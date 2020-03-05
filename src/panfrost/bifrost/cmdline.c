@@ -58,8 +58,6 @@ compile_shader(char **argv)
                 NIR_PASS_V(nir[i], nir_split_var_copies);
                 NIR_PASS_V(nir[i], nir_lower_var_copies);
 
-                NIR_PASS_V(nir[i], nir_lower_alu_to_scalar, NULL, NULL);
-
                 /* before buffers and vars_to_ssa */
                 NIR_PASS_V(nir[i], gl_nir_lower_images, true);
 

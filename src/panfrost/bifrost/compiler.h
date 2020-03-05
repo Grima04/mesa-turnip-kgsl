@@ -317,6 +317,7 @@ typedef struct bi_block {
 
 typedef struct {
        nir_shader *nir;
+       gl_shader_stage stage;
        struct list_head blocks; /* list of bi_block */
        uint32_t quirks;
 } bi_context; 
