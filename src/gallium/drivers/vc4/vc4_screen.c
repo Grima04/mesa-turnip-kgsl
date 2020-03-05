@@ -412,6 +412,7 @@ vc4_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                   int *count)
 {
         int m, i;
+        bool tex_will_lower;
         uint64_t available_modifiers[] = {
                 DRM_FORMAT_MOD_BROADCOM_VC4_T_TILED,
                 DRM_FORMAT_MOD_LINEAR,
@@ -426,6 +427,7 @@ vc4_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
 
         *count = MIN2(max, num_modifiers);
         m = screen->has_tiling_ioctl ? 0 : 1;
+        tex_will_lower = !vc4_tex_format_supported(format);
         /* We support both modifiers (tiled and linear) for all sampler
          * formats, but if we don't have the DRM_VC4_GET_TILING ioctl
          * we shouldn't advertise the tiled formats.
@@ -433,7 +435,7 @@ vc4_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
         for (i = 0; i < *count; i++) {
                 modifiers[i] = available_modifiers[m++];
                 if (external_only)
-                        external_only[i] = false;
+                        external_only[i] = tex_will_lower;
        }
 }
 
