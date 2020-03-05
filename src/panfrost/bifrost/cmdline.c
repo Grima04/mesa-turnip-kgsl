@@ -55,6 +55,7 @@ compile_shader(char **argv)
         for (unsigned i = 0; i < 2; ++i) {
                 nir[i] = glsl_to_nir(&local_ctx, prog, shader_types[i], &bifrost_nir_options);
                 NIR_PASS_V(nir[i], nir_lower_global_vars_to_local);
+                NIR_PASS_V(nir[i], nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir[i]), true, i == 0);
                 NIR_PASS_V(nir[i], nir_split_var_copies);
                 NIR_PASS_V(nir[i], nir_lower_var_copies);
 
