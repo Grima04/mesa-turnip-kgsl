@@ -192,13 +192,6 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_vertex_state *so = ctx->vertex;
 
-        size_t sz = sizeof(struct mali_attr_meta) * PAN_MAX_ATTRIBUTE;
-        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sz);
-        struct mali_attr_meta *target = (struct mali_attr_meta *) transfer.cpu;
-
-        /* Copy as-is for the first pass */
-        memcpy(target, so->hw, sz);
-
         /* Fixup offsets for the second pass. Recall that the hardware
          * calculates attribute addresses as:
          *
@@ -241,10 +234,14 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
                 if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start)
                         src_offset -= buf->stride * start;
 
-                target[i].src_offset = src_offset;
+                so->hw[i].src_offset = src_offset;
         }
 
-        ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = transfer.gpu;
+        mali_ptr out = panfrost_upload_transient(batch, so->hw,
+                                                 sizeof(*so->hw) *
+                                                 PAN_MAX_ATTRIBUTE);
+
+        ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = out;
 }
 
 /* Compute number of UBOs active (more specifically, compute the highest UBO
