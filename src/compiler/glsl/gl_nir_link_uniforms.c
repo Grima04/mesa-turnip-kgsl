@@ -48,9 +48,17 @@ static void
 nir_setup_uniform_remap_tables(struct gl_context *ctx,
                                struct gl_shader_program *prog)
 {
-   prog->UniformRemapTable = rzalloc_array(prog,
-                                           struct gl_uniform_storage *,
-                                           prog->NumUniformRemapTable);
+   /* For glsl this may have been allocated by reserve_explicit_locations() so
+    * that we can keep track of unused uniforms with explicit locations.
+    */
+   assert(!prog->data->spirv ||
+          (prog->data->spirv && !prog->UniformRemapTable));
+   if (!prog->UniformRemapTable) {
+      prog->UniformRemapTable = rzalloc_array(prog,
+                                              struct gl_uniform_storage *,
+                                              prog->NumUniformRemapTable);
+   }
+
    union gl_constant_value *data =
       rzalloc_array(prog->data,
                     union gl_constant_value, prog->data->NumUniformDataSlots);
@@ -93,7 +101,8 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
    }
 
    /* Reserve locations for rest of the uniforms. */
-   link_util_update_empty_uniform_locations(prog);
+   if (prog->data->spirv)
+      link_util_update_empty_uniform_locations(prog);
 
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
@@ -1396,8 +1405,10 @@ gl_nir_link_uniforms(struct gl_context *ctx,
    }
 
    prog->data->NumHiddenUniforms = state.num_hidden_uniforms;
-   prog->NumUniformRemapTable = state.max_uniform_location;
    prog->data->NumUniformDataSlots = state.num_values;
+
+   if (prog->data->spirv)
+      prog->NumUniformRemapTable = state.max_uniform_location;
 
    nir_setup_uniform_remap_tables(ctx, prog);
    gl_nir_set_uniform_initializers(ctx, prog);
