@@ -284,8 +284,36 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    s.SurfaceFormat = info->view->format;
 
 #if GEN_GEN >= 12
-   s.DepthStencilResource =
-      isl_surf_usage_is_depth_or_stencil(info->surf->usage);
+   /* The BSpec description of this field says:
+    *
+    *    "This bit field, when set, indicates if the resource is created as
+    *    Depth/Stencil resource."
+    *
+    *    "SW must set this bit for any resource that was created with
+    *    Depth/Stencil resource flag. Setting this bit allows HW to properly
+    *    interpret the data-layout for various cases. For any resource that's
+    *    created without Depth/Stencil resource flag, it must be reset."
+    *
+    * Even though the docs for this bit seem to imply that it's required for
+    * anything which might have been used for depth/stencil, empirical
+    * evidence suggests that it only affects CCS compression usage.  There are
+    * a few things which back this up:
+    *
+    *  1. The docs are also pretty clear that this bit was added as part
+    *     of enabling Gen12 depth/stencil lossless compression.
+    *
+    *  2. The only new difference between depth/stencil and color images on
+    *     Gen12 (where the bit was added) is how they treat CCS compression.
+    *     All other differences such as alignment requirements and MSAA layout
+    *     are already covered by other bits.
+    *
+    * Under these assumptions, it makes sense for ISL to model this bit as
+    * being an extension of AuxiliarySurfaceMode where STC_CCS and HIZ_CCS_WT
+    * are indicated by AuxiliarySurfaceMode == CCS_E and DepthStencilResource
+    * == true.
+    */
+   s.DepthStencilResource = info->aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT ||
+                            info->aux_usage == ISL_AUX_USAGE_STC_CCS;
 #endif
 
 #if GEN_GEN <= 5
