@@ -482,6 +482,7 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
                          parent->deref_type == nir_deref_type_array ||
                          parent->deref_type == nir_deref_type_ptr_as_array ||
                          parent->deref_type == nir_deref_type_cast);
+         validate_assert(state, nir_deref_instr_ptr_as_array_stride(parent));
          validate_src(&instr->arr.index, state,
                       nir_dest_bit_size(instr->dest), 1);
          break;
