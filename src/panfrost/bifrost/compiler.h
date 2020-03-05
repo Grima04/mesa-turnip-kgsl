@@ -320,6 +320,13 @@ typedef struct {
        gl_shader_stage stage;
        struct list_head blocks; /* list of bi_block */
        uint32_t quirks;
+
+       /* During NIR->BIR */
+       bi_block *current_block;
+       unsigned block_name_count;
+
+       /* Stats for shader-db */
+       unsigned instruction_count;
 } bi_context; 
 
 /* So we can distinguish between SSA/reg/sentinel quickly */

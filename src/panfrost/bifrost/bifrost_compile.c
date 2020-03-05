@@ -34,6 +34,72 @@
 #include "bifrost_compile.h"
 #include "compiler.h"
 #include "bi_quirks.h"
+#include "bi_print.h"
+
+static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
+
+static bi_block *
+create_empty_block(bi_context *ctx)
+{
+        bi_block *blk = rzalloc(ctx, bi_block);
+
+        blk->predecessors = _mesa_set_create(blk,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+        blk->name = ctx->block_name_count++;
+
+        return blk;
+}
+
+static bi_block *
+emit_block(bi_context *ctx, nir_block *block)
+{
+        ctx->current_block = create_empty_block(ctx);
+        list_addtail(&ctx->current_block->link, &ctx->blocks);
+        list_inithead(&ctx->current_block->instructions);
+
+        nir_foreach_instr(instr, block) {
+                //emit_instr(ctx, instr);
+                ++ctx->instruction_count;
+        }
+
+        return ctx->current_block;
+}
+
+static bi_block *
+emit_cf_list(bi_context *ctx, struct exec_list *list)
+{
+        bi_block *start_block = NULL;
+
+        foreach_list_typed(nir_cf_node, node, node, list) {
+                switch (node->type) {
+                case nir_cf_node_block: {
+                        bi_block *block = emit_block(ctx, nir_cf_node_as_block(node));
+
+                        if (!start_block)
+                                start_block = block;
+
+                        break;
+                }
+
+#if 0
+                case nir_cf_node_if:
+                        emit_if(ctx, nir_cf_node_as_if(node));
+                        break;
+
+                case nir_cf_node_loop:
+                        emit_loop(ctx, nir_cf_node_as_loop(node));
+                        break;
+#endif
+
+                default:
+                        unreachable("Unknown control flow");
+                }
+        }
+
+        return start_block;
+}
 
 static int
 glsl_type_size(const struct glsl_type *type, bool bindless)
@@ -115,6 +181,7 @@ bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned p
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
         ctx->quirks = bifrost_get_quirks(product_id);
+        list_inithead(&ctx->blocks);
 
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
          * (so we don't accidentally duplicate the epilogue since mesa/st has
@@ -140,6 +207,14 @@ bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned p
 
         bi_optimize_nir(nir);
         nir_print_shader(nir, stdout);
+
+        nir_foreach_function(func, nir) {
+                if (!func->impl)
+                        continue;
+
+                emit_cf_list(ctx, &func->impl->body);
+                break; /* TODO: Multi-function shaders */
+        }
 
         bi_print_shader(ctx, stdout);
 
