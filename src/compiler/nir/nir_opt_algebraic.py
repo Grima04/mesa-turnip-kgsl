@@ -1230,6 +1230,24 @@ optimizations.extend([
    (('bfm', 'bits', ('iand', 31, 'offset')), ('bfm', 'bits', 'offset')),
    (('bfm', ('iand', 31, 'bits'), 'offset'), ('bfm', 'bits', 'offset')),
 
+   # Section 8.8 (Integer Functions) of the GLSL 4.60 spec says:
+   #
+   #    If bits is zero, the result will be zero.
+   #
+   # These patterns prevent other patterns from generating invalid results
+   # when count is zero.
+   (('ubfe', a, b, 0), 0),
+   (('ibfe', a, b, 0), 0),
+
+   (('ubfe', a, 0, '#b'), ('iand', a, ('ushr', 0xffffffff, ('ineg', b)))),
+
+   (('b2i32', ('i2b', ('ubfe', a, b, 1))), ('ubfe', a, b, 1)),
+   (('b2i32', ('i2b', ('ibfe', a, b, 1))), ('ubfe', a, b, 1)), # ubfe in the replacement is correct
+   (('ine', ('ibfe(is_used_once)', a, '#b', '#c'), 0), ('ine', ('iand', a, ('ishl', ('ushr', 0xffffffff, ('ineg', c)), b)), 0)),
+   (('ieq', ('ibfe(is_used_once)', a, '#b', '#c'), 0), ('ieq', ('iand', a, ('ishl', ('ushr', 0xffffffff, ('ineg', c)), b)), 0)),
+   (('ine', ('ubfe(is_used_once)', a, '#b', '#c'), 0), ('ine', ('iand', a, ('ishl', ('ushr', 0xffffffff, ('ineg', c)), b)), 0)),
+   (('ieq', ('ubfe(is_used_once)', a, '#b', '#c'), 0), ('ieq', ('iand', a, ('ishl', ('ushr', 0xffffffff, ('ineg', c)), b)), 0)),
+
    (('ibitfield_extract', 'value', 'offset', 'bits'),
     ('bcsel', ('ieq', 0, 'bits'),
      0,
