@@ -357,7 +357,7 @@ bool
 panfrost_writes_point_size(struct panfrost_context *ctx)
 {
         assert(ctx->shader[PIPE_SHADER_VERTEX]);
-        struct panfrost_shader_state *vs = &ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant];
+        struct panfrost_shader_state *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
 
         return vs->writes_point_size && ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode == MALI_POINTS;
 }
@@ -719,14 +719,12 @@ static void
 panfrost_patch_shader_state(struct panfrost_context *ctx,
                             enum pipe_shader_type stage)
 {
-        struct panfrost_shader_variants *all = ctx->shader[stage];
+        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, stage);
 
-        if (!all) {
+        if (!ss) {
                 ctx->payloads[stage].postfix.shader = 0;
                 return;
         }
-
-        struct panfrost_shader_state *ss = &all->variants[all->active_variant];
 
         ss->tripipe->texture_count = ctx->sampler_view_count[stage];
         ss->tripipe->sampler_count = ctx->sampler_count[stage];
@@ -804,7 +802,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         }
 
         if (ctx->shader[PIPE_SHADER_FRAGMENT]) {
-                struct panfrost_shader_state *variant = &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant];
+                struct panfrost_shader_state *variant = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
                 panfrost_patch_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
@@ -1160,12 +1158,11 @@ panfrost_queue_draw(struct panfrost_context *ctx)
         }
 
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i) {
-                struct panfrost_shader_variants *all = ctx->shader[i];
+                struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, i);
 
-                if (!all)
+                if (!ss)
                         continue;
 
-                struct panfrost_shader_state *ss = &all->variants[all->active_variant];
                 batch->stack_size = MAX2(batch->stack_size, ss->stack_size);
         }
 }
@@ -1553,8 +1550,7 @@ panfrost_bind_rasterizer_state(
 
         /* Point sprites are emulated */
 
-        struct panfrost_shader_state *variant =
-                        ctx->shader[PIPE_SHADER_FRAGMENT] ? &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant] : NULL;
+        struct panfrost_shader_state *variant = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
         if (ctx->rasterizer->base.sprite_coord_enable || (variant && variant->point_sprite_mask))
                 ctx->base.bind_fs_state(&ctx->base, ctx->shader[PIPE_SHADER_FRAGMENT]);

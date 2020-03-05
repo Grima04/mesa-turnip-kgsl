@@ -272,6 +272,18 @@ pan_context(struct pipe_context *pcontext)
         return (struct panfrost_context *) pcontext;
 }
 
+static inline struct panfrost_shader_state *
+panfrost_get_shader_state(struct panfrost_context *ctx,
+                          enum pipe_shader_type st)
+{
+        struct panfrost_shader_variants *all = ctx->shader[st];
+
+        if (!all)
+                return NULL;
+
+        return &all->variants[all->active_variant];
+}
+
 struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 
