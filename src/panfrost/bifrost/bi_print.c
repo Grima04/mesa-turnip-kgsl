@@ -328,3 +328,17 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 
         fprintf(fp, "\n");
 }
+
+void
+bi_print_bundle(bi_bundle *bundle, FILE *fp)
+{
+        bi_instruction *ins[2] = { bundle->fma, bundle->add };
+
+        for (unsigned i = 0; i < 2; ++i) {
+                if (ins[i])
+                        bi_print_instruction(ins[i], fp);
+                else
+                        fprintf(fp, "nop\n");
+        }
+}
+
