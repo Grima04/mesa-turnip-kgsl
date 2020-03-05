@@ -692,13 +692,12 @@ files_libmesa_common += [
   main_enums_c,
   format_fallback_c,
   get_hash_h,
-  main_marshal_generated_c,
   main_marshal_generated_h,
   main_dispatch_h,
   ir_expression_operation_h,
   main_remap_helper_h,
   sha1_h,
-]
+] + main_marshal_generated_c
 files_libmesa_gallium += [
   ir_expression_operation_h,
   sha1_h,

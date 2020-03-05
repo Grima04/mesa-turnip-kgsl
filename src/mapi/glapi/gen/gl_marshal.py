@@ -46,6 +46,8 @@ static inline int safe_mul(int a, int b)
 """
 
 
+file_index = 0
+file_count = 1
 current_indent = 0
 
 
@@ -324,18 +326,27 @@ class PrintCode(gl_XML.gl_print_base):
         out('')
 
     def printBody(self, api):
-        async_funcs = []
+        # The first file only contains the dispatch tables
+        if file_index == 0:
+            self.print_unmarshal_dispatch_cmd(api)
+            self.print_create_marshal_table(api)
+            return
+
+        # The remaining files contain the marshal and unmarshal functions
+        func_per_file = (len(api.functionIterateAll()) // (file_count - 1)) + 1
+        i = -1
         for func in api.functionIterateAll():
+            i += 1
+            if i // func_per_file != (file_index - 1):
+                continue
+
             flavor = func.marshal_flavor()
             if flavor in ('skip', 'custom'):
                 continue
             elif flavor == 'async':
                 self.print_async_body(func)
-                async_funcs.append(func)
             elif flavor == 'sync':
                 self.print_sync_body(func)
-        self.print_unmarshal_dispatch_cmd(api)
-        self.print_create_marshal_table(api)
 
 
 def show_usage():
@@ -347,14 +358,19 @@ if __name__ == '__main__':
     file_name = 'gl_API.xml'
 
     try:
-        (args, trail) = getopt.getopt(sys.argv[1:], 'm:f:')
+        (args, trail) = getopt.getopt(sys.argv[1:], 'm:f:i:n:')
     except Exception:
         show_usage()
 
     for (arg,val) in args:
         if arg == '-f':
             file_name = val
+        elif arg == '-i':
+            file_index = int(val)
+        elif arg == '-n':
+            file_count = int(val)
 
+    assert file_index < file_count
     printer = PrintCode()
 
     api = gl_XML.parse_GL_API(file_name, marshal_XML.marshal_item_factory())
