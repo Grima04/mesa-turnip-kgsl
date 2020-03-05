@@ -399,21 +399,25 @@ bi_print_block(bi_block *block, FILE *fp)
                         bi_print_instruction(ins, fp);
         }
 
+        fprintf(fp, "}");
+
         if (block->successors[0]) {
                 fprintf(fp, " -> ");
 
                 for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
                         if (block->successors[i])
-                                fprintf(fp, "block%u", block->successors[i]->name);
+                                fprintf(fp, "block%u ", block->successors[i]->name);
                 }
         }
 
-        fprintf(fp, " from ");
+        if (block->predecessors->entries) {
+                fprintf(fp, " from");
 
-        bi_foreach_predecessor(block, pred)
-                fprintf(fp, "block%u ", pred->name);
+                bi_foreach_predecessor(block, pred)
+                        fprintf(fp, " block%u", pred->name);
+        }
 
-        fprintf(fp, "\n");
+        fprintf(fp, "\n\n");
 }
 
 void
