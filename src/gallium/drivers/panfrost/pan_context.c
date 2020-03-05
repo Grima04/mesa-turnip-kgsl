@@ -538,10 +538,8 @@ panfrost_patch_shader_state(struct panfrost_context *ctx,
 {
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, stage);
 
-        if (!ss) {
-                ctx->payloads[stage].postfix.shader = 0;
+        if (!ss)
                 return;
-        }
 
         ss->tripipe->texture_count = ctx->sampler_view_count[stage];
         ss->tripipe->sampler_count = ctx->sampler_count[stage];
@@ -550,18 +548,6 @@ panfrost_patch_shader_state(struct panfrost_context *ctx,
 
         unsigned ubo_count = panfrost_ubo_count(ctx, stage);
         ss->tripipe->midgard1.uniform_buffer_count = ubo_count;
-
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        /* Add the shader BO to the batch. */
-        panfrost_batch_add_bo(batch, ss->bo,
-                              PAN_BO_ACCESS_PRIVATE |
-                              PAN_BO_ACCESS_READ |
-			      panfrost_bo_access_for_stage(stage));
-
-        ctx->payloads[stage].postfix.shader = panfrost_upload_transient(batch,
-                                        ss->tripipe,
-                                        sizeof(struct mali_shader_meta));
 }
 
 /* Go through dirty flags and actualise them in the cmdstream. */
@@ -601,7 +587,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         }
 
         panfrost_patch_shader_state(ctx, PIPE_SHADER_VERTEX);
+        panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX,
+                                  &ctx->payloads[PIPE_SHADER_VERTEX]);
         panfrost_patch_shader_state(ctx, PIPE_SHADER_COMPUTE);
+        panfrost_emit_shader_meta(batch, PIPE_SHADER_COMPUTE,
+                                  &ctx->payloads[PIPE_SHADER_COMPUTE]);
 
         if (ctx->shader[PIPE_SHADER_VERTEX] && ctx->shader[PIPE_SHADER_FRAGMENT]) {
                 /* Check if we need to link the gl_PointSize varying */

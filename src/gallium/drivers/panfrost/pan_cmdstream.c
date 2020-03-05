@@ -28,6 +28,29 @@
 #include "pan_context.h"
 #include "pan_job.h"
 
+void
+panfrost_emit_shader_meta(struct panfrost_batch *batch,
+                          enum pipe_shader_type st,
+                          struct midgard_payload_vertex_tiler *vtp)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, st);
+
+        if (!ss) {
+                vtp->postfix.shader = 0;
+                return;
+        }
+
+        /* Add the shader BO to the batch. */
+        panfrost_batch_add_bo(batch, ss->bo,
+                              PAN_BO_ACCESS_PRIVATE |
+                              PAN_BO_ACCESS_READ |
+                              panfrost_bo_access_for_stage(st));
+
+        vtp->postfix.shader = panfrost_upload_transient(batch, ss->tripipe,
+                                                        sizeof(*ss->tripipe));
+}
+
 static void
 panfrost_mali_viewport_init(struct panfrost_context *ctx,
                             struct mali_viewport *mvp)

@@ -33,6 +33,11 @@
 #include "pan_job.h"
 
 void
+panfrost_emit_shader_meta(struct panfrost_batch *batch,
+                          enum pipe_shader_type st,
+                          struct midgard_payload_vertex_tiler *vtp);
+
+void
 panfrost_emit_viewport(struct panfrost_batch *batch,
                        struct midgard_payload_vertex_tiler *tp);
 
