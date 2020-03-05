@@ -618,22 +618,28 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
    struct anv_descriptor_set_layout *set_layout =
       layout->set[set_index].layout;
 
-   VkShaderStageFlags stages = set_layout->shader_stages &
-      (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE ?
-       VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL_GRAPHICS);
+   VkShaderStageFlags stages = set_layout->shader_stages;
+   struct anv_cmd_pipeline_state *pipe_state;
+
+   switch (bind_point) {
+   case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      stages &= VK_SHADER_STAGE_ALL_GRAPHICS;
+      pipe_state = &cmd_buffer->state.gfx.base;
+      break;
+
+   case VK_PIPELINE_BIND_POINT_COMPUTE:
+      stages &= VK_SHADER_STAGE_COMPUTE_BIT;
+      pipe_state = &cmd_buffer->state.compute.base;
+      break;
+
+   default:
+      unreachable("invalid bind point");
+   }
 
    VkShaderStageFlags dirty_stages = 0;
-   if (bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
-      if (cmd_buffer->state.compute.base.descriptors[set_index] != set) {
-         cmd_buffer->state.compute.base.descriptors[set_index] = set;
-         dirty_stages |= stages;
-      }
-   } else {
-      assert(bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS);
-      if (cmd_buffer->state.gfx.base.descriptors[set_index] != set) {
-         cmd_buffer->state.gfx.base.descriptors[set_index] = set;
-         dirty_stages |= stages;
-      }
+   if (pipe_state->descriptors[set_index] != set) {
+      pipe_state->descriptors[set_index] = set;
+      dirty_stages |= stages;
    }
 
    /* If it's a push descriptor set, we have to flag things as dirty
