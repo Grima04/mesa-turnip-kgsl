@@ -51,6 +51,7 @@
 #include "pan_screen.h"
 #include "pan_blending.h"
 #include "pan_blend_shaders.h"
+#include "pan_cmdstream.h"
 #include "pan_util.h"
 #include "pandecode/decode.h"
 
@@ -952,8 +953,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         panfrost_upload_sampler_descriptors(ctx);
         panfrost_upload_texture_descriptors(ctx);
 
-        const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
-
         for (int i = 0; i < PIPE_SHADER_TYPES; ++i) {
                 struct panfrost_shader_variants *all = ctx->shader[i];
 
@@ -1030,100 +1029,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
         /* TODO: Upload the viewport somewhere more appropriate */
 
-        /* Clip bounds are encoded as floats. The viewport itself is encoded as
-         * (somewhat) asymmetric ints. */
-        const struct pipe_scissor_state *ss = &ctx->scissor;
-
-        struct mali_viewport view = {
-                /* By default, do no viewport clipping, i.e. clip to (-inf,
-                 * inf) in each direction. Clipping to the viewport in theory
-                 * should work, but in practice causes issues when we're not
-                 * explicitly trying to scissor */
-
-                .clip_minx = -INFINITY,
-                .clip_miny = -INFINITY,
-                .clip_maxx = INFINITY,
-                .clip_maxy = INFINITY,
-        };
-
-        /* Always scissor to the viewport by default. */
-        float vp_minx = (int) (vp->translate[0] - fabsf(vp->scale[0]));
-        float vp_maxx = (int) (vp->translate[0] + fabsf(vp->scale[0]));
-
-        float vp_miny = (int) (vp->translate[1] - fabsf(vp->scale[1]));
-        float vp_maxy = (int) (vp->translate[1] + fabsf(vp->scale[1]));
-
-        float minz = (vp->translate[2] - fabsf(vp->scale[2]));
-        float maxz = (vp->translate[2] + fabsf(vp->scale[2]));
-
-        /* Apply the scissor test */
-
-        unsigned minx, miny, maxx, maxy;
-
-        if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor) {
-                minx = MAX2(ss->minx, vp_minx);
-                miny = MAX2(ss->miny, vp_miny);
-                maxx = MIN2(ss->maxx, vp_maxx);
-                maxy = MIN2(ss->maxy, vp_maxy);
-        } else {
-                minx = vp_minx;
-                miny = vp_miny;
-                maxx = vp_maxx;
-                maxy = vp_maxy;
-        }
-
-        /* Hardware needs the min/max to be strictly ordered, so flip if we
-         * need to. The viewport transformation in the vertex shader will
-         * handle the negatives if we don't */
-
-        if (miny > maxy) {
-                unsigned temp = miny;
-                miny = maxy;
-                maxy = temp;
-        }
-
-        if (minx > maxx) {
-                unsigned temp = minx;
-                minx = maxx;
-                maxx = temp;
-        }
-
-        if (minz > maxz) {
-                float temp = minz;
-                minz = maxz;
-                maxz = temp;
-        }
-
-        /* Clamp to the framebuffer size as a last check */
-
-        minx = MIN2(ctx->pipe_framebuffer.width, minx);
-        maxx = MIN2(ctx->pipe_framebuffer.width, maxx);
-
-        miny = MIN2(ctx->pipe_framebuffer.height, miny);
-        maxy = MIN2(ctx->pipe_framebuffer.height, maxy);
-
-        /* Update the job, unless we're doing wallpapering (whose lack of
-         * scissor we can ignore, since if we "miss" a tile of wallpaper, it'll
-         * just... be faster :) */
-
-        if (!ctx->wallpaper_batch)
-                panfrost_batch_union_scissor(batch, minx, miny, maxx, maxy);
-
-        /* Upload */
-
-        view.viewport0[0] = minx;
-        view.viewport1[0] = MALI_POSITIVE(maxx);
-
-        view.viewport0[1] = miny;
-        view.viewport1[1] = MALI_POSITIVE(maxy);
-
-        view.clip_minz = minz;
-        view.clip_maxz = maxz;
-
-        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.viewport =
-                panfrost_upload_transient(batch,
-                                          &view,
-                                          sizeof(struct mali_viewport));
+        panfrost_emit_viewport(batch, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
 }
 
 /* Corresponds to exactly one draw, but does not submit anything */
