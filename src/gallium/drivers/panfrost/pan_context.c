@@ -482,6 +482,18 @@ panfrost_statistics_record(
 }
 
 static void
+panfrost_update_streamout_offsets(struct panfrost_context *ctx)
+{
+        for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
+                unsigned count;
+
+                count = u_stream_outputs_for_vertices(ctx->active_prim,
+                                                      ctx->vertex_count);
+                ctx->streamout.offsets[i] += count;
+        }
+}
+
+static void
 panfrost_draw_vbo(
         struct pipe_context *pipe,
         const struct pipe_draw_info *info)
@@ -625,13 +637,7 @@ panfrost_draw_vbo(
         panfrost_queue_draw(ctx);
 
         /* Increment transform feedback offsets */
-
-        for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
-                unsigned output_count = u_stream_outputs_for_vertices(
-                                ctx->active_prim, ctx->vertex_count);
-
-                ctx->streamout.offsets[i] += output_count;
-        }
+        panfrost_update_streamout_offsets(ctx);
 }
 
 /* CSO state */
