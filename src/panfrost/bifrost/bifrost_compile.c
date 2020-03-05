@@ -60,6 +60,51 @@ emit_jump(bi_context *ctx, nir_jump_instr *instr)
 }
 
 static void
+bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        bi_instruction ins = {
+                .type = BI_LOAD_VAR,
+                .load_vary = {
+                        .load = {
+                                .location = nir_intrinsic_base(instr),
+                                .channels = instr->num_components,
+                        },
+                        .interp_mode = BIFROST_INTERP_DEFAULT, /* TODO */
+                        .reuse = false, /* TODO */
+                        .flat = instr->intrinsic != nir_intrinsic_load_interpolated_input
+                },
+                .dest = bir_dest_index(&instr->dest),
+                .dest_type = nir_type_float | nir_dest_bit_size(instr->dest),
+        };
+
+        nir_src *offset = nir_get_io_offset_src(instr);
+
+        if (nir_src_is_const(*offset))
+                ins.load_vary.load.location += nir_src_as_uint(*offset);
+        else
+                ins.src[0] = bir_src_index(offset);
+
+        bi_emit(ctx, ins);
+}
+
+static void
+emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+
+        switch (instr->intrinsic) {
+        case nir_intrinsic_load_barycentric_pixel:
+                /* stub */
+                break;
+        case nir_intrinsic_load_interpolated_input:
+                bi_emit_ld_vary(ctx, instr);
+                break;
+        default:
+                /* todo */
+                break;
+        }
+}
+
+static void
 emit_instr(bi_context *ctx, struct nir_instr *instr)
 {
         switch (instr->type) {
@@ -67,11 +112,13 @@ emit_instr(bi_context *ctx, struct nir_instr *instr)
         case nir_instr_type_load_const:
                 emit_load_const(ctx, nir_instr_as_load_const(instr));
                 break;
+#endif
 
         case nir_instr_type_intrinsic:
                 emit_intrinsic(ctx, nir_instr_as_intrinsic(instr));
                 break;
 
+#if 0
         case nir_instr_type_alu:
                 emit_alu(ctx, nir_instr_as_alu(instr));
                 break;
