@@ -258,5 +258,7 @@ void
 _mesa_glthread_finish_before(struct gl_context *ctx, const char *func)
 {
    _mesa_glthread_finish(ctx);
-   debug_print_sync_fallback(func);
+
+   /* Uncomment this if you want to know where glthread syncs. */
+   /*printf("fallback to sync: %s\n", func);*/
 }
