@@ -328,6 +328,13 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                         fprintf(fp, ", ");
         }
 
+        if (ins->type == BI_BRANCH) {
+                if (ins->branch.target)
+                        fprintf(fp, "-> block%u", ins->branch.target->name);
+                else
+                        fprintf(fp, "-> blockhole");
+        }
+
         fprintf(fp, "\n");
 }
 
