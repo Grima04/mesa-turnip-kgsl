@@ -11,8 +11,9 @@ timeouts:
 priority: 75
 visibility: public
 {% if tags %}
+{% set lavatags = tags.split(',') %}
 tags:
-{% for tag in tags %}
+{% for tag in lavatags %}
   - {{ tag }}
 {% endfor %}
 {% endif %}
