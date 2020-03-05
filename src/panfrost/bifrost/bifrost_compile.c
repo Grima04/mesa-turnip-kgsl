@@ -37,6 +37,65 @@
 #include "bi_print.h"
 
 static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
+static bi_instruction *bi_emit_branch(bi_context *ctx);
+static void bi_block_add_successor(bi_block *block, bi_block *successor);
+
+static void
+emit_jump(bi_context *ctx, nir_jump_instr *instr)
+{
+        bi_instruction *branch = bi_emit_branch(ctx);
+
+        switch (instr->type) {
+        case nir_jump_break:
+                branch->branch.target = ctx->break_block;
+                break;
+        case nir_jump_continue:
+                branch->branch.target = ctx->continue_block;
+                break;
+        default:
+                unreachable("Unhandled jump type");
+        }
+
+        bi_block_add_successor(ctx->current_block, branch->branch.target);
+}
+
+static void
+emit_instr(bi_context *ctx, struct nir_instr *instr)
+{
+        switch (instr->type) {
+#if 0
+        case nir_instr_type_load_const:
+                emit_load_const(ctx, nir_instr_as_load_const(instr));
+                break;
+
+        case nir_instr_type_intrinsic:
+                emit_intrinsic(ctx, nir_instr_as_intrinsic(instr));
+                break;
+
+        case nir_instr_type_alu:
+                emit_alu(ctx, nir_instr_as_alu(instr));
+                break;
+
+        case nir_instr_type_tex:
+                emit_tex(ctx, nir_instr_as_tex(instr));
+                break;
+#endif
+
+        case nir_instr_type_jump:
+                emit_jump(ctx, nir_instr_as_jump(instr));
+                break;
+
+        case nir_instr_type_ssa_undef:
+                /* Spurious */
+                break;
+
+        default:
+                //unreachable("Unhandled instruction type");
+                break;
+        }
+}
+
+
 
 static bi_block *
 create_empty_block(bi_context *ctx)
@@ -88,7 +147,7 @@ emit_block(bi_context *ctx, nir_block *block)
         list_inithead(&ctx->current_block->instructions);
 
         nir_foreach_instr(instr, block) {
-                //emit_instr(ctx, instr);
+                emit_instr(ctx, instr);
                 ++ctx->instruction_count;
         }
 
