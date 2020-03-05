@@ -499,7 +499,7 @@ iris_resolve_color(struct iris_context *ice,
    /* On Gen >= 12, Stencil buffer with lossless compression needs to be
     * resolve with WM_HZ_OP packet.
     */
-   if (isl_surf_usage_is_stencil(res->surf.usage)) {
+   if (res->aux.usage == ISL_AUX_USAGE_STC_CCS) {
       blorp_hiz_stencil_op(&blorp_batch, &surf, level, layer,
                            1, resolve_op);
    } else {
@@ -962,6 +962,7 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
 
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
+   case ISL_AUX_USAGE_STC_CCS:
       return res->aux.usage;
 
    case ISL_AUX_USAGE_CCS_D:

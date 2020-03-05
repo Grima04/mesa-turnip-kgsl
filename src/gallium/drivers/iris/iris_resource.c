@@ -492,6 +492,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
       } else {
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ_CCS;
       }
+   } else if (has_ccs && isl_surf_usage_is_stencil(res->surf.usage)) {
+      res->aux.possible_usages |= 1 << ISL_AUX_USAGE_STC_CCS;
    } else if (has_ccs) {
       if (want_ccs_e_for_format(devinfo, res->surf.format))
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
@@ -542,6 +544,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       break;
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
+   case ISL_AUX_USAGE_STC_CCS:
       /* When CCS_E is used, we need to ensure that the CCS starts off in
        * a valid state.  From the Sky Lake PRM, "MCS Buffer for Render
        * Target(s)":
@@ -555,11 +558,13 @@ iris_resource_configure_aux(struct iris_screen *screen,
        * For CCS_D, do the same thing.  On Gen9+, this avoids having any
        * undefined bits in the aux buffer.
        */
-      if (imported)
+      if (imported) {
+         assert(res->aux.usage != ISL_AUX_USAGE_STC_CCS);
          initial_state =
             isl_drm_modifier_get_default_aux_state(res->mod_info->modifier);
-      else
+      } else {
          initial_state = ISL_AUX_STATE_PASS_THROUGH;
+      }
       *alloc_flags |= BO_ALLOC_ZEROED;
       break;
    case ISL_AUX_USAGE_MC:
@@ -1803,13 +1808,16 @@ iris_transfer_map(struct pipe_context *ctx,
 
    if (resource->target != PIPE_BUFFER) {
       bool need_hiz_resolve = iris_resource_level_has_hiz(res, level);
+      bool need_stencil_resolve = res->aux.usage == ISL_AUX_USAGE_STC_CCS;
 
       need_color_resolve =
          (res->aux.usage == ISL_AUX_USAGE_CCS_D ||
           res->aux.usage == ISL_AUX_USAGE_CCS_E) &&
          iris_has_color_unresolved(res, level, 1, box->z, box->depth);
 
-      need_resolve = need_color_resolve || need_hiz_resolve;
+      need_resolve = need_color_resolve ||
+                     need_hiz_resolve ||
+                     need_stencil_resolve;
    }
 
    bool map_would_stall = false;

@@ -597,6 +597,10 @@ get_copy_region_aux_settings(struct iris_context *ice,
        */
       *out_clear_supported = devinfo->gen >= 9;
       break;
+   case ISL_AUX_USAGE_STC_CCS:
+      *out_aux_usage = res->aux.usage;
+      *out_clear_supported = false;
+      break;
    default:
       *out_aux_usage = ISL_AUX_USAGE_NONE;
       *out_clear_supported = false;
