@@ -11,7 +11,6 @@ apt-get -y install --no-install-recommends \
     libdrm2 \
     libdrm-nouveau2 \
     firmware-qcom-media \
-    firmware-realtek \
     wget \
     xz-utils
 passwd root -d
@@ -23,6 +22,9 @@ export PS1=lava-shell:
 exec sh
 EOF
 chmod +x  /init
+
+mkdir -p /lib/firmware/rtl_nic
+wget https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/rtl_nic/rtl8153a-3.fw -O /lib/firmware/rtl_nic/rtl8153a-3.fw
 
 #######################################################################
 # Strip the image to a small minimal system without removing the debian
