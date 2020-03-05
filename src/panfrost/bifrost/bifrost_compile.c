@@ -52,10 +52,38 @@ create_empty_block(bi_context *ctx)
         return blk;
 }
 
+static void
+bi_block_add_successor(bi_block *block, bi_block *successor)
+{
+        assert(block);
+        assert(successor);
+
+        for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
+                if (block->successors[i]) {
+                       if (block->successors[i] == successor)
+                               return;
+                       else
+                               continue;
+                }
+
+                block->successors[i] = successor;
+                _mesa_set_add(successor->predecessors, block);
+                return;
+        }
+
+        unreachable("Too many successors");
+}
+
 static bi_block *
 emit_block(bi_context *ctx, nir_block *block)
 {
-        ctx->current_block = create_empty_block(ctx);
+        if (ctx->after_block) {
+                ctx->current_block = ctx->after_block;
+                ctx->after_block = NULL;
+        } else {
+                ctx->current_block = create_empty_block(ctx);
+        }
+
         list_addtail(&ctx->current_block->link, &ctx->blocks);
         list_inithead(&ctx->current_block->instructions);
 
@@ -65,6 +93,85 @@ emit_block(bi_context *ctx, nir_block *block)
         }
 
         return ctx->current_block;
+}
+
+/* Emits an unconditional branch to the end of the current block, returning a
+ * pointer so the user can fill in details */
+
+static bi_instruction *
+bi_emit_branch(bi_context *ctx)
+{
+        bi_instruction branch = {
+                .type = BI_BRANCH,
+                .branch = {
+                        .cond = BI_COND_ALWAYS
+                }
+        };
+
+        return bi_emit(ctx, branch);
+}
+
+/* Sets a condition for a branch by examing the NIR condition. If we're
+ * familiar with the condition, we unwrap it to fold it into the branch
+ * instruction. Otherwise, we consume the condition directly. We
+ * generally use 1-bit booleans which allows us to use small types for
+ * the conditions.
+ */
+
+static void
+bi_set_branch_cond(bi_instruction *branch, nir_src *cond, bool invert)
+{
+        /* TODO: Try to unwrap instead of always bailing */
+        branch->src[0] = bir_src_index(cond);
+        branch->src[1] = BIR_INDEX_ZERO;
+        branch->src_types[0] = branch->src_types[1] = nir_type_uint16;
+        branch->branch.cond = invert ? BI_COND_EQ : BI_COND_NE;
+}
+
+static void
+emit_if(bi_context *ctx, nir_if *nif)
+{
+        bi_block *before_block = ctx->current_block;
+
+        /* Speculatively emit the branch, but we can't fill it in until later */
+        bi_instruction *then_branch = bi_emit_branch(ctx);
+        bi_set_branch_cond(then_branch, &nif->condition, true);
+
+        /* Emit the two subblocks. */
+        bi_block *then_block = emit_cf_list(ctx, &nif->then_list);
+        bi_block *end_then_block = ctx->current_block;
+
+        /* Emit a jump from the end of the then block to the end of the else */
+        bi_instruction *then_exit = bi_emit_branch(ctx);
+
+        /* Emit second block, and check if it's empty */
+
+        int count_in = ctx->instruction_count;
+        bi_block *else_block = emit_cf_list(ctx, &nif->else_list);
+        bi_block *end_else_block = ctx->current_block;
+        ctx->after_block = create_empty_block(ctx);
+
+        /* Now that we have the subblocks emitted, fix up the branches */
+
+        assert(then_block);
+        assert(else_block);
+
+        if (ctx->instruction_count == count_in) {
+                /* The else block is empty, so don't emit an exit jump */
+                bi_remove_instruction(then_exit);
+                then_branch->branch.target = ctx->after_block;
+        } else {
+                then_branch->branch.target = else_block;
+                then_exit->branch.target = ctx->after_block;
+                bi_block_add_successor(end_then_block, then_exit->branch.target);
+        }
+
+        /* Wire up the successors */
+
+        bi_block_add_successor(before_block, then_branch->branch.target); /* then_branch */
+
+        bi_block_add_successor(before_block, then_block); /* fallthrough */
+        bi_block_add_successor(end_else_block, ctx->after_block); /* fallthrough */
 }
 
 static bi_block *
@@ -83,11 +190,11 @@ emit_cf_list(bi_context *ctx, struct exec_list *list)
                         break;
                 }
 
-#if 0
                 case nir_cf_node_if:
                         emit_if(ctx, nir_cf_node_as_if(node));
                         break;
 
+#if 0
                 case nir_cf_node_loop:
                         emit_loop(ctx, nir_cf_node_as_loop(node));
                         break;
