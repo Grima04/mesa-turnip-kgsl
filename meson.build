@@ -958,6 +958,7 @@ else
     '-fno-math-errno',
     '-fno-trapping-math',
     '-Qunused-arguments',
+    '-fno-common',
   ]
   # MinGW chokes on format specifiers and I can't get it all working
   if not (cc.get_id() == 'gcc' and host_machine.system() == 'windows')
