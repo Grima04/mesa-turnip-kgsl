@@ -1228,7 +1228,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    /* Clear vsc_scratch: */
    tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 3);
-   tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_SCRATCH);
+   tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
    tu_cs_emit(cs, 0x0);
 
    /* Check for overflow, write vsc_scratch if detected: */
@@ -1240,7 +1240,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit(cs, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
       tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_data_pitch));
       tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
-      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_SCRATCH);
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
       tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(1 + cmd->vsc_data_pitch));
 
       tu_cs_emit_pkt7(cs, CP_COND_WRITE5, 8);
@@ -1250,7 +1250,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit(cs, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
       tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_data2_pitch));
       tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
-      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_SCRATCH);
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
       tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(3 + cmd->vsc_data2_pitch));
    }
 
@@ -1261,7 +1261,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_MEM_TO_REG, 3);
    tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(OVERFLOW_FLAG_REG) |
          CP_MEM_TO_REG_0_CNT(1 - 1));
-   tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_SCRATCH);
+   tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
 
    /*
     * This is a bit awkward, we really want a way to invert the
@@ -1293,7 +1293,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
       tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(OVERFLOW_FLAG_REG) |
             CP_REG_TO_MEM_0_CNT(0));
-      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_OVERFLOW);
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_overflow));
 
       tu_cs_emit_pkt4(cs, OVERFLOW_FLAG_REG, 1);
       tu_cs_emit(cs, 0x0);
@@ -3440,11 +3440,13 @@ tu6_emit_streamout(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(i)) |
                         CP_MEM_TO_REG_0_SHIFT_BY_2 | CP_MEM_TO_REG_0_UNK31 |
                         CP_MEM_TO_REG_0_CNT(0));
-         tu_cs_emit_qw(cs, cmd->scratch_bo.iova + VSC_FLUSH * (i + 1));
+         tu_cs_emit_qw(cs, cmd->scratch_bo.iova +
+                           ctrl_offset(flush_base[i].offset));
       }
 
       tu_cs_emit_regs(cs, A6XX_VPC_SO_FLUSH_BASE(i, .bo = &cmd->scratch_bo,
-                                                    .bo_offset = VSC_FLUSH * (i + 1)));
+                                                    .bo_offset =
+                                                       ctrl_offset(flush_base[i])));
    }
 
    if (cmd->state.streamout_enabled) {

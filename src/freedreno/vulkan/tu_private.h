@@ -947,6 +947,28 @@ tu_bo_list_add(struct tu_bo_list *list,
 VkResult
 tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other);
 
+/* This struct defines the layout of the scratch_bo */
+struct tu6_control
+{
+   uint32_t seqno;          /* seqno for async CP_EVENT_WRITE, etc */
+   uint32_t _pad0;
+   volatile uint32_t vsc_overflow;
+   uint32_t _pad1;
+   /* flag set from cmdstream when VSC overflow detected: */
+   uint32_t vsc_scratch;
+   uint32_t _pad2;
+   uint32_t _pad3;
+   uint32_t _pad4;
+
+   /* scratch space for VPC_SO[i].FLUSH_BASE_LO/HI, start on 32 byte boundary. */
+   struct {
+      uint32_t offset;
+      uint32_t pad[7];
+   } flush_base[4];
+};
+
+#define ctrl_offset(member) offsetof(struct tu6_control, member)
+
 struct tu_cmd_buffer
 {
    VK_LOADER_DATA _loader_data;
@@ -982,9 +1004,6 @@ struct tu_cmd_buffer
 
    struct tu_bo scratch_bo;
    uint32_t scratch_seqno;
-#define VSC_OVERFLOW 0x8
-#define VSC_SCRATCH 0x10
-#define VSC_FLUSH   0x20
 
    struct tu_bo vsc_data;
    struct tu_bo vsc_data2;
