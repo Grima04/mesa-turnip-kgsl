@@ -657,8 +657,11 @@ rematerialize_deref_in_block(nir_deref_instr *deref,
    switch (deref->deref_type) {
    case nir_deref_type_var:
    case nir_deref_type_array_wildcard:
-   case nir_deref_type_cast:
       /* Nothing more to do */
+      break;
+
+   case nir_deref_type_cast:
+      new_deref->cast.ptr_stride = deref->cast.ptr_stride;
       break;
 
    case nir_deref_type_array:
