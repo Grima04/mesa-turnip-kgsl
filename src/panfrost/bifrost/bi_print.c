@@ -317,9 +317,11 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 if (bi_is_src_swizzled(ins, s))
                         bi_print_swizzle(ins, fp);
 
-                if (ins->type == BI_CONVERT && s == 0)
-                        bi_print_alu_type(ins->src_types[s], fp);
-                else if ((ins->type == BI_BRANCH || ins->type == BI_CSEL) && s < 2)
+                bool is_convert = ins->type == BI_CONVERT && s == 0;
+                bool is_branch = ins->type == BI_BRANCH && s < 2 && ins->branch.cond != BI_COND_ALWAYS;
+                bool is_csel = ins->type == BI_CSEL && s < 2;
+
+                if (is_convert || is_branch || is_csel)
                         bi_print_alu_type(ins->src_types[s], fp);
 
                 if (s < BIR_SRC_COUNT)
