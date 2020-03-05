@@ -376,11 +376,6 @@ VkResult genX(GetQueryPoolResults)(
          const uint32_t *rpstat_begin = query_data + intel_perf_rpstart_offset(false);
          const uint32_t *rpstat_end = query_data + intel_perf_mi_rpc_offset(true);
          struct gen_perf_query_result result;
-         struct gen_perf_query_info metric = {
-            .oa_format = (GEN_GEN >= 8 ?
-                          I915_OA_FORMAT_A32u40_A4u32_B8_C8 :
-                          I915_OA_FORMAT_A45_B8_C8),
-         };
          uint32_t core_freq[2];
 #if GEN_GEN < 9
          core_freq[0] = ((*rpstat_begin >> 7) & 0x7f) * 1000000ULL;
@@ -390,7 +385,7 @@ VkResult genX(GetQueryPoolResults)(
          core_freq[1] = ((*rpstat_end >> 23) & 0x1ff) * 1000000ULL;
 #endif
          gen_perf_query_result_clear(&result);
-         gen_perf_query_result_accumulate(&result, &metric,
+         gen_perf_query_result_accumulate(&result, &device->physical->perf->queries[0],
                                           oa_begin, oa_end);
          gen_perf_query_result_read_frequencies(&result, &device->info,
                                                 oa_begin, oa_end);
