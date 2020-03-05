@@ -210,6 +210,17 @@ vir_set_unpack(struct qinst *inst, int src,
 }
 
 void
+vir_set_pack(struct qinst *inst, enum v3d_qpu_output_pack pack)
+{
+        if (vir_is_add(inst)) {
+                inst->qpu.alu.add.output_pack = pack;
+        } else {
+                assert(vir_is_mul(inst));
+                inst->qpu.alu.mul.output_pack = pack;
+        }
+}
+
+void
 vir_set_cond(struct qinst *inst, enum v3d_qpu_cond cond)
 {
         if (vir_is_add(inst)) {

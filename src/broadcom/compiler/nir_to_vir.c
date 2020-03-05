@@ -1160,6 +1160,27 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 vir_set_unpack(c->defs[result.index], 0, V3D_QPU_UNPACK_H);
                 break;
 
+        case nir_op_fquantize2f16: {
+                /* F32 -> F16 -> F32 conversion */
+                struct qreg tmp = vir_FMOV(c, src[0]);
+                vir_set_pack(c->defs[tmp.index], V3D_QPU_PACK_L);
+                tmp = vir_FMOV(c, tmp);
+                vir_set_unpack(c->defs[tmp.index], 0, V3D_QPU_UNPACK_L);
+
+                /* Check for denorm */
+                struct qreg abs_src = vir_FMOV(c, src[0]);
+                vir_set_unpack(c->defs[abs_src.index], 0, V3D_QPU_UNPACK_ABS);
+                struct qreg threshold = vir_uniform_f(c, ldexpf(1.0, -14));
+                vir_set_pf(vir_FCMP_dest(c, vir_nop_reg(), abs_src, threshold),
+                                         V3D_QPU_PF_PUSHC);
+
+                /* Return +/-0 for denorms */
+                struct qreg zero =
+                        vir_AND(c, src[0], vir_uniform_ui(c, 0x80000000));
+                result = vir_FMOV(c, vir_SEL(c, V3D_QPU_COND_IFNA, tmp, zero));
+                break;
+        }
+
         default:
                 fprintf(stderr, "unknown NIR ALU inst: ");
                 nir_print_instr(&instr->instr, stderr);
