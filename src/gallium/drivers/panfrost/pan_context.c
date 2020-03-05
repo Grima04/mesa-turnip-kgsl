@@ -225,15 +225,15 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
                 struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
-                struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer.resource);
-                mali_ptr addr = rsrc->bo->gpu + buf->buffer_offset;
 
                 /* Adjust by the masked off bits of the offset. Make sure we
                  * read src_offset from so->hw (which is not GPU visible)
                  * rather than target (which is) due to caching effects */
 
                 unsigned src_offset = so->pipe[i].src_offset;
-                src_offset += (addr & 63);
+
+                /* BOs aligned to 4k so guaranteed aligned to 64 */
+                src_offset += (buf->buffer_offset & 63);
 
                 /* Also, somewhat obscurely per-instance data needs to be
                  * offset in response to a delayed start in an indexed draw */
