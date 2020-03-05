@@ -108,7 +108,7 @@ panfrost_emit_varying_meta(
 {
         struct mali_attr_meta *out = (struct mali_attr_meta *) outptr;
 
-        for (unsigned i = 0; i < ss->tripipe->varying_count; ++i) {
+        for (unsigned i = 0; i < ss->varying_count; ++i) {
                 gl_varying_slot location = ss->varyings_loc[i];
                 int index = -1;
 
@@ -186,8 +186,8 @@ panfrost_emit_varying_descriptor(
 
         /* Allocate the varying descriptor */
 
-        size_t vs_size = sizeof(struct mali_attr_meta) * vs->tripipe->varying_count;
-        size_t fs_size = sizeof(struct mali_attr_meta) * fs->tripipe->varying_count;
+        size_t vs_size = sizeof(struct mali_attr_meta) * vs->varying_count;
+        size_t fs_size = sizeof(struct mali_attr_meta) * fs->varying_count;
 
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_transfer trans = panfrost_allocate_transient(batch,
@@ -200,7 +200,7 @@ panfrost_emit_varying_descriptor(
          * not, use the provided stream out information to determine the
          * offset, since it was already linked for us. */
 
-        for (unsigned i = 0; i < vs->tripipe->varying_count; i++) {
+        for (unsigned i = 0; i < vs->varying_count; i++) {
                 gl_varying_slot loc = vs->varyings_loc[i];
 
                 bool special = is_special_varying(loc);
@@ -222,12 +222,12 @@ panfrost_emit_varying_descriptor(
         /* Link up with fragment varyings */
         bool reads_point_coord = fs->reads_point_coord;
 
-        for (unsigned i = 0; i < fs->tripipe->varying_count; i++) {
+        for (unsigned i = 0; i < fs->varying_count; i++) {
                 gl_varying_slot loc = fs->varyings_loc[i];
                 signed vs_idx = -1;
 
                 /* Link up */
-                for (unsigned j = 0; j < vs->tripipe->varying_count; ++j) {
+                for (unsigned j = 0; j < vs->varying_count; ++j) {
                         if (vs->varyings_loc[j] == loc) {
                                 vs_idx = j;
                                 break;
@@ -252,7 +252,7 @@ panfrost_emit_varying_descriptor(
 
         /* Figure out how many streamout buffers could be bound */
         unsigned so_count = ctx->streamout.num_targets;
-        for (unsigned i = 0; i < vs->tripipe->varying_count; i++) {
+        for (unsigned i = 0; i < vs->varying_count; i++) {
                 gl_varying_slot loc = vs->varyings_loc[i];
 
                 bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
@@ -331,7 +331,7 @@ panfrost_emit_varying_descriptor(
         struct mali_attr_meta *ovs = (struct mali_attr_meta *) (trans.cpu);
         struct mali_attr_meta *ofs = (struct mali_attr_meta *) (trans.cpu + vs_size);
 
-        for (unsigned i = 0; i < vs->tripipe->varying_count; i++) {
+        for (unsigned i = 0; i < vs->varying_count; i++) {
                 gl_varying_slot loc = vs->varyings_loc[i];
 
                 bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
@@ -349,7 +349,7 @@ panfrost_emit_varying_descriptor(
                 signed fs_idx = -1;
 
                 /* Link up */
-                for (unsigned j = 0; j < fs->tripipe->varying_count; ++j) {
+                for (unsigned j = 0; j < fs->varying_count; ++j) {
                         if (fs->varyings_loc[j] == loc) {
                                 fs_idx = j;
                                 break;
@@ -364,7 +364,7 @@ panfrost_emit_varying_descriptor(
         }
 
         /* Replace point sprite */
-        for (unsigned i = 0; i < fs->tripipe->varying_count; i++) {
+        for (unsigned i = 0; i < fs->varying_count; i++) {
                 /* If we have a point sprite replacement, handle that here. We
                  * have to translate location first.  TODO: Flip y in shader.
                  * We're already keying ... just time crunch .. */
@@ -398,12 +398,12 @@ panfrost_emit_varying_descriptor(
                 varyings[i].elements |= MALI_ATTR_LINEAR;
                 varyings[i].size += align;
 
-                for (unsigned v = 0; v < vs->tripipe->varying_count; ++v) {
+                for (unsigned v = 0; v < vs->varying_count; ++v) {
                         if (ovs[v].index == i)
                                 ovs[v].src_offset = vs->varyings[v].src_offset + align;
                 }
 
-                for (unsigned f = 0; f < fs->tripipe->varying_count; ++f) {
+                for (unsigned f = 0; f < fs->varying_count; ++f) {
                         if (ofs[f].index == i)
                                 ofs[f].src_offset = fs->varyings[f].src_offset + align;
                 }

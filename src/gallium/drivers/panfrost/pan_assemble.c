@@ -81,9 +81,11 @@ panfrost_shader_compile(
                 state->bo = panfrost_bo_create(screen, size, PAN_BO_EXECUTE);
                 memcpy(state->bo->cpu, dst, size);
                 meta->shader = state->bo->gpu | program.first_tag;
+                state->first_tag = program.first_tag;
         } else {
                 /* No shader. Use dummy tag to avoid INSTR_INVALID_ENC */
                 meta->shader = 0x0 | 1;
+                state->first_tag = 1;
         }
 
         util_dynarray_fini(&program.compiled);
@@ -101,19 +103,19 @@ panfrost_shader_compile(
 
         switch (stage) {
         case MESA_SHADER_VERTEX:
-                meta->attribute_count = util_bitcount64(s->info.inputs_read);
-                meta->varying_count = util_bitcount64(s->info.outputs_written);
+                state->attribute_count = util_bitcount64(s->info.inputs_read);
+                state->varying_count = util_bitcount64(s->info.outputs_written);
 
                 if (vertex_id)
-                        meta->attribute_count = MAX2(meta->attribute_count, PAN_VERTEX_ID + 1);
+                        state->attribute_count = MAX2(state->attribute_count, PAN_VERTEX_ID + 1);
 
                 if (instance_id)
-                        meta->attribute_count = MAX2(meta->attribute_count, PAN_INSTANCE_ID + 1);
+                        state->attribute_count = MAX2(state->attribute_count, PAN_INSTANCE_ID + 1);
 
                 break;
         case MESA_SHADER_FRAGMENT:
-                meta->attribute_count = 0;
-                meta->varying_count = util_bitcount64(s->info.inputs_read);
+                state->attribute_count = 0;
+                state->varying_count = util_bitcount64(s->info.inputs_read);
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
                         state->writes_depth = true;
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
@@ -121,8 +123,8 @@ panfrost_shader_compile(
                 break;
         case MESA_SHADER_COMPUTE:
                 /* TODO: images */
-                meta->attribute_count = 0;
-                meta->varying_count = 0;
+                state->attribute_count = 0;
+                state->varying_count = 0;
                 state->shared_size = s->info.cs.shared_size;
                 break;
         default:
@@ -140,7 +142,11 @@ panfrost_shader_compile(
 
         /* Separate as primary uniform count is truncated */
         state->uniform_count = program.uniform_count;
+        state->uniform_cutoff = program.uniform_cutoff;
+        state->work_reg_count = program.work_register_count;
 
+        meta->attribute_count = state->attribute_count;
+        meta->varying_count = state->varying_count;
         meta->midgard1.flags_hi = 8; /* XXX */
 
         unsigned default_vec1_swizzle = panfrost_get_default_swizzle(1);
@@ -148,7 +154,7 @@ panfrost_shader_compile(
         unsigned default_vec4_swizzle = panfrost_get_default_swizzle(4);
 
         /* Iterate the varyings and emit the corresponding descriptor */
-        for (unsigned i = 0; i < meta->varying_count; ++i) {
+        for (unsigned i = 0; i < state->varying_count; ++i) {
                 unsigned location = program.varyings[i];
 
                 /* Default to a vec4 varying */

@@ -192,6 +192,9 @@ struct panfrost_shader_state {
 
         /* Non-descript information */
         int uniform_count;
+        unsigned uniform_cutoff;
+        unsigned work_reg_count;
+        unsigned attribute_count;
         bool can_discard;
         bool writes_point_size;
         bool writes_depth;
@@ -202,6 +205,8 @@ struct panfrost_shader_state {
         unsigned stack_size;
         unsigned shared_size;
 
+
+        unsigned int varying_count;
         struct mali_attr_meta varyings[PIPE_MAX_ATTRIBS];
         gl_varying_slot varyings_loc[PIPE_MAX_ATTRIBS];
         struct pipe_stream_output_info stream_output;
@@ -219,6 +224,7 @@ struct panfrost_shader_state {
         /* Should we enable helper invocations */
         bool helper_invocations;
 
+        unsigned first_tag;
         struct panfrost_bo *bo;
 };
 
