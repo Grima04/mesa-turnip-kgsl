@@ -1047,6 +1047,23 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
 }
 
 void
+panfrost_emit_vertex_attr_meta(struct panfrost_batch *batch,
+                               struct midgard_payload_vertex_tiler *vp)
+{
+        struct panfrost_context *ctx = batch->ctx;
+
+        if (!ctx->vertex)
+                return;
+
+        struct panfrost_vertex_state *so = ctx->vertex;
+
+        panfrost_vertex_state_upd_attr_offs(ctx, vp);
+        vp->postfix.attribute_meta = panfrost_upload_transient(batch, so->hw,
+                                                               sizeof(*so->hw) *
+                                                               PAN_MAX_ATTRIBUTE);
+}
+
+void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                 struct midgard_payload_vertex_tiler *vp,
                                 struct midgard_payload_vertex_tiler *tp)

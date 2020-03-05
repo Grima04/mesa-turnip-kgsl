@@ -183,7 +183,7 @@ panfrost_writes_point_size(struct panfrost_context *ctx)
         return vs->writes_point_size && ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode == MALI_POINTS;
 }
 
-static void
+void
 panfrost_vertex_state_upd_attr_offs(struct panfrost_context *ctx,
                                     struct midgard_payload_vertex_tiler *vp)
 {
@@ -238,27 +238,6 @@ panfrost_vertex_state_upd_attr_offs(struct panfrost_context *ctx,
         }
 }
 
-/* Stage the attribute descriptors so we can adjust src_offset
- * to let BOs align nicely */
-
-static void
-panfrost_stage_attributes(struct panfrost_context *ctx)
-{
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        struct panfrost_vertex_state *so = ctx->vertex;
-
-        /* Update src_offsets before copying to the GPU buffer. */
-
-        panfrost_vertex_state_upd_attr_offs(ctx,
-                                            &ctx->payloads[PIPE_SHADER_VERTEX]);
-
-        mali_ptr out = panfrost_upload_transient(batch, so->hw,
-                                                 sizeof(*so->hw) *
-                                                 PAN_MAX_ATTRIBUTE);
-
-        ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = out;
-}
-
 /* Compute number of UBOs active (more specifically, compute the highest UBO
  * number addressable -- if there are gaps, include them in the count anyway).
  * We always include UBO #0 in the count, since we *need* uniforms enabled for
@@ -299,9 +278,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx)
         panfrost_emit_shader_meta(batch, PIPE_SHADER_FRAGMENT,
                                   &ctx->payloads[PIPE_SHADER_FRAGMENT]);
 
-        /* We stage to transient, so always dirty.. */
-        if (ctx->vertex)
-                panfrost_stage_attributes(ctx);
+        panfrost_emit_vertex_attr_meta(batch,
+                                       &ctx->payloads[PIPE_SHADER_VERTEX]);
 
         for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
                 panfrost_emit_sampler_descriptors(batch, i, &ctx->payloads[i]);
