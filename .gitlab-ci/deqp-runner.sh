@@ -71,6 +71,10 @@ fi
 
 set +e
 
+if [ -n "$DEQP_PARALLEL" ]; then
+   JOB="--job $DEQP_PARALLEL"
+fi
+
 run_cts() {
     deqp=$1
     caselist=$2
@@ -81,7 +85,7 @@ run_cts() {
         --caselist $caselist \
         --exclude-list $ARTIFACTS/$DEQP_SKIPS \
         $XFAIL \
-        --job ${DEQP_PARALLEL:-1} \
+        $JOB \
 	--allow-flakes true \
 	$DEQP_RUNNER_OPTIONS \
         -- \
