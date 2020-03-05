@@ -385,26 +385,22 @@ static bool
 drm_get_pci_id_for_fd(int fd, int *vendor_id, int *chip_id)
 {
    drmDevicePtr device;
-   bool ret;
 
-   if (drmGetDevice2(fd, 0, &device) == 0) {
-      if (device->bustype == DRM_BUS_PCI) {
-         *vendor_id = device->deviceinfo.pci->vendor_id;
-         *chip_id = device->deviceinfo.pci->device_id;
-         ret = true;
-      }
-      else {
-         log_(_LOADER_DEBUG, "MESA-LOADER: device is not located on the PCI bus\n");
-         ret = false;
-      }
-      drmFreeDevice(&device);
-   }
-   else {
+   if (drmGetDevice2(fd, 0, &device) != 0) {
       log_(_LOADER_WARNING, "MESA-LOADER: failed to retrieve device information\n");
-      ret = false;
+      return false;
    }
 
-   return ret;
+   if (device->bustype != DRM_BUS_PCI) {
+      drmFreeDevice(&device);
+      log_(_LOADER_DEBUG, "MESA-LOADER: device is not located on the PCI bus\n");
+      return false;
+   }
+
+   *vendor_id = device->deviceinfo.pci->vendor_id;
+   *chip_id = device->deviceinfo.pci->device_id;
+   drmFreeDevice(&device);
+   return true;
 }
 #endif
 
