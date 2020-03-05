@@ -1399,7 +1399,7 @@ fd6_framebuffer_barrier(struct fd_context *ctx)
 	struct fd_ringbuffer *ring = batch->draw;
 	unsigned seqno;
 
-	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_AND_INV_EVENT, true);
+	seqno = fd6_event_write(batch, ring, RB_DONE_TS, true);
 
 	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
 	OUT_RING(ring, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |

@@ -166,7 +166,7 @@ timestamp_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 	struct fd_ringbuffer *ring = batch->draw;
 
 	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
-	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_AND_INV_EVENT) |
+	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS) |
 			CP_EVENT_WRITE_0_TIMESTAMP);
 	OUT_RELOCW(ring, query_sample(aq, start));
 	OUT_RING(ring, 0x00000000);
@@ -180,7 +180,7 @@ timestamp_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 	struct fd_ringbuffer *ring = batch->draw;
 
 	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
-	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_AND_INV_EVENT) |
+	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS) |
 			CP_EVENT_WRITE_0_TIMESTAMP);
 	OUT_RELOCW(ring, query_sample(aq, stop));
 	OUT_RING(ring, 0x00000000);

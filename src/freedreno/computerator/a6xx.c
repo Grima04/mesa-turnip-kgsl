@@ -314,7 +314,7 @@ cache_flush(struct fd_ringbuffer *ring, struct kernel *kernel)
 	struct a6xx_backend *a6xx_backend = to_a6xx_backend(ir3_kernel->backend);
 	unsigned seqno;
 
-	seqno = event_write(ring, kernel, CACHE_FLUSH_AND_INV_EVENT, true);
+	seqno = event_write(ring, kernel, RB_DONE_TS, true);
 
 	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
 	OUT_RING(ring, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
