@@ -574,15 +574,6 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
                 info->aux_usage == ISL_AUX_USAGE_CCS_D);
       }
 
-      if (GEN_GEN >= 12) {
-         /* We don't need an auxiliary surface for CCS on gen12+ */
-         assert (info->aux_usage == ISL_AUX_USAGE_CCS_E ||
-                 info->aux_usage == ISL_AUX_USAGE_MC || info->aux_surf);
-      } else {
-         /* We must have an auxiliary surface */
-         assert(info->aux_surf);
-      }
-
       /* The docs don't appear to say anything whatsoever about compression
        * and the data port.  Testing seems to indicate that the data port
        * completely ignores the AuxiliarySurfaceMode field.
@@ -615,13 +606,18 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 #endif
    }
 
-   /* The auxiliary buffer info is filled when it's useable by the HW. On
-    * gen12 and above, CCS is controlled by the aux table and not the
-    * auxiliary surface information in SURFACE_STATE.
+   /* The auxiliary buffer info is filled when it's useable by the HW.
+    *
+    * Starting with Gen12, the only form of compression that can be used
+    * with RENDER_SURFACE_STATE which requires an aux surface is MCS.
+    * HiZ still requires a surface but the HiZ surface can only be
+    * accessed through 3DSTATE_HIER_DEPTH_BUFFER.
+    *
+    * On all earlier hardware, an aux surface is required for all forms
+    * of compression.
     */
-   if (info->aux_usage != ISL_AUX_USAGE_NONE &&
-       ((info->aux_usage != ISL_AUX_USAGE_MC &&
-         info->aux_usage != ISL_AUX_USAGE_CCS_E) || GEN_GEN <= 11)) {
+   if ((GEN_GEN < 12 && info->aux_usage != ISL_AUX_USAGE_NONE) ||
+       (GEN_GEN >= 12 && isl_aux_usage_has_mcs(info->aux_usage))) {
 
       assert(info->aux_surf != NULL);
 
