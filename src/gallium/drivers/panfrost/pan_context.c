@@ -244,21 +244,6 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
                 target[i].src_offset = src_offset;
         }
 
-        /* Let's also include vertex builtins */
-
-        struct mali_attr_meta builtin = {
-                .format = MALI_R32UI,
-                .swizzle = panfrost_get_default_swizzle(1)
-        };
-
-        /* See mali_attr_meta specification for the magic number */
-
-        builtin.index = so->vertexid_index;
-        memcpy(&target[PAN_VERTEX_ID], &builtin, 4);
-
-        builtin.index = so->vertexid_index + 1;
-        memcpy(&target[PAN_INSTANCE_ID], &builtin, 4);
-
         ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = transfer.gpu;
 }
 
@@ -723,6 +708,12 @@ panfrost_create_vertex_elements_state(
 
                 so->hw[i].format = panfrost_find_format(desc);
         }
+
+        /* Let's also prepare vertex builtins */
+        so->hw[PAN_VERTEX_ID].format = MALI_R32UI;
+        so->hw[PAN_VERTEX_ID].swizzle = panfrost_get_default_swizzle(1);
+        so->hw[PAN_INSTANCE_ID].format = MALI_R32UI;
+        so->hw[PAN_INSTANCE_ID].swizzle = panfrost_get_default_swizzle(1);
 
         return so;
 }
