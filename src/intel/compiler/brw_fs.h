@@ -467,13 +467,13 @@ public:
    fs_generator(const struct brw_compiler *compiler, void *log_data,
                 void *mem_ctx,
                 struct brw_stage_prog_data *prog_data,
-                struct shader_stats shader_stats,
                 bool runtime_check_aads_emit,
                 gl_shader_stage stage);
    ~fs_generator();
 
    void enable_debug(const char *shader_name);
    int generate_code(const cfg_t *cfg, int dispatch_width,
+                     struct shader_stats shader_stats,
                      struct brw_compile_stats *stats);
    const unsigned *get_assembly();
 
@@ -572,7 +572,6 @@ private:
    unsigned dispatch_width; /**< 8, 16 or 32 */
 
    exec_list discard_halt_patches;
-   struct shader_stats shader_stats;
    bool runtime_check_aads_emit;
    bool debug_flag;
    const char *shader_name;

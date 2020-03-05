@@ -186,14 +186,12 @@ brw_reg_from_fs_reg(const struct gen_device_info *devinfo, fs_inst *inst,
 fs_generator::fs_generator(const struct brw_compiler *compiler, void *log_data,
                            void *mem_ctx,
                            struct brw_stage_prog_data *prog_data,
-                           struct shader_stats shader_stats,
                            bool runtime_check_aads_emit,
                            gl_shader_stage stage)
 
    : compiler(compiler), log_data(log_data),
      devinfo(compiler->devinfo),
      prog_data(prog_data),
-     shader_stats(shader_stats),
      runtime_check_aads_emit(runtime_check_aads_emit), debug_flag(false),
      stage(stage), mem_ctx(mem_ctx)
 {
@@ -1698,6 +1696,7 @@ fs_generator::enable_debug(const char *shader_name)
 
 int
 fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
+                            struct shader_stats shader_stats,
                             struct brw_compile_stats *stats)
 {
    /* align to 64 byte boundary. */

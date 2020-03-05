@@ -441,8 +441,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
       prog_data->base.base.dispatch_grf_start_reg = v.payload.num_regs;
 
       fs_generator g(compiler, log_data, mem_ctx,
-                     &prog_data->base.base, v.shader_stats, false,
-                     MESA_SHADER_TESS_CTRL);
+                     &prog_data->base.base, false, MESA_SHADER_TESS_CTRL);
       if (unlikely(INTEL_DEBUG & DEBUG_TCS)) {
          g.enable_debug(ralloc_asprintf(mem_ctx,
                                         "%s tessellation control shader %s",
@@ -451,7 +450,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
                                         nir->info.name));
       }
 
-      g.generate_code(v.cfg, 8, stats);
+      g.generate_code(v.cfg, 8, v.shader_stats, stats);
 
       assembly = g.get_assembly();
    } else {

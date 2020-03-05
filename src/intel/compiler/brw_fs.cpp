@@ -8601,6 +8601,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    brw_compute_flat_inputs(prog_data, shader);
 
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;
+   struct shader_stats v8_shader_stats, v16_shader_stats, v32_shader_stats;
 
    fs_visitor v8(compiler, log_data, mem_ctx, &key->base,
                  &prog_data->base, shader, 8,
@@ -8612,6 +8613,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
       return NULL;
    } else if (likely(!(INTEL_DEBUG & DEBUG_NO8))) {
       simd8_cfg = v8.cfg;
+      v8_shader_stats = v8.shader_stats;
       prog_data->base.dispatch_grf_start_reg = v8.payload.num_regs;
       prog_data->reg_blocks_8 = brw_register_blocks(v8.grf_used);
    }
@@ -8639,6 +8641,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                                    v16.fail_msg);
       } else {
          simd16_cfg = v16.cfg;
+         v16_shader_stats = v16.shader_stats;
          prog_data->dispatch_grf_start_reg_16 = v16.payload.num_regs;
          prog_data->reg_blocks_16 = brw_register_blocks(v16.grf_used);
       }
@@ -8659,6 +8662,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                                    v32.fail_msg);
       } else {
          simd32_cfg = v32.cfg;
+         v32_shader_stats = v32.shader_stats;
          prog_data->dispatch_grf_start_reg_32 = v32.payload.num_regs;
          prog_data->reg_blocks_32 = brw_register_blocks(v32.grf_used);
       }
@@ -8712,8 +8716,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    }
 
    fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
-                  v8.shader_stats, v8.runtime_check_aads_emit,
-                  MESA_SHADER_FRAGMENT);
+                  v8.runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
 
    if (unlikely(INTEL_DEBUG & DEBUG_WM)) {
       g.enable_debug(ralloc_asprintf(mem_ctx, "%s fragment shader %s",
@@ -8724,19 +8727,19 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    if (simd8_cfg) {
       prog_data->dispatch_8 = true;
-      g.generate_code(simd8_cfg, 8, stats);
+      g.generate_code(simd8_cfg, 8, v8_shader_stats, stats);
       stats = stats ? stats + 1 : NULL;
    }
 
    if (simd16_cfg) {
       prog_data->dispatch_16 = true;
-      prog_data->prog_offset_16 = g.generate_code(simd16_cfg, 16, stats);
+      prog_data->prog_offset_16 = g.generate_code(simd16_cfg, 16, v16_shader_stats, stats);
       stats = stats ? stats + 1 : NULL;
    }
 
    if (simd32_cfg) {
       prog_data->dispatch_32 = true;
-      prog_data->prog_offset_32 = g.generate_code(simd32_cfg, 32, stats);
+      prog_data->prog_offset_32 = g.generate_code(simd32_cfg, 32, v32_shader_stats, stats);
       stats = stats ? stats + 1 : NULL;
    }
 
@@ -8979,8 +8982,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          *error_str = ralloc_strdup(mem_ctx, fail_msg);
    } else {
       fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
-                     v->shader_stats, v->runtime_check_aads_emit,
-                     MESA_SHADER_COMPUTE);
+                     v->runtime_check_aads_emit, MESA_SHADER_COMPUTE);
       if (INTEL_DEBUG & DEBUG_CS) {
          char *name = ralloc_asprintf(mem_ctx, "%s compute shader %s",
                                       src_shader->info.label ?
@@ -8989,7 +8991,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          g.enable_debug(name);
       }
 
-      g.generate_code(v->cfg, prog_data->simd_size, stats);
+      g.generate_code(v->cfg, prog_data->simd_size, v->shader_stats, stats);
 
       ret = g.get_assembly();
    }
