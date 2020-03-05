@@ -190,6 +190,9 @@ panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
 void
 panfrost_batch_set_requirements(struct panfrost_batch *batch);
 
+void
+panfrost_batch_adjust_stack_size(struct panfrost_batch *batch);
+
 struct panfrost_bo *
 panfrost_batch_get_scratchpad(struct panfrost_batch *batch, unsigned shift, unsigned thread_tls_alloc, unsigned core_count);
 

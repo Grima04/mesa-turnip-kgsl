@@ -1157,14 +1157,7 @@ panfrost_queue_draw(struct panfrost_context *ctx)
                         panfrost_new_job(batch, JOB_TYPE_TILER, false, vertex, tiler_payload, sizeof(*tiler_payload), false);
         }
 
-        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i) {
-                struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, i);
-
-                if (!ss)
-                        continue;
-
-                batch->stack_size = MAX2(batch->stack_size, ss->stack_size);
-        }
+        panfrost_batch_adjust_stack_size(batch);
 }
 
 /* The entire frame is in memory -- send it off to the kernel! */

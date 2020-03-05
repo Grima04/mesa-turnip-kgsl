@@ -1127,6 +1127,22 @@ panfrost_batch_set_requirements(struct panfrost_batch *batch)
                 batch->requirements |= PAN_REQ_DEPTH_WRITE;
 }
 
+void
+panfrost_batch_adjust_stack_size(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+
+        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i) {
+                struct panfrost_shader_state *ss;
+
+                ss = panfrost_get_shader_state(ctx, i);
+                if (!ss)
+                        continue;
+
+                batch->stack_size = MAX2(batch->stack_size, ss->stack_size);
+        }
+}
+
 /* Helper to smear a 32-bit color across 128-bit components */
 
 static void
