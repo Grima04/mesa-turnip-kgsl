@@ -432,6 +432,11 @@ droid_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
 
       window->query(window, NATIVE_WINDOW_WIDTH, &dri2_surf->base.Width);
       window->query(window, NATIVE_WINDOW_HEIGHT, &dri2_surf->base.Height);
+
+      uint32_t usage = strcmp(dri2_dpy->driver_name, "kms_swrast") == 0
+            ? GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN
+            : GRALLOC_USAGE_HW_RENDER;
+      native_window_set_usage(window, usage);
    }
 
    config = dri2_get_dri_config(dri2_conf, type,
