@@ -42,5 +42,6 @@ void bi_print_instruction(bi_instruction *ins, FILE *fp);
 void bi_print_bundle(bi_bundle *bundle, FILE *fp);
 void bi_print_clause(bi_clause *clause, FILE *fp);
 void bi_print_block(bi_block *block, FILE *fp);
+void bi_print_shader(bi_context *ctx, FILE *fp);
 
 #endif
