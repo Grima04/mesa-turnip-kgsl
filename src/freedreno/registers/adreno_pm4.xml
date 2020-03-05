@@ -11,9 +11,9 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="CACHE_FLUSH_TS" value="4"/>
 	<value name="CONTEXT_DONE" value="5"/>
 	<value name="CACHE_FLUSH" value="6"/>
-	<value name="HLSQ_FLUSH" value="7"/> <!-- on a3xx -->
-	<value name="VIZQUERY_START" value="7"/> <!-- on a2xx (??) -->
-	<value name="VIZQUERY_END" value="8"/>
+	<value name="VIZQUERY_START" value="7" variants="A2XX"/>
+	<value name="HLSQ_FLUSH" value="7" variants="A3XX,A4XX"/>
+	<value name="VIZQUERY_END" value="8" variants="A2XX"/>
 	<value name="SC_WAIT_WC" value="9"/>
 	<value name="WRITE_PRIMITIVE_COUNTS" value="9" variants="A6XX"/>
 	<value name="START_PRIMITIVE_CTRS" value="11" variants="A6XX"/>
@@ -24,13 +24,15 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="STAT_EVENT" value="16"/>
 	<value name="CACHE_FLUSH_AND_INV_TS_EVENT" value="20" variants="A2XX,A3XX,A4XX"/>
 	<value name="ZPASS_DONE" value="21"/>
-	<value name="CACHE_FLUSH_AND_INV_EVENT" value="22"/>
+	<value name="CACHE_FLUSH_AND_INV_EVENT" value="22" variants="A2XX"/>
+	<value name="RB_DONE_TS" value="22" variants="A3XX-"/>
 	<value name="PERFCOUNTER_START" value="23" variants="A2XX,A3XX,A4XX"/>
 	<value name="PERFCOUNTER_STOP" value="24" variants="A2XX,A3XX,A4XX"/>
 	<value name="VS_FETCH_DONE" value="27"/>
 	<value name="FACENESS_FLUSH" value="28" variants="A2XX,A3XX,A4XX"/>
 
 	<!-- a5xx events -->
+	<value name="WT_DONE_TS" value="8" variants="A5XX,A6XX"/>
 	<value name="FLUSH_SO_0" value="17" variants="A5XX,A6XX"/>
 	<value name="FLUSH_SO_1" value="18" variants="A5XX,A6XX"/>
 	<value name="FLUSH_SO_2" value="19" variants="A5XX,A6XX"/>
