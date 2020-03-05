@@ -262,82 +262,6 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
         ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = transfer.gpu;
 }
 
-static void
-panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
-{
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        size_t desc_size = sizeof(struct mali_sampler_descriptor);
-
-        for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
-                mali_ptr upload = 0;
-
-                if (ctx->sampler_count[t]) {
-                        size_t transfer_size = desc_size * ctx->sampler_count[t];
-
-                        struct panfrost_transfer transfer =
-                                panfrost_allocate_transient(batch, transfer_size);
-
-                        struct mali_sampler_descriptor *desc =
-                                (struct mali_sampler_descriptor *) transfer.cpu;
-
-                        for (int i = 0; i < ctx->sampler_count[t]; ++i)
-                                desc[i] = ctx->samplers[t][i]->hw;
-
-                        upload = transfer.gpu;
-                }
-
-                ctx->payloads[t].postfix.sampler_descriptor = upload;
-        }
-}
-
-static mali_ptr
-panfrost_upload_tex(
-        struct panfrost_context *ctx,
-        enum pipe_shader_type st,
-        struct panfrost_sampler_view *view)
-{
-        if (!view)
-                return (mali_ptr) 0;
-
-        struct pipe_sampler_view *pview = &view->base;
-        struct panfrost_resource *rsrc = pan_resource(pview->texture);
-
-        /* Add the BO to the job so it's retained until the job is done. */
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        panfrost_batch_add_bo(batch, rsrc->bo,
-                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                              panfrost_bo_access_for_stage(st));
-
-        panfrost_batch_add_bo(batch, view->bo,
-                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
-                              panfrost_bo_access_for_stage(st));
-
-        return view->bo->gpu;
-}
-
-static void
-panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
-{
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
-                mali_ptr trampoline = 0;
-
-                if (ctx->sampler_view_count[t]) {
-                        uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-
-                        for (int i = 0; i < ctx->sampler_view_count[t]; ++i)
-                                trampolines[i] =
-                                        panfrost_upload_tex(ctx, t, ctx->sampler_views[t][i]);
-
-                        trampoline = panfrost_upload_transient(batch, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
-                }
-
-                ctx->payloads[t].postfix.texture_trampoline = trampoline;
-        }
-}
-
 /* Compute number of UBOs active (more specifically, compute the highest UBO
  * number addressable -- if there are gaps, include them in the count anyway).
  * We always include UBO #0 in the count, since we *need* uniforms enabled for
@@ -382,11 +306,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx)
         if (ctx->vertex)
                 panfrost_stage_attributes(ctx);
 
-        panfrost_upload_sampler_descriptors(ctx);
-        panfrost_upload_texture_descriptors(ctx);
-
-        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i)
+        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
+                panfrost_emit_sampler_descriptors(batch, i, &ctx->payloads[i]);
+                panfrost_emit_texture_descriptors(batch, i, &ctx->payloads[i]);
                 panfrost_emit_const_buf(batch, i, &ctx->payloads[i]);
+        }
 
         /* TODO: Upload the viewport somewhere more appropriate */
 

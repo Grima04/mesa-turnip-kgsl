@@ -66,4 +66,14 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
                             const struct pipe_grid_info *info,
                             struct midgard_payload_vertex_tiler *vtp);
 
+void
+panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
+                                  enum pipe_shader_type stage,
+                                  struct midgard_payload_vertex_tiler *vtp);
+
+void
+panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
+                                  enum pipe_shader_type stage,
+                                  struct midgard_payload_vertex_tiler *vtp);
+
 #endif /* __PAN_CMDSTREAM_H__ */

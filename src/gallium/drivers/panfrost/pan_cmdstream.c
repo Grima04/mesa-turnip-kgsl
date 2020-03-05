@@ -977,3 +977,71 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
         vtp->postfix.shared_memory = panfrost_upload_transient(batch, &shared,
                                                                sizeof(shared));
 }
+
+static mali_ptr
+panfrost_get_tex_desc(struct panfrost_batch *batch,
+                      enum pipe_shader_type st,
+                      struct panfrost_sampler_view *view)
+{
+        if (!view)
+                return (mali_ptr) 0;
+
+        struct pipe_sampler_view *pview = &view->base;
+        struct panfrost_resource *rsrc = pan_resource(pview->texture);
+
+        /* Add the BO to the job so it's retained until the job is done. */
+
+        panfrost_batch_add_bo(batch, rsrc->bo,
+                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
+                              panfrost_bo_access_for_stage(st));
+
+        panfrost_batch_add_bo(batch, view->bo,
+                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
+                              panfrost_bo_access_for_stage(st));
+
+        return view->bo->gpu;
+}
+
+void
+panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
+                                  enum pipe_shader_type stage,
+                                  struct midgard_payload_vertex_tiler *vtp)
+{
+        struct panfrost_context *ctx = batch->ctx;
+
+        if (!ctx->sampler_view_count[stage])
+                return;
+
+        uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+
+         for (int i = 0; i < ctx->sampler_view_count[stage]; ++i)
+                trampolines[i] = panfrost_get_tex_desc(batch, stage,
+                                                       ctx->sampler_views[stage][i]);
+
+         vtp->postfix.texture_trampoline = panfrost_upload_transient(batch,
+                                                                     trampolines,
+                                                                     sizeof(uint64_t) *
+                                                                     ctx->sampler_view_count[stage]);
+}
+
+void
+panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
+                                  enum pipe_shader_type stage,
+                                  struct midgard_payload_vertex_tiler *vtp)
+{
+        struct panfrost_context *ctx = batch->ctx;
+
+        if (!ctx->sampler_count[stage])
+                return;
+
+        size_t desc_size = sizeof(struct mali_sampler_descriptor);
+        size_t transfer_size = desc_size * ctx->sampler_count[stage];
+        struct panfrost_transfer transfer = panfrost_allocate_transient(batch,
+                                                                        transfer_size);
+        struct mali_sampler_descriptor *desc = (struct mali_sampler_descriptor *)transfer.cpu;
+
+        for (int i = 0; i < ctx->sampler_count[stage]; ++i)
+                desc[i] = ctx->samplers[stage][i]->hw;
+
+        vtp->postfix.sampler_descriptor = transfer.gpu;
+}
