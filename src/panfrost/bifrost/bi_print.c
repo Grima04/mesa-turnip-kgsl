@@ -140,6 +140,25 @@ bi_class_name(enum bi_class cl)
 }
 
 static void
+bi_print_index(FILE *fp, bi_instruction *ins, unsigned index)
+{
+        if (!index)
+                fprintf(fp, "_");
+        else if (index & BIR_INDEX_REGISTER)
+                fprintf(fp, "br%u", index & ~BIR_INDEX_REGISTER);
+        else if (index & BIR_INDEX_UNIFORM)
+                fprintf(fp, "u%u", index & ~BIR_INDEX_UNIFORM);
+        else if (index & BIR_INDEX_CONSTANT)
+                fprintf(fp, "#0x%" PRIx64, ins->constant.u64);
+        else if (index & BIR_INDEX_ZERO)
+                fprintf(fp, "#0");
+        else if (index & BIR_IS_REG)
+                fprintf(fp, "r%u", index >> 1);
+        else
+                fprintf(fp, "%u", (index >> 1) - 1);
+}
+
+static void
 bi_print_src(FILE *fp, bi_instruction *ins, unsigned s)
 {
         unsigned src = ins->src[s];
@@ -153,20 +172,7 @@ bi_print_src(FILE *fp, bi_instruction *ins, unsigned s)
         if (abs)
                 fprintf(fp, "abs(");
 
-        if (!src)
-                fprintf(fp, "_");
-        else if (src & BIR_INDEX_REGISTER)
-                fprintf(fp, "br%u", src & ~BIR_INDEX_REGISTER);
-        else if (src & BIR_INDEX_UNIFORM)
-                fprintf(fp, "u%u", src & ~BIR_INDEX_UNIFORM);
-        else if (src & BIR_INDEX_CONSTANT)
-                fprintf(fp, "#0x%" PRIx64, ins->constant.u64);
-        else if (src & BIR_INDEX_ZERO)
-                fprintf(fp, "#0");
-        else if (src & BIR_IS_REG)
-                fprintf(fp, "r%u", src >> 1);
-        else
-                fprintf(fp, "%u", (src >> 1) - 1);
+        bi_print_index(fp, ins, src);
 
         if (abs)
                 fprintf(fp, ")");
@@ -303,12 +309,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_round_mode_name(ins->roundmode));
 
         fprintf(fp, " ");
-
-        if (ins->dest)
-                fprintf(fp, "%d", ins->dest);
-        else
-                fprintf(fp, "_");
-
+        bi_print_index(fp, ins, ins->dest);
         fprintf(fp, ", ");
 
         bi_foreach_src(ins, s) {
