@@ -58,7 +58,6 @@ apt-get install -y --no-remove \
       libxrender-dev \
       libxrender1 \
       meson \
-      patch \
       pkg-config \
       python \
       python3-distutils \
@@ -106,7 +105,6 @@ apt-get purge -y \
       libxrandr-dev \
       libxrender-dev \
       meson \
-      patch \
       pkg-config
 
 apt-get autoremove -y --purge
