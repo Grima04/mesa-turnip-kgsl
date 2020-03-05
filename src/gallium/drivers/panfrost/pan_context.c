@@ -183,13 +183,13 @@ panfrost_writes_point_size(struct panfrost_context *ctx)
         return vs->writes_point_size && ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode == MALI_POINTS;
 }
 
-/* Stage the attribute descriptors so we can adjust src_offset
- * to let BOs align nicely */
-
 static void
-panfrost_stage_attributes(struct panfrost_context *ctx)
+panfrost_vertex_state_upd_attr_offs(struct panfrost_context *ctx,
+                                    struct midgard_payload_vertex_tiler *vp)
 {
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        if (!ctx->vertex)
+                return;
+
         struct panfrost_vertex_state *so = ctx->vertex;
 
         /* Fixup offsets for the second pass. Recall that the hardware
@@ -213,7 +213,7 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
          * QED.
          */
 
-        unsigned start = ctx->payloads[PIPE_SHADER_VERTEX].offset_start;
+        unsigned start = vp->offset_start;
 
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
@@ -236,6 +236,21 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
 
                 so->hw[i].src_offset = src_offset;
         }
+}
+
+/* Stage the attribute descriptors so we can adjust src_offset
+ * to let BOs align nicely */
+
+static void
+panfrost_stage_attributes(struct panfrost_context *ctx)
+{
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        struct panfrost_vertex_state *so = ctx->vertex;
+
+        /* Update src_offsets before copying to the GPU buffer. */
+
+        panfrost_vertex_state_upd_attr_offs(ctx,
+                                            &ctx->payloads[PIPE_SHADER_VERTEX]);
 
         mali_ptr out = panfrost_upload_transient(batch, so->hw,
                                                  sizeof(*so->hw) *
