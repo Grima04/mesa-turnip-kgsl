@@ -1045,3 +1045,36 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
 
         vtp->postfix.sampler_descriptor = transfer.gpu;
 }
+
+void
+panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
+                                struct midgard_payload_vertex_tiler *vp,
+                                struct midgard_payload_vertex_tiler *tp)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        bool wallpapering = ctx->wallpaper_batch && batch->tiler_dep;
+
+        if (wallpapering) {
+                /* Inject in reverse order, with "predicted" job indices.
+                 * THIS IS A HACK XXX */
+                panfrost_new_job(batch, JOB_TYPE_TILER, false,
+                                 batch->job_index + 2, tp, sizeof(*tp), true);
+                panfrost_new_job(batch, JOB_TYPE_VERTEX, false, 0,
+                                 vp, sizeof(*vp), true);
+                return;
+        }
+
+        /* If rasterizer discard is enable, only submit the vertex */
+
+        bool rasterizer_discard = ctx->rasterizer &&
+                                  ctx->rasterizer->base.rasterizer_discard;
+
+        unsigned vertex = panfrost_new_job(batch, JOB_TYPE_VERTEX, false, 0,
+                                           vp, sizeof(*vp), false);
+
+        if (rasterizer_discard)
+                return;
+
+        panfrost_new_job(batch, JOB_TYPE_TILER, false, vertex, tp, sizeof(*tp),
+                         false);
+}

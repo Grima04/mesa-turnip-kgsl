@@ -76,4 +76,9 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage,
                                   struct midgard_payload_vertex_tiler *vtp);
 
+void
+panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
+                                struct midgard_payload_vertex_tiler *vp,
+                                struct midgard_payload_vertex_tiler *tp);
+
 #endif /* __PAN_CMDSTREAM_H__ */

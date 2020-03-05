@@ -325,29 +325,11 @@ panfrost_queue_draw(struct panfrost_context *ctx)
         /* Handle dirty flags now */
         panfrost_emit_for_draw(ctx);
 
-        /* If rasterizer discard is enable, only submit the vertex */
-
-        bool rasterizer_discard = ctx->rasterizer
-                                  && ctx->rasterizer->base.rasterizer_discard;
-
-
-        struct midgard_payload_vertex_tiler *vertex_payload = &ctx->payloads[PIPE_SHADER_VERTEX];
-        struct midgard_payload_vertex_tiler *tiler_payload = &ctx->payloads[PIPE_SHADER_FRAGMENT];
-
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        bool wallpapering = ctx->wallpaper_batch && batch->tiler_dep;
 
-        if (wallpapering) {
-                /* Inject in reverse order, with "predicted" job indices. THIS IS A HACK XXX */
-                panfrost_new_job(batch, JOB_TYPE_TILER, false, batch->job_index + 2, tiler_payload, sizeof(*tiler_payload), true);
-                panfrost_new_job(batch, JOB_TYPE_VERTEX, false, 0, vertex_payload, sizeof(*vertex_payload), true);
-        } else  {
-                unsigned vertex = panfrost_new_job(batch, JOB_TYPE_VERTEX, false, 0, vertex_payload, sizeof(*vertex_payload), false);
-
-                if (!rasterizer_discard)
-                        panfrost_new_job(batch, JOB_TYPE_TILER, false, vertex, tiler_payload, sizeof(*tiler_payload), false);
-        }
-
+        panfrost_emit_vertex_tiler_jobs(batch,
+                                        &ctx->payloads[PIPE_SHADER_VERTEX],
+                                        &ctx->payloads[PIPE_SHADER_FRAGMENT]);
         panfrost_batch_adjust_stack_size(batch);
 }
 
