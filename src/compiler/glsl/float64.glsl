@@ -1192,7 +1192,7 @@ __fp64_to_bool(uint64_t a)
 uint64_t
 __bool_to_fp64(bool a)
 {
-   return __int_to_fp64(int(a));
+   return packUint2x32(uvec2(0x00000000u, uint(-int(a) & 0x3ff00000)));
 }
 
 /* Packs the sign `zSign', exponent `zExp', and significand `zFrac' into a
