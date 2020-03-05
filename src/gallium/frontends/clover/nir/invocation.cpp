@@ -80,6 +80,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
    spirv_options.caps.int16 = true;
    spirv_options.caps.int64 = true;
    spirv_options.caps.kernel = true;
+   spirv_options.caps.int64_atomics = dev.has_int64_atomics();
    spirv_options.constant_as_global = true;
 
    module m;
