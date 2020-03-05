@@ -60,6 +60,35 @@ panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
 }
 
 void
+panfrost_vt_update_rasterizer(struct panfrost_context *ctx,
+                              struct midgard_payload_vertex_tiler *tp)
+{
+        struct panfrost_rasterizer *rasterizer = ctx->rasterizer;
+
+        tp->gl_enables |= 0x7;
+        SET_BIT(tp->gl_enables, MALI_FRONT_CCW_TOP,
+                rasterizer && rasterizer->base.front_ccw);
+        SET_BIT(tp->gl_enables, MALI_CULL_FACE_FRONT,
+                rasterizer && (rasterizer->base.cull_face & PIPE_FACE_FRONT));
+        SET_BIT(tp->gl_enables, MALI_CULL_FACE_BACK,
+                rasterizer && (rasterizer->base.cull_face & PIPE_FACE_BACK));
+        SET_BIT(tp->prefix.unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
+                rasterizer && rasterizer->base.flatshade_first);
+
+        if (!panfrost_writes_point_size(ctx)) {
+                bool points = tp->prefix.draw_mode == MALI_POINTS;
+                float val = 0.0f;
+
+                if (rasterizer)
+                        val = points ?
+                              rasterizer->base.point_size :
+                              rasterizer->base.line_width;
+
+                tp->primitive_size.constant = val;
+        }
+}
+
+void
 panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
                                    struct midgard_payload_vertex_tiler *tp)
 {

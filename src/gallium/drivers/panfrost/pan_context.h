@@ -178,9 +178,6 @@ struct panfrost_context {
 
 struct panfrost_rasterizer {
         struct pipe_rasterizer_state base;
-
-        /* Bitmask of front face, etc */
-        unsigned tiler_gl_enables;
 };
 
 /* Variants bundle together to form the backing CSO, bundling multiple

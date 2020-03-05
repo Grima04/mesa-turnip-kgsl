@@ -544,7 +544,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx)
 
         if (ctx->rasterizer) {
                 bool msaa = ctx->rasterizer->base.multisample;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].gl_enables = ctx->rasterizer->tiler_gl_enables;
 
                 /* TODO: Sample size */
                 SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_HAS_MSAA, msaa);
@@ -553,26 +552,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx)
 
         panfrost_batch_set_requirements(batch);
 
+        panfrost_vt_update_rasterizer(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
         panfrost_vt_update_occlusion_query(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
 
         panfrost_patch_shader_state(ctx, PIPE_SHADER_VERTEX);
         panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX,
                                   &ctx->payloads[PIPE_SHADER_VERTEX]);
-
-        if (ctx->shader[PIPE_SHADER_VERTEX] && ctx->shader[PIPE_SHADER_FRAGMENT]) {
-                /* Check if we need to link the gl_PointSize varying */
-                if (!panfrost_writes_point_size(ctx)) {
-                        /* If the size is constant, write it out. Otherwise,
-                         * don't touch primitive_size (since we would clobber
-                         * the pointer there) */
-
-                        bool points = ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode == MALI_POINTS;
-
-                        ctx->payloads[PIPE_SHADER_FRAGMENT].primitive_size.constant = points ?
-                                ctx->rasterizer->base.point_size :
-                                ctx->rasterizer->base.line_width;
-                }
-        }
 
         if (ctx->shader[PIPE_SHADER_FRAGMENT]) {
                 struct panfrost_shader_state *variant = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
@@ -1109,18 +1094,6 @@ panfrost_create_rasterizer_state(
         struct panfrost_rasterizer *so = CALLOC_STRUCT(panfrost_rasterizer);
 
         so->base = *cso;
-
-        /* Bitmask, unknown meaning of the start value. 0x105 on 32-bit T6XX */
-        so->tiler_gl_enables = 0x7;
-
-        if (cso->front_ccw)
-                so->tiler_gl_enables |= MALI_FRONT_CCW_TOP;
-
-        if (cso->cull_face & PIPE_FACE_FRONT)
-                so->tiler_gl_enables |= MALI_CULL_FACE_FRONT;
-
-        if (cso->cull_face & PIPE_FACE_BACK)
-                so->tiler_gl_enables |= MALI_CULL_FACE_BACK;
 
         return so;
 }
