@@ -232,7 +232,7 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
                  * read src_offset from so->hw (which is not GPU visible)
                  * rather than target (which is) due to caching effects */
 
-                unsigned src_offset = so->hw[i].src_offset;
+                unsigned src_offset = so->pipe[i].src_offset;
                 src_offset += (addr & 63);
 
                 /* Also, somewhat obscurely per-instance data needs to be
@@ -722,9 +722,6 @@ panfrost_create_vertex_elements_state(
                 so->hw[i].swizzle = panfrost_get_default_swizzle(desc->nr_channels);
 
                 so->hw[i].format = panfrost_find_format(desc);
-
-                /* The field itself should probably be shifted over */
-                so->hw[i].src_offset = elements[i].src_offset;
         }
 
         return so;
