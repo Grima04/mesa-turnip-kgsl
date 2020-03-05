@@ -125,7 +125,7 @@ TEMPLATE = Template(textwrap.dedent("""\
 
 async def gather_commits(version: str) -> str:
     p = await asyncio.create_subprocess_exec(
-        'git', 'log', f'mesa-{version}..', '--grep', r'Closes: \(https\|#\).*',
+        'git', 'log', '--oneline', f'mesa-{version}..', '--grep', r'Closes: \(https\|#\).*',
         stdout=asyncio.subprocess.PIPE)
     out, _ = await p.communicate()
     assert p.returncode == 0, f"git log didn't work: {version}"
