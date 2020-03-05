@@ -27,6 +27,7 @@
  */
 
 #include "pan_context.h"
+#include "pan_cmdstream.h"
 #include "pan_bo.h"
 #include "util/u_memory.h"
 #include "nir_serialize.h"
@@ -106,8 +107,6 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* TODO: Stub */
         struct midgard_payload_vertex_tiler *payload = &ctx->payloads[PIPE_SHADER_COMPUTE];
-        struct panfrost_shader_variants *all = ctx->shader[PIPE_SHADER_COMPUTE];
-        struct panfrost_shader_state *ss = &all->variants[all->active_variant];
 
         /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
          * reuse the graphics path for this by lowering to Gallium */
@@ -123,22 +122,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
                 pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, &ubuf);
 
         panfrost_emit_for_draw(ctx, false);
-
-        unsigned single_size = util_next_power_of_two(MAX2(ss->shared_size, 128));
-        unsigned shared_size = single_size * info->grid[0] * info->grid[1] * info->grid[2] * 4;
-
-        struct mali_shared_memory shared = {
-                .shared_memory = panfrost_batch_get_shared_memory(batch, shared_size, 1)->gpu,
-                .shared_workgroup_count =
-                        util_logbase2_ceil(info->grid[0]) +
-                        util_logbase2_ceil(info->grid[1]) +
-                        util_logbase2_ceil(info->grid[2]),
-                .shared_unk1 = 0x2,
-                .shared_shift = util_logbase2(single_size) - 1
-        };
-
-        payload->postfix.shared_memory =
-                panfrost_upload_transient(batch, &shared, sizeof(shared));
+        panfrost_emit_shared_memory(batch, info, payload);
 
         /* Invoke according to the grid info */
 
