@@ -32,6 +32,9 @@
 
 #include "pan_job.h"
 
+unsigned
+panfrost_translate_compare_func(enum pipe_compare_func in);
+
 void
 panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
                                struct midgard_payload_vertex_tiler *vt);

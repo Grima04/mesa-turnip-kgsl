@@ -119,12 +119,6 @@ struct panfrost_context {
         /* Each draw has corresponding vertex and tiler payloads */
         struct midgard_payload_vertex_tiler payloads[PIPE_SHADER_TYPES];
 
-        /* The fragment shader binary itself is pointed here (for the tripipe) but
-         * also everything else in the shader core, including blending, the
-         * stencil/depth tests, etc. Refer to the presentations. */
-
-        struct mali_shader_meta fragment_shader_core;
-
         unsigned vertex_count;
         unsigned instance_count;
         enum pipe_prim_type active_prim;
@@ -188,7 +182,6 @@ struct panfrost_rasterizer {
 struct panfrost_shader_state {
         /* Compiled, mapped descriptor, ready for the hardware */
         bool compiled;
-        struct mali_shader_meta *tripipe;
 
         /* Non-descript information */
         int uniform_count;
@@ -296,10 +289,6 @@ panfrost_invalidate_frame(struct panfrost_context *ctx);
 bool
 panfrost_writes_point_size(struct panfrost_context *ctx);
 
-void
-panfrost_patch_shader_state(struct panfrost_context *ctx,
-                            enum pipe_shader_type stage);
-
 struct panfrost_transfer
 panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler);
 
@@ -325,14 +314,12 @@ mali_ptr
 panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws);
 
 void
-panfrost_shader_compile(
-                struct panfrost_context *ctx,
-                struct mali_shader_meta *meta,
-                enum pipe_shader_ir ir_type,
-                const void *ir,
-                gl_shader_stage stage,
-                struct panfrost_shader_state *state,
-                uint64_t *outputs_written);
+panfrost_shader_compile(struct panfrost_context *ctx,
+                        enum pipe_shader_ir ir_type,
+                        const void *ir,
+                        gl_shader_stage stage,
+                        struct panfrost_shader_state *state,
+                        uint64_t *outputs_written);
 
 unsigned
 panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage);

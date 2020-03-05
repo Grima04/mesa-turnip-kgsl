@@ -54,9 +54,6 @@ panfrost_create_compute_state(
         so->variant_count = 1;
         so->active_variant = 0;
 
-        /* calloc, instead of malloc - to zero unused fields */
-        v->tripipe = CALLOC_STRUCT(mali_shader_meta);
-
         if (cso->ir_type == PIPE_SHADER_IR_NIR_SERIALIZED) {
                 struct blob_reader reader;
                 const struct pipe_binary_program_header *hdr = cso->prog;
@@ -66,9 +63,8 @@ panfrost_create_compute_state(
                 so->cbase.ir_type = PIPE_SHADER_IR_NIR;
         }
 
-        panfrost_shader_compile(ctx, v->tripipe,
-                        so->cbase.ir_type, so->cbase.prog,
-                        MESA_SHADER_COMPUTE, v, NULL);
+        panfrost_shader_compile(ctx, so->cbase.ir_type, so->cbase.prog,
+                                MESA_SHADER_COMPUTE, v, NULL);
 
         return so;
 }
@@ -121,7 +117,6 @@ panfrost_launch_grid(struct pipe_context *pipe,
         if (info->input)
                 pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, &ubuf);
 
-        panfrost_patch_shader_state(ctx, PIPE_SHADER_COMPUTE);
         panfrost_emit_shader_meta(batch, PIPE_SHADER_COMPUTE, payload);
         panfrost_emit_const_buf(batch, PIPE_SHADER_COMPUTE, payload);
         panfrost_emit_shared_memory(batch, info, payload);

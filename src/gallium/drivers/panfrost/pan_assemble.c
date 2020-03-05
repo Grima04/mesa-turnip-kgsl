@@ -37,14 +37,12 @@
 #include "tgsi/tgsi_dump.h"
 
 void
-panfrost_shader_compile(
-                struct panfrost_context *ctx,
-                struct mali_shader_meta *meta,
-                enum pipe_shader_ir ir_type,
-                const void *ir,
-                gl_shader_stage stage,
-                struct panfrost_shader_state *state,
-                uint64_t *outputs_written)
+panfrost_shader_compile(struct panfrost_context *ctx,
+                        enum pipe_shader_ir ir_type,
+                        const void *ir,
+                        gl_shader_stage stage,
+                        struct panfrost_shader_state *state,
+                        uint64_t *outputs_written)
 {
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         uint8_t *dst;
@@ -80,11 +78,9 @@ panfrost_shader_compile(
         if (size) {
                 state->bo = panfrost_bo_create(screen, size, PAN_BO_EXECUTE);
                 memcpy(state->bo->cpu, dst, size);
-                meta->shader = state->bo->gpu | program.first_tag;
                 state->first_tag = program.first_tag;
         } else {
                 /* No shader. Use dummy tag to avoid INSTR_INVALID_ENC */
-                meta->shader = 0x0 | 1;
                 state->first_tag = 1;
         }
 
@@ -94,9 +90,6 @@ panfrost_shader_compile(
         program.uniform_count += program.sysval_count;
         state->sysval_count = program.sysval_count;
         memcpy(state->sysval, program.sysvals, sizeof(state->sysval[0]) * state->sysval_count);
-
-        meta->midgard1.uniform_count = MIN2(program.uniform_count, program.uniform_cutoff);
-        meta->midgard1.work_count = program.work_register_count;
 
         bool vertex_id = s->info.system_values_read & (1 << SYSTEM_VALUE_VERTEX_ID);
         bool instance_id = s->info.system_values_read & (1 << SYSTEM_VALUE_INSTANCE_ID);
@@ -144,10 +137,6 @@ panfrost_shader_compile(
         state->uniform_count = program.uniform_count;
         state->uniform_cutoff = program.uniform_cutoff;
         state->work_reg_count = program.work_register_count;
-
-        meta->attribute_count = state->attribute_count;
-        meta->varying_count = state->varying_count;
-        meta->midgard1.flags_hi = 8; /* XXX */
 
         unsigned default_vec1_swizzle = panfrost_get_default_swizzle(1);
         unsigned default_vec2_swizzle = panfrost_get_default_swizzle(2);
