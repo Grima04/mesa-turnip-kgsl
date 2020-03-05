@@ -767,7 +767,6 @@ radv_polaris10_vkcts:
     - .deqp-test-vk
     - .test-radv-unsafe
   variables:
-    DEQP_PARALLEL: 4
     DEQP_SKIPS: deqp-radv-polaris10-skips.txt
   tags:
     - polaris10
