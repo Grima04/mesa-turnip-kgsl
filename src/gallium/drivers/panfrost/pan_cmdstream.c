@@ -120,7 +120,7 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
         meta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
 }
 
-unsigned
+static unsigned
 panfrost_translate_compare_func(enum pipe_compare_func in)
 {
         switch (in) {
@@ -184,6 +184,80 @@ panfrost_translate_stencil_op(enum pipe_stencil_op in)
         default:
                 unreachable("Invalid stencil op");
         }
+}
+
+static unsigned
+translate_tex_wrap(enum pipe_tex_wrap w)
+{
+        switch (w) {
+        case PIPE_TEX_WRAP_REPEAT:
+                return MALI_WRAP_REPEAT;
+
+        case PIPE_TEX_WRAP_CLAMP:
+                return MALI_WRAP_CLAMP;
+
+        case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
+                return MALI_WRAP_CLAMP_TO_EDGE;
+
+        case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
+                return MALI_WRAP_CLAMP_TO_BORDER;
+
+        case PIPE_TEX_WRAP_MIRROR_REPEAT:
+                return MALI_WRAP_MIRRORED_REPEAT;
+
+        case PIPE_TEX_WRAP_MIRROR_CLAMP:
+                return MALI_WRAP_MIRRORED_CLAMP;
+
+        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE:
+                return MALI_WRAP_MIRRORED_CLAMP_TO_EDGE;
+
+        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER:
+                return MALI_WRAP_MIRRORED_CLAMP_TO_BORDER;
+
+        default:
+                unreachable("Invalid wrap");
+        }
+}
+
+void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
+                                struct mali_sampler_descriptor *hw)
+{
+        unsigned func = panfrost_translate_compare_func(cso->compare_func);
+        bool min_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
+        bool mag_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
+        bool mip_linear  = cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR;
+        unsigned min_filter = min_nearest ? MALI_SAMP_MIN_NEAREST : 0;
+        unsigned mag_filter = mag_nearest ? MALI_SAMP_MAG_NEAREST : 0;
+        unsigned mip_filter = mip_linear  ?
+                              (MALI_SAMP_MIP_LINEAR_1 | MALI_SAMP_MIP_LINEAR_2) : 0;
+        unsigned normalized = cso->normalized_coords ? MALI_SAMP_NORM_COORDS : 0;
+
+        *hw = (struct mali_sampler_descriptor) {
+                .filter_mode = min_filter | mag_filter | mip_filter |
+                               normalized,
+                .wrap_s = translate_tex_wrap(cso->wrap_s),
+                .wrap_t = translate_tex_wrap(cso->wrap_t),
+                .wrap_r = translate_tex_wrap(cso->wrap_r),
+                .compare_func = panfrost_flip_compare_func(func),
+                .border_color = {
+                        cso->border_color.f[0],
+                        cso->border_color.f[1],
+                        cso->border_color.f[2],
+                        cso->border_color.f[3]
+                },
+                .min_lod = FIXED_16(cso->min_lod, false), /* clamp at 0 */
+                .max_lod = FIXED_16(cso->max_lod, false),
+                .lod_bias = FIXED_16(cso->lod_bias, true), /* can be negative */
+                .seamless_cube_map = cso->seamless_cube_map,
+        };
+
+        /* If necessary, we disable mipmapping in the sampler descriptor by
+         * clamping the LOD as tight as possible (from 0 to epsilon,
+         * essentially -- remember these are fixed point numbers, so
+         * epsilon=1/256) */
+
+        if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
+                hw->max_lod = hw->min_lod + 1;
 }
 
 static void

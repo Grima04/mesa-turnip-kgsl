@@ -32,8 +32,8 @@
 
 #include "pan_job.h"
 
-unsigned
-panfrost_translate_compare_func(enum pipe_compare_func in);
+void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
+                                struct mali_sampler_descriptor *hw);
 
 void
 panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,

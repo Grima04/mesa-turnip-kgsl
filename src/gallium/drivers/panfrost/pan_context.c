@@ -174,39 +174,6 @@ panfrost_emit_vertex_payload(struct panfrost_context *ctx)
         memcpy(&ctx->payloads[PIPE_SHADER_COMPUTE], &payload, sizeof(payload));
 }
 
-static unsigned
-translate_tex_wrap(enum pipe_tex_wrap w)
-{
-        switch (w) {
-        case PIPE_TEX_WRAP_REPEAT:
-                return MALI_WRAP_REPEAT;
-
-        case PIPE_TEX_WRAP_CLAMP:
-                return MALI_WRAP_CLAMP;
-
-        case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
-                return MALI_WRAP_CLAMP_TO_EDGE;
-
-        case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-                return MALI_WRAP_CLAMP_TO_BORDER;
-
-        case PIPE_TEX_WRAP_MIRROR_REPEAT:
-                return MALI_WRAP_MIRRORED_REPEAT;
-
-        case PIPE_TEX_WRAP_MIRROR_CLAMP:
-                return MALI_WRAP_MIRRORED_CLAMP;
-
-        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE:
-                return MALI_WRAP_MIRRORED_CLAMP_TO_EDGE;
-
-        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER:
-                return MALI_WRAP_MIRRORED_CLAMP_TO_BORDER;
-
-        default:
-                unreachable("Invalid wrap");
-        }
-}
-
 bool
 panfrost_writes_point_size(struct panfrost_context *ctx)
 {
@@ -925,56 +892,7 @@ panfrost_create_sampler_state(
         struct panfrost_sampler_state *so = CALLOC_STRUCT(panfrost_sampler_state);
         so->base = *cso;
 
-        /* sampler_state corresponds to mali_sampler_descriptor, which we can generate entirely here */
-
-        bool min_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
-        bool mag_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
-        bool mip_linear  = cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR;
-
-        unsigned min_filter = min_nearest ? MALI_SAMP_MIN_NEAREST : 0;
-        unsigned mag_filter = mag_nearest ? MALI_SAMP_MAG_NEAREST : 0;
-        unsigned mip_filter = mip_linear  ?
-                (MALI_SAMP_MIP_LINEAR_1 | MALI_SAMP_MIP_LINEAR_2) : 0;
-        unsigned normalized = cso->normalized_coords ? MALI_SAMP_NORM_COORDS : 0;
-
-        struct mali_sampler_descriptor sampler_descriptor = {
-                .filter_mode = min_filter | mag_filter | mip_filter | normalized,
-                .wrap_s = translate_tex_wrap(cso->wrap_s),
-                .wrap_t = translate_tex_wrap(cso->wrap_t),
-                .wrap_r = translate_tex_wrap(cso->wrap_r),
-                .compare_func = panfrost_flip_compare_func(
-                                panfrost_translate_compare_func(
-                                        cso->compare_func)),
-                .border_color = {
-                        cso->border_color.f[0],
-                        cso->border_color.f[1],
-                        cso->border_color.f[2],
-                        cso->border_color.f[3]
-                },
-                .min_lod = FIXED_16(cso->min_lod, false), /* clamp at 0 */
-                .max_lod = FIXED_16(cso->max_lod, false),
-                .lod_bias = FIXED_16(cso->lod_bias, true), /* can be negative */
-                .seamless_cube_map = cso->seamless_cube_map,
-        };
-
-        /* If necessary, we disable mipmapping in the sampler descriptor by
-         * clamping the LOD as tight as possible (from 0 to epsilon,
-         * essentially -- remember these are fixed point numbers, so
-         * epsilon=1/256) */
-
-        if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE) {
-                sampler_descriptor.max_lod = sampler_descriptor.min_lod;
-
-                /* Enforce that there is something in the middle by adding epsilon*/
-
-                if (sampler_descriptor.min_lod == sampler_descriptor.max_lod)
-                        sampler_descriptor.max_lod++;
-
-                /* Sanity check */
-                assert(sampler_descriptor.max_lod > sampler_descriptor.min_lod);
-        }
-
-        so->hw = sampler_descriptor;
+        panfrost_sampler_desc_init(cso, &so->hw);
 
         return so;
 }
