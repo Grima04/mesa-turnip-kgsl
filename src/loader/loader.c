@@ -428,33 +428,14 @@ loader_get_device_name_for_fd(int fd)
    return result;
 }
 
-char *
-loader_get_driver_for_fd(int fd)
+static char *
+loader_get_pci_driver(int fd)
 {
    int vendor_id, chip_id, i, j;
    char *driver = NULL;
 
-   /* Allow an environment variable to force choosing a different driver
-    * binary.  If that driver binary can't survive on this FD, that's the
-    * user's problem, but this allows vc4 simulator to run on an i965 host,
-    * and may be useful for some touch testing of i915 on an i965 host.
-    */
-   if (geteuid() == getuid()) {
-      driver = getenv("MESA_LOADER_DRIVER_OVERRIDE");
-      if (driver)
-         return strdup(driver);
-   }
-
-#if defined(HAVE_LIBDRM) && defined(USE_DRICONF)
-   driver = loader_get_dri_config_driver(fd);
-   if (driver)
-      return driver;
-#endif
-
-   if (!loader_get_pci_id_for_fd(fd, &vendor_id, &chip_id)) {
-      driver = loader_get_kernel_driver_name(fd);
-      return driver;
-   }
+   if (!loader_get_pci_id_for_fd(fd, &vendor_id, &chip_id))
+      return NULL;
 
    for (i = 0; i < ARRAY_SIZE(driver_map); i++) {
       if (vendor_id != driver_map[i].vendor_id)
@@ -479,6 +460,35 @@ out:
    log_(driver ? _LOADER_DEBUG : _LOADER_WARNING,
          "pci id for fd %d: %04x:%04x, driver %s\n",
          fd, vendor_id, chip_id, driver);
+   return driver;
+}
+
+char *
+loader_get_driver_for_fd(int fd)
+{
+   char *driver;
+
+   /* Allow an environment variable to force choosing a different driver
+    * binary.  If that driver binary can't survive on this FD, that's the
+    * user's problem, but this allows vc4 simulator to run on an i965 host,
+    * and may be useful for some touch testing of i915 on an i965 host.
+    */
+   if (geteuid() == getuid()) {
+      driver = getenv("MESA_LOADER_DRIVER_OVERRIDE");
+      if (driver)
+         return strdup(driver);
+   }
+
+#if defined(HAVE_LIBDRM) && defined(USE_DRICONF)
+   driver = loader_get_dri_config_driver(fd);
+   if (driver)
+      return driver;
+#endif
+
+   driver = loader_get_pci_driver(fd);
+   if (!driver)
+      driver = loader_get_kernel_driver_name(fd);
+
    return driver;
 }
 
