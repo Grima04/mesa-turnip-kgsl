@@ -116,20 +116,16 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
       unsigned location =
          link_util_find_empty_block(prog, &prog->data->UniformStorage[i]);
 
-      if (location == -1 || location + entries >= prog->NumUniformRemapTable) {
-         unsigned new_entries = entries;
-         if (location == -1)
-            location = prog->NumUniformRemapTable;
-         else
-            new_entries = location - prog->NumUniformRemapTable + entries;
+      if (location == -1) {
+         location = prog->NumUniformRemapTable;
 
          /* resize remap table to fit new entries */
          prog->UniformRemapTable =
             reralloc(prog,
                      prog->UniformRemapTable,
                      struct gl_uniform_storage *,
-                     prog->NumUniformRemapTable + new_entries);
-         prog->NumUniformRemapTable += new_entries;
+                     prog->NumUniformRemapTable + entries);
+         prog->NumUniformRemapTable += entries;
       }
 
       /* set the base location in remap table for the uniform */
