@@ -784,6 +784,8 @@ tu_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
    struct tu_cs *cs = cmd->state.pass ? &cmd->draw_epilogue_cs : &cmd->cs;
 
+   tu_bo_list_add(&cmd->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
+
    /* WFI to get more accurate timestamp */
    tu_cs_emit_wfi(cs);
 
