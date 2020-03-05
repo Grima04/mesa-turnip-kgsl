@@ -234,6 +234,10 @@ typedef struct {
                 struct bi_load load;
                 struct bi_load_vary load_vary;
                 struct bi_branch branch;
+
+                /* For CSEL, the comparison op. BI_COND_ALWAYS doesn't make
+                 * sense here but you can always just use a move for that */
+                enum bi_cond csel_cond;
         };
 } bi_instruction;
 
