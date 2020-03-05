@@ -178,12 +178,32 @@ generate_junit() {
     echo "</testsuites>"
 }
 
+parse_renderer() {
+    RENDERER=`grep -A1 TestCaseResult.\*info.renderer $RESULTS/deqp-info.qpa | grep '<Text' | sed 's|.*<Text>||g' | sed 's|</Text>||g'`
+    VERSION=`grep -A1 TestCaseResult.\*info.version $RESULTS/deqp-info.qpa | grep '<Text' | sed 's|.*<Text>||g' | sed 's|</Text>||g'`
+    echo "Renderer: $RENDERER"
+    echo "Version: $VERSION "
+}
+
+check_renderer() {
+    echo "Capturing renderer info for driver sanity checks"
+    # If you're having trouble loading your driver, uncommenting this may help
+    # debug.
+    # export EGL_LOG_LEVEL=debug
+    $DEQP $DEQP_OPTIONS --deqp-case=dEQP-GLES2.info.\* --deqp-log-filename=$RESULTS/deqp-info.qpa
+    parse_renderer
+}
+
 # wrapper to supress +x to avoid spamming the log
 quiet() {
     set +x
     "$@"
     set -x
 }
+
+if [ $DEQP_VER != vk ]; then
+    quiet check_renderer
+fi
 
 run_cts $DEQP /tmp/case-list.txt $RESULTS/cts-runner-results.txt
 DEQP_EXITCODE=$?
