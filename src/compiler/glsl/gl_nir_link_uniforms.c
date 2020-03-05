@@ -48,6 +48,8 @@ static void
 nir_setup_uniform_remap_tables(struct gl_context *ctx,
                                struct gl_shader_program *prog)
 {
+   unsigned total_entries = prog->NumExplicitUniformLocations;
+
    /* For glsl this may have been allocated by reserve_explicit_locations() so
     * that we can keep track of unused uniforms with explicit locations.
     */
@@ -122,6 +124,13 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
       /* How many entries for this uniform? */
       const unsigned entries = MAX2(1, uniform->array_elements);
 
+      /* Add new entries to the total amount for checking against MAX_UNIFORM-
+       * _LOCATIONS. This only applies to the default uniform block (-1),
+       * because locations of uniform block entries are not assignable.
+       */
+      if (prog->data->UniformStorage[i].block_index == -1)
+         total_entries += entries;
+
       unsigned location =
          link_util_find_empty_block(prog, &prog->data->UniformStorage[i]);
 
@@ -153,6 +162,15 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
          if (uniform->block_index == -1)
             data_pos += num_slots;
       }
+   }
+
+   /* Verify that total amount of entries for explicit and implicit locations
+    * is less than MAX_UNIFORM_LOCATIONS.
+    */
+   if (total_entries > ctx->Const.MaxUserAssignableUniformLocations) {
+      linker_error(prog, "count of uniform locations > MAX_UNIFORM_LOCATIONS"
+                   "(%u > %u)", total_entries,
+                   ctx->Const.MaxUserAssignableUniformLocations);
    }
 
    /* Reserve all the explicit locations of the active subroutine uniforms. */
