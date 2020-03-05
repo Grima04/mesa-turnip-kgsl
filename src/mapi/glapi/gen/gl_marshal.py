@@ -174,7 +174,7 @@ class PrintCode(gl_XML.gl_print_base):
         out('};')
 
     def print_async_unmarshal(self, func):
-        out('static inline void')
+        out('static void')
         out(('_mesa_unmarshal_{0}(struct gl_context *ctx, '
              'const struct marshal_cmd_{0} *cmd)').format(func.name))
         out('{')
