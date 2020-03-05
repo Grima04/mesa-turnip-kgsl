@@ -5,7 +5,7 @@ set -ex
 git clone \
     --depth 1 \
     https://github.com/KhronosGroup/VK-GL-CTS.git \
-    -b vulkan-cts-1.1.6.0 \
+    -b vulkan-cts-1.2.1.0 \
     /VK-GL-CTS
 pushd /VK-GL-CTS
 
