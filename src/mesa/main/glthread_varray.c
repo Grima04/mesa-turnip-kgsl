@@ -33,7 +33,6 @@
 #include "main/dispatch.h"
 
 /* TODO:
- *   - Handle GL_ARB_instanced_arrays (incl. EXT_dsa)
  *   - Handle ARB_vertex_attrib_binding (incl. EXT_dsa and ARB_dsa)
  */
 
@@ -131,28 +130,49 @@ _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
    }
 }
 
+/* If vaobj is NULL, use the currently-bound VAO. */
+static inline struct glthread_vao *
+get_vao(struct gl_context *ctx, const GLuint *vaobj)
+{
+   if (vaobj)
+      return lookup_vao(ctx, *vaobj);
+
+   return ctx->GLThread.CurrentVAO;
+}
+
 void
 _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
                            gl_vert_attrib attrib, bool enable)
 {
-   struct glthread_state *glthread = &ctx->GLThread;
-   struct glthread_vao *vao;
-
    if (attrib >= VERT_ATTRIB_MAX)
       return;
 
-   if (vaobj) {
-      vao = lookup_vao(ctx, *vaobj);
-      if (!vao)
-         return;
-   } else {
-      vao = glthread->CurrentVAO;
-   }
+   struct glthread_vao *vao = get_vao(ctx, vaobj);
+   if (!vao)
+      return;
 
    if (enable)
       vao->Enabled |= 1u << attrib;
    else
       vao->Enabled &= ~(1u << attrib);
+}
+
+void _mesa_glthread_AttribDivisor(struct gl_context *ctx, const GLuint *vaobj,
+                                  gl_vert_attrib attrib, GLuint divisor)
+{
+   if (attrib >= VERT_ATTRIB_MAX)
+      return;
+
+   struct glthread_vao *vao = get_vao(ctx, vaobj);
+   if (!vao)
+      return;
+
+   vao->Attrib[attrib].Divisor = divisor;
+
+   if (divisor)
+      vao->NonZeroDivisorMask |= 1u << attrib;
+   else
+      vao->NonZeroDivisorMask &= ~(1u << attrib);
 }
 
 static void

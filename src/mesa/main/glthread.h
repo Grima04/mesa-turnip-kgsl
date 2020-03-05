@@ -64,10 +64,12 @@ struct glthread_vao {
    GLuint CurrentElementBufferName;
    GLbitfield Enabled;
    GLbitfield UserPointerMask;
+   GLbitfield NonZeroDivisorMask;
 
    struct {
       GLuint ElementSize;
       GLsizei Stride;
+      GLuint Divisor;
       const void *Pointer;
    } Attrib[VERT_ATTRIB_MAX];
 };
@@ -162,6 +164,8 @@ void _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
                                     GLsizei n, GLuint *arrays);
 void _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
                                 gl_vert_attrib attrib, bool enable);
+void _mesa_glthread_AttribDivisor(struct gl_context *ctx, const GLuint *vaobj,
+                                  gl_vert_attrib attrib, GLuint divisor);
 void _mesa_glthread_AttribPointer(struct gl_context *ctx, gl_vert_attrib attrib,
                                   GLint size, GLenum type, GLsizei stride,
                                   const void *pointer);
