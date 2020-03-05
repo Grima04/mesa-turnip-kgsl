@@ -299,7 +299,7 @@ panfrost_emit_varying_descriptor(
                                        sizeof(float) * 4, vertex_count);
 
 
-        if (vs->writes_point_size)
+        if (panfrost_writes_point_size(ctx))
                 ctx->payloads[PIPE_SHADER_FRAGMENT].primitive_size.pointer =
                         panfrost_emit_varyings(ctx, &varyings[gl_PointSize],
                                                2, vertex_count);

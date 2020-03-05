@@ -278,6 +278,9 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 void
 panfrost_invalidate_frame(struct panfrost_context *ctx);
 
+bool
+panfrost_writes_point_size(struct panfrost_context *ctx);
+
 void
 panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data);
 

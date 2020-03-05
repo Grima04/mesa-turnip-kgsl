@@ -353,7 +353,7 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
         memcpy(&ctx->fragment_shader_core, &shader, sizeof(shader));
 }
 
-static bool
+bool
 panfrost_writes_point_size(struct panfrost_context *ctx)
 {
         assert(ctx->shader[PIPE_SHADER_VERTEX]);
