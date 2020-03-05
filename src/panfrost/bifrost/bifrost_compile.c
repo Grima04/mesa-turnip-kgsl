@@ -174,6 +174,36 @@ emit_if(bi_context *ctx, nir_if *nif)
         bi_block_add_successor(end_else_block, ctx->after_block); /* fallthrough */
 }
 
+static void
+emit_loop(bi_context *ctx, nir_loop *nloop)
+{
+        /* Remember where we are */
+        bi_block *start_block = ctx->current_block;
+
+        bi_block *saved_break = ctx->break_block;
+        bi_block *saved_continue = ctx->continue_block;
+
+        ctx->continue_block = create_empty_block(ctx);
+        ctx->break_block = create_empty_block(ctx);
+        ctx->after_block = ctx->continue_block;
+
+        /* Emit the body itself */
+        emit_cf_list(ctx, &nloop->body);
+
+        /* Branch back to loop back */
+        bi_instruction *br_back = bi_emit_branch(ctx);
+        br_back->branch.target = ctx->continue_block;
+        bi_block_add_successor(start_block, ctx->continue_block);
+        bi_block_add_successor(ctx->current_block, ctx->continue_block);
+
+        ctx->after_block = ctx->break_block;
+
+        /* Pop off */
+        ctx->break_block = saved_break;
+        ctx->continue_block = saved_continue;
+        ++ctx->loop_count;
+}
+
 static bi_block *
 emit_cf_list(bi_context *ctx, struct exec_list *list)
 {
@@ -194,11 +224,9 @@ emit_cf_list(bi_context *ctx, struct exec_list *list)
                         emit_if(ctx, nir_cf_node_as_if(node));
                         break;
 
-#if 0
                 case nir_cf_node_loop:
                         emit_loop(ctx, nir_cf_node_as_loop(node));
                         break;
-#endif
 
                 default:
                         unreachable("Unknown control flow");

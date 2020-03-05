@@ -325,9 +325,12 @@ typedef struct {
        bi_block *current_block;
        unsigned block_name_count;
        bi_block *after_block;
+       bi_block *break_block;
+       bi_block *continue_block;
 
        /* Stats for shader-db */
        unsigned instruction_count;
+       unsigned loop_count;
 } bi_context;
 
 static inline bi_instruction *
