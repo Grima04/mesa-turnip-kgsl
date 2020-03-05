@@ -139,13 +139,6 @@ debug_print_sync(const char *func)
 #endif
 }
 
-static inline void
-debug_print_marshal(const char *func)
-{
-#if DEBUG_MARSHAL_PRINT_CALLS
-   printf("marshal: %s\n", func);
-#endif
-}
 
 struct _glapi_table *
 _mesa_create_marshal_table(const struct gl_context *ctx);

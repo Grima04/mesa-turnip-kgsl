@@ -261,8 +261,6 @@ class PrintCode(gl_XML.gl_print_base):
             out('int cmd_size = {0};'.format(' + '.join(size_terms)))
             out('{0} *cmd;'.format(struct))
 
-            out('debug_print_marshal("{0}");'.format(func.name))
-
             self.validate_count_or_fallback(func)
 
             if func.marshal_fail:

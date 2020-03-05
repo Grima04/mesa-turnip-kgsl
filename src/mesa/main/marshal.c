@@ -248,7 +248,6 @@ _mesa_marshal_BufferData_merged(GLuint target_or_name, GLsizeiptr size,
                        target_or_name == GL_EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD;
    bool copy_data = data && !external_mem;
    int cmd_size = sizeof(struct marshal_cmd_BufferData) + (copy_data ? size : 0);
-   debug_print_marshal("BufferData");
 
    if (unlikely(size < 0 || size > INT_MAX || cmd_size < 0 ||
                 cmd_size > MARSHAL_MAX_CMD_SIZE ||
@@ -362,7 +361,6 @@ _mesa_marshal_BufferSubData_merged(GLuint target_or_name, GLintptr offset,
 {
    GET_CURRENT_CONTEXT(ctx);
    size_t cmd_size = sizeof(struct marshal_cmd_BufferSubData) + size;
-   debug_print_marshal(func);
 
    if (unlikely(size < 0 || size > INT_MAX || cmd_size < 0 ||
                 cmd_size > MARSHAL_MAX_CMD_SIZE || !data ||
