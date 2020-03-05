@@ -37,6 +37,10 @@ panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
                                struct midgard_payload_vertex_tiler *vt);
 
 void
+panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
+                                   struct midgard_payload_vertex_tiler *tp);
+
+void
 panfrost_emit_shader_meta(struct panfrost_batch *batch,
                           enum pipe_shader_type st,
                           struct midgard_payload_vertex_tiler *vtp);

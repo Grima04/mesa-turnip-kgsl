@@ -60,6 +60,17 @@ panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
 }
 
 void
+panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
+                                   struct midgard_payload_vertex_tiler *tp)
+{
+        SET_BIT(tp->gl_enables, MALI_OCCLUSION_QUERY, ctx->occlusion_query);
+        if (ctx->occlusion_query)
+                tp->postfix.occlusion_counter = ctx->occlusion_query->bo->gpu;
+        else
+                tp->postfix.occlusion_counter = 0;
+}
+
+void
 panfrost_emit_shader_meta(struct panfrost_batch *batch,
                           enum pipe_shader_type st,
                           struct midgard_payload_vertex_tiler *vtp)

@@ -553,10 +553,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx)
 
         panfrost_batch_set_requirements(batch);
 
-        if (ctx->occlusion_query) {
-                ctx->payloads[PIPE_SHADER_FRAGMENT].gl_enables |= MALI_OCCLUSION_QUERY;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.occlusion_counter = ctx->occlusion_query->bo->gpu;
-        }
+        panfrost_vt_update_occlusion_query(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
 
         panfrost_patch_shader_state(ctx, PIPE_SHADER_VERTEX);
         panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX,
