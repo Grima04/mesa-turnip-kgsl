@@ -525,25 +525,22 @@ panfrost_patch_shader_state(struct panfrost_context *ctx,
 
 /* Go through dirty flags and actualise them in the cmdstream. */
 
-void
-panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
+static void
+panfrost_emit_for_draw(struct panfrost_context *ctx)
 {
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
         panfrost_batch_add_fbo_bos(batch);
 
-        for (int i = 0; i < PIPE_SHADER_TYPES; ++i)
+        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i)
                 panfrost_vt_attach_framebuffer(ctx, &ctx->payloads[i]);
 
-        if (with_vertex_data) {
-                panfrost_emit_vertex_data(batch);
+        panfrost_emit_vertex_data(batch);
 
-                /* Varyings emitted for -all- geometry */
-                unsigned total_count = ctx->padded_count * ctx->instance_count;
-                panfrost_emit_varying_descriptor(ctx, total_count);
-        }
-
+        /* Varyings emitted for -all- geometry */
+        unsigned total_count = ctx->padded_count * ctx->instance_count;
+        panfrost_emit_varying_descriptor(ctx, total_count);
 
         if (ctx->rasterizer) {
                 bool msaa = ctx->rasterizer->base.multisample;
@@ -564,9 +561,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         panfrost_patch_shader_state(ctx, PIPE_SHADER_VERTEX);
         panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX,
                                   &ctx->payloads[PIPE_SHADER_VERTEX]);
-        panfrost_patch_shader_state(ctx, PIPE_SHADER_COMPUTE);
-        panfrost_emit_shader_meta(batch, PIPE_SHADER_COMPUTE,
-                                  &ctx->payloads[PIPE_SHADER_COMPUTE]);
 
         if (ctx->shader[PIPE_SHADER_VERTEX] && ctx->shader[PIPE_SHADER_FRAGMENT]) {
                 /* Check if we need to link the gl_PointSize varying */
@@ -734,7 +728,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         panfrost_upload_sampler_descriptors(ctx);
         panfrost_upload_texture_descriptors(ctx);
 
-        for (int i = 0; i < PIPE_SHADER_TYPES; ++i)
+        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i)
                 panfrost_emit_const_buf(batch, i, &ctx->payloads[i]);
 
         /* TODO: Upload the viewport somewhere more appropriate */
@@ -748,7 +742,7 @@ static void
 panfrost_queue_draw(struct panfrost_context *ctx)
 {
         /* Handle dirty flags now */
-        panfrost_emit_for_draw(ctx, true);
+        panfrost_emit_for_draw(ctx);
 
         /* If rasterizer discard is enable, only submit the vertex */
 

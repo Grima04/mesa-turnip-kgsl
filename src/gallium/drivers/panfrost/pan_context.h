@@ -297,9 +297,6 @@ void
 panfrost_patch_shader_state(struct panfrost_context *ctx,
                             enum pipe_shader_type stage);
 
-void
-panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data);
-
 struct panfrost_transfer
 panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler);
 
