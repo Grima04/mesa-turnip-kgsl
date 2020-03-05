@@ -330,6 +330,9 @@ panfrost_shader_compile(
                 struct panfrost_shader_state *state,
                 uint64_t *outputs_written);
 
+unsigned
+panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage);
+
 /* Instancing */
 
 mali_ptr

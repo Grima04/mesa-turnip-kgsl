@@ -25,6 +25,8 @@
 #ifndef __PAN_CMDSTREAM_H__
 #define __PAN_CMDSTREAM_H__
 
+#include "pipe/p_defines.h"
+
 #include "panfrost-job.h"
 
 #include "pan_job.h"
@@ -32,5 +34,10 @@
 void
 panfrost_emit_viewport(struct panfrost_batch *batch,
                        struct midgard_payload_vertex_tiler *tp);
+
+void
+panfrost_emit_const_buf(struct panfrost_batch *batch,
+                        enum pipe_shader_type stage,
+                        struct midgard_payload_vertex_tiler *vtp);
 
 #endif /* __PAN_CMDSTREAM_H__ */
