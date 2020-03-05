@@ -342,3 +342,46 @@ bi_print_bundle(bi_bundle *bundle, FILE *fp)
         }
 }
 
+void
+bi_print_clause(bi_clause *clause, FILE *fp)
+{
+        fprintf(fp, "\tid(%u)", clause->scoreboard_id);
+
+        if (clause->dependencies) {
+                fprintf(fp, ", next-wait(");
+
+                for (unsigned i = 0; i < 8; ++i) {
+                        if (clause->dependencies & (1 << i))
+                                fprintf(fp, "%u ", i);
+                }
+
+                fprintf(fp, ")");
+        }
+
+        if (!clause->back_to_back)
+                fprintf(fp, " nbb %s", clause->branch_conditional ? "branch-cond" : "branch-uncond");
+
+        if (clause->data_register_write_barrier)
+                fprintf(fp, " drwb");
+
+        fprintf(fp, "\n");
+
+        if (clause->instruction_count) {
+                assert(!clause->bundle_count);
+
+                for (unsigned i = 0; i < clause->instruction_count; ++i)
+                        bi_print_instruction(clause->instructions[i], fp);
+        } else {
+                assert(clause->bundle_count);
+
+                for (unsigned i = 0; i < clause->bundle_count; ++i)
+                        bi_print_bundle(&clause->bundles[i], fp);
+        }
+
+        if (clause->constant_count) {
+                for (unsigned i = 0; i < clause->constant_count; ++i)
+                        fprintf(fp, "%" PRIx64 " ", clause->constants[i]);
+
+                fprintf(fp, "\n");
+        }
+}
