@@ -1951,6 +1951,86 @@ emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
+emit_flat_shade_flags(struct v3dv_job *job,
+                      int varying_offset,
+                      uint32_t varyings,
+                      enum V3DX(Varying_Flags_Action) lower,
+                      enum V3DX(Varying_Flags_Action) higher)
+{
+   cl_emit(&job->bcl, FLAT_SHADE_FLAGS, flags) {
+      flags.varying_offset_v0 = varying_offset;
+      flags.flat_shade_flags_for_varyings_v024 = varyings;
+      flags.action_for_flat_shade_flags_of_lower_numbered_varyings = lower;
+      flags.action_for_flat_shade_flags_of_higher_numbered_varyings = higher;
+   }
+}
+
+static void
+emit_noperspective_flags(struct v3dv_job *job,
+                         int varying_offset,
+                         uint32_t varyings,
+                         enum V3DX(Varying_Flags_Action) lower,
+                         enum V3DX(Varying_Flags_Action) higher)
+{
+   cl_emit(&job->bcl, NON_PERSPECTIVE_FLAGS, flags) {
+      flags.varying_offset_v0 = varying_offset;
+      flags.non_perspective_flags_for_varyings_v024 = varyings;
+      flags.action_for_non_perspective_flags_of_lower_numbered_varyings = lower;
+      flags.action_for_non_perspective_flags_of_higher_numbered_varyings = higher;
+   }
+}
+
+static void
+emit_centroid_flags(struct v3dv_job *job,
+                    int varying_offset,
+                    uint32_t varyings,
+                    enum V3DX(Varying_Flags_Action) lower,
+                    enum V3DX(Varying_Flags_Action) higher)
+{
+   cl_emit(&job->bcl, CENTROID_FLAGS, flags) {
+      flags.varying_offset_v0 = varying_offset;
+      flags.centroid_flags_for_varyings_v024 = varyings;
+      flags.action_for_centroid_flags_of_lower_numbered_varyings = lower;
+      flags.action_for_centroid_flags_of_higher_numbered_varyings = higher;
+   }
+}
+
+static bool
+emit_varying_flags(struct v3dv_job *job,
+                   uint32_t num_flags,
+                   const uint32_t *flags,
+                   void (*flag_emit_callback)(struct v3dv_job *job,
+                                              int varying_offset,
+                                              uint32_t flags,
+                                              enum V3DX(Varying_Flags_Action) lower,
+                                              enum V3DX(Varying_Flags_Action) higher))
+{
+   bool emitted_any = false;
+   for (int i = 0; i < num_flags; i++) {
+      if (!flags[i])
+         continue;
+
+      if (emitted_any) {
+        flag_emit_callback(job, i, flags[i],
+                           V3D_VARYING_FLAGS_ACTION_UNCHANGED,
+                           V3D_VARYING_FLAGS_ACTION_UNCHANGED);
+      } else if (i == 0) {
+        flag_emit_callback(job, i, flags[i],
+                           V3D_VARYING_FLAGS_ACTION_UNCHANGED,
+                           V3D_VARYING_FLAGS_ACTION_ZEROED);
+      } else {
+        flag_emit_callback(job, i, flags[i],
+                           V3D_VARYING_FLAGS_ACTION_ZEROED,
+                           V3D_VARYING_FLAGS_ACTION_ZEROED);
+      }
+
+      emitted_any = true;
+   }
+
+   return emitted_any;
+}
+
+static void
 emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
@@ -2087,10 +2167,29 @@ emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
 
    emit_stencil(cmd_buffer);
 
-   /* FIXME: hardcoded values */
-   cl_emit(&job->bcl, ZERO_ALL_FLAT_SHADE_FLAGS, flags);
-   cl_emit(&job->bcl, ZERO_ALL_NON_PERSPECTIVE_FLAGS, flags);
-   cl_emit(&job->bcl, ZERO_ALL_CENTROID_FLAGS, flags);
+   const uint32_t num_flags =
+      ARRAY_SIZE(pipeline->fs->prog_data.fs->flat_shade_flags);
+   const uint32_t *flat_shade_flags =
+      pipeline->fs->prog_data.fs->flat_shade_flags;
+   const uint32_t *noperspective_flags =
+      pipeline->fs->prog_data.fs->noperspective_flags;
+   const uint32_t *centroid_flags =
+      pipeline->fs->prog_data.fs->centroid_flags;
+
+   if (!emit_varying_flags(job, num_flags, flat_shade_flags,
+                           emit_flat_shade_flags)) {
+      cl_emit(&job->bcl, ZERO_ALL_FLAT_SHADE_FLAGS, flags);
+   }
+
+   if (!emit_varying_flags(job, num_flags, noperspective_flags,
+                           emit_noperspective_flags)) {
+      cl_emit(&job->bcl, ZERO_ALL_NON_PERSPECTIVE_FLAGS, flags);
+   }
+
+   if (!emit_varying_flags(job, num_flags, centroid_flags,
+                           emit_centroid_flags)) {
+      cl_emit(&job->bcl, ZERO_ALL_CENTROID_FLAGS, flags);
+   }
 }
 
 /* FIXME: C&P from v3dx_draw. Refactor to common place? */

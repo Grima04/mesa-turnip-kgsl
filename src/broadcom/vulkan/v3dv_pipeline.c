@@ -1283,7 +1283,18 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
       /* FIXME: oversample_mode postponed until msaa gets supported */
       config.rasterizer_oversample_mode = false;
 
-      config.direct3d_provoking_vertex = false; /* FIXME */
+      /* From the Vulkan spec:
+       *
+       *   "Provoking Vertex:
+       *
+       *       The vertex in a primitive from which flat shaded attribute
+       *       values are taken. This is generally the “first” vertex in the
+       *       primitive, and depends on the primitive topology."
+       *
+       * First vertex is the Direct3D style for provoking vertex. OpenGL uses
+       * the last vertex by default.
+       */
+      config.direct3d_provoking_vertex = true;
 
       config.blend_enable = overall_blend_enable;
 
