@@ -41,5 +41,6 @@ const char * bi_ldst_type_name(enum bifrost_ldst_type type);
 void bi_print_instruction(bi_instruction *ins, FILE *fp);
 void bi_print_bundle(bi_bundle *bundle, FILE *fp);
 void bi_print_clause(bi_clause *clause, FILE *fp);
+void bi_print_block(bi_block *block, FILE *fp);
 
 #endif
