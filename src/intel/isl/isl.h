@@ -648,6 +648,12 @@ enum isl_aux_usage {
     * @invariant isl_surf::samples > 1
     */
    ISL_AUX_USAGE_MCS_CCS,
+
+   /** CCS auxiliary data is used to compress a stencil buffer
+    *
+    * @invariant isl_surf::samples == 1
+    */
+   ISL_AUX_USAGE_STC_CCS,
 };
 
 /**
@@ -1779,7 +1785,8 @@ isl_aux_usage_has_ccs(enum isl_aux_usage usage)
           usage == ISL_AUX_USAGE_MC ||
           usage == ISL_AUX_USAGE_HIZ_CCS_WT ||
           usage == ISL_AUX_USAGE_HIZ_CCS ||
-          usage == ISL_AUX_USAGE_MCS_CCS;
+          usage == ISL_AUX_USAGE_MCS_CCS ||
+          usage == ISL_AUX_USAGE_STC_CCS;
 }
 
 static inline bool

@@ -165,7 +165,8 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       sb.SurfLOD = info->view->base_level;
       sb.MinimumArrayElement = info->view->base_array_layer;
       sb.StencilCompressionEnable =
-         info->stencil_aux_usage == ISL_AUX_USAGE_CCS_E;
+         info->stencil_aux_usage == ISL_AUX_USAGE_CCS_E ||
+         info->stencil_aux_usage == ISL_AUX_USAGE_STC_CCS;
       sb.ControlSurfaceEnable = sb.StencilCompressionEnable;
 #elif GEN_GEN >= 8 || GEN_IS_HASWELL
       sb.StencilBufferEnable = true;

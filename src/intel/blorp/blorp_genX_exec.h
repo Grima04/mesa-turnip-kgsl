@@ -1805,7 +1805,8 @@ blorp_emit_gen8_hiz_op(struct blorp_batch *batch,
          hzp.DepthBufferResolveEnable = params->depth.enabled;
 #if GEN_GEN >= 12
          if (params->stencil.enabled) {
-            assert(params->stencil.aux_usage == ISL_AUX_USAGE_CCS_E);
+            assert(params->stencil.aux_usage == ISL_AUX_USAGE_CCS_E ||
+                   params->stencil.aux_usage == ISL_AUX_USAGE_STC_CCS);
             hzp.StencilBufferResolveEnable = true;
          }
 #endif
