@@ -324,10 +324,26 @@ typedef struct {
        /* During NIR->BIR */
        bi_block *current_block;
        unsigned block_name_count;
+       bi_block *after_block;
 
        /* Stats for shader-db */
        unsigned instruction_count;
-} bi_context; 
+} bi_context;
+
+static inline bi_instruction *
+bi_emit(bi_context *ctx, bi_instruction ins)
+{
+        bi_instruction *u = rzalloc(ctx, bi_instruction);
+        memcpy(u, &ins, sizeof(ins));
+        list_addtail(&u->link, &ctx->current_block->instructions);
+        return u;
+}
+
+static inline void
+bi_remove_instruction(bi_instruction *ins)
+{
+        list_del(&ins->link);
+}
 
 /* So we can distinguish between SSA/reg/sentinel quickly */
 #define BIR_NO_ARG (0)
