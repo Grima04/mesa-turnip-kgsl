@@ -505,7 +505,7 @@ panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage)
 
 /* Fixes up a shader state with current state */
 
-static void
+void
 panfrost_patch_shader_state(struct panfrost_context *ctx,
                             enum pipe_shader_type stage)
 {

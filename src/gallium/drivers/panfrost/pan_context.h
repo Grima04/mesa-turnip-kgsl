@@ -294,6 +294,10 @@ bool
 panfrost_writes_point_size(struct panfrost_context *ctx);
 
 void
+panfrost_patch_shader_state(struct panfrost_context *ctx,
+                            enum pipe_shader_type stage);
+
+void
 panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data);
 
 struct panfrost_transfer
