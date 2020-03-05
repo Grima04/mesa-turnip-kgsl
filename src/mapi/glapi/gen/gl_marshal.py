@@ -94,7 +94,7 @@ class PrintCode(gl_XML.gl_print_base):
 
     def print_sync_body(self, func):
         out('/* {0}: marshalled synchronously */'.format(func.name))
-        out('static {0} GLAPIENTRY'.format(func.return_type))
+        out('{0} GLAPIENTRY'.format(func.return_type))
         out('_mesa_marshal_{0}({1})'.format(func.name, func.get_parameter_string()))
         out('{')
         with indent():
@@ -172,7 +172,7 @@ class PrintCode(gl_XML.gl_print_base):
         out('};')
 
     def print_async_unmarshal(self, func):
-        out('static void')
+        out('void')
         out(('_mesa_unmarshal_{0}(struct gl_context *ctx, '
              'const struct marshal_cmd_{0} *cmd)').format(func.name))
         out('{')
@@ -240,7 +240,7 @@ class PrintCode(gl_XML.gl_print_base):
         out('}')
 
     def print_async_marshal(self, func):
-        out('static void GLAPIENTRY')
+        out('void GLAPIENTRY')
         out('_mesa_marshal_{0}({1})'.format(
                 func.name, func.get_parameter_string()))
         out('{')
