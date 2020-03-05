@@ -111,6 +111,8 @@ static char *loader_get_kernel_driver_name(int fd)
    }
 
    driver = strndup(version->name, version->name_len);
+   log_(driver ? _LOADER_DEBUG : _LOADER_WARNING, "using driver %s for %d\n",
+        driver, fd);
 
    drmFreeVersion(version);
    return driver;
@@ -451,8 +453,6 @@ loader_get_driver_for_fd(int fd)
 
    if (!loader_get_pci_id_for_fd(fd, &vendor_id, &chip_id)) {
       driver = loader_get_kernel_driver_name(fd);
-      if (driver)
-         log_(_LOADER_INFO, "using driver %s for %d\n", driver, fd);
       return driver;
    }
 
