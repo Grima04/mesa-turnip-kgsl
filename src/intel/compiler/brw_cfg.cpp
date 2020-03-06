@@ -154,8 +154,10 @@ bblock_t::combine_with(bblock_t *that)
 }
 
 void
-bblock_t::dump(backend_shader *s) const
+bblock_t::dump() const
 {
+   const backend_shader *s = this->cfg->s;
+
    int ip = this->start_ip;
    foreach_inst_in_block(backend_instruction, inst, this) {
       fprintf(stderr, "%5d: ", ip);
@@ -164,7 +166,8 @@ bblock_t::dump(backend_shader *s) const
    }
 }
 
-cfg_t::cfg_t(exec_list *instructions)
+cfg_t::cfg_t(const backend_shader *s, exec_list *instructions) :
+   s(s)
 {
    mem_ctx = ralloc_context(NULL);
    block_list.make_empty();
@@ -499,7 +502,7 @@ cfg_t::make_block_array()
 }
 
 void
-cfg_t::dump(backend_shader *s)
+cfg_t::dump()
 {
    const idom_tree *idom = (s ? &s->idom_analysis.require() : NULL);
 
@@ -517,7 +520,7 @@ cfg_t::dump(backend_shader *s)
       }
       fprintf(stderr, "\n");
       if (s != NULL)
-         block->dump(s);
+         block->dump();
       fprintf(stderr, "END B%d", block->num);
       foreach_list_typed(bblock_link, link, link, &block->children) {
          fprintf(stderr, " %c>B%d",

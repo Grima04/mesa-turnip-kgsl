@@ -90,7 +90,7 @@ struct bblock_t {
                         enum bblock_link_kind kind) const;
    bool can_combine_with(const bblock_t *that) const;
    void combine_with(bblock_t *that);
-   void dump(backend_shader *s) const;
+   void dump() const;
 
    backend_instruction *start();
    const backend_instruction *start() const;
@@ -305,7 +305,7 @@ struct cfg_t {
 #ifdef __cplusplus
    DECLARE_RALLOC_CXX_OPERATORS(cfg_t)
 
-   cfg_t(exec_list *instructions);
+   cfg_t(const backend_shader *s, exec_list *instructions);
    ~cfg_t();
 
    void remove_block(bblock_t *block);
@@ -314,9 +314,10 @@ struct cfg_t {
    void set_next_block(bblock_t **cur, bblock_t *block, int ip);
    void make_block_array();
 
-   void dump(backend_shader *s);
+   void dump();
    void dump_cfg();
 #endif
+   const struct backend_shader *s;
    void *mem_ctx;
 
    /** Ordered list (by ip) of basic blocks */

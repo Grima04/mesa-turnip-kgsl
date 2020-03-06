@@ -1242,7 +1242,7 @@ backend_shader::calculate_cfg()
 {
    if (this->cfg)
       return;
-   cfg = new(mem_ctx) cfg_t(&this->instructions);
+   cfg = new(mem_ctx) cfg_t(this, &this->instructions);
 }
 
 void
