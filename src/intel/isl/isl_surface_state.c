@@ -609,8 +609,11 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
       /* The docs don't appear to say anything whatsoever about compression
        * and the data port.  Testing seems to indicate that the data port
        * completely ignores the AuxiliarySurfaceMode field.
+       *
+       * On gen12 HDC supports compression.
        */
-      assert(!(info->view->usage & ISL_SURF_USAGE_STORAGE_BIT));
+      if (GEN_GEN < 12)
+         assert(!(info->view->usage & ISL_SURF_USAGE_STORAGE_BIT));
 
       if (isl_surf_usage_is_depth(info->surf->usage))
          assert(isl_aux_usage_has_hiz(info->aux_usage));
