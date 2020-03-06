@@ -28,12 +28,9 @@
 #include "main/context.h"
 #include "main/mtypes.h"
 
-/* This file do the common link for GLSL uniforms, using NIR, instead of IR as
+/**
+ * This file do the common link for GLSL uniforms, using NIR, instead of IR as
  * the counter-part glsl/link_uniforms.cpp
- *
- * Also note that this is tailored for ARB_gl_spirv needs and particularities
- * (like need to work/link without name available, explicit location for
- * normal uniforms as mandatory, and so on).
  */
 
 #define UNMAPPED_UNIFORM_LOC ~0u
