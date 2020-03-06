@@ -621,37 +621,11 @@ namespace SwrJit
     /// @param a - 128bit SIMD lane(8x16bit) of float16 in int16 format.
     Value* Builder::CVTPH2PS(Value* a, const llvm::Twine& name)
     {
-        if (JM()->mArch.F16C())
-        {
-            return VCVTPH2PS(a, name);
-        }
-        else
-        {
-            FunctionType* pFuncTy   = FunctionType::get(mFP32Ty, mInt16Ty);
-            Function*     pCvtPh2Ps = cast<Function>(
-#if LLVM_VERSION_MAJOR >= 9
-                JM()->mpCurrentModule->getOrInsertFunction("ConvertFloat16ToFloat32", pFuncTy).getCallee());
-#else
-                JM()->mpCurrentModule->getOrInsertFunction("ConvertFloat16ToFloat32", pFuncTy));
-#endif
+        // Bitcast Nxint16 to Nxhalf
+        uint32_t numElems = a->getType()->getVectorNumElements();
+        Value*   input    = BITCAST(a, VectorType::get(mFP16Ty, numElems));
 
-            if (sys::DynamicLibrary::SearchForAddressOfSymbol("ConvertFloat16ToFloat32") == nullptr)
-            {
-                sys::DynamicLibrary::AddSymbol("ConvertFloat16ToFloat32",
-                                               (void*)&ConvertFloat16ToFloat32);
-            }
-
-            Value* pResult = UndefValue::get(mSimdFP32Ty);
-            for (uint32_t i = 0; i < mVWidth; ++i)
-            {
-                Value* pSrc  = VEXTRACT(a, C(i));
-                Value* pConv = CALL(pCvtPh2Ps, std::initializer_list<Value*>{pSrc});
-                pResult      = VINSERT(pResult, pConv, C(i));
-            }
-
-            pResult->setName(name);
-            return pResult;
-        }
+        return FP_EXT(input, VectorType::get(mFP32Ty, numElems), name);
     }
 
     //////////////////////////////////////////////////////////////////////////
