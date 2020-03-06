@@ -54,7 +54,7 @@ static const struct {
 	{ CHIP_POLARIS11, 0x67E0 },
 	{ CHIP_POLARIS12, 0x6980 },
 	{ CHIP_VEGAM, 0x694C },
-	{ CHIP_VEGA12, 0x6860 },
+	{ CHIP_VEGA10, 0x6860 },
 	{ CHIP_VEGA12, 0x69A0 },
 	{ CHIP_VEGA20, 0x66A0 },
 	{ CHIP_RAVEN, 0x15DD },
