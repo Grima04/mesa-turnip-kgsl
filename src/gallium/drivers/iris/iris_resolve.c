@@ -986,6 +986,14 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
    return ISL_AUX_USAGE_NONE;
 }
 
+enum isl_aux_usage
+iris_image_view_aux_usage(struct iris_context *ice,
+                          const struct pipe_image_view *pview,
+                          const struct shader_info *info)
+{
+   return ISL_AUX_USAGE_NONE;
+}
+
 static bool
 isl_formats_are_fast_clear_compatible(enum isl_format a, enum isl_format b)
 {
