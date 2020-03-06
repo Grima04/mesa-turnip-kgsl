@@ -141,6 +141,31 @@ bi_emit_ld_attr(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        nir_src *offset = nir_get_io_offset_src(instr);
+        assert(nir_src_is_const(*offset)); /* no indirects */
+
+        bi_instruction address = {
+                .type = BI_LOAD_VAR_ADDRESS,
+                .load = bi_direct_load_for_instr(instr),
+                .dest_type = nir_intrinsic_type(instr),
+                .dest = bi_make_temp(ctx)
+        };
+
+        bi_instruction st = {
+                .type = BI_STORE_VAR,
+                .src = {
+                        address.dest,
+                        bir_src_index(&instr->src[0])
+                }
+        };
+
+        bi_emit(ctx, address);
+        bi_emit(ctx, st);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -162,9 +187,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_store_output:
                 if (ctx->stage == MESA_SHADER_FRAGMENT)
                         bi_emit_frag_out(ctx, instr);
-                else {
-                        /* TODO */
-                }
+                else if (ctx->stage == MESA_SHADER_VERTEX)
+                        bi_emit_st_vary(ctx, instr);
+                else
+                        unreachable("Unsupported shader stage");
                 break;
         default:
                 /* todo */
