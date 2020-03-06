@@ -136,6 +136,10 @@ struct bo_cache_bucket {
 };
 
 struct brw_bufmgr {
+   uint32_t refcount;
+
+   struct list_head link;
+
    int fd;
 
    mtx_t lock;
@@ -155,6 +159,12 @@ struct brw_bufmgr {
    bool bo_reuse:1;
 
    uint64_t initial_kflags;
+};
+
+static mtx_t global_bufmgr_list_mutex = _MTX_INITIALIZER_NP;
+static struct list_head global_bufmgr_list = {
+   .next = &global_bufmgr_list,
+   .prev = &global_bufmgr_list,
 };
 
 static int bo_set_tiling_internal(struct brw_bo *bo, uint32_t tiling_mode,
@@ -1279,8 +1289,19 @@ brw_bo_wait(struct brw_bo *bo, int64_t timeout_ns)
 }
 
 void
-brw_bufmgr_destroy(struct brw_bufmgr *bufmgr)
+brw_bufmgr_unref(struct brw_bufmgr *bufmgr)
 {
+   mtx_lock(&global_bufmgr_list_mutex);
+   if (p_atomic_dec_zero(&bufmgr->refcount)) {
+      list_del(&bufmgr->link);
+   } else {
+      bufmgr = NULL;
+   }
+   mtx_unlock(&global_bufmgr_list_mutex);
+
+   if (!bufmgr)
+      return;
+
    mtx_destroy(&bufmgr->lock);
 
    /* Free any cached buffer objects we were going to reuse */
@@ -1308,6 +1329,9 @@ brw_bufmgr_destroy(struct brw_bufmgr *bufmgr)
          util_vma_heap_finish(&bufmgr->vma_allocator[z]);
       }
    }
+
+   close(bufmgr->fd);
+   bufmgr->fd = -1;
 
    free(bufmgr);
 }
@@ -1651,14 +1675,21 @@ brw_using_softpin(struct brw_bufmgr *bufmgr)
    return bufmgr->initial_kflags & EXEC_OBJECT_PINNED;
 }
 
+static struct brw_bufmgr *
+brw_bufmgr_ref(struct brw_bufmgr *bufmgr)
+{
+   p_atomic_inc(&bufmgr->refcount);
+   return bufmgr;
+}
+
 /**
  * Initializes the GEM buffer manager, which uses the kernel to allocate, map,
  * and manage map buffer objections.
  *
  * \param fd File descriptor of the opened DRM device.
  */
-struct brw_bufmgr *
-brw_bufmgr_init(struct gen_device_info *devinfo, int fd, bool bo_reuse)
+static struct brw_bufmgr *
+brw_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
 {
    struct brw_bufmgr *bufmgr;
 
@@ -1675,9 +1706,16 @@ brw_bufmgr_init(struct gen_device_info *devinfo, int fd, bool bo_reuse)
     * Don't do this! Ensure that each library/bufmgr has its own device
     * fd so that its namespace does not clash with another.
     */
-   bufmgr->fd = fd;
+   bufmgr->fd = dup(fd);
+   if (bufmgr->fd < 0) {
+      free(bufmgr);
+      return NULL;
+   }
+
+   p_atomic_set(&bufmgr->refcount, 1);
 
    if (mtx_init(&bufmgr->lock, mtx_plain) != 0) {
+      close(bufmgr->fd);
       free(bufmgr);
       return NULL;
    }
@@ -1719,6 +1757,7 @@ brw_bufmgr_init(struct gen_device_info *devinfo, int fd, bool bo_reuse)
           * might actually mean requiring 4.14.
           */
          fprintf(stderr, "i965 requires softpin (Kernel 4.5) on Gen10+.");
+         close(bufmgr->fd);
          free(bufmgr);
          return NULL;
       }
@@ -1732,4 +1771,42 @@ brw_bufmgr_init(struct gen_device_info *devinfo, int fd, bool bo_reuse)
       _mesa_hash_table_create(NULL, _mesa_hash_uint, _mesa_key_uint_equal);
 
    return bufmgr;
+}
+
+struct brw_bufmgr *
+brw_bufmgr_get_for_fd(struct gen_device_info *devinfo, int fd, bool bo_reuse)
+{
+   struct stat st;
+
+   if (fstat(fd, &st))
+      return NULL;
+
+   struct brw_bufmgr *bufmgr = NULL;
+
+   mtx_lock(&global_bufmgr_list_mutex);
+   list_for_each_entry(struct brw_bufmgr, iter_bufmgr, &global_bufmgr_list, link) {
+      struct stat iter_st;
+      if (fstat(iter_bufmgr->fd, &iter_st))
+         continue;
+
+      if (st.st_rdev == iter_st.st_rdev) {
+         assert(iter_bufmgr->bo_reuse == bo_reuse);
+         bufmgr = brw_bufmgr_ref(iter_bufmgr);
+         goto unlock;
+      }
+   }
+
+   bufmgr = brw_bufmgr_create(devinfo, fd, bo_reuse);
+   list_addtail(&bufmgr->link, &global_bufmgr_list);
+
+ unlock:
+   mtx_unlock(&global_bufmgr_list_mutex);
+
+   return bufmgr;
+}
+
+int
+brw_bufmgr_get_fd(struct brw_bufmgr *bufmgr)
+{
+   return bufmgr->fd;
 }

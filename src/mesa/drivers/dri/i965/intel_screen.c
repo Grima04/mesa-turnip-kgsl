@@ -1707,7 +1707,7 @@ intelDestroyScreen(__DRIscreen * sPriv)
 {
    struct intel_screen *screen = sPriv->driverPrivate;
 
-   brw_bufmgr_destroy(screen->bufmgr);
+   brw_bufmgr_unref(screen->bufmgr);
    driDestroyOptionInfo(&screen->optionCache);
 
    disk_cache_destroy(screen->disk_cache);
@@ -1910,6 +1910,8 @@ err_out:
 static bool
 intel_init_bufmgr(struct intel_screen *screen)
 {
+   __DRIscreen *dri_screen = screen->driScrnPriv;
+
    if (getenv("INTEL_NO_HW") != NULL)
       screen->no_hw = true;
 
@@ -1923,12 +1925,13 @@ intel_init_bufmgr(struct intel_screen *screen)
       break;
    }
 
-   screen->bufmgr = brw_bufmgr_init(&screen->devinfo, screen->fd, bo_reuse);
+   screen->bufmgr = brw_bufmgr_get_for_fd(&screen->devinfo, dri_screen->fd, bo_reuse);
    if (screen->bufmgr == NULL) {
       fprintf(stderr, "[%s:%u] Error initializing buffer manager.\n",
 	      __func__, __LINE__);
       return false;
    }
+   screen->fd = brw_bufmgr_get_fd(screen->bufmgr);
 
    if (!intel_get_boolean(screen, I915_PARAM_HAS_EXEC_NO_RELOC)) {
       fprintf(stderr, "[%s: %u] Kernel 3.9 required.\n", __func__, __LINE__);
@@ -2561,7 +2564,6 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
       return NULL;
    }
 
-   screen->fd = dri_screen->fd;
    if (!intel_init_bufmgr(screen))
        return NULL;
 
