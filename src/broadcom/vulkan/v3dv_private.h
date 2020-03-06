@@ -907,7 +907,7 @@ struct v3dv_pipeline {
    uint8_t shader_state_record[cl_packet_length(GL_SHADER_STATE_RECORD)];
    uint8_t vcm_cache_size[cl_packet_length(VCM_CACHE_SIZE)];
    uint8_t vertex_attrs[cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD) *
-                        (MAX_VBS / 4)];
+                        MAX_VERTEX_ATTRIBS];
    uint8_t stencil_cfg[2][cl_packet_length(STENCIL_CFG)];
 };
 
