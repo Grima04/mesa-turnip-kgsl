@@ -116,9 +116,6 @@ struct panfrost_context {
         uint64_t tf_prims_generated;
         struct panfrost_query *occlusion_query;
 
-        /* Each draw has corresponding vertex and tiler payloads */
-        struct midgard_payload_vertex_tiler payloads[PIPE_SHADER_TYPES];
-
         unsigned vertex_count;
         unsigned instance_count;
         enum pipe_prim_type active_prim;

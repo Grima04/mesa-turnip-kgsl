@@ -398,14 +398,13 @@ panfrost_draw_vbo(
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
 
+        struct midgard_payload_vertex_tiler vt, tp;
         unsigned vertex_count;
 
-        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i)
-                panfrost_vt_init(ctx, i, &ctx->payloads[i]);
+        panfrost_vt_init(ctx, PIPE_SHADER_VERTEX, &vt);
+        panfrost_vt_init(ctx, PIPE_SHADER_FRAGMENT, &tp);
 
-        panfrost_vt_set_draw_info(ctx, info, g2m_draw_mode(mode),
-                                  &ctx->payloads[PIPE_SHADER_VERTEX],
-                                  &ctx->payloads[PIPE_SHADER_FRAGMENT],
+        panfrost_vt_set_draw_info(ctx, info, g2m_draw_mode(mode), &vt, &tp,
                                   &vertex_count, &ctx->padded_count);
 
         panfrost_statistics_record(ctx, info);
@@ -413,38 +412,29 @@ panfrost_draw_vbo(
         /* Dispatch "compute jobs" for the vertex/tiler pair as (1,
          * vertex_count, 1) */
 
-        panfrost_pack_work_groups_fused(
-                &ctx->payloads[PIPE_SHADER_VERTEX].prefix,
-                &ctx->payloads[PIPE_SHADER_FRAGMENT].prefix,
-                1, vertex_count, info->instance_count,
-                1, 1, 1);
+        panfrost_pack_work_groups_fused(&vt.prefix, &tp.prefix,
+                                        1, vertex_count, info->instance_count,
+                                        1, 1, 1);
 
         /* Emit all sort of descriptors. */
-        panfrost_emit_vertex_data(batch, &ctx->payloads[PIPE_SHADER_VERTEX]);
+        panfrost_emit_vertex_data(batch, &vt);
         panfrost_emit_varying_descriptor(batch,
                                          ctx->padded_count *
                                          ctx->instance_count,
-                                         &ctx->payloads[PIPE_SHADER_VERTEX],
-                                         &ctx->payloads[PIPE_SHADER_FRAGMENT]);
-        panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX,
-                                  &ctx->payloads[PIPE_SHADER_VERTEX]);
-        panfrost_emit_shader_meta(batch, PIPE_SHADER_FRAGMENT,
-                                  &ctx->payloads[PIPE_SHADER_FRAGMENT]);
-        panfrost_emit_vertex_attr_meta(batch,
-                                       &ctx->payloads[PIPE_SHADER_VERTEX]);
-
-        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
-                panfrost_emit_sampler_descriptors(batch, i, &ctx->payloads[i]);
-                panfrost_emit_texture_descriptors(batch, i, &ctx->payloads[i]);
-                panfrost_emit_const_buf(batch, i, &ctx->payloads[i]);
-        }
-
-        panfrost_emit_viewport(batch, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
+                                         &vt, &tp);
+        panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX, &vt);
+        panfrost_emit_shader_meta(batch, PIPE_SHADER_FRAGMENT, &tp);
+        panfrost_emit_vertex_attr_meta(batch, &vt);
+        panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_VERTEX, &vt);
+        panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_FRAGMENT, &tp);
+        panfrost_emit_texture_descriptors(batch, PIPE_SHADER_VERTEX, &vt);
+        panfrost_emit_texture_descriptors(batch, PIPE_SHADER_FRAGMENT, &tp);
+        panfrost_emit_const_buf(batch, PIPE_SHADER_VERTEX, &vt);
+        panfrost_emit_const_buf(batch, PIPE_SHADER_FRAGMENT, &tp);
+        panfrost_emit_viewport(batch, &tp);
 
         /* Fire off the draw itself */
-        panfrost_emit_vertex_tiler_jobs(batch,
-                                        &ctx->payloads[PIPE_SHADER_VERTEX],
-                                        &ctx->payloads[PIPE_SHADER_FRAGMENT]);
+        panfrost_emit_vertex_tiler_jobs(batch, &vt, &tp);
 
         /* Adjust the batch stack size based on the new shader stack sizes. */
         panfrost_batch_adjust_stack_size(batch);
