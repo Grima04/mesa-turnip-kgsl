@@ -1898,11 +1898,38 @@ anv_CreateImageView(VkDevice _device,
       conv_format = conversion->format;
    }
 
-   VkImageUsageFlags image_usage = 0;
-   if (range->aspectMask & ~VK_IMAGE_ASPECT_STENCIL_BIT)
-      image_usage |= image->usage;
-   if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-      image_usage |= image->stencil_usage;
+   VkImageUsageFlags image_usage = image->usage;
+   if (range->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                            VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      assert(!(range->aspectMask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV));
+      /* From the Vulkan 1.2.131 spec:
+       *
+       *    "If the image was has a depth-stencil format and was created with
+       *    a VkImageStencilUsageCreateInfo structure included in the pNext
+       *    chain of VkImageCreateInfo, the usage is calculated based on the
+       *    subresource.aspectMask provided:
+       *
+       *     - If aspectMask includes only VK_IMAGE_ASPECT_STENCIL_BIT, the
+       *       implicit usage is equal to
+       *       VkImageStencilUsageCreateInfo::stencilUsage.
+       *
+       *     - If aspectMask includes only VK_IMAGE_ASPECT_DEPTH_BIT, the
+       *       implicit usage is equal to VkImageCreateInfo::usage.
+       *
+       *     - If both aspects are included in aspectMask, the implicit usage
+       *       is equal to the intersection of VkImageCreateInfo::usage and
+       *       VkImageStencilUsageCreateInfo::stencilUsage.
+       */
+      if (range->aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         image_usage = image->stencil_usage;
+      } else if (range->aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
+         image_usage = image->usage;
+      } else {
+         assert(range->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT |
+                                      VK_IMAGE_ASPECT_STENCIL_BIT));
+         image_usage = image->usage & image->stencil_usage;
+      }
+   }
 
    const VkImageViewUsageCreateInfo *usage_info =
       vk_find_struct_const(pCreateInfo, IMAGE_VIEW_USAGE_CREATE_INFO);
