@@ -506,17 +506,27 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	fprintf(out, "\n");
 
 	/* print generic shader info: */
-	fprintf(out, "; %s prog %d/%d: %u instructions, %d half, %d full\n",
+	fprintf(out, "; %s prog %d/%d: %u instr, %u nops, %u non-nops, %u dwords\n",
 			type, so->shader->id, so->id,
 			so->info.instrs_count,
+			so->info.nops_count,
+			so->info.instrs_count - so->info.nops_count,
+			so->info.sizedwords);
+
+	fprintf(out, "; %s prog %d/%d: %u last-baryf, %d half, %d full, %u constlen\n",
+			type, so->shader->id, so->id,
+			so->info.last_baryf,
 			so->info.max_half_reg + 1,
-			so->info.max_reg + 1);
+			so->info.max_reg + 1,
+			so->constlen);
 
-	fprintf(out, "; %u constlen\n", so->constlen);
-
-	fprintf(out, "; %u (ss), %u (sy)\n", so->info.ss, so->info.sy);
-
-	fprintf(out, "; max_sun=%u\n", ir->max_sun);
+	fprintf(out, "; %s prog %d/%d: %u sstall, %u (ss), %u (sy), %d max_sun, %d loops\n",
+			type, so->shader->id, so->id,
+			so->info.sstall,
+			so->info.ss,
+			so->info.sy,
+			so->max_sun,
+			so->loops);
 
 	/* print shader type specific info: */
 	switch (so->type) {
