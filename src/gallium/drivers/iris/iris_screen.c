@@ -521,15 +521,20 @@ iris_get_timestamp(struct pipe_screen *pscreen)
    return result;
 }
 
-static void
-iris_destroy_screen(struct pipe_screen *pscreen)
+void
+iris_screen_destroy(struct iris_screen *screen)
 {
-   struct iris_screen *screen = (struct iris_screen *) pscreen;
    iris_bo_unreference(screen->workaround_bo);
-   u_transfer_helper_destroy(pscreen->transfer_helper);
+   u_transfer_helper_destroy(screen->base.transfer_helper);
    iris_bufmgr_unref(screen->bufmgr);
    disk_cache_destroy(screen->disk_cache);
    ralloc_free(screen);
+}
+
+static void
+iris_screen_unref(struct pipe_screen *pscreen)
+{
+   iris_pscreen_unref(pscreen);
 }
 
 static void
@@ -639,6 +644,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    screen->pci_id = screen->devinfo.chipset_id;
    screen->no_hw = screen->devinfo.no_hw;
 
+   p_atomic_set(&screen->refcount, 1);
+
    if (screen->devinfo.gen < 8 || screen->devinfo.is_cherryview)
       return NULL;
 
@@ -705,7 +712,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    iris_init_screen_fence_functions(pscreen);
    iris_init_screen_resource_functions(pscreen);
 
-   pscreen->destroy = iris_destroy_screen;
+   pscreen->destroy = iris_screen_unref;
    pscreen->get_name = iris_get_name;
    pscreen->get_vendor = iris_get_vendor;
    pscreen->get_device_vendor = iris_get_device_vendor;
