@@ -32,18 +32,6 @@
 #include "marshal.h"
 #include "dispatch.h"
 
-static inline void
-_mesa_post_marshal_hook(struct gl_context *ctx)
-{
-   /* This can be enabled for debugging whether a failure is a synchronization
-    * problem between the main thread and the worker thread, or a failure in
-    * how we actually marshal.
-    */
-   if (false)
-      _mesa_glthread_finish(ctx);
-}
-
-
 struct marshal_cmd_ShaderSource
 {
    struct marshal_cmd_base cmd_base;
@@ -126,7 +114,6 @@ _mesa_marshal_ShaderSource(GLuint shader, GLsizei count,
          memcpy(cmd_strings, string[i], cmd_length[i]);
          cmd_strings += cmd_length[i];
       }
-      _mesa_post_marshal_hook(ctx);
    } else {
       _mesa_glthread_finish(ctx);
       CALL_ShaderSource(ctx->CurrentServerDispatch,
@@ -279,7 +266,6 @@ _mesa_marshal_BufferData_merged(GLuint target_or_name, GLsizeiptr size,
       char *variable_data = (char *) (cmd + 1);
       memcpy(variable_data, data, size);
    }
-   _mesa_post_marshal_hook(ctx);
 }
 
 void GLAPIENTRY
@@ -387,7 +373,6 @@ _mesa_marshal_BufferSubData_merged(GLuint target_or_name, GLintptr offset,
 
    char *variable_data = (char *) (cmd + 1);
    memcpy(variable_data, data, size);
-   _mesa_post_marshal_hook(ctx);
 }
 
 void GLAPIENTRY

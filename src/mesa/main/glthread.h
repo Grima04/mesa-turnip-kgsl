@@ -48,7 +48,6 @@
 #include "util/u_queue.h"
 #include "GL/gl.h"
 
-enum marshal_dispatch_cmd_id;
 struct gl_context;
 struct _mesa_HashTable;
 
