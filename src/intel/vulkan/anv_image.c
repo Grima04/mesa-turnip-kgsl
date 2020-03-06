@@ -400,7 +400,26 @@ add_aux_surface_if_supported(struct anv_device *device,
                                  &image->planes[plane].surface.isl,
                                  &image->planes[plane].aux_surface.isl);
       assert(ok);
-      image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ;
+      if (!isl_surf_supports_ccs(&device->isl_dev,
+                                 &image->planes[plane].surface.isl)) {
+         image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ;
+      } else if (image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+                                 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) &&
+                 image->samples == 1) {
+         /* If it's used as an input attachment or a texture and it's
+          * single-sampled (this is a requirement for HiZ+CCS write-through
+          * mode), use write-through mode so that we don't need to resolve
+          * before texturing.  This will make depth testing a bit slower but
+          * texturing faster.
+          *
+          * TODO: This is a heuristic trade-off; we haven't tuned it at all.
+          */
+         assert(device->info.gen >= 12);
+         image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS_WT;
+      } else {
+         assert(device->info.gen >= 12);
+         image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS;
+      }
       add_surface(image, &image->planes[plane].aux_surface, plane);
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->samples == 1) {
       if (image->n_planes != 1) {
@@ -1410,6 +1429,13 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
             aux_supported = false;
          break;
 
+      case ISL_AUX_USAGE_HIZ_CCS:
+         aux_supported = false;
+         break;
+
+      case ISL_AUX_USAGE_HIZ_CCS_WT:
+         break;
+
       case ISL_AUX_USAGE_CCS_D:
          aux_supported = false;
          break;
@@ -1425,6 +1451,8 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
 
    switch (aux_usage) {
    case ISL_AUX_USAGE_HIZ:
+   case ISL_AUX_USAGE_HIZ_CCS:
+   case ISL_AUX_USAGE_HIZ_CCS_WT:
       if (aux_supported) {
          return ISL_AUX_STATE_COMPRESSED_CLEAR;
       } else if (read_only) {
@@ -1513,7 +1541,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
           * depth/stencil attachment, we should enable HiZ so that we can get
           * faster depth testing.
           */
-         return ISL_AUX_USAGE_HIZ;
+         return image->planes[plane].aux_usage;
       } else {
          return ISL_AUX_USAGE_NONE;
       }
