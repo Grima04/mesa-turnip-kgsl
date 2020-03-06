@@ -2788,6 +2788,15 @@ to upconvert to 32b float internally?
 	</bitset>
 
 	<bitset name="a6xx_sp_xs_config" inline="yes">
+		<!--
+		Each of these are set if the given resource type is used
+		with the Vulkan/bindless binding model.
+		-->
+		<bitfield name="BINDLESS_TEX" pos="0" type="boolean"/>
+		<bitfield name="BINDLESS_SAMP" pos="1" type="boolean"/>
+		<bitfield name="BINDLESS_IBO" pos="2" type="boolean"/>
+		<bitfield name="BINDLESS_UBO" pos="3" type="boolean"/>
+
 		<bitfield name="ENABLED" pos="8" type="boolean"/>
 		<!--
 		number of textures and samplers.. these might be swapped, with GL I
@@ -2995,8 +3004,19 @@ to upconvert to 32b float internally?
 			<!--
 			CMD seems always 0x4??  3d, textureProj, textureLod seem to
 			skip pre-fetch.. TODO test texelFetch
+                        CMD is 0x6 when the Vulkan mode is enabled, and
+                        TEX_ID/SAMP_ID refer to the descriptor sets while the
+                        indices come from SP_FS_BINDLESS_PREFETCH[n]
 			 -->
 			<bitfield name="CMD" low="27" high="31"/>
+		</reg32>
+	</array>
+
+	<!-- TODO confirm that this is actually an array -->
+	<array offset="0xa9a3" name="SP_FS_BINDLESS_PREFETCH" stride="1" length="4">
+		<reg32 offset="0" name="CMD">
+			<bitfield name="SAMP_ID" low="0" high="7" type="uint"/>
+			<bitfield name="TEX_ID" low="16" high="23" type="uint"/>
 		</reg32>
 	</array>
 
@@ -3021,6 +3041,10 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa9e5" name="SP_FS_TEX_CONST_HI"/>
 	<reg32 offset="0xa9e6" name="SP_CS_TEX_CONST_LO"/>
 	<reg32 offset="0xa9e7" name="SP_CS_TEX_CONST_HI"/>
+
+	<array offset="0xa9e8" name="SP_CS_BINDLESS_BASE" stride="2" length="5">
+		<reg64 offset="0" name="ADDR" type="waddress"/>
+	</array>
 
 	<array offset="0xa98e" name="SP_FS_OUTPUT" stride="1" length="8">
 		<doc>per MRT</doc>
@@ -3048,6 +3072,10 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xab04" name="SP_FS_CONFIG" type="a6xx_sp_xs_config"/>
 	<reg32 offset="0xab05" name="SP_FS_INSTRLEN" type="uint"/>
+
+	<array offset="0xab10" name="SP_BINDLESS_BASE" stride="2" length="5">
+		<reg64 offset="0" name="ADDR" type="waddress"/>
+	</array>
 
 	<!--
 	Combined IBO state for 3d pipe, used for Image and SSBO write/atomic
@@ -3220,6 +3248,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb99a" name="HLSQ_CS_KERNEL_GROUP_Y"/>
 	<reg32 offset="0xb99b" name="HLSQ_CS_KERNEL_GROUP_Z"/>
 
+	<!-- mirror of SP_CS_BINDLESS_BASE -->
+	<array offset="0xb9c0" name="HLSQ_CS_BINDLESS_BASE" stride="2" length="5">
+		<reg64 offset="0" name="ADDR" type="waddress"/>
+	</array>
+
 	<!-- probably: -->
 	<reg32 offset="0xbb08" name="HLSQ_UPDATE_CNTL"/>
 
@@ -3227,6 +3260,11 @@ to upconvert to 32b float internally?
 
 	<!-- always 0x0 ? -->
 	<reg32 offset="0xbb11" name="HLSQ_UNKNOWN_BB11"/>
+
+	<!-- mirror of SP_BINDLESS_BASE -->
+	<array offset="0xbb20" name="HLSQ_BINDLESS_BASE" stride="2" length="5">
+		<reg64 offset="0" name="ADDR" type="waddress"/>
+	</array>
 
 	<!-- always 0x80 ? -->
 	<reg32 offset="0xbe00" name="HLSQ_UNKNOWN_BE00"/>
