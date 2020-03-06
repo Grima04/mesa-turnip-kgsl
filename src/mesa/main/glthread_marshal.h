@@ -78,7 +78,7 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
  * calls (deprecated and removed in GL core), we just disable threading.
  */
 static inline bool
-_mesa_glthread_is_non_vbo_draw_elements(const struct gl_context *ctx)
+_mesa_glthread_has_non_vbo_vertices_or_indices(const struct gl_context *ctx)
 {
    const struct glthread_state *glthread = &ctx->GLThread;
    struct glthread_vao *vao = glthread->CurrentVAO;
@@ -88,7 +88,7 @@ _mesa_glthread_is_non_vbo_draw_elements(const struct gl_context *ctx)
 }
 
 static inline bool
-_mesa_glthread_is_non_vbo_draw_arrays(const struct gl_context *ctx)
+_mesa_glthread_has_non_vbo_vertices(const struct gl_context *ctx)
 {
    const struct glthread_state *glthread = &ctx->GLThread;
 
@@ -96,7 +96,7 @@ _mesa_glthread_is_non_vbo_draw_arrays(const struct gl_context *ctx)
 }
 
 static inline bool
-_mesa_glthread_is_non_vbo_draw_arrays_indirect(const struct gl_context *ctx)
+_mesa_glthread_has_non_vbo_vertices_or_indirect(const struct gl_context *ctx)
 {
    const struct glthread_state *glthread = &ctx->GLThread;
 
@@ -106,7 +106,7 @@ _mesa_glthread_is_non_vbo_draw_arrays_indirect(const struct gl_context *ctx)
 }
 
 static inline bool
-_mesa_glthread_is_non_vbo_draw_elements_indirect(const struct gl_context *ctx)
+_mesa_glthread_has_non_vbo_vertices_or_indices_or_indirect(const struct gl_context *ctx)
 {
    const struct glthread_state *glthread = &ctx->GLThread;
    struct glthread_vao *vao = glthread->CurrentVAO;

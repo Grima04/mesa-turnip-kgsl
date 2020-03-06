@@ -10,14 +10,14 @@
 
     <function name="DrawArraysIndirect" exec="dynamic" es2="3.1"
               marshal="draw"
-              marshal_sync="_mesa_glthread_is_non_vbo_draw_arrays_indirect(ctx)">
+              marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indirect(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="indirect" type="const GLvoid *"/>
     </function>
 
     <function name="DrawElementsIndirect" exec="dynamic" es2="3.1"
               marshal="draw"
-              marshal_sync="_mesa_glthread_is_non_vbo_draw_elements_indirect(ctx)">
+              marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indices_or_indirect(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="type" type="GLenum"/>
         <param name="indirect" type="const GLvoid *"/>
@@ -29,7 +29,7 @@
 <category name="GL_ARB_multi_draw_indirect" number="133">
 
     <function name="MultiDrawArraysIndirect" exec="dynamic" marshal="draw"
-              marshal_sync="_mesa_glthread_is_non_vbo_draw_arrays_indirect(ctx)">
+              marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indirect(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="indirect" type="const GLvoid *"/>
         <param name="primcount" type="GLsizei"/>
@@ -37,7 +37,7 @@
     </function>
 
     <function name="MultiDrawElementsIndirect" exec="dynamic" marshal="draw"
-              marshal_sync="_mesa_glthread_is_non_vbo_draw_elements_indirect(ctx)">
+              marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indices_or_indirect(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="type" type="GLenum"/>
         <param name="indirect" type="const GLvoid *"/>
