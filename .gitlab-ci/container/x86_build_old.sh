@@ -53,7 +53,8 @@ apt-get install -y --no-remove \
       xz-utils \
       zlib1g-dev
 
+. .gitlab-ci/container/container_pre_build.sh
 
 ############### Uninstall unused packages
 
-apt-get autoremove -y --purge
+. .gitlab-ci/container/container_post_build.sh

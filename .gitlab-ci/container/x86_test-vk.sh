@@ -28,6 +28,7 @@ EOF
 apt-get dist-upgrade -y
 
 apt-get install -y --no-remove \
+      ccache \
       cmake \
       g++ \
       gcc \
@@ -66,6 +67,7 @@ apt-get install -y --no-remove \
       xauth \
       xvfb
 
+. .gitlab-ci/container/container_pre_build.sh
 
 ############### Build dEQP runner
 
@@ -89,7 +91,10 @@ apt-get install -y --no-remove \
 
 ############### Uninstall the build software
 
+ccache --show-stats
+
 apt-get purge -y \
+      ccache \
       cmake \
       g++ \
       gcc \

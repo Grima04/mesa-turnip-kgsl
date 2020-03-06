@@ -84,6 +84,8 @@ apt-get install -y --no-remove \
       xz-utils \
       zlib1g-dev
 
+. .gitlab-ci/container/container_pre_build.sh
+
 # Cross-build Mesa deps
 for arch in $CROSS_ARCHITECTURES; do
     apt-get install -y --no-remove \
@@ -219,10 +221,6 @@ make -j4
 popd
 
 
-# Remove ccache directory, useless for the build jobs
-rm -rf $(ccache --get-config=cache_dir)
-
-
 ############### Uninstall the build software
 
 apt-get purge -y \
@@ -237,4 +235,4 @@ apt-get purge -y \
       unzip \
       wget
 
-apt-get autoremove -y --purge
+. .gitlab-ci/container/container_post_build.sh

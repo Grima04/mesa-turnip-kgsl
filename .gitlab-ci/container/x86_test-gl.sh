@@ -30,6 +30,7 @@ apt-get dist-upgrade -y
 apt-get install -y --no-remove \
       autoconf \
       automake \
+      ccache \
       cmake \
       g++ \
       gcc \
@@ -75,6 +76,7 @@ apt-get install -y --no-remove \
       xvfb \
       zlib1g
 
+. .gitlab-ci/container/container_pre_build.sh
 
 ############### Build piglit
 
@@ -98,9 +100,12 @@ apt-get install -y --no-remove \
 
 ############### Uninstall the build software
 
+ccache --show-stats
+
 apt-get purge -y \
       autoconf \
       automake \
+      ccache \
       cmake \
       g++ \
       gcc \

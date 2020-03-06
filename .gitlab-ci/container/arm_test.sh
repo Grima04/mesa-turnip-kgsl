@@ -10,6 +10,7 @@ echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources
 apt-get update
 apt-get -y install \
 	bzip2 \
+	ccache \
 	cmake \
 	g++ \
 	gcc \
@@ -35,6 +36,8 @@ apt-get -y install \
 	wget \
 	zlib1g
 
+. .gitlab-ci/container/container_pre_build.sh
+
 ############### Build dEQP runner
 
 . .gitlab-ci/build-cts-runner.sh
@@ -46,8 +49,11 @@ apt-get -y install \
 
 ############### Uninstall the build software
 
+ccache --show-stats
+
 apt-get purge -y \
         bzip2 \
+        ccache \
         cmake \
         g++ \
         gcc \
