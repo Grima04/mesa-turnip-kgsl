@@ -36,6 +36,11 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
                                 struct mali_sampler_descriptor *hw);
 
 void
+panfrost_vt_init(struct panfrost_context *ctx,
+                 enum pipe_shader_type stage,
+                 struct midgard_payload_vertex_tiler *vtp);
+
+void
 panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
                                struct midgard_payload_vertex_tiler *vt);
 

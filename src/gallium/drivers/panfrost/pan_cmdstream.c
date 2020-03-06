@@ -101,6 +101,25 @@ panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
                 tp->postfix.occlusion_counter = 0;
 }
 
+void
+panfrost_vt_init(struct panfrost_context *ctx,
+                 enum pipe_shader_type stage,
+                 struct midgard_payload_vertex_tiler *vtp)
+{
+        if (!ctx->shader[stage])
+                return;
+
+        memset(vtp, 0, sizeof(*vtp));
+        vtp->gl_enables = 0x6;
+        panfrost_vt_attach_framebuffer(ctx, vtp);
+
+        if (stage == PIPE_SHADER_FRAGMENT) {
+                panfrost_vt_update_occlusion_query(ctx, vtp);
+                panfrost_vt_update_rasterizer(ctx, vtp);
+        }
+}
+
+
 static unsigned
 panfrost_translate_index_size(unsigned size)
 {

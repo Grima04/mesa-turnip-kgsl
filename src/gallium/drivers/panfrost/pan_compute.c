@@ -117,6 +117,8 @@ panfrost_launch_grid(struct pipe_context *pipe,
         if (info->input)
                 pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, &ubuf);
 
+        panfrost_vt_init(ctx, PIPE_SHADER_COMPUTE, payload);
+
         panfrost_emit_shader_meta(batch, PIPE_SHADER_COMPUTE, payload);
         panfrost_emit_const_buf(batch, PIPE_SHADER_COMPUTE, payload);
         panfrost_emit_shared_memory(batch, info, payload);

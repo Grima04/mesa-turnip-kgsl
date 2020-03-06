@@ -148,30 +148,8 @@ panfrost_clear(
 void
 panfrost_invalidate_frame(struct panfrost_context *ctx)
 {
-        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
-                ctx->payloads[i].postfix.shared_memory = 0;
-
         /* TODO: When does this need to be handled? */
         ctx->active_queries = true;
-}
-
-/* In practice, every field of these payloads should be configurable
- * arbitrarily, which means these functions are basically catch-all's for
- * as-of-yet unwavering unknowns */
-
-static void
-panfrost_emit_vertex_payload(struct panfrost_context *ctx)
-{
-        /* 0x2 bit clear on 32-bit T6XX */
-
-        struct midgard_payload_vertex_tiler payload = {
-                .gl_enables = 0x4 | 0x2,
-        };
-
-        /* Vertex and compute are closely coupled, so share a payload */
-
-        memcpy(&ctx->payloads[PIPE_SHADER_VERTEX], &payload, sizeof(payload));
-        memcpy(&ctx->payloads[PIPE_SHADER_COMPUTE], &payload, sizeof(payload));
 }
 
 bool
@@ -422,16 +400,13 @@ panfrost_draw_vbo(
 
         unsigned vertex_count;
 
+        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i)
+                panfrost_vt_init(ctx, i, &ctx->payloads[i]);
+
         panfrost_vt_set_draw_info(ctx, info, g2m_draw_mode(mode),
                                   &ctx->payloads[PIPE_SHADER_VERTEX],
                                   &ctx->payloads[PIPE_SHADER_FRAGMENT],
                                   &vertex_count, &ctx->padded_count);
-
-        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i)
-                panfrost_vt_attach_framebuffer(ctx, &ctx->payloads[i]);
-
-        panfrost_vt_update_rasterizer(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
-        panfrost_vt_update_occlusion_query(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
 
         panfrost_statistics_record(ctx, info);
 
@@ -1455,7 +1430,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         /* Prepare for render! */
 
         panfrost_batch_init(ctx);
-        panfrost_emit_vertex_payload(ctx);
         panfrost_invalidate_frame(ctx);
 
         return gallium;
