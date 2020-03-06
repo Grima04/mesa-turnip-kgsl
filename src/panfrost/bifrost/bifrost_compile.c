@@ -113,6 +113,33 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
         bi_schedule_barrier(ctx);
 }
 
+static struct bi_load
+bi_direct_load_for_instr(nir_intrinsic_instr *instr)
+{
+        nir_src *offset = nir_get_io_offset_src(instr);
+        assert(nir_src_is_const(*offset)); /* no indirects */
+
+        struct bi_load load = {
+                .location = nir_intrinsic_base(instr) + nir_src_as_uint(*offset),
+                .channels = instr->num_components
+        };
+
+        return load;
+}
+
+static void
+bi_emit_ld_attr(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        bi_instruction load = {
+                .type = BI_LOAD_ATTR,
+                .load = bi_direct_load_for_instr(instr),
+                .dest = bir_dest_index(&instr->dest),
+                .dest_type = nir_intrinsic_type(instr)
+        };
+
+        bi_emit(ctx, load);
+}
+
 static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -122,8 +149,16 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                 /* stub */
                 break;
         case nir_intrinsic_load_interpolated_input:
-                bi_emit_ld_vary(ctx, instr);
+        case nir_intrinsic_load_input:
+                if (ctx->stage == MESA_SHADER_FRAGMENT)
+                        bi_emit_ld_vary(ctx, instr);
+                else if (ctx->stage == MESA_SHADER_VERTEX)
+                        bi_emit_ld_attr(ctx, instr);
+                else {
+                        unreachable("Unsupported shader stage");
+                }
                 break;
+
         case nir_intrinsic_store_output:
                 if (ctx->stage == MESA_SHADER_FRAGMENT)
                         bi_emit_frag_out(ctx, instr);
