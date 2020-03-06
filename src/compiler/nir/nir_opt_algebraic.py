@@ -942,6 +942,7 @@ optimizations.extend([
    (('ilt', 'a(is_lt_zero)',      'b(is_not_negative)'), True),
 
    (('ult', 0, 'a(is_gt_zero)'), True),
+   (('ult', a, 0), False),
 
    # Packing and then unpacking does nothing
    (('unpack_64_2x32_split_x', ('pack_64_2x32_split', a, b)), a),
