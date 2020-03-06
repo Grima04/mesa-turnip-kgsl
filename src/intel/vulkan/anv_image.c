@@ -1237,7 +1237,7 @@ vk_image_layout_to_usage_flags(VkImageLayout layout,
    unreachable("Invalid image layout.");
 }
 
-ASSERTED static bool
+static bool
 vk_image_layout_is_read_only(VkImageLayout layout,
                              VkImageAspectFlagBits aspect)
 {
@@ -1315,7 +1315,8 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
 
    /* If we don't have an aux buffer then aux state makes no sense */
-   assert(image->planes[plane].aux_usage != ISL_AUX_USAGE_NONE);
+   const enum isl_aux_usage aux_usage = image->planes[plane].aux_usage;
+   assert(aux_usage != ISL_AUX_USAGE_NONE);
 
    /* All images that use an auxiliary surface are required to be tiled. */
    assert(image->planes[plane].surface.isl.tiling != ISL_TILING_LINEAR);
@@ -1323,6 +1324,7 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    /* Stencil has no aux */
    assert(aspect != VK_IMAGE_ASPECT_STENCIL_BIT);
 
+   /* Handle a few special cases */
    switch (layout) {
    /* Invalid layouts */
    case VK_IMAGE_LAYOUT_RANGE_SIZE:
@@ -1338,55 +1340,6 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    case VK_IMAGE_LAYOUT_UNDEFINED:
    case VK_IMAGE_LAYOUT_PREINITIALIZED:
       return ISL_AUX_STATE_AUX_INVALID;
-
-   /* General layout */
-   case VK_IMAGE_LAYOUT_GENERAL:
-      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
-         if (image->usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) {
-            /* This buffer could be used as both a depth and input attachment
-             * at the same time in which case compression could cause issues.
-             */
-            return ISL_AUX_STATE_AUX_INVALID;
-         } else if (anv_can_sample_with_hiz(devinfo, image)) {
-            return ISL_AUX_STATE_COMPRESSED_CLEAR;
-         } else {
-            return ISL_AUX_STATE_AUX_INVALID;
-         }
-      } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
-         return ISL_AUX_STATE_PASS_THROUGH;
-      } else {
-         return ISL_AUX_STATE_COMPRESSED_CLEAR;
-      }
-
-   /* Transfer layouts */
-   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-      if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
-         return ISL_AUX_STATE_PASS_THROUGH;
-      } else {
-         return ISL_AUX_STATE_COMPRESSED_CLEAR;
-      }
-
-   /* Sampling layouts */
-   case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR:
-   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-   case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
-      assert((image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0);
-      /* Fall-through */
-   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-   case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
-         if (anv_can_sample_with_hiz(devinfo, image))
-            return ISL_AUX_STATE_COMPRESSED_CLEAR;
-         else
-            return ISL_AUX_STATE_RESOLVED;
-      } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
-         return ISL_AUX_STATE_PASS_THROUGH;
-      } else {
-         return ISL_AUX_STATE_COMPRESSED_CLEAR;
-      }
-
-   case VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL_KHR:
-      return ISL_AUX_STATE_RESOLVED;
 
    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: {
       assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1417,34 +1370,89 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
       }
    }
 
-   /* Rendering layouts */
-   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-      assert(aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
-      /* fall-through */
-   case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR:
-      if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_D) {
-         return ISL_AUX_STATE_PARTIAL_CLEAR;
-      } else {
-         return ISL_AUX_STATE_COMPRESSED_CLEAR;
-      }
-
-   case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR:
-   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-   case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
-      assert(aspect == VK_IMAGE_ASPECT_DEPTH_BIT);
-      return ISL_AUX_STATE_COMPRESSED_CLEAR;
-
-   case VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR:
-      unreachable("VK_KHR_shared_presentable_image is unsupported");
-
-   case VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT:
-      unreachable("VK_EXT_fragment_density_map is unsupported");
-
-   case VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV:
-      unreachable("VK_NV_shading_rate_image is unsupported");
+   default:
+      break;
    }
 
-   unreachable("layout is not a VkImageLayout enumeration member.");
+   const bool read_only = vk_image_layout_is_read_only(layout, aspect);
+
+   const VkImageUsageFlags image_aspect_usage =
+      aspect == VK_IMAGE_ASPECT_STENCIL_BIT ? image->stencil_usage :
+                                              image->usage;
+   const VkImageUsageFlags usage =
+      vk_image_layout_to_usage_flags(layout, aspect) & image_aspect_usage;
+
+   bool aux_supported = true;
+
+   if ((usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) && !read_only) {
+      /* This image could be used as both an input attachment and a render
+       * target (depth, stencil, or color) at the same time and this can cause
+       * corruption.
+       *
+       * We currently only disable aux in this way for depth even though we
+       * disable it for color in GL.
+       *
+       * TODO: Should we be disabling this in more cases?
+       */
+      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT)
+         aux_supported = false;
+   }
+
+   if (usage & VK_IMAGE_USAGE_STORAGE_BIT)
+      aux_supported = false;
+
+   if (usage & (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                VK_IMAGE_USAGE_SAMPLED_BIT |
+                VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+      switch (aux_usage) {
+      case ISL_AUX_USAGE_HIZ:
+         if (!anv_can_sample_with_hiz(devinfo, image))
+            aux_supported = false;
+         break;
+
+      case ISL_AUX_USAGE_CCS_D:
+         aux_supported = false;
+         break;
+
+      case ISL_AUX_USAGE_CCS_E:
+      case ISL_AUX_USAGE_MCS:
+         break;
+
+      default:
+         unreachable("Unsupported aux usage");
+      }
+   }
+
+   switch (aux_usage) {
+   case ISL_AUX_USAGE_HIZ:
+      if (aux_supported) {
+         return ISL_AUX_STATE_COMPRESSED_CLEAR;
+      } else if (read_only) {
+         return ISL_AUX_STATE_RESOLVED;
+      } else {
+         return ISL_AUX_STATE_AUX_INVALID;
+      }
+
+   case ISL_AUX_USAGE_CCS_D:
+      /* We only support clear in exactly one state */
+      if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+         assert(aux_supported);
+         return ISL_AUX_STATE_PARTIAL_CLEAR;
+      } else {
+         return ISL_AUX_STATE_PASS_THROUGH;
+      }
+
+   case ISL_AUX_USAGE_CCS_E:
+   case ISL_AUX_USAGE_MCS:
+      if (aux_supported) {
+         return ISL_AUX_STATE_COMPRESSED_CLEAR;
+      } else {
+         return ISL_AUX_STATE_PASS_THROUGH;
+      }
+
+   default:
+      unreachable("Unsupported aux usage");
+   }
 }
 
 /**
