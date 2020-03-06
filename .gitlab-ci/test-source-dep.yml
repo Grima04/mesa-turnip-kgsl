@@ -102,7 +102,7 @@
     - when: never
 
 .lima-rules:
-  stage: misc-tests
+  stage: lima
   rules:
     - changes:
         *mesa_core_file_list

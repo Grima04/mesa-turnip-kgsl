@@ -17,7 +17,8 @@ stages:
   - softpipe
   - freedreno
   - panfrost
-  - misc-tests
+  - radv
+  - lima
   - success
 
 
@@ -779,7 +780,7 @@ arm64_a530_gles3:
 # RADV CI
 .test-radv:
   extends: .radv-rules
-  stage: misc-tests
+  stage: radv
   variables:
     VK_DRIVER: radeon
     RADV_DEBUG: checkir
@@ -824,7 +825,6 @@ radv-fossils:
 
 # Traces CI
 .traces-test:
-  stage: misc-tests
   cache:
     key: ${CI_JOB_NAME}
     paths:
