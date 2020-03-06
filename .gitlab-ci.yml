@@ -788,6 +788,9 @@ arm64_a530_gles3:
   extends:
     - .fossilize-test
     - .test-radv
+  script:
+    - ./artifacts/fossilize-runner.sh
+    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./artifacts/fossilize-runner.sh
 
 # Can only be triggered manually on personal branches because RADV is the only
 # driver that does Vulkan testing at the moment.
