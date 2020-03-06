@@ -332,9 +332,6 @@ panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage);
 mali_ptr
 panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i);
 
-void
-panfrost_emit_vertex_data(struct panfrost_batch *batch);
-
 /* Compute */
 
 void

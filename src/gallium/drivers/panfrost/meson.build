@@ -41,7 +41,6 @@ files_panfrost = files(
   'pan_cmdstream.c',
   'pan_compute.c',
   'pan_fragment.c',
-  'pan_attributes.c',
   'pan_scoreboard.c',
   'pan_sfbd.c',
   'pan_mfbd.c',

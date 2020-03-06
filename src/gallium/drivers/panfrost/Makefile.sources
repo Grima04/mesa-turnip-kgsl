@@ -20,7 +20,6 @@ C_SOURCES := \
 	pan_context.c \
 	pan_context.h \
 	pan_fragment.c \
-	pan_attributes.c \
 	pan_job.c \
 	pan_job.h \
 	pan_mfbd.c \
