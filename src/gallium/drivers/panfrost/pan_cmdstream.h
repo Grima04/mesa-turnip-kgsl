@@ -94,6 +94,12 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           struct midgard_payload_vertex_tiler *vp);
 
 void
+panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
+                                 unsigned vertex_count,
+                                 struct midgard_payload_vertex_tiler *vp,
+                                 struct midgard_payload_vertex_tiler *tp);
+
+void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                 struct midgard_payload_vertex_tiler *vp,
                                 struct midgard_payload_vertex_tiler *tp);

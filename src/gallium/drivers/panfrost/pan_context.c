@@ -446,9 +446,11 @@ panfrost_draw_vbo(
 
         /* Emit all sort of descriptors. */
         panfrost_emit_vertex_data(batch, &ctx->payloads[PIPE_SHADER_VERTEX]);
-        panfrost_emit_varying_descriptor(ctx,
+        panfrost_emit_varying_descriptor(batch,
                                          ctx->padded_count *
-                                         ctx->instance_count);
+                                         ctx->instance_count,
+                                         &ctx->payloads[PIPE_SHADER_VERTEX],
+                                         &ctx->payloads[PIPE_SHADER_FRAGMENT]);
         panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX,
                                   &ctx->payloads[PIPE_SHADER_VERTEX]);
         panfrost_emit_shader_meta(batch, PIPE_SHADER_FRAGMENT,

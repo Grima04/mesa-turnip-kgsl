@@ -30,5 +30,4 @@ C_SOURCES := \
 	pan_screen.c \
 	pan_screen.h \
 	pan_sfbd.c \
-	pan_util.h \
-	pan_varyings.c
+	pan_util.h

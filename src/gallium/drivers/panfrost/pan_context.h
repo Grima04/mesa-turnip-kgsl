@@ -337,11 +337,5 @@ panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i);
 void
 panfrost_compute_context_init(struct pipe_context *pctx);
 
-/* Varyings */
-
-void
-panfrost_emit_varying_descriptor(
-        struct panfrost_context *ctx,
-        unsigned vertex_count);
 
 #endif
