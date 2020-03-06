@@ -89,6 +89,31 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        if (!ctx->emitted_atest) {
+                bi_instruction ins = {
+                        .type = BI_ATEST
+                };
+
+                bi_emit(ctx, ins);
+                bi_schedule_barrier(ctx);
+                ctx->emitted_atest = true;
+        }
+
+        bi_instruction blend = {
+                .type = BI_BLEND,
+                .blend_location = nir_intrinsic_base(instr),
+                .src = {
+                        bir_src_index(&instr->src[0])
+                }
+        };
+
+        bi_emit(ctx, blend);
+        bi_schedule_barrier(ctx);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -98,6 +123,13 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                 break;
         case nir_intrinsic_load_interpolated_input:
                 bi_emit_ld_vary(ctx, instr);
+                break;
+        case nir_intrinsic_store_output:
+                if (ctx->stage == MESA_SHADER_FRAGMENT)
+                        bi_emit_frag_out(ctx, instr);
+                else {
+                        /* TODO */
+                }
                 break;
         default:
                 /* todo */

@@ -330,6 +330,7 @@ typedef struct {
        bi_block *after_block;
        bi_block *break_block;
        bi_block *continue_block;
+       bool emitted_atest;
 
        /* Stats for shader-db */
        unsigned instruction_count;
