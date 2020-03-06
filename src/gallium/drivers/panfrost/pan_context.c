@@ -250,64 +250,6 @@ panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage)
         return 32 - __builtin_clz(mask);
 }
 
-/* Go through dirty flags and actualise them in the cmdstream. */
-
-static void
-panfrost_emit_for_draw(struct panfrost_context *ctx)
-{
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        panfrost_batch_add_fbo_bos(batch);
-
-        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i)
-                panfrost_vt_attach_framebuffer(ctx, &ctx->payloads[i]);
-
-        panfrost_emit_vertex_data(batch);
-
-        /* Varyings emitted for -all- geometry */
-        unsigned total_count = ctx->padded_count * ctx->instance_count;
-        panfrost_emit_varying_descriptor(ctx, total_count);
-
-        panfrost_batch_set_requirements(batch);
-
-        panfrost_vt_update_rasterizer(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
-        panfrost_vt_update_occlusion_query(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
-
-        panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX,
-                                  &ctx->payloads[PIPE_SHADER_VERTEX]);
-        panfrost_emit_shader_meta(batch, PIPE_SHADER_FRAGMENT,
-                                  &ctx->payloads[PIPE_SHADER_FRAGMENT]);
-
-        panfrost_emit_vertex_attr_meta(batch,
-                                       &ctx->payloads[PIPE_SHADER_VERTEX]);
-
-        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
-                panfrost_emit_sampler_descriptors(batch, i, &ctx->payloads[i]);
-                panfrost_emit_texture_descriptors(batch, i, &ctx->payloads[i]);
-                panfrost_emit_const_buf(batch, i, &ctx->payloads[i]);
-        }
-
-        /* TODO: Upload the viewport somewhere more appropriate */
-
-        panfrost_emit_viewport(batch, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
-}
-
-/* Corresponds to exactly one draw, but does not submit anything */
-
-static void
-panfrost_queue_draw(struct panfrost_context *ctx)
-{
-        /* Handle dirty flags now */
-        panfrost_emit_for_draw(ctx);
-
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        panfrost_emit_vertex_tiler_jobs(batch,
-                                        &ctx->payloads[PIPE_SHADER_VERTEX],
-                                        &ctx->payloads[PIPE_SHADER_FRAGMENT]);
-        panfrost_batch_adjust_stack_size(batch);
-}
-
 /* The entire frame is in memory -- send it off to the kernel! */
 
 void
@@ -468,7 +410,10 @@ panfrost_draw_vbo(
         /* Now that we have a guaranteed terminating path, find the job.
          * Assignment commented out to prevent unused warning */
 
-        /* struct panfrost_batch *batch = */ panfrost_get_batch_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        panfrost_batch_add_fbo_bos(batch);
+        panfrost_batch_set_requirements(batch);
 
         /* Take into account a negative bias */
         ctx->vertex_count = info->count + abs(info->index_bias);
@@ -482,6 +427,12 @@ panfrost_draw_vbo(
                                   &ctx->payloads[PIPE_SHADER_FRAGMENT],
                                   &vertex_count, &ctx->padded_count);
 
+        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i)
+                panfrost_vt_attach_framebuffer(ctx, &ctx->payloads[i]);
+
+        panfrost_vt_update_rasterizer(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
+        panfrost_vt_update_occlusion_query(ctx, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
+
         panfrost_statistics_record(ctx, info);
 
         /* Dispatch "compute jobs" for the vertex/tiler pair as (1,
@@ -493,8 +444,33 @@ panfrost_draw_vbo(
                 1, vertex_count, info->instance_count,
                 1, 1, 1);
 
+        /* Emit all sort of descriptors. */
+        panfrost_emit_vertex_data(batch);
+        panfrost_emit_varying_descriptor(ctx,
+                                         ctx->padded_count *
+                                         ctx->instance_count);
+        panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX,
+                                  &ctx->payloads[PIPE_SHADER_VERTEX]);
+        panfrost_emit_shader_meta(batch, PIPE_SHADER_FRAGMENT,
+                                  &ctx->payloads[PIPE_SHADER_FRAGMENT]);
+        panfrost_emit_vertex_attr_meta(batch,
+                                       &ctx->payloads[PIPE_SHADER_VERTEX]);
+
+        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
+                panfrost_emit_sampler_descriptors(batch, i, &ctx->payloads[i]);
+                panfrost_emit_texture_descriptors(batch, i, &ctx->payloads[i]);
+                panfrost_emit_const_buf(batch, i, &ctx->payloads[i]);
+        }
+
+        panfrost_emit_viewport(batch, &ctx->payloads[PIPE_SHADER_FRAGMENT]);
+
         /* Fire off the draw itself */
-        panfrost_queue_draw(ctx);
+        panfrost_emit_vertex_tiler_jobs(batch,
+                                        &ctx->payloads[PIPE_SHADER_VERTEX],
+                                        &ctx->payloads[PIPE_SHADER_FRAGMENT]);
+
+        /* Adjust the batch stack size based on the new shader stack sizes. */
+        panfrost_batch_adjust_stack_size(batch);
 
         /* Increment transform feedback offsets */
         panfrost_update_streamout_offsets(ctx);
