@@ -3365,6 +3365,7 @@ void visit_load_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool p
 void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    if (ctx->stage == vertex_vs ||
+       ctx->stage == tess_eval_vs ||
        ctx->stage == fragment_fs ||
        ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
       unsigned write_mask = nir_intrinsic_write_mask(instr);
