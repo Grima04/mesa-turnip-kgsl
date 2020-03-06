@@ -122,6 +122,7 @@ bi_class_name(enum bi_class cl)
         case BI_FMA: return "fma";
         case BI_FREXP: return "frexp";
         case BI_LOAD: return "load";
+        case BI_LOAD_UNIFORM: return "load_uniform";
         case BI_LOAD_ATTR: return "load_attr";
         case BI_LOAD_VAR: return "load_var";
         case BI_LOAD_VAR_ADDRESS: return "load_var_address";
@@ -290,7 +291,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 
         if (ins->type == BI_MINMAX)
                 fprintf(fp, "%s", bi_minmax_mode_name(ins->minmax));
-        else if (ins->type == BI_LOAD_ATTR || ins->type == BI_LOAD_VAR_ADDRESS)
+        else if (ins->type == BI_LOAD_ATTR || ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_UNIFORM)
                 bi_print_load(&ins->load, fp);
         else if (ins->type == BI_LOAD_VAR)
                 bi_print_load_vary(&ins->load_vary, fp);

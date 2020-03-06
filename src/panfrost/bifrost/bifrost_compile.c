@@ -166,6 +166,24 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_ld_uniform(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        /* TODO: Indirect access */
+
+        bi_instruction ld = {
+                .type = BI_LOAD_UNIFORM,
+                .load = bi_direct_load_for_instr(instr),
+                .dest = bir_dest_index(&instr->dest),
+                .dest_type = nir_intrinsic_type(instr),
+                .src = {
+                        BIR_INDEX_ZERO /* TODO: UBOs */
+                }
+        };
+
+        bi_emit(ctx, ld);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -192,6 +210,11 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                 else
                         unreachable("Unsupported shader stage");
                 break;
+
+        case nir_intrinsic_load_uniform:
+                bi_emit_ld_uniform(ctx, instr);
+                break;
+
         default:
                 /* todo */
                 break;

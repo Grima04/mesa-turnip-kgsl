@@ -59,6 +59,7 @@ enum bi_class {
         BI_FMA,
         BI_FREXP,
         BI_LOAD,
+        BI_LOAD_UNIFORM,
         BI_LOAD_ATTR,
         BI_LOAD_VAR,
         BI_LOAD_VAR_ADDRESS,
@@ -112,12 +113,12 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 
-/* Class-specific data for BI_LD_ATTR, BI_LD_VAR_ADDR */
+/* Class-specific data for BI_LOAD, BI_LD_ATTR, BI_LD_VAR_ADDR */
 struct bi_load {
-        /* Note: no indirects here */
+        /* Note: LD_ATTR does not support indirects */
         unsigned location;
 
-        /* Only for BI_LD_ATTR. But number of vector channels */
+        /* Number of vector channels */
         unsigned channels;
 };
 
