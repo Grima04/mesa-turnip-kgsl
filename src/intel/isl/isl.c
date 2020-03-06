@@ -2057,9 +2057,6 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
        *
        *    Linear CCS is only allowed for Untyped Buffers but only via HDC
        *    Data-Port messages.
-       *
-       * We probably want to limit linear CCS to storage usage and check that
-       * the shaders actually use only untyped messages.
        */
       assert(surf->tiling != ISL_TILING_LINEAR);
 
