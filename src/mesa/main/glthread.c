@@ -106,6 +106,11 @@ _mesa_glthread_init(struct gl_context *ctx)
 
    glthread->enabled = true;
    glthread->stats.queue = &glthread->queue;
+
+   glthread->SupportsBufferUploads =
+      ctx->Const.BufferCreateMapUnsynchronizedThreadSafe &&
+      ctx->Const.AllowMappedBuffersDuringExecution;
+
    ctx->CurrentClientDispatch = ctx->MarshalExec;
 
    /* Execute the thread initialization function in the thread. */

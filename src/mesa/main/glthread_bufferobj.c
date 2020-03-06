@@ -21,8 +21,100 @@
  * IN THE SOFTWARE.
  */
 
-#include "glthread_marshal.h"
-#include "dispatch.h"
+#include "main/glthread_marshal.h"
+#include "main/dispatch.h"
+#include "main/bufferobj.h"
+
+/**
+ * Create an upload buffer. This is called from the app thread, so everything
+ * has to be thread-safe in the driver.
+ */
+static struct gl_buffer_object *
+new_upload_buffer(struct gl_context *ctx, GLsizeiptr size, uint8_t **ptr)
+{
+   assert(ctx->GLThread.SupportsBufferUploads);
+
+   struct gl_buffer_object *obj = ctx->Driver.NewBufferObject(ctx, -1);
+   if (!obj)
+      return NULL;
+
+   obj->Immutable = true;
+
+   if (!ctx->Driver.BufferData(ctx, GL_ARRAY_BUFFER, size, NULL,
+                               GL_WRITE_ONLY,
+                               GL_CLIENT_STORAGE_BIT | GL_MAP_WRITE_BIT,
+                               obj)) {
+      ctx->Driver.DeleteBuffer(ctx, obj);
+      return NULL;
+   }
+
+   *ptr = ctx->Driver.MapBufferRange(ctx, 0, size,
+                                     GL_MAP_WRITE_BIT |
+                                     GL_MAP_UNSYNCHRONIZED_BIT |
+                                     MESA_MAP_THREAD_SAFE_BIT,
+                                     obj, MAP_GLTHREAD);
+   if (!*ptr) {
+      ctx->Driver.DeleteBuffer(ctx, obj);
+      return NULL;
+   }
+
+   return obj;
+}
+
+void
+_mesa_glthread_upload(struct gl_context *ctx, const void *data,
+                      GLsizeiptr size, unsigned *out_offset,
+                      struct gl_buffer_object **out_buffer,
+                      uint8_t **out_ptr)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+   const unsigned default_size = 1024 * 1024;
+
+   if (unlikely(size > INT_MAX))
+      return;
+
+   /* The alignment was chosen arbitrarily. */
+   unsigned offset = align(glthread->upload_offset, 8);
+
+   /* Allocate a new buffer if needed. */
+   if (unlikely(!glthread->upload_buffer || offset + size > default_size)) {
+      /* If the size is greater than the buffer size, allocate a separate buffer
+       * just for this upload.
+       */
+      if (unlikely(size > default_size)) {
+         uint8_t *ptr;
+
+         assert(*out_buffer == NULL);
+         *out_buffer = new_upload_buffer(ctx, size, &ptr);
+         if (!*out_buffer)
+            return;
+
+         *out_offset = 0;
+         if (data)
+            memcpy(ptr, data, size);
+         else
+            *out_ptr = ptr;
+         return;
+      }
+
+      _mesa_reference_buffer_object(ctx, &glthread->upload_buffer, NULL);
+      glthread->upload_buffer =
+         new_upload_buffer(ctx, default_size, &glthread->upload_ptr);
+      glthread->upload_offset = 0;
+      offset = 0;
+   }
+
+   /* Upload data. */
+   if (data)
+      memcpy(glthread->upload_ptr + offset, data, size);
+   else
+      *out_ptr = glthread->upload_ptr + offset;
+
+   glthread->upload_offset = offset + size;
+   *out_offset = offset;
+   assert(*out_buffer == NULL);
+   _mesa_reference_buffer_object(ctx, out_buffer, glthread->upload_buffer);
+}
 
 /** Tracks the current bindings for the vertex array and index array buffers.
  *
@@ -268,6 +360,31 @@ _mesa_marshal_BufferSubData_merged(GLuint target_or_name, GLintptr offset,
 {
    GET_CURRENT_CONTEXT(ctx);
    size_t cmd_size = sizeof(struct marshal_cmd_BufferSubData) + size;
+
+   /* Fast path: Copy the data to an upload buffer, and use the GPU
+    * to copy the uploaded data to the destination buffer.
+    */
+   /* TODO: Handle offset == 0 && size < buffer_size.
+    *       If offset == 0 and size == buffer_size, it's better to discard
+    *       the buffer storage, but we don't know the buffer size in glthread.
+    */
+   if (ctx->GLThread.SupportsBufferUploads &&
+       data && offset > 0 && size > 0) {
+      struct gl_buffer_object *upload_buffer = NULL;
+      unsigned upload_offset = 0;
+
+      _mesa_glthread_upload(ctx, data, size, &upload_offset, &upload_buffer,
+                            NULL);
+
+      if (upload_buffer) {
+         _mesa_marshal_InternalBufferSubDataCopyMESA((GLintptr)upload_buffer,
+                                                     upload_offset,
+                                                     target_or_name,
+                                                     offset, size, named,
+                                                     ext_dsa);
+         return;
+      }
+   }
 
    if (unlikely(size < 0 || size > INT_MAX || cmd_size < 0 ||
                 cmd_size > MARSHAL_MAX_CMD_SIZE || !data ||

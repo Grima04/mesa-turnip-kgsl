@@ -50,6 +50,7 @@
 #include "compiler/shader_enums.h"
 
 struct gl_context;
+struct gl_buffer_object;
 struct _mesa_HashTable;
 
 struct glthread_attrib_binding {
@@ -109,6 +110,14 @@ struct glthread_state
    /** Index of the batch being filled and about to be submitted. */
    unsigned next;
 
+   /** Upload buffer. */
+   struct gl_buffer_object *upload_buffer;
+   uint8_t *upload_ptr;
+   unsigned upload_offset;
+
+   /** Caps. */
+   GLboolean SupportsBufferUploads;
+
    /** Vertex Array objects tracked by glthread independently of Mesa. */
    struct _mesa_HashTable *VAOs;
    struct glthread_vao *CurrentVAO;
@@ -129,6 +138,10 @@ void _mesa_glthread_disable(struct gl_context *ctx, const char *func);
 void _mesa_glthread_flush_batch(struct gl_context *ctx);
 void _mesa_glthread_finish(struct gl_context *ctx);
 void _mesa_glthread_finish_before(struct gl_context *ctx, const char *func);
+void _mesa_glthread_upload(struct gl_context *ctx, const void *data,
+                           GLsizeiptr size, unsigned *out_offset,
+                           struct gl_buffer_object **out_buffer,
+                           uint8_t **out_ptr);
 
 void _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target,
                                GLuint buffer);
