@@ -114,7 +114,6 @@ struct etna_context {
    /* Get sampler TS pointer for sampler view */
    struct etna_sampler_ts *(*ts_for_sampler_view)(struct pipe_sampler_view *pview);
 
-   struct etna_specs specs;
    struct etna_screen *screen;
    struct etna_cmd_stream *stream;
 

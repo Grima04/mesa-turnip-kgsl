@@ -394,6 +394,7 @@ etna_create_shader_state(struct pipe_context *pctx,
                          const struct pipe_shader_state *pss)
 {
    struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
    struct etna_shader *shader = CALLOC_STRUCT(etna_shader);
 
    if (!shader)
@@ -401,7 +402,7 @@ etna_create_shader_state(struct pipe_context *pctx,
 
    static uint32_t id;
    shader->id = id++;
-   shader->specs = &ctx->specs;
+   shader->specs = &screen->specs;
 
    if (DBG_ENABLED(ETNA_DBG_NIR))
       shader->nir = (pss->type == PIPE_SHADER_IR_NIR) ? pss->ir.nir :

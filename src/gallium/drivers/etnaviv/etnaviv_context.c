@@ -218,6 +218,7 @@ static void
 etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 {
    struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
    struct pipe_framebuffer_state *pfb = &ctx->framebuffer_s;
    uint32_t draw_mode;
    unsigned i;
@@ -358,7 +359,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    /* First, sync state, then emit DRAW_PRIMITIVES or DRAW_INDEXED_PRIMITIVES */
    etna_emit_state(ctx);
 
-   if (ctx->specs.halti >= 2) {
+   if (screen->specs.halti >= 2) {
       /* On HALTI2+ (GC3000 and higher) only use instanced drawing commands, as the blob does */
       etna_draw_instanced(ctx->stream, info->index_size, draw_mode, info->instance_count,
          info->count, info->index_size ? info->index_bias : info->start);
@@ -392,6 +393,7 @@ static void
 etna_reset_gpu_state(struct etna_context *ctx)
 {
    struct etna_cmd_stream *stream = ctx->stream;
+   struct etna_screen *screen = ctx->screen;
 
    etna_set_state(stream, VIVS_GL_API_MODE, VIVS_GL_API_MODE_OPENGL);
    etna_set_state(stream, VIVS_GL_VERTEX_ELEMENT_CONFIG, 0x00000001);
@@ -407,21 +409,21 @@ etna_reset_gpu_state(struct etna_context *ctx)
    etna_set_state(stream, VIVS_PS_CONTROL_EXT, 0x00000000);
 
    /* There is no HALTI0 specific state */
-   if (ctx->specs.halti >= 1) { /* Only on HALTI1+ */
+   if (screen->specs.halti >= 1) { /* Only on HALTI1+ */
       etna_set_state(stream, VIVS_VS_HALTI1_UNK00884, 0x00000808);
    }
-   if (ctx->specs.halti >= 2) { /* Only on HALTI2+ */
+   if (screen->specs.halti >= 2) { /* Only on HALTI2+ */
       etna_set_state(stream, VIVS_RA_UNK00E0C, 0x00000000);
    }
-   if (ctx->specs.halti >= 3) { /* Only on HALTI3+ */
+   if (screen->specs.halti >= 3) { /* Only on HALTI3+ */
       etna_set_state(stream, VIVS_PS_HALTI3_UNK0103C, 0x76543210);
    }
-   if (ctx->specs.halti >= 4) { /* Only on HALTI4+ */
+   if (screen->specs.halti >= 4) { /* Only on HALTI4+ */
       etna_set_state(stream, VIVS_PS_MSAA_CONFIG, 0x6fffffff & 0xf70fffff & 0xfff6ffff &
                                                   0xffff6fff & 0xfffff6ff & 0xffffff7f);
       etna_set_state(stream, VIVS_PE_HALTI4_UNK014C0, 0x00000000);
    }
-   if (ctx->specs.halti >= 5) { /* Only on HALTI5+ */
+   if (screen->specs.halti >= 5) { /* Only on HALTI5+ */
       etna_set_state(stream, VIVS_NTE_DESCRIPTOR_UNK14C40, 0x00000001);
       etna_set_state(stream, VIVS_FE_HALTI5_UNK007D8, 0x00000002);
       etna_set_state(stream, VIVS_FE_HALTI5_ID_CONFIG, 0x00000000);
@@ -433,12 +435,12 @@ etna_reset_gpu_state(struct etna_context *ctx)
       etna_set_state(stream, VIVS_GL_UNK03854, 0x00000000);
    }
 
-   if (!ctx->specs.use_blt) {
+   if (!screen->specs.use_blt) {
       /* Enable SINGLE_BUFFER for resolve, if supported */
-      etna_set_state(stream, VIVS_RS_SINGLE_BUFFER, COND(ctx->specs.single_buffer, VIVS_RS_SINGLE_BUFFER_ENABLE));
+      etna_set_state(stream, VIVS_RS_SINGLE_BUFFER, COND(screen->specs.single_buffer, VIVS_RS_SINGLE_BUFFER_ENABLE));
    }
 
-   if (ctx->specs.halti >= 5) {
+   if (screen->specs.halti >= 5) {
       /* TXDESC cache flush - do this once at the beginning, as texture
        * descriptors are only written by the CPU once, then patched by the kernel
        * before command stream submission. It does not need flushing if the
@@ -575,7 +577,6 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    mtx_init(&ctx->lock, mtx_recursive);
 
    /* context ctxate setup */
-   ctx->specs = screen->specs;
    ctx->screen = screen;
    /* need some sane default in case state tracker doesn't set some state: */
    ctx->sample_mask = 0xffff;

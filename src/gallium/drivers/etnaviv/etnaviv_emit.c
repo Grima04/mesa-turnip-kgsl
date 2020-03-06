@@ -218,6 +218,7 @@ void
 etna_emit_state(struct etna_context *ctx)
 {
    struct etna_cmd_stream *stream = ctx->stream;
+   struct etna_screen *screen = ctx->screen;
    unsigned ccw = ctx->rasterizer->front_ccw;
 
 
@@ -253,7 +254,7 @@ etna_emit_state(struct etna_context *ctx)
     * a) the number of vertex elements written matters: so write only active ones
     * b) the vertex element states must all be written: do not skip entries that stay the same */
    if (dirty & (ETNA_DIRTY_VERTEX_ELEMENTS)) {
-      if (ctx->specs.halti >= 5) {
+      if (screen->specs.halti >= 5) {
          /*17800*/ etna_set_state_multi(stream, VIVS_NFE_GENERIC_ATTRIB_CONFIG0(0),
             ctx->vertex_elements->num_elements,
             ctx->vertex_elements->NFE_GENERIC_ATTRIB_CONFIG0);
@@ -268,7 +269,7 @@ etna_emit_state(struct etna_context *ctx)
          /*00600*/ etna_set_state_multi(stream, VIVS_FE_VERTEX_ELEMENT_CONFIG(0),
             ctx->vertex_elements->num_elements,
             ctx->vertex_elements->FE_VERTEX_ELEMENT_CONFIG);
-         if (ctx->specs.halti >= 2) {
+         if (screen->specs.halti >= 2) {
             /*00780*/ etna_set_state_multi(stream, VIVS_FE_GENERIC_ATTRIB_SCALE(0),
                ctx->vertex_elements->num_elements,
                ctx->vertex_elements->NFE_GENERIC_ATTRIB_SCALE);
@@ -322,7 +323,7 @@ etna_emit_state(struct etna_context *ctx)
       /*00674*/ EMIT_STATE(FE_PRIMITIVE_RESTART_INDEX, ctx->index_buffer.FE_PRIMITIVE_RESTART_INDEX);
    }
    if (likely(dirty & (ETNA_DIRTY_VERTEX_BUFFERS))) {
-      if (ctx->specs.halti >= 2) { /* HALTI2+: NFE_VERTEX_STREAMS */
+      if (screen->specs.halti >= 2) { /* HALTI2+: NFE_VERTEX_STREAMS */
          for (int x = 0; x < ctx->vertex_buffer.count; ++x) {
             /*14600*/ EMIT_STATE_RELOC(NFE_VERTEX_STREAMS_BASE_ADDR(x), &ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_BASE_ADDR);
          }
@@ -331,7 +332,7 @@ etna_emit_state(struct etna_context *ctx)
                /*14640*/ EMIT_STATE(NFE_VERTEX_STREAMS_CONTROL(x), ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_CONTROL);
             }
          }
-      } else if(ctx->specs.stream_count > 1) { /* hw w/ multiple vertex streams */
+      } else if(screen->specs.stream_count > 1) { /* hw w/ multiple vertex streams */
          for (int x = 0; x < ctx->vertex_buffer.count; ++x) {
             /*00680*/ EMIT_STATE_RELOC(FE_VERTEX_STREAMS_BASE_ADDR(x), &ctx->vertex_buffer.cvb[x].FE_VERTEX_STREAM_BASE_ADDR);
          }
@@ -346,7 +347,7 @@ etna_emit_state(struct etna_context *ctx)
       }
    }
    /* gallium has instance divisor as part of elements state */
-   if ((dirty & (ETNA_DIRTY_VERTEX_ELEMENTS)) && ctx->specs.halti >= 2) {
+   if ((dirty & (ETNA_DIRTY_VERTEX_ELEMENTS)) && screen->specs.halti >= 2) {
       for (int x = 0; x < ctx->vertex_elements->num_buffers; ++x) {
          /*14680*/ EMIT_STATE(NFE_VERTEX_STREAMS_VERTEX_DIVISOR(x), ctx->vertex_elements->NFE_VERTEX_STREAMS_VERTEX_DIVISOR[x]);
       }
@@ -470,7 +471,7 @@ etna_emit_state(struct etna_context *ctx)
    if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER))) {
       /*0140C*/ EMIT_STATE(PE_DEPTH_NORMALIZE, ctx->framebuffer.PE_DEPTH_NORMALIZE);
 
-      if (ctx->specs.pixel_pipes == 1) {
+      if (screen->specs.pixel_pipes == 1) {
          /*01410*/ EMIT_STATE_RELOC(PE_DEPTH_ADDR, &ctx->framebuffer.PE_DEPTH_ADDR);
       }
 
@@ -507,11 +508,11 @@ etna_emit_state(struct etna_context *ctx)
       /*0142C*/ EMIT_STATE(PE_COLOR_FORMAT, val);
    }
    if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER))) {
-      if (ctx->specs.pixel_pipes == 1) {
+      if (screen->specs.pixel_pipes == 1) {
          /*01430*/ EMIT_STATE_RELOC(PE_COLOR_ADDR, &ctx->framebuffer.PE_COLOR_ADDR);
          /*01434*/ EMIT_STATE(PE_COLOR_STRIDE, ctx->framebuffer.PE_COLOR_STRIDE);
          /*01454*/ EMIT_STATE(PE_HDEPTH_CONTROL, ctx->framebuffer.PE_HDEPTH_CONTROL);
-      } else if (ctx->specs.pixel_pipes == 2) {
+      } else if (screen->specs.pixel_pipes == 2) {
          /*01434*/ EMIT_STATE(PE_COLOR_STRIDE, ctx->framebuffer.PE_COLOR_STRIDE);
          /*01454*/ EMIT_STATE(PE_HDEPTH_CONTROL, ctx->framebuffer.PE_HDEPTH_CONTROL);
          /*01460*/ EMIT_STATE_RELOC(PE_PIPE_COLOR_ADDR(0), &ctx->framebuffer.PE_PIPE_COLOR_ADDR[0]);
@@ -543,7 +544,7 @@ etna_emit_state(struct etna_context *ctx)
    if (unlikely(dirty & (ETNA_DIRTY_ZSA | ETNA_DIRTY_RASTERIZER))) {
       /*014B8*/ EMIT_STATE(PE_STENCIL_CONFIG_EXT2, etna_zsa_state(ctx->zsa)->PE_STENCIL_CONFIG_EXT2[ccw]);
    }
-   if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER)) && ctx->specs.halti >= 3)
+   if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER)) && screen->specs.halti >= 3)
       /*014BC*/ EMIT_STATE(PE_MEM_CONFIG, ctx->framebuffer.PE_MEM_CONFIG);
    if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER | ETNA_DIRTY_TS))) {
       /*01654*/ EMIT_STATE(TS_MEM_CONFIG, ctx->framebuffer.TS_MEM_CONFIG);
@@ -562,7 +563,7 @@ etna_emit_state(struct etna_context *ctx)
    /* end only EMIT_STATE */
 
    /* Emit strongly architecture-specific state */
-   if (ctx->specs.halti >= 5)
+   if (screen->specs.halti >= 5)
       emit_halti5_only_state(ctx, vs_output_count);
    else
       emit_pre_halti5_state(ctx);
@@ -576,7 +577,7 @@ etna_emit_state(struct etna_context *ctx)
     * I summise that this is because the "new" locations at 0xc000 are not
     * properly protected against updates as other states seem to be. Hence,
     * we detect the "new" vertex shader instruction offset to apply this. */
-   if (ctx->dirty & (ETNA_DIRTY_SHADER | ETNA_DIRTY_CONSTBUF) && ctx->specs.vs_offset > 0x4000)
+   if (ctx->dirty & (ETNA_DIRTY_SHADER | ETNA_DIRTY_CONSTBUF) && screen->specs.vs_offset > 0x4000)
       etna_stall(ctx->stream, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
 
    /* We need to update the uniform cache only if one of the following bits are
@@ -593,7 +594,7 @@ etna_emit_state(struct etna_context *ctx)
       ETNA_DIRTY_SHADER | ETNA_DIRTY_CONSTBUF;
 
    /**** Large dynamically-sized state ****/
-   bool do_uniform_flush = ctx->specs.halti < 5;
+   bool do_uniform_flush = screen->specs.halti < 5;
    if (dirty & (ETNA_DIRTY_SHADER)) {
       /* Special case: a new shader was loaded; simply re-load all uniforms and
        * shader code at once */
@@ -605,7 +606,7 @@ etna_emit_state(struct etna_context *ctx)
          state can legitimately be programmed multiple times.
        */
 
-      if (ctx->specs.halti >= 5) { /* ICACHE (HALTI5) */
+      if (screen->specs.halti >= 5) { /* ICACHE (HALTI5) */
          assert(ctx->shader_state.VS_INST_ADDR.bo && ctx->shader_state.PS_INST_ADDR.bo);
          /* Set icache (VS) */
          etna_set_state(stream, VIVS_VS_NEWRANGE_LOW, 0);
@@ -627,7 +628,7 @@ etna_emit_state(struct etna_context *ctx)
 
       } else if (ctx->shader_state.VS_INST_ADDR.bo || ctx->shader_state.PS_INST_ADDR.bo) {
          /* ICACHE (pre-HALTI5) */
-         assert(ctx->specs.has_icache && ctx->specs.has_shader_range_registers);
+         assert(screen->specs.has_icache && screen->specs.has_shader_range_registers);
          /* Set icache (VS) */
          etna_set_state(stream, VIVS_VS_RANGE, (ctx->shader_state.vs_inst_mem_size / 4 - 1) << 16);
          etna_set_state(stream, VIVS_VS_ICACHE_CONTROL,
@@ -646,27 +647,27 @@ etna_emit_state(struct etna_context *ctx)
       } else {
          /* Upload shader directly, first flushing and disabling icache if
           * supported on this hw */
-         if (ctx->specs.has_icache) {
+         if (screen->specs.has_icache) {
             etna_set_state(stream, VIVS_VS_ICACHE_CONTROL,
                   VIVS_VS_ICACHE_CONTROL_FLUSH_PS |
                   VIVS_VS_ICACHE_CONTROL_FLUSH_VS);
          }
-         if (ctx->specs.has_shader_range_registers) {
+         if (screen->specs.has_shader_range_registers) {
             etna_set_state(stream, VIVS_VS_RANGE, (ctx->shader_state.vs_inst_mem_size / 4 - 1) << 16);
             etna_set_state(stream, VIVS_PS_RANGE, ((ctx->shader_state.ps_inst_mem_size / 4 - 1 + 0x100) << 16) |
                                         0x100);
          }
-         etna_set_state_multi(stream, ctx->specs.vs_offset,
+         etna_set_state_multi(stream, screen->specs.vs_offset,
                               ctx->shader_state.vs_inst_mem_size,
                               ctx->shader_state.VS_INST_MEM);
-         etna_set_state_multi(stream, ctx->specs.ps_offset,
+         etna_set_state_multi(stream, screen->specs.ps_offset,
                               ctx->shader_state.ps_inst_mem_size,
                               ctx->shader_state.PS_INST_MEM);
       }
 
-      if (ctx->specs.has_unified_uniforms) {
+      if (screen->specs.has_unified_uniforms) {
          etna_set_state(stream, VIVS_VS_UNIFORM_BASE, 0);
-         etna_set_state(stream, VIVS_PS_UNIFORM_BASE, ctx->specs.max_vs_uniforms);
+         etna_set_state(stream, VIVS_PS_UNIFORM_BASE, screen->specs.max_vs_uniforms);
       }
 
       if (do_uniform_flush)
@@ -679,7 +680,7 @@ etna_emit_state(struct etna_context *ctx)
 
       etna_uniforms_write(ctx, ctx->shader.fs, ctx->constant_buffer[PIPE_SHADER_FRAGMENT].cb);
 
-      if (ctx->specs.halti >= 5) {
+      if (screen->specs.halti >= 5) {
          /* HALTI5 needs to be prompted to pre-fetch shaders */
          etna_set_state(stream, VIVS_VS_ICACHE_PREFETCH, 0x00000000);
          etna_set_state(stream, VIVS_PS_ICACHE_PREFETCH, 0x00000000);

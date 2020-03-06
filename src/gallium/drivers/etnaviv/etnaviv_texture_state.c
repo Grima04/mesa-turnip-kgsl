@@ -147,6 +147,7 @@ etna_create_sampler_view_state(struct pipe_context *pctx, struct pipe_resource *
 {
    struct etna_sampler_view *sv = CALLOC_STRUCT(etna_sampler_view);
    struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
    const uint32_t format = translate_texture_format(so->format);
    const bool ext = !!(format & EXT_FORMAT);
    const bool astc = !!(format & ASTC_FORMAT);
@@ -246,7 +247,7 @@ etna_create_sampler_view_state(struct pipe_context *pctx, struct pipe_resource *
 
    /* Workaround for npot textures -- it appears that only CLAMP_TO_EDGE is
     * supported when the appropriate capability is not set. */
-   if (!ctx->specs.npot_tex_any_wrap &&
+   if (!screen->specs.npot_tex_any_wrap &&
        (!util_is_power_of_two_or_zero(res->base.width0) ||
         !util_is_power_of_two_or_zero(res->base.height0))) {
       sv->TE_SAMPLER_CONFIG0_MASK = ~(VIVS_TE_SAMPLER_CONFIG0_UWRAP__MASK |
@@ -281,6 +282,7 @@ static void
 etna_emit_texture_state(struct etna_context *ctx)
 {
    struct etna_cmd_stream *stream = ctx->stream;
+   struct etna_screen *screen = ctx->screen;
    uint32_t active_samplers = active_samplers_bits(ctx);
    uint32_t dirty = ctx->dirty;
    struct etna_coalesce coalesce;
@@ -404,7 +406,7 @@ etna_emit_texture_state(struct etna_context *ctx)
          }
       }
    }
-   if (unlikely(ctx->specs.tex_astc && (dirty & (ETNA_DIRTY_SAMPLER_VIEWS)))) {
+   if (unlikely(screen->specs.tex_astc && (dirty & (ETNA_DIRTY_SAMPLER_VIEWS)))) {
       for (int x = 0; x < VIVS_TE_SAMPLER__LEN; ++x) {
          if ((1 << x) & active_samplers) {
             struct etna_sampler_view *sv = etna_sampler_view(ctx->sampler_view[x]);
@@ -412,7 +414,7 @@ etna_emit_texture_state(struct etna_context *ctx)
          }
       }
    }
-   if (unlikely(ctx->specs.halti >= 1 && (dirty & (ETNA_DIRTY_SAMPLER_VIEWS)))) {
+   if (unlikely(screen->specs.halti >= 1 && (dirty & (ETNA_DIRTY_SAMPLER_VIEWS)))) {
       for (int x = 0; x < VIVS_TE_SAMPLER__LEN; ++x) {
          if ((1 << x) & active_samplers) {
             struct etna_sampler_state *ss = etna_sampler_state(ctx->sampler[x]);
