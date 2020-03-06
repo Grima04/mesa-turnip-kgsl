@@ -143,6 +143,7 @@ struct glthread_state
 
    /** Caps. */
    GLboolean SupportsBufferUploads;
+   GLboolean SupportsNonVBOUploads;
 
    /** Primitive restart state. */
    bool PrimitiveRestart;

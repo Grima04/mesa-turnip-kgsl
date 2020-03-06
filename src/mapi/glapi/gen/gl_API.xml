@@ -3181,16 +3181,14 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="DrawArrays" es1="1.0" es2="2.0" exec="dynamic" marshal="draw"
-              marshal_sync="_mesa_glthread_has_non_vbo_vertices(ctx)">
+    <function name="DrawArrays" es1="1.0" es2="2.0" exec="dynamic" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="first" type="GLint"/>
         <param name="count" type="GLsizei"/>
         <glx rop="193" handcode="true"/>
     </function>
 
-    <function name="DrawElements" es1="1.0" es2="2.0" exec="dynamic" marshal="draw"
-              marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indices(ctx)">
+    <function name="DrawElements" es1="1.0" es2="2.0" exec="dynamic" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="count" type="GLsizei"/>
         <param name="type" type="GLenum"/>
@@ -3760,8 +3758,7 @@
         <glx rop="4097"/>
     </function>
 
-    <function name="DrawRangeElements" es2="3.0" exec="dynamic" marshal="draw"
-              marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indices(ctx)">
+    <function name="DrawRangeElements" es2="3.0" exec="dynamic" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="start" type="GLuint"/>
         <param name="end" type="GLuint"/>
@@ -4761,8 +4758,7 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="MultiDrawArrays" marshal="draw"
-              marshal_sync="_mesa_glthread_has_non_vbo_vertices(ctx)">
+    <function name="MultiDrawArrays" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="first" type="const GLint *" count="primcount"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
@@ -10286,8 +10282,7 @@
         <param name="primcount" type="GLsizei"/>
     </function>
 
-    <function name="MultiDrawElementsEXT" es1="1.0" es2="2.0" exec="dynamic" marshal="draw"
-              marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indices(ctx)">
+    <function name="MultiDrawElementsEXT" es1="1.0" es2="2.0" exec="dynamic" marshal="custom">
         <param name="mode" type="GLenum"/>
         <param name="count" type="const GLsizei *" count="primcount"/>
         <param name="type" type="GLenum"/>
