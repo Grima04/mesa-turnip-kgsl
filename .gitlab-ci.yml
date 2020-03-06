@@ -804,10 +804,23 @@ radv_polaris10_vkcts:
   tags:
     - polaris10
 
-radv-polaris10-fossils:
-  extends: .test-radv-fossilize
-  variables:
-    RADV_FORCE_FAMILY: "polaris10" # Force creating a null device
+radv-fossils:
+  extends:
+    - .fossilize-test
+    - .test-radv
+  script:
+    # Polaris10
+    - export RADV_FORCE_FAMILY="polaris10"
+    - ./artifacts/fossilize-runner.sh
+    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./artifacts/fossilize-runner.sh
+    # Vega10
+    - export RADV_FORCE_FAMILY="gfx900"
+    - ./artifacts/fossilize-runner.sh
+    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./artifacts/fossilize-runner.sh
+    # Navi10
+    - export RADV_FORCE_FAMILY="gfx1010"
+    - ./artifacts/fossilize-runner.sh
+    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./artifacts/fossilize-runner.sh
 
 # Traces CI
 .traces-test:
