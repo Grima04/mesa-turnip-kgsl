@@ -186,7 +186,7 @@ brw_nir_lower_resources(nir_shader *nir, struct gl_shader_program *shader_prog,
    prog->info.textures_used = prog->nir->info.textures_used;
    prog->info.textures_used_by_txf = prog->nir->info.textures_used_by_txf;
 
-   NIR_PASS_V(prog->nir, brw_nir_lower_image_load_store, devinfo);
+   NIR_PASS_V(prog->nir, brw_nir_lower_image_load_store, devinfo, NULL);
 
    if (prog->nir->info.stage == MESA_SHADER_COMPUTE &&
        shader_prog->data->spirv) {

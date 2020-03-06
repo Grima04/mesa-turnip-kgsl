@@ -692,7 +692,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-   NIR_PASS_V(nir, brw_nir_lower_image_load_store, compiler->devinfo);
+   NIR_PASS_V(nir, brw_nir_lower_image_load_store, compiler->devinfo, NULL);
 
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
               nir_address_format_64bit_global);

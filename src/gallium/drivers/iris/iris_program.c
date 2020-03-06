@@ -2131,7 +2131,8 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
 
    brw_preprocess_nir(screen->compiler, nir, NULL);
 
-   NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
+   NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo,
+              &ish->uses_atomic_load_store);
    NIR_PASS_V(nir, iris_lower_storage_image_derefs);
 
    nir_sweep(nir);

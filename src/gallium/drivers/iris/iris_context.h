@@ -361,6 +361,9 @@ struct iris_uncompiled_shader {
 
    bool needs_edge_flag;
 
+   /* Whether shader uses atomic operations. */
+   bool uses_atomic_load_store;
+
    /** Constant data scraped from the shader by nir_opt_large_constants */
    struct pipe_resource *const_data;
 

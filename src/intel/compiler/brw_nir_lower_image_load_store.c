@@ -680,7 +680,8 @@ lower_image_size_instr(nir_builder *b,
 
 bool
 brw_nir_lower_image_load_store(nir_shader *shader,
-                               const struct gen_device_info *devinfo)
+                               const struct gen_device_info *devinfo,
+                               bool *uses_atomic_load_store)
 {
    bool progress = false;
 
@@ -718,6 +719,8 @@ brw_nir_lower_image_load_store(nir_shader *shader,
             case nir_intrinsic_image_deref_atomic_xor:
             case nir_intrinsic_image_deref_atomic_exchange:
             case nir_intrinsic_image_deref_atomic_comp_swap:
+               if (uses_atomic_load_store)
+                  *uses_atomic_load_store = true;
                if (lower_image_atomic_instr(&b, devinfo, intrin))
                   progress = true;
                break;

@@ -679,6 +679,9 @@ struct brw_stage_prog_data {
     */
    uint32_t *param;
    uint32_t *pull_param;
+
+   /* Whether shader uses atomic operations. */
+   bool uses_atomic_load_store;
 };
 
 static inline uint32_t *
