@@ -827,8 +827,8 @@ st_start_thread(struct st_context_iface *stctxi)
     * If glthread is disabled, st_draw.c re-pins driver threads regularly
     * based on the location of the app thread.
     */
-   struct glthread_state *glthread = st->ctx->GLThread;
-   if (glthread && st->pipe->set_context_param) {
+   struct glthread_state *glthread = &st->ctx->GLThread;
+   if (glthread->enabled && st->pipe->set_context_param) {
       util_pin_driver_threads_to_random_L3(st->pipe, &glthread->queue.threads[0]);
    }
 }

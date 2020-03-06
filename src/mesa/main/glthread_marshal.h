@@ -56,7 +56,7 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
                                 uint16_t cmd_id,
                                 int size)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   struct glthread_state *glthread = &ctx->GLThread;
    struct glthread_batch *next = &glthread->batches[glthread->next];
    struct marshal_cmd_base *cmd_base;
    const int aligned_size = ALIGN(size, 8);
@@ -80,7 +80,7 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
 static inline bool
 _mesa_glthread_is_non_vbo_draw_elements(const struct gl_context *ctx)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   const struct glthread_state *glthread = &ctx->GLThread;
 
    return ctx->API != API_OPENGL_CORE &&
           (glthread->CurrentVAO->IndexBufferIsUserPointer ||
@@ -90,7 +90,7 @@ _mesa_glthread_is_non_vbo_draw_elements(const struct gl_context *ctx)
 static inline bool
 _mesa_glthread_is_non_vbo_draw_arrays(const struct gl_context *ctx)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   const struct glthread_state *glthread = &ctx->GLThread;
 
    return ctx->API != API_OPENGL_CORE && glthread->CurrentVAO->HasUserPointer;
 }
@@ -98,7 +98,7 @@ _mesa_glthread_is_non_vbo_draw_arrays(const struct gl_context *ctx)
 static inline bool
 _mesa_glthread_is_non_vbo_draw_arrays_indirect(const struct gl_context *ctx)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   const struct glthread_state *glthread = &ctx->GLThread;
 
    return ctx->API != API_OPENGL_CORE &&
           (!glthread->draw_indirect_buffer_is_vbo ||
@@ -108,7 +108,7 @@ _mesa_glthread_is_non_vbo_draw_arrays_indirect(const struct gl_context *ctx)
 static inline bool
 _mesa_glthread_is_non_vbo_draw_elements_indirect(const struct gl_context *ctx)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   const struct glthread_state *glthread = &ctx->GLThread;
 
    return ctx->API != API_OPENGL_CORE &&
           (!glthread->draw_indirect_buffer_is_vbo ||

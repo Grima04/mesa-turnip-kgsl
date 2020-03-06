@@ -68,28 +68,25 @@ glthread_thread_initialization(void *job, int thread_index)
 {
    struct gl_context *ctx = (struct gl_context*)job;
 
-   ctx->Driver.SetBackgroundContext(ctx, &ctx->GLThread->stats);
+   ctx->Driver.SetBackgroundContext(ctx, &ctx->GLThread.stats);
    _glapi_set_context(ctx);
 }
 
 void
 _mesa_glthread_init(struct gl_context *ctx)
 {
-   struct glthread_state *glthread = calloc(1, sizeof(*glthread));
+   struct glthread_state *glthread = &ctx->GLThread;
 
-   if (!glthread)
-      return;
+   assert(!glthread->enabled);
 
    if (!util_queue_init(&glthread->queue, "gl", MARSHAL_MAX_BATCHES - 2,
                         1, 0)) {
-      free(glthread);
       return;
    }
 
    glthread->VAOs = _mesa_NewHashTable();
    if (!glthread->VAOs) {
       util_queue_destroy(&glthread->queue);
-      free(glthread);
       return;
    }
    glthread->CurrentVAO = &glthread->DefaultVAO;
@@ -98,7 +95,6 @@ _mesa_glthread_init(struct gl_context *ctx)
    if (!ctx->MarshalExec) {
       _mesa_DeleteHashTable(glthread->VAOs);
       util_queue_destroy(&glthread->queue);
-      free(glthread);
       return;
    }
 
@@ -107,9 +103,9 @@ _mesa_glthread_init(struct gl_context *ctx)
       util_queue_fence_init(&glthread->batches[i].fence);
    }
 
+   glthread->enabled = true;
    glthread->stats.queue = &glthread->queue;
    ctx->CurrentClientDispatch = ctx->MarshalExec;
-   ctx->GLThread = glthread;
 
    /* Execute the thread initialization function in the thread. */
    struct util_queue_fence fence;
@@ -129,9 +125,9 @@ free_vao(GLuint key, void *data, void *userData)
 void
 _mesa_glthread_destroy(struct gl_context *ctx)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   struct glthread_state *glthread = &ctx->GLThread;
 
-   if (!glthread)
+   if (!glthread->enabled)
       return;
 
    _mesa_glthread_finish(ctx);
@@ -143,8 +139,7 @@ _mesa_glthread_destroy(struct gl_context *ctx)
    _mesa_HashDeleteAll(glthread->VAOs, free_vao, NULL);
    _mesa_DeleteHashTable(glthread->VAOs);
 
-   free(glthread);
-   ctx->GLThread = NULL;
+   ctx->GLThread.enabled = false;
 
    _mesa_glthread_restore_dispatch(ctx, "destroy");
 }
@@ -177,8 +172,8 @@ _mesa_glthread_disable(struct gl_context *ctx, const char *func)
 void
 _mesa_glthread_flush_batch(struct gl_context *ctx)
 {
-   struct glthread_state *glthread = ctx->GLThread;
-   if (!glthread)
+   struct glthread_state *glthread = &ctx->GLThread;
+   if (!glthread->enabled)
       return;
 
    struct glthread_batch *next = &glthread->batches[glthread->next];
@@ -213,8 +208,8 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
 void
 _mesa_glthread_finish(struct gl_context *ctx)
 {
-   struct glthread_state *glthread = ctx->GLThread;
-   if (!glthread)
+   struct glthread_state *glthread = &ctx->GLThread;
+   if (!glthread->enabled)
       return;
 
    /* If this is called from the worker thread, then we've hit a path that

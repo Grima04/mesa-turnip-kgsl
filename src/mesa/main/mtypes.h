@@ -39,6 +39,7 @@
 #include "c11/threads.h"
 
 #include "main/glheader.h"
+#include "main/glthread.h"
 #include "main/menums.h"
 #include "main/config.h"
 #include "glapi/glapi.h"
@@ -4904,7 +4905,7 @@ struct gl_context
 
    /*@}*/
 
-   struct glthread_state *GLThread;
+   struct glthread_state GLThread;
 
    struct gl_config Visual;
    struct gl_framebuffer *DrawBuffer;	/**< buffer for writing */

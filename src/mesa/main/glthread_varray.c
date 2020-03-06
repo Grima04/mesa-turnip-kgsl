@@ -42,7 +42,7 @@
 static struct glthread_vao *
 lookup_vao(struct gl_context *ctx, GLuint id)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   struct glthread_state *glthread = &ctx->GLThread;
    struct glthread_vao *vao;
 
    assert(id != 0);
@@ -64,7 +64,7 @@ lookup_vao(struct gl_context *ctx, GLuint id)
 void
 _mesa_glthread_BindVertexArray(struct gl_context *ctx, GLuint id)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   struct glthread_state *glthread = &ctx->GLThread;
 
    if (id == 0) {
       glthread->CurrentVAO = &glthread->DefaultVAO;
@@ -80,7 +80,7 @@ void
 _mesa_glthread_DeleteVertexArrays(struct gl_context *ctx,
                                   GLsizei n, const GLuint *ids)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   struct glthread_state *glthread = &ctx->GLThread;
 
    if (!ids)
       return;
@@ -114,7 +114,7 @@ void
 _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
                                GLsizei n, GLuint *arrays)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   struct glthread_state *glthread = &ctx->GLThread;
 
    if (!arrays)
       return;
@@ -137,7 +137,7 @@ _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
 void
 _mesa_glthread_AttribPointer(struct gl_context *ctx)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   struct glthread_state *glthread = &ctx->GLThread;
 
    if (!glthread->vertex_array_is_vbo)
       glthread->CurrentVAO->HasUserPointer = true;

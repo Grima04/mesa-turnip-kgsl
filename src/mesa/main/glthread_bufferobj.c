@@ -50,7 +50,7 @@
 void
 _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer)
 {
-   struct glthread_state *glthread = ctx->GLThread;
+   struct glthread_state *glthread = &ctx->GLThread;
 
    switch (target) {
    case GL_ARRAY_BUFFER:
