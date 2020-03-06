@@ -1921,6 +1921,161 @@ isl_surf_get_mcs_surf(const struct isl_device *dev,
 }
 
 bool
+isl_surf_supports_ccs(const struct isl_device *dev,
+                      const struct isl_surf *surf)
+{
+   /* CCS support does not exist prior to Gen7 */
+   if (ISL_DEV_GEN(dev) <= 6)
+      return false;
+
+   if (surf->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)
+      return false;
+
+   if (isl_format_is_compressed(surf->format))
+      return false;
+
+   if (!isl_is_pow2(isl_format_get_layout(surf->format)->bpb))
+      return false;
+
+   /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
+    * Target(s)", beneath the "Fast Color Clear" bullet (p326):
+    *
+    *     - Support is limited to tiled render targets.
+    *
+    * From the Skylake documentation, it is made clear that X-tiling is no
+    * longer supported:
+    *
+    *     - MCS and Lossless compression is supported for
+    *       TiledY/TileYs/TileYf non-MSRTs only.
+    *
+    * From the BSpec (44930) for Gen12:
+    *
+    *    Linear CCS is only allowed for Untyped Buffers but only via HDC
+    *    Data-Port messages.
+    *
+    * We never use untyped messages on surfaces created by ISL on Gen9+ so
+    * this means linear is out on Gen12+ as well.
+    */
+   if (surf->tiling == ISL_TILING_LINEAR)
+      return false;
+
+   if (ISL_DEV_GEN(dev) >= 12) {
+      if (isl_surf_usage_is_stencil(surf->usage) && surf->samples > 1)
+         return false;
+
+      /* [TGL+] CCS can only be added to a non-D16-formatted depth buffer if
+       * it has HiZ. If not for GEN:BUG:1406512483 "deprecate compression
+       * enable states", D16 would be supported. Supporting D16 requires being
+       * able to specify that the control surface is present and
+       * simultaneously disabling compression. The above bug makes it so that
+       * it's not possible to specify this configuration.
+       *
+       * Note: ISL Doesn't currently support depth CCS without HiZ at all.
+       */
+      if (isl_surf_usage_is_depth(surf->usage) &&
+          surf->format == ISL_FORMAT_R16_UNORM) {
+         return false;
+      }
+
+      /* On Gen12, 8BPP surfaces cannot be compressed if any level is not
+       * 32Bx4row-aligned. For now, just reject the cases where alignment
+       * matters.
+       */
+      if (isl_format_get_layout(surf->format)->bpb == 8 && surf->levels >= 3) {
+         isl_finishme("%s:%s: CCS for 8BPP textures with 3+ miplevels is "
+                      "disabled, but support for more levels is possible.",
+                      __FILE__, __func__);
+         return false;
+      }
+
+      /* On Gen12, all CCS-compressed surface pitches must be multiples of
+       * 512B.
+       */
+      if (surf->row_pitch_B % 512 != 0)
+         return false;
+
+      /* According to GEN:BUG:1406738321, 3D textures need a blit to a new
+       * surface in order to perform a resolve. For now, just disable CCS.
+       */
+      if (surf->dim == ISL_SURF_DIM_3D) {
+         isl_finishme("%s:%s: CCS for 3D textures is disabled, but a workaround"
+                      " is available.", __FILE__, __func__);
+         return false;
+      }
+
+      /* GEN:BUG:1207137018
+       *
+       * TODO: implement following workaround currently covered by the
+       * restriction above. If following conditions are met:
+       *
+       *    - RENDER_SURFACE_STATE.Surface Type == 3D
+       *    - RENDER_SURFACE_STATE.Auxiliary Surface Mode != AUX_NONE
+       *    - RENDER_SURFACE_STATE.Tiled ResourceMode is TYF or TYS
+       *
+       * Set the value of RENDER_SURFACE_STATE.Mip Tail Start LOD to a mip
+       * that larger than those present in the surface (i.e. 15)
+       */
+
+      /* TODO: Handle the other tiling formats */
+      if (surf->tiling != ISL_TILING_Y0)
+         return false;
+   } else {
+      /* ISL_DEV_GEN(dev) < 12 */
+      if (surf->samples > 1)
+         return false;
+
+      /* CCS is only for color images on Gen7-11 */
+      if (isl_surf_usage_is_depth_or_stencil(surf->usage))
+         return false;
+
+      /* The PRM doesn't say this explicitly, but fast-clears don't appear to
+       * work for 3D textures until gen9 where the layout of 3D textures
+       * changes to match 2D array textures.
+       */
+      if (ISL_DEV_GEN(dev) <= 8 && surf->dim != ISL_SURF_DIM_2D)
+         return false;
+
+      /* From the HSW PRM Volume 7: 3D-Media-GPGPU, page 652 (Color Clear of
+       * Non-MultiSampler Render Target Restrictions):
+       *
+       *    "Support is for non-mip-mapped and non-array surface types only."
+       *
+       * This restriction is lifted on gen8+.  Technically, it may be possible
+       * to create a CCS for an arrayed or mipmapped image and only enable
+       * CCS_D when rendering to the base slice.  However, there is no
+       * documentation tell us what the hardware would do in that case or what
+       * it does if you walk off the bases slice.  (Does it ignore CCS or does
+       * it start scribbling over random memory?)  We play it safe and just
+       * follow the docs and don't allow CCS_D for arrayed or mip-mapped
+       * surfaces.
+       */
+      if (ISL_DEV_GEN(dev) <= 7 &&
+          (surf->levels > 1 || surf->logical_level0_px.array_len > 1))
+         return false;
+
+      /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
+       * Target(s)", beneath the "Fast Color Clear" bullet (p326):
+       *
+       *     - MCS buffer for non-MSRT is supported only for RT formats 32bpp,
+       *       64bpp, and 128bpp.
+       */
+      if (isl_format_get_layout(surf->format)->bpb < 32)
+         return false;
+
+      /* From the Skylake documentation, it is made clear that X-tiling is no
+       * longer supported:
+       *
+       *     - MCS and Lossless compression is supported for
+       *     TiledY/TileYs/TileYf non-MSRTs only.
+       */
+      if (ISL_DEV_GEN(dev) >= 9 && !isl_tiling_is_any_y(surf->tiling))
+         return false;
+   }
+
+   return true;
+}
+
+bool
 isl_surf_get_ccs_surf(const struct isl_device *dev,
                       const struct isl_surf *surf,
                       struct isl_surf *aux_surf,
@@ -1939,127 +2094,11 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
    if (aux_surf->usage & ISL_SURF_USAGE_CCS_BIT)
       return false;
 
-   if (ISL_DEV_GEN(dev) < 12 && surf->samples > 1)
+   if (!isl_surf_supports_ccs(dev, surf))
       return false;
 
-   /* CCS support does not exist prior to Gen7 */
-   if (ISL_DEV_GEN(dev) <= 6)
-      return false;
-
-   if (surf->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)
-      return false;
-
-   /* Allow CCS for single-sampled stencil buffers Gen12+. */
-   if (isl_surf_usage_is_stencil(surf->usage) &&
-       (ISL_DEV_GEN(dev) < 12 || surf->samples > 1))
-      return false;
-
-   /* [TGL+] CCS can only be added to a non-D16-formatted depth buffer if it
-    * has HiZ. If not for GEN:BUG:1406512483 "deprecate compression enable
-    * states", D16 would be supported. Supporting D16 requires being able to
-    * specify that the control surface is present and simultaneously disabling
-    * compression. The above bug makes it so that it's not possible to specify
-    * this configuration.
-    */
-   if (isl_surf_usage_is_depth(surf->usage) && (aux_surf->size_B == 0 ||
-       ISL_DEV_GEN(dev) < 12 || surf->format == ISL_FORMAT_R16_UNORM)) {
-      return false;
-   }
-
-   /* The PRM doesn't say this explicitly, but fast-clears don't appear to
-    * work for 3D textures until gen9 where the layout of 3D textures changes
-    * to match 2D array textures.
-    */
-   if (ISL_DEV_GEN(dev) <= 8 && surf->dim != ISL_SURF_DIM_2D)
-      return false;
-
-   /* From the HSW PRM Volume 7: 3D-Media-GPGPU, page 652 (Color Clear of
-    * Non-MultiSampler Render Target Restrictions):
-    *
-    *    "Support is for non-mip-mapped and non-array surface types only."
-    *
-    * This restriction is lifted on gen8+.  Technically, it may be possible to
-    * create a CCS for an arrayed or mipmapped image and only enable CCS_D
-    * when rendering to the base slice.  However, there is no documentation
-    * tell us what the hardware would do in that case or what it does if you
-    * walk off the bases slice.  (Does it ignore CCS or does it start
-    * scribbling over random memory?)  We play it safe and just follow the
-    * docs and don't allow CCS_D for arrayed or mip-mapped surfaces.
-    */
-   if (ISL_DEV_GEN(dev) <= 7 &&
-       (surf->levels > 1 || surf->logical_level0_px.array_len > 1))
-      return false;
-
-   /* On Gen12, 8BPP surfaces cannot be compressed if any level is not
-    * 32Bx4row-aligned. For now, just reject the cases where alignment
-    * matters.
-    */
-   if (ISL_DEV_GEN(dev) >= 12 &&
-       isl_format_get_layout(surf->format)->bpb == 8 && surf->levels >= 3) {
-      isl_finishme("%s:%s: CCS for 8BPP textures with 3+ miplevels is "
-                   "disabled, but support for more levels is possible.",
-                   __FILE__, __func__);
-      return false;
-   }
-
-   /* On Gen12, all CCS-compressed surface pitches must be multiples of 512B.
-    */
-   if (ISL_DEV_GEN(dev) >= 12 && surf->row_pitch_B % 512 != 0)
-      return false;
-
-   if (isl_format_is_compressed(surf->format))
-      return false;
-
-   /* According to GEN:BUG:1406738321, 3D textures need a blit to a new
-    * surface in order to perform a resolve. For now, just disable CCS.
-    */
-   if (ISL_DEV_GEN(dev) >= 12 && surf->dim == ISL_SURF_DIM_3D) {
-      isl_finishme("%s:%s: CCS for 3D textures is disabled, but a workaround"
-                   " is available.", __FILE__, __func__);
-      return false;
-   }
-
-   /* GEN:BUG:1207137018
-    *
-    * TODO: implement following workaround currently covered by the restriction
-    * above. If following conditions are met:
-    *
-    *    - RENDER_SURFACE_STATE.Surface Type == 3D
-    *    - RENDER_SURFACE_STATE.Auxiliary Surface Mode != AUX_NONE
-    *    - RENDER_SURFACE_STATE.Tiled ResourceMode is TYF or TYS
-    *
-    * Set the value of RENDER_SURFACE_STATE.Mip Tail Start LOD to a mip that
-    * larger than those present in the surface (i.e. 15)
-    */
-
-   /* TODO: More conditions where it can fail. */
-
-   /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
-    * Target(s)", beneath the "Fast Color Clear" bullet (p326):
-    *
-    *     - Support is limited to tiled render targets.
-    *     - MCS buffer for non-MSRT is supported only for RT formats 32bpp,
-    *       64bpp, and 128bpp.
-    *
-    * From the Skylake documentation, it is made clear that X-tiling is no
-    * longer supported:
-    *
-    *     - MCS and Lossless compression is supported for
-    *     TiledY/TileYs/TileYf non-MSRTs only.
-    */
-   enum isl_format ccs_format;
    if (ISL_DEV_GEN(dev) >= 12) {
-      /* TODO: Handle the other tiling formats */
-      if (surf->tiling != ISL_TILING_Y0)
-         return false;
-
-      /* BSpec 44930:
-       *
-       *    Linear CCS is only allowed for Untyped Buffers but only via HDC
-       *    Data-Port messages.
-       */
-      assert(surf->tiling != ISL_TILING_LINEAR);
-
+      enum isl_format ccs_format;
       switch (isl_format_get_layout(surf->format)->bpb) {
       case 8:     ccs_format = ISL_FORMAT_GEN12_CCS_8BPP_Y0;    break;
       case 16:    ccs_format = ISL_FORMAT_GEN12_CCS_16BPP_Y0;   break;
@@ -2069,38 +2108,7 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
       default:
          return false;
       }
-   } else if (ISL_DEV_GEN(dev) >= 9) {
-      if (!isl_tiling_is_any_y(surf->tiling))
-         return false;
 
-      switch (isl_format_get_layout(surf->format)->bpb) {
-      case 32:    ccs_format = ISL_FORMAT_GEN9_CCS_32BPP;   break;
-      case 64:    ccs_format = ISL_FORMAT_GEN9_CCS_64BPP;   break;
-      case 128:   ccs_format = ISL_FORMAT_GEN9_CCS_128BPP;  break;
-      default:
-         return false;
-      }
-   } else if (surf->tiling == ISL_TILING_Y0) {
-      switch (isl_format_get_layout(surf->format)->bpb) {
-      case 32:    ccs_format = ISL_FORMAT_GEN7_CCS_32BPP_Y;    break;
-      case 64:    ccs_format = ISL_FORMAT_GEN7_CCS_64BPP_Y;    break;
-      case 128:   ccs_format = ISL_FORMAT_GEN7_CCS_128BPP_Y;   break;
-      default:
-         return false;
-      }
-   } else if (surf->tiling == ISL_TILING_X) {
-      switch (isl_format_get_layout(surf->format)->bpb) {
-      case 32:    ccs_format = ISL_FORMAT_GEN7_CCS_32BPP_X;    break;
-      case 64:    ccs_format = ISL_FORMAT_GEN7_CCS_64BPP_X;    break;
-      case 128:   ccs_format = ISL_FORMAT_GEN7_CCS_128BPP_X;   break;
-      default:
-         return false;
-      }
-   } else {
-      return false;
-   }
-
-   if (ISL_DEV_GEN(dev) >= 12) {
       /* On Gen12, the CCS is a scaled-down version of the main surface. We
        * model this as the CCS compressing a 2D-view of the entire surface.
        */
@@ -2122,6 +2130,33 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
       assert(!ok || ccs_surf->size_B == surf->size_B / 256);
       return ok;
    } else {
+      enum isl_format ccs_format;
+      if (ISL_DEV_GEN(dev) >= 9) {
+         switch (isl_format_get_layout(surf->format)->bpb) {
+         case 32:    ccs_format = ISL_FORMAT_GEN9_CCS_32BPP;   break;
+         case 64:    ccs_format = ISL_FORMAT_GEN9_CCS_64BPP;   break;
+         case 128:   ccs_format = ISL_FORMAT_GEN9_CCS_128BPP;  break;
+         default:    unreachable("Unsupported CCS format");
+            return false;
+         }
+      } else if (surf->tiling == ISL_TILING_Y0) {
+         switch (isl_format_get_layout(surf->format)->bpb) {
+         case 32:    ccs_format = ISL_FORMAT_GEN7_CCS_32BPP_Y;    break;
+         case 64:    ccs_format = ISL_FORMAT_GEN7_CCS_64BPP_Y;    break;
+         case 128:   ccs_format = ISL_FORMAT_GEN7_CCS_128BPP_Y;   break;
+         default:    unreachable("Unsupported CCS format");
+         }
+      } else if (surf->tiling == ISL_TILING_X) {
+         switch (isl_format_get_layout(surf->format)->bpb) {
+         case 32:    ccs_format = ISL_FORMAT_GEN7_CCS_32BPP_X;    break;
+         case 64:    ccs_format = ISL_FORMAT_GEN7_CCS_64BPP_X;    break;
+         case 128:   ccs_format = ISL_FORMAT_GEN7_CCS_128BPP_X;   break;
+         default:    unreachable("Unsupported CCS format");
+         }
+      } else {
+         unreachable("Invalid tiling format");
+      }
+
       return isl_surf_init(dev, aux_surf,
                            .dim = surf->dim,
                            .format = ccs_format,

@@ -1988,6 +1988,10 @@ isl_surf_get_tile_info(const struct isl_surf *surf,
                        struct isl_tile_info *tile_info);
 
 bool
+isl_surf_supports_ccs(const struct isl_device *dev,
+                      const struct isl_surf *surf);
+
+bool
 isl_surf_get_hiz_surf(const struct isl_device *dev,
                       const struct isl_surf *surf,
                       struct isl_surf *hiz_surf);
