@@ -142,33 +142,6 @@ panfrost_clear(
         panfrost_batch_clear(batch, buffers, color, depth, stencil);
 }
 
-/* TODO: Bifrost requires just a mali_shared_memory, without the rest of the
- * framebuffer */
-
-static void
-panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
-{
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        /* If we haven't, reserve space for the framebuffer */
-
-        if (!batch->framebuffer.gpu) {
-                unsigned size = (screen->quirks & MIDGARD_SFBD) ?
-                        sizeof(struct mali_single_framebuffer) :
-                        sizeof(struct mali_framebuffer);
-
-                batch->framebuffer = panfrost_allocate_transient(batch, size);
-
-                /* Tag the pointer */
-                if (!(screen->quirks & MIDGARD_SFBD))
-                        batch->framebuffer.gpu |= MALI_MFBD;
-        }
-
-        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
-                ctx->payloads[i].postfix.shared_memory = batch->framebuffer.gpu;
-}
-
 /* Reset per-frame context, called on context initialisation as well as after
  * flushing a frame */
 
@@ -559,7 +532,9 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
         panfrost_batch_add_fbo_bos(batch);
-        panfrost_attach_vt_framebuffer(ctx);
+
+        for (int i = 0; i < PIPE_SHADER_TYPES; ++i)
+                panfrost_vt_attach_framebuffer(ctx, &ctx->payloads[i]);
 
         if (with_vertex_data) {
                 panfrost_emit_vertex_data(batch);

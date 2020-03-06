@@ -22,11 +22,42 @@
  * SOFTWARE.
  */
 
+#include "util/macros.h"
+
+#include "panfrost-quirks.h"
+
 #include "pan_allocate.h"
 #include "pan_bo.h"
 #include "pan_cmdstream.h"
 #include "pan_context.h"
 #include "pan_job.h"
+
+/* TODO: Bifrost requires just a mali_shared_memory, without the rest of the
+ * framebuffer */
+
+void
+panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
+                               struct midgard_payload_vertex_tiler *vt)
+{
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        /* If we haven't, reserve space for the framebuffer */
+
+        if (!batch->framebuffer.gpu) {
+                unsigned size = (screen->quirks & MIDGARD_SFBD) ?
+                        sizeof(struct mali_single_framebuffer) :
+                        sizeof(struct mali_framebuffer);
+
+                batch->framebuffer = panfrost_allocate_transient(batch, size);
+
+                /* Tag the pointer */
+                if (!(screen->quirks & MIDGARD_SFBD))
+                        batch->framebuffer.gpu |= MALI_MFBD;
+        }
+
+        vt->postfix.shared_memory = batch->framebuffer.gpu;
+}
 
 void
 panfrost_emit_shader_meta(struct panfrost_batch *batch,
