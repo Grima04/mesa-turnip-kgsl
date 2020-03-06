@@ -527,9 +527,8 @@ iris_destroy_screen(struct pipe_screen *pscreen)
    struct iris_screen *screen = (struct iris_screen *) pscreen;
    iris_bo_unreference(screen->workaround_bo);
    u_transfer_helper_destroy(pscreen->transfer_helper);
-   iris_bufmgr_destroy(screen->bufmgr);
+   iris_bufmgr_unref(screen->bufmgr);
    disk_cache_destroy(screen->disk_cache);
-   close(screen->fd);
    ralloc_free(screen);
 }
 
@@ -635,8 +634,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    if (!screen)
       return NULL;
 
-   screen->fd = fd;
-
    if (!gen_get_device_info_from_fd(fd, &screen->devinfo))
       return NULL;
    screen->pci_id = screen->devinfo.chipset_id;
@@ -644,11 +641,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    if (screen->devinfo.gen < 8 || screen->devinfo.is_cherryview)
       return NULL;
-
-   screen->aperture_bytes = get_aperture_size(fd);
-
-   if (getenv("INTEL_NO_HW") != NULL)
-      screen->no_hw = true;
 
    bool bo_reuse = false;
    int bo_reuse_mode = driQueryOptioni(config->options, "bo_reuse");
@@ -660,9 +652,16 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
       break;
    }
 
-   screen->bufmgr = iris_bufmgr_init(&screen->devinfo, fd, bo_reuse);
+   screen->bufmgr = iris_bufmgr_get_for_fd(&screen->devinfo, fd, bo_reuse);
    if (!screen->bufmgr)
       return NULL;
+
+   screen->fd = iris_bufmgr_get_fd(screen->bufmgr);
+
+   screen->aperture_bytes = get_aperture_size(fd);
+
+   if (getenv("INTEL_NO_HW") != NULL)
+      screen->no_hw = true;
 
    screen->workaround_bo =
       iris_bo_alloc(screen->bufmgr, "workaround", 4096, IRIS_MEMZONE_OTHER);

@@ -49,7 +49,7 @@ struct iris_screen {
    /** Global slab allocator for iris_transfer_map objects */
    struct slab_parent_pool transfer_pool;
 
-   /** drm device file descriptor */
+   /** drm device file descriptor, on shared with bufmgr, do not close. */
    int fd;
 
    /** PCI ID for our GPU device */
