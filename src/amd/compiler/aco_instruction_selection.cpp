@@ -3316,6 +3316,24 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 }
 
+bool should_write_tcs_patch_output_to_vmem(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   unsigned off = nir_intrinsic_base(instr) * 4u;
+   nir_src *off_src = nir_get_io_offset_src(instr);
+
+   /* Indirect offset, we can't be sure if this is a tess factor, always write to VMEM */
+   if (!nir_src_is_const(*off_src))
+      return true;
+
+   off += nir_src_as_uint(*off_src) * 16u;
+
+   const unsigned tess_index_inner = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_INNER);
+   const unsigned tess_index_outer = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_OUTER);
+
+   return (off != (tess_index_inner * 16u)) &&
+          (off != (tess_index_outer * 16u));
+}
+
 void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
 {
    assert(ctx->stage == tess_control_hs || ctx->stage == vertex_tess_control_hs);
@@ -3327,8 +3345,8 @@ void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool 
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
    unsigned write_mask = nir_intrinsic_write_mask(instr);
 
-   /* TODO: Only write to VMEM if the output is per-vertex or it's per-patch non tess factor */
-   bool write_to_vmem = true;
+   /* Only write to VMEM if the output is per-vertex or it's per-patch non tess factor */
+   bool write_to_vmem = per_vertex || should_write_tcs_patch_output_to_vmem(ctx, instr);
    /* TODO: Only write to LDS if the output is read by the shader, or it's per-patch tess factor */
    bool write_to_lds = true;
 
@@ -9272,6 +9290,22 @@ static void write_tcs_tess_factors(isel_context *ctx)
    assert(stride == 2 || stride == 4 || stride == 6);
    Temp tf_vec = create_vec_from_array(ctx, out, stride, RegType::vgpr);
    store_vmem_mubuf(ctx, tf_vec, hs_ring_tess_factor, byte_offset, tf_base, tf_const_offset, 4, (1 << stride) - 1, true, false);
+
+   /* Store to offchip for TES to read - only if TES reads them */
+   if (ctx->args->options->key.tcs.tes_reads_tess_factors) {
+      Temp hs_ring_tess_offchip = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_HS_TESS_OFFCHIP * 16u));
+      Temp oc_lds = get_arg(ctx, ctx->args->oc_lds);
+
+      std::pair<Temp, unsigned> vmem_offs_outer = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, tess_index_outer * 16);
+      Temp outer_vec = create_vec_from_array(ctx, outer, outer_comps, RegType::vgpr);
+      store_vmem_mubuf(ctx, outer_vec, hs_ring_tess_offchip, vmem_offs_outer.first, oc_lds, vmem_offs_outer.second, 4, (1 << outer_comps) - 1, true, false);
+
+      if (likely(inner_comps)) {
+         std::pair<Temp, unsigned> vmem_offs_inner = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, tess_index_inner * 16);
+         Temp inner_vec = create_vec_from_array(ctx, inner, inner_comps, RegType::vgpr);
+         store_vmem_mubuf(ctx, inner_vec, hs_ring_tess_offchip, vmem_offs_inner.first, oc_lds, vmem_offs_inner.second, 4, (1 << inner_comps) - 1, true, false);
+      }
+   }
 
    begin_divergent_if_else(ctx, &ic_invocation_id_is_zero);
    end_divergent_if(ctx, &ic_invocation_id_is_zero);
