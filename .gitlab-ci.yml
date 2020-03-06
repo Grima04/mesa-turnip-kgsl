@@ -1,9 +1,9 @@
 variables:
-  UPSTREAM_REPO: mesa/mesa
+  FDO_UPSTREAM_REPO: mesa/mesa
 
 include:
-  - project: 'wayland/ci-templates'
-    ref: b7030c2cd0d6ccc5f6d4f8299bafa4daa9240d71
+  - project: 'freedesktop/ci-templates'
+    ref: a1699326519fd28526485ce93464e33423bac564
     file: '/templates/debian.yml'
   - local: '.gitlab-ci/lava-gitlab-ci.yml'
   - local: '.gitlab-ci/test-source-dep.yml'
@@ -88,7 +88,7 @@ success:
 
 # Build the CI docker images.
 #
-# DEBIAN_TAG is the tag of the docker image used by later stage jobs. If the
+# FDO_DISTRIBUTION_TAG is the tag of the docker image used by later stage jobs. If the
 # image doesn't exist yet, the container stage job generates it.
 #
 # In order to generate a new image, one should generally change the tag.
@@ -108,19 +108,19 @@ success:
   extends:
     - .ci-run-policy
   variables:
-    DEBIAN_VERSION: buster-slim
-    REPO_SUFFIX: $CI_JOB_NAME
-    DEBIAN_EXEC: 'bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
+    FDO_DISTRIBUTION_VERSION: buster-slim
+    FDO_REPO_SUFFIX: $CI_JOB_NAME
+    FDO_DISTRIBUTION_EXEC: 'bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
 
 # Debian 10 based x86 build image
 x86_build:
   extends:
-    - .debian@container-ifnot-exists
+    - .fdo.container-ifnot-exists@debian
     - .container
   variables:
-    DEBIAN_TAG: &x86_build "2020-03-13"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-03-13"
 
 .use-x86_build:
   variables:
@@ -133,20 +133,20 @@ x86_build:
 x86_test-gl:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test-gl "2020-03-13"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-03-13"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test-vk "2020-03-16"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-03-16"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_build_old "2019-09-18"
-    DEBIAN_VERSION: stretch-slim
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2019-09-18"
+    FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:
   variables:
@@ -158,10 +158,10 @@ x86_build_old:
 # Debian 10 based ARM build image
 arm_build:
   extends:
-    - .debian@container-ifnot-exists@arm64v8
+    - .fdo.container-ifnot-exists@debian@arm64v8
     - .container
   variables:
-    DEBIAN_TAG: &arm_build "2020-03-13"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-03-13"
 
 .use-arm_build:
   variables:
@@ -174,7 +174,7 @@ arm_build:
 arm_test:
   extends: arm_build
   variables:
-    DEBIAN_TAG: &arm_test "2020-01-30"
+    FDO_DISTRIBUTION_TAG: &arm_test "2020-01-30"
 
 .use-arm_test:
   variables:
