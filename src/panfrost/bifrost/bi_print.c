@@ -298,6 +298,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 bi_print_branch(&ins->branch, fp);
         else if (ins->type == BI_CSEL)
                 fprintf(fp, "%s", bi_cond_name(ins->csel_cond));
+        else if (ins->type == BI_BLEND)
+                fprintf(fp, ".loc%u", ins->blend_location);
 
         if (ins->dest)
                 bi_print_alu_type(ins->dest_type, fp);

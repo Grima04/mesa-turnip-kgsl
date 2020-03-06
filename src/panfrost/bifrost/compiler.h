@@ -242,6 +242,9 @@ typedef struct {
                 /* For CSEL, the comparison op. BI_COND_ALWAYS doesn't make
                  * sense here but you can always just use a move for that */
                 enum bi_cond csel_cond;
+
+                /* For BLEND -- the location 0-7 */
+                unsigned blend_location;
         };
 } bi_instruction;
 
