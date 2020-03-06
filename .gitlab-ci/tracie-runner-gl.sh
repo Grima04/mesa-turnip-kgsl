@@ -11,23 +11,24 @@ export LD_LIBRARY_PATH="$(pwd)/install/lib/"
 export PYTHONPATH="$PYTHONPATH:/renderdoc/build/lib"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/renderdoc/build/lib"
 
+# Set environment for the waffle library.
+export LD_LIBRARY_PATH="/waffle/build/lib:$LD_LIBRARY_PATH"
+
+# Set environment for apitrace executable.
+export PATH=/apitrace/build:$PATH
+
+# Use the surfaceless EGL platform.
+export EGL_PLATFORM=surfaceless
+export DISPLAY=
+export WAFFLE_PLATFORM=surfaceless_egl
+
 # Perform a self-test to ensure tracie is working properly.
 "$ARTIFACTS/tracie/tests/test.sh"
 
 ret=0
 
-# The renderdoc version we use can handle surfaceless.
-EGL_PLATFORM=surfaceless DISPLAY= \
-    "$ARTIFACTS/tracie/tracie.sh" "$ARTIFACTS/traces.yml" renderdoc \
-    || ret=1
+"$ARTIFACTS/tracie/tracie.sh" "$ARTIFACTS/traces.yml" renderdoc || ret=1
 
-# We need a newer waffle to use surfaceless with apitrace. For now run with
-# xvfb.
-xvfb-run --server-args="-noreset" sh -c \
-    "set -ex; \
-     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH; \
-     export PATH=/apitrace/build:\$PATH; \
-    \"$ARTIFACTS/tracie/tracie.sh\" \"$ARTIFACTS/traces.yml\" apitrace" \
-    || ret=1
+"$ARTIFACTS/tracie/tracie.sh" "$ARTIFACTS/traces.yml" apitrace || ret=1
 
 exit $ret
