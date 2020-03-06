@@ -1128,6 +1128,115 @@ VkResult anv_GetImageDrmFormatModifierPropertiesEXT(
    return VK_SUCCESS;
 }
 
+static VkImageUsageFlags
+vk_image_layout_to_usage_flags(VkImageLayout layout,
+                               VkImageAspectFlagBits aspect)
+{
+   assert(util_bitcount(aspect) == 1);
+
+   switch (layout) {
+   case VK_IMAGE_LAYOUT_UNDEFINED:
+   case VK_IMAGE_LAYOUT_PREINITIALIZED:
+      return 0u;
+
+   case VK_IMAGE_LAYOUT_GENERAL:
+      return ~0u;
+
+   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+      assert(aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
+      return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+      assert(aspect & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                       VK_IMAGE_ASPECT_STENCIL_BIT));
+      return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+   case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
+      assert(aspect & VK_IMAGE_ASPECT_DEPTH_BIT);
+      return vk_image_layout_to_usage_flags(
+         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, aspect);
+
+   case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL:
+      assert(aspect & VK_IMAGE_ASPECT_STENCIL_BIT);
+      return vk_image_layout_to_usage_flags(
+         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, aspect);
+
+   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+      assert(aspect & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                       VK_IMAGE_ASPECT_STENCIL_BIT));
+      return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+             VK_IMAGE_USAGE_SAMPLED_BIT |
+             VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
+   case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
+      assert(aspect & VK_IMAGE_ASPECT_DEPTH_BIT);
+      return vk_image_layout_to_usage_flags(
+         VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, aspect);
+
+   case VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL:
+      assert(aspect & VK_IMAGE_ASPECT_STENCIL_BIT);
+      return vk_image_layout_to_usage_flags(
+         VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, aspect);
+
+   case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+      return VK_IMAGE_USAGE_SAMPLED_BIT |
+             VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
+   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+      return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+      return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+   case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
+         return vk_image_layout_to_usage_flags(
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, aspect);
+      } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         return vk_image_layout_to_usage_flags(
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, aspect);
+      } else {
+         assert(!"Must be a depth/stencil aspect");
+         return 0;
+      }
+
+   case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
+      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
+         return vk_image_layout_to_usage_flags(
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, aspect);
+      } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         return vk_image_layout_to_usage_flags(
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, aspect);
+      } else {
+         assert(!"Must be a depth/stencil aspect");
+         return 0;
+      }
+
+   case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+      assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      /* This needs to be handled specially by the caller */
+      return 0;
+
+   case VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR:
+      assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      return vk_image_layout_to_usage_flags(VK_IMAGE_LAYOUT_GENERAL, aspect);
+
+   case VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV:
+      assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      return VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV;
+
+   case VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT:
+      assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      return VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT;
+
+   case VK_IMAGE_LAYOUT_RANGE_SIZE:
+   case VK_IMAGE_LAYOUT_MAX_ENUM:
+      unreachable("Invalid image layout.");
+   }
+
+   unreachable("Invalid image layout.");
+}
+
 /**
  * This function returns the assumed isl_aux_state for a given VkImageLayout.
  * Because Vulkan image layouts don't map directly to isl_aux_state enums, the
