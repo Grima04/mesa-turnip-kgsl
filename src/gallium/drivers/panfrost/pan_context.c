@@ -158,7 +158,7 @@ panfrost_writes_point_size(struct panfrost_context *ctx)
         assert(ctx->shader[PIPE_SHADER_VERTEX]);
         struct panfrost_shader_state *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
 
-        return vs->writes_point_size && ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode == MALI_POINTS;
+        return vs->writes_point_size && ctx->active_prim == PIPE_PRIM_POINTS;
 }
 
 void
