@@ -222,14 +222,33 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+emit_load_const(bi_context *ctx, nir_load_const_instr *instr)
+{
+        /* Make sure we've been lowered */
+        assert(instr->def.num_components == 1);
+
+        bi_instruction move = {
+                .type = BI_MOV,
+                .dest = bir_ssa_index(&instr->def),
+                .dest_type = instr->def.bit_size | nir_type_uint,
+                .src = {
+                        BIR_INDEX_CONSTANT
+                },
+                .constant = {
+                        .u64 = nir_const_value_as_uint(instr->value[0], instr->def.bit_size)
+                }
+        };
+
+        bi_emit(ctx, move);
+}
+
+static void
 emit_instr(bi_context *ctx, struct nir_instr *instr)
 {
         switch (instr->type) {
-#if 0
         case nir_instr_type_load_const:
                 emit_load_const(ctx, nir_instr_as_load_const(instr));
                 break;
-#endif
 
         case nir_instr_type_intrinsic:
                 emit_intrinsic(ctx, nir_instr_as_intrinsic(instr));
@@ -494,6 +513,8 @@ bi_optimize_nir(nir_shader *nir)
         };
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
+        NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
+        NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
 
         do {
                 progress = false;
@@ -538,6 +559,8 @@ bi_optimize_nir(nir_shader *nir)
         } while (progress);
 
         NIR_PASS(progress, nir, nir_opt_algebraic_late);
+        NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
+        NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
 
         /* Take us out of SSA */
         NIR_PASS(progress, nir, nir_lower_locals_to_regs);
@@ -570,10 +593,6 @@ bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned p
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
         NIR_PASS_V(nir, nir_lower_io, nir_var_all, glsl_type_size, 0);
         NIR_PASS_V(nir, nir_lower_ssbo);
-
-        /* We have to lower ALU to scalar ourselves since viewport
-         * transformations produce vector ops */
-        NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
 
         bi_optimize_nir(nir);
         nir_print_shader(nir, stdout);
