@@ -376,78 +376,6 @@ g2m_draw_mode(enum pipe_prim_type mode)
 
 #undef DEFINE_CASE
 
-static unsigned
-panfrost_translate_index_size(unsigned size)
-{
-        switch (size) {
-        case 1:
-                return MALI_DRAW_INDEXED_UINT8;
-
-        case 2:
-                return MALI_DRAW_INDEXED_UINT16;
-
-        case 4:
-                return MALI_DRAW_INDEXED_UINT32;
-
-        default:
-                unreachable("Invalid index size");
-        }
-}
-
-/* Gets a GPU address for the associated index buffer. Only gauranteed to be
- * good for the duration of the draw (transient), could last longer. Also get
- * the bounds on the index buffer for the range accessed by the draw. We do
- * these operations together because there are natural optimizations which
- * require them to be together. */
-
-static mali_ptr
-panfrost_get_index_buffer_bounded(struct panfrost_context *ctx, const struct pipe_draw_info *info, unsigned *min_index, unsigned *max_index)
-{
-        struct panfrost_resource *rsrc = (struct panfrost_resource *) (info->index.resource);
-
-        off_t offset = info->start * info->index_size;
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        mali_ptr out = 0;
-
-        bool needs_indices = true;
-
-        if (info->max_index != ~0u) {
-                *min_index = info->min_index;
-                *max_index = info->max_index;
-                needs_indices = false;
-        }
-
-        if (!info->has_user_indices) {
-                /* Only resources can be directly mapped */
-                panfrost_batch_add_bo(batch, rsrc->bo,
-                                      PAN_BO_ACCESS_SHARED |
-                                      PAN_BO_ACCESS_READ |
-                                      PAN_BO_ACCESS_VERTEX_TILER);
-                out = rsrc->bo->gpu + offset;
-
-                /* Check the cache */
-                needs_indices = !panfrost_minmax_cache_get(rsrc->index_cache, info->start, info->count,
-                                                           min_index, max_index);
-        } else {
-                /* Otherwise, we need to upload to transient memory */
-                const uint8_t *ibuf8 = (const uint8_t *) info->index.user;
-                out = panfrost_upload_transient(batch, ibuf8 + offset, info->count * info->index_size);
-        }
-
-        if (needs_indices) {
-                /* Fallback */
-                u_vbuf_get_minmax_index(&ctx->base, info, min_index, max_index);
-
-                if (!info->has_user_indices) {
-                        panfrost_minmax_cache_add(rsrc->index_cache, info->start, info->count,
-                                                  *min_index, *max_index);
-                }
-        }
-
-
-        return out;
-}
-
 static bool
 panfrost_scissor_culls_everything(struct panfrost_context *ctx)
 {
@@ -537,67 +465,24 @@ panfrost_draw_vbo(
                 }
         }
 
-        ctx->payloads[PIPE_SHADER_VERTEX].offset_start = info->start;
-        ctx->payloads[PIPE_SHADER_FRAGMENT].offset_start = info->start;
-
         /* Now that we have a guaranteed terminating path, find the job.
          * Assignment commented out to prevent unused warning */
 
         /* struct panfrost_batch *batch = */ panfrost_get_batch_for_fbo(ctx);
-
-        ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode = g2m_draw_mode(mode);
 
         /* Take into account a negative bias */
         ctx->vertex_count = info->count + abs(info->index_bias);
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
 
-        /* For non-indexed draws, they're the same */
-        unsigned vertex_count = ctx->vertex_count;
+        unsigned vertex_count;
 
-        unsigned draw_flags = 0;
-
-        /* The draw flags interpret how primitive size is interpreted */
-
-        if (panfrost_writes_point_size(ctx))
-                draw_flags |= MALI_DRAW_VARYING_SIZE;
-
-        if (info->primitive_restart)
-                draw_flags |= MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX;
-
-        /* These doesn't make much sense */
-
-        draw_flags |= 0x3000;
-
-        if (ctx->rasterizer && ctx->rasterizer->base.flatshade_first)
-                draw_flags |= MALI_DRAW_FLATSHADE_FIRST;
+        panfrost_vt_set_draw_info(ctx, info, g2m_draw_mode(mode),
+                                  &ctx->payloads[PIPE_SHADER_VERTEX],
+                                  &ctx->payloads[PIPE_SHADER_FRAGMENT],
+                                  &vertex_count, &ctx->padded_count);
 
         panfrost_statistics_record(ctx, info);
-
-        if (info->index_size) {
-                unsigned min_index = 0, max_index = 0;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices =
-                        panfrost_get_index_buffer_bounded(ctx, info, &min_index, &max_index);
-
-                /* Use the corresponding values */
-                vertex_count = max_index - min_index + 1;
-                ctx->payloads[PIPE_SHADER_VERTEX].offset_start = min_index + info->index_bias;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].offset_start = min_index + info->index_bias;
-
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.offset_bias_correction = -min_index;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.index_count = MALI_POSITIVE(info->count);
-
-                draw_flags |= panfrost_translate_index_size(info->index_size);
-        } else {
-                /* Index count == vertex count, if no indexing is applied, as
-                 * if it is internally indexed in the expected order */
-
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.offset_bias_correction = 0;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
-
-                /* Reverse index state */
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices = (mali_ptr) 0;
-        }
 
         /* Dispatch "compute jobs" for the vertex/tiler pair as (1,
          * vertex_count, 1) */
@@ -607,31 +492,6 @@ panfrost_draw_vbo(
                 &ctx->payloads[PIPE_SHADER_FRAGMENT].prefix,
                 1, vertex_count, info->instance_count,
                 1, 1, 1);
-
-        ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.unknown_draw = draw_flags;
-
-        /* Encode the padded vertex count */
-
-        if (info->instance_count > 1) {
-                ctx->padded_count = panfrost_padded_vertex_count(vertex_count);
-
-                unsigned shift = __builtin_ctz(ctx->padded_count);
-                unsigned k = ctx->padded_count >> (shift + 1);
-
-                ctx->payloads[PIPE_SHADER_VERTEX].instance_shift = shift;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift = shift;
-
-                ctx->payloads[PIPE_SHADER_VERTEX].instance_odd = k;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd = k;
-        } else {
-                ctx->padded_count = vertex_count;
-
-                /* Reset instancing state */
-                ctx->payloads[PIPE_SHADER_VERTEX].instance_shift = 0;
-                ctx->payloads[PIPE_SHADER_VERTEX].instance_odd = 0;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift = 0;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd = 0;
-        }
 
         /* Fire off the draw itself */
         panfrost_queue_draw(ctx);

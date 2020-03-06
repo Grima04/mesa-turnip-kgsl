@@ -23,6 +23,7 @@
  */
 
 #include "util/macros.h"
+#include "util/u_vbuf.h"
 
 #include "panfrost-quirks.h"
 
@@ -97,6 +98,148 @@ panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
                 tp->postfix.occlusion_counter = ctx->occlusion_query->bo->gpu;
         else
                 tp->postfix.occlusion_counter = 0;
+}
+
+static unsigned
+panfrost_translate_index_size(unsigned size)
+{
+        switch (size) {
+        case 1:
+                return MALI_DRAW_INDEXED_UINT8;
+
+        case 2:
+                return MALI_DRAW_INDEXED_UINT16;
+
+        case 4:
+                return MALI_DRAW_INDEXED_UINT32;
+
+        default:
+                unreachable("Invalid index size");
+        }
+}
+
+/* Gets a GPU address for the associated index buffer. Only gauranteed to be
+ * good for the duration of the draw (transient), could last longer. Also get
+ * the bounds on the index buffer for the range accessed by the draw. We do
+ * these operations together because there are natural optimizations which
+ * require them to be together. */
+
+static mali_ptr
+panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
+                                  const struct pipe_draw_info *info,
+                                  unsigned *min_index, unsigned *max_index)
+{
+        struct panfrost_resource *rsrc = pan_resource(info->index.resource);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        off_t offset = info->start * info->index_size;
+        bool needs_indices = true;
+        mali_ptr out = 0;
+
+        if (info->max_index != ~0u) {
+                *min_index = info->min_index;
+                *max_index = info->max_index;
+                needs_indices = false;
+        }
+
+        if (!info->has_user_indices) {
+                /* Only resources can be directly mapped */
+                panfrost_batch_add_bo(batch, rsrc->bo,
+                                      PAN_BO_ACCESS_SHARED |
+                                      PAN_BO_ACCESS_READ |
+                                      PAN_BO_ACCESS_VERTEX_TILER);
+                out = rsrc->bo->gpu + offset;
+
+                /* Check the cache */
+                needs_indices = !panfrost_minmax_cache_get(rsrc->index_cache,
+                                                           info->start,
+                                                           info->count,
+                                                           min_index,
+                                                           max_index);
+        } else {
+                /* Otherwise, we need to upload to transient memory */
+                const uint8_t *ibuf8 = (const uint8_t *) info->index.user;
+                out = panfrost_upload_transient(batch, ibuf8 + offset,
+                                                info->count *
+                                                info->index_size);
+        }
+
+        if (needs_indices) {
+                /* Fallback */
+                u_vbuf_get_minmax_index(&ctx->base, info, min_index, max_index);
+
+                if (!info->has_user_indices)
+                        panfrost_minmax_cache_add(rsrc->index_cache,
+                                                  info->start, info->count,
+                                                  *min_index, *max_index);
+        }
+
+        return out;
+}
+
+void
+panfrost_vt_set_draw_info(struct panfrost_context *ctx,
+                          const struct pipe_draw_info *info,
+                          enum mali_draw_mode draw_mode,
+                          struct midgard_payload_vertex_tiler *vp,
+                          struct midgard_payload_vertex_tiler *tp,
+                          unsigned *vertex_count,
+                          unsigned *padded_count)
+{
+        tp->prefix.draw_mode = draw_mode;
+
+        unsigned draw_flags = 0;
+
+        if (panfrost_writes_point_size(ctx))
+                draw_flags |= MALI_DRAW_VARYING_SIZE;
+
+        if (info->primitive_restart)
+                draw_flags |= MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX;
+
+        /* These doesn't make much sense */
+
+        draw_flags |= 0x3000;
+
+        if (info->index_size) {
+                unsigned min_index = 0, max_index = 0;
+
+                tp->prefix.indices = panfrost_get_index_buffer_bounded(ctx,
+                                                                       info,
+                                                                       &min_index,
+                                                                       &max_index);
+
+                /* Use the corresponding values */
+                *vertex_count = max_index - min_index + 1;
+                tp->offset_start = vp->offset_start = min_index + info->index_bias;
+                tp->prefix.offset_bias_correction = -min_index;
+                tp->prefix.index_count = MALI_POSITIVE(info->count);
+                draw_flags |= panfrost_translate_index_size(info->index_size);
+        } else {
+                tp->prefix.indices = 0;
+                *vertex_count = ctx->vertex_count;
+                tp->offset_start = vp->offset_start = info->start;
+                tp->prefix.offset_bias_correction = 0;
+                tp->prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
+        }
+
+        tp->prefix.unknown_draw = draw_flags;
+
+        /* Encode the padded vertex count */
+
+        if (info->instance_count > 1) {
+                *padded_count = panfrost_padded_vertex_count(*vertex_count);
+
+                unsigned shift = __builtin_ctz(ctx->padded_count);
+                unsigned k = ctx->padded_count >> (shift + 1);
+
+                tp->instance_shift = vp->instance_shift = shift;
+                tp->instance_odd = vp->instance_odd = k;
+        } else {
+                *padded_count = *vertex_count;
+
+                /* Reset instancing state */
+                tp->instance_shift = vp->instance_shift = 0;
+                tp->instance_odd = vp->instance_odd = 0;
+        }
 }
 
 static void

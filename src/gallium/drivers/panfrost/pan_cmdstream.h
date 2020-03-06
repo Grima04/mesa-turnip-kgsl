@@ -48,6 +48,15 @@ panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
                                    struct midgard_payload_vertex_tiler *tp);
 
 void
+panfrost_vt_set_draw_info(struct panfrost_context *ctx,
+                          const struct pipe_draw_info *info,
+                          enum mali_draw_mode draw_mode,
+                          struct midgard_payload_vertex_tiler *vp,
+                          struct midgard_payload_vertex_tiler *tp,
+                          unsigned *vertex_count,
+                          unsigned *padded_count);
+
+void
 panfrost_emit_shader_meta(struct panfrost_batch *batch,
                           enum pipe_shader_type st,
                           struct midgard_payload_vertex_tiler *vtp);
