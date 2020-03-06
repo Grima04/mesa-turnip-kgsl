@@ -33,6 +33,7 @@
     - echo $result
     - '[[ "$result" == "pass" ]]'
   artifacts:
+    name: "mesa_${CI_JOB_NAME}"
     when: always
     paths:
       - artifacts/
