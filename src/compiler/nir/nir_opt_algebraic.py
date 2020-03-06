@@ -1898,6 +1898,38 @@ late_optimizations = [
    # any conversions that could have been removed will have been removed in
    # nir_opt_algebraic so any remaining ones are required.
    (('f2fmp', a), ('f2f16', a)),
+
+   # Section 8.8 (Integer Functions) of the GLSL 4.60 spec says:
+   #
+   #    If bits is zero, the result will be zero.
+   #
+   # These prevent the next two lowerings generating incorrect results when
+   # count is zero.
+   (('ubfe', a, b, 0), 0),
+   (('ibfe', a, b, 0), 0),
+
+   # On Intel GPUs, BFE is a 3-source instruction.  Like all 3-source
+   # instructions on Intel GPUs, it cannot have an immediate values as
+   # sources.  There are also limitations on source register strides.  As a
+   # result, it is very easy for 3-source instruction combined with either
+   # loads of immediate values or copies from weird register strides to be
+   # more expensive than the primitive instructions it represents.
+   (('ubfe', a, '#b', '#c'), ('iand', ('ushr', 0xffffffff, ('ineg', c)), ('ushr', a, b)), 'options->lower_bfe_with_two_constants'),
+
+   # b is the lowest order bit to be extracted and c is the number of bits to
+   # extract.  The inner shift removes the bits above b + c by shifting left
+   # 32 - (b + c).  ishl only sees the low 5 bits of the shift count, which is
+   # -(b + c).  The outer shift moves the bit that was at b to bit zero.
+   # After the first shift, that bit is now at b + (32 - (b + c)) or 32 - c.
+   # This means that it must be shifted right by 32 - c or -c bits.
+   (('ibfe', a, '#b', '#c'), ('ishr', ('ishl', a, ('ineg', ('iadd', b, c))), ('ineg', c)), 'options->lower_bfe_with_two_constants'),
+
+   # Clean up no-op shifts that may result from the bfe lowerings.
+   (('ishl', a, 0), a),
+   (('ishl', a, -32), a),
+   (('ishr', a, 0), a),
+   (('ishr', a, -32), a),
+   (('ushr', a, 0), a),
 ]
 
 for op in ['fadd']:

@@ -3019,6 +3019,9 @@ typedef struct nir_shader_compiler_options {
     */
    bool intel_vec4;
 
+   /** Lower nir_op_ibfe and nir_op_ubfe that have two constant sources. */
+   bool lower_bfe_with_two_constants;
+
    /** Whether 8-bit ALU is supported. */
    bool support_8bit_alu;
 
