@@ -973,7 +973,7 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
                                     user_memory, templ->width0,
                                     IRIS_MEMZONE_OTHER);
    if (!res->bo) {
-      free(res);
+      iris_resource_destroy(pscreen, &res->base);
       return NULL;
    }
 
@@ -1016,7 +1016,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
       unreachable("invalid winsys handle type");
    }
    if (!res->bo)
-      return NULL;
+      goto fail;
 
    res->offset = whandle->offset;
 
