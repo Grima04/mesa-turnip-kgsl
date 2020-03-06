@@ -3448,7 +3448,7 @@ with a better name.
 	</reg32>
 	<reg32 offset="1" name="1">
 		<bitfield name="BASE_HI" low="0" high="16"/>
-		<!-- size probably in high bits -->
+		<bitfield name="SIZE" low="17" high="31"/> <!-- size in vec4 (4xDWORD) units -->
 	</reg32>
 </domain>
 
