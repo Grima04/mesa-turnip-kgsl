@@ -325,12 +325,16 @@ typedef struct {
        uint32_t quirks;
 
        /* During NIR->BIR */
+       nir_function_impl *impl;
        bi_block *current_block;
        unsigned block_name_count;
        bi_block *after_block;
        bi_block *break_block;
        bi_block *continue_block;
        bool emitted_atest;
+
+       /* For creating temporaries */
+       unsigned temp_alloc;
 
        /* Stats for shader-db */
        unsigned instruction_count;
@@ -374,6 +378,18 @@ bi_remove_instruction(bi_instruction *ins)
 
 #define BIR_SPECIAL        ((BIR_INDEX_REGISTER | BIR_INDEX_UNIFORM) | \
         (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO)
+
+static inline unsigned
+bi_make_temp(bi_context *ctx)
+{
+        return (ctx->impl->ssa_alloc + 1 + ctx->temp_alloc++) << 1;
+}
+
+static inline unsigned
+bi_make_temp_reg(bi_context *ctx)
+{
+        return ((ctx->impl->reg_alloc + ctx->temp_alloc++) << 1) | BIR_IS_REG;
+}
 
 static inline unsigned
 bir_ssa_index(nir_ssa_def *ssa)

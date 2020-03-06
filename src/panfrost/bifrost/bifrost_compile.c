@@ -533,6 +533,7 @@ bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned p
                 if (!func->impl)
                         continue;
 
+                ctx->impl = func->impl;
                 emit_cf_list(ctx, &func->impl->body);
                 break; /* TODO: Multi-function shaders */
         }
