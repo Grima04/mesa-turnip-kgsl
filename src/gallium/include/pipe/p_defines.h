@@ -346,6 +346,13 @@ enum pipe_transfer_usage
    PIPE_TRANSFER_COHERENT = (1 << 14),
 
    /**
+    * Map a resource in a thread-safe manner, because the calling thread can
+    * be any thread. It can only be used if both WRITE and UNSYNCHRONIZED are
+    * set.
+    */
+   PIPE_TRANSFER_THREAD_SAFE = 1 << 15,
+
+   /**
     * This and higher bits are reserved for private use by drivers. Drivers
     * should use this as (PIPE_TRANSFER_DRV_PRV << i).
     */
@@ -938,6 +945,7 @@ enum pipe_cap
    PIPE_CAP_SYSTEM_SVM,
    PIPE_CAP_VIEWPORT_MASK,
    PIPE_CAP_ALPHA_TO_COVERAGE_DITHER_CONTROL,
+   PIPE_CAP_MAP_UNSYNCHRONIZED_THREAD_SAFE,
 };
 
 /**

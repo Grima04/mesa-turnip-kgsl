@@ -324,7 +324,9 @@ static void *si_buffer_get_transfer(struct pipe_context *ctx, struct pipe_resour
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_transfer *transfer;
 
-   if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
+   if (usage & PIPE_TRANSFER_THREAD_SAFE)
+      transfer = malloc(sizeof(*transfer));
+   else if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
       transfer = slab_alloc(&sctx->pool_transfers_unsync);
    else
       transfer = slab_alloc(&sctx->pool_transfers);
@@ -461,7 +463,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
             (buf->flags & RADEON_FLAG_SPARSE)) {
       struct si_resource *staging;
 
-      assert(!(usage & TC_TRANSFER_MAP_THREADED_UNSYNC));
+      assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_TRANSFER_THREAD_SAFE)));
       staging = si_resource(pipe_buffer_create(ctx->screen, 0, PIPE_USAGE_STAGING,
                                                box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT)));
       if (staging) {
@@ -574,9 +576,14 @@ static void si_buffer_transfer_unmap(struct pipe_context *ctx, struct pipe_trans
    assert(stransfer->b.staging == NULL); /* for threaded context only */
    pipe_resource_reference(&transfer->resource, NULL);
 
-   /* Don't use pool_transfers_unsync. We are always in the driver
-    * thread. */
-   slab_free(&sctx->pool_transfers, transfer);
+   if (transfer->usage & PIPE_TRANSFER_THREAD_SAFE) {
+      free(transfer);
+   } else {
+      /* Don't use pool_transfers_unsync. We are always in the driver
+       * thread. Freeing an object into a different pool is allowed.
+       */
+      slab_free(&sctx->pool_transfers, transfer);
+   }
 }
 
 static void si_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *buffer,
