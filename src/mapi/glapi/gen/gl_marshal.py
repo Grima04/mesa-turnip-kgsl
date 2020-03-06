@@ -37,6 +37,14 @@ header = """
 #include "marshal.h"
 
 #define COMPAT (ctx->API != API_OPENGL_CORE)
+
+static inline int safe_mul(int a, int b)
+{
+    if (a < 0 || b < 0) return -1;
+    if (a == 0 || b == 0) return 0;
+    if (a > INT_MAX / b) return -1;
+    return a * b;
+}
 """
 
 
@@ -68,14 +76,6 @@ class PrintCode(gl_XML.gl_print_base):
 
     def printRealHeader(self):
         print(header)
-        print('static inline int safe_mul(int a, int b)')
-        print('{')
-        print('    if (a < 0 || b < 0) return -1;')
-        print('    if (a == 0 || b == 0) return 0;')
-        print('    if (a > INT_MAX / b) return -1;')
-        print('    return a * b;')
-        print('}')
-        print()
 
     def printRealFooter(self):
         pass
