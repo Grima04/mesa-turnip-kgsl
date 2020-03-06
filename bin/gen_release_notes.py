@@ -36,7 +36,7 @@ from mako import exceptions
 
 
 CURRENT_GL_VERSION = '4.6'
-CURRENT_VK_VERSION = '1.1'
+CURRENT_VK_VERSION = '1.2'
 
 TEMPLATE = Template(textwrap.dedent("""\
     <%!
