@@ -999,6 +999,27 @@ optimizations.extend([
    (('ishr', 'a@64', 56), ('extract_i8', a, 7), '!options->lower_extract_byte'),
    (('iand', 0xff, a), ('extract_u8', a, 0), '!options->lower_extract_byte'),
 
+   (('ubfe', a,  0, 8), ('extract_u8', a, 0), '!options->lower_extract_byte'),
+   (('ubfe', a,  8, 8), ('extract_u8', a, 1), '!options->lower_extract_byte'),
+   (('ubfe', a, 16, 8), ('extract_u8', a, 2), '!options->lower_extract_byte'),
+   (('ubfe', a, 24, 8), ('extract_u8', a, 3), '!options->lower_extract_byte'),
+   (('ibfe', a,  0, 8), ('extract_i8', a, 0), '!options->lower_extract_byte'),
+   (('ibfe', a,  8, 8), ('extract_i8', a, 1), '!options->lower_extract_byte'),
+   (('ibfe', a, 16, 8), ('extract_i8', a, 2), '!options->lower_extract_byte'),
+   (('ibfe', a, 24, 8), ('extract_i8', a, 3), '!options->lower_extract_byte'),
+
+    # Word extraction
+   (('ushr', ('ishl', 'a@32', 16), 16), ('extract_u16', a, 0), '!options->lower_extract_word'),
+   (('ushr', 'a@32', 16), ('extract_u16', a, 1), '!options->lower_extract_word'),
+   (('ishr', ('ishl', 'a@32', 16), 16), ('extract_i16', a, 0), '!options->lower_extract_word'),
+   (('ishr', 'a@32', 16), ('extract_i16', a, 1), '!options->lower_extract_word'),
+   (('iand', 0xffff, a), ('extract_u16', a, 0), '!options->lower_extract_word'),
+
+   (('ubfe', a,  0, 16), ('extract_u16', a, 0), '!options->lower_extract_word'),
+   (('ubfe', a, 16, 16), ('extract_u16', a, 1), '!options->lower_extract_word'),
+   (('ibfe', a,  0, 16), ('extract_i16', a, 0), '!options->lower_extract_word'),
+   (('ibfe', a, 16, 16), ('extract_i16', a, 1), '!options->lower_extract_word'),
+
    # Useless masking before unpacking
    (('unpack_half_2x16_split_x', ('iand', a, 0xffff)), ('unpack_half_2x16_split_x', a)),
    (('unpack_32_2x16_split_x', ('iand', a, 0xffff)), ('unpack_32_2x16_split_x', a)),
@@ -1034,13 +1055,6 @@ for op in ('extract_u8', 'extract_i8'):
    optimizations.extend([((op, ('ishl', 'a@64', 56 - 8 * i), 7), (op, a, i)) for i in range(6, -1, -1)])
 
 optimizations.extend([
-    # Word extraction
-   (('ushr', ('ishl', 'a@32', 16), 16), ('extract_u16', a, 0), '!options->lower_extract_word'),
-   (('ushr', 'a@32', 16), ('extract_u16', a, 1), '!options->lower_extract_word'),
-   (('ishr', ('ishl', 'a@32', 16), 16), ('extract_i16', a, 0), '!options->lower_extract_word'),
-   (('ishr', 'a@32', 16), ('extract_i16', a, 1), '!options->lower_extract_word'),
-   (('iand', 0xffff, a), ('extract_u16', a, 0), '!options->lower_extract_word'),
-
    # Subtracts
    (('ussub_4x8', a, 0), a),
    (('ussub_4x8', a, ~0), 0),
