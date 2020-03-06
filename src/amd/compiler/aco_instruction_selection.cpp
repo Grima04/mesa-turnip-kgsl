@@ -9596,7 +9596,7 @@ void select_program(Program *program,
       nir_function_impl *func = nir_shader_get_entrypoint(nir);
       visit_cf_list(&ctx, &func->body);
 
-      if (ctx.program->info->so.num_outputs && ctx.stage == vertex_vs)
+      if (ctx.program->info->so.num_outputs && (ctx.stage == vertex_vs || ctx.stage == tess_eval_vs))
          emit_streamout(&ctx, 0);
 
       if (ctx.stage == vertex_vs || ctx.stage == tess_eval_vs) {
