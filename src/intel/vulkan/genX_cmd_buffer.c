@@ -518,6 +518,105 @@ need_input_attachment_state(const struct anv_render_pass_attachment *att)
    return vk_format_is_color(att->format);
 }
 
+#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
+
+#if GEN_GEN == 12
+static void
+anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
+                      const struct anv_image *image,
+                      VkImageAspectFlagBits aspect,
+                      uint32_t base_level, uint32_t level_count,
+                      uint32_t base_layer, uint32_t layer_count)
+{
+   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+
+   uint64_t base_address =
+      anv_address_physical(image->planes[plane].address);
+
+   const struct isl_surf *isl_surf = &image->planes[plane].surface.isl;
+   uint64_t format_bits = gen_aux_map_format_bits_for_isl_surf(isl_surf);
+
+   /* We're about to live-update the AUX-TT.  We really don't want anyone else
+    * trying to read it while we're doing this.  We could probably get away
+    * with not having this stall in some cases if we were really careful but
+    * it's better to play it safe.  Full stall the GPU.
+    */
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+   struct gen_mi_builder b;
+   gen_mi_builder_init(&b, &cmd_buffer->batch);
+
+   for (uint32_t a = 0; a < layer_count; a++) {
+      const uint32_t layer = base_layer + a;
+
+      uint64_t start_offset_B = UINT64_MAX, end_offset_B = 0;
+      for (uint32_t l = 0; l < level_count; l++) {
+         const uint32_t level = base_level + l;
+
+         uint32_t logical_array_layer, logical_z_offset_px;
+         if (image->type == VK_IMAGE_TYPE_3D) {
+            logical_array_layer = 0;
+
+            /* If the given miplevel does not have this layer, then any higher
+             * miplevels won't either because miplevels only get smaller the
+             * higher the LOD.
+             */
+            assert(layer < image->extent.depth);
+            if (layer >= anv_minify(image->extent.depth, level))
+               break;
+            logical_z_offset_px = layer;
+         } else {
+            assert(layer < image->array_size);
+            logical_array_layer = layer;
+            logical_z_offset_px = 0;
+         }
+
+         uint32_t slice_start_offset_B, slice_end_offset_B;
+         isl_surf_get_image_range_B_tile(isl_surf, level,
+                                         logical_array_layer,
+                                         logical_z_offset_px,
+                                         &slice_start_offset_B,
+                                         &slice_end_offset_B);
+
+         start_offset_B = MIN2(start_offset_B, slice_start_offset_B);
+         end_offset_B = MAX2(end_offset_B, slice_end_offset_B);
+      }
+
+      /* Aux operates 64K at a time */
+      start_offset_B = align_down_u64(start_offset_B, 64 * 1024);
+      end_offset_B = align_u64(end_offset_B, 64 * 1024);
+
+      for (uint64_t offset = start_offset_B;
+           offset < end_offset_B; offset += 64 * 1024) {
+         uint64_t address = base_address + offset;
+
+         uint64_t aux_entry_addr64, *aux_entry_map;
+         aux_entry_map = gen_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
+                                               address, &aux_entry_addr64);
+
+         assert(cmd_buffer->device->physical->use_softpin);
+         struct anv_address aux_entry_address = {
+            .bo = NULL,
+            .offset = aux_entry_addr64,
+         };
+
+         const uint64_t old_aux_entry = READ_ONCE(*aux_entry_map);
+         uint64_t new_aux_entry =
+            (old_aux_entry & GEN_AUX_MAP_ADDRESS_MASK) | format_bits;
+
+         if (isl_aux_usage_has_ccs(image->planes[plane].aux_usage))
+            new_aux_entry |= GEN_AUX_MAP_ENTRY_VALID_BIT;
+
+         gen_mi_store(&b, gen_mi_mem64(aux_entry_address),
+                          gen_mi_imm(new_aux_entry));
+      }
+   }
+
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
+}
+#endif /* GEN_GEN == 12 */
+
 /* Transitions a HiZ-enabled depth buffer from one layout to another. Unless
  * the initial layout is undefined, the HiZ buffer and depth buffer will
  * represent the same data at the end of this operation.
@@ -1000,105 +1099,6 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
          ANV_PIPE_STATE_CACHE_INVALIDATE_BIT;
    }
 }
-
-#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
-
-#if GEN_GEN == 12
-static void
-anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
-                      const struct anv_image *image,
-                      VkImageAspectFlagBits aspect,
-                      uint32_t base_level, uint32_t level_count,
-                      uint32_t base_layer, uint32_t layer_count)
-{
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-
-   uint64_t base_address =
-      anv_address_physical(image->planes[plane].address);
-
-   const struct isl_surf *isl_surf = &image->planes[plane].surface.isl;
-   uint64_t format_bits = gen_aux_map_format_bits_for_isl_surf(isl_surf);
-
-   /* We're about to live-update the AUX-TT.  We really don't want anyone else
-    * trying to read it while we're doing this.  We could probably get away
-    * with not having this stall in some cases if we were really careful but
-    * it's better to play it safe.  Full stall the GPU.
-    */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_END_OF_PIPE_SYNC_BIT;
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
-
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
-
-   for (uint32_t a = 0; a < layer_count; a++) {
-      const uint32_t layer = base_layer + a;
-
-      uint64_t start_offset_B = UINT64_MAX, end_offset_B = 0;
-      for (uint32_t l = 0; l < level_count; l++) {
-         const uint32_t level = base_level + l;
-
-         uint32_t logical_array_layer, logical_z_offset_px;
-         if (image->type == VK_IMAGE_TYPE_3D) {
-            logical_array_layer = 0;
-
-            /* If the given miplevel does not have this layer, then any higher
-             * miplevels won't either because miplevels only get smaller the
-             * higher the LOD.
-             */
-            assert(layer < image->extent.depth);
-            if (layer >= anv_minify(image->extent.depth, level))
-               break;
-            logical_z_offset_px = layer;
-         } else {
-            assert(layer < image->array_size);
-            logical_array_layer = layer;
-            logical_z_offset_px = 0;
-         }
-
-         uint32_t slice_start_offset_B, slice_end_offset_B;
-         isl_surf_get_image_range_B_tile(isl_surf, level,
-                                         logical_array_layer,
-                                         logical_z_offset_px,
-                                         &slice_start_offset_B,
-                                         &slice_end_offset_B);
-
-         start_offset_B = MIN2(start_offset_B, slice_start_offset_B);
-         end_offset_B = MAX2(end_offset_B, slice_end_offset_B);
-      }
-
-      /* Aux operates 64K at a time */
-      start_offset_B = align_down_u64(start_offset_B, 64 * 1024);
-      end_offset_B = align_u64(end_offset_B, 64 * 1024);
-
-      for (uint64_t offset = start_offset_B;
-           offset < end_offset_B; offset += 64 * 1024) {
-         uint64_t address = base_address + offset;
-
-         uint64_t aux_entry_addr64, *aux_entry_map;
-         aux_entry_map = gen_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
-                                               address, &aux_entry_addr64);
-
-         assert(cmd_buffer->device->physical->use_softpin);
-         struct anv_address aux_entry_address = {
-            .bo = NULL,
-            .offset = aux_entry_addr64,
-         };
-
-         const uint64_t old_aux_entry = READ_ONCE(*aux_entry_map);
-         uint64_t new_aux_entry =
-            (old_aux_entry & GEN_AUX_MAP_ADDRESS_MASK) | format_bits;
-
-         if (isl_aux_usage_has_ccs(image->planes[plane].aux_usage))
-            new_aux_entry |= GEN_AUX_MAP_ENTRY_VALID_BIT;
-
-         gen_mi_store(&b, gen_mi_mem64(aux_entry_address),
-                          gen_mi_imm(new_aux_entry));
-      }
-   }
-
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
-}
-#endif /* GEN_GEN == 12 */
 
 /**
  * @brief Transitions a color buffer from one layout to another.
