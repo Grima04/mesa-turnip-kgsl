@@ -1627,7 +1627,7 @@ genX(BeginCommandBuffer)(
                                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                        layout);
 
-            cmd_buffer->state.hiz_enabled = aux_usage == ISL_AUX_USAGE_HIZ;
+            cmd_buffer->state.hiz_enabled = isl_aux_usage_has_hiz(aux_usage);
          }
       }
 
@@ -4854,7 +4854,8 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       const uint32_t ds =
          cmd_buffer->state.subpass->depth_stencil_attachment->attachment;
       info.hiz_usage = cmd_buffer->state.attachments[ds].aux_usage;
-      if (info.hiz_usage == ISL_AUX_USAGE_HIZ) {
+      if (info.hiz_usage != ISL_AUX_USAGE_NONE) {
+         assert(isl_aux_usage_has_hiz(info.hiz_usage));
          info.hiz_surf = &image->planes[depth_plane].aux_surface.isl;
 
          info.hiz_address =
@@ -4904,7 +4905,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
             (struct anv_address) { cmd_buffer->device->workaround_bo, 0 };
       }
    }
-   cmd_buffer->state.hiz_enabled = info.hiz_usage == ISL_AUX_USAGE_HIZ;
+   cmd_buffer->state.hiz_enabled = isl_aux_usage_has_hiz(info.hiz_usage);
 }
 
 /**
@@ -5160,7 +5161,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          if (att_state->fast_clear && !is_multiview) {
             /* We currently only support HiZ for single-LOD images */
             if (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
-               assert(iview->image->planes[0].aux_usage == ISL_AUX_USAGE_HIZ);
+               assert(isl_aux_usage_has_hiz(iview->image->planes[0].aux_usage));
                assert(iview->planes[0].isl.base_level == 0);
             }
 

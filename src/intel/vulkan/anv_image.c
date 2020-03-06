@@ -1682,7 +1682,7 @@ anv_image_fill_surface_state(struct anv_device *device,
     * value (SKL+), define the clear value to the optimal constant.
     */
    union isl_color_value default_clear_color = { .u32 = { 0, } };
-   if (device->info.gen >= 9 && aux_usage == ISL_AUX_USAGE_HIZ)
+   if (device->info.gen >= 9 && aspect == VK_IMAGE_ASPECT_DEPTH_BIT)
       default_clear_color.f32[0] = ANV_HZ_FC_VAL;
    if (!clear_color)
       clear_color = &default_clear_color;
@@ -1782,7 +1782,7 @@ anv_image_fill_surface_state(struct anv_device *device,
 
       struct anv_address clear_address = ANV_NULL_ADDRESS;
       if (device->info.gen >= 10 && aux_usage != ISL_AUX_USAGE_NONE) {
-         if (aux_usage == ISL_AUX_USAGE_HIZ) {
+         if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
             clear_address = (struct anv_address) {
                .bo = device->hiz_clear_bo,
                .offset = 0,
