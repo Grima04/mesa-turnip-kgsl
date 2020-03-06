@@ -675,8 +675,7 @@ throttle(struct brw_context *brw)
    }
 
    if (brw->need_flush_throttle) {
-      __DRIscreen *dri_screen = brw->screen->driScrnPriv;
-      drmCommandNone(dri_screen->fd, DRM_I915_GEM_THROTTLE);
+      drmCommandNone(brw->screen->fd, DRM_I915_GEM_THROTTLE);
       brw->need_flush_throttle = false;
    }
 }
@@ -741,7 +740,6 @@ execbuffer(int fd,
 static int
 submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
 {
-   __DRIscreen *dri_screen = brw->screen->driScrnPriv;
    struct intel_batchbuffer *batch = &brw->batch;
    int ret = 0;
 
@@ -808,7 +806,7 @@ submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
          batch->exec_bos[index] = tmp_bo;
       }
 
-      ret = execbuffer(dri_screen->fd, batch, brw->hw_ctx,
+      ret = execbuffer(brw->screen->fd, batch, brw->hw_ctx,
                        4 * USED_BATCH(*batch),
                        in_fence_fd, out_fence_fd, flags);
 
