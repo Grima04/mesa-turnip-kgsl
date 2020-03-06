@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-/** \file marshal.h
+/** \file glthread_marshal.h
  *
  * Declarations of functions related to marshalling GL calls from a client
  * thread to a server thread.

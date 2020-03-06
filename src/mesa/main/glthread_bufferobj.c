@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "marshal.h"
+#include "glthread_marshal.h"
 #include "dispatch.h"
 
 /** Tracks the current bindings for the vertex array and index array buffers.

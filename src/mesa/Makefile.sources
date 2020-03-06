@@ -126,6 +126,8 @@ MAIN_FILES = \
 	main/glthread.c \
 	main/glthread.h \
 	main/glthread_bufferobj.c \
+	main/glthread_marshal.h \
+	main/glthread_shaderobj.c \
 	main/glthread_varray.c \
 	main/glheader.h \
 	main/hash.c \
@@ -143,8 +145,6 @@ MAIN_FILES = \
 	main/lines.c \
 	main/lines.h \
 	main/macros.h \
-	main/marshal.c \
-	main/marshal.h \
 	main/marshal_generated.c \
 	main/marshal_generated.h \
 	main/matrix.c \

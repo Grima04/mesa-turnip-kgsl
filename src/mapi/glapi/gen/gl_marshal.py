@@ -31,10 +31,8 @@ import sys
 
 header = """
 #include "api_exec.h"
-#include "context.h"
+#include "glthread_marshal.h"
 #include "dispatch.h"
-#include "glthread.h"
-#include "marshal.h"
 
 #define COMPAT (ctx->API != API_OPENGL_CORE)
 

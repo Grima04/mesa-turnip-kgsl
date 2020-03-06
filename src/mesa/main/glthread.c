@@ -34,7 +34,7 @@
 
 #include "main/mtypes.h"
 #include "main/glthread.h"
-#include "main/marshal.h"
+#include "main/glthread_marshal.h"
 #include "main/hash.h"
 #include "util/u_atomic.h"
 #include "util/u_thread.h"

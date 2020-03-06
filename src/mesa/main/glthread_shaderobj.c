@@ -21,15 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-/** \file marshal.c
- *
- * Custom functions for marshalling GL calls from the main thread to a worker
- * thread when automatic code generation isn't appropriate.
- */
-
-#include "main/enums.h"
-#include "main/macros.h"
-#include "marshal.h"
+#include "glthread_marshal.h"
 #include "dispatch.h"
 
 struct marshal_cmd_ShaderSource
