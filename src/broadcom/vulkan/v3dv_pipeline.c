@@ -544,6 +544,8 @@ lower_fs_io(nir_shader *nir)
 static void
 lower_vs_io(struct nir_shader *nir)
 {
+   NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
+
    nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
                                MESA_SHADER_VERTEX);
 
