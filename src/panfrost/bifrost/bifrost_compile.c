@@ -39,6 +39,7 @@
 static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
 static bi_instruction *bi_emit_branch(bi_context *ctx);
 static void bi_block_add_successor(bi_block *block, bi_block *successor);
+static void bi_schedule_barrier(bi_context *ctx);
 
 static void
 emit_jump(bi_context *ctx, nir_jump_instr *instr)
@@ -178,6 +179,18 @@ bi_block_add_successor(bi_block *block, bi_block *successor)
         }
 
         unreachable("Too many successors");
+}
+
+static void
+bi_schedule_barrier(bi_context *ctx)
+{
+        bi_block *temp = ctx->after_block;
+        ctx->after_block = create_empty_block(ctx);
+        list_addtail(&ctx->after_block->link, &ctx->blocks);
+        list_inithead(&ctx->after_block->instructions);
+        bi_block_add_successor(ctx->current_block, ctx->after_block);
+        ctx->current_block = ctx->after_block;
+        ctx->after_block = temp;
 }
 
 static bi_block *
