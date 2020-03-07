@@ -904,7 +904,7 @@ blorp_hiz_clear_depth_stencil(struct blorp_batch *batch,
 
       if (clear_depth) {
          /* If we're clearing depth, we must have HiZ */
-         assert(depth && depth->aux_usage == ISL_AUX_USAGE_HIZ);
+         assert(depth && isl_aux_usage_has_hiz(depth->aux_usage));
 
          brw_blorp_surface_info_init(batch->blorp, &params.depth, depth,
                                      level, layer,
