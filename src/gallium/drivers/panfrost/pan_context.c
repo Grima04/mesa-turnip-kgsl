@@ -2053,7 +2053,7 @@ panfrost_create_sampler_view(
                         so->bo->cpu,
                         texture->width0, texture->height0,
                         texture->depth0, array_size,
-                        texture->format,
+                        template->format,
                         type, prsrc->layout,
                         template->u.tex.first_level,
                         template->u.tex.last_level,
