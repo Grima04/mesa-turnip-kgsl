@@ -3259,6 +3259,39 @@ _mesa_BindVertexBuffers(GLuint first, GLsizei count, const GLuint *buffers,
 }
 
 
+void
+_mesa_InternalBindVertexBuffers(struct gl_context *ctx,
+                                const struct glthread_attrib_binding *attribs,
+                                GLbitfield attrib_mask,
+                                GLboolean restore_pointers)
+{
+   struct gl_vertex_array_object *vao = ctx->Array.VAO;
+   unsigned param_index = 0;
+
+   if (restore_pointers) {
+      while (attrib_mask) {
+         unsigned i = u_bit_scan(&attrib_mask);
+
+         _mesa_bind_vertex_buffer(ctx, vao, i, NULL,
+                                  (GLintptr)attribs[param_index].original_pointer,
+                                  vao->BufferBinding[i].Stride, false, false);
+         param_index++;
+      }
+      return;
+   }
+
+   while (attrib_mask) {
+      unsigned i = u_bit_scan(&attrib_mask);
+      struct gl_buffer_object *buf = attribs[param_index].buffer;
+
+      /* The buffer reference is passed to _mesa_bind_vertex_buffer. */
+      _mesa_bind_vertex_buffer(ctx, vao, i, buf, attribs[param_index].offset,
+                               vao->BufferBinding[i].Stride, true, true);
+      param_index++;
+   }
+}
+
+
 void GLAPIENTRY
 _mesa_VertexArrayVertexBuffers_no_error(GLuint vaobj, GLuint first,
                                         GLsizei count, const GLuint *buffers,

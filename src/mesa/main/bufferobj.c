@@ -1228,6 +1228,19 @@ _mesa_BindBuffer(GLenum target, GLuint buffer)
    bind_buffer_object(ctx, bindTarget, buffer);
 }
 
+void
+_mesa_InternalBindElementBuffer(struct gl_context *ctx,
+                                struct gl_buffer_object *buf)
+{
+   struct gl_buffer_object **bindTarget =
+      get_buffer_target(ctx, GL_ELEMENT_ARRAY_BUFFER);
+
+   /* Move the buffer reference from the parameter to the bind point. */
+   _mesa_reference_buffer_object(ctx, bindTarget, NULL);
+   if (buf)
+      *bindTarget = buf;
+}
+
 /**
  * Binds a buffer object to a binding point.
  *

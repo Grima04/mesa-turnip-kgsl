@@ -151,6 +151,10 @@ _mesa_BindBuffer_no_error(GLenum target, GLuint buffer);
 void GLAPIENTRY
 _mesa_BindBuffer(GLenum target, GLuint buffer);
 
+void
+_mesa_InternalBindElementBuffer(struct gl_context *ctx,
+                                struct gl_buffer_object *buf);
+
 void GLAPIENTRY
 _mesa_DeleteBuffers_no_error(GLsizei n, const GLuint * buffer);
 

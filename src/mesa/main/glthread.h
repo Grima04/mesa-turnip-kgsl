@@ -52,6 +52,12 @@
 struct gl_context;
 struct _mesa_HashTable;
 
+struct glthread_attrib_binding {
+   struct gl_buffer_object *buffer; /**< where non-VBO data was uploaded */
+   int offset;                      /**< offset to uploaded non-VBO data */
+   const void *original_pointer;    /**< restore this pointer after the draw */
+};
+
 struct glthread_vao {
    GLuint Name;
    GLuint CurrentElementBufferName;
