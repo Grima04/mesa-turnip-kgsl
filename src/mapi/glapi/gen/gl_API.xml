@@ -13286,6 +13286,19 @@
     </function>
 </category>
 
+<category name="GL_MESA_internal_functions">
+    <!-- Internal function for glthread to implement BufferSubData as a GPU copy. -->
+    <function name="InternalBufferSubDataCopyMESA" es2="2.0">
+        <param name="srcBuffer" type="GLintptr"/> <!-- "struct gl_buffer_object *" really -->
+        <param name="srcOffset" type="GLuint"/>
+        <param name="dstTargetOrName" type="GLuint"/>
+        <param name="dstOffset" type="GLintptr"/>
+        <param name="size" type="GLsizeiptr"/>
+        <param name="named" type="GLboolean"/>
+        <param name="ext_dsa" type="GLboolean"/>
+    </function>
+</category>
+
 <xi:include href="OES_EGL_image.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 <xi:include href="EXT_EGL_image_storage.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 

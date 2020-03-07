@@ -359,6 +359,11 @@ void GLAPIENTRY
 _mesa_CopyNamedBufferSubData(GLuint readBuffer, GLuint writeBuffer,
                              GLintptr readOffset, GLintptr writeOffset,
                              GLsizeiptr size);
+void GLAPIENTRY
+_mesa_InternalBufferSubDataCopyMESA(GLintptr srcBuffer, GLuint srcOffset,
+                                    GLuint dstTargetOrName, GLintptr dstOffset,
+                                    GLsizeiptr size, GLboolean named,
+                                    GLboolean ext_dsa);
 
 void * GLAPIENTRY
 _mesa_MapBufferRange_no_error(GLenum target, GLintptr offset,
