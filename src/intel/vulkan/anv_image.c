@@ -1499,12 +1499,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
 
    case ISL_AUX_STATE_COMPRESSED_CLEAR:
    case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
-      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
-         return ISL_AUX_USAGE_HIZ;
-      } else {
-         assert(image->planes[plane].aux_usage != ISL_AUX_USAGE_NONE);
-         return image->planes[plane].aux_usage;
-      }
+      return image->planes[plane].aux_usage;
 
    case ISL_AUX_STATE_RESOLVED:
       /* We can only use RESOLVED in read-only layouts because any write will
