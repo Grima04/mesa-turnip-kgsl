@@ -6172,14 +6172,16 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
                Operand(0u), get_arg(ctx, ctx->args->ac.front_face)).def(0).setHint(vcc);
       break;
    }
-   case nir_intrinsic_load_view_index:
-   case nir_intrinsic_load_layer_id: {
-      if (instr->intrinsic == nir_intrinsic_load_view_index && (ctx->stage & (sw_vs | sw_gs))) {
+   case nir_intrinsic_load_view_index: {
+      if (ctx->stage & (sw_vs | sw_gs | sw_tcs | sw_tes)) {
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
          bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.view_index)));
          break;
       }
 
+      /* fallthrough */
+   }
+   case nir_intrinsic_load_layer_id: {
       unsigned idx = nir_intrinsic_base(instr);
       bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
                  Operand(2u), bld.m0(get_arg(ctx, ctx->args->ac.prim_mask)), idx, 0);
