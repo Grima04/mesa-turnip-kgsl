@@ -2372,13 +2372,14 @@
         <glx rop="137"/>
     </function>
 
-    <function name="Disable" es1="1.0" es2="2.0">
+    <function name="Disable" es1="1.0" es2="2.0"
+              marshal_call_after="if (cap == GL_PRIMITIVE_RESTART || cap == GL_PRIMITIVE_RESTART_FIXED_INDEX) _mesa_glthread_set_prim_restart(ctx, cap, false);">
         <param name="cap" type="GLenum"/>
         <glx rop="138" handcode="client"/>
     </function>
 
     <function name="Enable" es1="1.0" es2="2.0"
-              marshal_call_after='if (cap == GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB) _mesa_glthread_disable(ctx, "Enable(DEBUG_OUTPUT_SYNCHRONOUS)");'>
+              marshal_call_after='if (cap == GL_PRIMITIVE_RESTART || cap == GL_PRIMITIVE_RESTART_FIXED_INDEX) { _mesa_glthread_set_prim_restart(ctx, cap, true); } else if (cap == GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB) { _mesa_glthread_disable(ctx, "Enable(DEBUG_OUTPUT_SYNCHRONOUS)"); }'>
         <param name="cap" type="GLenum"/>
         <glx rop="139" handcode="client"/>
     </function>

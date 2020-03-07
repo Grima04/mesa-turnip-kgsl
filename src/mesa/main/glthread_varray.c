@@ -31,6 +31,7 @@
 #include "main/mtypes.h"
 #include "main/hash.h"
 #include "main/dispatch.h"
+#include "main/varray.h"
 
 /* TODO:
  *   - Handle ARB_vertex_attrib_binding (incl. EXT_dsa and ARB_dsa)
@@ -140,10 +141,57 @@ get_vao(struct gl_context *ctx, const GLuint *vaobj)
    return ctx->GLThread.CurrentVAO;
 }
 
+static void
+update_primitive_restart(struct gl_context *ctx)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+
+   glthread->_PrimitiveRestart = glthread->PrimitiveRestart ||
+                                 glthread->PrimitiveRestartFixedIndex;
+   glthread->_RestartIndex[0] =
+      _mesa_get_prim_restart_index(glthread->PrimitiveRestartFixedIndex,
+                                   glthread->RestartIndex, 1);
+   glthread->_RestartIndex[1] =
+      _mesa_get_prim_restart_index(glthread->PrimitiveRestartFixedIndex,
+                                   glthread->RestartIndex, 2);
+   glthread->_RestartIndex[3] =
+      _mesa_get_prim_restart_index(glthread->PrimitiveRestartFixedIndex,
+                                   glthread->RestartIndex, 4);
+}
+
+void
+_mesa_glthread_set_prim_restart(struct gl_context *ctx, GLenum cap, bool value)
+{
+   switch (cap) {
+   case GL_PRIMITIVE_RESTART:
+      ctx->GLThread.PrimitiveRestart = value;
+      break;
+   case GL_PRIMITIVE_RESTART_FIXED_INDEX:
+      ctx->GLThread.PrimitiveRestartFixedIndex = value;
+      break;
+   }
+
+   update_primitive_restart(ctx);
+}
+
+void
+_mesa_glthread_PrimitiveRestartIndex(struct gl_context *ctx, GLuint index)
+{
+   ctx->GLThread.RestartIndex = index;
+   update_primitive_restart(ctx);
+}
+
 void
 _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
                            gl_vert_attrib attrib, bool enable)
 {
+   /* The primitive restart client state uses a special value. */
+   if (attrib == VERT_ATTRIB_PRIMITIVE_RESTART_NV) {
+      ctx->GLThread.PrimitiveRestart = enable;
+      update_primitive_restart(ctx);
+      return;
+   }
+
    if (attrib >= VERT_ATTRIB_MAX)
       return;
 

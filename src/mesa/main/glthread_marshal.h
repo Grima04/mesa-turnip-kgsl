@@ -399,6 +399,8 @@ _mesa_array_to_attrib(struct gl_context *ctx, GLenum array)
       return VERT_ATTRIB_COLOR1;
    case GL_POINT_SIZE_ARRAY_OES:
       return VERT_ATTRIB_POINT_SIZE;
+   case GL_PRIMITIVE_RESTART_NV:
+      return VERT_ATTRIB_PRIMITIVE_RESTART_NV;
    default:
       if (array >= GL_TEXTURE0 && array <= GL_TEXTURE7)
          return VERT_ATTRIB_TEX(array - GL_TEXTURE0);

@@ -43,6 +43,9 @@
  */
 #define MARSHAL_MAX_BATCHES 8
 
+/* Special value for glEnableClientState(GL_PRIMITIVE_RESTART_NV). */
+#define VERT_ATTRIB_PRIMITIVE_RESTART_NV -1
+
 #include <inttypes.h>
 #include <stdbool.h>
 #include "util/u_queue.h"
@@ -127,6 +130,13 @@ struct glthread_state
    /** Caps. */
    GLboolean SupportsBufferUploads;
 
+   /** Primitive restart state. */
+   bool PrimitiveRestart;
+   bool PrimitiveRestartFixedIndex;
+   bool _PrimitiveRestart;
+   GLuint RestartIndex;
+   GLuint _RestartIndex[4]; /**< Restart index for index_size = 1,2,4. */
+
    /** Vertex Array objects tracked by glthread independently of Mesa. */
    struct _mesa_HashTable *VAOs;
    struct glthread_vao *CurrentVAO;
@@ -162,6 +172,9 @@ void _mesa_glthread_DeleteVertexArrays(struct gl_context *ctx,
                                        GLsizei n, const GLuint *ids);
 void _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
                                     GLsizei n, GLuint *arrays);
+void _mesa_glthread_set_prim_restart(struct gl_context *ctx, GLenum cap,
+                                     bool value);
+void _mesa_glthread_PrimitiveRestartIndex(struct gl_context *ctx, GLuint index);
 void _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
                                 gl_vert_attrib attrib, bool enable);
 void _mesa_glthread_AttribDivisor(struct gl_context *ctx, const GLuint *vaobj,
