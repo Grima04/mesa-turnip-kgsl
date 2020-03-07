@@ -361,7 +361,7 @@ bi_print_clause(bi_clause *clause, FILE *fp)
         fprintf(fp, "\tid(%u)", clause->scoreboard_id);
 
         if (clause->dependencies) {
-                fprintf(fp, ", next-wait(");
+                fprintf(fp, ", wait(");
 
                 for (unsigned i = 0; i < 8; ++i) {
                         if (clause->dependencies & (1 << i))
