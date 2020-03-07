@@ -1734,9 +1734,10 @@ NVC0LoweringPass::handleCasExch(Instruction *cas, bool needCctl)
       // happen elsewhere in the universe.
       // Also, it sometimes returns the new value instead of the old one
       // under mysterious circumstances.
-      Value *dreg = bld.getSSA(8);
+      DataType ty = typeOfSize(typeSizeof(cas->dType) * 2);
+      Value *dreg = bld.getSSA(typeSizeof(ty));
       bld.setPosition(cas, false);
-      bld.mkOp2(OP_MERGE, TYPE_U64, dreg, cas->getSrc(1), cas->getSrc(2));
+      bld.mkOp2(OP_MERGE, ty, dreg, cas->getSrc(1), cas->getSrc(2));
       cas->setSrc(1, dreg);
       cas->setSrc(2, dreg);
    }
