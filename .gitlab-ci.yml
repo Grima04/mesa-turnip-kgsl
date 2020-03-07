@@ -133,7 +133,7 @@ x86_build:
 x86_test-gl:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test-gl "2020-02-14"
+    DEBIAN_TAG: &x86_test-gl "2020-03-11"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
