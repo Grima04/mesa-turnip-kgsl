@@ -308,11 +308,8 @@ typedef struct bi_block {
 
         /* If true, uses clauses; if false, uses instructions */
         bool scheduled;
-
-        union {
-                struct list_head instructions; /* pre-schedule, list of bi_instructions */
-                struct list_head clauses; /* list of bi_clause */
-        };
+        struct list_head instructions; /* pre-schedule, list of bi_instructions */
+        struct list_head clauses; /* list of bi_clause */
 
         /* Control flow graph */
         struct set *predecessors;
@@ -485,5 +482,9 @@ bir_dest_index(nir_dest *dst)
 bool bi_has_outmod(bi_instruction *ins);
 bool bi_has_source_mods(bi_instruction *ins);
 bool bi_is_src_swizzled(bi_instruction *ins, unsigned s);
+
+/* BIR passes */
+
+void bi_schedule(bi_context *ctx);
 
 #endif

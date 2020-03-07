@@ -3,6 +3,7 @@ bifrost_FILES := \
         bifrost/bifrost_compile.c \
         bifrost/bifrost_compile.h \
         bifrost/bifrost_tables.c \
+        bifrost/bi_schedule.c \
         bifrost/bi_print.c \
         bifrost/bi_print.h \
         bifrost/bi_quirks.c \

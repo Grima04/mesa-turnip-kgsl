@@ -607,6 +607,8 @@ bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned p
         }
 
         bi_print_shader(ctx, stdout);
+        bi_schedule(ctx);
+        bi_print_shader(ctx, stdout);
 
         ralloc_free(ctx);
 }
