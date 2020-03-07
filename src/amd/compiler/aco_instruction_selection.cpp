@@ -3334,6 +3334,29 @@ bool should_write_tcs_patch_output_to_vmem(isel_context *ctx, nir_intrinsic_inst
           (off != (tess_index_outer * 16u));
 }
 
+bool should_write_tcs_patch_output_to_lds(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
+{
+   unsigned off = nir_intrinsic_base(instr) * 4u;
+   nir_src *off_src = nir_get_io_offset_src(instr);
+
+   /* Indirect offset, we can't be sure if this is read or not, always write to LDS */
+   if (!nir_src_is_const(*off_src))
+      return true;
+
+   off += nir_src_as_uint(*off_src) * 16u;
+
+   uint64_t out_rd = per_vertex
+                     ? ctx->shader->info.outputs_read
+                     : ctx->shader->info.patch_outputs_read;
+   while (out_rd) {
+      unsigned slot = u_bit_scan64(&out_rd) + (per_vertex ? 0 : VARYING_SLOT_PATCH0);
+      if (off == shader_io_get_unique_index((gl_varying_slot) slot) * 16u)
+         return true;
+   }
+
+   return false;
+}
+
 void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
 {
    assert(ctx->stage == tess_control_hs || ctx->stage == vertex_tess_control_hs);
@@ -3347,8 +3370,8 @@ void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool 
 
    /* Only write to VMEM if the output is per-vertex or it's per-patch non tess factor */
    bool write_to_vmem = per_vertex || should_write_tcs_patch_output_to_vmem(ctx, instr);
-   /* TODO: Only write to LDS if the output is read by the shader, or it's per-patch tess factor */
-   bool write_to_lds = true;
+   /* Only write to LDS if the output is read by the shader, or it's per-patch tess factor */
+   bool write_to_lds = !write_to_vmem || should_write_tcs_patch_output_to_lds(ctx, instr, per_vertex);
 
    if (write_to_vmem) {
       std::pair<Temp, unsigned> vmem_offs = per_vertex
