@@ -198,14 +198,15 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
                          struct gl_vertex_array_object *vao,
                          GLuint index,
                          struct gl_buffer_object *vbo,
-                         GLintptr offset, GLsizei stride)
+                         GLintptr offset, GLsizei stride,
+                         bool offset_is_int32)
 {
    assert(index < ARRAY_SIZE(vao->BufferBinding));
    assert(!vao->SharedAndImmutable);
    struct gl_vertex_buffer_binding *binding = &vao->BufferBinding[index];
 
    if (ctx->Const.VertexBufferOffsetIsInt32 && (int)offset < 0 &&
-       vbo) {
+       !offset_is_int32 && vbo) {
       /* The offset will be interpreted as a signed int, so make sure
        * the user supplied offset is not negative (driver limitation).
        */
@@ -909,7 +910,7 @@ update_array(struct gl_context *ctx,
       stride : array->Format._ElementSize;
    _mesa_bind_vertex_buffer(ctx, vao, attrib,
                             obj, (GLintptr) ptr,
-                            effectiveStride);
+                            effectiveStride, false);
 }
 
 
@@ -2939,7 +2940,7 @@ vertex_array_vertex_buffer(struct gl_context *ctx,
    }
 
    _mesa_bind_vertex_buffer(ctx, vao, VERT_ATTRIB_GENERIC(bindingIndex),
-                            vbo, offset, stride);
+                            vbo, offset, stride, false);
 }
 
 
@@ -3104,7 +3105,7 @@ vertex_array_vertex_buffers(struct gl_context *ctx,
        */
       for (i = 0; i < count; i++)
          _mesa_bind_vertex_buffer(ctx, vao, VERT_ATTRIB_GENERIC(first + i),
-                                  NULL, 0, 16);
+                                  NULL, 0, 16, false);
 
       return;
    }
@@ -3182,7 +3183,7 @@ vertex_array_vertex_buffers(struct gl_context *ctx,
       }
 
       _mesa_bind_vertex_buffer(ctx, vao, VERT_ATTRIB_GENERIC(first + i),
-                               vbo, offsets[i], strides[i]);
+                               vbo, offsets[i], strides[i], false);
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->BufferObjects);

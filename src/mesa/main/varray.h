@@ -109,7 +109,8 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
                          struct gl_vertex_array_object *vao,
                          GLuint index,
                          struct gl_buffer_object *vbo,
-                         GLintptr offset, GLsizei stride);
+                         GLintptr offset, GLsizei stride,
+                         bool offset_is_int32);
 
 extern void GLAPIENTRY
 _mesa_VertexPointer_no_error(GLint size, GLenum type, GLsizei stride,
