@@ -271,6 +271,25 @@ for log2 in range(1, 7): # powers of two from 2 to 64
        (('iand@32', ('iadd@32', a, b_is_multiple), mask), ('iadd', ('iand', a, mask), b)),
    ])
 
+# To save space in the state tables, reduce to the set that is known to help.
+# Previously, this was range(1, 32).  In addition, a couple rules inside the
+# loop are commented out.  Revisit someday, probably after mesa/#2635 has some
+# resolution.
+for i in [1, 2, 16, 24]:
+    lo_mask = 0xffffffff >> i
+    hi_mask = (0xffffffff << i) & 0xffffffff
+
+    optimizations.extend([
+        # This pattern seems to only help in the soft-fp64 code.
+        (('ishl@32', ('iand', 'a@32', lo_mask), i), ('ishl', a, i)),
+#        (('ushr@32', ('iand', 'a@32', hi_mask), i), ('ushr', a, i)),
+#        (('ishr@32', ('iand', 'a@32', hi_mask), i), ('ishr', a, i)),
+
+        (('iand', ('ishl', 'a@32', i), hi_mask), ('ishl', a, i)),
+        (('iand', ('ushr', 'a@32', i), lo_mask), ('ushr', a, i)),
+#        (('iand', ('ishr', 'a@32', i), lo_mask), ('ushr', a, i)), # Yes, ushr is correct
+    ])
+
 optimizations.extend([
    # This is common for address calculations.  Reassociating may enable the
    # 'a<<c' to be CSE'd.  It also helps architectures that have an ISHLADD
@@ -738,8 +757,6 @@ optimizations.extend([
    (('ishr', a, 0), a),
    (('ushr', 0, a), 0),
    (('ushr', a, 0), a),
-   (('iand', 0xff, ('ushr@32', a, 24)), ('ushr', a, 24)),
-   (('iand', 0xffff, ('ushr@32', a, 16)), ('ushr', a, 16)),
    (('ior', ('ishl@16', a, b), ('ushr@16', a, ('iadd', 16, ('ineg', b)))), ('urol', a, b), '!options->lower_rotate'),
    (('ior', ('ishl@16', a, b), ('ushr@16', a, ('isub', 16, b))), ('urol', a, b), '!options->lower_rotate'),
    (('ior', ('ishl@32', a, b), ('ushr@32', a, ('iadd', 32, ('ineg', b)))), ('urol', a, b), '!options->lower_rotate'),
