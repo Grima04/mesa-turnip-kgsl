@@ -32,42 +32,42 @@ apt-get install -y --no-remove \
       automake \
       cmake \
       g++ \
+      gcc \
       git \
       git-lfs \
-      gcc \
       libexpat1 \
       libgbm-dev \
       libgles2-mesa-dev \
-      libpcre32-3 \
+      libllvm9 \
       libpcre3-dev \
-      libpng16-16 \
+      libpcre32-3 \
       libpng-dev \
+      libpng16-16 \
       libpython3.7 \
-      libvulkan1 \
       libvulkan-dev \
+      libvulkan1 \
       libwaffle-dev \
       libwayland-server0 \
       libxcb-keysyms1 \
       libxcb-keysyms1-dev \
       libxcb-xfixes0 \
-      libxkbcommon0 \
       libxkbcommon-dev \
-      libxrender1 \
+      libxkbcommon0 \
       libxrender-dev \
-      libllvm9 \
+      libxrender1 \
       make \
       meson \
       patch \
       pkg-config \
       python \
-      python3.7 \
-      python3.7-dev \
       python3-distutils \
       python3-mako \
       python3-numpy \
       python3-pil \
       python3-six \
       python3-yaml \
+      python3.7 \
+      python3.7-dev \
       qt5-default \
       qt5-qmake \
       waffle-utils \
@@ -118,7 +118,7 @@ apt-get purge -y \
       meson \
       patch \
       pkg-config \
-      python3.7-dev \
-      python3-distutils
+      python3-distutils \
+      python3.7-dev
 
 apt-get autoremove -y --purge

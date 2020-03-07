@@ -30,40 +30,40 @@ apt-get dist-upgrade -y
 apt-get install -y --no-remove \
       cmake \
       g++ \
+      gcc \
       git \
       git-lfs \
-      gcc \
       libexpat1 \
       libgbm-dev \
       libgles2-mesa-dev \
+      libllvm9 \
       liblz4-1 \
       liblz4-dev \
-      libpng16-16 \
       libpng-dev \
-      libvulkan1 \
+      libpng16-16 \
       libvulkan-dev \
+      libvulkan1 \
       libwayland-client0 \
       libwayland-server0 \
-      libxcb-ewmh2 \
       libxcb-ewmh-dev \
+      libxcb-ewmh2 \
       libxcb-keysyms1 \
       libxcb-keysyms1-dev \
       libxcb-randr0 \
       libxcb-xfixes0 \
-      libxkbcommon0 \
       libxkbcommon-dev \
-      libxrandr2 \
+      libxkbcommon0 \
       libxrandr-dev \
-      libxrender1 \
+      libxrandr2 \
       libxrender-dev \
-      libllvm9 \
+      libxrender1 \
       meson \
       patch \
       pkg-config \
+      python \
       python3-distutils \
       python3-pil \
       python3-yaml \
-      python \
       xauth \
       xvfb
 
