@@ -118,11 +118,11 @@ apt-get install -y --no-remove \
 
 # for 64bit windows cross-builds
 apt-get install -y --no-remove \
-    libz-mingw-w64-dev \
-    mingw-w64 \
-    wine \
-    wine32 \
-    wine64
+      libz-mingw-w64-dev \
+      mingw-w64 \
+      wine \
+      wine32 \
+      wine64
 
 # Debian's pkg-config wrapers for mingw are broken, and there's no sign that
 # they're going to be fixed, so we'll just have to fix it ourselves

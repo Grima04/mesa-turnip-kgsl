@@ -6,8 +6,8 @@ set -o xtrace
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get install -y \
-        ca-certificates \
-        gnupg \
+      ca-certificates \
+      gnupg
 
 # Upstream LLVM package repository
 apt-key add .gitlab-ci/container/llvm-snapshot.gpg.key
