@@ -140,7 +140,7 @@ x86_test-gl:
 x86_test-vk:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-03-25"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-03-27"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
