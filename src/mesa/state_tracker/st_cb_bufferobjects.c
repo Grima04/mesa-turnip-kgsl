@@ -494,6 +494,8 @@ st_access_flags_to_transfer_flags(GLbitfield access, bool wholeBuffer)
 
    if (access & MESA_MAP_NOWAIT_BIT)
       flags |= PIPE_TRANSFER_DONTBLOCK;
+   if (access & MESA_MAP_THREAD_SAFE_BIT)
+      flags |= PIPE_TRANSFER_THREAD_SAFE;
 
    return flags;
 }

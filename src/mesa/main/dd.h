@@ -70,6 +70,9 @@ struct _mesa_index_buffer;
  */
 #define MESA_MAP_NOWAIT_BIT       0x4000
 
+/* Mapping a buffer is allowed from any thread. */
+#define MESA_MAP_THREAD_SAFE_BIT  0x8000
+
 
 /**
  * Device driver function table.

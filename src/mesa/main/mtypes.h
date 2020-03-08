@@ -4126,6 +4126,12 @@ struct gl_constants
    /** When drivers are OK with mapped buffers during draw and other calls. */
    bool AllowMappedBuffersDuringExecution;
 
+   /**
+    * Whether buffer creation, unsynchronized mapping, unmapping, and
+    * deletion is thread-safe.
+    */
+   bool BufferCreateMapUnsynchronizedThreadSafe;
+
    /** GL_ARB_get_program_binary */
    GLuint NumProgramBinaryFormats;
 
