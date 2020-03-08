@@ -1,5 +1,5 @@
 # Copyright (c) 2019 Collabora Ltd
-# Copyright © 2019 Valve Corporation.
+# Copyright © 2019-2020 Valve Corporation.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -28,12 +28,14 @@ from enum import Enum, auto
 class TraceType(Enum):
     UNKNOWN = auto()
     APITRACE = auto()
+    APITRACE_DXGI = auto()
     RENDERDOC = auto()
     GFXRECONSTRUCT = auto()
     TESTTRACE = auto()
 
 _trace_type_info_map = {
     TraceType.APITRACE : ("apitrace", ".trace"),
+    TraceType.APITRACE_DXGI : ("apitrace-dxgi", ".trace-dxgi"),
     TraceType.RENDERDOC : ("renderdoc", ".rdc"),
     TraceType.GFXRECONSTRUCT : ("gfxreconstruct", ".gfxr"),
     TraceType.TESTTRACE : ("testtrace", ".testtrace")

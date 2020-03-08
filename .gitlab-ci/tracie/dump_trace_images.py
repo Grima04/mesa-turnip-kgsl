@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # Copyright (c) 2019 Collabora Ltd
-# Copyright © 2019 Valve Corporation.
+# Copyright © 2019-2020 Valve Corporation.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -48,8 +48,8 @@ def run_logged_command(cmd, env, log_path):
             logoutput.decode(errors='replace') +
             "[dump_traces_images] Process failed with error code: %d" % ret.returncode)
 
-def get_last_apitrace_frame_call(trace_path):
-    cmd = ["apitrace", "dump", "--calls=frame", str(trace_path)]
+def get_last_apitrace_frame_call(cmd_wrapper, trace_path):
+    cmd = cmd_wrapper + ["apitrace", "dump", "--calls=frame", str(trace_path)]
     ret = subprocess.run(cmd, stdout=subprocess.PIPE)
     for l in reversed(ret.stdout.decode(errors='replace').splitlines()):
         s = l.split(None, 1)
@@ -71,14 +71,14 @@ def get_last_gfxreconstruct_frame_call(trace_path):
                 return int(c[0])
     return -1
 
-def dump_with_apitrace(trace_path, calls, device_name):
+def dump_with_apitrace(retrace_cmd, trace_path, calls, device_name):
     outputdir = str(trace_path.parent / "test" / device_name)
     os.makedirs(outputdir, exist_ok=True)
     outputprefix = str(Path(outputdir) / trace_path.name) + "-"
     if len(calls) == 0:
-        calls = [str(get_last_apitrace_frame_call(trace_path))]
-    cmd = ["eglretrace", "--snapshot=" + ','.join(calls),
-           "--snapshot-prefix=" + outputprefix, str(trace_path)]
+        calls = [str(get_last_apitrace_frame_call(retrace_cmd[:-1], trace_path))]
+    cmd = retrace_cmd + ["--snapshot=" + ','.join(calls),
+                         "--snapshot-prefix=" + outputprefix, str(trace_path)]
     log_path = Path(outputdir) / (trace_path.name + ".log")
     run_logged_command(cmd, None, log_path)
 
@@ -137,7 +137,9 @@ def dump_from_trace(trace_path, calls, device_name):
     trace_type = trace_type_from_filename(trace_path.name)
     try:
         if trace_type == TraceType.APITRACE:
-            dump_with_apitrace(trace_path, calls, device_name)
+            dump_with_apitrace(["eglretrace"], trace_path, calls, device_name)
+        elif trace_type == TraceType.APITRACE_DXGI:
+            dump_with_apitrace(["wine", "d3dretrace"], trace_path, calls, device_name)
         elif trace_type == TraceType.RENDERDOC:
             dump_with_renderdoc(trace_path, calls, device_name)
         elif trace_type == TraceType.GFXRECONSTRUCT:

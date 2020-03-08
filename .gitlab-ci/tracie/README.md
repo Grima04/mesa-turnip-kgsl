@@ -152,3 +152,8 @@ To ensure that this layer can be found when running the trace you need
 to set `VK_LAYER_PATH` to point to the location of
 `VkLayer_screenshot.json` and `LD_LIBRARY_PATH` to point to the
 location of `libVkLayer_screenshot.so`.
+
+In the case of DXGI traces, the scripts require Wine, a recent version
+of DXVK installed in the default `WINEPREFIX`, and a recent binary
+version of apitrace for Windows which should be reachable through
+Windows' `PATH` environment variable.
