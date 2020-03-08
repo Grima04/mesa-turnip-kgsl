@@ -82,6 +82,7 @@ vlVdpVideoSurfaceCreate(VdpDevice device, VdpChromaType chroma_type,
 
    mtx_lock(&dev->mutex);
    memset(&p_surf->templat, 0, sizeof(p_surf->templat));
+   /* TODO: buffer_format should be selected to match chroma_type */
    p_surf->templat.buffer_format = pipe->screen->get_video_param
    (
       pipe->screen,
@@ -89,7 +90,6 @@ vlVdpVideoSurfaceCreate(VdpDevice device, VdpChromaType chroma_type,
       PIPE_VIDEO_ENTRYPOINT_BITSTREAM,
       PIPE_VIDEO_CAP_PREFERED_FORMAT
    );
-   assert(pipe_format_to_chroma_format(p_surf->templat.buffer_format) == ChromaToPipe(chroma_type));
    p_surf->templat.width = width;
    p_surf->templat.height = height;
    p_surf->templat.interlaced = pipe->screen->get_video_param
