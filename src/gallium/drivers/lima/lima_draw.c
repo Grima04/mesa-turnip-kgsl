@@ -825,6 +825,19 @@ lima_update_gp_uniform(struct lima_context *ctx)
 
    struct lima_job *job = lima_job_get(ctx);
 
+   if (lima_debug & LIMA_DEBUG_GP) {
+      float *vs_const_buff_f = vs_const_buff;
+      printf("gp uniforms:\n");
+      for (int i = 0; i < (size / sizeof(float)); i++) {
+         if ((i % 4) == 0)
+            printf("%4d:", i / 4);
+         printf(" %8.4f", vs_const_buff_f[i]);
+         if ((i % 4) == 3)
+            printf("\n");
+      }
+      printf("\n");
+   }
+
    lima_dump_command_stream_print(
       job->dump, vs_const_buff, size, true,
       "update gp uniform at va %x\n",
