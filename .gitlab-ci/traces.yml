@@ -1,6 +1,6 @@
 traces-db:
   repo: "https://gitlab.freedesktop.org/gfx-ci/tracie/traces-db"
-  commit: "fa92c25a1a5570f3119bf9bc56e310b0a3c711ac"
+  commit: "d3b1efe0cd69ef6ae40a29a14ed733ee0ba0cb4c"
 
 traces:
   - path: glmark2/desktop-blur-radius=5:effect=blur:passes=1:separable=true:windows=4.rdc
@@ -23,3 +23,7 @@ traces:
     expectations:
       - device: vk-amd-polaris10
         checksum: 351710942ea93d511cef39ae2d7c68da
+  - path: Wicked-Engine/Tests:Cloth_Physics_Test.trace-dxgi
+    expectations:
+      - device: vk-amd-polaris10
+        checksum: 6b6d27df609b8d086cc3335e6d103581
