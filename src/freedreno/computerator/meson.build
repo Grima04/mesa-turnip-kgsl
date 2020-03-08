@@ -56,6 +56,7 @@ computerator = executable(
   link_with : [
     libfreedreno_drm,
     libfreedreno_ir3,
+    libfreedreno_perfcntrs,
   ],
   dependencies : [
     dep_libdrm,

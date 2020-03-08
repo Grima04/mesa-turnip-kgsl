@@ -22,9 +22,13 @@
  */
 
 #include <getopt.h>
+#include <inttypes.h>
+#include <locale.h>
 #include <xf86drm.h>
 
 #include "util/u_math.h"
+
+#include "perfcntrs/freedreno_perfcntr.h"
 
 #include "main.h"
 
@@ -91,13 +95,14 @@ dump_hex(void *buf, int sz)
 	}
 }
 
-static const char *shortopts = "df:g:h";
+static const char *shortopts = "df:g:hp:";
 
 static const struct option longopts[] = {
 	{"disasm",   no_argument,       0, 'd'},
 	{"file",     required_argument, 0, 'f'},
 	{"groups",   required_argument, 0, 'g'},
 	{"help",     no_argument,       0, 'h'},
+	{"perfcntr", required_argument, 0, 'p'},
 	{0, 0, 0, 0}
 };
 
@@ -111,17 +116,100 @@ usage(const char *name)
 		"    -f, --file=FILE          read shader from file (instead of stdin)\n"
 		"    -g, --groups=X,Y,Z       use specified group size\n"
 		"    -h, --help               show this message\n"
+		"    -p, --perfcntr=LIST      sample specified performance counters (comma\n"
+		"                             separated list)\n"
 		,
 		name);
+}
+
+/* performance counter description: */
+static unsigned num_groups;
+static const struct fd_perfcntr_group *groups;
+
+/* Track enabled counters per group: */
+static unsigned *enabled_counters;
+
+static void
+setup_counter(const char *name, struct perfcntr *c)
+{
+	for (int i = 0; i < num_groups; i++) {
+		const struct fd_perfcntr_group *group = &groups[i];
+
+		for (int j = 0; j < group->num_countables; j++) {
+			const struct fd_perfcntr_countable *countable = &group->countables[j];
+
+			if (strcmp(name, countable->name) != 0)
+				continue;
+
+			/*
+			 * Allocate a counter to use to monitor the requested countable:
+			 */
+			if (enabled_counters[i] >= group->num_counters) {
+				errx(-1, "Too many counters selected in group: %s", group->name);
+			}
+
+			unsigned idx = enabled_counters[i]++;
+			const struct fd_perfcntr_counter *counter = &group->counters[idx];
+
+			/*
+			 * And initialize the perfcntr struct, pulling together the info
+			 * about selected counter and countable, to simplify life for the
+			 * backend:
+			 */
+			c->name           = name;
+			c->select_reg     = counter->select_reg;
+			c->counter_reg_lo = counter->counter_reg_lo;
+			c->counter_reg_hi = counter->counter_reg_hi;
+			c->selector       = countable->selector;
+
+			return;
+		}
+	}
+
+	errx(-1, "could not find countable: %s", name);
+}
+
+static struct perfcntr *
+parse_perfcntrs(uint32_t gpu_id, const char *perfcntrstr, unsigned *num_perfcntrs)
+{
+	struct perfcntr *counters = NULL;
+	char *cnames, *s;
+	unsigned cnt = 0;
+
+	groups = fd_perfcntrs(gpu_id, &num_groups);
+	enabled_counters = calloc(num_groups, sizeof(enabled_counters[0]));
+
+	cnames = strdup(perfcntrstr);
+	while ((s = strstr(cnames, ","))) {
+		char *name = cnames;
+		s[0] = '\0';
+		cnames = &s[1];
+
+		counters = realloc(counters, ++cnt * sizeof(counters[0]));
+		setup_counter(name, &counters[cnt-1]);
+	}
+
+	char * name = cnames;
+	counters = realloc(counters, ++cnt * sizeof(counters[0]));
+	setup_counter(name, &counters[cnt-1]);
+
+	*num_perfcntrs = cnt;
+
+	return counters;
 }
 
 int
 main(int argc, char **argv)
 {
 	FILE *in = stdin;
+	const char *perfcntrstr = NULL;
+	struct perfcntr *perfcntrs = NULL;
+	unsigned num_perfcntrs = 0;
 	bool disasm = false;
 	uint32_t grid[3] = {0};
 	int opt, ret;
+
+	setlocale(LC_NUMERIC, "en_US.UTF-8");
 
 	while ((opt = getopt_long_only(argc, argv, shortopts, longopts, NULL)) != -1) {
 		switch (opt) {
@@ -140,6 +228,9 @@ main(int argc, char **argv)
 			break;
 		case 'h':
 			goto usage;
+		case 'p':
+			perfcntrstr = optarg;
+			break;
 		default:
 			printf("unrecognized arg: %c\n", opt);
 			goto usage;
@@ -185,6 +276,14 @@ main(int argc, char **argv)
 
 	struct fd_submit *submit = fd_submit_new(pipe);
 
+	if (perfcntrstr) {
+		if (!backend->set_perfcntrs) {
+			err(1, "performance counters not supported");
+		}
+		perfcntrs = parse_perfcntrs(gpu_id, perfcntrstr, &num_perfcntrs);
+		backend->set_perfcntrs(backend, perfcntrs, num_perfcntrs);
+	}
+
 	backend->emit_grid(kernel, grid, submit);
 
 	fd_submit_flush(submit, -1, NULL, NULL);
@@ -196,6 +295,15 @@ main(int argc, char **argv)
 		printf("buf[%d]:\n", i);
 		dump_hex(map, kernel->buf_sizes[i] * 4);
 		dump_float(map, kernel->buf_sizes[i] * 4);
+	}
+
+	if (perfcntrstr) {
+		uint64_t results[num_perfcntrs];
+		backend->read_perfcntrs(backend, results);
+
+		for (unsigned i = 0; i < num_perfcntrs; i++) {
+			printf("%s:\t%'"PRIu64"\n", perfcntrs[i].name, results[i]);
+		}
 	}
 
 	return 0;

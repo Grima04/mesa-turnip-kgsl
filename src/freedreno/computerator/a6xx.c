@@ -40,8 +40,16 @@ struct a6xx_backend {
 
 	unsigned seqno;
 	struct fd_bo *control_mem;
+
+	struct fd_bo *query_mem;
+	const struct perfcntr *perfcntrs;
+	unsigned num_perfcntrs;
 };
 define_cast(backend, a6xx_backend);
+
+/*
+ * Data structures shared with GPU:
+ */
 
 /* This struct defines the layout of the fd6_context::control buffer: */
 struct fd6_control {
@@ -64,6 +72,26 @@ struct fd6_control {
 
 #define control_ptr(a6xx_backend, member)  \
 	(a6xx_backend)->control_mem, offsetof(struct fd6_control, member), 0, 0
+
+
+struct PACKED fd6_query_sample {
+	uint64_t start;
+	uint64_t result;
+	uint64_t stop;
+};
+
+
+/* offset of a single field of an array of fd6_query_sample: */
+#define query_sample_idx(a6xx_backend, idx, field)    \
+	(a6xx_backend)->query_mem,                        \
+	(idx * sizeof(struct fd6_query_sample)) +         \
+	offsetof(struct fd6_query_sample, field),         \
+	0, 0
+
+
+/*
+ * Backend implementation:
+ */
 
 static struct kernel *
 a6xx_assemble(struct backend *b, FILE *in)
@@ -307,6 +335,8 @@ cache_flush(struct fd_ringbuffer *ring, struct kernel *kernel)
 static void
 a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3], struct fd_submit *submit)
 {
+	struct ir3_kernel *ir3_kernel = to_ir3_kernel(kernel);
+	struct a6xx_backend *a6xx_backend = to_a6xx_backend(ir3_kernel->backend);
 	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(submit, 0,
 			FD_RINGBUFFER_PRIMARY | FD_RINGBUFFER_GROWABLE);
 
@@ -344,6 +374,34 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3], struct fd_submit *submit
 	OUT_RING(ring, 1);            /* HLSQ_CS_KERNEL_GROUP_Y */
 	OUT_RING(ring, 1);            /* HLSQ_CS_KERNEL_GROUP_Z */
 
+	if (a6xx_backend->num_perfcntrs > 0) {
+		a6xx_backend->query_mem = fd_bo_new(a6xx_backend->dev,
+			a6xx_backend->num_perfcntrs * sizeof(struct fd6_query_sample),
+			DRM_FREEDRENO_GEM_TYPE_KMEM, "query");
+
+		/* configure the performance counters to count the requested
+		 * countables:
+		 */
+		for (unsigned i = 0; i < a6xx_backend->num_perfcntrs; i++) {
+			const struct perfcntr *counter = &a6xx_backend->perfcntrs[i];
+
+			OUT_PKT4(ring, counter->select_reg, 1);
+			OUT_RING(ring, counter->selector);
+		}
+
+		OUT_PKT7(ring, CP_WAIT_FOR_IDLE, 0);
+
+		/* and snapshot the start values: */
+		for (unsigned i = 0; i < a6xx_backend->num_perfcntrs; i++) {
+			const struct perfcntr *counter = &a6xx_backend->perfcntrs[i];
+
+			OUT_PKT7(ring, CP_REG_TO_MEM, 3);
+			OUT_RING(ring, CP_REG_TO_MEM_0_64B |
+				CP_REG_TO_MEM_0_REG(counter->counter_reg_lo));
+			OUT_RELOCW(ring, query_sample_idx(a6xx_backend, i, start));
+		}
+	}
+
 	OUT_PKT7(ring, CP_EXEC_CS, 4);
 	OUT_RING(ring, 0x00000000);
 	OUT_RING(ring, CP_EXEC_CS_1_NGROUPS_X(grid[0]));
@@ -352,7 +410,54 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3], struct fd_submit *submit
 
 	OUT_PKT7(ring, CP_WAIT_FOR_IDLE, 0);
 
+	if (a6xx_backend->num_perfcntrs > 0) {
+		/* snapshot the end values: */
+		for (unsigned i = 0; i < a6xx_backend->num_perfcntrs; i++) {
+			const struct perfcntr *counter = &a6xx_backend->perfcntrs[i];
+
+			OUT_PKT7(ring, CP_REG_TO_MEM, 3);
+			OUT_RING(ring, CP_REG_TO_MEM_0_64B |
+				CP_REG_TO_MEM_0_REG(counter->counter_reg_lo));
+			OUT_RELOCW(ring, query_sample_idx(a6xx_backend, i, stop));
+		}
+
+		/* and compute the result: */
+		for (unsigned i = 0; i < a6xx_backend->num_perfcntrs; i++) {
+			/* result += stop - start: */
+			OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
+			OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE |
+					CP_MEM_TO_MEM_0_NEG_C);
+			OUT_RELOCW(ring, query_sample_idx(a6xx_backend, i, result));     /* dst */
+			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, result));      /* srcA */
+			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, stop));        /* srcB */
+			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, start));       /* srcC */
+		}
+	}
+
 	cache_flush(ring, kernel);
+}
+
+static void
+a6xx_set_perfcntrs(struct backend *b, const struct perfcntr *perfcntrs,
+		unsigned num_perfcntrs)
+{
+	struct a6xx_backend *a6xx_backend = to_a6xx_backend(b);
+
+	a6xx_backend->perfcntrs = perfcntrs;
+	a6xx_backend->num_perfcntrs = num_perfcntrs;
+}
+
+static void
+a6xx_read_perfcntrs(struct backend *b, uint64_t *results)
+{
+	struct a6xx_backend *a6xx_backend = to_a6xx_backend(b);
+
+	fd_bo_cpu_prep(a6xx_backend->query_mem, NULL, DRM_FREEDRENO_PREP_READ);
+	struct fd6_query_sample *samples = fd_bo_map(a6xx_backend->query_mem);
+
+	for (unsigned i = 0; i < a6xx_backend->num_perfcntrs; i++) {
+		results[i] = samples[i].result;
+	}
 }
 
 struct backend *
@@ -364,6 +469,8 @@ a6xx_init(struct fd_device *dev, uint32_t gpu_id)
 		.assemble = a6xx_assemble,
 		.disassemble = a6xx_disassemble,
 		.emit_grid = a6xx_emit_grid,
+		.set_perfcntrs = a6xx_set_perfcntrs,
+		.read_perfcntrs = a6xx_read_perfcntrs,
 	};
 
 	a6xx_backend->compiler = ir3_compiler_create(dev, gpu_id);

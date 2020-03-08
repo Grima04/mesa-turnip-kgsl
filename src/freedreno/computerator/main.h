@@ -46,12 +46,31 @@ struct kernel {
 	struct fd_bo *bufs[MAX_BUFS];
 };
 
+struct perfcntr {
+	const char *name;
+
+	/* for backend to configure/read the counter, describes
+	 * the selected counter:
+	 */
+	unsigned select_reg;
+	unsigned counter_reg_lo;
+	unsigned counter_reg_hi;
+	/* and selected countable:
+	 */
+	unsigned selector;
+};
+
 /* per-generation entry-points: */
 struct backend {
 	struct kernel *(*assemble)(struct backend *b, FILE *in);
 	void (*disassemble)(struct kernel *kernel, FILE *out);
 	void (*emit_grid)(struct kernel *kernel, uint32_t grid[3],
 			struct fd_submit *submit);
+
+	/* performance-counter API: */
+	void (*set_perfcntrs)(struct backend *b, const struct perfcntr *perfcntrs,
+			unsigned num_perfcntrs);
+	void (*read_perfcntrs)(struct backend *b, uint64_t *results);
 };
 
 #define define_cast(_from, _to)	\
