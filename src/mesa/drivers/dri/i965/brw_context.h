@@ -447,7 +447,6 @@ struct brw_vertex_buffer {
 };
 struct brw_vertex_element {
    const struct gl_array_attributes *glattrib;
-   const struct gl_vertex_buffer_binding *glbinding;
 
    int buffer;
    bool is_dual_slot;

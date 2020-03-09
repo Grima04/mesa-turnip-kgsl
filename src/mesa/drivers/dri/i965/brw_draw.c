@@ -336,12 +336,6 @@ brw_merge_inputs(struct brw_context *brw)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    const struct gl_context *ctx = &brw->ctx;
 
-   for (unsigned i = 0; i < VERT_ATTRIB_MAX; i++) {
-      struct brw_vertex_element *input = &brw->vb.inputs[i];
-      _mesa_draw_attrib_and_binding(ctx, i,
-                                    &input->glattrib, &input->glbinding);
-   }
-
    if (devinfo->gen < 8 && !devinfo->is_haswell) {
       /* Prior to Haswell, the hardware can't natively support GL_FIXED or
        * 2_10_10_10_REV vertex formats.  Set appropriate workaround flags.
