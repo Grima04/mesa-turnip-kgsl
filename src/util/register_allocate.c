@@ -78,8 +78,6 @@
 #include "util/bitset.h"
 #include "register_allocate.h"
 
-#define NO_REG ~0U
-
 struct ra_reg {
    BITSET_WORD *conflicts;
    unsigned int *conflict_list;
