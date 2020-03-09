@@ -232,18 +232,8 @@ bi_bitwise_op_name(enum bi_bitwise_op op)
 }
 
 static void
-bi_print_load(struct bi_load *load, FILE *fp)
-{
-        fprintf(fp, ".loc%u", load->location);
-
-        if (load->channels != 1)
-                fprintf(fp, ".v%u", load->channels);
-}
-
-static void
 bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
 {
-        bi_print_load(&load->load, fp);
         fprintf(fp, "%s", bi_interp_mode_name(load->interp_mode));
 
         if (load->reuse)
@@ -277,7 +267,9 @@ bi_print_branch(struct bi_branch *branch, FILE *fp)
 static void
 bi_print_writemask(bi_instruction *ins, FILE *fp)
 {
-        unsigned bytes_per_comp = nir_alu_type_get_type_size(ins->dest_type) / 8;
+        unsigned bits_per_comp = nir_alu_type_get_type_size(ins->dest_type);
+        assert(bits_per_comp);
+        unsigned bytes_per_comp = MAX2(bits_per_comp / 8, 1);
         unsigned comps = 16 / bytes_per_comp;
         unsigned smask = (1 << bytes_per_comp) - 1;
         fprintf(fp, ".");
@@ -307,8 +299,6 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 
         if (ins->type == BI_MINMAX)
                 fprintf(fp, "%s", bi_minmax_mode_name(ins->minmax));
-        else if (ins->type == BI_LOAD_ATTR || ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_UNIFORM)
-                bi_print_load(&ins->load, fp);
         else if (ins->type == BI_LOAD_VAR)
                 bi_print_load_vary(&ins->load_vary, fp);
         else if (ins->type == BI_BRANCH)

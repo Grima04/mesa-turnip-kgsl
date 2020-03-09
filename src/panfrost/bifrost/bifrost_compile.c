@@ -67,32 +67,42 @@ bi_mask_for_channels_32(unsigned i)
         return (1 << (4 * i)) - 1;
 }
 
-static void
-bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
+static bi_instruction
+bi_load(enum bi_class T, nir_intrinsic_instr *instr)
 {
-        bi_instruction ins = {
-                .type = BI_LOAD_VAR,
-                .load_vary = {
-                        .load = {
-                                .location = nir_intrinsic_base(instr),
-                                .channels = instr->num_components,
-                        },
-                        .interp_mode = BIFROST_INTERP_DEFAULT, /* TODO */
-                        .reuse = false, /* TODO */
-                        .flat = instr->intrinsic != nir_intrinsic_load_interpolated_input
-                },
-                .dest = bir_dest_index(&instr->dest),
-                .dest_type = nir_type_float | nir_dest_bit_size(instr->dest),
-                .writemask = bi_mask_for_channels_32(instr->num_components)
+        bi_instruction load = {
+                .type = T,
+                .writemask = bi_mask_for_channels_32(instr->num_components),
+                .src = { BIR_INDEX_CONSTANT },
+                .constant = { .u64 = nir_intrinsic_base(instr) },
         };
+
+        const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];
+
+        if (info->has_dest)
+                load.dest = bir_dest_index(&instr->dest);
+
+        if (info->has_dest && info->index_map[NIR_INTRINSIC_TYPE] > 0)
+                load.dest_type = nir_intrinsic_type(instr);
 
         nir_src *offset = nir_get_io_offset_src(instr);
 
         if (nir_src_is_const(*offset))
-                ins.load_vary.load.location += nir_src_as_uint(*offset);
+                load.constant.u64 += nir_src_as_uint(*offset);
         else
-                ins.src[0] = bir_src_index(offset);
+                load.src[0] = bir_src_index(offset);
 
+        return load;
+}
+
+static void
+bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        bi_instruction ins = bi_load(BI_LOAD_VAR, instr);
+        ins.load_vary.interp_mode = BIFROST_INTERP_DEFAULT; /* TODO */
+        ins.load_vary.reuse = false; /* TODO */
+        ins.load_vary.flat = instr->intrinsic != nir_intrinsic_load_interpolated_input;
+        ins.dest_type = nir_type_float | nir_dest_bit_size(instr->dest),
         bi_emit(ctx, ins);
 }
 
@@ -124,47 +134,13 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
         bi_schedule_barrier(ctx);
 }
 
-static struct bi_load
-bi_direct_load_for_instr(nir_intrinsic_instr *instr)
-{
-        nir_src *offset = nir_get_io_offset_src(instr);
-        assert(nir_src_is_const(*offset)); /* no indirects */
-
-        struct bi_load load = {
-                .location = nir_intrinsic_base(instr) + nir_src_as_uint(*offset),
-                .channels = instr->num_components
-        };
-
-        return load;
-}
-
-static void
-bi_emit_ld_attr(bi_context *ctx, nir_intrinsic_instr *instr)
-{
-        bi_instruction load = {
-                .type = BI_LOAD_ATTR,
-                .load = bi_direct_load_for_instr(instr),
-                .dest = bir_dest_index(&instr->dest),
-                .dest_type = nir_intrinsic_type(instr),
-                .writemask = bi_mask_for_channels_32(instr->num_components)
-        };
-
-        bi_emit(ctx, load);
-}
-
 static void
 bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
-        nir_src *offset = nir_get_io_offset_src(instr);
-        assert(nir_src_is_const(*offset)); /* no indirects */
-
-        bi_instruction address = {
-                .type = BI_LOAD_VAR_ADDRESS,
-                .load = bi_direct_load_for_instr(instr),
-                .dest_type = nir_intrinsic_type(instr),
-                .dest = bi_make_temp(ctx),
-                .writemask = bi_mask_for_channels_32(instr->num_components)
-        };
+        bi_instruction address = bi_load(BI_LOAD_VAR_ADDRESS, instr);
+        address.dest = bi_make_temp(ctx);
+        address.dest_type = nir_type_uint64;
+        address.writemask = (1 << 8) - 1;
 
         bi_instruction st = {
                 .type = BI_STORE_VAR,
@@ -184,19 +160,8 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 static void
 bi_emit_ld_uniform(bi_context *ctx, nir_intrinsic_instr *instr)
 {
-        /* TODO: Indirect access */
-
-        bi_instruction ld = {
-                .type = BI_LOAD_UNIFORM,
-                .load = bi_direct_load_for_instr(instr),
-                .dest = bir_dest_index(&instr->dest),
-                .dest_type = nir_intrinsic_type(instr),
-                .writemask = bi_mask_for_channels_32(instr->num_components),
-                .src = {
-                        BIR_INDEX_ZERO /* TODO: UBOs */
-                }
-        };
-
+        bi_instruction ld = bi_load(BI_LOAD_UNIFORM, instr);
+        ld.src[1] = BIR_INDEX_ZERO; /* TODO: UBO index */
         bi_emit(ctx, ld);
 }
 
@@ -213,7 +178,7 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                 if (ctx->stage == MESA_SHADER_FRAGMENT)
                         bi_emit_ld_vary(ctx, instr);
                 else if (ctx->stage == MESA_SHADER_VERTEX)
-                        bi_emit_ld_attr(ctx, instr);
+                        bi_emit(ctx, bi_load(BI_LOAD_ATTR, instr));
                 else {
                         unreachable("Unsupported shader stage");
                 }
