@@ -816,12 +816,15 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
              instr->opcode != aco_opcode::ds_swizzle_b32) {
             if (instr->opcode == aco_opcode::ds_write2_b32 || instr->opcode == aco_opcode::ds_read2_b32 ||
                 instr->opcode == aco_opcode::ds_write2_b64 || instr->opcode == aco_opcode::ds_read2_b64) {
-               if (offset % 4 == 0 &&
-                   ds->offset0 + (offset >> 2) <= 255 &&
-                   ds->offset1 + (offset >> 2) <= 255) {
+               unsigned mask = (instr->opcode == aco_opcode::ds_write2_b64 || instr->opcode == aco_opcode::ds_read2_b64) ? 0x7 : 0x3;
+               unsigned shifts = (instr->opcode == aco_opcode::ds_write2_b64 || instr->opcode == aco_opcode::ds_read2_b64) ? 3 : 2;
+
+               if ((offset & mask) == 0 &&
+                   ds->offset0 + (offset >> shifts) <= 255 &&
+                   ds->offset1 + (offset >> shifts) <= 255) {
                   instr->operands[i].setTemp(base);
-                  ds->offset0 += offset >> 2;
-                  ds->offset1 += offset >> 2;
+                  ds->offset0 += offset >> shifts;
+                  ds->offset1 += offset >> shifts;
                }
             } else {
                if (ds->offset0 + offset <= 65535) {
