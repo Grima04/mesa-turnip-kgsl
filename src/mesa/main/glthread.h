@@ -54,9 +54,9 @@ struct _mesa_HashTable;
 
 struct glthread_vao {
    GLuint Name;
-   bool HasUserPointer;
    GLuint CurrentElementBufferName;
    GLbitfield Enabled;
+   GLbitfield UserPointerMask;
 };
 
 /** A single batch of commands queued up for execution. */
@@ -133,6 +133,7 @@ void _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
                                     GLsizei n, GLuint *arrays);
 void _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
                                 gl_vert_attrib attrib, bool enable);
-void _mesa_glthread_AttribPointer(struct gl_context *ctx);
+void _mesa_glthread_AttribPointer(struct gl_context *ctx,
+                                  gl_vert_attrib attrib);
 
 #endif /* _GLTHREAD_H*/

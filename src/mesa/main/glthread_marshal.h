@@ -84,25 +84,29 @@ _mesa_glthread_has_non_vbo_vertices_or_indices(const struct gl_context *ctx)
    struct glthread_vao *vao = glthread->CurrentVAO;
 
    return ctx->API != API_OPENGL_CORE &&
-          (vao->CurrentElementBufferName == 0 || vao->HasUserPointer);
+          (vao->CurrentElementBufferName == 0 ||
+           (vao->UserPointerMask & vao->Enabled));
 }
 
 static inline bool
 _mesa_glthread_has_non_vbo_vertices(const struct gl_context *ctx)
 {
    const struct glthread_state *glthread = &ctx->GLThread;
+   const struct glthread_vao *vao = glthread->CurrentVAO;
 
-   return ctx->API != API_OPENGL_CORE && glthread->CurrentVAO->HasUserPointer;
+   return ctx->API != API_OPENGL_CORE &&
+          (vao->UserPointerMask & vao->Enabled);
 }
 
 static inline bool
 _mesa_glthread_has_non_vbo_vertices_or_indirect(const struct gl_context *ctx)
 {
    const struct glthread_state *glthread = &ctx->GLThread;
+   const struct glthread_vao *vao = glthread->CurrentVAO;
 
    return ctx->API != API_OPENGL_CORE &&
           (glthread->CurrentDrawIndirectBufferName == 0 ||
-           glthread->CurrentVAO->HasUserPointer);
+           (vao->UserPointerMask & vao->Enabled));
 }
 
 static inline bool
@@ -113,7 +117,8 @@ _mesa_glthread_has_non_vbo_vertices_or_indices_or_indirect(const struct gl_conte
 
    return ctx->API != API_OPENGL_CORE &&
           (glthread->CurrentDrawIndirectBufferName == 0 ||
-           vao->CurrentElementBufferName == 0 || vao->HasUserPointer);
+           vao->CurrentElementBufferName == 0 ||
+           (vao->UserPointerMask & vao->Enabled));
 }
 
 

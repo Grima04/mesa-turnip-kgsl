@@ -158,10 +158,13 @@ _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
 }
 
 void
-_mesa_glthread_AttribPointer(struct gl_context *ctx)
+_mesa_glthread_AttribPointer(struct gl_context *ctx, gl_vert_attrib attrib)
 {
    struct glthread_state *glthread = &ctx->GLThread;
+   struct glthread_vao *vao = glthread->CurrentVAO;
 
-   if (glthread->CurrentArrayBufferName == 0)
-      glthread->CurrentVAO->HasUserPointer = true;
+   if (glthread->CurrentArrayBufferName != 0)
+      vao->UserPointerMask &= ~(1u << attrib);
+   else
+      vao->UserPointerMask |= 1u << attrib;
 }
