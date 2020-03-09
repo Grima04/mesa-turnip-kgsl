@@ -2497,7 +2497,7 @@
         <param name="u" type="GLfloat"/>
     </function>
 
-    <function name="EvalCoord1fv" deprecated="3.1">
+    <function name="EvalCoord1fv" deprecated="3.1" exec="dynamic">
         <param name="u" type="const GLfloat *" count="1"/>
         <glx rop="152"/>
     </function>
@@ -2518,7 +2518,7 @@
         <param name="v" type="GLfloat"/>
     </function>
 
-    <function name="EvalCoord2fv" deprecated="3.1">
+    <function name="EvalCoord2fv" deprecated="3.1" exec="dynamic">
         <param name="u" type="const GLfloat *" count="2"/>
         <glx rop="154"/>
     </function>
