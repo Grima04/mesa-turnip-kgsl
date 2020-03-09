@@ -56,7 +56,6 @@ enum bi_class {
         BI_CONVERT,
         BI_CSEL,
         BI_DISCARD,
-        BI_EXTRACT,
         BI_FMA,
         BI_FREXP,
         BI_LOAD,
@@ -191,8 +190,7 @@ typedef struct {
         unsigned dest;
         unsigned src[BIR_SRC_COUNT];
 
-        /* If one of the sources has BIR_INDEX_CONSTANT... Also, for
-         * BI_EXTRACT, the component index is stored here. */
+        /* If one of the sources has BIR_INDEX_CONSTANT */
         union {
                 uint64_t u64;
                 uint32_t u32;
@@ -218,12 +216,11 @@ typedef struct {
         /* Source types if required by the class */
         nir_alu_type src_types[BIR_SRC_COUNT];
 
-        /* If the source type is 8-bit or 16-bit such that SIMD is possible, and
-         * the class has BI_SWIZZLABLE, this is a swizzle for the input. Swizzles
-         * in practice only occur with one-source arguments (conversions,
-         * dedicated swizzle ops) and as component selection on two-sources
-         * where it is unambiguous which is which. Bounds are 32/type_size. */
-        unsigned swizzle[4];
+        /* If the source type is 8-bit or 16-bit such that SIMD is possible,
+         * and the class has BI_SWIZZLABLE, this is a swizzle in the usual
+         * sense. On non-SIMD instructions, it can be used for component
+         * selection, so we don't have to special case extraction. */
+        uint8_t swizzle[BIR_SRC_COUNT][NIR_MAX_VEC_COMPONENTS];
 
         /* A class-specific op from which the actual opcode can be derived
          * (along with the above information) */

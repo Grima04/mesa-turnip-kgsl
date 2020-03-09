@@ -106,6 +106,9 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 .blend_location = nir_intrinsic_base(instr),
                 .src = {
                         bir_src_index(&instr->src[0])
+                },
+                .swizzle = {
+                        { 0, 1, 2, 3 }
                 }
         };
 
@@ -158,6 +161,9 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                 .src = {
                         address.dest,
                         bir_src_index(&instr->src[0])
+                },
+                .swizzle = {
+                        { 0, 1, 2, 3 }
                 }
         };
 

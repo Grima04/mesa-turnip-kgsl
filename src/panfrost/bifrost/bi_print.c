@@ -118,7 +118,6 @@ bi_class_name(enum bi_class cl)
         case BI_CONVERT: return "convert";
         case BI_CSEL: return "csel";
         case BI_DISCARD: return "discard";
-        case BI_EXTRACT: return "extract";
         case BI_FMA: return "fma";
         case BI_FREXP: return "frexp";
         case BI_LOAD: return "load";
@@ -209,17 +208,16 @@ bi_print_alu_type(nir_alu_type t, FILE *fp)
 }
 
 static void
-bi_print_swizzle(bi_instruction *ins, FILE *fp)
+bi_print_swizzle(bi_instruction *ins, unsigned src, FILE *fp)
 {
-        unsigned size = nir_alu_type_get_type_size(ins->dest_type);
-        unsigned count = 32 / size;
-        assert(size == 8 || size == 16);
+        unsigned size = MAX2(nir_alu_type_get_type_size(ins->dest_type), 8);
+        unsigned count = (size == 64) ? 1 : (32 / size);
 
         fprintf(fp, ".");
 
         for (unsigned u = 0; u < count; ++u) {
-                assert(ins->swizzle[u] < size);
-                fputc("xyzw"[ins->swizzle[u]], fp);
+                assert(ins->swizzle[src][u] < 4);
+                fputc("xyzw"[ins->swizzle[src][u]], fp);
         }
 }
 
@@ -318,8 +316,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         bi_foreach_src(ins, s) {
                 bi_print_src(fp, ins, s);
 
-                if (bi_is_src_swizzled(ins, s))
-                        bi_print_swizzle(ins, fp);
+                if (ins->src[s] && !(ins->src[s] & (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO)))
+                        bi_print_swizzle(ins, s, fp);
 
                 bool is_convert = ins->type == BI_CONVERT && s == 0;
                 bool is_branch = ins->type == BI_BRANCH && s < 2 && ins->branch.cond != BI_COND_ALWAYS;
