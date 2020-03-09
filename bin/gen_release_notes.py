@@ -64,7 +64,7 @@ TEMPLATE = Template(textwrap.dedent("""\
     %if not bugfix:
         Mesa ${next_version} is a new development release. People who are concerned
         with stability and reliability should stick with a previous release or
-        wait for Mesa ${version[:-1]}1.
+        wait for Mesa ${next_version[:-1]}1.
     %else:
         Mesa ${next_version} is a bug fix release which fixes bugs found since the ${version} release.
     %endif
