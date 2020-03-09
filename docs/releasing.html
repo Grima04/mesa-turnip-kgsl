@@ -18,14 +18,14 @@
 <h1>Releasing Process</h1>
 
 <ul>
-<li><a href="#overview">Overview</a>
-<li><a href="#schedule">Release schedule</a>
-<li><a href="#pickntest">Cherry-pick and test</a>
-<li><a href="#stagingbranch">Staging branch</a>
-<li><a href="#branch">Making a branchpoint</a>
-<li><a href="#release">Making a new release</a>
-<li><a href="#announce">Announce the release</a>
-<li><a href="#gitlab">Update Gitlab Issues</a>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#schedule">Release schedule</a></li>
+<li><a href="#pickntest">Cherry-pick and test</a></li>
+<li><a href="#stagingbranch">Staging branch</a></li>
+<li><a href="#branch">Making a branchpoint</a></li>
+<li><a href="#release">Making a new release</a></li>
+<li><a href="#announce">Announce the release</a></li>
+<li><a href="#gitlab">Update Gitlab Issues</a></li>
 </ul>
 
 
@@ -67,18 +67,18 @@ date and other details for individual releases.
 
 <h2>Feature releases</h2>
 <ul>
-<li>Available approximately every three months.
+<li>Available approximately every three months.</li>
 <li>Initial timeplan available 2-4 weeks before the planned branchpoint (rc1)
-on the mesa-announce@ mailing list.
+on the mesa-announce@ mailing list.</li>
 <li>Typically, the final release will happen after 4
 candidates. Additional ones may be needed in order to resolve blocking
-regressions, though.
+regressions, though.</li>
 </ul>
 
 <h2>Stable releases</h2>
 <ul>
-<li>Normally available once every two weeks.
-<li>Only the latest branch has releases. See note below.
+<li>Normally available once every two weeks.</li>
+<li>Only the latest branch has releases. See note below.</li>
 </ul>
 
 <p>
@@ -136,8 +136,8 @@ well contained. Thus it cannot affect more than one driver/subsystem.
 
 <p>Following developers have requested permanent exception</p>
 <ul>
-<li><em>Ilia Mirkin</em>
-<li><em>AMD team</em>
+<li><em>Ilia Mirkin</em></li>
+<li><em>AMD team</em></li>
 </ul>
 
 <p>The gitlab CI must pass.</p>
@@ -191,9 +191,9 @@ Date:   Wed Mar 1 18:11:10 2017 +0100
 <h2>Regression/functionality testing</h2>
 
 <ul>
-<li><em>no regressions should be observed for Piglit/dEQP/CTS/Vulkan on Intel platforms</em>
+<li><em>no regressions should be observed for Piglit/dEQP/CTS/Vulkan on Intel platforms</em></li>
 <li><em>no regressions should be observed for Piglit using the swrast, softpipe
-and llvmpipe drivers</em>
+and llvmpipe drivers</em></li>
 </ul>
 
 <h2 id="stagingbranch">Staging branch</h2>
@@ -282,9 +282,9 @@ So we do a quick 'touch test'
 </p>
 
 <ul>
-<li>meson dist
-<li>scons (from release tarball)
-<li>the produced binaries work
+<li>meson dist</li>
+<li>scons (from release tarball)</li>
+<li>the produced binaries work</li>
 </ul>
 
 <p>
