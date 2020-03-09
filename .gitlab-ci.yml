@@ -708,6 +708,7 @@ arm64_a306_gles2:
 
 # RADV CI
 .test-radv:
+  extends: .radv-rules
   stage: misc-tests
   variables:
     VK_DRIVER: radeon

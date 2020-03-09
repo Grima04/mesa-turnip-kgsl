@@ -116,3 +116,14 @@
       - src/lima/**/*
       when: on_success
     - when: never
+
+.radv-rules:
+  rules:
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+      - src/amd/**/*
+      - src/vulkan/**/*
+      when: on_success
+    - when: never
