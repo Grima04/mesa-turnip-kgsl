@@ -1492,7 +1492,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef coords[5];
    LLVMValueRef offsets[3] = { NULL };
-   LLVMValueRef explicit_lod = NULL, projector = NULL;
+   LLVMValueRef explicit_lod = NULL, projector = NULL, ms_index = NULL;
    struct lp_sampler_params params;
    struct lp_derivatives derivs;
    unsigned sample_key = 0;
@@ -1607,6 +1607,8 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
          break;
       }
       case nir_tex_src_ms_index:
+         sample_key |= LP_SAMPLER_FETCH_MS;
+         ms_index = cast_type(bld_base, get_src(bld_base, instr->src[i].src), nir_type_int, 32);
          break;
       default:
          assert(0);
@@ -1668,6 +1670,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    params.coords = coords;
    params.texel = texel;
    params.lod = explicit_lod;
+   params.ms_index = ms_index;
    bld_base->tex(bld_base, &params);
    assign_dest(bld_base, &instr->dest, texel);
 }

@@ -2456,6 +2456,7 @@ emit_fetch_texels( struct lp_build_tgsi_soa_context *bld,
    LLVMValueRef explicit_lod = NULL;
    LLVMValueRef coords[5];
    LLVMValueRef offsets[3] = { NULL };
+   LLVMValueRef ms_index = NULL;
    struct lp_sampler_params params;
    enum lp_sampler_lod_property lod_property = LP_SAMPLER_LOD_SCALAR;
    unsigned dims, i;
@@ -2517,6 +2518,13 @@ emit_fetch_texels( struct lp_build_tgsi_soa_context *bld,
       explicit_lod = lp_build_emit_fetch(&bld->bld_base, inst, 0, 3);
       lod_property = lp_build_lod_property(&bld->bld_base, inst, 0);
    }
+
+   if (target == TGSI_TEXTURE_2D_MSAA ||
+       target == TGSI_TEXTURE_2D_ARRAY_MSAA) {
+      sample_key |= LP_SAMPLER_FETCH_MS;
+      ms_index = lp_build_emit_fetch(&bld->bld_base, inst, 0, 3);
+   }
+
    /*
     * XXX: for real msaa support, the w component (or src2.x for sample_i_ms)
     * would be the sample index.
@@ -2557,6 +2565,7 @@ emit_fetch_texels( struct lp_build_tgsi_soa_context *bld,
    params.derivs = NULL;
    params.lod = explicit_lod;
    params.texel = texel;
+   params.ms_index = ms_index;
 
    bld->sampler->emit_tex_sample(bld->sampler,
                                  bld->bld_base.base.gallivm,
