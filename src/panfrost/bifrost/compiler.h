@@ -63,7 +63,6 @@ enum bi_class {
         BI_LOAD_ATTR,
         BI_LOAD_VAR,
         BI_LOAD_VAR_ADDRESS,
-        BI_MAKE_VEC,
         BI_MINMAX,
         BI_MOV,
         BI_SHIFT,
@@ -206,6 +205,14 @@ typedef struct {
 
         /* Round mode (requires BI_ROUNDMODE) */
         enum bifrost_roundmode roundmode;
+
+        /* Writemask (bit for each affected byte). This is quite restricted --
+         * ALU ops can only write to a single channel (exception: <32 in which
+         * you can write to 32/N contiguous aligned channels). Load/store can
+         * only write to all channels at once, in a sense. But it's still
+         * better to use this generic form than have synthetic ops flying
+         * about, since we're not essentially vector for RA purposes. */
+        uint16_t writemask;
 
         /* Destination type. Usually the type of the instruction
          * itself, but if sources and destination have different

@@ -60,6 +60,13 @@ emit_jump(bi_context *ctx, nir_jump_instr *instr)
         bi_block_add_successor(ctx->current_block, branch->branch.target);
 }
 
+/* Gets a bytemask for a complete vecN write */
+static unsigned
+bi_mask_for_channels_32(unsigned i)
+{
+        return (1 << (4 * i)) - 1;
+}
+
 static void
 bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -76,6 +83,7 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                 },
                 .dest = bir_dest_index(&instr->dest),
                 .dest_type = nir_type_float | nir_dest_bit_size(instr->dest),
+                .writemask = bi_mask_for_channels_32(instr->num_components)
         };
 
         nir_src *offset = nir_get_io_offset_src(instr);
@@ -137,7 +145,8 @@ bi_emit_ld_attr(bi_context *ctx, nir_intrinsic_instr *instr)
                 .type = BI_LOAD_ATTR,
                 .load = bi_direct_load_for_instr(instr),
                 .dest = bir_dest_index(&instr->dest),
-                .dest_type = nir_intrinsic_type(instr)
+                .dest_type = nir_intrinsic_type(instr),
+                .writemask = bi_mask_for_channels_32(instr->num_components)
         };
 
         bi_emit(ctx, load);
@@ -153,7 +162,8 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                 .type = BI_LOAD_VAR_ADDRESS,
                 .load = bi_direct_load_for_instr(instr),
                 .dest_type = nir_intrinsic_type(instr),
-                .dest = bi_make_temp(ctx)
+                .dest = bi_make_temp(ctx),
+                .writemask = bi_mask_for_channels_32(instr->num_components)
         };
 
         bi_instruction st = {
@@ -181,6 +191,7 @@ bi_emit_ld_uniform(bi_context *ctx, nir_intrinsic_instr *instr)
                 .load = bi_direct_load_for_instr(instr),
                 .dest = bir_dest_index(&instr->dest),
                 .dest_type = nir_intrinsic_type(instr),
+                .writemask = bi_mask_for_channels_32(instr->num_components),
                 .src = {
                         BIR_INDEX_ZERO /* TODO: UBOs */
                 }
@@ -237,6 +248,7 @@ emit_load_const(bi_context *ctx, nir_load_const_instr *instr)
                 .type = BI_MOV,
                 .dest = bir_ssa_index(&instr->def),
                 .dest_type = instr->def.bit_size | nir_type_uint,
+                .writemask = (1 << (instr->def.bit_size / 8)) - 1,
                 .src = {
                         BIR_INDEX_CONSTANT
                 },
@@ -614,7 +626,6 @@ bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned p
 
         bi_print_shader(ctx, stdout);
         bi_schedule(ctx);
-        bi_print_shader(ctx, stdout);
 
         ralloc_free(ctx);
 }

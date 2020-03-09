@@ -125,7 +125,6 @@ bi_class_name(enum bi_class cl)
         case BI_LOAD_ATTR: return "load_attr";
         case BI_LOAD_VAR: return "load_var";
         case BI_LOAD_VAR_ADDRESS: return "load_var_address";
-        case BI_MAKE_VEC: return "make_vec";
         case BI_MINMAX: return "minmax";
         case BI_MOV: return "mov";
         case BI_SHIFT: return "shift";
@@ -275,6 +274,25 @@ bi_print_branch(struct bi_branch *branch, FILE *fp)
         fprintf(fp, "%s", bi_cond_name(branch->cond));
 }
 
+static void
+bi_print_writemask(bi_instruction *ins, FILE *fp)
+{
+        unsigned bytes_per_comp = nir_alu_type_get_type_size(ins->dest_type) / 8;
+        unsigned comps = 16 / bytes_per_comp;
+        unsigned smask = (1 << bytes_per_comp) - 1;
+        fprintf(fp, ".");
+
+        for (unsigned i = 0; i < comps; ++i) {
+                unsigned masked = (ins->writemask >> (i * bytes_per_comp)) & smask;
+                if (!masked)
+                        continue;
+
+                assert(masked == smask);
+                assert(i < 4);
+                fputc("xyzw"[i], fp);
+        }
+}
+
 void
 bi_print_instruction(bi_instruction *ins, FILE *fp)
 {
@@ -311,6 +329,10 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 
         fprintf(fp, " ");
         bi_print_index(fp, ins, ins->dest);
+
+        if (ins->dest)
+                bi_print_writemask(ins, fp);
+
         fprintf(fp, ", ");
 
         bi_foreach_src(ins, s) {
