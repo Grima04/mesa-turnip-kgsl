@@ -9383,6 +9383,36 @@ static void emit_streamout(isel_context *ctx, unsigned stream)
 
 } /* end namespace */
 
+void fix_ls_vgpr_init_bug(isel_context *ctx, Pseudo_instruction *startpgm)
+{
+   assert(ctx->shader->info.stage == MESA_SHADER_VERTEX);
+   Builder bld(ctx->program, ctx->block);
+   constexpr unsigned hs_idx = 1u;
+   Builder::Result hs_thread_count = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                                              get_arg(ctx, ctx->args->merged_wave_info),
+                                              Operand((8u << 16) | (hs_idx * 8u)));
+   Temp ls_has_nonzero_hs_threads = bool_to_vector_condition(ctx, hs_thread_count.def(1).getTemp());
+
+   /* If there are no HS threads, SPI mistakenly loads the LS VGPRs starting at VGPR 0. */
+
+   Temp instance_id = bld.sop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                               get_arg(ctx, ctx->args->ac.instance_id),
+                               get_arg(ctx, ctx->args->rel_auto_id),
+                               ls_has_nonzero_hs_threads);
+   Temp rel_auto_id = bld.sop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                               get_arg(ctx, ctx->args->rel_auto_id),
+                               get_arg(ctx, ctx->args->ac.tcs_rel_ids),
+                               ls_has_nonzero_hs_threads);
+   Temp vertex_id = bld.sop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                             get_arg(ctx, ctx->args->ac.vertex_id),
+                             get_arg(ctx, ctx->args->ac.tcs_patch_id),
+                             ls_has_nonzero_hs_threads);
+
+   ctx->arg_temps[ctx->args->ac.instance_id.arg_index] = instance_id;
+   ctx->arg_temps[ctx->args->rel_auto_id.arg_index] = rel_auto_id;
+   ctx->arg_temps[ctx->args->ac.vertex_id.arg_index] = vertex_id;
+}
+
 void split_arguments(isel_context *ctx, Pseudo_instruction *startpgm)
 {
    /* Split all arguments except for the first (ring_offsets) and the last
@@ -9518,6 +9548,10 @@ void select_program(Program *program,
          /* needs to be after init_context() for FS */
          Pseudo_instruction *startpgm = add_startpgm(&ctx);
          append_logical_start(ctx.block);
+
+         if (unlikely(args->options->has_ls_vgpr_init_bug && ctx.stage == vertex_tess_control_hs))
+            fix_ls_vgpr_init_bug(&ctx, startpgm);
+
          split_arguments(&ctx, startpgm);
       }
 
