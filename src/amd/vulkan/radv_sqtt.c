@@ -587,7 +587,7 @@ radv_get_thread_trace(struct radv_queue *queue,
 					"buffer size is %d KB.\n",
 					expected_size, available_size);
 			fprintf(stderr, "Please update the buffer size with "
-					"RADV_THREAD_TRACE_BUFER_SIZE=<size_in_bytes>\n");
+					"RADV_THREAD_TRACE_BUFFER_SIZE=<size_in_bytes>\n");
 			return false;
 		}
 
