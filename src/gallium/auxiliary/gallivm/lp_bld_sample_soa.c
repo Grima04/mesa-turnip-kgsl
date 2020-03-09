@@ -2616,6 +2616,7 @@ lp_build_sample_general(struct lp_build_sample_context *bld,
 static void
 lp_build_fetch_texel(struct lp_build_sample_context *bld,
                      unsigned texture_unit,
+                     LLVMValueRef ms_index,
                      const LLVMValueRef *coords,
                      LLVMValueRef explicit_lod,
                      const LLVMValueRef *offsets,
@@ -2715,6 +2716,18 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
                             lp_build_get_mip_offsets(bld, ilevel));
    }
 
+   if (bld->fetch_ms) {
+      LLVMValueRef num_samples;
+      num_samples = bld->dynamic_state->num_samples(bld->dynamic_state, bld->gallivm,
+                                                    bld->context_ptr, texture_unit);
+      out1 = lp_build_cmp(int_coord_bld, PIPE_FUNC_LESS, ms_index, int_coord_bld->zero);
+      out_of_bounds = lp_build_or(int_coord_bld, out_of_bounds, out1);
+      out1 = lp_build_cmp(int_coord_bld, PIPE_FUNC_GEQUAL, ms_index, lp_build_broadcast_scalar(int_coord_bld, num_samples));
+      out_of_bounds = lp_build_or(int_coord_bld, out_of_bounds, out1);
+      offset = lp_build_add(int_coord_bld, offset,
+                            lp_build_mul(int_coord_bld, bld->sample_stride, ms_index));
+   }
+
    offset = lp_build_andnot(int_coord_bld, offset, out_of_bounds);
 
    lp_build_fetch_rgba_soa(bld->gallivm,
@@ -2781,6 +2794,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
                          const LLVMValueRef *offsets,
                          const struct lp_derivatives *derivs, /* optional */
                          LLVMValueRef lod, /* optional */
+                         LLVMValueRef ms_index, /* optional */
                          LLVMValueRef texel_out[4])
 {
    unsigned target = static_texture_state->target;
@@ -2797,7 +2811,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
    enum lp_sampler_op_type op_type;
    LLVMValueRef lod_bias = NULL;
    LLVMValueRef explicit_lod = NULL;
-   boolean op_is_tex, op_is_lodq, op_is_gather;
+   boolean op_is_tex, op_is_lodq, op_is_gather, fetch_ms;
 
    if (0) {
       enum pipe_format fmt = static_texture_state->format;
@@ -2810,6 +2824,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
                     LP_SAMPLER_LOD_CONTROL_SHIFT;
    op_type = (sample_key & LP_SAMPLER_OP_TYPE_MASK) >>
                  LP_SAMPLER_OP_TYPE_SHIFT;
+   fetch_ms = !!(sample_key & LP_SAMPLER_FETCH_MS);
 
    op_is_tex = op_type == LP_SAMPLER_OP_TEXTURE;
    op_is_lodq = op_type == LP_SAMPLER_OP_LODQ;
@@ -3006,6 +3021,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
       bld.num_lods = num_quads;
    }
 
+   bld.fetch_ms = fetch_ms;
    if (op_is_gather)
       bld.gather_comp = (sample_key & LP_SAMPLER_GATHER_COMP_MASK) >> LP_SAMPLER_GATHER_COMP_SHIFT;
    bld.lodf_type = type;
@@ -3056,6 +3072,10 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
                                           context_ptr, texture_index);
    bld.mip_offsets = dynamic_state->mip_offsets(dynamic_state, gallivm,
                                                 context_ptr, texture_index);
+
+   if (fetch_ms)
+      bld.sample_stride = lp_build_broadcast_scalar(&bld.int_coord_bld, dynamic_state->sample_stride(dynamic_state, gallivm,
+                                                                                                     context_ptr, texture_index));
    /* Note that mip_offsets is an array[level] of offsets to texture images */
 
    if (dynamic_state->cache_ptr && thread_data_ptr) {
@@ -3128,7 +3148,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
    }
 
    else if (op_type == LP_SAMPLER_OP_FETCH) {
-      lp_build_fetch_texel(&bld, texture_index, newcoords,
+      lp_build_fetch_texel(&bld, texture_index, ms_index, newcoords,
                            lod, offsets,
                            texel_out);
    }
@@ -3454,6 +3474,7 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
    LLVMValueRef coords[5];
    LLVMValueRef offsets[3] = { NULL };
    LLVMValueRef lod = NULL;
+   LLVMValueRef ms_index = NULL;
    LLVMValueRef context_ptr;
    LLVMValueRef thread_data_ptr = NULL;
    LLVMValueRef texel_out[4];
@@ -3495,6 +3516,9 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
    }
    if (sample_key & LP_SAMPLER_SHADOW) {
       coords[4] = LLVMGetParam(function, num_param++);
+   }
+   if (sample_key & LP_SAMPLER_FETCH_MS) {
+      ms_index = LLVMGetParam(function, num_param++);
    }
    if (sample_key & LP_SAMPLER_OFFSETS) {
       for (i = 0; i < num_offsets; i++) {
@@ -3538,6 +3562,7 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
                             offsets,
                             deriv_ptr,
                             lod,
+                            ms_index,
                             texel_out);
 
    LLVMBuildAggregateRet(gallivm->builder, texel_out, 4);
@@ -3631,6 +3656,9 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
       if (sample_key & LP_SAMPLER_SHADOW) {
          arg_types[num_param++] = LLVMTypeOf(coords[0]);
       }
+      if (sample_key & LP_SAMPLER_FETCH_MS) {
+         arg_types[num_param++] = LLVMTypeOf(params->ms_index);
+      }
       if (sample_key & LP_SAMPLER_OFFSETS) {
          for (i = 0; i < num_offsets; i++) {
             arg_types[num_param++] = LLVMTypeOf(offsets[0]);
@@ -3691,6 +3719,9 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
    }
    if (sample_key & LP_SAMPLER_SHADOW) {
       args[num_args++] = coords[4];
+   }
+   if (sample_key & LP_SAMPLER_FETCH_MS) {
+      args[num_args++] = params->ms_index;
    }
    if (sample_key & LP_SAMPLER_OFFSETS) {
       for (i = 0; i < num_offsets; i++) {
@@ -3792,6 +3823,7 @@ lp_build_sample_soa(const struct lp_static_texture_state *static_texture_state,
                                params->offsets,
                                params->derivs,
                                params->lod,
+                               params->ms_index,
                                params->texel);
    }
 }
