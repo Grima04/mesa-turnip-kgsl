@@ -3339,6 +3339,10 @@ bool should_write_tcs_patch_output_to_lds(isel_context *ctx, nir_intrinsic_instr
    unsigned off = nir_intrinsic_base(instr) * 4u;
    nir_src *off_src = nir_get_io_offset_src(instr);
 
+   /* When none of the appropriate outputs are read, we are OK to never write to LDS */
+   if (per_vertex ? ctx->shader->info.outputs_read == 0U : ctx->shader->info.patch_outputs_read == 0u)
+      return false;
+
    /* Indirect offset, we can't be sure if this is read or not, always write to LDS */
    if (!nir_src_is_const(*off_src))
       return true;
