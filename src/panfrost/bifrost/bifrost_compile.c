@@ -548,6 +548,14 @@ bi_optimize_nir(nir_shader *nir)
         /* Take us out of SSA */
         NIR_PASS(progress, nir, nir_lower_locals_to_regs);
         NIR_PASS(progress, nir, nir_convert_from_ssa, true);
+
+        /* We're a primary scalar architecture but there's enough vector that
+         * we use a vector IR so let's not also deal with scalar hacks on top
+         * of the vector hacks */
+
+        NIR_PASS(progress, nir, nir_move_vec_src_uses_to_dest);
+        NIR_PASS(progress, nir, nir_lower_vec_to_movs);
+        NIR_PASS(progress, nir, nir_opt_dce);
 }
 
 void
