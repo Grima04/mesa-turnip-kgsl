@@ -1238,6 +1238,38 @@ struct mali_texture_descriptor {
         uint32_t unknown7;
 } __attribute__((packed));
 
+/* While Midgard texture descriptors are variable length, Bifrost descriptors
+ * are fixed like samplers with more pointers to expand if necessary */
+
+struct bifrost_texture_descriptor {
+        unsigned format_unk : 4; /* 2 */
+        enum mali_texture_type type : 2;
+        unsigned format_unk2 : 16; /* 0 */
+        enum mali_format format : 8;
+        unsigned srgb : 1;
+        unsigned format_unk3 : 1; /* 0 */
+
+        uint16_t width; /* MALI_POSITIVE */
+        uint16_t height; /* MALI_POSITIVE */
+
+        /* OpenGL swizzle */
+        unsigned swizzle : 12;
+        unsigned unk0 : 4; /* 1 */
+        uint8_t levels : 8; /* Number of levels-1 if mipmapped, 0 if not */
+        unsigned unk1 : 4;
+
+        unsigned levels_unk : 24; /* 0 */
+        unsigned level_2 : 8; /* Number of levels, again? */
+
+        mali_ptr payload;
+
+        uint16_t array_size;
+        uint16_t unk4;
+
+        uint16_t depth;
+        uint16_t unk5;
+} __attribute__((packed));
+
 /* filter_mode */
 
 #define MALI_SAMP_MAG_NEAREST (1 << 0)
