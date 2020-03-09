@@ -1082,11 +1082,12 @@ struct mali_vertex_tiler_postfix {
          */
         u64 uniform_buffers;
 
-        /* This is a pointer to an array of pointers to the texture
+        /* On Bifrost, this is a pointer to an array of bifrost_texture_descriptor.
+         * On Midgard, this is a pointer to an array of pointers to the texture
          * descriptors, number of pointers bounded by number of textures. The
          * indirection is needed to accomodate varying numbers and sizes of
          * texture descriptors */
-        u64 texture_trampoline;
+        u64 textures;
 
         /* For OpenGL, from what I've seen, this is intimately connected to
          * texture_meta. cwabbott says this is not the case under Vulkan, hence
@@ -1329,6 +1330,35 @@ struct mali_sampler_descriptor {
 
         uint32_t zero2;
         float border_color[4];
+} __attribute__((packed));
+
+/* Bifrost sampler descriptors look pretty similar */
+
+#define BIFROST_SAMP_MIN_NEAREST        (1)
+#define BIFROST_SAMP_MAG_LINEAR         (1)
+
+struct bifrost_sampler_descriptor {
+        uint8_t unk1;
+
+        enum mali_wrap_mode wrap_s : 4;
+        enum mali_wrap_mode wrap_t : 4;
+        enum mali_wrap_mode wrap_r : 4;
+        uint8_t unk8 : 4;
+
+        uint8_t unk2 : 3;
+        uint8_t min_filter : 1;
+        uint8_t norm_coords : 1;
+        uint8_t zero1 : 1;
+        uint8_t mip_filter : 1;
+        uint8_t mag_filter : 1;
+
+        int16_t min_lod;
+        int16_t max_lod;
+        int8_t zero2;
+        int8_t zero3;
+
+        uint32_t zero4;
+        uint32_t zero5;
 } __attribute__((packed));
 
 /* viewport0/viewport1 form the arguments to glViewport. viewport1 is
