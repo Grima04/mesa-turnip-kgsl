@@ -172,6 +172,8 @@ LP_LLVM_TEXTURE_MEMBER(base_ptr,   LP_JIT_TEXTURE_BASE, TRUE)
 LP_LLVM_TEXTURE_MEMBER(row_stride, LP_JIT_TEXTURE_ROW_STRIDE, FALSE)
 LP_LLVM_TEXTURE_MEMBER(img_stride, LP_JIT_TEXTURE_IMG_STRIDE, FALSE)
 LP_LLVM_TEXTURE_MEMBER(mip_offsets, LP_JIT_TEXTURE_MIP_OFFSETS, FALSE)
+LP_LLVM_TEXTURE_MEMBER(num_samples, LP_JIT_TEXTURE_NUM_SAMPLES, TRUE)
+LP_LLVM_TEXTURE_MEMBER(sample_stride, LP_JIT_TEXTURE_SAMPLE_STRIDE, TRUE)
 
 
 /**
@@ -401,6 +403,8 @@ lp_llvm_sampler_soa_create(const struct lp_sampler_static_state *static_state)
    sampler->dynamic_state.base.row_stride = lp_llvm_texture_row_stride;
    sampler->dynamic_state.base.img_stride = lp_llvm_texture_img_stride;
    sampler->dynamic_state.base.mip_offsets = lp_llvm_texture_mip_offsets;
+   sampler->dynamic_state.base.num_samples = lp_llvm_texture_num_samples;
+   sampler->dynamic_state.base.sample_stride = lp_llvm_texture_sample_stride;
    sampler->dynamic_state.base.min_lod = lp_llvm_sampler_min_lod;
    sampler->dynamic_state.base.max_lod = lp_llvm_sampler_max_lod;
    sampler->dynamic_state.base.lod_bias = lp_llvm_sampler_lod_bias;

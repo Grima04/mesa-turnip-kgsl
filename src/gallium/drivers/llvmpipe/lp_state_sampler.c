@@ -268,6 +268,8 @@ prepare_shader_sampling(
          unsigned num_layers = tex->depth0;
          unsigned first_level = 0;
          unsigned last_level = 0;
+         unsigned sample_stride = 0;
+         unsigned num_samples = tex->nr_samples;
 
          if (!lp_tex->dt) {
             /* regular texture - setup array of mipmap level offsets */
@@ -335,7 +337,8 @@ prepare_shader_sampling(
                                  shader_type,
                                  i,
                                  width0, tex->height0, num_layers,
-                                 first_level, last_level, 0, 0,
+                                 first_level, last_level,
+                                 num_samples, sample_stride,
                                  addr,
                                  row_stride, img_stride, mip_offsets);
       }

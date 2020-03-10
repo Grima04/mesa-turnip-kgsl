@@ -52,6 +52,8 @@ create_jit_texture_type(struct gallivm_state *gallivm)
    elem_types[LP_JIT_TEXTURE_WIDTH]  =
    elem_types[LP_JIT_TEXTURE_HEIGHT] =
    elem_types[LP_JIT_TEXTURE_DEPTH] =
+   elem_types[LP_JIT_TEXTURE_NUM_SAMPLES] =
+   elem_types[LP_JIT_TEXTURE_SAMPLE_STRIDE] =
    elem_types[LP_JIT_TEXTURE_FIRST_LEVEL] =
    elem_types[LP_JIT_TEXTURE_LAST_LEVEL] = LLVMInt32TypeInContext(lc);
    elem_types[LP_JIT_TEXTURE_BASE] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
@@ -90,6 +92,12 @@ create_jit_texture_type(struct gallivm_state *gallivm)
    LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, mip_offsets,
                           gallivm->target, texture_type,
                           LP_JIT_TEXTURE_MIP_OFFSETS);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, num_samples,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_NUM_SAMPLES);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, sample_stride,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_SAMPLE_STRIDE);
    LP_CHECK_STRUCT_SIZE(struct lp_jit_texture,
                         gallivm->target, texture_type);
    return texture_type;

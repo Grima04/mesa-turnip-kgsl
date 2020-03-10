@@ -60,6 +60,8 @@ struct lp_jit_texture
    uint32_t first_level;
    uint32_t last_level;
    uint32_t mip_offsets[LP_MAX_TEXTURE_LEVELS];
+   uint32_t num_samples;
+   uint32_t sample_stride;
 };
 
 
@@ -99,6 +101,8 @@ enum {
    LP_JIT_TEXTURE_FIRST_LEVEL,
    LP_JIT_TEXTURE_LAST_LEVEL,
    LP_JIT_TEXTURE_MIP_OFFSETS,
+   LP_JIT_TEXTURE_NUM_SAMPLES,
+   LP_JIT_TEXTURE_SAMPLE_STRIDE,
    LP_JIT_TEXTURE_NUM_FIELDS  /* number of fields above */
 };
 
