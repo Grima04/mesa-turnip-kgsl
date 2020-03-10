@@ -474,6 +474,105 @@ lower_vulkan_resource_index(nir_builder *b,
    nir_instr_remove(&instr->instr);
 }
 
+static void
+lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
+                        struct v3dv_pipeline *pipeline,
+                        const struct v3dv_pipeline_layout *layout)
+{
+   nir_ssa_def *index = NULL;
+   unsigned base_index = 0;
+   unsigned array_elements = 1;
+   nir_tex_src *src = &instr->src[src_idx];
+   bool is_sampler = src->src_type == nir_tex_src_sampler_deref;
+
+   /* We compute first the offsets */
+   nir_deref_instr *deref = nir_instr_as_deref(src->src.ssa->parent_instr);
+   while (deref->deref_type != nir_deref_type_var) {
+      assert(deref->parent.is_ssa);
+      nir_deref_instr *parent =
+         nir_instr_as_deref(deref->parent.ssa->parent_instr);
+
+      assert(deref->deref_type == nir_deref_type_array);
+
+      if (nir_src_is_const(deref->arr.index) && index == NULL) {
+         /* We're still building a direct index */
+         base_index += nir_src_as_uint(deref->arr.index) * array_elements;
+      } else {
+         if (index == NULL) {
+            /* We used to be direct but not anymore */
+            index = nir_imm_int(b, base_index);
+            base_index = 0;
+         }
+
+         index = nir_iadd(b, index,
+                          nir_imul(b, nir_imm_int(b, array_elements),
+                                   nir_ssa_for_src(b, deref->arr.index, 1)));
+      }
+
+      array_elements *= glsl_get_length(parent->type);
+
+      deref = parent;
+   }
+
+   if (index)
+      index = nir_umin(b, index, nir_imm_int(b, array_elements - 1));
+
+   /* We have the offsets, we apply them, rewriting the source or removing
+    * instr if needed
+    */
+   if (index) {
+      nir_instr_rewrite_src(&instr->instr, &src->src,
+                            nir_src_for_ssa(index));
+
+      src->src_type = is_sampler ?
+         nir_tex_src_sampler_offset :
+         nir_tex_src_texture_offset;
+   } else {
+      nir_tex_instr_remove_src(instr, src_idx);
+   }
+
+   uint32_t set = deref->var->data.descriptor_set;
+   uint32_t binding = deref->var->data.binding;
+   struct v3dv_descriptor_set_layout *set_layout = layout->set[set].layout;
+   struct v3dv_descriptor_set_binding_layout *binding_layout =
+      &set_layout->binding[binding];
+
+   int desc_index =
+      descriptor_map_add(is_sampler ?
+                         &pipeline->sampler_map : &pipeline->texture_map,
+                         deref->var->data.descriptor_set,
+                         deref->var->data.binding,
+                         deref->var->data.index,
+                         binding_layout->array_size) + base_index;
+   if (is_sampler)
+      instr->sampler_index = desc_index;
+   else
+      instr->texture_index = desc_index;
+}
+
+static bool
+lower_sampler(nir_builder *b, nir_tex_instr *instr,
+              struct v3dv_pipeline *pipeline,
+              const struct v3dv_pipeline_layout *layout)
+{
+   int texture_idx =
+      nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);
+
+   if (texture_idx >= 0)
+      lower_tex_src_to_offset(b, instr, texture_idx, pipeline, layout);
+
+   int sampler_idx =
+      nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
+
+   if (sampler_idx >= 0)
+      lower_tex_src_to_offset(b, instr, sampler_idx, pipeline, layout);
+
+   if (texture_idx < 0 && sampler_idx < 0)
+      return false;
+
+   return true;
+}
+
 static bool
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                 struct v3dv_pipeline *pipeline,
@@ -508,6 +607,10 @@ lower_impl(nir_function_impl *impl,
       nir_foreach_instr_safe(instr, block) {
          b.cursor = nir_before_instr(instr);
          switch (instr->type) {
+         case nir_instr_type_tex:
+            progress |=
+               lower_sampler(&b, nir_instr_as_tex(instr), pipeline, layout);
+            break;
          case nir_instr_type_intrinsic:
             progress |=
                lower_intrinsic(&b, nir_instr_as_intrinsic(instr), pipeline, layout);

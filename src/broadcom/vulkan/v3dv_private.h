@@ -945,6 +945,9 @@ struct v3dv_pipeline {
    struct v3dv_descriptor_map ubo_map;
    struct v3dv_descriptor_map ssbo_map;
 
+   struct v3dv_descriptor_map sampler_map;
+   struct v3dv_descriptor_map texture_map;
+
    /* FIXME: this bo is another candidate to data to be uploaded using a
     * resource manager, instead of a individual bo
     */
