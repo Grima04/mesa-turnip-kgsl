@@ -349,15 +349,10 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         bi_foreach_src(ins, s) {
                 bi_print_src(fp, ins, s);
 
-                if (ins->src[s] && !(ins->src[s] & (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO)))
-                        bi_print_swizzle(ins, s, fp);
-
-                bool is_convert = ins->type == BI_CONVERT && s == 0;
-                bool is_branch = ins->type == BI_BRANCH && s < 2 && ins->branch.cond != BI_COND_ALWAYS;
-                bool is_csel = ins->type == BI_CSEL && s < 2;
-
-                if (is_convert || is_branch || is_csel)
+                if (ins->src[s] && !(ins->src[s] & (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO))) {
                         bi_print_alu_type(ins->src_types[s], fp);
+                        bi_print_swizzle(ins, s, fp);
+                }
 
                 if (s < BIR_SRC_COUNT)
                         fprintf(fp, ", ");
