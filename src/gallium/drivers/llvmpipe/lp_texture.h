@@ -90,6 +90,7 @@ struct llvmpipe_resource
 
    unsigned id;  /**< temporary, for debugging */
 
+   unsigned sample_stride;
 #ifdef DEBUG
    /** for linked list */
    struct llvmpipe_resource *prev, *next;

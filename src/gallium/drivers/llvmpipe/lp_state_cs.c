@@ -880,6 +880,7 @@ lp_csctx_set_sampler_views(struct lp_cs_context *csctx,
                      jit_tex->row_stride[j] = lp_tex->row_stride[j];
                      jit_tex->img_stride[j] = lp_tex->img_stride[j];
                   }
+                  jit_tex->sample_stride = lp_tex->sample_stride;
 
                   if (res->target == PIPE_TEXTURE_1D_ARRAY ||
                       res->target == PIPE_TEXTURE_2D_ARRAY ||
@@ -1076,7 +1077,7 @@ lp_csctx_set_cs_images(struct lp_cs_context *csctx,
 
             jit_image->row_stride = lp_res->row_stride[image->u.tex.level];
             jit_image->img_stride = lp_res->img_stride[image->u.tex.level];
-            jit_image->sample_stride = 0;
+            jit_image->sample_stride = lp_res->sample_stride;
             jit_image->base = (uint8_t *)jit_image->base + mip_offset;
          } else {
             unsigned view_blocksize = util_format_get_blocksize(image->format);

@@ -76,6 +76,8 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
    unsigned depth = pt->depth0;
    uint64_t total_size = 0;
    unsigned layers = pt->array_size;
+   unsigned num_samples = util_res_sample_count(pt);
+
    /* XXX:
     * This alignment here (same for displaytarget) was added for the purpose of
     * ARB_map_buffer_alignment. I am not convinced it's needed for non-buffer
@@ -165,6 +167,9 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
       height = u_minify(height, 1);
       depth = u_minify(depth, 1);
    }
+
+   lpr->sample_stride = total_size;
+   total_size *= num_samples;
 
    if (allocate) {
       lpr->tex_data = align_malloc(total_size, mip_align);

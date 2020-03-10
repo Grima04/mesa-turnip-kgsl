@@ -283,6 +283,8 @@ prepare_shader_sampling(
                assert(last_level <= res->last_level);
                addr = lp_tex->tex_data;
 
+               sample_stride = lp_tex->sample_stride;
+
                for (j = first_level; j <= last_level; j++) {
                   mip_offsets[j] = lp_tex->mip_offsets[j];
                   row_stride[j] = lp_tex->row_stride[j];
@@ -443,7 +445,7 @@ prepare_shader_images(
 
                row_stride = lp_img->row_stride[view->u.tex.level];
                img_stride = lp_img->img_stride[view->u.tex.level];
-               sample_stride = 0;
+               sample_stride = lp_img->sample_stride;
                addr = (uint8_t *)addr + mip_offset;
             }
             else {
