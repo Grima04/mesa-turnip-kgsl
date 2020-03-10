@@ -49,7 +49,6 @@ static const nir_shader_compiler_options vs_nir_options = {
    .lower_sub = true,
    .lower_flrp32 = true,
    .lower_flrp64 = true,
-   .lower_ftrunc = true,
    /* could be implemented by clamp */
    .lower_fsat = true,
    .lower_bitops = true,
@@ -123,6 +122,7 @@ lima_program_optimize_vs_nir(struct nir_shader *s)
       NIR_PASS(progress, s, nir_opt_cse);
       NIR_PASS(progress, s, nir_opt_peephole_select, 8, true, true);
       NIR_PASS(progress, s, nir_opt_algebraic);
+      NIR_PASS(progress, s, lima_nir_lower_ftrunc);
       NIR_PASS(progress, s, nir_opt_constant_folding);
       NIR_PASS(progress, s, nir_opt_undef);
       NIR_PASS(progress, s, nir_opt_loop_unroll,
@@ -132,14 +132,8 @@ lima_program_optimize_vs_nir(struct nir_shader *s)
    } while (progress);
 
    NIR_PASS_V(s, nir_lower_int_to_float);
-   /* Run opt_algebraic between int_to_float and bool_to_float because
-    * int_to_float emits ftrunc, and ftrunc lowering generates bool ops
-    */
-   do {
-      progress = false;
-      NIR_PASS(progress, s, nir_opt_algebraic);
-   } while (progress);
-
+   /* int_to_float pass generates ftrunc, so lower it */
+   NIR_PASS(progress, s, lima_nir_lower_ftrunc);
    NIR_PASS_V(s, nir_lower_bool_to_float);
 
    NIR_PASS_V(s, nir_copy_prop);
