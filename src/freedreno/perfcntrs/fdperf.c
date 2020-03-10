@@ -28,6 +28,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <ftw.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1084,6 +1085,8 @@ main(int argc, char **argv)
 	}
 
 	dev.groups = calloc(dev.ngroups, sizeof(struct counter_group));
+
+	setlocale(LC_NUMERIC, "en_US.UTF-8");
 
 	setup_counter_groups(groups);
 	restore_counter_groups();
