@@ -26,18 +26,11 @@ dEQP-GLES2.functional.shaders.random.all_features.fragment.55
 dEQP-GLES2.functional.shaders.random.trigonometric.fragment.1
 dEQP-GLES2.functional.shaders.random.trigonometric.fragment.69
 
-# Driver bugs causing GPU errors
-dEQP-GLES2.functional.shaders.loops.while_constant_iterations.nested_sequence_vertex
-dEQP-GLES2.functional.shaders.loops.while_constant_iterations.conditional_body_vertex
-dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.conditional_continue_vertex
-dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.double_continue_vertex
-
 # Hangs / OOM
 dEQP-GLES2.functional.shaders.indexing.varying_array.vec4_dynamic_loop_write_static_read
 dEQP-GLES2.functional.shaders.indexing.varying_array.vec4_dynamic_loop_write_dynamic_read
 dEQP-GLES2.functional.shaders.indexing.varying_array.vec4_dynamic_loop_write_static_loop_read
 dEQP-GLES2.functional.shaders.indexing.varying_array.vec4_dynamic_loop_write_dynamic_loop_read
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_dynamic_loop_write_dynamic_read_vertex
 
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_dynamic_loop_write_static_read_vertex
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_dynamic_loop_write_dynamic_read_vertex

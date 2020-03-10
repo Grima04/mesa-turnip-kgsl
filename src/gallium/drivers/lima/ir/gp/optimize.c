@@ -171,6 +171,34 @@ dead_code_eliminate(gpir_compiler *comp)
          }
       }
    }
+
+   /* Kill all the writes to regs that are never read. All the known
+    * instances of these are coming from the cycle-breaking register
+    * created in out-of-SSA. See resolve_parallel_copy() in nir_from_ssa.c
+    * Since we kill redundant movs when we translate nir into gpir, it
+    * results in this reg being written, but never read.
+    */
+   BITSET_WORD *regs = rzalloc_array(comp, BITSET_WORD, comp->cur_reg);
+   list_for_each_entry(gpir_block, block, &comp->block_list, list) {
+      list_for_each_entry(gpir_node, node, &block->node_list, list) {
+         if (node->op != gpir_op_load_reg)
+            continue;
+         gpir_load_node *load = gpir_node_to_load(node);
+         BITSET_SET(regs, load->reg->index);
+      }
+   }
+
+   list_for_each_entry(gpir_block, block, &comp->block_list, list) {
+      list_for_each_entry_safe(gpir_node, node, &block->node_list, list) {
+         if (node->op != gpir_op_store_reg)
+            continue;
+         gpir_store_node *store = gpir_node_to_store(node);
+         if (!BITSET_TEST(regs, store->reg->index))
+            gpir_node_delete(node);
+      }
+   }
+
+   ralloc_free(regs);
 }
 
 bool
