@@ -338,7 +338,7 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
 }
 
 static int
-sysval_for_instr(nir_instr *instr, unsigned *dest)
+sysval_for_instr(nir_instr *instr, nir_dest *dest)
 {
         nir_intrinsic_instr *intr;
         nir_dest *dst = NULL;
@@ -368,7 +368,7 @@ sysval_for_instr(nir_instr *instr, unsigned *dest)
         }
 
         if (dest && dst)
-                *dest = nir_dest_index(dst);
+                *dest = *dst;
 
         return sysval;
 }
@@ -1371,11 +1371,13 @@ static void
 emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
                 unsigned nr_components, unsigned offset)
 {
-        unsigned dest = 0;
+        nir_dest nir_dest;
 
         /* Figure out which uniform this is */
-        int sysval = sysval_for_instr(instr, &dest);
+        int sysval = sysval_for_instr(instr, &nir_dest);
         void *val = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);
+
+        unsigned dest = nir_dest_index(&nir_dest);
 
         if (dest_override >= 0)
                 dest = dest_override;
