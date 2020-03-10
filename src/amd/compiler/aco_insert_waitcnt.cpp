@@ -247,7 +247,7 @@ struct wait_ctx {
    bool pending_s_buffer_store = false; /* GFX10 workaround */
 
    wait_imm barrier_imm[barrier_count];
-   uint16_t barrier_events[barrier_count]; /* use wait_event notion */
+   uint16_t barrier_events[barrier_count] = {}; /* use wait_event notion */
 
    std::map<PhysReg,wait_entry> gpr_map;
 
