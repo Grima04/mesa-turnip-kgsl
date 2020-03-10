@@ -658,9 +658,9 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       pCreateInfo->pColorBlendState;
 
-   key->logicop_func = (cb_info->logicOpEnable == VK_FALSE ?
-                        PIPE_LOGICOP_COPY :
-                        vk_to_pipe_logicop[cb_info->logicOp]);
+   key->logicop_func = cb_info && cb_info->logicOpEnable == VK_TRUE ?
+                       vk_to_pipe_logicop[cb_info->logicOp] :
+                       PIPE_LOGICOP_COPY;
 
    const VkPipelineMultisampleStateCreateInfo *ms_info =
       pCreateInfo->pMultisampleState;
