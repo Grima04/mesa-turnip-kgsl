@@ -226,6 +226,7 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
       elem_types[LP_JIT_CTX_IMAGES] = LLVMArrayType(image_type,
                                                     PIPE_MAX_SHADER_IMAGES);
       elem_types[LP_JIT_CTX_ALPHA_REF] = LLVMFloatTypeInContext(lc);
+      elem_types[LP_JIT_CTX_SAMPLE_MASK] =
       elem_types[LP_JIT_CTX_STENCIL_REF_FRONT] =
       elem_types[LP_JIT_CTX_STENCIL_REF_BACK] = LLVMInt32TypeInContext(lc);
       elem_types[LP_JIT_CTX_U8_BLEND_COLOR] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
@@ -277,6 +278,9 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
       LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, num_ssbos,
                              gallivm->target, context_type,
                              LP_JIT_CTX_NUM_SSBOS);
+      LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, sample_mask,
+                             gallivm->target, context_type,
+                             LP_JIT_CTX_SAMPLE_MASK);
       LP_CHECK_STRUCT_SIZE(struct lp_jit_context,
                            gallivm->target, context_type);
 

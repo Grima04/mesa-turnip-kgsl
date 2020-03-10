@@ -166,6 +166,8 @@ struct lp_jit_context
 
    const uint32_t *ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
    int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+
+   uint32_t sample_mask;
 };
 
 
@@ -187,6 +189,7 @@ enum {
    LP_JIT_CTX_VIEWPORTS,
    LP_JIT_CTX_SSBOS,
    LP_JIT_CTX_NUM_SSBOS,
+   LP_JIT_CTX_SAMPLE_MASK,
    LP_JIT_CTX_COUNT
 };
 
@@ -229,6 +232,9 @@ enum {
 
 #define lp_jit_context_num_ssbos(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_NUM_SSBOS, "num_ssbos")
+
+#define lp_jit_context_sample_mask(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_SAMPLE_MASK, "sample_mask")
 
 struct lp_jit_thread_data
 {
