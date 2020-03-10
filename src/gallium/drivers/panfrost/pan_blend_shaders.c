@@ -181,7 +181,7 @@ panfrost_compile_blend_shader(
 
         /* Compile the built shader */
 
-        midgard_program program;
+        panfrost_program program;
         midgard_compile_shader_nir(shader, &program, true, rt, screen->gpu_id, false);
 
         /* Allow us to patch later */

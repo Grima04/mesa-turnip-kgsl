@@ -27,7 +27,7 @@ libpanfrost_util_files = files(
 libpanfrost_util = static_library(
   'panfrost_util',
   [libpanfrost_util_files],
-  include_directories : [inc_common],
+  include_directories : [inc_common, inc_panfrost_hw],
   c_args : [c_vis_args, no_override_init_args],
   cpp_args : [cpp_vis_args],
   build_by_default : false,

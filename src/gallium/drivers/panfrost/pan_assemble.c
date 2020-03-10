@@ -60,7 +60,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         /* Call out to Midgard compiler given the above NIR */
 
-        midgard_program program = {
+        panfrost_program program = {
                 .alpha_ref = state->alpha_state.ref_value
         };
 
