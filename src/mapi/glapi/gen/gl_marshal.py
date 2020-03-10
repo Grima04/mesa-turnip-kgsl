@@ -261,14 +261,6 @@ class PrintCode(gl_XML.gl_print_base):
 
             self.validate_count_or_fallback(func)
 
-            if func.marshal_fail:
-                out('if ({0}) {{'.format(func.marshal_fail))
-                with indent():
-                    out('_mesa_glthread_disable(ctx, "{0}");'.format(func.name))
-                    self.print_sync_dispatch(func)
-                    out('return;')
-                out('}')
-
             if func.marshal_sync:
                 out('if ({0}) {{'.format(func.marshal_sync))
                 with indent():
