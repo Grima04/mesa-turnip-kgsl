@@ -150,6 +150,10 @@ lp_setup_is_resource_referenced( const struct lp_setup_context *setup,
                                 const struct pipe_resource *texture );
 
 void
+lp_setup_set_sample_mask(struct lp_setup_context *setup,
+                         uint32_t sample_mask);
+
+void
 lp_setup_set_flatshade_first( struct lp_setup_context *setup, 
                               boolean flatshade_first );
 

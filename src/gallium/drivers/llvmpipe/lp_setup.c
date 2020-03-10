@@ -801,6 +801,15 @@ lp_setup_set_scissors( struct lp_setup_context *setup,
    setup->dirty |= LP_SETUP_NEW_SCISSOR;
 }
 
+void
+lp_setup_set_sample_mask(struct lp_setup_context *setup,
+                         uint32_t sample_mask)
+{
+   if (setup->fs.current.jit_context.sample_mask != sample_mask) {
+      setup->fs.current.jit_context.sample_mask = sample_mask;
+      setup->dirty |= LP_SETUP_NEW_FS;
+   }
+}
 
 void 
 lp_setup_set_flatshade_first(struct lp_setup_context *setup,

@@ -182,7 +182,7 @@ llvmpipe_set_sample_mask(struct pipe_context *pipe,
    if (sample_mask != llvmpipe->sample_mask) {
       llvmpipe->sample_mask = sample_mask;
 
-      llvmpipe->dirty |= LP_NEW_RASTERIZER;
+      llvmpipe->dirty |= LP_NEW_SAMPLE_MASK;
    }
 }
 
@@ -202,5 +202,6 @@ llvmpipe_init_blend_funcs(struct llvmpipe_context *llvmpipe)
    llvmpipe->pipe.set_stencil_ref = llvmpipe_set_stencil_ref;
    llvmpipe->pipe.set_sample_mask = llvmpipe_set_sample_mask;
 
+   llvmpipe->dirty |= LP_NEW_SAMPLE_MASK;
    llvmpipe->sample_mask = ~0;
 }
