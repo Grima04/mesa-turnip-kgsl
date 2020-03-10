@@ -620,7 +620,7 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
             image->fds[p] = dup(fd);
             if (image->fds[p] == -1) {
                for (uint32_t i = 0; i < p; i++)
-                  close(image->fds[p]);
+                  close(image->fds[i]);
 
                result = VK_ERROR_OUT_OF_HOST_MEMORY;
                goto fail;
