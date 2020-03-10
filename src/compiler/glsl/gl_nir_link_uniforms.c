@@ -1269,10 +1269,16 @@ gl_nir_link_uniforms(struct gl_context *ctx,
 
             if (is_interface_array) {
                unsigned l = strlen(ifc_name);
+
+               /* Even when a match is found, do not "break" here.  As this is
+                * an array of instances, all elements of the array need to be
+                * marked as referenced.
+                */
                for (unsigned i = 0; i < num_blocks; i++) {
                   if (strncmp(ifc_name, blocks[i].Name, l) == 0 &&
                       blocks[i].Name[l] == '[') {
-                     buffer_block_index = i;
+                     if (buffer_block_index == -1)
+                        buffer_block_index = i;
 
                      blocks[i].stageref |= 1U << shader_type;
                   }
