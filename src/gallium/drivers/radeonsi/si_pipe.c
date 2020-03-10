@@ -676,7 +676,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       si_init_cp_reg_shadowing(sctx);
    }
 
-   si_begin_new_gfx_cs(sctx);
+   si_begin_new_gfx_cs(sctx, true);
    assert(sctx->gfx_cs->current.cdw == sctx->initial_gfx_cs_size);
 
    /* Initialize per-context buffers. */

@@ -119,8 +119,23 @@ void si_pm4_emit(struct si_context *sctx, struct si_pm4_state *state)
       state->atom.emit(sctx);
 }
 
-void si_pm4_reset_emitted(struct si_context *sctx)
+void si_pm4_reset_emitted(struct si_context *sctx, bool first_cs)
 {
+   if (!first_cs && sctx->shadowed_regs) {
+      /* Only dirty states that contain buffers, so that they are
+       * added to the buffer list on the next draw call.
+       */
+      for (unsigned i = 0; i < SI_NUM_STATES; i++) {
+         struct si_pm4_state *state = sctx->emitted.array[i];
+
+         if (state && state->shader) {
+            sctx->emitted.array[i] = NULL;
+            sctx->dirty_states |= 1 << i;
+         }
+      }
+      return;
+   }
+
    memset(&sctx->emitted, 0, sizeof(sctx->emitted));
    sctx->dirty_states |= u_bit_consecutive(0, SI_NUM_STATES);
 }
