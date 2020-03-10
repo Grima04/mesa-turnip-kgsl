@@ -374,11 +374,9 @@ sysval_for_instr(nir_instr *instr, nir_dest *dest)
 }
 
 static void
-midgard_nir_assign_sysval_body(compiler_context *ctx, nir_instr *instr)
+midgard_nir_assign_sysval_body(struct panfrost_sysvals *ctx, nir_instr *instr)
 {
-        int sysval;
-
-        sysval = sysval_for_instr(instr, NULL);
+        int sysval = sysval_for_instr(instr, NULL);
         if (sysval < 0)
                 return;
 
@@ -395,9 +393,10 @@ midgard_nir_assign_sysval_body(compiler_context *ctx, nir_instr *instr)
 }
 
 static void
-midgard_nir_assign_sysvals(compiler_context *ctx, nir_shader *shader)
+midgard_nir_assign_sysvals(struct panfrost_sysvals *ctx, nir_shader *shader)
 {
         ctx->sysval_count = 0;
+        ctx->sysval_to_id = _mesa_hash_table_u64_create(NULL);
 
         nir_foreach_function(function, shader) {
                 if (!function->impl) continue;
@@ -1375,7 +1374,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
 
         /* Figure out which uniform this is */
         int sysval = sysval_for_instr(instr, &nir_dest);
-        void *val = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);
+        void *val = _mesa_hash_table_u64_search(ctx->sysvals.sysval_to_id, sysval);
 
         unsigned dest = nir_dest_index(&nir_dest);
 
@@ -1560,7 +1559,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(&instr->dest);
 
                 if (is_uniform && !ctx->is_blend) {
-                        emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysval_count + offset) * 16, indirect_offset, 4, 0);
+                        emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysvals.sysval_count + offset) * 16, indirect_offset, 4, 0);
                 } else if (is_ubo) {
                         nir_src index = instr->src[0];
 
@@ -2778,7 +2777,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         ctx->ssa_constants = _mesa_hash_table_u64_create(NULL);
         ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
-        ctx->sysval_to_id = _mesa_hash_table_u64_create(NULL);
 
         /* Record the varying mapping for the command stream's bookkeeping */
 
@@ -2831,11 +2829,11 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         /* Assign sysvals and counts, now that we're sure
          * (post-optimisation) */
 
-        midgard_nir_assign_sysvals(ctx, nir);
+        midgard_nir_assign_sysvals(&ctx->sysvals, nir);
 
         program->uniform_count = nir->num_uniforms;
-        program->sysval_count = ctx->sysval_count;
-        memcpy(program->sysvals, ctx->sysvals, sizeof(ctx->sysvals[0]) * ctx->sysval_count);
+        program->sysval_count = ctx->sysvals.sysval_count;
+        memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)
