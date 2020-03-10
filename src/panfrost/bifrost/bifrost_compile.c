@@ -32,6 +32,7 @@
 
 #include "disassemble.h"
 #include "bifrost_compile.h"
+#include "bifrost_nir.h"
 #include "compiler.h"
 #include "bi_quirks.h"
 #include "bi_print.h"
@@ -708,6 +709,7 @@ bi_optimize_nir(nir_shader *nir)
         } while (progress);
 
         NIR_PASS(progress, nir, nir_opt_algebraic_late);
+        NIR_PASS(progress, nir, bifrost_nir_lower_algebraic_late);
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
         NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
 
