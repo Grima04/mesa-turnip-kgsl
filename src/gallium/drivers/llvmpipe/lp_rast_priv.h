@@ -240,7 +240,7 @@ lp_rast_shade_quads_all( struct lp_rasterizer_task *task,
    for (i = 0; i < scene->fb.nr_cbufs; i++) {
       if (scene->fb.cbufs[i]) {
          stride[i] = scene->cbufs[i].stride;
-         sample_stride[i] = 0;
+         sample_stride[i] = scene->cbufs[i].sample_stride;
          color[i] = lp_rast_get_color_block_pointer(task, i, x, y,
                                                     inputs->layer);
       }
@@ -253,6 +253,7 @@ lp_rast_shade_quads_all( struct lp_rasterizer_task *task,
 
    if (scene->zsbuf.map) {
       depth = lp_rast_get_depth_block_pointer(task, x, y, inputs->layer);
+      depth_sample_stride = scene->zsbuf.sample_stride;
       depth_stride = scene->zsbuf.stride;
    }
 

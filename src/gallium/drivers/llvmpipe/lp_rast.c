@@ -337,7 +337,7 @@ lp_rast_shade_tile(struct lp_rasterizer_task *task,
          for (i = 0; i < scene->fb.nr_cbufs; i++){
             if (scene->fb.cbufs[i]) {
                stride[i] = scene->cbufs[i].stride;
-               sample_stride[i] = 0;
+               sample_stride[i] = scene->cbufs[i].sample_stride;
                color[i] = lp_rast_get_color_block_pointer(task, i, tile_x + x,
                                                           tile_y + y, inputs->layer);
             }
@@ -353,6 +353,7 @@ lp_rast_shade_tile(struct lp_rasterizer_task *task,
             depth = lp_rast_get_depth_block_pointer(task, tile_x + x,
                                                     tile_y + y, inputs->layer);
             depth_stride = scene->zsbuf.stride;
+            depth_sample_stride = scene->zsbuf.sample_stride;
          }
 
          /* Propagate non-interpolated raster state. */
@@ -438,7 +439,7 @@ lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
    for (i = 0; i < scene->fb.nr_cbufs; i++) {
       if (scene->fb.cbufs[i]) {
          stride[i] = scene->cbufs[i].stride;
-         sample_stride[i] = 0;
+         sample_stride[i] = scene->cbufs[i].sample_stride;
          color[i] = lp_rast_get_color_block_pointer(task, i, x, y,
                                                     inputs->layer);
       }
@@ -452,6 +453,7 @@ lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
    /* depth buffer */
    if (scene->zsbuf.map) {
       depth_stride = scene->zsbuf.stride;
+      depth_sample_stride = scene->zsbuf.sample_stride;
       depth = lp_rast_get_depth_block_pointer(task, x, y, inputs->layer);
    }
 

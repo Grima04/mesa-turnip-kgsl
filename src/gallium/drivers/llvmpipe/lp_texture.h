@@ -195,6 +195,12 @@ llvmpipe_resource_stride(struct pipe_resource *resource,
    return lpr->row_stride[level];
 }
 
+static inline unsigned
+llvmpipe_sample_stride(struct pipe_resource *resource)
+{
+   struct llvmpipe_resource *lpr = llvmpipe_resource(resource);
+   return lpr->sample_stride;
+}
 
 void *
 llvmpipe_resource_map(struct pipe_resource *resource,
