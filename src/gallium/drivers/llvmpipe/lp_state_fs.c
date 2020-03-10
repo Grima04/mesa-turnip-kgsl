@@ -3071,14 +3071,14 @@ static void
 llvmpipe_bind_fs_state(struct pipe_context *pipe, void *fs)
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
-
-   if (llvmpipe->fs == fs)
+   struct lp_fragment_shader *lp_fs = (struct lp_fragment_shader *)fs;
+   if (llvmpipe->fs == lp_fs)
       return;
 
-   llvmpipe->fs = (struct lp_fragment_shader *) fs;
-
    draw_bind_fragment_shader(llvmpipe->draw,
-                             (llvmpipe->fs ? llvmpipe->fs->draw_data : NULL));
+                             (lp_fs ? lp_fs->draw_data : NULL));
+
+   llvmpipe->fs = lp_fs;
 
    llvmpipe->dirty |= LP_NEW_FS;
 }
