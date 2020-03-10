@@ -163,7 +163,43 @@ bi_emit_ld_uniform(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bi_instruction ld = bi_load(BI_LOAD_UNIFORM, instr);
         ld.src[1] = BIR_INDEX_ZERO; /* TODO: UBO index */
+
+        /* TODO: Indirect access, since we need to multiply by the element
+         * size. I believe we can get this lowering automatically via
+         * nir_lower_io (as mul instructions) with the proper options, but this
+         * is TODO */
+        assert(ld.src[0] & BIR_INDEX_CONSTANT);
+        ld.constant.u64 += ctx->sysvals.sysval_count;
+        ld.constant.u64 *= 16;
+
         bi_emit(ctx, ld);
+}
+
+static void
+bi_emit_sysval(bi_context *ctx, nir_instr *instr,
+                unsigned nr_components, unsigned offset)
+{
+        nir_dest nir_dest;
+
+        /* Figure out which uniform this is */
+        int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
+        void *val = _mesa_hash_table_u64_search(ctx->sysvals.sysval_to_id, sysval);
+
+        /* Sysvals are prefix uniforms */
+        unsigned uniform = ((uintptr_t) val) - 1;
+
+        /* Emit the read itself -- this is never indirect */
+
+        bi_instruction load = {
+                .type = BI_LOAD_UNIFORM,
+                .writemask = (1 << (nr_components * 4)) - 1,
+                .src = { BIR_INDEX_CONSTANT},
+                .constant = { (uniform * 16) + offset },
+                .dest = bir_dest_index(&nir_dest),
+                .dest_type = nir_type_uint32, /* TODO */
+        };
+
+        bi_emit(ctx, load);
 }
 
 static void
@@ -196,6 +232,21 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_uniform:
                 bi_emit_ld_uniform(ctx, instr);
+                break;
+
+        case nir_intrinsic_load_ssbo_address:
+                bi_emit_sysval(ctx, &instr->instr, 1, 0);
+                break;
+
+        case nir_intrinsic_get_buffer_size:
+                bi_emit_sysval(ctx, &instr->instr, 1, 8);
+                break;
+
+        case nir_intrinsic_load_viewport_scale:
+        case nir_intrinsic_load_viewport_offset:
+        case nir_intrinsic_load_num_work_groups:
+        case nir_intrinsic_load_sampler_lod_parameters_pan:
+                bi_emit_sysval(ctx, &instr->instr, 3, 0);
                 break;
 
         default:
@@ -799,6 +850,10 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
 
         bi_optimize_nir(nir);
         nir_print_shader(nir, stdout);
+
+        panfrost_nir_assign_sysvals(&ctx->sysvals, nir);
+        program->sysval_count = ctx->sysvals.sysval_count;
+        memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)

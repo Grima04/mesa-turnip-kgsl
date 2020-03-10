@@ -325,6 +325,7 @@ typedef struct {
        nir_shader *nir;
        gl_shader_stage stage;
        struct list_head blocks; /* list of bi_block */
+       struct panfrost_sysvals sysvals;
        uint32_t quirks;
 
        /* During NIR->BIR */
