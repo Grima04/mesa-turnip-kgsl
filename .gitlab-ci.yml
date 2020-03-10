@@ -484,8 +484,6 @@ meson-i386:
 meson-s390x:
   extends:
     - .meson-cross
-  tags:
-    - gstreamer
   variables:
     CROSS: s390x
     GALLIUM_DRIVERS: "swrast"
