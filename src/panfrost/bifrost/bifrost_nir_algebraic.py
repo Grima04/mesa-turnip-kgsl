@@ -38,6 +38,8 @@ algebraic_late = [
     (('ineg', a), ('isub', 0, a)),
 ]
 
+for sz in ('16', '32', '64'):
+        algebraic_late += [(('b2f' + sz, 'a@1'), ('bcsel', a, 1.0, 0.0))]
 
 # Midgard is able to type convert down by only one "step" per instruction; if
 # NIR wants more than one step, we need to break up into multiple instructions
