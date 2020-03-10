@@ -517,7 +517,7 @@ nir_alu_src_index(compiler_context *ctx, nir_alu_src *src)
 }
 
 static inline unsigned
-nir_dest_index(compiler_context *ctx, nir_dest *dst)
+nir_dest_index(nir_dest *dst)
 {
         if (dst->is_ssa)
                 return (dst->ssa.index << 1) | 0;

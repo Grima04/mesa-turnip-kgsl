@@ -337,8 +337,8 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
         }
 }
 
-static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
-                            unsigned *dest)
+static int
+sysval_for_instr(nir_instr *instr, unsigned *dest)
 {
         nir_intrinsic_instr *intr;
         nir_dest *dst = NULL;
@@ -368,7 +368,7 @@ static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
         }
 
         if (dest && dst)
-                *dest = nir_dest_index(ctx, dst);
+                *dest = nir_dest_index(dst);
 
         return sysval;
 }
@@ -378,7 +378,7 @@ midgard_nir_assign_sysval_body(compiler_context *ctx, nir_instr *instr)
 {
         int sysval;
 
-        sysval = sysval_for_instr(ctx, instr, NULL);
+        sysval = sysval_for_instr(instr, NULL);
         if (sysval < 0)
                 return;
 
@@ -781,7 +781,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         bool is_ssa = instr->dest.dest.is_ssa;
 
-        unsigned dest = nir_dest_index(ctx, &instr->dest.dest);
+        unsigned dest = nir_dest_index(&instr->dest.dest);
         unsigned nr_components = nir_dest_num_components(instr->dest.dest);
         unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
 
@@ -1374,7 +1374,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
         unsigned dest = 0;
 
         /* Figure out which uniform this is */
-        int sysval = sysval_for_instr(ctx, instr, &dest);
+        int sysval = sysval_for_instr(instr, &dest);
         void *val = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);
 
         if (dest_override >= 0)
@@ -1438,7 +1438,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, enum midgard_rt_id rt)
 static void
 emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-        unsigned reg = nir_dest_index(ctx, &instr->dest);
+        unsigned reg = nir_dest_index(&instr->dest);
         midgard_instruction ins = m_ld_compute_id(reg, 0);
         ins.mask = mask_of(3);
         ins.swizzle[0][3] = COMPONENT_X; /* xyzx */
@@ -1462,7 +1462,7 @@ vertex_builtin_arg(nir_op op)
 static void
 emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-        unsigned reg = nir_dest_index(ctx, &instr->dest);
+        unsigned reg = nir_dest_index(&instr->dest);
         emit_attr_read(ctx, reg, vertex_builtin_arg(instr->intrinsic), 1, nir_type_int);
 }
 
@@ -1555,7 +1555,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 /* We may need to apply a fractional offset */
                 int component = (is_flat || is_interp) ?
                                 nir_intrinsic_component(instr) : 0;
-                reg = nir_dest_index(ctx, &instr->dest);
+                reg = nir_dest_index(&instr->dest);
 
                 if (is_uniform && !ctx->is_blend) {
                         emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysval_count + offset) * 16, indirect_offset, 4, 0);
@@ -1597,7 +1597,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_raw_output_pan:
         case nir_intrinsic_load_output_u8_as_fp16_pan:
-                reg = nir_dest_index(ctx, &instr->dest);
+                reg = nir_dest_index(&instr->dest);
                 assert(ctx->is_blend);
 
                 /* T720 and below use different blend opcodes with slightly
@@ -1625,7 +1625,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_blend_const_color_rgba: {
                 assert(ctx->is_blend);
-                reg = nir_dest_index(ctx, &instr->dest);
+                reg = nir_dest_index(&instr->dest);
 
                 /* Blend constants are embedded directly in the shader and
                  * patched in, so we use some magic routing */
@@ -1898,7 +1898,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         midgard_instruction ins = {
                 .type = TAG_TEXTURE_4,
                 .mask = 0xF,
-                .dest = nir_dest_index(ctx, &instr->dest),
+                .dest = nir_dest_index(&instr->dest),
                 .src = { ~0, ~0, ~0, ~0 },
                 .swizzle = SWIZZLE_IDENTITY_4,
                 .texture = {
