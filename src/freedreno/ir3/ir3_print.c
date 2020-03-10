@@ -170,6 +170,9 @@ static void print_reg_name(struct ir3_register *reg)
 	else if (reg->flags & (IR3_REG_FABS | IR3_REG_SABS))
 		printf("(abs)");
 
+	if (reg->flags & IR3_REG_R)
+		printf("(r)");
+
 	if (reg->flags & IR3_REG_HIGH)
 		printf("H");
 	if (reg->flags & IR3_REG_HALF)
