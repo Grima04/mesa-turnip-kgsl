@@ -398,8 +398,7 @@ print_acc(gpir_codegen_instr *instr, gpir_codegen_instr *prev_instr,
    bool printed = false;
    const acc_op_info op = acc_op_infos[instr->acc_op];
 
-   if (instr->acc0_src0 != gpir_codegen_src_unused &&
-       instr->acc0_src1 != gpir_codegen_src_unused) {
+   if (instr->acc0_src0 != gpir_codegen_src_unused) {
       printed = true;
       printf("\t");
       acc_op_info acc0_op = op;
@@ -432,8 +431,7 @@ print_acc(gpir_codegen_instr *instr, gpir_codegen_instr *prev_instr,
       printf("\n");
    }
 
-   if (instr->acc1_src0 != gpir_codegen_src_unused &&
-       instr->acc1_src1 != gpir_codegen_src_unused) {
+   if (instr->acc1_src0 != gpir_codegen_src_unused) {
       printed = true;
       printf("\t");
       acc_op_info acc1_op = op;
