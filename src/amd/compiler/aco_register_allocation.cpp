@@ -1122,16 +1122,17 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
 
    read_variable = [&](Temp val, unsigned block_idx) -> Temp {
       std::unordered_map<unsigned, Temp>::iterator it = renames[block_idx].find(val.id());
-      assert(it != renames[block_idx].end());
-      return it->second;
+      if (it == renames[block_idx].end())
+         return val;
+      else
+         return it->second;
    };
 
    handle_live_in = [&](Temp val, Block *block) -> Temp {
       std::vector<unsigned>& preds = val.is_linear() ? block->linear_preds : block->logical_preds;
-      if (preds.size() == 0 || val.regClass() == val.regClass().as_linear()) {
-         renames[block->index][val.id()] = val;
+      if (preds.size() == 0 || val.regClass() == val.regClass().as_linear())
          return val;
-      }
+
       assert(preds.size() > 0);
 
       Temp new_val;
@@ -1161,11 +1162,8 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
          /* there are multiple predecessors and the block is sealed */
          Temp ops[preds.size()];
 
-         /* we start assuming that the name is the same from all predecessors */
-         renames[block->index][val.id()] = val;
-         bool needs_phi = false;
-
          /* get the rename from each predecessor and check if they are the same */
+         bool needs_phi = false;
          for (unsigned i = 0; i < preds.size(); i++) {
             ops[i] = read_variable(val, preds[i]);
             if (i == 0)
@@ -1193,9 +1191,10 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
          }
       }
 
-      renames[block->index][val.id()] = new_val;
-      renames[block->index][new_val.id()] = new_val;
-      ctx.orig_names[new_val.id()] = val;
+      if (new_val != val) {
+         renames[block->index][val.id()] = new_val;
+         ctx.orig_names[new_val.id()] = val;
+      }
       return new_val;
    };
 
@@ -1434,8 +1433,6 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
          if (definition.isKill())
             continue;
 
-         renames[block.index][definition.tempId()] = definition.getTemp();
-
          if (!definition.isFixed()) {
             std::vector<std::pair<Operand, Definition>> parallelcopy;
             /* try to find a register that is used by at least one operand */
@@ -1486,7 +1483,6 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                else
                   ctx.orig_names[pc.second.tempId()] = orig;
                renames[block.index][orig.id()] = pc.second.getTemp();
-               renames[block.index][pc.second.tempId()] = pc.second.getTemp();
 
                /* otherwise, this is a live-in and we need to create a new phi
                 * to move it in this block's predecessors */
@@ -1745,7 +1741,6 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                live.emplace(definition.getTemp());
 
             ctx.assignments[definition.tempId()] = {definition.physReg(), definition.regClass()};
-            renames[block.index][definition.tempId()] = definition.getTemp();
             register_file.fill(definition);
          }
 
@@ -1846,7 +1841,6 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                live.emplace(definition.getTemp());
 
             ctx.assignments[definition.tempId()] = {definition.physReg(), definition.regClass()};
-            renames[block.index][definition.tempId()] = definition.getTemp();
             register_file.fill(definition);
          }
 
@@ -1892,7 +1886,6 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                Temp orig = it != ctx.orig_names.end() ? it->second : pc->operands[i].getTemp();
                ctx.orig_names[pc->definitions[i].tempId()] = orig;
                renames[block.index][orig.id()] = pc->definitions[i].getTemp();
-               renames[block.index][pc->definitions[i].tempId()] = pc->definitions[i].getTemp();
 
                std::map<unsigned, phi_info>::iterator phi = phi_map.find(pc->operands[i].tempId());
                if (phi != phi_map.end())
