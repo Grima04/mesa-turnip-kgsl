@@ -370,7 +370,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
       draw_set_mapped_texture(draw, PIPE_SHADER_VERTEX, i, width0,
                               res->height0, num_layers, first_level,
-                              last_level, (void*)base_addr, row_stride,
+                              last_level, 0, 0, (void*)base_addr, row_stride,
                               img_stride, mip_offset);
    }
 

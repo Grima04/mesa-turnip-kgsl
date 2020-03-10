@@ -1168,6 +1168,8 @@ draw_set_mapped_texture(struct draw_context *draw,
                         unsigned sview_idx,
                         uint32_t width, uint32_t height, uint32_t depth,
                         uint32_t first_level, uint32_t last_level,
+                        uint32_t num_samples,
+                        uint32_t sample_stride,
                         const void *base_ptr,
                         uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS],
                         uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS],
@@ -1179,7 +1181,7 @@ draw_set_mapped_texture(struct draw_context *draw,
                                    shader_stage,
                                    sview_idx,
                                    width, height, depth, first_level,
-                                   last_level, base_ptr,
+                                   last_level, num_samples, sample_stride, base_ptr,
                                    row_stride, img_stride, mip_offsets);
 #endif
 }

@@ -252,7 +252,8 @@ DRAW_LLVM_TEXTURE_MEMBER(base_ptr,   DRAW_JIT_TEXTURE_BASE, TRUE)
 DRAW_LLVM_TEXTURE_MEMBER(row_stride, DRAW_JIT_TEXTURE_ROW_STRIDE, FALSE)
 DRAW_LLVM_TEXTURE_MEMBER(img_stride, DRAW_JIT_TEXTURE_IMG_STRIDE, FALSE)
 DRAW_LLVM_TEXTURE_MEMBER(mip_offsets, DRAW_JIT_TEXTURE_MIP_OFFSETS, FALSE)
-
+DRAW_LLVM_TEXTURE_MEMBER(num_samples, DRAW_JIT_TEXTURE_NUM_SAMPLES, TRUE)
+DRAW_LLVM_TEXTURE_MEMBER(sample_stride, DRAW_JIT_TEXTURE_SAMPLE_STRIDE, TRUE)
 
 #define DRAW_LLVM_SAMPLER_MEMBER(_name, _index, _emit_load)  \
    static LLVMValueRef \
@@ -359,6 +360,8 @@ draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_stat
    sampler->dynamic_state.base.img_stride = draw_llvm_texture_img_stride;
    sampler->dynamic_state.base.base_ptr = draw_llvm_texture_base_ptr;
    sampler->dynamic_state.base.mip_offsets = draw_llvm_texture_mip_offsets;
+   sampler->dynamic_state.base.num_samples = draw_llvm_texture_num_samples;
+   sampler->dynamic_state.base.sample_stride = draw_llvm_texture_sample_stride;
    sampler->dynamic_state.base.min_lod = draw_llvm_sampler_min_lod;
    sampler->dynamic_state.base.max_lod = draw_llvm_sampler_max_lod;
    sampler->dynamic_state.base.lod_bias = draw_llvm_sampler_lod_bias;

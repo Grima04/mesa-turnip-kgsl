@@ -264,7 +264,7 @@ prepare_shader_sampling(
                                  shader_type,
                                  i,
                                  width0, tex->height0, num_layers,
-                                 first_level, last_level,
+                                 first_level, last_level, 0, 0,
                                  addr,
                                  row_stride, img_stride, mip_offsets);
       }
