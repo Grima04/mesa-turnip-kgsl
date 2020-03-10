@@ -237,4 +237,12 @@ llvmpipe_is_resource_referenced( struct pipe_context *pipe,
 unsigned
 llvmpipe_get_format_alignment(enum pipe_format format);
 
+void *
+llvmpipe_transfer_map_ms( struct pipe_context *pipe,
+			  struct pipe_resource *resource,
+			  unsigned level,
+			  unsigned usage,
+			  unsigned sample,
+			  const struct pipe_box *box,
+			  struct pipe_transfer **transfer );
 #endif /* LP_TEXTURE_H */

@@ -509,13 +509,14 @@ llvmpipe_resource_get_handle(struct pipe_screen *screen,
 }
 
 
-static void *
-llvmpipe_transfer_map( struct pipe_context *pipe,
-                       struct pipe_resource *resource,
-                       unsigned level,
-                       unsigned usage,
-                       const struct pipe_box *box,
-                       struct pipe_transfer **transfer )
+void *
+llvmpipe_transfer_map_ms( struct pipe_context *pipe,
+                          struct pipe_resource *resource,
+                          unsigned level,
+                          unsigned usage,
+                          unsigned sample,
+                          const struct pipe_box *box,
+                          struct pipe_transfer **transfer )
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
    struct llvmpipe_screen *screen = llvmpipe_screen(pipe->screen);
@@ -620,9 +621,20 @@ llvmpipe_transfer_map( struct pipe_context *pipe,
       box->y / util_format_get_blockheight(format) * pt->stride +
       box->x / util_format_get_blockwidth(format) * util_format_get_blocksize(format);
 
+   map += sample * lpr->sample_stride;
    return map;
 }
 
+static void *
+llvmpipe_transfer_map( struct pipe_context *pipe,
+                       struct pipe_resource *resource,
+                       unsigned level,
+                       unsigned usage,
+                       const struct pipe_box *box,
+                       struct pipe_transfer **transfer )
+{
+   return llvmpipe_transfer_map_ms(pipe, resource, level, usage, 0, box, transfer);
+}
 
 static void
 llvmpipe_transfer_unmap(struct pipe_context *pipe,
