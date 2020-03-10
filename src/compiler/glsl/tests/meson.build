@@ -78,6 +78,19 @@ test(
 )
 
 test(
+  'list_iterators',
+  executable(
+    'list_iterators',
+    ['list_iterators.cpp'],
+    cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
+    include_directories : [inc_include, inc_src, inc_glsl],
+    link_with : [libglsl, libglsl_util],
+    dependencies : [dep_thread, idep_gtest],
+  ),
+  suite : ['compiler', 'glsl'],
+)
+
+test(
   'glsl compiler warnings',
   prog_python,
   args : [
