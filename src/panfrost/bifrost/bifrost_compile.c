@@ -237,6 +237,16 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_isub:
                 return BI_ISUB;
 
+        case nir_op_flt:
+        case nir_op_fge:
+        case nir_op_feq:
+        case nir_op_fne:
+        case nir_op_ilt:
+        case nir_op_ige:
+        case nir_op_ieq:
+        case nir_op_ine:
+                return BI_CMP;
+
         case nir_op_bcsel:
                 return BI_CSEL;
 
@@ -287,6 +297,27 @@ bi_class_for_nir_alu(nir_op op)
 
         default:
                 unreachable("Unknown ALU op");
+        }
+}
+
+static enum bi_cond
+bi_cond_for_nir(nir_op op)
+{
+        switch (op) {
+        case nir_op_flt:
+        case nir_op_ilt:
+                return BI_COND_LT;
+        case nir_op_fge:
+        case nir_op_ige:
+                return BI_COND_GE;
+        case nir_op_feq:
+        case nir_op_ieq:
+                return BI_COND_EQ;
+        case nir_op_fne:
+        case nir_op_ine:
+                return BI_COND_NE;
+        default:
+                unreachable("Invalid compare");
         }
 }
 
@@ -387,6 +418,16 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_fcos:
                 alu.op.special = BI_SPECIAL_FCOS;
+                break;
+        case nir_op_flt:
+        case nir_op_ilt:
+        case nir_op_fge:
+        case nir_op_ige:
+        case nir_op_feq:
+        case nir_op_ieq:
+        case nir_op_fne:
+        case nir_op_ine:
+                alu.op.compare = bi_cond_for_nir(instr->op);
                 break;
         default:
                 break;
