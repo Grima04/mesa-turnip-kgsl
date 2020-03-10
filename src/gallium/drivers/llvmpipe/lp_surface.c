@@ -36,6 +36,51 @@
 #include "lp_rast.h"
 
 static void
+lp_resource_copy_ms(struct pipe_context *pipe,
+                    struct pipe_resource *dst, unsigned dst_level,
+                    unsigned dstx, unsigned dsty, unsigned dstz,
+                    struct pipe_resource *src, unsigned src_level,
+                    const struct pipe_box *src_box)
+{
+   struct pipe_box dst_box = *src_box;
+   enum pipe_format src_format;
+   dst_box.x = dstx;
+   dst_box.y = dsty;
+   dst_box.z = dstz;
+
+   src_format = src->format;
+
+   for (unsigned i = 0; i < src->nr_samples; i++) {
+      struct pipe_transfer *src_trans, *dst_trans;
+      const uint8_t *src_map = llvmpipe_transfer_map_ms(pipe,
+                                                        src, 0, PIPE_TRANSFER_READ, i,
+                                                        src_box,
+                                                        &src_trans);
+      if (!src_map)
+         return;
+
+      uint8_t *dst_map = llvmpipe_transfer_map_ms(pipe,
+                                                  dst, 0, PIPE_TRANSFER_WRITE, i,
+                                                  &dst_box,
+                                                  &dst_trans);
+      if (!dst_map) {
+         pipe->transfer_unmap(pipe, src_trans);
+         return;
+      }
+
+      util_copy_box(dst_map,
+                    src_format,
+                    dst_trans->stride, dst_trans->layer_stride,
+                    0, 0, 0,
+                    src_box->width, src_box->height, src_box->depth,
+                    src_map,
+                    src_trans->stride, src_trans->layer_stride,
+                    0, 0, 0);
+      pipe->transfer_unmap(pipe, dst_trans);
+      pipe->transfer_unmap(pipe, src_trans);
+   }
+}
+static void
 lp_resource_copy(struct pipe_context *pipe,
                  struct pipe_resource *dst, unsigned dst_level,
                  unsigned dstx, unsigned dsty, unsigned dstz,
@@ -56,6 +101,12 @@ lp_resource_copy(struct pipe_context *pipe,
                            FALSE, /* do_not_block */
                            "blit src");
 
+   if (dst->nr_samples > 1 &&
+       dst->nr_samples == src->nr_samples) {
+      lp_resource_copy_ms(pipe, dst, dst_level, dstx, dsty, dstz,
+                          src, src_level, src_box);
+      return;
+   }
    util_resource_copy_region(pipe, dst, dst_level, dstx, dsty, dstz,
                              src, src_level, src_box);
 }
