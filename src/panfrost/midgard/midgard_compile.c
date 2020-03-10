@@ -1367,7 +1367,7 @@ emit_attr_read(
 }
 
 static void
-emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
+emit_sysval_read(compiler_context *ctx, nir_instr *instr,
                 unsigned nr_components, unsigned offset)
 {
         nir_dest nir_dest;
@@ -1377,9 +1377,6 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
         void *val = _mesa_hash_table_u64_search(ctx->sysvals.sysval_to_id, sysval);
 
         unsigned dest = nir_dest_index(&nir_dest);
-
-        if (dest_override >= 0)
-                dest = dest_override;
 
         /* Sysvals are prefix uniforms */
         unsigned uniform = ((uintptr_t) val) - 1;
@@ -1770,18 +1767,18 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ssbo_address:
-                emit_sysval_read(ctx, &instr->instr, ~0, 1, 0);
+                emit_sysval_read(ctx, &instr->instr, 1, 0);
                 break;
 
         case nir_intrinsic_get_buffer_size:
-                emit_sysval_read(ctx, &instr->instr, ~0, 1, 8);
+                emit_sysval_read(ctx, &instr->instr, 1, 8);
                 break;
  
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
         case nir_intrinsic_load_num_work_groups:
         case nir_intrinsic_load_sampler_lod_parameters_pan:
-                emit_sysval_read(ctx, &instr->instr, ~0, 3, 0);
+                emit_sysval_read(ctx, &instr->instr, 3, 0);
                 break;
 
         case nir_intrinsic_load_work_group_id:
@@ -2085,7 +2082,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_texop_native(ctx, instr, TEXTURE_OP_TEXEL_FETCH);
                 break;
         case nir_texop_txs:
-                emit_sysval_read(ctx, &instr->instr, ~0, 4, 0);
+                emit_sysval_read(ctx, &instr->instr, 4, 0);
                 break;
         default: {
                 fprintf(stderr, "Unhandled texture op: %d\n", instr->op);
