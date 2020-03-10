@@ -2760,6 +2760,9 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
    if (key->flatshade) {
       debug_printf("flatshade = 1\n");
    }
+   if (key->multisample) {
+      debug_printf("multisample = 1\n");
+   }
    for (i = 0; i < key->nr_cbufs; ++i) {
       debug_printf("cbuf_format[%u] = %s\n", i, util_format_name(key->cbuf_format[i]));
    }
@@ -3369,6 +3372,7 @@ make_variant_key(struct llvmpipe_context *lp,
    /* alpha.ref_value is passed in jit_context */
 
    key->flatshade = lp->rasterizer->flatshade;
+   key->multisample = lp->rasterizer->multisample;
    if (lp->active_occlusion_queries && !lp->queries_disabled) {
       key->occlusion_count = TRUE;
    }
