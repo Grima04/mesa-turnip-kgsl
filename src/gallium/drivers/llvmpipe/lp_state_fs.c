@@ -123,7 +123,8 @@ static LLVMValueRef
 generate_quad_mask(struct gallivm_state *gallivm,
                    struct lp_type fs_type,
                    unsigned first_quad,
-                   LLVMValueRef mask_input) /* int32 */
+                   unsigned sample,
+                   LLVMValueRef mask_input) /* int64 */
 {
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_type mask_type;
@@ -161,6 +162,11 @@ generate_quad_mask(struct gallivm_state *gallivm,
       assert(0);
       shift = 0;
    }
+
+   mask_input = LLVMBuildLShr(builder, mask_input, lp_build_const_int64(gallivm, 16 * sample), "");
+   mask_input = LLVMBuildTrunc(builder, mask_input,
+                               i32t, "");
+   mask_input = LLVMBuildAnd(builder, mask_input, lp_build_const_int32(gallivm, 0xffff), "");
 
    mask_input = LLVMBuildLShr(builder,
                               mask_input,
@@ -2538,7 +2544,7 @@ generate_fragment(struct llvmpipe_context *lp,
    arg_types[6] = LLVMPointerType(fs_elem_type, 0);    /* dady */
    arg_types[7] = LLVMPointerType(LLVMPointerType(blend_vec_type, 0), 0);  /* color */
    arg_types[8] = LLVMPointerType(int8_type, 0);       /* depth */
-   arg_types[9] = int32_type;                          /* mask_input */
+   arg_types[9] = LLVMInt64TypeInContext(gallivm->context);  /* mask_input */
    arg_types[10] = variant->jit_thread_data_ptr_type;  /* per thread data */
    arg_types[11] = LLVMPointerType(int32_type, 0);     /* stride */
    arg_types[12] = int32_type;                         /* depth_stride */
@@ -2660,7 +2666,7 @@ generate_fragment(struct llvmpipe_context *lp,
 
          if (partial_mask) {
             mask = generate_quad_mask(gallivm, fs_type,
-                                      i*fs_type.length/4, mask_input);
+                                      i*fs_type.length/4, 0, mask_input);
          }
          else {
             mask = lp_build_const_int_vec(gallivm, fs_type, ~0);

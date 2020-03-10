@@ -286,7 +286,7 @@ enum {
  * @param dady          shader input dady
  * @param color         color buffer
  * @param depth         depth buffer
- * @param mask          mask of visible pixels in block
+ * @param mask          mask of visible pixels in block (16-bits per sample)
  * @param thread_data   task thread data
  * @param stride        color buffer row stride in bytes
  * @param depth_stride  depth buffer row stride in bytes
@@ -301,7 +301,7 @@ typedef void
                     const void *dady,
                     uint8_t **color,
                     uint8_t *depth,
-                    uint32_t mask,
+                    uint64_t mask,
                     struct lp_jit_thread_data *thread_data,
                     unsigned *stride,
                     unsigned depth_stride,
