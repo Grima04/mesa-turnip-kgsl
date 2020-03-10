@@ -270,6 +270,12 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_mov:
                 return BI_MOV;
 
+        case nir_op_frcp:
+        case nir_op_frsq:
+        case nir_op_fsin:
+        case nir_op_fcos:
+                return BI_SPECIAL;
+
         default:
                 unreachable("Unknown ALU op");
         }
@@ -285,6 +291,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 .dest_type = nir_op_infos[instr->op].output_type
                         | nir_dest_bit_size(instr->dest.dest),
         };
+
+        /* TODO: Implement lowering of special functions for older Bifrost */
+        assert((alu.type != BI_SPECIAL) || !(ctx->quirks & BIFROST_NO_FAST_OP));
 
         if (instr->dest.dest.is_ssa) {
                 /* Construct a writemask */
@@ -348,6 +357,18 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         case nir_op_imax:
         case nir_op_umax:
                 alu.op.minmax = BI_MINMAX_MAX; /* MINMAX */
+                break;
+        case nir_op_frcp:
+                alu.op.special = BI_SPECIAL_FRCP;
+                break;
+        case nir_op_frsq:
+                alu.op.special = BI_SPECIAL_FRSQ;
+                break;
+        case nir_op_fsin:
+                alu.op.special = BI_SPECIAL_FSIN;
+                break;
+        case nir_op_fcos:
+                alu.op.special = BI_SPECIAL_FCOS;
                 break;
         default:
                 break;
