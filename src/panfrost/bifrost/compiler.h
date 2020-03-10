@@ -236,6 +236,7 @@ typedef struct {
                 enum bi_bitwise_op bitwise;
                 enum bi_round_op round;
                 enum bi_special_op special;
+                enum bi_cond compare;
         } op;
 
         /* Union for class-specific information */

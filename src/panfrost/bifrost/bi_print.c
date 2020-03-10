@@ -264,13 +264,13 @@ static const char *
 bi_cond_name(enum bi_cond cond)
 {
         switch (cond) {
-        case BI_COND_ALWAYS: return ".always";
-        case BI_COND_LT: return ".lt";
-        case BI_COND_LE: return ".le";
-        case BI_COND_GE: return ".ge";
-        case BI_COND_GT: return ".gt";
-        case BI_COND_EQ: return ".eq";
-        case BI_COND_NE: return ".ne";
+        case BI_COND_ALWAYS: return "always";
+        case BI_COND_LT: return "lt";
+        case BI_COND_LE: return "le";
+        case BI_COND_GE: return "ge";
+        case BI_COND_GT: return "gt";
+        case BI_COND_EQ: return "eq";
+        case BI_COND_NE: return "ne";
         default: return "invalid";
         }
 }
@@ -278,7 +278,7 @@ bi_cond_name(enum bi_cond cond)
 static void
 bi_print_branch(struct bi_branch *branch, FILE *fp)
 {
-        fprintf(fp, "%s", bi_cond_name(branch->cond));
+        fprintf(fp, ".%s", bi_cond_name(branch->cond));
 }
 
 static void
@@ -313,6 +313,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, ins->op.round == BI_ROUND_MODE ? "roundMode": "round");
         else if (ins->type == BI_SPECIAL)
                 fprintf(fp, "%s", bi_special_op_name(ins->op.special));
+        else if (ins->type == BI_CMP)
+                fprintf(fp, "%s", bi_cond_name(ins->op.compare));
         else
                 fprintf(fp, "%s", bi_class_name(ins->type));
 
@@ -323,7 +325,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         else if (ins->type == BI_BRANCH)
                 bi_print_branch(&ins->branch, fp);
         else if (ins->type == BI_CSEL)
-                fprintf(fp, "%s", bi_cond_name(ins->csel_cond));
+                fprintf(fp, ".%s", bi_cond_name(ins->csel_cond));
         else if (ins->type == BI_BLEND)
                 fprintf(fp, ".loc%u", ins->blend_location);
 
