@@ -1407,6 +1407,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen);
 /* si_gfx_cs.c */
 void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_handle **fence);
 void si_allocate_gds(struct si_context *ctx);
+void si_set_tracked_regs_to_clear_state(struct si_context *ctx);
 void si_begin_new_gfx_cs(struct si_context *ctx);
 void si_need_gfx_cs_space(struct si_context *ctx);
 void si_unref_sdma_uploads(struct si_context *sctx);
