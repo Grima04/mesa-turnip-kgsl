@@ -262,16 +262,36 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                                 comp_mask);
         }
 
+        /* We inline constants as we go. This tracks how many constants have
+         * been inlined, since we're limited to 64-bits of constants per
+         * instruction */
+
+        unsigned dest_bits = nir_dest_bit_size(instr->dest.dest);
+        unsigned constants_left = (64 / dest_bits);
+        unsigned constant_shift = 0;
+
         /* Copy sources */
 
         unsigned num_inputs = nir_op_infos[instr->op].num_inputs;
         assert(num_inputs <= ARRAY_SIZE(alu.src));
 
         for (unsigned i = 0; i < num_inputs; ++i) {
-                alu.src[i] = bir_src_index(&instr->src[i].src);
-
+                unsigned bits = nir_src_bit_size(instr->src[i].src);
                 alu.src_types[i] = nir_op_infos[instr->op].input_types[i]
-                        | nir_src_bit_size(instr->src[i].src);
+                        | bits;
+
+                /* Try to inline a constant */
+                if (nir_src_is_const(instr->src[i].src) && constants_left && (dest_bits == bits)) {
+                        alu.constant.u64 |=
+                                (nir_src_as_uint(instr->src[i].src)) << constant_shift;
+
+                        alu.src[i] = BIR_INDEX_CONSTANT | constant_shift;
+                        --constants_left;
+                        constant_shift += dest_bits;
+                        continue;
+                }
+
+                alu.src[i] = bir_src_index(&instr->src[i].src);
 
                 /* We assert scalarization above */
                 alu.swizzle[i][0] = instr->src[i].swizzle[0];
