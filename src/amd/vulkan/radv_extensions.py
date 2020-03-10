@@ -261,6 +261,82 @@ def _init_exts_from_xml(xml):
             for dep in extra_deps(ext):
                 ext.enable += ' && ' + dep
 
+# Mapping between extension name and the android version in which the extension
+# was whitelisted in Android CTS.
+allowed_android_version = {
+    # Allowed Instance KHR Extensions
+    "VK_KHR_surface": 26,
+    "VK_KHR_display": 26,
+    "VK_KHR_android_surface": 26,
+    "VK_KHR_mir_surface": 26,
+    "VK_KHR_wayland_surface": 26,
+    "VK_KHR_win32_surface": 26,
+    "VK_KHR_xcb_surface": 26,
+    "VK_KHR_xlib_surface": 26,
+    "VK_KHR_get_physical_device_properties2": 26,
+    "VK_KHR_get_surface_capabilities2": 26,
+    "VK_KHR_external_memory_capabilities": 28,
+    "VK_KHR_external_semaphore_capabilities": 28,
+    "VK_KHR_external_fence_capabilities": 28,
+    "VK_KHR_device_group_creation": 28,
+
+    # Allowed Device KHR Extensions
+    "VK_KHR_swapchain": 26,
+    "VK_KHR_display_swapchain": 26,
+    "VK_KHR_sampler_mirror_clamp_to_edge": 26,
+    "VK_KHR_shader_draw_parameters": 26,
+    "VK_KHR_maintenance1": 26,
+    "VK_KHR_push_descriptor": 26,
+    "VK_KHR_descriptor_update_template": 26,
+    "VK_KHR_incremental_present": 26,
+    "VK_KHR_shared_presentable_image": 26,
+    "VK_KHR_storage_buffer_storage_class": 28,
+    "VK_KHR_16bit_storage": 28,
+    "VK_KHR_get_memory_requirements2": 28,
+    "VK_KHR_external_memory": 28,
+    "VK_KHR_external_memory_fd": 28,
+    "VK_KHR_external_memory_win32": 28,
+    "VK_KHR_external_semaphore": 28,
+    "VK_KHR_external_semaphore_fd": 28,
+    "VK_KHR_external_semaphore_win32": 28,
+    "VK_KHR_external_fence": 28,
+    "VK_KHR_external_fence_fd": 28,
+    "VK_KHR_external_fence_win32": 28,
+    "VK_KHR_win32_keyed_mutex": 28,
+    "VK_KHR_dedicated_allocation": 28,
+    "VK_KHR_variable_pointers": 28,
+    "VK_KHR_relaxed_block_layout": 28,
+    "VK_KHR_bind_memory2": 28,
+    "VK_KHR_maintenance2": 28,
+    "VK_KHR_image_format_list": 28,
+    "VK_KHR_sampler_ycbcr_conversion": 28,
+    "VK_KHR_device_group": 28,
+    "VK_KHR_multiview": 28,
+    "VK_KHR_maintenance3": 28,
+
+    "VK_GOOGLE_display_timing": 26,
+    "VK_ANDROID_external_memory_android_hardware_buffer": 28,
+}
+
+# Extensions with these prefixes are checked in Android CTS, and thus must be
+# whitelisted per the preceding dict.
+android_extension_whitelist_prefixes = (
+    "VK_KHX",
+    "VK_KHR",
+    "VK_GOOGLE",
+    "VK_ANDROID"
+)
+
+def GetExtensionCondition(ext_name, condition):
+    """ If |ext_name| is an extension that Android CTS cares about, prepend
+        a condition to ensure that the extension is only enabled for Android
+        versions in which the extension is whitelisted in CTS. """
+    if not ext_name.startswith(android_extension_whitelist_prefixes):
+        return condition
+    allowed_version = allowed_android_version.get(ext_name, 9999)
+    return "(!ANDROID || ANDROID_API_LEVEL >= %d) && (%s)" % (allowed_version,
+                                                              condition)
+
 _TEMPLATE_H = Template(COPYRIGHT + """
 #ifndef RADV_EXTENSIONS_H
 #define RADV_EXTENSIONS_H
@@ -325,6 +401,7 @@ _TEMPLATE_C = Template(COPYRIGHT + """
 #   define ANDROID true
 #else
 #   define ANDROID false
+#   define ANDROID_API_LEVEL 0
 #endif
 
 #define RADV_HAS_SURFACE (VK_USE_PLATFORM_WAYLAND_KHR || \\
@@ -347,7 +424,7 @@ const VkExtensionProperties radv_device_extensions[RADV_DEVICE_EXTENSION_COUNT] 
 
 const struct radv_instance_extension_table radv_supported_instance_extensions = {
 %for ext in instance_extensions:
-   .${ext.name[3:]} = ${ext.enable},
+   .${ext.name[3:]} = ${GetExtensionCondition(ext.name, ext.enable)},
 %endfor
 };
 
@@ -356,7 +433,7 @@ void radv_fill_device_extension_table(const struct radv_physical_device *device,
 {
    const struct radv_instance *instance = device->instance;
 %for ext in device_extensions:
-   table->${ext.name[3:]} = ${ext.enable};
+   table->${ext.name[3:]} = ${GetExtensionCondition(ext.name, ext.enable)};
 %endfor
 }
 
@@ -400,6 +477,7 @@ if __name__ == '__main__':
         'MAX_API_VERSION': MAX_API_VERSION,
         'instance_extensions': [e for e in EXTENSIONS if e.type == 'instance'],
         'device_extensions': [e for e in EXTENSIONS if e.type == 'device'],
+        'GetExtensionCondition': GetExtensionCondition,
     }
 
     with open(args.out_c, 'w') as f:
