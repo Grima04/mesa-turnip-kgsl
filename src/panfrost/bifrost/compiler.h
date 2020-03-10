@@ -29,6 +29,7 @@
 
 #include "bifrost.h"
 #include "compiler/nir/nir.h"
+#include "panfrost/util/pan_ir.h"
 
 /* Bifrost opcodes are tricky -- the same op may exist on both FMA and
  * ADD with two completely different opcodes, and opcodes can be varying

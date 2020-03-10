@@ -33,6 +33,7 @@ libpanfrost_bifrost = static_library(
   [libpanfrost_bifrost_files],
   include_directories : [inc_common, inc_include, inc_src],
   dependencies: [idep_nir],
+  link_with: [libpanfrost_util],
   c_args : [c_vis_args, no_override_init_args],
   cpp_args : [cpp_vis_args],
   build_by_default : false,

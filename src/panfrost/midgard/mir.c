@@ -310,51 +310,6 @@ mir_mode_for_destsize(unsigned size)
         }
 }
 
-
-/* Converts per-component mask to a byte mask */
-
-uint16_t
-mir_to_bytemask(midgard_reg_mode mode, unsigned mask)
-{
-        switch (mode) {
-        case midgard_reg_mode_8:
-                return mask;
-
-        case midgard_reg_mode_16: {
-                unsigned space =
-                        (mask & 0x1) |
-                        ((mask & 0x2) << (2 - 1)) |
-                        ((mask & 0x4) << (4 - 2)) |
-                        ((mask & 0x8) << (6 - 3)) |
-                        ((mask & 0x10) << (8 - 4)) |
-                        ((mask & 0x20) << (10 - 5)) |
-                        ((mask & 0x40) << (12 - 6)) |
-                        ((mask & 0x80) << (14 - 7));
-
-                return space | (space << 1);
-        }
-
-        case midgard_reg_mode_32: {
-                unsigned space =
-                        (mask & 0x1) |
-                        ((mask & 0x2) << (4 - 1)) |
-                        ((mask & 0x4) << (8 - 2)) |
-                        ((mask & 0x8) << (12 - 3));
-
-                return space | (space << 1) | (space << 2) | (space << 3);
-        }
-
-        case midgard_reg_mode_64: {
-                unsigned A = (mask & 0x1) ? 0xFF : 0x00;
-                unsigned B = (mask & 0x2) ? 0xFF : 0x00;
-                return A | (B << 8);
-        }
-
-        default:
-                unreachable("Invalid register mode");
-        }
-}
-
 /* ...and the inverse */
 
 unsigned
@@ -417,7 +372,7 @@ mir_round_bytemask_up(uint16_t mask, midgard_reg_mode mode)
 uint16_t
 mir_bytemask(midgard_instruction *ins)
 {
-        return mir_to_bytemask(mir_typesize(ins), ins->mask);
+        return pan_to_bytemask(mir_bytes_for_mode(mir_typesize(ins)) * 8, ins->mask);
 }
 
 void
@@ -473,7 +428,7 @@ mir_bytemask_of_read_components_single(unsigned *swizzle, unsigned inmask, midga
                 cmask |= (1 << swizzle[c]);
         }
 
-        return mir_to_bytemask(mode, cmask);
+        return pan_to_bytemask(mir_bytes_for_mode(mode) * 8, cmask);
 }
 
 uint16_t

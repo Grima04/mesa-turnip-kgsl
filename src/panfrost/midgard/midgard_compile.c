@@ -1216,7 +1216,7 @@ mir_set_intr_mask(nir_instr *instr, midgard_instruction *ins, bool is_read)
         }
 
         /* Once we have the NIR mask, we need to normalize to work in 32-bit space */
-        unsigned bytemask = mir_to_bytemask(mir_mode_for_destsize(dsize), nir_mask);
+        unsigned bytemask = pan_to_bytemask(dsize, nir_mask);
         mir_set_bytemask(ins, bytemask);
 
         if (dsize == 64)
