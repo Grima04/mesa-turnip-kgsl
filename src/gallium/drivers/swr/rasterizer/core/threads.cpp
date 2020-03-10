@@ -592,17 +592,20 @@ bool WorkOnFifoBE(SWR_CONTEXT* pContext,
             pDC->pTileMgr->getTileIndices(tileID, x, y);
             if (((x ^ y) & numaMask) != numaNode)
             {
+                _mm_pause();
                 continue;
             }
 
             if (!tile->getNumQueued())
             {
+                _mm_pause();
                 continue;
             }
 
             // can only work on this draw if it's not in use by other threads
             if (lockedTiles.get(tileID))
             {
+                _mm_pause();
                 continue;
             }
 
@@ -663,6 +666,7 @@ bool WorkOnFifoBE(SWR_CONTEXT* pContext,
                 // This tile is already locked. So let's add it to our locked tiles set. This way we
                 // don't try locking this one again.
                 lockedTiles.set(tileID);
+                _mm_pause();
             }
         }
     }
@@ -750,7 +754,7 @@ void WorkOnFifoFE(SWR_CONTEXT* pContext, uint32_t workerId, uint32_t& curDrawFE)
         uint32_t      dcSlot = curDraw % pContext->MAX_DRAWS_IN_FLIGHT;
         DRAW_CONTEXT* pDC    = &pContext->dcRing[dcSlot];
 
-        if (!pDC->isCompute && !pDC->FeLock)
+        if (!pDC->FeLock && !pDC->isCompute)
         {
             if (CheckDependencyFE(pContext, pDC, lastRetiredFE))
             {
@@ -765,7 +769,16 @@ void WorkOnFifoFE(SWR_CONTEXT* pContext, uint32_t workerId, uint32_t& curDrawFE)
 
                 CompleteDrawFE(pContext, workerId, pDC);
             }
+            else
+            {
+                _mm_pause();
+            }
         }
+        else
+        {
+            _mm_pause();
+        }
+
         curDraw++;
     }
 }
