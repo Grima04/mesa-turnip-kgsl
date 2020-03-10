@@ -2768,12 +2768,15 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
    }
    if (key->multisample) {
       debug_printf("multisample = 1\n");
+      debug_printf("coverage samples = %d\n", key->coverage_samples);
    }
    for (i = 0; i < key->nr_cbufs; ++i) {
       debug_printf("cbuf_format[%u] = %s\n", i, util_format_name(key->cbuf_format[i]));
+      debug_printf("cbuf nr_samples[%u] = %d\n", i, key->cbuf_nr_samples[i]);
    }
    if (key->depth.enabled || key->stencil[0].enabled) {
       debug_printf("depth.format = %s\n", util_format_name(key->zsbuf_format));
+      debug_printf("depth nr_samples = %d\n", key->zsbuf_nr_samples);
    }
    if (key->depth.enabled) {
       debug_printf("depth.func = %s\n", util_str_func(key->depth.func, TRUE));
@@ -3346,6 +3349,7 @@ make_variant_key(struct llvmpipe_context *lp,
       if (llvmpipe_resource_is_1d(lp->framebuffer.zsbuf->texture)) {
          key->resource_1d = TRUE;
       }
+      key->zsbuf_nr_samples = util_res_sample_count(lp->framebuffer.zsbuf->texture);
    }
 
    /*
@@ -3387,6 +3391,9 @@ make_variant_key(struct llvmpipe_context *lp,
       memcpy(&key->blend, lp->blend, sizeof key->blend);
    }
 
+   key->coverage_samples = 1;
+   if (key->multisample)
+      key->coverage_samples = util_framebuffer_get_num_samples(&lp->framebuffer);
    key->nr_cbufs = lp->framebuffer.nr_cbufs;
 
    if (!key->blend.independent_blend_enable) {
@@ -3405,6 +3412,7 @@ make_variant_key(struct llvmpipe_context *lp,
          const struct util_format_description *format_desc;
 
          key->cbuf_format[i] = format;
+         key->cbuf_nr_samples[i] = util_res_sample_count(lp->framebuffer.cbufs[i]->texture);
 
          /*
           * Figure out if this is a 1d resource. Note that OpenGL allows crazy
@@ -3464,6 +3472,7 @@ make_variant_key(struct llvmpipe_context *lp,
       else {
          /* no color buffer for this fragment output */
          key->cbuf_format[i] = PIPE_FORMAT_NONE;
+         key->cbuf_nr_samples[i] = 0;
          blend_rt->colormask = 0x0;
          blend_rt->blend_enable = 0;
       }

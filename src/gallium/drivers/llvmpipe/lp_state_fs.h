@@ -88,6 +88,10 @@ struct lp_fragment_shader_variant_key
    enum pipe_format zsbuf_format;
    enum pipe_format cbuf_format[PIPE_MAX_COLOR_BUFS];
 
+   uint8_t cbuf_nr_samples[PIPE_MAX_COLOR_BUFS];
+   uint8_t zsbuf_nr_samples;
+   uint8_t coverage_samples;
+
    struct lp_sampler_static_state samplers[1];
    /* followed by variable number of images */
 };
