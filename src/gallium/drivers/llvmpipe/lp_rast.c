@@ -156,18 +156,20 @@ lp_rast_clear_color(struct lp_rasterizer_task *task,
    LP_DBG(DEBUG_RAST, "%s clear value (target format %d) raw 0x%x,0x%x,0x%x,0x%x\n",
           __FUNCTION__, format, uc.ui[0], uc.ui[1], uc.ui[2], uc.ui[3]);
 
-
-   util_fill_box(scene->cbufs[cbuf].map,
-                 format,
-                 scene->cbufs[cbuf].stride,
-                 scene->cbufs[cbuf].layer_stride,
-                 task->x,
-                 task->y,
-                 0,
-                 task->width,
-                 task->height,
-                 scene->fb_max_layer + 1,
-                 &uc);
+   for (unsigned s = 0; s < scene->cbufs[cbuf].nr_samples; s++) {
+      void *map = (char *)scene->cbufs[cbuf].map + scene->cbufs[cbuf].sample_stride * s;
+      util_fill_box(map,
+                    format,
+                    scene->cbufs[cbuf].stride,
+                    scene->cbufs[cbuf].layer_stride,
+                    task->x,
+                    task->y,
+                    0,
+                    task->width,
+                    task->height,
+                    scene->fb_max_layer + 1,
+                    &uc);
+   }
 
    /* this will increase for each rb which probably doesn't mean much */
    LP_COUNT(nr_color_tile_clear);
@@ -204,88 +206,91 @@ lp_rast_clear_zstencil(struct lp_rasterizer_task *task,
 
    if (scene->fb.zsbuf) {
       unsigned layer;
-      uint8_t *dst_layer = task->depth_tile;
-      block_size = util_format_get_blocksize(scene->fb.zsbuf->format);
 
-      clear_value &= clear_mask;
+      for (unsigned s = 0; s < scene->zsbuf.nr_samples; s++) {
+         uint8_t *dst_layer = task->depth_tile + (s * scene->zsbuf.sample_stride);
+         block_size = util_format_get_blocksize(scene->fb.zsbuf->format);
 
-      for (layer = 0; layer <= scene->fb_max_layer; layer++) {
-         dst = dst_layer;
+         clear_value &= clear_mask;
 
-         switch (block_size) {
-         case 1:
-            assert(clear_mask == 0xff);
-            for (i = 0; i < height; i++) {
-               uint8_t *row = (uint8_t *)dst;
-               memset(row, (uint8_t) clear_value, width);
-               dst += dst_stride;
-            }
-            break;
-         case 2:
-            if (clear_mask == 0xffff) {
+         for (layer = 0; layer <= scene->fb_max_layer; layer++) {
+            dst = dst_layer;
+
+            switch (block_size) {
+            case 1:
+               assert(clear_mask == 0xff);
                for (i = 0; i < height; i++) {
-                  uint16_t *row = (uint16_t *)dst;
-                  for (j = 0; j < width; j++)
-                     *row++ = (uint16_t) clear_value;
+                  uint8_t *row = (uint8_t *)dst;
+                  memset(row, (uint8_t) clear_value, width);
                   dst += dst_stride;
                }
-            }
-            else {
-               for (i = 0; i < height; i++) {
-                  uint16_t *row = (uint16_t *)dst;
-                  for (j = 0; j < width; j++) {
-                     uint16_t tmp = ~clear_mask & *row;
-                     *row++ = clear_value | tmp;
+               break;
+            case 2:
+               if (clear_mask == 0xffff) {
+                  for (i = 0; i < height; i++) {
+                     uint16_t *row = (uint16_t *)dst;
+                     for (j = 0; j < width; j++)
+                        *row++ = (uint16_t) clear_value;
+                     dst += dst_stride;
                   }
-                  dst += dst_stride;
                }
-            }
-            break;
-         case 4:
-            if (clear_mask == 0xffffffff) {
-               for (i = 0; i < height; i++) {
-                  util_memset32(dst, clear_value, width);
-                  dst += dst_stride;
-               }
-            }
-            else {
-               for (i = 0; i < height; i++) {
-                  uint32_t *row = (uint32_t *)dst;
-                  for (j = 0; j < width; j++) {
-                     uint32_t tmp = ~clear_mask & *row;
-                     *row++ = clear_value | tmp;
+               else {
+                  for (i = 0; i < height; i++) {
+                     uint16_t *row = (uint16_t *)dst;
+                     for (j = 0; j < width; j++) {
+                        uint16_t tmp = ~clear_mask & *row;
+                        *row++ = clear_value | tmp;
+                     }
+                     dst += dst_stride;
                   }
-                  dst += dst_stride;
                }
-            }
-            break;
-         case 8:
-            clear_value64 &= clear_mask64;
-            if (clear_mask64 == 0xffffffffffULL) {
-               for (i = 0; i < height; i++) {
-                  uint64_t *row = (uint64_t *)dst;
-                  for (j = 0; j < width; j++)
-                     *row++ = clear_value64;
-                  dst += dst_stride;
-               }
-            }
-            else {
-               for (i = 0; i < height; i++) {
-                  uint64_t *row = (uint64_t *)dst;
-                  for (j = 0; j < width; j++) {
-                     uint64_t tmp = ~clear_mask64 & *row;
-                     *row++ = clear_value64 | tmp;
+               break;
+            case 4:
+               if (clear_mask == 0xffffffff) {
+                  for (i = 0; i < height; i++) {
+                     util_memset32(dst, clear_value, width);
+                     dst += dst_stride;
                   }
-                  dst += dst_stride;
                }
-            }
-            break;
+               else {
+                  for (i = 0; i < height; i++) {
+                     uint32_t *row = (uint32_t *)dst;
+                     for (j = 0; j < width; j++) {
+                        uint32_t tmp = ~clear_mask & *row;
+                        *row++ = clear_value | tmp;
+                     }
+                     dst += dst_stride;
+                  }
+               }
+               break;
+            case 8:
+               clear_value64 &= clear_mask64;
+               if (clear_mask64 == 0xffffffffffULL) {
+                  for (i = 0; i < height; i++) {
+                     uint64_t *row = (uint64_t *)dst;
+                     for (j = 0; j < width; j++)
+                        *row++ = clear_value64;
+                     dst += dst_stride;
+                  }
+               }
+               else {
+                  for (i = 0; i < height; i++) {
+                     uint64_t *row = (uint64_t *)dst;
+                     for (j = 0; j < width; j++) {
+                        uint64_t tmp = ~clear_mask64 & *row;
+                        *row++ = clear_value64 | tmp;
+                     }
+                     dst += dst_stride;
+                  }
+               }
+               break;
 
-         default:
-            assert(0);
-            break;
+            default:
+               assert(0);
+               break;
+            }
+            dst_layer += scene->zsbuf.layer_stride;
          }
-         dst_layer += scene->zsbuf.layer_stride;
       }
    }
 }
