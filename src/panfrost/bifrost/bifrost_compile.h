@@ -26,12 +26,9 @@
 
 #include "compiler/nir/nir.h"
 #include "util/u_dynarray.h"
+#include "panfrost/util/pan_ir.h"
 
-typedef struct {
-        struct util_dynarray compiled;
-} bifrost_program;
-
-void bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned product_id);
+void bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned product_id);
 
 static const nir_shader_compiler_options bifrost_nir_options = {
         .lower_ffma = true,

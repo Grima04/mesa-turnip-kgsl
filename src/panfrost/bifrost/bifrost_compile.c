@@ -771,7 +771,7 @@ bi_optimize_nir(nir_shader *nir)
 }
 
 void
-bifrost_compile_shader_nir(nir_shader *nir, bifrost_program *program, unsigned product_id)
+bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned product_id)
 {
         bi_context *ctx = rzalloc(NULL, bi_context);
         ctx->nir = nir;
