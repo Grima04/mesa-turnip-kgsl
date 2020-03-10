@@ -292,6 +292,129 @@ llvmpipe_get_sample_position(struct pipe_context *pipe,
    }
 }
 
+static void
+lp_clear_color_texture_helper(struct pipe_transfer *dst_trans,
+                                ubyte *dst_map,
+                                enum pipe_format format,
+                                const union pipe_color_union *color,
+                                unsigned width, unsigned height, unsigned depth)
+{
+   union util_color uc;
+
+   assert(dst_trans->stride > 0);
+
+   util_pack_color_union(format, &uc, color);
+
+   util_fill_box(dst_map, format,
+                 dst_trans->stride, dst_trans->layer_stride,
+                 0, 0, 0, width, height, depth, &uc);
+}
+
+static void
+lp_clear_color_texture_msaa(struct pipe_context *pipe,
+                            struct pipe_resource *texture,
+                            enum pipe_format format,
+                            const union pipe_color_union *color,
+                            unsigned sample,
+                            const struct pipe_box *box)
+{
+   struct pipe_transfer *dst_trans;
+   ubyte *dst_map;
+
+   dst_map = llvmpipe_transfer_map_ms(pipe, texture, 0, PIPE_TRANSFER_WRITE,
+                                      sample, box, &dst_trans);
+   if (!dst_map)
+      return;
+
+   if (dst_trans->stride > 0) {
+      lp_clear_color_texture_helper(dst_trans, dst_map, format, color,
+                                    box->width, box->height, box->depth);
+   }
+   pipe->transfer_unmap(pipe, dst_trans);
+}
+
+static void
+lp_clear_depth_stencil_texture_msaa(struct pipe_context *pipe,
+                                    struct pipe_resource *texture,
+                                    enum pipe_format format,
+                                    unsigned clear_flags,
+                                    uint64_t zstencil, unsigned sample,
+                                    const struct pipe_box *box)
+{
+   struct pipe_transfer *dst_trans;
+   ubyte *dst_map;
+   boolean need_rmw = FALSE;
+
+   if ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) &&
+       ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL) &&
+       util_format_is_depth_and_stencil(format))
+      need_rmw = TRUE;
+
+   dst_map = llvmpipe_transfer_map_ms(pipe,
+                                      texture,
+                                      0,
+                                      (need_rmw ? PIPE_TRANSFER_READ_WRITE :
+                                       PIPE_TRANSFER_WRITE),
+                                      sample, box, &dst_trans);
+   assert(dst_map);
+   if (!dst_map)
+      return;
+
+   assert(dst_trans->stride > 0);
+
+   util_fill_zs_box(dst_map, format, need_rmw, clear_flags,
+		    dst_trans->stride, dst_trans->layer_stride,
+		    box->width, box->height, box->depth, zstencil);
+
+   pipe->transfer_unmap(pipe, dst_trans);
+}
+
+static void
+llvmpipe_clear_texture(struct pipe_context *pipe,
+                       struct pipe_resource *tex,
+                       unsigned level,
+                       const struct pipe_box *box,
+                       const void *data)
+{
+   const struct util_format_description *desc =
+          util_format_description(tex->format);
+   if (tex->nr_samples <= 1) {
+      util_clear_texture(pipe, tex, level, box, data);
+      return;
+   }
+   union pipe_color_union color;
+
+   if (util_format_is_depth_or_stencil(tex->format)) {
+      unsigned clear = 0;
+      float depth = 0.0f;
+      uint8_t stencil = 0;
+      uint64_t zstencil;
+
+      if (util_format_has_depth(desc)) {
+         clear |= PIPE_CLEAR_DEPTH;
+         util_format_unpack_z_float(tex->format, &depth, data, 1);
+      }
+
+      if (util_format_has_stencil(desc)) {
+         clear |= PIPE_CLEAR_STENCIL;
+         util_format_unpack_s_8uint(tex->format, &stencil, data, 1);
+      }
+
+      zstencil = util_pack64_z_stencil(tex->format, depth, stencil);
+
+      for (unsigned s = 0; s < util_res_sample_count(tex); s++)
+         lp_clear_depth_stencil_texture_msaa(pipe, tex, tex->format, clear, zstencil,
+                                             s, box);
+   } else {
+      util_format_unpack_rgba(tex->format, color.ui, data, 1);
+
+      for (unsigned s = 0; s < util_res_sample_count(tex); s++) {
+         lp_clear_color_texture_msaa(pipe, tex, tex->format, &color, s,
+                                     box);
+      }
+   }
+}
+
 void
 llvmpipe_init_surface_functions(struct llvmpipe_context *lp)
 {
@@ -300,7 +423,7 @@ llvmpipe_init_surface_functions(struct llvmpipe_context *lp)
    lp->pipe.create_surface = llvmpipe_create_surface;
    lp->pipe.surface_destroy = llvmpipe_surface_destroy;
    /* These are not actually functions dealing with surfaces */
-   lp->pipe.clear_texture = util_clear_texture;
+   lp->pipe.clear_texture = llvmpipe_clear_texture;
    lp->pipe.resource_copy_region = lp_resource_copy;
    lp->pipe.blit = lp_blit;
    lp->pipe.flush_resource = lp_flush_resource;
