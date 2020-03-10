@@ -233,6 +233,8 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_fadd:
         case nir_op_fsub:
                 return BI_ADD;
+        case nir_op_isub:
+                return BI_ISUB;
 
         case nir_op_i2i8:
         case nir_op_i2i16:

@@ -38,6 +38,7 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_DISCARD] 		= BI_SCHED_HI_LATENCY,
         [BI_FMA] 		= BI_ROUNDMODE | BI_SCHED_FMA,
         [BI_FREXP] 		= BI_SCHED_ALL,
+        [BI_ISUB] 		= BI_GENERIC | BI_SCHED_ALL,
         [BI_LOAD] 		= BI_SCHED_HI_LATENCY,
         [BI_LOAD_UNIFORM]	= BI_SCHED_HI_LATENCY,
         [BI_LOAD_ATTR] 		= BI_SCHED_HI_LATENCY,
