@@ -681,7 +681,8 @@ nop_sched(struct ir3 *ir)
 			 */
 
 			if ((delay > 0) && (ir->compiler->gpu_id >= 600) && last &&
-					((opc_cat(last->opc) == 2) || (opc_cat(last->opc) == 3))) {
+					((opc_cat(last->opc) == 2) || (opc_cat(last->opc) == 3)) &&
+					(last->repeat == 0)) {
 				/* the previous cat2/cat3 instruction can encode at most 3 nop's: */
 				unsigned transfer = MIN2(delay, 3 - last->nop);
 				last->nop += transfer;
