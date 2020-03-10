@@ -167,6 +167,17 @@ enum bi_round_op {
         BI_ROUND_ROUND /* i.e.: fround() */
 };
 
+enum bi_special_op {
+        BI_SPECIAL_FRCP,
+        BI_SPECIAL_FRSQ,
+        BI_SPECIAL_FATAN,
+        BI_SPECIAL_FSIN,
+        BI_SPECIAL_FCOS,
+        BI_SPECIAL_FEXP,
+        BI_SPECIAL_FLOG2,
+        BI_SPECIAL_FLOGE
+};
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
@@ -223,6 +234,7 @@ typedef struct {
                 enum bi_minmax_op minmax;
                 enum bi_bitwise_op bitwise;
                 enum bi_round_op round;
+                enum bi_special_op special;
         } op;
 
         /* Union for class-specific information */

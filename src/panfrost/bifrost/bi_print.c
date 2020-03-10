@@ -231,6 +231,22 @@ bi_bitwise_op_name(enum bi_bitwise_op op)
         }
 }
 
+static const char *
+bi_special_op_name(enum bi_special_op op)
+{
+        switch (op) {
+        case BI_SPECIAL_FRCP: return "frcp";
+        case BI_SPECIAL_FRSQ: return "frsq";
+        case BI_SPECIAL_FATAN: return "fatan";
+        case BI_SPECIAL_FSIN: return "fsin";
+        case BI_SPECIAL_FCOS: return "fcos";
+        case BI_SPECIAL_FEXP: return "fexp";
+        case BI_SPECIAL_FLOG2: return "flog2";
+        case BI_SPECIAL_FLOGE: return "flog";
+        default: return "invalid";
+        }
+}
+
 static void
 bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
 {
@@ -294,6 +310,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_bitwise_op_name(ins->op.bitwise));
         else if (ins->type == BI_ROUND)
                 fprintf(fp, ins->op.round == BI_ROUND_MODE ? "roundMode": "round");
+        else if (ins->type == BI_SPECIAL)
+                fprintf(fp, "%s", bi_special_op_name(ins->op.special));
         else
                 fprintf(fp, "%s", bi_class_name(ins->type));
 
