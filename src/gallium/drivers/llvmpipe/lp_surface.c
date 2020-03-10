@@ -33,7 +33,7 @@
 #include "lp_surface.h"
 #include "lp_texture.h"
 #include "lp_query.h"
-
+#include "lp_rast.h"
 
 static void
 lp_resource_copy(struct pipe_context *pipe,
@@ -225,6 +225,21 @@ llvmpipe_clear_depth_stencil(struct pipe_context *pipe,
                             dstx, dsty, width, height);
 }
 
+static void
+llvmpipe_get_sample_position(struct pipe_context *pipe,
+                             unsigned sample_count,
+                             unsigned sample_index,
+                             float *out_value)
+{
+   switch (sample_count) {
+   case 4:
+      out_value[0] = lp_sample_pos_4x[sample_index][0];
+      out_value[1] = lp_sample_pos_4x[sample_index][1];
+      break;
+   default:
+      break;
+   }
+}
 
 void
 llvmpipe_init_surface_functions(struct llvmpipe_context *lp)
@@ -238,4 +253,5 @@ llvmpipe_init_surface_functions(struct llvmpipe_context *lp)
    lp->pipe.resource_copy_region = lp_resource_copy;
    lp->pipe.blit = lp_blit;
    lp->pipe.flush_resource = lp_flush_resource;
+   lp->pipe.get_sample_position = llvmpipe_get_sample_position;
 }

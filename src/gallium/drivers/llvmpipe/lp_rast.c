@@ -56,6 +56,10 @@ const struct lp_rast_state *jit_state = NULL;
 const struct lp_rasterizer_task *jit_task = NULL;
 #endif
 
+const float lp_sample_pos_4x[4][2] = { { 0.375, 0.125 },
+                                       { 0.875, 0.375 },
+                                       { 0.125, 0.625 },
+                                       { 0.625, 0.875 } };
 
 /**
  * Begin rasterizing a scene.

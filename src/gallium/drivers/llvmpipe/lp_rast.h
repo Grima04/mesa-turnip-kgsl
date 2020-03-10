@@ -72,6 +72,7 @@ struct cmd_bin;
 
 struct lp_rasterizer_task;
 
+extern const float lp_sample_pos_4x[4][2];
 
 /**
  * Rasterization state.
