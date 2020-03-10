@@ -4398,12 +4398,10 @@ radv_cmd_buffer_end_subpass(struct radv_cmd_buffer *cmd_buffer)
 	}
 }
 
-void radv_CmdBeginRenderPass(
-	VkCommandBuffer                             commandBuffer,
-	const VkRenderPassBeginInfo*                pRenderPassBegin,
-	VkSubpassContents                           contents)
+void
+radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
+				  const VkRenderPassBeginInfo *pRenderPassBegin)
 {
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	RADV_FROM_HANDLE(radv_render_pass, pass, pRenderPassBegin->renderPass);
 	RADV_FROM_HANDLE(radv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
 	VkResult result;
@@ -4419,6 +4417,16 @@ void radv_CmdBeginRenderPass(
 	result = radv_cmd_state_setup_sample_locations(cmd_buffer, pass, pRenderPassBegin);
 	if (result != VK_SUCCESS)
 		return;
+}
+
+void radv_CmdBeginRenderPass(
+	VkCommandBuffer                             commandBuffer,
+	const VkRenderPassBeginInfo*                pRenderPassBegin,
+	VkSubpassContents                           contents)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+	radv_cmd_buffer_begin_render_pass(cmd_buffer, pRenderPassBegin);
 
 	radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
@@ -5270,6 +5278,19 @@ void radv_unaligned_dispatch(
 	radv_dispatch(cmd_buffer, &info);
 }
 
+void
+radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer)
+{
+	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
+	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.subpass_sample_locs);
+
+	cmd_buffer->state.pass = NULL;
+	cmd_buffer->state.subpass = NULL;
+	cmd_buffer->state.attachments = NULL;
+	cmd_buffer->state.framebuffer = NULL;
+	cmd_buffer->state.subpass_sample_locs = NULL;
+}
+
 void radv_CmdEndRenderPass(
 	VkCommandBuffer                             commandBuffer)
 {
@@ -5279,14 +5300,7 @@ void radv_CmdEndRenderPass(
 
 	radv_cmd_buffer_end_subpass(cmd_buffer);
 
-	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
-	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.subpass_sample_locs);
-
-	cmd_buffer->state.pass = NULL;
-	cmd_buffer->state.subpass = NULL;
-	cmd_buffer->state.attachments = NULL;
-	cmd_buffer->state.framebuffer = NULL;
-	cmd_buffer->state.subpass_sample_locs = NULL;
+	radv_cmd_buffer_end_render_pass(cmd_buffer);
 }
 
 void radv_CmdEndRenderPass2(

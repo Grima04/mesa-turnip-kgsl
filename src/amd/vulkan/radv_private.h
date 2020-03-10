@@ -2487,6 +2487,10 @@ si_conv_gl_prim_to_vertices(unsigned gl_prim)
 	}
 }
 
+void radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
+				       const VkRenderPassBeginInfo *pRenderPassBegin);
+void radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer);
+
 #define RADV_DEFINE_HANDLE_CASTS(__radv_type, __VkType)		\
 								\
 	static inline struct __radv_type *			\

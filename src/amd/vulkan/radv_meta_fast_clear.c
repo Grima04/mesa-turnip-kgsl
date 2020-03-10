@@ -626,31 +626,28 @@ radv_process_color_image_layer(struct radv_cmd_buffer *cmd_buffer,
 					.layers = 1
 				}, &cmd_buffer->pool->alloc, &fb_h);
 
-	radv_CmdBeginRenderPass(radv_cmd_buffer_to_handle(cmd_buffer),
-				&(VkRenderPassBeginInfo) {
-					.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-					.renderPass = device->meta_state.fast_clear_flush.pass,
-					.framebuffer = fb_h,
-					.renderArea = {
-						.offset = {
-							0,
-							0,
+	radv_cmd_buffer_begin_render_pass(cmd_buffer,
+					  &(VkRenderPassBeginInfo) {
+						.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+						.renderPass = device->meta_state.fast_clear_flush.pass,
+						.framebuffer = fb_h,
+						.renderArea = {
+							.offset = { 0, 0, },
+							.extent = { width, height, }
 						},
-						.extent = {
-							width,
-							height,
-						}
-					},
-					.clearValueCount = 0,
-					.pClearValues = NULL,
-				}, VK_SUBPASS_CONTENTS_INLINE);
+						.clearValueCount = 0,
+						.pClearValues = NULL,
+					});
+
+	radv_cmd_buffer_set_subpass(cmd_buffer,
+				    &cmd_buffer->state.pass->subpasses[0]);
 
 	radv_CmdDraw(radv_cmd_buffer_to_handle(cmd_buffer), 3, 1, 0, 0);
 
 	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 					RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 
-	radv_CmdEndRenderPass(radv_cmd_buffer_to_handle(cmd_buffer));
+	radv_cmd_buffer_end_render_pass(cmd_buffer);
 
 	radv_DestroyFramebuffer(radv_device_to_handle(device), fb_h,
 				&cmd_buffer->pool->alloc);
