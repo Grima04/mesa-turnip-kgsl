@@ -25,6 +25,7 @@ import enum
 import json
 import pathlib
 import re
+import subprocess
 import typing
 
 import attr
@@ -55,7 +56,9 @@ SEM = asyncio.Semaphore(50)
 
 COMMIT_LOCK = asyncio.Lock()
 
-pick_status_json = pathlib.Path(__file__).parent.parent.parent / '.pick_status.json'
+git_toplevel = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'],
+                                       stderr=subprocess.DEVNULL).decode("ascii").strip()
+pick_status_json = pathlib.Path(git_toplevel) / '.pick_status.json'
 
 
 class PickUIException(Exception):
