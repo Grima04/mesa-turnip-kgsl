@@ -295,120 +295,6 @@ midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(sum));
 }
 
-/* TODO: ssbo_size */
-static int
-midgard_sysval_for_ssbo(nir_intrinsic_instr *instr)
-{
-        nir_src index = instr->src[0];
-        assert(nir_src_is_const(index));
-        uint32_t uindex = nir_src_as_uint(index);
-
-        return PAN_SYSVAL(SSBO, uindex);
-}
-
-static int
-midgard_sysval_for_sampler(nir_intrinsic_instr *instr)
-{
-        /* TODO: indirect samplers !!! */
-        nir_src index = instr->src[0];
-        assert(nir_src_is_const(index));
-        uint32_t uindex = nir_src_as_uint(index);
-
-        return PAN_SYSVAL(SAMPLER, uindex);
-}
-
-static unsigned
-midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
-{
-        switch (instr->intrinsic) {
-        case nir_intrinsic_load_viewport_scale:
-                return PAN_SYSVAL_VIEWPORT_SCALE;
-        case nir_intrinsic_load_viewport_offset:
-                return PAN_SYSVAL_VIEWPORT_OFFSET;
-        case nir_intrinsic_load_num_work_groups:
-                return PAN_SYSVAL_NUM_WORK_GROUPS;
-        case nir_intrinsic_load_ssbo_address: 
-        case nir_intrinsic_get_buffer_size: 
-                return midgard_sysval_for_ssbo(instr);
-        case nir_intrinsic_load_sampler_lod_parameters_pan:
-                return midgard_sysval_for_sampler(instr);
-        default:
-                return ~0;
-        }
-}
-
-static int
-sysval_for_instr(nir_instr *instr, nir_dest *dest)
-{
-        nir_intrinsic_instr *intr;
-        nir_dest *dst = NULL;
-        nir_tex_instr *tex;
-        unsigned sysval = ~0;
-
-        switch (instr->type) {
-        case nir_instr_type_intrinsic:
-                intr = nir_instr_as_intrinsic(instr);
-                sysval = midgard_nir_sysval_for_intrinsic(intr);
-                dst = &intr->dest;
-                break;
-        case nir_instr_type_tex:
-                tex = nir_instr_as_tex(instr);
-                if (tex->op != nir_texop_txs)
-                        break;
-
-                sysval = PAN_SYSVAL(TEXTURE_SIZE,
-                                    PAN_TXS_SYSVAL_ID(tex->texture_index,
-                                                      nir_tex_instr_dest_size(tex) -
-                                                      (tex->is_array ? 1 : 0),
-                                                      tex->is_array));
-                dst  = &tex->dest;
-                break;
-        default:
-                break;
-        }
-
-        if (dest && dst)
-                *dest = *dst;
-
-        return sysval;
-}
-
-static void
-midgard_nir_assign_sysval_body(struct panfrost_sysvals *ctx, nir_instr *instr)
-{
-        int sysval = sysval_for_instr(instr, NULL);
-        if (sysval < 0)
-                return;
-
-        /* We have a sysval load; check if it's already been assigned */
-
-        if (_mesa_hash_table_u64_search(ctx->sysval_to_id, sysval))
-                return;
-
-        /* It hasn't -- so assign it now! */
-
-        unsigned id = ctx->sysval_count++;
-        _mesa_hash_table_u64_insert(ctx->sysval_to_id, sysval, (void *) ((uintptr_t) id + 1));
-        ctx->sysvals[id] = sysval;
-}
-
-static void
-midgard_nir_assign_sysvals(struct panfrost_sysvals *ctx, nir_shader *shader)
-{
-        ctx->sysval_count = 0;
-        ctx->sysval_to_id = _mesa_hash_table_u64_create(NULL);
-
-        nir_foreach_function(function, shader) {
-                if (!function->impl) continue;
-
-                nir_foreach_block(block, function->impl) {
-                        nir_foreach_instr_safe(instr, block) {
-                                midgard_nir_assign_sysval_body(ctx, instr);
-                        }
-                }
-        }
-}
-
 static bool
 midgard_nir_lower_fdot2(nir_shader *shader)
 {
@@ -1373,7 +1259,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
         nir_dest nir_dest;
 
         /* Figure out which uniform this is */
-        int sysval = sysval_for_instr(instr, &nir_dest);
+        int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
         void *val = _mesa_hash_table_u64_search(ctx->sysvals.sysval_to_id, sysval);
 
         unsigned dest = nir_dest_index(&nir_dest);
@@ -2826,7 +2712,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         /* Assign sysvals and counts, now that we're sure
          * (post-optimisation) */
 
-        midgard_nir_assign_sysvals(&ctx->sysvals, nir);
+        panfrost_nir_assign_sysvals(&ctx->sysvals, nir);
 
         program->uniform_count = nir->num_uniforms;
         program->sysval_count = ctx->sysvals.sysval_count;

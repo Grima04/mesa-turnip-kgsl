@@ -234,13 +234,6 @@ enum midgard_rt_id {
         MIDGARD_NUM_RTS,
 };
 
-struct panfrost_sysvals {
-        /* The mapping of sysvals to uniforms, the count, and the off-by-one inverse */
-        unsigned sysvals[MAX_SYSVAL_COUNT];
-        unsigned sysval_count;
-        struct hash_table_u64 *sysval_to_id;
-};
-
 typedef struct compiler_context {
         nir_shader *nir;
         gl_shader_stage stage;

@@ -26,7 +26,9 @@
 
 #include <stdint.h>
 #include "panfrost-job.h"
+#include "compiler/nir/nir.h"
 #include "util/u_dynarray.h"
+#include "util/hash_table.h"
 
 /* Define the general compiler entry point */
 
@@ -66,6 +68,19 @@ enum {
         PAN_INSTANCE_ID = 17,
         PAN_MAX_ATTRIBUTE
 };
+
+struct panfrost_sysvals {
+        /* The mapping of sysvals to uniforms, the count, and the off-by-one inverse */
+        unsigned sysvals[MAX_SYSVAL_COUNT];
+        unsigned sysval_count;
+        struct hash_table_u64 *sysval_to_id;
+};
+
+void
+panfrost_nir_assign_sysvals(struct panfrost_sysvals *ctx, nir_shader *shader);
+
+int
+panfrost_sysval_for_instr(nir_instr *instr, nir_dest *dest);
 
 typedef struct {
         int work_register_count;
