@@ -231,6 +231,7 @@ bi_class_for_nir_alu(nir_op op)
         switch (op) {
         case nir_op_fadd: return BI_ADD;
         case nir_op_fmul: return BI_FMA;
+        case nir_op_fsat:
         case nir_op_mov:  return BI_MOV;
         default: unreachable("Unknown ALU op");
         }
@@ -301,6 +302,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         switch (instr->op) {
         case nir_op_fmul:
                 alu.src[2] = BIR_INDEX_ZERO; /* FMA */
+                break;
+        case nir_op_fsat:
+                alu.outmod = BIFROST_SAT; /* MOV */
                 break;
         default:
                 break;
