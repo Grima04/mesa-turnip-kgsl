@@ -3,7 +3,6 @@ C_SOURCES := \
 	nir/nir_lower_blend.h \
 	nir/nir_lower_framebuffer.c \
     \
-	pan_afbc.c \
 	pan_allocate.c \
 	pan_allocate.h \
 	pan_assemble.c \

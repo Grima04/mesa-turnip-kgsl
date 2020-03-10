@@ -14,6 +14,7 @@ bifrost_FILES := \
         bifrost/disassemble.h
 
 encoder_FILES := \
+	encoder/pan_afbc.c \
         encoder/pan_attributes.c \
         encoder/pan_encoder.h \
         encoder/pan_invocation.c \
