@@ -229,11 +229,49 @@ static enum bi_class
 bi_class_for_nir_alu(nir_op op)
 {
         switch (op) {
-        case nir_op_fadd: return BI_ADD;
-        case nir_op_fmul: return BI_FMA;
+        case nir_op_iadd:
+        case nir_op_fadd:
+                return BI_ADD;
+
+        case nir_op_i2i8:
+        case nir_op_i2i16:
+        case nir_op_i2i32:
+        case nir_op_i2i64:
+        case nir_op_u2u8:
+        case nir_op_u2u16:
+        case nir_op_u2u32:
+        case nir_op_u2u64:
+        case nir_op_f2i16:
+        case nir_op_f2i32:
+        case nir_op_f2i64:
+        case nir_op_f2u16:
+        case nir_op_f2u32:
+        case nir_op_f2u64:
+        case nir_op_i2f16:
+        case nir_op_i2f32:
+        case nir_op_i2f64:
+        case nir_op_u2f16:
+        case nir_op_u2f32:
+        case nir_op_u2f64:
+                return BI_CONVERT;
+
+        case nir_op_fmul:
+                return BI_FMA;
+
+        case nir_op_imin:
+        case nir_op_imax:
+        case nir_op_umin:
+        case nir_op_umax:
+        case nir_op_fmin:
+        case nir_op_fmax:
+                return BI_MINMAX;
+
         case nir_op_fsat:
-        case nir_op_mov:  return BI_MOV;
-        default: unreachable("Unknown ALU op");
+        case nir_op_mov:
+                return BI_MOV;
+
+        default:
+                unreachable("Unknown ALU op");
         }
 }
 
@@ -305,6 +343,11 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_fsat:
                 alu.outmod = BIFROST_SAT; /* MOV */
+                break;
+        case nir_op_fmax:
+        case nir_op_imax:
+        case nir_op_umax:
+                alu.op.minmax = BI_MINMAX_MAX; /* MINMAX */
                 break;
         default:
                 break;
