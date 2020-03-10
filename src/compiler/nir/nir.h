@@ -881,6 +881,26 @@ nir_dest_num_components(nir_dest dest)
    return dest.is_ssa ? dest.ssa.num_components : dest.reg.reg->num_components;
 }
 
+/* Are all components the same, ie. .xxxx */
+static inline bool
+nir_is_same_comp_swizzle(uint8_t *swiz, unsigned nr_comp)
+{
+   for (unsigned i = 1; i < nr_comp; i++)
+      if (swiz[i] != swiz[0])
+         return false;
+   return true;
+}
+
+/* Are all components sequential, ie. .yzw */
+static inline bool
+nir_is_sequential_comp_swizzle(uint8_t *swiz, unsigned nr_comp)
+{
+   for (unsigned i = 1; i < nr_comp; i++)
+      if (swiz[i] != (swiz[0] + i))
+         return false;
+   return true;
+}
+
 void nir_src_copy(nir_src *dest, const nir_src *src, void *instr_or_if);
 void nir_dest_copy(nir_dest *dest, const nir_dest *src, nir_instr *instr);
 
