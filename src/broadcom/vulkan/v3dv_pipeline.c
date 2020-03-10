@@ -148,6 +148,10 @@ const nir_shader_compiler_options v3dv_nir_options = {
     */
    .lower_uadd_carry = true,
    .lower_usub_borrow = true,
+   /* FIXME: check if we can use multop + umul24 to implement mul2x32_64
+    * without lowering.
+    */
+   .lower_mul_2x32_64 = true,
    .lower_fdiv = true,
    .lower_find_lsb = true,
    .lower_ffma16 = true,
