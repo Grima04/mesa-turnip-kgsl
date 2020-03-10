@@ -641,9 +641,11 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
             continue;
 
          /* dead operands effectively reduce the number of estimated moves */
-         if (remaining_op_moves && reg_file.is_blocked(PhysReg{j})) {
-            k--;
-            remaining_op_moves--;
+         if (reg_file.is_blocked(PhysReg{j})) {
+            if (remaining_op_moves) {
+               k--;
+               remaining_op_moves--;
+            }
             continue;
          }
 
