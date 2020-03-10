@@ -231,6 +231,7 @@ bi_class_for_nir_alu(nir_op op)
         switch (op) {
         case nir_op_iadd:
         case nir_op_fadd:
+        case nir_op_fsub:
                 return BI_ADD;
 
         case nir_op_i2i8:
@@ -360,6 +361,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_fabs:
                 alu.src_abs[0] = true; /* MOV */
+                break;
+        case nir_op_fsub:
+                alu.src_neg[1] = true; /* ADD */
                 break;
         case nir_op_fmax:
         case nir_op_imax:
