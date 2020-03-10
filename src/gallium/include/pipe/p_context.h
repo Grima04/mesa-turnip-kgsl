@@ -804,7 +804,7 @@ struct pipe_context {
    void (*set_global_binding)(struct pipe_context *context,
                               unsigned first, unsigned count,
                               struct pipe_resource **resources,
-                              uint64_t **handles);
+                              uint32_t **handles);
 
    /**
     * Launch the compute kernel starting from instruction \a pc of the

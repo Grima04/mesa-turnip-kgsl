@@ -986,7 +986,7 @@ static void evergreen_set_compute_resources(struct pipe_context *ctx,
 static void evergreen_set_global_binding(struct pipe_context *ctx,
 					 unsigned first, unsigned n,
 					 struct pipe_resource **resources,
-					 uint64_t **handles)
+					 uint32_t **handles)
 {
 	struct r600_context *rctx = (struct r600_context *)ctx;
 	struct compute_memory_pool *pool = rctx->screen->global_pool;
@@ -1018,15 +1018,15 @@ static void evergreen_set_global_binding(struct pipe_context *ctx,
 
 	for (i = first; i < first + n; i++)
 	{
-		uint64_t buffer_offset;
-		uint64_t handle;
+		uint32_t buffer_offset;
+		uint32_t handle;
 		assert(resources[i]->target == PIPE_BUFFER);
 		assert(resources[i]->bind & PIPE_BIND_GLOBAL);
 
-		buffer_offset = util_le64_to_cpu(*(handles[i]));
+		buffer_offset = util_le32_to_cpu(*(handles[i]));
 		handle = buffer_offset + buffers[i]->chunk->start_in_dw * 4;
 
-		*(handles[i]) = util_cpu_to_le64(handle);
+		*(handles[i]) = util_cpu_to_le32(handle);
 	}
 
 	/* globals for writing */

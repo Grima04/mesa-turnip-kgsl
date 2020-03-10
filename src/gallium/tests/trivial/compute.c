@@ -403,7 +403,7 @@ static void destroy_sampler_states(struct context *ctx)
 }
 
 static void init_globals(struct context *ctx, const int *slots,
-                         uint64_t **handles)
+                         uint32_t **handles)
 {
         struct pipe_context *pipe = ctx->pipe;
         struct pipe_resource *res[MAX_RESOURCES];
@@ -651,7 +651,7 @@ static void test_input_global(struct context *ctx)
                 "       STORE RGLOBAL.x, TEMP[1].yyyy, TEMP[1]\n"
                 "       RET\n"
                 "    ENDSUB\n";
-        uint64_t input[8] = { 0x10001, 0x10002, 0x10003, 0x10004,
+        uint32_t input[8] = { 0x10001, 0x10002, 0x10003, 0x10004,
                               0x10005, 0x10006, 0x10007, 0x10008 };
 
         printf("- %s\n", __func__);
@@ -666,7 +666,7 @@ static void test_input_global(struct context *ctx)
         init_tex(ctx, 3, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT, 32, 0,
                  test_default_init);
         init_globals(ctx, (int []){ 0, 1, 2, 3, -1 },
-                     (uint64_t *[]){ &input[1], &input[3],
+                     (uint32_t *[]){ &input[1], &input[3],
                                      &input[5], &input[7] });
         launch_grid(ctx, (uint []){4, 1, 1}, (uint []){1, 1, 1}, 0, input);
         check_tex(ctx, 0, test_input_global_expect, NULL);

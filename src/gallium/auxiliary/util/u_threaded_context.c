@@ -1066,7 +1066,7 @@ tc_set_compute_resources(struct pipe_context *_pipe, unsigned start,
 static void
 tc_set_global_binding(struct pipe_context *_pipe, unsigned first,
                       unsigned count, struct pipe_resource **resources,
-                      uint64_t **handles)
+                      uint32_t **handles)
 {
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;

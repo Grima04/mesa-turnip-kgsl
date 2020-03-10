@@ -1039,7 +1039,7 @@ tegra_set_compute_resources(struct pipe_context *pcontext,
 static void
 tegra_set_global_binding(struct pipe_context *pcontext, unsigned int first,
                          unsigned int count, struct pipe_resource **resources,
-                         uint64_t **handles)
+                         uint32_t **handles)
 {
    struct tegra_context *context = to_tegra_context(pcontext);
 
