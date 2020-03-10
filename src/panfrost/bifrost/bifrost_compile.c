@@ -225,6 +225,70 @@ emit_load_const(bi_context *ctx, nir_load_const_instr *instr)
         bi_emit(ctx, move);
 }
 
+static enum bi_class
+bi_class_for_nir_alu(nir_op op)
+{
+        switch (op) {
+        case nir_op_fadd: return BI_ADD;
+        case nir_op_fmul: return BI_FMA;
+        case nir_op_mov:  return BI_MOV;
+        default: unreachable("Unknown ALU op");
+        }
+}
+
+static void
+emit_alu(bi_context *ctx, nir_alu_instr *instr)
+{
+        /* Assume it's something we can handle normally */
+        bi_instruction alu = {
+                .type = bi_class_for_nir_alu(instr->op),
+                .dest = bir_dest_index(&instr->dest.dest),
+                .dest_type = nir_op_infos[instr->op].output_type
+                        | nir_dest_bit_size(instr->dest.dest),
+        };
+
+        if (instr->dest.dest.is_ssa) {
+                /* Construct a writemask */
+                unsigned bits_per_comp = instr->dest.dest.ssa.bit_size;
+                unsigned comps = instr->dest.dest.ssa.num_components;
+                assert(comps == 1);
+                unsigned bits = bits_per_comp * comps;
+                unsigned bytes = MAX2(bits / 8, 1);
+                alu.writemask = (1 << bytes) - 1;
+        } else {
+                unsigned comp_mask = instr->dest.write_mask;
+
+                alu.writemask = pan_to_bytemask(nir_dest_bit_size(instr->dest.dest),
+                                comp_mask);
+        }
+
+        /* Copy sources */
+
+        unsigned num_inputs = nir_op_infos[instr->op].num_inputs;
+        assert(num_inputs <= ARRAY_SIZE(alu.src));
+
+        for (unsigned i = 0; i < num_inputs; ++i) {
+                alu.src[i] = bir_src_index(&instr->src[i].src);
+
+                alu.src_types[i] = nir_op_infos[instr->op].input_types[i]
+                        | nir_src_bit_size(instr->src[i].src);
+
+                /* We assert scalarization above */
+                alu.swizzle[i][0] = instr->src[i].swizzle[0];
+        }
+
+        /* Op-specific fixup */
+        switch (instr->op) {
+        case nir_op_fmul:
+                alu.src[2] = BIR_INDEX_ZERO; /* FMA */
+                break;
+        default:
+                break;
+        }
+
+        bi_emit(ctx, alu);
+}
+
 static void
 emit_instr(bi_context *ctx, struct nir_instr *instr)
 {
@@ -237,11 +301,11 @@ emit_instr(bi_context *ctx, struct nir_instr *instr)
                 emit_intrinsic(ctx, nir_instr_as_intrinsic(instr));
                 break;
 
-#if 0
         case nir_instr_type_alu:
                 emit_alu(ctx, nir_instr_as_alu(instr));
                 break;
 
+#if 0
         case nir_instr_type_tex:
                 emit_tex(ctx, nir_instr_as_tex(instr));
                 break;
