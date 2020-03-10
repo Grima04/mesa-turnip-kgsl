@@ -55,6 +55,8 @@ SEM = asyncio.Semaphore(50)
 
 COMMIT_LOCK = asyncio.Lock()
 
+pick_status_json = pathlib.Path(__file__).parent.parent.parent / '.pick_status.json'
+
 
 class PickUIException(Exception):
     pass
@@ -80,10 +82,9 @@ class Resolution(enum.Enum):
 
 async def commit_state(*, amend: bool = False, message: str = 'Update') -> bool:
     """Commit the .pick_status.json file."""
-    f = pathlib.Path(__file__).parent.parent.parent / '.pick_status.json'
     async with COMMIT_LOCK:
         p = await asyncio.create_subprocess_exec(
-            'git', 'add', f.as_posix(),
+            'git', 'add', pick_status_json.as_posix(),
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
@@ -360,18 +361,16 @@ async def gather_commits(version: str, previous: typing.List['Commit'],
 
 
 def load() -> typing.List['Commit']:
-    p = pathlib.Path(__file__).parent.parent.parent / '.pick_status.json'
-    if not p.exists():
+    if not pick_status_json.exists():
         return []
-    with p.open('r') as f:
+    with pick_status_json.open('r') as f:
         raw = json.load(f)
         return [Commit.from_json(c) for c in raw]
 
 
 def save(commits: typing.Iterable['Commit']) -> None:
-    p = pathlib.Path(__file__).parent.parent.parent / '.pick_status.json'
     commits = list(commits)
-    with p.open('wt') as f:
+    with pick_status_json.open('wt') as f:
         json.dump([c.to_json() for c in commits], f, indent=4)
 
     asyncio.ensure_future(commit_state(message=f'Update to {commits[0].sha}'))
