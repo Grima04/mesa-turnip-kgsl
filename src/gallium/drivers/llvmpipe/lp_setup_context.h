@@ -101,6 +101,7 @@ struct lp_setup_context
    boolean scissor_test;
    boolean point_size_per_vertex;
    boolean rasterizer_discard;
+   boolean multisample;
    unsigned cullmode;
    unsigned bottom_edge_rule;
    float pixel_offset;

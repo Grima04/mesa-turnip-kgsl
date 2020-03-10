@@ -78,7 +78,8 @@ lp_setup_set_triangle_state( struct lp_setup_context *setup,
                              boolean front_is_ccw,
                              boolean scissor,
                              boolean half_pixel_center,
-                             boolean bottom_edge_rule);
+                             boolean bottom_edge_rule,
+                             boolean multisample);
 
 void 
 lp_setup_set_line_state( struct lp_setup_context *setup,
