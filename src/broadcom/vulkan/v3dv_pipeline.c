@@ -531,6 +531,10 @@ lower_pipeline_layout_info(nir_shader *shader,
 static void
 lower_fs_io(nir_shader *nir)
 {
+   /* Our backend doesn't handle array fragment shader outputs */
+   NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_out, NULL);
+
    nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
                                MESA_SHADER_FRAGMENT);
 
