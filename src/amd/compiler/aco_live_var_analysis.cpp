@@ -91,7 +91,7 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
 
    register_demand.resize(block->instructions.size());
    block->register_demand = RegisterDemand();
-   std::set<Temp> live = lives.live_out[block->index];
+   TempSet live = lives.live_out[block->index];
 
    /* add the live_out_exec to live */
    bool exec_live = false;

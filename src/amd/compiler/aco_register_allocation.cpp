@@ -1097,7 +1097,7 @@ bool operand_can_use_reg(aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
 } /* end namespace */
 
 
-void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out_per_block)
+void register_allocation(Program *program, std::vector<TempSet>& live_out_per_block)
 {
    ra_ctx ctx(program);
 
@@ -1270,7 +1270,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
       Block& block = *it;
 
       /* first, compute the death points of all live vars within the block */
-      std::set<Temp>& live = live_out_per_block[block.index];
+      TempSet& live = live_out_per_block[block.index];
 
       std::vector<aco_ptr<Instruction>>::reverse_iterator rit;
       for (rit = block.instructions.rbegin(); rit != block.instructions.rend(); ++rit) {
@@ -1342,7 +1342,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
    std::vector<std::bitset<128>> sgpr_live_in(program->blocks.size());
 
    for (Block& block : program->blocks) {
-      std::set<Temp>& live = live_out_per_block[block.index];
+      TempSet& live = live_out_per_block[block.index];
       /* initialize register file */
       assert(block.index != 0 || live.empty());
       RegisterFile register_file;

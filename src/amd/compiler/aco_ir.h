@@ -27,6 +27,7 @@
 
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <bitset>
 #include <memory>
 
@@ -1442,9 +1443,16 @@ private:
    uint32_t allocationID = 1;
 };
 
+struct TempHash {
+   std::size_t operator()(Temp t) const {
+      return t.id();
+   }
+};
+using TempSet = std::unordered_set<Temp, TempHash>;
+
 struct live {
    /* live temps out per block */
-   std::vector<std::set<Temp>> live_out;
+   std::vector<TempSet> live_out;
    /* register demand (sgpr/vgpr) per instruction per block */
    std::vector<std::vector<RegisterDemand>> register_demand;
 };
@@ -1471,7 +1479,7 @@ void value_numbering(Program* program);
 void optimize(Program* program);
 void setup_reduce_temp(Program* program);
 void lower_to_cssa(Program* program, live& live_vars, const struct radv_nir_compiler_options *options);
-void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out_per_block);
+void register_allocation(Program *program, std::vector<TempSet>& live_out_per_block);
 void ssa_elimination(Program* program);
 void lower_to_hw_instr(Program* program);
 void schedule_program(Program* program, live& live_vars);
