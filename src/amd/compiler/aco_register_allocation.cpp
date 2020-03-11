@@ -51,7 +51,7 @@ struct ra_ctx {
    std::bitset<512> war_hint;
    Program* program;
    std::vector<assignment> assignments;
-   std::map<unsigned, Temp> orig_names;
+   std::unordered_map<unsigned, Temp> orig_names;
    unsigned max_used_sgpr = 0;
    unsigned max_used_vgpr = 0;
    std::bitset<64> defs_done; /* see MAX_ARGS in aco_instruction_selection_setup.cpp */
@@ -1114,8 +1114,8 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
    memset(filled, 0, sizeof filled);
    memset(sealed, 0, sizeof sealed);
    std::vector<std::vector<Instruction*>> incomplete_phis(program->blocks.size());
-   std::map<unsigned, phi_info> phi_map;
-   std::map<unsigned, unsigned> affinities;
+   std::unordered_map<unsigned, phi_info> phi_map;
+   std::unordered_map<unsigned, unsigned> affinities;
    std::function<Temp(Temp,unsigned)> read_variable;
    std::function<Temp(Temp,Block*)> handle_live_in;
    std::function<void(Temp)> try_remove_trivial_phi;
@@ -1199,7 +1199,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
    };
 
    try_remove_trivial_phi = [&] (Temp temp) -> void {
-      std::map<unsigned, phi_info>::iterator info = phi_map.find(temp.id());
+      std::unordered_map<unsigned, phi_info>::iterator info = phi_map.find(temp.id());
 
       if (info == phi_map.end() || !sealed[info->second.block_idx])
          return;
@@ -1225,7 +1225,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
 
       /* reroute all uses to same and remove phi */
       std::vector<Temp> phi_users;
-      std::map<unsigned, phi_info>::iterator same_phi_info = phi_map.find(same.id());
+      std::unordered_map<unsigned, phi_info>::iterator same_phi_info = phi_map.find(same.id());
       for (Instruction* instr : info->second.uses) {
          assert(phi != instr);
          /* recursively try to remove trivial phis */
@@ -1262,9 +1262,9 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
       return;
    };
 
-   std::map<unsigned, Instruction*> vectors;
+   std::unordered_map<unsigned, Instruction*> vectors;
    std::vector<std::vector<Temp>> phi_ressources;
-   std::map<unsigned, unsigned> temp_to_phi_ressources;
+   std::unordered_map<unsigned, unsigned> temp_to_phi_ressources;
 
    for (std::vector<Block>::reverse_iterator it = program->blocks.rbegin(); it != program->blocks.rend(); it++) {
       Block& block = *it;
@@ -1315,7 +1315,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
                continue;
             live.erase(def.getTemp());
             /* mark last-seen phi operand */
-            std::map<unsigned, unsigned>::iterator it = temp_to_phi_ressources.find(def.tempId());
+            std::unordered_map<unsigned, unsigned>::iterator it = temp_to_phi_ressources.find(def.tempId());
             if (it != temp_to_phi_ressources.end() && def.regClass() == phi_ressources[it->second][0].regClass()) {
                phi_ressources[it->second][0] = def.getTemp();
                /* try to coalesce phi affinities with parallelcopies */
@@ -1477,7 +1477,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
                }
 
                /* rename */
-               std::map<unsigned, Temp>::iterator orig_it = ctx.orig_names.find(pc.first.tempId());
+               std::unordered_map<unsigned, Temp>::iterator orig_it = ctx.orig_names.find(pc.first.tempId());
                Temp orig = pc.first.getTemp();
                if (orig_it != ctx.orig_names.end())
                   orig = orig_it->second;
@@ -1638,7 +1638,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
                      ctx.war_hint.set(operand.physReg().reg() + j);
                }
             }
-            std::map<unsigned, phi_info>::iterator phi = phi_map.find(operand.getTemp().id());
+            std::unordered_map<unsigned, phi_info>::iterator phi = phi_map.find(operand.getTemp().id());
             if (phi != phi_map.end())
                phi->second.uses.emplace(instr.get());
 
@@ -1883,12 +1883,12 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
                assert(pc->operands[i].size() == pc->definitions[i].size());
 
                /* it might happen that the operand is already renamed. we have to restore the original name. */
-               std::map<unsigned, Temp>::iterator it = ctx.orig_names.find(pc->operands[i].tempId());
+               std::unordered_map<unsigned, Temp>::iterator it = ctx.orig_names.find(pc->operands[i].tempId());
                Temp orig = it != ctx.orig_names.end() ? it->second : pc->operands[i].getTemp();
                ctx.orig_names[pc->definitions[i].tempId()] = orig;
                renames[block.index][orig.id()] = pc->definitions[i].getTemp();
 
-               std::map<unsigned, phi_info>::iterator phi = phi_map.find(pc->operands[i].tempId());
+               std::unordered_map<unsigned, phi_info>::iterator phi = phi_map.find(pc->operands[i].tempId());
                if (phi != phi_map.end())
                   phi->second.uses.emplace(pc.get());
             }
@@ -1993,7 +1993,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
                instr->operands[i] = operand;
                /* keep phi_map up to date */
                if (operand.isTemp()) {
-                  std::map<unsigned, phi_info>::iterator phi = phi_map.find(operand.tempId());
+                  std::unordered_map<unsigned, phi_info>::iterator phi = phi_map.find(operand.tempId());
                   if (phi != phi_map.end()) {
                      phi->second.uses.erase(tmp.get());
                      phi->second.uses.emplace(instr.get());
@@ -2043,7 +2043,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out
                      continue;
                   operand.setTemp(read_variable(operand.getTemp(), preds[i]));
                   operand.setFixed(ctx.assignments[operand.tempId()].reg);
-                  std::map<unsigned, phi_info>::iterator phi = phi_map.find(operand.getTemp().id());
+                  std::unordered_map<unsigned, phi_info>::iterator phi = phi_map.find(operand.getTemp().id());
                   if (phi != phi_map.end())
                      phi->second.uses.emplace(instr.get());
                }
