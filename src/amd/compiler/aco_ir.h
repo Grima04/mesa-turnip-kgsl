@@ -262,25 +262,25 @@ static constexpr RegClass v8b{RegClass::v8b};
  * and SSA id.
  */
 struct Temp {
-   Temp() noexcept : id_(0), reg_class(RegType::sgpr, 0) {}
+   Temp() noexcept : id_(0), reg_class(0) {}
    constexpr Temp(uint32_t id, RegClass cls) noexcept
-      : id_(id), reg_class(cls) {}
+      : id_(id), reg_class(uint8_t(cls)) {}
 
    constexpr uint32_t id() const noexcept { return id_; }
-   constexpr RegClass regClass() const noexcept { return reg_class; }
+   constexpr RegClass regClass() const noexcept { return (RegClass::RC)reg_class; }
 
-   constexpr unsigned bytes() const noexcept { return reg_class.bytes(); }
-   constexpr unsigned size() const noexcept { return reg_class.size(); }
-   constexpr RegType type() const noexcept { return reg_class.type(); }
-   constexpr bool is_linear() const noexcept { return reg_class.is_linear(); }
+   constexpr unsigned bytes() const noexcept { return regClass().bytes(); }
+   constexpr unsigned size() const noexcept { return regClass().size(); }
+   constexpr RegType type() const noexcept { return regClass().type(); }
+   constexpr bool is_linear() const noexcept { return regClass().is_linear(); }
 
    constexpr bool operator <(Temp other) const noexcept { return id() < other.id(); }
    constexpr bool operator==(Temp other) const noexcept { return id() == other.id(); }
    constexpr bool operator!=(Temp other) const noexcept { return id() != other.id(); }
 
 private:
-   uint32_t id_:24;
-   RegClass reg_class;
+   uint32_t id_: 24;
+   uint32_t reg_class : 8;
 };
 
 /**
