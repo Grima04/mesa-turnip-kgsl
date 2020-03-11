@@ -358,11 +358,11 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
    /* Skip the VUE header and position slots by default */
    unsigned urb_entry_read_offset = 1;
    int max_source_attr = 0;
-   for (int attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+   for (uint8_t idx = 0; idx < wm_prog_data->urb_setup_attribs_count; idx++) {
+      uint8_t attr = wm_prog_data->urb_setup_attribs[idx];
       int input_index = wm_prog_data->urb_setup[attr];
 
-      if (input_index < 0)
-         continue;
+      assert(0 <= input_index);
 
       /* gl_Viewport and gl_Layer are stored in the VUE header */
       if (attr == VARYING_SLOT_VIEWPORT || attr == VARYING_SLOT_LAYER) {
