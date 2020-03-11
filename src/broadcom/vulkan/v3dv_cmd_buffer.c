@@ -1860,6 +1860,14 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
       maxy = MIN2(maxy, scissor->offset.y + scissor->extent.height);
    }
 
+   /* If the scissor is outside the viewport area we end up with
+    * min{x,y} > max{x,y}.
+    */
+   if (minx > maxx)
+      maxx = minx;
+   if (miny > maxy)
+      maxy = miny;
+
    clip_window.offset.x = minx;
    clip_window.offset.y = miny;
    clip_window.extent.width = maxx - minx;
