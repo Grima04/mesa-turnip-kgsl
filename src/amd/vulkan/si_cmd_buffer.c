@@ -420,7 +420,14 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 				       S_030980_NUM_PC_LINES(128 * physical_device->rad_info.max_se - 1));
 	}
 
-	if (physical_device->rad_info.chip_class >= GFX8) {
+	if (physical_device->rad_info.chip_class >= GFX9) {
+		radeon_set_context_reg(cs, R_028B50_VGT_TESS_DISTRIBUTION,
+				       S_028B50_ACCUM_ISOLINE(40) |
+				       S_028B50_ACCUM_TRI(30) |
+				       S_028B50_ACCUM_QUAD(24) |
+				       S_028B50_DONUT_SPLIT(24) |
+				       S_028B50_TRAP_SPLIT(6));
+	} else if (physical_device->rad_info.chip_class >= GFX8) {
 		uint32_t vgt_tess_distribution;
 
 		vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(32) |
