@@ -1227,7 +1227,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	 *
 	 * Don't use late alloc for NGG on Navi14 due to a hw bug.
 	 */
-	if (sscreen->info.family == CHIP_NAVI14)
+	if (sscreen->info.family == CHIP_NAVI14 || !sscreen->info.use_late_alloc)
 		late_alloc_wave64 = 0;
 	else if (num_cu_per_sh <= 6)
 		late_alloc_wave64 = num_cu_per_sh - 2; /* All CUs enabled */
@@ -1318,7 +1318,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	}
 
 	unsigned oversub_pc_lines = sscreen->info.pc_lines * oversub_pc_factor;
-	shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(1) |
+	shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(sscreen->info.use_late_alloc) |
 					  S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
 	if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
@@ -1528,7 +1528,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 			S_02870C_POS3_EXPORT_FORMAT(shader->info.nr_pos_exports > 3 ?
 						    V_02870C_SPI_SHADER_4COMP :
 						    V_02870C_SPI_SHADER_NONE);
-	shader->ctx_reg.vs.ge_pc_alloc = S_030980_OVERSUB_EN(1) |
+	shader->ctx_reg.vs.ge_pc_alloc = S_030980_OVERSUB_EN(sscreen->info.use_late_alloc) |
 					 S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1);
 	shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, false);
 

@@ -717,14 +717,18 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		info->num_physical_sgprs_per_simd = 128 * info->max_wave64_per_simd * 2;
 		info->min_sgpr_alloc = 128;
 		info->sgpr_alloc_granularity = 128;
+		info->use_late_alloc = true;
 	} else if (info->chip_class >= GFX8) {
 		info->num_physical_sgprs_per_simd = 800;
 		info->min_sgpr_alloc = 16;
 		info->sgpr_alloc_granularity = 16;
+		info->use_late_alloc = true;
 	} else {
 		info->num_physical_sgprs_per_simd = 512;
 		info->min_sgpr_alloc = 8;
 		info->sgpr_alloc_granularity = 8;
+		/* Potential hang on Kabini: */
+		info->use_late_alloc = info->family != CHIP_KABINI;
 	}
 
 	info->max_sgpr_alloc = info->family == CHIP_TONGA ||

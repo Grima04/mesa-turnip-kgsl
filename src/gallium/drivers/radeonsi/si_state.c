@@ -5566,7 +5566,9 @@ static void si_init_config(struct si_context *sctx)
 			/* For Wave32, the hw will launch twice the number of late
 			 * alloc waves, so 1 == 2x wave32.
 			 */
-			if (num_cu_per_sh <= 6) {
+			if (!sscreen->info.use_late_alloc) {
+				late_alloc_wave64 = 0;
+			} else if (num_cu_per_sh <= 6) {
 				late_alloc_wave64 = num_cu_per_sh - 2;
 			} else {
 				late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
@@ -5578,8 +5580,8 @@ static void si_init_config(struct si_context *sctx)
 					     sctx->family != CHIP_NAVI14 ? 0xfff3 : 0xffff;
 			}
 		} else {
-			if (sctx->family == CHIP_KABINI) {
-				late_alloc_wave64 = 0; /* Potential hang on Kabini. */
+			if (!sscreen->info.use_late_alloc) {
+				late_alloc_wave64 = 0;
 			} else if (num_cu_per_sh <= 4) {
 				/* Too few available compute units per SH. Disallowing
 				 * VS to run on one CU could hurt us more than late VS
