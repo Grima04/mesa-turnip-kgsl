@@ -334,6 +334,9 @@ typedef struct {
        /* For creating temporaries */
        unsigned temp_alloc;
 
+       /* Analysis results */
+       bool has_liveness;
+
        /* Stats for shader-db */
        unsigned instruction_count;
        unsigned loop_count;
@@ -499,5 +502,12 @@ uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 /* BIR passes */
 
 void bi_schedule(bi_context *ctx);
+
+/* Liveness */
+
+void bi_compute_liveness(bi_context *ctx);
+void bi_liveness_ins_update(uint16_t *live, bi_instruction *ins, unsigned max);
+void bi_invalidate_liveness(bi_context *ctx);
+bool bi_is_live_after(bi_context *ctx, bi_block *block, bi_instruction *start, int src);
 
 #endif
