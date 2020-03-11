@@ -84,25 +84,6 @@ create_empty_block(compiler_context *ctx)
 }
 
 static void
-pan_block_add_successor(pan_block *block, pan_block *successor)
-{
-        assert(block);
-        assert(successor);
-
-        /* Deduplicate */
-        for (unsigned i = 0; i < block->nr_successors; ++i) {
-                if ((pan_block *) block->successors[i] == successor)
-                        return;
-        }
-
-        block->successors[block->nr_successors++] = successor;
-        assert(block->nr_successors <= ARRAY_SIZE(block->successors));
-
-        /* Note the predecessor in the other direction */
-        _mesa_set_add(successor->predecessors, block);
-}
-
-static void
 schedule_barrier(compiler_context *ctx)
 {
         midgard_block *temp = ctx->after_block;

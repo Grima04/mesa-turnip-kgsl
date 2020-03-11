@@ -128,8 +128,6 @@ typedef struct pan_block {
 
         /* Control flow graph */
         struct pan_block *successors[2];
-        unsigned nr_successors;
-
         struct set *predecessors;
 
         /* In liveness analysis, these are live masks (per-component) for
@@ -178,5 +176,7 @@ void pan_free_liveness(struct list_head *blocks);
 
 uint16_t
 pan_to_bytemask(unsigned bytes, unsigned mask);
+
+void pan_block_add_successor(pan_block *block, pan_block *successor);
 
 #endif

@@ -394,12 +394,10 @@ mir_print_block(midgard_block *block)
 
         printf("}");
 
-        if (block->base.nr_successors) {
+        if (block->base.successors[0]) {
                 printf(" -> ");
-                for (unsigned i = 0; i < block->base.nr_successors; ++i) {
-                        printf("block%u%s", block->base.successors[i]->name,
-                                        (i + 1) != block->base.nr_successors ? ", " : "");
-                }
+                pan_foreach_successor((&block->base), succ)
+                        printf(" block%u ", succ->name);
         }
 
         printf(" from { ");

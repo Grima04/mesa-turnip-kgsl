@@ -388,14 +388,6 @@ mir_next_op(struct midgard_instruction *ins)
         mir_foreach_block(ctx, v_block) \
                 mir_foreach_instr_in_block_safe(((midgard_block *) v_block), v)
 
-#define mir_foreach_successor(blk, v) \
-        struct midgard_block *v; \
-        struct midgard_block **_v; \
-        for (_v = &blk->base.successors[0], \
-                v = *_v; \
-                v != NULL && _v < &blk->base.successors[2]; \
-                _v++, v = *_v) \
-
 /* Based on set_foreach, expanded with automatic type casts */
 
 #define mir_foreach_predecessor(blk, v) \

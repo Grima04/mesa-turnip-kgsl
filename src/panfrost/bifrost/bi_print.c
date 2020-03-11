@@ -360,7 +360,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 
         if (ins->type == BI_BRANCH) {
                 if (ins->branch.target)
-                        fprintf(fp, "-> block%u", ins->branch.target->name);
+                        fprintf(fp, "-> block%u", ins->branch.target->base.name);
                 else
                         fprintf(fp, "-> blockhole");
         }
@@ -428,7 +428,7 @@ bi_print_clause(bi_clause *clause, FILE *fp)
 void
 bi_print_block(bi_block *block, FILE *fp)
 {
-        fprintf(fp, "block%u {\n", block->name);
+        fprintf(fp, "block%u {\n", block->base.name);
 
         if (block->scheduled) {
                 bi_foreach_clause_in_block(block, clause)
@@ -440,20 +440,18 @@ bi_print_block(bi_block *block, FILE *fp)
 
         fprintf(fp, "}");
 
-        if (block->successors[0]) {
+        if (block->base.successors[0]) {
                 fprintf(fp, " -> ");
 
-                for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
-                        if (block->successors[i])
-                                fprintf(fp, "block%u ", block->successors[i]->name);
-                }
+                pan_foreach_successor((&block->base), succ)
+                        fprintf(fp, "block%u ", succ->name);
         }
 
-        if (block->predecessors->entries) {
+        if (block->base.predecessors->entries) {
                 fprintf(fp, " from");
 
                 bi_foreach_predecessor(block, pred)
-                        fprintf(fp, " block%u", pred->name);
+                        fprintf(fp, " block%u", pred->base.name);
         }
 
         fprintf(fp, "\n\n");
@@ -463,5 +461,5 @@ void
 bi_print_shader(bi_context *ctx, FILE *fp)
 {
         bi_foreach_block(ctx, block)
-                bi_print_block(block, fp);
+                bi_print_block((bi_block *) block, fp);
 }

@@ -40,9 +40,11 @@ bi_schedule(bi_context *ctx)
         bool is_first = true;
 
         bi_foreach_block(ctx, block) {
-                list_inithead(&block->clauses);
+                bi_block *bblock = (bi_block *) block;
 
-                bi_foreach_instr_in_block(block, ins) {
+                list_inithead(&bblock->clauses);
+
+                bi_foreach_instr_in_block(bblock, ins) {
                         unsigned props = bi_class_props[ins->type];
 
                         bi_clause *u = rzalloc(ctx, bi_clause);
@@ -68,9 +70,9 @@ bi_schedule(bi_context *ctx)
                         u->constant_count = 1;
                         u->constants[0] = ins->constant.u64;
 
-                        list_addtail(&u->link, &block->clauses);
+                        list_addtail(&u->link, &bblock->clauses);
                 }
 
-                block->scheduled = true;
+                bblock->scheduled = true;
         }
 }

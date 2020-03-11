@@ -39,7 +39,6 @@
 
 static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
 static bi_instruction *bi_emit_branch(bi_context *ctx);
-static void bi_block_add_successor(bi_block *block, bi_block *successor);
 static void bi_schedule_barrier(bi_context *ctx);
 
 static void
@@ -58,7 +57,7 @@ emit_jump(bi_context *ctx, nir_jump_instr *instr)
                 unreachable("Unhandled jump type");
         }
 
-        bi_block_add_successor(ctx->current_block, branch->branch.target);
+        pan_block_add_successor(&ctx->current_block->base, &branch->branch.target->base);
 }
 
 /* Gets a bytemask for a complete vecN write */
@@ -530,35 +529,13 @@ create_empty_block(bi_context *ctx)
 {
         bi_block *blk = rzalloc(ctx, bi_block);
 
-        blk->predecessors = _mesa_set_create(blk,
+        blk->base.predecessors = _mesa_set_create(blk,
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
-        blk->name = ctx->block_name_count++;
+        blk->base.name = ctx->block_name_count++;
 
         return blk;
-}
-
-static void
-bi_block_add_successor(bi_block *block, bi_block *successor)
-{
-        assert(block);
-        assert(successor);
-
-        for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
-                if (block->successors[i]) {
-                       if (block->successors[i] == successor)
-                               return;
-                       else
-                               continue;
-                }
-
-                block->successors[i] = successor;
-                _mesa_set_add(successor->predecessors, block);
-                return;
-        }
-
-        unreachable("Too many successors");
 }
 
 static void
@@ -566,9 +543,9 @@ bi_schedule_barrier(bi_context *ctx)
 {
         bi_block *temp = ctx->after_block;
         ctx->after_block = create_empty_block(ctx);
-        list_addtail(&ctx->after_block->link, &ctx->blocks);
-        list_inithead(&ctx->after_block->instructions);
-        bi_block_add_successor(ctx->current_block, ctx->after_block);
+        list_addtail(&ctx->after_block->base.link, &ctx->blocks);
+        list_inithead(&ctx->after_block->base.instructions);
+        pan_block_add_successor(&ctx->current_block->base, &ctx->after_block->base);
         ctx->current_block = ctx->after_block;
         ctx->after_block = temp;
 }
@@ -583,8 +560,8 @@ emit_block(bi_context *ctx, nir_block *block)
                 ctx->current_block = create_empty_block(ctx);
         }
 
-        list_addtail(&ctx->current_block->link, &ctx->blocks);
-        list_inithead(&ctx->current_block->instructions);
+        list_addtail(&ctx->current_block->base.link, &ctx->blocks);
+        list_inithead(&ctx->current_block->base.instructions);
 
         nir_foreach_instr(instr, block) {
                 emit_instr(ctx, instr);
@@ -662,15 +639,15 @@ emit_if(bi_context *ctx, nir_if *nif)
         } else {
                 then_branch->branch.target = else_block;
                 then_exit->branch.target = ctx->after_block;
-                bi_block_add_successor(end_then_block, then_exit->branch.target);
+                pan_block_add_successor(&end_then_block->base, &then_exit->branch.target->base);
         }
 
         /* Wire up the successors */
 
-        bi_block_add_successor(before_block, then_branch->branch.target); /* then_branch */
+        pan_block_add_successor(&before_block->base, &then_branch->branch.target->base); /* then_branch */
 
-        bi_block_add_successor(before_block, then_block); /* fallthrough */
-        bi_block_add_successor(end_else_block, ctx->after_block); /* fallthrough */
+        pan_block_add_successor(&before_block->base, &then_block->base); /* fallthrough */
+        pan_block_add_successor(&end_else_block->base, &ctx->after_block->base); /* fallthrough */
 }
 
 static void
@@ -692,8 +669,8 @@ emit_loop(bi_context *ctx, nir_loop *nloop)
         /* Branch back to loop back */
         bi_instruction *br_back = bi_emit_branch(ctx);
         br_back->branch.target = ctx->continue_block;
-        bi_block_add_successor(start_block, ctx->continue_block);
-        bi_block_add_successor(ctx->current_block, ctx->continue_block);
+        pan_block_add_successor(&start_block->base, &ctx->continue_block->base);
+        pan_block_add_successor(&ctx->current_block->base, &ctx->continue_block->base);
 
         ctx->after_block = ctx->break_block;
 
