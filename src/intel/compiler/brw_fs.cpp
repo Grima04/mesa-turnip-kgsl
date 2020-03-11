@@ -7833,8 +7833,15 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
       const int iteration = 99;
       int pass_num = 0;
 
-      if (OPT(opt_cmod_propagation))
-         OPT(dead_code_eliminate);
+      if (OPT(opt_cmod_propagation)) {
+         /* dead_code_eliminate "undoes" the fixing done by
+          * fixup_3src_null_dest, so we have to do it again if
+          * dead_code_eliminiate makes any progress.
+          */
+         if (OPT(dead_code_eliminate))
+            fixup_3src_null_dest();
+      }
+
 
       /* We only allow spilling for the last schedule mode and only if the
        * allow_spilling parameter and dispatch width work out ok.
