@@ -402,7 +402,7 @@ radv_write_event_with_dims_marker(struct radv_cmd_buffer *cmd_buffer,
 void
 radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 {
-	uint64_t device_id = (uint64_t)cmd_buffer->device;
+	uint64_t device_id = (uintptr_t)cmd_buffer->device;
 	struct rgp_sqtt_marker_cb_start marker = {};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
@@ -427,7 +427,7 @@ radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 void
 radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 {
-	uint64_t device_id = (uint64_t)cmd_buffer->device;
+	uint64_t device_id = (uintptr_t)cmd_buffer->device;
 	struct rgp_sqtt_marker_cb_end marker = {};
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
