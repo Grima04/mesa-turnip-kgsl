@@ -1393,6 +1393,9 @@ tc_improve_map_buffer_flags(struct threaded_context *tc,
 
    /* Handle CPU reads trivially. */
    if (usage & PIPE_TRANSFER_READ) {
+      if (usage & PIPE_TRANSFER_UNSYNCHRONIZED)
+         usage |= TC_TRANSFER_MAP_THREADED_UNSYNC; /* don't sync */
+
       /* Drivers aren't allowed to do buffer invalidations. */
       return usage & ~PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
    }
