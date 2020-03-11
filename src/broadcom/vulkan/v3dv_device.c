@@ -1250,31 +1250,40 @@ device_free(struct v3dv_device *device, struct v3dv_device_memory *mem)
    v3dv_bo_free(device, mem->bo);
 }
 
+static void
+device_unmap(struct v3dv_device *device, struct v3dv_device_memory *mem)
+{
+   assert(mem && mem->bo->map && mem->bo->map_size > 0);
+   v3dv_bo_unmap(device, mem->bo);
+}
+
 static VkResult
 device_map(struct v3dv_device *device,
            struct v3dv_device_memory *mem,
            uint32_t size)
 {
+   assert(mem && mem->bo);
+
    /* From the spec:
     *
     *   "After a successful call to vkMapMemory the memory object memory is
     *   considered to be currently host mapped. It is an application error to
     *   call vkMapMemory on a memory object that is already host mapped."
+    *
+    * We are not concerned with this ourselves (validation layers should
+    * catch these errors and warn users), however, the driver may internally
+    * map things (for example for debug CLIF dumps) so by the time the user
+    * call here the buffer might already been mapped internally, so let's just
+    * make sure we unmap if needed.
     */
-   assert(mem && mem->bo->map == NULL);
+   if (mem->bo->map)
+      device_unmap(device, mem);
 
    bool ok = v3dv_bo_map(device, mem->bo, size);
    if (!ok)
       return VK_ERROR_MEMORY_MAP_FAILED;
 
    return VK_SUCCESS;
-}
-
-static void
-device_unmap(struct v3dv_device *device, struct v3dv_device_memory *mem)
-{
-   assert(mem && mem->bo->map && mem->bo->map_size > 0);
-   v3dv_bo_unmap(device, mem->bo);
 }
 
 static VkResult
