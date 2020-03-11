@@ -1097,7 +1097,7 @@ bool operand_can_use_reg(aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
 } /* end namespace */
 
 
-void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_per_block)
+void register_allocation(Program *program, std::vector<std::set<Temp>>& live_out_per_block)
 {
    ra_ctx ctx(program);
 
@@ -1118,7 +1118,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
    std::map<unsigned, unsigned> affinities;
    std::function<Temp(Temp,unsigned)> read_variable;
    std::function<Temp(Temp,Block*)> handle_live_in;
-   std::function<Temp(std::map<unsigned, phi_info>::iterator)> try_remove_trivial_phi;
+   std::function<void(Temp)> try_remove_trivial_phi;
 
    read_variable = [&](Temp val, unsigned block_idx) -> Temp {
       std::unordered_map<unsigned, Temp>::iterator it = renames[block_idx].find(val.id());
@@ -1198,27 +1198,33 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
       return new_val;
    };
 
-   try_remove_trivial_phi = [&] (std::map<unsigned, phi_info>::iterator info) -> Temp {
+   try_remove_trivial_phi = [&] (Temp temp) -> void {
+      std::map<unsigned, phi_info>::iterator info = phi_map.find(temp.id());
+
+      if (info == phi_map.end() || !sealed[info->second.block_idx])
+         return;
+
       assert(info->second.block_idx != 0);
       Instruction* phi = info->second.phi;
       Temp same = Temp();
-
       Definition def = phi->definitions[0];
+
       /* a phi node is trivial if all operands are the same as the definition of the phi */
       for (const Operand& op : phi->operands) {
          const Temp t = op.getTemp();
-         if (t == same || t == def.getTemp())
+         if (t == same || t == def.getTemp()) {
+            assert(t == same || op.physReg() == def.physReg());
             continue;
-         if (!(same == Temp()) || !(op.physReg() == def.physReg())) {
-            /* phi is not trivial */
-            return def.getTemp();
          }
+         if (same != Temp())
+            return;
+
          same = t;
       }
-      assert(!(same == Temp() || same == def.getTemp()));
+      assert(same != Temp() || same == def.getTemp());
 
       /* reroute all uses to same and remove phi */
-      std::vector<std::map<unsigned, phi_info>::iterator> phi_users;
+      std::vector<Temp> phi_users;
       std::map<unsigned, phi_info>::iterator same_phi_info = phi_map.find(same.id());
       for (Instruction* instr : info->second.uses) {
          assert(phi != instr);
@@ -1228,9 +1234,8 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
             if (instr->definitions.empty())
                continue;
 
-            std::map<unsigned, phi_info>::iterator it = phi_map.find(instr->definitions[0].tempId());
-            if (it != phi_map.end() && it != info)
-               phi_users.emplace_back(it);
+            if (instr->definitions[0].getTemp() != temp)
+               phi_users.emplace_back(instr->definitions[0].getTemp());
          }
          for (Operand& op : instr->operands) {
             if (op.isTemp() && op.tempId() == def.tempId()) {
@@ -1249,16 +1254,12 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
             renames[i][orig_var] = same;
       }
 
-      unsigned block_idx = info->second.block_idx;
       phi->definitions.clear(); /* this indicates that the phi can be removed */
       phi_map.erase(info);
-      for (auto it : phi_users) {
-         if (sealed[it->second.block_idx])
-            try_remove_trivial_phi(it);
-      }
+      for (Temp t : phi_users)
+         try_remove_trivial_phi(t);
 
-      /* due to the removal of other phis, the name might have changed once again! */
-      return renames[block_idx][orig_var];
+      return;
    };
 
    std::map<unsigned, Instruction*> vectors;
@@ -2019,6 +2020,8 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
             }
          }
          if (all_filled) {
+            sealed[succ_idx] = true;
+
             /* finish incomplete phis and check if they became trivial */
             for (Instruction* phi : incomplete_phis[succ_idx]) {
                std::vector<unsigned> preds = phi->definitions[0].getTemp().is_linear() ? succ.linear_preds : succ.logical_preds;
@@ -2026,7 +2029,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                   phi->operands[i].setTemp(read_variable(phi->operands[i].getTemp(), preds[i]));
                   phi->operands[i].setFixed(ctx.assignments[phi->operands[i].tempId()].reg);
                }
-               try_remove_trivial_phi(phi_map.find(phi->definitions[0].tempId()));
+               try_remove_trivial_phi(phi->definitions[0].getTemp());
             }
             /* complete the original phi nodes, but no need to check triviality */
             for (aco_ptr<Instruction>& instr : succ.instructions) {
@@ -2045,7 +2048,6 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                      phi->second.uses.emplace(instr.get());
                }
             }
-            sealed[succ_idx] = true;
          }
       }
    } /* end for BB */
