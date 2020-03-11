@@ -3477,8 +3477,13 @@ radv_get_binning_settings(const struct radv_physical_device *pdev)
 {
 	struct radv_binning_settings settings;
 	if (pdev->rad_info.has_dedicated_vram) {
-		settings.context_states_per_bin = 1;
-		settings.persistent_states_per_bin = 1;
+		if (pdev->rad_info.num_render_backends > 4) {
+			settings.context_states_per_bin = 1;
+			settings.persistent_states_per_bin = 1;
+		} else {
+			settings.context_states_per_bin = 3;
+			settings.persistent_states_per_bin = 8;
+		}
 		settings.fpovs_per_batch = 63;
 	} else {
 		/* The context states are affected by the scissor bug. */
