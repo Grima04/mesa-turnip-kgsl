@@ -60,3 +60,17 @@ bi_is_src_swizzled(bi_instruction *ins, unsigned s)
 
         return classy && small && first;
 }
+
+bool
+bi_has_arg(bi_instruction *ins, unsigned arg)
+{
+        if (!ins)
+                return false;
+
+        bi_foreach_src(ins, s) {
+                if (ins->src[s] == arg)
+                        return true;
+        }
+
+        return false;
+}

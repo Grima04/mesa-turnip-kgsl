@@ -474,6 +474,7 @@ bir_dest_index(nir_dest *dst)
 bool bi_has_outmod(bi_instruction *ins);
 bool bi_has_source_mods(bi_instruction *ins);
 bool bi_is_src_swizzled(bi_instruction *ins, unsigned s);
+bool bi_has_arg(bi_instruction *ins, unsigned arg);
 
 /* BIR passes */
 

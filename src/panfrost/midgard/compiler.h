@@ -602,7 +602,7 @@ mir_has_arg(midgard_instruction *ins, unsigned arg)
         if (!ins)
                 return false;
 
-        for (unsigned i = 0; i < ARRAY_SIZE(ins->src); ++i) {
+        mir_foreach_src(ins, i) {
                 if (ins->src[i] == arg)
                         return true;
         }
