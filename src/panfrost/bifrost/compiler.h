@@ -469,6 +469,18 @@ bir_dest_index(nir_dest *dst)
 #define bi_foreach_src(ins, v) \
         for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
 
+static inline bi_instruction *
+bi_prev_op(bi_instruction *ins)
+{
+        return list_last_entry(&(ins->link), bi_instruction, link);
+}
+
+static inline bi_instruction *
+bi_next_op(bi_instruction *ins)
+{
+        return list_first_entry(&(ins->link), bi_instruction, link);
+}
+
 /* BIR manipulation */
 
 bool bi_has_outmod(bi_instruction *ins);
