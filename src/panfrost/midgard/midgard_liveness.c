@@ -73,10 +73,10 @@ mir_liveness_ins_update(uint16_t *live, midgard_instruction *ins, unsigned max)
 /* live_out[s] = sum { p in succ[s] } ( live_in[p] ) */
 
 static void
-liveness_block_live_out(compiler_context *ctx, midgard_block *blk)
+liveness_block_live_out(midgard_block *blk, unsigned temp_count)
 {
         mir_foreach_successor(blk, succ) {
-                for (unsigned i = 0; i < ctx->temp_count; ++i)
+                for (unsigned i = 0; i < temp_count; ++i)
                         blk->live_out[i] |= succ->live_in[i];
         }
 }
@@ -86,21 +86,21 @@ liveness_block_live_out(compiler_context *ctx, midgard_block *blk)
  * returns whether progress was made. */
 
 static bool
-liveness_block_update(compiler_context *ctx, midgard_block *blk)
+liveness_block_update(midgard_block *blk, unsigned temp_count)
 {
         bool progress = false;
 
-        liveness_block_live_out(ctx, blk);
+        liveness_block_live_out(blk, temp_count);
 
-        uint16_t *live = ralloc_array(ctx, uint16_t, ctx->temp_count);
-        memcpy(live, blk->live_out, ctx->temp_count * sizeof(uint16_t));
+        uint16_t *live = ralloc_array(blk, uint16_t, temp_count);
+        memcpy(live, blk->live_out, temp_count * sizeof(uint16_t));
 
         mir_foreach_instr_in_block_rev(blk, ins)
-                mir_liveness_ins_update(live, ins, ctx->temp_count);
+                mir_liveness_ins_update(live, ins, temp_count);
 
         /* To figure out progress, diff live_in */
 
-        for (unsigned i = 0; (i < ctx->temp_count) && !progress; ++i)
+        for (unsigned i = 0; (i < temp_count) && !progress; ++i)
                 progress |= (blk->live_in[i] != live[i]);
 
         ralloc_free(blk->live_in);
@@ -123,6 +123,7 @@ mir_compute_liveness(compiler_context *ctx)
                 return;
 
         mir_compute_temp_count(ctx);
+        unsigned temp_count = ctx->temp_count;
 
         /* List of midgard_block */
         struct set *work_list = _mesa_set_create(ctx,
@@ -136,8 +137,8 @@ mir_compute_liveness(compiler_context *ctx)
         /* Allocate */
 
         mir_foreach_block(ctx, block) {
-                block->live_in = rzalloc_array(NULL, uint16_t, ctx->temp_count);
-                block->live_out = rzalloc_array(NULL, uint16_t, ctx->temp_count);
+                block->live_in = rzalloc_array(NULL, uint16_t, temp_count);
+                block->live_out = rzalloc_array(NULL, uint16_t, temp_count);
         }
 
         /* Initialize the work list with the exit block */
@@ -154,7 +155,7 @@ mir_compute_liveness(compiler_context *ctx)
                 _mesa_set_remove(work_list, cur);
 
                 /* Update its liveness information */
-                bool progress = liveness_block_update(ctx, blk);
+                bool progress = liveness_block_update(blk, temp_count);
 
                 /* If we made progress, we need to process the predecessors */
 
