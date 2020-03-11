@@ -293,54 +293,63 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 
 		/* Compute LATE_ALLOC_VS.LIMIT. */
 		unsigned num_cu_per_sh = physical_device->rad_info.num_good_cu_per_sh;
-		unsigned late_alloc_limit; /* The limit is per SH. */
-
-		if (physical_device->rad_info.family == CHIP_KABINI) {
-			late_alloc_limit = 0; /* Potential hang on Kabini. */
-		} else if (num_cu_per_sh <= 4) {
-			/* Too few available compute units per SH. Disallowing
-			 * VS to run on one CU could hurt us more than late VS
-			 * allocation would help.
-			 *
-			 * 2 is the highest safe number that allows us to keep
-			 * all CUs enabled.
-			 */
-			late_alloc_limit = 2;
-		} else {
-			/* This is a good initial value, allowing 1 late_alloc
-			 * wave per SIMD on num_cu - 2.
-			 */
-			late_alloc_limit = (num_cu_per_sh - 2) * 4;
-		}
-
-		unsigned late_alloc_limit_gs = late_alloc_limit;
+		unsigned late_alloc_wave64 = 0; /* The limit is per SH. */
+		unsigned late_alloc_wave64_gs = 0;
 		unsigned cu_mask_vs = 0xffff;
 		unsigned cu_mask_gs = 0xffff;
 
-		if (late_alloc_limit > 2) {
-			if (physical_device->rad_info.chip_class >= GFX10) {
+		if (physical_device->rad_info.chip_class >= GFX10) {
+			/* For Wave32, the hw will launch twice the number of late
+			 * alloc waves, so 1 == 2x wave32.
+			 */
+			if (num_cu_per_sh <= 6) {
+				late_alloc_wave64 = num_cu_per_sh - 2;
+			} else {
+				late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
+
 				/* CU2 & CU3 disabled because of the dual CU design */
 				cu_mask_vs = 0xfff3;
 				cu_mask_gs = 0xfff3; /* NGG only */
-			} else {
-				cu_mask_vs = 0xfffe; /* 1 CU disabled */
 			}
-		}
 
-		/* Don't use late alloc for NGG on Navi14 due to a hw bug.
-		 * If NGG is never used, enable all CUs.
-		 */
-		if (!physical_device->use_ngg ||
-		    physical_device->rad_info.family == CHIP_NAVI14) {
-			late_alloc_limit_gs = 0;
-			cu_mask_gs = 0xffff;
+			late_alloc_wave64_gs = late_alloc_wave64;
+
+			/* Don't use late alloc for NGG on Navi14 due to a hw
+			 * bug. If NGG is never used, enable all CUs.
+			 */
+			if (!physical_device->use_ngg ||
+			    physical_device->rad_info.family == CHIP_NAVI14) {
+				late_alloc_wave64_gs = 0;
+				cu_mask_gs = 0xffff;
+			}
+		} else {
+			if (physical_device->rad_info.family == CHIP_KABINI) {
+				late_alloc_wave64 = 0; /* Potential hang on Kabini. */
+			} else if (num_cu_per_sh <= 4) {
+				/* Too few available compute units per SH.
+				 * Disallowing VS to run on one CU could hurt
+				 * us more than late VS allocation would help.
+				 *
+				 * 2 is the highest safe number that allows us
+				 * to keep all CUs enabled.
+				 */
+				late_alloc_wave64 = 2;
+			} else {
+				/* This is a good initial value, allowing 1
+				 * late_alloc wave per SIMD on num_cu - 2.
+				 */
+				late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
+			}
+
+			if (late_alloc_wave64 > 2)
+				cu_mask_vs = 0xfffe; /* 1 CU disabled */
 		}
 
 		radeon_set_sh_reg_idx(physical_device, cs, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
 				      3, S_00B118_CU_EN(cu_mask_vs) |
 				      S_00B118_WAVE_LIMIT(0x3F));
 		radeon_set_sh_reg(cs, R_00B11C_SPI_SHADER_LATE_ALLOC_VS,
-				  S_00B11C_LIMIT(late_alloc_limit));
+				  S_00B11C_LIMIT(late_alloc_wave64));
 
 		radeon_set_sh_reg_idx(physical_device, cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
 				      3, S_00B21C_CU_EN(cu_mask_gs) | S_00B21C_WAVE_LIMIT(0x3F));
@@ -348,7 +357,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 		if (physical_device->rad_info.chip_class >= GFX10) {
 			radeon_set_sh_reg_idx(physical_device, cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
 					      3, S_00B204_CU_EN(0xffff) |
-					      S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit_gs));
+					      S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64_gs));
 		}
 
 		radeon_set_sh_reg_idx(physical_device, cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
