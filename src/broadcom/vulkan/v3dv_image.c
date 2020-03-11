@@ -307,15 +307,18 @@ v3dv_CreateImage(VkDevice _device,
          vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
       if (wsi_info)
          modifier = DRM_FORMAT_MOD_LINEAR;
-      else
-         modifier = DRM_FORMAT_MOD_BROADCOM_UIF;
    }
 
    /* 1D and 1D_ARRAY textures are always raster-order */
+   VkImageTiling tiling;
    if (pCreateInfo->imageType == VK_IMAGE_TYPE_1D)
-      modifier = DRM_FORMAT_MOD_LINEAR;
-
-   assert(modifier != DRM_FORMAT_MOD_INVALID);
+      tiling = VK_IMAGE_TILING_LINEAR;
+   else if (modifier == DRM_FORMAT_MOD_INVALID)
+      tiling = pCreateInfo->tiling;
+   else if (modifier == DRM_FORMAT_MOD_BROADCOM_UIF)
+      tiling = VK_IMAGE_TILING_OPTIMAL;
+   else
+      tiling = VK_IMAGE_TILING_LINEAR;
 
    const struct v3dv_format *format = v3dv_get_format(pCreateInfo->format);
    v3dv_assert(format != NULL && format->supported);
@@ -335,10 +338,10 @@ v3dv_CreateImage(VkDevice _device,
    image->samples = pCreateInfo->samples;
    image->usage = pCreateInfo->usage;
    image->create_flags = pCreateInfo->flags;
-   image->tiling = pCreateInfo->tiling;
 
    image->drm_format_mod = modifier;
-   image->tiled = image->drm_format_mod != DRM_FORMAT_MOD_LINEAR;
+   image->tiling = tiling;
+   image->tiled = tiling == VK_IMAGE_TILING_OPTIMAL;
 
    image->cpp = vk_format_get_blocksize(image->vk_format);
 
