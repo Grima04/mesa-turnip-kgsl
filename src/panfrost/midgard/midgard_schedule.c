@@ -1156,7 +1156,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         if (blend_offset)
                 ctx->blend_constant_offset = ((ctx->quadword_count + block->quadword_count) - blend_offset - 1) * 0x10;
 
-        block->is_scheduled = true;
+        block->scheduled = true;
         ctx->quadword_count += block->quadword_count;
 
         /* Reorder instructions to match bundled. First remove existing

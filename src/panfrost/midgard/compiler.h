@@ -173,9 +173,9 @@ typedef struct midgard_block {
         struct list_head instructions;
 
         /* Index of the block in source order */
-        unsigned source_id;
+        unsigned name;
 
-        bool is_scheduled;
+        bool scheduled;
 
         /* List of midgard_bundles emitted (after the scheduler has run) */
         struct util_dynarray bundles;

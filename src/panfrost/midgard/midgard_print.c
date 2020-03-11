@@ -377,9 +377,9 @@ mir_print_instruction(midgard_instruction *ins)
 void
 mir_print_block(midgard_block *block)
 {
-        printf("block%u: {\n", block->source_id);
+        printf("block%u: {\n", block->name);
 
-        if (block->is_scheduled) {
+        if (block->scheduled) {
                 mir_foreach_bundle_in_block(block, bundle) {
                         for (unsigned i = 0; i < bundle->instruction_count; ++i)
                                 mir_print_instruction(bundle->instructions[i]);
@@ -397,14 +397,14 @@ mir_print_block(midgard_block *block)
         if (block->nr_successors) {
                 printf(" -> ");
                 for (unsigned i = 0; i < block->nr_successors; ++i) {
-                        printf("block%u%s", block->successors[i]->source_id,
+                        printf("block%u%s", block->successors[i]->name,
                                         (i + 1) != block->nr_successors ? ", " : "");
                 }
         }
 
         printf(" from { ");
         mir_foreach_predecessor(block, pred)
-                printf("block%u ", pred->source_id);
+                printf("block%u ", pred->name);
         printf("}");
 
         printf("\n\n");

@@ -78,7 +78,7 @@ create_empty_block(compiler_context *ctx)
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
-        blk->source_id = ctx->block_source_count++;
+        blk->name = ctx->block_source_count++;
 
         return blk;
 }
@@ -2366,7 +2366,7 @@ emit_block(compiler_context *ctx, nir_block *block)
 
         list_addtail(&this_block->link, &ctx->blocks);
 
-        this_block->is_scheduled = false;
+        this_block->scheduled = false;
         ++ctx->block_count;
 
         /* Set up current block */
