@@ -74,24 +74,24 @@ create_empty_block(compiler_context *ctx)
 {
         midgard_block *blk = rzalloc(ctx, midgard_block);
 
-        blk->predecessors = _mesa_set_create(blk,
+        blk->base.predecessors = _mesa_set_create(blk,
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
-        blk->name = ctx->block_source_count++;
+        blk->base.name = ctx->block_source_count++;
 
         return blk;
 }
 
 static void
-midgard_block_add_successor(midgard_block *block, midgard_block *successor)
+pan_block_add_successor(pan_block *block, pan_block *successor)
 {
         assert(block);
         assert(successor);
 
         /* Deduplicate */
         for (unsigned i = 0; i < block->nr_successors; ++i) {
-                if (block->successors[i] == successor)
+                if ((pan_block *) block->successors[i] == successor)
                         return;
         }
 
@@ -108,9 +108,9 @@ schedule_barrier(compiler_context *ctx)
         midgard_block *temp = ctx->after_block;
         ctx->after_block = create_empty_block(ctx);
         ctx->block_count++;
-        list_addtail(&ctx->after_block->link, &ctx->blocks);
-        list_inithead(&ctx->after_block->instructions);
-        midgard_block_add_successor(ctx->current_block, ctx->after_block);
+        list_addtail(&ctx->after_block->base.link, &ctx->blocks);
+        list_inithead(&ctx->after_block->base.instructions);
+        pan_block_add_successor(&ctx->current_block->base, &ctx->after_block->base);
         ctx->current_block = ctx->after_block;
         ctx->after_block = temp;
 }
@@ -2364,13 +2364,13 @@ emit_block(compiler_context *ctx, nir_block *block)
         if (!this_block)
                 this_block = create_empty_block(ctx);
 
-        list_addtail(&this_block->link, &ctx->blocks);
+        list_addtail(&this_block->base.link, &ctx->blocks);
 
         this_block->scheduled = false;
         ++ctx->block_count;
 
         /* Set up current block */
-        list_inithead(&this_block->instructions);
+        list_inithead(&this_block->base.instructions);
         ctx->current_block = this_block;
 
         nir_foreach_instr(instr, block) {
@@ -2427,11 +2427,11 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
 
         ctx->after_block = create_empty_block(ctx);
 
-        midgard_block_add_successor(before_block, then_block);
-        midgard_block_add_successor(before_block, else_block);
+        pan_block_add_successor(&before_block->base, &then_block->base);
+        pan_block_add_successor(&before_block->base, &else_block->base);
 
-        midgard_block_add_successor(end_then_block, ctx->after_block);
-        midgard_block_add_successor(end_else_block, ctx->after_block);
+        pan_block_add_successor(&end_then_block->base, &ctx->after_block->base);
+        pan_block_add_successor(&end_else_block->base, &ctx->after_block->base);
 }
 
 static void
@@ -2455,8 +2455,8 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
         emit_mir_instruction(ctx, br_back);
 
         /* Mark down that branch in the graph. */
-        midgard_block_add_successor(start_block, loop_block);
-        midgard_block_add_successor(ctx->current_block, loop_block);
+        pan_block_add_successor(&start_block->base, &loop_block->base);
+        pan_block_add_successor(&ctx->current_block->base, &loop_block->base);
 
         /* Find the index of the block about to follow us (note: we don't add
          * one; blocks are 0-indexed so we get a fencepost problem) */
@@ -2466,8 +2466,8 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
          * now that we can allocate a block number for them */
         ctx->after_block = create_empty_block(ctx);
 
-        list_for_each_entry_from(struct midgard_block, block, start_block, &ctx->blocks, link) {
-                mir_foreach_instr_in_block(block, ins) {
+        mir_foreach_block_from(ctx, start_block, _block) {
+                mir_foreach_instr_in_block(((midgard_block *) _block), ins) {
                         if (ins->type != TAG_ALU_4) continue;
                         if (!ins->compact_branch) continue;
 
@@ -2483,7 +2483,7 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
                         ins->branch.target_type = TARGET_GOTO;
                         ins->branch.target_block = break_block_idx;
 
-                        midgard_block_add_successor(block, ctx->after_block);
+                        pan_block_add_successor(_block, &ctx->after_block->base);
                 }
         }
 
@@ -2537,7 +2537,8 @@ midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx)
 {
         midgard_block *initial_block = mir_get_block(ctx, block_idx);
 
-        mir_foreach_block_from(ctx, initial_block, v) {
+        mir_foreach_block_from(ctx, initial_block, _v) {
+                midgard_block *v = (midgard_block *) _v;
                 if (v->quadword_count) {
                         midgard_bundle *initial_bundle =
                                 util_dynarray_element(&v->bundles, midgard_bundle, 0);
@@ -2615,7 +2616,7 @@ mir_add_writeout_loops(compiler_context *ctx)
                 if (!br) continue;
 
                 unsigned popped = br->branch.target_block;
-                midgard_block_add_successor(mir_get_block(ctx, popped - 1), ctx->current_block);
+                pan_block_add_successor(&(mir_get_block(ctx, popped - 1)->base), &ctx->current_block->base);
                 br->branch.target_block = emit_fragment_epilogue(ctx, rt);
 
                 /* If we have more RTs, we'll need to restore back after our
@@ -2625,7 +2626,7 @@ mir_add_writeout_loops(compiler_context *ctx)
                         midgard_instruction uncond = v_branch(false, false);
                         uncond.branch.target_block = popped;
                         emit_mir_instruction(ctx, uncond);
-                        midgard_block_add_successor(ctx->current_block, mir_get_block(ctx, popped));
+                        pan_block_add_successor(&ctx->current_block->base, &(mir_get_block(ctx, popped)->base));
                         schedule_barrier(ctx);
                 } else {
                         /* We're last, so we can terminate here */
@@ -2734,7 +2735,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         /* Per-block lowering before opts */
 
-        mir_foreach_block(ctx, block) {
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
                 inline_alu_constants(ctx, block);
                 midgard_opt_promote_fmov(ctx, block);
                 embedded_to_inline_constant(ctx, block);
@@ -2746,7 +2748,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         do {
                 progress = false;
 
-                mir_foreach_block(ctx, block) {
+                mir_foreach_block(ctx, _block) {
+                        midgard_block *block = (midgard_block *) _block;
                         progress |= midgard_opt_pos_propagate(ctx, block);
                         progress |= midgard_opt_copy_prop(ctx, block);
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
@@ -2761,7 +2764,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                 }
         } while (progress);
 
-        mir_foreach_block(ctx, block) {
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
                 midgard_lower_invert(ctx, block);
                 midgard_lower_derivatives(ctx, block);
         }
@@ -2769,7 +2773,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         /* Nested control-flow can result in dead branches at the end of the
          * block. This messes with our analysis and is just dead code, so cull
          * them */
-        mir_foreach_block(ctx, block) {
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
                 midgard_opt_cull_dead_branch(ctx, block);
         }
 
@@ -2790,7 +2795,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         int br_block_idx = 0;
 
-        mir_foreach_block(ctx, block) {
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
                 util_dynarray_foreach(&block->bundles, midgard_bundle, bundle) {
                         for (int c = 0; c < bundle->instruction_count; ++c) {
                                 midgard_instruction *ins = bundle->instructions[c];
@@ -2902,12 +2908,14 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         /* Cache _all_ bundles in source order for lookahead across failed branches */
 
         int bundle_count = 0;
-        mir_foreach_block(ctx, block) {
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
                 bundle_count += block->bundles.size / sizeof(midgard_bundle);
         }
         midgard_bundle **source_order_bundles = malloc(sizeof(midgard_bundle *) * bundle_count);
         int bundle_idx = 0;
-        mir_foreach_block(ctx, block) {
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
                 util_dynarray_foreach(&block->bundles, midgard_bundle, bundle) {
                         source_order_bundles[bundle_idx++] = bundle;
                 }
@@ -2919,7 +2927,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
          * need to lookahead. Unless this is the last instruction, in
          * which we return 1. */
 
-        mir_foreach_block(ctx, block) {
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
                 mir_foreach_bundle_in_block(block, bundle) {
                         int lookahead = 1;
 
@@ -2954,7 +2963,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
                 /* Count instructions and bundles */
 
-                mir_foreach_block(ctx, block) {
+                mir_foreach_block(ctx, _block) {
+                        midgard_block *block = (midgard_block *) _block;
                         nr_bundles += util_dynarray_num_elements(
                                               &block->bundles, midgard_bundle);
 

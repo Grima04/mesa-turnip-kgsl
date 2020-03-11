@@ -377,7 +377,7 @@ mir_print_instruction(midgard_instruction *ins)
 void
 mir_print_block(midgard_block *block)
 {
-        printf("block%u: {\n", block->name);
+        printf("block%u: {\n", block->base.name);
 
         if (block->scheduled) {
                 mir_foreach_bundle_in_block(block, bundle) {
@@ -394,17 +394,17 @@ mir_print_block(midgard_block *block)
 
         printf("}");
 
-        if (block->nr_successors) {
+        if (block->base.nr_successors) {
                 printf(" -> ");
-                for (unsigned i = 0; i < block->nr_successors; ++i) {
-                        printf("block%u%s", block->successors[i]->name,
-                                        (i + 1) != block->nr_successors ? ", " : "");
+                for (unsigned i = 0; i < block->base.nr_successors; ++i) {
+                        printf("block%u%s", block->base.successors[i]->name,
+                                        (i + 1) != block->base.nr_successors ? ", " : "");
                 }
         }
 
         printf(" from { ");
         mir_foreach_predecessor(block, pred)
-                printf("block%u ", pred->name);
+                printf("block%u ", pred->base.name);
         printf("}");
 
         printf("\n\n");
@@ -414,6 +414,6 @@ void
 mir_print_shader(compiler_context *ctx)
 {
         mir_foreach_block(ctx, block) {
-                mir_print_block(block);
+                mir_print_block((midgard_block *) block);
         }
 }

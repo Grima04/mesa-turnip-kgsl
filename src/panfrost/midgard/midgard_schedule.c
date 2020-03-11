@@ -245,7 +245,7 @@ bytes_for_instruction(midgard_instruction *ains)
 static midgard_instruction **
 flatten_mir(midgard_block *block, unsigned *len)
 {
-        *len = list_length(&block->instructions);
+        *len = list_length(&block->base.instructions);
 
         if (!(*len))
                 return NULL;
@@ -1167,7 +1167,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         }
 
         mir_foreach_instr_in_block_scheduled_rev(block, ins) {
-                list_add(&ins->link, &block->instructions);
+                list_add(&ins->link, &block->base.instructions);
         }
 
 	free(instructions); /* Allocated by flatten_mir() */
@@ -1186,7 +1186,8 @@ midgard_schedule_program(compiler_context *ctx)
 
         /* Lowering can introduce some dead moves */
 
-        mir_foreach_block(ctx, block) {
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
                 midgard_opt_dead_move_eliminate(ctx, block);
                 schedule_block(ctx, block);
         }
