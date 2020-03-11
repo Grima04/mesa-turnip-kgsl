@@ -67,7 +67,7 @@ class CommitWidget(urwid.Text):
     _selectable = True
 
     def __init__(self, ui: 'UI', commit: 'core.Commit'):
-        super().__init__(commit.description)
+        super().__init__(f'{commit.sha[:10]} {commit.description}')
         self.ui = ui
         self.commit = commit
 
