@@ -370,8 +370,6 @@ emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
-      assert(!ds_clear_value ||
-             subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED);
       clear.z_clear_value = ds_clear_value ? ds_clear_value->depth : 1.0f;
       clear.stencil_clear_value = ds_clear_value ? ds_clear_value->stencil : 0;
    };
