@@ -378,7 +378,7 @@ bi_remove_instruction(bi_instruction *ins)
 /* Keep me synced please so we can check src & BIR_SPECIAL */
 
 #define BIR_SPECIAL        ((BIR_INDEX_REGISTER | BIR_INDEX_UNIFORM) | \
-        (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO)
+        (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO))
 
 static inline unsigned
 bi_max_temp(bi_context *ctx)
@@ -501,6 +501,7 @@ uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 
 /* BIR passes */
 
+bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block);
 void bi_schedule(bi_context *ctx);
 
 /* Liveness */

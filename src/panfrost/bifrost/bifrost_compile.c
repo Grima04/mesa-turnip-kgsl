@@ -841,6 +841,17 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
                 break; /* TODO: Multi-function shaders */
         }
 
+        bool progress = false;
+
+        do {
+                progress = false;
+
+                bi_foreach_block(ctx, _block) {
+                        bi_block *block = (bi_block *) _block;
+                        progress |= bi_opt_dead_code_eliminate(ctx, block);
+                }
+        } while(progress);
+
         bi_print_shader(ctx, stdout);
         bi_schedule(ctx);
 
