@@ -179,6 +179,9 @@ typedef struct shader_info {
    /* Whether flrp has been lowered. */
    bool flrp_lowered:1;
 
+   /* Whether the shader writes memory, including transform feedback. */
+   bool writes_memory:1;
+
    union {
       struct {
          /* Which inputs are doubles */
