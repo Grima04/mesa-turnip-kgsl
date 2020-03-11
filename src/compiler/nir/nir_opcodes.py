@@ -1129,9 +1129,9 @@ binop("amul", tint, _2src_commutative + associative, "src0 * src1")
 # ir3-specific instruction that maps directly to mul-add shift high mix,
 # (IMADSH_MIX16 i.e. ah * bl << 16 + c). It is used for lowering integer
 # multiplication (imul) on Freedreno backend..
-opcode("imadsh_mix16", 1, tint32,
-       [1, 1, 1], [tint32, tint32, tint32], False, "", """
-dst.x = ((((src0.x & 0xffff0000) >> 16) * (src1.x & 0x0000ffff)) << 16) + src2.x;
+opcode("imadsh_mix16", 0, tint32,
+       [0, 0, 0], [tint32, tint32, tint32], False, "", """
+dst = ((((src0 & 0xffff0000) >> 16) * (src1 & 0x0000ffff)) << 16) + src2;
 """)
 
 # ir3-specific instruction that maps directly to ir3 mad.s24.
