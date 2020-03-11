@@ -149,6 +149,7 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                         bir_src_index(&instr->src[0])
                 },
                 .swizzle = {
+                        { 0 },
                         { 0, 1, 2, 3 }
                 }
         };
