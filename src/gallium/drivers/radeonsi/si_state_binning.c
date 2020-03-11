@@ -485,7 +485,8 @@ void si_emit_dpbb_state(struct si_context *sctx)
 		G_02880C_DEPTH_BEFORE_SHADER(db_shader_control);
 
 	/* Disable DPBB when it's believed to be inefficient. */
-	if (ps_can_kill &&
+	if (sscreen->info.num_render_backends > 4 &&
+	    ps_can_kill &&
 	    db_can_reject_z_trivially &&
 	    sctx->framebuffer.state.zsbuf &&
 	    dsa->db_can_write) {
@@ -546,8 +547,13 @@ void si_emit_dpbb_state(struct si_context *sctx)
 
 	/* Tuned for Raven. Vega might need different values. */
 	if (sscreen->info.has_dedicated_vram) {
-		context_states_per_bin = 1;
-		persistent_states_per_bin = 1;
+		if (sscreen->info.num_render_backends > 4) {
+			context_states_per_bin = 1;
+			persistent_states_per_bin = 1;
+		} else {
+			context_states_per_bin = 3;
+			persistent_states_per_bin = 8;
+		}
 	} else {
 		/* This is a workaround for:
 		 *    https://bugs.freedesktop.org/show_bug.cgi?id=110214
