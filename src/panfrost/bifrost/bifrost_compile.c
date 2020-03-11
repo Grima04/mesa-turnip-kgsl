@@ -322,6 +322,7 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_u2f64:
                 return BI_CONVERT;
 
+        case nir_op_ffma:
         case nir_op_fmul:
                 return BI_FMA;
 

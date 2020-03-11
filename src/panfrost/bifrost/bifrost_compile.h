@@ -31,7 +31,6 @@
 void bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned product_id);
 
 static const nir_shader_compiler_options bifrost_nir_options = {
-        .lower_ffma = true,
         .lower_scmp = true,
         .lower_flrp32 = true,
         .lower_flrp64 = true,
@@ -68,6 +67,7 @@ static const nir_shader_compiler_options bifrost_nir_options = {
 
         .lower_bitfield_extract_to_shifts = true,
         .vectorize_io = true,
+        .fuse_ffma = true,
         .use_interpolated_input_intrinsics = true
 };
 
