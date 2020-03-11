@@ -177,6 +177,8 @@ class UI:
 
     async def feedback(self, text: str) -> None:
         self.feedback_box.append(urwid.AttrMap(urwid.Text(text), None))
+        latest_item_index = len(self.feedback_box) - 1
+        self.feedback_box.set_focus(latest_item_index)
 
     def remove_commit(self, commit: CommitWidget) -> None:
         for i, c in enumerate(self.commit_list):
