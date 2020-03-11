@@ -126,11 +126,20 @@ fd5_sampler_state_create(struct pipe_context *pctx,
 		COND(!cso->seamless_cube_map, A5XX_TEX_SAMP_1_CUBEMAPSEAMLESSFILTOFF) |
 		COND(!cso->normalized_coords, A5XX_TEX_SAMP_1_UNNORM_COORDS);
 
+	so->texsamp0 |= A5XX_TEX_SAMP_0_LOD_BIAS(cso->lod_bias);
+
 	if (cso->min_mip_filter != PIPE_TEX_MIPFILTER_NONE) {
-		so->texsamp0 |= A5XX_TEX_SAMP_0_LOD_BIAS(cso->lod_bias);
 		so->texsamp1 |=
 			A5XX_TEX_SAMP_1_MIN_LOD(cso->min_lod) |
 			A5XX_TEX_SAMP_1_MAX_LOD(cso->max_lod);
+	} else {
+		/* If we're not doing mipmap filtering, we still need a slightly > 0
+		 * LOD clamp so the HW can decide between min and mag filtering of
+		 * level 0.
+		 */
+		so->texsamp1 |=
+			A5XX_TEX_SAMP_1_MIN_LOD(MIN2(cso->min_lod, 0.125)) |
+			A5XX_TEX_SAMP_1_MAX_LOD(MIN2(cso->max_lod, 0.125));
 	}
 
 	if (cso->compare_mode)
