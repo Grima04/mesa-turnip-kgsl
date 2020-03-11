@@ -475,6 +475,7 @@ bool bi_has_outmod(bi_instruction *ins);
 bool bi_has_source_mods(bi_instruction *ins);
 bool bi_is_src_swizzled(bi_instruction *ins, unsigned s);
 bool bi_has_arg(bi_instruction *ins, unsigned arg);
+uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 
 /* BIR passes */
 

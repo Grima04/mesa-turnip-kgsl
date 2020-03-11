@@ -74,3 +74,24 @@ bi_has_arg(bi_instruction *ins, unsigned arg)
 
         return false;
 }
+
+uint16_t
+bi_bytemask_of_read_components(bi_instruction *ins, unsigned node)
+{
+        uint16_t mask = 0x0;
+
+        bi_foreach_src(ins, s) {
+                if (ins->src[s] != node) continue;
+                nir_alu_type T = ins->src_types[s];
+                unsigned size = nir_alu_type_get_type_size(T);
+                unsigned bytes = (MAX2(size, 8) / 8);
+                unsigned cmask = (1 << bytes) - 1;
+
+                for (unsigned i = 0; i < ARRAY_SIZE(ins->swizzle[s]); ++i) {
+                        unsigned c = ins->swizzle[s][i];
+                        mask |= (cmask << (c * bytes));
+                }
+        }
+
+        return mask;
+}
