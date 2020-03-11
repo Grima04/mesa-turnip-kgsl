@@ -120,7 +120,7 @@ x86_build:
     - .debian@container-ifnot-exists
     - .container
   variables:
-    DEBIAN_TAG: &x86_build "2020-03-11"
+    DEBIAN_TAG: &x86_build "2020-03-13"
 
 .use-x86_build:
   variables:
@@ -133,7 +133,7 @@ x86_build:
 x86_test-gl:
   extends: x86_build
   variables:
-    DEBIAN_TAG: &x86_test-gl "2020-03-11"
+    DEBIAN_TAG: &x86_test-gl "2020-03-13"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
@@ -161,7 +161,7 @@ arm_build:
     - .debian@container-ifnot-exists@arm64v8
     - .container
   variables:
-    DEBIAN_TAG: &arm_build "2020-03-09"
+    DEBIAN_TAG: &arm_build "2020-03-13"
 
 .use-arm_build:
   variables:

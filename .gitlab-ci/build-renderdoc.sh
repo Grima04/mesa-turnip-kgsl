@@ -2,7 +2,7 @@
 
 set -ex
 
-RENDERDOC_VERSION=6653316a62f6168b3e45040358cb77612dcffcb8
+RENDERDOC_VERSION=da02e88201dc3b64316fc33ce6ff69cc729689aa
 
 git clone https://github.com/baldurk/renderdoc.git --single-branch --no-checkout /renderdoc
 pushd /renderdoc

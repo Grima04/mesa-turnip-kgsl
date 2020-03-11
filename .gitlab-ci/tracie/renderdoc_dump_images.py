@@ -83,8 +83,8 @@ def loadCapture(filename):
     return (cap, controller)
 
 def renderdoc_dump_images(filename, eventIds, outputDir):
-   rd.InitGlobalEnv(rd.GlobalEnvironment(), [])
-   cap,controller = loadCapture(filename);
+   rd.InitialiseReplay(rd.GlobalEnvironment(), [])
+   cap, controller = loadCapture(filename);
 
    tracefile = Path(filename).name
 
@@ -96,6 +96,8 @@ def renderdoc_dump_images(filename, eventIds, outputDir):
 
    controller.Shutdown()
    cap.Shutdown()
+
+   rd.ShutdownReplay()
 
 if __name__ == "__main__":
    if len(sys.argv) < 3:
