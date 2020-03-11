@@ -302,7 +302,9 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 			/* For Wave32, the hw will launch twice the number of late
 			 * alloc waves, so 1 == 2x wave32.
 			 */
-			if (num_cu_per_sh <= 6) {
+			if (!physical_device->rad_info.use_late_alloc) {
+				late_alloc_wave64 = 0;
+			} else if (num_cu_per_sh <= 6) {
 				late_alloc_wave64 = num_cu_per_sh - 2;
 			} else {
 				late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
@@ -323,8 +325,8 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 				cu_mask_gs = 0xffff;
 			}
 		} else {
-			if (physical_device->rad_info.family == CHIP_KABINI) {
-				late_alloc_wave64 = 0; /* Potential hang on Kabini. */
+			if (!physical_device->rad_info.use_late_alloc) {
+				late_alloc_wave64 = 0;
 			} else if (num_cu_per_sh <= 4) {
 				/* Too few available compute units per SH.
 				 * Disallowing VS to run on one CU could hurt
@@ -425,7 +427,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 
 		/* TODO: For culling, replace 128 with 256. */
 		radeon_set_uconfig_reg(cs, R_030980_GE_PC_ALLOC,
-				       S_030980_OVERSUB_EN(1) |
+				       S_030980_OVERSUB_EN(physical_device->rad_info.use_late_alloc) |
 				       S_030980_NUM_PC_LINES(128 * physical_device->rad_info.max_se - 1));
 	}
 
