@@ -378,6 +378,13 @@ bi_remove_instruction(bi_instruction *ins)
         (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO)
 
 static inline unsigned
+bi_max_temp(bi_context *ctx)
+{
+        unsigned alloc = MAX2(ctx->impl->reg_alloc, ctx->impl->ssa_alloc);
+        return ((alloc + 1 + ctx->temp_alloc) << 1) | BIR_IS_REG;
+}
+
+static inline unsigned
 bi_make_temp(bi_context *ctx)
 {
         return (ctx->impl->ssa_alloc + 1 + ctx->temp_alloc++) << 1;
