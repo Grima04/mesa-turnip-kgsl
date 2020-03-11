@@ -169,7 +169,7 @@ vbo_exec_vtx_unmap(struct vbo_exec_context *exec)
       exec->vtx.buffer_used += (exec->vtx.buffer_ptr -
                                 exec->vtx.buffer_map) * sizeof(float);
 
-      assert(exec->vtx.buffer_used <= VBO_VERT_BUFFER_SIZE);
+      assert(exec->vtx.buffer_used <= exec->ctx->Const.glBeginEndBufferSize);
       assert(exec->vtx.buffer_ptr != NULL);
 
       ctx->Driver.UnmapBuffer(ctx, exec->vtx.bufferobj, MAP_INTERNAL);
@@ -182,7 +182,7 @@ vbo_exec_vtx_unmap(struct vbo_exec_context *exec)
 static bool
 vbo_exec_buffer_has_space(struct vbo_exec_context *exec)
 {
-   return VBO_VERT_BUFFER_SIZE > exec->vtx.buffer_used + 1024;
+   return exec->ctx->Const.glBeginEndBufferSize > exec->vtx.buffer_used + 1024;
 }
 
 
@@ -223,7 +223,7 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
          exec->vtx.buffer_map = (fi_type *)
             ctx->Driver.MapBufferRange(ctx,
                                        exec->vtx.buffer_used,
-                                       VBO_VERT_BUFFER_SIZE
+                                       ctx->Const.glBeginEndBufferSize
                                        - exec->vtx.buffer_used,
                                        accessRange,
                                        exec->vtx.bufferobj,
@@ -240,7 +240,7 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
       exec->vtx.buffer_used = 0;
 
       if (ctx->Driver.BufferData(ctx, GL_ARRAY_BUFFER_ARB,
-                                 VBO_VERT_BUFFER_SIZE,
+                                 ctx->Const.glBeginEndBufferSize,
                                  NULL, usage,
                                  GL_MAP_WRITE_BIT |
                                  (ctx->Extensions.ARB_buffer_storage ?
@@ -253,7 +253,7 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
          /* buffer allocation worked, now map the buffer */
          exec->vtx.buffer_map =
             (fi_type *)ctx->Driver.MapBufferRange(ctx,
-                                                  0, VBO_VERT_BUFFER_SIZE,
+                                                  0, ctx->Const.glBeginEndBufferSize,
                                                   accessRange,
                                                   exec->vtx.bufferobj,
                                                   MAP_INTERNAL);

@@ -422,6 +422,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_PSIZ_CLAMPED:
       return 0;
 
+   case PIPE_CAP_GL_BEGIN_END_BUFFER_SIZE:
+      return 512 * 1024;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }

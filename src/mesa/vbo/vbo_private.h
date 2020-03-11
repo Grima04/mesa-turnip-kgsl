@@ -163,8 +163,9 @@ vbo_get_default_vals_as_union(GLenum format)
 static inline unsigned
 vbo_compute_max_verts(const struct vbo_exec_context *exec)
 {
-   unsigned n = (VBO_VERT_BUFFER_SIZE - exec->vtx.buffer_used) /
-      (exec->vtx.vertex_size * sizeof(GLfloat));
+   unsigned n = (exec->ctx->Const.glBeginEndBufferSize -
+                 exec->vtx.buffer_used) /
+                (exec->vtx.vertex_size * sizeof(GLfloat));
    if (n == 0)
       return 0;
    /* Subtract one so we're always sure to have room for an extra

@@ -1017,7 +1017,8 @@ vbo_exec_vtx_init(struct vbo_exec_context *exec, bool use_buffer_objects)
                                     &exec->vtx.bufferobj,
                                     ctx->Shared->NullBufferObj);
 
-      exec->vtx.buffer_map = _mesa_align_malloc(VBO_VERT_BUFFER_SIZE, 64);
+      exec->vtx.buffer_map =
+         _mesa_align_malloc(ctx->Const.glBeginEndBufferSize, 64);
       exec->vtx.buffer_ptr = exec->vtx.buffer_map;
    }
 

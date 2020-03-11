@@ -754,6 +754,8 @@ _mesa_init_constants(struct gl_constants *consts, gl_api api)
    consts->ConservativeRasterDilateRange[0] = 0.0;
    consts->ConservativeRasterDilateRange[1] = 0.0;
    consts->ConservativeRasterDilateGranularity = 0.0;
+
+   consts->glBeginEndBufferSize = 512 * 1024;
 }
 
 
