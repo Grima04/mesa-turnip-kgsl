@@ -1483,7 +1483,8 @@ radv_get_physical_device_properties_1_1(struct radv_physical_device *pdevice,
 					 VK_SUBGROUP_FEATURE_QUAD_BIT;
 
 	if (pdevice->rad_info.chip_class == GFX8 ||
-	    pdevice->rad_info.chip_class == GFX9) {
+	    pdevice->rad_info.chip_class == GFX9 ||
+	    (pdevice->rad_info.chip_class == GFX10 && pdevice->use_aco)) {
 		p->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
 						  VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
 	}
