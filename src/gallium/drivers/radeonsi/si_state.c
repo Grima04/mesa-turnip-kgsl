@@ -5670,7 +5670,14 @@ static void si_init_config(struct si_context *sctx)
 		si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
 	}
 
-	if (sctx->chip_class >= GFX8) {
+	if (sctx->chip_class >= GFX9) {
+		si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION,
+			       S_028B50_ACCUM_ISOLINE(40) |
+			       S_028B50_ACCUM_TRI(30) |
+			       S_028B50_ACCUM_QUAD(24) |
+			       S_028B50_DONUT_SPLIT(24) |
+			       S_028B50_TRAP_SPLIT(6));
+	} else if (sctx->chip_class >= GFX8) {
 		unsigned vgt_tess_distribution;
 
 		vgt_tess_distribution =
