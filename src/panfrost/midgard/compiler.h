@@ -190,13 +190,6 @@ typedef struct midgard_block {
 
         struct set *predecessors;
 
-        /* The successors pointer form a graph, and in the case of
-         * complex control flow, this graph has a cycles. To aid
-         * traversal during liveness analysis, we have a visited?
-         * boolean for passes to use as they see fit, provided they
-         * clean up later */
-        bool visited;
-
         /* In liveness analysis, these are live masks (per-component) for
          * indices for the block. Scalar compilers have the luxury of using
          * simple bit fields, but for us, liveness is a vector idea. */

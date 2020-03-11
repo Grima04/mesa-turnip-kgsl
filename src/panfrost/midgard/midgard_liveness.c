@@ -129,11 +129,15 @@ mir_compute_liveness(compiler_context *ctx)
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
+        struct set *visited = _mesa_set_create(ctx,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
         /* Allocate */
 
         mir_foreach_block(ctx, block) {
-                block->live_in = rzalloc_array(ctx, uint16_t, ctx->temp_count);
-                block->live_out = rzalloc_array(ctx, uint16_t, ctx->temp_count);
+                block->live_in = rzalloc_array(NULL, uint16_t, ctx->temp_count);
+                block->live_out = rzalloc_array(NULL, uint16_t, ctx->temp_count);
         }
 
         /* Initialize the work list with the exit block */
@@ -154,20 +158,19 @@ mir_compute_liveness(compiler_context *ctx)
 
                 /* If we made progress, we need to process the predecessors */
 
-                if (progress || !blk->visited) {
+                if (progress || !_mesa_set_search(visited, blk)) {
                         mir_foreach_predecessor(blk, pred)
                                 _mesa_set_add(work_list, pred);
                 }
 
-                blk->visited = true;
+                _mesa_set_add(visited, blk);
         } while((cur = _mesa_set_next_entry(work_list, NULL)) != NULL);
+
+        _mesa_set_destroy(visited, NULL);
+        _mesa_set_destroy(work_list, NULL);
 
         /* Liveness is now valid */
         ctx->metadata |= MIDGARD_METADATA_LIVENESS;
-
-        mir_foreach_block(ctx, block) {
-                block->visited = false;
-        }
 }
 
 /* Once liveness data is no longer valid, call this */
