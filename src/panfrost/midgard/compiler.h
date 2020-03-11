@@ -165,29 +165,6 @@ typedef struct midgard_instruction {
         };
 } midgard_instruction;
 
-typedef struct pan_block {
-        /* Link to next block. Must be first for mir_get_block */
-        struct list_head link;
-
-        /* List of instructions emitted for the current block */
-        struct list_head instructions;
-
-        /* Index of the block in source order */
-        unsigned name;
-
-        /* Control flow graph */
-        struct pan_block *successors[2];
-        unsigned nr_successors;
-
-        struct set *predecessors;
-
-        /* In liveness analysis, these are live masks (per-component) for
-         * indices for the block. Scalar compilers have the luxury of using
-         * simple bit fields, but for us, liveness is a vector idea. */
-        uint16_t *live_in;
-        uint16_t *live_out;
-} pan_block;
-
 typedef struct midgard_block {
         pan_block base;
 
@@ -377,9 +354,6 @@ mir_next_op(struct midgard_instruction *ins)
 #define mir_foreach_instr_in_block_rev(block, v) \
         list_for_each_entry_rev(struct midgard_instruction, v, &block->base.instructions, link)
 
-#define pan_foreach_instr_in_block_rev(block, v) \
-        list_for_each_entry_rev(struct midgard_instruction, v, &block->instructions, link)
-
 #define mir_foreach_instr_in_block_safe(block, v) \
         list_for_each_entry_safe(struct midgard_instruction, v, &block->base.instructions, link)
 
@@ -422,14 +396,6 @@ mir_next_op(struct midgard_instruction *ins)
                 v != NULL && _v < &blk->base.successors[2]; \
                 _v++, v = *_v) \
 
-#define pan_foreach_successor(blk, v) \
-        pan_block *v; \
-        pan_block **_v; \
-        for (_v = (pan_block **) &blk->successors[0], \
-                v = *_v; \
-                v != NULL && _v < (pan_block **) &blk->successors[2]; \
-                _v++, v = *_v) \
-
 /* Based on set_foreach, expanded with automatic type casts */
 
 #define mir_foreach_predecessor(blk, v) \
@@ -440,15 +406,6 @@ mir_next_op(struct midgard_instruction *ins)
                 _entry_##v != NULL; \
                 _entry_##v = _mesa_set_next_entry(blk->base.predecessors, _entry_##v), \
                 v = (struct midgard_block *) (_entry_##v ? _entry_##v->key : NULL))
-
-#define pan_foreach_predecessor(blk, v) \
-        struct set_entry *_entry_##v; \
-        struct pan_block *v; \
-        for (_entry_##v = _mesa_set_next_entry(blk->predecessors, NULL), \
-                v = (struct pan_block *) (_entry_##v ? _entry_##v->key : NULL);  \
-                _entry_##v != NULL; \
-                _entry_##v = _mesa_set_next_entry(blk->predecessors, _entry_##v), \
-                v = (struct pan_block *) (_entry_##v ? _entry_##v->key : NULL))
 
 #define mir_foreach_src(ins, v) \
         for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
@@ -468,19 +425,6 @@ mir_get_block(compiler_context *ctx, int idx)
                 lst = lst->next;
 
         return (struct midgard_block *) lst;
-}
-
-static inline midgard_block *
-mir_exit_block(struct compiler_context *ctx)
-{
-        pan_block *last = list_last_entry(&ctx->blocks, pan_block, link);
-
-        /* The last block must be empty logically but contains branch writeout
-         * for fragment shaders */
-
-        assert(last->nr_successors == 0);
-
-        return (midgard_block *) last;
 }
 
 static inline bool

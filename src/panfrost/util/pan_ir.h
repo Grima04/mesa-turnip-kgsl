@@ -116,6 +116,66 @@ typedef struct {
         float alpha_ref;
 } panfrost_program;
 
+typedef struct pan_block {
+        /* Link to next block. Must be first for mir_get_block */
+        struct list_head link;
+
+        /* List of instructions emitted for the current block */
+        struct list_head instructions;
+
+        /* Index of the block in source order */
+        unsigned name;
+
+        /* Control flow graph */
+        struct pan_block *successors[2];
+        unsigned nr_successors;
+
+        struct set *predecessors;
+
+        /* In liveness analysis, these are live masks (per-component) for
+         * indices for the block. Scalar compilers have the luxury of using
+         * simple bit fields, but for us, liveness is a vector idea. */
+        uint16_t *live_in;
+        uint16_t *live_out;
+} pan_block;
+
+struct pan_instruction {
+        struct list_head link;
+};
+
+#define pan_foreach_instr_in_block_rev(block, v) \
+        list_for_each_entry_rev(struct pan_instruction, v, &block->instructions, link)
+
+#define pan_foreach_successor(blk, v) \
+        pan_block *v; \
+        pan_block **_v; \
+        for (_v = (pan_block **) &blk->successors[0], \
+                v = *_v; \
+                v != NULL && _v < (pan_block **) &blk->successors[2]; \
+                _v++, v = *_v) \
+
+#define pan_foreach_predecessor(blk, v) \
+        struct set_entry *_entry_##v; \
+        struct pan_block *v; \
+        for (_entry_##v = _mesa_set_next_entry(blk->predecessors, NULL), \
+                v = (struct pan_block *) (_entry_##v ? _entry_##v->key : NULL);  \
+                _entry_##v != NULL; \
+                _entry_##v = _mesa_set_next_entry(blk->predecessors, _entry_##v), \
+                v = (struct pan_block *) (_entry_##v ? _entry_##v->key : NULL))
+
+
+typedef void (*pan_liveness_update)(uint16_t *, void *, unsigned max);
+
+void pan_liveness_gen(uint16_t *live, unsigned node, unsigned max, uint16_t mask);
+void pan_liveness_kill(uint16_t *live, unsigned node, unsigned max, uint16_t mask);
+bool pan_liveness_get(uint16_t *live, unsigned node, uint16_t max);
+
+void pan_compute_liveness(struct list_head *blocks,
+                unsigned temp_count,
+                pan_liveness_update callback);
+
+void pan_free_liveness(struct list_head *blocks);
+
 uint16_t
 pan_to_bytemask(unsigned bytes, unsigned mask);
 
