@@ -29,6 +29,7 @@
 #include "radv_shader.h"
 #include "radv_shader_helper.h"
 #include "radv_shader_args.h"
+#include "radv_debug.h"
 #include "nir/nir.h"
 
 #include "sid.h"
@@ -4266,7 +4267,7 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 	free(elf_buffer);
 }
 
-void
+static void
 radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 			struct radv_shader_binary **rbinary,
 			const struct radv_shader_args *args,
@@ -4392,7 +4393,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 	LLVMPositionBuilderAtEnd(ctx->ac.builder, end_bb);
 }
 
-void
+static void
 radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 			    struct nir_shader *geom_shader,
 			    struct radv_shader_binary **rbinary,
@@ -4430,4 +4431,37 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 			       MESA_SHADER_VERTEX, "GS Copy Shader", args->options);
 	(*rbinary)->is_gs_copy_shader = true;
 	
+}
+
+void
+llvm_compile_shader(struct radv_device *device,
+		    unsigned shader_count,
+		    struct nir_shader *const *shaders,
+		    struct radv_shader_binary **binary,
+		    struct radv_shader_args *args)
+{
+	enum ac_target_machine_options tm_options = 0;
+	struct ac_llvm_compiler ac_llvm;
+	bool thread_compiler;
+
+	tm_options |= AC_TM_SUPPORTS_SPILL;
+	if (args->options->check_ir)
+		tm_options |= AC_TM_CHECK_IR;
+	if (device->instance->debug_flags & RADV_DEBUG_NO_LOAD_STORE_OPT)
+		tm_options |= AC_TM_NO_LOAD_STORE_OPT;
+
+	thread_compiler = !(device->instance->debug_flags & RADV_DEBUG_NOTHREADLLVM);
+
+	radv_init_llvm_compiler(&ac_llvm, thread_compiler,
+				args->options->family, tm_options,
+				args->shader_info->wave_size);
+
+	if (args->is_gs_copy_shader) {
+		radv_compile_gs_copy_shader(&ac_llvm, *shaders, binary, args);
+	} else {
+		radv_compile_nir_shader(&ac_llvm, binary, args,
+					shaders, shader_count);
+	}
+
+	radv_destroy_llvm_compiler(&ac_llvm, thread_compiler);
 }

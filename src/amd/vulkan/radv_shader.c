@@ -1119,36 +1119,11 @@ shader_variant_compile(struct radv_device *device,
 
 	if (device->physical_device->use_aco) {
 		aco_compile_shader(shader_count, shaders, &binary, &args);
-		binary->info = *info;
 	} else {
-		enum ac_target_machine_options tm_options = 0;
-		struct ac_llvm_compiler ac_llvm;
-		bool thread_compiler;
-
-		tm_options |= AC_TM_SUPPORTS_SPILL;
-		if (options->check_ir)
-			tm_options |= AC_TM_CHECK_IR;
-		if (device->instance->debug_flags & RADV_DEBUG_NO_LOAD_STORE_OPT)
-			tm_options |= AC_TM_NO_LOAD_STORE_OPT;
-
-		thread_compiler = !(device->instance->debug_flags & RADV_DEBUG_NOTHREADLLVM);
-		radv_init_llvm_compiler(&ac_llvm,
-					thread_compiler,
-					chip_family, tm_options,
-					info->wave_size);
-
-		if (gs_copy_shader) {
-			assert(shader_count == 1);
-			radv_compile_gs_copy_shader(&ac_llvm, *shaders, &binary,
-						    &args);
-		} else {
-			radv_compile_nir_shader(&ac_llvm, &binary, &args,
-						shaders, shader_count);
-		}
-
-		binary->info = *info;
-		radv_destroy_llvm_compiler(&ac_llvm, thread_compiler);
+		llvm_compile_shader(device, shader_count, shaders, &binary, &args);
 	}
+
+	binary->info = *info;
 
 	struct radv_shader_variant *variant = radv_shader_variant_create(device, binary,
 									 keep_shader_info);

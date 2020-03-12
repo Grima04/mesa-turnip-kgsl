@@ -2361,16 +2361,11 @@ struct radv_fence {
 /* radv_nir_to_llvm.c */
 struct radv_shader_args;
 
-void radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
-				 struct nir_shader *geom_shader,
-				 struct radv_shader_binary **rbinary,
-				 const struct radv_shader_args *args);
-
-void radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
-			     struct radv_shader_binary **rbinary,
-			     const struct radv_shader_args *args,
-			     struct nir_shader *const *nir,
-			     int nir_count);
+void llvm_compile_shader(struct radv_device *device,
+			 unsigned shader_count,
+			 struct nir_shader *const *shaders,
+			 struct radv_shader_binary **binary,
+			 struct radv_shader_args *args);
 
 unsigned radv_nir_get_max_workgroup_size(enum chip_class chip_class,
 					 gl_shader_stage stage,
