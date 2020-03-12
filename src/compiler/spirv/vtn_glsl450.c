@@ -172,15 +172,6 @@ matrix_inverse(struct vtn_builder *b, struct vtn_ssa_value *src)
 }
 
 /**
- * Return ln(x) - the natural logarithm of x.
- */
-static nir_ssa_def *
-build_log(nir_builder *b, nir_ssa_def *x)
-{
-   return nir_fmul_imm(b, nir_flog2(b, x), 1.0 / M_LOG2E);
-}
-
-/**
  * Approximate asin(x) by the formula:
  *    asin~(x) = sign(x) * (pi/2 - sqrt(1 - |x|) * (pi/2 + |x|(pi/4 - 1 + |x|(p0 + |x|p1))))
  *
@@ -359,7 +350,7 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       return;
 
    case GLSLstd450Log:
-      val->ssa->def = build_log(nb, src[0]);
+      val->ssa->def = nir_flog(nb, src[0]);
       return;
 
    case GLSLstd450FClamp:
@@ -472,20 +463,20 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
 
    case GLSLstd450Asinh:
       val->ssa->def = nir_fmul(nb, nir_fsign(nb, src[0]),
-         build_log(nb, nir_fadd(nb, nir_fabs(nb, src[0]),
-                       nir_fsqrt(nb, nir_fadd_imm(nb, nir_fmul(nb, src[0], src[0]),
-                                                      1.0f)))));
+         nir_flog(nb, nir_fadd(nb, nir_fabs(nb, src[0]),
+                      nir_fsqrt(nb, nir_fadd_imm(nb, nir_fmul(nb, src[0], src[0]),
+                                                    1.0f)))));
       return;
    case GLSLstd450Acosh:
-      val->ssa->def = build_log(nb, nir_fadd(nb, src[0],
+      val->ssa->def = nir_flog(nb, nir_fadd(nb, src[0],
          nir_fsqrt(nb, nir_fadd_imm(nb, nir_fmul(nb, src[0], src[0]),
                                         -1.0f))));
       return;
    case GLSLstd450Atanh: {
       nir_ssa_def *one = nir_imm_floatN_t(nb, 1.0, src[0]->bit_size);
       val->ssa->def =
-         nir_fmul_imm(nb, build_log(nb, nir_fdiv(nb, nir_fadd(nb, src[0], one),
-                                        nir_fsub(nb, one, src[0]))),
+         nir_fmul_imm(nb, nir_flog(nb, nir_fdiv(nb, nir_fadd(nb, src[0], one),
+                                       nir_fsub(nb, one, src[0]))),
                           0.5f);
       return;
    }
