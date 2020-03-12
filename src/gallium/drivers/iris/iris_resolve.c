@@ -993,6 +993,24 @@ iris_image_view_aux_usage(struct iris_context *ice,
                           const struct pipe_image_view *pview,
                           const struct shader_info *info)
 {
+   if (!info)
+      return ISL_AUX_USAGE_NONE;
+
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   struct iris_resource *res = (void *) pview->resource;
+
+   enum isl_format view_format = iris_image_view_get_format(ice, pview);
+   enum isl_aux_usage aux_usage =
+      iris_resource_texture_aux_usage(ice, res, view_format);
+
+   bool uses_atomic_load_store =
+      ice->shaders.uncompiled[info->stage]->uses_atomic_load_store;
+
+   if ((devinfo->gen == 12 && aux_usage == ISL_AUX_USAGE_CCS_E) &&
+       !uses_atomic_load_store)
+      return ISL_AUX_USAGE_CCS_E;
+
    return ISL_AUX_USAGE_NONE;
 }
 
