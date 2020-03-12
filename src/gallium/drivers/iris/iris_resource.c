@@ -214,6 +214,32 @@ pipe_bind_to_isl_usage(unsigned bindings)
    return usage;
 }
 
+enum isl_format
+iris_image_view_get_format(struct iris_context *ice,
+                           const struct pipe_image_view *img)
+{
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
+   enum isl_format isl_fmt =
+      iris_format_for_usage(devinfo, img->format, usage).fmt;
+
+   if (img->shader_access & PIPE_IMAGE_ACCESS_READ) {
+      /* On Gen8, try to use typed surfaces reads (which support a
+       * limited number of formats), and if not possible, fall back
+       * to untyped reads.
+       */
+      if (devinfo->gen == 8 &&
+          !isl_has_matching_typed_storage_image_format(devinfo, isl_fmt))
+         return ISL_FORMAT_RAW;
+      else
+         return isl_lower_storage_image_format(devinfo, isl_fmt);
+   }
+
+   return isl_fmt;
+}
+
 struct pipe_resource *
 iris_resource_get_separate_stencil(struct pipe_resource *p_res)
 {
