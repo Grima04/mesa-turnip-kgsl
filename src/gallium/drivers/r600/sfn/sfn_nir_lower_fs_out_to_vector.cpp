@@ -42,7 +42,7 @@ using std::vector;
 using std::array;
 
 struct nir_intrinsic_instr_less  {
-   bool operator () (const nir_intrinsic_instr *lhs, const nir_intrinsic_instr *rhs)
+   bool operator () (const nir_intrinsic_instr *lhs, const nir_intrinsic_instr *rhs) const
    {
       nir_variable *vlhs = nir_deref_instr_get_variable(nir_src_as_deref(lhs->src[0]));
       nir_variable *vrhs = nir_deref_instr_get_variable(nir_src_as_deref(rhs->src[0]));
