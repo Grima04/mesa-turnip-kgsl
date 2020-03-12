@@ -24,18 +24,10 @@
 #include "gtest/gtest.h"
 #include "isl/isl.h"
 
-#define ISL_AUX_OP_ASSERT ((enum isl_aux_op) 100)
-#define ISL_AUX_STATE_ASSERT ((enum isl_aux_state) 100)
-
-#ifndef NDEBUG
-#define ASSERTS_ENABLED true
-#else
-#define ASSERTS_ENABLED false
-#endif
-
 void
 PrintTo(const enum isl_aux_op &op, ::std::ostream* os) {
    *os << (const char *[]) {
+    [ISL_AUX_OP_ASSERT         ] = "ISL_AUX_OP_ASSERT",
     [ISL_AUX_OP_NONE           ] = "ISL_AUX_OP_NONE",
     [ISL_AUX_OP_FAST_CLEAR     ] = "ISL_AUX_OP_FAST_CLEAR",
     [ISL_AUX_OP_FULL_RESOLVE   ] = "ISL_AUX_OP_FULL_RESOLVE",
@@ -45,16 +37,9 @@ PrintTo(const enum isl_aux_op &op, ::std::ostream* os) {
 }
 
 #define E(state, usage, fc, op) \
-do { \
-   if (ISL_AUX_OP_ ## op != ISL_AUX_OP_ASSERT) { \
-      EXPECT_EQ(isl_aux_prepare_access(ISL_AUX_STATE_ ## state, \
-                                       ISL_AUX_USAGE_ ## usage, fc), \
-                                       ISL_AUX_OP_ ## op); \
-   } else if (ASSERTS_ENABLED) { \
-      EXPECT_DEATH(isl_aux_prepare_access(ISL_AUX_STATE_ ## state, \
-                                          ISL_AUX_USAGE_ ## usage, fc), ""); \
-   } \
-} while (0)
+   EXPECT_EQ(ISL_AUX_OP_ ## op, \
+             isl_aux_prepare_access(ISL_AUX_STATE_ ## state, \
+                                    ISL_AUX_USAGE_ ## usage, fc))
 
 TEST(PrepareAccess, CompressedFalseFastClearFalsePartialResolveFalse) {
    E(CLEAR, NONE, false, FULL_RESOLVE);
@@ -144,6 +129,7 @@ TEST(PrepareAccess, CompressedTrueFastClearTruePartialResolveTrue) {
 void
 PrintTo(const enum isl_aux_state &state, ::std::ostream* os) {
    *os << (const char *[]) {
+    [ISL_AUX_STATE_ASSERT             ] = "ISL_AUX_STATE_ASSERT",
     [ISL_AUX_STATE_CLEAR              ] = "ISL_AUX_STATE_CLEAR",
     [ISL_AUX_STATE_PARTIAL_CLEAR      ] = "ISL_AUX_STATE_PARTIAL_CLEAR",
     [ISL_AUX_STATE_COMPRESSED_CLEAR   ] = "ISL_AUX_STATE_COMPRESSED_CLEAR",
@@ -156,18 +142,10 @@ PrintTo(const enum isl_aux_state &state, ::std::ostream* os) {
 
 #undef E
 #define E(state1, usage, op, state2) \
-do { \
-   if (ISL_AUX_STATE_ ## state2 != ISL_AUX_STATE_ASSERT) { \
-      EXPECT_EQ(isl_aux_state_transition_aux_op(ISL_AUX_STATE_ ## state1, \
-                                                ISL_AUX_USAGE_ ## usage, \
-                                                ISL_AUX_OP_ ## op), \
-                                                ISL_AUX_STATE_ ## state2); \
-   } else if (ASSERTS_ENABLED) { \
-      EXPECT_DEATH(isl_aux_state_transition_aux_op(ISL_AUX_STATE_ ## state1, \
-                                                   ISL_AUX_USAGE_ ## usage, \
-                                                   ISL_AUX_OP_ ## op), ""); \
-   } \
-} while (0)
+   EXPECT_EQ(ISL_AUX_STATE_ ## state2, \
+             isl_aux_state_transition_aux_op(ISL_AUX_STATE_ ## state1, \
+                                             ISL_AUX_USAGE_ ## usage, \
+                                             ISL_AUX_OP_ ## op))
 
 /* The usages used in each test of this suite represent all combinations of
  * ::fast_clear and ::full_resolves_ambiguate.
@@ -344,18 +322,10 @@ TEST(StateTransitionAuxOp, Ambiguate) {
 
 #undef E
 #define E(state1, usage, full_surface, state2) \
-do { \
-   if (ISL_AUX_STATE_ ## state2 != ISL_AUX_STATE_ASSERT) { \
-      EXPECT_EQ(isl_aux_state_transition_write(ISL_AUX_STATE_ ## state1, \
-                                               ISL_AUX_USAGE_ ## usage, \
-                                               full_surface), \
-                                               ISL_AUX_STATE_ ## state2); \
-   } else if (ASSERTS_ENABLED) { \
-      EXPECT_DEATH(isl_aux_state_transition_write(ISL_AUX_STATE_ ## state1, \
-                                                  ISL_AUX_USAGE_ ## usage, \
-                                                  full_surface), ""); \
-   } \
-} while (0)
+   EXPECT_EQ(ISL_AUX_STATE_ ## state2, \
+             isl_aux_state_transition_write(ISL_AUX_STATE_ ## state1, \
+                                            ISL_AUX_USAGE_ ## usage, \
+                                            full_surface))
 
 TEST(StateTransitionWrite, WritesOnlyTouchMain) {
    E(CLEAR, NONE, false, ASSERT);

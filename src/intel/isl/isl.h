@@ -811,7 +811,10 @@ enum isl_aux_usage {
  *          the CCS and filling it with zeros.
  */
 enum isl_aux_state {
-   ISL_AUX_STATE_CLEAR = 0,
+#ifdef IN_UNIT_TEST
+   ISL_AUX_STATE_ASSERT,
+#endif
+   ISL_AUX_STATE_CLEAR,
    ISL_AUX_STATE_PARTIAL_CLEAR,
    ISL_AUX_STATE_COMPRESSED_CLEAR,
    ISL_AUX_STATE_COMPRESSED_NO_CLEAR,
@@ -824,6 +827,10 @@ enum isl_aux_state {
  * Enum which describes explicit aux transition operations.
  */
 enum isl_aux_op {
+#ifdef IN_UNIT_TEST
+   ISL_AUX_OP_ASSERT,
+#endif
+
    ISL_AUX_OP_NONE,
 
    /** Fast Clear

@@ -23,6 +23,24 @@
 
 #include "isl/isl.h"
 
+#ifdef IN_UNIT_TEST
+/* STATIC_ASSERT is a do { ... } while(0) statement */
+UNUSED static void static_assert_func(void) {
+   STATIC_ASSERT(ISL_AUX_OP_ASSERT == ((enum isl_aux_op) 0));
+   STATIC_ASSERT(ISL_AUX_STATE_ASSERT == ((enum isl_aux_state) 0));
+}
+
+#undef unreachable
+#define unreachable(str) return 0
+
+#undef assert
+#define assert(cond) do { \
+   if (!(cond)) { \
+      return 0; \
+   } \
+} while (0)
+#endif
+
 /* How writes with an isl_aux_usage behave. */
 enum write_behavior {
    /* Writes only touch the main surface. */
@@ -93,6 +111,10 @@ aux_state_possible(enum isl_aux_state state,
    case ISL_AUX_STATE_PASS_THROUGH:
    case ISL_AUX_STATE_AUX_INVALID:
       return true;
+#ifdef IN_UNIT_TEST
+   case ISL_AUX_STATE_ASSERT:
+      break;
+#endif
    }
 
    unreachable("Invalid aux state.");
@@ -130,6 +152,10 @@ isl_aux_prepare_access(enum isl_aux_state initial_state,
    case ISL_AUX_STATE_AUX_INVALID:
       return info[usage].write_behavior == WRITES_ONLY_TOUCH_MAIN ?
              ISL_AUX_OP_NONE : ISL_AUX_OP_AMBIGUATE;
+#ifdef IN_UNIT_TEST
+   case ISL_AUX_STATE_ASSERT:
+      break;
+#endif
    }
 
    unreachable("Invalid aux state.");
@@ -163,6 +189,10 @@ isl_aux_state_transition_aux_op(enum isl_aux_state initial_state,
              ISL_AUX_STATE_PASS_THROUGH : ISL_AUX_STATE_RESOLVED;
    case ISL_AUX_OP_AMBIGUATE:
       return ISL_AUX_STATE_PASS_THROUGH;
+#if IN_UNIT_TEST
+   case ISL_AUX_OP_ASSERT:
+      break;
+#endif
    }
 
    unreachable("Invalid aux op.");
@@ -203,6 +233,10 @@ isl_aux_state_transition_write(enum isl_aux_state initial_state,
    case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
    case ISL_AUX_STATE_AUX_INVALID:
       return initial_state;
+#ifdef IN_UNIT_TEST
+   case ISL_AUX_STATE_ASSERT:
+      break;
+#endif
    }
 
    unreachable("Invalid aux state.");

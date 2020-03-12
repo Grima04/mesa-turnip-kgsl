@@ -143,10 +143,14 @@ if with_tests
     'isl_aux_info',
     executable(
       'isl_aux_info_test',
-      'tests/isl_aux_info_test.cpp',
+      [
+        'tests/isl_aux_info_test.cpp',
+        'isl_aux_info.c',
+      ],
       dependencies : [dep_m, idep_gtest, idep_mesautil],
       include_directories : [inc_common, inc_intel],
-      link_with : [libisl],
+      c_args : '-DIN_UNIT_TEST',
+      cpp_args : '-DIN_UNIT_TEST',
     ),
     suite : ['intel'],
   )
