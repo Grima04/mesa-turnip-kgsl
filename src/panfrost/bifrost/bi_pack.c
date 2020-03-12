@@ -40,14 +40,60 @@ bi_pack_header(bi_clause *clause, bi_clause *next)
         return u;
 }
 
+static unsigned
+bi_pack_registers(bi_clause *clause, bi_bundle bundle)
+{
+        /* TODO */
+        return 0;
+}
+
+static unsigned
+bi_pack_fma(bi_clause *clause, bi_bundle bundle)
+{
+        /* TODO */
+        return BIFROST_FMA_NOP;
+}
+
+static unsigned
+bi_pack_add(bi_clause *clause, bi_bundle bundle)
+{
+        /* TODO */
+        return BIFROST_ADD_NOP;
+}
+
+struct bi_packed_bundle {
+        uint64_t lo;
+        uint64_t hi;
+};
+
+static struct bi_packed_bundle
+bi_pack_bundle(bi_clause *clause, bi_bundle bundle)
+{
+        unsigned reg = bi_pack_registers(clause, bundle);
+        uint64_t fma = bi_pack_fma(clause, bundle);
+        uint64_t add = bi_pack_add(clause, bundle);
+
+        struct bi_packed_bundle packed = {
+                .lo = reg | (fma << 35) | ((add & 0b111111) << 58),
+                .hi = add >> 6
+        };
+
+        return packed;
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
                 struct util_dynarray *emission)
 {
-        
+        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0]);
+        assert(clause->bundle_count == 1);
+
         struct bifrost_fmt1 quad_1 = {
                 .tag = BIFROST_FMT1_FINAL,
-                .header = bi_pack_header(clause, next) 
+                .header = bi_pack_header(clause, next),
+                .ins_1 = ins_1.lo,
+                .ins_2 = ins_1.hi & ((1 << 11) - 1),
+                .ins_0 = (ins_1.hi >> 11) & 0b111,
         };
 
         util_dynarray_append(emission, struct bifrost_fmt1, quad_1);
