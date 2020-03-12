@@ -387,7 +387,7 @@ static inline unsigned
 bi_max_temp(bi_context *ctx)
 {
         unsigned alloc = MAX2(ctx->impl->reg_alloc, ctx->impl->ssa_alloc);
-        return ((alloc + 1 + ctx->temp_alloc) << 1) | BIR_IS_REG;
+        return ((alloc + 2 + ctx->temp_alloc) << 1);
 }
 
 static inline unsigned
@@ -508,6 +508,7 @@ uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 
 bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block);
 void bi_schedule(bi_context *ctx);
+void bi_register_allocate(bi_context *ctx);
 
 /* Liveness */
 
