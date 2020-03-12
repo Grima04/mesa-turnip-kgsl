@@ -22,6 +22,7 @@
  */
 
 #include "nir.h"
+#include "nir_deref.h"
 #include "gl_nir_linker.h"
 #include "compiler/glsl/ir_uniform.h" /* for gl_uniform_storage */
 #include "linker_util.h"
@@ -255,6 +256,184 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
 }
 
 static void
+add_var_use_deref(nir_deref_instr *deref, struct hash_table *live,
+                  struct array_deref_range **derefs, unsigned *derefs_size)
+{
+   nir_deref_path path;
+   nir_deref_path_init(&path, deref, NULL);
+
+   deref = path.path[0];
+   if (deref->deref_type != nir_deref_type_var ||
+       deref->mode & ~(nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo)) {
+      nir_deref_path_finish(&path);
+      return;
+   }
+
+   /* Number of derefs used in current processing. */
+   unsigned num_derefs = 0;
+
+   const struct glsl_type *deref_type = deref->var->type;
+   nir_deref_instr **p = &path.path[1];
+   for (; *p; p++) {
+      if ((*p)->deref_type == nir_deref_type_array) {
+
+         /* Skip matrix derefences */
+         if (!glsl_type_is_array(deref_type))
+            break;
+
+         if ((num_derefs + 1) * sizeof(struct array_deref_range) > *derefs_size) {
+            void *ptr = reralloc_size(NULL, *derefs, *derefs_size + 4096);
+
+            if (ptr == NULL) {
+               nir_deref_path_finish(&path);
+               return;
+            }
+
+            *derefs_size += 4096;
+            *derefs = (struct array_deref_range *)ptr;
+         }
+
+         struct array_deref_range *dr = &(*derefs)[num_derefs];
+         num_derefs++;
+
+         dr->size = glsl_get_length(deref_type);
+
+         if (nir_src_is_const((*p)->arr.index)) {
+            dr->index = nir_src_as_uint((*p)->arr.index);
+         } else {
+            /* An unsized array can occur at the end of an SSBO.  We can't track
+             * accesses to such an array, so bail.
+             */
+            if (dr->size == 0) {
+               nir_deref_path_finish(&path);
+               return;
+            }
+
+            dr->index = dr->size;
+         }
+
+         deref_type = glsl_get_array_element(deref_type);
+      } else if ((*p)->deref_type == nir_deref_type_struct) {
+         /* We have reached the end of the array. */
+         break;
+      }
+   }
+
+   nir_deref_path_finish(&path);
+
+   /** Set of bit-flags to note which array elements have been accessed. */
+   BITSET_WORD *bits = NULL;
+
+   struct hash_entry *entry =
+      _mesa_hash_table_search(live, deref->var);
+   if (!entry && glsl_type_is_array(deref->var->type)) {
+      unsigned num_bits = MAX2(1, glsl_get_aoa_size(deref->var->type));
+      bits = rzalloc_array(live, BITSET_WORD, BITSET_WORDS(num_bits));
+   }
+
+   if (entry)
+      bits = (BITSET_WORD *) entry->data;
+
+   if (glsl_type_is_array(deref->var->type)) {
+      /* Count the "depth" of the arrays-of-arrays. */
+      unsigned array_depth = 0;
+      for (const struct glsl_type *type = deref->var->type;
+           glsl_type_is_array(type);
+           type = glsl_get_array_element(type)) {
+         array_depth++;
+      }
+
+      link_util_mark_array_elements_referenced(*derefs, num_derefs, array_depth,
+                                               bits);
+   }
+
+   assert(deref->mode == deref->var->data.mode);
+   _mesa_hash_table_insert(live, deref->var, bits);
+}
+
+/* Iterate over the shader and collect infomation about uniform use */
+static void
+add_var_use_shader(nir_shader *shader, struct hash_table *live)
+{
+   /* Currently allocated buffer block of derefs. */
+   struct array_deref_range *derefs = NULL;
+
+   /* Size of the derefs buffer in bytes. */
+   unsigned derefs_size = 0;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl) {
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type == nir_instr_type_intrinsic) {
+                  nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+                  switch (intr->intrinsic) {
+                  case nir_intrinsic_atomic_counter_read_deref:
+                  case nir_intrinsic_atomic_counter_inc_deref:
+                  case nir_intrinsic_atomic_counter_pre_dec_deref:
+                  case nir_intrinsic_atomic_counter_post_dec_deref:
+                  case nir_intrinsic_atomic_counter_add_deref:
+                  case nir_intrinsic_atomic_counter_min_deref:
+                  case nir_intrinsic_atomic_counter_max_deref:
+                  case nir_intrinsic_atomic_counter_and_deref:
+                  case nir_intrinsic_atomic_counter_or_deref:
+                  case nir_intrinsic_atomic_counter_xor_deref:
+                  case nir_intrinsic_atomic_counter_exchange_deref:
+                  case nir_intrinsic_atomic_counter_comp_swap_deref:
+                  case nir_intrinsic_image_deref_load:
+                  case nir_intrinsic_image_deref_store:
+                  case nir_intrinsic_image_deref_atomic_add:
+                  case nir_intrinsic_image_deref_atomic_umin:
+                  case nir_intrinsic_image_deref_atomic_imin:
+                  case nir_intrinsic_image_deref_atomic_umax:
+                  case nir_intrinsic_image_deref_atomic_imax:
+                  case nir_intrinsic_image_deref_atomic_and:
+                  case nir_intrinsic_image_deref_atomic_or:
+                  case nir_intrinsic_image_deref_atomic_xor:
+                  case nir_intrinsic_image_deref_atomic_exchange:
+                  case nir_intrinsic_image_deref_atomic_comp_swap:
+                  case nir_intrinsic_image_deref_size:
+                  case nir_intrinsic_image_deref_samples:
+                  case nir_intrinsic_load_deref:
+                  case nir_intrinsic_store_deref:
+                     add_var_use_deref(nir_src_as_deref(intr->src[0]), live,
+                                       &derefs, &derefs_size);
+                     break;
+
+                  default:
+                     /* Nothing to do */
+                     break;
+                  }
+               } else if (instr->type == nir_instr_type_tex) {
+                  nir_tex_instr *tex_instr = nir_instr_as_tex(instr);
+                  int sampler_idx =
+                     nir_tex_instr_src_index(tex_instr,
+                                             nir_tex_src_sampler_deref);
+                  int texture_idx =
+                     nir_tex_instr_src_index(tex_instr,
+                                             nir_tex_src_texture_deref);
+
+                  if (sampler_idx >= 0) {
+                     nir_deref_instr *deref =
+                        nir_src_as_deref(tex_instr->src[sampler_idx].src);
+                     add_var_use_deref(deref, live, &derefs, &derefs_size);
+                  }
+
+                  if (texture_idx >= 0) {
+                     nir_deref_instr *deref =
+                        nir_src_as_deref(tex_instr->src[texture_idx].src);
+                     add_var_use_deref(deref, live, &derefs, &derefs_size);
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   ralloc_free(derefs);
+}
+
+static void
 mark_stage_as_active(struct gl_uniform_storage *uniform,
                      unsigned stage)
 {
@@ -310,6 +489,7 @@ struct nir_link_uniforms_state {
    int top_level_array_stride;
 
    struct type_tree_entry *current_type;
+   struct hash_table *referenced_uniforms;
    struct hash_table *uniform_hash;
 };
 
@@ -472,8 +652,6 @@ find_and_update_named_uniform_storage(struct gl_context *ctx,
          _mesa_hash_table_search(state->uniform_hash, *name);
       if (entry) {
          unsigned i = (unsigned) (intptr_t) entry->data;
-         mark_stage_as_active(&prog->data->UniformStorage[i], stage);
-
          struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
 
          if (*first_element && !state->var_is_in_block) {
@@ -540,7 +718,12 @@ find_and_update_named_uniform_storage(struct gl_context *ctx,
             }
          }
 
-         uniform->active_shader_mask |= 1 << stage;
+         struct hash_entry *entry =
+            _mesa_hash_table_search(state->referenced_uniforms,
+                                    state->current_var);
+         if (entry != NULL ||
+             glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE)
+            uniform->active_shader_mask |= 1 << stage;
 
          if (!state->var_is_in_block)
             add_parameter(uniform, ctx, prog, type, state);
@@ -913,7 +1096,12 @@ nir_link_uniform(struct gl_context *ctx,
       uniform->top_level_array_size = state->top_level_array_size;
       uniform->top_level_array_stride = state->top_level_array_stride;
 
-      uniform->active_shader_mask |= 1 << stage;
+      struct hash_entry *entry =
+         _mesa_hash_table_search(state->referenced_uniforms,
+                                 state->current_var);
+      if (entry != NULL ||
+          glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE)
+         uniform->active_shader_mask |= 1 << stage;
 
       if (location >= 0) {
          /* Uniform has an explicit location */
@@ -1176,6 +1364,9 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       nir_shader *nir = sh->Program->nir;
       assert(nir);
 
+      state.referenced_uniforms =
+         _mesa_hash_table_create(NULL, _mesa_hash_pointer,
+                                 _mesa_key_pointer_equal);
       state.next_image_index = 0;
       state.next_sampler_index = 0;
       state.num_shader_samplers = 0;
@@ -1185,6 +1376,8 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       state.shader_samplers_used = 0;
       state.shader_shadow_samplers = 0;
       state.params = fill_parameters ? sh->Program->Parameters : NULL;
+
+      add_var_use_shader(nir, state.referenced_uniforms);
 
       nir_foreach_variable(var, &nir->uniforms) {
          state.current_var = var;
@@ -1280,7 +1473,13 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                      if (buffer_block_index == -1)
                         buffer_block_index = i;
 
-                     blocks[i].stageref |= 1U << shader_type;
+                     struct hash_entry *entry =
+                        _mesa_hash_table_search(state.referenced_uniforms, var);
+                     if (entry) {
+                        BITSET_WORD *bits = (BITSET_WORD *) entry->data;
+                        if (BITSET_TEST(bits, blocks[i].linearized_array_index))
+                           blocks[i].stageref |= 1U << shader_type;
+                     }
                   }
                }
             } else {
@@ -1288,7 +1487,11 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                   if (strcmp(ifc_name, blocks[i].Name) == 0) {
                      buffer_block_index = i;
 
-                     blocks[i].stageref |= 1U << shader_type;
+                     struct hash_entry *entry =
+                        _mesa_hash_table_search(state.referenced_uniforms, var);
+                     if (entry)
+                        blocks[i].stageref |= 1U << shader_type;
+
                      break;
                   }
                }
@@ -1347,7 +1550,10 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                   if (found) {
                      location = j;
 
-                     blocks[i].stageref |= 1U << shader_type;
+                     struct hash_entry *entry =
+                        _mesa_hash_table_search(state.referenced_uniforms, var);
+                     if (entry)
+                        blocks[i].stageref |= 1U << shader_type;
 
                      break;
                   }
@@ -1401,6 +1607,8 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          if (res == -1)
             return false;
       }
+
+      _mesa_hash_table_destroy(state.referenced_uniforms, NULL);
 
       if (state.num_shader_samplers >
           ctx->Const.Program[shader_type].MaxTextureImageUnits) {
