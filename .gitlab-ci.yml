@@ -382,13 +382,6 @@ meson-clang:
   script:
     - cmd /C .gitlab-ci\meson-build.bat
 
-scons-swr:
-  extends: .scons-build
-  variables:
-    SCONS_TARGET: "swr=1"
-    SCONS_CHECK_COMMAND: "true"
-    LLVM_VERSION: "6.0"
-
 scons-win64:
   extends: .scons-build
   variables:
@@ -519,8 +512,8 @@ meson-mingw32-x86_64:
 scons:
   extends: .scons-build
   variables:
-    SCONS_TARGET: "llvm=1"
-    SCONS_CHECK_COMMAND: "scons llvm=1 force_scons=1 check"
+    SCONS_TARGET: "llvm=1 swr=1"
+    SCONS_CHECK_COMMAND: "scons force_scons=1 ${SCONS_TARGET} check"
   script:
     - SCONS_TARGET="" SCONS_CHECK_COMMAND="scons check force_scons=1" .gitlab-ci/scons-build.sh
     - LLVM_VERSION=9 .gitlab-ci/scons-build.sh
