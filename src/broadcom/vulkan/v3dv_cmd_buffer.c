@@ -1734,6 +1734,17 @@ v3dv_viewport_compute_xform(const VkViewport *viewport,
 
    scale[2] = (f - n);
    translate[2] = n;
+
+   /* It seems that if the scale is small enough the hardware won't clip
+    * correctly so we work around this my choosing the smallest scale that
+    * seems to work.
+    *
+    * This case is exercised by CTS:
+    * dEQP-VK.draw.inverted_depth_ranges.nodepthclamp_deltazero
+    */
+   const float min_abs_scale = 0.000009f;
+   if (fabs(scale[2]) < min_abs_scale)
+      scale[2] = min_abs_scale * (scale[2] < 0 ? -1.0f : 1.0f);
 }
 
 void
