@@ -1058,6 +1058,56 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
       size_t stream_size = 0;
       FILE *stream = open_memstream(&stream_data, &stream_size);
 
+      uint32_t push_size = 0;
+      for (unsigned i = 0; i < 4; i++)
+         push_size += stage->bind_map.push_ranges[i].length;
+      if (push_size > 0) {
+         fprintf(stream, "Push constant ranges:\n");
+         for (unsigned i = 0; i < 4; i++) {
+            if (stage->bind_map.push_ranges[i].length == 0)
+               continue;
+
+            fprintf(stream, "    RANGE%d (%dB): ", i,
+                    stage->bind_map.push_ranges[i].length * 32);
+
+            switch (stage->bind_map.push_ranges[i].set) {
+            case ANV_DESCRIPTOR_SET_NULL:
+               fprintf(stream, "NULL");
+               break;
+
+            case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS:
+               fprintf(stream, "Vulkan push constants and API params");
+               break;
+
+            case ANV_DESCRIPTOR_SET_DESCRIPTORS:
+               fprintf(stream, "Descriptor buffer for set %d (start=%dB)",
+                       stage->bind_map.push_ranges[i].index,
+                       stage->bind_map.push_ranges[i].start * 32);
+               break;
+
+            case ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS:
+               unreachable("gl_NumWorkgroups is never pushed");
+
+            case ANV_DESCRIPTOR_SET_SHADER_CONSTANTS:
+               fprintf(stream, "Inline shader constant data (start=%dB)",
+                       stage->bind_map.push_ranges[i].start * 32);
+               break;
+
+            case ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS:
+               unreachable("Color attachments can't be pushed");
+
+            default:
+               fprintf(stream, "UBO (set=%d binding=%d start=%dB)",
+                       stage->bind_map.push_ranges[i].set,
+                       stage->bind_map.push_ranges[i].index,
+                       stage->bind_map.push_ranges[i].start * 32);
+               break;
+            }
+            fprintf(stream, "\n");
+         }
+         fprintf(stream, "\n");
+      }
+
       /* Creating this is far cheaper than it looks.  It's perfectly fine to
        * do it for every binary.
        */
