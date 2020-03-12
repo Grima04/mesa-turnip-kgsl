@@ -1520,7 +1520,8 @@ brw_blorp_get_blit_kernel(struct blorp_batch *batch,
                               &prog_data);
 
    bool result =
-      blorp->upload_shader(batch, prog_key, sizeof(*prog_key),
+      blorp->upload_shader(batch, MESA_SHADER_FRAGMENT,
+                           prog_key, sizeof(*prog_key),
                            program, prog_data.base.program_size,
                            &prog_data.base, sizeof(prog_data),
                            &params->wm_prog_kernel, &params->wm_prog_data);

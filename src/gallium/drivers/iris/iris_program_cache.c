@@ -221,7 +221,7 @@ iris_blorp_lookup_shader(struct blorp_batch *blorp_batch,
 }
 
 bool
-iris_blorp_upload_shader(struct blorp_batch *blorp_batch,
+iris_blorp_upload_shader(struct blorp_batch *blorp_batch, uint32_t stage,
                          const void *key, uint32_t key_size,
                          const void *kernel, UNUSED uint32_t kernel_size,
                          const struct brw_stage_prog_data *prog_data_templ,

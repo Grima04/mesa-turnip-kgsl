@@ -292,7 +292,8 @@ blorp_ensure_sf_program(struct blorp_batch *batch,
                             &prog_data_tmp, &vue_map, &program_size);
 
    bool result =
-      blorp->upload_shader(batch, &key, sizeof(key), program, program_size,
+      blorp->upload_shader(batch, MESA_SHADER_NONE,
+                           &key, sizeof(key), program, program_size,
                            (void *)&prog_data_tmp, sizeof(prog_data_tmp),
                            &params->sf_prog_kernel, &params->sf_prog_data);
 

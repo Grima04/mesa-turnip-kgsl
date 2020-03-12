@@ -49,6 +49,7 @@ struct blorp_context {
                          const void *key, uint32_t key_size,
                          uint32_t *kernel_out, void *prog_data_out);
    bool (*upload_shader)(struct blorp_batch *batch,
+                         uint32_t stage,
                          const void *key, uint32_t key_size,
                          const void *kernel, uint32_t kernel_size,
                          const struct brw_stage_prog_data *prog_data,

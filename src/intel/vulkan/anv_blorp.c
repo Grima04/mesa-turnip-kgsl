@@ -51,7 +51,7 @@ lookup_blorp_shader(struct blorp_batch *batch,
 }
 
 static bool
-upload_blorp_shader(struct blorp_batch *batch,
+upload_blorp_shader(struct blorp_batch *batch, uint32_t stage,
                     const void *key, uint32_t key_size,
                     const void *kernel, uint32_t kernel_size,
                     const struct brw_stage_prog_data *prog_data,
@@ -69,12 +69,6 @@ upload_blorp_shader(struct blorp_batch *batch,
       .sampler_count = 0,
    };
 
-   /* The stage in anv_shader_bin is only useful for pipeline shaders, so just pass
-    * a dummy value here so we don't need to change BLORP API.
-    *
-    * TODO: Plumb the stage information to BLORP.
-    */
-   gl_shader_stage stage = MESA_SHADER_NONE;
    struct anv_shader_bin *bin =
       anv_pipeline_cache_upload_kernel(&device->default_pipeline_cache, stage,
                                        key, key_size, kernel, kernel_size,

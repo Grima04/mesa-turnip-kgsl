@@ -100,7 +100,8 @@ blorp_params_get_clear_kernel(struct blorp_batch *batch,
                        &prog_data);
 
    bool result =
-      blorp->upload_shader(batch, &blorp_key, sizeof(blorp_key),
+      blorp->upload_shader(batch, MESA_SHADER_FRAGMENT,
+                           &blorp_key, sizeof(blorp_key),
                            program, prog_data.base.program_size,
                            &prog_data.base, sizeof(prog_data),
                            &params->wm_prog_kernel, &params->wm_prog_data);
@@ -192,7 +193,8 @@ blorp_params_get_layer_offset_vs(struct blorp_batch *batch,
       blorp_compile_vs(blorp, mem_ctx, b.shader, &vs_prog_data);
 
    bool result =
-      blorp->upload_shader(batch, &blorp_key, sizeof(blorp_key),
+      blorp->upload_shader(batch, MESA_SHADER_VERTEX,
+                           &blorp_key, sizeof(blorp_key),
                            program, vs_prog_data.base.base.program_size,
                            &vs_prog_data.base.base, sizeof(vs_prog_data),
                            &params->vs_prog_kernel, &params->vs_prog_data);
@@ -1170,7 +1172,8 @@ blorp_params_get_mcs_partial_resolve_kernel(struct blorp_batch *batch,
                        &prog_data);
 
    bool result =
-      blorp->upload_shader(batch, &blorp_key, sizeof(blorp_key),
+      blorp->upload_shader(batch, MESA_SHADER_FRAGMENT,
+                           &blorp_key, sizeof(blorp_key),
                            program, prog_data.base.program_size,
                            &prog_data.base, sizeof(prog_data),
                            &params->wm_prog_kernel, &params->wm_prog_data);
