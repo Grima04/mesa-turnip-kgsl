@@ -484,7 +484,7 @@ get_render_pass(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    const struct pipe_framebuffer_state *fb = &ctx->fb_state;
-   struct zink_render_pass_state state;
+   struct zink_render_pass_state state = { 0 };
 
    for (int i = 0; i < fb->nr_cbufs; i++) {
       struct pipe_resource *res = fb->cbufs[i]->texture;
