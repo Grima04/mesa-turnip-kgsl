@@ -1128,3 +1128,27 @@ ir3_lookup_array(struct ir3 *ir, unsigned id)
 			return arr;
 	return NULL;
 }
+
+void
+ir3_find_ssa_uses(struct ir3 *ir, void *mem_ctx)
+{
+	/* We could do this in a single pass if we can assume instructions
+	 * are always sorted.  Which currently might not always be true.
+	 * (In particular after ir3_group pass, but maybe other places.)
+	 */
+	foreach_block (block, &ir->block_list)
+		foreach_instr (instr, &block->instr_list)
+			instr->uses = NULL;
+
+	foreach_block (block, &ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
+			struct ir3_instruction *src;
+
+			foreach_ssa_src (src, instr) {
+				if (!src->uses)
+					src->uses = _mesa_pointer_set_create(mem_ctx);
+				_mesa_set_add(src->uses, instr);
+			}
+		}
+	}
+}

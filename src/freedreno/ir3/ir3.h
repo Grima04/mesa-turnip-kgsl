@@ -325,6 +325,11 @@ struct ir3_instruction {
 	 */
 	void *data;
 
+	/**
+	 * Valid if pass calls ir3_find_ssa_uses().. see foreach_ssa_use()
+	 */
+	struct set *uses;
+
 	int sun;            /* Sethi–Ullman number, used by sched */
 	int use_count;      /* currently just updated/used by cp */
 
@@ -593,6 +598,14 @@ void ir3_clear_mark(struct ir3 *shader);
 
 unsigned ir3_count_instructions(struct ir3 *ir);
 
+void ir3_find_ssa_uses(struct ir3 *ir, void *mem_ctx);
+
+#include "util/set.h"
+#define foreach_ssa_use(__use, __instr) \
+	for (struct ir3_instruction *__use = (void *)~0; \
+	     __use && (__instr)->uses; __use = NULL) \
+		set_foreach ((__instr)->uses, __entry) \
+			if ((__use = (void *)__entry->key))
 
 #define MAX_ARRAYS 16
 
