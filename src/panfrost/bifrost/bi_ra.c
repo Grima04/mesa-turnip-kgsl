@@ -89,6 +89,99 @@ bi_allocate_registers(bi_context *ctx, bool *success)
         return l;
 }
 
+static unsigned
+bi_reg_from_index(struct lcra_state *l, unsigned index, unsigned offset)
+{
+        /* Did we run RA for this index at all */
+        if (index >= l->node_count)
+                return index;
+
+        /* LCRA didn't bother solving this index (how lazy!) */
+        signed solution = l->solutions[index];
+        if (solution < 0)
+                return index;
+
+        solution += offset;
+
+        assert((solution & 0x3) == 0);
+        unsigned reg = solution / 4;
+        return BIR_INDEX_REGISTER | reg;
+}
+
+static void
+bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
+{
+        if (ins->src[src] >= l->node_count)
+                return;
+
+        bool vector = (bi_class_props[ins->type] & BI_VECTOR);
+        unsigned offset = 0;
+
+        if (vector) {
+                /* TODO: Do we do anything here? */
+        } else {
+                /* Use the swizzle as component select */
+                nir_alu_type T = ins->src_types[src];
+                unsigned size = nir_alu_type_get_type_size(T);
+                unsigned bytes = (MAX2(size, 8) / 8);
+                unsigned comps_per_reg = 4 / bytes;
+                unsigned components = bi_get_component_count(ins);
+
+                for (unsigned i = 0; i < components; ++i) {
+                        unsigned off = ins->swizzle[src][i] / comps_per_reg;
+                        off *= 4; /* 32-bit registers */
+
+                        /* We can't cross register boundaries in a swizzle */
+                        if (i == 0)
+                                offset = off;
+                        else
+                                assert(off == offset);
+
+                        ins->swizzle[src][i] %= comps_per_reg;
+                }
+        }
+
+        ins->src[src] = bi_reg_from_index(l, ins->src[src], offset);
+}
+
+static void
+bi_adjust_dest_ra(bi_instruction *ins, struct lcra_state *l)
+{
+        if (ins->dest >= l->node_count)
+                return;
+
+        bool vector = (bi_class_props[ins->type] & BI_VECTOR);
+        unsigned offset = 0;
+
+        if (!vector) {
+                /* Look at the writemask to get an offset, specifically the
+                 * trailing zeros */
+
+                unsigned tz = __builtin_ctz(ins->writemask);
+
+                /* Recall writemask is one bit per byte, so tz is in bytes */
+                unsigned regs = tz / 4;
+                offset = regs * 4;
+
+                /* Adjust writemask to compensate */
+                ins->writemask >>= offset;
+        }
+
+        ins->dest = bi_reg_from_index(l, ins->dest, offset);
+
+}
+
+static void
+bi_install_registers(bi_context *ctx, struct lcra_state *l)
+{
+        bi_foreach_instr_global(ctx, ins) {
+                bi_adjust_dest_ra(ins, l);
+
+                bi_foreach_src(ins, s)
+                        bi_adjust_src_ra(ins, l, s);
+        }
+}
+
 void
 bi_register_allocate(bi_context *ctx)
 {
@@ -107,6 +200,8 @@ bi_register_allocate(bi_context *ctx)
                 /* TODO: Spilling */
                 assert(success);
         } while(!success);
+
+        bi_install_registers(ctx, l);
 
         lcra_free(l);
 }
