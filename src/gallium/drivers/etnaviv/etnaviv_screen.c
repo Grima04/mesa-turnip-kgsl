@@ -243,7 +243,7 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       uint64_t system_memory;
 
       if (!os_get_total_physical_memory(&system_memory))
-         system_memory = 4096 << 20;
+         system_memory = (uint64_t)4096 << 20;
 
       return MIN2(system_memory / 32, 64 * 1024 * 1024);
    }
