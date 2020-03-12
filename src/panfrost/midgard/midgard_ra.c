@@ -565,13 +565,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         set_class(l->class, ins->src[1], REG_CLASS_TEXR);
                         set_class(l->class, ins->src[2], REG_CLASS_TEXR);
                         set_class(l->class, ins->src[3], REG_CLASS_TEXR);
-
-                        /* Texture offsets need to be aligned to vec4, since
-                         * the swizzle for x is forced to x in hardware, while
-                         * the other components are free. TODO: Relax to 8 for
-                         * half-registers if that ever occurs. */
-
-                        //lcra_restrict_range(l, ins->src[3], 16);
                 }
         }
 
