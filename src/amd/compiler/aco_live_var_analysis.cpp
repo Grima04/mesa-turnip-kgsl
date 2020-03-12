@@ -289,11 +289,11 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
 
 unsigned calc_waves_per_workgroup(Program *program)
 {
-   unsigned workgroup_size = program->wave_size;
-   if (program->stage == compute_cs) {
-      unsigned* bsize = program->info->cs.block_size;
-      workgroup_size = bsize[0] * bsize[1] * bsize[2];
-   }
+   /* When workgroup size is not known, just go with wave_size */
+   unsigned workgroup_size = program->workgroup_size == UINT_MAX
+                             ? program->wave_size
+                             : program->workgroup_size;
+
    return align(workgroup_size, program->wave_size) / program->wave_size;
 }
 } /* end namespace */

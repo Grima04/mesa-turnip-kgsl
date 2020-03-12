@@ -1238,21 +1238,44 @@ setup_isel_context(Program* program,
       program->sgpr_limit = 104;
    }
 
-   calc_min_waves(program);
-   program->vgpr_limit = get_addr_vgpr_from_waves(program, program->min_waves);
-   program->sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
-
    isel_context ctx = {};
    ctx.program = program;
    ctx.args = args;
    ctx.options = args->options;
    ctx.stage = program->stage;
 
-   if (ctx.stage == tess_control_hs) {
+   /* TODO: Check if we need to adjust min_waves for unknown workgroup sizes. */
+   if (program->stage & (hw_vs | hw_fs)) {
+      /* PS and legacy VS have separate waves, no workgroups */
+      program->workgroup_size = program->wave_size;
+   } else if (program->stage == compute_cs) {
+      /* CS sets the workgroup size explicitly */
+      unsigned* bsize = program->info->cs.block_size;
+      program->workgroup_size = bsize[0] * bsize[1] * bsize[2];
+   } else if ((program->stage & hw_es) || program->stage == geometry_gs) {
+      /* Unmerged ESGS operate in workgroups if on-chip GS (LDS rings) are enabled on GFX7-8 (not implemented in Mesa)  */
+      program->workgroup_size = program->wave_size;
+   } else if (program->stage & hw_gs) {
+      /* If on-chip GS (LDS rings) are enabled on GFX9 or later, merged GS operates in workgroups */
+      program->workgroup_size = UINT_MAX; /* TODO: set by VGT_GS_ONCHIP_CNTL, which is not plumbed to ACO */
+   } else if (program->stage == vertex_ls) {
+      /* Unmerged LS operates in workgroups */
+      program->workgroup_size = UINT_MAX; /* TODO: probably tcs_num_patches * tcs_vertices_in, but those are not plumbed to ACO for LS */
+   } else if (program->stage == tess_control_hs) {
+      /* Unmerged HS operates in workgroups, size is determined by the output vertices */
       setup_tcs_info(&ctx, shaders[0]);
-   } else if (ctx.stage == vertex_tess_control_hs) {
+      program->workgroup_size = ctx.tcs_num_patches * shaders[0]->info.tess.tcs_vertices_out;
+   } else if (program->stage == vertex_tess_control_hs) {
+      /* Merged LSHS operates in workgroups, but can still have a different number of LS and HS invocations */
       setup_tcs_info(&ctx, shaders[1]);
+      program->workgroup_size = ctx.tcs_num_patches * MAX2(shaders[1]->info.tess.tcs_vertices_out, ctx.args->options->key.tcs.input_vertices);
+   } else {
+      unreachable("Unsupported shader stage.");
    }
+
+   calc_min_waves(program);
+   program->vgpr_limit = get_addr_vgpr_from_waves(program, program->min_waves);
+   program->sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
 
    get_io_masks(&ctx, shader_count, shaders);
 

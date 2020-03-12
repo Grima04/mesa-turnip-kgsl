@@ -403,17 +403,12 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx)
    }
 
    if (instr->format == Format::PSEUDO_BARRIER) {
-      uint32_t workgroup_size = UINT32_MAX;
-      if (ctx.program->stage & sw_cs) {
-         unsigned* bsize = ctx.program->info->cs.block_size;
-         workgroup_size = bsize[0] * bsize[1] * bsize[2];
-      }
       switch (instr->opcode) {
       case aco_opcode::p_memory_barrier_common:
          imm.combine(ctx.barrier_imm[ffs(barrier_atomic) - 1]);
          imm.combine(ctx.barrier_imm[ffs(barrier_buffer) - 1]);
          imm.combine(ctx.barrier_imm[ffs(barrier_image) - 1]);
-         if (workgroup_size > ctx.program->wave_size)
+         if (ctx.program->workgroup_size > ctx.program->wave_size)
             imm.combine(ctx.barrier_imm[ffs(barrier_shared) - 1]);
          break;
       case aco_opcode::p_memory_barrier_atomic:
@@ -426,7 +421,7 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx)
          imm.combine(ctx.barrier_imm[ffs(barrier_image) - 1]);
          break;
       case aco_opcode::p_memory_barrier_shared:
-         if (workgroup_size > ctx.program->wave_size)
+         if (ctx.program->workgroup_size > ctx.program->wave_size)
             imm.combine(ctx.barrier_imm[ffs(barrier_shared) - 1]);
          break;
       case aco_opcode::p_memory_barrier_gs_data:

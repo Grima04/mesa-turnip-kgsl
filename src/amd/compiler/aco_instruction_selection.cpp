@@ -6827,22 +6827,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          break;
       }
 
-      if (ctx->shader->info.stage == MESA_SHADER_COMPUTE) {
-         unsigned* bsize = ctx->program->info->cs.block_size;
-         unsigned workgroup_size = bsize[0] * bsize[1] * bsize[2];
-         if (workgroup_size > ctx->program->wave_size)
-            bld.sopp(aco_opcode::s_barrier);
-      } else if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL) {
-         /* For each patch provided during rendering, n​ TCS shader invocations will be processed,
-          * where n​ is the number of vertices in the output patch.
-          */
-         unsigned workgroup_size = ctx->tcs_num_patches * ctx->shader->info.tess.tcs_vertices_out;
-         if (workgroup_size > ctx->program->wave_size)
-            bld.sopp(aco_opcode::s_barrier);
-      } else {
-         /* We don't know the workgroup size, so always emit the s_barrier. */
+      if (ctx->program->workgroup_size > ctx->program->wave_size)
          bld.sopp(aco_opcode::s_barrier);
-      }
 
       break;
    }
@@ -9374,8 +9360,7 @@ static void write_tcs_tess_factors(isel_context *ctx)
    Builder bld(ctx->program, ctx->block);
 
    bld.barrier(aco_opcode::p_memory_barrier_shared);
-   unsigned workgroup_size = ctx->tcs_num_patches * ctx->shader->info.tess.tcs_vertices_out;
-   if (unlikely(ctx->program->chip_class != GFX6 && workgroup_size > ctx->program->wave_size))
+   if (unlikely(ctx->program->chip_class != GFX6 && ctx->program->workgroup_size > ctx->program->wave_size))
       bld.sopp(aco_opcode::s_barrier);
 
    Temp tcs_rel_ids = get_arg(ctx, ctx->args->ac.tcs_rel_ids);
