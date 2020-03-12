@@ -1059,6 +1059,61 @@ tu_get_device_extension_index(const char *name)
    return -1;
 }
 
+struct PACKED bcolor_entry {
+   uint32_t fp32[4];
+   uint16_t ui16[4];
+   int16_t  si16[4];
+   uint16_t fp16[4];
+   uint16_t rgb565;
+   uint16_t rgb5a1;
+   uint16_t rgba4;
+   uint8_t __pad0[2];
+   uint8_t  ui8[4];
+   int8_t   si8[4];
+   uint32_t rgb10a2;
+   uint32_t z24; /* also s8? */
+   uint16_t srgb[4];      /* appears to duplicate fp16[], but clamped, used for srgb */
+   uint8_t  __pad1[56];
+} border_color[] = {
+   [VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK] = {},
+   [VK_BORDER_COLOR_INT_TRANSPARENT_BLACK] = {},
+   [VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK] = {
+      .fp32[3] = 0x3f800000,
+      .ui16[3] = 0xffff,
+      .si16[3] = 0x7fff,
+      .fp16[3] = 0x3c00,
+      .rgb5a1 = 0x8000,
+      .rgba4 = 0xf000,
+      .ui8[3] = 0xff,
+      .si8[3] = 0x7f,
+      .rgb10a2 = 0xc0000000,
+      .srgb[3] = 0x3c00,
+   },
+   [VK_BORDER_COLOR_INT_OPAQUE_BLACK] = {
+      .fp32[3] = 1,
+      .fp16[3] = 1,
+   },
+   [VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE] = {
+      .fp32[0 ... 3] = 0x3f800000,
+      .ui16[0 ... 3] = 0xffff,
+      .si16[0 ... 3] = 0x7fff,
+      .fp16[0 ... 3] = 0x3c00,
+      .rgb565 = 0xffff,
+      .rgb5a1 = 0xffff,
+      .rgba4 = 0xffff,
+      .ui8[0 ... 3] = 0xff,
+      .si8[0 ... 3] = 0x7f,
+      .rgb10a2 = 0xffffffff,
+      .z24 = 0xffffff,
+      .srgb[0 ... 3] = 0x3c00,
+   },
+   [VK_BORDER_COLOR_INT_OPAQUE_WHITE] = {
+      .fp32[0 ... 3] = 1,
+      .fp16[0 ... 3] = 1,
+   },
+};
+
+
 VkResult
 tu_CreateDevice(VkPhysicalDevice physicalDevice,
                 const VkDeviceCreateInfo *pCreateInfo,
@@ -1154,6 +1209,17 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_vsc_data2;
 
+   STATIC_ASSERT(sizeof(struct bcolor_entry) == 128);
+   result = tu_bo_init_new(device, &device->border_color, sizeof(border_color));
+   if (result != VK_SUCCESS)
+      goto fail_border_color;
+
+   result = tu_bo_map(device, &device->border_color);
+   if (result != VK_SUCCESS)
+      goto fail_border_color_map;
+
+   memcpy(device->border_color.map, border_color, sizeof(border_color));
+
    VkPipelineCacheCreateInfo ci;
    ci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
    ci.pNext = NULL;
@@ -1172,6 +1238,10 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    return VK_SUCCESS;
 
 fail_pipeline_cache:
+fail_border_color_map:
+   tu_bo_finish(device, &device->border_color);
+
+fail_border_color:
    tu_bo_finish(device, &device->vsc_data2);
 
 fail_vsc_data2:
@@ -1961,7 +2031,7 @@ tu_DestroyFramebuffer(VkDevice _device,
 }
 
 static enum a6xx_tex_clamp
-tu6_tex_wrap(VkSamplerAddressMode address_mode, bool *needs_border)
+tu6_tex_wrap(VkSamplerAddressMode address_mode)
 {
    switch (address_mode) {
    case VK_SAMPLER_ADDRESS_MODE_REPEAT:
@@ -1971,7 +2041,6 @@ tu6_tex_wrap(VkSamplerAddressMode address_mode, bool *needs_border)
    case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:
       return A6XX_TEX_CLAMP_TO_EDGE;
    case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:
-      *needs_border = true;
       return A6XX_TEX_CLAMP_TO_BORDER;
    case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
       /* only works for PoT.. need to emulate otherwise! */
@@ -2011,34 +2080,35 @@ tu_init_sampler(struct tu_device *device,
    unsigned aniso = pCreateInfo->anisotropyEnable ?
       util_last_bit(MIN2((uint32_t)pCreateInfo->maxAnisotropy >> 1, 8)) : 0;
    bool miplinear = (pCreateInfo->mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR);
-   bool needs_border = false;
 
-   sampler->state[0] =
+   sampler->descriptor[0] =
       COND(miplinear, A6XX_TEX_SAMP_0_MIPFILTER_LINEAR_NEAR) |
       A6XX_TEX_SAMP_0_XY_MAG(tu6_tex_filter(pCreateInfo->magFilter, aniso)) |
       A6XX_TEX_SAMP_0_XY_MIN(tu6_tex_filter(pCreateInfo->minFilter, aniso)) |
       A6XX_TEX_SAMP_0_ANISO(aniso) |
-      A6XX_TEX_SAMP_0_WRAP_S(tu6_tex_wrap(pCreateInfo->addressModeU, &needs_border)) |
-      A6XX_TEX_SAMP_0_WRAP_T(tu6_tex_wrap(pCreateInfo->addressModeV, &needs_border)) |
-      A6XX_TEX_SAMP_0_WRAP_R(tu6_tex_wrap(pCreateInfo->addressModeW, &needs_border)) |
+      A6XX_TEX_SAMP_0_WRAP_S(tu6_tex_wrap(pCreateInfo->addressModeU)) |
+      A6XX_TEX_SAMP_0_WRAP_T(tu6_tex_wrap(pCreateInfo->addressModeV)) |
+      A6XX_TEX_SAMP_0_WRAP_R(tu6_tex_wrap(pCreateInfo->addressModeW)) |
       A6XX_TEX_SAMP_0_LOD_BIAS(pCreateInfo->mipLodBias);
-   sampler->state[1] =
+   sampler->descriptor[1] =
       /* COND(!cso->seamless_cube_map, A6XX_TEX_SAMP_1_CUBEMAPSEAMLESSFILTOFF) | */
       COND(pCreateInfo->unnormalizedCoordinates, A6XX_TEX_SAMP_1_UNNORM_COORDS) |
       A6XX_TEX_SAMP_1_MIN_LOD(pCreateInfo->minLod) |
       A6XX_TEX_SAMP_1_MAX_LOD(pCreateInfo->maxLod) |
       COND(pCreateInfo->compareEnable,
            A6XX_TEX_SAMP_1_COMPARE_FUNC(tu6_compare_func(pCreateInfo->compareOp)));
-   sampler->state[2] = 0;
-   sampler->state[3] = 0;
+   /* This is an offset into the border_color BO, which we fill with all the
+    * possible Vulkan border colors in the correct order, so we can just use
+    * the Vulkan enum with no translation necessary.
+    */
+   sampler->descriptor[2] =
+      A6XX_TEX_SAMP_2_BCOLOR_OFFSET((unsigned) pCreateInfo->borderColor *
+                                    sizeof(struct bcolor_entry));
+   sampler->descriptor[3] = 0;
 
    /* TODO:
     * A6XX_TEX_SAMP_1_MIPFILTER_LINEAR_FAR disables mipmapping, but vk has no NONE mipfilter?
-    * border color
     */
-
-   sampler->needs_border = needs_border;
-   sampler->border = pCreateInfo->borderColor;
 }
 
 VkResult

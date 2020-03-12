@@ -1163,6 +1163,9 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs,
                    A6XX_RB_LRZ_CNTL(0));
 
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_TP_BORDER_COLOR_BASE_ADDR(.bo = &cmd->device->border_color));
+
    tu_cs_sanity_check(cs);
 }
 
@@ -2236,6 +2239,9 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
    }
 
+   tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->device->border_color,
+                  MSM_SUBMIT_BO_READ);
+
    for (uint32_t i = 0; i < cmd_buffer->draw_cs.bo_count; i++) {
       tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->draw_cs.bos[i],
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
@@ -2745,7 +2751,7 @@ struct tu_draw_state_group
    struct tu_cs_entry ib;
 };
 
-const static struct tu_sampler*
+const static void *
 sampler_ptr(struct tu_descriptor_state *descriptors_state,
             const struct tu_descriptor_map *map, unsigned i,
             unsigned array_index)
@@ -2759,20 +2765,18 @@ sampler_ptr(struct tu_descriptor_state *descriptors_state,
       &set->layout->binding[map->binding[i]];
 
    if (layout->immutable_samplers_offset) {
-      const struct tu_sampler *immutable_samplers =
+      const uint32_t *immutable_samplers =
          tu_immutable_samplers(set->layout, layout);
 
-      return &immutable_samplers[array_index];
+      return &immutable_samplers[array_index * A6XX_TEX_SAMP_DWORDS];
    }
 
    switch (layout->type) {
    case VK_DESCRIPTOR_TYPE_SAMPLER:
-      return (struct tu_sampler*) &set->mapped_ptr[layout->offset / 4];
+      return &set->mapped_ptr[layout->offset / 4];
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-      return (struct tu_sampler*) &set->mapped_ptr[layout->offset / 4 + A6XX_TEX_CONST_DWORDS +
-                                                   array_index *
-                                                   (A6XX_TEX_CONST_DWORDS +
-                                                    sizeof(struct tu_sampler) / 4)];
+      return &set->mapped_ptr[layout->offset / 4 + A6XX_TEX_CONST_DWORDS +
+                              array_index * (A6XX_TEX_CONST_DWORDS + A6XX_TEX_SAMP_DWORDS)];
    default:
       unreachable("unimplemented descriptor type");
       break;
@@ -2807,7 +2811,7 @@ write_tex_const(struct tu_cmd_buffer *cmd,
       memcpy(dst, &set->mapped_ptr[layout->offset / 4 +
                                    array_index *
                                    (A6XX_TEX_CONST_DWORDS +
-                                    sizeof(struct tu_sampler) / 4)],
+                                    A6XX_TEX_SAMP_DWORDS)],
              A6XX_TEX_CONST_DWORDS * 4);
       break;
    default:
@@ -3094,7 +3098,6 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
                   struct tu_descriptor_state *descriptors_state,
                   gl_shader_stage type,
                   struct tu_cs_entry *entry,
-                  bool *needs_border,
                   bool is_sysmem)
 {
    struct tu_cs *draw_state = &cmd->sub_cs;
@@ -3135,12 +3138,11 @@ tu6_emit_textures(struct tu_cmd_buffer *cmd,
       int sampler_index = 0;
       for (unsigned i = 0; i < link->sampler_map.num; i++) {
          for (int j = 0; j < link->sampler_map.array_size[i]; j++) {
-            const struct tu_sampler *sampler = sampler_ptr(descriptors_state,
-                                                           &link->sampler_map,
-                                                           i, j);
+            const uint32_t *sampler = sampler_ptr(descriptors_state,
+                                                  &link->sampler_map,
+                                                  i, j);
             memcpy(&tex_samp.map[A6XX_TEX_SAMP_DWORDS * sampler_index++],
-                   sampler->state, sizeof(sampler->state));
-            *needs_border |= sampler->needs_border;
+                   sampler, A6XX_TEX_SAMP_DWORDS * 4);
          }
       }
    }
@@ -3311,105 +3313,6 @@ tu6_emit_ibo(struct tu_cmd_buffer *cmd,
    tu_cs_emit_qw(&cs, ibo_const.iova); /* SRC_ADDR_LO/HI */
 
    *entry = tu_cs_end_sub_stream(draw_state, &cs);
-   return VK_SUCCESS;
-}
-
-struct PACKED bcolor_entry {
-   uint32_t fp32[4];
-   uint16_t ui16[4];
-   int16_t  si16[4];
-   uint16_t fp16[4];
-   uint16_t rgb565;
-   uint16_t rgb5a1;
-   uint16_t rgba4;
-   uint8_t __pad0[2];
-   uint8_t  ui8[4];
-   int8_t   si8[4];
-   uint32_t rgb10a2;
-   uint32_t z24; /* also s8? */
-   uint16_t srgb[4];      /* appears to duplicate fp16[], but clamped, used for srgb */
-   uint8_t  __pad1[56];
-} border_color[] = {
-   [VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK] = {},
-   [VK_BORDER_COLOR_INT_TRANSPARENT_BLACK] = {},
-   [VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK] = {
-      .fp32[3] = 0x3f800000,
-      .ui16[3] = 0xffff,
-      .si16[3] = 0x7fff,
-      .fp16[3] = 0x3c00,
-      .rgb5a1 = 0x8000,
-      .rgba4 = 0xf000,
-      .ui8[3] = 0xff,
-      .si8[3] = 0x7f,
-      .rgb10a2 = 0xc0000000,
-      .srgb[3] = 0x3c00,
-   },
-   [VK_BORDER_COLOR_INT_OPAQUE_BLACK] = {
-      .fp32[3] = 1,
-      .fp16[3] = 1,
-   },
-   [VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE] = {
-      .fp32[0 ... 3] = 0x3f800000,
-      .ui16[0 ... 3] = 0xffff,
-      .si16[0 ... 3] = 0x7fff,
-      .fp16[0 ... 3] = 0x3c00,
-      .rgb565 = 0xffff,
-      .rgb5a1 = 0xffff,
-      .rgba4 = 0xffff,
-      .ui8[0 ... 3] = 0xff,
-      .si8[0 ... 3] = 0x7f,
-      .rgb10a2 = 0xffffffff,
-      .z24 = 0xffffff,
-      .srgb[0 ... 3] = 0x3c00,
-   },
-   [VK_BORDER_COLOR_INT_OPAQUE_WHITE] = {
-      .fp32[0 ... 3] = 1,
-      .fp16[0 ... 3] = 1,
-   },
-};
-
-static VkResult
-tu6_emit_border_color(struct tu_cmd_buffer *cmd,
-                      struct tu_cs *cs)
-{
-   STATIC_ASSERT(sizeof(struct bcolor_entry) == 128);
-
-   const struct tu_pipeline *pipeline = cmd->state.pipeline;
-   struct tu_descriptor_state *descriptors_state =
-      &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
-   const struct tu_descriptor_map *vs_sampler =
-      &pipeline->program.link[MESA_SHADER_VERTEX].sampler_map;
-   const struct tu_descriptor_map *fs_sampler =
-      &pipeline->program.link[MESA_SHADER_FRAGMENT].sampler_map;
-   struct ts_cs_memory ptr;
-
-   VkResult result = tu_cs_alloc(&cmd->sub_cs,
-                                 vs_sampler->num_desc + fs_sampler->num_desc,
-                                 128 / 4,
-                                 &ptr);
-   if (result != VK_SUCCESS)
-      return result;
-
-   for (unsigned i = 0; i < vs_sampler->num; i++) {
-      for (unsigned j = 0; j < vs_sampler->array_size[i]; j++) {
-         const struct tu_sampler *sampler = sampler_ptr(descriptors_state,
-                                                        vs_sampler, i, j);
-         memcpy(ptr.map, &border_color[sampler->border], 128);
-         ptr.map += 128 / 4;
-      }
-   }
-
-   for (unsigned i = 0; i < fs_sampler->num; i++) {
-      for (unsigned j = 0; j < fs_sampler->array_size[i]; j++) {
-         const struct tu_sampler *sampler = sampler_ptr(descriptors_state,
-                                                        fs_sampler, i, j);
-         memcpy(ptr.map, &border_color[sampler->border], 128);
-         ptr.map += 128 / 4;
-      }
-   }
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR_LO, 2);
-   tu_cs_emit_qw(cs, ptr.iova);
    return VK_SUCCESS;
 }
 
@@ -3612,12 +3515,10 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 
    if (cmd->state.dirty &
          (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS)) {
-      bool needs_border = false;
       struct tu_cs_entry vs_tex, fs_tex_sysmem, fs_tex_gmem, fs_ibo;
 
       result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                                 MESA_SHADER_VERTEX, &vs_tex, &needs_border,
-                                 false);
+                                 MESA_SHADER_VERTEX, &vs_tex, false);
       if (result != VK_SUCCESS)
          return result;
 
@@ -3627,14 +3528,12 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
        * attachments.
        */
       result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                                 MESA_SHADER_FRAGMENT, &fs_tex_sysmem,
-                                 &needs_border, true);
+                                 MESA_SHADER_FRAGMENT, &fs_tex_sysmem, true);
       if (result != VK_SUCCESS)
          return result;
 
       result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                                 MESA_SHADER_FRAGMENT, &fs_tex_gmem,
-                                 &needs_border, false);
+                                 MESA_SHADER_FRAGMENT, &fs_tex_gmem, false);
       if (result != VK_SUCCESS)
          return result;
 
@@ -3667,12 +3566,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
             .enable_mask = ENABLE_DRAW,
             .ib = fs_ibo,
          };
-
-      if (needs_border) {
-         result = tu6_emit_border_color(cmd, cs);
-         if (result != VK_SUCCESS)
-            return result;
-      }
    }
 
    struct tu_cs_entry vs_params;
@@ -4055,9 +3948,8 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    tu_emit_compute_driver_params(cs, pipeline, info);
 
-   bool needs_border;
    result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                              MESA_SHADER_COMPUTE, &ib, &needs_border, false);
+                              MESA_SHADER_COMPUTE, &ib, false);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
       return;
@@ -4065,9 +3957,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    if (ib.size)
       tu_cs_emit_ib(cs, &ib);
-
-   if (needs_border)
-      tu_finishme("compute border color");
 
    result = tu6_emit_ibo(cmd, pipeline, descriptors_state, MESA_SHADER_COMPUTE, &ib);
    if (result != VK_SUCCESS) {

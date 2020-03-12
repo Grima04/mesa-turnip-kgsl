@@ -496,6 +496,8 @@ struct tu_device
    uint32_t vsc_data_pitch;
    uint32_t vsc_data2_pitch;
 
+   struct tu_bo border_color;
+
    struct list_head shader_slabs;
    mtx_t shader_slab_mutex;
 
@@ -1487,12 +1489,8 @@ struct tu_image_view
    uint32_t storage_descriptor[A6XX_TEX_CONST_DWORDS];
 };
 
-struct tu_sampler
-{
-   uint32_t state[A6XX_TEX_SAMP_DWORDS];
-
-   bool needs_border;
-   VkBorderColor border;
+struct tu_sampler {
+   uint32_t descriptor[A6XX_TEX_SAMP_DWORDS];
 };
 
 VkResult
