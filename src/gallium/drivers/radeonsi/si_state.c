@@ -2806,6 +2806,8 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    sctx->framebuffer.DB_has_shader_readable_metadata = false;
    sctx->framebuffer.all_DCC_pipe_aligned = true;
    sctx->framebuffer.min_bytes_per_pixel = 0;
+   sctx->framebuffer.color_big_page = true;
+   sctx->framebuffer.zs_big_page = true;
 
    for (i = 0; i < state->nr_cbufs; i++) {
       if (!state->cbufs[i])
@@ -2824,6 +2826,9 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
       sctx->framebuffer.spi_shader_col_format_blend |= surf->spi_shader_col_format_blend << (i * 4);
       sctx->framebuffer.spi_shader_col_format_blend_alpha |= surf->spi_shader_col_format_blend_alpha
                                                              << (i * 4);
+
+      sctx->framebuffer.color_big_page &=
+            tex->buffer.bo_alignment % (64 * 1024) == 0;
 
       if (surf->color_is_int8)
          sctx->framebuffer.color_is_int8 |= 1 << i;
@@ -2889,6 +2894,8 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
       if (!surf->depth_initialized) {
          si_init_depth_surface(sctx, surf);
       }
+
+      sctx->framebuffer.zs_big_page = zstex->buffer.bo_alignment % (64 * 1024) == 0;
 
       if (vi_tc_compat_htile_enabled(zstex, surf->base.u.tex.level, PIPE_MASK_ZS))
          sctx->framebuffer.DB_has_shader_readable_metadata = true;
@@ -3230,6 +3237,9 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       }
 
       if (sctx->chip_class >= GFX10) {
+         bool zs_big_page = sctx->chip_class >= GFX10_3 &&
+                            sctx->framebuffer.zs_big_page;
+
          radeon_set_context_reg(cs, R_028014_DB_HTILE_DATA_BASE, zb->db_htile_data_base);
          radeon_set_context_reg(cs, R_02801C_DB_DEPTH_SIZE_XY, zb->db_depth_size);
 
@@ -3256,7 +3266,9 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                      S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
                      S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_RD) |
                      S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_RD) |
-                     S_02807C_HTILE_RD_POLICY(meta_read_policy));
+                     S_02807C_HTILE_RD_POLICY(meta_read_policy) |
+                     S_02807C_Z_BIG_PAGE(zs_big_page) |
+                     S_02807C_S_BIG_PAGE(zs_big_page));
       } else if (sctx->chip_class == GFX9) {
          radeon_set_context_reg_seq(cs, R_028014_DB_HTILE_DATA_BASE, 3);
          radeon_emit(cs, zb->db_htile_data_base); /* DB_HTILE_DATA_BASE */
@@ -3344,6 +3356,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                           S_028208_BR_X(state->width) | S_028208_BR_Y(state->height));
 
    if (nr_cbufs) {
+      bool color_big_page = sctx->chip_class >= GFX10_3 &&
+                            sctx->framebuffer.color_big_page;
       radeon_set_context_reg(cs, R_028410_CB_RMI_GL2_CACHE_CONTROL,
                              S_028410_CMASK_WR_POLICY(meta_write_policy) |
                              S_028410_FMASK_WR_POLICY(meta_write_policy) |
@@ -3352,7 +3366,9 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                              S_028410_CMASK_RD_POLICY(meta_read_policy) |
                              S_028410_FMASK_RD_POLICY(meta_read_policy) |
                              S_028410_DCC_RD_POLICY(meta_read_policy) |
-                             S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD));
+                             S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD) |
+                             S_028410_FMASK_BIG_PAGE(color_big_page) |
+                             S_028410_COLOR_BIG_PAGE(color_big_page));
    }
 
    if (sctx->screen->dfsm_allowed) {
@@ -3857,7 +3873,9 @@ static void gfx10_make_texture_descriptor(
    state[5] = S_00A014_ARRAY_PITCH(!!(type == V_008F1C_SQ_RSRC_IMG_3D && !sampler)) |
               S_00A014_MAX_MIP(res->nr_samples > 1 ? util_logbase2(res->nr_samples)
                                                    : tex->buffer.b.b.last_level) |
-              S_00A014_PERF_MOD(4);
+              S_00A014_PERF_MOD(4) |
+              S_00A014_BIG_PAGE(screen->info.chip_class >= GFX10_3 &&
+                                tex->buffer.bo_alignment % (64 * 1024) == 0);
    state[6] = 0;
    state[7] = 0;
 
