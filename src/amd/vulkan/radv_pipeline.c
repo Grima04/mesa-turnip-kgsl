@@ -38,9 +38,6 @@
 #include "spirv/nir_spirv.h"
 #include "vk_util.h"
 
-#include <llvm-c/Core.h>
-#include <llvm-c/TargetMachine.h>
-
 #include "sid.h"
 #include "ac_binary.h"
 #include "ac_llvm_util.h"

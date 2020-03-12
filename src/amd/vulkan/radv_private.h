@@ -65,8 +65,6 @@
 #include "radv_extensions.h"
 #include "sid.h"
 
-#include <llvm-c/TargetMachine.h>
-
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
 struct wl_display;

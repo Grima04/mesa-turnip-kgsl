@@ -41,7 +41,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <llvm/Config/llvm-config.h>
 
 #include "radv_debug.h"
 #include "radv_private.h"

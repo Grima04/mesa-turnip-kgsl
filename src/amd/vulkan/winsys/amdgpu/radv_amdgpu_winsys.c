@@ -33,7 +33,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <llvm/Config/llvm-config.h>
 #include <amdgpu_drm.h>
 #include <assert.h>
 #include "radv_amdgpu_cs.h"

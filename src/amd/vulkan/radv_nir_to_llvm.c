@@ -31,11 +31,6 @@
 #include "radv_shader_args.h"
 #include "nir/nir.h"
 
-#include <llvm-c/Core.h>
-#include <llvm-c/TargetMachine.h>
-#include <llvm-c/Transforms/Scalar.h>
-#include <llvm-c/Transforms/Utils.h>
-
 #include "sid.h"
 #include "ac_binary.h"
 #include "ac_llvm_util.h"
