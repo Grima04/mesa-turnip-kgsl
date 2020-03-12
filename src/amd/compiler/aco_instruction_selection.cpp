@@ -3382,7 +3382,7 @@ void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool 
 
       Temp hs_ring_tess_offchip = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_HS_TESS_OFFCHIP * 16u));
       Temp oc_lds = get_arg(ctx, ctx->args->oc_lds);
-      store_vmem_mubuf(ctx, store_val, hs_ring_tess_offchip, vmem_offs.first, oc_lds, vmem_offs.second, elem_size_bytes, write_mask, false, false);
+      store_vmem_mubuf(ctx, store_val, hs_ring_tess_offchip, vmem_offs.first, oc_lds, vmem_offs.second, elem_size_bytes, write_mask, true, false);
    }
 
    if (write_to_lds) {
