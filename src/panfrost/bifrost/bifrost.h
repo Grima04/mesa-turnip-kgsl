@@ -321,4 +321,18 @@ struct bifrost_branch {
         unsigned op : 5;
 };
 
+/* Clause packing */
+
+struct bifrost_fmt1 {
+        unsigned ins_0 : 3;
+        unsigned tag : 5;
+        uint64_t ins_1 : 64;
+        unsigned ins_2 : 11;
+        uint64_t header : 45;
+} __attribute__((packed));
+
+#define BIFROST_FMT1_INSTRUCTIONS    0b00101
+#define BIFROST_FMT1_FINAL           0b01001
+#define BIFROST_FMT1_CONSTANTS       0b00001
+
 #endif

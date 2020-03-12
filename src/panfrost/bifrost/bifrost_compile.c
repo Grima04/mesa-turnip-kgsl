@@ -865,6 +865,8 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
         bi_schedule(ctx);
         bi_register_allocate(ctx);
         bi_print_shader(ctx, stdout);
+        bi_pack(ctx, &program->compiled);
+        disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
 
         ralloc_free(ctx);
 }
