@@ -186,6 +186,8 @@ job_destroy(struct v3dv_job *job)
 
    v3dv_bo_free(job->cmd_buffer->device, job->tile_alloc);
    v3dv_bo_free(job->cmd_buffer->device, job->tile_state);
+
+   vk_free(&job->cmd_buffer->device->alloc, job);
 }
 
 static void
