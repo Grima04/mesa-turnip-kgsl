@@ -265,7 +265,7 @@ meson-testing:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
-meson-main:
+meson-gallium:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -274,7 +274,6 @@ meson-main:
       -D gbm=true
       -D egl=true
       -D platforms=x11,wayland,drm,surfaceless
-    DRI_DRIVERS: "i915,i965,r100,r200,nouveau"
     GALLIUM_ST: >
       -D dri3=true
       -D gallium-extra-hud=true
@@ -292,6 +291,20 @@ meson-main:
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/run-shader-db.sh
+
+meson-classic:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_LOADERS: >
+      -D glx=dri
+      -D gbm=true
+      -D egl=true
+      -D platforms=x11,wayland,drm,surfaceless
+    DRI_DRIVERS: "auto"
+    EXTRA_OPTION: >
+      -D osmesa=classic
+      -D tools=all
 
 .meson-cross:
   extends:
@@ -458,19 +471,14 @@ meson-vulkan:
       -D vulkan-overlay-layer=true
       -D werror=true
 
-# While the main point of this build is testing the i386 cross build,
-# we also use this one to test some other options that are exclusive
-# with meson-main's choices (classic swrast and osmesa)
 meson-i386:
   extends: .meson-cross
   variables:
     CROSS: i386
     VULKAN_DRIVERS: intel,amd
-    DRI_DRIVERS: "swrast"
     GALLIUM_DRIVERS: "iris"
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
-      -D osmesa=classic
       -D werror=true
   script:
     - dpkg -i /var/cache/apt/archives/$CROSS/*.deb
