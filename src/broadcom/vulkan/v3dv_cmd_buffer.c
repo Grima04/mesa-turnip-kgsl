@@ -505,7 +505,14 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->alloc,
                                     sizeof(struct v3dv_job), 8,
                                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   assert(job);
+
+   cmd_buffer->state.job = job;
+
+   if (!job) {
+      fprintf(stderr, "Error: failed to allocate CPU memory for job\n");
+      cmd_buffer->state.oom = true;
+      return NULL;
+   }
 
    job->cmd_buffer = cmd_buffer;
 
@@ -531,8 +538,6 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
     */
    if (cmd_buffer->state.pass)
       job->first_subpass = subpass_idx;
-
-   cmd_buffer->state.job = job;
 
    return job;
 }
@@ -1486,6 +1491,8 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
     * the new job.
     */
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, subpass_idx);
+   if (!job)
+      return;
 
    state->subpass_idx = subpass_idx;
 
@@ -1550,6 +1557,9 @@ VkResult
 v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (cmd_buffer->state.oom)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE;
 

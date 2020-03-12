@@ -644,6 +644,8 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    assert(num_layers > 0);
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+   if (!job)
+      return;
 
    v3dv_cmd_buffer_start_frame(cmd_buffer,
                                region->imageExtent.width,
@@ -785,6 +787,8 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    assert(num_layers > 0);
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+   if (!job)
+      return;
 
    v3dv_cmd_buffer_start_frame(cmd_buffer,
                                region->extent.width,
@@ -928,6 +932,8 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          uint32_t height = u_minify(image->extent.height, level);
 
          struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+         if (!job)
+            return;
 
          v3dv_cmd_buffer_start_frame(cmd_buffer, width, height, 1,
                                      1, internal_bpp);
@@ -1131,6 +1137,8 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t dst_offset = region->dstOffset;
    while (num_items > 0) {
       job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+      if (!job)
+         return NULL;
 
       uint32_t width, height;
       framebuffer_size_for_pixel_count(num_items, &width, &height);
@@ -1209,6 +1217,8 @@ v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    };
    struct v3dv_job *copy_job =
       copy_buffer(cmd_buffer, dst_buffer->mem->bo, src_bo, &region);
+   if (!copy_job)
+      return;
 
    /* Make sure we add the BO to the list of extra BOs so it is not leaked.
     * If the copy job was split into multiple jobs, we just bind it to the last
@@ -1299,6 +1309,8 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
 
    while (num_items > 0) {
       struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+      if (!job)
+         return;
 
       uint32_t width, height;
       framebuffer_size_for_pixel_count(num_items, &width, &height);
@@ -1487,6 +1499,9 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    assert(num_layers > 0);
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+   if (!job)
+      return;
+
    v3dv_cmd_buffer_start_frame(cmd_buffer,
                                region->imageExtent.width,
                                region->imageExtent.height,
