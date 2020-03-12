@@ -5653,7 +5653,7 @@ VkResult radv_GetPipelineExecutableInternalRepresentationsKHR(
 	/* backend IR */
 	if (p < end) {
 		p->isText = true;
-		if (shader->aco_used) {
+		if (pipeline->device->physical_device->use_aco) {
 			desc_copy(p->name, "ACO IR");
 			desc_copy(p->description, "The ACO IR after some optimizations");
 		} else {

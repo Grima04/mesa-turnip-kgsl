@@ -1160,7 +1160,6 @@ shader_variant_compile(struct radv_device *device,
 		free(binary);
 		return NULL;
 	}
-	variant->aco_used = device->physical_device->use_aco;
 
 	if (options->dump_shader) {
 		fprintf(stderr, "disasm:\n%s\n", variant->disasm_string);
