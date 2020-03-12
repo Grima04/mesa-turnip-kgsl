@@ -9382,23 +9382,25 @@ static void write_tcs_tess_factors(isel_context *ctx)
 
    std::pair<Temp, unsigned> lds_base = get_tcs_output_lds_offset(ctx);
    unsigned stride = inner_comps + outer_comps;
-   Temp inner[4];
-   Temp outer[4];
+   unsigned lds_align = calculate_lds_alignment(ctx, lds_base.second);
+   Temp tf_inner_vec;
+   Temp tf_outer_vec;
    Temp out[6];
-   assert(inner_comps <= (sizeof(inner) / sizeof(Temp)));
-   assert(outer_comps <= (sizeof(outer) / sizeof(Temp)));
    assert(stride <= (sizeof(out) / sizeof(Temp)));
 
    if (ctx->args->options->key.tcs.primitive_mode == GL_ISOLINES) {
       // LINES reversal
-      outer[0] = out[1] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_out_loc + 0 * 4, 4);
-      outer[1] = out[0] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_out_loc + 1 * 4, 4);
+      tf_outer_vec = load_lds(ctx, 4, bld.tmp(v2), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_out_loc, lds_align);
+      out[1] = emit_extract_vector(ctx, tf_outer_vec, 0, v1);
+      out[0] = emit_extract_vector(ctx, tf_outer_vec, 1, v1);
    } else {
-      for (unsigned i = 0; i < outer_comps; ++i)
-         outer[i] = out[i] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_out_loc + i * 4, 4);
+      tf_outer_vec = load_lds(ctx, 4, bld.tmp(RegClass(RegType::vgpr, outer_comps)), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_out_loc, lds_align);
+      tf_inner_vec = load_lds(ctx, 4, bld.tmp(RegClass(RegType::vgpr, inner_comps)), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_in_loc, lds_align);
 
+      for (unsigned i = 0; i < outer_comps; ++i)
+         out[i] = emit_extract_vector(ctx, tf_outer_vec, i, v1);
       for (unsigned i = 0; i < inner_comps; ++i)
-         inner[i] = out[outer_comps + i] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_in_loc + i * 4, 4);
+         out[outer_comps + i] = emit_extract_vector(ctx, tf_inner_vec, i, v1);
    }
 
    Temp rel_patch_id = get_tess_rel_patch_id(ctx);
@@ -9435,13 +9437,11 @@ static void write_tcs_tess_factors(isel_context *ctx)
       Temp oc_lds = get_arg(ctx, ctx->args->oc_lds);
 
       std::pair<Temp, unsigned> vmem_offs_outer = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, ctx->tcs_tess_lvl_out_loc);
-      Temp outer_vec = create_vec_from_array(ctx, outer, outer_comps, RegType::vgpr);
-      store_vmem_mubuf(ctx, outer_vec, hs_ring_tess_offchip, vmem_offs_outer.first, oc_lds, vmem_offs_outer.second, 4, (1 << outer_comps) - 1, true, false);
+      store_vmem_mubuf(ctx, tf_outer_vec, hs_ring_tess_offchip, vmem_offs_outer.first, oc_lds, vmem_offs_outer.second, 4, (1 << outer_comps) - 1, true, false);
 
       if (likely(inner_comps)) {
          std::pair<Temp, unsigned> vmem_offs_inner = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, ctx->tcs_tess_lvl_in_loc);
-         Temp inner_vec = create_vec_from_array(ctx, inner, inner_comps, RegType::vgpr);
-         store_vmem_mubuf(ctx, inner_vec, hs_ring_tess_offchip, vmem_offs_inner.first, oc_lds, vmem_offs_inner.second, 4, (1 << inner_comps) - 1, true, false);
+         store_vmem_mubuf(ctx, tf_inner_vec, hs_ring_tess_offchip, vmem_offs_inner.first, oc_lds, vmem_offs_inner.second, 4, (1 << inner_comps) - 1, true, false);
       }
    }
 
