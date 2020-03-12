@@ -8981,7 +8981,20 @@ static bool visit_cf_list(isel_context *ctx,
    return false;
 }
 
-static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
+static void create_null_export(isel_context *ctx)
+{
+   /* Some shader stages always need to have exports.
+    * So when there is none, we need to add a null export.
+    */
+
+   unsigned dest = (ctx->program->stage & hw_fs) ? 9 /* NULL */ : V_008DFC_SQ_EXP_POS;
+   bool vm = (ctx->program->stage & hw_fs) || ctx->program->chip_class >= GFX10;
+   Builder bld(ctx->program, ctx->block);
+   bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1),
+           /* enabled_mask */ 0, dest, /* compr */ false, /* done */ true, vm);
+}
+
+static bool export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
 {
    assert(ctx->stage == vertex_vs ||
           ctx->stage == tess_eval_vs ||
@@ -8992,9 +9005,9 @@ static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
                 : ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
    uint64_t mask = ctx->outputs.mask[slot];
    if (!is_pos && !mask)
-      return;
+      return false;
    if (!is_pos && offset == AC_EXP_PARAM_UNDEFINED)
-      return;
+      return false;
    aco_ptr<Export_instruction> exp{create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
    exp->enabled_mask = mask;
    for (unsigned i = 0; i < 4; ++i) {
@@ -9014,6 +9027,8 @@ static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
    else
       exp->dest = V_008DFC_SQ_EXP_PARAM + offset;
    ctx->block->instructions.emplace_back(std::move(exp));
+
+   return true;
 }
 
 static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
@@ -9075,14 +9090,15 @@ static void create_vs_exports(isel_context *ctx)
 
    /* the order these position exports are created is important */
    int next_pos = 0;
-   export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
+   bool exported_pos = export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
    if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_viewport_index) {
       export_vs_psiz_layer_viewport(ctx, &next_pos);
+      exported_pos = true;
    }
    if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
-      export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, true, &next_pos);
+      exported_pos |= export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, true, &next_pos);
    if (ctx->num_clip_distances + ctx->num_cull_distances > 4)
-      export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST1, true, &next_pos);
+      exported_pos |= export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST1, true, &next_pos);
 
    if (ctx->export_clip_dists) {
       if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
@@ -9098,9 +9114,12 @@ static void create_vs_exports(isel_context *ctx)
 
       export_vs_varying(ctx, i, false, NULL);
    }
+
+   if (!exported_pos)
+      create_null_export(ctx);
 }
 
-static void export_fs_mrt_z(isel_context *ctx)
+static bool export_fs_mrt_z(isel_context *ctx)
 {
    Builder bld(ctx->program, ctx->block);
    unsigned enabled_channels = 0;
@@ -9157,9 +9176,11 @@ static void export_fs_mrt_z(isel_context *ctx)
 
    bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3],
            enabled_channels, V_008DFC_SQ_EXP_MRTZ, compr);
+
+   return true;
 }
 
-static void export_fs_mrt_color(isel_context *ctx, int slot)
+static bool export_fs_mrt_color(isel_context *ctx, int slot)
 {
    Builder bld(ctx->program, ctx->block);
    unsigned write_mask = ctx->outputs.mask[slot];
@@ -9276,7 +9297,7 @@ static void export_fs_mrt_color(isel_context *ctx, int slot)
    }
 
    if (target == V_008DFC_SQ_EXP_NULL)
-      return;
+      return false;
 
    if ((bool) compr_op) {
       for (int i = 0; i < 2; i++) {
@@ -9300,22 +9321,26 @@ static void export_fs_mrt_color(isel_context *ctx, int slot)
 
    bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3],
            enabled_channels, target, (bool) compr_op);
+   return true;
 }
 
 static void create_fs_exports(isel_context *ctx)
 {
+   bool exported = false;
+
    /* Export depth, stencil and sample mask. */
    if (ctx->outputs.mask[FRAG_RESULT_DEPTH] ||
        ctx->outputs.mask[FRAG_RESULT_STENCIL] ||
-       ctx->outputs.mask[FRAG_RESULT_SAMPLE_MASK]) {
-      export_fs_mrt_z(ctx);
-   }
+       ctx->outputs.mask[FRAG_RESULT_SAMPLE_MASK])
+      exported |= export_fs_mrt_z(ctx);
 
    /* Export all color render targets. */
-   for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i) {
+   for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i)
       if (ctx->outputs.mask[i])
-         export_fs_mrt_color(ctx, i);
-   }
+         exported |= export_fs_mrt_color(ctx, i);
+
+   if (!exported)
+      create_null_export(ctx);
 }
 
 static void write_tcs_tess_factors(isel_context *ctx)

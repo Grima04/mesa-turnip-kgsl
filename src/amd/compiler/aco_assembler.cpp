@@ -595,11 +595,11 @@ void emit_block(asm_context& ctx, std::vector<uint32_t>& out, Block& block)
 
 void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
 {
+   bool exported = false;
    for (Block& block : program->blocks) {
       if (!(block.kind & block_kind_export_end))
          continue;
       std::vector<aco_ptr<Instruction>>::reverse_iterator it = block.instructions.rbegin();
-      bool exported = false;
       while ( it != block.instructions.rend())
       {
          if ((*it)->format == Format::EXP) {
@@ -620,22 +620,13 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
             break;
          ++it;
       }
-      if (exported)
-         continue;
-      /* we didn't find an Export instruction and have to insert a null export */
-      aco_ptr<Export_instruction> exp{create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
-      for (unsigned i = 0; i < 4; i++)
-         exp->operands[i] = Operand(v1);
-      exp->enabled_mask = 0;
-      exp->compressed = false;
-      exp->done = true;
-      exp->valid_mask = (program->stage & hw_fs) || program->chip_class >= GFX10;
-      if (program->stage & hw_fs)
-         exp->dest = 9; /* NULL */
-      else
-         exp->dest = V_008DFC_SQ_EXP_POS;
-      /* insert the null export 1 instruction before branch/endpgm */
-      block.instructions.insert(block.instructions.end() - 1, std::move(exp));
+   }
+
+   if (!exported) {
+      /* Abort in order to avoid a GPU hang. */
+      fprintf(stderr, "Missing export in %s shader:\n", (program->stage & hw_vs) ? "vertex" : "fragment");
+      aco_print_program(program, stderr);
+      abort();
    }
 }
 

@@ -969,10 +969,30 @@ void lower_to_hw_instr(Program* program)
             }
             case aco_opcode::p_exit_early_if:
             {
-               /* don't bother with an early exit at the end of the program */
-               if (block->instructions[j + 1]->opcode == aco_opcode::p_logical_end &&
-                   block->instructions[j + 2]->opcode == aco_opcode::s_endpgm) {
-                  break;
+               /* don't bother with an early exit near the end of the program */
+               if ((block->instructions.size() - 1 - j) <= 4 &&
+                    block->instructions.back()->opcode == aco_opcode::s_endpgm) {
+                  unsigned null_exp_dest = (ctx.program->stage & hw_fs) ? 9 /* NULL */ : V_008DFC_SQ_EXP_POS;
+                  bool ignore_early_exit = true;
+
+                  for (unsigned k = j + 1; k < block->instructions.size(); ++k) {
+                     const aco_ptr<Instruction> &instr = block->instructions[k];
+                     if (instr->opcode == aco_opcode::s_endpgm ||
+                         instr->opcode == aco_opcode::p_logical_end)
+                        continue;
+                     else if (instr->opcode == aco_opcode::exp &&
+                              static_cast<Export_instruction *>(instr.get())->dest == null_exp_dest)
+                        continue;
+                     else if (instr->opcode == aco_opcode::p_parallelcopy &&
+                         instr->definitions[0].isFixed() &&
+                         instr->definitions[0].physReg() == exec)
+                        continue;
+
+                     ignore_early_exit = false;
+                  }
+
+                  if (ignore_early_exit)
+                     break;
                }
 
                if (!discard_block) {
