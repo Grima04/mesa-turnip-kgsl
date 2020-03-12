@@ -476,7 +476,7 @@ meson-i386:
   variables:
     CROSS: i386
     VULKAN_DRIVERS: intel,amd
-    GALLIUM_DRIVERS: "iris"
+    GALLIUM_DRIVERS: "iris,r300,radeonsi,swrast,virgl"
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
       -D werror=true
