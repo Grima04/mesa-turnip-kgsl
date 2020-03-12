@@ -593,16 +593,6 @@ void ir3_clear_mark(struct ir3 *shader);
 
 unsigned ir3_count_instructions(struct ir3 *ir);
 
-static inline int ir3_instr_regno(struct ir3_instruction *instr,
-		struct ir3_register *reg)
-{
-	unsigned i;
-	for (i = 0; i < instr->regs_count; i++)
-		if (reg == instr->regs[i])
-			return i;
-	return -1;
-}
-
 
 #define MAX_ARRAYS 16
 
