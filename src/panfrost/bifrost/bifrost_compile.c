@@ -125,6 +125,9 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 .src = {
                         bir_src_index(&instr->src[0])
                 },
+                .src_types = {
+                        nir_type_float32,
+                },
                 .swizzle = {
                         { 0, 1, 2, 3 }
                 }
@@ -147,6 +150,10 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                 .src = {
                         address.dest,
                         bir_src_index(&instr->src[0])
+                },
+                .src_types = {
+                        nir_type_uint64,
+                        nir_type_uint32
                 },
                 .swizzle = {
                         { 0 },
