@@ -1899,8 +1899,9 @@ emit_viewport(struct v3dv_cmd_buffer *cmd_buffer)
       clip.viewport_z_scale_zc_to_zs = vpscale[2];
    }
    cl_emit(&job->bcl, CLIPPER_Z_MIN_MAX_CLIPPING_PLANES, clip) {
-      float z1 = (vptranslate[2] - vpscale[2]);
-      float z2 = (vptranslate[2] + vpscale[2]);
+      /* Vulkan's Z NDC is [0..1], unlile OpenGL which is [-1, 1] */
+      float z1 = vptranslate[2];
+      float z2 = vptranslate[2] + vpscale[2];
       clip.minimum_zw = MIN2(z1, z2);
       clip.maximum_zw = MAX2(z1, z2);
    }
