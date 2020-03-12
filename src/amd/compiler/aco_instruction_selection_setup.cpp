@@ -100,6 +100,7 @@ struct isel_context {
    unsigned tcs_tess_lvl_in_loc;
    uint32_t tcs_num_inputs;
    uint32_t tcs_num_patches;
+   bool tcs_in_out_eq = false;
 
    /* VS, FS or GS output information */
    output_state outputs;
@@ -898,6 +899,15 @@ setup_tcs_variables(isel_context *ctx, nir_shader *nir)
    default:
       unreachable("Unsupported TCS shader stage");
    }
+
+   /* When the number of TCS input and output vertices are the same (typically 3):
+    * - There is an equal amount of LS and HS invocations
+    * - In case of merged LSHS shaders, the LS and HS halves of the shader
+    *   always process the exact same vertex. We can use this knowledge to optimize them.
+    */
+   ctx->tcs_in_out_eq =
+      ctx->stage == vertex_tess_control_hs &&
+      ctx->args->options->key.tcs.input_vertices == nir->info.tess.tcs_vertices_out;
 
    ctx->tcs_num_patches = get_tcs_num_patches(
                              ctx->args->options->key.tcs.input_vertices,

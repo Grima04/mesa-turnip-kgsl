@@ -9752,6 +9752,7 @@ void select_program(Program *program,
                     struct radv_shader_args *args)
 {
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args, false);
+   if_context ic_merged_wave_info;
 
    for (unsigned i = 0; i < shader_count; i++) {
       nir_shader *nir = shaders[i];
@@ -9778,14 +9779,15 @@ void select_program(Program *program,
                            (nir->info.stage == MESA_SHADER_TESS_EVAL &&
                             ctx.stage == tess_eval_geometry_gs));
 
-      if_context ic;
-      if (shader_count >= 2 && !empty_shader) {
+      bool check_merged_wave_info = ctx.tcs_in_out_eq ? i == 0 : (shader_count >= 2 && !empty_shader);
+      bool endif_merged_wave_info = ctx.tcs_in_out_eq ? i == 1 : check_merged_wave_info;
+      if (check_merged_wave_info) {
          Builder bld(ctx.program, ctx.block);
          Temp count = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(&ctx, args->merged_wave_info), Operand((8u << 16) | (i * 8u)));
          Temp thread_id = emit_mbcnt(&ctx, bld.def(v1));
          Temp cond = bld.vopc(aco_opcode::v_cmp_gt_u32, bld.hint_vcc(bld.def(bld.lm)), count, thread_id);
 
-         begin_divergent_if_then(&ctx, &ic, cond);
+         begin_divergent_if_then(&ctx, &ic_merged_wave_info, cond);
       }
 
       if (i) {
@@ -9821,9 +9823,9 @@ void select_program(Program *program,
       if (ctx.stage == fragment_fs)
          create_fs_exports(&ctx);
 
-      if (shader_count >= 2 && !empty_shader) {
-         begin_divergent_if_else(&ctx, &ic);
-         end_divergent_if(&ctx, &ic);
+      if (endif_merged_wave_info) {
+         begin_divergent_if_else(&ctx, &ic_merged_wave_info);
+         end_divergent_if(&ctx, &ic_merged_wave_info);
       }
 
       ralloc_free(ctx.divergent_vals);
