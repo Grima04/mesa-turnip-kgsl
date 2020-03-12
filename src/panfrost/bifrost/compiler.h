@@ -437,33 +437,33 @@ bir_dest_index(nir_dest *dst)
         list_for_each_entry_from(pan_block, v, from, &ctx->blocks, link)
 
 #define bi_foreach_instr_in_block(block, v) \
-        list_for_each_entry(bi_instruction, v, &block->base.instructions, link)
+        list_for_each_entry(bi_instruction, v, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_rev(block, v) \
-        list_for_each_entry_rev(bi_instruction, v, &block->base.instructions, link)
+        list_for_each_entry_rev(bi_instruction, v, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_safe(block, v) \
-        list_for_each_entry_safe(bi_instruction, v, &block->base.instructions, link)
+        list_for_each_entry_safe(bi_instruction, v, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_safe_rev(block, v) \
-        list_for_each_entry_safe_rev(bi_instruction, v, &block->base.instructions, link)
+        list_for_each_entry_safe_rev(bi_instruction, v, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_from(block, v, from) \
-        list_for_each_entry_from(bi_instruction, v, from, &block->base.instructions, link)
+        list_for_each_entry_from(bi_instruction, v, from, &(block)->base.instructions, link)
 
 #define bi_foreach_instr_in_block_from_rev(block, v, from) \
-        list_for_each_entry_from_rev(bi_instruction, v, from, &block->base.instructions, link)
+        list_for_each_entry_from_rev(bi_instruction, v, from, &(block)->base.instructions, link)
 
 #define bi_foreach_clause_in_block(block, v) \
-        list_for_each_entry(bi_clause, v, &block->clauses, link)
+        list_for_each_entry(bi_clause, v, &(block)->clauses, link)
 
 #define bi_foreach_instr_global(ctx, v) \
         bi_foreach_block(ctx, v_block) \
-                bi_foreach_instr_in_block((pan_block *) v_block, v)
+                bi_foreach_instr_in_block((bi_block *) v_block, v)
 
 #define bi_foreach_instr_global_safe(ctx, v) \
         bi_foreach_block(ctx, v_block) \
-                bi_foreach_instr_in_block_safe((pan_block *) v_block, v)
+                bi_foreach_instr_in_block_safe((bi_block *) v_block, v)
 
 /* Based on set_foreach, expanded with automatic type casts */
 
