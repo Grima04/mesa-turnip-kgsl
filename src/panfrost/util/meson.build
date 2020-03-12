@@ -20,6 +20,8 @@
 # SOFTWARE.
 
 libpanfrost_util_files = files(
+  'lcra.c',
+  'lcra.h',
   'pan_ir.c',
   'pan_ir.h',
   'pan_liveness.c',

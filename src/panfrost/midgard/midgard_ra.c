@@ -26,7 +26,6 @@
 #include "midgard_ops.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
-#include "lcra.h"
 #include "midgard_quirks.h"
 
 struct phys_reg {

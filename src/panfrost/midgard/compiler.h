@@ -28,7 +28,6 @@
 #include "helpers.h"
 #include "midgard_compile.h"
 #include "midgard_ops.h"
-#include "lcra.h"
 
 #include "util/hash_table.h"
 #include "util/u_dynarray.h"
@@ -39,6 +38,7 @@
 #include "compiler/nir_types.h"
 #include "compiler/nir/nir.h"
 #include "panfrost/util/pan_ir.h"
+#include "panfrost/util/lcra.h"
 
 /* Forward declare */
 struct midgard_block;

@@ -54,7 +54,6 @@ midgard_FILES := \
         midgard/mir_promote_uniforms.c \
         midgard/mir_squeeze.c \
         midgard/nir_undef_to_zero.c \
-        midgard/lcra.c
 
 shared_FILES := \
         shared/pan_minmax_cache.c \
