@@ -137,11 +137,13 @@ resolve_image_views(struct iris_context *ice,
          unsigned num_layers =
             pview->u.tex.last_layer - pview->u.tex.first_layer + 1;
 
-         /* The data port doesn't understand any compression */
+         enum isl_aux_usage aux_usage =
+            iris_image_view_aux_usage(ice, pview, info);
+
          iris_resource_prepare_access(ice, batch, res,
                                       pview->u.tex.level, 1,
                                       pview->u.tex.first_layer, num_layers,
-                                      ISL_AUX_USAGE_NONE, false);
+                                      aux_usage, false);
       }
 
       iris_cache_flush_for_read(batch, res->bo);

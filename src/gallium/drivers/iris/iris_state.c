@@ -2705,7 +2705,11 @@ iris_set_shader_images(struct pipe_context *ctx,
 
          enum isl_format isl_fmt = iris_image_view_get_format(ice, img);
 
-         alloc_surface_states(&iv->surface_state, 1 << ISL_AUX_USAGE_NONE);
+         /* Render compression with images supported on gen12+ only. */
+         unsigned aux_usages = GEN_GEN >= 12 ? res->aux.possible_usages :
+            1 << ISL_AUX_USAGE_NONE;
+
+         alloc_surface_states(&iv->surface_state, aux_usages);
          iv->surface_state.bo_address = res->bo->gtt_offset;
 
          void *map = iv->surface_state.cpu;
@@ -2727,8 +2731,7 @@ iris_set_shader_images(struct pipe_context *ctx,
                                          isl_fmt, ISL_SWIZZLE_IDENTITY,
                                          0, res->bo->size);
             } else {
-               /* Images don't support compression */
-               unsigned aux_modes = 1 << ISL_AUX_USAGE_NONE;
+               unsigned aux_modes = aux_usages;
                while (aux_modes) {
                   enum isl_aux_usage usage = u_bit_scan(&aux_modes);
 
@@ -4658,7 +4661,8 @@ use_ubo_ssbo(struct iris_batch *batch,
 
 static uint32_t
 use_image(struct iris_batch *batch, struct iris_context *ice,
-          struct iris_shader_state *shs, int i)
+          struct iris_shader_state *shs, const struct shader_info *info,
+          int i)
 {
    struct iris_image_view *iv = &shs->image[i];
    struct iris_resource *res = (void *) iv->base.resource;
@@ -4674,7 +4678,11 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
    if (res->aux.bo)
       iris_use_pinned_bo(batch, res->aux.bo, write);
 
-   return iv->surface_state.ref.offset;
+   enum isl_aux_usage aux_usage =
+      iris_image_view_aux_usage(ice, &iv->base, info);
+
+   return iv->surface_state.ref.offset +
+      surf_state_offset_for_aux(res, res->aux.possible_usages, aux_usage);
 }
 
 #define push_bt_entry(addr) \
@@ -4774,7 +4782,7 @@ iris_populate_binding_table(struct iris_context *ice,
    }
 
    foreach_surface_used(i, IRIS_SURFACE_GROUP_IMAGE) {
-      uint32_t addr = use_image(batch, ice, shs, i);
+      uint32_t addr = use_image(batch, ice, shs, info, i);
       push_bt_entry(addr);
    }
 
