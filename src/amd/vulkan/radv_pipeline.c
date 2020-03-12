@@ -2789,8 +2789,6 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		modules[MESA_SHADER_FRAGMENT] = &fs_m;
 	}
 
-	bool use_aco = device->physical_device->use_aco;
-
 	for (unsigned i = 0; i < MESA_SHADER_STAGES; ++i) {
 		const VkPipelineShaderStageCreateInfo *stage = pStages[i];
 
@@ -2802,7 +2800,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		nir[i] = radv_shader_compile_to_nir(device, modules[i],
 						    stage ? stage->pName : "main", i,
 						    stage ? stage->pSpecializationInfo : NULL,
-						    flags, pipeline->layout, use_aco);
+						    flags, pipeline->layout);
 
 		/* We don't want to alter meta shaders IR directly so clone it
 		 * first.
@@ -2824,7 +2822,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (nir[i]) {
-			if (use_aco) {
+			if (device->physical_device->use_aco) {
 				NIR_PASS_V(nir[i], nir_lower_non_uniform_access,
 				           nir_lower_non_uniform_ubo_access |
 				           nir_lower_non_uniform_ssbo_access |
@@ -2886,8 +2884,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 			pipeline->gs_copy_shader = radv_create_gs_copy_shader(
 					device, nir[MESA_SHADER_GEOMETRY], &info,
 					&gs_copy_binary, keep_executable_info,
-					keys[MESA_SHADER_GEOMETRY].has_multiview_view_index,
-					use_aco);
+					keys[MESA_SHADER_GEOMETRY].has_multiview_view_index);
 		}
 
 		if (!keep_executable_info && pipeline->gs_copy_shader) {
@@ -2913,7 +2910,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 			       radv_shader_variant_compile(device, modules[MESA_SHADER_FRAGMENT], &nir[MESA_SHADER_FRAGMENT], 1,
 			                                  pipeline->layout, keys + MESA_SHADER_FRAGMENT,
 							  infos + MESA_SHADER_FRAGMENT,
-			                                  keep_executable_info, use_aco,
+			                                  keep_executable_info,
 			                                  &binaries[MESA_SHADER_FRAGMENT]);
 
 			radv_stop_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT], false);
@@ -2931,7 +2928,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 			pipeline->shaders[MESA_SHADER_TESS_CTRL] = radv_shader_variant_compile(device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2,
 			                                                                      pipeline->layout,
 			                                                                      &key, &infos[MESA_SHADER_TESS_CTRL], keep_executable_info,
-			                                                                      use_aco, &binaries[MESA_SHADER_TESS_CTRL]);
+			                                                                      &binaries[MESA_SHADER_TESS_CTRL]);
 
 			radv_stop_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL], false);
 		}
@@ -2950,7 +2947,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 			pipeline->shaders[MESA_SHADER_GEOMETRY] = radv_shader_variant_compile(device, modules[MESA_SHADER_GEOMETRY], combined_nir, 2,
 			                                                                     pipeline->layout,
 			                                                                     &keys[pre_stage], &infos[MESA_SHADER_GEOMETRY], keep_executable_info,
-			                                                                     use_aco, &binaries[MESA_SHADER_GEOMETRY]);
+			                                                                     &binaries[MESA_SHADER_GEOMETRY]);
 
 			radv_stop_feedback(stage_feedbacks[MESA_SHADER_GEOMETRY], false);
 		}
@@ -2972,7 +2969,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 			pipeline->shaders[i] = radv_shader_variant_compile(device, modules[i], &nir[i], 1,
 									  pipeline->layout,
 									  keys + i, infos + i,keep_executable_info,
-									  use_aco, &binaries[i]);
+									  &binaries[i]);
 
 			radv_stop_feedback(stage_feedbacks[i], false);
 		}

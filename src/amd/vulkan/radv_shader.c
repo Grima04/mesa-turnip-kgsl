@@ -296,12 +296,13 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   gl_shader_stage stage,
 			   const VkSpecializationInfo *spec_info,
 			   const VkPipelineCreateFlags flags,
-			   const struct radv_pipeline_layout *layout,
-			   bool use_aco)
+			   const struct radv_pipeline_layout *layout)
 {
 	nir_shader *nir;
-	const nir_shader_compiler_options *nir_options = use_aco ? &nir_options_aco :
-								   &nir_options_llvm;
+	const nir_shader_compiler_options *nir_options =
+		device->physical_device->use_aco ? &nir_options_aco :
+						   &nir_options_llvm;
+
 	if (module->nir) {
 		/* Some things such as our meta clear/blit code will give us a NIR
 		 * shader directly.  In that case, we just ignore the SPIR-V entirely
@@ -432,7 +433,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		NIR_PASS_V(nir, nir_split_var_copies);
 		NIR_PASS_V(nir, nir_split_per_member_structs);
 
-		if (nir->info.stage == MESA_SHADER_FRAGMENT && use_aco)
+		if (nir->info.stage == MESA_SHADER_FRAGMENT &&
+		    device->physical_device->use_aco)
                         NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
 		if (nir->info.stage == MESA_SHADER_FRAGMENT)
 			NIR_PASS_V(nir, nir_lower_input_attachments, true);
@@ -454,7 +456,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 	nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-	if (nir->info.stage == MESA_SHADER_GEOMETRY && use_aco)
+	if (nir->info.stage == MESA_SHADER_GEOMETRY &&
+	    device->physical_device->use_aco)
 		nir_lower_gs_intrinsics(nir, true);
 
 	static const nir_lower_tex_options tex_options = {
@@ -1086,7 +1089,6 @@ shader_variant_compile(struct radv_device *device,
 		       struct radv_nir_compiler_options *options,
 		       bool gs_copy_shader,
 		       bool keep_shader_info,
-		       bool use_aco,
 		       struct radv_shader_binary **binary_out)
 {
 	enum radeon_family chip_family = device->physical_device->rad_info.family;
@@ -1115,10 +1117,11 @@ shader_variant_compile(struct radv_device *device,
 				 shader_count >= 2 ? shaders[shader_count - 2]->info.stage
 						   : MESA_SHADER_VERTEX);
 
-	if (!use_aco || options->dump_shader || options->record_ir)
+	if (!device->physical_device->use_aco ||
+	    options->dump_shader || options->record_ir)
 		ac_init_llvm_once();
 
-	if (use_aco) {
+	if (device->physical_device->use_aco) {
 		aco_compile_shader(shader_count, shaders, &binary, &args);
 		binary->info = *info;
 	} else {
@@ -1157,7 +1160,7 @@ shader_variant_compile(struct radv_device *device,
 		free(binary);
 		return NULL;
 	}
-	variant->aco_used = use_aco;
+	variant->aco_used = device->physical_device->use_aco;
 
 	if (options->dump_shader) {
 		fprintf(stderr, "disasm:\n%s\n", variant->disasm_string);
@@ -1196,7 +1199,6 @@ radv_shader_variant_compile(struct radv_device *device,
 			   const struct radv_shader_variant_key *key,
 			   struct radv_shader_info *info,
 			   bool keep_shader_info,
-			   bool use_aco,
 			   struct radv_shader_binary **binary_out)
 {
 	struct radv_nir_compiler_options options = {0};
@@ -1205,11 +1207,11 @@ radv_shader_variant_compile(struct radv_device *device,
 	if (key)
 		options.key = *key;
 
-	options.explicit_scratch_args = use_aco;
+	options.explicit_scratch_args = device->physical_device->use_aco;
 	options.robust_buffer_access = device->robust_buffer_access;
 
 	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage, info,
-				     &options, false, keep_shader_info, use_aco, binary_out);
+				     &options, false, keep_shader_info, binary_out);
 }
 
 struct radv_shader_variant *
@@ -1218,15 +1220,15 @@ radv_create_gs_copy_shader(struct radv_device *device,
 			   struct radv_shader_info *info,
 			   struct radv_shader_binary **binary_out,
 			   bool keep_shader_info,
-			   bool multiview, bool use_aco)
+			   bool multiview)
 {
 	struct radv_nir_compiler_options options = {0};
 
-	options.explicit_scratch_args = use_aco;
+	options.explicit_scratch_args = device->physical_device->use_aco;
 	options.key.has_multiview_view_index = multiview;
 
 	return shader_variant_compile(device, NULL, &shader, 1, MESA_SHADER_VERTEX,
-				      info, &options, true, keep_shader_info, use_aco, binary_out);
+				      info, &options, true, keep_shader_info, binary_out);
 }
 
 void
