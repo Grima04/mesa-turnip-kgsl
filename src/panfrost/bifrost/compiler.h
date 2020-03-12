@@ -110,6 +110,9 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
  * the end of a clause. Implies ADD */
 #define BI_SCHED_HI_LATENCY ((1 << 7) | BI_SCHED_ADD)
 
+/* Intrinsic is vectorized and should read 4 components regardless of writemask */
+#define BI_VECTOR (1 << 8)
+
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 
@@ -497,6 +500,8 @@ bool bi_has_outmod(bi_instruction *ins);
 bool bi_has_source_mods(bi_instruction *ins);
 bool bi_is_src_swizzled(bi_instruction *ins, unsigned s);
 bool bi_has_arg(bi_instruction *ins, unsigned arg);
+uint16_t bi_from_bytemask(uint16_t bytemask, unsigned bytes);
+unsigned bi_get_component_count(bi_instruction *ins);
 uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 
 /* BIR passes */

@@ -76,9 +76,40 @@ bi_has_arg(bi_instruction *ins, unsigned arg)
 }
 
 uint16_t
+bi_from_bytemask(uint16_t bytemask, unsigned bytes)
+{
+        unsigned value = 0;
+
+        for (unsigned c = 0, d = 0; c < 16; c += bytes, ++d) {
+                bool a = (bytemask & (1 << c)) != 0;
+
+                for (unsigned q = c; q < bytes; ++q)
+                        assert(((bytemask & (1 << q)) != 0) == a);
+
+                value |= (a << d);
+        }
+
+        return value;
+}
+
+unsigned
+bi_get_component_count(bi_instruction *ins)
+{
+        if (bi_class_props[ins->type] & BI_VECTOR) {
+                return 4;
+        } else {
+                /* Stores imply VECTOR */
+                assert(ins->dest_type);
+                unsigned bytes = MAX2(nir_alu_type_get_type_size(ins->dest_type), 8);
+                return 32 / bytes;
+        }
+}
+
+uint16_t
 bi_bytemask_of_read_components(bi_instruction *ins, unsigned node)
 {
         uint16_t mask = 0x0;
+        unsigned component_count = bi_get_component_count(ins);
 
         bi_foreach_src(ins, s) {
                 if (ins->src[s] != node) continue;
@@ -87,7 +118,7 @@ bi_bytemask_of_read_components(bi_instruction *ins, unsigned node)
                 unsigned bytes = (MAX2(size, 8) / 8);
                 unsigned cmask = (1 << bytes) - 1;
 
-                for (unsigned i = 0; i < ARRAY_SIZE(ins->swizzle[s]); ++i) {
+                for (unsigned i = 0; i < component_count; ++i) {
                         unsigned c = ins->swizzle[s][i];
                         mask |= (cmask << (c * bytes));
                 }
