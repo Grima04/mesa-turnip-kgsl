@@ -172,15 +172,6 @@ matrix_inverse(struct vtn_builder *b, struct vtn_ssa_value *src)
 }
 
 /**
- * Return e^x.
- */
-static nir_ssa_def *
-build_exp(nir_builder *b, nir_ssa_def *x)
-{
-   return nir_fexp2(b, nir_fmul_imm(b, x, M_LOG2E));
-}
-
-/**
  * Return ln(x) - the natural logarithm of x.
  */
 static nir_ssa_def *
@@ -364,7 +355,7 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       return;
 
    case GLSLstd450Exp:
-      val->ssa->def = build_exp(nb, src[0]);
+      val->ssa->def = nir_fexp(nb, src[0]);
       return;
 
    case GLSLstd450Log:
@@ -444,16 +435,16 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    case GLSLstd450Sinh:
       /* 0.5 * (e^x - e^(-x)) */
       val->ssa->def =
-         nir_fmul_imm(nb, nir_fsub(nb, build_exp(nb, src[0]),
-                                       build_exp(nb, nir_fneg(nb, src[0]))),
+         nir_fmul_imm(nb, nir_fsub(nb, nir_fexp(nb, src[0]),
+                                       nir_fexp(nb, nir_fneg(nb, src[0]))),
                           0.5f);
       return;
 
    case GLSLstd450Cosh:
       /* 0.5 * (e^x + e^(-x)) */
       val->ssa->def =
-         nir_fmul_imm(nb, nir_fadd(nb, build_exp(nb, src[0]),
-                                       build_exp(nb, nir_fneg(nb, src[0]))),
+         nir_fmul_imm(nb, nir_fadd(nb, nir_fexp(nb, src[0]),
+                                       nir_fexp(nb, nir_fneg(nb, src[0]))),
                           0.5f);
       return;
 
@@ -472,10 +463,10 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
                                   nir_imm_floatN_t(nb, -clamped_x, bit_size),
                                   nir_imm_floatN_t(nb, clamped_x, bit_size));
       val->ssa->def =
-         nir_fdiv(nb, nir_fsub(nb, build_exp(nb, x),
-                               build_exp(nb, nir_fneg(nb, x))),
-                  nir_fadd(nb, build_exp(nb, x),
-                           build_exp(nb, nir_fneg(nb, x))));
+         nir_fdiv(nb, nir_fsub(nb, nir_fexp(nb, x),
+                               nir_fexp(nb, nir_fneg(nb, x))),
+                  nir_fadd(nb, nir_fexp(nb, x),
+                           nir_fexp(nb, nir_fneg(nb, x))));
       return;
    }
 
