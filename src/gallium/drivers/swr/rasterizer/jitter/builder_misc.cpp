@@ -172,52 +172,92 @@ namespace SwrJit
 
     Value* Builder::VIMMED1(uint64_t i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth, false), cast<ConstantInt>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth, cast<ConstantInt>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1_16(uint64_t i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth16, false), cast<ConstantInt>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth16, cast<ConstantInt>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1(int i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth, false), cast<ConstantInt>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth, cast<ConstantInt>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1_16(int i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth16, false), cast<ConstantInt>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth16, cast<ConstantInt>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1(uint32_t i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth, false), cast<ConstantInt>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth, cast<ConstantInt>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1_16(uint32_t i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth16, false), cast<ConstantInt>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth16, cast<ConstantInt>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1(float i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth, false), cast<ConstantFP>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth, cast<ConstantFP>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1_16(float i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth16, false), cast<ConstantFP>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth16, cast<ConstantFP>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1(bool i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth, false), cast<ConstantInt>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth, cast<ConstantInt>(C(i)));
+#endif
     }
 
     Value* Builder::VIMMED1_16(bool i)
     {
+#if LLVM_VERSION_MAJOR > 10
+        return ConstantVector::getSplat(ElementCount(mVWidth16, false), cast<ConstantInt>(C(i)));
+#else
         return ConstantVector::getSplat(mVWidth16, cast<ConstantInt>(C(i)));
+#endif
     }
 
     Value* Builder::VUNDEF_IPTR() { return UndefValue::get(VectorType::get(mInt32PtrTy, mVWidth)); }

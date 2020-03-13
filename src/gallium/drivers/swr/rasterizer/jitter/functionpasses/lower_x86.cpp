@@ -48,12 +48,6 @@ namespace SwrJit
 {
     using namespace llvm;
 
-#if LLVM_VERSION_MAJOR > 10
-    typedef unsigned IntrinsicID;
-#else
-    typedef Intrinsic::ID IntrinsicID;
-#endif
-
     enum TargetArch
     {
         AVX    = 0,
@@ -512,10 +506,10 @@ namespace SwrJit
         auto     vi1Mask     = pCallInst->getArgOperand(3);
         auto     i8Scale     = pCallInst->getArgOperand(4);
 
-        pBase             = B->POINTER_CAST(pBase, PointerType::get(B->mInt8Ty, 0));
-        uint32_t numElem  = vSrc->getType()->getVectorNumElements();
-        auto     i32Scale = B->Z_EXT(i8Scale, B->mInt32Ty);
-        auto     srcTy    = vSrc->getType()->getVectorElementType();
+        pBase              = B->POINTER_CAST(pBase, PointerType::get(B->mInt8Ty, 0));
+        uint32_t numElem   = vSrc->getType()->getVectorNumElements();
+        auto     i32Scale  = B->Z_EXT(i8Scale, B->mInt32Ty);
+        auto     srcTy     = vSrc->getType()->getVectorElementType();
         Value*   v32Gather = nullptr;
         if (arch == AVX)
         {
@@ -526,7 +520,11 @@ namespace SwrJit
             B->STORE(vSrc, pTmp);
 
             v32Gather        = UndefValue::get(vSrc->getType());
+#if LLVM_VERSION_MAJOR > 10
+            auto vi32Scale   = ConstantVector::getSplat(ElementCount(numElem, false), cast<ConstantInt>(i32Scale));
+#else
             auto vi32Scale   = ConstantVector::getSplat(numElem, cast<ConstantInt>(i32Scale));
+#endif
             auto vi32Offsets = B->MUL(vi32Indices, vi32Scale);
 
             for (uint32_t i = 0; i < numElem; ++i)
