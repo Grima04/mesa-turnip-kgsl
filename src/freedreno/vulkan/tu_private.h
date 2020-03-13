@@ -316,10 +316,11 @@ struct tu_physical_device
    uint64_t gmem_base;
    uint32_t tile_align_w;
    uint32_t tile_align_h;
+   uint32_t ccu_offset_gmem;
+   uint32_t ccu_offset_bypass;
 
    struct {
       uint32_t RB_UNKNOWN_8E04_blit;    /* for CP_BLIT's */
-      uint32_t RB_CCU_CNTL_gmem;        /* for GMEM */
       uint32_t PC_UNKNOWN_9805;
       uint32_t SP_UNKNOWN_A0F8;
    } magic;

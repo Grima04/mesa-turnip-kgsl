@@ -1047,11 +1047,14 @@ tu6_emit_restart_index(struct tu_cs *cs, uint32_t restart_index)
 static void
 tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
+   const struct tu_physical_device *phys_dev = cmd->device->physical_device;
+
    tu6_emit_cache_flush(cmd, cs);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 0xfffff);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_CCU_CNTL, A6XX_RB_CCU_CNTL_OFFSET(0x20000));
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E04, 0x00100000);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE04, 0x8);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE00, 0);
@@ -1391,11 +1394,6 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
    tu_cs_emit(cs, 0x0);
 
-   tu_cs_emit_wfi(cs);
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(.dword = phys_dev->magic.RB_CCU_CNTL_gmem));
-
    cmd->wait_for_idle = false;
 }
 
@@ -1476,6 +1474,7 @@ static void
 tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
                         const struct VkRect2D *renderArea)
 {
+   const struct tu_physical_device *phys_dev = cmd->device->physical_device;
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
    assert(fb->width > 0 && fb->height > 0);
@@ -1498,7 +1497,7 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    tu6_emit_wfi(cmd, cs);
    tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(.offset = 0x20000));
+                   A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
 
    /* enable stream-out, with sysmem there is only one pass: */
    tu_cs_emit_regs(cs,
@@ -1558,10 +1557,9 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
-   /* 0x10000000 for BYPASS.. 0x7c13c080 for GMEM: */
    tu6_emit_wfi(cmd, cs);
    tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(.dword = phys_dev->magic.RB_CCU_CNTL_gmem));
+                   A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_gmem, .gmem = 1));
 
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
    if (use_hw_binning(cmd)) {

@@ -212,6 +212,8 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
 void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
              struct tu_blit *blt)
 {
+   struct tu_physical_device *phys_dev = cmdbuf->device->physical_device;
+
    switch (blt->type) {
    case TU_BLIT_COPY:
       blt->stencil_read =
@@ -281,6 +283,10 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
    tu6_emit_event_write(cmdbuf, cs, PC_CCU_FLUSH_DEPTH_TS, true);
    tu6_emit_event_write(cmdbuf, cs, PC_CCU_INVALIDATE_COLOR, false);
    tu6_emit_event_write(cmdbuf, cs, PC_CCU_INVALIDATE_DEPTH, false);
+
+   tu_cs_emit_wfi(cs);
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
 
    /* buffer copy setup */
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
