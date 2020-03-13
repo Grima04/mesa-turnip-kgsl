@@ -157,6 +157,11 @@ emit_setup(struct fd_batch *batch)
 	fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
 	fd6_event_write(batch, ring, PC_CCU_INVALIDATE_DEPTH, false);
+
+	/* normal BLIT_OP_SCALE operation needs bypass RB_CCU_CNTL */
+	OUT_WFI5(ring);
+	OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
+	OUT_RING(ring, fd6_context(batch->ctx)->magic.RB_CCU_CNTL_bypass);
 }
 
 static uint32_t
