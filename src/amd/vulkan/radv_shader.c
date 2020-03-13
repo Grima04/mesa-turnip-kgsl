@@ -453,8 +453,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 	nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-	if (nir->info.stage == MESA_SHADER_GEOMETRY &&
-	    device->physical_device->use_aco)
+	if (nir->info.stage == MESA_SHADER_GEOMETRY)
 		nir_lower_gs_intrinsics(nir, true);
 
 	static const nir_lower_tex_options tex_options = {
