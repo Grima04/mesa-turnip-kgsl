@@ -250,6 +250,13 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
                    * layout, we could end up with a single vector straddling a
                    * 32B boundary.
                    *
+                   * We intentionally push a size starting from the UBO
+                   * binding in the descriptor set rather than starting from
+                   * the started of the pushed range.  This prevents us from
+                   * accidentally flagging things as out-of-bounds due to
+                   * roll-over if a vector access crosses the push range
+                   * boundary.
+                   *
                    * We align up to 32B so that we can get better CSE.
                    *
                    * We check

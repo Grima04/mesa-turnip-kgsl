@@ -2924,9 +2924,12 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
 }
 
 
-/** Returns the size in bytes of the bound buffer relative to range->start
+/** Returns the size in bytes of the bound buffer
  *
- * This may be smaller than range->length * 32.
+ * The range is relative to the start of the buffer, not the start of the
+ * range.  The returned range may be smaller than
+ *
+ *    (range->start + range->length) * 32;
  */
 static uint32_t
 get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
@@ -2941,11 +2944,11 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
          gfx_state->base.descriptors[range->index];
       assert(range->start * 32 < set->desc_mem.alloc_size);
       assert((range->start + range->length) * 32 <= set->desc_mem.alloc_size);
-      return set->desc_mem.alloc_size - range->start * 32;
+      return set->desc_mem.alloc_size;
    }
 
    case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS:
-      return range->length * 32;
+      return (range->start + range->length) * 32;
 
    default: {
       assert(range->set < MAX_SETS);
@@ -2955,10 +2958,7 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
          &set->descriptors[range->index];
 
       if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-         if (range->start * 32 > desc->buffer_view->range)
-            return 0;
-
-         return desc->buffer_view->range - range->start * 32;
+         return desc->buffer_view->range;
       } else {
          assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
          /* Compute the offset within the buffer */
@@ -2975,10 +2975,7 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
          /* Align the range for consistency */
          bound_range = align_u32(bound_range, ANV_UBO_BOUNDS_CHECK_ALIGNMENT);
 
-         if (range->start * 32 > bound_range)
-            return 0;
-
-         return bound_range - range->start * 32;
+         return bound_range;
       }
    }
    }
