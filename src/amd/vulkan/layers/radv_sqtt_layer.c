@@ -571,6 +571,50 @@ radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 	cmd_buffer->state.num_layout_transitions++;
 }
 
+/* TODO: Improve the way to trigger capture (overlay, etc). */
+static void
+radv_handle_thread_trace(VkQueue _queue)
+{
+	RADV_FROM_HANDLE(radv_queue, queue, _queue);
+	static bool thread_trace_enabled = false;
+	static uint64_t num_frames = 0;
+
+	if (thread_trace_enabled) {
+		struct radv_thread_trace thread_trace = {};
+
+		radv_end_thread_trace(queue);
+		thread_trace_enabled = false;
+
+		/* TODO: Do something better than this whole sync. */
+		radv_QueueWaitIdle(_queue);
+
+		if (radv_get_thread_trace(queue, &thread_trace))
+			radv_dump_thread_trace(queue->device, &thread_trace);
+	} else {
+		if (num_frames == queue->device->thread_trace_start_frame) {
+			radv_begin_thread_trace(queue);
+			assert(!thread_trace_enabled);
+			thread_trace_enabled = true;
+		}
+	}
+	num_frames++;
+}
+
+VkResult sqtt_QueuePresentKHR(
+	VkQueue                                  _queue,
+	const VkPresentInfoKHR*                  pPresentInfo)
+{
+	VkResult result;
+
+	result = radv_QueuePresentKHR(_queue, pPresentInfo);
+	if (result != VK_SUCCESS)
+		return result;
+
+	radv_handle_thread_trace(_queue);
+
+	return VK_SUCCESS;
+}
+
 #define EVENT_MARKER(cmd_name, args...) \
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer); \
 	radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##cmd_name); \

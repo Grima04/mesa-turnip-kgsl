@@ -269,55 +269,16 @@ VkResult radv_AcquireNextImage2KHR(
 	return result;
 }
 
-/* TODO: Improve the way to trigger capture (overlay, etc). */
-static void
-radv_handle_thread_trace(VkQueue _queue)
-{
-	RADV_FROM_HANDLE(radv_queue, queue, _queue);
-	static bool thread_trace_enabled = false;
-	static uint64_t num_frames = 0;
-
-	if (thread_trace_enabled) {
-		struct radv_thread_trace thread_trace = {};
-
-		radv_end_thread_trace(queue);
-		thread_trace_enabled = false;
-
-		/* TODO: Do something better than this whole sync. */
-		radv_QueueWaitIdle(_queue);
-
-		if (radv_get_thread_trace(queue, &thread_trace))
-			radv_dump_thread_trace(queue->device, &thread_trace);
-	} else {
-		if (num_frames == queue->device->thread_trace_start_frame) {
-			radv_begin_thread_trace(queue);
-			assert(!thread_trace_enabled);
-			thread_trace_enabled = true;
-		}
-	}
-	num_frames++;
-}
-
 VkResult radv_QueuePresentKHR(
 	VkQueue                                  _queue,
 	const VkPresentInfoKHR*                  pPresentInfo)
 {
 	RADV_FROM_HANDLE(radv_queue, queue, _queue);
-	VkResult result;
-
-	result = wsi_common_queue_present(&queue->device->physical_device->wsi_device,
-				          radv_device_to_handle(queue->device),
-				          _queue,
-				          queue->queue_family_index,
-				          pPresentInfo);
-	if (result != VK_SUCCESS)
-		return result;
-
-	if (unlikely(queue->device->thread_trace_bo)) {
-		radv_handle_thread_trace(_queue);
-	}
-
-	return VK_SUCCESS;
+	return wsi_common_queue_present(&queue->device->physical_device->wsi_device,
+					radv_device_to_handle(queue->device),
+				        _queue,
+				        queue->queue_family_index,
+				        pPresentInfo);
 }
 
 
