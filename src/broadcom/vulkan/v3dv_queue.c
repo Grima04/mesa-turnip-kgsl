@@ -86,7 +86,7 @@ process_semaphores_to_signal(struct v3dv_device *device,
    int fd;
    drmSyncobjExportSyncFile(device->render_fd, device->last_job_sync, &fd);
    if (fd == -1)
-      return VK_ERROR_DEVICE_LOST;
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    for (uint32_t i = 0; i < count; i++) {
       struct v3dv_semaphore *sem = v3dv_semaphore_from_handle(sems[i]);
@@ -97,7 +97,7 @@ process_semaphores_to_signal(struct v3dv_device *device,
 
       int ret = drmSyncobjImportSyncFile(device->render_fd, sem->sync, fd);
       if (ret)
-         return VK_ERROR_DEVICE_LOST;
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       sem->fd = fd;
    }
@@ -120,11 +120,11 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
    int fd;
    drmSyncobjExportSyncFile(device->render_fd, device->last_job_sync, &fd);
    if (fd == -1)
-      return VK_ERROR_DEVICE_LOST;
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    int ret = drmSyncobjImportSyncFile(device->render_fd, fence->sync, fd);
    if (ret)
-      return VK_ERROR_DEVICE_LOST;
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    fence->fd = fd;
 
