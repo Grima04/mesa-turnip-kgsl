@@ -9783,9 +9783,23 @@ void select_program(Program *program,
       bool endif_merged_wave_info = ctx.tcs_in_out_eq ? i == 1 : check_merged_wave_info;
       if (check_merged_wave_info) {
          Builder bld(ctx.program, ctx.block);
-         Temp count = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(&ctx, args->merged_wave_info), Operand((8u << 16) | (i * 8u)));
-         Temp thread_id = emit_mbcnt(&ctx, bld.def(v1));
-         Temp cond = bld.vopc(aco_opcode::v_cmp_gt_u32, bld.hint_vcc(bld.def(bld.lm)), count, thread_id);
+
+         /* The s_bfm only cares about s0.u[5:0] so we don't need either s_bfe nor s_and here */
+         Temp count = i == 0 ? get_arg(&ctx, args->merged_wave_info)
+                             : bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc),
+                                        get_arg(&ctx, args->merged_wave_info), Operand(i * 8u));
+
+         Temp mask = bld.sop2(aco_opcode::s_bfm_b64, bld.def(s2), count, Operand(0u));
+         Temp cond;
+
+         if (ctx.program->wave_size == 64) {
+            /* Special case for 64 active invocations, because 64 doesn't work with s_bfm */
+            Temp active_64 = bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc), count, Operand(6u /* log2(64) */));
+            cond = bld.sop2(Builder::s_cselect, bld.def(bld.lm), Operand(-1u), mask, bld.scc(active_64));
+         } else {
+            /* We use s_bfm_b64 (not _b32) which works with 32, but we need to extract the lower half of the register */
+            cond = emit_extract_vector(&ctx, mask, 0, bld.lm);
+         }
 
          begin_divergent_if_then(&ctx, &ic_merged_wave_info, cond);
       }
