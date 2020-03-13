@@ -2940,7 +2940,7 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
       struct anv_descriptor_set *set =
          gfx_state->base.descriptors[range->index];
       assert(range->start * 32 < set->desc_mem.alloc_size);
-      assert((range->start + range->length) * 32 < set->desc_mem.alloc_size);
+      assert((range->start + range->length) * 32 <= set->desc_mem.alloc_size);
       return set->desc_mem.alloc_size - range->start * 32;
    }
 
