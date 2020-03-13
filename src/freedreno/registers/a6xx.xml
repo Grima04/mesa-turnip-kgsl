@@ -2383,24 +2383,27 @@ to upconvert to 32b float internally?
 		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a6xx_format"/>
 		<bitfield name="TILE_MODE" low="8" high="9" type="a6xx_tile_mode"/>
 		<bitfield name="COLOR_SWAP" low="10" high="11" type="a3xx_color_swap"/>
-		<!-- b12 seems to be set when UBWC "FLAGS" buffer enabled -->
 		<bitfield name="FLAGS" pos="12" type="boolean"/>
 		<bitfield name="SRGB" pos="13" type="boolean"/>
 		<!-- the rest is only for src -->
 		<bitfield name="SAMPLES" low="14" high="15" type="a3xx_msaa_samples"/>
 		<bitfield name="FILTER" pos="16" type="boolean"/>
 		<bitfield name="SAMPLES_AVERAGE" pos="18" type="boolean"/>
+		<bitfield name="UNK20" pos="20" type="boolean"/>
+		<bitfield name="UNK22" pos="22" type="boolean"/>
 	</bitset>
 
 	<reg32 offset="0x8c17" name="RB_2D_DST_INFO" type="a6xx_2d_surf_info"/>
 	<reg32 offset="0x8c18" name="RB_2D_DST_LO"/>
 	<reg32 offset="0x8c19" name="RB_2D_DST_HI"/>
+	<reg64 offset="0x8c18" name="RB_2D_DST" type="waddress"/>
 	<reg32 offset="0x8c1a" name="RB_2D_DST_SIZE">
 		<bitfield name="PITCH" low="0" high="15" shr="6" type="uint"/>
 	</reg32>
 
 	<reg32 offset="0x8c20" name="RB_2D_DST_FLAGS_LO"/>
 	<reg32 offset="0x8c21" name="RB_2D_DST_FLAGS_HI"/>
+	<reg64 offset="0x8c20" name="RB_2D_DST_FLAGS" type="waddress"/>
 	<reg32 offset="0x8c22" name="RB_2D_DST_FLAGS_PITCH">
 		<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
 		<bitfield name="ARRAY_PITCH" low="11" high="21" shr="7" type="uint"/>
@@ -3120,12 +3123,14 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0xb4c2" name="SP_PS_2D_SRC_LO"/>
 	<reg32 offset="0xb4c3" name="SP_PS_2D_SRC_HI"/>
+	<reg64 offset="0xb4c2" name="SP_PS_2D_SRC" type="waddress"/>
 	<reg32 offset="0xb4c4" name="SP_PS_2D_SRC_PITCH">
 	   <bitfield name="PITCH" low="9" high="24" shr="6" type="uint"/>
 	</reg32>
 
 	<reg32 offset="0xb4ca" name="SP_PS_2D_SRC_FLAGS_LO"/>
 	<reg32 offset="0xb4cb" name="SP_PS_2D_SRC_FLAGS_HI"/>
+	<reg64 offset="0xb4ca" name="SP_PS_2D_SRC_FLAGS" type="waddress"/>
 	<reg32 offset="0xb4cc" name="SP_PS_2D_SRC_FLAGS_PITCH">
 		<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
 		<bitfield name="ARRAY_PITCH" low="11" high="21" shr="7" type="uint"/>

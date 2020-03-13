@@ -77,6 +77,8 @@ typedef uint32_t xcb_window_t;
 
 #include "tu_entrypoints.h"
 
+#include "vk_format.h"
+
 #define MAX_VBS 32
 #define MAX_VERTEX_ATTRIBS 32
 #define MAX_RTS 8
@@ -1284,6 +1286,48 @@ tu6_emit_stencil_reference(struct tu_cs *cs, uint32_t front, uint32_t back);
 void
 tu6_emit_blend_constants(struct tu_cs *cs, const float constants[4]);
 
+void tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits samples);
+
+void tu6_emit_window_scissor(struct tu_cs *cs, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
+
+void tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1);
+
+struct tu_image_view;
+
+void
+tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
+                  struct tu_cs *cs,
+                  struct tu_image_view *src,
+                  struct tu_image_view *dst,
+                  uint32_t layers,
+                  const VkRect2D *rect);
+
+void
+tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
+                           struct tu_cs *cs,
+                           uint32_t a,
+                           const VkRenderPassBeginInfo *info);
+
+void
+tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
+                         struct tu_cs *cs,
+                         uint32_t a,
+                         const VkRenderPassBeginInfo *info);
+
+void
+tu_load_gmem_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t a);
+
+/* expose this function to be able to emit load without checking LOAD_OP */
+void
+tu_emit_load_gmem_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t a);
+
+/* note: gmem store can also resolve */
+void
+tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
+                         struct tu_cs *cs,
+                         uint32_t a,
+                         uint32_t gmem_a);
+
 struct tu_userdata_info *
 tu_lookup_user_sgpr(struct tu_pipeline *pipeline,
                     gl_shader_stage stage,
@@ -1330,18 +1374,6 @@ tu6_base_format(VkFormat format)
    return tu6_format_color(format, TILE6_LINEAR).fmt;
 }
 
-void
-tu_pack_clear_value(const VkClearValue *val,
-                    VkFormat format,
-                    uint32_t buf[4]);
-
-void
-tu_2d_clear_color(const VkClearColorValue *val, VkFormat format, uint32_t buf[4]);
-
-void
-tu_2d_clear_zs(const VkClearDepthStencilValue *val, VkFormat format, uint32_t buf[4]);
-
-enum a6xx_2d_ifmt tu6_fmt_to_ifmt(enum a6xx_format fmt);
 enum a6xx_depth_format tu6_pipe2depth(VkFormat format);
 
 struct tu_image
@@ -1409,6 +1441,14 @@ tu_image_stride(struct tu_image *image, int level)
    return image->layout.slices[level].pitch * image->layout.cpp;
 }
 
+/* to get the right pitch for compressed formats */
+static inline uint32_t
+tu_image_pitch(struct tu_image *image, int level)
+{
+   uint32_t stride = tu_image_stride(image, level);
+   return stride / vk_format_get_blockwidth(image->vk_format);
+}
+
 static inline uint64_t
 tu_image_base(struct tu_image *image, int level, int layer)
 {
@@ -1458,10 +1498,16 @@ tu_image_ubwc_base(struct tu_image *image, int level, int layer)
 #define tu_image_view_ubwc_base_ref(iview) \
    tu_image_ubwc_base_ref(iview->image, iview->base_mip, iview->base_layer)
 
+#define tu_image_view_ubwc_pitches(iview)                                \
+   .pitch = tu_image_ubwc_pitch(iview->image, iview->base_mip),          \
+   .array_pitch = tu_image_ubwc_size(iview->image, iview->base_mip) >> 2
+
 enum a6xx_tile_mode
 tu6_get_image_tile_mode(struct tu_image *image, int level);
 enum a3xx_msaa_samples
 tu_msaa_samples(uint32_t samples);
+enum a6xx_tex_fetchsize
+tu6_fetchsize(VkFormat format);
 
 static inline struct tu_native_format
 tu6_format_image(struct tu_image *image, VkFormat format, uint32_t level)
@@ -1704,21 +1750,6 @@ uint64_t
 tu_gem_info_offset(const struct tu_device *dev, uint32_t gem_handle);
 uint64_t
 tu_gem_info_iova(const struct tu_device *dev, uint32_t gem_handle);
-
-
-void
-tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
-                           struct tu_cs *cs,
-                           uint32_t attachment,
-                           const VkClearValue *value,
-                           const VkClearRect *rect);
-
-void
-tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
-                         struct tu_cs *cs,
-                         uint32_t attachment,
-                         uint8_t component_mask,
-                         const VkClearValue *value);
 
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                              \

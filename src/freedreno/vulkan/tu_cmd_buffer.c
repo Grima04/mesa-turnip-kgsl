@@ -33,7 +33,6 @@
 #include "vk_format.h"
 
 #include "tu_cs.h"
-#include "tu_blit.h"
 
 #define OVERFLOW_FLAG_REG REG_A6XX_CP_SCRATCH_REG(0)
 
@@ -109,69 +108,6 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
    }
 
    return VK_SUCCESS;
-}
-
-static bool
-is_linear_mipmapped(const struct tu_image_view *iview)
-{
-   return iview->image->layout.tile_mode == TILE6_LINEAR &&
-          iview->base_mip != iview->image->level_count - 1;
-}
-
-static bool
-force_sysmem(const struct tu_cmd_buffer *cmd,
-             const struct VkRect2D *render_area)
-{
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   bool has_linear_mipmapped_store = false;
-   const struct tu_render_pass *pass = cmd->state.pass;
-
-   /* Layered rendering requires sysmem. */
-   if (fb->layers > 1)
-      return true;
-
-   /* Iterate over all the places we call tu6_emit_store_attachment() */
-   for (unsigned i = 0; i < pass->subpass_count; i++) {
-      const struct tu_subpass *subpass = &pass->subpasses[i];
-      if (subpass->resolve_attachments) {
-         for (unsigned i = 0; i < subpass->color_count; i++) {
-            uint32_t a = subpass->resolve_attachments[i].attachment;
-            if (a != VK_ATTACHMENT_UNUSED &&
-                cmd->state.pass->attachments[a].store_op == VK_ATTACHMENT_STORE_OP_STORE) {
-               const struct tu_image_view *iview = fb->attachments[a].attachment;
-               if (is_linear_mipmapped(iview)) {
-                  has_linear_mipmapped_store = true;
-                  break;
-               }
-            }
-         }
-      }
-   }
-
-   for (unsigned i = 0; i < pass->attachment_count; i++) {
-      if (pass->attachments[i].gmem_offset >= 0 &&
-          cmd->state.pass->attachments[i].store_op == VK_ATTACHMENT_STORE_OP_STORE) {
-         const struct tu_image_view *iview = fb->attachments[i].attachment;
-         if (is_linear_mipmapped(iview)) {
-            has_linear_mipmapped_store = true;
-            break;
-         }
-      }
-   }
-
-   /* Linear textures cannot have any padding between mipmap levels and their
-    * height isn't padded, while at the same time the GMEM->MEM resolve does
-    * not have per-pixel granularity, so if the image height isn't aligned to
-    * the resolve granularity and the render area is tall enough, we may wind
-    * up writing past the bottom of the image into the next miplevel or even
-    * past the end of the image. For the last miplevel, the layout code should
-    * insert enough padding so that the overdraw writes to the padding.  To
-    * work around this, we force-enable sysmem rendering.
-    */
-   const uint32_t y2 = render_area->offset.y + render_area->extent.height;
-   const uint32_t aligned_y2 = ALIGN_POT(y2, GMEM_ALIGN_H);
-
-   return has_linear_mipmapped_store && aligned_y2 > fb->height;
 }
 
 static void
@@ -421,10 +357,6 @@ tu6_emit_wfi(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    }
 }
 
-#define tu_image_view_ubwc_pitches(iview)                                \
-   .pitch = tu_image_ubwc_pitch(iview->image, iview->base_mip),          \
-   .array_pitch = tu_image_ubwc_size(iview->image, iview->base_mip) >> 2
-
 static void
 tu6_emit_zs(struct tu_cmd_buffer *cmd,
             const struct tu_subpass *subpass,
@@ -497,20 +429,18 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
          continue;
 
       const struct tu_image_view *iview = fb->attachments[a].attachment;
-      const enum a6xx_tile_mode tile_mode =
-         tu6_get_image_tile_mode(iview->image, iview->base_mip);
 
       mrt_comp[i] = 0xf;
 
       if (vk_format_is_srgb(iview->vk_format))
          srgb_cntl |= (1 << i);
 
-      const struct tu_native_format format =
-         tu6_format_color(iview->vk_format, iview->image->layout.tile_mode);
+      struct tu_native_format format =
+         tu6_format_image(iview->image, iview->vk_format, iview->base_mip);
 
       tu_cs_emit_regs(cs,
                       A6XX_RB_MRT_BUF_INFO(i,
-                                           .color_tile_mode = tile_mode,
+                                           .color_tile_mode = format.tile_mode,
                                            .color_format = format.fmt,
                                            .color_swap = format.swap),
                       A6XX_RB_MRT_PITCH(i, tu_image_stride(iview->image, iview->base_mip)),
@@ -563,12 +493,10 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
                                         .type = LAYER_2D_ARRAY));
 }
 
-static void
-tu6_emit_msaa(struct tu_cmd_buffer *cmd,
-              const struct tu_subpass *subpass,
-              struct tu_cs *cs)
+void
+tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits vk_samples)
 {
-   const enum a3xx_msaa_samples samples = tu_msaa_samples(subpass->samples);
+   const enum a3xx_msaa_samples samples = tu_msaa_samples(vk_samples);
    bool msaa_disable = samples == MSAA_ONE;
 
    tu_cs_emit_regs(cs,
@@ -681,51 +609,8 @@ tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool align)
                    A6XX_RB_BLIT_SCISSOR_BR(.x = x2, .y = y2));
 }
 
-static void
-tu6_emit_blit_info(struct tu_cmd_buffer *cmd,
-                   struct tu_cs *cs,
-                   const struct tu_image_view *iview,
-                   uint32_t gmem_offset,
-                   bool resolve)
-{
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_BLIT_INFO(.unk0 = !resolve, .gmem = !resolve));
-
-   const struct tu_native_format format =
-      tu6_format_color(iview->vk_format, iview->image->layout.tile_mode);
-
-   enum a6xx_tile_mode tile_mode =
-      tu6_get_image_tile_mode(iview->image, iview->base_mip);
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_BLIT_DST_INFO(
-                      .tile_mode = tile_mode,
-                      .samples = tu_msaa_samples(iview->image->samples),
-                      .color_format = format.fmt,
-                      .color_swap = format.swap,
-                      .flags = iview->image->layout.ubwc_layer_size != 0),
-                   A6XX_RB_BLIT_DST(tu_image_view_base_ref(iview)),
-                   A6XX_RB_BLIT_DST_PITCH(tu_image_stride(iview->image, iview->base_mip)),
-                   A6XX_RB_BLIT_DST_ARRAY_PITCH(iview->image->layout.layer_size));
-
-   if (iview->image->layout.ubwc_layer_size) {
-      tu_cs_emit_regs(cs,
-                      A6XX_RB_BLIT_FLAG_DST(tu_image_view_ubwc_base_ref(iview)),
-                      A6XX_RB_BLIT_FLAG_DST_PITCH(tu_image_view_ubwc_pitches(iview)));
-   }
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_BLIT_BASE_GMEM(gmem_offset));
-}
-
-static void
-tu6_emit_blit(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
-{
-   tu6_emit_event_write(cmd, cs, BLIT, false);
-}
-
-static void
-tu6_emit_window_scissor(struct tu_cmd_buffer *cmd,
-                        struct tu_cs *cs,
+void
+tu6_emit_window_scissor(struct tu_cs *cs,
                         uint32_t x1,
                         uint32_t y1,
                         uint32_t x2,
@@ -740,11 +625,8 @@ tu6_emit_window_scissor(struct tu_cmd_buffer *cmd,
                    A6XX_GRAS_RESOLVE_CNTL_2(.x = x2, .y = y2));
 }
 
-static void
-tu6_emit_window_offset(struct tu_cmd_buffer *cmd,
-                       struct tu_cs *cs,
-                       uint32_t x1,
-                       uint32_t y1)
+void
+tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1)
 {
    tu_cs_emit_regs(cs,
                    A6XX_RB_WINDOW_OFFSET(.x = x1, .y = y1));
@@ -783,6 +665,9 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd)
    if (!cmd->state.pass->gmem_pixels)
       return true;
 
+   if (cmd->state.framebuffer->layers > 1)
+      return true;
+
    return cmd->state.tiling_config.force_sysmem;
 }
 
@@ -801,8 +686,8 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
    const uint32_t y1 = tile->begin.y;
    const uint32_t x2 = tile->end.x - 1;
    const uint32_t y2 = tile->end.y - 1;
-   tu6_emit_window_scissor(cmd, cs, x1, y1, x2, y2);
-   tu6_emit_window_offset(cmd, cs, x1, y1);
+   tu6_emit_window_scissor(cs, x1, y1, x2, y2);
+   tu6_emit_window_offset(cs, x1, y1);
 
    tu_cs_emit_regs(cs,
                    A6XX_VPC_SO_OVERRIDE(.so_disable = false));
@@ -862,141 +747,16 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
 }
 
 static void
-tu6_emit_load_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t a)
-{
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_image_view *iview = fb->attachments[a].attachment;
-   const struct tu_render_pass_attachment *attachment =
-      &cmd->state.pass->attachments[a];
-
-   if (attachment->gmem_offset < 0)
-      return;
-
-   const uint32_t x1 = tiling->render_area.offset.x;
-   const uint32_t y1 = tiling->render_area.offset.y;
-   const uint32_t x2 = x1 + tiling->render_area.extent.width;
-   const uint32_t y2 = y1 + tiling->render_area.extent.height;
-   const uint32_t tile_x2 =
-      tiling->tile0.offset.x + tiling->tile0.extent.width * tiling->tile_count.width;
-   const uint32_t tile_y2 =
-      tiling->tile0.offset.y + tiling->tile0.extent.height * tiling->tile_count.height;
-   bool need_load =
-      x1 != tiling->tile0.offset.x || x2 != MIN2(fb->width, tile_x2) ||
-      y1 != tiling->tile0.offset.y || y2 != MIN2(fb->height, tile_y2);
-
-   if (need_load)
-      tu_finishme("improve handling of unaligned render area");
-
-   if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
-      need_load = true;
-
-   if (vk_format_has_stencil(iview->vk_format) &&
-       attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
-      need_load = true;
-
-   if (need_load) {
-      tu6_emit_blit_info(cmd, cs, iview, attachment->gmem_offset, false);
-      tu6_emit_blit(cmd, cs);
-   }
-}
-
-static void
-tu6_emit_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
-                          uint32_t a,
-                          const VkRenderPassBeginInfo *info)
-{
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_image_view *iview = fb->attachments[a].attachment;
-   const struct tu_render_pass_attachment *attachment =
-      &cmd->state.pass->attachments[a];
-   unsigned clear_mask = 0;
-
-   /* note: this means it isn't used by any subpass and shouldn't be cleared anyway */
-   if (attachment->gmem_offset < 0)
-      return;
-
-   if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
-      clear_mask = 0xf;
-
-   if (vk_format_has_stencil(iview->vk_format)) {
-      clear_mask &= 0x1;
-      if (attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
-         clear_mask |= 0x2;
-   }
-   if (!clear_mask)
-      return;
-
-   tu_clear_gmem_attachment(cmd, cs, a, clear_mask,
-                            &info->pClearValues[a]);
-}
-
-static void
-tu6_emit_predicated_blit(struct tu_cmd_buffer *cmd,
-                         struct tu_cs *cs,
-                         uint32_t a,
-                         uint32_t gmem_a,
-                         bool resolve)
-{
-   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
-
-   tu6_emit_blit_info(cmd, cs,
-                      cmd->state.framebuffer->attachments[a].attachment,
-                      cmd->state.pass->attachments[gmem_a].gmem_offset, resolve);
-   tu6_emit_blit(cmd, cs);
-
-   tu_cond_exec_end(cs);
-}
-
-static void
 tu6_emit_sysmem_resolve(struct tu_cmd_buffer *cmd,
                         struct tu_cs *cs,
                         uint32_t a,
                         uint32_t gmem_a)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_image_view *dst = fb->attachments[a].attachment;
-   const struct tu_image_view *src = fb->attachments[gmem_a].attachment;
+   struct tu_image_view *dst = fb->attachments[a].attachment;
+   struct tu_image_view *src = fb->attachments[gmem_a].attachment;
 
-   tu_blit(cmd, cs, &(struct tu_blit) {
-      .dst = sysmem_attachment_surf(dst, dst->base_layer,
-                                    &cmd->state.tiling_config.render_area),
-      .src = sysmem_attachment_surf(src, src->base_layer,
-                                    &cmd->state.tiling_config.render_area),
-      .layers = fb->layers,
-   });
-}
-
-
-/* Emit a MSAA resolve operation, with both gmem and sysmem paths. */
-static void tu6_emit_resolve(struct tu_cmd_buffer *cmd,
-                             struct tu_cs *cs,
-                             uint32_t a,
-                             uint32_t gmem_a)
-{
-   if (cmd->state.pass->attachments[a].store_op == VK_ATTACHMENT_STORE_OP_DONT_CARE)
-      return;
-
-   tu6_emit_predicated_blit(cmd, cs, a, gmem_a, true);
-
-   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
-   tu6_emit_sysmem_resolve(cmd, cs, a, gmem_a);
-   tu_cond_exec_end(cs);
-}
-
-static void
-tu6_emit_store_attachment(struct tu_cmd_buffer *cmd,
-                          struct tu_cs *cs,
-                          uint32_t a,
-                          uint32_t gmem_a)
-{
-   if (cmd->state.pass->attachments[a].store_op == VK_ATTACHMENT_STORE_OP_DONT_CARE)
-      return;
-
-   tu6_emit_blit_info(cmd, cs,
-                      cmd->state.framebuffer->attachments[a].attachment,
-                      cmd->state.pass->attachments[gmem_a].gmem_offset, true);
-   tu6_emit_blit(cmd, cs);
+   tu_resolve_sysmem(cmd, cs, src, dst, fb->layers, &cmd->state.tiling_config.render_area);
 }
 
 static void
@@ -1018,19 +778,20 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
 
-   tu6_emit_blit_scissor(cmd, cs, true);
+   /* blit scissor may have been changed by CmdClearAttachments */
+   tu6_emit_blit_scissor(cmd, cs, false);
 
    for (uint32_t a = 0; a < pass->attachment_count; ++a) {
       if (pass->attachments[a].gmem_offset >= 0)
-         tu6_emit_store_attachment(cmd, cs, a, a);
+         tu_store_gmem_attachment(cmd, cs, a, a);
    }
 
    if (subpass->resolve_attachments) {
       for (unsigned i = 0; i < subpass->color_count; i++) {
          uint32_t a = subpass->resolve_attachments[i].attachment;
          if (a != VK_ATTACHMENT_UNUSED)
-            tu6_emit_store_attachment(cmd, cs, a,
-                                      subpass->color_attachments[i].attachment);
+            tu_store_gmem_attachment(cmd, cs, a,
+                                     subpass->color_attachments[i].attachment);
       }
    }
 }
@@ -1331,7 +1092,7 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    uint32_t x2 = tiling->render_area.offset.x + tiling->render_area.extent.width - 1;
    uint32_t y2 = tiling->render_area.offset.y + tiling->render_area.extent.height - 1;
 
-   tu6_emit_window_scissor(cmd, cs, x1, y1, x2, y2);
+   tu6_emit_window_scissor(cs, x1, y1, x2, y2);
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BINNING));
@@ -1396,44 +1157,6 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
-tu_emit_sysmem_clear_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
-                                uint32_t a,
-                                const VkRenderPassBeginInfo *info)
-{
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_image_view *iview = fb->attachments[a].attachment;
-   const struct tu_render_pass_attachment *attachment =
-      &cmd->state.pass->attachments[a];
-   unsigned clear_mask = 0;
-
-   /* note: this means it isn't used by any subpass and shouldn't be cleared anyway */
-   if (attachment->gmem_offset < 0)
-      return;
-
-   if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-      clear_mask = 0xf;
-   }
-
-   if (vk_format_has_stencil(iview->vk_format)) {
-      clear_mask &= 0x1;
-      if (attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
-         clear_mask |= 0x2;
-      if (clear_mask != 0x3)
-         tu_finishme("depth/stencil only load op");
-   }
-
-   if (!clear_mask)
-      return;
-
-   tu_clear_sysmem_attachment(cmd, cs, a,
-                              &info->pClearValues[a], &(struct VkClearRect) {
-      .rect = info->renderArea,
-      .baseArrayLayer = iview->base_layer,
-      .layerCount = iview->layer_count,
-   });
-}
-
-static void
 tu_emit_load_clear(struct tu_cmd_buffer *cmd,
                    const VkRenderPassBeginInfo *info)
 {
@@ -1444,26 +1167,19 @@ tu_emit_load_clear(struct tu_cmd_buffer *cmd,
    tu6_emit_blit_scissor(cmd, cs, true);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu6_emit_load_attachment(cmd, cs, i);
+      tu_load_gmem_attachment(cmd, cs, i);
 
    tu6_emit_blit_scissor(cmd, cs, false);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu6_emit_clear_attachment(cmd, cs, i, info);
+      tu_clear_gmem_attachment(cmd, cs, i, info);
 
    tu_cond_exec_end(cs);
-
-   /* invalidate because reading input attachments will cache GMEM and
-    * the cache isn''t updated when GMEM is written
-    * TODO: is there a no-cache bit for textures?
-    */
-   if (cmd->state.subpass->input_count)
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_emit_sysmem_clear_attachment(cmd, cs, i, info);
+      tu_clear_sysmem_attachment(cmd, cs, i, info);
 
    tu_cond_exec_end(cs);
 }
@@ -1476,8 +1192,8 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
    assert(fb->width > 0 && fb->height > 0);
-   tu6_emit_window_scissor(cmd, cs, 0, 0, fb->width - 1, fb->height - 1);
-   tu6_emit_window_offset(cmd, cs, 0, 0);
+   tu6_emit_window_scissor(cs, 0, 0, fb->width - 1, fb->height - 1);
+   tu6_emit_window_offset(cs, 0, 0);
 
    tu6_emit_bin_size(cs, 0, 0, 0xc00000); /* 0xc00000 = BYPASS? */
 
@@ -1516,7 +1232,6 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    /* Do any resolves of the last subpass. These are handled in the
     * tile_store_ib in the gmem path.
     */
-
    const struct tu_subpass *subpass = cmd->state.subpass;
    if (subpass->resolve_attachments) {
       for (unsigned i = 0; i < subpass->color_count; i++) {
@@ -1555,7 +1270,13 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
-   tu6_emit_wfi(cmd, cs);
+   /* TODO: flushing with barriers instead of blindly always flushing */
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR, false);
+   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH, false);
+
+   tu_cs_emit_wfi(cs);
    tu_cs_emit_regs(cs,
                    A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_gmem, .gmem = 1));
 
@@ -1684,7 +1405,7 @@ tu_cmd_render_sysmem(struct tu_cmd_buffer *cmd)
 static void
 tu_cmd_prepare_tile_store_ib(struct tu_cmd_buffer *cmd)
 {
-   const uint32_t tile_store_space = 32 + 23 * cmd->state.pass->attachment_count;
+   const uint32_t tile_store_space = 11 + (35 * 2) * cmd->state.pass->attachment_count;
    struct tu_cs sub_cs;
 
    VkResult result =
@@ -1708,7 +1429,7 @@ tu_cmd_update_tiling_config(struct tu_cmd_buffer *cmd,
    struct tu_tiling_config *tiling = &cmd->state.tiling_config;
 
    tiling->render_area = *render_area;
-   tiling->force_sysmem = force_sysmem(cmd, render_area);
+   tiling->force_sysmem = false;
 
    tu_tiling_config_update_tile_layout(tiling, dev, cmd->state.pass->gmem_pixels);
    tu_tiling_config_update_pipe_layout(tiling, dev);
@@ -2583,7 +2304,7 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
-   tu6_emit_msaa(cmd, cmd->state.subpass, &cmd->draw_cs);
+   tu6_emit_msaa(&cmd->draw_cs, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
 
    /* note: use_hw_binning only checks tiling config */
@@ -2614,53 +2335,66 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    struct tu_cs *cs = &cmd->draw_cs;
 
    const struct tu_subpass *subpass = cmd->state.subpass++;
-   /* TODO:
-    * if msaa samples change between subpasses,
-    * attachment store is broken for some attachments
-    */
+
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
+
    if (subpass->resolve_attachments) {
-      tu6_emit_blit_scissor(cmd, cs, true);
       for (unsigned i = 0; i < subpass->color_count; i++) {
          uint32_t a = subpass->resolve_attachments[i].attachment;
-         if (a != VK_ATTACHMENT_UNUSED) {
-            tu6_emit_resolve(cmd, cs, a,
-                             subpass->color_attachments[i].attachment);
-         }
+         if (a == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         tu_store_gmem_attachment(cmd, cs, a,
+                                    subpass->color_attachments[i].attachment);
+
+         if (pass->attachments[a].gmem_offset < 0)
+            continue;
+
+         /* TODO:
+          * check if the resolved attachment is needed by later subpasses,
+          * if it is, should be doing a GMEM->GMEM resolve instead of GMEM->MEM->GMEM..
+          */
+         tu_finishme("missing GMEM->GMEM resolve path\n");
+         tu_emit_load_gmem_attachment(cmd, cs, a);
       }
    }
 
-   /* invalidate because reading input attachments will cache GMEM and
-    * the cache isn''t updated when GMEM is written
-    * TODO: is there a no-cache bit for textures?
+   tu_cond_exec_end(cs);
+
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
+
+   /* Emit flushes so that input attachments will read the correct value.
+    * TODO: use subpass dependencies to flush or not
     */
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
+
+   if (subpass->resolve_attachments) {
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+
+      for (unsigned i = 0; i < subpass->color_count; i++) {
+         uint32_t a = subpass->resolve_attachments[i].attachment;
+         if (a == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         tu6_emit_sysmem_resolve(cmd, cs, a,
+                                 subpass->color_attachments[i].attachment);
+      }
+
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
+   }
+
+   tu_cond_exec_end(cs);
+
+   /* subpass->input_count > 0 then texture cache invalidate is likely to be needed */
    if (cmd->state.subpass->input_count)
       tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
 
    /* emit mrt/zs/msaa/ubwc state for the subpass that is starting */
    tu6_emit_zs(cmd, cmd->state.subpass, cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, cs);
-   tu6_emit_msaa(cmd, cmd->state.subpass, cs);
+   tu6_emit_msaa(cs, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, false);
-
-   /* Emit flushes so that input attachments will read the correct value. This
-    * is for sysmem only, although it shouldn't do much harm on gmem.
-    */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
-
-   /* TODO:
-    * since we don't know how to do GMEM->GMEM resolve,
-    * resolve attachments are resolved to memory then loaded to GMEM again if needed
-    */
-   if (subpass->resolve_attachments) {
-      for (unsigned i = 0; i < subpass->color_count; i++) {
-         uint32_t a = subpass->resolve_attachments[i].attachment;
-         if (a != VK_ATTACHMENT_UNUSED && pass->attachments[a].gmem_offset >= 0) {
-               tu_finishme("missing GMEM->GMEM resolve, performance will suffer\n");
-               tu6_emit_predicated_blit(cmd, cs, a, a, false);
-         }
-      }
-   }
 }
 
 void
@@ -4137,7 +3871,7 @@ struct tu_barrier_info
 };
 
 static void
-tu_barrier(struct tu_cmd_buffer *cmd_buffer,
+tu_barrier(struct tu_cmd_buffer *cmd,
            uint32_t memoryBarrierCount,
            const VkMemoryBarrier *pMemoryBarriers,
            uint32_t bufferMemoryBarrierCount,
@@ -4146,13 +3880,24 @@ tu_barrier(struct tu_cmd_buffer *cmd_buffer,
            const VkImageMemoryBarrier *pImageMemoryBarriers,
            const struct tu_barrier_info *info)
 {
+   /* renderpass case is only for subpass self-dependencies
+    * which means syncing the render output with texture cache
+    * note: only the CACHE_INVALIDATE is needed in GMEM mode
+    * and in sysmem mode we might not need either color/depth flush
+    */
+   if (cmd->state.pass) {
+      tu6_emit_event_write(cmd, &cmd->draw_cs, PC_CCU_FLUSH_COLOR_TS, true);
+      tu6_emit_event_write(cmd, &cmd->draw_cs, PC_CCU_FLUSH_DEPTH_TS, true);
+      tu6_emit_event_write(cmd, &cmd->draw_cs, CACHE_INVALIDATE, false);
+      return;
+   }
 }
 
 void
 tu_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
                       VkPipelineStageFlags srcStageMask,
-                      VkPipelineStageFlags destStageMask,
-                      VkBool32 byRegion,
+                      VkPipelineStageFlags dstStageMask,
+                      VkDependencyFlags dependencyFlags,
                       uint32_t memoryBarrierCount,
                       const VkMemoryBarrier *pMemoryBarriers,
                       uint32_t bufferMemoryBarrierCount,

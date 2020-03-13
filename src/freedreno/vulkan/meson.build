@@ -40,8 +40,7 @@ tu_extensions_c = custom_target(
 )
 
 libtu_files = files(
-  'tu_blit.c',
-  'tu_blit.h',
+  'tu_clear_blit.c',
   'tu_cmd_buffer.c',
   'tu_cs.c',
   'tu_cs.h',
@@ -52,11 +51,6 @@ libtu_files = files(
   'tu_fence.c',
   'tu_formats.c',
   'tu_image.c',
-  'tu_meta_blit.c',
-  'tu_meta_buffer.c',
-  'tu_meta_clear.c',
-  'tu_meta_copy.c',
-  'tu_meta_resolve.c',
   'tu_pass.c',
   'tu_pipeline.c',
   'tu_pipeline_cache.c',
