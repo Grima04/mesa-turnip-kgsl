@@ -283,6 +283,7 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
       /* fall through */
 
    case nir_intrinsic_emit_vertex:
+   case nir_intrinsic_emit_vertex_with_counter:
       if (nir_intrinsic_stream_id(instr) > 0)
          shader->info.gs.uses_streams = true;
 
