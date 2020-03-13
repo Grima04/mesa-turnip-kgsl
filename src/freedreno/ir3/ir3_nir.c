@@ -218,8 +218,12 @@ ir3_optimize_loop(nir_shader *s)
 		progress |= OPT(s, nir_lower_pack);
 		progress |= OPT(s, nir_opt_constant_folding);
 
-		progress |= OPT(s, nir_opt_load_store_vectorize, nir_var_mem_ubo,
-				ir3_nir_should_vectorize_mem, 0);
+		nir_load_store_vectorize_options vectorize_opts = {
+		   .modes = nir_var_mem_ubo,
+		   .callback = ir3_nir_should_vectorize_mem,
+		   .robust_modes = 0,
+		};
+		progress |= OPT(s, nir_opt_load_store_vectorize, &vectorize_opts);
 
 		if (lower_flrp != 0) {
 			if (OPT(s, nir_lower_flrp,

@@ -1026,11 +1026,14 @@ brw_vectorize_lower_mem_access(nir_shader *nir,
    bool progress = false;
 
    if (is_scalar) {
-      OPT(nir_opt_load_store_vectorize,
-          nir_var_mem_ubo | nir_var_mem_ssbo |
-          nir_var_mem_global | nir_var_mem_shared,
-          brw_nir_should_vectorize_mem,
-          (nir_variable_mode)0);
+      nir_load_store_vectorize_options options = {
+         .modes = nir_var_mem_ubo | nir_var_mem_ssbo |
+                  nir_var_mem_global | nir_var_mem_shared,
+         .callback = brw_nir_should_vectorize_mem,
+         .robust_modes = (nir_variable_mode)0,
+      };
+
+      OPT(nir_opt_load_store_vectorize, &options);
    }
 
    OPT(brw_nir_lower_mem_access_bit_sizes, devinfo);

@@ -158,7 +158,13 @@ nir_load_store_vectorize_test::run_vectorizer(nir_variable_mode modes,
 {
    if (modes & nir_var_mem_shared)
       nir_lower_vars_to_explicit_types(b->shader, nir_var_mem_shared, shared_type_info);
-   bool progress = nir_opt_load_store_vectorize(b->shader, modes, mem_vectorize_callback, robust_modes);
+
+   nir_load_store_vectorize_options opts = { };
+   opts.callback = mem_vectorize_callback;
+   opts.modes = modes;
+   opts.robust_modes = robust_modes;
+   bool progress = nir_opt_load_store_vectorize(b->shader, &opts);
+
    if (progress) {
       nir_validate_shader(b->shader, NULL);
       if (cse)

@@ -3271,20 +3271,22 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 			bool lower_to_scalar = false;
 			bool lower_pack = false;
-			nir_variable_mode robust_modes = (nir_variable_mode)0;
+			nir_load_store_vectorize_options vectorize_opts = {
+				.modes = nir_var_mem_ssbo | nir_var_mem_ubo |
+					 nir_var_mem_push_const | nir_var_mem_shared |
+					 nir_var_mem_global,
+				.callback = mem_vectorize_callback,
+				.robust_modes = 0,
+			};
 
 			if (device->robust_buffer_access) {
-				robust_modes = nir_var_mem_ubo |
-					       nir_var_mem_ssbo |
-					       nir_var_mem_global |
-					       nir_var_mem_push_const;
+				vectorize_opts.robust_modes = nir_var_mem_ubo |
+							      nir_var_mem_ssbo |
+							      nir_var_mem_global |
+							      nir_var_mem_push_const;
 			}
 
-			if (nir_opt_load_store_vectorize(nir[i],
-							 nir_var_mem_ssbo | nir_var_mem_ubo |
-							 nir_var_mem_push_const | nir_var_mem_shared |
-							 nir_var_mem_global,
-							 mem_vectorize_callback, robust_modes)) {
+			if (nir_opt_load_store_vectorize(nir[i], &vectorize_opts)) {
 				lower_to_scalar = true;
 				lower_pack = true;
 			}

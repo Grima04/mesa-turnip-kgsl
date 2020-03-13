@@ -2275,8 +2275,12 @@ ntt_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
                control_flow_depth == 0 ? ~0 : 8, true, true);
       NIR_PASS(progress, s, nir_opt_algebraic);
       NIR_PASS(progress, s, nir_opt_constant_folding);
-      NIR_PASS(progress, s, nir_opt_load_store_vectorize, nir_var_mem_ubo,
-               ntt_should_vectorize_io, 0);
+      nir_load_store_vectorize_options vectorize_opts = {
+         .modes = nir_var_mem_ubo,
+         .callback = ntt_should_vectorize_io,
+         .robust_modes = 0,
+      };
+      NIR_PASS(progress, s, nir_opt_load_store_vectorize, &vectorize_opts);
       NIR_PASS(progress, s, nir_opt_shrink_vectors);
       NIR_PASS(progress, s, nir_opt_trivial_continues);
       NIR_PASS(progress, s, nir_opt_vectorize, ntt_should_vectorize_instr, NULL);
