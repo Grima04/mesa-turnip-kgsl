@@ -440,6 +440,11 @@ typedef struct nir_variable {
       unsigned explicit_offset:1;
 
       /**
+       * Layout of the matrix.  Uses glsl_matrix_layout values.
+       */
+      unsigned matrix_layout:2;
+
+      /**
        * Non-zero if this variable was created by lowering a named interface
        * block.
        */

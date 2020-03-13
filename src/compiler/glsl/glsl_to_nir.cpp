@@ -464,6 +464,7 @@ nir_visitor::visit(ir_variable *ir)
 
    var->data.precision = ir->data.precision;
    var->data.explicit_location = ir->data.explicit_location;
+   var->data.matrix_layout = ir->data.matrix_layout;
    var->data.from_named_ifc_block = ir->data.from_named_ifc_block;
    var->data.compact = false;
 
