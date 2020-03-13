@@ -647,10 +647,10 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    if (!job)
       return;
 
-   v3dv_cmd_buffer_start_frame(cmd_buffer,
-                               region->imageExtent.width,
-                               region->imageExtent.height,
-                               num_layers, 1, internal_bpp);
+   v3dv_job_start_frame(job,
+                        region->imageExtent.width,
+                        region->imageExtent.height,
+                        num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
@@ -790,10 +790,10 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    if (!job)
       return;
 
-   v3dv_cmd_buffer_start_frame(cmd_buffer,
-                               region->extent.width,
-                               region->extent.height,
-                               num_layers, 1, internal_bpp);
+   v3dv_job_start_frame(job,
+                        region->extent.width,
+                        region->extent.height,
+                        num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
@@ -935,8 +935,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          if (!job)
             return;
 
-         v3dv_cmd_buffer_start_frame(cmd_buffer, width, height, 1,
-                                     1, internal_bpp);
+         v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
 
          struct framebuffer_data framebuffer;
          setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
@@ -1143,8 +1142,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       uint32_t width, height;
       framebuffer_size_for_pixel_count(num_items, &width, &height);
 
-      v3dv_cmd_buffer_start_frame(cmd_buffer, width, height, 1,
-                                  1, internal_bpp);
+      v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
 
       struct framebuffer_data framebuffer;
       setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
@@ -1315,7 +1313,7 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       uint32_t width, height;
       framebuffer_size_for_pixel_count(num_items, &width, &height);
 
-      v3dv_cmd_buffer_start_frame(cmd_buffer, width, height, 1, 1, internal_bpp);
+      v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
 
       struct framebuffer_data framebuffer;
       setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
@@ -1502,10 +1500,10 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    if (!job)
       return;
 
-   v3dv_cmd_buffer_start_frame(cmd_buffer,
-                               region->imageExtent.width,
-                               region->imageExtent.height,
-                               num_layers, 1, internal_bpp);
+   v3dv_job_start_frame(job,
+                        region->imageExtent.width,
+                        region->imageExtent.height,
+                        num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);

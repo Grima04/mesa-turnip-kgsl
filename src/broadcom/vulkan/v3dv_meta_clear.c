@@ -262,12 +262,12 @@ emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
    const uint8_t internal_bpp =
       v3dv_framebuffer_compute_internal_bpp(framebuffer, subpass);
 
-   v3dv_cmd_buffer_start_frame(cmd_buffer,
-                               framebuffer->width,
-                               framebuffer->height,
-                               framebuffer->layers,
-                               color_attachment_count,
-                               internal_bpp);
+   v3dv_job_start_frame(job,
+                        framebuffer->width,
+                        framebuffer->height,
+                        framebuffer->layers,
+                        color_attachment_count,
+                        internal_bpp);
 
    struct v3dv_cl *rcl = &job->rcl;
    v3dv_cl_ensure_space_with_branch(rcl, 200 +
@@ -427,12 +427,12 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
     */
    job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
 
-   v3dv_cmd_buffer_start_frame(cmd_buffer,
-                               subpass_tiling.width,
-                               subpass_tiling.height,
-                               subpass_tiling.layers,
-                               subpass_tiling.render_target_count,
-                               subpass_tiling.internal_bpp);
+   v3dv_job_start_frame(job,
+                        subpass_tiling.width,
+                        subpass_tiling.height,
+                        subpass_tiling.layers,
+                        subpass_tiling.render_target_count,
+                        subpass_tiling.internal_bpp);
 
    job->is_subpass_continue = true;
 }

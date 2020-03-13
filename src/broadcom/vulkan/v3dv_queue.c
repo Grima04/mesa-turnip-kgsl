@@ -132,7 +132,7 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
 }
 
 static VkResult
-queue_submit_job(struct v3dv_job *job, bool do_wait)
+queue_submit_job(struct v3dv_queue *queue, struct v3dv_job *job, bool do_wait)
 {
    assert(job);
 
@@ -150,10 +150,10 @@ queue_submit_job(struct v3dv_job *job, bool do_wait)
     * we have more than one semaphore to wait on.
     */
    submit.in_sync_bcl = 0;
-   submit.in_sync_rcl = do_wait ? job->cmd_buffer->device->last_job_sync : 0;
+   submit.in_sync_rcl = do_wait ? queue->device->last_job_sync : 0;
 
    /* Update the sync object for the last rendering by this device. */
-   submit.out_sync = job->cmd_buffer->device->last_job_sync;
+   submit.out_sync = queue->device->last_job_sync;
 
    submit.bcl_start = job->bcl.bo->offset;
    submit.bcl_end = job->bcl.bo->offset + v3dv_cl_offset(&job->bcl);
@@ -182,10 +182,10 @@ queue_submit_job(struct v3dv_job *job, bool do_wait)
    assert(bo_idx == submit.bo_handle_count);
    submit.bo_handles = (uintptr_t)(void *)bo_handles;
 
-   struct v3dv_device *device = job->cmd_buffer->device;
-   v3dv_clif_dump(device, job, &submit);
+   v3dv_clif_dump(queue->device, job, &submit);
 
-   int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_CL, &submit);
+   int ret = v3dv_ioctl(queue->device->render_fd,
+                        DRM_IOCTL_V3D_SUBMIT_CL, &submit);
    static bool warned = false;
    if (ret && !warned) {
       fprintf(stderr, "Draw call returned %s. Expect corruption.\n",
@@ -202,17 +202,208 @@ queue_submit_job(struct v3dv_job *job, bool do_wait)
 }
 
 static VkResult
-queue_submit_cmd_buffer(struct v3dv_cmd_buffer *cmd_buffer,
+queue_submit_cmd_buffer(struct v3dv_queue *queue,
+                        struct v3dv_cmd_buffer *cmd_buffer,
                         const VkSubmitInfo *pSubmit)
 {
    list_for_each_entry_safe(struct v3dv_job, job,
                             &cmd_buffer->submit_jobs, list_link) {
-      VkResult result = queue_submit_job(job, pSubmit->waitSemaphoreCount > 0);
+      VkResult result = queue_submit_job(queue, job,
+                                         pSubmit->waitSemaphoreCount > 0);
       if (result != VK_SUCCESS)
          return result;
    }
 
    return VK_SUCCESS;
+}
+
+static void
+emit_noop_bin(struct v3dv_job *job)
+{
+   v3dv_job_start_frame(job, 1, 1, 1, 1, V3D_INTERNAL_BPP_32);
+   v3dv_job_emit_binning_flush(job);
+}
+
+static void
+emit_noop_render(struct v3dv_job *job)
+{
+   struct v3dv_cl *rcl = &job->rcl;
+   v3dv_cl_ensure_space_with_branch(rcl, 200 + 1 * 256 *
+                                    cl_packet_length(SUPERTILE_COORDINATES));
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
+      config.early_z_disable = true;
+      config.image_width_pixels = 1;
+      config.image_height_pixels = 1;
+      config.number_of_render_targets = 1;
+      config.multisample_mode_4x = false;
+      config.maximum_bpp_of_all_render_targets = V3D_INTERNAL_BPP_32;
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
+      rt.render_target_0_internal_bpp = V3D_INTERNAL_BPP_32;
+      rt.render_target_0_internal_type = V3D_INTERNAL_TYPE_8;
+      rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
+   }
+
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
+      clear.z_clear_value = 1.0f;
+      clear.stencil_clear_value = 0;
+   };
+
+   cl_emit(rcl, TILE_LIST_INITIAL_BLOCK_SIZE, init) {
+      init.use_auto_chained_tile_lists = true;
+      init.size_of_first_block_in_chained_tile_lists =
+         TILE_ALLOCATION_BLOCK_SIZE_64B;
+   }
+
+   cl_emit(rcl, MULTICORE_RENDERING_TILE_LIST_SET_BASE, list) {
+      list.address = v3dv_cl_address(job->tile_alloc, 0);
+   }
+
+   cl_emit(rcl, MULTICORE_RENDERING_SUPERTILE_CFG, config) {
+      config.number_of_bin_tile_lists = 1;
+      config.total_frame_width_in_tiles = 1;
+      config.total_frame_height_in_tiles = 1;
+      config.supertile_width_in_tiles = 1;
+      config.supertile_height_in_tiles = 1;
+      config.total_frame_width_in_supertiles = 1;
+      config.total_frame_height_in_supertiles = 1;
+   }
+
+   struct v3dv_cl *icl = &job->indirect;
+   v3dv_cl_ensure_space(icl, 200, 1);
+   struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(icl);
+
+   cl_emit(icl, TILE_COORDINATES_IMPLICIT, coords);
+
+   cl_emit(icl, END_OF_LOADS, end);
+
+   cl_emit(icl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
+
+   cl_emit(icl, STORE_TILE_BUFFER_GENERAL, store) {
+      store.buffer_to_store = NONE;
+   }
+
+   cl_emit(icl, END_OF_TILE_MARKER, end);
+
+   cl_emit(icl, RETURN_FROM_SUB_LIST, ret);
+
+   cl_emit(rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
+      branch.start = tile_list_start;
+      branch.end = v3dv_cl_get_address(icl);
+   }
+
+   cl_emit(rcl, SUPERTILE_COORDINATES, coords) {
+      coords.column_number_in_supertiles = 0;
+      coords.row_number_in_supertiles = 0;
+   }
+
+   cl_emit(rcl, END_OF_RENDERING, end);
+}
+
+static VkResult
+queue_create_noop_job(struct v3dv_queue *queue, struct v3dv_job **job)
+{
+   *job = vk_zalloc(&queue->device->alloc, sizeof(struct v3dv_job), 8,
+                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!*job)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   v3dv_job_init(*job, queue->device, NULL, -1);
+
+   emit_noop_bin(*job);
+   emit_noop_render(*job);
+
+   return VK_SUCCESS;
+}
+
+void
+v3dv_queue_destroy_completed_noop_jobs(struct v3dv_queue *queue)
+{
+   struct v3dv_device *device = queue->device;
+   VkDevice _device = v3dv_device_to_handle(device);
+
+   list_for_each_entry_safe(struct v3dv_job, job,
+                            &queue->noop_jobs, list_link) {
+      assert(job->fence);
+      if (!drmSyncobjWait(device->render_fd, &job->fence->sync, 1, 0, 0, NULL)) {
+         v3dv_job_destroy(job);
+         v3dv_DestroyFence(_device, v3dv_fence_to_handle(job->fence), NULL);
+      }
+   }
+}
+
+static VkResult
+queue_submit_noop_job(struct v3dv_queue *queue, const VkSubmitInfo *pSubmit)
+{
+   VkResult result;
+   bool can_destroy_job = true;
+
+   struct v3dv_device *device = queue->device;
+   VkDevice _device = v3dv_device_to_handle(device);
+
+   /* Create noop job */
+   struct v3dv_job *job;
+   result = queue_create_noop_job(queue, &job);
+   if (result != VK_SUCCESS)
+      goto fail_job;
+
+   /* Create a fence for the job */
+   VkFence _fence;
+   VkFenceCreateInfo fence_info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .pNext = NULL,
+      .flags = 0
+   };
+
+   result = v3dv_CreateFence(_device, &fence_info, NULL, &_fence);
+   if (result != VK_SUCCESS)
+      goto fail_fence;
+
+   /* Submit the job */
+   result = queue_submit_job(queue, job, pSubmit->waitSemaphoreCount > 0);
+   if (result != VK_SUCCESS)
+      goto fail_submit;
+
+   list_addtail(&job->list_link, &queue->noop_jobs);
+
+   /* At this point we have submitted the job for execution and we can no
+    * longer destroy it until we know it has completed execution on the GPU.
+    */
+   can_destroy_job = false;
+
+   /* Bind a fence to the job we have just submitted so we can poll if the job
+    * has completed.
+    */
+   if (process_fence_to_signal(device, _fence) != VK_SUCCESS) {
+      /* If we could not bind the fence, then we need to do a sync wait so
+       * we don't leak the job. If the sync wait also fails, then we are
+       * out of options.
+       */
+      int ret = drmSyncobjWait(device->render_fd,
+                               &device->last_job_sync, 1, INT64_MAX, 0, NULL);
+      if (!ret)
+         can_destroy_job = true;
+      else
+         result = VK_ERROR_DEVICE_LOST;
+
+      goto fail_signal_fence;
+   }
+
+   job->fence = v3dv_fence_from_handle(_fence);
+
+   return result;
+
+fail_signal_fence:
+fail_submit:
+   v3dv_DestroyFence(_device, _fence, NULL);
+
+fail_fence:
+   if (can_destroy_job)
+      v3dv_job_destroy(job);
+
+fail_job:
+   return result;
 }
 
 static VkResult
@@ -221,13 +412,26 @@ queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
                               VkFence fence)
 {
    VkResult result = VK_SUCCESS;
-   for (uint32_t i = 0; i < pSubmit->commandBufferCount; i++) {
-      struct v3dv_cmd_buffer *cmd_buffer =
-         v3dv_cmd_buffer_from_handle(pSubmit->pCommandBuffers[i]);
-      result = queue_submit_cmd_buffer(cmd_buffer, pSubmit);
-      if (result != VK_SUCCESS)
-         return result;
+
+   /* Even if we don't have any actual work to submit we still need to wait
+    * on the wait semaphores and signal the signal semaphores and fence, so
+    * in this scenario we just submit a trivial no-op job so we don't have
+    * to do anything special, it should not be a common case anyway.
+    */
+   if (pSubmit->commandBufferCount == 0) {
+      result = queue_submit_noop_job(queue, pSubmit);
+   } else {
+      for (uint32_t i = 0; i < pSubmit->commandBufferCount; i++) {
+         struct v3dv_cmd_buffer *cmd_buffer =
+            v3dv_cmd_buffer_from_handle(pSubmit->pCommandBuffers[i]);
+         result = queue_submit_cmd_buffer(queue, cmd_buffer, pSubmit);
+         if (result != VK_SUCCESS)
+            break;
+      }
    }
+
+   if (result != VK_SUCCESS)
+      return result;
 
    result = process_semaphores_to_signal(queue->device,
                                          pSubmit->signalSemaphoreCount,
@@ -245,6 +449,8 @@ v3dv_QueueSubmit(VkQueue _queue,
                  VkFence fence)
 {
    V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
+
+   v3dv_queue_destroy_completed_noop_jobs(queue);
 
    VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < submitCount; i++) {

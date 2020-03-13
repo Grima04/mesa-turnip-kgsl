@@ -202,8 +202,15 @@ struct v3dv_queue {
 
    VkDeviceQueueCreateFlags flags;
 
-   /* FIXME: stub */
+   /* When the client submits to the queue without a command buffer the queue
+    * needs to create and submit a no-op job and it is then responsible from
+    * destroying it once it has completed execution. This list keeps references
+    * to all no-op jobs in flight so we can do that.
+    */
+   struct list_head noop_jobs;
 };
+
+void v3dv_queue_destroy_completed_noop_jobs(struct v3dv_queue *queue);
 
 struct v3dv_device {
    VK_LOADER_DATA _loader_data;
@@ -536,6 +543,8 @@ enum v3dv_ez_state {
 struct v3dv_job {
    struct list_head list_link;
 
+   struct v3dv_device *device;
+
    struct v3dv_cmd_buffer *cmd_buffer;
 
    struct v3dv_cl bcl;
@@ -573,11 +582,30 @@ struct v3dv_job {
 
    enum v3dv_ez_state ez_state;
    enum v3dv_ez_state first_ez_state;
+
+   /* Typically, the client is responsible for handling the life-time of
+    * command buffers by using fences to tell when they are no longer in
+    * use by the GPU, however, when the jobs that are submitted to the GPU
+    * are created internally by the driver (for example when we need to
+    * submit no-op jobs), then it is our responsibility to do that.
+    */
+   struct v3dv_fence *fence;
 };
 
+void v3dv_job_init(struct v3dv_job *job,
+                   struct v3dv_device *device,
+                   struct v3dv_cmd_buffer *cmd_buffer,
+                   int32_t subpass_idx);
+void v3dv_job_destroy(struct v3dv_job *job);
 void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);
 void v3dv_job_add_extra_bo(struct v3dv_job *job, struct v3dv_bo *bo);
 void v3dv_job_emit_binning_flush(struct v3dv_job *job);
+void v3dv_job_start_frame(struct v3dv_job *job,
+                          uint32_t width,
+                          uint32_t height,
+                          uint32_t layers,
+                          uint32_t render_target_count,
+                          uint8_t max_internal_bpp);
 
 struct v3dv_vertex_binding {
    struct v3dv_buffer *buffer;
@@ -647,12 +675,6 @@ struct v3dv_cmd_buffer {
 struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
                                            int32_t subpass_idx);
 void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
-void v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
-                                 uint32_t width,
-                                 uint32_t height,
-                                 uint32_t layers,
-                                 uint32_t render_target_count,
-                                 uint8_t max_internal_bpp);
 
 void v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
                                           int rt,

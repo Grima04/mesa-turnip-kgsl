@@ -156,8 +156,8 @@ cmd_buffer_create(struct v3dv_device *device,
    return VK_SUCCESS;
 }
 
-static void
-job_destroy(struct v3dv_job *job)
+void
+v3dv_job_destroy(struct v3dv_job *job)
 {
    assert(job);
 
@@ -180,14 +180,14 @@ job_destroy(struct v3dv_job *job)
 
    set_foreach(job->extra_bos, entry) {
       struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
-      v3dv_bo_free(job->cmd_buffer->device, bo);
+      v3dv_bo_free(job->device, bo);
    }
    _mesa_set_destroy(job->extra_bos, NULL);
 
-   v3dv_bo_free(job->cmd_buffer->device, job->tile_alloc);
-   v3dv_bo_free(job->cmd_buffer->device, job->tile_state);
+   v3dv_bo_free(job->device, job->tile_alloc);
+   v3dv_bo_free(job->device, job->tile_state);
 
-   vk_free(&job->cmd_buffer->device->alloc, job);
+   vk_free(&job->device->alloc, job);
 }
 
 static void
@@ -197,11 +197,11 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 
    list_for_each_entry_safe(struct v3dv_job, job,
                             &cmd_buffer->submit_jobs, list_link) {
-      job_destroy(job);
+      v3dv_job_destroy(job);
    }
 
    if (cmd_buffer->state.job)
-      job_destroy(cmd_buffer->state.job);
+      v3dv_job_destroy(cmd_buffer->state.job);
 
    if (cmd_buffer->state.attachments) {
       assert(cmd_buffer->state.attachment_count > 0);
@@ -373,14 +373,13 @@ job_compute_frame_tiling(struct v3dv_job *job,
 }
 
 void
-v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
-                            uint32_t width,
-                            uint32_t height,
-                            uint32_t layers,
-                            uint32_t render_target_count,
-                            uint8_t max_internal_bpp)
+v3dv_job_start_frame(struct v3dv_job *job,
+                     uint32_t width,
+                     uint32_t height,
+                     uint32_t layers,
+                     uint32_t render_target_count,
+                     uint8_t max_internal_bpp)
 {
-   struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
    /* Start by computing frame tiling spec for this job */
@@ -413,7 +412,7 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
     */
    tile_alloc_size += 512 * 1024;
 
-   job->tile_alloc = v3dv_bo_alloc(cmd_buffer->device, tile_alloc_size,
+   job->tile_alloc = v3dv_bo_alloc(job->device, tile_alloc_size,
                                    "tile_alloc");
    v3dv_job_add_bo(job, job->tile_alloc);
 
@@ -422,7 +421,7 @@ v3dv_cmd_buffer_start_frame(struct v3dv_cmd_buffer *cmd_buffer,
                                     tiling->draw_tiles_x *
                                     tiling->draw_tiles_y *
                                     tsda_per_tile_size;
-   job->tile_state = v3dv_bo_alloc(cmd_buffer->device, tile_state_size, "TSDA");
+   job->tile_state = v3dv_bo_alloc(job->device, tile_state_size, "TSDA");
    v3dv_job_add_bo(job, job->tile_state);
 
    /* This must go before the binning mode configuration. It is
@@ -483,6 +482,41 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.job = NULL;
 }
 
+void
+v3dv_job_init(struct v3dv_job *job,
+              struct v3dv_device *device,
+              struct v3dv_cmd_buffer *cmd_buffer,
+              int32_t subpass_idx)
+{
+   assert(job);
+
+   job->device = device;
+   job->cmd_buffer = cmd_buffer;
+
+   job->bos =
+      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   job->bo_count = 0;
+
+   job->extra_bos =
+      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+
+   v3dv_cl_init(job, &job->bcl);
+   v3dv_cl_begin(&job->bcl);
+
+   v3dv_cl_init(job, &job->rcl);
+   v3dv_cl_begin(&job->rcl);
+
+   v3dv_cl_init(job, &job->indirect);
+   v3dv_cl_begin(&job->indirect);
+
+   /* Keep track of the first subpass that we are recording in this new job.
+    * We will use this when we emit the RCL to decide how to emit our loads
+    * and stores.
+    */
+   if (cmd_buffer && cmd_buffer->state.pass)
+      job->first_subpass = subpass_idx;
+}
+
 struct v3dv_job *
 v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
                           int32_t subpass_idx)
@@ -514,30 +548,7 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
       return NULL;
    }
 
-   job->cmd_buffer = cmd_buffer;
-
-   job->bos =
-      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   job->bo_count = 0;
-
-   job->extra_bos =
-      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-
-   v3dv_cl_init(job, &job->bcl);
-   v3dv_cl_begin(&job->bcl);
-
-   v3dv_cl_init(job, &job->rcl);
-   v3dv_cl_begin(&job->rcl);
-
-   v3dv_cl_init(job, &job->indirect);
-   v3dv_cl_begin(&job->indirect);
-
-   /* Keep track of the first subpass that we are recording in this new job.
-    * We will use this when we emit the RCL to decide how to emit our loads
-    * and stores.
-    */
-   if (cmd_buffer->state.pass)
-      job->first_subpass = subpass_idx;
+   v3dv_job_init(job, cmd_buffer->device, cmd_buffer, subpass_idx);
 
    return job;
 }
@@ -1506,12 +1517,12 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
       const uint8_t internal_bpp =
          v3dv_framebuffer_compute_internal_bpp(framebuffer, subpass);
 
-      v3dv_cmd_buffer_start_frame(cmd_buffer,
-                                  framebuffer->width,
-                                  framebuffer->height,
-                                  framebuffer->layers,
-                                  subpass->color_count,
-                                  internal_bpp);
+      v3dv_job_start_frame(job,
+                           framebuffer->width,
+                           framebuffer->height,
+                           framebuffer->layers,
+                           subpass->color_count,
+                           internal_bpp);
    }
 
    /* If we don't have a scissor or viewport defined let's just use the render
