@@ -2706,7 +2706,11 @@ static LLVMValueRef enter_waterfall_image(struct ac_nir_context *ctx,
 					  struct waterfall_context *wctx,
 					  const nir_intrinsic_instr *instr)
 {
-	nir_deref_instr *deref_instr = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
+	nir_deref_instr *deref_instr = NULL;
+
+	if (instr->src[0].ssa->parent_instr->type == nir_instr_type_deref)
+		deref_instr = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
+
 	LLVMValueRef value = get_sampler_desc_index(ctx, deref_instr, &instr->instr, true);
 	return enter_waterfall(ctx, wctx, value, nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM);
 }
@@ -4282,20 +4286,18 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx,
 		}
 	}
 
+	LLVMValueRef texture_dynamic_index = get_sampler_desc_index(ctx, texture_deref_instr,
+								    &instr->instr, false);
 	if (!sampler_deref_instr)
 		sampler_deref_instr = texture_deref_instr;
 
-	LLVMValueRef texture_dynamic_index = NULL, sampler_dynamic_index = NULL;
-	if (texture_deref_instr) {
-		texture_dynamic_index = get_sampler_desc_index(ctx, texture_deref_instr, &instr->instr, false);
-		texture_dynamic_index = enter_waterfall(ctx, wctx + 0, texture_dynamic_index, instr->texture_non_uniform);
-	}
+        LLVMValueRef sampler_dynamic_index = get_sampler_desc_index(ctx, sampler_deref_instr,
+								    &instr->instr, false);
+	if (instr->texture_non_uniform)
+		texture_dynamic_index = enter_waterfall(ctx, wctx + 0, texture_dynamic_index, true);
 
-	if (sampler_deref_instr && sampler_deref_instr != texture_deref_instr) {
-		sampler_dynamic_index = get_sampler_desc_index(ctx, sampler_deref_instr, &instr->instr, false);
-		sampler_dynamic_index = enter_waterfall(ctx, wctx + 1, sampler_dynamic_index, instr->sampler_non_uniform);
-	} else
-		sampler_dynamic_index = texture_dynamic_index;
+	if (instr->sampler_non_uniform)
+		sampler_dynamic_index = enter_waterfall(ctx, wctx + 1, sampler_dynamic_index, true);
 
 	enum ac_descriptor_type main_descriptor = instr->sampler_dim  == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE;
 
