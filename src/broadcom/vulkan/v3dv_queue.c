@@ -83,17 +83,17 @@ process_semaphores_to_signal(struct v3dv_device *device,
    if (count == 0)
       return VK_SUCCESS;
 
+   int fd;
+   drmSyncobjExportSyncFile(device->render_fd, device->last_job_sync, &fd);
+   if (fd == -1)
+      return VK_ERROR_DEVICE_LOST;
+
    for (uint32_t i = 0; i < count; i++) {
       struct v3dv_semaphore *sem = v3dv_semaphore_from_handle(sems[i]);
 
       if (sem->fd >= 0)
          close(sem->fd);
       sem->fd = -1;
-
-      int fd;
-      drmSyncobjExportSyncFile(device->render_fd, device->last_job_sync, &fd);
-      if (fd == -1)
-         return VK_ERROR_DEVICE_LOST;
 
       int ret = drmSyncobjImportSyncFile(device->render_fd, sem->sync, fd);
       if (ret)
