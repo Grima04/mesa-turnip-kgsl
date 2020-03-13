@@ -390,7 +390,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
                  SI_CONTEXT_INV_L2 | SI_CONTEXT_START_PIPELINE_STATS;
 
    ctx->cs_shader_state.initialized = false;
-   si_all_descriptors_begin_new_cs(ctx);
+   si_add_all_descriptors_to_bo_list(ctx);
+   si_shader_pointers_mark_dirty(ctx);
 
    if (!ctx->has_graphics) {
       ctx->initial_gfx_cs_size = ctx->gfx_cs->current.cdw;

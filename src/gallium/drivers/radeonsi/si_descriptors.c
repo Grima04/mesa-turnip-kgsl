@@ -178,7 +178,8 @@ static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors
    return true;
 }
 
-static void si_descriptors_begin_new_cs(struct si_context *sctx, struct si_descriptors *desc)
+static void
+si_add_descriptors_to_bo_list(struct si_context *sctx, struct si_descriptors *desc)
 {
    if (!desc->buffer)
       return;
@@ -1929,7 +1930,7 @@ static void si_mark_shader_pointers_dirty(struct si_context *sctx, unsigned shad
    si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
 }
 
-static void si_shader_pointers_begin_new_cs(struct si_context *sctx)
+void si_shader_pointers_mark_dirty(struct si_context *sctx)
 {
    sctx->shader_pointers_dirty = u_bit_consecutive(0, SI_NUM_DESCS);
    sctx->vertex_buffer_pointer_dirty = sctx->vb_descriptors_buffer != NULL;
@@ -2804,13 +2805,11 @@ void si_compute_resources_add_all_to_bo_list(struct si_context *sctx)
    sctx->bo_list_add_all_compute_resources = false;
 }
 
-void si_all_descriptors_begin_new_cs(struct si_context *sctx)
+void si_add_all_descriptors_to_bo_list(struct si_context *sctx)
 {
    for (unsigned i = 0; i < SI_NUM_DESCS; ++i)
-      si_descriptors_begin_new_cs(sctx, &sctx->descriptors[i]);
-   si_descriptors_begin_new_cs(sctx, &sctx->bindless_descriptors);
-
-   si_shader_pointers_begin_new_cs(sctx);
+      si_add_descriptors_to_bo_list(sctx, &sctx->descriptors[i]);
+   si_add_descriptors_to_bo_list(sctx, &sctx->bindless_descriptors);
 
    sctx->bo_list_add_all_resident_resources = true;
    sctx->bo_list_add_all_gfx_resources = true;
