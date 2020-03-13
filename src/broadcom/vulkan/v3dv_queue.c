@@ -86,7 +86,7 @@ process_semaphores_to_signal(struct v3dv_device *device,
    int fd;
    drmSyncobjExportSyncFile(device->render_fd, device->last_job_sync, &fd);
    if (fd == -1)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    for (uint32_t i = 0; i < count; i++) {
       struct v3dv_semaphore *sem = v3dv_semaphore_from_handle(sems[i]);
@@ -97,7 +97,7 @@ process_semaphores_to_signal(struct v3dv_device *device,
 
       int ret = drmSyncobjImportSyncFile(device->render_fd, sem->sync, fd);
       if (ret)
-         return VK_ERROR_OUT_OF_HOST_MEMORY;
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
       sem->fd = fd;
    }
@@ -120,11 +120,11 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
    int fd;
    drmSyncobjExportSyncFile(device->render_fd, device->last_job_sync, &fd);
    if (fd == -1)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    int ret = drmSyncobjImportSyncFile(device->render_fd, fence->sync, fd);
    if (ret)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    fence->fd = fd;
 
@@ -135,6 +135,8 @@ static VkResult
 queue_submit_job(struct v3dv_queue *queue, struct v3dv_job *job, bool do_wait)
 {
    assert(job);
+
+   struct v3dv_device *device = queue->device;
 
    struct drm_v3d_submit_cl submit;
 
@@ -150,10 +152,10 @@ queue_submit_job(struct v3dv_queue *queue, struct v3dv_job *job, bool do_wait)
     * we have more than one semaphore to wait on.
     */
    submit.in_sync_bcl = 0;
-   submit.in_sync_rcl = do_wait ? queue->device->last_job_sync : 0;
+   submit.in_sync_rcl = do_wait ? device->last_job_sync : 0;
 
    /* Update the sync object for the last rendering by this device. */
-   submit.out_sync = queue->device->last_job_sync;
+   submit.out_sync = device->last_job_sync;
 
    submit.bcl_start = job->bcl.bo->offset;
    submit.bcl_end = job->bcl.bo->offset + v3dv_cl_offset(&job->bcl);
@@ -182,10 +184,9 @@ queue_submit_job(struct v3dv_queue *queue, struct v3dv_job *job, bool do_wait)
    assert(bo_idx == submit.bo_handle_count);
    submit.bo_handles = (uintptr_t)(void *)bo_handles;
 
-   v3dv_clif_dump(queue->device, job, &submit);
+   v3dv_clif_dump(device, job, &submit);
 
-   int ret = v3dv_ioctl(queue->device->render_fd,
-                        DRM_IOCTL_V3D_SUBMIT_CL, &submit);
+   int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_CL, &submit);
    static bool warned = false;
    if (ret && !warned) {
       fprintf(stderr, "Draw call returned %s. Expect corruption.\n",
@@ -196,7 +197,7 @@ queue_submit_job(struct v3dv_queue *queue, struct v3dv_job *job, bool do_wait)
    free(bo_handles);
 
    if (ret)
-      return VK_ERROR_DEVICE_LOST;
+      return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
 
    return VK_SUCCESS;
 }
@@ -305,11 +306,12 @@ emit_noop_render(struct v3dv_job *job)
 static VkResult
 queue_create_noop_job(struct v3dv_queue *queue, struct v3dv_job **job)
 {
-   *job = vk_zalloc(&queue->device->alloc, sizeof(struct v3dv_job), 8,
+   struct v3dv_device *device = queue->device;
+   *job = vk_zalloc(&device->alloc, sizeof(struct v3dv_job), 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!*job)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-   v3dv_job_init(*job, queue->device, NULL, -1);
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   v3dv_job_init(*job, device, NULL, -1);
 
    emit_noop_bin(*job);
    emit_noop_render(*job);
@@ -385,7 +387,7 @@ queue_submit_noop_job(struct v3dv_queue *queue, const VkSubmitInfo *pSubmit)
       if (!ret)
          can_destroy_job = true;
       else
-         result = VK_ERROR_DEVICE_LOST;
+         result = vk_error(device->instance, VK_ERROR_DEVICE_LOST);
 
       goto fail_signal_fence;
    }
@@ -600,7 +602,9 @@ v3dv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
 
    vk_free(&device->alloc, syncobjs);
 
-   return ret ? VK_ERROR_OUT_OF_HOST_MEMORY : VK_SUCCESS;
+   if (ret)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   return VK_SUCCESS;
 }
 
 VkResult
