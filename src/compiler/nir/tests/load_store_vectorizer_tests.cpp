@@ -355,7 +355,14 @@ bool nir_load_store_vectorize_test::mem_vectorize_callback(
    unsigned num_components,
    nir_intrinsic_instr *low, nir_intrinsic_instr *high)
 {
-   return bit_size / 8;
+   /* Calculate a simple alignment, like how nir_intrinsic_align() does. */
+   uint32_t align = align_mul;
+   if (align_offset)
+      align = 1 << (ffs(align_offset) - 1);
+
+   /* Require scalar alignment and less than 5 components. */
+   return align % (bit_size / 8) == 0 &&
+          num_components <= 4;
 }
 
 void nir_load_store_vectorize_test::shared_type_info(
