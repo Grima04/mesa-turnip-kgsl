@@ -2417,7 +2417,19 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x8e04" name="RB_UNKNOWN_8E04"/>
 
-	<reg32 offset="0x8e07" name="RB_CCU_CNTL"/>  <!-- always 7c400004 or 10000000 -->
+	<reg32 offset="0x8e07" name="RB_CCU_CNTL">
+		<!-- offset into GMEM for something.
+			important for sysmem path
+			BLIT_OP_SCALE also writes to GMEM at this offset for GMEM store
+			blob values for GMEM path (note: close to GMEM size):
+			a618: 0x7c000 a630/a640: 0xf8000 a650: 0x114000
+			SYSMEM path values:
+			a618: 0x10000 a630/a640: 0x20000 a650: 0x30000
+		-->
+		<bitfield name="OFFSET" low="23" high="31" shr="12" type="uint"/>
+		<bitfield name="GMEM" pos="22" type="boolean"/> <!-- set for GMEM path -->
+		<bitfield name="UNK2" pos="2" type="boolean"/> <!-- sometimes set with GMEM? -->
+	</reg32>
 
 	<reg32 offset="0x9100" name="VPC_UNKNOWN_9100"/>
 

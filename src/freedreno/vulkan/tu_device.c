@@ -268,7 +268,9 @@ tu_physical_device_init(struct tu_physical_device *device,
       device->tile_align_w = 64;
       device->tile_align_h = 16;
       device->magic.RB_UNKNOWN_8E04_blit = 0x00100000;
-      device->magic.RB_CCU_CNTL_gmem     = 0x3e400004;
+      device->magic.RB_CCU_CNTL_gmem = A6XX_RB_CCU_CNTL_OFFSET(0x7c000) |
+                                       A6XX_RB_CCU_CNTL_GMEM |
+                                       A6XX_RB_CCU_CNTL_UNK2;
       device->magic.PC_UNKNOWN_9805 = 0x0;
       device->magic.SP_UNKNOWN_A0F8 = 0x0;
       break;
@@ -277,7 +279,9 @@ tu_physical_device_init(struct tu_physical_device *device,
       device->tile_align_w = 64;
       device->tile_align_h = 16;
       device->magic.RB_UNKNOWN_8E04_blit = 0x01000000;
-      device->magic.RB_CCU_CNTL_gmem     = 0x7c400004;
+      device->magic.RB_CCU_CNTL_gmem = A6XX_RB_CCU_CNTL_OFFSET(0xf8000) |
+                                       A6XX_RB_CCU_CNTL_GMEM |
+                                       A6XX_RB_CCU_CNTL_UNK2;
       device->magic.PC_UNKNOWN_9805 = 0x1;
       device->magic.SP_UNKNOWN_A0F8 = 0x1;
       break;

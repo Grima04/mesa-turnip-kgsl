@@ -1051,7 +1051,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 0xfffff);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_CCU_CNTL, 0x10000000);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_CCU_CNTL, A6XX_RB_CCU_CNTL_OFFSET(0x20000));
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E04, 0x00100000);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE04, 0x8);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE00, 0);
@@ -1394,7 +1394,7 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_wfi(cs);
 
    tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(.unknown = phys_dev->magic.RB_CCU_CNTL_gmem));
+                   A6XX_RB_CCU_CNTL(.dword = phys_dev->magic.RB_CCU_CNTL_gmem));
 
    cmd->wait_for_idle = false;
 }
@@ -1498,7 +1498,7 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    tu6_emit_wfi(cmd, cs);
    tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(0x10000000));
+                   A6XX_RB_CCU_CNTL(.offset = 0x20000));
 
    /* enable stream-out, with sysmem there is only one pass: */
    tu_cs_emit_regs(cs,
@@ -1561,7 +1561,7 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    /* 0x10000000 for BYPASS.. 0x7c13c080 for GMEM: */
    tu6_emit_wfi(cmd, cs);
    tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(phys_dev->magic.RB_CCU_CNTL_gmem));
+                   A6XX_RB_CCU_CNTL(.dword = phys_dev->magic.RB_CCU_CNTL_gmem));
 
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
    if (use_hw_binning(cmd)) {
