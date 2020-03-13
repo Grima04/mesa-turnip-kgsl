@@ -649,7 +649,8 @@ new_bitsize_acceptable(struct vectorize_ctx *ctx, unsigned new_bit_size,
    if (!ctx->options->callback(low->align_mul,
                                low->align_offset,
                                new_bit_size, new_num_components,
-                               low->intrin, high->intrin))
+                               low->intrin, high->intrin,
+                               ctx->options->cb_data))
       return false;
 
    if (low->is_store) {

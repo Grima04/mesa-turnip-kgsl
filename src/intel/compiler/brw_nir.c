@@ -969,7 +969,8 @@ brw_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
                              unsigned bit_size,
                              unsigned num_components,
                              nir_intrinsic_instr *low,
-                             nir_intrinsic_instr *high)
+                             nir_intrinsic_instr *high,
+                             void *data)
 {
    /* Don't combine things to generate 64-bit loads/stores.  We have to split
     * those back into 32-bit ones anyway and UBO loads aren't split in NIR so

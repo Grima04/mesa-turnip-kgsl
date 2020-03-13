@@ -150,7 +150,8 @@ ir3_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
 		unsigned bit_size,
 		unsigned num_components,
 		nir_intrinsic_instr *low,
-		nir_intrinsic_instr *high)
+		nir_intrinsic_instr *high,
+		void *data)
 {
 	assert(bit_size >= 8);
 	if (bit_size != 32)

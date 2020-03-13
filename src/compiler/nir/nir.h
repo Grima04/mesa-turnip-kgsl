@@ -5010,12 +5010,14 @@ typedef bool (*nir_should_vectorize_mem_func)(unsigned align_mul,
                                               unsigned align_offset,
                                               unsigned bit_size,
                                               unsigned num_components,
-                                              nir_intrinsic_instr *low, nir_intrinsic_instr *high);
+                                              nir_intrinsic_instr *low, nir_intrinsic_instr *high,
+                                              void *data);
 
 typedef struct {
    nir_should_vectorize_mem_func callback;
    nir_variable_mode modes;
    nir_variable_mode robust_modes;
+   void *cb_data;
 } nir_load_store_vectorize_options;
 
 bool nir_opt_load_store_vectorize(nir_shader *shader, const nir_load_store_vectorize_options *options);
