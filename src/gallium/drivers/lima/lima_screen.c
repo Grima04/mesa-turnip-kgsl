@@ -312,7 +312,6 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
 
    if (usage & PIPE_BIND_DEPTH_STENCIL) {
       switch (format) {
-      case PIPE_FORMAT_Z16_UNORM:
       case PIPE_FORMAT_Z24_UNORM_S8_UINT:
       case PIPE_FORMAT_Z24X8_UNORM:
          break;

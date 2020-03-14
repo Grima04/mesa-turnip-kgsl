@@ -83,8 +83,6 @@ static const struct lima_format lima_format_table[] = {
    LIMA_FORMAT(B4G4R4A4_UNORM,     BGRA_4444, B4G4R4A4, false, 0x8444),
    LIMA_FORMAT(Z24_UNORM_S8_UINT,  Z24S8,     Z24S8,    false, 0x0000),
    LIMA_FORMAT(Z24X8_UNORM,        Z24S8,     Z24S8,    false, 0x0000),
-   /* Blob uses L16 for Z16 */
-   LIMA_FORMAT(Z16_UNORM,          L16,       Z16,      false, 0x0000),
    LIMA_FORMAT(L16_UNORM,          L16,       NONE,     false, 0x0000),
    LIMA_FORMAT(L8_UNORM,           L8,        NONE,     false, 0x0000),
    LIMA_FORMAT(A16_UNORM,          A16,       NONE,     false, 0x0000),
