@@ -1889,7 +1889,7 @@ iris_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
    bufmgr->handle_table =
       _mesa_hash_table_create(NULL, _mesa_hash_uint, _mesa_key_uint_equal);
 
-   if (devinfo->gen >= 12) {
+   if (devinfo->has_aux_map) {
       bufmgr->aux_map_ctx = gen_aux_map_init(bufmgr, &aux_map_allocator,
                                              devinfo);
       assert(bufmgr->aux_map_ctx);
