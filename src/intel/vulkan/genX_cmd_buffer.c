@@ -1542,7 +1542,8 @@ genX(BeginCommandBuffer)(
     * ensured that we have the table even if this command buffer doesn't
     * initialize any images.
     */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
+   if (cmd_buffer->device->info.has_aux_map)
+      cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
 
    /* We send an "Indirect State Pointers Disable" packet at
     * EndCommandBuffer, so all push contant packets are ignored during a

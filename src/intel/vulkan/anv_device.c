@@ -2902,7 +2902,7 @@ VkResult anv_CreateDevice(
          goto fail_surface_state_pool;
    }
 
-   if (device->info.gen >= 12) {
+   if (device->info.has_aux_map) {
       device->aux_map_ctx = gen_aux_map_init(device, &aux_map_allocator,
                                              &physical_device->info);
       if (!device->aux_map_ctx)
@@ -3004,7 +3004,7 @@ VkResult anv_CreateDevice(
  fail_workaround_bo:
    anv_device_release_bo(device, device->workaround_bo);
  fail_surface_aux_map_pool:
-   if (device->info.gen >= 12) {
+   if (device->info.has_aux_map) {
       gen_aux_map_finish(device->aux_map_ctx);
       device->aux_map_ctx = NULL;
    }
@@ -3076,7 +3076,7 @@ void anv_DestroyDevice(
    if (device->info.gen >= 10)
       anv_device_release_bo(device, device->hiz_clear_bo);
 
-   if (device->info.gen >= 12) {
+   if (device->info.has_aux_map) {
       gen_aux_map_finish(device->aux_map_ctx);
       device->aux_map_ctx = NULL;
    }
