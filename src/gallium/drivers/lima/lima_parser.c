@@ -478,11 +478,19 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
          fprintf(fp, "(1): depth test disabled || writes not allowed");
 
       fprintf(fp, "\n\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
-      fprintf(fp, ": blend_func %d (%s)", ((*value & 0x0000000e) >> 1),
+      fprintf(fp, ": depth_func %d (%s)", ((*value & 0x0000000e) >> 1),
               lima_get_compare_func_string((*value & 0x0000000e) >> 1));
       fprintf(fp, ", offset_scale: %d", (*value & 0x00ff0000) >> 16);
       fprintf(fp, ", offset_units: %d", (*value & 0xff000000) >> 24);
-      fprintf(fp, ", unknown bits 4-15: 0x%08x */\n", *value & 0x0000fff0);
+      if (*value & 0x400)
+         fprintf(fp, ", shader writes depth or stencil");
+      if (*value & 0x800)
+         fprintf(fp, ", shader writes depth");
+      if (*value & 0x1000)
+         fprintf(fp, ", shader writes stencil");
+      fprintf(fp, " */\n\t\t\t\t\t\t/* %s(3)", render_state_infos[i].info);
+      fprintf(fp, ": unknown bits 4-9: 0x%08x", *value & 0x000003f0);
+      fprintf(fp, ", unknown bits 13-15: 0x%08x */\n", *value & 0x00000e000);
       break;
    case 4: /* DEPTH RANGE */
       fprintf(fp, ": viewport.far = %f, viewport.near = %f */\n",
