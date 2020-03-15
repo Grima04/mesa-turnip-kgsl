@@ -1550,7 +1550,7 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         memcpy(trans.cpu, vs->varyings, vs_size);
         memcpy(trans.cpu + vs_size, fs->varyings, fs_size);
 
-        union mali_attr varyings[PIPE_MAX_ATTRIBS] = { };
+        union mali_attr varyings[PIPE_MAX_ATTRIBS] = {0};
 
         /* Figure out how many streamout buffers could be bound */
         unsigned so_count = ctx->streamout.num_targets;
