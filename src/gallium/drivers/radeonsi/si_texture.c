@@ -46,6 +46,8 @@ static enum radeon_surf_mode si_choose_tiling(struct si_screen *sscreen,
                                               const struct pipe_resource *templ,
                                               bool tc_compatible_htile);
 
+static bool si_texture_is_aux_plane(const struct pipe_resource *resource);
+
 bool si_prepare_for_dma_blit(struct si_context *sctx, struct si_texture *dst, unsigned dst_level,
                              unsigned dstx, unsigned dsty, unsigned dstz, struct si_texture *src,
                              unsigned src_level, const struct pipe_box *src_box)
@@ -601,8 +603,10 @@ static bool si_resource_get_param(struct pipe_screen *screen, struct pipe_contex
                                   enum pipe_resource_param param, unsigned handle_usage,
                                   uint64_t *value)
 {
-   for (unsigned i = 0; i < plane; i++)
+   while (plane && resource->next && !si_texture_is_aux_plane(resource->next)) {
+      --plane;
       resource = resource->next;
+   }
 
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct si_texture *tex = (struct si_texture *)resource;
@@ -610,26 +614,28 @@ static bool si_resource_get_param(struct pipe_screen *screen, struct pipe_contex
 
    switch (param) {
    case PIPE_RESOURCE_PARAM_NPLANES:
-      *value = resource->target == PIPE_BUFFER ? 1 : tex->num_planes;
+      if (resource->target == PIPE_BUFFER)
+         *value = 1;
+      else if (tex->num_planes > 1)
+         *value = tex->num_planes;
+      else
+         *value = ac_surface_get_nplanes(&tex->surface);
       return true;
 
    case PIPE_RESOURCE_PARAM_STRIDE:
       if (resource->target == PIPE_BUFFER)
          *value = 0;
-      else if (sscreen->info.chip_class >= GFX9)
-         *value = tex->surface.u.gfx9.surf_pitch * tex->surface.bpe;
       else
-         *value = tex->surface.u.legacy.level[0].nblk_x * tex->surface.bpe;
+         *value = ac_surface_get_plane_stride(sscreen->info.chip_class,
+                                              &tex->surface, plane);
       return true;
 
    case PIPE_RESOURCE_PARAM_OFFSET:
       if (resource->target == PIPE_BUFFER)
          *value = 0;
-      else if (sscreen->info.chip_class >= GFX9)
-         *value = tex->surface.u.gfx9.surf_offset + layer * tex->surface.u.gfx9.surf_slice_size;
       else
-         *value = tex->surface.u.legacy.level[0].offset +
-                  layer * (uint64_t)tex->surface.u.legacy.level[0].slice_size_dw * 4;
+         *value = ac_surface_get_plane_offset(sscreen->info.chip_class,
+                                              &tex->surface, plane, layer);
       return true;
 
    case PIPE_RESOURCE_PARAM_MODIFIER:
@@ -692,18 +698,31 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
    sctx = (struct si_context *)(ctx ? ctx : sscreen->aux_context);
 
    if (resource->target != PIPE_BUFFER) {
+      unsigned plane = whandle->plane;
+
       /* Individual planes are chained pipe_resource instances. */
-      for (unsigned i = 0; i < whandle->plane; i++) {
+      while (plane && resource->next && !si_texture_is_aux_plane(resource->next)) {
          resource = resource->next;
+         --plane;
+      }
+
          res = si_resource(resource);
          tex = (struct si_texture *)resource;
-      }
 
       /* This is not supported now, but it might be required for OpenCL
        * interop in the future.
        */
       if (resource->nr_samples > 1 || tex->is_depth)
          return false;
+
+      if (plane) {
+         whandle->offset = ac_surface_get_plane_offset(sscreen->info.chip_class,
+                                                       &tex->surface, plane, 0);
+         whandle->stride = ac_surface_get_plane_stride(sscreen->info.chip_class,
+                                                       &tex->surface, plane);
+         whandle->modifier = tex->surface.modifier;
+         return sscreen->ws->buffer_get_handle(sscreen->ws, res->buf, whandle);
+      }
 
       /* Move a suballocated texture into a non-suballocated allocation. */
       if (sscreen->ws->buffer_is_suballocated(res->buf) || tex->surface.tile_swizzle ||
@@ -1427,12 +1446,11 @@ static void si_query_dmabuf_modifiers(struct pipe_screen *screen,
 
    unsigned ac_mod_count = max;
    ac_get_supported_modifiers(&sscreen->info, &(struct ac_modifier_options) {
-         /* Disable DCC until we have support for auxiliary planes. */
-         .dcc = false,
+         .dcc = !(sscreen->debug_flags & DBG(NO_DCC)),
          /* Do not support DCC with retiling yet. This needs explicit
           * resource flushes, but the app has no way to promise doing
           * flushes with modifiers. */
-         .dcc_retile = false,
+         .dcc_retile = !(sscreen->debug_flags & DBG(NO_DCC)),
       }, format, &ac_mod_count,  max ? modifiers : NULL);
    if (max && external_only) {
       for (unsigned i = 0; i < ac_mod_count; ++i)
@@ -1481,6 +1499,24 @@ si_is_dmabuf_modifier_supported(struct pipe_screen *screen,
    return supported;
 }
 
+static unsigned
+si_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier,
+                             enum pipe_format format)
+{
+   unsigned planes = util_format_get_num_planes(format);
+
+   if (IS_AMD_FMT_MOD(modifier) && planes == 1) {
+      if (AMD_FMT_MOD_GET(DCC_RETILE, modifier))
+         return 3;
+      else if (AMD_FMT_MOD_GET(DCC, modifier))
+         return 2;
+      else
+         return 1;
+   }
+
+   return planes;
+}
+
 static struct pipe_resource *
 si_texture_create_with_modifiers(struct pipe_screen *screen,
                                  const struct pipe_resource *templ,
@@ -1525,6 +1561,47 @@ si_texture_create_with_modifiers(struct pipe_screen *screen,
       return NULL;
    }
    return si_texture_create_with_modifier(screen, templ, modifier);
+}
+
+/* State trackers create separate textures in a next-chain for extra planes
+ * even if those are planes created purely for modifiers. Because the linking
+ * of the chain happens outside of the driver, and NULL is interpreted as
+ * failure, let's create some dummy texture structs. We could use these
+ * later to use the offsets for linking if we really wanted to.
+ *
+ * For now just create a dummy struct and completely ignore it.
+ *
+ * Potentially in the future we could store stride/offset and use it during
+ * creation, though we might want to change how linking is done first.
+ */
+
+struct si_auxiliary_texture {
+   struct threaded_resource b;
+   struct pb_buffer *buffer;
+   uint32_t offset;
+   uint32_t stride;
+};
+
+static void si_auxiliary_texture_destroy(struct pipe_screen *screen,
+                                         struct pipe_resource *ptex)
+{
+   struct si_auxiliary_texture *tex = (struct si_auxiliary_texture *)ptex;
+
+   pb_reference(&tex->buffer, NULL);
+   FREE(ptex);
+}
+
+static const struct u_resource_vtbl si_auxiliary_texture_vtbl = {
+   NULL,                        /* get_handle */
+   si_auxiliary_texture_destroy,    /* resource_destroy */
+   NULL,                        /* transfer_map */
+   NULL,                        /* transfer_flush_region */
+   NULL,                        /* transfer_unmap */
+};
+
+static bool si_texture_is_aux_plane(const struct pipe_resource *resource)
+{
+   return ((struct threaded_resource*)resource)->vtbl == &si_auxiliary_texture_vtbl;
 }
 
 static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *sscreen,
@@ -1588,11 +1665,32 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 
    /* Account for multiple planes with lowered yuv import. */
    struct pipe_resource *next_plane = tex->buffer.b.b.next;
-   while(next_plane) {
+   while (next_plane && !si_texture_is_aux_plane(next_plane)) {
       struct si_texture *next_tex = (struct si_texture *)next_plane;
       ++next_tex->num_planes;
       ++tex->num_planes;
       next_plane = next_plane->next;
+   }
+
+   unsigned nplanes = ac_surface_get_nplanes(&tex->surface);
+   unsigned plane = 1;
+   while (next_plane) {
+      struct si_auxiliary_texture *ptex = (struct si_auxiliary_texture *)next_plane;
+      if (plane >= nplanes || ptex->buffer != tex->buffer.buf ||
+          ptex->offset != ac_surface_get_plane_offset(sscreen->info.chip_class,
+                                                      &tex->surface, plane, 0) ||
+          ptex->stride != ac_surface_get_plane_stride(sscreen->info.chip_class,
+                                                      &tex->surface, plane)) {
+         si_texture_reference(&tex, NULL);
+         return NULL;
+      }
+      ++plane;
+      next_plane = next_plane->next;
+   }
+
+   if (plane != nplanes && tex->num_planes == 1) {
+      si_texture_reference(&tex, NULL);
+      return NULL;
    }
 
    if (!ac_surface_set_umd_metadata(&sscreen->info, &tex->surface,
@@ -1641,6 +1739,21 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
    buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle, sscreen->info.max_alignment);
    if (!buf)
       return NULL;
+
+   if (whandle->plane >= util_format_get_num_planes(whandle->format)) {
+      struct si_auxiliary_texture *tex = CALLOC_STRUCT(si_auxiliary_texture);
+      if (!tex)
+         return NULL;
+      tex->b.b = *templ;
+      tex->b.vtbl = &si_auxiliary_texture_vtbl;
+      tex->stride = whandle->stride;
+      tex->offset = whandle->offset;
+      tex->buffer = buf;
+      pipe_reference_init(&tex->b.b.reference, 1);
+      tex->b.b.screen = screen;
+
+      return &tex->b.b;
+   }
 
    return si_texture_from_winsys_buffer(sscreen, templ, buf, whandle->stride, whandle->offset,
                                         whandle->modifier, usage, true);
@@ -2488,6 +2601,7 @@ void si_init_screen_texture_functions(struct si_screen *sscreen)
    sscreen->b.check_resource_capability = si_check_resource_capability;
    sscreen->b.query_dmabuf_modifiers = si_query_dmabuf_modifiers;
    sscreen->b.is_dmabuf_modifier_supported = si_is_dmabuf_modifier_supported;
+   sscreen->b.get_dmabuf_modifier_planes = si_get_dmabuf_modifier_planes;
 }
 
 void si_init_context_texture_functions(struct si_context *sctx)
