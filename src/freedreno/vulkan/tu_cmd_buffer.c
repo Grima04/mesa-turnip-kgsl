@@ -1875,16 +1875,62 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       descriptors_state->sets[idx] = set;
       descriptors_state->valid |= (1u << idx);
 
+      /* Note: the actual input attachment indices come from the shader
+       * itself, so we can't generate the patched versions of these until
+       * draw time when both the pipeline and descriptors are bound and
+       * we're inside the render pass.
+       */
+      unsigned dst_idx = layout->set[idx].input_attachment_start;
+      memcpy(&descriptors_state->input_attachments[dst_idx * A6XX_TEX_CONST_DWORDS],
+             set->dynamic_descriptors,
+             set->layout->input_attachment_count * A6XX_TEX_CONST_DWORDS * 4);
+
       for(unsigned j = 0; j < set->layout->dynamic_offset_count; ++j, ++dyn_idx) {
-         unsigned idx = j + layout->set[i + firstSet].dynamic_offset_start;
+         /* Dynamic buffers come after input attachments in the descriptor set
+          * itself, but due to how the Vulkan descriptor set binding works, we
+          * have to put input attachments and dynamic buffers in separate
+          * buffers in the descriptor_state and then combine them at draw
+          * time. Binding a descriptor set only invalidates the descriptor
+          * sets after it, but if we try to tightly pack the descriptors after
+          * the input attachments then we could corrupt dynamic buffers in the
+          * descriptor set before it, or we'd have to move all the dynamic
+          * buffers over. We just put them into separate buffers to make
+          * binding as well as the later patching of input attachments easy.
+          */
+         unsigned src_idx = j + set->layout->input_attachment_count;
+         unsigned dst_idx = j + layout->set[idx].dynamic_offset_start;
          assert(dyn_idx < dynamicOffsetCount);
 
-         descriptors_state->dynamic_buffers[idx] =
-         set->dynamic_descriptors[j].va + pDynamicOffsets[dyn_idx];
+         uint32_t *dst =
+            &descriptors_state->dynamic_descriptors[dst_idx * A6XX_TEX_CONST_DWORDS];
+         uint32_t *src =
+            &set->dynamic_descriptors[src_idx * A6XX_TEX_CONST_DWORDS];
+         uint32_t offset = pDynamicOffsets[dyn_idx];
+
+         /* Patch the storage/uniform descriptors right away. */
+         if (layout->set[idx].layout->dynamic_ubo & (1 << j)) {
+            /* Note: we can assume here that the addition won't roll over and
+             * change the SIZE field.
+             */
+            uint64_t va = src[0] | ((uint64_t)src[1] << 32);
+            va += offset;
+            dst[0] = va;
+            dst[1] = va >> 32;
+         } else {
+            memcpy(dst, src, A6XX_TEX_CONST_DWORDS * 4);
+            /* Note: A6XX_IBO_5_DEPTH is always 0 */
+            uint64_t va = dst[4] | ((uint64_t)dst[5] << 32);
+            va += offset;
+            dst[4] = va;
+            dst[5] = va >> 32;
+         }
       }
    }
 
-   cmd_buffer->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
+   if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE)
+      cmd_buffer->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
+   else
+      cmd_buffer->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
 }
 
 void tu_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
@@ -2316,6 +2362,9 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
       tu_bo_list_add(&cmd->bo_list, iview->image->bo,
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
    }
+
+   /* Flag input attachment descriptors for re-emission if necessary */
+   cmd->state.dirty |= TU_CMD_DIRTY_INPUT_ATTACHMENTS;
 }
 
 void
@@ -2395,6 +2444,9 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    tu6_emit_mrt(cmd, cmd->state.subpass, cs);
    tu6_emit_msaa(cs, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, false);
+
+   /* Flag input attachment descriptors for re-emission if necessary */
+   cmd->state.dirty |= TU_CMD_DIRTY_INPUT_ATTACHMENTS;
 }
 
 void
@@ -2459,6 +2511,7 @@ struct tu_draw_info
 
 #define ENABLE_ALL (CP_SET_DRAW_STATE__0_BINNING | CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
 #define ENABLE_DRAW (CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
+#define ENABLE_NON_GMEM (CP_SET_DRAW_STATE__0_BINNING | CP_SET_DRAW_STATE__0_SYSMEM)
 
 enum tu_draw_state_group_id
 {
@@ -2472,10 +2525,8 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_BLEND,
    TU_DRAW_STATE_VS_CONST,
    TU_DRAW_STATE_FS_CONST,
-   TU_DRAW_STATE_VS_TEX,
-   TU_DRAW_STATE_FS_TEX_SYSMEM,
-   TU_DRAW_STATE_FS_TEX_GMEM,
-   TU_DRAW_STATE_FS_IBO,
+   TU_DRAW_STATE_DESC_SETS,
+   TU_DRAW_STATE_DESC_SETS_GMEM,
    TU_DRAW_STATE_VS_PARAMS,
 
    TU_DRAW_STATE_COUNT,
@@ -2487,149 +2538,6 @@ struct tu_draw_state_group
    uint32_t enable_mask;
    struct tu_cs_entry ib;
 };
-
-const static void *
-sampler_ptr(struct tu_descriptor_state *descriptors_state,
-            const struct tu_descriptor_map *map, unsigned i,
-            unsigned array_index)
-{
-   assert(descriptors_state->valid & (1 << map->set[i]));
-
-   struct tu_descriptor_set *set = descriptors_state->sets[map->set[i]];
-   assert(map->binding[i] < set->layout->binding_count);
-
-   const struct tu_descriptor_set_binding_layout *layout =
-      &set->layout->binding[map->binding[i]];
-
-   if (layout->immutable_samplers_offset) {
-      const uint32_t *immutable_samplers =
-         tu_immutable_samplers(set->layout, layout);
-
-      return &immutable_samplers[array_index * A6XX_TEX_SAMP_DWORDS];
-   }
-
-   switch (layout->type) {
-   case VK_DESCRIPTOR_TYPE_SAMPLER:
-      return &set->mapped_ptr[layout->offset / 4];
-   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-      return &set->mapped_ptr[layout->offset / 4 + A6XX_TEX_CONST_DWORDS +
-                              array_index * (A6XX_TEX_CONST_DWORDS + A6XX_TEX_SAMP_DWORDS)];
-   default:
-      unreachable("unimplemented descriptor type");
-      break;
-   }
-}
-
-static void
-write_tex_const(struct tu_cmd_buffer *cmd,
-                uint32_t *dst,
-                struct tu_descriptor_state *descriptors_state,
-                const struct tu_descriptor_map *map,
-                unsigned i, unsigned array_index, bool is_sysmem)
-{
-   assert(descriptors_state->valid & (1 << map->set[i]));
-
-   struct tu_descriptor_set *set = descriptors_state->sets[map->set[i]];
-   assert(map->binding[i] < set->layout->binding_count);
-
-   const struct tu_descriptor_set_binding_layout *layout =
-      &set->layout->binding[map->binding[i]];
-
-   switch (layout->type) {
-   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-      memcpy(dst, &set->mapped_ptr[layout->offset / 4 +
-                                   array_index * A6XX_TEX_CONST_DWORDS],
-             A6XX_TEX_CONST_DWORDS * 4);
-      break;
-   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-      memcpy(dst, &set->mapped_ptr[layout->offset / 4 +
-                                   array_index *
-                                   (A6XX_TEX_CONST_DWORDS +
-                                    A6XX_TEX_SAMP_DWORDS)],
-             A6XX_TEX_CONST_DWORDS * 4);
-      break;
-   default:
-      unreachable("unimplemented descriptor type");
-      break;
-   }
-
-   if (layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT && !is_sysmem) {
-      const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-      uint32_t a = cmd->state.subpass->input_attachments[map->value[i] +
-                                                         array_index].attachment;
-      const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
-
-      assert(att->gmem_offset >= 0);
-
-      dst[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
-      dst[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
-      dst[2] &= ~(A6XX_TEX_CONST_2_TYPE__MASK | A6XX_TEX_CONST_2_PITCH__MASK);
-      dst[2] |=
-         A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
-         A6XX_TEX_CONST_2_PITCH(tiling->tile0.extent.width * att->cpp);
-      dst[3] = 0;
-      dst[4] = cmd->device->physical_device->gmem_base + att->gmem_offset;
-      dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
-      for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
-         dst[i] = 0;
-
-      if (cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
-         tu_finishme("patch input attachment pitch for secondary cmd buffer");
-   }
-}
-
-static void
-write_image_ibo(struct tu_cmd_buffer *cmd,
-                uint32_t *dst,
-                struct tu_descriptor_state *descriptors_state,
-                const struct tu_descriptor_map *map,
-                unsigned i, unsigned array_index)
-{
-   assert(descriptors_state->valid & (1 << map->set[i]));
-
-   struct tu_descriptor_set *set = descriptors_state->sets[map->set[i]];
-   assert(map->binding[i] < set->layout->binding_count);
-
-   const struct tu_descriptor_set_binding_layout *layout =
-      &set->layout->binding[map->binding[i]];
-
-   assert(layout->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-
-   memcpy(dst, &set->mapped_ptr[layout->offset / 4 +
-                                (array_index * 2 + 1) * A6XX_TEX_CONST_DWORDS],
-          A6XX_TEX_CONST_DWORDS * 4);
-}
-
-static uint64_t
-buffer_ptr(struct tu_descriptor_state *descriptors_state,
-           const struct tu_descriptor_map *map,
-           unsigned i, unsigned array_index)
-{
-   assert(descriptors_state->valid & (1 << map->set[i]));
-
-   struct tu_descriptor_set *set = descriptors_state->sets[map->set[i]];
-   assert(map->binding[i] < set->layout->binding_count);
-
-   const struct tu_descriptor_set_binding_layout *layout =
-      &set->layout->binding[map->binding[i]];
-
-   switch (layout->type) {
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      return descriptors_state->dynamic_buffers[layout->dynamic_offset_offset +
-                                                array_index];
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      return (uint64_t) set->mapped_ptr[layout->offset / 4 + array_index * 2 + 1] << 32 |
-                        set->mapped_ptr[layout->offset / 4 + array_index * 2];
-   default:
-      unreachable("unimplemented descriptor type");
-      break;
-   }
-}
 
 static inline uint32_t
 tu6_stage2opcode(gl_shader_stage type)
@@ -2708,21 +2616,24 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
       debug_assert((size % 16) == 0);
       debug_assert((offset % 16) == 0);
 
-      /* Look through the UBO map to find our UBO index, and get the VA for
-       * that UBO.
+      /* Dig out the descriptor from the descriptor state and read the VA from
+       * it.
        */
-      uint64_t va = 0;
-      uint32_t ubo_idx = state->range[i].block - 1;
-      uint32_t ubo_map_base = 0;
-      for (int j = 0; j < link->ubo_map.num; j++) {
-         if (ubo_idx >= ubo_map_base &&
-             ubo_idx < ubo_map_base + link->ubo_map.array_size[j]) {
-            va = buffer_ptr(descriptors_state, &link->ubo_map, j,
-                            ubo_idx - ubo_map_base);
-            break;
-         }
-         ubo_map_base += link->ubo_map.array_size[j];
-      }
+      assert(state->range[i].bindless);
+      uint32_t *base = state->range[i].bindless_base == MAX_SETS ?
+         descriptors_state->dynamic_descriptors :
+         descriptors_state->sets[state->range[i].bindless_base]->mapped_ptr;
+      unsigned block = state->range[i].block;
+      /* If the block in the shader here is in the dynamic descriptor set, it
+       * is an index into the dynamic descriptor set which is combined from
+       * dynamic descriptors and input attachments on-the-fly, and we don't
+       * have access to it here. Instead we work backwards to get the index
+       * into dynamic_descriptors.
+       */
+      if (state->range[i].bindless_base == MAX_SETS)
+         block -= pipeline->layout->input_attachment_count;
+      uint32_t *desc = base + block * A6XX_TEX_CONST_DWORDS;
+      uint64_t va = desc[0] | ((uint64_t)(desc[1] & A6XX_UBO_1_BASE_HI__MASK) << 32);
       assert(va);
 
       tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
@@ -2732,43 +2643,6 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
             CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
             CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
       tu_cs_emit_qw(cs, va + offset);
-   }
-}
-
-static void
-tu6_emit_ubos(struct tu_cs *cs, const struct tu_pipeline *pipeline,
-              struct tu_descriptor_state *descriptors_state,
-              gl_shader_stage type)
-{
-   const struct tu_program_descriptor_linkage *link =
-      &pipeline->program.link[type];
-
-   uint32_t num = MIN2(link->ubo_map.num_desc, link->const_state.num_ubos);
-   uint32_t anum = align(num, 2);
-
-   if (!num)
-      return;
-
-   tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + (2 * anum));
-   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(link->const_state.offsets.ubo) |
-         CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-         CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-         CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
-         CP_LOAD_STATE6_0_NUM_UNIT(anum/2));
-   tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-   tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-
-   unsigned emitted = 0;
-   for (unsigned i = 0; emitted < num && i < link->ubo_map.num; i++) {
-      for (unsigned j = 0; emitted < num && j < link->ubo_map.array_size[i]; j++) {
-         tu_cs_emit_qw(cs, buffer_ptr(descriptors_state, &link->ubo_map, i, j));
-         emitted++;
-      }
-   }
-
-   for (; emitted < anum; emitted++) {
-      tu_cs_emit(cs, 0xffffffff);
-      tu_cs_emit(cs, 0xffffffff);
    }
 }
 
@@ -2782,7 +2656,6 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    tu_cs_begin_sub_stream(&cmd->sub_cs, 512, &cs); /* TODO: maximum size? */
 
    tu6_emit_user_consts(&cs, pipeline, descriptors_state, type, cmd->push_constants);
-   tu6_emit_ubos(&cs, pipeline, descriptors_state, type);
 
    return tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
 }
@@ -2828,224 +2701,137 @@ tu6_emit_vs_params(struct tu_cmd_buffer *cmd,
 }
 
 static VkResult
-tu6_emit_textures(struct tu_cmd_buffer *cmd,
-                  const struct tu_pipeline *pipeline,
-                  struct tu_descriptor_state *descriptors_state,
-                  gl_shader_stage type,
-                  struct tu_cs_entry *entry,
-                  bool is_sysmem)
+tu6_emit_descriptor_sets(struct tu_cmd_buffer *cmd,
+                         const struct tu_pipeline *pipeline,
+                         VkPipelineBindPoint bind_point,
+                         struct tu_cs_entry *entry,
+                         bool gmem)
 {
    struct tu_cs *draw_state = &cmd->sub_cs;
-   const struct tu_program_descriptor_linkage *link =
-      &pipeline->program.link[type];
+   struct tu_pipeline_layout *layout = pipeline->layout;
+   struct tu_descriptor_state *descriptors_state =
+      tu_get_descriptors_state(cmd, bind_point);
+   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const uint32_t *input_attachment_idx =
+      pipeline->program.input_attachment_idx;
+   uint32_t num_dynamic_descs = layout->dynamic_offset_count +
+      layout->input_attachment_count;
+   struct ts_cs_memory dynamic_desc_set;
    VkResult result;
 
-   if (link->texture_map.num_desc == 0 && link->sampler_map.num_desc == 0) {
-      *entry = (struct tu_cs_entry) {};
-      return VK_SUCCESS;
-   }
-
-   /* allocate and fill texture state */
-   struct ts_cs_memory tex_const;
-   result = tu_cs_alloc(draw_state, link->texture_map.num_desc,
-                        A6XX_TEX_CONST_DWORDS, &tex_const);
-   if (result != VK_SUCCESS)
-      return result;
-
-   int tex_index = 0;
-   for (unsigned i = 0; i < link->texture_map.num; i++) {
-      for (int j = 0; j < link->texture_map.array_size[i]; j++) {
-         write_tex_const(cmd,
-                         &tex_const.map[A6XX_TEX_CONST_DWORDS * tex_index++],
-                         descriptors_state, &link->texture_map, i, j,
-                         is_sysmem);
-      }
-   }
-
-   /* allocate and fill sampler state */
-   struct ts_cs_memory tex_samp = { 0 };
-   if (link->sampler_map.num_desc) {
-      result = tu_cs_alloc(draw_state, link->sampler_map.num_desc,
-                           A6XX_TEX_SAMP_DWORDS, &tex_samp);
+   if (num_dynamic_descs > 0) {
+      /* allocate and fill out dynamic descriptor set */
+      result = tu_cs_alloc(draw_state, num_dynamic_descs,
+                           A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
       if (result != VK_SUCCESS)
          return result;
 
-      int sampler_index = 0;
-      for (unsigned i = 0; i < link->sampler_map.num; i++) {
-         for (int j = 0; j < link->sampler_map.array_size[i]; j++) {
-            const uint32_t *sampler = sampler_ptr(descriptors_state,
-                                                  &link->sampler_map,
-                                                  i, j);
-            memcpy(&tex_samp.map[A6XX_TEX_SAMP_DWORDS * sampler_index++],
-                   sampler, A6XX_TEX_SAMP_DWORDS * 4);
+      memcpy(dynamic_desc_set.map, descriptors_state->input_attachments,
+             layout->input_attachment_count * A6XX_TEX_CONST_DWORDS * 4);
+
+      if (gmem) {
+         /* Patch input attachments to refer to GMEM instead */
+         for (unsigned i = 0; i < layout->input_attachment_count; i++) {
+            uint32_t *dst =
+               &dynamic_desc_set.map[A6XX_TEX_CONST_DWORDS * i];
+
+            /* The compiler has already laid out input_attachment_idx in the
+             * final order of input attachments, so there's no need to go
+             * through the pipeline layout finding input attachments.
+             */
+            unsigned attachment_idx = input_attachment_idx[i];
+
+            /* It's possible for the pipeline layout to include an input
+             * attachment which doesn't actually exist for the current
+             * subpass. Of course, this is only valid so long as the pipeline
+             * doesn't try to actually load that attachment. Just skip
+             * patching in that scenario to avoid out-of-bounds accesses.
+             */
+            if (attachment_idx >= cmd->state.subpass->input_count)
+               continue;
+
+            uint32_t a = cmd->state.subpass->input_attachments[attachment_idx].attachment;
+            const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
+
+            assert(att->gmem_offset >= 0);
+
+            dst[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
+            dst[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
+            dst[2] &= ~(A6XX_TEX_CONST_2_TYPE__MASK | A6XX_TEX_CONST_2_PITCH__MASK);
+            dst[2] |=
+               A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
+               A6XX_TEX_CONST_2_PITCH(tiling->tile0.extent.width * att->cpp);
+            dst[3] = 0;
+            dst[4] = cmd->device->physical_device->gmem_base + att->gmem_offset;
+            dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
+            for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
+               dst[i] = 0;
+
+            if (cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+               tu_finishme("patch input attachment pitch for secondary cmd buffer");
          }
       }
+
+      memcpy(dynamic_desc_set.map + layout->input_attachment_count * A6XX_TEX_CONST_DWORDS,
+             descriptors_state->dynamic_descriptors,
+             layout->dynamic_offset_count * A6XX_TEX_CONST_DWORDS * 4);
    }
 
-   unsigned tex_samp_reg, tex_const_reg, tex_count_reg;
-   enum a6xx_state_block sb;
-
-   switch (type) {
-   case MESA_SHADER_VERTEX:
-      sb = SB6_VS_TEX;
-      tex_samp_reg = REG_A6XX_SP_VS_TEX_SAMP_LO;
-      tex_const_reg = REG_A6XX_SP_VS_TEX_CONST_LO;
-      tex_count_reg = REG_A6XX_SP_VS_TEX_COUNT;
+   uint32_t sp_bindless_base_reg, hlsq_bindless_base_reg;
+   uint32_t hlsq_update_value;
+   switch (bind_point) {
+   case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      sp_bindless_base_reg = REG_A6XX_SP_BINDLESS_BASE(0);
+      hlsq_bindless_base_reg = REG_A6XX_HLSQ_BINDLESS_BASE(0);
+      hlsq_update_value = 0x7c000;
       break;
-   case MESA_SHADER_FRAGMENT:
-      sb = SB6_FS_TEX;
-      tex_samp_reg = REG_A6XX_SP_FS_TEX_SAMP_LO;
-      tex_const_reg = REG_A6XX_SP_FS_TEX_CONST_LO;
-      tex_count_reg = REG_A6XX_SP_FS_TEX_COUNT;
-      break;
-   case MESA_SHADER_COMPUTE:
-      sb = SB6_CS_TEX;
-      tex_samp_reg = REG_A6XX_SP_CS_TEX_SAMP_LO;
-      tex_const_reg = REG_A6XX_SP_CS_TEX_CONST_LO;
-      tex_count_reg = REG_A6XX_SP_CS_TEX_COUNT;
+   case VK_PIPELINE_BIND_POINT_COMPUTE:
+      sp_bindless_base_reg = REG_A6XX_SP_CS_BINDLESS_BASE(0);
+      hlsq_bindless_base_reg = REG_A6XX_HLSQ_CS_BINDLESS_BASE(0);
+      hlsq_update_value = 0x3e00;
       break;
    default:
-      unreachable("bad state block");
+      unreachable("bad bind point");
    }
+
+   /* Be careful here to *not* refer to the pipeline, so that if only the
+    * pipeline changes we don't have to emit this again (except if there are
+    * dynamic descriptors in the pipeline layout). This means always emitting
+    * all the valid descriptors, which means that we always have to put the
+    * dynamic descriptor in the driver-only slot at the end
+    */
+   uint32_t num_user_sets = util_last_bit(descriptors_state->valid);
+   uint32_t num_sets = num_user_sets;
+   if (num_dynamic_descs > 0) {
+      num_user_sets = MAX_SETS;
+      num_sets = num_user_sets + 1;
+   }
+
+   unsigned regs[2] = { sp_bindless_base_reg, hlsq_bindless_base_reg };
 
    struct tu_cs cs;
-   result = tu_cs_begin_sub_stream(draw_state, 16, &cs);
+   result = tu_cs_begin_sub_stream(draw_state, ARRAY_SIZE(regs) * (1 + num_sets * 2) + 2, &cs);
    if (result != VK_SUCCESS)
       return result;
 
-   if (link->sampler_map.num_desc) {
-      /* output sampler state: */
-      tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
-      tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-                 CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-                 CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-                 CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-                 CP_LOAD_STATE6_0_NUM_UNIT(link->sampler_map.num_desc));
-      tu_cs_emit_qw(&cs, tex_samp.iova); /* SRC_ADDR_LO/HI */
-
-      tu_cs_emit_pkt4(&cs, tex_samp_reg, 2);
-      tu_cs_emit_qw(&cs, tex_samp.iova); /* SRC_ADDR_LO/HI */
-   }
-
-   /* emit texture state: */
-   tu_cs_emit_pkt7(&cs, tu6_stage2opcode(type), 3);
-   tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-      CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-      CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-      CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-      CP_LOAD_STATE6_0_NUM_UNIT(link->texture_map.num_desc));
-   tu_cs_emit_qw(&cs, tex_const.iova); /* SRC_ADDR_LO/HI */
-
-   tu_cs_emit_pkt4(&cs, tex_const_reg, 2);
-   tu_cs_emit_qw(&cs, tex_const.iova); /* SRC_ADDR_LO/HI */
-
-   tu_cs_emit_pkt4(&cs, tex_count_reg, 1);
-   tu_cs_emit(&cs, link->texture_map.num_desc);
-
-   *entry = tu_cs_end_sub_stream(draw_state, &cs);
-   return VK_SUCCESS;
-}
-
-static VkResult
-tu6_emit_ibo(struct tu_cmd_buffer *cmd,
-             const struct tu_pipeline *pipeline,
-             struct tu_descriptor_state *descriptors_state,
-             gl_shader_stage type,
-             struct tu_cs_entry *entry)
-{
-   struct tu_cs *draw_state = &cmd->sub_cs;
-   const struct tu_program_descriptor_linkage *link =
-      &pipeline->program.link[type];
-   VkResult result;
-
-   unsigned num_desc = link->ssbo_map.num_desc + link->image_map.num_desc;
-
-   if (num_desc == 0) {
-      *entry = (struct tu_cs_entry) {};
-      return VK_SUCCESS;
-   }
-
-   struct ts_cs_memory ibo_const;
-   result = tu_cs_alloc(draw_state, num_desc,
-                        A6XX_TEX_CONST_DWORDS, &ibo_const);
-   if (result != VK_SUCCESS)
-      return result;
-
-   int ssbo_index = 0;
-   for (unsigned i = 0; i < link->ssbo_map.num; i++) {
-      for (int j = 0; j < link->ssbo_map.array_size[i]; j++) {
-         uint32_t *dst = &ibo_const.map[A6XX_TEX_CONST_DWORDS * ssbo_index];
-
-         uint64_t va = buffer_ptr(descriptors_state, &link->ssbo_map, i, j);
-         /* We don't expose robustBufferAccess, so leave the size unlimited. */
-         uint32_t sz = MAX_STORAGE_BUFFER_RANGE / 4;
-
-         dst[0] = A6XX_IBO_0_FMT(FMT6_32_UINT);
-         dst[1] = A6XX_IBO_1_WIDTH(sz & MASK(15)) |
-                  A6XX_IBO_1_HEIGHT(sz >> 15);
-         dst[2] = A6XX_IBO_2_UNK4 |
-                  A6XX_IBO_2_UNK31 |
-                  A6XX_IBO_2_TYPE(A6XX_TEX_1D);
-         dst[3] = 0;
-         dst[4] = va;
-         dst[5] = va >> 32;
-         for (int i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
-            dst[i] = 0;
-
-         ssbo_index++;
+   if (num_sets > 0) {
+      for (unsigned i = 0; i < ARRAY_SIZE(regs); i++) {
+         tu_cs_emit_pkt4(&cs, regs[i], num_sets * 2);
+         for (unsigned j = 0; j < num_user_sets; j++) {
+            if (descriptors_state->valid & (1 << j)) {
+               /* magic | 3 copied from the blob */
+               tu_cs_emit_qw(&cs, descriptors_state->sets[j]->va | 3);
+            } else {
+               tu_cs_emit_qw(&cs, 0 | 3);
+            }
+         }
+         if (num_dynamic_descs > 0) {
+            tu_cs_emit_qw(&cs, dynamic_desc_set.iova | 3);
+         }
       }
+
+      tu_cs_emit_regs(&cs, A6XX_HLSQ_UPDATE_CNTL(hlsq_update_value));
    }
-
-   for (unsigned i = 0; i < link->image_map.num; i++) {
-      for (int j = 0; j < link->image_map.array_size[i]; j++) {
-         uint32_t *dst = &ibo_const.map[A6XX_TEX_CONST_DWORDS * ssbo_index];
-
-         write_image_ibo(cmd, dst,
-                         descriptors_state, &link->image_map, i, j);
-
-         ssbo_index++;
-      }
-   }
-
-   assert(ssbo_index == num_desc);
-
-   struct tu_cs cs;
-   result = tu_cs_begin_sub_stream(draw_state, 7, &cs);
-   if (result != VK_SUCCESS)
-      return result;
-
-   uint32_t opcode, ibo_addr_reg;
-   enum a6xx_state_block sb;
-   enum a6xx_state_type st;
-
-   switch (type) {
-   case MESA_SHADER_FRAGMENT:
-      opcode = CP_LOAD_STATE6;
-      st = ST6_SHADER;
-      sb = SB6_IBO;
-      ibo_addr_reg = REG_A6XX_SP_IBO_LO;
-      break;
-   case MESA_SHADER_COMPUTE:
-      opcode = CP_LOAD_STATE6_FRAG;
-      st = ST6_IBO;
-      sb = SB6_CS_SHADER;
-      ibo_addr_reg = REG_A6XX_SP_CS_IBO_LO;
-      break;
-   default:
-      unreachable("unsupported stage for ibos");
-   }
-
-   /* emit texture state: */
-   tu_cs_emit_pkt7(&cs, opcode, 3);
-   tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-              CP_LOAD_STATE6_0_STATE_TYPE(st) |
-              CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-              CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-              CP_LOAD_STATE6_0_NUM_UNIT(num_desc));
-   tu_cs_emit_qw(&cs, ibo_const.iova); /* SRC_ADDR_LO/HI */
-
-   tu_cs_emit_pkt4(&cs, ibo_addr_reg, 2);
-   tu_cs_emit_qw(&cs, ibo_const.iova); /* SRC_ADDR_LO/HI */
 
    *entry = tu_cs_end_sub_stream(draw_state, &cs);
    return VK_SUCCESS;
@@ -3255,59 +3041,54 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    if (cmd->state.dirty & TU_CMD_DIRTY_STREAMOUT_BUFFERS)
       tu6_emit_streamout(cmd, cs);
 
-   if (cmd->state.dirty &
-         (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS)) {
-      struct tu_cs_entry vs_tex, fs_tex_sysmem, fs_tex_gmem, fs_ibo;
+   /* If there are any any dynamic descriptors, then we may need to re-emit
+    * them after every pipeline change in case the number of input attachments
+    * changes. We also always need to re-emit after a pipeline change if there
+    * are any input attachments, because the input attachment index comes from
+    * the pipeline. Finally, it can also happen that the subpass changes
+    * without the pipeline changing, in which case the GMEM descriptors need
+    * to be patched differently.
+    *
+    * TODO: We could probably be clever and avoid re-emitting state on
+    * pipeline changes if the number of input attachments is always 0. We
+    * could also only re-emit dynamic state.
+    */
+   if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS ||
+       ((pipeline->layout->dynamic_offset_count +
+         pipeline->layout->input_attachment_count > 0) &&
+        cmd->state.dirty & TU_CMD_DIRTY_PIPELINE) ||
+       (pipeline->layout->input_attachment_count > 0 &&
+        cmd->state.dirty & TU_CMD_DIRTY_INPUT_ATTACHMENTS)) {
+      struct tu_cs_entry desc_sets, desc_sets_gmem;
+      bool need_gmem_desc_set = pipeline->layout->input_attachment_count > 0;
 
-      result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                                 MESA_SHADER_VERTEX, &vs_tex, false);
-      if (result != VK_SUCCESS)
-         return result;
-
-      /* TODO: we could emit just one texture descriptor draw state when there
-       * are no input attachments, which is the most common case. We could
-       * also split out the sampler state, which doesn't change even for input
-       * attachments.
-       */
-      result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                                 MESA_SHADER_FRAGMENT, &fs_tex_sysmem, true);
-      if (result != VK_SUCCESS)
-         return result;
-
-      result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                                 MESA_SHADER_FRAGMENT, &fs_tex_gmem, false);
-      if (result != VK_SUCCESS)
-         return result;
-
-      result = tu6_emit_ibo(cmd, pipeline, descriptors_state,
-                            MESA_SHADER_FRAGMENT, &fs_ibo);
+      result = tu6_emit_descriptor_sets(cmd, pipeline,
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        &desc_sets, false);
       if (result != VK_SUCCESS)
          return result;
 
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_VS_TEX,
-            .enable_mask = ENABLE_ALL,
-            .ib = vs_tex,
+            .id = TU_DRAW_STATE_DESC_SETS,
+            .enable_mask = need_gmem_desc_set ? ENABLE_NON_GMEM : ENABLE_ALL,
+            .ib = desc_sets,
          };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_FS_TEX_GMEM,
-            .enable_mask = CP_SET_DRAW_STATE__0_GMEM,
-            .ib = fs_tex_gmem,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_FS_TEX_SYSMEM,
-            .enable_mask = CP_SET_DRAW_STATE__0_SYSMEM,
-            .ib = fs_tex_sysmem,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_FS_IBO,
-            .enable_mask = ENABLE_DRAW,
-            .ib = fs_ibo,
-         };
+
+      if (need_gmem_desc_set) {
+         result = tu6_emit_descriptor_sets(cmd, pipeline,
+                                           VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                           &desc_sets_gmem, true);
+         if (result != VK_SUCCESS)
+            return result;
+
+         draw_state_groups[draw_state_group_count++] =
+            (struct tu_draw_state_group) {
+               .id = TU_DRAW_STATE_DESC_SETS_GMEM,
+               .enable_mask = CP_SET_DRAW_STATE__0_GMEM,
+               .ib = desc_sets_gmem,
+            };
+      }
    }
 
    struct tu_cs_entry vs_params;
@@ -3356,11 +3137,16 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       unsigned i;
       for_each_bit(i, descriptors_state->valid) {
          struct tu_descriptor_set *set = descriptors_state->sets[i];
-         for (unsigned j = 0; j < set->layout->buffer_count; ++j)
-            if (set->descriptors[j]) {
-               tu_bo_list_add(&cmd->bo_list, set->descriptors[j],
+         for (unsigned j = 0; j < set->layout->buffer_count; ++j) {
+            if (set->buffers[j]) {
+               tu_bo_list_add(&cmd->bo_list, set->buffers[j],
                               MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
             }
+         }
+         if (set->size > 0) {
+            tu_bo_list_add(&cmd->bo_list, &set->pool->bo,
+                           MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+         }
       }
    }
    if (cmd->state.dirty & TU_CMD_DIRTY_STREAMOUT_BUFFERS) {
@@ -3373,10 +3159,16 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       }
    }
 
+   /* There are too many graphics dirty bits to list here, so just list the
+    * bits to preserve instead. The only things not emitted here are
+    * compute-related state.
+    */
+   cmd->state.dirty &= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
+
    /* Fragment shader state overwrites compute shader state, so flag the
     * compute pipeline for re-emit.
     */
-   cmd->state.dirty = TU_CMD_DIRTY_COMPUTE_PIPELINE;
+   cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_PIPELINE;
    return VK_SUCCESS;
 }
 
@@ -3698,42 +3490,43 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    tu_emit_compute_driver_params(cs, pipeline, info);
 
-   result = tu6_emit_textures(cmd, pipeline, descriptors_state,
-                              MESA_SHADER_COMPUTE, &ib, false);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
+   if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS) {
+      result = tu6_emit_descriptor_sets(cmd, pipeline,
+                                        VK_PIPELINE_BIND_POINT_COMPUTE, &ib,
+                                        false);
+      if (result != VK_SUCCESS) {
+         cmd->record_result = result;
+         return;
+      }
 
-   if (ib.size)
-      tu_cs_emit_ib(cs, &ib);
-
-   result = tu6_emit_ibo(cmd, pipeline, descriptors_state, MESA_SHADER_COMPUTE, &ib);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
-
-   if (ib.size)
-      tu_cs_emit_ib(cs, &ib);
-
-   /* track BOs */
-   if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
+      /* track BOs */
       unsigned i;
       for_each_bit(i, descriptors_state->valid) {
          struct tu_descriptor_set *set = descriptors_state->sets[i];
-         for (unsigned j = 0; j < set->layout->buffer_count; ++j)
-            if (set->descriptors[j]) {
-               tu_bo_list_add(&cmd->bo_list, set->descriptors[j],
+         for (unsigned j = 0; j < set->layout->buffer_count; ++j) {
+            if (set->buffers[j]) {
+               tu_bo_list_add(&cmd->bo_list, set->buffers[j],
                               MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
             }
+         }
+
+         if (set->size > 0) {
+            tu_bo_list_add(&cmd->bo_list, &set->pool->bo,
+                           MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+         }
       }
    }
+
+   if (ib.size)
+      tu_cs_emit_ib(cs, &ib);
+
+   cmd->state.dirty &=
+      ~(TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS | TU_CMD_DIRTY_COMPUTE_PIPELINE);
 
    /* Compute shader state overwrites fragment shader state, so we flag the
     * graphics pipeline for re-emit.
     */
-   cmd->state.dirty = TU_CMD_DIRTY_PIPELINE;
+   cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE;
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_COMPUTE));

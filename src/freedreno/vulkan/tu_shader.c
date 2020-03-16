@@ -83,129 +83,6 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
    return nir;
 }
 
-static unsigned
-map_add(struct tu_descriptor_map *map, int set, int binding, int value,
-        int array_size)
-{
-   unsigned index = 0;
-   for (unsigned i = 0; i < map->num; i++) {
-      if (set == map->set[i] && binding == map->binding[i]) {
-         assert(value == map->value[i]);
-         assert(array_size == map->array_size[i]);
-         return index;
-      }
-      index += map->array_size[i];
-   }
-
-   assert(index == map->num_desc);
-
-   map->set[map->num] = set;
-   map->binding[map->num] = binding;
-   map->value[map->num] = value;
-   map->array_size[map->num] = array_size;
-   map->num++;
-   map->num_desc += array_size;
-
-   return index;
-}
-
-static void
-lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
-                        struct tu_shader *shader,
-                        const struct tu_pipeline_layout *layout)
-{
-   nir_ssa_def *index = NULL;
-   unsigned base_index = 0;
-   unsigned array_elements = 1;
-   nir_tex_src *src = &instr->src[src_idx];
-   bool is_sampler = src->src_type == nir_tex_src_sampler_deref;
-
-   /* We compute first the offsets */
-   nir_deref_instr *deref = nir_instr_as_deref(src->src.ssa->parent_instr);
-   while (deref->deref_type != nir_deref_type_var) {
-      assert(deref->parent.is_ssa);
-      nir_deref_instr *parent =
-         nir_instr_as_deref(deref->parent.ssa->parent_instr);
-
-      assert(deref->deref_type == nir_deref_type_array);
-
-      if (nir_src_is_const(deref->arr.index) && index == NULL) {
-         /* We're still building a direct index */
-         base_index += nir_src_as_uint(deref->arr.index) * array_elements;
-      } else {
-         if (index == NULL) {
-            /* We used to be direct but not anymore */
-            index = nir_imm_int(b, base_index);
-            base_index = 0;
-         }
-
-         index = nir_iadd(b, index,
-                          nir_imul(b, nir_imm_int(b, array_elements),
-                                   nir_ssa_for_src(b, deref->arr.index, 1)));
-      }
-
-      array_elements *= glsl_get_length(parent->type);
-
-      deref = parent;
-   }
-
-   if (index)
-      index = nir_umin(b, index, nir_imm_int(b, array_elements - 1));
-
-   /* We have the offsets, we apply them, rewriting the source or removing
-    * instr if needed
-    */
-   if (index) {
-      nir_instr_rewrite_src(&instr->instr, &src->src,
-                            nir_src_for_ssa(index));
-
-      src->src_type = is_sampler ?
-         nir_tex_src_sampler_offset :
-         nir_tex_src_texture_offset;
-   } else {
-      nir_tex_instr_remove_src(instr, src_idx);
-   }
-
-   uint32_t set = deref->var->data.descriptor_set;
-   uint32_t binding = deref->var->data.binding;
-   struct tu_descriptor_set_layout *set_layout = layout->set[set].layout;
-   struct tu_descriptor_set_binding_layout *binding_layout =
-      &set_layout->binding[binding];
-
-   int desc_index = map_add(is_sampler ?
-                            &shader->sampler_map : &shader->texture_map,
-                            deref->var->data.descriptor_set,
-                            deref->var->data.binding,
-                            deref->var->data.index,
-                            binding_layout->array_size) + base_index;
-   if (is_sampler)
-      instr->sampler_index = desc_index;
-   else
-      instr->texture_index = desc_index;
-}
-
-static bool
-lower_sampler(nir_builder *b, nir_tex_instr *instr, struct tu_shader *shader,
-                const struct tu_pipeline_layout *layout)
-{
-   int texture_idx =
-      nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);
-
-   if (texture_idx >= 0)
-      lower_tex_src_to_offset(b, instr, texture_idx, shader, layout);
-
-   int sampler_idx =
-      nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
-
-   if (sampler_idx >= 0)
-      lower_tex_src_to_offset(b, instr, sampler_idx, shader, layout);
-
-   if (texture_idx < 0 && sampler_idx < 0)
-      return false;
-
-   return true;
-}
-
 static void
 lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
                          struct tu_shader *shader)
@@ -234,41 +111,98 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
                             struct tu_shader *shader,
                             const struct tu_pipeline_layout *layout)
 {
-   nir_const_value *const_val = nir_src_as_const_value(instr->src[0]);
+   nir_ssa_def *vulkan_idx = instr->src[0].ssa;
 
    unsigned set = nir_intrinsic_desc_set(instr);
    unsigned binding = nir_intrinsic_binding(instr);
    struct tu_descriptor_set_layout *set_layout = layout->set[set].layout;
    struct tu_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
-   unsigned index = 0;
+   uint32_t base;
 
-   switch (nir_intrinsic_desc_type(instr)) {
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+   switch (binding_layout->type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      if (!const_val)
-         tu_finishme("non-constant vulkan_resource_index array index");
-      /* skip index 0 which is used for push constants */
-      index = map_add(&shader->ubo_map, set, binding, 0,
-                      binding_layout->array_size) + 1;
-      index += const_val->u32;
-      break;
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      if (!const_val)
-         tu_finishme("non-constant vulkan_resource_index array index");
-      index = map_add(&shader->ssbo_map, set, binding, 0,
-                      binding_layout->array_size);
-      index += const_val->u32;
+      base = layout->set[set].dynamic_offset_start +
+         binding_layout->dynamic_offset_offset +
+         layout->input_attachment_count;
+      set = MAX_SETS;
       break;
    default:
-      tu_finishme("unsupported desc_type for vulkan_resource_index");
+      base = binding_layout->offset / (4 * A6XX_TEX_CONST_DWORDS);
       break;
    }
 
+   nir_intrinsic_instr *bindless =
+      nir_intrinsic_instr_create(b->shader,
+                                 nir_intrinsic_bindless_resource_ir3);
+   bindless->num_components = 1;
+   nir_ssa_dest_init(&bindless->instr, &bindless->dest,
+                     1, 32, NULL);
+   nir_intrinsic_set_desc_set(bindless, set);
+   bindless->src[0] = nir_src_for_ssa(nir_iadd(b, nir_imm_int(b, base), vulkan_idx));
+   nir_builder_instr_insert(b, &bindless->instr);
+
    nir_ssa_def_rewrite_uses(&instr->dest.ssa,
-                            nir_src_for_ssa(nir_imm_int(b, index)));
+                            nir_src_for_ssa(&bindless->dest.ssa));
    nir_instr_remove(&instr->instr);
+}
+
+static nir_ssa_def *
+build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
+               struct tu_shader *shader,
+               const struct tu_pipeline_layout *layout)
+{
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+
+   unsigned set = var->data.descriptor_set;
+   unsigned binding = var->data.binding;
+   const struct tu_descriptor_set_binding_layout *bind_layout =
+      &layout->set[set].layout->binding[binding];
+
+   nir_ssa_def *desc_offset;
+   unsigned descriptor_stride;
+   if (bind_layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
+      unsigned offset =
+         layout->set[set].input_attachment_start +
+         bind_layout->input_attachment_offset;
+      desc_offset = nir_imm_int(b, offset);
+      set = MAX_SETS;
+      descriptor_stride = 1;
+   } else {
+      unsigned offset = 0;
+      /* Samplers come second in combined image/sampler descriptors, see
+       * write_combined_image_sampler_descriptor().
+       */
+      if (is_sampler && bind_layout->type ==
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+         offset = 1;
+      }
+      desc_offset =
+         nir_imm_int(b, (bind_layout->offset / (4 * A6XX_TEX_CONST_DWORDS)) +
+                     offset);
+      descriptor_stride = bind_layout->size / (4 * A6XX_TEX_CONST_DWORDS);
+   }
+
+   if (deref->deref_type != nir_deref_type_var) {
+      assert(deref->deref_type == nir_deref_type_array);
+
+      nir_ssa_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
+      desc_offset = nir_iadd(b, desc_offset,
+                             nir_imul_imm(b, arr_index, descriptor_stride));
+   }
+
+   nir_intrinsic_instr *bindless =
+      nir_intrinsic_instr_create(b->shader,
+                                 nir_intrinsic_bindless_resource_ir3);
+   bindless->num_components = 1;
+   nir_ssa_dest_init(&bindless->instr, &bindless->dest,
+                     1, 32, NULL);
+   nir_intrinsic_set_desc_set(bindless, set);
+   bindless->src[0] = nir_src_for_ssa(desc_offset);
+   nir_builder_instr_insert(b, &bindless->instr);
+
+   return &bindless->dest.ssa;
 }
 
 static void
@@ -277,23 +211,8 @@ lower_image_deref(nir_builder *b,
                   const struct tu_pipeline_layout *layout)
 {
    nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
-   nir_variable *var = nir_deref_instr_get_variable(deref);
-
-   uint32_t set = var->data.descriptor_set;
-   uint32_t binding = var->data.binding;
-   struct tu_descriptor_set_layout *set_layout = layout->set[set].layout;
-   struct tu_descriptor_set_binding_layout *binding_layout =
-      &set_layout->binding[binding];
-
-   nir_ssa_def *index = nir_imm_int(b,
-                                    map_add(&shader->image_map,
-                                            set, binding, var->data.index,
-                                            binding_layout->array_size));
-   if (deref->deref_type != nir_deref_type_var) {
-      assert(deref->deref_type == nir_deref_type_array);
-      index = nir_iadd(b, index, nir_ssa_for_src(b, deref->arr.index, 1));
-   }
-   nir_rewrite_image_intrinsic(instr, index, false);
+   nir_ssa_def *bindless = build_bindless(b, deref, false, shader, layout);
+   nir_rewrite_image_intrinsic(instr, bindless, true);
 }
 
 static bool
@@ -331,9 +250,6 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_deref_size:
    case nir_intrinsic_image_deref_samples:
-   case nir_intrinsic_image_deref_load_param_intel:
-   case nir_intrinsic_image_deref_load_raw_intel:
-   case nir_intrinsic_image_deref_store_raw_intel:
       lower_image_deref(b, instr, shader, layout);
       return true;
 
@@ -341,6 +257,59 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
       return false;
    }
 }
+
+static bool
+lower_tex(nir_builder *b, nir_tex_instr *tex,
+          struct tu_shader *shader, const struct tu_pipeline_layout *layout)
+{
+   int sampler_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
+   if (sampler_src_idx >= 0) {
+      nir_deref_instr *deref = nir_src_as_deref(tex->src[sampler_src_idx].src);
+      nir_ssa_def *bindless = build_bindless(b, deref, true, shader, layout);
+      nir_instr_rewrite_src(&tex->instr, &tex->src[sampler_src_idx].src,
+                            nir_src_for_ssa(bindless));
+      tex->src[sampler_src_idx].src_type = nir_tex_src_sampler_handle;
+   }
+
+   int tex_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
+   if (tex_src_idx >= 0) {
+      nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_src_idx].src);
+      nir_ssa_def *bindless = build_bindless(b, deref, false, shader, layout);
+      nir_instr_rewrite_src(&tex->instr, &tex->src[tex_src_idx].src,
+                            nir_src_for_ssa(bindless));
+      tex->src[tex_src_idx].src_type = nir_tex_src_texture_handle;
+   }
+
+   return true;
+}
+
+static bool
+lower_impl(nir_function_impl *impl, struct tu_shader *shader,
+            const struct tu_pipeline_layout *layout)
+{
+   nir_builder b;
+   nir_builder_init(&b, impl);
+   bool progress = false;
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         b.cursor = nir_before_instr(instr);
+         switch (instr->type) {
+         case nir_instr_type_tex:
+            progress |= lower_tex(&b, nir_instr_as_tex(instr), shader, layout);
+            break;
+         case nir_instr_type_intrinsic:
+            progress |= lower_intrinsic(&b, nir_instr_as_intrinsic(instr), shader, layout);
+            break;
+         default:
+            break;
+         }
+      }
+   }
+
+   return progress;
+}
+
 
 /* Figure out the range of push constants that we're actually going to push to
  * the shader, and tell the backend to reserve this range when pushing UBO
@@ -391,31 +360,36 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
       align(tu_shader->push_consts.count, 4);
 }
 
-static bool
-lower_impl(nir_function_impl *impl, struct tu_shader *shader,
-            const struct tu_pipeline_layout *layout)
+/* Gather the InputAttachmentIndex for each input attachment from the NIR
+ * shader and organize the info in a way so that draw-time patching is easy.
+ */
+static void
+gather_input_attachments(nir_shader *shader, struct tu_shader *tu_shader,
+                         const struct tu_pipeline_layout *layout)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
-   bool progress = false;
+   nir_foreach_variable(var, &shader->uniforms) {
+      const struct glsl_type *glsl_type = glsl_without_array(var->type);
 
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         b.cursor = nir_before_instr(instr);
-         switch (instr->type) {
-         case nir_instr_type_tex:
-            progress |= lower_sampler(&b, nir_instr_as_tex(instr), shader, layout);
-            break;
-         case nir_instr_type_intrinsic:
-            progress |= lower_intrinsic(&b, nir_instr_as_intrinsic(instr), shader, layout);
-            break;
-         default:
-            break;
-         }
+      if (!glsl_type_is_image(glsl_type))
+         continue;
+
+      enum glsl_sampler_dim dim = glsl_get_sampler_dim(glsl_type);
+
+      const uint32_t set = var->data.descriptor_set;
+      const uint32_t binding = var->data.binding;
+      const struct tu_descriptor_set_binding_layout *bind_layout =
+            &layout->set[set].layout->binding[binding];
+      const uint32_t array_size = bind_layout->array_size;
+
+      if (dim == GLSL_SAMPLER_DIM_SUBPASS ||
+          dim == GLSL_SAMPLER_DIM_SUBPASS_MS) {
+         unsigned offset =
+            layout->set[set].input_attachment_start +
+            bind_layout->input_attachment_offset;
+         for (unsigned i = 0; i < array_size; i++)
+            tu_shader->attachment_idx[offset + i] = var->data.index + i;
       }
    }
-
-   return progress;
 }
 
 static bool
@@ -425,17 +399,12 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
    bool progress = false;
 
    gather_push_constants(shader, tu_shader);
+   gather_input_attachments(shader, tu_shader, layout);
 
    nir_foreach_function(function, shader) {
       if (function->impl)
          progress |= lower_impl(function->impl, tu_shader, layout);
    }
-
-   /* spirv_to_nir produces num_ssbos equal to the number of SSBO-containing
-    * variables, while ir3 wants the number of descriptors (like the gallium
-    * path).
-    */
-   shader->info.num_ssbos = tu_shader->ssbo_map.num_desc;
 
    return progress;
 }

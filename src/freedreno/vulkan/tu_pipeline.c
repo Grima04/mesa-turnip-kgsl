@@ -333,13 +333,18 @@ tu6_blend_op(VkBlendOp op)
    }
 }
 
-static unsigned
-tu_shader_nibo(const struct tu_shader *shader)
+static uint32_t
+emit_xs_config(const struct ir3_shader_variant *sh)
 {
-   /* Don't use ir3_shader_nibo(), because that would include declared but
-    * unused storage images and SSBOs.
-    */
-   return shader->ssbo_map.num_desc + shader->image_map.num_desc;
+   if (sh->instrlen) {
+      return A6XX_SP_VS_CONFIG_ENABLED |
+         COND(sh->bindless_tex, A6XX_SP_VS_CONFIG_BINDLESS_TEX) |
+         COND(sh->bindless_samp, A6XX_SP_VS_CONFIG_BINDLESS_SAMP) |
+         COND(sh->bindless_ibo, A6XX_SP_VS_CONFIG_BINDLESS_IBO) |
+         COND(sh->bindless_ubo, A6XX_SP_VS_CONFIG_BINDLESS_UBO);
+   } else {
+      return 0;
+   }
 }
 
 static void
@@ -356,16 +361,11 @@ tu6_emit_vs_config(struct tu_cs *cs, struct tu_shader *shader,
    if (vs->need_fine_derivatives)
       sp_vs_ctrl |= A6XX_SP_VS_CTRL_REG0_DIFF_FINE;
 
-   uint32_t sp_vs_config = A6XX_SP_VS_CONFIG_NTEX(shader->texture_map.num_desc) |
-                           A6XX_SP_VS_CONFIG_NSAMP(shader->sampler_map.num_desc);
-   if (vs->instrlen)
-      sp_vs_config |= A6XX_SP_VS_CONFIG_ENABLED;
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_CTRL_REG0, 1);
    tu_cs_emit(cs, sp_vs_ctrl);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_CONFIG, 2);
-   tu_cs_emit(cs, sp_vs_config);
+   tu_cs_emit(cs, emit_xs_config(vs));
    tu_cs_emit(cs, vs->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_VS_CNTL, 1);
@@ -377,15 +377,11 @@ static void
 tu6_emit_hs_config(struct tu_cs *cs, struct tu_shader *shader,
                    const struct ir3_shader_variant *hs)
 {
-   uint32_t sp_hs_config = 0;
-   if (hs->instrlen)
-      sp_hs_config |= A6XX_SP_HS_CONFIG_ENABLED;
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
    tu_cs_emit(cs, 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_CONFIG, 2);
-   tu_cs_emit(cs, sp_hs_config);
+   tu_cs_emit(cs, emit_xs_config(hs));
    tu_cs_emit(cs, hs->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_HS_CNTL, 1);
@@ -396,12 +392,8 @@ static void
 tu6_emit_ds_config(struct tu_cs *cs, struct tu_shader *shader,
                    const struct ir3_shader_variant *ds)
 {
-   uint32_t sp_ds_config = 0;
-   if (ds->instrlen)
-      sp_ds_config |= A6XX_SP_DS_CONFIG_ENABLED;
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_DS_CONFIG, 2);
-   tu_cs_emit(cs, sp_ds_config);
+   tu_cs_emit(cs, emit_xs_config(ds));
    tu_cs_emit(cs, ds->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_DS_CNTL, 1);
@@ -417,11 +409,7 @@ tu6_emit_gs_config(struct tu_cs *cs, struct tu_shader *shader,
    tu_cs_emit(cs, 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CONFIG, 2);
-   tu_cs_emit(cs, COND(has_gs,
-                       A6XX_SP_GS_CONFIG_ENABLED |
-                       A6XX_SP_GS_CONFIG_NIBO(ir3_shader_nibo(gs)) |
-                       A6XX_SP_GS_CONFIG_NTEX(gs->num_samp) |
-                       A6XX_SP_GS_CONFIG_NSAMP(gs->num_samp)));
+   tu_cs_emit(cs, emit_xs_config(gs));
    tu_cs_emit(cs, gs->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_GS_CNTL, 1);
@@ -445,31 +433,16 @@ tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
    if (fs->need_fine_derivatives)
       sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_DIFF_FINE;
 
-   uint32_t sp_fs_config = 0;
-   unsigned shader_nibo = 0;
-   if (shader) {
-      shader_nibo = tu_shader_nibo(shader);
-      sp_fs_config = A6XX_SP_FS_CONFIG_NTEX(shader->texture_map.num_desc) |
-                     A6XX_SP_FS_CONFIG_NSAMP(shader->sampler_map.num_desc) |
-                     A6XX_SP_FS_CONFIG_NIBO(shader_nibo);
-   }
-
-   if (fs->instrlen)
-      sp_fs_config |= A6XX_SP_FS_CONFIG_ENABLED;
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CTRL_REG0, 1);
    tu_cs_emit(cs, sp_fs_ctrl);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CONFIG, 2);
-   tu_cs_emit(cs, sp_fs_config);
+   tu_cs_emit(cs, emit_xs_config(fs));
    tu_cs_emit(cs, fs->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL, 1);
    tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(fs->constlen, 4)) |
                   A6XX_HLSQ_FS_CNTL_ENABLED);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_IBO_COUNT, 1);
-   tu_cs_emit(cs, shader_nibo);
 }
 
 static void
@@ -485,10 +458,7 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
               A6XX_HLSQ_CS_CNTL_ENABLED);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CONFIG, 2);
-   tu_cs_emit(cs, A6XX_SP_CS_CONFIG_ENABLED |
-              A6XX_SP_CS_CONFIG_NIBO(tu_shader_nibo(shader)) |
-              A6XX_SP_CS_CONFIG_NTEX(shader->texture_map.num_desc) |
-              A6XX_SP_CS_CONFIG_NSAMP(shader->sampler_map.num_desc));
+   tu_cs_emit(cs, emit_xs_config(v));
    tu_cs_emit(cs, v->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CTRL_REG0, 1);
@@ -514,9 +484,6 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
               A6XX_HLSQ_CS_CNTL_0_UNK1(regid(63, 0)) |
               A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
    tu_cs_emit(cs, 0x2fc);             /* HLSQ_CS_UNKNOWN_B998 */
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_IBO_COUNT, 1);
-   tu_cs_emit(cs, tu_shader_nibo(shader));
 }
 
 static void
@@ -1011,6 +978,16 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
                      A6XX_SP_FS_PREFETCH_CMD_WRMASK(prefetch->wrmask) |
                      COND(prefetch->half_precision, A6XX_SP_FS_PREFETCH_CMD_HALF) |
                      A6XX_SP_FS_PREFETCH_CMD_CMD(prefetch->cmd));
+   }
+
+   if (fs->num_sampler_prefetch > 0) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_BINDLESS_PREFETCH_CMD(0), fs->num_sampler_prefetch);
+      for (int i = 0; i < fs->num_sampler_prefetch; i++) {
+         const struct ir3_sampler_prefetch *prefetch = &fs->sampler_prefetch[i];
+         tu_cs_emit(cs,
+                    A6XX_SP_FS_BINDLESS_PREFETCH_CMD_SAMP_ID(prefetch->samp_bindless_id) |
+                    A6XX_SP_FS_BINDLESS_PREFETCH_CMD_TEX_ID(prefetch->tex_bindless_id));
+      }
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
@@ -1949,11 +1926,6 @@ tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
    link->const_state = v->shader->const_state;
    link->constlen = v->constlen;
    link->push_consts = shader->push_consts;
-   link->texture_map = shader->texture_map;
-   link->sampler_map = shader->sampler_map;
-   link->ubo_map = shader->ubo_map;
-   link->ssbo_map = shader->ssbo_map;
-   link->image_map = shader->image_map;
 }
 
 static void
@@ -1983,6 +1955,12 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       tu_pipeline_set_linkage(&pipeline->program.link[i],
                               builder->shaders[i],
                               &builder->shaders[i]->variants[0]);
+   }
+
+   if (builder->shaders[MESA_SHADER_FRAGMENT]) {
+      memcpy(pipeline->program.input_attachment_idx,
+             builder->shaders[MESA_SHADER_FRAGMENT]->attachment_idx,
+             sizeof(pipeline->program.input_attachment_idx));
    }
 }
 
@@ -2208,6 +2186,8 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
                                         pipeline);
    if (result != VK_SUCCESS)
       return result;
+
+   (*pipeline)->layout = builder->layout;
 
    /* compile and upload shaders */
    result = tu_pipeline_builder_compile_shaders(builder);

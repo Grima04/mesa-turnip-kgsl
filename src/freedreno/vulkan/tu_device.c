@@ -732,18 +732,13 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    VkSampleCountFlags sample_counts =
       VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
 
-   /* make sure that the entire descriptor set is addressable with a signed
-    * 32-bit int. So the sum of all limits scaled by descriptor size has to
-    * be at most 2 GiB. the combined image & samples object count as one of
-    * both. This limit is for the pipeline layout, not for the set layout, but
-    * there is no set limit, so we just set a pipeline limit. I don't think
-    * any app is going to hit this soon. */
-   size_t max_descriptor_set_size =
-      ((1ull << 31) - 16 * MAX_DYNAMIC_BUFFERS) /
-      (32 /* uniform buffer, 32 due to potential space wasted on alignment */ +
-       32 /* storage buffer, 32 due to potential space wasted on alignment */ +
-       32 /* sampler, largest when combined with image */ +
-       64 /* sampled image */ + 64 /* storage image */);
+   /* I have no idea what the maximum size is, but the hardware supports very
+    * large numbers of descriptors (at least 2^16). This limit is based on
+    * CP_LOAD_STATE6, which has a 28-bit field for the DWORD offset, so that
+    * we don't have to think about what to do if that overflows, but really
+    * nothing is likely to get close to this.
+    */
+   const size_t max_descriptor_set_size = (1 << 28) / A6XX_TEX_CONST_DWORDS;
 
    VkPhysicalDeviceLimits limits = {
       .maxImageDimension1D = (1 << 14),
@@ -752,7 +747,7 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxImageDimensionCube = (1 << 14),
       .maxImageArrayLayers = (1 << 11),
       .maxTexelBufferElements = 128 * 1024 * 1024,
-      .maxUniformBufferRange = UINT32_MAX,
+      .maxUniformBufferRange = MAX_UNIFORM_BUFFER_RANGE,
       .maxStorageBufferRange = MAX_STORAGE_BUFFER_RANGE,
       .maxPushConstantsSize = MAX_PUSH_CONSTANTS_SIZE,
       .maxMemoryAllocationCount = UINT32_MAX,
@@ -765,7 +760,7 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxPerStageDescriptorStorageBuffers = max_descriptor_set_size,
       .maxPerStageDescriptorSampledImages = max_descriptor_set_size,
       .maxPerStageDescriptorStorageImages = max_descriptor_set_size,
-      .maxPerStageDescriptorInputAttachments = max_descriptor_set_size,
+      .maxPerStageDescriptorInputAttachments = MAX_RTS,
       .maxPerStageResources = max_descriptor_set_size,
       .maxDescriptorSetSamplers = max_descriptor_set_size,
       .maxDescriptorSetUniformBuffers = max_descriptor_set_size,
@@ -774,7 +769,7 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxDescriptorSetStorageBuffersDynamic = MAX_DYNAMIC_STORAGE_BUFFERS,
       .maxDescriptorSetSampledImages = max_descriptor_set_size,
       .maxDescriptorSetStorageImages = max_descriptor_set_size,
-      .maxDescriptorSetInputAttachments = max_descriptor_set_size,
+      .maxDescriptorSetInputAttachments = MAX_RTS,
       .maxVertexInputAttributes = 32,
       .maxVertexInputBindings = 32,
       .maxVertexInputAttributeOffset = 4095,
@@ -814,8 +809,8 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .viewportSubPixelBits = 8,
       .minMemoryMapAlignment = 4096, /* A page */
       .minTexelBufferOffsetAlignment = 64,
-      .minUniformBufferOffsetAlignment = 4,
-      .minStorageBufferOffsetAlignment = 4,
+      .minUniformBufferOffsetAlignment = 64,
+      .minStorageBufferOffsetAlignment = 64,
       .minTexelOffset = -32,
       .maxTexelOffset = 31,
       .minTexelGatherOffset = -32,
@@ -1715,7 +1710,7 @@ tu_GetBufferMemoryRequirements(VkDevice _device,
    TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
 
    pMemoryRequirements->memoryTypeBits = 1;
-   pMemoryRequirements->alignment = 16;
+   pMemoryRequirements->alignment = 64;
    pMemoryRequirements->size =
       align64(buffer->size, pMemoryRequirements->alignment);
 }

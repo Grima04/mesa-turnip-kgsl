@@ -98,6 +98,12 @@ typedef uint32_t xcb_window_t;
 #define MAX_VIEWS 8
 /* The Qualcomm driver exposes 0x20000058 */
 #define MAX_STORAGE_BUFFER_RANGE 0x20000000
+/* We use ldc for uniform buffer loads, just like the Qualcomm driver, so
+ * expose the same maximum range.
+ * TODO: The SIZE bitfield is 15 bits, and in 4-dword units, so the actual
+ * range might be higher.
+ */
+#define MAX_UNIFORM_BUFFER_RANGE 0x10000
 
 #define NUM_DEPTH_CLEAR_PIPELINES 3
 
@@ -615,13 +621,15 @@ struct tu_descriptor_range
 struct tu_descriptor_set
 {
    const struct tu_descriptor_set_layout *layout;
+   struct tu_descriptor_pool *pool;
    uint32_t size;
 
    uint64_t va;
    uint32_t *mapped_ptr;
-   struct tu_descriptor_range *dynamic_descriptors;
 
-   struct tu_bo *descriptors[0];
+   uint32_t *dynamic_descriptors;
+
+   struct tu_bo *buffers[0];
 };
 
 struct tu_push_descriptor_set
@@ -806,7 +814,8 @@ struct tu_descriptor_state
    uint32_t valid;
    struct tu_push_descriptor_set push_set;
    bool push_dirty;
-   uint64_t dynamic_buffers[MAX_DYNAMIC_BUFFERS];
+   uint32_t dynamic_descriptors[MAX_DYNAMIC_BUFFERS * A6XX_TEX_CONST_DWORDS];
+   uint32_t input_attachments[MAX_RTS * A6XX_TEX_CONST_DWORDS];
 };
 
 struct tu_tile
@@ -845,8 +854,10 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_COMPUTE_PIPELINE = 1 << 1,
    TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 2,
    TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 3,
-   TU_CMD_DIRTY_PUSH_CONSTANTS = 1 << 4,
-   TU_CMD_DIRTY_STREAMOUT_BUFFERS = 1 << 5,
+   TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS = 1 << 4,
+   TU_CMD_DIRTY_PUSH_CONSTANTS = 1 << 5,
+   TU_CMD_DIRTY_STREAMOUT_BUFFERS = 1 << 6,
+   TU_CMD_DIRTY_INPUT_ATTACHMENTS = 1 << 7,
 
    TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH = 1 << 16,
    TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK = 1 << 17,
@@ -1118,17 +1129,6 @@ struct tu_shader_compile_options
    bool include_binning_pass;
 };
 
-struct tu_descriptor_map
-{
-   /* TODO: avoid fixed size array/justify the size */
-   unsigned num; /* number of array entries */
-   unsigned num_desc; /* Number of descriptors (sum of array_size[]) */
-   int set[128];
-   int binding[128];
-   int value[128];
-   int array_size[128];
-};
-
 struct tu_push_constant_range
 {
    uint32_t lo;
@@ -1140,11 +1140,7 @@ struct tu_shader
    struct ir3_shader ir3_shader;
 
    struct tu_push_constant_range push_consts;
-   struct tu_descriptor_map texture_map;
-   struct tu_descriptor_map sampler_map;
-   struct tu_descriptor_map ubo_map;
-   struct tu_descriptor_map ssbo_map;
-   struct tu_descriptor_map image_map;
+   unsigned attachment_idx[MAX_RTS];
 
    /* This may be true for vertex shaders.  When true, variants[1] is the
     * binning variant and binning_binary is non-NULL.
@@ -1189,11 +1185,6 @@ struct tu_program_descriptor_linkage
    uint32_t constlen;
 
    struct tu_push_constant_range push_consts;
-   struct tu_descriptor_map texture_map;
-   struct tu_descriptor_map sampler_map;
-   struct tu_descriptor_map ubo_map;
-   struct tu_descriptor_map ssbo_map;
-   struct tu_descriptor_map image_map;
 };
 
 struct tu_pipeline
@@ -1216,6 +1207,7 @@ struct tu_pipeline
       struct tu_cs_entry binning_state_ib;
 
       struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
+      unsigned input_attachment_idx[MAX_RTS];
    } program;
 
    struct
