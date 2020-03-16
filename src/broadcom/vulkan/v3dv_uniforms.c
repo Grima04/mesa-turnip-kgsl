@@ -135,14 +135,71 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PUSH_CONSTANTS;
 }
 
+static void
+write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
+                        struct v3dv_pipeline *pipeline,
+                        struct v3dv_cl_out **uniforms,
+                        enum quniform_contents content,
+                        uint32_t data)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   struct v3dv_descriptor_state *descriptor_state =
+      &cmd_buffer->state.descriptor_state;
+
+   struct v3dv_descriptor_map *map =
+      content == QUNIFORM_UBO_ADDR ?
+      &pipeline->ubo_map : &pipeline->ssbo_map;
+
+   uint32_t offset =
+      content == QUNIFORM_UBO_ADDR ?
+      v3d_unit_data_get_offset(data) :
+      0;
+
+   uint32_t dynamic_offset = 0;
+
+   /* For ubos, index is shifted, as 0 is reserved for push constants.
+    */
+   if (content == QUNIFORM_UBO_ADDR &&
+       v3d_unit_data_get_unit(data) == 0) {
+      /* This calls is to ensure that the push_constant_ubo is
+       * updated. It already take into account it is should do the
+       * update or not
+       */
+      check_push_constants_ubo(cmd_buffer);
+
+      struct v3dv_resource *resource =
+         &cmd_buffer->push_constants_resource;
+      assert(resource->bo);
+
+      cl_aligned_reloc(&job->indirect, uniforms,
+                       resource->bo,
+                       resource->offset + offset + dynamic_offset);
+
+   } else {
+      uint32_t index =
+         content == QUNIFORM_UBO_ADDR ?
+         v3d_unit_data_get_unit(data) - 1 :
+         data;
+
+      struct v3dv_descriptor *descriptor =
+         get_descriptor(descriptor_state, map,
+                        pipeline->layout,
+                        index, &dynamic_offset);
+      assert(descriptor);
+      assert(descriptor->bo);
+
+      cl_aligned_reloc(&job->indirect, uniforms,
+                       descriptor->bo,
+                       descriptor->offset + offset + dynamic_offset);
+   }
+}
+
 struct v3dv_cl_reloc
 v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                     struct v3dv_pipeline_stage *p_stage)
 {
    struct v3d_uniform_list *uinfo = &p_stage->prog_data.base->uniforms;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
-   struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state;
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
 
    struct v3dv_job *job = cmd_buffer->state.job;
@@ -192,56 +249,10 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
          break;
 
       case QUNIFORM_SSBO_OFFSET:
-      case QUNIFORM_UBO_ADDR: {
-         struct v3dv_descriptor_map *map =
-            uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
-            &pipeline->ubo_map : &pipeline->ssbo_map;
-
-         uint32_t offset =
-            uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
-            v3d_unit_data_get_offset(data) :
-            0; /* FIXME */
-
-         uint32_t dynamic_offset = 0;
-
-         /* For ubos, index is shifted, as 0 is reserved for push constants.
-          */
-         if (uinfo->contents[i] == QUNIFORM_UBO_ADDR &&
-             v3d_unit_data_get_unit(data) == 0) {
-            /* This calls is to ensure that the push_constant_ubo is
-             * updated. It already take into account it is should do the
-             * update or not
-             */
-            check_push_constants_ubo(cmd_buffer);
-
-            struct v3dv_resource *resource =
-               &cmd_buffer->push_constants_resource;
-            assert(resource->bo);
-
-            cl_aligned_reloc(&job->indirect, &uniforms,
-                             resource->bo,
-                             resource->offset + offset + dynamic_offset);
-
-         } else {
-            uint32_t index =
-               uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
-               v3d_unit_data_get_unit(data) - 1 :
-               data;
-
-            struct v3dv_descriptor *descriptor =
-               get_descriptor(descriptor_state, map,
-                              pipeline->layout,
-                              index, &dynamic_offset);
-            assert(descriptor);
-            assert(descriptor->bo);
-
-            cl_aligned_reloc(&job->indirect, &uniforms,
-                             descriptor->bo,
-                             descriptor->offset + offset + dynamic_offset);
-         }
-
+      case QUNIFORM_UBO_ADDR:
+         write_ubo_ssbo_uniforms(cmd_buffer, pipeline, &uniforms,
+                                 uinfo->contents[i], data);
          break;
-      }
 
       default:
          unreachable("unsupported quniform_contents uniform type\n");
