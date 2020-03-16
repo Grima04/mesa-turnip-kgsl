@@ -917,13 +917,11 @@ void * ir3_assemble(struct ir3 *shader, struct ir3_info *info,
 {
 	uint32_t *ptr, *dwords;
 
+	memset(info, 0, sizeof(*info));
 	info->gpu_id        = gpu_id;
 	info->max_reg       = -1;
 	info->max_half_reg  = -1;
 	info->max_const     = -1;
-	info->instrs_count  = 0;
-	info->sizedwords    = 0;
-	info->ss = info->sy = 0;
 
 	foreach_block (block, &shader->block_list) {
 		foreach_instr (instr, &block->instr_list) {
@@ -958,6 +956,13 @@ void * ir3_assemble(struct ir3 *shader, struct ir3_info *info,
 			info->nops_count += instr->nop;
 			if (instr->opc == OPC_NOP)
 				info->nops_count += 1 + instr->repeat;
+			if (instr->opc == OPC_MOV) {
+				if (instr->cat1.src_type == instr->cat1.dst_type) {
+					info->mov_count += 1 + instr->repeat;
+				} else {
+					info->cov_count += 1 + instr->repeat;
+				}
+			}
 			dwords += 2;
 
 			if (instr->flags & IR3_INSTR_SS) {
