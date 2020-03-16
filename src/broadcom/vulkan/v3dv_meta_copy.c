@@ -538,7 +538,8 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
    const VkImageSubresourceLayers *imgrsc = &region->imageSubresource;
-   assert(layer < imgrsc->layerCount);
+   assert((image->type != VK_IMAGE_TYPE_3D && layer < imgrsc->layerCount) ||
+          layer < image->extent.depth);
 
    /* Load image to TLB */
    emit_image_load(cl, image, imgrsc->aspectMask,
@@ -640,7 +641,11 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                                            region->imageSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
 
-   uint32_t num_layers = region->imageSubresource.layerCount;
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->imageSubresource.layerCount;
+   else
+      num_layers = region->imageExtent.depth;
    assert(num_layers > 0);
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
@@ -702,7 +707,8 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
    const VkImageSubresourceLayers *srcrsc = &region->srcSubresource;
-   assert(layer < srcrsc->layerCount);
+   assert((src->type != VK_IMAGE_TYPE_3D && layer < srcrsc->layerCount) ||
+          layer < src->extent.depth);
 
    emit_image_load(cl, src, srcrsc->aspectMask,
                    srcrsc->baseArrayLayer + layer, srcrsc->mipLevel,
@@ -713,7 +719,8 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
    const VkImageSubresourceLayers *dstrsc = &region->dstSubresource;
-   assert(layer < dstrsc->layerCount);
+   assert((dst->type != VK_IMAGE_TYPE_3D && layer < dstrsc->layerCount) ||
+          layer < dst->extent.depth);
 
    emit_image_store(cl, dst, dstrsc->aspectMask,
                     dstrsc->baseArrayLayer + layer, dstrsc->mipLevel,
@@ -777,13 +784,15 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 
    /* From the Vulkan spec, VkImageCopy valid usage:
     *
-    *   "The number of slices of the extent (for 3D) or layers of the
-    *    srcSubresource (for non-3D) must match the number of slices of
-    *    the extent (for 3D) or layers of the dstSubresource (for non-3D)."
+    * "The layerCount member of srcSubresource and dstSubresource must match"
     */
    assert(region->srcSubresource.layerCount ==
           region->dstSubresource.layerCount);
-   uint32_t num_layers = region->dstSubresource.layerCount;
+   uint32_t num_layers;
+   if (dst->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->dstSubresource.layerCount;
+   else
+      num_layers = region->extent.depth;
    assert(num_layers > 0);
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
@@ -914,15 +923,22 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       hw_clear_value.s = clear_value->depthStencil.stencil;
    }
 
-   uint32_t layer_count = range->layerCount == VK_REMAINING_ARRAY_LAYERS ?
-                          image->array_size - range->baseArrayLayer :
-                          range->layerCount;
+   uint32_t min_layer;
+   uint32_t max_layer;
+   if (image->type != VK_IMAGE_TYPE_3D) {
+      uint32_t layer_count = range->layerCount == VK_REMAINING_ARRAY_LAYERS ?
+                             image->array_size - range->baseArrayLayer :
+                             range->layerCount;
+      min_layer = range->baseArrayLayer;
+      max_layer = range->baseArrayLayer + layer_count;
+   } else {
+      min_layer = 0;
+      max_layer = image->extent.depth;
+   }
 
    uint32_t level_count = range->levelCount == VK_REMAINING_MIP_LEVELS ?
                           image->levels - range->baseMipLevel :
                           range->levelCount;
-   uint32_t min_layer = range->baseArrayLayer;
-   uint32_t max_layer = range->baseArrayLayer + layer_count;
    uint32_t min_level = range->baseMipLevel;
    uint32_t max_level = range->baseMipLevel + level_count;
 
@@ -1370,7 +1386,8 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
    const VkImageSubresourceLayers *imgrsc = &region->imageSubresource;
-   assert(layer < imgrsc->layerCount);
+   assert((image->type != VK_IMAGE_TYPE_3D && layer < imgrsc->layerCount) ||
+          layer < image->extent.depth);
 
    /* Load TLB from buffer */
    uint32_t width, height;
@@ -1493,7 +1510,11 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                                            region->imageSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
 
-   uint32_t num_layers = region->imageSubresource.layerCount;
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->imageSubresource.layerCount;
+   else
+      num_layers = region->imageExtent.depth;
    assert(num_layers > 0);
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
