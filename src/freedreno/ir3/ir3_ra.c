@@ -1082,39 +1082,6 @@ static void fixup_half_instr_dst(struct ir3_instruction *instr)
 	case 1: /* move instructions */
 		instr->cat1.dst_type = half_type(instr->cat1.dst_type);
 		break;
-	case 3:
-		switch (instr->opc) {
-		case OPC_MAD_F32:
-			/* Available for that dest is half and srcs are full.
-			 * eg. mad.f32 hr0, r0.x, r0.y, r0.z
-			 */
-			if (instr->regs[1]->flags & IR3_REG_HALF)
-				instr->opc = OPC_MAD_F16;
-			break;
-		case OPC_SEL_B32:
-			instr->opc = OPC_SEL_B16;
-			break;
-		case OPC_SEL_S32:
-			instr->opc = OPC_SEL_S16;
-			break;
-		case OPC_SEL_F32:
-			instr->opc = OPC_SEL_F16;
-			break;
-		case OPC_SAD_S32:
-			instr->opc = OPC_SAD_S16;
-			break;
-		/* instructions may already be fixed up: */
-		case OPC_MAD_F16:
-		case OPC_SEL_B16:
-		case OPC_SEL_S16:
-		case OPC_SEL_F16:
-		case OPC_SAD_S16:
-			break;
-		default:
-			assert(0);
-			break;
-		}
-		break;
 	case 4:
 		switch (instr->opc) {
 		case OPC_RSQ:
@@ -1141,6 +1108,21 @@ static void fixup_half_instr_src(struct ir3_instruction *instr)
 	switch (instr->opc) {
 	case OPC_MOV:
 		instr->cat1.src_type = half_type(instr->cat1.src_type);
+		break;
+	case OPC_MAD_F32:
+		instr->opc = OPC_MAD_F16;
+		break;
+	case OPC_SEL_B32:
+		instr->opc = OPC_SEL_B16;
+		break;
+	case OPC_SEL_S32:
+		instr->opc = OPC_SEL_S16;
+		break;
+	case OPC_SEL_F32:
+		instr->opc = OPC_SEL_F16;
+		break;
+	case OPC_SAD_S32:
+		instr->opc = OPC_SAD_S16;
 		break;
 	default:
 		break;
