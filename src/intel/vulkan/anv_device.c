@@ -308,7 +308,7 @@ anv_physical_device_free_disk_cache(struct anv_physical_device *device)
 static uint64_t
 get_available_system_memory()
 {
-   char *meminfo = os_read_file("/proc/meminfo");
+   char *meminfo = os_read_file("/proc/meminfo", NULL);
    if (!meminfo)
       return 0;
 

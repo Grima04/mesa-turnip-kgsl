@@ -27,9 +27,11 @@ os_file_create_unique(const char *filename, int filemode);
 /*
  * Read a file.
  * Returns a char* that the caller must free(), or NULL and sets errno.
+ * If size is not null and no error occured it's set to the size of the
+ * file.
  */
 char *
-os_read_file(const char *filename);
+os_read_file(const char *filename, size_t *size);
 
 /*
  * Try to determine if two file descriptors reference the same file description

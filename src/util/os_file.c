@@ -67,7 +67,7 @@ readN(int fd, char *buf, size_t len)
 }
 
 char *
-os_read_file(const char *filename)
+os_read_file(const char *filename, size_t *size)
 {
    /* Note that this also serves as a slight margin to avoid a 2x grow when
     * the file is just a few bytes larger when we read it than when we
@@ -130,6 +130,9 @@ os_read_file(const char *filename)
 
    buf[offset] = '\0';
 
+   if (size)
+      *size = offset;
+
    return buf;
 }
 
@@ -150,7 +153,7 @@ os_same_file_description(int fd1, int fd2)
 #include "u_debug.h"
 
 char *
-os_read_file(const char *filename)
+os_read_file(const char *filename, size_t *size)
 {
    errno = -ENOSYS;
    return NULL;
