@@ -2788,16 +2788,27 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 
 	for (unsigned i = 0; i < MESA_SHADER_STAGES; ++i) {
 		const VkPipelineShaderStageCreateInfo *stage = pStages[i];
+		unsigned subgroup_size = 64;
 
 		if (!modules[i])
 			continue;
 
 		radv_start_feedback(stage_feedbacks[i]);
 
+		if (key->compute_subgroup_size) {
+			/* Only GFX10+ and compute shaders currently support
+			 * requiring a specific subgroup size.
+			 */
+			assert(device->physical_device->rad_info.chip_class >= GFX10 &&
+			       i == MESA_SHADER_COMPUTE);
+			subgroup_size = key->compute_subgroup_size;
+		}
+
 		nir[i] = radv_shader_compile_to_nir(device, modules[i],
 						    stage ? stage->pName : "main", i,
 						    stage ? stage->pSpecializationInfo : NULL,
-						    flags, pipeline->layout);
+						    flags, pipeline->layout,
+						    subgroup_size);
 
 		/* We don't want to alter meta shaders IR directly so clone it
 		 * first.
