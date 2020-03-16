@@ -309,8 +309,7 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       val->ssa->def = nir_degrees(nb, src[0]);
       return;
    case GLSLstd450Tan:
-      val->ssa->def = nir_fdiv(nb, nir_fsin(nb, src[0]),
-                               nir_fcos(nb, src[0]));
+      val->ssa->def = nir_ftan(nb, src[0]);
       return;
 
    case GLSLstd450Modf: {
