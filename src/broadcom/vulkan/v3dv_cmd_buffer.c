@@ -209,8 +209,8 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
       vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
    }
 
-   if (cmd_buffer->push_constants_descriptor.bo)
-      v3dv_bo_free(cmd_buffer->device, cmd_buffer->push_constants_descriptor.bo);
+   if (cmd_buffer->push_constants_resource.bo)
+      v3dv_bo_free(cmd_buffer->device, cmd_buffer->push_constants_resource.bo);
 }
 
 static void

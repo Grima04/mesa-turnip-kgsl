@@ -672,6 +672,16 @@ struct v3dv_descriptor {
    uint32_t offset;
 };
 
+/* Aux struct as it is really common to have a pair bo/address. Called
+ * resource because it is really likely that we would need something like that
+ * if we work on reuse the same bo at different points (like the shader
+ * assembly).
+ */
+struct v3dv_resource {
+   struct v3dv_bo *bo;
+   uint32_t offset;
+};
+
 struct v3dv_cmd_buffer {
    VK_LOADER_DATA _loader_data;
 
@@ -688,7 +698,7 @@ struct v3dv_cmd_buffer {
    struct v3dv_cmd_buffer_state state;
 
    uint32_t push_constants_data[MAX_PUSH_CONSTANTS_SIZE / 4];
-   struct v3dv_descriptor push_constants_descriptor;
+   struct v3dv_resource push_constants_resource;
 
    /* List of jobs to submit to the kernel */
    struct list_head submit_jobs;

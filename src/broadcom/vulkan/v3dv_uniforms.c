@@ -100,26 +100,26 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.pipeline->layout->push_constant_size == 0)
       return;
 
-   if (cmd_buffer->push_constants_descriptor.bo == NULL) {
-      cmd_buffer->push_constants_descriptor.bo =
+   if (cmd_buffer->push_constants_resource.bo == NULL) {
+      cmd_buffer->push_constants_resource.bo =
          v3dv_bo_alloc(cmd_buffer->device, MAX_PUSH_CONSTANTS_SIZE, "push constants");
 
-      if (!cmd_buffer->push_constants_descriptor.bo) {
+      if (!cmd_buffer->push_constants_resource.bo) {
          fprintf(stderr, "Failed to allocate memory for push constants\n");
          abort();
       }
 
       bool ok = v3dv_bo_map(cmd_buffer->device,
-                            cmd_buffer->push_constants_descriptor.bo,
+                            cmd_buffer->push_constants_resource.bo,
                             MAX_PUSH_CONSTANTS_SIZE);
       if (!ok) {
          fprintf(stderr, "failed to map push constants buffer\n");
          abort();
       }
    } else {
-      if (cmd_buffer->push_constants_descriptor.offset + MAX_PUSH_CONSTANTS_SIZE <=
-          cmd_buffer->push_constants_descriptor.bo->size) {
-         cmd_buffer->push_constants_descriptor.offset += MAX_PUSH_CONSTANTS_SIZE;
+      if (cmd_buffer->push_constants_resource.offset + MAX_PUSH_CONSTANTS_SIZE <=
+          cmd_buffer->push_constants_resource.bo->size) {
+         cmd_buffer->push_constants_resource.offset += MAX_PUSH_CONSTANTS_SIZE;
       } else {
          /* FIXME: we got out of space for push descriptors. Should we create
           * a new bo? This could be easier with a uploader
@@ -127,8 +127,8 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
       }
    }
 
-   memcpy(cmd_buffer->push_constants_descriptor.bo->map +
-          cmd_buffer->push_constants_descriptor.offset,
+   memcpy(cmd_buffer->push_constants_resource.bo->map +
+          cmd_buffer->push_constants_resource.offset,
           cmd_buffer->push_constants_data,
           MAX_PUSH_CONSTANTS_SIZE);
 
@@ -206,7 +206,6 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 
          /* For ubos, index is shifted, as 0 is reserved for push constants.
           */
-         struct v3dv_descriptor *descriptor = NULL;
          if (uinfo->contents[i] == QUNIFORM_UBO_ADDR &&
              v3d_unit_data_get_unit(data) == 0) {
             /* This calls is to ensure that the push_constant_ubo is
@@ -215,23 +214,32 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
              */
             check_push_constants_ubo(cmd_buffer);
 
-            descriptor = &cmd_buffer->push_constants_descriptor;
+            struct v3dv_resource *resource =
+               &cmd_buffer->push_constants_resource;
+            assert(resource->bo);
+
+            cl_aligned_reloc(&job->indirect, &uniforms,
+                             resource->bo,
+                             resource->offset + offset + dynamic_offset);
+
          } else {
             uint32_t index =
                uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
                v3d_unit_data_get_unit(data) - 1 :
                data;
 
-            descriptor =
+            struct v3dv_descriptor *descriptor =
                get_descriptor(descriptor_state, map,
                               pipeline->layout,
                               index, &dynamic_offset);
             assert(descriptor);
+            assert(descriptor->bo);
+
+            cl_aligned_reloc(&job->indirect, &uniforms,
+                             descriptor->bo,
+                             descriptor->offset + offset + dynamic_offset);
          }
 
-         cl_aligned_reloc(&job->indirect, &uniforms,
-                          descriptor->bo,
-                          descriptor->offset + offset + dynamic_offset);
          break;
       }
 
