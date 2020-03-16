@@ -38,6 +38,11 @@ is_fp16_conv(struct ir3_instruction *instr)
 	if (dst->flags & (IR3_REG_EVEN | IR3_REG_POS_INF))
 		return false;
 
+	if (dst->flags & (IR3_REG_RELATIV | IR3_REG_ARRAY))
+		return false;
+	if (src->flags & (IR3_REG_RELATIV | IR3_REG_ARRAY))
+		return false;
+
 	if (instr->cat1.src_type == TYPE_F32 &&
 			instr->cat1.dst_type == TYPE_F16)
 		return true;
