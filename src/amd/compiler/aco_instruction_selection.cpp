@@ -9502,16 +9502,16 @@ void fix_ls_vgpr_init_bug(isel_context *ctx, Pseudo_instruction *startpgm)
    /* If there are no HS threads, SPI mistakenly loads the LS VGPRs starting at VGPR 0. */
 
    Temp instance_id = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
-                               get_arg(ctx, ctx->args->ac.instance_id),
                                get_arg(ctx, ctx->args->rel_auto_id),
+                               get_arg(ctx, ctx->args->ac.instance_id),
                                ls_has_nonzero_hs_threads);
    Temp rel_auto_id = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
-                               get_arg(ctx, ctx->args->rel_auto_id),
                                get_arg(ctx, ctx->args->ac.tcs_rel_ids),
+                               get_arg(ctx, ctx->args->rel_auto_id),
                                ls_has_nonzero_hs_threads);
    Temp vertex_id = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
-                             get_arg(ctx, ctx->args->ac.vertex_id),
                              get_arg(ctx, ctx->args->ac.tcs_patch_id),
+                             get_arg(ctx, ctx->args->ac.vertex_id),
                              ls_has_nonzero_hs_threads);
 
    ctx->arg_temps[ctx->args->ac.instance_id.arg_index] = instance_id;
