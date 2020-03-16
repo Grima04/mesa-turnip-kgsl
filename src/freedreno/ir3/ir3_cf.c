@@ -21,6 +21,8 @@
  * SOFTWARE.
  */
 
+#include "util/ralloc.h"
+
 #include "ir3.h"
 
 static bool
@@ -55,38 +57,28 @@ is_fp16_conv(struct ir3_instruction *instr)
 }
 
 static bool
-all_uses_fp16_conv(struct ir3 *ir, struct ir3_instruction *conv_src)
+all_uses_fp16_conv(struct ir3_instruction *conv_src)
 {
-	foreach_block (block, &ir->block_list) {
-		foreach_instr (instr, &block->instr_list) {
-			struct ir3_instruction *src;
-			foreach_ssa_src (src, instr) {
-				if (src == conv_src && !is_fp16_conv(instr))
-					return false;
-			}
-		}
-	}
-
+	foreach_ssa_use (use, conv_src)
+		if (!is_fp16_conv(use))
+			return false;
 	return true;
 }
 
 static void
-rewrite_uses(struct ir3 *ir, struct ir3_instruction *conv,
-			 struct ir3_instruction *replace)
+rewrite_uses(struct ir3_instruction *conv, struct ir3_instruction *replace)
 {
-	foreach_block (block, &ir->block_list) {
-		foreach_instr (instr, &block->instr_list) {
-			struct ir3_instruction *src;
-			foreach_ssa_src_n (src, n, instr) {
-				if (src == conv)
-					instr->regs[n]->instr = replace;
-			}
+	foreach_ssa_use (use, conv) {
+		struct ir3_instruction *src;
+		foreach_ssa_src_n (src, n, use) {
+			if (src == conv)
+				use->regs[n]->instr = replace;
 		}
 	}
 }
 
 static void
-try_conversion_folding(struct ir3 *ir, struct ir3_instruction *conv)
+try_conversion_folding(struct ir3_instruction *conv)
 {
 	struct ir3_instruction *src;
 
@@ -115,7 +107,7 @@ try_conversion_folding(struct ir3 *ir, struct ir3_instruction *conv)
 		break;
 	}
 
-	if (!all_uses_fp16_conv(ir, src))
+	if (!all_uses_fp16_conv(src))
 		return;
 
 	if (src->opc == OPC_MOV) {
@@ -141,15 +133,21 @@ try_conversion_folding(struct ir3 *ir, struct ir3_instruction *conv)
 		src->regs[0]->flags &= ~IR3_REG_HALF;
 	}
 
-	rewrite_uses(ir, conv, src);
+	rewrite_uses(conv, src);
 }
 
 void
 ir3_cf(struct ir3 *ir)
 {
-	foreach_block_safe (block, &ir->block_list) {
+	void *mem_ctx = ralloc_context(NULL);
+
+	ir3_find_ssa_uses(ir, mem_ctx);
+
+	foreach_block (block, &ir->block_list) {
 		foreach_instr_safe (instr, &block->instr_list) {
-			try_conversion_folding(ir, instr);
+			try_conversion_folding(instr);
 		}
 	}
+
+	ralloc_free(mem_ctx);
 }
