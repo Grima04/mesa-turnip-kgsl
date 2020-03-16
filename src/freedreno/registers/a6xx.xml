@@ -3049,6 +3049,12 @@ to upconvert to 32b float internally?
 	<!-- always 0x3f ? -->
 	<reg32 offset="0xae0f" name="SP_UNKNOWN_AE0F"/>
 
+	<!--
+	The downstream kernel calls the debug cluster of registers
+	"a6xx_sp_ps_tp_cluster" but this actually specifies the border
+	color base for compute shaders.
+	-->
+	<reg64 offset="0xb180" name="SP_PS_TP_BORDER_COLOR_BASE_ADDR" type="address"/>
 	<!-- always 0x0 ? -->
 	<reg32 offset="0xb182" name="SP_UNKNOWN_B182"/>
 	<reg32 offset="0xb183" name="SP_UNKNOWN_B183"/>

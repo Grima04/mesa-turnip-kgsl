@@ -1165,6 +1165,8 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_TP_BORDER_COLOR_BASE_ADDR(.bo = &cmd->device->border_color));
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_PS_TP_BORDER_COLOR_BASE_ADDR(.bo = &cmd->device->border_color));
 
    tu_cs_sanity_check(cs);
 }
