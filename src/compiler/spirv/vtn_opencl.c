@@ -100,6 +100,7 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_SSub_sat: return nir_op_isub_sat;
    case OpenCLstd_USub_sat: return nir_op_usub_sat;
    case OpenCLstd_Trunc: return nir_op_ftrunc;
+   case OpenCLstd_Rint: return nir_op_fround_even;
    /* uhm... */
    case OpenCLstd_UAbs: return nir_op_mov;
    default:
@@ -366,6 +367,7 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_SSub_sat:
    case OpenCLstd_USub_sat:
    case OpenCLstd_Trunc:
+   case OpenCLstd_Rint:
       handle_instr(b, cl_opcode, w, count, handle_alu);
       return true;
    case OpenCLstd_SAbs_diff:
