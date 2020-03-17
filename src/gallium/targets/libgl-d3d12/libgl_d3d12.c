@@ -43,12 +43,17 @@ gdi_screen_create(void)
 {
    struct pipe_screen *screen = NULL;
    struct sw_winsys *winsys;
+   LUID *adapter_luid = NULL, local_luid;
 
    winsys = gdi_create_sw_winsys();
    if(!winsys)
       goto no_winsys;
 
-   screen = d3d12_create_screen( winsys );
+   if (stw_dev && stw_dev->callbacks.pfnGetAdapterLuid) {
+      stw_dev->callbacks.pfnGetAdapterLuid(NULL, &local_luid);
+      adapter_luid = &local_luid;
+   }
+   screen = d3d12_create_screen( winsys, adapter_luid );
 
    if(!screen)
       goto no_screen;
