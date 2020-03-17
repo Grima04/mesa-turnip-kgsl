@@ -553,6 +553,24 @@ vectorized_intrinsic(nir_intrinsic_instr *intr)
    return false;
 }
 
+/** Returns the image format or PIPE_FORMAT_COUNT for incomplete derefs
+ *
+ * We use PIPE_FORMAT_COUNT for incomplete derefs because PIPE_FORMAT_NONE
+ * indicates that we found the variable but it has no format specified.
+ */
+static enum pipe_format
+image_intrin_format(nir_intrinsic_instr *instr)
+{
+   if (nir_intrinsic_has_format(instr))
+      return nir_intrinsic_format(instr);
+
+   nir_variable *var = nir_intrinsic_get_var(instr, 0);
+   if (var == NULL)
+      return PIPE_FORMAT_COUNT;
+
+   return var->data.image.format;
+}
+
 static void
 validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 {
@@ -675,6 +693,63 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       validate_assert(state,
          util_bitcount(nir_intrinsic_memory_modes(instr)) == 1);
       break;
+
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_image_atomic_imin:
+   case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_image_atomic_umax:
+   case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_comp_swap: {
+      enum pipe_format format = image_intrin_format(instr);
+      validate_assert(state, format == PIPE_FORMAT_COUNT ||
+                             format == PIPE_FORMAT_R32_UINT ||
+                             format == PIPE_FORMAT_R32_SINT);
+      validate_assert(state, nir_dest_bit_size(instr->dest) == 32);
+      break;
+   }
+
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_exchange: {
+      enum pipe_format format = image_intrin_format(instr);
+      validate_assert(state, format == PIPE_FORMAT_COUNT ||
+                             format == PIPE_FORMAT_R32_UINT ||
+                             format == PIPE_FORMAT_R32_SINT ||
+                             format == PIPE_FORMAT_R32_FLOAT);
+      validate_assert(state, nir_dest_bit_size(instr->dest) == 32);
+      break;
+   }
+
+   case nir_intrinsic_image_deref_atomic_fadd:
+   case nir_intrinsic_image_atomic_fadd:
+   case nir_intrinsic_bindless_image_atomic_fadd: {
+      enum pipe_format format = image_intrin_format(instr);
+      validate_assert(state, format == PIPE_FORMAT_COUNT ||
+                             format == PIPE_FORMAT_R32_FLOAT);
+      validate_assert(state, nir_dest_bit_size(instr->dest) == 32);
+      break;
+   }
 
    default:
       break;
