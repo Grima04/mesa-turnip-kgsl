@@ -54,6 +54,7 @@ struct spirv_supported_capabilities {
    bool image_ms_array;
    bool image_read_without_format;
    bool image_write_without_format;
+   bool image_atomic_int64;
    bool int8;
    bool int16;
    bool int64;

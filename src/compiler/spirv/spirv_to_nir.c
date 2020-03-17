@@ -1333,6 +1333,8 @@ translate_image_format(struct vtn_builder *b, SpvImageFormat format)
    case SpvImageFormatRg8ui:        return PIPE_FORMAT_R8G8_UINT;
    case SpvImageFormatR16ui:        return PIPE_FORMAT_R16_UINT;
    case SpvImageFormatR8ui:         return PIPE_FORMAT_R8_UINT;
+   case SpvImageFormatR64ui:        return PIPE_FORMAT_R64_UINT;
+   case SpvImageFormatR64i:         return PIPE_FORMAT_R64_SINT;
    default:
       vtn_fail("Invalid image format: %s (%u)",
                spirv_imageformat_to_string(format), format);
@@ -1607,9 +1609,17 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          vtn_fail_if(sampled_type->base_type != vtn_base_type_void,
                      "Sampled type of OpTypeImage must be void for kernels");
       } else {
-         vtn_fail_if(sampled_type->base_type != vtn_base_type_scalar ||
-                     glsl_get_bit_size(sampled_type->type) != 32,
-                     "Sampled type of OpTypeImage must be a 32-bit scalar");
+         vtn_fail_if(sampled_type->base_type != vtn_base_type_scalar,
+                     "Sampled type of OpTypeImage must be a scalar");
+         if (b->options->caps.image_atomic_int64) {
+            vtn_fail_if(glsl_get_bit_size(sampled_type->type) != 32 &&
+                        glsl_get_bit_size(sampled_type->type) != 64,
+                        "Sampled type of OpTypeImage must be a 32 or 64-bit "
+                        "scalar");
+         } else {
+            vtn_fail_if(glsl_get_bit_size(sampled_type->type) != 32,
+                        "Sampled type of OpTypeImage must be a 32-bit scalar");
+         }
       }
 
       enum glsl_sampler_dim dim;
@@ -3315,7 +3325,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
          intrin->num_components = dest_components;
 
       nir_ssa_dest_init(&intrin->instr, &intrin->dest,
-                        nir_intrinsic_dest_components(intrin), 32, NULL);
+                        nir_intrinsic_dest_components(intrin),
+                        glsl_get_bit_size(type->type), NULL);
 
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
@@ -4458,6 +4469,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
 
       case SpvCapabilityRayTraversalPrimitiveCullingProvisionalKHR:
          spv_check_supported(ray_traversal_primitive_culling, cap);
+         break;
+
+      case SpvCapabilityInt64ImageEXT:
+         spv_check_supported(image_atomic_int64, cap);
          break;
 
       default:
