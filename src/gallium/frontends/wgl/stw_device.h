@@ -91,7 +91,7 @@ struct stw_device
 extern struct stw_device *stw_dev;
 
 boolean
-stw_init_screen(void);
+stw_init_screen(HDC hdc);
 
 static inline struct stw_context *
 stw_lookup_context_locked( DHGLRC dhglrc )

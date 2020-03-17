@@ -39,7 +39,7 @@
 #include "d3d12/d3d12_public.h"
 
 static struct pipe_screen *
-gdi_screen_create(void)
+gdi_screen_create(HDC hDC)
 {
    struct pipe_screen *screen = NULL;
    struct sw_winsys *winsys;
@@ -50,7 +50,7 @@ gdi_screen_create(void)
       goto no_winsys;
 
    if (stw_dev && stw_dev->callbacks.pfnGetAdapterLuid) {
-      stw_dev->callbacks.pfnGetAdapterLuid(NULL, &local_luid);
+      stw_dev->callbacks.pfnGetAdapterLuid(hDC, &local_luid);
       adapter_luid = &local_luid;
    }
    screen = d3d12_create_screen( winsys, adapter_luid );

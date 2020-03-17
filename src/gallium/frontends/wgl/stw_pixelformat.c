@@ -311,9 +311,9 @@ stw_pixelformat_init(void)
 
 
 uint
-stw_pixelformat_get_count(void)
+stw_pixelformat_get_count(HDC hdc)
 {
-   if (!stw_init_screen())
+   if (!stw_init_screen(hdc))
       return 0;
 
    return stw_dev->pixelformat_count;
@@ -321,9 +321,9 @@ stw_pixelformat_get_count(void)
 
 
 uint
-stw_pixelformat_get_extended_count(void)
+stw_pixelformat_get_extended_count(HDC hdc)
 {
-   if (!stw_init_screen())
+   if (!stw_init_screen(hdc))
       return 0;
 
    return stw_dev->pixelformat_extended_count;
@@ -355,12 +355,10 @@ DrvDescribePixelFormat(HDC hdc, INT iPixelFormat, ULONG cjpfd,
    uint count;
    const struct stw_pixelformat_info *pfi;
 
-   (void) hdc;
-
    if (!stw_dev)
       return 0;
 
-   count = stw_pixelformat_get_count();
+   count = stw_pixelformat_get_count(hdc);
 
    if (ppfd == NULL)
       return count;
@@ -425,9 +423,7 @@ stw_pixelformat_choose(HDC hdc, CONST PIXELFORMATDESCRIPTOR *ppfd)
    uint bestindex;
    uint bestdelta;
 
-   (void) hdc;
-
-   count = stw_pixelformat_get_extended_count();
+   count = stw_pixelformat_get_extended_count(hdc);
    bestindex = 0;
    bestdelta = ~0U;
 

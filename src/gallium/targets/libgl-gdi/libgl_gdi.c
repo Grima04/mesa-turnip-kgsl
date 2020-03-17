@@ -78,7 +78,7 @@ static boolean use_zink = FALSE;
 #endif
 
 static struct pipe_screen *
-gdi_screen_create(void)
+gdi_screen_create(HDC hDC)
 {
    const char *default_driver;
    const char *driver;
@@ -119,7 +119,7 @@ gdi_screen_create(void)
    if (strcmp(driver, "d3d12") == 0) {
       LUID* adapter_luid = NULL, local_luid;
       if (stw_dev && stw_dev->callbacks.pfnGetAdapterLuid) {
-         stw_dev->callbacks.pfnGetAdapterLuid(NULL, &local_luid);
+         stw_dev->callbacks.pfnGetAdapterLuid(hDC, &local_luid);
          adapter_luid = &local_luid;
       }
       screen = d3d12_create_screen( winsys, adapter_luid );

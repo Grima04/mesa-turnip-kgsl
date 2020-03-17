@@ -41,7 +41,7 @@ struct stw_shared_surface;
 struct stw_winsys
 {
    struct pipe_screen *
-   (*create_screen)( void );
+   (*create_screen)( HDC hDC );
 
    /* XXX is it actually possible to have non-zero level/layer ??? */
    /**
@@ -59,6 +59,7 @@ struct stw_winsys
     */
    boolean
    (*get_adapter_luid)( struct pipe_screen *screen,
+                        HDC hDC,
                         LUID *pAdapterLuid );
 
    /**

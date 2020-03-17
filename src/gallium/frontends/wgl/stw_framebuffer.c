@@ -431,7 +431,7 @@ DrvSetPixelFormat(HDC hdc, LONG iPixelFormat)
       return FALSE;
 
    index = (uint) iPixelFormat - 1;
-   count = stw_pixelformat_get_count();
+   count = stw_pixelformat_get_count(hdc);
    if (index >= count)
       return FALSE;
 
