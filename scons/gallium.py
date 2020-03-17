@@ -399,8 +399,8 @@ def generate(env):
             #'_UNICODE',
             #'UNICODE',
             # http://msdn.microsoft.com/en-us/library/aa383745.aspx
-            ('_WIN32_WINNT', '0x0601'),
-            ('WINVER', '0x0601'),
+            ('_WIN32_WINNT', '0x0A00'),
+            ('WINVER', '0x0A00'),
         ]
         if gcc_compat:
             cppdefines += [('__MSVCRT_VERSION__', '0x0700')]
