@@ -40,9 +40,9 @@
 
 namespace aco {
 
-struct output_state {
+struct shader_io_state {
    uint8_t mask[VARYING_SLOT_VAR31 + 1];
-   Temp outputs[VARYING_SLOT_VAR31 + 1][4];
+   Temp temps[VARYING_SLOT_VAR31 + 1][4];
 };
 
 struct isel_context {
@@ -102,8 +102,9 @@ struct isel_context {
    uint32_t tcs_num_patches;
    bool tcs_in_out_eq = false;
 
-   /* VS, FS or GS output information */
-   output_state outputs;
+   /* I/O information */
+   shader_io_state inputs;
+   shader_io_state outputs;
 };
 
 Temp get_arg(isel_context *ctx, struct ac_arg arg)

@@ -3432,7 +3432,7 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
       for (unsigned i = 0; i < 8; ++i) {
          if (write_mask & (1 << i)) {
             ctx->outputs.mask[idx / 4u] |= 1 << (idx % 4u);
-            ctx->outputs.outputs[idx / 4u][idx % 4u] = emit_extract_vector(ctx, src, i, v1);
+            ctx->outputs.temps[idx / 4u][idx % 4u] = emit_extract_vector(ctx, src, i, v1);
          }
          idx++;
       }
@@ -6296,7 +6296,7 @@ void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *inst
             mtbuf->operands[0] = Operand(gsvs_ring);
             mtbuf->operands[1] = vaddr_offset;
             mtbuf->operands[2] = Operand(get_arg(ctx, ctx->args->gs2vs_offset));
-            mtbuf->operands[3] = Operand(ctx->outputs.outputs[i][j]);
+            mtbuf->operands[3] = Operand(ctx->outputs.temps[i][j]);
             mtbuf->offen = !vaddr_offset.isUndefined();
             mtbuf->dfmt = V_008F0C_BUF_DATA_FORMAT_32;
             mtbuf->nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
@@ -9010,7 +9010,7 @@ static bool export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
    exp->enabled_mask = mask;
    for (unsigned i = 0; i < 4; ++i) {
       if (mask & (1 << i))
-         exp->operands[i] = Operand(ctx->outputs.outputs[slot][i]);
+         exp->operands[i] = Operand(ctx->outputs.temps[slot][i]);
       else
          exp->operands[i] = Operand(v1);
    }
@@ -9036,22 +9036,22 @@ static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
    for (unsigned i = 0; i < 4; ++i)
       exp->operands[i] = Operand(v1);
    if (ctx->outputs.mask[VARYING_SLOT_PSIZ]) {
-      exp->operands[0] = Operand(ctx->outputs.outputs[VARYING_SLOT_PSIZ][0]);
+      exp->operands[0] = Operand(ctx->outputs.temps[VARYING_SLOT_PSIZ][0]);
       exp->enabled_mask |= 0x1;
    }
    if (ctx->outputs.mask[VARYING_SLOT_LAYER]) {
-      exp->operands[2] = Operand(ctx->outputs.outputs[VARYING_SLOT_LAYER][0]);
+      exp->operands[2] = Operand(ctx->outputs.temps[VARYING_SLOT_LAYER][0]);
       exp->enabled_mask |= 0x4;
    }
    if (ctx->outputs.mask[VARYING_SLOT_VIEWPORT]) {
       if (ctx->options->chip_class < GFX9) {
-         exp->operands[3] = Operand(ctx->outputs.outputs[VARYING_SLOT_VIEWPORT][0]);
+         exp->operands[3] = Operand(ctx->outputs.temps[VARYING_SLOT_VIEWPORT][0]);
          exp->enabled_mask |= 0x8;
       } else {
          Builder bld(ctx->program, ctx->block);
 
          Temp out = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(16u),
-                             Operand(ctx->outputs.outputs[VARYING_SLOT_VIEWPORT][0]));
+                             Operand(ctx->outputs.temps[VARYING_SLOT_VIEWPORT][0]));
          if (exp->operands[2].isTemp())
             out = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), Operand(out), exp->operands[2]);
 
@@ -9078,12 +9078,12 @@ static void create_vs_exports(isel_context *ctx)
 
    if (outinfo->export_prim_id) {
       ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
-      ctx->outputs.outputs[VARYING_SLOT_PRIMITIVE_ID][0] = get_arg(ctx, ctx->args->vs_prim_id);
+      ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID][0] = get_arg(ctx, ctx->args->vs_prim_id);
    }
 
    if (ctx->options->key.has_multiview_view_index) {
       ctx->outputs.mask[VARYING_SLOT_LAYER] |= 0x1;
-      ctx->outputs.outputs[VARYING_SLOT_LAYER][0] = as_vgpr(ctx, get_arg(ctx, ctx->args->ac.view_index));
+      ctx->outputs.temps[VARYING_SLOT_LAYER][0] = as_vgpr(ctx, get_arg(ctx, ctx->args->ac.view_index));
    }
 
    /* the order these position exports are created is important */
@@ -9136,29 +9136,29 @@ static bool export_fs_mrt_z(isel_context *ctx)
 
       if (ctx->program->info->ps.writes_stencil) {
          /* Stencil should be in X[23:16]. */
-         values[0] = Operand(ctx->outputs.outputs[FRAG_RESULT_STENCIL][0]);
+         values[0] = Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL][0]);
          values[0] = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(16u), values[0]);
          enabled_channels |= 0x3;
       }
 
       if (ctx->program->info->ps.writes_sample_mask) {
          /* SampleMask should be in Y[15:0]. */
-         values[1] = Operand(ctx->outputs.outputs[FRAG_RESULT_SAMPLE_MASK][0]);
+         values[1] = Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK][0]);
          enabled_channels |= 0xc;
      }
    } else {
       if (ctx->program->info->ps.writes_z) {
-         values[0] = Operand(ctx->outputs.outputs[FRAG_RESULT_DEPTH][0]);
+         values[0] = Operand(ctx->outputs.temps[FRAG_RESULT_DEPTH][0]);
          enabled_channels |= 0x1;
       }
 
       if (ctx->program->info->ps.writes_stencil) {
-         values[1] = Operand(ctx->outputs.outputs[FRAG_RESULT_STENCIL][0]);
+         values[1] = Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL][0]);
          enabled_channels |= 0x2;
       }
 
       if (ctx->program->info->ps.writes_sample_mask) {
-         values[2] = Operand(ctx->outputs.outputs[FRAG_RESULT_SAMPLE_MASK][0]);
+         values[2] = Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK][0]);
          enabled_channels |= 0x4;
       }
    }
@@ -9186,7 +9186,7 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot)
 
    for (unsigned i = 0; i < 4; ++i) {
       if (write_mask & (1 << i)) {
-         values[i] = Operand(ctx->outputs.outputs[slot][i]);
+         values[i] = Operand(ctx->outputs.temps[slot][i]);
       } else {
          values[i] = Operand(v1);
       }
@@ -9469,7 +9469,7 @@ static void emit_stream_output(isel_context *ctx,
    bool all_undef = true;
    assert(ctx->stage == vertex_vs || ctx->stage == gs_copy_vs);
    for (unsigned i = 0; i < num_comps; i++) {
-      out[i] = ctx->outputs.outputs[loc][start + i];
+      out[i] = ctx->outputs.temps[loc][start + i];
       all_undef = all_undef && !out[i].id();
    }
    if (all_undef)
@@ -9843,6 +9843,12 @@ void select_program(Program *program,
       }
 
       ralloc_free(ctx.divergent_vals);
+
+      if (i == 0 && ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq) {
+         /* Outputs of the previous stage are inputs to the next stage */
+         ctx.inputs = ctx.outputs;
+         memset(&ctx.outputs, 0, sizeof(ctx.outputs));
+      }
    }
 
    program->config->float_mode = program->blocks[0].fp_mode.val;
@@ -9950,7 +9956,7 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
             mubuf->can_reorder = true;
 
             ctx.outputs.mask[i] |= 1 << j;
-            ctx.outputs.outputs[i][j] = mubuf->definitions[0].getTemp();
+            ctx.outputs.temps[i][j] = mubuf->definitions[0].getTemp();
 
             bld.insert(std::move(mubuf));
 
