@@ -422,7 +422,7 @@ tu_gather_xfb_info(nir_shader *nir, struct tu_shader *shader)
       info->output[i].num_components =
                            util_bitcount(xfb->outputs[i].component_mask);
       info->output[i].output_buffer  = xfb->outputs[i].buffer;
-      info->output[i].dst_offset = xfb->outputs[i].offset;
+      info->output[i].dst_offset = xfb->outputs[i].offset / 4;
       info->output[i].stream = xfb->buffer_to_stream[xfb->outputs[i].buffer];
    }
 
