@@ -1782,7 +1782,7 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
 
    switch (mcs_op) {
    case ISL_AUX_OP_FAST_CLEAR:
-      blorp_fast_clear(&batch, &surf, format,
+      blorp_fast_clear(&batch, &surf, format, ISL_SWIZZLE_IDENTITY,
                        0, base_layer, layer_count,
                        0, 0, image->extent.width, image->extent.height);
       break;
@@ -1863,7 +1863,7 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
 
    switch (ccs_op) {
    case ISL_AUX_OP_FAST_CLEAR:
-      blorp_fast_clear(&batch, &surf, format,
+      blorp_fast_clear(&batch, &surf, format, ISL_SWIZZLE_IDENTITY,
                        level, base_layer, layer_count,
                        0, 0, level_width, level_height);
       break;
