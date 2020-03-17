@@ -208,10 +208,29 @@ gdi_present(struct pipe_screen *screen,
 }
 
 
+#if WINVER >= 0xA00
+static boolean
+gdi_get_adapter_luid(struct pipe_screen* screen,
+   HDC hDC,
+   LUID* adapter_luid)
+{
+   if (!stw_dev || !stw_dev->callbacks.pfnGetAdapterLuid)
+      return false;
+
+   stw_dev->callbacks.pfnGetAdapterLuid(hDC, adapter_luid);
+   return true;
+}
+#endif
+
+
 static const struct stw_winsys stw_winsys = {
    &gdi_screen_create,
    &gdi_present,
+#if WINVER >= 0xA00
+   &gdi_get_adapter_luid,
+#else
    NULL, /* get_adapter_luid */
+#endif
    NULL, /* shared_surface_open */
    NULL, /* shared_surface_close */
    NULL  /* compose */

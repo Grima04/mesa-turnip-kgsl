@@ -89,10 +89,23 @@ gdi_present(struct pipe_screen *screen,
 }
 
 
+static boolean
+gdi_get_adapter_luid(struct pipe_screen *screen,
+                     HDC hDC,
+                     LUID *adapter_luid)
+{
+   if (!stw_dev || !stw_dev->callbacks.pfnGetAdapterLuid)
+      return false;
+
+   stw_dev->callbacks.pfnGetAdapterLuid(hDC, adapter_luid);
+   return true;
+}
+
+
 static const struct stw_winsys stw_winsys = {
    &gdi_screen_create,
    &gdi_present,
-   NULL, /* get_adapter_luid */
+   &gdi_get_adapter_luid,
    NULL, /* shared_surface_open */
    NULL, /* shared_surface_close */
    NULL  /* compose */
