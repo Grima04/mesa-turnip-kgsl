@@ -307,6 +307,24 @@ v3dv_get_format_swizzle(VkFormat f)
    return vf->swizzle;
 }
 
+static bool
+format_supports_blending(const struct v3dv_format *format)
+{
+   /* Hardware blending is only supported on render targets that are configured
+    * 4x8-bit unorm, 2x16-bit float or 4x16-bit float.
+    */
+   uint32_t type, bpp;
+   v3dv_get_internal_type_bpp_for_output_format(format->rt_type, &type, &bpp);
+   switch (type) {
+   case V3D_INTERNAL_TYPE_8:
+      return bpp == V3D_INTERNAL_BPP_32;
+   case V3D_INTERNAL_TYPE_16F:
+      return bpp == V3D_INTERNAL_BPP_32 || V3D_INTERNAL_BPP_64;
+   default:
+      return false;
+   }
+}
+
 static VkFormatFeatureFlags
 image_format_features(VkFormat vk_format,
                       const struct v3dv_format *v3dv_format,
@@ -345,8 +363,9 @@ image_format_features(VkFormat vk_format,
    if (v3dv_format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
       flags |= VK_FORMAT_FEATURE_BLIT_DST_BIT;
       if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-         flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-                  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
+         flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+         if (format_supports_blending(v3dv_format))
+            flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
       } else if (aspects & zs_aspects) {
          flags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
       }
