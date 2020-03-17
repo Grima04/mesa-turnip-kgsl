@@ -481,16 +481,18 @@ tu_shader_create(struct tu_device *dev,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_split_per_member_structs);
 
+   NIR_PASS_V(nir, nir_remove_dead_variables,
+              nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared);
+
    /* Gather information for transform feedback.
     * This should be called after nir_split_per_member_structs.
+    * Also needs to be called after nir_remove_dead_variables with varyings,
+    * so that we could align stream outputs correctly.
     */
    if (nir->info.stage == MESA_SHADER_VERTEX ||
          nir->info.stage == MESA_SHADER_TESS_EVAL ||
          nir->info.stage == MESA_SHADER_GEOMETRY)
       tu_gather_xfb_info(nir, shader);
-
-   NIR_PASS_V(nir, nir_remove_dead_variables,
-              nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared);
 
    NIR_PASS_V(nir, nir_propagate_invariant);
 
