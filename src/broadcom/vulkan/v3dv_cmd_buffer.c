@@ -1651,6 +1651,8 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   /* FIXME: handle VK_DYNAMIC_STATE_BLEND_CONSTANTS */
+
    cmd_buffer->state.dynamic.mask = dynamic_mask;
    cmd_buffer->state.dirty |= dirty;
 }
@@ -1994,6 +1996,43 @@ emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
+emit_blend(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(pipeline);
+
+   const uint32_t blend_packets_size =
+      cl_packet_length(BLEND_ENABLES) +
+      cl_packet_length(BLEND_CONSTANT_COLOR) +
+      cl_packet_length(BLEND_CFG) * V3D_MAX_DRAW_BUFFERS +
+      cl_packet_length(COLOR_WRITE_MASKS);
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl, blend_packets_size);
+
+   if (pipeline->blend.enables) {
+      cl_emit(&job->bcl, BLEND_ENABLES, enables) {
+         enables.mask = pipeline->blend.enables;
+      }
+   }
+
+   /* FIXME: this can be dynamic state! */
+   if (pipeline->blend.needs_color_constants)
+      cl_emit_prepacked(&job->bcl, &pipeline->blend.constant_color);
+
+   for (uint32_t i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+      if (pipeline->blend.enables & (1 << i))
+         cl_emit_prepacked(&job->bcl, &pipeline->blend.cfg[i]);
+   }
+
+   cl_emit(&job->bcl, COLOR_WRITE_MASKS, mask) {
+      mask.mask = pipeline->blend.color_write_masks;
+   }
+}
+
+static void
 emit_flat_shade_flags(struct v3dv_job *job,
                       int varying_offset,
                       uint32_t varyings,
@@ -2321,6 +2360,8 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
       V3DV_CMD_DIRTY_STENCIL_REFERENCE;
    if (*dirty & dynamic_stencil_dirty_flags)
       emit_stencil(cmd_buffer);
+
+   emit_blend(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~(*dirty);
 }

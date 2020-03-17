@@ -867,6 +867,7 @@ struct v3dv_pipeline {
 
    VkShaderStageFlags active_stages;
 
+   struct v3dv_render_pass *pass;
    struct v3dv_subpass *subpass;
 
    /* Note: We can't use just a MESA_SHADER_STAGES array as we need to track
@@ -927,6 +928,22 @@ struct v3dv_pipeline {
 
    /* If the pipeline is using push constants */
    bool use_push_constants;
+
+   /* Blend state */
+   struct {
+      /* Per-RT bit mask with blend enables */
+      uint8_t enables;
+      /* Per-RT prepacked blend config packets */
+      uint8_t cfg[V3D_MAX_DRAW_BUFFERS][cl_packet_length(BLEND_CFG)];
+      /* Flag indicating whether the blend factors in use require
+       * color constants.
+       */
+      bool needs_color_constants;
+      /* Blend constants packet */
+      uint8_t constant_color[cl_packet_length(BLEND_CONSTANT_COLOR)];
+      /* Mask with enabled color channels for each RT (4 bits per RT) */
+      uint32_t color_write_masks;
+   } blend;
 
    /* Packets prepacked during pipeline creation
     */

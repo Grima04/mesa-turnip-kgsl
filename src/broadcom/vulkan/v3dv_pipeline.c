@@ -1260,27 +1260,136 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
    pipeline->dynamic_state.mask = dynamic_states;
 }
 
+static uint8_t
+blend_factor(VkBlendFactor factor, bool dst_alpha_one, bool *needs_constants)
+{
+   switch (factor) {
+   case VK_BLEND_FACTOR_ZERO:
+   case VK_BLEND_FACTOR_ONE:
+   case VK_BLEND_FACTOR_SRC_COLOR:
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+   case VK_BLEND_FACTOR_DST_COLOR:
+   case VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR:
+   case VK_BLEND_FACTOR_SRC_ALPHA:
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+   case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+      return factor;
+   case VK_BLEND_FACTOR_CONSTANT_COLOR:
+   case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
+   case VK_BLEND_FACTOR_CONSTANT_ALPHA:
+   case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:
+      *needs_constants = true;
+      return factor;
+   case VK_BLEND_FACTOR_DST_ALPHA:
+      return dst_alpha_one ? V3D_BLEND_FACTOR_ONE :
+                             V3D_BLEND_FACTOR_DST_ALPHA;
+   case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
+      return dst_alpha_one ? V3D_BLEND_FACTOR_ZERO :
+                             V3D_BLEND_FACTOR_INV_DST_ALPHA;
+   case VK_BLEND_FACTOR_SRC1_COLOR:
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
+   case VK_BLEND_FACTOR_SRC1_ALPHA:
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
+      assert(!"Invalid blend factor: dual source blending not supported.");
+   default:
+      assert(!"Unknown blend factor.");
+   }
+
+   /* Should be handled by the switch, added to avoid a "end of non-void
+    * function" error
+    */
+   unreachable("Unknown blend factor.");
+}
+
+static void
+pack_blend(struct v3dv_pipeline *pipeline,
+           const VkPipelineColorBlendStateCreateInfo *cb_info)
+{
+   /* By default, we are not enabling blending and all color channel writes are
+    * enabled. Color write enables are independent of whether blending is
+    * enabled or not.
+    *
+    * Vulkan specifies color write masks so that bits set correspond to
+    * enabled channels. Our hardware does it the other way around.
+    */
+   pipeline->blend.enables = 0;
+   pipeline->blend.color_write_masks = 0; /* All channels enabled */
+
+   if (!cb_info)
+      return;
+
+   assert(pipeline->subpass);
+   if (pipeline->subpass->color_count == 0)
+      return;
+
+   pipeline->blend.needs_color_constants = false;
+   uint32_t color_write_masks = 0;
+   for (uint32_t i = 0; i < cb_info->attachmentCount; i++) {
+      const VkPipelineColorBlendAttachmentState *b_state =
+         &cb_info->pAttachments[i];
+
+      assert(i < pipeline->subpass->color_count);
+
+      uint32_t attachment_idx =
+         pipeline->subpass->color_attachments[i].attachment;
+      if (attachment_idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      color_write_masks |= (~b_state->colorWriteMask & 0xf) << (4 * i);
+
+      if (!b_state->blendEnable)
+         continue;
+
+      VkAttachmentDescription *desc =
+         &pipeline->pass->attachments[attachment_idx].desc;
+      const struct v3dv_format *format = v3dv_get_format(desc->format);
+      bool dst_alpha_one = (format->swizzle[3] == PIPE_SWIZZLE_1);
+
+      uint8_t rt_mask = 1 << i;
+      pipeline->blend.enables |= rt_mask;
+
+      v3dv_pack(pipeline->blend.cfg[i], BLEND_CFG, config) {
+         config.render_target_mask = rt_mask;
+
+         config.color_blend_mode = b_state->colorBlendOp;
+         config.color_blend_dst_factor =
+            blend_factor(b_state->dstColorBlendFactor, dst_alpha_one,
+                         &pipeline->blend.needs_color_constants);
+         config.color_blend_src_factor =
+            blend_factor(b_state->srcColorBlendFactor, dst_alpha_one,
+                         &pipeline->blend.needs_color_constants);
+
+         config.alpha_blend_mode = b_state->alphaBlendOp;
+         config.alpha_blend_dst_factor =
+            blend_factor(b_state->dstAlphaBlendFactor, dst_alpha_one,
+                         &pipeline->blend.needs_color_constants);
+         config.alpha_blend_src_factor =
+            blend_factor(b_state->srcAlphaBlendFactor, dst_alpha_one,
+                         &pipeline->blend.needs_color_constants);
+      }
+   }
+
+   if (pipeline->blend.needs_color_constants) {
+      v3dv_pack(pipeline->blend.constant_color, BLEND_CONSTANT_COLOR, color) {
+         color.red_f16 = _mesa_float_to_half(cb_info->blendConstants[0]);
+         color.green_f16 = _mesa_float_to_half(cb_info->blendConstants[1]);
+         color.blue_f16 = _mesa_float_to_half(cb_info->blendConstants[2]);
+         color.alpha_f16 = _mesa_float_to_half(cb_info->blendConstants[3]);
+      }
+   }
+
+   pipeline->blend.color_write_masks = color_write_masks;
+}
+
+/* This requires that pack_blend() had been called before so we can set
+ * the overall blend enable bit in the CFG_BITS packet.
+ */
 static void
 pack_cfg_bits(struct v3dv_pipeline *pipeline,
               const VkPipelineDepthStencilStateCreateInfo *ds_info,
-              const VkPipelineRasterizationStateCreateInfo *rs_info,
-              const VkPipelineColorBlendStateCreateInfo *cb_info)
+              const VkPipelineRasterizationStateCreateInfo *rs_info)
 {
    assert(sizeof(pipeline->cfg_bits) == cl_packet_length(CFG_BITS));
-
-   /* CFG_BITS allow to set a overall blend_enable that it is anded with the
-    * per-target blend enable. v3d so far creates a mask with each target, so
-    * we just set to true if any attachment has blending enabled
-    */
-   bool overall_blend_enable = false;
-   if (cb_info) {
-      for (uint32_t i = 0; i < cb_info->attachmentCount; i++) {
-         const VkPipelineColorBlendAttachmentState *b_state =
-            &cb_info->pAttachments[i];
-
-         overall_blend_enable |= b_state->blendEnable;
-      }
-   }
 
    v3dv_pack(pipeline->cfg_bits, CFG_BITS, config) {
       config.enable_forward_facing_primitive =
@@ -1311,7 +1420,7 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
        */
       config.direct3d_provoking_vertex = true;
 
-      config.blend_enable = overall_blend_enable;
+      config.blend_enable = pipeline->blend.enables != 0;
 
       /* Note: ez state may update based on the compiled FS, along with zsa
        * (FIXME: not done)
@@ -1744,6 +1853,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
 
    V3DV_FROM_HANDLE(v3dv_render_pass, render_pass, pCreateInfo->renderPass);
    assert(pCreateInfo->subpass < render_pass->subpass_count);
+   pipeline->pass = render_pass;
    pipeline->subpass = &render_pass->subpasses[pCreateInfo->subpass];
 
    pipeline_init_dynamic_state(pipeline, pCreateInfo);
@@ -1763,7 +1873,8 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       raster_enabled ? pCreateInfo->pColorBlendState : NULL;
 
-   pack_cfg_bits(pipeline, ds_info, rs_info, cb_info);
+   pack_blend(pipeline, cb_info);
+   pack_cfg_bits(pipeline, ds_info, rs_info);
    pack_stencil_cfg(pipeline, ds_info);
    pipeline_set_ez_state(pipeline, ds_info);
 
