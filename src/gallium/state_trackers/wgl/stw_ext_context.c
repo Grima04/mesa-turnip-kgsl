@@ -30,7 +30,7 @@
 #include <GL/gl.h>
 #include <GL/wglext.h>
 
-#include "stw_icd.h"
+#include "gldrv.h"
 #include "stw_context.h"
 #include "stw_device.h"
 #include "stw_ext_context.h"
@@ -172,10 +172,10 @@ wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList)
       DHGLRC dhglrc, c, share_dhglrc = 0;
 
       /* Convert public HGLRC to driver DHGLRC */
-      if (stw_dev && stw_dev->callbacks.wglCbGetDhglrc) {
-         dhglrc = stw_dev->callbacks.wglCbGetDhglrc(context);
+      if (stw_dev && stw_dev->callbacks.pfnGetDhglrc) {
+         dhglrc = stw_dev->callbacks.pfnGetDhglrc(context);
          if (hShareContext)
-            share_dhglrc = stw_dev->callbacks.wglCbGetDhglrc(hShareContext);
+            share_dhglrc = stw_dev->callbacks.pfnGetDhglrc(hShareContext);
       }
       else {
          /* not using ICD */
@@ -203,9 +203,9 @@ wglMakeContextCurrentARB(HDC hDrawDC, HDC hReadDC, HGLRC hglrc)
 {
    DHGLRC dhglrc = 0;
 
-   if (stw_dev && stw_dev->callbacks.wglCbGetDhglrc) {
+   if (stw_dev && stw_dev->callbacks.pfnGetDhglrc) {
       /* Convert HGLRC to DHGLRC */
-      dhglrc = stw_dev->callbacks.wglCbGetDhglrc(hglrc);
+      dhglrc = stw_dev->callbacks.pfnGetDhglrc(hglrc);
    }
 
    return stw_make_current(hDrawDC, hReadDC, dhglrc);

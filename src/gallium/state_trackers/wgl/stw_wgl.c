@@ -39,9 +39,10 @@
  */
 
 #include <windows.h>
+#include <GL/gl.h>
 
 #include "util/u_debug.h"
-#include "stw_icd.h"
+#include "gldrv.h"
 #include "stw_context.h"
 #include "stw_pixelformat.h"
 #include "stw_wgl.h"

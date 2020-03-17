@@ -33,7 +33,8 @@
 #include "util/u_debug.h"
 #include "util/u_memory.h"
 
-#include "stw_icd.h"
+#include <GL/gl.h>
+#include "gldrv.h"
 #include "stw_device.h"
 #include "stw_pixelformat.h"
 #include "stw_tls.h"

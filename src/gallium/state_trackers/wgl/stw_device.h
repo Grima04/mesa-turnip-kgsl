@@ -31,7 +31,8 @@
 
 #include "pipe/p_compiler.h"
 #include "util/u_handle_table.h"
-#include "stw_icd.h"
+#include <GL/gl.h>
+#include "gldrv.h"
 #include "stw_pixelformat.h"
 
 
@@ -62,7 +63,7 @@ struct stw_device
    unsigned pixelformat_count;
    unsigned pixelformat_extended_count;
 
-   GLCALLBACKTABLE callbacks;
+   struct WGLCALLBACKS callbacks;
 
    CRITICAL_SECTION ctx_mutex;
    struct handle_table *ctx_table;
