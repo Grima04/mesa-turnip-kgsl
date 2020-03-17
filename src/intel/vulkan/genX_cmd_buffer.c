@@ -1021,7 +1021,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
     * with not having this stall in some cases if we were really careful but
     * it's better to play it safe.  Full stall the GPU.
     */
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_END_OF_PIPE_SYNC_BIT;
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    struct gen_mi_builder b;
