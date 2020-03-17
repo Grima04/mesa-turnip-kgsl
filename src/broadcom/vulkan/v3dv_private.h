@@ -448,8 +448,10 @@ enum v3dv_cmd_buffer_status {
 
 union v3dv_clear_value {
    uint32_t color[4];
-   float z;
-   uint8_t s;
+   struct {
+      float z;
+      uint8_t s;
+   };
 };
 
 struct v3dv_cmd_buffer_attachment_state {
