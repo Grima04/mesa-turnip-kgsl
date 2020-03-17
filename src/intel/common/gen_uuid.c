@@ -22,7 +22,7 @@
  */
 
 #include "gen_uuid.h"
-#include "util/build_id.h"
+#include "git_sha1.h"
 #include "util/mesa-sha1.h"
 
 void
@@ -56,18 +56,20 @@ gen_uuid_compute_driver_id(uint8_t *uuid,
                            const struct gen_device_info *devinfo,
                            size_t size)
 {
-   const struct build_id_note *note =
-      build_id_find_nhdr_for_addr(gen_uuid_compute_driver_id);
-   assert(note && "Failed to find build-id");
+   const char* intelDriver = PACKAGE_VERSION MESA_GIT_SHA1;
+   struct mesa_sha1 sha1_ctx;
+   uint8_t sha1[20];
 
-   unsigned build_id_len = build_id_length(note);
-   assert(build_id_len >= size && "build-id too short");
+   assert(size <= sizeof(sha1));
 
    /* The driver UUID is used for determining sharability of images and memory
-    * between two Vulkan instances in separate processes, or for
-    * interoperability between Vulkan and OpenGL.  People who want to * share
-    * memory need to also check the device UUID so all this * needs to be is
-    * the build-id.
+    * between two Vulkan instances in separate processes, but also to
+    * determining memory objects and sharability between Vulkan and OpenGL
+    * driver. People who want to share memory need to also check the device
+    * UUID.
     */
-   memcpy(uuid, build_id_data(note), size);
+   _mesa_sha1_init(&sha1_ctx);
+   _mesa_sha1_update(&sha1_ctx, intelDriver, strlen(intelDriver) * sizeof(char));
+   _mesa_sha1_final(&sha1_ctx, sha1);
+   memcpy(uuid, sha1, size);
 }
