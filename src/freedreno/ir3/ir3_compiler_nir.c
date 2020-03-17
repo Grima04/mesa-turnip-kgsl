@@ -1319,11 +1319,8 @@ get_frag_coord(struct ir3_context *ctx)
 		 *
 		 */
 		for (int i = 0; i < 2; i++) {
-			xyzw[i] = ir3_SUB_S(b, xyzw[i], 0,
-					create_immed(b, 8), 0);
-			xyzw[i] = ir3_SHR_B(b, xyzw[i], 0,
-					create_immed(b, 4), 0);
 			xyzw[i] = ir3_COV(b, xyzw[i], TYPE_U32, TYPE_F32);
+			xyzw[i] = ir3_MUL_F(b, xyzw[i], 0, create_immed(b, fui(1.0 / 16.0)), 0);
 		}
 
 		ctx->frag_coord = ir3_create_collect(ctx, xyzw, 4);
