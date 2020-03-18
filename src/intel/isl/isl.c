@@ -1372,11 +1372,19 @@ isl_calc_row_pitch_alignment(const struct isl_device *dev,
    if (tile_info->tiling != ISL_TILING_LINEAR) {
       /* According to BSpec: 44930, Gen12's CCS-compressed surface pitches must
        * be 512B-aligned. CCS is only support on Y tilings.
+       *
+       * Only consider 512B alignment when :
+       *    - AUX is not explicitly disabled
+       *    - the caller has specified no pitch
+       *
+       * isl_surf_get_ccs_surf() will check that the main surface alignment
+       * matches CCS expectations.
        */
       if (ISL_DEV_GEN(dev) >= 12 &&
           isl_format_supports_ccs_e(dev->info, surf_info->format) &&
           tile_info->tiling != ISL_TILING_X &&
-          !(surf_info->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)) {
+          !(surf_info->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT) &&
+          surf_info->row_pitch_B == 0) {
          return isl_align(tile_info->phys_extent_B.width, 512);
       }
 
