@@ -12,3 +12,5 @@ dEQP-GLES[0-9]*.functional.flush_finish.*
 # unstable results (probably related to the iommu faults).
 dEQP-GLES3.functional.texture.filtering.3d.*
 dEQP-GLES3.functional.texture.vertex.3d.filtering.*
+dEQP-GLES3.functional.fbo.invalidate.sub.unbind_blit_msaa_stencil
+dEQP-GLES3.functional.fbo.invalidate.whole.unbind_blit_msaa_stencil
