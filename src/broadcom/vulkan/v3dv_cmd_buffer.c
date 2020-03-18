@@ -2165,7 +2165,49 @@ emit_varying_flags(struct v3dv_job *job,
 }
 
 static void
-emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
+emit_varyings_state(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+
+   const uint32_t num_flags =
+      ARRAY_SIZE(pipeline->fs->prog_data.fs->flat_shade_flags);
+   const uint32_t *flat_shade_flags =
+      pipeline->fs->prog_data.fs->flat_shade_flags;
+   const uint32_t *noperspective_flags =
+      pipeline->fs->prog_data.fs->noperspective_flags;
+   const uint32_t *centroid_flags =
+      pipeline->fs->prog_data.fs->centroid_flags;
+
+   if (!emit_varying_flags(job, num_flags, flat_shade_flags,
+                           emit_flat_shade_flags)) {
+      cl_emit(&job->bcl, ZERO_ALL_FLAT_SHADE_FLAGS, flags);
+   }
+
+   if (!emit_varying_flags(job, num_flags, noperspective_flags,
+                           emit_noperspective_flags)) {
+      cl_emit(&job->bcl, ZERO_ALL_NON_PERSPECTIVE_FLAGS, flags);
+   }
+
+   if (!emit_varying_flags(job, num_flags, centroid_flags,
+                           emit_centroid_flags)) {
+      cl_emit(&job->bcl, ZERO_ALL_CENTROID_FLAGS, flags);
+   }
+}
+
+static void
+emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+
+   cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
+      config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
+   }
+}
+
+static void
+emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -2295,34 +2337,6 @@ emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       state.number_of_attribute_arrays = num_elements_to_emit;
    }
 
-   cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
-      config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
-   }
-
-   const uint32_t num_flags =
-      ARRAY_SIZE(pipeline->fs->prog_data.fs->flat_shade_flags);
-   const uint32_t *flat_shade_flags =
-      pipeline->fs->prog_data.fs->flat_shade_flags;
-   const uint32_t *noperspective_flags =
-      pipeline->fs->prog_data.fs->noperspective_flags;
-   const uint32_t *centroid_flags =
-      pipeline->fs->prog_data.fs->centroid_flags;
-
-   if (!emit_varying_flags(job, num_flags, flat_shade_flags,
-                           emit_flat_shade_flags)) {
-      cl_emit(&job->bcl, ZERO_ALL_FLAT_SHADE_FLAGS, flags);
-   }
-
-   if (!emit_varying_flags(job, num_flags, noperspective_flags,
-                           emit_noperspective_flags)) {
-      cl_emit(&job->bcl, ZERO_ALL_NON_PERSPECTIVE_FLAGS, flags);
-   }
-
-   if (!emit_varying_flags(job, num_flags, centroid_flags,
-                           emit_centroid_flags)) {
-      cl_emit(&job->bcl, ZERO_ALL_CENTROID_FLAGS, flags);
-   }
-
    cmd_buffer->state.dirty &= ~(V3DV_CMD_DIRTY_VERTEX_BUFFER |
                                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                                 V3DV_CMD_DIRTY_PUSH_CONSTANTS);
@@ -2433,7 +2447,9 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
                  V3DV_CMD_DIRTY_VERTEX_BUFFER |
                  V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                  V3DV_CMD_DIRTY_PUSH_CONSTANTS)) {
-      emit_graphics_pipeline(cmd_buffer);
+      emit_gl_shader_state(cmd_buffer);
+      emit_configuration_bits(cmd_buffer);
+      emit_varyings_state(cmd_buffer);
    }
 
    if (*dirty & (V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR)) {
