@@ -1948,6 +1948,7 @@ tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
    link->ubo_state = v->shader->ubo_state;
    link->const_state = v->shader->const_state;
    link->constlen = v->constlen;
+   link->push_consts = shader->push_consts;
    link->texture_map = shader->texture_map;
    link->sampler_map = shader->sampler_map;
    link->ubo_map = shader->ubo_map;

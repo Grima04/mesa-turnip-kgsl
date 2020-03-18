@@ -75,7 +75,7 @@ enum ir3_driver_param {
 
 /**
  * Describes the layout of shader consts.  This includes:
- *   + Driver lowered UBO ranges
+ *   + User consts + driver lowered UBO ranges
  *   + SSBO sizes
  *   + Image sizes/dimensions
  *   + Driver params (ie. IR3_DP_*)
@@ -114,6 +114,7 @@ enum ir3_driver_param {
  */
 struct ir3_const_state {
 	unsigned num_ubos;
+	unsigned num_reserved_user_consts;
 	unsigned num_driver_params;   /* scalar */
 
 	struct {

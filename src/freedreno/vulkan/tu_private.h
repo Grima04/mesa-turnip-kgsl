@@ -1129,10 +1129,17 @@ struct tu_descriptor_map
    int array_size[128];
 };
 
+struct tu_push_constant_range
+{
+   uint32_t lo;
+   uint32_t count;
+};
+
 struct tu_shader
 {
    struct ir3_shader ir3_shader;
 
+   struct tu_push_constant_range push_consts;
    struct tu_descriptor_map texture_map;
    struct tu_descriptor_map sampler_map;
    struct tu_descriptor_map ubo_map;
@@ -1181,6 +1188,7 @@ struct tu_program_descriptor_linkage
 
    uint32_t constlen;
 
+   struct tu_push_constant_range push_consts;
    struct tu_descriptor_map texture_map;
    struct tu_descriptor_map sampler_map;
    struct tu_descriptor_map ubo_map;

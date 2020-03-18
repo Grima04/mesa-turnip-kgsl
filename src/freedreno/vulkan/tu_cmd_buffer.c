@@ -2676,6 +2676,21 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
       &pipeline->program.link[type];
    const struct ir3_ubo_analysis_state *state = &link->ubo_state;
 
+   if (link->push_consts.count > 0) {
+      unsigned num_units = link->push_consts.count;
+      unsigned offset = link->push_consts.lo;
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + num_units * 4);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(offset) |
+            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+            CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+            CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
+            CP_LOAD_STATE6_0_NUM_UNIT(num_units));
+      tu_cs_emit(cs, 0);
+      tu_cs_emit(cs, 0);
+      for (unsigned i = 0; i < num_units * 4; i++)
+         tu_cs_emit(cs, push_constants[i + offset * 4]);
+   }
+
    for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
       if (state->range[i].start < state->range[i].end) {
          uint32_t size = state->range[i].end - state->range[i].start;
@@ -2693,21 +2708,6 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
          debug_assert((state->range[i].offset % 16) == 0);
          debug_assert((size % 16) == 0);
          debug_assert((offset % 16) == 0);
-
-         if (i == 0) {
-            /* push constants */
-            tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + (size / 4));
-            tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
-                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
-                  CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
-            tu_cs_emit(cs, 0);
-            tu_cs_emit(cs, 0);
-            for (unsigned i = 0; i < size / 4; i++)
-               tu_cs_emit(cs, push_constants[i + offset / 4]);
-            continue;
-         }
 
          /* Look through the UBO map to find our UBO index, and get the VA for
           * that UBO.

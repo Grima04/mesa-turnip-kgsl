@@ -235,7 +235,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 	 * first.
 	 */
 	const uint32_t max_upload = 16 * 1024;
-	uint32_t offset = 0;
+	uint32_t offset = shader->const_state.num_reserved_user_consts * 16;
 	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
 		uint32_t range_size = state->range[i].end - state->range[i].start;
 

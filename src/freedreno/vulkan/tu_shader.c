@@ -210,17 +210,16 @@ static void
 lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
                          struct tu_shader *shader)
 {
-   /* note: ir3 wants load_ubo, not load_uniform */
-   assert(nir_intrinsic_base(instr) == 0);
-
    nir_intrinsic_instr *load =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_ubo);
-
-   nir_intrinsic_set_align(load, 4, 0);
-
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_uniform);
    load->num_components = instr->num_components;
-   load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
-   load->src[1] = instr->src[0];
+   uint32_t base = nir_intrinsic_base(instr);
+   assert(base % 4 == 0);
+   assert(base >= shader->push_consts.lo * 16);
+   base -= shader->push_consts.lo * 16;
+   nir_intrinsic_set_base(load, base / 4);
+   load->src[0] =
+      nir_src_for_ssa(nir_ushr(b, instr->src[0].ssa, nir_imm_int(b, 2)));
    nir_ssa_dest_init(&load->instr, &load->dest,
                      load->num_components, instr->dest.ssa.bit_size,
                      instr->dest.ssa.name);
@@ -343,6 +342,55 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    }
 }
 
+/* Figure out the range of push constants that we're actually going to push to
+ * the shader, and tell the backend to reserve this range when pushing UBO
+ * constants.
+ */
+
+static void
+gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
+{
+   uint32_t min = UINT32_MAX, max = 0;
+   nir_foreach_function(function, shader) {
+      if (!function->impl)
+         continue;
+
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            if (intrin->intrinsic != nir_intrinsic_load_push_constant)
+               continue;
+
+            uint32_t base = nir_intrinsic_base(intrin);
+            uint32_t range = nir_intrinsic_range(intrin);
+            min = MIN2(min, base);
+            max = MAX2(max, base + range);
+            break;
+         }
+      }
+   }
+
+   if (min >= max) {
+      tu_shader->push_consts.lo = 0;
+      tu_shader->push_consts.count = 0;
+      tu_shader->ir3_shader.const_state.num_reserved_user_consts = 0;
+      return;
+   }
+
+   /* CP_LOAD_STATE OFFSET and NUM_UNIT are in units of vec4 (4 dwords),
+    * however there's an alignment requirement of 4 on OFFSET. Expand the
+    * range and change units accordingly.
+    */
+   tu_shader->push_consts.lo = (min / 16) / 4 * 4;
+   tu_shader->push_consts.count =
+      align(max, 16) / 16 - tu_shader->push_consts.lo;
+   tu_shader->ir3_shader.const_state.num_reserved_user_consts = 
+      align(tu_shader->push_consts.count, 4);
+}
+
 static bool
 lower_impl(nir_function_impl *impl, struct tu_shader *shader,
             const struct tu_pipeline_layout *layout)
@@ -375,6 +423,8 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
             const struct tu_pipeline_layout *layout)
 {
    bool progress = false;
+
+   gather_push_constants(shader, tu_shader);
 
    nir_foreach_function(function, shader) {
       if (function->impl)
