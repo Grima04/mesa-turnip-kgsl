@@ -110,15 +110,28 @@ bi_assign_ports(bi_bundle now, bi_bundle prev)
 {
         struct bi_registers regs = { 0 };
 
+        /* We assign ports for the main register mechanism. Special ops
+         * use the data registers, which has its own mechanism entirely
+         * and thus gets skipped over here. */
+
+        unsigned read_dreg = now.add &&
+                bi_class_props[now.add->type] & BI_DATA_REG_SRC;
+
+        unsigned write_dreg = prev.add &&
+                bi_class_props[prev.add->type] & BI_DATA_REG_DEST;
+
         /* First, assign reads */
 
         if (now.fma)
                 bi_foreach_src(now.fma, src)
                         bi_assign_port_read(&regs, now.fma->src[src]);
 
-        if (now.add)
-                bi_foreach_src(now.add, src)
-                        bi_assign_port_read(&regs, now.add->src[src]);
+        if (now.add) {
+                bi_foreach_src(now.add, src) {
+                        if (!(src == 0 && read_dreg))
+                                bi_assign_port_read(&regs, now.add->src[src]);
+                }
+        }
 
         /* Next, assign writes */
 
@@ -127,7 +140,7 @@ bi_assign_ports(bi_bundle now, bi_bundle prev)
                 regs.write_fma = true;
         }
 
-        if (prev.add && prev.add->dest & BIR_INDEX_REGISTER) {
+        if (prev.add && prev.add->dest & BIR_INDEX_REGISTER && !write_dreg) {
                 unsigned r = prev.add->dest & ~BIR_INDEX_REGISTER;
 
                 if (regs.write_fma) {

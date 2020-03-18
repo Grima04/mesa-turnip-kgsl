@@ -113,6 +113,11 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* Intrinsic is vectorized and should read 4 components regardless of writemask */
 #define BI_VECTOR (1 << 8)
 
+/* Use a data register for src0/dest respectively, bypassing the usual
+ * register accessor. Mutually exclusive. */
+#define BI_DATA_REG_SRC (1 << 9)
+#define BI_DATA_REG_DEST (1 << 10)
+
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 
