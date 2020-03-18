@@ -28,6 +28,7 @@ dEQP-GLES31.functional.stencil_texturing.misc.compare_mode_effect
 dEQP-GLES31.functional.texture.border_clamp.formats.stencil_index8.nearest_size_npot
 dEQP-GLES31.functional.texture.border_clamp.formats.stencil_index8.nearest_size_pot
 dEQP-GLES31.functional.texture.border_clamp.sampler.uint_stencil
+dEQP-GLES31.functional.texture.specification.texstorage3d.format.r16f_cube_array
 dEQP-GLES31.functional.texture.specification.texsubimage3d_pbo.r16ui_cube_array
 dEQP-GLES3.functional.buffer.write.recreate_store.random_1
 dEQP-GLES3.functional.draw.draw_elements.line_loop.instanced_attributes
@@ -36,6 +37,7 @@ dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_r16f
 dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_r32f
 dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_r8
 dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_rgb5_a1
+dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_srgb8_alpha8
 dEQP-GLES3.functional.fbo.blit.conversion.r16i_to_rg16i
 dEQP-GLES3.functional.fbo.blit.conversion.r16ui_to_r8ui
 dEQP-GLES3.functional.fbo.blit.conversion.r32f_to_r16f
