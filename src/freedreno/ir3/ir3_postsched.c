@@ -58,8 +58,6 @@ struct ir3_postsched_ctx {
 	struct dag *dag;
 
 	struct list_head unscheduled_list; /* unscheduled instructions */
-	struct ir3_instruction *scheduled; /* last scheduled instr */
-	struct ir3_instruction *pred;      /* current p0.x user, if any */
 
 	bool error;
 
@@ -90,14 +88,9 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 	 */
 	list_delinit(&instr->node);
 
-	if (writes_pred(instr)) {
-		ctx->pred = instr;
-	}
-
 	di(instr, "schedule");
 
 	list_addtail(&instr->node, &instr->block->instr_list);
-	ctx->scheduled = instr;
 
 	if (is_sfu(instr)) {
 		ctx->sfu_delay = 8;
@@ -557,8 +550,6 @@ static void
 sched_block(struct ir3_postsched_ctx *ctx, struct ir3_block *block)
 {
 	ctx->block = block;
-	ctx->scheduled = NULL;
-	ctx->pred = NULL;
 
 	/* move all instructions to the unscheduled list, and
 	 * empty the block's instruction list (to which we will
