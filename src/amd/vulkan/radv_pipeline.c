@@ -2812,11 +2812,10 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		radv_start_feedback(stage_feedbacks[i]);
 
 		if (key->compute_subgroup_size) {
-			/* Only GFX10+ and compute shaders currently support
-			 * requiring a specific subgroup size.
-			 */
-			assert(device->physical_device->rad_info.chip_class >= GFX10 &&
-			       i == MESA_SHADER_COMPUTE);
+			/* Only compute shaders currently support requiring a
+			 * specific subgroup size.
+                         */
+			assert(i == MESA_SHADER_COMPUTE);
 			subgroup_size = key->compute_subgroup_size;
 			ballot_bit_size = key->compute_subgroup_size;
 		}
