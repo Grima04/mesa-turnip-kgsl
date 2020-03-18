@@ -70,17 +70,17 @@ struct bifrost_header {
         unsigned unk3 : 1; // part of clauseType?
         unsigned next_clause_type: 4;
         unsigned unk4 : 1; // part of nextClauseType?
-};
+} __attribute__((packed));
 
 struct bifrost_fma_inst {
         unsigned src0 : 3;
         unsigned op   : 20;
-};
+} __attribute__((packed));
 
 struct bifrost_add_inst {
         unsigned src0 : 3;
         unsigned op   : 17;
-};
+} __attribute__((packed));
 
 enum bifrost_outmod {
         BIFROST_NONE = 0x0,
@@ -134,7 +134,7 @@ struct bifrost_fma_add {
         enum bifrost_outmod outmod : 2;
         enum bifrost_roundmode roundmode : 2;
         unsigned op : 6;
-};
+} __attribute__((packed));
 
 enum bifrost_csel_cond {
         BIFROST_FEQ_F = 0x0,
@@ -154,7 +154,7 @@ struct bifrost_csel4 {
         unsigned src3 : 3;
         enum bifrost_csel_cond cond : 3;
         unsigned op   : 8;
-};
+} __attribute__((packed));
 
 struct bifrost_shift_fma {
         unsigned src0 : 3;
@@ -166,7 +166,7 @@ struct bifrost_shift_fma {
         /* For XOR, switches RSHIFT to LSHIFT since only one invert needed */
         unsigned invert_2 : 1;
         unsigned op : 8;
-};
+} __attribute__((packed));
 
 struct bifrost_shift_add {
         unsigned src0 : 3;
@@ -178,7 +178,7 @@ struct bifrost_shift_add {
         unsigned invert_2 : 1;
 
         unsigned op : 7;
-};
+} __attribute__((packed));
 
 enum bifrost_ldst_type {
         BIFROST_LDST_F16 = 0,
@@ -193,7 +193,7 @@ struct bifrost_ld_var_addr {
         unsigned location : 5;
         enum bifrost_ldst_type type : 2;
         unsigned op : 7;
-};
+} __attribute__((packed));
 
 struct bifrost_ld_attr {
         unsigned src0 : 3;
@@ -202,7 +202,7 @@ struct bifrost_ld_attr {
         unsigned channels : 2; /* MALI_POSITIVE */
         enum bifrost_ldst_type type : 2;
         unsigned op : 5;
-};
+} __attribute__((packed));
 
 enum bifrost_interp_mode {
         BIFROST_INTERP_PER_FRAG = 0x0,
@@ -222,7 +222,7 @@ struct bifrost_ld_var {
         unsigned reuse : 1;
         unsigned flat : 1;
         unsigned op : 6;
-};
+} __attribute__((packed));
 
 struct bifrost_tex_ctrl {
         unsigned sampler_index : 4; // also used to signal indirects
@@ -240,7 +240,7 @@ struct bifrost_tex_ctrl {
         unsigned unk1 : 1;
         unsigned result_type : 4; // integer, unsigned, float TODO: why is this 4 bits?
         unsigned unk2 : 4;
-};
+} __attribute__((packed));
 
 struct bifrost_dual_tex_ctrl {
         unsigned sampler_index0 : 2;
@@ -249,7 +249,7 @@ struct bifrost_dual_tex_ctrl {
         unsigned sampler_index1 : 2;
         unsigned tex_index1 : 2;
         unsigned unk1 : 22;
-};
+} __attribute__((packed));
 
 enum branch_bit_size {
         BR_SIZE_32 = 0,
@@ -284,7 +284,7 @@ struct bifrost_regs {
         unsigned reg0 : 5;
         unsigned reg1 : 6;
         unsigned ctrl : 4;
-};
+} __attribute__((packed));
 
 enum bifrost_branch_cond {
         BR_COND_LT = 0,
