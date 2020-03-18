@@ -23,6 +23,12 @@
 
 #include "compiler.h"
 
+#define RETURN_PACKED(str) { \
+        uint64_t temp = 0; \
+        memcpy(&temp, &str, sizeof(str)); \
+        return temp; \
+}
+
 /* This file contains the final passes of the compiler. Running after
  * scheduling and RA, the IR is now finalized, so we need to emit it to actual
  * bits on the wire (as well as fixup branches) */
@@ -237,15 +243,87 @@ bi_pack_registers(struct bi_registers regs)
         return packed;
 }
 
-static unsigned
-bi_pack_fma(bi_clause *clause, bi_bundle bundle)
+static enum bifrost_packed_src
+bi_get_src_reg_port(struct bi_registers *regs, unsigned src)
 {
-        /* TODO */
-        return BIFROST_FMA_NOP;
+        unsigned reg = src & ~BIR_INDEX_REGISTER;
+
+        if (regs->port[0] == reg && regs->enabled[0])
+                return BIFROST_SRC_PORT0;
+        else if (regs->port[1] == reg && regs->enabled[1])
+                return BIFROST_SRC_PORT1;
+        else if (regs->port[3] == reg && regs->read_port3)
+                return BIFROST_SRC_PORT3;
+        else
+                unreachable("Tried to access register with no port");
+}
+
+static enum bifrost_packed_src
+bi_get_fma_src(bi_instruction *ins, struct bi_registers *regs, unsigned s)
+{
+        unsigned src = ins->src[s];
+
+        if (src & BIR_INDEX_REGISTER)
+                return bi_get_src_reg_port(regs, src);
+        else if (src & BIR_INDEX_ZERO)
+                return BIFROST_SRC_STAGE;
+        else if (src & BIR_INDEX_PASS)
+                return src & ~BIR_INDEX_PASS;
+        else
+                unreachable("Unknown src in FMA");
 }
 
 static unsigned
-bi_pack_add(bi_clause *clause, bi_bundle bundle)
+bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
+{
+        /* (-a)(-b) = ab, so we only need one negate bit */
+        bool negate_mul = ins->src_neg[0] ^ ins->src_neg[1];
+
+        struct bifrost_fma_fma pack = {
+                .src0 = bi_get_fma_src(ins, regs, 0),
+                .src1 = bi_get_fma_src(ins, regs, 1),
+                .src2 = bi_get_fma_src(ins, regs, 2),
+                .src0_abs = ins->src_abs[0],
+                .src1_abs = ins->src_abs[1],
+                .src2_abs = ins->src_abs[2],
+                .src0_neg = negate_mul,
+                .src2_neg = ins->src_neg[2],
+                .op = BIFROST_FMA_OP_FMA
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
+bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
+{
+        if (!bundle.fma)
+                return BIFROST_FMA_NOP;
+
+        switch (bundle.fma->type) {
+        case BI_ADD:
+        case BI_CMP:
+        case BI_BITWISE:
+        case BI_CONVERT:
+        case BI_CSEL:
+		return BIFROST_FMA_NOP;
+        case BI_FMA:
+                return bi_pack_fma_fma(bundle.fma, regs);
+        case BI_FREXP:
+        case BI_ISUB:
+        case BI_MINMAX:
+        case BI_MOV:
+        case BI_SHIFT:
+        case BI_SWIZZLE:
+        case BI_ROUND:
+		return BIFROST_FMA_NOP;
+        default:
+                unreachable("Cannot encode class as FMA");
+        }
+}
+
+static unsigned
+bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         /* TODO */
         return BIFROST_ADD_NOP;
@@ -263,8 +341,8 @@ bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_b
         regs.first_instruction = first_bundle;
 
         uint64_t reg = bi_pack_registers(regs);
-        uint64_t fma = bi_pack_fma(clause, bundle);
-        uint64_t add = bi_pack_add(clause, bundle);
+        uint64_t fma = bi_pack_fma(clause, bundle, &regs);
+        uint64_t add = bi_pack_add(clause, bundle, &regs);
 
         struct bi_packed_bundle packed = {
                 .lo = reg | (fma << 35) | ((add & 0b111111) << 58),
