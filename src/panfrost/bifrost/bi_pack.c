@@ -40,8 +40,74 @@ bi_pack_header(bi_clause *clause, bi_clause *next)
         return u;
 }
 
+/* Represents the assignment of ports for a given bundle */
+
+struct bi_registers {
+        /* Register to assign to each port */
+        unsigned port[4];
+
+        /* Read ports can be disabled */
+        bool enabled[2];
+
+        /* Should we write FMA? what about ADD? If only a single port is
+         * enabled it is in port 2, else ADD/FMA is 2/3 respectively */
+        bool write_fma, write_add;
+
+        /* Should we read with port 3? */
+        bool read_port3;
+
+        /* Packed uniform/constant */
+        unsigned uniform_constant;
+
+        /* Whether writes are actually for the last instruction */
+        bool first_instruction;
+};
+
+/* Determines the register control field, ignoring the first? flag */
+
+static enum bifrost_reg_control
+bi_pack_register_ctrl_lo(struct bi_registers r)
+{
+        if (r.write_fma) {
+                if (r.write_add) {
+                        assert(!r.read_port3);
+                        return BIFROST_WRITE_ADD_P2_FMA_P3;
+                } else {
+                        if (r.read_port3)
+                                return BIFROST_WRITE_FMA_P2_READ_P3;
+                        else
+                                return BIFROST_WRITE_FMA_P2;
+                }
+        } else if (r.write_add) {
+                if (r.read_port3)
+                        return BIFROST_WRITE_ADD_P2_READ_P3;
+                else
+                        return BIFROST_WRITE_ADD_P2;
+        } else if (r.read_port3)
+                return BIFROST_READ_P3;
+        else
+                return BIFROST_REG_NONE;
+}
+
+/* Ditto but account for the first? flag this time */
+
+static enum bifrost_reg_control
+bi_pack_register_ctrl(struct bi_registers r)
+{
+        enum bifrost_reg_control ctrl = bi_pack_register_ctrl_lo(r);
+
+        if (r.first_instruction) {
+                if (ctrl == BIFROST_REG_NONE)
+                        ctrl = BIFROST_FIRST_NONE;
+                else
+                        ctrl |= BIFROST_FIRST_NONE;
+        }
+
+        return ctrl;
+}
+
 static unsigned
-bi_pack_registers(bi_clause *clause, bi_bundle bundle)
+bi_pack_registers(struct bi_registers regs)
 {
         /* TODO */
         return 0;
@@ -69,7 +135,7 @@ struct bi_packed_bundle {
 static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle)
 {
-        unsigned reg = bi_pack_registers(clause, bundle);
+        unsigned reg = /*bi_pack_registers(clause, bundle)*/0;
         uint64_t fma = bi_pack_fma(clause, bundle);
         uint64_t add = bi_pack_add(clause, bundle);
 
