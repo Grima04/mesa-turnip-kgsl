@@ -2042,7 +2042,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
     *    add extra flushes in the case it knows that the engine is already
     *    IDLE."
     */
-   if (GEN_GEN == 12 && ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)
+   if (GEN_GEN == 12 && (bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT))
       bits |= ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT;
 
    /* If we're going to do an invalidate and we have a pending end-of-pipe
