@@ -711,7 +711,7 @@ arm64_a306_gles2:
   extends:
     - .baremetal-test
     - .use-arm_build
-  stage: freedreno
+    - .freedreno-rules
   variables:
     BM_KERNEL: /lava-files/Image.gz
     BM_DTB: /lava-files/apq8016-sbc.dtb
