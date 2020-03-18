@@ -71,7 +71,7 @@ v3dv_job_add_extra_bo(struct v3dv_job *job, struct v3dv_bo *bo)
    _mesa_set_add(job->extra_bos, bo);
 }
 
-static void
+static struct v3dv_job *
 subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx);
 
 static void
@@ -256,6 +256,12 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer)
 
    const struct v3dv_physical_device *physical_device =
       &cmd_buffer->device->instance->physicalDevice;
+
+   if (!cmd_buffer->state.job)
+      return false;
+
+   if (cmd_buffer->state.job->always_flush)
+      return false;
 
    if (!physical_device->options.merge_jobs)
       return false;
@@ -515,6 +521,9 @@ v3dv_job_init(struct v3dv_job *job,
     */
    if (cmd_buffer && cmd_buffer->state.pass)
       job->first_subpass = subpass_idx;
+
+   if (V3D_DEBUG & V3D_DEBUG_ALWAYS_FLUSH)
+      job->always_flush = true;
 }
 
 struct v3dv_job *
@@ -1491,7 +1500,7 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
-static void
+static struct v3dv_job *
 subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
@@ -1503,7 +1512,7 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
     */
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, subpass_idx);
    if (!job)
-      return;
+      return NULL;
 
    state->subpass_idx = subpass_idx;
 
@@ -1538,6 +1547,8 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
        cmd_buffer->state.dynamic.viewport.count == 0) {
       emit_clip_window(job, &state->render_area);
    }
+
+   return job;
 }
 
 static void
@@ -2331,9 +2342,46 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
    }
 }
 
+static struct v3dv_job *
+cmd_buffer_pre_draw_split_job(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   /* If the job has been flagged with 'always_flush' and it has already
+    * recorded any draw calls then we need to start a new job for it.
+    */
+   if (job->always_flush && job->draw_count > 0) {
+      assert(cmd_buffer->state.pass);
+      /* First, flag the current job as not being the last in the
+       * current subpass
+       */
+      job->is_subpass_finish = false;
+
+      /* Now start a new job in the same subpass and flag it as continuing
+       * the current subpass.
+       */
+      job = subpass_start(cmd_buffer, cmd_buffer->state.subpass_idx);
+      assert(job->draw_count == 0);
+      job->is_subpass_continue = true;
+
+      /* Inherit the 'always flush' behavior */
+      job->always_flush = true;
+   }
+
+   assert(job->draw_count == 0 || !job->always_flush);
+   return job;
+}
+
 static void
 cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   /* If the job is configured to flush on every draw call we need to create
+    * a new job now.
+    */
+   struct v3dv_job *job = cmd_buffer_pre_draw_split_job(cmd_buffer);
+   job->draw_count++;
+
    /* FIXME: likely to be filtered by really needed states */
    uint32_t *dirty = &cmd_buffer->state.dirty;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
@@ -2383,7 +2431,6 @@ v3dv_CmdDraw(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    struct v3dv_draw_info info = {};
-
    info.vertex_count = vertexCount;
    info.instance_count = instanceCount;
    info.first_instance = firstInstance;
@@ -2402,10 +2449,10 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
+   cmd_buffer_emit_pre_draw(cmd_buffer);
+
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
-
-   cmd_buffer_emit_pre_draw(cmd_buffer);
 
    const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
@@ -2453,10 +2500,10 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    if (drawCount == 0)
       return;
 
+   cmd_buffer_emit_pre_draw(cmd_buffer);
+
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
-
-   cmd_buffer_emit_pre_draw(cmd_buffer);
 
    const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
@@ -2483,10 +2530,10 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    if (drawCount == 0)
       return;
 
+   cmd_buffer_emit_pre_draw(cmd_buffer);
+
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
-
-   cmd_buffer_emit_pre_draw(cmd_buffer);
 
    const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);

@@ -592,6 +592,15 @@ struct v3dv_job {
     * submit no-op jobs), then it is our responsibility to do that.
     */
    struct v3dv_fence *fence;
+
+   /* Number of draw calls recorded into the job */
+   uint32_t draw_count;
+
+   /* A flag indicating whether we want to flush every draw separately. This
+    * can be used for debugging, or for cases where special circumstances
+    * require this behavior.
+    */
+   bool always_flush;
 };
 
 void v3dv_job_init(struct v3dv_job *job,
