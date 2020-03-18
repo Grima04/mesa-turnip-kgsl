@@ -1664,7 +1664,7 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    if (!(dynamic_mask & V3DV_DYNAMIC_BLEND_CONSTANTS)) {
-      if (memcmp(&dest->blend_constants, &src->blend_constants,
+      if (memcmp(dest->blend_constants, src->blend_constants,
                  sizeof(src->blend_constants))) {
          memcpy(dest->blend_constants, src->blend_constants,
                 sizeof(src->blend_constants));
@@ -1949,6 +1949,8 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
    clip_window.extent.height = maxy - miny;
 
    emit_clip_window(cmd_buffer->state.job, &clip_window);
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_SCISSOR;
 }
 
 static void
@@ -1985,6 +1987,8 @@ emit_viewport(struct v3dv_cmd_buffer *cmd_buffer)
       vp.viewport_centre_x_coordinate = vptranslate[0];
       vp.viewport_centre_y_coordinate = vptranslate[1];
    }
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_VIEWPORT;
 }
 
 static void
@@ -2069,8 +2073,9 @@ emit_blend(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    if (pipeline->blend.needs_color_constants &&
-       (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_BLEND_CONSTANTS)) {
-      cl_emit_prepacked(&job->bcl, &pipeline->blend.constant_color);
+       cmd_buffer->state.dirty & V3DV_CMD_DIRTY_BLEND_CONSTANTS) {
+         cl_emit_prepacked(&job->bcl, &pipeline->blend.constant_color);
+      cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_BLEND_CONSTANTS;
    }
 }
 
@@ -2314,6 +2319,10 @@ emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
                            emit_centroid_flags)) {
       cl_emit(&job->bcl, ZERO_ALL_CENTROID_FLAGS, flags);
    }
+
+   cmd_buffer->state.dirty &= ~(V3DV_CMD_DIRTY_VERTEX_BUFFER |
+                                V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
+                                V3DV_CMD_DIRTY_PUSH_CONSTANTS);
 }
 
 /* FIXME: C&P from v3dx_draw. Refactor to common place? */
@@ -2440,9 +2449,10 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    if (*dirty & dynamic_stencil_dirty_flags)
       emit_stencil(cmd_buffer);
 
-   emit_blend(cmd_buffer);
+   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_BLEND_CONSTANTS))
+      emit_blend(cmd_buffer);
 
-   cmd_buffer->state.dirty &= ~(*dirty);
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PIPELINE;
 }
 
 static void
