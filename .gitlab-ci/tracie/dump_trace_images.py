@@ -77,7 +77,8 @@ def dump_with_apitrace(retrace_cmd, trace_path, calls, device_name):
     outputprefix = str(Path(outputdir) / trace_path.name) + "-"
     if len(calls) == 0:
         calls = [str(get_last_apitrace_frame_call(retrace_cmd[:-1], trace_path))]
-    cmd = retrace_cmd + ["--snapshot=" + ','.join(calls),
+    cmd = retrace_cmd + ["--headless",
+                         "--snapshot=" + ','.join(calls),
                          "--snapshot-prefix=" + outputprefix, str(trace_path)]
     log_path = Path(outputdir) / (trace_path.name + ".log")
     run_logged_command(cmd, None, log_path)
