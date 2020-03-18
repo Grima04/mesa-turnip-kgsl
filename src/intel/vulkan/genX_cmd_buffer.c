@@ -5834,7 +5834,10 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          dst_state->current_stencil_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
          enum isl_aux_usage src_aux_usage = ISL_AUX_USAGE_NONE;
-         enum isl_aux_usage dst_aux_usage = ISL_AUX_USAGE_NONE;
+         uint32_t plane = anv_image_aspect_to_plane(dst_iview->image->aspects,
+                                                    VK_IMAGE_ASPECT_STENCIL_BIT);
+         enum isl_aux_usage dst_aux_usage =
+            dst_iview->image->planes[plane].aux_usage;
 
          enum blorp_filter filter =
             vk_to_blorp_resolve_mode(subpass->stencil_resolve_mode);
