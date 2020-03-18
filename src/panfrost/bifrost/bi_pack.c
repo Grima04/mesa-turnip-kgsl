@@ -257,9 +257,10 @@ struct bi_packed_bundle {
 };
 
 static struct bi_packed_bundle
-bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev)
+bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle)
 {
         struct bi_registers regs = bi_assign_ports(bundle, prev);
+        regs.first_instruction = first_bundle;
 
         uint64_t reg = bi_pack_registers(regs);
         uint64_t fma = bi_pack_fma(clause, bundle);
@@ -277,7 +278,7 @@ static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
                 struct util_dynarray *emission)
 {
-        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0]);
+        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true);
         assert(clause->bundle_count == 1);
 
         struct bifrost_fmt1 quad_1 = {
