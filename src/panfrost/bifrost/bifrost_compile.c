@@ -102,7 +102,16 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         ins.load_vary.interp_mode = BIFROST_INTERP_DEFAULT; /* TODO */
         ins.load_vary.reuse = false; /* TODO */
         ins.load_vary.flat = instr->intrinsic != nir_intrinsic_load_interpolated_input;
-        ins.dest_type = nir_type_float | nir_dest_bit_size(instr->dest),
+        ins.dest_type = nir_type_float | nir_dest_bit_size(instr->dest);
+
+        if (nir_src_is_const(*nir_get_io_offset_src(instr))) {
+                /* Zero it out for direct */
+                ins.src[1] = BIR_INDEX_ZERO;
+        } else {
+                /* R61 contains sample mask stuff, TODO RA XXX */
+                ins.src[1] = BIR_INDEX_REGISTER | 61;
+        }
+
         bi_emit(ctx, ins);
 }
 
