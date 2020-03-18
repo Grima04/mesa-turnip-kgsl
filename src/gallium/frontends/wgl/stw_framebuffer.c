@@ -28,6 +28,7 @@
 #include <windows.h>
 
 #include "pipe/p_screen.h"
+#include "pipe/p_state.h"
 #include "util/u_memory.h"
 #include "hud/hud_context.h"
 #include "util/os_time.h"
@@ -99,6 +100,9 @@ stw_framebuffer_release_locked(struct stw_framebuffer *fb)
    if (fb->shared_surface)
       stw_dev->stw_winsys->shared_surface_close(stw_dev->screen,
                                                 fb->shared_surface);
+
+   if (fb->winsys_framebuffer)
+      fb->winsys_framebuffer->destroy(fb->winsys_framebuffer);
 
    stw_st_destroy_framebuffer_locked(fb->stfb);
 
@@ -267,6 +271,10 @@ stw_framebuffer_create(HDC hdc, int iPixelFormat)
 
    fb->hWnd = hWnd;
    fb->iPixelFormat = iPixelFormat;
+
+   if (stw_dev->stw_winsys->create_framebuffer)
+      fb->winsys_framebuffer =
+         stw_dev->stw_winsys->create_framebuffer(stw_dev->screen, hdc, iPixelFormat);
 
    /*
     * We often need a displayable pixel format to make GDI happy. Set it
@@ -552,8 +560,17 @@ stw_framebuffer_present_locked(HDC hdc,
                                struct stw_framebuffer *fb,
                                struct pipe_resource *res)
 {
-   if (stw_dev->callbacks.pfnPresentBuffers &&
-      stw_dev->stw_winsys->compose) {
+   if (fb->winsys_framebuffer) {
+      BOOL result = fb->winsys_framebuffer->present(fb->winsys_framebuffer);
+
+      stw_framebuffer_update(fb);
+      stw_notify_current_locked(fb);
+      stw_framebuffer_unlock(fb);
+
+      return result;
+   }
+   else if (stw_dev->callbacks.pfnPresentBuffers &&
+            stw_dev->stw_winsys->compose) {
       PRESENTBUFFERSCB data;
 
       memset(&data, 0, sizeof data);
@@ -652,7 +669,7 @@ DrvSwapBuffers(HDC hdc)
       }
    }
 
-   if (stw_dev->swap_interval != 0) {
+   if (stw_dev->swap_interval != 0 && !fb->winsys_framebuffer) {
       wait_swap_interval(fb);
    }
 

@@ -29,11 +29,13 @@
 #include "util/u_inlines.h"
 #include "util/u_atomic.h"
 #include "state_tracker/st_gl_api.h" /* for st_gl_api_create */
+#include "pipe/p_state.h"
 
 #include "stw_st.h"
 #include "stw_device.h"
 #include "stw_framebuffer.h"
 #include "stw_pixelformat.h"
+#include "stw_winsys.h"
 
 struct stw_st_framebuffer {
    struct st_framebuffer_iface base;
@@ -74,21 +76,14 @@ stw_own_mutex(const CRITICAL_SECTION *cs)
  * Remove outdated textures and create the requested ones.
  */
 static void
-stw_st_framebuffer_validate_locked(struct st_framebuffer_iface *stfb,
+stw_st_framebuffer_validate_locked(struct st_context_iface *stctx,
+                                   struct st_framebuffer_iface *stfb,
                                    unsigned width, unsigned height,
                                    unsigned mask)
 {
    struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
    struct pipe_resource templ;
    unsigned i;
-
-   /* remove outdated textures */
-   if (stwfb->texture_width != width || stwfb->texture_height != height) {
-      for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
-         pipe_resource_reference(&stwfb->msaa_textures[i], NULL);
-         pipe_resource_reference(&stwfb->textures[i], NULL);
-      }
-   }
 
    memset(&templ, 0, sizeof(templ));
    templ.target = PIPE_TEXTURE_2D;
@@ -97,6 +92,20 @@ stw_st_framebuffer_validate_locked(struct st_framebuffer_iface *stfb,
    templ.depth0 = 1;
    templ.array_size = 1;
    templ.last_level = 0;
+
+   /* remove outdated textures */
+   if (stwfb->texture_width != width || stwfb->texture_height != height) {
+      for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
+         pipe_resource_reference(&stwfb->msaa_textures[i], NULL);
+         pipe_resource_reference(&stwfb->textures[i], NULL);
+      }
+
+      if (stwfb->fb->winsys_framebuffer) {
+         templ.nr_samples = templ.nr_storage_samples = 1;
+         templ.format = stwfb->stvis.color_format;
+         stwfb->fb->winsys_framebuffer->resize(stwfb->fb->winsys_framebuffer, stctx->pipe, &templ);
+      }
+   }
 
    for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
       enum pipe_format format;
@@ -141,8 +150,12 @@ stw_st_framebuffer_validate_locked(struct st_framebuffer_iface *stfb,
 
          templ.bind = bind;
          templ.nr_samples = templ.nr_storage_samples = 1;
-         stwfb->textures[i] =
-            stw_dev->screen->resource_create(stw_dev->screen, &templ);
+         if (stwfb->fb->winsys_framebuffer)
+            stwfb->textures[i] = stwfb->fb->winsys_framebuffer->get_resource(
+               stwfb->fb->winsys_framebuffer, i);
+         else
+            stwfb->textures[i] =
+               stw_dev->screen->resource_create(stw_dev->screen, &templ);
       }
    }
 
@@ -168,7 +181,7 @@ stw_st_framebuffer_validate(struct st_context_iface *stctx,
    stw_framebuffer_lock(stwfb->fb);
 
    if (stwfb->fb->must_resize || (statt_mask & ~stwfb->texture_mask)) {
-      stw_st_framebuffer_validate_locked(&stwfb->base,
+      stw_st_framebuffer_validate_locked(stctx, &stwfb->base,
             stwfb->fb->width, stwfb->fb->height, statt_mask);
       stwfb->fb->must_resize = FALSE;
    }
