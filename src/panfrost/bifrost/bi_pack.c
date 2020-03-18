@@ -295,6 +295,28 @@ bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
+bi_pack_fma_add(bi_instruction *ins, struct bi_registers *regs)
+{
+        /* TODO: fadd16 packing is a bit different */
+        assert(ins->dest_type == nir_type_float32);
+
+        struct bifrost_fma_add pack = {
+                .src0 = bi_get_fma_src(ins, regs, 0),
+                .src1 = bi_get_fma_src(ins, regs, 1),
+                .src0_abs = ins->src_abs[0],
+                .src1_abs = ins->src_abs[1],
+                .src0_neg = ins->src_neg[0],
+                .src1_neg = ins->src_neg[1],
+                .unk = 0x0,
+                .outmod = ins->outmod,
+                .roundmode = ins->roundmode,
+                .op = BIFROST_FMA_OP_FADD32
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         if (!bundle.fma)
@@ -302,6 +324,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 
         switch (bundle.fma->type) {
         case BI_ADD:
+                return bi_pack_fma_add(bundle.fma, regs);
         case BI_CMP:
         case BI_BITWISE:
         case BI_CONVERT:

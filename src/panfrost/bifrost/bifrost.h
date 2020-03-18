@@ -134,6 +134,8 @@ enum bifrost_minmax_mode {
         BIFROST_SRC0_WINS   = 0x3,
 };
 
+#define BIFROST_FMA_OP_FADD32 (0x58 >> 2)
+
 struct bifrost_fma_add {
         unsigned src0 : 3;
         unsigned src1 : 3;
