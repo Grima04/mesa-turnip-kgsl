@@ -72,6 +72,17 @@ struct bifrost_header {
         unsigned unk4 : 1; // part of nextClauseType?
 } __attribute__((packed));
 
+enum bifrost_packed_src {
+        BIFROST_SRC_PORT0    = 0,
+        BIFROST_SRC_PORT1    = 1,
+        BIFROST_SRC_PORT3    = 2,
+        BIFROST_SRC_STAGE    = 3,
+        BIFROST_SRC_CONST_LO = 4,
+        BIFROST_SRC_CONST_HI = 5,
+        BIFROST_SRC_PASS_FMA = 6,
+        BIFROST_SRC_PASS_ADD = 7,
+};
+
 struct bifrost_fma_inst {
         unsigned src0 : 3;
         unsigned op   : 20;

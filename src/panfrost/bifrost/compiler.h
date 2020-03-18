@@ -371,17 +371,19 @@ bi_remove_instruction(bi_instruction *ins)
  *  Uniform: access a uniform register given by low bits.
  *  Constant: access the specified constant 
  *  Zero: special cased to avoid wasting a constant
+ *  Passthrough: a bifrost_packed_src to passthrough T/T0/T1
  */
 
 #define BIR_INDEX_REGISTER (1 << 31)
 #define BIR_INDEX_UNIFORM  (1 << 30)
 #define BIR_INDEX_CONSTANT (1 << 29)
 #define BIR_INDEX_ZERO     (1 << 28)
+#define BIR_INDEX_PASS     (1 << 27)
 
 /* Keep me synced please so we can check src & BIR_SPECIAL */
 
 #define BIR_SPECIAL        ((BIR_INDEX_REGISTER | BIR_INDEX_UNIFORM) | \
-        (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO))
+        (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO | BIR_INDEX_PASS))
 
 static inline unsigned
 bi_max_temp(bi_context *ctx)
