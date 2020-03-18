@@ -63,6 +63,89 @@ struct bi_registers {
         bool first_instruction;
 };
 
+/* Assigns a port for reading, before anything is written */
+
+static void
+bi_assign_port_read(struct bi_registers *regs, unsigned src)
+{
+        /* We only assign for registers */
+        if (!(src & BIR_INDEX_REGISTER))
+                return;
+
+        unsigned reg = src & ~BIR_INDEX_REGISTER;
+
+        /* Check if we already assigned the port */
+        for (unsigned i = 0; i <= 1; ++i) {
+                if (regs->port[i] == reg && regs->enabled[i])
+                        return;
+        }
+
+        if (regs->port[3] == reg && regs->read_port3)
+                return;
+
+        /* Assign it now */
+
+        for (unsigned i = 0; i <= 1; ++i) {
+                if (!regs->enabled[i]) {
+                        regs->port[i] = reg;
+                        regs->enabled[i] = true;
+                        return;
+                }
+        }
+
+        if (!regs->read_port3) {
+                regs->port[3] = reg;
+                regs->read_port3 = true;
+        }
+}
+
+static struct bi_registers
+bi_assign_ports(bi_bundle now, bi_bundle prev)
+{
+        struct bi_registers regs = { 0 };
+
+        /* First, assign reads */
+
+        if (now.fma)
+                bi_foreach_src(now.fma, src)
+                        bi_assign_port_read(&regs, now.fma->src[src]);
+
+        if (now.add)
+                bi_foreach_src(now.add, src)
+                        bi_assign_port_read(&regs, now.add->src[src]);
+
+        /* Next, assign writes */
+
+        if (prev.fma && prev.fma->dest & BIR_INDEX_REGISTER) {
+                regs.port[2] = prev.fma->dest & ~BIR_INDEX_REGISTER;
+                regs.write_fma = true;
+        }
+
+        if (prev.add && prev.add->dest & BIR_INDEX_REGISTER) {
+                unsigned r = prev.add->dest & ~BIR_INDEX_REGISTER;
+
+                if (regs.write_fma) {
+                        /* Scheduler constraint: cannot read 3 and write 2 */
+                        assert(!regs.read_port3);
+                        regs.port[3] = r;
+                } else {
+                        regs.port[2] = r;
+                }
+
+                regs.write_add = true;
+        }
+
+        /* Finally, ensure port 1 > port 0 for the 63-x trick to function */
+
+        if (regs.enabled[0] && regs.enabled[1] && regs.port[1] < regs.port[0]) {
+                unsigned temp = regs.port[0];
+                regs.port[0] = regs.port[1];
+                regs.port[1] = temp;
+        }
+
+        return regs;
+}
+
 /* Determines the register control field, ignoring the first? flag */
 
 static enum bifrost_reg_control
@@ -174,15 +257,9 @@ struct bi_packed_bundle {
 };
 
 static struct bi_packed_bundle
-bi_pack_bundle(bi_clause *clause, bi_bundle bundle)
+bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev)
 {
-        struct bi_registers regs = {
-                .enabled = { true, true },
-                .port = { 34, 35, 3, 4 },
-                .write_fma = true,
-                .write_add = true,
-                .first_instruction = true,
-        };
+        struct bi_registers regs = bi_assign_ports(bundle, prev);
 
         uint64_t reg = bi_pack_registers(regs);
         uint64_t fma = bi_pack_fma(clause, bundle);
@@ -200,7 +277,7 @@ static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
                 struct util_dynarray *emission)
 {
-        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0]);
+        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0]);
         assert(clause->bundle_count == 1);
 
         struct bifrost_fmt1 quad_1 = {
