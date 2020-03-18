@@ -108,7 +108,7 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 
 /* For scheduling purposes this is a high latency instruction and must be at
  * the end of a clause. Implies ADD */
-#define BI_SCHED_HI_LATENCY ((1 << 7) | BI_SCHED_ADD)
+#define BI_SCHED_HI_LATENCY (1 << 7)
 
 /* Intrinsic is vectorized and should read 4 components regardless of writemask */
 #define BI_VECTOR (1 << 8)
