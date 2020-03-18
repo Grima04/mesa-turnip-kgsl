@@ -575,6 +575,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 	struct pipe_surface *zsbuf = fb->zsbuf;
 	struct si_texture *zstex =
 		zsbuf ? (struct si_texture*)zsbuf->texture : NULL;
+	bool needs_db_flush = false;
 
 	if (buffers & PIPE_CLEAR_COLOR) {
 		si_do_fast_color_clear(sctx, &buffers, color);
@@ -610,6 +611,11 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 			}
 
 			if (zstex->depth_clear_value != (float)depth) {
+				if ((zstex->depth_clear_value != 0) != (depth != 0)) {
+					/* ZRANGE_PRECISION register of a bound surface will change so we
+					 * must flush the DB caches. */
+					needs_db_flush = true;
+				}
 				/* Update DB_DEPTH_CLEAR. */
 				zstex->depth_clear_value = depth;
 				sctx->framebuffer.dirty_zsbuf = true;
@@ -641,19 +647,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 			si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
 		}
 
-		/* TODO: Find out what's wrong here. Fast depth clear leads to
-		 * corruption in ARK: Survival Evolved, but that may just be
-		 * a coincidence and the root cause is elsewhere.
-		 *
-		 * The corruption can be fixed by putting the DB flush before
-		 * or after the depth clear. (surprisingly)
-		 *
-		 * https://bugs.freedesktop.org/show_bug.cgi?id=102955 (apitrace)
-		 *
-		 * This hack decreases back-to-back ClearDepth performance.
-		 */
-		if ((sctx->db_depth_clear || sctx->db_stencil_clear) &&
-		    sctx->screen->options.clear_db_cache_before_clear)
+		if (needs_db_flush)
 			sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_DB;
 	}
 
