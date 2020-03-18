@@ -108,12 +108,13 @@ _util_sparse_array_set_or_free_node(struct util_sparse_array_node **node_ptr,
 void *
 util_sparse_array_get(struct util_sparse_array *arr, uint64_t idx)
 {
+   const unsigned node_size_log2 = arr->node_size_log2;
    struct util_sparse_array_node *root = p_atomic_read(&arr->root);
    if (unlikely(root == NULL)) {
       unsigned root_level = 0;
-      uint64_t idx_iter = idx >> arr->node_size_log2;
+      uint64_t idx_iter = idx >> node_size_log2;
       while (idx_iter) {
-         idx_iter >>= arr->node_size_log2;
+         idx_iter >>= node_size_log2;
          root_level++;
       }
       struct util_sparse_array_node *new_root =
@@ -122,8 +123,8 @@ util_sparse_array_get(struct util_sparse_array *arr, uint64_t idx)
    }
 
    while (1) {
-      uint64_t root_idx = idx >> (root->level * arr->node_size_log2);
-      if (likely(root_idx < (1ull << arr->node_size_log2)))
+      uint64_t root_idx = idx >> (root->level * node_size_log2);
+      if (likely(root_idx < (1ull << node_size_log2)))
          break;
 
       /* In this case, we have a root but its level is low enough that the
@@ -147,8 +148,8 @@ util_sparse_array_get(struct util_sparse_array *arr, uint64_t idx)
 
    struct util_sparse_array_node *node = root;
    while (node->level > 0) {
-      uint64_t child_idx = (idx >> (node->level * arr->node_size_log2)) &
-                           ((1ull << arr->node_size_log2) - 1);
+      uint64_t child_idx = (idx >> (node->level * node_size_log2)) &
+                           ((1ull << node_size_log2) - 1);
 
       struct util_sparse_array_node **children =
          _util_sparse_array_node_data(node);
@@ -164,7 +165,7 @@ util_sparse_array_get(struct util_sparse_array *arr, uint64_t idx)
       node = child;
    }
 
-   uint64_t elem_idx = idx & ((1ull << arr->node_size_log2) - 1);
+   uint64_t elem_idx = idx & ((1ull << node_size_log2) - 1);
    return (void *)((char *)_util_sparse_array_node_data(node) +
                    (elem_idx * arr->elem_size));
 }
