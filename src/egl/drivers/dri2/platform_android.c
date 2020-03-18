@@ -1657,9 +1657,11 @@ dri2_initialize_android(_EGLDriver *drv, _EGLDisplay *disp)
     */
    if (disp->Extensions.ANDROID_native_fence_sync) {
       disp->Extensions.EXT_buffer_age = EGL_TRUE;
-#if ANDROID_API_LEVEL >= 23
-      disp->Extensions.KHR_partial_update = EGL_TRUE;
-#endif
+   } else {
+      /* disable KHR_partial_update that might have been enabled in
+       * dri2_setup_screen
+       */
+      disp->Extensions.KHR_partial_update = EGL_FALSE;
    }
 
    disp->Extensions.KHR_image = EGL_TRUE;
