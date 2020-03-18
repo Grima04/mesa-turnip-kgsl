@@ -259,18 +259,43 @@ bi_get_src_reg_port(struct bi_registers *regs, unsigned src)
 }
 
 static enum bifrost_packed_src
-bi_get_fma_src(bi_instruction *ins, struct bi_registers *regs, unsigned s)
+bi_get_src_const(struct bi_registers *regs, unsigned constant)
+{
+        if (regs->uniform_constant & (1 << 7))
+                unreachable("Tried to get constant but loading uniforms");
+
+        unsigned loc = (regs->uniform_constant >> 4) & 0x7;
+
+        if (loc != 0)
+                unreachable("TODO: constants in clauses");
+
+        unsigned lo = regs->uniform_constant & 0xF;
+
+        if (lo == 0) {
+                if (constant != 0)
+                        unreachable("Tried to load !0 in 0 slot");
+
+                return BIFROST_SRC_CONST_LO;
+        } else {
+                unreachable("Special slot is not a fixed immediate");
+        }
+}
+
+static enum bifrost_packed_src
+bi_get_src(bi_instruction *ins, struct bi_registers *regs, unsigned s, bool is_fma)
 {
         unsigned src = ins->src[s];
 
         if (src & BIR_INDEX_REGISTER)
                 return bi_get_src_reg_port(regs, src);
-        else if (src & BIR_INDEX_ZERO)
+        else if (src & BIR_INDEX_ZERO && is_fma)
                 return BIFROST_SRC_STAGE;
+        else if (src & BIR_INDEX_ZERO)
+                return bi_get_src_const(regs, 0);
         else if (src & BIR_INDEX_PASS)
                 return src & ~BIR_INDEX_PASS;
         else
-                unreachable("Unknown src in FMA");
+                unreachable("Unknown src");
 }
 
 static unsigned
@@ -280,9 +305,9 @@ bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
         bool negate_mul = ins->src_neg[0] ^ ins->src_neg[1];
 
         struct bifrost_fma_fma pack = {
-                .src0 = bi_get_fma_src(ins, regs, 0),
-                .src1 = bi_get_fma_src(ins, regs, 1),
-                .src2 = bi_get_fma_src(ins, regs, 2),
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .src1 = bi_get_src(ins, regs, 1, true),
+                .src2 = bi_get_src(ins, regs, 2, true),
                 .src0_abs = ins->src_abs[0],
                 .src1_abs = ins->src_abs[1],
                 .src2_abs = ins->src_abs[2],
@@ -301,8 +326,8 @@ bi_pack_fma_add(bi_instruction *ins, struct bi_registers *regs)
         assert(ins->dest_type == nir_type_float32);
 
         struct bifrost_fma_add pack = {
-                .src0 = bi_get_fma_src(ins, regs, 0),
-                .src1 = bi_get_fma_src(ins, regs, 1),
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .src1 = bi_get_src(ins, regs, 1, true),
                 .src0_abs = ins->src_abs[0],
                 .src1_abs = ins->src_abs[1],
                 .src0_neg = ins->src_neg[0],
