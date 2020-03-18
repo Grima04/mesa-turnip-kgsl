@@ -348,8 +348,38 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
-        /* TODO */
-        return BIFROST_ADD_NOP;
+        if (!bundle.add)
+                return BIFROST_ADD_NOP;
+
+        switch (bundle.add->type) {
+        case BI_ADD:
+        case BI_ATEST:
+        case BI_BRANCH:
+        case BI_CMP:
+        case BI_BLEND:
+        case BI_BITWISE:
+        case BI_CONVERT:
+        case BI_DISCARD:
+        case BI_FREXP:
+        case BI_ISUB:
+        case BI_LOAD:
+        case BI_LOAD_UNIFORM:
+        case BI_LOAD_ATTR:
+        case BI_LOAD_VAR:
+        case BI_LOAD_VAR_ADDRESS:
+        case BI_MINMAX:
+        case BI_MOV:
+        case BI_SHIFT:
+        case BI_STORE:
+        case BI_STORE_VAR:
+        case BI_SPECIAL:
+        case BI_SWIZZLE:
+        case BI_TEX:
+        case BI_ROUND:
+                return BIFROST_ADD_NOP;
+        default:
+                unreachable("Cannot encode class as ADD");
+        }
 }
 
 struct bi_packed_bundle {
