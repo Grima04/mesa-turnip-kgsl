@@ -26,6 +26,51 @@
 
 #include "compiler.h"
 
+/* Finds the clause type required or return none */
+
+static enum bifrost_clause_type
+bi_clause_type_for_ins(bi_instruction *ins)
+{
+        unsigned T = ins->type;
+
+        /* Only high latency ops impose clause types */
+        if (!(bi_class_props[T] & BI_SCHED_HI_LATENCY))
+                return BIFROST_CLAUSE_NONE;
+
+        switch (T) {
+        case BI_BRANCH:
+        case BI_DISCARD:
+                return BIFROST_CLAUSE_NONE;
+
+        case BI_LOAD_VAR:
+                return BIFROST_CLAUSE_LOAD_VARY;
+
+        case BI_LOAD_UNIFORM:
+        case BI_LOAD_ATTR:
+        case BI_LOAD_VAR_ADDRESS:
+                return BIFROST_CLAUSE_UBO;
+
+        case BI_TEX:
+                return BIFROST_CLAUSE_TEX;
+
+        case BI_LOAD:
+                return BIFROST_CLAUSE_SSBO_LOAD;
+
+        case BI_STORE:
+        case BI_STORE_VAR:
+                return BIFROST_CLAUSE_SSBO_STORE;
+
+        case BI_BLEND:
+                return BIFROST_CLAUSE_BLEND;
+
+        case BI_ATEST:
+                return BIFROST_CLAUSE_ATEST;
+
+        default:
+                unreachable("Invalid high-latency class");
+        }
+}
+
 /* Eventually, we'll need a proper scheduling, grouping instructions
  * into clauses and ordering/assigning grouped instructions to the
  * appropriate FMA/ADD slots. Right now we do the dumbest possible
@@ -69,6 +114,8 @@ bi_schedule(bi_context *ctx)
 
                         u->constant_count = 1;
                         u->constants[0] = ins->constant.u64;
+
+                        u->clause_type = bi_clause_type_for_ins(ins);
 
                         list_addtail(&u->link, &bblock->clauses);
                 }
