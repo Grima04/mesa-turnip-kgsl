@@ -2294,8 +2294,6 @@ emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
    }
 
-   emit_stencil(cmd_buffer);
-
    const uint32_t num_flags =
       ARRAY_SIZE(pipeline->fs->prog_data.fs->flat_shade_flags);
    const uint32_t *flat_shade_flags =
