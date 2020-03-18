@@ -2004,6 +2004,7 @@ emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
                                            V3DV_DYNAMIC_STENCIL_WRITE_MASK |
                                            V3DV_DYNAMIC_STENCIL_REFERENCE;
 
+   bool emitted_stencil = false;
    for (uint32_t i = 0; i < 2; i++) {
       if (pipeline->emit_stencil_cfg[i]) {
          if (dynamic_state->mask & dynamic_stencil_states) {
@@ -2028,14 +2029,18 @@ emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
          } else {
             cl_emit_prepacked(&job->bcl, &pipeline->stencil_cfg[i]);
          }
+
+         emitted_stencil = true;
       }
    }
 
-   const uint32_t dynamic_stencil_dirty_flags =
-      V3DV_CMD_DIRTY_STENCIL_COMPARE_MASK |
-      V3DV_CMD_DIRTY_STENCIL_WRITE_MASK |
-      V3DV_CMD_DIRTY_STENCIL_REFERENCE;
-   cmd_buffer->state.dirty &= ~dynamic_stencil_dirty_flags;
+   if (emitted_stencil) {
+      const uint32_t dynamic_stencil_dirty_flags =
+               V3DV_CMD_DIRTY_STENCIL_COMPARE_MASK |
+               V3DV_CMD_DIRTY_STENCIL_WRITE_MASK |
+               V3DV_CMD_DIRTY_STENCIL_REFERENCE;
+      cmd_buffer->state.dirty &= ~dynamic_stencil_dirty_flags;
+   }
 }
 
 static void
@@ -2444,7 +2449,7 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
       V3DV_CMD_DIRTY_STENCIL_COMPARE_MASK |
       V3DV_CMD_DIRTY_STENCIL_WRITE_MASK |
       V3DV_CMD_DIRTY_STENCIL_REFERENCE;
-   if (*dirty & dynamic_stencil_dirty_flags)
+   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | dynamic_stencil_dirty_flags))
       emit_stencil(cmd_buffer);
 
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_BLEND_CONSTANTS))
