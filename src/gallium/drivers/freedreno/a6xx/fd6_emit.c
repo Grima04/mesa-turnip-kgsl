@@ -689,7 +689,8 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 	}
 
 	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_0, 1);
-	OUT_RING(ring, A6XX_VFD_CONTROL_0_VTXCNT(j) | (j << 8));
+	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(j) |
+			A6XX_VFD_CONTROL_0_DECODE_CNT(j));
 
 	return ring;
 }

@@ -3439,18 +3439,15 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
        (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_VERTEX_BUFFERS)) {
       for (uint32_t i = 0; i < pipeline->vi.count; i++) {
          const uint32_t binding = pipeline->vi.bindings[i];
-         const uint32_t stride = pipeline->vi.strides[i];
          const struct tu_buffer *buf = cmd->state.vb.buffers[binding];
          const VkDeviceSize offset = buf->bo_offset +
-                                     cmd->state.vb.offsets[binding] +
-                                     pipeline->vi.offsets[i];
+                                     cmd->state.vb.offsets[binding];
          const VkDeviceSize size =
             offset < buf->bo->size ? buf->bo->size - offset : 0;
 
          tu_cs_emit_regs(cs,
                          A6XX_VFD_FETCH_BASE(i, .bo = buf->bo, .bo_offset = offset),
-                         A6XX_VFD_FETCH_SIZE(i, size),
-                         A6XX_VFD_FETCH_STRIDE(i, stride));
+                         A6XX_VFD_FETCH_SIZE(i, size));
       }
    }
 

@@ -2675,7 +2675,8 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x9e72" name="PC_UNKNOWN_9E72"/>
 
 	<reg32 offset="0xa000" name="VFD_CONTROL_0">
-		<bitfield name="VTXCNT" low="0" high="5" type="uint"/>
+		<bitfield name="FETCH_CNT" low="0" high="5" type="uint"/>
+		<bitfield name="DECODE_CNT" low="8" high="13" type="uint"/>
 	</reg32>
 	<reg32 offset="0xa001" name="VFD_CONTROL_1">
 		<bitfield name="REGID4VTX" low="0" high="7" type="a3xx_regid"/>
@@ -2723,8 +2724,9 @@ to upconvert to 32b float internally?
 	</array>
 	<array offset="0xa090" name="VFD_DECODE" stride="2" length="32">
 		<reg32 offset="0x0" name="INSTR">
-			<!-- IDX appears to index into VFD_FETCH[] -->
+			<!-- IDX and byte OFFSET into VFD_FETCH -->
 			<bitfield name="IDX" low="0" high="4" type="uint"/>
+			<bitfield name="OFFSET" low="5" high="16"/>
 			<bitfield name="INSTANCED" pos="17" type="boolean"/>
 			<bitfield name="FORMAT" low="20" high="27" type="a6xx_format"/>
 			<bitfield name="SWAP" low="28" high="29" type="a3xx_color_swap"/>
