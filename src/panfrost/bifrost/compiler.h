@@ -307,12 +307,18 @@ typedef struct {
         bool back_to_back;
         bool branch_conditional;
 
+        /* Assigned data register */
+        unsigned data_register;
+
         /* Corresponds to the usual bit but shifted by a clause */
         bool data_register_write_barrier;
 
         /* Constants read by this clause. ISA limit. */
         uint64_t constants[8];
         unsigned constant_count;
+
+        /* What type of high latency instruction is here, basically */
+        unsigned clause_type;
 } bi_clause;
 
 typedef struct bi_block {

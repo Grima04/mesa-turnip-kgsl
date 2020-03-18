@@ -34,11 +34,19 @@
  * bits on the wire (as well as fixup branches) */
 
 static uint64_t
-bi_pack_header(bi_clause *clause, bi_clause *next)
+bi_pack_header(bi_clause *clause, bi_clause *next, bool is_fragment)
 {
         struct bifrost_header header = {
-                /* stub */
+                .back_to_back = clause->back_to_back,
                 .no_end_of_shader = (next != NULL),
+                .elide_writes = is_fragment,
+                .branch_cond = clause->branch_conditional,
+                .datareg_writebarrier = clause->data_register_write_barrier,
+                .datareg = clause->data_register,
+                .scoreboard_deps = clause->dependencies,
+                .scoreboard_index = clause->scoreboard_id,
+                .clause_type = clause->clause_type,
+                .next_clause_type = next ? next->clause_type : 0,
         };
 
         uint64_t u = 0;
@@ -384,7 +392,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add_ld_vary(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
         unsigned size = nir_alu_type_get_type_size(ins->dest_type);
         assert(size == 32 || size == 16);
@@ -407,6 +415,10 @@ bi_pack_add_ld_vary(bi_instruction *ins, struct bi_registers *regs)
                 /* Indirect gets an extra source */
                 packed_addr = bi_get_src(ins, regs, 0, false) | 0b11000;
         }
+
+        /* The destination is thrown in the data register */
+        assert(ins->dest & BIR_INDEX_REGISTER);
+        clause->data_register = ins->dest & ~BIR_INDEX_REGISTER;
 
         assert(channels >= 1 && channels <= 4);
 
@@ -445,7 +457,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_LOAD_ATTR:
                 return BIFROST_ADD_NOP;
         case BI_LOAD_VAR:
-                return bi_pack_add_ld_vary(bundle.add, regs);
+                return bi_pack_add_ld_vary(clause, bundle.add, regs);
         case BI_LOAD_VAR_ADDRESS:
         case BI_MINMAX:
         case BI_MOV:
@@ -492,9 +504,12 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
         struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true);
         assert(clause->bundle_count == 1);
 
+        /* Used to decide if we elide writes */
+        bool is_fragment = ctx->stage == MESA_SHADER_FRAGMENT;
+
         struct bifrost_fmt1 quad_1 = {
                 .tag = BIFROST_FMT1_FINAL,
-                .header = bi_pack_header(clause, next),
+                .header = bi_pack_header(clause, next, is_fragment),
                 .ins_1 = ins_1.lo,
                 .ins_2 = ins_1.hi & ((1 << 11) - 1),
                 .ins_0 = (ins_1.hi >> 11) & 0b111,
