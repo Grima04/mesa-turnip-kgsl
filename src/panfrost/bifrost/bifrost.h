@@ -240,6 +240,9 @@ enum bifrost_interp_mode {
         BIFROST_INTERP_EXPLICIT = 0x3
 };
 
+#define BIFROST_ADD_OP_LD_VAR_16 (0x1a << 1)
+#define BIFROST_ADD_OP_LD_VAR_32 (0x0a << 1)
+
 struct bifrost_ld_var {
         unsigned src0 : 3;
 

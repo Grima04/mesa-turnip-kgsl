@@ -371,6 +371,46 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 }
 
 static unsigned
+bi_pack_add_ld_vary(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned size = nir_alu_type_get_type_size(ins->dest_type);
+        assert(size == 32 || size == 16);
+
+        unsigned op = (size == 32) ?
+                BIFROST_ADD_OP_LD_VAR_32 :
+                BIFROST_ADD_OP_LD_VAR_16;
+
+        unsigned cmask = bi_from_bytemask(ins->writemask, size / 8);
+        unsigned channels = util_bitcount(cmask);
+        assert(cmask == ((1 << channels) - 1));
+
+        unsigned packed_addr = 0;
+
+        if (ins->src[0] & BIR_INDEX_CONSTANT) {
+                /* Direct uses address field directly */
+                packed_addr = ins->src[0] & ~BIR_INDEX_CONSTANT;
+                assert(packed_addr < 0b1000);
+        } else {
+                /* Indirect gets an extra source */
+                packed_addr = bi_get_src(ins, regs, 0, false) | 0b11000;
+        }
+
+        assert(channels >= 1 && channels <= 4);
+
+        struct bifrost_ld_var pack = {
+                .src0 = bi_get_src(ins, regs, 1, false),
+                .addr = packed_addr,
+                .channels = MALI_POSITIVE(channels),
+                .interp_mode = ins->load_vary.interp_mode,
+                .reuse = ins->load_vary.reuse,
+                .flat = ins->load_vary.flat,
+                .op = op
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         if (!bundle.add)
@@ -390,7 +430,9 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_LOAD:
         case BI_LOAD_UNIFORM:
         case BI_LOAD_ATTR:
+                return BIFROST_ADD_NOP;
         case BI_LOAD_VAR:
+                return bi_pack_add_ld_vary(bundle.add, regs);
         case BI_LOAD_VAR_ADDRESS:
         case BI_MINMAX:
         case BI_MOV:
