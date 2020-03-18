@@ -1719,6 +1719,26 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
    if (cmd_buffer->state.pipeline == pipeline)
       return;
 
+
+   /* Enable always flush if we are blending to sRGB render targets. This
+    * fixes test failures in:
+    * dEQP-VK.pipeline.blend.format.r8g8b8a8_srgb.*
+    *
+    * FIXME: not sure why we need this. The tile buffer is always linear, with
+    * conversion from/to sRGB happening on tile load/store operations. This
+    * means that when we enable flushing the only difference is that we convert
+    * to sRGB on the store after each draw call and we convert from sRGB on the
+    * load before each draw call, but the blend happens in linear format in the
+    * tile buffer anyway, which is the same scenario as if we didn't flush.
+    */
+   assert(pipeline->subpass);
+   if (pipeline->subpass->has_srgb_rt && pipeline->blend.enables) {
+      assert(cmd_buffer->state.job);
+      cmd_buffer->state.job->always_flush = true;
+      perf_debug("flushing draw calls for subpass %d because bound pipeline "
+                 "uses sRGB blending\n", cmd_buffer->state.subpass_idx);
+   }
+
    cmd_buffer->state.pipeline = pipeline;
 
    cmd_buffer_bind_pipeline_static_state(cmd_buffer, &pipeline->dynamic_state);

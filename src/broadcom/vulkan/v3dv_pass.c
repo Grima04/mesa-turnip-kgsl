@@ -22,6 +22,7 @@
  */
 
 #include "v3dv_private.h"
+#include "vk_format_info.h"
 
 static uint32_t
 num_subpass_attachments(const VkSubpassDescription *desc)
@@ -143,10 +144,16 @@ v3dv_CreateRenderPass(VkDevice _device,
          p += desc->colorAttachmentCount;
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
+            const uint32_t attachment_idx =
+               desc->pColorAttachments[j].attachment;
             subpass->color_attachments[j] = (struct v3dv_subpass_attachment) {
-               .attachment = desc->pColorAttachments[j].attachment,
+               .attachment = attachment_idx,
                .layout = desc->pColorAttachments[j].layout,
             };
+            if (attachment_idx != VK_ATTACHMENT_UNUSED) {
+               VkFormat format = pass->attachments[attachment_idx].desc.format;
+               subpass->has_srgb_rt |= vk_format_is_srgb(format);
+            }
          }
       }
 

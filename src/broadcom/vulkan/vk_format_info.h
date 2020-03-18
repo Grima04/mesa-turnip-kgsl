@@ -96,6 +96,12 @@ vk_format_is_int(VkFormat format)
 }
 
 static inline bool
+vk_format_is_srgb(VkFormat format)
+{
+   return util_format_is_srgb(vk_format_to_pipe_format(format));
+}
+
+static inline bool
 vk_format_is_depth_or_stencil(VkFormat format)
 {
    const VkImageAspectFlags aspects = vk_format_aspects(format);
