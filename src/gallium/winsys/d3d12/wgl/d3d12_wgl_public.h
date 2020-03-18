@@ -43,6 +43,9 @@ d3d12_wgl_present(struct pipe_screen *screen,
                   struct pipe_resource *res,
                   HDC hDC);
 
+unsigned
+d3d12_wgl_get_pfd_flags(struct pipe_screen *screen);
+
 #ifdef __cplusplus
 }
 #endif

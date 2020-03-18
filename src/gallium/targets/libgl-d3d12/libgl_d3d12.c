@@ -84,13 +84,21 @@ gdi_get_adapter_luid(struct pipe_screen *screen,
 }
 
 
+static unsigned
+gdi_get_pfd_flags(struct pipe_screen *screen)
+{
+   return d3d12_wgl_get_pfd_flags(screen);
+}
+
+
 static const struct stw_winsys stw_winsys = {
    &gdi_screen_create,
    &gdi_present,
    &gdi_get_adapter_luid,
    NULL, /* shared_surface_open */
    NULL, /* shared_surface_close */
-   NULL  /* compose */
+   NULL, /* compose */
+   &gdi_get_pfd_flags
 };
 
 

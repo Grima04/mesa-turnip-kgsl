@@ -38,6 +38,12 @@ struct pipe_resource;
 
 struct stw_shared_surface;
 
+typedef enum
+{
+   stw_pfd_gdi_support   = 1 << 0,
+   stw_pfd_double_buffer = 1 << 1,
+} stw_pfd_flag;
+
 struct stw_winsys
 {
    struct pipe_screen *
@@ -91,6 +97,13 @@ struct stw_winsys
                struct stw_shared_surface *dest,
                LPCRECT pRect,
                ULONGLONG PresentHistoryToken );
+
+   /**
+    * Query whether the driver can support GDI and/or double-buffering in its
+    * pixel formats (optional).
+    */
+   unsigned
+   (*get_pfd_flags)( struct pipe_screen *screen );
 };
 
 boolean
