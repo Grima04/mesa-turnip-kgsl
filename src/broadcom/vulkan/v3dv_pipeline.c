@@ -1183,6 +1183,8 @@ v3dv_dynamic_state_mask(VkDynamicState state)
       return V3DV_DYNAMIC_STENCIL_WRITE_MASK;
    case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
       return V3DV_DYNAMIC_STENCIL_REFERENCE;
+   case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
+      return V3DV_DYNAMIC_BLEND_CONSTANTS;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -1255,6 +1257,13 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
          dynamic->stencil_reference.back =
             pCreateInfo->pDepthStencilState->back.reference;
       }
+   }
+
+   if (pCreateInfo->pColorBlendState &&
+       !(dynamic_states & V3DV_DYNAMIC_BLEND_CONSTANTS)) {
+      memcpy(dynamic->blend_constants,
+             pCreateInfo->pColorBlendState->blendConstants,
+             sizeof(dynamic->blend_constants));
    }
 
    pipeline->dynamic_state.mask = dynamic_states;

@@ -48,6 +48,7 @@ const struct v3dv_dynamic_state default_dynamic_state = {
      .front = 0u,
      .back = 0u,
    },
+   .blend_constants = { 0.0f, 0.0f, 0.0f, 0.0f },
 };
 
 void
@@ -1662,7 +1663,14 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
-   /* FIXME: handle VK_DYNAMIC_STATE_BLEND_CONSTANTS */
+   if (!(dynamic_mask & V3DV_DYNAMIC_BLEND_CONSTANTS)) {
+      if (memcmp(&dest->blend_constants, &src->blend_constants,
+                 sizeof(src->blend_constants))) {
+         memcpy(dest->blend_constants, src->blend_constants,
+                sizeof(src->blend_constants));
+         dirty |= V3DV_CMD_DIRTY_BLEND_CONSTANTS;
+      }
+   }
 
    cmd_buffer->state.dynamic.mask = dynamic_mask;
    cmd_buffer->state.dirty |= dirty;
@@ -2049,9 +2057,10 @@ emit_blend(struct v3dv_cmd_buffer *cmd_buffer)
       }
    }
 
-   /* FIXME: this can be dynamic state! */
-   if (pipeline->blend.needs_color_constants)
+   if (pipeline->blend.needs_color_constants &&
+       (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_BLEND_CONSTANTS)) {
       cl_emit_prepacked(&job->bcl, &pipeline->blend.constant_color);
+   }
 
    for (uint32_t i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
       if (pipeline->blend.enables & (1 << i))
@@ -2738,4 +2747,22 @@ v3dv_CmdPushConstants(VkCommandBuffer commandBuffer,
    memcpy((void*) cmd_buffer->push_constants_data + offset, pValues, size);
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PUSH_CONSTANTS;
+}
+
+void
+v3dv_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
+                          const float blendConstants[4])
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+
+   if (!memcmp(state->dynamic.blend_constants, blendConstants,
+               sizeof(state->dynamic.blend_constants))) {
+      return;
+   }
+
+   memcpy(state->dynamic.blend_constants, blendConstants,
+          sizeof(state->dynamic.blend_constants));
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_BLEND_CONSTANTS;
 }
