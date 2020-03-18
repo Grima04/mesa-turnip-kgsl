@@ -106,11 +106,52 @@ bi_pack_register_ctrl(struct bi_registers r)
         return ctrl;
 }
 
-static unsigned
+static uint64_t
 bi_pack_registers(struct bi_registers regs)
 {
-        /* TODO */
-        return 0;
+        enum bifrost_reg_control ctrl = bi_pack_register_ctrl(regs);
+        struct bifrost_regs s;
+        uint64_t packed = 0;
+
+        if (regs.enabled[1]) {
+                /* Gotta save that bit!~ Required by the 63-x trick */
+                assert(regs.port[1] > regs.port[0]);
+                assert(regs.enabled[0]);
+
+                /* Do the 63-x trick, see docs/disasm */
+                if (regs.port[0] > 31) {
+                        regs.port[0] = 63 - regs.port[0];
+                        regs.port[1] = 63 - regs.port[1];
+                }
+
+                assert(regs.port[0] <= 31);
+                assert(regs.port[1] <= 63);
+
+                s.ctrl = ctrl;
+                s.reg1 = regs.port[1];
+                s.reg0 = regs.port[0];
+        } else {
+                /* Port 1 disabled, so set to zero and use port 1 for ctrl */
+                s.reg1 = ctrl << 2;
+
+                if (regs.enabled[0]) {
+                        /* Bit 0 upper bit of port 0 */
+                        s.reg1 |= (regs.port[0] >> 5);
+
+                        /* Rest of port 0 in usual spot */
+                        s.reg0 = (regs.port[0] & 0b11111);
+                } else {
+                        /* Bit 1 set if port 0 also disabled */
+                        s.reg1 |= (1 << 1);
+                }
+        }
+
+        s.reg3 = regs.port[3];
+        s.reg2 = regs.port[2];
+        s.uniform_const = regs.uniform_constant;
+
+        memcpy(&packed, &s, sizeof(s));
+        return packed;
 }
 
 static unsigned
@@ -135,7 +176,15 @@ struct bi_packed_bundle {
 static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle)
 {
-        unsigned reg = /*bi_pack_registers(clause, bundle)*/0;
+        struct bi_registers regs = {
+                .enabled = { true, true },
+                .port = { 34, 35, 3, 4 },
+                .write_fma = true,
+                .write_add = true,
+                .first_instruction = true,
+        };
+
+        uint64_t reg = bi_pack_registers(regs);
         uint64_t fma = bi_pack_fma(clause, bundle);
         uint64_t add = bi_pack_add(clause, bundle);
 
