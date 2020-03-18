@@ -147,6 +147,22 @@ struct bifrost_fma_add {
         unsigned op : 6;
 } __attribute__((packed));
 
+#define BIFROST_FMA_OP_FMA (0x00)
+
+struct bifrost_fma_fma {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src2 : 3;
+        unsigned src_expand : 3;
+        unsigned src0_abs : 1;
+        unsigned unk : 4;
+        unsigned src0_neg : 1;
+        unsigned src2_neg : 1;
+        unsigned src1_abs : 1;
+        unsigned src2_abs : 1;
+        unsigned op : 5;
+} __attribute__((packed));
+
 enum bifrost_csel_cond {
         BIFROST_FEQ_F = 0x0,
         BIFROST_FGT_F = 0x1,
