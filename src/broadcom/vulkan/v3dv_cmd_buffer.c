@@ -2051,24 +2051,26 @@ emit_blend(struct v3dv_cmd_buffer *cmd_buffer)
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, blend_packets_size);
 
-   if (pipeline->blend.enables) {
-      cl_emit(&job->bcl, BLEND_ENABLES, enables) {
-         enables.mask = pipeline->blend.enables;
+   if (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PIPELINE) {
+      if (pipeline->blend.enables) {
+         cl_emit(&job->bcl, BLEND_ENABLES, enables) {
+            enables.mask = pipeline->blend.enables;
+         }
+      }
+
+      for (uint32_t i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+         if (pipeline->blend.enables & (1 << i))
+            cl_emit_prepacked(&job->bcl, &pipeline->blend.cfg[i]);
+      }
+
+      cl_emit(&job->bcl, COLOR_WRITE_MASKS, mask) {
+         mask.mask = pipeline->blend.color_write_masks;
       }
    }
 
    if (pipeline->blend.needs_color_constants &&
        (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_BLEND_CONSTANTS)) {
       cl_emit_prepacked(&job->bcl, &pipeline->blend.constant_color);
-   }
-
-   for (uint32_t i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
-      if (pipeline->blend.enables & (1 << i))
-         cl_emit_prepacked(&job->bcl, &pipeline->blend.cfg[i]);
-   }
-
-   cl_emit(&job->bcl, COLOR_WRITE_MASKS, mask) {
-      mask.mask = pipeline->blend.color_write_masks;
    }
 }
 
