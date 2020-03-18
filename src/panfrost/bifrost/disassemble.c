@@ -136,8 +136,15 @@ bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offset, boo
 
 void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 {
+        fprintf(fp, "id(%du) ", header.scoreboard_index);
+
         if (header.clause_type != 0) {
-                fprintf(fp, "id(%du) ", header.scoreboard_index);
+                const char *name = bi_clause_type_name(header.clause_type);
+
+                if (name[0] == '?')
+                        fprintf(fp, "unk%u ", header.clause_type);
+                else
+                        fprintf(fp, "%s ", name);
         }
 
         if (header.scoreboard_deps != 0) {

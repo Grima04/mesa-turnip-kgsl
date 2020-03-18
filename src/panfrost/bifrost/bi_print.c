@@ -27,6 +27,23 @@
 #include "bi_print.h"
 
 const char *
+bi_clause_type_name(enum bifrost_clause_type T)
+{
+        switch (T) {
+        case BIFROST_CLAUSE_NONE: return "";
+        case BIFROST_CLAUSE_LOAD_VARY: return "load_vary";
+        case BIFROST_CLAUSE_UBO: return "ubo";
+        case BIFROST_CLAUSE_TEX: return "tex";
+        case BIFROST_CLAUSE_SSBO_LOAD: return "load";
+        case BIFROST_CLAUSE_SSBO_STORE: return "store";
+        case BIFROST_CLAUSE_BLEND: return "blend";
+        case BIFROST_CLAUSE_ATEST: return "atest";
+        case BIFROST_CLAUSE_64BIT: return "64";
+        default: return "??";
+        }
+}
+
+const char *
 bi_output_mod_name(enum bifrost_outmod mod)
 {
         switch (mod) {

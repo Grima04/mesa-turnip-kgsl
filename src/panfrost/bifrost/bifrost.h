@@ -29,6 +29,18 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+enum bifrost_clause_type {
+        BIFROST_CLAUSE_NONE       = 0,
+        BIFROST_CLAUSE_LOAD_VARY  = 1,
+        BIFROST_CLAUSE_UBO        = 2,
+        BIFROST_CLAUSE_TEX        = 3,
+        BIFROST_CLAUSE_SSBO_LOAD  = 5,
+        BIFROST_CLAUSE_SSBO_STORE = 6,
+        BIFROST_CLAUSE_BLEND      = 9,
+        BIFROST_CLAUSE_ATEST      = 13,
+        BIFROST_CLAUSE_64BIT      = 15
+};
+
 struct bifrost_header {
         unsigned unk0 : 7;
         // If true, convert any infinite result of any floating-point operation to
@@ -66,9 +78,9 @@ struct bifrost_header {
         unsigned datareg : 6;
         unsigned scoreboard_deps: 8;
         unsigned scoreboard_index: 3;
-        unsigned clause_type: 4;
+        enum bifrost_clause_type clause_type: 4;
         unsigned unk3 : 1; // part of clauseType?
-        unsigned next_clause_type: 4;
+        enum bifrost_clause_type next_clause_type: 4;
         unsigned unk4 : 1; // part of nextClauseType?
 } __attribute__((packed));
 
