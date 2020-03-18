@@ -68,7 +68,8 @@ struct ir3_sched_ctx {
 	struct ir3_block *block;           /* the current block */
 	struct list_head depth_list;       /* depth sorted unscheduled instrs */
 	struct ir3_instruction *scheduled; /* last scheduled instr XXX remove*/
-	struct ir3_instruction *addr;      /* current a0.x user, if any */
+	struct ir3_instruction *addr0;     /* current a0.x user, if any */
+	struct ir3_instruction *addr1;     /* current a1.x user, if any */
 	struct ir3_instruction *pred;      /* current p0.x user, if any */
 	int live_values;                   /* estimate of current live values */
 	int half_live_values;              /* estimate of current half precision live values */
@@ -225,9 +226,14 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	 */
 	list_delinit(&instr->node);
 
-	if (writes_addr(instr)) {
-		debug_assert(ctx->addr == NULL);
-		ctx->addr = instr;
+	if (writes_addr0(instr)) {
+		debug_assert(ctx->addr0 == NULL);
+		ctx->addr0 = instr;
+	}
+
+	if (writes_addr1(instr)) {
+		debug_assert(ctx->addr1 == NULL);
+		ctx->addr1 = instr;
 	}
 
 	if (writes_pred(instr)) {
@@ -244,7 +250,7 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 
 	update_live_values(ctx, instr);
 
-	if (writes_addr(instr) || writes_pred(instr) || is_input(instr)) {
+	if (writes_addr0(instr) || writes_addr1(instr) || writes_pred(instr) || is_input(instr)) {
 		clear_cache(ctx, NULL);
 	} else {
 		/* invalidate only the necessary entries.. */
@@ -281,7 +287,7 @@ struct ir3_sched_notes {
 	/* there is at least one instruction that could be scheduled,
 	 * except for conflicting address/predicate register usage:
 	 */
-	bool addr_conflict, pred_conflict;
+	bool addr0_conflict, addr1_conflict, pred_conflict;
 };
 
 /* could an instruction be scheduled if specified ssa src was scheduled? */
@@ -314,11 +320,28 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 	 * TODO if any instructions use pred register and have other
 	 * src args, we would need to do the same for writes_pred()..
 	 */
-	if (writes_addr(instr)) {
+	if (writes_addr0(instr)) {
 		struct ir3 *ir = instr->block->shader;
 		bool ready = false;
-		for (unsigned i = 0; (i < ir->indirects_count) && !ready; i++) {
-			struct ir3_instruction *indirect = ir->indirects[i];
+		for (unsigned i = 0; (i < ir->a0_users_count) && !ready; i++) {
+			struct ir3_instruction *indirect = ir->a0_users[i];
+			if (!indirect)
+				continue;
+			if (indirect->address != instr)
+				continue;
+			ready = could_sched(indirect, instr);
+		}
+
+		/* nothing could be scheduled, so keep looking: */
+		if (!ready)
+			return false;
+	}
+
+	if (writes_addr1(instr)) {
+		struct ir3 *ir = instr->block->shader;
+		bool ready = false;
+		for (unsigned i = 0; (i < ir->a1_users_count) && !ready; i++) {
+			struct ir3_instruction *indirect = ir->a1_users[i];
 			if (!indirect)
 				continue;
 			if (indirect->address != instr)
@@ -335,9 +358,15 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 	 * register is currently in use, we need to defer until it is
 	 * free:
 	 */
-	if (writes_addr(instr) && ctx->addr) {
-		debug_assert(ctx->addr != instr);
-		notes->addr_conflict = true;
+	if (writes_addr0(instr) && ctx->addr0) {
+		debug_assert(ctx->addr0 != instr);
+		notes->addr0_conflict = true;
+		return false;
+	}
+
+	if (writes_addr1(instr) && ctx->addr1) {
+		debug_assert(ctx->addr1 != instr);
+		notes->addr1_conflict = true;
 		return false;
 	}
 
@@ -585,23 +614,21 @@ split_instr(struct ir3_sched_ctx *ctx, struct ir3_instruction *orig_instr)
 	return new_instr;
 }
 
-/* "spill" the address register by remapping any unscheduled
+/* "spill" the address registers by remapping any unscheduled
  * instructions which depend on the current address register
  * to a clone of the instruction which wrote the address reg.
  */
 static struct ir3_instruction *
-split_addr(struct ir3_sched_ctx *ctx)
+split_addr(struct ir3_sched_ctx *ctx, struct ir3_instruction **addr,
+		   struct ir3_instruction **users, unsigned users_count)
 {
-	struct ir3 *ir;
 	struct ir3_instruction *new_addr = NULL;
 	unsigned i;
 
-	debug_assert(ctx->addr);
+	debug_assert(*addr);
 
-	ir = ctx->addr->block->shader;
-
-	for (i = 0; i < ir->indirects_count; i++) {
-		struct ir3_instruction *indirect = ir->indirects[i];
+	for (i = 0; i < users_count; i++) {
+		struct ir3_instruction *indirect = users[i];
 
 		if (!indirect)
 			continue;
@@ -613,9 +640,9 @@ split_addr(struct ir3_sched_ctx *ctx)
 		/* remap remaining instructions using current addr
 		 * to new addr:
 		 */
-		if (indirect->address == ctx->addr) {
+		if (indirect->address == *addr) {
 			if (!new_addr) {
-				new_addr = split_instr(ctx, ctx->addr);
+				new_addr = split_instr(ctx, *addr);
 				/* original addr is scheduled, but new one isn't: */
 				new_addr->flags &= ~IR3_INSTR_MARK;
 			}
@@ -625,7 +652,7 @@ split_addr(struct ir3_sched_ctx *ctx)
 	}
 
 	/* all remaining indirects remapped to new addr: */
-	ctx->addr = NULL;
+	*addr = NULL;
 
 	return new_addr;
 }
@@ -682,7 +709,8 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	ctx->block = block;
 
 	/* addr/pred writes are per-block: */
-	ctx->addr = NULL;
+	ctx->addr0 = NULL;
+	ctx->addr1 = NULL;
 	ctx->pred = NULL;
 
 	/* move all instructions to the unscheduled list, and
@@ -740,14 +768,19 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 			schedule(ctx, instr);
 		} else {
 			struct ir3_instruction *new_instr = NULL;
+			struct ir3 *ir = block->shader;
 
 			/* nothing available to schedule.. if we are blocked on
 			 * address/predicate register conflict, then break the
 			 * deadlock by cloning the instruction that wrote that
 			 * reg:
 			 */
-			if (notes.addr_conflict) {
-				new_instr = split_addr(ctx);
+			if (notes.addr0_conflict) {
+				new_instr = split_addr(ctx, &ctx->addr0,
+									   ir->a0_users, ir->a0_users_count);
+			} else if (notes.addr1_conflict) {
+				new_instr = split_addr(ctx, &ctx->addr1,
+									   ir->a1_users, ir->a1_users_count);
 			} else if (notes.pred_conflict) {
 				new_instr = split_pred(ctx);
 			} else {

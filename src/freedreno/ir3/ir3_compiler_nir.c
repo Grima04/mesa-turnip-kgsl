@@ -744,8 +744,8 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		base_lo = create_uniform(b, ubo + (src0->regs[1]->iim_val * ptrsz));
 		base_hi = create_uniform(b, ubo + (src0->regs[1]->iim_val * ptrsz) + 1);
 	} else {
-		base_lo = create_uniform_indirect(b, ubo, ir3_get_addr(ctx, src0, ptrsz));
-		base_hi = create_uniform_indirect(b, ubo + 1, ir3_get_addr(ctx, src0, ptrsz));
+		base_lo = create_uniform_indirect(b, ubo, ir3_get_addr0(ctx, src0, ptrsz));
+		base_hi = create_uniform_indirect(b, ubo + 1, ir3_get_addr0(ctx, src0, ptrsz));
 
 		/* NOTE: since relative addressing is used, make sure constlen is
 		 * at least big enough to cover all the UBO addresses, since the
@@ -1362,7 +1362,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			src = ir3_get_src(ctx, &intr->src[0]);
 			for (int i = 0; i < intr->num_components; i++) {
 				dst[i] = create_uniform_indirect(b, idx + i,
-						ir3_get_addr(ctx, src[0], 1));
+						ir3_get_addr0(ctx, src[0], 1));
 			}
 			/* NOTE: if relative addressing is used, we set
 			 * constlen in the compiler (to worst-case value)
@@ -1558,7 +1558,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			src = ir3_get_src(ctx, &intr->src[0]);
 			struct ir3_instruction *collect =
 					ir3_create_collect(ctx, ctx->ir->inputs, ctx->ninputs);
-			struct ir3_instruction *addr = ir3_get_addr(ctx, src[0], 4);
+			struct ir3_instruction *addr = ir3_get_addr0(ctx, src[0], 4);
 			for (int i = 0; i < intr->num_components; i++) {
 				unsigned n = idx * 4 + i + comp;
 				dst[i] = create_indirect_load(ctx, ctx->ninputs,
@@ -2424,10 +2424,13 @@ emit_block(struct ir3_context *ctx, nir_block *nblock)
 	list_addtail(&block->node, &ctx->ir->block_list);
 
 	/* re-emit addr register in each block if needed: */
-	for (int i = 0; i < ARRAY_SIZE(ctx->addr_ht); i++) {
-		_mesa_hash_table_destroy(ctx->addr_ht[i], NULL);
-		ctx->addr_ht[i] = NULL;
+	for (int i = 0; i < ARRAY_SIZE(ctx->addr0_ht); i++) {
+		_mesa_hash_table_destroy(ctx->addr0_ht[i], NULL);
+		ctx->addr0_ht[i] = NULL;
 	}
+
+	_mesa_hash_table_u64_destroy(ctx->addr1_ht, NULL);
+	ctx->addr1_ht = NULL;
 
 	nir_foreach_instr (instr, nblock) {
 		ctx->cur_instr = instr;

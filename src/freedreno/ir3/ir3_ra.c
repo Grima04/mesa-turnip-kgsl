@@ -264,7 +264,7 @@ ra_block_find_definers(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 		if (instr->regs_count == 0)
 			continue;
 		/* couple special cases: */
-		if (writes_addr(instr) || writes_pred(instr)) {
+		if (writes_addr0(instr) || writes_addr1(instr) || writes_pred(instr)) {
 			id->cls = -1;
 		} else if (instr->regs[0]->flags & IR3_REG_ARRAY) {
 			id->cls = total_class_count;

@@ -1086,7 +1086,14 @@ ir3_instr_set_address(struct ir3_instruction *instr,
 		debug_assert(instr->block == addr->block);
 
 		instr->address = addr;
-		array_insert(ir, ir->indirects, instr);
+		debug_assert(reg_num(addr->regs[0]) == REG_A0);
+		unsigned comp = reg_comp(addr->regs[0]);
+		if (comp == 0) {
+			array_insert(ir, ir->a0_users, instr);
+		} else {
+			debug_assert(comp == 1);
+			array_insert(ir, ir->a1_users, instr);
+		}
 	}
 }
 

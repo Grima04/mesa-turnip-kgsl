@@ -469,7 +469,10 @@ struct ir3 {
 	 * convenient list of instructions that reference some address
 	 * register simplifies this.
 	 */
-	DECLARE_ARRAY(struct ir3_instruction *, indirects);
+	DECLARE_ARRAY(struct ir3_instruction *, a0_users);
+
+	/* same for a1.x: */
+	DECLARE_ARRAY(struct ir3_instruction *, a1_users);
 
 	/* and same for instructions that consume predicate register: */
 	DECLARE_ARRAY(struct ir3_instruction *, predicates);
@@ -695,10 +698,10 @@ static inline bool is_same_type_mov(struct ir3_instruction *instr)
 
 	dst = instr->regs[0];
 
-	/* mov's that write to a0.x or p0.x are special: */
+	/* mov's that write to a0 or p0.x are special: */
 	if (dst->num == regid(REG_P0, 0))
 		return false;
-	if (dst->num == regid(REG_A0, 0))
+	if (reg_num(dst) == REG_A0)
 		return false;
 
 	if (dst->flags & (IR3_REG_RELATIV | IR3_REG_ARRAY))
@@ -848,11 +851,20 @@ static inline unsigned dest_regs(struct ir3_instruction *instr)
 	return util_last_bit(instr->regs[0]->wrmask);
 }
 
-static inline bool writes_addr(struct ir3_instruction *instr)
+static inline bool writes_addr0(struct ir3_instruction *instr)
 {
 	if (instr->regs_count > 0) {
 		struct ir3_register *dst = instr->regs[0];
-		return reg_num(dst) == REG_A0;
+		return dst->num == regid(REG_A0, 0);
+	}
+	return false;
+}
+
+static inline bool writes_addr1(struct ir3_instruction *instr)
+{
+	if (instr->regs_count > 0) {
+		struct ir3_register *dst = instr->regs[0];
+		return dst->num == regid(REG_A0, 1);
 	}
 	return false;
 }

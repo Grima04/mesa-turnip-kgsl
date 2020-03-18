@@ -392,7 +392,6 @@ static void
 calculate_deps(struct ir3_postsched_deps_state *state,
 		struct ir3_postsched_node *node)
 {
-	static const struct ir3_register half_reg = { .flags = IR3_REG_HALF };
 	struct ir3_register *reg;
 	int b;
 
@@ -400,12 +399,6 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 	 * in the reverse direction) wrote any of our src registers:
 	 */
 	foreach_src_n (reg, i, node->instr) {
-		/* NOTE: relative access for a src can be either const or gpr: */
-		if (reg->flags & IR3_REG_RELATIV) {
-			/* also reads a0.x: */
-			add_reg_dep(state, node, &half_reg, regid(REG_A0, 0), false);
-		}
-
 		if (reg->flags & (IR3_REG_CONST | IR3_REG_IMMED))
 			continue;
 
@@ -428,6 +421,12 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 		}
 	}
 
+	if (node->instr->address) {
+		add_reg_dep(state, node, node->instr->address->regs[0],
+					node->instr->address->regs[0]->num,
+					false);
+	}
+
 	if (dest_regs(node->instr) == 0)
 		return;
 
@@ -441,9 +440,6 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 		for (unsigned i = 0; i < arr->length; i++) {
 			add_reg_dep(state, node, reg, arr->reg + i, true);
 		}
-
-		/* also reads a0.x: */
-		add_reg_dep(state, node, &half_reg, regid(REG_A0, 0), false);
 	} else {
 		foreach_bit (b, reg->wrmask) {
 			add_reg_dep(state, node, reg, reg->num + b, true);

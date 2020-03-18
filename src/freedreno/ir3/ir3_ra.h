@@ -199,7 +199,7 @@ writes_gpr(struct ir3_instruction *instr)
 	/* is dest a normal temp register: */
 	struct ir3_register *reg = instr->regs[0];
 	debug_assert(!(reg->flags & (IR3_REG_CONST | IR3_REG_IMMED)));
-	if ((reg->num == regid(REG_A0, 0)) ||
+	if ((reg_num(reg) == REG_A0) ||
 			(reg->num == regid(REG_P0, 0)))
 		return false;
 	return true;
