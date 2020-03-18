@@ -63,6 +63,7 @@ apt-get install -y --no-remove \
       python \
       python3-distutils \
       python3-pil \
+      python3-requests \
       python3-yaml \
       xauth \
       xvfb
