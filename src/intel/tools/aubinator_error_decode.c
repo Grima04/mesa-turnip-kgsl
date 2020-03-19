@@ -380,6 +380,17 @@ static int ascii85_decode(const char *in, uint32_t **out, bool inflate)
    return zlib_inflate(out, len);
 }
 
+static int qsort_hw_context_first(const void *a, const void *b)
+{
+   const struct section *sa = a, *sb = b;
+   if (strcmp(sa->buffer_name, "HW Context") == 0)
+      return -1;
+   if (strcmp(sb->buffer_name, "HW Context") == 0)
+      return 1;
+   else
+      return 0;
+}
+
 static struct gen_batch_decode_bo
 get_gen_batch_bo(void *user_data, bool ppgtt, uint64_t address)
 {
@@ -583,6 +594,13 @@ read_data_file(FILE *file)
 
    free(line);
    free(ring_name);
+
+   /*
+    * Order sections so that the hardware context section is visited by the
+    * decoder before other command buffers. This will allow the decoder to see
+    * persistent state that was set before the current batch.
+    */
+   qsort(sections, num_sections, sizeof(sections[0]), qsort_hw_context_first);
 
    enum gen_batch_decode_flags batch_flags = 0;
    if (option_color == COLOR_ALWAYS)
