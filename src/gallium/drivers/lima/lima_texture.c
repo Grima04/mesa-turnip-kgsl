@@ -83,7 +83,7 @@ lima_texture_desc_set_res(struct lima_context *ctx, lima_tex_desc *desc,
    }
 
    desc->format = lima_format_get_texel(prsc->format);
-   desc->swap_r_b = lima_format_get_swap_rb(prsc->format);
+   desc->swap_r_b = lima_format_get_texel_swap_rb(prsc->format);
    desc->width  = width;
    desc->height = height;
    desc->unknown_3_1 = 1;

@@ -804,7 +804,7 @@ lima_pack_wb_cbuf_reg(struct lima_job *job, uint32_t *frame_reg,
    int level = cbuf->u.tex.level;
    unsigned layer = cbuf->u.tex.first_layer;
    uint32_t format = lima_format_get_pixel(cbuf->format);
-   bool swap_channels = lima_format_get_swap_rb(cbuf->format);
+   bool swap_channels = lima_format_get_pixel_swap_rb(cbuf->format);
 
    struct lima_pp_frame_reg *frame = (void *)frame_reg;
    frame->channel_layout = lima_format_get_channel_layout(cbuf->format);
