@@ -132,6 +132,7 @@ struct radv_nir_compiler_options {
 	bool dump_shader;
 	bool dump_preoptir;
 	bool record_ir;
+	bool record_stats;
 	bool check_ir;
 	bool has_ls_vgpr_init_bug;
 	bool use_ngg_streamout;
@@ -449,14 +450,15 @@ radv_shader_variant_compile(struct radv_device *device,
 			    struct radv_pipeline_layout *layout,
 			    const struct radv_shader_variant_key *key,
 			    struct radv_shader_info *info,
-			    bool keep_shader_info,
+			    bool keep_shader_info, bool keep_statistic_info,
 			    struct radv_shader_binary **binary_out);
 
 struct radv_shader_variant *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
 			   struct radv_shader_info *info,
 			   struct radv_shader_binary **binary_out,
-			   bool multiview,  bool keep_shader_info);
+			   bool multiview,  bool keep_shader_info,
+			   bool keep_statistic_info);
 
 void
 radv_shader_variant_destroy(struct radv_device *device,

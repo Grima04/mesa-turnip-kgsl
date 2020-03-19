@@ -78,7 +78,7 @@ void aco_compile_shader(unsigned shader_count,
    ac_shader_config config = {0};
    std::unique_ptr<aco::Program> program{new aco::Program};
 
-   program->collect_statistics = args->options->record_ir;
+   program->collect_statistics = args->options->record_stats;
    if (program->collect_statistics)
       memset(program->statistics, 0, sizeof(program->statistics));
 
