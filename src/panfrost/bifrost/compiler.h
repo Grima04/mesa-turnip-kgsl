@@ -57,6 +57,7 @@ enum bi_class {
         BI_CSEL,
         BI_DISCARD,
         BI_FMA,
+        BI_FMOV,
         BI_FREXP,
         BI_ISUB,
         BI_LOAD,

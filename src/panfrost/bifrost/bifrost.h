@@ -95,6 +95,9 @@ enum bifrost_packed_src {
         BIFROST_SRC_PASS_ADD = 7,
 };
 
+#define BIFROST_FMA_EXT (0xe0000)
+#define BIFROST_FMA_OP_MOV BIFROST_FMA_EXT | (0x32d)
+
 struct bifrost_fma_inst {
         unsigned src0 : 3;
         unsigned op   : 20;

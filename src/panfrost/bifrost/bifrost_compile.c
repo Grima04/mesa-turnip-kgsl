@@ -375,6 +375,7 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_fsat:
         case nir_op_fneg:
         case nir_op_fabs:
+                return BI_FMOV;
         case nir_op_mov:
                 return BI_MOV;
 
@@ -480,16 +481,16 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.src[2] = BIR_INDEX_ZERO; /* FMA */
                 break;
         case nir_op_fsat:
-                alu.outmod = BIFROST_SAT; /* MOV */
+                alu.outmod = BIFROST_SAT; /* FMOV */
                 break;
         case nir_op_fneg:
-                alu.src_neg[0] = true; /* MOV */
+                alu.src_neg[0] = true; /* FMOV */
                 break;
         case nir_op_fabs:
-                alu.src_abs[0] = true; /* MOV */
+                alu.src_abs[0] = true; /* FMOV */
                 break;
         case nir_op_fsub:
-                alu.src_neg[1] = true; /* ADD */
+                alu.src_neg[1] = true; /* FADD */
                 break;
         case nir_op_fmax:
         case nir_op_imax:

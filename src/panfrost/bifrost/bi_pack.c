@@ -363,6 +363,17 @@ bi_pack_fma_add(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
+bi_pack_fma_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
+{
+        struct bifrost_fma_inst pack = {
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .op = op
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         if (!bundle.fma)
@@ -381,7 +392,10 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_FREXP:
         case BI_ISUB:
         case BI_MINMAX:
+                return BIFROST_FMA_NOP;
         case BI_MOV:
+                return bi_pack_fma_1src(bundle.fma, regs, BIFROST_FMA_OP_MOV);
+        case BI_FMOV:
         case BI_SHIFT:
         case BI_SWIZZLE:
         case BI_ROUND:
@@ -499,6 +513,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_LOAD_VAR_ADDRESS:
         case BI_MINMAX:
         case BI_MOV:
+        case BI_FMOV:
         case BI_SHIFT:
         case BI_STORE:
         case BI_STORE_VAR:
