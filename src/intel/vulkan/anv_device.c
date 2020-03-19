@@ -477,19 +477,6 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->always_flush_cache =
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
 
-   /* Starting with Gen10, the timestamp frequency of the command streamer may
-    * vary from one part to another. We can query the value from the kernel.
-    */
-   if (device->info.gen >= 10) {
-      int timestamp_frequency =
-         anv_gem_get_param(fd, I915_PARAM_CS_TIMESTAMP_FREQUENCY);
-
-      if (timestamp_frequency < 0)
-         intel_logw("Kernel 4.16-rc1+ required to properly query CS timestamp frequency");
-      else
-         device->info.timestamp_frequency = timestamp_frequency;
-   }
-
    /* GENs prior to 8 do not support EU/Subslice info */
    if (device->info.gen >= 8) {
       device->subslice_total = anv_gem_get_param(fd, I915_PARAM_SUBSLICE_TOTAL);
