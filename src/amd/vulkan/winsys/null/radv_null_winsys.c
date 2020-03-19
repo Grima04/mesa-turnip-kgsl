@@ -109,6 +109,7 @@ static void radv_null_winsys_query_info(struct radeon_winsys *rws,
 	}
 
 	info->pci_id = radv_null_winsys_get_pci_id(info->family);
+	info->has_syncobj_wait_for_submit = true;
 	info->max_se = 4;
 	info->max_wave64_per_simd = info->family >= CHIP_POLARIS10 &&
 				    info->family <= CHIP_VEGAM ? 8 : 10;
