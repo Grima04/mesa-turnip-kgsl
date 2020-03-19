@@ -795,8 +795,13 @@ cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_render_pass *pass = state->pass;
-   assert(count <= pass->attachment_count);
 
+   /* There could be less clear values than attachments in the render pass, in
+    * which case we only want to process as many as we have, or there could be
+    * more, in which case we want to ignore those for which we don't have a
+    * corresponding attachment.
+    */
+   count = MIN2(count, pass->attachment_count);
    for (uint32_t i = 0; i < count; i++) {
       const struct v3dv_render_pass_attachment *attachment =
          &pass->attachments[i];
