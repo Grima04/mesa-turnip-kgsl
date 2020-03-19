@@ -90,6 +90,9 @@ struct lp_build_interp_soa_context
    boolean depth_clamp;
 
    double pos_offset;
+   unsigned coverage_samples;
+   LLVMValueRef num_loop;
+   LLVMValueRef sample_pos_array;
 
    LLVMValueRef x;
    LLVMValueRef y;
@@ -119,6 +122,9 @@ lp_build_interp_soa_init(struct lp_build_interp_soa_context *bld,
                          unsigned num_inputs,
                          const struct lp_shader_input *inputs,
                          boolean pixel_center_integer,
+                         unsigned coverage_samples,
+                         LLVMValueRef sample_pos_array,
+                         LLVMValueRef num_loop,
                          boolean depth_clamp,
                          LLVMBuilderRef builder,
                          struct lp_type type,
@@ -131,7 +137,8 @@ lp_build_interp_soa_init(struct lp_build_interp_soa_context *bld,
 void
 lp_build_interp_soa_update_inputs_dyn(struct lp_build_interp_soa_context *bld,
                                       struct gallivm_state *gallivm,
-                                      LLVMValueRef quad_start_index);
+                                      LLVMValueRef quad_start_index,
+                                      LLVMValueRef mask_store);
 
 void
 lp_build_interp_soa_update_pos_dyn(struct lp_build_interp_soa_context *bld,

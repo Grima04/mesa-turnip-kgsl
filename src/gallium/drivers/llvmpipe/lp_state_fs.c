@@ -492,7 +492,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
          lp_build_mask_check(&mask);
    }
 
-   lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter);
+   lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, NULL);
 
    struct lp_build_tgsi_params params;
    memset(&params, 0, sizeof(params));
@@ -2653,6 +2653,7 @@ generate_fragment(struct llvmpipe_context *lp,
                                shader->info.base.num_inputs,
                                inputs,
                                pixel_center_integer,
+                               1, NULL, num_loop,
                                key->depth_clamp,
                                builder, fs_type,
                                a0_ptr, dadx_ptr, dady_ptr,
