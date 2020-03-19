@@ -76,6 +76,7 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
 
    /* Load the vertex count */
    b->cursor = nir_before_instr(&intrin->instr);
+   assert(state->vertex_count_vars[stream] != NULL);
    nir_ssa_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
 
    nir_ssa_def *max_vertices =
@@ -117,6 +118,7 @@ rewrite_end_primitive(nir_intrinsic_instr *intrin, struct state *state)
    unsigned stream = nir_intrinsic_stream_id(intrin);
 
    b->cursor = nir_before_instr(&intrin->instr);
+   assert(state->vertex_count_vars[stream] != NULL);
    nir_ssa_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
 
    nir_intrinsic_instr *lowered =
@@ -197,20 +199,23 @@ nir_lower_gs_intrinsics(nir_shader *shader, bool per_stream)
 
    /* Create the counter variables */
    b.cursor = nir_before_cf_list(&impl->body);
-   unsigned num_counters = per_stream && shader->info.gs.uses_streams ?
-                           NIR_MAX_XFB_STREAMS : 1;
-   for (unsigned i = 0; i < num_counters; i++) {
-      state.vertex_count_vars[i] =
-         nir_local_variable_create(impl, glsl_uint_type(), "vertex_count");
-      /* initialize to 0 */
-      nir_store_var(&b, state.vertex_count_vars[i], nir_imm_int(&b, 0), 0x1);
+   for (unsigned i = 0; i < NIR_MAX_XFB_STREAMS; i++) {
+      if (per_stream && !(shader->info.gs.active_stream_mask & (1 << i)))
+         continue;
+
+      if (i == 0 || per_stream) {
+         state.vertex_count_vars[i] =
+            nir_local_variable_create(impl, glsl_uint_type(), "vertex_count");
+         /* initialize to 0 */
+         nir_store_var(&b, state.vertex_count_vars[i], nir_imm_int(&b, 0), 0x1);
+      } else {
+         /* If per_stream is false, we only have one counter which we want to use
+          * for all streams.  Duplicate the counter pointer so all streams use the
+          * same counter.
+          */
+         state.vertex_count_vars[i] = state.vertex_count_vars[0];
+      }
    }
-   /* If per_stream is false, we only have one counter which we want to use
-    * for all streams.  Duplicate the counter pointer so all streams use the
-    * same counter.
-    */
-   for (unsigned i = num_counters; i < NIR_MAX_XFB_STREAMS; i++)
-      state.vertex_count_vars[i] = state.vertex_count_vars[0];
 
    nir_foreach_block_safe(block, impl)
       rewrite_intrinsics(block, &state);

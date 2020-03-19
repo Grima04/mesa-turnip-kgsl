@@ -3050,7 +3050,7 @@ struct gl_shader_program
       GLint VerticesIn;
 
       bool UsesEndPrimitive;
-      bool UsesStreams;
+      unsigned ActiveStreamMask;
    } Geom;
 
    /**

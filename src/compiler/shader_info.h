@@ -234,8 +234,8 @@ typedef struct shader_info {
          /** Whether or not this shader uses EndPrimitive */
          bool uses_end_primitive:1;
 
-         /** Whether or not this shader uses non-zero streams */
-         bool uses_streams:1;
+         /** The streams used in this shaders (max. 4) */
+         uint8_t active_stream_mask:4;
       } gs;
 
       struct {
