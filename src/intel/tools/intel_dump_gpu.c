@@ -116,6 +116,20 @@ static struct gen_device_info devinfo = {0};
 static int device = 0;
 static struct aub_file aub_file;
 
+static void
+ensure_device_info(int fd)
+{
+   /* We can't do this at open time as we're not yet authenticated. */
+   if (device == 0) {
+      fail_if(!gen_get_device_info_from_fd(fd, &devinfo),
+              "failed to identify chipset.\n");
+      device = devinfo.chipset_id;
+   } else if (devinfo.gen == 0) {
+      fail_if(!gen_get_device_info_from_pci_id(device, &devinfo),
+              "failed to identify chipset.\n");
+   }
+}
+
 static void *
 relocate_bo(int fd, struct bo *bo, const struct drm_i915_gem_execbuffer2 *execbuffer2,
             const struct drm_i915_gem_exec_object2 *obj)
@@ -202,15 +216,7 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
    int batch_index;
    void *data;
 
-   /* We can't do this at open time as we're not yet authenticated. */
-   if (device == 0) {
-      fail_if(!gen_get_device_info_from_fd(fd, &devinfo),
-              "failed to identify chipset.\n");
-      device = devinfo.chipset_id;
-   } else if (devinfo.gen == 0) {
-      fail_if(!gen_get_device_info_from_pci_id(device, &devinfo),
-              "failed to identify chipset.\n");
-   }
+   ensure_device_info(fd);
 
    if (!aub_file.file) {
       aub_file_init(&aub_file, output_file,
@@ -469,6 +475,8 @@ ioctl(int fd, unsigned long request, ...)
 
       case DRM_IOCTL_I915_GETPARAM: {
          struct drm_i915_getparam *getparam = argp;
+
+         ensure_device_info(fd);
 
          if (getparam->param == I915_PARAM_CHIPSET_ID)
             return get_pci_id(fd, getparam->value);
