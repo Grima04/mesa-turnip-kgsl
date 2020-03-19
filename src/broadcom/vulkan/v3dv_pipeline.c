@@ -1413,6 +1413,12 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
 
       config.enable_depth_offset = rs_info ? rs_info->depthBiasEnable: false;
 
+      /* This is required to pass line rasterization tests in CTS while
+       * exposing, at least, a minimum of 4-bits of subpixel precision
+       * (the minimum requirement).
+       */
+      config.line_rasterization = 1; /* perp end caps */
+
       /* FIXME: oversample_mode postponed until msaa gets supported */
       config.rasterizer_oversample_mode = false;
 
