@@ -120,68 +120,8 @@ _mesa_glthread_is_non_vbo_draw_elements_indirect(const struct gl_context *ctx)
 struct _glapi_table *
 _mesa_create_marshal_table(const struct gl_context *ctx);
 
-struct marshal_cmd_ShaderSource;
-struct marshal_cmd_BufferData;
-struct marshal_cmd_BufferSubData;
-
-void GLAPIENTRY
-_mesa_marshal_ShaderSource(GLuint shader, GLsizei count,
-                           const GLchar * const *string, const GLint *length);
-
-void
-_mesa_unmarshal_ShaderSource(struct gl_context *ctx,
-                             const struct marshal_cmd_ShaderSource *cmd);
-
 void
 _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer);
-
-void
-_mesa_unmarshal_BufferData(struct gl_context *ctx,
-                           const struct marshal_cmd_BufferData *cmd);
-
-void
-_mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
-                                const struct marshal_cmd_BufferData *cmd);
-
-void
-_mesa_unmarshal_NamedBufferDataEXT(struct gl_context *ctx,
-                                   const struct marshal_cmd_BufferData *cmd);
-
-void GLAPIENTRY
-_mesa_marshal_BufferData(GLenum target, GLsizeiptr size, const GLvoid * data,
-                         GLenum usage);
-
-void GLAPIENTRY
-_mesa_marshal_NamedBufferData(GLuint buffer, GLsizeiptr size,
-                              const GLvoid * data, GLenum usage);
-
-void GLAPIENTRY
-_mesa_marshal_NamedBufferDataEXT(GLuint buffer, GLsizeiptr size,
-                                 const GLvoid *data, GLenum usage);
-
-void
-_mesa_unmarshal_BufferSubData(struct gl_context *ctx,
-                              const struct marshal_cmd_BufferSubData *cmd);
-
-void
-_mesa_unmarshal_NamedBufferSubData(struct gl_context *ctx,
-                                   const struct marshal_cmd_BufferSubData *cmd);
-
-void
-_mesa_unmarshal_NamedBufferSubDataEXT(struct gl_context *ctx,
-                                      const struct marshal_cmd_BufferSubData *cmd);
-
-void GLAPIENTRY
-_mesa_marshal_BufferSubData(GLenum target, GLintptr offset, GLsizeiptr size,
-                            const GLvoid * data);
-
-void GLAPIENTRY
-_mesa_marshal_NamedBufferSubData(GLuint buffer, GLintptr offset, GLsizeiptr size,
-                                 const GLvoid * data);
-
-void GLAPIENTRY
-_mesa_marshal_NamedBufferSubDataEXT(GLuint buffer, GLintptr offset,
-                                    GLsizeiptr size, const GLvoid * data);
 
 static inline unsigned
 _mesa_buffer_enum_to_count(GLenum buffer)

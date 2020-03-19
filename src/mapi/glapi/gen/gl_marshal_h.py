@@ -63,6 +63,15 @@ class PrintCode(gl_XML.gl_print_base):
             print('   DISPATCH_CMD_{0},'.format(func.name))
         print('   NUM_DISPATCH_CMD,')
         print('};')
+        print('')
+
+        for func in api.functionIterateAll():
+            flavor = func.marshal_flavor()
+            if flavor == 'custom':
+                print('struct marshal_cmd_{0};'.format(func.name))
+                print(('void _mesa_unmarshal_{0}(struct gl_context *ctx, '
+                       'const struct marshal_cmd_{0} *cmd);').format(func.name))
+                print('void GLAPIENTRY _mesa_marshal_{0}({1});'.format(func.name, func.get_parameter_string()))
 
 
 def show_usage():
