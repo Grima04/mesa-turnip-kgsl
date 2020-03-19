@@ -487,17 +487,38 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 		cat5->src2 = reg(src2, info, instr->repeat, IR3_REG_HALF);
 	}
 
+	if (instr->flags & IR3_INSTR_B) {
+		cat5->s2en_bindless.base_hi = instr->cat5.tex_base >> 1;
+		cat5->base_lo = instr->cat5.tex_base & 1;
+	}
+
 	if (instr->flags & IR3_INSTR_S2EN) {
 		struct ir3_register *samp_tex = instr->regs[1];
 		iassert(samp_tex->flags & IR3_REG_HALF);
-		cat5->s2en_bindless.src3 = reg(samp_tex, info, instr->repeat, IR3_REG_HALF);
-		/* TODO: This should probably be CAT5_UNIFORM, at least on a6xx, as
-		 * this is what the blob does and it is presumably faster, but first
-		 * we should confirm it is actually nonuniform and figure out when the
-		 * whole descriptor mode mechanism was introduced.
-		 */
-		cat5->s2en_bindless.desc_mode = CAT5_NONUNIFORM;
+		cat5->s2en_bindless.src3 = reg(samp_tex, info, instr->repeat,
+									   (instr->flags & IR3_INSTR_B) ? 0 : IR3_REG_HALF);
+		if (instr->flags & IR3_INSTR_B) {
+			if (instr->flags & IR3_INSTR_A1EN) {
+				cat5->s2en_bindless.desc_mode = CAT5_BINDLESS_A1_UNIFORM;
+			} else {
+				cat5->s2en_bindless.desc_mode = CAT5_BINDLESS_UNIFORM;
+			}
+		} else {
+			/* TODO: This should probably be CAT5_UNIFORM, at least on a6xx,
+			 * as this is what the blob does and it is presumably faster, but
+			 * first we should confirm it is actually nonuniform and figure
+			 * out when the whole descriptor mode mechanism was introduced.
+			 */
+			cat5->s2en_bindless.desc_mode = CAT5_NONUNIFORM;
+		}
 		iassert(!(instr->cat5.samp | instr->cat5.tex));
+	} else if (instr->flags & IR3_INSTR_B) {
+		cat5->s2en_bindless.src3 = instr->cat5.samp;
+		if (instr->flags & IR3_INSTR_A1EN) {
+			cat5->s2en_bindless.desc_mode = CAT5_BINDLESS_A1_IMM;
+		} else {
+			cat5->s2en_bindless.desc_mode = CAT5_BINDLESS_IMM;
+		}
 	} else {
 		cat5->norm.samp = instr->cat5.samp;
 		cat5->norm.tex  = instr->cat5.tex;
@@ -509,7 +530,7 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 	cat5->is_3d    = !!(instr->flags & IR3_INSTR_3D);
 	cat5->is_a     = !!(instr->flags & IR3_INSTR_A);
 	cat5->is_s     = !!(instr->flags & IR3_INSTR_S);
-	cat5->is_s2en_bindless = !!(instr->flags & IR3_INSTR_S2EN);
+	cat5->is_s2en_bindless = !!(instr->flags & (IR3_INSTR_S2EN | IR3_INSTR_B));
 	cat5->is_o     = !!(instr->flags & IR3_INSTR_O);
 	cat5->is_p     = !!(instr->flags & IR3_INSTR_P);
 	cat5->opc      = instr->opc;
@@ -523,13 +544,11 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 		struct ir3_info *info)
 {
-	struct ir3_register *src1, *src2;
+	struct ir3_register *src1, *src2, *ssbo;
 	instr_cat6_a6xx_t *cat6 = ptr;
 	bool has_dest = (instr->opc == OPC_LDIB || instr->opc == OPC_LDC);
 
-	/* first reg should be SSBO binding point: */
-	iassert(instr->regs[1]->flags & IR3_REG_IMMED);
-
+	ssbo = instr->regs[1];
 	src1 = instr->regs[2];
 
 	if (has_dest) {
@@ -552,7 +571,20 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 
 	cat6->src1 = reg(src1, info, instr->repeat, 0);
 	cat6->src2 = reg(src2, info, instr->repeat, 0);
-	cat6->ssbo = instr->regs[1]->iim_val;
+	cat6->ssbo = reg(ssbo, info, instr->repeat, IR3_REG_IMMED);
+
+	if (instr->flags & IR3_INSTR_B) {
+		if (ssbo->flags & IR3_REG_IMMED) {
+			cat6->desc_mode = CAT6_BINDLESS_IMM;
+		} else {
+			cat6->desc_mode = CAT6_BINDLESS_UNIFORM;
+		}
+		cat6->base = instr->cat6.base;
+	} else {
+		/* TODO figure out mode for indirect SSBO index in !bindless */
+		iassert(ssbo->flags & IR3_REG_IMMED);
+		cat6->desc_mode = CAT6_IMM;
+	}
 
 	switch (instr->opc) {
 	case OPC_ATOMIC_ADD:

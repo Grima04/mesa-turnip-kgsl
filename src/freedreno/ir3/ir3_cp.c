@@ -713,12 +713,14 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 		}
 	}
 
-	/* Handle converting a sam.s2en (taking samp/tex idx params via
-	 * register) into a normal sam (encoding immediate samp/tex idx)
-	 * if they are immediate.  This saves some instructions and regs
-	 * in the common case where we know samp/tex at compile time:
+	/* Handle converting a sam.s2en (taking samp/tex idx params via register)
+	 * into a normal sam (encoding immediate samp/tex idx) if they are
+	 * immediate. This saves some instructions and regs in the common case
+	 * where we know samp/tex at compile time. This needs to be done in the
+	 * frontend for bindless tex, though, so don't replicate it here.
 	 */
 	if (is_tex(instr) && (instr->flags & IR3_INSTR_S2EN) &&
+			!(instr->flags & IR3_INSTR_B) &&
 			!(ir3_shader_debug & IR3_DBG_FORCES2EN)) {
 		/* The first src will be a collect, if both of it's
 		 * two sources are mov from imm, then we can

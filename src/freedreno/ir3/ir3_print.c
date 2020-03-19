@@ -122,6 +122,12 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 			printf(".p");
 		if (instr->flags & IR3_INSTR_S)
 			printf(".s");
+		if (instr->flags & IR3_INSTR_A1EN)
+			printf(".a1en");
+		if (instr->flags & IR3_INSTR_B) {
+			printf(".base%d",
+				   is_tex(instr) ? instr->cat5.tex_base : instr->cat6.base);
+		}
 		if (instr->flags & IR3_INSTR_S2EN)
 			printf(".s2en");
 	}
@@ -210,8 +216,18 @@ print_instr(struct ir3_instruction *instr, int lvl)
 		print_reg_name(reg);
 	}
 
-	if (is_tex(instr) && !(instr->flags & IR3_INSTR_S2EN))
-		printf(", s#%d, t#%d", instr->cat5.samp, instr->cat5.tex);
+	if (is_tex(instr) && !(instr->flags & IR3_INSTR_S2EN)) {
+		if (!!(instr->flags & IR3_INSTR_B)) {
+			if (!!(instr->flags & IR3_INSTR_A1EN)) {
+				printf(", s#%d", instr->cat5.samp);
+			} else {
+				printf(", s#%d, t#%d", instr->cat5.samp & 0xf,
+					   instr->cat5.samp >> 4);
+			}
+		} else {
+			printf(", s#%d, t#%d", instr->cat5.samp, instr->cat5.tex);
+		}
+	}
 
 	if (instr->address) {
 		printf(", address=_");

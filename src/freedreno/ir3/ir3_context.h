@@ -155,6 +155,8 @@ struct ir3_context_funcs {
 			struct ir3_instruction **dst);
 	void (*emit_intrinsic_store_ssbo)(struct ir3_context *ctx, nir_intrinsic_instr *intr);
 	struct ir3_instruction * (*emit_intrinsic_atomic_ssbo)(struct ir3_context *ctx, nir_intrinsic_instr *intr);
+	void (*emit_intrinsic_load_image)(struct ir3_context *ctx, nir_intrinsic_instr *intr,
+			struct ir3_instruction **dst);
 	void (*emit_intrinsic_store_image)(struct ir3_context *ctx, nir_intrinsic_instr *intr);
 	struct ir3_instruction * (*emit_intrinsic_atomic_image)(struct ir3_context *ctx, nir_intrinsic_instr *intr);
 };

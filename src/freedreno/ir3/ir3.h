@@ -218,11 +218,15 @@ struct ir3_instruction {
 		IR3_INSTR_S2EN  = 0x200,
 		IR3_INSTR_G     = 0x400,
 		IR3_INSTR_SAT   = 0x800,
+		/* (cat5/cat6) Bindless */
+		IR3_INSTR_B     = 0x1000,
+		/* (cat5-only) Get some parts of the encoding from a1.x */
+		IR3_INSTR_A1EN  = 0x2000,
 		/* meta-flags, for intermediate stages of IR, ie.
 		 * before register assignment is done:
 		 */
-		IR3_INSTR_MARK  = 0x1000,
-		IR3_INSTR_UNUSED= 0x2000,
+		IR3_INSTR_MARK  = 0x4000,
+		IR3_INSTR_UNUSED= 0x8000,
 	} flags;
 	uint8_t repeat;
 	uint8_t nop;
@@ -253,6 +257,7 @@ struct ir3_instruction {
 		} cat2;
 		struct {
 			unsigned samp, tex;
+			unsigned tex_base : 3;
 			type_t type;
 		} cat5;
 		struct {
@@ -262,6 +267,7 @@ struct ir3_instruction {
 			int iim_val : 3;      /* for ldgb/stgb, # of components */
 			unsigned d : 3;
 			bool typed : 1;
+			unsigned base : 3;
 		} cat6;
 		struct {
 			unsigned w : 1;       /* write */
@@ -284,6 +290,8 @@ struct ir3_instruction {
 		struct {
 			unsigned samp, tex;
 			unsigned input_offset;
+			unsigned samp_base : 3;
+			unsigned tex_base : 3;
 		} prefetch;
 		struct {
 			/* maps back to entry in ir3_shader_variant::inputs table: */
@@ -1559,9 +1567,11 @@ ir3_SAM(struct ir3_block *block, opc_t opc, type_t type,
 	struct ir3_instruction *sam;
 
 	sam = ir3_instr_create(block, opc);
-	sam->flags |= flags | IR3_INSTR_S2EN;
+	sam->flags |= flags;
 	__ssa_dst(sam)->wrmask = wrmask;
-	__ssa_src(sam, samp_tex, IR3_REG_HALF);
+	if (flags & IR3_INSTR_S2EN) {
+		__ssa_src(sam, samp_tex, IR3_REG_HALF);
+	}
 	if (src0) {
 		__ssa_src(sam, src0, 0)->wrmask = (1 << (src0->regs_count - 1)) - 1;
 	}
@@ -1594,6 +1604,7 @@ INSTR2(ATOMIC_MAX)
 INSTR2(ATOMIC_AND)
 INSTR2(ATOMIC_OR)
 INSTR2(ATOMIC_XOR)
+INSTR2(LDC)
 #if GPU >= 600
 INSTR3(STIB);
 INSTR2(LDIB);
