@@ -2448,6 +2448,9 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
                  V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                  V3DV_CMD_DIRTY_PUSH_CONSTANTS)) {
       emit_gl_shader_state(cmd_buffer);
+   }
+
+   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE)) {
       emit_configuration_bits(cmd_buffer);
       emit_varyings_state(cmd_buffer);
    }
