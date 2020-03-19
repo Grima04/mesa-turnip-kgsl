@@ -105,6 +105,22 @@ struct bifrost_add_inst {
         unsigned op   : 17;
 } __attribute__((packed));
 
+#define BIFROST_ADD_OP_ATEST (0xc8f)
+
+struct bifrost_add_atest {
+        /* gl_SampleMask (R60) */
+        unsigned src0 : 3;
+
+        /* Alpha value */
+        unsigned src1 : 3;
+
+        /* If half, X/Y select. If !half, always set */
+        unsigned component : 1;
+        unsigned half : 1;
+
+        unsigned op   : 12;
+} __attribute__((packed));
+
 enum bifrost_outmod {
         BIFROST_NONE = 0x0,
         BIFROST_POS = 0x1,
