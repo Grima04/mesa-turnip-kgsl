@@ -2012,3 +2012,14 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
 
    return result;
 }
+
+VkResult
+v3dv_CreateComputePipelines(VkDevice device,
+                            VkPipelineCache pipelineCache,
+                            uint32_t createInfoCount,
+                            const VkComputePipelineCreateInfo *pCreateInfos,
+                            const VkAllocationCallbacks *pAllocator,
+                            VkPipeline *pPipelines)
+{
+   unreachable("vkCreateComputePipelines not implemented");
+}
