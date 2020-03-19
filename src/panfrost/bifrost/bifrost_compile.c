@@ -120,7 +120,22 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         if (!ctx->emitted_atest) {
                 bi_instruction ins = {
-                        .type = BI_ATEST
+                        .type = BI_ATEST,
+                        .src = {
+                                BIR_INDEX_REGISTER | 60 /* TODO: RA */,
+                                bir_src_index(&instr->src[0])
+                        },
+                        .src_types = {
+                                nir_type_uint32,
+                                nir_type_float32
+                        },
+                        .swizzle = {
+                                { 0 },
+                                { 3, 0 } /* swizzle out the alpha */
+                        },
+                        .dest = BIR_INDEX_REGISTER | 60 /* TODO: RA */,
+                        .dest_type = nir_type_uint32,
+                        .writemask = 0xF
                 };
 
                 bi_emit(ctx, ins);
