@@ -103,6 +103,8 @@
  */
 
 
+static struct ir3_instruction * name_to_instr(struct ir3_ra_ctx *ctx, unsigned name);
+
 /* does it conflict? */
 static inline bool
 intersects(unsigned a_start, unsigned a_end, unsigned b_start, unsigned b_end)
@@ -406,21 +408,17 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 	 * dependencies, and it potentially avoids needing (ss) syncs to
 	 * for write after read hazards:
 	 */
-	struct hash_entry *entry = _mesa_hash_table_search(ctx->name_to_instr, &n);
-	if (entry) {
-		struct ir3_instruction *instr = entry->data;
+	struct ir3_instruction *instr = name_to_instr(ctx, n);
+	if (is_sfu(instr) && instr->regs[1]->instr) {
+		struct ir3_instruction *src = instr->regs[1]->instr;
+		unsigned src_n = scalar_name(ctx, src, 0);
 
-		if (is_sfu(instr) && instr->regs[1]->instr) {
-			struct ir3_instruction *src = instr->regs[1]->instr;
-			unsigned src_n = scalar_name(ctx, src, 0);
+		unsigned reg = ra_get_node_reg(ctx->g, src_n);
 
-			unsigned reg = ra_get_node_reg(ctx->g, src_n);
-
-			/* Check if the src register has been assigned yet: */
-			if (reg != NO_REG) {
-				if (BITSET_TEST(regs, reg)) {
-					return reg;
-				}
+		/* Check if the src register has been assigned yet: */
+		if (reg != NO_REG) {
+			if (BITSET_TEST(regs, reg)) {
+				return reg;
 			}
 		}
 	}
@@ -496,6 +494,17 @@ ra_init(struct ir3_ra_ctx *ctx)
 		ctx->name_to_instr = _mesa_hash_table_create(ctx->g,
 				_mesa_hash_int, _mesa_key_int_equal);
 	}
+}
+
+/* Map the name back to instruction: */
+static struct ir3_instruction *
+name_to_instr(struct ir3_ra_ctx *ctx, unsigned name)
+{
+	struct hash_entry *entry = _mesa_hash_table_search(ctx->name_to_instr, &name);
+	if (entry)
+		return entry->data;
+	unreachable("invalid name");
+	return NULL;
 }
 
 static void
@@ -602,6 +611,20 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 				for (unsigned i = 0; i < n; i++) {
 					unsigned name = scalar_name(ctx, instr, i);
 
+					/* split/collect instructions have duplicate names
+					 * as real instructions, so they skip the hashtable:
+					 */
+					if (ctx->name_to_instr && !((instr->opc == OPC_META_SPLIT) ||
+							(instr->opc == OPC_META_COLLECT))) {
+						/* this is slightly annoying, we can't just use an
+						 * integer on the stack
+						 */
+						unsigned *key = ralloc(ctx->name_to_instr, unsigned);
+						*key = name;
+						debug_assert(!_mesa_hash_table_search(ctx->name_to_instr, key));
+						_mesa_hash_table_insert(ctx->name_to_instr, key, instr);
+					}
+
 					/* tex instructions actually have a wrmask, and
 					 * don't touch masked out components.  We can't do
 					 * anything useful about that in the first pass,
@@ -613,16 +636,6 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 						continue;
 
 					def(name, instr);
-
-					if (ctx->name_to_instr && is_sfu(instr)) {
-						/* this is slightly annoying, we can't just use an
-						 * integer on the stack
-						 */
-						unsigned *key = ralloc(ctx->name_to_instr, unsigned);
-						*key = name;
-						debug_assert(!_mesa_hash_table_search(ctx->name_to_instr, key));
-						_mesa_hash_table_insert(ctx->name_to_instr, key, instr);
-					}
 
 					if ((instr->opc == OPC_META_INPUT) && first_non_input)
 						use(name, first_non_input);
