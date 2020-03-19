@@ -838,6 +838,44 @@ bi_optimize_nir(nir_shader *nir)
         NIR_PASS(progress, nir, nir_opt_dce);
 }
 
+static void
+bi_insert_mov32(bi_context *ctx, bi_instruction *parent, unsigned comp)
+{
+        bi_instruction move = {
+                .type = BI_MOV,
+                .dest = parent->dest,
+                .dest_type = nir_type_uint32,
+                .writemask = (0xF << (4 * comp)),
+                .src = { parent->src[0] },
+                .src_types = { nir_type_uint32 },
+                .swizzle = { { comp } }
+        };
+
+        bi_emit_before(ctx, parent, move);
+}
+
+static void
+bi_lower_mov(bi_context *ctx, bi_block *block)
+{
+        bi_foreach_instr_in_block_safe(block, ins) {
+                if (ins->type != BI_MOV) continue;
+                if (util_bitcount(ins->writemask) <= 4) continue;
+
+                for (unsigned i = 0; i < 4; ++i) {
+                        unsigned quad = (ins->writemask >> (4 * i)) & 0xF;
+
+                        if (quad == 0)
+                                continue;
+                        else if (quad == 0xF)
+                                bi_insert_mov32(ctx, ins, i);
+                        else
+                                unreachable("TODO: Lowering <32bit moves");
+                }
+
+                bi_remove_instruction(ins);
+        }
+}
+
 void
 bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned product_id)
 {
@@ -879,6 +917,11 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
                 ctx->impl = func->impl;
                 emit_cf_list(ctx, &func->impl->body);
                 break; /* TODO: Multi-function shaders */
+        }
+
+        bi_foreach_block(ctx, _block) {
+                bi_block *block = (bi_block *) _block;
+                bi_lower_mov(ctx, block);
         }
 
         bool progress = false;
