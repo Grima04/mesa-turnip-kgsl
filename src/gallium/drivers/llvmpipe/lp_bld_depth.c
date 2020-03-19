@@ -654,7 +654,7 @@ lp_build_depth_stencil_load_swizzled(struct gallivm_state *gallivm,
  * \param type  the data type of the fragment depth/stencil values
  * \param format_desc  description of the depth/stencil surface
  * \param is_1d  whether this resource has only one dimension
- * \param mask  the alive/dead pixel mask for the quad (vector)
+ * \param mask_value the alive/dead pixel mask for the quad (vector)
  * \param z_fb  z values read from fb (with padding)
  * \param s_fb  s values read from fb (with padding)
  * \param loop_counter  the current loop iteration
@@ -668,7 +668,7 @@ lp_build_depth_stencil_write_swizzled(struct gallivm_state *gallivm,
                                       struct lp_type z_src_type,
                                       const struct util_format_description *format_desc,
                                       boolean is_1d,
-                                      struct lp_build_mask_context *mask,
+                                      LLVMValueRef mask_value,
                                       LLVMValueRef z_fb,
                                       LLVMValueRef s_fb,
                                       LLVMValueRef loop_counter,
@@ -680,7 +680,6 @@ lp_build_depth_stencil_write_swizzled(struct gallivm_state *gallivm,
    struct lp_build_context z_bld;
    LLVMValueRef shuffles[LP_MAX_VECTOR_LENGTH / 4];
    LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef mask_value = NULL;
    LLVMValueRef zs_dst1, zs_dst2;
    LLVMValueRef zs_dst_ptr1, zs_dst_ptr2;
    LLVMValueRef depth_offset1, depth_offset2;
@@ -738,8 +737,7 @@ lp_build_depth_stencil_write_swizzled(struct gallivm_state *gallivm,
       s_value = LLVMBuildBitCast(builder, s_value, z_bld.vec_type, "");
    }
 
-   if (mask) {
-      mask_value = lp_build_mask_value(mask);
+   if (mask_value) {
       z_value = lp_build_select(&z_bld, mask_value, z_value, z_fb);
       if (format_desc->block.bits > 32) {
          s_fb = LLVMBuildBitCast(builder, s_fb, z_bld.vec_type, "");

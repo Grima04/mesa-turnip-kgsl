@@ -637,7 +637,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
        */
       lp_build_depth_stencil_write_swizzled(gallivm, type,
                                             zs_format_desc, key->resource_1d,
-                                            &mask, z_fb, s_fb, loop_state.counter,
+                                            lp_build_mask_value(&mask), z_fb, s_fb, loop_state.counter,
                                             depth_ptr, depth_stride,
                                             z_value, s_value);
    }
