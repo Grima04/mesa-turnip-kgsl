@@ -810,6 +810,7 @@ lp_build_depth_stencil_write_swizzled(struct gallivm_state *gallivm,
  * \param type  the data type of the fragment depth/stencil values
  * \param format_desc  description of the depth/stencil surface
  * \param mask  the alive/dead pixel mask for the quad (vector)
+ * \param cov_mask coverage mask
  * \param stencil_refs  the front/back stencil ref values (scalar)
  * \param z_src  the incoming depth/stencil values (n 2x2 quad values, float32)
  * \param zs_dst  the depth/stencil values in framebuffer
@@ -822,6 +823,7 @@ lp_build_depth_stencil_test(struct gallivm_state *gallivm,
                             struct lp_type z_src_type,
                             const struct util_format_description *format_desc,
                             struct lp_build_mask_context *mask,
+                            LLVMValueRef *cov_mask,
                             LLVMValueRef stencil_refs[2],
                             LLVMValueRef z_src,
                             LLVMValueRef z_fb,
@@ -841,7 +843,7 @@ lp_build_depth_stencil_test(struct gallivm_state *gallivm,
    LLVMValueRef stencil_vals = NULL;
    LLVMValueRef z_bitmask = NULL, stencil_shift = NULL;
    LLVMValueRef z_pass = NULL, s_pass_mask = NULL;
-   LLVMValueRef current_mask = lp_build_mask_value(mask);
+   LLVMValueRef current_mask = mask ? lp_build_mask_value(mask) : *cov_mask;
    LLVMValueRef front_facing = NULL;
    boolean have_z, have_s;
 
@@ -1070,7 +1072,7 @@ lp_build_depth_stencil_test(struct gallivm_state *gallivm,
          current_mask = LLVMBuildAnd(builder, current_mask, s_pass_mask, "");
       }
 
-      if (!stencil[0].enabled) {
+      if (!stencil[0].enabled && mask) {
          /* We can potentially skip all remaining operations here, but only
           * if stencil is disabled because we still need to update the stencil
           * buffer values.  Don't need to update Z buffer values.
@@ -1145,10 +1147,21 @@ lp_build_depth_stencil_test(struct gallivm_state *gallivm,
       *s_value = stencil_vals;
    }
 
-   if (s_pass_mask)
-      lp_build_mask_update(mask, s_pass_mask);
+   if (mask) {
+      if (s_pass_mask)
+         lp_build_mask_update(mask, s_pass_mask);
 
-   if (depth->enabled && stencil[0].enabled)
-      lp_build_mask_update(mask, z_pass);
+      if (depth->enabled && stencil[0].enabled)
+         lp_build_mask_update(mask, z_pass);
+   } else {
+      LLVMValueRef tmp_mask = *cov_mask;
+      if (s_pass_mask)
+         tmp_mask = LLVMBuildAnd(builder, tmp_mask, s_pass_mask, "");
+
+      /* for multisample we don't do the stencil optimisation so update always */
+      if (depth->enabled)
+         tmp_mask = LLVMBuildAnd(builder, tmp_mask, z_pass, "");
+      *cov_mask = tmp_mask;
+   }
 }
 
