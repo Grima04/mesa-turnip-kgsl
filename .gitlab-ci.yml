@@ -677,6 +677,22 @@ softpipe-gles31:
     DEQP_VER: gles31
   extends: softpipe-gles2
 
+# Rules for tests that should not be present in MRs or the main
+# project's pipeline (don't block marge or report red on
+# mesa/mesamaster) but should be present on pipelines in personal
+# branches (so you can opt in to running the flaky test when you want
+# to).
+.test-manual:
+  rules:
+    # Never test in the main project.
+    - if: '$CI_PROJECT_PATH == "mesa/mesa"'
+      when: never
+    # Never test in merge requests.
+    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+      when: never
+    # Otherwise, allow testing manually for personal branches.
+    - when: manual
+
 arm64_a630_gles2:
   extends:
     - .deqp-test-gl
@@ -731,9 +747,10 @@ arm64_a306_gles2:
     - google-freedreno-db410c
 
 # Disabled due to flaky results
-.arm64_a306_gles3:
+arm64_a306_gles3:
   extends:
     - arm64_a306_gles2
+    - .test-manual
   parallel: 8
   variables:
     DEQP_VER: gles3
@@ -754,6 +771,7 @@ arm64_a530_gles2:
 arm64_a530_gles3:
   extends:
     - arm64_a530_gles2
+    - .test-manual
   parallel: 6
   variables:
     DEQP_VER: gles3
@@ -766,29 +784,18 @@ arm64_a530_gles3:
     VK_DRIVER: radeon
     RADV_DEBUG: checkir
 
-.test-radv-unsafe:
-  extends: .test-radv
-  # Can only be triggered manually on personal branches because RADV is the only
-  # driver that does Vulkan testing at the moment.
-  rules:
-    # Never test RADV by default in the main project.
-    - if: '$CI_PROJECT_PATH == "mesa/mesa"'
-      when: never
-    # Never test RADV by default for merge requests.
-    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
-      when: never
-    # Otherwise, allow testing RADV manually for personal branches.
-    - when: manual
-
 .test-radv-fossilize:
   extends:
     - .fossilize-test
     - .test-radv
 
+# Can only be triggered manually on personal branches because RADV is the only
+# driver that does Vulkan testing at the moment.
 radv_polaris10_vkcts:
   extends:
     - .deqp-test-vk
-    - .test-radv-unsafe
+    - .test-radv
+    - .test-manual
   variables:
     DEQP_SKIPS: deqp-radv-polaris10-skips.txt
   tags:
@@ -833,7 +840,8 @@ llvmpipe-traces:
 radv-polaris10-traces:
   extends:
     - .traces-test-vk
-    - .test-radv-unsafe
+    - .test-radv
+    - .test-manual
   variables:
     DEVICE_NAME: "vk-amd-polaris10"
   tags:
