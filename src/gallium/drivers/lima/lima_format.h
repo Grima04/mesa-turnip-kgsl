@@ -35,6 +35,7 @@ int lima_format_get_pixel(enum pipe_format f);
 int lima_format_get_texel_reload(enum pipe_format f);
 bool lima_format_get_texel_swap_rb(enum pipe_format f);
 bool lima_format_get_pixel_swap_rb(enum pipe_format f);
+const uint8_t *lima_format_get_texel_swizzle(enum pipe_format f);
 uint32_t lima_format_get_channel_layout(enum pipe_format f);
 
 #endif

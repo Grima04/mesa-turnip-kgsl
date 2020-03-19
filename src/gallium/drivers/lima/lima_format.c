@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "util/format/u_format.h"
 #include <util/macros.h>
 
 #include "lima_format.h"
@@ -52,6 +53,8 @@
 #define LIMA_PIXEL_FORMAT_B5G5R5A1     0x01
 #define LIMA_PIXEL_FORMAT_B4G4R4A4     0x02
 #define LIMA_PIXEL_FORMAT_B8G8R8A8     0x03
+#define LIMA_PIXEL_FORMAT_B8           0x04
+#define LIMA_PIXEL_FORMAT_G8B8         0x05
 #define LIMA_PIXEL_FORMAT_Z16          0x0e
 #define LIMA_PIXEL_FORMAT_Z24S8        0x0f
 
@@ -59,13 +62,23 @@ struct lima_format {
    bool present;
    int format;
    bool swap_r_b;
-   uint32_t channel_layout;
+   union {
+      uint32_t channel_layout;
+      uint8_t swizzle[4];
+   };
 };
 
-#define LIMA_TEXEL_FORMAT(pipe, tex, swap)                  \
+#define SWIZ(x,y,z,w) {    \
+        PIPE_SWIZZLE_##x,  \
+        PIPE_SWIZZLE_##y,  \
+        PIPE_SWIZZLE_##z,  \
+        PIPE_SWIZZLE_##w   \
+}
+
+#define LIMA_TEXEL_FORMAT(pipe, tex, swap, swiz)            \
    [PIPE_FORMAT_##pipe] = {                                 \
       .present = true, .format = LIMA_TEXEL_FORMAT_##tex,   \
-      .swap_r_b = swap                                      \
+      .swap_r_b = swap, .swizzle = swiz                     \
    }
 
 #define LIMA_PIXEL_FORMAT(pipe, pix, swap, ch_layout)       \
@@ -75,25 +88,27 @@ struct lima_format {
    }
 
 static const struct lima_format lima_texel_formats[] = {
-   LIMA_TEXEL_FORMAT(R8G8B8A8_UNORM,     RGBA_8888, true),
-   LIMA_TEXEL_FORMAT(B8G8R8A8_UNORM,     RGBA_8888, false),
-   LIMA_TEXEL_FORMAT(R8G8B8A8_SRGB,      RGBA_8888, true),
-   LIMA_TEXEL_FORMAT(B8G8R8A8_SRGB,      RGBA_8888, false),
-   LIMA_TEXEL_FORMAT(R8G8B8X8_UNORM,     RGBX_8888, true),
-   LIMA_TEXEL_FORMAT(B8G8R8X8_UNORM,     RGBX_8888, false),
-   LIMA_TEXEL_FORMAT(B5G6R5_UNORM,       BGR_565,   false),
-   LIMA_TEXEL_FORMAT(B5G5R5A1_UNORM,     BGRA_5551, false),
-   LIMA_TEXEL_FORMAT(B4G4R4A4_UNORM,     BGRA_4444, false),
-   LIMA_TEXEL_FORMAT(Z24_UNORM_S8_UINT,  Z24X8,     false),
-   LIMA_TEXEL_FORMAT(Z24X8_UNORM,        Z24X8,     false),
-   LIMA_TEXEL_FORMAT(L16_UNORM,          L16,       false),
-   LIMA_TEXEL_FORMAT(L8_UNORM,           L8,        false),
-   LIMA_TEXEL_FORMAT(A16_UNORM,          A16,       false),
-   LIMA_TEXEL_FORMAT(A8_UNORM,           A8,        false),
-   LIMA_TEXEL_FORMAT(I16_UNORM,          I16,       false),
-   LIMA_TEXEL_FORMAT(I8_UNORM,           I8,        false),
-   LIMA_TEXEL_FORMAT(L8A8_UNORM,         L8A8,      false),
-   LIMA_TEXEL_FORMAT(ETC1_RGB8,          ETC1_RGB8, false),
+   LIMA_TEXEL_FORMAT(R8G8B8A8_UNORM,     RGBA_8888, true,  SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(B8G8R8A8_UNORM,     RGBA_8888, false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(R8G8B8A8_SRGB,      RGBA_8888, true,  SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(B8G8R8A8_SRGB,      RGBA_8888, false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(R8G8B8X8_UNORM,     RGBX_8888, true,  SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(B8G8R8X8_UNORM,     RGBX_8888, false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(B5G6R5_UNORM,       BGR_565,   false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(B5G5R5A1_UNORM,     BGRA_5551, false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(B4G4R4A4_UNORM,     BGRA_4444, false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(Z24_UNORM_S8_UINT,  Z24X8,     false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(Z24X8_UNORM,        Z24X8,     false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(L16_UNORM,          L16,       false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(L8_UNORM,           L8,        false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(A16_UNORM,          A16,       false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(A8_UNORM,           A8,        false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(I16_UNORM,          I16,       false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(I8_UNORM,           I8,        false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(L8A8_UNORM,         L8A8,      false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(ETC1_RGB8,          ETC1_RGB8, false, SWIZ(X, Y, Z, W)),
+   LIMA_TEXEL_FORMAT(R8_UNORM,           L8,        false, SWIZ(X, 0, 0, 1)),
+   LIMA_TEXEL_FORMAT(R8G8_UNORM,         L8A8,      false, SWIZ(X, W, 0, 1)),
 };
 
 static const struct lima_format lima_pixel_formats[] = {
@@ -106,6 +121,9 @@ static const struct lima_format lima_pixel_formats[] = {
    LIMA_PIXEL_FORMAT(B5G6R5_UNORM,       B5G6R5,   false, 0x8565),
    LIMA_PIXEL_FORMAT(B5G5R5A1_UNORM,     B5G5R5A1, false, 0x8565),
    LIMA_PIXEL_FORMAT(B4G4R4A4_UNORM,     B4G4R4A4, false, 0x8444),
+   /* FIXME: reload doesn't work for these formats for some reason */
+   //LIMA_PIXEL_FORMAT(R8_UNORM,           B8,       true,  0x8888),
+   //LIMA_PIXEL_FORMAT(R8G8_UNORM,         G8B8,     true,  0x8888),
    LIMA_PIXEL_FORMAT(Z24_UNORM_S8_UINT,  Z24S8,    false, 0x0000),
    LIMA_PIXEL_FORMAT(Z24X8_UNORM,        Z24S8,    false, 0x0000),
 };
@@ -186,6 +204,12 @@ bool
 lima_format_get_pixel_swap_rb(enum pipe_format f)
 {
    return lima_pixel_formats[f].swap_r_b;
+}
+
+const uint8_t *
+lima_format_get_texel_swizzle(enum pipe_format f)
+{
+   return lima_texel_formats[f].swizzle;
 }
 
 uint32_t

@@ -44,9 +44,11 @@ struct lima_depth_stencil_alpha_state {
 };
 
 struct lima_fs_shader_state {
+   struct pipe_shader_state base;
    void *shader;
    int shader_size;
    int stack_size;
+   uint8_t swizzles[PIPE_MAX_SAMPLERS][4];
    bool uses_discard;
    struct lima_bo *bo;
 };
