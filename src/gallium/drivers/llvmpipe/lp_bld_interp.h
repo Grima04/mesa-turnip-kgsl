@@ -71,7 +71,8 @@ struct lp_shader_input {
    uint usage_mask:4;   /* bitmask of TGSI_WRITEMASK_x flags */
    uint src_index:8;    /* where to find values in incoming vertices */
    uint cyl_wrap:4;     /* TGSI_CYLINDRICAL_WRAP_x flags */
-   uint padding:12;
+   uint location:2;     /* TGSI_INTERPOLOATE_LOC_* */
+   uint padding:10;
 };
 
 
@@ -84,6 +85,7 @@ struct lp_build_interp_soa_context
    unsigned num_attribs;
    unsigned mask[1 + PIPE_MAX_SHADER_INPUTS]; /**< TGSI_WRITE_MASK_x */
    enum lp_interp interp[1 + PIPE_MAX_SHADER_INPUTS];
+   unsigned interp_loc[1 + PIPE_MAX_SHADER_INPUTS];
    boolean simple_interp;
    boolean depth_clamp;
 

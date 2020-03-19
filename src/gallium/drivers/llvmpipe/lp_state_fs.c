@@ -3030,6 +3030,7 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
    for (i = 0; i < shader->info.base.num_inputs; i++) {
       shader->inputs[i].usage_mask = shader->info.base.input_usage_mask[i];
       shader->inputs[i].cyl_wrap = shader->info.base.input_cylindrical_wrap[i];
+      shader->inputs[i].location = shader->info.base.input_interpolate_loc[i];
 
       switch (shader->info.base.input_interpolate[i]) {
       case TGSI_INTERPOLATE_CONSTANT:

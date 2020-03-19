@@ -735,11 +735,13 @@ lp_build_interp_soa_init(struct lp_build_interp_soa_context *bld,
    /* Position */
    bld->mask[0] = TGSI_WRITEMASK_XYZW;
    bld->interp[0] = LP_INTERP_LINEAR;
+   bld->interp_loc[0] = 0;
 
    /* Inputs */
    for (attrib = 0; attrib < num_inputs; ++attrib) {
       bld->mask[1 + attrib] = inputs[attrib].usage_mask;
       bld->interp[1 + attrib] = inputs[attrib].interp;
+      bld->interp_loc[1 + attrib] = inputs[attrib].location;
    }
    bld->num_attribs = 1 + num_inputs;
 
