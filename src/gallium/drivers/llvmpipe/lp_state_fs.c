@@ -310,8 +310,9 @@ generate_fs_loop(struct gallivm_state *gallivm,
                  const struct lp_build_image_soa *image,
                  LLVMValueRef mask_store,
                  LLVMValueRef (*out_color)[4],
-                 LLVMValueRef depth_ptr,
+                 LLVMValueRef depth_base_ptr,
                  LLVMValueRef depth_stride,
+                 LLVMValueRef depth_sample_stride,
                  LLVMValueRef facing,
                  LLVMValueRef thread_data_ptr)
 {
@@ -319,15 +320,16 @@ generate_fs_loop(struct gallivm_state *gallivm,
    const struct tgsi_token *tokens = shader->base.tokens;
    struct lp_type int_type = lp_int_type(type);
    LLVMTypeRef vec_type, int_vec_type;
-   LLVMValueRef mask_ptr, mask_val;
+   LLVMValueRef mask_ptr = NULL, mask_val = NULL;
    LLVMValueRef consts_ptr, num_consts_ptr;
    LLVMValueRef ssbo_ptr, num_ssbo_ptr;
    LLVMValueRef z;
    LLVMValueRef z_value, s_value;
    LLVMValueRef z_fb, s_fb;
+   LLVMValueRef depth_ptr;
    LLVMValueRef stencil_refs[2];
    LLVMValueRef outputs[PIPE_MAX_SHADER_OUTPUTS][TGSI_NUM_CHANNELS];
-   struct lp_build_for_loop_state loop_state;
+   struct lp_build_for_loop_state loop_state, sample_loop_state;
    struct lp_build_mask_context mask;
    /*
     * TODO: figure out if simple_shader optimization is really worthwile to
@@ -438,9 +440,22 @@ generate_fs_loop(struct gallivm_state *gallivm,
                            num_loop,
                            lp_build_const_int32(gallivm, 1));
 
-   mask_ptr = LLVMBuildGEP(builder, mask_store,
-                           &loop_state.counter, 1, "mask_ptr");
-   mask_val = LLVMBuildLoad(builder, mask_ptr, "");
+   if (key->multisample) {
+      /* create shader execution mask by combining all sample masks. */
+      for (unsigned s = 0; s < key->coverage_samples; s++) {
+         LLVMValueRef s_mask_idx = LLVMBuildMul(builder, num_loop, lp_build_const_int32(gallivm, s), "");
+         s_mask_idx = LLVMBuildAdd(builder, s_mask_idx, loop_state.counter, "");
+         LLVMValueRef s_mask = lp_build_pointer_get(builder, mask_store, s_mask_idx);
+         if (s == 0)
+            mask_val = s_mask;
+         else
+            mask_val = LLVMBuildOr(builder, s_mask, mask_val, "");
+      }
+   } else {
+      mask_ptr = LLVMBuildGEP(builder, mask_store,
+                              &loop_state.counter, 1, "mask_ptr");
+      mask_val = LLVMBuildLoad(builder, mask_ptr, "");
+   }
 
    /* 'mask' will control execution based on quad's pixel alive/killed state */
    lp_build_mask_begin(&mask, gallivm, type, mask_val);
@@ -450,6 +465,32 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter);
    z = interp->pos[2];
+
+   /* Create storage for recombining sample masks after early Z pass. */
+   LLVMValueRef s_mask_or = lp_build_alloca(gallivm, lp_build_int_vec_type(gallivm, type), "cov_mask_early_depth");
+   LLVMBuildStore(builder, LLVMConstNull(lp_build_int_vec_type(gallivm, type)), s_mask_or);
+
+   LLVMValueRef s_mask = NULL, s_mask_ptr = NULL;
+   /* Run early depth once per sample */
+   if (key->multisample) {
+      lp_build_for_loop_begin(&sample_loop_state, gallivm,
+                              lp_build_const_int32(gallivm, 0),
+                              LLVMIntULT, lp_build_const_int32(gallivm, key->coverage_samples),
+                              lp_build_const_int32(gallivm, 1));
+
+      LLVMValueRef s_mask_idx = LLVMBuildMul(builder, sample_loop_state.counter, num_loop, "");
+      s_mask_idx = LLVMBuildAdd(builder, s_mask_idx, loop_state.counter, "");
+      s_mask_ptr = LLVMBuildGEP(builder, mask_store, &s_mask_idx, 1, "");
+
+      s_mask = LLVMBuildLoad(builder, s_mask_ptr, "");
+      s_mask = LLVMBuildAnd(builder, s_mask, mask_val, "");
+   }
+
+   depth_ptr = depth_base_ptr;
+   if (key->multisample) {
+      LLVMValueRef sample_offset = LLVMBuildMul(builder, sample_loop_state.counter, depth_sample_stride, "");
+      depth_ptr = LLVMBuildGEP(builder, depth_ptr, &sample_offset, 1, "");
+   }
 
    if (depth_mode & EARLY_DEPTH_TEST) {
       /*
@@ -468,8 +509,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                   key->stencil,
                                   type,
                                   zs_format_desc,
-                                  &mask,
-                                  NULL,
+                                  key->multisample ? NULL : &mask,
+                                  &s_mask,
                                   stencil_refs,
                                   z, z_fb, s_fb,
                                   facing,
@@ -488,8 +529,27 @@ generate_fs_loop(struct gallivm_state *gallivm,
        * stencil test otherwise new stencil values may not get written if all
        * fragments got killed by depth/stencil test.
        */
-      if (!simple_shader && key->stencil[0].enabled)
+      if (!simple_shader && key->stencil[0].enabled && !key->multisample)
          lp_build_mask_check(&mask);
+   }
+
+   if (key->multisample) {
+      /*
+       * Store the post-early Z coverage mask.
+       * Recombine the resulting coverage masks post early Z into the fragment
+       * shader execution mask.
+       */
+      LLVMValueRef tmp_s_mask_or = LLVMBuildLoad(builder, s_mask_or, "");
+      tmp_s_mask_or = LLVMBuildOr(builder, tmp_s_mask_or, s_mask, "");
+      LLVMBuildStore(builder, tmp_s_mask_or, s_mask_or);
+
+      LLVMBuildStore(builder, s_mask, s_mask_ptr);
+
+      lp_build_for_loop_end(&sample_loop_state);
+
+      /* recombined all the coverage masks in the shader exec mask. */
+      tmp_s_mask_or = LLVMBuildLoad(builder, s_mask_or, "");
+      lp_build_mask_update(&mask, tmp_s_mask_or);
    }
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, NULL, NULL);
@@ -575,6 +635,29 @@ generate_fs_loop(struct gallivm_state *gallivm,
       lp_build_mask_update(&mask, smask);
    }
 
+   if (key->multisample) {
+      /* execute depth test for each sample */
+      lp_build_for_loop_begin(&sample_loop_state, gallivm,
+                              lp_build_const_int32(gallivm, 0),
+                              LLVMIntULT, lp_build_const_int32(gallivm, key->coverage_samples),
+                              lp_build_const_int32(gallivm, 1));
+
+      /* load the per-sample coverage mask */
+      LLVMValueRef s_mask_idx = LLVMBuildMul(builder, sample_loop_state.counter, num_loop, "");
+      s_mask_idx = LLVMBuildAdd(builder, s_mask_idx, loop_state.counter, "");
+      s_mask_ptr = LLVMBuildGEP(builder, mask_store, &s_mask_idx, 1, "");
+
+      /* combine the execution mask post fragment shader with the coverage mask. */
+      s_mask = LLVMBuildLoad(builder, s_mask_ptr, "");
+      s_mask = LLVMBuildAnd(builder, s_mask, lp_build_mask_value(&mask), "");
+   }
+
+   depth_ptr = depth_base_ptr;
+   if (key->multisample) {
+      LLVMValueRef sample_offset = LLVMBuildMul(builder, sample_loop_state.counter, depth_sample_stride, "");
+      depth_ptr = LLVMBuildGEP(builder, depth_ptr, &sample_offset, 1, "");
+   }
+
    /* Late Z test */
    if (depth_mode & LATE_DEPTH_TEST) {
       int pos0 = find_output_by_semantic(&shader->info.base,
@@ -613,8 +696,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                   key->stencil,
                                   type,
                                   zs_format_desc,
-                                  &mask,
-                                  NULL,
+                                  key->multisample ? NULL : &mask,
+                                  &s_mask,
                                   stencil_refs,
                                   z, z_fb, s_fb,
                                   facing,
@@ -638,11 +721,16 @@ generate_fs_loop(struct gallivm_state *gallivm,
        */
       lp_build_depth_stencil_write_swizzled(gallivm, type,
                                             zs_format_desc, key->resource_1d,
-                                            lp_build_mask_value(&mask), z_fb, s_fb, loop_state.counter,
+                                            key->multisample ? s_mask : lp_build_mask_value(&mask), z_fb, s_fb, loop_state.counter,
                                             depth_ptr, depth_stride,
                                             z_value, s_value);
    }
 
+   if (key->multisample) {
+      /* store the sample mask for this loop */
+      LLVMBuildStore(builder, s_mask, s_mask_ptr);
+      lp_build_for_loop_end(&sample_loop_state);
+   }
 
    /* Color write  */
    for (attrib = 0; attrib < shader->info.base.num_outputs; ++attrib)
@@ -675,7 +763,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
    }
 
    mask_val = lp_build_mask_end(&mask);
-   LLVMBuildStore(builder, mask_val, mask_ptr);
+   if (!key->multisample)
+      LLVMBuildStore(builder, mask_val, mask_ptr);
    lp_build_for_loop_end(&loop_state);
 }
 
@@ -2638,8 +2727,9 @@ generate_fragment(struct llvmpipe_context *lp,
    {
       LLVMValueRef num_loop = lp_build_const_int32(gallivm, num_fs);
       LLVMTypeRef mask_type = lp_build_int_vec_type(gallivm, fs_type);
+      LLVMValueRef num_loop_samp = lp_build_const_int32(gallivm, num_fs * key->coverage_samples);
       LLVMValueRef mask_store = lp_build_array_alloca(gallivm, mask_type,
-                                                      num_loop, "mask_store");
+                                                      num_loop_samp, "mask_store");
       LLVMValueRef color_store[PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS];
       boolean pixel_center_integer =
          shader->info.base.properties[TGSI_PROPERTY_FS_COORD_PIXEL_CENTER];
@@ -2661,19 +2751,45 @@ generate_fragment(struct llvmpipe_context *lp,
                                x, y);
 
       for (i = 0; i < num_fs; i++) {
-         LLVMValueRef mask;
-         LLVMValueRef indexi = lp_build_const_int32(gallivm, i);
-         LLVMValueRef mask_ptr = LLVMBuildGEP(builder, mask_store,
-                                              &indexi, 1, "mask_ptr");
+         if (key->multisample) {
+            LLVMValueRef smask_val = LLVMBuildLoad(builder, lp_jit_context_sample_mask(gallivm, context_ptr), "");
 
-         if (partial_mask) {
-            mask = generate_quad_mask(gallivm, fs_type,
-                                      i*fs_type.length/4, 0, mask_input);
+            /*
+             * For multisampling, extract the per-sample mask from the incoming 64-bit mask,
+             * store to the per sample mask storage. Or all of them together to generate
+             * the fragment shader mask. (sample shading TODO).
+             * Take the incoming state coverage mask into account.
+             */
+            for (unsigned s = 0; s < key->coverage_samples; s++) {
+               LLVMValueRef sindexi = lp_build_const_int32(gallivm, i + (s * num_fs));
+               LLVMValueRef sample_mask_ptr = LLVMBuildGEP(builder, mask_store,
+                                                           &sindexi, 1, "sample_mask_ptr");
+               LLVMValueRef s_mask = generate_quad_mask(gallivm, fs_type,
+                                                        i*fs_type.length/4, s, mask_input);
+
+               LLVMValueRef smask_bit = LLVMBuildAnd(builder, smask_val, lp_build_const_int32(gallivm, (1 << s)), "");
+               LLVMValueRef cmp = LLVMBuildICmp(builder, LLVMIntNE, smask_bit, lp_build_const_int32(gallivm, 0), "");
+               smask_bit = LLVMBuildSExt(builder, cmp, int32_type, "");
+               smask_bit = lp_build_broadcast(gallivm, mask_type, smask_bit);
+
+               s_mask = LLVMBuildAnd(builder, s_mask, smask_bit, "");
+               LLVMBuildStore(builder, s_mask, sample_mask_ptr);
+            }
+         } else {
+            LLVMValueRef mask;
+            LLVMValueRef indexi = lp_build_const_int32(gallivm, i);
+            LLVMValueRef mask_ptr = LLVMBuildGEP(builder, mask_store,
+                                                 &indexi, 1, "mask_ptr");
+
+            if (partial_mask) {
+               mask = generate_quad_mask(gallivm, fs_type,
+                                         i*fs_type.length/4, 0, mask_input);
+            }
+            else {
+               mask = lp_build_const_int_vec(gallivm, fs_type, ~0);
+            }
+            LLVMBuildStore(builder, mask, mask_ptr);
          }
-         else {
-            mask = lp_build_const_int_vec(gallivm, fs_type, ~0);
-         }
-         LLVMBuildStore(builder, mask, mask_ptr);
       }
 
       generate_fs_loop(gallivm,
@@ -2689,6 +2805,7 @@ generate_fragment(struct llvmpipe_context *lp,
                        color_store,
                        depth_ptr,
                        depth_stride,
+                       depth_sample_stride,
                        facing,
                        thread_data_ptr);
 
