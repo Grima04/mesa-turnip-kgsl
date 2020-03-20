@@ -304,6 +304,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                  LLVMBuilderRef builder,
                  struct lp_type type,
                  LLVMValueRef context_ptr,
+                 LLVMValueRef sample_pos_array,
                  LLVMValueRef num_loop,
                  struct lp_build_interp_soa_context *interp,
                  const struct lp_build_sampler_soa *sampler,
@@ -591,6 +592,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
       /* for multisample Z needs to be re interpolated at pixel center */
       lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter, NULL);
    }
+
+   system_values.sample_pos = sample_pos_array;
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, NULL, NULL);
 
@@ -2776,6 +2779,26 @@ generate_fragment(struct llvmpipe_context *lp,
       LLVMValueRef num_loop_samp = lp_build_const_int32(gallivm, num_fs * key->coverage_samples);
       LLVMValueRef mask_store = lp_build_array_alloca(gallivm, mask_type,
                                                       num_loop_samp, "mask_store");
+
+      LLVMTypeRef flt_type = LLVMFloatTypeInContext(gallivm->context);
+      LLVMValueRef glob_sample_pos = LLVMAddGlobal(gallivm->module, flt_type, "");
+      LLVMValueRef sample_pos_array;
+
+      if (key->multisample && key->coverage_samples == 4) {
+         LLVMValueRef sample_pos_arr[8];
+         for (unsigned i = 0; i < 4; i++) {
+            sample_pos_arr[i * 2] = LLVMConstReal(flt_type, lp_sample_pos_4x[i][0]);
+            sample_pos_arr[i * 2 + 1] = LLVMConstReal(flt_type, lp_sample_pos_4x[i][1]);
+         }
+         sample_pos_array = LLVMConstArray(LLVMFloatTypeInContext(gallivm->context), sample_pos_arr, 8);
+      } else {
+         LLVMValueRef sample_pos_arr[2];
+         sample_pos_arr[0] = LLVMConstReal(flt_type, 0.5);
+         sample_pos_arr[1] = LLVMConstReal(flt_type, 0.5);
+         sample_pos_array = LLVMConstArray(LLVMFloatTypeInContext(gallivm->context), sample_pos_arr, 2);
+      }
+      LLVMSetInitializer(glob_sample_pos, sample_pos_array);
+
       LLVMValueRef color_store[PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS];
       boolean pixel_center_integer =
          shader->info.base.properties[TGSI_PROPERTY_FS_COORD_PIXEL_CENTER];
@@ -2790,7 +2813,8 @@ generate_fragment(struct llvmpipe_context *lp,
                                shader->info.base.num_inputs,
                                inputs,
                                pixel_center_integer,
-                               1, NULL, num_loop,
+                               key->coverage_samples, glob_sample_pos,
+                               num_loop,
                                key->depth_clamp,
                                builder, fs_type,
                                a0_ptr, dadx_ptr, dady_ptr,
@@ -2843,6 +2867,7 @@ generate_fragment(struct llvmpipe_context *lp,
                        builder,
                        fs_type,
                        context_ptr,
+                       glob_sample_pos,
                        num_loop,
                        &interp,
                        sampler,
