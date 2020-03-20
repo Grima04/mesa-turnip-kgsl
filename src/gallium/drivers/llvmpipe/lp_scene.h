@@ -150,6 +150,9 @@ struct lp_scene {
    /* The amount of layers in the fb (minimum of all attachments) */
    unsigned fb_max_layer;
 
+   /* fixed point sample positions. */
+   int32_t fixed_sample_pos[LP_MAX_SAMPLES][2];
+
    /* max samples for bound framebuffer */
    unsigned fb_max_samples;
 
