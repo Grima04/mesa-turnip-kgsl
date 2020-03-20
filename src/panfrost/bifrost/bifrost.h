@@ -121,6 +121,16 @@ struct bifrost_add_2src {
         unsigned op   : 14;
 } __attribute__((packed));
 
+#define BIFROST_ADD_OP_ST_VAR (0x19300 >> 8)
+
+struct bifrost_st_vary {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src2 : 3;
+        unsigned channels : 2;
+        unsigned op   : 9;
+} __attribute__((packed));
+
 #define BIFROST_ADD_OP_ATEST (0xc8f)
 
 struct bifrost_add_atest {

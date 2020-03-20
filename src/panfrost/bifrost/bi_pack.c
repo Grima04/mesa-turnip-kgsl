@@ -594,6 +594,23 @@ bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_regist
 }
 
 static unsigned
+bi_pack_add_st_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+{
+        assert(ins->store_channels >= 1 && ins->store_channels <= 4);
+
+        struct bifrost_st_vary pack = {
+                .src0 = bi_get_src(ins, regs, 1, false),
+                .src1 = bi_get_src(ins, regs, 2, false),
+                .src2 = bi_get_src(ins, regs, 3, false),
+                .channels = MALI_POSITIVE(ins->store_channels),
+                .op = BIFROST_ADD_OP_ST_VAR
+        };
+
+        bi_read_data_register(clause, ins);
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_add_atest(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
         /* TODO: fp16 */
@@ -663,7 +680,9 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_FMOV:
         case BI_SHIFT:
         case BI_STORE:
+                return BIFROST_ADD_NOP;
         case BI_STORE_VAR:
+                return bi_pack_add_st_vary(clause, bundle.add, regs);
         case BI_SPECIAL:
         case BI_SWIZZLE:
         case BI_TEX:
