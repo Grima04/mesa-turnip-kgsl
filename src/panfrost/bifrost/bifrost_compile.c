@@ -194,7 +194,8 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                 .swizzle = {
                         { 0, 1, 2, 3 },
                         { 0 }, { 1 }, { 2}
-                }
+                },
+                .store_channels = 4, /* TODO: WRITEMASK */
         };
 
         bi_emit(ctx, address);

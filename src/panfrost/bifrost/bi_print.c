@@ -345,6 +345,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, ".%s", bi_cond_name(ins->csel_cond));
         else if (ins->type == BI_BLEND)
                 fprintf(fp, ".loc%u", ins->blend_location);
+        else if (ins->type == BI_STORE || ins->type == BI_STORE_VAR)
+                fprintf(fp, ".v%u", ins->store_channels);
 
         if (ins->dest)
                 bi_print_alu_type(ins->dest_type, fp);

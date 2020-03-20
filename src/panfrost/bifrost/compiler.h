@@ -261,6 +261,9 @@ typedef struct {
 
                 /* For BLEND -- the location 0-7 */
                 unsigned blend_location;
+
+                /* For STORE, STORE_VAR -- channel count */
+                unsigned store_channels;
         };
 } bi_instruction;
 
