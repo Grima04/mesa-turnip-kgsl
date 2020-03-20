@@ -413,10 +413,10 @@ lp_rast_shade_tile_opaque(struct lp_rasterizer_task *task,
  * \param y  Y position of quad in window coords
  */
 void
-lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
-                         const struct lp_rast_shader_inputs *inputs,
-                         unsigned x, unsigned y,
-                         unsigned mask)
+lp_rast_shade_quads_mask_sample(struct lp_rasterizer_task *task,
+                                const struct lp_rast_shader_inputs *inputs,
+                                unsigned x, unsigned y,
+                                uint64_t mask)
 {
    const struct lp_rast_state *state = task->state;
    struct lp_fragment_shader_variant *variant = state->variant;
@@ -482,7 +482,7 @@ lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
                                             GET_DADY(inputs),
                                             color,
                                             depth,
-                                            (uint64_t)mask,
+                                            mask,
                                             &task->thread_data,
                                             stride,
                                             depth_stride,
@@ -492,7 +492,17 @@ lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
    }
 }
 
-
+void
+lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
+                         const struct lp_rast_shader_inputs *inputs,
+                         unsigned x, unsigned y,
+                         unsigned mask)
+{
+   uint64_t new_mask = 0;
+   for (unsigned i = 0; i < task->scene->fb_max_samples; i++)
+      new_mask |= ((uint64_t)mask) << (16 * i);
+   lp_rast_shade_quads_mask_sample(task, inputs, x, y, new_mask);
+}
 
 /**
  * Begin a new occlusion query.

@@ -131,7 +131,11 @@ struct lp_rasterizer
    util_barrier barrier;
 };
 
-
+void
+lp_rast_shade_quads_mask_sample(struct lp_rasterizer_task *task,
+                                const struct lp_rast_shader_inputs *inputs,
+                                unsigned x, unsigned y,
+                                uint64_t mask);
 void
 lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
                          const struct lp_rast_shader_inputs *inputs,
