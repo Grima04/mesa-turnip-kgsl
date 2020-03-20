@@ -690,7 +690,16 @@ generate_fs_loop(struct gallivm_state *gallivm,
          }
       }
    }
-
+   if (key->blend.alpha_to_one && key->multisample) {
+      for (attrib = 0; attrib < shader->info.base.num_outputs; ++attrib) {
+         unsigned cbuf = shader->info.base.output_semantic_index[attrib];
+         if ((shader->info.base.output_semantic_name[attrib] == TGSI_SEMANTIC_COLOR) &&
+             ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend)))
+            if (outputs[cbuf][3]) {
+               LLVMBuildStore(builder, lp_build_const_vec(gallivm, type, 1.0), outputs[cbuf][3]);
+            }
+      }
+   }
    if (shader->info.base.writes_samplemask) {
       int smaski = find_output_by_semantic(&shader->info.base,
                                            TGSI_SEMANTIC_SAMPLEMASK,
