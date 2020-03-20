@@ -1028,6 +1028,7 @@ calc_fixed_position(struct lp_setup_context *setup,
                     const float (*v1)[4],
                     const float (*v2)[4])
 {
+   float pixel_offset = setup->multisample ? 0.0 : setup->pixel_offset;
    /*
     * The rounding may not be quite the same with PIPE_ARCH_SSE
     * (util_iround right now only does nearest/even on x87,
@@ -1039,7 +1040,7 @@ calc_fixed_position(struct lp_setup_context *setup,
    __m128 vxy0xy2, vxy1xy0;
    __m128i vxy0xy2i, vxy1xy0i;
    __m128i dxdy0120, x0x2y0y2, x1x0y1y0, x0120, y0120;
-   __m128 pix_offset = _mm_set1_ps(setup->pixel_offset);
+   __m128 pix_offset = _mm_set1_ps(pixel_offset);
    __m128 fixed_one = _mm_set1_ps((float)FIXED_ONE);
    v0r = _mm_castpd_ps(_mm_load_sd((double *)v0[0]));
    vxy0xy2 = _mm_loadh_pi(v0r, (__m64 *)v2[0]);
@@ -1065,14 +1066,14 @@ calc_fixed_position(struct lp_setup_context *setup,
    _mm_store_si128((__m128i *)&position->y[0], y0120);
 
 #else
-   position->x[0] = subpixel_snap(v0[0][0] - setup->pixel_offset);
-   position->x[1] = subpixel_snap(v1[0][0] - setup->pixel_offset);
-   position->x[2] = subpixel_snap(v2[0][0] - setup->pixel_offset);
+   position->x[0] = subpixel_snap(v0[0][0] - pixel_offset);
+   position->x[1] = subpixel_snap(v1[0][0] - pixel_offset);
+   position->x[2] = subpixel_snap(v2[0][0] - pixel_offset);
    position->x[3] = 0; // should be unused
 
-   position->y[0] = subpixel_snap(v0[0][1] - setup->pixel_offset);
-   position->y[1] = subpixel_snap(v1[0][1] - setup->pixel_offset);
-   position->y[2] = subpixel_snap(v2[0][1] - setup->pixel_offset);
+   position->y[0] = subpixel_snap(v0[0][1] - pixel_offset);
+   position->y[1] = subpixel_snap(v1[0][1] - pixel_offset);
+   position->y[2] = subpixel_snap(v2[0][1] - pixel_offset);
    position->y[3] = 0; // should be unused
 
    position->dx01 = position->x[0] - position->x[1];
