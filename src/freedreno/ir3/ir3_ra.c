@@ -358,6 +358,29 @@ ra_block_name_instructions(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 	}
 }
 
+/**
+ * Set a value for max register target.
+ *
+ * Currently this just rounds up to a multiple of full-vec4 (ie. the
+ * granularity that we configure the hw for.. there is no point to
+ * using r3.x if you aren't going to make r3.yzw available).  But
+ * in reality there seems to be multiple thresholds that affect the
+ * number of waves.. and we should round up the target to the next
+ * threshold when we round-robin registers, to give postsched more
+ * options.  When we understand that better, this is where we'd
+ * implement that.
+ */
+static void
+ra_set_register_target(struct ir3_ra_ctx *ctx, unsigned max_target)
+{
+	const unsigned hvec4 = 4;
+	const unsigned vec4 = 2 * hvec4;
+
+	ctx->max_target = align(max_target, vec4);
+
+	d("New max_target=%u", ctx->max_target);
+}
+
 static int
 pick_in_range(BITSET_WORD *regs, unsigned min, unsigned max)
 {
@@ -434,7 +457,7 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 
 	if (r < 0) {
 		/* overflow, we need to increase max_target: */
-		ctx->max_target++;
+		ra_set_register_target(ctx, ctx->max_target + 1);
 		return ra_select_reg_merged(n, regs, data);
 	}
 
@@ -541,6 +564,11 @@ __def(struct ir3_ra_ctx *ctx, struct ir3_ra_block_data *bd, unsigned name,
 		struct ir3_instruction *instr)
 {
 	debug_assert(name < ctx->alloc_count);
+
+	/* split/collect do not actually define any real value */
+	if ((instr->opc == OPC_META_SPLIT) || (instr->opc == OPC_META_COLLECT))
+		return;
+
 	/* defined on first write: */
 	if (!ctx->def[name])
 		ctx->def[name] = instr->ip;
@@ -720,6 +748,178 @@ print_bitset(const char *name, BITSET_WORD *bs, unsigned cnt)
 	debug_printf("\n");
 }
 
+/* size of one component of instruction result, ie. half vs full: */
+static unsigned
+live_size(struct ir3_instruction *instr)
+{
+	if (is_half(instr)) {
+		return 1;
+	} else if (is_high(instr)) {
+		/* doesn't count towards footprint */
+		return 0;
+	} else {
+		return 2;
+	}
+}
+
+static unsigned
+name_size(struct ir3_ra_ctx *ctx, unsigned name)
+{
+	if (name_is_array(ctx, name)) {
+		struct ir3_array *arr = name_to_array(ctx, name);
+		return arr->half ? 1 : 2;
+	} else {
+		struct ir3_instruction *instr = name_to_instr(ctx, name);
+		/* in scalar pass, each name represents on scalar value,
+		 * half or full precision
+		 */
+		return live_size(instr);
+	}
+}
+
+static unsigned
+ra_calc_block_live_values(struct ir3_ra_ctx *ctx, struct ir3_block *block)
+{
+	struct ir3_ra_block_data *bd = block->data;
+	unsigned name;
+
+	assert(ctx->name_to_instr);
+
+	/* TODO this gets a bit more complicated in non-scalar pass.. but
+	 * possibly a lowball estimate is fine to start with if we do
+	 * round-robin in non-scalar pass?  Maybe we just want to handle
+	 * that in a different fxn?
+	 */
+	assert(ctx->scalar_pass);
+
+	BITSET_WORD *live =
+		rzalloc_array(bd, BITSET_WORD, BITSET_WORDS(ctx->alloc_count));
+
+	/* Add the live input values: */
+	unsigned livein = 0;
+	BITSET_FOREACH_SET (name, bd->livein, ctx->alloc_count) {
+		livein += name_size(ctx, name);
+		BITSET_SET(live, name);
+	}
+
+	d("---------------------");
+	d("block%u: LIVEIN: %u", block_id(block), livein);
+
+	unsigned max = livein;
+	int cur_live = max;
+
+	/* Now that we know the live inputs to the block, iterate the
+	 * instructions adjusting the current # of live values as we
+	 * see their last use:
+	 */
+	foreach_instr (instr, &block->instr_list) {
+		if (RA_DEBUG)
+			print_bitset("LIVE", live, ctx->alloc_count);
+		di(instr, "CALC");
+
+		unsigned new_live = 0;    /* newly live values */
+		unsigned new_dead = 0;    /* newly no-longer live values */
+		unsigned next_dead = 0;   /* newly dead following this instr */
+
+		foreach_def (name, ctx, instr) {
+			/* NOTE: checking ctx->def filters out things like split/
+			 * collect which are just redefining existing live names
+			 * or array writes to already live array elements:
+			 */
+			if (ctx->def[name] != instr->ip)
+				continue;
+			new_live += live_size(instr);
+			d("NEW_LIVE: %u (new_live=%u, use=%u)", name, new_live, ctx->use[name]);
+			BITSET_SET(live, name);
+			/* There can be cases where this is *also* the last use
+			 * of a value, for example instructions that write multiple
+			 * values, only some of which are used.  These values are
+			 * dead *after* (rather than during) this instruction.
+			 */
+			if (ctx->use[name] != instr->ip)
+				continue;
+			next_dead += live_size(instr);
+			d("NEXT_DEAD: %u (next_dead=%u)", name, next_dead);
+			BITSET_CLEAR(live, name);
+		}
+
+		/* To be more resilient against special cases where liverange
+		 * is extended (like first_non_input), rather than using the
+		 * foreach_use() iterator, we iterate the current live values
+		 * instead:
+		 */
+		BITSET_FOREACH_SET (name, live, ctx->alloc_count) {
+			/* Is this the last use? */
+			if (ctx->use[name] != instr->ip)
+				continue;
+			new_dead += name_size(ctx, name);
+			d("NEW_DEAD: %u (new_dead=%u)", name, new_dead);
+			BITSET_CLEAR(live, name);
+		}
+
+		cur_live += new_live;
+		cur_live -= new_dead;
+
+		assert(cur_live >= 0);
+		d("CUR_LIVE: %u", cur_live);
+
+		max = MAX2(max, cur_live);
+
+		/* account for written values which are not used later,
+		 * but after updating max (since they are for one cycle
+		 * live)
+		 */
+		cur_live -= next_dead;
+		assert(cur_live >= 0);
+
+		if (RA_DEBUG) {
+			unsigned cnt = 0;
+			BITSET_FOREACH_SET (name, live, ctx->alloc_count) {
+				cnt += name_size(ctx, name);
+			}
+			assert(cur_live == cnt);
+		}
+	}
+
+	d("block%u max=%u", block_id(block), max);
+
+	/* the remaining live should match liveout (for extra sanity testing): */
+	if (RA_DEBUG) {
+		unsigned liveout = 0;
+		BITSET_FOREACH_SET (name, bd->liveout, ctx->alloc_count) {
+			liveout += name_size(ctx, name);
+			BITSET_CLEAR(live, name);
+		}
+
+		if (cur_live != liveout) {
+			print_bitset("LEAKED", live, ctx->alloc_count);
+			/* TODO there are a few edge cases where live-range extension
+			 * tells us a value is livein.  But not used by the block or
+			 * liveout for the block.  Possibly a bug in the liverange
+			 * extension.  But for now leave the assert disabled:
+			assert(cur_live == liveout);
+			 */
+		}
+	}
+
+	ralloc_free(live);
+
+	return max;
+}
+
+static unsigned
+ra_calc_max_live_values(struct ir3_ra_ctx *ctx)
+{
+	unsigned max = 0;
+
+	foreach_block (block, &ctx->ir->block_list) {
+		unsigned block_live = ra_calc_block_live_values(ctx, block);
+		max = MAX2(max, block_live);
+	}
+
+	return max;
+}
+
 static void
 ra_add_interference(struct ir3_ra_ctx *ctx)
 {
@@ -800,6 +1000,11 @@ ra_add_interference(struct ir3_ra_ctx *ctx)
 				}
 			}
 		}
+	}
+
+	if (ctx->name_to_instr) {
+		unsigned max = ra_calc_max_live_values(ctx);
+		ra_set_register_target(ctx, max);
 	}
 
 	for (unsigned i = 0; i < ctx->alloc_count; i++) {
@@ -945,35 +1150,6 @@ reg_assign(struct ir3_ra_ctx *ctx, struct ir3_register *reg,
 	}
 }
 
-static void
-account_assignment(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
-{
-	struct ir3_ra_instr_data *id;
-	struct ir3_register *dst = instr->regs[0];
-	unsigned max;
-
-	if (is_high(instr))
-		return;
-
-	if (dst->flags & IR3_REG_ARRAY) {
-		struct ir3_array *arr =
-			ir3_lookup_array(ctx->ir, dst->array.id);
-		max = arr->reg + arr->length;
-	} else if ((id = &ctx->instrd[instr->ip]) && id->defn) {
-		unsigned name = scalar_name(ctx, id->defn, 0);
-		unsigned r = ra_get_node_reg(ctx->g, name);
-		max = ctx->set->ra_reg_to_gpr[r] + id->off + dest_regs(id->defn);
-	} else {
-		return;
-	}
-
-	if (is_half(instr)) {
-		ctx->max_half_assigned = MAX2(ctx->max_half_assigned, max);
-	} else {
-		ctx->max_assigned = MAX2(ctx->max_assigned, max);
-	}
-}
-
 /* helper to determine which regs to assign in which pass: */
 static bool
 should_assign(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
@@ -991,7 +1167,6 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 		struct ir3_register *reg;
 
 		if (writes_gpr(instr)) {
-			account_assignment(ctx, instr);
 			if (should_assign(ctx, instr)) {
 				reg_assign(ctx, instr->regs[0], instr);
 				if (instr->regs[0]->flags & IR3_REG_HALF)
@@ -1269,32 +1444,9 @@ ra_sanity_check(struct ir3 *ir)
 	}
 }
 
-/* Target is calculated in terms of half-regs (with a full reg
- * consisting of two half-regs).
- */
-static void
-ra_calc_merged_register_target(struct ir3_ra_ctx *ctx)
-{
-	const unsigned vec4 = 2 * 4;  // 8 half-regs
-	unsigned t = MAX2(2 * ctx->max_assigned, ctx->max_half_assigned);
-
-	/* second RA pass may have saved some regs, let's try to reclaim
-	 * the benefit by adjusting the target downwards slightly:
-	 */
-	if (ir3_has_latency_to_hide(ctx->ir)) {
-		if (t > 8 * vec4) {
-			t -= 2 * vec4;
-		} else if (t > 6 * vec4) {
-			t -= vec4;
-		}
-	}
-
-	ctx->max_target = t;
-}
-
 static int
 ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
-		unsigned nprecolor, bool scalar_pass, unsigned *target)
+		unsigned nprecolor, bool scalar_pass)
 {
 	struct ir3_ra_ctx ctx = {
 			.v = v,
@@ -1304,10 +1456,6 @@ ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	};
 	int ret;
 
-	if (scalar_pass) {
-		ctx.max_target = *target;
-	}
-
 	ra_init(&ctx);
 	ra_add_interference(&ctx);
 	ra_precolor(&ctx, precolor, nprecolor);
@@ -1316,17 +1464,6 @@ ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	ret = ra_alloc(&ctx);
 	ra_destroy(&ctx);
 
-	/* In the first pass, calculate the target register usage used in the
-	 * second (scalar) pass:
-	 */
-	if (!scalar_pass) {
-		/* TODO: round-robin support for pre-a6xx: */
-		if (ctx.ir->compiler->gpu_id >= 600) {
-			ra_calc_merged_register_target(&ctx);
-		}
-		*target = ctx.max_target;
-	}
-
 	return ret;
 }
 
@@ -1334,11 +1471,10 @@ int
 ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 		unsigned nprecolor)
 {
-	unsigned target = 0;
 	int ret;
 
 	/* First pass, assign the vecN (non-scalar) registers: */
-	ret = ir3_ra_pass(v, precolor, nprecolor, false, &target);
+	ret = ir3_ra_pass(v, precolor, nprecolor, false);
 	if (ret)
 		return ret;
 
@@ -1348,7 +1484,7 @@ ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	}
 
 	/* Second pass, assign the scalar registers: */
-	ret = ir3_ra_pass(v, precolor, nprecolor, true, &target);
+	ret = ir3_ra_pass(v, precolor, nprecolor, true);
 	if (ret)
 		return ret;
 

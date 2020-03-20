@@ -122,15 +122,6 @@ struct ir3_ra_ctx {
 	/* Mapping vreg name back to instruction, used select reg callback: */
 	struct hash_table *name_to_instr;
 
-	/* Tracking for max half/full register assigned.  We don't need to
-	 * track high registers.
-	 *
-	 * The feedback about registers used in first pass is used to choose
-	 * a target register usage to round-robin between in the 2nd pass.
-	 */
-	unsigned max_assigned;
-	unsigned max_half_assigned;
-
 	/* Tracking for select_reg callback */
 	unsigned start_search_reg;
 	unsigned max_target;
