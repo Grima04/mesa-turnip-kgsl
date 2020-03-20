@@ -715,12 +715,11 @@ ac_build_fdiv(struct ac_llvm_context *ctx,
 	 */
 	LLVMValueRef one = LLVMConstReal(LLVMTypeOf(num), 1.0);
 	LLVMValueRef rcp = LLVMBuildFDiv(ctx->builder, one, den, "");
-	LLVMValueRef ret = LLVMBuildFMul(ctx->builder, num, rcp, "");
-
 	/* Use v_rcp_f32 instead of precise division. */
-	if (!LLVMIsConstant(ret))
-		LLVMSetMetadata(ret, ctx->fpmath_md_kind, ctx->fpmath_md_2p5_ulp);
-	return ret;
+	if (!LLVMIsConstant(rcp))
+		LLVMSetMetadata(rcp, ctx->fpmath_md_kind, ctx->fpmath_md_2p5_ulp);
+
+	return LLVMBuildFMul(ctx->builder, num, rcp, "");
 }
 
 /* See fast_idiv_by_const.h. */
