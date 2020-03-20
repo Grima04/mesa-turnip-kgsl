@@ -240,6 +240,9 @@ si_build_ds_ordered_op(struct si_shader_context *ctx, const char *opcode,
 		       LLVMValueRef m0, LLVMValueRef value, unsigned ordered_count_index,
 		       bool release, bool done)
 {
+	if (ctx->screen->info.chip_class >= GFX10)
+		ordered_count_index |= 1 << 24; /* number of dwords == 1 */
+
 	LLVMValueRef args[] = {
 		LLVMBuildIntToPtr(ctx->ac.builder, m0,
 				  LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS), ""),
