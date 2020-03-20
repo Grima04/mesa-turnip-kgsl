@@ -652,7 +652,7 @@ init_args(struct gallivm_state *gallivm,
    load_attribute(gallivm, args, key, 0, attr_pos);
 
    pixel_center = lp_build_const_vec(gallivm, typef4,
-                                     key->pixel_center_half ? 0.5 : 0.0);
+                                     (!key->multisample && key->pixel_center_half) ? 0.5 : 0.0);
 
    /*
     * xy are first two elems in v0a/v1a/v2a but just use vec4 arit
@@ -843,6 +843,7 @@ lp_make_setup_variant_key(struct llvmpipe_context *lp,
    key->num_inputs = fs->info.base.num_inputs;
    key->flatshade_first = lp->rasterizer->flatshade_first;
    key->pixel_center_half = lp->rasterizer->half_pixel_center;
+   key->multisample = lp->rasterizer->multisample;
    key->twoside = lp->rasterizer->light_twoside;
    key->size = Offset(struct lp_setup_variant_key,
                       inputs[key->num_inputs]);
