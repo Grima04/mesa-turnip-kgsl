@@ -289,6 +289,7 @@ struct section {
    const char *buffer_name;
    uint32_t *data;
    int dword_count;
+   size_t data_offset;
 };
 
 #define MAX_SECTIONS 256
@@ -417,6 +418,8 @@ read_data_file(FILE *file)
    char *line = NULL;
    size_t line_size;
    uint32_t offset, value;
+   uint32_t ring_head = UINT32_MAX, ring_tail = UINT32_MAX;
+   bool ring_wraps = false;
    char *ring_name = NULL;
    struct gen_device_info devinfo;
 
@@ -528,6 +531,9 @@ read_data_file(FILE *file)
          if (matched == 1)
             print_head(reg);
 
+         sscanf(line, "  HEAD: 0x%08x [0x%08X]\n", &reg, &ring_head);
+         sscanf(line, "  TAIL: 0x%08x\n", &ring_tail);
+
          matched = sscanf(line, "  ACTHD: 0x%08x\n", &reg);
          if (matched == 1) {
             print_register(spec,
@@ -602,6 +608,33 @@ read_data_file(FILE *file)
     */
    qsort(sections, num_sections, sizeof(sections[0]), qsort_hw_context_first);
 
+   for (int s = 0; s < num_sections; s++) {
+      if (strcmp(sections[s].buffer_name, "ring buffer") != 0)
+         continue;
+      if (ring_head == UINT32_MAX) {
+         ring_head = 0;
+         ring_tail = UINT32_MAX;
+      }
+      if (ring_tail == UINT32_MAX)
+         ring_tail = (ring_head - sizeof(uint32_t)) %
+            (sections[s].dword_count * sizeof(uint32_t));
+      if (ring_head > ring_tail) {
+         size_t total_size = sections[s].dword_count * sizeof(uint32_t) -
+            ring_head + ring_tail;
+         size_t size1 = total_size - ring_tail;
+         uint32_t *new_data = calloc(total_size, 1);
+         memcpy(new_data, (uint8_t *)sections[s].data + ring_head, size1);
+         memcpy((uint8_t *)new_data + size1, sections[s].data, ring_tail);
+         free(sections[s].data);
+         sections[s].data = new_data;
+         ring_head = 0;
+         ring_tail = total_size;
+         ring_wraps = true;
+      }
+      sections[s].data_offset = ring_head;
+      sections[s].dword_count = (ring_tail - ring_head) / sizeof(uint32_t);
+   }
+
    enum gen_batch_decode_flags batch_flags = 0;
    if (option_color == COLOR_ALWAYS)
       batch_flags |= GEN_BATCH_DECODE_IN_COLOR;
@@ -625,14 +658,19 @@ read_data_file(FILE *file)
              (unsigned) (sections[s].gtt_offset >> 32),
              (unsigned) sections[s].gtt_offset);
 
-      if (option_print_all_bb ||
+      bool is_ring_buffer = strcmp(sections[s].buffer_name, "ring buffer") == 0;
+      if (option_print_all_bb || is_ring_buffer ||
           strcmp(sections[s].buffer_name, "batch buffer") == 0 ||
-          strcmp(sections[s].buffer_name, "ring buffer") == 0 ||
           strcmp(sections[s].buffer_name, "HW Context") == 0) {
+         if (is_ring_buffer && ring_wraps)
+            batch_ctx.flags &= ~GEN_BATCH_DECODE_OFFSETS;
          batch_ctx.engine = class;
-         gen_print_batch(&batch_ctx, sections[s].data,
-                         sections[s].dword_count * 4,
-                         sections[s].gtt_offset, false);
+         uint8_t *data = (uint8_t *)sections[s].data + sections[s].data_offset;
+         uint64_t batch_addr = sections[s].gtt_offset + sections[s].data_offset;
+         gen_print_batch(&batch_ctx, (uint32_t *)data,
+                         sections[s].dword_count * 4, batch_addr,
+                         is_ring_buffer);
+         batch_ctx.flags = batch_flags;
       }
    }
 
