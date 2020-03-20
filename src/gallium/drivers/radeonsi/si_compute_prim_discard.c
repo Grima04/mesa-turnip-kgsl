@@ -108,7 +108,6 @@
  *   (patch elimination where tess factors are 0 would be possible to implement)
  * - The vertex shader must not contain memory stores.
  * - All VS resources must not have a write usage in the command buffer.
- *   (TODO: all shader buffers currently set the write usage)
  * - Bindless textures and images must not occur in the vertex shader.
  *
  * User data SGPR layout:
