@@ -315,6 +315,8 @@ bi_get_src(bi_instruction *ins, struct bi_registers *regs, unsigned s, bool is_f
                 return bi_get_src_const(regs, 0);
         else if (src & BIR_INDEX_PASS)
                 return src & ~BIR_INDEX_PASS;
+        else if (src & BIR_INDEX_CONSTANT)
+                return bi_get_src_const(regs, 0); /*TODO ins->constant.u64 */
         else
                 unreachable("Unknown src");
 }
@@ -550,6 +552,33 @@ bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_b
         return packed;
 }
 
+/* Packs the next two constants as a dedicated constant quadword at the end of
+ * the clause, returning the number packed. */
+
+static unsigned
+bi_pack_constants(bi_context *ctx, bi_clause *clause,
+                unsigned index,
+                struct util_dynarray *emission)
+{
+        /* After these two, are we done? Determines tag */
+        bool done = clause->constant_count <= (index + 2);
+        bool only = clause->constant_count <= (index + 1);
+
+        /* TODO: Pos */
+        assert(index == 0 && clause->bundle_count == 1);
+
+        struct bifrost_fmt_constant quad = {
+                .pos = 0, /* TODO */
+                .tag = done ? BIFROST_FMTC_FINAL : BIFROST_FMTC_CONSTANTS,
+                .imm_1 = clause->constants[index + 0] >> 4,
+                .imm_2 = only ? 0 : clause->constants[index + 1] >> 4
+        };
+
+        util_dynarray_append(emission, struct bifrost_fmt_constant, quad);
+
+        return 2;
+}
+
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
                 struct util_dynarray *emission)
@@ -560,8 +589,11 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
         /* Used to decide if we elide writes */
         bool is_fragment = ctx->stage == MESA_SHADER_FRAGMENT;
 
+        /* State for packing constants throughout */
+        unsigned constant_index = 0;
+
         struct bifrost_fmt1 quad_1 = {
-                .tag = BIFROST_FMT1_FINAL,
+                .tag = clause->constant_count ? BIFROST_FMT1_CONSTANTS : BIFROST_FMT1_FINAL,
                 .header = bi_pack_header(clause, next, is_fragment),
                 .ins_1 = ins_1.lo,
                 .ins_2 = ins_1.hi & ((1 << 11) - 1),
@@ -569,6 +601,13 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
         };
 
         util_dynarray_append(emission, struct bifrost_fmt1, quad_1);
+
+        /* Pack the remaining constants */
+
+        while (constant_index < clause->constant_count) {
+                constant_index += bi_pack_constants(ctx, clause,
+                                constant_index, emission);
+        }
 }
 
 static bi_clause *

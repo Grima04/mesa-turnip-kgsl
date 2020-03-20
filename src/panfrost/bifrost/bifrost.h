@@ -403,6 +403,16 @@ struct bifrost_fmt1 {
 #define BIFROST_FMT1_FINAL           0b01001
 #define BIFROST_FMT1_CONSTANTS       0b00001
 
+#define BIFROST_FMTC_CONSTANTS       0b0011
+#define BIFROST_FMTC_FINAL           0b0111
+
+struct bifrost_fmt_constant {
+        unsigned pos : 4;
+        unsigned tag : 4;
+        uint64_t imm_1 : 60;
+        uint64_t imm_2 : 60;
+} __attribute__((packed));
+
 enum bifrost_reg_control {
         BIFROST_WRITE_FMA_P2         = 1,
         BIFROST_WRITE_FMA_P2_READ_P3 = 2,
