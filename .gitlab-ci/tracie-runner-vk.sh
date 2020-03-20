@@ -11,6 +11,15 @@ export VK_ICD_FILENAMES="$(pwd)/install/share/vulkan/icd.d/${VK_DRIVER}_icd.x86_
 export VK_LAYER_PATH="$VK_LAYER_PATH:/VulkanTools/build/etc/vulkan/explicit_layer.d"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/VulkanTools/build/lib"
 
+# Set environment for Wine
+export WINEDEBUG="-all"
+export WINEPREFIX="/dxvk-wine64"
+export WINEESYNC=1
+
+# Set environment for DXVK
+export DXVK_LOG_LEVEL="none"
+export DXVK_STATE_CACHE=0
+
 # Perform a self-test to ensure tracie is working properly.
 "$INSTALL/tracie/tests/test.sh"
 
