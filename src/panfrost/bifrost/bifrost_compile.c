@@ -178,22 +178,22 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         address.src_types[2] = nir_type_uint32;
         address.src_types[3] = nir_intrinsic_type(instr);
         address.dest = bi_make_temp(ctx);
-        address.dest_type = nir_type_uint64;
-        address.writemask = (1 << 8) - 1;
+        address.dest_type = nir_type_uint32;
+        address.writemask = (1 << 12) - 1;
 
         bi_instruction st = {
                 .type = BI_STORE_VAR,
                 .src = {
-                        address.dest,
-                        bir_src_index(&instr->src[0])
+                        bir_src_index(&instr->src[0]),
+                        address.dest, address.dest, address.dest,
                 },
                 .src_types = {
-                        nir_type_uint64,
-                        nir_type_uint32
+                        nir_type_uint32,
+                        nir_type_uint32, nir_type_uint32, nir_type_uint32,
                 },
                 .swizzle = {
-                        { 0 },
-                        { 0, 1, 2, 3 }
+                        { 0, 1, 2, 3 },
+                        { 0 }, { 1 }, { 2}
                 }
         };
 

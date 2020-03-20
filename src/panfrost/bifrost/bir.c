@@ -93,10 +93,10 @@ bi_from_bytemask(uint16_t bytemask, unsigned bytes)
 }
 
 unsigned
-bi_get_component_count(bi_instruction *ins)
+bi_get_component_count(bi_instruction *ins, unsigned src)
 {
         if (bi_class_props[ins->type] & BI_VECTOR) {
-                return 4;
+                return (src == 0) ? 4 : 1;
         } else {
                 /* Stores imply VECTOR */
                 assert(ins->dest_type);
@@ -119,10 +119,10 @@ uint16_t
 bi_bytemask_of_read_components(bi_instruction *ins, unsigned node)
 {
         uint16_t mask = 0x0;
-        unsigned component_count = bi_get_component_count(ins);
 
         bi_foreach_src(ins, s) {
                 if (ins->src[s] != node) continue;
+                unsigned component_count = bi_get_component_count(ins, s);
                 nir_alu_type T = ins->src_types[s];
                 unsigned size = nir_alu_type_get_type_size(T);
                 unsigned bytes = (MAX2(size, 8) / 8);

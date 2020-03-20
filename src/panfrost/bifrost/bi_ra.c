@@ -114,7 +114,7 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
         if (ins->src[src] >= l->node_count)
                 return;
 
-        bool vector = (bi_class_props[ins->type] & BI_VECTOR);
+        bool vector = (bi_class_props[ins->type] & BI_VECTOR) && src == 0;
         unsigned offset = 0;
 
         if (vector) {
@@ -125,7 +125,7 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
                 unsigned size = nir_alu_type_get_type_size(T);
                 unsigned bytes = (MAX2(size, 8) / 8);
                 unsigned comps_per_reg = 4 / bytes;
-                unsigned components = bi_get_component_count(ins);
+                unsigned components = bi_get_component_count(ins, src);
 
                 for (unsigned i = 0; i < components; ++i) {
                         unsigned off = ins->swizzle[src][i] / comps_per_reg;
