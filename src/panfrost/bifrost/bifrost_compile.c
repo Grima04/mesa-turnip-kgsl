@@ -171,6 +171,12 @@ static void
 bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bi_instruction address = bi_load(BI_LOAD_VAR_ADDRESS, instr);
+        address.src[1] = BIR_INDEX_REGISTER | 61; /* TODO: RA */
+        address.src[2] = BIR_INDEX_REGISTER | 62;
+        address.src[3] = 0;
+        address.src_types[1] = nir_type_uint32;
+        address.src_types[2] = nir_type_uint32;
+        address.src_types[3] = nir_intrinsic_type(instr);
         address.dest = bi_make_temp(ctx);
         address.dest_type = nir_type_uint64;
         address.writemask = (1 << 8) - 1;

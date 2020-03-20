@@ -260,6 +260,8 @@ enum bifrost_ldst_type {
         BIFROST_LDST_U32 = 3
 };
 
+#define BIFROST_ADD_OP_LD_VAR_ADDR (0x18000 >> 10)
+
 struct bifrost_ld_var_addr {
         unsigned src0 : 3;
         unsigned src1 : 3;

@@ -119,6 +119,8 @@ bi_assign_uniform_constant_single(
                 return assigned;
 
         bi_foreach_src(ins, s) {
+                if (s == 0 && ins->type == BI_LOAD_VAR_ADDRESS) continue;
+
                 if (ins->src[s] & BIR_INDEX_CONSTANT) {
                         /* TODO: lo/hi matching? */
                         uint64_t cons = ins->constant.u64;
@@ -549,6 +551,36 @@ bi_pack_add_ld_ubo(bi_clause *clause, bi_instruction *ins, struct bi_registers *
         return bi_pack_add_2src(ins, regs, ops[components - 1]);
 }
 
+static enum bifrost_ldst_type
+bi_pack_ldst_type(nir_alu_type T)
+{
+        switch (T) {
+        case nir_type_float16: return BIFROST_LDST_F16;
+        case nir_type_float32: return BIFROST_LDST_F32;
+        case nir_type_int32:   return BIFROST_LDST_I32;
+        case nir_type_uint32:  return BIFROST_LDST_U32;
+        default: unreachable("Invalid type loaded");
+        }
+}
+
+static unsigned
+bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+{
+        /* Only direct loads supported */
+        assert(ins->src[0] == BIR_INDEX_CONSTANT);
+
+        struct bifrost_ld_var_addr pack = {
+                .src0 = bi_get_src(ins, regs, 1, false),
+                .src1 = bi_get_src(ins, regs, 2, false),
+                .location = ins->constant.u64,
+                .type = bi_pack_ldst_type(ins->src_types[3]),
+                .op = BIFROST_ADD_OP_LD_VAR_ADDR
+        };
+
+        bi_write_data_register(clause, ins);
+        RETURN_PACKED(pack);
+}
+
 static unsigned
 bi_pack_add_atest(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
@@ -613,6 +645,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_LOAD_VAR:
                 return bi_pack_add_ld_vary(clause, bundle.add, regs);
         case BI_LOAD_VAR_ADDRESS:
+                return bi_pack_add_ld_var_addr(clause, bundle.add, regs);
         case BI_MINMAX:
         case BI_MOV:
         case BI_FMOV:
