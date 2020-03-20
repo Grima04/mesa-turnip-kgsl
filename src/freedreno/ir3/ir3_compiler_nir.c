@@ -2197,6 +2197,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
 		sam = ir3_META_TEX_PREFETCH(b);
 		__ssa_dst(sam)->wrmask = MASK(ncomp);   /* dst */
+		__ssa_src(sam, get_barycentric_pixel(ctx), 0);
 		sam->prefetch.input_offset =
 				ir3_nir_coord_offset(tex->src[idx].src.ssa);
 		sam->prefetch.tex  = tex->texture_index;
@@ -3017,14 +3018,8 @@ emit_instructions(struct ir3_context *ctx)
 	 * only need ij_pixel for "old style" varying inputs (ie.
 	 * tgsi_to_nir)
 	 */
-	struct ir3_instruction *vcoord = NULL;
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
-		struct ir3_instruction *xy[2];
-
-		vcoord = create_input(ctx, 0x3);
-		ir3_split_dest(ctx->block, xy, vcoord, 0, 2);
-
-		ctx->ij_pixel = ir3_create_collect(ctx, xy, 2);
+		ctx->ij_pixel = create_input(ctx, 0x3);
 	}
 
 	/* Setup inputs: */
@@ -3035,9 +3030,9 @@ emit_instructions(struct ir3_context *ctx)
 	/* Defer add_sysval_input() stuff until after setup_inputs(),
 	 * because sysvals need to be appended after varyings:
 	 */
-	if (vcoord) {
+	if (ctx->ij_pixel) {
 		add_sysval_input_compmask(ctx, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL,
-				0x3, vcoord);
+				0x3, ctx->ij_pixel);
 	}
 
 
