@@ -412,16 +412,6 @@ generate_fs_loop(struct gallivm_state *gallivm,
    ssbo_ptr = lp_jit_context_ssbos(gallivm, context_ptr);
    num_ssbo_ptr = lp_jit_context_num_ssbos(gallivm, context_ptr);
 
-   lp_build_for_loop_begin(&loop_state, gallivm,
-                           lp_build_const_int32(gallivm, 0),
-                           LLVMIntULT,
-                           num_loop,
-                           lp_build_const_int32(gallivm, 1));
-
-   mask_ptr = LLVMBuildGEP(builder, mask_store,
-                           &loop_state.counter, 1, "mask_ptr");
-   mask_val = LLVMBuildLoad(builder, mask_ptr, "");
-
    memset(outputs, 0, sizeof outputs);
 
    for(cbuf = 0; cbuf < key->nr_cbufs; cbuf++) {
@@ -442,6 +432,15 @@ generate_fs_loop(struct gallivm_state *gallivm,
       }
    }
 
+   lp_build_for_loop_begin(&loop_state, gallivm,
+                           lp_build_const_int32(gallivm, 0),
+                           LLVMIntULT,
+                           num_loop,
+                           lp_build_const_int32(gallivm, 1));
+
+   mask_ptr = LLVMBuildGEP(builder, mask_store,
+                           &loop_state.counter, 1, "mask_ptr");
+   mask_val = LLVMBuildLoad(builder, mask_ptr, "");
 
    /* 'mask' will control execution based on quad's pixel alive/killed state */
    lp_build_mask_begin(&mask, gallivm, type, mask_val);
