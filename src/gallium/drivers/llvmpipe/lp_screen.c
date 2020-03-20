@@ -238,8 +238,6 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 1;
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return 16;
-   case PIPE_CAP_TEXTURE_MULTISAMPLE:
-      return 0;
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return 64;
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
@@ -271,8 +269,10 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TGSI_TEX_TXF_LZ:
    case PIPE_CAP_SAMPLER_VIEW_TARGET:
       return 1;
-   case PIPE_CAP_FAKE_SW_MSAA:
-      return 1;
+   case PIPE_CAP_FAKE_SW_MSAA: {
+      struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
+      return lscreen->use_tgsi ? 1 : 0;
+   }
    case PIPE_CAP_TEXTURE_QUERY_LOD:
    case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
    case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
@@ -399,6 +399,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 1;
    case PIPE_CAP_TGSI_VOTE:
    case PIPE_CAP_LOAD_CONSTBUF:
+   case PIPE_CAP_TEXTURE_MULTISAMPLE:
    case PIPE_CAP_PACKED_UNIFORMS: {
       struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
       return !lscreen->use_tgsi;
@@ -621,7 +622,6 @@ static const struct nir_shader_compiler_options gallivm_nir_options = {
    .lower_extract_word = true,
    .lower_rotate = true,
    .lower_ifind_msb = true,
-   .optimize_sample_mask_in = true,
    .max_unroll_iterations = 32,
    .use_interpolated_input_intrinsics = true,
    .lower_to_scalar = true,
@@ -676,7 +676,7 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
           target == PIPE_TEXTURE_CUBE ||
           target == PIPE_TEXTURE_CUBE_ARRAY);
 
-   if (sample_count > 1)
+   if (sample_count != 0 && sample_count != 1 && sample_count != 4)
       return false;
 
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))

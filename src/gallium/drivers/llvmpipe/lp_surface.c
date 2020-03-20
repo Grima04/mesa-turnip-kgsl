@@ -121,14 +121,6 @@ static void lp_blit(struct pipe_context *pipe,
    if (blit_info->render_condition_enable && !llvmpipe_check_render_cond(lp))
       return;
 
-   if (info.src.resource->nr_samples > 1 &&
-       info.dst.resource->nr_samples <= 1 &&
-       !util_format_is_depth_or_stencil(info.src.resource->format) &&
-       !util_format_is_pure_integer(info.src.resource->format)) {
-      debug_printf("llvmpipe: color resolve unimplemented\n");
-      return;
-   }
-
    if (util_try_blit_via_copy_region(pipe, &info)) {
       return; /* done */
    }
