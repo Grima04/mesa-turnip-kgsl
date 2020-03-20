@@ -3210,6 +3210,7 @@ generate_variant(struct llvmpipe_context *lp,
          fullcolormask &&
          !key->stencil[0].enabled &&
          !key->alpha.enabled &&
+         !key->multisample &&
          !key->blend.alpha_to_coverage &&
          !key->depth.enabled &&
          !shader->info.base.uses_kill &&
