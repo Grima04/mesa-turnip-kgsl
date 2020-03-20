@@ -71,11 +71,99 @@ struct bi_registers {
         bool read_port3;
 
         /* Packed uniform/constant */
-        unsigned uniform_constant;
+        uint8_t uniform_constant;
 
         /* Whether writes are actually for the last instruction */
         bool first_instruction;
 };
+
+/* The uniform/constant slot allows loading a contiguous 64-bit immediate or
+ * pushed uniform per bundle. Figure out which one we need in the bundle (the
+ * scheduler needs to ensure we only have one type per bundle), validate
+ * everything, and rewrite away the register/uniform indices to use 3-bit
+ * sources directly. */
+
+static unsigned
+bi_lookup_constant(bi_clause *clause, uint64_t cons)
+{
+        for (unsigned i = 0; i < clause->constant_count; ++i) {
+                /* Only check top 60-bits since that's what's actually embedded
+                 * in the clause, the bottom 4-bits are bundle-inline */
+
+                if ((cons >> 4) == (clause->constants[i] >> 4))
+                        return i;
+        }
+
+        unreachable("Invalid constant accessed");
+}
+
+static unsigned
+bi_constant_field(unsigned idx)
+{
+        assert(idx <= 5);
+
+        const unsigned values[] = {
+                4, 5, 6, 7, 2, 3
+        };
+
+        return values[idx] << 4;
+}
+
+static bool
+bi_assign_uniform_constant_single(
+                struct bi_registers *regs,
+                bi_clause *clause,
+                bi_instruction *ins, bool assigned, bool fast_zero)
+{
+        if (!ins)
+                return assigned;
+
+        bi_foreach_src(ins, s) {
+                if (ins->src[s] & BIR_INDEX_CONSTANT) {
+                        /* TODO: lo/hi matching? */
+                        uint64_t cons = ins->constant.u64;
+                        unsigned idx = bi_lookup_constant(clause, cons);
+                        unsigned f = bi_constant_field(idx) | (cons & 0xF);
+
+                        if (assigned && regs->uniform_constant != f)
+                                unreachable("Mismatched uniform/const field: imm");
+
+                        regs->uniform_constant = f;
+                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_CONST_LO;
+                        assigned = true;
+                } else if (ins->src[s] & BIR_INDEX_ZERO && (ins->type == BI_LOAD_UNIFORM || ins->type == BI_LOAD_VAR)) {
+                        /* XXX: HACK UNTIL WE HAVE HI MATCHING DUE TO OVERFLOW XXX */
+                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_CONST_HI;
+                } else if (ins->src[s] & BIR_INDEX_ZERO && !fast_zero) {
+                        /* FMAs have a fast zero port, ADD needs to use the
+                         * uniform/const port's special 0 mode handled here */
+                        unsigned f = 0;
+
+                        if (assigned && regs->uniform_constant != f)
+                                unreachable("Mismatched uniform/const field: 0");
+
+                        regs->uniform_constant = f;
+                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_CONST_LO;
+                        assigned = true;
+                } else if (s & BIR_INDEX_UNIFORM) {
+                        unreachable("Push uniforms not implemented yet");
+                }
+        }
+
+        return assigned;
+}
+
+static void
+bi_assign_uniform_constant(
+                bi_clause *clause,
+                struct bi_registers *regs,
+                bi_bundle bundle)
+{
+        bool assigned =
+                bi_assign_uniform_constant_single(regs, clause, bundle.fma, false, true);
+
+        bi_assign_uniform_constant_single(regs, clause, bundle.add, assigned, false);
+}
 
 /* Assigns a port for reading, before anything is written */
 
@@ -280,29 +368,6 @@ bi_get_src_reg_port(struct bi_registers *regs, unsigned src)
 }
 
 static enum bifrost_packed_src
-bi_get_src_const(struct bi_registers *regs, unsigned constant)
-{
-        if (regs->uniform_constant & (1 << 7))
-                unreachable("Tried to get constant but loading uniforms");
-
-        unsigned loc = (regs->uniform_constant >> 4) & 0x7;
-
-        if (loc != 0)
-                unreachable("TODO: constants in clauses");
-
-        unsigned lo = regs->uniform_constant & 0xF;
-
-        if (lo == 0) {
-                if (constant != 0)
-                        unreachable("Tried to load !0 in 0 slot");
-
-                return BIFROST_SRC_CONST_LO;
-        } else {
-                unreachable("Special slot is not a fixed immediate");
-        }
-}
-
-static enum bifrost_packed_src
 bi_get_src(bi_instruction *ins, struct bi_registers *regs, unsigned s, bool is_fma)
 {
         unsigned src = ins->src[s];
@@ -311,12 +376,8 @@ bi_get_src(bi_instruction *ins, struct bi_registers *regs, unsigned s, bool is_f
                 return bi_get_src_reg_port(regs, src);
         else if (src & BIR_INDEX_ZERO && is_fma)
                 return BIFROST_SRC_STAGE;
-        else if (src & BIR_INDEX_ZERO)
-                return bi_get_src_const(regs, 0);
         else if (src & BIR_INDEX_PASS)
                 return src & ~BIR_INDEX_PASS;
-        else if (src & BIR_INDEX_CONSTANT)
-                return bi_get_src_const(regs, 0); /*TODO ins->constant.u64 */
         else
                 unreachable("Unknown src");
 }
@@ -538,6 +599,7 @@ static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle)
 {
         struct bi_registers regs = bi_assign_ports(bundle, prev);
+        bi_assign_uniform_constant(clause, &regs, bundle);
         regs.first_instruction = first_bundle;
 
         uint64_t reg = bi_pack_registers(regs);
