@@ -485,10 +485,11 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		}
 	}
 
-	LLVMValueRef ordered_wave_id = ac_get_arg(&ctx->ac, param_ordered_wave_id);
+	LLVMValueRef ordered_wave_id = NULL;
 
 	/* Extract the ordered wave ID. */
 	if (VERTEX_COUNTER_GDS_MODE == 2) {
+		ordered_wave_id = ac_get_arg(&ctx->ac, param_ordered_wave_id);
 		ordered_wave_id = LLVMBuildLShr(builder, ordered_wave_id,
 						LLVMConstInt(ctx->ac.i32, 6, 0), "");
 		ordered_wave_id = LLVMBuildAnd(builder, ordered_wave_id,
