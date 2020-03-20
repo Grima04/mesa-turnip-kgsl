@@ -2977,6 +2977,17 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
    struct si_surface *cb = NULL;
    unsigned cb_color_info = 0;
 
+   /* Enable CMASK/FMASK/HTILE/DCC caching in L2 for small chips. */
+   unsigned meta_write_policy, meta_read_policy;
+   /* TODO: investigate whether LRU improves performance on other chips too */
+   if (sctx->screen->info.num_render_backends <= 4) {
+      meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
+      meta_read_policy =  V_02807C_CACHE_LRU_RD; /* cache reads */
+   } else {
+      meta_write_policy = V_02807C_CACHE_STREAM_WR; /* write combine */
+      meta_read_policy =  V_02807C_CACHE_NOA_RD;    /* don't cache reads */
+   }
+
    /* Colorbuffers. */
    for (i = 0; i < nr_cbufs; i++) {
       uint64_t cb_color_base, cb_color_fmask, cb_color_cmask, cb_dcc_base;
@@ -3232,12 +3243,20 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          radeon_emit(cs, zb->db_depth_base);   /* DB_Z_WRITE_BASE */
          radeon_emit(cs, zb->db_stencil_base); /* DB_STENCIL_WRITE_BASE */
 
-         radeon_set_context_reg_seq(cs, R_028068_DB_Z_READ_BASE_HI, 5);
+         radeon_set_context_reg_seq(cs, R_028068_DB_Z_READ_BASE_HI, 6);
          radeon_emit(cs, zb->db_depth_base >> 32);      /* DB_Z_READ_BASE_HI */
          radeon_emit(cs, zb->db_stencil_base >> 32);    /* DB_STENCIL_READ_BASE_HI */
          radeon_emit(cs, zb->db_depth_base >> 32);      /* DB_Z_WRITE_BASE_HI */
          radeon_emit(cs, zb->db_stencil_base >> 32);    /* DB_STENCIL_WRITE_BASE_HI */
          radeon_emit(cs, zb->db_htile_data_base >> 32); /* DB_HTILE_DATA_BASE_HI */
+         radeon_emit(cs, /* DB_RMI_L2_CACHE_CONTROL */
+                     S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
+                     S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
+                     S_02807C_HTILE_WR_POLICY(meta_write_policy) |
+                     S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
+                     S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_RD) |
+                     S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_RD) |
+                     S_02807C_HTILE_RD_POLICY(meta_read_policy));
       } else if (sctx->chip_class == GFX9) {
          radeon_set_context_reg_seq(cs, R_028014_DB_HTILE_DATA_BASE, 3);
          radeon_emit(cs, zb->db_htile_data_base); /* DB_HTILE_DATA_BASE */
@@ -3323,6 +3342,18 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
    /* PA_SC_WINDOW_SCISSOR_TL is set in si_init_config() */
    radeon_set_context_reg(cs, R_028208_PA_SC_WINDOW_SCISSOR_BR,
                           S_028208_BR_X(state->width) | S_028208_BR_Y(state->height));
+
+   if (nr_cbufs) {
+      radeon_set_context_reg(cs, R_028410_CB_RMI_GL2_CACHE_CONTROL,
+                             S_028410_CMASK_WR_POLICY(meta_write_policy) |
+                             S_028410_FMASK_WR_POLICY(meta_write_policy) |
+                             S_028410_DCC_WR_POLICY(meta_write_policy) |
+                             S_028410_COLOR_WR_POLICY(V_028410_CACHE_STREAM_WR) |
+                             S_028410_CMASK_RD_POLICY(meta_read_policy) |
+                             S_028410_FMASK_RD_POLICY(meta_read_policy) |
+                             S_028410_DCC_RD_POLICY(meta_read_policy) |
+                             S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD));
+   }
 
    if (sctx->screen->dfsm_allowed) {
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
@@ -5366,34 +5397,6 @@ static void si_init_config(struct si_context *sctx)
                         sscreen->info.pa_sc_tile_steering_override);
       }
 
-      /* Enable CMASK/FMASK/HTILE/DCC caching in L2 for small chips. */
-      unsigned meta_write_policy, meta_read_policy;
-      /* TODO: investigate whether LRU improves performance on other chips too */
-      if (sscreen->info.num_render_backends <= 4) {
-         meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
-         meta_read_policy = V_02807C_CACHE_LRU_RD;  /* cache reads */
-      } else {
-         meta_write_policy = V_02807C_CACHE_STREAM_WR; /* write combine */
-         meta_read_policy = V_02807C_CACHE_NOA_RD;     /* don't cache reads */
-      }
-
-      si_pm4_set_reg(pm4, R_02807C_DB_RMI_L2_CACHE_CONTROL,
-                     S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
-                        S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
-                        S_02807C_HTILE_WR_POLICY(meta_write_policy) |
-                        S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
-                        S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_RD) |
-                        S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_RD) |
-                        S_02807C_HTILE_RD_POLICY(meta_read_policy));
-
-      si_pm4_set_reg(
-         pm4, R_028410_CB_RMI_GL2_CACHE_CONTROL,
-         S_028410_CMASK_WR_POLICY(meta_write_policy) | S_028410_FMASK_WR_POLICY(meta_write_policy) |
-            S_028410_DCC_WR_POLICY(meta_write_policy) |
-            S_028410_COLOR_WR_POLICY(V_028410_CACHE_STREAM_WR) |
-            S_028410_CMASK_RD_POLICY(meta_read_policy) |
-            S_028410_FMASK_RD_POLICY(meta_read_policy) | S_028410_DCC_RD_POLICY(meta_read_policy) |
-            S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD));
       si_pm4_set_reg(pm4, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
 
       si_pm4_set_reg(pm4, R_00B0C0_SPI_SHADER_REQ_CTRL_PS,
