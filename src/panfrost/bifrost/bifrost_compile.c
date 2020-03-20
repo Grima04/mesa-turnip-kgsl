@@ -230,7 +230,7 @@ bi_emit_sysval(bi_context *ctx, nir_instr *instr,
         bi_instruction load = {
                 .type = BI_LOAD_UNIFORM,
                 .writemask = (1 << (nr_components * 4)) - 1,
-                .src = { BIR_INDEX_CONSTANT},
+                .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                 .constant = { (uniform * 16) + offset },
                 .dest = bir_dest_index(&nir_dest),
                 .dest_type = nir_type_uint32, /* TODO */
