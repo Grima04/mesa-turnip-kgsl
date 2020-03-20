@@ -105,6 +105,16 @@ bi_get_component_count(bi_instruction *ins)
         }
 }
 
+unsigned
+bi_load32_components(bi_instruction *ins)
+{
+        unsigned mask = bi_from_bytemask(ins->writemask, 4);
+        unsigned count = util_bitcount(mask);
+        assert(mask == ((1 << count) - 1));
+        assert(count >= 1 && count <= 4);
+        return count;
+}
+
 uint16_t
 bi_bytemask_of_read_components(bi_instruction *ins, unsigned node)
 {

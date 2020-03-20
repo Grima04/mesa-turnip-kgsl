@@ -531,6 +531,7 @@ bool bi_is_src_swizzled(bi_instruction *ins, unsigned s);
 bool bi_has_arg(bi_instruction *ins, unsigned arg);
 uint16_t bi_from_bytemask(uint16_t bytemask, unsigned bytes);
 unsigned bi_get_component_count(bi_instruction *ins);
+unsigned bi_load32_components(bi_instruction *ins);
 uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 
 /* BIR passes */
