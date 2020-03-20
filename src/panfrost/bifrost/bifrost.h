@@ -110,6 +110,17 @@ struct bifrost_add_inst {
         unsigned op   : 17;
 } __attribute__((packed));
 
+#define BIFROST_ADD_OP_LD_UBO_1 (0x0c1a0 >> 3)
+#define BIFROST_ADD_OP_LD_UBO_2 (0x0c1e0 >> 3)
+#define BIFROST_ADD_OP_LD_UBO_3 (0x0caa0 >> 3)
+#define BIFROST_ADD_OP_LD_UBO_4 (0x0c220 >> 3)
+
+struct bifrost_add_2src {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned op   : 14;
+} __attribute__((packed));
+
 #define BIFROST_ADD_OP_ATEST (0xc8f)
 
 struct bifrost_add_atest {

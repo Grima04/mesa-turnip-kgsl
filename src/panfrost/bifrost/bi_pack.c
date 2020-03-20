@@ -352,6 +352,15 @@ bi_pack_registers(struct bi_registers regs)
         return packed;
 }
 
+static void
+bi_write_data_register(bi_clause *clause, bi_instruction *ins)
+{
+        assert(ins->dest & BIR_INDEX_REGISTER);
+        unsigned reg = ins->dest & ~BIR_INDEX_REGISTER;
+        assert(reg <= 63);
+        clause->data_register = reg;
+}
+
 static enum bifrost_packed_src
 bi_get_src_reg_port(struct bi_registers *regs, unsigned src)
 {
@@ -513,6 +522,34 @@ bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
 }
 
 static unsigned
+bi_pack_add_2src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
+{
+        struct bifrost_add_2src pack = {
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .src1 = bi_get_src(ins, regs, 1, true),
+                .op = op
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
+bi_pack_add_ld_ubo(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned components = bi_load32_components(ins);
+
+        const unsigned ops[4] = {
+                BIFROST_ADD_OP_LD_UBO_1,
+                BIFROST_ADD_OP_LD_UBO_2,
+                BIFROST_ADD_OP_LD_UBO_3,
+                BIFROST_ADD_OP_LD_UBO_4
+        };
+
+        bi_write_data_register(clause, ins);
+        return bi_pack_add_2src(ins, regs, ops[components - 1]);
+}
+
+static unsigned
 bi_pack_add_atest(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
         /* TODO: fp16 */
@@ -568,7 +605,9 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_FREXP:
         case BI_ISUB:
         case BI_LOAD:
+                return BIFROST_ADD_NOP;
         case BI_LOAD_UNIFORM:
+                return bi_pack_add_ld_ubo(clause, bundle.add, regs);
         case BI_LOAD_ATTR:
                 return BIFROST_ADD_NOP;
         case BI_LOAD_VAR:
