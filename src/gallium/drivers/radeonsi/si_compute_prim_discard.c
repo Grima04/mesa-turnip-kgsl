@@ -1209,15 +1209,30 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
 		/* This needs to be done at the beginning of IBs due to possible
 		 * TTM buffer moves in the kernel.
-		 *
-		 * TODO: update for GFX10
 		 */
-		si_emit_surface_sync(sctx, cs,
-				     S_0085F0_TC_ACTION_ENA(1) |
-				     S_0085F0_TCL1_ACTION_ENA(1) |
-				     S_0301F0_TC_WB_ACTION_ENA(sctx->chip_class >= GFX8) |
-				     S_0085F0_SH_ICACHE_ACTION_ENA(1) |
-				     S_0085F0_SH_KCACHE_ACTION_ENA(1));
+		if (sctx->chip_class >= GFX10) {
+			radeon_emit(cs, PKT3(PKT3_ACQUIRE_MEM, 6, 0));
+			radeon_emit(cs, 0);		/* CP_COHER_CNTL */
+			radeon_emit(cs, 0xffffffff);	/* CP_COHER_SIZE */
+			radeon_emit(cs, 0xffffff);	/* CP_COHER_SIZE_HI */
+			radeon_emit(cs, 0);		/* CP_COHER_BASE */
+			radeon_emit(cs, 0);		/* CP_COHER_BASE_HI */
+			radeon_emit(cs, 0x0000000A);	/* POLL_INTERVAL */
+			radeon_emit(cs,			/* GCR_CNTL */
+				    S_586_GLI_INV(V_586_GLI_ALL) |
+				    S_586_GLK_INV(1) | S_586_GLV_INV(1) |
+				    S_586_GL1_INV(1) |
+				    S_586_GL2_INV(1) | S_586_GL2_WB(1) |
+				    S_586_GLM_INV(1) | S_586_GLM_WB(1) |
+				    S_586_SEQ(V_586_SEQ_FORWARD));
+		} else {
+			si_emit_surface_sync(sctx, cs,
+					     S_0085F0_TC_ACTION_ENA(1) |
+					     S_0085F0_TCL1_ACTION_ENA(1) |
+					     S_0301F0_TC_WB_ACTION_ENA(sctx->chip_class >= GFX8) |
+					     S_0085F0_SH_ICACHE_ACTION_ENA(1) |
+					     S_0085F0_SH_KCACHE_ACTION_ENA(1));
+		}
 
 		/* Restore the GDS prim restart counter if needed. */
 		if (sctx->preserve_prim_restart_gds_at_flush) {
