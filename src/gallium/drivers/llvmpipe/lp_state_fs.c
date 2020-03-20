@@ -726,6 +726,30 @@ generate_fs_loop(struct gallivm_state *gallivm,
       LLVMBuildStore(builder, output_smask, out_sample_mask_storage);
    }
 
+   /* Color write  */
+   for (attrib = 0; attrib < shader->info.base.num_outputs; ++attrib)
+   {
+      unsigned cbuf = shader->info.base.output_semantic_index[attrib];
+      if ((shader->info.base.output_semantic_name[attrib] == TGSI_SEMANTIC_COLOR) &&
+           ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend)))
+      {
+         for(chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
+            if(outputs[attrib][chan]) {
+               /* XXX: just initialize outputs to point at colors[] and
+                * skip this.
+                */
+               LLVMValueRef out = LLVMBuildLoad(builder, outputs[attrib][chan], "");
+               LLVMValueRef color_ptr;
+               color_ptr = LLVMBuildGEP(builder, out_color[cbuf][chan],
+                                        &loop_state.counter, 1, "");
+               lp_build_name(out, "color%u.%c", attrib, "rgba"[chan]);
+               LLVMBuildStore(builder, out, color_ptr);
+            }
+         }
+      }
+   }
+
+
    if (key->multisample) {
       /* execute depth test for each sample */
       lp_build_for_loop_begin(&sample_loop_state, gallivm,
@@ -839,29 +863,6 @@ generate_fs_loop(struct gallivm_state *gallivm,
       /* store the sample mask for this loop */
       LLVMBuildStore(builder, s_mask, s_mask_ptr);
       lp_build_for_loop_end(&sample_loop_state);
-   }
-
-   /* Color write  */
-   for (attrib = 0; attrib < shader->info.base.num_outputs; ++attrib)
-   {
-      unsigned cbuf = shader->info.base.output_semantic_index[attrib];
-      if ((shader->info.base.output_semantic_name[attrib] == TGSI_SEMANTIC_COLOR) &&
-           ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend)))
-      {
-         for(chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
-            if(outputs[attrib][chan]) {
-               /* XXX: just initialize outputs to point at colors[] and
-                * skip this.
-                */
-               LLVMValueRef out = LLVMBuildLoad(builder, outputs[attrib][chan], "");
-               LLVMValueRef color_ptr;
-               color_ptr = LLVMBuildGEP(builder, out_color[cbuf][chan],
-                                        &loop_state.counter, 1, "");
-               lp_build_name(out, "color%u.%c", attrib, "rgba"[chan]);
-               LLVMBuildStore(builder, out, color_ptr);
-            }
-         }
-      }
    }
 
    if (key->occlusion_count) {
