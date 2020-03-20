@@ -2040,6 +2040,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 	/* Update NGG culling settings. */
 	if (sctx->ngg &&
+	    !dispatch_prim_discard_cs &&
 	    rast_prim == PIPE_PRIM_TRIANGLES &&
 	    (sctx->screen->always_use_ngg_culling ||
 	     /* At least 1024 non-indexed vertices (8 subgroups) are needed
