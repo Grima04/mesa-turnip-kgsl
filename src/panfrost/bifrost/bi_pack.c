@@ -355,12 +355,24 @@ bi_pack_registers(struct bi_registers regs)
 }
 
 static void
-bi_write_data_register(bi_clause *clause, bi_instruction *ins)
+bi_set_data_register(bi_clause *clause, unsigned idx)
 {
-        assert(ins->dest & BIR_INDEX_REGISTER);
-        unsigned reg = ins->dest & ~BIR_INDEX_REGISTER;
+        assert(idx & BIR_INDEX_REGISTER);
+        unsigned reg = idx & ~BIR_INDEX_REGISTER;
         assert(reg <= 63);
         clause->data_register = reg;
+}
+
+static void
+bi_read_data_register(bi_clause *clause, bi_instruction *ins)
+{
+        bi_set_data_register(clause, ins->src[0]);
+}
+
+static void
+bi_write_data_register(bi_clause *clause, bi_instruction *ins)
+{
+        bi_set_data_register(clause, ins->dest);
 }
 
 static enum bifrost_packed_src
