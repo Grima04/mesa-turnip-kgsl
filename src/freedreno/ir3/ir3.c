@@ -525,7 +525,7 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 {
 	struct ir3_register *src1, *src2;
 	instr_cat6_a6xx_t *cat6 = ptr;
-	bool has_dest = (instr->opc == OPC_LDIB);
+	bool has_dest = (instr->opc == OPC_LDIB || instr->opc == OPC_LDC);
 
 	/* first reg should be SSBO binding point: */
 	iassert(instr->regs[1]->flags & IR3_REG_IMMED);
