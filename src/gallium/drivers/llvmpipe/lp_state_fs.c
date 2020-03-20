@@ -329,6 +329,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    LLVMValueRef depth_ptr;
    LLVMValueRef stencil_refs[2];
    LLVMValueRef outputs[PIPE_MAX_SHADER_OUTPUTS][TGSI_NUM_CHANNELS];
+   LLVMValueRef zs_samples = lp_build_const_int32(gallivm, key->zsbuf_nr_samples);
    struct lp_build_for_loop_state loop_state, sample_loop_state;
    struct lp_build_mask_context mask;
    /*
@@ -471,8 +472,33 @@ generate_fs_loop(struct gallivm_state *gallivm,
    LLVMBuildStore(builder, LLVMConstNull(lp_build_int_vec_type(gallivm, type)), s_mask_or);
 
    LLVMValueRef s_mask = NULL, s_mask_ptr = NULL;
+   LLVMValueRef z_sample_value_store = NULL, s_sample_value_store = NULL;
+   LLVMValueRef z_fb_store = NULL, s_fb_store = NULL;
+   LLVMTypeRef z_type = NULL, z_fb_type = NULL;
+
    /* Run early depth once per sample */
    if (key->multisample) {
+
+      if (zs_format_desc) {
+         struct lp_type zs_type = lp_depth_type(zs_format_desc, type.length);
+         struct lp_type z_type = zs_type;
+         struct lp_type s_type = zs_type;
+         if (zs_format_desc->block.bits < type.width)
+            z_type.width = type.width;
+         else if (zs_format_desc->block.bits > 32) {
+            z_type.width = z_type.width / 2;
+            s_type.width = s_type.width / 2;
+            s_type.floating = 0;
+         }
+         z_sample_value_store = lp_build_array_alloca(gallivm, lp_build_int_vec_type(gallivm, type),
+                                                      zs_samples, "z_sample_store");
+         s_sample_value_store = lp_build_array_alloca(gallivm, lp_build_int_vec_type(gallivm, type),
+                                                      zs_samples, "s_sample_store");
+         z_fb_store = lp_build_array_alloca(gallivm, lp_build_vec_type(gallivm, z_type),
+                                            zs_samples, "z_fb_store");
+         s_fb_store = lp_build_array_alloca(gallivm, lp_build_vec_type(gallivm, s_type),
+                                            zs_samples, "s_fb_store");
+      }
       lp_build_for_loop_begin(&sample_loop_state, gallivm,
                               lp_build_const_int32(gallivm, 0),
                               LLVMIntULT, lp_build_const_int32(gallivm, key->coverage_samples),
@@ -531,6 +557,15 @@ generate_fs_loop(struct gallivm_state *gallivm,
        */
       if (!simple_shader && key->stencil[0].enabled && !key->multisample)
          lp_build_mask_check(&mask);
+
+      if (key->multisample) {
+         z_fb_type = LLVMTypeOf(z_fb);
+         z_type = LLVMTypeOf(z_value);
+         lp_build_pointer_set(builder, z_sample_value_store, sample_loop_state.counter, LLVMBuildBitCast(builder, z_value, lp_build_int_vec_type(gallivm, type), ""));
+         lp_build_pointer_set(builder, s_sample_value_store, sample_loop_state.counter, LLVMBuildBitCast(builder, s_value, lp_build_int_vec_type(gallivm, type), ""));
+         lp_build_pointer_set(builder, z_fb_store, sample_loop_state.counter, z_fb);
+         lp_build_pointer_set(builder, s_fb_store, sample_loop_state.counter, s_fb);
+      }
    }
 
    if (key->multisample) {
@@ -719,6 +754,12 @@ generate_fs_loop(struct gallivm_state *gallivm,
        * depth value, update from zs_value with the new mask value and
        * write that out.
        */
+      if (key->multisample) {
+         z_value = LLVMBuildBitCast(builder, lp_build_pointer_get(builder, z_sample_value_store, sample_loop_state.counter), z_type, "");;
+         s_value = lp_build_pointer_get(builder, s_sample_value_store, sample_loop_state.counter);
+         z_fb = LLVMBuildBitCast(builder, lp_build_pointer_get(builder, z_fb_store, sample_loop_state.counter), z_fb_type, "");
+         s_fb = lp_build_pointer_get(builder, s_fb_store, sample_loop_state.counter);
+      }
       lp_build_depth_stencil_write_swizzled(gallivm, type,
                                             zs_format_desc, key->resource_1d,
                                             key->multisample ? s_mask : lp_build_mask_value(&mask), z_fb, s_fb, loop_state.counter,
