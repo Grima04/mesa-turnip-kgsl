@@ -829,6 +829,24 @@ static void virgl_clear(struct pipe_context *ctx,
    virgl_encode_clear(vctx, buffers, color, depth, stencil);
 }
 
+static void virgl_clear_texture(struct pipe_context *ctx,
+                                struct pipe_resource *res,
+                                unsigned int level,
+                                const struct pipe_box *box,
+                                const void *data)
+{
+   struct virgl_context *vctx = virgl_context(ctx);
+   struct virgl_resource *vres = virgl_resource(res);
+
+   virgl_encode_clear_texture(vctx, vres, level, box, data);
+
+   /* Mark as dirty, since we are updating the host side resource
+    * without going through the corresponding guest side resource, and
+    * hence the two will diverge.
+    */
+   virgl_resource_dirty(vres, level);
+}
+
 static void virgl_draw_vbo(struct pipe_context *ctx,
                                    const struct pipe_draw_info *dinfo)
 {
@@ -1498,6 +1516,7 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    vctx->base.launch_grid = virgl_launch_grid;
 
    vctx->base.clear = virgl_clear;
+   vctx->base.clear_texture = virgl_clear_texture;
    vctx->base.draw_vbo = virgl_draw_vbo;
    vctx->base.flush = virgl_flush_from_st;
    vctx->base.screen = pscreen;
