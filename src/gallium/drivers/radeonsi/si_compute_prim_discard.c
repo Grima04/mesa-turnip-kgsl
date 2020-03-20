@@ -1174,7 +1174,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 		return;
 
 	unsigned num_prims = num_prims_per_instance * info->instance_count;
-	unsigned vertices_per_prim, output_indexbuf_format;
+	unsigned vertices_per_prim, output_indexbuf_format, gfx10_output_indexbuf_format;
 
 	switch (info->mode) {
 	case PIPE_PRIM_TRIANGLES:
@@ -1182,6 +1182,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 	case PIPE_PRIM_TRIANGLE_FAN:
 		vertices_per_prim = 3;
 		output_indexbuf_format = V_008F0C_BUF_DATA_FORMAT_32_32_32;
+		gfx10_output_indexbuf_format = V_008F0C_IMG_FORMAT_32_32_32_UINT;
 		break;
 	default:
 		unreachable("unsupported primitive type");
@@ -1308,23 +1309,44 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 	desc[1] = S_008F04_BASE_ADDRESS_HI(input_indexbuf_va >> 32) |
 		  S_008F04_STRIDE(index_size);
 	desc[2] = input_indexbuf_num_elements * (sctx->chip_class == GFX8 ? index_size : 1);
-	desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-		  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
-		  S_008F0C_DATA_FORMAT(index_size == 1 ? V_008F0C_BUF_DATA_FORMAT_8 :
-				       index_size == 2 ? V_008F0C_BUF_DATA_FORMAT_16 :
-							 V_008F0C_BUF_DATA_FORMAT_32);
+
+	if (sctx->chip_class >= GFX10) {
+		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_FORMAT(index_size == 1 ? V_008F0C_IMG_FORMAT_8_UINT :
+					  index_size == 2 ? V_008F0C_IMG_FORMAT_16_UINT :
+							    V_008F0C_IMG_FORMAT_32_UINT) |
+			  S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED_WITH_OFFSET) |
+			  S_008F0C_RESOURCE_LEVEL(1);
+	} else {
+		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
+			  S_008F0C_DATA_FORMAT(index_size == 1 ? V_008F0C_BUF_DATA_FORMAT_8 :
+					       index_size == 2 ? V_008F0C_BUF_DATA_FORMAT_16 :
+								 V_008F0C_BUF_DATA_FORMAT_32);
+	}
 
 	/* Output index buffer. */
 	desc[4] = out_indexbuf_va;
 	desc[5] = S_008F04_BASE_ADDRESS_HI(out_indexbuf_va >> 32) |
 		  S_008F04_STRIDE(vertices_per_prim * 4);
 	desc[6] = num_prims * (sctx->chip_class == GFX8 ? vertices_per_prim * 4 : 1);
-	desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-		  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-		  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-		  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_0) |
-		  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
-		  S_008F0C_DATA_FORMAT(output_indexbuf_format);
+
+	if (sctx->chip_class >= GFX10) {
+		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_0) |
+			  S_008F0C_FORMAT(gfx10_output_indexbuf_format) |
+			  S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED_WITH_OFFSET) |
+			  S_008F0C_RESOURCE_LEVEL(1);
+	} else {
+		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_0) |
+			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
+			  S_008F0C_DATA_FORMAT(output_indexbuf_format);
+	}
 
 	/* Viewport state. */
 	struct si_small_prim_cull_info cull_info;
@@ -1411,9 +1433,12 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
 		radeon_set_sh_reg_seq(cs, R_00B848_COMPUTE_PGM_RSRC1, 2);
 		radeon_emit(cs, S_00B848_VGPRS((shader->config.num_vgprs - 1) / 4) |
-				S_00B848_SGPRS((shader->config.num_sgprs - 1) / 8) |
+				S_00B848_SGPRS(sctx->chip_class <= GFX9 ?
+					       (shader->config.num_sgprs - 1) / 8 : 0) |
 				S_00B848_FLOAT_MODE(shader->config.float_mode) |
-				S_00B848_DX10_CLAMP(1));
+				S_00B848_DX10_CLAMP(1) |
+				S_00B848_MEM_ORDERED(sctx->chip_class >= GFX10) |
+				S_00B848_WGP_MODE(sctx->chip_class >= GFX10));
 		radeon_emit(cs, S_00B84C_SCRATCH_EN(0 /* no scratch */) |
 				S_00B84C_USER_SGPR(user_sgprs) |
 				S_00B84C_TGID_X_EN(1 /* only blockID.x is used */) |
