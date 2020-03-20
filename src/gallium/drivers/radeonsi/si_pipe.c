@@ -622,7 +622,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 		sctx->b.create_video_buffer = vl_video_buffer_create;
 	}
 
-	if (sctx->chip_class >= GFX9) {
+	if (sctx->chip_class >= GFX9 ||
+	    si_compute_prim_discard_enabled(sctx)) {
 		sctx->wait_mem_scratch = si_resource(
 			pipe_buffer_create(screen, 0, PIPE_USAGE_DEFAULT, 8));
 		if (!sctx->wait_mem_scratch)
