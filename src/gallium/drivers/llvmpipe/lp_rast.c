@@ -361,6 +361,10 @@ lp_rast_shade_tile(struct lp_rasterizer_task *task,
             depth_sample_stride = scene->zsbuf.sample_stride;
          }
 
+         uint64_t mask = 0;
+         for (unsigned i = 0; i < scene->fb_max_samples; i++)
+            mask |= (uint64_t)(0xffff) << (16 * i);
+
          /* Propagate non-interpolated raster state. */
          task->thread_data.raster_state.viewport_index = inputs->viewport_index;
 
@@ -374,7 +378,7 @@ lp_rast_shade_tile(struct lp_rasterizer_task *task,
                                             GET_DADY(inputs),
                                             color,
                                             depth,
-                                            (uint64_t)0xffff,
+                                            mask,
                                             &task->thread_data,
                                             stride,
                                             depth_stride,

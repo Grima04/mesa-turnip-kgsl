@@ -261,6 +261,10 @@ lp_rast_shade_quads_all( struct lp_rasterizer_task *task,
       depth_stride = scene->zsbuf.stride;
    }
 
+   uint64_t mask = 0;
+   for (unsigned i = 0; i < scene->fb_max_samples; i++)
+      mask |= (uint64_t)0xffff << (16 * i);
+
    /*
     * The rasterizer may produce fragments outside our
     * allocated 4x4 blocks hence need to filter them out here.
@@ -279,7 +283,7 @@ lp_rast_shade_quads_all( struct lp_rasterizer_task *task,
                                          GET_DADY(inputs),
                                          color,
                                          depth,
-                                         (uint64_t)0xffff,
+                                         mask,
                                          &task->thread_data,
                                          stride,
                                          depth_stride,
