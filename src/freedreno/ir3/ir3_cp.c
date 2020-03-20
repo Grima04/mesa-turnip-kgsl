@@ -244,10 +244,10 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 			if (instr->opc == OPC_STG && (instr->flags & IR3_INSTR_G) && (n != 2))
 				return false;
 
-			/* as with atomics, ldib on a6xx can only have immediate for
-			 * SSBO slot argument
+			/* as with atomics, ldib and ldc on a6xx can only have immediate
+			 * for SSBO slot argument
 			 */
-			if ((instr->opc == OPC_LDIB) && (n != 0))
+			if ((instr->opc == OPC_LDIB || instr->opc == OPC_LDC) && (n != 0))
 				return false;
 		}
 
