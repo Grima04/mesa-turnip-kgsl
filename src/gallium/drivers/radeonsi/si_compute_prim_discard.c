@@ -366,7 +366,10 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	si_llvm_create_func(ctx, "prim_discard_cs", NULL, 0, THREADGROUP_SIZE);
 	ctx->type = old_type;
 
-	if (VERTEX_COUNTER_GDS_MODE == 1) {
+	if (VERTEX_COUNTER_GDS_MODE == 2) {
+		ac_llvm_add_target_dep_function_attr(ctx->main_fn,
+						     "amdgpu-gds-size", 256);
+	} else if (VERTEX_COUNTER_GDS_MODE == 1) {
 		ac_llvm_add_target_dep_function_attr(ctx->main_fn, "amdgpu-gds-size",
 						     GDS_SIZE_UNORDERED);
 	}
