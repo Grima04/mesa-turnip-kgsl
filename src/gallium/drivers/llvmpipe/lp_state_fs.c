@@ -2612,7 +2612,7 @@ generate_fragment(struct llvmpipe_context *lp,
    struct lp_build_sampler_soa *sampler;
    struct lp_build_image_soa *image;
    struct lp_build_interp_soa_context interp;
-   LLVMValueRef fs_mask[16 / 4];
+   LLVMValueRef fs_mask[(16 / 4) * LP_MAX_SAMPLES];
    LLVMValueRef fs_out_color[PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS][16 / 4];
    LLVMValueRef function;
    LLVMValueRef facing;
@@ -2678,7 +2678,7 @@ generate_fragment(struct llvmpipe_context *lp,
    arg_types[4] = LLVMPointerType(fs_elem_type, 0);    /* a0 */
    arg_types[5] = LLVMPointerType(fs_elem_type, 0);    /* dadx */
    arg_types[6] = LLVMPointerType(fs_elem_type, 0);    /* dady */
-   arg_types[7] = LLVMPointerType(LLVMPointerType(blend_vec_type, 0), 0);  /* color */
+   arg_types[7] = LLVMPointerType(LLVMPointerType(int8_type, 0), 0);  /* color */
    arg_types[8] = LLVMPointerType(int8_type, 0);       /* depth */
    arg_types[9] = LLVMInt64TypeInContext(gallivm->context);  /* mask_input */
    arg_types[10] = variant->jit_thread_data_ptr_type;  /* per thread data */
@@ -2857,9 +2857,15 @@ generate_fragment(struct llvmpipe_context *lp,
 
       for (i = 0; i < num_fs; i++) {
          LLVMValueRef indexi = lp_build_const_int32(gallivm, i);
-         LLVMValueRef ptr = LLVMBuildGEP(builder, mask_store,
-                                         &indexi, 1, "");
-         fs_mask[i] = LLVMBuildLoad(builder, ptr, "mask");
+         LLVMValueRef ptr;
+         for (unsigned s = 0; s < key->coverage_samples; s++) {
+            int idx = (i + (s * num_fs));
+            LLVMValueRef sindexi = lp_build_const_int32(gallivm, idx);
+            ptr = LLVMBuildGEP(builder, mask_store, &sindexi, 1, "");
+
+            fs_mask[idx] = LLVMBuildLoad(builder, ptr, "smask");
+         }
+
          /* This is fucked up need to reorganize things */
          for (cbuf = 0; cbuf < key->nr_cbufs; cbuf++) {
             for (chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
@@ -2889,6 +2895,7 @@ generate_fragment(struct llvmpipe_context *lp,
       if (key->cbuf_format[cbuf] != PIPE_FORMAT_NONE) {
          LLVMValueRef color_ptr;
          LLVMValueRef stride;
+         LLVMValueRef sample_stride = NULL;
          LLVMValueRef index = lp_build_const_int32(gallivm, cbuf);
 
          boolean do_branch = ((key->depth.enabled
@@ -2901,17 +2908,33 @@ generate_fragment(struct llvmpipe_context *lp,
                                                 &index, 1, ""),
                                    "");
 
-         lp_build_name(color_ptr, "color_ptr%d", cbuf);
-
          stride = LLVMBuildLoad(builder,
                                 LLVMBuildGEP(builder, stride_ptr, &index, 1, ""),
                                 "");
 
-         generate_unswizzled_blend(gallivm, cbuf, variant,
-                                   key->cbuf_format[cbuf],
-                                   num_fs, fs_type, fs_mask, fs_out_color,
-                                   context_ptr, color_ptr, stride,
-                                   partial_mask, do_branch);
+         if (key->multisample)
+            sample_stride = LLVMBuildLoad(builder,
+                                          LLVMBuildGEP(builder, color_sample_stride_ptr,
+                                                       &index, 1, ""), "");
+
+         for (unsigned s = 0; s < key->cbuf_nr_samples[cbuf]; s++) {
+            unsigned mask_idx = num_fs * (key->multisample ? s : 0);
+            LLVMValueRef out_ptr = color_ptr;;
+
+            if (key->multisample) {
+               LLVMValueRef sample_offset = LLVMBuildMul(builder, sample_stride, lp_build_const_int32(gallivm, s), "");
+               out_ptr = LLVMBuildGEP(builder, out_ptr, &sample_offset, 1, "");
+            }
+            out_ptr = LLVMBuildBitCast(builder, out_ptr, LLVMPointerType(blend_vec_type, 0), "");
+
+            lp_build_name(out_ptr, "color_ptr%d", cbuf);
+
+            generate_unswizzled_blend(gallivm, cbuf, variant,
+                                      key->cbuf_format[cbuf],
+                                      num_fs, fs_type, &fs_mask[mask_idx], fs_out_color,
+                                      context_ptr, out_ptr, stride,
+                                      partial_mask, do_branch);
+         }
       }
    }
 
