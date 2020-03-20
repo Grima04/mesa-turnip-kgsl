@@ -71,7 +71,7 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
 		shader_variant_flags |= 1 << 0;
 	if (sel->nir)
 		shader_variant_flags |= 1 << 1;
-	if (si_get_wave_size(sel->screen, sel->type, ngg, es) == 32)
+	if (si_get_wave_size(sel->screen, sel->type, ngg, es, false) == 32)
 		shader_variant_flags |= 1 << 2;
 	if (sel->type == PIPE_SHADER_FRAGMENT &&
 	    sel->info.uses_derivatives &&
