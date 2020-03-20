@@ -204,7 +204,18 @@ lp_rast_32_tri_tab[MAX_PLANES+1] = {
    LP_RAST_OP_TRIANGLE_32_8
 };
 
-
+static unsigned
+lp_rast_ms_tri_tab[MAX_PLANES+1] = {
+   0,               /* should be impossible */
+   LP_RAST_OP_MS_TRIANGLE_1,
+   LP_RAST_OP_MS_TRIANGLE_2,
+   LP_RAST_OP_MS_TRIANGLE_3,
+   LP_RAST_OP_MS_TRIANGLE_4,
+   LP_RAST_OP_MS_TRIANGLE_5,
+   LP_RAST_OP_MS_TRIANGLE_6,
+   LP_RAST_OP_MS_TRIANGLE_7,
+   LP_RAST_OP_MS_TRIANGLE_8
+};
 
 /**
  * The primitive covers the whole tile- shade whole tile.
@@ -249,7 +260,7 @@ lp_setup_whole_tile(struct lp_setup_context *setup,
    } else {
       LP_COUNT(nr_shade_64);
       return lp_scene_bin_cmd_with_state( scene, tx, ty,
-                                          setup->fs.stored, 
+                                          setup->fs.stored,
                                           LP_RAST_OP_SHADE_TILE,
                                           lp_rast_arg_inputs(inputs) );
    }
@@ -759,6 +770,8 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
    struct lp_scene *scene = setup->scene;
    struct u_rect trimmed_box = *bbox;   
    int i;
+   unsigned cmd;
+
    /* What is the largest power-of-two boundary this triangle crosses:
     */
    int dx = floor_pot((bbox->x0 ^ bbox->x1) |
@@ -808,11 +821,12 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
              */
             assert(px + 4 <= TILE_SIZE);
             assert(py + 4 <= TILE_SIZE);
+            if (setup->multisample)
+               cmd = LP_RAST_OP_MS_TRIANGLE_3_4;
+            else
+               cmd = use_32bits ? LP_RAST_OP_TRIANGLE_32_3_4 : LP_RAST_OP_TRIANGLE_3_4;
             return lp_scene_bin_cmd_with_state( scene, ix0, iy0,
-                                                setup->fs.stored,
-                                                use_32bits ?
-                                                LP_RAST_OP_TRIANGLE_32_3_4 :
-                                                LP_RAST_OP_TRIANGLE_3_4,
+                                                setup->fs.stored, cmd,
                                                 lp_rast_arg_triangle_contained(tri, px, py) );
          }
 
@@ -832,11 +846,12 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
             assert(px + 16 <= TILE_SIZE);
             assert(py + 16 <= TILE_SIZE);
 
+            if (setup->multisample)
+               cmd = LP_RAST_OP_MS_TRIANGLE_3_16;
+            else
+               cmd = use_32bits ? LP_RAST_OP_TRIANGLE_32_3_16 : LP_RAST_OP_TRIANGLE_3_16;
             return lp_scene_bin_cmd_with_state( scene, ix0, iy0,
-                                                setup->fs.stored,
-                                                use_32bits ?
-                                                LP_RAST_OP_TRIANGLE_32_3_16 :
-                                                LP_RAST_OP_TRIANGLE_3_16,
+                                                setup->fs.stored, cmd,
                                                 lp_rast_arg_triangle_contained(tri, px, py) );
          }
       }
@@ -848,20 +863,24 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
          assert(px + 16 <= TILE_SIZE);
          assert(py + 16 <= TILE_SIZE);
 
+         if (setup->multisample)
+            cmd = LP_RAST_OP_MS_TRIANGLE_4_16;
+         else
+            cmd = use_32bits ? LP_RAST_OP_TRIANGLE_32_4_16 : LP_RAST_OP_TRIANGLE_4_16;
          return lp_scene_bin_cmd_with_state(scene, ix0, iy0,
-                                            setup->fs.stored,
-                                            use_32bits ?
-                                            LP_RAST_OP_TRIANGLE_32_4_16 :
-                                            LP_RAST_OP_TRIANGLE_4_16,
+                                            setup->fs.stored, cmd,
                                             lp_rast_arg_triangle_contained(tri, px, py));
       }
 
 
       /* Triangle is contained in a single tile:
        */
+      if (setup->multisample)
+         cmd = lp_rast_ms_tri_tab[nr_planes];
+      else
+         cmd = use_32bits ? lp_rast_32_tri_tab[nr_planes] : lp_rast_tri_tab[nr_planes];
       return lp_scene_bin_cmd_with_state(
-         scene, ix0, iy0, setup->fs.stored,
-         use_32bits ? lp_rast_32_tri_tab[nr_planes] : lp_rast_tri_tab[nr_planes],
+         scene, ix0, iy0, setup->fs.stored, cmd,
          lp_rast_arg_triangle(tri, (1<<nr_planes)-1));
    }
    else
@@ -933,12 +952,13 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
                 */
                int count = util_bitcount(partial);
                in = TRUE;
-               
+
+               if (setup->multisample)
+                  cmd = lp_rast_ms_tri_tab[count];
+               else
+                  cmd = use_32bits ? lp_rast_32_tri_tab[count] : lp_rast_tri_tab[count];
                if (!lp_scene_bin_cmd_with_state( scene, x, y,
-                                                 setup->fs.stored,
-                                                 use_32bits ?
-                                                 lp_rast_32_tri_tab[count] :
-                                                 lp_rast_tri_tab[count],
+                                                 setup->fs.stored, cmd,
                                                  lp_rast_arg_triangle(tri, partial) ))
                   goto fail;
 
