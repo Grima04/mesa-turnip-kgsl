@@ -574,6 +574,11 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
                 .imm_2 = only ? 0 : clause->constants[index + 1] >> 4
         };
 
+        /* XXX: On G71, Connor observed that the difference of the top 4 bits
+         * of the second constant with the first must be less than 8, otherwise
+         * we have to swap them. I am not able to reproduce this on G52,
+         * further investigation needed. Possibly an errata. XXX */
+
         util_dynarray_append(emission, struct bifrost_fmt_constant, quad);
 
         return 2;
