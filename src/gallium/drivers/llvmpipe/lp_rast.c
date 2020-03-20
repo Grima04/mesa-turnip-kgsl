@@ -627,7 +627,18 @@ static lp_rast_cmd_func dispatch[LP_RAST_OP_MAX] =
    lp_rast_triangle_32_8,
    lp_rast_triangle_32_3_4,
    lp_rast_triangle_32_3_16,
-   lp_rast_triangle_32_4_16
+   lp_rast_triangle_32_4_16,
+   lp_rast_triangle_ms_1,
+   lp_rast_triangle_ms_2,
+   lp_rast_triangle_ms_3,
+   lp_rast_triangle_ms_4,
+   lp_rast_triangle_ms_5,
+   lp_rast_triangle_ms_6,
+   lp_rast_triangle_ms_7,
+   lp_rast_triangle_ms_8,
+   lp_rast_triangle_ms_3_4,
+   lp_rast_triangle_ms_3_16,
+   lp_rast_triangle_ms_4_16,
 };
 
 

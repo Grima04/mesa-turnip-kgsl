@@ -346,6 +346,58 @@ void lp_rast_triangle_32_3_16( struct lp_rasterizer_task *,
 void lp_rast_triangle_32_4_16( struct lp_rasterizer_task *, 
                             const union lp_rast_cmd_arg );
 
+void lp_rast_triangle_ms_1( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_2( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_3( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_4( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_5( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_6( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_7( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_8( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+
+void lp_rast_triangle_ms_3_4(struct lp_rasterizer_task *,
+                          const union lp_rast_cmd_arg );
+
+void lp_rast_triangle_ms_3_16( struct lp_rasterizer_task *,
+                            const union lp_rast_cmd_arg );
+
+void lp_rast_triangle_ms_4_16( struct lp_rasterizer_task *,
+                            const union lp_rast_cmd_arg );
+
+void lp_rast_triangle_ms_32_1( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_32_2( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_32_3( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_32_4( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_32_5( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_32_6( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_32_7( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+void lp_rast_triangle_ms_32_8( struct lp_rasterizer_task *,
+                         const union lp_rast_cmd_arg );
+
+void lp_rast_triangle_ms_32_3_4(struct lp_rasterizer_task *,
+                          const union lp_rast_cmd_arg );
+
+void lp_rast_triangle_ms_32_3_16( struct lp_rasterizer_task *,
+                            const union lp_rast_cmd_arg );
+
+void lp_rast_triangle_ms_32_4_16( struct lp_rasterizer_task *,
+                            const union lp_rast_cmd_arg );
+
 void
 lp_rast_set_state(struct lp_rasterizer_task *task,
                   const union lp_rast_cmd_arg arg);
