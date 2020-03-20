@@ -293,6 +293,32 @@ lp_build_depth_clamp(struct gallivm_state *gallivm,
    return lp_build_clamp(&f32_bld, z, min_depth, max_depth);
 }
 
+static void
+lp_build_sample_alpha_to_coverage(struct gallivm_state *gallivm,
+                                  struct lp_type type,
+                                  unsigned coverage_samples,
+                                  LLVMValueRef num_loop,
+                                  LLVMValueRef loop_counter,
+                                  LLVMValueRef coverage_mask_store,
+                                  LLVMValueRef alpha)
+{
+   struct lp_build_context bld;
+   LLVMBuilderRef builder = gallivm->builder;
+   float step = 1.0 / coverage_samples;
+
+   lp_build_context_init(&bld, gallivm, type);
+   for (unsigned s = 0; s < coverage_samples; s++) {
+      LLVMValueRef alpha_ref_value = lp_build_const_vec(gallivm, type, step * s);
+      LLVMValueRef test = lp_build_cmp(&bld, PIPE_FUNC_GREATER, alpha, alpha_ref_value);
+
+      LLVMValueRef s_mask_idx = LLVMBuildMul(builder, lp_build_const_int32(gallivm, s), num_loop, "");
+      s_mask_idx = LLVMBuildAdd(builder, s_mask_idx, loop_counter, "");
+      LLVMValueRef s_mask_ptr = LLVMBuildGEP(builder, coverage_mask_store, &s_mask_idx, 1, "");
+      LLVMValueRef s_mask = LLVMBuildLoad(builder, s_mask_ptr, "");
+      s_mask = LLVMBuildAnd(builder, s_mask, test, "");
+      LLVMBuildStore(builder, s_mask, s_mask_ptr);
+   }
+}
 
 /**
  * Generate the fragment shader, depth/stencil test, and alpha tests.
@@ -653,9 +679,15 @@ generate_fs_loop(struct gallivm_state *gallivm,
       if (color0 != -1 && outputs[color0][3]) {
          LLVMValueRef alpha = LLVMBuildLoad(builder, outputs[color0][3], "alpha");
 
-         lp_build_alpha_to_coverage(gallivm, type,
-                                    &mask, alpha,
-                                    (depth_mode & LATE_DEPTH_TEST) != 0);
+         if (!key->multisample) {
+            lp_build_alpha_to_coverage(gallivm, type,
+                                       &mask, alpha,
+                                       (depth_mode & LATE_DEPTH_TEST) != 0);
+         } else {
+            lp_build_sample_alpha_to_coverage(gallivm, type, key->coverage_samples, num_loop,
+                                              loop_state.counter,
+                                              mask_store, alpha);
+         }
       }
    }
 
