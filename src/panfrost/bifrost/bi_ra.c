@@ -123,8 +123,8 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
                 /* Use the swizzle as component select */
                 nir_alu_type T = ins->src_types[src];
                 unsigned size = nir_alu_type_get_type_size(T);
-                unsigned bytes = (MAX2(size, 8) / 8);
-                unsigned comps_per_reg = 4 / bytes;
+                assert(size <= 32); /* TODO: 64-bit */
+                unsigned comps_per_reg = 32 / size;
                 unsigned components = bi_get_component_count(ins, src);
 
                 for (unsigned i = 0; i < components; ++i) {
@@ -159,7 +159,7 @@ bi_adjust_dest_ra(bi_instruction *ins, struct lcra_state *l)
 
                 unsigned tz = __builtin_ctz(ins->writemask);
 
-                /* Recall writemask is one bit per byte, so tz is in bytes */
+                /* Recall writemask is one bit per byte, so tz is in eytes */
                 unsigned regs = tz / 4;
                 offset = regs * 4;
 

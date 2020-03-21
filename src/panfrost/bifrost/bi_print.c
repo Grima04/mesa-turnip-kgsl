@@ -227,7 +227,7 @@ bi_print_alu_type(nir_alu_type t, FILE *fp)
 static void
 bi_print_swizzle(bi_instruction *ins, unsigned src, FILE *fp)
 {
-        unsigned size = MAX2(nir_alu_type_get_type_size(ins->dest_type), 8);
+        unsigned size = nir_alu_type_get_type_size(ins->dest_type);
         unsigned count = (size == 64) ? 1 : (32 / size);
 
         fprintf(fp, ".");
@@ -303,7 +303,7 @@ bi_print_writemask(bi_instruction *ins, FILE *fp)
 {
         unsigned bits_per_comp = nir_alu_type_get_type_size(ins->dest_type);
         assert(bits_per_comp);
-        unsigned bytes_per_comp = MAX2(bits_per_comp / 8, 1);
+        unsigned bytes_per_comp = bits_per_comp / 8;
         unsigned comps = 16 / bytes_per_comp;
         unsigned smask = (1 << bytes_per_comp) - 1;
         fprintf(fp, ".");

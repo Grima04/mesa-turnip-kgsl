@@ -455,7 +455,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 unsigned comps = instr->dest.dest.ssa.num_components;
                 assert(comps == 1);
                 unsigned bits = bits_per_comp * comps;
-                unsigned bytes = MAX2(bits / 8, 1);
+                unsigned bytes = bits / 8;
                 alu.writemask = (1 << bytes) - 1;
         } else {
                 unsigned comp_mask = instr->dest.write_mask;
