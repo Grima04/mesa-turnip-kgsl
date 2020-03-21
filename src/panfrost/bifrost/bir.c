@@ -136,3 +136,11 @@ bi_bytemask_of_read_components(bi_instruction *ins, unsigned node)
 
         return mask;
 }
+
+uint64_t
+bi_get_immediate(bi_instruction *ins, unsigned index)
+{
+        assert(index & BIR_INDEX_CONSTANT);
+        unsigned shift = index & ~BIR_INDEX_CONSTANT;
+        return ins->constant.u64 >> shift;
+}

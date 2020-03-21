@@ -394,7 +394,7 @@ bi_remove_instruction(bi_instruction *ins)
  *
  *  Fixed register: do not allocate register, do not collect $200.
  *  Uniform: access a uniform register given by low bits.
- *  Constant: access the specified constant 
+ *  Constant: access the specified constant (specifies a bit offset / shift)
  *  Zero: special cased to avoid wasting a constant
  *  Passthrough: a bifrost_packed_src to passthrough T/T0/T1
  */
@@ -537,6 +537,7 @@ uint16_t bi_from_bytemask(uint16_t bytemask, unsigned bytes);
 unsigned bi_get_component_count(bi_instruction *ins, unsigned s);
 unsigned bi_load32_components(bi_instruction *ins);
 uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
+uint64_t bi_get_immediate(bi_instruction *ins, unsigned index);
 
 /* BIR passes */
 
