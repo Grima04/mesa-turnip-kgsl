@@ -585,159 +585,69 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 	}
 
 	foreach_instr (instr, &block->instr_list) {
-		struct ir3_instruction *src;
-		struct ir3_register *reg;
-
-		if (writes_gpr(instr)) {
-			struct ir3_ra_instr_data *id = &ctx->instrd[instr->ip];
-			struct ir3_register *dst = instr->regs[0];
-
-			if (dst->flags & IR3_REG_ARRAY) {
-				struct ir3_array *arr =
-					ir3_lookup_array(ctx->ir, dst->array.id);
-				unsigned i;
+		foreach_def (name, ctx, instr) {
+			if (name_is_array(ctx, name)) {
+				struct ir3_array *arr = name_to_array(ctx, name);
 
 				arr->start_ip = MIN2(arr->start_ip, instr->ip);
 				arr->end_ip = MAX2(arr->end_ip, instr->ip);
 
-				/* set the node class now.. in case we don't encounter
-				 * this array dst again.  From register_alloc algo's
-				 * perspective, these are all single/scalar regs:
-				 */
-				for (i = 0; i < arr->length; i++) {
+				for (unsigned i = 0; i < arr->length; i++) {
 					unsigned name = arr->base + i;
 					if(arr->half)
 						ra_set_node_class(ctx->g, name, ctx->set->half_classes[0]);
 					else
 						ra_set_node_class(ctx->g, name, ctx->set->classes[0]);
 				}
-
-				/* indirect write is treated like a write to all array
-				 * elements, since we don't know which one is actually
-				 * written:
-				 */
-				if (dst->flags & IR3_REG_RELATIV) {
-					for (i = 0; i < arr->length; i++) {
-						unsigned name = arr->base + i;
-						def(name, instr);
-					}
+			} else {
+				struct ir3_ra_instr_data *id = &ctx->instrd[instr->ip];
+				if (is_high(instr)) {
+					ra_set_node_class(ctx->g, name,
+							ctx->set->high_classes[id->cls - HIGH_OFFSET]);
+				} else if (is_half(instr)) {
+					ra_set_node_class(ctx->g, name,
+							ctx->set->half_classes[id->cls - HALF_OFFSET]);
 				} else {
-					unsigned name = arr->base + dst->array.offset;
-					def(name, instr);
-				}
-			} else if (id->defn == instr) {
-				/* in scalar pass, we aren't considering virtual register
-				 * classes, ie. if an instruction writes a vec2, then it
-				 * defines two different scalar register names.
-				 */
-				unsigned n = ctx->scalar_pass ? dest_regs(instr) : 1;
-				for (unsigned i = 0; i < n; i++) {
-					unsigned name = scalar_name(ctx, instr, i);
-
-					/* split/collect instructions have duplicate names
-					 * as real instructions, so they skip the hashtable:
-					 */
-					if (ctx->name_to_instr && !((instr->opc == OPC_META_SPLIT) ||
-							(instr->opc == OPC_META_COLLECT))) {
-						/* this is slightly annoying, we can't just use an
-						 * integer on the stack
-						 */
-						unsigned *key = ralloc(ctx->name_to_instr, unsigned);
-						*key = name;
-						debug_assert(!_mesa_hash_table_search(ctx->name_to_instr, key));
-						_mesa_hash_table_insert(ctx->name_to_instr, key, instr);
-					}
-
-					/* tex instructions actually have a wrmask, and
-					 * don't touch masked out components.  We can't do
-					 * anything useful about that in the first pass,
-					 * but in the scalar pass we can realize these
-					 * registers are available:
-					 */
-					if (ctx->scalar_pass && is_tex_or_prefetch(instr) &&
-							!(instr->regs[0]->wrmask & (1 << i)))
-						continue;
-
-					def(name, instr);
-
-					if ((instr->opc == OPC_META_INPUT) && first_non_input)
-						use(name, first_non_input);
-
-					if (is_high(instr)) {
-						ra_set_node_class(ctx->g, name,
-								ctx->set->high_classes[id->cls - HIGH_OFFSET]);
-					} else if (is_half(instr)) {
-						ra_set_node_class(ctx->g, name,
-								ctx->set->half_classes[id->cls - HALF_OFFSET]);
-					} else {
-						ra_set_node_class(ctx->g, name,
-								ctx->set->classes[id->cls]);
-					}
+					ra_set_node_class(ctx->g, name,
+							ctx->set->classes[id->cls]);
 				}
 			}
+
+			def(name, instr);
+
+			if ((instr->opc == OPC_META_INPUT) && first_non_input)
+				use(name, first_non_input);
 		}
 
-		foreach_src (reg, instr) {
-			if (reg->flags & IR3_REG_ARRAY) {
-				struct ir3_array *arr =
-					ir3_lookup_array(ctx->ir, reg->array.id);
+		foreach_use (name, ctx, instr) {
+			if (name_is_array(ctx, name)) {
+				struct ir3_array *arr = name_to_array(ctx, name);
+
 				arr->start_ip = MIN2(arr->start_ip, instr->ip);
 				arr->end_ip = MAX2(arr->end_ip, instr->ip);
 
-				/* indirect read is treated like a read from all array
-				 * elements, since we don't know which one is actually
-				 * read:
+				/* NOTE: arrays are not SSA so unconditionally
+				 * set use bit:
 				 */
-				if (reg->flags & IR3_REG_RELATIV) {
-					unsigned i;
-					for (i = 0; i < arr->length; i++) {
-						unsigned name = arr->base + i;
-						use(name, instr);
-						BITSET_SET(bd->use, name);
-					}
-				} else {
-					unsigned name = arr->base + reg->array.offset;
-					use(name, instr);
-					/* NOTE: arrays are not SSA so unconditionally
-					 * set use bit:
-					 */
-					BITSET_SET(bd->use, name);
-					debug_assert(reg->array.offset < arr->length);
-				}
-			} else if (ctx->scalar_pass) {
-				struct ir3_instruction *src = reg->instr;
-				/* skip things that aren't SSA: */
-				unsigned n = src ? dest_regs(src) : 0;
+				BITSET_SET(bd->use, name);
+			}
 
-				/* in scalar pass, we aren't considering virtual register
-				 * classes, ie. if an instruction writes a vec2, then it
-				 * defines two different scalar register names.
-				 *
-				 * We need to traverse up thru collect/split to find the
-				 * actual non-meta instruction names for each of the
-				 * components:
+			use(name, instr);
+		}
+
+		foreach_name (name, ctx, instr) {
+			/* split/collect instructions have duplicate names
+			 * as real instructions, so they skip the hashtable:
+			 */
+			if (ctx->name_to_instr && !((instr->opc == OPC_META_SPLIT) ||
+					(instr->opc == OPC_META_COLLECT))) {
+				/* this is slightly annoying, we can't just use an
+				 * integer on the stack
 				 */
-				for (unsigned i = 0; i < n; i++) {
-					/* Need to filter out a couple special cases, ie.
-					 * writes to a0.x or p0.x:
-					 */
-					if (!writes_gpr(src))
-						continue;
-
-					/* split takes a src w/ wrmask potentially greater
-					 * than 0x1, but it really only cares about a single
-					 * component.  This shows up in splits coming out of
-					 * a tex instruction w/ wrmask=.z, for example.
-					 */
-					if ((instr->opc == OPC_META_SPLIT) &&
-							!(i == instr->split.off))
-						continue;
-
-					use(scalar_name(ctx, src, i), instr);
-				}
-			} else if ((src = ssa(reg)) && writes_gpr(src)) {
-				unsigned name = ra_name(ctx, &ctx->instrd[src->ip]);
-				use(name, instr);
+				unsigned *key = ralloc(ctx->name_to_instr, unsigned);
+				*key = name;
+				debug_assert(!_mesa_hash_table_search(ctx->name_to_instr, key));
+				_mesa_hash_table_insert(ctx->name_to_instr, key, instr);
 			}
 		}
 	}

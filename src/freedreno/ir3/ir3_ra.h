@@ -134,6 +134,18 @@ struct ir3_ra_ctx {
 	/* Tracking for select_reg callback */
 	unsigned start_search_reg;
 	unsigned max_target;
+
+	/* Temporary buffer for def/use iterators
+	 *
+	 * The worst case should probably be an array w/ relative access (ie.
+	 * all elements are def'd or use'd), and that can't be larger than
+	 * the number of registers.
+	 *
+	 * NOTE we could declare this on the stack if needed, but I don't
+	 * think there is a need for nested iterators.
+	 */
+	unsigned namebuf[NUM_REGS];
+	unsigned namecnt, nameidx;
 };
 
 static inline int
@@ -181,6 +193,153 @@ writes_gpr(struct ir3_instruction *instr)
 		return false;
 	return true;
 }
+
+#define NO_NAME ~0
+
+/*
+ * Iterators to iterate the vreg names of an instructions def's and use's
+ */
+
+static inline unsigned
+__ra_name_cnt(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
+{
+	if (!instr)
+		return 0;
+
+	/* Filter special cases, ie. writes to a0.x or p0.x, or non-ssa: */
+	if (!writes_gpr(instr) || (instr->regs[0]->flags & IR3_REG_ARRAY))
+		return 0;
+
+	/* in scalar pass, we aren't considering virtual register classes, ie.
+	 * if an instruction writes a vec2, then it defines two different scalar
+	 * register names.
+	 */
+	if (ctx->scalar_pass)
+		return dest_regs(instr);
+
+	return 1;
+}
+
+#define foreach_name_n(__name, __n, __ctx, __instr) \
+	for (unsigned __cnt = __ra_name_cnt(__ctx, __instr), __n = 0, __name; \
+	     (__n < __cnt) && ({__name = scalar_name(__ctx, __instr, __n); 1;}); __n++)
+
+#define foreach_name(__name, __ctx, __instr) \
+	foreach_name_n(__name, __n, __ctx, __instr)
+
+static inline unsigned
+__ra_itr_pop(struct ir3_ra_ctx *ctx)
+{
+	if (ctx->nameidx < ctx->namecnt)
+		return ctx->namebuf[ctx->nameidx++];
+	return NO_NAME;
+}
+
+static inline void
+__ra_itr_push(struct ir3_ra_ctx *ctx, unsigned name)
+{
+	assert(ctx->namecnt < ARRAY_SIZE(ctx->namebuf));
+	ctx->namebuf[ctx->namecnt++] = name;
+}
+
+static inline unsigned
+__ra_init_def_itr(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
+{
+	/* nested use is not supported: */
+	assert(ctx->namecnt == ctx->nameidx);
+
+	ctx->namecnt = ctx->nameidx = 0;
+
+	if (!writes_gpr(instr))
+		return NO_NAME;
+
+	struct ir3_ra_instr_data *id = &ctx->instrd[instr->ip];
+	struct ir3_register *dst = instr->regs[0];
+
+	if (dst->flags & IR3_REG_ARRAY) {
+		struct ir3_array *arr = ir3_lookup_array(ctx->ir, dst->array.id);
+
+		/* indirect write is treated like a write to all array
+		 * elements, since we don't know which one is actually
+		 * written:
+		 */
+		if (dst->flags & IR3_REG_RELATIV) {
+			for (unsigned i = 0; i < arr->length; i++) {
+				__ra_itr_push(ctx, arr->base + i);
+			}
+		} else {
+			__ra_itr_push(ctx, arr->base + dst->array.offset);
+			debug_assert(dst->array.offset < arr->length);
+		}
+	} else if (id->defn == instr) {
+		foreach_name_n (name, i, ctx, instr) {
+			/* tex instructions actually have a wrmask, and
+			 * don't touch masked out components.  We can't do
+			 * anything useful about that in the first pass,
+			 * but in the scalar pass we can realize these
+			 * registers are available:
+			 */
+			if (ctx->scalar_pass && is_tex_or_prefetch(instr) &&
+					!(instr->regs[0]->wrmask & (1 << i)))
+				continue;
+			__ra_itr_push(ctx, name);
+		}
+	}
+
+	return __ra_itr_pop(ctx);
+}
+
+static inline unsigned
+__ra_init_use_itr(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
+{
+	/* nested use is not supported: */
+	assert(ctx->namecnt == ctx->nameidx);
+
+	ctx->namecnt = ctx->nameidx = 0;
+
+	struct ir3_register *reg;
+	foreach_src (reg, instr) {
+		if (reg->flags & IR3_REG_ARRAY) {
+			struct ir3_array *arr =
+				ir3_lookup_array(ctx->ir, reg->array.id);
+
+			/* indirect read is treated like a read from all array
+			 * elements, since we don't know which one is actually
+			 * read:
+			 */
+			if (reg->flags & IR3_REG_RELATIV) {
+				for (unsigned i = 0; i < arr->length; i++) {
+					__ra_itr_push(ctx, arr->base + i);
+				}
+			} else {
+				__ra_itr_push(ctx, arr->base + reg->array.offset);
+				debug_assert(reg->array.offset < arr->length);
+			}
+		} else {
+			foreach_name_n (name, i, ctx, reg->instr) {
+				/* split takes a src w/ wrmask potentially greater
+				 * than 0x1, but it really only cares about a single
+				 * component.  This shows up in splits coming out of
+				 * a tex instruction w/ wrmask=.z, for example.
+				 */
+				if (ctx->scalar_pass && (instr->opc == OPC_META_SPLIT) &&
+						!(i == instr->split.off))
+					continue;
+				__ra_itr_push(ctx, name);
+			}
+		}
+	}
+
+	return __ra_itr_pop(ctx);
+}
+
+#define foreach_def(__name, __ctx, __instr) \
+	for (unsigned __name = __ra_init_def_itr(__ctx, __instr); \
+	     __name != NO_NAME; __name = __ra_itr_pop(__ctx))
+
+#define foreach_use(__name, __ctx, __instr) \
+	for (unsigned __name = __ra_init_use_itr(__ctx, __instr); \
+	     __name != NO_NAME; __name = __ra_itr_pop(__ctx))
 
 int ra_size_to_class(unsigned sz, bool half, bool high);
 
