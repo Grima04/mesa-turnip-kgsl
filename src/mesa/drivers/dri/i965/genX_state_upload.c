@@ -4358,10 +4358,11 @@ genX(upload_cs_state)(struct brw_context *brw)
       vfe.CURBEAllocationSize = vfe_curbe_allocation;
    }
 
-   if (cs_prog_data->push.total.size > 0) {
+   const unsigned push_const_size =
+      brw_cs_push_const_total_size(cs_prog_data, cs_prog_data->threads);
+   if (push_const_size > 0) {
       brw_batch_emit(brw, GENX(MEDIA_CURBE_LOAD), curbe) {
-         curbe.CURBETotalDataLength =
-            ALIGN(cs_prog_data->push.total.size, 64);
+         curbe.CURBETotalDataLength = ALIGN(push_const_size, 64);
          curbe.CURBEDataStartAddress = stage_state->push_const_offset;
       }
    }

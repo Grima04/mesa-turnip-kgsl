@@ -8807,6 +8807,16 @@ fs_visitor::emit_cs_work_group_id_setup()
    return reg;
 }
 
+unsigned
+brw_cs_push_const_total_size(const struct brw_cs_prog_data *cs_prog_data,
+                             unsigned threads)
+{
+   assert(cs_prog_data->push.per_thread.size % REG_SIZE == 0);
+   assert(cs_prog_data->push.cross_thread.size % REG_SIZE == 0);
+   return cs_prog_data->push.per_thread.size * threads +
+          cs_prog_data->push.cross_thread.size;
+}
+
 static void
 fill_push_const_block_info(struct brw_push_const_block *block, unsigned dwords)
 {
@@ -8844,11 +8854,6 @@ cs_fill_push_const_info(const struct gen_device_info *devinfo,
 
    fill_push_const_block_info(&cs_prog_data->push.cross_thread, cross_thread_dwords);
    fill_push_const_block_info(&cs_prog_data->push.per_thread, per_thread_dwords);
-
-   unsigned total_dwords =
-      (cs_prog_data->push.per_thread.size * cs_prog_data->threads +
-       cs_prog_data->push.cross_thread.size) / 4;
-   fill_push_const_block_info(&cs_prog_data->push.total, total_dwords);
 
    assert(cs_prog_data->push.cross_thread.dwords % 8 == 0 ||
           cs_prog_data->push.per_thread.size == 0);

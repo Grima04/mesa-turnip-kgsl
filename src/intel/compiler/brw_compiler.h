@@ -910,7 +910,6 @@ struct brw_cs_prog_data {
    struct {
       struct brw_push_const_block cross_thread;
       struct brw_push_const_block per_thread;
-      struct brw_push_const_block total;
    } push;
 
    struct {
@@ -1469,6 +1468,10 @@ encode_slm_size(unsigned gen, uint32_t bytes)
 
    return slm_size;
 }
+
+unsigned
+brw_cs_push_const_total_size(const struct brw_cs_prog_data *cs_prog_data,
+                             unsigned threads);
 
 /**
  * Return true if the given shader stage is dispatched contiguously by the

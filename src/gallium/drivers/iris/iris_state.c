@@ -6543,18 +6543,19 @@ iris_upload_compute_state(struct iris_context *ice,
       assert(cs_prog_data->push.cross_thread.dwords == 0 &&
              cs_prog_data->push.per_thread.dwords == 1 &&
              cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
+      const unsigned push_const_size =
+         brw_cs_push_const_total_size(cs_prog_data, cs_prog_data->threads);
       uint32_t *curbe_data_map =
          stream_state(batch, ice->state.dynamic_uploader,
                       &ice->state.last_res.cs_thread_ids,
-                      ALIGN(cs_prog_data->push.total.size, 64), 64,
+                      ALIGN(push_const_size, 64), 64,
                       &curbe_data_offset);
       assert(curbe_data_map);
-      memset(curbe_data_map, 0x5a, ALIGN(cs_prog_data->push.total.size, 64));
+      memset(curbe_data_map, 0x5a, ALIGN(push_const_size, 64));
       iris_fill_cs_push_const_buffer(cs_prog_data, curbe_data_map);
 
       iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
-         curbe.CURBETotalDataLength =
-            ALIGN(cs_prog_data->push.total.size, 64);
+         curbe.CURBETotalDataLength = ALIGN(push_const_size, 64);
          curbe.CURBEDataStartAddress = curbe_data_offset;
       }
    }
