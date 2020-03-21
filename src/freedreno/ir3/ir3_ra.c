@@ -1036,7 +1036,7 @@ account_assignment(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
 	} else if ((id = &ctx->instrd[instr->ip]) && id->defn) {
 		unsigned name = scalar_name(ctx, id->defn, 0);
 		unsigned r = ra_get_node_reg(ctx->g, name);
-		max = ctx->set->ra_reg_to_gpr[r] + id->off;
+		max = ctx->set->ra_reg_to_gpr[r] + id->off + dest_regs(id->defn);
 	} else {
 		return;
 	}
