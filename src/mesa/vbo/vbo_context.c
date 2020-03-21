@@ -149,13 +149,11 @@ _vbo_install_exec_vtxfmt(struct gl_context *ctx)
 
 
 void
-vbo_exec_invalidate_state(struct gl_context *ctx)
+vbo_exec_update_eval_maps(struct gl_context *ctx)
 {
    struct vbo_context *vbo = vbo_context(ctx);
-   struct vbo_exec_context *exec = &vbo->exec;
 
-   if (ctx->NewState & _NEW_EVAL)
-      exec->eval.recalculate_maps = GL_TRUE;
+   vbo->exec.eval.recalculate_maps = GL_TRUE;
 }
 
 

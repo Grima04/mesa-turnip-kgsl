@@ -463,7 +463,6 @@ _mesa_update_state_locked( struct gl_context *ctx )
    new_prog_state |= update_program_constants(ctx);
 
    ctx->NewState |= new_prog_state;
-   vbo_exec_invalidate_state(ctx);
 
    /*
     * Give the driver a chance to act upon the new_state flags.

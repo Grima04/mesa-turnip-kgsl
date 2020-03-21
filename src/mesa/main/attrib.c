@@ -1178,7 +1178,7 @@ _mesa_PopAttrib(void)
             break;
          case GL_EVAL_BIT:
             memcpy(&ctx->Eval, attr->data, sizeof(struct gl_eval_attrib));
-            ctx->NewState |= _NEW_EVAL;
+            vbo_exec_update_eval_maps(ctx);
             break;
          case GL_FOG_BIT:
             {

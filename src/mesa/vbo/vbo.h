@@ -48,7 +48,7 @@ void
 _vbo_DestroyContext(struct gl_context *ctx);
 
 void
-vbo_exec_invalidate_state(struct gl_context *ctx);
+vbo_exec_update_eval_maps(struct gl_context *ctx);
 
 void
 _vbo_install_exec_vtxfmt(struct gl_context *ctx);
