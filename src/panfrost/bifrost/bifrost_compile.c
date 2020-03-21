@@ -411,8 +411,13 @@ bi_class_for_nir_alu(nir_op op)
         }
 }
 
+/* Gets a bi_cond for a given NIR comparison opcode. In soft mode, it will
+ * return BI_COND_ALWAYS as a sentinel if it fails to do so (when used for
+ * optimizations). Otherwise it will bail (when used for primary code
+ * generation). */
+
 static enum bi_cond
-bi_cond_for_nir(nir_op op)
+bi_cond_for_nir(nir_op op, bool soft)
 {
         switch (op) {
         BI_CASE_CMP(nir_op_flt)
@@ -431,7 +436,10 @@ bi_cond_for_nir(nir_op op)
         BI_CASE_CMP(nir_op_ine)
                 return BI_COND_NE;
         default:
-                unreachable("Invalid compare");
+                if (soft)
+                        return BI_COND_ALWAYS;
+                else
+                        unreachable("Invalid compare");
         }
 }
 
@@ -541,7 +549,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         BI_CASE_CMP(nir_op_ieq)
         BI_CASE_CMP(nir_op_fne)
         BI_CASE_CMP(nir_op_ine)
-                alu.op.compare = bi_cond_for_nir(instr->op);
+                alu.op.compare = bi_cond_for_nir(instr->op, false);
                 break;
         default:
                 break;
