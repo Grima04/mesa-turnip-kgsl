@@ -2204,6 +2204,11 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
    LOOKUP_ANV_ENTRYPOINT(EnumerateInstanceVersion);
    LOOKUP_ANV_ENTRYPOINT(CreateInstance);
 
+   /* GetInstanceProcAddr() can also be called with a NULL instance.
+    * See https://gitlab.khronos.org/vulkan/vulkan/issues/2057
+    */
+   LOOKUP_ANV_ENTRYPOINT(GetInstanceProcAddr);
+
 #undef LOOKUP_ANV_ENTRYPOINT
 
    if (instance == NULL)

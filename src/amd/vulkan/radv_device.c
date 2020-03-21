@@ -4948,6 +4948,11 @@ PFN_vkVoidFunction radv_GetInstanceProcAddr(
 	LOOKUP_RADV_ENTRYPOINT(EnumerateInstanceVersion);
 	LOOKUP_RADV_ENTRYPOINT(CreateInstance);
 
+	/* GetInstanceProcAddr() can also be called with a NULL instance.
+	 * See https://gitlab.khronos.org/vulkan/vulkan/issues/2057
+	 */
+	LOOKUP_RADV_ENTRYPOINT(GetInstanceProcAddr);
+
 #undef LOOKUP_RADV_ENTRYPOINT
 
 	if (instance == NULL)
