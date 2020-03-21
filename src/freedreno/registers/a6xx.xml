@@ -1072,7 +1072,9 @@ to upconvert to 32b float internally?
 		<bitfield high="1" low="1" name="CP_AHB_BUSY_CP_MASTER" />
 		<bitfield high="0" low="0" name="CP_AHB_BUSY_CX_MASTER"/>
 	</reg32>
-	<reg32 offset="0x0213" name="RBBM_STATUS3"/>
+	<reg32 offset="0x0213" name="RBBM_STATUS3">
+		<bitfield pos="24" name="SMMU_STALLED_ON_FAULT" type="boolean"/>
+	</reg32>
 	<reg32 offset="0x0215" name="RBBM_VBIF_GX_RESET_STATUS"/>
 	<reg32 offset="0x0400" name="RBBM_PERFCTR_CP_0_LO"/>
 	<reg32 offset="0x0401" name="RBBM_PERFCTR_CP_0_HI"/>
