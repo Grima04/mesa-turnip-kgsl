@@ -119,7 +119,7 @@ bi_assign_uniform_constant_single(
                 return assigned;
 
         bi_foreach_src(ins, s) {
-                if (s == 0 && ins->type == BI_LOAD_VAR_ADDRESS) continue;
+                if (s == 0 && (ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_ATTR)) continue;
 
                 if (ins->src[s] & BIR_INDEX_CONSTANT) {
                         /* TODO: lo/hi matching? */
@@ -594,6 +594,25 @@ bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_regist
 }
 
 static unsigned
+bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+{
+        /* Only direct loads supported */
+        assert(ins->src[0] == BIR_INDEX_CONSTANT);
+
+        struct bifrost_ld_attr pack = {
+                .src0 = bi_get_src(ins, regs, 1, false),
+                .src1 = bi_get_src(ins, regs, 2, false),
+                .location = ins->constant.u64,
+                .channels = MALI_POSITIVE(bi_load32_components(ins)),
+                .type = bi_pack_ldst_type(ins->dest_type),
+                .op = BIFROST_ADD_OP_LD_ATTR
+        };
+
+        bi_write_data_register(clause, ins);
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_add_st_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
         assert(ins->store_channels >= 1 && ins->store_channels <= 4);
@@ -667,10 +686,10 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_ISUB:
         case BI_LOAD:
                 return BIFROST_ADD_NOP;
+        case BI_LOAD_ATTR:
+                return bi_pack_add_ld_attr(clause, bundle.add, regs);
         case BI_LOAD_UNIFORM:
                 return bi_pack_add_ld_ubo(clause, bundle.add, regs);
-        case BI_LOAD_ATTR:
-                return BIFROST_ADD_NOP;
         case BI_LOAD_VAR:
                 return bi_pack_add_ld_vary(clause, bundle.add, regs);
         case BI_LOAD_VAR_ADDRESS:

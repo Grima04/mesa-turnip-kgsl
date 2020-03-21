@@ -280,6 +280,8 @@ struct bifrost_ld_var_addr {
         unsigned op : 7;
 } __attribute__((packed));
 
+#define BIFROST_ADD_OP_LD_ATTR (0x08000 >> 12)
+
 struct bifrost_ld_attr {
         unsigned src0 : 3;
         unsigned src1 : 3;

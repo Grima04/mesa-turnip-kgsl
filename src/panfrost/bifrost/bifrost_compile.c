@@ -167,16 +167,23 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
         bi_schedule_barrier(ctx);
 }
 
+static bi_instruction
+bi_load_with_r61(enum bi_class T, nir_intrinsic_instr *instr)
+{
+        bi_instruction ld = bi_load(T, instr);
+        ld.src[1] = BIR_INDEX_REGISTER | 61; /* TODO: RA */
+        ld.src[2] = BIR_INDEX_REGISTER | 62;
+        ld.src[3] = 0;
+        ld.src_types[1] = nir_type_uint32;
+        ld.src_types[2] = nir_type_uint32;
+        ld.src_types[3] = nir_intrinsic_type(instr);
+        return ld;
+}
+
 static void
 bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
-        bi_instruction address = bi_load(BI_LOAD_VAR_ADDRESS, instr);
-        address.src[1] = BIR_INDEX_REGISTER | 61; /* TODO: RA */
-        address.src[2] = BIR_INDEX_REGISTER | 62;
-        address.src[3] = 0;
-        address.src_types[1] = nir_type_uint32;
-        address.src_types[2] = nir_type_uint32;
-        address.src_types[3] = nir_intrinsic_type(instr);
+        bi_instruction address = bi_load_with_r61(BI_LOAD_VAR_ADDRESS, instr);
         address.dest = bi_make_temp(ctx);
         address.dest_type = nir_type_uint32;
         address.writemask = (1 << 12) - 1;
@@ -259,7 +266,7 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                 if (ctx->stage == MESA_SHADER_FRAGMENT)
                         bi_emit_ld_vary(ctx, instr);
                 else if (ctx->stage == MESA_SHADER_VERTEX)
-                        bi_emit(ctx, bi_load(BI_LOAD_ATTR, instr));
+                        bi_emit(ctx, bi_load_with_r61(BI_LOAD_ATTR, instr));
                 else {
                         unreachable("Unsupported shader stage");
                 }
