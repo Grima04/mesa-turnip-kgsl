@@ -161,6 +161,7 @@ void _mesa_glthread_upload(struct gl_context *ctx, const void *data,
                            GLsizeiptr size, unsigned *out_offset,
                            struct gl_buffer_object **out_buffer,
                            uint8_t **out_ptr);
+void _mesa_glthread_reset_vao(struct glthread_vao *vao);
 
 void _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target,
                                GLuint buffer);

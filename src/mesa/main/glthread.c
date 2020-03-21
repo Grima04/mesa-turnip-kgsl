@@ -89,6 +89,8 @@ _mesa_glthread_init(struct gl_context *ctx)
       util_queue_destroy(&glthread->queue);
       return;
    }
+
+   _mesa_glthread_reset_vao(&glthread->DefaultVAO);
    glthread->CurrentVAO = &glthread->DefaultVAO;
 
    ctx->MarshalExec = _mesa_create_marshal_table(ctx);

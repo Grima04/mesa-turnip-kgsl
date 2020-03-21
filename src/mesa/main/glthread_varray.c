@@ -37,6 +37,35 @@
  *   - Handle ARB_vertex_attrib_binding (incl. EXT_dsa and ARB_dsa)
  */
 
+void
+_mesa_glthread_reset_vao(struct glthread_vao *vao)
+{
+   static unsigned default_elem_size[VERT_ATTRIB_MAX] = {
+      [VERT_ATTRIB_NORMAL] = 12,
+      [VERT_ATTRIB_COLOR1] = 12,
+      [VERT_ATTRIB_FOG] = 4,
+      [VERT_ATTRIB_COLOR_INDEX] = 4,
+      [VERT_ATTRIB_EDGEFLAG] = 1,
+      [VERT_ATTRIB_POINT_SIZE] = 4,
+   };
+
+   vao->CurrentElementBufferName = 0;
+   vao->Enabled = 0;
+   vao->UserPointerMask = 0;
+   vao->NonZeroDivisorMask = 0;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(vao->Attrib); i++) {
+      unsigned elem_size = default_elem_size[i];
+      if (!elem_size)
+         elem_size = 16;
+
+      vao->Attrib[i].ElementSize = elem_size;
+      vao->Attrib[i].Stride = elem_size;
+      vao->Attrib[i].Divisor = 0;
+      vao->Attrib[i].Pointer = NULL;
+   }
+}
+
 static struct glthread_vao *
 lookup_vao(struct gl_context *ctx, GLuint id)
 {
@@ -127,6 +156,7 @@ _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
          continue; /* Is that all we can do? */
 
       vao->Name = id;
+      _mesa_glthread_reset_vao(vao);
       _mesa_HashInsertLocked(glthread->VAOs, id, vao);
    }
 }
