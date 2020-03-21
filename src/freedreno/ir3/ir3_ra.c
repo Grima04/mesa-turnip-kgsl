@@ -105,6 +105,9 @@
 
 static struct ir3_instruction * name_to_instr(struct ir3_ra_ctx *ctx, unsigned name);
 
+static bool name_is_array(struct ir3_ra_ctx *ctx, unsigned name);
+static struct ir3_array * name_to_array(struct ir3_ra_ctx *ctx, unsigned name);
+
 /* does it conflict? */
 static inline bool
 intersects(unsigned a_start, unsigned a_end, unsigned b_start, unsigned b_end)
@@ -500,10 +503,30 @@ ra_init(struct ir3_ra_ctx *ctx)
 static struct ir3_instruction *
 name_to_instr(struct ir3_ra_ctx *ctx, unsigned name)
 {
+	assert(!name_is_array(ctx, name));
 	struct hash_entry *entry = _mesa_hash_table_search(ctx->name_to_instr, &name);
 	if (entry)
 		return entry->data;
-	unreachable("invalid name");
+	unreachable("invalid instr name");
+	return NULL;
+}
+
+static bool
+name_is_array(struct ir3_ra_ctx *ctx, unsigned name)
+{
+	return name >= ctx->class_base[total_class_count];
+}
+
+static struct ir3_array *
+name_to_array(struct ir3_ra_ctx *ctx, unsigned name)
+{
+	assert(name_is_array(ctx, name));
+	foreach_array (arr, &ctx->ir->array_list) {
+		unsigned sz = reg_size_for_array(arr);
+		if (name < (arr->base + sz))
+			return arr;
+	}
+	unreachable("invalid array name");
 	return NULL;
 }
 
