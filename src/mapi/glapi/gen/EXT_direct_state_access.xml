@@ -102,11 +102,13 @@
 
    <!-- OpenGL 1.1 -->
 
-    <function name="ClientAttribDefaultEXT">
+    <function name="ClientAttribDefaultEXT"
+              marshal_call_after="if (COMPAT) _mesa_glthread_ClientAttribDefault(ctx, mask);">
        <param name="mask" type="GLbitfield" />
     </function>
 
-    <function name="PushClientAttribDefaultEXT">
+    <function name="PushClientAttribDefaultEXT"
+              marshal_call_after="if (COMPAT) _mesa_glthread_PushClientAttrib(ctx, mask, true);">
        <param name="mask" type="GLbitfield" />
     </function>
 

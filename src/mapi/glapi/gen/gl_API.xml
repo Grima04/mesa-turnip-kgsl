@@ -3388,11 +3388,13 @@
         <glx rop="194"/>
     </function>
 
-    <function name="PopClientAttrib" deprecated="3.1">
+    <function name="PopClientAttrib" deprecated="3.1"
+              marshal_call_after="if (COMPAT) _mesa_glthread_PopClientAttrib(ctx);">
         <glx handcode="true"/>
     </function>
 
-    <function name="PushClientAttrib" deprecated="3.1">
+    <function name="PushClientAttrib" deprecated="3.1"
+              marshal_call_after="if (COMPAT) _mesa_glthread_PushClientAttrib(ctx, mask, false);">
         <param name="mask" type="GLbitfield"/>
         <glx handcode="true"/>
     </function>

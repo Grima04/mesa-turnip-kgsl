@@ -51,6 +51,7 @@
 #include "util/u_queue.h"
 #include "GL/gl.h"
 #include "compiler/shader_enums.h"
+#include "main/config.h"
 
 struct gl_context;
 struct gl_buffer_object;
@@ -99,6 +100,18 @@ struct glthread_batch
    uint8_t buffer[MARSHAL_MAX_CMD_SIZE];
 };
 
+struct glthread_client_attrib {
+   struct glthread_vao VAO;
+   GLuint CurrentArrayBufferName;
+   int ClientActiveTexture;
+   GLuint RestartIndex;
+   bool PrimitiveRestart;
+   bool PrimitiveRestartFixedIndex;
+
+   /** Whether this element of the client attrib stack contains saved state. */
+   bool Valid;
+};
+
 struct glthread_state
 {
    /** Multithreaded queue. */
@@ -143,6 +156,8 @@ struct glthread_state
    struct glthread_vao *CurrentVAO;
    struct glthread_vao *LastLookedUpVAO;
    struct glthread_vao DefaultVAO;
+   struct glthread_client_attrib ClientAttribStack[MAX_CLIENT_ATTRIB_STACK_DEPTH];
+   int ClientAttribStackTop;
    int ClientActiveTexture;
 
    /** Currently-bound buffer object IDs. */
@@ -188,5 +203,9 @@ void _mesa_glthread_DSAAttribPointer(struct gl_context *ctx, GLuint vao,
                                      GLuint buffer, gl_vert_attrib attrib,
                                      GLint size, GLenum type, GLsizei stride,
                                      GLintptr offset);
+void _mesa_glthread_PushClientAttrib(struct gl_context *ctx, GLbitfield mask,
+                                     bool set_default);
+void _mesa_glthread_PopClientAttrib(struct gl_context *ctx);
+void _mesa_glthread_ClientAttribDefault(struct gl_context *ctx, GLbitfield mask);
 
 #endif /* _GLTHREAD_H*/

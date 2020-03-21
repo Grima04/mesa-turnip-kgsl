@@ -308,3 +308,89 @@ _mesa_glthread_DSAAttribPointer(struct gl_context *ctx, GLuint vaobj,
    attrib_pointer(glthread, vao, buffer, attrib, size, type, stride,
                   (const void*)offset);
 }
+
+void
+_mesa_glthread_PushClientAttrib(struct gl_context *ctx, GLbitfield mask,
+                                bool set_default)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+
+   if (glthread->ClientAttribStackTop >= MAX_CLIENT_ATTRIB_STACK_DEPTH)
+      return;
+
+   struct glthread_client_attrib *top =
+      &glthread->ClientAttribStack[glthread->ClientAttribStackTop];
+
+   if (mask & GL_CLIENT_VERTEX_ARRAY_BIT) {
+      top->VAO = *glthread->CurrentVAO;
+      top->CurrentArrayBufferName = glthread->CurrentArrayBufferName;
+      top->ClientActiveTexture = glthread->ClientActiveTexture;
+      top->RestartIndex = glthread->RestartIndex;
+      top->PrimitiveRestart = glthread->PrimitiveRestart;
+      top->PrimitiveRestartFixedIndex = glthread->PrimitiveRestartFixedIndex;
+      top->Valid = true;
+   } else {
+      top->Valid = false;
+   }
+
+   glthread->ClientAttribStackTop++;
+
+   if (set_default)
+      _mesa_glthread_ClientAttribDefault(ctx, mask);
+}
+
+void
+_mesa_glthread_PopClientAttrib(struct gl_context *ctx)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+
+   if (glthread->ClientAttribStackTop == 0)
+      return;
+
+   glthread->ClientAttribStackTop--;
+
+   struct glthread_client_attrib *top =
+      &glthread->ClientAttribStack[glthread->ClientAttribStackTop];
+
+   if (!top->Valid)
+      return;
+
+   /* Popping a delete VAO is an error. */
+   struct glthread_vao *vao = NULL;
+   if (top->VAO.Name) {
+      vao = lookup_vao(ctx, top->VAO.Name);
+      if (!vao)
+         return;
+   }
+
+   /* Restore states. */
+   glthread->CurrentArrayBufferName = top->CurrentArrayBufferName;
+   glthread->ClientActiveTexture = top->ClientActiveTexture;
+   glthread->RestartIndex = top->RestartIndex;
+   glthread->PrimitiveRestart = top->PrimitiveRestart;
+   glthread->PrimitiveRestartFixedIndex = top->PrimitiveRestartFixedIndex;
+
+   if (!vao)
+      vao = &glthread->DefaultVAO;
+
+   assert(top->VAO.Name == vao->Name);
+   *vao = top->VAO; /* Copy all fields. */
+   glthread->CurrentVAO = vao;
+}
+
+void
+_mesa_glthread_ClientAttribDefault(struct gl_context *ctx, GLbitfield mask)
+{
+   struct glthread_state *glthread = &ctx->GLThread;
+
+   if (!(mask & GL_CLIENT_VERTEX_ARRAY_BIT))
+      return;
+
+   glthread->CurrentArrayBufferName = 0;
+   glthread->ClientActiveTexture = 0;
+   glthread->RestartIndex = 0;
+   glthread->PrimitiveRestart = false;
+   glthread->PrimitiveRestartFixedIndex = false;
+   glthread->CurrentVAO = &glthread->DefaultVAO;
+   _mesa_glthread_reset_vao(glthread->CurrentVAO);
+}
