@@ -643,7 +643,7 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 	bool progress;
 	do {
 		progress = false;
-		foreach_src_n(reg, n, instr) {
+		foreach_src_n (reg, n, instr) {
 			struct ir3_instruction *src = ssa(reg);
 
 			if (!src)
@@ -767,7 +767,7 @@ ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so)
 			 */
 			debug_assert(instr->deps_count == 0);
 
-			foreach_ssa_src(src, instr) {
+			foreach_ssa_src (src, instr) {
 				src->use_count++;
 			}
 		}
@@ -776,7 +776,7 @@ ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so)
 	ir3_clear_mark(ir);
 
 	struct ir3_instruction *out;
-	foreach_output_n(out, n, ir) {
+	foreach_output_n (out, n, ir) {
 		instr_cp(&ctx, out);
 		ir->outputs[n] = eliminate_output_mov(out);
 	}

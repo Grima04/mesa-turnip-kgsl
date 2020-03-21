@@ -322,7 +322,7 @@ ir3_print(struct ir3 *ir)
 		print_block(block, 0);
 
 	struct ir3_instruction *out;
-	foreach_output_n(out, i, ir) {
+	foreach_output_n (out, i, ir) {
 		printf("out%d: ", i);
 		print_instr(out, 0);
 	}

@@ -214,10 +214,10 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 
 	memset(state, 0, sizeof(*state));
 
-	nir_foreach_function(function, nir) {
+	nir_foreach_function (function, nir) {
 		if (function->impl) {
-			nir_foreach_block(block, function->impl) {
-				nir_foreach_instr(instr, block) {
+			nir_foreach_block (block, function->impl) {
+				nir_foreach_instr (instr, block) {
 					if (instr->type == nir_instr_type_intrinsic &&
 						nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_ubo)
 						gather_ubo_ranges(nir, nir_instr_as_intrinsic(instr), state);
@@ -252,12 +252,12 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 	}
 	state->size = offset;
 
-	nir_foreach_function(function, nir) {
+	nir_foreach_function (function, nir) {
 		if (function->impl) {
 			nir_builder builder;
 			nir_builder_init(&builder, function->impl);
-			nir_foreach_block(block, function->impl) {
-				nir_foreach_instr_safe(instr, block) {
+			nir_foreach_block (block, function->impl) {
+				nir_foreach_instr_safe (instr, block) {
 					if (instr->type == nir_instr_type_intrinsic &&
 						nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_ubo)
 						lower_ubo_load_to_uniform(nir_instr_as_intrinsic(instr), &builder, state);

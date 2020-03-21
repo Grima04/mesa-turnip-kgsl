@@ -385,7 +385,7 @@ ir3_a6xx_fixup_atomic_dests(struct ir3 *ir, struct ir3_shader_variant *so)
 		foreach_instr_safe (instr, &block->instr_list) {
 			struct ir3_register *reg;
 
-			foreach_src(reg, instr) {
+			foreach_src (reg, instr) {
 				struct ir3_instruction *src = reg->instr;
 
 				if (!src)

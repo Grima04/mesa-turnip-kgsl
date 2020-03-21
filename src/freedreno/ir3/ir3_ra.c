@@ -976,7 +976,7 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 			}
 		}
 
-		foreach_src(reg, instr) {
+		foreach_src (reg, instr) {
 			if (reg->flags & IR3_REG_ARRAY) {
 				struct ir3_array *arr =
 					ir3_lookup_array(ctx->ir, reg->array.id);
@@ -1028,7 +1028,7 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 					 * component.  This shows up in splits coming out of
 					 * a tex instruction w/ wrmask=.z, for example.
 					 */
-					if (ctx->scalar_pass && (instr->opc == OPC_META_SPLIT) &&
+					if ((instr->opc == OPC_META_SPLIT) &&
 							!(i == instr->split.off))
 						continue;
 
@@ -1053,6 +1053,9 @@ ra_compute_livein_liveout(struct ir3_ra_ctx *ctx)
 
 		/* update livein: */
 		for (unsigned i = 0; i < bitset_words; i++) {
+			/* anything used but not def'd within a block is
+			 * by definition a live value coming into the block:
+			 */
 			BITSET_WORD new_livein =
 				(bd->use[i] | (bd->liveout[i] & ~bd->def[i]));
 
@@ -1073,6 +1076,9 @@ ra_compute_livein_liveout(struct ir3_ra_ctx *ctx)
 			succ_bd = succ->data;
 
 			for (unsigned i = 0; i < bitset_words; i++) {
+				/* add anything that is livein in a successor block
+				 * to our liveout:
+				 */
 				BITSET_WORD new_liveout =
 					(succ_bd->livein[i] & ~bd->liveout[i]);
 
@@ -1186,7 +1192,7 @@ ra_add_interference(struct ir3_ra_ctx *ctx)
 
 	/* need to fix things up to keep outputs live: */
 	struct ir3_instruction *out;
-	foreach_output(out, ir) {
+	foreach_output (out, ir) {
 		unsigned name = ra_name(ctx, &ctx->instrd[out->ip]);
 		ctx->use[name] = ctx->instr_cnt;
 	}
@@ -1388,7 +1394,7 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 			}
 		}
 
-		foreach_src_n(reg, n, instr) {
+		foreach_src_n (reg, n, instr) {
 			struct ir3_instruction *src = reg->instr;
 
 			if (src && !should_assign(ctx, src) && !should_assign(ctx, instr))

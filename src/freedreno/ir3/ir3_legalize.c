@@ -274,7 +274,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		 * their src register(s):
 		 */
 		if (is_tex(n) || is_sfu(n) || is_mem(n)) {
-			foreach_src(reg, n) {
+			foreach_src (reg, n) {
 				if (reg_gpr(reg))
 					regmask_set(&state->needs_ss_war, reg);
 			}

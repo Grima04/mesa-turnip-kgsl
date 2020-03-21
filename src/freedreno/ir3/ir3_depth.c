@@ -79,7 +79,7 @@ ir3_instr_depth(struct ir3_instruction *instr, unsigned boost, bool falsedep)
 
 	instr->depth = 0;
 
-	foreach_ssa_src_n(src, i, instr) {
+	foreach_ssa_src_n (src, i, instr) {
 		unsigned sd;
 
 		/* visit child to compute it's depth: */
@@ -165,7 +165,7 @@ compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 	}
 
 	struct ir3_instruction *out;
-	foreach_output(out, ir)
+	foreach_output (out, ir)
 		ir3_instr_depth(out, 0, false);
 
 	foreach_block (block, &ir->block_list) {
@@ -193,7 +193,7 @@ compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 
 	/* cleanup unused inputs: */
 	struct ir3_instruction *in;
-	foreach_input_n(in, n, ir)
+	foreach_input_n (in, n, ir)
 		if (in->flags & IR3_INSTR_UNUSED)
 			ir->inputs[n] = NULL;
 

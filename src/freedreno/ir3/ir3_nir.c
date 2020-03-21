@@ -359,12 +359,12 @@ static void
 ir3_nir_scan_driver_consts(nir_shader *shader,
 		struct ir3_const_state *layout)
 {
-	nir_foreach_function(function, shader) {
+	nir_foreach_function (function, shader) {
 		if (!function->impl)
 			continue;
 
-		nir_foreach_block(block, function->impl) {
-			nir_foreach_instr(instr, block) {
+		nir_foreach_block (block, function->impl) {
+			nir_foreach_instr (instr, block) {
 				if (instr->type != nir_instr_type_intrinsic)
 					continue;
 

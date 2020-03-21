@@ -287,7 +287,7 @@ ir3_shader_destroy(struct ir3_shader *shader)
 static bool
 lower_output_var(nir_shader *nir, int location)
 {
-	nir_foreach_variable(var, &nir->outputs) {
+	nir_foreach_variable (var, &nir->outputs) {
 		if (var->data.driver_location == location &&
 				((var->data.precision == GLSL_PRECISION_MEDIUM) ||
 					(var->data.precision == GLSL_PRECISION_LOW))) {
@@ -313,8 +313,8 @@ lower_mediump_outputs(nir_shader *nir)
 	nir_builder b;
 	nir_builder_init(&b, impl);
 
-	nir_foreach_block_safe(block, impl) {
-		nir_foreach_instr_safe(instr, block) {
+	nir_foreach_block_safe (block, impl) {
+		nir_foreach_instr_safe (instr, block) {
 			if (instr->type != nir_instr_type_intrinsic)
 				continue;
 
@@ -434,7 +434,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	unsigned i;
 
 	struct ir3_instruction *instr;
-	foreach_input_n(instr, i, ir) {
+	foreach_input_n (instr, i, ir) {
 		reg = instr->regs[0];
 		regid = reg->num;
 		fprintf(out, "@in(%sr%d.%c)\tin%d",
@@ -456,7 +456,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 				fetch->wrmask, fetch->cmd);
 	}
 
-	foreach_output_n(instr, i, ir) {
+	foreach_output_n (instr, i, ir) {
 		reg = instr->regs[0];
 		regid = reg->num;
 		fprintf(out, "@out(%sr%d.%c)\tout%d",
