@@ -33,6 +33,7 @@
 #include "etnaviv_clear_blit.h"
 #include "etnaviv_context.h"
 #include "etnaviv_format.h"
+#include "etnaviv_rasterizer.h"
 #include "etnaviv_screen.h"
 #include "etnaviv_shader.h"
 #include "etnaviv_surface.h"
@@ -659,6 +660,39 @@ etna_update_ts_config(struct etna_context *ctx)
    return true;
 }
 
+static bool
+etna_update_clipping(struct etna_context *ctx)
+{
+   const struct etna_rasterizer_state *rasterizer = etna_rasterizer_state(ctx->rasterizer);
+
+   /* clip framebuffer against viewport */
+   uint32_t scissor_left =
+      MAX2(ctx->framebuffer.SE_SCISSOR_LEFT, ctx->viewport.SE_SCISSOR_LEFT);
+   uint32_t scissor_top =
+      MAX2(ctx->framebuffer.SE_SCISSOR_TOP, ctx->viewport.SE_SCISSOR_TOP);
+   uint32_t scissor_right =
+      MIN2(ctx->framebuffer.SE_SCISSOR_RIGHT, ctx->viewport.SE_SCISSOR_RIGHT);
+   uint32_t scissor_bottom =
+      MIN2(ctx->framebuffer.SE_SCISSOR_BOTTOM, ctx->viewport.SE_SCISSOR_BOTTOM);
+
+   /* clip against scissor */
+   if (rasterizer->scissor) {
+      scissor_left = MAX2(ctx->scissor.SE_SCISSOR_LEFT, scissor_left);
+      scissor_top = MAX2(ctx->scissor.SE_SCISSOR_TOP, scissor_top);
+      scissor_right = MIN2(ctx->scissor.SE_SCISSOR_RIGHT, scissor_right);
+      scissor_bottom = MIN2(ctx->scissor.SE_SCISSOR_BOTTOM, scissor_bottom);
+   }
+
+   ctx->clipping.SE_SCISSOR_LEFT = scissor_left;
+   ctx->clipping.SE_SCISSOR_TOP = scissor_top;
+   ctx->clipping.SE_SCISSOR_RIGHT = scissor_right;
+   ctx->clipping.SE_SCISSOR_BOTTOM = scissor_bottom;
+
+   ctx->dirty |= ETNA_DIRTY_SCISSOR_CLIP;
+
+   return true;
+}
+
 struct etna_state_updater {
    bool (*update)(struct etna_context *ctx);
    uint32_t dirty;
@@ -679,6 +713,10 @@ static const struct etna_state_updater etna_state_updates[] = {
    },
    {
       etna_update_ts_config, ETNA_DIRTY_DERIVE_TS,
+   },
+   {
+      etna_update_clipping, ETNA_DIRTY_SCISSOR | ETNA_DIRTY_FRAMEBUFFER |
+                            ETNA_DIRTY_RASTERIZER | ETNA_DIRTY_VIEWPORT,
    }
 };
 

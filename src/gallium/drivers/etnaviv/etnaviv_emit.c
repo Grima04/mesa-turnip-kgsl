@@ -391,33 +391,11 @@ etna_emit_state(struct etna_context *ctx)
       /*00A38*/ EMIT_STATE(PA_WIDE_LINE_WIDTH0, rasterizer->PA_LINE_WIDTH);
       /*00A3C*/ EMIT_STATE(PA_WIDE_LINE_WIDTH1, rasterizer->PA_LINE_WIDTH);
    }
-   if (unlikely(dirty & (ETNA_DIRTY_SCISSOR | ETNA_DIRTY_FRAMEBUFFER |
-                         ETNA_DIRTY_RASTERIZER | ETNA_DIRTY_VIEWPORT))) {
-      /* this is a bit of a mess: rasterizer.scissor determines whether to use
-       * only the framebuffer scissor, or specific scissor state, and the
-       * viewport clips too so the logic spans four CSOs */
-      struct etna_rasterizer_state *rasterizer = etna_rasterizer_state(ctx->rasterizer);
-
-      uint32_t scissor_left =
-         MAX2(ctx->framebuffer.SE_SCISSOR_LEFT, ctx->viewport.SE_SCISSOR_LEFT);
-      uint32_t scissor_top =
-         MAX2(ctx->framebuffer.SE_SCISSOR_TOP, ctx->viewport.SE_SCISSOR_TOP);
-      uint32_t scissor_right =
-         MIN2(ctx->framebuffer.SE_SCISSOR_RIGHT, ctx->viewport.SE_SCISSOR_RIGHT);
-      uint32_t scissor_bottom =
-         MIN2(ctx->framebuffer.SE_SCISSOR_BOTTOM, ctx->viewport.SE_SCISSOR_BOTTOM);
-
-      if (rasterizer->scissor) {
-         scissor_left = MAX2(ctx->scissor.SE_SCISSOR_LEFT, scissor_left);
-         scissor_top = MAX2(ctx->scissor.SE_SCISSOR_TOP, scissor_top);
-         scissor_right = MIN2(ctx->scissor.SE_SCISSOR_RIGHT, scissor_right);
-         scissor_bottom = MIN2(ctx->scissor.SE_SCISSOR_BOTTOM, scissor_bottom);
-      }
-
-      /*00C00*/ EMIT_STATE_FIXP(SE_SCISSOR_LEFT, scissor_left);
-      /*00C04*/ EMIT_STATE_FIXP(SE_SCISSOR_TOP, scissor_top);
-      /*00C08*/ EMIT_STATE_FIXP(SE_SCISSOR_RIGHT, scissor_right + ETNA_SE_SCISSOR_MARGIN_RIGHT);
-      /*00C0C*/ EMIT_STATE_FIXP(SE_SCISSOR_BOTTOM, scissor_bottom + ETNA_SE_SCISSOR_MARGIN_BOTTOM);
+   if (unlikely(dirty & (ETNA_DIRTY_SCISSOR_CLIP))) {
+      /*00C00*/ EMIT_STATE_FIXP(SE_SCISSOR_LEFT, ctx->clipping.SE_SCISSOR_LEFT);
+      /*00C04*/ EMIT_STATE_FIXP(SE_SCISSOR_TOP, ctx->clipping.SE_SCISSOR_TOP);
+      /*00C08*/ EMIT_STATE_FIXP(SE_SCISSOR_RIGHT, ctx->clipping.SE_SCISSOR_RIGHT + ETNA_SE_SCISSOR_MARGIN_RIGHT);
+      /*00C0C*/ EMIT_STATE_FIXP(SE_SCISSOR_BOTTOM, ctx->clipping.SE_SCISSOR_BOTTOM + ETNA_SE_SCISSOR_MARGIN_BOTTOM);
    }
    if (unlikely(dirty & (ETNA_DIRTY_RASTERIZER))) {
       struct etna_rasterizer_state *rasterizer = etna_rasterizer_state(ctx->rasterizer);
@@ -426,22 +404,9 @@ etna_emit_state(struct etna_context *ctx)
       /*00C14*/ EMIT_STATE(SE_DEPTH_BIAS, rasterizer->SE_DEPTH_BIAS);
       /*00C18*/ EMIT_STATE(SE_CONFIG, rasterizer->SE_CONFIG);
    }
-   if (unlikely(dirty & (ETNA_DIRTY_SCISSOR | ETNA_DIRTY_FRAMEBUFFER |
-                         ETNA_DIRTY_RASTERIZER | ETNA_DIRTY_VIEWPORT))) {
-      struct etna_rasterizer_state *rasterizer = etna_rasterizer_state(ctx->rasterizer);
-
-      uint32_t clip_right =
-         MIN2(ctx->framebuffer.SE_SCISSOR_RIGHT, ctx->viewport.SE_SCISSOR_RIGHT);
-      uint32_t clip_bottom =
-         MIN2(ctx->framebuffer.SE_SCISSOR_BOTTOM, ctx->viewport.SE_SCISSOR_BOTTOM);
-
-      if (rasterizer->scissor) {
-         clip_right = MIN2(ctx->scissor.SE_SCISSOR_RIGHT, clip_right);
-         clip_bottom = MIN2(ctx->scissor.SE_SCISSOR_BOTTOM, clip_bottom);
-      }
-
-      /*00C20*/ EMIT_STATE_FIXP(SE_CLIP_RIGHT, clip_right + ETNA_SE_CLIP_MARGIN_RIGHT);
-      /*00C24*/ EMIT_STATE_FIXP(SE_CLIP_BOTTOM, clip_bottom + ETNA_SE_CLIP_MARGIN_BOTTOM);
+   if (unlikely(dirty & (ETNA_DIRTY_SCISSOR_CLIP))) {
+      /*00C20*/ EMIT_STATE_FIXP(SE_CLIP_RIGHT, ctx->clipping.SE_SCISSOR_RIGHT + ETNA_SE_CLIP_MARGIN_RIGHT);
+      /*00C24*/ EMIT_STATE_FIXP(SE_CLIP_BOTTOM, ctx->clipping.SE_SCISSOR_BOTTOM + ETNA_SE_CLIP_MARGIN_BOTTOM);
    }
    if (unlikely(dirty & (ETNA_DIRTY_SHADER))) {
       /*00E00*/ EMIT_STATE(RA_CONTROL, ctx->shader_state.RA_CONTROL);

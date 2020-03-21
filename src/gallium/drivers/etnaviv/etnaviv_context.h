@@ -138,6 +138,7 @@ struct etna_context {
       ETNA_DIRTY_TS              = (1 << 17),
       ETNA_DIRTY_TEXTURE_CACHES  = (1 << 18),
       ETNA_DIRTY_DERIVE_TS       = (1 << 19),
+      ETNA_DIRTY_SCISSOR_CLIP    = (1 << 20),
    } dirty;
 
    uint32_t prim_hwsupport;
@@ -156,6 +157,7 @@ struct etna_context {
    struct pipe_depth_stencil_alpha_state *zsa;
    struct compiled_vertex_elements_state *vertex_elements;
    struct compiled_shader_state shader_state;
+   struct compiled_scissor_state clipping;
 
    /* to simplify the emit process we store pre compiled state objects,
     * which got 'compiled' during state change. */
