@@ -444,6 +444,64 @@ bi_cond_for_nir(nir_op op, bool soft)
 }
 
 static void
+bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
+                unsigned *constants_left, unsigned *constant_shift)
+{
+        unsigned bits = nir_src_bit_size(instr->src[i].src);
+        unsigned dest_bits = nir_dest_bit_size(instr->dest.dest);
+
+        alu->src_types[to] = nir_op_infos[instr->op].input_types[i]
+                | bits;
+
+        /* Try to inline a constant */
+        if (nir_src_is_const(instr->src[i].src) && *constants_left && (dest_bits == bits)) {
+                alu->constant.u64 |=
+                        (nir_src_as_uint(instr->src[i].src)) << *constant_shift;
+
+                alu->src[to] = BIR_INDEX_CONSTANT | (*constant_shift);
+                --(*constants_left);
+                (*constant_shift) += dest_bits;
+                return;
+        }
+
+        alu->src[to] = bir_src_index(&instr->src[i].src);
+
+        /* We assert scalarization above */
+        alu->swizzle[to][0] = instr->src[i].swizzle[0];
+}
+
+static void
+bi_fuse_csel_cond(bi_instruction *csel, nir_alu_src cond,
+                unsigned *constants_left, unsigned *constant_shift)
+{
+        /* Bail for vector weirdness */
+        if (cond.swizzle[0] != 0)
+                return;
+
+        if (!cond.src.is_ssa)
+                return;
+
+        nir_ssa_def *def = cond.src.ssa;
+        nir_instr *parent = def->parent_instr;
+
+        if (parent->type != nir_instr_type_alu)
+                return;
+
+        nir_alu_instr *alu = nir_instr_as_alu(parent);
+
+        /* Try to match a condition */
+        enum bi_cond bcond = bi_cond_for_nir(alu->op, true);
+
+        if (bcond == BI_COND_ALWAYS)
+                return;
+
+        /* We found one, let's fuse it in */
+        csel->csel_cond = bcond;
+        bi_copy_src(csel, alu, 0, 0, constants_left, constant_shift);
+        bi_copy_src(csel, alu, 1, 3, constants_left, constant_shift);
+}
+
+static void
 emit_alu(bi_context *ctx, nir_alu_instr *instr)
 {
         /* Assume it's something we can handle normally */
@@ -485,27 +543,8 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         unsigned num_inputs = nir_op_infos[instr->op].num_inputs;
         assert(num_inputs <= ARRAY_SIZE(alu.src));
 
-        for (unsigned i = 0; i < num_inputs; ++i) {
-                unsigned bits = nir_src_bit_size(instr->src[i].src);
-                alu.src_types[i] = nir_op_infos[instr->op].input_types[i]
-                        | bits;
-
-                /* Try to inline a constant */
-                if (nir_src_is_const(instr->src[i].src) && constants_left && (dest_bits == bits)) {
-                        alu.constant.u64 |=
-                                (nir_src_as_uint(instr->src[i].src)) << constant_shift;
-
-                        alu.src[i] = BIR_INDEX_CONSTANT | constant_shift;
-                        --constants_left;
-                        constant_shift += dest_bits;
-                        continue;
-                }
-
-                alu.src[i] = bir_src_index(&instr->src[i].src);
-
-                /* We assert scalarization above */
-                alu.swizzle[i][0] = instr->src[i].swizzle[0];
-        }
+        for (unsigned i = 0; i < num_inputs; ++i)
+                bi_copy_src(&alu, instr, i, i, &constants_left, &constant_shift);
 
         /* Op-specific fixup */
         switch (instr->op) {
@@ -553,6 +592,11 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         default:
                 break;
+        }
+
+        if (alu.type == BI_CSEL) {
+                bi_fuse_csel_cond(&alu, instr->src[0],
+                                &constants_left, &constant_shift);
         }
 
         bi_emit(ctx, alu);
