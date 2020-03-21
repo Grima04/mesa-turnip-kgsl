@@ -96,6 +96,9 @@ fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
 	}
 
 	for (i = 0; i < v->outputs_count; i++) {
+		/* for ex, VS shaders with tess don't have normal varying outs: */
+		if (!VALIDREG(v->outputs[i].regid))
+			continue;
 		int32_t regid = v->outputs[i].regid + 3;
 		if (v->outputs[i].half) {
 			if (gpu_id < 500) {
