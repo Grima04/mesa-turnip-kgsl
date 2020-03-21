@@ -79,6 +79,9 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
 	    sel->screen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL))
 		shader_variant_flags |= 1 << 3;
 
+	/* This varies depending on whether compute-based culling is enabled. */
+	shader_variant_flags |= sel->screen->num_vbos_in_user_sgprs << 4;
+
 	struct mesa_sha1 ctx;
 	_mesa_sha1_init(&ctx);
 	_mesa_sha1_update(&ctx, &shader_variant_flags, 4);
