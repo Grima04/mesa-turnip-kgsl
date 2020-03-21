@@ -892,13 +892,6 @@ ra_add_interference(struct ir3_ra_ctx *ctx)
 		}
 	}
 
-	/* need to fix things up to keep outputs live: */
-	struct ir3_instruction *out;
-	foreach_output (out, ir) {
-		unsigned name = ra_name(ctx, &ctx->instrd[out->ip]);
-		ctx->use[name] = ctx->instr_cnt;
-	}
-
 	for (unsigned i = 0; i < ctx->alloc_count; i++) {
 		for (unsigned j = 0; j < ctx->alloc_count; j++) {
 			if (intersects(ctx->def[i], ctx->use[i],
