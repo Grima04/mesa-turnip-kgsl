@@ -199,7 +199,7 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
                          GLuint index,
                          struct gl_buffer_object *vbo,
                          GLintptr offset, GLsizei stride,
-                         bool offset_is_int32)
+                         bool offset_is_int32, bool take_vbo_ownership)
 {
    assert(index < ARRAY_SIZE(vao->BufferBinding));
    assert(!vao->SharedAndImmutable);
@@ -223,7 +223,12 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
        binding->Offset != offset ||
        binding->Stride != stride) {
 
-      _mesa_reference_buffer_object(ctx, &binding->BufferObj, vbo);
+      if (take_vbo_ownership) {
+         _mesa_reference_buffer_object(ctx, &binding->BufferObj, NULL);
+         binding->BufferObj = vbo;
+      } else {
+         _mesa_reference_buffer_object(ctx, &binding->BufferObj, vbo);
+      }
 
       binding->Offset = offset;
       binding->Stride = stride;
@@ -910,7 +915,7 @@ update_array(struct gl_context *ctx,
       stride : array->Format._ElementSize;
    _mesa_bind_vertex_buffer(ctx, vao, attrib,
                             obj, (GLintptr) ptr,
-                            effectiveStride, false);
+                            effectiveStride, false, false);
 }
 
 
@@ -2940,7 +2945,7 @@ vertex_array_vertex_buffer(struct gl_context *ctx,
    }
 
    _mesa_bind_vertex_buffer(ctx, vao, VERT_ATTRIB_GENERIC(bindingIndex),
-                            vbo, offset, stride, false);
+                            vbo, offset, stride, false, false);
 }
 
 
@@ -3105,7 +3110,7 @@ vertex_array_vertex_buffers(struct gl_context *ctx,
        */
       for (i = 0; i < count; i++)
          _mesa_bind_vertex_buffer(ctx, vao, VERT_ATTRIB_GENERIC(first + i),
-                                  NULL, 0, 16, false);
+                                  NULL, 0, 16, false, false);
 
       return;
    }
@@ -3183,7 +3188,7 @@ vertex_array_vertex_buffers(struct gl_context *ctx,
       }
 
       _mesa_bind_vertex_buffer(ctx, vao, VERT_ATTRIB_GENERIC(first + i),
-                               vbo, offsets[i], strides[i], false);
+                               vbo, offsets[i], strides[i], false, false);
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->BufferObjects);
