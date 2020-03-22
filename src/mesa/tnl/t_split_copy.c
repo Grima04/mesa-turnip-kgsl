@@ -455,7 +455,7 @@ replay_init(struct copy_context *copy)
          copy->varying[j].size = attrib->Format._ElementSize;
          copy->vertex_size += attrib->Format._ElementSize;
 
-         if (_mesa_is_bufferobj(vbo)) {
+         if (vbo) {
             if (!_mesa_bufferobj_mapped(vbo, MAP_INTERNAL)) {
                ctx->Driver.MapBufferRange(ctx, 0, vbo->Size, GL_MAP_READ_BIT, vbo,
                                           MAP_INTERNAL);
@@ -476,7 +476,7 @@ replay_init(struct copy_context *copy)
     * caller convert non-indexed prims to indexed.  Could alternately
     * do it internally.
     */
-   if (_mesa_is_bufferobj(copy->ib->obj) &&
+   if (copy->ib->obj &&
        !_mesa_bufferobj_mapped(copy->ib->obj, MAP_INTERNAL))
       ctx->Driver.MapBufferRange(ctx, 0, copy->ib->obj->Size, GL_MAP_READ_BIT,
                                  copy->ib->obj, MAP_INTERNAL);
@@ -578,12 +578,12 @@ replay_finish(struct copy_context *copy)
    for (i = 0; i < copy->nr_varying; i++) {
       struct gl_buffer_object *vbo =
          copy->varying[i].array->BufferBinding->BufferObj;
-      if (_mesa_is_bufferobj(vbo) && _mesa_bufferobj_mapped(vbo, MAP_INTERNAL))
+      if (vbo && _mesa_bufferobj_mapped(vbo, MAP_INTERNAL))
          ctx->Driver.UnmapBuffer(ctx, vbo, MAP_INTERNAL);
    }
 
    /* Unmap index buffer */
-   if (_mesa_is_bufferobj(copy->ib->obj) &&
+   if (copy->ib->obj &&
        _mesa_bufferobj_mapped(copy->ib->obj, MAP_INTERNAL)) {
       ctx->Driver.UnmapBuffer(ctx, copy->ib->obj, MAP_INTERNAL);
    }

@@ -1415,7 +1415,7 @@ attrib_src(const struct gl_vertex_array_object *vao,
       &vao->BufferBinding[array->BufferBindingIndex];
    const GLubyte *src = _mesa_vertex_attrib_address(array, binding);
 
-   if (_mesa_is_bufferobj(binding->BufferObj)) {
+   if (binding->BufferObj) {
       src = ADD_POINTERS(binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
                          src);
    }

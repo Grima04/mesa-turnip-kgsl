@@ -60,17 +60,6 @@ _mesa_check_disallowed_mapping(const struct gl_buffer_object *obj)
             GL_MAP_PERSISTENT_BIT);
 }
 
-/**
- * Is the given buffer object a user-created buffer object?
- * Mesa uses default buffer objects in several places.  Default buffers
- * always have Name==0.  User created buffers have Name!=0.
- */
-static inline GLboolean
-_mesa_is_bufferobj(const struct gl_buffer_object *obj)
-{
-   return obj != NULL && obj->Name != 0;
-}
-
 
 extern void
 _mesa_init_buffer_objects(struct gl_context *ctx);

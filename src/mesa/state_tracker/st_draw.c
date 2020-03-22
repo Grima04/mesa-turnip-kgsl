@@ -206,7 +206,7 @@ st_draw_vbo(struct gl_context *ctx,
       info.min_index = min_index;
       info.max_index = max_index;
 
-      if (_mesa_is_bufferobj(bufobj)) {
+      if (bufobj) {
          /* indices are in a real VBO */
          info.has_user_indices = false;
          info.index.resource = st_buffer_object(bufobj)->buffer;
@@ -295,7 +295,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       struct gl_buffer_object *bufobj = ib->obj;
 
       /* indices are always in a real VBO */
-      assert(_mesa_is_bufferobj(bufobj));
+      assert(bufobj);
 
       info.index_size = 1 << ib->index_size_shift;
       info.index.resource = st_buffer_object(bufobj)->buffer;

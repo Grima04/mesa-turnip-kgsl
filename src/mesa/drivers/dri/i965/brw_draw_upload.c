@@ -493,7 +493,7 @@ brw_prepare_vertices(struct brw_context *brw)
          _mesa_draw_buffer_binding(vao, ffs(vbomask) - 1);
       const GLsizei stride = glbinding->Stride;
 
-      assert(_mesa_is_bufferobj(glbinding->BufferObj));
+      assert(glbinding->BufferObj);
 
       /* Accumulate the range of a single vertex, start with inverted range */
       uint32_t vertex_range_start = ~(uint32_t)0;
@@ -581,7 +581,7 @@ brw_prepare_vertices(struct brw_context *brw)
          _mesa_draw_buffer_binding(vao, ffs(usermask) - 1);
       const GLsizei stride = glbinding->Stride;
 
-      assert(!_mesa_is_bufferobj(glbinding->BufferObj));
+      assert(!glbinding->BufferObj);
       assert(brw->vb.index_bounds_valid);
 
       /* Accumulate the range of a single vertex, start with inverted range */
@@ -727,7 +727,7 @@ brw_upload_indices(struct brw_context *brw)
 
    /* Turn into a proper VBO:
     */
-   if (!_mesa_is_bufferobj(bufferobj)) {
+   if (!bufferobj) {
       /* Get new bufferobj, offset:
        */
       brw_upload_data(&brw->upload, index_buffer->ptr, ib_size, ib_type_size,

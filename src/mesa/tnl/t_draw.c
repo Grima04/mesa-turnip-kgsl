@@ -291,7 +291,7 @@ static void bind_inputs( struct gl_context *ctx,
       const struct gl_array_attributes *attrib = array->VertexAttrib;
       const void *ptr;
 
-      if (_mesa_is_bufferobj(binding->BufferObj)) {
+      if (binding->BufferObj) {
 	 if (!binding->BufferObj->Mappings[MAP_INTERNAL].Pointer) {
 	    bo[*nr_bo] = binding->BufferObj;
 	    (*nr_bo)++;
@@ -362,7 +362,7 @@ static void bind_indices( struct gl_context *ctx,
       return;
    }
 
-   if (_mesa_is_bufferobj(ib->obj) &&
+   if (ib->obj &&
        !_mesa_bufferobj_mapped(ib->obj, MAP_INTERNAL)) {
       /* if the buffer object isn't mapped yet, map it now */
       bo[*nr_bo] = ib->obj;

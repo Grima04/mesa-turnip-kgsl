@@ -45,7 +45,7 @@ static inline const GLubyte *
 _mesa_vertex_attrib_address(const struct gl_array_attributes *array,
                             const struct gl_vertex_buffer_binding *binding)
 {
-   if (_mesa_is_bufferobj(binding->BufferObj))
+   if (binding->BufferObj)
       return (const GLubyte *) (binding->Offset + array->RelativeOffset);
    else
       return array->Ptr;

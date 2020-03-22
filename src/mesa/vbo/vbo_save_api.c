@@ -1374,7 +1374,7 @@ _save_OBE_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
 
    _mesa_vao_map(ctx, vao, GL_MAP_READ_BIT);
 
-   if (_mesa_is_bufferobj(indexbuf))
+   if (indexbuf)
       indices =
          ADD_POINTERS(indexbuf->Mappings[MAP_INTERNAL].Pointer, indices);
 

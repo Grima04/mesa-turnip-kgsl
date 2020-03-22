@@ -53,7 +53,7 @@ buffer_object_purgeable(struct gl_context *ctx, GLuint name, GLenum option)
                   "glObjectPurgeable(name = 0x%x)", name);
       return 0;
    }
-   if (!_mesa_is_bufferobj(bufObj)) {
+   if (!bufObj) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "glObjectPurgeable(buffer 0)" );
       return 0;
    }

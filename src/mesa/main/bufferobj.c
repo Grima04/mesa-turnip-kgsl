@@ -206,7 +206,7 @@ get_buffer(struct gl_context *ctx, const char *func, GLenum target,
       return NULL;
    }
 
-   if (!_mesa_is_bufferobj(*bufObj)) {
+   if (!*bufObj) {
       _mesa_error(ctx, error, "%s(no buffer bound)", func);
       return NULL;
    }

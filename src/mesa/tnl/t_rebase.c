@@ -227,7 +227,7 @@ void t_rebase_prims( struct gl_context *ctx,
       tmp_attribs[i] = *(arrays[i].VertexAttrib);
       tmp_arrays[i].BufferBinding = arrays[i].BufferBinding;
       tmp_arrays[i].VertexAttrib = &tmp_attribs[i];
-      if (_mesa_is_bufferobj(arrays[i].BufferBinding->BufferObj))
+      if (arrays[i].BufferBinding->BufferObj)
          tmp_attribs[i].RelativeOffset +=
             min_index * arrays[i].BufferBinding->Stride;
       else

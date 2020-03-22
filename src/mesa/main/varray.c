@@ -169,7 +169,7 @@ _mesa_vertex_attrib_binding(struct gl_context *ctx,
    if (array->BufferBindingIndex != bindingIndex) {
       const GLbitfield array_bit = VERT_BIT(attribIndex);
 
-      if (_mesa_is_bufferobj(vao->BufferBinding[bindingIndex].BufferObj))
+      if (vao->BufferBinding[bindingIndex].BufferObj)
          vao->VertexAttribBufferMask |= array_bit;
       else
          vao->VertexAttribBufferMask &= ~array_bit;
@@ -205,7 +205,7 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
    struct gl_vertex_buffer_binding *binding = &vao->BufferBinding[index];
 
    if (ctx->Const.VertexBufferOffsetIsInt32 && (int)offset < 0 &&
-       _mesa_is_bufferobj(vbo)) {
+       vbo) {
       /* The offset will be interpreted as a signed int, so make sure
        * the user supplied offset is not negative (driver limitation).
        */
@@ -227,7 +227,7 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
       binding->Offset = offset;
       binding->Stride = stride;
 
-      if (!_mesa_is_bufferobj(vbo)) {
+      if (!vbo) {
          vao->VertexAttribBufferMask &= ~binding->_BoundArrays;
       } else {
          vao->VertexAttribBufferMask |= binding->_BoundArrays;
@@ -831,7 +831,7 @@ validate_array(struct gl_context *ctx, const char *func,
     *       2.9.6), and the pointer argument is not NULL."
     */
    if (ptr != NULL && vao != ctx->Array.DefaultVAO &&
-       !_mesa_is_bufferobj(obj)) {
+       !obj) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "%s(non-VBO array)", func);
       return;
    }

@@ -248,7 +248,7 @@ vbo_get_minmax_index(struct gl_context *ctx,
    GLintptr offset = 0;
 
    indices = (char *) ib->ptr + (prim->start << ib->index_size_shift);
-   if (_mesa_is_bufferobj(ib->obj)) {
+   if (ib->obj) {
       GLsizeiptr size = MIN2(count << ib->index_size_shift, ib->obj->Size);
 
       if (vbo_get_minmax_cached(ib->obj, 1 << ib->index_size_shift, (GLintptr) indices,
@@ -338,7 +338,7 @@ vbo_get_minmax_index(struct gl_context *ctx,
       unreachable("not reached");
    }
 
-   if (_mesa_is_bufferobj(ib->obj)) {
+   if (ib->obj) {
       vbo_minmax_cache_store(ctx, ib->obj, 1 << ib->index_size_shift, offset,
                              count, *min_index, *max_index);
       ctx->Driver.UnmapBuffer(ctx, ib->obj, MAP_INTERNAL);

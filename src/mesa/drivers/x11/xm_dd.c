@@ -355,7 +355,7 @@ xmesa_DrawPixels_8R8G8B( struct gl_context *ctx,
       if (swrast->NewState)
          _swrast_validate_derived( ctx );
 
-      if (_mesa_is_bufferobj(unpack->BufferObj)) {
+      if (unpack->BufferObj) {
          /* unpack from PBO */
          GLubyte *buf;
          if (!_mesa_validate_pbo_access(2, unpack, width, height, 1,
@@ -415,7 +415,7 @@ xmesa_DrawPixels_8R8G8B( struct gl_context *ctx,
          XPutImage(dpy, xrb->pixmap, gc, &ximage, 0, 0, dstX, dstY, w, h);
       }
 
-      if (_mesa_is_bufferobj(unpack->BufferObj)) {
+      if (unpack->BufferObj) {
          ctx->Driver.UnmapBuffer(ctx, unpack->BufferObj, MAP_INTERNAL);
       }
    }
@@ -487,7 +487,7 @@ xmesa_DrawPixels_5R6G5B( struct gl_context *ctx,
       if (swrast->NewState)
          _swrast_validate_derived( ctx );
       
-      if (_mesa_is_bufferobj(unpack->BufferObj)) {
+      if (unpack->BufferObj) {
          /* unpack from PBO */
          GLubyte *buf;
          if (!_mesa_validate_pbo_access(2, unpack, width, height, 1,

@@ -46,7 +46,7 @@ get_array_stride(struct gl_context *ctx, const struct tnl_vertex_array *a)
 	struct nouveau_render_state *render = to_render_state(ctx);
 	const struct gl_vertex_buffer_binding *binding = a->BufferBinding;
 
-	if (render->mode == VBO && !_mesa_is_bufferobj(binding->BufferObj)) {
+	if (render->mode == VBO && !binding->BufferObj) {
 		const struct gl_array_attributes *attrib = a->VertexAttrib;
 		/* Pack client buffers. */
 		return align(attrib->Format._ElementSize, 4);
@@ -230,7 +230,7 @@ get_max_client_stride(struct gl_context *ctx, const struct tnl_vertex_array *arr
 	FOR_EACH_BOUND_ATTR(render, i, attr) {
 		const struct tnl_vertex_array *a = &arrays[attr];
 
-		if (!_mesa_is_bufferobj(a->BufferBinding->BufferObj))
+		if (!a->BufferBinding->BufferObj)
 			s = MAX2(s, get_array_stride(ctx, a));
 	}
 
