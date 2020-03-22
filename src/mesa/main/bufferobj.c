@@ -872,7 +872,7 @@ _mesa_init_buffer_objects( struct gl_context *ctx )
    for (i = 0; i < MAX_COMBINED_UNIFORM_BUFFERS; i++) {
       _mesa_reference_buffer_object(ctx,
 				    &ctx->UniformBufferBindings[i].BufferObject,
-				    ctx->Shared->NullBufferObj);
+				    NULL);
       ctx->UniformBufferBindings[i].Offset = -1;
       ctx->UniformBufferBindings[i].Size = -1;
    }
@@ -880,7 +880,7 @@ _mesa_init_buffer_objects( struct gl_context *ctx )
    for (i = 0; i < MAX_COMBINED_SHADER_STORAGE_BUFFERS; i++) {
       _mesa_reference_buffer_object(ctx,
                                     &ctx->ShaderStorageBufferBindings[i].BufferObject,
-                                    ctx->Shared->NullBufferObj);
+                                    NULL);
       ctx->ShaderStorageBufferBindings[i].Offset = -1;
       ctx->ShaderStorageBufferBindings[i].Size = -1;
    }
@@ -888,7 +888,7 @@ _mesa_init_buffer_objects( struct gl_context *ctx )
    for (i = 0; i < MAX_COMBINED_ATOMIC_BUFFERS; i++) {
       _mesa_reference_buffer_object(ctx,
 				    &ctx->AtomicBufferBindings[i].BufferObject,
-				    ctx->Shared->NullBufferObj);
+				    NULL);
       ctx->AtomicBufferBindings[i].Offset = 0;
       ctx->AtomicBufferBindings[i].Size = 0;
    }
@@ -1079,10 +1079,9 @@ _mesa_lookup_bufferobj_err(struct gl_context *ctx, GLuint buffer,
  * of an existing buffer object.
  *
  * If the buffer ID refers to an existing buffer object, a pointer
- * to the buffer object is returned.  If the ID is zero, a pointer
- * to the shared NullBufferObj is returned.  If the ID is not zero
- * and does not refer to a valid buffer object, this function
- * returns NULL.
+ * to the buffer object is returned.  If the ID is zero, NULL is returned.
+ * If the ID is not zero and does not refer to a valid buffer object, this
+ * function returns NULL.
  *
  * This function assumes that the caller has already locked the
  * hash table mutex by calling
@@ -1091,9 +1090,12 @@ _mesa_lookup_bufferobj_err(struct gl_context *ctx, GLuint buffer,
 struct gl_buffer_object *
 _mesa_multi_bind_lookup_bufferobj(struct gl_context *ctx,
                                   const GLuint *buffers,
-                                  GLuint index, const char *caller)
+                                  GLuint index, const char *caller,
+                                  bool *error)
 {
-   struct gl_buffer_object *bufObj;
+   struct gl_buffer_object *bufObj = NULL;
+
+   *error = false;
 
    if (buffers[index] != 0) {
       bufObj = _mesa_lookup_bufferobj_locked(ctx, buffers[index]);
@@ -1102,20 +1104,20 @@ _mesa_multi_bind_lookup_bufferobj(struct gl_context *ctx,
          when they don't exist. */
       if (bufObj == &DummyBufferObject)
          bufObj = NULL;
-   } else
-      bufObj = ctx->Shared->NullBufferObj;
 
-   if (!bufObj) {
-      /* The ARB_multi_bind spec says:
-       *
-       *    "An INVALID_OPERATION error is generated if any value
-       *     in <buffers> is not zero or the name of an existing
-       *     buffer object (per binding)."
-       */
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "%s(buffers[%u]=%u is not zero or the name "
-                  "of an existing buffer object)",
-                  caller, index, buffers[index]);
+      if (!bufObj) {
+         /* The ARB_multi_bind spec says:
+          *
+          *    "An INVALID_OPERATION error is generated if any value
+          *     in <buffers> is not zero or the name of an existing
+          *     buffer object (per binding)."
+          */
+         _mesa_error(ctx, GL_INVALID_OPERATION,
+                     "%s(buffers[%u]=%u is not zero or the name "
+                     "of an existing buffer object)",
+                     caller, index, buffers[index]);
+         *error = true;
+      }
    }
 
    return bufObj;
@@ -1255,17 +1257,21 @@ set_buffer_multi_binding(struct gl_context *ctx,
                          gl_buffer_usage usage)
 {
    struct gl_buffer_object *bufObj;
+
    if (binding->BufferObject && binding->BufferObject->Name == buffers[idx])
       bufObj = binding->BufferObject;
-   else
-      bufObj = _mesa_multi_bind_lookup_bufferobj(ctx, buffers, idx, caller);
-
-   if (bufObj) {
-      if (bufObj == ctx->Shared->NullBufferObj)
-         set_buffer_binding(ctx, binding, bufObj, -1, -1, !range, usage);
-      else
-         set_buffer_binding(ctx, binding, bufObj, offset, size, !range, usage);
+   else {
+      bool error;
+      bufObj = _mesa_multi_bind_lookup_bufferobj(ctx, buffers, idx, caller,
+                                                 &error);
+      if (error)
+         return;
    }
+
+   if (!bufObj)
+      set_buffer_binding(ctx, binding, bufObj, -1, -1, !range, usage);
+   else
+      set_buffer_binding(ctx, binding, bufObj, offset, size, !range, usage);
 }
 
 static void
@@ -1367,7 +1373,7 @@ bind_buffer_base_uniform_buffer(struct gl_context *ctx,
 
    _mesa_reference_buffer_object(ctx, &ctx->UniformBuffer, bufObj);
 
-   if (bufObj == ctx->Shared->NullBufferObj)
+   if (!bufObj)
       bind_uniform_buffer(ctx, index, bufObj, -1, -1, GL_TRUE);
    else
       bind_uniform_buffer(ctx, index, bufObj, 0, 0, GL_TRUE);
@@ -1389,7 +1395,7 @@ bind_buffer_base_shader_storage_buffer(struct gl_context *ctx,
 
    _mesa_reference_buffer_object(ctx, &ctx->ShaderStorageBuffer, bufObj);
 
-   if (bufObj == ctx->Shared->NullBufferObj)
+   if (!bufObj)
       bind_shader_storage_buffer(ctx, index, bufObj, -1, -1, GL_TRUE);
    else
       bind_shader_storage_buffer(ctx, index, bufObj, 0, 0, GL_TRUE);
@@ -1411,7 +1417,7 @@ bind_buffer_base_atomic_buffer(struct gl_context *ctx,
 
    _mesa_reference_buffer_object(ctx, &ctx->AtomicBuffer, bufObj);
 
-   if (bufObj == ctx->Shared->NullBufferObj)
+   if (!bufObj)
       bind_atomic_buffer(ctx, index, bufObj, -1, -1, GL_TRUE);
    else
       bind_atomic_buffer(ctx, index, bufObj, 0, 0, GL_TRUE);
@@ -1484,16 +1490,14 @@ delete_buffers(struct gl_context *ctx, GLsizei n, const GLuint *ids)
             if (ctx->TransformFeedback.CurrentObject->Buffers[j] == bufObj) {
                _mesa_bind_buffer_base_transform_feedback(ctx,
                                            ctx->TransformFeedback.CurrentObject,
-                                           j, ctx->Shared->NullBufferObj,
-                                           false);
+                                           j, NULL, false);
             }
          }
 
          /* unbind UBO binding points */
          for (j = 0; j < ctx->Const.MaxUniformBufferBindings; j++) {
             if (ctx->UniformBufferBindings[j].BufferObject == bufObj) {
-               bind_buffer_base_uniform_buffer(ctx, j,
-                                               ctx->Shared->NullBufferObj);
+               bind_buffer_base_uniform_buffer(ctx, j, NULL);
             }
          }
 
@@ -1504,8 +1508,7 @@ delete_buffers(struct gl_context *ctx, GLsizei n, const GLuint *ids)
          /* unbind SSBO binding points */
          for (j = 0; j < ctx->Const.MaxShaderStorageBufferBindings; j++) {
             if (ctx->ShaderStorageBufferBindings[j].BufferObject == bufObj) {
-               bind_buffer_base_shader_storage_buffer(ctx, j,
-                                                    ctx->Shared->NullBufferObj);
+               bind_buffer_base_shader_storage_buffer(ctx, j, NULL);
             }
          }
 
@@ -1516,8 +1519,7 @@ delete_buffers(struct gl_context *ctx, GLsizei n, const GLuint *ids)
          /* unbind Atomci Buffer binding points */
          for (j = 0; j < ctx->Const.MaxAtomicBufferBindings; j++) {
             if (ctx->AtomicBufferBindings[j].BufferObject == bufObj) {
-               bind_buffer_base_atomic_buffer(ctx, j,
-                                              ctx->Shared->NullBufferObj);
+               bind_buffer_base_atomic_buffer(ctx, j, NULL);
             }
          }
 
@@ -3713,7 +3715,7 @@ bind_buffer_range_uniform_buffer(struct gl_context *ctx, GLuint index,
                                  struct gl_buffer_object *bufObj,
                                  GLintptr offset, GLsizeiptr size)
 {
-   if (bufObj == ctx->Shared->NullBufferObj) {
+   if (!bufObj) {
       offset = -1;
       size = -1;
    }
@@ -3756,7 +3758,7 @@ bind_buffer_range_shader_storage_buffer(struct gl_context *ctx,
                                         GLintptr offset,
                                         GLsizeiptr size)
 {
-   if (bufObj == ctx->Shared->NullBufferObj) {
+   if (!bufObj) {
       offset = -1;
       size = -1;
    }
@@ -3798,7 +3800,7 @@ bind_buffer_range_atomic_buffer(struct gl_context *ctx, GLuint index,
                                  struct gl_buffer_object *bufObj,
                                  GLintptr offset, GLsizeiptr size)
 {
-   if (bufObj == ctx->Shared->NullBufferObj) {
+   if (!bufObj) {
       offset = -1;
       size = -1;
    }
@@ -3933,11 +3935,9 @@ error_check_bind_shader_storage_buffers(struct gl_context *ctx,
 static void
 unbind_uniform_buffers(struct gl_context *ctx, GLuint first, GLsizei count)
 {
-   struct gl_buffer_object *bufObj = ctx->Shared->NullBufferObj;
-
    for (int i = 0; i < count; i++)
       set_buffer_binding(ctx, &ctx->UniformBufferBindings[first + i],
-                         bufObj, -1, -1, GL_TRUE, 0);
+                         NULL, -1, -1, GL_TRUE, 0);
 }
 
 /**
@@ -3948,11 +3948,9 @@ static void
 unbind_shader_storage_buffers(struct gl_context *ctx, GLuint first,
                               GLsizei count)
 {
-   struct gl_buffer_object *bufObj = ctx->Shared->NullBufferObj;
-
    for (int i = 0; i < count; i++)
       set_buffer_binding(ctx, &ctx->ShaderStorageBufferBindings[first + i],
-                         bufObj, -1, -1, GL_TRUE, 0);
+                         NULL, -1, -1, GL_TRUE, 0);
 }
 
 static void
@@ -4212,11 +4210,9 @@ unbind_xfb_buffers(struct gl_context *ctx,
                    struct gl_transform_feedback_object *tfObj,
                    GLuint first, GLsizei count)
 {
-   struct gl_buffer_object * const bufObj = ctx->Shared->NullBufferObj;
-
    for (int i = 0; i < count; i++)
       _mesa_set_transform_feedback_binding(ctx, tfObj, first + i,
-                                           bufObj, 0, 0);
+                                           NULL, 0, 0);
 }
 
 static void
@@ -4325,12 +4321,16 @@ bind_xfb_buffers(struct gl_context *ctx,
 
       if (boundBufObj && boundBufObj->Name == buffers[i])
          bufObj = boundBufObj;
-      else
-         bufObj = _mesa_multi_bind_lookup_bufferobj(ctx, buffers, i, caller);
+      else {
+         bool error;
+         bufObj = _mesa_multi_bind_lookup_bufferobj(ctx, buffers, i, caller,
+                                                    &error);
+         if (error)
+            continue;
+      }
 
-      if (bufObj)
-         _mesa_set_transform_feedback_binding(ctx, tfObj, index, bufObj,
-                                              offset, size);
+      _mesa_set_transform_feedback_binding(ctx, tfObj, index, bufObj,
+                                           offset, size);
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->BufferObjects);
@@ -4371,11 +4371,9 @@ error_check_bind_atomic_buffers(struct gl_context *ctx,
 static void
 unbind_atomic_buffers(struct gl_context *ctx, GLuint first, GLsizei count)
 {
-   struct gl_buffer_object * const bufObj = ctx->Shared->NullBufferObj;
-
    for (int i = 0; i < count; i++)
       set_buffer_binding(ctx, &ctx->AtomicBufferBindings[first + i],
-                         bufObj, -1, -1, GL_TRUE, 0);
+                         NULL, -1, -1, GL_TRUE, 0);
 }
 
 static void
@@ -4492,7 +4490,7 @@ bind_buffer_range(GLenum target, GLuint index, GLuint buffer, GLintptr offset,
    }
 
    if (buffer == 0) {
-      bufObj = ctx->Shared->NullBufferObj;
+      bufObj = NULL;
    } else {
       bufObj = _mesa_lookup_bufferobj(ctx, buffer);
       if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
@@ -4590,7 +4588,7 @@ _mesa_BindBufferBase(GLenum target, GLuint index, GLuint buffer)
    }
 
    if (buffer == 0) {
-      bufObj = ctx->Shared->NullBufferObj;
+      bufObj = NULL;
    } else {
       bufObj = _mesa_lookup_bufferobj(ctx, buffer);
       if (!_mesa_handle_bind_buffer_gen(ctx, buffer,

@@ -101,7 +101,8 @@ _mesa_lookup_bufferobj_err(struct gl_context *ctx, GLuint buffer,
 extern struct gl_buffer_object *
 _mesa_multi_bind_lookup_bufferobj(struct gl_context *ctx,
                                   const GLuint *buffers,
-                                  GLuint index, const char *caller);
+                                  GLuint index, const char *caller,
+                                  bool *error);
 
 extern void
 _mesa_initialize_buffer_object(struct gl_context *ctx,

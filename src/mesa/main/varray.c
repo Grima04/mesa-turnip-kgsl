@@ -3167,13 +3167,11 @@ vertex_array_vertex_buffers(struct gl_context *ctx,
          else if (binding->BufferObj && binding->BufferObj->Name == buffers[i])
             vbo = binding->BufferObj;
          else {
-            vbo = _mesa_multi_bind_lookup_bufferobj(ctx, buffers, i, func);
-            if (!vbo)
+            bool error;
+            vbo = _mesa_multi_bind_lookup_bufferobj(ctx, buffers, i, func,
+                                                    &error);
+            if (error)
                continue;
-
-            /* TODO: remove this hack */
-            if (vbo == ctx->Shared->NullBufferObj)
-               vbo = NULL;
          }
       } else {
          vbo = NULL;

@@ -2531,7 +2531,8 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
          goto invalid_value;
       if (!ctx->Extensions.ARB_uniform_buffer_object)
          goto invalid_enum;
-      v->value_int = ctx->UniformBufferBindings[index].BufferObject->Name;
+      buf = ctx->UniformBufferBindings[index].BufferObject;
+      v->value_int = buf ? buf->Name : 0;
       return TYPE_INT;
 
    case GL_UNIFORM_BUFFER_START:
@@ -2558,7 +2559,8 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
          goto invalid_enum;
       if (index >= ctx->Const.MaxShaderStorageBufferBindings)
          goto invalid_value;
-      v->value_int = ctx->ShaderStorageBufferBindings[index].BufferObject->Name;
+      buf = ctx->ShaderStorageBufferBindings[index].BufferObject;
+      v->value_int = buf ? buf->Name : 0;
       return TYPE_INT;
 
    case GL_SHADER_STORAGE_BUFFER_START:
@@ -2593,7 +2595,8 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
          goto invalid_enum;
       if (index >= ctx->Const.MaxAtomicBufferBindings)
          goto invalid_value;
-      v->value_int = ctx->AtomicBufferBindings[index].BufferObject->Name;
+      buf = ctx->AtomicBufferBindings[index].BufferObject;
+      v->value_int = buf ? buf->Name : 0;
       return TYPE_INT;
 
    case GL_ATOMIC_COUNTER_BUFFER_START:

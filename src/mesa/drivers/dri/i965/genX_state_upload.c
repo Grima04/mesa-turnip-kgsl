@@ -3125,7 +3125,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
                const struct gl_buffer_binding *binding =
                   &ctx->UniformBufferBindings[block->Binding];
 
-               if (binding->BufferObject == ctx->Shared->NullBufferObj) {
+               if (!binding->BufferObject) {
                   static unsigned msg_id = 0;
                   _mesa_gl_debugf(ctx, &msg_id, MESA_DEBUG_SOURCE_API,
                                   MESA_DEBUG_TYPE_UNDEFINED,
