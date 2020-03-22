@@ -1607,6 +1607,7 @@ copy_array_attrib(struct gl_context *ctx,
    dest->PrimitiveRestartFixedIndex = src->PrimitiveRestartFixedIndex;
    dest->_PrimitiveRestart = src->_PrimitiveRestart;
    dest->RestartIndex = src->RestartIndex;
+   memcpy(dest->_RestartIndex, src->_RestartIndex, sizeof(src->_RestartIndex));
    /* skip NewState */
    /* skip RebindArrays */
 

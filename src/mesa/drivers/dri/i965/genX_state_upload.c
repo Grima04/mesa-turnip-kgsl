@@ -904,7 +904,7 @@ genX(upload_cut_index)(struct brw_context *brw)
    brw_batch_emit(brw, GENX(3DSTATE_VF), vf) {
       if (ctx->Array._PrimitiveRestart && brw->ib.ib) {
          vf.IndexedDrawCutIndexEnable = true;
-         vf.CutIndex = _mesa_primitive_restart_index(ctx, brw->ib.index_size);
+         vf.CutIndex = ctx->Array._RestartIndex[brw->ib.index_size - 1];
       }
    }
 }

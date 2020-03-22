@@ -85,8 +85,7 @@ setup_primitive_restart(struct gl_context *ctx, struct pipe_draw_info *info)
    if (ctx->Array._PrimitiveRestart) {
       unsigned index_size = info->index_size;
 
-      info->restart_index =
-         _mesa_primitive_restart_index(ctx, index_size);
+      info->restart_index = ctx->Array._RestartIndex[index_size - 1];
 
       /* Enable primitive restart only when the restart index can have an
        * effect. This is required for correctness in radeonsi GFX8 support.

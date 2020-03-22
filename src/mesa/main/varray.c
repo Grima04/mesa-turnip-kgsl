@@ -2747,6 +2747,7 @@ static void
 primitive_restart_index(struct gl_context *ctx, GLuint index)
 {
    ctx->Array.RestartIndex = index;
+   _mesa_update_derived_primitive_restart_state(ctx);
 }
 
 
