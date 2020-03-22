@@ -2654,6 +2654,8 @@ const struct function gles3_functions_possible[] = {
    /* EXT_EGL_image_storage */
    { "glEGLImageTargetTexStorageEXT", 30, -1 },
 
+   { "glDrawElementsInstancedBaseVertex", 30, -1 },
+
    { NULL, 0, -1 }
 };
 

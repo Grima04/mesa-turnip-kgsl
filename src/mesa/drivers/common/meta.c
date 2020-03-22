@@ -1861,7 +1861,7 @@ meta_clear(struct gl_context *ctx, GLbitfield buffers, bool glsl)
 
    /* draw quad(s) */
    if (fb->MaxNumLayers > 0) {
-      _mesa_DrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, fb->MaxNumLayers);
+      _mesa_DrawArraysInstancedARB(GL_TRIANGLE_FAN, 0, 4, fb->MaxNumLayers);
    } else {
       _mesa_DrawArrays(GL_TRIANGLE_FAN, 0, 4);
    }

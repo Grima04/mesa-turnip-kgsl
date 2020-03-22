@@ -38,7 +38,7 @@
         <param name="basevertex" type="const GLint *" count="primcount"/>
     </function>
 
-    <function name="DrawElementsInstancedBaseVertex" es2="3.2" exec="dynamic" marshal="draw"
+    <function name="DrawElementsInstancedBaseVertex" es2="3.2" marshal="draw"
               marshal_sync="_mesa_glthread_has_non_vbo_vertices_or_indices(ctx)">
         <param name="mode" type="GLenum"/>
         <param name="count" type="GLsizei"/>
