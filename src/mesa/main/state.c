@@ -403,8 +403,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
       if (ctx->FragmentProgram._MaintainTexEnvProgram) {
          prog_flags |= (_NEW_BUFFERS | _NEW_TEXTURE_OBJECT | _NEW_FOG |
                         _NEW_VARYING_VP_INPUTS | _NEW_LIGHT | _NEW_POINT |
-                        _NEW_RENDERMODE | _NEW_PROGRAM | _NEW_FRAG_CLAMP |
-                        _NEW_COLOR | _NEW_TEXTURE_STATE);
+                        _NEW_RENDERMODE | _NEW_COLOR | _NEW_TEXTURE_STATE);
       }
       if (ctx->VertexProgram._MaintainTnlProgram) {
          prog_flags |= (_NEW_VARYING_VP_INPUTS | _NEW_TEXTURE_OBJECT |
