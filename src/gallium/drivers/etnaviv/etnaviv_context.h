@@ -178,7 +178,7 @@ struct etna_context {
    struct pipe_framebuffer_state framebuffer_s;
    struct pipe_stencil_ref stencil_ref_s;
    struct pipe_viewport_state viewport_s;
-   struct pipe_scissor_state scissor_s;
+   struct pipe_scissor_state scissor;
 
    /* stats/counters */
    struct {

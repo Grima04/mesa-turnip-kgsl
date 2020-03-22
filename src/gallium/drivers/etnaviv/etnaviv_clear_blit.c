@@ -53,7 +53,7 @@ etna_blit_save_state(struct etna_context *ctx)
    util_blitter_save_vertex_shader(ctx->blitter, ctx->shader.bind_vs);
    util_blitter_save_rasterizer(ctx->blitter, ctx->rasterizer);
    util_blitter_save_viewport(ctx->blitter, &ctx->viewport_s);
-   util_blitter_save_scissor(ctx->blitter, &ctx->scissor_s);
+   util_blitter_save_scissor(ctx->blitter, &ctx->scissor);
    util_blitter_save_fragment_shader(ctx->blitter, ctx->shader.bind_fs);
    util_blitter_save_blend(ctx->blitter, ctx->blend);
    util_blitter_save_depth_stencil_alpha(ctx->blitter, ctx->zsa);

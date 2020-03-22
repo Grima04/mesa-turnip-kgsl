@@ -386,7 +386,7 @@ etna_set_scissor_states(struct pipe_context *pctx, unsigned start_slot,
    assert(ss->minx <= ss->maxx);
    assert(ss->miny <= ss->maxy);
 
-   ctx->scissor_s = *ss;
+   ctx->scissor = *ss;
    ctx->dirty |= ETNA_DIRTY_SCISSOR;
 }
 
@@ -670,10 +670,10 @@ etna_update_clipping(struct etna_context *ctx)
 
    /* clip against scissor */
    if (rasterizer->scissor) {
-      scissor_left = MAX2(ctx->scissor_s.minx, scissor_left);
-      scissor_top = MAX2(ctx->scissor_s.miny, scissor_top);
-      scissor_right = MIN2(ctx->scissor_s.maxx, scissor_right);
-      scissor_bottom = MIN2(ctx->scissor_s.maxy, scissor_bottom);
+      scissor_left = MAX2(ctx->scissor.minx, scissor_left);
+      scissor_top = MAX2(ctx->scissor.miny, scissor_top);
+      scissor_right = MIN2(ctx->scissor.maxx, scissor_right);
+      scissor_bottom = MIN2(ctx->scissor.maxy, scissor_bottom);
    }
 
    ctx->clipping.minx = scissor_left;
