@@ -352,8 +352,8 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
    /* Scissor setup */
    cs->SE_SCISSOR_LEFT = 0; /* affected by rasterizer and scissor state as well */
    cs->SE_SCISSOR_TOP = 0;
-   cs->SE_SCISSOR_RIGHT = (fb->width << 16);
-   cs->SE_SCISSOR_BOTTOM = (fb->height << 16);
+   cs->SE_SCISSOR_RIGHT = fb->width;
+   cs->SE_SCISSOR_BOTTOM = fb->height;
 
    cs->TS_MEM_CONFIG = ts_mem_config;
    cs->PE_MEM_CONFIG = pe_mem_config;
@@ -389,10 +389,10 @@ etna_set_scissor_states(struct pipe_context *pctx, unsigned start_slot,
 
    /* note that this state is only used when rasterizer_state->scissor is on */
    ctx->scissor_s = *ss;
-   cs->SE_SCISSOR_LEFT = (ss->minx << 16);
-   cs->SE_SCISSOR_TOP = (ss->miny << 16);
-   cs->SE_SCISSOR_RIGHT = (ss->maxx << 16);
-   cs->SE_SCISSOR_BOTTOM = (ss->maxy << 16);
+   cs->SE_SCISSOR_LEFT = ss->minx;
+   cs->SE_SCISSOR_TOP = ss->miny;
+   cs->SE_SCISSOR_RIGHT = ss->maxx;
+   cs->SE_SCISSOR_BOTTOM = ss->maxy;
 
    ctx->dirty |= ETNA_DIRTY_SCISSOR;
 }
@@ -428,10 +428,10 @@ etna_set_viewport_states(struct pipe_context *pctx, unsigned start_slot,
    /* Compute scissor rectangle (fixp) from viewport.
     * Make sure left is always < right and top always < bottom.
     */
-   cs->SE_SCISSOR_LEFT = etna_f32_to_fixp16(MAX2(vs->translate[0] - fabsf(vs->scale[0]), 0.0f));
-   cs->SE_SCISSOR_TOP = etna_f32_to_fixp16(MAX2(vs->translate[1] - fabsf(vs->scale[1]), 0.0f));
-   cs->SE_SCISSOR_RIGHT = etna_f32_to_fixp16(MAX2(vs->translate[0] + fabsf(vs->scale[0]), 0.0f));
-   cs->SE_SCISSOR_BOTTOM = etna_f32_to_fixp16(MAX2(vs->translate[1] + fabsf(vs->scale[1]), 0.0f));
+   cs->SE_SCISSOR_LEFT = MAX2(vs->translate[0] - fabsf(vs->scale[0]), 0.0f);
+   cs->SE_SCISSOR_TOP = MAX2(vs->translate[1] - fabsf(vs->scale[1]), 0.0f);
+   cs->SE_SCISSOR_RIGHT = ceilf(MAX2(vs->translate[0] + fabsf(vs->scale[0]), 0.0f));
+   cs->SE_SCISSOR_BOTTOM = ceilf(MAX2(vs->translate[1] + fabsf(vs->scale[1]), 0.0f));
 
    cs->PE_DEPTH_NEAR = fui(0.0); /* not affected if depth mode is Z (as in GL) */
    cs->PE_DEPTH_FAR = fui(1.0);
