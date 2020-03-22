@@ -192,7 +192,6 @@ enum value_extra {
    EXTRA_API_ES31,
    EXTRA_API_ES32,
    EXTRA_NEW_BUFFERS,
-   EXTRA_NEW_FRAG_CLAMP,
    EXTRA_VALID_DRAW_BUFFER,
    EXTRA_VALID_TEXTURE_UNIT,
    EXTRA_VALID_CLIP_DISTANCE,
@@ -314,11 +313,6 @@ union value {
 
 static const int extra_new_buffers[] = {
    EXTRA_NEW_BUFFERS,
-   EXTRA_END
-};
-
-static const int extra_new_frag_clamp[] = {
-   EXTRA_NEW_FRAG_CLAMP,
    EXTRA_END
 };
 
@@ -1393,10 +1387,6 @@ check_extra(struct gl_context *ctx, const char *func, const struct value_desc *d
          api_check = GL_TRUE;
          if (_mesa_is_desktop_gl(ctx) && version >= 43)
             api_found = GL_TRUE;
-         break;
-      case EXTRA_NEW_FRAG_CLAMP:
-         if (ctx->NewState & (_NEW_BUFFERS | _NEW_FRAG_CLAMP))
-            _mesa_update_state(ctx);
          break;
       case EXTRA_API_ES2:
          api_check = GL_TRUE;

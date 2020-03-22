@@ -2155,8 +2155,6 @@ get_tex_parameterfv(struct gl_context *ctx,
              !ctx->Extensions.ARB_texture_border_clamp)
             goto invalid_pname;
 
-         if (ctx->NewState & (_NEW_BUFFERS | _NEW_FRAG_CLAMP))
-            _mesa_update_state_locked(ctx);
          if (_mesa_get_clamp_fragment_color(ctx, ctx->DrawBuffer)) {
             params[0] = CLAMP(obj->Sampler.BorderColor.f[0], 0.0F, 1.0F);
             params[1] = CLAMP(obj->Sampler.BorderColor.f[1], 0.0F, 1.0F);
