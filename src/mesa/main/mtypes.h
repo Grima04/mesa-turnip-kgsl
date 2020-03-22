@@ -1591,6 +1591,9 @@ struct gl_array_attrib
    /** The last VAO accessed by a DSA function */
    struct gl_vertex_array_object *LastLookedUpVAO;
 
+   /** These contents are copied to newly created VAOs. */
+   struct gl_vertex_array_object DefaultVAOState;
+
    /** Array objects (GL_ARB_vertex_array_object) */
    struct _mesa_HashTable *Objects;
 

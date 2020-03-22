@@ -3788,6 +3788,75 @@ _mesa_print_arrays(struct gl_context *ctx)
    }
 }
 
+/**
+ * Initialize attributes of a vertex array within a vertex array object.
+ * \param vao  the container vertex array object
+ * \param index  which array in the VAO to initialize
+ * \param size  number of components (1, 2, 3 or 4) per attribute
+ * \param type  datatype of the attribute (GL_FLOAT, GL_INT, etc).
+ */
+static void
+init_array(struct gl_context *ctx,
+           struct gl_vertex_array_object *vao,
+           gl_vert_attrib index, GLint size, GLint type)
+{
+   assert(index < ARRAY_SIZE(vao->VertexAttrib));
+   struct gl_array_attributes *array = &vao->VertexAttrib[index];
+   assert(index < ARRAY_SIZE(vao->BufferBinding));
+   struct gl_vertex_buffer_binding *binding = &vao->BufferBinding[index];
+
+   _mesa_set_vertex_format(&array->Format, size, type, GL_RGBA,
+                           GL_FALSE, GL_FALSE, GL_FALSE);
+   array->Stride = 0;
+   array->Ptr = NULL;
+   array->RelativeOffset = 0;
+   ASSERT_BITFIELD_SIZE(struct gl_array_attributes, BufferBindingIndex,
+                        VERT_ATTRIB_MAX - 1);
+   array->BufferBindingIndex = index;
+
+   binding->Offset = 0;
+   binding->Stride = array->Format._ElementSize;
+   binding->BufferObj = NULL;
+   binding->_BoundArrays = BITFIELD_BIT(index);
+}
+
+static void
+init_default_vao_state(struct gl_context *ctx)
+{
+   struct gl_vertex_array_object *vao = &ctx->Array.DefaultVAOState;
+
+   vao->RefCount = 1;
+   vao->SharedAndImmutable = false;
+
+   /* Init the individual arrays */
+   for (unsigned i = 0; i < ARRAY_SIZE(vao->VertexAttrib); i++) {
+      switch (i) {
+      case VERT_ATTRIB_NORMAL:
+         init_array(ctx, vao, VERT_ATTRIB_NORMAL, 3, GL_FLOAT);
+         break;
+      case VERT_ATTRIB_COLOR1:
+         init_array(ctx, vao, VERT_ATTRIB_COLOR1, 3, GL_FLOAT);
+         break;
+      case VERT_ATTRIB_FOG:
+         init_array(ctx, vao, VERT_ATTRIB_FOG, 1, GL_FLOAT);
+         break;
+      case VERT_ATTRIB_COLOR_INDEX:
+         init_array(ctx, vao, VERT_ATTRIB_COLOR_INDEX, 1, GL_FLOAT);
+         break;
+      case VERT_ATTRIB_EDGEFLAG:
+         init_array(ctx, vao, VERT_ATTRIB_EDGEFLAG, 1, GL_UNSIGNED_BYTE);
+         break;
+      case VERT_ATTRIB_POINT_SIZE:
+         init_array(ctx, vao, VERT_ATTRIB_POINT_SIZE, 1, GL_FLOAT);
+         break;
+      default:
+         init_array(ctx, vao, i, 4, GL_FLOAT);
+         break;
+      }
+   }
+
+   vao->_AttributeMapMode = ATTRIBUTE_MAP_MODE_IDENTITY;
+}
 
 /**
  * Initialize vertex array state for given context.
@@ -3795,6 +3864,8 @@ _mesa_print_arrays(struct gl_context *ctx)
 void
 _mesa_init_varray(struct gl_context *ctx)
 {
+   init_default_vao_state(ctx);
+
    ctx->Array.DefaultVAO = _mesa_new_vao(ctx, 0);
    _mesa_reference_vao(ctx, &ctx->Array.VAO, ctx->Array.DefaultVAO);
    ctx->Array._EmptyVAO = _mesa_new_vao(ctx, ~0u);

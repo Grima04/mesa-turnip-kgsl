@@ -1692,7 +1692,7 @@ init_array_attrib_data(struct gl_context *ctx,
                        struct gl_array_attrib *attrib)
 {
    /* Get a non driver gl_vertex_array_object. */
-   attrib->VAO = CALLOC_STRUCT(gl_vertex_array_object);
+   attrib->VAO = MALLOC_STRUCT(gl_vertex_array_object);
 
    if (attrib->VAO == NULL) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glPushClientAttrib");
