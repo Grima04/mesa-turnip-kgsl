@@ -114,6 +114,7 @@ struct glthread_state
    struct gl_buffer_object *upload_buffer;
    uint8_t *upload_ptr;
    unsigned upload_offset;
+   int upload_buffer_private_refcount;
 
    /** Caps. */
    GLboolean SupportsBufferUploads;

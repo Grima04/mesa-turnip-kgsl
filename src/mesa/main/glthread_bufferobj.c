@@ -97,11 +97,39 @@ _mesa_glthread_upload(struct gl_context *ctx, const void *data,
          return;
       }
 
+      if (glthread->upload_buffer_private_refcount > 0) {
+         p_atomic_add(&glthread->upload_buffer->RefCount,
+                      -glthread->upload_buffer_private_refcount);
+         glthread->upload_buffer_private_refcount = 0;
+      }
       _mesa_reference_buffer_object(ctx, &glthread->upload_buffer, NULL);
       glthread->upload_buffer =
          new_upload_buffer(ctx, default_size, &glthread->upload_ptr);
       glthread->upload_offset = 0;
       offset = 0;
+
+      /* Since atomic operations are very very slow when 2 threads are not
+       * sharing one L3 cache (which can happen on AMD Zen), prevent using
+       * atomics as follows:
+       *
+       * This function has to return a buffer reference to the caller.
+       * Instead of atomic_inc for every call, it does all possible future
+       * increments in advance when the upload buffer is allocated.
+       * The maximum number of times the function can be called per upload
+       * buffer is default_size, because the minimum allocation size is 1.
+       * Therefore the function can only return default_size number of
+       * references at most, so we will never need more. This is the number
+       * that is added to RefCount at allocation.
+       *
+       * upload_buffer_private_refcount tracks how many buffer references
+       * are left to return to callers. If the buffer is full and there are
+       * still references left, they are atomically subtracted from RefCount
+       * before the buffer is unreferenced.
+       *
+       * This can increase performance by 20%.
+       */
+      glthread->upload_buffer->RefCount += default_size;
+      glthread->upload_buffer_private_refcount = default_size;
    }
 
    /* Upload data. */
@@ -112,8 +140,11 @@ _mesa_glthread_upload(struct gl_context *ctx, const void *data,
 
    glthread->upload_offset = offset + size;
    *out_offset = offset;
+
    assert(*out_buffer == NULL);
-   _mesa_reference_buffer_object(ctx, out_buffer, glthread->upload_buffer);
+   assert(glthread->upload_buffer_private_refcount > 0);
+   *out_buffer = glthread->upload_buffer;
+   glthread->upload_buffer_private_refcount--;
 }
 
 /** Tracks the current bindings for the vertex array and index array buffers.
