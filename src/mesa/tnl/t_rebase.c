@@ -151,7 +151,7 @@ void t_rebase_prims( struct gl_context *ctx,
    } else if (ib) {
       /* Unfortunately need to adjust each index individually.
        */
-      GLboolean map_ib = ib->obj->Name &&
+      GLboolean map_ib = ib->obj &&
                          !ib->obj->Mappings[MAP_INTERNAL].Pointer;
       void *ptr;
 
@@ -184,7 +184,7 @@ void t_rebase_prims( struct gl_context *ctx,
          return;
       }
 
-      tmp_ib.obj = ctx->Shared->NullBufferObj;
+      tmp_ib.obj = NULL;
       tmp_ib.ptr = tmp_indices;
       tmp_ib.count = ib->count;
       tmp_ib.index_size_shift = ib->index_size_shift;

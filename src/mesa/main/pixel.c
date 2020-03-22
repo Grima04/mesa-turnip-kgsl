@@ -155,8 +155,7 @@ validate_pbo_access(struct gl_context *ctx,
 
    /* restore */
    _mesa_reference_buffer_object(ctx,
-                                 &ctx->DefaultPacking.BufferObj,
-                                 ctx->Shared->NullBufferObj);
+                                 &ctx->DefaultPacking.BufferObj, NULL);
 
    if (!ok) {
       if (_mesa_is_bufferobj(pack->BufferObj)) {

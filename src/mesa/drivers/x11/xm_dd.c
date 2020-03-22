@@ -546,7 +546,7 @@ xmesa_DrawPixels_5R6G5B( struct gl_context *ctx,
          XPutImage(dpy, xrb->pixmap, gc, &ximage, 0, 0, dstX, dstY, w, h);
       }
 
-      if (unpack->BufferObj->Name) {
+      if (unpack->BufferObj) {
          ctx->Driver.UnmapBuffer(ctx, unpack->BufferObj, MAP_INTERNAL);
       }
    }

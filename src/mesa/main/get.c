@@ -1009,14 +1009,16 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       v->value_int = (*buffer_obj) ? (*buffer_obj)->Name : 0;
       break;
    case GL_ARRAY_BUFFER_BINDING_ARB:
-      v->value_int = ctx->Array.ArrayBufferObj->Name;
+      buf = ctx->Array.ArrayBufferObj;
+      v->value_int = buf ? buf->Name : 0;
       break;
    case GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING_ARB:
       buf = ctx->Array.VAO->BufferBinding[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].BufferObj;
       v->value_int = buf ? buf->Name : 0;
       break;
    case GL_ELEMENT_ARRAY_BUFFER_BINDING_ARB:
-      v->value_int = ctx->Array.VAO->IndexBufferObj->Name;
+      buf = ctx->Array.VAO->IndexBufferObj;
+      v->value_int = buf ? buf->Name : 0;
       break;
 
    /* ARB_vertex_array_bgra */
@@ -1031,20 +1033,21 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
 
    /* ARB_copy_buffer */
    case GL_COPY_READ_BUFFER:
-      v->value_int = ctx->CopyReadBuffer->Name;
+      v->value_int = ctx->CopyReadBuffer ? ctx->CopyReadBuffer->Name : 0;
       break;
    case GL_COPY_WRITE_BUFFER:
-      v->value_int = ctx->CopyWriteBuffer->Name;
+      v->value_int = ctx->CopyWriteBuffer ? ctx->CopyWriteBuffer->Name : 0;
       break;
 
    case GL_PIXEL_PACK_BUFFER_BINDING_EXT:
-      v->value_int = ctx->Pack.BufferObj->Name;
+      v->value_int = ctx->Pack.BufferObj ? ctx->Pack.BufferObj->Name : 0;
       break;
    case GL_PIXEL_UNPACK_BUFFER_BINDING_EXT:
-      v->value_int = ctx->Unpack.BufferObj->Name;
+      v->value_int = ctx->Unpack.BufferObj ? ctx->Unpack.BufferObj->Name : 0;
       break;
    case GL_TRANSFORM_FEEDBACK_BUFFER_BINDING:
-      v->value_int = ctx->TransformFeedback.CurrentBuffer->Name;
+      v->value_int = ctx->TransformFeedback.CurrentBuffer ?
+                        ctx->TransformFeedback.CurrentBuffer->Name : 0;
       break;
    case GL_TRANSFORM_FEEDBACK_BUFFER_PAUSED:
       v->value_int = ctx->TransformFeedback.CurrentObject->Paused;
@@ -1120,7 +1123,7 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
 
    /* GL_ARB_texture_buffer_object */
    case GL_TEXTURE_BUFFER_ARB:
-      v->value_int = ctx->Texture.BufferObject->Name;
+      v->value_int = ctx->Texture.BufferObject ? ctx->Texture.BufferObject->Name : 0;
       break;
    case GL_TEXTURE_BINDING_BUFFER_ARB:
       unit = ctx->Texture.CurrentUnit;
@@ -1150,15 +1153,15 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       break;
    /* GL_ARB_uniform_buffer_object */
    case GL_UNIFORM_BUFFER_BINDING:
-      v->value_int = ctx->UniformBuffer->Name;
+      v->value_int = ctx->UniformBuffer ? ctx->UniformBuffer->Name : 0;
       break;
    /* GL_ARB_shader_storage_buffer_object */
    case GL_SHADER_STORAGE_BUFFER_BINDING:
-      v->value_int = ctx->ShaderStorageBuffer->Name;
+      v->value_int = ctx->ShaderStorageBuffer ? ctx->ShaderStorageBuffer->Name : 0;
       break;
    /* GL_ARB_query_buffer_object */
    case GL_QUERY_BUFFER_BINDING:
-      v->value_int = ctx->QueryBuffer->Name;
+      v->value_int = ctx->QueryBuffer ? ctx->QueryBuffer->Name : 0;
       break;
    /* GL_ARB_timer_query */
    case GL_TIMESTAMP:
@@ -1179,11 +1182,7 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       break;
    /* GL_ARB_shader_atomic_counters */
    case GL_ATOMIC_COUNTER_BUFFER_BINDING:
-      if (ctx->AtomicBuffer) {
-         v->value_int = ctx->AtomicBuffer->Name;
-      } else {
-         v->value_int = 0;
-      }
+      v->value_int = ctx->AtomicBuffer ? ctx->AtomicBuffer->Name : 0;
       break;
    /* GL 4.3 */
    case GL_NUM_SHADING_LANGUAGE_VERSIONS:
@@ -1191,11 +1190,11 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       break;
    /* GL_ARB_draw_indirect */
    case GL_DRAW_INDIRECT_BUFFER_BINDING:
-      v->value_int = ctx->DrawIndirectBuffer->Name;
+      v->value_int = ctx->DrawIndirectBuffer ? ctx->DrawIndirectBuffer->Name: 0;
       break;
    /* GL_ARB_indirect_parameters */
    case GL_PARAMETER_BUFFER_BINDING_ARB:
-      v->value_int = ctx->ParameterBuffer->Name;
+      v->value_int = ctx->ParameterBuffer ? ctx->ParameterBuffer->Name : 0;
       break;
    /* GL_ARB_separate_shader_objects */
    case GL_PROGRAM_PIPELINE_BINDING:
@@ -1207,7 +1206,8 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       break;
    /* GL_ARB_compute_shader */
    case GL_DISPATCH_INDIRECT_BUFFER_BINDING:
-      v->value_int = ctx->DispatchIndirectBuffer->Name;
+      v->value_int = ctx->DispatchIndirectBuffer ?
+                        ctx->DispatchIndirectBuffer->Name : 0;
       break;
    /* GL_ARB_multisample */
    case GL_SAMPLES:

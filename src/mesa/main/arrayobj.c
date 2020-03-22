@@ -394,10 +394,7 @@ _mesa_initialize_vao(struct gl_context *ctx,
                      GLuint name)
 {
    memcpy(vao, &ctx->Array.DefaultVAOState, sizeof(*vao));
-
    vao->Name = name;
-   _mesa_reference_buffer_object(ctx, &vao->IndexBufferObj,
-                                 ctx->Shared->NullBufferObj);
 }
 
 
@@ -1242,14 +1239,16 @@ vertex_array_element_buffer(struct gl_context *ctx, GLuint vaobj, GLuint buffer,
       } else {
          bufObj = _mesa_lookup_bufferobj(ctx, buffer);
       }
+
+      if (!bufObj)
+         return;
+
+      bufObj->UsageHistory |= USAGE_ELEMENT_ARRAY_BUFFER;
    } else {
-      bufObj = ctx->Shared->NullBufferObj;
+      bufObj = NULL;
    }
 
-   if (bufObj) {
-      bufObj->UsageHistory |= USAGE_ELEMENT_ARRAY_BUFFER;
-      _mesa_reference_buffer_object(ctx, &vao->IndexBufferObj, bufObj);
-   }
+   _mesa_reference_buffer_object(ctx, &vao->IndexBufferObj, bufObj);
 }
 
 
@@ -1299,5 +1298,5 @@ _mesa_GetVertexArrayiv(GLuint vaobj, GLenum pname, GLint *param)
       return;
    }
 
-   param[0] = vao->IndexBufferObj->Name;
+   param[0] = vao->IndexBufferObj ? vao->IndexBufferObj->Name : 0;
 }

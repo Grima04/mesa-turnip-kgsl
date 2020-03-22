@@ -917,7 +917,8 @@ _mesa_DrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end,
              "(start %u, end %u, type 0x%x, count %d) ElemBuf %u, "
              "base %d\n",
              start, end, type, count,
-             ctx->Array.VAO->IndexBufferObj->Name, basevertex);
+             ctx->Array.VAO->IndexBufferObj ?
+                ctx->Array.VAO->IndexBufferObj->Name : 0, basevertex);
    }
 
    if ((int) start + basevertex < 0 || end + basevertex >= max_element)

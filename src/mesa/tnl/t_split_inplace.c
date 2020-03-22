@@ -228,7 +228,7 @@ split_prims(struct split_context *split)
 
          ib.count = count;
          ib.index_size_shift = 2;
-         ib.obj = split->ctx->Shared->NullBufferObj;
+         ib.obj = NULL;
          ib.ptr = elts;
 
          tmpprim = *prim;

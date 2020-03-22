@@ -901,10 +901,6 @@ update_array(struct gl_context *ctx,
    assert((vao->NewArrays | ~vao->Enabled) & VERT_BIT(attrib));
    array->Ptr = ptr;
 
-   /* TODO: remove this hack by not using NullBufferObj in callers */
-   if (obj == ctx->Shared->NullBufferObj)
-      obj = NULL;
-
    /* Update the vertex buffer binding */
    GLsizei effectiveStride = stride != 0 ?
       stride : array->Format._ElementSize;

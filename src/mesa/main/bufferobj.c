@@ -869,35 +869,6 @@ _mesa_init_buffer_objects( struct gl_context *ctx )
    simple_mtx_init(&DummyBufferObject.MinMaxCacheMutex, mtx_plain);
    DummyBufferObject.RefCount = 1000*1000*1000; /* never delete */
 
-   _mesa_reference_buffer_object(ctx, &ctx->Array.ArrayBufferObj,
-                                 ctx->Shared->NullBufferObj);
-
-   _mesa_reference_buffer_object(ctx, &ctx->CopyReadBuffer,
-                                 ctx->Shared->NullBufferObj);
-   _mesa_reference_buffer_object(ctx, &ctx->CopyWriteBuffer,
-                                 ctx->Shared->NullBufferObj);
-
-   _mesa_reference_buffer_object(ctx, &ctx->UniformBuffer,
-				 ctx->Shared->NullBufferObj);
-
-   _mesa_reference_buffer_object(ctx, &ctx->ShaderStorageBuffer,
-                                 ctx->Shared->NullBufferObj);
-
-   _mesa_reference_buffer_object(ctx, &ctx->AtomicBuffer,
-				 ctx->Shared->NullBufferObj);
-
-   _mesa_reference_buffer_object(ctx, &ctx->DrawIndirectBuffer,
-				 ctx->Shared->NullBufferObj);
-
-   _mesa_reference_buffer_object(ctx, &ctx->ParameterBuffer,
-				 ctx->Shared->NullBufferObj);
-
-   _mesa_reference_buffer_object(ctx, &ctx->DispatchIndirectBuffer,
-				 ctx->Shared->NullBufferObj);
-
-   _mesa_reference_buffer_object(ctx, &ctx->QueryBuffer,
-                                 ctx->Shared->NullBufferObj);
-
    for (i = 0; i < MAX_COMBINED_UNIFORM_BUFFERS; i++) {
       _mesa_reference_buffer_object(ctx,
 				    &ctx->UniformBufferBindings[i].BufferObject,
@@ -1012,29 +983,23 @@ bind_buffer_object(struct gl_context *ctx,
 
    /* Get pointer to old buffer object (to be unbound) */
    oldBufObj = *bindTarget;
-   if (oldBufObj && oldBufObj->Name == buffer && !oldBufObj->DeletePending)
+   if ((oldBufObj && oldBufObj->Name == buffer && !oldBufObj->DeletePending) ||
+       (!oldBufObj && buffer == 0))
       return;   /* rebinding the same buffer object- no change */
 
    /*
     * Get pointer to new buffer object (newBufObj)
     */
-   if (buffer == 0) {
-      /* The spec says there's not a buffer object named 0, but we use
-       * one internally because it simplifies things.
-       */
-      newBufObj = ctx->Shared->NullBufferObj;
-   }
-   else {
+   if (buffer != 0) {
       /* non-default buffer object */
       newBufObj = _mesa_lookup_bufferobj(ctx, buffer);
       if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
                                         &newBufObj, "glBindBuffer"))
          return;
-   }
 
-   /* record usage history */
-   if (bindTarget == &ctx->Pack.BufferObj) {
-      newBufObj->UsageHistory |= USAGE_PIXEL_PACK_BUFFER;
+      /* record usage history */
+      if (bindTarget == &ctx->Pack.BufferObj)
+         newBufObj->UsageHistory |= USAGE_PIXEL_PACK_BUFFER;
    }
 
    /* bind new buffer */
@@ -1050,9 +1015,7 @@ bind_buffer_object(struct gl_context *ctx,
 void
 _mesa_update_default_objects_buffer_objects(struct gl_context *ctx)
 {
-   /* Bind the NullBufferObj to remove references to those
-    * in the shared context hash table.
-    */
+   /* Bind 0 to remove references to those in the shared context hash table. */
    bind_buffer_object(ctx, &ctx->Array.ArrayBufferObj, 0);
    bind_buffer_object(ctx, &ctx->Array.VAO->IndexBufferObj, 0);
    bind_buffer_object(ctx, &ctx->Pack.BufferObj, 0);

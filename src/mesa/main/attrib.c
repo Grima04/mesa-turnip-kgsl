@@ -1666,21 +1666,24 @@ restore_array_attrib(struct gl_context *ctx,
    _mesa_BindVertexArray(src->VAO->Name);
 
    /* Restore or recreate the buffer objects by the names ... */
-   if (is_vao_name_zero || src->ArrayBufferObj->Name == 0 ||
+   if (is_vao_name_zero || !src->ArrayBufferObj ||
        _mesa_IsBuffer(src->ArrayBufferObj->Name)) {
       /* ... and restore its content */
       copy_array_attrib(ctx, dest, src, false);
 
       _mesa_BindBuffer(GL_ARRAY_BUFFER_ARB,
-                       src->ArrayBufferObj->Name);
+                       src->ArrayBufferObj ?
+                          src->ArrayBufferObj->Name : 0);
    } else {
       copy_array_attrib(ctx, dest, src, true);
    }
 
-   if (is_vao_name_zero || src->VAO->IndexBufferObj->Name == 0 ||
-       _mesa_IsBuffer(src->VAO->IndexBufferObj->Name))
+   if (is_vao_name_zero || !src->VAO->IndexBufferObj ||
+       _mesa_IsBuffer(src->VAO->IndexBufferObj->Name)) {
       _mesa_BindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,
-                       src->VAO->IndexBufferObj->Name);
+                       src->VAO->IndexBufferObj ?
+                          src->VAO->IndexBufferObj->Name : 0);
+   }
 }
 
 /**

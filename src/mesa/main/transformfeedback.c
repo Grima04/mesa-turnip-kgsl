@@ -142,8 +142,7 @@ _mesa_init_transform_feedback(struct gl_context *ctx)
    ctx->TransformFeedback.Objects = _mesa_NewHashTable();
 
    _mesa_reference_buffer_object(ctx,
-                                 &ctx->TransformFeedback.CurrentBuffer,
-                                 ctx->Shared->NullBufferObj);
+                                 &ctx->TransformFeedback.CurrentBuffer, NULL);
 }
 
 
