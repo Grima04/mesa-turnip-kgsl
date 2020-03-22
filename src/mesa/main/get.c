@@ -690,7 +690,7 @@ static const int extra_EXT_disjoint_timer_query[] = {
 static void
 find_custom_value(struct gl_context *ctx, const struct value_desc *d, union value *v)
 {
-   struct gl_buffer_object **buffer_obj;
+   struct gl_buffer_object **buffer_obj, *buf;
    struct gl_array_attributes *array;
    GLuint unit, *p;
 
@@ -1006,14 +1006,14 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
    case GL_FOG_COORDINATE_ARRAY_BUFFER_BINDING_ARB:
       buffer_obj = (struct gl_buffer_object **)
          ((char *) ctx->Array.VAO + d->offset);
-      v->value_int = (*buffer_obj)->Name;
+      v->value_int = (*buffer_obj) ? (*buffer_obj)->Name : 0;
       break;
    case GL_ARRAY_BUFFER_BINDING_ARB:
       v->value_int = ctx->Array.ArrayBufferObj->Name;
       break;
    case GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING_ARB:
-      v->value_int =
-         ctx->Array.VAO->BufferBinding[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].BufferObj->Name;
+      buf = ctx->Array.VAO->BufferBinding[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].BufferObj;
+      v->value_int = buf ? buf->Name : 0;
       break;
    case GL_ELEMENT_ARRAY_BUFFER_BINDING_ARB:
       v->value_int = ctx->Array.VAO->IndexBufferObj->Name;
@@ -1079,7 +1079,8 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
          ctx->CurrentRenderbuffer ? ctx->CurrentRenderbuffer->Name : 0;
       break;
    case GL_POINT_SIZE_ARRAY_BUFFER_BINDING_OES:
-      v->value_int = ctx->Array.VAO->BufferBinding[VERT_ATTRIB_POINT_SIZE].BufferObj->Name;
+      buf = ctx->Array.VAO->BufferBinding[VERT_ATTRIB_POINT_SIZE].BufferObj;
+      v->value_int = buf ? buf->Name : 0;
       break;
 
    case GL_FOG_COLOR:
@@ -2394,6 +2395,7 @@ static enum value_type
 find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
 {
    GET_CURRENT_CONTEXT(ctx);
+   struct gl_buffer_object *buf;
 
    switch (pname) {
 
@@ -2642,7 +2644,8 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
          goto invalid_enum;
       if (index >= ctx->Const.Program[MESA_SHADER_VERTEX].MaxAttribs)
          goto invalid_value;
-      v->value_int = ctx->Array.VAO->BufferBinding[VERT_ATTRIB_GENERIC(index)].BufferObj->Name;
+      buf = ctx->Array.VAO->BufferBinding[VERT_ATTRIB_GENERIC(index)].BufferObj;
+      v->value_int = buf ? buf->Name : 0;
       return TYPE_INT;
 
    /* ARB_shader_image_load_store */

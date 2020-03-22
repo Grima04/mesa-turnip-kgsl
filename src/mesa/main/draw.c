@@ -90,7 +90,7 @@ check_array_data(struct gl_context *ctx, struct gl_vertex_array_object *vao,
                          array->Format.Type, array->Format.Size,
                          binding->Stride);
                   printf("  Address/offset %p in Buffer Object %u\n",
-                         array->Ptr, bo->Name);
+                         array->Ptr, bo ? bo->Name : 0);
                   f[k] = 1.0F;  /* XXX replace the bad value! */
                }
                /*assert(!IS_INF_OR_NAN(f[k])); */
@@ -255,7 +255,7 @@ print_draw_arrays(struct gl_context *ctx,
              "ptr %p  Bufobj %u\n",
              gl_vert_attrib_name((gl_vert_attrib) i),
              array->Format.Size, binding->Stride,
-             array->Ptr, bufObj->Name);
+             array->Ptr, bufObj ? bufObj->Name : 0);
 
       if (_mesa_is_bufferobj(bufObj)) {
          GLubyte *p = bufObj->Mappings[MAP_INTERNAL].Pointer;

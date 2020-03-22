@@ -398,12 +398,6 @@ _mesa_initialize_vao(struct gl_context *ctx,
    vao->Name = name;
    _mesa_reference_buffer_object(ctx, &vao->IndexBufferObj,
                                  ctx->Shared->NullBufferObj);
-
-   /* Vertex array buffers */
-   for (unsigned i = 0; i < ARRAY_SIZE(vao->BufferBinding); i++) {
-      _mesa_reference_buffer_object(ctx, &vao->BufferBinding[i].BufferObj,
-                                    ctx->Shared->NullBufferObj);
-   }
 }
 
 

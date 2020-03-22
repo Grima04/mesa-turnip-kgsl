@@ -455,13 +455,17 @@ replay_init(struct copy_context *copy)
          copy->varying[j].size = attrib->Format._ElementSize;
          copy->vertex_size += attrib->Format._ElementSize;
 
-         if (_mesa_is_bufferobj(vbo) &&
-             !_mesa_bufferobj_mapped(vbo, MAP_INTERNAL))
-            ctx->Driver.MapBufferRange(ctx, 0, vbo->Size, GL_MAP_READ_BIT, vbo,
-                                       MAP_INTERNAL);
+         if (_mesa_is_bufferobj(vbo)) {
+            if (!_mesa_bufferobj_mapped(vbo, MAP_INTERNAL)) {
+               ctx->Driver.MapBufferRange(ctx, 0, vbo->Size, GL_MAP_READ_BIT, vbo,
+                                          MAP_INTERNAL);
+            }
 
-         copy->varying[j].src_ptr =
-               ADD_POINTERS(vbo->Mappings[MAP_INTERNAL].Pointer, ptr);
+            copy->varying[j].src_ptr =
+                  ADD_POINTERS(vbo->Mappings[MAP_INTERNAL].Pointer, ptr);
+         } else {
+            copy->varying[j].src_ptr = ptr;
+         }
 
          copy->dstarray[i].VertexAttrib = &copy->varying[j].dstattribs;
          copy->dstarray[i].BufferBinding = &copy->varying[j].dstbinding;
@@ -532,7 +536,7 @@ replay_init(struct copy_context *copy)
       dstattr->Format = srcattr->Format;
       dstattr->Ptr = copy->dstbuf + offset;
       dstbind->Stride = copy->vertex_size;
-      dstbind->BufferObj = ctx->Shared->NullBufferObj;
+      dstbind->BufferObj = NULL;
       dst->BufferBinding = dstbind;
       dst->VertexAttrib = dstattr;
 
