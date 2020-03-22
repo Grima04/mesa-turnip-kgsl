@@ -4831,6 +4831,18 @@ struct gl_semaphore_object
 };
 
 /**
+ * One element of the client attrib stack.
+ */
+struct gl_client_attrib_node
+{
+   GLbitfield Mask;
+   struct gl_array_attrib Array;
+   struct gl_vertex_array_object VAO;
+   struct gl_pixelstore_attrib Pack;
+   struct gl_pixelstore_attrib Unpack;
+};
+
+/**
  * Mesa rendering context.
  *
  * This is the central context data structure for Mesa.  Almost all
@@ -4968,7 +4980,7 @@ struct gl_context
    /** \name Client attribute stack */
    /*@{*/
    GLuint ClientAttribStackDepth;
-   struct gl_attrib_node *ClientAttribStack[MAX_CLIENT_ATTRIB_STACK_DEPTH];
+   struct gl_client_attrib_node ClientAttribStack[MAX_CLIENT_ATTRIB_STACK_DEPTH];
    /*@}*/
 
    /** \name Client attribute groups */
