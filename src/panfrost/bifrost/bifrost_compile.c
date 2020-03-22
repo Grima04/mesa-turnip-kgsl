@@ -595,6 +595,11 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         }
 
         if (alu.type == BI_CSEL) {
+                /* Default to csel3 */
+                alu.csel_cond = BI_COND_NE;
+                alu.src[3] = BIR_INDEX_ZERO;
+                alu.src_types[3] = alu.src_types[0];
+
                 bi_fuse_csel_cond(&alu, instr->src[0],
                                 &constants_left, &constant_shift);
         }
