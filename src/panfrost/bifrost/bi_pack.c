@@ -84,14 +84,29 @@ struct bi_registers {
  * sources directly. */
 
 static unsigned
-bi_lookup_constant(bi_clause *clause, uint64_t cons)
+bi_lookup_constant(bi_clause *clause, uint64_t cons, bool *hi, bool b64)
 {
+        uint64_t want = (cons >> 4);
+
         for (unsigned i = 0; i < clause->constant_count; ++i) {
                 /* Only check top 60-bits since that's what's actually embedded
                  * in the clause, the bottom 4-bits are bundle-inline */
 
-                if ((cons >> 4) == (clause->constants[i] >> 4))
+                unsigned candidates[2] = {
+                        clause->constants[i] >> 4,
+                        clause->constants[i] >> 36
+                };
+
+                if (!b64)
+                        candidates[0] &= 0xFFFFFFFF;
+
+                if (candidates[0] == want)
                         return i;
+
+                if (candidates[1] == want && !b64) {
+                        *hi = true;
+                        return i;
+                }
         }
 
         unreachable("Invalid constant accessed");
@@ -122,16 +137,17 @@ bi_assign_uniform_constant_single(
                 if (s == 0 && (ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_ATTR)) continue;
 
                 if (ins->src[s] & BIR_INDEX_CONSTANT) {
-                        /* TODO: lo/hi matching? */
-                        uint64_t cons = ins->constant.u64;
-                        unsigned idx = bi_lookup_constant(clause, cons);
+                        bool hi = false;
+                        bool b64 = nir_alu_type_get_type_size(ins->src_types[s]) > 32;
+                        uint64_t cons = bi_get_immediate(ins, ins->src[s]);
+                        unsigned idx = bi_lookup_constant(clause, cons, &hi, b64);
                         unsigned f = bi_constant_field(idx) | (cons & 0xF);
 
                         if (assigned && regs->uniform_constant != f)
                                 unreachable("Mismatched uniform/const field: imm");
 
                         regs->uniform_constant = f;
-                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_CONST_LO;
+                        ins->src[s] = BIR_INDEX_PASS | (hi ? BIFROST_SRC_CONST_HI : BIFROST_SRC_CONST_LO);
                         assigned = true;
                 } else if (ins->src[s] & BIR_INDEX_ZERO && (ins->type == BI_LOAD_UNIFORM || ins->type == BI_LOAD_VAR)) {
                         /* XXX: HACK UNTIL WE HAVE HI MATCHING DUE TO OVERFLOW XXX */
@@ -509,7 +525,7 @@ bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
 
         if (ins->src[0] & BIR_INDEX_CONSTANT) {
                 /* Direct uses address field directly */
-                packed_addr = ins->src[0] & ~BIR_INDEX_CONSTANT;
+                packed_addr = bi_get_immediate(ins, ins->src[0]);
                 assert(packed_addr < 0b1000);
         } else {
                 /* Indirect gets an extra source */
@@ -578,13 +594,10 @@ bi_pack_ldst_type(nir_alu_type T)
 static unsigned
 bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
-        /* Only direct loads supported */
-        assert(ins->src[0] == BIR_INDEX_CONSTANT);
-
         struct bifrost_ld_var_addr pack = {
                 .src0 = bi_get_src(ins, regs, 1, false),
                 .src1 = bi_get_src(ins, regs, 2, false),
-                .location = ins->constant.u64,
+                .location = bi_get_immediate(ins, ins->src[0]),
                 .type = bi_pack_ldst_type(ins->src_types[3]),
                 .op = BIFROST_ADD_OP_LD_VAR_ADDR
         };
@@ -596,13 +609,10 @@ bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_regist
 static unsigned
 bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
-        /* Only direct loads supported */
-        assert(ins->src[0] == BIR_INDEX_CONSTANT);
-
         struct bifrost_ld_attr pack = {
                 .src0 = bi_get_src(ins, regs, 1, false),
                 .src1 = bi_get_src(ins, regs, 2, false),
-                .location = ins->constant.u64,
+                .location = bi_get_immediate(ins, ins->src[0]),
                 .channels = MALI_POSITIVE(bi_load32_components(ins)),
                 .type = bi_pack_ldst_type(ins->dest_type),
                 .op = BIFROST_ADD_OP_LD_ATTR
