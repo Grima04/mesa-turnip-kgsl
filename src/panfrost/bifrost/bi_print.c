@@ -132,6 +132,7 @@ bi_class_name(enum bi_class cl)
         case BI_CMP: return "cmp";
         case BI_BLEND: return "blend";
         case BI_BITWISE: return "bitwise";
+        case BI_COMBINE: return "combine";
         case BI_CONVERT: return "convert";
         case BI_CSEL: return "csel";
         case BI_DISCARD: return "discard";

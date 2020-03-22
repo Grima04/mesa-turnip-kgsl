@@ -53,6 +53,7 @@ enum bi_class {
         BI_CMP,
         BI_BLEND,
         BI_BITWISE,
+        BI_COMBINE,
         BI_CONVERT,
         BI_CSEL,
         BI_DISCARD,
@@ -541,6 +542,7 @@ uint64_t bi_get_immediate(bi_instruction *ins, unsigned index);
 
 /* BIR passes */
 
+void bi_lower_combine(bi_context *ctx, bi_block *block);
 bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block);
 void bi_schedule(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);

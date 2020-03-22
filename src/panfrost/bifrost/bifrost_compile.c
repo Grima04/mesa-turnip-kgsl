@@ -381,6 +381,15 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_u2f64:
                 return BI_CONVERT;
 
+        case nir_op_vec2:
+        case nir_op_vec3:
+        case nir_op_vec4:
+                return BI_COMBINE;
+
+        case nir_op_vec8:
+        case nir_op_vec16:
+                unreachable("should've been lowered");
+
         case nir_op_ffma:
         case nir_op_fmul:
                 return BI_FMA;
@@ -519,7 +528,10 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 /* Construct a writemask */
                 unsigned bits_per_comp = instr->dest.dest.ssa.bit_size;
                 unsigned comps = instr->dest.dest.ssa.num_components;
-                assert(comps == 1);
+
+                if (alu.type != BI_COMBINE)
+                        assert(comps == 1);
+
                 unsigned bits = bits_per_comp * comps;
                 unsigned bytes = bits / 8;
                 alu.writemask = (1 << bytes) - 1;
@@ -909,53 +921,8 @@ bi_optimize_nir(nir_shader *nir)
 
         /* Take us out of SSA */
         NIR_PASS(progress, nir, nir_lower_locals_to_regs);
-        NIR_PASS(progress, nir, nir_convert_from_ssa, true);
-
-        /* We're a primary scalar architecture but there's enough vector that
-         * we use a vector IR so let's not also deal with scalar hacks on top
-         * of the vector hacks */
-
         NIR_PASS(progress, nir, nir_move_vec_src_uses_to_dest);
-        NIR_PASS(progress, nir, nir_lower_vec_to_movs);
-        NIR_PASS(progress, nir, nir_opt_dce);
-}
-
-static void
-bi_insert_mov32(bi_context *ctx, bi_instruction *parent, unsigned comp)
-{
-        bi_instruction move = {
-                .type = BI_MOV,
-                .dest = parent->dest,
-                .dest_type = nir_type_uint32,
-                .writemask = (0xF << (4 * comp)),
-                .src = { parent->src[0] },
-                .src_types = { nir_type_uint32 },
-                .swizzle = { { comp } }
-        };
-
-        bi_emit_before(ctx, parent, move);
-}
-
-static void
-bi_lower_mov(bi_context *ctx, bi_block *block)
-{
-        bi_foreach_instr_in_block_safe(block, ins) {
-                if (ins->type != BI_MOV) continue;
-                if (util_bitcount(ins->writemask) <= 4) continue;
-
-                for (unsigned i = 0; i < 4; ++i) {
-                        unsigned quad = (ins->writemask >> (4 * i)) & 0xF;
-
-                        if (quad == 0)
-                                continue;
-                        else if (quad == 0xF)
-                                bi_insert_mov32(ctx, ins, i);
-                        else
-                                unreachable("TODO: Lowering <32bit moves");
-                }
-
-                bi_remove_instruction(ins);
-        }
+        NIR_PASS(progress, nir, nir_convert_from_ssa, true);
 }
 
 void
@@ -1003,7 +970,7 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
 
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
-                bi_lower_mov(ctx, block);
+                bi_lower_combine(ctx, block);
         }
 
         bool progress = false;
