@@ -15,6 +15,8 @@ C_SOURCES := \
 	pan_blit.c \
 	pan_bo.c \
 	pan_bo.h \
+	pan_cmdstream.c \
+	pan_cmdstream.h \
 	pan_compute.c \
 	pan_context.c \
 	pan_context.h \

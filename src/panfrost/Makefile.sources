@@ -17,6 +17,7 @@ encoder_FILES := \
 	encoder/pan_afbc.c \
         encoder/pan_attributes.c \
         encoder/pan_encoder.h \
+        encoder/pan_format.c \
         encoder/pan_invocation.c \
         encoder/pan_props.c \
         encoder/pan_sampler.c \
@@ -68,3 +69,11 @@ pandecode_FILES := \
         pandecode/pan_pretty_print.c \
         pandecode/pan_pretty_print.h \
         pandecode/public.h
+
+util_FILES := \
+        util/lcra.c \
+        util/lcra.h \
+        util/pan_ir.c \
+        util/pan_ir.h \
+        util/pan_liveness.c \
+        util/pan_sysval.c \
