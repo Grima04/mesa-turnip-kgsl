@@ -349,12 +349,6 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
       break;
    }
 
-   /* Scissor setup */
-   cs->SE_SCISSOR_LEFT = 0; /* affected by rasterizer and scissor state as well */
-   cs->SE_SCISSOR_TOP = 0;
-   cs->SE_SCISSOR_RIGHT = fb->width;
-   cs->SE_SCISSOR_BOTTOM = fb->height;
-
    cs->TS_MEM_CONFIG = ts_mem_config;
    cs->PE_MEM_CONFIG = pe_mem_config;
 
@@ -657,16 +651,13 @@ static bool
 etna_update_clipping(struct etna_context *ctx)
 {
    const struct etna_rasterizer_state *rasterizer = etna_rasterizer_state(ctx->rasterizer);
+   const struct pipe_framebuffer_state *fb = &ctx->framebuffer_s;
 
    /* clip framebuffer against viewport */
-   uint32_t scissor_left =
-      MAX2(ctx->framebuffer.SE_SCISSOR_LEFT, ctx->viewport.SE_SCISSOR_LEFT);
-   uint32_t scissor_top =
-      MAX2(ctx->framebuffer.SE_SCISSOR_TOP, ctx->viewport.SE_SCISSOR_TOP);
-   uint32_t scissor_right =
-      MIN2(ctx->framebuffer.SE_SCISSOR_RIGHT, ctx->viewport.SE_SCISSOR_RIGHT);
-   uint32_t scissor_bottom =
-      MIN2(ctx->framebuffer.SE_SCISSOR_BOTTOM, ctx->viewport.SE_SCISSOR_BOTTOM);
+   uint32_t scissor_left = ctx->viewport.SE_SCISSOR_LEFT;
+   uint32_t scissor_top = ctx->viewport.SE_SCISSOR_TOP;
+   uint32_t scissor_right = MIN2(fb->width, ctx->viewport.SE_SCISSOR_RIGHT);
+   uint32_t scissor_bottom = MIN2(fb->height, ctx->viewport.SE_SCISSOR_BOTTOM);
 
    /* clip against scissor */
    if (rasterizer->scissor) {
