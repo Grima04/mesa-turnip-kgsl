@@ -157,14 +157,13 @@ struct etna_context {
    struct pipe_depth_stencil_alpha_state *zsa;
    struct compiled_vertex_elements_state *vertex_elements;
    struct compiled_shader_state shader_state;
-   struct compiled_scissor_state clipping;
+   struct pipe_scissor_state clipping;
 
    /* to simplify the emit process we store pre compiled state objects,
     * which got 'compiled' during state change. */
    struct compiled_blend_color blend_color;
    struct compiled_stencil_ref stencil_ref;
    struct compiled_framebuffer_state framebuffer;
-   struct compiled_scissor_state scissor;
    struct compiled_viewport_state viewport;
    unsigned num_fragment_sampler_views;
    uint32_t active_sampler_views;

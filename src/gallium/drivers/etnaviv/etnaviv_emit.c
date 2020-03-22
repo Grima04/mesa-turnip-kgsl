@@ -392,10 +392,10 @@ etna_emit_state(struct etna_context *ctx)
       /*00A3C*/ EMIT_STATE(PA_WIDE_LINE_WIDTH1, rasterizer->PA_LINE_WIDTH);
    }
    if (unlikely(dirty & (ETNA_DIRTY_SCISSOR_CLIP))) {
-      /*00C00*/ EMIT_STATE_FIXP(SE_SCISSOR_LEFT, ctx->clipping.SE_SCISSOR_LEFT << 16);
-      /*00C04*/ EMIT_STATE_FIXP(SE_SCISSOR_TOP, ctx->clipping.SE_SCISSOR_TOP << 16);
-      /*00C08*/ EMIT_STATE_FIXP(SE_SCISSOR_RIGHT, (ctx->clipping.SE_SCISSOR_RIGHT << 16) + ETNA_SE_SCISSOR_MARGIN_RIGHT);
-      /*00C0C*/ EMIT_STATE_FIXP(SE_SCISSOR_BOTTOM, (ctx->clipping.SE_SCISSOR_BOTTOM << 16) + ETNA_SE_SCISSOR_MARGIN_BOTTOM);
+      /*00C00*/ EMIT_STATE_FIXP(SE_SCISSOR_LEFT, ctx->clipping.minx << 16);
+      /*00C04*/ EMIT_STATE_FIXP(SE_SCISSOR_TOP, ctx->clipping.miny << 16);
+      /*00C08*/ EMIT_STATE_FIXP(SE_SCISSOR_RIGHT, (ctx->clipping.maxx << 16) + ETNA_SE_SCISSOR_MARGIN_RIGHT);
+      /*00C0C*/ EMIT_STATE_FIXP(SE_SCISSOR_BOTTOM, (ctx->clipping.maxy << 16) + ETNA_SE_SCISSOR_MARGIN_BOTTOM);
    }
    if (unlikely(dirty & (ETNA_DIRTY_RASTERIZER))) {
       struct etna_rasterizer_state *rasterizer = etna_rasterizer_state(ctx->rasterizer);
@@ -405,8 +405,8 @@ etna_emit_state(struct etna_context *ctx)
       /*00C18*/ EMIT_STATE(SE_CONFIG, rasterizer->SE_CONFIG);
    }
    if (unlikely(dirty & (ETNA_DIRTY_SCISSOR_CLIP))) {
-      /*00C20*/ EMIT_STATE_FIXP(SE_CLIP_RIGHT, (ctx->clipping.SE_SCISSOR_RIGHT << 16) + ETNA_SE_CLIP_MARGIN_RIGHT);
-      /*00C24*/ EMIT_STATE_FIXP(SE_CLIP_BOTTOM, (ctx->clipping.SE_SCISSOR_BOTTOM << 16) + ETNA_SE_CLIP_MARGIN_BOTTOM);
+      /*00C20*/ EMIT_STATE_FIXP(SE_CLIP_RIGHT, (ctx->clipping.maxx << 16) + ETNA_SE_CLIP_MARGIN_RIGHT);
+      /*00C24*/ EMIT_STATE_FIXP(SE_CLIP_BOTTOM, (ctx->clipping.maxy << 16) + ETNA_SE_CLIP_MARGIN_BOTTOM);
    }
    if (unlikely(dirty & (ETNA_DIRTY_SHADER))) {
       /*00E00*/ EMIT_STATE(RA_CONTROL, ctx->shader_state.RA_CONTROL);

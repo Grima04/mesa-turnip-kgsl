@@ -157,14 +157,6 @@ struct compiled_stencil_ref {
    uint32_t PE_STENCIL_CONFIG_EXT[2];
 };
 
-/* Compiled pipe_scissor_state */
-struct compiled_scissor_state {
-   uint32_t SE_SCISSOR_LEFT;
-   uint32_t SE_SCISSOR_TOP;
-   uint32_t SE_SCISSOR_RIGHT;
-   uint32_t SE_SCISSOR_BOTTOM;
-};
-
 /* Compiled pipe_viewport_state */
 struct compiled_viewport_state {
    uint32_t PA_VIEWPORT_SCALE_X;
