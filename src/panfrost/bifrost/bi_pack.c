@@ -475,6 +475,81 @@ bi_pack_fma_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
         RETURN_PACKED(pack);
 }
 
+static enum bifrost_csel_cond
+bi_cond_to_csel(enum bi_cond cond, bool *flip, bool *invert, nir_alu_type T)
+{
+        nir_alu_type B = nir_alu_type_get_base_type(T);
+        unsigned idx = (B == nir_type_float) ? 0 :
+                ((B == nir_type_int) ? 1 : 2);
+
+        switch (cond){
+        case BI_COND_LT:
+                *flip = true;
+        case BI_COND_GT: {
+                const enum bifrost_csel_cond ops[] = {
+                        BIFROST_FGT_F,
+                        BIFROST_IGT_I,
+                        BIFROST_UGT_I
+                };
+
+                return ops[idx];
+        }
+        case BI_COND_LE:
+                *flip = true;
+        case BI_COND_GE: {
+                const enum bifrost_csel_cond ops[] = {
+                        BIFROST_FGE_F,
+                        BIFROST_IGE_I,
+                        BIFROST_UGE_I
+                };
+
+                return ops[idx];
+        }
+        case BI_COND_NE:
+                *invert = true;
+        case BI_COND_EQ: {
+                const enum bifrost_csel_cond ops[] = {
+                        BIFROST_FEQ_F,
+                        BIFROST_IEQ_F,
+                        BIFROST_IEQ_F /* sign is irrelevant */
+                };
+
+                return ops[idx];
+        }
+        default:
+                unreachable("Invalid op for csel");
+        }
+}
+
+static unsigned
+bi_pack_fma_csel(bi_instruction *ins, struct bi_registers *regs)
+{
+        /* TODO: Use csel3 as well */
+        bool flip = false, invert = false;
+
+        enum bifrost_csel_cond cond =
+                bi_cond_to_csel(ins->csel_cond, &flip, &invert, ins->src_types[0]);
+
+        unsigned size = nir_alu_type_get_type_size(ins->dest_type);
+
+        unsigned cmp_0 = (flip ? 3 : 0);
+        unsigned cmp_1 = (flip ? 0 : 3);
+        unsigned res_0 = (invert ? 2 : 1);
+        unsigned res_1 = (invert ? 1 : 2);
+        
+        struct bifrost_csel4 pack = {
+                .src0 = bi_get_src(ins, regs, cmp_0, true),
+                .src1 = bi_get_src(ins, regs, cmp_1, true),
+                .src2 = bi_get_src(ins, regs, res_0, true),
+                .src3 = bi_get_src(ins, regs, res_1, true),
+                .cond = cond,
+                .op = (size == 16) ? BIFROST_FMA_OP_CSEL4_V16 :
+                        BIFROST_FMA_OP_CSEL4
+        };
+
+        RETURN_PACKED(pack);
+}
+
 static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
@@ -487,8 +562,9 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_CMP:
         case BI_BITWISE:
         case BI_CONVERT:
-        case BI_CSEL:
 		return BIFROST_FMA_NOP;
+        case BI_CSEL:
+		return bi_pack_fma_csel(bundle.fma, regs);
         case BI_FMA:
                 return bi_pack_fma_fma(bundle.fma, regs);
         case BI_FREXP:

@@ -230,6 +230,9 @@ enum bifrost_csel_cond {
         BIFROST_UGE_I = 0x7
 };
 
+#define BIFROST_FMA_OP_CSEL4     (0x5c)
+#define BIFROST_FMA_OP_CSEL4_V16 (0xdc)
+
 struct bifrost_csel4 {
         unsigned src0 : 3;
         unsigned src1 : 3;
