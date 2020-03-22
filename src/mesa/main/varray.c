@@ -204,8 +204,6 @@ _mesa_bind_vertex_buffer(struct gl_context *ctx,
    assert(!vao->SharedAndImmutable);
    struct gl_vertex_buffer_binding *binding = &vao->BufferBinding[index];
 
-   assert(vbo != ctx->Shared->NullBufferObj);
-
    if (ctx->Const.VertexBufferOffsetIsInt32 && (int)offset < 0 &&
        _mesa_is_bufferobj(vbo)) {
       /* The offset will be interpreted as a signed int, so make sure

@@ -4930,7 +4930,15 @@ _mesa_NamedBufferPageCommitmentEXT(GLuint buffer, GLintptr offset,
                                         "glNamedBufferPageCommitmentEXT"))
          return;
    } else {
-      bufferObj = ctx->Shared->NullBufferObj;
+      /* GL_EXT_direct_state_access says about NamedBuffer* functions:
+       *
+       *   There is no buffer corresponding to the name zero, these commands
+       *   generate the INVALID_OPERATION error if the buffer parameter is
+       *   zero.
+       */
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "glNamedBufferPageCommitmentEXT(buffer = 0)");
+      return;
    }
    buffer_page_commitment(ctx, bufferObj, offset, size, commit,
                           "glNamedBufferPageCommitmentEXT");

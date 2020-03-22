@@ -3313,9 +3313,6 @@ struct gl_shared_state
    GLuint TextureStateStamp;	        /**< state notification for shared tex */
    /*@}*/
 
-   /** Default buffer object for vertex arrays that aren't in VBOs */
-   struct gl_buffer_object *NullBufferObj;
-
    /**
     * \name Vertex/geometry/fragment programs
     */
