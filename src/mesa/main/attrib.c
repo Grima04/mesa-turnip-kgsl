@@ -1926,6 +1926,15 @@ _mesa_ClientAttribDefaultEXT( GLbitfield mask )
       }
 
       _mesa_ClientActiveTexture(GL_TEXTURE0);
+
+      _mesa_PrimitiveRestartIndex_no_error(0);
+      if (ctx->Version >= 31)
+         _mesa_Disable(GL_PRIMITIVE_RESTART);
+      else if (_mesa_has_NV_primitive_restart(ctx))
+         _mesa_DisableClientState(GL_PRIMITIVE_RESTART_NV);
+
+      if (_mesa_has_ARB_ES3_compatibility(ctx))
+         _mesa_Disable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
    }
 }
 
