@@ -612,113 +612,134 @@ spec/arb_shader_image_load_store/max-images/vertex shader max image uniforms tes
 spec/arb_shader_image_load_store/max-size/imagecube max size test/8192x8192x6x1: skip
 spec/arb_shader_image_load_store/max-size/imagecubearray max size test/8192x8192x6x1: skip
 spec/arb_shader_storage_buffer_object/minmax: skip
-spec/arb_shader_texture_image_samples/builtin-image: skip
+spec/arb_shader_texture_image_samples/builtin-image/r8/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/r8/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/r8/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/r8/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16f/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16f/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16f/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16f/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16i/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16i/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16i/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16i/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16ui/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16ui/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16ui/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba16ui/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32f/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32f/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32f/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32f/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32i/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32i/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32i/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32i/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32ui/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32ui/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32ui/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba32ui/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8i/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8i/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8i/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8i/fragment/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8ui/compute/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8ui/compute/image2dmsarray samples test/2x8x16x6: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8ui/fragment/image2dms samples test/2x8x96x1: skip
+spec/arb_shader_texture_image_samples/builtin-image/rgba8ui/fragment/image2dmsarray samples test/2x8x16x6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-8: skip
 spec/arb_shader_texture_lod/execution/arb_shader_texture_lod-texgrad: fail
@@ -1662,10 +1683,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    20045
+       pass:    20103
        fail:      197
       crash:        0
-       skip:     1440
+       skip:     1461
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1674,4 +1695,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21706
+      total:    21785
