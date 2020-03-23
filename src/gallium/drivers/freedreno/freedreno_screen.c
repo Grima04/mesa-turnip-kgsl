@@ -61,9 +61,6 @@
 #include "ir3/ir3_nir.h"
 #include "a2xx/ir2.h"
 
-/* XXX this should go away */
-#include "state_tracker/drm_driver.h"
-
 static const struct debug_named_value debug_options[] = {
 		{"msgs",      FD_DBG_MSGS,   "Print debug messages"},
 		{"disasm",    FD_DBG_DISASM, "Dump TGSI and adreno shader disassembly (a2xx only, see IR3_SHADER_DEBUG)"},
