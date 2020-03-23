@@ -626,22 +626,22 @@ lima_transfer_flush_region(struct pipe_context *pctx,
 }
 
 static void
-lima_transfer_unmap(struct pipe_context *pctx,
-                    struct pipe_transfer *ptrans)
+lima_transfer_unmap_inner(struct lima_context *ctx,
+                          struct pipe_transfer *ptrans)
 {
-   struct lima_context *ctx = lima_context(pctx);
-   struct lima_transfer *trans = lima_transfer(ptrans);
+
    struct lima_resource *res = lima_resource(ptrans->resource);
+   struct lima_transfer *trans = lima_transfer(ptrans);
    struct lima_bo *bo = res->bo;
    struct pipe_resource *pres;
 
    if (trans->staging) {
       pres = &res->base;
-      if (ptrans->usage & PIPE_TRANSFER_WRITE) {
+      if (trans->base.usage & PIPE_TRANSFER_WRITE) {
          unsigned i;
-         for (i = 0; i < ptrans->box.depth; i++)
+         for (i = 0; i < trans->base.box.depth; i++)
             panfrost_store_tiled_image(
-               bo->map + res->levels[ptrans->level].offset + (i + ptrans->box.z) * res->levels[ptrans->level].layer_stride,
+               bo->map + res->levels[trans->base.level].offset + (i + trans->base.box.z) * res->levels[trans->base.level].layer_stride,
                trans->staging + i * ptrans->stride * ptrans->box.height,
                ptrans->box.x, ptrans->box.y,
                ptrans->box.width, ptrans->box.height,
@@ -649,9 +649,20 @@ lima_transfer_unmap(struct pipe_context *pctx,
                ptrans->stride,
                pres->format);
       }
-      free(trans->staging);
    }
+}
 
+static void
+lima_transfer_unmap(struct pipe_context *pctx,
+                    struct pipe_transfer *ptrans)
+{
+   struct lima_context *ctx = lima_context(pctx);
+   struct lima_transfer *trans = lima_transfer(ptrans);
+   struct lima_resource *res = lima_resource(ptrans->resource);
+
+   lima_transfer_unmap_inner(ctx, ptrans);
+   if (trans->staging)
+      free(trans->staging);
    panfrost_minmax_cache_invalidate(res->index_cache, ptrans);
 
    pipe_resource_reference(&ptrans->resource, NULL);
@@ -718,18 +729,59 @@ lima_flush_resource(struct pipe_context *pctx, struct pipe_resource *resource)
 
 }
 
+static void
+lima_texture_subdata(struct pipe_context *pctx,
+                     struct pipe_resource *prsc,
+                     unsigned level,
+                     unsigned usage,
+                     const struct pipe_box *box,
+                     const void *data,
+                     unsigned stride,
+                     unsigned layer_stride)
+{
+   struct lima_context *ctx = lima_context(pctx);
+   struct lima_resource *res = lima_resource(prsc);
+
+   if (!res->tiled) {
+      u_default_texture_subdata(pctx, prsc, level, usage, box,
+                                data, stride, layer_stride);
+      return;
+   }
+
+   assert(!(usage & PIPE_TRANSFER_READ));
+
+   struct lima_transfer t = {
+      .base = {
+         .resource = prsc,
+         .usage = PIPE_TRANSFER_WRITE,
+         .level = level,
+         .box = *box,
+         .stride = stride,
+         .layer_stride = layer_stride,
+      },
+      .staging = (void *)data,
+   };
+
+   lima_flush_job_accessing_bo(ctx, res->bo, true);
+   lima_bo_wait(res->bo, LIMA_GEM_WAIT_WRITE, PIPE_TIMEOUT_INFINITE);
+   if (!lima_bo_map(res->bo))
+      return;
+
+   lima_transfer_unmap_inner(ctx, &t.base);
+}
+
 void
 lima_resource_context_init(struct lima_context *ctx)
 {
    ctx->base.create_surface = lima_surface_create;
    ctx->base.surface_destroy = lima_surface_destroy;
 
-   /* TODO: optimize these functions to read/write data directly
-    * from/to target instead of creating a staging memory for tiled
-    * buffer indirectly
-    */
    ctx->base.buffer_subdata = u_default_buffer_subdata;
-   ctx->base.texture_subdata = u_default_texture_subdata;
+   ctx->base.texture_subdata = lima_texture_subdata;
+   /* TODO: optimize resource_copy_region to do copy directly
+    * between 2 tiled or tiled and linear resources instead of
+    * using staging buffer.
+    */
    ctx->base.resource_copy_region = util_resource_copy_region;
 
    ctx->base.blit = lima_blit;
