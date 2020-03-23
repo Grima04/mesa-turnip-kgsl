@@ -173,6 +173,7 @@ tu_CreateDescriptorSetLayout(
       set_layout->binding[b].dynamic_offset_offset = dynamic_offset_count;
       set_layout->binding[b].input_attachment_offset = input_attachment_count;
       set_layout->binding[b].size = descriptor_size(binding->descriptorType);
+      set_layout->binding[b].shader_stages = binding->stageFlags;
 
       if (variable_flags && binding->binding < variable_flags->bindingCount &&
           (variable_flags->pBindingFlags[binding->binding] &

@@ -1212,6 +1212,11 @@ struct tu_pipeline
 
    struct
    {
+      struct tu_cs_entry state_ib;
+   } load_state;
+
+   struct
+   {
       uint8_t bindings[MAX_VERTEX_ATTRIBS];
       uint32_t count;
 

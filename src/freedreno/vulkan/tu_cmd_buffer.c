@@ -2527,6 +2527,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_FS_CONST,
    TU_DRAW_STATE_DESC_SETS,
    TU_DRAW_STATE_DESC_SETS_GMEM,
+   TU_DRAW_STATE_DESC_SETS_LOAD,
    TU_DRAW_STATE_VS_PARAMS,
 
    TU_DRAW_STATE_COUNT,
@@ -3089,6 +3090,42 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
                .ib = desc_sets_gmem,
             };
       }
+
+      /* We need to reload the descriptors every time the descriptor sets
+       * change. However, the commands we send only depend on the pipeline
+       * because the whole point is to cache descriptors which are used by the
+       * pipeline. There's a problem here, in that the firmware has an
+       * "optimization" which skips executing groups that are set to the same
+       * value as the last draw. This means that if the descriptor sets change
+       * but not the pipeline, we'd try to re-execute the same buffer which
+       * the firmware would ignore and we wouldn't pre-load the new
+       * descriptors. The blob seems to re-emit the LOAD_STATE group whenever
+       * the descriptor sets change, which we emulate here by copying the
+       * pre-prepared buffer.
+       */
+      const struct tu_cs_entry *load_entry = &pipeline->load_state.state_ib;
+      if (load_entry->size > 0) {
+         struct tu_cs load_cs;
+         result = tu_cs_begin_sub_stream(&cmd->sub_cs, load_entry->size, &load_cs);
+         if (result != VK_SUCCESS)
+            return result;
+         tu_cs_emit_array(&load_cs,
+                          (uint32_t *)((char  *)load_entry->bo->map + load_entry->offset),
+                          load_entry->size / 4);
+         struct tu_cs_entry load_copy = tu_cs_end_sub_stream(&cmd->sub_cs, &load_cs);
+
+         draw_state_groups[draw_state_group_count++] =
+            (struct tu_draw_state_group) {
+               .id = TU_DRAW_STATE_DESC_SETS_LOAD,
+               /* The blob seems to not enable this for binning, even when
+                * resources would actually be used in the binning shader.
+                * Presumably the overhead of prefetching the resources isn't
+                * worth it.
+                */
+               .enable_mask = ENABLE_DRAW,
+               .ib = load_copy,
+            };
+      }
    }
 
    struct tu_cs_entry vs_params;
@@ -3519,6 +3556,9 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    if (ib.size)
       tu_cs_emit_ib(cs, &ib);
+
+   if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS)
+      tu_cs_emit_ib(cs, &pipeline->load_state.state_ib);
 
    cmd->state.dirty &=
       ~(TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS | TU_CMD_DIRTY_COMPUTE_PIPELINE);

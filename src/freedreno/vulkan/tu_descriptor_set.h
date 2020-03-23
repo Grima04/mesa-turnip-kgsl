@@ -60,6 +60,9 @@ struct tu_descriptor_set_binding_layout
    /* Offset in the tu_descriptor_set_layout of the immutable samplers, or 0
     * if there are no immutable samplers. */
    uint32_t immutable_samplers_offset;
+
+   /* Shader stages that use this binding */
+   uint32_t shader_stages;
 };
 
 struct tu_descriptor_set_layout

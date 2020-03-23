@@ -40,6 +40,247 @@
 
 #include "tu_cs.h"
 
+/* Emit IB that preloads the descriptors that the shader uses */
+
+static inline uint32_t
+tu6_vkstage2opcode(VkShaderStageFlags stage)
+{
+   switch (stage) {
+   case VK_SHADER_STAGE_VERTEX_BIT:
+   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+   case VK_SHADER_STAGE_GEOMETRY_BIT:
+      return CP_LOAD_STATE6_GEOM;
+   case VK_SHADER_STAGE_FRAGMENT_BIT:
+   case VK_SHADER_STAGE_COMPUTE_BIT:
+      return CP_LOAD_STATE6_FRAG;
+   default:
+      unreachable("bad shader type");
+   }
+}
+
+static enum a6xx_state_block
+tu6_tex_stage2sb(VkShaderStageFlags stage)
+{
+   switch (stage) {
+   case VK_SHADER_STAGE_VERTEX_BIT:
+      return SB6_VS_TEX;
+   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+      return SB6_HS_TEX;
+   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+      return SB6_DS_TEX;
+   case VK_SHADER_STAGE_GEOMETRY_BIT:
+      return SB6_GS_TEX;
+   case VK_SHADER_STAGE_FRAGMENT_BIT:
+      return SB6_FS_TEX;
+   case VK_SHADER_STAGE_COMPUTE_BIT:
+      return SB6_CS_TEX;
+   default:
+      unreachable("bad shader stage");
+   }
+}
+
+static enum a6xx_state_block
+tu6_ubo_stage2sb(VkShaderStageFlags stage)
+{
+   switch (stage) {
+   case VK_SHADER_STAGE_VERTEX_BIT:
+      return SB6_VS_SHADER;
+   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+      return SB6_HS_SHADER;
+   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+      return SB6_DS_SHADER;
+   case VK_SHADER_STAGE_GEOMETRY_BIT:
+      return SB6_GS_SHADER;
+   case VK_SHADER_STAGE_FRAGMENT_BIT:
+      return SB6_FS_SHADER;
+   case VK_SHADER_STAGE_COMPUTE_BIT:
+      return SB6_CS_SHADER;
+   default:
+      unreachable("bad shader stage");
+   }
+}
+
+static void
+emit_load_state(struct tu_cs *cs, unsigned opcode, enum a6xx_state_type st,
+                enum a6xx_state_block sb, unsigned base, unsigned offset,
+                unsigned count)
+{
+   /* Note: just emit one packet, even if count overflows NUM_UNIT. It's not
+    * clear if emitting more packets will even help anything. Presumably the
+    * descriptor cache is relatively small, and these packets stop doing
+    * anything when there are too many descriptors.
+    */
+   tu_cs_emit_pkt7(cs, opcode, 3);
+   tu_cs_emit(cs,
+              CP_LOAD_STATE6_0_STATE_TYPE(st) |
+              CP_LOAD_STATE6_0_STATE_SRC(SS6_BINDLESS) |
+              CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
+              CP_LOAD_STATE6_0_NUM_UNIT(MIN2(count, 1024-1)));
+   tu_cs_emit_qw(cs, offset | (base << 28));
+}
+
+static unsigned
+tu6_load_state_size(struct tu_pipeline_layout *layout, bool compute)
+{
+   const unsigned load_state_size = 4;
+   unsigned size = 0;
+   for (unsigned i = 0; i < layout->num_sets; i++) {
+      struct tu_descriptor_set_layout *set_layout = layout->set[i].layout;
+      for (unsigned j = 0; j < set_layout->binding_count; j++) {
+         struct tu_descriptor_set_binding_layout *binding = &set_layout->binding[j];
+         unsigned count = 0;
+         /* Note: some users, like amber for example, pass in
+          * VK_SHADER_STAGE_ALL which includes a bunch of extra bits, so
+          * filter these out by using VK_SHADER_STAGE_ALL_GRAPHICS explicitly.
+          */
+         VkShaderStageFlags stages = compute ?
+            binding->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT :
+            binding->shader_stages & VK_SHADER_STAGE_ALL_GRAPHICS;
+         unsigned stage_count = util_bitcount(stages);
+         switch (binding->type) {
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            /* IBO-backed resources only need one packet for all graphics stages */
+            if (stages & ~VK_SHADER_STAGE_COMPUTE_BIT)
+               count += 1;
+            if (stages & VK_SHADER_STAGE_COMPUTE_BIT)
+               count += 1;
+            break;
+         case VK_DESCRIPTOR_TYPE_SAMPLER:
+         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            /* Textures and UBO's needs a packet for each stage */
+            count = stage_count;
+            break;
+         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            /* Because of how we pack combined images and samplers, we
+             * currently can't use one packet for the whole array.
+             */
+            count = stage_count * binding->array_size * 2;
+            break;
+         default:
+            unreachable("bad descriptor type");
+         }
+         size += count * load_state_size;
+      }
+   }
+   return size;
+}
+
+static void
+tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
+{
+   unsigned size = tu6_load_state_size(pipeline->layout, compute);
+   if (size == 0)
+      return;
+
+   struct tu_cs cs;
+   tu_cs_begin_sub_stream(&pipeline->cs, size, &cs);
+
+   struct tu_pipeline_layout *layout = pipeline->layout;
+   for (unsigned i = 0; i < layout->num_sets; i++) {
+      struct tu_descriptor_set_layout *set_layout = layout->set[i].layout;
+      for (unsigned j = 0; j < set_layout->binding_count; j++) {
+         struct tu_descriptor_set_binding_layout *binding = &set_layout->binding[j];
+         unsigned base = i;
+         unsigned offset = binding->offset / 4;
+         /* Note: some users, like amber for example, pass in
+          * VK_SHADER_STAGE_ALL which includes a bunch of extra bits, so
+          * filter these out by using VK_SHADER_STAGE_ALL_GRAPHICS explicitly.
+          */
+         VkShaderStageFlags stages = compute ?
+            binding->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT :
+            binding->shader_stages & VK_SHADER_STAGE_ALL_GRAPHICS;
+         unsigned count = binding->array_size;
+         if (count == 0 || stages == 0)
+            continue;
+         switch (binding->type) {
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+            base = MAX_SETS;
+            offset = (layout->input_attachment_count +
+                      layout->set[i].dynamic_offset_start +
+                      binding->dynamic_offset_offset) * A6XX_TEX_CONST_DWORDS;
+            /* fallthrough */
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            /* IBO-backed resources only need one packet for all graphics stages */
+            if (stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
+               emit_load_state(&cs, CP_LOAD_STATE6, ST6_SHADER, SB6_IBO,
+                               base, offset, count);
+            }
+            if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+               emit_load_state(&cs, CP_LOAD_STATE6_FRAG, ST6_IBO, SB6_CS_SHADER,
+                               base, offset, count);
+            }
+            break;
+         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+            base = MAX_SETS;
+            offset = (layout->set[i].input_attachment_start +
+                      binding->input_attachment_offset) * A6XX_TEX_CONST_DWORDS;
+         case VK_DESCRIPTOR_TYPE_SAMPLER:
+         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+            unsigned stage_log2;
+            for_each_bit(stage_log2, stages) {
+               VkShaderStageFlags stage = 1 << stage_log2;
+               emit_load_state(&cs, tu6_vkstage2opcode(stage),
+                               binding->type == VK_DESCRIPTOR_TYPE_SAMPLER ?
+                               ST6_SHADER : ST6_CONSTANTS,
+                               tu6_tex_stage2sb(stage), base, offset, count);
+            }
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            base = MAX_SETS;
+            offset = (layout->input_attachment_count +
+                      layout->set[i].dynamic_offset_start +
+                      binding->dynamic_offset_offset) * A6XX_TEX_CONST_DWORDS;
+            /* fallthrough */
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+            unsigned stage_log2;
+            for_each_bit(stage_log2, stages) {
+               VkShaderStageFlags stage = 1 << stage_log2;
+               emit_load_state(&cs, tu6_vkstage2opcode(stage), ST6_UBO,
+                               tu6_ubo_stage2sb(stage), base, offset, count);
+            }
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+            unsigned stage_log2;
+            for_each_bit(stage_log2, stages) {
+               VkShaderStageFlags stage = 1 << stage_log2;
+               /* TODO: We could emit less CP_LOAD_STATE6 if we used
+                * struct-of-arrays instead of array-of-structs.
+                */
+               for (unsigned i = 0; i < count; i++) {
+                  unsigned tex_offset = offset + 2 * i * A6XX_TEX_CONST_DWORDS;
+                  unsigned sam_offset = offset + (2 * i + 1) * A6XX_TEX_CONST_DWORDS;
+                  emit_load_state(&cs, tu6_vkstage2opcode(stage),
+                                  ST6_CONSTANTS, tu6_tex_stage2sb(stage),
+                                  base, tex_offset, 1);
+                  emit_load_state(&cs, tu6_vkstage2opcode(stage),
+                                  ST6_SHADER, tu6_tex_stage2sb(stage),
+                                  base, sam_offset, 1);
+               }
+            }
+            break;
+         }
+         default:
+            unreachable("bad descriptor type");
+         }
+      }
+   }
+
+   pipeline->load_state.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
+}
+
 struct tu_pipeline_builder
 {
    struct tu_device *device;
@@ -1774,6 +2015,8 @@ tu6_emit_blend_constants(struct tu_cs *cs, const float constants[4])
 
 static VkResult
 tu_pipeline_create(struct tu_device *dev,
+                   struct tu_pipeline_layout *layout,
+                   bool compute,
                    const VkAllocationCallbacks *pAllocator,
                    struct tu_pipeline **out_pipeline)
 {
@@ -1785,8 +2028,12 @@ tu_pipeline_create(struct tu_device *dev,
 
    tu_cs_init(&pipeline->cs, dev, TU_CS_MODE_SUB_STREAM, 2048);
 
-   /* reserve the space now such that tu_cs_begin_sub_stream never fails */
-   VkResult result = tu_cs_reserve_space(&pipeline->cs, 2048);
+   /* Reserve the space now such that tu_cs_begin_sub_stream never fails. Note
+    * that LOAD_STATE can potentially take up a large amount of space so we
+    * calculate its size explicitly.
+   */
+   unsigned load_state_size = tu6_load_state_size(layout, compute);
+   VkResult result = tu_cs_reserve_space(&pipeline->cs, 2048 + load_state_size);
    if (result != VK_SUCCESS) {
       vk_free2(&dev->alloc, pAllocator, pipeline);
       return result;
@@ -2182,8 +2429,8 @@ static VkResult
 tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
                           struct tu_pipeline **pipeline)
 {
-   VkResult result = tu_pipeline_create(builder->device, builder->alloc,
-                                        pipeline);
+   VkResult result = tu_pipeline_create(builder->device, builder->layout,
+                                        false, builder->alloc, pipeline);
    if (result != VK_SUCCESS)
       return result;
 
@@ -2209,6 +2456,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    tu_pipeline_builder_parse_rasterization(builder, *pipeline);
    tu_pipeline_builder_parse_depth_stencil(builder, *pipeline);
    tu_pipeline_builder_parse_multisample_and_color_blend(builder, *pipeline);
+   tu6_emit_load_state(*pipeline, false);
 
    /* we should have reserved enough space upfront such that the CS never
     * grows
@@ -2381,7 +2629,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    *pPipeline = VK_NULL_HANDLE;
 
-   result = tu_pipeline_create(dev, pAllocator, &pipeline);
+   result = tu_pipeline_create(dev, layout, true, pAllocator, &pipeline);
    if (result != VK_SUCCESS)
       return result;
 
@@ -2417,6 +2665,8 @@ tu_compute_pipeline_create(VkDevice device,
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_compute_program(&prog_cs, shader, &pipeline->program.binary_bo);
    pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+
+   tu6_emit_load_state(pipeline, true);
 
    *pPipeline = tu_pipeline_to_handle(pipeline);
    return VK_SUCCESS;
