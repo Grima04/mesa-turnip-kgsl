@@ -488,6 +488,9 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                         return false;
         }
 
+        if (format_desc->channel[0].size > 32)
+            return false;
+
         /* Internally, formats that are depth/stencil renderable are limited.
          *
          * In particular: Z16, Z24, Z24S8, S8 are all identical from the GPU
