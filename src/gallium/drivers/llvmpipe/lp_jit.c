@@ -146,7 +146,9 @@ create_jit_image_type(struct gallivm_state *gallivm)
    elem_types[LP_JIT_IMAGE_DEPTH] = LLVMInt32TypeInContext(lc);
    elem_types[LP_JIT_IMAGE_BASE] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
    elem_types[LP_JIT_IMAGE_ROW_STRIDE] =
-   elem_types[LP_JIT_IMAGE_IMG_STRIDE] = LLVMInt32TypeInContext(lc);
+   elem_types[LP_JIT_IMAGE_IMG_STRIDE] =
+   elem_types[LP_JIT_IMAGE_NUM_SAMPLES] =
+   elem_types[LP_JIT_IMAGE_SAMPLE_STRIDE] = LLVMInt32TypeInContext(lc);
 
    image_type = LLVMStructTypeInContext(lc, elem_types,
                                         ARRAY_SIZE(elem_types), 0);
@@ -168,6 +170,12 @@ create_jit_image_type(struct gallivm_state *gallivm)
    LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, img_stride,
                           gallivm->target, image_type,
                           LP_JIT_IMAGE_IMG_STRIDE);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, num_samples,
+                          gallivm->target, image_type,
+                          LP_JIT_IMAGE_NUM_SAMPLES);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, sample_stride,
+                          gallivm->target, image_type,
+                          LP_JIT_IMAGE_SAMPLE_STRIDE);
    return image_type;
 }
 

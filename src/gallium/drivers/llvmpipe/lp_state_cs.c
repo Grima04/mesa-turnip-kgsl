@@ -1050,6 +1050,7 @@ lp_csctx_set_cs_images(struct lp_cs_context *csctx,
          jit_image->width = res->width0;
          jit_image->height = res->height0;
          jit_image->depth = res->depth0;
+         jit_image->num_samples = res->nr_samples;
 
          if (llvmpipe_resource_is_texture(res)) {
             uint32_t mip_offset = lp_res->mip_offsets[image->u.tex.level];
@@ -1075,6 +1076,7 @@ lp_csctx_set_cs_images(struct lp_cs_context *csctx,
 
             jit_image->row_stride = lp_res->row_stride[image->u.tex.level];
             jit_image->img_stride = lp_res->img_stride[image->u.tex.level];
+            jit_image->sample_stride = 0;
             jit_image->base = (uint8_t *)jit_image->base + mip_offset;
          } else {
             unsigned view_blocksize = util_format_get_blocksize(image->format);

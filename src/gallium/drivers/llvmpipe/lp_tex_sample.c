@@ -313,6 +313,8 @@ LP_LLVM_IMAGE_MEMBER(depth,      LP_JIT_IMAGE_DEPTH, TRUE)
 LP_LLVM_IMAGE_MEMBER(base_ptr,   LP_JIT_IMAGE_BASE, TRUE)
 LP_LLVM_IMAGE_MEMBER(row_stride, LP_JIT_IMAGE_ROW_STRIDE, TRUE)
 LP_LLVM_IMAGE_MEMBER(img_stride, LP_JIT_IMAGE_IMG_STRIDE, TRUE)
+LP_LLVM_IMAGE_MEMBER(num_samples, LP_JIT_IMAGE_NUM_SAMPLES, TRUE)
+LP_LLVM_IMAGE_MEMBER(sample_stride, LP_JIT_IMAGE_SAMPLE_STRIDE, TRUE)
 
 #if LP_USE_TEXTURE_CACHE
 static LLVMValueRef
@@ -477,6 +479,8 @@ lp_llvm_image_soa_create(const struct lp_image_static_state *static_state)
    image->dynamic_state.base.base_ptr = lp_llvm_image_base_ptr;
    image->dynamic_state.base.row_stride = lp_llvm_image_row_stride;
    image->dynamic_state.base.img_stride = lp_llvm_image_img_stride;
+   image->dynamic_state.base.num_samples = lp_llvm_image_num_samples;
+   image->dynamic_state.base.sample_stride = lp_llvm_image_sample_stride;
 
    image->dynamic_state.static_state = static_state;
 

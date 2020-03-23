@@ -402,6 +402,7 @@ prepare_shader_images(
    unsigned i;
    uint32_t row_stride;
    uint32_t img_stride;
+   uint32_t sample_stride;
    const void *addr;
 
    assert(num <= PIPE_MAX_SHADER_SAMPLER_VIEWS);
@@ -420,6 +421,7 @@ prepare_shader_images(
          unsigned width = u_minify(img->width0, view->u.tex.level);
          unsigned height = u_minify(img->height0, view->u.tex.level);
          unsigned num_layers = img->depth0;
+         unsigned num_samples = img->nr_samples;
 
          if (!lp_img->dt) {
             /* regular texture - setup array of mipmap level offsets */
@@ -441,6 +443,7 @@ prepare_shader_images(
 
                row_stride = lp_img->row_stride[view->u.tex.level];
                img_stride = lp_img->img_stride[view->u.tex.level];
+               sample_stride = 0;
                addr = (uint8_t *)addr + mip_offset;
             }
             else {
@@ -449,6 +452,7 @@ prepare_shader_images(
                /* probably don't really need to fill that out */
                row_stride = 0;
                img_stride = 0;
+               sample_stride = 0;
 
                /* everything specified in number of elements here. */
                width = view->u.buf.size / view_blocksize;
@@ -467,6 +471,7 @@ prepare_shader_images(
                                                 PIPE_TRANSFER_READ);
             row_stride = lp_img->row_stride[0];
             img_stride = lp_img->img_stride[0];
+            sample_stride = 0;
             assert(addr);
          }
          draw_set_mapped_image(lp->draw,
@@ -474,7 +479,8 @@ prepare_shader_images(
                                i,
                                width, height, num_layers,
                                addr,
-                               row_stride, img_stride, 0, 0);
+                               row_stride, img_stride,
+                               num_samples, sample_stride);
       }
    }
 }

@@ -89,6 +89,8 @@ struct lp_jit_image
    const void *base;
    uint32_t row_stride;
    uint32_t img_stride;
+   uint32_t num_samples;
+   uint32_t sample_stride;
 };
 
 enum {
@@ -129,6 +131,8 @@ enum {
    LP_JIT_IMAGE_BASE,
    LP_JIT_IMAGE_ROW_STRIDE,
    LP_JIT_IMAGE_IMG_STRIDE,
+   LP_JIT_IMAGE_NUM_SAMPLES,
+   LP_JIT_IMAGE_SAMPLE_STRIDE,
    LP_JIT_IMAGE_NUM_FIELDS  /* number of fields above */
 };
 /**
