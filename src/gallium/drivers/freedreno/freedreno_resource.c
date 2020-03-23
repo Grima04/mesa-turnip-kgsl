@@ -133,6 +133,19 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
 
 	rsc->bo = fd_bo_new(screen->dev, size, flags, "%ux%ux%u@%u:%x",
 			prsc->width0, prsc->height0, prsc->depth0, rsc->layout.cpp, prsc->bind);
+
+	/* Zero out the UBWC area on allocation.  This fixes intermittent failures
+	 * with UBWC, which I suspect are due to the HW having a hard time
+	 * interpreting arbitrary values populating the flags buffer when the BO
+	 * was recycled through the bo cache (instead of fresh allocations from
+	 * the kernel, which are zeroed).  sleep(1) in this spot didn't work
+	 * around the issue, but any memset value seems to.
+	 */
+	if (rsc->layout.ubwc) {
+		void *buf = fd_bo_map(rsc->bo);
+		memset(buf, 0, rsc->layout.slices[0].offset);
+	}
+
 	rsc->seqno = p_atomic_inc_return(&screen->rsc_seqno);
 	util_range_set_empty(&rsc->valid_buffer_range);
 	fd_bc_invalidate_resource(rsc, true);

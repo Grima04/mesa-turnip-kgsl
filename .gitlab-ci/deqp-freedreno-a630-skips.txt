@@ -22,32 +22,6 @@ dEQP-GLES31.functional.ssbo.layout.random.all_shared_buffer.48
 
 # Flakes reported more than once during Jan-Feb 2020
 dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
-dEQP-GLES31.functional.stencil_texturing.format.depth24_stencil8_2d
-dEQP-GLES31.functional.stencil_texturing.format.stencil_index8_2d
-dEQP-GLES31.functional.stencil_texturing.misc.compare_mode_effect
-dEQP-GLES31.functional.texture.border_clamp.formats.stencil_index8.nearest_size_npot
-dEQP-GLES31.functional.texture.border_clamp.formats.stencil_index8.nearest_size_pot
-dEQP-GLES31.functional.texture.border_clamp.sampler.uint_stencil
-dEQP-GLES31.functional.texture.specification.texstorage3d.format.r16f_cube_array
-dEQP-GLES31.functional.texture.specification.texsubimage3d_pbo.r16ui_cube_array
-dEQP-GLES3.functional.buffer.write.recreate_store.random_1
-dEQP-GLES3.functional.draw.draw_elements.line_loop.instanced_attributes
-dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_r11f_g11f_b10f
-dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_r16f
-dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_r32f
-dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_r8
-dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_rgb5_a1
-dEQP-GLES3.functional.fbo.blit.conversion.r16f_to_srgb8_alpha8
-dEQP-GLES3.functional.fbo.blit.conversion.r16i_to_rg16i
-dEQP-GLES3.functional.fbo.blit.conversion.r16ui_to_r8ui
-dEQP-GLES3.functional.fbo.blit.conversion.r32f_to_r16f
-dEQP-GLES3.functional.fbo.blit.conversion.r8_to_r16f
-dEQP-GLES3.functional.fbo.blit.conversion.rgb5_a1_to_r16f
-dEQP-GLES3.functional.fbo.blit.conversion.rgba32f_to_r16f
-dEQP-GLES3.functional.fbo.blit.conversion.rgba32i_to_r16i
-dEQP-GLES3.functional.fbo.blit.conversion.rgba32ui_to_r16ui
-dEQP-GLES3.functional.fbo.msaa.2_samples.stencil_index8
-dEQP-GLES3.functional.fbo.msaa.4_samples.r16f
 dEQP-GLES3.functional.fragment_out.random.0
 dEQP-GLES3.functional.fragment_out.random.1
 dEQP-GLES3.functional.fragment_out.random.12
@@ -84,9 +58,6 @@ dEQP-GLES3.functional.fragment_out.random.91
 dEQP-GLES3.functional.fragment_out.random.93
 dEQP-GLES3.functional.fragment_out.random.95
 dEQP-GLES3.functional.fragment_out.random.96
-dEQP-GLES3.functional.texture.format.sized.2d_array.r16ui_npot
-dEQP-GLES3.functional.texture.specification.basic_teximage3d.r16f_2d_array
-dEQP-GLES3.functional.texture.specification.texsubimage3d_pbo.r16i_2d_array
 dEQP-GLES3.functional.transform_feedback.array_element.interleaved.triangles.highp_mat2x3
 dEQP-GLES3.functional.transform_feedback.array_element.interleaved.triangles.lowp_mat2x4
 dEQP-GLES3.functional.transform_feedback.array_element.separate.triangles.lowp_mat2x4
