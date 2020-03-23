@@ -47,6 +47,7 @@ dEQP-GLES3.functional.fbo.blit.conversion.rgba32f_to_r16f
 dEQP-GLES3.functional.fbo.blit.conversion.rgba32i_to_r16i
 dEQP-GLES3.functional.fbo.blit.conversion.rgba32ui_to_r16ui
 dEQP-GLES3.functional.fbo.msaa.2_samples.stencil_index8
+dEQP-GLES3.functional.fbo.msaa.4_samples.r16f
 dEQP-GLES3.functional.fragment_out.random.0
 dEQP-GLES3.functional.fragment_out.random.1
 dEQP-GLES3.functional.fragment_out.random.12
