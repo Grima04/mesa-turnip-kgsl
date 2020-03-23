@@ -922,7 +922,7 @@ panfrost_create_sampler_view(
                         template->u.tex.last_layer,
                         type, prsrc->layout);
 
-        so->bo = panfrost_bo_create(device, size, 0);
+        so->bo = pan_bo_create(device, size, 0);
 
         panfrost_new_texture(
                         so->bo->cpu,
@@ -1180,7 +1180,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
                 /* Allocate a bo for the query results to be stored */
                 if (!query->bo) {
-                        query->bo = panfrost_bo_create(
+                        query->bo = pan_bo_create(
                                         pan_device(ctx->base.screen),
                                         sizeof(unsigned), 0);
                 }

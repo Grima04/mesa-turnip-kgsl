@@ -76,7 +76,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
          * that's how I'd do it. */
 
         if (size) {
-                state->bo = panfrost_bo_create(dev, size, PAN_BO_EXECUTE);
+                state->bo = pan_bo_create(dev, size, PAN_BO_EXECUTE);
                 memcpy(state->bo->cpu, dst, size);
                 state->first_tag = program.first_tag;
         } else {

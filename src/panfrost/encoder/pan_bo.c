@@ -31,8 +31,6 @@
 #include "drm-uapi/panfrost_drm.h"
 
 #include "pan_bo.h"
-#include "pan_util.h"
-#include "pandecode/decode.h"
 
 #include "os/os_mman.h"
 
@@ -72,7 +70,7 @@ panfrost_bo_alloc(struct panfrost_device *dev, size_t size,
 
         ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
         if (ret) {
-                DBG("DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
+                fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
                 return NULL;
         }
 
@@ -344,10 +342,6 @@ panfrost_bo_mmap(struct panfrost_bo *bo)
                 fprintf(stderr, "mmap failed: %p %m\n", bo->cpu);
                 assert(0);
         }
-
-        /* Record the mmap if we're tracing */
-        if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
-                pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
 }
 
 static void
@@ -404,10 +398,6 @@ panfrost_bo_create(struct panfrost_device *dev, size_t size,
 
         if (!(flags & (PAN_BO_INVISIBLE | PAN_BO_DELAY_MMAP)))
                 panfrost_bo_mmap(bo);
-        else if (flags & PAN_BO_INVISIBLE) {
-                if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
-                        pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
-        }
 
         p_atomic_set(&bo->refcnt, 1);
 

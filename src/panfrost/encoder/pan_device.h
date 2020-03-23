@@ -34,9 +34,9 @@
 #include "util/u_dynarray.h"
 #include "util/bitset.h"
 #include "util/set.h"
+#include "util/list.h"
 
 #include <panfrost-misc.h>
-#include "pan_allocate.h"
 
 /* Driver limits */
 #define PAN_MAX_CONST_BUFFERS 16

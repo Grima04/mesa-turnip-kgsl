@@ -118,4 +118,8 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
                                     unsigned int nrects,
                                     const struct pipe_box *rects);
 
+
+struct panfrost_bo *
+pan_bo_create(struct panfrost_device *dev, size_t size, uint32_t flags);
+
 #endif /* PAN_RESOURCE_H */

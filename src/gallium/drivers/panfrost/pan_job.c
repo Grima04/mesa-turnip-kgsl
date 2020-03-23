@@ -603,12 +603,12 @@ panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
 {
         struct panfrost_bo *bo;
 
-        bo = panfrost_bo_create(pan_device(batch->ctx->base.screen), size,
+        bo = pan_bo_create(pan_device(batch->ctx->base.screen), size,
                                 create_flags);
         panfrost_batch_add_bo(batch, bo, access_flags);
 
         /* panfrost_batch_add_bo() has retained a reference and
-         * panfrost_bo_create() initialize the refcnt to 1, so let's
+         * pan_bo_create() initialize the refcnt to 1, so let's
          * unreference the BO here so it gets released when the batch is
          * destroyed (unless it's retained by someone else in the meantime).
          */

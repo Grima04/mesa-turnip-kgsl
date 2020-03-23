@@ -17,6 +17,8 @@ bifrost_FILES := \
 encoder_FILES := \
 	encoder/pan_afbc.c \
         encoder/pan_attributes.c \
+        encoder/pan_bo.c \
+        encoder/pan_bo.h \
         encoder/pan_device.h \
         encoder/pan_encoder.h \
         encoder/pan_format.c \
@@ -25,7 +27,8 @@ encoder_FILES := \
         encoder/pan_sampler.c \
         encoder/pan_tiler.c \
         encoder/pan_texture.c \
-        encoder/pan_scratch.c
+        encoder/pan_scratch.c \
+        encoder/pan_util.h
 
 midgard_FILES := \
         midgard/compiler.h \

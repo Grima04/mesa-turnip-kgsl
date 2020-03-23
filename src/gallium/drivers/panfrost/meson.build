@@ -30,7 +30,6 @@ files_panfrost = files(
   'nir/nir_lower_framebuffer.c',
 
   'pan_context.c',
-  'pan_bo.c',
   'pan_blit.c',
   'pan_job.c',
   'pan_allocate.c',
