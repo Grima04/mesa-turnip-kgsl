@@ -790,16 +790,13 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
       return;
 
    /* all target regs are needed as operand somewhere which means, all entries are part of a cycle */
-   bool constants = false;
    for (it = copy_map.begin(); it != copy_map.end(); ++it) {
       assert(it->second.op.isFixed());
       if (it->first == it->second.op.physReg())
          continue;
-      /* do constants later */
-      if (it->second.op.isConstant()) {
-         constants = true;
-         continue;
-      }
+
+      /* should already be done */
+      assert(!it->second.op.isConstant());
 
       if (preserve_scc && it->second.def.getTemp().type() == RegType::sgpr)
          assert(!(it->second.def.physReg() == pi->scratch_sgpr));
@@ -843,19 +840,6 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          if (target->second.op.physReg() == it->first) {
             target->second.op.setFixed(swap.op.physReg());
             break;
-         }
-      }
-   }
-
-   /* copy constants into a registers which were operands */
-   if (constants) {
-      for (it = copy_map.begin(); it != copy_map.end(); ++it) {
-         if (!it->second.op.isConstant())
-            continue;
-         if (it->second.def.physReg() == scc) {
-            bld.sopc(aco_opcode::s_cmp_lg_i32, Definition(scc, s1), Operand(0u), Operand(it->second.op.constantValue() ? 1u : 0u));
-         } else {
-            bld.copy(it->second.def, it->second.op);
          }
       }
    }
