@@ -31,6 +31,7 @@ LOCAL_SRC_FILES := \
 	ir/gp/lower.c \
 	ir/gp/nir.c \
 	ir/gp/node.c \
+	ir/gp/optimize.c \
 	ir/gp/regalloc.c \
 	ir/gp/reduce_scheduler.c \
 	ir/gp/scheduler.c \
