@@ -4097,6 +4097,7 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
    struct lp_build_context int_bld, int_coord_bld;
    const struct util_format_description *format_desc = util_format_description(static_texture_state->format);
    LLVMValueRef x = params->coords[0], y = params->coords[1], z = params->coords[2];
+   LLVMValueRef ms_index = params->ms_index;
    LLVMValueRef row_stride_vec = NULL, img_stride_vec = NULL;
    int_type = lp_type_int(32);
    int_coord_type = lp_int_type(params->type);
@@ -4117,6 +4118,14 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                                                params->context_ptr, params->image_index);
    LLVMValueRef depth = dynamic_state->depth(dynamic_state, gallivm,
                                               params->context_ptr, params->image_index);
+   LLVMValueRef num_samples = NULL, sample_stride = NULL;
+   if (ms_index) {
+      num_samples = dynamic_state->num_samples(dynamic_state, gallivm,
+                                               params->context_ptr, params->image_index);
+      sample_stride = dynamic_state->sample_stride(dynamic_state, gallivm,
+                                                   params->context_ptr, params->image_index);
+   }
+
    boolean layer_coord = has_layer_coord(target);
 
    width = lp_build_broadcast_scalar(&int_coord_bld, width);
@@ -4147,6 +4156,14 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                           x, y, z, row_stride_vec, img_stride_vec,
                           &offset, &i, &j);
 
+   if (ms_index) {
+      out1 = lp_build_cmp(&int_coord_bld, PIPE_FUNC_GEQUAL, ms_index, lp_build_broadcast_scalar(&int_coord_bld, num_samples));
+      out_of_bounds = lp_build_or(&int_coord_bld, out_of_bounds, out1);
+
+      offset = lp_build_add(&int_coord_bld, offset,
+                            lp_build_mul(&int_coord_bld, lp_build_broadcast_scalar(&int_coord_bld, sample_stride),
+                                         ms_index));
+   }
    if (params->img_op == LP_IMG_LOAD) {
       struct lp_type texel_type = params->type;
       if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&

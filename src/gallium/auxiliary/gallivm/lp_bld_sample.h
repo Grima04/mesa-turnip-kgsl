@@ -144,6 +144,7 @@ struct lp_img_params
    LLVMValueRef context_ptr;
    LLVMValueRef thread_data_ptr;
    const LLVMValueRef *coords;
+   LLVMValueRef ms_index;
    LLVMValueRef indata[4];
    LLVMValueRef indata2[4];
    LLVMValueRef *outdata;
