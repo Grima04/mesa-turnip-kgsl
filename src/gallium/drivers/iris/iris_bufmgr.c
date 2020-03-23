@@ -171,10 +171,6 @@ static int bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
 
 static void bo_free(struct iris_bo *bo);
 
-static uint64_t vma_alloc(struct iris_bufmgr *bufmgr,
-                          enum iris_memory_zone memzone,
-                          uint64_t size, uint64_t alignment);
-
 static struct iris_bo *
 find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
 {
