@@ -294,6 +294,10 @@ class PrintCode(gl_XML.gl_print_base):
         out('')
 
     def print_create_marshal_table(self, api):
+        out('/* _mesa_create_marshal_table takes a long time to compile with -O2 */')
+        out('#ifdef __GNUC__')
+        out('__attribute__((optimize("O1")))')
+        out('#endif')
         out('struct _glapi_table *')
         out('_mesa_create_marshal_table(const struct gl_context *ctx)')
         out('{')
@@ -308,7 +312,11 @@ class PrintCode(gl_XML.gl_print_base):
             for func in api.functionIterateAll():
                 if func.marshal_flavor() == 'skip':
                     continue
-                out('SET_{0}(table, _mesa_marshal_{0});'.format(func.name))
+                # Don't use the SET_* functions, because they increase compile time
+                # by 20 seconds (on Ryzen 1700X).
+                out('if (_gloffset_{0} >= 0)'.format(func.name))
+                out('   ((_glapi_proc *)(table))[_gloffset_{0}] = (_glapi_proc)_mesa_marshal_{0};'
+                    .format(func.name))
             out('')
             out('return table;')
         out('}')
