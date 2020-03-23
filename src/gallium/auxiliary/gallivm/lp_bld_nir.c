@@ -1472,6 +1472,7 @@ static void visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    params.explicit_lod = explicit_lod;
    params.is_sviewinfo = TRUE;
    params.sizes_out = sizes_out;
+   params.samples_only = false;
 
    if (instr->op == nir_texop_query_levels)
       params.explicit_lod = bld_base->uint_bld.zero;

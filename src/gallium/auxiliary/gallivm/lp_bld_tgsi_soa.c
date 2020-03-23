@@ -2644,6 +2644,7 @@ emit_size_query( struct lp_build_tgsi_soa_context *bld,
    params.lod_property = lod_property;
    params.explicit_lod = explicit_lod;
    params.sizes_out = sizes_out;
+   params.samples_only = false;
 
    bld->sampler->emit_size_query(bld->sampler,
                                  bld->bld_base.base.gallivm,

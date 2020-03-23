@@ -123,6 +123,7 @@ struct lp_sampler_size_query_params
    unsigned target;
    LLVMValueRef context_ptr;
    boolean is_sviewinfo;
+   bool samples_only;
    enum lp_sampler_lod_property lod_property;
    LLVMValueRef explicit_lod;
    LLVMValueRef *sizes_out;

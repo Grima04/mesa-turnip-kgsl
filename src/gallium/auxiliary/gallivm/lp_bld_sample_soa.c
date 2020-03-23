@@ -3902,6 +3902,12 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
 
    lp_build_context_init(&bld_int_vec4, gallivm, lp_type_int_vec(32, 128));
 
+   if (params->samples_only) {
+      params->sizes_out[0] = lp_build_broadcast(gallivm, lp_build_vec_type(gallivm, params->int_type),
+                                                dynamic_state->num_samples(dynamic_state, gallivm,
+                                                                           context_ptr, texture_unit));
+      return;
+   }
    if (params->explicit_lod) {
       /* FIXME: this needs to honor per-element lod */
       lod = LLVMBuildExtractElement(gallivm->builder, params->explicit_lod,
