@@ -115,23 +115,6 @@ struct panfrost_bo {
         uint32_t gpu_access;
 };
 
-/* If a BO is accessed for a particular shader stage, will it be in the primary
- * batch (vertex/tiler) or the secondary batch (fragment)? Anything but
- * fragment will be primary, e.g. compute jobs will be considered
- * "vertex/tiler" by analogy */
-
-static inline uint32_t
-panfrost_bo_access_for_stage(enum pipe_shader_type stage)
-{
-        assert(stage == PIPE_SHADER_FRAGMENT ||
-               stage == PIPE_SHADER_VERTEX ||
-               stage == PIPE_SHADER_COMPUTE);
-
-        return stage == PIPE_SHADER_FRAGMENT ?
-               PAN_BO_ACCESS_FRAGMENT :
-               PAN_BO_ACCESS_VERTEX_TILER;
-}
-
 bool
 panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
                  uint32_t access_type);
