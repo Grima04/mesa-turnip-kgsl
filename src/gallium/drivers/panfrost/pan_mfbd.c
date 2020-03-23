@@ -359,7 +359,7 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
+        struct panfrost_device *dev = pan_device(gallium->screen);
 
         unsigned width = batch->key.width;
         unsigned height = batch->key.height;
@@ -381,7 +381,7 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 
                 .shared_memory = {
                         .stack_shift = shift,
-                        .scratchpad = panfrost_batch_get_scratchpad(batch, shift, screen->thread_tls_alloc, screen->core_count)->gpu,
+                        .scratchpad = panfrost_batch_get_scratchpad(batch, shift, dev->thread_tls_alloc, dev->core_count)->gpu,
                         .shared_workgroup_count = ~0,
                 }
         };

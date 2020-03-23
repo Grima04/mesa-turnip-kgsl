@@ -41,20 +41,20 @@ void
 panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
                                struct midgard_payload_vertex_tiler *vt)
 {
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         /* If we haven't, reserve space for the framebuffer */
 
         if (!batch->framebuffer.gpu) {
-                unsigned size = (screen->quirks & MIDGARD_SFBD) ?
+                unsigned size = (dev->quirks & MIDGARD_SFBD) ?
                         sizeof(struct mali_single_framebuffer) :
                         sizeof(struct mali_framebuffer);
 
                 batch->framebuffer = panfrost_allocate_transient(batch, size);
 
                 /* Tag the pointer */
-                if (!(screen->quirks & MIDGARD_SFBD))
+                if (!(dev->quirks & MIDGARD_SFBD))
                         batch->framebuffer.gpu |= MALI_MFBD;
         }
 
@@ -530,10 +530,10 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 struct mali_shader_meta *fragmeta,
                                 struct midgard_blend_rt *rts)
 {
-        const struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        const struct panfrost_device *dev = pan_device(ctx->base.screen);
 
         SET_BIT(fragmeta->unknown2_4, MALI_NO_DITHER,
-                (screen->quirks & MIDGARD_SFBD) && ctx->blend &&
+                (dev->quirks & MIDGARD_SFBD) && ctx->blend &&
                 !ctx->blend->base.dither);
 
         /* Get blending setup */
@@ -570,7 +570,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 break;
         }
 
-        if (screen->quirks & MIDGARD_SFBD) {
+        if (dev->quirks & MIDGARD_SFBD) {
                 /* When only a single render target platform is used, the blend
                  * information is inside the shader meta itself. We additionally
                  * need to signal CAN_DISCARD for nontrivial blend modes (so
@@ -617,7 +617,7 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                                struct mali_shader_meta *fragmeta,
                                struct midgard_blend_rt *rts)
 {
-        const struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs;
 
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
@@ -632,7 +632,7 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
          * these earlier chips (perhaps this is a chicken bit of some kind).
          * More investigation is needed. */
 
-        SET_BIT(fragmeta->unknown2_4, 0x10, screen->quirks & MIDGARD_SFBD);
+        SET_BIT(fragmeta->unknown2_4, 0x10, dev->quirks & MIDGARD_SFBD);
 
         /* Depending on whether it's legal to in the given shader, we try to
          * enable early-z testing (or forward-pixel kill?) */
@@ -689,7 +689,7 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
         mali_ptr shader_ptr;
 
         if (st == PIPE_SHADER_FRAGMENT) {
-                struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+                struct panfrost_device *dev = pan_device(ctx->base.screen);
                 unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
                 size_t desc_size = sizeof(meta);
                 struct midgard_blend_rt rts[4];
@@ -699,7 +699,7 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
 
                 panfrost_frag_shader_meta_init(ctx, &meta, rts);
 
-                if (!(screen->quirks & MIDGARD_SFBD))
+                if (!(dev->quirks & MIDGARD_SFBD))
                         desc_size += sizeof(*rts) * rt_count;
 
                 xfer = panfrost_allocate_transient(batch, desc_size);

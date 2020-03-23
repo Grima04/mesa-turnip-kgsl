@@ -58,8 +58,8 @@
 struct midgard_tiler_descriptor
 panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 {
-        struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
-        bool hierarchy = !(screen->quirks & MIDGARD_NO_HIER_TILING);
+        struct panfrost_device *device = pan_device(batch->ctx->base.screen);
+        bool hierarchy = !(device->quirks & MIDGARD_NO_HIER_TILING);
         struct midgard_tiler_descriptor t = {0};
         unsigned height = batch->key.height;
         unsigned width = batch->key.width;
@@ -881,7 +881,7 @@ panfrost_create_sampler_view(
         struct pipe_resource *texture,
         const struct pipe_sampler_view *template)
 {
-        struct panfrost_screen *screen = pan_screen(pctx->screen);
+        struct panfrost_device *device = pan_device(pctx->screen);
         struct panfrost_sampler_view *so = rzalloc(pctx, struct panfrost_sampler_view);
 
         pipe_reference(NULL, &texture->reference);
@@ -922,7 +922,7 @@ panfrost_create_sampler_view(
                         template->u.tex.last_layer,
                         type, prsrc->layout);
 
-        so->bo = panfrost_bo_create(screen, size, 0);
+        so->bo = panfrost_bo_create(device, size, 0);
 
         panfrost_new_texture(
                         so->bo->cpu,
@@ -999,7 +999,7 @@ panfrost_set_shader_buffers(
 
 static void
 panfrost_hint_afbc(
-                struct panfrost_screen *screen,
+                struct panfrost_device *device,
                 const struct pipe_framebuffer_state *fb)
 {
         /* AFBC implemenation incomplete; hide it */
@@ -1010,14 +1010,14 @@ panfrost_hint_afbc(
         for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
                 struct pipe_surface *surf = fb->cbufs[i];
                 struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                panfrost_resource_hint_layout(screen, rsrc, MALI_TEXTURE_AFBC, 1);
+                panfrost_resource_hint_layout(device, rsrc, MALI_TEXTURE_AFBC, 1);
         }
 
         /* Also hint it to the depth buffer */
 
         if (fb->zsbuf) {
                 struct panfrost_resource *rsrc = pan_resource(fb->zsbuf->texture);
-                panfrost_resource_hint_layout(screen, rsrc, MALI_TEXTURE_AFBC, 1);
+                panfrost_resource_hint_layout(device, rsrc, MALI_TEXTURE_AFBC, 1);
         }
 }
 
@@ -1027,7 +1027,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-        panfrost_hint_afbc(pan_screen(pctx->screen), fb);
+        panfrost_hint_afbc(pan_device(pctx->screen), fb);
         util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
         ctx->batch = NULL;
         panfrost_invalidate_frame(ctx);
@@ -1181,7 +1181,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
                 /* Allocate a bo for the query results to be stored */
                 if (!query->bo) {
                         query->bo = panfrost_bo_create(
-                                        pan_screen(ctx->base.screen),
+                                        pan_device(ctx->base.screen),
                                         sizeof(unsigned), 0);
                 }
 

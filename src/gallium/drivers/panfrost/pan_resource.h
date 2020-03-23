@@ -88,13 +88,13 @@ panfrost_get_texture_address(
         struct panfrost_resource *rsrc,
         unsigned level, unsigned face);
 
-void panfrost_resource_screen_init(struct panfrost_screen *screen);
+void panfrost_resource_screen_init(struct pipe_screen *screen);
 
 void panfrost_resource_context_init(struct pipe_context *pctx);
 
 void
 panfrost_resource_hint_layout(
-                struct panfrost_screen *screen,
+                struct panfrost_device *dev,
                 struct panfrost_resource *rsrc,
                 enum mali_texture_layout layout,
                 signed weight);

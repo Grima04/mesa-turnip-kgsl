@@ -72,7 +72,7 @@ int pan_debug = 0;
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
 {
-        return panfrost_model_name(pan_screen(screen)->gpu_id);
+        return panfrost_model_name(pan_device(screen)->gpu_id);
 }
 
 static const char *
@@ -591,12 +591,12 @@ panfrost_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_t
 static void
 panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
-        struct panfrost_screen *screen = pan_screen(pscreen);
-        panfrost_bo_cache_evict_all(screen);
-        pthread_mutex_destroy(&screen->bo_cache.lock);
-        pthread_mutex_destroy(&screen->active_bos_lock);
-        drmFreeVersion(screen->kernel_version);
-        ralloc_free(screen);
+        struct panfrost_device *dev = pan_device(pscreen);
+        panfrost_bo_cache_evict_all(dev);
+        pthread_mutex_destroy(&dev->bo_cache.lock);
+        pthread_mutex_destroy(&dev->active_bos_lock);
+        drmFreeVersion(dev->kernel_version);
+        ralloc_free(pscreen);
 }
 
 static uint64_t
@@ -629,7 +629,7 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
                       struct pipe_fence_handle *fence,
                       uint64_t timeout)
 {
-        struct panfrost_screen *screen = pan_screen(pscreen);
+        struct panfrost_device *dev = pan_device(pscreen);
         struct panfrost_fence *f = (struct panfrost_fence *)fence;
         struct util_dynarray syncobjs;
         int ret;
@@ -642,10 +642,10 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
         util_dynarray_foreach(&f->syncfds, int, fd) {
                 uint32_t syncobj;
 
-                ret = drmSyncobjCreate(screen->fd, 0, &syncobj);
+                ret = drmSyncobjCreate(dev->fd, 0, &syncobj);
                 assert(!ret);
 
-                ret = drmSyncobjImportSyncFile(screen->fd, syncobj, *fd);
+                ret = drmSyncobjImportSyncFile(dev->fd, syncobj, *fd);
                 assert(!ret);
                 util_dynarray_append(&syncobjs, uint32_t, syncobj);
         }
@@ -654,13 +654,13 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
         if (abs_timeout == OS_TIMEOUT_INFINITE)
                 abs_timeout = INT64_MAX;
 
-        ret = drmSyncobjWait(screen->fd, util_dynarray_begin(&syncobjs),
+        ret = drmSyncobjWait(dev->fd, util_dynarray_begin(&syncobjs),
                              util_dynarray_num_elements(&syncobjs, uint32_t),
                              abs_timeout, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL,
                              NULL);
 
         util_dynarray_foreach(&syncobjs, uint32_t, syncobj)
-                drmSyncobjDestroy(screen->fd, *syncobj);
+                drmSyncobjDestroy(dev->fd, *syncobj);
 
         return ret >= 0;
 }
@@ -669,7 +669,7 @@ struct panfrost_fence *
 panfrost_fence_create(struct panfrost_context *ctx,
                       struct util_dynarray *fences)
 {
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_device *device = pan_device(ctx->base.screen);
         struct panfrost_fence *f = calloc(1, sizeof(*f));
         if (!f)
                 return NULL;
@@ -684,7 +684,7 @@ panfrost_fence_create(struct panfrost_context *ctx,
                 if ((*fence)->signaled)
                         continue;
 
-                drmSyncobjExportSyncFile(screen->fd, (*fence)->syncobj, &fd);
+                drmSyncobjExportSyncFile(device->fd, (*fence)->syncobj, &fd);
                 if (fd == -1)
                         fprintf(stderr, "export failed: %m\n");
 
@@ -744,26 +744,29 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         if (!screen)
                 return NULL;
 
+        struct panfrost_device *dev = pan_device(&screen->base);
+
         if (ro) {
-                screen->ro = renderonly_dup(ro);
-                if (!screen->ro) {
+                dev->ro = renderonly_dup(ro);
+                if (!dev->ro) {
                         DBG("Failed to dup renderonly object\n");
                         free(screen);
                         return NULL;
                 }
         }
 
-        screen->fd = fd;
+        dev->fd = fd;
+        dev->memctx = screen;
 
-        screen->gpu_id = panfrost_query_gpu_version(screen->fd);
-        screen->core_count = panfrost_query_core_count(screen->fd);
-        screen->thread_tls_alloc = panfrost_query_thread_tls_alloc(screen->fd);
-        screen->quirks = panfrost_get_quirks(screen->gpu_id);
-        screen->kernel_version = drmGetVersion(fd);
+        dev->gpu_id = panfrost_query_gpu_version(dev->fd);
+        dev->core_count = panfrost_query_core_count(dev->fd);
+        dev->thread_tls_alloc = panfrost_query_thread_tls_alloc(dev->fd);
+        dev->quirks = panfrost_get_quirks(dev->gpu_id);
+        dev->kernel_version = drmGetVersion(fd);
 
         /* Check if we're loading against a supported GPU model. */
 
-        switch (screen->gpu_id) {
+        switch (dev->gpu_id) {
         case 0x720: /* T720 */
         case 0x750: /* T760 */
         case 0x820: /* T820 */
@@ -771,18 +774,18 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 break;
         default:
                 /* Fail to load against untested models */
-                debug_printf("panfrost: Unsupported model %X", screen->gpu_id);
+                debug_printf("panfrost: Unsupported model %X", dev->gpu_id);
                 return NULL;
         }
 
-        pthread_mutex_init(&screen->active_bos_lock, NULL);
-        screen->active_bos = _mesa_set_create(screen, panfrost_active_bos_hash,
+        pthread_mutex_init(&dev->active_bos_lock, NULL);
+        dev->active_bos = _mesa_set_create(screen, panfrost_active_bos_hash,
                                               panfrost_active_bos_cmp);
 
-        pthread_mutex_init(&screen->bo_cache.lock, NULL);
-        list_inithead(&screen->bo_cache.lru);
-        for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache.buckets); ++i)
-                list_inithead(&screen->bo_cache.buckets[i]);
+        pthread_mutex_init(&dev->bo_cache.lock, NULL);
+        list_inithead(&dev->bo_cache.lru);
+        for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
+                list_inithead(&dev->bo_cache.buckets[i]);
 
         if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
                 pandecode_initialize(!(pan_debug & PAN_DBG_TRACE));
@@ -804,7 +807,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.fence_finish = panfrost_fence_finish;
         screen->base.set_damage_region = panfrost_resource_set_damage_region;
 
-        panfrost_resource_screen_init(screen);
+        panfrost_resource_screen_init(&screen->base);
 
         return &screen->base;
 }

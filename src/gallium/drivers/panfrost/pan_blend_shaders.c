@@ -138,7 +138,7 @@ panfrost_compile_blend_shader(
         enum pipe_format format,
         unsigned rt)
 {
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_blend_shader res;
 
         res.ctx = ctx;
@@ -177,12 +177,12 @@ panfrost_compile_blend_shader(
 
         NIR_PASS_V(shader, nir_lower_blend, options);
 
-        NIR_PASS_V(shader, nir_lower_framebuffer, format, screen->gpu_id);
+        NIR_PASS_V(shader, nir_lower_framebuffer, format, dev->gpu_id);
 
         /* Compile the built shader */
 
         panfrost_program program;
-        midgard_compile_shader_nir(shader, &program, true, rt, screen->gpu_id, false);
+        midgard_compile_shader_nir(shader, &program, true, rt, dev->gpu_id, false);
 
         /* Allow us to patch later */
         res.patch_index = program.blend_patch_offset;

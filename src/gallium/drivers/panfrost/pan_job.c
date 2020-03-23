@@ -71,7 +71,7 @@ panfrost_create_batch_fence(struct panfrost_batch *batch)
         pipe_reference_init(&fence->reference, 1);
         fence->ctx = batch->ctx;
         fence->batch = batch;
-        ret = drmSyncobjCreate(pan_screen(batch->ctx->base.screen)->fd, 0,
+        ret = drmSyncobjCreate(pan_device(batch->ctx->base.screen)->fd, 0,
                                &fence->syncobj);
         assert(!ret);
 
@@ -81,7 +81,7 @@ panfrost_create_batch_fence(struct panfrost_batch *batch)
 static void
 panfrost_free_batch_fence(struct panfrost_batch_fence *fence)
 {
-        drmSyncobjDestroy(pan_screen(fence->ctx->base.screen)->fd,
+        drmSyncobjDestroy(pan_device(fence->ctx->base.screen)->fd,
                           fence->syncobj);
         ralloc_free(fence);
 }
@@ -322,7 +322,7 @@ panfrost_batch_fence_is_signaled(struct panfrost_batch_fence *fence)
         if (fence->batch)
                 return false;
 
-        int ret = drmSyncobjWait(pan_screen(fence->ctx->base.screen)->fd,
+        int ret = drmSyncobjWait(pan_device(fence->ctx->base.screen)->fd,
                                  &fence->syncobj, 1, 0, 0, NULL);
 
         /* Cache whether the fence was signaled */
@@ -603,7 +603,7 @@ panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
 {
         struct panfrost_bo *bo;
 
-        bo = panfrost_bo_create(pan_screen(batch->ctx->base.screen), size,
+        bo = panfrost_bo_create(pan_device(batch->ctx->base.screen), size,
                                 create_flags);
         panfrost_batch_add_bo(batch, bo, access_flags);
 
@@ -702,14 +702,14 @@ panfrost_batch_get_tiler_heap(struct panfrost_batch *batch)
 struct panfrost_bo *
 panfrost_batch_get_tiler_dummy(struct panfrost_batch *batch)
 {
-        struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
         uint32_t create_flags = 0;
 
         if (batch->tiler_dummy)
                 return batch->tiler_dummy;
 
-        if (!(screen->quirks & MIDGARD_NO_HIER_TILING))
+        if (!(dev->quirks & MIDGARD_NO_HIER_TILING))
                 create_flags = PAN_BO_INVISIBLE;
 
         batch->tiler_dummy = panfrost_batch_create_bo(batch, 4096,
@@ -844,7 +844,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 {
         struct panfrost_context *ctx = batch->ctx;
         struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
+        struct panfrost_device *dev = pan_device(gallium->screen);
         struct drm_panfrost_submit submit = {0,};
         uint32_t *bo_handles, *in_syncs = NULL;
         bool is_fragment_shader;
@@ -901,7 +901,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         }
 
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
-        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+        ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
         free(bo_handles);
         free(in_syncs);
 
@@ -913,12 +913,12 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         /* Trace the job if we're doing that */
         if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
                 /* Wait so we can get errors reported back */
-                drmSyncobjWait(screen->fd, &batch->out_sync->syncobj, 1,
+                drmSyncobjWait(dev->fd, &batch->out_sync->syncobj, 1,
                                INT64_MAX, 0, NULL);
 
                 /* Trace gets priority over sync */
                 bool minimal = !(pan_debug & PAN_DBG_TRACE);
-                pandecode_jc(submit.jc, FALSE, screen->gpu_id, minimal);
+                pandecode_jc(submit.jc, FALSE, dev->gpu_id, minimal);
         }
 
         return 0;
@@ -975,9 +975,9 @@ panfrost_batch_submit(struct panfrost_batch *batch)
         if (batch->framebuffer.gpu && batch->first_job) {
                 struct panfrost_context *ctx = batch->ctx;
                 struct pipe_context *gallium = (struct pipe_context *) ctx;
-                struct panfrost_screen *screen = pan_screen(gallium->screen);
+                struct panfrost_device *dev = pan_device(gallium->screen);
 
-                if (screen->quirks & MIDGARD_SFBD)
+                if (dev->quirks & MIDGARD_SFBD)
                         panfrost_attach_sfbd(batch, ~0);
                 else
                         panfrost_attach_mfbd(batch, ~0);
@@ -1048,7 +1048,7 @@ panfrost_flush_all_batches(struct panfrost_context *ctx, bool wait)
         if (!wait)
                 return;
 
-        drmSyncobjWait(pan_screen(ctx->base.screen)->fd,
+        drmSyncobjWait(pan_device(ctx->base.screen)->fd,
                        util_dynarray_begin(&syncobjs),
                        util_dynarray_num_elements(&syncobjs, uint32_t),
                        INT64_MAX, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL, NULL);
@@ -1313,7 +1313,7 @@ panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
         batch->maxy = MIN2(batch->maxy, maxy);
 }
 
-/* Are we currently rendering to the screen (rather than an FBO)? */
+/* Are we currently rendering to the dev (rather than an FBO)? */
 
 bool
 panfrost_batch_is_scanout(struct panfrost_batch *batch)

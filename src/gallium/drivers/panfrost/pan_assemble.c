@@ -44,7 +44,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                         struct panfrost_shader_state *state,
                         uint64_t *outputs_written)
 {
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         uint8_t *dst;
 
         nir_shader *s;
@@ -64,7 +64,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 .alpha_ref = state->alpha_state.ref_value
         };
 
-        midgard_compile_shader_nir(s, &program, false, 0, screen->gpu_id,
+        midgard_compile_shader_nir(s, &program, false, 0, dev->gpu_id,
                         pan_debug & PAN_DBG_PRECOMPILE);
 
         /* Prepare the compiled binary for upload */
@@ -76,7 +76,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
          * that's how I'd do it. */
 
         if (size) {
-                state->bo = panfrost_bo_create(screen, size, PAN_BO_EXECUTE);
+                state->bo = panfrost_bo_create(dev, size, PAN_BO_EXECUTE);
                 memcpy(state->bo->cpu, dst, size);
                 state->first_tag = program.first_tag;
         } else {

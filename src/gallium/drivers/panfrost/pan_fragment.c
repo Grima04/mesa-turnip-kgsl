@@ -50,9 +50,9 @@ panfrost_initialize_surface(
 mali_ptr
 panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
 {
-        struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
-        mali_ptr framebuffer = (screen->quirks & MIDGARD_SFBD) ?
+        mali_ptr framebuffer = (dev->quirks & MIDGARD_SFBD) ?
                                panfrost_sfbd_fragment(batch, has_draws) :
                                panfrost_mfbd_fragment(batch, has_draws);
 

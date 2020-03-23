@@ -31,7 +31,6 @@
 #include "drm-uapi/panfrost_drm.h"
 
 #include "pan_bo.h"
-#include "pan_screen.h"
 #include "pan_util.h"
 #include "pandecode/decode.h"
 
@@ -56,34 +55,34 @@
  */
 
 static struct panfrost_bo *
-panfrost_bo_alloc(struct panfrost_screen *screen, size_t size,
+panfrost_bo_alloc(struct panfrost_device *dev, size_t size,
                   uint32_t flags)
 {
         struct drm_panfrost_create_bo create_bo = { .size = size };
         struct panfrost_bo *bo;
         int ret;
 
-        if (screen->kernel_version->version_major > 1 ||
-            screen->kernel_version->version_minor >= 1) {
+        if (dev->kernel_version->version_major > 1 ||
+            dev->kernel_version->version_minor >= 1) {
                 if (flags & PAN_BO_GROWABLE)
                         create_bo.flags |= PANFROST_BO_HEAP;
                 if (!(flags & PAN_BO_EXECUTE))
                         create_bo.flags |= PANFROST_BO_NOEXEC;
         }
 
-        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
+        ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
         if (ret) {
                 DBG("DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
                 return NULL;
         }
 
-        bo = rzalloc(screen, struct panfrost_bo);
+        bo = rzalloc(dev->memctx, struct panfrost_bo);
         assert(bo);
         bo->size = create_bo.size;
         bo->gpu = create_bo.offset;
         bo->gem_handle = create_bo.handle;
         bo->flags = flags;
-        bo->screen = screen;
+        bo->dev = dev;
         return bo;
 }
 
@@ -93,7 +92,7 @@ panfrost_bo_free(struct panfrost_bo *bo)
         struct drm_gem_close gem_close = { .handle = bo->gem_handle };
         int ret;
 
-        ret = drmIoctl(bo->screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
+        ret = drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
         if (ret) {
                 fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %m\n");
                 assert(0);
@@ -143,7 +142,7 @@ panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
         /* The ioctl returns >= 0 value when the BO we are waiting for is ready
          * -1 otherwise.
          */
-        ret = drmIoctl(bo->screen->fd, DRM_IOCTL_PANFROST_WAIT_BO, &req);
+        ret = drmIoctl(bo->dev->fd, DRM_IOCTL_PANFROST_WAIT_BO, &req);
         if (ret != -1) {
                 /* Set gpu_access to 0 so that the next call to bo_wait()
                  * doesn't have to call the WAIT_BO ioctl.
@@ -184,9 +183,9 @@ pan_bucket_index(unsigned size)
 }
 
 static struct list_head *
-pan_bucket(struct panfrost_screen *screen, unsigned size)
+pan_bucket(struct panfrost_device *dev, unsigned size)
 {
-        return &screen->bo_cache.buckets[pan_bucket_index(size)];
+        return &dev->bo_cache.buckets[pan_bucket_index(size)];
 }
 
 /* Tries to fetch a BO of sufficient size with the appropriate flags from the
@@ -195,11 +194,11 @@ pan_bucket(struct panfrost_screen *screen, unsigned size)
  * BO. */
 
 static struct panfrost_bo *
-panfrost_bo_cache_fetch(struct panfrost_screen *screen,
+panfrost_bo_cache_fetch(struct panfrost_device *dev,
                         size_t size, uint32_t flags, bool dontwait)
 {
-        pthread_mutex_lock(&screen->bo_cache.lock);
-        struct list_head *bucket = pan_bucket(screen, size);
+        pthread_mutex_lock(&dev->bo_cache.lock);
+        struct list_head *bucket = pan_bucket(dev, size);
         struct panfrost_bo *bo = NULL;
 
         /* Iterate the bucket looking for something suitable */
@@ -222,7 +221,7 @@ panfrost_bo_cache_fetch(struct panfrost_screen *screen,
                 list_del(&entry->bucket_link);
                 list_del(&entry->lru_link);
 
-                ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
+                ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
                 if (!ret && !madv.retained) {
                         panfrost_bo_free(entry);
                         continue;
@@ -231,19 +230,19 @@ panfrost_bo_cache_fetch(struct panfrost_screen *screen,
                 bo = entry;
                 break;
         }
-        pthread_mutex_unlock(&screen->bo_cache.lock);
+        pthread_mutex_unlock(&dev->bo_cache.lock);
 
         return bo;
 }
 
 static void
-panfrost_bo_cache_evict_stale_bos(struct panfrost_screen *screen)
+panfrost_bo_cache_evict_stale_bos(struct panfrost_device *dev)
 {
         struct timespec time;
 
         clock_gettime(CLOCK_MONOTONIC, &time);
         list_for_each_entry_safe(struct panfrost_bo, entry,
-                                 &screen->bo_cache.lru, lru_link) {
+                                 &dev->bo_cache.lru, lru_link) {
                 /* We want all entries that have been used more than 1 sec
                  * ago to be dropped, others can be kept.
                  * Note the <= 2 check and not <= 1. It's here to account for
@@ -267,13 +266,13 @@ panfrost_bo_cache_evict_stale_bos(struct panfrost_screen *screen)
 static bool
 panfrost_bo_cache_put(struct panfrost_bo *bo)
 {
-        struct panfrost_screen *screen = bo->screen;
+        struct panfrost_device *dev = bo->dev;
 
         if (bo->flags & PAN_BO_DONT_REUSE)
                 return false;
 
-        pthread_mutex_lock(&screen->bo_cache.lock);
-        struct list_head *bucket = pan_bucket(screen, bo->size);
+        pthread_mutex_lock(&dev->bo_cache.lock);
+        struct list_head *bucket = pan_bucket(dev, bo->size);
         struct drm_panfrost_madvise madv;
         struct timespec time;
 
@@ -281,21 +280,21 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
         madv.madv = PANFROST_MADV_DONTNEED;
 	madv.retained = 0;
 
-        drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
+        drmIoctl(dev->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
 
         /* Add us to the bucket */
         list_addtail(&bo->bucket_link, bucket);
 
         /* Add us to the LRU list and update the last_used field. */
-        list_addtail(&bo->lru_link, &screen->bo_cache.lru);
+        list_addtail(&bo->lru_link, &dev->bo_cache.lru);
         clock_gettime(CLOCK_MONOTONIC, &time);
         bo->last_used = time.tv_sec;
 
         /* Let's do some cleanup in the BO cache while we hold the
          * lock.
          */
-        panfrost_bo_cache_evict_stale_bos(screen);
-        pthread_mutex_unlock(&screen->bo_cache.lock);
+        panfrost_bo_cache_evict_stale_bos(dev);
+        pthread_mutex_unlock(&dev->bo_cache.lock);
 
         return true;
 }
@@ -308,11 +307,11 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
 
 void
 panfrost_bo_cache_evict_all(
-                struct panfrost_screen *screen)
+                struct panfrost_device *dev)
 {
-        pthread_mutex_lock(&screen->bo_cache.lock);
-        for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache.buckets); ++i) {
-                struct list_head *bucket = &screen->bo_cache.buckets[i];
+        pthread_mutex_lock(&dev->bo_cache.lock);
+        for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i) {
+                struct list_head *bucket = &dev->bo_cache.buckets[i];
 
                 list_for_each_entry_safe(struct panfrost_bo, entry, bucket,
                                          bucket_link) {
@@ -321,7 +320,7 @@ panfrost_bo_cache_evict_all(
                         panfrost_bo_free(entry);
                 }
         }
-        pthread_mutex_unlock(&screen->bo_cache.lock);
+        pthread_mutex_unlock(&dev->bo_cache.lock);
 }
 
 void
@@ -333,14 +332,14 @@ panfrost_bo_mmap(struct panfrost_bo *bo)
         if (bo->cpu)
                 return;
 
-        ret = drmIoctl(bo->screen->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
+        ret = drmIoctl(bo->dev->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
         if (ret) {
                 fprintf(stderr, "DRM_IOCTL_PANFROST_MMAP_BO failed: %m\n");
                 assert(0);
         }
 
         bo->cpu = os_mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                          bo->screen->fd, mmap_bo.offset);
+                          bo->dev->fd, mmap_bo.offset);
         if (bo->cpu == MAP_FAILED) {
                 fprintf(stderr, "mmap failed: %p %m\n", bo->cpu);
                 assert(0);
@@ -366,7 +365,7 @@ panfrost_bo_munmap(struct panfrost_bo *bo)
 }
 
 struct panfrost_bo *
-panfrost_bo_create(struct panfrost_screen *screen, size_t size,
+panfrost_bo_create(struct panfrost_device *dev, size_t size,
                    uint32_t flags)
 {
         struct panfrost_bo *bo;
@@ -388,11 +387,11 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
          * and if that fails too, we try one more time to allocate from the
          * cache, but this time we accept to wait.
          */
-        bo = panfrost_bo_cache_fetch(screen, size, flags, true);
+        bo = panfrost_bo_cache_fetch(dev, size, flags, true);
         if (!bo)
-                bo = panfrost_bo_alloc(screen, size, flags);
+                bo = panfrost_bo_alloc(dev, size, flags);
         if (!bo)
-                bo = panfrost_bo_cache_fetch(screen, size, flags, false);
+                bo = panfrost_bo_cache_fetch(dev, size, flags, false);
 
         if (!bo)
                 fprintf(stderr, "BO creation failed\n");
@@ -412,9 +411,9 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
 
         pipe_reference_init(&bo->reference, 1);
 
-        pthread_mutex_lock(&screen->active_bos_lock);
-        _mesa_set_add(bo->screen->active_bos, bo);
-        pthread_mutex_unlock(&screen->active_bos_lock);
+        pthread_mutex_lock(&dev->active_bos_lock);
+        _mesa_set_add(bo->dev->active_bos, bo);
+        pthread_mutex_unlock(&dev->active_bos_lock);
 
         return bo;
 }
@@ -435,14 +434,14 @@ panfrost_bo_unreference(struct panfrost_bo *bo)
         if (!pipe_reference(&bo->reference, NULL))
                 return;
 
-        struct panfrost_screen *screen = bo->screen;
+        struct panfrost_device *dev = bo->dev;
 
-        pthread_mutex_lock(&screen->active_bos_lock);
+        pthread_mutex_lock(&dev->active_bos_lock);
         /* Someone might have imported this BO while we were waiting for the
          * lock, let's make sure it's still not referenced before freeing it.
          */
         if (!pipe_is_referenced(&bo->reference)) {
-                _mesa_set_remove_key(bo->screen->active_bos, bo);
+                _mesa_set_remove_key(bo->dev->active_bos, bo);
 
                 /* When the reference count goes to zero, we need to cleanup */
                 panfrost_bo_munmap(bo);
@@ -453,32 +452,32 @@ panfrost_bo_unreference(struct panfrost_bo *bo)
                 if (!panfrost_bo_cache_put(bo))
                         panfrost_bo_free(bo);
         }
-        pthread_mutex_unlock(&screen->active_bos_lock);
+        pthread_mutex_unlock(&dev->active_bos_lock);
 }
 
 struct panfrost_bo *
-panfrost_bo_import(struct panfrost_screen *screen, int fd)
+panfrost_bo_import(struct panfrost_device *dev, int fd)
 {
-        struct panfrost_bo *bo, *newbo = rzalloc(screen, struct panfrost_bo);
+        struct panfrost_bo *bo, *newbo = rzalloc(dev->memctx, struct panfrost_bo);
         struct drm_panfrost_get_bo_offset get_bo_offset = {0,};
         struct set_entry *entry;
         ASSERTED int ret;
         unsigned gem_handle;
 
-        newbo->screen = screen;
+        newbo->dev = dev;
 
-        ret = drmPrimeFDToHandle(screen->fd, fd, &gem_handle);
+        ret = drmPrimeFDToHandle(dev->fd, fd, &gem_handle);
         assert(!ret);
 
         newbo->gem_handle = gem_handle;
 
-        pthread_mutex_lock(&screen->active_bos_lock);
-        entry = _mesa_set_search_or_add(screen->active_bos, newbo);
+        pthread_mutex_lock(&dev->active_bos_lock);
+        entry = _mesa_set_search_or_add(dev->active_bos, newbo);
         assert(entry);
         bo = (struct panfrost_bo *)entry->key;
         if (newbo == bo) {
                 get_bo_offset.handle = gem_handle;
-                ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_BO_OFFSET, &get_bo_offset);
+                ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_GET_BO_OFFSET, &get_bo_offset);
                 assert(!ret);
 
                 newbo->gpu = (mali_ptr) get_bo_offset.offset;
@@ -506,7 +505,7 @@ panfrost_bo_import(struct panfrost_screen *screen, int fd)
                         panfrost_bo_reference(bo);
                 assert(bo->cpu);
         }
-        pthread_mutex_unlock(&screen->active_bos_lock);
+        pthread_mutex_unlock(&dev->active_bos_lock);
 
         return bo;
 }
@@ -519,7 +518,7 @@ panfrost_bo_export(struct panfrost_bo *bo)
                 .flags = DRM_CLOEXEC,
         };
 
-        int ret = drmIoctl(bo->screen->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &args);
+        int ret = drmIoctl(bo->dev->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &args);
         if (ret == -1)
                 return -1;
 

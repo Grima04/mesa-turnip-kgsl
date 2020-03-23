@@ -17,6 +17,7 @@ bifrost_FILES := \
 encoder_FILES := \
 	encoder/pan_afbc.c \
         encoder/pan_attributes.c \
+        encoder/pan_device.h \
         encoder/pan_encoder.h \
         encoder/pan_format.c \
         encoder/pan_invocation.c \

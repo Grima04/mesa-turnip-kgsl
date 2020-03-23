@@ -29,8 +29,7 @@
 #include <panfrost-misc.h>
 #include "pipe/p_state.h"
 #include "util/list.h"
-
-struct panfrost_screen;
+#include "pan_device.h"
 
 /* Flags for allocated memory */
 
@@ -94,7 +93,7 @@ struct panfrost_bo {
 
         struct pipe_reference reference;
 
-        struct panfrost_screen *screen;
+        struct panfrost_device *dev;
 
         /* Mapping for the entire object (all levels) */
         uint8_t *cpu;
@@ -141,15 +140,15 @@ panfrost_bo_reference(struct panfrost_bo *bo);
 void
 panfrost_bo_unreference(struct panfrost_bo *bo);
 struct panfrost_bo *
-panfrost_bo_create(struct panfrost_screen *screen, size_t size,
+panfrost_bo_create(struct panfrost_device *dev, size_t size,
                    uint32_t flags);
 void
 panfrost_bo_mmap(struct panfrost_bo *bo);
 struct panfrost_bo *
-panfrost_bo_import(struct panfrost_screen *screen, int fd);
+panfrost_bo_import(struct panfrost_device *dev, int fd);
 int
 panfrost_bo_export(struct panfrost_bo *bo);
 void
-panfrost_bo_cache_evict_all(struct panfrost_screen *screen);
+panfrost_bo_cache_evict_all(struct panfrost_device *dev);
 
 #endif /* __PAN_BO_H__ */
