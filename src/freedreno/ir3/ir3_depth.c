@@ -177,9 +177,25 @@ compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 			ir3_instr_depth(block->condition, 6, false);
 	}
 
-	/* mark un-used instructions: */
+	/* remove un-used instructions: */
 	foreach_block (block, &ir->block_list) {
 		progress |= remove_unused_by_block(block);
+	}
+
+	/* fixup wrmask of split instructions to account for adjusted tex
+	 * wrmask's:
+	 */
+	foreach_block (block, &ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
+			if (instr->opc != OPC_META_SPLIT)
+				continue;
+
+			struct ir3_instruction *src = ssa(instr->regs[1]);
+			if (!is_tex_or_prefetch(src))
+				continue;
+
+			instr->regs[1]->wrmask = src->regs[0]->wrmask;
+		}
 	}
 
 	/* note that we can end up with unused indirects, but we should

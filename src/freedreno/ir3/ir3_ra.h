@@ -333,5 +333,6 @@ __ra_init_use_itr(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
 	     __name != NO_NAME; __name = __ra_itr_pop(__ctx))
 
 int ra_size_to_class(unsigned sz, bool half, bool high);
+int ra_class_to_size(unsigned class, bool *half, bool *high);
 
 #endif  /* IR3_RA_H_ */

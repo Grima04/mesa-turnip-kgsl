@@ -229,3 +229,19 @@ ra_size_to_class(unsigned sz, bool half, bool high)
 	debug_assert(0);
 	return -1;
 }
+
+int
+ra_class_to_size(unsigned class, bool *half, bool *high)
+{
+	*half = *high = false;
+
+	if (class >= HIGH_OFFSET) {
+		*high = true;
+		return high_class_sizes[class - HIGH_OFFSET];
+	} else if (class >= HALF_OFFSET) {
+		*half = true;
+		return half_class_sizes[class - HALF_OFFSET];
+	} else {
+		return class_sizes[class];
+	}
+}

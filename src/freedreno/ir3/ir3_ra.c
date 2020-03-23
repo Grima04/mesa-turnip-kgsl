@@ -384,7 +384,18 @@ ra_set_register_target(struct ir3_ra_ctx *ctx, unsigned max_target)
 static int
 pick_in_range(BITSET_WORD *regs, unsigned min, unsigned max)
 {
-	for (unsigned i = min; i < max; i++) {
+	for (unsigned i = min; i <= max; i++) {
+		if (BITSET_TEST(regs, i)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static int
+pick_in_range_rev(BITSET_WORD *regs, int min, int max)
+{
+	for (int i = max; i >= min; i--) {
 		if (BITSET_TEST(regs, i)) {
 			return i;
 		}
@@ -398,6 +409,10 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 {
 	struct ir3_ra_ctx *ctx = data;
 	unsigned int class = ra_get_node_class(ctx->g, n);
+	bool half, high;
+	int sz = ra_class_to_size(class, &half, &high);
+
+	assert (sz > 0);
 
 	/* dimensions within the register class: */
 	unsigned max_target, start;
@@ -410,23 +425,51 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 	 */
 	unsigned base;
 
+	/* TODO I think eventually we want to round-robin in vector pass
+	 * as well, but needs some more work to calculate # of live vals
+	 * for this.  (Maybe with some work, we could just figure out
+	 * the scalar target and use that, since that is what we care
+	 * about in the end.. but that would mean setting up use-def/
+	 * liveranges for scalar pass before doing vector pass.)
+	 *
+	 * For now, in the vector class, just move assignments for scalar
+	 * vals higher to hopefully prevent them from limiting where vecN
+	 * values can be placed.  Since the scalar values are re-assigned
+	 * in the 2nd pass, we don't really care where they end up in the
+	 * vector pass.
+	 */
+	if (!ctx->scalar_pass) {
+		base = ctx->set->gpr_to_ra_reg[class][0];
+		if (high) {
+			max_target = HIGH_CLASS_REGS(sz);
+		} else if (half) {
+			max_target = HALF_CLASS_REGS(sz);
+		} else {
+			max_target = CLASS_REGS(sz);
+		}
+
+		if ((sz == 1) && !high) {
+			return pick_in_range_rev(regs, base, base + max_target);
+		} else {
+			return pick_in_range(regs, base, base + max_target);
+		}
+	} else {
+		assert(sz == 1);
+	}
+
 	/* NOTE: this is only used in scalar pass, so the register
 	 * class will be one of the scalar classes (ie. idx==0):
 	 */
-	if (class == ctx->set->high_classes[0]) {
+	base = ctx->set->gpr_to_ra_reg[class][0];
+	if (high) {
 		max_target = HIGH_CLASS_REGS(0);
 		start = 0;
-		base = ctx->set->gpr_to_ra_reg[HIGH_OFFSET][0];
-	} else if (class == ctx->set->half_classes[0]) {
+	} else if (half) {
 		max_target = ctx->max_target;
 		start = ctx->start_search_reg;
-		base = ctx->set->gpr_to_ra_reg[HALF_OFFSET][0];
-	} else if (class == ctx->set->classes[0]) {
+	} else {
 		max_target = ctx->max_target / 2;
 		start = ctx->start_search_reg;
-		base = ctx->set->gpr_to_ra_reg[0][0];
-	} else {
-		unreachable("unexpected register class!");
 	}
 
 	/* For cat4 instructions, if the src reg is already assigned, and
@@ -447,6 +490,19 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 				return reg;
 			}
 		}
+	} else if (is_tex_or_prefetch(instr)) {
+		/* we could have a tex fetch w/ wrmask .z, for example.. these
+		 * cannot land in r0.x since that would underflow when we
+		 * subtract the offset.  Ie. if we pick r0.z, and subtract
+		 * the offset, the register encoded for dst will be r0.x
+		 */
+		unsigned n = ffs(instr->regs[0]->wrmask);
+		debug_assert(n > 0);
+		unsigned offset = n - 1;
+		if (!half)
+			offset *= 2;
+		base += offset;
+		max_target -= offset;
 	}
 
 	int r = pick_in_range(regs, base + start, base + max_target);
@@ -514,11 +570,13 @@ ra_init(struct ir3_ra_ctx *ctx)
 	ctx->use = rzalloc_array(ctx->g, unsigned, ctx->alloc_count);
 
 	/* TODO add selector callback for split (pre-a6xx) register file: */
-	if (ctx->scalar_pass && (ctx->ir->compiler->gpu_id >= 600)) {
+	if (ctx->ir->compiler->gpu_id >= 600) {
 		ra_set_select_reg_callback(ctx->g, ra_select_reg_merged, ctx);
 
-		ctx->name_to_instr = _mesa_hash_table_create(ctx->g,
-				_mesa_hash_int, _mesa_key_int_equal);
+		if (ctx->scalar_pass) {
+			ctx->name_to_instr = _mesa_hash_table_create(ctx->g,
+					_mesa_hash_int, _mesa_key_int_equal);
+		}
 	}
 }
 
@@ -1154,8 +1212,11 @@ reg_assign(struct ir3_ra_ctx *ctx, struct ir3_register *reg,
 static bool
 should_assign(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
 {
-	if ((instr->opc == OPC_META_SPLIT) ||
-			(instr->opc == OPC_META_COLLECT))
+	if ((instr->opc == OPC_META_SPLIT) &&
+			(util_bitcount(instr->regs[1]->wrmask) > 1))
+		return !ctx->scalar_pass;
+	if ((instr->opc == OPC_META_COLLECT) &&
+			(util_bitcount(instr->regs[0]->wrmask) > 1))
 		return !ctx->scalar_pass;
 	return ctx->scalar_pass;
 }
@@ -1390,8 +1451,10 @@ ra_precolor_assigned(struct ir3_ra_ctx *ctx)
 	foreach_block (block, &ctx->ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
 
-			if ((instr->opc != OPC_META_SPLIT) &&
-					(instr->opc != OPC_META_COLLECT))
+			if (!writes_gpr(instr))
+				continue;
+
+			if (should_assign(ctx, instr))
 				continue;
 
 			precolor(ctx, instr);
