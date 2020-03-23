@@ -108,8 +108,12 @@ bi_rewrite_uses(bi_context *ctx,
  * returns false if not (nondestructive in this case). */
 
 static bool
-bi_shift_mask_scalar(bi_instruction *ins, signed shift)
+bi_shift_mask(bi_instruction *ins, unsigned shift)
 {
+        /* No op and handles the funny cases */
+        if (!shift)
+                return true;
+
         unsigned sz = nir_alu_type_get_type_size(ins->dest_type);
         unsigned bytes = sz / 8;
 
@@ -124,25 +128,59 @@ bi_shift_mask_scalar(bi_instruction *ins, signed shift)
                         return false;
         }
 
+        /* Shift swizzle so old i'th component is accessed by new (i + j)'th
+         * component where j is component shift */
+        unsigned component_shift = shift / bytes;
+
+        /* Sanity check to avoid memory corruption */
+        if (component_shift >= sizeof(ins->swizzle[0]))
+                return false;
+
         /* Otherwise, shift is divisible by bytes, and all relevant src types
          * are the same size as the dest type. */
         ins->writemask <<= shift;
 
-        /* Shift swizzle so old i'th component is accessed by new (i + j)'th
-         * component where j is component shift */
-        signed component_shift = shift / bytes;
-
         bi_foreach_src(ins, s) {
                 if (!ins->src[s]) continue;
 
-                size_t overlap = sizeof(ins->swizzle[s]) - abs(component_shift);
-
-                if (component_shift > 0)
-                        memmove(ins->swizzle[s] + component_shift, ins->swizzle[s], overlap);
-                else
-                        memmove(ins->swizzle[s], ins->swizzle[s] - component_shift, overlap);
+                size_t overlap = sizeof(ins->swizzle[s]) - component_shift;
+                memmove(ins->swizzle[s] + component_shift, ins->swizzle[s], overlap);
         }
 
+        return true;
+}
+
+/* Checks if we have a nicely aligned vector prefix */
+
+static bool
+bi_is_aligned_vec(bi_instruction *combine, unsigned s, bi_instruction *parent,
+                unsigned *count)
+{
+        /* We only support prefixes */
+        if (s != 0)
+                return false;
+
+        /* Is it a contiguous write? */
+        unsigned writes = util_bitcount(parent->writemask);
+        if (parent->writemask != ((1 << writes) - 1))
+                return false;
+
+        /* Okay - how many components? */
+        unsigned bytes = nir_alu_type_get_type_size(parent->dest_type) / 8;
+        unsigned components = writes / bytes;
+
+        /* Are we contiguous like that? */
+
+        for (unsigned i = 0; i < components; ++i) {
+                if (combine->src[i] != parent->dest)
+                        return false;
+
+                if (combine->swizzle[i][0] != i)
+                        return false;
+        }
+
+        /* We're good to go */
+        *count = components;
         return true;
 }
 
@@ -150,7 +188,8 @@ bi_shift_mask_scalar(bi_instruction *ins, signed shift)
  * returning true if successful, and false with no changes otherwise. */
 
 static bool
-bi_lower_combine_src(bi_context *ctx, bi_instruction *ins, unsigned s, unsigned R)
+bi_lower_combine_src(bi_context *ctx, bi_instruction *ins, unsigned s, unsigned R,
+                unsigned *vec_count)
 {
         unsigned src = ins->src[s];
 
@@ -171,9 +210,10 @@ bi_lower_combine_src(bi_context *ctx, bi_instruction *ins, unsigned s, unsigned 
         unsigned pbytes = nir_alu_type_get_type_size(parent->dest_type) / 8;
         if (pbytes != bytes) return false;
 
-        /* Scalar? */
-        if (parent->writemask != ((1 << bytes) - 1)) return false;
-        if (!bi_shift_mask_scalar(parent, bytes * s)) return false;
+        bool scalar = (parent->writemask == ((1 << bytes) - 1));
+        if (!(scalar || bi_is_aligned_vec(ins, s, parent, vec_count))) return false;
+
+        if (!bi_shift_mask(parent, bytes * s)) return false;
         bi_rewrite_uses(ctx, parent->dest, 0, R, s);
         parent->dest = R;
         return true;
@@ -191,8 +231,15 @@ bi_lower_combine(bi_context *ctx, bi_block *block)
                 unsigned R = bi_make_temp_reg(ctx);
 
                 bi_foreach_src(ins, s) {
-                        if (!bi_lower_combine_src(ctx, ins, s, R))
+                        unsigned vec_count = 0;
+
+                        if (bi_lower_combine_src(ctx, ins, s, R, &vec_count)) {
+                                /* Skip vectored sources */
+                                if (vec_count)
+                                        s += (vec_count - 1);
+                        } else {
                                 bi_insert_combine_mov(ctx, ins, s, R);
+                        }
                 }
 
 
