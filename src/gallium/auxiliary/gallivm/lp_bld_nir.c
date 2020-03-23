@@ -1078,6 +1078,8 @@ static void visit_load_image(struct lp_build_nir_context *bld_base,
    params.coords = coords;
    params.outdata = result;
    params.img_op = LP_IMG_LOAD;
+   if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS)
+      params.ms_index = get_src(bld_base, instr->src[2]);
    params.image_index = var->data.binding;
    bld_base->image_op(bld_base, &params);
 }
@@ -1107,6 +1109,8 @@ static void visit_store_image(struct lp_build_nir_context *bld_base,
       params.indata[i] = LLVMBuildExtractValue(builder, in_val, i, "");
       params.indata[i] = LLVMBuildBitCast(builder, params.indata[i], bld_base->base.vec_type, "");
    }
+   if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS)
+      params.ms_index = get_src(bld_base, instr->src[2]);
    params.img_op = LP_IMG_STORE;
    params.image_index = var->data.binding;
 
@@ -1169,6 +1173,8 @@ static void visit_atomic_image(struct lp_build_nir_context *bld_base,
    if (params.target == PIPE_TEXTURE_1D_ARRAY)
       coords[2] = coords[1];
    params.coords = coords;
+   if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS)
+      params.ms_index = get_src(bld_base, instr->src[2]);
    if (instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap) {
       LLVMValueRef cas_val = get_src(bld_base, instr->src[4]);
       params.indata[0] = in_val;
