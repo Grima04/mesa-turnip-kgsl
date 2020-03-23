@@ -593,6 +593,8 @@ void init_context(isel_context *ctx, nir_shader *shader)
                unsigned size = nir_instr_as_ssa_undef(instr)->def.num_components;
                if (nir_instr_as_ssa_undef(instr)->def.bit_size == 64)
                   size *= 2;
+               else if (nir_instr_as_ssa_undef(instr)->def.bit_size == 1)
+                  size *= lane_mask_size;
                allocated[nir_instr_as_ssa_undef(instr)->def.index] = Temp(0, RegClass(RegType::sgpr, size));
                break;
             }
