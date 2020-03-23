@@ -3,7 +3,7 @@ variables:
 
 include:
   - project: 'freedesktop/ci-templates'
-    ref: a1699326519fd28526485ce93464e33423bac564
+    ref: 4b2997287317808830e9cb4eb0f99b691787da88
     file: '/templates/debian.yml'
   - local: '.gitlab-ci/lava-gitlab-ci.yml'
   - local: '.gitlab-ci/test-source-dep.yml'
@@ -110,7 +110,7 @@ success:
     - .ci-run-policy
   variables:
     FDO_DISTRIBUTION_VERSION: buster-slim
-    FDO_REPO_SUFFIX: $CI_JOB_NAME
+    FDO_REPO_SUFFIX: "debian/$CI_JOB_NAME"
     FDO_DISTRIBUTION_EXEC: 'bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
@@ -118,7 +118,7 @@ success:
 # Debian 10 based x86 build image
 x86_build:
   extends:
-    - .fdo.container-ifnot-exists@debian
+    - .fdo.container-build@debian
     - .container
   variables:
     FDO_DISTRIBUTION_TAG: &x86_build "2020-03-13"
@@ -159,7 +159,7 @@ x86_build_old:
 # Debian 10 based ARM build image
 arm_build:
   extends:
-    - .fdo.container-ifnot-exists@debian@arm64v8
+    - .fdo.container-build@debian@arm64v8
     - .container
   variables:
     FDO_DISTRIBUTION_TAG: &arm_build "2020-03-24"
