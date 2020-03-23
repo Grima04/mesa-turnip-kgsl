@@ -1193,7 +1193,9 @@ draw_set_mapped_image(struct draw_context *draw,
                       uint32_t width, uint32_t height, uint32_t depth,
                       const void *base_ptr,
                       uint32_t row_stride,
-                      uint32_t img_stride)
+                      uint32_t img_stride,
+                      uint32_t num_samples,
+                      uint32_t sample_stride)
 {
 #ifdef LLVM_AVAILABLE
    if (draw->llvm)
@@ -1202,7 +1204,8 @@ draw_set_mapped_image(struct draw_context *draw,
                                  idx,
                                  width, height, depth,
                                  base_ptr,
-                                 row_stride, img_stride);
+                                 row_stride, img_stride,
+                                 num_samples, sample_stride);
 #endif
 }
 

@@ -417,7 +417,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       }
 
       draw_set_mapped_image(draw, PIPE_SHADER_VERTEX, i, width, height,
-                            num_layers, addr, row_stride, img_stride);
+                            num_layers, addr, row_stride, img_stride, 0, 0);
    }
    draw_set_images(draw, PIPE_SHADER_VERTEX, images, prog->info.num_images);
 
@@ -446,7 +446,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    /* unmap images */
    for (unsigned i = 0; i < prog->info.num_images; i++) {
       if (img_transfer[i]) {
-         draw_set_mapped_image(draw, PIPE_SHADER_VERTEX, i, 0, 0, 0, NULL, 0, 0);
+         draw_set_mapped_image(draw, PIPE_SHADER_VERTEX, i, 0, 0, 0, NULL, 0, 0, 0, 0);
          pipe_transfer_unmap(pipe, img_transfer[i]);
       }
    }

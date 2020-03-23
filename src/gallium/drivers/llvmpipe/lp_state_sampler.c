@@ -471,7 +471,7 @@ prepare_shader_images(
                                i,
                                width, height, num_layers,
                                addr,
-                               row_stride, img_stride);
+                               row_stride, img_stride, 0, 0);
       }
    }
 }
