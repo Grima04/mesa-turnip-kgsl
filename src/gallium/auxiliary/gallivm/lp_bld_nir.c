@@ -1204,6 +1204,21 @@ static void visit_image_size(struct lp_build_nir_context *bld_base,
    bld_base->image_size(bld_base, &params);
 }
 
+static void visit_image_samples(struct lp_build_nir_context *bld_base,
+                                nir_intrinsic_instr *instr,
+                                LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
+{
+   nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   struct lp_sampler_size_query_params params = { 0 };
+   params.texture_unit = var->data.binding;
+   params.target = glsl_sampler_to_pipe(glsl_get_sampler_dim(var->type), glsl_sampler_type_is_array(var->type));
+   params.sizes_out = result;
+   params.samples_only = true;
+
+   bld_base->image_size(bld_base, &params);
+}
+
 static void visit_shared_load(struct lp_build_nir_context *bld_base,
                                 nir_intrinsic_instr *instr,
                                 LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
@@ -1390,6 +1405,9 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_image_deref_size:
       visit_image_size(bld_base, instr, result);
       break;
+   case nir_intrinsic_image_deref_samples:
+      visit_image_samples(bld_base, instr, result);
+      break;
    case nir_intrinsic_load_shared:
       visit_shared_load(bld_base, instr, result);
       break;
@@ -1453,7 +1471,7 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
 
 static void visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
 {
-   struct lp_sampler_size_query_params params;
+   struct lp_sampler_size_query_params params = { 0 };
    LLVMValueRef sizes_out[NIR_MAX_VEC_COMPONENTS];
    LLVMValueRef explicit_lod = NULL;
 
@@ -1472,7 +1490,7 @@ static void visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    params.explicit_lod = explicit_lod;
    params.is_sviewinfo = TRUE;
    params.sizes_out = sizes_out;
-   params.samples_only = false;
+   params.samples_only = (instr->op == nir_texop_texture_samples);
 
    if (instr->op == nir_texop_query_levels)
       params.explicit_lod = bld_base->uint_bld.zero;
@@ -1517,7 +1535,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    memset(&params, 0, sizeof(params));
    enum lp_sampler_lod_property lod_property = LP_SAMPLER_LOD_SCALAR;
 
-   if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
+   if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels || instr->op == nir_texop_texture_samples) {
       visit_txs(bld_base, instr);
       return;
    }
