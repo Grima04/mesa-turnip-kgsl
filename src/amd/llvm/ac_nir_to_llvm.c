@@ -3950,8 +3950,33 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		break;
 	}
 	case nir_intrinsic_shuffle:
-		result = ac_build_shuffle(&ctx->ac, get_src(ctx, instr->src[0]),
-				get_src(ctx, instr->src[1]));
+		if (ctx->ac.chip_class == GFX8 ||
+		    ctx->ac.chip_class == GFX9 ||
+		    (ctx->ac.chip_class == GFX10 && ctx->ac.wave_size == 32)) {
+			result = ac_build_shuffle(&ctx->ac, get_src(ctx, instr->src[0]),
+						  get_src(ctx, instr->src[1]));
+		} else {
+			LLVMValueRef src = get_src(ctx, instr->src[0]);
+			LLVMValueRef index = get_src(ctx, instr->src[1]);
+			LLVMTypeRef type = LLVMTypeOf(src);
+	                struct waterfall_context wctx;
+	                LLVMValueRef index_val;
+
+	                index_val = enter_waterfall(ctx, &wctx, index, true);
+
+			src = LLVMBuildZExt(ctx->ac.builder, src,
+					    ctx->ac.i32, "");
+
+			result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.readlane",
+						    ctx->ac.i32,
+						    (LLVMValueRef []) { src, index_val }, 2,
+						    AC_FUNC_ATTR_READNONE |
+						    AC_FUNC_ATTR_CONVERGENT);
+
+			result = LLVMBuildTrunc(ctx->ac.builder, result, type, "");
+
+		        result = exit_waterfall(ctx, &wctx, result);
+		}
 		break;
 	case nir_intrinsic_reduce:
 		result = ac_build_reduce(&ctx->ac,
