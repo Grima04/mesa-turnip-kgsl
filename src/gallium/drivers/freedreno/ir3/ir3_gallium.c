@@ -259,9 +259,12 @@ ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *
 	struct ir3_ubo_analysis_state *state;
 	state = &v->shader->ubo_state;
 
-	uint32_t i;
-	foreach_bit(i, state->enabled & constbuf->enabled_mask) {
-		struct pipe_constant_buffer *cb = &constbuf->cb[i];
+	for (unsigned i = 0; i < state->num_enabled; i++) {
+		assert(!state->range[i].bindless);
+		unsigned ubo = state->range[i].block;
+		if (!(constbuf->enabled_mask & (1 << ubo)))
+			continue;
+		struct pipe_constant_buffer *cb = &constbuf->cb[ubo];
 
 		uint32_t size = state->range[i].end - state->range[i].start;
 		uint32_t offset = cb->buffer_offset + state->range[i].start;

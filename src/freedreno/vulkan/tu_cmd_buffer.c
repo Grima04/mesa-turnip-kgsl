@@ -2691,49 +2691,47 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
          tu_cs_emit(cs, push_constants[i + offset * 4]);
    }
 
-   for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
-      if (state->range[i].start < state->range[i].end) {
-         uint32_t size = state->range[i].end - state->range[i].start;
-         uint32_t offset = state->range[i].start;
+   for (uint32_t i = 0; i < state->num_enabled; i++) {
+      uint32_t size = state->range[i].end - state->range[i].start;
+      uint32_t offset = state->range[i].start;
 
-         /* and even if the start of the const buffer is before
-          * first_immediate, the end may not be:
-          */
-         size = MIN2(size, (16 * link->constlen) - state->range[i].offset);
+      /* and even if the start of the const buffer is before
+       * first_immediate, the end may not be:
+       */
+      size = MIN2(size, (16 * link->constlen) - state->range[i].offset);
 
-         if (size == 0)
-            continue;
+      if (size == 0)
+         continue;
 
-         /* things should be aligned to vec4: */
-         debug_assert((state->range[i].offset % 16) == 0);
-         debug_assert((size % 16) == 0);
-         debug_assert((offset % 16) == 0);
+      /* things should be aligned to vec4: */
+      debug_assert((state->range[i].offset % 16) == 0);
+      debug_assert((size % 16) == 0);
+      debug_assert((offset % 16) == 0);
 
-         /* Look through the UBO map to find our UBO index, and get the VA for
-          * that UBO.
-          */
-         uint64_t va = 0;
-         uint32_t ubo_idx = i - 1;
-         uint32_t ubo_map_base = 0;
-         for (int j = 0; j < link->ubo_map.num; j++) {
-            if (ubo_idx >= ubo_map_base &&
-                ubo_idx < ubo_map_base + link->ubo_map.array_size[j]) {
-               va = buffer_ptr(descriptors_state, &link->ubo_map, j,
-                               ubo_idx - ubo_map_base);
-               break;
-            }
-            ubo_map_base += link->ubo_map.array_size[j];
+      /* Look through the UBO map to find our UBO index, and get the VA for
+       * that UBO.
+       */
+      uint64_t va = 0;
+      uint32_t ubo_idx = state->range[i].block - 1;
+      uint32_t ubo_map_base = 0;
+      for (int j = 0; j < link->ubo_map.num; j++) {
+         if (ubo_idx >= ubo_map_base &&
+             ubo_idx < ubo_map_base + link->ubo_map.array_size[j]) {
+            va = buffer_ptr(descriptors_state, &link->ubo_map, j,
+                            ubo_idx - ubo_map_base);
+            break;
          }
-         assert(va);
-
-         tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
-         tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
-               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-               CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-               CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
-               CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
-         tu_cs_emit_qw(cs, va + offset);
+         ubo_map_base += link->ubo_map.array_size[j];
       }
+      assert(va);
+
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
+            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+            CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+            CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
+            CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
+      tu_cs_emit_qw(cs, va + offset);
    }
 }
 
