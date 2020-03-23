@@ -27,7 +27,6 @@
 #define __PAN_BO_H__
 
 #include <panfrost-misc.h>
-#include "pipe/p_state.h"
 #include "util/list.h"
 #include "pan_device.h"
 
@@ -91,7 +90,8 @@ struct panfrost_bo {
          */
         time_t last_used;
 
-        struct pipe_reference reference;
+        /* Atomic reference count */
+        int32_t refcnt;
 
         struct panfrost_device *dev;
 

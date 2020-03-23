@@ -409,7 +409,7 @@ panfrost_bo_create(struct panfrost_device *dev, size_t size,
                         pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
         }
 
-        pipe_reference_init(&bo->reference, 1);
+        p_atomic_set(&bo->refcnt, 1);
 
         pthread_mutex_lock(&dev->active_bos_lock);
         _mesa_set_add(bo->dev->active_bos, bo);
@@ -421,8 +421,10 @@ panfrost_bo_create(struct panfrost_device *dev, size_t size,
 void
 panfrost_bo_reference(struct panfrost_bo *bo)
 {
-        if (bo)
-                pipe_reference(NULL, &bo->reference);
+        if (bo) {
+                ASSERTED int count = p_atomic_inc_return(&bo->refcnt);
+                assert(count != 1);
+        }
 }
 
 void
@@ -431,7 +433,8 @@ panfrost_bo_unreference(struct panfrost_bo *bo)
         if (!bo)
                 return;
 
-        if (!pipe_reference(&bo->reference, NULL))
+        /* Don't return to cache if there are still references */
+        if (p_atomic_dec_return(&bo->refcnt))
                 return;
 
         struct panfrost_device *dev = bo->dev;
@@ -440,7 +443,7 @@ panfrost_bo_unreference(struct panfrost_bo *bo)
         /* Someone might have imported this BO while we were waiting for the
          * lock, let's make sure it's still not referenced before freeing it.
          */
-        if (!pipe_is_referenced(&bo->reference)) {
+        if (p_atomic_read(&bo->refcnt) == 0) {
                 _mesa_set_remove_key(bo->dev->active_bos, bo);
 
                 /* When the reference count goes to zero, we need to cleanup */
@@ -484,23 +487,23 @@ panfrost_bo_import(struct panfrost_device *dev, int fd)
                 newbo->size = lseek(fd, 0, SEEK_END);
                 newbo->flags |= PAN_BO_DONT_REUSE | PAN_BO_IMPORTED;
                 assert(newbo->size > 0);
-                pipe_reference_init(&newbo->reference, 1);
+                p_atomic_set(&newbo->refcnt, 1);
                 // TODO map and unmap on demand?
                 panfrost_bo_mmap(newbo);
         } else {
                 ralloc_free(newbo);
-                /* !pipe_is_referenced(&bo->reference) can happen if the BO
+                /* bo->refcnt != 0 can happen if the BO
                  * was being released but panfrost_bo_import() acquired the
                  * lock before panfrost_bo_unreference(). In that case, refcnt
                  * is 0 and we can't use panfrost_bo_reference() directly, we
-                 * have to re-initialize it with pipe_reference_init().
+                 * have to re-initialize the refcnt().
                  * Note that panfrost_bo_unreference() checks
-                 * pipe_is_referenced() value just after acquiring the lock to
+                 * refcnt value just after acquiring the lock to
                  * make sure the object is not freed if panfrost_bo_import()
                  * acquired it in the meantime.
                  */
-                if (!pipe_is_referenced(&bo->reference))
-                        pipe_reference_init(&newbo->reference, 1);
+                if (p_atomic_read(&bo->refcnt))
+                        p_atomic_set(&newbo->refcnt, 1);
                 else
                         panfrost_bo_reference(bo);
                 assert(bo->cpu);
