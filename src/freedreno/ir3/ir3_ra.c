@@ -32,6 +32,21 @@
 #include "ir3.h"
 #include "ir3_compiler.h"
 
+
+#ifdef DEBUG
+#define RA_DEBUG (ir3_shader_debug & IR3_DBG_RAMSGS)
+#else
+#define RA_DEBUG 0
+#endif
+#define d(fmt, ...) do { if (RA_DEBUG) { \
+	printf("RA: "fmt"\n", ##__VA_ARGS__); \
+} } while (0)
+
+#define di(instr, fmt, ...) do { if (RA_DEBUG) { \
+	printf("RA: "fmt": ", ##__VA_ARGS__); \
+	ir3_print_instr(instr); \
+} } while (0)
+
 /*
  * Register Assignment:
  *
@@ -1097,7 +1112,7 @@ static void
 print_bitset(const char *name, BITSET_WORD *bs, unsigned cnt)
 {
 	bool first = true;
-	debug_printf("  %s:", name);
+	debug_printf("RA:  %s:", name);
 	for (unsigned i = 0; i < cnt; i++) {
 		if (BITSET_TEST(bs, i)) {
 			if (!first)
@@ -1131,34 +1146,35 @@ ra_add_interference(struct ir3_ra_ctx *ctx)
 	/* update per-block livein/liveout: */
 	while (ra_compute_livein_liveout(ctx)) {}
 
-	if (ir3_shader_debug & IR3_DBG_OPTMSGS) {
-		debug_printf("AFTER LIVEIN/OUT:\n");
+	if (RA_DEBUG) {
+		d("AFTER LIVEIN/OUT:");
 		foreach_block (block, &ir->block_list) {
 			struct ir3_ra_block_data *bd = block->data;
-			debug_printf("block%u:\n", block_id(block));
+			d("block%u:", block_id(block));
 			print_bitset("  def", bd->def, ctx->alloc_count);
 			print_bitset("  use", bd->use, ctx->alloc_count);
 			print_bitset("  l/i", bd->livein, ctx->alloc_count);
 			print_bitset("  l/o", bd->liveout, ctx->alloc_count);
 		}
 		foreach_array (arr, &ir->array_list) {
-			debug_printf("array%u:\n", arr->id);
-			debug_printf("  length:   %u\n", arr->length);
-			debug_printf("  start_ip: %u\n", arr->start_ip);
-			debug_printf("  end_ip:   %u\n", arr->end_ip);
+			d("array%u:", arr->id);
+			d("   length:   %u", arr->length);
+			d("   start_ip: %u", arr->start_ip);
+			d("   end_ip:   %u", arr->end_ip);
 		}
-		debug_printf("INSTRUCTION VREG NAMES:\n");
+		d("INSTRUCTION VREG NAMES:");
 		foreach_block (block, &ctx->ir->block_list) {
 			foreach_instr (instr, &block->instr_list) {
 				if (!ctx->instrd[instr->ip].defn)
 					continue;
-				debug_printf("%04u: ", scalar_name(ctx, instr, 0));
-				ir3_print_instr(instr);
+				if (!writes_gpr(instr))
+					continue;
+				di(instr, "%04u", scalar_name(ctx, instr, 0));
 			}
 		}
-		debug_printf("ARRAY VREG NAMES:\n");
+		d("ARRAY VREG NAMES:");
 		foreach_array (arr, &ctx->ir->array_list) {
-			debug_printf("%04u: arr%u\n", arr->base, arr->id);
+			d("%04u: arr%u", arr->base, arr->id);
 		}
 	}
 

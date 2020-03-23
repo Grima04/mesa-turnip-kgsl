@@ -92,8 +92,11 @@ enum ir3_shader_debug {
 	IR3_DBG_OPTMSGS    = BITFIELD_BIT(7),
 	IR3_DBG_FORCES2EN  = BITFIELD_BIT(8),
 	IR3_DBG_NOUBOOPT   = BITFIELD_BIT(9),
-	IR3_DBG_SCHEDMSGS  = BITFIELD_BIT(10),
-	IR3_DBG_NOFP16     = BITFIELD_BIT(11),
+	IR3_DBG_NOFP16     = BITFIELD_BIT(10),
+
+	/* DEBUG-only options: */
+	IR3_DBG_SCHEDMSGS  = BITFIELD_BIT(20),
+	IR3_DBG_RAMSGS     = BITFIELD_BIT(21),
 };
 
 extern enum ir3_shader_debug ir3_shader_debug;
