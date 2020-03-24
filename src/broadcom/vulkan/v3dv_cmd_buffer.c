@@ -1727,7 +1727,7 @@ cmd_buffer_update_ez_state(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    /* If the FS writes Z, then it may update against the chosen EZ direction */
-   if (pipeline->fs->prog_data.fs->writes_z)
+   if (pipeline->fs->current_variant->prog_data.fs->writes_z)
       job->ez_state = VC5_EZ_DISABLED;
 
    if (job->first_ez_state == VC5_EZ_UNDECIDED &&
@@ -2186,14 +2186,14 @@ emit_varyings_state(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
 
+   struct v3d_fs_prog_data *prog_data_fs =
+      pipeline->fs->current_variant->prog_data.fs;
+
    const uint32_t num_flags =
-      ARRAY_SIZE(pipeline->fs->prog_data.fs->flat_shade_flags);
-   const uint32_t *flat_shade_flags =
-      pipeline->fs->prog_data.fs->flat_shade_flags;
-   const uint32_t *noperspective_flags =
-      pipeline->fs->prog_data.fs->noperspective_flags;
-   const uint32_t *centroid_flags =
-      pipeline->fs->prog_data.fs->centroid_flags;
+      ARRAY_SIZE(prog_data_fs->flat_shade_flags);
+   const uint32_t *flat_shade_flags = prog_data_fs->flat_shade_flags;
+   const uint32_t *noperspective_flags =  prog_data_fs->noperspective_flags;
+   const uint32_t *centroid_flags = prog_data_fs->centroid_flags;
 
    if (!emit_varying_flags(job, num_flags, flat_shade_flags,
                            emit_flat_shade_flags)) {
@@ -2243,9 +2243,9 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
       v3dv_write_uniforms(cmd_buffer, pipeline->vs_bin);
 
    /* Update the cache dirty flag based on the shader progs data */
-   job->tmu_dirty_rcl |= pipeline->vs_bin->prog_data.vs->base.tmu_dirty_rcl;
-   job->tmu_dirty_rcl |= pipeline->vs->prog_data.vs->base.tmu_dirty_rcl;
-   job->tmu_dirty_rcl |= pipeline->fs->prog_data.fs->base.tmu_dirty_rcl;
+   job->tmu_dirty_rcl |= pipeline->vs_bin->current_variant->prog_data.vs->base.tmu_dirty_rcl;
+   job->tmu_dirty_rcl |= pipeline->vs->current_variant->prog_data.vs->base.tmu_dirty_rcl;
+   job->tmu_dirty_rcl |= pipeline->fs->current_variant->prog_data.fs->base.tmu_dirty_rcl;
 
    /* See GFXH-930 workaround below */
    uint32_t num_elements_to_emit = MAX2(pipeline->va_count, 1);
@@ -2271,11 +2271,11 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
          pipeline->vpm_cfg.As;
 
       shader.coordinate_shader_code_address =
-         v3dv_cl_address(pipeline->vs_bin->assembly_bo, 0);
+         v3dv_cl_address(pipeline->vs_bin->current_variant->assembly_bo, 0);
       shader.vertex_shader_code_address =
-         v3dv_cl_address(pipeline->vs->assembly_bo, 0);
+         v3dv_cl_address(pipeline->vs->current_variant->assembly_bo, 0);
       shader.fragment_shader_code_address =
-         v3dv_cl_address(pipeline->fs->assembly_bo, 0);
+         v3dv_cl_address(pipeline->fs->current_variant->assembly_bo, 0);
 
       shader.coordinate_shader_uniforms_address = vs_bin_uniforms;
       shader.vertex_shader_uniforms_address = vs_uniforms;
@@ -2296,6 +2296,12 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
 
       struct v3dv_vertex_binding *c_vb = &cmd_buffer->state.vertex_bindings[binding];
 
+      struct v3d_vs_prog_data *prog_data_vs =
+         pipeline->vs->current_variant->prog_data.vs;
+
+      struct v3d_vs_prog_data *prog_data_vs_bin =
+         pipeline->vs_bin->current_variant->prog_data.vs;
+
       cl_emit_with_prepacked(&job->indirect, GL_SHADER_STATE_ATTRIBUTE_RECORD,
                              &pipeline->vertex_attrs[i * packet_length], attr) {
 
@@ -2306,9 +2312,9 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
                                         c_vb->offset);
 
          attr.number_of_values_read_by_coordinate_shader =
-            pipeline->vs_bin->prog_data.vs->vattr_sizes[location];
+            prog_data_vs_bin->vattr_sizes[location];
          attr.number_of_values_read_by_vertex_shader =
-            pipeline->vs->prog_data.vs->vattr_sizes[location];
+            prog_data_vs->vattr_sizes[location];
 
          /* GFXH-930: At least one attribute must be enabled and read by CS
           * and VS.  If we have attributes being consumed by the VS but not
@@ -2316,7 +2322,7 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
           * CS's VPM inputs.  (Since CS is just dead-code-elimination compared
           * to VS, we can't have CS loading but not VS).
           */
-         if (pipeline->vs_bin->prog_data.vs->vattr_sizes[location])
+         if (prog_data_vs->vattr_sizes[location])
             cs_loaded_any = true;
 
          if (binding == pipeline->va_count - 1 && !cs_loaded_any) {

@@ -247,7 +247,8 @@ struct v3dv_cl_reloc
 v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                     struct v3dv_pipeline_stage *p_stage)
 {
-   struct v3d_uniform_list *uinfo = &p_stage->prog_data.base->uniforms;
+   struct v3d_uniform_list *uinfo =
+      &p_stage->current_variant->prog_data.base->uniforms;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
 

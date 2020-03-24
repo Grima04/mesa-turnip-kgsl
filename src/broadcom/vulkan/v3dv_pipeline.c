@@ -32,6 +32,8 @@
 
 #include "compiler/nir/nir_builder.h"
 
+#include "util/u_atomic.h"
+
 #include "vulkan/util/vk_format.h"
 
 #include "broadcom/cle/v3dx_pack.h"
@@ -83,7 +85,16 @@ destroy_pipeline_stage(struct v3dv_device *device,
                        struct v3dv_pipeline_stage *p_stage,
                        const VkAllocationCallbacks *pAllocator)
 {
-   v3dv_bo_free(device, p_stage->assembly_bo);
+   hash_table_foreach(p_stage->cache, entry) {
+      struct v3dv_shader_variant *variant = entry->data;
+
+      if (variant->assembly_bo) {
+         v3dv_bo_free(device, variant->assembly_bo);
+         variant->assembly_bo = NULL;
+      }
+   }
+
+   _mesa_hash_table_destroy(p_stage->cache, NULL);
 
    vk_free2(&device->alloc, pAllocator, p_stage);
 }
@@ -689,6 +700,26 @@ pipeline_populate_v3d_key(struct v3d_key *key,
                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
                           const struct v3dv_pipeline_stage *p_stage)
 {
+   /* The following values are default values used at pipeline create, that
+    * lack the info about the real sampler/texture format used, needed to
+    * decide about lowerings and other stuff affecting the final
+    * assembly. When all that info is in place, it would be needed to check if
+    * it is needed a shader variant (if we are lucky the default values would
+    * be the same and no new compilation will be done)
+    */
+   nir_shader *s = p_stage->nir;
+
+   key->num_tex_used = s->info.num_textures;
+   for (uint32_t i = 0; i < s->info.num_textures; i++) {
+      key->tex[i].swizzle[0] = PIPE_SWIZZLE_X;
+      key->tex[i].swizzle[1] = PIPE_SWIZZLE_Y;
+      key->tex[i].swizzle[2] = PIPE_SWIZZLE_Z;
+      key->tex[i].swizzle[3] = PIPE_SWIZZLE_W;
+
+      key->tex[i].return_size = 16;
+      key->tex[i].return_channels = 2;
+   }
+
    /* default value. Would be override on the vs/gs populate methods when GS
     * gets supported
     */
@@ -888,11 +919,52 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
       key->num_used_outputs = 0;
    } else {
       struct v3dv_pipeline *pipeline = p_stage->pipeline;
-      key->num_used_outputs = pipeline->fs->prog_data.fs->num_inputs;
+      struct v3dv_shader_variant *fs_variant = pipeline->fs->current_variant;
+
+      key->num_used_outputs = fs_variant->prog_data.fs->num_inputs;
+
       STATIC_ASSERT(sizeof(key->used_outputs) ==
-                    sizeof(pipeline->fs->prog_data.fs->input_slots));
-      memcpy(key->used_outputs, pipeline->fs->prog_data.fs->input_slots,
+                    sizeof(fs_variant->prog_data.fs->input_slots));
+      memcpy(key->used_outputs, fs_variant->prog_data.fs->input_slots,
              sizeof(key->used_outputs));
+   }
+}
+
+/* FIXME: following hash/compare methods are C&P from v3d. Common place? */
+static uint32_t
+fs_cache_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct v3d_fs_key));
+}
+
+static uint32_t
+vs_cache_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct v3d_vs_key));
+}
+
+static bool
+fs_cache_compare(const void *key1, const void *key2)
+{
+   return memcmp(key1, key2, sizeof(struct v3d_fs_key)) == 0;
+}
+
+static bool
+vs_cache_compare(const void *key1, const void *key2)
+{
+   return memcmp(key1, key2, sizeof(struct v3d_vs_key)) == 0;
+}
+
+static struct hash_table*
+create_variant_cache(gl_shader_stage stage)
+{
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      return _mesa_hash_table_create(NULL, vs_cache_hash, vs_cache_compare);
+   case MESA_SHADER_FRAGMENT:
+      return _mesa_hash_table_create(NULL, fs_cache_hash, fs_cache_compare);
+   default:
+      unreachable("not supported shader stage");
    }
 }
 
@@ -917,6 +989,11 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
    p_stage->module = src->module;
    p_stage->nir = src->nir;
 
+   /* Technically we could share the hash_table, but having their own makes
+    * destroy p_stage more straightforward
+    */
+   p_stage->cache = create_variant_cache(MESA_SHADER_VERTEX);
+
    p_stage->is_coord = true;
 
    return p_stage;
@@ -924,14 +1001,15 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
 
 /* FIXME: right now this just asks for an bo for the exact size of the qpu
  * assembly. It would be good to be slighly smarter and having one "all
- * shaders" bo per pipeline, so each p_stage would save their offset on
- * such. That is really relevant due the fact that bo are always aligned to
+ * shaders" bo per pipeline, so each p_stage/variant would save their offset
+ * on such. That is really relevant due the fact that bo are always aligned to
  * 4096, so that would allow to use less memory.
  *
  * For now one-bo per-assembly would work.
  */
 static void
 upload_assembly(struct v3dv_pipeline_stage *p_stage,
+                struct v3dv_shader_variant *variant,
                 const void *data,
                 uint32_t size)
 {
@@ -939,7 +1017,7 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
    /* We are uploading the assembly just once, so at this point we shouldn't
     * have any bo
     */
-   assert(p_stage->assembly_bo == NULL);
+   assert(variant->assembly_bo == NULL);
    struct v3dv_device *device = p_stage->pipeline->device;
 
    switch (p_stage->stage) {
@@ -971,32 +1049,41 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
 
    v3dv_bo_unmap(device, bo);
 
-   p_stage->assembly_bo = bo;
+   variant->assembly_bo = bo;
 }
 
-static void
-compile_pipeline_stage(struct v3dv_pipeline_stage *p_stage)
+/* For a given key, it returns the compiled version of the shader. If it was
+ * already compiled, it gets it from the p_stage cache, if not it compiles is
+ * through the v3d compiler
+ */
+static struct v3dv_shader_variant*
+get_shader_variant(struct v3dv_pipeline_stage *p_stage,
+                   struct v3d_key *key,
+                   size_t key_size)
 {
+   struct hash_table *ht = p_stage->cache;
+   struct hash_entry *entry = _mesa_hash_table_search(ht, key);
+
+   if (entry)
+      return entry->data;
+
+   struct v3dv_device *device = p_stage->pipeline->device;
+   struct v3dv_shader_variant *variant =
+      vk_zalloc(&device->alloc, sizeof(*variant), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
    struct v3dv_physical_device *physical_device =
       &p_stage->pipeline->device->instance->physicalDevice;
    const struct v3d_compiler *compiler = physical_device->compiler;
 
-   /* We don't support variants (and probably will never support them) */
-   int variant_id = 0;
-
-   /* Note that we are assigning program_id slightly differently that
-    * v3d. Here we are assigning one per pipeline stage, so vs and vs_bin
-    * would have a different program_id, while v3d would have the same for
-    * both. For the case of v3dv, it is more natural to have an id this way,
-    * as right now we are using it for debugging, not for shader-db.
-    */
-   p_stage->program_id = physical_device->next_program_id++;
+   uint32_t variant_id = p_atomic_inc_return(&p_stage->compiled_variant_count);
 
    if (V3D_DEBUG & (V3D_DEBUG_NIR |
                     v3d_debug_flag_for_shader_stage(p_stage->stage))) {
-      fprintf(stderr, "Just before v3d_compile: %s prog %d NIR:\n",
+      fprintf(stderr, "Just before v3d_compile: %s prog %d variant %d NIR:\n",
               gl_shader_stage_name(p_stage->stage),
-              p_stage->program_id);
+              p_stage->program_id,
+              variant_id);
       nir_print_shader(p_stage->nir, stderr);
       fprintf(stderr, "\n");
    }
@@ -1005,7 +1092,7 @@ compile_pipeline_stage(struct v3dv_pipeline_stage *p_stage)
    uint32_t qpu_insts_size;
 
    qpu_insts = v3d_compile(compiler,
-                           &p_stage->key.base, &p_stage->prog_data.base,
+                           key, &variant->prog_data.base,
                            p_stage->nir,
                            shader_debug_output, NULL,
                            p_stage->program_id,
@@ -1017,10 +1104,22 @@ compile_pipeline_stage(struct v3dv_pipeline_stage *p_stage)
               gl_shader_stage_name(p_stage->stage),
               p_stage->program_id);
    } else {
-      upload_assembly(p_stage, qpu_insts, qpu_insts_size);
+      upload_assembly(p_stage, variant, qpu_insts, qpu_insts_size);
    }
 
    free(qpu_insts);
+
+   if (ht) {
+      struct v3d_key *dup_key;
+      dup_key = ralloc_size(ht, key_size);
+      memcpy(dup_key, key, key_size);
+      _mesa_hash_table_insert(ht, dup_key, variant);
+   }
+
+   /* FIXME: pending provide scratch space for register spilling */
+   assert(variant->prog_data.base->spill_size == 0);
+
+   return variant;
 }
 
 /* FIXME: C&P from st, common place? */
@@ -1132,6 +1231,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 {
    struct v3dv_pipeline_stage *stages[MESA_SHADER_STAGES] = { };
    struct v3dv_device *device = pipeline->device;
+   struct v3dv_physical_device *physical_device =
+      &device->instance->physicalDevice;
 
    /* First pass to get the the common info from the shader and the nir
     * shader. We don't care of the coord shader for now.
@@ -1143,6 +1244,16 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       struct v3dv_pipeline_stage *p_stage =
          vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+      /* Note that we are assigning program_id slightly differently that
+       * v3d. Here we are assigning one per pipeline stage, so vs and vs_bin
+       * would have a different program_id, while v3d would have the same for
+       * both. For the case of v3dv, it is more natural to have an id this way,
+       * as right now we are using it for debugging, not for shader-db.
+       */
+      p_stage->program_id = physical_device->next_program_id++;
+      p_stage->compiled_variant_count = 0;
+      p_stage->cache = create_variant_cache(stage);
 
       p_stage->pipeline = pipeline;
       p_stage->stage = stage;
@@ -1178,6 +1289,10 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->module = 0;
       p_stage->nir = b.shader;
 
+      p_stage->program_id = physical_device->next_program_id++;
+      p_stage->compiled_variant_count = 0;
+      p_stage->cache = create_variant_cache(MESA_SHADER_FRAGMENT);
+
       stages[MESA_SHADER_FRAGMENT] = p_stage;
       pipeline->active_stages |= MESA_SHADER_FRAGMENT;
    }
@@ -1204,7 +1319,10 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       next_stage = stages[stage];
    }
 
-   /* Compiling to vir */
+   /* Compiling to vir. Note that at this point we are compiling a default
+    * variant. Binding to textures, and other stuff (that would need a
+    * cmd_buffer) would need a recompile
+    */
    for (int stage = MESA_SHADER_STAGES - 1; stage >= 0; stage--) {
       if (stages[stage] == NULL || stages[stage]->entrypoint == NULL)
          continue;
@@ -1214,7 +1332,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
 
       switch(stage) {
-      case MESA_SHADER_VERTEX:
+      case MESA_SHADER_VERTEX: {
          /* Right now we only support pipelines with both vertex and fragment
           * shader.
           */
@@ -1234,25 +1352,35 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          lower_vs_io(p_stage->nir);
 
          /* Note that at this point we would compile twice, one for vs and
-          * other for vs_bin. For now we are maintaining two pipeline_stage
-          * and two keys. Eventually we could reuse the key.
+          * other for vs_bin. For now we are maintaining two pipeline_stages.
+          *
+          * FIXME: this leads to two caches, when it shouldnt, revisit
           */
-         pipeline_populate_v3d_vs_key(&pipeline->vs->key.vs, pCreateInfo, pipeline->vs);
-         pipeline_populate_v3d_vs_key(&pipeline->vs_bin->key.vs, pCreateInfo, pipeline->vs_bin);
+         struct v3d_vs_key *key = &pipeline->vs->key.vs;
+         pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
+         pipeline->vs->current_variant =
+            get_shader_variant(pipeline->vs, &key->base, sizeof(*key));
 
-         compile_pipeline_stage(pipeline->vs);
-         compile_pipeline_stage(pipeline->vs_bin);
+         key = &pipeline->vs_bin->key.vs;
+         pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs_bin);
+         pipeline->vs_bin->current_variant =
+            get_shader_variant(pipeline->vs_bin, &key->base, sizeof(*key));
          break;
-      case MESA_SHADER_FRAGMENT:
+      }
+      case MESA_SHADER_FRAGMENT: {
+         struct v3d_fs_key *key = &p_stage->key.fs;
+
          pipeline->fs = p_stage;
 
-         pipeline_populate_v3d_fs_key(&p_stage->key.fs, pCreateInfo,
-                             p_stage);
+         pipeline_populate_v3d_fs_key(key, pCreateInfo, p_stage);
 
          lower_fs_io(p_stage->nir);
 
-         compile_pipeline_stage(pipeline->fs);
+         p_stage->current_variant =
+            get_shader_variant(p_stage, &key->base, sizeof(*key));
+
          break;
+      }
       default:
          unreachable("not supported shader stage");
       }
@@ -1263,11 +1391,13 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
     */
    pipeline->vpm_cfg_bin.As = 1;
    pipeline->vpm_cfg_bin.Ve = 0;
-   pipeline->vpm_cfg_bin.Vc = pipeline->vs_bin->prog_data.vs->vcm_cache_size;
+   pipeline->vpm_cfg_bin.Vc =
+      pipeline->vs_bin->current_variant->prog_data.vs->vcm_cache_size;
 
    pipeline->vpm_cfg.As = 1;
    pipeline->vpm_cfg.Ve = 0;
-   pipeline->vpm_cfg.Vc = pipeline->vs->prog_data.vs->vcm_cache_size;
+   pipeline->vpm_cfg.Vc =
+      pipeline->vs->current_variant->prog_data.vs->vcm_cache_size;
 
    return VK_SUCCESS;
 }
@@ -1720,6 +1850,16 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
    assert(sizeof(pipeline->shader_state_record) ==
           cl_packet_length(GL_SHADER_STATE_RECORD));
 
+   struct v3d_fs_prog_data *prog_data_fs =
+      pipeline->fs->current_variant->prog_data.fs;
+
+   struct v3d_vs_prog_data *prog_data_vs =
+      pipeline->vs->current_variant->prog_data.vs;
+
+   struct v3d_vs_prog_data *prog_data_vs_bin =
+      pipeline->vs_bin->current_variant->prog_data.vs;
+
+
    /* Note: we are not packing addresses, as we need the job (see
     * cl_pack_emit_reloc). Additionally uniforms can't be filled up at this
     * point as they depend on dynamic info that can be set after create the
@@ -1730,33 +1870,31 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
       shader.enable_clipping = true;
 
       shader.point_size_in_shaded_vertex_data =
-         pipeline->vs->key.vs.per_vertex_point_size;
+         pipeline->vs->topology == PIPE_PRIM_POINTS;
 
       /* Must be set if the shader modifies Z, discards, or modifies
        * the sample mask.  For any of these cases, the fragment
        * shader needs to write the Z value (even just discards).
        */
-      shader.fragment_shader_does_z_writes =
-         pipeline->fs->prog_data.fs->writes_z;
+      shader.fragment_shader_does_z_writes = prog_data_fs->writes_z;
       /* Set if the EZ test must be disabled (due to shader side
        * effects and the early_z flag not being present in the
        * shader).
        */
-      shader.turn_off_early_z_test =
-         pipeline->fs->prog_data.fs->disable_ez;
+      shader.turn_off_early_z_test = prog_data_fs->disable_ez;
 
       shader.fragment_shader_uses_real_pixel_centre_w_in_addition_to_centroid_w2 =
-         pipeline->fs->prog_data.fs->uses_center_w;
+         prog_data_fs->uses_center_w;
 
       shader.any_shader_reads_hardware_written_primitive_id = false;
 
       shader.do_scoreboard_wait_on_first_thread_switch =
-         pipeline->fs->prog_data.fs->lock_scoreboard_on_first_thrsw;
+         prog_data_fs->lock_scoreboard_on_first_thrsw;
       shader.disable_implicit_point_line_varyings =
-         !pipeline->fs->prog_data.fs->uses_implicit_point_line_varyings;
+         !prog_data_fs->uses_implicit_point_line_varyings;
 
       shader.number_of_varyings_in_fragment_shader =
-         pipeline->fs->prog_data.fs->num_inputs;
+         prog_data_fs->num_inputs;
 
       shader.coordinate_shader_propagate_nans = true;
       shader.vertex_shader_propagate_nans = true;
@@ -1771,21 +1909,21 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
        * on v3d, see v3dx_draw).
        */
       shader.coordinate_shader_has_separate_input_and_output_vpm_blocks =
-         pipeline->vs_bin->prog_data.vs->separate_segments;
+         prog_data_vs_bin->separate_segments;
       shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
-         pipeline->vs->prog_data.vs->separate_segments;
+         prog_data_vs->separate_segments;
 
       shader.coordinate_shader_input_vpm_segment_size =
-         pipeline->vs_bin->prog_data.vs->separate_segments ?
-         pipeline->vs_bin->prog_data.vs->vpm_input_size : 1;
+         prog_data_vs_bin->separate_segments ?
+         prog_data_vs_bin->vpm_input_size : 1;
       shader.vertex_shader_input_vpm_segment_size =
-         pipeline->vs->prog_data.vs->separate_segments ?
-         pipeline->vs->prog_data.vs->vpm_input_size : 1;
+         prog_data_vs->separate_segments ?
+         prog_data_vs->vpm_input_size : 1;
 
       shader.coordinate_shader_output_vpm_segment_size =
-         pipeline->vs_bin->prog_data.vs->vpm_output_size;
+         prog_data_vs_bin->vpm_output_size;
       shader.vertex_shader_output_vpm_segment_size =
-         pipeline->vs->prog_data.vs->vpm_output_size;
+         prog_data_vs->vpm_output_size;
 
       /* Note: see previous note about adresses */
       /* shader.coordinate_shader_uniforms_address */
@@ -1803,27 +1941,27 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
          pipeline->vpm_cfg.Ve;
 
       shader.coordinate_shader_4_way_threadable =
-         pipeline->vs_bin->prog_data.vs->base.threads == 4;
+         prog_data_vs_bin->base.threads == 4;
       shader.vertex_shader_4_way_threadable =
-         pipeline->vs->prog_data.vs->base.threads == 4;
+         prog_data_vs->base.threads == 4;
       shader.fragment_shader_4_way_threadable =
-         pipeline->fs->prog_data.fs->base.threads == 4;
+         prog_data_fs->base.threads == 4;
 
       shader.coordinate_shader_start_in_final_thread_section =
-         pipeline->vs_bin->prog_data.vs->base.single_seg;
+         prog_data_vs_bin->base.single_seg;
       shader.vertex_shader_start_in_final_thread_section =
-         pipeline->vs->prog_data.vs->base.single_seg;
+         prog_data_vs->base.single_seg;
       shader.fragment_shader_start_in_final_thread_section =
-         pipeline->fs->prog_data.fs->base.single_seg;
+         prog_data_fs->base.single_seg;
 
       shader.vertex_id_read_by_coordinate_shader =
-         pipeline->vs_bin->prog_data.vs->uses_vid;
+         prog_data_vs_bin->uses_vid;
       shader.instance_id_read_by_coordinate_shader =
-         pipeline->vs_bin->prog_data.vs->uses_iid;
+         prog_data_vs_bin->uses_iid;
       shader.vertex_id_read_by_vertex_shader =
-         pipeline->vs->prog_data.vs->uses_vid;
+         prog_data_vs->uses_vid;
       shader.instance_id_read_by_vertex_shader =
-         pipeline->vs->prog_data.vs->uses_iid;
+         prog_data_vs->uses_iid;
 
       /* Note: see previous note about adresses */
       /* shader.address_of_default_attribute_values */

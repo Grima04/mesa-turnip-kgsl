@@ -779,6 +779,20 @@ vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
    return ffs(vk_stage) - 1;
 }
 
+struct v3dv_shader_variant {
+   union {
+      struct v3d_prog_data *base;
+      struct v3d_vs_prog_data *vs;
+      struct v3d_fs_prog_data *fs;
+   } prog_data;
+
+   /* FIXME: using one bo per shader. Eventually we would be interested on
+    * reusing the same bo for all the shaders, like a bo per v3dv_pipeline for
+    * shaders.
+    */
+   struct v3dv_bo *assembly_bo;
+};
+
 /*
  * Per-stage info for each stage, useful so shader_module_compile_to_nir and
  * other methods doesn't have so many parameters.
@@ -805,29 +819,30 @@ struct v3dv_pipeline_stage {
 
    /** A name for this program, so you can track it in shader-db output. */
    uint32_t program_id;
+   /** How many variants of this program were compiled, for shader-db. */
+   uint32_t compiled_variant_count;
 
+   /* The following are the default v3d_key populated using
+    * VkCreateGraphicsPipelineCreateInfo. Variants will be created tweaking
+    * them, so we don't need to maintain a copy of that create info struct
+    * around
+    */
    union {
       struct v3d_key base;
       struct v3d_vs_key vs;
       struct v3d_fs_key fs;
    } key;
 
-   union {
-      struct v3d_prog_data *base;
-      struct v3d_vs_prog_data *vs;
-      struct v3d_fs_prog_data *fs;
-   } prog_data;
+   /* Cache with all the shader variant.
+    */
+   struct hash_table *cache;
+
+   struct v3dv_shader_variant *current_variant;
 
    /* FIXME: only make sense on vs, so perhaps a v3dv key like radv? or a kind
     * of pipe_draw_info
     */
    enum pipe_prim_type topology;
-
-   /* FIXME: using one bo per shader. Eventually we would be interested on
-    * reusing the same bo for all the shaders, like a bo per v3dv_pipeline for
-    * shaders.
-    */
-   struct v3dv_bo *assembly_bo;
 };
 
 /* FIXME: although the full vpm_config is not required at this point, as we
