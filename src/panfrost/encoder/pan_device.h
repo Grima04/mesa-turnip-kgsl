@@ -104,4 +104,10 @@ struct panfrost_device {
         } bo_cache;
 };
 
+void
+panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev);
+
+void
+panfrost_close_device(struct panfrost_device *dev);
+
 #endif

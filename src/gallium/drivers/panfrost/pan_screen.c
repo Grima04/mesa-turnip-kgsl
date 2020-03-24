@@ -591,11 +591,7 @@ panfrost_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_t
 static void
 panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
-        struct panfrost_device *dev = pan_device(pscreen);
-        panfrost_bo_cache_evict_all(dev);
-        pthread_mutex_destroy(&dev->bo_cache.lock);
-        pthread_mutex_destroy(&dev->active_bos_lock);
-        drmFreeVersion(dev->kernel_version);
+        panfrost_close_device(pan_device(pscreen));
         ralloc_free(pscreen);
 }
 
@@ -705,22 +701,6 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
         return &midgard_nir_options;
 }
 
-static uint32_t
-panfrost_active_bos_hash(const void *key)
-{
-        const struct panfrost_bo *bo = key;
-
-        return _mesa_hash_data(&bo->gem_handle, sizeof(bo->gem_handle));
-}
-
-static bool
-panfrost_active_bos_cmp(const void *keya, const void *keyb)
-{
-        const struct panfrost_bo *a = keya, *b = keyb;
-
-        return a->gem_handle == b->gem_handle;
-}
-
 struct pipe_screen *
 panfrost_create_screen(int fd, struct renderonly *ro)
 {
@@ -745,6 +725,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 return NULL;
 
         struct panfrost_device *dev = pan_device(&screen->base);
+        panfrost_open_device(screen, fd, dev);
 
         if (ro) {
                 dev->ro = renderonly_dup(ro);
@@ -754,15 +735,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                         return NULL;
                 }
         }
-
-        dev->fd = fd;
-        dev->memctx = screen;
-
-        dev->gpu_id = panfrost_query_gpu_version(dev->fd);
-        dev->core_count = panfrost_query_core_count(dev->fd);
-        dev->thread_tls_alloc = panfrost_query_thread_tls_alloc(dev->fd);
-        dev->quirks = panfrost_get_quirks(dev->gpu_id);
-        dev->kernel_version = drmGetVersion(fd);
 
         /* Check if we're loading against a supported GPU model. */
 
@@ -775,17 +747,9 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         default:
                 /* Fail to load against untested models */
                 debug_printf("panfrost: Unsupported model %X", dev->gpu_id);
+                panfrost_destroy_screen(&(screen->base));
                 return NULL;
         }
-
-        pthread_mutex_init(&dev->active_bos_lock, NULL);
-        dev->active_bos = _mesa_set_create(screen, panfrost_active_bos_hash,
-                                              panfrost_active_bos_cmp);
-
-        pthread_mutex_init(&dev->bo_cache.lock, NULL);
-        list_inithead(&dev->bo_cache.lru);
-        for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
-                list_inithead(&dev->bo_cache.buckets[i]);
 
         if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
                 pandecode_initialize(!(pan_debug & PAN_DBG_TRACE));
