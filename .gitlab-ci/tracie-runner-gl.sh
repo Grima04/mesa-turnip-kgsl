@@ -2,7 +2,7 @@
 
 set -ex
 
-ARTIFACTS="$(pwd)/artifacts"
+INSTALL="$(pwd)/install"
 
 # Set up the driver environment.
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(pwd)/install/lib/"
@@ -23,6 +23,6 @@ export DISPLAY=
 export WAFFLE_PLATFORM=surfaceless_egl
 
 # Perform a self-test to ensure tracie is working properly.
-"$ARTIFACTS/tracie/tests/test.sh"
+"$INSTALL/tracie/tests/test.sh"
 
-python3 $ARTIFACTS/tracie/tracie.py --file $ARTIFACTS/traces.yml --device-name $DEVICE_NAME
+python3 $INSTALL/tracie/tracie.py --file $INSTALL/traces.yml --device-name $DEVICE_NAME

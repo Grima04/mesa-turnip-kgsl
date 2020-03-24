@@ -22,20 +22,23 @@ find install -name \*.so -exec $STRIP {} \;
 
 # Test runs don't pull down the git tree, so put the dEQP helper
 # script and associated bits there.
-mkdir -p artifacts/
-cp VERSION artifacts/
-cp -Rp .gitlab-ci/deqp* artifacts/
-cp -Rp .gitlab-ci/piglit artifacts/
-cp -Rp .gitlab-ci/traces.yml artifacts/
-cp -Rp .gitlab-ci/tracie artifacts/
-cp -Rp .gitlab-ci/tracie-runner-gl.sh artifacts/
-cp -Rp .gitlab-ci/tracie-runner-vk.sh artifacts/
-cp -Rp .gitlab-ci/fossils.yml artifacts/
-cp -Rp .gitlab-ci/fossils artifacts/
-cp -Rp .gitlab-ci/fossilize-runner.sh artifacts/
+cp VERSION install/
+cp -Rp .gitlab-ci/deqp* install/
+cp -Rp .gitlab-ci/piglit install/
+cp -Rp .gitlab-ci/traces.yml install/
+cp -Rp .gitlab-ci/tracie install/
+cp -Rp .gitlab-ci/tracie-runner-gl.sh install/
+cp -Rp .gitlab-ci/tracie-runner-vk.sh install/
+cp -Rp .gitlab-ci/fossils.yml install/
+cp -Rp .gitlab-ci/fossils install/
+cp -Rp .gitlab-ci/fossilize-runner.sh install/
+cp -Rp .gitlab-ci/deqp-runner.sh install/
+cp -Rp .gitlab-ci/deqp-*-fails.txt install/
+cp -Rp .gitlab-ci/deqp-*-skips.txt install/
 
 # Tar up the install dir so that symlinks and hardlinks aren't each
 # packed separately in the zip file.
+mkdir -p artifacts/
 tar -cf artifacts/install.tar install
 
 # If the container has LAVA stuff, prepare the artifacts for LAVA jobs
@@ -45,13 +48,8 @@ if [ -d /lava-files ]; then
     cp /lava-files/*.dtb artifacts/.
 
     # Pack ramdisk for LAVA
-    mkdir -p /lava-files/rootfs-${CROSS:-arm64}/mesa
-    cp -a install/* /lava-files/rootfs-${CROSS:-arm64}/mesa/.
-
-    cp .gitlab-ci/deqp-runner.sh /lava-files/rootfs-${CROSS:-arm64}/deqp/.
-    cp .gitlab-ci/deqp-*-fails.txt /lava-files/rootfs-${CROSS:-arm64}/deqp/.
-    cp .gitlab-ci/deqp-*-skips.txt /lava-files/rootfs-${CROSS:-arm64}/deqp/.
-    find /lava-files/rootfs-${CROSS:-arm64}/ -type f -printf "%s\t%i\t%p\n" | sort -n | tail -100
+    mkdir -p /lava-files/rootfs-${CROSS:-arm64}/install
+    cp -a install/* /lava-files/rootfs-${CROSS:-arm64}/install/.
 
     pushd /lava-files/rootfs-${CROSS:-arm64}/
     find -H  |  cpio -H newc -o | gzip -c - > $CI_PROJECT_DIR/artifacts/lava-rootfs-${CROSS:-arm64}.cpio.gz

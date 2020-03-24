@@ -2,7 +2,7 @@
 
 set -ex
 
-ARTIFACTS="$(pwd)/artifacts"
+INSTALL="$(pwd)/install"
 
 # Set the Vulkan driver to use.
 export VK_ICD_FILENAMES="$(pwd)/install/share/vulkan/icd.d/${VK_DRIVER}_icd.x86_64.json"
@@ -12,7 +12,7 @@ export VK_LAYER_PATH="$VK_LAYER_PATH:/VulkanTools/build/etc/vulkan/explicit_laye
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/VulkanTools/build/lib"
 
 # Perform a self-test to ensure tracie is working properly.
-"$ARTIFACTS/tracie/tests/test.sh"
+"$INSTALL/tracie/tests/test.sh"
 
 ret=0
 
@@ -22,6 +22,6 @@ ret=0
 # file:
 # https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-runners-section
 PATH="/gfxreconstruct/build/bin:$PATH" \
-    python3 $ARTIFACTS/tracie/tracie.py --file $ARTIFACTS/traces.yml --device-name $DEVICE_NAME
+    python3 $INSTALL/tracie/tracie.py --file $INSTALL/traces.yml --device-name $DEVICE_NAME
 
 exit $ret

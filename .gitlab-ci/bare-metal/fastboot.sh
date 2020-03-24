@@ -56,10 +56,9 @@ ln -sf $CI_PROJECT_DIR/install rootfs/install
 
 # Copy the deqp runner script and metadata.
 cp .gitlab-ci/deqp-runner.sh rootfs/deqp/.
-mkdir -p rootfs/artifacts/deqp
-cp .gitlab-ci/$DEQP_SKIPS rootfs/artifacts/deqp-skips.txt
+cp .gitlab-ci/$DEQP_SKIPS rootfs/$CI_PROJECT_DIR/install/deqp-skips.txt
 if [ -n "$DEQP_EXPECTED_FAILS" ]; then
-  cp .gitlab-ci/$DEQP_EXPECTED_FAILS rootfs/artifacts/deqp-expected-fails.txt
+  cp .gitlab-ci/$DEQP_EXPECTED_FAILS rootfs/$CI_PROJECT_DIR/install/deqp-expected-fails.txt
 fi
 
 # Finally, pack it up into a cpio rootfs.

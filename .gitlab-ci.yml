@@ -587,7 +587,7 @@ scons-old-llvm:
     LIBGL_ALWAYS_SOFTWARE: 1
     PIGLIT_NO_WINDOW: 1
   script:
-    - artifacts/piglit/run.sh
+    - install/piglit/run.sh
 
 piglit-quick_gl:
   extends: .piglit-test
@@ -624,7 +624,7 @@ piglit-quick_shader:
   variables:
     DEQP_SKIPS: deqp-default-skips.txt
   script:
-    - ./artifacts/deqp-runner.sh
+    - ./install/deqp-runner.sh
 
 .deqp-test-gl:
   extends:
@@ -641,7 +641,7 @@ piglit-quick_shader:
 .fossilize-test:
   extends: .test-vk
   script:
-    - ./artifacts/fossilize-runner.sh
+    - ./install/fossilize-runner.sh
 
 llvmpipe-gles2:
   variables:
@@ -790,8 +790,8 @@ arm64_a530_gles3:
     - .fossilize-test
     - .test-radv
   script:
-    - ./artifacts/fossilize-runner.sh
-    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./artifacts/fossilize-runner.sh
+    - ./install/fossilize-runner.sh
+    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./install/fossilize-runner.sh
 
 # Can only be triggered manually on personal branches because RADV is the only
 # driver that does Vulkan testing at the moment.
@@ -812,16 +812,16 @@ radv-fossils:
   script:
     # Polaris10
     - export RADV_FORCE_FAMILY="polaris10"
-    - ./artifacts/fossilize-runner.sh
-    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./artifacts/fossilize-runner.sh
+    - ./install/fossilize-runner.sh
+    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./install/fossilize-runner.sh
     # Vega10
     - export RADV_FORCE_FAMILY="gfx900"
-    - ./artifacts/fossilize-runner.sh
-    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./artifacts/fossilize-runner.sh
+    - ./install/fossilize-runner.sh
+    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./install/fossilize-runner.sh
     # Navi10
     - export RADV_FORCE_FAMILY="gfx1010"
-    - ./artifacts/fossilize-runner.sh
-    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./artifacts/fossilize-runner.sh
+    - ./install/fossilize-runner.sh
+    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./install/fossilize-runner.sh
 
 # Traces CI
 .traces-test:
@@ -835,14 +835,14 @@ radv-fossils:
     - .test-gl
     - .traces-test
   script:
-    - ./artifacts/tracie-runner-gl.sh
+    - ./install/tracie-runner-gl.sh
 
 .traces-test-vk:
   extends:
     - .test-vk
     - .traces-test
   script:
-    - ./artifacts/tracie-runner-vk.sh
+    - ./install/tracie-runner-vk.sh
 
 llvmpipe-traces:
   extends:

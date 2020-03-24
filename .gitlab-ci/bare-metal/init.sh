@@ -15,7 +15,7 @@ export DEQP_PARALLEL=DEQP_PARALLEL_REPLACE
 export CI_NODE_INDEX=CI_NODE_INDEX_REPLACE
 export CI_NODE_TOTAL=CI_NODE_TOTAL_REPLACE
 export DEQP_SKIPS=deqp-skips.txt
-if [ -e /artifacts/deqp-expected-fails.txt ]; then
+if [ -e /install/deqp-expected-fails.txt ]; then
   export DEQP_EXPECTED_FAILS=deqp-expected-fails.txt
 fi
 

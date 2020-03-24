@@ -83,6 +83,9 @@ actions:
           - export {{ env_vars }}
 {% endif %}
 
+          # deqp-runner.sh assumes some stuff is in pwd
+          - cd /
+
           - export DEQP_NO_SAVE_RESULTS=1
           - 'export DEQP_RUNNER_OPTIONS="--compact-display false --shuffle false"'
           - export DEQP_EXPECTED_FAILS=deqp-{{ gpu_version }}-fails.txt
@@ -90,15 +93,7 @@ actions:
           - export DEQP_VER={{ deqp_version }}
           - export LIBGL_DRIVERS_PATH=`pwd`/install/lib/dri
 
-          # Put stuff where the runner script expects it
-          - mkdir artifacts
-          - mkdir results
-          - mkdir -p install/lib
-          - cp /deqp/$DEQP_EXPECTED_FAILS artifacts/.
-          - cp /deqp/$DEQP_SKIPS artifacts/.
-          - mv /mesa/lib/* install/lib/.
-
-          - "if sh /deqp/deqp-runner.sh; then
+          - "if sh /install/deqp-runner.sh; then
                   echo 'deqp: pass';
              else
                   echo 'deqp: fail';

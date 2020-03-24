@@ -31,7 +31,7 @@ if [ -z "$DEQP_SKIPS" ]; then
    exit 1
 fi
 
-ARTIFACTS=`pwd`/artifacts
+INSTALL=`pwd`/install
 
 # Set up the driver environment.
 export LD_LIBRARY_PATH=`pwd`/install/lib/
@@ -66,7 +66,7 @@ if [ ! -s /tmp/case-list.txt ]; then
 fi
 
 if [ -n "$DEQP_EXPECTED_FAILS" ]; then
-    XFAIL="--xfail-list $ARTIFACTS/$DEQP_EXPECTED_FAILS"
+    XFAIL="--xfail-list $INSTALL/$DEQP_EXPECTED_FAILS"
 fi
 
 set +e
@@ -83,7 +83,7 @@ run_cts() {
         --deqp $deqp \
         --output $output \
         --caselist $caselist \
-        --exclude-list $ARTIFACTS/$DEQP_SKIPS \
+        --exclude-list $INSTALL/$DEQP_SKIPS \
         $XFAIL \
         $JOB \
 	--allow-flakes true \

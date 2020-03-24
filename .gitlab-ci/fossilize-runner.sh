@@ -7,10 +7,10 @@ if [ -z "$VK_DRIVER" ]; then
    exit 1
 fi
 
-ARTIFACTS=`pwd`/artifacts
+INSTALL=`pwd`/install
 
 # Set up the driver environment.
 export LD_LIBRARY_PATH=`pwd`/install/lib/
 export VK_ICD_FILENAMES=`pwd`/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.x86_64.json
 
-"$ARTIFACTS/fossils/fossils.sh" "$ARTIFACTS/fossils.yml"
+"$INSTALL/fossils/fossils.sh" "$INSTALL/fossils.yml"
