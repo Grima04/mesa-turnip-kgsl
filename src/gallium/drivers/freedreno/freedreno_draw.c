@@ -308,7 +308,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 }
 
 static void
-fd_clear(struct pipe_context *pctx, unsigned buffers,
+fd_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor_state *scissor_state,
 		const union pipe_color_union *color, double depth, unsigned stencil)
 {
 	struct fd_context *ctx = fd_context(pctx);

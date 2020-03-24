@@ -300,5 +300,5 @@ void
 pp_filter_set_clear_fb(struct pp_program *p)
 {
    cso_set_framebuffer(p->cso, &p->framebuffer);
-   p->pipe->clear(p->pipe, PIPE_CLEAR_COLOR0, &p->clear_color, 0, 0);
+   p->pipe->clear(p->pipe, PIPE_CLEAR_COLOR0, NULL, &p->clear_color, 0, 0);
 }

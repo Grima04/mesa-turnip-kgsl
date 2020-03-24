@@ -812,6 +812,7 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
 static void
 zink_clear(struct pipe_context *pctx,
            unsigned buffers,
+           const struct pipe_scissor_state *scissor_state,
            const union pipe_color_union *pcolor,
            double depth, unsigned stencil)
 {

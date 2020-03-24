@@ -2238,7 +2238,7 @@ CSMT_ITEM_NO_WAIT(nine_context_clear_fb,
          rect.x2 >= zsbuf_surf->desc.Width &&
          rect.y2 >= zsbuf_surf->desc.Height))) {
         DBG("Clear fast path\n");
-        pipe->clear(pipe, bufs, &rgba, Z, Stencil);
+        pipe->clear(pipe, bufs, NULL, &rgba, Z, Stencil);
         return;
     }
 

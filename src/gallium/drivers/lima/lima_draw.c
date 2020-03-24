@@ -131,7 +131,7 @@ lima_damage_rect_union(struct pipe_scissor_state *rect,
 }
 
 static void
-lima_clear(struct pipe_context *pctx, unsigned buffers,
+lima_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor_state *scissor_state,
            const union pipe_color_union *color, double depth, unsigned stencil)
 {
    struct lima_context *ctx = lima_context(pctx);

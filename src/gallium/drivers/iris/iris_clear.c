@@ -636,6 +636,7 @@ clear_depth_stencil(struct iris_context *ice,
 static void
 iris_clear(struct pipe_context *ctx,
            unsigned buffers,
+           const struct pipe_scissor_state *scissor_state,
            const union pipe_color_union *p_color,
            double depth,
            unsigned stencil)

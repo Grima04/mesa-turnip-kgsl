@@ -407,7 +407,7 @@ etna_blit_clear_zs_rs(struct pipe_context *pctx, struct pipe_surface *dst,
 }
 
 static void
-etna_clear_rs(struct pipe_context *pctx, unsigned buffers,
+etna_clear_rs(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor_state *scissor_state,
            const union pipe_color_union *color, double depth, unsigned stencil)
 {
    struct etna_context *ctx = etna_context(pctx);

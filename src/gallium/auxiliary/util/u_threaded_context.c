@@ -2343,20 +2343,22 @@ tc_invalidate_resource(struct pipe_context *_pipe,
 
 struct tc_clear {
    unsigned buffers;
+   struct pipe_scissor_state scissor_state;
    union pipe_color_union color;
    double depth;
    unsigned stencil;
+   bool scissor_state_set;
 };
 
 static void
 tc_call_clear(struct pipe_context *pipe, union tc_payload *payload)
 {
    struct tc_clear *p = (struct tc_clear *)payload;
-   pipe->clear(pipe, p->buffers, &p->color, p->depth, p->stencil);
+   pipe->clear(pipe, p->buffers, p->scissor_state_set ? &p->scissor_state : NULL, &p->color, p->depth, p->stencil);
 }
 
 static void
-tc_clear(struct pipe_context *_pipe, unsigned buffers,
+tc_clear(struct pipe_context *_pipe, unsigned buffers, const struct pipe_scissor_state *scissor_state,
          const union pipe_color_union *color, double depth,
          unsigned stencil)
 {
@@ -2364,6 +2366,9 @@ tc_clear(struct pipe_context *_pipe, unsigned buffers,
    struct tc_clear *p = tc_add_struct_typed_call(tc, TC_CALL_clear, tc_clear);
 
    p->buffers = buffers;
+   if (scissor_state)
+      p->scissor_state = *scissor_state;
+   p->scissor_state_set = !!scissor_state;
    p->color = *color;
    p->depth = depth;
    p->stencil = stencil;

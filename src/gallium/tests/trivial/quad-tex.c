@@ -309,7 +309,7 @@ static void draw(struct program *p)
 	cso_set_framebuffer(p->cso, &p->framebuffer);
 
 	/* clear the render target */
-	p->pipe->clear(p->pipe, PIPE_CLEAR_COLOR, &p->clear_color, 0, 0);
+	p->pipe->clear(p->pipe, PIPE_CLEAR_COLOR, NULL, &p->clear_color, 0, 0);
 
 	/* set misc state we care about */
 	cso_set_blend(p->cso, &p->blend);

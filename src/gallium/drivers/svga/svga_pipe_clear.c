@@ -230,7 +230,7 @@ try_clear(struct svga_context *svga,
  * No masking, no scissor (clear entire buffer).
  */
 static void
-svga_clear(struct pipe_context *pipe, unsigned buffers,
+svga_clear(struct pipe_context *pipe, unsigned buffers, const struct pipe_scissor_state *scissor_state,
            const union pipe_color_union *color,
 	   double depth, unsigned stencil)
 {

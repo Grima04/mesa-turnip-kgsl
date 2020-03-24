@@ -303,6 +303,8 @@ The integer capabilities:
   a compressed block is copied to/from a plain pixel of the same size.
 * ``PIPE_CAP_CLEAR_TEXTURE``: Whether `clear_texture` will be
   available in contexts.
+* ``PIPE_CAP_CLEAR_SCISSORED``: Whether `clear` can accept a scissored
+  bounding box.
 * ``PIPE_CAP_DRAW_PARAMETERS``: Whether ``TGSI_SEMANTIC_BASEVERTEX``,
   ``TGSI_SEMANTIC_BASEINSTANCE``, and ``TGSI_SEMANTIC_DRAWID`` are
   supported in vertex shaders.

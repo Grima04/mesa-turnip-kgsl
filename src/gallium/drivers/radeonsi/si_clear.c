@@ -540,6 +540,7 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
 }
 
 static void si_clear(struct pipe_context *ctx, unsigned buffers,
+                     const struct pipe_scissor_state *scissor_state,
                      const union pipe_color_union *color, double depth, unsigned stencil)
 {
    struct si_context *sctx = (struct si_context *)ctx;
