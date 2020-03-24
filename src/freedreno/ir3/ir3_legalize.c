@@ -239,7 +239,6 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 
 		if (is_tex_or_prefetch(n)) {
 			regmask_set(&state->needs_sy, n->regs[0]);
-			ctx->so->need_pixlod = true;
 			if (n->opc == OPC_META_TEX_PREFETCH)
 				has_tex_prefetch = true;
 		} else if (n->opc == OPC_RESINFO) {

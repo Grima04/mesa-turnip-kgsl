@@ -3543,6 +3543,10 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	/* Collect sampling instructions eligible for pre-dispatch. */
 	collect_tex_prefetches(ctx, ir);
 
+	if (so->type == MESA_SHADER_FRAGMENT &&
+			ctx->s->info.fs.needs_helper_invocations)
+		so->need_pixlod = true;
+
 out:
 	if (ret) {
 		if (so->ir)
