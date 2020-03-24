@@ -4712,6 +4712,9 @@ ac_build_load_helper_invocation(struct ac_llvm_context *ctx)
 LLVMValueRef
 ac_build_is_helper_invocation(struct ac_llvm_context *ctx)
 {
+	if (!ctx->postponed_kill)
+		return ac_build_load_helper_invocation(ctx);
+
 	/* !(exact && postponed) */
 	LLVMValueRef exact = ac_build_intrinsic(ctx, "llvm.amdgcn.ps.live",
 						ctx->i1, NULL, 0,
