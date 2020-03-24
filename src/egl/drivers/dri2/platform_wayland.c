@@ -929,19 +929,27 @@ create_wl_buffer(struct dri2_egl_display *dri2_dpy,
    }
 
    bool supported_modifier = false;
-   if (modifier != DRM_FORMAT_MOD_INVALID) {
-      supported_modifier = true;
-   } else {
-      int visual_idx = dri2_wl_visual_idx_from_fourcc(fourcc);
-      assert(visual_idx != -1);
+   bool mod_invalid_supported = false;
+   int visual_idx = dri2_wl_visual_idx_from_fourcc(fourcc);
+   assert(visual_idx != -1);
 
-      uint64_t *mod;
-      u_vector_foreach(mod, &dri2_dpy->wl_modifiers[visual_idx]) {
-         if (*mod == DRM_FORMAT_MOD_INVALID) {
-            supported_modifier = true;
-            break;
-         }
+   uint64_t *mod;
+   u_vector_foreach(mod, &dri2_dpy->wl_modifiers[visual_idx]) {
+      if (*mod == DRM_FORMAT_MOD_INVALID) {
+         mod_invalid_supported = true;
       }
+      if (*mod == modifier) {
+         supported_modifier = true;
+         break;
+      }
+   }
+   if (!supported_modifier && mod_invalid_supported) {
+      /* If the server has advertised DRM_FORMAT_MOD_INVALID then we trust
+       * that the client has allocated the buffer with the right implicit
+       * modifier for the format, even though it's allocated a buffer the
+       * server hasn't explicitly claimed to support. */
+      modifier = DRM_FORMAT_MOD_INVALID;
+      supported_modifier = true;
    }
 
    if (dri2_dpy->wl_dmabuf && supported_modifier) {
