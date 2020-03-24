@@ -40,6 +40,10 @@
 #include <unistd.h>
 #endif
 
+#if DETECT_OS_APPLE
+#include <mach-o/dyld.h>
+#endif
+
 #if defined(__linux__) && defined(HAVE_PROGRAM_INVOCATION_NAME)
 
 static char *path = NULL;
@@ -166,6 +170,11 @@ util_get_process_exec_path(char* process_path, size_t len)
 {
 #if DETECT_OS_WINDOWS
    return GetModuleFileNameA(NULL, process_path, len);
+#elif DETECT_OS_APPLE
+   uint32_t bufSize = len;
+   int result = _NSGetExecutablePath(process_path, &bufSize);
+
+   return (result == 0) ? strlen(process_path) : 0;
 #elif DETECT_OS_UNIX
    ssize_t r;
 
