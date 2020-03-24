@@ -31,6 +31,9 @@
 #include "panfrost/encoder/pan_device.h"
 #include "panfrost/encoder/pan_bo.h"
 
+struct panfrost_device *
+bit_initialize(void *memctx);
+
 #endif
 
 

@@ -30,6 +30,7 @@
 #include "compiler/nir_types.h"
 #include "util/u_dynarray.h"
 #include "bifrost_compile.h"
+#include "test/bit.h"
 
 static void
 compile_shader(char **argv)
@@ -91,6 +92,13 @@ disassemble(const char *filename)
         free(code);
 }
 
+static void
+test(void)
+{
+        void *memctx = NULL; /* TODO */
+        bit_initialize(memctx);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -103,6 +111,8 @@ main(int argc, char **argv)
                 compile_shader(&argv[2]);
         else if (strcmp(argv[1], "disasm") == 0)
                 disassemble(argv[2]);
+        else if (strcmp(argv[1], "test") == 0)
+                test();
         else
                 unreachable("Unknown command. Valid: compile/disasm");
 

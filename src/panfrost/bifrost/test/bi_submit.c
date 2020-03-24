@@ -37,3 +37,20 @@ bit_bo_create(struct panfrost_device *dev, size_t size)
         pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
         return bo;
 }
+
+struct panfrost_device *
+bit_initialize(void *memctx)
+{
+        int fd = drmOpenWithType("panfrost", NULL, DRM_NODE_RENDER);
+
+        if (fd < 0)
+                unreachable("No panfrost device found. Try chmod?");
+
+        struct panfrost_device *dev = rzalloc(memctx, struct panfrost_device);
+        panfrost_open_device(memctx, fd, dev);
+
+        pandecode_initialize(true);
+        printf("%X\n", dev->gpu_id);
+
+        return dev;
+}
