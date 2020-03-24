@@ -1321,6 +1321,17 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
    tu_cs_emit(cs,
               A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_HORZ(guardband_adj.width) |
                  A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_VERT(guardband_adj.height));
+
+   float z_clamp_min = MIN2(viewport->minDepth, viewport->maxDepth);
+   float z_clamp_max = MAX2(viewport->minDepth, viewport->maxDepth);
+
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_CL_Z_CLAMP_MIN(z_clamp_min),
+                   A6XX_GRAS_CL_Z_CLAMP_MAX(z_clamp_max));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_Z_CLAMP_MIN(z_clamp_min),
+                   A6XX_RB_Z_CLAMP_MAX(z_clamp_max));
 }
 
 void
@@ -1342,9 +1353,6 @@ tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
 static void
 tu6_emit_gras_unknowns(struct tu_cs *cs)
 {
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_CNTL, 1);
-   tu_cs_emit(cs, A6XX_GRAS_CL_CNTL_ZERO_GB_SCALE_Z |
-                  A6XX_GRAS_CL_CNTL_VP_CLIP_CODE_IGNORE);
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8001, 1);
    tu_cs_emit(cs, 0x0);
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_LAYER_CNTL, 1);
@@ -1418,7 +1426,8 @@ tu6_emit_alpha_control_disable(struct tu_cs *cs)
 
 static void
 tu6_emit_depth_control(struct tu_cs *cs,
-                       const VkPipelineDepthStencilStateCreateInfo *ds_info)
+                       const VkPipelineDepthStencilStateCreateInfo *ds_info,
+                       const VkPipelineRasterizationStateCreateInfo *rast_info)
 {
    assert(!ds_info->depthBoundsTestEnable);
 
@@ -1428,6 +1437,9 @@ tu6_emit_depth_control(struct tu_cs *cs,
          A6XX_RB_DEPTH_CNTL_Z_ENABLE |
          A6XX_RB_DEPTH_CNTL_ZFUNC(tu6_compare_func(ds_info->depthCompareOp)) |
          A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
+
+      if (rast_info->depthClampEnable)
+         rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE;
 
       if (ds_info->depthWriteEnable)
          rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
@@ -1862,7 +1874,7 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
       builder->create_info->pViewportState;
 
    struct tu_cs vp_cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, 15, &vp_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 21, &vp_cs);
 
    if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_VIEWPORT)) {
       assert(vp_info->viewportCount == 1);
@@ -1884,12 +1896,19 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    const VkPipelineRasterizationStateCreateInfo *rast_info =
       builder->create_info->pRasterizationState;
 
-   assert(!rast_info->depthClampEnable);
    assert(rast_info->polygonMode == VK_POLYGON_MODE_FILL);
 
    struct tu_cs rast_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 20, &rast_cs);
 
+
+   tu_cs_emit_regs(&rast_cs,
+                   A6XX_GRAS_CL_CNTL(
+                     .znear_clip_disable = rast_info->depthClampEnable,
+                     .zfar_clip_disable = rast_info->depthClampEnable,
+                     .unk5 = rast_info->depthClampEnable,
+                     .zero_gb_scale_z = 1,
+                     .vp_clip_code_ignore = 1));
    /* move to hw ctx init? */
    tu6_emit_gras_unknowns(&rast_cs);
    tu6_emit_point_size(&rast_cs);
@@ -1937,7 +1956,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
    /* move to hw ctx init? */
    tu6_emit_alpha_control_disable(&ds_cs);
 
-   tu6_emit_depth_control(&ds_cs, ds_info);
+   tu6_emit_depth_control(&ds_cs, ds_info, builder->create_info->pRasterizationState);
    tu6_emit_stencil_control(&ds_cs, ds_info);
 
    if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_COMPARE_MASK)) {

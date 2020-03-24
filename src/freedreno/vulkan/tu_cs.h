@@ -341,8 +341,8 @@ tu_cond_exec_end(struct tu_cs *cs)
    STATIC_ASSERT(count > 0);                            \
    STATIC_ASSERT(count <= 16);                          \
                                                         \
-   tu_cs_emit_pkt4(cs, regs[0].reg, count);             \
-   uint32_t *p = cs->cur;                               \
+   tu_cs_emit_pkt4((cs), regs[0].reg, count);             \
+   uint32_t *p = (cs)->cur;                               \
    __ONE_REG( 0, regs);                                 \
    __ONE_REG( 1, regs);                                 \
    __ONE_REG( 2, regs);                                 \
@@ -359,7 +359,7 @@ tu_cond_exec_end(struct tu_cs *cs)
    __ONE_REG(13, regs);                                 \
    __ONE_REG(14, regs);                                 \
    __ONE_REG(15, regs);                                 \
-   cs->cur = p;                                         \
+   (cs)->cur = p;                                         \
    } while (0)
 
 #endif /* TU_CS_H */
