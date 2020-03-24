@@ -1413,6 +1413,10 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
    state->render_pass_states =
       anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
                              num_states * ss_stride, isl_dev->ss.align);
+   if (state->render_pass_states.map == NULL) {
+      return anv_batch_set_error(&cmd_buffer->batch,
+                                 VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   }
 
    struct anv_state next_state = state->render_pass_states;
    next_state.alloc_size = isl_dev->ss.size;
