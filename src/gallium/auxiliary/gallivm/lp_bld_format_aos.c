@@ -770,19 +770,25 @@ lp_build_fetch_rgba_aos(struct gallivm_state *gallivm,
                        format_desc->format == PIPE_FORMAT_LATC1_SNORM ||
                        format_desc->format == PIPE_FORMAT_LATC2_SNORM);
 
-      tmp = lp_build_fetch_rgtc_rgba_aos(gallivm,
-                                         format_desc,
-                                         num_pixels,
-                                         base_ptr,
-                                         offset,
-                                         i, j,
-                                         cache);
+      if (!tmp_type.sign) {
+         /*
+          * FIXME: this is buggy for snorm formats, likely the lerp is
+          * busted.
+          */
+         tmp = lp_build_fetch_rgtc_rgba_aos(gallivm,
+                                            format_desc,
+                                            num_pixels,
+                                            base_ptr,
+                                            offset,
+                                            i, j,
+                                            cache);
 
-      lp_build_conv(gallivm,
-                    tmp_type, type,
-                    &tmp, 1, &tmp, 1);
+         lp_build_conv(gallivm,
+                       tmp_type, type,
+                       &tmp, 1, &tmp, 1);
 
-       return tmp;
+         return tmp;
+      }
    }
 
    /*
