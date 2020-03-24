@@ -489,6 +489,26 @@ tu_descriptor_set_create(struct tu_device *device,
          return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
    }
 
+   if (layout->has_immutable_samplers) {
+      for (unsigned i = 0; i < layout->binding_count; ++i) {
+         if (!layout->binding[i].immutable_samplers_offset)
+            continue;
+
+         unsigned offset = layout->binding[i].offset / 4;
+         if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+            offset += A6XX_TEX_CONST_DWORDS;
+
+         const struct tu_sampler *samplers =
+            (const struct tu_sampler *)((const char *)layout +
+                               layout->binding[i].immutable_samplers_offset);
+         for (unsigned j = 0; j < layout->binding[i].array_size; ++j) {
+            memcpy(set->mapped_ptr + offset, samplers + j,
+                   sizeof(struct tu_sampler));
+            offset += layout->binding[i].size / 4;
+         }
+      }
+   }
+
    *out_set = set;
    return VK_SUCCESS;
 }
