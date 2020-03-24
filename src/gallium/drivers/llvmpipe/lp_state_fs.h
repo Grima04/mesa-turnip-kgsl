@@ -91,6 +91,7 @@ struct lp_fragment_shader_variant_key
    uint8_t cbuf_nr_samples[PIPE_MAX_COLOR_BUFS];
    uint8_t zsbuf_nr_samples;
    uint8_t coverage_samples;
+   uint8_t min_samples;
 
    struct lp_sampler_static_state samplers[1];
    /* followed by variable number of images */
