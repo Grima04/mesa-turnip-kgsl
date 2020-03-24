@@ -31,12 +31,13 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #undef GET_PROGRAM_NAME
 
 #if DETECT_OS_WINDOWS
 #include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 #if defined(__linux__) && defined(HAVE_PROGRAM_INVOCATION_NAME)
