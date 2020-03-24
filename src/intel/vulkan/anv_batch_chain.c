@@ -1761,6 +1761,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
       submit->cmd_buffer->perf_query_pool;
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
+      fprintf(stderr, "Batch on queue %d\n", (int)(queue - device->queues));
       if (submit->cmd_buffer) {
          if (has_perf_query) {
             struct anv_query_pool *query_pool = submit->cmd_buffer->perf_query_pool;
