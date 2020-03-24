@@ -157,6 +157,12 @@ void validate(Program* program, FILE * output)
             }
          }
 
+         /* check subdword definitions */
+         for (unsigned i = 0; i < instr->definitions.size(); i++) {
+            if (instr->definitions[i].regClass().is_subdword())
+               check(instr->isSDWA() || instr->format == Format::PSEUDO, "Only SDWA and Pseudo instructions can write subdword registers", instr.get());
+         }
+
          if (instr->isSALU() || instr->isVALU()) {
             /* check literals */
             Operand literal(s1);
@@ -448,6 +454,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d has an out-of-bounds register assignment", i);
             if (op.physReg() == vcc && !program->needs_vcc)
                err |= ra_fail(output, loc, Location(), "Operand %d fixed to vcc but needs_vcc=false", i);
+            if (!(instr->isSDWA() || instr->format == Format::PSEUDO) && op.regClass().is_subdword() && op.physReg().byte())
+               err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d must be aligned to a full register", i);
             if (!assignments[op.tempId()].firstloc.block)
                assignments[op.tempId()].firstloc = loc;
             if (!assignments[op.tempId()].defloc.block)
