@@ -799,12 +799,12 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
  */
 static struct v3dv_pipeline_stage*
 pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
-                             const VkAllocationCallbacks *alloc)
+                             const VkAllocationCallbacks *pAllocator)
 {
    struct v3dv_device *device = src->pipeline->device;
 
    struct v3dv_pipeline_stage *p_stage =
-      vk_zalloc2(&device->alloc, alloc, sizeof(*p_stage), 8,
+      vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    p_stage->pipeline = src->pipeline;
@@ -1025,7 +1025,7 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
 static VkResult
 pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                          const VkAllocationCallbacks *alloc)
+                          const VkAllocationCallbacks *pAllocator)
 {
    struct v3dv_pipeline_stage *stages[MESA_SHADER_STAGES] = { };
    struct v3dv_device *device = pipeline->device;
@@ -1038,7 +1038,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
       struct v3dv_pipeline_stage *p_stage =
-         vk_zalloc2(&device->alloc, alloc, sizeof(*p_stage), 8,
+         vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       p_stage->pipeline = pipeline;
@@ -1066,7 +1066,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       b.shader->info.name = ralloc_strdup(b.shader, "noop_fs");
 
       struct v3dv_pipeline_stage *p_stage =
-         vk_zalloc2(&device->alloc, alloc, sizeof(*p_stage), 8,
+         vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       p_stage->pipeline = pipeline;
@@ -1119,7 +1119,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
          pipeline->vs = p_stage;
 
-         pipeline->vs_bin = pipeline_stage_create_vs_bin(pipeline->vs, alloc);
+         pipeline->vs_bin = pipeline_stage_create_vs_bin(pipeline->vs, pAllocator);
 
          /* FIXME: likely this to be moved to a gather info method to a full
           * struct inside pipeline_stage
@@ -1863,7 +1863,7 @@ static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
               struct v3dv_device *device,
               const VkGraphicsPipelineCreateInfo *pCreateInfo,
-              const VkAllocationCallbacks *alloc)
+              const VkAllocationCallbacks *pAllocator)
 {
    VkResult result = VK_SUCCESS;
 
@@ -1902,7 +1902,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    pipeline->primitive_restart =
       pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
 
-   result = pipeline_compile_graphics(pipeline, pCreateInfo, alloc);
+   result = pipeline_compile_graphics(pipeline, pCreateInfo, pAllocator);
 
    if (result != VK_SUCCESS) {
       /* Caller would already destroy the pipeline, and we didn't allocate any
