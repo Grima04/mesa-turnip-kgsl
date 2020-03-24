@@ -84,6 +84,8 @@ struct disasm_ctx {
 	unsigned repeat;
 	/* current instruction repeat indx/offset (for --expand): */
 	unsigned repeatidx;
+
+	unsigned instructions;
 };
 
 static void print_reg(struct disasm_ctx *ctx, reg_t reg, bool full, bool r,
@@ -1212,9 +1214,12 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 	instr_t *instr = (instr_t *)dwords;
 	uint32_t opc = instr_opc(instr, ctx->gpu_id);
 	unsigned nop = 0;
+	unsigned cycles = ctx->instructions;
 
-	if (debug & PRINT_VERBOSE)
-		fprintf(ctx->out, "%s%04d[%08xx_%08xx] ", levels[ctx->level], n, dwords[1], dwords[0]);
+	if (debug & PRINT_VERBOSE) {
+		fprintf(ctx->out, "%s%04d:%04d[%08xx_%08xx] ", levels[ctx->level],
+				n, cycles++, dwords[1], dwords[0]);
+	}
 
 	/* NOTE: order flags are printed is a bit fugly.. but for now I
 	 * try to match the order in llvm-a3xx disassembler for easy
@@ -1222,6 +1227,7 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 	 */
 
 	ctx->repeat = instr_repeat(instr);
+	ctx->instructions += 1 + ctx->repeat;
 
 	if (instr->sync) {
 		fprintf(ctx->out, "(sy)");
@@ -1239,6 +1245,7 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 		nop = (instr->cat2.src2_r * 2) + instr->cat2.src1_r;
 	else if ((instr->opc_cat == 3) && (instr->cat3.src1_r || instr->cat3.src2_r))
 		nop = (instr->cat3.src2_r * 2) + instr->cat3.src1_r;
+	ctx->instructions += nop;
 	if (nop)
 		fprintf(ctx->out, "(nop%d)", nop);
 
@@ -1251,13 +1258,18 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 	if ((instr->opc_cat <= 4) && (debug & EXPAND_REPEAT)) {
 		int i;
 		for (i = 0; i < nop; i++) {
-			fprintf(ctx->out, "%s%04d[                   ] ", levels[ctx->level], n);
+			if (debug & PRINT_VERBOSE) {
+				fprintf(ctx->out, "%s%04d:%04d[                   ] ",
+						levels[ctx->level], n, cycles++);
+			}
 			fprintf(ctx->out, "nop\n");
 		}
 		for (i = 0; i < ctx->repeat; i++) {
 			ctx->repeatidx = i + 1;
-			fprintf(ctx->out, "%s%04d[                   ] ", levels[ctx->level], n);
-
+			if (debug & PRINT_VERBOSE) {
+				fprintf(ctx->out, "%s%04d:%04d[                   ] ",
+						levels[ctx->level], n, cycles++);
+			}
 			print_single_instr(ctx, instr);
 			fprintf(ctx->out, "\n");
 		}
