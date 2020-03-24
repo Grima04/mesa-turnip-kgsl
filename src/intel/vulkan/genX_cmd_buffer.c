@@ -1367,25 +1367,21 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
       ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_END_OF_PIPE_SYNC_BIT;
 }
 
-/**
- * Setup anv_cmd_state::attachments for vkCmdBeginRenderPass.
- */
 static VkResult
 genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
-                                   struct anv_render_pass *pass,
+                                   const struct anv_render_pass *pass,
+                                   const struct anv_framebuffer *framebuffer,
                                    const VkRenderPassBeginInfo *begin)
 {
-   const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
    struct anv_cmd_state *state = &cmd_buffer->state;
-   struct anv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 
    vk_free(&cmd_buffer->pool->alloc, state->attachments);
 
    if (pass->attachment_count > 0) {
-      state->attachments = vk_alloc(&cmd_buffer->pool->alloc,
-                                    pass->attachment_count *
-                                         sizeof(state->attachments[0]),
-                                    8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      state->attachments = vk_zalloc(&cmd_buffer->pool->alloc,
+                                     pass->attachment_count *
+                                          sizeof(state->attachments[0]),
+                                     8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (state->attachments == NULL) {
          /* Propagate VK_ERROR_OUT_OF_HOST_MEMORY to vkEndCommandBuffer */
          return anv_batch_set_error(&cmd_buffer->batch,
@@ -1395,68 +1391,24 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
       state->attachments = NULL;
    }
 
-   /* Reserve one for the NULL state. */
-   unsigned num_states = 1;
-   for (uint32_t i = 0; i < pass->attachment_count; ++i) {
-      if (vk_format_is_color(pass->attachments[i].format))
-         num_states++;
-
-      if (need_input_attachment_state(&pass->attachments[i]))
-         num_states++;
-   }
-
-   const uint32_t ss_stride = align_u32(isl_dev->ss.size, isl_dev->ss.align);
-   state->render_pass_states =
-      anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
-                             num_states * ss_stride, isl_dev->ss.align);
-   if (state->render_pass_states.map == NULL) {
-      return anv_batch_set_error(&cmd_buffer->batch,
-                                 VK_ERROR_OUT_OF_DEVICE_MEMORY);
-   }
-
-   struct anv_state next_state = state->render_pass_states;
-   next_state.alloc_size = isl_dev->ss.size;
-
-   state->null_surface_state = next_state;
-   next_state.offset += ss_stride;
-   next_state.map += ss_stride;
-
-   const VkRenderPassAttachmentBeginInfoKHR *begin_attachment =
+   const VkRenderPassAttachmentBeginInfoKHR *attach_begin =
       vk_find_struct_const(begin, RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR);
-
-   if (begin && !begin_attachment)
+   if (begin && !attach_begin)
       assert(pass->attachment_count == framebuffer->attachment_count);
 
    for (uint32_t i = 0; i < pass->attachment_count; ++i) {
-      if (vk_format_is_color(pass->attachments[i].format)) {
-         state->attachments[i].color.state = next_state;
-         next_state.offset += ss_stride;
-         next_state.map += ss_stride;
-      }
-
-      if (need_input_attachment_state(&pass->attachments[i])) {
-         state->attachments[i].input.state = next_state;
-         next_state.offset += ss_stride;
-         next_state.map += ss_stride;
-      }
-
-      if (begin_attachment && begin_attachment->attachmentCount != 0) {
-         assert(begin_attachment->attachmentCount == pass->attachment_count);
-         ANV_FROM_HANDLE(anv_image_view, iview, begin_attachment->pAttachments[i]);
-         cmd_buffer->state.attachments[i].image_view = iview;
+      if (attach_begin && attach_begin->attachmentCount != 0) {
+         assert(attach_begin->attachmentCount == pass->attachment_count);
+         ANV_FROM_HANDLE(anv_image_view, iview, attach_begin->pAttachments[i]);
+         state->attachments[i].image_view = iview;
       } else if (framebuffer && i < framebuffer->attachment_count) {
-         cmd_buffer->state.attachments[i].image_view = framebuffer->attachments[i];
+         state->attachments[i].image_view = framebuffer->attachments[i];
+      } else {
+         state->attachments[i].image_view = NULL;
       }
    }
-   assert(next_state.offset == state->render_pass_states.offset +
-                               state->render_pass_states.alloc_size);
 
    if (begin) {
-      isl_null_fill_state(isl_dev, state->null_surface_state.map,
-                          isl_extent3d(framebuffer->width,
-                                       framebuffer->height,
-                                       framebuffer->layers));
-
       for (uint32_t i = 0; i < pass->attachment_count; ++i) {
          struct anv_render_pass_attachment *att = &pass->attachments[i];
          VkImageAspectFlags att_aspects = vk_format_aspects(att->format);
@@ -1495,59 +1447,135 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
          if (clear_aspects)
             state->attachments[i].clear_value = begin->pClearValues[i];
 
-         struct anv_image_view *iview = cmd_buffer->state.attachments[i].image_view;
+         struct anv_image_view *iview = state->attachments[i].image_view;
          anv_assert(iview->vk_format == att->format);
 
          const uint32_t num_layers = iview->planes[0].isl.array_len;
          state->attachments[i].pending_clear_views = (1 << num_layers) - 1;
 
-         union isl_color_value clear_color = { .u32 = { 0, } };
          if (att_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
             anv_assert(iview->n_planes == 1);
             assert(att_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
             color_attachment_compute_aux_usage(cmd_buffer->device,
                                                state, i, begin->renderArea);
-            if (state->attachments[i].fast_clear) {
-               anv_clear_color_from_att_state(&clear_color,
-                                              &state->attachments[i], iview);
-            }
-
-            anv_image_fill_surface_state(cmd_buffer->device,
-                                         iview->image,
-                                         VK_IMAGE_ASPECT_COLOR_BIT,
-                                         &iview->planes[0].isl,
-                                         ISL_SURF_USAGE_RENDER_TARGET_BIT,
-                                         state->attachments[i].aux_usage,
-                                         &clear_color,
-                                         0,
-                                         &state->attachments[i].color,
-                                         NULL);
-
-            add_surface_state_relocs(cmd_buffer, state->attachments[i].color);
          } else {
             depth_stencil_attachment_compute_aux_usage(cmd_buffer->device,
                                                        state, i,
                                                        begin->renderArea);
          }
-
-         if (need_input_attachment_state(&pass->attachments[i])) {
-            anv_image_fill_surface_state(cmd_buffer->device,
-                                         iview->image,
-                                         VK_IMAGE_ASPECT_COLOR_BIT,
-                                         &iview->planes[0].isl,
-                                         ISL_SURF_USAGE_TEXTURE_BIT,
-                                         state->attachments[i].input_aux_usage,
-                                         &clear_color,
-                                         0,
-                                         &state->attachments[i].input,
-                                         NULL);
-
-            add_surface_state_relocs(cmd_buffer, state->attachments[i].input);
-         }
       }
    }
 
    return VK_SUCCESS;
+}
+
+/**
+ * Setup anv_cmd_state::attachments for vkCmdBeginRenderPass.
+ */
+static VkResult
+genX(cmd_buffer_alloc_att_surf_states)(struct anv_cmd_buffer *cmd_buffer,
+                                       const struct anv_render_pass *pass)
+{
+   const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
+   struct anv_cmd_state *state = &cmd_buffer->state;
+
+   /* Reserve one for the NULL state. */
+   unsigned num_states = 1;
+   for (uint32_t i = 0; i < pass->attachment_count; ++i) {
+      if (vk_format_is_color(pass->attachments[i].format))
+         num_states++;
+
+      if (need_input_attachment_state(&pass->attachments[i]))
+         num_states++;
+   }
+
+   const uint32_t ss_stride = align_u32(isl_dev->ss.size, isl_dev->ss.align);
+   state->render_pass_states =
+      anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
+                             num_states * ss_stride, isl_dev->ss.align);
+   if (state->render_pass_states.map == NULL) {
+      return anv_batch_set_error(&cmd_buffer->batch,
+                                 VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   }
+
+   struct anv_state next_state = state->render_pass_states;
+   next_state.alloc_size = isl_dev->ss.size;
+
+   state->null_surface_state = next_state;
+   next_state.offset += ss_stride;
+   next_state.map += ss_stride;
+
+   for (uint32_t i = 0; i < pass->attachment_count; ++i) {
+      if (vk_format_is_color(pass->attachments[i].format)) {
+         state->attachments[i].color.state = next_state;
+         next_state.offset += ss_stride;
+         next_state.map += ss_stride;
+      }
+
+      if (need_input_attachment_state(&pass->attachments[i])) {
+         state->attachments[i].input.state = next_state;
+         next_state.offset += ss_stride;
+         next_state.map += ss_stride;
+      }
+   }
+   assert(next_state.offset == state->render_pass_states.offset +
+                               state->render_pass_states.alloc_size);
+
+   return VK_SUCCESS;
+}
+
+static void
+genX(cmd_buffer_fill_att_surf_states)(struct anv_cmd_buffer *cmd_buffer,
+                                      const struct anv_render_pass *pass,
+                                      const struct anv_framebuffer *framebuffer)
+{
+   const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
+   struct anv_cmd_state *state = &cmd_buffer->state;
+
+   isl_null_fill_state(isl_dev, state->null_surface_state.map,
+                       isl_extent3d(framebuffer->width,
+                                    framebuffer->height,
+                                    framebuffer->layers));
+
+   for (uint32_t i = 0; i < pass->attachment_count; ++i) {
+      struct anv_image_view *iview = state->attachments[i].image_view;
+
+      union isl_color_value clear_color = { .u32 = { 0, } };
+      if (vk_format_is_color(pass->attachments[i].format)) {
+         if (state->attachments[i].fast_clear) {
+            anv_clear_color_from_att_state(&clear_color,
+                                           &state->attachments[i], iview);
+         }
+
+         anv_image_fill_surface_state(cmd_buffer->device,
+                                      iview->image,
+                                      VK_IMAGE_ASPECT_COLOR_BIT,
+                                      &iview->planes[0].isl,
+                                      ISL_SURF_USAGE_RENDER_TARGET_BIT,
+                                      state->attachments[i].aux_usage,
+                                      &clear_color,
+                                      0,
+                                      &state->attachments[i].color,
+                                      NULL);
+
+         add_surface_state_relocs(cmd_buffer, state->attachments[i].color);
+      }
+
+      if (need_input_attachment_state(&pass->attachments[i])) {
+         anv_image_fill_surface_state(cmd_buffer->device,
+                                      iview->image,
+                                      VK_IMAGE_ASPECT_COLOR_BIT,
+                                      &iview->planes[0].isl,
+                                      ISL_SURF_USAGE_TEXTURE_BIT,
+                                      state->attachments[i].input_aux_usage,
+                                      &clear_color,
+                                      0,
+                                      &state->attachments[i].input,
+                                      NULL);
+
+         add_surface_state_relocs(cmd_buffer, state->attachments[i].input);
+      }
+   }
 }
 
 VkResult
@@ -1626,8 +1654,14 @@ genX(BeginCommandBuffer)(
       /* This is optional in the inheritance info. */
       cmd_buffer->state.framebuffer = framebuffer;
 
-      result = genX(cmd_buffer_setup_attachments)(cmd_buffer,
-                                                  cmd_buffer->state.pass, NULL);
+      result = genX(cmd_buffer_setup_attachments)(cmd_buffer, pass,
+                                                  framebuffer, NULL);
+      if (result != VK_SUCCESS)
+         return result;
+
+      result = genX(cmd_buffer_alloc_att_surf_states)(cmd_buffer, pass);
+      if (result != VK_SUCCESS)
+         return result;
 
       /* Record that HiZ is enabled if we can. */
       if (cmd_buffer->state.framebuffer) {
@@ -5718,18 +5752,27 @@ void genX(CmdBeginRenderPass)(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_render_pass, pass, pRenderPassBegin->renderPass);
    ANV_FROM_HANDLE(anv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
+   VkResult result;
 
    cmd_buffer->state.framebuffer = framebuffer;
    cmd_buffer->state.pass = pass;
    cmd_buffer->state.render_area = pRenderPassBegin->renderArea;
-   VkResult result =
-      genX(cmd_buffer_setup_attachments)(cmd_buffer, pass, pRenderPassBegin);
 
-   /* If we failed to setup the attachments we should not try to go further */
+   result = genX(cmd_buffer_setup_attachments)(cmd_buffer, pass,
+                                               framebuffer,
+                                               pRenderPassBegin);
    if (result != VK_SUCCESS) {
       assert(anv_batch_has_error(&cmd_buffer->batch));
       return;
    }
+
+   result = genX(cmd_buffer_alloc_att_surf_states)(cmd_buffer, pass);
+   if (result != VK_SUCCESS) {
+      assert(anv_batch_has_error(&cmd_buffer->batch));
+      return;
+   }
+
+   genX(cmd_buffer_fill_att_surf_states)(cmd_buffer, pass, framebuffer);
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
