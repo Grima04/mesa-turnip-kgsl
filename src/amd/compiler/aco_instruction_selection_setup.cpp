@@ -41,8 +41,13 @@
 namespace aco {
 
 struct shader_io_state {
-   uint8_t mask[VARYING_SLOT_VAR31 + 1];
-   Temp temps[VARYING_SLOT_VAR31 + 1][4];
+   uint8_t mask[VARYING_SLOT_MAX];
+   Temp temps[VARYING_SLOT_MAX * 4u];
+
+   shader_io_state() {
+      memset(mask, 0, sizeof(mask));
+      std::fill_n(temps, VARYING_SLOT_MAX * 4u, Temp(0, RegClass::v1));
+   }
 };
 
 struct isel_context {
