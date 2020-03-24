@@ -65,7 +65,8 @@ struct glthread_attrib_binding {
 struct glthread_vao {
    GLuint Name;
    GLuint CurrentElementBufferName;
-   GLbitfield Enabled;
+   GLbitfield UserEnabled; /**< Vertex attrib arrays enabled by the user. */
+   GLbitfield Enabled; /**< UserEnabled with POS vs GENERIC0 aliasing resolved. */
    GLbitfield UserPointerMask;
    GLbitfield NonZeroDivisorMask;
 

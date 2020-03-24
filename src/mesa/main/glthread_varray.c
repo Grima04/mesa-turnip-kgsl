@@ -50,6 +50,7 @@ _mesa_glthread_reset_vao(struct glthread_vao *vao)
    };
 
    vao->CurrentElementBufferName = 0;
+   vao->UserEnabled = 0;
    vao->Enabled = 0;
    vao->UserPointerMask = 0;
    vao->NonZeroDivisorMask = 0;
@@ -230,9 +231,14 @@ _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
       return;
 
    if (enable)
-      vao->Enabled |= 1u << attrib;
+      vao->UserEnabled |= 1u << attrib;
    else
-      vao->Enabled &= ~(1u << attrib);
+      vao->UserEnabled &= ~(1u << attrib);
+
+   /* The generic0 attribute superseeds the position attribute */
+   vao->Enabled = vao->UserEnabled;
+   if (vao->Enabled & VERT_BIT_GENERIC0)
+      vao->Enabled &= ~VERT_BIT_POS;
 }
 
 void _mesa_glthread_AttribDivisor(struct gl_context *ctx, const GLuint *vaobj,
