@@ -36,6 +36,7 @@ subdir('encoder')
 
 files_bifrost = files(
   'bifrost/cmdline.c',
+  'bifrost/test/bi_submit.c'
 )
 
 bifrost_compiler = executable(
@@ -49,14 +50,18 @@ bifrost_compiler = executable(
     inc_include,
     inc_src,
     inc_panfrost,
+    inc_panfrost_hw,
  ],
   dependencies : [
     idep_nir,
     idep_mesautil,
+    dep_libdrm,
   ],
   link_with : [
     libglsl_standalone,
-    libpanfrost_bifrost
+    libpanfrost_bifrost,
+    libpanfrost_decode,
+    libpanfrost_encoder,
   ],
   build_by_default : true
 )
