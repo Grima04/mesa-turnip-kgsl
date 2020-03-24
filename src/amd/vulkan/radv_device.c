@@ -2231,8 +2231,8 @@ radv_bo_list_finish(struct radv_bo_list *bo_list)
 	pthread_mutex_destroy(&bo_list->mutex);
 }
 
-static VkResult radv_bo_list_add(struct radv_device *device,
-				 struct radeon_winsys_bo *bo)
+VkResult radv_bo_list_add(struct radv_device *device,
+			  struct radeon_winsys_bo *bo)
 {
 	struct radv_bo_list *bo_list = &device->bo_list;
 
@@ -2261,8 +2261,8 @@ static VkResult radv_bo_list_add(struct radv_device *device,
 	return VK_SUCCESS;
 }
 
-static void radv_bo_list_remove(struct radv_device *device,
-				struct radeon_winsys_bo *bo)
+void radv_bo_list_remove(struct radv_device *device,
+			 struct radeon_winsys_bo *bo)
 {
 	struct radv_bo_list *bo_list = &device->bo_list;
 
@@ -2273,7 +2273,9 @@ static void radv_bo_list_remove(struct radv_device *device,
 		return;
 
 	pthread_mutex_lock(&bo_list->mutex);
-	for(unsigned i = 0; i < bo_list->list.count; ++i) {
+	/* Loop the list backwards so we find the most recently added
+	 * memory first. */
+	for(unsigned i = bo_list->list.count; i-- > 0;) {
 		if (bo_list->list.bos[i] == bo) {
 			bo_list->list.bos[i] = bo_list->list.bos[bo_list->list.count - 1];
 			--bo_list->list.count;
@@ -5241,9 +5243,11 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		mem->type_index = mem_type_index;
 	}
 
-	result = radv_bo_list_add(device, mem->bo);
-	if (result != VK_SUCCESS)
-		goto fail;
+	if (!wsi_info) {
+		result = radv_bo_list_add(device, mem->bo);
+		if (result != VK_SUCCESS)
+			goto fail;
+	}
 
 	*pMem = radv_device_memory_to_handle(mem);
 

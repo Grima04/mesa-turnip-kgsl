@@ -758,6 +758,11 @@ struct radv_bo_list {
 	pthread_mutex_t mutex;
 };
 
+VkResult radv_bo_list_add(struct radv_device *device,
+			  struct radeon_winsys_bo *bo);
+void radv_bo_list_remove(struct radv_device *device,
+			 struct radeon_winsys_bo *bo);
+
 struct radv_secure_compile_process {
 	/* Secure process file descriptors. Used to communicate between the
 	 * user facing device and the idle forked device used to fork a clean
