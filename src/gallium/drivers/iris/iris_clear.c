@@ -646,15 +646,23 @@ iris_clear(struct pipe_context *ctx,
 
    assert(buffers != 0);
 
+   struct pipe_box box = {
+      .width = cso_fb->width,
+      .height = cso_fb->height,
+   };
+
+   if (scissor_state) {
+      box.x = scissor_state->minx;
+      box.y = scissor_state->miny;
+      box.width = MIN2(box.width, scissor_state->maxx - scissor_state->minx);
+      box.height = MIN2(box.height, scissor_state->maxy - scissor_state->miny);
+   }
+
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
       struct pipe_surface *psurf = cso_fb->zsbuf;
-      struct pipe_box box = {
-         .width = cso_fb->width,
-         .height = cso_fb->height,
-         .depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1,
-         .z = psurf->u.tex.first_layer,
-      };
 
+      box.depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1;
+      box.z = psurf->u.tex.first_layer,
       clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box, true,
                           buffers & PIPE_CLEAR_DEPTH,
                           buffers & PIPE_CLEAR_STENCIL,
@@ -669,12 +677,8 @@ iris_clear(struct pipe_context *ctx,
          if (buffers & (PIPE_CLEAR_COLOR0 << i)) {
             struct pipe_surface *psurf = cso_fb->cbufs[i];
             struct iris_surface *isurf = (void *) psurf;
-            struct pipe_box box = {
-               .width = cso_fb->width,
-               .height = cso_fb->height,
-               .depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1,
-               .z = psurf->u.tex.first_layer,
-            };
+            box.depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1,
+            box.z = psurf->u.tex.first_layer,
 
             clear_color(ice, psurf->texture, psurf->u.tex.level, &box,
                         true, isurf->view.format, isurf->view.swizzle,
