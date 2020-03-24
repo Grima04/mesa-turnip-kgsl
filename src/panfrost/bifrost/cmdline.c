@@ -96,7 +96,8 @@ static void
 test(void)
 {
         void *memctx = NULL; /* TODO */
-        bit_initialize(memctx);
+        struct panfrost_device *dev = bit_initialize(memctx);
+        bit_sanity_check(dev);
 }
 
 int

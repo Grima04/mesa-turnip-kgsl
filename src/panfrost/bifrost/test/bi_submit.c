@@ -26,6 +26,7 @@
 
 #include "bit.h"
 #include "panfrost/pandecode/decode.h"
+#include "drm-uapi/panfrost_drm.h"
 
 /* Standalone compiler tests submitting jobs directly to the hardware. Uses the
  * `bit` prefix for `BIfrost Tests` and because bit sounds wicked cool. */
@@ -53,4 +54,68 @@ bit_initialize(void *memctx)
         printf("%X\n", dev->gpu_id);
 
         return dev;
+}
+
+static bool
+bit_submit(struct panfrost_device *dev,
+                enum mali_job_type T,
+                void *payload, size_t payload_size,
+                struct panfrost_bo *bos, size_t bo_count)
+{
+        struct mali_job_descriptor_header header = {
+                .job_descriptor_size = MALI_JOB_64,
+                .job_type = T,
+                .job_index = 1
+        };
+
+        struct panfrost_bo *job = bit_bo_create(dev, 4096);
+        memcpy(job->cpu, &header, sizeof(header));
+        memcpy(job->cpu + sizeof(header), payload, payload_size);
+
+        uint32_t *bo_handles = calloc(sizeof(uint32_t), bo_count);
+
+        for (unsigned i = 0; i < bo_count; ++i)
+                bo_handles[i] = bos[i].gem_handle;
+
+        uint32_t syncobj = 0;
+        int ret = 0;
+
+        ret = drmSyncobjCreate(dev->fd, DRM_SYNCOBJ_CREATE_SIGNALED, &syncobj);
+        assert(!ret);
+
+        struct drm_panfrost_submit submit = {
+                .jc = job->gpu,
+                .bo_handles = (uintptr_t) bo_handles,
+                .bo_handle_count = bo_count,
+                .out_sync = syncobj,
+        };
+
+        ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+        assert(!ret);
+        free(bo_handles);
+
+        drmSyncobjWait(dev->fd, &syncobj, 1, INT64_MAX, 0, NULL);
+        pandecode_jc(submit.jc, true, dev->gpu_id, false);
+        return true;
+}
+
+/* Checks that the device is alive and responding to basic jobs as a sanity
+ * check - prerequisite to running code on the device. We test this via a
+ * WRITE_VALUE job */
+
+bool
+bit_sanity_check(struct panfrost_device *dev)
+{
+        struct panfrost_bo *scratch = bit_bo_create(dev, 4096);
+        ((uint32_t *) scratch->cpu)[0] = 0xAA;
+
+        struct mali_payload_write_value payload = {
+                .address = scratch->gpu,
+                .value_descriptor = MALI_WRITE_VALUE_ZERO
+        };
+
+        bool success = bit_submit(dev, JOB_TYPE_WRITE_VALUE,
+                        &payload, sizeof(payload), scratch, 1);
+
+        return success && (((uint8_t *) scratch->cpu)[0] == 0x0);
 }

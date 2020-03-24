@@ -34,6 +34,8 @@
 struct panfrost_device *
 bit_initialize(void *memctx);
 
+bool bit_sanity_check(struct panfrost_device *dev);
+
 #endif
 
 
