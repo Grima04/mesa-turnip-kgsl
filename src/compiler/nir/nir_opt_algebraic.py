@@ -109,7 +109,6 @@ optimizations = [
 
    (('~fneg', ('fneg', a)), a),
    (('ineg', ('ineg', a)), a),
-   (('fabs', ('fabs', a)), ('fabs', a)),
    (('fabs', ('fneg', a)), ('fabs', a)),
    (('fabs', ('u2f', a)), ('u2f', a)),
    (('iabs', ('iabs', a)), ('iabs', a)),
