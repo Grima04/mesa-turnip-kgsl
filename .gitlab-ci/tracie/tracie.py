@@ -86,7 +86,7 @@ def checksum(filename, hash_factory=hashlib.sha256, chunk_num_blocks=128):
     with open(filename,'rb') as f:
         for chunk in iter(lambda: f.read(chunk_num_blocks*h.block_size), b''):
             h.update(chunk)
-    return h.digest()
+    return h.hexdigest()
 
 def ensure_trace(repo_url, repo_commit, trace):
     trace_path = TRACES_DB_PATH + trace['path']
