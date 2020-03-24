@@ -1613,14 +1613,18 @@ genX(BeginCommandBuffer)(
    if (cmd_buffer->usage_flags &
        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
       assert(pBeginInfo->pInheritanceInfo);
-      cmd_buffer->state.pass =
-         anv_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
-      cmd_buffer->state.subpass =
-         &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
+      ANV_FROM_HANDLE(anv_render_pass, pass,
+                      pBeginInfo->pInheritanceInfo->renderPass);
+      struct anv_subpass *subpass =
+         &pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
+      ANV_FROM_HANDLE(anv_framebuffer, framebuffer,
+                      pBeginInfo->pInheritanceInfo->framebuffer);
+
+      cmd_buffer->state.pass = pass;
+      cmd_buffer->state.subpass = subpass;
 
       /* This is optional in the inheritance info. */
-      cmd_buffer->state.framebuffer =
-         anv_framebuffer_from_handle(pBeginInfo->pInheritanceInfo->framebuffer);
+      cmd_buffer->state.framebuffer = framebuffer;
 
       result = genX(cmd_buffer_setup_attachments)(cmd_buffer,
                                                   cmd_buffer->state.pass, NULL);
