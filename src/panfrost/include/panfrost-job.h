@@ -294,6 +294,8 @@ enum mali_format {
 	MALI_RGB10_A2UI     = MALI_FORMAT_SPECIAL | 0x7,
 	MALI_RGB10_A2I      = MALI_FORMAT_SPECIAL | 0x9,
 
+	MALI_RGB332_UNORM   = MALI_FORMAT_SPECIAL | 0xb,
+
 	/* YUV formats */
 	MALI_NV12           = MALI_FORMAT_SPECIAL | 0xc,
 

@@ -124,6 +124,9 @@ panfrost_find_format(const struct util_format_description *desc)
                 /* Z32F = R32F to the hardware */
                 return MALI_R32F;
 
+        case PIPE_FORMAT_R3G3B2_UNORM:
+                return MALI_RGB332_UNORM;
+
         case PIPE_FORMAT_B5G6R5_UNORM:
                 return MALI_RGB565;
 

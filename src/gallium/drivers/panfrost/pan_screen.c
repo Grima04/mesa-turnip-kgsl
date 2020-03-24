@@ -461,7 +461,9 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (format == PIPE_FORMAT_X8Z24_UNORM)
                 return false;
 
-        if (format == PIPE_FORMAT_A1B5G5R5_UNORM || format == PIPE_FORMAT_X1B5G5R5_UNORM)
+        if (format == PIPE_FORMAT_A1B5G5R5_UNORM ||
+            format == PIPE_FORMAT_X1B5G5R5_UNORM ||
+            format == PIPE_FORMAT_B2G3R3_UNORM)
                 return false;
 
         /* TODO */
