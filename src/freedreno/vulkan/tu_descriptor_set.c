@@ -1035,11 +1035,64 @@ tu_CreateDescriptorUpdateTemplate(
    if (!templ)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   templ->entry_count = entry_count;
+
+   if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR) {
+      TU_FROM_HANDLE(tu_pipeline_layout, pipeline_layout, pCreateInfo->pipelineLayout);
+
+      /* descriptorSetLayout should be ignored for push descriptors
+       * and instead it refers to pipelineLayout and set.
+       */
+      assert(pCreateInfo->set < MAX_SETS);
+      set_layout = pipeline_layout->set[pCreateInfo->set].layout;
+   }
+
+   for (uint32_t i = 0; i < entry_count; i++) {
+      const VkDescriptorUpdateTemplateEntry *entry = &pCreateInfo->pDescriptorUpdateEntries[i];
+
+      const struct tu_descriptor_set_binding_layout *binding_layout =
+         set_layout->binding + entry->dstBinding;
+      const uint32_t buffer_offset = binding_layout->buffer_offset +
+         entry->dstArrayElement;
+      uint32_t dst_offset, dst_stride;
+
+      /* dst_offset is an offset into dynamic_descriptors when the descriptor 
+       * is dynamic, and an offset into mapped_ptr otherwise.
+       */
+      switch (entry->descriptorType) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         dst_offset = (set_layout->input_attachment_count +
+            binding_layout->dynamic_offset_offset +
+            entry->dstArrayElement) * A6XX_TEX_CONST_DWORDS;
+         dst_stride = A6XX_TEX_CONST_DWORDS;
+         break;
+      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         dst_offset = (binding_layout->input_attachment_offset +
+            entry->dstArrayElement) * A6XX_TEX_CONST_DWORDS;
+         dst_stride = A6XX_TEX_CONST_DWORDS;
+         break;
+      default:
+         dst_offset = binding_layout->offset / 4;
+         dst_offset += (binding_layout->size * entry->dstArrayElement) / 4;
+         dst_stride = binding_layout->size / 4;
+      }
+
+      templ->entry[i] = (struct tu_descriptor_update_template_entry) {
+         .descriptor_type = entry->descriptorType,
+         .descriptor_count = entry->descriptorCount,
+         .src_offset = entry->offset,
+         .src_stride = entry->stride,
+         .dst_offset = dst_offset,
+         .dst_stride = dst_stride,
+         .buffer_offset = buffer_offset,
+         .has_sampler = !binding_layout->immutable_samplers_offset,
+      };
+   }
+
    *pDescriptorUpdateTemplate =
       tu_descriptor_update_template_to_handle(templ);
 
-   tu_use_args(set_layout);
-   tu_stub();
    return VK_SUCCESS;
 }
 
@@ -1069,7 +1122,76 @@ tu_update_descriptor_set_with_template(
 {
    TU_FROM_HANDLE(tu_descriptor_update_template, templ,
                   descriptorUpdateTemplate);
-   tu_use_args(templ);
+
+   for (uint32_t i = 0; i < templ->entry_count; i++) {
+      uint32_t *ptr = set->mapped_ptr;
+      const void *src = ((const char *) pData) + templ->entry[i].src_offset;
+      struct tu_bo **buffer_list = set->buffers;
+
+      ptr += templ->entry[i].dst_offset;
+      buffer_list += templ->entry[i].buffer_offset;
+      unsigned dst_offset = templ->entry[i].dst_offset;
+      for (unsigned j = 0; j < templ->entry[i].descriptor_count; ++j) {
+         switch(templ->entry[i].descriptor_type) {
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: {
+            assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
+            write_ubo_descriptor(device, cmd_buffer,
+                                 set->dynamic_descriptors + dst_offset,
+                                 buffer_list, src);
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+            write_ubo_descriptor(device, cmd_buffer, ptr, buffer_list, src);
+            break;
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+            assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
+            write_buffer_descriptor(device, cmd_buffer,
+                                    set->dynamic_descriptors + dst_offset,
+                                    buffer_list, src);
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            write_buffer_descriptor(device, cmd_buffer, ptr, buffer_list, src);
+            break;
+         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            write_texel_buffer_descriptor(device, cmd_buffer, ptr,
+                                          buffer_list, *(VkBufferView *) src);
+            break;
+         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            write_image_descriptor(device, cmd_buffer, ptr, buffer_list,
+                                   templ->entry[i].descriptor_type,
+                                   src);
+            break;
+         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+            write_image_descriptor(device, cmd_buffer,
+                                    set->dynamic_descriptors + dst_offset,
+                                    buffer_list, templ->entry[i].descriptor_type,
+                                    src);
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            write_combined_image_sampler_descriptor(device, cmd_buffer,
+                                                    A6XX_TEX_CONST_DWORDS * 4,
+                                                    ptr, buffer_list,
+                                                    templ->entry[i].descriptor_type,
+                                                    src,
+                                                    templ->entry[i].has_sampler);
+            break;
+         case VK_DESCRIPTOR_TYPE_SAMPLER:
+            write_sampler_descriptor(device, ptr, src);
+            break;
+         default:
+            unreachable("unimplemented descriptor type");
+            break;
+         }
+         src = (char *) src + templ->entry[i].src_stride;
+         ptr += templ->entry[i].dst_stride;
+         dst_offset += templ->entry[i].dst_stride;
+         ++buffer_list;
+      }
+   }
 }
 
 void

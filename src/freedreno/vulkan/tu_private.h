@@ -690,7 +690,6 @@ struct tu_descriptor_update_template_entry
 struct tu_descriptor_update_template
 {
    uint32_t entry_count;
-   VkPipelineBindPoint bind_point;
    struct tu_descriptor_update_template_entry entry[0];
 };
 
