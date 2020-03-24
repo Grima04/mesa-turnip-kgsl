@@ -91,9 +91,6 @@ panfrost_find_format(const struct util_format_description *desc)
         /* Check for special formats */
         switch (desc->format)
         {
-        case PIPE_FORMAT_NV12:
-                return MALI_NV12;
-
         case PIPE_FORMAT_R10G10B10X2_UNORM:
         case PIPE_FORMAT_B10G10R10X2_UNORM:
         case PIPE_FORMAT_R10G10B10A2_UNORM:
