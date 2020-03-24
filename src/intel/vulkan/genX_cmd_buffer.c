@@ -293,8 +293,7 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
 static void
 color_attachment_compute_aux_usage(struct anv_device * device,
                                    struct anv_cmd_state * cmd_state,
-                                   uint32_t att, VkRect2D render_area,
-                                   union isl_color_value *fast_clear_color)
+                                   uint32_t att, VkRect2D render_area)
 {
    struct anv_attachment_state *att_state = &cmd_state->attachments[att];
    struct anv_image_view *iview = cmd_state->attachments[att].image_view;
@@ -425,9 +424,6 @@ color_attachment_compute_aux_usage(struct anv_device * device,
                        "Rendering to a multi-layer framebuffer with "
                        "LOAD_OP_CLEAR.  Only fast-clearing the first slice");
       }
-
-      if (att_state->fast_clear)
-         *fast_clear_color = clear_color;
    } else {
       att_state->fast_clear = false;
    }
@@ -1510,8 +1506,11 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
             anv_assert(iview->n_planes == 1);
             assert(att_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
             color_attachment_compute_aux_usage(cmd_buffer->device,
-                                               state, i, begin->renderArea,
-                                               &clear_color);
+                                               state, i, begin->renderArea);
+            if (state->attachments[i].fast_clear) {
+               anv_clear_color_from_att_state(&clear_color,
+                                              &state->attachments[i], iview);
+            }
 
             anv_image_fill_surface_state(cmd_buffer->device,
                                          iview->image,
