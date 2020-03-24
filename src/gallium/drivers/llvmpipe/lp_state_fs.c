@@ -859,17 +859,18 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                             z_value, s_value);
    }
 
+   if (key->occlusion_count) {
+      LLVMValueRef counter = lp_jit_thread_data_counter(gallivm, thread_data_ptr);
+      lp_build_name(counter, "counter");
+
+      lp_build_occlusion_count(gallivm, type,
+                               key->multisample ? s_mask : lp_build_mask_value(&mask), counter);
+   }
+
    if (key->multisample) {
       /* store the sample mask for this loop */
       LLVMBuildStore(builder, s_mask, s_mask_ptr);
       lp_build_for_loop_end(&sample_loop_state);
-   }
-
-   if (key->occlusion_count) {
-      LLVMValueRef counter = lp_jit_thread_data_counter(gallivm, thread_data_ptr);
-      lp_build_name(counter, "counter");
-      lp_build_occlusion_count(gallivm, type,
-                               lp_build_mask_value(&mask), counter);
    }
 
    mask_val = lp_build_mask_end(&mask);
