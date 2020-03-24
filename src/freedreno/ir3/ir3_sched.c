@@ -104,6 +104,22 @@ struct ir3_sched_node {
 	unsigned delay;
 	unsigned max_delay;
 
+	/* For instructions that are a meta:collect src, once we schedule
+	 * the first src of the collect, the entire vecN is live (at least
+	 * from the PoV of the first RA pass.. the 2nd scalar pass can fill
+	 * in some of the gaps, but often not all).  So we want to help out
+	 * RA, and realize that as soon as we schedule the first collect
+	 * src, there is no penalty to schedule the remainder (ie. they
+	 * don't make additional values live).  In fact we'd prefer to
+	 * schedule the rest ASAP to minimize the live range of the vecN.
+	 *
+	 * For instructions that are the src of a collect, we track the
+	 * corresponding collect, and mark them as partially live as soon
+	 * as any one of the src's is scheduled.
+	 */
+	struct ir3_instruction *collect;
+	bool partially_live;
+
 	/* Is this instruction a direct or indirect dependency for a kill?
 	 * If so, we should prioritize it when possible
 	 */
@@ -157,6 +173,19 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	}
 
 	struct ir3_sched_node *n = instr->data;
+
+	/* If this instruction is a meta:collect src, mark the remaining
+	 * collect srcs as partially live.
+	 */
+	if (n->collect) {
+		struct ir3_instruction *src;
+		foreach_ssa_src (src, n->collect) {
+			if (src->block != instr->block)
+				continue;
+			struct ir3_sched_node *sn = src->data;
+			sn->partially_live = true;
+		}
+	}
 
 	dag_prune_head(ctx->dag, &n->dag);
 }
@@ -340,9 +369,16 @@ use_count(struct ir3_instruction *instr)
 static int
 live_effect(struct ir3_instruction *instr)
 {
+	struct ir3_sched_node *n = instr->data;
 	struct ir3_instruction *src;
-	int new_live = dest_regs(instr);
+	int new_live = n->partially_live ? 0 : dest_regs(instr);
 	int freed_live = 0;
+
+	/* if we schedule something that causes a vecN to be live,
+	 * then count all it's other components too:
+	 */
+	if (n->collect)
+		new_live *= n->collect->regs_count - 1;
 
 	foreach_ssa_src_n (src, n, instr) {
 		if (__is_false_dep(instr, n))
@@ -696,6 +732,13 @@ sched_node_add_dep(struct ir3_instruction *instr, struct ir3_instruction *src, i
 
 	struct ir3_sched_node *n = instr->data;
 	struct ir3_sched_node *sn = src->data;
+
+	/* If src is consumed by a collect, track that to realize that once
+	 * any of the collect srcs are live, we should hurry up and schedule
+	 * the rest.
+	 */
+	if (instr->opc == OPC_META_COLLECT)
+		sn->collect = instr;
 
 	dag_add_edge(&sn->dag, &n->dag, NULL);
 
