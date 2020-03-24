@@ -5,13 +5,20 @@
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"
     DEQP_VERSION: gles2
+    FILES_HOST_NAME: "mesa-ci-lava-files.freedesktop.org"
   script:
-    - BUILD_JOB_ID=`cat artifacts/build_job_id.txt`
+    - mkdir -p /srv/${FILES_HOST_NAME}/$CI_JOB_ID/
+    - cp /lava-files/${KERNEL_IMAGE_NAME} /srv/${FILES_HOST_NAME}/$CI_JOB_ID/.
+    - cp /lava-files/${DEVICE_TYPE}.dtb /srv/${FILES_HOST_NAME}/$CI_JOB_ID/.
+    - tar -C /lava-files/rootfs-${ARCH} -xf artifacts/install.tar
+    - pushd /lava-files/rootfs-${ARCH}
+    - find -H  |  cpio -H newc -o | gzip -c - > /srv/${FILES_HOST_NAME}/$CI_JOB_ID/lava-rootfs-${ARCH}.cpio.gz
+    - popd
     - >
       artifacts/generate_lava.py \
         --template artifacts/lava-deqp.yml.jinja2 \
         --pipeline-info "$CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
-        --base-artifacts-url $CI_PROJECT_URL/-/jobs/$BUILD_JOB_ID/artifacts/raw/artifacts \
+        --base-artifacts-url https://${FILES_HOST_NAME}/$CI_JOB_ID \
         --device-type ${DEVICE_TYPE} \
         --env-vars "${ENV_VARS}" \
         --arch ${ARCH} \
@@ -23,7 +30,7 @@
         --lava-tags "${LAVA_TAGS}" \
         --ci-node-index "${CI_NODE_INDEX}" \
         --ci-node-total "${CI_NODE_TOTAL}"
-    - lava_job_id=`lavacli jobs submit lava-deqp.yml`
+    - lava_job_id=`lavacli jobs submit lava-deqp.yml` || lavacli jobs submit lava-deqp.yml
     - echo $lava_job_id
     - rm -rf artifacts/*
     - cp lava-deqp.yml artifacts/.
@@ -32,6 +39,8 @@
     - result=`lavacli results $lava_job_id 0_deqp deqp | head -1`
     - echo $result
     - '[[ "$result" == "pass" ]]'
+  after_script:
+    - rm -rf /srv/${FILES_HOST_NAME}/$CI_JOB_ID/
   artifacts:
     name: "mesa_${CI_JOB_NAME}"
     when: always
@@ -75,7 +84,7 @@ panfrost-t720-gles2:arm64:
     GPU_VERSION: panfrost-t720
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
   tags:
-    - lava-sun50i-h6-pine-h64
+    - mesa-ci-aarch64-lava-collabora
 
 panfrost-t760-gles2:armhf:
   extends:
@@ -88,7 +97,7 @@ panfrost-t760-gles2:armhf:
     KERNEL_IMAGE_TYPE: ""
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
   tags:
-    - lava-rk3288-veyron-jaq
+    - mesa-ci-aarch64-lava-collabora
 
 panfrost-t860-gles2:arm64:
   extends:
@@ -101,7 +110,7 @@ panfrost-t860-gles2:arm64:
     KERNEL_IMAGE_TYPE: ""
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
   tags:
-    - lava-rk3399-gru-kevin
+    - mesa-ci-aarch64-lava-collabora
 
 panfrost-t860-gles3:arm64:
   extends:
@@ -117,9 +126,9 @@ panfrost-t860-gles3:arm64:
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 5
   tags:
-    - lava-rk3399-gru-kevin
+    - mesa-ci-aarch64-lava-collabora
 
-panfrost-t820-gles2:arm64:
+.panfrost-t820-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
@@ -128,6 +137,7 @@ panfrost-t820-gles2:arm64:
     GPU_VERSION: panfrost-t820
     LAVA_TAGS: panfrost
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
+    FILES_HOST_NAME: "lava-files.baylibre.com"
   tags:
     - lava-meson-gxm-khadas-vim2
 
@@ -140,10 +150,11 @@ panfrost-t820-gles2:arm64:
     DEVICE_TYPE: sun8i-h3-libretech-all-h3-cc
     GPU_VERSION: lima
     ENV_VARS: "DEQP_PARALLEL=3"
+    FILES_HOST_NAME: "lava-files.baylibre.com"
   tags:
     - lava-sun8i-h3-libretech-all-h3-cc
 
-lima-mali450-test:arm64:
+.lima-mali450-test:arm64:
   extends:
     - .lava-test:arm64
     - .lima-rules
@@ -151,5 +162,6 @@ lima-mali450-test:arm64:
     DEVICE_TYPE: meson-gxl-s905x-libretech-cc
     GPU_VERSION: lima
     ENV_VARS: "DEQP_PARALLEL=6"
+    FILES_HOST_NAME: "lava-files.baylibre.com"
   tags:
     - lava-meson-gxl-s905x-libretech-cc

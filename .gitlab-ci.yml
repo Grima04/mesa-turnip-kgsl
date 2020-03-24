@@ -162,7 +162,7 @@ arm_build:
     - .fdo.container-ifnot-exists@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-03-17-db820c"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-03-24"
 
 .use-arm_build:
   variables:
