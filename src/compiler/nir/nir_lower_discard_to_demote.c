@@ -50,9 +50,11 @@ nir_lower_discard_to_demote(nir_shader *shader)
             switch (intrin->intrinsic) {
             case nir_intrinsic_discard:
                intrin->intrinsic = nir_intrinsic_demote;
+               shader->info.fs.uses_demote = true;
                break;
             case nir_intrinsic_discard_if:
                intrin->intrinsic = nir_intrinsic_demote_if;
+               shader->info.fs.uses_demote = true;
                break;
             case nir_intrinsic_load_helper_invocation:
                intrin->intrinsic = nir_intrinsic_is_helper_invocation;
