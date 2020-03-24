@@ -1342,8 +1342,8 @@ tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
 static void
 tu6_emit_gras_unknowns(struct tu_cs *cs)
 {
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_DISABLE_CNTL, 1);
-   tu_cs_emit(cs, A6XX_GRAS_DISABLE_CNTL_VP_CLIP_CODE_IGNORE);
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_CNTL, 1);
+   tu_cs_emit(cs, A6XX_GRAS_CL_CNTL_VP_CLIP_CODE_IGNORE);
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8001, 1);
    tu_cs_emit(cs, 0x0);
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_LAYER_CNTL, 1);
