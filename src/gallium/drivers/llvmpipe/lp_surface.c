@@ -238,43 +238,6 @@ llvmpipe_surface_destroy(struct pipe_context *pipe,
 }
 
 
-static void
-llvmpipe_clear_render_target(struct pipe_context *pipe,
-                             struct pipe_surface *dst,
-                             const union pipe_color_union *color,
-                             unsigned dstx, unsigned dsty,
-                             unsigned width, unsigned height,
-                             bool render_condition_enabled)
-{
-   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
-
-   if (render_condition_enabled && !llvmpipe_check_render_cond(llvmpipe))
-      return;
-
-   util_clear_render_target(pipe, dst, color,
-                            dstx, dsty, width, height);
-}
-
-
-static void
-llvmpipe_clear_depth_stencil(struct pipe_context *pipe,
-                             struct pipe_surface *dst,
-                             unsigned clear_flags,
-                             double depth,
-                             unsigned stencil,
-                             unsigned dstx, unsigned dsty,
-                             unsigned width, unsigned height,
-                             bool render_condition_enabled)
-{
-   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
-
-   if (render_condition_enabled && !llvmpipe_check_render_cond(llvmpipe))
-      return;
-
-   util_clear_depth_stencil(pipe, dst, clear_flags,
-                            depth, stencil,
-                            dstx, dsty, width, height);
-}
 
 static void
 llvmpipe_get_sample_position(struct pipe_context *pipe,
@@ -334,6 +297,32 @@ lp_clear_color_texture_msaa(struct pipe_context *pipe,
 }
 
 static void
+llvmpipe_clear_render_target(struct pipe_context *pipe,
+                             struct pipe_surface *dst,
+                             const union pipe_color_union *color,
+                             unsigned dstx, unsigned dsty,
+                             unsigned width, unsigned height,
+                             bool render_condition_enabled)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+
+   if (render_condition_enabled && !llvmpipe_check_render_cond(llvmpipe))
+      return;
+
+   if (dst->texture->nr_samples > 1) {
+      struct pipe_box box;
+      u_box_2d(dstx, dsty, width, height, &box);
+      for (unsigned s = 0; s < util_res_sample_count(dst->texture); s++) {
+         lp_clear_color_texture_msaa(pipe, dst->texture, dst->format,
+                                     color, s, &box);
+      }
+   } else
+      util_clear_render_target(pipe, dst, color,
+                               dstx, dsty, width, height);
+}
+
+
+static void
 lp_clear_depth_stencil_texture_msaa(struct pipe_context *pipe,
                                     struct pipe_resource *texture,
                                     enum pipe_format format,
@@ -367,6 +356,35 @@ lp_clear_depth_stencil_texture_msaa(struct pipe_context *pipe,
 		    box->width, box->height, box->depth, zstencil);
 
    pipe->transfer_unmap(pipe, dst_trans);
+}
+
+static void
+llvmpipe_clear_depth_stencil(struct pipe_context *pipe,
+                             struct pipe_surface *dst,
+                             unsigned clear_flags,
+                             double depth,
+                             unsigned stencil,
+                             unsigned dstx, unsigned dsty,
+                             unsigned width, unsigned height,
+                             bool render_condition_enabled)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+
+   if (render_condition_enabled && !llvmpipe_check_render_cond(llvmpipe))
+      return;
+
+   if (dst->texture->nr_samples > 1) {
+      uint64_t zstencil = util_pack64_z_stencil(dst->format, depth, stencil);
+      struct pipe_box box;
+      u_box_2d(dstx, dsty, width, height, &box);
+      for (unsigned s = 0; s < util_res_sample_count(dst->texture); s++)
+         lp_clear_depth_stencil_texture_msaa(pipe, dst->texture,
+                                             dst->format, clear_flags,
+                                             zstencil, s, &box);
+   } else
+      util_clear_depth_stencil(pipe, dst, clear_flags,
+                               depth, stencil,
+                               dstx, dsty, width, height);
 }
 
 static void
