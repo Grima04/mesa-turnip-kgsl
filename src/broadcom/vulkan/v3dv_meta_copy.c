@@ -616,12 +616,6 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
-static inline bool
-can_use_tlb_copy_for_image_offset(const VkOffset3D *offset)
-{
-   return offset->x == 0 && offset->y == 0;
-}
-
 /* Implements a copy using the TLB.
  *
  * This only works if we are copying from offset (0,0), since a TLB store for
@@ -634,8 +628,6 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_image *image,
                          const VkBufferImageCopy *region)
 {
-   assert(can_use_tlb_copy_for_image_offset(&region->imageOffset));
-
    uint32_t internal_type, internal_bpp;
    get_internal_type_bpp_for_image_aspects(image,
                                            region->imageSubresource.aspectMask,
@@ -990,6 +982,8 @@ v3dv_CmdClearColorImage(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < rangeCount; i++) {
       if (can_use_tlb(image, &origin))
          clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
+      else
+         assert(!"Fallback path for vkCmdClearColorImage not implemented");
    }
 }
 
@@ -1008,8 +1002,12 @@ v3dv_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
       .depthStencil = *pDepthStencil,
    };
 
+   const VkOffset3D origin = { 0, 0, 0 };
    for (uint32_t i = 0; i < rangeCount; i++)
-      clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
+      if (can_use_tlb(image, &origin))
+         clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
+      else
+         assert(!"Fallback path for vkCmdClearDepthStencilImage not implemented");
 }
 
 static void
@@ -1503,8 +1501,6 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_buffer *buffer,
                          const VkBufferImageCopy *region)
 {
-   assert(can_use_tlb_copy_for_image_offset(&region->imageOffset));
-
    uint32_t internal_type, internal_bpp;
    get_internal_type_bpp_for_image_aspects(image,
                                            region->imageSubresource.aspectMask,
@@ -1548,7 +1544,7 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_image, image, dstImage);
 
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb_copy_for_image_offset(&pRegions[i].imageOffset))
+      if (can_use_tlb(image, &pRegions[i].imageOffset))
          copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]);
       else
          assert(!"Fallback path for vkCmdCopyBufferToImage not implemented");
