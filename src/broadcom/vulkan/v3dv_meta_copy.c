@@ -25,6 +25,7 @@
 
 #include "broadcom/cle/v3dx_pack.h"
 #include "vk_format_info.h"
+#include "util/u_pack_color.h"
 
 /**
  * Copy operations implemented in this file don't operate on a framebuffer
@@ -44,10 +45,15 @@ struct framebuffer_data {
    uint32_t min_y_supertile;
    uint32_t max_x_supertile;
    uint32_t max_y_supertile;
+
+   /* Format info */
+   VkFormat vk_format;
+   const struct v3dv_format *format;
 };
 
 static void
 setup_framebuffer_data(struct framebuffer_data *fb,
+                       VkFormat vk_format,
                        uint32_t internal_type,
                        const struct v3dv_frame_tiling *tiling)
 {
@@ -64,6 +70,8 @@ setup_framebuffer_data(struct framebuffer_data *fb,
    fb->max_x_supertile = (tiling->width - 1) / supertile_w_in_pixels;
    fb->max_y_supertile = (tiling->height - 1) / supertile_h_in_pixels;
 
+   fb->vk_format = vk_format;
+   fb->format = v3dv_get_format(vk_format);
 }
 
 /* This chooses a tile buffer format that is appropriate for the copy operation.
@@ -73,14 +81,14 @@ setup_framebuffer_data(struct framebuffer_data *fb,
  * color format.
  */
 static uint32_t
-choose_tlb_format(struct v3dv_image *image,
+choose_tlb_format(struct framebuffer_data *framebuffer,
                   VkImageAspectFlags aspect,
                   bool for_store,
                   bool is_copy_to_buffer,
                   bool is_copy_from_buffer)
 {
    if (is_copy_to_buffer || is_copy_from_buffer) {
-      switch (image->vk_format) {
+      switch (framebuffer->vk_format) {
       case VK_FORMAT_D16_UNORM:
          return V3D_OUTPUT_IMAGE_FORMAT_R16UI;
       case VK_FORMAT_D32_SFLOAT:
@@ -120,11 +128,11 @@ choose_tlb_format(struct v3dv_image *image,
             }
          }
       default: /* Color formats */
-         return image->format->rt_type;
+         return framebuffer->format->rt_type;
          break;
       }
    } else {
-      return image->format->rt_type;
+      return framebuffer->format->rt_type;
    }
 }
 
@@ -136,7 +144,7 @@ format_needs_rb_swap(VkFormat format)
 }
 
 static void
-get_internal_type_bpp_for_image_aspects(struct v3dv_image *image,
+get_internal_type_bpp_for_image_aspects(VkFormat vk_format,
                                         VkImageAspectFlags aspect_mask,
                                         uint32_t *internal_type,
                                         uint32_t *internal_bpp)
@@ -150,7 +158,7 @@ get_internal_type_bpp_for_image_aspects(struct v3dv_image *image,
     */
    /* FIXME: pre-compute this at image creation time? */
    if (aspect_mask & ds_aspects) {
-      switch (image->vk_format) {
+      switch (vk_format) {
       case VK_FORMAT_D16_UNORM:
          *internal_type = V3D_INTERNAL_TYPE_16UI;
          *internal_bpp = V3D_INTERNAL_BPP_64;
@@ -173,7 +181,8 @@ get_internal_type_bpp_for_image_aspects(struct v3dv_image *image,
          break;
       }
    } else {
-      v3dv_get_internal_type_bpp_for_output_format(image->format->rt_type,
+      const struct v3dv_format *format = v3dv_get_format(vk_format);
+      v3dv_get_internal_type_bpp_for_output_format(format->rt_type,
                                                    internal_type,
                                                    internal_bpp);
    }
@@ -387,6 +396,7 @@ emit_linear_store(struct v3dv_cl *cl,
 
 static void
 emit_image_load(struct v3dv_cl *cl,
+                struct framebuffer_data *framebuffer,
                 struct v3dv_image *image,
                 VkImageAspectFlags aspect,
                 uint32_t layer,
@@ -410,7 +420,7 @@ emit_image_load(struct v3dv_cl *cl,
 
       load.address = v3dv_cl_address(image->mem->bo, layer_offset);
 
-      load.input_image_format = choose_tlb_format(image, aspect, false,
+      load.input_image_format = choose_tlb_format(framebuffer, aspect, false,
                                                   is_copy_to_buffer,
                                                   is_copy_from_buffer);
       load.memory_format = slice->tiling;
@@ -435,8 +445,8 @@ emit_image_load(struct v3dv_cl *cl,
       bool needs_rb_swap = false;
       bool needs_chan_reverse = false;
       if (is_copy_to_buffer &&
-         (image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
-          (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+         (framebuffer->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
+          (framebuffer->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
            (aspect & VK_IMAGE_ASPECT_DEPTH_BIT)))) {
          needs_rb_swap = true;
          needs_chan_reverse = true;
@@ -445,7 +455,7 @@ emit_image_load(struct v3dv_cl *cl,
          /* This is not a raw data copy (i.e. we are clearing the image),
           * so we need to make sure we respect the format swizzle.
           */
-         needs_rb_swap = format_needs_rb_swap(image->vk_format);
+         needs_rb_swap = format_needs_rb_swap(framebuffer->vk_format);
       }
 
       load.r_b_swap = needs_rb_swap;
@@ -468,6 +478,7 @@ emit_image_load(struct v3dv_cl *cl,
 
 static void
 emit_image_store(struct v3dv_cl *cl,
+                 struct framebuffer_data *framebuffer,
                  struct v3dv_image *image,
                  VkImageAspectFlags aspect,
                  uint32_t layer,
@@ -492,20 +503,20 @@ emit_image_store(struct v3dv_cl *cl,
       bool needs_rb_swap = false;
       bool needs_chan_reverse = false;
       if (is_copy_from_buffer &&
-         (image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
-          (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+         (framebuffer->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
+          (framebuffer->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
            (aspect & VK_IMAGE_ASPECT_DEPTH_BIT)))) {
          needs_rb_swap = true;
          needs_chan_reverse = true;
       } else if (!is_copy_from_buffer && !is_copy_to_buffer &&
                  (aspect & VK_IMAGE_ASPECT_COLOR_BIT)) {
-         needs_rb_swap = format_needs_rb_swap(image->vk_format);
+         needs_rb_swap = format_needs_rb_swap(framebuffer->vk_format);
       }
 
       store.r_b_swap = needs_rb_swap;
       store.channel_reverse = needs_chan_reverse;
 
-      store.output_image_format = choose_tlb_format(image, aspect, true,
+      store.output_image_format = choose_tlb_format(framebuffer, aspect, true,
                                                     is_copy_to_buffer,
                                                     is_copy_from_buffer);
       store.memory_format = slice->tiling;
@@ -526,6 +537,7 @@ emit_image_store(struct v3dv_cl *cl,
 
 static void
 emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
+                                        struct framebuffer_data *framebuffer,
                                         struct v3dv_buffer *buffer,
                                         struct v3dv_image *image,
                                         uint32_t layer,
@@ -542,7 +554,7 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
           layer < image->extent.depth);
 
    /* Load image to TLB */
-   emit_image_load(cl, image, imgrsc->aspectMask,
+   emit_image_load(cl, framebuffer, image, imgrsc->aspectMask,
                    imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                    true, false);
 
@@ -572,7 +584,7 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    uint32_t buffer_offset =
       region->bufferOffset + height * buffer_stride * layer;
 
-   uint32_t format = choose_tlb_format(image, imgrsc->aspectMask,
+   uint32_t format = choose_tlb_format(framebuffer, imgrsc->aspectMask,
                                        true, true, false);
    bool msaa = image->samples > VK_SAMPLE_COUNT_1_BIT;
 
@@ -598,7 +610,8 @@ emit_copy_layer_to_buffer(struct v3dv_job *job,
                           const VkBufferImageCopy *region)
 {
    emit_frame_setup(job, layer, NULL);
-   emit_copy_layer_to_buffer_per_tile_list(job, buffer, image, layer, region);
+   emit_copy_layer_to_buffer_per_tile_list(job, framebuffer, buffer,
+                                           image, layer, region);
    emit_supertile_coordinates(job, framebuffer);
 }
 
@@ -626,10 +639,11 @@ static void
 copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_buffer *buffer,
                          struct v3dv_image *image,
+                         VkFormat fb_format,
                          const VkBufferImageCopy *region)
 {
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(image,
+   get_internal_type_bpp_for_image_aspects(fb_format,
                                            region->imageSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
 
@@ -650,7 +664,8 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                         num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
-   setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
+   setup_framebuffer_data(&framebuffer, fb_format, internal_type,
+                          &job->frame_tiling);
 
    v3dv_job_emit_binning_flush(job);
    emit_copy_image_to_buffer_rcl(job, buffer, image, &framebuffer, region);
@@ -658,11 +673,66 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_cmd_buffer_finish_job(cmd_buffer);
 }
 
-static inline bool
-can_use_tlb(struct v3dv_image *image, const VkOffset3D *offset)
+static VkFormat
+get_compatible_tlb_format(VkFormat format)
 {
-   return image->format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO &&
-          offset->x == 0 && offset->y == 0;
+   switch (format) {
+   case VK_FORMAT_R8G8B8A8_SNORM:
+      return VK_FORMAT_R8G8B8A8_UINT;
+
+   case VK_FORMAT_R8G8_SNORM:
+      return VK_FORMAT_R8G8_UINT;
+
+   case VK_FORMAT_R8_SNORM:
+      return VK_FORMAT_R8_UINT;
+
+   case VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+      return VK_FORMAT_A8B8G8R8_UINT_PACK32;
+
+   case VK_FORMAT_R16_UNORM:
+   case VK_FORMAT_R16_SNORM:
+      return VK_FORMAT_R16_UINT;
+
+   case VK_FORMAT_R16G16_UNORM:
+   case VK_FORMAT_R16G16_SNORM:
+      return VK_FORMAT_R16G16_UINT;
+
+   case VK_FORMAT_R16G16B16A16_UNORM:
+   case VK_FORMAT_R16G16B16A16_SNORM:
+      return VK_FORMAT_R16G16B16A16_UINT;
+
+   case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+      return VK_FORMAT_R32_SFLOAT;
+
+   default:
+      return VK_FORMAT_UNDEFINED;
+   }
+}
+
+static inline bool
+can_use_tlb(struct v3dv_image *image,
+            const VkOffset3D *offset,
+            VkFormat *compat_format)
+{
+   if (offset->x != 0 || offset->y != 0)
+      return false;
+
+   if (image->format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
+      if (compat_format)
+         *compat_format = image->vk_format;
+      return true;
+   }
+
+   /* If the image format is not TLB-supported, then check if we can use
+    * a compatible format instead.
+    */
+   if (compat_format) {
+      *compat_format = get_compatible_tlb_format(image->vk_format);
+      if (*compat_format != VK_FORMAT_UNDEFINED)
+         return true;
+   }
+
+   return false;
 }
 
 void
@@ -677,16 +747,20 @@ v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_image, image, srcImage);
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, destBuffer);
 
+   VkFormat compat_format;
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb(image, &pRegions[i].imageOffset))
-         copy_image_to_buffer_tlb(cmd_buffer, buffer, image, &pRegions[i]);
-      else
+      if (can_use_tlb(image, &pRegions[i].imageOffset, &compat_format)) {
+         copy_image_to_buffer_tlb(cmd_buffer, buffer, image, compat_format,
+                                  &pRegions[i]);
+      } else {
          assert(!"Fallback path for vkCopyImageToBuffer not implemented");
+      }
    }
 }
 
 static void
 emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
+                                    struct framebuffer_data *framebuffer,
                                     struct v3dv_image *dst,
                                     struct v3dv_image *src,
                                     uint32_t layer,
@@ -702,7 +776,7 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
    assert((src->type != VK_IMAGE_TYPE_3D && layer < srcrsc->layerCount) ||
           layer < src->extent.depth);
 
-   emit_image_load(cl, src, srcrsc->aspectMask,
+   emit_image_load(cl, framebuffer, src, srcrsc->aspectMask,
                    srcrsc->baseArrayLayer + layer, srcrsc->mipLevel,
                    false, false);
 
@@ -714,7 +788,7 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
    assert((dst->type != VK_IMAGE_TYPE_3D && layer < dstrsc->layerCount) ||
           layer < dst->extent.depth);
 
-   emit_image_store(cl, dst, dstrsc->aspectMask,
+   emit_image_store(cl, framebuffer, dst, dstrsc->aspectMask,
                     dstrsc->baseArrayLayer + layer, dstrsc->mipLevel,
                     false, false);
 
@@ -737,7 +811,7 @@ emit_copy_image_layer(struct v3dv_job *job,
                       const VkImageCopy *region)
 {
    emit_frame_setup(job, layer, NULL);
-   emit_copy_image_layer_per_tile_list(job, dst, src, layer, region);
+   emit_copy_image_layer_per_tile_list(job, framebuffer, dst, src, layer, region);
    emit_supertile_coordinates(job, framebuffer);
 }
 
@@ -759,6 +833,7 @@ static void
 copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                struct v3dv_image *dst,
                struct v3dv_image *src,
+               VkFormat fb_format,
                const VkImageCopy *region)
 {
    /* From the Vulkan spec, VkImageCopy valid usage:
@@ -770,7 +845,7 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    assert(region->dstSubresource.aspectMask ==
           region->srcSubresource.aspectMask);
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(dst,
+   get_internal_type_bpp_for_image_aspects(fb_format,
                                            region->dstSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
 
@@ -797,7 +872,8 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                         num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
-   setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
+   setup_framebuffer_data(&framebuffer, fb_format, internal_type,
+                          &job->frame_tiling);
 
    v3dv_job_emit_binning_flush(job);
    emit_copy_image_rcl(job, dst, src, &framebuffer, region);
@@ -818,10 +894,11 @@ v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_image, src, srcImage);
    V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
 
+   VkFormat compat_format;
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb(src, &pRegions[i].srcOffset) &&
-          can_use_tlb(dst, &pRegions[i].dstOffset)) {
-         copy_image_tlb(cmd_buffer, dst, src, &pRegions[i]);
+      if (can_use_tlb(src, &pRegions[i].srcOffset, &compat_format) &&
+          can_use_tlb(dst, &pRegions[i].dstOffset, &compat_format)) {
+         copy_image_tlb(cmd_buffer, dst, src, compat_format, &pRegions[i]);
       } else {
          assert(!"Fallback path for vkCopyImageToImage not implemented");
       }
@@ -830,6 +907,7 @@ v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
 
 static void
 emit_clear_image_per_tile_list(struct v3dv_job *job,
+                               struct framebuffer_data *framebuffer,
                                struct v3dv_image *image,
                                VkImageAspectFlags aspects,
                                uint32_t layer,
@@ -845,7 +923,7 @@ emit_clear_image_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   emit_image_store(cl, image, aspects, layer, level, false, false);
+   emit_image_store(cl, framebuffer, image, aspects, layer, level, false, false);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -865,7 +943,7 @@ emit_clear_image(struct v3dv_job *job,
                  uint32_t layer,
                  uint32_t level)
 {
-   emit_clear_image_per_tile_list(job, image, aspects, layer, level);
+   emit_clear_image_per_tile_list(job, framebuffer, image, aspects, layer, level);
    emit_supertile_coordinates(job, framebuffer);
 }
 
@@ -894,20 +972,47 @@ emit_clear_image_rcl(struct v3dv_job *job,
 }
 
 static void
+get_hw_clear_color(const VkClearColorValue *color,
+                   VkFormat fb_format,
+                   VkFormat image_format,
+                   uint32_t internal_type,
+                   uint32_t internal_bpp,
+                   uint32_t *hw_color)
+{
+   const uint32_t internal_size = 4 << internal_bpp;
+
+   /* If the image format doesn't match the framebuffer format, then we are
+    * trying to clear an unsupported tlb format using a compatible
+    * format for the framebuffer. In this case, we want to make sure that
+    * we pack the clear value according to the original format semantics,
+    * not the compatible format.
+    */
+   if (fb_format == image_format) {
+      v3dv_get_hw_clear_color(color, internal_type, internal_size, hw_color);
+   } else {
+      union util_color uc;
+      enum pipe_format pipe_image_format =
+         vk_format_to_pipe_format(image_format);
+      util_pack_color(color->float32, pipe_image_format, &uc);
+      memcpy(hw_color, uc.ui, internal_size);
+   }
+}
+
+static void
 clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_image *image,
+                VkFormat fb_format,
                 const VkClearValue *clear_value,
                 const VkImageSubresourceRange *range)
 {
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(image, range->aspectMask,
+   get_internal_type_bpp_for_image_aspects(fb_format, range->aspectMask,
                                            &internal_type, &internal_bpp);
 
    union v3dv_clear_value hw_clear_value = { 0 };
    if (range->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-      uint32_t internal_size = 4 << internal_bpp;
-      v3dv_get_hw_clear_color(&clear_value->color, internal_type, internal_size,
-                              hw_clear_value.color);
+      get_hw_clear_color(&clear_value->color, fb_format, image->vk_format,
+                         internal_type, internal_bpp, &hw_clear_value.color[0]);
    } else {
       assert((range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) ||
              (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT));
@@ -946,7 +1051,8 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
 
          struct framebuffer_data framebuffer;
-         setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
+         setup_framebuffer_data(&framebuffer, fb_format, internal_type,
+                                &job->frame_tiling);
 
          v3dv_job_emit_binning_flush(job);
 
@@ -978,12 +1084,15 @@ v3dv_CmdClearColorImage(VkCommandBuffer commandBuffer,
       .color = *pColor,
    };
 
+   VkFormat compat_format;
    const VkOffset3D origin = { 0, 0, 0 };
    for (uint32_t i = 0; i < rangeCount; i++) {
-      if (can_use_tlb(image, &origin))
-         clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
-      else
+      if (can_use_tlb(image, &origin, &compat_format)) {
+         clear_image_tlb(cmd_buffer, image, compat_format,
+                         &clear_value, &pRanges[i]);
+      } else {
          assert(!"Fallback path for vkCmdClearColorImage not implemented");
+      }
    }
 }
 
@@ -1003,11 +1112,14 @@ v3dv_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
    };
 
    const VkOffset3D origin = { 0, 0, 0 };
-   for (uint32_t i = 0; i < rangeCount; i++)
-      if (can_use_tlb(image, &origin))
-         clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]);
-      else
+   for (uint32_t i = 0; i < rangeCount; i++) {
+      if (can_use_tlb(image, &origin, NULL)) {
+         clear_image_tlb(cmd_buffer, image, image->vk_format,
+                         &clear_value, &pRanges[i]);
+      } else {
          assert(!"Fallback path for vkCmdClearDepthStencilImage not implemented");
+      }
+   }
 }
 
 static void
@@ -1125,19 +1237,23 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
     */
    uint32_t item_size;
    uint32_t format;
+   VkFormat vk_format;
    switch (region->size % 4) {
    case 0:
       item_size = 4;
       format = V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+      vk_format = VK_FORMAT_R8G8B8A8_UINT;
       break;
    case 2:
       item_size = 2;
       format = V3D_OUTPUT_IMAGE_FORMAT_RG8UI;
+      vk_format = VK_FORMAT_R8G8_UINT;
       break;
    case 1:
    case 3:
       item_size = 1;
       format = V3D_OUTPUT_IMAGE_FORMAT_R8UI;
+      vk_format = VK_FORMAT_R8_UINT;
       break;
 
    }
@@ -1159,7 +1275,8 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
 
       struct framebuffer_data framebuffer;
-      setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
+      setup_framebuffer_data(&framebuffer, vk_format, internal_type,
+                             &job->frame_tiling);
 
       v3dv_job_emit_binning_flush(job);
 
@@ -1330,7 +1447,8 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
 
       struct framebuffer_data framebuffer;
-      setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
+      setup_framebuffer_data(&framebuffer, VK_FORMAT_R8G8B8A8_UINT,
+                             internal_type, &job->frame_tiling);
 
       v3dv_job_emit_binning_flush(job);
 
@@ -1372,6 +1490,7 @@ v3dv_CmdFillBuffer(VkCommandBuffer commandBuffer,
 
 static void
 emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
+                                        struct framebuffer_data *framebuffer,
                                         struct v3dv_image *image,
                                         struct v3dv_buffer *buffer,
                                         uint32_t layer,
@@ -1405,7 +1524,7 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
    uint32_t buffer_offset =
       region->bufferOffset + height * buffer_stride * layer;
 
-   uint32_t format = choose_tlb_format(image, imgrsc->aspectMask,
+   uint32_t format = choose_tlb_format(framebuffer, imgrsc->aspectMask,
                                        false, false, true);
 
    emit_linear_load(cl, RENDER_TARGET_0, buffer->mem->bo,
@@ -1423,14 +1542,14 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
     * after that, we do another store from the Z/S tile buffer to restore the
     * other aspect to its original value.
     */
-   if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+   if (framebuffer->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
       if (imgrsc->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
-         emit_image_load(cl, image, VK_IMAGE_ASPECT_STENCIL_BIT,
+         emit_image_load(cl, framebuffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
                          imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                          false, false);
       } else {
          assert(imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
-         emit_image_load(cl, image, VK_IMAGE_ASPECT_DEPTH_BIT,
+         emit_image_load(cl, framebuffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
                          imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                          false, false);
       }
@@ -1441,18 +1560,18 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
    /* Store TLB to image */
-   emit_image_store(cl, image, imgrsc->aspectMask,
+   emit_image_store(cl, framebuffer, image, imgrsc->aspectMask,
                     imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                     false, true);
 
-   if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+   if (framebuffer->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
       if (imgrsc->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
-         emit_image_store(cl, image, VK_IMAGE_ASPECT_STENCIL_BIT,
+         emit_image_store(cl, framebuffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
                           imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                           false, false);
       } else {
          assert(imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
-         emit_image_store(cl, image, VK_IMAGE_ASPECT_DEPTH_BIT,
+         emit_image_store(cl, framebuffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
                           imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
                           false, false);
       }
@@ -1477,7 +1596,8 @@ emit_copy_buffer_to_layer(struct v3dv_job *job,
                           const VkBufferImageCopy *region)
 {
    emit_frame_setup(job, layer, NULL);
-   emit_copy_buffer_to_layer_per_tile_list(job, image, buffer, layer, region);
+   emit_copy_buffer_to_layer_per_tile_list(job, framebuffer, image, buffer,
+                                           layer, region);
    emit_supertile_coordinates(job, framebuffer);
 }
 
@@ -1499,10 +1619,11 @@ static void
 copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_image *image,
                          struct v3dv_buffer *buffer,
+                         VkFormat fb_format,
                          const VkBufferImageCopy *region)
 {
    uint32_t internal_type, internal_bpp;
-   get_internal_type_bpp_for_image_aspects(image,
+   get_internal_type_bpp_for_image_aspects(fb_format,
                                            region->imageSubresource.aspectMask,
                                            &internal_type, &internal_bpp);
 
@@ -1523,7 +1644,8 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                         num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
-   setup_framebuffer_data(&framebuffer, internal_type, &job->frame_tiling);
+   setup_framebuffer_data(&framebuffer, fb_format, internal_type,
+                          &job->frame_tiling);
 
    v3dv_job_emit_binning_flush(job);
    emit_copy_buffer_to_image_rcl(job, image, buffer, &framebuffer, region);
@@ -1543,10 +1665,13 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, srcBuffer);
    V3DV_FROM_HANDLE(v3dv_image, image, dstImage);
 
+   VkFormat compat_format;
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb(image, &pRegions[i].imageOffset))
-         copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]);
-      else
+      if (can_use_tlb(image, &pRegions[i].imageOffset, &compat_format)) {
+         copy_buffer_to_image_tlb(cmd_buffer, image, buffer, compat_format,
+                                  &pRegions[i]);
+      } else {
          assert(!"Fallback path for vkCmdCopyBufferToImage not implemented");
+      }
    }
 }
