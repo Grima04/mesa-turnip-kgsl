@@ -494,6 +494,18 @@ get_image_format_properties(
    if (!format_feature_flags)
       goto unsupported;
 
+   if (info->usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
+      if (!(format_feature_flags & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) {
+         goto unsupported;
+      }
+   }
+
+   if (info->usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
+      if (!(format_feature_flags & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)) {
+         goto unsupported;
+      }
+   }
+
    if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
          goto unsupported;
