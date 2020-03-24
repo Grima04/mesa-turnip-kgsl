@@ -106,8 +106,8 @@ lp_scene_is_empty(struct lp_scene *scene )
 {
    unsigned x, y;
 
-   for (y = 0; y < TILES_Y; y++) {
-      for (x = 0; x < TILES_X; x++) {
+   for (y = 0; y < scene->tiles_y; y++) {
+      for (x = 0; x < scene->tiles_x; x++) {
          const struct cmd_bin *bin = lp_scene_get_bin(scene, x, y);
          if (bin->head) {
             return FALSE;

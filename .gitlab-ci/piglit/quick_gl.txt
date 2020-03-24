@@ -429,8 +429,20 @@ spec/arb_compute_shader/display-list: skip
 spec/arb_compute_variable_group_size/errors: skip
 spec/arb_compute_variable_group_size/local-size: skip
 spec/arb_compute_variable_group_size/minmax: skip
-spec/arb_copy_image/arb_copy_image-formats --samples=2: skip
-spec/arb_copy_image/arb_copy_image-formats --samples=4: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_component/destination: gl_depth_component: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_component16/destination: gl_depth_component16: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_component24/destination: gl_depth_component24: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_component32/destination: gl_depth_component32: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_depth_stencil/destination: gl_depth_stencil: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=2/source: gl_stencil_index8/destination: gl_stencil_index8: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_component/destination: gl_depth_component: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_component16/destination: gl_depth_component16: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_component24/destination: gl_depth_component24: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_component32/destination: gl_depth_component32: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_depth_stencil/destination: gl_depth_stencil: skip
+spec/arb_copy_image/arb_copy_image-formats --samples=4/source: gl_stencil_index8/destination: gl_stencil_index8: skip
 spec/arb_copy_image/arb_copy_image-formats --samples=8: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 1024 d=z32f_s8_s=z24_s8: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 1024 d=z32f_s=z24_s8: skip
@@ -460,10 +472,8 @@ spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifi
 spec/arb_enhanced_layouts/gs-stream-location-aliasing: fail
 spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
-spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-atomic/per-sample: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-params/dsa: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms2: skip
-spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-roundup-samples: skip
 spec/arb_framebuffer_object/fbo-blit-scaled-linear: fail
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_line_strip_adjacency: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_lines_adjacency: skip
@@ -504,65 +514,86 @@ spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache
 spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_unsigned_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: fail
 spec/arb_sample_locations/test: skip
-spec/arb_sample_shading/arb_sample_shading-api: skip
-spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha: skip
-spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha-to-coverage-combinations: skip
-spec/arb_sample_shading/builtin-gl-num-samples 0: skip
+spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha-to-coverage-combinations: fail
 spec/arb_sample_shading/builtin-gl-num-samples 16: skip
-spec/arb_sample_shading/builtin-gl-num-samples 2: skip
 spec/arb_sample_shading/builtin-gl-num-samples 32: skip
-spec/arb_sample_shading/builtin-gl-num-samples 4: skip
 spec/arb_sample_shading/builtin-gl-num-samples 6: skip
 spec/arb_sample_shading/builtin-gl-num-samples 8: skip
-spec/arb_sample_shading/builtin-gl-sample-id 0: skip
 spec/arb_sample_shading/builtin-gl-sample-id 16: skip
-spec/arb_sample_shading/builtin-gl-sample-id 2: skip
 spec/arb_sample_shading/builtin-gl-sample-id 32: skip
-spec/arb_sample_shading/builtin-gl-sample-id 4: skip
 spec/arb_sample_shading/builtin-gl-sample-id 6: skip
 spec/arb_sample_shading/builtin-gl-sample-id 8: skip
-spec/arb_sample_shading/builtin-gl-sample-mask 0: skip
+spec/arb_sample_shading/builtin-gl-sample-mask 0: fail
 spec/arb_sample_shading/builtin-gl-sample-mask 16: skip
-spec/arb_sample_shading/builtin-gl-sample-mask 2: skip
 spec/arb_sample_shading/builtin-gl-sample-mask 32: skip
-spec/arb_sample_shading/builtin-gl-sample-mask 4: skip
 spec/arb_sample_shading/builtin-gl-sample-mask 6: skip
 spec/arb_sample_shading/builtin-gl-sample-mask 8: skip
-spec/arb_sample_shading/builtin-gl-sample-mask-simple 0: skip
+spec/arb_sample_shading/builtin-gl-sample-mask-simple 0: fail
 spec/arb_sample_shading/builtin-gl-sample-mask-simple 16: skip
-spec/arb_sample_shading/builtin-gl-sample-mask-simple 2: skip
 spec/arb_sample_shading/builtin-gl-sample-mask-simple 32: skip
-spec/arb_sample_shading/builtin-gl-sample-mask-simple 4: skip
 spec/arb_sample_shading/builtin-gl-sample-mask-simple 6: skip
 spec/arb_sample_shading/builtin-gl-sample-mask-simple 8: skip
-spec/arb_sample_shading/builtin-gl-sample-position 0: skip
 spec/arb_sample_shading/builtin-gl-sample-position 16: skip
-spec/arb_sample_shading/builtin-gl-sample-position 2: skip
 spec/arb_sample_shading/builtin-gl-sample-position 32: skip
-spec/arb_sample_shading/builtin-gl-sample-position 4: skip
 spec/arb_sample_shading/builtin-gl-sample-position 6: skip
 spec/arb_sample_shading/builtin-gl-sample-position 8: skip
 spec/arb_sample_shading/ignore-centroid-qualifier 16: skip
-spec/arb_sample_shading/ignore-centroid-qualifier 2: skip
 spec/arb_sample_shading/ignore-centroid-qualifier 32: skip
-spec/arb_sample_shading/ignore-centroid-qualifier 4: skip
 spec/arb_sample_shading/ignore-centroid-qualifier 6: skip
 spec/arb_sample_shading/ignore-centroid-qualifier 8: skip
 spec/arb_sample_shading/interpolate-at-sample-position 16: skip
-spec/arb_sample_shading/interpolate-at-sample-position 2: skip
 spec/arb_sample_shading/interpolate-at-sample-position 32: skip
-spec/arb_sample_shading/interpolate-at-sample-position 4: skip
 spec/arb_sample_shading/interpolate-at-sample-position 6: skip
 spec/arb_sample_shading/interpolate-at-sample-position 8: skip
 spec/arb_sample_shading/samplemask 0 all: skip
 spec/arb_sample_shading/samplemask 16: skip
 spec/arb_sample_shading/samplemask 16 all: skip
-spec/arb_sample_shading/samplemask 2: skip
-spec/arb_sample_shading/samplemask 2 all: skip
+spec/arb_sample_shading/samplemask 2 all/0.250000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 2 all/0.250000 partition: skip
+spec/arb_sample_shading/samplemask 2 all/0.500000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 2 all/0.500000 partition: skip
+spec/arb_sample_shading/samplemask 2 all/1.000000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 2 all/1.000000 partition: skip
+spec/arb_sample_shading/samplemask 2 all/noms fix: fail
+spec/arb_sample_shading/samplemask 2 all/noms mask_in_one: fail
+spec/arb_sample_shading/samplemask 2 all/noms partition: skip
+spec/arb_sample_shading/samplemask 2 all/sample mask_in_one: fail
+spec/arb_sample_shading/samplemask 2 all/sample partition: skip
+spec/arb_sample_shading/samplemask 2/0.250000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 2/0.250000 partition: skip
+spec/arb_sample_shading/samplemask 2/0.500000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 2/0.500000 partition: skip
+spec/arb_sample_shading/samplemask 2/1.000000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 2/1.000000 partition: skip
+spec/arb_sample_shading/samplemask 2/noms fix: fail
+spec/arb_sample_shading/samplemask 2/noms mask_in_one: fail
+spec/arb_sample_shading/samplemask 2/noms partition: skip
+spec/arb_sample_shading/samplemask 2/sample mask_in_one: fail
+spec/arb_sample_shading/samplemask 2/sample partition: skip
 spec/arb_sample_shading/samplemask 32: skip
 spec/arb_sample_shading/samplemask 32 all: skip
-spec/arb_sample_shading/samplemask 4: skip
-spec/arb_sample_shading/samplemask 4 all: skip
+spec/arb_sample_shading/samplemask 4 all/0.250000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 4 all/0.250000 partition: skip
+spec/arb_sample_shading/samplemask 4 all/0.500000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 4 all/0.500000 partition: skip
+spec/arb_sample_shading/samplemask 4 all/1.000000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 4 all/1.000000 partition: skip
+spec/arb_sample_shading/samplemask 4 all/noms fix: fail
+spec/arb_sample_shading/samplemask 4 all/noms mask_in_one: fail
+spec/arb_sample_shading/samplemask 4 all/noms partition: skip
+spec/arb_sample_shading/samplemask 4 all/sample mask_in_one: fail
+spec/arb_sample_shading/samplemask 4 all/sample partition: skip
+spec/arb_sample_shading/samplemask 4/0.250000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 4/0.250000 partition: skip
+spec/arb_sample_shading/samplemask 4/0.500000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 4/0.500000 partition: skip
+spec/arb_sample_shading/samplemask 4/1.000000 mask_in_one: fail
+spec/arb_sample_shading/samplemask 4/1.000000 partition: skip
+spec/arb_sample_shading/samplemask 4/noms fix: fail
+spec/arb_sample_shading/samplemask 4/noms mask_in_one: fail
+spec/arb_sample_shading/samplemask 4/noms partition: skip
+spec/arb_sample_shading/samplemask 4/sample mask_in_one: fail
+spec/arb_sample_shading/samplemask 4/sample partition: skip
 spec/arb_sample_shading/samplemask 6: skip
 spec/arb_sample_shading/samplemask 6 all: skip
 spec/arb_sample_shading/samplemask 8: skip
@@ -1683,10 +1714,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    20103
-       fail:      197
+       pass:    20701
+       fail:      224
       crash:        0
-       skip:     1461
+       skip:     1465
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1695,4 +1726,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21785
+      total:    22414

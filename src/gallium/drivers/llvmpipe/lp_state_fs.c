@@ -3723,7 +3723,7 @@ make_variant_key(struct llvmpipe_context *lp,
    key->min_samples = 1;
    if (key->multisample) {
       key->coverage_samples = util_framebuffer_get_num_samples(&lp->framebuffer);
-      key->min_samples = 1;
+      key->min_samples = lp->min_samples == 1 ? 1 : key->coverage_samples;
    }
    key->nr_cbufs = lp->framebuffer.nr_cbufs;
 
