@@ -127,6 +127,9 @@ panfrost_find_format(const struct util_format_description *desc)
         case PIPE_FORMAT_B5G6R5_UNORM:
                 return MALI_RGB565;
 
+        case PIPE_FORMAT_B5G5R5X1_UNORM:
+                return MALI_RGB5_X1_UNORM;
+
         case PIPE_FORMAT_B5G5R5A1_UNORM:
                 return MALI_RGB5_A1_UNORM;
 
