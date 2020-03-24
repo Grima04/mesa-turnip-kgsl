@@ -185,6 +185,43 @@ arm_test:
     - meson-arm64
     - arm_test
 
+# Native Windows docker builds
+# 
+# Unlike the above Linux-based builds - including MinGW/SCons builds which
+# cross-compile for Windows - which use the freedesktop ci-templates, we
+# cannot use the same scheme here. As Windows lacks support for
+# Docker-in-Docker, and Podman does not run natively on Windows, we have
+# to open-code much of the same ourselves.
+#
+# This is achieved by first running in a native Windows shell instance
+# (host PowerShell) in the container stage to build and push the image,
+# then in the build stage by executing inside Docker.
+
+.windows-docker-vs2019:
+  variables:
+    WINDOWS_TAG: "2020-03-24"
+    WINDOWS_IMAGE: "$CI_REGISTRY_IMAGE/windows/x64_build:$WINDOWS_TAG"
+    WINDOWS_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/windows/x64_build:$WINDOWS_TAG"
+
+windows_build_vs2019:
+  extends:
+    - .container
+    - .windows-docker-vs2019
+  stage: container
+  variables:
+    GIT_STRATEGY: fetch # we do actually need the full repository though
+  tags:
+    - windows
+    - shell
+    - "1809"
+  script:
+    - .\.gitlab-ci\windows\mesa_container.ps1 $CI_REGISTRY $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $WINDOWS_IMAGE $WINDOWS_UPSTREAM_IMAGE
+  
+.use-windows_build_vs2019:
+  extends: .windows-docker-vs2019
+  image: "$WINDOWS_IMAGE"
+  needs:
+    - windows_build_vs2019
 
 # BUILD
 
@@ -218,7 +255,9 @@ arm_test:
 .build-windows:
   extends: .build-common
   tags:
-    - mesa-windows
+    - windows
+    - docker
+    - "1809"
   cache:
     key: ${CI_JOB_NAME}
     paths:
@@ -386,15 +425,13 @@ meson-clang:
     CC: "ccache clang-9"
     CXX: "ccache clang++-9"
 
-.meson-windows:
+meson-windows-vs2019:
   extends:
     - .build-windows
+    - .use-windows_build_vs2019
   stage: meson-misc
-  before_script:
-    - $ENV:ARCH = "x86"
-    - $ENV:VERSION = "2019\Community"
   script:
-    - cmd /C .gitlab-ci\meson-build.bat
+    - . .\.gitlab-ci\windows\mesa_build.ps1
 
 scons-win64:
   extends: .scons-build
