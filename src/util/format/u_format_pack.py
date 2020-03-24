@@ -437,7 +437,7 @@ def conversion_expr(src_channel,
             src_size = 32
 
         if dst_channel.size == 16:
-            value = 'util_float_to_half(%s)' % value
+            value = 'util_float_to_half_rtz(%s)' % value
         elif dst_channel.size == 64 and src_size < 64:
             value = '(double)%s' % value
 
