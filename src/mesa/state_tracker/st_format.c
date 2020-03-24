@@ -229,8 +229,9 @@ static const struct format_mapping format_map[] = {
    },
    {
       { GL_R3_G3_B2, 0 },
-      { PIPE_FORMAT_B2G3R3_UNORM, PIPE_FORMAT_B5G6R5_UNORM,
-        PIPE_FORMAT_B5G5R5A1_UNORM, DEFAULT_RGB_FORMATS }
+      { PIPE_FORMAT_B2G3R3_UNORM, PIPE_FORMAT_R3G3B2_UNORM,
+        PIPE_FORMAT_B5G6R5_UNORM, PIPE_FORMAT_B5G5R5A1_UNORM,
+        DEFAULT_RGB_FORMATS }
    },
    {
       { GL_RGB4 },
