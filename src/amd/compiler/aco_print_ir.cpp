@@ -65,7 +65,7 @@ static void print_reg_class(const RegClass rc, FILE *output)
    }
 }
 
-void print_physReg(unsigned reg, unsigned size, FILE *output)
+void print_physReg(PhysReg reg, unsigned bytes, FILE *output)
 {
    if (reg == 124) {
       fprintf(output, ":m0");
@@ -77,12 +77,15 @@ void print_physReg(unsigned reg, unsigned size, FILE *output)
       fprintf(output, ":exec");
    } else {
       bool is_vgpr = reg / 256;
-      reg = reg % 256;
-      fprintf(output, ":%c[%d", is_vgpr ? 'v' : 's', reg);
+      unsigned r = reg % 256;
+      unsigned size = DIV_ROUND_UP(bytes, 4);
+      fprintf(output, ":%c[%d", is_vgpr ? 'v' : 's', r);
       if (size > 1)
-         fprintf(output, "-%d]", reg + size -1);
+         fprintf(output, "-%d]", r + size -1);
       else
          fprintf(output, "]");
+      if (reg.byte() || bytes % 4)
+         fprintf(output, "[%d:%d]", reg.byte()*8, (reg.byte()+bytes) * 8);
    }
 }
 
@@ -143,7 +146,7 @@ static void print_operand(const Operand *operand, FILE *output)
       fprintf(output, "%%%d", operand->tempId());
 
       if (operand->isFixed())
-         print_physReg(operand->physReg(), operand->size(), output);
+         print_physReg(operand->physReg(), operand->bytes(), output);
    }
 }
 
@@ -153,7 +156,7 @@ static void print_definition(const Definition *definition, FILE *output)
    fprintf(output, "%%%d", definition->tempId());
 
    if (definition->isFixed())
-      print_physReg(definition->physReg(), definition->size(), output);
+      print_physReg(definition->physReg(), definition->bytes(), output);
 }
 
 static void print_barrier_reorder(bool can_reorder, barrier_interaction barrier, FILE *output)
@@ -636,14 +639,16 @@ void aco_print_instr(struct Instruction *instr, FILE *output)
          print_operand(&instr->operands[i], output);
          if (opsel[i] || (sel[i] & sdwa_sext))
             fprintf(output, ")");
-         if ((sel[i] & sdwa_asuint) == sdwa_udword) {
-            /* print nothing */
-         } else if (sel[i] & sdwa_isword) {
-            unsigned index = sel[i] & sdwa_wordnum;
-            fprintf(output, "[%u:%u]", index * 16, index * 16 + 15);
-         } else {
-            unsigned index = sel[i] & sdwa_bytenum;
-            fprintf(output, "[%u:%u]", index * 8, index * 8 + 7);
+         if (!(sel[i] & sdwa_isra)) {
+            if (sel[i] & sdwa_udword) {
+               /* print nothing */
+            } else if (sel[i] & sdwa_isword) {
+               unsigned index = sel[i] & sdwa_wordnum;
+               fprintf(output, "[%u:%u]", index * 16, index * 16 + 15);
+            } else {
+               unsigned index = sel[i] & sdwa_bytenum;
+               fprintf(output, "[%u:%u]", index * 8, index * 8 + 7);
+            }
          }
          if (abs[i])
             fprintf(output, "|");
