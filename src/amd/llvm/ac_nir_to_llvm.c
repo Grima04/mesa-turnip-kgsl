@@ -834,9 +834,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		                              ac_to_float_type(&ctx->ac, def_type), src[0]);
 		break;
 	case nir_op_frsq:
-		result = emit_intrin_1f_param(&ctx->ac, "llvm.sqrt",
-		                              ac_to_float_type(&ctx->ac, def_type), src[0]);
-		result = ac_build_fdiv(&ctx->ac, LLVMConstReal(LLVMTypeOf(result), 1.0), result);
+		result = emit_intrin_1f_param(&ctx->ac, "llvm.amdgcn.rsq",
+					      ac_to_float_type(&ctx->ac, def_type), src[0]);
 		break;
 	case nir_op_frexp_exp:
 		src[0] = ac_to_float(&ctx->ac, src[0]);
