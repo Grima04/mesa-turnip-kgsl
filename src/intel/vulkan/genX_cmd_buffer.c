@@ -5238,6 +5238,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          }
       }
 
+      assert(util_bitcount(subpass->attachments[i].usage) == 1);
       if (subpass->attachments[i].usage ==
           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
          /* We assume that if we're starting a subpass, we're going to do some
