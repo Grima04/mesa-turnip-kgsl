@@ -32,8 +32,8 @@
 #include "bifrost_compile.h"
 #include "test/bit.h"
 
-static void
-compile_shader(char **argv)
+static panfrost_program
+compile_shader(char **argv, bool vertex_only)
 {
         struct gl_shader_program *prog;
         nir_shader *nir[2];
@@ -68,7 +68,12 @@ compile_shader(char **argv)
 
                 unsigned product_id = 0x7212; /* Mali G52 */
                 bifrost_compile_shader_nir(nir[i], &compiled, product_id);
+
+                if (vertex_only)
+                        return compiled;
         }
+
+        return compiled;
 }
 
 static void
@@ -93,11 +98,11 @@ disassemble(const char *filename)
 }
 
 static void
-test(void)
+test_vertex(char **argv)
 {
         void *memctx = NULL; /* TODO */
         struct panfrost_device *dev = bit_initialize(memctx);
-        bit_sanity_check(dev);
+        bit_vertex(dev, compile_shader(argv, true));
 }
 
 int
@@ -109,11 +114,11 @@ main(int argc, char **argv)
         }
 
         if (strcmp(argv[1], "compile") == 0)
-                compile_shader(&argv[2]);
+                compile_shader(&argv[2], false);
         else if (strcmp(argv[1], "disasm") == 0)
                 disassemble(argv[2]);
-        else if (strcmp(argv[1], "test") == 0)
-                test();
+        else if (strcmp(argv[1], "test-vertex") == 0)
+                test_vertex(&argv[2]);
         else
                 unreachable("Unknown command. Valid: compile/disasm");
 

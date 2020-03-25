@@ -27,6 +27,7 @@
 #include "bit.h"
 #include "panfrost/pandecode/decode.h"
 #include "drm-uapi/panfrost_drm.h"
+#include "panfrost/encoder/pan_encoder.h"
 
 /* Standalone compiler tests submitting jobs directly to the hardware. Uses the
  * `bit` prefix for `BIfrost Tests` and because bit sounds wicked cool. */
@@ -60,7 +61,7 @@ static bool
 bit_submit(struct panfrost_device *dev,
                 enum mali_job_type T,
                 void *payload, size_t payload_size,
-                struct panfrost_bo *bos, size_t bo_count)
+                struct panfrost_bo **bos, size_t bo_count, bool trace)
 {
         struct mali_job_descriptor_header header = {
                 .job_descriptor_size = MALI_JOB_64,
@@ -75,7 +76,7 @@ bit_submit(struct panfrost_device *dev,
         uint32_t *bo_handles = calloc(sizeof(uint32_t), bo_count);
 
         for (unsigned i = 0; i < bo_count; ++i)
-                bo_handles[i] = bos[i].gem_handle;
+                bo_handles[i] = bos[i]->gem_handle;
 
         uint32_t syncobj = 0;
         int ret = 0;
@@ -95,7 +96,8 @@ bit_submit(struct panfrost_device *dev,
         free(bo_handles);
 
         drmSyncobjWait(dev->fd, &syncobj, 1, INT64_MAX, 0, NULL);
-        pandecode_jc(submit.jc, true, dev->gpu_id, false);
+        if (trace)
+                pandecode_jc(submit.jc, true, dev->gpu_id, false);
         return true;
 }
 
@@ -106,7 +108,7 @@ bit_submit(struct panfrost_device *dev,
 bool
 bit_sanity_check(struct panfrost_device *dev)
 {
-        struct panfrost_bo *scratch = bit_bo_create(dev, 4096);
+        struct panfrost_bo *scratch = bit_bo_create(dev, 65536);
         ((uint32_t *) scratch->cpu)[0] = 0xAA;
 
         struct mali_payload_write_value payload = {
@@ -114,8 +116,107 @@ bit_sanity_check(struct panfrost_device *dev)
                 .value_descriptor = MALI_WRITE_VALUE_ZERO
         };
 
+        struct panfrost_bo *bos[] = { scratch };
         bool success = bit_submit(dev, JOB_TYPE_WRITE_VALUE,
-                        &payload, sizeof(payload), scratch, 1);
+                        &payload, sizeof(payload), bos, 1, false);
 
         return success && (((uint8_t *) scratch->cpu)[0] == 0x0);
+}
+
+/* Constructs a vertex job */
+
+bool
+bit_vertex(struct panfrost_device *dev, panfrost_program prog)
+{
+
+        struct panfrost_bo *scratchpad = bit_bo_create(dev, 4096);
+        struct panfrost_bo *shader = bit_bo_create(dev, prog.compiled.size);
+        struct panfrost_bo *shader_desc = bit_bo_create(dev, 4096);
+        struct panfrost_bo *ubo = bit_bo_create(dev, 4096);
+        struct panfrost_bo *var = bit_bo_create(dev, 4096);
+        struct panfrost_bo *attr = bit_bo_create(dev, 4096);
+
+        struct mali_attr_meta vmeta = {
+                .index = 0,
+                .format = MALI_RGBA32F
+        };
+
+        union mali_attr vary = {
+                .elements = (var->gpu + 1024) | MALI_ATTR_LINEAR,
+                .size = 1024
+        };
+
+        union mali_attr attr_ = {
+                .elements = (attr->gpu + 1024) | MALI_ATTR_LINEAR,
+                .size = 1024
+        };
+
+        uint64_t my_ubo = MALI_MAKE_UBO(64, ubo->gpu + 1024);
+
+        memcpy(ubo->cpu, &my_ubo, sizeof(my_ubo));
+        memcpy(var->cpu, &vmeta, sizeof(vmeta));
+        memcpy(attr->cpu, &vmeta, sizeof(vmeta));
+        memcpy(var->cpu + 256, &vary, sizeof(vary));
+        memcpy(attr->cpu + 256, &attr_, sizeof(vary));
+
+        float *fvaryings = (float *) (var->cpu + 1024);
+        float *fubo = (float *) (ubo->cpu + 1024);
+
+        struct panfrost_bo *shmem = bit_bo_create(dev, 4096);
+        struct mali_shared_memory shmemp = {
+                .scratchpad = scratchpad->gpu,
+                .shared_workgroup_count = 0x1f,
+        };
+
+        memcpy(shmem->cpu, &shmemp, sizeof(shmemp));
+
+        struct mali_shader_meta meta = {
+                .shader = shader->gpu,
+                .attribute_count = 1,
+                .varying_count = 1,
+                .bifrost1 = {
+                        .unk1 = 0x800200,
+                },
+                .bifrost2 = {
+                        .unk3 = 0x0,
+                        .preload_regs = 0xc0,
+                        .uniform_count = 0,
+                        .unk4 = 0x0,
+                },
+        };
+
+        memcpy(shader_desc->cpu, &meta, sizeof(meta));
+        memcpy(shader->cpu, prog.compiled.data, prog.compiled.size);
+
+        struct bifrost_payload_vertex payload = {
+                .prefix = {
+                },
+                .vertex = {
+                        .unk2 = 0x2,
+                },
+                .postfix = {
+                        .shared_memory = shmem->gpu,
+                        .shader = shader_desc->gpu,
+                        .uniforms = ubo->gpu + 1024,
+                        .uniform_buffers = ubo->gpu,
+                        .attribute_meta = attr->gpu,
+                        .attributes = var->gpu + 256,
+                        .varying_meta = var->gpu,
+                        .varyings = var->gpu + 256,
+                },
+        };
+
+        panfrost_pack_work_groups_compute(&payload.prefix,
+                        1, 1, 1,
+                        1, 1, 1,
+                        true);
+
+        payload.prefix.workgroups_x_shift_3 = 5;
+
+        struct panfrost_bo *bos[] = {
+                scratchpad, shmem, shader, shader_desc, ubo, var, attr
+        };
+
+        return bit_submit(dev, JOB_TYPE_VERTEX, &payload,
+                        sizeof(payload), bos, ARRAY_SIZE(bos), true);
 }

@@ -30,11 +30,13 @@
 #include "panfrost/include/panfrost-job.h"
 #include "panfrost/encoder/pan_device.h"
 #include "panfrost/encoder/pan_bo.h"
+#include "bifrost_compile.h"
 
 struct panfrost_device *
 bit_initialize(void *memctx);
 
 bool bit_sanity_check(struct panfrost_device *dev);
+bool bit_vertex(struct panfrost_device *dev, panfrost_program prog);
 
 #endif
 
