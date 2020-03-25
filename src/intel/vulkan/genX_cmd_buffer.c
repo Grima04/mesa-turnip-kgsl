@@ -290,6 +290,25 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+static bool
+isl_color_value_requires_conversion(union isl_color_value color,
+                                    const struct isl_surf *surf,
+                                    const struct isl_view *view)
+{
+   if (surf->format == view->format && isl_swizzle_is_identity(view->swizzle))
+      return false;
+
+   uint32_t surf_pack[4] = { 0, 0, 0, 0 };
+   isl_color_value_pack(&color, surf->format, surf_pack);
+
+   uint32_t view_pack[4] = { 0, 0, 0, 0 };
+   union isl_color_value swiz_color =
+      isl_color_value_swizzle_inv(color, view->swizzle);
+   isl_color_value_pack(&swiz_color, view->format, view_pack);
+
+   return memcmp(surf_pack, view_pack, sizeof(surf_pack)) != 0;
+}
+
 static void
 color_attachment_compute_aux_usage(struct anv_device * device,
                                    struct anv_cmd_state * cmd_state,
@@ -403,6 +422,20 @@ color_attachment_compute_aux_usage(struct anv_device * device,
       /* On Broadwell and earlier, we can only handle 0/1 clear colors */
       if (GEN_GEN <= 8 && !att_state->clear_color_is_zero_one)
          att_state->fast_clear = false;
+
+      /* If the clear color is one that would require non-trivial format
+       * conversion on resolve, we don't bother with the fast clear.  This
+       * shouldn't be common as most clear colors are 0/1 and the most common
+       * format re-interpretation is for sRGB.
+       */
+      if (isl_color_value_requires_conversion(clear_color,
+                                              &iview->image->planes[0].surface.isl,
+                                              &iview->planes[0].isl)) {
+         anv_perf_warn(device, iview,
+                       "Cannot fast-clear to colors which would require "
+                       "format conversion on resolve");
+         att_state->fast_clear = false;
+      }
 
       /* We only allow fast clears to the first slice of an image (level 0,
        * layer 0) and only for the entire slice.  This guarantees us that, at
@@ -5671,57 +5704,6 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       struct anv_attachment_state *att_state = &cmd_state->attachments[a];
       struct anv_image_view *iview = cmd_state->attachments[a].image_view;
       const struct anv_image *image = iview->image;
-
-      if ((image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) &&
-          image->vk_format != iview->vk_format) {
-         enum anv_fast_clear_type fast_clear_type =
-            anv_layout_to_fast_clear_type(&cmd_buffer->device->info,
-                                          image, VK_IMAGE_ASPECT_COLOR_BIT,
-                                          att_state->current_layout);
-
-         /* If any clear color was used, flush it down the aux surfaces. If we
-          * don't do it now using the view's format we might use the clear
-          * color incorrectly in the following resolves (for example with an
-          * SRGB view & a UNORM image).
-          */
-         if (fast_clear_type != ANV_FAST_CLEAR_NONE) {
-            anv_perf_warn(cmd_buffer->device, iview,
-                          "Doing a partial resolve to get rid of clear color at the "
-                          "end of a renderpass due to an image/view format mismatch");
-
-            uint32_t base_layer, layer_count;
-            if (image->type == VK_IMAGE_TYPE_3D) {
-               base_layer = 0;
-               layer_count = anv_minify(iview->image->extent.depth,
-                                        iview->planes[0].isl.base_level);
-            } else {
-               base_layer = iview->planes[0].isl.base_array_layer;
-               layer_count = fb->layers;
-            }
-
-            for (uint32_t a = 0; a < layer_count; a++) {
-               uint32_t array_layer = base_layer + a;
-               if (image->samples == 1) {
-                  anv_cmd_predicated_ccs_resolve(cmd_buffer, image,
-                                                 iview->planes[0].isl.format,
-                                                 iview->planes[0].isl.swizzle,
-                                                 VK_IMAGE_ASPECT_COLOR_BIT,
-                                                 iview->planes[0].isl.base_level,
-                                                 array_layer,
-                                                 ISL_AUX_OP_PARTIAL_RESOLVE,
-                                                 ANV_FAST_CLEAR_NONE);
-               } else {
-                  anv_cmd_predicated_mcs_resolve(cmd_buffer, image,
-                                                 iview->planes[0].isl.format,
-                                                 iview->planes[0].isl.swizzle,
-                                                 VK_IMAGE_ASPECT_COLOR_BIT,
-                                                 base_layer,
-                                                 ISL_AUX_OP_PARTIAL_RESOLVE,
-                                                 ANV_FAST_CLEAR_NONE);
-               }
-            }
-         }
-      }
 
       /* Transition the image into the final layout for this render pass */
       VkImageLayout target_layout =
