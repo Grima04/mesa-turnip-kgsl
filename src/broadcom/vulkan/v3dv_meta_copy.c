@@ -221,11 +221,10 @@ emit_rcl_prologue(struct v3dv_job *job,
       uint32_t clear_pad = 0;
       if (clear_info->image) {
          const struct v3dv_image *image = clear_info->image;
-         if (image->slices[clear_info->layer].tiling == VC5_TILING_UIF_NO_XOR ||
-             image->slices[clear_info->layer].tiling == VC5_TILING_UIF_XOR) {
-            const struct v3d_resource_slice *slice =
-               &image->slices[clear_info->level];
-
+         const struct v3d_resource_slice *slice =
+            &image->slices[clear_info->level];
+         if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
+             slice->tiling == VC5_TILING_UIF_XOR) {
             int uif_block_height = v3d_utile_height(image->cpp) * 2;
 
             uint32_t implicit_padded_height =
