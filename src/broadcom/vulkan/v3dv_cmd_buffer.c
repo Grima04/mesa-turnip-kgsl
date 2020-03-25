@@ -465,7 +465,18 @@ static void
 cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
 {
    assert(cmd_buffer->state.job);
-   cmd_buffer_emit_render_pass_rcl(cmd_buffer);
+
+   /* Typically, we have a single job for each subpass and we emit the job's RCL
+    * here when we are ending the frame for the subpass. However, some commands
+    * such as vkCmdClearAttachments need to run in their own separate job and
+    * they emit their own RCL even if they execute inside a subpass. In this
+    * scenario, we don't want to emit subpass RCL when we end the frame for
+    * those jobs, so we only emit the subpass RCL if the job has not recorded
+    * any RCL commands of its own.
+    */
+   if (v3dv_cl_offset(&cmd_buffer->state.job->rcl) == 0)
+      cmd_buffer_emit_render_pass_rcl(cmd_buffer);
+
    v3dv_job_emit_binning_flush(cmd_buffer->state.job);
 }
 

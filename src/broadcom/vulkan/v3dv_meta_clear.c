@@ -418,7 +418,9 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
                       base_layer, layer_count);
 
    /* Since vkCmdClearAttachments executes inside a render pass command, this
-    * will emit the binner FLUSH packet.
+    * will emit the binner FLUSH packet. Notice that this won't emit the
+    * subpass RCL for this job though because it will see that the job has
+    * recorded its own RCL.
     */
    v3dv_cmd_buffer_finish_job(cmd_buffer);
 
