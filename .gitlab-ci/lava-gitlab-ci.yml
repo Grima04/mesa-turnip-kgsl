@@ -135,7 +135,7 @@ panfrost-t860-gles3:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-t820-gles2:arm64:
+panfrost-t820-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
@@ -145,9 +145,9 @@ panfrost-t860-gles3:arm64:
     LAVA_TAGS: panfrost
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
   tags:
-    - lava-meson-gxm-khadas-vim2
+    - mesa-ci-aarch64-lava-baylibre
 
-.lima-mali400-test:armhf:
+lima-mali400-test:armhf:
   parallel: 2
   extends:
     - .lava-test:armhf
@@ -157,9 +157,9 @@ panfrost-t860-gles3:arm64:
     GPU_VERSION: lima
     ENV_VARS: "DEQP_PARALLEL=3"
   tags:
-    - lava-sun8i-h3-libretech-all-h3-cc
+    - mesa-ci-aarch64-lava-baylibre
 
-.lima-mali450-test:arm64:
+lima-mali450-test:arm64:
   extends:
     - .lava-test:arm64
     - .lima-rules
@@ -168,4 +168,4 @@ panfrost-t860-gles3:arm64:
     GPU_VERSION: lima
     ENV_VARS: "DEQP_PARALLEL=6"
   tags:
-    - lava-meson-gxl-s905x-libretech-cc
+    - mesa-ci-aarch64-lava-baylibre
