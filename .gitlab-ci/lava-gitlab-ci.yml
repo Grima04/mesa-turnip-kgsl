@@ -5,7 +5,6 @@
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"
     DEQP_VERSION: gles2
-    FILES_HOST_NAME: "mesa-ci-lava-files.freedesktop.org"
   script:
     - mkdir -p /srv/${FILES_HOST_NAME}/$CI_JOB_ID/
     - cp /lava-files/${KERNEL_IMAGE_NAME} /srv/${FILES_HOST_NAME}/$CI_JOB_ID/.
@@ -18,7 +17,7 @@
       artifacts/generate_lava.py \
         --template artifacts/lava-deqp.yml.jinja2 \
         --pipeline-info "$CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
-        --base-artifacts-url https://${FILES_HOST_NAME}/$CI_JOB_ID \
+        --base-artifacts-url ${FILES_HOST_URL}/$CI_JOB_ID \
         --device-type ${DEVICE_TYPE} \
         --env-vars "${ENV_VARS}" \
         --arch ${ARCH} \
@@ -83,6 +82,8 @@ panfrost-t720-gles2:arm64:
     DEVICE_TYPE: sun50i-h6-pine-h64
     GPU_VERSION: panfrost-t720
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
+    FILES_HOST_NAME: "mesa-ci-lava-files.freedesktop.org"
+    FILES_HOST_URL: "https://mesa-ci-lava-files.freedesktop.org"
   tags:
     - mesa-ci-aarch64-lava-collabora
 
@@ -96,6 +97,8 @@ panfrost-t760-gles2:armhf:
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
+    FILES_HOST_NAME: "mesa-ci-lava-files.freedesktop.org"
+    FILES_HOST_URL: "https://mesa-ci-lava-files.freedesktop.org"
   tags:
     - mesa-ci-aarch64-lava-collabora
 
@@ -109,6 +112,8 @@ panfrost-t860-gles2:arm64:
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
+    FILES_HOST_NAME: "mesa-ci-lava-files.freedesktop.org"
+    FILES_HOST_URL: "https://mesa-ci-lava-files.freedesktop.org"
   tags:
     - mesa-ci-aarch64-lava-collabora
 
@@ -125,6 +130,8 @@ panfrost-t860-gles3:arm64:
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 5
+    FILES_HOST_NAME: "mesa-ci-lava-files.freedesktop.org"
+    FILES_HOST_URL: "https://mesa-ci-lava-files.freedesktop.org"
   tags:
     - mesa-ci-aarch64-lava-collabora
 
@@ -137,7 +144,6 @@ panfrost-t860-gles3:arm64:
     GPU_VERSION: panfrost-t820
     LAVA_TAGS: panfrost
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6"
-    FILES_HOST_NAME: "lava-files.baylibre.com"
   tags:
     - lava-meson-gxm-khadas-vim2
 
@@ -150,7 +156,6 @@ panfrost-t860-gles3:arm64:
     DEVICE_TYPE: sun8i-h3-libretech-all-h3-cc
     GPU_VERSION: lima
     ENV_VARS: "DEQP_PARALLEL=3"
-    FILES_HOST_NAME: "lava-files.baylibre.com"
   tags:
     - lava-sun8i-h3-libretech-all-h3-cc
 
@@ -162,6 +167,5 @@ panfrost-t860-gles3:arm64:
     DEVICE_TYPE: meson-gxl-s905x-libretech-cc
     GPU_VERSION: lima
     ENV_VARS: "DEQP_PARALLEL=6"
-    FILES_HOST_NAME: "lava-files.baylibre.com"
   tags:
     - lava-meson-gxl-s905x-libretech-cc
