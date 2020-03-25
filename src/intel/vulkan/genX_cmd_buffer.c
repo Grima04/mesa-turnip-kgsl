@@ -5246,49 +5246,6 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          }
       }
 
-      assert(util_bitcount(subpass->attachments[i].usage) == 1);
-      if (subpass->attachments[i].usage ==
-          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
-         /* We assume that if we're starting a subpass, we're going to do some
-          * rendering so we may end up with compressed data.
-          */
-         genX(cmd_buffer_mark_image_written)(cmd_buffer, iview->image,
-                                             VK_IMAGE_ASPECT_COLOR_BIT,
-                                             att_state->aux_usage,
-                                             iview->planes[0].isl.base_level,
-                                             iview->planes[0].isl.base_array_layer,
-                                             fb->layers);
-      } else if (subpass->attachments[i].usage ==
-                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-         /* We may be writing depth or stencil so we need to mark the surface.
-          * Unfortunately, there's no way to know at this point whether the
-          * depth or stencil tests used will actually write to the surface.
-          *
-          * Even though stencil may be plane 1, it always shares a base_level
-          * with depth.
-          */
-         const struct isl_view *ds_view = &iview->planes[0].isl;
-         if (iview->aspect_mask & VK_IMAGE_ASPECT_DEPTH_BIT) {
-            genX(cmd_buffer_mark_image_written)(cmd_buffer, image,
-                                                VK_IMAGE_ASPECT_DEPTH_BIT,
-                                                att_state->aux_usage,
-                                                ds_view->base_level,
-                                                ds_view->base_array_layer,
-                                                fb->layers);
-         }
-         if (iview->aspect_mask & VK_IMAGE_ASPECT_STENCIL_BIT) {
-            /* Even though stencil may be plane 1, it always shares a
-             * base_level with depth.
-             */
-            genX(cmd_buffer_mark_image_written)(cmd_buffer, image,
-                                                VK_IMAGE_ASPECT_STENCIL_BIT,
-                                                ISL_AUX_USAGE_NONE,
-                                                ds_view->base_level,
-                                                ds_view->base_array_layer,
-                                                fb->layers);
-         }
-      }
-
       /* If multiview is enabled, then we are only done clearing when we no
        * longer have pending layers to clear, or when we have processed the
        * last subpass that uses this attachment.
@@ -5358,6 +5315,59 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
    struct anv_subpass *subpass = cmd_state->subpass;
    uint32_t subpass_id = anv_get_subpass_id(&cmd_buffer->state);
    struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
+
+   for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
+      const uint32_t a = subpass->attachments[i].attachment;
+      if (a == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      assert(a < cmd_state->pass->attachment_count);
+      struct anv_attachment_state *att_state = &cmd_state->attachments[a];
+      struct anv_image_view *iview = att_state->image_view;
+
+      assert(util_bitcount(subpass->attachments[i].usage) == 1);
+      if (subpass->attachments[i].usage ==
+          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+         /* We assume that if we're ending a subpass, we did do some rendering
+          * so we may end up with compressed data.
+          */
+         genX(cmd_buffer_mark_image_written)(cmd_buffer, iview->image,
+                                             VK_IMAGE_ASPECT_COLOR_BIT,
+                                             att_state->aux_usage,
+                                             iview->planes[0].isl.base_level,
+                                             iview->planes[0].isl.base_array_layer,
+                                             fb->layers);
+      } else if (subpass->attachments[i].usage ==
+                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+         /* We may be writing depth or stencil so we need to mark the surface.
+          * Unfortunately, there's no way to know at this point whether the
+          * depth or stencil tests used will actually write to the surface.
+          *
+          * Even though stencil may be plane 1, it always shares a base_level
+          * with depth.
+          */
+         const struct isl_view *ds_view = &iview->planes[0].isl;
+         if (iview->aspect_mask & VK_IMAGE_ASPECT_DEPTH_BIT) {
+            genX(cmd_buffer_mark_image_written)(cmd_buffer, iview->image,
+                                                VK_IMAGE_ASPECT_DEPTH_BIT,
+                                                att_state->aux_usage,
+                                                ds_view->base_level,
+                                                ds_view->base_array_layer,
+                                                fb->layers);
+         }
+         if (iview->aspect_mask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+            /* Even though stencil may be plane 1, it always shares a
+             * base_level with depth.
+             */
+            genX(cmd_buffer_mark_image_written)(cmd_buffer, iview->image,
+                                                VK_IMAGE_ASPECT_STENCIL_BIT,
+                                                ISL_AUX_USAGE_NONE,
+                                                ds_view->base_level,
+                                                ds_view->base_array_layer,
+                                                fb->layers);
+         }
+      }
+   }
 
    if (subpass->has_color_resolve) {
       /* We are about to do some MSAA resolves.  We need to flush so that the
