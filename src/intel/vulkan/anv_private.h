@@ -2748,11 +2748,11 @@ struct anv_cmd_state {
     * flat array.  For depth-stencil attachments, the surface state is simply
     * left blank.
     */
-   struct anv_state                             render_pass_states;
+   struct anv_state                             attachment_states;
 
    /**
     * A null surface state of the right size to match the framebuffer.  This
-    * is one of the states in render_pass_states.
+    * is one of the states in attachment_states.
     */
    struct anv_state                             null_surface_state;
 };
