@@ -327,7 +327,6 @@ color_attachment_compute_aux_usage(struct anv_device * device,
        */
       att_state->aux_usage = ISL_AUX_USAGE_NONE;
       att_state->input_aux_usage = ISL_AUX_USAGE_NONE;
-      att_state->fast_clear = false;
       return;
    }
 
@@ -383,83 +382,94 @@ color_attachment_compute_aux_usage(struct anv_device * device,
    union isl_color_value clear_color = {};
    anv_clear_color_from_att_state(&clear_color, att_state, iview);
 
-   const bool clear_color_is_zero_one =
-      isl_color_value_is_zero_one(clear_color, iview->planes[0].isl.format);
    att_state->clear_color_is_zero =
       isl_color_value_is_zero(clear_color, iview->planes[0].isl.format);
+}
 
-   if (att_state->pending_clear_aspects == VK_IMAGE_ASPECT_COLOR_BIT) {
-      /* Start by getting the fast clear type.  We use the first subpass
-       * layout here because we don't want to fast-clear if the first subpass
-       * to use the attachment can't handle fast-clears.
-       */
-      enum anv_fast_clear_type fast_clear_type =
-         anv_layout_to_fast_clear_type(&device->info, iview->image,
-                                       VK_IMAGE_ASPECT_COLOR_BIT,
-                                       cmd_state->pass->attachments[att].first_subpass_layout);
-      switch (fast_clear_type) {
-      case ANV_FAST_CLEAR_NONE:
-         att_state->fast_clear = false;
-         break;
-      case ANV_FAST_CLEAR_DEFAULT_VALUE:
-         att_state->fast_clear = att_state->clear_color_is_zero;
-         break;
-      case ANV_FAST_CLEAR_ANY:
-         att_state->fast_clear = true;
-         break;
-      }
+static bool
+anv_can_fast_clear_color_view(struct anv_device * device,
+                              struct anv_image_view *iview,
+                              VkImageLayout layout,
+                              union isl_color_value clear_color,
+                              uint32_t num_layers,
+                              VkRect2D render_area)
+{
+   if (iview->planes[0].isl.base_array_layer >=
+       anv_image_aux_layers(iview->image, VK_IMAGE_ASPECT_COLOR_BIT,
+                            iview->planes[0].isl.base_level))
+      return false;
 
-      /* Potentially, we could do partial fast-clears but doing so has crazy
-       * alignment restrictions.  It's easier to just restrict to full size
-       * fast clears for now.
-       */
-      if (render_area.offset.x != 0 ||
-          render_area.offset.y != 0 ||
-          render_area.extent.width != iview->extent.width ||
-          render_area.extent.height != iview->extent.height)
-         att_state->fast_clear = false;
-
-      /* On Broadwell and earlier, we can only handle 0/1 clear colors */
-      if (GEN_GEN <= 8 && !clear_color_is_zero_one)
-         att_state->fast_clear = false;
-
-      /* If the clear color is one that would require non-trivial format
-       * conversion on resolve, we don't bother with the fast clear.  This
-       * shouldn't be common as most clear colors are 0/1 and the most common
-       * format re-interpretation is for sRGB.
-       */
-      if (isl_color_value_requires_conversion(clear_color,
-                                              &iview->image->planes[0].surface.isl,
-                                              &iview->planes[0].isl)) {
-         anv_perf_warn(device, iview,
-                       "Cannot fast-clear to colors which would require "
-                       "format conversion on resolve");
-         att_state->fast_clear = false;
-      }
-
-      /* We only allow fast clears to the first slice of an image (level 0,
-       * layer 0) and only for the entire slice.  This guarantees us that, at
-       * any given time, there is only one clear color on any given image at
-       * any given time.  At the time of our testing (Jan 17, 2018), there
-       * were no known applications which would benefit from fast-clearing
-       * more than just the first slice.
-       */
-      if (att_state->fast_clear &&
-          (iview->planes[0].isl.base_level > 0 ||
-           iview->planes[0].isl.base_array_layer > 0)) {
-         anv_perf_warn(device, iview->image,
-                       "Rendering with multi-lod or multi-layer framebuffer "
-                       "with LOAD_OP_LOAD and baseMipLevel > 0 or "
-                       "baseArrayLayer > 0.  Not fast clearing.");
-         att_state->fast_clear = false;
-      } else if (att_state->fast_clear && cmd_state->framebuffer->layers > 1) {
-         anv_perf_warn(device, iview->image,
-                       "Rendering to a multi-layer framebuffer with "
-                       "LOAD_OP_CLEAR.  Only fast-clearing the first slice");
-      }
-   } else {
-      att_state->fast_clear = false;
+   /* Start by getting the fast clear type.  We use the first subpass
+    * layout here because we don't want to fast-clear if the first subpass
+    * to use the attachment can't handle fast-clears.
+    */
+   enum anv_fast_clear_type fast_clear_type =
+      anv_layout_to_fast_clear_type(&device->info, iview->image,
+                                    VK_IMAGE_ASPECT_COLOR_BIT,
+                                    layout);
+   switch (fast_clear_type) {
+   case ANV_FAST_CLEAR_NONE:
+      return false;
+   case ANV_FAST_CLEAR_DEFAULT_VALUE:
+      if (!isl_color_value_is_zero(clear_color, iview->planes[0].isl.format))
+         return false;
+      break;
+   case ANV_FAST_CLEAR_ANY:
+      break;
    }
+
+   /* Potentially, we could do partial fast-clears but doing so has crazy
+    * alignment restrictions.  It's easier to just restrict to full size
+    * fast clears for now.
+    */
+   if (render_area.offset.x != 0 ||
+       render_area.offset.y != 0 ||
+       render_area.extent.width != iview->extent.width ||
+       render_area.extent.height != iview->extent.height)
+      return false;
+
+   /* On Broadwell and earlier, we can only handle 0/1 clear colors */
+   if (GEN_GEN <= 8 &&
+       !isl_color_value_is_zero_one(clear_color, iview->planes[0].isl.format))
+      return false;
+
+   /* If the clear color is one that would require non-trivial format
+    * conversion on resolve, we don't bother with the fast clear.  This
+    * shouldn't be common as most clear colors are 0/1 and the most common
+    * format re-interpretation is for sRGB.
+    */
+   if (isl_color_value_requires_conversion(clear_color,
+                                           &iview->image->planes[0].surface.isl,
+                                           &iview->planes[0].isl)) {
+      anv_perf_warn(device, iview,
+                    "Cannot fast-clear to colors which would require "
+                    "format conversion on resolve");
+      return false;
+   }
+
+   /* We only allow fast clears to the first slice of an image (level 0,
+    * layer 0) and only for the entire slice.  This guarantees us that, at
+    * any given time, there is only one clear color on any given image at
+    * any given time.  At the time of our testing (Jan 17, 2018), there
+    * were no known applications which would benefit from fast-clearing
+    * more than just the first slice.
+    */
+   if (iview->planes[0].isl.base_level > 0 ||
+       iview->planes[0].isl.base_array_layer > 0) {
+      anv_perf_warn(device, iview->image,
+                    "Rendering with multi-lod or multi-layer framebuffer "
+                    "with LOAD_OP_LOAD and baseMipLevel > 0 or "
+                    "baseArrayLayer > 0.  Not fast clearing.");
+      return false;
+   }
+
+   if (num_layers > 1) {
+      anv_perf_warn(device, iview->image,
+                    "Rendering to a multi-layer framebuffer with "
+                    "LOAD_OP_CLEAR.  Only fast-clearing the first slice");
+   }
+
+   return true;
 }
 
 static bool
@@ -1459,6 +1469,16 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
             assert(att_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
             color_attachment_compute_aux_usage(cmd_buffer->device,
                                                state, i, begin->renderArea);
+
+            if (clear_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
+               assert(clear_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
+               att_state->fast_clear =
+                  anv_can_fast_clear_color_view(cmd_buffer->device, iview,
+                                                pass_att->first_subpass_layout,
+                                                vk_to_isl_color(att_state->clear_value.color),
+                                                framebuffer->layers,
+                                                begin->renderArea);
+            }
          } else {
             /* These will be initialized after the first subpass transition. */
             att_state->aux_usage = ISL_AUX_USAGE_NONE;
