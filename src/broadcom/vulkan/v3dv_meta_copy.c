@@ -1019,6 +1019,16 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       hw_clear_value.s = clear_value->depthStencil.stencil;
    }
 
+   uint32_t level_count = range->levelCount == VK_REMAINING_MIP_LEVELS ?
+                          image->levels - range->baseMipLevel :
+                          range->levelCount;
+   uint32_t min_level = range->baseMipLevel;
+   uint32_t max_level = range->baseMipLevel + level_count;
+
+   /* For 3D images baseArrayLayer and layerCount must be 0 and 1 respectively.
+    * Instead, we need to consider the full depth dimension of the image, which
+    * goes from 0 up to the level's depth extent.
+    */
    uint32_t min_layer;
    uint32_t max_layer;
    if (image->type != VK_IMAGE_TYPE_3D) {
@@ -1029,17 +1039,12 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       max_layer = range->baseArrayLayer + layer_count;
    } else {
       min_layer = 0;
-      max_layer = image->extent.depth;
    }
 
-   uint32_t level_count = range->levelCount == VK_REMAINING_MIP_LEVELS ?
-                          image->levels - range->baseMipLevel :
-                          range->levelCount;
-   uint32_t min_level = range->baseMipLevel;
-   uint32_t max_level = range->baseMipLevel + level_count;
-
-   for (uint32_t layer = min_layer; layer < max_layer; layer++) {
-      for (uint32_t level = min_level; level < max_level; level++) {
+   for (uint32_t level = min_level; level < max_level; level++) {
+      if (image->type == VK_IMAGE_TYPE_3D)
+         max_layer = u_minify(image->extent.depth, level);
+      for (uint32_t layer = min_layer; layer < max_layer; layer++) {
          uint32_t width = u_minify(image->extent.width, level);
          uint32_t height = u_minify(image->extent.height, level);
 
@@ -1047,6 +1052,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          if (!job)
             return;
 
+         /* We start a a new job for each layer so the frame "depth" is 1 */
          v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
 
          struct framebuffer_data framebuffer;
