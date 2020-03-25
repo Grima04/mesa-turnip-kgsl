@@ -407,7 +407,7 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_frame_tiling subpass_tiling;
    memcpy(&subpass_tiling, &job->frame_tiling, sizeof(subpass_tiling));
 
-   job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+   job = v3dv_cmd_buffer_start_job(cmd_buffer, cmd_buffer->state.subpass_idx);
 
    /* vkCmdClearAttachments runs inside a render pass */
    job->is_subpass_continue = true;
@@ -425,7 +425,7 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
    /* Make sure we have an active job to continue the render pass recording
     * after the clear.
     */
-   job = v3dv_cmd_buffer_start_job(cmd_buffer, false);
+   job = v3dv_cmd_buffer_start_job(cmd_buffer, cmd_buffer->state.subpass_idx);
 
    v3dv_job_start_frame(job,
                         subpass_tiling.width,
