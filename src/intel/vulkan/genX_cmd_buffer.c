@@ -383,7 +383,7 @@ color_attachment_compute_aux_usage(struct anv_device * device,
    union isl_color_value clear_color = {};
    anv_clear_color_from_att_state(&clear_color, att_state, iview);
 
-   att_state->clear_color_is_zero_one =
+   const bool clear_color_is_zero_one =
       isl_color_value_is_zero_one(clear_color, iview->planes[0].isl.format);
    att_state->clear_color_is_zero =
       isl_color_value_is_zero(clear_color, iview->planes[0].isl.format);
@@ -420,7 +420,7 @@ color_attachment_compute_aux_usage(struct anv_device * device,
          att_state->fast_clear = false;
 
       /* On Broadwell and earlier, we can only handle 0/1 clear colors */
-      if (GEN_GEN <= 8 && !att_state->clear_color_is_zero_one)
+      if (GEN_GEN <= 8 && !clear_color_is_zero_one)
          att_state->fast_clear = false;
 
       /* If the clear color is one that would require non-trivial format
@@ -475,11 +475,6 @@ depth_stencil_attachment_compute_aux_usage(struct anv_device *device,
    /* These will be initialized after the first subpass transition. */
    att_state->aux_usage = ISL_AUX_USAGE_NONE;
    att_state->input_aux_usage = ISL_AUX_USAGE_NONE;
-
-   /* This is unused for depth/stencil but valgrind complains if it
-    * isn't initialized
-    */
-   att_state->clear_color_is_zero_one = false;
 
    if (GEN_GEN == 7) {
       /* We don't do any HiZ or depth fast-clears on gen7 yet */
@@ -5044,7 +5039,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
        * color or auxiliary buffer usage isn't supported by the sampler.
        */
       const bool input_needs_resolve =
-            (att_state->fast_clear && !att_state->clear_color_is_zero_one) ||
+            (att_state->fast_clear && !att_state->clear_color_is_zero) ||
             att_state->input_aux_usage != att_state->aux_usage;
 
       VkImageLayout target_layout;

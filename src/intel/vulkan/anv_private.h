@@ -2591,7 +2591,6 @@ struct anv_attachment_state {
    VkImageAspectFlags                           pending_load_aspects;
    bool                                         fast_clear;
    VkClearValue                                 clear_value;
-   bool                                         clear_color_is_zero_one;
    bool                                         clear_color_is_zero;
 
    /* When multiview is active, attachments with a renderpass clear
