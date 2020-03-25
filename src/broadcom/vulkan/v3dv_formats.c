@@ -308,6 +308,16 @@ v3dv_get_format_swizzle(VkFormat f)
    return vf->swizzle;
 }
 
+uint8_t
+v3dv_get_tex_return_size(const struct v3dv_format *vf,
+                         enum pipe_tex_compare compare)
+{
+   if (compare == PIPE_TEX_COMPARE_R_TO_TEXTURE)
+      return 16;
+
+   return vf->return_size;
+}
+
 static bool
 format_supports_blending(const struct v3dv_format *format)
 {

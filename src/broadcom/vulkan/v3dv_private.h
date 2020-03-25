@@ -526,6 +526,7 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_DESCRIPTOR_SETS           = 1 << 7,
    V3DV_CMD_DIRTY_PUSH_CONSTANTS            = 1 << 8,
    V3DV_CMD_DIRTY_BLEND_CONSTANTS           = 1 << 9,
+   V3DV_CMD_DIRTY_SHADER_VARIANTS           = 1 << 10,
 };
 
 
@@ -1126,6 +1127,8 @@ void v3dv_loge_v(const char *format, va_list va);
 const struct v3dv_format *v3dv_get_format(VkFormat);
 const uint8_t *v3dv_get_format_swizzle(VkFormat f);
 void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *type, uint32_t *bpp);
+uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, enum pipe_tex_compare compare);
+
 
 uint32_t v3d_utile_width(int cpp);
 uint32_t v3d_utile_height(int cpp);
@@ -1144,6 +1147,18 @@ void v3d_store_tiled_image(void *dst, uint32_t dst_stride,
 
 struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                          struct v3dv_pipeline_stage *p_stage);
+
+struct v3dv_shader_variant *
+v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
+                        struct v3d_key *key,
+                        size_t key_size);
+
+struct v3dv_descriptor *
+v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_state,
+                                   struct v3dv_descriptor_map *map,
+                                   struct v3dv_pipeline_layout *pipeline_layout,
+                                   uint32_t index,
+                                   uint32_t *dynamic_offset);
 
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \
                                                         \

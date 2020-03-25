@@ -1736,6 +1736,120 @@ cmd_buffer_update_ez_state(struct v3dv_cmd_buffer *cmd_buffer,
    }
 }
 
+/* Note that the following poopulate methods doesn't do a detailed fill-up of
+ * the v3d_fs_key. Here we just fill-up cmd_buffer specific info. All info
+ * coming from the pipeline create info was alredy filled up when the pipeline
+ * was created
+ */
+static void
+cmd_buffer_populate_v3d_key(struct v3d_key *key,
+                            struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_descriptor_map *map = &cmd_buffer->state.pipeline->texture_map;
+   struct v3dv_descriptor_state *descriptor_state =
+      &cmd_buffer->state.descriptor_state;
+
+   for (uint32_t i = 0; i < map->num_desc; i++) {
+      struct v3dv_descriptor *descriptor =
+         v3dv_descriptor_map_get_descriptor(descriptor_state,
+                                            map,
+                                            cmd_buffer->state.pipeline->layout,
+                                            i, NULL);
+
+      assert(descriptor->type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+             descriptor->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+      assert(descriptor);
+      assert(descriptor->image_view);
+      assert(descriptor->image_view->image);
+
+      key->tex[i].return_size =
+         v3dv_get_tex_return_size(descriptor->image_view->format,
+                                  0); /* FIXME: how to get the sampler compare mode? */
+
+      if (key->tex[i].return_size == 16) {
+         key->tex[i].return_channels = 2;
+      } else {
+         key->tex[i].return_channels = 4;
+      }
+
+      /* Note: we don't need to do anything for the swizzle, as that is
+       * handled with the swizzle info at the Texture State, and the
+       * default values for key->tex[].swizzle were already filled up on
+       * the pipeline populate.
+       */
+   }
+}
+
+static void
+update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_shader_variant *variant;
+   struct v3dv_pipeline_stage *p_stage = cmd_buffer->state.pipeline->fs;
+   struct v3d_fs_key local_key;
+
+   /* We start with a copy of the original pipeline key */
+   memcpy(&local_key, &p_stage->key.fs, sizeof(struct v3d_fs_key));
+
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+
+   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                     sizeof(struct v3d_fs_key));
+
+   if (p_stage->current_variant != variant) {
+      p_stage->current_variant = variant;
+      /* FIXME: we need to set any dirty flag here? */
+   }
+}
+
+static void
+update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_shader_variant *variant;
+   struct v3dv_pipeline_stage *p_stage = cmd_buffer->state.pipeline->vs;
+   struct v3d_vs_key local_key;
+
+   /* We start with a copy of the original pipeline key */
+   memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
+
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+
+   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                     sizeof(struct v3d_vs_key));
+
+   if (p_stage->current_variant != variant) {
+      p_stage->current_variant = variant;
+      /* FIXME: we need to set any dirty flag here? */
+   }
+
+   p_stage = cmd_buffer->state.pipeline->vs_bin;
+   memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
+
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                     sizeof(struct v3d_vs_key));
+
+   if (p_stage->current_variant != variant) {
+      p_stage->current_variant = variant;
+      /* FIXME: we need to set any dirty flag here? */
+   }
+}
+
+/*
+ * Some updates on the cmd buffer requires also updates on the shader being
+ * compiled at the pipeline. The poster boy here are textures, as the compiler
+ * needs to do certain things depending on the texture format. So here we
+ * re-create the v3d_keys and update the variant. Note that internally the
+ * pipeline has a variant cache (hash table) to avoid unneeded compilations
+ */
+static void
+update_pipeline_variants(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   assert(cmd_buffer->state.pipeline);
+
+   update_fs_variant(cmd_buffer);
+   update_vs_variant(cmd_buffer);
+}
+
 static void
 bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
                        struct v3dv_pipeline *pipeline)
@@ -1767,6 +1881,12 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
 
    cmd_buffer_bind_pipeline_static_state(cmd_buffer, &pipeline->dynamic_state);
    cmd_buffer_update_ez_state(cmd_buffer, pipeline);
+
+   if (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_SHADER_VARIANTS) {
+      update_pipeline_variants(cmd_buffer);
+
+      cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_SHADER_VARIANTS;
+   }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
 }
@@ -2785,6 +2905,12 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
          descriptor_state->dynamic_offsets[idx] = pDynamicOffsets[dyn_index];
       }
+   }
+
+   if (cmd_buffer->state.pipeline) {
+      update_pipeline_variants(cmd_buffer);
+   } else {
+      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_SHADER_VARIANTS;
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;

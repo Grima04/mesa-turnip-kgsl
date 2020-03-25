@@ -1056,10 +1056,10 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
  * already compiled, it gets it from the p_stage cache, if not it compiles is
  * through the v3d compiler
  */
-static struct v3dv_shader_variant*
-get_shader_variant(struct v3dv_pipeline_stage *p_stage,
-                   struct v3d_key *key,
-                   size_t key_size)
+struct v3dv_shader_variant*
+v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
+                        struct v3d_key *key,
+                        size_t key_size)
 {
    struct hash_table *ht = p_stage->cache;
    struct hash_entry *entry = _mesa_hash_table_search(ht, key);
@@ -1359,12 +1359,12 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          struct v3d_vs_key *key = &pipeline->vs->key.vs;
          pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
          pipeline->vs->current_variant =
-            get_shader_variant(pipeline->vs, &key->base, sizeof(*key));
+            v3dv_get_shader_variant(pipeline->vs, &key->base, sizeof(*key));
 
          key = &pipeline->vs_bin->key.vs;
          pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs_bin);
          pipeline->vs_bin->current_variant =
-            get_shader_variant(pipeline->vs_bin, &key->base, sizeof(*key));
+            v3dv_get_shader_variant(pipeline->vs_bin, &key->base, sizeof(*key));
          break;
       }
       case MESA_SHADER_FRAGMENT: {
@@ -1377,7 +1377,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          lower_fs_io(p_stage->nir);
 
          p_stage->current_variant =
-            get_shader_variant(p_stage, &key->base, sizeof(*key));
+            v3dv_get_shader_variant(p_stage, &key->base, sizeof(*key));
 
          break;
       }

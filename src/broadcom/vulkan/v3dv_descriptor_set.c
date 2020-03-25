@@ -25,6 +25,55 @@
 
 #include "v3dv_private.h"
 
+static bool
+descriptor_type_is_dynamic(VkDescriptorType type)
+{
+   switch (type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      return true;
+      break;
+   default:
+      return false;
+   }
+}
+
+struct v3dv_descriptor *
+v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_state,
+                                   struct v3dv_descriptor_map *map,
+                                   struct v3dv_pipeline_layout *pipeline_layout,
+                                   uint32_t index,
+                                   uint32_t *dynamic_offset)
+{
+   assert(index >= 0 && index < map->num_desc);
+
+   uint32_t set_number = map->set[index];
+   assert(descriptor_state->valid & 1 << set_number);
+
+   struct v3dv_descriptor_set *set =
+      descriptor_state->descriptor_sets[set_number];
+   assert(set);
+
+   uint32_t binding_number = map->binding[index];
+   assert(binding_number < set->layout->binding_count);
+
+   const struct v3dv_descriptor_set_binding_layout *binding_layout =
+      &set->layout->binding[binding_number];
+
+   uint32_t array_index = map->array_index[index];
+   assert(array_index < binding_layout->array_size);
+
+   if (descriptor_type_is_dynamic(binding_layout->type)) {
+      uint32_t dynamic_offset_index =
+         pipeline_layout->set[set_number].dynamic_offset_start +
+         binding_layout->dynamic_offset_index + array_index;
+
+      *dynamic_offset = descriptor_state->dynamic_offsets[dynamic_offset_index];
+   }
+
+   return &set->descriptors[binding_layout->descriptor_index + array_index];
+}
+
 /*
  * As anv and tu already points:
  *
