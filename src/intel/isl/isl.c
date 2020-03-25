@@ -2896,6 +2896,29 @@ isl_swizzle_invert(struct isl_swizzle swizzle)
    return (struct isl_swizzle) { chans[0], chans[1], chans[2], chans[3] };
 }
 
+/** Applies an inverse swizzle to a color value */
+union isl_color_value
+isl_color_value_swizzle_inv(union isl_color_value src,
+                            struct isl_swizzle swizzle)
+{
+   union isl_color_value dst = { .u32 = { 0, } };
+
+   /* We assign colors in ABGR order so that the first one will be taken in
+    * RGBA precedence order.  According to the PRM docs for shader channel
+    * select, this matches Haswell hardware behavior.
+    */
+   if ((unsigned)(swizzle.a - ISL_CHANNEL_SELECT_RED) < 4)
+      dst.u32[swizzle.a - ISL_CHANNEL_SELECT_RED] = src.u32[3];
+   if ((unsigned)(swizzle.b - ISL_CHANNEL_SELECT_RED) < 4)
+      dst.u32[swizzle.b - ISL_CHANNEL_SELECT_RED] = src.u32[2];
+   if ((unsigned)(swizzle.g - ISL_CHANNEL_SELECT_RED) < 4)
+      dst.u32[swizzle.g - ISL_CHANNEL_SELECT_RED] = src.u32[1];
+   if ((unsigned)(swizzle.r - ISL_CHANNEL_SELECT_RED) < 4)
+      dst.u32[swizzle.r - ISL_CHANNEL_SELECT_RED] = src.u32[0];
+
+   return dst;
+}
+
 uint8_t
 isl_format_get_aux_map_encoding(enum isl_format format)
 {
