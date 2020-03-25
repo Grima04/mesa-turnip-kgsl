@@ -154,6 +154,8 @@ void validate(Program* program, FILE * output)
                                    (flat && i == 1) || (instr->format == Format::MIMG && i == 1) ||
                                    ((instr->format == Format::MUBUF || instr->format == Format::MTBUF) && i == 1);
                check(can_be_undef, "Undefs can only be used in certain operands", instr.get());
+            } else {
+               check(instr->operands[i].isFixed() || instr->operands[i].isTemp() || instr->operands[i].isConstant(), "Uninitialized Operand", instr.get());
             }
          }
 
