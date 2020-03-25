@@ -489,7 +489,7 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
       Location loc;
       loc.block = &block;
 
-      std::array<unsigned, 512> regs;
+      std::array<unsigned, 2048> regs; /* register file in bytes */
       regs.fill(0);
 
       std::set<Temp> live;
@@ -501,11 +501,11 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
       /* check live out */
       for (Temp tmp : live) {
          PhysReg reg = assignments.at(tmp.id()).reg;
-         for (unsigned i = 0; i < tmp.size(); i++) {
-            if (regs[reg + i]) {
-               err |= ra_fail(output, loc, Location(), "Assignment of element %d of %%%d already taken by %%%d in live-out", i, tmp.id(), regs[reg + i]);
+         for (unsigned i = 0; i < tmp.bytes(); i++) {
+            if (regs[reg.reg_b + i]) {
+               err |= ra_fail(output, loc, Location(), "Assignment of element %d of %%%d already taken by %%%d in live-out", i, tmp.id(), regs[reg.reg_b + i]);
             }
-            regs[reg + i] = tmp.id();
+            regs[reg.reg_b + i] = tmp.id();
          }
       }
       regs.fill(0);
@@ -517,9 +517,9 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
          if (instr->opcode == aco_opcode::p_logical_end) {
             for (Temp tmp : phi_sgpr_ops[block.index]) {
                PhysReg reg = assignments.at(tmp.id()).reg;
-               for (unsigned i = 0; i < tmp.size(); i++) {
-                  if (regs[reg + i])
-                     err |= ra_fail(output, loc, Location(), "Assignment of element %d of %%%d already taken by %%%d in live-out", i, tmp.id(), regs[reg + i]);
+               for (unsigned i = 0; i < tmp.bytes(); i++) {
+                  if (regs[reg.reg_b + i])
+                     err |= ra_fail(output, loc, Location(), "Assignment of element %d of %%%d already taken by %%%d in live-out", i, tmp.id(), regs[reg.reg_b + i]);
                }
                live.emplace(tmp);
             }
@@ -544,8 +544,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
 
       for (Temp tmp : live) {
          PhysReg reg = assignments.at(tmp.id()).reg;
-         for (unsigned i = 0; i < tmp.size(); i++)
-            regs[reg + i] = tmp.id();
+         for (unsigned i = 0; i < tmp.bytes(); i++)
+            regs[reg.reg_b + i] = tmp.id();
       }
 
       for (aco_ptr<Instruction>& instr : block.instructions) {
@@ -555,7 +555,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
          if (instr->opcode == aco_opcode::p_logical_end) {
             for (Temp tmp : phi_sgpr_ops[block.index]) {
                PhysReg reg = assignments.at(tmp.id()).reg;
-               regs[reg] = 0;
+               for (unsigned i = 0; i < tmp.bytes(); i++)
+                  regs[reg.reg_b + i] = 0;
             }
          }
 
@@ -564,8 +565,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                if (!op.isTemp())
                   continue;
                if (op.isFirstKillBeforeDef()) {
-                  for (unsigned j = 0; j < op.getTemp().size(); j++)
-                     regs[op.physReg() + j] = 0;
+                  for (unsigned j = 0; j < op.getTemp().bytes(); j++)
+                     regs[op.physReg().reg_b + j] = 0;
                }
             }
          }
@@ -576,10 +577,10 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                continue;
             Temp tmp = def.getTemp();
             PhysReg reg = assignments.at(tmp.id()).reg;
-            for (unsigned j = 0; j < tmp.size(); j++) {
-               if (regs[reg + j])
-                  err |= ra_fail(output, loc, assignments.at(regs[reg + i]).defloc, "Assignment of element %d of %%%d already taken by %%%d from instruction", i, tmp.id(), regs[reg + j]);
-               regs[reg + j] = tmp.id();
+            for (unsigned j = 0; j < tmp.bytes(); j++) {
+               if (regs[reg.reg_b + j])
+                  err |= ra_fail(output, loc, assignments.at(regs[reg.reg_b + i]).defloc, "Assignment of element %d of %%%d already taken by %%%d from instruction", i, tmp.id(), regs[reg.reg_b + j]);
+               regs[reg.reg_b + j] = tmp.id();
             }
          }
 
@@ -587,8 +588,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
             if (!def.isTemp())
                continue;
             if (def.isKill()) {
-               for (unsigned j = 0; j < def.getTemp().size(); j++)
-                  regs[def.physReg() + j] = 0;
+               for (unsigned j = 0; j < def.getTemp().bytes(); j++)
+                  regs[def.physReg().reg_b + j] = 0;
             }
          }
 
@@ -597,8 +598,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                if (!op.isTemp())
                   continue;
                if (op.isLateKill() && op.isFirstKill()) {
-                  for (unsigned j = 0; j < op.getTemp().size(); j++)
-                     regs[op.physReg() + j] = 0;
+                  for (unsigned j = 0; j < op.getTemp().bytes(); j++)
+                     regs[op.physReg().reg_b + j] = 0;
                }
             }
          }
