@@ -688,8 +688,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		result = LLVMBuildFMul(ctx->ac.builder, src[0], src[1], "");
 		break;
 	case nir_op_frcp:
-		src[0] = ac_to_float(&ctx->ac, src[0]);
-		result = ac_build_fdiv(&ctx->ac, LLVMConstReal(LLVMTypeOf(src[0]), 1.0), src[0]);
+		result = emit_intrin_1f_param(&ctx->ac, "llvm.amdgcn.rcp",
+					      ac_to_float_type(&ctx->ac, def_type), src[0]);
 		break;
 	case nir_op_iand:
 		result = LLVMBuildAnd(ctx->ac.builder, src[0], src[1], "");
