@@ -285,6 +285,11 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
    }
 }
 
+bool instr_can_access_subdword(aco_ptr<Instruction>& instr)
+{
+   return instr->isSDWA() || instr->format == Format::PSEUDO;
+}
+
 std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
                                         RegisterFile& reg_file,
                                         uint32_t lb, uint32_t ub,
@@ -784,6 +789,16 @@ PhysReg get_reg(ra_ctx& ctx,
          stride = 4;
    }
 
+   if (rc.is_subdword()) {
+      /* stride in bytes */
+      if(!instr_can_access_subdword(instr))
+         stride = 4;
+      else if (rc.bytes() % 4 == 0)
+         stride = 4;
+      else if (rc.bytes() % 2 == 0)
+         stride = 2;
+   }
+
    std::pair<PhysReg, bool> res = {{}, false};
    /* try to find space without live-range splits */
    if (rc.type() == RegType::vgpr && (size == 4 || size == 8))
@@ -977,6 +992,9 @@ bool get_reg_specified(ra_ctx& ctx,
       ub = ctx.program->max_reg_demand.sgpr;
    }
 
+   if (rc.is_subdword() && reg.byte() && !instr_can_access_subdword(instr))
+      return false;
+
    uint32_t reg_lo = reg.reg();
    uint32_t reg_hi = reg + (size - 1);
 
@@ -1051,6 +1069,9 @@ void handle_pseudo(ra_ctx& ctx,
 
 bool operand_can_use_reg(aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
 {
+   if (!instr_can_access_subdword(instr) && reg.byte())
+      return false;
+
    switch (instr->format) {
    case Format::SMEM:
       return reg != scc &&
@@ -1790,6 +1811,9 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                   PhysReg reg = res.first;
                   if (res.second) {
                      reg.reg_b += byte_offset;
+                     /* make sure to only use byte offset if the instruction supports it */
+                     if (vec->definitions[0].regClass().is_subdword() && reg.byte() && !instr_can_access_subdword(instr))
+                        reg = get_reg(ctx, register_file, definition.regClass(), parallelcopy, instr);
                   } else {
                      reg = get_reg(ctx, register_file, definition.regClass(), parallelcopy, instr);
                   }
