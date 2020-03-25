@@ -254,6 +254,13 @@ drisw_swap_buffers(__DRIdrawable *dPriv)
 
       ctx->st->flush(ctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
 
+      if (drawable->stvis.samples > 1) {
+         /* Resolve the back buffer. */
+         dri_pipe_blit(ctx->st->pipe,
+                       drawable->textures[ST_ATTACHMENT_BACK_LEFT],
+                       drawable->msaa_textures[ST_ATTACHMENT_BACK_LEFT]);
+      }
+
       drisw_copy_to_front(dPriv, ptex);
    }
 }
@@ -292,6 +299,12 @@ drisw_flush_frontbuffer(struct dri_context *ctx,
    if (!ctx)
       return;
 
+   if (drawable->stvis.samples > 1) {
+      /* Resolve the front buffer. */
+      dri_pipe_blit(ctx->st->pipe,
+                    drawable->textures[ST_ATTACHMENT_FRONT_LEFT],
+                    drawable->msaa_textures[ST_ATTACHMENT_FRONT_LEFT]);
+   }
    ptex = drawable->textures[statt];
 
    if (ptex) {
@@ -327,8 +340,10 @@ drisw_allocate_textures(struct dri_context *stctx,
 
    /* remove outdated textures */
    if (resized) {
-      for (i = 0; i < ST_ATTACHMENT_COUNT; i++)
+      for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
          pipe_resource_reference(&drawable->textures[i], NULL);
+         pipe_resource_reference(&drawable->msaa_textures[i], NULL);
+      }
    }
 
    memset(&templ, 0, sizeof(templ));
@@ -358,6 +373,8 @@ drisw_allocate_textures(struct dri_context *stctx,
 
       templ.format = format;
       templ.bind = bind;
+      templ.nr_samples = 0;
+      templ.nr_storage_samples = 0;
 
       if (statts[i] == ST_ATTACHMENT_FRONT_LEFT &&
           screen->base.screen->resource_create_front &&
@@ -367,6 +384,19 @@ drisw_allocate_textures(struct dri_context *stctx,
       } else
          drawable->textures[statts[i]] =
             screen->base.screen->resource_create(screen->base.screen, &templ);
+
+      if (drawable->stvis.samples > 1) {
+         templ.bind = templ.bind &
+            ~(PIPE_BIND_SCANOUT | PIPE_BIND_SHARED | PIPE_BIND_DISPLAY_TARGET);
+         templ.nr_samples = drawable->stvis.samples;
+         templ.nr_storage_samples = drawable->stvis.samples;
+         drawable->msaa_textures[statts[i]] =
+            screen->base.screen->resource_create(screen->base.screen, &templ);
+
+         dri_pipe_blit(stctx->st->pipe,
+                       drawable->msaa_textures[statts[i]],
+                       drawable->textures[statts[i]]);
+      }
    }
 
    drawable->old_w = width;
