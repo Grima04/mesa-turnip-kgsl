@@ -144,6 +144,7 @@ lp_build_interp_soa_update_inputs_dyn(struct lp_build_interp_soa_context *bld,
 void
 lp_build_interp_soa_update_pos_dyn(struct lp_build_interp_soa_context *bld,
                                    struct gallivm_state *gallivm,
-                                   LLVMValueRef quad_start_index);
+                                   LLVMValueRef quad_start_index,
+                                   LLVMValueRef sample_id);
 
 #endif /* LP_BLD_INTERP_H */

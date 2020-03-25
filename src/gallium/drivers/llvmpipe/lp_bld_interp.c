@@ -313,7 +313,7 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                   if (bld->coverage_samples > 1) {
                      LLVMValueRef xoffset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
                      LLVMValueRef yoffset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
-                     if (loc == TGSI_INTERPOLATE_LOC_SAMPLE) {
+                     if (loc == TGSI_INTERPOLATE_LOC_SAMPLE || (attrib == 0 && chan == 2 && sample_id)) {
                         LLVMValueRef x_val_idx = LLVMBuildMul(gallivm->builder, sample_id, lp_build_const_int32(gallivm, 2), "");
                         LLVMValueRef y_val_idx = LLVMBuildAdd(gallivm->builder, x_val_idx, lp_build_const_int32(gallivm, 1), "");
 
@@ -882,10 +882,11 @@ lp_build_interp_soa_update_inputs_dyn(struct lp_build_interp_soa_context *bld,
 void
 lp_build_interp_soa_update_pos_dyn(struct lp_build_interp_soa_context *bld,
                                    struct gallivm_state *gallivm,
-                                   LLVMValueRef quad_start_index)
+                                   LLVMValueRef quad_start_index,
+                                   LLVMValueRef sample_id)
 {
    if (bld->simple_interp) {
-      attribs_update_simple(bld, gallivm, quad_start_index, NULL, NULL, 0, 1);
+      attribs_update_simple(bld, gallivm, quad_start_index, NULL, sample_id, 0, 1);
    }
    else {
       attribs_update(bld, gallivm, quad_start_index, 0, 1);

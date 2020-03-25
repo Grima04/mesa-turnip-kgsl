@@ -464,9 +464,6 @@ generate_fs_loop(struct gallivm_state *gallivm,
    if (!(depth_mode & EARLY_DEPTH_TEST) && !simple_shader)
       lp_build_mask_check(&mask);
 
-   lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter);
-   z = interp->pos[2];
-
    /* Create storage for recombining sample masks after early Z pass. */
    LLVMValueRef s_mask_or = lp_build_alloca(gallivm, lp_build_int_vec_type(gallivm, type), "cov_mask_early_depth");
    LLVMBuildStore(builder, LLVMConstNull(lp_build_int_vec_type(gallivm, type)), s_mask_or);
@@ -511,6 +508,11 @@ generate_fs_loop(struct gallivm_state *gallivm,
       s_mask = LLVMBuildLoad(builder, s_mask_ptr, "");
       s_mask = LLVMBuildAnd(builder, s_mask, mask_val, "");
    }
+
+
+   /* for multisample Z needs to be interpolated at sample points for testing. */
+   lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter, key->multisample ? sample_loop_state.counter : NULL);
+   z = interp->pos[2];
 
    depth_ptr = depth_base_ptr;
    if (key->multisample) {
@@ -585,6 +587,9 @@ generate_fs_loop(struct gallivm_state *gallivm,
       /* recombined all the coverage masks in the shader exec mask. */
       tmp_s_mask_or = LLVMBuildLoad(builder, s_mask_or, "");
       lp_build_mask_update(&mask, tmp_s_mask_or);
+
+      /* for multisample Z needs to be re interpolated at pixel center */
+      lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter, NULL);
    }
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, NULL, NULL);
