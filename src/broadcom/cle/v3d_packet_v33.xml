@@ -269,6 +269,7 @@
     <value name="d16"      value="42" min_ver="41"/>
     <value name="d24s8"    value="43" min_ver="41"/>
     <value name="s8"       value="44" min_ver="41"/>
+    <value name="rgba5551" value="45" min_ver="41"/>
   </enum>
 
   <enum name="Z/S Output Image Format" prefix="V3D_OUTPUT_IMAGE_FORMAT_ZS" max_ver="33">
@@ -1775,6 +1776,7 @@
     <value name="Texture Data Format RGBA32I" value="112"/>
     <value name="Texture Data Format RGBA32UI" value="113"/>
     <value name="Texture Data Format RGB10_A2UI" value="114"/>
+    <value name="Texture Data Format A1_RGB5" value="115"/>
 
   </enum>
 </vcxml>
