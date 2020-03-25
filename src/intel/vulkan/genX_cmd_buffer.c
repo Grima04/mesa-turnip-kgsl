@@ -1425,48 +1425,49 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
 
    if (begin) {
       for (uint32_t i = 0; i < pass->attachment_count; ++i) {
-         struct anv_render_pass_attachment *att = &pass->attachments[i];
-         VkImageAspectFlags att_aspects = vk_format_aspects(att->format);
+         const struct anv_render_pass_attachment *pass_att = &pass->attachments[i];
+         struct anv_attachment_state *att_state = &state->attachments[i];
+         VkImageAspectFlags att_aspects = vk_format_aspects(pass_att->format);
          VkImageAspectFlags clear_aspects = 0;
          VkImageAspectFlags load_aspects = 0;
 
          if (att_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
             /* color attachment */
-            if (att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+            if (pass_att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
                clear_aspects |= VK_IMAGE_ASPECT_COLOR_BIT;
-            } else if (att->load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
+            } else if (pass_att->load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
                load_aspects |= VK_IMAGE_ASPECT_COLOR_BIT;
             }
          } else {
             /* depthstencil attachment */
             if (att_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
-               if (att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+               if (pass_att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
                   clear_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
-               } else if (att->load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
+               } else if (pass_att->load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
                   load_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
                }
             }
             if (att_aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-               if (att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+               if (pass_att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
                   clear_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-               } else if (att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
+               } else if (pass_att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
                   load_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
                }
             }
          }
 
-         state->attachments[i].current_layout = att->initial_layout;
-         state->attachments[i].current_stencil_layout = att->stencil_initial_layout;
-         state->attachments[i].pending_clear_aspects = clear_aspects;
-         state->attachments[i].pending_load_aspects = load_aspects;
+         att_state->current_layout = pass_att->initial_layout;
+         att_state->current_stencil_layout = pass_att->stencil_initial_layout;
+         att_state->pending_clear_aspects = clear_aspects;
+         att_state->pending_load_aspects = load_aspects;
          if (clear_aspects)
-            state->attachments[i].clear_value = begin->pClearValues[i];
+            att_state->clear_value = begin->pClearValues[i];
 
          struct anv_image_view *iview = state->attachments[i].image_view;
-         anv_assert(iview->vk_format == att->format);
+         anv_assert(iview->vk_format == pass_att->format);
 
          const uint32_t num_layers = iview->planes[0].isl.array_len;
-         state->attachments[i].pending_clear_views = (1 << num_layers) - 1;
+         att_state->pending_clear_views = (1 << num_layers) - 1;
 
          if (att_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
             anv_assert(iview->n_planes == 1);
