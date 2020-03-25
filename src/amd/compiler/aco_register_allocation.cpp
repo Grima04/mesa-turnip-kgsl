@@ -1492,10 +1492,11 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
                   pc_op.setFixed(reg);
                   PhysReg new_reg = get_reg(ctx, register_file, operand.regClass(), parallelcopy, instr);
                   Definition pc_def = Definition(program->allocateId(), new_reg, pc_op.regClass());
-                  ctx.assignments[pc_def.tempId()] = {reg, pc_def.regClass()};
+                  ctx.assignments[pc_def.tempId()] = {new_reg, pc_def.regClass()};
                   register_file.clear(pc_op);
                   register_file.fill(pc_def);
                   parallelcopy.emplace_back(pc_op, pc_def);
+                  operand.setTemp(pc_def.getTemp());
                   operand.setFixed(new_reg);
                }
 
