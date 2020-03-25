@@ -432,7 +432,6 @@ static int si_get_shader_param(struct pipe_screen* pscreen,
 	case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
 	case PIPE_SHADER_CAP_INTEGERS:
 	case PIPE_SHADER_CAP_INT64_ATOMICS:
-	case PIPE_SHADER_CAP_FP16:
 	case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
 	case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
 	case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
@@ -463,6 +462,7 @@ static int si_get_shader_param(struct pipe_screen* pscreen,
 		       shader == PIPE_SHADER_TESS_CTRL;
 
 	/* Unsupported boolean features. */
+	case PIPE_SHADER_CAP_FP16:
 	case PIPE_SHADER_CAP_SUBROUTINES:
 	case PIPE_SHADER_CAP_SUPPORTED_IRS:
 	case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
