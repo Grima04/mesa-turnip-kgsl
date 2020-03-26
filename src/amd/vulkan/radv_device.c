@@ -7034,6 +7034,11 @@ radv_get_max_anisotropy(struct radv_device *device,
 	return 0;
 }
 
+static inline int S_FIXED(float value, unsigned frac_bits)
+{
+	return value * (1 << frac_bits);
+}
+
 static void
 radv_init_sampler(struct radv_device *device,
 		  struct radv_sampler *sampler,

@@ -37,6 +37,8 @@
 #include <unistd.h>
 
 #include "util/u_atomic.h"
+#include "util/u_memory.h"
+#include "util/u_math.h"
 
 #define AMDGPU_TILING_SCANOUT_SHIFT 63
 #define AMDGPU_TILING_SCANOUT_MASK 1
@@ -61,7 +63,7 @@ radv_amdgpu_bo_va_op(struct radv_amdgpu_winsys *ws,
 	if (!(bo_flags & RADEON_FLAG_READ_ONLY))
 		flags |= AMDGPU_VM_PAGE_WRITEABLE;
 
-	size = ALIGN(size, getpagesize());
+	size = align64(size, getpagesize());
 
 	return amdgpu_bo_va_op_raw(ws->dev, bo, offset, size, addr,
 				   flags, ops);

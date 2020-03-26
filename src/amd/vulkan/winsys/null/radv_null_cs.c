@@ -26,6 +26,7 @@
  */
 
 #include "radv_null_cs.h"
+#include "util/u_memory.h"
 
 struct radv_null_cs {
 	struct radeon_cmdbuf base;

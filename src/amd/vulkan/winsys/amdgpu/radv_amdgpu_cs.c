@@ -29,6 +29,7 @@
 #include <pthread.h>
 #include <errno.h>
 
+#include "util/u_memory.h"
 #include "ac_debug.h"
 #include "radv_radeon_winsys.h"
 #include "radv_amdgpu_cs.h"

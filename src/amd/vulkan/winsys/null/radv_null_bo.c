@@ -26,6 +26,7 @@
  */
 
 #include "radv_null_bo.h"
+#include "util/u_memory.h"
 
 static struct radeon_winsys_bo *
 radv_null_winsys_bo_create(struct radeon_winsys *_ws,

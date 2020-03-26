@@ -49,7 +49,6 @@
 #include "util/macros.h"
 #include "util/list.h"
 #include "util/xmlconfig.h"
-#include "main/macros.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
 
