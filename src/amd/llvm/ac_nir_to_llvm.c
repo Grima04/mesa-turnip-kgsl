@@ -2342,8 +2342,7 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 		unsigned natural_stride = type_scalar_size_bytes(deref->type);
 		unsigned stride = explicit_stride ? explicit_stride : natural_stride;
 		int elem_size_bytes = ac_get_elem_bits(&ctx->ac, result_type) / 8;
-		bool split_loads = ctx->ac.chip_class == GFX6 &&
-				   elem_size_bytes == 1;
+		bool split_loads = ctx->ac.chip_class == GFX6 && elem_size_bytes < 4;
 
 		if (stride != natural_stride || split_loads) {
 			if (LLVMGetTypeKind(result_type) == LLVMVectorTypeKind)
@@ -2505,8 +2504,7 @@ visit_store_var(struct ac_nir_context *ctx,
 		unsigned natural_stride = type_scalar_size_bytes(deref->type);
 		unsigned stride = explicit_stride ? explicit_stride : natural_stride;
 		int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(val)) / 8;
-		bool split_stores = ctx->ac.chip_class == GFX6 &&
-				    elem_size_bytes == 1;
+		bool split_stores = ctx->ac.chip_class == GFX6 && elem_size_bytes < 4;
 
 		LLVMTypeRef ptr_type =  LLVMPointerType(LLVMTypeOf(val),
 							LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
