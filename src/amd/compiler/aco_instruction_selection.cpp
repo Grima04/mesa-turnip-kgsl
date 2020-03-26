@@ -3329,6 +3329,34 @@ bool store_output_to_temps(isel_context *ctx, nir_intrinsic_instr *instr)
    return true;
 }
 
+bool load_input_from_temps(isel_context *ctx, nir_intrinsic_instr *instr, Temp dst)
+{
+   /* Only TCS per-vertex inputs are supported by this function.
+    * Per-vertex inputs only match between the VS/TCS invocation id when the number of invocations is the same.
+    */
+   if (ctx->shader->info.stage != MESA_SHADER_TESS_CTRL || !ctx->tcs_in_out_eq)
+      return false;
+
+   nir_src *off_src = nir_get_io_offset_src(instr);
+   nir_src *vertex_index_src = nir_get_io_vertex_index_src(instr);
+   nir_instr *vertex_index_instr = vertex_index_src->ssa->parent_instr;
+   bool can_use_temps = nir_src_is_const(*off_src) &&
+                        vertex_index_instr->type == nir_instr_type_intrinsic &&
+                        nir_instr_as_intrinsic(vertex_index_instr)->intrinsic == nir_intrinsic_load_invocation_id;
+
+   if (!can_use_temps)
+      return false;
+
+   unsigned idx = nir_intrinsic_base(instr) + nir_intrinsic_component(instr) + 4 * nir_src_as_uint(*off_src);
+   Temp *src = &ctx->inputs.temps[idx];
+   Temp vec = create_vec_from_array(ctx, src, dst.size(), dst.regClass().type(), 4u);
+   assert(vec.size() == dst.size());
+
+   Builder bld(ctx->program, ctx->block);
+   bld.copy(Definition(dst), vec);
+   return true;
+}
+
 void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -3337,6 +3365,9 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
    unsigned write_mask = nir_intrinsic_write_mask(instr);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8u;
+
+   if (ctx->tcs_in_out_eq)
+      store_output_to_temps(ctx, instr);
 
    if (ctx->stage == vertex_es || ctx->stage == tess_eval_es) {
       /* GFX6-8: ES stage is not merged into GS, data is passed from ES to GS in VMEM. */
@@ -3974,6 +4005,10 @@ void visit_load_tcs_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *ins
 
    Builder bld(ctx->program, ctx->block);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+
+   if (load_input_from_temps(ctx, instr, dst))
+      return;
+
    std::pair<Temp, unsigned> offs = get_tcs_per_vertex_input_lds_offset(ctx, instr);
    unsigned elem_size_bytes = instr->dest.ssa.bit_size / 8;
    unsigned lds_align = calculate_lds_alignment(ctx, offs.second);
