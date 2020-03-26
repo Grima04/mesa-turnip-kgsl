@@ -1904,8 +1904,9 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
       LLVMValueRef total_emitted_vertices_vec;
       LLVMValueRef emitted_prims_vec;
 
-      end_primitive_masked(&bld.bld_base, lp_build_mask_value(bld.mask), 0);
       for (int i = 0; i < PIPE_MAX_VERTEX_STREAMS; i++) {
+         end_primitive_masked(&bld.bld_base, lp_build_mask_value(bld.mask), i);
+
          total_emitted_vertices_vec =
             LLVMBuildLoad(builder, bld.total_emitted_vertices_vec_ptr[i], "");
 
