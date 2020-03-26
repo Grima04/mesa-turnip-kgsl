@@ -285,12 +285,13 @@ if with_tests
     dependencies : idep_mesautil,
     c_args : [c_msvc_compat_args],
   )
-  if not (host_machine.system() == 'windows')
-    process_test_exe_full_path = process_test_exe.full_path()
-  else
+  if (host_machine.system() == 'windows' and cc.get_id() == 'gcc')
+    # This conversion is only required on mingw
     process_test_exe_full_path = run_command(
       'winepath', '-w', process_test_exe.full_path()
     ).stdout().strip()
+  else
+    process_test_exe_full_path = process_test_exe.full_path()
   endif
 
   test(
