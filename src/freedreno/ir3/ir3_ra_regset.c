@@ -201,31 +201,23 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 		}
 	}
 
-	setup_conflicts(set);
-
 	/* starting a6xx, half precision regs conflict w/ full precision regs: */
 	if (compiler->gpu_id >= 600) {
-		/* because of transitivity, we can get away with just setting up
-		 * conflicts between the first class of full and half regs:
-		 */
-		for (unsigned i = 0; i < half_class_count; i++) {
-			/* NOTE there are fewer half class sizes, but they match the
-			 * first N full class sizes.. but assert in case that ever
-			 * accidentally changes:
-			 */
-			debug_assert(class_sizes[i] == half_class_sizes[i]);
-			for (unsigned j = 0; j < CLASS_REGS(i) / 2; j++) {
-				unsigned freg  = set->gpr_to_ra_reg[i][j];
-				unsigned hreg0 = set->gpr_to_ra_reg[i + HALF_OFFSET][(j * 2) + 0];
-				unsigned hreg1 = set->gpr_to_ra_reg[i + HALF_OFFSET][(j * 2) + 1];
+		for (unsigned i = 0; i < CLASS_REGS(0) / 2; i++) {
+			unsigned freg  = set->gpr_to_ra_reg[0][i];
+			unsigned hreg0 = set->gpr_to_ra_reg[0 + HALF_OFFSET][(i * 2) + 0];
+			unsigned hreg1 = set->gpr_to_ra_reg[0 + HALF_OFFSET][(i * 2) + 1];
 
-				ra_add_transitive_reg_pair_conflict(set->regs, freg, hreg0, hreg1);
-			}
+			ra_add_transitive_reg_pair_conflict(set->regs, freg, hreg0, hreg1);
 		}
+
+		setup_conflicts(set);
 
 		// TODO also need to update q_values, but for now:
 		ra_set_finalize(set->regs, NULL);
 	} else {
+		setup_conflicts(set);
+
 		/* allocate and populate q_values: */
 		unsigned int **q_values = ralloc_array(set, unsigned *, total_class_count);
 
