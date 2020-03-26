@@ -76,6 +76,26 @@ struct ir3_ra_reg_set {
 	unsigned int classes[class_count];
 	unsigned int half_classes[half_class_count];
 	unsigned int high_classes[high_class_count];
+
+	/* The virtual register space flattens out all the classes,
+	 * starting with full, followed by half and then high, ie:
+	 *
+	 *   scalar full  (starting at zero)
+	 *   vec2 full
+	 *   vec3 full
+	 *   ...
+	 *   vecN full
+	 *   scalar half  (starting at first_half_reg)
+	 *   vec2 half
+	 *   ...
+	 *   vecN half
+	 *   scalar high  (starting at first_high_reg)
+	 *   ...
+	 *   vecN high
+	 *
+	 */
+	unsigned first_half_reg, first_high_reg;
+
 	/* maps flat virtual register space to base gpr: */
 	uint16_t *ra_reg_to_gpr;
 	/* maps cls,gpr to flat virtual register space: */

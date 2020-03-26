@@ -70,6 +70,45 @@ build_q_values(unsigned int **q_values, unsigned off,
 	}
 }
 
+static void
+setup_conflicts(struct ir3_ra_reg_set *set)
+{
+	unsigned reg;
+
+	reg = 0;
+	for (unsigned i = 0; i < class_count; i++) {
+		for (unsigned j = 0; j < CLASS_REGS(i); j++) {
+			for (unsigned br = j; br < j + class_sizes[i]; br++) {
+				ra_add_transitive_reg_conflict(set->regs, br, reg);
+			}
+
+			reg++;
+		}
+	}
+
+	for (unsigned i = 0; i < half_class_count; i++) {
+		for (unsigned j = 0; j < HALF_CLASS_REGS(i); j++) {
+			for (unsigned br = j; br < j + half_class_sizes[i]; br++) {
+				ra_add_transitive_reg_conflict(set->regs,
+						br + set->first_half_reg, reg);
+			}
+
+			reg++;
+		}
+	}
+
+	for (unsigned i = 0; i < high_class_count; i++) {
+		for (unsigned j = 0; j < HIGH_CLASS_REGS(i); j++) {
+			for (unsigned br = j; br < j + high_class_sizes[i]; br++) {
+				ra_add_transitive_reg_conflict(set->regs,
+						br + set->first_high_reg, reg);
+			}
+
+			reg++;
+		}
+	}
+}
+
 /* One-time setup of RA register-set, which describes all the possible
  * "virtual" registers and their interferences.  Ie. double register
  * occupies (and conflicts with) two single registers, and so forth.
@@ -91,8 +130,7 @@ struct ir3_ra_reg_set *
 ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 {
 	struct ir3_ra_reg_set *set = rzalloc(compiler, struct ir3_ra_reg_set);
-	unsigned ra_reg_count, reg, first_half_reg, first_high_reg, base;
-	unsigned int **q_values;
+	unsigned ra_reg_count, reg, base;
 
 	/* calculate # of regs across all classes: */
 	ra_reg_count = 0;
@@ -102,13 +140,6 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 		ra_reg_count += HALF_CLASS_REGS(i);
 	for (unsigned i = 0; i < high_class_count; i++)
 		ra_reg_count += HIGH_CLASS_REGS(i);
-
-	/* allocate and populate q_values: */
-	q_values = ralloc_array(set, unsigned *, total_class_count);
-
-	build_q_values(q_values, 0, class_sizes, class_count);
-	build_q_values(q_values, HALF_OFFSET, half_class_sizes, half_class_count);
-	build_q_values(q_values, HIGH_OFFSET, high_class_sizes, high_class_count);
 
 	/* allocate the reg-set.. */
 	set->regs = ra_alloc_reg_set(set, ra_reg_count, true);
@@ -128,14 +159,11 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 			set->ra_reg_to_gpr[reg] = j;
 			set->gpr_to_ra_reg[i][j] = reg;
 
-			for (unsigned br = j; br < j + class_sizes[i]; br++)
-				ra_add_transitive_reg_conflict(set->regs, br, reg);
-
 			reg++;
 		}
 	}
 
-	first_half_reg = reg;
+	set->first_half_reg = reg;
 	base = HALF_OFFSET;
 
 	for (unsigned i = 0; i < half_class_count; i++) {
@@ -150,14 +178,11 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 			set->ra_reg_to_gpr[reg] = j;
 			set->gpr_to_ra_reg[base + i][j] = reg;
 
-			for (unsigned br = j; br < j + half_class_sizes[i]; br++)
-				ra_add_transitive_reg_conflict(set->regs, br + first_half_reg, reg);
-
 			reg++;
 		}
 	}
 
-	first_high_reg = reg;
+	set->first_high_reg = reg;
 	base = HIGH_OFFSET;
 
 	for (unsigned i = 0; i < high_class_count; i++) {
@@ -172,12 +197,11 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 			set->ra_reg_to_gpr[reg] = j;
 			set->gpr_to_ra_reg[base + i][j] = reg;
 
-			for (unsigned br = j; br < j + high_class_sizes[i]; br++)
-				ra_add_transitive_reg_conflict(set->regs, br + first_high_reg, reg);
-
 			reg++;
 		}
 	}
+
+	setup_conflicts(set);
 
 	/* starting a6xx, half precision regs conflict w/ full precision regs: */
 	if (compiler->gpu_id >= 600) {
@@ -202,10 +226,17 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 		// TODO also need to update q_values, but for now:
 		ra_set_finalize(set->regs, NULL);
 	} else {
-		ra_set_finalize(set->regs, q_values);
-	}
+		/* allocate and populate q_values: */
+		unsigned int **q_values = ralloc_array(set, unsigned *, total_class_count);
 
-	ralloc_free(q_values);
+		build_q_values(q_values, 0, class_sizes, class_count);
+		build_q_values(q_values, HALF_OFFSET, half_class_sizes, half_class_count);
+		build_q_values(q_values, HIGH_OFFSET, high_class_sizes, high_class_count);
+
+		ra_set_finalize(set->regs, q_values);
+
+		ralloc_free(q_values);
+	}
 
 	return set;
 }
