@@ -72,6 +72,8 @@ libintel_compiler_files = files(
   'brw_ir_allocator.h',
   'brw_ir_analysis.h',
   'brw_ir_fs.h',
+  'brw_ir_performance.h',
+  'brw_ir_performance.cpp',
   'brw_ir_vec4.h',
   'brw_nir.h',
   'brw_nir.c',

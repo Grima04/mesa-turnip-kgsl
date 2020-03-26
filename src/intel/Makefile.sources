@@ -79,6 +79,8 @@ COMPILER_FILES = \
 	compiler/brw_interpolation_map.c \
 	compiler/brw_ir_allocator.h \
 	compiler/brw_ir_fs.h \
+	compiler/brw_ir_performance.h \
+	compiler/brw_ir_performance.cpp \
 	compiler/brw_ir_vec4.h \
 	compiler/brw_nir.h \
 	compiler/brw_nir.c \

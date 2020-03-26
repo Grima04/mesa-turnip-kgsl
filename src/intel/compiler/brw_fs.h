@@ -32,6 +32,7 @@
 #include "brw_ir_fs.h"
 #include "brw_fs_builder.h"
 #include "brw_fs_live_variables.h"
+#include "brw_ir_performance.h"
 #include "compiler/nir/nir.h"
 
 struct bblock_t;
@@ -349,6 +350,8 @@ public:
                 backend_shader *) live_analysis;
    BRW_ANALYSIS(regpressure_analysis, brw::register_pressure,
                 fs_visitor *) regpressure_analysis;
+   BRW_ANALYSIS(performance_analysis, brw::performance,
+                fs_visitor *) performance_analysis;
 
    /** Number of uniform variable components visited. */
    unsigned uniforms;

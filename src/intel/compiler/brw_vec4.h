@@ -28,6 +28,7 @@
 
 #ifdef __cplusplus
 #include "brw_ir_vec4.h"
+#include "brw_ir_performance.h"
 #include "brw_vec4_builder.h"
 #include "brw_vec4_live_variables.h"
 #endif
@@ -107,6 +108,8 @@ public:
    unsigned int max_grf;
    BRW_ANALYSIS(live_analysis, brw::vec4_live_variables,
                 backend_shader *) live_analysis;
+   BRW_ANALYSIS(performance_analysis, brw::performance,
+                vec4_visitor *) performance_analysis;
 
    bool need_all_constants_in_pull_buffer;
 
