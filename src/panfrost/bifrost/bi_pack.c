@@ -43,7 +43,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next, bool is_fragment)
                 .branch_cond = clause->branch_conditional,
                 .datareg_writebarrier = clause->data_register_write_barrier,
                 .datareg = clause->data_register,
-                .scoreboard_deps = clause->dependencies,
+                .scoreboard_deps = next ? next->dependencies : 0,
                 .scoreboard_index = clause->scoreboard_id,
                 .clause_type = clause->clause_type,
                 .next_clause_type = next ? next->clause_type : 0,
