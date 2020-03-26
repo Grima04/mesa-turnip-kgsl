@@ -185,6 +185,9 @@ int draw_tess_ctrl_shader_run(struct draw_tess_ctrl_shader *shader,
    output_prims->primitive_lengths = NULL;
    output_prims->primitive_count = 0;
 
+   if (shader->draw->collect_statistics) {
+      shader->draw->statistics.hs_invocations += num_patches;
+   }
 #ifdef LLVM_AVAILABLE
    for (unsigned i = 0; i < num_patches; i++) {
       uint32_t vert_start = output_verts->count;
@@ -346,6 +349,9 @@ int draw_tess_eval_shader_run(struct draw_tess_eval_shader *shader,
    shader->input_vertex_stride = input_stride;
    shader->input_info = input_info;
 
+   if (shader->draw->collect_statistics) {
+      shader->draw->statistics.ds_invocations += input_prim->primitive_count;
+   }
 #ifdef LLVM_AVAILABLE
    struct pipe_tessellation_factors factors;
    struct pipe_tessellator_data data = { 0 };
