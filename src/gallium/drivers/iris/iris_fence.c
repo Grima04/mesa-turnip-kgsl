@@ -495,18 +495,23 @@ iris_fence_create_fd(struct pipe_context *ctx,
                      int fd,
                      enum pipe_fd_type type)
 {
-   assert(type == PIPE_FD_TYPE_NATIVE_SYNC);
+   assert(type == PIPE_FD_TYPE_NATIVE_SYNC || type == PIPE_FD_TYPE_SYNCOBJ);
 
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    struct drm_syncobj_handle args = {
-      .handle = gem_syncobj_create(screen->fd, DRM_SYNCOBJ_CREATE_SIGNALED),
-      .flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE,
       .fd = fd,
    };
+
+   if (type == PIPE_FD_TYPE_NATIVE_SYNC) {
+      args.flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE;
+      args.handle = gem_syncobj_create(screen->fd, DRM_SYNCOBJ_CREATE_SIGNALED);
+   }
+
    if (gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &args) == -1) {
       fprintf(stderr, "DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE failed: %s\n",
               strerror(errno));
-      gem_syncobj_destroy(screen->fd, args.handle);
+      if (type == PIPE_FD_TYPE_NATIVE_SYNC)
+         gem_syncobj_destroy(screen->fd, args.handle);
       *out = NULL;
       return;
    }
