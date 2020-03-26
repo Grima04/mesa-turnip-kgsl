@@ -893,19 +893,8 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 }
 
 void
-setup_tcs_variables(isel_context *ctx, nir_shader *nir)
+setup_tcs_info(isel_context *ctx, nir_shader *nir)
 {
-   switch (ctx->stage) {
-   case tess_control_hs:
-      ctx->tcs_num_inputs = ctx->args->options->key.tcs.num_inputs;
-      break;
-   case vertex_tess_control_hs:
-      ctx->tcs_num_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
-      break;
-   default:
-      unreachable("Unsupported TCS shader stage");
-   }
-
    /* When the number of TCS input and output vertices are the same (typically 3):
     * - There is an equal amount of LS and HS invocations
     * - In case of merged LSHS shaders, the LS and HS halves of the shader
@@ -914,6 +903,14 @@ setup_tcs_variables(isel_context *ctx, nir_shader *nir)
    ctx->tcs_in_out_eq =
       ctx->stage == vertex_tess_control_hs &&
       ctx->args->options->key.tcs.input_vertices == nir->info.tess.tcs_vertices_out;
+
+   if (ctx->stage == tess_control_hs) {
+      ctx->tcs_num_inputs = ctx->args->options->key.tcs.num_inputs;
+   } else if (ctx->stage == vertex_tess_control_hs) {
+      ctx->tcs_num_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
+   } else {
+      unreachable("Unsupported TCS shader stage");
+   }
 
    ctx->tcs_num_patches = get_tcs_num_patches(
                              ctx->args->options->key.tcs.input_vertices,
@@ -936,7 +933,11 @@ setup_tcs_variables(isel_context *ctx, nir_shader *nir)
    ctx->args->shader_info->tcs.lds_size = lds_size;
    ctx->program->config->lds_size = (lds_size + ctx->program->lds_alloc_granule - 1) /
                                     ctx->program->lds_alloc_granule;
+}
 
+void
+setup_tcs_variables(isel_context *ctx, nir_shader *nir)
+{
    nir_foreach_variable(variable, &nir->inputs) {
       variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
    }
@@ -1246,6 +1247,12 @@ setup_isel_context(Program* program,
    ctx.args = args;
    ctx.options = args->options;
    ctx.stage = program->stage;
+
+   if (ctx.stage == tess_control_hs) {
+      setup_tcs_info(&ctx, shaders[0]);
+   } else if (ctx.stage == vertex_tess_control_hs) {
+      setup_tcs_info(&ctx, shaders[1]);
+   }
 
    get_io_masks(&ctx, shader_count, shaders);
 
