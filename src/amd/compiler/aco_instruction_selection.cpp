@@ -3302,6 +3302,33 @@ bool tcs_driver_location_matches_api_mask(isel_context *ctx, nir_intrinsic_instr
    return false;
 }
 
+bool store_output_to_temps(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   unsigned write_mask = nir_intrinsic_write_mask(instr);
+   unsigned component = nir_intrinsic_component(instr);
+   unsigned idx = nir_intrinsic_base(instr) + component;
+
+   nir_instr *off_instr = instr->src[1].ssa->parent_instr;
+   if (off_instr->type != nir_instr_type_load_const)
+      return false;
+
+   Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+   idx += nir_src_as_uint(instr->src[1]) * 4u;
+
+   if (instr->src[0].ssa->bit_size == 64)
+      write_mask = widen_mask(write_mask, 2);
+
+   for (unsigned i = 0; i < 8; ++i) {
+      if (write_mask & (1 << i)) {
+         ctx->outputs.mask[idx / 4u] |= 1 << (idx % 4u);
+         ctx->outputs.temps[idx] = emit_extract_vector(ctx, src, i, v1);
+      }
+      idx++;
+   }
+
+   return true;
+}
+
 void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -3421,28 +3448,12 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
        ctx->stage == tess_eval_vs ||
        ctx->stage == fragment_fs ||
        ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
-      unsigned write_mask = nir_intrinsic_write_mask(instr);
-      unsigned component = nir_intrinsic_component(instr);
-      Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-      unsigned idx = nir_intrinsic_base(instr) + component;
-
-      nir_instr *off_instr = instr->src[1].ssa->parent_instr;
-      if (off_instr->type != nir_instr_type_load_const) {
-         fprintf(stderr, "Unimplemented nir_intrinsic_load_input offset\n");
-         nir_print_instr(off_instr, stderr);
+      bool stored_to_temps = store_output_to_temps(ctx, instr);
+      if (!stored_to_temps) {
+         fprintf(stderr, "Unimplemented output offset instruction:\n");
+         nir_print_instr(instr->src[1].ssa->parent_instr, stderr);
          fprintf(stderr, "\n");
-      }
-      idx += nir_instr_as_load_const(off_instr)->value[0].u32 * 4u;
-
-      if (instr->src[0].ssa->bit_size == 64)
-         write_mask = widen_mask(write_mask, 2);
-
-      for (unsigned i = 0; i < 8; ++i) {
-         if (write_mask & (1 << i)) {
-            ctx->outputs.mask[idx / 4u] |= 1 << (idx % 4u);
-            ctx->outputs.temps[idx] = emit_extract_vector(ctx, src, i, v1);
-         }
-         idx++;
+         abort();
       }
    } else if (ctx->stage == vertex_es ||
               ctx->stage == vertex_ls ||
