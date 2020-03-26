@@ -309,83 +309,6 @@ isl_color_value_requires_conversion(union isl_color_value color,
    return memcmp(surf_pack, view_pack, sizeof(surf_pack)) != 0;
 }
 
-static void
-color_attachment_compute_aux_usage(struct anv_device * device,
-                                   struct anv_cmd_state * cmd_state,
-                                   uint32_t att, VkRect2D render_area)
-{
-   struct anv_attachment_state *att_state = &cmd_state->attachments[att];
-   struct anv_image_view *iview = cmd_state->attachments[att].image_view;
-
-   assert(iview->n_planes == 1);
-
-   if (iview->planes[0].isl.base_array_layer >=
-       anv_image_aux_layers(iview->image, VK_IMAGE_ASPECT_COLOR_BIT,
-                            iview->planes[0].isl.base_level)) {
-      /* There is no aux buffer which corresponds to the level and layer(s)
-       * being accessed.
-       */
-      att_state->aux_usage = ISL_AUX_USAGE_NONE;
-      att_state->input_aux_usage = ISL_AUX_USAGE_NONE;
-      return;
-   }
-
-   att_state->aux_usage =
-      anv_layout_to_aux_usage(&device->info, iview->image,
-                              VK_IMAGE_ASPECT_COLOR_BIT,
-                              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-   /* If we don't have aux, then we should have returned early in the layer
-    * check above.  If we got here, we must have something.
-    */
-   assert(att_state->aux_usage != ISL_AUX_USAGE_NONE);
-
-   if (att_state->aux_usage == ISL_AUX_USAGE_CCS_E ||
-       att_state->aux_usage == ISL_AUX_USAGE_MCS) {
-      att_state->input_aux_usage = att_state->aux_usage;
-   } else {
-      /* From the Sky Lake PRM, RENDER_SURFACE_STATE::AuxiliarySurfaceMode:
-       *
-       *    "If Number of Multisamples is MULTISAMPLECOUNT_1, AUX_CCS_D
-       *    setting is only allowed if Surface Format supported for Fast
-       *    Clear. In addition, if the surface is bound to the sampling
-       *    engine, Surface Format must be supported for Render Target
-       *    Compression for surfaces bound to the sampling engine."
-       *
-       * In other words, we can only sample from a fast-cleared image if it
-       * also supports color compression.
-       */
-      if (isl_format_supports_ccs_e(&device->info, iview->planes[0].isl.format) &&
-          isl_format_supports_ccs_d(&device->info, iview->planes[0].isl.format)) {
-         att_state->input_aux_usage = ISL_AUX_USAGE_CCS_D;
-
-         /* While fast-clear resolves and partial resolves are fairly cheap in the
-          * case where you render to most of the pixels, full resolves are not
-          * because they potentially involve reading and writing the entire
-          * framebuffer.  If we can't texture with CCS_E, we should leave it off and
-          * limit ourselves to fast clears.
-          */
-         if (cmd_state->pass->attachments[att].first_subpass_layout ==
-             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-            anv_perf_warn(device, iview->image,
-                          "Not temporarily enabling CCS_E.");
-         }
-      } else {
-         att_state->input_aux_usage = ISL_AUX_USAGE_NONE;
-      }
-   }
-
-   assert(iview->image->planes[0].aux_surface.isl.usage &
-          (ISL_SURF_USAGE_CCS_BIT | ISL_SURF_USAGE_MCS_BIT));
-
-   union isl_color_value clear_color = {};
-   anv_clear_color_from_att_state(&clear_color, att_state, iview);
-
-   att_state->clear_color_is_zero =
-      isl_color_value_is_zero(clear_color, iview->planes[0].isl.format);
-}
-
 static bool
 anv_can_fast_clear_color_view(struct anv_device * device,
                               struct anv_image_view *iview,
@@ -1464,25 +1387,20 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
          const uint32_t num_layers = iview->planes[0].isl.array_len;
          att_state->pending_clear_views = (1 << num_layers) - 1;
 
-         if (att_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
-            anv_assert(iview->n_planes == 1);
-            assert(att_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-            color_attachment_compute_aux_usage(cmd_buffer->device,
-                                               state, i, begin->renderArea);
+         /* This will be initialized after the first subpass transition. */
+         att_state->aux_usage = ISL_AUX_USAGE_NONE;
 
-            if (clear_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
-               assert(clear_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-               att_state->fast_clear =
-                  anv_can_fast_clear_color_view(cmd_buffer->device, iview,
-                                                pass_att->first_subpass_layout,
-                                                vk_to_isl_color(att_state->clear_value.color),
-                                                framebuffer->layers,
-                                                begin->renderArea);
-            }
-         } else {
-            /* These will be initialized after the first subpass transition. */
-            att_state->aux_usage = ISL_AUX_USAGE_NONE;
-            att_state->input_aux_usage = ISL_AUX_USAGE_NONE;
+         att_state->fast_clear = false;
+         if (clear_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
+            assert(clear_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
+            att_state->fast_clear =
+               anv_can_fast_clear_color_view(cmd_buffer->device, iview,
+                                             pass_att->first_subpass_layout,
+                                             vk_to_isl_color(att_state->clear_value.color),
+                                             framebuffer->layers,
+                                             begin->renderArea);
+         } else if (clear_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                                     VK_IMAGE_ASPECT_STENCIL_BIT)) {
             att_state->fast_clear =
                anv_can_hiz_clear_ds_view(cmd_buffer->device, iview,
                                          pass_att->first_subpass_layout,
@@ -5047,26 +4965,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       struct anv_image_view *iview = cmd_state->attachments[a].image_view;
       const struct anv_image *image = iview->image;
 
-      /* A resolve is necessary before use as an input attachment if the clear
-       * color or auxiliary buffer usage isn't supported by the sampler.
-       */
-      const bool input_needs_resolve =
-            (att_state->fast_clear && !att_state->clear_color_is_zero) ||
-            att_state->input_aux_usage != att_state->aux_usage;
-
-      VkImageLayout target_layout;
-      if (iview->aspect_mask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV &&
-          !input_needs_resolve) {
-         /* Layout transitions before the final only help to enable sampling
-          * as an input attachment. If the input attachment supports sampling
-          * using the auxiliary surface, we can skip such transitions by
-          * making the target layout one that is CCS-aware.
-          */
-         target_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-      } else {
-         target_layout = subpass->attachments[i].layout;
-      }
-
+      VkImageLayout target_layout = subpass->attachments[i].layout;
       VkImageLayout target_stencil_layout =
          subpass->attachments[i].stencil_layout;
 
@@ -5086,6 +4985,11 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                                  iview->planes[0].isl.base_level, 1,
                                  base_layer, layer_count,
                                  att_state->current_layout, target_layout);
+         att_state->aux_usage =
+            anv_layout_to_aux_usage(&cmd_buffer->device->info, image,
+                                    VK_IMAGE_ASPECT_COLOR_BIT,
+                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                    target_layout);
       }
 
       if (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -5149,7 +5053,8 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
             if (is_multiview)
                att_state->pending_clear_views &= ~1;
 
-            if (att_state->clear_color_is_zero) {
+            if (isl_color_value_is_zero(clear_color,
+                                        iview->planes[0].isl.format)) {
                /* This image has the auxiliary buffer enabled. We can mark the
                 * subresource as not needing a resolve because the clear color
                 * will match what's in every RENDER_SURFACE_STATE object when
@@ -5309,7 +5214,11 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       } else if (att_usage == VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) {
          surface_state = &att_state->input;
          isl_surf_usage = ISL_SURF_USAGE_TEXTURE_BIT;
-         isl_aux_usage = att_state->input_aux_usage;
+         isl_aux_usage =
+            anv_layout_to_aux_usage(&cmd_buffer->device->info, iview->image,
+                                    VK_IMAGE_ASPECT_COLOR_BIT,
+                                    VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
+                                    att_state->current_layout);
       } else {
          continue;
       }

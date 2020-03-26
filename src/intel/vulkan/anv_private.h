@@ -2581,7 +2581,6 @@ struct anv_surface_state {
  */
 struct anv_attachment_state {
    enum isl_aux_usage                           aux_usage;
-   enum isl_aux_usage                           input_aux_usage;
    struct anv_surface_state                     color;
    struct anv_surface_state                     input;
 
@@ -2591,7 +2590,6 @@ struct anv_attachment_state {
    VkImageAspectFlags                           pending_load_aspects;
    bool                                         fast_clear;
    VkClearValue                                 clear_value;
-   bool                                         clear_color_is_zero;
 
    /* When multiview is active, attachments with a renderpass clear
     * operation have their respective layers cleared on the first
