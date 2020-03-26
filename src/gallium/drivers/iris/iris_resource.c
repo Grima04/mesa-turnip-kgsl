@@ -38,6 +38,7 @@
 #include "util/u_cpu_detect.h"
 #include "util/u_inlines.h"
 #include "util/format/u_format.h"
+#include "util/u_memory.h"
 #include "util/u_threaded_context.h"
 #include "util/u_transfer.h"
 #include "util/u_transfer_helper.h"
@@ -291,6 +292,66 @@ iris_image_view_get_format(struct iris_context *ice,
    }
 
    return isl_fmt;
+}
+
+static struct pipe_memory_object *
+iris_memobj_create_from_handle(struct pipe_screen *pscreen,
+                               struct winsys_handle *whandle,
+                               bool dedicated)
+{
+   struct iris_screen *screen = (struct iris_screen *)pscreen;
+   struct iris_memory_object *memobj = CALLOC_STRUCT(iris_memory_object);
+   struct iris_bo *bo;
+   const struct isl_drm_modifier_info *mod_inf;
+
+   if (!memobj)
+      return NULL;
+
+   switch (whandle->type) {
+   case WINSYS_HANDLE_TYPE_SHARED:
+      bo = iris_bo_gem_create_from_name(screen->bufmgr, "winsys image",
+                                        whandle->handle);
+      break;
+   case WINSYS_HANDLE_TYPE_FD:
+      mod_inf = isl_drm_modifier_get_info(whandle->modifier);
+      if (mod_inf) {
+         bo = iris_bo_import_dmabuf(screen->bufmgr, whandle->handle,
+                                    whandle->modifier);
+      } else {
+         /* If we can't get information about the tiling from the
+          * kernel we ignore it. We are going to set it when we
+          * create the resource.
+          */
+         bo = iris_bo_import_dmabuf_no_mods(screen->bufmgr,
+                                            whandle->handle);
+      }
+
+      break;
+   default:
+      unreachable("invalid winsys handle type");
+   }
+
+   if (!bo) {
+      free(memobj);
+      return NULL;
+   }
+
+   memobj->b.dedicated = dedicated;
+   memobj->bo = bo;
+
+   iris_bo_reference(memobj->bo);
+
+   return &memobj->b;
+}
+
+static void
+iris_memobj_destroy(struct pipe_screen *pscreen,
+                    struct pipe_memory_object *pmemobj)
+{
+   struct iris_memory_object *memobj = (struct iris_memory_object *)pmemobj;
+
+   iris_bo_unreference(memobj->bo);
+   free(memobj);
 }
 
 struct pipe_resource *
@@ -2289,6 +2350,8 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_get_handle = iris_resource_get_handle;
    pscreen->resource_get_param = iris_resource_get_param;
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;
+   pscreen->memobj_create_from_handle = iris_memobj_create_from_handle;
+   pscreen->memobj_destroy = iris_memobj_destroy;
    pscreen->transfer_helper =
       u_transfer_helper_create(&transfer_vtbl, true, true, false, true);
 }

@@ -1480,6 +1480,60 @@ err:
    return NULL;
 }
 
+struct iris_bo *
+iris_bo_import_dmabuf_no_mods(struct iris_bufmgr *bufmgr,
+                              int prime_fd)
+{
+   uint32_t handle;
+   struct iris_bo *bo;
+
+   mtx_lock(&bufmgr->lock);
+   int ret = drmPrimeFDToHandle(bufmgr->fd, prime_fd, &handle);
+   if (ret) {
+      DBG("import_dmabuf: failed to obtain handle from fd: %s\n",
+          strerror(errno));
+      mtx_unlock(&bufmgr->lock);
+      return NULL;
+   }
+
+   /*
+    * See if the kernel has already returned this buffer to us. Just as
+    * for named buffers, we must not create two bo's pointing at the same
+    * kernel object
+    */
+   bo = find_and_ref_external_bo(bufmgr->handle_table, handle);
+   if (bo)
+      goto out;
+
+   bo = bo_calloc();
+   if (!bo)
+      goto out;
+
+   p_atomic_set(&bo->refcount, 1);
+
+   /* Determine size of bo.  The fd-to-handle ioctl really should
+    * return the size, but it doesn't.  If we have kernel 3.12 or
+    * later, we can lseek on the prime fd to get the size.  Older
+    * kernels will just fail, in which case we fall back to the
+    * provided (estimated or guess size). */
+   ret = lseek(prime_fd, 0, SEEK_END);
+   if (ret != -1)
+      bo->size = ret;
+
+   bo->bufmgr = bufmgr;
+   bo->name = "prime";
+   bo->reusable = false;
+   bo->external = true;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
+   bo->gem_handle = handle;
+   _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
+
+out:
+   mtx_unlock(&bufmgr->lock);
+   return bo;
+}
+
 static void
 iris_bo_make_external_locked(struct iris_bo *bo)
 {

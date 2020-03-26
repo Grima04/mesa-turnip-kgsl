@@ -278,6 +278,14 @@ struct iris_transfer {
 };
 
 /**
+ * Memory Object
+ */
+struct iris_memory_object {
+   struct pipe_memory_object b;
+   struct iris_bo *bo;
+};
+
+/**
  * Unwrap a pipe_resource to get the underlying iris_bo (for convenience).
  */
 static inline struct iris_bo *
