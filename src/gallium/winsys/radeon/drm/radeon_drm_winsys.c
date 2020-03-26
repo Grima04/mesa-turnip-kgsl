@@ -32,6 +32,7 @@
 #include "util/u_cpu_detect.h"
 #include "util/u_memory.h"
 #include "util/u_hash_table.h"
+#include "util/u_pointer.h"
 
 #include <xf86drm.h>
 #include <stdio.h>

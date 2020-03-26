@@ -28,6 +28,7 @@
 
 #include "util/u_hash_table.h"
 #include "util/u_memory.h"
+#include "util/u_pointer.h"
 
 #include "etnaviv/etnaviv_screen.h"
 #include "etnaviv/hw/common.xml.h"

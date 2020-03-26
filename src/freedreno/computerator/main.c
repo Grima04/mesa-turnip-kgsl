@@ -25,6 +25,7 @@
 #include <inttypes.h>
 #include <locale.h>
 #include <xf86drm.h>
+#include <stdlib.h>
 
 #include "util/u_math.h"
 

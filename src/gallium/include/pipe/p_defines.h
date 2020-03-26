@@ -1246,17 +1246,6 @@ enum pipe_fd_type
    PIPE_FD_TYPE_SYNCOBJ,
 };
 
-enum pipe_debug_type
-{
-   PIPE_DEBUG_TYPE_OUT_OF_MEMORY = 1,
-   PIPE_DEBUG_TYPE_ERROR,
-   PIPE_DEBUG_TYPE_SHADER_INFO,
-   PIPE_DEBUG_TYPE_PERF_INFO,
-   PIPE_DEBUG_TYPE_INFO,
-   PIPE_DEBUG_TYPE_FALLBACK,
-   PIPE_DEBUG_TYPE_CONFORMANCE,
-};
-
 /**
  * counter type and counter data type enums used by INTEL_performance_query
  * APIs in gallium drivers.

@@ -7,6 +7,7 @@
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 #include "util/u_hash_table.h"
+#include "util/u_pointer.h"
 #include "os/os_thread.h"
 
 #include "nouveau_drm_public.h"

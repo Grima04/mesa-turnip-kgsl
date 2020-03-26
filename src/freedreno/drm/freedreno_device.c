@@ -79,8 +79,8 @@ out:
 	dev->fd = fd;
 	dev->handle_table = _mesa_hash_table_create(NULL, _mesa_hash_u32, _mesa_key_u32_equal);
 	dev->name_table = _mesa_hash_table_create(NULL, _mesa_hash_u32, _mesa_key_u32_equal);
-	fd_bo_cache_init(&dev->bo_cache, FALSE);
-	fd_bo_cache_init(&dev->ring_cache, TRUE);
+	fd_bo_cache_init(&dev->bo_cache, false);
+	fd_bo_cache_init(&dev->ring_cache, true);
 
 	return dev;
 }
