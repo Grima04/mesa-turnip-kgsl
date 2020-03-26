@@ -553,8 +553,8 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
                          &pipeline->sampler_map : &pipeline->texture_map,
                          deref->var->data.descriptor_set,
                          deref->var->data.binding,
-                         deref->var->data.index,
-                         binding_layout->array_size) + base_index;
+                         deref->var->data.index + base_index,
+                         binding_layout->array_size);
    if (is_sampler)
       instr->sampler_index = desc_index;
    else
