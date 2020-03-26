@@ -3890,15 +3890,17 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       dest.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
 
       /* Read the vector */
-      if (nir_intrinsic_align(instr) >= 4) {
-         assert(nir_dest_bit_size(instr->dest) == 32);
+      assert(nir_dest_bit_size(instr->dest) <= 32);
+      assert(nir_intrinsic_align(instr) > 0);
+      if (nir_dest_bit_size(instr->dest) == 32 &&
+          nir_intrinsic_align(instr) >= 4) {
+         assert(nir_dest_num_components(instr->dest) <= 4);
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(instr->num_components);
          fs_inst *inst =
             bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL,
                      dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
          inst->size_written = instr->num_components * dispatch_width * 4;
       } else {
-         assert(nir_dest_bit_size(instr->dest) <= 32);
          assert(nir_dest_num_components(instr->dest) == 1);
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(bit_size);
 
@@ -3923,17 +3925,18 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       fs_reg data = get_nir_src(instr->src[0]);
       data.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
 
+      assert(nir_src_bit_size(instr->src[0]) <= 32);
       assert(nir_intrinsic_write_mask(instr) ==
              (1u << instr->num_components) - 1);
-      if (nir_intrinsic_align(instr) >= 4) {
-         assert(nir_src_bit_size(instr->src[0]) == 32);
+      assert(nir_intrinsic_align(instr) > 0);
+      if (nir_src_bit_size(instr->src[0]) == 32 &&
+          nir_intrinsic_align(instr) >= 4) {
          assert(nir_src_num_components(instr->src[0]) <= 4);
          srcs[SURFACE_LOGICAL_SRC_DATA] = data;
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(instr->num_components);
          bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL,
                   fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
       } else {
-         assert(nir_src_bit_size(instr->src[0]) <= 32);
          assert(nir_src_num_components(instr->src[0]) == 1);
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(bit_size);
 
@@ -4556,8 +4559,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_load_global: {
       assert(devinfo->gen >= 8);
 
-      if (nir_intrinsic_align(instr) >= 4) {
-         assert(nir_dest_bit_size(instr->dest) == 32);
+      assert(nir_dest_bit_size(instr->dest) <= 32);
+      assert(nir_intrinsic_align(instr) > 0);
+      if (nir_dest_bit_size(instr->dest) == 32 &&
+          nir_intrinsic_align(instr) >= 4) {
+         assert(nir_dest_num_components(instr->dest) <= 4);
          fs_inst *inst = bld.emit(SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL,
                                   dest,
                                   get_nir_src(instr->src[0]), /* Address */
@@ -4567,7 +4573,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                               inst->dst.component_size(inst->exec_size);
       } else {
          const unsigned bit_size = nir_dest_bit_size(instr->dest);
-         assert(bit_size <= 32);
          assert(nir_dest_num_components(instr->dest) == 1);
          fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD);
          bld.emit(SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL,
@@ -4586,17 +4591,21 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       if (stage == MESA_SHADER_FRAGMENT)
          brw_wm_prog_data(prog_data)->has_side_effects = true;
 
-      if (nir_intrinsic_align(instr) >= 4) {
-         assert(nir_src_bit_size(instr->src[0]) == 32);
+      assert(nir_src_bit_size(instr->src[0]) <= 32);
+      assert(nir_intrinsic_write_mask(instr) ==
+             (1u << instr->num_components) - 1);
+      assert(nir_intrinsic_align(instr) > 0);
+      if (nir_src_bit_size(instr->src[0]) == 32 &&
+          nir_intrinsic_align(instr) >= 4) {
+         assert(nir_src_num_components(instr->src[0]) <= 4);
          bld.emit(SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL,
                   fs_reg(),
                   get_nir_src(instr->src[1]), /* Address */
                   get_nir_src(instr->src[0]), /* Data */
                   brw_imm_ud(instr->num_components));
       } else {
-         const unsigned bit_size = nir_src_bit_size(instr->src[0]);
-         assert(bit_size <= 32);
          assert(nir_src_num_components(instr->src[0]) == 1);
+         const unsigned bit_size = nir_src_bit_size(instr->src[0]);
          brw_reg_type data_type =
             brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
          fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD);
@@ -4641,15 +4650,17 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       dest.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
 
       /* Read the vector */
-      if (nir_intrinsic_align(instr) >= 4) {
-         assert(nir_dest_bit_size(instr->dest) == 32);
+      assert(nir_dest_bit_size(instr->dest) <= 32);
+      assert(nir_intrinsic_align(instr) > 0);
+      if (nir_dest_bit_size(instr->dest) == 32 &&
+          nir_intrinsic_align(instr) >= 4) {
+         assert(nir_dest_num_components(instr->dest) <= 4);
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(instr->num_components);
          fs_inst *inst =
             bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL,
                      dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
          inst->size_written = instr->num_components * dispatch_width * 4;
       } else {
-         assert(nir_dest_bit_size(instr->dest) <= 32);
          assert(nir_dest_num_components(instr->dest) == 1);
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(bit_size);
 
@@ -4677,17 +4688,18 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       fs_reg data = get_nir_src(instr->src[0]);
       data.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
 
+      assert(nir_src_bit_size(instr->src[0]) <= 32);
       assert(nir_intrinsic_write_mask(instr) ==
              (1u << instr->num_components) - 1);
-      if (nir_intrinsic_align(instr) >= 4) {
-         assert(nir_src_bit_size(instr->src[0]) == 32);
+      assert(nir_intrinsic_align(instr) > 0);
+      if (nir_src_bit_size(instr->src[0]) == 32 &&
+          nir_intrinsic_align(instr) >= 4) {
          assert(nir_src_num_components(instr->src[0]) <= 4);
          srcs[SURFACE_LOGICAL_SRC_DATA] = data;
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(instr->num_components);
          bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL,
                   fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
       } else {
-         assert(nir_src_bit_size(instr->src[0]) <= 32);
          assert(nir_src_num_components(instr->src[0]) == 1);
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(bit_size);
 
@@ -4816,9 +4828,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       dest.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
 
       /* Read the vector */
-      if (nir_intrinsic_align(instr) >= 4) {
-         assert(nir_dest_bit_size(instr->dest) == 32);
-
+      assert(nir_dest_num_components(instr->dest) == 1);
+      assert(nir_dest_bit_size(instr->dest) <= 32);
+      assert(nir_intrinsic_align(instr) > 1);
+      if (nir_dest_bit_size(instr->dest) >= 4 &&
+          nir_intrinsic_align(instr) >= 4) {
          /* The offset for a DWORD scattered message is in dwords. */
          srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
             swizzle_nir_scratch_addr(bld, nir_addr, true);
@@ -4826,8 +4840,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          bld.emit(SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL,
                   dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
       } else {
-         assert(nir_dest_bit_size(instr->dest) <= 32);
-
          srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
             swizzle_nir_scratch_addr(bld, nir_addr, false);
 
@@ -4860,10 +4872,12 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       fs_reg data = get_nir_src(instr->src[0]);
       data.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
 
-      assert(nir_intrinsic_write_mask(instr) ==
-             (1u << instr->num_components) - 1);
-      if (nir_intrinsic_align(instr) >= 4) {
-         assert(nir_src_bit_size(instr->src[0]) == 32);
+      assert(nir_src_num_components(instr->src[0]) == 1);
+      assert(nir_src_bit_size(instr->src[0]) <= 32);
+      assert(nir_intrinsic_write_mask(instr) == 1);
+      assert(nir_intrinsic_align(instr) > 1);
+      if (nir_src_bit_size(instr->src[0]) == 32 &&
+          nir_intrinsic_align(instr) >= 4) {
          srcs[SURFACE_LOGICAL_SRC_DATA] = data;
 
          /* The offset for a DWORD scattered message is in dwords. */
@@ -4873,8 +4887,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          bld.emit(SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL,
                   fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
       } else {
-         assert(nir_src_bit_size(instr->src[0]) <= 32);
-
          srcs[SURFACE_LOGICAL_SRC_DATA] = bld.vgrf(BRW_REGISTER_TYPE_UD);
          bld.MOV(srcs[SURFACE_LOGICAL_SRC_DATA], data);
 
