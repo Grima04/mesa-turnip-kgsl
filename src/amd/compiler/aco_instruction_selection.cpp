@@ -2900,21 +2900,29 @@ unsigned calculate_lds_alignment(isel_context *ctx, unsigned const_offset)
 }
 
 
-Temp create_vec_from_array(isel_context *ctx, Temp arr[], unsigned cnt, RegType reg_type, unsigned split_cnt = 0u, Temp dst = Temp())
+Temp create_vec_from_array(isel_context *ctx, Temp arr[], unsigned cnt, RegType reg_type, unsigned elem_size_bytes,
+                           unsigned split_cnt = 0u, Temp dst = Temp())
 {
    Builder bld(ctx->program, ctx->block);
+   unsigned dword_size = elem_size_bytes / 4;
 
    if (!dst.id())
-      dst = bld.tmp(RegClass(reg_type, cnt * arr[0].size()));
+      dst = bld.tmp(RegClass(reg_type, cnt * dword_size));
 
    std::array<Temp, NIR_MAX_VEC_COMPONENTS> allocated_vec;
    aco_ptr<Pseudo_instruction> instr {create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, cnt, 1)};
    instr->definitions[0] = Definition(dst);
 
    for (unsigned i = 0; i < cnt; ++i) {
-      assert(arr[i].size() == arr[0].size());
-      allocated_vec[i] = arr[i];
-      instr->operands[i] = Operand(arr[i]);
+      if (arr[i].id()) {
+         assert(arr[i].size() == dword_size);
+         allocated_vec[i] = arr[i];
+         instr->operands[i] = Operand(arr[i]);
+      } else {
+         Temp zero = bld.copy(bld.def(RegClass(reg_type, dword_size)), Operand(0u, dword_size == 2));
+         allocated_vec[i] = zero;
+         instr->operands[i] = Operand(zero);
+      }
    }
 
    bld.insert(std::move(instr));
@@ -3065,7 +3073,7 @@ void load_vmem_mubuf(isel_context *ctx, Temp dst, Temp descriptor, Temp voffset,
       elems[i] = emit_single_mubuf_load(ctx, descriptor, voffset, soffset, const_offset, load_size, allow_reorder);
    }
 
-   create_vec_from_array(ctx, elems.data(), num_loads, RegType::vgpr, split_cnt, dst);
+   create_vec_from_array(ctx, elems.data(), num_loads, RegType::vgpr, load_size * 4u, split_cnt, dst);
 }
 
 std::pair<Temp, unsigned> offset_add_from_nir(isel_context *ctx, const std::pair<Temp, unsigned> &base_offset, nir_src *off_src, unsigned stride = 1u)
@@ -9428,7 +9436,7 @@ static void write_tcs_tess_factors(isel_context *ctx)
    }
 
    assert(stride == 2 || stride == 4 || stride == 6);
-   Temp tf_vec = create_vec_from_array(ctx, out, stride, RegType::vgpr);
+   Temp tf_vec = create_vec_from_array(ctx, out, stride, RegType::vgpr, 4u);
    store_vmem_mubuf(ctx, tf_vec, hs_ring_tess_factor, byte_offset, tf_base, tf_const_offset, 4, (1 << stride) - 1, true, false);
 
    /* Store to offchip for TES to read - only if TES reads them */
