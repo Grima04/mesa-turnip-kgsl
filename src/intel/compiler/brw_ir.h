@@ -36,7 +36,7 @@
 struct backend_reg : private brw_reg
 {
    backend_reg() {}
-   backend_reg(const struct brw_reg &reg) : brw_reg(reg) {}
+   backend_reg(const struct brw_reg &reg) : brw_reg(reg), offset(0) {}
 
    const brw_reg &as_brw_reg() const
    {
