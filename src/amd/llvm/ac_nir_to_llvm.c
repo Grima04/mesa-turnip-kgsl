@@ -1741,12 +1741,13 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 			num_bytes = 2;
 		}
 
-		/* Due to alignment issues, split stores of 8-bit vectors. */
-		if (ctx->ac.chip_class == GFX6 &&
-                    elem_size_bytes == 1 && count > 1) {
+		/* Due to alignment issues, split stores of 8-bit/16-bit
+		 * vectors.
+		 */
+		if (ctx->ac.chip_class == GFX6 && count > 1 && elem_size_bytes < 4) {
 			writemask |= ((1u << (count - 1)) - 1u) << (start + 1);
 			count = 1;
-			num_bytes = 1;
+			num_bytes = elem_size_bytes;
 		}
 
 		data = extract_vector_range(&ctx->ac, base_data, start, count);
