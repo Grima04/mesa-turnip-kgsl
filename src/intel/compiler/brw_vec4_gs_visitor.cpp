@@ -865,7 +865,8 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
                                          label, shader->info.name);
             g.enable_debug(name);
          }
-         g.generate_code(v.cfg, 8, v.shader_stats, stats);
+         g.generate_code(v.cfg, 8, v.shader_stats,
+                         v.performance_analysis.require(), stats);
          return g.get_assembly();
       }
    }
@@ -897,7 +898,9 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
             ralloc_free(param);
             return brw_vec4_generate_assembly(compiler, log_data, mem_ctx,
                                               shader, &prog_data->base,
-                                              v.cfg, stats);
+                                              v.cfg,
+                                              v.performance_analysis.require(),
+                                              stats);
          } else {
             /* These variables could be modified by the execution of the GS
              * visitor if it packed the uniforms in the push constant buffer.
@@ -960,7 +963,9 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
          *error_str = ralloc_strdup(mem_ctx, gs->fail_msg);
    } else {
       ret = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, shader,
-                                       &prog_data->base, gs->cfg, stats);
+                                       &prog_data->base, gs->cfg,
+                                       gs->performance_analysis.require(),
+                                       stats);
    }
 
    delete gs;

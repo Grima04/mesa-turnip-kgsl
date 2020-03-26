@@ -8845,21 +8845,24 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    if (simd8_cfg) {
       prog_data->dispatch_8 = true;
-      g.generate_code(simd8_cfg, 8, v8->shader_stats, stats);
+      g.generate_code(simd8_cfg, 8, v8->shader_stats,
+                      v8->performance_analysis.require(), stats);
       stats = stats ? stats + 1 : NULL;
    }
 
    if (simd16_cfg) {
       prog_data->dispatch_16 = true;
-      prog_data->prog_offset_16 = g.generate_code(simd16_cfg, 16,
-                                                  v16->shader_stats, stats);
+      prog_data->prog_offset_16 = g.generate_code(
+         simd16_cfg, 16, v16->shader_stats,
+         v16->performance_analysis.require(), stats);
       stats = stats ? stats + 1 : NULL;
    }
 
    if (simd32_cfg) {
       prog_data->dispatch_32 = true;
-      prog_data->prog_offset_32 = g.generate_code(simd32_cfg, 32,
-                                                  v32->shader_stats, stats);
+      prog_data->prog_offset_32 = g.generate_code(
+         simd32_cfg, 32, v32->shader_stats,
+         v32->performance_analysis.require(), stats);
       stats = stats ? stats + 1 : NULL;
    }
 
@@ -9118,7 +9121,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          g.enable_debug(name);
       }
 
-      g.generate_code(v->cfg, prog_data->simd_size, v->shader_stats, stats);
+      g.generate_code(v->cfg, prog_data->simd_size, v->shader_stats,
+                      v->performance_analysis.require(), stats);
 
       ret = g.get_assembly();
    }

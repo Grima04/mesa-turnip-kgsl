@@ -1371,7 +1371,8 @@ brw_compile_tes(const struct brw_compiler *compiler,
                                         nir->info.name));
       }
 
-      g.generate_code(v.cfg, 8, v.shader_stats, stats);
+      g.generate_code(v.cfg, 8, v.shader_stats,
+                      v.performance_analysis.require(), stats);
 
       assembly = g.get_assembly();
    } else {
@@ -1387,7 +1388,9 @@ brw_compile_tes(const struct brw_compiler *compiler,
 	 v.dump_instructions();
 
       assembly = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, nir,
-                                            &prog_data->base, v.cfg, stats);
+                                            &prog_data->base, v.cfg,
+                                            v.performance_analysis.require(),
+                                            stats);
    }
 
    return assembly;

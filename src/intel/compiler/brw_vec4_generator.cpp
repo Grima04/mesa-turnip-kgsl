@@ -1498,6 +1498,7 @@ generate_code(struct brw_codegen *p,
               const nir_shader *nir,
               struct brw_vue_prog_data *prog_data,
               const struct cfg_t *cfg,
+              const performance &perf,
               struct brw_compile_stats *stats)
 {
    const struct gen_device_info *devinfo = p->devinfo;
@@ -2220,7 +2221,7 @@ generate_code(struct brw_codegen *p,
 
       fprintf(stderr, "%s vec4 shader: %d instructions. %d loops. %u cycles. %d:%d "
                      "spills:fills, %u sends. Compacted %d to %d bytes (%.0f%%)\n",
-            stage_abbrev, before_size / 16, loop_count, cfg->cycle_count,
+            stage_abbrev, before_size / 16, loop_count, perf.latency,
             spill_count, fill_count, send_count, before_size, after_size,
             100.0f * (before_size - after_size) / before_size);
 
@@ -2239,14 +2240,14 @@ generate_code(struct brw_codegen *p,
                               "%d:%d spills:fills, %u sends, "
                               "compacted %d to %d bytes.",
                               stage_abbrev, before_size / 16,
-                              loop_count, cfg->cycle_count, spill_count,
+                              loop_count, perf.latency, spill_count,
                               fill_count, send_count, before_size, after_size);
    if (stats) {
       stats->dispatch_width = 0;
       stats->instructions = before_size / 16;
       stats->sends = send_count;
       stats->loops = loop_count;
-      stats->cycles = cfg->cycle_count;
+      stats->cycles = perf.latency;
       stats->spills = spill_count;
       stats->fills = fill_count;
    }
@@ -2259,13 +2260,14 @@ brw_vec4_generate_assembly(const struct brw_compiler *compiler,
                            const nir_shader *nir,
                            struct brw_vue_prog_data *prog_data,
                            const struct cfg_t *cfg,
+                           const performance &perf,
                            struct brw_compile_stats *stats)
 {
    struct brw_codegen *p = rzalloc(mem_ctx, struct brw_codegen);
    brw_init_codegen(compiler->devinfo, p, mem_ctx);
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   generate_code(p, compiler, log_data, nir, prog_data, cfg, stats);
+   generate_code(p, compiler, log_data, nir, prog_data, cfg, perf, stats);
 
    return brw_get_program(p, &prog_data->base.program_size);
 }

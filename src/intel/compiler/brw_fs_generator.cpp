@@ -1715,6 +1715,7 @@ fs_generator::enable_debug(const char *shader_name)
 int
 fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                             struct shader_stats shader_stats,
+                            const brw::performance &perf,
                             struct brw_compile_stats *stats)
 {
    /* align to 64 byte boundary. */
@@ -2462,7 +2463,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
               "Compacted %d to %d bytes (%.0f%%)\n",
               shader_name, sha1buf,
               dispatch_width, before_size / 16,
-              loop_count, cfg->cycle_count,
+              loop_count, perf.latency,
               spill_count, fill_count, send_count,
               shader_stats.scheduler_mode,
               shader_stats.promoted_constants,
@@ -2487,7 +2488,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                               "compacted %d to %d bytes.",
                               _mesa_shader_stage_to_abbrev(stage),
                               dispatch_width, before_size / 16 - nop_count,
-                              loop_count, cfg->cycle_count,
+                              loop_count, perf.latency,
                               spill_count, fill_count, send_count,
                               shader_stats.scheduler_mode,
                               shader_stats.promoted_constants,
@@ -2497,7 +2498,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       stats->instructions = before_size / 16 - nop_count;
       stats->sends = send_count;
       stats->loops = loop_count;
-      stats->cycles = cfg->cycle_count;
+      stats->cycles = perf.latency;
       stats->spills = spill_count;
       stats->fills = fill_count;
    }
