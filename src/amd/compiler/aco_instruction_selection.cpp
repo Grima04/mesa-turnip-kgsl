@@ -3341,19 +3341,8 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
 bool should_write_tcs_patch_output_to_vmem(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    unsigned off = nir_intrinsic_base(instr) * 4u;
-   nir_src *off_src = nir_get_io_offset_src(instr);
-
-   /* Indirect offset, we can't be sure if this is a tess factor, always write to VMEM */
-   if (!nir_src_is_const(*off_src))
-      return true;
-
-   off += nir_src_as_uint(*off_src) * 16u;
-
-   const unsigned tess_index_inner = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_INNER);
-   const unsigned tess_index_outer = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_OUTER);
-
-   return (off != (tess_index_inner * 16u)) &&
-          (off != (tess_index_outer * 16u));
+   return off != ctx->tcs_tess_lvl_out_loc &&
+          off != ctx->tcs_tess_lvl_in_loc;
 }
 
 bool should_write_tcs_output_to_lds(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
@@ -9374,9 +9363,6 @@ static void write_tcs_tess_factors(isel_context *ctx)
       return;
    }
 
-   const unsigned tess_index_inner = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_INNER);
-   const unsigned tess_index_outer = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_OUTER);
-
    Builder bld(ctx->program, ctx->block);
 
    bld.barrier(aco_opcode::p_memory_barrier_shared);
@@ -9405,14 +9391,14 @@ static void write_tcs_tess_factors(isel_context *ctx)
 
    if (ctx->args->options->key.tcs.primitive_mode == GL_ISOLINES) {
       // LINES reversal
-      outer[0] = out[1] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + tess_index_outer * 16 + 0 * 4, 4);
-      outer[1] = out[0] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + tess_index_outer * 16 + 1 * 4, 4);
+      outer[0] = out[1] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_out_loc + 0 * 4, 4);
+      outer[1] = out[0] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_out_loc + 1 * 4, 4);
    } else {
       for (unsigned i = 0; i < outer_comps; ++i)
-         outer[i] = out[i] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + tess_index_outer * 16 + i * 4, 4);
+         outer[i] = out[i] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_out_loc + i * 4, 4);
 
       for (unsigned i = 0; i < inner_comps; ++i)
-         inner[i] = out[outer_comps + i] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + tess_index_inner * 16 + i * 4, 4);
+         inner[i] = out[outer_comps + i] = load_lds(ctx, 4, bld.tmp(v1), lds_base.first, lds_base.second + ctx->tcs_tess_lvl_in_loc + i * 4, 4);
    }
 
    Temp rel_patch_id = get_tess_rel_patch_id(ctx);
@@ -9448,12 +9434,12 @@ static void write_tcs_tess_factors(isel_context *ctx)
       Temp hs_ring_tess_offchip = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_HS_TESS_OFFCHIP * 16u));
       Temp oc_lds = get_arg(ctx, ctx->args->oc_lds);
 
-      std::pair<Temp, unsigned> vmem_offs_outer = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, tess_index_outer * 16);
+      std::pair<Temp, unsigned> vmem_offs_outer = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, ctx->tcs_tess_lvl_out_loc);
       Temp outer_vec = create_vec_from_array(ctx, outer, outer_comps, RegType::vgpr);
       store_vmem_mubuf(ctx, outer_vec, hs_ring_tess_offchip, vmem_offs_outer.first, oc_lds, vmem_offs_outer.second, 4, (1 << outer_comps) - 1, true, false);
 
       if (likely(inner_comps)) {
-         std::pair<Temp, unsigned> vmem_offs_inner = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, tess_index_inner * 16);
+         std::pair<Temp, unsigned> vmem_offs_inner = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, ctx->tcs_tess_lvl_in_loc);
          Temp inner_vec = create_vec_from_array(ctx, inner, inner_comps, RegType::vgpr);
          store_vmem_mubuf(ctx, inner_vec, hs_ring_tess_offchip, vmem_offs_inner.first, oc_lds, vmem_offs_inner.second, 4, (1 << inner_comps) - 1, true, false);
       }

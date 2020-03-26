@@ -96,6 +96,8 @@ struct isel_context {
    unsigned num_cull_distances;
 
    /* tessellation information */
+   unsigned tcs_tess_lvl_out_loc;
+   unsigned tcs_tess_lvl_in_loc;
    uint32_t tcs_num_inputs;
    uint32_t tcs_num_patches;
 
@@ -926,6 +928,9 @@ setup_tcs_variables(isel_context *ctx, nir_shader *nir)
    nir_foreach_variable(variable, &nir->outputs) {
       variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
    }
+
+   ctx->tcs_tess_lvl_out_loc = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_OUTER) * 16u;
+   ctx->tcs_tess_lvl_in_loc = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_INNER) * 16u;
 }
 
 void
