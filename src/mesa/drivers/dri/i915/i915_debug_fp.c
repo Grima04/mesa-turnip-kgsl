@@ -29,7 +29,8 @@
 
 #include "i915_reg.h"
 #include "i915_debug.h"
-#include "main/imports.h"
+#include "util/imports.h"
+#include "main/glheader.h"
 
 static const char *opcodes[0x20] = {
    "NOP",

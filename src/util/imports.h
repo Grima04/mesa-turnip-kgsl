@@ -39,8 +39,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include "compiler.h"
-#include "glheader.h"
+#include "util/compiler.h"
 #include "util/bitscan.h"
 
 #ifdef __cplusplus
@@ -67,18 +66,18 @@ extern "C" {
  * this macro.
  * Both pointers/offsets are expressed in bytes.
  */
-#define ADD_POINTERS(A, B)  ( (GLubyte *) (A) + (uintptr_t) (B) )
+#define ADD_POINTERS(A, B)  ( (uint8_t *) (A) + (uintptr_t) (B) )
 
 
 /**
- * Sometimes we treat GLfloats as GLints.  On x86 systems, moving a float
+ * Sometimes we treat floats as ints.  On x86 systems, moving a float
  * as an int (thereby using integer registers instead of FP registers) is
  * a performance win.  Typically, this can be done with ordinary casts.
  * But with gcc's -fstrict-aliasing flag (which defaults to on in gcc 3.0)
  * these casts generate warnings.
  * The following union typedef is used to solve that.
  */
-typedef union { GLfloat f; GLint i; GLuint u; } fi_type;
+typedef union { float f; int i; unsigned u; } fi_type;
 
 
 
@@ -88,23 +87,23 @@ typedef union { GLfloat f; GLint i; GLuint u; } fi_type;
 /***
  *** LOG2: Log base 2 of float
  ***/
-static inline GLfloat LOG2(GLfloat x)
+static inline float LOG2(float x)
 {
 #if 0
    /* This is pretty fast, but not accurate enough (only 2 fractional bits).
     * Based on code from http://www.stereopsis.com/log2.html
     */
-   const GLfloat y = x * x * x * x;
-   const GLuint ix = *((GLuint *) &y);
-   const GLuint exp = (ix >> 23) & 0xFF;
-   const GLint log2 = ((GLint) exp) - 127;
-   return (GLfloat) log2 * (1.0 / 4.0);  /* 4, because of x^4 above */
+   const float y = x * x * x * x;
+   const unsigned ix = *((unsigned *) &y);
+   const unsigned exp = (ix >> 23) & 0xFF;
+   const int log2 = ((int) exp) - 127;
+   return (float) log2 * (1.0 / 4.0);  /* 4, because of x^4 above */
 #endif
    /* Pretty fast, and accurate.
     * Based on code from http://www.flipcode.com/totd/
     */
    fi_type num;
-   GLint log_2;
+   int log_2;
    num.f = x;
    log_2 = ((num.i >> 23) & 255) - 128;
    num.i &= ~(255 << 23);
@@ -156,9 +155,9 @@ static inline int IROUNDD(double d)
 /**
  * Convert float to int64 by rounding to nearest integer.
  */
-static inline GLint64 IROUND64(float f)
+static inline int64_t IROUND64(float f)
 {
-   return (GLint64) ((f >= 0.0F) ? (f + 0.5F) : (f - 0.5F));
+   return (int64_t) ((f >= 0.0F) ? (f + 0.5F) : (f - 0.5F));
 }
 
 
@@ -268,13 +267,13 @@ _mesa_next_pow_two_64(uint64_t x)
 /*
  * Returns the floor form of binary logarithm for a 32-bit integer.
  */
-static inline GLuint
-_mesa_logbase2(GLuint n)
+static inline unsigned
+_mesa_logbase2(unsigned n)
 {
 #ifdef HAVE___BUILTIN_CLZ
    return (31 - __builtin_clz(n | 1));
 #else
-   GLuint pos = 0;
+   unsigned pos = 0;
    if (n >= 1<<16) { n >>= 16; pos += 16; }
    if (n >= 1<< 8) { n >>=  8; pos +=  8; }
    if (n >= 1<< 4) { n >>=  4; pos +=  4; }

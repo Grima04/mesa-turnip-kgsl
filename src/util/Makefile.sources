@@ -9,6 +9,7 @@ MESA_UTIL_FILES := \
 	blob.h \
 	build_id.c \
 	build_id.h \
+        compiler.h \
 	crc32.c \
 	crc32.h \
 	dag.c \
@@ -50,6 +51,8 @@ MESA_UTIL_FILES := \
 	half_float.h \
 	hash_table.c \
 	hash_table.h \
+        imports.c \
+        imports.h \
 	list.h \
 	macros.h \
 	mesa-sha1.c \

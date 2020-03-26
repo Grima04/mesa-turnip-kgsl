@@ -28,7 +28,7 @@
 #include "i830_context.h"
 #include "main/api_exec.h"
 #include "main/extensions.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/version.h"
 #include "main/vtxfmt.h"
 #include "tnl/tnl.h"

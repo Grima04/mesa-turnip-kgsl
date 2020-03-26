@@ -37,7 +37,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <errno.h>
 #include "main/glheader.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/mtypes.h"
 #include "main/framebuffer.h"
 #include "main/renderbuffer.h"

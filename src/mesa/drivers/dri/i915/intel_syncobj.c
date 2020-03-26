@@ -38,7 +38,7 @@
  * performance bottleneck, though.
  */
 
-#include "main/imports.h"
+#include "util/imports.h"
 
 #include "intel_context.h"
 #include "intel_batchbuffer.h"

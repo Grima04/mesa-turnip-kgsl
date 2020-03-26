@@ -12,7 +12,7 @@
 
 
 
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/image.h"
 #include "main/macros.h"
 #include "main/teximage.h"

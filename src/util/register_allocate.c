@@ -73,7 +73,7 @@
 #include <stdbool.h>
 
 #include "ralloc.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/macros.h"
 #include "util/bitset.h"
 #include "register_allocate.h"

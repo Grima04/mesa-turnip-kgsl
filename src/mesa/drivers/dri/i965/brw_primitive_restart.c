@@ -25,7 +25,7 @@
  *
  */
 
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/bufferobj.h"
 #include "main/varray.h"
 #include "vbo/vbo.h"

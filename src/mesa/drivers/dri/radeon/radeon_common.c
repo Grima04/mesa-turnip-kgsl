@@ -43,7 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <errno.h>
 #include "main/glheader.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/context.h"
 #include "main/enums.h"
 #include "main/fbobject.h"

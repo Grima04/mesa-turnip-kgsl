@@ -24,7 +24,7 @@
  */
 
 #include "main/enums.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/macros.h"
 #include "main/mtypes.h"
 #include "main/fbobject.h"

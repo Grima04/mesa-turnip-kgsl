@@ -24,7 +24,7 @@
 
 
 #include "main/glheader.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/accum.h"
 #include "main/arrayobj.h"
 #include "main/context.h"

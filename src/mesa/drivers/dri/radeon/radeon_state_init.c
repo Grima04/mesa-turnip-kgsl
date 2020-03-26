@@ -29,7 +29,7 @@
 
 #include "main/errors.h"
 #include "main/glheader.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/api_arrayelt.h"
 
 #include "swrast/swrast.h"

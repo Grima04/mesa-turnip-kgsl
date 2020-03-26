@@ -32,7 +32,7 @@
  * \author Brian Paul
  */
 
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/context.h"
 #include "main/enums.h"
 #include "main/formats.h"

@@ -43,7 +43,7 @@
 #define BRW_REG_H
 
 #include <stdbool.h>
-#include "main/compiler.h"
+#include "util/compiler.h"
 #include "main/macros.h"
 #include "program/prog_instruction.h"
 #include "brw_eu_defines.h"

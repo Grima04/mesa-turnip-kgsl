@@ -31,7 +31,7 @@ inc_amd_common_llvm = include_directories('amd/llvm')
 libglsl_util = static_library(
   'glsl_util',
   files(
-    'mesa/main/extensions_table.c', 'mesa/main/imports.c',
+    'mesa/main/extensions_table.c',
     'mesa/program/prog_parameter.c', 'mesa/program/symbol_table.c',
     'mesa/program/dummy_errors.c',
   ),

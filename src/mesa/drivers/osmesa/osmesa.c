@@ -41,7 +41,7 @@
 #include "main/extensions.h"
 #include "main/formats.h"
 #include "main/framebuffer.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/macros.h"
 #include "main/mipmap.h"
 #include "main/mtypes.h"

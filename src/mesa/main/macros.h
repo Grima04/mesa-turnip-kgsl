@@ -34,7 +34,8 @@
 #include "util/macros.h"
 #include "util/u_math.h"
 #include "util/rounding.h"
-#include "imports.h"
+#include "util/imports.h"
+#include "main/glheader.h"
 
 
 /**

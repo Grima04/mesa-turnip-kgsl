@@ -51,7 +51,7 @@
 #include "util/u_queue.h"
 #include "util/mesa-sha1.h"
 #include "util/ralloc.h"
-#include "main/compiler.h"
+#include "util/compiler.h"
 #include "main/errors.h"
 
 #include "disk_cache.h"

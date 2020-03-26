@@ -27,7 +27,7 @@
 #include "main/mtypes.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/nir_types.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "compiler/nir/nir_builder.h"
 
 #include "disassemble.h"

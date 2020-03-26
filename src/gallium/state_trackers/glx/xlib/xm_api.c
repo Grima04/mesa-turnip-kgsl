@@ -70,7 +70,7 @@
 #include "hud/hud_context.h"
 
 #include "main/errors.h"
-#include "main/imports.h"
+#include "util/imports.h"
 
 #include "xm_public.h"
 #include <GL/glx.h>

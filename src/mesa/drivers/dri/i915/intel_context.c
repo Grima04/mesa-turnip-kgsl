@@ -31,7 +31,7 @@
 #include "main/extensions.h"
 #include "main/fbobject.h"
 #include "main/framebuffer.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/points.h"
 #include "main/renderbuffer.h"
 

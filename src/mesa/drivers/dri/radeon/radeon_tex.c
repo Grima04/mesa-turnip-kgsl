@@ -32,7 +32,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include "main/glheader.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/context.h"
 #include "main/enums.h"
 #include "main/image.h"

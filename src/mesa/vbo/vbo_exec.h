@@ -35,7 +35,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define VBO_EXEC_H
 
 #include "main/dd.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "vbo.h"
 #include "vbo_attrib.h"
 

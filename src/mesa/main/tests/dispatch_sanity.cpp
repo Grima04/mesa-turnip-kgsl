@@ -43,7 +43,7 @@
 
 #include "GL/gl.h"
 #include "GL/glext.h"
-#include "main/compiler.h"
+#include "util/compiler.h"
 #include "main/api_exec.h"
 #include "main/context.h"
 #include "main/remap.h"

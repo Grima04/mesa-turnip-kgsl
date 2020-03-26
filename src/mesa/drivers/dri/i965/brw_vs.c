@@ -30,7 +30,7 @@
   */
 
 
-#include "main/compiler.h"
+#include "util/compiler.h"
 #include "main/context.h"
 #include "brw_context.h"
 #include "brw_vs.h"

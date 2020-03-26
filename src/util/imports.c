@@ -46,8 +46,6 @@
 #include <stdarg.h>
 #include "c99_math.h"
 #include "imports.h"
-#include "context.h"
-#include "version.h"
 
 #ifdef _GNU_SOURCE
 #include <locale.h>

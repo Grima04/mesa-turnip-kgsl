@@ -39,7 +39,7 @@
 #include <GL/glxproto.h>
 
 #include "xm_api.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/errors.h"
 #include "util/u_math.h"
 

@@ -86,7 +86,7 @@
 #include "util/u_string.h"
 #include "util/u_math.h"
 
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/shaderobj.h"
 #include "main/enums.h"
 #include "main/mtypes.h"

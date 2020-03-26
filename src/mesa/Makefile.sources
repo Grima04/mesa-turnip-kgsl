@@ -43,7 +43,6 @@ MAIN_FILES = \
 	main/colortab.h \
 	main/compute.c \
 	main/compute.h \
-	main/compiler.h \
 	main/condrender.c \
 	main/condrender.h \
 	main/config.h \
@@ -138,8 +137,6 @@ MAIN_FILES = \
 	main/histogram.h \
 	main/image.c \
 	main/image.h \
-	main/imports.c \
-	main/imports.h \
 	main/light.c \
 	main/light.h \
 	main/lines.c \

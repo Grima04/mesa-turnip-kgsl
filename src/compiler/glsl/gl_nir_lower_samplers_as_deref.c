@@ -61,7 +61,7 @@
 #include "gl_nir.h"
 #include "ir_uniform.h"
 
-#include "main/compiler.h"
+#include "util/compiler.h"
 #include "main/mtypes.h"
 
 struct lower_samplers_as_deref_state {

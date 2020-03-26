@@ -30,7 +30,7 @@
  */
 
 #include "main/glheader.h"
-#include "main/imports.h"
+#include "util/imports.h"
 #include "main/context.h"
 #include "main/enums.h"
 #include "main/mipmap.h"
