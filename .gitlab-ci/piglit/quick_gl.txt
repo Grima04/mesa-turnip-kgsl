@@ -542,46 +542,34 @@ spec/arb_sample_shading/samplemask 16: skip
 spec/arb_sample_shading/samplemask 16 all: skip
 spec/arb_sample_shading/samplemask 2 all/0.250000 mask_in_one: fail
 spec/arb_sample_shading/samplemask 2 all/0.500000 mask_in_one: fail
-spec/arb_sample_shading/samplemask 2 all/0.500000 partition: fail
 spec/arb_sample_shading/samplemask 2 all/1.000000 mask_in_one: fail
-spec/arb_sample_shading/samplemask 2 all/1.000000 partition: fail
 spec/arb_sample_shading/samplemask 2 all/noms fix: fail
 spec/arb_sample_shading/samplemask 2 all/noms mask_in_one: fail
 spec/arb_sample_shading/samplemask 2 all/noms partition: fail
 spec/arb_sample_shading/samplemask 2 all/sample mask_in_one: fail
-spec/arb_sample_shading/samplemask 2 all/sample partition: fail
 spec/arb_sample_shading/samplemask 2/0.250000 mask_in_one: fail
 spec/arb_sample_shading/samplemask 2/0.500000 mask_in_one: fail
-spec/arb_sample_shading/samplemask 2/0.500000 partition: fail
 spec/arb_sample_shading/samplemask 2/1.000000 mask_in_one: fail
-spec/arb_sample_shading/samplemask 2/1.000000 partition: fail
 spec/arb_sample_shading/samplemask 2/noms fix: fail
 spec/arb_sample_shading/samplemask 2/noms mask_in_one: fail
 spec/arb_sample_shading/samplemask 2/noms partition: fail
 spec/arb_sample_shading/samplemask 2/sample mask_in_one: fail
-spec/arb_sample_shading/samplemask 2/sample partition: fail
 spec/arb_sample_shading/samplemask 32: skip
 spec/arb_sample_shading/samplemask 32 all: skip
 spec/arb_sample_shading/samplemask 4 all/0.250000 mask_in_one: fail
 spec/arb_sample_shading/samplemask 4 all/0.500000 mask_in_one: fail
-spec/arb_sample_shading/samplemask 4 all/0.500000 partition: fail
 spec/arb_sample_shading/samplemask 4 all/1.000000 mask_in_one: fail
-spec/arb_sample_shading/samplemask 4 all/1.000000 partition: fail
 spec/arb_sample_shading/samplemask 4 all/noms fix: fail
 spec/arb_sample_shading/samplemask 4 all/noms mask_in_one: fail
 spec/arb_sample_shading/samplemask 4 all/noms partition: fail
 spec/arb_sample_shading/samplemask 4 all/sample mask_in_one: fail
-spec/arb_sample_shading/samplemask 4 all/sample partition: fail
 spec/arb_sample_shading/samplemask 4/0.250000 mask_in_one: fail
 spec/arb_sample_shading/samplemask 4/0.500000 mask_in_one: fail
-spec/arb_sample_shading/samplemask 4/0.500000 partition: fail
 spec/arb_sample_shading/samplemask 4/1.000000 mask_in_one: fail
-spec/arb_sample_shading/samplemask 4/1.000000 partition: fail
 spec/arb_sample_shading/samplemask 4/noms fix: fail
 spec/arb_sample_shading/samplemask 4/noms mask_in_one: fail
 spec/arb_sample_shading/samplemask 4/noms partition: fail
 spec/arb_sample_shading/samplemask 4/sample mask_in_one: fail
-spec/arb_sample_shading/samplemask 4/sample partition: fail
 spec/arb_sample_shading/samplemask 6: skip
 spec/arb_sample_shading/samplemask 6 all: skip
 spec/arb_sample_shading/samplemask 8: skip
@@ -1684,8 +1672,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    21841
-       fail:      214
+       pass:    21853
+       fail:      202
       crash:        0
        skip:     1445
     timeout:        0

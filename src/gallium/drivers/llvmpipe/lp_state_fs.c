@@ -399,6 +399,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                             shader->info.base.num_instructions < 8) && 0;
    const boolean dual_source_blend = key->blend.rt[0].blend_enable &&
                                      util_blend_state_is_dual(&key->blend, 0);
+   const bool post_depth_coverage = shader->info.base.properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE];
    unsigned attrib;
    unsigned chan;
    unsigned cbuf;
@@ -539,6 +540,11 @@ generate_fs_loop(struct gallivm_state *gallivm,
    LLVMValueRef s_mask_or = lp_build_alloca(gallivm, lp_build_int_vec_type(gallivm, type), "cov_mask_early_depth");
    LLVMBuildStore(builder, LLVMConstNull(lp_build_int_vec_type(gallivm, type)), s_mask_or);
 
+   /* Create storage for post depth sample mask */
+   LLVMValueRef post_depth_sample_mask_in = NULL;
+   if (post_depth_coverage)
+      post_depth_sample_mask_in = lp_build_alloca(gallivm, int_vec_type, "post_depth_sample_mask_in");
+
    LLVMValueRef s_mask = NULL, s_mask_ptr = NULL;
    LLVMValueRef z_sample_value_store = NULL, s_sample_value_store = NULL;
    LLVMValueRef z_fb_store = NULL, s_fb_store = NULL;
@@ -651,6 +657,14 @@ generate_fs_loop(struct gallivm_state *gallivm,
       tmp_s_mask_or = LLVMBuildOr(builder, tmp_s_mask_or, s_mask, "");
       LLVMBuildStore(builder, tmp_s_mask_or, s_mask_or);
 
+      if (post_depth_coverage) {
+         LLVMValueRef mask_bit_idx = LLVMBuildShl(builder, lp_build_const_int32(gallivm, 1), sample_loop_state.counter, "");
+         LLVMValueRef post_depth_mask_in = LLVMBuildLoad(builder, post_depth_sample_mask_in, "");
+         mask_bit_idx = LLVMBuildAnd(builder, s_mask, lp_build_broadcast(gallivm, int_vec_type, mask_bit_idx), "");
+         post_depth_mask_in = LLVMBuildOr(builder, post_depth_mask_in, mask_bit_idx, "");
+         LLVMBuildStore(builder, post_depth_mask_in, post_depth_sample_mask_in);
+      }
+
       LLVMBuildStore(builder, s_mask, s_mask_ptr);
 
       lp_build_for_loop_end(&sample_loop_state);
@@ -664,6 +678,11 @@ generate_fs_loop(struct gallivm_state *gallivm,
          lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter, NULL);
          lp_build_mask_update(&mask, tmp_s_mask_or);
       }
+   } else {
+      if (post_depth_coverage) {
+         LLVMValueRef post_depth_mask_in = LLVMBuildAnd(builder, lp_build_mask_value(&mask), lp_build_const_int_vec(gallivm, type, 1), "");
+         LLVMBuildStore(builder, post_depth_mask_in, post_depth_sample_mask_in);
+      }
    }
 
    LLVMValueRef out_sample_mask_storage = NULL;
@@ -673,6 +692,11 @@ generate_fs_loop(struct gallivm_state *gallivm,
          LLVMBuildStore(builder, LLVMConstNull(int_vec_type), out_sample_mask_storage);
    }
 
+   if (post_depth_coverage) {
+      system_values.sample_mask_in = LLVMBuildLoad(builder, post_depth_sample_mask_in, "");
+   }
+   else
+      system_values.sample_mask_in = sample_mask_in;
    if (key->multisample && key->min_samples > 1) {
       lp_build_for_loop_begin(&sample_loop_state, gallivm,
                               lp_build_const_int32(gallivm, 0),
@@ -687,10 +711,13 @@ generate_fs_loop(struct gallivm_state *gallivm,
       lp_build_mask_force(&mask, s_mask);
       lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter, sample_loop_state.counter);
       system_values.sample_id = sample_loop_state.counter;
-   } else
+      system_values.sample_mask_in = LLVMBuildAnd(builder, system_values.sample_mask_in,
+                                                  lp_build_broadcast(gallivm, int_vec_type,
+                                                                     LLVMBuildShl(builder, lp_build_const_int32(gallivm, 1), sample_loop_state.counter, "")), "");
+   } else {
       system_values.sample_id = lp_build_const_int32(gallivm, 0);
 
-   system_values.sample_mask_in = sample_mask_in;
+   }
    system_values.sample_pos = sample_pos_array;
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, mask_store, sample_loop_state.counter);
