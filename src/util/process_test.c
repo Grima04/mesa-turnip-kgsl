@@ -31,6 +31,11 @@
 #include <limits.h>
 #include <stdlib.h>
 
+#if DETECT_OS_WINDOWS && !defined(PATH_MAX)
+#include <windows.h>
+#define PATH_MAX MAX_PATH
+#endif
+
 bool error = false;
 
 static void
