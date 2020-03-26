@@ -500,7 +500,9 @@ generate_fs_loop(struct gallivm_state *gallivm,
                            num_loop,
                            lp_build_const_int32(gallivm, 1));
 
+   LLVMValueRef sample_mask_in;
    if (key->multisample) {
+      sample_mask_in = lp_build_const_int_vec(gallivm, type, 0);
       /* create shader execution mask by combining all sample masks. */
       for (unsigned s = 0; s < key->coverage_samples; s++) {
          LLVMValueRef s_mask_idx = LLVMBuildMul(builder, num_loop, lp_build_const_int32(gallivm, s), "");
@@ -510,11 +512,18 @@ generate_fs_loop(struct gallivm_state *gallivm,
             mask_val = s_mask;
          else
             mask_val = LLVMBuildOr(builder, s_mask, mask_val, "");
+
+         LLVMValueRef mask_in = LLVMBuildAnd(builder, s_mask, lp_build_const_int_vec(gallivm, type, (1 << s)), "");
+         sample_mask_in = LLVMBuildOr(builder, sample_mask_in, mask_in, "");
       }
    } else {
+      sample_mask_in = lp_build_const_int_vec(gallivm, type, 1);
       mask_ptr = LLVMBuildGEP(builder, mask_store,
                               &loop_state.counter, 1, "mask_ptr");
       mask_val = LLVMBuildLoad(builder, mask_ptr, "");
+
+      LLVMValueRef mask_in = LLVMBuildAnd(builder, mask_val, lp_build_const_int_vec(gallivm, type, 1), "");
+      sample_mask_in = LLVMBuildOr(builder, sample_mask_in, mask_in, "");
    }
 
    /* 'mask' will control execution based on quad's pixel alive/killed state */
@@ -678,6 +687,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    } else
       system_values.sample_id = lp_build_const_int32(gallivm, 0);
 
+   system_values.sample_mask_in = sample_mask_in;
    system_values.sample_pos = sample_pos_array;
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, mask_store, sample_loop_state.counter);
