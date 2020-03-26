@@ -885,8 +885,6 @@ struct anv_state_pool {
    struct anv_fixed_size_state_pool buckets[ANV_STATE_BUCKETS];
 };
 
-struct anv_state_stream_block;
-
 struct anv_state_stream {
    struct anv_state_pool *state_pool;
 
@@ -900,7 +898,7 @@ struct anv_state_stream {
    uint32_t next;
 
    /* List of all blocks allocated from this pool */
-   struct anv_state_stream_block *block_list;
+   struct util_dynarray all_blocks;
 };
 
 /* The block_pool functions exported for testing only.  The block pool should
