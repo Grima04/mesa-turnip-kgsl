@@ -33,7 +33,6 @@ extern "C" {
 #endif
 
 void gen_uuid_compute_device_id(uint8_t *uuid,
-                                const struct gen_device_info *devinfo,
                                 const struct isl_device *isldev,
                                 size_t size);
 

@@ -27,12 +27,12 @@
 
 void
 gen_uuid_compute_device_id(uint8_t *uuid,
-                           const struct gen_device_info *devinfo,
                            const struct isl_device *isldev,
                            size_t size)
 {
    struct mesa_sha1 sha1_ctx;
    uint8_t sha1[20];
+   const struct gen_device_info *devinfo = isldev->info;
 
    assert(size <= sizeof(sha1));
 

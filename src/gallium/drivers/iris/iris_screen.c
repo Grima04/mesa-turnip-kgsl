@@ -55,6 +55,7 @@
 #include "intel/compiler/brw_compiler.h"
 #include "intel/common/gen_gem.h"
 #include "intel/common/gen_l3_config.h"
+#include "intel/common/gen_uuid.h"
 #include "iris_monitor.h"
 
 static void
@@ -75,6 +76,24 @@ static const char *
 iris_get_device_vendor(struct pipe_screen *pscreen)
 {
    return "Intel";
+}
+
+static void
+iris_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+   struct iris_screen *screen = (struct iris_screen *)pscreen;
+   const struct isl_device *isldev = &screen->isl_dev;
+
+   gen_uuid_compute_device_id((uint8_t *)uuid, isldev, PIPE_UUID_SIZE);
+}
+
+static void
+iris_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+   struct iris_screen *screen = (struct iris_screen *)pscreen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   gen_uuid_compute_driver_id((uint8_t *)uuid, devinfo, PIPE_UUID_SIZE);
 }
 
 static const char *
@@ -768,6 +787,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    pscreen->get_compute_param = iris_get_compute_param;
    pscreen->get_paramf = iris_get_paramf;
    pscreen->get_compiler_options = iris_get_compiler_options;
+   pscreen->get_device_uuid = iris_get_device_uuid;
+   pscreen->get_driver_uuid = iris_get_driver_uuid;
    pscreen->get_disk_shader_cache = iris_get_disk_shader_cache;
    pscreen->is_format_supported = iris_is_format_supported;
    pscreen->context_create = iris_create_context;
