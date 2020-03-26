@@ -144,8 +144,6 @@ nv50_emit_vtxattr(struct nv50_context *nv50, struct pipe_vertex_buffer *vb,
    const void *data = (const uint8_t *)vb->buffer.user + ve->src_offset;
    float v[4];
    const unsigned nc = util_format_get_nr_components(ve->src_format);
-   const struct util_format_description *desc =
-      util_format_description(ve->src_format);
 
    assert(vb->is_user_buffer);
 
