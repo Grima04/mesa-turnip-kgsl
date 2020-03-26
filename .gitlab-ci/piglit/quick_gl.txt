@@ -738,150 +738,6 @@ spec/arb_stencil_texturing/glblitframebuffer corrupts state/gl_texture_2d_multis
 spec/arb_stencil_texturing/glblitframebuffer corrupts state/gl_texture_2d_multisample_array: fail
 spec/arb_tessellation_shader/arb_tessellation_shader-immediate-mode-draw-patches: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-tes-gs-max-output -small -scan 1 50: fail
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 8: skip
 spec/arb_texture_buffer_object/indexed: skip
 spec/arb_texture_buffer_object/negative-unsupported: skip
 spec/arb_texture_compression_bptc/bptc-float-modes: fail
@@ -1982,8 +1838,6 @@ spec/nv_fragment_program_option/fp-condition_codes-01: skip
 spec/nv_fragment_program_option/fp-rfl: skip
 spec/nv_fragment_program_option/fp-set-02: skip
 spec/nv_fragment_program_option/fp-unpack-01: skip
-spec/nv_texture_barrier/arb_texture_barrier-texture-halves-ping-pong-operation-chain: skip
-spec/nv_texture_barrier/blending-in-shader: skip
 spec/nv_vertex_program2_option/vp-address-03: skip
 spec/nv_vertex_program2_option/vp-address-05: skip
 spec/nv_vertex_program2_option/vp-address-06: skip
@@ -2081,10 +1935,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    19539
+       pass:    19685
        fail:      246
       crash:        0
-       skip:     1814
+       skip:     1668
     timeout:        0
        warn:        2
  incomplete:        0

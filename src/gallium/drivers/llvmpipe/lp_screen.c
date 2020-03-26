@@ -194,9 +194,8 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MAX_TEXEL_OFFSET:
       return 31;
    case PIPE_CAP_CONDITIONAL_RENDER:
-      return 1;
    case PIPE_CAP_TEXTURE_BARRIER:
-      return 0;
+      return 1;
    case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
    case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
       return 16*4;

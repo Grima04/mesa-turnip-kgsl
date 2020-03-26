@@ -131,6 +131,12 @@ llvmpipe_render_condition(struct pipe_context *pipe,
    llvmpipe->render_cond_cond = condition;
 }
 
+static void
+llvmpipe_texture_barrier(struct pipe_context *pipe, unsigned flags)
+{
+   llvmpipe_flush(pipe, NULL, __FUNCTION__);
+}
+
 struct pipe_context *
 llvmpipe_create_context(struct pipe_screen *screen, void *priv,
                         unsigned flags)
@@ -159,6 +165,7 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
    llvmpipe->pipe.set_framebuffer_state = llvmpipe_set_framebuffer_state;
    llvmpipe->pipe.clear = llvmpipe_clear;
    llvmpipe->pipe.flush = do_flush;
+   llvmpipe->pipe.texture_barrier = llvmpipe_texture_barrier;
 
    llvmpipe->pipe.render_condition = llvmpipe_render_condition;
 
