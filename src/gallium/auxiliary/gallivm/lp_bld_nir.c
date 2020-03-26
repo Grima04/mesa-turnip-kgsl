@@ -1386,6 +1386,7 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_load_patch_vertices_in:
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_sample_pos:
+   case nir_intrinsic_load_sample_mask_in:
       bld_base->sysval_intrin(bld_base, instr, result);
       break;
    case nir_intrinsic_load_helper_invocation:

@@ -1386,6 +1386,9 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
          result[i] = lp_build_broadcast_scalar(&bld_base->base, val);
       }
       break;
+   case nir_intrinsic_load_sample_mask_in:
+      result[0] = bld->system_values.sample_mask_in;
+      break;
    }
 }
 
