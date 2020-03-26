@@ -556,6 +556,29 @@ iris_fence_create_fd(struct pipe_context *ctx,
    *out = fence;
 }
 
+static void
+iris_fence_signal(struct pipe_context *ctx,
+                  struct pipe_fence_handle *fence)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+
+   if (ctx == fence->unflushed_ctx)
+      return;
+
+   for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
+      for (unsigned i = 0; i < ARRAY_SIZE(fence->fine); i++) {
+         struct iris_fine_fence *fine = fence->fine[i];
+
+         /* already signaled fence skipped */
+         if (iris_fine_fence_signaled(fine))
+            continue;
+
+         iris_batch_add_syncobj(&ice->batches[b], fine->syncobj,
+                                I915_EXEC_FENCE_SIGNAL);
+      }
+   }
+}
+
 void
 iris_init_screen_fence_functions(struct pipe_screen *screen)
 {
@@ -570,4 +593,5 @@ iris_init_context_fence_functions(struct pipe_context *ctx)
    ctx->flush = iris_fence_flush;
    ctx->create_fence_fd = iris_fence_create_fd;
    ctx->fence_server_sync = iris_fence_await;
+   ctx->fence_server_signal = iris_fence_signal;
 }
