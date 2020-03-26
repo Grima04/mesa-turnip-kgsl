@@ -71,11 +71,12 @@
  */
 
 #include <stdbool.h>
+#include <limits.h>
 
 #include "ralloc.h"
 #include "util/imports.h"
-#include "main/macros.h"
 #include "util/bitset.h"
+#include "u_math.h"
 #include "register_allocate.h"
 
 struct ra_reg {
@@ -496,7 +497,7 @@ ra_realloc_interference_graph(struct ra_graph *g, unsigned int alloc)
     * easier to memset the top of the growing bitsets.
     */
    assert(g->alloc % BITSET_WORDBITS == 0);
-   alloc = ALIGN(alloc, BITSET_WORDBITS);
+   alloc = align64(alloc, BITSET_WORDBITS);
 
    g->nodes = reralloc(g, g->nodes, struct ra_node, alloc);
 

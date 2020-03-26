@@ -23,8 +23,8 @@
 
 #include <string.h>
 
-#include "main/macros.h"
 #include "blob.h"
+#include "u_math.h"
 
 #ifdef HAVE_VALGRIND
 #include <valgrind.h>
@@ -85,7 +85,7 @@ grow_to_fit(struct blob *blob, size_t additional)
 static bool
 align_blob(struct blob *blob, size_t alignment)
 {
-   const size_t new_size = ALIGN(blob->size, alignment);
+   const size_t new_size = align64(blob->size, alignment);
 
    if (blob->size < new_size) {
       if (!grow_to_fit(blob, new_size - blob->size))
@@ -102,7 +102,7 @@ align_blob(struct blob *blob, size_t alignment)
 static void
 align_blob_reader(struct blob_reader *blob, size_t alignment)
 {
-   blob->current = blob->data + ALIGN(blob->current - blob->data, alignment);
+   blob->current = blob->data + align64(blob->current - blob->data, alignment);
 }
 
 void
@@ -212,7 +212,7 @@ BLOB_WRITE_TYPE(blob_write_uint64, uint64_t)
 BLOB_WRITE_TYPE(blob_write_intptr, intptr_t)
 
 #define ASSERT_ALIGNED(_offset, _align) \
-   assert(ALIGN((_offset), (_align)) == (_offset))
+   assert(align64((_offset), (_align)) == (_offset))
 
 bool
 blob_overwrite_uint8 (struct blob *blob,

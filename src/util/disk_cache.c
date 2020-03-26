@@ -52,7 +52,6 @@
 #include "util/mesa-sha1.h"
 #include "util/ralloc.h"
 #include "util/compiler.h"
-#include "main/errors.h"
 
 #include "disk_cache.h"
 
