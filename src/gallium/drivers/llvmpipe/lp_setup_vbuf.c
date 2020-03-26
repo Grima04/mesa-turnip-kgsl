@@ -571,6 +571,10 @@ lp_setup_pipeline_statistics(
       stats->gs_invocations;
    llvmpipe->pipeline_statistics.gs_primitives +=
       stats->gs_primitives;
+   llvmpipe->pipeline_statistics.hs_invocations +=
+      stats->hs_invocations;
+   llvmpipe->pipeline_statistics.ds_invocations +=
+      stats->ds_invocations;
    if (!setup->rasterizer_discard) {
       llvmpipe->pipeline_statistics.c_invocations +=
          stats->c_invocations;
