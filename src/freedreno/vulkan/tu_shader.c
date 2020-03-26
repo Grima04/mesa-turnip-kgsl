@@ -644,6 +644,14 @@ tu_shader_compile(struct tu_device *dev,
    if (!shader->binary)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
+   if (shader_debug_enabled(shader->ir3_shader.type)) {
+      fprintf(stdout, "Native code for unnamed %s shader %s:\n",
+              ir3_shader_stage(&shader->variants[0]), shader->ir3_shader.nir->info.name);
+       if (shader->ir3_shader.type == MESA_SHADER_FRAGMENT)
+               fprintf(stdout, "SIMD0\n");
+       ir3_shader_disasm(&shader->variants[0], shader->binary, stdout);
+   }
+
    /* compile another variant for the binning pass */
    if (options->include_binning_pass &&
        shader->ir3_shader.type == MESA_SHADER_VERTEX) {
@@ -654,6 +662,12 @@ tu_shader_compile(struct tu_device *dev,
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       shader->has_binning_pass = true;
+
+      if (shader_debug_enabled(MESA_SHADER_VERTEX)) {
+         fprintf(stdout, "Native code for unnamed binning shader %s:\n",
+                 shader->ir3_shader.nir->info.name);
+          ir3_shader_disasm(&shader->variants[1], shader->binary, stdout);
+      }
    }
 
    if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_IR3)) {
