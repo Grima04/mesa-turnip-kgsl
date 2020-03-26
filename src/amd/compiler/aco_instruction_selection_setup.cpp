@@ -103,6 +103,7 @@ struct isel_context {
    /* tessellation information */
    unsigned tcs_tess_lvl_out_loc;
    unsigned tcs_tess_lvl_in_loc;
+   uint64_t tcs_temp_only_inputs;
    uint32_t tcs_num_inputs;
    uint32_t tcs_num_patches;
    bool tcs_in_out_eq = false;
@@ -908,6 +909,12 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir)
       ctx->tcs_num_inputs = ctx->args->options->key.tcs.num_inputs;
    } else if (ctx->stage == vertex_tess_control_hs) {
       ctx->tcs_num_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
+
+      if (ctx->tcs_in_out_eq) {
+         ctx->tcs_temp_only_inputs = ~nir->info.tess.tcs_cross_invocation_inputs_read &
+                                     ~nir->info.inputs_read_indirectly &
+                                     nir->info.inputs_read;
+      }
    } else {
       unreachable("Unsupported TCS shader stage");
    }

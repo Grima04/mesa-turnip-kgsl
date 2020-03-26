@@ -3366,8 +3366,13 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    unsigned write_mask = nir_intrinsic_write_mask(instr);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8u;
 
-   if (ctx->tcs_in_out_eq)
-      store_output_to_temps(ctx, instr);
+   if (ctx->tcs_in_out_eq && store_output_to_temps(ctx, instr)) {
+      /* When the TCS only reads this output directly and for the same vertices as its invocation id, it is unnecessary to store the VS output to LDS. */
+      bool indirect_write;
+      bool temp_only_input = tcs_driver_location_matches_api_mask(ctx, instr, true, ctx->tcs_temp_only_inputs, &indirect_write);
+      if (temp_only_input && !indirect_write)
+         return;
+   }
 
    if (ctx->stage == vertex_es || ctx->stage == tess_eval_es) {
       /* GFX6-8: ES stage is not merged into GS, data is passed from ES to GS in VMEM. */
