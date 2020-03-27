@@ -1653,6 +1653,26 @@ static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src, n
    result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildLoad(builder, res_store, ""));
 }
 
+static void
+emit_interp_at(struct lp_build_nir_context *bld_base,
+               unsigned num_components,
+               nir_variable *var,
+               bool centroid,
+               bool sample,
+               unsigned const_index,
+               LLVMValueRef indir_index,
+               LLVMValueRef offsets[2],
+               LLVMValueRef dst[4])
+{
+   struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+
+   for (unsigned i = 0; i < num_components; i++) {
+      dst[i] = bld->fs_iface->interp_fn(bld->fs_iface, &bld_base->base,
+                                        const_index + var->data.driver_location, i + var->data.location_frac,
+                                        centroid, sample, indir_index, offsets);
+   }
+}
+
 void lp_build_nir_soa(struct gallivm_state *gallivm,
                       struct nir_shader *shader,
                       const struct lp_build_tgsi_params *params,
@@ -1749,6 +1769,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.image_size = emit_image_size;
    bld.bld_base.vote = emit_vote;
    bld.bld_base.helper_invocation = emit_helper_invocation;
+   bld.bld_base.interp_at = emit_interp_at;
 
    bld.mask = params->mask;
    bld.inputs = params->inputs;
@@ -1773,6 +1794,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.gs_iface = params->gs_iface;
    bld.tcs_iface = params->tcs_iface;
    bld.tes_iface = params->tes_iface;
+   bld.fs_iface = params->fs_iface;
    if (bld.gs_iface) {
       struct lp_build_context *uint_bld = &bld.bld_base.uint_bld;
 

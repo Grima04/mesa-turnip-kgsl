@@ -243,6 +243,15 @@ struct lp_build_image_soa
                        const struct lp_sampler_size_query_params *params);
 };
 
+struct lp_build_fs_iface;
+struct lp_build_fs_iface {
+   LLVMValueRef (*interp_fn)(const struct lp_build_fs_iface *iface,
+                             struct lp_build_context *bld,
+                             unsigned attrib, unsigned chan,
+                             bool centroid, bool sample,
+                             LLVMValueRef indir_index, LLVMValueRef offsets[2]);
+};
+
 void
 lp_build_tgsi_info(const struct tgsi_token *tokens,
                    struct lp_tgsi_info *info);
@@ -268,6 +277,7 @@ struct lp_build_tgsi_params {
    LLVMValueRef shared_ptr;
    const struct lp_build_coro_suspend_info *coro;
    LLVMValueRef kernel_args;
+   const struct lp_build_fs_iface *fs_iface;
 };
 
 void
