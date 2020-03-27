@@ -211,12 +211,29 @@ struct bifrost_fma_fma {
         unsigned src2 : 3;
         unsigned src_expand : 3;
         unsigned src0_abs : 1;
-        unsigned unk : 4;
-        unsigned src0_neg : 1;
+        enum bifrost_roundmode roundmode : 2;
+        enum bifrost_outmod outmod : 2;
+        unsigned src0_neg : 1; /* 14 */
         unsigned src2_neg : 1;
         unsigned src1_abs : 1;
-        unsigned src2_abs : 1;
-        unsigned op : 5;
+        unsigned src2_abs : 1; /* 17 */
+        unsigned op : 2;
+} __attribute__((packed));
+
+#define BIFROST_FMA_OP_FMA16 (0x2)
+
+struct bifrost_fma_fma16 {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src2 : 3;
+        unsigned swizzle_0 : 2;
+        unsigned swizzle_1 : 2;
+        enum bifrost_roundmode roundmode : 2;
+        enum bifrost_outmod outmod : 2;
+        unsigned src0_neg : 1;
+        unsigned src2_neg : 1;
+        unsigned swizzle_2 : 2;
+        unsigned op : 2;
 } __attribute__((packed));
 
 enum bifrost_csel_cond {
