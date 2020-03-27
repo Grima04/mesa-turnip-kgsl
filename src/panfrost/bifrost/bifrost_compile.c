@@ -379,6 +379,10 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_u2f16:
         case nir_op_u2f32:
         case nir_op_u2f64:
+        case nir_op_f2f16:
+        case nir_op_f2f32:
+        case nir_op_f2f64:
+        case nir_op_f2fmp:
                 return BI_CONVERT;
 
         case nir_op_vec2:
