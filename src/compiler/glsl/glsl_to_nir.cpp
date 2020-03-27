@@ -1549,7 +1549,7 @@ nir_visitor::visit(ir_call *ir)
 
          /* The value in shared memory is a 32-bit value */
          if (type->is_boolean())
-            ret = nir_i2b(&b, &instr->dest.ssa);
+            ret = nir_b2b1(&b, &instr->dest.ssa);
          break;
       }
       case nir_intrinsic_store_shared: {
@@ -1571,7 +1571,7 @@ nir_visitor::visit(ir_call *ir)
          nir_ssa_def *nir_val = evaluate_rvalue(val);
          /* The value in shared memory is a 32-bit value */
          if (val->type->is_boolean())
-            nir_val = nir_b2i32(&b, nir_val);
+            nir_val = nir_b2b32(&b, nir_val);
 
          instr->src[0] = nir_src_for_ssa(nir_val);
          instr->num_components = val->type->vector_elements;

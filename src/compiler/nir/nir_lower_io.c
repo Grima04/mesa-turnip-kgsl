@@ -938,8 +938,16 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       result = &load->dest.ssa;
    }
 
-   if (intrin->dest.ssa.bit_size == 1)
-      result = nir_i2b(b, result);
+   if (intrin->dest.ssa.bit_size == 1) {
+      /* For shared, we can go ahead and use NIR's and/or the back-end's
+       * standard encoding for booleans rather than forcing a 0/1 boolean.
+       * This should save an instruction or two.
+       */
+      if (mode == nir_var_mem_shared)
+         result = nir_b2b1(b, result);
+      else
+         result = nir_i2b(b, result);
+   }
 
    return result;
 }
@@ -974,8 +982,16 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_intrinsic_instr *store = nir_intrinsic_instr_create(b->shader, op);
 
    if (value->bit_size == 1) {
-      /* TODO: Make the native bool bit_size an option. */
-      value = nir_b2i(b, value, 32);
+      /* For shared, we can go ahead and use NIR's and/or the back-end's
+       * standard encoding for booleans rather than forcing a 0/1 boolean.
+       * This should save an instruction or two.
+       *
+       * TODO: Make the native bool bit_size an option.
+       */
+      if (mode == nir_var_mem_shared)
+         value = nir_b2b32(b, value);
+      else
+         value = nir_b2i(b, value, 32);
    }
 
    store->src[0] = nir_src_for_ssa(value);
