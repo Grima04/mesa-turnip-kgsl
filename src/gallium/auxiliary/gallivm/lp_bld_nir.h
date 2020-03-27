@@ -174,6 +174,7 @@ struct lp_build_nir_context
    void (*end_primitive)(struct lp_build_nir_context *bld_base, uint32_t stream_id);
 
    void (*vote)(struct lp_build_nir_context *bld_base, LLVMValueRef src, nir_intrinsic_instr *instr, LLVMValueRef dst[4]);
+   void (*helper_invocation)(struct lp_build_nir_context *bld_base, LLVMValueRef *dst);
 //   LLVMValueRef main_function
 };
 

@@ -1333,6 +1333,9 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_load_patch_vertices_in:
       bld_base->sysval_intrin(bld_base, instr, result);
       break;
+   case nir_intrinsic_load_helper_invocation:
+      bld_base->helper_invocation(bld_base, &result[0]);
+      break;
    case nir_intrinsic_discard_if:
    case nir_intrinsic_discard:
       visit_discard(bld_base, instr);

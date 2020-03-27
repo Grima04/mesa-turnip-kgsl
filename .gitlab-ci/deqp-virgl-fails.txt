@@ -449,10 +449,6 @@ dEQP-GLES31.functional.shaders.builtin_functions.uniform.findLSBMinusOne.mediump
 dEQP-GLES31.functional.shaders.builtin_functions.uniform.findMSBMinusOne.highp_tess_eval
 dEQP-GLES31.functional.shaders.builtin_functions.uniform.findMSBZero.lowp_tess_eval
 dEQP-GLES31.functional.shaders.builtin_var.compute.global_invocation_id
-dEQP-GLES31.functional.shaders.helper_invocation.derivate.points_max_samples_fwidth
-dEQP-GLES31.functional.shaders.helper_invocation.derivate.triangles_max_samples_dfdy
-dEQP-GLES31.functional.shaders.helper_invocation.derivate.wide_lines_dfdx
-dEQP-GLES31.functional.shaders.helper_invocation.value.lines_max_samples
 dEQP-GLES31.functional.shaders.linkage.es31.tessellation.uniform.types.int
 dEQP-GLES31.functional.shaders.linkage.es31.tessellation.uniform.types.vec4
 dEQP-GLES31.functional.shaders.linkage.es31.tessellation.varying.rules.internal_superfluous_declaration
