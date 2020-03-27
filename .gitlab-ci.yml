@@ -425,7 +425,7 @@ meson-clang:
     CC: "ccache clang-9"
     CXX: "ccache clang++-9"
 
-meson-windows-vs2019:
+.meson-windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
