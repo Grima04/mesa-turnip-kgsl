@@ -569,6 +569,7 @@ gather_varying_component_info(nir_shader *producer, nir_shader *consumer,
             vc_info->is_32bit = glsl_type_is_32bit(type);
             vc_info->is_patch = in_var->data.patch;
             vc_info->is_intra_stage_only = false;
+            vc_info->initialised = true;
          }
       }
    }
@@ -604,8 +605,14 @@ gather_varying_component_info(nir_shader *producer, nir_shader *consumer,
 
             unsigned var_info_idx =
                store_varying_info_idx[location][out_var->data.location_frac];
-            if (!var_info_idx)
-               continue;
+            if (!var_info_idx) {
+               /* Something went wrong, the shader interfaces didn't match, so
+                * abandon packing. This can happen for example when the
+                * inputs are scalars but the outputs are struct members.
+                */
+               *varying_comp_info_size = 0;
+               break;
+            }
 
             struct varying_component *vc_info =
                &(*varying_comp_info)[var_info_idx-1];
@@ -624,8 +631,21 @@ gather_varying_component_info(nir_shader *producer, nir_shader *consumer,
                vc_info->is_32bit = glsl_type_is_32bit(type);
                vc_info->is_patch = out_var->data.patch;
                vc_info->is_intra_stage_only = true;
+               vc_info->initialised = true;
             }
          }
+      }
+   }
+
+   for (unsigned i = 0; i < *varying_comp_info_size; i++ ) {
+      struct varying_component *vc_info = &(*varying_comp_info)[i];
+      if (!vc_info->initialised) {
+         /* Something went wrong, the shader interfaces didn't match, so
+          * abandon packing. This can happen for example when the outputs are
+          * scalars but the inputs are struct members.
+          */
+         *varying_comp_info_size = 0;
+         break;
       }
    }
 }
