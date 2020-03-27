@@ -47,8 +47,8 @@ struct llvmpipe_query {
    struct lp_fence *fence;          /* fence from last scene this was binned in */
    unsigned type;                   /* PIPE_QUERY_* */
    unsigned index;
-   unsigned num_primitives_generated;
-   unsigned num_primitives_written;
+   unsigned num_primitives_generated[PIPE_MAX_VERTEX_STREAMS];
+   unsigned num_primitives_written[PIPE_MAX_VERTEX_STREAMS];
 
    struct pipe_query_data_pipeline_statistics stats;
 };
