@@ -458,6 +458,8 @@ bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
                         .src2_abs = ins->src_abs[2],
                         .src0_neg = negate_mul,
                         .src2_neg = ins->src_neg[2],
+                        .outmod = ins->outmod,
+                        .roundmode = ins->roundmode,
                         .op = BIFROST_FMA_OP_FMA
                 };
 
@@ -472,6 +474,8 @@ bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
                         .swizzle_2 = bi_swiz16(ins, 2),
                         .src0_neg = negate_mul,
                         .src2_neg = ins->src_neg[2],
+                        .outmod = ins->outmod,
+                        .roundmode = ins->roundmode,
                         .op = BIFROST_FMA_OP_FMA16
                 };
 
