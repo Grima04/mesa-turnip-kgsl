@@ -593,6 +593,55 @@ bi_pack_fma_csel(bi_instruction *ins, struct bi_registers *regs)
         RETURN_PACKED(pack);
 }
 
+/* We have a single convert opcode in the IR but a number of opcodes that could
+ * come out. In particular we have native opcodes for:
+ *
+ * [ui]16 --> [fui]32           -- int16_to_32
+ * f16     --> f32              -- float16_to_32
+ * f32     --> f16              -- float32_to_16
+ * f32     --> [ui]32           -- float32_to_int
+ * [ui]32  --> f32              -- int_to_float32
+ * [fui]16 --> [fui]16          -- f2i_i2f16
+ */
+
+static unsigned
+bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
+{
+        nir_alu_type from_base = nir_alu_type_get_base_type(ins->src_types[0]);
+        unsigned from_size = nir_alu_type_get_type_size(ins->src_types[0]);
+
+        nir_alu_type to_base = nir_alu_type_get_base_type(ins->dest_type);
+        unsigned to_size = nir_alu_type_get_type_size(ins->dest_type);
+
+        /* Sanity check */
+        assert((from_base != to_base) || (from_size != to_size));
+        assert((MAX2(from_size, to_size) / MIN2(from_size, to_size)) <= 2);
+
+        if (from_size == 16 && to_size == 16) {
+                /* f2i_i2f16 */
+        } else if (from_size == 32 && to_size == 32) {
+                if (from_base == nir_type_float) {
+                        /* float32_to_int */
+                } else {
+                        /* int_to_float32 */
+                }
+        } else if (from_size == 16 && to_size == 32) {
+                if (from_base == nir_type_float) {
+                        /* float16_to_32 */
+                } else {
+                        /* int16_to_32 */
+                }
+        } else if (from_size == 32 && to_size == 16) {
+                if (from_base == nir_type_float) {
+                        /* float32_to_float16 */
+                } else {
+                        /* XXX: No int32_to_int16? */
+                }
+        }
+
+        return BIFROST_FMA_NOP;
+}
+
 static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
@@ -604,8 +653,9 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return bi_pack_fma_add(bundle.fma, regs);
         case BI_CMP:
         case BI_BITWISE:
-        case BI_CONVERT:
 		return BIFROST_FMA_NOP;
+        case BI_CONVERT:
+		return bi_pack_fma_convert(bundle.fma, regs);
         case BI_CSEL:
 		return bi_pack_fma_csel(bundle.fma, regs);
         case BI_FMA:
