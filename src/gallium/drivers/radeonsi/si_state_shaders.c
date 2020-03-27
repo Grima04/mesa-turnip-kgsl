@@ -2827,9 +2827,27 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 static void *si_create_shader(struct pipe_context *ctx, const struct pipe_shader_state *state)
 {
+   struct si_context *sctx = (struct si_context *)ctx;
    struct si_screen *sscreen = (struct si_screen *)ctx->screen;
+   bool cache_hit;
+   struct si_shader_selector *sel = (struct si_shader_selector *)util_live_shader_cache_get(
+      ctx, &sscreen->live_shader_cache, state, &cache_hit);
 
-   return util_live_shader_cache_get(ctx, &sscreen->live_shader_cache, state);
+   if (sel && cache_hit && sctx->debug.debug_message) {
+      if (sel->main_shader_part)
+         si_shader_dump_stats_for_shader_db(sscreen, sel->main_shader_part, &sctx->debug);
+      if (sel->main_shader_part_ls)
+         si_shader_dump_stats_for_shader_db(sscreen, sel->main_shader_part_ls, &sctx->debug);
+      if (sel->main_shader_part_es)
+         si_shader_dump_stats_for_shader_db(sscreen, sel->main_shader_part_es, &sctx->debug);
+      if (sel->main_shader_part_ngg)
+         si_shader_dump_stats_for_shader_db(sscreen, sel->main_shader_part_ngg, &sctx->debug);
+      if (sel->main_shader_part_ngg_es)
+         si_shader_dump_stats_for_shader_db(sscreen, sel->main_shader_part_ngg_es, &sctx->debug);
+      if (sel->gs_copy_shader)
+         si_shader_dump_stats_for_shader_db(sscreen, sel->gs_copy_shader, &sctx->debug);
+   }
+   return sel;
 }
 
 static void si_update_streamout_state(struct si_context *sctx)
