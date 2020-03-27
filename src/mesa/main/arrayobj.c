@@ -546,6 +546,17 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
    vao->_EffEnabledVBO = _mesa_vao_enable_to_vp_inputs(mode, enabled & vbos);
    vao->_EffEnabledNonZeroDivisor =
       _mesa_vao_enable_to_vp_inputs(mode, enabled & divisor_is_nonzero);
+
+   /* Fast path when the VAO is updated too often. */
+   if (vao->IsDynamic)
+      return;
+
+   /* More than 4 updates turn the VAO to dynamic. */
+   if (ctx->Const.AllowDynamicVAOFastPath && ++vao->NumUpdates > 4) {
+      vao->IsDynamic = true;
+      return;
+   }
+
    /* Walk those enabled arrays that have a real vbo attached */
    GLbitfield mask = enabled;
    while (mask) {

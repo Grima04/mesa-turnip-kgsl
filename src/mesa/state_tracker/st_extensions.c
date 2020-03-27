@@ -583,6 +583,8 @@ void st_init_limits(struct pipe_screen *screen,
    c->MultiDrawWithUserIndices =
       screen->get_param(screen, PIPE_CAP_DRAW_INFO_START_WITH_USER_INDICES);
 
+   c->AllowDynamicVAOFastPath = true;
+
    c->glBeginEndBufferSize =
       screen->get_param(screen, PIPE_CAP_GL_BEGIN_END_BUFFER_SIZE);
 }

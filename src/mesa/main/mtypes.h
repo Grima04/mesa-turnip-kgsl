@@ -1540,11 +1540,25 @@ struct gl_vertex_array_object
    GLboolean EverBound;
 
    /**
+    * Whether the VAO is changed by the application so often that some of
+    * the derived fields are not updated at all to decrease overhead.
+    * Also, interleaved arrays are not detected, because it's too expensive
+    * to do that before every draw call.
+    */
+   bool IsDynamic;
+
+   /**
     * Marked to true if the object is shared between contexts and immutable.
     * Then reference counting is done using atomics and thread safe.
     * Is used for dlist VAOs.
     */
    bool SharedAndImmutable;
+
+   /**
+    * Number of updates that were done by the application. This is used to
+    * decide whether the VAO is static or dynamic.
+    */
+   unsigned NumUpdates;
 
    /** Vertex attribute arrays */
    struct gl_array_attributes VertexAttrib[VERT_ATTRIB_MAX];
@@ -4163,6 +4177,9 @@ struct gl_constants
 
    /** Whether out-of-order draw (Begin/End) optimizations are allowed. */
    bool AllowDrawOutOfOrder;
+
+   /** Whether to allow the fast path for frequently updated VAOs. */
+   bool AllowDynamicVAOFastPath;
 
    /** GL_ARB_gl_spirv */
    struct spirv_supported_capabilities SpirVCapabilities;
