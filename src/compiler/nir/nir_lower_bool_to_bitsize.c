@@ -167,6 +167,16 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
                                bit_size == 16 ? nir_op_i2b16 : nir_op_i2b32;
       break;
 
+   case nir_op_b2b1:
+      /* Since the canonical bit size is the size of the src, it's a no-op */
+      opcode = nir_op_mov;
+      break;
+
+   case nir_op_b2b32:
+      /* For up-converting booleans, sign-extend */
+      opcode = nir_op_i2i32;
+      break;
+
    case nir_op_flt:
       opcode = bit_size == 8 ? nir_op_flt8 :
                                bit_size == 16 ? nir_op_flt16 : nir_op_flt32;

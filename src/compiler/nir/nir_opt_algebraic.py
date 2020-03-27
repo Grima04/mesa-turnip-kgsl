@@ -1359,7 +1359,7 @@ for x, y in itertools.product(['f', 'u', 'i'], ['f', 'u', 'i']):
    optimizations.append(((x2yN, (b2x, a)), (b2y, a)))
 
 # Optimize away x2xN(a@N)
-for t in ['int', 'uint', 'float']:
+for t in ['int', 'uint', 'float', 'bool']:
    for N in type_sizes(t):
       x2xN = '{0}2{0}{1}'.format(t[0], N)
       aN = 'a@{0}'.format(N)

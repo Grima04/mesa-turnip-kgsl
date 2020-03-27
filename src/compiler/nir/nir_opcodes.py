@@ -211,7 +211,7 @@ unop("flog2", tfloat, "log2f(src0)")
 # Generate all of the numeric conversion opcodes
 for src_t in [tint, tuint, tfloat, tbool]:
    if src_t == tbool:
-      dst_types = [tfloat, tint]
+      dst_types = [tfloat, tint, tbool]
    elif src_t == tint:
       dst_types = [tfloat, tint, tbool]
    elif src_t == tuint:
