@@ -1338,6 +1338,7 @@ static void visit_interp(struct lp_build_nir_context *bld_base,
       }
    } else if (instr->intrinsic == nir_intrinsic_interp_deref_at_sample) {
       offsets[0] = get_src(bld_base, instr->src[1]);
+      offsets[0] = cast_type(bld_base, offsets[0], nir_type_int, 32);
       sample = true;
    }
    bld_base->interp_at(bld_base, num_components, var, centroid, sample, const_index, indir_index, offsets, result);

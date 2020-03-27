@@ -96,6 +96,10 @@ struct lp_build_interp_soa_context
    LLVMValueRef x;
    LLVMValueRef y;
 
+   LLVMValueRef a0_ptr;
+   LLVMValueRef dadx_ptr;
+   LLVMValueRef dady_ptr;
+
    LLVMValueRef a0aos[1 + PIPE_MAX_SHADER_INPUTS];
    LLVMValueRef dadxaos[1 + PIPE_MAX_SHADER_INPUTS];
    LLVMValueRef dadyaos[1 + PIPE_MAX_SHADER_INPUTS];
@@ -143,5 +147,15 @@ lp_build_interp_soa_update_pos_dyn(struct lp_build_interp_soa_context *bld,
                                    struct gallivm_state *gallivm,
                                    LLVMValueRef quad_start_index,
                                    LLVMValueRef sample_id);
+
+LLVMValueRef
+lp_build_interp_soa(struct lp_build_interp_soa_context *bld,
+                    struct gallivm_state *gallivm,
+                    LLVMValueRef loop_iter,
+                    LLVMValueRef mask_store,
+                    unsigned attrib, unsigned chan,
+                    unsigned loc,
+                    LLVMValueRef indir_index,
+                    LLVMValueRef offsets[2]);
 
 #endif /* LP_BLD_INTERP_H */
