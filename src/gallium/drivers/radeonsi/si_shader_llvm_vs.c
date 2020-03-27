@@ -664,11 +664,10 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       if (pos_args[i].out[0])
          shader->info.nr_pos_exports++;
 
-   /* Navi10-14 skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
+   /* GFX10 (Navi1x) skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
     * Setting valid_mask=1 prevents it and has no other effect.
     */
-   if (ctx->screen->info.family == CHIP_NAVI10 || ctx->screen->info.family == CHIP_NAVI12 ||
-       ctx->screen->info.family == CHIP_NAVI14)
+   if (ctx->screen->info.chip_class == GFX10)
       pos_args[0].valid_mask = 1;
 
    pos_idx = 0;

@@ -1259,9 +1259,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
 
          /* Stencil texturing with HTILE doesn't work
           * with mipmapping on Navi10-14. */
-         if ((sscreen->info.family == CHIP_NAVI10 || sscreen->info.family == CHIP_NAVI12 ||
-              sscreen->info.family == CHIP_NAVI14) &&
-             base->last_level > 0)
+         if (sscreen->info.chip_class == GFX10 && base->last_level > 0)
             tex->htile_stencil_disabled = true;
       } else {
          tex->can_sample_z = !tex->surface.u.legacy.depth_adjusted;

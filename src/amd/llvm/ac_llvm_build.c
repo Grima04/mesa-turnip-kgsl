@@ -4818,10 +4818,7 @@ void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wav
 	 * We always have to export at least 1 primitive.
 	 * Export a degenerate triangle using vertex 0 for all 3 vertices.
 	 */
-	if (prim_cnt == ctx->i32_0 &&
-	    (ctx->family == CHIP_NAVI10 ||
-	     ctx->family == CHIP_NAVI12 ||
-	     ctx->family == CHIP_NAVI14)) {
+	if (prim_cnt == ctx->i32_0 && ctx->chip_class == GFX10) {
 		assert(vtx_cnt == ctx->i32_0);
 		prim_cnt = ctx->i32_1;
 		vtx_cnt = ctx->i32_1;

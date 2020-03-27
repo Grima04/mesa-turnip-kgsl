@@ -918,8 +918,7 @@ static void gfx10_emit_ge_pc_alloc(struct si_context *sctx, unsigned value)
        sctx->tracked_regs.reg_value[reg] != value) {
       struct radeon_cmdbuf *cs = sctx->gfx_cs;
 
-      if (sctx->family == CHIP_NAVI10 || sctx->family == CHIP_NAVI12 ||
-          sctx->family == CHIP_NAVI14) {
+      if (sctx->chip_class == GFX10) {
          /* SQ_NON_EVENT must be emitted before GE_PC_ALLOC is written. */
          radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
          radeon_emit(cs, EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
@@ -1162,8 +1161,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
 
    /* Limit LATE_ALLOC_GS for prevent a hang (hw bug). */
-   if (sscreen->info.family == CHIP_NAVI10 || sscreen->info.family == CHIP_NAVI12 ||
-       sscreen->info.family == CHIP_NAVI14)
+   if (sscreen->info.chip_class == GFX10)
       late_alloc_wave64 = MIN2(late_alloc_wave64, 64);
 
    si_pm4_set_reg(
@@ -1255,8 +1253,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
        *
        * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
        */
-      if ((sscreen->info.family == CHIP_NAVI10 || sscreen->info.family == CHIP_NAVI12 ||
-           sscreen->info.family == CHIP_NAVI14) &&
+      if ((sscreen->info.chip_class == GFX10) &&
           (es_type == PIPE_SHADER_VERTEX || gs_type == PIPE_SHADER_VERTEX) && /* = no tess */
           shader->ngg.hw_max_esverts != 256) {
          shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
@@ -2950,9 +2947,7 @@ bool si_update_ngg(struct si_context *sctx)
        * VGT_FLUSH is also emitted at the beginning of IBs when legacy GS ring
        * pointers are set.
        */
-      if ((sctx->family == CHIP_NAVI10 || sctx->family == CHIP_NAVI12 ||
-           sctx->family == CHIP_NAVI14) &&
-          !new_ngg)
+      if (sctx->chip_class == GFX10 && !new_ngg)
          sctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
       sctx->ngg = new_ngg;
