@@ -421,25 +421,64 @@ bi_get_src(bi_instruction *ins, struct bi_registers *regs, unsigned s, bool is_f
                 unreachable("Unknown src");
 }
 
+/* Constructs a packed 2-bit swizzle for a 16-bit vec2 source. Source must be
+ * 16-bit and written components must correspond to valid swizzles (component x
+ * or y). */
+
+static unsigned
+bi_swiz16(bi_instruction *ins, unsigned src)
+{
+        assert(nir_alu_type_get_type_size(ins->src_types[src]) == 16);
+        unsigned swizzle = 0;
+
+        for (unsigned c = 0; c < 2; ++c) {
+                if (!bi_writes_component(ins, src)) continue;
+
+                unsigned k = ins->swizzle[src][c];
+                assert(k < 1);
+                swizzle |= (k << c);
+        }
+
+        return swizzle;
+}
+
 static unsigned
 bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
 {
         /* (-a)(-b) = ab, so we only need one negate bit */
         bool negate_mul = ins->src_neg[0] ^ ins->src_neg[1];
 
-        struct bifrost_fma_fma pack = {
-                .src0 = bi_get_src(ins, regs, 0, true),
-                .src1 = bi_get_src(ins, regs, 1, true),
-                .src2 = bi_get_src(ins, regs, 2, true),
-                .src0_abs = ins->src_abs[0],
-                .src1_abs = ins->src_abs[1],
-                .src2_abs = ins->src_abs[2],
-                .src0_neg = negate_mul,
-                .src2_neg = ins->src_neg[2],
-                .op = BIFROST_FMA_OP_FMA
-        };
+        if (ins->dest_type == nir_type_float32) {
+                struct bifrost_fma_fma pack = {
+                        .src0 = bi_get_src(ins, regs, 0, true),
+                        .src1 = bi_get_src(ins, regs, 1, true),
+                        .src2 = bi_get_src(ins, regs, 2, true),
+                        .src0_abs = ins->src_abs[0],
+                        .src1_abs = ins->src_abs[1],
+                        .src2_abs = ins->src_abs[2],
+                        .src0_neg = negate_mul,
+                        .src2_neg = ins->src_neg[2],
+                        .op = BIFROST_FMA_OP_FMA
+                };
 
-        RETURN_PACKED(pack);
+                RETURN_PACKED(pack);
+        } else if (ins->dest_type == nir_type_float16) {
+                struct bifrost_fma_fma16 pack = {
+                        .src0 = bi_get_src(ins, regs, 0, true),
+                        .src1 = bi_get_src(ins, regs, 1, true),
+                        .src2 = bi_get_src(ins, regs, 2, true),
+                        .swizzle_0 = bi_swiz16(ins, 0),
+                        .swizzle_1 = bi_swiz16(ins, 1),
+                        .swizzle_2 = bi_swiz16(ins, 2),
+                        .src0_neg = negate_mul,
+                        .src2_neg = ins->src_neg[2],
+                        .op = BIFROST_FMA_OP_FMA16
+                };
+
+                RETURN_PACKED(pack);
+        } else {
+                unreachable("Invalid fma dest type");
+        }
 }
 
 static unsigned
