@@ -36,7 +36,7 @@ libintel_perf = static_library(
   'intel_perf',
   gen_perf_sources,
   include_directories : [
-    inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_intel, inc_util,
+    inc_include, inc_src, inc_intel,
   ],
   c_args : [c_vis_args, no_override_init_args, '-msse2'],
   cpp_args : [cpp_vis_args, '-msse2'],
