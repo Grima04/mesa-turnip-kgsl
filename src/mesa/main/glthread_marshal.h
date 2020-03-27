@@ -59,13 +59,13 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
    struct glthread_state *glthread = &ctx->GLThread;
    struct glthread_batch *next = &glthread->batches[glthread->next];
    struct marshal_cmd_base *cmd_base;
-   const int aligned_size = ALIGN(size, 8);
 
    if (unlikely(next->used + size > MARSHAL_MAX_CMD_SIZE)) {
       _mesa_glthread_flush_batch(ctx);
       next = &glthread->batches[glthread->next];
    }
 
+   const int aligned_size = align(size, 8);
    cmd_base = (struct marshal_cmd_base *)&next->buffer[next->used];
    next->used += aligned_size;
    cmd_base->cmd_id = cmd_id;
