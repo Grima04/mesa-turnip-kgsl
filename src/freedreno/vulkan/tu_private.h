@@ -1339,13 +1339,6 @@ tu_2d_clear_zs(const VkClearDepthStencilValue *val, VkFormat format, uint32_t bu
 enum a6xx_2d_ifmt tu6_fmt_to_ifmt(enum a6xx_format fmt);
 enum a6xx_depth_format tu6_pipe2depth(VkFormat format);
 
-struct tu_image_level
-{
-   VkDeviceSize offset;
-   VkDeviceSize size;
-   uint32_t pitch;
-};
-
 struct tu_image
 {
    VkImageType type;
@@ -1361,9 +1354,6 @@ struct tu_image
    uint32_t level_count;
    uint32_t layer_count;
    VkSampleCountFlagBits samples;
-
-
-   uint32_t alignment;
 
    struct fdl_layout layout;
 
