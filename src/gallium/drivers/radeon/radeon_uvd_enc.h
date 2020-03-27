@@ -28,6 +28,8 @@
 #ifndef _RADEON_UVD_ENC_H
 #define _RADEON_UVD_ENC_H
 
+#include "radeon_video.h"
+
 #define RENC_UVD_FW_INTERFACE_MAJOR_VERSION     1
 #define RENC_UVD_FW_INTERFACE_MINOR_VERSION     1
 
@@ -462,6 +464,8 @@ struct radeon_uvd_encoder
    bool emulation_prevention;
    bool need_feedback;
 };
+
+struct si_screen;
 
 void radeon_uvd_enc_1_1_init(struct radeon_uvd_encoder *enc);
 bool si_radeon_uvd_enc_supported(struct si_screen *sscreen);

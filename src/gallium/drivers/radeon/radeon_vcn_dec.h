@@ -28,6 +28,8 @@
 #ifndef _RADEON_VCN_DEC_H
 #define _RADEON_VCN_DEC_H
 
+#include "radeon_video.h"
+
 #define RDECODE_PKT_TYPE_S(x)			(((unsigned)(x)	& 0x3) << 30)
 #define RDECODE_PKT_TYPE_G(x)			(((x) >> 30) & 0x3)
 #define RDECODE_PKT_TYPE_C			0x3FFFFFFF

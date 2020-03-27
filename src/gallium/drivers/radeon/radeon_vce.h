@@ -29,6 +29,7 @@
 #define RADEON_VCE_H
 
 #include "util/list.h"
+#include "radeon_video.h"
 
 #define RVCE_CS(value) (enc->cs->current.buf[enc->cs->current.cdw++] = (value))
 #define RVCE_BEGIN(cmd) { \

@@ -28,6 +28,8 @@
 #ifndef _RADEON_VCN_ENC_H
 #define _RADEON_VCN_ENC_H
 
+#include "radeon_video.h"
+
 #define RENCODE_IB_OP_INITIALIZE    				0x01000001
 #define RENCODE_IB_OP_CLOSE_SESSION 				0x01000002
 #define RENCODE_IB_OP_ENCODE        				0x01000003
