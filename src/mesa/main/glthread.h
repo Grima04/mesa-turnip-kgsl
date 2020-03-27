@@ -94,6 +94,9 @@ struct glthread_state
    /** The ring of batches in memory. */
    struct glthread_batch batches[MARSHAL_MAX_BATCHES];
 
+   /** Pointer to the batch currently being filled. */
+   struct glthread_batch *next_batch;
+
    /** Index of the last submitted batch. */
    unsigned last;
 

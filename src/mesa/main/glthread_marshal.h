@@ -57,12 +57,12 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
                                 int size)
 {
    struct glthread_state *glthread = &ctx->GLThread;
-   struct glthread_batch *next = &glthread->batches[glthread->next];
+   struct glthread_batch *next = glthread->next_batch;
    struct marshal_cmd_base *cmd_base;
 
    if (unlikely(next->used + size > MARSHAL_MAX_CMD_SIZE)) {
       _mesa_glthread_flush_batch(ctx);
-      next = &glthread->batches[glthread->next];
+      next = glthread->next_batch;
    }
 
    const int aligned_size = align(size, 8);

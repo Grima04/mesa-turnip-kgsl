@@ -102,6 +102,7 @@ _mesa_glthread_init(struct gl_context *ctx)
       glthread->batches[i].ctx = ctx;
       util_queue_fence_init(&glthread->batches[i].fence);
    }
+   glthread->next_batch = &glthread->batches[glthread->next];
 
    glthread->enabled = true;
    glthread->stats.queue = &glthread->queue;
@@ -176,7 +177,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    if (!glthread->enabled)
       return;
 
-   struct glthread_batch *next = &glthread->batches[glthread->next];
+   struct glthread_batch *next = glthread->next_batch;
    if (!next->used)
       return;
 
@@ -197,6 +198,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
                       glthread_unmarshal_batch, NULL, 0);
    glthread->last = glthread->next;
    glthread->next = (glthread->next + 1) % MARSHAL_MAX_BATCHES;
+   glthread->next_batch = &glthread->batches[glthread->next];
 }
 
 /**
@@ -221,7 +223,7 @@ _mesa_glthread_finish(struct gl_context *ctx)
       return;
 
    struct glthread_batch *last = &glthread->batches[glthread->last];
-   struct glthread_batch *next = &glthread->batches[glthread->next];
+   struct glthread_batch *next = glthread->next_batch;
    bool synced = false;
 
    if (!util_queue_fence_is_signalled(&last->fence)) {
