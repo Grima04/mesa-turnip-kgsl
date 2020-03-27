@@ -480,6 +480,8 @@ static const struct fma_op_info FMAOpInfos[] = {
         { false, 0xd8000, "ADD.v2f16", FMA_FADD16 },
         { false, 0xdc000, "CSEL4.v16", FMA_CSEL4 },
         { false, 0xdd000, "F32_TO_F16", FMA_TWO_SRC },
+
+        /* TODO: Combine to bifrost_fma_f2i_i2f16 */
         { true,  0x00046, "F16_TO_I16.XX", FMA_ONE_SRC },
         { true,  0x00047, "F16_TO_U16.XX", FMA_ONE_SRC },
         { true,  0x0004e, "F16_TO_I16.YX", FMA_ONE_SRC },
@@ -496,10 +498,13 @@ static const struct fma_op_info FMAOpInfos[] = {
         { true,  0x000d1, "U16_TO_F16.XY", FMA_ONE_SRC },
         { true,  0x000d8, "I16_TO_F16.YY", FMA_ONE_SRC },
         { true,  0x000d9, "U16_TO_F16.YY", FMA_ONE_SRC },
+
         { true,  0x00136, "F32_TO_I32", FMA_ONE_SRC },
         { true,  0x00137, "F32_TO_U32", FMA_ONE_SRC },
         { true,  0x00178, "I32_TO_F32", FMA_ONE_SRC },
         { true,  0x00179, "U32_TO_F32", FMA_ONE_SRC },
+
+        /* TODO: cleanup to use bifrost_fma_int16_to_32 */
         { true,  0x00198, "I16_TO_I32.X", FMA_ONE_SRC },
         { true,  0x00199, "U16_TO_U32.X", FMA_ONE_SRC },
         { true,  0x0019a, "I16_TO_I32.Y", FMA_ONE_SRC },
@@ -508,8 +513,10 @@ static const struct fma_op_info FMAOpInfos[] = {
         { true,  0x0019d, "U16_TO_F32.X", FMA_ONE_SRC },
         { true,  0x0019e, "I16_TO_F32.Y", FMA_ONE_SRC },
         { true,  0x0019f, "U16_TO_F32.Y", FMA_ONE_SRC },
+
         { true,  0x001a2, "F16_TO_F32.X", FMA_ONE_SRC },
         { true,  0x001a3, "F16_TO_F32.Y", FMA_ONE_SRC },
+
         { true,  0x0032c, "NOP",  FMA_ONE_SRC },
         { true,  0x0032d, "MOV",  FMA_ONE_SRC },
         { true,  0x0032f, "SWZ.YY.v2i16",  FMA_ONE_SRC },

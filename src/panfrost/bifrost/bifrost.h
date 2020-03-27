@@ -283,6 +283,40 @@ struct bifrost_shift_add {
         unsigned op : 7;
 } __attribute__((packed));
 
+#define BIFROST_FMA_INT16_TO_32 (0xe0198 >> 3)
+
+struct bifrost_fma_int16_to_32 {
+        unsigned src0 : 3;
+        unsigned is_unsigned : 1;
+        unsigned swizzle : 1;
+        unsigned to_float : 1;
+        unsigned op : 17;
+} __attribute__((packed));
+
+/* We could combine but it's easier to just use FMA_ONE_SRC */
+#define BIFROST_FMA_FLOAT16_TO_32(y) (0xe01a2 | ((y) ? 1 : 0))
+
+/* Two sources for vectorization */
+#define BIFROST_FMA_FLOAT32_TO_16 (0xdd000 >> 3)
+
+/* Again we could combine but easier to just ONE_SRC with an
+ * argumnt for unsignedness */
+#define BIFROST_FMA_FLOAT32_TO_INT(u) (0xe0136 | ((u) ? 1 : 0))
+#define BIFROST_FMA_INT_TO_FLOAT32(u) (0xe0178 | ((u) ? 1 : 0))
+
+/* Used for f2i16 and i2f16 */
+#define BIFROST_FMA_F2I16 (0xe00)
+
+struct bifrost_fma_f2i_i2f16 {
+        unsigned src0 : 3;
+        unsigned is_unsigned : 1;
+        unsigned direction : 2; /* 00 for i2f, 11 for f2i */
+        unsigned swizzle : 2;
+        unsigned unk : 2; /* always 10 */
+        unsigned direction_2 : 1; /* 0 for f2i, 1 for i2f */
+        unsigned op : 12;
+} __attribute__((packed));
+
 enum bifrost_ldst_type {
         BIFROST_LDST_F16 = 0,
         BIFROST_LDST_F32 = 1,
