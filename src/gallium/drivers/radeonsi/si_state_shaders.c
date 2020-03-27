@@ -1312,11 +1312,12 @@ static void si_emit_shader_vs(struct si_context *sctx)
                                  shader->vgt_vertex_reuse_block_cntl);
 
    /* Required programming for tessellation. (legacy pipeline only) */
-   if (sctx->chip_class == GFX10 && shader->selector->type == PIPE_SHADER_TESS_EVAL) {
-      radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL, SI_TRACKED_VGT_GS_ONCHIP_CNTL,
+   if (sctx->chip_class >= GFX10 && shader->selector->type == PIPE_SHADER_TESS_EVAL) {
+      radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL,
+                                 SI_TRACKED_VGT_GS_ONCHIP_CNTL,
                                  S_028A44_ES_VERTS_PER_SUBGRP(250) |
-                                    S_028A44_GS_PRIMS_PER_SUBGRP(126) |
-                                    S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
+                                 S_028A44_GS_PRIMS_PER_SUBGRP(126) |
+                                 S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
    }
 
    if (sctx->chip_class >= GFX10) {
@@ -2651,7 +2652,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          u_vertices_per_prim(sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM]);
 
       /* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation. */
-      sel->tess_turns_off_ngg = sscreen->info.chip_class == GFX10 &&
+      sel->tess_turns_off_ngg = sscreen->info.chip_class >= GFX10 &&
                                 sel->gs_num_invocations * sel->gs_max_out_vertices > 256;
       break;
 
@@ -2748,7 +2749,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    }
 
    sel->ngg_culling_allowed =
-      sscreen->info.chip_class == GFX10 && sscreen->info.has_dedicated_vram &&
+      sscreen->info.chip_class >= GFX10 &&
+      sscreen->info.has_dedicated_vram &&
       sscreen->use_ngg_culling &&
       /* Disallow TES by default, because TessMark results are mixed. */
       (sel->type == PIPE_SHADER_VERTEX ||

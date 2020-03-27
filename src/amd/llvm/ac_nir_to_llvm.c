@@ -4043,7 +4043,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_shuffle:
 		if (ctx->ac.chip_class == GFX8 ||
 		    ctx->ac.chip_class == GFX9 ||
-		    (ctx->ac.chip_class == GFX10 && ctx->ac.wave_size == 32)) {
+		    (ctx->ac.chip_class >= GFX10 && ctx->ac.wave_size == 32)) {
 			result = ac_build_shuffle(&ctx->ac, get_src(ctx, instr->src[0]),
 						  get_src(ctx, instr->src[1]));
 		} else {
