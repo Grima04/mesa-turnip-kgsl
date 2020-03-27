@@ -213,8 +213,6 @@ dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.tessel
 dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.tessellation_evaluation.sampler2darray
 dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.tessellation_evaluation.usamplercube
 dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.const_expression_tessellation_evaluation
-dEQP-GLES31.functional.synchronization.inter_invocation.image_atomic_read_write
-dEQP-GLES31.functional.synchronization.inter_invocation.ssbo_atomic_read_write
 dEQP-GLES31.functional.tessellation.common_edge.quads_fractional_odd_spacing
 dEQP-GLES31.functional.tessellation.misc_draw.fill_overlap_quads_equal_spacing
 dEQP-GLES31.functional.tessellation.shader_input_output.barrier
