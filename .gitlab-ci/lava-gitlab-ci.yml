@@ -74,7 +74,7 @@
   needs:
     - meson-arm64
 
-panfrost-t720-gles2:arm64:
+.panfrost-t720-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
@@ -87,7 +87,7 @@ panfrost-t720-gles2:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-t760-gles2:armhf:
+.panfrost-t760-gles2:armhf:
   extends:
     - .lava-test:armhf
     - .panfrost-rules
@@ -102,7 +102,7 @@ panfrost-t760-gles2:armhf:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-t860-gles2:arm64:
+.panfrost-t860-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
@@ -117,7 +117,7 @@ panfrost-t860-gles2:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-t860-gles3:arm64:
+.panfrost-t860-gles3:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
