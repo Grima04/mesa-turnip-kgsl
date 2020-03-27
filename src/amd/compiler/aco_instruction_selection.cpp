@@ -2247,6 +2247,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       }
       break;
    }
+   case nir_op_b2b32:
    case nir_op_b2i32: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       assert(src.regClass() == bld.lm);
@@ -2261,6 +2262,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       }
       break;
    }
+   case nir_op_b2b1:
    case nir_op_i2b1: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       assert(dst.regClass() == bld.lm);
