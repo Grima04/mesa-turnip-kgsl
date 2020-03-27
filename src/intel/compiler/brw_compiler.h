@@ -906,7 +906,6 @@ struct brw_cs_prog_data {
    unsigned local_size[3];
    unsigned max_variable_local_size;
    unsigned simd_size;
-   unsigned threads;
    unsigned slm_size;
    bool uses_barrier;
    bool uses_num_work_groups;

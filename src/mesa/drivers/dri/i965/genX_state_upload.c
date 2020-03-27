@@ -4267,9 +4267,6 @@ genX(upload_cs_state)(struct brw_context *brw)
    const unsigned threads =
       DIV_ROUND_UP(brw_cs_group_size(brw), cs_prog_data->simd_size);
 
-   if (!cs_prog_data->uses_variable_group_size)
-      assert(cs_prog_data->threads == threads);
-
    if (INTEL_DEBUG & DEBUG_SHADER_TIME) {
       brw_emit_buffer_surface_state(
          brw, &stage_state->surf_offset[

@@ -8864,22 +8864,6 @@ cs_fill_push_const_info(const struct gen_device_info *devinfo,
              prog_data->nr_params);
 }
 
-static void
-cs_set_simd_size(struct brw_cs_prog_data *cs_prog_data, unsigned size)
-{
-   cs_prog_data->simd_size = size;
-
-   unsigned group_size;
-   if (cs_prog_data->uses_variable_group_size) {
-      group_size = cs_prog_data->max_variable_local_size;
-   } else {
-      group_size = cs_prog_data->local_size[0] *
-                   cs_prog_data->local_size[1] *
-                   cs_prog_data->local_size[2];
-   }
-   cs_prog_data->threads = DIV_ROUND_UP(group_size, size);
-}
-
 static nir_shader *
 compile_cs_to_nir(const struct brw_compiler *compiler,
                   void *mem_ctx,
@@ -8972,7 +8956,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          assert(v8->max_dispatch_width >= 32);
 
          v = v8;
-         cs_set_simd_size(prog_data, 8);
+         prog_data->simd_size = 8;
          cs_fill_push_const_info(compiler->devinfo, prog_data);
       }
    }
@@ -9002,7 +8986,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          assert(v16->max_dispatch_width >= 32);
 
          v = v16;
-         cs_set_simd_size(prog_data, 16);
+         prog_data->simd_size = 16;
          cs_fill_push_const_info(compiler->devinfo, prog_data);
       }
    }
@@ -9034,7 +9018,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          }
       } else {
          v = v32;
-         cs_set_simd_size(prog_data, 32);
+         prog_data->simd_size = 32;
          cs_fill_push_const_info(compiler->devinfo, prog_data);
       }
    }
