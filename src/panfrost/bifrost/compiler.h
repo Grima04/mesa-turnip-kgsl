@@ -539,6 +539,7 @@ unsigned bi_get_component_count(bi_instruction *ins, unsigned s);
 unsigned bi_load32_components(bi_instruction *ins);
 uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 uint64_t bi_get_immediate(bi_instruction *ins, unsigned index);
+bool bi_writes_component(bi_instruction *ins, unsigned comp);
 
 /* BIR passes */
 

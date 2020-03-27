@@ -128,6 +128,10 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
                 unsigned components = bi_get_component_count(ins, src);
 
                 for (unsigned i = 0; i < components; ++i) {
+                        /* If we're not writing the component, who cares? */
+                        if (!bi_writes_component(ins, i))
+                                continue;
+
                         unsigned off = ins->swizzle[src][i] / comps_per_reg;
                         off *= 4; /* 32-bit registers */
 

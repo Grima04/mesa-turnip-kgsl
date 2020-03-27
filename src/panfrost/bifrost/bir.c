@@ -144,3 +144,11 @@ bi_get_immediate(bi_instruction *ins, unsigned index)
         unsigned shift = index & ~BIR_INDEX_CONSTANT;
         return ins->constant.u64 >> shift;
 }
+
+bool
+bi_writes_component(bi_instruction *ins, unsigned comp)
+{
+        nir_alu_type T = ins->dest_type;
+        unsigned size = nir_alu_type_get_type_size(T);
+        return ins->writemask & (0xF << (comp * (size / 8)));
+}
