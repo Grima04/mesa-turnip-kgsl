@@ -27,7 +27,7 @@ if ($?) {
 docker pull "$registry_central_image"
 if ($?) {
   Write-Host "Copying central image $registry_central_image to user image $registry_user_image"
-  docker tag "$registry_user_image" "$registry_central_image"
+  docker tag "$registry_central_image" "$registry_user_image"
   docker push "$registry_user_image"
   $pushstatus = $?
   docker logout "$registry_uri"
