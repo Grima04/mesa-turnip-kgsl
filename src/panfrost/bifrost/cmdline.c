@@ -43,8 +43,9 @@ compile_shader(char **argv, bool vertex_only)
         };
 
         struct standalone_options options = {
-                .glsl_version = 430,
+                .glsl_version = 300, /* ES - needed for precision */
                 .do_link = true,
+                .lower_precision = true
         };
 
         static struct gl_context local_ctx;
