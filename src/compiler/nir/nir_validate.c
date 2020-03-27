@@ -570,6 +570,33 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       break;
    }
 
+   case nir_intrinsic_load_uniform:
+   case nir_intrinsic_load_ubo:
+   case nir_intrinsic_load_input:
+   case nir_intrinsic_load_per_vertex_input:
+   case nir_intrinsic_load_interpolated_input:
+   case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_load_output:
+   case nir_intrinsic_load_per_vertex_output:
+   case nir_intrinsic_load_shared:
+   case nir_intrinsic_load_push_constant:
+   case nir_intrinsic_load_constant:
+   case nir_intrinsic_load_global:
+   case nir_intrinsic_load_scratch:
+      /* Memory load operations must load at least a byte */
+      validate_assert(state, nir_dest_bit_size(instr->dest) >= 8);
+      break;
+
+   case nir_intrinsic_store_output:
+   case nir_intrinsic_store_per_vertex_output:
+   case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_store_shared:
+   case nir_intrinsic_store_global:
+   case nir_intrinsic_store_scratch:
+      /* Memory store operations must store at least a byte */
+      validate_assert(state, nir_src_bit_size(instr->src[0]) >= 8);
+      break;
+
    default:
       break;
    }
