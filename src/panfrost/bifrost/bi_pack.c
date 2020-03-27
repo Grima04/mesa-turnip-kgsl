@@ -609,9 +609,11 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
 {
         nir_alu_type from_base = nir_alu_type_get_base_type(ins->src_types[0]);
         unsigned from_size = nir_alu_type_get_type_size(ins->src_types[0]);
+        bool from_unsigned = from_base == nir_type_uint;
 
         nir_alu_type to_base = nir_alu_type_get_base_type(ins->dest_type);
         unsigned to_size = nir_alu_type_get_type_size(ins->dest_type);
+        bool to_unsigned = to_base == nir_type_uint;
 
         /* Sanity check */
         assert((from_base != to_base) || (from_size != to_size));
@@ -620,14 +622,21 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
         if (from_size == 16 && to_size == 16) {
                 /* f2i_i2f16 */
         } else if (from_size == 32 && to_size == 32) {
+                unsigned op = 0;
+
                 if (from_base == nir_type_float) {
-                        /* float32_to_int */
+                        op = BIFROST_FMA_FLOAT32_TO_INT(to_unsigned);
                 } else {
-                        /* int_to_float32 */
+                        op = BIFROST_FMA_INT_TO_FLOAT32(from_unsigned);
                 }
+
+                return bi_pack_fma_1src(ins, regs, op);
         } else if (from_size == 16 && to_size == 32) {
+                bool from_y = ins->swizzle[0][0];
+
                 if (from_base == nir_type_float) {
-                        /* float16_to_32 */
+                        return bi_pack_fma_1src(ins, regs,
+                                        BIFROST_FMA_FLOAT16_TO_32(from_y));
                 } else {
                         /* int16_to_32 */
                 }
