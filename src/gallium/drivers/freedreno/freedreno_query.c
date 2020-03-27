@@ -63,11 +63,7 @@ fd_begin_query(struct pipe_context *pctx, struct pipe_query *pq)
 {
 	struct fd_query *q = fd_query(pq);
 
-	if (q->active)
-		return false;
-
 	q->funcs->begin_query(fd_context(pctx), q);
-	q->active = true;
 
 	return true;
 }
@@ -80,14 +76,10 @@ fd_end_query(struct pipe_context *pctx, struct pipe_query *pq)
 	/* there are a couple special cases, which don't have
 	 * a matching ->begin_query():
 	 */
-	if (skip_begin_query(q->type) && !q->active)
+	if (skip_begin_query(q->type))
 		fd_begin_query(pctx, pq);
 
-	if (!q->active)
-		return false;
-
 	q->funcs->end_query(fd_context(pctx), q);
-	q->active = false;
 
 	return true;
 }
@@ -97,9 +89,6 @@ fd_get_query_result(struct pipe_context *pctx, struct pipe_query *pq,
 		bool wait, union pipe_query_result *result)
 {
 	struct fd_query *q = fd_query(pq);
-
-	if (q->active)
-		return false;
 
 	util_query_clear_result(result, q->type);
 

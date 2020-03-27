@@ -44,7 +44,6 @@ struct fd_query_funcs {
 
 struct fd_query {
 	const struct fd_query_funcs *funcs;
-	bool active;
 	int type;
 	unsigned index;
 };

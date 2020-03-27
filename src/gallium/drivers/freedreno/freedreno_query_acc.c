@@ -44,7 +44,7 @@ fd_acc_destroy_query(struct fd_context *ctx, struct fd_query *q)
 {
 	struct fd_acc_query *aq = fd_acc_query(q);
 
-	DBG("%p: active=%d", q, q->active);
+	DBG("%p", q);
 
 	pipe_resource_reference(&aq->prsc, NULL);
 	list_del(&aq->node);
@@ -81,7 +81,7 @@ fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q)
 	struct fd_acc_query *aq = fd_acc_query(q);
 	const struct fd_acc_sample_provider *p = aq->provider;
 
-	DBG("%p: active=%d", q, q->active);
+	DBG("%p", q);
 
 	/* ->begin_query() discards previous results, so realloc bo: */
 	realloc_query_bo(ctx, aq);
@@ -102,7 +102,7 @@ fd_acc_end_query(struct fd_context *ctx, struct fd_query *q)
 	struct fd_acc_query *aq = fd_acc_query(q);
 	const struct fd_acc_sample_provider *p = aq->provider;
 
-	DBG("%p: active=%d", q, q->active);
+	DBG("%p", q);
 
 	if (batch && is_active(aq, batch->stage))
 		p->pause(aq, batch);
@@ -119,7 +119,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 	const struct fd_acc_sample_provider *p = aq->provider;
 	struct fd_resource *rsc = fd_resource(aq->prsc);
 
-	DBG("%p: wait=%d, active=%d", q, wait, q->active);
+	DBG("%p: wait=%d", q, wait);
 
 	assert(list_is_empty(&aq->node));
 

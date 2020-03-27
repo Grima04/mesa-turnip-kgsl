@@ -124,7 +124,7 @@ fd_hw_destroy_query(struct fd_context *ctx, struct fd_query *q)
 {
 	struct fd_hw_query *hq = fd_hw_query(q);
 
-	DBG("%p: active=%d", q, q->active);
+	DBG("%p", q);
 
 	destroy_periods(ctx, hq);
 	list_del(&hq->list);
@@ -138,7 +138,7 @@ fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
 	struct fd_batch *batch = fd_context_batch(ctx);
 	struct fd_hw_query *hq = fd_hw_query(q);
 
-	DBG("%p: active=%d", q, q->active);
+	DBG("%p", q);
 
 	/* begin_query() should clear previous results: */
 	destroy_periods(ctx, hq);
@@ -157,7 +157,7 @@ fd_hw_end_query(struct fd_context *ctx, struct fd_query *q)
 	struct fd_batch *batch = fd_context_batch(ctx);
 	struct fd_hw_query *hq = fd_hw_query(q);
 
-	DBG("%p: active=%d", q, q->active);
+	DBG("%p", q);
 
 	if (batch && is_active(hq, batch->stage))
 		pause_query(batch, hq, batch->draw);
@@ -180,7 +180,7 @@ fd_hw_get_query_result(struct fd_context *ctx, struct fd_query *q,
 	const struct fd_hw_sample_provider *p = hq->provider;
 	struct fd_hw_sample_period *period;
 
-	DBG("%p: wait=%d, active=%d", q, wait, q->active);
+	DBG("%p: wait=%d", q, wait);
 
 	if (list_is_empty(&hq->periods))
 		return true;
