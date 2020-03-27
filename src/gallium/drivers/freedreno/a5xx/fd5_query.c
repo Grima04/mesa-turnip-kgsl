@@ -229,7 +229,7 @@ timestamp_accumulate_result(struct fd_acc_query *aq, void *buf,
 
 static const struct fd_acc_sample_provider time_elapsed = {
 		.query_type = PIPE_QUERY_TIME_ELAPSED,
-		.active = FD_STAGE_DRAW | FD_STAGE_CLEAR,
+		.active = FD_STAGE_ALL,
 		.size = sizeof(struct fd5_query_sample),
 		.resume = timestamp_resume,
 		.pause = timestamp_pause,
@@ -366,7 +366,7 @@ perfcntr_accumulate_result(struct fd_acc_query *aq, void *buf,
 
 static const struct fd_acc_sample_provider perfcntr = {
 		.query_type = FD_QUERY_FIRST_PERFCNTR,
-		.active = FD_STAGE_DRAW | FD_STAGE_CLEAR,
+		.active = FD_STAGE_ALL,
 		.resume = perfcntr_resume,
 		.pause = perfcntr_pause,
 		.result = perfcntr_accumulate_result,

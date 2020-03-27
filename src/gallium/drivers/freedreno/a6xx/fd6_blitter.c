@@ -646,6 +646,8 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	mtx_unlock(&ctx->screen->lock);
 
+	fd_batch_set_stage(batch, FD_STAGE_BLIT);
+
 	emit_setup(batch);
 
 	if ((info->src.resource->target == PIPE_BUFFER) &&
