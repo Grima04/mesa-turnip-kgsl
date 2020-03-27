@@ -318,6 +318,33 @@ lp_build_sample_alpha_to_coverage(struct gallivm_state *gallivm,
       s_mask = LLVMBuildAnd(builder, s_mask, test, "");
       LLVMBuildStore(builder, s_mask, s_mask_ptr);
    }
+};
+
+struct lp_build_fs_llvm_iface {
+   struct lp_build_fs_iface base;
+   struct lp_build_interp_soa_context *interp;
+   struct lp_build_for_loop_state *loop_state;
+   LLVMValueRef mask_store;
+};
+
+static LLVMValueRef fs_interp(const struct lp_build_fs_iface *iface,
+                              struct lp_build_context *bld,
+                              unsigned attrib, unsigned chan,
+                              bool centroid, bool sample,
+                              LLVMValueRef attrib_indir,
+                              LLVMValueRef offsets[2])
+{
+   struct lp_build_fs_llvm_iface *fs_iface = (struct lp_build_fs_llvm_iface *)iface;
+   struct lp_build_interp_soa_context *interp = fs_iface->interp;
+   unsigned loc = TGSI_INTERPOLATE_LOC_CENTER;
+   if (centroid)
+      loc = TGSI_INTERPOLATE_LOC_CENTROID;
+   if (sample)
+      loc = TGSI_INTERPOLATE_LOC_SAMPLE;
+
+   return lp_build_interp_soa(interp, bld->gallivm, fs_iface->loop_state->counter,
+                              fs_iface->mask_store,
+                              attrib, chan, loc, attrib_indir, offsets);
 }
 
 /**
@@ -655,11 +682,19 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, mask_store, sample_loop_state.counter);
 
+   struct lp_build_fs_llvm_iface fs_iface = {
+     .base.interp_fn = fs_interp,
+     .interp = interp,
+     .loop_state = &loop_state,
+     .mask_store = mask_store,
+   };
+
    struct lp_build_tgsi_params params;
    memset(&params, 0, sizeof(params));
 
    params.type = type;
    params.mask = &mask;
+   params.fs_iface = &fs_iface.base;
    params.consts_ptr = consts_ptr;
    params.const_sizes_ptr = num_consts_ptr;
    params.system_values = &system_values;
