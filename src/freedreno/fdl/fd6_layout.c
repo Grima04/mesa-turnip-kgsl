@@ -36,26 +36,27 @@
  * missing 96/128 CPP for 8x MSAA with 32_32_32/32_32_32_32
  */
 static const struct {
+	unsigned basealign;
 	unsigned pitchalign;
 	unsigned heightalign;
 	uint8_t ubwc_blockwidth;
 	uint8_t ubwc_blockheight;
 } tile_alignment[] = {
-	[1]  = { 128, 32, 16, 4 },
-	[2]  = { 128, 16, 16, 4 },
-	[3]  = {  64, 32 },
-	[4]  = {  64, 16, 16, 4 },
-	[6]  = {  64, 16 },
-	[8]  = {  64, 16, 8, 4, },
-	[12] = {  64, 16 },
-	[16] = {  64, 16, 4, 4, },
-	[24] = {  64, 16 },
-	[32] = {  64, 16, 4, 2 },
-	[48] = {  64, 16 },
-	[64] = {  64, 16 },
+	[1]  = {  64, 128, 32, 16, 4 },
+	[2]  = { 128, 128, 16, 16, 4 },
+	[3]  = { 256,  64, 32 },
+	[4]  = { 256,  64, 16, 16, 4 },
+	[6]  = { 256,  64, 16 },
+	[8]  = { 256,  64, 16, 8, 4, },
+	[12] = { 256,  64, 16 },
+	[16] = { 256,  64, 16, 4, 4, },
+	[24] = { 256,  64, 16 },
+	[32] = { 256,  64, 16, 4, 2 },
+	[48] = { 256,  64, 16 },
+	[64] = { 256,  64, 16 },
 
 	/* special cases for r8g8: */
-	[0]  = {  64, 32, 16, 4 },
+	[0]  = { 256, 64, 32, 16, 4 },
 };
 
 #define RGB_TILE_WIDTH_ALIGNMENT 64
@@ -116,6 +117,12 @@ fdl6_layout(struct fdl_layout *layout,
 
 	debug_assert(ta < ARRAY_SIZE(tile_alignment));
 	debug_assert(tile_alignment[ta].pitchalign);
+
+	if (layout->tile_mode) {
+		layout->base_align = tile_alignment[ta].basealign;
+	} else {
+		layout->base_align = 64;
+	}
 
 	for (uint32_t level = 0; level < mip_levels; level++) {
 		struct fdl_slice *slice = &layout->slices[level];

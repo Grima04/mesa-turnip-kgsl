@@ -114,6 +114,7 @@ struct fdl_layout {
 	enum pipe_format format;
 
 	uint32_t size; /* Size of the whole image, in bytes. */
+	uint32_t base_align; /* Alignment of the base address, in bytes. */
 };
 
 static inline uint32_t
