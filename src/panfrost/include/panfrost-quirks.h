@@ -39,9 +39,14 @@
 
 #define MIDGARD_SFBD (1 << 1)
 
+/* Whether fp16 is broken in the compiler. Hopefully this quirk will go away
+ * over time */
+
+#define MIDGARD_BROKEN_FP16 (1 << 2)
+
 /* Quirk collections common to particular uarchs */
 
-#define MIDGARD_QUIRKS (0)
+#define MIDGARD_QUIRKS (MIDGARD_BROKEN_FP16)
 
 #define BIFROST_QUIRKS (0)
 
