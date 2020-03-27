@@ -1438,6 +1438,7 @@ void si_init_perfcounters(struct si_screen *screen)
       num_blocks = ARRAY_SIZE(groups_gfx9);
       break;
    case GFX10:
+   case GFX10_3:
       blocks = groups_gfx10;
       num_blocks = ARRAY_SIZE(groups_gfx10);
       break;

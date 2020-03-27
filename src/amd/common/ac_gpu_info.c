@@ -582,7 +582,8 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 			        info->family == CHIP_VEGA12 ||
 			        info->family == CHIP_RAVEN ||
 			        info->family == CHIP_RAVEN2 ||
-			        info->family == CHIP_RENOIR);
+			        info->family == CHIP_RENOIR ||
+				info->chip_class >= GFX10_3);
 
 	info->has_out_of_order_rast = info->chip_class >= GFX8 &&
 				      info->chip_class <= GFX9 &&
@@ -736,7 +737,9 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	if (info->chip_class >= GFX10)
 		info->num_sdp_interfaces = device_info.num_tcc_blocks;
 
-	if (info->chip_class >= GFX10)
+	if (info->chip_class >= GFX10_3)
+		info->max_wave64_per_simd = 16;
+	else if (info->chip_class == GFX10)
 		info->max_wave64_per_simd = 20;
 	else if (info->family >= CHIP_POLARIS10 && info->family <= CHIP_VEGAM)
 		info->max_wave64_per_simd = 8;

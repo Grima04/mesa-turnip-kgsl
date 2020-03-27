@@ -1217,7 +1217,9 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
     * this.
     */
    shader->ctx_reg.ngg.pa_cl_ngg_cntl =
-      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX);
+      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX) |
+      /* Reuse for NGG. */
+      S_028838_VERTEX_REUSE_DEPTH_GFX103(sscreen->info.chip_class >= GFX10_3 ? 30 : 0);
    shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(gs_sel, true);
 
    /* Oversubscribe PC. This improves performance when there are too many varyings. */

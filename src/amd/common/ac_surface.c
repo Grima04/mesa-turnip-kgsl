@@ -2127,6 +2127,7 @@ bool ac_surface_set_umd_metadata(const struct radeon_info *info,
          break;
 
       case GFX10:
+      case GFX10_3:
          surf->dcc_offset =
             ((uint64_t)G_00A018_META_DATA_ADDRESS_LO(desc[6]) << 8) | ((uint64_t)desc[7] << 16);
          surf->u.gfx9.dcc.pipe_aligned = G_00A018_META_PIPE_ALIGNED(desc[6]);
@@ -2169,6 +2170,7 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info,
       desc[5] |= S_008F24_META_DATA_ADDRESS(surf->dcc_offset >> 40);
       break;
    case GFX10:
+   case GFX10_3:
       desc[6] &= C_00A018_META_DATA_ADDRESS_LO;
       desc[6] |= S_00A018_META_DATA_ADDRESS_LO(surf->dcc_offset >> 8);
       desc[7] = surf->dcc_offset >> 16;

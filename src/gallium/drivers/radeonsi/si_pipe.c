@@ -1088,7 +1088,11 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->tess_factor_ring_size = 32768 * sscreen->info.max_se;
    sscreen->tess_offchip_ring_size = max_offchip_buffers * sscreen->tess_offchip_block_dw_size * 4;
 
-   if (sscreen->info.chip_class >= GFX7) {
+   if (sscreen->info.chip_class >= GFX10_3) {
+      sscreen->vgt_hs_offchip_param =
+            S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers - 1) |
+            S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
+   } else if (sscreen->info.chip_class >= GFX7) {
       if (sscreen->info.chip_class >= GFX8)
          --max_offchip_buffers;
       sscreen->vgt_hs_offchip_param = S_03093C_OFFCHIP_BUFFERING(max_offchip_buffers) |
@@ -1125,7 +1129,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    /* Only enable primitive binning on APUs by default. */
    if (sscreen->info.chip_class >= GFX10) {
       sscreen->dpbb_allowed = true;
-      sscreen->dfsm_allowed = !sscreen->info.has_dedicated_vram;
+      /* DFSM is not supported on GFX 10.3 and not beneficial on Navi1x. */
    } else if (sscreen->info.chip_class == GFX9) {
       sscreen->dpbb_allowed = !sscreen->info.has_dedicated_vram;
       sscreen->dfsm_allowed = !sscreen->info.has_dedicated_vram;

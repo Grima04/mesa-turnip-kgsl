@@ -757,8 +757,9 @@ static void si_emit_clip_regs(struct si_context *sctx)
 
    unsigned initial_cdw = sctx->gfx_cs->current.cdw;
    unsigned pa_cl_cntl = S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0F) != 0) |
-                         S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xF0) != 0) | clipdist_mask |
-                         (culldist_mask << 8);
+                         S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xF0) != 0) |
+                         S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(sctx->chip_class >= GFX10_3) |
+                         clipdist_mask | (culldist_mask << 8);
 
    if (sctx->chip_class >= GFX10) {
       radeon_opt_set_context_reg_rmw(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
@@ -1384,8 +1385,9 @@ static void si_emit_db_render_state(struct si_context *sctx)
    radeon_opt_set_context_reg(
       sctx, R_028010_DB_RENDER_OVERRIDE2, SI_TRACKED_DB_RENDER_OVERRIDE2,
       S_028010_DISABLE_ZMASK_EXPCLEAR_OPTIMIZATION(sctx->db_depth_disable_expclear) |
-         S_028010_DISABLE_SMEM_EXPCLEAR_OPTIMIZATION(sctx->db_stencil_disable_expclear) |
-         S_028010_DECOMPRESS_Z_ON_FLUSH(sctx->framebuffer.nr_samples >= 4));
+      S_028010_DISABLE_SMEM_EXPCLEAR_OPTIMIZATION(sctx->db_stencil_disable_expclear) |
+      S_028010_DECOMPRESS_Z_ON_FLUSH(sctx->framebuffer.nr_samples >= 4) |
+      S_028010_CENTROID_COMPUTATION_MODE_GFX103(sctx->chip_class >= GFX10_3 ? 2 : 0));
 
    db_shader_control = sctx->ps_db_shader_control;
 
@@ -3535,7 +3537,8 @@ static void si_emit_msaa_config(struct si_context *sctx)
       sc_line_cntl |= S_028BDC_EXPAND_LINE_WIDTH(1);
       sc_aa_config = S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
                      S_028BE0_MAX_SAMPLE_DIST(max_dist[log_samples]) |
-                     S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples);
+                     S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) |
+                     S_028BE0_COVERED_CENTROID_IS_CENTER_GFX103(sctx->chip_class >= GFX10_3);
 
       if (sctx->framebuffer.nr_samples > 1) {
          db_eqaa |= S_028804_MAX_ANCHOR_SAMPLES(log_z_samples) |
@@ -5329,6 +5332,7 @@ static void si_init_config(struct si_context *sctx)
        * a single primitive shader subgroup.
        */
       si_pm4_set_reg(pm4, R_028C50_PA_SC_NGG_MODE_CNTL, S_028C50_MAX_DEALLOCS_IN_WAVE(512));
+      /* Reuse for legacy (non-NGG) only. */
       si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
 
       if (!has_clear_state) {
@@ -5369,6 +5373,9 @@ static void si_init_config(struct si_context *sctx)
       si_pm4_set_reg(pm4, R_00B0C0_SPI_SHADER_REQ_CTRL_PS,
                      S_00B0C0_SOFT_GROUPING_EN(1) | S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
       si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
+   }
+   if (sctx->chip_class >= GFX10_3) {
+      si_pm4_set_reg(pm4, R_028750_SX_PS_DOWNCONVERT_CONTROL_GFX103, 0xff);
    }
 
    if (sctx->chip_class >= GFX9) {

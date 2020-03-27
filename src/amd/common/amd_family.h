@@ -119,6 +119,7 @@ enum chip_class {
     GFX8,
     GFX9,
     GFX10,
+    GFX10_3,
 };
 
 enum ring_type {
