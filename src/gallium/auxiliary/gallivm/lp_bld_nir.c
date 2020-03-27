@@ -1521,11 +1521,14 @@ static void visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    struct lp_sampler_size_query_params params = { 0 };
    LLVMValueRef sizes_out[NIR_MAX_VEC_COMPONENTS];
    LLVMValueRef explicit_lod = NULL;
-
+   LLVMValueRef texture_unit_offset = NULL;
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
       case nir_tex_src_lod:
          explicit_lod = cast_type(bld_base, get_src(bld_base, instr->src[i].src), nir_type_int, 32);
+         break;
+      case nir_tex_src_texture_offset:
+         texture_unit_offset = get_src(bld_base, instr->src[i].src);
          break;
       default:
          break;
@@ -1538,6 +1541,7 @@ static void visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    params.is_sviewinfo = TRUE;
    params.sizes_out = sizes_out;
    params.samples_only = (instr->op == nir_texop_texture_samples);
+   params.texture_unit_offset = texture_unit_offset;
 
    if (instr->op == nir_texop_query_levels)
       params.explicit_lod = bld_base->uint_bld.zero;
@@ -1575,6 +1579,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    unsigned sample_key = 0;
    nir_deref_instr *texture_deref_instr = NULL;
    nir_deref_instr *sampler_deref_instr = NULL;
+   LLVMValueRef texture_unit_offset = NULL;
    LLVMValueRef texel[NIR_MAX_VEC_COMPONENTS];
    unsigned lod_src = 0;
    LLVMValueRef coord_undef = LLVMGetUndef(bld_base->base.int_vec_type);
@@ -1687,6 +1692,12 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
          sample_key |= LP_SAMPLER_FETCH_MS;
          ms_index = cast_type(bld_base, get_src(bld_base, instr->src[i].src), nir_type_int, 32);
          break;
+
+      case nir_tex_src_texture_offset:
+         texture_unit_offset = get_src(bld_base, instr->src[i].src);
+         break;
+      case nir_tex_src_sampler_offset:
+         break;
       default:
          assert(0);
          break;
@@ -1743,6 +1754,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    params.sample_key = sample_key;
    params.offsets = offsets;
    params.texture_index = base_index;
+   params.texture_index_offset = texture_unit_offset;
    params.sampler_index = base_index;
    params.coords = coords;
    params.texel = texel;

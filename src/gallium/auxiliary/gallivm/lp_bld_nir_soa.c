@@ -1296,6 +1296,10 @@ static void emit_tex(struct lp_build_nir_context *bld_base,
    params->context_ptr = bld->context_ptr;
    params->thread_data_ptr = bld->thread_data_ptr;
 
+   if (params->texture_index_offset)
+      params->texture_index_offset = LLVMBuildExtractElement(bld_base->base.gallivm->builder,
+                                                             params->texture_index_offset,
+                                                             lp_build_const_int32(bld_base->base.gallivm, 0), "");
    bld->sampler->emit_tex_sample(bld->sampler,
                                  bld->bld_base.base.gallivm,
                                  params);
@@ -1309,6 +1313,10 @@ static void emit_tex_size(struct lp_build_nir_context *bld_base,
    params->int_type = bld_base->int_bld.type;
    params->context_ptr = bld->context_ptr;
 
+   if (params->texture_unit_offset)
+      params->texture_unit_offset = LLVMBuildExtractElement(bld_base->base.gallivm->builder,
+                                                             params->texture_unit_offset,
+                                                             lp_build_const_int32(bld_base->base.gallivm, 0), "");
    bld->sampler->emit_size_query(bld->sampler,
                                  bld->bld_base.base.gallivm,
                                  params);
