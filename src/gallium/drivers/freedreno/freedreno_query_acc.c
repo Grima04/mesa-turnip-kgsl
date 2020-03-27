@@ -93,6 +93,8 @@ fd_acc_query_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 
 	aq->batch = batch;
 	p->resume(aq, aq->batch);
+
+	fd_batch_resource_used(batch, fd_resource(aq->prsc), true);
 }
 
 static void
