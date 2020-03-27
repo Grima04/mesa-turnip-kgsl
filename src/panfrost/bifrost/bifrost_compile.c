@@ -566,6 +566,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         switch (instr->op) {
         case nir_op_fmul:
                 alu.src[2] = BIR_INDEX_ZERO; /* FMA */
+                alu.src_types[2] = alu.src_types[1];
                 break;
         case nir_op_fsat:
                 alu.outmod = BIFROST_SAT; /* FMOV */
