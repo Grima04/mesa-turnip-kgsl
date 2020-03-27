@@ -4295,7 +4295,7 @@ void genX(CmdDispatchBase)(
       ggw.SIMDSize                     = prog_data->simd_size / 16;
       ggw.ThreadDepthCounterMaximum    = 0;
       ggw.ThreadHeightCounterMaximum   = 0;
-      ggw.ThreadWidthCounterMaximum    = prog_data->threads - 1;
+      ggw.ThreadWidthCounterMaximum    = anv_cs_threads(pipeline) - 1;
       ggw.ThreadGroupIDXDimension      = groupCountX;
       ggw.ThreadGroupIDYDimension      = groupCountY;
       ggw.ThreadGroupIDZDimension      = groupCountZ;
@@ -4411,7 +4411,7 @@ void genX(CmdDispatchIndirect)(
       ggw.SIMDSize                     = prog_data->simd_size / 16;
       ggw.ThreadDepthCounterMaximum    = 0;
       ggw.ThreadHeightCounterMaximum   = 0;
-      ggw.ThreadWidthCounterMaximum    = prog_data->threads - 1;
+      ggw.ThreadWidthCounterMaximum    = anv_cs_threads(pipeline) - 1;
       ggw.RightExecutionMask           = pipeline->cs_right_mask;
       ggw.BottomExecutionMask          = 0xffffffff;
    }

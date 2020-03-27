@@ -2321,8 +2321,10 @@ compute_pipeline_create(
    else
       pipeline->cs_right_mask = ~0u >> (32 - cs_prog_data->simd_size);
 
+   const uint32_t threads = anv_cs_threads(pipeline);
+
    const uint32_t vfe_curbe_allocation =
-      ALIGN(cs_prog_data->push.per_thread.regs * cs_prog_data->threads +
+      ALIGN(cs_prog_data->push.per_thread.regs * threads +
             cs_prog_data->push.cross_thread.regs, 2);
 
    const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
@@ -2405,7 +2407,7 @@ compute_pipeline_create(
       .ThreadPreemptionDisable = true,
 #endif
 
-      .NumberofThreadsinGPGPUThreadGroup = cs_prog_data->threads,
+      .NumberofThreadsinGPGPUThreadGroup = threads,
    };
    GENX(INTERFACE_DESCRIPTOR_DATA_pack)(NULL,
                                         pipeline->interface_descriptor_data,

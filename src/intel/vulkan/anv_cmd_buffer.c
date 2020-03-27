@@ -834,8 +834,9 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
    const struct anv_push_range *range = &pipeline->cs->bind_map.push_ranges[0];
 
+   const uint32_t threads = anv_cs_threads(pipeline);
    const unsigned total_push_constants_size =
-      brw_cs_push_const_total_size(cs_prog_data, cs_prog_data->threads);
+      brw_cs_push_const_total_size(cs_prog_data, threads);
    if (total_push_constants_size == 0)
       return (struct anv_state) { .offset = 0 };
 
@@ -858,7 +859,7 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
    }
 
    if (cs_prog_data->push.per_thread.size > 0) {
-      for (unsigned t = 0; t < cs_prog_data->threads; t++) {
+      for (unsigned t = 0; t < threads; t++) {
          memcpy(dst, src, cs_prog_data->push.per_thread.size);
 
          uint32_t *subgroup_id = dst +

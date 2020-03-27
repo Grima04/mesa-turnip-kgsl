@@ -3315,6 +3315,12 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         const char *entrypoint,
                         const VkSpecializationInfo *spec_info);
 
+uint32_t
+anv_cs_workgroup_size(const struct anv_compute_pipeline *pipeline);
+
+uint32_t
+anv_cs_threads(const struct anv_compute_pipeline *pipeline);
+
 struct anv_format_plane {
    enum isl_format isl_format:16;
    struct isl_swizzle swizzle;
