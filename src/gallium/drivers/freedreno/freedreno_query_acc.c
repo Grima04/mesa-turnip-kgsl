@@ -74,7 +74,7 @@ realloc_query_bo(struct fd_context *ctx, struct fd_acc_query *aq)
 	fd_bo_cpu_fini(rsc->bo);
 }
 
-static bool
+static void
 fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q)
 {
 	struct fd_batch *batch = fd_context_batch(ctx);
@@ -93,8 +93,6 @@ fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q)
 	/* add to active list: */
 	assert(list_is_empty(&aq->node));
 	list_addtail(&aq->node, &ctx->acc_active_queries);
-
-	return true;
 }
 
 static void

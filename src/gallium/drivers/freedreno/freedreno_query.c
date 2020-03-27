@@ -62,15 +62,14 @@ static bool
 fd_begin_query(struct pipe_context *pctx, struct pipe_query *pq)
 {
 	struct fd_query *q = fd_query(pq);
-	bool ret;
 
 	if (q->active)
 		return false;
 
-	ret = q->funcs->begin_query(fd_context(pctx), q);
-	q->active = ret;
+	q->funcs->begin_query(fd_context(pctx), q);
+	q->active = true;
 
-	return ret;
+	return true;
 }
 
 static bool

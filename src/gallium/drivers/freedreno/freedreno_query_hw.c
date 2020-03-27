@@ -132,7 +132,7 @@ fd_hw_destroy_query(struct fd_context *ctx, struct fd_query *q)
 	free(hq);
 }
 
-static bool
+static void
 fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
 {
 	struct fd_batch *batch = fd_context_batch(ctx);
@@ -149,8 +149,6 @@ fd_hw_begin_query(struct fd_context *ctx, struct fd_query *q)
 	/* add to active list: */
 	assert(list_is_empty(&hq->list));
 	list_addtail(&hq->list, &ctx->hw_active_queries);
-
-	return true;
 }
 
 static void
