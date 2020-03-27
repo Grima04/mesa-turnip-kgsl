@@ -132,5 +132,3 @@ mesa = env.ConvenienceLibrary(
 env.Alias('mesa', mesa)
 
 Export('mesa')
-
-SConscript('drivers/SConscript')

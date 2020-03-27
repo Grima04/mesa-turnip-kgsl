@@ -561,7 +561,7 @@ meson-mingw32-x86_64:
 scons:
   extends: .scons-build
   variables:
-    SCONS_TARGET: "llvm=1 swr=1"
+    SCONS_TARGET: "llvm=1"
     SCONS_CHECK_COMMAND: "scons force_scons=1 ${SCONS_TARGET} check"
   script:
     - SCONS_TARGET="" SCONS_CHECK_COMMAND="scons check force_scons=1" .gitlab-ci/scons-build.sh
