@@ -1150,6 +1150,24 @@ setup_nir(isel_context *ctx, nir_shader *nir)
    nir_index_ssa_defs(func);
 }
 
+void
+setup_xnack(Program *program)
+{
+   switch (program->family) {
+   /* GFX8 APUs */
+   case CHIP_CARRIZO:
+   case CHIP_STONEY:
+   /* GFX9 APUS */
+   case CHIP_RAVEN:
+   case CHIP_RAVEN2:
+   case CHIP_RENOIR:
+      program->xnack_enabled = true;
+      break;
+   default:
+      break;
+   }
+}
+
 isel_context
 setup_isel_context(Program* program,
                    unsigned shader_count,
@@ -1307,6 +1325,8 @@ setup_isel_context(Program* program,
    ctx.block = ctx.program->create_and_insert_block();
    ctx.block->loop_nest_depth = 0;
    ctx.block->kind = block_kind_top_level;
+
+   setup_xnack(program);
 
    return ctx;
 }

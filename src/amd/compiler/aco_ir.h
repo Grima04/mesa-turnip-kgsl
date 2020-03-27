@@ -1252,8 +1252,9 @@ public:
    uint16_t vgpr_alloc_granule; /* minus one. must be power of two */
    unsigned workgroup_size; /* if known; otherwise UINT_MAX */
 
+   bool xnack_enabled = false;
+
    bool needs_vcc = false;
-   bool needs_xnack_mask = false;
    bool needs_flat_scr = false;
 
    uint32_t allocateId()

@@ -274,6 +274,41 @@ bool test_bitset_range(BITSET_WORD *words, unsigned start, unsigned size) {
    }
 }
 
+/* A SMEM clause is any group of consecutive SMEM instructions. The
+ * instructions in this group may return out of order and/or may be replayed.
+ *
+ * To fix this potential hazard correctly, we have to make sure that when a
+ * clause has more than one instruction, no instruction in the clause writes
+ * to a register that is read by another instruction in the clause (including
+ * itself). In this case, we have to break the SMEM clause by inserting non
+ * SMEM instructions.
+ *
+ * SMEM clauses are only present on GFX8+, and only matter when XNACK is set.
+ */
+void handle_smem_clause_hazards(Program *program, NOP_ctx_gfx6 &ctx,
+                                aco_ptr<Instruction>& instr, int *NOPs)
+{
+   /* break off from previous SMEM clause if needed */
+   if (!*NOPs & (ctx.smem_clause || ctx.smem_write)) {
+      /* Don't allow clauses with store instructions since the clause's
+       * instructions may use the same address. */
+      if (ctx.smem_write || instr->definitions.empty() || instr_info.is_atomic[(unsigned)instr->opcode]) {
+         *NOPs = 1;
+      } else if (program->xnack_enabled) {
+         for (Operand op : instr->operands) {
+            if (!op.isConstant() && test_bitset_range(ctx.smem_clause_write, op.physReg(), op.size())) {
+               *NOPs = 1;
+               break;
+            }
+         }
+
+         Definition def = instr->definitions[0];
+         if (!*NOPs && test_bitset_range(ctx.smem_clause_read_write, def.physReg(), def.size()))
+            *NOPs = 1;
+      }
+   }
+}
+
 /* TODO: we don't handle accessing VCC using the actual SGPR instead of using the alias */
 void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &ctx,
                              aco_ptr<Instruction>& instr, std::vector<aco_ptr<Instruction>>& new_instructions)
@@ -300,24 +335,7 @@ void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &c
          }
       }
 
-      /* break off from prevous SMEM clause if needed */
-      if (!NOPs & (ctx.smem_clause || ctx.smem_write)) {
-         /* Don't allow clauses with store instructions since the clause's
-          * instructions may use the same address. */
-         if (ctx.smem_write || instr->definitions.empty() || instr_info.is_atomic[(unsigned)instr->opcode]) {
-            NOPs = 1;
-         } else {
-            for (Operand op : instr->operands) {
-               if (!op.isConstant() && test_bitset_range(ctx.smem_clause_write, op.physReg(), op.size())) {
-                  NOPs = 1;
-                  break;
-               }
-            }
-            Definition def = instr->definitions[0];
-            if (!NOPs && test_bitset_range(ctx.smem_clause_read_write, def.physReg(), def.size()))
-               NOPs = 1;
-         }
-      }
+      handle_smem_clause_hazards(program, ctx, instr, &NOPs);
    } else if (instr->isSALU()) {
       if (instr->opcode == aco_opcode::s_setreg_b32 || instr->opcode == aco_opcode::s_setreg_imm32_b32 ||
           instr->opcode == aco_opcode::s_getreg_b32) {
@@ -414,8 +432,11 @@ void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &c
    if ((ctx.smem_clause || ctx.smem_write) && (NOPs || instr->format != Format::SMEM)) {
       ctx.smem_clause = false;
       ctx.smem_write = false;
-      BITSET_ZERO(ctx.smem_clause_read_write);
-      BITSET_ZERO(ctx.smem_clause_write);
+
+      if (program->xnack_enabled) {
+         BITSET_ZERO(ctx.smem_clause_read_write);
+         BITSET_ZERO(ctx.smem_clause_write);
+      }
    }
 
    if (instr->format == Format::SMEM) {
@@ -424,15 +445,17 @@ void handle_instruction_gfx6(Program *program, Block *cur_block, NOP_ctx_gfx6 &c
       } else {
          ctx.smem_clause = true;
 
-         for (Operand op : instr->operands) {
-            if (!op.isConstant()) {
-               set_bitset_range(ctx.smem_clause_read_write, op.physReg(), op.size());
+         if (program->xnack_enabled) {
+            for (Operand op : instr->operands) {
+               if (!op.isConstant()) {
+                  set_bitset_range(ctx.smem_clause_read_write, op.physReg(), op.size());
+               }
             }
-         }
 
-         Definition def = instr->definitions[0];
-         set_bitset_range(ctx.smem_clause_read_write, def.physReg(), def.size());
-         set_bitset_range(ctx.smem_clause_write, def.physReg(), def.size());
+            Definition def = instr->definitions[0];
+            set_bitset_range(ctx.smem_clause_read_write, def.physReg(), def.size());
+            set_bitset_range(ctx.smem_clause_write, def.physReg(), def.size());
+         }
       }
    } else if (instr->isVALU()) {
       for (Definition def : instr->definitions) {

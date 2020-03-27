@@ -302,19 +302,19 @@ uint16_t get_extra_sgprs(Program *program)
 {
    if (program->chip_class >= GFX10) {
       assert(!program->needs_flat_scr);
-      assert(!program->needs_xnack_mask);
+      assert(!program->xnack_enabled);
       return 2;
    } else if (program->chip_class >= GFX8) {
       if (program->needs_flat_scr)
          return 6;
-      else if (program->needs_xnack_mask)
+      else if (program->xnack_enabled)
          return 4;
       else if (program->needs_vcc)
          return 2;
       else
          return 0;
    } else {
-      assert(!program->needs_xnack_mask);
+      assert(!program->xnack_enabled);
       if (program->needs_flat_scr)
          return 4;
       else if (program->needs_vcc)
