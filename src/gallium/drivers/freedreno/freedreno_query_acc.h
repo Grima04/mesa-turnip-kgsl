@@ -78,6 +78,11 @@ struct fd_acc_query {
 
 	struct pipe_resource *prsc;
 
+	/* Pointer to the batch that our query has had resume() called on (if
+	 * any).
+	 */
+	struct fd_batch *batch;
+
 	/* usually the same as provider->size but for batch queries we
 	 * need to calculate the size dynamically when the query is
 	 * allocated:

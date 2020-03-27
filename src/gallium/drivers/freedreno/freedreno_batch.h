@@ -47,11 +47,11 @@ enum fd_resource_status;
  * is active across IB's (or between tile IB and draw IB)
  */
 enum fd_render_stage {
-	FD_STAGE_NULL     = 0x01,
-	FD_STAGE_DRAW     = 0x02,
-	FD_STAGE_CLEAR    = 0x04,
+	FD_STAGE_NULL     = 0x00,
+	FD_STAGE_DRAW     = 0x01,
+	FD_STAGE_CLEAR    = 0x02,
 	/* used for driver internal draws (ie. util_blitter_blit()): */
-	FD_STAGE_BLIT     = 0x08,
+	FD_STAGE_BLIT     = 0x04,
 	FD_STAGE_ALL      = 0xff,
 };
 

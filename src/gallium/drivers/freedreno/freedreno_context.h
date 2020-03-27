@@ -202,6 +202,11 @@ struct fd_context {
 	struct list_head acc_active_queries;
 	/*@}*/
 
+	/* Whether we need to walk the acc_active_queries next fd_set_stage() to
+	 * update active queries (even if stage doesn't change).
+	 */
+	bool update_active_queries;
+
 	/* table with PIPE_PRIM_MAX entries mapping PIPE_PRIM_x to
 	 * DI_PT_x value to use for draw initiator.  There are some
 	 * slight differences between generation:
@@ -469,9 +474,8 @@ fd_batch_set_stage(struct fd_batch *batch, enum fd_render_stage stage)
 	 * don't enable queries which should be paused during internal
 	 * blits:
 	 */
-	if ((batch->stage == FD_STAGE_BLIT) &&
-			(stage != FD_STAGE_NULL))
-		return;
+	if (batch->stage == FD_STAGE_BLIT && stage != FD_STAGE_NULL)
+		stage = FD_STAGE_BLIT;
 
 	if (ctx->query_set_stage)
 		ctx->query_set_stage(batch, stage);
