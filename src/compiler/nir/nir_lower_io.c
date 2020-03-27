@@ -352,6 +352,13 @@ lower_load(nir_intrinsic_instr *intrin, struct lower_io_state *state,
       }
 
       return nir_vec(b, comp64, intrin->dest.ssa.num_components);
+   } else if (intrin->dest.ssa.bit_size == 1) {
+      /* Booleans are 32-bit */
+      assert(glsl_type_is_boolean(type));
+      return nir_b2b1(&state->builder,
+                      emit_load(state, vertex_index, var, offset, component,
+                                intrin->dest.ssa.num_components, 32,
+                                nir_type_bool32));
    } else {
       return emit_load(state, vertex_index, var, offset, component,
                        intrin->dest.ssa.num_components,
@@ -445,6 +452,14 @@ lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
          write_mask >>= num_comps;
          offset = nir_iadd_imm(b, offset, slot_size);
       }
+   } else if (intrin->dest.ssa.bit_size == 1) {
+      /* Booleans are 32-bit */
+      assert(glsl_type_is_boolean(type));
+      nir_ssa_def *b32_val = nir_b2b32(&state->builder, intrin->src[1].ssa);
+      emit_store(state, b32_val, vertex_index, var, offset,
+                 component, intrin->num_components,
+                 nir_intrinsic_write_mask(intrin),
+                 nir_type_bool32);
    } else {
       emit_store(state, intrin->src[1].ssa, vertex_index, var, offset,
                  component, intrin->num_components,
