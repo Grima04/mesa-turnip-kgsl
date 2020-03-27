@@ -943,6 +943,12 @@ ChipFamily Gfx10Lib::HwlConvertChipFamily(
     {
         case FAMILY_NV:
             m_settings.isDcn2 = 1;
+
+            if (ASICREV_IS_SIENNA_M(chipRevision))
+            {
+                m_settings.supportRbPlus   = 1;
+                m_settings.dccUnsup3DSwDis = 0;
+            }
             break;
         default:
             ADDR_ASSERT(!"Unknown chip family");

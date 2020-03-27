@@ -157,6 +157,8 @@ const char *ac_get_llvm_processor_name(enum radeon_family family)
 		return "gfx1011";
 	case CHIP_NAVI14:
 		return "gfx1012";
+	case CHIP_SIENNA:
+		return "gfx1030";
 	default:
 		return "";
 	}

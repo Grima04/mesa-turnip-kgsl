@@ -102,6 +102,7 @@ enum radeon_family {
     CHIP_NAVI10,
     CHIP_NAVI12,
     CHIP_NAVI14,
+    CHIP_SIENNA,
     CHIP_LAST,
 };
 
