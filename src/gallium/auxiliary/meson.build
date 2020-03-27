@@ -46,6 +46,7 @@ files_libgallium = files(
   'draw/draw_pipe_stipple.c',
   'draw/draw_pipe_twoside.c',
   'draw/draw_pipe_unfilled.c',
+  'draw/draw_pipe_user_cull.c',
   'draw/draw_pipe_util.c',
   'draw/draw_pipe_validate.c',
   'draw/draw_pipe_vbuf.c',

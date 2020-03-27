@@ -122,6 +122,7 @@ struct draw_context
       struct draw_stage *flatshade;
       struct draw_stage *clip;
       struct draw_stage *cull;
+      struct draw_stage *user_cull;
       struct draw_stage *twoside;
       struct draw_stage *offset;
       struct draw_stage *unfilled;
