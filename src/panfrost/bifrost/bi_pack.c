@@ -621,6 +621,7 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
 
         if (from_size == 16 && to_size == 16) {
                 /* f2i_i2f16 */
+                unreachable("i16 not yet implemented");
         } else if (from_size == 32 && to_size == 32) {
                 unsigned op = 0;
 
@@ -638,7 +639,7 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
                         return bi_pack_fma_1src(ins, regs,
                                         BIFROST_FMA_FLOAT16_TO_32(from_y));
                 } else {
-                        /* int16_to_32 */
+                        unreachable("i16 not yet implemented");
                 }
         } else if (from_size == 32 && to_size == 16) {
                 if (from_base == nir_type_float) {
@@ -651,11 +652,11 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
 
                         RETURN_PACKED(pack);
                 } else {
-                        /* XXX: No int32_to_int16? */
+                        unreachable("i16 not yet implemented");
                 }
         }
 
-        return BIFROST_FMA_NOP;
+        unreachable("Unknown convert");
 }
 
 static unsigned
