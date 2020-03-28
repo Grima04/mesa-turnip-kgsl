@@ -26,6 +26,7 @@
 
 #include "pipe/p_state.h"
 #include "util/hash_table.h"
+#include "util/u_dump.h"
 #include "util/u_string.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
@@ -471,7 +472,7 @@ render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 	for (i = 0; i < (gmem->nbins_x * gmem->nbins_y); i++) {
 		struct fd_tile *tile = &gmem->tile[i];
 
-		DBG("bin_h=%d, yoff=%d, bin_w=%d, xoff=%d",
+		fd_log(batch, "bin_h=%d, yoff=%d, bin_w=%d, xoff=%d",
 			tile->bin_h, tile->yoff, tile->bin_w, tile->xoff);
 
 		ctx->emit_tile_prep(batch, tile);
@@ -486,11 +487,13 @@ render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 			ctx->query_prepare_tile(batch, i, batch->gmem);
 
 		/* emit IB to drawcmds: */
+		fd_log(batch, "TILE[%d]: START DRAW IB", i);
 		if (ctx->emit_tile) {
 			ctx->emit_tile(batch, tile);
 		} else {
 			ctx->screen->emit_ib(batch->gmem, batch->draw);
 		}
+		fd_log(batch, "TILE[%d]: END DRAW IB", i);
 		fd_reset_wfi(batch);
 
 		/* emit gmem2mem to transfer tile back to system memory: */
@@ -514,7 +517,9 @@ render_sysmem(struct fd_batch *batch)
 		ctx->query_prepare_tile(batch, 0, batch->gmem);
 
 	/* emit IB to drawcmds: */
+	fd_log(batch, "SYSMEM: START DRAW IB");
 	ctx->screen->emit_ib(batch->gmem, batch->draw);
+	fd_log(batch, "SYSMEM: END DRAW IB");
 	fd_reset_wfi(batch);
 
 	if (ctx->emit_sysmem_fini)
@@ -546,7 +551,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 		if (batch->cleared || batch->gmem_reason ||
 				((batch->num_draws > 5) && !batch->blit) ||
 				(pfb->samples > 1)) {
-			DBG("GMEM: cleared=%x, gmem_reason=%x, num_draws=%u, samples=%u",
+			fd_log(batch, "GMEM: cleared=%x, gmem_reason=%x, num_draws=%u, samples=%u",
 				batch->cleared, batch->gmem_reason, batch->num_draws,
 				pfb->samples);
 		} else if (!(fd_mesa_debug & FD_DBG_NOBYPASS)) {
@@ -583,11 +588,19 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 
 	ctx->stats.batch_total++;
 
+	if (unlikely(fd_mesa_debug & FD_DBG_LOG) && !batch->nondraw) {
+		fd_log_stream(batch, stream, util_dump_framebuffer_state(stream, pfb));
+		for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
+			fd_log_stream(batch, stream, util_dump_surface(stream, pfb->cbufs[i]));
+		}
+		fd_log_stream(batch, stream, util_dump_surface(stream, pfb->zsbuf));
+	}
+
 	if (batch->nondraw) {
 		DBG("%p: rendering non-draw", batch);
 		ctx->stats.batch_nondraw++;
 	} else if (sysmem) {
-		DBG("%p: rendering sysmem %ux%u (%s/%s), num_draws=%u",
+		fd_log(batch, "%p: rendering sysmem %ux%u (%s/%s), num_draws=%u",
 			batch, pfb->width, pfb->height,
 			util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
 			util_format_short_name(pipe_surface_format(pfb->zsbuf)),
@@ -599,7 +612,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 	} else {
 		struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch);
 		batch->gmem_state = gmem;
-		DBG("%p: rendering %dx%d tiles %ux%u (%s/%s)",
+		fd_log(batch, "%p: rendering %dx%d tiles %ux%u (%s/%s)",
 			batch, pfb->width, pfb->height, gmem->nbins_x, gmem->nbins_y,
 			util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
 			util_format_short_name(pipe_surface_format(pfb->zsbuf)));
