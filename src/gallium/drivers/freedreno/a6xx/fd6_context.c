@@ -152,6 +152,7 @@ PC_UNKNOWN_9805:
 	fd6_texture_init(pctx);
 	fd6_prog_init(pctx);
 	fd6_emit_init(pctx);
+	fd6_query_context_init(pctx);
 
 	pctx = fd_context_init(&fd6_ctx->base, pscreen, primtypes, priv, flags);
 	if (!pctx)
@@ -179,7 +180,6 @@ PC_UNKNOWN_9805:
 
 	fd_context_setup_common_vbos(&fd6_ctx->base);
 
-	fd6_query_context_init(pctx);
 	fd6_blitter_init(pctx);
 
 	fd6_ctx->border_color_uploader = u_upload_create(pctx, 4096, 0,

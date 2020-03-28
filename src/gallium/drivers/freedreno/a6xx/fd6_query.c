@@ -204,8 +204,19 @@ timestamp_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 	/* We captured a timestamp in timestamp_resume(), nothing to do here. */
 }
 
+/* timestamp logging for fd_log(): */
+static void
+record_timestamp(struct fd_ringbuffer *ring, struct fd_bo *bo, unsigned offset)
+{
+	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
+	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_AND_INV_EVENT) |
+			CP_EVENT_WRITE_0_TIMESTAMP);
+	OUT_RELOCW(ring, bo, offset, 0, 0);
+	OUT_RING(ring, 0x00000000);
+}
+
 static uint64_t
-ticks_to_ns(uint32_t ts)
+ticks_to_ns(uint64_t ts)
 {
 	/* This is based on the 19.2MHz always-on rbbm timer.
 	 *
@@ -636,6 +647,9 @@ fd6_query_context_init(struct pipe_context *pctx)
 
 	ctx->create_query = fd_acc_create_query;
 	ctx->query_set_stage = fd_acc_query_set_stage;
+
+	ctx->record_timestamp = record_timestamp;
+	ctx->ts_to_ns = ticks_to_ns;
 
 	pctx->create_batch_query = fd6_create_batch_query;
 
