@@ -72,10 +72,10 @@ static const struct debug_named_value debug_options[] = {
 		{"noscis",    FD_DBG_NOSCIS, "Disable scissor optimization"},
 		{"direct",    FD_DBG_DIRECT, "Force inline (SS_DIRECT) state loads"},
 		{"nobypass",  FD_DBG_NOBYPASS, "Disable GMEM bypass"},
-		{"fraghalf",  FD_DBG_FRAGHALF, "Use half-precision in fragment shader"},
+		/* BIT(7) */
 		{"nobin",     FD_DBG_NOBIN,  "Disable hw binning"},
 		{"nogmem",    FD_DBG_NOGMEM,  "Disable GMEM rendering (bypass only)"},
-		{"glsl120",   FD_DBG_GLSL120,"Temporary flag to force GLSL 1.20 (rather than 1.30) on a3xx+"},
+		/* BIT(10) */
 		{"shaderdb",  FD_DBG_SHADERDB, "Enable shaderdb output"},
 		{"flush",     FD_DBG_FLUSH,  "Force flush after every draw"},
 		{"deqp",      FD_DBG_DEQP,   "Enable dEQP hacks"},
@@ -100,7 +100,6 @@ DEBUG_GET_ONCE_FLAGS_OPTION(fd_mesa_debug, "FD_MESA_DEBUG", debug_options, 0)
 
 int fd_mesa_debug = 0;
 bool fd_binning_enabled = true;
-static bool glsl120 = false;
 
 static const char *
 fd_screen_get_name(struct pipe_screen *pscreen)
@@ -294,8 +293,6 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
 	case PIPE_CAP_GLSL_FEATURE_LEVEL:
 	case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-		if (glsl120)
-			return 120;
 		return is_ir3(screen) ? 140 : 120;
 
 	case PIPE_CAP_ESSL_FEATURE_LEVEL:
@@ -559,8 +556,6 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 	case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
 		return 1;
 	case PIPE_SHADER_CAP_INTEGERS:
-		if (glsl120)
-			return 0;
 		return is_ir3(screen) ? 1 : 0;
 	case PIPE_SHADER_CAP_INT64_ATOMICS:
 		return 0;
@@ -804,8 +799,6 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 
 	if (fd_mesa_debug & FD_DBG_NOBIN)
 		fd_binning_enabled = false;
-
-	glsl120 = !!(fd_mesa_debug & FD_DBG_GLSL120);
 
 	if (!screen)
 		return NULL;
