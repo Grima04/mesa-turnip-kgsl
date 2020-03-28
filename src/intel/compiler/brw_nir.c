@@ -861,8 +861,6 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    UNUSED bool progress; /* Written by OPT */
 
-   OPT(brw_nir_lower_mem_access_bit_sizes, devinfo);
-
    OPT(nir_opt_combine_memory_barriers, combine_all_barriers, NULL);
 
    do {
@@ -871,6 +869,18 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    } while (progress);
 
    brw_nir_optimize(nir, compiler, is_scalar, false);
+
+   if (OPT(brw_nir_lower_mem_access_bit_sizes, devinfo)) {
+      do {
+         progress = false;
+         OPT(nir_lower_pack);
+         OPT(nir_copy_prop);
+         OPT(nir_opt_dce);
+         OPT(nir_opt_cse);
+         OPT(nir_opt_algebraic);
+         OPT(nir_opt_constant_folding);
+      } while (progress);
+   }
 
    if (OPT(nir_lower_int64, nir->options->lower_int64_options))
       brw_nir_optimize(nir, compiler, is_scalar, false);
