@@ -34,6 +34,7 @@
 #include "util/format/u_format.h"
 
 #include "freedreno_draw.h"
+#include "freedreno_log.h"
 #include "freedreno_state.h"
 #include "freedreno_resource.h"
 
@@ -655,7 +656,9 @@ emit_binning_pass(struct fd_batch *batch)
 			A6XX_SP_TP_WINDOW_OFFSET_Y(0));
 
 	/* emit IB to binning drawcmds: */
+	fd_log(batch, "GMEM: START BINNING IB");
 	fd6_emit_ib(ring, batch->draw);
+	fd_log(batch, "GMEM: END BINNING IB");
 
 	fd_reset_wfi(batch);
 
@@ -675,7 +678,9 @@ emit_binning_pass(struct fd_batch *batch)
 
 	OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
 
+	fd_log(batch, "START VSC OVERFLOW TEST");
 	emit_vsc_overflow_test(batch);
+	fd_log(batch, "END VSC OVERFLOW TEST");
 
 	OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
 	OUT_RING(ring, 0x0);
@@ -729,8 +734,11 @@ fd6_emit_tile_init(struct fd_batch *batch)
 
 	fd6_emit_lrz_flush(ring);
 
-	if (batch->lrz_clear)
+	if (batch->lrz_clear) {
+		fd_log(batch, "START LRZ CLEAR");
 		fd6_emit_ib(ring, batch->lrz_clear);
+		fd_log(batch, "END LRZ CLEAR");
+	}
 
 	fd6_cache_inv(batch, ring);
 
@@ -1218,11 +1226,13 @@ fd6_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 static void
 fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 {
+	fd_log(batch, "TILE: START CLEAR/RESTORE");
 	if (batch->fast_cleared || !use_hw_binning(batch)) {
 		fd6_emit_ib(batch->gmem, batch->tile_setup);
 	} else {
 		emit_conditional_ib(batch, tile, batch->tile_setup);
 	}
+	fd_log(batch, "TILE: END CLEAR/RESTORE");
 }
 
 static void
@@ -1354,11 +1364,13 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
 	emit_marker6(ring, 7);
 
+	fd_log(batch, "TILE: START RESOLVE");
 	if (batch->fast_cleared || !use_hw_binning(batch)) {
 		fd6_emit_ib(batch->gmem, batch->tile_fini);
 	} else {
 		emit_conditional_ib(batch, tile, batch->tile_fini);
 	}
+	fd_log(batch, "TILE: END RESOLVE");
 }
 
 static void
