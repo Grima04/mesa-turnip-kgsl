@@ -209,6 +209,25 @@ struct bifrost_fma_add {
         unsigned op : 6;
 } __attribute__((packed));
 
+#define BIFROST_FMA_OP_FMAX16 (0xC0 >> 2)
+#define BIFROST_FMA_OP_FMIN16 (0xCC >> 2)
+#define BIFROST_FMA_OP_FADD16 (0xD8 >> 2)
+
+struct bifrost_fma_add_minmax16 {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        /* abs2 inferred as (src1 < src0) */
+        unsigned abs1 : 1;
+        unsigned src0_neg : 1;
+        unsigned src1_neg : 1;
+        unsigned src0_swizzle : 2;
+        unsigned src1_swizzle : 2;
+        enum bifrost_outmod outmod : 2;
+        /* roundmode for add, min/max mode for min/max */
+        unsigned mode : 2;
+        unsigned op : 6;
+} __attribute__((packed));
+
 #define BIFROST_FMA_OP_FMA (0x00)
 
 struct bifrost_fma_fma {
