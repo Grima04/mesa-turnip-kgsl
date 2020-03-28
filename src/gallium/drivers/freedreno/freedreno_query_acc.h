@@ -59,8 +59,8 @@ struct fd_acc_query;
 struct fd_acc_sample_provider {
 	unsigned query_type;
 
-	/* stages applicable to the query type: */
-	enum fd_render_stage active;
+	/* Set if the provider should still count while !ctx->active_queries */
+	bool always;
 
 	unsigned size;
 

@@ -379,6 +379,15 @@ fd_hw_query_prepare_tile(struct fd_batch *batch, uint32_t n,
 void
 fd_hw_query_set_stage(struct fd_batch *batch, enum fd_render_stage stage)
 {
+	/* special case: internal blits (like mipmap level generation)
+	 * go through normal draw path (via util_blitter_blit()).. but
+	 * we need to ignore the FD_STAGE_DRAW which will be set, so we
+	 * don't enable queries which should be paused during internal
+	 * blits:
+	 */
+	if (batch->stage == FD_STAGE_BLIT && stage != FD_STAGE_NULL)
+		stage = FD_STAGE_BLIT;
+
 	if (stage != batch->stage) {
 		struct fd_hw_query *hq;
 		LIST_FOR_EACH_ENTRY(hq, &batch->ctx->hw_active_queries, list) {

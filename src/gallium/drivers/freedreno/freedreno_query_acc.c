@@ -32,13 +32,6 @@
 #include "freedreno_resource.h"
 #include "freedreno_util.h"
 
-
-static bool
-is_active(struct fd_acc_query *aq, enum fd_render_stage stage)
-{
-	return !!(aq->provider->active & stage);
-}
-
 static void
 fd_acc_destroy_query(struct fd_context *ctx, struct fd_query *q)
 {
@@ -245,7 +238,8 @@ fd_acc_query_set_stage(struct fd_batch *batch, enum fd_render_stage stage)
 		LIST_FOR_EACH_ENTRY(aq, &ctx->acc_active_queries, node) {
 			bool batch_change = aq->batch != batch;
 			bool was_active = aq->batch != NULL;
-			bool now_active = is_active(aq, stage);
+			bool now_active = stage != FD_STAGE_NULL &&
+				(ctx->active_queries || aq->provider->always);
 
 			if (was_active && (!now_active || batch_change))
 				fd_acc_query_pause(aq);

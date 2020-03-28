@@ -367,6 +367,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	 * set some state:
 	 */
 	ctx->sample_mask = 0xffff;
+	ctx->active_queries = true;
 
 	pctx = &ctx->base;
 	pctx->screen = pscreen;

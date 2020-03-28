@@ -176,8 +176,11 @@ fd_get_driver_query_group_info(struct pipe_screen *pscreen, unsigned index,
 }
 
 static void
-fd_set_active_query_state(struct pipe_context *pipe, bool enable)
+fd_set_active_query_state(struct pipe_context *pctx, bool enable)
 {
+	struct fd_context *ctx = fd_context(pctx);
+	ctx->active_queries = enable;
+	ctx->update_active_queries = true;
 }
 
 static enum pipe_driver_query_type

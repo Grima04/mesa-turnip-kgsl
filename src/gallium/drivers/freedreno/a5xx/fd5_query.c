@@ -134,7 +134,6 @@ occlusion_predicate_result(struct fd_acc_query *aq, void *buf,
 
 static const struct fd_acc_sample_provider occlusion_counter = {
 		.query_type = PIPE_QUERY_OCCLUSION_COUNTER,
-		.active = FD_STAGE_DRAW,
 		.size = sizeof(struct fd5_query_sample),
 		.resume = occlusion_resume,
 		.pause = occlusion_pause,
@@ -143,7 +142,6 @@ static const struct fd_acc_sample_provider occlusion_counter = {
 
 static const struct fd_acc_sample_provider occlusion_predicate = {
 		.query_type = PIPE_QUERY_OCCLUSION_PREDICATE,
-		.active = FD_STAGE_DRAW,
 		.size = sizeof(struct fd5_query_sample),
 		.resume = occlusion_resume,
 		.pause = occlusion_pause,
@@ -152,7 +150,6 @@ static const struct fd_acc_sample_provider occlusion_predicate = {
 
 static const struct fd_acc_sample_provider occlusion_predicate_conservative = {
 		.query_type = PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE,
-		.active = FD_STAGE_DRAW,
 		.size = sizeof(struct fd5_query_sample),
 		.resume = occlusion_resume,
 		.pause = occlusion_pause,
@@ -229,7 +226,7 @@ timestamp_accumulate_result(struct fd_acc_query *aq, void *buf,
 
 static const struct fd_acc_sample_provider time_elapsed = {
 		.query_type = PIPE_QUERY_TIME_ELAPSED,
-		.active = FD_STAGE_ALL,
+		.always = true,
 		.size = sizeof(struct fd5_query_sample),
 		.resume = timestamp_resume,
 		.pause = timestamp_pause,
@@ -245,7 +242,7 @@ static const struct fd_acc_sample_provider time_elapsed = {
 
 static const struct fd_acc_sample_provider timestamp = {
 		.query_type = PIPE_QUERY_TIMESTAMP,
-		.active = FD_STAGE_ALL,
+		.always = true,
 		.size = sizeof(struct fd5_query_sample),
 		.resume = timestamp_resume,
 		.pause = timestamp_pause,
@@ -366,7 +363,7 @@ perfcntr_accumulate_result(struct fd_acc_query *aq, void *buf,
 
 static const struct fd_acc_sample_provider perfcntr = {
 		.query_type = FD_QUERY_FIRST_PERFCNTR,
-		.active = FD_STAGE_ALL,
+		.always = true,
 		.resume = perfcntr_resume,
 		.pause = perfcntr_pause,
 		.result = perfcntr_accumulate_result,

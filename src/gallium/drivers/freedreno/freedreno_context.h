@@ -207,6 +207,11 @@ struct fd_context {
 	 */
 	bool update_active_queries;
 
+	/* Current state of pctx->set_active_query_state() (i.e. "should drawing
+	 * be counted against non-perfcounter queries")
+	 */
+	bool active_queries;
+
 	/* table with PIPE_PRIM_MAX entries mapping PIPE_PRIM_x to
 	 * DI_PT_x value to use for draw initiator.  There are some
 	 * slight differences between generation:
@@ -467,15 +472,6 @@ static inline void
 fd_batch_set_stage(struct fd_batch *batch, enum fd_render_stage stage)
 {
 	struct fd_context *ctx = batch->ctx;
-
-	/* special case: internal blits (like mipmap level generation)
-	 * go through normal draw path (via util_blitter_blit()).. but
-	 * we need to ignore the FD_STAGE_DRAW which will be set, so we
-	 * don't enable queries which should be paused during internal
-	 * blits:
-	 */
-	if (batch->stage == FD_STAGE_BLIT && stage != FD_STAGE_NULL)
-		stage = FD_STAGE_BLIT;
 
 	if (ctx->query_set_stage)
 		ctx->query_set_stage(batch, stage);
