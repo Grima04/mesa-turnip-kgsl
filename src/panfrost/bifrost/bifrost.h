@@ -103,6 +103,12 @@ struct bifrost_fma_inst {
         unsigned op   : 20;
 } __attribute__((packed));
 
+struct bifrost_fma_2src {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned op   : 17;
+} __attribute__((packed));
+
 #define BIFROST_ADD_OP_BLEND (0x1952c)
 
 struct bifrost_add_inst {
