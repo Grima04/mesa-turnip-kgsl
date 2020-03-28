@@ -1400,6 +1400,15 @@ for N, M in itertools.product(type_sizes('uint'), type_sizes('uint')):
       # The N == M case is handled by other optimizations
       pass
 
+# Downcast operations should be able to see through pack
+for t in ['i', 'u']:
+    for N in [8, 16, 32]:
+        x2xN = '{0}2{0}{1}'.format(t, N)
+        optimizations += [
+            ((x2xN, ('pack_64_2x32_split', a, b)), (x2xN, a)),
+            ((x2xN, ('pack_64_2x32_split', a, b)), (x2xN, a)),
+        ]
+
 # Optimize comparisons with up-casts
 for t in ['int', 'uint', 'float']:
     for N, M in itertools.product(type_sizes(t), repeat=2):
