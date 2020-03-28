@@ -291,10 +291,20 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
         const struct pipe_resource *templat,
         struct winsys_handle *handle, unsigned usage)
 {
-   struct lima_resource *res;
-   struct lima_screen *screen = lima_screen(pscreen);
+   if (templat->bind & (PIPE_BIND_SAMPLER_VIEW |
+                        PIPE_BIND_RENDER_TARGET |
+                        PIPE_BIND_DEPTH_STENCIL)) {
+      /* sampler hardware need offset alignment 64, while render hardware
+       * need offset alignment 8, but due to render target may be reloaded
+       * which uses the sampler, set alignment requrement to 64 for all
+       */
+      if (handle->offset & 0x3f) {
+         debug_error("import buffer offset not properly aligned\n");
+         return NULL;
+      }
+   }
 
-   res = CALLOC_STRUCT(lima_resource);
+   struct lima_resource *res = CALLOC_STRUCT(lima_resource);
    if (!res)
       return NULL;
 
@@ -302,9 +312,10 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
    *pres = *templat;
    pres->screen = pscreen;
    pipe_reference_init(&pres->reference, 1);
-   res->levels[0].offset = 0;
+   res->levels[0].offset = handle->offset;
    res->levels[0].stride = handle->stride;
 
+   struct lima_screen *screen = lima_screen(pscreen);
    res->bo = lima_bo_import(screen, handle);
    if (!res->bo) {
       FREE(res);
