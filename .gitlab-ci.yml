@@ -437,8 +437,9 @@ meson-clang:
 scons-win64:
   extends: .scons-build
   variables:
-    SCONS_TARGET: platform=windows machine=x86_64
+    SCONS_TARGET: platform=windows machine=x86_64 debug=1
     SCONS_CHECK_COMMAND: "true"
+  allow_failure: true
 
 meson-clover:
   extends: .meson-build
@@ -557,22 +558,6 @@ meson-mingw32-x86_64:
       -Dllvm=false
       -Dosmesa=gallium
       --cross-file=.gitlab-ci/x86_64-w64-mingw32
-
-scons:
-  extends: .scons-build
-  variables:
-    SCONS_TARGET: "llvm=1"
-    SCONS_CHECK_COMMAND: "scons force_scons=1 ${SCONS_TARGET} check"
-  script:
-    - SCONS_TARGET="" SCONS_CHECK_COMMAND="scons check force_scons=1" .gitlab-ci/scons-build.sh
-    - LLVM_VERSION=9 .gitlab-ci/scons-build.sh
-
-scons-old-llvm:
-  extends:
-    - scons
-    - .use-x86_build_old
-  script:
-    - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
 
 .test:
   extends:
