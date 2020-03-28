@@ -486,11 +486,8 @@ bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_add(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_add_f32(bi_instruction *ins, struct bi_registers *regs)
 {
-        /* TODO: fadd16 packing is a bit different */
-        assert(ins->dest_type == nir_type_float32);
-
         struct bifrost_fma_add pack = {
                 .src0 = bi_get_src(ins, regs, 0, true),
                 .src1 = bi_get_src(ins, regs, 1, true),
@@ -505,6 +502,38 @@ bi_pack_fma_add(bi_instruction *ins, struct bi_registers *regs)
         };
 
         RETURN_PACKED(pack);
+}
+
+static unsigned
+bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned op =
+                (ins->type == BI_ADD) ? BIFROST_FMA_OP_FADD16 :
+                (ins->op.minmax == BI_MINMAX_MIN) ? BIFROST_FMA_OP_FMIN16 :
+                BIFROST_FMA_OP_FMAX16;
+
+        struct bifrost_fma_add_minmax16 pack = {
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .src1 = bi_get_src(ins, regs, 1, true),
+                .src0_neg = ins->src_neg[0],
+                .src1_neg = ins->src_neg[1],
+                .outmod = ins->outmod,
+                .mode = (ins->type == BI_ADD) ? ins->roundmode : ins->minmax,
+                .op = op
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
+bi_pack_fma_add(bi_instruction *ins, struct bi_registers *regs)
+{
+        if (ins->dest_type == nir_type_float32)
+                return bi_pack_fma_add_f32(ins, regs);
+        else if(ins->dest_type == nir_type_float16)
+                return bi_pack_fma_addmin_f16(ins, regs);
+        else
+                unreachable("Unknown FMA/ADD type");
 }
 
 static unsigned
