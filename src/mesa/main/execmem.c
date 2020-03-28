@@ -90,7 +90,7 @@ init_heap(void)
 
 
 void *
-_mesa_exec_malloc(GLuint size)
+_mesa_exec_malloc(unsigned size)
 {
    struct mem_block *block = NULL;
    void *addr = NULL;
@@ -140,7 +140,7 @@ _mesa_exec_free(void *addr)
  */
 
 void *
-_mesa_exec_malloc(GLuint size)
+_mesa_exec_malloc(unsigned size)
 {
    return malloc( size );
 }
