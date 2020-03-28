@@ -413,6 +413,12 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_mov:
                 return BI_MOV;
 
+        case nir_op_fround_even:
+        case nir_op_fceil:
+        case nir_op_ffloor:
+        case nir_op_ftrunc:
+                return BI_ROUND;
+
         case nir_op_frcp:
         case nir_op_frsq:
         case nir_op_fsin:
@@ -606,6 +612,22 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         BI_CASE_CMP(nir_op_fne)
         BI_CASE_CMP(nir_op_ine)
                 alu.op.compare = bi_cond_for_nir(instr->op, false);
+                break;
+        case nir_op_fround_even:
+                alu.op.round = BI_ROUND_MODE;
+                alu.roundmode = BIFROST_RTE;
+                break;
+        case nir_op_fceil:
+                alu.op.round = BI_ROUND_MODE;
+                alu.roundmode = BIFROST_RTP;
+                break;
+        case nir_op_ffloor:
+                alu.op.round = BI_ROUND_MODE;
+                alu.roundmode = BIFROST_RTN;
+                break;
+        case nir_op_ftrunc:
+                alu.op.round = BI_ROUND_MODE;
+                alu.roundmode = BIFROST_RTZ;
                 break;
         default:
                 break;
