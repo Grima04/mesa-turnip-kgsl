@@ -72,7 +72,7 @@ static const struct debug_named_value debug_options[] = {
 		{"noscis",    FD_DBG_NOSCIS, "Disable scissor optimization"},
 		{"direct",    FD_DBG_DIRECT, "Force inline (SS_DIRECT) state loads"},
 		{"nobypass",  FD_DBG_NOBYPASS, "Disable GMEM bypass"},
-		/* BIT(7) */
+		{"log",       FD_DBG_LOG,    "Enable GPU timestamp based logging (a6xx+)"},
 		{"nobin",     FD_DBG_NOBIN,  "Disable hw binning"},
 		{"nogmem",    FD_DBG_NOGMEM,  "Disable GMEM rendering (bypass only)"},
 		/* BIT(10) */

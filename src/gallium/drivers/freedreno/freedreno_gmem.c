@@ -34,6 +34,7 @@
 #include "freedreno_gmem.h"
 #include "freedreno_context.h"
 #include "freedreno_fence.h"
+#include "freedreno_log.h"
 #include "freedreno_resource.h"
 #include "freedreno_query_hw.h"
 #include "freedreno_util.h"
@@ -531,6 +532,7 @@ flush_ring(struct fd_batch *batch)
 			&timestamp);
 
 	fd_fence_populate(batch->fence, timestamp, out_fence_fd);
+	fd_log_flush(batch);
 }
 
 void

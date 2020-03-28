@@ -102,6 +102,8 @@ batch_init(struct fd_batch *batch)
 	assert(batch->resources->entries == 0);
 
 	util_dynarray_init(&batch->samples, NULL);
+
+	list_inithead(&batch->log_chunks);
 }
 
 struct fd_batch *
@@ -191,6 +193,8 @@ batch_fini(struct fd_batch *batch)
 		fd_hw_sample_reference(batch->ctx, &samp, NULL);
 	}
 	util_dynarray_fini(&batch->samples);
+
+	assert(list_is_empty(&batch->log_chunks));
 }
 
 static void

@@ -34,6 +34,8 @@ files_libfreedreno = files(
   'freedreno_fence.h',
   'freedreno_gmem.c',
   'freedreno_gmem.h',
+  'freedreno_log.c',
+  'freedreno_log.h',
   'freedreno_program.c',
   'freedreno_program.h',
   'freedreno_query.c',

@@ -69,7 +69,7 @@ enum fd_debug_flag {
 	FD_DBG_NOSCIS       = BITFIELD_BIT(4),
 	FD_DBG_DIRECT       = BITFIELD_BIT(5),
 	FD_DBG_NOBYPASS     = BITFIELD_BIT(6),
-	/* BIT(7) */
+	FD_DBG_LOG          = BITFIELD_BIT(7),
 	FD_DBG_NOBIN        = BITFIELD_BIT(8),
 	FD_DBG_NOGMEM       = BITFIELD_BIT(9),
 	/* BIT(10) */

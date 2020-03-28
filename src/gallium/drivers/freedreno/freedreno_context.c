@@ -28,6 +28,7 @@
 #include "freedreno_blitter.h"
 #include "freedreno_draw.h"
 #include "freedreno_fence.h"
+#include "freedreno_log.h"
 #include "freedreno_program.h"
 #include "freedreno_resource.h"
 #include "freedreno_texture.h"
@@ -89,6 +90,9 @@ out:
 	fd_fence_ref(&ctx->last_fence, fence);
 
 	fd_fence_ref(&fence, NULL);
+
+	if (flags & PIPE_FLUSH_END_OF_FRAME)
+		fd_log_eof(ctx);
 }
 
 static void
@@ -167,6 +171,9 @@ fd_context_destroy(struct pipe_context *pctx)
 	unsigned i;
 
 	DBG("");
+
+	fd_log_process(ctx, true);
+	assert(list_is_empty(&ctx->log_chunks));
 
 	fd_fence_ref(&ctx->last_fence, NULL);
 
@@ -404,6 +411,13 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 
 	list_inithead(&ctx->hw_active_queries);
 	list_inithead(&ctx->acc_active_queries);
+	list_inithead(&ctx->log_chunks);
+
+	if ((fd_mesa_debug & FD_DBG_LOG) &&
+			!(ctx->record_timestamp && ctx->ts_to_ns)) {
+		printf("logging not supported!\n");
+		fd_mesa_debug &= ~FD_DBG_LOG;
+	}
 
 	return pctx;
 
