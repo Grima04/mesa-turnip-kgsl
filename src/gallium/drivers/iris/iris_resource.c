@@ -569,6 +569,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
        */
       initial_state = ISL_AUX_STATE_CLEAR;
       break;
+   case ISL_AUX_USAGE_GEN12_CCS_E:
+      unreachable("Driver unprepared to handle this aux_usage.");
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_STC_CCS:
