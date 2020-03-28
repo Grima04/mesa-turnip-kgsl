@@ -263,7 +263,7 @@ struct fd_context {
 	 * contents.  Main point is to eliminate blits from fd_try_shadow_resource().
 	 * For example, in case of texture upload + gen-mipmaps.
 	 */
-	bool in_blit : 1;
+	bool in_discard_blit : 1;
 
 	struct pipe_scissor_state scissor;
 

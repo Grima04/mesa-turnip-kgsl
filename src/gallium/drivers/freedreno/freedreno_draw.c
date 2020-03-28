@@ -112,12 +112,12 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		}
 	}
 
-	if (ctx->in_blit) {
+	if (ctx->in_discard_blit) {
 		fd_batch_reset(batch);
 		fd_context_all_dirty(ctx);
 	}
 
-	batch->blit = ctx->in_blit;
+	batch->blit = ctx->in_discard_blit;
 	batch->back_blit = ctx->in_shadow;
 
 	/* NOTE: needs to be before resource_written(batch->query_buf), otherwise
@@ -323,7 +323,7 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 
 	fd_fence_ref(&ctx->last_fence, NULL);
 
-	if (ctx->in_blit) {
+	if (ctx->in_discard_blit) {
 		fd_batch_reset(batch);
 		fd_context_all_dirty(ctx);
 	}
