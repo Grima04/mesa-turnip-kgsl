@@ -512,11 +512,70 @@ bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
                 (ins->op.minmax == BI_MINMAX_MIN) ? BIFROST_FMA_OP_FMIN16 :
                 BIFROST_FMA_OP_FMAX16;
 
+        /* Absolute values are packed in a quirky way. Let k = src1 < src0. Let
+         * l be an auxiliary bit we encode. Then the hardware determines:
+         *
+         *      abs0 = l || k
+         *      abs1 = l && k
+         *
+         * Since add/min/max are commutative, this saves a bit by using the
+         * order of the operands as a bit (k). To pack this, first note:
+         *
+         *      (l && k) implies (l || k).
+         *
+         * That is, if the second argument is abs'd, then the first argument
+         * also has abs. So there are three cases:
+         *
+         * Case 0: Neither src has absolute value. Then we have l = k = 0.
+         *
+         * Case 1: Exactly one src has absolute value. Assign that source to
+         * src0 and the other source to src1. Compute k = src1 < src0 based on
+         * that assignment. Then l = ~k.
+         *
+         * Case 2: Both sources have absolute value. Then we have l = k = 1.
+         * Note to force k = 1 requires that (src1 < src0) OR (src0 < src1).
+         * That is, this encoding is only valid if src1 and src0 are distinct.
+         * This is a scheduling restriction (XXX); if an op of this type
+         * requires both identical sources to have abs value, then we must
+         * schedule to ADD (which does not use this ordering trick).
+         */
+
+        unsigned abs_0 = ins->src_abs[0], abs_1 = ins->src_abs[1];
+        unsigned src_0 = bi_get_src(ins, regs, 0, true);
+        unsigned src_1 = bi_get_src(ins, regs, 0, true);
+        bool l = false;
+
+        if (!abs_0 && !abs_1) {
+                /* Force k = 0 <===> NOT(src1 < src0) <==> src1 >= src0 */
+                if (src_0 < src_1) {
+                        unsigned tmp = src_0;
+                        src_0 = src_1;
+                        src_1 = tmp;
+                }
+        } else if (abs_0 && !abs_1) {
+                l = src_1 >= src_0;
+        } else if (abs_1 && !abs_0) {
+                unsigned tmp = src_0;
+                src_0 = src_1;
+                src_0 = tmp;
+
+                l = src_1 >= src_0;
+        } else {
+                if (src_0 >= src_1) {
+                        unsigned tmp = src_0;
+                        src_0 = src_1;
+                        src_1 = tmp;
+                }
+
+                l = true;
+        }
+
         struct bifrost_fma_add_minmax16 pack = {
-                .src0 = bi_get_src(ins, regs, 0, true),
-                .src1 = bi_get_src(ins, regs, 1, true),
+                .src0 = src_0,
+                .src1 = src_1,
                 .src0_neg = ins->src_neg[0],
                 .src1_neg = ins->src_neg[1],
+                .abs1 = l,
                 .outmod = ins->outmod,
                 .mode = (ins->type == BI_ADD) ? ins->roundmode : ins->minmax,
                 .op = op
