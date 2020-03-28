@@ -642,7 +642,14 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
                 }
         } else if (from_size == 32 && to_size == 16) {
                 if (from_base == nir_type_float) {
-                        /* float32_to_float16 */
+                        /* TODO: second vectorized source? */
+                        struct bifrost_fma_2src pack = {
+                                .src0 = bi_get_src(ins, regs, 0, true),
+                                .src1 = BIFROST_SRC_STAGE, /* 0 */
+                                .op = BIFROST_FMA_FLOAT32_TO_16
+                        };
+
+                        RETURN_PACKED(pack);
                 } else {
                         /* XXX: No int32_to_int16? */
                 }
