@@ -555,7 +555,7 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .largePoints = false,
       .alphaToOne = false,
       .multiViewport = false,
-      .samplerAnisotropy = false,
+      .samplerAnisotropy = true,
       .textureCompressionETC2 = true,
       .textureCompressionASTC_LDR = false,
       .textureCompressionBC = false,
@@ -1877,3 +1877,138 @@ v3dv_ResetEvent(VkDevice _device, VkEvent _event)
    *((uint32_t *) event->bo->map) = 0;
    return VK_SUCCESS;
 }
+
+static const enum V3DX(Wrap_Mode) vk_to_v3d_wrap_mode[] = {
+   [VK_SAMPLER_ADDRESS_MODE_REPEAT]          = V3D_WRAP_MODE_REPEAT,
+   [VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT] = V3D_WRAP_MODE_MIRROR,
+   [VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE]   = V3D_WRAP_MODE_CLAMP,
+   [VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE] = V3D_WRAP_MODE_MIRROR_ONCE,
+   [VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER] = V3D_WRAP_MODE_BORDER,
+};
+
+static const enum V3DX(Compare_Function)
+vk_to_v3d_compare_func[] = {
+   [VK_COMPARE_OP_NEVER]                        = V3D_COMPARE_FUNC_NEVER,
+   [VK_COMPARE_OP_LESS]                         = V3D_COMPARE_FUNC_LESS,
+   [VK_COMPARE_OP_EQUAL]                        = V3D_COMPARE_FUNC_EQUAL,
+   [VK_COMPARE_OP_LESS_OR_EQUAL]                = V3D_COMPARE_FUNC_LEQUAL,
+   [VK_COMPARE_OP_GREATER]                      = V3D_COMPARE_FUNC_GREATER,
+   [VK_COMPARE_OP_NOT_EQUAL]                    = V3D_COMPARE_FUNC_NOTEQUAL,
+   [VK_COMPARE_OP_GREATER_OR_EQUAL]             = V3D_COMPARE_FUNC_GEQUAL,
+   [VK_COMPARE_OP_ALWAYS]                       = V3D_COMPARE_FUNC_ALWAYS,
+};
+
+static void
+pack_sampler_state(struct v3dv_sampler *sampler,
+                   const VkSamplerCreateInfo *pCreateInfo)
+{
+   enum V3DX(Border_Color_Mode) border_color_mode;
+
+   /* FIXME: direct border_color_mode mapping would work with some specific
+    * formats, but some others it would be needed to use
+    * V3D_BORDER_COLOR_FOLLOWS, and fill up
+    * SAMPLER_STATE.border_color_word_[0/1/2/3]
+    */
+   switch (pCreateInfo->borderColor) {
+   case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
+   case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
+      border_color_mode = V3D_BORDER_COLOR_0000;
+      break;
+   case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
+   case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
+      border_color_mode = V3D_BORDER_COLOR_0001;
+      break;
+   case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
+   case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
+      border_color_mode = V3D_BORDER_COLOR_1111;
+      break;
+   default:
+      unreachable("Unknown border color");
+      break;
+   }
+
+   v3dv_pack(sampler->state->map, SAMPLER_STATE, s) {
+      if (pCreateInfo->anisotropyEnable) {
+         s.anisotropy_enable = true;
+         if (pCreateInfo->maxAnisotropy > 8)
+            s.maximum_anisotropy = 3;
+         else if (pCreateInfo->maxAnisotropy > 4)
+            s.maximum_anisotropy = 2;
+         else if (pCreateInfo->maxAnisotropy > 2)
+            s.maximum_anisotropy = 1;
+      }
+
+      s.border_color_mode = border_color_mode;
+
+      s.wrap_i_border = false; /* Also hardcoded on v3d */
+      s.wrap_s = vk_to_v3d_wrap_mode[pCreateInfo->addressModeU];
+      s.wrap_t = vk_to_v3d_wrap_mode[pCreateInfo->addressModeV];
+      s.wrap_r = vk_to_v3d_wrap_mode[pCreateInfo->addressModeW];
+      s.fixed_bias = pCreateInfo->mipLodBias;
+      s.max_level_of_detail = MIN2(MAX2(0, pCreateInfo->maxLod), 15);
+      s.min_level_of_detail = MIN2(MAX2(0, pCreateInfo->minLod), 15);
+      s.srgb_disable = 0; /* Not even set by v3d */
+      s.depth_compare_function =
+         vk_to_v3d_compare_func[pCreateInfo->compareEnable ?
+                                pCreateInfo->compareOp : VK_COMPARE_OP_NEVER];
+      s.mip_filter_nearest = pCreateInfo->mipmapMode == VK_SAMPLER_MIPMAP_MODE_NEAREST;
+      s.min_filter_nearest = pCreateInfo->minFilter == VK_FILTER_NEAREST;
+      s.mag_filter_nearest = pCreateInfo->magFilter == VK_FILTER_NEAREST;
+   }
+}
+
+VkResult
+v3dv_CreateSampler(VkDevice _device,
+                 const VkSamplerCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *pAllocator,
+                 VkSampler *pSampler)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_sampler *sampler;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
+
+   sampler = vk_zalloc2(&device->alloc, pAllocator, sizeof(*sampler), 8,
+                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!sampler)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   if (sampler->state == NULL) {
+      sampler->state = v3dv_bo_alloc(device, cl_packet_length(SAMPLER_STATE),
+                                     "sampler_state");
+
+      if (!sampler->state) {
+         fprintf(stderr, "Failed to allocate memory for sampler state\n");
+         abort();
+      }
+
+      bool ok = v3dv_bo_map(device, sampler->state,
+                            cl_packet_length(SAMPLER_STATE));
+      if (!ok) {
+         fprintf(stderr, "failed to map sampler state buffer\n");
+         abort();
+      }
+   }
+
+   pack_sampler_state(sampler, pCreateInfo);
+
+   *pSampler = v3dv_sampler_to_handle(sampler);
+
+   return VK_SUCCESS;
+}
+
+void
+v3dv_DestroySampler(VkDevice _device,
+                  VkSampler _sampler,
+                  const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_sampler, sampler, _sampler);
+
+   if (!sampler)
+      return;
+
+   vk_free2(&device->alloc, pAllocator, sampler);
+}
+
+

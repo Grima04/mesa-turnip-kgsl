@@ -186,10 +186,11 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                         pipeline->layout,
                         index, &dynamic_offset);
       assert(descriptor);
-      assert(descriptor->bo);
+      assert(descriptor->buffer);
 
       cl_aligned_reloc(&job->indirect, uniforms,
-                       descriptor->bo,
+                       descriptor->buffer->mem->bo,
+                       descriptor->buffer->mem_offset +
                        descriptor->offset + offset + dynamic_offset);
    }
 }

@@ -349,9 +349,27 @@ struct v3dv_image_view {
    uint32_t internal_type;
 
    uint32_t base_level;
+   uint32_t max_level;
    uint32_t first_layer;
    uint32_t last_layer;
    uint32_t offset;
+
+   /* Precomputed (composed from createinfo->components and formar swizzle)
+    * swizzles to pass in to the shader key.
+    *
+    * FIXME: this is also a candidate to be included on the descriptor info.
+    */
+   uint8_t swizzle[4];
+
+   /* FIXME: here we store the packet TEXTURE_SHADER_STATE, that is referenced
+    * as part of the tmu configuration, and the content is set per sampler. A
+    * possible perf improvement, to avoid bo fragmentation, would be to save
+    * the state as static, have the bo as part of the descriptor (booked from
+    * the descriptor pools), and then copy this content to the descriptor bo
+    * on UpdateDescriptor. This also makes sense because not all the images
+    * are used as textures.
+    */
+   struct v3dv_bo *texture_shader_state;
 };
 
 uint32_t v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer);
@@ -668,8 +686,19 @@ struct v3dv_cmd_buffer_state {
 };
 
 struct v3dv_descriptor {
-   struct v3dv_bo *bo;
-   uint32_t offset;
+   VkDescriptorType type;
+
+   union {
+      struct {
+         struct v3dv_image_view *image_view;
+         struct v3dv_sampler *sampler;
+      };
+
+      struct {
+         struct v3dv_buffer *buffer;
+         uint32_t offset;
+      };
+   };
 };
 
 /* Aux struct as it is really common to have a pair bo/address. Called
@@ -858,6 +887,9 @@ struct v3dv_descriptor_set_layout {
    /* Number of bindings in this descriptor set */
    uint32_t binding_count;
 
+   /* Total size of the descriptor set with room for all array entries */
+   uint32_t size;
+
    /* Shader stages affected by this descriptor set */
    uint16_t shader_stages;
 
@@ -866,6 +898,8 @@ struct v3dv_descriptor_set_layout {
 
    /* Number of dynamic offsets used by this descriptor set */
    uint16_t dynamic_offset_count;
+
+   bool has_immutable_samplers;
 
    /* Bindings in this descriptor set */
    struct v3dv_descriptor_set_binding_layout binding[0];
@@ -890,6 +924,17 @@ struct v3dv_descriptor_map {
    int binding[64];
    int array_index[64];
    int array_size[64];
+};
+
+struct v3dv_sampler {
+   /* FIXME: here we store the packet SAMPLER_STATE, that is referenced as part
+    * of the tmu configuration, and the content is set per sampler. A possible
+    * perf improvement, to avoid bo fragmentation, would be to save the state
+    * as static, have the bo as part of the descriptor (booked from the
+    * descriptor pools), and then copy this content to the descriptor bo on
+    * UpdateDescriptor
+    */
+   struct v3dv_bo *state;
 };
 
 struct v3dv_pipeline {
@@ -1137,6 +1182,7 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline, VkPipeline)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline_layout, VkPipelineLayout)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_sampler, VkSampler)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_semaphore, VkSemaphore)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_shader_module, VkShaderModule)
 
@@ -1146,6 +1192,10 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_shader_module, VkShaderModule)
 #define v3dv_layer_count(_image, _range) \
    ((_range)->layerCount == VK_REMAINING_ARRAY_LAYERS ? \
     (_image)->array_size - (_range)->baseArrayLayer : (_range)->layerCount)
+
+#define v3dv_level_count(_image, _range) \
+   ((_range)->levelCount == VK_REMAINING_MIP_LEVELS ? \
+    (_image)->levels - (_range)->baseMipLevel : (_range)->levelCount)
 
 static inline int
 v3dv_ioctl(int fd, unsigned long request, void *arg)

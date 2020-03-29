@@ -395,6 +395,144 @@ v3dv_DestroyImage(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, image);
 }
 
+/*
+ * This method translates pipe_swizzle to the swizzle values used at the
+ * packet TEXTURE_SHADER_STATE
+ *
+ * FIXME: C&P from v3d, common place?
+ */
+static uint32_t
+translate_swizzle(unsigned char pipe_swizzle)
+{
+   switch (pipe_swizzle) {
+   case PIPE_SWIZZLE_0:
+      return 0;
+   case PIPE_SWIZZLE_1:
+      return 1;
+   case PIPE_SWIZZLE_X:
+   case PIPE_SWIZZLE_Y:
+   case PIPE_SWIZZLE_Z:
+   case PIPE_SWIZZLE_W:
+      return 2 + pipe_swizzle;
+   default:
+      unreachable("unknown swizzle");
+   }
+}
+
+static void
+pack_texture_shader_state(struct v3dv_device *device,
+                          struct v3dv_image_view *image_view)
+{
+   assert(image_view->image);
+   const struct v3dv_image *image = image_view->image;
+
+   if (image_view->texture_shader_state == NULL) {
+      image_view->texture_shader_state =
+         v3dv_bo_alloc(device, cl_packet_length(TEXTURE_SHADER_STATE),
+                       "texture_shader_state");
+
+      if (!image_view->texture_shader_state) {
+         fprintf(stderr, "Failed to allocate memory for texture shader state\n");
+         abort();
+      }
+
+      bool ok = v3dv_bo_map(device, image_view->texture_shader_state,
+                            cl_packet_length(TEXTURE_SHADER_STATE));
+      if (!ok) {
+         fprintf(stderr, "failed to map texture shader state\n");
+         abort();
+      }
+   }
+
+   int msaa_scale = 1; /* FIXME: hardcoded. Revisit when msaa get supported */
+   v3dv_pack(image_view->texture_shader_state->map, TEXTURE_SHADER_STATE, tex) {
+
+      tex.level_0_is_strictly_uif =
+         (image->slices[0].tiling == VC5_TILING_UIF_XOR ||
+          image->slices[0].tiling == VC5_TILING_UIF_NO_XOR);
+
+      tex.level_0_xor_enable = (image->slices[0].tiling == VC5_TILING_UIF_XOR);
+
+      if (tex.level_0_is_strictly_uif)
+         tex.level_0_ub_pad = image->slices[0].ub_pad;
+
+      /* FIXME: v3d never sets uif_xor_disable, but uses it on the following
+       * check so let's set the default value
+       */
+      tex.uif_xor_disable = false;
+      if (tex.uif_xor_disable ||
+          tex.level_0_is_strictly_uif) {
+         tex.extended = true;
+      }
+
+      tex.base_level = image_view->base_level;
+      tex.max_level = image_view->max_level;
+
+      tex.swizzle_r = translate_swizzle(image_view->swizzle[0]);
+      tex.swizzle_g = translate_swizzle(image_view->swizzle[1]);
+      tex.swizzle_b = translate_swizzle(image_view->swizzle[2]);
+      tex.swizzle_a = translate_swizzle(image_view->swizzle[3]);
+
+      tex.texture_type = image_view->format->tex_type;
+
+      if (image->type == VK_IMAGE_TYPE_3D) {
+         tex.image_depth = image->extent.depth;
+      } else {
+         tex.image_depth = (image_view->last_layer - image_view->first_layer) + 1;
+      }
+      tex.image_height = image->extent.height * msaa_scale;
+      tex.image_width = image->extent.width * msaa_scale;
+
+      /* On 4.x, the height of a 1D texture is redefined to be the
+       * upper 14 bits of the width (which is only usable with txf).
+       */
+      if (image->type == VK_IMAGE_TYPE_1D) {
+         tex.image_height = tex.image_width >> 14;
+      }
+      tex.image_width &= (1 << 14) - 1;
+      tex.image_height &= (1 << 14) - 1;
+
+      tex.array_stride_64_byte_aligned = image->cube_map_stride / 64;
+
+      tex.srgb = vk_format_is_srgb(image_view->vk_format);
+
+      /* At this point we don't have the job. That's the reason the first
+       * parameter is NULL, to avoid a crash when cl_pack_emit_reloc tries to
+       * add the bo to the job. This also means that we need to add manually
+       * the image bo to the job using the texture.
+       */
+      const uint32_t base_offset =
+         image->mem->bo->offset +
+         v3dv_layer_offset(image, 0, image_view->first_layer);
+      tex.texture_base_pointer = v3dv_cl_address(NULL, base_offset);
+   }
+}
+
+static enum pipe_swizzle
+vk_component_mapping_to_pipe_swizzle(VkComponentSwizzle comp,
+                                     VkComponentSwizzle swz)
+{
+   if (swz == VK_COMPONENT_SWIZZLE_IDENTITY)
+      swz = comp;
+
+   switch (swz) {
+   case VK_COMPONENT_SWIZZLE_ZERO:
+      return PIPE_SWIZZLE_0;
+   case VK_COMPONENT_SWIZZLE_ONE:
+      return PIPE_SWIZZLE_1;
+   case VK_COMPONENT_SWIZZLE_R:
+      return PIPE_SWIZZLE_X;
+   case VK_COMPONENT_SWIZZLE_G:
+      return PIPE_SWIZZLE_Y;
+   case VK_COMPONENT_SWIZZLE_B:
+      return PIPE_SWIZZLE_Z;
+   case VK_COMPONENT_SWIZZLE_A:
+      return PIPE_SWIZZLE_W;
+   default:
+      unreachable("Unknown VkComponentSwizzle");
+   };
+}
+
 VkResult
 v3dv_CreateImageView(VkDevice _device,
                      const VkImageViewCreateInfo *pCreateInfo,
@@ -435,6 +573,7 @@ v3dv_CreateImageView(VkDevice _device,
    iview->aspects = range->aspectMask;
 
    iview->base_level = range->baseMipLevel;
+   iview->max_level = iview->base_level + v3dv_level_count(image, range) - 1;
    iview->extent = (VkExtent3D) {
       .width  = u_minify(image->extent.width , iview->base_level),
       .height = u_minify(image->extent.height, iview->base_level),
@@ -476,6 +615,28 @@ v3dv_CreateImageView(VkDevice _device,
                                                    &iview->internal_type,
                                                    &iview->internal_bpp);
    }
+
+   /* FIXME: we are doing this vk to pipe swizzle mapping just to call
+    * util_format_compose_swizzles. Would be good to check if it would be
+    * better to reimplement the latter using vk component
+    */
+   uint8_t image_view_swizzle[4] = {
+      vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_R,
+                                           pCreateInfo->components.r),
+      vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_G,
+                                           pCreateInfo->components.g),
+      vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_B,
+                                           pCreateInfo->components.b),
+      vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_A,
+                                           pCreateInfo->components.a),
+   };
+   const uint8_t *format_swizzle =
+      v3dv_get_format_swizzle(iview->vk_format);
+
+   util_format_compose_swizzles(format_swizzle, image_view_swizzle, iview->swizzle);
+
+   pack_texture_shader_state(device, iview);
+
    *pView = v3dv_image_view_to_handle(iview);
 
    return VK_SUCCESS;

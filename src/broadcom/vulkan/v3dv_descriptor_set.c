@@ -108,12 +108,15 @@ v3dv_CreateDescriptorPool(VkDevice _device,
       if (pCreateInfo->pPoolSizes[i].type != VK_DESCRIPTOR_TYPE_SAMPLER)
          descriptor_count += pCreateInfo->pPoolSizes[i].descriptorCount;
 
+      /* Verify supported descriptor type */
       switch(pCreateInfo->pPoolSizes[i].type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         break;
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
          break;
       default:
          unreachable("Unimplemented descriptor type");
@@ -255,9 +258,18 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
 
    uint32_t max_binding = 0;
+   uint32_t immutable_sampler_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
+      if ((pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+           pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
+           pCreateInfo->pBindings[j].pImmutableSamplers) {
+         immutable_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
+      }
    }
+
+   /* FIXME: immutable samplers not supported yet */
+   assert(immutable_sampler_count == 0);
 
    uint32_t size = sizeof(struct v3dv_descriptor_set_layout) +
       (max_binding + 1) * sizeof(set_layout->binding[0]);
@@ -283,6 +295,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->binding_count = max_binding + 1;
    set_layout->flags = pCreateInfo->flags;
    set_layout->shader_stages = 0;
+   set_layout->has_immutable_samplers = false;
 
    uint32_t descriptor_count = 0;
    uint32_t dynamic_offset_count = 0;
@@ -298,6 +311,11 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          set_layout->binding[binding_number].dynamic_offset_count = 1;
+         break;
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         /* Nothing here, just to keep the descriptor type filtering below */
          break;
       default:
          unreachable("Unknown descriptor type\n");
@@ -374,6 +392,9 @@ descriptor_set_create(struct v3dv_device *device,
    set->pool = pool;
 
    set->layout = layout;
+
+   /* FIXME: if we have immutable samplers those are tightly included here */
+   assert(layout->has_immutable_samplers == false);
 
    if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
       vk_free2(&device->alloc, NULL, set);
@@ -461,7 +482,9 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
 
       descriptor += binding_layout->descriptor_index;
       descriptor += writeset->dstArrayElement;
+
       for (uint32_t j = 0; j < writeset->descriptorCount; ++j) {
+         descriptor->type = writeset->descriptorType;
 
          switch(writeset->descriptorType) {
 
@@ -472,8 +495,32 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
             const VkDescriptorBufferInfo *buffer_info = writeset->pBufferInfo + j;
             V3DV_FROM_HANDLE(v3dv_buffer, buffer, buffer_info->buffer);
 
-            descriptor->bo = buffer->mem->bo;
+            descriptor->buffer = buffer;
             descriptor->offset = buffer_info->offset;
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_SAMPLER: {
+            const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
+            V3DV_FROM_HANDLE(v3dv_sampler, sampler, image_info->sampler);
+
+            descriptor->sampler = sampler;
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
+            const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
+            V3DV_FROM_HANDLE(v3dv_image_view, iview, image_info->imageView);
+
+            descriptor->image_view = iview;
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+            const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
+            V3DV_FROM_HANDLE(v3dv_image_view, iview, image_info->imageView);
+            V3DV_FROM_HANDLE(v3dv_sampler, sampler, image_info->sampler);
+
+            descriptor->image_view = iview;
+            descriptor->sampler = sampler;
+
             break;
          }
          default:
