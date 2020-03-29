@@ -26,22 +26,18 @@
  */
 
 #include "v3dv_private.h"
+#include "vk_format_info.h"
 
 static bool
 descriptor_type_is_dynamic(VkDescriptorType type)
 {
    switch (type) {
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      return false;
-      break;
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
       return true;
       break;
    default:
-      assert(!"descriptor type not supported.\n");
-      break;
+      return false;
    }
    return false;
 }
@@ -133,6 +129,58 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
           MAX_PUSH_CONSTANTS_SIZE);
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PUSH_CONSTANTS;
+}
+
+/** V3D 4.x TMU configuration parameter 0 (texture) */
+static void
+write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
+             struct v3dv_pipeline *pipeline,
+             struct v3dv_cl_out **uniforms,
+             uint32_t data)
+{
+   int unit = v3d_unit_data_get_unit(data);
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   struct v3dv_descriptor_state *descriptor_state =
+      &cmd_buffer->state.descriptor_state;
+
+   struct v3dv_descriptor *descriptor =
+      get_descriptor(descriptor_state, &pipeline->texture_map,
+                     pipeline->layout, unit, NULL);
+
+   assert(descriptor);
+   assert(descriptor->image_view);
+
+   cl_aligned_reloc(&job->indirect, uniforms,
+                    descriptor->image_view->texture_shader_state,
+                    v3d_unit_data_get_offset(data));
+
+   /* We need to ensure that the texture bo is added to the job */
+   v3dv_job_add_bo(job, descriptor->image_view->image->mem->bo);
+}
+
+/** V3D 4.x TMU configuration parameter 1 (sampler) */
+static void
+write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
+             struct v3dv_pipeline *pipeline,
+             struct v3dv_cl_out **uniforms,
+             uint32_t data)
+{
+   uint32_t unit = v3d_unit_data_get_unit(data);
+   struct v3dv_job *job = cmd_buffer->state.job;
+   struct v3dv_descriptor_state *descriptor_state =
+      &cmd_buffer->state.descriptor_state;
+
+   struct v3dv_descriptor *descriptor =
+      get_descriptor(descriptor_state, &pipeline->sampler_map,
+                     pipeline->layout, unit, NULL);
+
+   assert(descriptor);
+   assert(descriptor->sampler);
+
+   cl_aligned_reloc(&job->indirect, uniforms,
+                    descriptor->sampler->state,
+                    v3d_unit_data_get_offset(data));
 }
 
 static void
@@ -253,6 +301,14 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
       case QUNIFORM_UBO_ADDR:
          write_ubo_ssbo_uniforms(cmd_buffer, pipeline, &uniforms,
                                  uinfo->contents[i], data);
+        break;
+
+      case QUNIFORM_TMU_CONFIG_P0:
+         write_tmu_p0(cmd_buffer, pipeline, &uniforms, data);
+         break;
+
+      case QUNIFORM_TMU_CONFIG_P1:
+         write_tmu_p1(cmd_buffer, pipeline, &uniforms, data);
          break;
 
       default:
