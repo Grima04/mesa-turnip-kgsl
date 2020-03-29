@@ -1740,8 +1740,15 @@ cmd_buffer_update_ez_state(struct v3dv_cmd_buffer *cmd_buffer,
  * the v3d_fs_key. Here we just fill-up cmd_buffer specific info. All info
  * coming from the pipeline create info was alredy filled up when the pipeline
  * was created
+ *
+ * It also returns if it was able to populate the info based on the descriptor
+ * info. Note that returning false is a possible valid outcome, that could
+ * happens if the descriptors are being bound with more than one
+ * CmdBindDescriptorSet call (and this is needed in some cases, like if you
+ * are skipping descriptor sets). If that is the case we just stop trying
+ * getting the variant.
  */
-static void
+static bool
 cmd_buffer_populate_v3d_key(struct v3d_key *key,
                             struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -1756,9 +1763,11 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
                                             cmd_buffer->state.pipeline->layout,
                                             i, NULL);
 
+      if (descriptor == NULL)
+         return false;
+
       assert(descriptor->type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
              descriptor->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-      assert(descriptor);
       assert(descriptor->image_view);
       assert(descriptor->image_view->image);
 
@@ -1778,9 +1787,11 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
        * the pipeline populate.
        */
    }
+
+   return true;
 }
 
-static void
+static bool
 update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_shader_variant *variant;
@@ -1790,18 +1801,21 @@ update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    /* We start with a copy of the original pipeline key */
    memcpy(&local_key, &p_stage->key.fs, sizeof(struct v3d_fs_key));
 
-   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+   if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
+      variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                        sizeof(struct v3d_fs_key));
 
-   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                     sizeof(struct v3d_fs_key));
-
-   if (p_stage->current_variant != variant) {
-      p_stage->current_variant = variant;
-      /* FIXME: we need to set any dirty flag here? */
+      if (p_stage->current_variant != variant) {
+         p_stage->current_variant = variant;
+      }
+   } else {
+      return false;
    }
+
+   return true;
 }
 
-static void
+static bool
 update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_shader_variant *variant;
@@ -1811,27 +1825,32 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    /* We start with a copy of the original pipeline key */
    memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
 
-   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+   if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
+      variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                        sizeof(struct v3d_vs_key));
 
-   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                     sizeof(struct v3d_vs_key));
-
-   if (p_stage->current_variant != variant) {
-      p_stage->current_variant = variant;
-      /* FIXME: we need to set any dirty flag here? */
+      if (p_stage->current_variant != variant) {
+         p_stage->current_variant = variant;
+      }
+   } else {
+      return false;
    }
 
    p_stage = cmd_buffer->state.pipeline->vs_bin;
    memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
 
-   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
-   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                     sizeof(struct v3d_vs_key));
+   if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
+      variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                        sizeof(struct v3d_vs_key));
 
-   if (p_stage->current_variant != variant) {
-      p_stage->current_variant = variant;
-      /* FIXME: we need to set any dirty flag here? */
+      if (p_stage->current_variant != variant) {
+         p_stage->current_variant = variant;
+      }
+   } else {
+      return false;
    }
+
+   return true;
 }
 
 /*
@@ -1840,14 +1859,19 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
  * needs to do certain things depending on the texture format. So here we
  * re-create the v3d_keys and update the variant. Note that internally the
  * pipeline has a variant cache (hash table) to avoid unneeded compilations
+ *
+ * Returns if it was able to go to the end of the update variants
+ * process. Note that this is not the same that getting a new variant or
+ * not. If at this moment we don't have all the descriptors bound, we can't
+ * check for a new variant, and the SHADER_VARIANTS flag needs to keep dirty.
  */
-static void
+static bool
 update_pipeline_variants(struct v3dv_cmd_buffer *cmd_buffer)
 {
    assert(cmd_buffer->state.pipeline);
 
-   update_fs_variant(cmd_buffer);
-   update_vs_variant(cmd_buffer);
+   return (update_fs_variant(cmd_buffer) ||
+           update_vs_variant(cmd_buffer));
 }
 
 static void
@@ -1883,9 +1907,8 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer_update_ez_state(cmd_buffer, pipeline);
 
    if (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_SHADER_VARIANTS) {
-      update_pipeline_variants(cmd_buffer);
-
-      cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_SHADER_VARIANTS;
+      if (update_pipeline_variants(cmd_buffer))
+         cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_SHADER_VARIANTS;
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;

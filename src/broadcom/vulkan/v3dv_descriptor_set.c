@@ -38,6 +38,16 @@ descriptor_type_is_dynamic(VkDescriptorType type)
    }
 }
 
+/*
+ * Tries to get a real descriptor using a descriptor map index from the
+ * descriptor_state + pipeline_layout.
+ *
+ * Note that it is possible to get a NULL. This could happens if not all the
+ * needed descriptors are bound yet (this can happens while checking for
+ * variants). Caller should decide if getting a NULL descriptor is a valid
+ * outcome at the context or not.
+ *
+ */
 struct v3dv_descriptor *
 v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_state,
                                    struct v3dv_descriptor_map *map,
@@ -48,11 +58,16 @@ v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_stat
    assert(index >= 0 && index < map->num_desc);
 
    uint32_t set_number = map->set[index];
-   assert(descriptor_state->valid & 1 << set_number);
+   if (!(descriptor_state->valid & 1 << set_number)) {
+      return NULL;
+   }
 
    struct v3dv_descriptor_set *set =
       descriptor_state->descriptor_sets[set_number];
-   assert(set);
+
+   if (set == NULL)
+      return NULL;
+
 
    uint32_t binding_number = map->binding[index];
    assert(binding_number < set->layout->binding_count);
