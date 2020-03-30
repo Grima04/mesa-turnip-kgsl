@@ -91,10 +91,6 @@ struct isel_context {
    /* GS inputs */
    Temp gs_wave_id;
 
-   /* gathered information */
-   uint64_t input_masks[MESA_SHADER_COMPUTE];
-   uint64_t output_masks[MESA_SHADER_COMPUTE];
-
    /* VS output information */
    bool export_clip_dists;
    unsigned num_clip_distances;
@@ -744,7 +740,7 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
    if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer)
       pos_written |= 1 << 1;
 
-   uint64_t mask = ctx->output_masks[nir->info.stage];
+   uint64_t mask = nir->info.outputs_written;
    while (mask) {
       int idx = u_bit_scan64(&mask);
       if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
@@ -789,17 +785,8 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    }
    nir_foreach_variable(variable, &nir->outputs)
    {
-      if (ctx->stage == vertex_geometry_gs)
-         variable->data.driver_location = util_bitcount64(ctx->output_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
-      else if (ctx->stage == vertex_es ||
-               ctx->stage == vertex_ls ||
-               ctx->stage == vertex_tess_control_hs)
-         // TODO: make this more compact
-         variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
-      else if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs)
+      if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs)
          variable->data.driver_location = variable->data.location * 4;
-      else
-         unreachable("Unsupported VS stage");
 
       assert(variable->data.location >= 0 && variable->data.location <= UINT8_MAX);
       ctx->output_drv_loc_to_var_slot[MESA_SHADER_VERTEX][variable->data.driver_location / 4] = variable->data.location;
@@ -818,7 +805,7 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
       /* radv_es_output_info *outinfo = &ctx->program->info->vs.es_info;
       outinfo->esgs_itemsize = util_bitcount64(ctx->output_masks[nir->info.stage]) * 16u; */
    } else if (ctx->stage == vertex_ls) {
-      ctx->tcs_num_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
+      ctx->tcs_num_inputs = ctx->program->info->vs.num_linked_outputs;
    }
 
    if (ctx->stage == ngg_vertex_gs && ctx->args->options->key.vs_common_out.export_prim_id) {
@@ -831,19 +818,8 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
 
 void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 {
-   if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
-      nir_foreach_variable(variable, &nir->inputs) {
-         variable->data.driver_location = util_bitcount64(ctx->input_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
-      }
+   if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs)
       ctx->program->config->lds_size = ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
-   } else if (ctx->stage == geometry_gs) {
-      //TODO: make this more compact
-      nir_foreach_variable(variable, &nir->inputs) {
-         variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot)variable->data.location) * 4;
-      }
-   } else {
-      unreachable("Unsupported GS stage.");
-   }
 
    nir_foreach_variable(variable, &nir->outputs) {
       variable->data.driver_location = variable->data.location * 4;
@@ -867,22 +843,15 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir)
       ctx->stage == vertex_tess_control_hs &&
       ctx->args->options->key.tcs.input_vertices == nir->info.tess.tcs_vertices_out;
 
-   if (ctx->stage == tess_control_hs) {
-      ctx->tcs_num_inputs = ctx->args->options->key.tcs.num_inputs;
-   } else if (ctx->stage == vertex_tess_control_hs) {
-      ctx->tcs_num_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
-
-      if (ctx->tcs_in_out_eq) {
-         ctx->tcs_temp_only_inputs = ~nir->info.tess.tcs_cross_invocation_inputs_read &
-                                     ~nir->info.inputs_read_indirectly &
-                                     nir->info.inputs_read;
-      }
-   } else {
-      unreachable("Unsupported TCS shader stage");
+   if (ctx->tcs_in_out_eq) {
+      ctx->tcs_temp_only_inputs = ~nir->info.tess.tcs_cross_invocation_inputs_read &
+                                    ~nir->info.inputs_read_indirectly &
+                                    nir->info.inputs_read;
    }
 
-   ctx->tcs_num_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
-   ctx->tcs_num_patch_outputs = util_last_bit64(ctx->args->shader_info->tcs.patch_outputs_written);
+   ctx->tcs_num_inputs = ctx->program->info->tcs.num_linked_inputs;
+   ctx->tcs_num_outputs = ctx->program->info->tcs.num_linked_outputs;
+   ctx->tcs_num_patch_outputs = ctx->program->info->tcs.num_linked_patch_outputs;
 
    ctx->tcs_num_patches = get_tcs_num_patches(
                              ctx->args->options->key.tcs.input_vertices,
@@ -910,43 +879,30 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir)
 void
 setup_tcs_variables(isel_context *ctx, nir_shader *nir)
 {
-   nir_foreach_variable(variable, &nir->inputs) {
-      variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
-   }
-
    nir_foreach_variable(variable, &nir->outputs) {
-      variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
       assert(variable->data.location >= 0 && variable->data.location <= UINT8_MAX);
+
+      if (variable->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)
+         ctx->tcs_tess_lvl_out_loc = variable->data.driver_location * 4u;
+      else if (variable->data.location == VARYING_SLOT_TESS_LEVEL_INNER)
+         ctx->tcs_tess_lvl_in_loc = variable->data.driver_location * 4u;
 
       if (variable->data.patch)
          ctx->output_tcs_patch_drv_loc_to_var_slot[variable->data.driver_location / 4] = variable->data.location;
       else
          ctx->output_drv_loc_to_var_slot[MESA_SHADER_TESS_CTRL][variable->data.driver_location / 4] = variable->data.location;
    }
-
-   ctx->tcs_tess_lvl_out_loc = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_OUTER) * 16u;
-   ctx->tcs_tess_lvl_in_loc = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_INNER) * 16u;
 }
 
 void
 setup_tes_variables(isel_context *ctx, nir_shader *nir)
 {
    ctx->tcs_num_patches = ctx->args->options->key.tes.num_patches;
-   ctx->tcs_num_outputs = ctx->args->options->key.tes.tcs_num_outputs;
-
-   nir_foreach_variable(variable, &nir->inputs) {
-      variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
-   }
+   ctx->tcs_num_outputs = ctx->program->info->tes.num_linked_inputs;
 
    nir_foreach_variable(variable, &nir->outputs) {
       if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs)
          variable->data.driver_location = variable->data.location * 4;
-      else if (ctx->stage == tess_eval_es)
-         variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
-      else if (ctx->stage == tess_eval_geometry_gs)
-         variable->data.driver_location = util_bitcount64(ctx->output_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
-      else
-         unreachable("Unsupported TES shader stage");
    }
 
    if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs) {
@@ -991,50 +947,6 @@ setup_variables(isel_context *ctx, nir_shader *nir)
    }
    default:
       unreachable("Unhandled shader stage.");
-   }
-}
-
-void
-get_io_masks(isel_context *ctx, unsigned shader_count, struct nir_shader *const *shaders)
-{
-   for (unsigned i = 0; i < shader_count; i++) {
-      nir_shader *nir = shaders[i];
-      if (nir->info.stage == MESA_SHADER_COMPUTE)
-         continue;
-
-      uint64_t output_mask = 0;
-      nir_foreach_variable(variable, &nir->outputs) {
-         const glsl_type *type = variable->type;
-         if (nir_is_per_vertex_io(variable, nir->info.stage))
-            type = type->fields.array;
-         unsigned slots = type->count_attribute_slots(false);
-         if (variable->data.compact) {
-            unsigned component_count = variable->data.location_frac + type->length;
-            slots = (component_count + 3) / 4;
-         }
-         output_mask |= ((1ull << slots) - 1) << variable->data.location;
-      }
-
-      uint64_t input_mask = 0;
-      nir_foreach_variable(variable, &nir->inputs) {
-         const glsl_type *type = variable->type;
-         if (nir_is_per_vertex_io(variable, nir->info.stage))
-            type = type->fields.array;
-         unsigned slots = type->count_attribute_slots(false);
-         if (variable->data.compact) {
-            unsigned component_count = variable->data.location_frac + type->length;
-            slots = (component_count + 3) / 4;
-         }
-         input_mask |= ((1ull << slots) - 1) << variable->data.location;
-      }
-
-      ctx->output_masks[nir->info.stage] |= output_mask;
-      if (i + 1 < shader_count)
-         ctx->input_masks[shaders[i + 1]->info.stage] |= output_mask;
-
-      ctx->input_masks[nir->info.stage] |= input_mask;
-      if (i)
-         ctx->output_masks[shaders[i - 1]->info.stage] |= input_mask;
    }
 }
 
@@ -1320,8 +1232,6 @@ setup_isel_context(Program* program,
    calc_min_waves(program);
    program->vgpr_limit = get_addr_vgpr_from_waves(program, program->min_waves);
    program->sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
-
-   get_io_masks(&ctx, shader_count, shaders);
 
    unsigned scratch_size = 0;
    if (program->stage == gs_copy_vs) {
