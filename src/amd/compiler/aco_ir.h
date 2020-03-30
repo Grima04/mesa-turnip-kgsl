@@ -806,24 +806,31 @@ struct Instruction {
       return false;
    }
 };
+static_assert(sizeof(Instruction) == 16);
 
 struct SOPK_instruction : public Instruction {
    uint16_t imm;
+   uint16_t padding;
 };
+static_assert(sizeof(SOPK_instruction) == sizeof(Instruction) + 4);
 
 struct SOPP_instruction : public Instruction {
    uint32_t imm;
    int block;
 };
+static_assert(sizeof(SOPP_instruction) == sizeof(Instruction) + 8);
 
 struct SOPC_instruction : public Instruction {
 };
+static_assert(sizeof(SOPC_instruction) == sizeof(Instruction) + 0);
 
 struct SOP1_instruction : public Instruction {
 };
+static_assert(sizeof(SOP1_instruction) == sizeof(Instruction) + 0);
 
 struct SOP2_instruction : public Instruction {
 };
+static_assert(sizeof(SOP2_instruction) == sizeof(Instruction) + 0);
 
 /**
  * Scalar Memory Format:
@@ -837,22 +844,27 @@ struct SOP2_instruction : public Instruction {
  *
  */
 struct SMEM_instruction : public Instruction {
+   barrier_interaction barrier;
    bool glc : 1; /* VI+: globally coherent */
    bool dlc : 1; /* NAVI: device level coherent */
    bool nv : 1; /* VEGA only: Non-volatile */
    bool can_reorder : 1;
    bool disable_wqm : 1;
-   barrier_interaction barrier;
+   uint32_t padding: 19;
 };
+static_assert(sizeof(SMEM_instruction) == sizeof(Instruction) + 4);
 
 struct VOP1_instruction : public Instruction {
 };
+static_assert(sizeof(VOP1_instruction) == sizeof(Instruction) + 0);
 
 struct VOP2_instruction : public Instruction {
 };
+static_assert(sizeof(VOP2_instruction) == sizeof(Instruction) + 0);
 
 struct VOPC_instruction : public Instruction {
 };
+static_assert(sizeof(VOPC_instruction) == sizeof(Instruction) + 0);
 
 struct VOP3A_instruction : public Instruction {
    bool abs[3];
@@ -860,7 +872,9 @@ struct VOP3A_instruction : public Instruction {
    uint8_t opsel : 4;
    uint8_t omod : 2;
    bool clamp : 1;
+   uint32_t padding : 9;
 };
+static_assert(sizeof(VOP3A_instruction) == sizeof(Instruction) + 8);
 
 /**
  * Data Parallel Primitives Format:
@@ -875,7 +889,9 @@ struct DPP_instruction : public Instruction {
    uint8_t row_mask : 4;
    uint8_t bank_mask : 4;
    bool bound_ctrl : 1;
+   uint32_t padding : 7;
 };
+static_assert(sizeof(DPP_instruction) == sizeof(Instruction) + 8);
 
 enum sdwa_sel : uint8_t {
     /* masks */
@@ -924,20 +940,23 @@ enum sdwa_sel : uint8_t {
 struct SDWA_instruction : public Instruction {
    /* these destination modifiers aren't available with VOPC except for
     * clamp on GFX8 */
-   unsigned dst_sel:8;
-   bool dst_preserve:1;
-   bool clamp:1;
-   unsigned omod:2; /* GFX9+ */
-
-   unsigned sel[2];
+   uint8_t sel[2];
+   uint8_t dst_sel;
    bool neg[2];
    bool abs[2];
+   bool dst_preserve : 1;
+   bool clamp : 1;
+   uint8_t omod : 2; /* GFX9+ */
+   uint32_t padding : 4;
 };
+static_assert(sizeof(SDWA_instruction) == sizeof(Instruction) + 8);
 
 struct Interp_instruction : public Instruction {
    uint8_t attribute;
    uint8_t component;
+   uint16_t padding;
 };
+static_assert(sizeof(Interp_instruction) == sizeof(Instruction) + 4);
 
 /**
  * Local and Global Data Sharing instructions
@@ -953,6 +972,7 @@ struct DS_instruction : public Instruction {
    int8_t offset1;
    bool gds;
 };
+static_assert(sizeof(DS_instruction) == sizeof(Instruction) + 4);
 
 /**
  * Vector Memory Untyped-buffer Instructions
@@ -974,8 +994,10 @@ struct MUBUF_instruction : public Instruction {
    bool lds : 1; /* Return read-data to LDS instead of VGPRs */
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
    bool can_reorder : 1;
+   uint8_t padding : 2;
    barrier_interaction barrier;
 };
+static_assert(sizeof(MUBUF_instruction) == sizeof(Instruction) + 4);
 
 /**
  * Vector Memory Typed-buffer Instructions
@@ -987,6 +1009,7 @@ struct MUBUF_instruction : public Instruction {
  */
 struct MTBUF_instruction : public Instruction {
    uint16_t offset; /* Unsigned byte offset - 12 bit */
+   barrier_interaction barrier;
    uint8_t dfmt : 4; /* Data Format of data in memory buffer */
    uint8_t nfmt : 3; /* Numeric format of data in memory */
    bool offen : 1; /* Supply an offset from VGPR (VADDR) */
@@ -997,8 +1020,9 @@ struct MTBUF_instruction : public Instruction {
    bool tfe : 1; /* texture fail enable */
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
    bool can_reorder : 1;
-   barrier_interaction barrier;
+   uint32_t padding : 25;
 };
+static_assert(sizeof(MTBUF_instruction) == sizeof(Instruction) + 8);
 
 /**
  * Vector Memory Image Instructions
@@ -1024,8 +1048,10 @@ struct MIMG_instruction : public Instruction {
    bool d16 : 1; /* Convert 32-bit data to 16-bit data */
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
    bool can_reorder : 1;
+   uint8_t padding : 1;
    barrier_interaction barrier;
 };
+static_assert(sizeof(MIMG_instruction) == sizeof(Instruction) + 4);
 
 /**
  * Flat/Scratch/Global Instructions
@@ -1043,8 +1069,10 @@ struct FLAT_instruction : public Instruction {
    bool nv : 1;
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
    bool can_reorder : 1;
+   uint8_t padding : 1;
    barrier_interaction barrier;
 };
+static_assert(sizeof(FLAT_instruction) == sizeof(Instruction) + 4);
 
 struct Export_instruction : public Instruction {
    uint8_t enabled_mask;
@@ -1052,12 +1080,16 @@ struct Export_instruction : public Instruction {
    bool compressed : 1;
    bool done : 1;
    bool valid_mask : 1;
+   uint32_t padding : 13;
 };
+static_assert(sizeof(Export_instruction) == sizeof(Instruction) + 4);
 
 struct Pseudo_instruction : public Instruction {
-   bool tmp_in_scc;
    PhysReg scratch_sgpr; /* might not be valid if it's not needed */
+   bool tmp_in_scc;
+   uint8_t padding;
 };
+static_assert(sizeof(Pseudo_instruction) == sizeof(Instruction) + 4);
 
 struct Pseudo_branch_instruction : public Instruction {
    /* target[0] is the block index of the branch target.
@@ -1066,11 +1098,13 @@ struct Pseudo_branch_instruction : public Instruction {
     */
    uint32_t target[2];
 };
+static_assert(sizeof(Pseudo_branch_instruction) == sizeof(Instruction) + 8);
 
 struct Pseudo_barrier_instruction : public Instruction {
 };
+static_assert(sizeof(Pseudo_barrier_instruction) == sizeof(Instruction) + 0);
 
-enum ReduceOp {
+enum ReduceOp : uint16_t {
    iadd32, iadd64,
    imul32, imul64,
    fadd32, fadd64,
@@ -1102,8 +1136,9 @@ enum ReduceOp {
  */
 struct Pseudo_reduction_instruction : public Instruction {
    ReduceOp reduce_op;
-   unsigned cluster_size; // must be 0 for scans
+   uint16_t cluster_size; // must be 0 for scans
 };
+static_assert(sizeof(Pseudo_reduction_instruction) == sizeof(Instruction) + 4);
 
 struct instr_deleter_functor {
    void operator()(void* p) {
