@@ -812,6 +812,8 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
        */
       /* radv_es_output_info *outinfo = &ctx->program->info->vs.es_info;
       outinfo->esgs_itemsize = util_bitcount64(ctx->output_masks[nir->info.stage]) * 16u; */
+   } else if (ctx->stage == vertex_ls) {
+      ctx->tcs_num_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
    }
 
    if (ctx->stage == ngg_vertex_gs && ctx->args->options->key.vs_common_out.export_prim_id) {
@@ -918,6 +920,7 @@ void
 setup_tes_variables(isel_context *ctx, nir_shader *nir)
 {
    ctx->tcs_num_patches = ctx->args->options->key.tes.num_patches;
+   ctx->tcs_num_outputs = ctx->args->options->key.tes.tcs_num_outputs;
 
    nir_foreach_variable(variable, &nir->inputs) {
       variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;

@@ -4153,11 +4153,9 @@ std::pair<Temp, unsigned> get_tcs_output_lds_offset(isel_context *ctx, nir_intri
    Builder bld(ctx->program, ctx->block);
 
    uint32_t input_patch_size = ctx->args->options->key.tcs.input_vertices * ctx->tcs_num_inputs * 16;
-   uint32_t num_tcs_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
-   uint32_t num_tcs_patch_outputs = util_last_bit64(ctx->args->shader_info->tcs.patch_outputs_written);
-   uint32_t output_vertex_size = num_tcs_outputs * 16;
+   uint32_t output_vertex_size = ctx->tcs_num_outputs * 16;
    uint32_t pervertex_output_patch_size = ctx->shader->info.tess.tcs_vertices_out * output_vertex_size;
-   uint32_t output_patch_stride = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
+   uint32_t output_patch_stride = pervertex_output_patch_size + ctx->tcs_num_patch_outputs * 16;
 
    std::pair<Temp, unsigned> offs = instr
                                     ? get_intrinsic_io_basic_offset(ctx, instr, 4u)
@@ -4205,11 +4203,7 @@ std::pair<Temp, unsigned> get_tcs_per_patch_output_vmem_offset(isel_context *ctx
 {
    Builder bld(ctx->program, ctx->block);
 
-   unsigned num_tcs_outputs = ctx->shader->info.stage == MESA_SHADER_TESS_CTRL
-                              ? util_last_bit64(ctx->args->shader_info->tcs.outputs_written)
-                              : ctx->args->options->key.tes.tcs_num_outputs;
-
-   unsigned output_vertex_size = num_tcs_outputs * 16;
+   unsigned output_vertex_size = ctx->tcs_num_outputs * 16;
    unsigned per_vertex_output_patch_size = ctx->shader->info.tess.tcs_vertices_out * output_vertex_size;
    unsigned per_patch_data_offset = per_vertex_output_patch_size * ctx->tcs_num_patches;
    unsigned attr_stride = ctx->tcs_num_patches;
@@ -4344,9 +4338,8 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
          /* GFX6-8: VS runs on LS stage when tessellation is used, but LS shares LDS space with HS.
           * GFX9+: LS is merged into HS, but still uses the same LDS layout.
           */
-         unsigned num_tcs_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
          Temp vertex_idx = get_arg(ctx, ctx->args->rel_auto_id);
-         lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, num_tcs_inputs * 16u);
+         lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, ctx->tcs_num_inputs * 16u);
       } else {
          unreachable("Invalid LS or ES stage");
       }
