@@ -178,7 +178,7 @@ timestamp_resume(struct fd_acc_query *aq, struct fd_batch *batch)
 }
 
 static void
-timestamp_pause(struct fd_acc_query *aq, struct fd_batch *batch)
+time_elapsed_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->draw;
 
@@ -199,6 +199,12 @@ timestamp_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 	OUT_RELOC(ring, query_sample(aq, result));      /* srcA */
 	OUT_RELOC(ring, query_sample(aq, stop));        /* srcB */
 	OUT_RELOC(ring, query_sample(aq, start));       /* srcC */
+}
+
+static void
+timestamp_pause(struct fd_acc_query *aq, struct fd_batch *batch)
+{
+	/* We captured a timestamp in timestamp_resume(), nothing to do here. */
 }
 
 static uint64_t
@@ -224,7 +230,7 @@ timestamp_accumulate_result(struct fd_acc_query *aq, void *buf,
 		union pipe_query_result *result)
 {
 	struct fd6_query_sample *sp = buf;
-	result->u64 = ticks_to_ns(sp->result);
+	result->u64 = ticks_to_ns(sp->start);
 }
 
 static const struct fd_acc_sample_provider time_elapsed = {
@@ -232,14 +238,14 @@ static const struct fd_acc_sample_provider time_elapsed = {
 		.active = FD_STAGE_ALL,
 		.size = sizeof(struct fd6_query_sample),
 		.resume = timestamp_resume,
-		.pause = timestamp_pause,
+		.pause = time_elapsed_pause,
 		.result = time_elapsed_accumulate_result,
 };
 
 /* NOTE: timestamp query isn't going to give terribly sensible results
  * on a tiler.  But it is needed by qapitrace profile heatmap.  If you
  * add in a binning pass, the results get even more non-sensical.  So
- * we just return the timestamp on the first tile and hope that is
+ * we just return the timestamp on the last tile and hope that is
  * kind of good enough.
  */
 
