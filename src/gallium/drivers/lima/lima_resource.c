@@ -322,25 +322,6 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
       return NULL;
    }
 
-   /* check alignment for the buffer */
-   if (pres->bind & PIPE_BIND_RENDER_TARGET) {
-      unsigned width, height, stride, size;
-
-      width = align(pres->width0, 16);
-      height = align(pres->height0, 16);
-      stride = util_format_get_stride(pres->format, width);
-      size = util_format_get_2d_size(pres->format, stride, height);
-
-      if (res->levels[0].stride != stride || res->bo->size < size) {
-         debug_error("import buffer not properly aligned\n");
-         goto err_out;
-      }
-
-      res->levels[0].width = width;
-   }
-   else
-      res->levels[0].width = pres->width0;
-
    switch (handle->modifier) {
    case DRM_FORMAT_MOD_LINEAR:
       res->tiled = false;
@@ -359,6 +340,26 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
                   (long long)handle->modifier);
       goto err_out;
    }
+
+   /* check alignment for the buffer */
+   if (res->tiled ||
+       (pres->bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL))) {
+      unsigned width, height, stride, size;
+
+      width = align(pres->width0, 16);
+      height = align(pres->height0, 16);
+      stride = util_format_get_stride(pres->format, width);
+      size = util_format_get_2d_size(pres->format, stride, height);
+
+      if (res->levels[0].stride != stride || res->bo->size < size) {
+         debug_error("import buffer not properly aligned\n");
+         goto err_out;
+      }
+
+      res->levels[0].width = width;
+   }
+   else
+      res->levels[0].width = pres->width0;
 
    return pres;
 
