@@ -67,6 +67,7 @@ struct fd_log_chunk {
 	struct fd_bo *timestamps_bo;
 
 	bool eof;
+	uint32_t *ring_cur;
 };
 
 static struct fd_log_chunk *
@@ -117,12 +118,21 @@ process_chunk(struct fd_context *ctx, struct fd_log_chunk *chunk)
 	while (u_fifo_pop(chunk->msg_fifo, (void **)&msg)) {
 		uint64_t ts = timestamps[n++];
 		uint64_t ns = ctx->ts_to_ns(ts);
-		int32_t delta = last_time_ns ? ns - last_time_ns : 0;
+		int32_t delta;
 
 		if (!first_time_ns)
 			first_time_ns = ns;
 
-		last_time_ns = ns;
+		if (ns) {
+			delta = last_time_ns ? ns - last_time_ns : 0;
+			last_time_ns = ns;
+		} else {
+			/* we skipped recording the timestamp, so it should be
+			 * the same as last msg:
+			 */
+			ns = last_time_ns;
+			delta = 0;
+		}
 
 		printf("%016"PRIu64" %016"PRIu64" %+9d: %s\n", ts, ns, delta, msg);
 		free(msg);
@@ -180,10 +190,23 @@ _fd_log(struct fd_batch *batch, const char *fmt, ...)
 	u_fifo_add(chunk->msg_fifo, msg);
 
 	assert(ctx->record_timestamp);
-	ctx->record_timestamp(ring, chunk->timestamps_bo,
-			chunk->num_msgs * sizeof(uint64_t));
+
+	/* If nothing else has been emitted to the ring since the last log msg,
+	 * skip emitting another timestamp.
+	 */
+	if (ring->cur == chunk->ring_cur) {
+		uint64_t *ts = fd_bo_map(chunk->timestamps_bo);
+		/* zero signifies an invalid timestamp to process_chunk(), so it
+		 * will use the last valid timestamp for this msg instead.
+		 */
+		ts[chunk->num_msgs] = 0;
+	} else {
+		ctx->record_timestamp(ring, chunk->timestamps_bo,
+				chunk->num_msgs * sizeof(uint64_t));
+	}
 
 	chunk->num_msgs++;
+	chunk->ring_cur = ring->cur;
 }
 
 void fd_log_eof(struct fd_context *ctx)
