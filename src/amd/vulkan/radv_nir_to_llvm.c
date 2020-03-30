@@ -4004,13 +4004,15 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 				ctx.tcs_num_inputs = args->options->key.tcs.num_inputs;
 			else
 				ctx.tcs_num_inputs = util_last_bit64(args->shader_info->vs.ls_outputs_written);
+			unsigned tcs_num_outputs = util_last_bit64(ctx.args->shader_info->tcs.outputs_written);
+			unsigned tcs_num_patch_outputs = util_last_bit64(ctx.args->shader_info->tcs.patch_outputs_written);
 			ctx.tcs_num_patches =
 				get_tcs_num_patches(
 					ctx.args->options->key.tcs.input_vertices,
 					ctx.shader->info.tess.tcs_vertices_out,
 					ctx.tcs_num_inputs,
-					ctx.args->shader_info->tcs.outputs_written,
-					ctx.args->shader_info->tcs.patch_outputs_written,
+					tcs_num_outputs,
+					tcs_num_patch_outputs,
 					ctx.args->options->tess_offchip_block_dw_size,
 					ctx.args->options->chip_class,
 					ctx.args->options->family);
@@ -4114,6 +4116,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		}
 
 		if (shaders[i]->info.stage == MESA_SHADER_TESS_CTRL) {
+			unsigned tcs_num_outputs = util_last_bit64(ctx.args->shader_info->tcs.outputs_written);
+			unsigned tcs_num_patch_outputs = util_last_bit64(ctx.args->shader_info->tcs.patch_outputs_written);
 			args->shader_info->tcs.num_patches = ctx.tcs_num_patches;
 			args->shader_info->tcs.lds_size =
 				calculate_tess_lds_size(
@@ -4121,8 +4125,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 					ctx.shader->info.tess.tcs_vertices_out,
 					ctx.tcs_num_inputs,
 					ctx.tcs_num_patches,
-					ctx.args->shader_info->tcs.outputs_written,
-					ctx.args->shader_info->tcs.patch_outputs_written);
+					tcs_num_outputs,
+					tcs_num_patch_outputs);
 		}
 	}
 

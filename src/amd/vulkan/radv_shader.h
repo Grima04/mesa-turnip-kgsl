@@ -527,19 +527,16 @@ calculate_tess_lds_size(unsigned tcs_num_input_vertices,
 			unsigned tcs_num_output_vertices,
 			unsigned tcs_num_inputs,
 			unsigned tcs_num_patches,
-			unsigned tcs_outputs_written,
-			unsigned tcs_per_patch_outputs_written)
+			unsigned tcs_num_outputs,
+			unsigned tcs_num_patch_outputs)
 {
-	unsigned num_tcs_outputs = util_last_bit64(tcs_outputs_written);
-	unsigned num_tcs_patch_outputs = util_last_bit64(tcs_per_patch_outputs_written);
-
 	unsigned input_vertex_size = tcs_num_inputs * 16;
-	unsigned output_vertex_size = num_tcs_outputs * 16;
+	unsigned output_vertex_size = tcs_num_outputs * 16;
 
 	unsigned input_patch_size = tcs_num_input_vertices * input_vertex_size;
 
 	unsigned pervertex_output_patch_size = tcs_num_output_vertices * output_vertex_size;
-	unsigned output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
+	unsigned output_patch_size = pervertex_output_patch_size + tcs_num_patch_outputs * 16;
 
 	unsigned output_patch0_offset = input_patch_size * tcs_num_patches;
 
@@ -550,19 +547,17 @@ static inline unsigned
 get_tcs_num_patches(unsigned tcs_num_input_vertices,
 			unsigned tcs_num_output_vertices,
 			unsigned tcs_num_inputs,
-			unsigned tcs_outputs_written,
-			unsigned tcs_per_patch_outputs_written,
+			unsigned tcs_num_outputs,
+			unsigned tcs_num_patch_outputs,
 			unsigned tess_offchip_block_dw_size,
 			enum chip_class chip_class,
 			enum radeon_family family)
 {
 	uint32_t input_vertex_size = tcs_num_inputs * 16;
 	uint32_t input_patch_size = tcs_num_input_vertices * input_vertex_size;
-	uint32_t num_tcs_outputs = util_last_bit64(tcs_outputs_written);
-	uint32_t num_tcs_patch_outputs = util_last_bit64(tcs_per_patch_outputs_written);
-	uint32_t output_vertex_size = num_tcs_outputs * 16;
+	uint32_t output_vertex_size = tcs_num_outputs * 16;
 	uint32_t pervertex_output_patch_size = tcs_num_output_vertices * output_vertex_size;
-	uint32_t output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
+	uint32_t output_patch_size = pervertex_output_patch_size + tcs_num_patch_outputs * 16;
 
 	/* Ensure that we only need one wave per SIMD so we don't need to check
 	 * resource usage. Also ensures that the number of tcs in and out

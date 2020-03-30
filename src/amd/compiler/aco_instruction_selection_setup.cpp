@@ -105,6 +105,8 @@ struct isel_context {
    unsigned tcs_tess_lvl_in_loc;
    uint64_t tcs_temp_only_inputs;
    uint32_t tcs_num_inputs;
+   uint32_t tcs_num_outputs;
+   uint32_t tcs_num_patch_outputs;
    uint32_t tcs_num_patches;
    bool tcs_in_out_eq = false;
 
@@ -871,12 +873,15 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir)
       unreachable("Unsupported TCS shader stage");
    }
 
+   ctx->tcs_num_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
+   ctx->tcs_num_patch_outputs = util_last_bit64(ctx->args->shader_info->tcs.patch_outputs_written);
+
    ctx->tcs_num_patches = get_tcs_num_patches(
                              ctx->args->options->key.tcs.input_vertices,
                              nir->info.tess.tcs_vertices_out,
                              ctx->tcs_num_inputs,
-                             ctx->args->shader_info->tcs.outputs_written,
-                             ctx->args->shader_info->tcs.patch_outputs_written,
+                             ctx->tcs_num_outputs,
+                             ctx->tcs_num_patch_outputs,
                              ctx->args->options->tess_offchip_block_dw_size,
                              ctx->args->options->chip_class,
                              ctx->args->options->family);
@@ -885,8 +890,8 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir)
                              nir->info.tess.tcs_vertices_out,
                              ctx->tcs_num_inputs,
                              ctx->tcs_num_patches,
-                             ctx->args->shader_info->tcs.outputs_written,
-                             ctx->args->shader_info->tcs.patch_outputs_written);
+                             ctx->tcs_num_outputs,
+                             ctx->tcs_num_patch_outputs);
 
    ctx->args->shader_info->tcs.num_patches = ctx->tcs_num_patches;
    ctx->args->shader_info->tcs.lds_size = lds_size;
