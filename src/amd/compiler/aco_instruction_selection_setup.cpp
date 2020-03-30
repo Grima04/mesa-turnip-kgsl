@@ -113,6 +113,8 @@ struct isel_context {
    /* I/O information */
    shader_io_state inputs;
    shader_io_state outputs;
+   uint8_t output_drv_loc_to_var_slot[MESA_SHADER_COMPUTE][VARYING_SLOT_MAX];
+   uint8_t output_tcs_patch_drv_loc_to_var_slot[VARYING_SLOT_MAX];
 };
 
 Temp get_arg(isel_context *ctx, struct ac_arg arg)
@@ -798,6 +800,9 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
          variable->data.driver_location = variable->data.location * 4;
       else
          unreachable("Unsupported VS stage");
+
+      assert(variable->data.location >= 0 && variable->data.location <= UINT8_MAX);
+      ctx->output_drv_loc_to_var_slot[MESA_SHADER_VERTEX][variable->data.driver_location / 4] = variable->data.location;
    }
 
    if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs) {
@@ -910,6 +915,12 @@ setup_tcs_variables(isel_context *ctx, nir_shader *nir)
 
    nir_foreach_variable(variable, &nir->outputs) {
       variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
+      assert(variable->data.location >= 0 && variable->data.location <= UINT8_MAX);
+
+      if (variable->data.patch)
+         ctx->output_tcs_patch_drv_loc_to_var_slot[variable->data.driver_location / 4] = variable->data.location;
+      else
+         ctx->output_drv_loc_to_var_slot[MESA_SHADER_TESS_CTRL][variable->data.driver_location / 4] = variable->data.location;
    }
 
    ctx->tcs_tess_lvl_out_loc = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_OUTER) * 16u;

@@ -4224,10 +4224,12 @@ std::pair<Temp, unsigned> get_tcs_per_patch_output_vmem_offset(isel_context *ctx
 
 bool tcs_driver_location_matches_api_mask(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex, uint64_t mask, bool *indirect)
 {
+   assert(per_vertex || ctx->shader->info.stage == MESA_SHADER_TESS_CTRL);
+
    if (mask == 0)
       return false;
 
-   unsigned off = nir_intrinsic_base(instr) * 4u;
+   unsigned drv_loc = nir_intrinsic_base(instr);
    nir_src *off_src = nir_get_io_offset_src(instr);
 
    if (!nir_src_is_const(*off_src)) {
@@ -4236,15 +4238,10 @@ bool tcs_driver_location_matches_api_mask(isel_context *ctx, nir_intrinsic_instr
    }
 
    *indirect = false;
-   off += nir_src_as_uint(*off_src) * 16u;
-
-   while (mask) {
-      unsigned slot = u_bit_scan64(&mask) + (per_vertex ? 0 : VARYING_SLOT_PATCH0);
-      if (off == shader_io_get_unique_index((gl_varying_slot) slot) * 16u)
-         return true;
-   }
-
-   return false;
+   uint64_t slot = per_vertex
+                   ? ctx->output_drv_loc_to_var_slot[ctx->shader->info.stage][drv_loc / 4]
+                   : (ctx->output_tcs_patch_drv_loc_to_var_slot[drv_loc / 4] - VARYING_SLOT_PATCH0);
+   return (((uint64_t) 1) << slot) & mask;
 }
 
 bool store_output_to_temps(isel_context *ctx, nir_intrinsic_instr *instr)
