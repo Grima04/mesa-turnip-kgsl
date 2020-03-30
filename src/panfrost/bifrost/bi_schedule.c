@@ -71,6 +71,24 @@ bi_clause_type_for_ins(bi_instruction *ins)
         }
 }
 
+/* There is an encoding restriction against FMA fp16 add/min/max
+ * having both sources with abs(..) with a duplicated source. This is
+ * due to the packing being order-sensitive, so the ports must end up distinct
+ * to handle both having abs(..). The swizzle doesn't matter here. Note
+ * BIR_INDEX_REGISTER generally should not be used pre-schedule (TODO: enforce
+ * this).
+ */
+
+static bool
+bi_ambiguous_abs(bi_instruction *ins)
+{
+        bool classy = bi_class_props[ins->type] & BI_NO_ABS_ABS_FP16_FMA;
+        bool typey = ins->dest_type == nir_type_float16;
+        bool absy = ins->src_abs[0] && ins->src_abs[1];
+
+        return classy && typey && absy;
+}
+
 /* Eventually, we'll need a proper scheduling, grouping instructions
  * into clauses and ordering/assigning grouped instructions to the
  * appropriate FMA/ADD slots. Right now we do the dumbest possible
@@ -95,7 +113,16 @@ bi_schedule(bi_context *ctx)
                         bi_clause *u = rzalloc(ctx, bi_clause);
                         u->bundle_count = 1;
 
-                        if (props & BI_SCHED_FMA)
+                        /* Check for scheduling restrictions */
+
+                        bool can_fma = props & BI_SCHED_FMA;
+                        bool can_add = props & BI_SCHED_ADD;
+
+                        can_fma &= !bi_ambiguous_abs(ins);
+
+                        assert(can_fma || can_add);
+
+                        if (can_fma)
                                 u->bundles[0].fma = ins;
                         else
                                 u->bundles[0].add = ins;

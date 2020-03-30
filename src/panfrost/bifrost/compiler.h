@@ -121,6 +121,9 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 #define BI_DATA_REG_SRC (1 << 9)
 #define BI_DATA_REG_DEST (1 << 10)
 
+/* Quirk: cannot encode multiple abs on FMA in fp16 mode */
+#define BI_NO_ABS_ABS_FP16_FMA (1 << 11)
+
 /* It can't get any worse than csel4... can it? */
 #define BIR_SRC_COUNT 4
 

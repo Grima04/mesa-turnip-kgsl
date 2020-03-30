@@ -27,7 +27,7 @@
 #include "compiler.h"
 
 unsigned bi_class_props[BI_NUM_CLASSES] = {
-        [BI_ADD] 		= BI_GENERIC | BI_MODS | BI_SCHED_ALL,
+        [BI_ADD] 		= BI_GENERIC | BI_MODS | BI_SCHED_ALL | BI_NO_ABS_ABS_FP16_FMA,
         [BI_ATEST] 		= BI_SCHED_HI_LATENCY | BI_SCHED_ADD,
         [BI_BRANCH] 		= BI_SCHED_HI_LATENCY | BI_SCHED_ADD,
         [BI_CMP] 		= BI_GENERIC | BI_MODS | BI_SCHED_ALL,
@@ -45,7 +45,7 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_LOAD_ATTR] 		= BI_SCHED_HI_LATENCY | BI_SCHED_ADD | BI_VECTOR | BI_DATA_REG_DEST,
         [BI_LOAD_VAR] 		= BI_SCHED_HI_LATENCY | BI_SCHED_ADD | BI_VECTOR | BI_DATA_REG_DEST,
         [BI_LOAD_VAR_ADDRESS] 	= BI_SCHED_HI_LATENCY | BI_SCHED_ADD | BI_DATA_REG_DEST,
-        [BI_MINMAX] 		= BI_GENERIC | BI_SCHED_ALL,
+        [BI_MINMAX] 		= BI_GENERIC | BI_SCHED_ALL | BI_NO_ABS_ABS_FP16_FMA,
         [BI_MOV] 		= BI_SCHED_ALL,
         [BI_FMOV]               = BI_MODS | BI_SCHED_ALL,
         [BI_SHIFT] 		= BI_SCHED_ALL,
