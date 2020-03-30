@@ -3553,10 +3553,30 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
                                  w + 5, count - 5);
       break;
 
-   case SpvOpCopyLogical:
    case SpvOpCopyObject:
-      ssa = vtn_composite_copy(b, vtn_ssa_value(b, w[3]));
-      break;
+   case SpvOpCopyLogical: {
+      struct vtn_value *src = vtn_untyped_value(b, w[3]);
+      struct vtn_value *dst = vtn_push_value(b, w[2], src->value_type);
+      if (opcode == SpvOpCopyObject) {
+         vtn_fail_if(dst->type->id != src->type->id,
+                     "Result Type of OpCopyObject must equal Operand type");
+      } else {
+         assert(opcode == SpvOpCopyLogical);
+         /* The logical type matching rules should guarantee we have exactly
+          * the same GLSL type which means that, if it's an SSA value, we
+          * don't actually need to clone it; we can just copy it blind.
+          */
+         vtn_fail_if(dst->type->type != src->type->type,
+                     "Result Type of OpCopyLogical must logically match "
+                     "the Operand type");
+      }
+      struct vtn_value src_copy = *src;
+      src_copy.name = dst->name;
+      src_copy.decoration = dst->decoration;
+      src_copy.type = dst->type;
+      *dst = src_copy;
+      return;
+   }
 
    default:
       vtn_fail_with_opcode("unknown composite operation", opcode);
