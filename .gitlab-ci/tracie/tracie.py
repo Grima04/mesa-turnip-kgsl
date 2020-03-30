@@ -8,6 +8,7 @@ import sys
 import tempfile
 import time
 import yaml
+import shutil
 
 from pathlib import Path
 from PIL import Image
@@ -128,9 +129,9 @@ def check_trace(repo_url, repo_commit, device_name, trace, expectation):
     trace_dir = os.path.split(trace['path'])[0]
     results_path = os.path.join(RESULTS_PATH, trace_dir, "test", device_name)
     os.makedirs(results_path, exist_ok=True)
-    os.rename(log_file, os.path.join(results_path, os.path.split(log_file)[1]))
+    shutil.move(log_file, os.path.join(results_path, os.path.split(log_file)[1]))
     if not ok or os.environ.get('TRACIE_STORE_IMAGES', '0') == '1':
-            os.rename(image_file, os.path.join(results_path, os.path.split(image_file)[1]))
+            shutil.move(image_file, os.path.join(results_path, os.path.split(image_file)[1]))
 
     return ok
 
