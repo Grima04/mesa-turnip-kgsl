@@ -3809,6 +3809,15 @@ void nir_assign_io_var_locations(struct exec_list *var_list,
                                  unsigned *size,
                                  gl_shader_stage stage);
 
+typedef struct {
+   uint8_t num_linked_io_vars;
+   uint8_t num_linked_patch_io_vars;
+} nir_linked_io_var_info;
+
+nir_linked_io_var_info
+nir_assign_linked_io_var_locations(nir_shader *producer,
+                                   nir_shader *consumer);
+
 typedef enum {
    /* If set, this causes all 64-bit IO operations to be lowered on-the-fly
     * to 32-bit operations.  This is only valid for nir_var_shader_in/out
