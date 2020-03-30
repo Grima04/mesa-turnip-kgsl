@@ -1118,7 +1118,7 @@ iris_compile_vs(struct iris_context *ice,
    }
 
    uint32_t *so_decls =
-      ice->vtbl.create_so_decl_list(&ish->stream_output,
+      screen->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
 
    struct iris_compiled_shader *shader =
@@ -1140,12 +1140,13 @@ iris_compile_vs(struct iris_context *ice,
 static void
 iris_update_compiled_vs(struct iris_context *ice)
 {
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_VERTEX];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_VERTEX];
 
    struct iris_vs_prog_key key = { KEY_ID(vue.base) };
-   ice->vtbl.populate_vs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
+   screen->vtbl.populate_vs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_VS];
    struct iris_compiled_shader *shader =
@@ -1366,7 +1367,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
    };
    get_unified_tess_slots(ice, &key.outputs_written,
                           &key.patch_outputs_written);
-   ice->vtbl.populate_tcs_key(ice, &key);
+   screen->vtbl.populate_tcs_key(ice, &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_TCS];
    struct iris_compiled_shader *shader =
@@ -1451,7 +1452,7 @@ iris_compile_tes(struct iris_context *ice,
    }
 
    uint32_t *so_decls =
-      ice->vtbl.create_so_decl_list(&ish->stream_output,
+      screen->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
 
 
@@ -1474,13 +1475,14 @@ iris_compile_tes(struct iris_context *ice,
 static void
 iris_update_compiled_tes(struct iris_context *ice)
 {
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_EVAL];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
 
    struct iris_tes_prog_key key = { KEY_ID(vue.base) };
    get_unified_tess_slots(ice, &key.inputs_read, &key.patch_inputs_read);
-   ice->vtbl.populate_tes_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
+   screen->vtbl.populate_tes_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_TES];
    struct iris_compiled_shader *shader =
@@ -1572,7 +1574,7 @@ iris_compile_gs(struct iris_context *ice,
    }
 
    uint32_t *so_decls =
-      ice->vtbl.create_so_decl_list(&ish->stream_output,
+      screen->vtbl.create_so_decl_list(&ish->stream_output,
                                     &vue_prog_data->vue_map);
 
    struct iris_compiled_shader *shader =
@@ -1599,10 +1601,11 @@ iris_update_compiled_gs(struct iris_context *ice)
       ice->shaders.uncompiled[MESA_SHADER_GEOMETRY];
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_GS];
    struct iris_compiled_shader *shader = NULL;
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
 
    if (ish) {
       struct iris_gs_prog_key key = { KEY_ID(vue.base) };
-      ice->vtbl.populate_gs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
+      screen->vtbl.populate_gs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
       shader =
          iris_find_cached_shader(ice, IRIS_CACHE_GS, sizeof(key), &key);
@@ -1712,7 +1715,8 @@ iris_update_compiled_fs(struct iris_context *ice)
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
    struct iris_fs_prog_key key = { KEY_ID(base) };
-   ice->vtbl.populate_fs_key(ice, &ish->nir->info, &key);
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   screen->vtbl.populate_fs_key(ice, &ish->nir->info, &key);
 
    if (ish->nos & (1ull << IRIS_NOS_LAST_VUE_MAP))
       key.input_slots_valid = ice->shaders.last_vue_map->slots_valid;
@@ -1987,7 +1991,8 @@ iris_update_compiled_cs(struct iris_context *ice)
       ice->shaders.uncompiled[MESA_SHADER_COMPUTE];
 
    struct iris_cs_prog_key key = { KEY_ID(base) };
-   ice->vtbl.populate_cs_key(ice, &key);
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   screen->vtbl.populate_cs_key(ice, &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_CS];
    struct iris_compiled_shader *shader =

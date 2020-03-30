@@ -219,7 +219,7 @@ fast_clear_color(struct iris_context *ice,
        * is not something that should happen often, we stall on the CPU here
        * to resolve the predication, and then proceed.
        */
-      ice->vtbl.resolve_conditional_render(ice);
+      batch->screen->vtbl.resolve_conditional_render(ice);
       if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
          return;
 
@@ -305,7 +305,7 @@ fast_clear_color(struct iris_context *ice,
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, blorp_flags);
 
    struct blorp_surf surf;
-   iris_blorp_surf_for_resource(&ice->vtbl, &batch->screen->isl_dev, &surf,
+   iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
                                 p_res, res->aux.usage, level, true);
 
    /* In newer gens (> 9), the hardware will do a linear -> sRGB conversion of
@@ -376,7 +376,7 @@ clear_color(struct iris_context *ice,
                                 box->z, box->depth, aux_usage);
 
    struct blorp_surf surf;
-   iris_blorp_surf_for_resource(&ice->vtbl, &batch->screen->isl_dev, &surf,
+   iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
                                 p_res, aux_usage, level, true);
 
    struct blorp_batch blorp_batch;
@@ -475,7 +475,7 @@ fast_clear_depth(struct iris_context *ice,
        * even more complex, so the easiest thing to do when the fast clear
        * depth is changing is to stall on the CPU and resolve the predication.
        */
-      ice->vtbl.resolve_conditional_render(ice);
+      batch->screen->vtbl.resolve_conditional_render(ice);
       if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
          return;
 
@@ -588,7 +588,7 @@ clear_depth_stencil(struct iris_context *ice,
 
    if (clear_depth && z_res) {
       iris_resource_prepare_depth(ice, batch, z_res, level, box->z, box->depth);
-      iris_blorp_surf_for_resource(&ice->vtbl, &batch->screen->isl_dev,
+      iris_blorp_surf_for_resource(&batch->screen->isl_dev,
                                    &z_surf, &z_res->base, z_res->aux.usage,
                                    level, true);
    }
@@ -600,7 +600,7 @@ clear_depth_stencil(struct iris_context *ice,
    if (stencil_mask) {
       iris_resource_prepare_access(ice, batch, stencil_res, level, 1, box->z,
                                    box->depth, stencil_res->aux.usage, false);
-      iris_blorp_surf_for_resource(&ice->vtbl, &batch->screen->isl_dev,
+      iris_blorp_surf_for_resource(&batch->screen->isl_dev,
                                    &stencil_surf, &stencil_res->base,
                                    stencil_res->aux.usage, level, true);
    }

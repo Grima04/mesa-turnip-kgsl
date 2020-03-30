@@ -150,9 +150,10 @@ iris_upload_shader(struct iris_context *ice,
                    const struct iris_binding_table *bt)
 {
    struct hash_table *cache = ice->shaders.cache;
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
    struct iris_compiled_shader *shader =
       rzalloc_size(cache, sizeof(struct iris_compiled_shader) +
-                   ice->vtbl.derived_program_state_size(cache_id));
+                   screen->vtbl.derived_program_state_size(cache_id));
    const struct iris_compiled_shader *existing =
       find_existing_assembly(cache, assembly, prog_data->program_size);
 
@@ -188,7 +189,7 @@ iris_upload_shader(struct iris_context *ice,
    ralloc_steal(shader, shader->system_values);
 
    /* Store the 3DSTATE shader packets and other derived state. */
-   ice->vtbl.store_derived_program_state(ice, cache_id, shader);
+   screen->vtbl.store_derived_program_state(ice, cache_id, shader);
 
    struct keybox *keybox = make_keybox(shader, cache_id, key, key_size);
    _mesa_hash_table_insert(ice->shaders.cache, keybox, shader);

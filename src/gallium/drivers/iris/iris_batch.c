@@ -169,7 +169,6 @@ decode_batch(struct iris_batch *batch)
 void
 iris_init_batch(struct iris_batch *batch,
                 struct iris_screen *screen,
-                struct iris_vtable *vtbl,
                 struct pipe_debug_callback *dbg,
                 struct pipe_device_reset_callback *reset,
                 struct hash_table_u64 *state_sizes,
@@ -178,7 +177,6 @@ iris_init_batch(struct iris_batch *batch,
                 int priority)
 {
    batch->screen = screen;
-   batch->vtbl = vtbl;
    batch->dbg = dbg;
    batch->reset = reset;
    batch->state_sizes = state_sizes;
