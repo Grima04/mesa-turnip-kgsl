@@ -1055,6 +1055,22 @@ nir_op_vec(unsigned components)
 }
 
 static inline bool
+nir_op_is_vec(nir_op op)
+{
+   switch (op) {
+   case nir_op_mov:
+   case nir_op_vec2:
+   case nir_op_vec3:
+   case nir_op_vec4:
+   case nir_op_vec8:
+   case nir_op_vec16:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline bool
 nir_is_float_control_signed_zero_inf_nan_preserve(unsigned execution_mode, unsigned bit_size)
 {
     return (16 == bit_size && execution_mode & FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP16) ||
