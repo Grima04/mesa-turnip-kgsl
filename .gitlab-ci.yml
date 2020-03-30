@@ -259,6 +259,7 @@ windows_build_vs2019:
     - windows
     - docker
     - "1809"
+    - mesa
   cache:
     key: ${CI_JOB_NAME}
     paths:
@@ -426,7 +427,7 @@ meson-clang:
     CC: "ccache clang-9"
     CXX: "ccache clang++-9"
 
-.meson-windows-vs2019:
+meson-windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
