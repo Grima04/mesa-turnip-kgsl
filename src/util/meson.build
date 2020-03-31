@@ -224,6 +224,8 @@ idep_xmlconfig = declare_dependency(
   link_with : _libxmlconfig,
 )
 
+files_xxd = files('xxd.py')
+
 if with_tests
   # DRI_CONF macros use designated initializers (required for union
   # initializaiton), so we need c++2a since gtest forces us to use c++
