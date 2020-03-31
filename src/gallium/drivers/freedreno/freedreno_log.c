@@ -54,8 +54,10 @@
  * for profiling at that level.
  */
 
-const unsigned bo_size = 0x1000;
-const unsigned msgs_per_chunk = bo_size / sizeof(uint64_t);
+enum {
+	bo_size = 0x1000,
+	msgs_per_chunk = bo_size / sizeof(uint64_t),
+};
 
 struct fd_log_chunk {
 	struct list_head node;
