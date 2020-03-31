@@ -81,6 +81,14 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 	if (pCreateInfo->mipLevels > 1)
 		return false;
 
+	/* Do not enable TC-compatible HTILE if the image isn't readable by a
+	 * shader because no texture fetches will happen.
+	 */
+	if (!(pCreateInfo->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+				    VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+				    VK_IMAGE_USAGE_TRANSFER_SRC_BIT)))
+		return false;
+
 	/* FIXME: for some reason TC compat with 2/4/8 samples breaks some cts
 	 * tests - disable for now. On GFX10 D32_SFLOAT is affected as well.
 	 */
