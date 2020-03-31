@@ -48,6 +48,7 @@ static void
 lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
 {
    const nir_op op = alu->op;
+   unsigned dst_bit_size = alu->dest.dest.ssa.bit_size;
 
    bld->cursor = nir_before_instr(&alu->instr);
 
@@ -58,9 +59,14 @@ lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
 
       nir_alu_type type = nir_op_infos[op].input_types[i];
       if (nir_alu_type_get_type_size(type) == 0)
-         srcs[i] = convert_to_bit_size(bld, src, type, bit_size);
-      else
-         srcs[i] = src;
+         src = convert_to_bit_size(bld, src, type, bit_size);
+
+      if (i == 1 && (op == nir_op_ishl || op == nir_op_ishr || op == nir_op_ushr)) {
+         assert(util_is_power_of_two_nonzero(dst_bit_size));
+         src = nir_iand(bld, src, nir_imm_int(bld, dst_bit_size - 1));
+      }
+
+      srcs[i] = src;
    }
 
    /* Emit the lowered ALU instruction */
@@ -68,7 +74,6 @@ lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
       nir_build_alu(bld, op, srcs[0], srcs[1], srcs[2], srcs[3]);
 
    /* Convert result back to the original bit-size */
-   unsigned dst_bit_size = alu->dest.dest.ssa.bit_size;
    nir_alu_type type = nir_op_infos[op].output_type;
    nir_ssa_def *dst = convert_to_bit_size(bld, lowered_dst, type, dst_bit_size);
    nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(dst));
