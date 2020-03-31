@@ -217,6 +217,12 @@ struct v3dv_queue {
 
 void v3dv_queue_destroy_completed_noop_jobs(struct v3dv_queue *queue);
 
+
+struct v3dv_meta_color_clear_pipeline {
+   VkPipeline pipeline;
+   VkRenderPass pass;
+};
+
 struct v3dv_device {
    VK_LOADER_DATA _loader_data;
 
@@ -239,10 +245,10 @@ struct v3dv_device {
 
    /* Resources used for meta operations */
    struct {
+      mtx_t mtx;
       struct {
          VkPipelineLayout playout;
-         VkPipeline pipeline;
-         VkRenderPass pass;
+         struct hash_table *cache; /* v3dv_meta_color_clear_pipeline */
       } color_clear;
    } meta;
 };

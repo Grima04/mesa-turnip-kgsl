@@ -258,7 +258,7 @@ create_color_clear_pipeline(struct v3dv_device *device,
                             uint32_t rt_idx,
                             uint32_t samples,
                             VkRenderPass _pass,
-                            VkPipelineLayout *pipeline_layout,
+                            VkPipelineLayout pipeline_layout,
                             VkPipeline *pipeline)
 {
    /* For now we only support clearing a framebuffer with a single attachment */
@@ -305,10 +305,6 @@ create_color_clear_pipeline(struct v3dv_device *device,
       .pAttachments = blend_att_state
    };
 
-   VkResult result = create_color_clear_pipeline_layout(device, pipeline_layout);
-   if (result != VK_SUCCESS)
-      return result;
-
    return create_pipeline(device,
                           pass,
                           samples,
@@ -316,7 +312,7 @@ create_color_clear_pipeline(struct v3dv_device *device,
                           &vi_state,
                           &ds_state,
                           &cb_state,
-                          *pipeline_layout,
+                          pipeline_layout,
                           pipeline);
 }
 
@@ -365,36 +361,76 @@ create_color_clear_render_pass(struct v3dv_device *device,
                                 &info, &device->alloc, pass);
 }
 
-static VkResult
-ensure_color_clear_pipeline(struct v3dv_device *device,
-                            VkFormat format,
-                            uint32_t samples)
+static inline uint64_t
+get_color_clear_pipeline_cache_key(VkFormat format, uint32_t samples)
 {
-   /* FIXME: we need a pipeline per [format, samples], right now this
-    * only works for the first combination we need.
-    */
+   return ((uint64_t) samples) << 32 | format;
+}
+
+static VkResult
+get_color_clear_pipeline(struct v3dv_device *device,
+                         VkFormat format,
+                         uint32_t samples,
+                         struct v3dv_meta_color_clear_pipeline **pipeline)
+{
    VkResult result = VK_SUCCESS;
-   if (device->meta.color_clear.pipeline)
+
+   mtx_lock(&device->meta.mtx);
+   if (!device->meta.color_clear.playout) {
+      result =
+         create_color_clear_pipeline_layout(device,
+                                            &device->meta.color_clear.playout);
+   }
+   mtx_unlock(&device->meta.mtx);
+   if (result != VK_SUCCESS)
       return result;
 
-   if (!device->meta.color_clear.pass) {
-      result =
-         create_color_clear_render_pass(device,
-                                        format,
-                                        samples,
-                                        &device->meta.color_clear.pass);
-      if (result != VK_SUCCESS)
-         return result;
+   uint64_t key = get_color_clear_pipeline_cache_key(format, samples);
+   mtx_lock(&device->meta.mtx);
+   struct hash_entry *entry =
+      _mesa_hash_table_search(device->meta.color_clear.cache, &key);
+   if (entry) {
+      mtx_unlock(&device->meta.mtx);
+      *pipeline = entry->data;
+      return VK_SUCCESS;
    }
 
-   if (!device->meta.color_clear.pipeline) {
-      result =
-         create_color_clear_pipeline(device, 0 /* rt_idx*/, samples,
-                                     device->meta.color_clear.pass,
-                                     &device->meta.color_clear.playout,
-                                     &device->meta.color_clear.pipeline);
-      if (result != VK_SUCCESS)
-         return result;
+   *pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(**pipeline), 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (*pipeline == NULL)
+      goto fail;
+
+   result = create_color_clear_render_pass(device,
+                                           format,
+                                           samples,
+                                           &(*pipeline)->pass);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   result = create_color_clear_pipeline(device, 0 /* rt_idx*/, samples,
+                                        (*pipeline)->pass,
+                                        device->meta.color_clear.playout,
+                                        &(*pipeline)->pipeline);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   _mesa_hash_table_insert(device->meta.color_clear.cache, &key, *pipeline);
+
+   mtx_unlock(&device->meta.mtx);
+   return VK_SUCCESS;
+
+fail:
+   mtx_unlock(&device->meta.mtx);
+
+   VkDevice _device = v3dv_device_to_handle(device);
+   if (*pipeline) {
+      if ((*pipeline)->pass)
+         v3dv_DestroyRenderPass(_device, (*pipeline)->pass, &device->alloc);
+      if ((*pipeline)->pipeline)
+         v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->alloc);
+      vk_free(&device->alloc, *pipeline);
+      *pipeline = NULL;
    }
 
    return result;
@@ -444,8 +480,12 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
    if (vk_format_is_depth_or_stencil(rt_format))
       rt_format = get_color_format_for_depth_stencil_format(rt_format);
 
-   if (ensure_color_clear_pipeline(device, rt_format, rt_samples) != VK_SUCCESS)
+   struct v3dv_meta_color_clear_pipeline *pipeline = NULL;
+   VkResult result =
+      get_color_clear_pipeline(device, rt_format, rt_samples, &pipeline);
+   if (result != VK_SUCCESS)
       return;
+   assert(pipeline && pipeline->pipeline && pipeline->pass);
 
    /* Store command buffer state for the current subpass before we interrupt
     * it to emit the color clear pass and then finish the job for the
@@ -508,7 +548,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
 
       VkRenderPassBeginInfo rp_info = {
          .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-         .renderPass = device->meta.color_clear.pass,
+         .renderPass = pipeline->pass,
          .framebuffer = fb,
          .renderArea = { .offset = { 0, 0 },
                          .extent = { fb_info.width, fb_info.height } },
@@ -532,7 +572,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
 
       v3dv_CmdBindPipeline(cmd_buffer_handle,
                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                           device->meta.color_clear.pipeline);
+                           pipeline->pipeline);
 
       const VkViewport viewport = {
          .x = rect->rect.offset.x,
