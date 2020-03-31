@@ -106,7 +106,7 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
                shader->info.inputs_read_indirectly |= bitfield;
          }
 
-         if (cross_invocation)
+         if (cross_invocation && shader->info.stage == MESA_SHADER_TESS_CTRL)
             shader->info.tess.tcs_cross_invocation_inputs_read |= bitfield;
 
          if (shader->info.stage == MESA_SHADER_FRAGMENT) {
@@ -125,7 +125,7 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
                   shader->info.outputs_accessed_indirectly |= bitfield;
             }
 
-            if (cross_invocation)
+            if (cross_invocation && shader->info.stage == MESA_SHADER_TESS_CTRL)
                shader->info.tess.tcs_cross_invocation_outputs_read |= bitfield;
          } else {
             if (is_patch_generic) {
