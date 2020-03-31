@@ -78,7 +78,7 @@ compile_shader(char **argv, bool vertex_only)
 }
 
 static void
-disassemble(const char *filename)
+disassemble(const char *filename, bool verbose)
 {
         FILE *fp = fopen(filename, "rb");
         assert(fp);
@@ -94,7 +94,7 @@ disassemble(const char *filename)
         }
         fclose(fp);
 
-        disassemble_bifrost(stdout, code, filesize, false);
+        disassemble_bifrost(stdout, code, filesize, verbose);
         free(code);
 }
 
@@ -166,7 +166,9 @@ main(int argc, char **argv)
         if (strcmp(argv[1], "compile") == 0)
                 compile_shader(&argv[2], false);
         else if (strcmp(argv[1], "disasm") == 0)
-                disassemble(argv[2]);
+                disassemble(argv[2], false);
+        else if (strcmp(argv[1], "disasm-verbose") == 0)
+                disassemble(argv[2], true);
         else if (strcmp(argv[1], "test-vertex") == 0)
                 test_vertex(&argv[2]);
         else if (strcmp(argv[1], "run") == 0)
