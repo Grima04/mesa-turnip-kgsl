@@ -70,8 +70,18 @@ lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
    }
 
    /* Emit the lowered ALU instruction */
-   nir_ssa_def *lowered_dst =
-      nir_build_alu(bld, op, srcs[0], srcs[1], srcs[2], srcs[3]);
+   nir_ssa_def *lowered_dst = NULL;
+   if (op == nir_op_imul_high || op == nir_op_umul_high) {
+      assert(dst_bit_size * 2 <= bit_size);
+      nir_ssa_def *lowered_dst = nir_imul(bld, srcs[0], srcs[1]);
+      if (nir_op_infos[op].output_type & nir_type_uint)
+         lowered_dst = nir_ushr(bld, lowered_dst, nir_imm_int(bld, dst_bit_size));
+      else
+         lowered_dst = nir_ishr(bld, lowered_dst, nir_imm_int(bld, dst_bit_size));
+   } else {
+      lowered_dst = nir_build_alu(bld, op, srcs[0], srcs[1], srcs[2], srcs[3]);
+   }
+
 
    /* Convert result back to the original bit-size */
    nir_alu_type type = nir_op_infos[op].output_type;
