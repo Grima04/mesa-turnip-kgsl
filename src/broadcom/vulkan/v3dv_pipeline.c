@@ -1577,13 +1577,13 @@ pack_blend(struct v3dv_pipeline *pipeline,
    if (pipeline->subpass->color_count == 0)
       return;
 
+   assert(pipeline->subpass->color_count == cb_info->attachmentCount);
+
    pipeline->blend.needs_color_constants = false;
    uint32_t color_write_masks = 0;
-   for (uint32_t i = 0; i < cb_info->attachmentCount; i++) {
+   for (uint32_t i = 0; i < pipeline->subpass->color_count; i++) {
       const VkPipelineColorBlendAttachmentState *b_state =
          &cb_info->pAttachments[i];
-
-      assert(i < pipeline->subpass->color_count);
 
       uint32_t attachment_idx =
          pipeline->subpass->color_attachments[i].attachment;
