@@ -61,7 +61,7 @@ static bool
 bit_submit(struct panfrost_device *dev,
                 enum mali_job_type T,
                 void *payload, size_t payload_size,
-                struct panfrost_bo **bos, size_t bo_count, bool trace)
+                struct panfrost_bo **bos, size_t bo_count, enum bit_debug debug)
 {
         struct mali_job_descriptor_header header = {
                 .job_descriptor_size = MALI_JOB_64,
@@ -96,7 +96,7 @@ bit_submit(struct panfrost_device *dev,
         free(bo_handles);
 
         drmSyncobjWait(dev->fd, &syncobj, 1, INT64_MAX, 0, NULL);
-        if (trace)
+        if (debug >= BIT_DEBUG_ALL)
                 pandecode_jc(submit.jc, true, dev->gpu_id, false);
         return true;
 }
@@ -126,7 +126,10 @@ bit_sanity_check(struct panfrost_device *dev)
 /* Constructs a vertex job */
 
 bool
-bit_vertex(struct panfrost_device *dev, panfrost_program prog)
+bit_vertex(struct panfrost_device *dev, panfrost_program prog,
+                uint32_t *iubo, size_t sz_ubo,
+                uint32_t *iattr, size_t sz_attr,
+                uint32_t *expected, size_t sz_expected, enum bit_debug debug)
 {
 
         struct panfrost_bo *scratchpad = bit_bo_create(dev, 4096);
@@ -155,12 +158,17 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog)
 
         memcpy(ubo->cpu, &my_ubo, sizeof(my_ubo));
         memcpy(var->cpu, &vmeta, sizeof(vmeta));
+
+        vmeta.unknown1 = 0x2; /* XXX: only attrib? */
         memcpy(attr->cpu, &vmeta, sizeof(vmeta));
         memcpy(var->cpu + 256, &vary, sizeof(vary));
         memcpy(attr->cpu + 256, &attr_, sizeof(vary));
 
-        float *fvaryings = (float *) (var->cpu + 1024);
-        float *fubo = (float *) (ubo->cpu + 1024);
+        if (sz_ubo)
+                memcpy(ubo->cpu + 1024, iubo, sz_ubo);
+
+        if (sz_attr)
+                memcpy(attr->cpu + 1024, iattr, sz_attr);
 
         struct panfrost_bo *shmem = bit_bo_create(dev, 4096);
         struct mali_shared_memory shmemp = {
@@ -176,11 +184,12 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog)
                 .varying_count = 1,
                 .bifrost1 = {
                         .unk1 = 0x800200,
+                        .uniform_buffer_count = 1,
                 },
                 .bifrost2 = {
                         .unk3 = 0x0,
                         .preload_regs = 0xc0,
-                        .uniform_count = 0,
+                        .uniform_count = sz_ubo / 16,
                         .unk4 = 0x0,
                 },
         };
@@ -200,7 +209,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog)
                         .uniforms = ubo->gpu + 1024,
                         .uniform_buffers = ubo->gpu,
                         .attribute_meta = attr->gpu,
-                        .attributes = var->gpu + 256,
+                        .attributes = attr->gpu + 256,
                         .varying_meta = var->gpu,
                         .varyings = var->gpu + 256,
                 },
@@ -217,6 +226,33 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog)
                 scratchpad, shmem, shader, shader_desc, ubo, var, attr
         };
 
-        return bit_submit(dev, JOB_TYPE_VERTEX, &payload,
-                        sizeof(payload), bos, ARRAY_SIZE(bos), true);
+        bool succ = bit_submit(dev, JOB_TYPE_VERTEX, &payload,
+                        sizeof(payload), bos, ARRAY_SIZE(bos), debug);
+
+        /* Check the output varyings */
+
+        if (sz_expected) {
+                uint32_t *output = (uint32_t *) (var->cpu + 1024);
+                float *foutput = (float *) output;
+                float *fexpected = (float *) expected;
+
+                unsigned comp = memcmp(output, expected, sz_expected);
+                succ &= (comp == 0);
+
+                if (comp && (debug >= BIT_DEBUG_FAIL)) {
+                        fprintf(stderr, "expected [");
+
+                        for (unsigned i = 0; i < (sz_expected >> 2); ++i)
+                                fprintf(stderr, "%08X /* %f */ ", expected[i], fexpected[i]);
+
+                        fprintf(stderr, "], got [");
+
+                        for (unsigned i = 0; i < (sz_expected >> 2); ++i)
+                                fprintf(stderr, "%08X /* %f */ ", output[i], foutput[i]);
+
+                        fprintf(stderr, "\n");
+                }
+        }
+
+        return succ;
 }

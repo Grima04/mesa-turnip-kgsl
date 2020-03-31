@@ -103,7 +103,24 @@ test_vertex(char **argv)
 {
         void *memctx = NULL; /* TODO */
         struct panfrost_device *dev = bit_initialize(memctx);
-        bit_vertex(dev, compile_shader(argv, true));
+
+        float iubo[] = {
+                0.1, 0.2, 0.3, 0.4
+        };
+
+        float iattr[] = {
+                0.5, 0.6, 0.7, 0.8
+        };
+
+        float expected[] = {
+                0.6, 0.8, 1.0, 1.2
+        };
+
+        bit_vertex(dev, compile_shader(argv, true),
+                        (uint32_t *) iubo, sizeof(iubo),
+                        (uint32_t *) iattr, sizeof(iattr),
+                        (uint32_t *) expected, sizeof(expected),
+                        BIT_DEBUG_ALL);
 }
 
 static void
@@ -133,7 +150,7 @@ run(const char *filename)
                 },
         };
 
-        bit_vertex(dev, prog);
+        bit_vertex(dev, prog, NULL, 0, NULL, 0, NULL, 0, BIT_DEBUG_FAIL);
 
         free(code);
 }
