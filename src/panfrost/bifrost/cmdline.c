@@ -106,6 +106,38 @@ test_vertex(char **argv)
         bit_vertex(dev, compile_shader(argv, true));
 }
 
+static void
+run(const char *filename)
+{
+        FILE *fp = fopen(filename, "rb");
+        assert(fp);
+
+        fseek(fp, 0, SEEK_END);
+        unsigned filesize = ftell(fp);
+        rewind(fp);
+
+        unsigned char *code = malloc(filesize);
+        unsigned res = fread(code, 1, filesize, fp);
+        if (res != filesize) {
+                printf("Couldn't read full file\n");
+        }
+        fclose(fp);
+
+        void *memctx = NULL; /* TODO */
+        struct panfrost_device *dev = bit_initialize(memctx);
+
+        panfrost_program prog = {
+                .compiled = {
+                        .data = code,
+                        .size = filesize
+                },
+        };
+
+        bit_vertex(dev, prog);
+
+        free(code);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -120,6 +152,8 @@ main(int argc, char **argv)
                 disassemble(argv[2]);
         else if (strcmp(argv[1], "test-vertex") == 0)
                 test_vertex(&argv[2]);
+        else if (strcmp(argv[1], "run") == 0)
+                run(argv[2]);
         else
                 unreachable("Unknown command. Valid: compile/disasm");
 
