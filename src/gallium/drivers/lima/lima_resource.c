@@ -389,6 +389,7 @@ lima_resource_get_handle(struct pipe_screen *pscreen,
    if (!lima_bo_export(res->bo, handle))
       return false;
 
+   handle->offset = res->levels[0].offset;
    handle->stride = res->levels[0].stride;
    return true;
 }
