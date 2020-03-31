@@ -320,6 +320,9 @@ emit_load_const(bi_context *ctx, nir_load_const_instr *instr)
                 .src = {
                         BIR_INDEX_CONSTANT
                 },
+                .src_types = {
+                        instr->def.bit_size | nir_type_uint,
+                },
                 .constant = {
                         .u64 = nir_const_value_as_uint(instr->value[0], instr->def.bit_size)
                 }
@@ -559,6 +562,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         unsigned dest_bits = nir_dest_bit_size(instr->dest.dest);
         unsigned constants_left = (64 / dest_bits);
         unsigned constant_shift = 0;
+
+        if (alu.type == BI_COMBINE)
+                constants_left = 0;
 
         /* Copy sources */
 
