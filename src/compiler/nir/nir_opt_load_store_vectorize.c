@@ -793,7 +793,7 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
       b->cursor = nir_before_instr(first->instr);
 
       nir_ssa_def *new_base = first->intrin->src[info->base_src].ssa;
-      new_base = nir_iadd(b, new_base, nir_imm_int(b, -(high_start / 8u)));
+      new_base = nir_iadd_imm(b, new_base, -(int)(high_start / 8u));
 
       nir_instr_rewrite_src(first->instr, &first->intrin->src[info->base_src],
                             nir_src_for_ssa(new_base));
