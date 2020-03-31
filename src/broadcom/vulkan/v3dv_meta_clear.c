@@ -26,6 +26,7 @@
 #include "broadcom/cle/v3dx_pack.h"
 #include "compiler/nir/nir_builder.h"
 #include "vk_format_info.h"
+#include "util/u_pack_color.h"
 
 static nir_ssa_def *
 gen_rect_vertices(nir_builder *b)
@@ -399,6 +400,22 @@ ensure_color_clear_pipeline(struct v3dv_device *device,
    return result;
 }
 
+static VkFormat
+get_color_format_for_depth_stencil_format(VkFormat format)
+{
+   switch (format) {
+   case VK_FORMAT_D16_UNORM:
+      return VK_FORMAT_R16_UINT;
+   case VK_FORMAT_D32_SFLOAT:
+      return VK_FORMAT_R32_SFLOAT;
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      return VK_FORMAT_R32_UINT;
+   default:
+      unreachable("Unsupported depth/stencil format");
+   };
+}
+
 static void
 emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
                       uint32_t rt_idx,
@@ -411,12 +428,21 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_subpass *subpass =
       &pass->subpasses[cmd_buffer->state.subpass_idx];
 
-   assert(rt_idx < subpass->color_count);
-   uint32_t attachment_idx = subpass->color_attachments[rt_idx].attachment;
+   uint32_t attachment_idx;
+   if (rt_idx == -1) {
+      attachment_idx = subpass->ds_attachment.attachment;
+      rt_idx = attachment_idx;
+   } else {
+      assert(rt_idx == -1 || rt_idx < subpass->color_count);
+      attachment_idx = subpass->color_attachments[rt_idx].attachment;
+   }
    assert(attachment_idx != VK_ATTACHMENT_UNUSED &&
           attachment_idx < pass->attachment_count);
-   VkFormat rt_format = pass->attachments[attachment_idx].desc.format;
+
    const uint32_t rt_samples = pass->attachments[attachment_idx].desc.samples;
+   VkFormat rt_format = pass->attachments[attachment_idx].desc.format;
+   if (vk_format_is_depth_or_stencil(rt_format))
+      rt_format = get_color_format_for_depth_stencil_format(rt_format);
 
    if (ensure_color_clear_pipeline(device, rt_format, rt_samples) != VK_SUCCESS)
       return;
@@ -433,17 +459,36 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
    VkCommandBuffer cmd_buffer_handle = v3dv_cmd_buffer_to_handle(cmd_buffer);
    VkDevice device_handle = v3dv_device_to_handle(cmd_buffer->device);
 
+   /* If we are clearing a depth/stencil attachment as a color attachment
+    * then we need to configure the framebuffer to the compatible color
+    * format.
+    */
+   struct v3dv_image_view attachment_layer_view;
+   memcpy(&attachment_layer_view, subpass_fb->attachments[rt_idx],
+          sizeof(struct v3dv_image_view));
+   if (vk_format_is_depth_or_stencil(attachment_layer_view.vk_format)) {
+      attachment_layer_view.aspects = VK_IMAGE_ASPECT_COLOR_BIT;
+      attachment_layer_view.vk_format = rt_format;
+      attachment_layer_view.format = v3dv_get_format(rt_format);
+      assert(attachment_layer_view.format &&
+             attachment_layer_view.format->supported &&
+             attachment_layer_view.format->rt_type !=
+                V3D_OUTPUT_IMAGE_FORMAT_NO);
+      v3dv_get_internal_type_bpp_for_output_format(
+         attachment_layer_view.format->rt_type,
+         &attachment_layer_view.internal_type,
+         &attachment_layer_view.internal_bpp);
+   }
+
    /* Emit the pass for each attachment layer, which creates a framebuffer
     * for each selected layer of the attachment and then renders a scissored
     * quad in the clear color.
     */
    for (uint32_t i = 0; i < rect->layerCount; i++) {
-      struct v3dv_image_view attachment_layer_view;
-      memcpy(&attachment_layer_view,
-             subpass_fb->attachments[rt_idx],
-             sizeof(struct v3dv_image_view));
-      attachment_layer_view.first_layer += rect->baseArrayLayer + i;
+      attachment_layer_view.first_layer =
+         subpass_fb->attachments[rt_idx]->first_layer + rect->baseArrayLayer + i;
       attachment_layer_view.last_layer = attachment_layer_view.first_layer;
+
       VkImageView fb_attachment =
          v3dv_image_view_to_handle(&attachment_layer_view);
 
@@ -522,7 +567,35 @@ emit_ds_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
                    VkClearDepthStencilValue clear_ds,
                    const VkClearRect *rect)
 {
-   assert(!"Not implemented.");
+   assert(cmd_buffer->state.pass);
+   assert(cmd_buffer->state.subpass_idx >= 0 &&
+          cmd_buffer->state.subpass_idx < cmd_buffer->state.pass->subpass_count);
+
+   const struct v3dv_subpass *subpass =
+      &cmd_buffer->state.pass->subpasses[cmd_buffer->state.subpass_idx];
+   const uint32_t attachment_idx = subpass->ds_attachment.attachment;
+   assert(attachment_idx != VK_ATTACHMENT_UNUSED);
+   assert(attachment_idx < cmd_buffer->state.pass->attachment_count);
+
+   VkFormat format =
+      cmd_buffer->state.pass->attachments[attachment_idx].desc.format;
+   enum pipe_format pformat = vk_format_to_pipe_format(format);
+
+   VkClearColorValue clear_color;
+   uint32_t clear_zs =
+      util_pack_z_stencil(pformat, clear_ds.depth, clear_ds.stencil);
+   if (format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
+       format == VK_FORMAT_D24_UNORM_S8_UINT) {
+      clear_zs = clear_zs << 8 | clear_zs >> 24;
+   }
+
+   /* We implement depth/stencil clears by turning them into color clears
+    * with a compatible color format. Passing -1 as the render target index
+    * will inform the color clear code that we are attempting to clear a
+    * depth/stencil attachment.
+    */
+   clear_color.uint32[0] = clear_zs;
+   emit_color_clear_rect(cmd_buffer, -1, clear_color, rect);
 }
 
 static void
