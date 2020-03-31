@@ -482,11 +482,11 @@ radv_process_depth_image_layer(struct radv_cmd_buffer *cmd_buffer,
 				&cmd_buffer->pool->alloc);
 }
 
-static void radv_process_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
-					     struct radv_image *image,
-					     const VkImageSubresourceRange *subresourceRange,
-					     struct radv_sample_locations_state *sample_locs,
-					     enum radv_depth_op op)
+static void radv_process_depth_stencil(struct radv_cmd_buffer *cmd_buffer,
+				       struct radv_image *image,
+				       const VkImageSubresourceRange *subresourceRange,
+				       struct radv_sample_locations_state *sample_locs,
+				       enum radv_depth_op op)
 {
 	struct radv_meta_saved_state saved_state;
 	VkCommandBuffer cmd_buffer_h = radv_cmd_buffer_to_handle(cmd_buffer);
@@ -554,10 +554,10 @@ static void radv_process_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 	radv_meta_restore(&saved_state, cmd_buffer);
 }
 
-void radv_decompress_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
-					 struct radv_image *image,
-					 const VkImageSubresourceRange *subresourceRange,
-					 struct radv_sample_locations_state *sample_locs)
+void radv_decompress_depth_stencil(struct radv_cmd_buffer *cmd_buffer,
+				   struct radv_image *image,
+				   const VkImageSubresourceRange *subresourceRange,
+				   struct radv_sample_locations_state *sample_locs)
 {
 	struct radv_barrier_data barrier = {};
 
@@ -565,14 +565,14 @@ void radv_decompress_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
 	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
-	radv_process_depth_image_inplace(cmd_buffer, image, subresourceRange,
-					 sample_locs, DEPTH_DECOMPRESS);
+	radv_process_depth_stencil(cmd_buffer, image, subresourceRange,
+				   sample_locs, DEPTH_DECOMPRESS);
 }
 
-void radv_resummarize_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
-					 struct radv_image *image,
-					 const VkImageSubresourceRange *subresourceRange,
-					 struct radv_sample_locations_state *sample_locs)
+void radv_resummarize_depth_stencil(struct radv_cmd_buffer *cmd_buffer,
+				    struct radv_image *image,
+				    const VkImageSubresourceRange *subresourceRange,
+				    struct radv_sample_locations_state *sample_locs)
 {
 	struct radv_barrier_data barrier = {};
 
@@ -580,6 +580,6 @@ void radv_resummarize_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
 	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
-	radv_process_depth_image_inplace(cmd_buffer, image, subresourceRange,
-					 sample_locs, DEPTH_RESUMMARIZE);
+	radv_process_depth_stencil(cmd_buffer, image, subresourceRange,
+				   sample_locs, DEPTH_RESUMMARIZE);
 }
