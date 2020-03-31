@@ -492,8 +492,8 @@ struct bifrost_branch {
 
 /* Clause packing */
 
-#define BIFROST_FMA_NOP (0x701960)
-#define BIFROST_ADD_NOP (0x3D960)
+#define BIFROST_FMA_NOP (0x701960 | BIFROST_SRC_STAGE)
+#define BIFROST_ADD_NOP (0x3D960 | BIFROST_SRC_STAGE)
 
 struct bifrost_fmt1 {
         unsigned ins_0 : 3;
