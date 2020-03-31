@@ -241,11 +241,11 @@ create_pipeline(struct radv_device *device,
 
 	struct radv_graphics_pipeline_create_info extra = {
 		.use_rectlist = true,
-		.db_flush_depth_inplace = decompress == DECOMPRESS_DEPTH_STENCIL ||
+		.depth_compress_disable = decompress == DECOMPRESS_DEPTH_STENCIL ||
 					  decompress == DECOMPRESS_DEPTH,
-		.db_flush_stencil_inplace = decompress == DECOMPRESS_DEPTH_STENCIL ||
+		.stencil_compress_disable = decompress == DECOMPRESS_DEPTH_STENCIL ||
 					    decompress == DECOMPRESS_STENCIL,
-		.db_resummarize = op == DEPTH_RESUMMARIZE,
+		.resummarize_enable = op == DEPTH_RESUMMARIZE,
 	};
 
 	result = radv_graphics_pipeline_create(device_h,
