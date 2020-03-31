@@ -148,9 +148,7 @@ _mesa_spirv_link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
       /* Create program and attach it to the linked shader */
       struct gl_program *gl_prog =
-         ctx->Driver.NewProgram(ctx,
-                                _mesa_shader_stage_to_program(shader_type),
-                                prog->Name, false);
+         ctx->Driver.NewProgram(ctx, shader_type, prog->Name, false);
       if (!gl_prog) {
          prog->data->LinkStatus = LINKING_FAILURE;
          _mesa_delete_linked_shader(ctx, linked);

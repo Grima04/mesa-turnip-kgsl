@@ -77,7 +77,8 @@ lookup_or_create_program(GLuint id, GLenum target, const char* caller)
       newProg = _mesa_lookup_program(ctx, id);
       if (!newProg || newProg == &_mesa_DummyProgram) {
          /* allocate a new program now */
-         newProg = ctx->Driver.NewProgram(ctx, target, id, true);
+         newProg = ctx->Driver.NewProgram(ctx, _mesa_program_enum_to_shader_stage(target),
+                                          id, true);
          if (!newProg) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
             return NULL;

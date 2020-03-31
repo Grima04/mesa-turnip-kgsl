@@ -72,7 +72,8 @@ brw_nir_lower_uniforms(nir_shader *nir, bool is_scalar)
    }
 }
 
-static struct gl_program *brwNewProgram(struct gl_context *ctx, GLenum target,
+static struct gl_program *brwNewProgram(struct gl_context *ctx,
+                                        gl_shader_stage stage,
                                         GLuint id, bool is_arb_asm);
 
 nir_shader *
@@ -219,7 +220,8 @@ get_new_program_id(struct intel_screen *screen)
    return p_atomic_inc_return(&screen->program_id);
 }
 
-static struct gl_program *brwNewProgram(struct gl_context *ctx, GLenum target,
+static struct gl_program *brwNewProgram(struct gl_context *ctx,
+                                        gl_shader_stage stage,
                                         GLuint id, bool is_arb_asm)
 {
    struct brw_context *brw = brw_context(ctx);
@@ -228,7 +230,7 @@ static struct gl_program *brwNewProgram(struct gl_context *ctx, GLenum target,
    if (prog) {
       prog->id = get_new_program_id(brw->screen);
 
-      return _mesa_init_gl_program(&prog->program, target, id, is_arb_asm);
+      return _mesa_init_gl_program(&prog->program, stage, id, is_arb_asm);
    }
 
    return NULL;
