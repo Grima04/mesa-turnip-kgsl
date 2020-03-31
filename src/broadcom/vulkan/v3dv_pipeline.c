@@ -51,10 +51,12 @@ v3dv_CreateShaderModule(VkDevice _device,
    assert(pCreateInfo->flags == 0);
 
    module = vk_alloc2(&device->alloc, pAllocator,
-                       sizeof(*module) + pCreateInfo->codeSize, 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+                      sizeof(*module) + pCreateInfo->codeSize, 8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (module == NULL)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   module->nir = NULL;
 
    module->size = pCreateInfo->codeSize;
    memcpy(module->data, pCreateInfo->pCode, module->size);
@@ -76,6 +78,13 @@ v3dv_DestroyShaderModule(VkDevice _device,
 
    if (!module)
       return;
+
+   /* NIR modules (which are only created internally by the driver) are not
+    * dynamically allocated so we should never call this for them.
+    * Instead the driver is responsible for freeing the NIR code when it is
+    * no longer needed.
+    */
+   assert(module->nir == NULL);
 
    vk_free2(&device->alloc, pAllocator, module);
 }
@@ -329,22 +338,28 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    nir_shader *nir;
    const nir_shader_compiler_options *nir_options = &v3dv_nir_options;
 
-   uint32_t *spirv = (uint32_t *) stage->module->data;
-   assert(stage->module->size % 4 == 0);
+   if (!stage->module->nir) {
+      uint32_t *spirv = (uint32_t *) stage->module->data;
+      assert(stage->module->size % 4 == 0);
 
-   if (V3D_DEBUG & V3D_DEBUG_DUMP_SPIRV)
-      v3dv_print_spirv(stage->module->data, stage->module->size, stderr);
+      if (V3D_DEBUG & V3D_DEBUG_DUMP_SPIRV)
+         v3dv_print_spirv(stage->module->data, stage->module->size, stderr);
 
-   uint32_t num_spec_entries = 0;
-   struct nir_spirv_specialization *spec_entries = NULL;
+      uint32_t num_spec_entries = 0;
+      struct nir_spirv_specialization *spec_entries = NULL;
 
-   const struct spirv_to_nir_options spirv_options = default_spirv_options;
-   nir = spirv_to_nir(spirv, stage->module->size / 4,
-                      spec_entries, num_spec_entries,
-                      stage->stage, stage->entrypoint,
-                      &spirv_options, nir_options);
+      const struct spirv_to_nir_options spirv_options = default_spirv_options;
+      nir = spirv_to_nir(spirv, stage->module->size / 4,
+                         spec_entries, num_spec_entries,
+                         stage->stage, stage->entrypoint,
+                         &spirv_options, nir_options);
+      nir_validate_shader(nir, "after spirv_to_nir");
+      free(spec_entries);
+   } else {
+      nir = stage->module->nir;
+      nir_validate_shader(nir, "nir module");
+   }
    assert(nir->info.stage == stage->stage);
-   nir_validate_shader(nir, "after spirv_to_nir");
 
    if (V3D_DEBUG & (V3D_DEBUG_NIR |
                     v3d_debug_flag_for_shader_stage(stage->stage))) {
@@ -354,8 +369,6 @@ shader_module_compile_to_nir(struct v3dv_device *device,
       nir_print_shader(nir, stderr);
       fprintf(stderr, "\n");
    }
-
-   free(spec_entries);
 
    /* We have to lower away local variable initializers right before we
     * inline functions.  That way they get properly initialized at the top

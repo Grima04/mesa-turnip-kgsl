@@ -765,6 +765,12 @@ struct v3dv_event {
 };
 
 struct v3dv_shader_module {
+   /* A NIR shader. We create NIR modules for shaders that are generated
+    * internally by the driver.
+    */
+   struct nir_shader *nir;
+
+   /* A SPIR-V shader */
    unsigned char sha1[20];
    uint32_t size;
    char data[0];
