@@ -112,6 +112,7 @@ files_mesa_util = files(
   'u_vector.h',
   'u_math.c',
   'u_math.h',
+  'u_memset.h',
   'u_mm.c',
   'u_mm.h',
   'u_debug.c',

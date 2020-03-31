@@ -33,7 +33,7 @@
 #include "util/u_pack_color.h"
 #include "util/u_string.h"
 #include "util/u_thread.h"
-
+#include "util/u_memset.h"
 #include "util/os_time.h"
 
 #include "lp_scene_queue.h"
@@ -236,9 +236,7 @@ lp_rast_clear_zstencil(struct lp_rasterizer_task *task,
          case 4:
             if (clear_mask == 0xffffffff) {
                for (i = 0; i < height; i++) {
-                  uint32_t *row = (uint32_t *)dst;
-                  for (j = 0; j < width; j++)
-                     *row++ = clear_value;
+                  util_memset32(dst, clear_value, width);
                   dst += dst_stride;
                }
             }

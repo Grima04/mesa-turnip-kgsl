@@ -41,7 +41,7 @@
 #include "util/u_rect.h"
 #include "util/u_surface.h"
 #include "util/u_pack_color.h"
-
+#include "util/u_memset.h"
 
 /**
  * Initialize a pipe_surface object.  'view' is considered to have
@@ -141,9 +141,7 @@ util_fill_rect(ubyte * dst,
       break;
    case 4:
       for (i = 0; i < height; i++) {
-         uint32_t *row = (uint32_t *)dst;
-         for (j = 0; j < width; j++)
-            *row++ = uc->ui[0];
+         util_memset32(dst, uc->ui[0], width);
          dst += dst_stride;
       }
       break;
@@ -492,9 +490,7 @@ util_clear_depth_stencil_texture(struct pipe_context *pipe,
       case 4:
          if (!need_rmw) {
             for (i = 0; i < height; i++) {
-               uint32_t *row = (uint32_t *)dst_map;
-               for (j = 0; j < width; j++)
-                  *row++ = (uint32_t) zstencil;
+               util_memset32(dst_map, (uint32_t)zstencil, width);
                dst_map += dst_stride;
             }
          }
