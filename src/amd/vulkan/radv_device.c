@@ -411,10 +411,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 	device->use_ngg = device->rad_info.chip_class >= GFX10 &&
 			  device->rad_info.family != CHIP_NAVI14 &&
 			  !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
-	if (device->use_aco && device->use_ngg) {
-		fprintf(stderr, "WARNING: disabling NGG because ACO is used.\n");
-		device->use_ngg = false;
-	}
 
 	device->use_ngg_streamout = false;
 
