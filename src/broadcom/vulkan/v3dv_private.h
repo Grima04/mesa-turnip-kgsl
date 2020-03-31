@@ -236,6 +236,15 @@ struct v3dv_device {
     * the GPU is idle.
     */
    uint32_t last_job_sync;
+
+   /* Resources used for meta operations */
+   struct {
+      struct {
+         VkPipelineLayout playout;
+         VkPipeline pipeline;
+         VkRenderPass pass;
+      } color_clear;
+   } meta;
 };
 
 struct v3dv_device_memory {
@@ -660,8 +669,8 @@ struct v3dv_descriptor_state {
 };
 
 struct v3dv_cmd_buffer_state {
-   const struct v3dv_render_pass *pass;
-   const struct v3dv_framebuffer *framebuffer;
+   struct v3dv_render_pass *pass;
+   struct v3dv_framebuffer *framebuffer;
    VkRect2D render_area;
 
    /* Current job being recorded */
@@ -684,6 +693,14 @@ struct v3dv_cmd_buffer_state {
 
    /* Used to flag OOM conditions during command buffer recording */
    bool oom;
+
+   /* Command buffer state saved during a meta operation */
+   struct {
+      uint32_t subpass_idx;
+      VkRenderPass pass;
+      VkPipeline pipeline;
+      VkFramebuffer framebuffer;
+   } meta;
 };
 
 struct v3dv_descriptor {
@@ -737,6 +754,14 @@ struct v3dv_cmd_buffer {
 struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
                                            int32_t subpass_idx);
 void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
+
+struct v3dv_job *v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
+                                               uint32_t subpass_idx);
+
+void v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
+
+void v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer);
+void v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer);
 
 void v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
                                           int rt,
@@ -1054,6 +1079,8 @@ struct v3dv_pipeline {
                         MAX_VERTEX_ATTRIBS];
    uint8_t stencil_cfg[2][cl_packet_length(STENCIL_CFG)];
 };
+
+const nir_shader_compiler_options *v3dv_pipeline_get_nir_options(void);
 
 static inline uint32_t
 v3dv_zs_buffer_from_aspect_bits(VkImageAspectFlags aspects)

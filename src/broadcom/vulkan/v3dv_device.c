@@ -1111,7 +1111,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
          return vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
    }
 
-   device = vk_alloc2(&physical_device->instance->alloc, pAllocator,
+   device = vk_zalloc2(&physical_device->instance->alloc, pAllocator,
                        sizeof(*device), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)

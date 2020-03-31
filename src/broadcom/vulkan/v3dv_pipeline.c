@@ -192,6 +192,12 @@ const nir_shader_compiler_options v3dv_nir_options = {
                                    * needs to be supported */
 };
 
+const nir_shader_compiler_options *
+v3dv_pipeline_get_nir_options(void)
+{
+   return &v3dv_nir_options;
+}
+
 #define OPT(pass, ...) ({                                  \
    bool this_progress = false;                             \
    NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);      \

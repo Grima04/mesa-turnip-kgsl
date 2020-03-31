@@ -72,12 +72,6 @@ v3dv_job_add_extra_bo(struct v3dv_job *job, struct v3dv_bo *bo)
    _mesa_set_add(job->extra_bos, bo);
 }
 
-static struct v3dv_job *
-subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx);
-
-static void
-subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
-
 static void
 cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer);
 
@@ -132,6 +126,9 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
 
    assert(pool);
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
+
+   cmd_buffer->state.subpass_idx = -1;
+   cmd_buffer->state.meta.subpass_idx = -1;
 
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
 }
@@ -887,7 +884,7 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    state->render_area = pRenderPassBegin->renderArea;
 
    /* Setup for first subpass */
-   subpass_start(cmd_buffer, 0);
+   v3dv_cmd_buffer_subpass_start(cmd_buffer, 0);
 }
 
 void
@@ -899,10 +896,10 @@ v3dv_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    assert(state->subpass_idx < state->pass->subpass_count - 1);
 
    /* Finish the previous subpass */
-   subpass_finish(cmd_buffer);
+   v3dv_cmd_buffer_subpass_finish(cmd_buffer);
 
    /* Start the next subpass */
-   subpass_start(cmd_buffer, state->subpass_idx + 1);
+   v3dv_cmd_buffer_subpass_start(cmd_buffer, state->subpass_idx + 1);
 }
 
 void
@@ -1517,8 +1514,9 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
-static struct v3dv_job *
-subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
+struct v3dv_job *
+v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
+                              uint32_t subpass_idx)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(subpass_idx < state->pass->subpass_count);
@@ -1568,8 +1566,8 @@ subpass_start(struct v3dv_cmd_buffer *cmd_buffer, uint32_t subpass_idx)
    return job;
 }
 
-static void
-subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
+void
+v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -1584,7 +1582,7 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    /* Emit last subpass */
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(state->subpass_idx == state->pass->subpass_count - 1);
-   subpass_finish(cmd_buffer);
+   v3dv_cmd_buffer_subpass_finish(cmd_buffer);
    v3dv_cmd_buffer_finish_job(cmd_buffer);
 
    /* We are no longer inside a render pass */
@@ -2507,6 +2505,55 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
                                 V3DV_CMD_DIRTY_PUSH_CONSTANTS);
 }
 
+/* This stores command buffer state for the current subpass that we are
+ * about to interrupt to emit a meta pass.
+ */
+void
+v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   assert(state->subpass_idx != -1);
+
+   state->meta.pipeline = v3dv_pipeline_to_handle(state->pipeline);
+   state->meta.framebuffer = v3dv_framebuffer_to_handle(state->framebuffer);
+   state->meta.pass = v3dv_render_pass_to_handle(state->pass);
+   state->meta.subpass_idx = state->subpass_idx;
+}
+
+/* This resstores command buffer state for a subpass that we interrupted to
+ * emit a meta pass.
+ */
+void
+v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   assert(state->meta.subpass_idx != -1);
+
+   state->pass = v3dv_render_pass_from_handle(state->meta.pass);
+   state->framebuffer = v3dv_framebuffer_from_handle(state->meta.framebuffer);
+
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_subpass_start(cmd_buffer, state->meta.subpass_idx);
+   if (job) {
+      job->is_subpass_continue = true;
+      if (state->meta.pipeline != VK_NULL_HANDLE) {
+         v3dv_CmdBindPipeline(v3dv_cmd_buffer_to_handle(cmd_buffer),
+                              VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              state->meta.pipeline);
+      } else {
+         state->pipeline = VK_NULL_HANDLE;
+      }
+   } else {
+      state->pipeline = VK_NULL_HANDLE;
+      state->subpass_idx = -1;
+   }
+
+   state->meta.pipeline = VK_NULL_HANDLE;
+   state->meta.framebuffer = VK_NULL_HANDLE;
+   state->meta.pass = VK_NULL_HANDLE;
+   state->meta.subpass_idx = -1;
+}
+
 /* FIXME: C&P from v3dx_draw. Refactor to common place? */
 static uint32_t
 v3d_hw_prim_type(enum pipe_prim_type prim_type)
@@ -2583,7 +2630,8 @@ cmd_buffer_pre_draw_split_job(struct v3dv_cmd_buffer *cmd_buffer)
       /* Now start a new job in the same subpass and flag it as continuing
        * the current subpass.
        */
-      job = subpass_start(cmd_buffer, cmd_buffer->state.subpass_idx);
+      job = v3dv_cmd_buffer_subpass_start(cmd_buffer,
+                                          cmd_buffer->state.subpass_idx);
       assert(job->draw_count == 0);
       job->is_subpass_continue = true;
 
