@@ -1604,12 +1604,20 @@ anv_layout_to_fast_clear_type(const struct gen_device_info * const devinfo,
          return ANV_FAST_CLEAR_ANY;
       } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_MCS ||
                  image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E) {
-         /* If the image has MCS or CCS_E enabled all the time then we can use
-          * fast-clear as long as the clear color is the default value of zero
-          * since this is the default value we program into every surface
-          * state used for texturing.
-          */
-         return ANV_FAST_CLEAR_DEFAULT_VALUE;
+         if (devinfo->gen >= 11) {
+            /* On ICL and later, the sampler hardware uses a copy of the clear
+             * value that is encoded as a pixel value.  Therefore, we can use
+             * any clear color we like for sampling.
+             */
+            return ANV_FAST_CLEAR_ANY;
+         } else {
+            /* If the image has MCS or CCS_E enabled all the time then we can
+             * use fast-clear as long as the clear color is the default value
+             * of zero since this is the default value we program into every
+             * surface state used for texturing.
+             */
+            return ANV_FAST_CLEAR_DEFAULT_VALUE;
+         }
       } else {
          return ANV_FAST_CLEAR_NONE;
       }
