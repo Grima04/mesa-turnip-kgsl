@@ -139,7 +139,7 @@ bi_schedule(bi_context *ctx)
 
                         ids = ids & 1;
                         last_id = u->scoreboard_id;
-                        u->back_to_back = true;
+                        u->back_to_back = false;
 
                         u->constant_count = 1;
                         u->constants[0] = ins->constant.u64;
