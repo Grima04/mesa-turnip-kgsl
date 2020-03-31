@@ -330,6 +330,10 @@ typedef struct shader_info {
          uint8_t tcs_vertices_out;
          enum gl_tess_spacing spacing:2;
 
+         /** Is the vertex order counterclockwise? */
+         bool ccw:1;
+         bool point_mode:1;
+
          /* Bit mask of TCS per-vertex inputs (VS outputs) that are used
           * with a vertex index that is NOT the invocation id
           */
@@ -339,10 +343,6 @@ typedef struct shader_info {
           * with a vertex index that is NOT the invocation id
           */
          uint64_t tcs_cross_invocation_outputs_read;
-
-         /** Is the vertex order counterclockwise? */
-         bool ccw:1;
-         bool point_mode:1;
       } tess;
    };
 } shader_info;
