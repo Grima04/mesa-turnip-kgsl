@@ -1748,6 +1748,7 @@ calculate_urb_setup(const struct gen_device_info *devinfo,
    }
 
    prog_data->num_varying_inputs = urb_next;
+   prog_data->inputs = nir->info.inputs_read;
 
    brw_compute_urb_setup_index(prog_data);
 }

@@ -780,6 +780,11 @@ struct brw_wm_prog_data {
     */
    uint32_t flat_inputs;
 
+   /**
+    * The FS inputs
+    */
+   uint64_t inputs;
+
    /* Mapping of VUE slots to interpolation modes.
     * Used by the Gen4-5 clip/sf/wm stages.
     */
