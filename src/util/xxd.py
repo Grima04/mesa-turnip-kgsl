@@ -46,28 +46,7 @@ def filename_to_C_identifier(n):
 
 
 def emit_byte(f, b):
-    if ord(b) == ord('\n'):
-        f.write(b"\\n\"\n    \"")
-        return
-    elif ord(b) == ord('\r'):
-        f.write(b"\\r\"\n    \"")
-        return
-    elif ord(b) == ord('\t'):
-        f.write(b"\\t")
-        return
-    elif ord(b) == ord('"'):
-        f.write(b"\\\"")
-        return
-    elif ord(b) == ord('\\'):
-        f.write(b"\\\\")
-        return
-
-    if ord(b) >= ord(' ') and ord(b) <= ord('~'):
-        f.write(b)
-    else:
-        hi = ord(b) >> 4
-        lo = ord(b) & 0x0f
-        f.write("\\x{:x}{:x}".format(hi, lo).encode('utf-8'))
+    f.write("0x{:02x}, ".format(ord(b)).encode('utf-8'))
 
 
 def process_file(args):
@@ -82,16 +61,21 @@ def process_file(args):
                 else:
                     name = filename_to_C_identifier(args.input)
 
-                outfile.write("static const char {}[] =\n \"".format(name).encode('utf-8'))
+                outfile.write("static const char {}[] = {{\n".format(name).encode('utf-8'))
 
+                linecount = 0
                 while True:
                     byte = infile.read(1)
                     if byte == b"":
                         break
 
                     emit_byte(outfile, byte)
+                    linecount = linecount + 1
+                    if linecount > 20:
+                        outfile.write(b"\n ")
+                        linecount = 0
 
-                outfile.write(b"\"\n    ;\n")
+                outfile.write(b"\n0 };\n")
         except Exception:
             # In the event that anything goes wrong, delete the output file,
             # then re-raise the exception. Deleteing the output file should
