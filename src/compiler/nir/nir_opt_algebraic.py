@@ -1028,6 +1028,11 @@ optimizations.extend([
    (('unpack_32_2x16_split_y', ('iand', a, 0xffff0000)), ('unpack_32_2x16_split_y', a)),
    (('unpack_64_2x32_split_y', ('iand', a, 0xffffffff00000000)), ('unpack_64_2x32_split_y', a)),
 
+   (('unpack_half_2x16_split_x', ('extract_u16', a, 0)), ('unpack_half_2x16_split_x', a)),
+   (('unpack_half_2x16_split_x', ('extract_u16', a, 1)), ('unpack_half_2x16_split_y', a)),
+   (('unpack_32_2x16_split_x', ('extract_u16', a, 0)), ('unpack_32_2x16_split_x', a)),
+   (('unpack_32_2x16_split_x', ('extract_u16', a, 1)), ('unpack_32_2x16_split_y', a)),
+
    # Optimize half packing
    (('ishl', ('pack_half_2x16', ('vec2', a, 0)), 16), ('pack_half_2x16', ('vec2', 0, a))),
    (('ushr', ('pack_half_2x16', ('vec2', 0, a)), 16), ('pack_half_2x16', ('vec2', a, 0))),
