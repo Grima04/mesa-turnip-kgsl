@@ -3011,6 +3011,12 @@ typedef struct nir_shader_compiler_options {
     */
    bool intel_vec4;
 
+   /** Whether 8-bit ALU is supported. */
+   bool support_8bit_alu;
+
+   /** Whether 16-bit ALU is supported. */
+   bool support_16bit_alu;
+
    unsigned max_unroll_iterations;
 
    nir_lower_int64_options lower_int64_options;
