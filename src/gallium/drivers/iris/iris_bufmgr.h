@@ -101,6 +101,9 @@ struct iris_bo {
    /** Buffer manager context associated with this buffer object */
    struct iris_bufmgr *bufmgr;
 
+   /** Pre-computed hash using _mesa_hash_pointer for cache tracking sets */
+   uint32_t hash;
+
    /** The GEM handle for this buffer object. */
    uint32_t gem_handle;
 
@@ -131,15 +134,6 @@ struct iris_bo {
     * XXX: compute index...
     */
    unsigned index;
-
-   /**
-    * Boolean of whether the GPU is definitely not accessing the buffer.
-    *
-    * This is only valid when reusable, since non-reusable
-    * buffers are those that have been shared with other
-    * processes, so we don't know their state.
-    */
-   bool idle;
 
    int refcount;
    const char *name;
@@ -173,6 +167,15 @@ struct iris_bo {
    struct list_head head;
 
    /**
+    * Boolean of whether the GPU is definitely not accessing the buffer.
+    *
+    * This is only valid when reusable, since non-reusable
+    * buffers are those that have been shared with other
+    * processes, so we don't know their state.
+    */
+   bool idle;
+
+   /**
     * Boolean of whether this buffer can be re-used
     */
    bool reusable;
@@ -191,9 +194,6 @@ struct iris_bo {
     * Boolean of whether this buffer points into user memory
     */
    bool userptr;
-
-   /** Pre-computed hash using _mesa_hash_pointer for cache tracking sets */
-   uint32_t hash;
 };
 
 #define BO_ALLOC_ZEROED     (1<<0)
