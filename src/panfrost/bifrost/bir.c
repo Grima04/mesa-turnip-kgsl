@@ -148,6 +148,10 @@ bi_get_immediate(bi_instruction *ins, unsigned index)
 bool
 bi_writes_component(bi_instruction *ins, unsigned comp)
 {
+        /* TODO: Do we want something less coarse? */
+        if (bi_class_props[ins->type] & BI_VECTOR)
+                return true;
+
         nir_alu_type T = ins->dest_type;
         unsigned size = nir_alu_type_get_type_size(T);
         return ins->writemask & (0xF << (comp * (size / 8)));
