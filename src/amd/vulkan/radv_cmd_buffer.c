@@ -1475,10 +1475,10 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer,
 	    !radv_image_is_tc_compat_htile(image))
 		return;
 
-	if (!radv_layout_has_htile(image, layout, in_render_loop,
-	                           radv_image_queue_family_mask(image,
-	                                                        cmd_buffer->queue_family_index,
-	                                                        cmd_buffer->queue_family_index))) {
+	if (!radv_layout_is_htile_compressed(image, layout, in_render_loop,
+					     radv_image_queue_family_mask(image,
+									  cmd_buffer->queue_family_index,
+									  cmd_buffer->queue_family_index))) {
 		db_z_info &= C_028040_TILE_SURFACE_ENABLE;
 	}
 
@@ -1518,10 +1518,10 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t db_z_info = ds->db_z_info;
 	uint32_t db_stencil_info = ds->db_stencil_info;
 
-	if (!radv_layout_has_htile(image, layout, in_render_loop,
-	                           radv_image_queue_family_mask(image,
-	                                                        cmd_buffer->queue_family_index,
-	                                                        cmd_buffer->queue_family_index))) {
+	if (!radv_layout_is_htile_compressed(image, layout, in_render_loop,
+					     radv_image_queue_family_mask(image,
+									  cmd_buffer->queue_family_index,
+									  cmd_buffer->queue_family_index))) {
 		db_z_info &= C_028040_TILE_SURFACE_ENABLE;
 		db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
 	}
@@ -2053,14 +2053,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		VkImageLayout layout = subpass->depth_stencil_attachment->layout;
 		bool in_render_loop = subpass->depth_stencil_attachment->in_render_loop;
 		struct radv_image_view *iview = cmd_buffer->state.attachments[idx].iview;
-		struct radv_image *image = iview->image;
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, cmd_buffer->state.attachments[idx].iview->bo);
-		ASSERTED uint32_t queue_mask = radv_image_queue_family_mask(image,
-										cmd_buffer->queue_family_index,
-										cmd_buffer->queue_family_index);
-		/* We currently don't support writing decompressed HTILE */
-		assert(radv_layout_has_htile(image, layout, in_render_loop, queue_mask) ==
-		       radv_layout_is_htile_compressed(image, layout, in_render_loop, queue_mask));
 
 		radv_emit_fb_ds_state(cmd_buffer, &cmd_buffer->state.attachments[idx].ds, iview, layout, in_render_loop);
 

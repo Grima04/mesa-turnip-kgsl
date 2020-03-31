@@ -1816,13 +1816,6 @@ struct radv_image {
 	struct radv_image_plane planes[0];
 };
 
-/* Whether the image has a htile that is known consistent with the contents of
- * the image. */
-bool radv_layout_has_htile(const struct radv_image *image,
-                           VkImageLayout layout,
-                           bool in_render_loop,
-                           unsigned queue_mask);
-
 /* Whether the image has a htile  that is known consistent with the contents of
  * the image and is allowed to be in compressed form.
  *
