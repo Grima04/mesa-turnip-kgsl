@@ -36,7 +36,8 @@ subdir('encoder')
 
 files_bifrost = files(
   'bifrost/cmdline.c',
-  'bifrost/test/bi_submit.c'
+  'bifrost/test/bi_submit.c',
+  'bifrost/test/bi_interpret.c',
 )
 
 bifrost_compiler = executable(
