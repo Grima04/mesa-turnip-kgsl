@@ -719,6 +719,10 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    device->has_context_priority = anv_gem_has_context_priority(fd);
 
+   /* Initialize memory regions struct to 0. */
+   memset(&device->vram, 0, sizeof(device->vram));
+   memset(&device->sys, 0, sizeof(device->sys));
+
    result = anv_physical_device_init_heaps(device, fd);
    if (result != VK_SUCCESS)
       goto fail_base;
