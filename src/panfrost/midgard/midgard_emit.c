@@ -372,11 +372,11 @@ emit_alu_bundle(compiler_context *ctx,
                         source = &scalarized;
                 }
 
-                memcpy(util_dynarray_grow_bytes(emission, 1, size), source, size);
+                memcpy(util_dynarray_grow_bytes(emission, size, 1), source, size);
         }
 
         /* Emit padding (all zero) */
-        memset(util_dynarray_grow_bytes(emission, 1, bundle->padding), 0, bundle->padding);
+        memset(util_dynarray_grow_bytes(emission, bundle->padding, 1), 0, bundle->padding);
 
         /* Tack on constants */
 
