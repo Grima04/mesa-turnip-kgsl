@@ -667,6 +667,26 @@ tu6_setup_streamout(const struct ir3_shader_variant *v,
 }
 
 static void
+tu6_emit_const(struct tu_cs *cs, uint32_t opcode, uint32_t base,
+               enum a6xx_state_block block, uint32_t offset,
+               uint32_t size, uint32_t *dwords) {
+   assert(size % 4 == 0);
+
+   tu_cs_emit_pkt7(cs, opcode, 3 + size);
+   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
+         CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+         CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+         CP_LOAD_STATE6_0_STATE_BLOCK(block) |
+         CP_LOAD_STATE6_0_NUM_UNIT(size / 4));
+
+   tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+   tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+   dwords = (uint32_t *)&((uint8_t *)dwords)[offset];
+
+   tu_cs_emit_array(cs, dwords, size);
+}
+
+static void
 tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
              const struct ir3_shader_variant *fs,
@@ -1139,6 +1159,27 @@ tu6_emit_immediates(struct tu_cs *cs, const struct ir3_shader_variant *v,
 }
 
 static void
+tu6_emit_geometry_consts(struct tu_cs *cs,
+                         const struct ir3_shader_variant *vs,
+                         const struct ir3_shader_variant *gs) {
+   unsigned num_vertices = gs->shader->nir->info.gs.vertices_in;
+
+   uint32_t params[4] = {
+      vs->shader->output_size * num_vertices * 4,  /* primitive stride */
+      vs->shader->output_size * 4,                 /* vertex stride */
+      0,
+      0,
+   };
+   uint32_t vs_base = vs->shader->const_state.offsets.primitive_param;
+   tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, vs_base, SB6_VS_SHADER, 0,
+                  ARRAY_SIZE(params), params);
+
+   uint32_t gs_base = gs->shader->const_state.offsets.primitive_param;
+   tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, gs_base, SB6_GS_SHADER, 0,
+                  ARRAY_SIZE(params), params);
+}
+
+static void
 tu6_emit_program(struct tu_cs *cs,
                  const struct tu_pipeline_builder *builder,
                  const struct tu_bo *binary_bo,
@@ -1167,6 +1208,7 @@ tu6_emit_program(struct tu_cs *cs,
       builder->shaders[MESA_SHADER_FRAGMENT]
          ? &builder->shaders[MESA_SHADER_FRAGMENT]->variants[0]
          : &dummy_variant;
+   bool has_gs = gs->type != MESA_SHADER_NONE;
 
    if (binning_pass) {
       /* if we have streamout, use full VS in binning pass, as the
@@ -1192,11 +1234,17 @@ tu6_emit_program(struct tu_cs *cs,
 
    tu6_emit_shader_object(cs, MESA_SHADER_VERTEX, vs, binary_bo,
       binning_pass ? builder->binning_vs_offset : builder->shader_offsets[MESA_SHADER_VERTEX]);
-
+   if (has_gs)
+      tu6_emit_shader_object(cs, MESA_SHADER_GEOMETRY, gs, binary_bo,
+                             builder->shader_offsets[MESA_SHADER_GEOMETRY]);
    tu6_emit_shader_object(cs, MESA_SHADER_FRAGMENT, fs, binary_bo,
                           builder->shader_offsets[MESA_SHADER_FRAGMENT]);
 
    tu6_emit_immediates(cs, vs, CP_LOAD_STATE6_GEOM, SB6_VS_SHADER);
+   if (has_gs) {
+      tu6_emit_immediates(cs, gs, CP_LOAD_STATE6_GEOM, SB6_GS_SHADER);
+      tu6_emit_geometry_consts(cs, vs, gs);
+   }
    if (!binning_pass)
       tu6_emit_immediates(cs, fs, CP_LOAD_STATE6_FRAG, SB6_FS_SHADER);
 }
