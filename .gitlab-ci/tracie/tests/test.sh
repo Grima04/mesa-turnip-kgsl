@@ -56,9 +56,24 @@ run_test() {
     cleanup
 }
 
+assert_results_yaml_contains() {
+    grep -q "actual: $1" $4
+    assert "[ $? = 0 ]"
+
+    grep -q "expected: $2" $4
+    assert "[ $? = 0 ]"
+
+    if [ $3 != "" ]; then
+        grep -q $3 $4
+    fi
+
+    assert "[ $? = 0 ]"
+}
+
 tracie_succeeds_if_all_images_match() {
     run_tracie
     assert "[ $? = 0 ]"
+    assert_results_yaml_contains 5efda83854befe0155ff8517a58d5b51 5efda83854befe0155ff8517a58d5b51 "" "$PWD/results/results.yml"
 }
 
 tracie_fails_on_image_mismatch() {
@@ -67,6 +82,7 @@ tracie_fails_on_image_mismatch() {
 
     run_tracie
     assert "[ $? != 0 ]"
+    assert_results_yaml_contains 5efda83854befe0155ff8517a58d5b51 8e0a801367e1714463475a824dab363b "trace2/test/vk-test-device/olive.testtrace-0.png" "$PWD/results/results.yml"
 }
 
 tracie_skips_traces_without_checksum() {

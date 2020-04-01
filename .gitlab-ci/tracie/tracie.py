@@ -112,6 +112,9 @@ def ensure_trace(repo_url, repo_commit, trace):
 def check_trace(repo_url, repo_commit, device_name, trace, expectation):
     ensure_trace(repo_url, repo_commit, trace)
 
+    result = {}
+    result[trace['path']] = {}
+
     trace_path = Path(TRACES_DB_PATH + trace['path'])
     checksum, image_file, log_file = replay(trace_path, device_name)
     if checksum is None:
@@ -127,13 +130,19 @@ def check_trace(repo_url, repo_commit, device_name, trace, expectation):
             ok = False
 
     trace_dir = os.path.split(trace['path'])[0]
-    results_path = os.path.join(RESULTS_PATH, trace_dir, "test", device_name)
+    dir_in_results = os.path.join(trace_dir, "test", device_name)
+    results_path = os.path.join(RESULTS_PATH, dir_in_results)
     os.makedirs(results_path, exist_ok=True)
     shutil.move(log_file, os.path.join(results_path, os.path.split(log_file)[1]))
     if not ok or os.environ.get('TRACIE_STORE_IMAGES', '0') == '1':
-            shutil.move(image_file, os.path.join(results_path, os.path.split(image_file)[1]))
+        image_name = os.path.split(image_file)[1]
+        shutil.move(image_file, os.path.join(results_path, image_name))
+        result[trace['path']]['image'] = os.path.join(dir_in_results, image_name)
 
-    return ok
+    result[trace['path']]['expected'] = expectation['checksum']
+    result[trace['path']]['actual'] = checksum
+
+    return ok, result
 
 def main():
     parser = argparse.ArgumentParser()
@@ -156,11 +165,17 @@ def main():
 
     traces = y['traces']
     all_ok = True
+    results = {}
     for trace in traces:
         for expectation in trace['expectations']:
-                if expectation['device'] == args.device_name:
-                        ok = check_trace(repo, commit_id, args.device_name, trace, expectation)
-                        all_ok = all_ok and ok
+            if expectation['device'] == args.device_name:
+                ok, result = check_trace(repo, commit_id, args.device_name, trace, expectation)
+                all_ok = all_ok and ok
+                results.update(result)
+
+    with open(os.path.join(RESULTS_PATH, 'results.yml'), 'w') as f:
+        yaml.safe_dump(results, f, default_flow_style=False)
+
 
     sys.exit(0 if all_ok else 1)
 
