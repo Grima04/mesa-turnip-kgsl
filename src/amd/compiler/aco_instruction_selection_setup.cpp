@@ -800,13 +800,13 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
                ctx->stage == vertex_tess_control_hs)
          // TODO: make this more compact
          variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
-      else if (ctx->stage == vertex_vs)
+      else if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs)
          variable->data.driver_location = variable->data.location * 4;
       else
          unreachable("Unsupported VS stage");
    }
 
-   if (ctx->stage == vertex_vs) {
+   if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs) {
       radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
@@ -920,7 +920,7 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
    }
 
    nir_foreach_variable(variable, &nir->outputs) {
-      if (ctx->stage == tess_eval_vs)
+      if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs)
          variable->data.driver_location = variable->data.location * 4;
       else if (ctx->stage == tess_eval_es)
          variable->data.driver_location = shader_io_get_unique_index((gl_varying_slot) variable->data.location) * 4;
@@ -930,7 +930,7 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
          unreachable("Unsupported TES shader stage");
    }
 
-   if (ctx->stage == tess_eval_vs) {
+   if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs) {
       radv_vs_output_info *outinfo = &ctx->program->info->tes.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
@@ -1154,10 +1154,12 @@ setup_isel_context(Program* program,
    }
    bool gfx9_plus = args->options->chip_class >= GFX9;
    bool ngg = args->shader_info->is_ngg && args->options->chip_class >= GFX10;
-   if (program->stage == sw_vs && args->shader_info->vs.as_es)
+   if (program->stage == sw_vs && args->shader_info->vs.as_es && !ngg)
       program->stage |= hw_es;
-   else if (program->stage == sw_vs && !args->shader_info->vs.as_ls)
+   else if (program->stage == sw_vs && !args->shader_info->vs.as_ls && !ngg)
       program->stage |= hw_vs;
+   else if (program->stage == sw_vs && ngg)
+      program->stage |= hw_ngg_gs; /* GFX10/NGG: VS without GS uses the HW GS stage */
    else if (program->stage == sw_gs)
       program->stage |= hw_gs;
    else if (program->stage == sw_fs)
@@ -1176,6 +1178,8 @@ setup_isel_context(Program* program,
       program->stage |= hw_hs; /* GFX9-10: VS+TCS merged into a Hull Shader */
    else if (program->stage == sw_tes && !args->shader_info->tes.as_es && !ngg)
       program->stage |= hw_vs; /* GFX6-9: TES without GS uses the HW VS stage (and GFX10/legacy) */
+   else if (program->stage == sw_tes && !args->shader_info->tes.as_es && ngg)
+      program->stage |= hw_ngg_gs; /* GFX10/NGG: TES without GS uses the HW GS stage */
    else if (program->stage == sw_tes && args->shader_info->tes.as_es && !ngg)
       program->stage |= hw_es; /* GFX6-8: TES is an Export Shader */
    else if (program->stage == (sw_tes | sw_gs) && gfx9_plus && !ngg)
@@ -1247,6 +1251,9 @@ setup_isel_context(Program* program,
       /* Merged LSHS operates in workgroups, but can still have a different number of LS and HS invocations */
       setup_tcs_info(&ctx, shaders[1]);
       program->workgroup_size = ctx.tcs_num_patches * MAX2(shaders[1]->info.tess.tcs_vertices_out, ctx.args->options->key.tcs.input_vertices);
+   } else if (program->stage & hw_ngg_gs) {
+      /* TODO: Calculate workgroup size of NGG shaders. */
+      program->workgroup_size = UINT_MAX;
    } else {
       unreachable("Unsupported shader stage.");
    }
