@@ -883,6 +883,22 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
     */
    state->render_area = pRenderPassBegin->renderArea;
 
+   /* If our render area is smaller than the current clip window we will have
+    * to emit a new clip window.
+    */
+   uint32_t min_render_x = state->render_area.offset.x;
+   uint32_t min_render_y = state->render_area.offset.x;
+   uint32_t max_render_x = min_render_x + state->render_area.extent.width - 1;
+   uint32_t max_render_y = min_render_y + state->render_area.extent.height - 1;
+   uint32_t min_clip_x = state->clip_window.offset.x;
+   uint32_t min_clip_y = state->clip_window.offset.y;
+   uint32_t max_clip_x = min_clip_x + state->clip_window.extent.width - 1;
+   uint32_t max_clip_y = min_clip_y + state->clip_window.extent.height - 1;
+   if (min_render_x > min_clip_x || min_render_y > min_clip_y ||
+       max_render_x < max_clip_x || max_render_y < max_clip_y) {
+      state->dirty |= V3DV_CMD_DIRTY_SCISSOR;
+   }
+
    /* Setup for first subpass */
    v3dv_cmd_buffer_subpass_start(cmd_buffer, 0);
 }
@@ -1547,20 +1563,6 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
                            framebuffer->layers,
                            subpass->color_count,
                            internal_bpp);
-   }
-
-   /* If we don't have a scissor or viewport defined let's just use the render
-    * area as clip_window, as that would be required for a clear in any
-    * case. If we have that, it would be emitted as part of the pipeline
-    * dynamic state flush
-    *
-    * FIXME: this is mostly just needed for clear. radv has dedicated paths
-    * for them, so we could get that idea. In any case, need to revisit if
-    * this is the place to emit the clip window.
-    */
-   if (cmd_buffer->state.dynamic.scissor.count == 0 &&
-       cmd_buffer->state.dynamic.viewport.count == 0) {
-      emit_clip_window(job, &state->render_area);
    }
 
    return job;
