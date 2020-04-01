@@ -10323,6 +10323,9 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx)
 {
    Builder bld(ctx->program, ctx->block);
 
+   /* It is recommended to do the GS_ALLOC_REQ as soon and as quickly as possible, so we set the maximum priority (3). */
+   bld.sopp(aco_opcode::s_setprio, -1u, 0x3u);
+
    /* Get the id of the current wave within the threadgroup (workgroup) */
    Builder::Result wave_id_in_tg = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
                                             get_arg(ctx, ctx->args->merged_wave_info), Operand(24u | (4u << 16)));
@@ -10349,6 +10352,9 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx)
 
    /* Request the SPI to allocate space for the primitives and vertices that will be exported by the threadgroup. */
    bld.sopp(aco_opcode::s_sendmsg, bld.m0(tmp), -1, sendmsg_gs_alloc_req);
+
+   /* After the GS_ALLOC_REQ is done, reset priority to default (0). */
+   bld.sopp(aco_opcode::s_setprio, -1u, 0x0u);
 
    end_uniform_if(ctx, &ic);
 }
