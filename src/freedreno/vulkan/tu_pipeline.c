@@ -438,19 +438,21 @@ static void
 tu6_emit_gs_config(struct tu_cs *cs, struct tu_shader *shader,
                    const struct ir3_shader_variant *gs)
 {
-   uint32_t sp_gs_config = 0;
-   if (gs->instrlen)
-      sp_gs_config |= A6XX_SP_GS_CONFIG_ENABLED;
-
+   bool has_gs = gs->type != MESA_SHADER_NONE;
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
    tu_cs_emit(cs, 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CONFIG, 2);
-   tu_cs_emit(cs, sp_gs_config);
+   tu_cs_emit(cs, COND(has_gs,
+                       A6XX_SP_GS_CONFIG_ENABLED |
+                       A6XX_SP_GS_CONFIG_NIBO(ir3_shader_nibo(gs)) |
+                       A6XX_SP_GS_CONFIG_NTEX(gs->num_samp) |
+                       A6XX_SP_GS_CONFIG_NSAMP(gs->num_samp)));
    tu_cs_emit(cs, gs->instrlen);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_GS_CNTL, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_GS_CNTL_CONSTLEN(align(gs->constlen, 4)));
+   tu_cs_emit(cs, COND(has_gs, A6XX_HLSQ_GS_CNTL_ENABLED) |
+                  A6XX_HLSQ_GS_CNTL_CONSTLEN(align(gs->constlen, 4)));
 }
 
 static void
