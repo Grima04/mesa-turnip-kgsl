@@ -460,7 +460,7 @@ enum HazardResult {
    /* Must stop at these failures. The hazard query code doesn't consider them
     * when added. */
    hazard_fail_exec,
-   hazard_fail_memtime,
+   hazard_fail_unreorderable,
 };
 
 HazardResult perform_hazard_query(hazard_query *query, Instruction *instr)
@@ -478,9 +478,11 @@ HazardResult perform_hazard_query(hazard_query *query, Instruction *instr)
    if (instr->format == Format::EXP)
       return hazard_fail_export;
 
-   /* don't move s_memtime/s_memrealtime */
-   if (instr->opcode == aco_opcode::s_memtime || instr->opcode == aco_opcode::s_memrealtime)
-      return hazard_fail_memtime;
+   /* don't move non-reorderable instructions */
+   if (instr->opcode == aco_opcode::s_memtime ||
+       instr->opcode == aco_opcode::s_memrealtime ||
+       instr->opcode == aco_opcode::s_setprio)
+      return hazard_fail_unreorderable;
 
    if (query->barrier_interaction && (query->barrier_interaction & parse_barrier(instr)))
       return hazard_fail_barrier;
@@ -795,7 +797,7 @@ void schedule_position_export(sched_ctx& ctx, Block* block,
          break;
 
       HazardResult haz = perform_hazard_query(&hq, candidate.get());
-      if (haz == hazard_fail_exec || haz == hazard_fail_memtime)
+      if (haz == hazard_fail_exec || haz == hazard_fail_unreorderable)
          break;
 
       if (haz != hazard_success) {
