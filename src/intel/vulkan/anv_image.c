@@ -328,8 +328,8 @@ add_aux_state_tracking_buffer(struct anv_image *image,
     * a 4K alignment. We believe that 256B might be enough, but due to lack of
     * testing we will leave this as 4K for now.
     */
-   image->planes[plane].size = ALIGN(image->planes[plane].size, 4096);
-   image->size = ALIGN(image->size, 4096);
+   image->planes[plane].size = align_u64(image->planes[plane].size, 4096);
+   image->size = align_u64(image->size, 4096);
 
    assert(image->planes[plane].offset % 4096 == 0);
 
