@@ -25,15 +25,20 @@
  */
 
 #include "bit.h"
+#include "util/half_float.h"
 
 typedef union {
         uint64_t u64;
         uint32_t u32;
         uint16_t u16[2];
         uint8_t u8[4];
+        int64_t i64;
+        int32_t i32;
+        int16_t i16[2];
+        int8_t i8[4];
         double f64;
         float f32;
-        uint16_t f16;
+        uint16_t f16[2];
 } bit_t;
 
 /* Interprets a subset of Bifrost IR required for automated testing */
@@ -83,6 +88,102 @@ bit_write(struct bit_state *s, unsigned index, nir_alu_type T, bit_t value, bool
         }
 }
 
+#define bh _mesa_float_to_half
+#define bf _mesa_half_to_float
+
+#define bv2f16(fxn) \
+        for (unsigned c = 0; c < 2; ++c) { \
+                dest.f16[c] = bh(fxn(bf(srcs[0].f16[ins->swizzle[0][c]]), \
+                                        bf(srcs[1].f16[ins->swizzle[1][c]]), \
+                                        bf(srcs[2].f16[ins->swizzle[2][c]]), \
+                                        bf(srcs[3].f16[ins->swizzle[3][c]]))); \
+        }
+
+#define bv2i16(fxn) \
+        for (unsigned c = 0; c < 2; ++c) { \
+                dest.f16[c] = fxn(srcs[0].u16[ins->swizzle[0][c]], \
+                                        srcs[1].u16[ins->swizzle[1][c]], \
+                                        srcs[2].u16[ins->swizzle[2][c]], \
+                                        srcs[3].u16[ins->swizzle[3][c]]); \
+        }
+
+#define bf32(fxn) dest.f32 = fxn(srcs[0].f32, srcs[1].f32, srcs[2].f32, srcs[3].f32)
+#define bi32(fxn) dest.i32 = fxn(srcs[0].u32, srcs[1].u32, srcs[2].u32, srcs[3].i32)
+
+#define bfloat(fxn64, fxn32) \
+        if (ins->dest_type == nir_type_float64) { \
+                unreachable("TODO: 64-bit"); \
+        } else if (ins->dest_type == nir_type_float32) { \
+                bf32(fxn64); \
+                break; \
+        } else if (ins->dest_type == nir_type_float16) { \
+                bv2f16(fxn32); \
+                break; \
+        }
+
+#define bint(fxn64, fxn32, fxn16, fxn8) \
+        if (ins->dest_type == nir_type_int64 || ins->dest_type == nir_type_uint64) { \
+                unreachable("TODO: 64-bit"); \
+        } else if (ins->dest_type == nir_type_int32 || ins->dest_type == nir_type_uint32) { \
+                bi32(fxn32); \
+                break; \
+        } else if (ins->dest_type == nir_type_int16 || ins->dest_type == nir_type_uint16) { \
+                bv2i16(fxn16); \
+                break; \
+        } else if (ins->dest_type == nir_type_int8 || ins->dest_type == nir_type_uint8) { \
+                unreachable("TODO: 8-bit"); \
+        }
+
+#define bpoly(name) \
+        bfloat(bit_f64 ## name, bit_f32 ## name); \
+        bint(bit_i64 ## name, bit_i32 ## name, bit_i16 ## name, bit_i8 ## name); \
+        unreachable("Invalid type");
+
+#define bit_make_float(name, expr) \
+        static inline double \
+        bit_f64 ## name(double a, double b, double c, double d) \
+        { \
+                return expr; \
+        } \
+        static inline float \
+        bit_f32 ## name(float a, float b, float c, float d) \
+        { \
+                return expr; \
+        } \
+
+#define bit_make_int(name, expr) \
+        static inline int64_t \
+        bit_i64 ## name (int64_t a, int64_t b, int64_t c, int64_t d) \
+        { \
+                return expr; \
+        } \
+        \
+        static inline int32_t \
+        bit_i32 ## name (int32_t a, int32_t b, int32_t c, int32_t d) \
+        { \
+                return expr; \
+        } \
+        \
+        static inline int16_t \
+        bit_i16 ## name (int16_t a, int16_t b, int16_t c, int16_t d) \
+        { \
+                return expr; \
+        } \
+        \
+        static inline int8_t \
+        bit_i8 ## name (int8_t a, int8_t b, int8_t c, int8_t d) \
+        { \
+                return expr; \
+        } \
+
+#define bit_make_poly(name, expr) \
+        bit_make_float(name, expr) \
+        bit_make_int(name, expr) \
+        
+bit_make_poly(add, a + b);
+bit_make_float(fma, (a * b) + c);
+bit_make_poly(mov, a);
+
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 {
@@ -97,32 +198,51 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 
         switch (ins->type) {
         case BI_ADD:
-        case BI_ATEST:
+                bpoly(add);
+
         case BI_BRANCH:
         case BI_CMP:
-        case BI_BLEND:
         case BI_BITWISE:
-        case BI_COMBINE:
         case BI_CONVERT:
         case BI_CSEL:
-        case BI_DISCARD:
-        case BI_FMA:
+                unreachable("Unsupported op");
+
+        case BI_FMA: {
+                bfloat(bit_f64fma, bit_f32fma);
+                unreachable("Unknown type");
+        }
+
         case BI_FREXP:
         case BI_ISUB:
-        case BI_LOAD:
-        case BI_LOAD_UNIFORM:
-        case BI_LOAD_ATTR:
-        case BI_LOAD_VAR:
-        case BI_LOAD_VAR_ADDRESS:
         case BI_MINMAX:
+                unreachable("Unsupported op");
+
         case BI_MOV:
+                bpoly(mov);
+
         case BI_SHIFT:
-        case BI_STORE:
         case BI_STORE_VAR:
         case BI_SPECIAL: /* _FAST, _TABLE on supported GPUs */
         case BI_SWIZZLE:
-        case BI_TEX:
         case BI_ROUND:
+                unreachable("Unsupported op");
+        
+        /* We only interpret vertex shaders */
+        case BI_DISCARD:
+        case BI_LOAD_VAR:
+        case BI_ATEST:
+        case BI_BLEND:
+                unreachable("Fragment op used in interpreter");
+
+        /* Modeling main memory is more than I bargained for */
+        case BI_LOAD_UNIFORM:
+        case BI_LOAD_ATTR:
+        case BI_LOAD_VAR_ADDRESS:
+        case BI_LOAD:
+        case BI_STORE:
+        case BI_TEX:
+                unreachable("Unsupported I/O in interpreter");
+
         default:
                 unreachable("Unsupported op");
         }
@@ -136,3 +256,6 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
                 s->T1 = dest.u32;
         }
 }
+
+#undef bh
+#undef bf
