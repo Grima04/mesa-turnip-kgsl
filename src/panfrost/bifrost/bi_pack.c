@@ -780,7 +780,6 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return BIFROST_FMA_NOP;
         case BI_MOV:
                 return bi_pack_fma_1src(bundle.fma, regs, BIFROST_FMA_OP_MOV);
-        case BI_FMOV:
         case BI_SHIFT:
         case BI_SWIZZLE:
         case BI_ROUND:
@@ -989,7 +988,6 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return bi_pack_add_ld_var_addr(clause, bundle.add, regs);
         case BI_MINMAX:
         case BI_MOV:
-        case BI_FMOV:
         case BI_SHIFT:
         case BI_STORE:
                 return BIFROST_ADD_NOP;

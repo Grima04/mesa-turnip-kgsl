@@ -137,6 +137,7 @@ bi_class_name(enum bi_class cl)
         case BI_CSEL: return "csel";
         case BI_DISCARD: return "discard";
         case BI_FMA: return "fma";
+        case BI_FMOV: return "fmov";
         case BI_FREXP: return "frexp";
         case BI_ISUB: return "isub";
         case BI_LOAD: return "load";

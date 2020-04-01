@@ -89,6 +89,22 @@ bi_ambiguous_abs(bi_instruction *ins)
         return classy && typey && absy;
 }
 
+/* Lowers FMOV to ADD #0, since FMOV doesn't exist on the h/w and this is the
+ * latest time it's sane to lower (it's useful to distinguish before, but we'll
+ * need this handle during scheduling to ensure the ports get modeled
+ * correctly with respect to the new zero source) */
+
+static void
+bi_lower_fmov(bi_instruction *ins)
+{
+        if (ins->type != BI_FMOV)
+                return;
+
+        ins->type = BI_ADD;
+        ins->src[1] = BIR_INDEX_ZERO;
+        ins->src_types[1] = ins->src_types[0];
+}
+
 /* Eventually, we'll need a proper scheduling, grouping instructions
  * into clauses and ordering/assigning grouped instructions to the
  * appropriate FMA/ADD slots. Right now we do the dumbest possible
@@ -108,6 +124,9 @@ bi_schedule(bi_context *ctx)
                 list_inithead(&bblock->clauses);
 
                 bi_foreach_instr_in_block(bblock, ins) {
+                        /* Convenient time to lower */
+                        bi_lower_fmov(ins);
+
                         unsigned props = bi_class_props[ins->type];
 
                         bi_clause *u = rzalloc(ctx, bi_clause);
