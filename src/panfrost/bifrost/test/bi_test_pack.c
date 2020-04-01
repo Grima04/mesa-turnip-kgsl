@@ -143,5 +143,55 @@ bit_test_single(struct panfrost_device *dev,
         bi_pack(ctx, &prog.compiled);
 
         return bit_vertex(dev, prog, input, 16, NULL, 0,
-                        s.r, 16, BIT_DEBUG_ALL);
+                        s.r, 16, debug);
+}
+
+/* Utilities for generating tests */
+
+static void
+bit_generate_vector(uint32_t *mem)
+{
+        for (unsigned i = 0; i < 4; ++i)
+                mem[i] = rand();
+}
+
+/* Tests all 64 combinations of floating point modifiers for a given
+ * instruction / floating-type / test type */
+
+void
+bit_fmod_helper(struct panfrost_device *dev,
+                enum bi_class c, unsigned size, bool fma,
+                uint32_t *input, enum bit_debug debug)
+{
+        nir_alu_type T = nir_type_float | size;
+
+        bi_instruction ins = {
+                .type = c,
+                .src = {
+                        BIR_INDEX_REGISTER | 0,
+                        BIR_INDEX_REGISTER | 1,
+                },
+                .src_types = { T, T },
+                .dest = BIR_INDEX_REGISTER | 2,
+                .dest_type = T,
+        };
+
+        for (unsigned outmod = 0; outmod < 4; ++outmod) {
+                for (unsigned inmod = 0; inmod < 16; ++inmod) {
+                        ins.outmod = outmod;
+                        ins.src_abs[0] = (inmod & 0x1);
+                        ins.src_abs[1] = (inmod & 0x2);
+                        ins.src_neg[0] = (inmod & 0x4);
+                        ins.src_neg[1] = (inmod & 0x8);
+
+                        if (!bit_test_single(dev, &ins, input, fma, debug)) {
+                                fprintf(stderr, "FAIL: fmod.%s%u.%s%s.%u\n",
+                                                bi_class_name(c),
+                                                size,
+                                                fma ? "fma" : "add",
+                                                outmod ? bi_output_mod_name(outmod) : ".none",
+                                                inmod);
+                        }
+                }
+        }
 }

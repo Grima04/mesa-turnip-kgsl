@@ -48,7 +48,7 @@ bool
 bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 uint32_t *iubo, size_t sz_ubo,
                 uint32_t *iattr, size_t sz_attr,
-                uint32_t *expected, size_t sz_expected, enum bit_debug);
+                uint32_t *expected, size_t sz_expected, enum bit_debug debug);
 
 /* BIT interpreter */
 
@@ -69,11 +69,10 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA);
 
 /* Packing tests */
 
-bool
-bit_test_single(struct panfrost_device *dev,
-                bi_instruction *ins, 
-                uint32_t input[4],
-                bool fma);
+void
+bit_fmod_helper(struct panfrost_device *dev,
+                enum bi_class c, unsigned size, bool fma,
+                uint32_t *input, enum bit_debug debug);
 
 #endif
 
