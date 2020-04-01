@@ -3639,6 +3639,11 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 	ir3_debug_print(ir, "AFTER: ir3_sched");
 
+	if (IR3_PASS(ir, ir3_cp_postsched)) {
+		/* cleanup the result of removing unneeded mov's: */
+		while (IR3_PASS(ir, ir3_dce, so)) {}
+	}
+
 	/* Pre-assign VS inputs on a6xx+ binning pass shader, to align
 	 * with draw pass VS, so binning and draw pass can both use the
 	 * same VBO state.

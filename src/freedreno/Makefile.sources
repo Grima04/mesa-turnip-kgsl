@@ -28,6 +28,7 @@ ir3_SOURCES := \
 	ir3/ir3_context.c \
 	ir3/ir3_context.h \
 	ir3/ir3_cp.c \
+	ir3/ir3_cp_postsched.c \
 	ir3/ir3_cf.c \
 	ir3/ir3_dce.c \
 	ir3/ir3_delay.c \

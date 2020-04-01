@@ -1304,6 +1304,7 @@ bool ir3_cf(struct ir3 *ir);
 
 /* copy-propagate: */
 bool ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so);
+bool ir3_cp_postsched(struct ir3 *ir);
 
 /* group neighbors and insert mov's to resolve conflicts: */
 bool ir3_group(struct ir3 *ir);
