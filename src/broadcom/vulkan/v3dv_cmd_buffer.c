@@ -2059,8 +2059,6 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
     * since the hardware does guardband clipping, meaning
     * primitives would rasterize outside of the view volume."
     */
-
-   VkRect2D clip_window;
    uint32_t minx, miny, maxx, maxy;
 
    /* From the Vulkan spec:
@@ -2100,12 +2098,12 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
    if (miny > maxy)
       maxy = miny;
 
-   clip_window.offset.x = minx;
-   clip_window.offset.y = miny;
-   clip_window.extent.width = maxx - minx;
-   clip_window.extent.height = maxy - miny;
+   cmd_buffer->state.clip_window.offset.x = minx;
+   cmd_buffer->state.clip_window.offset.y = miny;
+   cmd_buffer->state.clip_window.extent.width = maxx - minx;
+   cmd_buffer->state.clip_window.extent.height = maxy - miny;
 
-   emit_clip_window(cmd_buffer->state.job, &clip_window);
+   emit_clip_window(cmd_buffer->state.job, &cmd_buffer->state.clip_window);
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_SCISSOR;
 }
