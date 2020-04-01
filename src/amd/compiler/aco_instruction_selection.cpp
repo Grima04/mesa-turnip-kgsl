@@ -350,6 +350,82 @@ void expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_compo
    ctx->allocated_vec.emplace(dst.id(), elems);
 }
 
+/* adjust misaligned small bit size loads */
+void byte_align_scalar(isel_context *ctx, Temp vec, Operand offset, Temp dst)
+{
+   Builder bld(ctx->program, ctx->block);
+   Operand shift;
+   Temp select = Temp();
+   if (offset.isConstant()) {
+      assert(offset.constantValue() && offset.constantValue() < 4);
+      shift = Operand(offset.constantValue() * 8);
+   } else {
+      /* bit_offset = 8 * (offset & 0x3) */
+      Temp tmp = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), offset, Operand(3u));
+      select = bld.tmp(s1);
+      shift = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.scc(Definition(select)), tmp, Operand(3u));
+   }
+
+   if (vec.size() == 1) {
+      bld.sop2(aco_opcode::s_lshr_b32, Definition(dst), bld.def(s1, scc), vec, shift);
+   } else if (vec.size() == 2) {
+      Temp tmp = dst.size() == 2 ? dst : bld.tmp(s2);
+      bld.sop2(aco_opcode::s_lshr_b64, Definition(tmp), bld.def(s1, scc), vec, shift);
+      if (tmp == dst)
+         emit_split_vector(ctx, dst, 2);
+      else
+         emit_extract_vector(ctx, tmp, 0, dst);
+   } else if (vec.size() == 4) {
+      Temp lo = bld.tmp(s2), hi = bld.tmp(s2);
+      bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), vec);
+      hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(s1), hi, Operand(0u));
+      if (select != Temp())
+         hi = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), hi, Operand(0u), select);
+      lo = bld.sop2(aco_opcode::s_lshr_b64, bld.def(s2), bld.def(s1, scc), lo, shift);
+      Temp mid = bld.tmp(s1);
+      lo = bld.pseudo(aco_opcode::p_split_vector, bld.def(s1), Definition(mid), lo);
+      hi = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), hi, shift);
+      mid = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc), hi, mid);
+      bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, mid);
+      emit_split_vector(ctx, dst, 2);
+   }
+}
+
+/* this function trims subdword vectors:
+ * if dst is vgpr - split the src and create a shrunk version according to the mask.
+ * if dst is sgpr - split the src, but move the original to sgpr. */
+void trim_subdword_vector(isel_context *ctx, Temp vec_src, Temp dst, unsigned num_components, unsigned mask)
+{
+   assert(vec_src.type() == RegType::vgpr);
+   emit_split_vector(ctx, vec_src, num_components);
+
+   Builder bld(ctx->program, ctx->block);
+   std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
+   unsigned component_size = vec_src.bytes() / num_components;
+   RegClass rc = RegClass(RegType::vgpr, component_size).as_subdword();
+
+   unsigned k = 0;
+   for (unsigned i = 0; i < num_components; i++) {
+      if (mask & (1 << i))
+         elems[k++] = emit_extract_vector(ctx, vec_src, i, rc);
+   }
+
+   if (dst.type() == RegType::vgpr) {
+      assert(dst.bytes() == k * component_size);
+      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, k, 1)};
+      for (unsigned i = 0; i < k; i++)
+         vec->operands[i] = Operand(elems[i]);
+      vec->definitions[0] = Definition(dst);
+      bld.insert(std::move(vec));
+   } else {
+      // TODO: alignbyte if mask doesn't start with 1?
+      assert(mask & 1);
+      assert(dst.size() == vec_src.size());
+      bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), vec_src);
+   }
+   ctx->allocated_vec.emplace(dst.id(), elems);
+}
+
 Temp bool_to_vector_condition(isel_context *ctx, Temp val, Temp dst = Temp(0, s2))
 {
    Builder bld(ctx->program, ctx->block);
