@@ -315,6 +315,8 @@ bi_pack_register_ctrl(struct bi_registers r)
         if (r.first_instruction) {
                 if (ctrl == BIFROST_REG_NONE)
                         ctrl = BIFROST_FIRST_NONE;
+                else if (ctrl == BIFROST_WRITE_FMA_P2_READ_P3)
+                        ctrl = BIFROST_FIRST_WRITE_FMA_P2_READ_P3;
                 else
                         ctrl |= BIFROST_FIRST_NONE;
         }

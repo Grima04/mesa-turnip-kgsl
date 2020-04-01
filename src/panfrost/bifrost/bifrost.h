@@ -520,7 +520,7 @@ struct bifrost_fmt_constant {
 enum bifrost_reg_control {
         BIFROST_WRITE_FMA_P2         = 1,
         BIFROST_WRITE_FMA_P2_READ_P3 = 2,
-        BIFROST_WRITE_FMA_P2_READ_P3_ALT = 3,
+        BIFROST_FIRST_WRITE_FMA_P2_READ_P3 = 3,
         BIFROST_READ_P3              = 4,
         BIFROST_WRITE_ADD_P2         = 5,
         BIFROST_WRITE_ADD_P2_READ_P3 = 6,
@@ -528,6 +528,7 @@ enum bifrost_reg_control {
 
         BIFROST_FIRST_NONE           = 8,
         BIFROST_FIRST_WRITE_FMA_P2   = 9,
+        /* INSTR_INVALID_ENC */
         BIFROST_REG_NONE             = 11,
         BIFROST_FIRST_READ_P3        = 12,
         BIFROST_FIRST_WRITE_ADD_P2   = 13,
