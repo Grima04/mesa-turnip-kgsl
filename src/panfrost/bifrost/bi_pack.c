@@ -363,12 +363,15 @@ bi_pack_registers(struct bi_registers regs)
         }
 
         /* When port 3 isn't used, we have to set it to port 2, and vice versa,
-         * or we an INSTR_INVALID_ENC is raised. The reason is unknown. */
+         * or INSTR_INVALID_ENC is raised. The reason is unknown. */
 
-        if (!regs.port[3])
+        bool has_port2 = regs.write_fma || regs.write_add;
+        bool has_port3 = regs.read_port3 || (regs.write_fma && regs.write_add);
+
+        if (!has_port3)
                 regs.port[3] = regs.port[2];
 
-        if (!regs.port[2])
+        if (!has_port2)
                 regs.port[2] = regs.port[3];
 
         s.reg3 = regs.port[3];
