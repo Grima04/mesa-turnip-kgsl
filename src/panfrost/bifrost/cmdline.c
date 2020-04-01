@@ -124,6 +124,16 @@ test_vertex(char **argv)
 }
 
 static void
+tests(void)
+{
+        void *memctx = NULL; /* TODO */
+        struct panfrost_device *dev = bit_initialize(memctx);
+        bit_fmod(dev, BIT_DEBUG_FAIL);
+        bit_fma(dev, BIT_DEBUG_FAIL);
+        bit_csel(dev, BIT_DEBUG_FAIL);
+}
+
+static void
 run(const char *filename)
 {
         FILE *fp = fopen(filename, "rb");
@@ -169,6 +179,8 @@ main(int argc, char **argv)
                 disassemble(argv[2], false);
         else if (strcmp(argv[1], "disasm-verbose") == 0)
                 disassemble(argv[2], true);
+        else if (strcmp(argv[1], "tests") == 0)
+                tests();
         else if (strcmp(argv[1], "test-vertex") == 0)
                 test_vertex(&argv[2]);
         else if (strcmp(argv[1], "run") == 0)
