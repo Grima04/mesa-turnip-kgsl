@@ -553,37 +553,26 @@ bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
         unsigned src_0 = bi_get_src(ins, regs, 0, true);
         unsigned src_1 = bi_get_src(ins, regs, 1, true);
         bool l = false;
+        bool flip = false;
 
         if (!abs_0 && !abs_1) {
                 /* Force k = 0 <===> NOT(src1 < src0) <==> src1 >= src0 */
-                if (src_0 < src_1) {
-                        unsigned tmp = src_0;
-                        src_0 = src_1;
-                        src_1 = tmp;
-                }
+                flip = (src_0 < src_1);
         } else if (abs_0 && !abs_1) {
                 l = src_1 >= src_0;
         } else if (abs_1 && !abs_0) {
-                unsigned tmp = src_0;
-                src_0 = src_1;
-                src_0 = tmp;
-
-                l = src_1 >= src_0;
+                flip = true;
+                l = src_0 >= src_1;
         } else {
-                if (src_0 >= src_1) {
-                        unsigned tmp = src_0;
-                        src_0 = src_1;
-                        src_1 = tmp;
-                }
-
+                flip = (src_0 >= src_1);
                 l = true;
         }
 
         struct bifrost_fma_add_minmax16 pack = {
-                .src0 = src_0,
-                .src1 = src_1,
-                .src0_neg = ins->src_neg[0],
-                .src1_neg = ins->src_neg[1],
+                .src0 = flip ? src_1 : src_0,
+                .src1 = flip ? src_0 : src_1,
+                .src0_neg = ins->src_neg[flip ? 1 : 0],
+                .src1_neg = ins->src_neg[flip ? 0 : 1],
                 .abs1 = l,
                 .outmod = ins->outmod,
                 .mode = (ins->type == BI_ADD) ? ins->roundmode : ins->minmax,
