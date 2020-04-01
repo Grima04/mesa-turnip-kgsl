@@ -211,9 +211,7 @@ v3dv_GetRenderAreaGranularity(VkDevice device,
    V3DV_FROM_HANDLE(v3dv_render_pass, pass, renderPass);
 
    /* Our tile size depends on the max number of color attachments we can
-    * have in any subpass and their bpp. Here we only know the number of
-    * attachments, so we only use that. This means we might report a
-    * granularity that is slightly larger, but that should be fine.
+    * have in any subpass and the maximum bpp across all of them.
     */
    static const uint8_t tile_sizes[] = {
       64, 64,
@@ -223,10 +221,25 @@ v3dv_GetRenderAreaGranularity(VkDevice device,
       16, 16,
    };
 
+   /* Find maximum number of color attachments in any subpass */
    uint32_t max_color_attachment_count = 0;
    for (unsigned i = 0; i < pass->subpass_count; i++) {
       max_color_attachment_count = MAX2(max_color_attachment_count,
                                         pass->subpasses[i].color_count);
+   }
+
+   /* Find maximum bpp in any color attachment */
+   uint32_t max_internal_bpp = 0;
+   for (unsigned i = 0; i < pass->attachment_count; i++) {
+      VkFormat vk_format = pass->attachments[i].desc.format;
+      if (vk_format_is_color(vk_format)) {
+         const struct v3dv_format *format = v3dv_get_format(vk_format);
+         uint32_t internal_type, internal_bpp;
+         v3dv_get_internal_type_bpp_for_output_format(format->rt_type,
+                                                      &internal_type,
+                                                      &internal_bpp);
+         max_internal_bpp = MAX2(max_internal_bpp, internal_bpp);
+      }
    }
 
    uint32_t idx = 0;
@@ -235,6 +248,9 @@ v3dv_GetRenderAreaGranularity(VkDevice device,
    else if (max_color_attachment_count > 1)
       idx += 1;
 
+   idx += max_internal_bpp;
+
+   assert(idx < ARRAY_SIZE(tile_sizes));
    *pGranularity = (VkExtent2D) { .width = tile_sizes[idx * 2],
                                   .height = tile_sizes[idx * 2 + 1] };
 }
