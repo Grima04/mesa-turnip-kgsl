@@ -209,6 +209,43 @@ bit_fmod_helper(struct panfrost_device *dev,
         }
 }
 
+static void
+bit_fma_helper(struct panfrost_device *dev,
+                unsigned size, uint32_t *input, enum bit_debug debug)
+{
+        nir_alu_type T = nir_type_float | size;
+
+        bi_instruction ins = {
+                .type = BI_FMA,
+                .src = {
+                        BIR_INDEX_REGISTER | 0,
+                        BIR_INDEX_REGISTER | 1,
+                        BIR_INDEX_REGISTER | 2,
+                },
+                .src_types = { T, T, T },
+                .dest = BIR_INDEX_REGISTER | 3,
+                .dest_type = T,
+        };
+
+        for (unsigned outmod = 0; outmod < 4; ++outmod) {
+                for (unsigned inmod = 0; inmod < 8; ++inmod) {
+                        ins.outmod = outmod;
+                        ins.src_neg[0] = (inmod & 0x1);
+                        ins.src_neg[1] = (inmod & 0x2);
+                        ins.src_neg[2] = (inmod & 0x4);
+
+                        if (!bit_test_single(dev, &ins, input, true, debug)) {
+                                fprintf(stderr, "FAIL: fma%u%s.%u\n",
+                                                size,
+                                                outmod ? bi_output_mod_name(outmod) : ".none",
+                                                inmod);
+                        }
+                }
+        }
+}
+
+
+
 void
 bit_fmod(struct panfrost_device *dev, enum bit_debug debug)
 {
@@ -226,5 +263,26 @@ bit_fmod(struct panfrost_device *dev, enum bit_debug debug)
                         (uint32_t *) input32;
 
                 bit_fmod_helper(dev, BI_ADD, sz, true, input, debug);
+        }
+}
+
+void
+bit_fma(struct panfrost_device *dev, enum bit_debug debug)
+{
+        float input32[4] = { 0.2, 1.6, -3.5, 0.0 };
+
+        uint32_t input16[4] = {
+                _mesa_float_to_half(input32[0]) | (_mesa_float_to_half(-1.8) << 16),
+                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(0.6) << 16),
+                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(16.2) << 16),
+                0
+        };
+
+        for (unsigned sz = 16; sz <= 32; sz *= 2) {
+                uint32_t *input =
+                        (sz == 16) ? input16 :
+                        (uint32_t *) input32;
+
+                bit_fma_helper(dev, sz, input, debug);
         }
 }
