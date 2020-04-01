@@ -573,9 +573,19 @@ tu_shader_compile_options_init(
    struct tu_shader_compile_options *options,
    const VkGraphicsPipelineCreateInfo *pipeline_info)
 {
-   *options = (struct tu_shader_compile_options) {
-      /* TODO ir3_key */
+   bool has_gs = false;
+   for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
+      if (pipeline_info->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
+         has_gs = true;
+         break;
+      }
+   }
 
+   *options = (struct tu_shader_compile_options) {
+      /* TODO: Populate the remaining fields of ir3_shader_key. */
+      .key = {
+         .has_gs = has_gs,
+      },
       /* TODO: VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT
        * some optimizations need to happen otherwise shader might not compile
        */
