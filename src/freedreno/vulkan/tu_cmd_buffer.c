@@ -3655,6 +3655,8 @@ tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
                      const struct tu_draw_info *draw)
 {
    const enum pc_di_primtype primtype = cmd->state.pipeline->ia.primtype;
+   bool has_gs = cmd->state.pipeline->active_stages &
+                 VK_SHADER_STAGE_GEOMETRY_BIT;
 
    tu_cs_emit_regs(cs,
                    A6XX_VFD_INDEX_OFFSET(draw->vertex_offset),
@@ -3673,7 +3675,8 @@ tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
          CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
          CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) | 0x2000;
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
+         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE) | 0x2000;
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_INDIRECT, 6);
       tu_cs_emit(cs, cp_draw_indx);
@@ -3684,7 +3687,8 @@ tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
       const uint32_t cp_draw_indx =
          CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) | 0x2000;
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
+         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE) | 0x2000;
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT, 3);
       tu_cs_emit(cs, cp_draw_indx);
@@ -3701,6 +3705,8 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
 {
 
    const enum pc_di_primtype primtype = cmd->state.pipeline->ia.primtype;
+   bool has_gs = cmd->state.pipeline->active_stages &
+                 VK_SHADER_STAGE_GEOMETRY_BIT;
 
    tu_cs_emit_regs(cs,
                    A6XX_VFD_INDEX_OFFSET(draw->vertex_offset),
@@ -3721,7 +3727,8 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
          CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
          CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) | 0x2000;
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
+         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE) | 0x2000;
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 7);
       tu_cs_emit(cs, cp_draw_indx);
@@ -3734,7 +3741,8 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
       const uint32_t cp_draw_indx =
          CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) | 0x2000;
+         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
+         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE) | 0x2000;
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
       tu_cs_emit(cs, cp_draw_indx);
