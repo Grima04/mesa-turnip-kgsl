@@ -545,21 +545,30 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
 
 static void
 tu6_emit_vs_system_values(struct tu_cs *cs,
-                          const struct ir3_shader_variant *vs)
+                          const struct ir3_shader_variant *vs,
+                          const struct ir3_shader_variant *gs)
 {
    const uint32_t vertexid_regid =
-      ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
+         ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
    const uint32_t instanceid_regid =
-      ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
+         ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
+   const uint32_t primitiveid_regid = gs->type != MESA_SHADER_NONE ?
+         ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) :
+         regid(63, 0);
+   const uint32_t gsheader_regid = gs->type != MESA_SHADER_NONE ?
+         ir3_find_sysval_regid(gs, SYSTEM_VALUE_GS_HEADER_IR3) :
+         regid(63, 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_1, 6);
    tu_cs_emit(cs, A6XX_VFD_CONTROL_1_REGID4VTX(vertexid_regid) |
-                     A6XX_VFD_CONTROL_1_REGID4INST(instanceid_regid) |
-                     0xfcfc0000);
+                  A6XX_VFD_CONTROL_1_REGID4INST(instanceid_regid) |
+                  A6XX_VFD_CONTROL_1_REGID4PRIMID(primitiveid_regid) |
+                  0xfc000000);
    tu_cs_emit(cs, 0x0000fcfc); /* VFD_CONTROL_2 */
    tu_cs_emit(cs, 0xfcfcfcfc); /* VFD_CONTROL_3 */
    tu_cs_emit(cs, 0x000000fc); /* VFD_CONTROL_4 */
-   tu_cs_emit(cs, 0x0000fcfc); /* VFD_CONTROL_5 */
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gsheader_regid) |
+                  0xfc00); /* VFD_CONTROL_5 */
    tu_cs_emit(cs, 0x00000000); /* VFD_CONTROL_6 */
 }
 
@@ -1343,7 +1352,7 @@ tu6_emit_program(struct tu_cs *cs,
    tu6_emit_gs_config(cs, builder->shaders[MESA_SHADER_GEOMETRY], gs);
    tu6_emit_fs_config(cs, builder->shaders[MESA_SHADER_FRAGMENT], fs);
 
-   tu6_emit_vs_system_values(cs, vs);
+   tu6_emit_vs_system_values(cs, vs, gs);
    tu6_emit_vpc(cs, vs, gs, fs, binning_pass, tf);
    tu6_emit_vpc_varying_modes(cs, fs, binning_pass);
    tu6_emit_fs_inputs(cs, fs);
