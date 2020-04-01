@@ -24,6 +24,7 @@
  *      Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
 
+#include <math.h>
 #include "bit.h"
 #include "util/half_float.h"
 
@@ -201,6 +202,18 @@ bit_outmod(float raw, enum bifrost_outmod mod)
         }
 }
 
+static float
+bit_srcmod(float raw, bool abs, bool neg)
+{
+        if (abs)
+                raw = fabs(raw);
+
+        if (neg)
+                raw = -raw;
+
+        return raw;
+}
+
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 {
@@ -209,6 +222,23 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 
         bi_foreach_src(ins, src)
                 srcs[src].u64 = bit_read(s, ins, ins->src[src], ins->src_types[src], FMA);
+
+        /* Apply source modifiers if we need to */
+        if (bi_has_source_mods(ins)) {
+                bi_foreach_src(ins, src) {
+                        if (ins->src_types[src] == nir_type_float16) {
+                                for (unsigned c = 0; c < 2; ++c) {
+                                        srcs[src].f16[c] = bh(bit_srcmod(bf(srcs[src].f16[c]),
+                                                        ins->src_abs[src],
+                                                        ins->src_neg[src]));
+                                }
+                        } else if (ins->src_types[src] == nir_type_float32) {
+                                srcs[src].f32 = bit_srcmod(srcs[src].f32,
+                                                        ins->src_abs[src],
+                                                        ins->src_neg[src]);
+                        }
+                }
+        }
 
         /* Next, do the action of the instruction */
         bit_t dest = { 0 };
