@@ -214,6 +214,41 @@ bit_srcmod(float raw, bool abs, bool neg)
         return raw;
 }
 
+#define BIT_COND(cond, left, right) \
+        if (cond == BI_COND_LT) return left < right; \
+        else if (cond == BI_COND_LE) return left <= right; \
+        else if (cond == BI_COND_GE) return left >= right; \
+        else if (cond == BI_COND_GT) return left > right; \
+        else if (cond == BI_COND_EQ) return left == right; \
+        else if (cond == BI_COND_NE) return left != right; \
+        else { return true; }
+
+static bool
+bit_eval_cond(enum bi_cond cond, bit_t l, bit_t r, nir_alu_type T, unsigned c)
+{
+        if (T == nir_type_float32) {
+                BIT_COND(cond, l.f32, r.f32);
+        } else if (T == nir_type_float16) {
+                float left = bf(l.f16[c]);
+                float right = bf(r.f16[c]);
+                BIT_COND(cond, left, right);
+        } else if (T == nir_type_int32) {
+                int32_t left = (int32_t) l.u32;
+                int32_t right = (int32_t) r.u32;
+                BIT_COND(cond, left, right);
+        } else if (T == nir_type_int16) {
+                int16_t left = (int16_t) l.u32;
+                int16_t right = (int16_t) r.u32;
+                BIT_COND(cond, left, right);
+        } else if (T == nir_type_uint32) {
+                BIT_COND(cond, l.u32, r.u32);
+        } else if (T == nir_type_uint16) {
+                BIT_COND(cond, l.u16[c], r.u16[c]);
+        } else {
+                unreachable("Unknown type evaluated");
+        }
+}
+
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 {
@@ -251,8 +286,16 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         case BI_CMP:
         case BI_BITWISE:
         case BI_CONVERT:
-        case BI_CSEL:
                 unreachable("Unsupported op");
+
+        case BI_CSEL: {
+                bool direct = ins->csel_cond == BI_COND_ALWAYS;
+                bool cond = direct ? srcs[0].u32 :
+                        bit_eval_cond(ins->csel_cond, srcs[0], srcs[1], ins->src_types[0], 0);
+
+                dest = cond ? srcs[2] : srcs[3];
+                break;
+        }
 
         case BI_FMA: {
                 bfloat(bit_f64fma, bit_f32fma);
