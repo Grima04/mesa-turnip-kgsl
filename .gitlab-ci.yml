@@ -313,7 +313,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-06-22-tracie"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-07-07"
 
 .use-arm_build:
   variables:
@@ -602,6 +602,8 @@ meson-armhf:
     LLVM_VERSION: "7"
     EXTRA_OPTION: >
       -D llvm=disabled
+    UPLOAD_FOR_LAVA: 1
+    DEBIAN_ARCH: armhf
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -614,6 +616,8 @@ meson-arm64:
     VULKAN_DRIVERS: "freedreno"
     EXTRA_OPTION: >
       -D llvm=disabled
+    UPLOAD_FOR_LAVA: 1
+    DEBIAN_ARCH: arm64
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh

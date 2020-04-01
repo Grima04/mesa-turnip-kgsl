@@ -7,8 +7,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Ephemeral packages (installed for this script and removed again at the end)
 STABLE_EPHEMERAL=" \
-        libpciaccess-dev:$arch \
-        wget \
+        libpciaccess-dev:$arch
         "
 
 dpkg --add-architecture $arch
@@ -23,8 +22,14 @@ apt-get install -y --no-remove \
         libstdc++6:$arch \
         libtinfo-dev:$arch
 
+if [[ $arch == "armhf" ]]; then
+        LLVM=llvm-7-dev
+else
+        LLVM=llvm-8-dev
+fi
+
 apt-get install -y --no-remove -t buster-backports \
-        llvm-8-dev:$arch
+        $LLVM:$arch
 
 . .gitlab-ci/create-cross-file.sh $arch
 

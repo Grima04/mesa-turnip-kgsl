@@ -47,8 +47,13 @@ mkdir -p artifacts/
 tar -cf artifacts/install.tar install
 
 # If the container has LAVA stuff, prepare the artifacts for LAVA jobs
-if [ -d /lava-files ]; then
+if [ -n "$UPLOAD_FOR_LAVA" ]; then
     # Pass needed files to the test stage
     cp $CI_PROJECT_DIR/.gitlab-ci/generate_lava.py artifacts/.
     cp $CI_PROJECT_DIR/.gitlab-ci/lava-deqp.yml.jinja2 artifacts/.
+
+    gzip -c artifacts/install.tar > mesa-${DEBIAN_ARCH}.tar.gz
+    ci-fairy minio login $CI_JOB_JWT
+    MINIO_PATH=minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
+    ci-fairy minio cp mesa-${DEBIAN_ARCH}.tar.gz minio://${MINIO_PATH}/mesa-${DEBIAN_ARCH}.tar.gz
 fi
