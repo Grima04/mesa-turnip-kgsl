@@ -19,6 +19,7 @@ stages:
   - panfrost
   - radv
   - lima
+  - virgl
   - success
 
 
@@ -145,7 +146,7 @@ x86_build:
 x86_test-gl:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-03-18-jflags"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-04-20"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
@@ -309,7 +310,7 @@ meson-testing:
       -D platforms=x11,drm,surfaceless
     GALLIUM_ST: >
       -D dri3=true
-    GALLIUM_DRIVERS: "swrast"
+    GALLIUM_DRIVERS: "swrast,virgl"
     VULKAN_DRIVERS: amd
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
@@ -712,6 +713,31 @@ softpipe-gles31:
   variables:
     DEQP_VER: gles31
   extends: softpipe-gles2
+
+virgl-gles2:
+  variables:
+    DEQP_VER: gles2
+    DEQP_PARALLEL: 4
+    NIR_VALIDATE: 0
+    DEQP_NO_SAVE_RESULTS: 1
+    DEQP_RUNNER_OPTIONS: "--compact-display false"
+    # Don't use threads inside llvmpipe, we've already got all 4 cores
+    # busy with DEQP_PARALLEL.
+    LP_NUM_THREADS: 0
+    DEQP_EXPECTED_FAILS: deqp-virgl-fails.txt
+    LIBGL_ALWAYS_SOFTWARE: "true"
+    GALLIUM_DRIVER: "virpipe"
+  extends:
+    - .deqp-test-gl
+    - .virgl-rules
+
+virgl-gles3:
+  variables:
+    DEQP_VER: gles3
+    CI_NODE_INDEX: 1
+    CI_NODE_TOTAL: 3
+    DEQP_RUNNER_OPTIONS: "--compact-display false --timeout 120"
+  extends: virgl-gles2
 
 # Rules for tests that should not be present in MRs or the main
 # project's pipeline (don't block marge or report red on

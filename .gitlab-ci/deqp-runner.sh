@@ -194,7 +194,8 @@ check_renderer() {
     # If you're having trouble loading your driver, uncommenting this may help
     # debug.
     # export EGL_LOG_LEVEL=debug
-    $DEQP $DEQP_OPTIONS --deqp-case=dEQP-GLES2.info.\* --deqp-log-filename=$RESULTS/deqp-info.qpa
+    VERSION=`echo $DEQP_VER | tr '[a-z]' '[A-Z]'`
+    $DEQP $DEQP_OPTIONS --deqp-case=dEQP-$VERSION.info.\* --deqp-log-filename=$RESULTS/deqp-info.qpa
     parse_renderer
 }
 
@@ -204,6 +205,19 @@ quiet() {
     "$@"
     set -x
 }
+
+if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
+    # deqp is to use virpipe, and virgl_test_server llvmpipe
+    export GALLIUM_DRIVER="$GALLIUM_DRIVER"
+
+    GALLIUM_DRIVER=llvmpipe \
+    GALLIVM_PERF="nopt,no_filter_hacks" \
+    VTEST_USE_EGL_SURFACELESS=1 \
+    VTEST_USE_GLES=1 \
+    virgl_test_server >$RESULTS/vtest-log.txt 2>&1 &
+
+    sleep 1
+fi
 
 if [ $DEQP_VER != vk ]; then
     quiet check_renderer
