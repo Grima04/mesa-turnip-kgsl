@@ -3792,6 +3792,8 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
    if (ctx->stage == vertex_vs ||
        ctx->stage == tess_eval_vs ||
        ctx->stage == fragment_fs ||
+       ctx->stage == ngg_vertex_gs ||
+       ctx->stage == ngg_tess_eval_gs ||
        ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
       bool stored_to_temps = store_output_to_temps(ctx, instr);
       if (!stored_to_temps) {
@@ -9506,9 +9508,11 @@ static bool export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
 {
    assert(ctx->stage == vertex_vs ||
           ctx->stage == tess_eval_vs ||
-          ctx->stage == gs_copy_vs);
+          ctx->stage == gs_copy_vs ||
+          ctx->stage == ngg_vertex_gs ||
+          ctx->stage == ngg_tess_eval_gs);
 
-   int offset = ctx->stage == tess_eval_vs
+   int offset = (ctx->stage & sw_tes)
                 ? ctx->program->info->tes.outinfo.vs_output_param_offset[slot]
                 : ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
    uint64_t mask = ctx->outputs.mask[slot];
@@ -9576,17 +9580,46 @@ static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
    ctx->block->instructions.emplace_back(std::move(exp));
 }
 
+static void create_export_phis(isel_context *ctx)
+{
+   /* Used when exports are needed, but the output temps are defined in a preceding block.
+    * This function will set up phis in order to access the outputs in the next block.
+    */
+
+   assert(ctx->block->instructions.back()->opcode == aco_opcode::p_logical_start);
+   aco_ptr<Instruction> logical_start = aco_ptr<Instruction>(ctx->block->instructions.back().release());
+   ctx->block->instructions.pop_back();
+
+   Builder bld(ctx->program, ctx->block);
+
+   for (unsigned slot = 0; slot <= VARYING_SLOT_VAR31; ++slot) {
+      uint64_t mask = ctx->outputs.mask[slot];
+      for (unsigned i = 0; i < 4; ++i) {
+         if (!(mask & (1 << i)))
+            continue;
+
+         Temp old = ctx->outputs.temps[slot * 4 + i];
+         Temp phi = bld.pseudo(aco_opcode::p_phi, bld.def(v1), old, Operand(v1));
+         ctx->outputs.temps[slot * 4 + i] = phi;
+      }
+   }
+
+   bld.insert(std::move(logical_start));
+}
+
 static void create_vs_exports(isel_context *ctx)
 {
    assert(ctx->stage == vertex_vs ||
           ctx->stage == tess_eval_vs ||
-          ctx->stage == gs_copy_vs);
+          ctx->stage == gs_copy_vs ||
+          ctx->stage == ngg_vertex_gs ||
+          ctx->stage == ngg_tess_eval_gs);
 
-   radv_vs_output_info *outinfo = ctx->stage == tess_eval_vs
+   radv_vs_output_info *outinfo = (ctx->stage & sw_tes)
                                   ? &ctx->program->info->tes.outinfo
                                   : &ctx->program->info->vs.outinfo;
 
-   if (outinfo->export_prim_id) {
+   if (outinfo->export_prim_id && !(ctx->stage & hw_ngg_gs)) {
       ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
       ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = get_arg(ctx, ctx->args->vs_prim_id);
    }
@@ -9616,7 +9649,8 @@ static void create_vs_exports(isel_context *ctx)
    }
 
    for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
-      if (i < VARYING_SLOT_VAR0 && i != VARYING_SLOT_LAYER &&
+      if (i < VARYING_SLOT_VAR0 &&
+          i != VARYING_SLOT_LAYER &&
           i != VARYING_SLOT_PRIMITIVE_ID)
          continue;
 
@@ -10279,6 +10313,208 @@ Temp merged_wave_info_to_mask(isel_context *ctx, unsigned i)
    return cond;
 }
 
+bool ngg_early_prim_export(isel_context *ctx)
+{
+   /* TODO: Check edge flags, and if they are written, return false. (Needed for OpenGL, not for Vulkan.) */
+   return true;
+}
+
+void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   /* Get the id of the current wave within the threadgroup (workgroup) */
+   Builder::Result wave_id_in_tg = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                                            get_arg(ctx, ctx->args->merged_wave_info), Operand(24u | (4u << 16)));
+
+   /* Execute the following code only on the first wave (wave id 0),
+    * use the SCC def to tell if the wave id is zero or not.
+    */
+   Temp cond = wave_id_in_tg.def(1).getTemp();
+   if_context ic;
+   begin_uniform_if_then(ctx, &ic, cond);
+   begin_uniform_if_else(ctx, &ic);
+   bld.reset(ctx->block);
+
+   /* Number of vertices output by VS/TES */
+   Temp vtx_cnt = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                           get_arg(ctx, ctx->args->gs_tg_info), Operand(12u | (9u << 16u)));
+   /* Number of primitives output by VS/TES */
+   Temp prm_cnt = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                           get_arg(ctx, ctx->args->gs_tg_info), Operand(22u | (9u << 16u)));
+
+   /* Put the number of vertices and primitives into m0 for the GS_ALLOC_REQ */
+   Temp tmp = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), prm_cnt, Operand(12u));
+   tmp = bld.sop2(aco_opcode::s_or_b32, bld.m0(bld.def(s1)), bld.def(s1, scc), tmp, vtx_cnt);
+
+   /* Request the SPI to allocate space for the primitives and vertices that will be exported by the threadgroup. */
+   bld.sopp(aco_opcode::s_sendmsg, bld.m0(tmp), -1, sendmsg_gs_alloc_req);
+
+   end_uniform_if(ctx, &ic);
+}
+
+Temp ngg_get_prim_exp_arg(isel_context *ctx, unsigned num_vertices, const Temp vtxindex[])
+{
+   Builder bld(ctx->program, ctx->block);
+
+   if (ctx->args->options->key.vs_common_out.as_ngg_passthrough) {
+      return get_arg(ctx, ctx->args->gs_vtx_offset[0]);
+   }
+
+   Temp gs_invocation_id = get_arg(ctx, ctx->args->ac.gs_invocation_id);
+   Temp tmp;
+
+   for (unsigned i = 0; i < num_vertices; ++i) {
+      assert(vtxindex[i].id());
+
+      if (i)
+         tmp = bld.vop3(aco_opcode::v_lshl_add_u32, bld.def(v1), vtxindex[i], Operand(10u * i), tmp);
+      else
+         tmp = vtxindex[i];
+
+      /* The initial edge flag is always false in tess eval shaders. */
+      if (ctx->stage == ngg_vertex_gs) {
+         Temp edgeflag = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), gs_invocation_id, Operand(8 + i), Operand(1u));
+         tmp = bld.vop3(aco_opcode::v_lshl_add_u32, bld.def(v1), edgeflag, Operand(10u * i + 9u), tmp);
+      }
+   }
+
+   /* TODO: Set isnull field in case of merged NGG VS+GS. */
+
+   return tmp;
+}
+
+void ngg_emit_prim_export(isel_context *ctx, unsigned num_vertices_per_primitive, const Temp vtxindex[])
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp prim_exp_arg = ngg_get_prim_exp_arg(ctx, num_vertices_per_primitive, vtxindex);
+
+   bld.exp(aco_opcode::exp, prim_exp_arg, Operand(v1), Operand(v1), Operand(v1),
+        1 /* enabled mask */, V_008DFC_SQ_EXP_PRIM /* dest */,
+        false /* compressed */, true/* done */, false /* valid mask */);
+}
+
+void ngg_emit_nogs_gsthreads(isel_context *ctx)
+{
+   /* Emit the things that NGG GS threads need to do, for shaders that don't have SW GS.
+    * These must always come before VS exports.
+    *
+    * It is recommended to do these as early as possible. They can be at the beginning when
+    * there is no SW GS and the shader doesn't write edge flags.
+    */
+
+   if_context ic;
+   Temp is_gs_thread = merged_wave_info_to_mask(ctx, 1);
+   begin_divergent_if_then(ctx, &ic, is_gs_thread);
+
+   Builder bld(ctx->program, ctx->block);
+   constexpr unsigned max_vertices_per_primitive = 3;
+   unsigned num_vertices_per_primitive = max_vertices_per_primitive;
+
+   if (ctx->stage == ngg_vertex_gs) {
+      /* TODO: optimize for points & lines */
+   } else if (ctx->stage == ngg_tess_eval_gs) {
+      if (ctx->shader->info.tess.point_mode)
+         num_vertices_per_primitive = 1;
+      else if (ctx->shader->info.tess.primitive_mode == GL_ISOLINES)
+         num_vertices_per_primitive = 2;
+   } else {
+      unreachable("Unsupported NGG shader stage");
+   }
+
+   Temp vtxindex[max_vertices_per_primitive];
+   vtxindex[0] = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu),
+                          get_arg(ctx, ctx->args->gs_vtx_offset[0]));
+   vtxindex[1] = num_vertices_per_primitive < 2 ? Temp(0, v1) :
+                 bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
+                          get_arg(ctx, ctx->args->gs_vtx_offset[0]), Operand(16u), Operand(16u));
+   vtxindex[2] = num_vertices_per_primitive < 3 ? Temp(0, v1) :
+                 bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu),
+                          get_arg(ctx, ctx->args->gs_vtx_offset[2]));
+
+   /* Export primitive data to the index buffer. */
+   ngg_emit_prim_export(ctx, num_vertices_per_primitive, vtxindex);
+
+   /* Export primitive ID. */
+   if (ctx->stage == ngg_vertex_gs && ctx->args->options->key.vs_common_out.export_prim_id) {
+      /* Copy Primitive IDs from GS threads to the LDS address corresponding to the ES thread of the provoking vertex. */
+      Temp prim_id = get_arg(ctx, ctx->args->ac.gs_prim_id);
+      Temp provoking_vtx_index = vtxindex[0];
+      Temp addr = bld.v_mul_imm(bld.def(v1), provoking_vtx_index, 4u);
+
+      store_lds(ctx, 4, prim_id, 0x1u, addr, 0u, 4u);
+   }
+
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
+}
+
+void ngg_emit_nogs_output(isel_context *ctx)
+{
+   /* Emits NGG GS output, for stages that don't have SW GS. */
+
+   if_context ic;
+   Builder bld(ctx->program, ctx->block);
+   bool late_prim_export = !ngg_early_prim_export(ctx);
+
+   /* NGG streamout is currently disabled by default. */
+   assert(!ctx->args->shader_info->so.num_outputs);
+
+   if (late_prim_export) {
+      /* VS exports are output to registers in a predecessor block. Emit phis to get them into this block. */
+      create_export_phis(ctx);
+      /* Do what we need to do in the GS threads. */
+      ngg_emit_nogs_gsthreads(ctx);
+
+      /* What comes next should be executed on ES threads. */
+      Temp is_es_thread = merged_wave_info_to_mask(ctx, 0);
+      begin_divergent_if_then(ctx, &ic, is_es_thread);
+      bld.reset(ctx->block);
+   }
+
+   /* Export VS outputs */
+   ctx->block->kind |= block_kind_export_end;
+   create_vs_exports(ctx);
+
+   /* Export primitive ID */
+   if (ctx->args->options->key.vs_common_out.export_prim_id) {
+      Temp prim_id;
+
+      if (ctx->stage == ngg_vertex_gs) {
+         /* Wait for GS threads to store primitive ID in LDS. */
+         bld.barrier(aco_opcode::p_memory_barrier_shared);
+         bld.sopp(aco_opcode::s_barrier);
+
+         /* Calculate LDS address where the GS threads stored the primitive ID. */
+         Temp wave_id_in_tg = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                                       get_arg(ctx, ctx->args->merged_wave_info), Operand(24u | (4u << 16)));
+         Temp thread_id_in_wave = emit_mbcnt(ctx, bld.def(v1));
+         Temp wave_id_mul = bld.v_mul_imm(bld.def(v1), as_vgpr(ctx, wave_id_in_tg), ctx->program->wave_size);
+         Temp thread_id_in_tg = bld.vadd32(bld.def(v1), Operand(wave_id_mul), Operand(thread_id_in_wave));
+         Temp addr = bld.v_mul_imm(bld.def(v1), thread_id_in_tg, 4u);
+
+         /* Load primitive ID from LDS. */
+         prim_id = load_lds(ctx, 4, bld.tmp(v1), addr, 0u, 4u);
+      } else if (ctx->stage == ngg_tess_eval_gs) {
+         /* TES: Just use the patch ID as the primitive ID. */
+         prim_id = get_arg(ctx, ctx->args->ac.tes_patch_id);
+      } else {
+         unreachable("unsupported NGG shader stage.");
+      }
+
+      ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
+      ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = prim_id;
+
+      export_vs_varying(ctx, VARYING_SLOT_PRIMITIVE_ID, false, nullptr);
+   }
+
+   if (late_prim_export) {
+      begin_divergent_if_else(ctx, &ic);
+      end_divergent_if(ctx, &ic);
+      bld.reset(ctx->block);
+   }
+}
+
 void select_program(Program *program,
                     unsigned shader_count,
                     struct nir_shader *const *shaders,
@@ -10287,6 +10523,7 @@ void select_program(Program *program,
 {
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args, false);
    if_context ic_merged_wave_info;
+   bool ngg_no_gs = ctx.stage == ngg_vertex_gs || ctx.stage == ngg_tess_eval_gs;
 
    for (unsigned i = 0; i < shader_count; i++) {
       nir_shader *nir = shaders[i];
@@ -10305,6 +10542,13 @@ void select_program(Program *program,
          split_arguments(&ctx, startpgm);
       }
 
+      if (ngg_no_gs) {
+         ngg_emit_sendmsg_gs_alloc_req(&ctx);
+
+         if (ngg_early_prim_export(&ctx))
+            ngg_emit_nogs_gsthreads(&ctx);
+      }
+
       /* In a merged VS+TCS HS, the VS implementation can be completely empty. */
       nir_function_impl *func = nir_shader_get_entrypoint(nir);
       bool empty_shader = nir_cf_list_is_empty_block(&func->body) &&
@@ -10313,7 +10557,7 @@ void select_program(Program *program,
                            (nir->info.stage == MESA_SHADER_TESS_EVAL &&
                             ctx.stage == tess_eval_geometry_gs));
 
-      bool check_merged_wave_info = ctx.tcs_in_out_eq ? i == 0 : (shader_count >= 2 && !empty_shader);
+      bool check_merged_wave_info = ctx.tcs_in_out_eq ? i == 0 : ((shader_count >= 2 && !empty_shader) || ngg_no_gs);
       bool endif_merged_wave_info = ctx.tcs_in_out_eq ? i == 1 : check_merged_wave_info;
       if (check_merged_wave_info) {
          Temp cond = merged_wave_info_to_mask(&ctx, i);
@@ -10337,11 +10581,14 @@ void select_program(Program *program,
 
       visit_cf_list(&ctx, &func->body);
 
-      if (ctx.program->info->so.num_outputs && (ctx.stage == vertex_vs || ctx.stage == tess_eval_vs))
+      if (ctx.program->info->so.num_outputs && (ctx.stage & hw_vs))
          emit_streamout(&ctx, 0);
 
-      if (ctx.stage == vertex_vs || ctx.stage == tess_eval_vs) {
+      if (ctx.stage & hw_vs) {
          create_vs_exports(&ctx);
+         ctx.block->kind |= block_kind_export_end;
+      } else if (ngg_no_gs && ngg_early_prim_export(&ctx)) {
+         ngg_emit_nogs_output(&ctx);
       } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
          Builder bld(ctx.program, ctx.block);
          bld.barrier(aco_opcode::p_memory_barrier_gs_data);
@@ -10350,13 +10597,18 @@ void select_program(Program *program,
          write_tcs_tess_factors(&ctx);
       }
 
-      if (ctx.stage == fragment_fs)
+      if (ctx.stage == fragment_fs) {
          create_fs_exports(&ctx);
+         ctx.block->kind |= block_kind_export_end;
+      }
 
       if (endif_merged_wave_info) {
          begin_divergent_if_else(&ctx, &ic_merged_wave_info);
          end_divergent_if(&ctx, &ic_merged_wave_info);
       }
+
+      if (ngg_no_gs && !ngg_early_prim_export(&ctx))
+         ngg_emit_nogs_output(&ctx);
 
       ralloc_free(ctx.divergent_vals);
 
@@ -10370,7 +10622,7 @@ void select_program(Program *program,
    program->config->float_mode = program->blocks[0].fp_mode.val;
 
    append_logical_end(ctx.block);
-   ctx.block->kind |= block_kind_uniform | block_kind_export_end;
+   ctx.block->kind |= block_kind_uniform;
    Builder bld(ctx.program, ctx.block);
    if (ctx.program->wb_smem_l1_on_end)
       bld.smem(aco_opcode::s_dcache_wb, false);

@@ -819,6 +819,13 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
       /* radv_es_output_info *outinfo = &ctx->program->info->vs.es_info;
       outinfo->esgs_itemsize = util_bitcount64(ctx->output_masks[nir->info.stage]) * 16u; */
    }
+
+   if (ctx->stage == ngg_vertex_gs && ctx->args->options->key.vs_common_out.export_prim_id) {
+      /* We need to store the primitive IDs in LDS */
+      unsigned lds_size = ctx->program->info->ngg_info.esgs_ring_size;
+      ctx->program->config->lds_size = (lds_size + ctx->program->lds_alloc_granule - 1) /
+                                       ctx->program->lds_alloc_granule;
+   }
 }
 
 void setup_gs_variables(isel_context *ctx, nir_shader *nir)
