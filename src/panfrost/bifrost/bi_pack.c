@@ -551,7 +551,7 @@ bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
 
         unsigned abs_0 = ins->src_abs[0], abs_1 = ins->src_abs[1];
         unsigned src_0 = bi_get_src(ins, regs, 0, true);
-        unsigned src_1 = bi_get_src(ins, regs, 0, true);
+        unsigned src_1 = bi_get_src(ins, regs, 1, true);
         bool l = false;
 
         if (!abs_0 && !abs_1) {
