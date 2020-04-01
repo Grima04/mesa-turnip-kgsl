@@ -26,6 +26,8 @@
 
 #include "bit.h"
 #include "bi_print.h"
+#include "util/half_float.h"
+#include "bifrost/disassemble.h"
 
 /* Instruction packing tests */
 
@@ -142,8 +144,15 @@ bit_test_single(struct panfrost_device *dev,
         panfrost_program prog;
         bi_pack(ctx, &prog.compiled);
 
-        return bit_vertex(dev, prog, input, 16, NULL, 0,
+        bool succ = bit_vertex(dev, prog, input, 16, NULL, 0,
                         s.r, 16, debug);
+
+        if (debug >= BIT_DEBUG_ALL || (!succ && debug >= BIT_DEBUG_FAIL)) {
+                bi_print_shader(ctx, stderr);
+                disassemble_bifrost(stderr, prog.compiled.data, prog.compiled.size, true);
+        }
+
+        return succ;
 }
 
 /* Utilities for generating tests */
