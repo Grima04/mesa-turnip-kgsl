@@ -39,26 +39,58 @@ typedef union {
 /* Interprets a subset of Bifrost IR required for automated testing */
 
 static uint64_t
-bit_read(struct bit_state *s, bi_instruction *ins, unsigned index, nir_alu_type T)
+bit_read(struct bit_state *s, bi_instruction *ins, unsigned index, nir_alu_type T, bool FMA)
 {
-        /* STUB */
-        return 0;
+        if (index & BIR_INDEX_REGISTER) {
+                uint32_t reg = index & ~BIR_INDEX_REGISTER;
+                assert(reg < 64);
+                return s->r[reg];
+        } else if (index & BIR_INDEX_UNIFORM) {
+                unreachable("Uniform registers to be implemented");
+        } else if (index & BIR_INDEX_CONSTANT) {
+                return ins->constant.u64 >> (index & ~BIR_INDEX_CONSTANT);
+        } else if (index & BIR_INDEX_ZERO) {
+                return 0;
+        } else if (index & (BIR_INDEX_PASS | BIFROST_SRC_STAGE)) {
+                return FMA ? 0 : s->T;
+        } else if (index & (BIR_INDEX_PASS | BIFROST_SRC_PASS_FMA)) {
+                return s->T0;
+        } else if (index & (BIR_INDEX_PASS | BIFROST_SRC_PASS_ADD)) {
+                return s->T1;
+        } else if (!index) {
+                /* Placeholder */
+                return 0;
+        } else {
+                unreachable("Invalid source");
+        }
 }
 
 static void
-bit_write(struct bit_state *s, unsigned index, nir_alu_type T, bit_t value)
+bit_write(struct bit_state *s, unsigned index, nir_alu_type T, bit_t value, bool FMA)
 {
-        /* STUB */
+        /* Always write stage passthrough */
+        if (FMA)
+                s->T = value.u32;
+
+        if (index & BIR_INDEX_REGISTER) {
+                uint32_t reg = index & ~BIR_INDEX_REGISTER;
+                assert(reg < 64);
+                s->r[reg] = value.u32;
+        } else if (!index) {
+                /* Nothing to do */
+        } else {
+                unreachable("Invalid destination");
+        }
 }
 
 void
-bit_step(struct bit_state *s, bi_instruction *ins)
+bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 {
         /* First, load sources */
         bit_t srcs[BIR_SRC_COUNT] = { 0 };
 
         bi_foreach_src(ins, src)
-                srcs[src].u64 = bit_read(s, ins, ins->src[src], ins->src_types[src]);
+                srcs[src].u64 = bit_read(s, ins, ins->src[src], ins->src_types[src], FMA);
 
         /* Next, do the action of the instruction */
         bit_t dest = { 0 };
@@ -96,5 +128,11 @@ bit_step(struct bit_state *s, bi_instruction *ins)
         }
 
         /* Finally, store the result */
-        bit_write(s, ins->dest, ins->dest_type, dest);
+        bit_write(s, ins->dest, ins->dest_type, dest, FMA);
+
+        /* For ADD - change out the passthrough */
+        if (!FMA) {
+                s->T0 = s->T;
+                s->T1 = dest.u32;
+        }
 }

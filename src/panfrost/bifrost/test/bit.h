@@ -53,11 +53,19 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
 /* BIT interpreter */
 
 struct bit_state {
+        /* Work registers */
         uint32_t r[64];
+
+        /* Passthrough within the bundle */
+        uint32_t T;
+
+        /* Passthrough from last bundle */
+        uint32_t T0;
+        uint32_t T1;
 };
 
 void
-bit_step(struct bit_state *s, bi_instruction *ins);
+bit_step(struct bit_state *s, bi_instruction *ins, bool FMA);
 
 #endif
 
