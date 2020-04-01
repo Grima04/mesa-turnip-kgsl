@@ -184,6 +184,23 @@ bit_make_poly(add, a + b);
 bit_make_float(fma, (a * b) + c);
 bit_make_poly(mov, a);
 
+/* Modifiers */
+
+static float
+bit_outmod(float raw, enum bifrost_outmod mod)
+{
+        switch (mod) {
+        case BIFROST_POS:
+                return MAX2(raw, 0.0);
+        case BIFROST_SAT_SIGNED:
+                return CLAMP(raw, -1.0, 1.0);
+        case BIFROST_SAT:
+                return CLAMP(raw, 0.0, 1.0);
+        default:
+                return raw;
+        }
+}
+
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 {
@@ -245,6 +262,16 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 
         default:
                 unreachable("Unsupported op");
+        }
+
+        /* Apply outmod */
+        if (bi_has_outmod(ins) && ins->outmod != BIFROST_NONE) {
+                if (ins->dest_type == nir_type_float16) {
+                        for (unsigned c = 0; c < 2; ++c)
+                                dest.f16[c] = bh(bit_outmod(bf(dest.f16[c]), ins->outmod));
+                } else {
+                        dest.f32 = bit_outmod(dest.f32, ins->outmod);
+                }
         }
 
         /* Finally, store the result */
