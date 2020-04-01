@@ -1070,12 +1070,12 @@ st_destroy_context(struct st_context *st)
    simple_mtx_destroy(&st->zombie_sampler_views.mutex);
    simple_mtx_destroy(&st->zombie_shaders.mutex);
 
-   st_reference_prog(st, &st->fp, NULL);
-   st_reference_prog(st, &st->gp, NULL);
-   st_reference_prog(st, &st->vp, NULL);
-   st_reference_prog(st, &st->tcp, NULL);
-   st_reference_prog(st, &st->tep, NULL);
-   st_reference_prog(st, &st->cp, NULL);
+   st_release_program(st, &st->fp);
+   st_release_program(st, &st->gp);
+   st_release_program(st, &st->vp);
+   st_release_program(st, &st->tcp);
+   st_release_program(st, &st->tep);
+   st_release_program(st, &st->cp);
 
    /* release framebuffer in the winsys buffers list */
    LIST_FOR_EACH_ENTRY_SAFE_REV(stfb, next, &st->winsys_buffers, head) {
