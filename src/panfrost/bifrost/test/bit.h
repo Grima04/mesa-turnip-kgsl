@@ -70,9 +70,7 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA);
 /* Packing tests */
 
 void
-bit_fmod_helper(struct panfrost_device *dev,
-                enum bi_class c, unsigned size, bool fma,
-                uint32_t *input, enum bit_debug debug);
+bit_fmod(struct panfrost_device *dev, enum bit_debug debug);
 
 #endif
 

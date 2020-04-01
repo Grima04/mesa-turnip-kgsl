@@ -167,7 +167,7 @@ bit_generate_vector(uint32_t *mem)
 /* Tests all 64 combinations of floating point modifiers for a given
  * instruction / floating-type / test type */
 
-void
+static void
 bit_fmod_helper(struct panfrost_device *dev,
                 enum bi_class c, unsigned size, bool fma,
                 uint32_t *input, enum bit_debug debug)
@@ -193,6 +193,10 @@ bit_fmod_helper(struct panfrost_device *dev,
                         ins.src_neg[0] = (inmod & 0x4);
                         ins.src_neg[1] = (inmod & 0x8);
 
+                        /* Skip over tests that cannot run on FMA */
+                        if (fma && (size == 16) && ins.src_abs[0] && ins.src_abs[1])
+                                continue;
+
                         if (!bit_test_single(dev, &ins, input, fma, debug)) {
                                 fprintf(stderr, "FAIL: fmod.%s%u.%s%s.%u\n",
                                                 bi_class_name(c),
@@ -202,5 +206,25 @@ bit_fmod_helper(struct panfrost_device *dev,
                                                 inmod);
                         }
                 }
+        }
+}
+
+void
+bit_fmod(struct panfrost_device *dev, enum bit_debug debug)
+{
+        float input32[4] = { 0.8, 1.7, 0.0, 0.0 };
+
+        uint32_t input16[4] = {
+                _mesa_float_to_half(input32[0]) | (_mesa_float_to_half(-1.2) << 16),
+                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(0.9) << 16),
+                0, 0
+        };
+
+        for (unsigned sz = 16; sz <= 32; sz *= 2) {
+                uint32_t *input =
+                        (sz == 16) ? input16 :
+                        (uint32_t *) input32;
+
+                bit_fmod_helper(dev, BI_ADD, sz, true, input, debug);
         }
 }
