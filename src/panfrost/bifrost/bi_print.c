@@ -122,7 +122,7 @@ bi_ldst_type_name(enum bifrost_ldst_type type)
 /* The remaining functions in this file are for IR-internal
  * structures; the disassembler doesn't use them */
 
-static const char *
+const char *
 bi_class_name(enum bi_class cl)
 {
         switch (cl) {
