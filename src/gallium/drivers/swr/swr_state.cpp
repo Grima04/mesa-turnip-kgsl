@@ -1422,12 +1422,20 @@ swr_update_derived(struct pipe_context *pipe,
             partial_inbounds = 0;
             min_vertex_index = info.min_index + info.index_bias;
 
-            /* Use user memory directly. The draw will access user-buffer
-             * directly and then block. It's easier and usually
-             * faster than copying.
-             */
-            post_update_dirty_flags |= SWR_BLOCK_CLIENT_DRAW;
-            p_data = (const uint8_t *) vb->buffer.user;
+            size = AlignUp(size, 4);
+            /* If size of client memory copy is too large, don't copy. The
+             * draw will access user-buffer directly and then block.  This is
+             * faster than queuing many large client draws. */
+            if (size >= screen->client_copy_limit) {
+               post_update_dirty_flags |= SWR_BLOCK_CLIENT_DRAW;
+               p_data = (const uint8_t *) vb->buffer.user;
+            } else {
+               /* Copy only needed vertices to scratch space */
+               const void *ptr = (const uint8_t *) vb->buffer.user + base;
+               ptr = (uint8_t *)swr_copy_to_scratch_space(
+                     ctx, &ctx->scratch->vertex_buffer, ptr, size);
+               p_data = (const uint8_t *)ptr - base;
+            }
          } else if (vb->buffer.resource) {
             /* VBO */
             if (!pitch) {
@@ -1488,12 +1496,20 @@ swr_update_derived(struct pipe_context *pipe,
 
             size = info.count * pitch;
 
-            /* Use user memory directly. The draw will access user-buffer
-             * directly and then block. It's easier and usually
-             * faster than copying.
-             */
-            post_update_dirty_flags |= SWR_BLOCK_CLIENT_DRAW;
-            p_data = (const uint8_t *) info.index.user;
+            size = AlignUp(size, 4);
+            /* If size of client memory copy is too large, don't copy. The
+             * draw will access user-buffer directly and then block.  This is
+             * faster than queuing many large client draws. */
+            if (size >= screen->client_copy_limit) {
+               post_update_dirty_flags |= SWR_BLOCK_CLIENT_DRAW;
+               p_data = (const uint8_t *) info.index.user;
+            } else {
+               /* Copy indices to scratch space */
+               const void *ptr = info.index.user;
+               ptr = swr_copy_to_scratch_space(
+                     ctx, &ctx->scratch->index_buffer, ptr, size);
+               p_data = (const uint8_t *)ptr;
+            }
          }
 
          SWR_INDEX_BUFFER_STATE swrIndexBuffer;
