@@ -204,8 +204,8 @@ struct bifrost_fma_add {
         unsigned src1_neg : 1;
         unsigned unk : 3;
         unsigned src0_abs : 1;
-        enum bifrost_outmod outmod : 2;
         enum bifrost_roundmode roundmode : 2;
+        enum bifrost_outmod outmod : 2;
         unsigned op : 6;
 } __attribute__((packed));
 
@@ -222,9 +222,9 @@ struct bifrost_fma_add_minmax16 {
         unsigned src1_neg : 1;
         unsigned src0_swizzle : 2;
         unsigned src1_swizzle : 2;
+        unsigned mode : 2;
         enum bifrost_outmod outmod : 2;
         /* roundmode for add, min/max mode for min/max */
-        unsigned mode : 2;
         unsigned op : 6;
 } __attribute__((packed));
 
