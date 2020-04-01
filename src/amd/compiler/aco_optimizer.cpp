@@ -2633,7 +2633,15 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
                literal_idx = i;
             }
          }
-         if (literal_uses < threshold) {
+
+         /* Limit the number of literals to apply to not increase the code
+          * size too much, but always apply literals for v_mad->v_madak
+          * because both instructions are 64-bit and this doesn't increase
+          * code size.
+          * TODO: try to apply the literals earlier to lower the number of
+          * uses below threshold
+          */
+         if (literal_uses < threshold || literal_idx == 2) {
             ctx.uses[instr->operands[literal_idx].tempId()]--;
             mad_info->check_literal = true;
             mad_info->literal_idx = literal_idx;
@@ -2760,7 +2768,8 @@ void apply_literals(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    /* apply literals on MAD */
    if (instr->opcode == aco_opcode::v_mad_f32 && ctx.info[instr->definitions[0].tempId()].is_mad()) {
       mad_info* info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].val];
-      if (info->check_literal && ctx.uses[instr->operands[info->literal_idx].tempId()] == 0) {
+      if (info->check_literal &&
+          (ctx.uses[instr->operands[info->literal_idx].tempId()] == 0 || info->literal_idx == 2)) {
          aco_ptr<Instruction> new_mad;
          if (info->literal_idx == 2) { /* add literal -> madak */
             new_mad.reset(create_instruction<VOP2_instruction>(aco_opcode::v_madak_f32, Format::VOP2, 3, 1));
