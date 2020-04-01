@@ -7,6 +7,7 @@ def main():
     file = open(sys.argv[1], "r")
     lines = file.read().split('\n')
 
+    compute_match = re.compile(r"COMPUTE: START")
     gmem_match = re.compile(r": rendering (\S+)x(\S+) tiles")
     sysmem_match = re.compile(r": rendering sysmem (\S+)x(\S+)")
     blit_match = re.compile(r": END BLIT")
@@ -17,9 +18,18 @@ def main():
     times_blit = []
     times_sysmem = []
     times_gmem = []
+    times_compute = []
     times = None
 
     for line in lines:
+        match = re.search(compute_match, line)
+        if match is not None:
+            #printf("GRID/COMPUTE")
+            if times  is not None:
+                print("expected times to not be set yet")
+            times = times_compute
+            continue
+
         match = re.search(gmem_match, line)
         if match is not None:
             #print("GMEM")
@@ -47,11 +57,12 @@ def main():
         match = re.search(eof_match, line)
         if match is not None:
             frame_nr = int(match.group(1))
-            print("FRAME[{}]: {} blits ({:,} ns), {} SYSMEM ({:,} ns), {} GMEM ({:,} ns)".format(
+            print("FRAME[{}]: {} blits ({:,} ns), {} SYSMEM ({:,} ns), {} GMEM ({:,} ns), {} COMPUTE ({:,} ns)".format(
                     frame_nr,
                     len(times_blit), sum(times_blit),
                     len(times_sysmem), sum(times_sysmem),
-                    len(times_gmem), sum(times_gmem)
+                    len(times_gmem), sum(times_gmem),
+                    len(times_compute), sum(times_compute)
                 ))
             times_blit = []
             times_sysmem = []

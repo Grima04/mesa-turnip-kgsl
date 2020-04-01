@@ -25,7 +25,9 @@
  */
 
 #include "pipe/p_state.h"
+#include "util/u_dump.h"
 
+#include "freedreno_log.h"
 #include "freedreno_resource.h"
 
 #include "fd6_compute.h"
@@ -181,6 +183,9 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 	OUT_RING(ring, 1);            /* HLSQ_CS_KERNEL_GROUP_Y */
 	OUT_RING(ring, 1);            /* HLSQ_CS_KERNEL_GROUP_Z */
 
+	fd_log(ctx->batch, "COMPUTE: START");
+	fd_log_stream(ctx->batch, stream, util_dump_grid_info(stream, info));
+
 	if (info->indirect) {
 		struct fd_resource *rsc = fd_resource(info->indirect);
 
@@ -198,9 +203,12 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 		OUT_RING(ring, CP_EXEC_CS_3_NGROUPS_Z(info->grid[2]));
 	}
 
+	fd_log(ctx->batch, "COMPUTE: END");
 	OUT_WFI5(ring);
+	fd_log(ctx->batch, "..");
 
 	fd6_cache_flush(ctx->batch, ring);
+	fd_log(ctx->batch, "..");
 }
 
 void
