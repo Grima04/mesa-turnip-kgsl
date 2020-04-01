@@ -67,6 +67,14 @@ struct bit_state {
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA);
 
+/* Packing tests */
+
+bool
+bit_test_single(struct panfrost_device *dev,
+                bi_instruction *ins, 
+                uint32_t input[4],
+                bool fma);
+
 #endif
 
 

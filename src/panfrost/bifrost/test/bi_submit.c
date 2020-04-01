@@ -141,7 +141,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
 
         struct mali_attr_meta vmeta = {
                 .index = 0,
-                .format = MALI_RGBA32F
+                .format = MALI_RGBA32UI
         };
 
         union mali_attr vary = {
