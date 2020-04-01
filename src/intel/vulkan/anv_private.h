@@ -3684,6 +3684,16 @@ anv_can_sample_with_hiz(const struct gen_device_info * const devinfo,
    if (!(image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
       return false;
 
+   /* For Gen8-11, there are some restrictions around sampling from HiZ.
+    * The Skylake PRM docs for RENDER_SURFACE_STATE::AuxiliarySurfaceMode
+    * say:
+    *
+    *    "If this field is set to AUX_HIZ, Number of Multisamples must
+    *    be MULTISAMPLECOUNT_1, and Surface Type cannot be SURFTYPE_3D."
+    */
+   if (image->type == VK_IMAGE_TYPE_3D)
+      return false;
+
    /* Allow this feature on BDW even though it is disabled in the BDW devinfo
     * struct. There's documentation which suggests that this feature actually
     * reduces performance on BDW, but it has only been observed to help so
