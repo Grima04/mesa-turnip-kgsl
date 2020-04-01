@@ -1106,16 +1106,17 @@ swr_user_vbuf_range(const struct pipe_draw_info *info,
 {
    /* FIXME: The size is too large - we don't access the full extra stride. */
    unsigned elems;
+   unsigned elem_pitch = vb->stride + velems->stream_pitch[i];
    if (velems->instanced_bufs & (1U << i)) {
       elems = info->instance_count / velems->min_instance_div[i] + 1;
       *totelems = info->start_instance + elems;
       *base = info->start_instance * vb->stride;
-      *size = elems * vb->stride;
+      *size = elems * elem_pitch;
    } else if (vb->stride) {
       elems = info->max_index - info->min_index + 1;
       *totelems = (info->max_index + info->index_bias) + 1;
       *base = (info->min_index + info->index_bias) * vb->stride;
-      *size = elems * vb->stride;
+      *size = elems * elem_pitch;
    } else {
       *totelems = 1;
       *base = 0;
