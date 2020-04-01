@@ -1127,7 +1127,11 @@ shader_variant_compile(struct radv_device *device,
 	}
 
 	if (options->dump_shader) {
-		fprintf(stderr, "disasm:\n%s\n", variant->disasm_string);
+		fprintf(stderr, "%s", radv_get_shader_name(info, shaders[0]->info.stage));
+		for (int i = 1; i < shader_count; ++i)
+			fprintf(stderr, " + %s", radv_get_shader_name(info, shaders[i]->info.stage));
+
+		fprintf(stderr, "\ndisasm:\n%s\n", variant->disasm_string);
 	}
 
 
