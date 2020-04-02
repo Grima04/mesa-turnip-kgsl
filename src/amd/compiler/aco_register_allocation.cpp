@@ -837,12 +837,11 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
 
    /* move killed operands which aren't yet at the correct position */
    for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
-      if (instr->operands[i].isTemp() && instr->operands[i].isFirstKillBeforeDef() && instr->operands[i].getTemp().type() == rc.type()) {
-         if (instr->operands[i].physReg() != best_pos + offset)
-            vars.emplace(instr->operands[i].size(), instr->operands[i].tempId());
-         else
-            reg_file.fill(instr->operands[i]);
-      }
+      if (instr->operands[i].isTemp() &&
+          instr->operands[i].isFirstKillBeforeDef() &&
+          instr->operands[i].getTemp().type() == rc.type() &&
+          instr->operands[i].physReg() != best_pos + offset)
+         vars.emplace(instr->operands[i].size(), instr->operands[i].tempId());
    }
 
    ASSERTED bool success = false;
