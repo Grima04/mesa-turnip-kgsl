@@ -105,11 +105,21 @@ static struct gl_buffer_object DummyBufferObject;
 static inline struct gl_buffer_object **
 get_buffer_target(struct gl_context *ctx, GLenum target)
 {
-   /* Other targets are only supported in desktop OpenGL and OpenGL ES 3.0.
-    */
-   if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx)
-       && target != GL_ARRAY_BUFFER && target != GL_ELEMENT_ARRAY_BUFFER)
-      return NULL;
+   /* Other targets are only supported in desktop OpenGL and OpenGL ES 3.0. */
+   if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx)) {
+      switch (target) {
+      case GL_ARRAY_BUFFER:
+      case GL_ELEMENT_ARRAY_BUFFER:
+         break;
+      case GL_PIXEL_PACK_BUFFER:
+      case GL_PIXEL_UNPACK_BUFFER:
+         if (!ctx->Extensions.EXT_pixel_buffer_object)
+            return NULL;
+         break;
+      default:
+         return NULL;
+      }
+   }
 
    switch (target) {
    case GL_ARRAY_BUFFER_ARB:

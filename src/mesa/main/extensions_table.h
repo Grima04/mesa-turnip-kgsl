@@ -388,6 +388,7 @@ EXT(NV_fragment_shader_interlock            , ARB_fragment_shader_interlock     
 EXT(NV_image_formats                        , ARB_shader_image_load_store            ,  x ,  x ,  x ,  31, 2014)
 EXT(NV_light_max_exponent                   , dummy_true                             , GLL,  x ,  x ,  x , 1999)
 EXT(NV_packed_depth_stencil                 , dummy_true                             , GLL, GLC,  x ,  x , 2000)
+EXT(NV_pixel_buffer_object                  , EXT_pixel_buffer_object                ,  x ,  x ,  x , ES2, 2012)
 EXT(NV_point_sprite                         , NV_point_sprite                        , GLL, GLC,  x ,  x , 2001)
 EXT(NV_primitive_restart                    , NV_primitive_restart                   , GLL,  x ,  x ,  x , 2002)
 EXT(NV_read_buffer                          , dummy_true                             ,  x ,  x ,  x , ES2, 2011)
