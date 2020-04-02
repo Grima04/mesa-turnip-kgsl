@@ -1054,33 +1054,22 @@ can_use_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
 
    /* Check if we are clearing a single region covering the entire framebuffer
     * and that we are not constrained by the current render area.
+    *
+    * From the Vulkan 1.0 spec:
+    *
+    *   "The vkCmdClearAttachments command is not affected by the bound
+    *    pipeline state."
+    *
+    * So we can ignore scissor and viewport state for this check.
     */
    const VkRect2D fb_rect = {
-      {0, 0},
-      { framebuffer->width, framebuffer->height}
+      { 0, 0 },
+      { framebuffer->width, framebuffer->height }
    };
 
-   bool ok =
-      rect_count == 1 &&
-      is_subrect(&rects[0].rect, &fb_rect) &&
-      is_subrect(render_area, &fb_rect);
-
-   if (!ok)
-      return false;
-
-   /* If we have enabled scissors, make sure they don't reduce the clear area.
-    * For simplicity, we only check the case for a single scissor.
-    */
-   const struct v3dv_scissor_state *scissor_state =
-      &cmd_buffer->state.dynamic.scissor;
-
-   if (scissor_state->count == 0)
-      return true;
-
-   if (scissor_state->count == 1)
-      return is_subrect(&scissor_state->scissors[0], &fb_rect);
-
-   return false;
+   return rect_count == 1 &&
+          is_subrect(&rects[0].rect, &fb_rect) &&
+          is_subrect(render_area, &fb_rect);
 }
 
 void
