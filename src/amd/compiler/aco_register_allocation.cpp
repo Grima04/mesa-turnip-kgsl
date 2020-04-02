@@ -360,6 +360,35 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
    return {{}, false};
 }
 
+/* collect variables from a register area and clear reg_file */
+std::set<std::pair<unsigned, unsigned>> collect_vars(ra_ctx& ctx, RegisterFile& reg_file,
+                                          PhysReg reg, unsigned size)
+{
+   std::set<std::pair<unsigned, unsigned>> vars;
+   for (unsigned j = reg; j < reg + size; j++) {
+      if (reg_file.is_blocked(PhysReg{j}))
+         continue;
+      if (reg_file[j] == 0xF0000000) {
+         for (unsigned k = 0; k < 4; k++) {
+            unsigned id = reg_file.subdword_regs[j][k];
+            if (id) {
+               std::pair<PhysReg, RegClass> assignment = ctx.assignments.at(id);
+               vars.emplace(assignment.second.bytes(), id);
+               reg_file.clear(assignment.first, assignment.second);
+               if (!reg_file[j])
+                  break;
+            }
+         }
+      } else if (reg_file[j] != 0) {
+         unsigned id = reg_file[j];
+         std::pair<PhysReg, RegClass> assignment = ctx.assignments.at(id);
+         vars.emplace(assignment.second.bytes(), id);
+         reg_file.clear(assignment.first, assignment.second);
+      }
+   }
+   return vars;
+}
+
 bool get_regs_for_copies(ra_ctx& ctx,
                          RegisterFile& reg_file,
                          std::vector<std::pair<Operand, Definition>>& parallelcopies,
@@ -375,7 +404,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
    for (std::set<std::pair<unsigned, unsigned>>::const_reverse_iterator it = vars.rbegin(); it != vars.rend(); ++it) {
       unsigned id = it->second;
       std::pair<PhysReg, RegClass> var = ctx.assignments[id];
-      uint32_t size = it->first;
+      uint32_t size = var.second.size();
       uint32_t stride = 1;
       if (var.second.type() == RegType::sgpr) {
          if (size == 2)
@@ -493,15 +522,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
       reg_hi = best_pos + size - 1;
 
       /* collect variables and block reg file */
-      std::set<std::pair<unsigned, unsigned>> new_vars;
-      for (unsigned j = reg_lo; j <= reg_hi; j++) {
-         if (reg_file[j] != 0) {
-            unsigned size = ctx.assignments[reg_file[j]].second.size();
-            unsigned id = reg_file[j];
-            new_vars.emplace(size, id);
-            reg_file.clear(ctx.assignments[id].first, ctx.assignments[id].second);
-         }
-      }
+      std::set<std::pair<unsigned, unsigned>> new_vars = collect_vars(ctx, reg_file, PhysReg{reg_lo}, size);
 
       /* mark the area as blocked */
       reg_file.block(PhysReg{reg_lo}, size * 4);
@@ -637,12 +658,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    RegisterFile register_file = reg_file;
 
    /* now, we figured the placement for our definition */
-   std::set<std::pair<unsigned, unsigned>> vars;
-   for (unsigned j = best_pos; j < best_pos + size; j++) {
-      if (reg_file[j] != 0xFFFFFFFF && reg_file[j] != 0)
-         vars.emplace(ctx.assignments[reg_file[j]].second.size(), reg_file[j]);
-      reg_file.clear(ctx.assignments[reg_file[j]].first, ctx.assignments[reg_file[j]].second);
-   }
+   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
    if (instr->opcode == aco_opcode::p_create_vector) {
       /* move killed operands which aren't yet at the correct position */
@@ -651,7 +667,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
              instr->operands[i].getTemp().type() == rc.type()) {
 
             if (instr->operands[i].physReg() != best_pos + offset) {
-               vars.emplace(instr->operands[i].size(), instr->operands[i].tempId());
+               vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
                reg_file.clear(instr->operands[i]);
             } else {
                reg_file.fill(instr->operands[i]);
@@ -878,12 +894,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
       return get_reg(ctx, reg_file, rc, parallelcopies, instr);
 
    /* collect variables to be moved */
-   std::set<std::pair<unsigned, unsigned>> vars;
-   for (unsigned i = best_pos; i < best_pos + size; i++) {
-      if (reg_file[i] != 0)
-         vars.emplace(ctx.assignments[reg_file[i]].second.size(), reg_file[i]);
-      reg_file[i] = 0;
-   }
+   std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
    /* move killed operands which aren't yet at the correct position */
    for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
@@ -891,7 +902,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
           instr->operands[i].isFirstKillBeforeDef() &&
           instr->operands[i].getTemp().type() == rc.type() &&
           instr->operands[i].physReg() != best_pos + offset)
-         vars.emplace(instr->operands[i].size(), instr->operands[i].tempId());
+         vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
    }
 
    ASSERTED bool success = false;
