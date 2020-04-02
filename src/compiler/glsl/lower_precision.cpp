@@ -200,7 +200,7 @@ find_lowerable_rvalues_visitor::add_lowerable_children(const stack_entry &entry)
 void
 find_lowerable_rvalues_visitor::pop_stack_entry()
 {
-   const stack_entry &entry = stack.end()[-1];
+   const stack_entry &entry = stack.back();
 
    if (stack.size() >= 2) {
       /* Combine this state into the parent state, unless the parent operation
@@ -315,7 +315,7 @@ find_lowerable_rvalues_visitor::visit(ir_constant *ir)
    stack_enter(ir, this);
 
    if (!can_lower_type(ir->type))
-      stack.end()[-1].state = CANT_LOWER;
+      stack.back().state = CANT_LOWER;
 
    stack_leave(ir, this);
 
@@ -327,8 +327,8 @@ find_lowerable_rvalues_visitor::visit(ir_dereference_variable *ir)
 {
    stack_enter(ir, this);
 
-   if (stack.end()[-1].state == UNKNOWN)
-      stack.end()[-1].state = handle_precision(ir->type, ir->precision());
+   if (stack.back().state == UNKNOWN)
+      stack.back().state = handle_precision(ir->type, ir->precision());
 
    stack_leave(ir, this);
 
@@ -340,8 +340,8 @@ find_lowerable_rvalues_visitor::visit_enter(ir_dereference_record *ir)
 {
    ir_hierarchical_visitor::visit_enter(ir);
 
-   if (stack.end()[-1].state == UNKNOWN)
-      stack.end()[-1].state = handle_precision(ir->type, ir->precision());
+   if (stack.back().state == UNKNOWN)
+      stack.back().state = handle_precision(ir->type, ir->precision());
 
    return visit_continue;
 }
@@ -351,8 +351,8 @@ find_lowerable_rvalues_visitor::visit_enter(ir_dereference_array *ir)
 {
    ir_hierarchical_visitor::visit_enter(ir);
 
-   if (stack.end()[-1].state == UNKNOWN)
-      stack.end()[-1].state = handle_precision(ir->type, ir->precision());
+   if (stack.back().state == UNKNOWN)
+      stack.back().state = handle_precision(ir->type, ir->precision());
 
    return visit_continue;
 }
@@ -362,12 +362,12 @@ find_lowerable_rvalues_visitor::visit_enter(ir_texture *ir)
 {
    ir_hierarchical_visitor::visit_enter(ir);
 
-   if (stack.end()[-1].state == UNKNOWN) {
+   if (stack.back().state == UNKNOWN) {
       /* The precision of the sample value depends on the precision of the
        * sampler.
        */
-      stack.end()[-1].state = handle_precision(ir->type,
-                                               ir->sampler->precision());
+      stack.back().state = handle_precision(ir->type,
+                                            ir->sampler->precision());
    }
 
    return visit_continue;
@@ -379,7 +379,7 @@ find_lowerable_rvalues_visitor::visit_enter(ir_expression *ir)
    ir_hierarchical_visitor::visit_enter(ir);
 
    if (!can_lower_type(ir->type))
-      stack.end()[-1].state = CANT_LOWER;
+      stack.back().state = CANT_LOWER;
 
    /* Don't lower precision for derivative calculations */
    if (ir->operation == ir_unop_dFdx ||
@@ -388,7 +388,7 @@ find_lowerable_rvalues_visitor::visit_enter(ir_expression *ir)
          ir->operation == ir_unop_dFdy ||
          ir->operation == ir_unop_dFdy_coarse ||
          ir->operation == ir_unop_dFdy_fine) {
-      stack.end()[-1].state = CANT_LOWER;
+      stack.back().state = CANT_LOWER;
    }
 
    return visit_continue;
