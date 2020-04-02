@@ -344,18 +344,6 @@ tu6_emit_event_write(struct tu_cmd_buffer *cmd,
 }
 
 static void
-tu6_emit_cache_flush(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
-{
-   tu6_emit_event_write(cmd, cs, 0x31);
-}
-
-static void
-tu6_emit_lrz_flush(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
-{
-   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
-}
-
-static void
 tu6_emit_wfi(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    if (cmd->wait_for_idle) {
@@ -764,7 +752,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_physical_device *phys_dev = cmd->device->physical_device;
 
-   tu6_emit_cache_flush(cmd, cs);
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 0xfffff);
 
@@ -1130,7 +1118,7 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    tu6_emit_bin_size(cs, 0, 0, 0xc00000); /* 0xc00000 = BYPASS? */
 
-   tu6_emit_lrz_flush(cmd, cs);
+   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS));
@@ -1180,7 +1168,7 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
-   tu6_emit_lrz_flush(cmd, cs);
+   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
 
    tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
    tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
@@ -1194,11 +1182,11 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    struct tu_physical_device *phys_dev = cmd->device->physical_device;
 
-   tu6_emit_lrz_flush(cmd, cs);
+   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
 
    /* lrz clear? */
 
-   tu6_emit_cache_flush(cmd, cs);
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
@@ -1297,7 +1285,7 @@ tu6_tile_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_LRZ_CNTL(0));
 
-   tu6_emit_lrz_flush(cmd, cs);
+   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
 
    tu6_emit_event_write(cmd, cs, PC_CCU_RESOLVE_TS);
 
@@ -3584,7 +3572,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_wfi(cs);
 
-   tu6_emit_cache_flush(cmd, cs);
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 }
 
 void
