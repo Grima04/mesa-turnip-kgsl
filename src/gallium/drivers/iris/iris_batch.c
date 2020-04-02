@@ -63,12 +63,6 @@
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
-/* Terminating the batch takes either 4 bytes for MI_BATCH_BUFFER_END
- * or 12 bytes for MI_BATCH_BUFFER_START (when chaining).  Plus, we may
- * need an extra 4 bytes to pad out to the nearest QWord.  So reserve 16.
- */
-#define BATCH_RESERVED 16
-
 static void
 iris_batch_reset(struct iris_batch *batch);
 

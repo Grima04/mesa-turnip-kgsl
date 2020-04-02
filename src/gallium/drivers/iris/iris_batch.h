@@ -38,8 +38,14 @@
 /* The kernel assumes batchbuffers are smaller than 256kB. */
 #define MAX_BATCH_SIZE (256 * 1024)
 
+/* Terminating the batch takes either 4 bytes for MI_BATCH_BUFFER_END
+ * or 12 bytes for MI_BATCH_BUFFER_START (when chaining).  Plus, we may
+ * need an extra 4 bytes to pad out to the nearest QWord.  So reserve 16.
+ */
+#define BATCH_RESERVED 16
+
 /* Our target batch size - flush approximately at this point. */
-#define BATCH_SZ (64 * 1024)
+#define BATCH_SZ (64 * 1024 - BATCH_RESERVED)
 
 enum iris_batch_name {
    IRIS_BATCH_RENDER,
