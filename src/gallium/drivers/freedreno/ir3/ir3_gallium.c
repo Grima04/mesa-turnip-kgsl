@@ -144,6 +144,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		if (nir->info.stage != MESA_SHADER_FRAGMENT)
 			ir3_shader_variant(shader, key, true, debug);
 	}
+
 	return shader;
 }
 
@@ -169,6 +170,15 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 	}
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir);
+
+	if (fd_mesa_debug & FD_DBG_SHADERDB) {
+		/* if shader-db run, create a standard variant immediately
+		 * (as otherwise nothing will trigger the shader to be
+		 * actually compiled)
+		 */
+		static struct ir3_shader_key key; /* static is implicitly zeroed */
+		ir3_shader_variant(shader, key, false, debug);
+	}
 
 	return shader;
 }
