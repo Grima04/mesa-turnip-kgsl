@@ -1704,6 +1704,10 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
                            framebuffer->layers,
                            subpass->color_count,
                            internal_bpp);
+
+      /* FIXME: we don't support input/resolve attachments yet */
+      assert(subpass->input_count == 0);
+      assert(subpass->resolve_attachments == NULL);
    }
 
    /* If we can't use TLB clears then we need to emit draw clears for any
