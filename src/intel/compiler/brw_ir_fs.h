@@ -667,4 +667,7 @@ is_coalescing_payload(const brw::simple_allocator &alloc, const fs_inst *inst)
           alloc.sizes[inst->src[0].nr] * REG_SIZE == inst->size_written;
 }
 
+bool
+has_bank_conflict(const gen_device_info *devinfo, const fs_inst *inst);
+
 #endif
