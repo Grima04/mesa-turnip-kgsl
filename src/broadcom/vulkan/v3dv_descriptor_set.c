@@ -325,24 +325,39 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    uint32_t immutable_sampler_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
-      if ((pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-           pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
+
+      /* From the Vulkan 1.1.97 spec for VkDescriptorSetLayoutBinding:
+       *
+       *    "If descriptorType specifies a VK_DESCRIPTOR_TYPE_SAMPLER or
+       *    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER type descriptor, then
+       *    pImmutableSamplers can be used to initialize a set of immutable
+       *    samplers. [...]  If descriptorType is not one of these descriptor
+       *    types, then pImmutableSamplers is ignored.
+       *
+       * We need to be careful here and only parse pImmutableSamplers if we
+       * have one of the right descriptor types.
+       */
+      VkDescriptorType desc_type = pCreateInfo->pBindings[j].descriptorType;
+      if ((desc_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+           desc_type == VK_DESCRIPTOR_TYPE_SAMPLER) &&
            pCreateInfo->pBindings[j].pImmutableSamplers) {
          immutable_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
       }
    }
 
-   /* FIXME: immutable samplers not supported yet */
-   assert(immutable_sampler_count == 0);
-
-   uint32_t size = sizeof(struct v3dv_descriptor_set_layout) +
+   uint32_t samplers_offset = sizeof(struct v3dv_descriptor_set_layout) +
       (max_binding + 1) * sizeof(set_layout->binding[0]);
+   uint32_t size = samplers_offset +
+      immutable_sampler_count * sizeof(struct v3dv_sampler);
 
    set_layout = vk_alloc2(&device->alloc, pAllocator, size, 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (!set_layout)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   /* We just allocate all the immutable samplers at the end of the struct */
+   struct v3dv_sampler *samplers = (void*) &set_layout->binding[max_binding + 1];
 
    VkDescriptorSetLayoutBinding *bindings =
       create_sorted_bindings(pCreateInfo->pBindings, pCreateInfo->bindingCount,
@@ -359,7 +374,6 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->binding_count = max_binding + 1;
    set_layout->flags = pCreateInfo->flags;
    set_layout->shader_stages = 0;
-   set_layout->has_immutable_samplers = false;
 
    uint32_t descriptor_count = 0;
    uint32_t dynamic_offset_count = 0;
@@ -390,6 +404,19 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       set_layout->binding[binding_number].array_size = binding->descriptorCount;
       set_layout->binding[binding_number].descriptor_index = descriptor_count;
       set_layout->binding[binding_number].dynamic_offset_index = dynamic_offset_count;
+
+      if ((binding->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+           binding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
+          binding->pImmutableSamplers) {
+
+         set_layout->binding[binding_number].immutable_samplers_offset = samplers_offset;
+
+         for (uint32_t i = 0; i < binding->descriptorCount; i++)
+            samplers[i] = *v3dv_sampler_from_handle(binding->pImmutableSamplers[i]);
+
+         samplers += binding->descriptorCount;
+         samplers_offset += sizeof(struct v3dv_sampler) * binding->descriptorCount;
+      }
 
       descriptor_count += binding->descriptorCount;
       dynamic_offset_count += binding->descriptorCount *
@@ -456,9 +483,6 @@ descriptor_set_create(struct v3dv_device *device,
    set->pool = pool;
 
    set->layout = layout;
-
-   /* FIXME: if we have immutable samplers those are tightly included here */
-   assert(layout->has_immutable_samplers == false);
 
    if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
       vk_free2(&device->alloc, NULL, set);

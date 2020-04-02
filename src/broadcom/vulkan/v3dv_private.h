@@ -951,6 +951,11 @@ struct v3dv_descriptor_set_binding_layout {
 
    uint32_t dynamic_offset_count;
    uint32_t dynamic_offset_index;
+
+   /* Offset in the v3dv_descriptor_set_layout of the immutable samplers, or 0
+    * if there are no immutable samplers.
+    */
+   uint32_t immutable_samplers_offset;
 };
 
 struct v3dv_descriptor_set_layout {
@@ -970,8 +975,6 @@ struct v3dv_descriptor_set_layout {
 
    /* Number of dynamic offsets used by this descriptor set */
    uint16_t dynamic_offset_count;
-
-   bool has_immutable_samplers;
 
    /* Bindings in this descriptor set */
    struct v3dv_descriptor_set_binding_layout binding[0];
@@ -1217,6 +1220,14 @@ v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_stat
                                    struct v3dv_pipeline_layout *pipeline_layout,
                                    uint32_t index,
                                    uint32_t *dynamic_offset);
+
+static inline const struct v3dv_sampler *
+v3dv_immutable_samplers(const struct v3dv_descriptor_set_layout *set,
+                        const struct v3dv_descriptor_set_binding_layout *binding)
+{
+   assert(binding->immutable_samplers_offset);
+   return (const struct v3dv_sampler *) ((const char *) set + binding->immutable_samplers_offset);
+}
 
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \
                                                         \
