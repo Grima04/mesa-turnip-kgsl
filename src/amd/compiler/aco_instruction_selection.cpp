@@ -270,21 +270,25 @@ Temp emit_extract_vector(isel_context* ctx, Temp src, uint32_t idx, RegClass dst
       assert(idx == 0);
       return src;
    }
-   assert(src.size() > idx);
+
+   assert(src.bytes() > (idx * dst_rc.bytes()));
    Builder bld(ctx->program, ctx->block);
    auto it = ctx->allocated_vec.find(src.id());
    /* the size check needs to be early because elements other than 0 may be garbage */
-   if (it != ctx->allocated_vec.end() && it->second[0].size() == dst_rc.size()) {
+   if (it != ctx->allocated_vec.end() && dst_rc.bytes() == it->second[idx].regClass().bytes()) {
       if (it->second[idx].regClass() == dst_rc) {
          return it->second[idx];
       } else {
-         assert(dst_rc.size() == it->second[idx].regClass().size());
+         assert(!dst_rc.is_subdword());
          assert(dst_rc.type() == RegType::vgpr && it->second[idx].type() == RegType::sgpr);
          return bld.copy(bld.def(dst_rc), it->second[idx]);
       }
    }
 
-   if (src.size() == dst_rc.size()) {
+   if (dst_rc.is_subdword())
+      src = as_vgpr(ctx, src);
+
+   if (src.bytes() == dst_rc.bytes()) {
       assert(idx == 0);
       return bld.copy(bld.def(dst_rc), src);
    } else {
@@ -303,8 +307,19 @@ void emit_split_vector(isel_context* ctx, Temp vec_src, unsigned num_components)
    aco_ptr<Pseudo_instruction> split{create_instruction<Pseudo_instruction>(aco_opcode::p_split_vector, Format::PSEUDO, 1, num_components)};
    split->operands[0] = Operand(vec_src);
    std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
+   RegClass rc;
+   if (num_components > vec_src.size()) {
+      if (vec_src.type() == RegType::sgpr)
+         return;
+
+      /* sub-dword split */
+      assert(vec_src.type() == RegType::vgpr);
+      rc = RegClass(RegType::vgpr, vec_src.bytes() / num_components).as_subdword();
+   } else {
+      rc = RegClass(vec_src.type(), vec_src.size() / num_components);
+   }
    for (unsigned i = 0; i < num_components; i++) {
-      elems[i] = {ctx->program->allocateId(), RegClass(vec_src.type(), vec_src.size() / num_components)};
+      elems[i] = {ctx->program->allocateId(), rc};
       split->definitions[i] = Definition(elems[i]);
    }
    ctx->block->instructions.emplace_back(std::move(split));
@@ -469,11 +484,32 @@ Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
    }
 
    Temp vec = get_ssa_temp(ctx, src.src.ssa);
-   unsigned elem_size = vec.size() / src.src.ssa->num_components;
-   assert(elem_size > 0); /* TODO: 8 and 16-bit vectors not supported */
-   assert(vec.size() % elem_size == 0);
+   unsigned elem_size = vec.bytes() / src.src.ssa->num_components;
+   assert(elem_size > 0);
+   assert(vec.bytes() % elem_size == 0);
 
-   RegClass elem_rc = RegClass(vec.type(), elem_size);
+   if (elem_size < 4 && vec.type() == RegType::sgpr) {
+      assert(src.src.ssa->bit_size == 8 || src.src.ssa->bit_size == 16);
+      assert(size == 1);
+      unsigned swizzle = src.swizzle[0];
+      if (vec.size() > 1) {
+         assert(src.src.ssa->bit_size == 16);
+         vec = emit_extract_vector(ctx, vec, swizzle / 2, s1);
+         swizzle = swizzle & 1;
+      }
+      if (swizzle == 0)
+         return vec;
+
+      Temp dst{ctx->program->allocateId(), s1};
+      aco_ptr<SOP2_instruction> bfe{create_instruction<SOP2_instruction>(aco_opcode::s_bfe_u32, Format::SOP2, 2, 1)};
+      bfe->operands[0] = Operand(vec);
+      bfe->operands[1] = Operand(uint32_t((src.src.ssa->bit_size << 16) | (src.src.ssa->bit_size * swizzle)));
+      bfe->definitions[0] = Definition(dst);
+      ctx->block->instructions.emplace_back(std::move(bfe));
+      return dst;
+   }
+
+   RegClass elem_rc = elem_size < 4 ? RegClass(vec.type(), elem_size).as_subdword() : RegClass(vec.type(), elem_size / 4);
    if (size == 1) {
       return emit_extract_vector(ctx, vec, src.swizzle[0], elem_rc);
    } else {
@@ -484,7 +520,7 @@ Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
          elems[i] = emit_extract_vector(ctx, vec, src.swizzle[i], elem_rc);
          vec_instr->operands[i] = Operand{elems[i]};
       }
-      Temp dst{ctx->program->allocateId(), RegClass(vec.type(), elem_size * size)};
+      Temp dst{ctx->program->allocateId(), RegClass(vec.type(), elem_size * size / 4)};
       vec_instr->definitions[0] = Definition(dst);
       ctx->block->instructions.emplace_back(std::move(vec_instr));
       ctx->allocated_vec.emplace(dst.id(), elems);
