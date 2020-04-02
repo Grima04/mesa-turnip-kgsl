@@ -671,7 +671,7 @@ public:
                             int block_count,
                             instruction_scheduler_mode mode);
    void calculate_deps();
-   bool is_compressed(fs_inst *inst);
+   bool is_compressed(const fs_inst *inst);
    schedule_node *choose_instruction_to_schedule();
    int issue_time(backend_instruction *inst);
    const fs_visitor *v;
@@ -1063,7 +1063,7 @@ instruction_scheduler::add_barrier_deps(schedule_node *n)
  * actually writes 2 MRFs.
  */
 bool
-fs_instruction_scheduler::is_compressed(fs_inst *inst)
+fs_instruction_scheduler::is_compressed(const fs_inst *inst)
 {
    return inst->exec_size == 16;
 }
