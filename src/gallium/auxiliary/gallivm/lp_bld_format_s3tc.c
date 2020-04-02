@@ -1023,6 +1023,8 @@ s3tc_dxt5_alpha_channel(struct gallivm_state *gallivm,
       alpha = LLVMBuildAnd(builder, alpha, LLVMBuildNot(builder, mask6, ""), "");
       alpha = LLVMBuildOr(builder, alpha, mask7, "");
    }
+   /* There can be garbage in upper bits, mask them off for rgtc formats */
+   alpha = LLVMBuildAnd(builder, alpha, lp_build_const_int_vec(gallivm, type, 0xff), "");
 
    return alpha;
 }
