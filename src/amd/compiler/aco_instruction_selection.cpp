@@ -941,14 +941,38 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_vec3:
    case nir_op_vec4: {
       std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
-      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, instr->dest.dest.ssa.num_components, 1)};
-      for (unsigned i = 0; i < instr->dest.dest.ssa.num_components; ++i) {
+      unsigned num = instr->dest.dest.ssa.num_components;
+      for (unsigned i = 0; i < num; ++i)
          elems[i] = get_alu_src(ctx, instr->src[i]);
-         vec->operands[i] = Operand{elems[i]};
+
+      if (instr->dest.dest.ssa.bit_size >= 32 || dst.type() == RegType::vgpr) {
+         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, instr->dest.dest.ssa.num_components, 1)};
+         for (unsigned i = 0; i < num; ++i)
+            vec->operands[i] = Operand{elems[i]};
+         vec->definitions[0] = Definition(dst);
+         ctx->block->instructions.emplace_back(std::move(vec));
+         ctx->allocated_vec.emplace(dst.id(), elems);
+      } else {
+         // TODO: that is a bit suboptimal..
+         Temp mask = bld.copy(bld.def(s1), Operand((1u << instr->dest.dest.ssa.bit_size) - 1));
+         for (unsigned i = 0; i < num - 1; ++i)
+            if (((i+1) * instr->dest.dest.ssa.bit_size) % 32)
+               elems[i] = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), elems[i], mask);
+         for (unsigned i = 0; i < num; ++i) {
+            unsigned bit = i * instr->dest.dest.ssa.bit_size;
+            if (bit % 32 == 0) {
+               elems[bit / 32] = elems[i];
+            } else {
+               elems[i] = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
+                                   elems[i], Operand((i * instr->dest.dest.ssa.bit_size) % 32));
+               elems[bit / 32] = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc), elems[bit / 32], elems[i]);
+            }
+         }
+         if (dst.size() == 1)
+            bld.copy(Definition(dst), elems[0]);
+         else
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), elems[0], elems[1]);
       }
-      vec->definitions[0] = Definition(dst);
-      ctx->block->instructions.emplace_back(std::move(vec));
-      ctx->allocated_vec.emplace(dst.id(), elems);
       break;
    }
    case nir_op_mov: {
