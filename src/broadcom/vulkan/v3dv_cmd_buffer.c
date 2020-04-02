@@ -721,6 +721,39 @@ emit_clip_window(struct v3dv_job *job, const VkRect2D *rect)
    }
 }
 
+/* Checks whether the clip rectangle covers a region that is aligned to
+ * tile boundaries, which means that for all tiles covered by the clip
+ * region, there are no uncovered pixels (unless they are also outside the
+ * framebuffer).
+ */
+static void
+cmd_buffer_update_tile_alignment(struct v3dv_cmd_buffer *cmd_buffer,
+                                 const VkRect2D *clip_rect,
+                                 const VkExtent2D *fb_extent)
+{
+   /* Render areas and scissor/viewport are only relevant inside render passes,
+    * otherwise we are dealing with transfer operations where these elements
+    * don't apply.
+    */
+   if (!cmd_buffer->state.pass) {
+      cmd_buffer->state.tile_aligned_render_area = true;
+      return;
+   }
+
+   VkExtent2D granularity;
+   VkDevice _device = v3dv_device_to_handle(cmd_buffer->device);
+   VkRenderPass _pass = v3dv_render_pass_to_handle(cmd_buffer->state.pass);
+   v3dv_GetRenderAreaGranularity(_device, _pass, &granularity);
+
+   cmd_buffer->state.tile_aligned_render_area =
+      clip_rect->offset.x % granularity.width == 0 &&
+      clip_rect->offset.y % granularity.height == 0 &&
+      (clip_rect->extent.width % granularity.width == 0 ||
+       clip_rect->offset.x + clip_rect->extent.width >= fb_extent->width) &&
+      (clip_rect->extent.height % granularity.height == 0 ||
+       clip_rect->offset.y + clip_rect->extent.height >= fb_extent->height);
+}
+
 void
 v3dv_get_hw_clear_color(const VkClearColorValue *color,
                         uint32_t internal_type,
@@ -780,6 +813,8 @@ cmd_buffer_state_set_attachment_clear_color(struct v3dv_cmd_buffer *cmd_buffer,
 
    v3dv_get_hw_clear_color(color, internal_type, internal_size,
                            &attachment_state->clear_value.color[0]);
+
+   attachment_state->vk_clear_value.color = *color;
 }
 
 static void
@@ -797,6 +832,8 @@ cmd_buffer_state_set_attachment_clear_depth_stencil(
 
    if (clear_stencil)
       attachment_state->clear_value.s = ds->stencil;
+
+   attachment_state->vk_clear_value.depthStencil = *ds;
 }
 
 static void
@@ -879,14 +916,10 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    cmd_buffer_ensure_render_pass_attachment_state(cmd_buffer);
    cmd_buffer_init_render_pass_attachment_state(cmd_buffer, pRenderPassBegin);
 
-   /* FIXME: probably need to align the render area to tile boundaries since
-    *        the tile clears will render full tiles anyway.
-    *        See vkGetRenderAreaGranularity().
-    */
    state->render_area = pRenderPassBegin->renderArea;
 
    /* If our render area is smaller than the current clip window we will have
-    * to emit a new clip window.
+    * to emit a new clip window to constraint it to the render area.
     */
    uint32_t min_render_x = state->render_area.offset.x;
    uint32_t min_render_y = state->render_area.offset.x;
@@ -900,6 +933,13 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
        max_render_x < max_clip_x || max_render_y < max_clip_y) {
       state->dirty |= V3DV_CMD_DIRTY_SCISSOR;
    }
+
+   /* Check if our render area is aligned to tile boundaries */
+   VkExtent2D fb_extent = {
+      .width = framebuffer->width,
+      .height = framebuffer->height
+   };
+   cmd_buffer_update_tile_alignment(cmd_buffer, &state->render_area, &fb_extent);
 
    /* Setup for first subpass */
    v3dv_cmd_buffer_subpass_start(cmd_buffer, 0);
@@ -1018,12 +1058,18 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
        * by a previous subpass to the same attachment. We also want to load
        * if the current job is continuing subpass work started by a previous
        * job, for the same reason.
+       *
+       * If the render area is not aligned to tile boundaries then we have
+       * tiles which are partially covered by it. In this case, we need to
+       * load the tiles so we can preserve the pixels that are outside the
+       * render area for any such tiles.
        */
       assert(state->job->first_subpass >= attachment->first_subpass);
       bool needs_load =
          state->job->first_subpass > attachment->first_subpass ||
          state->job->is_subpass_continue ||
-         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD;
+         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
+         !state->tile_aligned_render_area;
 
       if (needs_load) {
          struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
@@ -1041,7 +1087,8 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       bool needs_load =
          state->job->first_subpass > ds_attachment->first_subpass ||
          state->job->is_subpass_continue ||
-         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD;
+         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
+         !state->tile_aligned_render_area;
 
       if (needs_load) {
          struct v3dv_image_view *iview =
@@ -1127,6 +1174,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
 
       /* Only clear once on the first subpass that uses the attachment */
       bool needs_clear =
+         state->tile_aligned_render_area &&
          state->job->first_subpass == attachment->first_subpass &&
          attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
          !state->job->is_subpass_continue;
@@ -1172,6 +1220,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
 
       /* Only clear once on the first subpass that uses the attachment */
       needs_ds_clear =
+         state->tile_aligned_render_area &&
          state->job->first_subpass == ds_attachment->first_subpass &&
          ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
          !state->job->is_subpass_continue;
@@ -1315,7 +1364,7 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
       cl_emit(rcl, STORE_TILE_BUFFER_GENERAL, store) {
          store.buffer_to_store = NONE;
       }
-      if (i == 0) {
+      if (i == 0 && cmd_buffer->state.tile_aligned_render_area) {
          cl_emit(rcl, CLEAR_TILE_BUFFERS, clear) {
             clear.clear_z_stencil_buffer = true;
             clear.clear_all_render_targets = true;
@@ -1452,12 +1501,6 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
          }
       }
 
-      /* FIXME: the tile buffer clears don't seem to honor the scissor rect
-       * so if the current combination of scissor + renderArea doesn't cover
-       * the full extent of the render target we won't get correct behavior.
-       * We probably need to detect these cases, implement the clearing by
-       * drawing a rect and skip clearing here.
-       */
       cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1, clear) {
          clear.clear_color_low_32_bits = clear_color[0];
          clear.clear_color_next_24_bits = clear_color[1] & 0xffffff;
@@ -1532,6 +1575,78 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
+static void
+cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   assert(cmd_buffer->state.pass);
+   assert(cmd_buffer->state.subpass_idx < cmd_buffer->state.pass->subpass_count);
+   const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct v3dv_render_pass *pass = state->pass;
+   const struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
+
+   uint32_t att_count = 0;
+   VkClearAttachment atts[V3D_MAX_DRAW_BUFFERS + 1]; /* 4 color + D/S */
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      const uint32_t att_idx = subpass->color_attachments[i].attachment;
+      if (att_idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      struct v3dv_render_pass_attachment *att = &pass->attachments[att_idx];
+      if (att->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+         continue;
+
+      if (state->subpass_idx != att->first_subpass)
+         continue;
+
+      atts[att_count].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      atts[att_count].colorAttachment = i;
+      atts[att_count].clearValue = state->attachments[att_idx].vk_clear_value;
+      att_count++;
+   }
+
+   const uint32_t ds_att_idx = subpass->ds_attachment.attachment;
+   if (ds_att_idx != VK_ATTACHMENT_UNUSED) {
+      struct v3dv_render_pass_attachment *att = &pass->attachments[ds_att_idx];
+      if (state->subpass_idx == att->first_subpass) {
+         VkImageAspectFlags aspects = vk_format_aspects(att->desc.format);
+         if (att->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+            aspects &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
+         if (att->desc.stencilLoadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+            aspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+
+         atts[att_count].aspectMask = aspects;
+         atts[att_count].colorAttachment = 0; /* Ignored */
+         atts[att_count].clearValue =
+            state->attachments[ds_att_idx].vk_clear_value;
+         att_count++;
+      }
+   }
+
+   if (att_count == 0)
+      return;
+
+   perf_debug("Render area doesn't match render pass granularity, falling "
+              "back to vkCmdClearAttachments for VK_ATTACHMENT_LOAD_OP_CLEAR");
+
+   /* From the Vulkan 1.0 spec:
+    *
+    *    "VK_ATTACHMENT_LOAD_OP_CLEAR specifies that the contents within the
+    *     render area will be cleared to a uniform value, which is specified
+    *     when a render pass instance is begun."
+    *
+    * So the clear is only constrained by the render area and not by pipeline
+    * state such as scissor or viewport, these are the semantics of
+    * vkCmdClearAttachments as well.
+    */
+   VkCommandBuffer _cmd_buffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
+   VkClearRect rect = {
+      .rect = state->render_area,
+      .baseArrayLayer = 0,
+      .layerCount = 1,
+   };
+   v3dv_CmdClearAttachments(_cmd_buffer, att_count, atts, 1, &rect);
+}
+
 struct v3dv_job *
 v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
                               uint32_t subpass_idx)
@@ -1566,6 +1681,12 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
                            subpass->color_count,
                            internal_bpp);
    }
+
+   /* If we can't use TLB clears then we need to emit draw clears for any
+    * LOAD_OP_CLEAR attachments in this subpass now.
+    */
+   if (!cmd_buffer->state.tile_aligned_render_area)
+      cmd_buffer_emit_subpass_clears(cmd_buffer);
 
    return job;
 }

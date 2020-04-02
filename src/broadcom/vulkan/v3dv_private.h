@@ -495,6 +495,10 @@ union v3dv_clear_value {
 };
 
 struct v3dv_cmd_buffer_attachment_state {
+   /* The original clear value as provided by the Vulkan API */
+   VkClearValue vk_clear_value;
+
+   /* The hardware clear value */
    union v3dv_clear_value clear_value;
 };
 
@@ -695,6 +699,15 @@ struct v3dv_cmd_buffer_state {
     * to drawing rects.
     */
    VkRect2D clip_window;
+
+   /* Whether our render area is aligned to tile boundaries. If this is false
+    * then we have tiles that are only partially covered by the render area,
+    * and therefore, we need to be careful with our loads and stores so we don't
+    * modify pixels for the tile area that is not covered by the render area.
+    * This means, for example, that we can't use the TLB to clear, since that
+    * always clears full tiles.
+    */
+   bool tile_aligned_render_area;
 
    uint32_t attachment_count;
    struct v3dv_cmd_buffer_attachment_state *attachments;
