@@ -558,6 +558,8 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 		return 0;
 	case PIPE_SHADER_CAP_FP16:
 		return ((is_a5xx(screen) || is_a6xx(screen)) &&
+				(shader == PIPE_SHADER_COMPUTE ||
+					shader == PIPE_SHADER_FRAGMENT) &&
 				!(fd_mesa_debug & FD_DBG_NOFP16));
 	case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
 	case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
