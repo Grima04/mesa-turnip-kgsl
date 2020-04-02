@@ -33,16 +33,9 @@ llvm_libdir = dep_llvm.get_configtool_variable('libdir')
 
 opencl_libname = with_opencl_icd ? 'MesaOpenCL' : 'OpenCL'
 
-libopencl = shared_library(
-  opencl_libname,
-  [],
-  link_args : [ld_args_gc_sections, opencl_link_args],
-  link_depends : opencl_link_deps,
-  link_whole : libclover,
-  link_with : [libpipe_loader_dynamic, libgallium],
-  dependencies : [
-    idep_mesautil,
-    dep_clock, dep_dl, dep_unwind, dep_elf,
+dep_clang = cpp.find_library('clang-cpp', dirs : llvm_libdir, required : false)
+if not dep_clang.found()
+  dep_clang = [
     cpp.find_library('clangCodeGen', dirs : llvm_libdir),
     cpp.find_library('clangFrontendTool', dirs : llvm_libdir),
     cpp.find_library('clangFrontend', dirs : llvm_libdir),
@@ -56,6 +49,19 @@ libopencl = shared_library(
     cpp.find_library('clangEdit', dirs : llvm_libdir),
     cpp.find_library('clangLex', dirs : llvm_libdir),
     cpp.find_library('clangBasic', dirs : llvm_libdir),
+  ]
+endif
+
+libopencl = shared_library(
+  opencl_libname,
+  [],
+  link_args : [ld_args_gc_sections, opencl_link_args],
+  link_depends : opencl_link_deps,
+  link_whole : libclover,
+  link_with : [libpipe_loader_dynamic, libgallium],
+  dependencies : [
+    idep_mesautil,
+    dep_clock, dep_dl, dep_unwind, dep_elf, dep_clang
   ],
   version : '@0@.0.0'.format(opencl_version),
   install : true,
