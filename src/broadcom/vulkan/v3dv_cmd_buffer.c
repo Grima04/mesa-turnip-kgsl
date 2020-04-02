@@ -1088,6 +1088,7 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
          state->job->first_subpass > ds_attachment->first_subpass ||
          state->job->is_subpass_continue ||
          ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
+         ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
          !state->tile_aligned_render_area;
 
       if (needs_load) {
@@ -1208,7 +1209,8 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
     * not want to do that. We might want to consider emitting clears for
     * all RTs needing clearing just once ahead of the first subpass.
     */
-   bool needs_ds_clear = false;
+   bool needs_depth_clear = false;
+   bool needs_stencil_clear = false;
    uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
    if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
       const struct v3dv_render_pass_attachment *ds_attachment =
@@ -1218,31 +1220,53 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       assert(state->subpass_idx >= ds_attachment->first_subpass);
       assert(state->subpass_idx <= ds_attachment->last_subpass);
 
+      /* From the Vulkan spec, VkImageSubresourceRange:
+       *
+       *   "When an image view of a depth/stencil image is used as a
+       *   depth/stencil framebuffer attachment, the aspectMask is ignored
+       *   and both depth and stencil image subresources are used."
+       *
+       * So we ignore the aspects from the subresource range of the image view
+       * for the depth/stencil attachment, but we still need to restrict this
+       * to aspects that actually exist in the image.
+       */
+      const VkImageAspectFlags aspects =
+         vk_format_aspects(ds_attachment->desc.format);
+
       /* Only clear once on the first subpass that uses the attachment */
-      needs_ds_clear =
+      needs_depth_clear =
+         (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
          state->tile_aligned_render_area &&
          state->job->first_subpass == ds_attachment->first_subpass &&
          ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
          !state->job->is_subpass_continue;
 
-      /* Skip the last store if it is not required  */
-      bool needs_ds_store =
-         state->subpass_idx < ds_attachment->last_subpass ||
-         ds_attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
-         needs_ds_clear ||
-         !state->job->is_subpass_finish;
+      needs_stencil_clear =
+         (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+         state->tile_aligned_render_area &&
+         state->job->first_subpass == ds_attachment->first_subpass &&
+         ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+         !state->job->is_subpass_continue;
 
+      /* Skip the last store if it is not required  */
+      bool needs_depth_store =
+         (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+         (state->subpass_idx < ds_attachment->last_subpass ||
+          ds_attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
+          needs_depth_clear ||
+          !state->job->is_subpass_finish);
+
+      bool needs_stencil_store =
+         (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+         (state->subpass_idx < ds_attachment->last_subpass ||
+          ds_attachment->desc.stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE ||
+          needs_stencil_clear ||
+          !state->job->is_subpass_finish);
+
+      bool needs_ds_clear = needs_stencil_clear || needs_depth_clear;
+      bool needs_ds_store = needs_stencil_store || needs_depth_store;
       if (needs_ds_store) {
-         struct v3dv_image_view *iview =
-            state->framebuffer->attachments[ds_attachment_idx];
-         /* From the Vulkan spec:
-          *
-          *   "When an image view of a depth/stencil image is used as a
-          *   depth/stencil framebuffer attachment, the aspectMask is ignored
-          *   and both depth and stencil image subresources are used."
-          */
-         const uint32_t zs_buffer =
-            v3dv_zs_buffer_from_vk_format(iview->image->vk_format);
+         uint32_t zs_buffer = v3dv_zs_buffer_from_aspect_bits(aspects);
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            ds_attachment_idx, layer,
                                            zs_buffer, needs_ds_clear);
@@ -1258,7 +1282,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    /* FIXME: see fixme remark for depth/stencil above */
-   if (needs_ds_clear) {
+   if (needs_depth_clear && needs_stencil_clear) {
       cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
          clear.clear_z_stencil_buffer = true;
          clear.clear_all_render_targets = true;
