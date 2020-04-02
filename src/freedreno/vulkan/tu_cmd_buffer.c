@@ -344,11 +344,102 @@ tu6_emit_event_write(struct tu_cmd_buffer *cmd,
 }
 
 static void
-tu6_emit_wfi(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
+                 struct tu_cs *cs,
+                 enum tu_cmd_flush_bits flushes)
 {
-   if (cmd->wait_for_idle) {
+   /* Experiments show that invalidating CCU while it still has data in it
+    * doesn't work, so make sure to always flush before invalidating in case
+    * any data remains that hasn't yet been made available through a barrier.
+    * However it does seem to work for UCHE.
+    */
+   if (flushes & (TU_CMD_FLAG_CCU_FLUSH_COLOR |
+                  TU_CMD_FLAG_CCU_INVALIDATE_COLOR))
+      tu6_emit_event_write(cmd_buffer, cs, PC_CCU_FLUSH_COLOR_TS);
+   if (flushes & (TU_CMD_FLAG_CCU_FLUSH_DEPTH |
+                  TU_CMD_FLAG_CCU_INVALIDATE_DEPTH))
+      tu6_emit_event_write(cmd_buffer, cs, PC_CCU_FLUSH_DEPTH_TS);
+   if (flushes & TU_CMD_FLAG_CCU_INVALIDATE_COLOR)
+      tu6_emit_event_write(cmd_buffer, cs, PC_CCU_INVALIDATE_COLOR);
+   if (flushes & TU_CMD_FLAG_CCU_INVALIDATE_DEPTH)
+      tu6_emit_event_write(cmd_buffer, cs, PC_CCU_INVALIDATE_DEPTH);
+   if (flushes & TU_CMD_FLAG_CACHE_FLUSH)
+      tu6_emit_event_write(cmd_buffer, cs, CACHE_FLUSH_TS);
+   if (flushes & TU_CMD_FLAG_CACHE_INVALIDATE)
+      tu6_emit_event_write(cmd_buffer, cs, CACHE_INVALIDATE);
+   if (flushes & TU_CMD_FLAG_WFI)
       tu_cs_emit_wfi(cs);
-      cmd->wait_for_idle = false;
+}
+
+/* "Normal" cache flushes, that don't require any special handling */
+
+static void
+tu_emit_cache_flush(struct tu_cmd_buffer *cmd_buffer,
+                    struct tu_cs *cs)
+{
+   tu6_emit_flushes(cmd_buffer, cs, cmd_buffer->state.cache.flush_bits);
+   cmd_buffer->state.cache.flush_bits = 0;
+}
+
+/* Renderpass cache flushes */
+
+static void
+tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer,
+                               struct tu_cs *cs)
+{
+   tu6_emit_flushes(cmd_buffer, cs, cmd_buffer->state.renderpass_cache.flush_bits);
+   cmd_buffer->state.renderpass_cache.flush_bits = 0;
+}
+
+/* Cache flushes for things that use the color/depth read/write path (i.e.
+ * blits and draws). This deals with changing CCU state as well as the usual
+ * cache flushing.
+ */
+
+void
+tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
+                        struct tu_cs *cs,
+                        enum tu_cmd_ccu_state ccu_state)
+{
+   enum tu_cmd_flush_bits flushes = cmd_buffer->state.cache.flush_bits;
+
+   assert(ccu_state != TU_CMD_CCU_UNKNOWN);
+
+   /* Changing CCU state must involve invalidating the CCU. In sysmem mode,
+    * the CCU may also contain data that we haven't flushed out yet, so we
+    * also need to flush. Also, in order to program RB_CCU_CNTL, we need to
+    * emit a WFI as it isn't pipelined.
+    */
+   if (ccu_state != cmd_buffer->state.ccu_state) {
+      if (cmd_buffer->state.ccu_state != TU_CMD_CCU_GMEM) {
+         flushes |=
+            TU_CMD_FLAG_CCU_FLUSH_COLOR |
+            TU_CMD_FLAG_CCU_FLUSH_DEPTH;
+         cmd_buffer->state.cache.pending_flush_bits &= ~(
+            TU_CMD_FLAG_CCU_FLUSH_COLOR |
+            TU_CMD_FLAG_CCU_FLUSH_DEPTH);
+      }
+      flushes |=
+         TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
+         TU_CMD_FLAG_CCU_INVALIDATE_DEPTH |
+         TU_CMD_FLAG_WFI;
+      cmd_buffer->state.cache.pending_flush_bits &= ~(
+         TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
+         TU_CMD_FLAG_CCU_INVALIDATE_DEPTH);
+   }
+
+   tu6_emit_flushes(cmd_buffer, cs, flushes);
+   cmd_buffer->state.cache.flush_bits = 0;
+
+   if (ccu_state != cmd_buffer->state.ccu_state) {
+      struct tu_physical_device *phys_dev = cmd_buffer->device->physical_device;
+      tu_cs_emit_regs(cs,
+                      A6XX_RB_CCU_CNTL(.offset =
+                                          ccu_state == TU_CMD_CCU_GMEM ?
+                                          phys_dev->ccu_offset_gmem :
+                                          phys_dev->ccu_offset_bypass,
+                                       .gmem = ccu_state == TU_CMD_CCU_GMEM));
+      cmd_buffer->state.ccu_state = ccu_state;
    }
 }
 
@@ -705,6 +796,49 @@ tu6_emit_sysmem_resolve(struct tu_cmd_buffer *cmd,
 }
 
 static void
+tu6_emit_sysmem_resolves(struct tu_cmd_buffer *cmd,
+                         struct tu_cs *cs,
+                         const struct tu_subpass *subpass)
+{
+   if (subpass->resolve_attachments) {
+      /* From the documentation for vkCmdNextSubpass, section 7.4 "Render Pass
+       * Commands":
+       *
+       *    End-of-subpass multisample resolves are treated as color
+       *    attachment writes for the purposes of synchronization. That is,
+       *    they are considered to execute in the
+       *    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT pipeline stage and
+       *    their writes are synchronized with
+       *    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT. Synchronization between
+       *    rendering within a subpass and any resolve operations at the end
+       *    of the subpass occurs automatically, without need for explicit
+       *    dependencies or pipeline barriers. However, if the resolve
+       *    attachment is also used in a different subpass, an explicit
+       *    dependency is needed.
+       *
+       * We use the CP_BLIT path for sysmem resolves, which is really a
+       * transfer command, so we have to manually flush similar to the gmem
+       * resolve case. However, a flush afterwards isn't needed because of the
+       * last sentence and the fact that we're in sysmem mode.
+       */
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
+
+      /* Wait for the flushes to land before using the 2D engine */
+      tu_cs_emit_wfi(cs);
+
+      for (unsigned i = 0; i < subpass->color_count; i++) {
+         uint32_t a = subpass->resolve_attachments[i].attachment;
+         if (a == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         tu6_emit_sysmem_resolve(cmd, cs, a,
+                                 subpass->color_attachments[i].attachment);
+      }
+   }
+}
+
+static void
 tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_render_pass *pass = cmd->state.pass;
@@ -758,6 +892,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
+   cmd->state.ccu_state = TU_CMD_CCU_SYSMEM;
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E04, 0x00100000);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE04, 0x8);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE00, 0);
@@ -1073,8 +1208,6 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
    tu_cs_emit(cs, 0x0);
-
-   cmd->wait_for_idle = false;
 }
 
 static void
@@ -1109,7 +1242,6 @@ static void
 tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
                         const struct VkRect2D *renderArea)
 {
-   const struct tu_physical_device *phys_dev = cmd->device->physical_device;
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
    assert(fb->width > 0 && fb->height > 0);
@@ -1126,13 +1258,7 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
-
-   tu6_emit_wfi(cmd, cs);
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
+   tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
 
    /* enable stream-out, with sysmem there is only one pass: */
    tu_cs_emit_regs(cs,
@@ -1153,15 +1279,7 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    /* Do any resolves of the last subpass. These are handled in the
     * tile_store_ib in the gmem path.
     */
-   const struct tu_subpass *subpass = cmd->state.subpass;
-   if (subpass->resolve_attachments) {
-      for (unsigned i = 0; i < subpass->color_count; i++) {
-         uint32_t a = subpass->resolve_attachments[i].attachment;
-         if (a != VK_ATTACHMENT_UNUSED)
-            tu6_emit_sysmem_resolve(cmd, cs, a,
-                                    subpass->color_attachments[i].attachment);
-      }
-   }
+   tu6_emit_sysmem_resolves(cmd, cs, cmd->state.subpass);
 
    tu_cs_emit_call(cs, &cmd->draw_epilogue_cs);
 
@@ -1169,9 +1287,6 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, 0x0);
 
    tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
-
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
 
    tu_cs_sanity_check(cs);
 }
@@ -1186,20 +1301,10 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    /* lrz clear? */
 
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
-
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
-   /* TODO: flushing with barriers instead of blindly always flushing */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
-
-   tu_cs_emit_wfi(cs);
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_gmem, .gmem = 1));
+   tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_GMEM);
 
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
    if (use_hw_binning(cmd)) {
@@ -1253,7 +1358,6 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
    tu6_emit_tile_select(cmd, cs, tile);
 
    tu_cs_emit_call(cs, &cmd->draw_cs);
-   cmd->wait_for_idle = true;
 
    if (use_hw_binning(cmd)) {
       tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
@@ -1318,7 +1422,6 @@ tu_cmd_render_sysmem(struct tu_cmd_buffer *cmd)
    tu6_sysmem_render_begin(cmd, &cmd->cs, &tiling->render_area);
 
    tu_cs_emit_call(&cmd->cs, &cmd->draw_cs);
-   cmd->wait_for_idle = true;
 
    tu6_sysmem_render_end(cmd, &cmd->cs);
 }
@@ -1576,8 +1679,6 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
 static VkResult
 tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
 {
-   cmd_buffer->wait_for_idle = true;
-
    cmd_buffer->record_result = VK_SUCCESS;
 
    tu_bo_list_reset(&cmd_buffer->bo_list);
@@ -1677,6 +1778,16 @@ tu_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    return tu_reset_cmd_buffer(cmd_buffer);
 }
 
+/* Initialize the cache, assuming all necessary flushes have happened but *not*
+ * invalidations.
+ */
+static void
+tu_cache_init(struct tu_cache_state *cache)
+{
+   cache->flush_bits = 0;
+   cache->pending_flush_bits = TU_CMD_FLAG_ALL_INVALIDATE;
+}
+
 VkResult
 tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                       const VkCommandBufferBeginInfo *pBeginInfo)
@@ -1694,6 +1805,8 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    }
 
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
+   tu_cache_init(&cmd_buffer->state.cache);
+   tu_cache_init(&cmd_buffer->state.renderpass_cache);
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
    tu_cs_begin(&cmd_buffer->cs);
@@ -1709,11 +1822,18 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       default:
          break;
       }
-   } else if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
-              (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
-      assert(pBeginInfo->pInheritanceInfo);
-      cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
-      cmd_buffer->state.subpass = &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
+   } else if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+      if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
+         assert(pBeginInfo->pInheritanceInfo);
+         cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
+         cmd_buffer->state.subpass =
+            &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
+      } else {
+         /* When executing in the middle of another command buffer, the CCU
+          * state is unknown.
+          */
+         cmd_buffer->state.ccu_state = TU_CMD_CCU_UNKNOWN;
+      }
    }
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
@@ -1921,10 +2041,43 @@ tu_CmdPushConstants(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_PUSH_CONSTANTS;
 }
 
+/* Flush everything which has been made available but we haven't actually
+ * flushed yet.
+ */
+static void
+tu_flush_all_pending(struct tu_cache_state *cache)
+{
+   cache->flush_bits |= cache->pending_flush_bits & TU_CMD_FLAG_ALL_FLUSH;
+   cache->pending_flush_bits &= ~TU_CMD_FLAG_ALL_FLUSH;
+}
+
 VkResult
 tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+
+   /* We currently flush CCU at the end of the command buffer, like
+    * what the blob does. There's implicit synchronization around every
+    * vkQueueSubmit, but the kernel only flushes the UCHE, and we don't
+    * know yet if this command buffer will be the last in the submit so we
+    * have to defensively flush everything else.
+    *
+    * TODO: We could definitely do better than this, since these flushes
+    * aren't required by Vulkan, but we'd need kernel support to do that.
+    * Ideally, we'd like the kernel to flush everything afterwards, so that we
+    * wouldn't have to do any flushes here, and when submitting multiple
+    * command buffers there wouldn't be any unnecessary flushes in between.
+    */
+   if (cmd_buffer->state.pass) {
+      tu_flush_all_pending(&cmd_buffer->state.renderpass_cache);
+      tu_emit_cache_flush_renderpass(cmd_buffer, &cmd_buffer->draw_cs);
+   } else {
+      tu_flush_all_pending(&cmd_buffer->state.cache);
+      cmd_buffer->state.cache.flush_bits |=
+         TU_CMD_FLAG_CCU_FLUSH_COLOR |
+         TU_CMD_FLAG_CCU_FLUSH_DEPTH;
+      tu_emit_cache_flush(cmd_buffer, &cmd_buffer->cs);
+   }
 
    tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->scratch_bo,
                   MSM_SUBMIT_BO_WRITE);
@@ -2128,6 +2281,206 @@ tu_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
    tu6_emit_sample_locations(&cmd->draw_cs, pSampleLocationsInfo);
 }
 
+static void
+tu_flush_for_access(struct tu_cache_state *cache,
+                    enum tu_cmd_access_mask src_mask,
+                    enum tu_cmd_access_mask dst_mask)
+{
+   enum tu_cmd_flush_bits flush_bits = 0;
+
+   if (src_mask & TU_ACCESS_SYSMEM_WRITE) {
+      cache->pending_flush_bits |= TU_CMD_FLAG_ALL_INVALIDATE;
+   }
+
+#define SRC_FLUSH(domain, flush, invalidate) \
+   if (src_mask & TU_ACCESS_##domain##_WRITE) {                      \
+      cache->pending_flush_bits |= TU_CMD_FLAG_##flush |             \
+         (TU_CMD_FLAG_ALL_INVALIDATE & ~TU_CMD_FLAG_##invalidate);   \
+   }
+
+   SRC_FLUSH(UCHE, CACHE_FLUSH, CACHE_INVALIDATE)
+   SRC_FLUSH(CCU_COLOR, CCU_FLUSH_COLOR, CCU_INVALIDATE_COLOR)
+   SRC_FLUSH(CCU_DEPTH, CCU_FLUSH_DEPTH, CCU_INVALIDATE_DEPTH)
+
+#undef SRC_FLUSH
+
+#define SRC_INCOHERENT_FLUSH(domain, flush, invalidate)              \
+   if (src_mask & TU_ACCESS_##domain##_INCOHERENT_WRITE) {           \
+      flush_bits |= TU_CMD_FLAG_##flush;                             \
+      cache->pending_flush_bits |=                                   \
+         (TU_CMD_FLAG_ALL_INVALIDATE & ~TU_CMD_FLAG_##invalidate);   \
+   }
+
+   SRC_INCOHERENT_FLUSH(CCU_COLOR, CCU_FLUSH_COLOR, CCU_INVALIDATE_COLOR)
+   SRC_INCOHERENT_FLUSH(CCU_DEPTH, CCU_FLUSH_DEPTH, CCU_INVALIDATE_DEPTH)
+
+#undef SRC_INCOHERENT_FLUSH
+
+   if (dst_mask & (TU_ACCESS_SYSMEM_READ | TU_ACCESS_SYSMEM_WRITE)) {
+      flush_bits |= cache->pending_flush_bits & TU_CMD_FLAG_ALL_FLUSH;
+   }
+
+#define DST_FLUSH(domain, flush, invalidate) \
+   if (dst_mask & (TU_ACCESS_##domain##_READ |                 \
+                   TU_ACCESS_##domain##_WRITE)) {              \
+      flush_bits |= cache->pending_flush_bits &                \
+         (TU_CMD_FLAG_##invalidate |                           \
+          (TU_CMD_FLAG_ALL_FLUSH & ~TU_CMD_FLAG_##flush));     \
+   }
+
+   DST_FLUSH(UCHE, CACHE_FLUSH, CACHE_INVALIDATE)
+   DST_FLUSH(CCU_COLOR, CCU_FLUSH_COLOR, CCU_INVALIDATE_COLOR)
+   DST_FLUSH(CCU_DEPTH, CCU_FLUSH_DEPTH, CCU_INVALIDATE_DEPTH)
+
+#undef DST_FLUSH
+
+#define DST_INCOHERENT_FLUSH(domain, flush, invalidate) \
+   if (dst_mask & (TU_ACCESS_##domain##_READ |                 \
+                   TU_ACCESS_##domain##_WRITE)) {              \
+      flush_bits |= TU_CMD_FLAG_##invalidate |                 \
+          (cache->pending_flush_bits &                         \
+           (TU_CMD_FLAG_ALL_FLUSH & ~TU_CMD_FLAG_##flush));    \
+   }
+
+   DST_INCOHERENT_FLUSH(CCU_COLOR, CCU_FLUSH_COLOR, CCU_INVALIDATE_COLOR)
+   DST_INCOHERENT_FLUSH(CCU_DEPTH, CCU_FLUSH_DEPTH, CCU_INVALIDATE_DEPTH)
+
+#undef DST_INCOHERENT_FLUSH
+
+   if (dst_mask & TU_ACCESS_WFI_READ) {
+      flush_bits |= TU_CMD_FLAG_WFI;
+   }
+
+   cache->flush_bits |= flush_bits;
+   cache->pending_flush_bits &= ~flush_bits;
+}
+
+static enum tu_cmd_access_mask
+vk2tu_access(VkAccessFlags flags, bool gmem)
+{
+   enum tu_cmd_access_mask mask = 0;
+
+   /* If the GPU writes a buffer that is then read by an indirect draw
+    * command, we theoretically need a WFI + WAIT_FOR_ME combination to
+    * wait for the writes to complete. The WAIT_FOR_ME is performed as part
+    * of the draw by the firmware, so we just need to execute a WFI.
+    */
+   if (flags &
+       (VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
+        VK_ACCESS_MEMORY_READ_BIT)) {
+      mask |= TU_ACCESS_WFI_READ;
+   }
+
+   if (flags &
+       (VK_ACCESS_INDIRECT_COMMAND_READ_BIT | /* Read performed by CP */
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT | /* Read performed by CP, I think */
+        VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT | /* Read performed by CP */
+        VK_ACCESS_HOST_READ_BIT | /* sysmem by definition */
+        VK_ACCESS_MEMORY_READ_BIT)) {
+      mask |= TU_ACCESS_SYSMEM_READ;
+   }
+
+   if (flags &
+       (VK_ACCESS_HOST_WRITE_BIT |
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT | /* Write performed by CP, I think */
+        VK_ACCESS_MEMORY_WRITE_BIT)) {
+      mask |= TU_ACCESS_SYSMEM_WRITE;
+   }
+
+   if (flags &
+       (VK_ACCESS_INDEX_READ_BIT | /* Read performed by PC, I think */
+        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | /* Read performed by VFD */
+        VK_ACCESS_UNIFORM_READ_BIT | /* Read performed by SP */
+        /* TODO: Is there a no-cache bit for textures so that we can ignore
+         * these?
+         */
+        VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | /* Read performed by TP */
+        VK_ACCESS_SHADER_READ_BIT | /* Read perfomed by SP/TP */
+        VK_ACCESS_MEMORY_READ_BIT)) {
+      mask |= TU_ACCESS_UCHE_READ;
+   }
+
+   if (flags &
+       (VK_ACCESS_SHADER_WRITE_BIT | /* Write performed by SP */
+        VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | /* Write performed by VPC */
+        VK_ACCESS_MEMORY_WRITE_BIT)) {
+      mask |= TU_ACCESS_UCHE_WRITE;
+   }
+
+   /* When using GMEM, the CCU is always flushed automatically to GMEM, and
+    * then GMEM is flushed to sysmem. Furthermore, we already had to flush any
+    * previous writes in sysmem mode when transitioning to GMEM. Therefore we
+    * can ignore CCU and pretend that color attachments and transfers use
+    * sysmem directly.
+    */
+
+   if (flags &
+       (VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+        VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT |
+        VK_ACCESS_MEMORY_READ_BIT)) {
+      if (gmem)
+         mask |= TU_ACCESS_SYSMEM_READ;
+      else
+         mask |= TU_ACCESS_CCU_COLOR_INCOHERENT_READ;
+   }
+
+   if (flags &
+       (VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+        VK_ACCESS_MEMORY_READ_BIT)) {
+      if (gmem)
+         mask |= TU_ACCESS_SYSMEM_READ;
+      else
+         mask |= TU_ACCESS_CCU_DEPTH_INCOHERENT_READ;
+   }
+
+   if (flags &
+       (VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+        VK_ACCESS_MEMORY_WRITE_BIT)) {
+      if (gmem) {
+         mask |= TU_ACCESS_SYSMEM_WRITE;
+      } else {
+         mask |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
+      }
+   }
+
+   if (flags &
+       (VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+        VK_ACCESS_MEMORY_WRITE_BIT)) {
+      if (gmem) {
+         mask |= TU_ACCESS_SYSMEM_WRITE;
+      } else {
+         mask |= TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE;
+      }
+   }
+
+   /* When the dst access is a transfer read/write, it seems we sometimes need
+    * to insert a WFI after any flushes, to guarantee that the flushes finish
+    * before the 2D engine starts. However the opposite (i.e. a WFI after
+    * CP_BLIT and before any subsequent flush) does not seem to be needed, and
+    * the blob doesn't emit such a WFI.
+    */
+
+   if (flags &
+       (VK_ACCESS_TRANSFER_WRITE_BIT |
+        VK_ACCESS_MEMORY_WRITE_BIT)) {
+      if (gmem) {
+         mask |= TU_ACCESS_SYSMEM_WRITE;
+      } else {
+         mask |= TU_ACCESS_CCU_COLOR_WRITE;
+      }
+      mask |= TU_ACCESS_WFI_READ;
+   }
+
+   if (flags &
+       (VK_ACCESS_TRANSFER_READ_BIT | /* Access performed by TP */
+        VK_ACCESS_MEMORY_READ_BIT)) {
+      mask |= TU_ACCESS_UCHE_READ | TU_ACCESS_WFI_READ;
+   }
+
+   return mask;
+}
+
+
 void
 tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                       uint32_t commandBufferCount,
@@ -2137,6 +2490,15 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
    VkResult result;
 
    assert(commandBufferCount > 0);
+
+   /* Emit any pending flushes. */
+   if (cmd->state.pass) {
+      tu_flush_all_pending(&cmd->state.renderpass_cache);
+      tu_emit_cache_flush_renderpass(cmd, &cmd->draw_cs);
+   } else {
+      tu_flush_all_pending(&cmd->state.cache);
+      tu_emit_cache_flush(cmd, &cmd->cs);
+   }
 
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       TU_FROM_HANDLE(tu_cmd_buffer, secondary, pCmdBuffers[i]);
@@ -2176,6 +2538,17 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
       }
    }
    cmd->state.dirty = ~0u; /* TODO: set dirty only what needs to be */
+
+   /* After executing secondary command buffers, there may have been arbitrary
+    * flushes executed, so when we encounter a pipeline barrier with a
+    * srcMask, we have to assume that we need to invalidate. Therefore we need
+    * to re-initialize the cache with all pending invalidate bits set.
+    */
+   if (cmd->state.pass) {
+      tu_cache_init(&cmd->state.renderpass_cache);
+   } else {
+      tu_cache_init(&cmd->state.cache);
+   }
 }
 
 VkResult
@@ -2269,6 +2642,29 @@ tu_TrimCommandPool(VkDevice device,
    }
 }
 
+static void
+tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
+                   const struct tu_subpass_barrier *barrier,
+                   bool external)
+{
+   /* Note: we don't know until the end of the subpass whether we'll use
+    * sysmem, so assume sysmem here to be safe.
+    */
+   struct tu_cache_state *cache =
+      external ? &cmd_buffer->state.cache : &cmd_buffer->state.renderpass_cache;
+   enum tu_cmd_access_mask src_flags =
+      vk2tu_access(barrier->src_access_mask, false);
+   enum tu_cmd_access_mask dst_flags =
+      vk2tu_access(barrier->dst_access_mask, false);
+
+   if (barrier->incoherent_ccu_color)
+      src_flags |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
+   if (barrier->incoherent_ccu_depth)
+      src_flags |= TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE;
+
+   tu_flush_for_access(cache, src_flags, dst_flags);
+}
+
 void
 tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
                       const VkRenderPassBeginInfo *pRenderPassBegin,
@@ -2284,6 +2680,15 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 
    tu_cmd_update_tiling_config(cmd, &pRenderPassBegin->renderArea);
    tu_cmd_prepare_tile_store_ib(cmd);
+
+   /* Note: because this is external, any flushes will happen before draw_cs
+    * gets called. However deferred flushes could have to happen later as part
+    * of the subpass.
+    */
+   tu_subpass_barrier(cmd, &pass->subpasses[0].start_barrier, true);
+   cmd->state.renderpass_cache.pending_flush_bits =
+      cmd->state.cache.pending_flush_bits;
+   cmd->state.renderpass_cache.flush_bits = 0;
 
    tu_emit_load_clear(cmd, pRenderPassBegin);
 
@@ -2353,32 +2758,12 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
-   /* Emit flushes so that input attachments will read the correct value.
-    * TODO: use subpass dependencies to flush or not
-    */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-
-   if (subpass->resolve_attachments) {
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
-
-      for (unsigned i = 0; i < subpass->color_count; i++) {
-         uint32_t a = subpass->resolve_attachments[i].attachment;
-         if (a == VK_ATTACHMENT_UNUSED)
-            continue;
-
-         tu6_emit_sysmem_resolve(cmd, cs, a,
-                                 subpass->color_attachments[i].attachment);
-      }
-
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-   }
+   tu6_emit_sysmem_resolves(cmd, cs, subpass);
 
    tu_cond_exec_end(cs);
 
-   /* subpass->input_count > 0 then texture cache invalidate is likely to be needed */
-   if (cmd->state.subpass->input_count)
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
+   /* Handle dependencies for the next subpass */
+   tu_subpass_barrier(cmd, &cmd->state.subpass->start_barrier, false);
 
    /* emit mrt/zs/msaa/ubwc state for the subpass that is starting */
    tu6_emit_zs(cmd, cmd->state.subpass, cs);
@@ -3276,6 +3661,8 @@ tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
    struct tu_cs *cs = &cmd->draw_cs;
    VkResult result;
 
+   tu_emit_cache_flush_renderpass(cmd, cs);
+
    result = tu6_bind_draw_states(cmd, cs, draw);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;
@@ -3293,8 +3680,6 @@ tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
             tu6_emit_event_write(cmd, cs, FLUSH_SO_0 + i);
       }
    }
-
-   cmd->wait_for_idle = true;
 
    tu_cs_sanity_check(cs);
 }
@@ -3475,6 +3860,11 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_COMPUTE];
    VkResult result;
 
+   /* TODO: We could probably flush less if we add a compute_flush_bits
+    * bitfield.
+    */
+   tu_emit_cache_flush(cmd, cs);
+
    if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_PIPELINE)
       tu_cs_emit_ib(cs, &pipeline->program.state_ib);
 
@@ -3571,8 +3961,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    }
 
    tu_cs_emit_wfi(cs);
-
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 }
 
 void
@@ -3641,6 +4029,10 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    tu_cs_discard_entries(&cmd_buffer->draw_epilogue_cs);
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
+   cmd_buffer->state.cache.pending_flush_bits |=
+      cmd_buffer->state.renderpass_cache.pending_flush_bits;
+   tu_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier, true);
+
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;
    cmd_buffer->state.framebuffer = NULL;
@@ -3670,16 +4062,67 @@ tu_barrier(struct tu_cmd_buffer *cmd,
            const VkImageMemoryBarrier *pImageMemoryBarriers,
            const struct tu_barrier_info *info)
 {
-   /* renderpass case is only for subpass self-dependencies
-    * which means syncing the render output with texture cache
-    * note: only the CACHE_INVALIDATE is needed in GMEM mode
-    * and in sysmem mode we might not need either color/depth flush
+   struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
+   VkAccessFlags srcAccessMask = 0;
+   VkAccessFlags dstAccessMask = 0;
+
+   for (uint32_t i = 0; i < memoryBarrierCount; i++) {
+      srcAccessMask |= pMemoryBarriers[i].srcAccessMask;
+      dstAccessMask |= pMemoryBarriers[i].dstAccessMask;
+   }
+
+   for (uint32_t i = 0; i < bufferMemoryBarrierCount; i++) {
+      srcAccessMask |= pBufferMemoryBarriers[i].srcAccessMask;
+      dstAccessMask |= pBufferMemoryBarriers[i].dstAccessMask;
+   }
+
+   enum tu_cmd_access_mask src_flags = 0;
+   enum tu_cmd_access_mask dst_flags = 0;
+
+   for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
+      TU_FROM_HANDLE(tu_image, image, pImageMemoryBarriers[i].image);
+      VkImageLayout old_layout = pImageMemoryBarriers[i].oldLayout;
+      /* For non-linear images, PREINITIALIZED is the same as UNDEFINED */
+      if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
+          (image->tiling != VK_IMAGE_TILING_LINEAR &&
+           old_layout == VK_IMAGE_LAYOUT_PREINITIALIZED)) {
+         /* The underlying memory for this image may have been used earlier
+          * within the same queue submission for a different image, which
+          * means that there may be old, stale cache entries which are in the
+          * "wrong" location, which could cause problems later after writing
+          * to the image. We don't want these entries being flushed later and
+          * overwriting the actual image, so we need to flush the CCU.
+          */
+         src_flags |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
+      }
+      srcAccessMask |= pImageMemoryBarriers[i].srcAccessMask;
+      dstAccessMask |= pImageMemoryBarriers[i].dstAccessMask;
+   }
+
+   /* Inside a renderpass, we don't know yet whether we'll be using sysmem
+    * so we have to use the sysmem flushes.
     */
-   if (cmd->state.pass) {
-      tu6_emit_event_write(cmd, &cmd->draw_cs, PC_CCU_FLUSH_COLOR_TS);
-      tu6_emit_event_write(cmd, &cmd->draw_cs, PC_CCU_FLUSH_DEPTH_TS);
-      tu6_emit_event_write(cmd, &cmd->draw_cs, CACHE_INVALIDATE);
-      return;
+   bool gmem = cmd->state.ccu_state == TU_CMD_CCU_GMEM &&
+      !cmd->state.pass;
+   src_flags |= vk2tu_access(srcAccessMask, gmem);
+   dst_flags |= vk2tu_access(dstAccessMask, gmem);
+
+   struct tu_cache_state *cache =
+      cmd->state.pass  ? &cmd->state.renderpass_cache : &cmd->state.cache;
+   tu_flush_for_access(cache, src_flags, dst_flags);
+
+   for (uint32_t i = 0; i < info->eventCount; i++) {
+      TU_FROM_HANDLE(tu_event, event, info->pEvents[i]);
+
+      tu_bo_list_add(&cmd->bo_list, &event->bo, MSM_SUBMIT_BO_READ);
+
+      tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
+      tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
+                     CP_WAIT_REG_MEM_0_POLL_MEMORY);
+      tu_cs_emit_qw(cs, event->bo.iova); /* POLL_ADDR_LO/HI */
+      tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(1));
+      tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0u));
+      tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(20));
    }
 }
 
@@ -3708,17 +4151,36 @@ tu_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
 }
 
 static void
-write_event(struct tu_cmd_buffer *cmd, struct tu_event *event, unsigned value)
+write_event(struct tu_cmd_buffer *cmd, struct tu_event *event,
+            VkPipelineStageFlags stageMask, unsigned value)
 {
    struct tu_cs *cs = &cmd->cs;
 
+   /* vkCmdSetEvent/vkCmdResetEvent cannot be called inside a render pass */
+   assert(!cmd->state.pass);
+
+   tu_emit_cache_flush(cmd, cs);
+
    tu_bo_list_add(&cmd->bo_list, &event->bo, MSM_SUBMIT_BO_WRITE);
 
-   /* TODO: any flush required before/after ? */
+   /* Flags that only require a top-of-pipe event. DrawIndirect parameters are
+    * read by the CP, so the draw indirect stage counts as top-of-pipe too.
+    */
+   VkPipelineStageFlags top_of_pipe_flags =
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+      VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
 
-   tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 3);
-   tu_cs_emit_qw(cs, event->bo.iova); /* ADDR_LO/HI */
-   tu_cs_emit(cs, value);
+   if (!(stageMask & ~top_of_pipe_flags)) {
+      tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 3);
+      tu_cs_emit_qw(cs, event->bo.iova); /* ADDR_LO/HI */
+      tu_cs_emit(cs, value);
+   } else {
+      /* Use a RB_DONE_TS event to wait for everything to complete. */
+      tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 4);
+      tu_cs_emit(cs, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS));
+      tu_cs_emit_qw(cs, event->bo.iova);
+      tu_cs_emit(cs, value);
+   }
 }
 
 void
@@ -3729,7 +4191,7 @@ tu_CmdSetEvent(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_event, event, _event);
 
-   write_event(cmd, event, 1);
+   write_event(cmd, event, stageMask, 1);
 }
 
 void
@@ -3740,7 +4202,7 @@ tu_CmdResetEvent(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_event, event, _event);
 
-   write_event(cmd, event, 0);
+   write_event(cmd, event, stageMask, 0);
 }
 
 void
@@ -3757,23 +4219,15 @@ tu_CmdWaitEvents(VkCommandBuffer commandBuffer,
                  const VkImageMemoryBarrier *pImageMemoryBarriers)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs *cs = &cmd->cs;
+   struct tu_barrier_info info;
 
-   /* TODO: any flush required before/after? (CP_WAIT_FOR_ME?) */
+   info.eventCount = eventCount;
+   info.pEvents = pEvents;
+   info.srcStageMask = 0;
 
-   for (uint32_t i = 0; i < eventCount; i++) {
-      TU_FROM_HANDLE(tu_event, event, pEvents[i]);
-
-      tu_bo_list_add(&cmd->bo_list, &event->bo, MSM_SUBMIT_BO_READ);
-
-      tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
-      tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
-                     CP_WAIT_REG_MEM_0_POLL_MEMORY);
-      tu_cs_emit_qw(cs, event->bo.iova); /* POLL_ADDR_LO/HI */
-      tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(1));
-      tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0u));
-      tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(20));
-   }
+   tu_barrier(cmd, memoryBarrierCount, pMemoryBarriers,
+              bufferMemoryBarrierCount, pBufferMemoryBarriers,
+              imageMemoryBarrierCount, pImageMemoryBarriers, &info);
 }
 
 void

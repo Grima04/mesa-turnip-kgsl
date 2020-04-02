@@ -468,18 +468,7 @@ r2d_setup(struct tu_cmd_buffer *cmd,
           bool clear,
           uint8_t mask)
 {
-   const struct tu_physical_device *phys_dev = cmd->device->physical_device;
-
-   /* TODO: flushing with barriers instead of blindly always flushing */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
-
-   tu_cs_emit_wfi(cs);
-   tu_cs_emit_regs(cs,
-                  A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
+   tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
 
    r2d_setup_common(cmd, cs, vk_format, rotation, clear, mask, false);
 }
@@ -489,11 +478,6 @@ r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    tu_cs_emit_pkt7(cs, CP_BLIT, 1);
    tu_cs_emit(cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
-
-   /* TODO: flushing with barriers instead of blindly always flushing */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 }
 
 /* r3d_ = shader path operations */
@@ -912,21 +896,11 @@ r3d_setup(struct tu_cmd_buffer *cmd,
           bool clear,
           uint8_t mask)
 {
-   const struct tu_physical_device *phys_dev = cmd->device->physical_device;
-
    if (!cmd->state.pass) {
-      /* TODO: flushing with barriers instead of blindly always flushing */
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-      tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
-      tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
-
-      tu_cs_emit_regs(cs,
-                     A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
-
+      tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
       tu6_emit_window_scissor(cs, 0, 0, 0x7fff, 0x7fff);
    }
+
    tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.dword = 0xc00000));
    tu_cs_emit_regs(cs, A6XX_RB_BIN_CONTROL(.dword = 0xc00000));
 
@@ -979,13 +953,6 @@ r3d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                   CP_DRAW_INDX_OFFSET_0_VIS_CULL(IGNORE_VISIBILITY));
    tu_cs_emit(cs, 1); /* instance count */
    tu_cs_emit(cs, 2); /* vertex count */
-
-   if (!cmd->state.pass) {
-      /* TODO: flushing with barriers instead of blindly always flushing */
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
-   }
 }
 
 /* blit ops - common interface for 2d/shader paths */
@@ -1941,15 +1908,38 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
    struct tu_cs *cs = &cmd->draw_cs;
 
    for (uint32_t j = 0; j < attachment_count; j++) {
+         /* The vulkan spec, section 17.2 "Clearing Images Inside a Render
+          * Pass Instance" says that:
+          *
+          *     Unlike other clear commands, vkCmdClearAttachments executes as
+          *     a drawing command, rather than a transfer command, with writes
+          *     performed by it executing in rasterization order. Clears to
+          *     color attachments are executed as color attachment writes, by
+          *     the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage.
+          *     Clears to depth/stencil attachments are executed as depth
+          *     writes and writes by the
+          *     VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT and
+          *     VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT stages.
+          *
+          * However, the 2d path here is executed the same way as a
+          * transfer command, using the CCU color cache exclusively with
+          * a special depth-as-color format for depth clears. This means that
+          * we can't rely on the normal pipeline barrier mechanism here, and
+          * have to manually flush whenever using a different cache domain
+          * from what the 3d path would've used. This happens when we clear
+          * depth/stencil, since normally depth attachments use CCU depth, but
+          * we clear it using a special depth-as-color format. Since the clear
+          * potentially uses a different attachment state we also need to
+          * invalidate color beforehand and flush it afterwards.
+          */
+
          uint32_t a;
          if (attachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
             a = subpass->color_attachments[attachments[j].colorAttachment].attachment;
+            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
          } else {
             a = subpass->depth_stencil_attachment.attachment;
-
-            /* sync depth into color */
             tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-            /* also flush color to avoid losing contents from invalidate */
             tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
             tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
          }
@@ -1971,6 +1961,9 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
          ops->setup(cmd, cs, iview->image->vk_format, ROTATE_0, true, mask);
          ops->clear_value(cs, iview->image->vk_format, &attachments[j].clearValue);
 
+         /* Wait for the flushes we triggered manually to complete */
+         tu_cs_emit_wfi(cs);
+
          for (uint32_t i = 0; i < rect_count; i++) {
             ops->coords(cs, &rects[i].rect.offset, NULL, &rects[i].rect.extent);
             for (uint32_t layer = 0; layer < rects[i].layerCount; layer++) {
@@ -1980,11 +1973,8 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
          }
 
          if (attachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-            /* does not use CCU - flush
-             * note: cache invalidate might be needed to, and just not covered by test cases
-             */
-            if (attachments[j].colorAttachment > 0)
-               tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+            tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
          } else {
             /* sync color into depth */
             tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
@@ -2313,9 +2303,29 @@ tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
    ops->coords(cs, &info->renderArea.offset, NULL, &info->renderArea.extent);
    ops->clear_value(cs, attachment->format, &info->pClearValues[a]);
 
+   /* Wait for any flushes at the beginning of the renderpass to complete */
+   tu_cs_emit_wfi(cs);
+
    for (uint32_t i = 0; i < fb->layers; i++) {
       ops->dst(cs, iview, i);
       ops->run(cmd, cs);
+   }
+
+   /* The spec doesn't explicitly say, but presumably the initial renderpass
+    * clear is considered part of the renderpass, and therefore barriers
+    * aren't required inside the subpass/renderpass.  Therefore we need to
+    * flush CCU color into CCU depth here, just like with
+    * vkCmdClearAttachments(). Note that because this only happens at the
+    * beginning of a renderpass, and renderpass writes are considered
+    * "incoherent", we shouldn't have to worry about syncing depth into color
+    * beforehand as depth should already be flushed.
+    */
+   if (vk_format_is_depth_or_stencil(attachment->format)) {
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+      tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
+   } else {
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+      tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
    }
 }
 
@@ -2488,14 +2498,18 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                    A6XX_SP_PS_2D_SRC_HI(),
                    A6XX_SP_PS_2D_SRC_PITCH(.pitch = tiling->tile0.extent.width * src->cpp));
 
-   /* sync GMEM writes with CACHE */
+   /* sync GMEM writes with CACHE. */
    tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
+
+   /* Wait for CACHE_INVALIDATE to land */
+   tu_cs_emit_wfi(cs);
 
    tu_cs_emit_pkt7(cs, CP_BLIT, 1);
    tu_cs_emit(cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
 
-   /* TODO: flushing with barriers instead of blindly always flushing */
+   /* CP_BLIT writes to the CCU, unlike CP_EVENT_WRITE::BLIT which writes to
+    * sysmem, and we generally assume that GMEM renderpasses leave their
+    * results in sysmem, so we need to flush manually here.
+    */
    tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 }

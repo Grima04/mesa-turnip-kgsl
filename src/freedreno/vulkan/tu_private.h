@@ -901,6 +901,116 @@ struct tu_streamout_state {
    uint32_t vpc_so_buf_cntl;
 };
 
+/* There are only three cache domains we have to care about: the CCU, or
+ * color cache unit, which is used for color and depth/stencil attachments
+ * and copy/blit destinations, and is split conceptually into color and depth,
+ * and the universal cache or UCHE which is used for pretty much everything
+ * else, except for the CP (uncached) and host. We need to flush whenever data
+ * crosses these boundaries.
+ */
+
+enum tu_cmd_access_mask {
+   TU_ACCESS_UCHE_READ = 1 << 0,
+   TU_ACCESS_UCHE_WRITE = 1 << 1,
+   TU_ACCESS_CCU_COLOR_READ = 1 << 2,
+   TU_ACCESS_CCU_COLOR_WRITE = 1 << 3,
+   TU_ACCESS_CCU_DEPTH_READ = 1 << 4,
+   TU_ACCESS_CCU_DEPTH_WRITE = 1 << 5,
+
+   /* Experiments have shown that while it's safe to avoid flushing the CCU
+    * after each blit/renderpass, it's not safe to assume that subsequent
+    * lookups with a different attachment state will hit unflushed cache
+    * entries. That is, the CCU needs to be flushed and possibly invalidated
+    * when accessing memory with a different attachment state. Writing to an
+    * attachment under the following conditions after clearing using the
+    * normal 2d engine path is known to have issues:
+    *
+    * - It isn't the 0'th layer.
+    * - There are more than one attachment, and this isn't the 0'th attachment
+    *   (this seems to also depend on the cpp of the attachments).
+    *
+    * Our best guess is that the layer/MRT state is used when computing
+    * the location of a cache entry in CCU, to avoid conflicts. We assume that
+    * any access in a renderpass after or before an access by a transfer needs
+    * a flush/invalidate, and use the _INCOHERENT variants to represent access
+    * by a transfer.
+    */
+   TU_ACCESS_CCU_COLOR_INCOHERENT_READ = 1 << 6,
+   TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE = 1 << 7,
+   TU_ACCESS_CCU_DEPTH_INCOHERENT_READ = 1 << 8,
+   TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE = 1 << 9,
+
+   TU_ACCESS_SYSMEM_READ = 1 << 10,
+   TU_ACCESS_SYSMEM_WRITE = 1 << 11,
+
+   /* Set if a WFI is required due to data being read by the CP or the 2D
+    * engine.
+    */
+   TU_ACCESS_WFI_READ = 1 << 12,
+
+   TU_ACCESS_READ =
+      TU_ACCESS_UCHE_READ |
+      TU_ACCESS_CCU_COLOR_READ |
+      TU_ACCESS_CCU_DEPTH_READ |
+      TU_ACCESS_CCU_COLOR_INCOHERENT_READ |
+      TU_ACCESS_CCU_DEPTH_INCOHERENT_READ |
+      TU_ACCESS_SYSMEM_READ,
+
+   TU_ACCESS_WRITE =
+      TU_ACCESS_UCHE_WRITE |
+      TU_ACCESS_CCU_COLOR_WRITE |
+      TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE |
+      TU_ACCESS_CCU_DEPTH_WRITE |
+      TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE |
+      TU_ACCESS_SYSMEM_WRITE,
+
+   TU_ACCESS_ALL =
+      TU_ACCESS_READ |
+      TU_ACCESS_WRITE,
+};
+
+enum tu_cmd_flush_bits {
+   TU_CMD_FLAG_CCU_FLUSH_DEPTH = 1 << 0,
+   TU_CMD_FLAG_CCU_FLUSH_COLOR = 1 << 1,
+   TU_CMD_FLAG_CCU_INVALIDATE_DEPTH = 1 << 2,
+   TU_CMD_FLAG_CCU_INVALIDATE_COLOR = 1 << 3,
+   TU_CMD_FLAG_CACHE_FLUSH = 1 << 4,
+   TU_CMD_FLAG_CACHE_INVALIDATE = 1 << 5,
+
+   TU_CMD_FLAG_ALL_FLUSH =
+      TU_CMD_FLAG_CCU_FLUSH_DEPTH |
+      TU_CMD_FLAG_CCU_FLUSH_COLOR |
+      TU_CMD_FLAG_CACHE_FLUSH,
+
+   TU_CMD_FLAG_ALL_INVALIDATE =
+      TU_CMD_FLAG_CCU_INVALIDATE_DEPTH |
+      TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
+      TU_CMD_FLAG_CACHE_INVALIDATE,
+
+   TU_CMD_FLAG_WFI = 1 << 6,
+};
+
+/* Changing the CCU from sysmem mode to gmem mode or vice-versa is pretty
+ * heavy, involving a CCU cache flush/invalidate and a WFI in order to change
+ * which part of the gmem is used by the CCU. Here we keep track of what the
+ * state of the CCU.
+ */
+enum tu_cmd_ccu_state {
+   TU_CMD_CCU_SYSMEM,
+   TU_CMD_CCU_GMEM,
+   TU_CMD_CCU_UNKNOWN,
+};
+
+struct tu_cache_state {
+   /* Caches which must be made available (flushed) eventually if there are
+    * any users outside that cache domain, and caches which must be
+    * invalidated eventually if there are any reads.
+    */
+   enum tu_cmd_flush_bits pending_flush_bits;
+   /* Pending flushes */
+   enum tu_cmd_flush_bits flush_bits;
+};
+
 struct tu_cmd_state
 {
    uint32_t dirty;
@@ -934,6 +1044,17 @@ struct tu_cmd_state
    uint32_t index_type;
    uint32_t max_index_count;
    uint64_t index_va;
+
+   /* Renderpasses are tricky, because we may need to flush differently if
+    * using sysmem vs. gmem and therefore we have to delay any flushing that
+    * happens before a renderpass. So we have to have two copies of the flush
+    * state, one for intra-renderpass flushes (i.e. renderpass dependencies)
+    * and one for outside a renderpass.
+    */
+   struct tu_cache_state cache;
+   struct tu_cache_state renderpass_cache;
+
+   enum tu_cmd_ccu_state ccu_state;
 
    const struct tu_render_pass *pass;
    const struct tu_subpass *subpass;
@@ -1054,8 +1175,6 @@ struct tu_cmd_buffer
    uint32_t vsc_draw_strm_pitch;
    uint32_t vsc_prim_strm_pitch;
    bool use_vsc_data;
-
-   bool wait_for_idle;
 };
 
 /* Temporary struct for tracking a register state to be written, used by
@@ -1070,6 +1189,10 @@ struct tu_reg_value {
    uint32_t bo_offset;
    uint32_t bo_shift;
 };
+
+void tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
+                             struct tu_cs *cs,
+                             enum tu_cmd_ccu_state ccu_state);
 
 void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
@@ -1602,9 +1725,17 @@ struct tu_framebuffer
    struct tu_attachment_info attachments[0];
 };
 
+struct tu_subpass_barrier {
+   VkPipelineStageFlags src_stage_mask;
+   VkAccessFlags src_access_mask;
+   VkAccessFlags dst_access_mask;
+   bool incoherent_ccu_color, incoherent_ccu_depth;
+};
+
 struct tu_subpass_attachment
 {
    uint32_t attachment;
+   VkImageLayout layout;
 };
 
 struct tu_subpass
@@ -1617,8 +1748,11 @@ struct tu_subpass
    struct tu_subpass_attachment depth_stencil_attachment;
 
    VkSampleCountFlagBits samples;
+   bool has_external_src, has_external_dst;
 
    uint32_t srgb_cntl;
+
+   struct tu_subpass_barrier start_barrier;
 };
 
 struct tu_render_pass_attachment
@@ -1629,6 +1763,7 @@ struct tu_render_pass_attachment
    VkImageAspectFlags clear_mask;
    bool load;
    bool store;
+   VkImageLayout initial_layout, final_layout;
    int32_t gmem_offset;
 };
 
@@ -1640,6 +1775,7 @@ struct tu_render_pass
    uint32_t tile_align_w;
    struct tu_subpass_attachment *subpass_attachments;
    struct tu_render_pass_attachment *attachments;
+   struct tu_subpass_barrier end_barrier;
    struct tu_subpass subpasses[0];
 };
 
