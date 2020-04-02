@@ -1017,8 +1017,8 @@ s3tc_dxt5_alpha_channel(struct gallivm_state *gallivm,
    mask7 = lp_build_compare(gallivm, type, PIPE_FUNC_EQUAL,
                             code_s, lp_build_const_int_vec(gallivm, type, 7));
    if (is_signed) {
-      alpha = lp_build_select(&bld32, mask6, lp_build_const_int_vec(gallivm, type, 127), alpha);
-      alpha = lp_build_select(&bld32, mask7, lp_build_const_int_vec(gallivm, type, -127), alpha);
+      alpha = lp_build_select(&bld32, mask6, lp_build_const_int_vec(gallivm, type, -127), alpha);
+      alpha = lp_build_select(&bld32, mask7, lp_build_const_int_vec(gallivm, type, 127), alpha);
    } else {
       alpha = LLVMBuildAnd(builder, alpha, LLVMBuildNot(builder, mask6, ""), "");
       alpha = LLVMBuildOr(builder, alpha, mask7, "");
