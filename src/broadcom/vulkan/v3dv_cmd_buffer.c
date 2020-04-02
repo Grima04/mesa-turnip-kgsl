@@ -481,7 +481,9 @@ void
 v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
-   assert(job);
+   if (!job)
+      return;
+
    assert(v3dv_cl_offset(&job->bcl) != 0);
 
    /* When we merge multiple subpasses into the same job we must only emit one
@@ -1571,9 +1573,14 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
 void
 v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   /* We can end up here without a job if the last command recorded into the
+    * subpass already finished the job (for example a pipeline barrier). In
+    * that case we miss to set the is_subpass_finish flag, but that is not
+    * required for proper behavior.
+    */
    struct v3dv_job *job = cmd_buffer->state.job;
-   assert(job);
-   job->is_subpass_finish = true;
+   if (job)
+      job->is_subpass_finish = true;
 }
 
 void
@@ -1584,8 +1591,14 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    /* Emit last subpass */
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(state->subpass_idx == state->pass->subpass_count - 1);
-   v3dv_cmd_buffer_subpass_finish(cmd_buffer);
-   v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+   /* See v3dv_cmd_buffer_subpass_finish for why we can get here without an
+    * active job.
+    */
+   if (cmd_buffer->state.job) {
+      v3dv_cmd_buffer_subpass_finish(cmd_buffer);
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
+   }
 
    /* We are no longer inside a render pass */
    state->pass = NULL;
