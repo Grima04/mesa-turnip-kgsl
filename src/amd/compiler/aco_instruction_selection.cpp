@@ -1539,11 +1539,16 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_fadd: {
-      if (dst.size() == 1) {
+      Temp src0 = get_alu_src(ctx, instr->src[0]);
+      Temp src1 = as_vgpr(ctx, get_alu_src(ctx, instr->src[1]));
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.tmp(v1);
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_add_f16, tmp, true);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_add_f32, dst, true);
-      } else if (dst.size() == 2) {
-         bld.vop3(aco_opcode::v_add_f64, Definition(dst), get_alu_src(ctx, instr->src[0]),
-                  as_vgpr(ctx, get_alu_src(ctx, instr->src[1])));
+      } else if (dst.regClass() == v2) {
+         bld.vop3(aco_opcode::v_add_f64, Definition(dst), src0, src1);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
@@ -1553,16 +1558,22 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_fsub: {
       Temp src0 = get_alu_src(ctx, instr->src[0]);
-      Temp src1 = get_alu_src(ctx, instr->src[1]);
-      if (dst.size() == 1) {
+      Temp src1 = as_vgpr(ctx, get_alu_src(ctx, instr->src[1]));
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.tmp(v1);
+         if (src1.type() == RegType::vgpr || src0.type() != RegType::vgpr)
+            emit_vop2_instruction(ctx, instr, aco_opcode::v_sub_f16, tmp, false);
+         else
+            emit_vop2_instruction(ctx, instr, aco_opcode::v_subrev_f16, tmp, true);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          if (src1.type() == RegType::vgpr || src0.type() != RegType::vgpr)
             emit_vop2_instruction(ctx, instr, aco_opcode::v_sub_f32, dst, false);
          else
             emit_vop2_instruction(ctx, instr, aco_opcode::v_subrev_f32, dst, true);
-      } else if (dst.size() == 2) {
+      } else if (dst.regClass() == v2) {
          Instruction* add = bld.vop3(aco_opcode::v_add_f64, Definition(dst),
-                                     get_alu_src(ctx, instr->src[0]),
-                                     as_vgpr(ctx, get_alu_src(ctx, instr->src[1])));
+                                     src0, src1);
          VOP3A_instruction* sub = static_cast<VOP3A_instruction*>(add);
          sub->neg[1] = true;
       } else {
