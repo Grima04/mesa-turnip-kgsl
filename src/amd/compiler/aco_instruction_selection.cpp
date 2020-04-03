@@ -1985,12 +1985,14 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_frexp_sig: {
-      if (dst.size() == 1) {
-         bld.vop1(aco_opcode::v_frexp_mant_f32, Definition(dst),
-                  get_alu_src(ctx, instr->src[0]));
-      } else if (dst.size() == 2) {
-         bld.vop1(aco_opcode::v_frexp_mant_f64, Definition(dst),
-                  get_alu_src(ctx, instr->src[0]));
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.vop1(aco_opcode::v_frexp_mant_f16, bld.def(v1), src);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
+         bld.vop1(aco_opcode::v_frexp_mant_f32, Definition(dst), src);
+      } else if (dst.regClass() == v2) {
+         bld.vop1(aco_opcode::v_frexp_mant_f64, Definition(dst), src);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
@@ -1999,12 +2001,14 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_frexp_exp: {
-      if (instr->src[0].src.ssa->bit_size == 32) {
-         bld.vop1(aco_opcode::v_frexp_exp_i32_f32, Definition(dst),
-                  get_alu_src(ctx, instr->src[0]));
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      if (instr->src[0].src.ssa->bit_size == 16) {
+         Temp tmp = bld.vop1(aco_opcode::v_frexp_exp_i16_f16, bld.def(v1), src);
+         bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), tmp, Operand(0u));
+      } else if (instr->src[0].src.ssa->bit_size == 32) {
+         bld.vop1(aco_opcode::v_frexp_exp_i32_f32, Definition(dst), src);
       } else if (instr->src[0].src.ssa->bit_size == 64) {
-         bld.vop1(aco_opcode::v_frexp_exp_i32_f64, Definition(dst),
-                  get_alu_src(ctx, instr->src[0]));
+         bld.vop1(aco_opcode::v_frexp_exp_i32_f64, Definition(dst), src);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
