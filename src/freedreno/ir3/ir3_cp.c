@@ -229,6 +229,9 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 			if (instr->opc == OPC_STLW && n == 0)
 				return false;
 
+			if (instr->opc == OPC_LDLW && n == 0)
+				return false;
+
 			/* disallow CP into anything but the SSBO slot argument for
 			 * atomics:
 			 */
