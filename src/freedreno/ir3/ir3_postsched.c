@@ -507,6 +507,14 @@ sched_dag_init(struct ir3_postsched_ctx *ctx)
 	calculate_reverse_deps(ctx);
 
 	/*
+	 * To avoid expensive texture fetches, etc, from being moved ahead
+	 * of kills, track the kills we've seen so far, so we can add an
+	 * extra dependency on them for tex/mem instructions
+	 */
+	struct util_dynarray kills;
+	util_dynarray_init(&kills, ctx->mem_ctx);
+
+	/*
 	 * Normal srcs won't be in SSA at this point, those are dealt with in
 	 * calculate_forward_deps() and calculate_reverse_deps().  But we still
 	 * have the false-dep information in SSA form, so go ahead and add
@@ -531,6 +539,16 @@ sched_dag_init(struct ir3_postsched_ctx *ctx)
 				continue;
 
 			dag_add_edge(&sn->dag, &n->dag, NULL);
+		}
+
+		if (is_kill(instr)) {
+			util_dynarray_append(&kills, struct ir3_instruction *, instr);
+		} else if (is_tex(instr) || is_mem(instr)) {
+			util_dynarray_foreach(&kills, struct ir3_instruction *, instrp) {
+				struct ir3_instruction *kill = *instrp;
+				struct ir3_postsched_node *kn = kill->data;
+				dag_add_edge(&kn->dag, &n->dag, NULL);
+			}
 		}
 	}
 
