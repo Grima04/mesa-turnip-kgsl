@@ -2242,6 +2242,7 @@ generate_code(struct brw_codegen *p,
    if (stats) {
       stats->dispatch_width = 0;
       stats->instructions = before_size / 16;
+      stats->sends = send_count;
       stats->loops = loop_count;
       stats->cycles = cfg->cycle_count;
       stats->spills = spill_count;

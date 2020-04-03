@@ -2492,6 +2492,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
    if (stats) {
       stats->dispatch_width = dispatch_width;
       stats->instructions = before_size / 16 - nop_count;
+      stats->sends = send_count;
       stats->loops = loop_count;
       stats->cycles = cfg->cycle_count;
       stats->spills = spill_count;

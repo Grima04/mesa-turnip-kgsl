@@ -1275,6 +1275,7 @@ DEFINE_PROG_DATA_DOWNCAST(sf)
 struct brw_compile_stats {
    uint32_t dispatch_width; /**< 0 for vec4 */
    uint32_t instructions;
+   uint32_t sends;
    uint32_t loops;
    uint32_t cycles;
    uint32_t spills;

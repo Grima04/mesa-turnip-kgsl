@@ -2189,6 +2189,16 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
    }
 
    vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "SEND Count");
+      WRITE_STR(stat->description,
+                "Number of instructions in the final generated shader "
+                "executable which access external units such as the "
+                "constant cache or the sampler.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.sends;
+   }
+
+   vk_outarray_append(&out, stat) {
       WRITE_STR(stat->name, "Loop Count");
       WRITE_STR(stat->description,
                 "Number of loops (not unrolled) in the final generated "
