@@ -738,12 +738,18 @@ void emit_bcsel(isel_context *ctx, nir_alu_instr *instr, Temp dst)
 
    if (dst.type() == RegType::vgpr) {
       aco_ptr<Instruction> bcsel;
-      if (dst.size() == 1) {
+      if (dst.regClass() == v2b) {
+         then = as_vgpr(ctx, then);
+         els = as_vgpr(ctx, els);
+
+         Temp tmp = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), els, then, cond);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          then = as_vgpr(ctx, then);
          els = as_vgpr(ctx, els);
 
          bld.vop2(aco_opcode::v_cndmask_b32, Definition(dst), els, then, cond);
-      } else if (dst.size() == 2) {
+      } else if (dst.regClass() == v2) {
          Temp then_lo = bld.tmp(v1), then_hi = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(then_lo), Definition(then_hi), then);
          Temp else_lo = bld.tmp(v1), else_hi = bld.tmp(v1);
