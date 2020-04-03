@@ -2472,7 +2472,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
       /* overriding the shader makes disasm_info invalid */
       if (!brw_try_override_assembly(p, start_offset, sha1buf)) {
-         dump_assembly(p->store, disasm_info);
+         dump_assembly(p->store, disasm_info, perf.block_latency);
       } else {
          fprintf(stderr, "Successfully overrode shader with sha1 %s\n\n", sha1buf);
       }
