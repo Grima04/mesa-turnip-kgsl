@@ -208,7 +208,7 @@ fs_visitor::DEP_RESOLVE_MOV(const fs_builder &bld, int grf)
     * dependencies, and to avoid having to deal with aligning its regs to 2.
     */
    const fs_builder ubld = bld.annotate("send dependency resolve")
-                              .half(0);
+                              .quarter(0);
 
    ubld.MOV(ubld.null_reg_f(), fs_reg(VGRF, grf, BRW_REGISTER_TYPE_F));
 }
@@ -3885,9 +3885,9 @@ fs_visitor::lower_load_payload()
                } else {
                   /* Platform doesn't have COMPR4.  We have to fake it */
                   fs_reg mov_dst = retype(dst, inst->src[i].type);
-                  ibld.half(0).MOV(mov_dst, half(inst->src[i], 0));
+                  ibld.quarter(0).MOV(mov_dst, quarter(inst->src[i], 0));
                   mov_dst.nr += 4;
-                  ibld.half(1).MOV(mov_dst, half(inst->src[i], 1));
+                  ibld.quarter(1).MOV(mov_dst, quarter(inst->src[i], 1));
                }
             }
 

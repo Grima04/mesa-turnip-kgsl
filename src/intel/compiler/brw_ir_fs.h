@@ -276,12 +276,11 @@ is_uniform(const fs_reg &reg)
 
 /**
  * Get the specified 8-component quarter of a register.
- * XXX - Maybe come up with a less misleading name for this (e.g. quarter())?
  */
 static inline fs_reg
-half(const fs_reg &reg, unsigned idx)
+quarter(const fs_reg &reg, unsigned idx)
 {
-   assert(idx < 2);
+   assert(idx < 4);
    return horiz_offset(reg, 8 * idx);
 }
 

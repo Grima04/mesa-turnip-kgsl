@@ -140,7 +140,7 @@ namespace brw {
        * Alias for group() with width equal to eight.
        */
       fs_builder
-      half(unsigned i) const
+      quarter(unsigned i) const
       {
          return group(8, i);
       }
