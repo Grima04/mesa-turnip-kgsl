@@ -1880,10 +1880,14 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_ffloor: {
-      if (dst.size() == 1) {
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.vop1(aco_opcode::v_floor_f16, bld.def(v1), src);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_floor_f32, dst);
-      } else if (dst.size() == 2) {
-         emit_floor_f64(ctx, bld, Definition(dst), get_alu_src(ctx, instr->src[0]));
+      } else if (dst.regClass() == v2) {
+         emit_floor_f64(ctx, bld, Definition(dst), src);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
@@ -1892,15 +1896,17 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_fceil: {
-      if (dst.size() == 1) {
+      Temp src0 = get_alu_src(ctx, instr->src[0]);
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.vop1(aco_opcode::v_ceil_f16, bld.def(v1), src0);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_ceil_f32, dst);
-      } else if (dst.size() == 2) {
+      } else if (dst.regClass() == v2) {
          if (ctx->options->chip_class >= GFX7) {
             emit_vop1_instruction(ctx, instr, aco_opcode::v_ceil_f64, dst);
          } else {
             /* GFX6 doesn't support V_CEIL_F64, lower it. */
-            Temp src0 = get_alu_src(ctx, instr->src[0]);
-
             /* trunc = trunc(src0)
              * if (src0 > 0.0 && src0 != trunc)
              *    trunc += 1.0
