@@ -127,6 +127,10 @@ force_sysmem(const struct tu_cmd_buffer *cmd,
    bool has_linear_mipmapped_store = false;
    const struct tu_render_pass *pass = cmd->state.pass;
 
+   /* Layered rendering requires sysmem. */
+   if (fb->layers > 1)
+      return true;
+
    /* Iterate over all the places we call tu6_emit_store_attachment() */
    for (unsigned i = 0; i < pass->subpass_count; i++) {
       const struct tu_subpass *subpass = &pass->subpasses[i];
@@ -553,6 +557,11 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
                       .rt5 = mrt_comp[5],
                       .rt6 = mrt_comp[6],
                       .rt7 = mrt_comp[7]));
+
+   // XXX: We probably can't hardcode LAYER_CNTL_TYPE.
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_LAYER_CNTL(.layered = fb->layers > 1,
+                                        .type = LAYER_2D_ARRAY));
 }
 
 static void
