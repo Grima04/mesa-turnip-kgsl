@@ -1731,9 +1731,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_frsq: {
-      if (dst.size() == 1) {
-         emit_rsq(ctx, bld, Definition(dst), get_alu_src(ctx, instr->src[0]));
-      } else if (dst.size() == 2) {
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.vop1(aco_opcode::v_rsq_f16, bld.def(v1), src);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
+         emit_rsq(ctx, bld, Definition(dst), src);
+      } else if (dst.regClass() == v2) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_rsq_f64, dst);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -1814,9 +1818,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_frcp: {
-      if (dst.size() == 1) {
-         emit_rcp(ctx, bld, Definition(dst), get_alu_src(ctx, instr->src[0]));
-      } else if (dst.size() == 2) {
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.vop1(aco_opcode::v_rcp_f16, bld.def(v1), src);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
+         emit_rcp(ctx, bld, Definition(dst), src);
+      } else if (dst.regClass() == v2) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_rcp_f64, dst);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -1840,9 +1848,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_fsqrt: {
-      if (dst.size() == 1) {
-         emit_sqrt(ctx, bld, Definition(dst), get_alu_src(ctx, instr->src[0]));
-      } else if (dst.size() == 2) {
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.vop1(aco_opcode::v_sqrt_f16, bld.def(v1), src);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
+         emit_sqrt(ctx, bld, Definition(dst), src);
+      } else if (dst.regClass() == v2) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_sqrt_f64, dst);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
