@@ -1844,9 +1844,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_ffract: {
-      if (dst.size() == 1) {
+      if (dst.regClass() == v2b) {
+         Temp src = get_alu_src(ctx, instr->src[0]);
+         Temp tmp = bld.vop1(aco_opcode::v_fract_f16, bld.def(v1), src);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_fract_f32, dst);
-      } else if (dst.size() == 2) {
+      } else if (dst.regClass() == v2) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_fract_f64, dst);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
