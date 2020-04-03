@@ -1573,18 +1573,21 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_fmax: {
-      if (dst.size() == 1) {
+      Temp src0 = get_alu_src(ctx, instr->src[0]);
+      Temp src1 = as_vgpr(ctx, get_alu_src(ctx, instr->src[1]));
+      if (dst.regClass() == v2b) {
+         // TODO: check fp_mode.must_flush_denorms16_64
+         Temp tmp = bld.tmp(v1);
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_max_f16, tmp, true);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_max_f32, dst, true, false, ctx->block->fp_mode.must_flush_denorms32);
-      } else if (dst.size() == 2) {
+      } else if (dst.regClass() == v2) {
          if (ctx->block->fp_mode.must_flush_denorms16_64 && ctx->program->chip_class < GFX9) {
-            Temp tmp = bld.vop3(aco_opcode::v_max_f64, bld.def(v2),
-                                get_alu_src(ctx, instr->src[0]),
-                                as_vgpr(ctx, get_alu_src(ctx, instr->src[1])));
+            Temp tmp = bld.vop3(aco_opcode::v_max_f64, bld.def(v2), src0, src1);
             bld.vop3(aco_opcode::v_mul_f64, Definition(dst), Operand(0x3FF0000000000000lu), tmp);
          } else {
-            bld.vop3(aco_opcode::v_max_f64, Definition(dst),
-                     get_alu_src(ctx, instr->src[0]),
-                     as_vgpr(ctx, get_alu_src(ctx, instr->src[1])));
+            bld.vop3(aco_opcode::v_max_f64, Definition(dst), src0, src1);
          }
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -1594,18 +1597,21 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_fmin: {
-      if (dst.size() == 1) {
+      Temp src0 = get_alu_src(ctx, instr->src[0]);
+      Temp src1 = as_vgpr(ctx, get_alu_src(ctx, instr->src[1]));
+      if (dst.regClass() == v2b) {
+         // TODO: check fp_mode.must_flush_denorms16_64
+         Temp tmp = bld.tmp(v1);
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_min_f16, tmp, true);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_min_f32, dst, true, false, ctx->block->fp_mode.must_flush_denorms32);
-      } else if (dst.size() == 2) {
+      } else if (dst.regClass() == v2) {
          if (ctx->block->fp_mode.must_flush_denorms16_64 && ctx->program->chip_class < GFX9) {
-            Temp tmp = bld.vop3(aco_opcode::v_min_f64, bld.def(v2),
-                                get_alu_src(ctx, instr->src[0]),
-                                as_vgpr(ctx, get_alu_src(ctx, instr->src[1])));
+            Temp tmp = bld.vop3(aco_opcode::v_min_f64, bld.def(v2), src0, src1);
             bld.vop3(aco_opcode::v_mul_f64, Definition(dst), Operand(0x3FF0000000000000lu), tmp);
          } else {
-            bld.vop3(aco_opcode::v_min_f64, Definition(dst),
-                     get_alu_src(ctx, instr->src[0]),
-                     as_vgpr(ctx, get_alu_src(ctx, instr->src[1])));
+            bld.vop3(aco_opcode::v_min_f64, Definition(dst), src0, src1);
          }
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
