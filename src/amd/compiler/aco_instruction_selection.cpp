@@ -2008,11 +2008,16 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_fsin:
    case nir_op_fcos: {
-      Temp src = get_alu_src(ctx, instr->src[0]);
+      Temp src = as_vgpr(ctx, get_alu_src(ctx, instr->src[0]));
       aco_ptr<Instruction> norm;
-      if (dst.size() == 1) {
-         Temp half_pi = bld.copy(bld.def(s1), Operand(0x3e22f983u));
-         Temp tmp = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), half_pi, as_vgpr(ctx, src));
+      Temp half_pi = bld.copy(bld.def(s1), Operand(0x3e22f983u));
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.vop2(aco_opcode::v_mul_f16, bld.def(v1), half_pi, src);
+         aco_opcode opcode = instr->op == nir_op_fsin ? aco_opcode::v_sin_f16 : aco_opcode::v_cos_f16;
+         tmp = bld.vop1(opcode, bld.def(v1), tmp);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
+         Temp tmp = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), half_pi, src);
 
          /* before GFX9, v_sin_f32 and v_cos_f32 had a valid input domain of [-256, +256] */
          if (ctx->options->chip_class < GFX9)
