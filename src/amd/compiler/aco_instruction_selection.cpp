@@ -2194,6 +2194,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       bld.vop1(aco_opcode::v_cvt_f64_f32, Definition(dst), src);
       break;
    }
+   case nir_op_i2f16: {
+      assert(dst.regClass() == v2b);
+      Temp tmp = bld.vop1(aco_opcode::v_cvt_f16_i16, bld.def(v1),
+                          get_alu_src(ctx, instr->src[0]));
+      bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      break;
+   }
    case nir_op_i2f32: {
       assert(dst.size() == 1);
       emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_f32_i32, dst);
@@ -2217,6 +2224,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          nir_print_instr(&instr->instr, stderr);
          fprintf(stderr, "\n");
       }
+      break;
+   }
+   case nir_op_u2f16: {
+      assert(dst.regClass() == v2b);
+      Temp tmp = bld.vop1(aco_opcode::v_cvt_f16_u16, bld.def(v1),
+                          get_alu_src(ctx, instr->src[0]));
+      bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
       break;
    }
    case nir_op_u2f32: {
@@ -2477,6 +2491,22 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
          fprintf(stderr, "\n");
+      }
+      break;
+   }
+   case nir_op_b2f16: {
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      assert(src.regClass() == bld.lm);
+
+      if (dst.regClass() == s1) {
+         src = bool_to_scalar_condition(ctx, src);
+         bld.sop2(aco_opcode::s_mul_i32, Definition(dst), Operand(0x3c00u), src);
+      } else if (dst.regClass() == v2b) {
+         Temp one = bld.copy(bld.def(v1), Operand(0x3c00u));
+         Temp tmp = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), one, src);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else {
+         unreachable("Wrong destination register class for nir_op_b2f16.");
       }
       break;
    }
