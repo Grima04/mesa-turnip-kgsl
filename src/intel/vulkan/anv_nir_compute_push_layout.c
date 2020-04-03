@@ -208,22 +208,17 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
 
                   int ubo_range_idx = -1;
                   for (unsigned i = 0; i < 4; i++) {
-                     if (prog_data->ubo_ranges[i].length > 0 &&
-                         prog_data->ubo_ranges[i].block == index) {
+                     const struct brw_ubo_range *range =
+                        &prog_data->ubo_ranges[i];
+                     if (range->block == index &&
+                         offset + size > range->start * 32 &&
+                         offset < (range->start + range->length) * 32) {
                         ubo_range_idx = i;
                         break;
                      }
                   }
 
                   if (ubo_range_idx < 0)
-                     break;
-
-                  const struct brw_ubo_range *range =
-                     &prog_data->ubo_ranges[ubo_range_idx];
-                  const uint32_t range_end =
-                     (range->start + range->length) * 32;
-
-                  if (range_end < offset || offset + size <= range->start)
                      break;
 
                   b.cursor = nir_after_instr(&intrin->instr);
