@@ -1671,8 +1671,8 @@ cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_CmdClearAttachments(_cmd_buffer, att_count, atts, 1, &rect);
 }
 
-struct v3dv_job *
-v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
+static struct v3dv_job *
+cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
                               uint32_t subpass_idx)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
@@ -1710,11 +1710,43 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
       assert(subpass->resolve_attachments == NULL);
    }
 
+   return job;
+}
+
+struct v3dv_job *
+v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
+                              uint32_t subpass_idx)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   assert(subpass_idx < state->pass->subpass_count);
+
+   struct v3dv_job *job =
+      cmd_buffer_subpass_create_job(cmd_buffer, subpass_idx);
+   if (!job)
+      return NULL;
+
    /* If we can't use TLB clears then we need to emit draw clears for any
     * LOAD_OP_CLEAR attachments in this subpass now.
     */
    if (!cmd_buffer->state.tile_aligned_render_area)
       cmd_buffer_emit_subpass_clears(cmd_buffer);
+
+   return job;
+}
+
+struct v3dv_job *
+v3dv_cmd_buffer_subpass_resume(struct v3dv_cmd_buffer *cmd_buffer,
+                               uint32_t subpass_idx)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+   assert(subpass_idx < state->pass->subpass_count);
+
+   struct v3dv_job *job =
+      cmd_buffer_subpass_create_job(cmd_buffer, subpass_idx);
+   if (!job)
+      return NULL;
+
+   job->is_subpass_continue = true;
 
    return job;
 }
@@ -2731,9 +2763,8 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
    memcpy(&state->render_area, &state->meta.render_area, sizeof(VkRect2D));
 
    struct v3dv_job *job =
-      v3dv_cmd_buffer_subpass_start(cmd_buffer, state->meta.subpass_idx);
+      v3dv_cmd_buffer_subpass_resume(cmd_buffer, state->meta.subpass_idx);
    if (job) {
-      job->is_subpass_continue = true;
       if (state->meta.pipeline != VK_NULL_HANDLE) {
          v3dv_CmdBindPipeline(v3dv_cmd_buffer_to_handle(cmd_buffer),
                               VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -2830,10 +2861,9 @@ cmd_buffer_pre_draw_split_job(struct v3dv_cmd_buffer *cmd_buffer)
       /* Now start a new job in the same subpass and flag it as continuing
        * the current subpass.
        */
-      job = v3dv_cmd_buffer_subpass_start(cmd_buffer,
-                                          cmd_buffer->state.subpass_idx);
+      job = v3dv_cmd_buffer_subpass_resume(cmd_buffer,
+                                           cmd_buffer->state.subpass_idx);
       assert(job->draw_count == 0);
-      job->is_subpass_continue = true;
 
       /* Inherit the 'always flush' behavior */
       job->always_flush = true;

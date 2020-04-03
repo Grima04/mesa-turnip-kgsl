@@ -791,6 +791,8 @@ void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
 
 struct v3dv_job *v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
                                                uint32_t subpass_idx);
+struct v3dv_job *v3dv_cmd_buffer_subpass_resume(struct v3dv_cmd_buffer *cmd_buffer,
+                                                uint32_t subpass_idx);
 
 void v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
 
