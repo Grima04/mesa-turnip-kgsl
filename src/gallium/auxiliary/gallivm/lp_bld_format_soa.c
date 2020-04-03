@@ -741,13 +741,14 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
    /*
     * Try calling lp_build_fetch_rgba_aos for all pixels.
     * Should only really hit subsampled, compressed
-    * (for s3tc srgb too, for rgtc the unorm ones only) by now.
+    * (for s3tc srgb and rgtc too).
     * (This is invalid for plain 8unorm formats because we're lazy with
     * the swizzle since some results would arrive swizzled, some not.)
     */
 
    if ((format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN) &&
        (util_format_fits_8unorm(format_desc) ||
+        format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC ||
         format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) &&
        type.floating && type.width == 32 &&
        (type.length == 1 || (type.length % 4 == 0))) {
@@ -757,6 +758,10 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
       const struct util_format_description *flinear_desc;
       const struct util_format_description *frgba8_desc;
       unsigned chan;
+      bool is_signed = (format_desc->format == PIPE_FORMAT_RGTC1_SNORM ||
+                        format_desc->format == PIPE_FORMAT_RGTC2_SNORM ||
+                        format_desc->format == PIPE_FORMAT_LATC1_SNORM ||
+                        format_desc->format == PIPE_FORMAT_LATC2_SNORM);
 
       lp_build_context_init(&bld, gallivm, type);
 
@@ -769,6 +774,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
       tmp_type.width = 8;
       tmp_type.length = type.length * 4;
       tmp_type.norm = TRUE;
+      tmp_type.sign = is_signed;
 
       packed = lp_build_fetch_rgba_aos(gallivm, flinear_desc, tmp_type,
                                        aligned, base_ptr, offset, i, j, cache);
@@ -778,7 +784,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
        * The values are now packed so they match ordinary (srgb) RGBA8 format,
        * hence need to use matching format for unpack.
        */
-      frgba8_desc = util_format_description(PIPE_FORMAT_R8G8B8A8_UNORM);
+      frgba8_desc = util_format_description(is_signed ? PIPE_FORMAT_R8G8B8A8_SNORM : PIPE_FORMAT_R8G8B8A8_UNORM);
       if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) {
          assert(format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC);
          frgba8_desc = util_format_description(PIPE_FORMAT_R8G8B8A8_SRGB);
@@ -815,7 +821,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
     * in particular if the formats have less than 4 channels.
     *
     * Right now, this should only be hit for:
-    * - RGTC snorm formats
+    * - ETC formats
     *   (those miss fast fetch functions hence they are terrible anyway)
     */
 
