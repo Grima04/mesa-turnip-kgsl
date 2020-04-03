@@ -5,6 +5,21 @@ import argparse
 PREFIX = 'EGL_ENTRYPOINT('
 SUFFIX = ')'
 
+
+def check_entrypoint_sorted(entrypoints):
+    print('Checking that EGL API entrypoints are sorted...')
+
+    for i, _ in enumerate(entrypoints):
+        # Can't compare the first one with the previous
+        if i == 0:
+            continue
+        if entrypoints[i - 1] > entrypoints[i]:
+            print('ERROR: ' + entrypoints[i] + ' should come before ' + entrypoints[i - 1])
+            exit(1)
+
+    print('All good :)')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('header')
@@ -20,17 +35,7 @@ def main():
             assert line.endswith(SUFFIX)
             entrypoints.append(line[len(PREFIX):-len(SUFFIX)])
 
-    print('Checking EGL API entrypoints are sorted')
-
-    for i, _ in enumerate(entrypoints):
-        # Can't compare the first one with the previous
-        if i == 0:
-            continue
-        if entrypoints[i - 1] > entrypoints[i]:
-            print('ERROR: ' + entrypoints[i] + ' should come before ' + entrypoints[i - 1])
-            exit(1)
-
-    print('All good :)')
+    check_entrypoint_sorted(entrypoints)
 
 if __name__ == '__main__':
     main()
