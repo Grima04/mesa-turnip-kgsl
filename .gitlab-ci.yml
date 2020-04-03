@@ -100,9 +100,9 @@ success:
   extends:
     - .ci-run-policy
   rules:
-    # Run pipeline by default if it is for a merge request and any files
-    # affecting it were changed
-    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+    # Run pipeline by default if it was triggered by Marge Bot, is for a
+    # merge request, and any files affecting it were changed
+    - if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
       changes:
         *all_paths
       when: on_success
@@ -112,9 +112,9 @@ success:
       changes:
         *all_paths
       when: on_success
-    # Allow triggering jobs manually for branches of forked projects
-    - if: '$CI_PROJECT_PATH != "mesa/mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
-      changes:
+    # Allow triggering jobs manually for MRs or branches of forked projects if
+    # any files affecting the pipeline were changed
+    - changes:
         *all_paths
       when: manual
     # Otherwise, container jobs won't run
