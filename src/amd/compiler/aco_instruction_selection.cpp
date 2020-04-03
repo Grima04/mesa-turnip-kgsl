@@ -2244,7 +2244,15 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_f2i32: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (instr->src[0].src.ssa->bit_size == 32) {
+      if (instr->src[0].src.ssa->bit_size == 16) {
+         Temp tmp = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), src);
+         if (dst.type() == RegType::vgpr) {
+            bld.vop1(aco_opcode::v_cvt_i32_f32, Definition(dst), tmp);
+         } else {
+            bld.pseudo(aco_opcode::p_as_uniform, Definition(dst),
+                       bld.vop1(aco_opcode::v_cvt_i32_f32, bld.def(v1), tmp));
+         }
+      } else if (instr->src[0].src.ssa->bit_size == 32) {
          if (dst.type() == RegType::vgpr)
             bld.vop1(aco_opcode::v_cvt_i32_f32, Definition(dst), src);
          else
@@ -2267,7 +2275,15 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_f2u32: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (instr->src[0].src.ssa->bit_size == 32) {
+      if (instr->src[0].src.ssa->bit_size == 16) {
+         Temp tmp = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), src);
+         if (dst.type() == RegType::vgpr) {
+            bld.vop1(aco_opcode::v_cvt_u32_f32, Definition(dst), tmp);
+         } else {
+            bld.pseudo(aco_opcode::p_as_uniform, Definition(dst),
+                       bld.vop1(aco_opcode::v_cvt_u32_f32, bld.def(v1), tmp));
+         }
+      } else if (instr->src[0].src.ssa->bit_size == 32) {
          if (dst.type() == RegType::vgpr)
             bld.vop1(aco_opcode::v_cvt_u32_f32, Definition(dst), src);
          else
