@@ -898,18 +898,22 @@ s3tc_dxt5_alpha_channel(struct gallivm_state *gallivm,
                         LLVMValueRef i, LLVMValueRef j)
 {
    LLVMBuilderRef builder = gallivm->builder;
-   struct lp_type type;
+   struct lp_type type, type8;
    LLVMValueRef tmp, alpha0, alpha1, alphac, alphac0, bit_pos, shift;
    LLVMValueRef sel_mask, tmp_mask, alpha, alpha64, code_s;
    LLVMValueRef mask6, mask7, ainterp;
    LLVMTypeRef i64t = LLVMInt64TypeInContext(gallivm->context);
    LLVMTypeRef i32t = LLVMInt32TypeInContext(gallivm->context);
-   LLVMTypeRef i8t = LLVMInt32TypeInContext(gallivm->context);
    struct lp_build_context bld32;
 
    memset(&type, 0, sizeof type);
    type.width = 32;
    type.length = n;
+
+   memset(&type8, 0, sizeof type8);
+   type8.width = 8;
+   type8.length = n;
+   type8.sign = is_signed;
 
    lp_build_context_init(&bld32, gallivm, type);
    /* this looks pretty complex for vectorization:
@@ -924,8 +928,8 @@ s3tc_dxt5_alpha_channel(struct gallivm_state *gallivm,
    alpha0 = LLVMBuildAnd(builder, alpha_lo,
                          lp_build_const_int_vec(gallivm, type, 0xff), "");
    if (is_signed) {
-      alpha0 = LLVMBuildTrunc(builder, alpha0, i8t, "");
-      alpha0 = LLVMBuildSExt(builder, alpha0, i32t, "");
+      alpha0 = LLVMBuildTrunc(builder, alpha0, lp_build_vec_type(gallivm, type8), "");
+      alpha0 = LLVMBuildSExt(builder, alpha0, lp_build_vec_type(gallivm, type), "");
    }
 
    alpha1 = LLVMBuildLShr(builder, alpha_lo,
@@ -933,8 +937,8 @@ s3tc_dxt5_alpha_channel(struct gallivm_state *gallivm,
    alpha1 = LLVMBuildAnd(builder, alpha1,
                          lp_build_const_int_vec(gallivm, type, 0xff), "");
    if (is_signed) {
-      alpha1 = LLVMBuildTrunc(builder, alpha1, i8t, "");
-      alpha1 = LLVMBuildSExt(builder, alpha1, i32t, "");
+      alpha1 = LLVMBuildTrunc(builder, alpha1, lp_build_vec_type(gallivm, type8), "");
+      alpha1 = LLVMBuildSExt(builder, alpha1, lp_build_vec_type(gallivm, type), "");
    }
 
    /* pos = 3*(4j+i) */
