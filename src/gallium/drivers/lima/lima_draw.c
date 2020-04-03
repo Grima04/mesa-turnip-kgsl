@@ -49,16 +49,47 @@
 
 #include <drm-uapi/lima_drm.h>
 
+static void
+lima_clip_scissor_to_viewport(struct lima_context *ctx)
+{
+   struct lima_context_framebuffer *fb = &ctx->framebuffer;
+   struct pipe_scissor_state *cscissor = &ctx->clipped_scissor;
+   int viewport_left, viewport_right, viewport_bottom, viewport_top;
+
+   if (ctx->rasterizer && ctx->rasterizer->base.scissor) {
+      struct pipe_scissor_state *scissor = &ctx->scissor;
+      cscissor->minx = scissor->minx;
+      cscissor->maxx = scissor->maxx;
+      cscissor->miny = scissor->miny;
+      cscissor->maxy = scissor->maxy;
+   } else {
+      cscissor->minx = 0;
+      cscissor->maxx = fb->base.width;
+      cscissor->miny = 0;
+      cscissor->maxy = fb->base.height;
+   }
+
+   viewport_left = MAX2(ctx->viewport.left, 0);
+   cscissor->minx = MAX2(cscissor->minx, viewport_left);
+   viewport_right = MIN2(ctx->viewport.right, fb->base.width);
+   cscissor->maxx = MIN2(cscissor->maxx, viewport_right);
+   if (cscissor->minx > cscissor->maxx)
+      cscissor->minx = cscissor->maxx;
+
+   viewport_bottom = MAX2(ctx->viewport.bottom, 0);
+   cscissor->miny = MAX2(cscissor->miny, viewport_bottom);
+   viewport_top = MIN2(ctx->viewport.top, fb->base.height);
+   cscissor->maxy = MIN2(cscissor->maxy, viewport_top);
+   if (cscissor->miny > cscissor->maxy)
+      cscissor->miny = cscissor->maxy;
+}
+
 static bool
 lima_is_scissor_zero(struct lima_context *ctx)
 {
-   if (!ctx->rasterizer || !ctx->rasterizer->base.scissor)
-      return false;
+   struct pipe_scissor_state *cscissor = &ctx->clipped_scissor;
 
-   struct pipe_scissor_state *scissor = &ctx->scissor;
-   return
-      scissor->minx == scissor->maxx
-      && scissor->miny == scissor->maxy;
+   return cscissor->minx == cscissor->maxx || cscissor->miny == cscissor->maxy;
 }
 
 static void
@@ -268,14 +299,8 @@ lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 static void
 lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
-   struct lima_context_framebuffer *fb = &ctx->framebuffer;
    struct lima_vs_shader_state *vs = ctx->vs;
-   unsigned minx, maxx, miny, maxy;
-
-   /* If it's zero scissor, we skip adding all other commands */
-   if (lima_is_scissor_zero(ctx))
-      return;
-
+   struct pipe_scissor_state *cscissor = &ctx->clipped_scissor;
    struct lima_job *job = lima_job_get(ctx);
    PLBU_CMD_BEGIN(&job->plbu_cmd_array, 32);
 
@@ -317,26 +342,12 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
     * - we should set it only for the first draw that enabled the scissor and for
     *   latter draw only if scissor is dirty
     */
-   if (ctx->rasterizer->base.scissor) {
-      struct pipe_scissor_state *scissor = &ctx->scissor;
-      minx = scissor->minx;
-      maxx = scissor->maxx;
-      miny = scissor->miny;
-      maxy = scissor->maxy;
-   } else {
-      minx = 0;
-      maxx = fb->base.width;
-      miny = 0;
-      maxy = fb->base.height;
-   }
 
-   minx = MAX2(minx, ctx->viewport.left);
-   maxx = MIN2(maxx, ctx->viewport.right);
-   miny = MAX2(miny, ctx->viewport.bottom);
-   maxy = MIN2(maxy, ctx->viewport.top);
+   assert(cscissor->minx < cscissor->maxx && cscissor->miny < cscissor->maxy);
+   PLBU_CMD_SCISSORS(cscissor->minx, cscissor->maxx, cscissor->miny, cscissor->maxy);
 
-   PLBU_CMD_SCISSORS(minx, maxx, miny, maxy);
-   lima_damage_rect_union(&job->damage_rect, minx, maxx, miny, maxy);
+   lima_damage_rect_union(&job->damage_rect, cscissor->minx, cscissor->maxx,
+                          cscissor->miny, cscissor->maxy);
 
    PLBU_CMD_UNKNOWN1();
 
@@ -1001,9 +1012,7 @@ lima_draw_vbo_update(struct pipe_context *pctx,
 
    lima_update_varying(ctx, info);
 
-   /* If it's zero scissor, don't build vs cmd list */
-   if (!lima_is_scissor_zero(ctx))
-      lima_pack_vs_cmd(ctx, info);
+   lima_pack_vs_cmd(ctx, info);
 
    if (ctx->dirty & LIMA_CONTEXT_DIRTY_CONST_BUFF &&
        ctx->const_buffer[PIPE_SHADER_FRAGMENT].dirty) {
@@ -1110,6 +1119,10 @@ lima_draw_vbo(struct pipe_context *pctx,
       debug_warn_once("no shader, skip draw\n");
       return;
    }
+
+   lima_clip_scissor_to_viewport(ctx);
+   if (lima_is_scissor_zero(ctx))
+      return;
 
    if (!lima_update_vs_state(ctx) || !lima_update_fs_state(ctx))
       return;

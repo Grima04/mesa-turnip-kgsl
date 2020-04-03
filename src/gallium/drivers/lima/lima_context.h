@@ -191,6 +191,7 @@ struct lima_context {
    struct lima_context_framebuffer framebuffer;
    struct lima_context_viewport_state viewport;
    struct pipe_scissor_state scissor;
+   struct pipe_scissor_state clipped_scissor;
    struct lima_vs_shader_state *vs;
    struct lima_fs_shader_state *fs;
    struct lima_vertex_element_state *vertex_elements;
