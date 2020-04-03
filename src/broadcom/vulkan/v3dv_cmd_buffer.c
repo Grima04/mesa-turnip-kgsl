@@ -2680,19 +2680,55 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer)
    state->meta.framebuffer = v3dv_framebuffer_to_handle(state->framebuffer);
    state->meta.pass = v3dv_render_pass_to_handle(state->pass);
    state->meta.subpass_idx = state->subpass_idx;
+
+   const uint32_t attachment_state_item_size =
+      sizeof(struct v3dv_cmd_buffer_attachment_state);
+   const uint32_t attachment_state_total_size =
+      attachment_state_item_size * state->attachment_count;
+   if (state->meta.attachment_alloc_count < state->attachment_count) {
+      if (state->meta.attachment_alloc_count > 0)
+         vk_free(&cmd_buffer->device->alloc, state->meta.attachments);
+
+      state->meta.attachments = vk_zalloc(&cmd_buffer->device->alloc,
+                                          attachment_state_total_size, 8,
+                                          VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      state->meta.attachment_alloc_count = state->attachment_count;
+   }
+   state->meta.attachment_count = state->attachment_count;
+   memcpy(state->meta.attachments, state->attachments,
+          attachment_state_total_size);
+
+   state->meta.tile_aligned_render_area = state->tile_aligned_render_area;
+   memcpy(&state->meta.render_area, &state->render_area, sizeof(VkRect2D));
+
+   if (state->meta.pipeline)
+      memcpy(&state->meta.dynamic, &state->dynamic, sizeof(state->dynamic));
 }
 
 /* This resstores command buffer state for a subpass that we interrupted to
  * emit a meta pass.
  */
 void
-v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer)
+v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
+                               uint32_t dirty_dynamic_state)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(state->meta.subpass_idx != -1);
 
    state->pass = v3dv_render_pass_from_handle(state->meta.pass);
    state->framebuffer = v3dv_framebuffer_from_handle(state->meta.framebuffer);
+
+   assert(state->meta.attachment_count <= state->attachment_count);
+   const uint32_t attachment_state_item_size =
+      sizeof(struct v3dv_cmd_buffer_attachment_state);
+   const uint32_t attachment_state_total_size =
+      attachment_state_item_size * state->meta.attachment_count;
+   state->attachment_count = state->meta.attachment_count;
+   memcpy(state->attachments, state->meta.attachments,
+          attachment_state_total_size);
+
+   state->tile_aligned_render_area = state->meta.tile_aligned_render_area;
+   memcpy(&state->render_area, &state->meta.render_area, sizeof(VkRect2D));
 
    struct v3dv_job *job =
       v3dv_cmd_buffer_subpass_start(cmd_buffer, state->meta.subpass_idx);
@@ -2702,6 +2738,8 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer)
          v3dv_CmdBindPipeline(v3dv_cmd_buffer_to_handle(cmd_buffer),
                               VK_PIPELINE_BIND_POINT_GRAPHICS,
                               state->meta.pipeline);
+         memcpy(&state->dynamic, &state->meta.dynamic, sizeof(state->dynamic));
+         state->dirty |= dirty_dynamic_state;
       } else {
          state->pipeline = VK_NULL_HANDLE;
       }

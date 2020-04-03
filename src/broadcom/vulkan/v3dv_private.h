@@ -725,6 +725,15 @@ struct v3dv_cmd_buffer_state {
       VkRenderPass pass;
       VkPipeline pipeline;
       VkFramebuffer framebuffer;
+
+      uint32_t attachment_alloc_count;
+      uint32_t attachment_count;
+      struct v3dv_cmd_buffer_attachment_state *attachments;
+
+      bool tile_aligned_render_area;
+      VkRect2D render_area;
+
+      struct v3dv_dynamic_state dynamic;
    } meta;
 };
 
@@ -786,7 +795,8 @@ struct v3dv_job *v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffe
 void v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
 
 void v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer);
-void v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer);
+void v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
+                                    uint32_t dirty_dynamic_state);
 
 void v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
                                           int rt,

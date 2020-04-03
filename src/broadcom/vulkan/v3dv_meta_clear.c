@@ -524,6 +524,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
     * for each selected layer of the attachment and then renders a scissored
     * quad in the clear color.
     */
+   uint32_t dirty_dynamic_state = 0;
    for (uint32_t i = 0; i < rect->layerCount; i++) {
       attachment_layer_view.first_layer =
          subpass_fb->attachments[rt_idx]->first_layer + rect->baseArrayLayer + i;
@@ -598,8 +599,13 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_DestroyFramebuffer(device_handle, fb, &cmd_buffer->device->alloc);
    }
 
+   /* The clear pipeline sets viewport and scissor state, so we need
+    * to restore it
+    */
+   dirty_dynamic_state = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
+
 fail_job_start:
-   v3dv_cmd_buffer_meta_state_pop(cmd_buffer);
+   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state);
 }
 
 static void
