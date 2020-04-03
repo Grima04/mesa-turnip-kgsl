@@ -1762,24 +1762,6 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
    }
 
    assert(instructions_to_schedule == 0);
-
-   block->cycle_count = time;
-}
-
-static unsigned get_cycle_count(cfg_t *cfg)
-{
-   unsigned count = 0, multiplier = 1;
-   foreach_block(block, cfg) {
-      if (block->start()->opcode == BRW_OPCODE_DO)
-         multiplier *= 10; /* assume that loops execute ~10 times */
-
-      count += block->cycle_count * multiplier;
-
-      if (block->end()->opcode == BRW_OPCODE_WHILE)
-         multiplier /= 10;
-   }
-
-   return count;
 }
 
 void
@@ -1821,8 +1803,6 @@ instruction_scheduler::run(cfg_t *cfg)
               post_reg_alloc);
       bs->dump_instructions();
    }
-
-   cfg->cycle_count = get_cycle_count(cfg);
 }
 
 void

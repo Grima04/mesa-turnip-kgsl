@@ -119,8 +119,6 @@ struct bblock_t {
    struct exec_list parents;
    struct exec_list children;
    int num;
-
-   unsigned cycle_count;
 };
 
 static inline struct backend_instruction *
@@ -329,8 +327,6 @@ struct cfg_t {
    struct exec_list block_list;
    struct bblock_t **blocks;
    int num_blocks;
-
-   unsigned cycle_count;
 };
 
 static inline struct bblock_t *
