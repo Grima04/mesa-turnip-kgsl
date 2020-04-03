@@ -551,8 +551,9 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
          .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
          .renderPass = pipeline->pass,
          .framebuffer = fb,
-         .renderArea = { .offset = { 0, 0 },
-                         .extent = { fb_info.width, fb_info.height } },
+         .renderArea = {
+            .offset = { rect->rect.offset.x, rect->rect.offset.y },
+            .extent = { rect->rect.extent.width, rect->rect.extent.height } },
          .clearValueCount = 0,
       };
 
