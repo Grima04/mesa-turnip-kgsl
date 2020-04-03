@@ -8705,22 +8705,21 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    calculate_urb_setup(devinfo, key, prog_data, shader);
    brw_compute_flat_inputs(prog_data, shader);
 
+   fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;
-   struct shader_stats v8_shader_stats, v16_shader_stats, v32_shader_stats;
 
-   fs_visitor v8(compiler, log_data, mem_ctx, &key->base,
-                 &prog_data->base, shader, 8,
-                 shader_time_index8);
-   if (!v8.run_fs(allow_spilling, false /* do_rep_send */)) {
+   v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+                       &prog_data->base, shader, 8, shader_time_index8);
+   if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
       if (error_str)
-         *error_str = ralloc_strdup(mem_ctx, v8.fail_msg);
+         *error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
 
+      delete v8;
       return NULL;
    } else if (likely(!(INTEL_DEBUG & DEBUG_NO8))) {
-      simd8_cfg = v8.cfg;
-      v8_shader_stats = v8.shader_stats;
-      prog_data->base.dispatch_grf_start_reg = v8.payload.num_regs;
-      prog_data->reg_blocks_8 = brw_register_blocks(v8.grf_used);
+      simd8_cfg = v8->cfg;
+      prog_data->base.dispatch_grf_start_reg = v8->payload.num_regs;
+      prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
    }
 
    /* Limit dispatch width to simd8 with dual source blending on gen8.
@@ -8729,47 +8728,43 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    if (devinfo->gen == 8 && prog_data->dual_src_blend &&
        !(INTEL_DEBUG & DEBUG_NO8)) {
       assert(!use_rep_send);
-      v8.limit_dispatch_width(8, "gen8 workaround: "
-                              "using SIMD8 when dual src blending.\n");
+      v8->limit_dispatch_width(8, "gen8 workaround: "
+                               "using SIMD8 when dual src blending.\n");
    }
 
-   if (v8.max_dispatch_width >= 16 &&
+   if (v8->max_dispatch_width >= 16 &&
        likely(!(INTEL_DEBUG & DEBUG_NO16) || use_rep_send)) {
       /* Try a SIMD16 compile */
-      fs_visitor v16(compiler, log_data, mem_ctx, &key->base,
-                     &prog_data->base, shader, 16,
-                     shader_time_index16);
-      v16.import_uniforms(&v8);
-      if (!v16.run_fs(allow_spilling, use_rep_send)) {
+      v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+                           &prog_data->base, shader, 16, shader_time_index16);
+      v16->import_uniforms(v8);
+      if (!v16->run_fs(allow_spilling, use_rep_send)) {
          compiler->shader_perf_log(log_data,
                                    "SIMD16 shader failed to compile: %s",
-                                   v16.fail_msg);
+                                   v16->fail_msg);
       } else {
-         simd16_cfg = v16.cfg;
-         v16_shader_stats = v16.shader_stats;
-         prog_data->dispatch_grf_start_reg_16 = v16.payload.num_regs;
-         prog_data->reg_blocks_16 = brw_register_blocks(v16.grf_used);
+         simd16_cfg = v16->cfg;
+         prog_data->dispatch_grf_start_reg_16 = v16->payload.num_regs;
+         prog_data->reg_blocks_16 = brw_register_blocks(v16->grf_used);
       }
    }
 
    /* Currently, the compiler only supports SIMD32 on SNB+ */
-   if (v8.max_dispatch_width >= 32 && !use_rep_send &&
+   if (v8->max_dispatch_width >= 32 && !use_rep_send &&
        compiler->devinfo->gen >= 6 &&
        unlikely(INTEL_DEBUG & DEBUG_DO32)) {
       /* Try a SIMD32 compile */
-      fs_visitor v32(compiler, log_data, mem_ctx, &key->base,
-                     &prog_data->base, shader, 32,
-                     shader_time_index32);
-      v32.import_uniforms(&v8);
-      if (!v32.run_fs(allow_spilling, false)) {
+      v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+                           &prog_data->base, shader, 32, shader_time_index32);
+      v32->import_uniforms(v8);
+      if (!v32->run_fs(allow_spilling, false)) {
          compiler->shader_perf_log(log_data,
                                    "SIMD32 shader failed to compile: %s",
-                                   v32.fail_msg);
+                                   v32->fail_msg);
       } else {
-         simd32_cfg = v32.cfg;
-         v32_shader_stats = v32.shader_stats;
-         prog_data->dispatch_grf_start_reg_32 = v32.payload.num_regs;
-         prog_data->reg_blocks_32 = brw_register_blocks(v32.grf_used);
+         simd32_cfg = v32->cfg;
+         prog_data->dispatch_grf_start_reg_32 = v32->payload.num_regs;
+         prog_data->reg_blocks_32 = brw_register_blocks(v32->grf_used);
       }
    }
 
@@ -8828,7 +8823,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    }
 
    fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
-                  v8.runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
+                  v8->runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
 
    if (unlikely(INTEL_DEBUG & DEBUG_WM)) {
       g.enable_debug(ralloc_asprintf(mem_ctx, "%s fragment shader %s",
@@ -8839,21 +8834,27 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    if (simd8_cfg) {
       prog_data->dispatch_8 = true;
-      g.generate_code(simd8_cfg, 8, v8_shader_stats, stats);
+      g.generate_code(simd8_cfg, 8, v8->shader_stats, stats);
       stats = stats ? stats + 1 : NULL;
    }
 
    if (simd16_cfg) {
       prog_data->dispatch_16 = true;
-      prog_data->prog_offset_16 = g.generate_code(simd16_cfg, 16, v16_shader_stats, stats);
+      prog_data->prog_offset_16 = g.generate_code(simd16_cfg, 16,
+                                                  v16->shader_stats, stats);
       stats = stats ? stats + 1 : NULL;
    }
 
    if (simd32_cfg) {
       prog_data->dispatch_32 = true;
-      prog_data->prog_offset_32 = g.generate_code(simd32_cfg, 32, v32_shader_stats, stats);
+      prog_data->prog_offset_32 = g.generate_code(simd32_cfg, 32,
+                                                  v32->shader_stats, stats);
       stats = stats ? stats + 1 : NULL;
    }
+
+   delete v8;
+   delete v16;
+   delete v32;
 
    return g.get_assembly();
 }
