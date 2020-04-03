@@ -27,7 +27,7 @@ stages:
   rules:
     # Run pipeline by default for merge requests changing files affecting it
     - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
-      changes: &paths
+      changes: &all_paths
       - VERSION
       - bin/**/*
       # GitLab CI
@@ -49,7 +49,7 @@ stages:
     # changed
     - if: '$CI_PROJECT_PATH == "mesa/mesa"'
       changes:
-        *paths
+        *all_paths
       when: on_success
     # Allow triggering jobs manually on branches of forked projects
     - if: '$CI_PROJECT_PATH != "mesa/mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
@@ -70,7 +70,7 @@ success:
     - merge_requests
   except:
     changes:
-      *paths
+      *all_paths
   variables:
     GIT_STRATEGY: none
   script:
