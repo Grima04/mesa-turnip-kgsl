@@ -293,7 +293,8 @@ struct wait_ctx {
              max_exp_cnt(6),
              max_lgkm_cnt(program_->chip_class >= GFX10 ? 62 : 14),
              max_vs_cnt(program_->chip_class >= GFX10 ? 62 : 0),
-             unordered_events(event_smem | (program_->chip_class < GFX10 ? event_flat : 0)) {}
+             unordered_events(event_smem | (program_->chip_class < GFX10 ? event_flat : 0)),
+             collect_statistics(program_->collect_statistics) {}
 
    bool join(const wait_ctx* other, bool logical)
    {
@@ -846,8 +847,6 @@ void handle_block(Program *program, Block& block, wait_ctx& ctx)
    std::vector<aco_ptr<Instruction>> new_instructions;
 
    wait_imm queued_imm;
-
-   ctx.collect_statistics = program->collect_statistics;
 
    for (aco_ptr<Instruction>& instr : block.instructions) {
       bool is_wait = !parse_wait_instr(ctx, instr.get()).empty();
