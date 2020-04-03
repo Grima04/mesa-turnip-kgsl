@@ -8646,8 +8646,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                char **error_str)
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
-
-   unsigned max_subgroup_size = unlikely(INTEL_DEBUG & DEBUG_DO32) ? 32 : 16;
+   const unsigned max_subgroup_size = compiler->devinfo->gen >= 6 ? 32 : 16;
 
    brw_nir_apply_key(shader, compiler, &key->base, max_subgroup_size, true);
    brw_nir_lower_fs_inputs(shader, devinfo, key);
@@ -8707,6 +8706,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;
+   float throughput = 0;
 
    v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                        &prog_data->base, shader, 8, shader_time_index8);
@@ -8720,6 +8720,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
       simd8_cfg = v8->cfg;
       prog_data->base.dispatch_grf_start_reg = v8->payload.num_regs;
       prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
+      const performance &perf = v8->performance_analysis.require();
+      throughput = MAX2(throughput, perf.throughput);
    }
 
    /* Limit dispatch width to simd8 with dual source blending on gen8.
@@ -8746,13 +8748,14 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
          simd16_cfg = v16->cfg;
          prog_data->dispatch_grf_start_reg_16 = v16->payload.num_regs;
          prog_data->reg_blocks_16 = brw_register_blocks(v16->grf_used);
+         const performance &perf = v16->performance_analysis.require();
+         throughput = MAX2(throughput, perf.throughput);
       }
    }
 
    /* Currently, the compiler only supports SIMD32 on SNB+ */
    if (v8->max_dispatch_width >= 32 && !use_rep_send &&
-       compiler->devinfo->gen >= 6 &&
-       unlikely(INTEL_DEBUG & DEBUG_DO32)) {
+       devinfo->gen >= 6 && simd16_cfg) {
       /* Try a SIMD32 compile */
       v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base, shader, 32, shader_time_index32);
@@ -8762,9 +8765,16 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                                    "SIMD32 shader failed to compile: %s",
                                    v32->fail_msg);
       } else {
-         simd32_cfg = v32->cfg;
-         prog_data->dispatch_grf_start_reg_32 = v32->payload.num_regs;
-         prog_data->reg_blocks_32 = brw_register_blocks(v32->grf_used);
+         const performance &perf = v32->performance_analysis.require();
+
+         if (!(INTEL_DEBUG & DEBUG_DO32) && throughput >= perf.throughput) {
+            compiler->shader_perf_log(log_data, "SIMD32 shader inefficient\n");
+         } else {
+            simd32_cfg = v32->cfg;
+            prog_data->dispatch_grf_start_reg_32 = v32->payload.num_regs;
+            prog_data->reg_blocks_32 = brw_register_blocks(v32->grf_used);
+            throughput = MAX2(throughput, perf.throughput);
+         }
       }
    }
 
