@@ -2048,14 +2048,16 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_ldexp: {
-      if (dst.size() == 1) {
-         bld.vop3(aco_opcode::v_ldexp_f32, Definition(dst),
-                  as_vgpr(ctx, get_alu_src(ctx, instr->src[0])),
-                  get_alu_src(ctx, instr->src[1]));
-      } else if (dst.size() == 2) {
-         bld.vop3(aco_opcode::v_ldexp_f64, Definition(dst),
-                  as_vgpr(ctx, get_alu_src(ctx, instr->src[0])),
-                  get_alu_src(ctx, instr->src[1]));
+      Temp src0 = get_alu_src(ctx, instr->src[0]);
+      Temp src1 = get_alu_src(ctx, instr->src[1]);
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.tmp(v1);
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_ldexp_f16, tmp, false);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
+         bld.vop3(aco_opcode::v_ldexp_f32, Definition(dst), as_vgpr(ctx, src0), src1);
+      } else if (dst.regClass() == v2) {
+         bld.vop3(aco_opcode::v_ldexp_f64, Definition(dst), as_vgpr(ctx, src0), src1);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
          nir_print_instr(&instr->instr, stderr);
