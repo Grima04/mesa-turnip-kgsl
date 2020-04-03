@@ -791,7 +791,8 @@ parseAppAttr(struct OptConfData *data, const XML_Char **attr)
     if (exec && strcmp (exec, data->execName)) {
         data->ignoringApp = data->inApp;
     } else if (sha1) {
-        if (strlen(sha1) != 40) {
+        /* SHA1_DIGEST_STRING_LENGTH includes terminating null byte */
+        if (strlen(sha1) != (SHA1_DIGEST_STRING_LENGTH - 1)) {
             XML_WARNING("Incorrect sha1 application attribute");
             data->ignoringApp = data->inApp;
         } else {
@@ -800,13 +801,13 @@ parseAppAttr(struct OptConfData *data, const XML_Char **attr)
             char path[PATH_MAX];
             if (util_get_process_exec_path(path, ARRAY_SIZE(path)) > 0 &&
                 (content = os_read_file(path, &len))) {
-                uint8_t sha1x[20];
-                char sha1s[40];
+                uint8_t sha1x[SHA1_DIGEST_LENGTH];
+                char sha1s[SHA1_DIGEST_STRING_LENGTH];
                 _mesa_sha1_compute(content, len, sha1x);
                 _mesa_sha1_format((char*) sha1s, sha1x);
                 free(content);
 
-                if (memcmp(sha1, sha1s, SHA1_DIGEST_LENGTH)) {
+                if (strcmp(sha1, sha1s)) {
                     data->ignoringApp = data->inApp;
                 }
             } else {
