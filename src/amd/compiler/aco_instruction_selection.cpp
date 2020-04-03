@@ -1816,11 +1816,15 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_fsat: {
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (dst.size() == 1) {
+      if (dst.regClass() == v2b) {
+         Temp one = bld.copy(bld.def(s1), Operand(0x3c00u));
+         Temp tmp = bld.vop3(aco_opcode::v_med3_f16, bld.def(v1), Operand(0u), one, src);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          bld.vop3(aco_opcode::v_med3_f32, Definition(dst), Operand(0u), Operand(0x3f800000u), src);
          /* apparently, it is not necessary to flush denorms if this instruction is used with these operands */
          // TODO: confirm that this holds under any circumstances
-      } else if (dst.size() == 2) {
+      } else if (dst.regClass() == v2) {
          Instruction* add = bld.vop3(aco_opcode::v_add_f64, Definition(dst), src, Operand(0u));
          VOP3A_instruction* vop3 = static_cast<VOP3A_instruction*>(add);
          vop3->clamp = true;
