@@ -30,6 +30,7 @@
 #include "anv_private.h"
 
 #include "genxml/gen8_pack.h"
+#include "genxml/genX_bits.h"
 
 #include "util/debug.h"
 
@@ -288,6 +289,17 @@ anv_batch_emit_reloc(struct anv_batch *batch,
    return address_u64;
 }
 
+struct anv_address
+anv_batch_address(struct anv_batch *batch, void *batch_location)
+{
+   assert(batch->start < batch_location);
+
+   /* Allow a jump at the current location of the batch. */
+   assert(batch->next >= batch_location);
+
+   return anv_address_add(batch->start_addr, batch_location - batch->start);
+}
+
 void
 anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other)
 {
@@ -396,6 +408,7 @@ static void
 anv_batch_bo_start(struct anv_batch_bo *bbo, struct anv_batch *batch,
                    size_t batch_padding)
 {
+   batch->start_addr = (struct anv_address) { .bo = bbo->bo, };
    batch->next = batch->start = bbo->bo->map;
    batch->end = bbo->bo->map + bbo->bo->size - batch_padding;
    batch->relocs = &bbo->relocs;
@@ -406,6 +419,7 @@ static void
 anv_batch_bo_continue(struct anv_batch_bo *bbo, struct anv_batch *batch,
                       size_t batch_padding)
 {
+   batch->start_addr = (struct anv_address) { .bo = bbo->bo, };
    batch->start = bbo->bo->map;
    batch->next = bbo->bo->map + bbo->length;
    batch->end = bbo->bo->map + bbo->bo->size - batch_padding;
@@ -914,6 +928,29 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
       const uint32_t length = cmd_buffer->batch.next - cmd_buffer->batch.start;
       if (!cmd_buffer->device->can_chain_batches) {
          cmd_buffer->exec_mode = ANV_CMD_BUFFER_EXEC_MODE_GROW_AND_EMIT;
+      } else if (cmd_buffer->device->physical->use_softpin) {
+         cmd_buffer->exec_mode = ANV_CMD_BUFFER_EXEC_MODE_CALL_AND_RETURN;
+         /* If the secondary command buffer begins & ends in the same BO and
+          * its length is less than the length of CS prefetch, add some NOOPs
+          * instructions so the last MI_BATCH_BUFFER_START is outside the CS
+          * prefetch.
+          */
+         if (cmd_buffer->batch_bos.next == cmd_buffer->batch_bos.prev) {
+            int32_t batch_len =
+               cmd_buffer->batch.next - cmd_buffer->batch.start;
+
+            for (int32_t i = 0; i < (512 - batch_len); i += 4)
+               anv_batch_emit(&cmd_buffer->batch, GEN8_MI_NOOP, noop);
+         }
+
+         void *jump_addr =
+            anv_batch_emitn(&cmd_buffer->batch,
+                            GEN8_MI_BATCH_BUFFER_START_length,
+                            GEN8_MI_BATCH_BUFFER_START,
+                            .AddressSpaceIndicator = ASI_PPGTT,
+                            .SecondLevelBatchBuffer = Firstlevelbatch) +
+            (GEN8_MI_BATCH_BUFFER_START_BatchBufferStartAddress_start / 8);
+         cmd_buffer->return_addr = anv_batch_address(&cmd_buffer->batch, jump_addr);
       } else if ((cmd_buffer->batch_bos.next == cmd_buffer->batch_bos.prev) &&
                  (length < ANV_CMD_BUFFER_BATCH_SIZE / 2)) {
          /* If the secondary has exactly one batch buffer in its list *and*
@@ -1021,6 +1058,26 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
 
       anv_batch_bo_continue(last_bbo, &primary->batch,
                             GEN8_MI_BATCH_BUFFER_START_length * 4);
+      break;
+   }
+   case ANV_CMD_BUFFER_EXEC_MODE_CALL_AND_RETURN: {
+      struct anv_batch_bo *first_bbo =
+         list_first_entry(&secondary->batch_bos, struct anv_batch_bo, link);
+
+      uint64_t *write_return_addr =
+         anv_batch_emitn(&primary->batch,
+                         GEN8_MI_STORE_DATA_IMM_length + 1 /* QWord write */,
+                         GEN8_MI_STORE_DATA_IMM,
+                         .Address = secondary->return_addr)
+         + (GEN8_MI_STORE_DATA_IMM_ImmediateData_start / 8);
+
+      emit_batch_buffer_start(primary, first_bbo->bo, 0);
+
+      *write_return_addr =
+         anv_address_physical(anv_batch_address(&primary->batch,
+                                                primary->batch.next));
+
+      anv_cmd_buffer_add_seen_bbos(primary, &secondary->batch_bos);
       break;
    }
    default:

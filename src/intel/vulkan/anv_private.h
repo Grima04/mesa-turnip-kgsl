@@ -1592,8 +1592,15 @@ struct anv_batch_bo {
    struct anv_reloc_list                        relocs;
 };
 
+struct anv_address {
+   struct anv_bo *bo;
+   uint32_t offset;
+};
+
 struct anv_batch {
    const VkAllocationCallbacks *                alloc;
+
+   struct anv_address                           start_addr;
 
    void *                                       start;
    void *                                       end;
@@ -1621,6 +1628,7 @@ void *anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords);
 void anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other);
 uint64_t anv_batch_emit_reloc(struct anv_batch *batch,
                               void *location, struct anv_bo *bo, uint32_t offset);
+struct anv_address anv_batch_address(struct anv_batch *batch, void *batch_location);
 
 static inline VkResult
 anv_batch_set_error(struct anv_batch *batch, VkResult error)
@@ -1636,11 +1644,6 @@ anv_batch_has_error(struct anv_batch *batch)
 {
    return batch->status != VK_SUCCESS;
 }
-
-struct anv_address {
-   struct anv_bo *bo;
-   uint32_t offset;
-};
 
 #define ANV_NULL_ADDRESS ((struct anv_address) { NULL, 0 })
 
@@ -2824,6 +2827,7 @@ enum anv_cmd_buffer_exec_mode {
    ANV_CMD_BUFFER_EXEC_MODE_GROW_AND_EMIT,
    ANV_CMD_BUFFER_EXEC_MODE_CHAIN,
    ANV_CMD_BUFFER_EXEC_MODE_COPY_AND_CHAIN,
+   ANV_CMD_BUFFER_EXEC_MODE_CALL_AND_RETURN,
 };
 
 struct anv_cmd_buffer {
@@ -2872,6 +2876,8 @@ struct anv_cmd_buffer {
    VkCommandBufferLevel                         level;
 
    struct anv_cmd_state                         state;
+
+   struct anv_address                           return_addr;
 
    /* Set by SetPerformanceMarkerINTEL, written into queries by CmdBeginQuery */
    uint64_t                                     intel_perf_marker;
