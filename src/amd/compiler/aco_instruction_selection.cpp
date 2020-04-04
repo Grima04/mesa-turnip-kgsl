@@ -1643,7 +1643,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_fmax3: {
-      if (dst.size() == 1) {
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.tmp(v1);
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_max3_f16, tmp, false);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop3a_instruction(ctx, instr, aco_opcode::v_max3_f32, dst, ctx->block->fp_mode.must_flush_denorms32);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -1653,7 +1657,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_fmin3: {
-      if (dst.size() == 1) {
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.tmp(v1);
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_min3_f16, tmp, false);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop3a_instruction(ctx, instr, aco_opcode::v_min3_f32, dst, ctx->block->fp_mode.must_flush_denorms32);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -1663,7 +1671,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_fmed3: {
-      if (dst.size() == 1) {
+      if (dst.regClass() == v2b) {
+         Temp tmp = bld.tmp(v1);
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_med3_f16, tmp, false);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
+      } else if (dst.regClass() == v1) {
          emit_vop3a_instruction(ctx, instr, aco_opcode::v_med3_f32, dst, ctx->block->fp_mode.must_flush_denorms32);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -1823,8 +1835,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_fsat: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (dst.regClass() == v2b) {
-         Temp one = bld.copy(bld.def(s1), Operand(0x3c00u));
-         Temp tmp = bld.vop3(aco_opcode::v_med3_f16, bld.def(v1), Operand(0u), one, src);
+         Temp tmp = bld.vop3(aco_opcode::v_med3_f16, bld.def(v1), Operand(0u), Operand(0x3f800000u), src);
          bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
       } else if (dst.regClass() == v1) {
          bld.vop3(aco_opcode::v_med3_f32, Definition(dst), Operand(0u), Operand(0x3f800000u), src);
