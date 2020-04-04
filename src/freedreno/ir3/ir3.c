@@ -1149,7 +1149,6 @@ ir3_clear_mark(struct ir3 *ir)
 	}
 }
 
-/* note: this will destroy instr->depth, don't do it until after sched! */
 unsigned
 ir3_count_instructions(struct ir3 *ir)
 {

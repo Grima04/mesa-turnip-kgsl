@@ -306,25 +306,9 @@ struct ir3_instruction {
 		} input;
 	};
 
-	/* transient values used during various algorithms: */
-	union {
-		/* The instruction depth is the max dependency distance to output.
-		 *
-		 * You can also think of it as the "cost", if we did any sort of
-		 * optimization for register footprint.  Ie. a value that is  just
-		 * result of moving a const to a reg would have a low cost,  so to
-		 * it could make sense to duplicate the instruction at various
-		 * points where the result is needed to reduce register footprint.
-		 */
-		int depth;
-		/* When we get to the RA stage, we no longer need depth, but
-		 * we do need instruction's position/name:
-		 */
-		struct {
-			uint16_t ip;
-			uint16_t name;
-		};
-	};
+	/* When we get to the RA stage, we need instruction's position/name: */
+	uint16_t ip;
+	uint16_t name;
 
 	/* used for per-pass extra instruction data.
 	 *
@@ -1199,9 +1183,9 @@ unsigned ir3_delay_calc(struct ir3_block *block, struct ir3_instruction *instr,
 		bool soft, bool pred);
 void ir3_remove_nops(struct ir3 *ir);
 
-/* depth calculation: */
+/* dead code elimination: */
 struct ir3_shader_variant;
-void ir3_depth(struct ir3 *ir, struct ir3_shader_variant *so);
+void ir3_dce(struct ir3 *ir, struct ir3_shader_variant *so);
 
 /* fp16 conversion folding */
 void ir3_cf(struct ir3 *ir);

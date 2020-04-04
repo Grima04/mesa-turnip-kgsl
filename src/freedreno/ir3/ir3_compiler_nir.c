@@ -3640,9 +3640,9 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 	ir3_debug_print(ir, "AFTER GROUPING");
 
-	ir3_depth(ir, so);
+	ir3_dce(ir, so);
 
-	ir3_debug_print(ir, "AFTER DEPTH");
+	ir3_debug_print(ir, "AFTER DCE");
 
 	/* do Sethi–Ullman numbering before scheduling: */
 	ir3_sun(ir);

@@ -30,26 +30,11 @@
 #include "ir3_shader.h"
 
 /*
- * Instruction Depth:
- *
- * Calculates weighted instruction depth, ie. the sum of # of needed
- * instructions plus delay slots back to original input (ie INPUT or
- * CONST).  That is to say, an instructions depth is:
- *
- *   depth(instr) {
- *     d = 0;
- *     // for each src register:
- *     foreach (src in instr->regs[1..n])
- *       d = max(d, delayslots(src->instr, n) + depth(src->instr));
- *     return d + 1;
- *   }
- *
- * After an instruction's depth is calculated, it is inserted into the
- * blocks depth sorted list, which is used by the scheduling pass.
+ * Dead code elimination:
  */
 
 static void
-ir3_instr_depth(struct ir3_instruction *instr, unsigned boost, bool falsedep)
+instr_dce(struct ir3_instruction *instr, bool falsedep)
 {
 	struct ir3_instruction *src;
 
@@ -60,26 +45,9 @@ ir3_instr_depth(struct ir3_instruction *instr, unsigned boost, bool falsedep)
 	if (ir3_instr_check_mark(instr))
 		return;
 
-	instr->depth = 0;
-
 	foreach_ssa_src_n (src, i, instr) {
-		unsigned sd;
-
-		/* visit child to compute it's depth: */
-		ir3_instr_depth(src, boost, __is_false_dep(instr, i));
-
-		/* for array writes, no need to delay on previous write: */
-		if (i == 0)
-			continue;
-
-		sd = ir3_delayslots(src, instr, i, true) + src->depth;
-		sd += boost;
-
-		instr->depth = MAX2(instr->depth, sd);
+		instr_dce(src, __is_false_dep(instr, i));
 	}
-
-	if (!is_meta(instr))
-		instr->depth++;
 }
 
 static bool
@@ -129,7 +97,7 @@ remove_unused_by_block(struct ir3_block *block)
 }
 
 static bool
-compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
+find_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 {
 	unsigned i;
 	bool progress = false;
@@ -154,15 +122,15 @@ compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 
 	struct ir3_instruction *out;
 	foreach_output (out, ir)
-		ir3_instr_depth(out, 0, false);
+		instr_dce(out, false);
 
 	foreach_block (block, &ir->block_list) {
 		for (i = 0; i < block->keeps_count; i++)
-			ir3_instr_depth(block->keeps[i], 0, false);
+			instr_dce(block->keeps[i], false);
 
 		/* We also need to account for if-condition: */
 		if (block->condition)
-			ir3_instr_depth(block->condition, 6, false);
+			instr_dce(block->condition, false);
 	}
 
 	/* remove un-used instructions: */
@@ -211,7 +179,7 @@ compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 }
 
 void
-ir3_depth(struct ir3 *ir, struct ir3_shader_variant *so)
+ir3_dce(struct ir3 *ir, struct ir3_shader_variant *so)
 {
 	void *mem_ctx = ralloc_context(NULL);
 	bool progress;
@@ -219,7 +187,7 @@ ir3_depth(struct ir3 *ir, struct ir3_shader_variant *so)
 	ir3_find_ssa_uses(ir, mem_ctx, true);
 
 	do {
-		progress = compute_depth_and_remove_unused(ir, so);
+		progress = find_and_remove_unused(ir, so);
 	} while (progress);
 
 	ralloc_free(mem_ctx);
