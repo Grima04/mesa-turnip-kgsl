@@ -3152,16 +3152,31 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
             &cmd_buffer->state.push_constants[stage];
 
          if (cmd_buffer->device->robust_buffer_access) {
+            push->push_reg_mask = 0;
+            /* Start of the current range in the shader, relative to the start
+             * of push constants in the shader.
+             */
+            unsigned range_start_reg = 0;
             for (unsigned i = 0; i < 4; i++) {
                const struct anv_push_range *range = &bind_map->push_ranges[i];
-               if (range->length == 0) {
-                  push->push_ubo_sizes[i] = 0;
-               } else {
-                  push->push_ubo_sizes[i] =
-                     get_push_range_bound_size(cmd_buffer, stage, range);
+               if (range->length == 0)
+                  continue;
+
+               unsigned bound_size =
+                  get_push_range_bound_size(cmd_buffer, stage, range);
+               if (bound_size >= range->start * 32) {
+                  unsigned bound_regs =
+                     MIN2(DIV_ROUND_UP(bound_size, 32) - range->start,
+                          range->length);
+                  assert(range_start_reg + bound_regs <= 64);
+                  push->push_reg_mask |= BITFIELD64_RANGE(range_start_reg,
+                                                          bound_regs);
                }
+
                cmd_buffer->state.push_constants_dirty |=
                   mesa_to_vk_shader_stage(stage);
+
+               range_start_reg += range->length;
             }
          }
 

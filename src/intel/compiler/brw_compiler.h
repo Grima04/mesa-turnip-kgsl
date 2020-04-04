@@ -657,6 +657,19 @@ struct brw_stage_prog_data {
    GLuint nr_params;       /**< number of float params/constants */
    GLuint nr_pull_params;
 
+   /* zero_push_reg is a bitfield which indicates what push registers (if any)
+    * should be zeroed by SW at the start of the shader.  The corresponding
+    * push_reg_mask_param specifies the param index (in 32-bit units) where
+    * the actual runtime 64-bit mask will be pushed.  The shader will zero
+    * push reg i if
+    *
+    *    reg_used & zero_push_reg & ~*push_reg_mask_param & (1ull << i)
+    *
+    * If this field is set, brw_compiler::compact_params must be false.
+    */
+   uint64_t zero_push_reg;
+   unsigned push_reg_mask_param;
+
    unsigned curb_read_length;
    unsigned total_scratch;
    unsigned total_shared;

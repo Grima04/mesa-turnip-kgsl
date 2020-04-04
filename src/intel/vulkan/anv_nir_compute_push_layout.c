@@ -80,13 +80,15 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
    if (push_ubo_ranges && robust_buffer_access) {
       /* We can't on-the-fly adjust our push ranges because doing so would
        * mess up the layout in the shader.  When robustBufferAccess is
-       * enabled, we have to manually bounds check our pushed UBO accesses.
+       * enabled, we push a mask into the shader indicating which pushed
+       * registers are valid and we zero out the invalid ones at the top of
+       * the shader.
        */
-      const uint32_t ubo_size_start =
-         offsetof(struct anv_push_constants, push_ubo_sizes);
-      const uint32_t ubo_size_end = ubo_size_start + (4 * sizeof(uint32_t));
-      push_start = MIN2(push_start, ubo_size_start);
-      push_end = MAX2(push_end, ubo_size_end);
+      const uint32_t push_reg_mask_start =
+         offsetof(struct anv_push_constants, push_reg_mask);
+      const uint32_t push_reg_mask_end = push_reg_mask_start + sizeof(uint64_t);
+      push_start = MIN2(push_start, push_reg_mask_start);
+      push_end = MAX2(push_end, push_reg_mask_end);
    }
 
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
@@ -121,8 +123,32 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
       .length = DIV_ROUND_UP(push_end - push_start, 32),
    };
 
-   /* Mapping from brw_ubo_range to anv_push_range */
-   int push_range_idx_map[4] = { -1, -1, -1, -1 };
+   if (has_push_intrinsic) {
+      nir_foreach_function(function, nir) {
+         if (!function->impl)
+            continue;
+
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr_safe(instr, block) {
+               if (instr->type != nir_instr_type_intrinsic)
+                  continue;
+
+               nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+               switch (intrin->intrinsic) {
+               case nir_intrinsic_load_push_constant:
+                  intrin->intrinsic = nir_intrinsic_load_uniform;
+                  nir_intrinsic_set_base(intrin,
+                                         nir_intrinsic_base(intrin) -
+                                         push_start);
+                  break;
+
+               default:
+                  break;
+               }
+            }
+         }
+      }
+   }
 
    if (push_ubo_ranges) {
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
@@ -144,6 +170,16 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
       if (push_constant_range.length > 0)
          map->push_ranges[n++] = push_constant_range;
 
+      if (robust_buffer_access) {
+         const uint32_t push_reg_mask_offset =
+            offsetof(struct anv_push_constants, push_reg_mask);
+         assert(push_reg_mask_offset >= push_start);
+         prog_data->push_reg_mask_param =
+            (push_reg_mask_offset - push_start) / 4;
+      }
+
+      unsigned range_start_reg = push_constant_range.length;
+
       for (int i = 0; i < 4; i++) {
          struct brw_ubo_range *ubo_range = &prog_data->ubo_ranges[i];
          if (ubo_range->length == 0)
@@ -157,7 +193,6 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
          const struct anv_pipeline_binding *binding =
             &map->surface_to_descriptor[ubo_range->block];
 
-         push_range_idx_map[i] = n;
          map->push_ranges[n++] = (struct anv_push_range) {
             .set = binding->set,
             .index = binding->index,
@@ -165,6 +200,14 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
             .start = ubo_range->start,
             .length = ubo_range->length,
          };
+
+         /* We only bother to shader-zero pushed client UBOs */
+         if (binding->set < MAX_SETS && robust_buffer_access) {
+            prog_data->zero_push_reg |= BITFIELD64_RANGE(range_start_reg,
+                                                         ubo_range->length);
+         }
+
+         range_start_reg += ubo_range->length;
       }
    } else {
       /* For Ivy Bridge, the push constants packets have a different
@@ -176,135 +219,6 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
        * better to just provide one in push_ranges[0].
        */
       map->push_ranges[0] = push_constant_range;
-   }
-
-   if (has_push_intrinsic || (push_ubo_ranges && robust_buffer_access)) {
-      nir_foreach_function(function, nir) {
-         if (!function->impl)
-            continue;
-
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
-
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (instr->type != nir_instr_type_intrinsic)
-                  continue;
-
-               nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-               switch (intrin->intrinsic) {
-               case nir_intrinsic_load_ubo: {
-                  if (!robust_buffer_access)
-                     break;
-
-                  if (!nir_src_is_const(intrin->src[0]) ||
-                      !nir_src_is_const(intrin->src[1]))
-                     break;
-
-                  uint32_t index = nir_src_as_uint(intrin->src[0]);
-                  uint64_t offset = nir_src_as_uint(intrin->src[1]);
-                  uint32_t size = intrin->num_components *
-                                  (intrin->dest.ssa.bit_size / 8);
-
-                  int ubo_range_idx = -1;
-                  for (unsigned i = 0; i < 4; i++) {
-                     const struct brw_ubo_range *range =
-                        &prog_data->ubo_ranges[i];
-                     if (range->block == index &&
-                         offset + size > range->start * 32 &&
-                         offset < (range->start + range->length) * 32) {
-                        ubo_range_idx = i;
-                        break;
-                     }
-                  }
-
-                  if (ubo_range_idx < 0)
-                     break;
-
-                  b.cursor = nir_after_instr(&intrin->instr);
-
-                  assert(push_range_idx_map[ubo_range_idx] >= 0);
-                  const uint32_t ubo_size_offset =
-                     offsetof(struct anv_push_constants, push_ubo_sizes) +
-                     push_range_idx_map[ubo_range_idx] * sizeof(uint32_t);
-
-                  nir_intrinsic_instr *load_size =
-                     nir_intrinsic_instr_create(b.shader,
-                                                nir_intrinsic_load_uniform);
-                  load_size->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-                  nir_intrinsic_set_base(load_size,
-                                         ubo_size_offset - push_start);
-                  nir_intrinsic_set_range(load_size, 4);
-                  nir_intrinsic_set_type(load_size, nir_type_uint32);
-                  load_size->num_components = 1;
-                  nir_ssa_dest_init(&load_size->instr, &load_size->dest,
-                                    1, 32, NULL);
-                  nir_builder_instr_insert(&b, &load_size->instr);
-
-                  /* Do the size checks per-component.  Thanks to scalar block
-                   * layout, we could end up with a single vector straddling a
-                   * 32B boundary.
-                   *
-                   * We intentionally push a size starting from the UBO
-                   * binding in the descriptor set rather than starting from
-                   * the started of the pushed range.  This prevents us from
-                   * accidentally flagging things as out-of-bounds due to
-                   * roll-over if a vector access crosses the push range
-                   * boundary.
-                   *
-                   * We align up to 32B so that we can get better CSE.
-                   *
-                   * We check
-                   *
-                   *    offset + size - 1 < push_ubo_sizes[i]
-                   *
-                   * rather than
-                   *
-                   *    offset + size <= push_ubo_sizes[i]
-                   *
-                   * because it properly returns OOB for the case where
-                   * offset + size == 0.
-                   */
-                  nir_const_value last_byte_const[NIR_MAX_VEC_COMPONENTS];
-                  for (unsigned c = 0; c < intrin->dest.ssa.num_components; c++) {
-                     assert(intrin->dest.ssa.bit_size % 8 == 0);
-                     const unsigned comp_size_B = intrin->dest.ssa.bit_size / 8;
-                     const uint32_t comp_last_byte =
-                        align_u32(offset + (c + 1) * comp_size_B,
-                                  ANV_UBO_BOUNDS_CHECK_ALIGNMENT) - 1;
-                     last_byte_const[c] =
-                        nir_const_value_for_uint(comp_last_byte, 32);
-                  }
-                  nir_ssa_def *last_byte =
-                     nir_build_imm(&b, intrin->dest.ssa.num_components, 32,
-                                   last_byte_const);
-                  nir_ssa_def *in_bounds =
-                     nir_ult(&b, last_byte, &load_size->dest.ssa);
-
-                  nir_ssa_def *zero =
-                     nir_imm_zero(&b, intrin->dest.ssa.num_components,
-                                      intrin->dest.ssa.bit_size);
-                  nir_ssa_def *value =
-                     nir_bcsel(&b, in_bounds, &intrin->dest.ssa, zero);
-                  nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                                 nir_src_for_ssa(value),
-                                                 value->parent_instr);
-                  break;
-               }
-
-               case nir_intrinsic_load_push_constant:
-                  intrin->intrinsic = nir_intrinsic_load_uniform;
-                  nir_intrinsic_set_base(intrin,
-                                         nir_intrinsic_base(intrin) -
-                                         push_start);
-                  break;
-
-               default:
-                  break;
-               }
-            }
-         }
-      }
    }
 
    /* Now that we're done computing the push constant portion of the

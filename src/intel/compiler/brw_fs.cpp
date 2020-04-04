@@ -1604,6 +1604,8 @@ fs_visitor::assign_curb_setup()
 
    prog_data->curb_read_length = uniform_push_length + ubo_push_length;
 
+   uint64_t used = 0;
+
    /* Map the offsets in the UNIFORM file to fixed HW regs. */
    foreach_block_and_inst(block, fs_inst, inst, cfg) {
       for (unsigned int i = 0; i < inst->sources; i++) {
@@ -1625,6 +1627,9 @@ fs_visitor::assign_curb_setup()
                constant_nr = 0;
             }
 
+            assert(constant_nr / 8 < 64);
+            used |= BITFIELD64_BIT(constant_nr / 8);
+
 	    struct brw_reg brw_reg = brw_vec1_grf(payload.num_regs +
 						  constant_nr / 8,
 						  constant_nr % 8);
@@ -1637,6 +1642,44 @@ fs_visitor::assign_curb_setup()
                inst->src[i].offset % 4);
 	 }
       }
+   }
+
+   uint64_t want_zero = used & stage_prog_data->zero_push_reg;
+   if (want_zero) {
+      assert(!compiler->compact_params);
+      fs_builder ubld = bld.exec_all().group(8, 0).at(
+         cfg->first_block(), cfg->first_block()->start());
+
+      /* push_reg_mask_param is in 32-bit units */
+      unsigned mask_param = stage_prog_data->push_reg_mask_param;
+      struct brw_reg mask = brw_vec1_grf(payload.num_regs + mask_param / 8,
+                                                            mask_param % 8);
+
+      fs_reg b32;
+      for (unsigned i = 0; i < 64; i++) {
+         if (i % 16 == 0 && (want_zero & BITFIELD64_RANGE(i, 16))) {
+            fs_reg shifted = ubld.vgrf(BRW_REGISTER_TYPE_W, 2);
+            ubld.SHL(horiz_offset(shifted, 8),
+                     byte_offset(retype(mask, BRW_REGISTER_TYPE_W), i / 8),
+                     brw_imm_v(0x01234567));
+            ubld.SHL(shifted, horiz_offset(shifted, 8), brw_imm_w(8));
+
+            fs_builder ubld16 = ubld.group(16, 0);
+            b32 = ubld16.vgrf(BRW_REGISTER_TYPE_D);
+            ubld16.group(16, 0).ASR(b32, shifted, brw_imm_w(15));
+         }
+
+         if (want_zero & BITFIELD64_BIT(i)) {
+            assert(i < prog_data->curb_read_length);
+            struct brw_reg push_reg =
+               retype(brw_vec8_grf(payload.num_regs + i, 0),
+                      BRW_REGISTER_TYPE_D);
+
+            ubld.AND(push_reg, push_reg, component(b32, i % 16));
+         }
+      }
+
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
    }
 
    /* This may be updated in assign_urb_setup or assign_vs_urb_setup. */
