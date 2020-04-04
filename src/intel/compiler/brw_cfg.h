@@ -310,6 +310,11 @@ struct cfg_t {
 
    void remove_block(bblock_t *block);
 
+   bblock_t *first_block();
+   const bblock_t *first_block() const;
+   bblock_t *last_block();
+   const bblock_t *last_block() const;
+
    bblock_t *new_block();
    void set_next_block(bblock_t **cur, bblock_t *block, int ip);
    void make_block_array();
@@ -327,6 +332,56 @@ struct cfg_t {
 
    unsigned cycle_count;
 };
+
+static inline struct bblock_t *
+cfg_first_block(struct cfg_t *cfg)
+{
+   return (struct bblock_t *)exec_list_get_head(&cfg->block_list);
+}
+
+static inline const struct bblock_t *
+cfg_first_block_const(const struct cfg_t *cfg)
+{
+   return (const struct bblock_t *)exec_list_get_head_const(&cfg->block_list);
+}
+
+static inline struct bblock_t *
+cfg_last_block(struct cfg_t *cfg)
+{
+   return (struct bblock_t *)exec_list_get_tail(&cfg->block_list);
+}
+
+static inline const struct bblock_t *
+cfg_last_block_const(const struct cfg_t *cfg)
+{
+   return (const struct bblock_t *)exec_list_get_tail_const(&cfg->block_list);
+}
+
+#ifdef __cplusplus
+inline bblock_t *
+cfg_t::first_block()
+{
+   return cfg_first_block(this);
+}
+
+const inline bblock_t *
+cfg_t::first_block() const
+{
+   return cfg_first_block_const(this);
+}
+
+inline bblock_t *
+cfg_t::last_block()
+{
+   return cfg_last_block(this);
+}
+
+const inline bblock_t *
+cfg_t::last_block() const
+{
+   return cfg_last_block_const(this);
+}
+#endif
 
 /* Note that this is implemented with a double for loop -- break will
  * break from the inner loop only!
