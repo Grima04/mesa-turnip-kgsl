@@ -685,7 +685,7 @@ cleanup_self_movs(struct ir3 *ir)
 			}
 
 			for (unsigned i = 0; i < instr->deps_count; i++) {
-				if (is_self_mov(instr->deps[i])) {
+				if (instr->deps[i] && is_self_mov(instr->deps[i])) {
 					list_delinit(&instr->deps[i]->node);
 					instr->deps[i] = instr->deps[i]->regs[1]->instr;
 				}

@@ -95,7 +95,7 @@ remove_unused_by_block(struct ir3_block *block)
 				/* tex (cat5) instructions have a writemask, so we can
 				 * mask off unused components.  Other instructions do not.
 				 */
-				if (is_tex_or_prefetch(src) && (src->regs[0]->wrmask > 1)) {
+				if (src && is_tex_or_prefetch(src) && (src->regs[0]->wrmask > 1)) {
 					src->regs[0]->wrmask &= ~(1 << instr->split.off);
 
 					/* prune no-longer needed right-neighbors.  We could
@@ -114,6 +114,13 @@ remove_unused_by_block(struct ir3_block *block)
 					}
 				}
 			}
+
+			/* prune false-deps, etc: */
+			foreach_ssa_use (use, instr)
+				foreach_ssa_srcp_n (srcp, n, use)
+					if (*srcp == instr)
+						*srcp = NULL;
+
 			list_delinit(&instr->node);
 			progress = true;
 		}
@@ -206,8 +213,14 @@ compute_depth_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 void
 ir3_depth(struct ir3 *ir, struct ir3_shader_variant *so)
 {
+	void *mem_ctx = ralloc_context(NULL);
 	bool progress;
+
+	ir3_find_ssa_uses(ir, mem_ctx, true);
+
 	do {
 		progress = compute_depth_and_remove_unused(ir, so);
 	} while (progress);
+
+	ralloc_free(mem_ctx);
 }

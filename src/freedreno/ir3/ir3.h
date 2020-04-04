@@ -1118,13 +1118,16 @@ static inline unsigned __ssa_src_cnt(struct ir3_instruction *instr)
 	return cnt;
 }
 
-static inline struct ir3_instruction * __ssa_src_n(struct ir3_instruction *instr, unsigned n)
+static inline struct ir3_instruction **
+__ssa_srcp_n(struct ir3_instruction *instr, unsigned n)
 {
 	if (n == (instr->regs_count + instr->deps_count))
-		return instr->address;
+		return &instr->address;
 	if (n >= instr->regs_count)
-		return instr->deps[n - instr->regs_count];
-	return ssa(instr->regs[n]);
+		return &instr->deps[n - instr->regs_count];
+	if (ssa(instr->regs[n]))
+		return &instr->regs[n]->instr;
+	return NULL;
 }
 
 static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
@@ -1136,12 +1139,18 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 	return false;
 }
 
-#define __src_cnt(__instr) ((__instr)->address ? (__instr)->regs_count : (__instr)->regs_count - 1)
+#define foreach_ssa_srcp_n(__srcp, __n, __instr) \
+	for (struct ir3_instruction **__srcp = (void *)~0; __srcp; __srcp = NULL) \
+		for (unsigned __cnt = __ssa_src_cnt(__instr), __n = 0; __n < __cnt; __n++) \
+			if ((__srcp = __ssa_srcp_n(__instr, __n)))
+
+#define foreach_ssa_srcp(__srcp, __instr) \
+	foreach_ssa_srcp_n(__srcp, __i, __instr)
 
 /* iterator for an instruction's SSA sources (instr), also returns src #: */
 #define foreach_ssa_src_n(__srcinst, __n, __instr) \
-	for (unsigned __cnt = __ssa_src_cnt(__instr), __n = 0; __n < __cnt; __n++) \
-		if ((__srcinst = __ssa_src_n(__instr, __n)))
+	foreach_ssa_srcp_n(__srcp, __n, __instr) \
+		if ((__srcinst = *__srcp))
 
 /* iterator for an instruction's SSA sources (instr): */
 #define foreach_ssa_src(__srcinst, __instr) \

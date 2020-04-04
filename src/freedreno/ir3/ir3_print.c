@@ -73,7 +73,11 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 	printf("%04u:", instr->name);
 	printf("%04u:", instr->ip);
 	printf("%03d:", instr->depth);
-	printf("%03u: ", instr->use_count);
+	if (instr->flags & IR3_INSTR_UNUSED) {
+		printf("XXX: ");
+	} else {
+		printf("%03u: ", instr->use_count);
+	}
 
 	if (flags) {
 		printf("\t");
