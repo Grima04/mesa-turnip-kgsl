@@ -280,7 +280,8 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
          * makes code a lot simpler */
 
         bool renderable = res->bind &
-                          (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL);
+                          (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL) &&
+                          res->target != PIPE_BUFFER;
         bool afbc = pres->layout == MALI_TEXTURE_AFBC;
         bool tiled = pres->layout == MALI_TEXTURE_TILED;
         bool should_align = renderable || tiled;
