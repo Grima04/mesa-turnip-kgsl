@@ -478,9 +478,16 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 	 * for write after read hazards:
 	 */
 	struct ir3_instruction *instr = name_to_instr(ctx, n);
-	if (is_sfu(instr) && instr->regs[1]->instr) {
-		struct ir3_instruction *src = instr->regs[1]->instr;
-		unsigned src_n = scalar_name(ctx, src, 0);
+	if (is_sfu(instr)) {
+		struct ir3_register *src = instr->regs[1];
+		int src_n;
+
+		if ((src->flags & IR3_REG_ARRAY) && !(src->flags & IR3_REG_RELATIV)) {
+			struct ir3_array *arr = ir3_lookup_array(ctx->ir, src->array.id);
+			src_n = arr->base + src->array.offset;
+		} else {
+			src_n = scalar_name(ctx, src->instr, 0);
+		}
 
 		unsigned reg = ra_get_node_reg(ctx->g, src_n);
 
