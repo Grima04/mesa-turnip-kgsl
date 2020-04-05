@@ -231,11 +231,11 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
 
         /* Check the output varyings */
 
-        if (sz_expected) {
-                uint32_t *output = (uint32_t *) (var->cpu + 1024);
-                float *foutput = (float *) output;
-                float *fexpected = (float *) expected;
+        uint32_t *output = (uint32_t *) (var->cpu + 1024);
+        float *foutput = (float *) output;
+        float *fexpected = (float *) expected;
 
+        if (sz_expected) {
                 unsigned comp = memcmp(output, expected, sz_expected);
                 succ &= (comp == 0);
 
@@ -252,6 +252,13 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
 
                         fprintf(stderr, "\n");
                 }
+        } else if (debug == BIT_DEBUG_ALL) {
+                fprintf(stderr, "got [");
+
+                for (unsigned i = 0; i < 4; ++i)
+                        fprintf(stderr, "%08X /* %f */ ", output[i], foutput[i]);
+
+                fprintf(stderr, "\n");
         }
 
         return succ;
