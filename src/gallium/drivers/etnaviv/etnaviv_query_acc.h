@@ -69,9 +69,6 @@ etna_acc_query_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
 {
    const struct etna_acc_sample_provider *p = aq->provider;
 
-   if (!aq->base.active)
-      return;
-
    p->suspend(aq, ctx);
    aq->samples++;
 }
@@ -80,9 +77,6 @@ static inline void
 etna_acc_query_resume(struct etna_acc_query *aq, struct etna_context *ctx)
 {
    const struct etna_acc_sample_provider *p = aq->provider;
-
-   if (!aq->base.active)
-      return;
 
    p->resume(aq, ctx);
    aq->samples++;

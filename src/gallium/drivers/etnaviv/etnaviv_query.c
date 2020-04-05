@@ -61,11 +61,7 @@ etna_begin_query(struct pipe_context *pctx, struct pipe_query *pq)
 {
    struct etna_query *q = etna_query(pq);
 
-   if (q->active)
-      return false;
-
    q->funcs->begin_query(etna_context(pctx), q);
-   q->active = true;
 
    return true;
 }
@@ -75,11 +71,7 @@ etna_end_query(struct pipe_context *pctx, struct pipe_query *pq)
 {
    struct etna_query *q = etna_query(pq);
 
-   if (!q->active)
-      return false;
-
    q->funcs->end_query(etna_context(pctx), q);
-   q->active = false;
 
    return true;
 }
@@ -89,9 +81,6 @@ etna_get_query_result(struct pipe_context *pctx, struct pipe_query *pq,
                       bool wait, union pipe_query_result *result)
 {
    struct etna_query *q = etna_query(pq);
-
-   if (q->active)
-      return false;
 
    util_query_clear_result(result, q->type);
 
