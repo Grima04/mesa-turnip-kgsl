@@ -520,7 +520,7 @@ bi_fuse_csel_cond(bi_instruction *csel, nir_alu_src cond,
         /* We found one, let's fuse it in */
         csel->csel_cond = bcond;
         bi_copy_src(csel, alu, 0, 0, constants_left, constant_shift);
-        bi_copy_src(csel, alu, 1, 3, constants_left, constant_shift);
+        bi_copy_src(csel, alu, 1, 1, constants_left, constant_shift);
 }
 
 static void
@@ -571,8 +571,14 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         unsigned num_inputs = nir_op_infos[instr->op].num_inputs;
         assert(num_inputs <= ARRAY_SIZE(alu.src));
 
-        for (unsigned i = 0; i < num_inputs; ++i)
-                bi_copy_src(&alu, instr, i, i, &constants_left, &constant_shift);
+        for (unsigned i = 0; i < num_inputs; ++i) {
+                unsigned f = 0;
+
+                if (i && alu.type == BI_CSEL)
+                        f++;
+
+                bi_copy_src(&alu, instr, i, i + f, &constants_left, &constant_shift);
+        }
 
         /* Op-specific fixup */
         switch (instr->op) {
@@ -642,8 +648,8 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         if (alu.type == BI_CSEL) {
                 /* Default to csel3 */
                 alu.csel_cond = BI_COND_NE;
-                alu.src[3] = BIR_INDEX_ZERO;
-                alu.src_types[3] = alu.src_types[0];
+                alu.src[1] = BIR_INDEX_ZERO;
+                alu.src_types[1] = alu.src_types[0];
 
                 bi_fuse_csel_cond(&alu, instr->src[0],
                                 &constants_left, &constant_shift);

@@ -691,10 +691,10 @@ bi_pack_fma_csel(bi_instruction *ins, struct bi_registers *regs)
 
         unsigned size = nir_alu_type_get_type_size(ins->dest_type);
 
-        unsigned cmp_0 = (flip ? 3 : 0);
-        unsigned cmp_1 = (flip ? 0 : 3);
-        unsigned res_0 = (invert ? 2 : 1);
-        unsigned res_1 = (invert ? 1 : 2);
+        unsigned cmp_0 = (flip ? 1 : 0);
+        unsigned cmp_1 = (flip ? 0 : 1);
+        unsigned res_0 = (invert ? 3 : 2);
+        unsigned res_1 = (invert ? 2 : 3);
         
         struct bifrost_csel4 pack = {
                 .src0 = bi_get_src(ins, regs, cmp_0, true),
