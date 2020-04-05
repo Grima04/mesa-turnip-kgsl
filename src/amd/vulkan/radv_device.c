@@ -1000,7 +1000,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->storageBuffer16BitAccess = !pdevice->use_aco;
 			features->uniformAndStorageBuffer16BitAccess = !pdevice->use_aco;
 			features->storagePushConstant16 = !pdevice->use_aco;
-			features->storageInputOutput16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
+			features->storageInputOutput16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
@@ -1218,7 +1218,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->storageBuffer16BitAccess = !pdevice->use_aco;
 			features->uniformAndStorageBuffer16BitAccess = !pdevice->use_aco;
 			features->storagePushConstant16 = !pdevice->use_aco;
-			features->storageInputOutput16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
+			features->storageInputOutput16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
 			features->multiview = true;
 			features->multiviewGeometryShader = true;
 			features->multiviewTessellationShader = true;
