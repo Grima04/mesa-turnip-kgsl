@@ -1512,8 +1512,13 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 	/* On AMD hardware, denormals and rounding modes for fp16/fp64 are
 	 * controlled by the same config register.
 	 */
-	p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
-	p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+	if (pdevice->rad_info.has_double_rate_fp16) {
+		p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+		p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+	} else {
+		p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+		p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+	}
 
 	/* Do not allow both preserving and flushing denorms because different
 	 * shaders in the same pipeline can have different settings and this
@@ -1530,10 +1535,10 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 	p->shaderSignedZeroInfNanPreserveFloat32 = true;
 
 	p->shaderDenormFlushToZeroFloat16 = false;
-	p->shaderDenormPreserveFloat16 = pdevice->rad_info.chip_class >= GFX8;
-	p->shaderRoundingModeRTEFloat16 = pdevice->rad_info.chip_class >= GFX8;
+	p->shaderDenormPreserveFloat16 = pdevice->rad_info.has_double_rate_fp16;
+	p->shaderRoundingModeRTEFloat16 = pdevice->rad_info.has_double_rate_fp16;
 	p->shaderRoundingModeRTZFloat16 = false;
-	p->shaderSignedZeroInfNanPreserveFloat16 = pdevice->rad_info.chip_class >= GFX8;
+	p->shaderSignedZeroInfNanPreserveFloat16 = pdevice->rad_info.has_double_rate_fp16;
 
 	p->shaderDenormFlushToZeroFloat64 = false;
 	p->shaderDenormPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
