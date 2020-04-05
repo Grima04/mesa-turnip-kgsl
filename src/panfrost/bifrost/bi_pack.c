@@ -77,6 +77,27 @@ struct bi_registers {
         bool first_instruction;
 };
 
+static inline void
+bi_print_ports(struct bi_registers *regs)
+{
+        for (unsigned i = 0; i < 2; ++i) {
+                if (regs->enabled[i])
+                        printf("port %u: %u\n", i, regs->port[i]);
+        }
+
+        if (regs->write_fma || regs->write_add) {
+                printf("port 2 (%s): %u\n",
+                                regs->write_fma ? "FMA" : "ADD",
+                                regs->port[2]);
+        }
+
+        if ((regs->write_fma && regs->write_add) || regs->read_port3) {
+                printf("port 3 (%s): %u\n",
+                                regs->read_port3 ? "read" : "ADD",
+                                regs->port[3]);
+        }
+}
+
 /* The uniform/constant slot allows loading a contiguous 64-bit immediate or
  * pushed uniform per bundle. Figure out which one we need in the bundle (the
  * scheduler needs to ensure we only have one type per bundle), validate
@@ -216,7 +237,11 @@ bi_assign_port_read(struct bi_registers *regs, unsigned src)
         if (!regs->read_port3) {
                 regs->port[3] = reg;
                 regs->read_port3 = true;
+                return;
         }
+
+        bi_print_ports(regs);
+        unreachable("Failed to find a free port for src");
 }
 
 static struct bi_registers
