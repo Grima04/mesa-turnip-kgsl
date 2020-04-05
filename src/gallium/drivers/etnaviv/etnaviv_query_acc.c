@@ -78,7 +78,7 @@ realloc_query_bo(struct etna_context *ctx, struct etna_acc_query *aq)
    etna_bo_cpu_fini(rsc->bo);
 }
 
-static bool
+static void
 etna_acc_begin_query(struct etna_context *ctx, struct etna_query *q)
 {
    struct etna_acc_query *aq = etna_acc_query(q);
@@ -93,8 +93,6 @@ etna_acc_begin_query(struct etna_context *ctx, struct etna_query *q)
    /* add to active list */
    assert(list_is_empty(&aq->node));
    list_addtail(&aq->node, &ctx->active_acc_queries);
-
-   return true;
 }
 
 static void
