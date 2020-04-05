@@ -279,7 +279,7 @@ bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
                 fprintf(fp, ".flat");
 }
 
-static const char *
+const char *
 bi_cond_name(enum bi_cond cond)
 {
         switch (cond) {

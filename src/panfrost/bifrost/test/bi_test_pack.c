@@ -164,6 +164,25 @@ bit_generate_vector(uint32_t *mem)
                 mem[i] = rand();
 }
 
+static bi_instruction
+bit_ins(enum bi_class C, unsigned argc, nir_alu_type base, unsigned size)
+{
+        nir_alu_type T = base | size;
+
+        bi_instruction ins = {
+                .type = C,
+                .dest = BIR_INDEX_REGISTER | 0,
+                .dest_type = T,
+        };
+
+        for (unsigned i = 0; i < argc; ++i) {
+                ins.src[i] = BIR_INDEX_REGISTER | i;
+                ins.src_types[i] = T;
+        }
+
+        return ins;
+}
+
 /* Tests all 64 combinations of floating point modifiers for a given
  * instruction / floating-type / test type */
 
@@ -172,18 +191,7 @@ bit_fmod_helper(struct panfrost_device *dev,
                 enum bi_class c, unsigned size, bool fma,
                 uint32_t *input, enum bit_debug debug)
 {
-        nir_alu_type T = nir_type_float | size;
-
-        bi_instruction ins = {
-                .type = c,
-                .src = {
-                        BIR_INDEX_REGISTER | 0,
-                        BIR_INDEX_REGISTER | 1,
-                },
-                .src_types = { T, T },
-                .dest = BIR_INDEX_REGISTER | 2,
-                .dest_type = T,
-        };
+        bi_instruction ins = bit_ins(c, 2, nir_type_float, size);
 
         for (unsigned outmod = 0; outmod < 4; ++outmod) {
                 for (unsigned inmod = 0; inmod < 16; ++inmod) {
@@ -213,19 +221,7 @@ static void
 bit_fma_helper(struct panfrost_device *dev,
                 unsigned size, uint32_t *input, enum bit_debug debug)
 {
-        nir_alu_type T = nir_type_float | size;
-
-        bi_instruction ins = {
-                .type = BI_FMA,
-                .src = {
-                        BIR_INDEX_REGISTER | 0,
-                        BIR_INDEX_REGISTER | 1,
-                        BIR_INDEX_REGISTER | 2,
-                },
-                .src_types = { T, T, T },
-                .dest = BIR_INDEX_REGISTER | 3,
-                .dest_type = T,
-        };
+        bi_instruction ins = bit_ins(BI_FMA, 3, nir_type_float, size);
 
         for (unsigned outmod = 0; outmod < 4; ++outmod) {
                 for (unsigned inmod = 0; inmod < 8; ++inmod) {
@@ -244,7 +240,24 @@ bit_fma_helper(struct panfrost_device *dev,
         }
 }
 
+static void
+bit_csel_helper(struct panfrost_device *dev,
+                unsigned size, uint32_t *input, enum bit_debug debug)
+{
+        bi_instruction ins = bit_ins(BI_CSEL, 4, nir_type_uint, size);
+        
+        /* SCHEDULER: We can only read 3 registers at once. */
+        ins.src[2] = ins.src[0];
 
+        for (enum bi_cond cond = BI_COND_LT; cond <= BI_COND_NE; ++cond) {
+                ins.csel_cond = cond;
+
+                if (!bit_test_single(dev, &ins, input, true, debug)) {
+                        fprintf(stderr, "FAIL: csel%u.%s\n",
+                                        size, bi_cond_name(cond));
+                }
+        }
+}
 
 void
 bit_fmod(struct panfrost_device *dev, enum bit_debug debug)
@@ -284,5 +297,26 @@ bit_fma(struct panfrost_device *dev, enum bit_debug debug)
                         (uint32_t *) input32;
 
                 bit_fma_helper(dev, sz, input, debug);
+        }
+}
+
+void
+bit_csel(struct panfrost_device *dev, enum bit_debug debug)
+{
+        float input32[4] = { 0.2, 1.6, -3.5, 3.0 };
+
+        uint32_t input16[4] = {
+                _mesa_float_to_half(input32[0]) | (_mesa_float_to_half(-1.8) << 16),
+                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(0.6) << 16),
+                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(16.2) << 16),
+                _mesa_float_to_half(input32[2]) | (_mesa_float_to_half(4.9) << 16),
+        };
+
+        for (unsigned sz = 32; sz <= 32; sz *= 2) {
+                uint32_t *input =
+                        (sz == 16) ? input16 :
+                        (uint32_t *) input32;
+
+                bit_csel_helper(dev, sz, input, debug);
         }
 }
