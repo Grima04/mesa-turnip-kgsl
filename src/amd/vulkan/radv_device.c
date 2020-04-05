@@ -1106,7 +1106,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
 			VkPhysicalDeviceShaderFloat16Int8Features *features =
 				(VkPhysicalDeviceShaderFloat16Int8Features*)ext;
-			features->shaderFloat16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->shaderFloat16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco;
 			features->shaderInt8 = !pdevice->use_aco;
 			break;
 		}
@@ -1239,7 +1239,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->storagePushConstant8 = !pdevice->use_aco;
 			features->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 			features->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9;
-			features->shaderFloat16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->shaderFloat16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco;
 			features->shaderInt8 = !pdevice->use_aco;
 			features->descriptorIndexing = true;
 			features->shaderInputAttachmentArrayDynamicIndexing = true;
