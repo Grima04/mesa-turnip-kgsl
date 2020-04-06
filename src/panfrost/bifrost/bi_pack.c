@@ -634,6 +634,17 @@ bi_pack_fma_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
         RETURN_PACKED(pack);
 }
 
+static unsigned
+bi_pack_add_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
+{
+        struct bifrost_add_inst pack = {
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .op = op
+        };
+
+        RETURN_PACKED(pack);
+}
+
 static enum bifrost_csel_cond
 bi_cond_to_csel(enum bi_cond cond, bool *flip, bool *invert, nir_alu_type T)
 {
@@ -975,6 +986,20 @@ bi_pack_add_blend(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
+bi_pack_add_special(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned op = 0;
+
+        if (ins->op.special == BI_SPECIAL_FRCP) {
+                op = BIFROST_ADD_OP_FRCP_FAST_F32;
+        } else {
+                op = BIFROST_ADD_OP_FRSQ_FAST_F32;
+        }
+
+        return bi_pack_add_1src(ins, regs, op);
+}
+
+static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         if (!bundle.add)
@@ -1013,6 +1038,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_STORE_VAR:
                 return bi_pack_add_st_vary(clause, bundle.add, regs);
         case BI_SPECIAL:
+                return bi_pack_add_special(bundle.add, regs);
         case BI_SWIZZLE:
         case BI_TEX:
         case BI_ROUND:

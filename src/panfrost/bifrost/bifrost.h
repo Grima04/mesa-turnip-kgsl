@@ -110,6 +110,8 @@ struct bifrost_fma_2src {
 } __attribute__((packed));
 
 #define BIFROST_ADD_OP_BLEND (0x1952c)
+#define BIFROST_ADD_OP_FRCP_FAST_F32 (0x0cc00)
+#define BIFROST_ADD_OP_FRSQ_FAST_F32 (0x0cc20)
 
 struct bifrost_add_inst {
         unsigned src0 : 3;
