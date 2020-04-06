@@ -561,6 +561,7 @@ EXTRA_EXT(NV_conservative_raster_pre_snap_triangles);
 EXTRA_EXT(ARB_sample_locations);
 EXTRA_EXT(AMD_framebuffer_multisample_advanced);
 EXTRA_EXT(ARB_spirv_extensions);
+EXTRA_EXT(NV_viewport_swizzle);
 
 static const int
 extra_ARB_color_buffer_float_or_glcore[] = {
@@ -1325,6 +1326,20 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       v->value_int_n.n = ctx->Const.NumSupportedMultisampleModes * 3;
       memcpy(v->value_int_n.ints, ctx->Const.SupportedMultisampleModes,
              v->value_int_n.n * sizeof(GLint));
+      break;
+
+   /* GL_NV_viewport_swizzle */
+   case GL_VIEWPORT_SWIZZLE_X_NV:
+      v->value_enum = ctx->ViewportArray[0].SwizzleX;
+      break;
+   case GL_VIEWPORT_SWIZZLE_Y_NV:
+      v->value_enum = ctx->ViewportArray[0].SwizzleY;
+      break;
+   case GL_VIEWPORT_SWIZZLE_Z_NV:
+      v->value_enum = ctx->ViewportArray[0].SwizzleZ;
+      break;
+   case GL_VIEWPORT_SWIZZLE_W_NV:
+      v->value_enum = ctx->ViewportArray[0].SwizzleW;
       break;
    }
 }
@@ -2825,6 +2840,35 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
          goto invalid_enum;
       v->value_matrix = ctx->TextureMatrixStack[index].Top;
       return TYPE_MATRIX_T;
+   /* GL_NV_viewport_swizzle */
+   case GL_VIEWPORT_SWIZZLE_X_NV:
+      if (!ctx->Extensions.NV_viewport_swizzle)
+         goto invalid_enum;
+      if (index >= ctx->Const.MaxViewports)
+         goto invalid_value;
+      v->value_int = ctx->ViewportArray[index].SwizzleX;
+      return TYPE_INT;
+   case GL_VIEWPORT_SWIZZLE_Y_NV:
+      if (!ctx->Extensions.NV_viewport_swizzle)
+         goto invalid_enum;
+      if (index >= ctx->Const.MaxViewports)
+         goto invalid_value;
+      v->value_int = ctx->ViewportArray[index].SwizzleY;
+      return TYPE_INT;
+   case GL_VIEWPORT_SWIZZLE_Z_NV:
+      if (!ctx->Extensions.NV_viewport_swizzle)
+         goto invalid_enum;
+      if (index >= ctx->Const.MaxViewports)
+         goto invalid_value;
+      v->value_int = ctx->ViewportArray[index].SwizzleZ;
+      return TYPE_INT;
+   case GL_VIEWPORT_SWIZZLE_W_NV:
+      if (!ctx->Extensions.NV_viewport_swizzle)
+         goto invalid_enum;
+      if (index >= ctx->Const.MaxViewports)
+         goto invalid_value;
+      v->value_int = ctx->ViewportArray[index].SwizzleW;
+      return TYPE_INT;
    }
 
  invalid_enum:

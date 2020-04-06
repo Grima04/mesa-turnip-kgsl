@@ -1312,6 +1312,9 @@ struct gl_viewport_attrib
    GLfloat X, Y;		/**< position */
    GLfloat Width, Height;	/**< size */
    GLfloat Near, Far;		/**< Depth buffer range */
+
+   /**< GL_NV_viewport_swizzle */
+   GLenum16 SwizzleX, SwizzleY, SwizzleZ, SwizzleW;
 };
 
 
@@ -4438,6 +4441,7 @@ struct gl_extensions
    GLboolean NV_conservative_raster_dilate;
    GLboolean NV_conservative_raster_pre_snap_triangles;
    GLboolean NV_conservative_raster_pre_snap;
+   GLboolean NV_viewport_swizzle;
    GLboolean NVX_gpu_memory_info;
    GLboolean TDFX_texture_compression_FXT1;
    GLboolean OES_EGL_image;

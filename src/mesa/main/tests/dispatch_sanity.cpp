@@ -1435,6 +1435,9 @@ const struct function common_desktop_functions_possible[] = {
    { "glProgramUniform3ui64vARB", 40, -1 },
    { "glProgramUniform4ui64vARB", 40, -1 },
 
+   /* GL_NV_viewport_swizzle */
+   { "glViewportSwizzleNV", 11, -1 },
+
    { NULL, 0, -1 }
 };
 
@@ -2769,6 +2772,9 @@ const struct function gles31_functions_possible[] = {
    { "glFramebufferSampleLocationsfvARB", 31, -1 },
    { "glNamedFramebufferSampleLocationsfvARB", 31, -1 },
    { "glEvaluateDepthValuesARB", 31, -1 },
+
+   /* GL_NV_viewport_swizzle */
+   { "glViewportSwizzleNV", 31, -1 },
 
    { NULL, 0, -1 },
  };
