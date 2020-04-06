@@ -2817,8 +2817,6 @@ tu6_emit_streamout(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit_regs(cs, A6XX_VPC_SO_BUFFER_SIZE(i, buf->size));
 
       if (cmd->state.streamout_reset & (1 << i)) {
-         offset *= tf->stride[i];
-
          tu_cs_emit_regs(cs, A6XX_VPC_SO_BUFFER_OFFSET(i, offset));
          cmd->state.streamout_reset &= ~(1  << i);
       } else {
