@@ -984,6 +984,8 @@ if cc.get_id() == 'msvc'
                '/wd4146',  # unary minus operator applied to unsigned type, result still unsigned
                '/wd4200',  # nonstandard extension used: zero-sized array in struct/union
                '/wd4624',  # destructor was implicitly defined as deleted [from LLVM]
+               '/wd4309',  # 'initializing': truncation of constant value
+               '/wd4838',  # conversion from 'int' to 'const char' requires a narrowing conversion
               ]
     if cc.has_argument(a)
       c_args += a
