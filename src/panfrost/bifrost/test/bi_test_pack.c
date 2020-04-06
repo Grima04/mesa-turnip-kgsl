@@ -303,6 +303,7 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
                 bit_fmod_helper(dev, BI_ADD, sz, true, input, debug, 0);
 
                 if (sz == 32) {
+                        bit_fmod_helper(dev, BI_ADD, sz, false, input, debug, 0);
                         bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MIN);
                         bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MAX);
                 }

@@ -1057,7 +1057,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 
         switch (bundle.add->type) {
         case BI_ADD:
-                return BIFROST_ADD_NOP;
+                return bi_pack_add_addmin(bundle.add, regs);
         case BI_ATEST:
                 return bi_pack_add_atest(clause, bundle.add, regs);
         case BI_BRANCH:
