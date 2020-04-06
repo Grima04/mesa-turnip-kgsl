@@ -25,6 +25,7 @@ aco_tests_files = files(
   'test_assembler.cpp',
   'test_isel.cpp',
   'test_optimizer.cpp',
+  'test_to_hw_instr.cpp',
   'test_tests.cpp',
 )
 
