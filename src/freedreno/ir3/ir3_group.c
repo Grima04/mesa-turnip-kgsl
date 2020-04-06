@@ -34,7 +34,17 @@ static void
 insert_mov(struct ir3_instruction *collect, int idx)
 {
 	struct ir3_instruction *src = ssa(collect->regs[idx+1]);
-	collect->regs[idx+1]->instr = ir3_MOV(src->block, src, TYPE_F32);
+	struct ir3_instruction *mov = ir3_MOV(src->block, src, TYPE_F32);
+	collect->regs[idx+1]->instr = mov;
+
+	/* if collect and src are in the same block, move the inserted mov
+	 * to just before the collect to avoid a use-before-def.  Otherwise
+	 * it should be safe to leave at the end of the block it is in:
+	 */
+	if (src->block == collect->block) {
+		list_delinit(&mov->node);
+		list_addtail(&mov->node, &collect->node);
+	}
 }
 
 /* verify that cur != instr, but cur is also not in instr's neighbor-list: */
