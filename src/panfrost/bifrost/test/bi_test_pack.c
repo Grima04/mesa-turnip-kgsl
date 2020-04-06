@@ -196,13 +196,14 @@ bit_ins(enum bi_class C, unsigned argc, nir_alu_type base, unsigned size)
 static void
 bit_fmod_helper(struct panfrost_device *dev,
                 enum bi_class c, unsigned size, bool fma,
-                uint32_t *input, enum bit_debug debug)
+                uint32_t *input, enum bit_debug debug, unsigned op)
 {
         bi_instruction ins = bit_ins(c, 2, nir_type_float, size);
 
         for (unsigned outmod = 0; outmod < 4; ++outmod) {
                 for (unsigned inmod = 0; inmod < 16; ++inmod) {
                         ins.outmod = outmod;
+                        ins.op.minmax = op;
                         ins.src_abs[0] = (inmod & 0x1);
                         ins.src_abs[1] = (inmod & 0x2);
                         ins.src_neg[0] = (inmod & 0x4);
@@ -299,7 +300,13 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
                         (sz == 16) ? (uint32_t *) input16 :
                         (uint32_t *) input32;
 
-                bit_fmod_helper(dev, BI_ADD, sz, true, input, debug);
+                bit_fmod_helper(dev, BI_ADD, sz, true, input, debug, 0);
+
+                if (sz == 32) {
+                        bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MIN);
+                        bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MAX);
+                }
+
                 bit_fma_helper(dev, sz, input, debug);
         }
 
