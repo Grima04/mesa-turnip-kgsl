@@ -128,10 +128,7 @@ tests(void)
 {
         void *memctx = NULL; /* TODO */
         struct panfrost_device *dev = bit_initialize(memctx);
-        bit_fmod(dev, BIT_DEBUG_FAIL);
-        bit_fma(dev, BIT_DEBUG_FAIL);
-        bit_csel(dev, BIT_DEBUG_FAIL);
-        bit_special(dev, BIT_DEBUG_FAIL);
+        bit_packing(dev, BIT_DEBUG_FAIL);
 }
 
 static void

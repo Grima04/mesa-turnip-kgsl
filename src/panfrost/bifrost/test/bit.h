@@ -67,12 +67,7 @@ struct bit_state {
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA);
 
-/* Packing tests */
-
-void bit_fmod(struct panfrost_device *dev, enum bit_debug debug);
-void bit_fma(struct panfrost_device *dev, enum bit_debug debug);
-void bit_csel(struct panfrost_device *dev, enum bit_debug debug);
-void bit_special(struct panfrost_device *dev, enum bit_debug debug);
+void bit_packing(struct panfrost_device *dev, enum bit_debug debug);
 
 #endif
 

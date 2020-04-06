@@ -158,10 +158,17 @@ bit_test_single(struct panfrost_device *dev,
 /* Utilities for generating tests */
 
 static void
-bit_generate_vector(uint32_t *mem)
+bit_generate_float4(float *mem)
 {
         for (unsigned i = 0; i < 4; ++i)
-                mem[i] = rand();
+                mem[i] = (float) ((rand() & 255) - 127) / 16.0;
+}
+
+static void
+bit_generate_half8(uint16_t *mem)
+{
+        for (unsigned i = 0; i < 8; ++i)
+                mem[i] = _mesa_float_to_half(((float) (rand() & 255) - 127) / 16.0);
 }
 
 static bi_instruction
@@ -279,77 +286,33 @@ bit_special_helper(struct panfrost_device *dev,
 }
 
 void
-bit_fmod(struct panfrost_device *dev, enum bit_debug debug)
+bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 {
-        float input32[4] = { 0.8, 1.7, 0.0, 0.0 };
+        float input32[4];
+        uint16_t input16[8];
 
-        uint32_t input16[4] = {
-                _mesa_float_to_half(input32[0]) | (_mesa_float_to_half(-1.2) << 16),
-                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(0.9) << 16),
-                0, 0
-        };
+        bit_generate_float4(input32);
+        bit_generate_half8(input16);
 
         for (unsigned sz = 16; sz <= 32; sz *= 2) {
                 uint32_t *input =
-                        (sz == 16) ? input16 :
+                        (sz == 16) ? (uint32_t *) input16 :
                         (uint32_t *) input32;
 
                 bit_fmod_helper(dev, BI_ADD, sz, true, input, debug);
-        }
-}
-
-void
-bit_fma(struct panfrost_device *dev, enum bit_debug debug)
-{
-        float input32[4] = { 0.2, 1.6, -3.5, 0.0 };
-
-        uint32_t input16[4] = {
-                _mesa_float_to_half(input32[0]) | (_mesa_float_to_half(-1.8) << 16),
-                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(0.6) << 16),
-                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(16.2) << 16),
-                0
-        };
-
-        for (unsigned sz = 16; sz <= 32; sz *= 2) {
-                uint32_t *input =
-                        (sz == 16) ? input16 :
-                        (uint32_t *) input32;
-
                 bit_fma_helper(dev, sz, input, debug);
         }
-}
 
-void
-bit_csel(struct panfrost_device *dev, enum bit_debug debug)
-{
-        float input32[4] = { 0.2, 1.6, -3.5, 3.0 };
+        for (unsigned sz = 32; sz <= 32; sz *= 2)
+                bit_csel_helper(dev, sz, (uint32_t *) input32, debug);
 
-        uint32_t input16[4] = {
-                _mesa_float_to_half(input32[0]) | (_mesa_float_to_half(-1.8) << 16),
-                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(0.6) << 16),
-                _mesa_float_to_half(input32[1]) | (_mesa_float_to_half(16.2) << 16),
-                _mesa_float_to_half(input32[2]) | (_mesa_float_to_half(4.9) << 16),
-        };
-
-        for (unsigned sz = 32; sz <= 32; sz *= 2) {
-                uint32_t *input =
-                        (sz == 16) ? input16 :
-                        (uint32_t *) input32;
-
-                bit_csel_helper(dev, sz, input, debug);
-        }
-}
-
-void
-bit_special(struct panfrost_device *dev, enum bit_debug debug)
-{
-        float input32[4] = { 0.9 };
-        uint32_t input16[4] = { _mesa_float_to_half(input32[0]) | (_mesa_float_to_half(0.2) << 16) };
+        float special[4] = { 0.9 };
+        uint32_t special16[4] = { _mesa_float_to_half(special[0]) | (_mesa_float_to_half(0.2) << 16) };
 
         for (unsigned sz = 16; sz <= 32; sz *= 2) {
                 uint32_t *input =
-                        (sz == 16) ? input16 :
-                        (uint32_t *) input32;
+                        (sz == 16) ? special16 :
+                        (uint32_t *) special;
 
                 bit_special_helper(dev, sz, input, debug);
         }
