@@ -1859,3 +1859,61 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
         panfrost_new_job(batch, JOB_TYPE_TILER, false, vertex, tp, tp_size,
                          false);
 }
+
+/* TODO: stop hardcoding this */
+mali_ptr
+panfrost_emit_sample_locations(struct panfrost_batch *batch)
+{
+        uint16_t locations[] = {
+            128, 128,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            0, 256,
+            128, 128,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        };
+
+        return panfrost_upload_transient(batch, locations, 96 * sizeof(uint16_t));
+}

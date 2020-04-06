@@ -24,6 +24,7 @@
 
 #include "pan_bo.h"
 #include "pan_context.h"
+#include "pan_cmdstream.h"
 #include "pan_util.h"
 #include "panfrost-quirks.h"
 
@@ -365,9 +366,7 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
         unsigned width = batch->key.width;
         unsigned height = batch->key.height;
 
-        unsigned shift = panfrost_get_stack_shift(batch->stack_size);
-
-        struct mali_framebuffer framebuffer = {
+        struct mali_framebuffer mfbd = {
                 .width1 = MALI_POSITIVE(width),
                 .height1 = MALI_POSITIVE(height),
                 .width2 = MALI_POSITIVE(width),
@@ -377,20 +376,25 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 
                 .rt_count_1 = MALI_POSITIVE(batch->key.nr_cbufs),
                 .rt_count_2 = 4,
-
-                .shared_memory = {
-                        .stack_shift = shift,
-                        .scratchpad = panfrost_batch_get_scratchpad(batch, shift, dev->thread_tls_alloc, dev->core_count)->gpu,
-                        .shared_workgroup_count = ~0,
-                }
         };
 
-        if (dev->quirks & IS_BIFROST)
-                framebuffer.tiler_meta = panfrost_batch_get_tiler_meta(batch, vertex_count);
-        else
-                framebuffer.tiler = panfrost_emit_midg_tiler(batch, vertex_count);
+        if (dev->quirks & IS_BIFROST) {
+                mfbd.msaa.sample_locations = panfrost_emit_sample_locations(batch);
+                mfbd.tiler_meta = panfrost_batch_get_tiler_meta(batch, vertex_count);
+        } else {
+                unsigned shift = panfrost_get_stack_shift(batch->stack_size);
+                struct panfrost_bo *bo = panfrost_batch_get_scratchpad(batch,
+                                                                       shift,
+                                                                       dev->thread_tls_alloc,
+                                                                       dev->core_count);
+                mfbd.shared_memory.stack_shift = shift;
+                mfbd.shared_memory.scratchpad = bo->gpu;
+                mfbd.shared_memory.shared_workgroup_count = ~0;
 
-        return framebuffer;
+                mfbd.tiler = panfrost_emit_midg_tiler(batch, vertex_count);
+        }
+
+        return mfbd;
 }
 
 void

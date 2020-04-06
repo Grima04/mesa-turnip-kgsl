@@ -108,4 +108,7 @@ panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
                                   struct mali_vertex_tiler_prefix *prefix,
                                   union midgard_primitive_size *primitive_size);
 
+mali_ptr
+panfrost_emit_sample_locations(struct panfrost_batch *batch);
+
 #endif /* __PAN_CMDSTREAM_H__ */
