@@ -201,6 +201,8 @@ enum bifrost_minmax_mode {
 };
 
 #define BIFROST_FMA_OP_FADD32 (0x58 >> 2)
+#define BIFROST_FMA_OP_FMAX32 (0x40 >> 2)
+#define BIFROST_FMA_OP_FMIN32 (0x44 >> 2)
 
 struct bifrost_fma_add {
         unsigned src0 : 3;

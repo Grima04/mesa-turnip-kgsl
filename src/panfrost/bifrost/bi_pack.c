@@ -525,8 +525,13 @@ bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_add_f32(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
 {
+        unsigned op =
+                (ins->type == BI_ADD) ? BIFROST_FMA_OP_FADD32 :
+                (ins->op.minmax == BI_MINMAX_MIN) ? BIFROST_FMA_OP_FMIN32 :
+                BIFROST_FMA_OP_FMAX32;
+
         struct bifrost_fma_add pack = {
                 .src0 = bi_get_src(ins, regs, 0, true),
                 .src1 = bi_get_src(ins, regs, 1, true),
@@ -536,8 +541,8 @@ bi_pack_fma_add_f32(bi_instruction *ins, struct bi_registers *regs)
                 .src1_neg = ins->src_neg[1],
                 .unk = 0x0,
                 .outmod = ins->outmod,
-                .roundmode = ins->roundmode,
-                .op = BIFROST_FMA_OP_FADD32
+                .roundmode = (ins->type == BI_ADD) ? ins->roundmode : ins->minmax,
+                .op = op
         };
 
         RETURN_PACKED(pack);
@@ -613,10 +618,10 @@ bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_add(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_addmin(bi_instruction *ins, struct bi_registers *regs)
 {
         if (ins->dest_type == nir_type_float32)
-                return bi_pack_fma_add_f32(ins, regs);
+                return bi_pack_fma_addmin_f32(ins, regs);
         else if(ins->dest_type == nir_type_float16)
                 return bi_pack_fma_addmin_f16(ins, regs);
         else
@@ -794,7 +799,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 
         switch (bundle.fma->type) {
         case BI_ADD:
-                return bi_pack_fma_add(bundle.fma, regs);
+                return bi_pack_fma_addmin(bundle.fma, regs);
         case BI_CMP:
         case BI_BITWISE:
 		return BIFROST_FMA_NOP;
@@ -806,8 +811,9 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return bi_pack_fma_fma(bundle.fma, regs);
         case BI_FREXP:
         case BI_ISUB:
-        case BI_MINMAX:
                 return BIFROST_FMA_NOP;
+        case BI_MINMAX:
+                return bi_pack_fma_addmin(bundle.fma, regs);
         case BI_MOV:
                 return bi_pack_fma_1src(bundle.fma, regs, BIFROST_FMA_OP_MOV);
         case BI_SHIFT:
