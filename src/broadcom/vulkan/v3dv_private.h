@@ -1237,6 +1237,18 @@ v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_stat
                                    uint32_t index,
                                    uint32_t *dynamic_offset);
 
+const struct v3dv_sampler *
+v3dv_descriptor_map_get_sampler(struct v3dv_descriptor_state *descriptor_state,
+                                struct v3dv_descriptor_map *map,
+                                struct v3dv_pipeline_layout *pipeline_layout,
+                                uint32_t index);
+
+struct v3dv_image_view *
+v3dv_descriptor_map_get_image_view(struct v3dv_descriptor_state *descriptor_state,
+                                   struct v3dv_descriptor_map *map,
+                                   struct v3dv_pipeline_layout *pipeline_layout,
+                                   uint32_t index);
+
 static inline const struct v3dv_sampler *
 v3dv_immutable_samplers(const struct v3dv_descriptor_set_layout *set,
                         const struct v3dv_descriptor_set_binding_layout *binding)

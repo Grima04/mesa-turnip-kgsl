@@ -81,66 +81,6 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PUSH_CONSTANTS;
 }
 
-/*
- * The difference between this method and v3dv_descriptor_map_get_descriptor,
- * is that if the sampler are added as immutable when creating the set layout,
- * they are bound to the set layout, so not part of the descriptor per
- * se. This method return early in that case.
- */
-static const struct v3dv_sampler *
-descriptor_map_get_sampler(struct v3dv_descriptor_state *descriptor_state,
-                           struct v3dv_descriptor_map *map,
-                           struct v3dv_pipeline_layout *pipeline_layout,
-                           uint32_t index)
-
-{
-   assert(index >= 0 && index < map->num_desc);
-
-   uint32_t set_number = map->set[index];
-   if (!(descriptor_state->valid & 1 << set_number)) {
-      return NULL;
-   }
-
-   struct v3dv_descriptor_set *set =
-      descriptor_state->descriptor_sets[set_number];
-
-   if (set == NULL)
-      return NULL;
-
-   uint32_t binding_number = map->binding[index];
-   assert(binding_number < set->layout->binding_count);
-
-   const struct v3dv_descriptor_set_binding_layout *binding_layout =
-      &set->layout->binding[binding_number];
-
-   uint32_t array_index = map->array_index[index];
-   assert(array_index < binding_layout->array_size);
-
-   if (binding_layout->immutable_samplers_offset != 0) {
-      assert(binding_layout->type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-             binding_layout->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-      const struct v3dv_sampler *immutable_samplers =
-         v3dv_immutable_samplers(set->layout, binding_layout);
-
-      assert(immutable_samplers);
-      const struct v3dv_sampler *sampler = &immutable_samplers[array_index];
-      assert(sampler);
-
-      return sampler;
-   }
-
-   struct v3dv_descriptor *descriptor =
-      &set->descriptors[binding_layout->descriptor_index + array_index];
-
-   assert(descriptor->type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-          descriptor->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-   assert(descriptor->sampler);
-
-   return descriptor->sampler;
-}
-
 /** V3D 4.x TMU configuration parameter 0 (texture) */
 static void
 write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
@@ -154,19 +94,18 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_descriptor_state *descriptor_state =
       &cmd_buffer->state.descriptor_state;
 
-   struct v3dv_descriptor *descriptor =
-      v3dv_descriptor_map_get_descriptor(descriptor_state, &pipeline->texture_map,
-                                         pipeline->layout, unit, NULL);
+   struct v3dv_image_view *image_view =
+      v3dv_descriptor_map_get_image_view(descriptor_state, &pipeline->texture_map,
+                                         pipeline->layout, unit);
 
-   assert(descriptor);
-   assert(descriptor->image_view);
+   assert(image_view);
 
    cl_aligned_reloc(&job->indirect, uniforms,
-                    descriptor->image_view->texture_shader_state,
+                    image_view->texture_shader_state,
                     v3d_unit_data_get_offset(data));
 
    /* We need to ensure that the texture bo is added to the job */
-   v3dv_job_add_bo(job, descriptor->image_view->image->mem->bo);
+   v3dv_job_add_bo(job, image_view->image->mem->bo);
 }
 
 /** V3D 4.x TMU configuration parameter 1 (sampler) */
@@ -182,8 +121,8 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
       &cmd_buffer->state.descriptor_state;
 
    const struct v3dv_sampler *sampler =
-      descriptor_map_get_sampler(descriptor_state, &pipeline->sampler_map,
-                                 pipeline->layout, unit);
+      v3dv_descriptor_map_get_sampler(descriptor_state, &pipeline->sampler_map,
+                                      pipeline->layout, unit);
 
    assert(sampler);
 

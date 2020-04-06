@@ -1951,27 +1951,22 @@ static bool
 cmd_buffer_populate_v3d_key(struct v3d_key *key,
                             struct v3dv_cmd_buffer *cmd_buffer)
 {
-   struct v3dv_descriptor_map *map = &cmd_buffer->state.pipeline->texture_map;
+   struct v3dv_descriptor_map *texture_map = &cmd_buffer->state.pipeline->texture_map;
    struct v3dv_descriptor_state *descriptor_state =
       &cmd_buffer->state.descriptor_state;
 
-   for (uint32_t i = 0; i < map->num_desc; i++) {
-      struct v3dv_descriptor *descriptor =
-         v3dv_descriptor_map_get_descriptor(descriptor_state,
-                                            map,
+   for (uint32_t i = 0; i < texture_map->num_desc; i++) {
+      struct v3dv_image_view *image_view =
+         v3dv_descriptor_map_get_image_view(descriptor_state,
+                                            texture_map,
                                             cmd_buffer->state.pipeline->layout,
-                                            i, NULL);
+                                            i);
 
-      if (descriptor == NULL)
+      if (image_view == NULL)
          return false;
 
-      assert(descriptor->type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
-             descriptor->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-      assert(descriptor->image_view);
-      assert(descriptor->image_view->image);
-
       key->tex[i].return_size =
-         v3dv_get_tex_return_size(descriptor->image_view->format,
+         v3dv_get_tex_return_size(image_view->format,
                                   0); /* FIXME: how to get the sampler compare mode? */
 
       if (key->tex[i].return_size == 16) {
