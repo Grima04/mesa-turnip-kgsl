@@ -274,7 +274,6 @@ Temp emit_extract_vector(isel_context* ctx, Temp src, uint32_t idx, RegClass dst
    assert(src.bytes() > (idx * dst_rc.bytes()));
    Builder bld(ctx->program, ctx->block);
    auto it = ctx->allocated_vec.find(src.id());
-   /* the size check needs to be early because elements other than 0 may be garbage */
    if (it != ctx->allocated_vec.end() && dst_rc.bytes() == it->second[idx].regClass().bytes()) {
       if (it->second[idx].regClass() == dst_rc) {
          return it->second[idx];

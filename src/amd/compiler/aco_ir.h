@@ -262,7 +262,7 @@ static constexpr RegClass v8b{RegClass::v8b};
  * and SSA id.
  */
 struct Temp {
-   Temp() = default;
+   Temp() noexcept : id_(0), reg_class(RegType::sgpr, 0) {}
    constexpr Temp(uint32_t id, RegClass cls) noexcept
       : id_(id), reg_class(cls) {}
 

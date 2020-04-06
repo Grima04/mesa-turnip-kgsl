@@ -103,6 +103,8 @@ struct ssa_info {
    };
    uint32_t label;
 
+   ssa_info() : label(0) {}
+
    void add_label(Label new_label)
    {
       /* Since all labels which use "instr" use it for the same thing
