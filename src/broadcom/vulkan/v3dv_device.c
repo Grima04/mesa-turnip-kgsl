@@ -1739,7 +1739,7 @@ v3dv_framebuffer_compute_internal_bpp(const struct v3dv_framebuffer *framebuffer
          if (att_idx == VK_ATTACHMENT_UNUSED)
             continue;
 
-         const struct v3dv_image_view *att = framebuffer->attachments[i];
+         const struct v3dv_image_view *att = framebuffer->attachments[att_idx];
          assert(att);
 
          if (att->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
