@@ -6082,12 +6082,14 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
 
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT);
    bool dlc = glc && ctx->options->chip_class >= GFX10;
+   /* VMEM stores don't update the SMEM cache and it's difficult to prove that
+    * it's safe to use SMEM */
+   bool can_use_smem = nir_intrinsic_access(instr) & ACCESS_NON_WRITEABLE;
    aco_opcode op;
-   if (dst.type() == RegType::vgpr || (glc && ctx->options->chip_class < GFX8)) {
+   if (dst.type() == RegType::vgpr || (glc && ctx->options->chip_class < GFX8) || !can_use_smem) {
       bool global = ctx->options->chip_class >= GFX9;
 
       if (ctx->options->chip_class >= GFX7) {
-         aco_opcode op;
          switch (num_bytes) {
          case 4:
             op = global ? aco_opcode::global_load_dword : aco_opcode::flat_load_dword;
@@ -6128,7 +6130,6 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
          /* GFX6 doesn't support loading vec3, expand to vec4. */
          num_bytes = num_bytes == 12 ? 16 : num_bytes;
 
-         aco_opcode op;
          switch (num_bytes) {
          case 4:
             op = aco_opcode::buffer_load_dword;
