@@ -89,14 +89,18 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
              uint32_t data)
 {
    int unit = v3d_unit_data_get_unit(data);
-
+   uint32_t texture_idx;
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
       &cmd_buffer->state.descriptor_state;
 
+   v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
+                                           &texture_idx,
+                                           NULL);
+
    struct v3dv_image_view *image_view =
       v3dv_descriptor_map_get_image_view(descriptor_state, &pipeline->texture_map,
-                                         pipeline->layout, unit);
+                                         pipeline->layout, texture_idx);
 
    assert(image_view);
 
@@ -116,13 +120,17 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
              uint32_t data)
 {
    uint32_t unit = v3d_unit_data_get_unit(data);
+   uint32_t sampler_idx;
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
       &cmd_buffer->state.descriptor_state;
 
+   v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
+                                           NULL, &sampler_idx);
+
    const struct v3dv_sampler *sampler =
       v3dv_descriptor_map_get_sampler(descriptor_state, &pipeline->sampler_map,
-                                      pipeline->layout, unit);
+                                      pipeline->layout, sampler_idx);
 
    assert(sampler);
 

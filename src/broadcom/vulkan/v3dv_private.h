@@ -1018,6 +1018,8 @@ struct v3dv_descriptor_map {
 };
 
 struct v3dv_sampler {
+   bool compare_enable;
+
    /* FIXME: here we store the packet SAMPLER_STATE, that is referenced as part
     * of the tmu configuration, and the content is set per sampler. A possible
     * perf improvement, to avoid bo fragmentation, would be to save the state
@@ -1027,6 +1029,32 @@ struct v3dv_sampler {
     */
    struct v3dv_bo *state;
 };
+
+/*
+ * Following two methods are using on the combined to/from texture/sampler
+ * indices maps at v3dv_pipeline.
+ */
+static inline uint32_t
+v3dv_pipeline_combined_index_key_create(uint32_t texture_index,
+                                        uint32_t sampler_index)
+{
+   return texture_index << 24 | sampler_index;
+}
+
+static inline void
+v3dv_pipeline_combined_index_key_unpack(uint32_t combined_index_key,
+                                        uint32_t *texture_index,
+                                        uint32_t *sampler_index)
+{
+   uint32_t texture = combined_index_key >> 24;
+   uint32_t sampler = combined_index_key & 0xffffff;
+
+   if (texture_index)
+      *texture_index = texture;
+
+   if (sampler_index)
+      *sampler_index = sampler;
+}
 
 struct v3dv_pipeline {
    struct v3dv_device *device;
@@ -1083,6 +1111,21 @@ struct v3dv_pipeline {
 
    struct v3dv_descriptor_map sampler_map;
    struct v3dv_descriptor_map texture_map;
+
+   /*
+    * Vulkan has separate texture and sampler objects. Previous sampler and
+    * texture map uses a sampler and texture index respectively, that can be
+    * different. But OpenGL combine both (or in other words, they are the
+    * same). The v3d compiler and all the nir lowerings that they use were
+    * written under that assumption. In order to not update all those, we
+    * combine the indexes, and we use the following maps to get one or the
+    * other. In general the driver side uses the tex/sampler indexes to gather
+    * resources, and the compiler side uses the combined index (so the v3d key
+    * texture info will be indexed using the combined index).
+    */
+   struct hash_table *combined_index_map;
+   uint32_t combined_index_to_key_map[32];
+   uint32_t next_combined_index;
 
    /* FIXME: this bo is another candidate to data to be uploaded using a
     * resource manager, instead of a individual bo
@@ -1204,7 +1247,7 @@ void v3dv_loge_v(const char *format, va_list va);
 const struct v3dv_format *v3dv_get_format(VkFormat);
 const uint8_t *v3dv_get_format_swizzle(VkFormat f);
 void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *type, uint32_t *bpp);
-uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, enum pipe_tex_compare compare);
+uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, bool compare_enable);
 
 
 uint32_t v3d_utile_width(int cpp);

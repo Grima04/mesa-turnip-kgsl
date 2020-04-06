@@ -310,9 +310,9 @@ v3dv_get_format_swizzle(VkFormat f)
 
 uint8_t
 v3dv_get_tex_return_size(const struct v3dv_format *vf,
-                         enum pipe_tex_compare compare)
+                         bool compare_enable)
 {
-   if (compare == PIPE_TEX_COMPARE_R_TO_TEXTURE)
+   if (compare_enable)
       return 16;
 
    return vf->return_size;

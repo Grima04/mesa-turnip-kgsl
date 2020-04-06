@@ -2036,6 +2036,7 @@ v3dv_CreateSampler(VkDevice _device,
       }
    }
 
+   sampler->compare_enable = pCreateInfo->compareEnable;
    pack_sampler_state(sampler, pCreateInfo);
 
    *pSampler = v3dv_sampler_to_handle(sampler);

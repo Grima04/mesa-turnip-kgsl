@@ -131,6 +131,9 @@ v3dv_DestroyPipeline(VkDevice _device,
       pipeline->default_attribute_values = NULL;
    }
 
+   if (pipeline->combined_index_map)
+      _mesa_hash_table_destroy(pipeline->combined_index_map, NULL);
+
    vk_free2(&device->alloc, pAllocator, pipeline);
 }
 
@@ -504,6 +507,41 @@ lower_vulkan_resource_index(nir_builder *b,
    nir_instr_remove(&instr->instr);
 }
 
+static struct hash_table *
+pipeline_ensure_combined_index_map(struct v3dv_pipeline *pipeline)
+{
+   if (pipeline->combined_index_map == NULL) {
+      pipeline->combined_index_map =
+         _mesa_hash_table_create(NULL, _mesa_hash_u32, _mesa_key_u32_equal);
+      pipeline->next_combined_index = 0;
+   }
+
+   assert(pipeline->combined_index_map);
+
+   return pipeline->combined_index_map;
+}
+
+static uint32_t
+get_combined_index(struct v3dv_pipeline *pipeline,
+                   uint32_t texture_index,
+                   uint32_t sampler_index)
+{
+   struct hash_table *ht = pipeline_ensure_combined_index_map(pipeline);
+   uint32_t key = v3dv_pipeline_combined_index_key_create(texture_index, sampler_index);
+   struct hash_entry *entry = _mesa_hash_table_search(ht, &key);
+
+   if (entry)
+      return (uint32_t)(uintptr_t) (entry->data);
+
+   uint32_t new_index = pipeline->next_combined_index;
+
+   _mesa_hash_table_insert(ht, &key, (void *)(uintptr_t) (new_index));
+   pipeline->combined_index_to_key_map[new_index] = key;
+   pipeline->next_combined_index++;
+
+   return new_index;
+}
+
 static void
 lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
                         struct v3dv_pipeline *pipeline,
@@ -599,6 +637,12 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
 
    if (texture_idx < 0 && sampler_idx < 0)
       return false;
+
+   int combined_index =
+      get_combined_index(pipeline, instr->texture_index, instr->sampler_index);
+
+   instr->texture_index = combined_index;
+   instr->sampler_index = combined_index;
 
    return true;
 }

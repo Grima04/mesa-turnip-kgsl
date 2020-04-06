@@ -1951,35 +1951,55 @@ static bool
 cmd_buffer_populate_v3d_key(struct v3d_key *key,
                             struct v3dv_cmd_buffer *cmd_buffer)
 {
-   struct v3dv_descriptor_map *texture_map = &cmd_buffer->state.pipeline->texture_map;
-   struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state;
+   if (cmd_buffer->state.pipeline->combined_index_map != NULL) {
+      struct v3dv_descriptor_map *texture_map = &cmd_buffer->state.pipeline->texture_map;
+      struct v3dv_descriptor_map *sampler_map = &cmd_buffer->state.pipeline->sampler_map;
+      struct v3dv_descriptor_state *descriptor_state =
+         &cmd_buffer->state.descriptor_state;
 
-   for (uint32_t i = 0; i < texture_map->num_desc; i++) {
-      struct v3dv_image_view *image_view =
-         v3dv_descriptor_map_get_image_view(descriptor_state,
-                                            texture_map,
+      hash_table_foreach(cmd_buffer->state.pipeline->combined_index_map, entry) {
+         uint32_t combined_idx = (uint32_t)(uintptr_t) (entry->data);
+         uint32_t combined_idx_key =
+            cmd_buffer->state.pipeline->combined_index_to_key_map[combined_idx];
+         uint32_t texture_idx;
+         uint32_t sampler_idx;
+
+         v3dv_pipeline_combined_index_key_unpack(combined_idx_key,
+                                                 &texture_idx, &sampler_idx);
+
+         struct v3dv_image_view *image_view =
+            v3dv_descriptor_map_get_image_view(descriptor_state,
+                                               texture_map,
+                                               cmd_buffer->state.pipeline->layout,
+                                               texture_idx);
+
+         if (image_view == NULL)
+            return false;
+
+         const struct v3dv_sampler *sampler =
+            v3dv_descriptor_map_get_sampler(descriptor_state,
+                                            sampler_map,
                                             cmd_buffer->state.pipeline->layout,
-                                            i);
+                                            sampler_idx);
+         if (sampler == NULL)
+            return false;
 
-      if (image_view == NULL)
-         return false;
+         key->tex[combined_idx].return_size =
+            v3dv_get_tex_return_size(image_view->format,
+                                     sampler ? sampler->compare_enable : false);
 
-      key->tex[i].return_size =
-         v3dv_get_tex_return_size(image_view->format,
-                                  0); /* FIXME: how to get the sampler compare mode? */
-
-      if (key->tex[i].return_size == 16) {
-         key->tex[i].return_channels = 2;
-      } else {
-         key->tex[i].return_channels = 4;
-      }
+         if (key->tex[combined_idx].return_size == 16) {
+            key->tex[combined_idx].return_channels = 2;
+         } else {
+            key->tex[combined_idx].return_channels = 4;
+         }
 
       /* Note: we don't need to do anything for the swizzle, as that is
        * handled with the swizzle info at the Texture State, and the
        * default values for key->tex[].swizzle were already filled up on
        * the pipeline populate.
        */
+      }
    }
 
    return true;
