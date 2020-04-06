@@ -111,7 +111,11 @@ struct bifrost_fma_2src {
 
 #define BIFROST_ADD_OP_BLEND (0x1952c)
 #define BIFROST_ADD_OP_FRCP_FAST_F32 (0x0cc00)
+#define BIFROST_ADD_OP_FRCP_FAST_F16_X (0x0ce10)
+#define BIFROST_ADD_OP_FRCP_FAST_F16_Y (0x0ce30)
 #define BIFROST_ADD_OP_FRSQ_FAST_F32 (0x0cc20)
+#define BIFROST_ADD_OP_FRSQ_FAST_F16_X (0x0ce50)
+#define BIFROST_ADD_OP_FRSQ_FAST_F16_Y (0x0ce70)
 
 struct bifrost_add_inst {
         unsigned src0 : 3;
