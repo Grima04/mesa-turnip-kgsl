@@ -158,7 +158,7 @@ run(const char *filename)
                 },
         };
 
-        bit_vertex(dev, prog, NULL, 0, NULL, 0, NULL, 0, BIT_DEBUG_FAIL);
+        bit_vertex(dev, prog, NULL, 0, NULL, 0, NULL, 0, BIT_DEBUG_ALL);
 
         free(code);
 }
