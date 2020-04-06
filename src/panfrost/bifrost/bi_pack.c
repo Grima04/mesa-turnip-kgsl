@@ -591,8 +591,8 @@ bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
         bool flip = false;
 
         if (!abs_0 && !abs_1) {
-                /* Force k = 0 <===> NOT(src1 < src0) <==> src1 >= src0 */
-                flip = (src_0 < src_1);
+                /* Force k = 0 <===> NOT(src1 < src0) */
+                flip = (src_1 < src_0);
         } else if (abs_0 && !abs_1) {
                 l = src_1 >= src_0;
         } else if (abs_1 && !abs_0) {
