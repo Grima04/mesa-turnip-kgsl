@@ -63,7 +63,8 @@ static void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_in
    sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
    sctx->render_cond_force_off = true;
    /* Skip decompression to prevent infinite recursion. */
-   sctx->blitter->running = true;
+   if (sctx->blitter)
+      sctx->blitter->running = true;
 
    /* Dispatch compute. */
    sctx->b.launch_grid(&sctx->b, info);
@@ -72,7 +73,8 @@ static void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_in
    sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
    sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
    sctx->render_cond_force_off = false;
-   sctx->blitter->running = false;
+   if (sctx->blitter)
+      sctx->blitter->running = false;
 }
 
 static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe_resource *dst,
