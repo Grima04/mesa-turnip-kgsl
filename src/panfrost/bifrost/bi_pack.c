@@ -882,6 +882,41 @@ bi_pack_add_2src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
 }
 
 static unsigned
+bi_pack_add_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned op =
+                (ins->type == BI_ADD) ? BIFROST_ADD_OP_FADD32 :
+                (ins->op.minmax == BI_MINMAX_MIN) ? BIFROST_ADD_OP_FMIN32 :
+                BIFROST_ADD_OP_FMAX32;
+ 
+        struct bifrost_add_faddmin pack = {
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .src1 = bi_get_src(ins, regs, 1, true),
+                .src0_abs = ins->src_abs[0],
+                .src1_abs = ins->src_abs[1],
+                .src0_neg = ins->src_neg[0],
+                .src1_neg = ins->src_neg[1],
+                .outmod = ins->outmod,
+                .mode = (ins->type == BI_ADD) ? ins->roundmode : ins->minmax,
+                .op = op
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
+bi_pack_add_addmin(bi_instruction *ins, struct bi_registers *regs)
+{
+        if (ins->dest_type == nir_type_float32)
+                return bi_pack_add_addmin_f32(ins, regs);
+        else if(ins->dest_type == nir_type_float16)
+                unreachable("todo");
+                //return bi_pack_add_addmin_f16(ins, regs);
+        else
+                unreachable("Unknown FMA/ADD type");
+}
+
+static unsigned
 bi_pack_add_ld_ubo(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
         unsigned components = bi_load32_components(ins);
@@ -1046,6 +1081,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_LOAD_VAR_ADDRESS:
                 return bi_pack_add_ld_var_addr(clause, bundle.add, regs);
         case BI_MINMAX:
+                return bi_pack_add_addmin(bundle.add, regs);
         case BI_MOV:
         case BI_SHIFT:
         case BI_STORE:
