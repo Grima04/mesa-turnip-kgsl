@@ -742,15 +742,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
       assert(smaski >= 0);
       output_smask = LLVMBuildLoad(builder, outputs[smaski][0], "smask");
-      /*
-       * Pixel is alive according to the first sample in the mask.
-       */
       output_smask = LLVMBuildBitCast(builder, output_smask, smask_bld.vec_type, "");
-      if (!key->multisample) {
-         output_smask = lp_build_and(&smask_bld, output_smask, smask_bld.one);
-         output_smask = lp_build_cmp(&smask_bld, PIPE_FUNC_NOTEQUAL, output_smask, smask_bld.zero);
-         lp_build_mask_update(&mask, output_smask);
-      }
 
       if (key->min_samples > 1) {
          /* only the bit corresponding to this sample is to be used. */

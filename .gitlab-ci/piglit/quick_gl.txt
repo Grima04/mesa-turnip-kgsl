@@ -523,12 +523,10 @@ spec/arb_sample_shading/builtin-gl-sample-id 16: skip
 spec/arb_sample_shading/builtin-gl-sample-id 32: skip
 spec/arb_sample_shading/builtin-gl-sample-id 6: skip
 spec/arb_sample_shading/builtin-gl-sample-id 8: skip
-spec/arb_sample_shading/builtin-gl-sample-mask 0: fail
 spec/arb_sample_shading/builtin-gl-sample-mask 16: skip
 spec/arb_sample_shading/builtin-gl-sample-mask 32: skip
 spec/arb_sample_shading/builtin-gl-sample-mask 6: skip
 spec/arb_sample_shading/builtin-gl-sample-mask 8: skip
-spec/arb_sample_shading/builtin-gl-sample-mask-simple 0: fail
 spec/arb_sample_shading/builtin-gl-sample-mask-simple 16: skip
 spec/arb_sample_shading/builtin-gl-sample-mask-simple 32: skip
 spec/arb_sample_shading/builtin-gl-sample-mask-simple 6: skip
@@ -1714,8 +1712,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    20701
-       fail:      224
+       pass:    20703
+       fail:      222
       crash:        0
        skip:     1465
     timeout:        0
