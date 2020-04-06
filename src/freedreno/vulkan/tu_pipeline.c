@@ -827,6 +827,10 @@ tu6_setup_streamout(const struct ir3_shader_variant *v,
       unsigned k = out->register_index;
       unsigned idx;
 
+      /* Skip it, if there's an unused reg in the middle of outputs. */
+      if (v->outputs[k].regid == INVALID_REG)
+         continue;
+
       tf->ncomp[out->output_buffer] += out->num_components;
 
       /* linkage map sorted by order frag shader wants things, so
