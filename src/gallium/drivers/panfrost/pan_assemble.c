@@ -28,10 +28,12 @@
 #include "pan_bo.h"
 #include "pan_context.h"
 #include "pan_util.h"
+#include "panfrost-quirks.h"
 
 #include "compiler/nir/nir.h"
 #include "nir/tgsi_to_nir.h"
 #include "midgard/midgard_compile.h"
+#include "bifrost/bifrost_compile.h"
 #include "util/u_dynarray.h"
 
 #include "tgsi/tgsi_dump.h"
@@ -64,8 +66,12 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 .alpha_ref = state->alpha_state.ref_value
         };
 
-        midgard_compile_shader_nir(s, &program, false, 0, dev->gpu_id,
-                        pan_debug & PAN_DBG_PRECOMPILE);
+        if (dev->quirks & IS_BIFROST) {
+                bifrost_compile_shader_nir(s, &program, dev->gpu_id);
+        } else {
+                midgard_compile_shader_nir(s, &program, false, 0, dev->gpu_id,
+                                pan_debug & PAN_DBG_PRECOMPILE);
+        }
 
         /* Prepare the compiled binary for upload */
         int size = program.compiled.size;
@@ -78,10 +84,12 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         if (size) {
                 state->bo = pan_bo_create(dev, size, PAN_BO_EXECUTE);
                 memcpy(state->bo->cpu, dst, size);
-                state->first_tag = program.first_tag;
-        } else {
-                /* No shader. Use dummy tag to avoid INSTR_INVALID_ENC */
-                state->first_tag = 1;
+        }
+
+        if (!(dev->quirks & IS_BIFROST)) {
+                /* If size = 0, no shader. Use dummy tag to avoid
+                 * INSTR_INVALID_ENC */
+                state->first_tag = size ? program.first_tag : 1;
         }
 
         util_dynarray_fini(&program.compiled);
