@@ -313,6 +313,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONSERVATIVE_RASTER_POST_SNAP_POINTS_LINES:
    case PIPE_CAP_CONSERVATIVE_RASTER_POST_DEPTH_COVERAGE:
    case PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS:
+   case PIPE_CAP_VIEWPORT_SWIZZLE:
       return class_3d >= GM200_3D_CLASS;
    case PIPE_CAP_CONSERVATIVE_RASTER_PRE_SNAP_TRIANGLES:
       return class_3d >= GP100_3D_CLASS;
