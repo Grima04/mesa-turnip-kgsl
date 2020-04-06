@@ -40,6 +40,7 @@ const char * bi_interp_mode_name(enum bifrost_interp_mode mode);
 const char * bi_ldst_type_name(enum bifrost_ldst_type type);
 const char * bi_class_name(enum bi_class cl);
 const char * bi_cond_name(enum bi_cond cond);
+const char * bi_special_op_name(enum bi_special_op op);
 
 void bi_print_instruction(bi_instruction *ins, FILE *fp);
 void bi_print_bundle(bi_bundle *bundle, FILE *fp);

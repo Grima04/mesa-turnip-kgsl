@@ -251,7 +251,7 @@ bi_bitwise_op_name(enum bi_bitwise_op op)
         }
 }
 
-static const char *
+const char *
 bi_special_op_name(enum bi_special_op op)
 {
         switch (op) {

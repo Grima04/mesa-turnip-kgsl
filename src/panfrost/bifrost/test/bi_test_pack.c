@@ -259,6 +259,25 @@ bit_csel_helper(struct panfrost_device *dev,
         }
 }
 
+static void
+bit_special_helper(struct panfrost_device *dev,
+                unsigned size, uint32_t *input, enum bit_debug debug)
+{
+        bi_instruction ins = bit_ins(BI_SPECIAL, 1, nir_type_float, size);
+
+        for (enum bi_special_op op = BI_SPECIAL_FRCP; op <= BI_SPECIAL_FRSQ; ++op) {
+                for (unsigned c = 0; c < ((size == 16) ? 2 : 1); ++c) {
+                        ins.op.special = op;
+                        ins.swizzle[0][0] = c;
+
+                        if (!bit_test_single(dev, &ins, input, false, debug)) {
+                                fprintf(stderr, "FAIL: special%u.%s\n",
+                                                size, bi_special_op_name(op));
+                        }
+                }
+        }
+}
+
 void
 bit_fmod(struct panfrost_device *dev, enum bit_debug debug)
 {
@@ -318,5 +337,20 @@ bit_csel(struct panfrost_device *dev, enum bit_debug debug)
                         (uint32_t *) input32;
 
                 bit_csel_helper(dev, sz, input, debug);
+        }
+}
+
+void
+bit_special(struct panfrost_device *dev, enum bit_debug debug)
+{
+        float input32[4] = { 0.9 };
+        uint32_t input16[4] = { _mesa_float_to_half(input32[0]) | (_mesa_float_to_half(0.2) << 16) };
+
+        for (unsigned sz = 16; sz <= 32; sz *= 2) {
+                uint32_t *input =
+                        (sz == 16) ? input16 :
+                        (uint32_t *) input32;
+
+                bit_special_helper(dev, sz, input, debug);
         }
 }
