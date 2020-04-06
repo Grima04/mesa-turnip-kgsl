@@ -1980,6 +1980,12 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    pipeline->program.binning_state_ib =
       tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
+   VkShaderStageFlags stages = 0;
+   for (unsigned i = 0; i < builder->create_info->stageCount; i++) {
+      stages |= builder->create_info->pStages[i].stage;
+   }
+   pipeline->active_stages = stages;
+
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (!builder->shaders[i])
          continue;
