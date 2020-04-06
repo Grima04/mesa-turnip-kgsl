@@ -1603,7 +1603,6 @@ static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src, n
       lp_build_endif(&ifthen);
       lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
 			     NULL, LLVMIntUGE);
-      lp_build_print_value(gallivm, "init_val is ", LLVMBuildLoad(builder, res_store, ""));
       init_val = LLVMBuildLoad(builder, res_store, "");
    } else {
       LLVMBuildStore(builder, lp_build_const_int32(gallivm, instr->intrinsic == nir_intrinsic_vote_any ? 0 : -1), res_store);
