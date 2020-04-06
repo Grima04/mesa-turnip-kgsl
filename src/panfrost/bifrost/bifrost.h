@@ -133,6 +133,23 @@ struct bifrost_add_2src {
         unsigned op   : 14;
 } __attribute__((packed));
 
+#define BIFROST_ADD_OP_FMAX32 (0x00)
+#define BIFROST_ADD_OP_FMIN32 (0x01)
+#define BIFROST_ADD_OP_FADD32 (0x02)
+
+struct bifrost_add_faddmin {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src1_abs : 1;
+        unsigned src0_neg : 1;
+        unsigned src1_neg : 1;
+        unsigned select : 2;
+        unsigned outmod : 2;
+        unsigned mode : 2;
+        unsigned src0_abs : 1;
+        unsigned op   : 4;
+} __attribute__((packed));
+
 #define BIFROST_ADD_OP_ST_VAR (0x19300 >> 8)
 
 struct bifrost_st_vary {
