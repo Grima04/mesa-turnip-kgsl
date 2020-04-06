@@ -302,13 +302,14 @@ llvm_fetch_tess_factors(struct draw_tess_eval_shader *shader,
 static void
 llvm_tes_run(struct draw_tess_eval_shader *shader,
              uint32_t prim_id,
+             uint32_t patch_vertices_in,
              struct pipe_tessellator_data *tess_data,
              struct pipe_tessellation_factors *tess_factors,
              struct vertex_header *output)
 {
    shader->current_variant->jit_func(shader->jit_context, shader->tes_input->data, output, prim_id,
                                      tess_data->num_domain_points, tess_data->domain_points_u, tess_data->domain_points_v,
-                                     tess_factors->outer_tf, tess_factors->inner_tf);
+                                     tess_factors->outer_tf, tess_factors->inner_tf, patch_vertices_in);
 }
 #endif
 
@@ -391,7 +392,7 @@ int draw_tess_eval_shader_run(struct draw_tess_eval_shader *shader,
       /* run once per primitive? */
       char *output = (char *)output_verts->verts;
       output += vert_start * vertex_size;
-      llvm_tes_run(shader, i, &data, &factors, (struct vertex_header *)output);
+      llvm_tes_run(shader, i, num_input_vertices_per_patch, &data, &factors, (struct vertex_header *)output);
 
       uint32_t prim_len = u_prim_vertex_count(output_prims->prim)->min;
       output_prims->primitive_count += data.num_indices / prim_len;

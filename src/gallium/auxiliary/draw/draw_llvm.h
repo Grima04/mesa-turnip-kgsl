@@ -453,7 +453,7 @@ typedef int
                      struct vertex_header *io,
                      uint32_t prim_id, uint32_t num_tess_coord,
                      float *tess_coord_x, float *tess_coord_y, float *tess_outer,
-                     float *tess_inner);
+                     float *tess_inner, uint32_t patch_vertices_in);
 
 
 struct draw_llvm_variant_key

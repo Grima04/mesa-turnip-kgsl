@@ -3711,12 +3711,12 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    LLVMContextRef context = gallivm->context;
    LLVMTypeRef int32_type = LLVMInt32TypeInContext(context);
    LLVMTypeRef flt_type = LLVMFloatTypeInContext(context);
-   LLVMTypeRef arg_types[9];
+   LLVMTypeRef arg_types[10];
    LLVMTypeRef func_type;
    LLVMValueRef variant_func;
    LLVMValueRef context_ptr;
    LLVMValueRef tess_coord[2], io_ptr, input_array, num_tess_coord;
-   LLVMValueRef tess_inner, tess_outer, prim_id;
+   LLVMValueRef tess_inner, tess_outer, prim_id, patch_vertices_in;
    LLVMBasicBlockRef block;
    LLVMBuilderRef builder;
    LLVMValueRef mask_val;
@@ -3750,6 +3750,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    arg_types[6] = LLVMPointerType(flt_type, 0);
    arg_types[7] = LLVMPointerType(LLVMArrayType(flt_type, 4), 0);
    arg_types[8] = LLVMPointerType(LLVMArrayType(flt_type, 2), 0);
+   arg_types[9] = int32_type;
 
    func_type = LLVMFunctionType(int32_type, arg_types, ARRAY_SIZE(arg_types), 0);
    variant_func = LLVMAddFunction(gallivm->module, func_name, func_type);
@@ -3770,6 +3771,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    tess_coord[1]             = LLVMGetParam(variant_func, 6);
    tess_outer                = LLVMGetParam(variant_func, 7);
    tess_inner                = LLVMGetParam(variant_func, 8);
+   patch_vertices_in         = LLVMGetParam(variant_func, 9);
 
    lp_build_name(context_ptr, "context");
    lp_build_name(input_array, "input");
@@ -3780,6 +3782,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    lp_build_name(tess_coord[1], "tess_coord[1]");
    lp_build_name(tess_outer, "tess_outer");
    lp_build_name(tess_inner, "tess_inner");
+   lp_build_name(patch_vertices_in, "patch_vertices_in");
 
    tes_iface.base.fetch_vertex_input = draw_tes_llvm_fetch_vertex_input;
    tes_iface.base.fetch_patch_input = draw_tes_llvm_fetch_patch_input;
@@ -3815,6 +3818,8 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    system_values.tess_inner = LLVMBuildLoad(builder, tess_inner, "");
 
    system_values.prim_id = lp_build_broadcast_scalar(&bldvec, prim_id);
+
+   system_values.vertices_in = lp_build_broadcast_scalar(&bldvec, patch_vertices_in);
    struct lp_build_loop_state lp_loop;
    lp_build_loop_begin(&lp_loop, gallivm, bld.zero);
    {
