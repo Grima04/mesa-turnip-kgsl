@@ -1018,6 +1018,34 @@ get_io_masks(isel_context *ctx, unsigned shader_count, struct nir_shader *const 
    }
 }
 
+unsigned
+lower_bit_size_callback(const nir_alu_instr *alu, void *_)
+{
+   if (nir_op_is_vec(alu->op))
+      return 0;
+
+   unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   if (nir_alu_instr_is_comparison(alu))
+      bit_size = nir_src_bit_size(alu->src[0].src);
+
+   if (bit_size >= 32 || bit_size == 1)
+      return 0;
+
+   if (alu->op == nir_op_bcsel)
+      return 0;
+
+   const nir_op_info *info = &nir_op_infos[alu->op];
+
+   if (info->is_conversion)
+      return 0;
+
+   bool is_integer = info->output_type & (nir_type_uint | nir_type_int);
+   for (unsigned i = 0; is_integer && (i < info->num_inputs); i++)
+      is_integer = info->input_types[i] & (nir_type_uint | nir_type_int);
+
+   return is_integer ? 32 : 0;
+}
+
 void
 setup_nir(isel_context *ctx, nir_shader *nir)
 {
@@ -1061,6 +1089,9 @@ setup_nir(isel_context *ctx, nir_shader *nir)
    /* lower ALU operations */
    // TODO: implement logic64 in aco, it's more effective for sgprs
    nir_lower_int64(nir, nir->options->lower_int64_options);
+
+   if (nir_lower_bit_size(nir, lower_bit_size_callback, NULL))
+      nir_copy_prop(nir); /* allow nir_opt_idiv_const() to optimize lowered divisions */
 
    nir_opt_idiv_const(nir, 32);
    nir_lower_idiv(nir, nir_lower_idiv_precise);
