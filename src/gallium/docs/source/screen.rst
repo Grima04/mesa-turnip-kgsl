@@ -573,6 +573,7 @@ The integer capabilities:
 * ``PIPE_CAP_PSIZ_CLAMPED``: Driver needs for the point size to be clamped. Additionally, the gl_PointSize has been modified and its value should be lowered for transform feedback, if needed. Defaults to false.
 * ``PIPE_CAP_DRAW_INFO_START_WITH_USER_INDICES``: pipe_draw_info::start can be non-zero with user indices.
 * ``PIPE_CAP_GL_BEGIN_END_BUFFER_SIZE``: Buffer size used to upload vertices for glBegin/glEnd.
+* ``PIPE_CAP_VIEWPORT_SWIZZLE``: Whether pipe_viewport_state::swizzle can be used to specify pre-clipping swizzling of coordinates (see GL_NV_viewport_swizzle).
 
 .. _pipe_capf:
 
