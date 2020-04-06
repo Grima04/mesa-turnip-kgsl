@@ -324,7 +324,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MAX_VARYINGS:
       return 32;
    case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
-      return 1;
+      return 16;
    case PIPE_CAP_QUERY_BUFFER_OBJECT:
       return 1;
    case PIPE_CAP_DRAW_PARAMETERS:
