@@ -1274,10 +1274,14 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                         pandecode_log("},\n");
                 }
 
-                if (fbx->zero3 || fbx->zero4) {
+                if (fbx->clear_color_1 | fbx->clear_color_2) {
+                        pandecode_prop("clear_color_1 = 0x%" PRIx32, fbx->clear_color_1);
+                        pandecode_prop("clear_color_2 = 0x%" PRIx32, fbx->clear_color_2);
+                }
+
+                if (fbx->zero3) {
                         pandecode_msg("XXX: fb_extra zeros tripped\n");
                         pandecode_prop("zero3 = 0x%" PRIx64, fbx->zero3);
-                        pandecode_prop("zero4 = 0x%" PRIx64, fbx->zero4);
                 }
 
                 pandecode_indent--;

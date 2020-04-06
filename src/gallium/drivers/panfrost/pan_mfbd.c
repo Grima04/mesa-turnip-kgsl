@@ -161,6 +161,10 @@ panfrost_mfbd_clear(
         struct mali_render_target *rts,
         unsigned rt_count)
 {
+        struct panfrost_context *ctx = batch->ctx;
+        struct pipe_context *gallium = (struct pipe_context *) ctx;
+        struct panfrost_device *dev = pan_device(gallium->screen);
+
         for (unsigned i = 0; i < rt_count; ++i) {
                 if (!(batch->clear & (PIPE_CLEAR_COLOR0 << i)))
                         continue;
@@ -177,6 +181,11 @@ panfrost_mfbd_clear(
 
         if (batch->clear & PIPE_CLEAR_STENCIL) {
                 fb->clear_stencil = batch->clear_stencil;
+        }
+
+        if (dev->quirks & IS_BIFROST) {
+                fbx->clear_color_1 = batch->clear_color[0][0];
+                fbx->clear_color_2 = 0xc0000000 | (fbx->clear_color_1 & 0xffff); /* WTF? */
         }
 }
 

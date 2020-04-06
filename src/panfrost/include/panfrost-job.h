@@ -1670,7 +1670,9 @@ struct mali_framebuffer_extra  {
         };
 
 
-        u64 zero3, zero4;
+        u32 clear_color_1;
+        u32 clear_color_2;
+        u64 zero3;
 } __attribute__((packed));
 
 /* Flags for mfbd_flags */
