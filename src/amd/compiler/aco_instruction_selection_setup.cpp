@@ -154,8 +154,7 @@ unsigned get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
 bool
 sanitize_if(nir_function_impl *impl, bool *divergent, nir_if *nif)
 {
-   if (!divergent[nif->condition.ssa->index])
-      return false;
+   //TODO: skip this if the condition is uniform and there are no divergent breaks/continues?
 
    nir_block *then_block = nir_if_last_then_block(nif);
    nir_block *else_block = nir_if_last_else_block(nif);
