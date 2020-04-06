@@ -504,7 +504,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
     * format.
     */
    struct v3dv_image_view attachment_layer_view;
-   memcpy(&attachment_layer_view, subpass_fb->attachments[rt_idx],
+   memcpy(&attachment_layer_view, subpass_fb->attachments[attachment_idx],
           sizeof(struct v3dv_image_view));
    if (vk_format_is_depth_or_stencil(attachment_layer_view.vk_format)) {
       attachment_layer_view.aspects = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -527,7 +527,8 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t dirty_dynamic_state = 0;
    for (uint32_t i = 0; i < rect->layerCount; i++) {
       attachment_layer_view.first_layer =
-         subpass_fb->attachments[rt_idx]->first_layer + rect->baseArrayLayer + i;
+         subpass_fb->attachments[attachment_idx]->first_layer +
+         rect->baseArrayLayer + i;
       attachment_layer_view.last_layer = attachment_layer_view.first_layer;
 
       VkImageView fb_attachment =
