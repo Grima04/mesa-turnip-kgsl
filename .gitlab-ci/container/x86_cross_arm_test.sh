@@ -38,6 +38,7 @@ apt-get install -y --no-remove \
         python3.7 \
         pkg-config \
         procps \
+        u-boot-tools \
         unzip
 
 # Cross-build test deps
@@ -86,7 +87,8 @@ apt-get purge -y \
         meson \
         pkg-config \
         python3-distutils \
-        procps
+        procps \
+        u-boot-tools
 
 for arch in $CROSS_ARCHITECTURES; do
     apt-get purge -y ".*:${arch}"

@@ -46,11 +46,26 @@ wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
 pushd kernel
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ../.gitlab-ci/${KERNEL_ARCH}.config
 make ${KERNEL_IMAGE_NAME} dtbs
-cp arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_NAME} /lava-files/.
+for image in ${KERNEL_IMAGE_NAME}; do
+    cp arch/${KERNEL_ARCH}/boot/${image} /lava-files/.
+done
 cp ${DEVICE_TREES} /lava-files/.
+
+
+if [[ ${DEBIAN_ARCH} = "arm64" ]] && which mkimage > /dev/null; then
+    make Image.lzma
+    mkimage \
+        -f auto \
+        -A arm \
+        -O linux \
+        -d arch/arm64/boot/Image.lzma \
+        -C lzma\
+        -b arch/arm64/boot/dts/qcom/sdm845-cheza-r3.dtb \
+        /lava-files/cheza-kernel
+fi
+
 popd
 rm -rf kernel
-
 
 ############### Create rootfs
 set +e
@@ -95,4 +110,10 @@ if [ ${DEBIAN_ARCH} = arm64 ]; then
 
     # Make a gzipped copy of the Image for db410c.
     gzip -k /lava-files/Image
+
+    # Add missing a630 firmware, added to debian packge in apr 2020
+    wget https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/qcom/a630_gmu.bin \
+         -O /lava-files/rootfs-arm64/lib/firmware/qcom/a630_gmu.bin
+    wget https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/qcom/a630_sqe.fw \
+         -O /lava-files/rootfs-arm64/lib/firmware/qcom/a630_sqe.fw
 fi
