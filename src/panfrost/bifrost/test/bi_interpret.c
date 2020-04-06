@@ -184,6 +184,8 @@ bit_write(struct bit_state *s, unsigned index, nir_alu_type T, bit_t value, bool
 bit_make_poly(add, a + b);
 bit_make_float(fma, (a * b) + c);
 bit_make_poly(mov, a);
+bit_make_poly(min, MIN2(a, b));
+bit_make_poly(max, MAX2(a, b));
 
 /* Modifiers */
 
@@ -317,8 +319,15 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 
         case BI_FREXP:
         case BI_ISUB:
-        case BI_MINMAX:
                 unreachable("Unsupported op");
+
+        case BI_MINMAX: {
+                if (ins->op.minmax == BI_MINMAX_MIN) {
+                        bpoly(min);
+                } else {
+                        bpoly(max);
+                }
+        }
 
         case BI_MOV:
                 bpoly(mov);
