@@ -149,6 +149,15 @@ class Format(Enum):
    def get_builder_field_decls(self):
       return [('%s %s=%s' % (f[0], f[1], f[2]) if f[2] != None else '%s %s' % (f[0], f[1])) for f in self.get_builder_fields()]
 
+   def get_builder_initialization(self, num_operands):
+      res = ''
+      if self == Format.SDWA:
+         for i in range(min(num_operands, 2)):
+            res += f'instr->sel[{i}] = op{i}.op.bytes() == 2 ? sdwa_uword : (op{i}.op.bytes() == 1 ? sdwa_ubyte : sdwa_udword);\n'
+         res += 'instr->dst_sel = def0.bytes() == 2 ? sdwa_uword : (def0.bytes() == 1 ? sdwa_ubyte : sdwa_udword);\n'
+         res += 'instr->dst_preserve = true;'
+      return res
+
 
 class Opcode(object):
    """Class that represents all the information we have about the opcode
