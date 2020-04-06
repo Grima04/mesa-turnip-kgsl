@@ -8,3 +8,7 @@ GL_NV_viewport_array2 on nvc0 (GM200+).
 GL_NV_viewport_swizzle on nvc0 (GM200+).
 VK_KHR_shader_non_semantic_info on Intel, RADV.
 GL_EXT_draw_instanced on gles2
+VK_KHR_8bit_storage for ACO on GFX8+
+VK_KHR_16bit_storage for ACO on GFX8+ (storageInputOutput16 is still unsupported)
+shaderInt16 for ACO on GFX9+
+VK_KHR_shader_float16_int8 for ACO on GFX8+ (shaderFloat16 is still unsupported)

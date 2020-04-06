@@ -957,7 +957,7 @@ void radv_GetPhysicalDeviceFeatures(
 		.shaderCullDistance                       = true,
 		.shaderFloat64                            = true,
 		.shaderInt64                              = true,
-		.shaderInt16                              = pdevice->rad_info.chip_class >= GFX9 && !pdevice->use_aco,
+		.shaderInt16                              = pdevice->rad_info.chip_class >= GFX9,
 		.sparseBinding                            = true,
 		.variableMultisampleRate                  = true,
 		.inheritedQueries                         = true,
@@ -999,9 +999,10 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
 			VkPhysicalDevice16BitStorageFeatures *features =
 			    (VkPhysicalDevice16BitStorageFeatures*)ext;
-			features->storageBuffer16BitAccess = !pdevice->use_aco;
-			features->uniformAndStorageBuffer16BitAccess = !pdevice->use_aco;
-			features->storagePushConstant16 = !pdevice->use_aco;
+			bool enable = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
+			features->storageBuffer16BitAccess = enable;
+			features->uniformAndStorageBuffer16BitAccess = enable;
+			features->storagePushConstant16 = enable;
 			features->storageInputOutput16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
 			break;
 		}
@@ -1100,16 +1101,17 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
 			VkPhysicalDevice8BitStorageFeatures *features =
 			    (VkPhysicalDevice8BitStorageFeatures *)ext;
-			features->storageBuffer8BitAccess = !pdevice->use_aco;
-			features->uniformAndStorageBuffer8BitAccess = !pdevice->use_aco;
-			features->storagePushConstant8 = !pdevice->use_aco;
+			bool enable = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
+			features->storageBuffer8BitAccess = enable;
+			features->uniformAndStorageBuffer8BitAccess = enable;
+			features->storagePushConstant8 = enable;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
 			VkPhysicalDeviceShaderFloat16Int8Features *features =
 				(VkPhysicalDeviceShaderFloat16Int8Features*)ext;
 			features->shaderFloat16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco;
-			features->shaderInt8 = !pdevice->use_aco;
+			features->shaderInt8 = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
@@ -1217,9 +1219,10 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
 			VkPhysicalDeviceVulkan11Features *features =
 				(VkPhysicalDeviceVulkan11Features *)ext;
-			features->storageBuffer16BitAccess = !pdevice->use_aco;
-			features->uniformAndStorageBuffer16BitAccess = !pdevice->use_aco;
-			features->storagePushConstant16 = !pdevice->use_aco;
+			bool storage16_enable = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
+			features->storageBuffer16BitAccess = storage16_enable;
+			features->uniformAndStorageBuffer16BitAccess = storage16_enable;
+			features->storagePushConstant16 = storage16_enable;
 			features->storageInputOutput16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco && LLVM_VERSION_MAJOR >= 9;
 			features->multiview = true;
 			features->multiviewGeometryShader = true;
@@ -1234,15 +1237,16 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
 			VkPhysicalDeviceVulkan12Features *features =
 				(VkPhysicalDeviceVulkan12Features *)ext;
+			bool int8_enable = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
 			features->samplerMirrorClampToEdge = true;
 			features->drawIndirectCount = true;
-			features->storageBuffer8BitAccess = !pdevice->use_aco;
-			features->uniformAndStorageBuffer8BitAccess = !pdevice->use_aco;
-			features->storagePushConstant8 = !pdevice->use_aco;
+			features->storageBuffer8BitAccess = int8_enable;
+			features->uniformAndStorageBuffer8BitAccess = int8_enable;
+			features->storagePushConstant8 = int8_enable;
 			features->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 			features->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 			features->shaderFloat16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco;
-			features->shaderInt8 = !pdevice->use_aco;
+			features->shaderInt8 = int8_enable;
 			features->descriptorIndexing = true;
 			features->shaderInputAttachmentArrayDynamicIndexing = true;
 			features->shaderUniformTexelBufferArrayDynamicIndexing = true;
