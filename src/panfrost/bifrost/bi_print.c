@@ -257,12 +257,6 @@ bi_special_op_name(enum bi_special_op op)
         switch (op) {
         case BI_SPECIAL_FRCP: return "frcp";
         case BI_SPECIAL_FRSQ: return "frsq";
-        case BI_SPECIAL_FATAN: return "fatan";
-        case BI_SPECIAL_FSIN: return "fsin";
-        case BI_SPECIAL_FCOS: return "fcos";
-        case BI_SPECIAL_FEXP: return "fexp";
-        case BI_SPECIAL_FLOG2: return "flog2";
-        case BI_SPECIAL_FLOGE: return "flog";
         default: return "invalid";
         }
 }
