@@ -741,9 +741,9 @@ cmd_buffer_update_tile_alignment(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    VkExtent2D granularity;
-   VkDevice _device = v3dv_device_to_handle(cmd_buffer->device);
-   VkRenderPass _pass = v3dv_render_pass_to_handle(cmd_buffer->state.pass);
-   v3dv_GetRenderAreaGranularity(_device, _pass, &granularity);
+   v3dv_subpass_get_granularity(cmd_buffer->state.pass,
+                                cmd_buffer->state.subpass_idx,
+                                &granularity);
 
    cmd_buffer->state.tile_aligned_render_area =
       clip_rect->offset.x % granularity.width == 0 &&
@@ -933,13 +933,6 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
        max_render_x < max_clip_x || max_render_y < max_clip_y) {
       state->dirty |= V3DV_CMD_DIRTY_SCISSOR;
    }
-
-   /* Check if our render area is aligned to tile boundaries */
-   VkExtent2D fb_extent = {
-      .width = framebuffer->width,
-      .height = framebuffer->height
-   };
-   cmd_buffer_update_tile_alignment(cmd_buffer, &state->render_area, &fb_extent);
 
    /* Setup for first subpass */
    v3dv_cmd_buffer_subpass_start(cmd_buffer, 0);
@@ -1724,6 +1717,18 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
       cmd_buffer_subpass_create_job(cmd_buffer, subpass_idx);
    if (!job)
       return NULL;
+
+   /* Check if our render area is aligned to tile boundaries. We have to do
+    * this in each subpass because the subset of attachments used can change
+    * and with that the tile size selected by the hardware can change too.
+    */
+   assert(state->framebuffer);
+   VkExtent2D fb_extent = {
+      .width = state->framebuffer->width,
+      .height = state->framebuffer->height
+   };
+   cmd_buffer_update_tile_alignment(cmd_buffer, &state->render_area, &fb_extent);
+
 
    /* If we can't use TLB clears then we need to emit draw clears for any
     * LOAD_OP_CLEAR attachments in this subpass now.

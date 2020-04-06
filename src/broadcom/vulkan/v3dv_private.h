@@ -445,6 +445,10 @@ struct v3dv_render_pass {
    struct v3dv_subpass_attachment *subpass_attachments;
 };
 
+void v3dv_subpass_get_granularity(struct v3dv_render_pass *pass,
+                                  uint32_t subpass_idx,
+                                  VkExtent2D *granularity);
+
 struct v3dv_framebuffer {
    uint32_t width;
    uint32_t height;
