@@ -80,6 +80,9 @@ get_sysfs_dev_dir(struct gen_perf_config *perf, int fd)
 
    perf->sysfs_dev_dir[0] = '\0';
 
+   if (unlikely(INTEL_DEBUG & DEBUG_NO_OACONFIG))
+      return true;
+
    if (fstat(fd, &sb)) {
       DBG("Failed to stat DRM fd\n");
       return false;
@@ -230,6 +233,16 @@ enumerate_sysfs_metrics(struct gen_perf_config *perf,
    }
 
    closedir(metricsdir);
+}
+
+static void
+add_all_metrics(struct gen_perf_config *perf,
+                const struct gen_device_info *devinfo)
+{
+   hash_table_foreach(perf->oa_metrics_table, entry) {
+      const struct gen_perf_query_info *query = entry->data;
+      register_oa_config(perf, devinfo, query, 0);
+   }
 }
 
 static bool
@@ -394,11 +407,16 @@ init_oa_sys_vars(struct gen_perf_config *perf, const struct gen_device_info *dev
 {
    uint64_t min_freq_mhz = 0, max_freq_mhz = 0;
 
-   if (!read_sysfs_drm_device_file_uint64(perf, "gt_min_freq_mhz", &min_freq_mhz))
-      return false;
+   if (likely(!(INTEL_DEBUG & DEBUG_NO_OACONFIG))) {
+      if (!read_sysfs_drm_device_file_uint64(perf, "gt_min_freq_mhz", &min_freq_mhz))
+         return false;
 
-   if (!read_sysfs_drm_device_file_uint64(perf,  "gt_max_freq_mhz", &max_freq_mhz))
-      return false;
+      if (!read_sysfs_drm_device_file_uint64(perf,  "gt_max_freq_mhz", &max_freq_mhz))
+         return false;
+   } else {
+      min_freq_mhz = 300;
+      max_freq_mhz = 1000;
+   }
 
    memset(&perf->sys_vars, 0, sizeof(perf->sys_vars));
    perf->sys_vars.gt_min_freq = min_freq_mhz * 1000000;
@@ -679,11 +697,14 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
     */
    oa_register(perf);
 
-   if (likely((INTEL_DEBUG & DEBUG_NO_OACONFIG) == 0) &&
-       kernel_has_dynamic_config_support(perf, fd))
-      init_oa_configs(perf, fd, devinfo);
-   else
-      enumerate_sysfs_metrics(perf, devinfo);
+   if (likely(!(INTEL_DEBUG & DEBUG_NO_OACONFIG))) {
+      if (kernel_has_dynamic_config_support(perf, fd))
+         init_oa_configs(perf, fd, devinfo);
+      else
+         enumerate_sysfs_metrics(perf, devinfo);
+   } else {
+      add_all_metrics(perf, devinfo);
+   }
 
    build_unique_counter_list(perf);
 

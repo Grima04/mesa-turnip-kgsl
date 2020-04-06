@@ -180,18 +180,21 @@ VkResult anv_AcquirePerformanceConfigurationINTEL(
     VkPerformanceConfigurationINTEL*            pConfiguration)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
+   int ret = -1;
 
-   struct gen_perf_registers *perf_config =
-      gen_perf_load_configuration(device->physical->perf, device->fd,
-                                  GEN_PERF_QUERY_GUID_MDAPI);
-   if (!perf_config)
-      return VK_INCOMPLETE;
+   if (likely(!(INTEL_DEBUG & DEBUG_NO_OACONFIG))) {
+      struct gen_perf_registers *perf_config =
+         gen_perf_load_configuration(device->physical->perf, device->fd,
+                                     GEN_PERF_QUERY_GUID_MDAPI);
+      if (!perf_config)
+         return VK_INCOMPLETE;
 
-   int ret = gen_perf_store_configuration(device->physical->perf, device->fd,
-                                          perf_config, NULL /* guid */);
-   if (ret < 0) {
-      ralloc_free(perf_config);
-      return VK_INCOMPLETE;
+      ret = gen_perf_store_configuration(device->physical->perf, device->fd,
+                                         perf_config, NULL /* guid */);
+      if (ret < 0) {
+         ralloc_free(perf_config);
+         return VK_INCOMPLETE;
+      }
    }
 
    *pConfiguration = (VkPerformanceConfigurationINTEL) (uint64_t) ret;
@@ -206,7 +209,8 @@ VkResult anv_ReleasePerformanceConfigurationINTEL(
    ANV_FROM_HANDLE(anv_device, device, _device);
    uint64_t config = (uint64_t) _configuration;
 
-   gen_ioctl(device->fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG, &config);
+   if (likely(!(INTEL_DEBUG & DEBUG_NO_OACONFIG)))
+      gen_ioctl(device->fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG, &config);
 
    return VK_SUCCESS;
 }
@@ -219,15 +223,17 @@ VkResult anv_QueueSetPerformanceConfigurationINTEL(
    struct anv_device *device = queue->device;
    uint64_t configuration = (uint64_t) _configuration;
 
-   if (device->perf_fd < 0) {
-      device->perf_fd = anv_device_perf_open(device, configuration);
-      if (device->perf_fd < 0)
-         return VK_ERROR_INITIALIZATION_FAILED;
-   } else {
-      int ret = gen_ioctl(device->perf_fd, I915_PERF_IOCTL_CONFIG,
+   if (likely(!(INTEL_DEBUG & DEBUG_NO_OACONFIG))) {
+      if (device->perf_fd < 0) {
+         device->perf_fd = anv_device_perf_open(device, configuration);
+         if (device->perf_fd < 0)
+            return VK_ERROR_INITIALIZATION_FAILED;
+      } else {
+         int ret = gen_ioctl(device->perf_fd, I915_PERF_IOCTL_CONFIG,
                           (void *)(uintptr_t) _configuration);
-      if (ret < 0)
-         return anv_device_set_lost(device, "i915-perf config failed: %m");
+         if (ret < 0)
+            return anv_device_set_lost(device, "i915-perf config failed: %m");
+      }
    }
 
    return VK_SUCCESS;
@@ -342,12 +348,15 @@ VkResult anv_AcquireProfilingLockKHR(
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct gen_perf_config *perf = device->physical->perf;
    struct gen_perf_query_info *first_metric_set = &perf->queries[0];
+   int fd = -1;
 
    assert(device->perf_fd == -1);
 
-   int fd = anv_device_perf_open(device, first_metric_set->oa_metrics_set_id);
-   if (fd < 0)
-      return VK_TIMEOUT;
+   if (likely(!(INTEL_DEBUG & DEBUG_NO_OACONFIG))) {
+      fd = anv_device_perf_open(device, first_metric_set->oa_metrics_set_id);
+      if (fd < 0)
+         return VK_TIMEOUT;
+   }
 
    device->perf_fd = fd;
    return VK_SUCCESS;
@@ -358,8 +367,10 @@ void anv_ReleaseProfilingLockKHR(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
 
-   assert(device->perf_fd >= 0);
-   close(device->perf_fd);
+   if (likely(!(INTEL_DEBUG & DEBUG_NO_OACONFIG))) {
+      assert(device->perf_fd >= 0);
+      close(device->perf_fd);
+   }
    device->perf_fd = -1;
 }
 
