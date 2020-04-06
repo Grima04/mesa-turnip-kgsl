@@ -284,20 +284,31 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
                           enum pipe_shader_type st,
                           struct mali_shader_meta *meta)
 {
+        const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, st);
 
         memset(meta, 0, sizeof(*meta));
         meta->shader = (ss->bo ? ss->bo->gpu : 0) | ss->first_tag;
-        meta->midgard1.uniform_count = MIN2(ss->uniform_count,
-                                            ss->uniform_cutoff);
-        meta->midgard1.work_count = ss->work_reg_count;
         meta->attribute_count = ss->attribute_count;
         meta->varying_count = ss->varying_count;
-        meta->midgard1.flags_hi = 0x8; /* XXX */
-        meta->midgard1.flags_lo = 0x220;
         meta->texture_count = ctx->sampler_view_count[st];
         meta->sampler_count = ctx->sampler_count[st];
-        meta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
+
+        if (dev->quirks & IS_BIFROST) {
+                meta->bifrost1.unk1 = 0x800200;
+                meta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
+                meta->bifrost2.preload_regs = 0xC0;
+                meta->bifrost2.uniform_count = MIN2(ss->uniform_count,
+                                                    ss->uniform_cutoff);
+        } else {
+                meta->midgard1.uniform_count = MIN2(ss->uniform_count,
+                                                    ss->uniform_cutoff);
+                meta->midgard1.work_count = ss->work_reg_count;
+                meta->midgard1.flags_hi = 0x8; /* XXX */
+                meta->midgard1.flags_lo = 0x220;
+                meta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
+        }
+
 }
 
 static unsigned
