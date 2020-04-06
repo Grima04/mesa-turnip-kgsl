@@ -249,6 +249,19 @@ bit_eval_cond(enum bi_cond cond, bit_t l, bit_t r, nir_alu_type T, unsigned c)
         }
 }
 
+static float
+biti_special(float Q, enum bi_special_op op)
+{
+        switch (op) {
+        case BI_SPECIAL_FRCP: return 1.0 / Q;
+        case BI_SPECIAL_FRSQ: {
+              double Qf = 1.0 / sqrt(Q);
+              return Qf;
+        }
+        default: unreachable("Invalid special");
+        }
+}
+
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 {
@@ -310,9 +323,29 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         case BI_MOV:
                 bpoly(mov);
 
+        case BI_SPECIAL: {
+                assert(nir_alu_type_get_base_type(ins->dest_type) == nir_type_float);
+                assert(nir_alu_type_get_base_type(ins->dest_type) != nir_type_float64);
+                float Q = (ins->dest_type == nir_type_float16) ?
+                        bf(srcs[0].u16[ins->swizzle[0][0]]) :
+                        srcs[0].f32;
+
+                float R = biti_special(Q, ins->op.special);
+
+                if (ins->dest_type == nir_type_float16) {
+                        dest.f16[0] = bh(R);
+
+                        if (!ins->swizzle[0][0] && ins->op.special == BI_SPECIAL_FRSQ) {
+                                /* Sorry. */
+                                dest.f16[0]++;
+                        }
+                } else {
+                        dest.f32 = R;
+                }
+                break;
+        }
+
         case BI_SHIFT:
-        case BI_STORE_VAR:
-        case BI_SPECIAL: /* _FAST, _TABLE on supported GPUs */
         case BI_SWIZZLE:
         case BI_ROUND:
                 unreachable("Unsupported op");
@@ -330,6 +363,7 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         case BI_LOAD_VAR_ADDRESS:
         case BI_LOAD:
         case BI_STORE:
+        case BI_STORE_VAR:
         case BI_TEX:
                 unreachable("Unsupported I/O in interpreter");
 
