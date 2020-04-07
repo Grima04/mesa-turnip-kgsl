@@ -92,6 +92,12 @@ if with_platform_drm
   libtu_files += files('tu_wsi_display.c')
 endif
 
+if with_platform_android
+  tu_flags += '-DVK_USE_PLATFORM_ANDROID_KHR'
+  libtu_files += files('tu_android.c')
+  tu_deps += [dep_android]
+endif
+
 if with_xlib_lease
   tu_deps += [dep_xcb_xrandr, dep_xlib_xrandr]
   tu_flags += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
