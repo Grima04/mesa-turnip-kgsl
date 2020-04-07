@@ -195,7 +195,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-05-14-baremetal-5"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-05-28-cheza"
 
 .use-arm_build:
   variables:
@@ -208,7 +208,7 @@ arm_build:
 x86_cross_arm_test:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_cross_arm_test "2020-05-13"
+    FDO_DISTRIBUTION_TAG: &x86_cross_arm_test "2020-05-28-cheza"
 
 .use-x86_cross_arm_test:
   variables:
