@@ -338,7 +338,7 @@ tu_physical_device_finish(struct tu_physical_device *device)
       close(device->master_fd);
 }
 
-static void *
+static VKAPI_ATTR void *
 default_alloc_func(void *pUserData,
                    size_t size,
                    size_t align,
@@ -347,7 +347,7 @@ default_alloc_func(void *pUserData,
    return malloc(size);
 }
 
-static void *
+static VKAPI_ATTR void *
 default_realloc_func(void *pUserData,
                      void *pOriginal,
                      size_t size,
@@ -357,7 +357,7 @@ default_realloc_func(void *pUserData,
    return realloc(pOriginal, size);
 }
 
-static void
+static VKAPI_ATTR void
 default_free_func(void *pUserData, void *pMemory)
 {
    free(pMemory);
