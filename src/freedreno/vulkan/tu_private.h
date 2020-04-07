@@ -1587,21 +1587,6 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
 void
 tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
 
-uint32_t
-tu_gem_new(const struct tu_device *dev, uint64_t size, uint32_t flags);
-uint32_t
-tu_gem_import_dmabuf(const struct tu_device *dev,
-                     int prime_fd,
-                     uint64_t size);
-int
-tu_gem_export_dmabuf(const struct tu_device *dev, uint32_t gem_handle);
-void
-tu_gem_close(const struct tu_device *dev, uint32_t gem_handle);
-uint64_t
-tu_gem_info_offset(const struct tu_device *dev, uint32_t gem_handle);
-uint64_t
-tu_gem_info_iova(const struct tu_device *dev, uint32_t gem_handle);
-
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                              \
    static inline struct __tu_type *__tu_type##_from_handle(__VkType _handle) \
