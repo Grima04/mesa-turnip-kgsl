@@ -28,8 +28,6 @@ export DXVK_STATE_CACHE=0
 MESA_VERSION=$(cat "$INSTALL/VERSION" | sed 's/\./\\./g')
 vulkaninfo | grep "Mesa $MESA_VERSION\(\s\|$\)"
 
-ret=0
-
 # Run gfxreconstruct traces against the host's running X server (xvfb
 # doesn't have DRI3 support).
 # Set the DISPLAY env variable in each gitlab-runner's configuration
@@ -37,5 +35,3 @@ ret=0
 # https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-runners-section
 PATH="/gfxreconstruct/build/bin:$PATH" \
     python3 $INSTALL/tracie/tracie.py --file $INSTALL/traces.yml --device-name $DEVICE_NAME
-
-exit $ret
