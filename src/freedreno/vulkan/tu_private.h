@@ -1573,14 +1573,11 @@ tu_update_descriptor_set_with_template(
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData);
 
-int
-tu_drm_get_gpu_id(const struct tu_physical_device *dev, uint32_t *id);
-
-int
-tu_drm_get_gmem_size(const struct tu_physical_device *dev, uint32_t *size);
-
-int
-tu_drm_get_gmem_base(const struct tu_physical_device *dev, uint64_t *base);
+VkResult
+tu_physical_device_init(struct tu_physical_device *device,
+                        struct tu_instance *instance);
+VkResult
+tu_enumerate_devices(struct tu_instance *instance);
 
 int
 tu_drm_submitqueue_new(const struct tu_device *dev,

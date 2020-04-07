@@ -162,101 +162,11 @@ tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
    tu_gem_close(dev, bo->gem_handle);
 }
 
-static VkResult
+VkResult
 tu_physical_device_init(struct tu_physical_device *device,
-                        struct tu_instance *instance,
-                        drmDevicePtr drm_device)
+                        struct tu_instance *instance)
 {
-   const char *path = drm_device->nodes[DRM_NODE_RENDER];
    VkResult result = VK_SUCCESS;
-   drmVersionPtr version;
-   int fd;
-   int master_fd = -1;
-
-   fd = open(path, O_RDWR | O_CLOEXEC);
-   if (fd < 0) {
-      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                       "failed to open device %s", path);
-   }
-
-   /* Version 1.3 added MSM_INFO_IOVA. */
-   const int min_version_major = 1;
-   const int min_version_minor = 3;
-
-   version = drmGetVersion(fd);
-   if (!version) {
-      close(fd);
-      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                       "failed to query kernel driver version for device %s",
-                       path);
-   }
-
-   if (strcmp(version->name, "msm")) {
-      drmFreeVersion(version);
-      close(fd);
-      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                       "device %s does not use the msm kernel driver", path);
-   }
-
-   if (version->version_major != min_version_major ||
-       version->version_minor < min_version_minor) {
-      result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                         "kernel driver for device %s has version %d.%d, "
-                         "but Vulkan requires version >= %d.%d",
-                         path, version->version_major, version->version_minor,
-                         min_version_major, min_version_minor);
-      drmFreeVersion(version);
-      close(fd);
-      return result;
-   }
-
-   device->msm_major_version = version->version_major;
-   device->msm_minor_version = version->version_minor;
-
-   drmFreeVersion(version);
-
-   if (instance->debug_flags & TU_DEBUG_STARTUP)
-      tu_logi("Found compatible device '%s'.", path);
-
-   vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
-   device->instance = instance;
-   assert(strlen(path) < ARRAY_SIZE(device->path));
-   strncpy(device->path, path, ARRAY_SIZE(device->path));
-
-   if (instance->enabled_extensions.KHR_display) {
-      master_fd =
-         open(drm_device->nodes[DRM_NODE_PRIMARY], O_RDWR | O_CLOEXEC);
-      if (master_fd >= 0) {
-         /* TODO: free master_fd is accel is not working? */
-      }
-   }
-
-   device->master_fd = master_fd;
-   device->local_fd = fd;
-
-   if (tu_drm_get_gpu_id(device, &device->gpu_id)) {
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not query the GPU ID");
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "could not get GPU ID");
-      goto fail;
-   }
-
-   if (tu_drm_get_gmem_size(device, &device->gmem_size)) {
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not query the GMEM size");
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "could not get GMEM size");
-      goto fail;
-   }
-
-   if (tu_drm_get_gmem_base(device, &device->gmem_base)) {
-      if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not query the GMEM size");
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "could not get GMEM size");
-      goto fail;
-   }
 
    memset(device->name, 0, sizeof(device->name));
    sprintf(device->name, "FD%d", device->gpu_id);
@@ -326,9 +236,9 @@ tu_physical_device_init(struct tu_physical_device *device,
    return VK_SUCCESS;
 
 fail:
-   close(fd);
-   if (master_fd != -1)
-      close(master_fd);
+   close(device->local_fd);
+   if (device->master_fd != -1)
+      close(device->master_fd);
    return result;
 }
 
@@ -495,46 +405,6 @@ tu_DestroyInstance(VkInstance _instance,
 
    vk_object_base_finish(&instance->base);
    vk_free(&instance->alloc, instance);
-}
-
-static VkResult
-tu_enumerate_devices(struct tu_instance *instance)
-{
-   /* TODO: Check for more devices ? */
-   drmDevicePtr devices[8];
-   VkResult result = VK_ERROR_INCOMPATIBLE_DRIVER;
-   int max_devices;
-
-   instance->physical_device_count = 0;
-
-   max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
-
-   if (instance->debug_flags & TU_DEBUG_STARTUP) {
-      if (max_devices < 0)
-         tu_logi("drmGetDevices2 returned error: %s\n", strerror(max_devices));
-      else
-         tu_logi("Found %d drm nodes", max_devices);
-   }
-
-   if (max_devices < 1)
-      return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
-
-   for (unsigned i = 0; i < (unsigned) max_devices; i++) {
-      if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
-          devices[i]->bustype == DRM_BUS_PLATFORM) {
-
-         result = tu_physical_device_init(
-            instance->physical_devices + instance->physical_device_count,
-            instance, devices[i]);
-         if (result == VK_SUCCESS)
-            ++instance->physical_device_count;
-         else if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
-            break;
-      }
-   }
-   drmFreeDevices(devices, max_devices);
-
-   return result;
 }
 
 VkResult
