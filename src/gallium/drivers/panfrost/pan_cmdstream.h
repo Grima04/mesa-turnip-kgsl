@@ -41,18 +41,6 @@ panfrost_vt_init(struct panfrost_context *ctx,
                  struct midgard_payload_vertex_tiler *vtp);
 
 void
-panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
-                               struct midgard_payload_vertex_tiler *vt);
-
-void
-panfrost_vt_update_rasterizer(struct panfrost_context *ctx,
-                              struct midgard_payload_vertex_tiler *tp);
-
-void
-panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
-                                   struct midgard_payload_vertex_tiler *tp);
-
-void
 panfrost_vt_set_draw_info(struct panfrost_context *ctx,
                           const struct pipe_draw_info *info,
                           enum mali_draw_mode draw_mode,

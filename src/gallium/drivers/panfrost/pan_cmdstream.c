@@ -54,7 +54,7 @@ panfrost_bo_access_for_stage(enum pipe_shader_type stage)
 /* TODO: Bifrost requires just a mali_shared_memory, without the rest of the
  * framebuffer */
 
-void
+static void
 panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
                                struct midgard_payload_vertex_tiler *vt)
 {
@@ -78,7 +78,7 @@ panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
         vt->postfix.shared_memory = batch->framebuffer.gpu;
 }
 
-void
+static void
 panfrost_vt_update_rasterizer(struct panfrost_context *ctx,
                               struct midgard_payload_vertex_tiler *tp)
 {
@@ -107,7 +107,7 @@ panfrost_vt_update_rasterizer(struct panfrost_context *ctx,
         }
 }
 
-void
+static void
 panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
                                    struct midgard_payload_vertex_tiler *tp)
 {
