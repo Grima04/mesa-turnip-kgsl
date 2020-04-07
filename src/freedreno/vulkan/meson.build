@@ -47,7 +47,6 @@ libtu_files = files(
   'tu_device.c',
   'tu_descriptor_set.c',
   'tu_descriptor_set.h',
-  'tu_drm.c',
   'tu_fence.c',
   'tu_formats.c',
   'tu_image.c',
@@ -96,6 +95,12 @@ endif
 if with_xlib_lease
   tu_deps += [dep_xcb_xrandr, dep_xlib_xrandr]
   tu_flags += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
+endif
+
+if with_freedreno_kgsl
+  libtu_files += files('tu_kgsl.c')
+else
+  libtu_files += files('tu_drm.c')
 endif
 
 libvulkan_freedreno = shared_library(

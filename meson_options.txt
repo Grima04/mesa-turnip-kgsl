@@ -170,6 +170,12 @@ option(
   description : 'List of vulkan drivers to build. If this is set to auto all drivers applicable to the target OS/architecture will be built'
 )
 option(
+  'freedreno-kgsl',
+  type : 'boolean',
+  value : false,
+  description : 'use kgsl backend for freedreno vulkan driver',
+)
+option(
   'shader-cache',
   type : 'combo',
   value : 'auto',
