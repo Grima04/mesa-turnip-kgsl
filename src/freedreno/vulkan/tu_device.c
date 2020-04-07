@@ -1448,6 +1448,44 @@ tu_DeviceWaitIdle(VkDevice _device)
 }
 
 VkResult
+tu_ImportSemaphoreFdKHR(VkDevice _device,
+                        const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
+{
+   tu_stub();
+
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetSemaphoreFdKHR(VkDevice _device,
+                     const VkSemaphoreGetFdInfoKHR *pGetFdInfo,
+                     int *pFd)
+{
+   tu_stub();
+
+   return VK_SUCCESS; 
+}
+
+VkResult
+tu_ImportFenceFdKHR(VkDevice _device,
+                    const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
+{
+   tu_stub();
+
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetFenceFdKHR(VkDevice _device,
+                 const VkFenceGetFdInfoKHR *pGetFdInfo,
+                 int *pFd)
+{
+   tu_stub();
+
+   return VK_SUCCESS;
+}
+
+VkResult
 tu_EnumerateInstanceExtensionProperties(const char *pLayerName,
                                         uint32_t *pPropertyCount,
                                         VkExtensionProperties *pProperties)
