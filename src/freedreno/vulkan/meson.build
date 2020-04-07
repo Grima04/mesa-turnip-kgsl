@@ -127,7 +127,6 @@ libvulkan_freedreno = shared_library(
     dep_dl,
     dep_elf,
     dep_libdrm,
-    dep_llvm,
     dep_m,
     dep_thread,
     dep_valgrind,
