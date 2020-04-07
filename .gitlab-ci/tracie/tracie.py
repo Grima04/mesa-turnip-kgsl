@@ -118,16 +118,16 @@ def check_trace(repo_url, repo_commit, device_name, trace, expectation):
     trace_path = Path(TRACES_DB_PATH + trace['path'])
     checksum, image_file, log_file = replay(trace_path, device_name)
     if checksum is None:
-            return False
+        return False
     elif checksum == expectation['checksum']:
-            print("[check_image] Images match for %s" % (trace['path']))
-            ok = True
+        print("[check_image] Images match for %s" % (trace['path']))
+        ok = True
     else:
-            print("[check_image] Images differ for %s (expected: %s, actual: %s)" %
-                  (trace['path'], expectation['checksum'], checksum))
-            print("[check_image] For more information see "
-                  "https://gitlab.freedesktop.org/mesa/mesa/blob/master/.gitlab-ci/tracie/README.md")
-            ok = False
+        print("[check_image] Images differ for %s (expected: %s, actual: %s)" %
+                (trace['path'], expectation['checksum'], checksum))
+        print("[check_image] For more information see "
+                "https://gitlab.freedesktop.org/mesa/mesa/blob/master/.gitlab-ci/tracie/README.md")
+        ok = False
 
     trace_dir = os.path.split(trace['path'])[0]
     dir_in_results = os.path.join(trace_dir, "test", device_name)
