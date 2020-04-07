@@ -1294,6 +1294,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->robustBufferAccess2 = true;
 			features->robustImageAccess2 = true;
 			features->nullDescriptor = true;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+			VkPhysicalDeviceCustomBorderColorFeaturesEXT *features =
+				(VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
+			features->customBorderColors = true;
+			features->customBorderColorWithoutFormat = true;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
@@ -1938,6 +1944,11 @@ void radv_GetPhysicalDeviceProperties2(
 				(VkPhysicalDeviceRobustness2PropertiesEXT *)ext;
 			properties->robustStorageBufferAccessSizeAlignment = 4;
 			properties->robustUniformBufferAccessSizeAlignment = 4;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
+			VkPhysicalDeviceCustomBorderColorPropertiesEXT *props =
+				(VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
+			props->maxCustomBorderColorSamplers = RADV_BORDER_COLOR_COUNT;
 			break;
 		}
 		default:
@@ -2936,6 +2947,37 @@ check_physical_device_features(VkPhysicalDevice physicalDevice,
 	return VK_SUCCESS;
 }
 
+static VkResult radv_device_init_border_color(struct radv_device *device)
+{
+	device->border_color_data.bo =
+	device->ws->buffer_create(device->ws,
+					RADV_BORDER_COLOR_BUFFER_SIZE,
+					4096,
+					RADEON_DOMAIN_VRAM,
+					RADEON_FLAG_CPU_ACCESS |
+					RADEON_FLAG_READ_ONLY |
+					RADEON_FLAG_NO_INTERPROCESS_SHARING,
+					RADV_BO_PRIORITY_SHADER);
+
+	if (device->border_color_data.bo == NULL)
+		return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
+	device->border_color_data.colors_gpu_ptr =
+		device->ws->buffer_map(device->border_color_data.bo);
+	pthread_mutex_init(&device->border_color_data.mutex, NULL);
+
+	return VK_SUCCESS;
+}
+
+static void radv_device_finish_border_color(struct radv_device *device)
+{
+	if (device->border_color_data.bo) {
+		device->ws->buffer_destroy(device->border_color_data.bo);
+
+		pthread_mutex_destroy(&device->border_color_data.mutex);
+	}
+}
+
 VkResult radv_CreateDevice(
 	VkPhysicalDevice                            physicalDevice,
 	const VkDeviceCreateInfo*                   pCreateInfo,
@@ -2949,6 +2991,7 @@ VkResult radv_CreateDevice(
 	bool keep_shader_info = false;
 	bool robust_buffer_access = false;
 	bool overallocation_disallowed = false;
+	bool custom_border_colors = false;
 
 	/* Check enabled features */
 	if (pCreateInfo->pEnabledFeatures) {
@@ -2978,6 +3021,11 @@ VkResult radv_CreateDevice(
 			const VkDeviceMemoryOverallocationCreateInfoAMD *overallocation = (const void *)ext;
 			if (overallocation->overallocationBehavior == VK_MEMORY_OVERALLOCATION_BEHAVIOR_DISALLOWED_AMD)
 				overallocation_disallowed = true;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+			const VkPhysicalDeviceCustomBorderColorFeaturesEXT *border_color_features = (const void *)ext;
+			custom_border_colors = border_color_features->customBorderColors;
 			break;
 		}
 		default:
@@ -3150,6 +3198,13 @@ VkResult radv_CreateDevice(
 
 	radv_device_init_msaa(device);
 
+ 	/* If the border color extension is enabled, let's create the buffer we need. */
+	if (custom_border_colors) {
+		result = radv_device_init_border_color(device);
+		if (result != VK_SUCCESS)
+			goto fail;
+	}
+
 	for (int family = 0; family < RADV_MAX_QUEUE_FAMILIES; ++family) {
 		device->empty_cs[family] = device->ws->cs_create(device->ws, family);
 		switch (family) {
@@ -3221,6 +3276,8 @@ fail:
 	if (device->gfx_init)
 		device->ws->buffer_destroy(device->gfx_init);
 
+	radv_device_finish_border_color(device);
+
 	for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
 		for (unsigned q = 0; q < device->queue_count[i]; q++)
 			radv_queue_finish(&device->queues[i][q]);
@@ -3246,6 +3303,8 @@ void radv_DestroyDevice(
 
 	if (device->gfx_init)
 		device->ws->buffer_destroy(device->gfx_init);
+
+	radv_device_finish_border_color(device);
 
 	for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
 		for (unsigned q = 0; q < device->queue_count[i]; q++)
@@ -7094,6 +7153,9 @@ radv_tex_bordercolor(VkBorderColor bcolor)
 	case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
 	case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
 		return V_008F3C_SQ_TEX_BORDER_COLOR_OPAQUE_WHITE;
+	case VK_BORDER_COLOR_FLOAT_CUSTOM_EXT:
+	case VK_BORDER_COLOR_INT_CUSTOM_EXT:
+		return V_008F3C_SQ_TEX_BORDER_COLOR_REGISTER;
 	default:
 		break;
 	}
@@ -7149,6 +7211,40 @@ static inline int S_FIXED(float value, unsigned frac_bits)
 	return value * (1 << frac_bits);
 }
 
+static uint32_t radv_register_border_color(struct radv_device *device,
+					   VkClearColorValue   value)
+{
+	uint32_t slot;
+
+	pthread_mutex_lock(&device->border_color_data.mutex);
+
+	for (slot = 0; slot < RADV_BORDER_COLOR_COUNT; slot++) {
+		if (!device->border_color_data.used[slot]) {
+			/* Copy to the GPU wrt endian-ness. */
+			util_memcpy_cpu_to_le32(&device->border_color_data.colors_gpu_ptr[slot],
+						&value,
+						sizeof(VkClearColorValue));
+
+			device->border_color_data.used[slot] = true;
+			break;
+		}
+	}
+
+	pthread_mutex_unlock(&device->border_color_data.mutex);
+
+	return slot;
+}
+
+static void radv_unregister_border_color(struct radv_device *device,
+					 uint32_t            slot)
+{
+	pthread_mutex_lock(&device->border_color_data.mutex);
+
+	device->border_color_data.used[slot] = false;
+
+	pthread_mutex_unlock(&device->border_color_data.mutex);
+}
+
 static void
 radv_init_sampler(struct radv_device *device,
 		  struct radv_sampler *sampler,
@@ -7161,6 +7257,11 @@ radv_init_sampler(struct radv_device *device,
 	unsigned filter_mode = V_008F30_SQ_IMG_FILTER_MODE_BLEND;
 	unsigned depth_compare_func = V_008F30_SQ_TEX_DEPTH_COMPARE_NEVER;
 	bool trunc_coord = pCreateInfo->minFilter == VK_FILTER_NEAREST && pCreateInfo->magFilter == VK_FILTER_NEAREST;
+	bool uses_border_color = pCreateInfo->addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER ||
+				 pCreateInfo->addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER ||
+				 pCreateInfo->addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	VkBorderColor border_color = uses_border_color ? pCreateInfo->borderColor : VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+	uint32_t border_color_ptr;
 
 	const struct VkSamplerReductionModeCreateInfo *sampler_reduction =
 		vk_find_struct_const(pCreateInfo->pNext,
@@ -7170,6 +7271,30 @@ radv_init_sampler(struct radv_device *device,
 
 	if (pCreateInfo->compareEnable)
 		depth_compare_func = radv_tex_compare(pCreateInfo->compareOp);
+
+	sampler->border_color_slot = RADV_BORDER_COLOR_COUNT;
+
+	if (border_color == VK_BORDER_COLOR_FLOAT_CUSTOM_EXT || border_color == VK_BORDER_COLOR_INT_CUSTOM_EXT) {
+		const VkSamplerCustomBorderColorCreateInfoEXT *custom_border_color =
+			vk_find_struct_const(pCreateInfo->pNext,
+					     SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT);
+
+		assert(custom_border_color);
+
+		sampler->border_color_slot =
+			radv_register_border_color(device, custom_border_color->customBorderColor);
+
+		/* Did we fail to find a slot? */
+		if (sampler->border_color_slot == RADV_BORDER_COLOR_COUNT) {
+			fprintf(stderr, "WARNING: no free border color slots, defaulting to TRANS_BLACK.\n");
+			border_color = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+		}
+	}
+
+	/* If we don't have a custom color, set the ptr to 0 */
+	border_color_ptr = sampler->border_color_slot != RADV_BORDER_COLOR_COUNT
+		? sampler->border_color_slot
+		: 0;
 
 	sampler->state[0] = (S_008F30_CLAMP_X(radv_tex_wrap(pCreateInfo->addressModeU)) |
 			     S_008F30_CLAMP_Y(radv_tex_wrap(pCreateInfo->addressModeV)) |
@@ -7191,8 +7316,8 @@ radv_init_sampler(struct radv_device *device,
 			     S_008F38_XY_MIN_FILTER(radv_tex_filter(pCreateInfo->minFilter, max_aniso)) |
 			     S_008F38_MIP_FILTER(radv_tex_mipfilter(pCreateInfo->mipmapMode)) |
 			     S_008F38_MIP_POINT_PRECLAMP(0));
-	sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR(0) |
-			     S_008F3C_BORDER_COLOR_TYPE(radv_tex_bordercolor(pCreateInfo->borderColor)));
+	sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR(border_color_ptr) |
+			     S_008F3C_BORDER_COLOR_TYPE(radv_tex_bordercolor(border_color)));
 
 	if (device->physical_device->rad_info.chip_class >= GFX10) {
 		sampler->state[2] |= S_008F38_ANISO_OVERRIDE_GFX10(1);
@@ -7245,6 +7370,10 @@ void radv_DestroySampler(
 
 	if (!sampler)
 		return;
+
+	if (sampler->border_color_slot != RADV_BORDER_COLOR_COUNT)
+		radv_unregister_border_color(device, sampler->border_color_slot);
+
 	vk_object_base_finish(&sampler->base);
 	vk_free2(&device->vk.alloc, pAllocator, sampler);
 }

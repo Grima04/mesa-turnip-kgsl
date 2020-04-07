@@ -781,6 +781,20 @@ struct radv_secure_compile_state {
 	char *uid;
 };
 
+#define RADV_BORDER_COLOR_COUNT       4096
+#define RADV_BORDER_COLOR_BUFFER_SIZE (sizeof(VkClearColorValue) * RADV_BORDER_COLOR_COUNT)
+
+struct radv_device_border_color_data {
+	bool 			 used[RADV_BORDER_COLOR_COUNT];
+
+	struct radeon_winsys_bo *bo;
+	VkClearColorValue       *colors_gpu_ptr;
+
+	/* Mutex is required to guarantee vkCreateSampler thread safety
+	 * given that we are writing to a buffer and checking color occupation */
+	pthread_mutex_t          mutex;
+};
+
 struct radv_device {
 	struct vk_device vk;
 
@@ -850,6 +864,8 @@ struct radv_device {
 
 	/* Whether anisotropy is forced with RADV_TEX_ANISO (-1 is disabled). */
 	int force_aniso;
+
+	struct radv_device_border_color_data border_color_data;
 
 	struct radv_secure_compile_state *sc_state;
 
@@ -2162,6 +2178,7 @@ struct radv_sampler {
 	struct vk_object_base base;
 	uint32_t state[4];
 	struct radv_sampler_ycbcr_conversion *ycbcr_sampler;
+	uint32_t border_color_slot;
 };
 
 struct radv_framebuffer {
