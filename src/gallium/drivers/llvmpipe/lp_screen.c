@@ -570,6 +570,7 @@ static const struct nir_shader_compiler_options gallivm_nir_options = {
    .max_unroll_iterations = 32,
    .use_interpolated_input_intrinsics = true,
    .lower_to_scalar = true,
+   .lower_cs_local_index_from_id = true,
 };
 
 static void
