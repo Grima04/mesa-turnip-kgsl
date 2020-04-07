@@ -4499,6 +4499,9 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
             retype(brw_vec8_grf(2, 0), BRW_REGISTER_TYPE_UD),
          };
          ubld.LOAD_PAYLOAD(header, header_sources, 2, 0);
+
+         /* Gen12 will require additional fix-ups if we ever hit this path. */
+         assert(devinfo->gen < 12);
       }
 
       uint32_t g00_bits = 0;
@@ -4684,6 +4687,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
 static void
 lower_fb_read_logical_send(const fs_builder &bld, fs_inst *inst)
 {
+   const gen_device_info *devinfo = bld.shader->devinfo;
    const fs_builder &ubld = bld.exec_all().group(8, 0);
    const unsigned length = 2;
    const fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD, length);
@@ -4698,6 +4702,19 @@ lower_fb_read_logical_send(const fs_builder &bld, fs_inst *inst)
          retype(brw_vec8_grf(2, 0), BRW_REGISTER_TYPE_UD)
       };
       ubld.LOAD_PAYLOAD(header, header_sources, ARRAY_SIZE(header_sources), 0);
+
+      if (devinfo->gen >= 12) {
+         /* On Gen12 the Viewport and Render Target Array Index fields (AKA
+          * Poly 0 Info) are provided in r1.1 instead of r0.0, and the render
+          * target message header format was updated accordingly -- However
+          * the updated format only works for the lower 16 channels in a
+          * SIMD32 thread, since the higher 16 channels want the subspan data
+          * from r2 instead of r1, so we need to copy over the contents of
+          * r1.1 in order to fix things up.
+          */
+         ubld.group(1, 0).MOV(component(header, 9),
+                              retype(brw_vec1_grf(1, 1), BRW_REGISTER_TYPE_UD));
+      }
    }
 
    inst->resize_sources(1);
