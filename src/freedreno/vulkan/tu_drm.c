@@ -112,53 +112,6 @@ tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
                    &queue_id, sizeof(uint32_t));
 }
 
-/**
- * Return gem handle on success. Return 0 on failure.
- */
-static uint32_t
-tu_gem_new(const struct tu_device *dev, uint64_t size, uint32_t flags)
-{
-   struct drm_msm_gem_new req = {
-      .size = size,
-      .flags = flags,
-   };
-
-   int ret = drmCommandWriteRead(dev->physical_device->local_fd,
-                                 DRM_MSM_GEM_NEW, &req, sizeof(req));
-   if (ret)
-      return 0;
-
-   return req.handle;
-}
-
-static uint32_t
-tu_gem_import_dmabuf(const struct tu_device *dev, int prime_fd, uint64_t size)
-{
-   /* lseek() to get the real size */
-   off_t real_size = lseek(prime_fd, 0, SEEK_END);
-   lseek(prime_fd, 0, SEEK_SET);
-   if (real_size < 0 || (uint64_t) real_size < size)
-      return 0;
-
-   uint32_t gem_handle;
-   int ret = drmPrimeFDToHandle(dev->physical_device->local_fd, prime_fd,
-                                &gem_handle);
-   if (ret)
-      return 0;
-
-   return gem_handle;
-}
-
-static int
-tu_gem_export_dmabuf(const struct tu_device *dev, uint32_t gem_handle)
-{
-   int prime_fd;
-   int ret = drmPrimeHandleToFD(dev->physical_device->local_fd, gem_handle,
-                                DRM_CLOEXEC, &prime_fd);
-
-   return ret == 0 ? prime_fd : -1;
-}
-
 static void
 tu_gem_close(const struct tu_device *dev, uint32_t gem_handle)
 {
@@ -186,35 +139,17 @@ tu_gem_info(const struct tu_device *dev, uint32_t gem_handle, uint32_t info)
    return req.value;
 }
 
-/** Returns the offset for CPU-side mmap of the gem handle.
- *
- * Returns 0 on error (an invalid mmap offset in the DRM UBI).
- */
-static uint64_t
-tu_gem_info_offset(const struct tu_device *dev, uint32_t gem_handle)
-{
-   return tu_gem_info(dev, gem_handle, MSM_INFO_GET_OFFSET);
-}
-
-/** Returns the the iova of the BO in GPU memory.
- *
- * Returns 0 on error (an invalid iova in the MSM DRM UABI).
- */
-static uint64_t
-tu_gem_info_iova(const struct tu_device *dev, uint32_t gem_handle)
-{
-   return tu_gem_info(dev, gem_handle, MSM_INFO_GET_IOVA);
-}
-
 static VkResult
 tu_bo_init(struct tu_device *dev,
            struct tu_bo *bo,
            uint32_t gem_handle,
            uint64_t size)
 {
-   uint64_t iova = tu_gem_info_iova(dev, gem_handle);
-   if (!iova)
+   uint64_t iova = tu_gem_info(dev, gem_handle, MSM_INFO_GET_IOVA);
+   if (!iova) {
+      tu_gem_close(dev, gem_handle);
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   }
 
    *bo = (struct tu_bo) {
       .gem_handle = gem_handle,
@@ -231,42 +166,48 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size)
    /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
     * always sets `flags = MSM_BO_WC`, and we copy that behavior here.
     */
-   uint32_t gem_handle = tu_gem_new(dev, size, MSM_BO_WC);
-   if (!gem_handle)
+   struct drm_msm_gem_new req = {
+      .size = size,
+      .flags = MSM_BO_WC
+   };
+
+   int ret = drmCommandWriteRead(dev->physical_device->local_fd,
+                                 DRM_MSM_GEM_NEW, &req, sizeof(req));
+   if (ret)
       return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   VkResult result = tu_bo_init(dev, bo, gem_handle, size);
-   if (result != VK_SUCCESS) {
-      tu_gem_close(dev, gem_handle);
-      return vk_error(dev->instance, result);
-   }
-
-   return VK_SUCCESS;
+   return tu_bo_init(dev, bo, req.handle, size);
 }
 
 VkResult
 tu_bo_init_dmabuf(struct tu_device *dev,
                   struct tu_bo *bo,
                   uint64_t size,
-                  int fd)
+                  int prime_fd)
 {
-   uint32_t gem_handle = tu_gem_import_dmabuf(dev, fd, size);
-   if (!gem_handle)
+   /* lseek() to get the real size */
+   off_t real_size = lseek(prime_fd, 0, SEEK_END);
+   lseek(prime_fd, 0, SEEK_SET);
+   if (real_size < 0 || (uint64_t) real_size < size)
       return vk_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
-   VkResult result = tu_bo_init(dev, bo, gem_handle, size);
-   if (result != VK_SUCCESS) {
-      tu_gem_close(dev, gem_handle);
-      return vk_error(dev->instance, result);
-   }
+   uint32_t gem_handle;
+   int ret = drmPrimeFDToHandle(dev->physical_device->local_fd, prime_fd,
+                                &gem_handle);
+   if (ret)
+      return vk_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
-   return VK_SUCCESS;
+   return tu_bo_init(dev, bo, gem_handle, size);
 }
 
 int
 tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
 {
-   return tu_gem_export_dmabuf(dev, bo->gem_handle);
+   int prime_fd;
+   int ret = drmPrimeHandleToFD(dev->physical_device->local_fd, bo->gem_handle,
+                                DRM_CLOEXEC, &prime_fd);
+
+   return ret == 0 ? prime_fd : -1;
 }
 
 VkResult
@@ -275,7 +216,7 @@ tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
    if (bo->map)
       return VK_SUCCESS;
 
-   uint64_t offset = tu_gem_info_offset(dev, bo->gem_handle);
+   uint64_t offset = tu_gem_info(dev, bo->gem_handle, MSM_INFO_GET_OFFSET);
    if (!offset)
       return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
