@@ -2447,7 +2447,7 @@ generate_fragment(struct llvmpipe_context *lp,
    struct lp_type blend_type;
    LLVMTypeRef fs_elem_type;
    LLVMTypeRef blend_vec_type;
-   LLVMTypeRef arg_types[13];
+   LLVMTypeRef arg_types[15];
    LLVMTypeRef func_type;
    LLVMTypeRef int32_type = LLVMInt32TypeInContext(gallivm->context);
    LLVMTypeRef int8_type = LLVMInt8TypeInContext(gallivm->context);
@@ -2459,8 +2459,10 @@ generate_fragment(struct llvmpipe_context *lp,
    LLVMValueRef dady_ptr;
    LLVMValueRef color_ptr_ptr;
    LLVMValueRef stride_ptr;
+   LLVMValueRef color_sample_stride_ptr;
    LLVMValueRef depth_ptr;
    LLVMValueRef depth_stride;
+   LLVMValueRef depth_sample_stride;
    LLVMValueRef mask_input;
    LLVMValueRef thread_data_ptr;
    LLVMBasicBlockRef block;
@@ -2540,6 +2542,8 @@ generate_fragment(struct llvmpipe_context *lp,
    arg_types[10] = variant->jit_thread_data_ptr_type;  /* per thread data */
    arg_types[11] = LLVMPointerType(int32_type, 0);     /* stride */
    arg_types[12] = int32_type;                         /* depth_stride */
+   arg_types[13] = LLVMPointerType(int32_type, 0);     /* color sample strides */
+   arg_types[14] = int32_type;                         /* depth sample stride */
 
    func_type = LLVMFunctionType(LLVMVoidTypeInContext(gallivm->context),
                                 arg_types, ARRAY_SIZE(arg_types), 0);
@@ -2569,6 +2573,8 @@ generate_fragment(struct llvmpipe_context *lp,
    thread_data_ptr  = LLVMGetParam(function, 10);
    stride_ptr   = LLVMGetParam(function, 11);
    depth_stride = LLVMGetParam(function, 12);
+   color_sample_stride_ptr = LLVMGetParam(function, 13);
+   depth_sample_stride = LLVMGetParam(function, 14);
 
    lp_build_name(context_ptr, "context");
    lp_build_name(x, "x");
@@ -2582,6 +2588,8 @@ generate_fragment(struct llvmpipe_context *lp,
    lp_build_name(thread_data_ptr, "thread_data");
    lp_build_name(stride_ptr, "stride_ptr");
    lp_build_name(depth_stride, "depth_stride");
+   lp_build_name(color_sample_stride_ptr, "color_sample_stride_ptr");
+   lp_build_name(depth_sample_stride, "depth_sample_stride");
 
    /*
     * Function body

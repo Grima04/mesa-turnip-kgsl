@@ -230,19 +230,23 @@ lp_rast_shade_quads_all( struct lp_rasterizer_task *task,
    struct lp_fragment_shader_variant *variant = state->variant;
    uint8_t *color[PIPE_MAX_COLOR_BUFS];
    unsigned stride[PIPE_MAX_COLOR_BUFS];
+   unsigned sample_stride[PIPE_MAX_COLOR_BUFS];
    uint8_t *depth = NULL;
    unsigned depth_stride = 0;
+   unsigned depth_sample_stride = 0;
    unsigned i;
 
    /* color buffer */
    for (i = 0; i < scene->fb.nr_cbufs; i++) {
       if (scene->fb.cbufs[i]) {
          stride[i] = scene->cbufs[i].stride;
+         sample_stride[i] = 0;
          color[i] = lp_rast_get_color_block_pointer(task, i, x, y,
                                                     inputs->layer);
       }
       else {
          stride[i] = 0;
+         sample_stride[i] = 0;
          color[i] = NULL;
       }
    }
@@ -273,7 +277,9 @@ lp_rast_shade_quads_all( struct lp_rasterizer_task *task,
                                          0xffff,
                                          &task->thread_data,
                                          stride,
-                                         depth_stride);
+                                         depth_stride,
+                                         sample_stride,
+                                         depth_sample_stride);
       END_JIT_CALL();
    }
 }

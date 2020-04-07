@@ -327,19 +327,23 @@ lp_rast_shade_tile(struct lp_rasterizer_task *task,
       for (x = 0; x < task->width; x += 4) {
          uint8_t *color[PIPE_MAX_COLOR_BUFS];
          unsigned stride[PIPE_MAX_COLOR_BUFS];
+         unsigned sample_stride[PIPE_MAX_COLOR_BUFS];
          uint8_t *depth = NULL;
          unsigned depth_stride = 0;
+         unsigned depth_sample_stride = 0;
          unsigned i;
 
          /* color buffer */
          for (i = 0; i < scene->fb.nr_cbufs; i++){
             if (scene->fb.cbufs[i]) {
                stride[i] = scene->cbufs[i].stride;
+               sample_stride[i] = 0;
                color[i] = lp_rast_get_color_block_pointer(task, i, tile_x + x,
                                                           tile_y + y, inputs->layer);
             }
             else {
                stride[i] = 0;
+               sample_stride[i] = 0;
                color[i] = NULL;
             }
          }
@@ -367,7 +371,9 @@ lp_rast_shade_tile(struct lp_rasterizer_task *task,
                                             0xffff,
                                             &task->thread_data,
                                             stride,
-                                            depth_stride);
+                                            depth_stride,
+                                            sample_stride,
+                                            depth_sample_stride);
          END_JIT_CALL();
       }
    }
@@ -411,8 +417,10 @@ lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
    const struct lp_scene *scene = task->scene;
    uint8_t *color[PIPE_MAX_COLOR_BUFS];
    unsigned stride[PIPE_MAX_COLOR_BUFS];
+   unsigned sample_stride[PIPE_MAX_COLOR_BUFS];
    uint8_t *depth = NULL;
    unsigned depth_stride = 0;
+   unsigned depth_sample_stride = 0;
    unsigned i;
 
    assert(state);
@@ -430,11 +438,13 @@ lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
    for (i = 0; i < scene->fb.nr_cbufs; i++) {
       if (scene->fb.cbufs[i]) {
          stride[i] = scene->cbufs[i].stride;
+         sample_stride[i] = 0;
          color[i] = lp_rast_get_color_block_pointer(task, i, x, y,
                                                     inputs->layer);
       }
       else {
          stride[i] = 0;
+         sample_stride[i] = 0;
          color[i] = NULL;
       }
    }
@@ -468,7 +478,9 @@ lp_rast_shade_quads_mask(struct lp_rasterizer_task *task,
                                             mask,
                                             &task->thread_data,
                                             stride,
-                                            depth_stride);
+                                            depth_stride,
+                                            sample_stride,
+                                            depth_sample_stride);
       END_JIT_CALL();
    }
 }

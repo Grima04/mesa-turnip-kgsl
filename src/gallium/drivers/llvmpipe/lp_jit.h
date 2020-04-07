@@ -304,7 +304,9 @@ typedef void
                     uint32_t mask,
                     struct lp_jit_thread_data *thread_data,
                     unsigned *stride,
-                    unsigned depth_stride);
+                    unsigned depth_stride,
+                    unsigned *color_sample_stride,
+                    unsigned depth_sample_stride);
 
 
 struct lp_jit_cs_thread_data
