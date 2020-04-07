@@ -25,6 +25,7 @@
 #include "pan_context.h"
 #include "pan_job.h"
 #include "pan_allocate.h"
+#include "panfrost-quirks.h"
 #include "util/bitset.h"
 
 /*
@@ -171,8 +172,10 @@ panfrost_new_job(
 void
 panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch)
 {
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+
         /* Check if we even need tiling */
-        if (!batch->tiler_dep)
+        if (dev->quirks & IS_BIFROST || !batch->tiler_dep)
                 return;
 
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
