@@ -1619,8 +1619,12 @@ find_value(const char *func, GLenum pname, void **p, union value *v)
       if (ctx->Texture.CurrentUnit < ARRAY_SIZE(ctx->Texture.FixedFuncUnit)) {
          unsigned index = ctx->Texture.CurrentUnit;
          *p = ((char *)&ctx->Texture.FixedFuncUnit[index] + d->offset);
+         return d;
       }
-      return d;
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(pname=%s,unit=%d)", func,
+                  _mesa_enum_to_string(pname),
+                  ctx->Texture.CurrentUnit);
+      return &error_value;
    case LOC_CUSTOM:
       find_custom_value(ctx, d, v);
       *p = v;
