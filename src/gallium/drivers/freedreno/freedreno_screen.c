@@ -453,6 +453,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return 10;
 	case PIPE_CAP_UMA:
 		return 1;
+	case PIPE_CAP_MEMOBJ:
+		return fd_device_version(screen->dev) >= FD_VERSION_MEMORY_FD;
 	case PIPE_CAP_NATIVE_FENCE_FD:
 		return fd_device_version(screen->dev) >= FD_VERSION_FENCE_FD;
 	default:
