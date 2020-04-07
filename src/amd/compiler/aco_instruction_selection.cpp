@@ -3086,6 +3086,12 @@ void visit_load_const(isel_context *ctx, nir_load_const_instr *instr)
       int val = instr->value[0].b ? -1 : 0;
       Operand op = bld.lm.size() == 1 ? Operand((uint32_t) val) : Operand((uint64_t) val);
       bld.sop1(Builder::s_mov, Definition(dst), op);
+   } else if (instr->def.bit_size == 8) {
+      /* ensure that the value is correctly represented in the low byte of the register */
+      bld.sopk(aco_opcode::s_movk_i32, Definition(dst), instr->value[0].u8);
+   } else if (instr->def.bit_size == 16) {
+      /* ensure that the value is correctly represented in the low half of the register */
+      bld.sopk(aco_opcode::s_movk_i32, Definition(dst), instr->value[0].u16);
    } else if (dst.size() == 1) {
       bld.copy(Definition(dst), Operand(instr->value[0].u32));
    } else {
