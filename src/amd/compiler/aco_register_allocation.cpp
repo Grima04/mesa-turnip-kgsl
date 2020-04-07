@@ -30,7 +30,6 @@
 #include <array>
 #include <map>
 #include <unordered_map>
-#include <functional>
 
 #include "aco_ir.h"
 #include "sid.h"
@@ -1111,158 +1110,157 @@ bool operand_can_use_reg(aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
    }
 }
 
+Temp read_variable(ra_ctx& ctx, Temp val, unsigned block_idx)
+{
+   std::unordered_map<unsigned, Temp>::iterator it = ctx.renames[block_idx].find(val.id());
+   if (it == ctx.renames[block_idx].end())
+      return val;
+   else
+      return it->second;
+}
+
+Temp handle_live_in(ra_ctx& ctx, Temp val, Block* block)
+{
+   std::vector<unsigned>& preds = val.is_linear() ? block->linear_preds : block->logical_preds;
+   if (preds.size() == 0 || val.regClass() == val.regClass().as_linear())
+      return val;
+
+   assert(preds.size() > 0);
+
+   Temp new_val;
+   if (!ctx.sealed[block->index]) {
+      /* consider rename from already processed predecessor */
+      Temp tmp = read_variable(ctx, val, preds[0]);
+
+      /* if the block is not sealed yet, we create an incomplete phi (which might later get removed again) */
+      new_val = Temp{ctx.program->allocateId(), val.regClass()};
+      ctx.assignments.emplace_back();
+      aco_opcode opcode = val.is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
+      aco_ptr<Instruction> phi{create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
+      phi->definitions[0] = Definition(new_val);
+      for (unsigned i = 0; i < preds.size(); i++)
+         phi->operands[i] = Operand(val);
+      if (tmp.regClass() == new_val.regClass())
+         ctx.affinities[new_val.id()] = tmp.id();
+
+      ctx.phi_map.emplace(new_val.id(), phi_info{phi.get(), block->index});
+      ctx.incomplete_phis[block->index].emplace_back(phi.get());
+      block->instructions.insert(block->instructions.begin(), std::move(phi));
+
+   } else if (preds.size() == 1) {
+      /* if the block has only one predecessor, just look there for the name */
+      new_val = read_variable(ctx, val, preds[0]);
+   } else {
+      /* there are multiple predecessors and the block is sealed */
+      Temp ops[preds.size()];
+
+      /* get the rename from each predecessor and check if they are the same */
+      bool needs_phi = false;
+      for (unsigned i = 0; i < preds.size(); i++) {
+         ops[i] = read_variable(ctx, val, preds[i]);
+         if (i == 0)
+            new_val = ops[i];
+         else
+            needs_phi |= !(new_val == ops[i]);
+      }
+
+      if (needs_phi) {
+         /* the variable has been renamed differently in the predecessors: we need to insert a phi */
+         aco_opcode opcode = val.is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
+         aco_ptr<Instruction> phi{create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
+         new_val = Temp{ctx.program->allocateId(), val.regClass()};
+         phi->definitions[0] = Definition(new_val);
+         for (unsigned i = 0; i < preds.size(); i++) {
+            phi->operands[i] = Operand(ops[i]);
+            phi->operands[i].setFixed(ctx.assignments[ops[i].id()].reg);
+            if (ops[i].regClass() == new_val.regClass())
+               ctx.affinities[new_val.id()] = ops[i].id();
+         }
+         ctx.assignments.emplace_back();
+         assert(ctx.assignments.size() == ctx.program->peekAllocationId());
+         ctx.phi_map.emplace(new_val.id(), phi_info{phi.get(), block->index});
+         block->instructions.insert(block->instructions.begin(), std::move(phi));
+      }
+   }
+
+   if (new_val != val) {
+      ctx.renames[block->index][val.id()] = new_val;
+      ctx.orig_names[new_val.id()] = val;
+   }
+   return new_val;
+}
+
+void try_remove_trivial_phi(ra_ctx& ctx, Temp temp)
+{
+   std::unordered_map<unsigned, phi_info>::iterator info = ctx.phi_map.find(temp.id());
+
+   if (info == ctx.phi_map.end() || !ctx.sealed[info->second.block_idx])
+      return;
+
+   assert(info->second.block_idx != 0);
+   Instruction* phi = info->second.phi;
+   Temp same = Temp();
+   Definition def = phi->definitions[0];
+
+   /* a phi node is trivial if all operands are the same as the definition of the phi */
+   for (const Operand& op : phi->operands) {
+      const Temp t = op.getTemp();
+      if (t == same || t == def.getTemp()) {
+         assert(t == same || op.physReg() == def.physReg());
+         continue;
+      }
+      if (same != Temp())
+         return;
+
+      same = t;
+   }
+   assert(same != Temp() || same == def.getTemp());
+
+   /* reroute all uses to same and remove phi */
+   std::vector<Temp> phi_users;
+   std::unordered_map<unsigned, phi_info>::iterator same_phi_info = ctx.phi_map.find(same.id());
+   for (Instruction* instr : info->second.uses) {
+      assert(phi != instr);
+      /* recursively try to remove trivial phis */
+      if (is_phi(instr)) {
+         /* ignore if the phi was already flagged trivial */
+         if (instr->definitions.empty())
+            continue;
+
+         if (instr->definitions[0].getTemp() != temp)
+            phi_users.emplace_back(instr->definitions[0].getTemp());
+      }
+      for (Operand& op : instr->operands) {
+         if (op.isTemp() && op.tempId() == def.tempId()) {
+            op.setTemp(same);
+            if (same_phi_info != ctx.phi_map.end())
+               same_phi_info->second.uses.emplace(instr);
+         }
+      }
+   }
+
+   auto it = ctx.orig_names.find(same.id());
+   unsigned orig_var = it != ctx.orig_names.end() ? it->second.id() : same.id();
+   for (unsigned i = 0; i < ctx.program->blocks.size(); i++) {
+      auto it = ctx.renames[i].find(orig_var);
+      if (it != ctx.renames[i].end() && it->second == def.getTemp())
+         ctx.renames[i][orig_var] = same;
+   }
+
+   phi->definitions.clear(); /* this indicates that the phi can be removed */
+   ctx.phi_map.erase(info);
+   for (Temp t : phi_users)
+      try_remove_trivial_phi(ctx, t);
+
+   return;
+}
+
 } /* end namespace */
 
 
 void register_allocation(Program *program, std::vector<TempSet>& live_out_per_block)
 {
    ra_ctx ctx(program);
-
-   std::function<Temp(Temp,unsigned)> read_variable;
-   std::function<Temp(Temp,Block*)> handle_live_in;
-   std::function<void(Temp)> try_remove_trivial_phi;
-
-   read_variable = [&](Temp val, unsigned block_idx) -> Temp {
-      std::unordered_map<unsigned, Temp>::iterator it = ctx.renames[block_idx].find(val.id());
-      if (it == ctx.renames[block_idx].end())
-         return val;
-      else
-         return it->second;
-   };
-
-   handle_live_in = [&](Temp val, Block *block) -> Temp {
-      std::vector<unsigned>& preds = val.is_linear() ? block->linear_preds : block->logical_preds;
-      if (preds.size() == 0 || val.regClass() == val.regClass().as_linear())
-         return val;
-
-      assert(preds.size() > 0);
-
-      Temp new_val;
-      if (!ctx.sealed[block->index]) {
-         /* consider rename from already processed predecessor */
-         Temp tmp = read_variable(val, preds[0]);
-
-         /* if the block is not sealed yet, we create an incomplete phi (which might later get removed again) */
-         new_val = Temp{program->allocateId(), val.regClass()};
-         ctx.assignments.emplace_back();
-         aco_opcode opcode = val.is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
-         aco_ptr<Instruction> phi{create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
-         phi->definitions[0] = Definition(new_val);
-         for (unsigned i = 0; i < preds.size(); i++)
-            phi->operands[i] = Operand(val);
-         if (tmp.regClass() == new_val.regClass())
-            ctx.affinities[new_val.id()] = tmp.id();
-
-         ctx.phi_map.emplace(new_val.id(), phi_info{phi.get(), block->index});
-         ctx.incomplete_phis[block->index].emplace_back(phi.get());
-         block->instructions.insert(block->instructions.begin(), std::move(phi));
-
-      } else if (preds.size() == 1) {
-         /* if the block has only one predecessor, just look there for the name */
-         new_val = read_variable(val, preds[0]);
-      } else {
-         /* there are multiple predecessors and the block is sealed */
-         Temp ops[preds.size()];
-
-         /* get the rename from each predecessor and check if they are the same */
-         bool needs_phi = false;
-         for (unsigned i = 0; i < preds.size(); i++) {
-            ops[i] = read_variable(val, preds[i]);
-            if (i == 0)
-               new_val = ops[i];
-            else
-               needs_phi |= !(new_val == ops[i]);
-         }
-
-         if (needs_phi) {
-            /* the variable has been renamed differently in the predecessors: we need to insert a phi */
-            aco_opcode opcode = val.is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
-            aco_ptr<Instruction> phi{create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
-            new_val = Temp{program->allocateId(), val.regClass()};
-            phi->definitions[0] = Definition(new_val);
-            for (unsigned i = 0; i < preds.size(); i++) {
-               phi->operands[i] = Operand(ops[i]);
-               phi->operands[i].setFixed(ctx.assignments[ops[i].id()].reg);
-               if (ops[i].regClass() == new_val.regClass())
-                  ctx.affinities[new_val.id()] = ops[i].id();
-            }
-            ctx.assignments.emplace_back();
-            assert(ctx.assignments.size() == ctx.program->peekAllocationId());
-            ctx.phi_map.emplace(new_val.id(), phi_info{phi.get(), block->index});
-            block->instructions.insert(block->instructions.begin(), std::move(phi));
-         }
-      }
-
-      if (new_val != val) {
-         ctx.renames[block->index][val.id()] = new_val;
-         ctx.orig_names[new_val.id()] = val;
-      }
-      return new_val;
-   };
-
-   try_remove_trivial_phi = [&] (Temp temp) -> void {
-      std::unordered_map<unsigned, phi_info>::iterator info = ctx.phi_map.find(temp.id());
-
-      if (info == ctx.phi_map.end() || !ctx.sealed[info->second.block_idx])
-         return;
-
-      assert(info->second.block_idx != 0);
-      Instruction* phi = info->second.phi;
-      Temp same = Temp();
-      Definition def = phi->definitions[0];
-
-      /* a phi node is trivial if all operands are the same as the definition of the phi */
-      for (const Operand& op : phi->operands) {
-         const Temp t = op.getTemp();
-         if (t == same || t == def.getTemp()) {
-            assert(t == same || op.physReg() == def.physReg());
-            continue;
-         }
-         if (same != Temp())
-            return;
-
-         same = t;
-      }
-      assert(same != Temp() || same == def.getTemp());
-
-      /* reroute all uses to same and remove phi */
-      std::vector<Temp> phi_users;
-      std::unordered_map<unsigned, phi_info>::iterator same_phi_info = ctx.phi_map.find(same.id());
-      for (Instruction* instr : info->second.uses) {
-         assert(phi != instr);
-         /* recursively try to remove trivial phis */
-         if (is_phi(instr)) {
-            /* ignore if the phi was already flagged trivial */
-            if (instr->definitions.empty())
-               continue;
-
-            if (instr->definitions[0].getTemp() != temp)
-               phi_users.emplace_back(instr->definitions[0].getTemp());
-         }
-         for (Operand& op : instr->operands) {
-            if (op.isTemp() && op.tempId() == def.tempId()) {
-               op.setTemp(same);
-               if (same_phi_info != ctx.phi_map.end())
-                  same_phi_info->second.uses.emplace(instr);
-            }
-         }
-      }
-
-      auto it = ctx.orig_names.find(same.id());
-      unsigned orig_var = it != ctx.orig_names.end() ? it->second.id() : same.id();
-      for (unsigned i = 0; i < program->blocks.size(); i++) {
-         auto it = ctx.renames[i].find(orig_var);
-         if (it != ctx.renames[i].end() && it->second == def.getTemp())
-            ctx.renames[i][orig_var] = same;
-      }
-
-      phi->definitions.clear(); /* this indicates that the phi can be removed */
-      ctx.phi_map.erase(info);
-      for (Temp t : phi_users)
-         try_remove_trivial_phi(t);
-
-      return;
-   };
 
    std::unordered_map<unsigned, Instruction*> vectors;
    std::vector<std::vector<Temp>> phi_ressources;
@@ -1351,7 +1349,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
       ctx.war_hint.reset();
 
       for (Temp t : live) {
-         Temp renamed = handle_live_in(t, &block);
+         Temp renamed = handle_live_in(ctx, t, &block);
          if (ctx.assignments[renamed.id()].assigned)
             register_file.fill(ctx.assignments[renamed.id()].reg, t.size(), renamed.id());
       }
@@ -1541,7 +1539,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                   if (phi->operands[idx].isTemp() &&
                       phi->operands[idx].getTemp().type() == RegType::sgpr &&
                       phi->operands[idx].isFirstKillBeforeDef()) {
-                     Temp phi_op = read_variable(phi->operands[idx].getTemp(), block.index);
+                     Temp phi_op = read_variable(ctx, phi->operands[idx].getTemp(), block.index);
                      PhysReg reg = ctx.assignments[phi_op.id()].reg;
                      assert(register_file[reg] == phi_op.id());
                      register_file[reg] = 0;
@@ -1565,7 +1563,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                continue;
 
             /* rename operands */
-            operand.setTemp(read_variable(operand.getTemp(), block.index));
+            operand.setTemp(read_variable(ctx, operand.getTemp(), block.index));
 
             /* check if the operand is fixed */
             if (operand.isFixed()) {
@@ -2028,10 +2026,10 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
             for (Instruction* phi : ctx.incomplete_phis[succ_idx]) {
                std::vector<unsigned> preds = phi->definitions[0].getTemp().is_linear() ? succ.linear_preds : succ.logical_preds;
                for (unsigned i = 0; i < phi->operands.size(); i++) {
-                  phi->operands[i].setTemp(read_variable(phi->operands[i].getTemp(), preds[i]));
+                  phi->operands[i].setTemp(read_variable(ctx, phi->operands[i].getTemp(), preds[i]));
                   phi->operands[i].setFixed(ctx.assignments[phi->operands[i].tempId()].reg);
                }
-               try_remove_trivial_phi(phi->definitions[0].getTemp());
+               try_remove_trivial_phi(ctx, phi->definitions[0].getTemp());
             }
             /* complete the original phi nodes, but no need to check triviality */
             for (aco_ptr<Instruction>& instr : succ.instructions) {
@@ -2043,7 +2041,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                   auto& operand = instr->operands[i];
                   if (!operand.isTemp())
                      continue;
-                  operand.setTemp(read_variable(operand.getTemp(), preds[i]));
+                  operand.setTemp(read_variable(ctx, operand.getTemp(), preds[i]));
                   operand.setFixed(ctx.assignments[operand.tempId()].reg);
                   std::unordered_map<unsigned, phi_info>::iterator phi = ctx.phi_map.find(operand.getTemp().id());
                   if (phi != ctx.phi_map.end())
