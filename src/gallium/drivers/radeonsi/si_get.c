@@ -218,6 +218,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return sscreen->info.has_sparse_vm_mappings ? RADEON_SPARSE_PAGE_SIZE : 0;
 
    case PIPE_CAP_UMA:
+   case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
       return 0;
 
    case PIPE_CAP_FENCE_SIGNAL:
