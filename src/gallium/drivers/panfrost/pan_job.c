@@ -918,7 +918,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 
                 /* Trace gets priority over sync */
                 bool minimal = !(pan_debug & PAN_DBG_TRACE);
-                pandecode_jc(submit.jc, FALSE, dev->gpu_id, minimal);
+                pandecode_jc(submit.jc, dev->quirks & IS_BIFROST, dev->gpu_id, minimal);
         }
 
         return 0;
