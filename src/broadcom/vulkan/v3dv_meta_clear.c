@@ -454,24 +454,14 @@ get_color_format_for_depth_stencil_format(VkFormat format)
 
 static void
 emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
-                      uint32_t rt_idx,
+                      uint32_t attachment_idx,
                       VkClearColorValue clear_color,
                       const VkClearRect *rect)
 {
    assert(cmd_buffer->state.pass);
    struct v3dv_device *device = cmd_buffer->device;
    struct v3dv_render_pass *pass = cmd_buffer->state.pass;
-   struct v3dv_subpass *subpass =
-      &pass->subpasses[cmd_buffer->state.subpass_idx];
 
-   uint32_t attachment_idx;
-   if (rt_idx == -1) {
-      attachment_idx = subpass->ds_attachment.attachment;
-      rt_idx = attachment_idx;
-   } else {
-      assert(rt_idx == -1 || rt_idx < subpass->color_count);
-      attachment_idx = subpass->color_attachments[rt_idx].attachment;
-   }
    assert(attachment_idx != VK_ATTACHMENT_UNUSED &&
           attachment_idx < pass->attachment_count);
 
@@ -612,16 +602,11 @@ fail_job_start:
 
 static void
 emit_ds_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
+                   uint32_t attachment_idx,
                    VkClearDepthStencilValue clear_ds,
                    const VkClearRect *rect)
 {
    assert(cmd_buffer->state.pass);
-   assert(cmd_buffer->state.subpass_idx >= 0 &&
-          cmd_buffer->state.subpass_idx < cmd_buffer->state.pass->subpass_count);
-
-   const struct v3dv_subpass *subpass =
-      &cmd_buffer->state.pass->subpasses[cmd_buffer->state.subpass_idx];
-   const uint32_t attachment_idx = subpass->ds_attachment.attachment;
    assert(attachment_idx != VK_ATTACHMENT_UNUSED);
    assert(attachment_idx < cmd_buffer->state.pass->attachment_count);
 
@@ -643,7 +628,7 @@ emit_ds_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
     * depth/stencil attachment.
     */
    clear_color.uint32[0] = clear_zs;
-   emit_color_clear_rect(cmd_buffer, -1, clear_color, rect);
+   emit_color_clear_rect(cmd_buffer, attachment_idx, clear_color, rect);
 }
 
 static void
@@ -1105,10 +1090,9 @@ v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
 
    for (uint32_t i = 0; i < attachmentCount; i++) {
       uint32_t attachment_idx = VK_ATTACHMENT_UNUSED;
-      int32_t rt_idx = -1;
 
       if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-         rt_idx = pAttachments[i].colorAttachment;
+         uint32_t rt_idx = pAttachments[i].colorAttachment;
          attachment_idx = subpass->color_attachments[rt_idx].attachment;
       } else if (pAttachments[i].aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT |
                                                VK_IMAGE_ASPECT_STENCIL_BIT)) {
@@ -1118,16 +1102,17 @@ v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
       if (attachment_idx == VK_ATTACHMENT_UNUSED)
          continue;
 
-      if (rt_idx != -1) {
+      if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
          for (uint32_t j = 0; j < rectCount; j++) {
             emit_color_clear_rect(cmd_buffer,
-                                  rt_idx,
+                                  attachment_idx,
                                   pAttachments[i].clearValue.color,
                                   &pRects[j]);
          }
       } else {
          for (uint32_t j = 0; j < rectCount; j++) {
             emit_ds_clear_rect(cmd_buffer,
+                               attachment_idx,
                                pAttachments[i].clearValue.depthStencil,
                                &pRects[j]);
          }
