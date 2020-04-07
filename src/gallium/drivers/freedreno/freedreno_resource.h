@@ -101,6 +101,11 @@ struct fd_resource {
 	struct fd_bo *lrz;
 };
 
+struct fd_memory_object {
+	struct pipe_memory_object b;
+	struct fd_bo *bo;
+};
+
 static inline struct fd_resource *
 fd_resource(struct pipe_resource *ptex)
 {
@@ -111,6 +116,12 @@ static inline const struct fd_resource *
 fd_resource_const(const struct pipe_resource *ptex)
 {
 	return (const struct fd_resource *)ptex;
+}
+
+static inline struct fd_memory_object *
+fd_memory_object (struct pipe_memory_object *pmemobj)
+{
+	return (struct fd_memory_object *)pmemobj;
 }
 
 static inline bool

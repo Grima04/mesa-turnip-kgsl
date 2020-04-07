@@ -1173,6 +1173,39 @@ fd_layout_resource_for_modifier(struct fd_resource *rsc, uint64_t modifier)
 	}
 }
 
+static struct pipe_memory_object *
+fd_memobj_create_from_handle(struct pipe_screen *pscreen,
+							 struct winsys_handle *whandle,
+							 bool dedicated)
+{
+	struct fd_memory_object *memobj = CALLOC_STRUCT(fd_memory_object);
+	if (!memobj)
+		return NULL;
+
+	struct fd_bo *bo = fd_screen_bo_from_handle(pscreen, whandle);
+	if (!bo) {
+		free(memobj);
+		return NULL;
+	}
+
+	memobj->b.dedicated = dedicated;
+	memobj->bo = bo;
+
+	return &memobj->b;
+}
+
+static void
+fd_memobj_destroy(struct pipe_screen *pscreen,
+		struct pipe_memory_object *pmemobj)
+{
+	struct fd_memory_object *memobj = fd_memory_object(pmemobj);
+
+	assert(memobj->bo);
+	fd_bo_del(memobj->bo);
+
+	free(pmemobj);
+}
+
 void
 fd_resource_screen_init(struct pipe_screen *pscreen)
 {
@@ -1197,6 +1230,10 @@ fd_resource_screen_init(struct pipe_screen *pscreen)
 		screen->supported_modifiers = supported_modifiers;
 		screen->num_supported_modifiers = ARRAY_SIZE(supported_modifiers);
 	}
+
+	/* GL_EXT_memory_object */
+	pscreen->memobj_create_from_handle = fd_memobj_create_from_handle;
+	pscreen->memobj_destroy = fd_memobj_destroy;
 }
 
 static void
