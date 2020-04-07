@@ -1468,7 +1468,7 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
 
 void lower_wqm(Program* program, live& live_vars,
                const struct radv_nir_compiler_options *options);
-void lower_bool_phis(Program* program);
+void lower_phis(Program* program);
 void calc_min_waves(Program* program);
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand);
 live live_var_analysis(Program* program, const struct radv_nir_compiler_options *options);

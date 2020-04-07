@@ -213,7 +213,7 @@ void lower_subdword_phis(Program *program, Block *block, aco_ptr<Instruction>& p
    return;
 }
 
-void lower_bool_phis(Program* program)
+void lower_phis(Program* program)
 {
    for (Block& block : program->blocks) {
       for (aco_ptr<Instruction>& phi : block.instructions) {
