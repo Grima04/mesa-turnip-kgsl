@@ -84,12 +84,12 @@ panfrost_vt_update_rasterizer(struct panfrost_context *ctx,
 {
         struct panfrost_rasterizer *rasterizer = ctx->rasterizer;
 
-        tp->gl_enables |= 0x7;
-        SET_BIT(tp->gl_enables, MALI_FRONT_CCW_TOP,
+        tp->postfix.gl_enables |= 0x7;
+        SET_BIT(tp->postfix.gl_enables, MALI_FRONT_CCW_TOP,
                 rasterizer && rasterizer->base.front_ccw);
-        SET_BIT(tp->gl_enables, MALI_CULL_FACE_FRONT,
+        SET_BIT(tp->postfix.gl_enables, MALI_CULL_FACE_FRONT,
                 rasterizer && (rasterizer->base.cull_face & PIPE_FACE_FRONT));
-        SET_BIT(tp->gl_enables, MALI_CULL_FACE_BACK,
+        SET_BIT(tp->postfix.gl_enables, MALI_CULL_FACE_BACK,
                 rasterizer && (rasterizer->base.cull_face & PIPE_FACE_BACK));
         SET_BIT(tp->prefix.unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
                 rasterizer && rasterizer->base.flatshade_first);
@@ -111,7 +111,7 @@ static void
 panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
                                    struct midgard_payload_vertex_tiler *tp)
 {
-        SET_BIT(tp->gl_enables, MALI_OCCLUSION_QUERY, ctx->occlusion_query);
+        SET_BIT(tp->postfix.gl_enables, MALI_OCCLUSION_QUERY, ctx->occlusion_query);
         if (ctx->occlusion_query)
                 tp->postfix.occlusion_counter = ctx->occlusion_query->bo->gpu;
         else
@@ -127,7 +127,7 @@ panfrost_vt_init(struct panfrost_context *ctx,
                 return;
 
         memset(vtp, 0, sizeof(*vtp));
-        vtp->gl_enables = 0x6;
+        vtp->postfix.gl_enables = 0x6;
         panfrost_vt_attach_framebuffer(ctx, vtp);
 
         if (stage == PIPE_SHADER_FRAGMENT) {
@@ -246,14 +246,14 @@ panfrost_vt_set_draw_info(struct panfrost_context *ctx,
 
                 /* Use the corresponding values */
                 *vertex_count = max_index - min_index + 1;
-                tp->offset_start = vp->offset_start = min_index + info->index_bias;
+                tp->postfix.offset_start = vp->postfix.offset_start = min_index + info->index_bias;
                 tp->prefix.offset_bias_correction = -min_index;
                 tp->prefix.index_count = MALI_POSITIVE(info->count);
                 draw_flags |= panfrost_translate_index_size(info->index_size);
         } else {
                 tp->prefix.indices = 0;
                 *vertex_count = ctx->vertex_count;
-                tp->offset_start = vp->offset_start = info->start;
+                tp->postfix.offset_start = vp->postfix.offset_start = info->start;
                 tp->prefix.offset_bias_correction = 0;
                 tp->prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
         }
@@ -268,14 +268,14 @@ panfrost_vt_set_draw_info(struct panfrost_context *ctx,
                 unsigned shift = __builtin_ctz(ctx->padded_count);
                 unsigned k = ctx->padded_count >> (shift + 1);
 
-                tp->instance_shift = vp->instance_shift = shift;
-                tp->instance_odd = vp->instance_odd = k;
+                tp->postfix.instance_shift = vp->postfix.instance_shift = shift;
+                tp->postfix.instance_odd = vp->postfix.instance_odd = k;
         } else {
                 *padded_count = *vertex_count;
 
                 /* Reset instancing state */
-                tp->instance_shift = vp->instance_shift = 0;
-                tp->instance_odd = vp->instance_odd = 0;
+                tp->postfix.instance_shift = vp->postfix.instance_shift = 0;
+                tp->postfix.instance_odd = vp->postfix.instance_odd = 0;
         }
 }
 
@@ -1339,8 +1339,8 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         /* Normal, non-instanced attributes */
                         attrs[k++].elements |= MALI_ATTR_LINEAR;
                 } else {
-                        unsigned instance_shift = vp->instance_shift;
-                        unsigned instance_odd = vp->instance_odd;
+                        unsigned instance_shift = vp->postfix.instance_shift;
+                        unsigned instance_odd = vp->postfix.instance_odd;
 
                         k += panfrost_vertex_instanced(ctx->padded_count,
                                                        instance_shift,

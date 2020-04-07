@@ -200,10 +200,8 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
         struct bifrost_payload_vertex payload = {
                 .prefix = {
                 },
-                .vertex = {
-                        .unk2 = 0x2,
-                },
                 .postfix = {
+                        .gl_enables = 0x2,
                         .shared_memory = shmem->gpu,
                         .shader = shader_desc->gpu,
                         .uniforms = ubo->gpu + 1024,

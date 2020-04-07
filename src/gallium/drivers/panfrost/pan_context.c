@@ -191,7 +191,7 @@ panfrost_vertex_state_upd_attr_offs(struct panfrost_context *ctx,
          * QED.
          */
 
-        unsigned start = vp->offset_start;
+        unsigned start = vp->postfix.offset_start;
 
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
