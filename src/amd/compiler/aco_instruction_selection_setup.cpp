@@ -361,12 +361,10 @@ void init_context(isel_context *ctx, nir_shader *shader)
                break;
             }
             case nir_instr_type_load_const: {
-               unsigned size = nir_instr_as_load_const(instr)->def.num_components;
-               if (nir_instr_as_load_const(instr)->def.bit_size == 64)
-                  size *= 2;
-               else if (nir_instr_as_load_const(instr)->def.bit_size == 1)
-                  size *= lane_mask_size;
-               allocated[nir_instr_as_load_const(instr)->def.index] = Temp(0, RegClass(RegType::sgpr, size));
+               unsigned num_components = nir_instr_as_load_const(instr)->def.num_components;
+               unsigned bit_size = nir_instr_as_load_const(instr)->def.bit_size;
+               RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
+               allocated[nir_instr_as_load_const(instr)->def.index] = Temp(0, rc);
                break;
             }
             case nir_instr_type_intrinsic: {
@@ -552,12 +550,10 @@ void init_context(isel_context *ctx, nir_shader *shader)
                break;
             }
             case nir_instr_type_ssa_undef: {
-               unsigned size = nir_instr_as_ssa_undef(instr)->def.num_components;
-               if (nir_instr_as_ssa_undef(instr)->def.bit_size == 64)
-                  size *= 2;
-               else if (nir_instr_as_ssa_undef(instr)->def.bit_size == 1)
-                  size *= lane_mask_size;
-               allocated[nir_instr_as_ssa_undef(instr)->def.index] = Temp(0, RegClass(RegType::sgpr, size));
+               unsigned num_components = nir_instr_as_ssa_undef(instr)->def.num_components;
+               unsigned bit_size = nir_instr_as_ssa_undef(instr)->def.bit_size;
+               RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
+               allocated[nir_instr_as_ssa_undef(instr)->def.index] = Temp(0, rc);
                break;
             }
             case nir_instr_type_phi: {
