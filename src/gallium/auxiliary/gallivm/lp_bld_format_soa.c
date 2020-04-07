@@ -879,17 +879,23 @@ lp_build_insert_soa_chan(struct lp_build_context *bld,
     struct lp_type type = bld->type;
     const unsigned width = chan_desc.size;
     const unsigned start = chan_desc.shift;
+    const uint32_t chan_mask = (1ULL << width) - 1;
     ASSERTED const unsigned stop = start + width;
     LLVMValueRef chan = NULL;
     switch(chan_desc.type) {
     case UTIL_FORMAT_TYPE_UNSIGNED:
 
-       if (chan_desc.pure_integer)
+       if (chan_desc.pure_integer) {
           chan = LLVMBuildBitCast(builder, rgba, bld->int_vec_type, "");
+          LLVMValueRef mask_val = lp_build_const_int_vec(gallivm, type, chan_mask);
+          LLVMValueRef mask = LLVMBuildICmp(builder, LLVMIntUGT, chan, mask_val, "");
+          chan = LLVMBuildSelect(builder, mask, mask_val, chan, "");
+       }
        else if (type.floating) {
-          if (chan_desc.normalized)
+          if (chan_desc.normalized) {
+             rgba = lp_build_clamp(bld, rgba, bld->zero, bld->one);
              chan = lp_build_clamped_float_to_unsigned_norm(gallivm, type, width, rgba);
-          else
+          } else
              chan = LLVMBuildFPToSI(builder, rgba, bld->vec_type, "");
        }
        if (start)
@@ -901,10 +907,10 @@ lp_build_insert_soa_chan(struct lp_build_context *bld,
           *output = LLVMBuildOr(builder, *output, chan, "");
        break;
     case UTIL_FORMAT_TYPE_SIGNED:
-       if (chan_desc.pure_integer)
+       if (chan_desc.pure_integer) {
           chan = LLVMBuildBitCast(builder, rgba, bld->int_vec_type, "");
-       else if (type.floating) {
-          uint32_t mask_val = (1UL << chan_desc.size) - 1;
+          chan = LLVMBuildAnd(builder, chan, lp_build_const_int_vec(gallivm, type, chan_mask), "");
+       } else if (type.floating) {
           if (chan_desc.normalized) {
              char intrin[32];
              double scale = ((1 << (chan_desc.size - 1)) - 1);
@@ -915,7 +921,7 @@ lp_build_insert_soa_chan(struct lp_build_context *bld,
              rgba = lp_build_intrinsic_unary(builder, intrin, bld->vec_type, rgba);
           }
           chan = LLVMBuildFPToSI(builder, rgba, bld->int_vec_type, "");
-          chan = LLVMBuildAnd(builder, chan, lp_build_const_int_vec(gallivm, type, mask_val), "");
+          chan = LLVMBuildAnd(builder, chan, lp_build_const_int_vec(gallivm, type, chan_mask), "");
        }
        if (start)
           chan = LLVMBuildShl(builder, chan,
