@@ -459,6 +459,7 @@ struct lp_build_tcs_iface
                              LLVMValueRef vertex_index,
                              boolean is_aindex_indirect,
                              LLVMValueRef attrib_index,
+                             boolean is_sindex_indirect,
                              LLVMValueRef swizzle_index,
                              LLVMValueRef value,
                              LLVMValueRef mask_vec);

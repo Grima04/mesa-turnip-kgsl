@@ -1763,6 +1763,7 @@ emit_store_tcs_output(struct lp_build_tgsi_context *bld_base,
                                           vertex_index,
                                           reg->Register.Indirect,
                                           attrib_index,
+                                          false,
                                           channel_index,
                                           value,
                                           mask_vec(bld_base));
