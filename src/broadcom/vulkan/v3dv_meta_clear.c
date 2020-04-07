@@ -257,6 +257,7 @@ static VkResult
 create_color_clear_pipeline(struct v3dv_device *device,
                             uint32_t rt_idx,
                             uint32_t samples,
+                            uint32_t components,
                             VkRenderPass _pass,
                             VkPipelineLayout pipeline_layout,
                             VkPipeline *pipeline)
@@ -292,10 +293,7 @@ create_color_clear_pipeline(struct v3dv_device *device,
    VkPipelineColorBlendAttachmentState blend_att_state[1] = { 0 };
    blend_att_state[rt_idx] = (VkPipelineColorBlendAttachmentState) {
       .blendEnable = false,
-      .colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                        VK_COLOR_COMPONENT_G_BIT |
-                        VK_COLOR_COMPONENT_B_BIT |
-                        VK_COLOR_COMPONENT_A_BIT,
+      .colorWriteMask = components,
    };
 
    const VkPipelineColorBlendStateCreateInfo cb_state = {
@@ -362,15 +360,30 @@ create_color_clear_render_pass(struct v3dv_device *device,
 }
 
 static inline uint64_t
-get_color_clear_pipeline_cache_key(VkFormat format, uint32_t samples)
+get_color_clear_pipeline_cache_key(VkFormat format,
+                                   uint32_t samples,
+                                   uint32_t components)
 {
-   return ((uint64_t) samples) << 32 | format;
+   uint64_t key = 0;
+   uint32_t bit_offset = 0;
+
+   key |= format;
+   bit_offset += 32;
+
+   key |= ((uint64_t) samples) << bit_offset;
+   bit_offset += 4;
+
+   key |= ((uint64_t) components) << bit_offset;
+   bit_offset += 4;
+
+   return key;
 }
 
 static VkResult
 get_color_clear_pipeline(struct v3dv_device *device,
                          VkFormat format,
                          uint32_t samples,
+                         uint32_t components,
                          struct v3dv_meta_color_clear_pipeline **pipeline)
 {
    VkResult result = VK_SUCCESS;
@@ -385,7 +398,8 @@ get_color_clear_pipeline(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       return result;
 
-   uint64_t key = get_color_clear_pipeline_cache_key(format, samples);
+   const uint64_t key =
+      get_color_clear_pipeline_cache_key(format, samples, components);
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
       _mesa_hash_table_search(device->meta.color_clear.cache, &key);
@@ -408,7 +422,10 @@ get_color_clear_pipeline(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       goto fail;
 
-   result = create_color_clear_pipeline(device, 0 /* rt_idx*/, samples,
+   result = create_color_clear_pipeline(device,
+                                        0 /* rt_idx*/,
+                                        samples,
+                                        components,
                                         (*pipeline)->pass,
                                         device->meta.color_clear.playout,
                                         &(*pipeline)->pipeline);
@@ -439,6 +456,10 @@ fail:
 static VkFormat
 get_color_format_for_depth_stencil_format(VkFormat format)
 {
+   /* For single depth/stencil aspect formats, we just choose a compatible
+    * 1 channel format, but for combined depth/stencil we want an RGBA format
+    * so we can specify the channels we want to write.
+    */
    switch (format) {
    case VK_FORMAT_D16_UNORM:
       return VK_FORMAT_R16_UINT;
@@ -446,15 +467,22 @@ get_color_format_for_depth_stencil_format(VkFormat format)
       return VK_FORMAT_R32_SFLOAT;
    case VK_FORMAT_X8_D24_UNORM_PACK32:
    case VK_FORMAT_D24_UNORM_S8_UINT:
-      return VK_FORMAT_R32_UINT;
+      return VK_FORMAT_R8G8B8A8_UINT;
    default:
       unreachable("Unsupported depth/stencil format");
    };
 }
 
+/**
+ * Emits a scissored quad in the clear color. Notice this can also handle
+ * depth/stencil formats by rendering to the depth/stencil target using
+ * a compatible color format.
+ */
 static void
 emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
                       uint32_t attachment_idx,
+                      VkFormat rt_format,
+                      uint32_t rt_components,
                       VkClearColorValue clear_color,
                       const VkClearRect *rect)
 {
@@ -466,13 +494,11 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
           attachment_idx < pass->attachment_count);
 
    const uint32_t rt_samples = pass->attachments[attachment_idx].desc.samples;
-   VkFormat rt_format = pass->attachments[attachment_idx].desc.format;
-   if (vk_format_is_depth_or_stencil(rt_format))
-      rt_format = get_color_format_for_depth_stencil_format(rt_format);
 
    struct v3dv_meta_color_clear_pipeline *pipeline = NULL;
    VkResult result =
-      get_color_clear_pipeline(device, rt_format, rt_samples, &pipeline);
+      get_color_clear_pipeline(device, rt_format, rt_samples, rt_components,
+                               &pipeline);
    if (result != VK_SUCCESS)
       return;
    assert(pipeline && pipeline->pipeline && pipeline->pass);
@@ -602,6 +628,7 @@ fail_job_start:
 
 static void
 emit_ds_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
+                   VkImageAspectFlags aspects,
                    uint32_t attachment_idx,
                    VkClearDepthStencilValue clear_ds,
                    const VkClearRect *rect)
@@ -612,23 +639,48 @@ emit_ds_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
 
    VkFormat format =
       cmd_buffer->state.pass->attachments[attachment_idx].desc.format;
-   enum pipe_format pformat = vk_format_to_pipe_format(format);
+   VkImageAspectFlags format_aspects = vk_format_aspects(format);
+   assert ((aspects & ~format_aspects) == 0);
 
+   enum pipe_format pformat = vk_format_to_pipe_format(format);
    VkClearColorValue clear_color;
    uint32_t clear_zs =
       util_pack_z_stencil(pformat, clear_ds.depth, clear_ds.stencil);
-   if (format == VK_FORMAT_X8_D24_UNORM_PACK32 ||
-       format == VK_FORMAT_D24_UNORM_S8_UINT) {
-      clear_zs = clear_zs << 8 | clear_zs >> 24;
-   }
 
    /* We implement depth/stencil clears by turning them into color clears
-    * with a compatible color format. Passing -1 as the render target index
-    * will inform the color clear code that we are attempting to clear a
-    * depth/stencil attachment.
+    * with a compatible color format.
     */
-   clear_color.uint32[0] = clear_zs;
-   emit_color_clear_rect(cmd_buffer, attachment_idx, clear_color, rect);
+   VkFormat color_format = get_color_format_for_depth_stencil_format(format);
+
+   uint32_t comps;
+   if (color_format == VK_FORMAT_R8G8B8A8_UINT) {
+    /* We are clearing a D24 format so we need to select the channels that we
+     * are being asked to clear to avoid clearing aspects that should be
+     * preserved. Also, the hardware uses the MSB channels to store the D24
+     * component, so we need to shift the components in the clear value to
+     * match that.
+     */
+      comps = 0;
+      if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+         comps |= VK_COLOR_COMPONENT_R_BIT;
+         clear_color.uint32[0] = clear_zs >> 24;
+      }
+      if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         comps |= VK_COLOR_COMPONENT_G_BIT |
+                  VK_COLOR_COMPONENT_B_BIT |
+                  VK_COLOR_COMPONENT_A_BIT;
+         clear_color.uint32[1] = (clear_zs >>  0) & 0xff;
+         clear_color.uint32[2] = (clear_zs >>  8) & 0xff;
+         clear_color.uint32[3] = (clear_zs >> 16) & 0xff;
+      }
+   } else {
+      /* For anything else we use a single component format */
+      comps = VK_COLOR_COMPONENT_R_BIT;
+      clear_color.uint32[0] = clear_zs;
+   }
+
+   emit_color_clear_rect(cmd_buffer, attachment_idx, color_format, comps,
+                         clear_color, rect);
 }
 
 static void
@@ -1103,15 +1155,24 @@ v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
          continue;
 
       if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+         const uint32_t components = VK_COLOR_COMPONENT_R_BIT |
+                                     VK_COLOR_COMPONENT_G_BIT |
+                                     VK_COLOR_COMPONENT_B_BIT |
+                                     VK_COLOR_COMPONENT_A_BIT;
+         const VkFormat format =
+            cmd_buffer->state.pass->attachments[attachment_idx].desc.format;
          for (uint32_t j = 0; j < rectCount; j++) {
             emit_color_clear_rect(cmd_buffer,
                                   attachment_idx,
+                                  format,
+                                  components,
                                   pAttachments[i].clearValue.color,
                                   &pRects[j]);
          }
       } else {
          for (uint32_t j = 0; j < rectCount; j++) {
             emit_ds_clear_rect(cmd_buffer,
+                               pAttachments[i].aspectMask,
                                attachment_idx,
                                pAttachments[i].clearValue.depthStencil,
                                &pRects[j]);
