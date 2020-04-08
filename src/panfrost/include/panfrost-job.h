@@ -1053,7 +1053,7 @@ struct bifrost_tiler_only {
 } __attribute__((packed));
 
 struct mali_vertex_tiler_postfix {
-        u16 gl_enables; // 0x5 on Midgard, 0x2 on Bifrost
+        u16 gl_enables; // 0x6 on Midgard, 0x2 on Bifrost
 
         /* Both zero for non-instanced draws. For instanced draws, a
          * decomposition of padded_num_vertices. See the comments about the

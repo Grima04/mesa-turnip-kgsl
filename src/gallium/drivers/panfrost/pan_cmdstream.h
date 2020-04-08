@@ -38,30 +38,32 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
 void
 panfrost_vt_init(struct panfrost_context *ctx,
                  enum pipe_shader_type stage,
-                 struct midgard_payload_vertex_tiler *vtp);
+                 struct mali_vertex_tiler_prefix *prefix,
+                 struct mali_vertex_tiler_postfix *postfix);
 
 void
 panfrost_vt_set_draw_info(struct panfrost_context *ctx,
                           const struct pipe_draw_info *info,
                           enum mali_draw_mode draw_mode,
-                          struct midgard_payload_vertex_tiler *vp,
-                          struct midgard_payload_vertex_tiler *tp,
+                          struct mali_vertex_tiler_postfix *vertex_postfix,
+                          struct mali_vertex_tiler_prefix *tiler_prefix,
+                          struct mali_vertex_tiler_postfix *tiler_postfix,
                           unsigned *vertex_count,
                           unsigned *padded_count);
 
 void
 panfrost_emit_shader_meta(struct panfrost_batch *batch,
                           enum pipe_shader_type st,
-                          struct midgard_payload_vertex_tiler *vtp);
+                          struct mali_vertex_tiler_postfix *postfix);
 
 void
 panfrost_emit_viewport(struct panfrost_batch *batch,
-                       struct midgard_payload_vertex_tiler *tp);
+                       struct mali_vertex_tiler_postfix *tiler_postfix);
 
 void
 panfrost_emit_const_buf(struct panfrost_batch *batch,
                         enum pipe_shader_type stage,
-                        struct midgard_payload_vertex_tiler *vtp);
+                        struct mali_vertex_tiler_postfix *postfix);
 
 void
 panfrost_emit_shared_memory(struct panfrost_batch *batch,
@@ -71,30 +73,39 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
 void
 panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage,
-                                  struct midgard_payload_vertex_tiler *vtp);
+                                  struct mali_vertex_tiler_postfix *postfix);
 
 void
 panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage,
-                                  struct midgard_payload_vertex_tiler *vtp);
+                                  struct mali_vertex_tiler_postfix *postfix);
 
 void
 panfrost_emit_vertex_attr_meta(struct panfrost_batch *batch,
-                               struct midgard_payload_vertex_tiler *vp);
+                               struct mali_vertex_tiler_postfix *vertex_postfix);
 
 void
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
-                          struct midgard_payload_vertex_tiler *vp);
+                          struct mali_vertex_tiler_postfix *vertex_postfix);
 
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
-                                 struct midgard_payload_vertex_tiler *vp,
-                                 struct midgard_payload_vertex_tiler *tp);
+                                 struct mali_vertex_tiler_postfix *vertex_postfix,
+                                 struct mali_vertex_tiler_postfix *tiler_postfix,
+                                 union midgard_primitive_size *primitive_size);
 
 void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
-                                struct midgard_payload_vertex_tiler *vp,
-                                struct midgard_payload_vertex_tiler *tp);
+                                struct mali_vertex_tiler_prefix *vertex_prefix,
+                                struct mali_vertex_tiler_postfix *vertex_postfix,
+                                struct mali_vertex_tiler_prefix *tiler_prefix,
+                                struct mali_vertex_tiler_postfix *tiler_postfix,
+                                union midgard_primitive_size *primitive_size);
+
+void
+panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
+                                  struct mali_vertex_tiler_prefix *prefix,
+                                  union midgard_primitive_size *primitive_size);
 
 #endif /* __PAN_CMDSTREAM_H__ */

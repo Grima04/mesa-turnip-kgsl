@@ -2594,6 +2594,12 @@ pandecode_tiler_heap_meta(mali_ptr gpu_va, int job_no)
 {
 
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
+
+        if (gpu_va == 0) {
+                pandecode_msg("XXX: bifrost_tiler_heap_meta is NULL!!\n");
+                return;
+        }
+
         const struct bifrost_tiler_heap_meta *PANDECODE_PTR_VAR(h, mem, gpu_va);
 
         pandecode_log("struct mali_tiler_heap_meta tiler_heap_meta_%d = {\n", job_no);
@@ -2718,7 +2724,7 @@ pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
 
         pandecode_vertex_tiler_postfix_pre(&v->postfix, job_no, h->job_type, "", true, gpu_id);
 
-        pandecode_log("struct bifrost_payload_vertex payload_%d = {\n", job_no);
+        pandecode_log("struct bifrost_payload_vertex payload_%"PRIx64"_%d = {\n", payload, job_no);
         pandecode_indent++;
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, false);
