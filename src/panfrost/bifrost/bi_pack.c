@@ -87,13 +87,13 @@ bi_print_ports(struct bi_registers *regs)
 
         if (regs->write_fma || regs->write_add) {
                 printf("port 2 (%s): %u\n",
-                                regs->write_fma ? "FMA" : "ADD",
+                                regs->write_add ? "ADD" : "FMA",
                                 regs->port[2]);
         }
 
         if ((regs->write_fma && regs->write_add) || regs->read_port3) {
                 printf("port 3 (%s): %u\n",
-                                regs->read_port3 ? "read" : "ADD",
+                                regs->read_port3 ? "read" : "FMA",
                                 regs->port[3]);
         }
 }
@@ -274,15 +274,15 @@ bi_assign_ports(bi_bundle now, bi_bundle prev)
 
         /* Next, assign writes */
 
-        if (prev.fma && prev.fma->dest & BIR_INDEX_REGISTER) {
-                regs.port[2] = prev.fma->dest & ~BIR_INDEX_REGISTER;
-                regs.write_fma = true;
+        if (prev.add && prev.add->dest & BIR_INDEX_REGISTER && !write_dreg) {
+                regs.port[2] = prev.add->dest & ~BIR_INDEX_REGISTER;
+                regs.write_add = true;
         }
 
-        if (prev.add && prev.add->dest & BIR_INDEX_REGISTER && !write_dreg) {
-                unsigned r = prev.add->dest & ~BIR_INDEX_REGISTER;
+        if (prev.fma && prev.fma->dest & BIR_INDEX_REGISTER) {
+                unsigned r = prev.fma->dest & ~BIR_INDEX_REGISTER;
 
-                if (regs.write_fma) {
+                if (regs.write_add) {
                         /* Scheduler constraint: cannot read 3 and write 2 */
                         assert(!regs.read_port3);
                         regs.port[3] = r;
@@ -290,7 +290,7 @@ bi_assign_ports(bi_bundle now, bi_bundle prev)
                         regs.port[2] = r;
                 }
 
-                regs.write_add = true;
+                regs.write_fma = true;
         }
 
         /* Finally, ensure port 1 > port 0 for the 63-x trick to function */
