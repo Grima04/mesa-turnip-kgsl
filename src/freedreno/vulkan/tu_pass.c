@@ -115,8 +115,8 @@ tu_CreateRenderPass(VkDevice _device,
       struct tu_render_pass_attachment *att = &pass->attachments[i];
 
       att->format = pCreateInfo->pAttachments[i].format;
-      att->cpp = vk_format_get_blocksize(att->format) *
-                           pCreateInfo->pAttachments[i].samples;
+      att->samples = pCreateInfo->pAttachments[i].samples;
+      att->cpp = vk_format_get_blocksize(att->format) * att->samples;
       att->load_op = pCreateInfo->pAttachments[i].loadOp;
       att->stencil_load_op = pCreateInfo->pAttachments[i].stencilLoadOp;
       att->store_op = pCreateInfo->pAttachments[i].storeOp;
@@ -243,8 +243,8 @@ tu_CreateRenderPass2(VkDevice _device,
       struct tu_render_pass_attachment *att = &pass->attachments[i];
 
       att->format = pCreateInfo->pAttachments[i].format;
-      att->cpp = vk_format_get_blocksize(att->format) *
-                           pCreateInfo->pAttachments[i].samples;
+      att->samples = pCreateInfo->pAttachments[i].samples;
+      att->cpp = vk_format_get_blocksize(att->format) * att->samples;
       att->load_op = pCreateInfo->pAttachments[i].loadOp;
       att->stencil_load_op = pCreateInfo->pAttachments[i].stencilLoadOp;
       att->store_op = pCreateInfo->pAttachments[i].storeOp;

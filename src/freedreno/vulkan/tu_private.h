@@ -1577,6 +1577,7 @@ struct tu_subpass
 struct tu_render_pass_attachment
 {
    VkFormat format;
+   uint32_t samples;
    uint32_t cpp;
    VkAttachmentLoadOp load_op;
    VkAttachmentLoadOp stencil_load_op;
