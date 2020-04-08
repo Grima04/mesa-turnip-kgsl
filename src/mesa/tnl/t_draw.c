@@ -362,20 +362,22 @@ static void bind_indices( struct gl_context *ctx,
       return;
    }
 
-   if (ib->obj &&
-       !_mesa_bufferobj_mapped(ib->obj, MAP_INTERNAL)) {
-      /* if the buffer object isn't mapped yet, map it now */
-      bo[*nr_bo] = ib->obj;
-      (*nr_bo)++;
-      ptr = ctx->Driver.MapBufferRange(ctx, (GLsizeiptr) ib->ptr,
-                                       ib->count << ib->index_size_shift,
-				       GL_MAP_READ_BIT, ib->obj,
-                                       MAP_INTERNAL);
-      assert(ib->obj->Mappings[MAP_INTERNAL].Pointer);
-   } else {
-      /* user-space elements, or buffer already mapped */
-      ptr = ADD_POINTERS(ib->obj->Mappings[MAP_INTERNAL].Pointer, ib->ptr);
-   }
+   if (ib->obj) {
+      if (!_mesa_bufferobj_mapped(ib->obj, MAP_INTERNAL)) {
+         /* if the buffer object isn't mapped yet, map it now */
+         bo[*nr_bo] = ib->obj;
+         (*nr_bo)++;
+         ptr = ctx->Driver.MapBufferRange(ctx, (GLsizeiptr) ib->ptr,
+                                          ib->count << ib->index_size_shift,
+                                          GL_MAP_READ_BIT, ib->obj,
+                                          MAP_INTERNAL);
+         assert(ib->obj->Mappings[MAP_INTERNAL].Pointer);
+      } else {
+         /* user-space elements, or buffer already mapped */
+         ptr = ADD_POINTERS(ib->obj->Mappings[MAP_INTERNAL].Pointer, ib->ptr);
+      }
+   } else
+      ptr = ib->ptr;
 
    if (ib->index_size_shift == 2 && VB->Primitive[0].basevertex == 0) {
       VB->Elts = (GLuint *) ptr;
