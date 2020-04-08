@@ -1202,6 +1202,49 @@ fd_layout_resource_for_modifier(struct fd_resource *rsc, uint64_t modifier)
 	}
 }
 
+static struct pipe_resource *
+fd_resource_from_memobj(struct pipe_screen *pscreen,
+						const struct pipe_resource *tmpl,
+						struct pipe_memory_object *pmemobj,
+						uint64_t offset)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+	struct fd_memory_object *memobj = fd_memory_object(pmemobj);
+	struct pipe_resource *prsc;
+	struct fd_resource *rsc;
+	uint32_t size;
+	assert(memobj->bo);
+
+	/* We shouldn't get a scanout buffer here. */
+	assert(!(tmpl->bind & PIPE_BIND_SCANOUT));
+
+	uint64_t modifiers = DRM_FORMAT_MOD_INVALID;
+	if (tmpl->bind & PIPE_BIND_LINEAR) {
+		modifiers = DRM_FORMAT_MOD_LINEAR;
+	} else if (is_a6xx(screen) && tmpl->width0 >= FDL_MIN_UBWC_WIDTH) {
+		modifiers = DRM_FORMAT_MOD_QCOM_COMPRESSED;
+	}
+
+	/* Allocate new pipe resource. */
+	prsc = fd_resource_allocate_and_resolve(pscreen, tmpl, &modifiers, 1, &size);
+	if (!prsc)
+		return NULL;
+	rsc = fd_resource(prsc);
+
+	/* bo's size has to be large enough, otherwise cleanup resource and fail
+	 * gracefully.
+	 */
+	if (fd_bo_size(memobj->bo) < size) {
+		fd_resource_destroy(pscreen, prsc);
+		return NULL;
+	}
+
+	/* Share the bo with the memory object. */
+	rsc->bo = fd_bo_ref(memobj->bo);
+
+	return prsc;
+}
+
 static struct pipe_memory_object *
 fd_memobj_create_from_handle(struct pipe_screen *pscreen,
 							 struct winsys_handle *whandle,
@@ -1263,6 +1306,7 @@ fd_resource_screen_init(struct pipe_screen *pscreen)
 	/* GL_EXT_memory_object */
 	pscreen->memobj_create_from_handle = fd_memobj_create_from_handle;
 	pscreen->memobj_destroy = fd_memobj_destroy;
+	pscreen->resource_from_memobj = fd_resource_from_memobj;
 }
 
 static void
