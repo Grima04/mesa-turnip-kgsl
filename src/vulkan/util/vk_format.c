@@ -244,8 +244,20 @@ static const enum pipe_format vk_format_map[] = {
 enum pipe_format
 vk_format_to_pipe_format(enum VkFormat vkformat)
 {
-   if (vkformat >= ARRAY_SIZE(vk_format_map))
-      return PIPE_FORMAT_NONE;
+   if (vkformat >= ARRAY_SIZE(vk_format_map)) {
+      switch (vkformat) {
+      case VK_FORMAT_G8B8G8R8_422_UNORM:
+         return PIPE_FORMAT_YUYV;
+      case VK_FORMAT_B8G8R8G8_422_UNORM:
+         return PIPE_FORMAT_UYVY;
+      case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+         return PIPE_FORMAT_YV12;
+      case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+         return PIPE_FORMAT_NV12;
+      default:
+         return PIPE_FORMAT_NONE;
+      }
+   }
 
    /* Unpopulated entries in the table must be PIPE_FORMAT_NONE */
    STATIC_ASSERT(PIPE_FORMAT_NONE == 0);
