@@ -476,14 +476,16 @@ replay_init(struct copy_context *copy)
     * caller convert non-indexed prims to indexed.  Could alternately
     * do it internally.
     */
-   if (copy->ib->obj &&
-       !_mesa_bufferobj_mapped(copy->ib->obj, MAP_INTERNAL))
-      ctx->Driver.MapBufferRange(ctx, 0, copy->ib->obj->Size, GL_MAP_READ_BIT,
-                                 copy->ib->obj, MAP_INTERNAL);
+   if (copy->ib->obj) {
+      if (!_mesa_bufferobj_mapped(copy->ib->obj, MAP_INTERNAL))
+         ctx->Driver.MapBufferRange(ctx, 0, copy->ib->obj->Size, GL_MAP_READ_BIT,
+                                    copy->ib->obj, MAP_INTERNAL);
 
-   srcptr = (const GLubyte *)
-            ADD_POINTERS(copy->ib->obj->Mappings[MAP_INTERNAL].Pointer,
-                         copy->ib->ptr);
+      srcptr = (const GLubyte *)
+         ADD_POINTERS(copy->ib->obj->Mappings[MAP_INTERNAL].Pointer,
+                      copy->ib->ptr);
+   } else
+      srcptr = copy->ib->ptr;
 
    switch (copy->ib->index_size_shift) {
    case 0:
