@@ -2310,12 +2310,10 @@ tu_CmdSetViewport(VkCommandBuffer commandBuffer,
                   const VkViewport *pViewports)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs *draw_cs = &cmd->draw_cs;
 
    assert(firstViewport == 0 && viewportCount == 1);
-   tu6_emit_viewport(draw_cs, pViewports);
-
-   tu_cs_sanity_check(draw_cs);
+   cmd->state.dynamic.viewport.viewports[0] = pViewports[0];
+   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_VIEWPORT;
 }
 
 void
@@ -2325,12 +2323,10 @@ tu_CmdSetScissor(VkCommandBuffer commandBuffer,
                  const VkRect2D *pScissors)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs *draw_cs = &cmd->draw_cs;
 
    assert(firstScissor == 0 && scissorCount == 1);
-   tu6_emit_scissor(draw_cs, pScissors);
-
-   tu_cs_sanity_check(draw_cs);
+   cmd->state.dynamic.scissor.scissors[0] = pScissors[0];
+   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_SCISSOR;
 }
 
 void
@@ -3429,6 +3425,16 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
        (pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_REFERENCE)) {
       tu6_emit_stencil_reference(cs, dynamic->stencil_reference.front,
                                  dynamic->stencil_reference.back);
+   }
+
+   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_VIEWPORT) &&
+       (pipeline->dynamic_state.mask & TU_DYNAMIC_VIEWPORT)) {
+      tu6_emit_viewport(cs, &cmd->state.dynamic.viewport.viewports[0]);
+   }
+
+   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_SCISSOR) &&
+       (pipeline->dynamic_state.mask & TU_DYNAMIC_SCISSOR)) {
+      tu6_emit_scissor(cs, &cmd->state.dynamic.scissor.scissors[0]);
    }
 
    if (cmd->state.dirty &
