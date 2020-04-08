@@ -344,46 +344,18 @@ r2d_clear_value(struct tu_cs *cs, VkFormat format, const VkClearValue *val)
 static void
 r2d_src(struct tu_cmd_buffer *cmd,
         struct tu_cs *cs,
-        struct tu_image *image,
-        VkFormat vk_format,
-        uint32_t level,
+        const struct tu_image_view *iview,
         uint32_t layer,
-        bool linear_filter,
-        bool stencil_read)
+        bool linear_filter)
 {
-   struct tu_native_format format = tu6_format_image_src(image, vk_format, level);
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_INFO, 5);
+   tu_cs_emit(cs, iview->SP_PS_2D_SRC_INFO |
+                  COND(linear_filter, A6XX_SP_PS_2D_SRC_INFO_FILTER));
+   tu_cs_emit(cs, iview->SP_PS_2D_SRC_SIZE);
+   tu_cs_image_ref_2d(cs, iview, layer, true);
 
-   /* stencil readout path fails with UBWC enabled (why?) */
-   assert(!stencil_read || !image->layout.ubwc_layer_size);
-
-   if (stencil_read)
-      format.swap = XYZW;
-
-   tu_cs_emit_regs(cs,
-                   A6XX_SP_PS_2D_SRC_INFO(
-                     .color_format = format.fmt,
-                     .tile_mode = format.tile_mode,
-                     .color_swap = format.swap,
-                     .flags = image->layout.ubwc_layer_size != 0,
-                     .srgb = vk_format_is_srgb(vk_format),
-                     .samples = tu_msaa_samples(image->samples),
-                     .filter = linear_filter,
-                     .samples_average = image->samples > 1 &&
-                                        !vk_format_is_int(vk_format) &&
-                                        !vk_format_is_depth_or_stencil(vk_format),
-                     .unk20 = 1,
-                     .unk22 = 1),
-                   A6XX_SP_PS_2D_SRC_SIZE(
-                     .width = tu_minify(image->extent.width, level),
-                     .height = tu_minify(image->extent.height, level)),
-                   A6XX_SP_PS_2D_SRC(tu_image_base_ref(image, level, layer)),
-                   A6XX_SP_PS_2D_SRC_PITCH(.pitch = tu_image_pitch(image, level)));
-
-   if (image->layout.ubwc_layer_size) {
-      tu_cs_emit_regs(cs,
-                      A6XX_SP_PS_2D_SRC_FLAGS(tu_image_ubwc_base_ref(image, level, layer)),
-                      A6XX_SP_PS_2D_SRC_FLAGS_PITCH(.pitch = tu_image_ubwc_pitch(image, level)));
-   }
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_FLAGS_LO, 3);
+   tu_cs_image_flag_ref(cs, iview, layer);
 }
 
 static void
@@ -409,31 +381,16 @@ r2d_src_buffer(struct tu_cmd_buffer *cmd,
 }
 
 static void
-r2d_dst(struct tu_cs *cs,
-        struct tu_image *image,
-        VkFormat vk_format,
-        uint32_t level,
-        uint32_t layer)
+r2d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
-   struct tu_native_format format = tu6_format_image(image, vk_format, level);
+   assert(iview->image->samples == 1);
 
-   assert(image->samples == 1);
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_INFO, 4);
+   tu_cs_emit(cs, iview->RB_2D_DST_INFO);
+   tu_cs_image_ref_2d(cs, iview, layer, false);
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_2D_DST_INFO(
-                      .color_format = format.fmt,
-                      .tile_mode = format.tile_mode,
-                      .color_swap = format.swap,
-                      .flags = image->layout.ubwc_layer_size != 0,
-                      .srgb = vk_format_is_srgb(image->vk_format)),
-                   A6XX_RB_2D_DST(tu_image_base_ref(image, level, layer)),
-                   A6XX_RB_2D_DST_SIZE(.pitch = tu_image_pitch(image, level)));
-
-   if (image->layout.ubwc_layer_size) {
-      tu_cs_emit_regs(cs,
-                      A6XX_RB_2D_DST_FLAGS(tu_image_ubwc_base_ref(image, level, layer)),
-                      A6XX_RB_2D_DST_FLAGS_PITCH(.pitch = tu_image_ubwc_pitch(image, level)));
-   }
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_FLAGS_LO, 3);
+   tu_cs_image_flag_ref(cs, iview, layer);
 }
 
 static void
@@ -806,7 +763,12 @@ r3d_clear_value(struct tu_cs *cs, VkFormat format, const VkClearValue *val)
 }
 
 static void
-r3d_src_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t *tex_const, bool linear_filter)
+r3d_src_common(struct tu_cmd_buffer *cmd,
+               struct tu_cs *cs,
+               const uint32_t *tex_const,
+               uint32_t offset_base,
+               uint32_t offset_ubwc,
+               bool linear_filter)
 {
    struct ts_cs_memory texture = { };
    VkResult result = tu_cs_alloc(&cmd->sub_cs,
@@ -815,6 +777,12 @@ r3d_src_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t *tex_const,
    assert(result == VK_SUCCESS);
 
    memcpy(texture.map, tex_const, A6XX_TEX_CONST_DWORDS * 4);
+
+   /* patch addresses for layer offset */
+   *(uint64_t*) (texture.map + 4) += offset_base;
+   uint64_t ubwc_addr = (texture.map[7] | (uint64_t) texture.map[8] << 32) + offset_ubwc;
+   texture.map[7] = ubwc_addr;
+   texture.map[8] = ubwc_addr >> 32;
 
    texture.map[A6XX_TEX_CONST_DWORDS + 0] =
       A6XX_TEX_SAMP_0_XY_MAG(linear_filter ? A6XX_TEX_LINEAR : A6XX_TEX_NEAREST) |
@@ -858,31 +826,14 @@ r3d_src_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t *tex_const,
 static void
 r3d_src(struct tu_cmd_buffer *cmd,
         struct tu_cs *cs,
-        struct tu_image *image,
-        VkFormat format,
-        uint32_t level,
+        const struct tu_image_view *iview,
         uint32_t layer,
-        bool linear_filter,
-        bool stencil_read)
+        bool linear_filter)
 {
-   struct tu_image_view view;
-
-   /* use tu_image_view_init to fill out a view descriptor */
-   tu_image_view_init(&view, cmd->device, &(VkImageViewCreateInfo) {
-      .image = tu_image_to_handle(image),
-      .viewType = VK_IMAGE_VIEW_TYPE_2D,
-      .format = format,
-      /* image_to_buffer from d24s8 with stencil aspect mask writes out to r8 */
-      .components.r = stencil_read ? VK_COMPONENT_SWIZZLE_A : VK_COMPONENT_SWIZZLE_R,
-      .subresourceRange = {
-         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-         .baseMipLevel = level,
-         .levelCount = 1,
-         .baseArrayLayer = layer,
-         .layerCount = 1,
-      },
-   });
-   r3d_src_common(cmd, cs, view.descriptor, linear_filter);
+   r3d_src_common(cmd, cs, iview->descriptor,
+                  iview->layer_size * layer,
+                  iview->ubwc_layer_size * layer,
+                  linear_filter);
 }
 
 static void
@@ -916,35 +867,23 @@ r3d_src_buffer(struct tu_cmd_buffer *cmd,
    for (uint32_t i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
       desc[i] = 0;
 
-   r3d_src_common(cmd, cs, desc, false);
+   r3d_src_common(cmd, cs, desc, 0, 0, false);
 }
 
 static void
-r3d_dst(struct tu_cs *cs,
-        struct tu_image *image,
-        VkFormat vk_format,
-        uint32_t level,
-        uint32_t layer)
+r3d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
-   tu6_emit_msaa(cs, image->samples); /* TODO: move to setup */
+   tu6_emit_msaa(cs, iview->image->samples); /* TODO: move to setup */
 
-   struct tu_native_format format = tu6_format_image(image, vk_format, level);
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(0), 6);
+   tu_cs_emit(cs, iview->RB_MRT_BUF_INFO);
+   tu_cs_image_ref(cs, iview, layer);
+   tu_cs_emit(cs, 0);
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_MRT_BUF_INFO(0,
-                     .color_tile_mode = format.tile_mode,
-                     .color_format = format.fmt,
-                     .color_swap = format.swap),
-                   A6XX_RB_MRT_PITCH(0, tu_image_pitch(image, level)),
-                   A6XX_RB_MRT_ARRAY_PITCH(0, image->layout.layer_size),
-                   A6XX_RB_MRT_BASE(0, tu_image_base_ref(image, level, layer)),
-                   A6XX_RB_MRT_BASE_GMEM(0, 0));
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_FLAG_BUFFER(0), 3);
+   tu_cs_image_flag_ref(cs, iview, layer);
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_MRT_FLAG_BUFFER_ADDR(0, tu_image_ubwc_base_ref(image, level, layer)),
-                   A6XX_RB_MRT_FLAG_BUFFER_PITCH(0, .pitch = tu_image_ubwc_pitch(image, level)));
-
-   tu_cs_emit_regs(cs, A6XX_RB_RENDER_CNTL(.flag_mrts = image->layout.ubwc_layer_size != 0));
+   tu_cs_emit_regs(cs, A6XX_RB_RENDER_CNTL(.flag_mrts = iview->ubwc_enabled));
 }
 
 static void
@@ -1060,21 +999,14 @@ struct blit_ops {
    void (*src)(
         struct tu_cmd_buffer *cmd,
         struct tu_cs *cs,
-        struct tu_image *image,
-        VkFormat format,
-        uint32_t level,
+        const struct tu_image_view *iview,
         uint32_t layer,
-        bool linear_filter,
-        bool stencil_read);
+        bool linear_filter);
    void (*src_buffer)(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
                       VkFormat vk_format,
                       uint64_t va, uint32_t pitch,
                       uint32_t width, uint32_t height);
-   void (*dst)(struct tu_cs *cs,
-               struct tu_image *image,
-               VkFormat format,
-               uint32_t level,
-               uint32_t layer);
+   void (*dst)(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
    void (*dst_buffer)(struct tu_cs *cs, VkFormat vk_format, uint64_t va, uint32_t pitch);
    void (*setup)(struct tu_cmd_buffer *cmd,
                  struct tu_cs *cs,
@@ -1116,6 +1048,47 @@ coords(const struct blit_ops *ops,
        const VkExtent3D *extent)
 {
    ops->coords(cs, (const VkOffset2D*) dst, (const VkOffset2D*) src, (const VkExtent2D*) extent);
+}
+
+static void
+tu_image_view_blit2(struct tu_image_view *iview,
+                    struct tu_image *image,
+                    VkFormat format,
+                    const VkImageSubresourceLayers *subres,
+                    uint32_t layer,
+                    bool stencil_read)
+{
+   VkImageAspectFlags aspect_mask = subres->aspectMask;
+
+   /* always use the AS_R8G8B8A8 format for these */
+   if (format == VK_FORMAT_D24_UNORM_S8_UINT ||
+       format == VK_FORMAT_X8_D24_UNORM_PACK32) {
+      aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+   }
+
+   tu_image_view_init(iview, &(VkImageViewCreateInfo) {
+      .image = tu_image_to_handle(image),
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = format,
+      /* image_to_buffer from d24s8 with stencil aspect mask writes out to r8 */
+      .components.r = stencil_read ? VK_COMPONENT_SWIZZLE_A : VK_COMPONENT_SWIZZLE_R,
+      .subresourceRange = {
+         .aspectMask = aspect_mask,
+         .baseMipLevel = subres->mipLevel,
+         .levelCount = 1,
+         .baseArrayLayer = subres->baseArrayLayer + layer,
+         .layerCount = 1,
+      },
+   });
+}
+
+static void
+tu_image_view_blit(struct tu_image_view *iview,
+                   struct tu_image *image,
+                   const VkImageSubresourceLayers *subres,
+                   uint32_t layer)
+{
+   tu_image_view_blit2(iview, image, image->vk_format, subres, layer, false);
 }
 
 static void
@@ -1197,14 +1170,13 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
          A6XX_GRAS_2D_SRC_BR_Y(.y = MAX2(info->srcOffsets[0].y, info->srcOffsets[1].y) - 1));
    }
 
+   struct tu_image_view dst, src;
+   tu_image_view_blit(&dst, dst_image, &info->dstSubresource, info->dstOffsets[0].z);
+   tu_image_view_blit(&src, src_image, &info->srcSubresource, info->srcOffsets[0].z);
+
    for (uint32_t i = 0; i < layers; i++) {
-      ops->src(cmd, cs, src_image, src_image->vk_format,
-               info->srcSubresource.mipLevel,
-               info->srcSubresource.baseArrayLayer + info->srcOffsets[0].z + i,
-               filter == VK_FILTER_LINEAR, false);
-      ops->dst(cs, dst_image, dst_image->vk_format,
-               info->dstSubresource.mipLevel,
-               info->dstSubresource.baseArrayLayer + info->dstOffsets[0].z + i);
+      ops->dst(cs, &dst, i);
+      ops->src(cmd, cs, &src, i, filter == VK_FILTER_LINEAR);
       ops->run(cmd, cs);
    }
 }
@@ -1283,6 +1255,7 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
    VkFormat dst_format = dst_image->vk_format;
    VkFormat src_format = dst_image->vk_format;
    const struct blit_ops *ops = &r2d_ops;
+
    uint8_t mask = 0xf;
 
    if (dst_image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
@@ -1304,7 +1277,7 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
       (info->bufferRowLength ?: extent.width) * vk_format_get_blocksize(src_format);
    uint32_t layer_size = (info->bufferImageHeight ?: extent.height) * pitch;
 
-   if (dst_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 || vk_format_is_compressed(dst_format)) {
+   if (dst_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 || vk_format_is_compressed(src_format)) {
       assert(src_format == dst_format);
       copy_compressed(dst_format, &offset, &extent, &pitch, &layer_size);
       src_format = dst_format = copy_format(dst_format);
@@ -1316,10 +1289,11 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
 
    ops->setup(cmd, cs, dst_format, ROTATE_0, false, mask);
 
+   struct tu_image_view dst;
+   tu_image_view_blit2(&dst, dst_image, dst_format, &info->imageSubresource, offset.z, false);
+
    for (uint32_t i = 0; i < layers; i++) {
-      ops->dst(cs, dst_image, dst_format,
-               info->imageSubresource.mipLevel,
-               info->imageSubresource.baseArrayLayer + info->imageOffset.z + i);
+      ops->dst(cs, &dst, i);
 
       uint64_t src_va = tu_buffer_iova(src_buffer) + info->bufferOffset + layer_size * i;
       if ((src_va & 63) || (pitch & 63)) {
@@ -1383,7 +1357,7 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
    uint32_t pitch = (info->bufferRowLength ?: extent.width) * vk_format_get_blocksize(dst_format);
    uint32_t layer_size = (info->bufferImageHeight ?: extent.height) * pitch;
 
-   if (src_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 || vk_format_is_compressed(src_format)) {
+   if (dst_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 || vk_format_is_compressed(dst_format)) {
       assert(src_format == dst_format);
       copy_compressed(dst_format, &offset, &extent, &pitch, &layer_size);
       src_format = dst_format = copy_format(dst_format);
@@ -1395,11 +1369,11 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
 
    ops->setup(cmd, cs, dst_format, ROTATE_0, false, 0xf);
 
+   struct tu_image_view src;
+   tu_image_view_blit2(&src, src_image, src_format, &info->imageSubresource, offset.z, stencil_read);
+
    for (uint32_t i = 0; i < layers; i++) {
-      ops->src(cmd, cs, src_image, src_format,
-               info->imageSubresource.mipLevel,
-               info->imageSubresource.baseArrayLayer + info->imageOffset.z + i,
-               false, stencil_read);
+      ops->src(cmd, cs, &src, i, false);
 
       uint64_t dst_va = tu_buffer_iova(dst_buffer) + info->bufferOffset + layer_size * i;
       if ((dst_va & 63) || (pitch & 63)) {
@@ -1489,14 +1463,13 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
    ops->setup(cmd, cs, format, ROTATE_0, false, mask);
    coords(ops, cs, &dst_offset, &src_offset, &extent);
 
+   struct tu_image_view dst, src;
+   tu_image_view_blit2(&dst, dst_image, format, &info->dstSubresource, dst_offset.z, false);
+   tu_image_view_blit2(&src, src_image, format, &info->srcSubresource, src_offset.z, false);
+
    for (uint32_t i = 0; i < info->extent.depth; i++) {
-      ops->src(cmd, cs, src_image, format,
-               info->srcSubresource.mipLevel,
-               info->srcSubresource.baseArrayLayer + info->srcOffset.z + i,
-               false, false);
-      ops->dst(cs, dst_image, format,
-               info->dstSubresource.mipLevel,
-               info->dstSubresource.baseArrayLayer + info->dstOffset.z + i);
+      ops->src(cmd, cs, &src, i, false);
+      ops->dst(cs, &dst, i);
       ops->run(cmd, cs);
    }
 }
@@ -1661,14 +1634,13 @@ tu_CmdResolveImage(VkCommandBuffer commandBuffer,
 
       coords(ops, cs, &info->dstOffset, &info->srcOffset, &info->extent);
 
+      struct tu_image_view dst, src;
+      tu_image_view_blit(&dst, dst_image, &info->dstSubresource, info->dstOffset.z);
+      tu_image_view_blit(&src, src_image, &info->srcSubresource, info->srcOffset.z);
+
       for (uint32_t i = 0; i < layers; i++) {
-         ops->src(cmd, cs, src_image, src_image->vk_format,
-                  info->srcSubresource.mipLevel,
-                  info->srcSubresource.baseArrayLayer + info->srcOffset.z + i,
-                  false, false);
-         ops->dst(cs, dst_image, dst_image->vk_format,
-                  info->dstSubresource.mipLevel,
-                  info->dstSubresource.baseArrayLayer + info->dstOffset.z + i);
+         ops->src(cmd, cs, &src, i, false);
+         ops->dst(cs, &dst, i);
          ops->run(cmd, cs);
       }
    }
@@ -1687,19 +1659,14 @@ tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
    tu_bo_list_add(&cmd->bo_list, src->image->bo, MSM_SUBMIT_BO_READ);
    tu_bo_list_add(&cmd->bo_list, dst->image->bo, MSM_SUBMIT_BO_WRITE);
 
-   assert(src->vk_format == dst->vk_format);
+   assert(src->image->vk_format == dst->image->vk_format);
 
-   ops->setup(cmd, cs, dst->vk_format, ROTATE_0, false, 0xf);
+   ops->setup(cmd, cs, dst->image->vk_format, ROTATE_0, false, 0xf);
    ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
 
    for (uint32_t i = 0; i < layers; i++) {
-      ops->src(cmd, cs, src->image, src->vk_format,
-               src->base_mip,
-               src->base_layer + i,
-               false, false);
-      ops->dst(cs, dst->image, dst->vk_format,
-               dst->base_mip,
-               dst->base_layer + i);
+      ops->src(cmd, cs, src, i, false);
+      ops->dst(cs, dst, i);
       ops->run(cmd, cs);
    }
 }
@@ -1745,8 +1712,16 @@ clear_image(struct tu_cmd_buffer *cmd,
                      u_minify(image->extent.height, range->baseMipLevel + j)
                   });
 
+      struct tu_image_view dst;
+      tu_image_view_blit2(&dst, image, format, &(VkImageSubresourceLayers) {
+         .aspectMask = range->aspectMask,
+         .mipLevel = range->baseMipLevel + j,
+         .baseArrayLayer = range->baseArrayLayer,
+         .layerCount = 1,
+      }, 0, false);
+
       for (uint32_t i = 0; i < layer_count; i++) {
-         ops->dst(cs, image, format, range->baseMipLevel + j, range->baseArrayLayer + i);
+         ops->dst(cs, &dst, i);
          ops->run(cmd, cs);
       }
    }
@@ -1828,14 +1803,13 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
          const struct tu_image_view *iview =
             cmd->state.framebuffer->attachments[a].attachment;
 
-         ops->setup(cmd, cs, iview->vk_format, ROTATE_0, true, mask);
-         ops->clear_value(cs, iview->vk_format, &attachments[j].clearValue);
+         ops->setup(cmd, cs, iview->image->vk_format, ROTATE_0, true, mask);
+         ops->clear_value(cs, iview->image->vk_format, &attachments[j].clearValue);
 
          for (uint32_t i = 0; i < rect_count; i++) {
             ops->coords(cs, &rects[i].rect.offset, NULL, &rects[i].rect.extent);
             for (uint32_t layer = 0; layer < rects[i].layerCount; layer++) {
-               ops->dst(cs, iview->image, iview->vk_format, iview->base_mip,
-                        iview->base_layer + rects[i].baseArrayLayer + layer);
+               ops->dst(cs, iview, rects[i].baseArrayLayer + layer);
                ops->run(cmd, cs);
             }
          }
@@ -2152,7 +2126,7 @@ tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
    if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
       mask = 0xf;
 
-   if (iview->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+   if (attachment->format == VK_FORMAT_D24_UNORM_S8_UINT) {
       mask &= 0x7;
       if (attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
          mask |= 0x8;
@@ -2166,12 +2140,12 @@ tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
    if (attachment->samples > 1)
       ops = &r3d_ops;
 
-   ops->setup(cmd, cs, iview->vk_format, ROTATE_0, true, mask);
+   ops->setup(cmd, cs, attachment->format, ROTATE_0, true, mask);
    ops->coords(cs, &info->renderArea.offset, NULL, &info->renderArea.extent);
-   ops->clear_value(cs, iview->vk_format, &info->pClearValues[a]);
+   ops->clear_value(cs, attachment->format, &info->pClearValues[a]);
 
    for (uint32_t i = 0; i < fb->layers; i++) {
-      ops->dst(cs, iview->image, iview->vk_format, iview->base_mip, iview->base_layer + i);
+      ops->dst(cs, iview, i);
       ops->run(cmd, cs);
    }
 }
@@ -2182,8 +2156,6 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                          uint32_t a,
                          const VkRenderPassBeginInfo *info)
 {
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_image_view *iview = fb->attachments[a].attachment;
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
    unsigned clear_mask = 0;
@@ -2195,7 +2167,7 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
    if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
       clear_mask = 0xf;
 
-   if (vk_format_has_stencil(iview->vk_format)) {
+   if (vk_format_has_stencil(attachment->format)) {
       clear_mask &= 0x7;
       if (attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
          clear_mask |= 0x8;
@@ -2216,9 +2188,6 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
              struct tu_render_pass_attachment *attachment,
              bool resolve)
 {
-   const struct tu_native_format format =
-      tu6_format_image(iview->image, iview->vk_format, iview->base_mip);
-
    tu_cs_emit_regs(cs,
                    A6XX_RB_MSAA_CNTL(tu_msaa_samples(attachment->samples)));
 
@@ -2226,24 +2195,14 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
       .unk0 = !resolve,
       .gmem = !resolve,
       /* "integer" bit disables msaa resolve averaging */
-      .integer = vk_format_is_int(iview->vk_format)));
+      .integer = vk_format_is_int(attachment->format)));
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_BLIT_DST_INFO(
-                      .tile_mode = format.tile_mode,
-                      .samples = tu_msaa_samples(iview->image->samples),
-                      .color_format = format.fmt,
-                      .color_swap = format.swap,
-                      .flags = iview->image->layout.ubwc_layer_size != 0),
-                   A6XX_RB_BLIT_DST(tu_image_view_base_ref(iview)),
-                   A6XX_RB_BLIT_DST_PITCH(tu_image_stride(iview->image, iview->base_mip)),
-                   A6XX_RB_BLIT_DST_ARRAY_PITCH(iview->image->layout.layer_size));
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 4);
+   tu_cs_emit(cs, iview->RB_BLIT_DST_INFO);
+   tu_cs_image_ref_2d(cs, iview, 0, false);
 
-   if (iview->image->layout.ubwc_layer_size) {
-      tu_cs_emit_regs(cs,
-                      A6XX_RB_BLIT_FLAG_DST(tu_image_view_ubwc_base_ref(iview)),
-                      A6XX_RB_BLIT_FLAG_DST_PITCH(tu_image_view_ubwc_pitches(iview)));
-   }
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST_LO, 3);
+   tu_cs_image_flag_ref(cs, iview, 0);
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset));
@@ -2336,16 +2295,14 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
     * required y padding in the layout (except for the last level)
     */
    bool need_y2_align =
-      y2 != iview->extent.height ||
-      (tu6_get_image_tile_mode(iview->image, iview->base_mip) == TILE6_LINEAR &&
-       iview->base_mip != iview->image->level_count - 1);
+      y2 != iview->extent.height || iview->need_y2_align;
 
    bool unaligned =
       x1 % GMEM_ALIGN_W || (x2 % GMEM_ALIGN_W && x2 != iview->extent.width) ||
       y1 % GMEM_ALIGN_H || (y2 % GMEM_ALIGN_H && need_y2_align);
 
    /* use fast path when render area is aligned, except for unsupported resolve cases */
-   if (!unaligned && (a == gmem_a || blit_can_resolve(iview->vk_format))) {
+   if (!unaligned && (a == gmem_a || blit_can_resolve(dst->format))) {
       tu_emit_blit(cmd, cs, iview, src, true);
       return;
    }
@@ -2358,8 +2315,8 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       return;
    }
 
-   r2d_setup_common(cmd, cs, iview->vk_format, ROTATE_0, false, 0xf, true);
-   r2d_dst(cs, iview->image, iview->vk_format, iview->base_mip, iview->base_layer);
+   r2d_setup_common(cmd, cs, dst->format, ROTATE_0, false, 0xf, true);
+   r2d_dst(cs, iview, 0);
    r2d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
 
    tu_cs_emit_regs(cs,

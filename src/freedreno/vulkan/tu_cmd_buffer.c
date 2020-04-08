@@ -387,22 +387,18 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
    }
 
    const struct tu_image_view *iview = fb->attachments[a].attachment;
-   enum a6xx_depth_format fmt = tu6_pipe2depth(iview->vk_format);
+   enum a6xx_depth_format fmt = tu6_pipe2depth(cmd->state.pass->attachments[a].format);
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt),
-                   A6XX_RB_DEPTH_BUFFER_PITCH(tu_image_stride(iview->image, iview->base_mip)),
-                   A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(
-                           fdl_layer_stride(&iview->image->layout, iview->base_mip)),
-                   A6XX_RB_DEPTH_BUFFER_BASE(tu_image_view_base_ref(iview)),
-                   A6XX_RB_DEPTH_BUFFER_BASE_GMEM(cmd->state.pass->attachments[a].gmem_offset));
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
+   tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt).value);
+   tu_cs_image_ref(cs, iview, 0);
+   tu_cs_emit(cs, cmd->state.pass->attachments[a].gmem_offset);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = fmt));
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_DEPTH_FLAG_BUFFER_BASE(tu_image_view_ubwc_base_ref(iview)),
-                   A6XX_RB_DEPTH_FLAG_BUFFER_PITCH(tu_image_view_ubwc_pitches(iview)));
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE_LO, 3);
+   tu_cs_image_flag_ref(cs, iview, 0);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_LRZ_BUFFER_BASE(0),
@@ -429,30 +425,16 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
 
       const struct tu_image_view *iview = fb->attachments[a].attachment;
 
-
-      struct tu_native_format format =
-         tu6_format_image(iview->image, iview->vk_format, iview->base_mip);
-
-      tu_cs_emit_regs(cs,
-                      A6XX_RB_MRT_BUF_INFO(i,
-                                           .color_tile_mode = format.tile_mode,
-                                           .color_format = format.fmt,
-                                           .color_swap = format.swap),
-                      A6XX_RB_MRT_PITCH(i, tu_image_stride(iview->image, iview->base_mip)),
-                      A6XX_RB_MRT_ARRAY_PITCH(i,
-                              fdl_layer_stride(&iview->image->layout, iview->base_mip)),
-                      A6XX_RB_MRT_BASE(i, tu_image_view_base_ref(iview)),
-                      A6XX_RB_MRT_BASE_GMEM(i, cmd->state.pass->attachments[a].gmem_offset));
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
+      tu_cs_emit(cs, iview->RB_MRT_BUF_INFO);
+      tu_cs_image_ref(cs, iview, 0);
+      tu_cs_emit(cs, cmd->state.pass->attachments[a].gmem_offset);
 
       tu_cs_emit_regs(cs,
-                      A6XX_SP_FS_MRT_REG(i,
-                                         .color_format = format.fmt,
-                                         .color_sint = vk_format_is_sint(iview->vk_format),
-                                         .color_uint = vk_format_is_uint(iview->vk_format)));
+                      A6XX_SP_FS_MRT_REG(i, .dword = iview->SP_FS_MRT_REG));
 
-      tu_cs_emit_regs(cs,
-                      A6XX_RB_MRT_FLAG_BUFFER_ADDR(i, tu_image_view_ubwc_base_ref(iview)),
-                      A6XX_RB_MRT_FLAG_BUFFER_PITCH(i, tu_image_view_ubwc_pitches(iview)));
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_FLAG_BUFFER_ADDR_LO(i), 3);
+      tu_cs_image_flag_ref(cs, iview, 0);
    }
 
    tu_cs_emit_regs(cs,
@@ -532,7 +514,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
             continue;
 
          const struct tu_image_view *iview = fb->attachments[a].attachment;
-         if (iview->image->layout.ubwc_layer_size != 0)
+         if (iview->ubwc_enabled)
             mrts_ubwc_enable |= 1 << i;
       }
 
@@ -541,7 +523,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
       const uint32_t a = subpass->depth_stencil_attachment.attachment;
       if (a != VK_ATTACHMENT_UNUSED) {
          const struct tu_image_view *iview = fb->attachments[a].attachment;
-         if (iview->image->layout.ubwc_layer_size != 0)
+         if (iview->ubwc_enabled)
             cntl |= A6XX_RB_RENDER_CNTL_FLAG_DEPTH;
       }
 
