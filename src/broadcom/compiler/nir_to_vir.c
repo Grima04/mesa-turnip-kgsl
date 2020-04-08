@@ -1560,10 +1560,14 @@ ntq_setup_vs_inputs(struct v3d_compile *c)
         bool uses_iid = c->s->info.system_values_read &
                 (1ull << SYSTEM_VALUE_INSTANCE_ID |
                  1ull << SYSTEM_VALUE_INSTANCE_INDEX);
+        bool uses_biid = c->s->info.system_values_read &
+                (1ull << SYSTEM_VALUE_BASE_INSTANCE);
         bool uses_vid = c->s->info.system_values_read &
                 (1ull << SYSTEM_VALUE_VERTEX_ID |
                  1ull << SYSTEM_VALUE_VERTEX_ID_ZERO_BASE);
+
         num_components += uses_iid;
+        num_components += uses_biid;
         num_components += uses_vid;
 
         for (int i = 0; i < ARRAY_SIZE(c->vattr_sizes); i++)
@@ -1572,6 +1576,11 @@ ntq_setup_vs_inputs(struct v3d_compile *c)
         if (uses_iid) {
                 c->iid = ntq_emit_vpm_read(c, &vpm_components_queued,
                                            &num_components, ~0);
+        }
+
+        if (uses_biid) {
+                c->biid = ntq_emit_vpm_read(c, &vpm_components_queued,
+                                            &num_components, ~0);
         }
 
         if (uses_vid) {
@@ -2003,6 +2012,10 @@ ntq_emit_load_input(struct v3d_compile *c, nir_intrinsic_instr *instr)
                       index++;
                }
                if (c->s->info.system_values_read &
+                   (1ull << SYSTEM_VALUE_BASE_INSTANCE)) {
+                      index++;
+               }
+               if (c->s->info.system_values_read &
                    (1ull << SYSTEM_VALUE_VERTEX_ID)) {
                       index++;
                }
@@ -2250,6 +2263,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                vir_ADD(c,
                                        vir_uniform_ui(c, -1),
                                        vir_REVF(c)));
+                break;
+
+        case nir_intrinsic_load_base_instance:
+                ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, c->biid));
                 break;
 
         case nir_intrinsic_load_instance_id:

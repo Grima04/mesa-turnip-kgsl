@@ -585,8 +585,14 @@ struct v3d_compile {
         struct qreg iid;
 
         /**
-         * Vertex ID, which comes in before the vertex attribute payload
+         * Base Instance ID, which comes in before the vertex attribute payload
          * (after Instance ID) if the shader record requests it.
+         */
+        struct qreg biid;
+
+        /**
+         * Vertex ID, which comes in before the vertex attribute payload
+         * (after Base Instance) if the shader record requests it.
          */
         struct qreg vid;
 
@@ -714,7 +720,7 @@ struct v3d_prog_data {
 struct v3d_vs_prog_data {
         struct v3d_prog_data base;
 
-        bool uses_iid, uses_vid;
+        bool uses_iid, uses_biid, uses_vid;
 
         /* Number of components read from each vertex attribute. */
         uint8_t vattr_sizes[V3D_MAX_VS_INPUTS / 4];
