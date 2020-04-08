@@ -95,7 +95,6 @@ radv_store_availability(nir_builder *b, nir_ssa_def *flags, nir_ssa_def *dst_buf
 
 	b->cursor = nir_after_cf_list(&availability_if->then_list);
 
-
 	nir_if *store_64bit_if = nir_if_create(b->shader);
 	store_64bit_if->condition = nir_src_for_ssa(result_is_64bit);
 	nir_cf_node_insert(b->cursor, &store_64bit_if->cf_node);
