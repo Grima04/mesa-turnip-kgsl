@@ -3341,12 +3341,6 @@ vtn_vector_insert(struct vtn_builder *b, nir_ssa_def *src, nir_ssa_def *insert,
    return &vec->dest.dest.ssa;
 }
 
-static nir_ssa_def *
-nir_ieq_imm(nir_builder *b, nir_ssa_def *x, uint64_t i)
-{
-   return nir_ieq(b, x, nir_imm_intN_t(b, i, x->bit_size));
-}
-
 nir_ssa_def *
 vtn_vector_extract_dynamic(struct vtn_builder *b, nir_ssa_def *src,
                            nir_ssa_def *index)
@@ -3358,12 +3352,17 @@ nir_ssa_def *
 vtn_vector_insert_dynamic(struct vtn_builder *b, nir_ssa_def *src,
                           nir_ssa_def *insert, nir_ssa_def *index)
 {
-   nir_ssa_def *dest = vtn_vector_insert(b, src, insert, 0);
-   for (unsigned i = 1; i < src->num_components; i++)
-      dest = nir_bcsel(&b->nb, nir_ieq_imm(&b->nb, index, i),
-                       vtn_vector_insert(b, src, insert, i), dest);
+   nir_const_value per_comp_idx_const[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
+      per_comp_idx_const[i] = nir_const_value_for_int(i, index->bit_size);
+   nir_ssa_def *per_comp_idx =
+      nir_build_imm(&b->nb, src->num_components,
+                    index->bit_size, per_comp_idx_const);
 
-   return dest;
+   /* nir_builder will automatically splat out scalars to vectors so an insert
+    * is as simple as "if I'm the channel, replace me with the scalar."
+    */
+   return nir_bcsel(&b->nb, nir_ieq(&b->nb, index, per_comp_idx), insert, src);
 }
 
 static nir_ssa_def *
