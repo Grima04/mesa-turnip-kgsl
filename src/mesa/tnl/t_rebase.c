@@ -151,16 +151,19 @@ void t_rebase_prims( struct gl_context *ctx,
    } else if (ib) {
       /* Unfortunately need to adjust each index individually.
        */
-      GLboolean map_ib = ib->obj &&
-                         !ib->obj->Mappings[MAP_INTERNAL].Pointer;
-      void *ptr;
+      bool map_ib = false;
+      const void *ptr;
 
-      if (map_ib) 
-	 ctx->Driver.MapBufferRange(ctx, 0, ib->obj->Size, GL_MAP_READ_BIT,
-				    ib->obj, MAP_INTERNAL);
+      if (ib->obj) {
+         if (!ib->obj->Mappings[MAP_INTERNAL].Pointer) {
+            ctx->Driver.MapBufferRange(ctx, 0, ib->obj->Size, GL_MAP_READ_BIT,
+                                       ib->obj, MAP_INTERNAL);
+            map_ib = true;
+         }
 
-
-      ptr = ADD_POINTERS(ib->obj->Mappings[MAP_INTERNAL].Pointer, ib->ptr);
+         ptr = ADD_POINTERS(ib->obj->Mappings[MAP_INTERNAL].Pointer, ib->ptr);
+      } else
+         ptr = ib->ptr;
 
       /* Some users might prefer it if we translated elements to
        * GLuints here.  Others wouldn't...
