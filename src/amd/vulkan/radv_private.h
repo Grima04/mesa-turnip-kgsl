@@ -896,6 +896,7 @@ struct radv_descriptor_range {
 struct radv_descriptor_set {
 	const struct radv_descriptor_set_layout *layout;
 	uint32_t size;
+	uint32_t buffer_count;
 
 	struct radeon_winsys_bo *bo;
 	uint64_t va;
