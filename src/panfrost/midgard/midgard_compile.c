@@ -2648,7 +2648,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         struct exec_list *varyings =
                         ctx->stage == MESA_SHADER_VERTEX ? &nir->outputs : &nir->inputs;
 
-        unsigned max_varying = 0;
         nir_foreach_variable(var, varyings) {
                 unsigned loc = var->data.driver_location;
                 unsigned sz = glsl_type_size(var->type, FALSE);
@@ -2656,7 +2655,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                 for (int c = 0; c < sz; ++c) {
                         program->varyings[loc + c] = var->data.location + c;
                         program->varying_type[loc + c] = pan_format_from_glsl(var->type);
-                        max_varying = MAX2(max_varying, loc + c);
                 }
         }
 
