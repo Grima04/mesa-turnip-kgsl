@@ -104,7 +104,17 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0x84" name="FMT6_32_32_32_32_SINT"/>
 	<value value="0x85" name="FMT6_32_32_32_32_FIXED"/>
 
+	<value value="0x8c" name="FMT6_G8R8B8R8_422_UNORM"/>
+	<value value="0x8d" name="FMT6_R8G8R8B8_422_UNORM"/>
+	<value value="0x8e" name="FMT6_R8_G8B8_2PLANE_420_UNORM"/>
+	<value value="0x90" name="FMT6_R8_G8_B8_3PLANE_420_UNORM"/>
+
 	<value value="0x91" name="FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8"/>
+
+	<!-- used with the Y plane of FMT6_R8_G8B8_2PLANE_420_UNORM
+	     which has different UBWC compression from regular 8_UNORM format -->
+	<value value="0x94" name="FMT6_8_PLANE_UNORM"/>
+
 	<value value="0xa0" name="FMT6_Z24_UNORM_S8_UINT"/>
 
 	<value value="0xab" name="FMT6_ETC2_RG11_UNORM"/>
@@ -3337,6 +3347,8 @@ to upconvert to 32b float internally?
 		<bitfield name="LOD_BIAS" low="19" high="31" type="fixed" radix="8"/><!-- no idea how many bits for real -->
 	</reg32>
 	<reg32 offset="1" name="1">
+		<!-- bit 0 always set with vulkan? -->
+		<bitfield name="UNK0" pos="0" type="boolean"/>
 		<bitfield name="COMPARE_FUNC" low="1" high="3" type="adreno_compare_func"/>
 		<bitfield name="CUBEMAPSEAMLESSFILTOFF" pos="4" type="boolean"/>
 		<bitfield name="UNNORM_COORDS" pos="5" type="boolean"/>
@@ -3346,6 +3358,7 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="2" name="2">
 		<bitfield name="REDUCTION_MODE" low="0" high="1" type="a6xx_reduction_mode"/>
+		<bitfield name="CHROMA_LINEAR" pos="5" type="boolean"/>
 		<bitfield name="BCOLOR_OFFSET" low="7" high="31" shr="7"/>
 	</reg32>
 	<reg32 offset="3" name="3"/>
@@ -3375,6 +3388,9 @@ to upconvert to 32b float internally?
 		<bitfield name="SWIZ_Z" low="10" high="12" type="a6xx_tex_swiz"/>
 		<bitfield name="SWIZ_W" low="13" high="15" type="a6xx_tex_swiz"/>
 		<bitfield name="MIPLVLS" low="16" high="19" type="uint"/>
+		<!-- overlaps with MIPLVLS -->
+		<bitfield name="CHROMA_MIDPOINT_X" pos="16" type="boolean"/>
+		<bitfield name="CHROMA_MIDPOINT_Y" pos="18" type="boolean"/>
 		<bitfield name="SAMPLES" low="20" high="21" type="a3xx_msaa_samples"/>
 		<bitfield name="FMT" low="22" high="29" type="a6xx_format"/>
 		<bitfield name="SWAP" low="30" high="31" type="a3xx_color_swap"/>
@@ -3415,6 +3431,10 @@ to upconvert to 32b float internally?
 		<bitfield name="TILE_ALL" pos="27" type="boolean"/>
 		<bitfield name="FLAG" pos="28" type="boolean"/>
 	</reg32>
+	<!-- for 2-3 plane format, BASE is flag buffer address (if enabled)
+	     the address of the non-flag base buffer is determined automatically,
+	     and must follow the flag buffer
+	 -->
 	<reg32 offset="4" name="4">
 		<bitfield name="BASE_LO" low="5" high="31" shr="5"/>
 	</reg32>
@@ -3422,13 +3442,18 @@ to upconvert to 32b float internally?
 		<bitfield name="BASE_HI" low="0" high="16"/>
 		<bitfield name="DEPTH" low="17" high="29" type="uint"/>
 	</reg32>
-	<reg32 offset="6" name="6"/>
+	<reg32 offset="6" name="6">
+		<!-- pitch for plane 2 / plane 3 -->
+		<bitfield name="PLANE_PITCH" low="8" high="31" type="uint"/>
+	</reg32>
+	<!-- 7/8 is plane 2 address for planar formats -->
 	<reg32 offset="7" name="7">
 		<bitfield name="FLAG_LO" low="5" high="31" shr="5"/>
 	</reg32>
 	<reg32 offset="8" name="8">
 		<bitfield name="FLAG_HI" low="0" high="16"/>
 	</reg32>
+	<!-- 9/10 is plane 3 address for planar formats -->
 	<reg32 offset="9" name="9">
 		<bitfield name="FLAG_BUFFER_ARRAY_PITCH" low="0" high="16" shr="4" type="uint"/>
 	</reg32>
