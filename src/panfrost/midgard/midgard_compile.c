@@ -2626,8 +2626,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
          * (post-optimisation) */
 
         panfrost_nir_assign_sysvals(&ctx->sysvals, nir);
-
-        program->uniform_count = nir->num_uniforms;
         program->sysval_count = ctx->sysvals.sysval_count;
         memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
 

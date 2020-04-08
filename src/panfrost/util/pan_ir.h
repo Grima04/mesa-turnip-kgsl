@@ -84,7 +84,6 @@ panfrost_sysval_for_instr(nir_instr *instr, nir_dest *dest);
 
 typedef struct {
         int work_register_count;
-        int uniform_count;
         int uniform_cutoff;
 
         /* Prepended before uniforms, mapping to SYSVAL_ names for the

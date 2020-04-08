@@ -146,8 +146,6 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         util_dynarray_fini(&program.compiled);
 
-        /* Sysvals are prepended */
-        program.uniform_count += program.sysval_count;
         state->sysval_count = program.sysval_count;
         memcpy(state->sysval, program.sysvals, sizeof(state->sysval[0]) * state->sysval_count);
 
@@ -193,8 +191,9 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         if (outputs_written)
                 *outputs_written = s->info.outputs_written;
 
-        /* Separate as primary uniform count is truncated */
-        state->uniform_count = program.uniform_count;
+        /* Separate as primary uniform count is truncated. Sysvals are prefix
+         * uniforms */
+        state->uniform_count = s->num_uniforms + program.sysval_count;
         state->uniform_cutoff = program.uniform_cutoff;
         state->work_reg_count = program.work_register_count;
 
