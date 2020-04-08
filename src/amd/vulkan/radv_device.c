@@ -1339,7 +1339,7 @@ void radv_GetPhysicalDeviceProperties(
 		.maxMemoryAllocationCount                 = UINT32_MAX,
 		.maxSamplerAllocationCount                = 64 * 1024,
 		.bufferImageGranularity                   = 64, /* A cache line */
-		.sparseAddressSpaceSize                   = 0xffffffffu, /* buffer max size */
+		.sparseAddressSpaceSize                   = RADV_MAX_MEMORY_ALLOCATION_SIZE, /* buffer max size */
 		.maxBoundDescriptorSets                   = MAX_SETS,
 		.maxPerStageDescriptorSamplers            = max_descriptor_set_size,
 		.maxPerStageDescriptorUniformBuffers      = max_descriptor_set_size,
