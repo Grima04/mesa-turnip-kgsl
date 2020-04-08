@@ -229,7 +229,7 @@ void validate(Program* program, FILE * output)
                       instr->opcode == aco_opcode::v_writelane_b32 ||
                       instr->opcode == aco_opcode::v_writelane_b32_e64) {
                      check(!op.isLiteral(), "No literal allowed on VALU instruction", instr.get());
-                     check(i == 1 || (op.isTemp() && op.regClass() == v1), "Wrong Operand type for VALU instruction", instr.get());
+                     check(i == 1 || (op.isTemp() && op.regClass().type() == RegType::vgpr && op.bytes() <= 4), "Wrong Operand type for VALU instruction", instr.get());
                      continue;
                   }
                   if (op.isTemp() && instr->operands[i].regClass().type() == RegType::sgpr) {
