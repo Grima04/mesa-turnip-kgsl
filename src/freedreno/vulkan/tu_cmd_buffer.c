@@ -3443,7 +3443,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          const VkDeviceSize offset = buf->bo_offset +
                                      cmd->state.vb.offsets[binding];
          const VkDeviceSize size =
-            offset < buf->bo->size ? buf->bo->size - offset : 0;
+            offset < buf->size ? buf->size - offset : 0;
 
          tu_cs_emit_regs(cs,
                          A6XX_VFD_FETCH_BASE(i, .bo = buf->bo, .bo_offset = offset),
