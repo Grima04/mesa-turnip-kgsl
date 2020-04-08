@@ -6237,6 +6237,9 @@ VkResult radv_CreateBuffer(
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	struct radv_buffer *buffer;
 
+	if (pCreateInfo->size > RADV_MAX_MEMORY_ALLOCATION_SIZE)
+		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
 	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
 	buffer = vk_alloc2(&device->alloc, pAllocator, sizeof(*buffer), 8,
