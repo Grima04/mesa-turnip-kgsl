@@ -574,10 +574,12 @@ tu_shader_compile_options_init(
    const VkGraphicsPipelineCreateInfo *pipeline_info)
 {
    bool has_gs = false;
-   for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
-      if (pipeline_info->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
-         has_gs = true;
-         break;
+   if (pipeline_info) {
+      for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
+         if (pipeline_info->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
+            has_gs = true;
+            break;
+         }
       }
    }
 
