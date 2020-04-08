@@ -215,6 +215,9 @@ lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
 
    nir_intrinsic_instr *load =
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_ubo);
+
+   nir_intrinsic_set_align(load, 4, 0);
+
    load->num_components = instr->num_components;
    load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
    load->src[1] = instr->src[0];
