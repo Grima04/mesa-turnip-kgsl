@@ -2019,10 +2019,14 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
 
       shader.vertex_id_read_by_coordinate_shader =
          prog_data_vs_bin->uses_vid;
+      shader.base_instance_id_read_by_coordinate_shader =
+         prog_data_vs_bin->uses_biid;
       shader.instance_id_read_by_coordinate_shader =
          prog_data_vs_bin->uses_iid;
       shader.vertex_id_read_by_vertex_shader =
          prog_data_vs->uses_vid;
+      shader.base_instance_id_read_by_vertex_shader =
+         prog_data_vs->uses_biid;
       shader.instance_id_read_by_vertex_shader =
          prog_data_vs->uses_iid;
 

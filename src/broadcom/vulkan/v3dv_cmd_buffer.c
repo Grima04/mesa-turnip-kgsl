@@ -2849,16 +2849,28 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
 
    assert(pipeline);
 
-   uint32_t prim_tf_enable = 0;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
 
-   /* FIXME: using VERTEX_ARRAY_PRIMS always as it fits our test caselist
-    * right now. Need to be choosen based on the current case.
-    */
-   cl_emit(&job->bcl, VERTEX_ARRAY_PRIMS, prim) {
-      prim.mode = hw_prim_type | prim_tf_enable;
-      prim.length = info->vertex_count;
-      prim.index_of_first_vertex = info->first_vertex;
+   if (info->first_instance > 0) {
+      cl_emit(&job->bcl, BASE_VERTEX_BASE_INSTANCE, base) {
+         base.base_instance = info->first_instance;
+         base.base_vertex = 0;
+      }
+   }
+
+   if (info->instance_count > 1) {
+      cl_emit(&job->bcl, VERTEX_ARRAY_INSTANCED_PRIMS, prim) {
+         prim.mode = hw_prim_type;
+         prim.index_of_first_vertex = info->first_vertex;
+         prim.number_of_instances = info->instance_count;
+         prim.instance_length = info->vertex_count;
+      }
+   } else {
+      cl_emit(&job->bcl, VERTEX_ARRAY_PRIMS, prim) {
+         prim.mode = hw_prim_type;
+         prim.length = info->vertex_count;
+         prim.index_of_first_vertex = info->first_vertex;
+      }
    }
 }
 
