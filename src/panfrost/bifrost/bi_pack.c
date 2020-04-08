@@ -353,7 +353,7 @@ static uint64_t
 bi_pack_registers(struct bi_registers regs)
 {
         enum bifrost_reg_control ctrl = bi_pack_register_ctrl(regs);
-        struct bifrost_regs s;
+        struct bifrost_regs s = { 0 };
         uint64_t packed = 0;
 
         if (regs.enabled[1]) {
@@ -375,6 +375,7 @@ bi_pack_registers(struct bi_registers regs)
                 s.reg0 = regs.port[0];
         } else {
                 /* Port 1 disabled, so set to zero and use port 1 for ctrl */
+                s.ctrl = 0;
                 s.reg1 = ctrl << 2;
 
                 if (regs.enabled[0]) {
