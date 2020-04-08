@@ -539,9 +539,10 @@ fs_visitor::emit_fb_writes()
    inst->last_rt = true;
    inst->eot = true;
 
-   if (devinfo->gen == 11 && prog_data->dual_src_blend) {
+   if (devinfo->gen >= 11 && devinfo->gen <= 12 &&
+       prog_data->dual_src_blend) {
       /* The dual-source RT write messages fail to release the thread
-       * dependency on ICL with SIMD32 dispatch, leading to hangs.
+       * dependency on ICL and TGL with SIMD32 dispatch, leading to hangs.
        *
        * XXX - Emit an extra single-source NULL RT-write marked LastRT in
        *       order to release the thread dependency without disabling
