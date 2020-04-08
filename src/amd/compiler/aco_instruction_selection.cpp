@@ -7539,7 +7539,14 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          if (instr->intrinsic == nir_intrinsic_read_invocation || !nir_src_is_divergent(instr->src[1]))
             tid = bld.as_uniform(tid);
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-         if (src.regClass() == v1) {
+         if (src.regClass() == v1b || src.regClass() == v2b) {
+            Temp tmp = bld.tmp(v1);
+            tmp = emit_wqm(ctx, emit_bpermute(ctx, bld, tid, src), tmp);
+            if (dst.type() == RegType::vgpr)
+               bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(src.regClass() == v1b ? v3b : v2b), tmp);
+            else
+               bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), tmp);
+         } else if (src.regClass() == v1) {
             emit_wqm(ctx, emit_bpermute(ctx, bld, tid, src), dst);
          } else if (src.regClass() == v2) {
             Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
