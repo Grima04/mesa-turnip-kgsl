@@ -92,9 +92,11 @@ build_constant_load(nir_builder *b, nir_deref_instr *deref,
    if (load->dest.ssa.bit_size < 8) {
       /* Booleans are special-cased to be 32-bit */
       assert(glsl_type_is_boolean(deref->type));
+      assert(deref_size == num_components * 4);
       load->dest.ssa.bit_size = 32;
       return nir_b2b1(b, &load->dest.ssa);
    } else {
+      assert(deref_size == num_components * bit_size / 8);
       return &load->dest.ssa;
    }
 }
