@@ -7669,27 +7669,31 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       } else if (cluster_size == 1) {
          bld.copy(Definition(dst), src);
       } else {
-         src = as_vgpr(ctx, src);
+         unsigned bit_size = instr->src[0].ssa->bit_size;
+
+         src = emit_extract_vector(ctx, src, 0, RegClass::get(RegType::vgpr, bit_size / 8));
 
          ReduceOp reduce_op;
          switch (op) {
-         #define CASE(name) case nir_op_##name: reduce_op = (src.regClass() == v1) ? name##32 : name##64; break;
-            CASE(iadd)
-            CASE(imul)
-            CASE(fadd)
-            CASE(fmul)
-            CASE(imin)
-            CASE(umin)
-            CASE(fmin)
-            CASE(imax)
-            CASE(umax)
-            CASE(fmax)
-            CASE(iand)
-            CASE(ior)
-            CASE(ixor)
+         #define CASEI(name) case nir_op_##name: reduce_op = (bit_size == 32) ? name##32 : (bit_size == 16) ? name##16 : (bit_size == 8) ? name##8 : name##64; break;
+         #define CASEF(name) case nir_op_##name: reduce_op = (bit_size == 32) ? name##32 : (bit_size == 16) ? name##16 : name##64; break;
+            CASEI(iadd)
+            CASEI(imul)
+            CASEI(imin)
+            CASEI(umin)
+            CASEI(imax)
+            CASEI(umax)
+            CASEI(iand)
+            CASEI(ior)
+            CASEI(ixor)
+            CASEF(fadd)
+            CASEF(fmul)
+            CASEF(fmin)
+            CASEF(fmax)
             default:
                unreachable("unknown reduction op");
-         #undef CASE
+         #undef CASEI
+         #undef CASEF
          }
 
          aco_opcode aco_op;
