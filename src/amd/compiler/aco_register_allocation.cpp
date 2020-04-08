@@ -112,26 +112,6 @@ public:
       return false;
    }
 
-   void fill(PhysReg start, unsigned size, uint32_t val) {
-      for (unsigned i = 0; i < size; i++)
-         regs[start + i] = val;
-   }
-
-   void fill_subdword(PhysReg start, unsigned num_bytes, uint32_t val) {
-      fill(start, DIV_ROUND_UP(num_bytes, 4), 0xF0000000);
-      for (PhysReg i = start; i.reg_b < start.reg_b + num_bytes; i = PhysReg(i + 1)) {
-         /* emplace or get */
-         std::array<uint32_t, 4>& sub = subdword_regs.emplace(i, std::array<uint32_t, 4>{0, 0, 0, 0}).first->second;
-         for (unsigned j = i.byte(); i * 4 + j < start.reg_b + num_bytes && j < 4; j++)
-            sub[j] = val;
-
-         if (sub == std::array<uint32_t, 4>{0, 0, 0, 0}) {
-            subdword_regs.erase(i);
-            regs[i] = 0;
-         }
-      }
-   }
-
    void block(PhysReg start, unsigned num_bytes) {
       if (start.byte() || num_bytes % 4)
          fill_subdword(start, num_bytes, 0xFFFFFFFF);
@@ -177,6 +157,27 @@ public:
 
    void clear(Definition def) {
       clear(def.physReg(), def.regClass());
+   }
+
+private:
+   void fill(PhysReg start, unsigned size, uint32_t val) {
+      for (unsigned i = 0; i < size; i++)
+         regs[start + i] = val;
+   }
+
+   void fill_subdword(PhysReg start, unsigned num_bytes, uint32_t val) {
+      fill(start, DIV_ROUND_UP(num_bytes, 4), 0xF0000000);
+      for (PhysReg i = start; i.reg_b < start.reg_b + num_bytes; i = PhysReg(i + 1)) {
+         /* emplace or get */
+         std::array<uint32_t, 4>& sub = subdword_regs.emplace(i, std::array<uint32_t, 4>{0, 0, 0, 0}).first->second;
+         for (unsigned j = i.byte(); i * 4 + j < start.reg_b + num_bytes && j < 4; j++)
+            sub[j] = val;
+
+         if (sub == std::array<uint32_t, 4>{0, 0, 0, 0}) {
+            subdword_regs.erase(i);
+            regs[i] = 0;
+         }
+      }
    }
 };
 
@@ -1350,8 +1351,10 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
 
       for (Temp t : live) {
          Temp renamed = handle_live_in(ctx, t, &block);
-         if (ctx.assignments[renamed.id()].assigned)
-            register_file.fill(ctx.assignments[renamed.id()].reg, t.size(), renamed.id());
+         assignment& var = ctx.assignments[renamed.id()];
+         /* due to live-range splits, the live-in might be a phi, now */
+         if (var.assigned)
+            register_file.fill(Definition(renamed.id(), var.reg, var.rc));
       }
 
       std::vector<aco_ptr<Instruction>> instructions;
@@ -1470,9 +1473,10 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                }
                if (prev_phi) {
                   /* if so, just update that phi's register */
+                  register_file.clear(prev_phi->definitions[0]);
                   prev_phi->definitions[0].setFixed(pc.second.physReg());
                   ctx.assignments[prev_phi->definitions[0].tempId()] = {pc.second.physReg(), pc.second.regClass()};
-                  register_file.fill(pc.second.physReg(), pc.second.size(), prev_phi->definitions[0].tempId());
+                  register_file.fill(prev_phi->definitions[0]);
                   continue;
                }
 
@@ -1901,7 +1905,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                }
                for (const Operand& op : instr->operands) {
                   if (op.isTemp() && op.isFirstKill())
-                     register_file.fill(op.physReg(), op.size(), 0xFFFF);
+                     register_file.block(op.physReg(), op.bytes());
                }
 
                handle_pseudo(ctx, register_file, pc.get());
@@ -1954,7 +1958,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                   register_file.clear(def);
                for (const Operand& op : instr->operands) {
                   if (op.isTemp() && op.isFirstKill())
-                     register_file.fill(op.physReg(), op.size(), 0xFFFF);
+                     register_file.block(op.physReg(), op.bytes());
                }
                RegClass rc = can_sgpr ? s1 : v1;
                PhysReg reg = get_reg(ctx, register_file, rc, parallelcopy, instr);
