@@ -212,8 +212,7 @@ flush(struct copy_context *copy)
               0,
               copy->dstbuf_nr - 1,
               1,
-              0,
-              NULL, 0);
+              0);
 
    /* Reset all pointers:
     */

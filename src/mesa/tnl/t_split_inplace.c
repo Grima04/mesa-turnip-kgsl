@@ -96,8 +96,7 @@ flush_vertex( struct split_context *split)
                split->min_index,
                split->max_index,
                split->num_instances,
-               split->base_instance,
-               NULL, 0);
+               split->base_instance);
 
    split->dstprim_nr = 0;
    split->min_index = ~0;

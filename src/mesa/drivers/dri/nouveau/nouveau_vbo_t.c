@@ -244,9 +244,7 @@ TAG(vbo_render_prims)(struct gl_context *ctx,
 		      const struct _mesa_index_buffer *ib,
 		      GLboolean index_bounds_valid,
 		      GLuint min_index, GLuint max_index,
-                      GLuint num_instances, GLuint base_instance,
-		      struct gl_transform_feedback_object *tfb_vertcount,
-                      unsigned stream);
+                      GLuint num_instances, GLuint base_instance);
 
 static GLboolean
 vbo_maybe_split(struct gl_context *ctx, const struct tnl_vertex_array *arrays,
@@ -489,9 +487,7 @@ TAG(vbo_render_prims)(struct gl_context *ctx,
 		      const struct _mesa_index_buffer *ib,
 		      GLboolean index_bounds_valid,
 		      GLuint min_index, GLuint max_index,
-                      GLuint num_instances, GLuint base_instance,
-		      struct gl_transform_feedback_object *tfb_vertcount,
-                      unsigned stream)
+                      GLuint num_instances, GLuint base_instance)
 {
 	struct nouveau_render_state *render = to_render_state(ctx);
 
@@ -527,9 +523,7 @@ TAG(vbo_check_render_prims)(struct gl_context *ctx,
 			    const struct _mesa_index_buffer *ib,
 			    GLboolean index_bounds_valid,
 			    GLuint min_index, GLuint max_index,
-                            GLuint num_instances, GLuint base_instance,
-			    struct gl_transform_feedback_object *tfb_vertcount,
-                            unsigned stream)
+                            GLuint num_instances, GLuint base_instance)
 {
 	struct nouveau_context *nctx = to_nouveau_context(ctx);
 
@@ -538,14 +532,12 @@ TAG(vbo_check_render_prims)(struct gl_context *ctx,
 	if (nctx->fallback == HWTNL)
 		TAG(vbo_render_prims)(ctx, arrays, prims, nr_prims, ib,
 				      index_bounds_valid, min_index, max_index,
-				      num_instances, base_instance,
-                                      tfb_vertcount, stream);
+				      num_instances, base_instance);
 
 	if (nctx->fallback == SWTNL)
 		_tnl_draw_prims(ctx, arrays, prims, nr_prims, ib,
 				index_bounds_valid, min_index, max_index,
-                                num_instances, base_instance,
-				tfb_vertcount, stream);
+                                num_instances, base_instance);
 }
 
 static void
@@ -555,8 +547,8 @@ TAG(vbo_draw)(struct gl_context *ctx,
 	      GLboolean index_bounds_valid,
 	      GLuint min_index, GLuint max_index,
               GLuint num_instances, GLuint base_instance,
-	      struct gl_transform_feedback_object *tfb_vertcount,
-	      unsigned stream)
+	      UNUSED struct gl_transform_feedback_object *tfb_vertcount,
+	      UNUSED unsigned stream)
 {
 	/* Borrow and update the inputs list from the tnl context */
 	const struct tnl_vertex_array* arrays = _tnl_bind_inputs(ctx);
@@ -564,8 +556,7 @@ TAG(vbo_draw)(struct gl_context *ctx,
 	TAG(vbo_check_render_prims)(ctx, arrays,
 				    prims, nr_prims, ib,
 				    index_bounds_valid, min_index, max_index,
-                                    num_instances, base_instance,
-				    tfb_vertcount, stream);
+                                    num_instances, base_instance);
 }
 
 void

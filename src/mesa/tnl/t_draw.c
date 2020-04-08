@@ -436,9 +436,7 @@ void _tnl_draw_prims(struct gl_context *ctx,
 			 GLuint min_index,
 			 GLuint max_index,
                          GLuint num_instances,
-                         GLuint base_instance,
-			 struct gl_transform_feedback_object *tfb_vertcount,
-                         unsigned stream)
+                         GLuint base_instance)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    const GLuint TEST_SPLIT = 0;
@@ -642,8 +640,8 @@ _tnl_draw(struct gl_context *ctx,
           const struct _mesa_index_buffer *ib,
           GLboolean index_bounds_valid, GLuint min_index, GLuint max_index,
           GLuint num_instances, GLuint base_instance,
-          struct gl_transform_feedback_object *tfb_vertcount,
-          unsigned stream)
+          UNUSED struct gl_transform_feedback_object *tfb_vertcount,
+          UNUSED unsigned stream)
 {
    /* Update TNLcontext::draw_arrays and return that pointer.
     */
@@ -651,7 +649,7 @@ _tnl_draw(struct gl_context *ctx,
 
    _tnl_draw_prims(ctx, arrays, prim, nr_prims, ib,
                    index_bounds_valid, min_index, max_index,
-                   num_instances, base_instance, tfb_vertcount, stream);
+                   num_instances, base_instance);
 }
 
 

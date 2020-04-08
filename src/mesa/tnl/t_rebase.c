@@ -247,8 +247,7 @@ void t_rebase_prims( struct gl_context *ctx,
 	 GL_TRUE,
 	 0, 
 	 max_index - min_index,
-         num_instances, base_instance,
-	 NULL, 0);
+         num_instances, base_instance);
 
    free(tmp_indices);
    
