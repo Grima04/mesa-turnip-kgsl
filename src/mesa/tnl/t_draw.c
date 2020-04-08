@@ -118,18 +118,17 @@ convert_bgra_to_float(const struct gl_vertex_buffer_binding *binding,
 
 static void
 convert_half_to_float(const struct gl_vertex_buffer_binding *binding,
-                      const struct gl_array_attributes *attrib,
-		      const GLubyte *ptr, GLfloat *fptr,
-		      GLuint count, GLuint sz)
+                      const GLubyte *ptr, GLfloat *fptr,
+                      GLuint count, GLuint sz)
 {
    GLuint i, j;
 
    for (i = 0; i < count; i++) {
       GLhalfARB *in = (GLhalfARB *)ptr;
 
-      for (j = 0; j < sz; j++) {
-	 *fptr++ = _mesa_half_to_float(in[j]);
-      }
+      for (j = 0; j < sz; j++)
+         *fptr++ = _mesa_half_to_float(in[j]);
+
       ptr += binding->Stride;
    }
 }
@@ -221,8 +220,8 @@ static void _tnl_import_array( struct gl_context *ctx,
 	 CONVERT(GLdouble, (GLfloat)); 
 	 break;
       case GL_HALF_FLOAT:
-	 convert_half_to_float(binding, attrib, ptr, fptr, count, sz);
-	 break;
+         convert_half_to_float(binding, ptr, fptr, count, sz);
+         break;
       case GL_FIXED:
          convert_fixed_to_float(binding, attrib, ptr, fptr, count);
          break;
