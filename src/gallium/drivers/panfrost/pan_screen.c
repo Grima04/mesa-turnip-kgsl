@@ -52,6 +52,7 @@
 
 #include "pan_context.h"
 #include "midgard/midgard_compile.h"
+#include "bifrost/bifrost_compile.h"
 #include "panfrost-quirks.h"
 
 static const struct debug_named_value debug_options[] = {
@@ -701,7 +702,10 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
                                      enum pipe_shader_ir ir,
                                      enum pipe_shader_type shader)
 {
-        return &midgard_nir_options;
+        if (pan_device(pscreen)->quirks & IS_BIFROST)
+                return &bifrost_nir_options;
+        else
+                return &midgard_nir_options;
 }
 
 struct pipe_screen *
