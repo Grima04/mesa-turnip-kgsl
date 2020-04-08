@@ -278,7 +278,21 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
                           const struct pipe_resource *templ,
                           struct winsys_handle *handle, unsigned usage)
 {
-   return NULL;
+   if (handle->type != WINSYS_HANDLE_TYPE_D3D12_RES)
+      return NULL;
+
+   struct d3d12_resource *res = CALLOC_STRUCT(d3d12_resource);
+   if (!res)
+      return NULL;
+
+   res->base = *templ;
+   pipe_reference_init(&res->base.reference, 1);
+   res->base.screen = pscreen;
+   res->dxgi_format = templ->target == PIPE_BUFFER ? DXGI_FORMAT_UNKNOWN :
+                 d3d12_get_format(templ->format);
+   res->bo = d3d12_bo_wrap_res((ID3D12Resource *)handle->com_obj, templ->format);
+   init_valid_range(res);
+   return &res->base;
 }
 
 static bool
@@ -288,7 +302,14 @@ d3d12_resource_get_handle(struct pipe_screen *pscreen,
                           struct winsys_handle *handle,
                           unsigned usage)
 {
-   return false;
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   struct d3d12_resource *res = d3d12_resource(pres);
+
+   if (handle->type != WINSYS_HANDLE_TYPE_D3D12_RES)
+      return false;
+
+   handle->com_obj = d3d12_resource_resource(res);
+   return true;
 }
 
 void
