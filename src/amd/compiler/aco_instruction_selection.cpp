@@ -7584,7 +7584,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_read_first_invocation: {
       Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      if (src.regClass() == v1) {
+      if (src.regClass() == v1b || src.regClass() == v2b || src.regClass() == v1) {
          emit_wqm(ctx,
                   bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), src),
                   dst);
