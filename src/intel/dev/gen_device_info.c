@@ -63,6 +63,7 @@ static const struct {
    { "tgl", 0x9a49 },
    { "rkl", 0x4c8a },
    { "dg1", 0x4905 },
+   { "adl", 0x4680 },
 };
 
 /**
@@ -956,6 +957,14 @@ static const struct gen_device_info gen_device_info_rkl_gt05 = {
 };
 
 static const struct gen_device_info gen_device_info_rkl_gt1 = {
+   GEN12_GT_FEATURES(1),
+};
+
+static const struct gen_device_info gen_device_info_adl_gt05 = {
+   GEN12_GT05_FEATURES,
+};
+
+static const struct gen_device_info gen_device_info_adl_gt1 = {
    GEN12_GT_FEATURES(1),
 };
 
