@@ -1315,14 +1315,20 @@ struct tu_native_format
 {
    enum a6xx_format fmt : 8;
    enum a3xx_color_swap swap : 8;
+   enum a6xx_tile_mode tile_mode : 8;
    enum tu_supported_formats supported : 8;
 };
 
-struct tu_native_format tu6_get_native_format(VkFormat format);
 struct tu_native_format tu6_format_vtx(VkFormat format);
-enum a6xx_format tu6_format_gmem(VkFormat format);
-struct tu_native_format tu6_format_color(VkFormat format, bool tiled);
-struct tu_native_format tu6_format_texture(VkFormat format, bool tiled);
+struct tu_native_format tu6_format_color(VkFormat format, enum a6xx_tile_mode tile_mode);
+struct tu_native_format tu6_format_texture(VkFormat format, enum a6xx_tile_mode tile_mode);
+
+static inline enum a6xx_format
+tu6_base_format(VkFormat format)
+{
+   /* note: tu6_format_color doesn't care about tiling for .fmt field */
+   return tu6_format_color(format, TILE6_LINEAR).fmt;
+}
 
 void
 tu_pack_clear_value(const VkClearValue *val,
@@ -1456,6 +1462,24 @@ enum a6xx_tile_mode
 tu6_get_image_tile_mode(struct tu_image *image, int level);
 enum a3xx_msaa_samples
 tu_msaa_samples(uint32_t samples);
+
+static inline struct tu_native_format
+tu6_format_image(struct tu_image *image, VkFormat format, uint32_t level)
+{
+   struct tu_native_format fmt =
+      tu6_format_color(format, image->layout.tile_mode);
+   fmt.tile_mode = tu6_get_image_tile_mode(image, level);
+   return fmt;
+}
+
+static inline struct tu_native_format
+tu6_format_image_src(struct tu_image *image, VkFormat format, uint32_t level)
+{
+   struct tu_native_format fmt =
+      tu6_format_texture(format, image->layout.tile_mode);
+   fmt.tile_mode = tu6_get_image_tile_mode(image, level);
+   return fmt;
+}
 
 struct tu_image_view
 {

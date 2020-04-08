@@ -287,7 +287,7 @@ static const struct tu_native_format tu6_format_table[] = {
    TU6_xTx(ASTC_12x12_SRGB_BLOCK,      ASTC_12x12,        WZYX), /* 184 */
 };
 
-struct tu_native_format
+static struct tu_native_format
 tu6_get_native_format(VkFormat format)
 {
    struct tu_native_format fmt = {};
@@ -314,20 +314,8 @@ tu6_format_vtx(VkFormat format)
    return fmt;
 }
 
-enum a6xx_format
-tu6_format_gmem(VkFormat format)
-{
-   struct tu_native_format fmt = tu6_get_native_format(format);
-   assert(fmt.supported & FMT_COLOR);
-
-   if (fmt.fmt == FMT6_10_10_10_2_UNORM)
-      return FMT6_10_10_10_2_UNORM_DEST;
-
-   return fmt.fmt;
-}
-
 struct tu_native_format
-tu6_format_color(VkFormat format, bool tiled)
+tu6_format_color(VkFormat format, enum a6xx_tile_mode tile_mode)
 {
    struct tu_native_format fmt = tu6_get_native_format(format);
    assert(fmt.supported & FMT_COLOR);
@@ -335,19 +323,19 @@ tu6_format_color(VkFormat format, bool tiled)
    if (fmt.fmt == FMT6_10_10_10_2_UNORM)
       fmt.fmt = FMT6_10_10_10_2_UNORM_DEST;
 
-   if (tiled)
+   if (tile_mode)
       fmt.swap = WZYX;
 
    return fmt;
 }
 
 struct tu_native_format
-tu6_format_texture(VkFormat format, bool tiled)
+tu6_format_texture(VkFormat format, enum a6xx_tile_mode tile_mode)
 {
    struct tu_native_format fmt = tu6_get_native_format(format);
    assert(fmt.supported & FMT_TEXTURE);
 
-   if (!tiled) {
+   if (!tile_mode) {
       /* different from format table when used as linear src */
       if (format == VK_FORMAT_R5G5B5A1_UNORM_PACK16)
          fmt.fmt = FMT6_1_5_5_5_UNORM, fmt.swap = WXYZ;

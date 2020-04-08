@@ -79,8 +79,8 @@ emit_blit_step(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
 {
    struct tu_physical_device *phys_dev = cmdbuf->device->physical_device;
 
-   struct tu_native_format dfmt = tu6_format_color(blt->dst.fmt, blt->dst.tiled);
-   struct tu_native_format sfmt = tu6_format_texture(blt->src.fmt, blt->src.tiled);
+   struct tu_native_format dfmt = tu6_format_color(blt->dst.fmt, blt->dst.image_tile_mode);
+   struct tu_native_format sfmt = tu6_format_texture(blt->src.fmt, blt->src.image_tile_mode);
 
    if (dfmt.fmt == FMT6_Z24_UNORM_S8_UINT)
       dfmt.fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
@@ -318,7 +318,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
          }
       } else if ((blt->src.va & 63) || (blt->src.pitch & 63)) {
          /* per line copy path (buffer_to_image) */
-         assert(blt->type == TU_BLIT_COPY && !blt->src.tiled);
+         assert(blt->type == TU_BLIT_COPY && !blt->src.image_tile_mode);
          struct tu_blit line_blt = *blt;
          uint64_t src_va = line_blt.src.va + blt->src.pitch * blt->src.y;
 
@@ -338,7 +338,7 @@ void tu_blit(struct tu_cmd_buffer *cmdbuf, struct tu_cs *cs,
          }
       } else if ((blt->dst.va & 63) || (blt->dst.pitch & 63)) {
          /* per line copy path (image_to_buffer) */
-         assert(blt->type == TU_BLIT_COPY && !blt->dst.tiled);
+         assert(blt->type == TU_BLIT_COPY && !blt->dst.image_tile_mode);
          struct tu_blit line_blt = *blt;
          uint64_t dst_va = line_blt.dst.va + blt->dst.pitch * blt->dst.y;
 

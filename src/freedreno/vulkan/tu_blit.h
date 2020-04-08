@@ -35,7 +35,7 @@
 struct tu_blit_surf {
    VkFormat fmt;
    enum a6xx_tile_mode tile_mode;
-   bool tiled;
+   enum a6xx_tile_mode image_tile_mode;
    uint64_t va;
    uint32_t pitch, layer_size;
    uint32_t x, y;
@@ -60,7 +60,7 @@ tu_blit_surf(struct tu_image *image,
    return (struct tu_blit_surf) {
       .fmt = image->vk_format,
       .tile_mode = tu6_get_image_tile_mode(image, subres.mipLevel),
-      .tiled = image->layout.tile_mode != TILE6_LINEAR,
+      .image_tile_mode = image->layout.tile_mode,
       .va = tu_image_base(image, subres.mipLevel, layer),
       .pitch = tu_image_stride(image, subres.mipLevel),
       .layer_size = tu_layer_size(image, subres.mipLevel),

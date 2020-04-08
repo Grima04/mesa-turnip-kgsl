@@ -520,7 +520,7 @@ tu_buffer_view_init(struct tu_buffer_view *view,
 
    enum VkFormat vfmt = pCreateInfo->format;
    enum pipe_format pfmt = vk_format_to_pipe_format(vfmt);
-   const struct tu_native_format fmt = tu6_format_texture(vfmt, false);
+   const struct tu_native_format fmt = tu6_format_texture(vfmt, TILE6_LINEAR);
 
    uint32_t range;
    if (pCreateInfo->range == VK_WHOLE_SIZE)
