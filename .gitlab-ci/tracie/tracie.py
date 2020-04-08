@@ -36,12 +36,8 @@ def replay(trace_path, device_name):
         log_file = files[0]
         return hashlib.md5(Image.open(image_file).tobytes()).hexdigest(), image_file, log_file
 
-def download_metadata(repo_url, repo_commit, trace_path):
-    # The GitLab API doesn't want the .git postfix
-    url = repo_url
-    if url.endswith(".git"):
-        url = url[:-4]
-    url = parse.urlparse(url)
+def gitlab_download_metadata(project_url, repo_commit, trace_path):
+    url = parse.urlparse(project_url)
 
     url_path = url.path
     if url_path.startswith("/"):
@@ -57,7 +53,7 @@ def download_metadata(repo_url, repo_commit, trace_path):
 
     return oid, size
 
-def download_trace(repo_url, repo_commit, trace_path, oid, size):
+def gitlfs_download_trace(repo_url, repo_commit, trace_path, oid, size):
     headers = {
         "Accept": "application/vnd.git-lfs+json",
         "Content-Type": "application/vnd.git-lfs+json"
@@ -74,10 +70,6 @@ def download_trace(repo_url, repo_commit, trace_path, oid, size):
         ]
     }
 
-    # The LFS API really wants the .git postfix...
-    if not repo_url.endswith(".git"):
-        repo_url += ".git"
-
     r = requests.post(repo_url + "/info/lfs/objects/batch", headers=headers, json=json)
     url = r.json()["objects"][0]["actions"]["download"]["href"]
     open(TRACES_DB_PATH + trace_path, "wb").write(requests.get(url).content)
@@ -89,9 +81,9 @@ def checksum(filename, hash_factory=hashlib.sha256, chunk_num_blocks=128):
             h.update(chunk)
     return h.hexdigest()
 
-def ensure_trace(repo_url, repo_commit, trace):
+def gitlab_ensure_trace(project_url, repo_commit, trace):
     trace_path = TRACES_DB_PATH + trace['path']
-    if repo_url is None:
+    if project_url is None:
         assert(repo_commit is None)
         assert(os.path.exists(trace_path))
         return
@@ -101,16 +93,16 @@ def ensure_trace(repo_url, repo_commit, trace):
     if os.path.exists(trace_path):
         local_oid = checksum(trace_path)
 
-    remote_oid, size = download_metadata(repo_url, repo_commit, trace['path'])
+    remote_oid, size = gitlab_download_metadata(project_url, repo_commit, trace['path'])
 
     if not os.path.exists(trace_path) or local_oid != remote_oid:
         print("[check_image] Downloading trace %s" % (trace['path']), end=" ", flush=True)
         download_time = time.time()
-        download_trace(repo_url, repo_commit, trace['path'], remote_oid, size)
+        gitlfs_download_trace(project_url + ".git", repo_commit, trace['path'], remote_oid, size)
         print("took %ds." % (time.time() - download_time), flush=True)
 
-def check_trace(repo_url, repo_commit, device_name, trace, expectation):
-    ensure_trace(repo_url, repo_commit, trace)
+def gitlab_check_trace(project_url, repo_commit, device_name, trace, expectation):
+    gitlab_ensure_trace(project_url, repo_commit, trace)
 
     result = {}
     result[trace['path']] = {}
@@ -157,10 +149,10 @@ def main():
         y = yaml.safe_load(f)
 
     if "traces-db" in y:
-        repo = y["traces-db"]["repo"]
+        project_url = y["traces-db"]["gitlab-project-url"]
         commit_id = y["traces-db"]["commit"]
     else:
-        repo = None
+        project_url = None
         commit_id = None
 
     traces = y['traces']
@@ -169,7 +161,7 @@ def main():
     for trace in traces:
         for expectation in trace['expectations']:
             if expectation['device'] == args.device_name:
-                ok, result = check_trace(repo, commit_id, args.device_name, trace, expectation)
+                ok, result = gitlab_check_trace(project_url, commit_id, args.device_name, trace, expectation)
                 all_ok = all_ok and ok
                 results.update(result)
 
