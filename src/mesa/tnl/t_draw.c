@@ -44,12 +44,11 @@
 #include "tnl.h"
 
 
-
 static GLubyte *get_space(struct gl_context *ctx, GLuint bytes)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    GLubyte *space = malloc(bytes);
-   
+
    tnl->block[tnl->nr_blocks++] = space;
    return space;
 }
@@ -58,9 +57,10 @@ static GLubyte *get_space(struct gl_context *ctx, GLuint bytes)
 static void free_space(struct gl_context *ctx)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
-   GLuint i;
-   for (i = 0; i < tnl->nr_blocks; i++)
+
+   for (GLuint i = 0; i < tnl->nr_blocks; i++)
       free(tnl->block[i]);
+
    tnl->nr_blocks = 0;
 }
 
@@ -72,20 +72,20 @@ static void free_space(struct gl_context *ctx)
    GLuint i, j;					\
    if (attrib->Format.Normalized) {		\
       for (i = 0; i < count; i++) {		\
-	 const TYPE *in = (TYPE *)ptr;		\
-	 for (j = 0; j < sz; j++) {		\
-	    *fptr++ = MACRO(*in);		\
-	    in++;				\
-	 }					\
+         const TYPE *in = (TYPE *)ptr;		\
+         for (j = 0; j < sz; j++) {		\
+            *fptr++ = MACRO(*in);		\
+            in++;				\
+         }					\
          ptr += binding->Stride;		\
       }						\
    } else {					\
       for (i = 0; i < count; i++) {		\
-	 const TYPE *in = (TYPE *)ptr;		\
-	 for (j = 0; j < sz; j++) {		\
-	    *fptr++ = (GLfloat)(*in);		\
-	    in++;				\
-	 }					\
+         const TYPE *in = (TYPE *)ptr;		\
+         for (j = 0; j < sz; j++) {		\
+            *fptr++ = (GLfloat)(*in);		\
+            in++;				\
+         }					\
          ptr += binding->Stride;		\
       }						\
    }						\
@@ -101,7 +101,7 @@ static void
 convert_bgra_to_float(const struct gl_vertex_buffer_binding *binding,
                       const struct gl_array_attributes *attrib,
                       const GLubyte *ptr, GLfloat *fptr,
-                      GLuint count )
+                      GLuint count)
 {
    GLuint i;
    assert(attrib->Format.Normalized);
@@ -175,12 +175,12 @@ convert_fixed_to_float(const struct gl_vertex_buffer_binding *binding,
 /* Adjust pointer to point at first requested element, convert to
  * floating point, populate VB->AttribPtr[].
  */
-static void _tnl_import_array( struct gl_context *ctx,
-                               GLuint attr,
-			       GLuint count,
-                               const struct gl_vertex_buffer_binding *binding,
-                               const struct gl_array_attributes *attrib,
-			       const GLubyte *ptr )
+static void _tnl_import_array(struct gl_context *ctx,
+                              GLuint attr,
+                              GLuint count,
+                              const struct gl_vertex_buffer_binding *binding,
+                              const struct gl_array_attributes *attrib,
+                              const GLubyte *ptr)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    struct vertex_buffer *VB = &tnl->vb;
@@ -192,33 +192,33 @@ static void _tnl_import_array( struct gl_context *ctx,
       GLfloat *fptr = (GLfloat *)buf;
 
       switch (attrib->Format.Type) {
-      case GL_BYTE: 
-	 CONVERT(GLbyte, BYTE_TO_FLOAT); 
-	 break;
-      case GL_UNSIGNED_BYTE: 
+      case GL_BYTE:
+         CONVERT(GLbyte, BYTE_TO_FLOAT);
+         break;
+      case GL_UNSIGNED_BYTE:
          if (attrib->Format.Format == GL_BGRA) {
             /* See GL_EXT_vertex_array_bgra */
             convert_bgra_to_float(binding, attrib, ptr, fptr, count);
          }
          else {
-            CONVERT(GLubyte, UBYTE_TO_FLOAT); 
+            CONVERT(GLubyte, UBYTE_TO_FLOAT);
          }
-	 break;
-      case GL_SHORT: 
-	 CONVERT(GLshort, SHORT_TO_FLOAT); 
-	 break;
-      case GL_UNSIGNED_SHORT: 
-	 CONVERT(GLushort, USHORT_TO_FLOAT); 
-	 break;
-      case GL_INT: 
-	 CONVERT(GLint, INT_TO_FLOAT); 
-	 break;
-      case GL_UNSIGNED_INT: 
-	 CONVERT(GLuint, UINT_TO_FLOAT); 
-	 break;
-      case GL_DOUBLE: 
-	 CONVERT(GLdouble, (GLfloat)); 
-	 break;
+         break;
+      case GL_SHORT:
+         CONVERT(GLshort, SHORT_TO_FLOAT);
+         break;
+      case GL_UNSIGNED_SHORT:
+         CONVERT(GLushort, USHORT_TO_FLOAT);
+         break;
+      case GL_INT:
+         CONVERT(GLint, INT_TO_FLOAT);
+         break;
+      case GL_UNSIGNED_INT:
+         CONVERT(GLuint, UINT_TO_FLOAT);
+         break;
+      case GL_DOUBLE:
+         CONVERT(GLdouble, (GLfloat));
+         break;
       case GL_HALF_FLOAT:
          convert_half_to_float(binding, ptr, fptr, count, sz);
          break;
@@ -226,8 +226,7 @@ static void _tnl_import_array( struct gl_context *ctx,
          convert_fixed_to_float(binding, attrib, ptr, fptr, count);
          break;
       default:
-	 assert(0);
-	 break;
+         unreachable("Invalid type.");
       }
 
       ptr = buf;
@@ -241,29 +240,28 @@ static void _tnl_import_array( struct gl_context *ctx,
    VB->AttribPtr[attr]->stride = stride;
    VB->AttribPtr[attr]->size = attrib->Format.Size;
 
-   /* This should die, but so should the whole GLvector4f concept: 
+   /* This should die, but so should the whole GLvector4f concept:
     */
    VB->AttribPtr[attr]->flags = (((1<<attrib->Format.Size)-1) |
-				   VEC_NOT_WRITEABLE |
-				   (stride == 4*sizeof(GLfloat) ? 0 : VEC_BAD_STRIDE));
-   
+                                 VEC_NOT_WRITEABLE |
+                                 (stride == 4*sizeof(GLfloat) ? 0 : VEC_BAD_STRIDE));
+
    VB->AttribPtr[attr]->storage = NULL;
 }
 
 #define CLIPVERTS  ((6 + MAX_CLIP_PLANES) * 2)
 
 
-static GLboolean *_tnl_import_edgeflag( struct gl_context *ctx,
-					const GLvector4f *input,
-					GLuint count)
+static GLboolean *_tnl_import_edgeflag(struct gl_context *ctx,
+                                       const GLvector4f *input,
+                                       GLuint count)
 {
    const GLubyte *ptr = (const GLubyte *)input->data;
    const GLuint stride = input->stride;
    GLboolean *space = (GLboolean *)get_space(ctx, count + CLIPVERTS);
    GLboolean *bptr = space;
-   GLuint i;
 
-   for (i = 0; i < count; i++) {
+   for (GLuint i = 0; i < count; i++) {
       *bptr++ = ((GLfloat *)ptr)[0] == 1.0F;
       ptr += stride;
    }
@@ -272,44 +270,42 @@ static GLboolean *_tnl_import_edgeflag( struct gl_context *ctx,
 }
 
 
-static void bind_inputs( struct gl_context *ctx, 
-			 const struct tnl_vertex_array *inputs,
-			 GLint count,
-			 struct gl_buffer_object **bo,
-			 GLuint *nr_bo )
+static void bind_inputs(struct gl_context *ctx,
+                        const struct tnl_vertex_array *inputs,
+                        GLint count,
+                        struct gl_buffer_object **bo,
+                        GLuint *nr_bo)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    struct vertex_buffer *VB = &tnl->vb;
-   GLuint i;
 
    /* Map all the VBOs
     */
-   for (i = 0; i < VERT_ATTRIB_MAX; i++) {
+   for (unsigned i = 0; i < VERT_ATTRIB_MAX; i++) {
       const struct tnl_vertex_array *array = &inputs[i];
       const struct gl_vertex_buffer_binding *binding = array->BufferBinding;
       const struct gl_array_attributes *attrib = array->VertexAttrib;
       const void *ptr;
 
       if (binding->BufferObj) {
-	 if (!binding->BufferObj->Mappings[MAP_INTERNAL].Pointer) {
-	    bo[*nr_bo] = binding->BufferObj;
-	    (*nr_bo)++;
-	    ctx->Driver.MapBufferRange(ctx, 0, binding->BufferObj->Size,
-				       GL_MAP_READ_BIT,
+         if (!binding->BufferObj->Mappings[MAP_INTERNAL].Pointer) {
+            bo[*nr_bo] = binding->BufferObj;
+            (*nr_bo)++;
+            ctx->Driver.MapBufferRange(ctx, 0, binding->BufferObj->Size,
+                                       GL_MAP_READ_BIT,
                                        binding->BufferObj,
                                        MAP_INTERNAL);
-	    
+
             assert(binding->BufferObj->Mappings[MAP_INTERNAL].Pointer);
-	 }
-	 
+         }
+
          ptr = ADD_POINTERS(binding->BufferObj->Mappings[MAP_INTERNAL].Pointer,
                             binding->Offset + attrib->RelativeOffset);
-      }
-      else
+      } else
          ptr = attrib->Ptr;
 
       /* Just make sure the array is floating point, otherwise convert to
-       * temporary storage.  
+       * temporary storage.
        *
        * XXX: remove the GLvector4f type at some stage and just use
        * client arrays.
@@ -331,13 +327,11 @@ static void bind_inputs( struct gl_context *ctx,
     * remove.
     */
    if (ctx->Polygon.FrontMode != GL_FILL ||
-       ctx->Polygon.BackMode != GL_FILL)
-   {
-      VB->EdgeFlag = _tnl_import_edgeflag( ctx, 
-					   VB->AttribPtr[_TNL_ATTRIB_EDGEFLAG],
-					   VB->Count );
-   }
-   else {
+       ctx->Polygon.BackMode != GL_FILL) {
+      VB->EdgeFlag = _tnl_import_edgeflag(ctx,
+                                          VB->AttribPtr[_TNL_ATTRIB_EDGEFLAG],
+                                          VB->Count);
+   } else {
       /* the data previously pointed to by EdgeFlag may have been freed */
       VB->EdgeFlag = NULL;
    }
@@ -346,10 +340,10 @@ static void bind_inputs( struct gl_context *ctx,
 
 /* Translate indices to GLuints and store in VB->Elts.
  */
-static void bind_indices( struct gl_context *ctx,
-			  const struct _mesa_index_buffer *ib,
-			  struct gl_buffer_object **bo,
-			  GLuint *nr_bo)
+static void bind_indices(struct gl_context *ctx,
+                         const struct _mesa_index_buffer *ib,
+                         struct gl_buffer_object **bo,
+                         GLuint *nr_bo)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    struct vertex_buffer *VB = &tnl->vb;
@@ -386,26 +380,26 @@ static void bind_indices( struct gl_context *ctx,
       VB->Elts = elts;
 
       if (ib->index_size_shift == 2) {
-	 const GLuint *in = (GLuint *)ptr;
-	 for (i = 0; i < ib->count; i++)
-	    *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
+         const GLuint *in = (GLuint *)ptr;
+         for (i = 0; i < ib->count; i++)
+            *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
       }
       else if (ib->index_size_shift == 1) {
-	 const GLushort *in = (GLushort *)ptr;
-	 for (i = 0; i < ib->count; i++) 
-	    *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
+         const GLushort *in = (GLushort *)ptr;
+         for (i = 0; i < ib->count; i++)
+            *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
       }
       else {
-	 const GLubyte *in = (GLubyte *)ptr;
-	 for (i = 0; i < ib->count; i++) 
-	    *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
+         const GLubyte *in = (GLubyte *)ptr;
+         for (i = 0; i < ib->count; i++)
+            *elts++ = (GLuint)(*in++) + VB->Primitive[0].basevertex;
       }
    }
 }
 
-static void bind_prims( struct gl_context *ctx,
-			const struct _mesa_prim *prim,
-			GLuint nr_prims )
+static void bind_prims(struct gl_context *ctx,
+                       const struct _mesa_prim *prim,
+                       GLuint nr_prims)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    struct vertex_buffer *VB = &tnl->vb;
@@ -414,12 +408,11 @@ static void bind_prims( struct gl_context *ctx,
    VB->PrimitiveCount = nr_prims;
 }
 
-static void unmap_vbos( struct gl_context *ctx,
-			struct gl_buffer_object **bo,
-			GLuint nr_bo )
+static void unmap_vbos(struct gl_context *ctx,
+                       struct gl_buffer_object **bo,
+                       GLuint nr_bo)
 {
-   GLuint i;
-   for (i = 0; i < nr_bo; i++) { 
+   for (GLuint i = 0; i < nr_bo; i++) {
       ctx->Driver.UnmapBuffer(ctx, bo[i], MAP_INTERNAL);
    }
 }
@@ -429,14 +422,14 @@ static void unmap_vbos( struct gl_context *ctx,
  */
 void _tnl_draw_prims(struct gl_context *ctx,
                      const struct tnl_vertex_array *arrays,
-			 const struct _mesa_prim *prim,
-			 GLuint nr_prims,
-			 const struct _mesa_index_buffer *ib,
-			 GLboolean index_bounds_valid,
-			 GLuint min_index,
-			 GLuint max_index,
-                         GLuint num_instances,
-                         GLuint base_instance)
+                     const struct _mesa_prim *prim,
+                     GLuint nr_prims,
+                     const struct _mesa_index_buffer *ib,
+                     GLboolean index_bounds_valid,
+                     GLuint min_index,
+                     GLuint max_index,
+                     GLuint num_instances,
+                     GLuint base_instance)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    const GLuint TEST_SPLIT = 0;
@@ -456,22 +449,21 @@ void _tnl_draw_prims(struct gl_context *ctx,
    for (i = 1; i < nr_prims; i++)
       max_basevertex = MAX2(max_basevertex, prim[i].basevertex);
 
-   if (0)
-   {
+   if (0) {
       printf("%s %d..%d\n", __func__, min_index, max_index);
       for (i = 0; i < nr_prims; i++)
-	 printf("prim %d: %s start %d count %d\n", i, 
-		_mesa_enum_to_string(prim[i].mode),
-		prim[i].start,
-		prim[i].count);
+         printf("prim %d: %s start %d count %d\n", i,
+                _mesa_enum_to_string(prim[i].mode),
+                prim[i].start,
+                prim[i].count);
    }
 
    if (min_index) {
-      /* We always translate away calls with min_index != 0. 
+      /* We always translate away calls with min_index != 0.
        */
-      t_rebase_prims( ctx, arrays, prim, nr_prims, ib,
-                      min_index, max_index, num_instances, base_instance,
-                      _tnl_draw_prims );
+      t_rebase_prims(ctx, arrays, prim, nr_prims, ib,
+                     min_index, max_index, num_instances, base_instance,
+                     _tnl_draw_prims);
       return;
    }
    else if ((GLint)max_index + max_basevertex > max) {
@@ -487,11 +479,11 @@ void _tnl_draw_prims(struct gl_context *ctx,
       /* This will split the buffers one way or another and
        * recursively call back into this function.
        */
-      _tnl_split_prims( ctx, arrays, prim, nr_prims, ib,
-                        0, max_index + prim->basevertex,
-                        num_instances, base_instance,
-                        _tnl_draw_prims,
-                        &limits );
+      _tnl_split_prims(ctx, arrays, prim, nr_prims, ib,
+                       0, max_index + prim->basevertex,
+                       num_instances, base_instance,
+                       _tnl_draw_prims,
+                       &limits);
    }
    else {
       /* May need to map a vertex buffer object for every attribute plus
@@ -504,21 +496,21 @@ void _tnl_draw_prims(struct gl_context *ctx,
       assert(num_instances > 0);
 
       for (i = 0; i < nr_prims;) {
-	 GLuint this_nr_prims;
+         GLuint this_nr_prims;
 
-	 /* Our SW TNL pipeline doesn't handle basevertex yet, so bind_indices
-	  * will rebase the elements to the basevertex, and we'll only
-	  * emit strings of prims with the same basevertex in one draw call.
-	  */
-	 for (this_nr_prims = 1; i + this_nr_prims < nr_prims;
-	      this_nr_prims++) {
-	    if (prim[i].basevertex != prim[i + this_nr_prims].basevertex)
-	       break;
-	 }
+         /* Our SW TNL pipeline doesn't handle basevertex yet, so bind_indices
+          * will rebase the elements to the basevertex, and we'll only
+          * emit strings of prims with the same basevertex in one draw call.
+          */
+         for (this_nr_prims = 1; i + this_nr_prims < nr_prims;
+              this_nr_prims++) {
+            if (prim[i].basevertex != prim[i + this_nr_prims].basevertex)
+               break;
+         }
 
-	 /* Binding inputs may imply mapping some vertex buffer objects.
-	  * They will need to be unmapped below.
-	  */
+         /* Binding inputs may imply mapping some vertex buffer objects.
+          * They will need to be unmapped below.
+          */
          for (inst = 0; inst < num_instances; inst++) {
 
             bind_prims(ctx, &prim[i], this_nr_prims);
@@ -533,7 +525,7 @@ void _tnl_draw_prims(struct gl_context *ctx,
             free_space(ctx);
          }
 
-	 i += this_nr_prims;
+         i += this_nr_prims;
       }
    }
 }
@@ -621,8 +613,8 @@ _tnl_update_inputs(struct gl_context *ctx, struct tnl_inputs *inputs)
 }
 
 
-const struct tnl_vertex_array*
-_tnl_bind_inputs( struct gl_context *ctx )
+const struct tnl_vertex_array *
+_tnl_bind_inputs(struct gl_context *ctx)
 {
    TNLcontext *tnl = TNL_CONTEXT(ctx);
    _tnl_update_inputs(ctx, &tnl->draw_arrays);
