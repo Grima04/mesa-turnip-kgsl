@@ -38,6 +38,58 @@
 
 #include "tgsi/tgsi_dump.h"
 
+static unsigned
+pan_format_from_nir_base(nir_alu_type base)
+{
+        switch (base) {
+        case nir_type_int:
+                return MALI_FORMAT_SINT;
+        case nir_type_uint:
+        case nir_type_bool:
+                return MALI_FORMAT_UINT;
+        case nir_type_float:
+                return MALI_CHANNEL_FLOAT;
+        default:
+                unreachable("Invalid base");
+        }
+}
+
+static unsigned
+pan_format_from_nir_size(nir_alu_type base, unsigned size)
+{
+        if (base == nir_type_float) {
+                switch (size) {
+                case 16: return MALI_FORMAT_SINT;
+                case 32: return MALI_FORMAT_UNORM;
+                default:
+                        unreachable("Invalid float size for format");
+                }
+        } else {
+                switch (size) {
+                case 1:
+                case 8:  return MALI_CHANNEL_8;
+                case 16: return MALI_CHANNEL_16;
+                case 32: return MALI_CHANNEL_32;
+                default:
+                         unreachable("Invalid int size for format");
+                }
+        }
+}
+
+static enum mali_format
+pan_format_from_glsl(const struct glsl_type *type)
+{
+        enum glsl_base_type glsl_base = glsl_get_base_type(glsl_without_array(type));
+        nir_alu_type t = nir_get_nir_type_for_glsl_base_type(glsl_base);
+
+        unsigned base = nir_alu_type_get_base_type(t);
+        unsigned size = nir_alu_type_get_type_size(t);
+
+        return pan_format_from_nir_base(base) |
+                pan_format_from_nir_size(base, size) |
+                MALI_NR_CHANNELS(4);
+}
+
 void
 panfrost_shader_compile(struct panfrost_context *ctx,
                         enum pipe_shader_ir ir_type,
@@ -150,13 +202,31 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         unsigned default_vec2_swizzle = panfrost_get_default_swizzle(2);
         unsigned default_vec4_swizzle = panfrost_get_default_swizzle(4);
 
+        /* Record the varying mapping for the command stream's bookkeeping */
+
+        unsigned p_varyings[32];
+        enum mali_format p_varying_type[32];
+
+        struct exec_list *l_varyings =
+                        stage == MESA_SHADER_VERTEX ? &s->outputs : &s->inputs;
+
+        nir_foreach_variable(var, l_varyings) {
+                unsigned loc = var->data.driver_location;
+                unsigned sz = glsl_count_attribute_slots(var->type, FALSE);
+
+                for (int c = 0; c < sz; ++c) {
+                        p_varyings[loc + c] = var->data.location + c;
+                        p_varying_type[loc + c] = pan_format_from_glsl(var->type);
+                }
+        }
+
         /* Iterate the varyings and emit the corresponding descriptor */
         for (unsigned i = 0; i < state->varying_count; ++i) {
-                unsigned location = program.varyings[i];
+                unsigned location = p_varyings[i];
 
                 /* Default to a vec4 varying */
                 struct mali_attr_meta v = {
-                        .format = program.varying_type[i],
+                        .format = p_varying_type[i],
                         .swizzle = default_vec4_swizzle,
                         .unknown1 = 0x2,
                 };
