@@ -7753,6 +7753,14 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
                      bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), mask_tmp,
                               bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm))));
             emit_wqm(ctx, tmp, dst);
+         } else if (instr->dest.ssa.bit_size == 8) {
+            Temp tmp = bld.tmp(v1);
+            emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), tmp);
+            bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v3b), tmp);
+         } else if (instr->dest.ssa.bit_size == 16) {
+            Temp tmp = bld.tmp(v1);
+            emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), tmp);
+            bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
          } else if (instr->dest.ssa.bit_size == 32) {
             if (ctx->program->chip_class >= GFX8)
                emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), dst);
@@ -7817,6 +7825,14 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
             src = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, dpp_ctrl);
          Temp tmp = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), src);
          emit_wqm(ctx, tmp, dst);
+      } else if (instr->dest.ssa.bit_size == 8) {
+         Temp tmp = bld.tmp(v1);
+         emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), tmp);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v3b), tmp);
+      } else if (instr->dest.ssa.bit_size == 16) {
+         Temp tmp = bld.tmp(v1);
+         emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), tmp);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
       } else if (instr->dest.ssa.bit_size == 32) {
          Temp tmp;
          if (ctx->program->chip_class >= GFX8)
