@@ -921,9 +921,10 @@ tu_get_image_format_properties(
        !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
        !(info->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
       sampleCounts |= VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
-      /* 8x MSAA on 128bpp formats doesn't seem to work */
-      if (vk_format_get_blocksize(info->format) <= 8)
-         sampleCounts |= VK_SAMPLE_COUNT_8_BIT;
+      /* note: most operations support 8 samples (GMEM render/resolve do at least)
+       * but some do not (which ones?), just disable 8 samples completely,
+       * (no 8x msaa matches the blob driver behavior)
+       */
    }
 
    if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
