@@ -1702,7 +1702,13 @@ struct mali_framebuffer {
         u32 mfbd_flags : 24; // = 0x100
         float clear_depth;
 
-        struct midgard_tiler_descriptor tiler;
+        union {
+                struct midgard_tiler_descriptor tiler;
+                struct {
+                        mali_ptr tiler_meta;
+                        u32 zeros[16];
+                };
+        };
 
         /* optional: struct mali_framebuffer_extra  extra */
         /* struct mali_render_target rts[] */

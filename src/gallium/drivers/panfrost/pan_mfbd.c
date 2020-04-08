@@ -25,6 +25,7 @@
 #include "pan_bo.h"
 #include "pan_context.h"
 #include "pan_util.h"
+#include "panfrost-quirks.h"
 
 static struct mali_rt_format
 panfrost_mfbd_format(struct pipe_surface *surf)
@@ -377,14 +378,17 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 .rt_count_1 = MALI_POSITIVE(batch->key.nr_cbufs),
                 .rt_count_2 = 4,
 
-                .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
-
                 .shared_memory = {
                         .stack_shift = shift,
                         .scratchpad = panfrost_batch_get_scratchpad(batch, shift, dev->thread_tls_alloc, dev->core_count)->gpu,
                         .shared_workgroup_count = ~0,
                 }
         };
+
+        if (dev->quirks & IS_BIFROST)
+                framebuffer.tiler_meta = panfrost_batch_get_tiler_meta(batch, vertex_count);
+        else
+                framebuffer.tiler = panfrost_emit_midg_tiler(batch, vertex_count);
 
         return framebuffer;
 }

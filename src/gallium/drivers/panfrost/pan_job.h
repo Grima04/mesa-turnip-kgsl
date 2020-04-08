@@ -142,6 +142,9 @@ struct panfrost_batch {
         /* Framebuffer descriptor. */
         struct panfrost_transfer framebuffer;
 
+        /* Bifrost tiler meta descriptor. */
+        mali_ptr tiler_meta;
+
         /* Output sync object. Only valid when submitted is true. */
         struct panfrost_batch_fence *out_sync;
 
@@ -239,5 +242,8 @@ void panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch);
 
 bool
 panfrost_batch_is_scanout(struct panfrost_batch *batch);
+
+mali_ptr
+panfrost_batch_get_tiler_meta(struct panfrost_batch *batch, unsigned vertex_count);
 
 #endif

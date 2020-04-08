@@ -1818,7 +1818,7 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
 
                 bifrost_tiler.prefix = *tiler_prefix;
                 bifrost_tiler.tiler.primitive_size = *primitive_size;
-                //bifrost_tiler.tiler.tiler_meta;
+                bifrost_tiler.tiler.tiler_meta = panfrost_batch_get_tiler_meta(batch, ~0);
                 bifrost_tiler.postfix = *tiler_postfix;
                 tp = &bifrost_tiler;
                 tp_size = sizeof(bifrost_tiler);

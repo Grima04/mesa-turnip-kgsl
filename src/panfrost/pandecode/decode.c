@@ -629,24 +629,18 @@ pandecode_midgard_tiler_descriptor(
 /* TODO: The Bifrost tiler is not understood at all yet */
 
 static void
-pandecode_bifrost_tiler_descriptor(const struct midgard_tiler_descriptor *t)
+pandecode_bifrost_tiler_descriptor(const struct mali_framebuffer *fb)
 {
         pandecode_log(".tiler = {\n");
         pandecode_indent++;
 
-        pandecode_prop("polygon_list_size = 0x%" PRIx32, t->polygon_list_size);
-        pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
-        pandecode_prop("flags = 0x%" PRIx16, t->flags);
+        MEMORY_PROP(fb, tiler_meta);
 
-        MEMORY_PROP(t, polygon_list);
-        MEMORY_PROP(t, polygon_list_body);
-        MEMORY_PROP(t, heap_start);
-        MEMORY_PROP(t, heap_end);
-
-        pandecode_log(".weights = { ");
-
-        for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
-                pandecode_log_cont("%d, ", t->weights[w]);
+        for (int i = 0; i < 16; i++) {
+                if (fb->zeros[i] != 0) {
+                        pandecode_msg("XXX: tiler descriptor zero %d tripped, value %x\n",
+                                      i, fb->zeros[i]);
+                }
         }
 
         pandecode_log("},\n");
@@ -1180,12 +1174,11 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
         if (fb->clear_depth)
                 pandecode_prop("clear_depth = %f", fb->clear_depth);
 
-        const struct midgard_tiler_descriptor t = fb->tiler;
         if (!is_compute)
                 if (is_bifrost)
-                        pandecode_bifrost_tiler_descriptor(&t);
+                        pandecode_bifrost_tiler_descriptor(fb);
                 else
-                        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
+                        pandecode_midgard_tiler_descriptor(&fb->tiler, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
         else
                 pandecode_msg("XXX: skipping compute MFBD, fixme\n");
 
@@ -2592,17 +2585,10 @@ pandecode_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p, int jo
 static void
 pandecode_tiler_heap_meta(mali_ptr gpu_va, int job_no)
 {
-
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-
-        if (gpu_va == 0) {
-                pandecode_msg("XXX: bifrost_tiler_heap_meta is NULL!!\n");
-                return;
-        }
-
         const struct bifrost_tiler_heap_meta *PANDECODE_PTR_VAR(h, mem, gpu_va);
 
-        pandecode_log("struct mali_tiler_heap_meta tiler_heap_meta_%d = {\n", job_no);
+        pandecode_log("struct bifrost_tiler_heap_meta tiler_heap_meta_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
 
         if (h->zero) {
@@ -2646,7 +2632,7 @@ pandecode_tiler_meta(mali_ptr gpu_va, int job_no)
 
         pandecode_tiler_heap_meta(t->tiler_heap_meta, job_no);
 
-        pandecode_log("struct bifrost_tiler_meta tiler_meta_%d = {\n", job_no);
+        pandecode_log("struct bifrost_tiler_meta tiler_meta_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
 
         if (t->zero0 || t->zero1) {
@@ -2746,7 +2732,7 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
         pandecode_vertex_tiler_postfix_pre(&t->postfix, job_no, h->job_type, "", true, gpu_id);
         pandecode_tiler_meta(t->tiler.tiler_meta, job_no);
 
-        pandecode_log("struct bifrost_payload_tiler payload_%d = {\n", job_no);
+        pandecode_log("struct bifrost_payload_tiler payload_%"PRIx64"_%d = {\n", payload, job_no);
         pandecode_indent++;
 
         pandecode_vertex_tiler_prefix(&t->prefix, job_no, false);
