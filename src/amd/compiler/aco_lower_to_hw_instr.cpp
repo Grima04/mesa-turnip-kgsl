@@ -845,6 +845,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
             bld.vop1(aco_opcode::v_mov_b32, it->second.def, Operand((uint32_t)val));
             bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg{it->second.def.physReg() + 1}, v1),
                      Operand((uint32_t)(val >> 32)));
+            ctx->program->statistics[statistic_copies]++;
          } else {
             bld.copy(it->second.def, it->second.op);
          }
