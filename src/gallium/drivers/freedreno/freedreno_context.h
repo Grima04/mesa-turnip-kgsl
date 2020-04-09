@@ -361,6 +361,7 @@ struct fd_context {
 
 	struct list_head log_chunks;  /* list of flushed log chunks in fifo order */
 	unsigned frame_nr;            /* frame counter (for fd_log) */
+	FILE *log_out;
 
 	/*
 	 * Common pre-cooked VBO state (used for a3xx and later):

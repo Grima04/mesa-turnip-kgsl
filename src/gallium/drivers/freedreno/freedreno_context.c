@@ -39,6 +39,12 @@
 #include "freedreno_util.h"
 #include "util/u_upload_mgr.h"
 
+#if DETECT_OS_ANDROID
+#include "util/u_process.h"
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
 static void
 fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 		unsigned flags)
@@ -413,11 +419,25 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	list_inithead(&ctx->acc_active_queries);
 	list_inithead(&ctx->log_chunks);
 
+	ctx->log_out = stdout;
+
 	if ((fd_mesa_debug & FD_DBG_LOG) &&
 			!(ctx->record_timestamp && ctx->ts_to_ns)) {
 		printf("logging not supported!\n");
 		fd_mesa_debug &= ~FD_DBG_LOG;
 	}
+
+#if DETECT_OS_ANDROID
+	if (fd_mesa_debug && FD_DBG_LOG) {
+		static unsigned idx = 0;
+		char *p;
+		asprintf(&p, "/data/fdlog/%s-%d.log", util_get_process_name(), idx++);
+
+		FILE *f = fopen(p, "w");
+		if (f)
+			ctx->log_out = f;
+	}
+#endif
 
 	return pctx;
 

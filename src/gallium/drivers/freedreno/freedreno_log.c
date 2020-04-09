@@ -109,7 +109,7 @@ free_chunk(struct fd_log_chunk *chunk)
 static void
 process_chunk(struct fd_context *ctx, struct fd_log_chunk *chunk)
 {
-	printf("+----- TS -----+ +----- NS -----+ +-- Δ --+  +----- MSG -----\n");
+	fprintf(ctx->log_out, "+----- TS -----+ +----- NS -----+ +-- Δ --+  +----- MSG -----\n");
 
 	uint64_t *timestamps = fd_bo_map(chunk->timestamps_bo);
 	uint64_t last_time_ns = 0;
@@ -136,15 +136,15 @@ process_chunk(struct fd_context *ctx, struct fd_log_chunk *chunk)
 			delta = 0;
 		}
 
-		printf("%016"PRIu64" %016"PRIu64" %+9d: %s\n", ts, ns, delta, msg);
+		fprintf(ctx->log_out, "%016"PRIu64" %016"PRIu64" %+9d: %s\n", ts, ns, delta, msg);
 		free(msg);
 
 	}
 
-	printf("ELAPSED: %"PRIu64" ns\n", last_time_ns - first_time_ns);
+	fprintf(ctx->log_out, "ELAPSED: %"PRIu64" ns\n", last_time_ns - first_time_ns);
 
 	if (chunk->eof)
-		printf("END OF FRAME %u\n", ctx->frame_nr++);
+		fprintf(ctx->log_out, "END OF FRAME %u\n", ctx->frame_nr++);
 }
 
 void
@@ -165,6 +165,8 @@ fd_log_process(struct fd_context *ctx, bool wait)
 		process_chunk(ctx, chunk);
 		free_chunk(chunk);
 	}
+
+	fflush(ctx->log_out);
 }
 
 void
@@ -217,7 +219,7 @@ void fd_log_eof(struct fd_context *ctx)
 		return;
 
 	if (list_is_empty(&ctx->log_chunks)) {
-		printf("WARNING: no log chunks!\n");
+		fprintf(ctx->log_out, "WARNING: no log chunks!\n");
 		return;
 	}
 
