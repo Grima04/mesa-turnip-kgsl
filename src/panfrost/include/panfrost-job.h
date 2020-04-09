@@ -1028,12 +1028,14 @@ struct bifrost_tiler_heap_meta {
         mali_ptr tiler_heap_end;
 
         /* hierarchy weights? but they're still 0 after the job has run... */
-        u32 zeros[12];
+        u32 zeros[10];
+        u32 unk1;
+        u32 unk7e007e;
 } __attribute__((packed));
 
 struct bifrost_tiler_meta {
         u64 zero0;
-        u16 hierarchy_mask;
+        u16 hierarchy_mask; /* Five values observed: 0xa, 0x14, 0x28, 0x50, 0xa0 */
         u16 flags;
         u16 width;
         u16 height;

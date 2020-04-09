@@ -2596,13 +2596,6 @@ pandecode_tiler_heap_meta(mali_ptr gpu_va, int job_no)
                 pandecode_prop("zero = 0x%x", h->zero);
         }
 
-        for (int i = 0; i < 12; i++) {
-                if (h->zeros[i] != 0) {
-                        pandecode_msg("XXX: tiler heap zero %d tripped, value %x\n",
-                                      i, h->zeros[i]);
-                }
-        }
-
         pandecode_prop("heap_size = 0x%x", h->heap_size);
         MEMORY_PROP(h, tiler_heap_start);
         MEMORY_PROP(h, tiler_heap_free);
@@ -2618,6 +2611,23 @@ pandecode_tiler_heap_meta(mali_ptr gpu_va, int job_no)
                 char *a = pointer_as_memory_reference(h->tiler_heap_end - 1);
                 pandecode_prop("tiler_heap_end = %s + 1", a);
                 free(a);
+        }
+
+        for (int i = 0; i < 10; i++) {
+                if (h->zeros[i] != 0) {
+                        pandecode_msg("XXX: tiler heap zero %d tripped, value %x\n",
+                                      i, h->zeros[i]);
+                }
+        }
+
+        if (h->unk1 != 0x1) {
+                pandecode_msg("XXX: tiler heap unk1 tripped\n");
+                pandecode_prop("unk1 = 0x%x", h->unk1);
+        }
+
+        if (h->unk7e007e != 0x7e007e) {
+                pandecode_msg("XXX: tiler heap unk7e007e tripped\n");
+                pandecode_prop("unk7e007e = 0x%x", h->unk7e007e);
         }
 
         pandecode_indent--;
@@ -2641,7 +2651,15 @@ pandecode_tiler_meta(mali_ptr gpu_va, int job_no)
                 pandecode_prop("zero1 = 0x%" PRIx64, t->zero1);
         }
 
+        if (t->hierarchy_mask != 0xa &&
+            t->hierarchy_mask != 0x14 &&
+            t->hierarchy_mask != 0x28 &&
+            t->hierarchy_mask != 0x50 &&
+            t->hierarchy_mask != 0xa0)
+                pandecode_prop("XXX: Unexpected hierarchy_mask (not 0xa, 0x14, 0x28, 0x50 or 0xa0)!");
+
         pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
+
         pandecode_prop("flags = 0x%" PRIx16, t->flags);
 
         pandecode_prop("width = MALI_POSITIVE(%d)", t->width + 1);
