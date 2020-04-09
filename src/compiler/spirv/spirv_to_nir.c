@@ -3314,7 +3314,10 @@ vtn_ssa_transpose(struct vtn_builder *b, struct vtn_ssa_value *src)
 nir_ssa_def *
 vtn_vector_extract(struct vtn_builder *b, nir_ssa_def *src, unsigned index)
 {
-   return nir_channel(&b->nb, src, index);
+   if (index > src->num_components)
+      return nir_ssa_undef(&b->nb, src->num_components, src->bit_size);
+   else
+      return nir_channel(&b->nb, src, index);
 }
 
 nir_ssa_def *
