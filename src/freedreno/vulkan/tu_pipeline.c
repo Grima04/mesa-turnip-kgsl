@@ -297,10 +297,10 @@ struct tu_pipeline_builder
    bool rasterizer_discard;
    /* these states are affectd by rasterizer_discard */
    VkSampleCountFlagBits samples;
-   bool use_depth_stencil_attachment;
    bool use_color_attachments;
    uint32_t color_attachment_count;
    VkFormat color_attachment_formats[MAX_RTS];
+   VkFormat depth_attachment_format;
 };
 
 static enum tu_dynamic_state_bits
@@ -2335,13 +2335,18 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
     *    render pass the pipeline is created against does not use a
     *    depth/stencil attachment.
     *
-    * We disable both depth and stenil tests in those cases.
+    * Disable both depth and stencil tests if there is no ds attachment,
+    * Disable depth test if ds attachment is S8_UINT, since S8_UINT defines
+    * only the separate stencil attachment
     */
    static const VkPipelineDepthStencilStateCreateInfo dummy_ds_info;
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
-      builder->use_depth_stencil_attachment
+      builder->depth_attachment_format != VK_FORMAT_UNDEFINED
          ? builder->create_info->pDepthStencilState
          : &dummy_ds_info;
+   const VkPipelineDepthStencilStateCreateInfo *ds_info_depth =
+      builder->depth_attachment_format != VK_FORMAT_S8_UINT
+         ? ds_info : &dummy_ds_info;
 
    struct tu_cs ds_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 12, &ds_cs);
@@ -2349,7 +2354,8 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
    /* move to hw ctx init? */
    tu6_emit_alpha_control_disable(&ds_cs);
 
-   tu6_emit_depth_control(&ds_cs, ds_info, builder->create_info->pRasterizationState);
+   tu6_emit_depth_control(&ds_cs, ds_info_depth,
+                          builder->create_info->pRasterizationState);
    tu6_emit_stencil_control(&ds_cs, ds_info);
 
    if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_COMPARE_MASK)) {
@@ -2507,8 +2513,9 @@ tu_pipeline_builder_init_graphics(
       const struct tu_subpass *subpass =
          &pass->subpasses[create_info->subpass];
 
-      builder->use_depth_stencil_attachment =
-         subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED;
+      const uint32_t a = subpass->depth_stencil_attachment.attachment;
+      builder->depth_attachment_format = (a != VK_ATTACHMENT_UNUSED) ?
+         pass->attachments[a].format : VK_FORMAT_UNDEFINED;
 
       assert(subpass->color_count == 0 ||
              !create_info->pColorBlendState ||
