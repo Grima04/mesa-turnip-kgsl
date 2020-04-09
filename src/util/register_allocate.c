@@ -371,6 +371,8 @@ ra_class_add_reg(struct ra_regs *regs, unsigned int c, unsigned int r)
 {
    struct ra_class *class = regs->classes[c];
 
+   assert(r < regs->count);
+
    BITSET_SET(class->regs, r);
    class->p++;
 }
