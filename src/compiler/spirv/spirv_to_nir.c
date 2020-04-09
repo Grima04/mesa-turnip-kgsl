@@ -3459,10 +3459,20 @@ vtn_composite_insert(struct vtn_builder *b, struct vtn_ssa_value *src,
    struct vtn_ssa_value *cur = dest;
    unsigned i;
    for (i = 0; i < num_indices - 1; i++) {
+      /* If we got a vector here, that means the next index will be trying to
+       * dereference a scalar.
+       */
+      vtn_fail_if(glsl_type_is_vector_or_scalar(cur->type),
+                  "OpCompositeInsert has too many indices.");
+      vtn_fail_if(indices[i] >= glsl_get_length(cur->type),
+                  "All indices in an OpCompositeInsert must be in-bounds");
       cur = cur->elems[indices[i]];
    }
 
    if (glsl_type_is_vector_or_scalar(cur->type)) {
+      vtn_fail_if(indices[i] >= glsl_get_vector_elements(cur->type),
+                  "All indices in an OpCompositeInsert must be in-bounds");
+
       /* According to the SPIR-V spec, OpCompositeInsert may work down to
        * the component granularity. In that case, the last index will be
        * the index to insert the scalar into the vector.
@@ -3470,6 +3480,8 @@ vtn_composite_insert(struct vtn_builder *b, struct vtn_ssa_value *src,
 
       cur->def = vtn_vector_insert(b, cur->def, insert->def, indices[i]);
    } else {
+      vtn_fail_if(indices[i] >= glsl_get_length(cur->type),
+                  "All indices in an OpCompositeInsert must be in-bounds");
       cur->elems[indices[i]] = insert;
    }
 
@@ -3484,6 +3496,9 @@ vtn_composite_extract(struct vtn_builder *b, struct vtn_ssa_value *src,
    for (unsigned i = 0; i < num_indices; i++) {
       if (glsl_type_is_vector_or_scalar(cur->type)) {
          vtn_assert(i == num_indices - 1);
+         vtn_fail_if(indices[i] >= glsl_get_vector_elements(cur->type),
+                     "All indices in an OpCompositeExtract must be in-bounds");
+
          /* According to the SPIR-V spec, OpCompositeExtract may work down to
           * the component granularity. The last index will be the index of the
           * vector to extract.
@@ -3494,6 +3509,8 @@ vtn_composite_extract(struct vtn_builder *b, struct vtn_ssa_value *src,
          ret->def = vtn_vector_extract(b, cur->def, indices[i]);
          return ret;
       } else {
+         vtn_fail_if(indices[i] >= glsl_get_length(cur->type),
+                     "All indices in an OpCompositeExtract must be in-bounds");
          cur = cur->elems[indices[i]];
       }
    }
