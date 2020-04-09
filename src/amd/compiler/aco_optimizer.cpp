@@ -509,25 +509,40 @@ bool can_swap_operands(aco_ptr<Instruction>& instr)
       return false;
 
    switch (instr->opcode) {
+   case aco_opcode::v_add_f16:
    case aco_opcode::v_add_f32:
+   case aco_opcode::v_mul_f16:
    case aco_opcode::v_mul_f32:
    case aco_opcode::v_or_b32:
    case aco_opcode::v_and_b32:
    case aco_opcode::v_xor_b32:
+   case aco_opcode::v_max_f16:
    case aco_opcode::v_max_f32:
+   case aco_opcode::v_min_f16:
    case aco_opcode::v_min_f32:
    case aco_opcode::v_max_i32:
    case aco_opcode::v_min_i32:
    case aco_opcode::v_max_u32:
    case aco_opcode::v_min_u32:
+   case aco_opcode::v_cmp_eq_f16:
    case aco_opcode::v_cmp_eq_f32:
+   case aco_opcode::v_cmp_lg_f16:
    case aco_opcode::v_cmp_lg_f32:
+      return true;
+   case aco_opcode::v_sub_f16:
+      instr->opcode = aco_opcode::v_subrev_f16;
       return true;
    case aco_opcode::v_sub_f32:
       instr->opcode = aco_opcode::v_subrev_f32;
       return true;
+   case aco_opcode::v_cmp_lt_f16:
+      instr->opcode = aco_opcode::v_cmp_gt_f16;
+      return true;
    case aco_opcode::v_cmp_lt_f32:
       instr->opcode = aco_opcode::v_cmp_gt_f32;
+      return true;
+   case aco_opcode::v_cmp_ge_f16:
+      instr->opcode = aco_opcode::v_cmp_le_f16;
       return true;
    case aco_opcode::v_cmp_ge_f32:
       instr->opcode = aco_opcode::v_cmp_le_f32;
