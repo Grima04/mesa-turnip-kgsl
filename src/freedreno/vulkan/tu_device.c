@@ -637,7 +637,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxMemoryAllocationCount = UINT32_MAX,
       .maxSamplerAllocationCount = 64 * 1024,
       .bufferImageGranularity = 64,          /* A cache line */
-      .sparseAddressSpaceSize = 0xffffffffu, /* buffer max size */
+      .sparseAddressSpaceSize = 0,
       .maxBoundDescriptorSets = MAX_SETS,
       .maxPerStageDescriptorSamplers = max_descriptor_set_size,
       .maxPerStageDescriptorUniformBuffers = max_descriptor_set_size,
