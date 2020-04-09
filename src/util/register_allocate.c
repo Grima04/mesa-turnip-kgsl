@@ -865,6 +865,7 @@ ra_select(struct ra_graph *g)
          }
 
          r = g->select_reg_callback(n, select_regs, g->select_reg_callback_data);
+         assert(r < g->regs->count);
       } else {
          /* Find the lowest-numbered reg which is not used by a member
           * of the graph adjacent to us.
