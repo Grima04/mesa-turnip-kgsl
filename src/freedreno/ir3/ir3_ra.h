@@ -27,13 +27,7 @@
 #ifndef IR3_RA_H_
 #define IR3_RA_H_
 
-//#include "util/u_math.h"
-//#include "util/register_allocate.h"
-//#include "util/ralloc.h"
 #include "util/bitset.h"
-
-//#include "ir3.h"
-//#include "ir3_compiler.h"
 
 
 static const unsigned class_sizes[] = {
