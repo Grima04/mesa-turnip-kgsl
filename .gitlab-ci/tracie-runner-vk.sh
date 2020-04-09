@@ -23,6 +23,11 @@ export DXVK_STATE_CACHE=0
 # Perform a self-test to ensure tracie is working properly.
 "$INSTALL/tracie/tests/test.sh"
 
+# Sanity check to ensure that our environment is sufficient to make our tests
+# run against the Mesa built by CI, rather than any installed distro version.
+MESA_VERSION=$(cat "$INSTALL/VERSION" | sed 's/\./\\./g')
+vulkaninfo | grep "Mesa $MESA_VERSION\(\s\|$\)"
+
 ret=0
 
 # Run gfxreconstruct traces against the host's running X server (xvfb
