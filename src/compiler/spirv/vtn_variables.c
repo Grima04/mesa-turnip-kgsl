@@ -735,11 +735,7 @@ vtn_local_load(struct vtn_builder *b, nir_deref_instr *src,
 
    if (src_tail != src) {
       val->type = src->type;
-      if (nir_src_is_const(src->arr.index))
-         val->def = vtn_vector_extract(b, val->def,
-                                       nir_src_as_uint(src->arr.index));
-      else
-         val->def = vtn_vector_extract_dynamic(b, val->def, src->arr.index.ssa);
+      val->def = nir_vector_extract(&b->nb, val->def, src->arr.index.ssa);
    }
 
    return val;

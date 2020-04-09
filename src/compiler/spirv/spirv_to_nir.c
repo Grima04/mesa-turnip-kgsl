@@ -3312,15 +3312,6 @@ vtn_ssa_transpose(struct vtn_builder *b, struct vtn_ssa_value *src)
 }
 
 nir_ssa_def *
-vtn_vector_extract(struct vtn_builder *b, nir_ssa_def *src, unsigned index)
-{
-   if (index > src->num_components)
-      return nir_ssa_undef(&b->nb, src->num_components, src->bit_size);
-   else
-      return nir_channel(&b->nb, src, index);
-}
-
-nir_ssa_def *
 vtn_vector_insert(struct vtn_builder *b, nir_ssa_def *src, nir_ssa_def *insert,
                   unsigned index)
 {
@@ -3339,13 +3330,6 @@ vtn_vector_insert(struct vtn_builder *b, nir_ssa_def *src, nir_ssa_def *insert,
    nir_builder_instr_insert(&b->nb, &vec->instr);
 
    return &vec->dest.dest.ssa;
-}
-
-nir_ssa_def *
-vtn_vector_extract_dynamic(struct vtn_builder *b, nir_ssa_def *src,
-                           nir_ssa_def *index)
-{
-   return nir_vector_extract(&b->nb, src, nir_i2i(&b->nb, index, 32));
 }
 
 nir_ssa_def *
@@ -3506,7 +3490,7 @@ vtn_composite_extract(struct vtn_builder *b, struct vtn_ssa_value *src,
 
          struct vtn_ssa_value *ret = rzalloc(b, struct vtn_ssa_value);
          ret->type = glsl_scalar_type(glsl_get_base_type(cur->type));
-         ret->def = vtn_vector_extract(b, cur->def, indices[i]);
+         ret->def = nir_channel(&b->nb, cur->def, indices[i]);
          return ret;
       } else {
          vtn_fail_if(indices[i] >= glsl_get_length(cur->type),
@@ -3527,8 +3511,8 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
 
    switch (opcode) {
    case SpvOpVectorExtractDynamic:
-      ssa->def = vtn_vector_extract_dynamic(b, vtn_ssa_value(b, w[3])->def,
-                                            vtn_ssa_value(b, w[4])->def);
+      ssa->def = nir_vector_extract(&b->nb, vtn_ssa_value(b, w[3])->def,
+                                    vtn_ssa_value(b, w[4])->def);
       break;
 
    case SpvOpVectorInsertDynamic:

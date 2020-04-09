@@ -797,10 +797,6 @@ struct vtn_ssa_value *vtn_create_ssa_value(struct vtn_builder *b,
 struct vtn_ssa_value *vtn_ssa_transpose(struct vtn_builder *b,
                                         struct vtn_ssa_value *src);
 
-nir_ssa_def *vtn_vector_extract(struct vtn_builder *b, nir_ssa_def *src,
-                                unsigned index);
-nir_ssa_def *vtn_vector_extract_dynamic(struct vtn_builder *b, nir_ssa_def *src,
-                                        nir_ssa_def *index);
 nir_ssa_def *vtn_vector_insert(struct vtn_builder *b, nir_ssa_def *src,
                                nir_ssa_def *insert, unsigned index);
 nir_ssa_def *vtn_vector_insert_dynamic(struct vtn_builder *b, nir_ssa_def *src,
