@@ -177,8 +177,8 @@ static LLVMTargetMachineRef ac_create_target_machine(enum radeon_family family,
 		 LLVM_VERSION_MAJOR >= 11 ? "" : ",-fp32-denormals,+fp64-denormals",
 		 family >= CHIP_NAVI10 && !(tm_options & AC_TM_WAVE32) ?
 			 ",+wavefrontsize64,-wavefrontsize32" : "",
-		 tm_options & AC_TM_FORCE_ENABLE_XNACK ? ",+xnack" : "",
-		 tm_options & AC_TM_FORCE_DISABLE_XNACK ? ",-xnack" : "",
+		 family <= CHIP_NAVI14 && tm_options & AC_TM_FORCE_ENABLE_XNACK ? ",+xnack" : "",
+		 family <= CHIP_NAVI14 && tm_options & AC_TM_FORCE_DISABLE_XNACK ? ",-xnack" : "",
 		 tm_options & AC_TM_PROMOTE_ALLOCA_TO_SCRATCH ? ",-promote-alloca" : "",
 		 tm_options & AC_TM_NO_LOAD_STORE_OPT ? ",-load-store-opt" : "");
 
