@@ -2020,13 +2020,14 @@ iris_update_compiled_compute_shader(struct iris_context *ice)
 
 void
 iris_fill_cs_push_const_buffer(struct brw_cs_prog_data *cs_prog_data,
+                               unsigned threads,
                                uint32_t *dst)
 {
-   assert(brw_cs_push_const_total_size(cs_prog_data, cs_prog_data->threads) > 0);
+   assert(brw_cs_push_const_total_size(cs_prog_data, threads) > 0);
    assert(cs_prog_data->push.cross_thread.size == 0);
    assert(cs_prog_data->push.per_thread.dwords == 1);
    assert(cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
-   for (unsigned t = 0; t < cs_prog_data->threads; t++)
+   for (unsigned t = 0; t < threads; t++)
       dst[8 * t] = t;
 }
 
