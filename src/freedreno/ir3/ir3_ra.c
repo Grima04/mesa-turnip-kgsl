@@ -441,11 +441,11 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 	if (!ctx->scalar_pass) {
 		base = ctx->set->gpr_to_ra_reg[class][0];
 		if (high) {
-			max_target = HIGH_CLASS_REGS(sz);
+			max_target = HIGH_CLASS_REGS(class - HIGH_OFFSET);
 		} else if (half) {
-			max_target = HALF_CLASS_REGS(sz);
+			max_target = HALF_CLASS_REGS(class - HALF_OFFSET);
 		} else {
-			max_target = CLASS_REGS(sz);
+			max_target = CLASS_REGS(class);
 		}
 
 		if ((sz == 1) && !high) {

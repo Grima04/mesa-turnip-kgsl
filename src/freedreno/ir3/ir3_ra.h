@@ -63,9 +63,27 @@ static const unsigned high_class_sizes[] = {
 #define NUM_HIGH_REGS        (4 * 8)   /* r48 to r55 */
 #define FIRST_HIGH_REG       (4 * 48)
 /* Number of virtual regs in a given class: */
-#define CLASS_REGS(i)        (NUM_REGS - (class_sizes[i] - 1))
-#define HALF_CLASS_REGS(i)   (NUM_REGS - (half_class_sizes[i] - 1))
-#define HIGH_CLASS_REGS(i)   (NUM_HIGH_REGS - (high_class_sizes[i] - 1))
+
+static inline unsigned CLASS_REGS(unsigned i)
+{
+	assert(i < class_count);
+
+	return (NUM_REGS - (class_sizes[i] - 1));
+}
+
+static inline unsigned HALF_CLASS_REGS(unsigned i)
+{
+	assert(i < half_class_count);
+
+	return (NUM_REGS - (half_class_sizes[i] - 1));
+}
+
+static inline unsigned HIGH_CLASS_REGS(unsigned i)
+{
+	assert(i < high_class_count);
+
+	return (NUM_HIGH_REGS - (high_class_sizes[i] - 1));
+}
 
 #define HALF_OFFSET          (class_count)
 #define HIGH_OFFSET          (class_count + half_class_count)
