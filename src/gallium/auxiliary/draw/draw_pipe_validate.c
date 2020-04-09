@@ -100,6 +100,9 @@ draw_need_pipeline(const struct draw_context *draw,
       /* point sprites */
       if (rasterizer->sprite_coord_enable && draw->pipeline.point_sprite)
          return TRUE;
+
+      if (draw_current_shader_num_written_culldistances(draw))
+         return TRUE;
    }
    else if (reduced_prim == PIPE_PRIM_TRIANGLES) {
       /* polygon stipple */
