@@ -50,7 +50,6 @@
 #define LP_SETUP_NEW_SCISSOR     0x08
 #define LP_SETUP_NEW_VIEWPORTS   0x10
 #define LP_SETUP_NEW_SSBOS       0x20
-#define LP_SETUP_NEW_IMAGES      0x40
 
 struct lp_setup_variant;
 

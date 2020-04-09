@@ -741,7 +741,7 @@ lp_setup_set_fs_images(struct lp_setup_context *setup,
    for (; i < ARRAY_SIZE(setup->images); i++) {
       util_copy_image_view(&setup->images[i].current, NULL);
    }
-   setup->dirty |= LP_SETUP_NEW_IMAGES;
+   setup->dirty |= LP_SETUP_NEW_FS;
 }
 
 void
