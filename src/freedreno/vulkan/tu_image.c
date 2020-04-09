@@ -100,6 +100,10 @@ tu_image_create(VkDevice _device,
    if (image->vk_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
       ubwc_enabled = false;
 
+   /* separate stencil doesn't have a UBWC enable bit */
+   if (image->vk_format == VK_FORMAT_S8_UINT)
+      ubwc_enabled = false;
+
    if (image->extent.depth > 1) {
       tu_finishme("UBWC with 3D textures");
       ubwc_enabled = false;

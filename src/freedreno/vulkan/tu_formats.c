@@ -354,6 +354,7 @@ tu6_pipe2depth(VkFormat format)
    case VK_FORMAT_D24_UNORM_S8_UINT:
       return DEPTH6_24_8;
    case VK_FORMAT_D32_SFLOAT:
+   case VK_FORMAT_S8_UINT:
       return DEPTH6_32;
    default:
       return ~0;

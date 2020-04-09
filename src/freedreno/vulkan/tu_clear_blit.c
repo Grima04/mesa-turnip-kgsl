@@ -1777,8 +1777,6 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
 
    for (uint32_t j = 0; j < attachment_count; j++) {
          uint32_t a;
-         uint8_t mask = 0xf;
-
          if (attachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
             a = subpass->color_attachments[attachments[j].colorAttachment].attachment;
          } else {
@@ -1789,16 +1787,18 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
             /* also flush color to avoid losing contents from invalidate */
             tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
             tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR, false);
+         }
 
+         if (a == VK_ATTACHMENT_UNUSED)
+               continue;
 
+         uint8_t mask = 0xf;
+         if (cmd->state.pass->attachments[a].format == VK_FORMAT_D24_UNORM_S8_UINT) {
             if (!(attachments[j].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
                mask &= ~0x7;
             if (!(attachments[j].aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT))
                mask &= ~0x8;
          }
-
-         if (a == VK_ATTACHMENT_UNUSED)
-               continue;
 
          const struct tu_image_view *iview =
             cmd->state.framebuffer->attachments[a].attachment;
@@ -2071,20 +2071,21 @@ tu_clear_gmem_attachments(struct tu_cmd_buffer *cmd,
 
       for (unsigned j = 0; j < attachment_count; j++) {
          uint32_t a;
-         unsigned clear_mask = 0;
-         if (attachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-            clear_mask = 0xf;
+         if (attachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
             a = subpass->color_attachments[attachments[j].colorAttachment].attachment;
-         } else {
+         else
             a = subpass->depth_stencil_attachment.attachment;
-            if (attachments[j].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-               clear_mask |= 0x7;
-            if (attachments[j].aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-               clear_mask |= 0x8;
-         }
 
          if (a == VK_ATTACHMENT_UNUSED)
                continue;
+
+         unsigned clear_mask = 0xf;
+         if (cmd->state.pass->attachments[a].format == VK_FORMAT_D24_UNORM_S8_UINT) {
+            if (!(attachments[j].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
+               clear_mask &= ~0x7;
+            if (!(attachments[j].aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT))
+               clear_mask &= ~0x8;
+         }
 
          tu_emit_clear_gmem_attachment(cmd, cs, a, clear_mask,
                                        &attachments[j].clearValue);

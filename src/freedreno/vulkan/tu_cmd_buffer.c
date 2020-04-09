@@ -387,12 +387,14 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
    }
 
    const struct tu_image_view *iview = fb->attachments[a].attachment;
-   enum a6xx_depth_format fmt = tu6_pipe2depth(cmd->state.pass->attachments[a].format);
+   const struct tu_render_pass_attachment *attachment =
+      &cmd->state.pass->attachments[a];
+   enum a6xx_depth_format fmt = tu6_pipe2depth(attachment->format);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt).value);
    tu_cs_image_ref(cs, iview, 0);
-   tu_cs_emit(cs, cmd->state.pass->attachments[a].gmem_offset);
+   tu_cs_emit(cs, attachment->gmem_offset);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = fmt));
@@ -405,10 +407,15 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
                    A6XX_GRAS_LRZ_BUFFER_PITCH(0),
                    A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE(0));
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_STENCIL_INFO(0));
-
-   /* enable zs? */
+   if (attachment->format == VK_FORMAT_S8_UINT) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCIL_INFO, 6);
+      tu_cs_emit(cs, A6XX_RB_STENCIL_INFO(.separate_stencil = true).value);
+      tu_cs_image_ref(cs, iview, 0);
+      tu_cs_emit(cs, attachment->gmem_offset);
+   } else {
+      tu_cs_emit_regs(cs,
+                     A6XX_RB_STENCIL_INFO(0));
+   }
 }
 
 static void
