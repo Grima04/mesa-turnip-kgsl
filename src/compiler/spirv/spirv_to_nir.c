@@ -3311,44 +3311,6 @@ vtn_ssa_transpose(struct vtn_builder *b, struct vtn_ssa_value *src)
    return dest;
 }
 
-nir_ssa_def *
-vtn_vector_insert(struct vtn_builder *b, nir_ssa_def *src, nir_ssa_def *insert,
-                  unsigned index)
-{
-   nir_alu_instr *vec = create_vec(b, src->num_components,
-                                   src->bit_size);
-
-   for (unsigned i = 0; i < src->num_components; i++) {
-      if (i == index) {
-         vec->src[i].src = nir_src_for_ssa(insert);
-      } else {
-         vec->src[i].src = nir_src_for_ssa(src);
-         vec->src[i].swizzle[0] = i;
-      }
-   }
-
-   nir_builder_instr_insert(&b->nb, &vec->instr);
-
-   return &vec->dest.dest.ssa;
-}
-
-nir_ssa_def *
-vtn_vector_insert_dynamic(struct vtn_builder *b, nir_ssa_def *src,
-                          nir_ssa_def *insert, nir_ssa_def *index)
-{
-   nir_const_value per_comp_idx_const[NIR_MAX_VEC_COMPONENTS];
-   for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
-      per_comp_idx_const[i] = nir_const_value_for_int(i, index->bit_size);
-   nir_ssa_def *per_comp_idx =
-      nir_build_imm(&b->nb, src->num_components,
-                    index->bit_size, per_comp_idx_const);
-
-   /* nir_builder will automatically splat out scalars to vectors so an insert
-    * is as simple as "if I'm the channel, replace me with the scalar."
-    */
-   return nir_bcsel(&b->nb, nir_ieq(&b->nb, index, per_comp_idx), insert, src);
-}
-
 static nir_ssa_def *
 vtn_vector_shuffle(struct vtn_builder *b, unsigned num_components,
                    nir_ssa_def *src0, nir_ssa_def *src1,
@@ -3462,7 +3424,7 @@ vtn_composite_insert(struct vtn_builder *b, struct vtn_ssa_value *src,
        * the index to insert the scalar into the vector.
        */
 
-      cur->def = vtn_vector_insert(b, cur->def, insert->def, indices[i]);
+      cur->def = nir_vector_insert_imm(&b->nb, cur->def, insert->def, indices[i]);
    } else {
       vtn_fail_if(indices[i] >= glsl_get_length(cur->type),
                   "All indices in an OpCompositeInsert must be in-bounds");
@@ -3516,9 +3478,9 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpVectorInsertDynamic:
-      ssa->def = vtn_vector_insert_dynamic(b, vtn_ssa_value(b, w[3])->def,
-                                           vtn_ssa_value(b, w[4])->def,
-                                           vtn_ssa_value(b, w[5])->def);
+      ssa->def = nir_vector_insert(&b->nb, vtn_ssa_value(b, w[3])->def,
+                                   vtn_ssa_value(b, w[4])->def,
+                                   vtn_ssa_value(b, w[5])->def);
       break;
 
    case SpvOpVectorShuffle:
