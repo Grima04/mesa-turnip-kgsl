@@ -1756,8 +1756,23 @@ bool radv_layout_is_htile_compressed(const struct radv_image *image,
 				     bool in_render_loop,
                                      unsigned queue_mask)
 {
-	if (radv_image_is_tc_compat_htile(image))
+	if (radv_image_is_tc_compat_htile(image)) {
+		if (layout == VK_IMAGE_LAYOUT_GENERAL &&
+		    !in_render_loop &&
+		    !(image->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
+			/* It should be safe to enable TC-compat HTILE with
+			 * VK_IMAGE_LAYOUT_GENERAL if we are not in a render
+			 * loop and if the image doesn't have the storage bit
+			 * set. This improves performance for apps that use
+			 * GENERAL for the main depth pass because this allows
+			 * compression and this reduces the number of
+			 * decompressions from/to GENERAL.
+			 */
+			return true;
+		}
+
 		return layout != VK_IMAGE_LAYOUT_GENERAL;
+	}
 
 	return radv_image_has_htile(image) &&
 	       (layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ||
