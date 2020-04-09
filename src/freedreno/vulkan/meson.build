@@ -118,6 +118,7 @@ libvulkan_freedreno = shared_library(
     libfreedreno_layout,
   ],
   dependencies : [
+    idep_libfreedreno_common,
     dep_dl,
     dep_elf,
     dep_libdrm,

@@ -1,4 +1,4 @@
-# Copyright © 2018 Rob Clark
+# Copyright © 2020 Igalia S.L
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,20 +18,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_freedreno = include_directories(['.', './registers'])
+libfreedreno_common = static_library(
+  'freedreno_common',
+  [
+    'freedreno_uuid.c',
+    'freedreno_uuid.h',
+  ],
+  include_directories : [inc_freedreno],
+  c_args : [c_vis_args, no_override_init_args],
+  build_by_default : true,
+  dependencies: [idep_mesautil]
+)
 
-subdir('common')
-subdir('registers')
-subdir('drm')
-subdir('ir3')
-subdir('fdl')
-subdir('perfcntrs')
-subdir('computerator')
-
-if with_tools.contains('drm-shim')
-  subdir('drm-shim')
-endif
-
-if with_freedreno_vk
-  subdir('vulkan')
-endif
+idep_libfreedreno_common = declare_dependency(
+  link_with: [libfreedreno_common],
+)

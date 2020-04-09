@@ -45,6 +45,9 @@
 
 #include "drm-uapi/msm_drm.h"
 
+/* for fd_get_driver/device_uuid() */
+#include "freedreno/common/freedreno_uuid.h"
+
 static int
 tu_device_get_cache_uuid(uint16_t family, void *uuid)
 {
@@ -59,19 +62,6 @@ tu_device_get_cache_uuid(uint16_t family, void *uuid)
    memcpy((char *) uuid + 4, &f, 2);
    snprintf((char *) uuid + 6, VK_UUID_SIZE - 10, "tu");
    return 0;
-}
-
-static void
-tu_get_driver_uuid(void *uuid)
-{
-   memset(uuid, 0, VK_UUID_SIZE);
-   snprintf(uuid, VK_UUID_SIZE, "freedreno");
-}
-
-static void
-tu_get_device_uuid(void *uuid)
-{
-   memset(uuid, 0, VK_UUID_SIZE);
 }
 
 static VkResult
@@ -308,8 +298,8 @@ tu_physical_device_init(struct tu_physical_device *device,
    fprintf(stderr, "WARNING: tu is not a conformant vulkan implementation, "
                    "testing use only.\n");
 
-   tu_get_driver_uuid(&device->device_uuid);
-   tu_get_device_uuid(&device->device_uuid);
+   fd_get_driver_uuid(device->driver_uuid);
+   fd_get_device_uuid(device->device_uuid);
 
    tu_physical_device_get_supported_extensions(device, &device->supported_extensions);
 
