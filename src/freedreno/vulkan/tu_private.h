@@ -1319,7 +1319,10 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                          const VkRenderPassBeginInfo *info);
 
 void
-tu_load_gmem_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t a);
+tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,
+                        struct tu_cs *cs,
+                        uint32_t a,
+                        bool force_load);
 
 /* expose this function to be able to emit load without checking LOAD_OP */
 void
@@ -1590,10 +1593,9 @@ struct tu_render_pass_attachment
    VkFormat format;
    uint32_t samples;
    uint32_t cpp;
-   VkAttachmentLoadOp load_op;
-   VkAttachmentLoadOp stencil_load_op;
-   VkAttachmentStoreOp store_op;
-   VkAttachmentStoreOp stencil_store_op;
+   VkImageAspectFlags clear_mask;
+   bool load;
+   bool store;
    int32_t gmem_offset;
 };
 

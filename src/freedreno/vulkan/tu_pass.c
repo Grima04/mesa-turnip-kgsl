@@ -102,6 +102,53 @@ create_render_pass_common(struct tu_render_pass *pass,
             subpass->srgb_cntl |= 1 << i;
       }
    }
+
+   /* disable unused attachments */
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      struct tu_render_pass_attachment *att = &pass->attachments[i];
+      if (att->gmem_offset < 0) {
+         att->clear_mask = 0;
+         att->load = false;
+      }
+   }
+}
+
+static void
+attachment_set_ops(struct tu_render_pass_attachment *att,
+                   VkAttachmentLoadOp load_op,
+                   VkAttachmentLoadOp stencil_load_op,
+                   VkAttachmentStoreOp store_op,
+                   VkAttachmentStoreOp stencil_store_op)
+{
+   /* load/store ops */
+   att->clear_mask =
+      (load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+   att->load = (load_op == VK_ATTACHMENT_LOAD_OP_LOAD);
+   att->store = (store_op == VK_ATTACHMENT_STORE_OP_STORE);
+
+   bool stencil_clear = (stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR);
+   bool stencil_load = (stencil_load_op == VK_ATTACHMENT_LOAD_OP_LOAD);
+   bool stencil_store = (stencil_store_op == VK_ATTACHMENT_STORE_OP_STORE);
+
+   switch (att->format) {
+   case VK_FORMAT_D24_UNORM_S8_UINT: /* || stencil load/store */
+      if (att->clear_mask)
+         att->clear_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+      if (stencil_clear)
+         att->clear_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+      if (stencil_load)
+         att->load = true;
+      if (stencil_store)
+         att->store = true;
+      break;
+   case VK_FORMAT_S8_UINT: /* replace load/store with stencil load/store */
+      att->clear_mask = stencil_clear ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
+      att->load = stencil_load;
+      att->store = stencil_store;
+      break;
+   default:
+      break;
+   }
 }
 
 VkResult
@@ -138,13 +185,13 @@ tu_CreateRenderPass(VkDevice _device,
       att->format = pCreateInfo->pAttachments[i].format;
       att->samples = pCreateInfo->pAttachments[i].samples;
       att->cpp = vk_format_get_blocksize(att->format) * att->samples;
-      att->load_op = pCreateInfo->pAttachments[i].loadOp;
-      att->stencil_load_op = pCreateInfo->pAttachments[i].stencilLoadOp;
-      att->store_op = pCreateInfo->pAttachments[i].storeOp;
-      if (pCreateInfo->pAttachments[i].stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE &&
-          vk_format_has_stencil(att->format))
-         att->store_op = VK_ATTACHMENT_STORE_OP_STORE;
       att->gmem_offset = -1;
+
+      attachment_set_ops(att,
+                         pCreateInfo->pAttachments[i].loadOp,
+                         pCreateInfo->pAttachments[i].stencilLoadOp,
+                         pCreateInfo->pAttachments[i].storeOp,
+                         pCreateInfo->pAttachments[i].stencilStoreOp);
    }
 
    uint32_t subpass_attachment_count = 0;
@@ -266,14 +313,13 @@ tu_CreateRenderPass2(VkDevice _device,
       att->format = pCreateInfo->pAttachments[i].format;
       att->samples = pCreateInfo->pAttachments[i].samples;
       att->cpp = vk_format_get_blocksize(att->format) * att->samples;
-      att->load_op = pCreateInfo->pAttachments[i].loadOp;
-      att->stencil_load_op = pCreateInfo->pAttachments[i].stencilLoadOp;
-      att->store_op = pCreateInfo->pAttachments[i].storeOp;
-      att->stencil_store_op = pCreateInfo->pAttachments[i].stencilStoreOp;
-      if (pCreateInfo->pAttachments[i].stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE &&
-          vk_format_has_stencil(att->format))
-         att->store_op = VK_ATTACHMENT_STORE_OP_STORE;
       att->gmem_offset = -1;
+
+      attachment_set_ops(att,
+                         pCreateInfo->pAttachments[i].loadOp,
+                         pCreateInfo->pAttachments[i].stencilLoadOp,
+                         pCreateInfo->pAttachments[i].storeOp,
+                         pCreateInfo->pAttachments[i].stencilStoreOp);
    }
    uint32_t subpass_attachment_count = 0;
    struct tu_subpass_attachment *p;

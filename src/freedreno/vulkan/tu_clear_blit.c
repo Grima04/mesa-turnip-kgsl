@@ -2123,17 +2123,14 @@ tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
       &cmd->state.pass->attachments[a];
    uint8_t mask = 0;
 
-   if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+   if (attachment->clear_mask == VK_IMAGE_ASPECT_COLOR_BIT)
       mask = 0xf;
+   if (attachment->clear_mask & VK_IMAGE_ASPECT_DEPTH_BIT)
+      mask |= 0x7;
+   if (attachment->clear_mask & VK_IMAGE_ASPECT_STENCIL_BIT)
+      mask |= 0x8;
 
-   if (attachment->format == VK_FORMAT_D24_UNORM_S8_UINT) {
-      mask &= 0x7;
-      if (attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
-         mask |= 0x8;
-   }
-
-   /* gmem_offset<0 means it isn't used by any subpass and shouldn't be cleared */
-   if (attachment->gmem_offset < 0 || !mask)
+   if (!mask)
       return;
 
    const struct blit_ops *ops = &r2d_ops;
@@ -2160,18 +2157,13 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
       &cmd->state.pass->attachments[a];
    unsigned clear_mask = 0;
 
-   /* note: this means it isn't used by any subpass and shouldn't be cleared anyway */
-   if (attachment->gmem_offset < 0)
-      return;
-
-   if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+   if (attachment->clear_mask == VK_IMAGE_ASPECT_COLOR_BIT)
       clear_mask = 0xf;
+   if (attachment->clear_mask & VK_IMAGE_ASPECT_DEPTH_BIT)
+      clear_mask |= 0x7;
+   if (attachment->clear_mask & VK_IMAGE_ASPECT_STENCIL_BIT)
+      clear_mask |= 0x8;
 
-   if (vk_format_has_stencil(attachment->format)) {
-      clear_mask &= 0x7;
-      if (attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
-         clear_mask |= 0x8;
-   }
    if (!clear_mask)
       return;
 
@@ -2185,7 +2177,7 @@ static void
 tu_emit_blit(struct tu_cmd_buffer *cmd,
              struct tu_cs *cs,
              const struct tu_image_view *iview,
-             struct tu_render_pass_attachment *attachment,
+             const struct tu_render_pass_attachment *attachment,
              bool resolve)
 {
    tu_cs_emit_regs(cs,
@@ -2246,28 +2238,18 @@ blit_can_resolve(VkFormat format)
 }
 
 void
-tu_emit_load_gmem_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t a)
+tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,
+                        struct tu_cs *cs,
+                        uint32_t a,
+                        bool force_load)
 {
-   tu_emit_blit(cmd, cs,
-                cmd->state.framebuffer->attachments[a].attachment,
-                &cmd->state.pass->attachments[a],
-                false);
-}
-
-void
-tu_load_gmem_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t a)
-{
+   const struct tu_image_view *iview =
+      cmd->state.framebuffer->attachments[a].attachment;
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
 
-   if (attachment->gmem_offset < 0)
-      return;
-
-   if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_LOAD ||
-       (vk_format_has_stencil(attachment->format) &&
-        attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_LOAD)) {
-      tu_emit_load_gmem_attachment(cmd, cs, a);
-   }
+   if (attachment->load || force_load)
+      tu_emit_blit(cmd, cs, iview, attachment, false);
 }
 
 void
@@ -2282,7 +2264,7 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
    struct tu_image_view *iview = cmd->state.framebuffer->attachments[a].attachment;
    struct tu_render_pass_attachment *src = &cmd->state.pass->attachments[gmem_a];
 
-   if (dst->store_op == VK_ATTACHMENT_STORE_OP_DONT_CARE)
+   if (!dst->store)
       return;
 
    uint32_t x1 = render_area->offset.x;

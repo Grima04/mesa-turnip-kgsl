@@ -1123,7 +1123,7 @@ tu_emit_load_clear(struct tu_cmd_buffer *cmd,
    tu6_emit_blit_scissor(cmd, cs, true);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_load_gmem_attachment(cmd, cs, i);
+      tu_load_gmem_attachment(cmd, cs, i, false);
 
    tu6_emit_blit_scissor(cmd, cs, false);
 
@@ -2362,7 +2362,7 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
           * if it is, should be doing a GMEM->GMEM resolve instead of GMEM->MEM->GMEM..
           */
          tu_finishme("missing GMEM->GMEM resolve path\n");
-         tu_emit_load_gmem_attachment(cmd, cs, a);
+         tu_load_gmem_attachment(cmd, cs, a, true);
       }
    }
 
