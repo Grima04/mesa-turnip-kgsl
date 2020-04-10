@@ -1121,6 +1121,9 @@ void handle_pseudo(ra_ctx& ctx,
 
 bool operand_can_use_reg(aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
 {
+   if (instr->operands[idx].isFixed())
+      return instr->operands[idx].physReg() == reg;
+
    if (!instr_can_access_subdword(instr) && reg.byte())
       return false;
 
@@ -1134,6 +1137,43 @@ bool operand_can_use_reg(aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
       // TODO: there are more instructions with restrictions on registers
       return true;
    }
+}
+
+void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
+                         std::vector<std::pair<Operand, Definition>>& parallelcopy,
+                         aco_ptr<Instruction>& instr, Operand& operand)
+{
+   /* check if the operand is fixed */
+   PhysReg dst;
+   if (operand.isFixed()) {
+      assert(operand.physReg() != ctx.assignments[operand.tempId()].reg);
+
+      /* check if target reg is blocked, and move away the blocking var */
+      if (register_file[operand.physReg().reg()]) {
+         assert(register_file[operand.physReg()] != 0xF0000000);
+         uint32_t blocking_id = register_file[operand.physReg().reg()];
+         RegClass rc = ctx.assignments[blocking_id].rc;
+         Operand pc_op = Operand(Temp{blocking_id, rc});
+         pc_op.setFixed(operand.physReg());
+
+         /* find free reg */
+         PhysReg reg = get_reg(ctx, register_file, pc_op.regClass(), parallelcopy, instr);
+         Definition pc_def = Definition(PhysReg{reg}, pc_op.regClass());
+         register_file.clear(pc_op);
+         parallelcopy.emplace_back(pc_op, pc_def);
+      }
+      dst = operand.physReg();
+
+   } else {
+      dst = get_reg(ctx, register_file, operand.regClass(), parallelcopy, instr);
+   }
+
+   Operand pc_op = operand;
+   pc_op.setFixed(ctx.assignments[operand.tempId()].reg);
+   Definition pc_def = Definition(dst, pc_op.regClass());
+   register_file.clear(pc_op);
+   parallelcopy.emplace_back(pc_op, pc_def);
+   update_renames(ctx, register_file, parallelcopy, instr);
 }
 
 Temp read_variable(ra_ctx& ctx, Temp val, unsigned block_idx)
@@ -1593,85 +1633,26 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
 
             /* rename operands */
             operand.setTemp(read_variable(ctx, operand.getTemp(), block.index));
+            assert(ctx.assignments[operand.tempId()].assigned);
 
-            /* check if the operand is fixed */
-            if (operand.isFixed()) {
+            PhysReg reg = ctx.assignments[operand.tempId()].reg;
+            if (operand_can_use_reg(instr, i, reg))
+               operand.setFixed(reg);
+            else
+               get_reg_for_operand(ctx, register_file, parallelcopy, instr, operand);
 
-               if (operand.physReg() == ctx.assignments[operand.tempId()].reg) {
-                  /* we are fine: the operand is already assigned the correct reg */
-
-               } else {
-                  /* check if target reg is blocked, and move away the blocking var */
-                  if (register_file[operand.physReg().reg()]) {
-                     uint32_t blocking_id = register_file[operand.physReg().reg()];
-                     RegClass rc = ctx.assignments[blocking_id].rc;
-                     Operand pc_op = Operand(Temp{blocking_id, rc});
-                     pc_op.setFixed(operand.physReg());
-                     Definition pc_def = Definition(Temp{program->allocateId(), pc_op.regClass()});
-                     /* find free reg */
-                     PhysReg reg = get_reg(ctx, register_file, pc_op.regClass(), parallelcopy, instr);
-                     pc_def.setFixed(reg);
-                     ctx.assignments.emplace_back(reg, pc_def.regClass());
-                     assert(ctx.assignments.size() == ctx.program->peekAllocationId());
-                     register_file.clear(pc_op);
-                     register_file.fill(pc_def);
-                     parallelcopy.emplace_back(pc_op, pc_def);
-
-                     /* handle renames of previous operands */
-                     for (unsigned j = 0; j < i; j++) {
-                        Operand& op = instr->operands[j];
-                        if (op.isTemp() && op.tempId() == blocking_id) {
-                           op.setTemp(pc_def.getTemp());
-                           op.setFixed(reg);
-                        }
-                     }
-                  }
-                  /* move operand to fixed reg and create parallelcopy pair */
-                  Operand pc_op = operand;
-                  Temp tmp = Temp{program->allocateId(), operand.regClass()};
-                  Definition pc_def = Definition(tmp);
-                  pc_def.setFixed(operand.physReg());
-                  pc_op.setFixed(ctx.assignments[operand.tempId()].reg);
-                  operand.setTemp(tmp);
-                  ctx.assignments.emplace_back(pc_def.physReg(), pc_def.regClass());
-                  assert(ctx.assignments.size() == ctx.program->peekAllocationId());
-                  operand.setFixed(pc_def.physReg());
-                  register_file.clear(pc_op);
-                  register_file.fill(pc_def);
-                  parallelcopy.emplace_back(pc_op, pc_def);
-               }
-            } else {
-               assert(ctx.assignments[operand.tempId()].assigned);
-               PhysReg reg = ctx.assignments[operand.tempId()].reg;
-
-               if (operand_can_use_reg(instr, i, reg)) {
-                  operand.setFixed(ctx.assignments[operand.tempId()].reg);
-               } else {
-                  Operand pc_op = operand;
-                  pc_op.setFixed(reg);
-                  PhysReg new_reg = get_reg(ctx, register_file, operand.regClass(), parallelcopy, instr);
-                  Definition pc_def = Definition(program->allocateId(), new_reg, pc_op.regClass());
-                  ctx.assignments.emplace_back(new_reg, pc_def.regClass());
-                  assert(ctx.assignments.size() == ctx.program->peekAllocationId());
-                  register_file.clear(pc_op);
-                  register_file.fill(pc_def);
-                  parallelcopy.emplace_back(pc_op, pc_def);
-                  operand.setTemp(pc_def.getTemp());
-                  operand.setFixed(new_reg);
-               }
-
-               if (instr->format == Format::EXP ||
-                   (instr->isVMEM() && i == 3 && program->chip_class == GFX6) ||
-                   (instr->format == Format::DS && static_cast<DS_instruction*>(instr.get())->gds)) {
-                  for (unsigned j = 0; j < operand.size(); j++)
-                     ctx.war_hint.set(operand.physReg().reg() + j);
-               }
+            if (instr->format == Format::EXP ||
+                (instr->isVMEM() && i == 3 && ctx.program->chip_class == GFX6) ||
+                (instr->format == Format::DS && static_cast<DS_instruction*>(instr.get())->gds)) {
+               for (unsigned j = 0; j < operand.size(); j++)
+                  ctx.war_hint.set(operand.physReg().reg() + j);
             }
+
             std::unordered_map<unsigned, phi_info>::iterator phi = ctx.phi_map.find(operand.getTemp().id());
             if (phi != ctx.phi_map.end())
                phi->second.uses.emplace(instr.get());
-
          }
+
          /* remove dead vars from register file */
          for (const Operand& op : instr->operands) {
             if (op.isTemp() && op.isFirstKillBeforeDef())
