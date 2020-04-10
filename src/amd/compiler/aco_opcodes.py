@@ -49,15 +49,15 @@ class Format(Enum):
    PSEUDO_BRANCH = 16
    PSEUDO_BARRIER = 17
    PSEUDO_REDUCTION = 18
+   VOP3P = 19
    VOP1 = 1 << 8
    VOP2 = 1 << 9
    VOPC = 1 << 10
    VOP3A = 1 << 11
    VOP3B = 1 << 11
-   VOP3P = 1 << 12
-   VINTRP = 1 << 13
-   DPP = 1 << 14
-   SDWA = 1 << 15
+   VINTRP = 1 << 12
+   DPP = 1 << 13
+   SDWA = 1 << 14
 
    def get_builder_fields(self):
       if self == Format.SOPK:

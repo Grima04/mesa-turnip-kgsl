@@ -90,17 +90,17 @@ enum class Format : std::uint16_t {
    PSEUDO_REDUCTION = 18,
 
    /* Vector ALU Formats */
+   VOP3P = 19,
    VOP1 = 1 << 8,
    VOP2 = 1 << 9,
    VOPC = 1 << 10,
    VOP3 = 1 << 11,
    VOP3A = 1 << 11,
    VOP3B = 1 << 11,
-   VOP3P = 1 << 12,
    /* Vector Parameter Interpolation Format */
-   VINTRP = 1 << 13,
-   DPP = 1 << 14,
-   SDWA = 1 << 15,
+   VINTRP = 1 << 12,
+   DPP = 1 << 13,
+   SDWA = 1 << 14,
 };
 
 enum barrier_interaction : uint8_t {
@@ -755,7 +755,7 @@ struct Instruction {
           || ((uint16_t) format & (uint16_t) Format::VOPC) == (uint16_t) Format::VOPC
           || ((uint16_t) format & (uint16_t) Format::VOP3A) == (uint16_t) Format::VOP3A
           || ((uint16_t) format & (uint16_t) Format::VOP3B) == (uint16_t) Format::VOP3B
-          || ((uint16_t) format & (uint16_t) Format::VOP3P) == (uint16_t) Format::VOP3P;
+          || format == Format::VOP3P;
    }
 
    constexpr bool isSALU() const noexcept
@@ -782,8 +782,7 @@ struct Instruction {
    constexpr bool isVOP3() const noexcept
    {
       return ((uint16_t) format & (uint16_t) Format::VOP3A) ||
-             ((uint16_t) format & (uint16_t) Format::VOP3B) ||
-             format == Format::VOP3P;
+             ((uint16_t) format & (uint16_t) Format::VOP3B);
    }
 
    constexpr bool isSDWA() const noexcept
@@ -876,6 +875,16 @@ struct VOP3A_instruction : public Instruction {
    uint32_t padding : 9;
 };
 static_assert(sizeof(VOP3A_instruction) == sizeof(Instruction) + 8);
+
+struct VOP3P_instruction : public Instruction {
+   bool neg_lo[3];
+   bool neg_hi[3];
+   uint8_t opsel_lo : 3;
+   uint8_t opsel_hi : 3;
+   bool clamp : 1;
+   uint32_t padding : 9;
+};
+static_assert(sizeof(VOP3P_instruction) == sizeof(Instruction) + 8);
 
 /**
  * Data Parallel Primitives Format:
@@ -1172,14 +1181,23 @@ constexpr bool Instruction::usesModifiers() const noexcept
 {
    if (isDPP() || isSDWA())
       return true;
-   if (!isVOP3())
-      return false;
-   const VOP3A_instruction *vop3 = static_cast<const VOP3A_instruction*>(this);
-   for (unsigned i = 0; i < operands.size(); i++) {
-      if (vop3->abs[i] || vop3->neg[i])
-         return true;
+
+   if (format == Format::VOP3P) {
+      const VOP3P_instruction *vop3p = static_cast<const VOP3P_instruction*>(this);
+      for (unsigned i = 0; i < operands.size(); i++) {
+         if (vop3p->neg_lo[i] || vop3p->neg_hi[i])
+            return true;
+      }
+      return vop3p->opsel_lo || vop3p->opsel_hi || vop3p->clamp;
+   } else if (isVOP3()) {
+      const VOP3A_instruction *vop3 = static_cast<const VOP3A_instruction*>(this);
+      for (unsigned i = 0; i < operands.size(); i++) {
+         if (vop3->abs[i] || vop3->neg[i])
+            return true;
+      }
+      return vop3->opsel || vop3->clamp || vop3->omod;
    }
-   return vop3->opsel || vop3->clamp || vop3->omod;
+   return false;
 }
 
 constexpr bool is_phi(Instruction* instr)

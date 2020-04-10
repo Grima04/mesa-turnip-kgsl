@@ -480,6 +480,11 @@ static void print_instr_format_specific(struct Instruction *instr, FILE *output)
       print_barrier_reorder(mtbuf->can_reorder, mtbuf->barrier, output);
       break;
    }
+   case Format::VOP3P: {
+      if (static_cast<VOP3P_instruction*>(instr)->clamp)
+         fprintf(output, " clamp");
+      break;
+   }
    default: {
       break;
    }
@@ -652,7 +657,22 @@ void aco_print_instr(struct Instruction *instr, FILE *output)
          }
          if (abs[i])
             fprintf(output, "|");
-       }
+
+         if (instr->format == Format::VOP3P) {
+            VOP3P_instruction* vop3 = static_cast<VOP3P_instruction*>(instr);
+            if ((vop3->opsel_lo & (1 << i)) || !(vop3->opsel_hi & (1 << i))) {
+               fprintf(output, ".%c%c",
+                       vop3->opsel_lo & (1 << i) ? 'y' : 'x',
+                       vop3->opsel_hi & (1 << i) ? 'y' : 'x');
+            }
+            if (vop3->neg_lo[i] && vop3->neg_hi[i])
+               fprintf(output, "*[-1,-1]");
+            else if (vop3->neg_lo[i])
+               fprintf(output, "*[-1,1]");
+            else if (vop3->neg_hi[i])
+               fprintf(output, "*[1,-1]");
+         }
+      }
    }
    print_instr_format_specific(instr, output);
 }
