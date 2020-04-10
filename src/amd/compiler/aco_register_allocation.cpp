@@ -481,11 +481,12 @@ bool get_regs_for_copies(ra_ctx& ctx,
       std::pair<PhysReg, bool> res;
       if (is_dead_operand) {
          if (instr->opcode == aco_opcode::p_create_vector) {
-            for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
+            for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
                if (instr->operands[i].isTemp() && instr->operands[i].tempId() == id) {
-                  for (unsigned j = 0; j < size; j++)
-                     assert(reg_file[def_reg_lo + offset + j] == 0);
-                  res = {PhysReg{def_reg_lo + offset}, true};
+                  PhysReg reg(def_reg_lo);
+                  reg.reg_b += offset;
+                  assert(!reg_file.test(reg, var.rc.bytes()));
+                  res = {reg, true};
                   break;
                }
             }
@@ -893,6 +894,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
 {
    /* create_vector instructions have different costs w.r.t. register coalescing */
    uint32_t size = rc.size();
+   uint32_t bytes = rc.bytes();
    uint32_t stride = 1;
    uint32_t lb, ub;
    if (rc.type() == RegType::vgpr) {
@@ -907,20 +909,25 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
          stride = 4;
    }
 
+   //TODO: improve p_create_vector for sub-dword vectors
+
    unsigned best_pos = -1;
    unsigned num_moves = 0xFF;
    bool best_war_hint = true;
 
    /* test for each operand which definition placement causes the least shuffle instructions */
-   for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
+   for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
       // TODO: think about, if we can alias live operands on the same register
       if (!instr->operands[i].isTemp() || !instr->operands[i].isKillBeforeDef() || instr->operands[i].getTemp().type() != rc.type())
          continue;
 
-      if (offset > instr->operands[i].physReg())
+      if (offset > instr->operands[i].physReg().reg_b)
          continue;
 
-      unsigned reg_lo = instr->operands[i].physReg() - offset;
+      unsigned reg_lo = instr->operands[i].physReg().reg_b - offset;
+      if (reg_lo % 4)
+         continue;
+      reg_lo /= 4;
       unsigned reg_hi = reg_lo + size - 1;
       unsigned k = 0;
 
@@ -942,10 +949,18 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
       bool linear_vgpr = false;
       for (unsigned j = reg_lo; j <= reg_hi && !linear_vgpr; j++) {
          if (reg_file[j] != 0) {
-            k++;
-            /* we cannot split live ranges of linear vgprs */
-            if (ctx.assignments[reg_file[j]].rc & (1 << 6))
-               linear_vgpr = true;
+            if (reg_file[j] == 0xF0000000) {
+               PhysReg reg;
+               reg.reg_b = j * 4;
+               unsigned bytes_left = bytes - (j - reg_lo) * 4;
+               for (unsigned k = 0; k < MIN2(bytes_left, 4); k++, reg.reg_b++)
+                  k += reg_file.test(reg, 1);
+            } else {
+               k += 4;
+               /* we cannot split live ranges of linear vgprs */
+               if (ctx.assignments[reg_file[j]].rc & (1 << 6))
+                  linear_vgpr = true;
+            }
          }
          war_hint |= ctx.war_hint[j];
       }
@@ -953,13 +968,13 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
          continue;
 
       /* count operands in wrong positions */
-      for (unsigned j = 0, offset = 0; j < instr->operands.size(); offset += instr->operands[j].size(), j++) {
+      for (unsigned j = 0, offset = 0; j < instr->operands.size(); offset += instr->operands[j].bytes(), j++) {
          if (j == i ||
              !instr->operands[j].isTemp() ||
              instr->operands[j].getTemp().type() != rc.type())
             continue;
-         if (instr->operands[j].physReg() != reg_lo + offset)
-            k += instr->operands[j].size();
+         if (instr->operands[j].physReg().reg_b != reg_lo * 4 + offset)
+            k += instr->operands[j].bytes();
       }
       bool aligned = rc == RegClass::v4 && reg_lo % 4 == 0;
       if (k > num_moves || (!aligned && k == num_moves))
@@ -970,18 +985,18 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
       best_war_hint = war_hint;
    }
 
-   if (num_moves >= size)
+   if (num_moves >= bytes)
       return get_reg(ctx, reg_file, rc, parallelcopies, instr);
 
    /* collect variables to be moved */
    std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
    /* move killed operands which aren't yet at the correct position */
-   for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
+   for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
       if (instr->operands[i].isTemp() &&
           instr->operands[i].isFirstKillBeforeDef() &&
           instr->operands[i].getTemp().type() == rc.type() &&
-          instr->operands[i].physReg() != best_pos + offset)
+          instr->operands[i].physReg().reg_b != best_pos * 4 + offset)
          vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
    }
 
