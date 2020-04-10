@@ -122,7 +122,7 @@ nir_convert_ycbcr_to_rgb(nir_builder *b,
                chroma_range(b, nir_channel(b, raw_channels, 0), bpcs[0], range),
                y_range(b, nir_channel(b, raw_channels, 1), bpcs[1], range),
                chroma_range(b, nir_channel(b, raw_channels, 2), bpcs[2], range),
-               nir_imm_float(b, 1.0f));
+               nir_channel(b, raw_channels, 3));
 
    if (model == VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_IDENTITY)
       return expanded_channels;
@@ -138,5 +138,5 @@ nir_convert_ycbcr_to_rgb(nir_builder *b,
 
    return nir_vec4(b,
                    converted_channels[0], converted_channels[1],
-                   converted_channels[2], nir_imm_float(b, 1.0f));
+                   converted_channels[2], nir_channel(b, raw_channels, 3));
 }
