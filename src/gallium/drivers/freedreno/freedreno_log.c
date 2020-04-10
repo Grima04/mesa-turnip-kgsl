@@ -68,7 +68,8 @@ struct fd_log_chunk {
 	/* list of recorded 64b timestamps */
 	struct fd_bo *timestamps_bo;
 
-	bool eof;
+	bool last;          /* this chunk is last in submit */
+	bool eof;           /* this chunk is last in frame */
 	uint32_t *ring_cur;
 };
 
@@ -83,6 +84,10 @@ get_chunk(struct fd_batch *batch)
 				struct fd_log_chunk, node);
 		if (chunk->num_msgs < msgs_per_chunk)
 			return chunk;
+		/* we need to expand to add another chunk to the batch, so
+		 * the current one is no longer the last one of the batch:
+		 */
+		chunk->last = false;
 	}
 
 	/* .. if not, then create a new one: */
@@ -90,6 +95,7 @@ get_chunk(struct fd_batch *batch)
 	chunk->msg_fifo = u_fifo_create(msgs_per_chunk);
 	chunk->timestamps_bo = fd_bo_new(batch->ctx->screen->dev, bo_size,
 			DRM_FREEDRENO_GEM_TYPE_KMEM, "timestamps");
+	chunk->last = true;
 
 	list_addtail(&chunk->node, &batch->log_chunks);
 
@@ -106,14 +112,22 @@ free_chunk(struct fd_log_chunk *chunk)
 	free(chunk);
 }
 
+/* state to accumulate time across N chunks associated with a single batch: */
+struct times {
+	uint64_t last_time_ns;
+	uint64_t first_time_ns;
+};
+
 static void
-process_chunk(struct fd_context *ctx, struct fd_log_chunk *chunk)
+process_chunk(struct fd_context *ctx, struct fd_log_chunk *chunk, struct times *t)
 {
-	fprintf(ctx->log_out, "+----- TS -----+ +----- NS -----+ +-- Δ --+  +----- MSG -----\n");
+	/* For first chunk of batch, accumulated times will be zerod: */
+	if (!t->last_time_ns) {
+		fprintf(ctx->log_out,
+			"+----- TS -----+ +----- NS -----+ +-- Δ --+  +----- MSG -----\n");
+	}
 
 	uint64_t *timestamps = fd_bo_map(chunk->timestamps_bo);
-	uint64_t last_time_ns = 0;
-	uint64_t first_time_ns = 0;
 	unsigned n = 0;
 	char *msg;
 
@@ -122,26 +136,31 @@ process_chunk(struct fd_context *ctx, struct fd_log_chunk *chunk)
 		uint64_t ns = ctx->ts_to_ns(ts);
 		int32_t delta;
 
-		if (!first_time_ns)
-			first_time_ns = ns;
+		if (!t->first_time_ns)
+			t->first_time_ns = ns;
 
 		if (ns) {
-			delta = last_time_ns ? ns - last_time_ns : 0;
-			last_time_ns = ns;
+			delta = t->last_time_ns ? ns - t->last_time_ns : 0;
+			t->last_time_ns = ns;
 		} else {
 			/* we skipped recording the timestamp, so it should be
 			 * the same as last msg:
 			 */
-			ns = last_time_ns;
+			ns = t->last_time_ns;
 			delta = 0;
 		}
 
-		fprintf(ctx->log_out, "%016"PRIu64" %016"PRIu64" %+9d: %s\n", ts, ns, delta, msg);
+		fprintf(ctx->log_out, "%016"PRIu64" %016"PRIu64" %+9d: %s\n",
+			ts, ns, delta, msg);
 		free(msg);
 
 	}
 
-	fprintf(ctx->log_out, "ELAPSED: %"PRIu64" ns\n", last_time_ns - first_time_ns);
+	if (chunk->last) {
+		fprintf(ctx->log_out, "ELAPSED: %"PRIu64" ns\n",
+			t->last_time_ns - t->first_time_ns);
+		memset(t, 0, sizeof(*t));
+	}
 
 	if (chunk->eof)
 		fprintf(ctx->log_out, "END OF FRAME %u\n", ctx->frame_nr++);
@@ -150,6 +169,8 @@ process_chunk(struct fd_context *ctx, struct fd_log_chunk *chunk)
 void
 fd_log_process(struct fd_context *ctx, bool wait)
 {
+	struct times times = {0};
+
 	while (!list_is_empty(&ctx->log_chunks)) {
 		struct fd_log_chunk *chunk = list_first_entry(&ctx->log_chunks,
 				struct fd_log_chunk, node);
@@ -162,8 +183,15 @@ fd_log_process(struct fd_context *ctx, bool wait)
 		if (ret)
 			break;
 
-		process_chunk(ctx, chunk);
+		process_chunk(ctx, chunk, &times);
 		free_chunk(chunk);
+	}
+
+	/* We expect that the last processed chunk was the last in it's
+	 * batch, which should reset the times:
+	 */
+	if (times.last_time_ns) {
+		fprintf(ctx->log_out, "WARNING: last processed chunk not last in batch?");
 	}
 
 	fflush(ctx->log_out);
