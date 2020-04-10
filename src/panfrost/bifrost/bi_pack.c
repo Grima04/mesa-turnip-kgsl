@@ -49,6 +49,8 @@ bi_pack_header(bi_clause *clause, bi_clause *next, bool is_fragment)
                 .next_clause_type = next ? next->clause_type : 0,
         };
 
+        header.branch_cond |= header.back_to_back;
+
         uint64_t u = 0;
         memcpy(&u, &header, sizeof(header));
         return u;
