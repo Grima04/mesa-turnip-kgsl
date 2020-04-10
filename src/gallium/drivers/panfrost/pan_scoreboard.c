@@ -115,15 +115,18 @@ panfrost_new_job(
                 void *payload, size_t payload_size,
                 bool inject)
 {
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+
         unsigned global_dep = 0;
 
         if (type == JOB_TYPE_TILER) {
-                /* Tiler jobs must be chained, and the first tiler job must
-                 * depend on the write value job, whose index we reserve now */
+                /* Tiler jobs must be chained, and on Midgard, the first tiler
+                 * job must depend on the write value job, whose index we
+                 * reserve now */
 
                 if (batch->tiler_dep)
                         global_dep = batch->tiler_dep;
-                else {
+                else if (!(dev->quirks & IS_BIFROST)) {
                         batch->write_value_index = ++batch->job_index;
                         global_dep = batch->write_value_index;
                 }
