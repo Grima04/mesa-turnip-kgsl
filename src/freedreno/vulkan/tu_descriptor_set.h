@@ -61,6 +61,10 @@ struct tu_descriptor_set_binding_layout
     * if there are no immutable samplers. */
    uint32_t immutable_samplers_offset;
 
+   /* Offset in the tu_descriptor_set_layout of the ycbcr samplers, or 0
+    * if there are no immutable samplers. */
+   uint32_t ycbcr_samplers_offset;
+
    /* Shader stages that use this binding */
    uint32_t shader_stages;
 };
@@ -123,4 +127,15 @@ tu_immutable_samplers(const struct tu_descriptor_set_layout *set,
 {
    return (void *) ((const char *) set + binding->immutable_samplers_offset);
 }
+
+static inline const struct tu_sampler_ycbcr_conversion *
+tu_immutable_ycbcr_samplers(const struct tu_descriptor_set_layout *set,
+                            const struct tu_descriptor_set_binding_layout *binding)
+{
+   if (!binding->ycbcr_samplers_offset)
+      return NULL;
+
+   return (void *) ((const char *) set + binding->ycbcr_samplers_offset);
+}
+
 #endif /* TU_DESCRIPTOR_SET_H */

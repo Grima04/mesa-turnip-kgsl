@@ -1507,8 +1507,18 @@ struct tu_image_view
    uint32_t RB_BLIT_DST_INFO;
 };
 
+struct tu_sampler_ycbcr_conversion {
+   VkFormat format;
+   VkSamplerYcbcrModelConversion ycbcr_model;
+   VkSamplerYcbcrRange ycbcr_range;
+   VkComponentMapping components;
+   VkChromaLocation chroma_offsets[2];
+   VkFilter chroma_filter;
+};
+
 struct tu_sampler {
    uint32_t descriptor[A6XX_TEX_SAMP_DWORDS];
+   struct tu_sampler_ycbcr_conversion *ycbcr_sampler;
 };
 
 void
@@ -1774,6 +1784,7 @@ TU_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_layout, VkPipelineLayout)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_query_pool, VkQueryPool)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_render_pass, VkRenderPass)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler, VkSampler)
+TU_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler_ycbcr_conversion, VkSamplerYcbcrConversion)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_shader_module, VkShaderModule)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_semaphore, VkSemaphore)
 

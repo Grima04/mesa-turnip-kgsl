@@ -119,18 +119,32 @@ tu_CreateDescriptorSetLayout(
 
    uint32_t max_binding = 0;
    uint32_t immutable_sampler_count = 0;
+   uint32_t ycbcr_sampler_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
       if ((pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
            pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
            pCreateInfo->pBindings[j].pImmutableSamplers) {
          immutable_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
+
+         bool has_ycbcr_sampler = false;
+         for (unsigned i = 0; i < pCreateInfo->pBindings[j].descriptorCount; ++i) {
+            if (tu_sampler_from_handle(pCreateInfo->pBindings[j].pImmutableSamplers[i])->ycbcr_sampler)
+               has_ycbcr_sampler = true;
+         }
+
+         if (has_ycbcr_sampler)
+            ycbcr_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
       }
    }
 
    uint32_t samplers_offset = sizeof(struct tu_descriptor_set_layout) +
       (max_binding + 1) * sizeof(set_layout->binding[0]);
-   uint32_t size = samplers_offset + immutable_sampler_count * A6XX_TEX_SAMP_DWORDS * 4;
+   /* note: only need to store TEX_SAMP_DWORDS for immutable samples,
+    * but using struct tu_sampler makes things simpler */
+   uint32_t size = samplers_offset +
+      immutable_sampler_count * sizeof(struct tu_sampler) +
+      ycbcr_sampler_count * sizeof(struct tu_sampler_ycbcr_conversion);
 
    set_layout = vk_alloc2(&device->alloc, pAllocator, size, 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -141,6 +155,8 @@ tu_CreateDescriptorSetLayout(
 
    /* We just allocate all the immutable samplers at the end of the struct */
    struct tu_sampler *samplers = (void*) &set_layout->binding[max_binding + 1];
+   struct tu_sampler_ycbcr_conversion *ycbcr_samplers =
+      (void*) &samplers[immutable_sampler_count];
 
    VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(
       pCreateInfo->pBindings, pCreateInfo->bindingCount);
@@ -196,6 +212,27 @@ tu_CreateDescriptorSetLayout(
 
          samplers += binding->descriptorCount;
          samplers_offset += sizeof(struct tu_sampler) * binding->descriptorCount;
+
+         bool has_ycbcr_sampler = false;
+         for (unsigned i = 0; i < pCreateInfo->pBindings[j].descriptorCount; ++i) {
+            if (tu_sampler_from_handle(binding->pImmutableSamplers[i])->ycbcr_sampler)
+               has_ycbcr_sampler = true;
+         }
+
+         if (has_ycbcr_sampler) {
+            set_layout->binding[b].ycbcr_samplers_offset =
+               (const char*)ycbcr_samplers - (const char*)set_layout;
+            for (uint32_t i = 0; i < binding->descriptorCount; i++) {
+               struct tu_sampler *sampler = tu_sampler_from_handle(binding->pImmutableSamplers[i]);
+               if (sampler->ycbcr_sampler)
+                  ycbcr_samplers[i] = *sampler->ycbcr_sampler;
+               else
+                  ycbcr_samplers[i].ycbcr_model = VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY;
+            }
+            ycbcr_samplers += binding->descriptorCount;
+         } else {
+            set_layout->binding[b].ycbcr_samplers_offset = 0;
+         }
       }
 
       set_layout->size +=
@@ -502,8 +539,8 @@ tu_descriptor_set_create(struct tu_device *device,
             (const struct tu_sampler *)((const char *)layout +
                                layout->binding[i].immutable_samplers_offset);
          for (unsigned j = 0; j < layout->binding[i].array_size; ++j) {
-            memcpy(set->mapped_ptr + offset, samplers + j,
-                   sizeof(struct tu_sampler));
+            memcpy(set->mapped_ptr + offset, samplers[j].descriptor,
+                   sizeof(samplers[j].descriptor));
             offset += layout->binding[i].size / 4;
          }
       }
@@ -1210,19 +1247,39 @@ tu_UpdateDescriptorSetWithTemplate(
 
 VkResult
 tu_CreateSamplerYcbcrConversion(
-   VkDevice device,
+   VkDevice _device,
    const VkSamplerYcbcrConversionCreateInfo *pCreateInfo,
    const VkAllocationCallbacks *pAllocator,
    VkSamplerYcbcrConversion *pYcbcrConversion)
 {
-   *pYcbcrConversion = VK_NULL_HANDLE;
+   TU_FROM_HANDLE(tu_device, device, _device);
+   struct tu_sampler_ycbcr_conversion *conversion;
+
+   conversion = vk_alloc2(&device->alloc, pAllocator, sizeof(*conversion), 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!conversion)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   conversion->format = pCreateInfo->format;
+   conversion->ycbcr_model = pCreateInfo->ycbcrModel;
+   conversion->ycbcr_range = pCreateInfo->ycbcrRange;
+   conversion->components = pCreateInfo->components;
+   conversion->chroma_offsets[0] = pCreateInfo->xChromaOffset;
+   conversion->chroma_offsets[1] = pCreateInfo->yChromaOffset;
+   conversion->chroma_filter = pCreateInfo->chromaFilter;
+
+   *pYcbcrConversion = tu_sampler_ycbcr_conversion_to_handle(conversion);
    return VK_SUCCESS;
 }
 
 void
-tu_DestroySamplerYcbcrConversion(VkDevice device,
+tu_DestroySamplerYcbcrConversion(VkDevice _device,
                                  VkSamplerYcbcrConversion ycbcrConversion,
                                  const VkAllocationCallbacks *pAllocator)
 {
-   /* Do nothing. */
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_sampler_ycbcr_conversion, ycbcr_conversion, ycbcrConversion);
+
+   if (ycbcr_conversion)
+      vk_free2(&device->alloc, pAllocator, ycbcr_conversion);
 }

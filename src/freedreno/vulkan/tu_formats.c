@@ -384,8 +384,14 @@ tu_physical_device_get_format_properties(
                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
-                 VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
+                 VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT |
+                 VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT |
+                 VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
+
       buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+
+      if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED)
+         optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT;
 
       if (physical_device->supported_extensions.EXT_filter_cubic)
          optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT;
@@ -701,6 +707,7 @@ tu_GetPhysicalDeviceImageFormatProperties2(
    VkExternalImageFormatProperties *external_props = NULL;
    VkFilterCubicImageViewImageFormatPropertiesEXT *cubic_props = NULL;
    VkFormatFeatureFlags format_feature_flags;
+   VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
    VkResult result;
 
    result = tu_get_image_format_properties(physical_device,
@@ -732,6 +739,9 @@ tu_GetPhysicalDeviceImageFormatProperties2(
          break;
       case VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT:
          cubic_props = (void *) s;
+         break;
+      case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES:
+         ycbcr_props = (void *) s;
          break;
       default:
          break;
@@ -766,6 +776,9 @@ tu_GetPhysicalDeviceImageFormatProperties2(
          cubic_props->filterCubicMinmax = false;
       }
    }
+
+   if (ycbcr_props)
+      ycbcr_props->combinedImageSamplerDescriptorCount = 1;
 
    return VK_SUCCESS;
 

@@ -166,35 +166,62 @@ tu6_fetchsize(VkFormat format)
    }
 }
 
+static void
+compose_swizzle(unsigned char *swiz, const VkComponentMapping *mapping)
+{
+   unsigned char src_swiz[4] = { swiz[0], swiz[1], swiz[2], swiz[3] };
+   VkComponentSwizzle vk_swiz[4] = {
+      mapping->r, mapping->g, mapping->b, mapping->a
+   };
+   for (int i = 0; i < 4; i++) {
+      switch (vk_swiz[i]) {
+      case VK_COMPONENT_SWIZZLE_IDENTITY:
+         swiz[i] = src_swiz[i];
+         break;
+      case VK_COMPONENT_SWIZZLE_R...VK_COMPONENT_SWIZZLE_A:
+         swiz[i] = src_swiz[vk_swiz[i] - VK_COMPONENT_SWIZZLE_R];
+         break;
+      case VK_COMPONENT_SWIZZLE_ZERO:
+         swiz[i] = A6XX_TEX_ZERO;
+         break;
+      case VK_COMPONENT_SWIZZLE_ONE:
+         swiz[i] = A6XX_TEX_ONE;
+         break;
+      default:
+         unreachable("unexpected swizzle");
+      }
+   }
+}
+
 static uint32_t
 tu6_texswiz(const VkComponentMapping *comps,
+            const struct tu_sampler_ycbcr_conversion *conversion,
             VkFormat format,
             VkImageAspectFlagBits aspect_mask)
 {
-   unsigned char swiz[4] = {comps->r, comps->g, comps->b, comps->a};
-   unsigned char vk_swizzle[] = {
-      [VK_COMPONENT_SWIZZLE_ZERO] = A6XX_TEX_ZERO,
-      [VK_COMPONENT_SWIZZLE_ONE]  = A6XX_TEX_ONE,
-      [VK_COMPONENT_SWIZZLE_R] = A6XX_TEX_X,
-      [VK_COMPONENT_SWIZZLE_G] = A6XX_TEX_Y,
-      [VK_COMPONENT_SWIZZLE_B] = A6XX_TEX_Z,
-      [VK_COMPONENT_SWIZZLE_A] = A6XX_TEX_W,
+   unsigned char swiz[4] = {
+      A6XX_TEX_X, A6XX_TEX_Y, A6XX_TEX_Z, A6XX_TEX_W,
    };
-   const unsigned char *fmt_swiz = vk_format_description(format)->swizzle;
 
-   for (unsigned i = 0; i < 4; i++) {
-      swiz[i] = (swiz[i] == VK_COMPONENT_SWIZZLE_IDENTITY) ? i : vk_swizzle[swiz[i]];
-      /* if format has 0/1 in channel, use that (needed for bc1_rgb) */
-      if (swiz[i] < 4) {
-         if (aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT &&
-             format == VK_FORMAT_D24_UNORM_S8_UINT)
-            swiz[i] = A6XX_TEX_Y;
-         switch (fmt_swiz[swiz[i]]) {
-         case PIPE_SWIZZLE_0: swiz[i] = A6XX_TEX_ZERO; break;
-         case PIPE_SWIZZLE_1: swiz[i] = A6XX_TEX_ONE;  break;
-         }
+   switch (format) {
+   case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+   case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+      /* same hardware format is used for BC1_RGB / BC1_RGBA */
+      swiz[3] = A6XX_TEX_ONE;
+      break;
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      /* for D24S8, stencil is in the 2nd channel of the hardware format */
+      if (aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         swiz[0] = A6XX_TEX_Y;
+         swiz[1] = A6XX_TEX_ZERO;
       }
+   default:
+      break;
    }
+
+   compose_swizzle(swiz, comps);
+   if (conversion)
+      compose_swizzle(swiz, &conversion->components);
 
    return A6XX_TEX_CONST_0_SWIZ_X(swiz[0]) |
           A6XX_TEX_CONST_0_SWIZ_Y(swiz[1]) |
@@ -252,6 +279,11 @@ tu_image_view_init(struct tu_image_view *iview,
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
    VkFormat format = pCreateInfo->format;
    VkImageAspectFlagBits aspect_mask = pCreateInfo->subresourceRange.aspectMask;
+
+   const struct VkSamplerYcbcrConversionInfo *ycbcr_conversion =
+      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_YCBCR_CONVERSION_INFO);
+   const struct tu_sampler_ycbcr_conversion *conversion = ycbcr_conversion ?
+      tu_sampler_ycbcr_conversion_from_handle(ycbcr_conversion->conversion) : NULL;
 
    switch (image->type) {
    case VK_IMAGE_TYPE_1D:
@@ -320,7 +352,7 @@ tu_image_view_init(struct tu_image_view *iview,
       A6XX_TEX_CONST_0_FMT(fmt_tex) |
       A6XX_TEX_CONST_0_SAMPLES(tu_msaa_samples(image->samples)) |
       A6XX_TEX_CONST_0_SWAP(fmt.swap) |
-      tu6_texswiz(&pCreateInfo->components, format, aspect_mask) |
+      tu6_texswiz(&pCreateInfo->components, conversion, format, aspect_mask) |
       A6XX_TEX_CONST_0_MIPLVLS(tu_get_levelCount(image, range) - 1);
    iview->descriptor[1] = A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height);
    iview->descriptor[2] =
@@ -630,7 +662,7 @@ tu_buffer_view_init(struct tu_buffer_view *view,
       A6XX_TEX_CONST_0_SWAP(fmt.swap) |
       A6XX_TEX_CONST_0_FMT(fmt.fmt) |
       A6XX_TEX_CONST_0_MIPLVLS(0) |
-      tu6_texswiz(&components, vfmt, VK_IMAGE_ASPECT_COLOR_BIT);
+      tu6_texswiz(&components, NULL, vfmt, VK_IMAGE_ASPECT_COLOR_BIT);
       COND(vk_format_is_srgb(vfmt), A6XX_TEX_CONST_0_SRGB);
    view->descriptor[1] =
       A6XX_TEX_CONST_1_WIDTH(elements & MASK(15)) |
