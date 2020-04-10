@@ -158,6 +158,12 @@ bi_assign_uniform_constant_single(
         if (!ins)
                 return assigned;
 
+        if (ins->type == BI_BLEND) {
+                assert(!assigned);
+                regs->uniform_constant = 0x8;
+                return true;
+        }
+
         bi_foreach_src(ins, s) {
                 if (s == 0 && (ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_ATTR)) continue;
 
