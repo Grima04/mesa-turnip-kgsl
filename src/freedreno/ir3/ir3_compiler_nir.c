@@ -629,10 +629,17 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 
 	case nir_op_b16csel:
 	case nir_op_b32csel: {
-		struct ir3_instruction *cond = ir3_b2n(b, src[0]);
+		struct ir3_instruction *cond = src[0];
 
-		if ((src[0]->regs[0]->flags & IR3_REG_HALF))
-			cond->regs[0]->flags |= IR3_REG_HALF;
+		/* If src[0] is a negation (likely as a result of an ir3_b2n(cond)),
+		 * we can ignore that and use original cond, since the nonzero-ness of
+		 * cond stays the same.
+		 */
+		if (cond->opc == OPC_ABSNEG_S &&
+				cond->flags == 0 &&
+				(cond->regs[1]->flags & (IR3_REG_SNEG | IR3_REG_SABS)) == IR3_REG_SNEG) {
+			cond = cond->regs[1]->instr;
+		}
 
 		compile_assert(ctx, bs[1] == bs[2]);
 		/* Make sure the boolean condition has the same bit size as the other
