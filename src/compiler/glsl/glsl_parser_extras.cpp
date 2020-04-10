@@ -751,6 +751,7 @@ static const _mesa_glsl_extension _mesa_glsl_supported_extensions[] = {
    EXT(NV_fragment_shader_interlock),
    EXT(NV_image_formats),
    EXT(NV_shader_atomic_float),
+   EXT(NV_viewport_array2),
 };
 
 #undef EXT

@@ -4448,6 +4448,7 @@ struct gl_extensions
    GLboolean NV_conservative_raster_dilate;
    GLboolean NV_conservative_raster_pre_snap_triangles;
    GLboolean NV_conservative_raster_pre_snap;
+   GLboolean NV_viewport_array2;
    GLboolean NV_viewport_swizzle;
    GLboolean NVX_gpu_memory_info;
    GLboolean TDFX_texture_compression_FXT1;

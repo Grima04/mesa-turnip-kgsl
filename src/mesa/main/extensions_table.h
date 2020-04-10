@@ -402,6 +402,7 @@ EXT(NV_texture_barrier                      , NV_texture_barrier                
 EXT(NV_texture_env_combine4                 , NV_texture_env_combine4                , GLL,  x ,  x ,  x , 1999)
 EXT(NV_texture_rectangle                    , NV_texture_rectangle                   , GLL,  x ,  x ,  x , 2000)
 EXT(NV_vdpau_interop                        , NV_vdpau_interop                       , GLL, GLC,  x ,  x , 2010)
+EXT(NV_viewport_array2                      , NV_viewport_array2                     , GLL, GLC,  x ,  31, 2015)
 EXT(NV_viewport_swizzle                     , NV_viewport_swizzle                    , GLL, GLC,  x ,  31, 2015)
 
 EXT(OES_EGL_image                           , OES_EGL_image                          , GLL, GLC, ES1, ES2, 2006) /* FIXME: Mesa expects GL_OES_EGL_image to be available in OpenGL contexts. */
