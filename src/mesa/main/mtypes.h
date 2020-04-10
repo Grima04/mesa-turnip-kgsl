@@ -105,6 +105,7 @@ _mesa_varying_slot_in_fs(gl_varying_slot slot)
    case VARYING_SLOT_TESS_LEVEL_INNER:
    case VARYING_SLOT_BOUNDING_BOX0:
    case VARYING_SLOT_BOUNDING_BOX1:
+   case VARYING_SLOT_VIEWPORT_MASK:
       return GL_FALSE;
    default:
       return GL_TRUE;
