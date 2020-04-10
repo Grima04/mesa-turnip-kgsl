@@ -147,16 +147,16 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 .type = BI_BLEND,
                 .blend_location = nir_intrinsic_base(instr),
                 .src = {
+                        bir_src_index(&instr->src[0]),
                         BIR_INDEX_REGISTER | 60 /* Can this be arbitrary? */,
-                        bir_src_index(&instr->src[0])
                 },
                 .src_types = {
-                        nir_type_uint32,
                         nir_type_float32,
+                        nir_type_uint32
                 },
                 .swizzle = {
-                        { 0 },
-                        { 0, 1, 2, 3 }
+                        { 0, 1, 2, 3 },
+                        { 0 }
                 },
                 .dest = BIR_INDEX_REGISTER | 48 /* Looks like magic */,
                 .dest_type = nir_type_uint32,

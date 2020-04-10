@@ -1014,16 +1014,17 @@ bi_pack_add_atest(bi_clause *clause, bi_instruction *ins, struct bi_registers *r
 }
 
 static unsigned
-bi_pack_add_blend(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_blend(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
         struct bifrost_add_inst pack = {
-                .src0 = bi_get_src(ins, regs, 0, false),
+                .src0 = bi_get_src(ins, regs, 1, false),
                 .op = BIFROST_ADD_OP_BLEND
         };
 
         /* TODO: Pack location in uniform_const */
         assert(ins->blend_location == 0);
 
+        bi_read_data_register(clause, ins);
         RETURN_PACKED(pack);
 }
 
@@ -1065,7 +1066,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_CMP:
                 return BIFROST_ADD_NOP;
         case BI_BLEND:
-                return bi_pack_add_blend(bundle.add, regs);
+                return bi_pack_add_blend(clause, bundle.add, regs);
         case BI_BITWISE:
         case BI_CONVERT:
         case BI_DISCARD:
