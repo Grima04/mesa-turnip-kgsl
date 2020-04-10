@@ -838,6 +838,16 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
       tmp_type = type;
       tmp_type.length = 4;
 
+      if (type.length == 1) {
+         LLVMValueRef fetch = lp_build_fetch_rgba_aos(gallivm, format_desc, tmp_type,
+                                                      aligned, base_ptr, offset,
+                                                      i, j, cache);
+
+         for (k = 0; k < 4; k++)
+            rgba_out[k] = LLVMBuildExtractElement(gallivm->builder, fetch, lp_build_const_int32(gallivm, k), "");
+         return;
+      }
+
       /*
        * Note that vector transpose can be worse compared to insert/extract
        * for aos->soa conversion (for formats with 1 or 2 channels). However,

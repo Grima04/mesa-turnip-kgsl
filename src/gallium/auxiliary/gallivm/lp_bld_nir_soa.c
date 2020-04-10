@@ -1291,15 +1291,64 @@ static void emit_tex(struct lp_build_nir_context *bld_base,
                      struct lp_sampler_params *params)
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
 
    params->type = bld_base->base.type;
    params->context_ptr = bld->context_ptr;
    params->thread_data_ptr = bld->thread_data_ptr;
 
+   if (params->texture_index_offset && bld_base->shader->info.stage != MESA_SHADER_FRAGMENT) {
+      /* this is horrible but this can be dynamic */
+      LLVMValueRef coords[5];
+      LLVMValueRef *orig_texel_ptr;
+      struct lp_build_context *uint_bld = &bld_base->uint_bld;
+      LLVMValueRef result[4] = { LLVMGetUndef(bld_base->base.vec_type),
+                                 LLVMGetUndef(bld_base->base.vec_type),
+                                 LLVMGetUndef(bld_base->base.vec_type),
+                                 LLVMGetUndef(bld_base->base.vec_type) };
+      LLVMValueRef texel[4], orig_offset;
+      unsigned i;
+      orig_texel_ptr = params->texel;
+
+      for (i = 0; i < 5; i++) {
+         coords[i] = params->coords[i];
+      }
+      orig_offset = params->texture_index_offset;
+
+      for (unsigned v = 0; v < uint_bld->type.length; v++) {
+         LLVMValueRef idx = lp_build_const_int32(gallivm, v);
+         LLVMValueRef new_coords[5];
+         for (i = 0; i < 5; i++) {
+            new_coords[i] = LLVMBuildExtractElement(gallivm->builder,
+                                                    coords[i], idx, "");
+         }
+         params->coords = new_coords;
+         params->texture_index_offset = LLVMBuildExtractElement(gallivm->builder,
+                                                                orig_offset,
+                                                                idx, "");
+         params->type = lp_elem_type(bld_base->base.type);
+
+         params->texel = texel;
+         bld->sampler->emit_tex_sample(bld->sampler,
+                                       gallivm,
+                                       params);
+
+         for (i = 0; i < 4; i++) {
+            result[i] = LLVMBuildInsertElement(gallivm->builder, result[i], texel[i], idx, "");
+         }
+      }
+      for (i = 0; i < 4; i++) {
+         orig_texel_ptr[i] = result[i];
+      }
+      return;
+   }
+
    if (params->texture_index_offset)
       params->texture_index_offset = LLVMBuildExtractElement(bld_base->base.gallivm->builder,
                                                              params->texture_index_offset,
                                                              lp_build_const_int32(bld_base->base.gallivm, 0), "");
+
+   params->type = bld_base->base.type;
    bld->sampler->emit_tex_sample(bld->sampler,
                                  bld->bld_base.base.gallivm,
                                  params);
