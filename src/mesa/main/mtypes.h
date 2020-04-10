@@ -2674,6 +2674,12 @@ struct gl_shader
    bool bound_sampler;
    bool bound_image;
 
+   /**
+    * Whether layer output is viewport-relative.
+    */
+   bool redeclares_gl_layer;
+   bool layer_viewport_relative;
+
    /** Global xfb_stride out qualifier if any */
    GLuint TransformFeedbackBufferStride[MAX_FEEDBACK_BUFFERS];
 

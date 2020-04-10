@@ -1929,6 +1929,8 @@ set_shader_inout_layout(struct gl_shader *shader,
    shader->bindless_image = state->bindless_image_specified;
    shader->bound_sampler = state->bound_sampler_specified;
    shader->bound_image = state->bound_image_specified;
+   shader->redeclares_gl_layer = state->redeclares_gl_layer;
+   shader->layer_viewport_relative = state->layer_viewport_relative;
 }
 
 /* src can be NULL if only the symbols found in the exec_list should be

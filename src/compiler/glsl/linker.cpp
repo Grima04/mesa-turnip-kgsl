@@ -1817,6 +1817,40 @@ link_bindless_layout_qualifiers(struct gl_shader_program *prog,
 }
 
 /**
+ * Check for conflicting viewport_relative settings across shaders, and sets
+ * the value for the linked shader.
+ */
+static void
+link_layer_viewport_relative_qualifier(struct gl_shader_program *prog,
+                                       struct gl_program *gl_prog,
+                                       struct gl_shader **shader_list,
+                                       unsigned num_shaders)
+{
+   unsigned i;
+
+   /* Find first shader with explicit layer declaration */
+   for (i = 0; i < num_shaders; i++) {
+      if (shader_list[i]->redeclares_gl_layer) {
+         gl_prog->info.layer_viewport_relative =
+            shader_list[i]->layer_viewport_relative;
+         break;
+      }
+   }
+
+   /* Now make sure that each subsequent shader's explicit layer declaration
+    * matches the first one's.
+    */
+   for (; i < num_shaders; i++) {
+      if (shader_list[i]->redeclares_gl_layer &&
+          shader_list[i]->layer_viewport_relative !=
+          gl_prog->info.layer_viewport_relative) {
+         linker_error(prog, "all gl_Layer redeclarations must have identical "
+                      "viewport_relative settings");
+      }
+   }
+}
+
+/**
  * Performs the cross-validation of tessellation control shader vertices and
  * layout qualifiers for the attached tessellation control shaders,
  * and propagates them to the linked TCS and linked shader program.
@@ -2460,6 +2494,8 @@ link_intrastage_shaders(void *mem_ctx,
       link_xfb_stride_layout_qualifiers(ctx, prog, shader_list, num_shaders);
 
    link_bindless_layout_qualifiers(prog, shader_list, num_shaders);
+
+   link_layer_viewport_relative_qualifier(prog, gl_prog, shader_list, num_shaders);
 
    populate_symbol_table(linked, shader_list[0]->symbols);
 
