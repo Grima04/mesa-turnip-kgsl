@@ -215,6 +215,7 @@ NIR_FILES = \
 	nir/nir_control_flow.c \
 	nir/nir_control_flow.h \
 	nir/nir_control_flow_private.h \
+	nir/nir_convert_ycbcr.c \
 	nir/nir_deref.c \
 	nir/nir_deref.h \
 	nir/nir_divergence_analysis.c \
@@ -348,6 +349,7 @@ NIR_FILES = \
 	nir/nir_to_lcssa.c \
 	nir/nir_validate.c \
 	nir/nir_vla.h \
+	nir/nir_vulkan.h \
 	nir/nir_worklist.c \
 	nir/nir_worklist.h \
 	nir/nir_xfb_info.h
