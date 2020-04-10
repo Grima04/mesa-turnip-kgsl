@@ -146,13 +146,10 @@ check_flush(struct copy_context *copy)
  * Dump the parameters/info for a vbo->draw() call.
  */
 static void
-dump_draw_info(struct gl_context *ctx,
-               const struct tnl_vertex_array *arrays,
+dump_draw_info(const struct tnl_vertex_array *arrays,
                const struct _mesa_prim *prims,
                GLuint nr_prims,
-               const struct _mesa_index_buffer *ib,
-               GLuint min_index,
-               GLuint max_index)
+               const struct _mesa_index_buffer *ib)
 {
    GLuint i, j;
 
@@ -192,13 +189,10 @@ flush(struct copy_context *copy)
    copy->dstib.count = copy->dstelt_nr;
 
 #if 0
-   dump_draw_info(copy->ctx,
-                  copy->dstarray,
+   dump_draw_info(copy->dstarray,
                   copy->dstprim,
                   copy->dstprim_nr,
-                  &copy->dstib,
-                  0,
-                  copy->dstbuf_nr);
+                  &copy->dstib);
 #else
    (void) dump_draw_info;
 #endif
