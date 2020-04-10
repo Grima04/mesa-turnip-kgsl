@@ -320,6 +320,10 @@ try_setup_line( struct lp_setup_context *setup,
    boolean will_draw_start;
    boolean will_draw_end;
 
+   if (lp_context->active_statistics_queries) {
+      lp_context->pipeline_statistics.c_primitives++;
+   }
+
    if (0)
       print_line(setup, v1, v2);
 
@@ -615,10 +619,6 @@ try_setup_line( struct lp_setup_context *setup,
 #endif
 
    LP_COUNT(nr_tris);
-
-   if (lp_context->active_statistics_queries) {
-      lp_context->pipeline_statistics.c_primitives++;
-   }
 
    /* calculate the deltas */
    plane = GET_PLANES(line);
