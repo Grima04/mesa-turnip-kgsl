@@ -851,6 +851,12 @@ static void write_buffer_descriptor(struct radv_device *device,
 	if (buffer_info->range == VK_WHOLE_SIZE)
 		range = buffer->size - buffer_info->offset;
 
+	/* robustBufferAccess is relaxed enough to allow this (in combination
+	 * with the alignment/size we return from vkGetBufferMemoryRequirements)
+	 * and this allows the shader compiler to create more efficient 8/16-bit
+	 * buffer accesses. */
+	range = align(range, 4);
+
 	va += buffer_info->offset + buffer->offset;
 	dst[0] = va;
 	dst[1] = S_008F04_BASE_ADDRESS_HI(va >> 32);
@@ -897,6 +903,12 @@ static void write_dynamic_buffer_descriptor(struct radv_device *device,
 
 	if (buffer_info->range == VK_WHOLE_SIZE)
 		size = buffer->size - buffer_info->offset;
+
+	/* robustBufferAccess is relaxed enough to allow this (in combination
+	 * with the alignment/size we return from vkGetBufferMemoryRequirements)
+	 * and this allows the shader compiler to create more efficient 8/16-bit
+	 * buffer accesses. */
+	size = align(size, 4);
 
 	va += buffer_info->offset + buffer->offset;
 	range->va = va;
