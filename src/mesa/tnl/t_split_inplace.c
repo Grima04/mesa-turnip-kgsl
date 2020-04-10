@@ -267,8 +267,6 @@ _tnl_split_inplace(struct gl_context *ctx,
                    const struct _mesa_prim *prim,
                    GLuint nr_prims,
                    const struct _mesa_index_buffer *ib,
-                   GLuint min_index,
-                   GLuint max_index,
                    GLuint num_instances,
                    GLuint base_instance,
                    tnl_draw_func draw,
@@ -296,5 +294,3 @@ _tnl_split_inplace(struct gl_context *ctx,
 
    split_prims(&split);
 }
-
-
