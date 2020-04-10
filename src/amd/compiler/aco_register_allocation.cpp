@@ -63,6 +63,7 @@ struct ra_ctx {
    std::unordered_map<unsigned, Temp> orig_names;
    std::unordered_map<unsigned, phi_info> phi_map;
    std::unordered_map<unsigned, unsigned> affinities;
+   std::unordered_map<unsigned, Instruction*> vectors;
    unsigned max_used_sgpr = 0;
    unsigned max_used_vgpr = 0;
    std::bitset<64> defs_done; /* see MAX_ARGS in aco_instruction_selection_setup.cpp */
@@ -803,6 +804,9 @@ bool get_reg_specified(ra_ctx& ctx,
                        aco_ptr<Instruction>& instr,
                        PhysReg reg)
 {
+   if (rc.is_subdword() && reg.byte() && !instr_can_access_subdword(instr))
+      return false;
+
    uint32_t size = rc.size();
    uint32_t stride = 1;
    uint32_t lb, ub;
@@ -820,9 +824,6 @@ bool get_reg_specified(ra_ctx& ctx,
       lb = 0;
       ub = ctx.program->max_reg_demand.sgpr;
    }
-
-   if (rc.is_subdword() && reg.byte() && !instr_can_access_subdword(instr))
-      return false;
 
    uint32_t reg_lo = reg.reg();
    uint32_t reg_hi = reg + (size - 1);
@@ -864,6 +865,46 @@ PhysReg get_reg(ra_ctx& ctx,
                 std::vector<std::pair<Operand, Definition>>& parallelcopies,
                 aco_ptr<Instruction>& instr)
 {
+   if (ctx.affinities.find(temp.id()) != ctx.affinities.end() &&
+       ctx.assignments[ctx.affinities[temp.id()]].assigned) {
+      PhysReg reg = ctx.assignments[ctx.affinities[temp.id()]].reg;
+      if (get_reg_specified(ctx, reg_file, temp.regClass(), parallelcopies, instr, reg))
+         return reg;
+   }
+
+   if (ctx.vectors.find(temp.id()) != ctx.vectors.end()) {
+      Instruction* vec = ctx.vectors[temp.id()];
+      unsigned byte_offset = 0;
+      for (const Operand& op : vec->operands) {
+         if (op.isTemp() && op.tempId() == temp.id())
+            break;
+         else
+            byte_offset += op.bytes();
+      }
+      unsigned k = 0;
+      for (const Operand& op : vec->operands) {
+         if (op.isTemp() &&
+             op.tempId() != temp.id() &&
+             op.getTemp().type() == temp.type() &&
+             ctx.assignments[op.tempId()].assigned) {
+            PhysReg reg = ctx.assignments[op.tempId()].reg;
+            reg.reg_b += (byte_offset - k);
+            if (get_reg_specified(ctx, reg_file, temp.regClass(), parallelcopies, instr, reg))
+               return reg;
+         }
+         k += op.bytes();
+      }
+
+      std::pair<PhysReg, bool> res = get_reg_vec(ctx, reg_file, vec->definitions[0].regClass());
+      PhysReg reg = res.first;
+      if (res.second) {
+         reg.reg_b += byte_offset;
+         /* make sure to only use byte offset if the instruction supports it */
+         if (get_reg_specified(ctx, reg_file, temp.regClass(), parallelcopies, instr, reg))
+            return reg;
+      }
+   }
+
    RegClass rc = temp.regClass();
    uint32_t size = rc.size();
    uint32_t stride = 1;
@@ -1327,8 +1368,6 @@ void try_remove_trivial_phi(ra_ctx& ctx, Temp temp)
 void register_allocation(Program *program, std::vector<TempSet>& live_out_per_block)
 {
    ra_ctx ctx(program);
-
-   std::unordered_map<unsigned, Instruction*> vectors;
    std::vector<std::vector<Temp>> phi_ressources;
    std::unordered_map<unsigned, unsigned> temp_to_phi_ressources;
 
@@ -1364,7 +1403,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
          if (instr->opcode == aco_opcode::p_create_vector) {
             for (const Operand& op : instr->operands) {
                if (op.isTemp() && op.getTemp().type() == instr->definitions[0].getTemp().type())
-                  vectors[op.tempId()] = instr.get();
+                  ctx.vectors[op.tempId()] = instr.get();
             }
          }
 
@@ -1768,18 +1807,15 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
             else if (instr->opcode == aco_opcode::p_split_vector) {
                PhysReg reg = instr->operands[0].physReg();
                reg.reg_b += i * definition.bytes();
-               if (!get_reg_specified(ctx, register_file, definition.regClass(), parallelcopy, instr, reg))
-                  reg = get_reg(ctx, register_file, definition.getTemp(), parallelcopy, instr);
-               definition.setFixed(reg);
+               if (get_reg_specified(ctx, register_file, definition.regClass(), parallelcopy, instr, reg))
+                  definition.setFixed(reg);
             } else if (instr->opcode == aco_opcode::p_wqm) {
                PhysReg reg;
                if (instr->operands[0].isKillBeforeDef() && instr->operands[0].getTemp().type() == definition.getTemp().type()) {
                   reg = instr->operands[0].physReg();
+                  definition.setFixed(reg);
                   assert(register_file[reg.reg()] == 0);
-               } else {
-                  reg = get_reg(ctx, register_file, definition.getTemp(), parallelcopy, instr);
                }
-               definition.setFixed(reg);
             } else if (instr->opcode == aco_opcode::p_extract_vector) {
                PhysReg reg;
                if (instr->operands[0].isKillBeforeDef() &&
@@ -1787,60 +1823,15 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                   reg = instr->operands[0].physReg();
                   reg.reg_b += definition.bytes() * instr->operands[1].constantValue();
                   assert(!register_file.test(reg, definition.bytes()));
-               } else {
-                  reg = get_reg(ctx, register_file, definition.getTemp(), parallelcopy, instr);
+                  definition.setFixed(reg);
                }
-               definition.setFixed(reg);
             } else if (instr->opcode == aco_opcode::p_create_vector) {
                PhysReg reg = get_reg_create_vector(ctx, register_file, definition.getTemp(),
                                                    parallelcopy, instr);
                definition.setFixed(reg);
-            } else if (ctx.affinities.find(definition.tempId()) != ctx.affinities.end() &&
-                       ctx.assignments[ctx.affinities[definition.tempId()]].assigned) {
-               PhysReg reg = ctx.assignments[ctx.affinities[definition.tempId()]].reg;
-               if (get_reg_specified(ctx, register_file, definition.regClass(), parallelcopy, instr, reg))
-                  definition.setFixed(reg);
-               else
-                  definition.setFixed(get_reg(ctx, register_file, definition.getTemp(), parallelcopy, instr));
+            }
 
-            } else if (vectors.find(definition.tempId()) != vectors.end()) {
-               Instruction* vec = vectors[definition.tempId()];
-               unsigned byte_offset = 0;
-               for (const Operand& op : vec->operands) {
-                  if (op.isTemp() && op.tempId() == definition.tempId())
-                     break;
-                  else
-                     byte_offset += op.bytes();
-               }
-               unsigned k = 0;
-               for (const Operand& op : vec->operands) {
-                  if (op.isTemp() &&
-                      op.tempId() != definition.tempId() &&
-                      op.getTemp().type() == definition.getTemp().type() &&
-                      ctx.assignments[op.tempId()].assigned) {
-                     PhysReg reg = ctx.assignments[op.tempId()].reg;
-                     reg.reg_b += (byte_offset - k);
-                     if (get_reg_specified(ctx, register_file, definition.regClass(), parallelcopy, instr, reg)) {
-                        definition.setFixed(reg);
-                        break;
-                     }
-                  }
-                  k += op.bytes();
-               }
-               if (!definition.isFixed()) {
-                  std::pair<PhysReg, bool> res = get_reg_vec(ctx, register_file, vec->definitions[0].regClass());
-                  PhysReg reg = res.first;
-                  if (res.second) {
-                     reg.reg_b += byte_offset;
-                     /* make sure to only use byte offset if the instruction supports it */
-                     if (vec->definitions[0].regClass().is_subdword() && reg.byte() && !instr_can_access_subdword(instr))
-                        reg = get_reg(ctx, register_file, definition.getTemp(), parallelcopy, instr);
-                  } else {
-                     reg = get_reg(ctx, register_file, definition.getTemp(), parallelcopy, instr);
-                  }
-                  definition.setFixed(reg);
-               }
-            } else
+            if (!definition.isFixed())
                definition.setFixed(get_reg(ctx, register_file, definition.getTemp(), parallelcopy, instr));
 
             assert(definition.isFixed() && ((definition.getTemp().type() == RegType::vgpr && definition.physReg() >= 256) ||
