@@ -293,6 +293,8 @@ static const struct tu_native_format tu6_format_table[] = {
 static const struct tu_native_format tu6_format_table_ext[] = {
    TU6_xTx(G8B8G8R8_422_UNORM,         R8G8R8B8_422_UNORM,        WZYX), /* 0 */
    TU6_xTx(B8G8R8G8_422_UNORM,         G8R8B8R8_422_UNORM,        WZYX), /* 1 */
+   TU6_xTx(G8_B8_R8_3PLANE_420_UNORM,  R8_G8_B8_3PLANE_420_UNORM, WZYX), /* 2 */
+   TU6_xTx(G8_B8R8_2PLANE_420_UNORM,   R8_G8B8_2PLANE_420_UNORM,  WZYX), /* 3 */
 };
 
 static struct tu_native_format
@@ -376,8 +378,7 @@ tu_physical_device_get_format_properties(
       buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
 
    if (native_fmt.supported & FMT_TEXTURE) {
-      optimal |= VK_FORMAT_FEATURE_BLIT_SRC_BIT |
-                 VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+      optimal |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
@@ -386,6 +387,10 @@ tu_physical_device_get_format_properties(
                  VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
 
       buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+
+      /* no blit src bit for extended (YUYV/NV12/I420) formats */
+      if (format < FMT_EXT_BASE)
+         optimal |= VK_FORMAT_FEATURE_BLIT_SRC_BIT;
 
       if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED)
          optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT;

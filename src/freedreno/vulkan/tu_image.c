@@ -149,6 +149,16 @@ tu_image_create(VkDevice _device,
       ubwc_enabled = false;
    }
 
+   /* UBWC is supported for these formats, but NV12 has a special UBWC
+    * format for accessing the Y plane aspect, which isn't implemented
+    * For IYUV, the blob doesn't use UBWC, but it seems to work, but
+    * disable it since we don't know if a special UBWC format is needed
+    * like NV12
+    */
+   if (image->vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
+       image->vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM)
+      ubwc_enabled = false;
+
    /* don't use UBWC with compressed formats */
    if (vk_format_is_compressed(image->vk_format))
       ubwc_enabled = false;
@@ -293,6 +303,8 @@ tu6_texswiz(const VkComponentMapping *comps,
    switch (format) {
    case VK_FORMAT_G8B8G8R8_422_UNORM:
    case VK_FORMAT_B8G8R8G8_422_UNORM:
+   case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+   case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
       swiz[0] = A6XX_TEX_Z;
       swiz[1] = A6XX_TEX_X;
       swiz[2] = A6XX_TEX_Y;
@@ -437,6 +449,48 @@ tu_image_view_init(struct tu_image_view *iview,
    iview->descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(layer_size);
    iview->descriptor[4] = base_addr;
    iview->descriptor[5] = (base_addr >> 32) | A6XX_TEX_CONST_5_DEPTH(depth);
+
+   if (format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
+       format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+      /* chroma offset re-uses MIPLVLS bits */
+      assert(tu_get_levelCount(image, range) == 1);
+      if (conversion) {
+         if (conversion->chroma_offsets[0] == VK_CHROMA_LOCATION_MIDPOINT)
+            iview->descriptor[0] |= A6XX_TEX_CONST_0_CHROMA_MIDPOINT_X;
+         if (conversion->chroma_offsets[1] == VK_CHROMA_LOCATION_MIDPOINT)
+            iview->descriptor[0] |= A6XX_TEX_CONST_0_CHROMA_MIDPOINT_Y;
+      }
+
+      uint64_t base_addr[3];
+
+      iview->descriptor[3] |= A6XX_TEX_CONST_3_TILE_ALL;
+      if (ubwc_enabled) {
+         iview->descriptor[3] |= A6XX_TEX_CONST_3_FLAG;
+         /* no separate ubwc base, image must have the expected layout */
+         for (uint32_t i = 0; i < 3; i++) {
+            base_addr[i] = image->bo->iova + image->bo_offset +
+               fdl_ubwc_offset(&image->layout[i], range->baseMipLevel, range->baseArrayLayer);
+         }
+      } else {
+         for (uint32_t i = 0; i < 3; i++) {
+            base_addr[i] = image->bo->iova + image->bo_offset +
+               fdl_surface_offset(&image->layout[i], range->baseMipLevel, range->baseArrayLayer);
+         }
+      }
+
+      iview->descriptor[4] = base_addr[0];
+      iview->descriptor[5] |= base_addr[0] >> 32;
+      iview->descriptor[6] =
+         A6XX_TEX_CONST_6_PLANE_PITCH(image->layout[1].slices[range->baseMipLevel].pitch);
+      iview->descriptor[7] = base_addr[1];
+      iview->descriptor[8] = base_addr[1] >> 32;
+      iview->descriptor[9] = base_addr[2];
+      iview->descriptor[10] = base_addr[2] >> 32;
+
+      assert(pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_3D);
+      assert(!(image->usage & VK_IMAGE_USAGE_STORAGE_BIT));
+      return;
+   }
 
    if (ubwc_enabled) {
       uint32_t block_width, block_height;

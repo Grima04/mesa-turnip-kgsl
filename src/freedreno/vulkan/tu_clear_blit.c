@@ -1152,6 +1152,10 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
       ops = &r3d_ops;
    }
 
+   /* TODO: G8_B8R8_2PLANE_420_UNORM Y plane has different hardware format,
+    * which matters for UBWC. buffer_to_image/etc can fail because of this
+    */
+
    VkOffset3D offset = info->imageOffset;
    VkExtent3D extent = info->imageExtent;
    uint32_t src_width = info->bufferRowLength ?: extent.width;
