@@ -992,12 +992,15 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
    /* move killed operands which aren't yet at the correct position */
+   uint64_t moved_operand_mask = 0;
    for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
       if (instr->operands[i].isTemp() &&
           instr->operands[i].isFirstKillBeforeDef() &&
           instr->operands[i].getTemp().type() == rc.type() &&
-          instr->operands[i].physReg().reg_b != best_pos * 4 + offset)
+          instr->operands[i].physReg().reg_b != best_pos * 4 + offset) {
          vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
+         moved_operand_mask |= (uint64_t)1 << i;
+      }
    }
 
    ASSERTED bool success = false;
@@ -1006,6 +1009,13 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
 
    update_renames(ctx, reg_file, parallelcopies, instr);
    adjust_max_used_regs(ctx, rc, best_pos);
+
+   while (moved_operand_mask) {
+      unsigned i = u_bit_scan64(&moved_operand_mask);
+      assert(instr->operands[i].isFirstKillBeforeDef());
+      reg_file.clear(instr->operands[i]);
+   }
+
    return PhysReg{best_pos};
 }
 
