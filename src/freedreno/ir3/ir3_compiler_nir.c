@@ -642,13 +642,22 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		}
 
 		compile_assert(ctx, bs[1] == bs[2]);
-		/* Make sure the boolean condition has the same bit size as the other
-		 * two arguments, adding a conversion if necessary.
-		 */
-		if (bs[1] < bs[0])
-			cond = ir3_COV(b, cond, TYPE_U32, TYPE_U16);
-		else if (bs[1] > bs[0])
-			cond = ir3_COV(b, cond, TYPE_U16, TYPE_U32);
+		if (bs[1] != bs[0]) {
+			struct hash_entry *prev_entry =
+				_mesa_hash_table_search(ctx->sel_cond_conversions, src[0]);
+			if (prev_entry) {
+				cond = prev_entry->data;
+			} else {
+				/* Make sure the boolean condition has the same bit size as the other
+				 * two arguments, adding a conversion if necessary.
+				 */
+				if (bs[1] < bs[0])
+					cond = ir3_COV(b, cond, TYPE_U32, TYPE_U16);
+				else if (bs[1] > bs[0])
+					cond = ir3_COV(b, cond, TYPE_U16, TYPE_U32);
+				_mesa_hash_table_insert(ctx->sel_cond_conversions, src[0], cond);
+			}
+		}
 
 		if (bs[1] > 16)
 			dst[0] = ir3_SEL_B32(b, src[1], 0, cond, 0, src[2], 0);
@@ -2687,6 +2696,8 @@ emit_block(struct ir3_context *ctx, nir_block *nblock)
 		if (ctx->error)
 			return;
 	}
+
+	_mesa_hash_table_clear(ctx->sel_cond_conversions, NULL);
 }
 
 static void emit_cf_list(struct ir3_context *ctx, struct exec_list *list);

@@ -127,6 +127,8 @@ struct ir3_context {
 	 */
 	struct hash_table_u64 *addr1_ht;
 
+	struct hash_table *sel_cond_conversions;
+
 	/* last dst array, for indirect we need to insert a var-store.
 	 */
 	struct ir3_instruction **last_dst;

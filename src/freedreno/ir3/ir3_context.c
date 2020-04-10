@@ -63,6 +63,8 @@ ir3_context_init(struct ir3_compiler *compiler,
 			_mesa_hash_pointer, _mesa_key_pointer_equal);
 	ctx->block_ht = _mesa_hash_table_create(ctx,
 			_mesa_hash_pointer, _mesa_key_pointer_equal);
+	ctx->sel_cond_conversions = _mesa_hash_table_create(ctx,
+			_mesa_hash_pointer, _mesa_key_pointer_equal);
 
 	/* TODO: maybe generate some sort of bitmask of what key
 	 * lowers vs what shader has (ie. no need to lower
