@@ -89,9 +89,10 @@ tu_image_create(VkDevice _device,
    bool ubwc_enabled =
       !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
 
-   /* disable tiling when linear is requested and for compressed formats */
+   /* disable tiling when linear is requested and for YUYV/UYVY */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
-       modifier == DRM_FORMAT_MOD_LINEAR) {
+       modifier == DRM_FORMAT_MOD_LINEAR ||
+       vk_format_description(image->vk_format)->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED) {
       image->layout.tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
    }
@@ -204,6 +205,12 @@ tu6_texswiz(const VkComponentMapping *comps,
    };
 
    switch (format) {
+   case VK_FORMAT_G8B8G8R8_422_UNORM:
+   case VK_FORMAT_B8G8R8G8_422_UNORM:
+      swiz[0] = A6XX_TEX_Z;
+      swiz[1] = A6XX_TEX_X;
+      swiz[2] = A6XX_TEX_Y;
+      break;
    case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
    case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
       /* same hardware format is used for BC1_RGB / BC1_RGBA */
@@ -556,8 +563,7 @@ tu_GetImageSubresourceLayout(VkDevice _device,
                                         pSubresource->mipLevel,
                                         pSubresource->arrayLayer);
    pLayout->size = slice->size0;
-   pLayout->rowPitch =
-      slice->pitch * vk_format_get_blockheight(image->vk_format);
+   pLayout->rowPitch = slice->pitch;
    pLayout->arrayPitch = image->layout.layer_size;
    pLayout->depthPitch = slice->size0;
 

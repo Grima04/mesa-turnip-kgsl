@@ -167,7 +167,8 @@ vk_format_compose_swizzles(const VkComponentMapping *mapping,
 static inline bool
 vk_format_is_compressed(VkFormat format)
 {
-   return util_format_is_compressed(vk_format_to_pipe_format(format));
+   /* this includes 4:2:2 formats, which are compressed formats for vulkan */
+   return vk_format_get_blockwidth(format) > 1;
 }
 
 static inline bool
@@ -312,6 +313,15 @@ vk_format_get_component_bits(VkFormat format,
                              enum util_format_colorspace colorspace,
                              unsigned component)
 {
+   switch (format) {
+   case VK_FORMAT_G8B8G8R8_422_UNORM:
+   case VK_FORMAT_B8G8R8G8_422_UNORM:
+      /* util_format_get_component_bits doesn't return what we want */
+      return 8;
+   default:
+      break;
+   }
+
    return util_format_get_component_bits(vk_format_to_pipe_format(format),
                                          colorspace, component);
 }
