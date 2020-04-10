@@ -596,8 +596,11 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
 
    if (draw->collect_statistics) {
       draw->statistics.ia_vertices += prim_info->count;
-      draw->statistics.ia_primitives +=
-         u_decomposed_prims_for_vertices(prim_info->prim, prim_info->count);
+      if (prim_info->prim == PIPE_PRIM_PATCHES)
+         draw->statistics.ia_primitives += prim_info->count / draw->pt.vertices_per_patch;
+      else
+         draw->statistics.ia_primitives +=
+            u_decomposed_prims_for_vertices(prim_info->prim, prim_info->count);
       draw->statistics.vs_invocations += fetch_info->count;
    }
 
