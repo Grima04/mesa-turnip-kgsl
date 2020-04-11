@@ -109,6 +109,7 @@ const char *tgsi_semantic_names[TGSI_SEMANTIC_COUNT] =
    "SUBGROUP_LE_MASK",
    "SUBGROUP_LT_MASK",
    "CS_USER_DATA_AMD",
+   "VIEWPORT_MASK",
 };
 
 const char *tgsi_texture_names[TGSI_TEXTURE_COUNT] =

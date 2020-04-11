@@ -3526,6 +3526,13 @@ A bit mask of ``bit index < TGSI_SEMANTIC_SUBGROUP_INVOCATION``, i.e.
 ``(1 << subgroup_invocation) - 1`` in arbitrary precision arithmetic.
 
 
+TGSI_SEMANTIC_VIEWPORT_MASK
+"""""""""""""""""""""""""""
+
+A bit mask of viewports to broadcast the current primitive to. See
+GL_NV_viewport_array2 for more details.
+
+
 TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL
 """"""""""""""""""""""""""""""""""""""
 

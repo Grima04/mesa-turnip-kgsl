@@ -209,6 +209,7 @@ enum tgsi_semantic {
    TGSI_SEMANTIC_SUBGROUP_LE_MASK,
    TGSI_SEMANTIC_SUBGROUP_LT_MASK,
    TGSI_SEMANTIC_CS_USER_DATA_AMD,
+   TGSI_SEMANTIC_VIEWPORT_MASK,
    TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL, /**< from set_tess_state */
    TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL, /**< from set_tess_state */
    TGSI_SEMANTIC_COUNT,       /**< number of semantic values */
