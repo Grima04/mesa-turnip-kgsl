@@ -200,6 +200,46 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
    }
 }
 
+static uint32_t
+get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
+                 struct v3dv_pipeline *pipeline,
+                 enum quniform_contents contents,
+                 uint32_t data)
+{
+   int unit = v3d_unit_data_get_unit(data);
+   uint32_t texture_idx;
+   struct v3dv_descriptor_state *descriptor_state =
+      &cmd_buffer->state.descriptor_state;
+
+   v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
+                                           &texture_idx,
+                                           NULL);
+
+   struct v3dv_image_view *image_view =
+      v3dv_descriptor_map_get_image_view(descriptor_state, &pipeline->texture_map,
+                                         pipeline->layout, texture_idx);
+
+   assert(image_view);
+
+   switch(contents) {
+   case QUNIFORM_TEXTURE_WIDTH:
+      /* We don't u_minify the values, as we are using the image_view
+       * extents
+       */
+      return image_view->extent.width;
+   case QUNIFORM_TEXTURE_HEIGHT:
+      return image_view->extent.height;
+   case QUNIFORM_TEXTURE_DEPTH:
+      return image_view->extent.depth;
+   case QUNIFORM_TEXTURE_ARRAY_SIZE:
+      return image_view->last_layer - image_view->first_layer + 1;
+   case QUNIFORM_TEXTURE_LEVELS:
+      return image_view->max_level - image_view->base_level + 1;
+   default:
+      unreachable("Bad texture size field");
+   }
+}
+
 struct v3dv_cl_reloc
 v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                     struct v3dv_pipeline_stage *p_stage)
@@ -267,6 +307,18 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 
       case QUNIFORM_TMU_CONFIG_P1:
          write_tmu_p1(cmd_buffer, pipeline, &uniforms, data);
+         break;
+
+      case QUNIFORM_TEXTURE_WIDTH:
+      case QUNIFORM_TEXTURE_HEIGHT:
+      case QUNIFORM_TEXTURE_DEPTH:
+      case QUNIFORM_TEXTURE_ARRAY_SIZE:
+      case QUNIFORM_TEXTURE_LEVELS:
+         cl_aligned_u32(&uniforms,
+                        get_texture_size(cmd_buffer,
+                                         pipeline,
+                                         uinfo->contents[i],
+                                         data));
          break;
 
       default:
