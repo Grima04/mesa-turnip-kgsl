@@ -139,6 +139,10 @@ tgsi_get_gl_varying_semantic(gl_varying_slot attr,
       *semantic_name = TGSI_SEMANTIC_TESSINNER;
       *semantic_index = 0;
       break;
+   case VARYING_SLOT_VIEWPORT_MASK:
+      *semantic_name = TGSI_SEMANTIC_VIEWPORT_MASK;
+      *semantic_index = 0;
+      break;
 
    case VARYING_SLOT_TEX0:
    case VARYING_SLOT_TEX1:

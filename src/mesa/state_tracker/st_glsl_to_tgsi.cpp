@@ -6832,6 +6832,9 @@ st_translate_program(
       emit_compute_block_size(proginfo, ureg);
    }
 
+   if (program->shader->Program->info.layer_viewport_relative)
+      ureg_property(ureg, TGSI_PROPERTY_LAYER_VIEWPORT_RELATIVE, 1);
+
    /* Declare address register.
     */
    if (program->num_address_regs > 0) {
