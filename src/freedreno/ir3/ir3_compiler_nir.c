@@ -733,12 +733,6 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0] = ir3_n2b(b, dst[0]);
 	}
 
-	if (nir_dest_bit_size(alu->dest.dest) < 32) {
-		for (unsigned i = 0; i < dst_sz; i++) {
-			dst[i]->regs[0]->flags |= IR3_REG_HALF;
-		}
-	}
-
 	ir3_put_dst(ctx, &alu->dest.dest);
 }
 
