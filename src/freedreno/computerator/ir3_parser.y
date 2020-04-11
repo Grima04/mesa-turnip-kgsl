@@ -65,6 +65,7 @@ static struct ir3_instruction    *instr;   /* current instruction */
 static struct {
 	unsigned flags;
 	unsigned repeat;
+	unsigned nop;
 } iflags;
 
 static struct {
@@ -79,8 +80,9 @@ static struct ir3_instruction * new_instr(opc_t opc)
 	instr = ir3_instr_create(block, opc);
 	instr->flags = iflags.flags;
 	instr->repeat = iflags.repeat;
+	instr->nop = iflags.nop;
 	instr->line = ir3_yyget_lineno();
-	iflags.flags = iflags.repeat = 0;
+	iflags.flags = iflags.repeat = iflags.nop = 0;
 	return instr;
 }
 
@@ -266,6 +268,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_JP
 %token <num> T_RPT
 %token <tok> T_UL
+%token <tok> T_NOP
 
 /* category 0: */
 %token <tok> T_OP_NOP
@@ -540,6 +543,7 @@ iflag:             T_SY   { iflags.flags |= IR3_INSTR_SY; }
 |                  T_JP   { iflags.flags |= IR3_INSTR_JP; }
 |                  T_RPT  { iflags.repeat = $1; }
 |                  T_UL   { iflags.flags |= IR3_INSTR_UL; }
+|                  T_NOP  { iflags.nop = $1; }
 
 iflags:
 |                  iflag iflags
