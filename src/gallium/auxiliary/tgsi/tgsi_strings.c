@@ -163,6 +163,7 @@ const char *tgsi_property_names[TGSI_PROPERTY_COUNT] =
    "MUL_ZERO_WINS",
    "VS_BLIT_SGPRS_AMD",
    "CS_USER_DATA_COMPONENTS_AMD",
+   "LAYER_VIEWPORT_RELATIVE",
 };
 
 const char *tgsi_return_type_names[TGSI_RETURN_TYPE_COUNT] =

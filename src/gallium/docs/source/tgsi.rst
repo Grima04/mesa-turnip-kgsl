@@ -3804,6 +3804,13 @@ When enabled, the input for TGSI_SEMANTIC_SAMPLEMASK will exclude samples
 that have failed the depth/stencil tests. This is only valid when
 FS_EARLY_DEPTH_STENCIL is also specified.
 
+LAYER_VIEWPORT_RELATIVE
+"""""""""""""""""""""""
+
+When enabled, the TGSI_SEMATNIC_LAYER output value is relative to the
+current viewport. This is especially useful in conjunction with
+TGSI_SEMANTIC_VIEWPORT_MASK.
+
 
 Texture Sampling and Texture Formats
 ------------------------------------
