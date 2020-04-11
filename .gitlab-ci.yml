@@ -720,14 +720,11 @@ softpipe-gles31:
 # to).
 .test-manual:
   rules:
-    # Never test in the main project.
-    - if: '$CI_PROJECT_PATH == "mesa/mesa"'
-      when: never
-    # Never test in merge requests.
-    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
-      when: never
-    # Otherwise, allow testing manually for personal branches.
-    - when: manual
+    - if: '$CI_PROJECT_PATH != "mesa/mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
+      changes:
+        *all_paths
+      when: manual
+    - when: never
 
 arm64_a630_gles2:
   extends:
