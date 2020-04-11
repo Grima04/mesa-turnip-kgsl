@@ -1030,6 +1030,8 @@ struct v3dv_sampler {
    struct v3dv_bo *state;
 };
 
+#define V3DV_NO_SAMPLER_IDX 666
+
 /*
  * Following two methods are using on the combined to/from texture/sampler
  * indices maps at v3dv_pipeline.

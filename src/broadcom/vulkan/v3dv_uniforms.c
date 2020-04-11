@@ -127,6 +127,7 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
 
    v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
                                            NULL, &sampler_idx);
+   assert(sampler_idx != V3DV_NO_SAMPLER_IDX);
 
    const struct v3dv_sampler *sampler =
       v3dv_descriptor_map_get_sampler(descriptor_state, &pipeline->sampler_map,

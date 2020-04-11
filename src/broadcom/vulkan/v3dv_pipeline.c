@@ -639,7 +639,9 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
       return false;
 
    int combined_index =
-      get_combined_index(pipeline, instr->texture_index, instr->sampler_index);
+      get_combined_index(pipeline,
+                         instr->texture_index,
+                         sampler_idx < 0 ? V3DV_NO_SAMPLER_IDX : instr->sampler_index);
 
    instr->texture_index = combined_index;
    instr->sampler_index = combined_index;

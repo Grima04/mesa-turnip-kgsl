@@ -1976,13 +1976,17 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
          if (image_view == NULL)
             return false;
 
-         const struct v3dv_sampler *sampler =
-            v3dv_descriptor_map_get_sampler(descriptor_state,
-                                            sampler_map,
-                                            cmd_buffer->state.pipeline->layout,
-                                            sampler_idx);
-         if (sampler == NULL)
-            return false;
+
+         const struct v3dv_sampler *sampler = NULL;
+         if (sampler_idx != V3DV_NO_SAMPLER_IDX) {
+            sampler =
+               v3dv_descriptor_map_get_sampler(descriptor_state,
+                                               sampler_map,
+                                               cmd_buffer->state.pipeline->layout,
+                                               sampler_idx);
+            if (sampler == NULL)
+               return false;
+         }
 
          key->tex[combined_idx].return_size =
             v3dv_get_tex_return_size(image_view->format,
