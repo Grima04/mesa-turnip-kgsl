@@ -458,6 +458,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_S2EN
 %token <tok> T_SAMP
 %token <tok> T_TEX
+%token <tok> T_BASE
 
 %token <tok> T_NAN
 %token <tok> T_INF
@@ -719,11 +720,12 @@ cat5_flag:         '.' T_3D       { instr->flags |= IR3_INSTR_3D; }
 |                  '.' 'p'        { instr->flags |= IR3_INSTR_P; }
 |                  '.' 's'        { instr->flags |= IR3_INSTR_S; }
 |                  '.' T_S2EN     { instr->flags |= IR3_INSTR_S2EN; }
+|                  '.' T_BASE     { instr->flags |= IR3_INSTR_B; instr->cat5.tex_base = $2; }
 cat5_flags:
 |                  cat5_flag cat5_flags
 
 cat5_samp:         T_SAMP         { instr->cat5.samp = $1; }
-cat5_tex:          T_TEX          { instr->cat5.tex = $1; }
+cat5_tex:          T_TEX          { if (instr->flags & IR3_INSTR_B) instr->cat5.samp |= ($1 << 4); else instr->cat5.tex = $1; }
 cat5_type:         '(' type ')'   { instr->cat5.type = $2; }
 
 cat5_instr:        cat5_opc_dsxypp cat5_flags dst_reg ',' src_reg
