@@ -1229,6 +1229,9 @@ void Source::scanProperty(const struct tgsi_full_property *prop)
    case TGSI_PROPERTY_MUL_ZERO_WINS:
       info->io.mul_zero_wins = prop->u[0].Data;
       break;
+   case TGSI_PROPERTY_LAYER_VIEWPORT_RELATIVE:
+      info->io.layer_viewport_relative = prop->u[0].Data;
+      break;
    default:
       INFO("unhandled TGSI property %d\n", prop->Property.PropertyName);
       break;
@@ -1548,6 +1551,7 @@ bool Source::scanInstruction(const struct tgsi_full_instruction *inst)
              info->out[dst.getIndex(0)].sn == TGSI_SEMANTIC_PRIMID ||
              info->out[dst.getIndex(0)].sn == TGSI_SEMANTIC_LAYER ||
              info->out[dst.getIndex(0)].sn == TGSI_SEMANTIC_VIEWPORT_INDEX ||
+             info->out[dst.getIndex(0)].sn == TGSI_SEMANTIC_VIEWPORT_MASK ||
              info->out[dst.getIndex(0)].sn == TGSI_SEMANTIC_FOG)
             info->out[dst.getIndex(0)].mask &= 1;
 
