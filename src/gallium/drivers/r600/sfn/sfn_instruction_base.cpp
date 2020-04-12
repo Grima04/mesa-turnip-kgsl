@@ -120,7 +120,8 @@ void Instruction::remap_registers(ValueRemapper& map)
 
 void Instruction::add_remappable_src_value(PValue *v)
 {
-   m_mappable_src_registers.push_back(v);
+   if (*v)
+      m_mappable_src_registers.push_back(v);
 }
 
 void Instruction::add_remappable_src_value(GPRVector *v)
@@ -130,7 +131,8 @@ void Instruction::add_remappable_src_value(GPRVector *v)
 
 void Instruction::add_remappable_dst_value(PValue *v)
 {
-   m_mappable_dst_registers.push_back(v);
+   if (v)
+      m_mappable_dst_registers.push_back(v);
 }
 
 void Instruction::add_remappable_dst_value(GPRVector *v)
