@@ -142,4 +142,33 @@ RatInstruction::ERatOp RatInstruction::opcode(nir_intrinsic_op opcode)
    }
 }
 
+GDSStoreTessFactor::GDSStoreTessFactor(GPRVector& value):
+   Instruction(tf_write),
+   m_value(value)
+{
+   add_remappable_src_value(&m_value);
+}
+
+void GDSStoreTessFactor::replace_values(const ValueSet& candiates, PValue new_value)
+{
+   for (auto& c: candiates) {
+      for (int i = 0; i < 4; ++i) {
+         if (*c == *m_value[i])
+            m_value[i] = new_value;
+      }
+   }
+}
+
+
+bool GDSStoreTessFactor::is_equal_to(const Instruction& lhs) const
+{
+   auto& other = static_cast<const GDSStoreTessFactor&>(lhs);
+   return m_value == other.m_value;
+}
+
+void GDSStoreTessFactor::do_print(std::ostream& os) const
+{
+   os << "TF_WRITE " << m_value;
+}
+
 }

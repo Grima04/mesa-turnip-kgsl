@@ -190,6 +190,20 @@ private:
 
 };
 
+class GDSStoreTessFactor : public Instruction {
+public:
+      GDSStoreTessFactor(GPRVector& value);
+      int sel() const {return m_value.sel();}
+      int chan(int i ) const {return m_value.chan_i(i);}
+
+      void replace_values(const ValueSet& candiates, PValue new_value) override;
+private:
+      bool is_equal_to(const Instruction& lhs) const override;
+      void do_print(std::ostream& os) const override;
+
+      GPRVector m_value;
+};
+
 }
 
 #endif // SFN_GDSINSTR_H

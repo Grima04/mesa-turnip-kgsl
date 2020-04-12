@@ -90,6 +90,7 @@ public:
       mem_wr_scratch,
       gds,
       rat,
+      tf_write,
       block,
       unknown
    };

@@ -67,6 +67,7 @@ private:
    bool emit_rat(const RatInstruction& instr);
    bool emit_ldswrite(const LDSWriteInstruction& instr);
    bool emit_ldsread(const LDSReadInstruction& instr);
+   bool emit_tf_write(const GDSStoreTessFactor& instr);
 
    bool emit_load_addr(PValue addr);
    bool emit_fs_pixel_export(const ExportInstruction & exi);
@@ -196,6 +197,8 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
       return emit_ldswrite(static_cast<const LDSWriteInstruction&>(*i));
    case Instruction::lds_read:
       return emit_ldsread(static_cast<const LDSReadInstruction&>(*i));
+   case Instruction::tf_write:
+      return emit_tf_write(static_cast<const GDSStoreTessFactor&>(*i));
    default:
       return false;
    }
@@ -947,6 +950,42 @@ bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
 	if (r)
 		return false;
 	m_bc->cf_last->vpm = 1;
+   return true;
+}
+
+bool AssemblyFromShaderLegacyImpl::emit_tf_write(const GDSStoreTessFactor& instr)
+{
+   struct r600_bytecode_gds gds;
+
+   memset(&gds, 0, sizeof(struct r600_bytecode_gds));
+   gds.src_gpr = instr.sel();
+   gds.src_sel_x = instr.chan(0);
+   gds.src_sel_y = instr.chan(1);
+   gds.src_sel_z = 4;
+   gds.dst_sel_x = 7;
+   gds.dst_sel_y = 7;
+   gds.dst_sel_z = 7;
+   gds.dst_sel_w = 7;
+   gds.op = FETCH_OP_TF_WRITE;
+
+   if (r600_bytecode_add_gds(m_bc, &gds) != 0)
+         return false;
+
+   if (instr.chan(2) != 7) {
+      memset(&gds, 0, sizeof(struct r600_bytecode_gds));
+      gds.src_gpr = instr.sel();
+      gds.src_sel_x = instr.chan(2);
+      gds.src_sel_y = instr.chan(3);
+      gds.src_sel_z = 4;
+      gds.dst_sel_x = 7;
+      gds.dst_sel_y = 7;
+      gds.dst_sel_z = 7;
+      gds.dst_sel_w = 7;
+      gds.op = FETCH_OP_TF_WRITE;
+
+      if (r600_bytecode_add_gds(m_bc, &gds))
+         return false;
+   }
    return true;
 }
 
