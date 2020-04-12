@@ -177,6 +177,8 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_fddy_coarse:
    case nir_op_fddy: return emit_tex_fdd(instr,TexInstruction::get_gradient_v, false);
 
+   case nir_op_umad24: return emit_alu_op3(instr, op3_muladd_uint24,  {0, 1, 2});
+   case nir_op_umul24: return emit_alu_op2(instr, op2_mul_uint24);
    default:
       return false;
    }
