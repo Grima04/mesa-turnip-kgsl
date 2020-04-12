@@ -246,7 +246,7 @@ bool AssemblyFromShaderLegacyImpl::emit_alu(const AluInstruction& ai, ECFAluOpCo
     * scheduler */
    if (m_nliterals_in_group > 4) {
       sfn_log << SfnLog::assembly << "  Have " << m_nliterals_in_group << " inject a last op (nop)\n";
-      alu.op = op0_nop;
+      alu.op = ALU_OP0_NOP;
       alu.last = 1;
       int retval = r600_bytecode_add_alu(m_bc, &alu);
       if (retval)
@@ -1057,21 +1057,31 @@ bool AssemblyFromShaderLegacyImpl::copy_src(r600_bytecode_alu_src& src, const Va
       if (v.value() == 0) {
          src.sel = ALU_SRC_0;
          src.chan = 0;
+         --m_nliterals_in_group;
          return true;
       }
       if (v.value() == 1) {
          src.sel = ALU_SRC_1_INT;
          src.chan = 0;
+         --m_nliterals_in_group;
          return true;
       }
       if (v.value_float() == 1.0f) {
          src.sel = ALU_SRC_1;
          src.chan = 0;
+         --m_nliterals_in_group;
          return true;
       }
       if (v.value_float() == 0.5f) {
          src.sel = ALU_SRC_0_5;
          src.chan = 0;
+         --m_nliterals_in_group;
+         return true;
+      }
+      if (v.value() == 0xffffffff) {
+         src.sel = ALU_SRC_M_1_INT;
+         src.chan = 0;
+         --m_nliterals_in_group;
          return true;
       }
       src.value = v.value();
