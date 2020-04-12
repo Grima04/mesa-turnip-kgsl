@@ -1137,3 +1137,11 @@ triop("imad24_ir3", tint32, _2src_commutative,
 # 24b multiply into 32b result (with sign extension)
 binop("imul24", tint32, _2src_commutative + associative,
       "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8)")
+
+# unsigned 24b multiply into 32b result plus 32b int
+triop("umad24", tuint32, _2src_commutative,
+      "(((uint32_t)src0 << 8) >> 8) * (((uint32_t)src1 << 8) >> 8) + src2")
+
+# unsigned 24b multiply into 32b result uint
+binop("umul24", tint32, _2src_commutative + associative,
+      "(((uint32_t)src0 << 8) >> 8) * (((uint32_t)src1 << 8) >> 8)")

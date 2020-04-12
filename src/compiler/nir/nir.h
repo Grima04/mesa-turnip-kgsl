@@ -2996,6 +2996,14 @@ typedef struct nir_shader_compiler_options {
     */
    bool has_imul24;
 
+   /** Backend supports umul24, if not set  umul24 will automatically be lowered
+    * to imul with masked inputs */
+   bool has_umul24;
+
+   /** Backend supports umad24, if not set  umad24 will automatically be lowered
+    * to imul with masked inputs and iadd */
+   bool has_umad24;
+
    /* Whether to generate only scoped_memory_barrier intrinsics instead of the
     * set of memory barrier intrinsics based on GLSL.
     */

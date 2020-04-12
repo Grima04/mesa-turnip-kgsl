@@ -1313,6 +1313,13 @@ optimizations.extend([
    # rule converts everyone else to imul:
    (('amul', a, b), ('imul', a, b), '!options->has_imul24'),
 
+   (('umul24', a, b),
+    ('imul', ('iand', a, 0xffffff), ('iand', b, 0xffffff)),
+    '!options->has_umul24'),
+   (('umad24', a, b, c),
+    ('iadd', ('imul', ('iand', a, 0xffffff), ('iand', b, 0xffffff)), c),
+    '!options->has_umad24'),
+
    (('imad24_ir3', a, b, 0), ('imul24', a, b)),
    (('imad24_ir3', a, 0, c), (c)),
    (('imad24_ir3', a, 1, c), ('iadd', a, c)),
