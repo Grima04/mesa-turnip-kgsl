@@ -118,6 +118,8 @@ CXX_SOURCES = \
 	sfn/sfn_instruction_export.h \
 	sfn/sfn_instruction_fetch.cpp \
 	sfn/sfn_instruction_fetch.h \
+	sfn/sfn_instruction_lds.cpp \
+	sfn/sfn_instruction_lds.h \
 	sfn/sfn_instruction_gds.cpp \
 	sfn/sfn_instruction_gds.h \
 	sfn/sfn_instruction_misc.cpp \

@@ -137,6 +137,8 @@ files_r600 = files(
   'sfn/sfn_instruction_fetch.h',
   'sfn/sfn_instruction_gds.cpp',
   'sfn/sfn_instruction_gds.h',
+  'sfn/sfn_instruction_lds.cpp',
+  'sfn/sfn_instruction_lds.h',
   'sfn/sfn_instruction_misc.cpp',
   'sfn/sfn_instruction_misc.h',
   'sfn/sfn_instruction_tex.cpp',

@@ -77,6 +77,8 @@ public:
       cond_if,
       cond_else,
       cond_endif,
+      lds_read,
+      lds_write,
       loop_begin,
       loop_end,
       loop_break,
