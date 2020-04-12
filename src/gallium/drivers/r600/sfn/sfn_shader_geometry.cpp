@@ -83,8 +83,11 @@ bool GeometryShaderFromNir::do_process_inputs(nir_variable *input)
 
    if (input->data.location == VARYING_SLOT_POS ||
        input->data.location == VARYING_SLOT_PSIZ ||
+       input->data.location == VARYING_SLOT_CLIP_VERTEX ||
        input->data.location == VARYING_SLOT_CLIP_DIST0 ||
        input->data.location == VARYING_SLOT_CLIP_DIST1 ||
+       input->data.location == VARYING_SLOT_COL0 ||
+       input->data.location == VARYING_SLOT_COL1 ||
        (input->data.location >= VARYING_SLOT_VAR0 &&
        input->data.location <= VARYING_SLOT_VAR31) ||
        (input->data.location >= VARYING_SLOT_TEX0 &&
