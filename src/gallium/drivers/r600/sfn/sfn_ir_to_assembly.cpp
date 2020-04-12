@@ -30,6 +30,7 @@
 #include "sfn_instruction_gds.h"
 #include "sfn_instruction_misc.h"
 #include "sfn_instruction_fetch.h"
+#include "sfn_instruction_lds.h"
 
 #include "../r600_shader.h"
 #include "../r600_sq.h"
@@ -64,6 +65,8 @@ private:
    bool emit_wr_scratch(const WriteScratchInstruction& instr);
    bool emit_gds(const GDSInstr& instr);
    bool emit_rat(const RatInstruction& instr);
+   bool emit_ldswrite(const LDSWriteInstruction& instr);
+   bool emit_ldsread(const LDSReadInstruction& instr);
 
    bool emit_load_addr(PValue addr);
    bool emit_fs_pixel_export(const ExportInstruction & exi);
@@ -189,6 +192,10 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
       return emit_gds(static_cast<const GDSInstr&>(*i));
    case Instruction::rat:
       return emit_rat(static_cast<const RatInstruction&>(*i));
+   case Instruction::lds_write:
+      return emit_ldswrite(static_cast<const LDSWriteInstruction&>(*i));
+   case Instruction::lds_read:
+      return emit_ldsread(static_cast<const LDSReadInstruction&>(*i));
    default:
       return false;
    }
@@ -943,6 +950,77 @@ bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
    return true;
 }
 
+bool AssemblyFromShaderLegacyImpl::emit_ldswrite(const LDSWriteInstruction& instr)
+{
+   r600_bytecode_alu alu;
+   memset(&alu, 0, sizeof(r600_bytecode_alu));
+
+   alu.last = true;
+   alu.is_lds_idx_op = true;
+   copy_src(alu.src[0], instr.address());
+   copy_src(alu.src[1], instr.value0());
+
+   if (instr.num_components() == 1) {
+      alu.op = LDS_OP2_LDS_WRITE;
+   } else {
+      alu.op = LDS_OP3_LDS_WRITE_REL;
+      alu.lds_idx = 1;
+      copy_src(alu.src[2], instr.value1());
+   }
+
+   return r600_bytecode_add_alu(m_bc, &alu) == 0;
+}
+
+bool AssemblyFromShaderLegacyImpl::emit_ldsread(const LDSReadInstruction& instr)
+{
+   int r;
+   unsigned nread = 0;
+   unsigned nfetch = 0;
+   unsigned n_values = instr.num_values();
+
+   r600_bytecode_alu alu_fetch;
+   r600_bytecode_alu alu_read;
+
+   /* We must add a new ALU clause if the fetch and read op would be split otherwise
+    * r600_asm limites at 120 slots = 240 dwords */
+   if (m_bc->cf_last->ndw > 240 - 4 * n_values)
+      m_bc->force_add_cf = 1;
+
+   while (nread < n_values) {
+      if (nfetch < n_values) {
+         memset(&alu_fetch, 0, sizeof(r600_bytecode_alu));
+         alu_fetch.is_lds_idx_op = true;
+         alu_fetch.op = LDS_OP1_LDS_READ_RET;
+
+         copy_src(alu_fetch.src[0], instr.address(nfetch));
+         alu_fetch.src[1].sel = V_SQ_ALU_SRC_0;
+         alu_fetch.src[2].sel = V_SQ_ALU_SRC_0;
+         alu_fetch.last = 1;
+         r = r600_bytecode_add_alu(m_bc, &alu_fetch);
+         m_bc->cf_last->nlds_read++;
+         if (r)
+            return false;
+      }
+
+      if (nfetch >= n_values) {
+         memset(&alu_read, 0, sizeof(r600_bytecode_alu));
+         copy_dst(alu_read.dst, instr.dest(nread));
+         alu_read.op = ALU_OP1_MOV;
+         alu_read.src[0].sel = EG_V_SQ_ALU_SRC_LDS_OQ_A_POP;
+         alu_read.last = 1;
+         alu_read.dst.write = 1;
+         r = r600_bytecode_add_alu(m_bc, &alu_read);
+         m_bc->cf_last->nqueue_read++;
+         if (r)
+            return false;
+         ++nread;
+      }
+      ++nfetch;
+   }
+   assert(m_bc->cf_last->nlds_read == m_bc->cf_last->nqueue_read);
+
+   return true;
+}
 
 bool AssemblyFromShaderLegacyImpl::emit_rat(const RatInstruction& instr)
 {
