@@ -88,6 +88,7 @@ public:
    PValue m_last_addr;
    int m_loop_nesting;
    int m_nliterals_in_group;
+   std::set<int> vtx_fetch_results;
 };
 
 
@@ -147,6 +148,9 @@ bool AssemblyFromShaderLegacy::do_lower(const std::vector<InstructionBlock>& ir)
 
 bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
 {
+   if (i->type() != Instruction::vtx)
+       vtx_fetch_results.clear();
+
    sfn_log << SfnLog::assembly << "Emit from '" << *i << "\n";
    switch (i->type()) {
    case Instruction::alu:
@@ -739,6 +743,13 @@ bool AssemblyFromShaderLegacyImpl::emit_vtx(const FetchInstruction& fetch_instr)
             return false;
       }
    }
+
+   if (vtx_fetch_results.find(fetch_instr.src().sel()) !=
+       vtx_fetch_results.end()) {
+      m_bc->force_add_cf = 1;
+      vtx_fetch_results.clear();
+   }
+   vtx_fetch_results.insert(fetch_instr.dst().sel());
 
    struct r600_bytecode_vtx vtx;
    memset(&vtx, 0, sizeof(vtx));
