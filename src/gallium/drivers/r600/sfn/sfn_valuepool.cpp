@@ -53,8 +53,27 @@ GPRVector ValuePool::vec_from_nir(const nir_dest& dst, int num_components)
    for (int i = 0; i < 4; ++i)
       result[i] = from_nir(dst, i < num_components ? i : 7);
    return GPRVector(result);
-
 }
+
+std::vector<PValue> ValuePool::varvec_from_nir(const nir_dest& dst, int num_components)
+{
+   std::vector<PValue> result(num_components);
+   for (int i = 0; i < num_components; ++i)
+      result[i] = from_nir(dst, i);
+   return result;
+}
+
+
+std::vector<PValue> ValuePool::varvec_from_nir(const nir_src& src, int num_components)
+{
+   std::vector<PValue> result(num_components);
+   int i;
+   for (i = 0; i < num_components; ++i)
+      result[i] = from_nir(src, i);
+
+   return result;
+}
+
 
 PValue ValuePool::from_nir(const nir_src& v, unsigned component, unsigned swizzled)
 {

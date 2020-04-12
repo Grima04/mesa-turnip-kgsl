@@ -89,6 +89,9 @@ public:
 
    GPRVector vec_from_nir(const nir_dest& dst, int num_components);
 
+   std::vector<PValue> varvec_from_nir(const nir_dest& src, int num_components);
+   std::vector<PValue> varvec_from_nir(const nir_src& src, int num_components);
+
    PValue from_nir(const nir_src& v, unsigned component, unsigned swizzled);
 
    PValue from_nir(const nir_src& v, unsigned component);
