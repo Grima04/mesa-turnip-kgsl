@@ -174,6 +174,11 @@ public:
    FetchGDSOpResult(const GPRVector dst, const PValue src);
 };
 
+class FetchTCSIOParam : public FetchInstruction {
+public:
+   FetchTCSIOParam(GPRVector dst, PValue src, int offset);
+};
+
 }
 
 #endif // SFN_INSTRUCTION_FETCH_H
