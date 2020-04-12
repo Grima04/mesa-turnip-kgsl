@@ -102,6 +102,7 @@ protected:
    bool emit_load_local_shared(nir_intrinsic_instr* instr);
    bool emit_store_local_shared(nir_intrinsic_instr* instr);
 
+   bool emit_barrier(nir_intrinsic_instr* instr);
    const GPRVector *output_register(unsigned location) const;
 
    bool load_preloaded_value(const nir_dest& dest, int chan, PValue value,

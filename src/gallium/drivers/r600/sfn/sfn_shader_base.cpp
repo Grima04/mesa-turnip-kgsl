@@ -535,6 +535,10 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
       return emit_load_local_shared(instr);
    case nir_intrinsic_store_local_shared_r600:
       return emit_store_local_shared(instr);
+   case nir_intrinsic_control_barrier:
+   case nir_intrinsic_memory_barrier_tcs_patch:
+      return emit_barrier(instr);
+
    default:
       fprintf(stderr, "r600-nir: Unsupported intrinsic %d\n", instr->intrinsic);
       return false;
@@ -552,6 +556,15 @@ ShaderFromNirProcessor::emit_load_function_temp(UNUSED const nir_variable *var, 
 {
    return false;
 }
+
+bool ShaderFromNirProcessor::emit_barrier(UNUSED nir_intrinsic_instr* instr)
+{
+   AluInstruction *ir = new AluInstruction(op0_group_barrier);
+   ir->set_flag(alu_last_instr);
+   emit_instruction(ir);
+   return true;
+}
+
 
 bool ShaderFromNirProcessor::load_preloaded_value(const nir_dest& dest, int chan, PValue value, bool as_last)
 {

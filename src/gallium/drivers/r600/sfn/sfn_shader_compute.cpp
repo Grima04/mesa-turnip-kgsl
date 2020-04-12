@@ -70,8 +70,6 @@ bool ComputeShaderFromNir::emit_intrinsic_instruction_override(nir_intrinsic_ins
       return emit_load_3vec(instr, m_workgroup_id);
    case nir_intrinsic_load_num_work_groups:
       return emit_load_num_work_groups(instr);
-   case nir_intrinsic_control_barrier:
-      return emit_barrier(instr);
    default:
       return false;
    }
@@ -86,14 +84,6 @@ bool ComputeShaderFromNir::emit_load_3vec(nir_intrinsic_instr* instr,
       emit_instruction(ir);
    }
    ir->set_flag(alu_last_instr);
-   return true;
-}
-
-bool ComputeShaderFromNir::emit_barrier(UNUSED nir_intrinsic_instr* instr)
-{
-   AluInstruction *ir = new AluInstruction(op0_group_barrier);
-   ir->set_flag(alu_last_instr);
-   emit_instruction(ir);
    return true;
 }
 
