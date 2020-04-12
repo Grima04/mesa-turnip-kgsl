@@ -889,6 +889,18 @@ load("sampler_lod_parameters_pan", 1, [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { buffer_index, offset }.
 load("ubo_r600", 2, [ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# location where the tesselation data is stored in LDS
+system_value("tcs_in_param_base_r600", 4)
+system_value("tcs_out_param_base_r600", 4)
+system_value("tcs_rel_patch_id_r600", 1)
+system_value("tcs_tess_factor_base_r600", 1)
+
+# load as many components as needed giving per-component addresses
+intrinsic("load_local_shared_r600", src_comp=[0], dest_comp=0, indices = [COMPONENT], flags = [CAN_ELIMINATE, CAN_REORDER])
+
+store("local_shared_r600", 2, [WRMASK])
+store("tf_r600", 1)
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel
