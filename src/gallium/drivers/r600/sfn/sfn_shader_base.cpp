@@ -788,8 +788,7 @@ PValue ShaderFromNirProcessor::from_nir_with_fetch_constant(const nir_src& src, 
    if (value->type() != Value::gpr &&
        value->type() != Value::gpr_vector &&
        value->type() != Value::gpr_array_value) {
-      unsigned temp = allocate_temp_register();
-      PValue retval(new GPRValue(temp, component));
+      PValue retval = get_temp_register();
       emit_instruction(new AluInstruction(op1_mov, retval, value,
                                           EmitInstruction::last_write));
       value = retval;
