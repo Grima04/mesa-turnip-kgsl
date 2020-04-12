@@ -956,6 +956,7 @@ static void *r600_create_shader_state(struct pipe_context *ctx,
 	case PIPE_SHADER_TESS_CTRL:
 		sel->lds_patch_outputs_written_mask = 0;
 		sel->lds_outputs_written_mask = 0;
+		bool texxcoord_semantic = ctx->screen->get_param(ctx->screen, PIPE_CAP_TGSI_TEXCOORD);
 
 		for (i = 0; i < sel->info.num_outputs; i++) {
 			unsigned name = sel->info.output_semantic_name[i];
@@ -966,11 +967,11 @@ static void *r600_create_shader_state(struct pipe_context *ctx,
 			case TGSI_SEMANTIC_TESSOUTER:
 			case TGSI_SEMANTIC_PATCH:
 				sel->lds_patch_outputs_written_mask |=
-					1ull << r600_get_lds_unique_index(name, index);
+					1ull << r600_get_lds_unique_index(name, index, texxcoord_semantic);
 				break;
 			default:
 				sel->lds_outputs_written_mask |=
-					1ull << r600_get_lds_unique_index(name, index);
+					1ull << r600_get_lds_unique_index(name, index, texxcoord_semantic);
 			}
 		}
 		break;
