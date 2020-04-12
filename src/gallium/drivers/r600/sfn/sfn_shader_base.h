@@ -98,6 +98,10 @@ protected:
    bool emit_loop_end(int loop_id);
    bool emit_jump_instruction(nir_jump_instr *instr);
 
+   bool emit_load_tcs_param_base(nir_intrinsic_instr* instr, int offset);
+   bool emit_load_local_shared(nir_intrinsic_instr* instr);
+   bool emit_store_local_shared(nir_intrinsic_instr* instr);
+
    const GPRVector *output_register(unsigned location) const;
 
    bool load_preloaded_value(const nir_dest& dest, int chan, PValue value,

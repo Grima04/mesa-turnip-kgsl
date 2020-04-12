@@ -36,6 +36,7 @@
 #include "sfn_nir.h"
 #include "sfn_instruction_misc.h"
 #include "sfn_instruction_fetch.h"
+#include "sfn_instruction_lds.h"
 
 #include <iostream>
 
@@ -421,6 +422,46 @@ bool ShaderFromNirProcessor::emit_ifelse_end(int if_id)
    return true;
 }
 
+bool ShaderFromNirProcessor::emit_load_tcs_param_base(nir_intrinsic_instr* instr, int offset)
+{
+   PValue src = get_temp_register();
+   emit_instruction(new AluInstruction(op1_mov, src, Value::zero, {alu_write, alu_last_instr}));
+
+   GPRVector dest = vec_from_nir(instr->dest, instr->num_components);
+   emit_instruction(new FetchTCSIOParam(dest, src, offset));
+
+   return true;
+
+}
+
+bool ShaderFromNirProcessor::emit_load_local_shared(nir_intrinsic_instr* instr)
+{
+   auto address = varvec_from_nir(instr->src[0], instr->num_components);
+   auto dest_value = varvec_from_nir(instr->dest, instr->num_components);
+
+   emit_instruction(new LDSReadInstruction(address, dest_value));
+   return true;
+}
+
+bool ShaderFromNirProcessor::emit_store_local_shared(nir_intrinsic_instr* instr)
+{
+   unsigned write_mask = nir_intrinsic_write_mask(instr);
+
+   auto address = from_nir(instr->src[1], 0);
+   int swizzle_base = (write_mask & 0x3) ? 0 : 2;
+   write_mask |= write_mask >> 2;
+
+   auto value =  from_nir(instr->src[0], swizzle_base);
+   if (!(write_mask & 2)) {
+      emit_instruction(new LDSWriteInstruction(address, 0, value));
+   } else {
+      auto value1 = from_nir(instr->src[0], swizzle_base + 1);
+      emit_instruction(new LDSWriteInstruction(address, 0, value, value1));
+   }
+
+   return true;
+}
+
 bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* instr)
 {
    r600::sfn_log << SfnLog::instr << "emit '"
@@ -486,6 +527,14 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_input:
    case nir_intrinsic_store_output:
+   case nir_intrinsic_load_tcs_in_param_base_r600:
+      return emit_load_tcs_param_base(instr, 0);
+   case nir_intrinsic_load_tcs_out_param_base_r600:
+      return emit_load_tcs_param_base(instr, 16);
+   case nir_intrinsic_load_local_shared_r600:
+      return emit_load_local_shared(instr);
+   case nir_intrinsic_store_local_shared_r600:
+      return emit_store_local_shared(instr);
    default:
       fprintf(stderr, "r600-nir: Unsupported intrinsic %d\n", instr->intrinsic);
       return false;
