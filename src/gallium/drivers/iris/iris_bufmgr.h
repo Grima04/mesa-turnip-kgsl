@@ -310,6 +310,13 @@ int iris_bo_get_tiling(struct iris_bo *bo, uint32_t *tiling_mode,
 int iris_bo_flink(struct iris_bo *bo, uint32_t *name);
 
 /**
+ * Make a BO externally accessible.
+ *
+ * \param bo Buffer to make external
+ */
+void iris_bo_make_external(struct iris_bo *bo);
+
+/**
  * Returns 1 if mapping the buffer for write could cause the process
  * to block, due to the object being active in the GPU.
  */

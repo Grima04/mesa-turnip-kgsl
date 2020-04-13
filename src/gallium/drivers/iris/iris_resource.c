@@ -801,6 +801,9 @@ iris_resource_create_for_buffer(struct pipe_screen *pscreen,
       return NULL;
    }
 
+   if (templ->bind & PIPE_BIND_SHARED)
+      iris_bo_make_external(res->bo);
+
    return &res->base;
 }
 
@@ -923,6 +926,9 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
          goto fail;
       map_aux_addresses(screen, res);
    }
+
+   if (templ->bind & PIPE_BIND_SHARED)
+      iris_bo_make_external(res->bo);
 
    return &res->base;
 

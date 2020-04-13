@@ -1376,12 +1376,17 @@ iris_bo_make_external_locked(struct iris_bo *bo)
 {
    if (!bo->external) {
       _mesa_hash_table_insert(bo->bufmgr->handle_table, &bo->gem_handle, bo);
+      /* If a BO is going to be used externally, it could be sent to the
+       * display HW. So make sure our CPU mappings don't assume cache
+       * coherency since display is outside that cache.
+       */
+      bo->cache_coherent = false;
       bo->external = true;
       bo->reusable = false;
    }
 }
 
-static void
+void
 iris_bo_make_external(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
