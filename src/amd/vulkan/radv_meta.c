@@ -65,6 +65,8 @@ radv_meta_save(struct radv_meta_saved_state *state,
 
 		state->cull_mode = cmd_buffer->state.dynamic.cull_mode;
 		state->front_face = cmd_buffer->state.dynamic.front_face;
+
+		state->primitive_topology = cmd_buffer->state.dynamic.primitive_topology;
 	}
 
 	if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
@@ -129,10 +131,13 @@ radv_meta_restore(const struct radv_meta_saved_state *state,
 		cmd_buffer->state.dynamic.cull_mode = state->cull_mode;
 		cmd_buffer->state.dynamic.front_face = state->front_face;
 
+		cmd_buffer->state.dynamic.primitive_topology = state->primitive_topology;
+
 		cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
 					   RADV_CMD_DIRTY_DYNAMIC_SCISSOR |
 					   RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
-					   RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
+					   RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
+					   RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
 	}
 
 	if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {

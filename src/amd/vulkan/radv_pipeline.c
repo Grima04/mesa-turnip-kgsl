@@ -1193,38 +1193,6 @@ radv_prim_can_use_guardband(enum VkPrimitiveTopology topology)
 }
 
 static uint32_t
-si_translate_prim(enum VkPrimitiveTopology topology)
-{
-	switch (topology) {
-	case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
-		return V_008958_DI_PT_POINTLIST;
-	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
-		return V_008958_DI_PT_LINELIST;
-	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
-		return V_008958_DI_PT_LINESTRIP;
-	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
-		return V_008958_DI_PT_TRILIST;
-	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
-		return V_008958_DI_PT_TRISTRIP;
-	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
-		return V_008958_DI_PT_TRIFAN;
-	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
-		return V_008958_DI_PT_LINELIST_ADJ;
-	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
-		return V_008958_DI_PT_LINESTRIP_ADJ;
-	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
-		return V_008958_DI_PT_TRILIST_ADJ;
-	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
-		return V_008958_DI_PT_TRISTRIP_ADJ;
-	case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
-		return V_008958_DI_PT_PATCH;
-	default:
-		assert(0);
-		return 0;
-	}
-}
-
-static uint32_t
 si_conv_gl_prim_to_gs_out(unsigned gl_prim)
 {
 	switch (gl_prim) {
@@ -1302,6 +1270,8 @@ static unsigned radv_dynamic_state_mask(VkDynamicState state)
 		return RADV_DYNAMIC_CULL_MODE;
 	case VK_DYNAMIC_STATE_FRONT_FACE_EXT:
 		return RADV_DYNAMIC_FRONT_FACE;
+	case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT:
+		return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY;
 	default:
 		unreachable("Unhandled dynamic state");
 	}
@@ -1311,10 +1281,12 @@ static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreat
 {
 	uint32_t states = RADV_DYNAMIC_ALL;
 
-	/* If rasterization is disabled we do not care about any of the dynamic states,
-	 * since they are all rasterization related only. */
+	/* If rasterization is disabled we do not care about any of the
+	 * dynamic states, since they are all rasterization related only,
+	 * except primitive topology.
+	 */
 	if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
-		return 0;
+		return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY;
 
 	if (!pCreateInfo->pRasterizationState->depthBiasEnable)
 		states &= ~RADV_DYNAMIC_DEPTH_BIAS;
@@ -1350,7 +1322,8 @@ static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreat
 
 static void
 radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
-				 const VkGraphicsPipelineCreateInfo *pCreateInfo)
+				 const VkGraphicsPipelineCreateInfo *pCreateInfo,
+				 const struct radv_graphics_pipeline_create_info *extra)
 {
 	uint32_t needed_states = radv_pipeline_needed_dynamic_state(pCreateInfo);
 	uint32_t states = needed_states;
@@ -1424,6 +1397,14 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 	if (states & RADV_DYNAMIC_FRONT_FACE) {
 		dynamic->front_face =
 			pCreateInfo->pRasterizationState->frontFace;
+	}
+
+	if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
+		dynamic->primitive_topology =
+			si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
+		if (extra && extra->use_rectlist) {
+			dynamic->primitive_topology = V_008958_DI_PT_RECTLIST;
+		}
 	}
 
 	/* If there is no depthstencil attachment, then don't read
@@ -4615,7 +4596,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
                            const struct radv_graphics_pipeline_create_info *extra,
                            const struct radv_blend_state *blend,
                            const struct radv_tessellation_state *tess,
-                           unsigned prim, unsigned gs_out)
+                           unsigned gs_out)
 {
 	struct radeon_cmdbuf *ctx_cs = &pipeline->ctx_cs;
 	struct radeon_cmdbuf *cs = &pipeline->cs;
@@ -4642,13 +4623,6 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess);
 
 	radeon_set_context_reg(ctx_cs, R_028B54_VGT_SHADER_STAGES_EN, radv_compute_vgt_shader_stages_en(pipeline));
-
-	if (pipeline->device->physical_device->rad_info.chip_class >= GFX7) {
-		radeon_set_uconfig_reg_idx(pipeline->device->physical_device,
-					   cs, R_030908_VGT_PRIMITIVE_TYPE, 1, prim);
-	} else {
-		radeon_set_config_reg(cs, R_008958_VGT_PRIMITIVE_TYPE, prim);
-	}
 	radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
 
 	radeon_set_context_reg(ctx_cs, R_02820C_PA_SC_CLIPRECT_RULE, radv_compute_cliprect_rule(pCreateInfo));
@@ -4834,9 +4808,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	pipeline->graphics.spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
 	radv_pipeline_init_multisample_state(pipeline, &blend, pCreateInfo);
 	uint32_t gs_out;
-	uint32_t prim = si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
 
-	pipeline->graphics.topology = si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
 	pipeline->graphics.can_use_guardband = radv_prim_can_use_guardband(pCreateInfo->pInputAssemblyState->topology);
 
 	if (radv_pipeline_has_gs(pipeline)) {
@@ -4852,7 +4824,6 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		gs_out = si_conv_prim_to_gs_out(pCreateInfo->pInputAssemblyState->topology);
 	}
 	if (extra && extra->use_rectlist) {
-		prim = V_008958_DI_PT_RECTLIST;
 		gs_out = V_028A6C_OUTPRIM_TYPE_TRISTRIP;
 		pipeline->graphics.can_use_guardband = true;
 		if (radv_pipeline_has_ngg(pipeline))
@@ -4860,7 +4831,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	}
 	pipeline->graphics.prim_restart_enable = !!pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
 
-	radv_pipeline_init_dynamic_state(pipeline, pCreateInfo);
+	radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, extra);
 
 	/* Ensure that some export memory is always allocated, for two reasons:
 	 *
@@ -4942,7 +4913,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
 
 	result = radv_pipeline_scratch_init(device, pipeline);
-	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, &tess, prim, gs_out);
+	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, &tess, gs_out);
 
 	return result;
 }

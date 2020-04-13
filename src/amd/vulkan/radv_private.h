@@ -1135,6 +1135,7 @@ struct radv_dynamic_state {
 
 	VkCullModeFlags cull_mode;
 	VkFrontFace front_face;
+	unsigned primitive_topology;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -1395,7 +1396,8 @@ void si_write_scissors(struct radeon_cmdbuf *cs, int first,
 uint32_t si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 				   bool instanced_draw, bool indirect_draw,
 				   bool count_from_stream_output,
-				   uint32_t draw_vertex_count);
+				   uint32_t draw_vertex_count,
+				   unsigned topology);
 void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs,
 				enum chip_class chip_class,
 				bool is_mec,
@@ -1651,7 +1653,6 @@ struct radv_pipeline {
  			bool can_use_guardband;
 			uint32_t needed_dynamic_state;
 			bool disable_out_of_order_rast_for_occlusion;
-			uint8_t topology;
 			unsigned tess_patch_control_points;
 			unsigned pa_su_sc_mode_cntl;
 
@@ -2489,6 +2490,37 @@ si_conv_gl_prim_to_vertices(unsigned gl_prim)
 void radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
 				       const VkRenderPassBeginInfo *pRenderPassBegin);
 void radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer);
+
+static inline uint32_t si_translate_prim(unsigned topology)
+{
+	switch (topology) {
+	case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+		return V_008958_DI_PT_POINTLIST;
+	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+		return V_008958_DI_PT_LINELIST;
+	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+		return V_008958_DI_PT_LINESTRIP;
+	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+		return V_008958_DI_PT_TRILIST;
+	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
+		return V_008958_DI_PT_TRISTRIP;
+	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
+		return V_008958_DI_PT_TRIFAN;
+	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+		return V_008958_DI_PT_LINELIST_ADJ;
+	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+		return V_008958_DI_PT_LINESTRIP_ADJ;
+	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+		return V_008958_DI_PT_TRILIST_ADJ;
+	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+		return V_008958_DI_PT_TRISTRIP_ADJ;
+	case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
+		return V_008958_DI_PT_PATCH;
+	default:
+		assert(0);
+		return 0;
+	}
+}
 
 #define RADV_DEFINE_HANDLE_CASTS(__radv_type, __VkType)		\
 								\

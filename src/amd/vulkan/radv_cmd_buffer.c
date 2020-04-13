@@ -98,6 +98,7 @@ const struct radv_dynamic_state default_dynamic_state = {
 	},
 	.cull_mode = 0u,
 	.front_face = 0u,
+	.primitive_topology = 0u,
 };
 
 static void
@@ -234,6 +235,13 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 		if (dest->front_face != src->front_face) {
 			dest->front_face = src->front_face;
 			dest_mask |= RADV_DYNAMIC_FRONT_FACE;
+		}
+	}
+
+	if (copy_mask & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
+		if (dest->primitive_topology != src->primitive_topology) {
+			dest->primitive_topology = src->primitive_topology;
+			dest_mask |= RADV_DYNAMIC_PRIMITIVE_TOPOLOGY;
 		}
 	}
 
@@ -1210,6 +1218,9 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 		cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
 					   RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
 
+	if (!cmd_buffer->state.emitted_pipeline)
+		cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
+
 	radeon_emit_array(cmd_buffer->cs, pipeline->cs.buf, pipeline->cs.cdw);
 
 	if (!cmd_buffer->state.emitted_pipeline ||
@@ -1348,10 +1359,9 @@ static void
 radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
 {
 	struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-	struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
 	uint32_t auto_reset_cntl = 1;
 
-	if (pipeline->graphics.topology == V_008958_DI_PT_LINESTRIP)
+	if (d->primitive_topology == V_008958_DI_PT_LINESTRIP)
 		auto_reset_cntl = 2;
 
 	radeon_set_context_reg(cmd_buffer->cs, R_028A0C_PA_SC_LINE_STIPPLE,
@@ -1381,6 +1391,23 @@ radv_emit_culling(struct radv_cmd_buffer *cmd_buffer, uint32_t states)
 
 	radeon_set_context_reg(cmd_buffer->cs, R_028814_PA_SU_SC_MODE_CNTL,
 			       pa_su_sc_mode_cntl);
+}
+
+static void
+radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7) {
+		radeon_set_uconfig_reg_idx(cmd_buffer->device->physical_device,
+					   cmd_buffer->cs,
+					   R_030908_VGT_PRIMITIVE_TYPE, 1,
+					   d->primitive_topology);
+	} else {
+		radeon_set_config_reg(cmd_buffer->cs,
+				      R_008958_VGT_PRIMITIVE_TYPE,
+				      d->primitive_topology);
+	}
 }
 
 static void
@@ -2291,6 +2318,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 		      RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE))
 		radv_emit_culling(cmd_buffer, states);
 
+	if (states & RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)
+		radv_emit_primitive_topology(cmd_buffer);
+
 	cmd_buffer->state.dirty &= ~states;
 }
 
@@ -2790,6 +2820,7 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
 	struct radv_cmd_state *state = &cmd_buffer->state;
+	unsigned topology = state->dynamic.primitive_topology;
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	unsigned ia_multi_vgt_param;
 
@@ -2797,7 +2828,8 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 		si_get_ia_multi_vgt_param(cmd_buffer, instanced_draw,
 					  indirect_draw,
 					  count_from_stream_output,
-					  draw_vertex_count);
+					  draw_vertex_count,
+					  topology);
 
 	if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
 		if (info->chip_class == GFX9) {
@@ -4268,6 +4300,22 @@ void radv_CmdSetFrontFaceEXT(
 	state->dynamic.front_face = frontFace;
 
 	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
+}
+
+void radv_CmdSetPrimitiveTopologyEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkPrimitiveTopology                         primitiveTopology)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	unsigned primitive_topology = si_translate_prim(primitiveTopology);
+
+	if (state->dynamic.primitive_topology == primitive_topology)
+		return;
+
+	state->dynamic.primitive_topology = primitive_topology;
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
 }
 
 void radv_CmdExecuteCommands(

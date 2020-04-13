@@ -711,7 +711,8 @@ uint32_t
 si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 			  bool instanced_draw, bool indirect_draw,
 			  bool count_from_stream_output,
-			  uint32_t draw_vertex_count)
+			  uint32_t draw_vertex_count,
+			  unsigned topology)
 {
 	enum chip_class chip_class = cmd_buffer->device->physical_device->rad_info.chip_class;
 	enum radeon_family family = cmd_buffer->device->physical_device->rad_info.family;
@@ -723,7 +724,6 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 	bool ia_switch_on_eoi = false;
 	bool partial_vs_wave = false;
 	bool partial_es_wave = cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.partial_es_wave;
-	unsigned topology = cmd_buffer->state.pipeline->graphics.topology;
 	bool multi_instances_smaller_than_primgroup;
 	struct radv_prim_vertex_count prim_vertex_count = prim_size_table[topology];
 
