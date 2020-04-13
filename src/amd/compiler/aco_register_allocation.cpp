@@ -80,6 +80,49 @@ struct ra_ctx {
    }
 };
 
+bool instr_can_access_subdword(aco_ptr<Instruction>& instr)
+{
+   return instr->isSDWA() || instr->format == Format::PSEUDO;
+}
+
+struct DefInfo {
+   uint16_t lb;
+   uint16_t ub;
+   uint8_t size;
+   uint8_t stride;
+   RegClass rc;
+
+   DefInfo(uint32_t lb, uint32_t ub, uint32_t size, uint32_t stride, RegClass rc) :
+      lb(lb), ub(ub), size(size), stride(stride), rc(rc) {}
+
+   DefInfo(ra_ctx& ctx, aco_ptr<Instruction>& instr, RegClass rc) : rc(rc) {
+      size = rc.size();
+      stride = 1;
+
+      if (rc.type() == RegType::vgpr) {
+         lb = 256;
+         ub = 256 + ctx.program->max_reg_demand.vgpr;
+      } else {
+         lb = 0;
+         ub = ctx.program->max_reg_demand.sgpr;
+         if (size == 2)
+            stride = 2;
+         else if (size >= 4)
+            stride = 4;
+      }
+
+      if (rc.is_subdword()) {
+         /* stride in bytes */
+         if(!instr_can_access_subdword(instr))
+            stride = 4;
+         else if (rc.bytes() % 4 == 0)
+            stride = 4;
+         else if (rc.bytes() % 2 == 0)
+            stride = 2;
+      }
+   }
+};
+
 class RegisterFile {
 public:
    RegisterFile() {regs.fill(0);}
@@ -316,17 +359,16 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
    }
 }
 
-bool instr_can_access_subdword(aco_ptr<Instruction>& instr)
-{
-   return instr->isSDWA() || instr->format == Format::PSEUDO;
-}
-
 std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
                                         RegisterFile& reg_file,
-                                        uint32_t lb, uint32_t ub,
-                                        uint32_t size, uint32_t stride,
-                                        RegClass rc)
+                                        DefInfo info)
 {
+   uint32_t lb = info.lb;
+   uint32_t ub = info.ub;
+   uint32_t size = info.size;
+   uint32_t stride = info.stride;
+   RegClass rc = info.rc;
+
    if (rc.is_subdword()) {
       for (std::pair<uint32_t, std::array<uint32_t, 4>> entry : reg_file.subdword_regs) {
          assert(reg_file[entry.first] == 0xF0000000);
@@ -496,13 +538,16 @@ bool get_regs_for_copies(ra_ctx& ctx,
                }
             }
          } else {
-            res = get_reg_simple(ctx, reg_file, def_reg_lo, def_reg_hi + 1, size, stride, var.rc);
+            DefInfo info = {def_reg_lo, def_reg_hi + 1, size, stride, var.rc};
+            res = get_reg_simple(ctx, reg_file, info);
          }
       } else {
-         res = get_reg_simple(ctx, reg_file, lb, def_reg_lo, size, stride, var.rc);
+         DefInfo info = {lb, def_reg_lo, size, stride, var.rc};
+         res = get_reg_simple(ctx, reg_file, info);
          if (!res.second) {
             unsigned lb = (def_reg_hi + stride) & ~(stride - 1);
-            res = get_reg_simple(ctx, reg_file, lb, ub, size, stride, var.rc);
+            DefInfo info = {lb, ub, size, stride, var.rc};
+            res = get_reg_simple(ctx, reg_file, info);
          }
       }
 
@@ -860,7 +905,8 @@ std::pair<PhysReg, bool> get_reg_vec(ra_ctx& ctx,
       else if (size >= 4)
          stride = 4;
    }
-   return get_reg_simple(ctx, reg_file, lb, ub, size, stride, rc);
+   DefInfo info = {lb, ub, size, stride, rc};
+   return get_reg_simple(ctx, reg_file, info);
 }
 
 PhysReg get_reg(ra_ctx& ctx,
@@ -909,43 +955,23 @@ PhysReg get_reg(ra_ctx& ctx,
       }
    }
 
-   RegClass rc = temp.regClass();
-   uint32_t size = rc.size();
-   uint32_t stride = 1;
-   uint32_t lb, ub;
-   if (rc.type() == RegType::vgpr) {
-      lb = 256;
-      ub = 256 + ctx.program->max_reg_demand.vgpr;
-   } else {
-      lb = 0;
-      ub = ctx.program->max_reg_demand.sgpr;
-      if (size == 2)
-         stride = 2;
-      else if (size >= 4)
-         stride = 4;
-   }
+   DefInfo info(ctx, instr, temp.regClass());
 
-   if (rc.is_subdword()) {
-      /* stride in bytes */
-      if(!instr_can_access_subdword(instr))
-         stride = 4;
-      else if (rc.bytes() % 4 == 0)
-         stride = 4;
-      else if (rc.bytes() % 2 == 0)
-         stride = 2;
-   }
-
-   std::pair<PhysReg, bool> res = {{}, false};
    /* try to find space without live-range splits */
-   if (rc.type() == RegType::vgpr && (size == 4 || size == 8))
-      res = get_reg_simple(ctx, reg_file, lb, ub, size, 4, rc);
+   std::pair<PhysReg, bool> res;
+   if (info.rc.type() == RegType::vgpr && (info.size == 4 || info.size == 8)) {
+      DefInfo info_strided = {info.lb, info.ub, info.size, 4, info.rc};
+      std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info_strided);
+   }
    if (!res.second)
-      res = get_reg_simple(ctx, reg_file, lb, ub, size, stride, rc);
+      res = get_reg_simple(ctx, reg_file, info);
+
+
    if (res.second)
       return res.first;
 
    /* try to find space with live-range splits */
-   res = get_reg_impl(ctx, reg_file, parallelcopies, lb, ub, size, stride, rc, instr);
+   res = get_reg_impl(ctx, reg_file, parallelcopies, info.lb, info.ub, info.size, info.stride, info.rc, instr);
 
    if (res.second)
       return res.first;
@@ -954,14 +980,14 @@ PhysReg get_reg(ra_ctx& ctx,
 
    /* We should only fail here because keeping under the limit would require
     * too many moves. */
-   assert(reg_file.count_zero(PhysReg{lb}, ub-lb) >= size);
+   assert(reg_file.count_zero(PhysReg{info.lb}, info.ub-info.lb) >= info.size);
 
    uint16_t max_addressible_sgpr = ctx.program->sgpr_limit;
    uint16_t max_addressible_vgpr = ctx.program->vgpr_limit;
-   if (rc.type() == RegType::vgpr && ctx.program->max_reg_demand.vgpr < max_addressible_vgpr) {
+   if (info.rc.type() == RegType::vgpr && ctx.program->max_reg_demand.vgpr < max_addressible_vgpr) {
       update_vgpr_sgpr_demand(ctx.program, RegisterDemand(ctx.program->max_reg_demand.vgpr + 1, ctx.program->max_reg_demand.sgpr));
       return get_reg(ctx, reg_file, temp, parallelcopies, instr);
-   } else if (rc.type() == RegType::sgpr && ctx.program->max_reg_demand.sgpr < max_addressible_sgpr) {
+   } else if (info.rc.type() == RegType::sgpr && ctx.program->max_reg_demand.sgpr < max_addressible_sgpr) {
       update_vgpr_sgpr_demand(ctx.program,  RegisterDemand(ctx.program->max_reg_demand.vgpr, ctx.program->max_reg_demand.sgpr + 1));
       return get_reg(ctx, reg_file, temp, parallelcopies, instr);
    }
