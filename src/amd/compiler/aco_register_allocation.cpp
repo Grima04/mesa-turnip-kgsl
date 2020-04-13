@@ -1839,8 +1839,17 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                definition.setFixed(reg);
             }
 
-            if (!definition.isFixed())
-               definition.setFixed(get_reg(ctx, register_file, definition.getTemp(), parallelcopy, instr));
+            if (!definition.isFixed()) {
+               Temp tmp = definition.getTemp();
+               /* subdword instructions before RDNA write full registers */
+               if (tmp.regClass().is_subdword() &&
+                   !instr_can_access_subdword(instr) &&
+                   ctx.program->chip_class <= GFX9) {
+                  assert(tmp.bytes() <= 4);
+                  tmp = Temp(definition.tempId(), v1);
+               }
+               definition.setFixed(get_reg(ctx, register_file, tmp, parallelcopy, instr));
+            }
 
             assert(definition.isFixed() && ((definition.getTemp().type() == RegType::vgpr && definition.physReg() >= 256) ||
                                             (definition.getTemp().type() != RegType::vgpr && definition.physReg() < 256)));
