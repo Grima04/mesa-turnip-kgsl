@@ -58,6 +58,9 @@ struct radv_meta_saved_state {
 	struct radv_attachment_state *attachments;
 	struct radv_framebuffer *framebuffer;
 	VkRect2D render_area;
+
+	VkCullModeFlags cull_mode;
+	VkFrontFace front_face;
 };
 
 VkResult radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand);

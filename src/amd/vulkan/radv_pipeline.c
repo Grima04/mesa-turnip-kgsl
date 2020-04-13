@@ -1298,6 +1298,10 @@ static unsigned radv_dynamic_state_mask(VkDynamicState state)
 		return RADV_DYNAMIC_SAMPLE_LOCATIONS;
 	case VK_DYNAMIC_STATE_LINE_STIPPLE_EXT:
 		return RADV_DYNAMIC_LINE_STIPPLE;
+	case VK_DYNAMIC_STATE_CULL_MODE_EXT:
+		return RADV_DYNAMIC_CULL_MODE;
+	case VK_DYNAMIC_STATE_FRONT_FACE_EXT:
+		return RADV_DYNAMIC_FRONT_FACE;
 	default:
 		unreachable("Unhandled dynamic state");
 	}
@@ -1410,6 +1414,16 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 		assert(pCreateInfo->pColorBlendState);
 		typed_memcpy(dynamic->blend_constants,
 			     pCreateInfo->pColorBlendState->blendConstants, 4);
+	}
+
+	if (states & RADV_DYNAMIC_CULL_MODE) {
+		dynamic->cull_mode =
+			pCreateInfo->pRasterizationState->cullMode;
+	}
+
+	if (states & RADV_DYNAMIC_FRONT_FACE) {
+		dynamic->front_face =
+			pCreateInfo->pRasterizationState->frontFace;
 	}
 
 	/* If there is no depthstencil attachment, then don't read
@@ -3692,16 +3706,16 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
 	                       S_028BE4_ROUND_MODE(V_028BE4_X_ROUND_TO_EVEN) |
 	                       S_028BE4_QUANT_MODE(V_028BE4_X_16_8_FIXED_POINT_1_256TH));
 
-	radeon_set_context_reg(ctx_cs, R_028814_PA_SU_SC_MODE_CNTL,
-	                       S_028814_FACE(vkraster->frontFace) |
-	                       S_028814_CULL_FRONT(!!(vkraster->cullMode & VK_CULL_MODE_FRONT_BIT)) |
-	                       S_028814_CULL_BACK(!!(vkraster->cullMode & VK_CULL_MODE_BACK_BIT)) |
-	                       S_028814_POLY_MODE(vkraster->polygonMode != VK_POLYGON_MODE_FILL) |
-	                       S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(vkraster->polygonMode)) |
-	                       S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(vkraster->polygonMode)) |
-	                       S_028814_POLY_OFFSET_FRONT_ENABLE(vkraster->depthBiasEnable ? 1 : 0) |
-	                       S_028814_POLY_OFFSET_BACK_ENABLE(vkraster->depthBiasEnable ? 1 : 0) |
-	                       S_028814_POLY_OFFSET_PARA_ENABLE(vkraster->depthBiasEnable ? 1 : 0));
+	pipeline->graphics.pa_su_sc_mode_cntl =
+		S_028814_FACE(vkraster->frontFace) |
+		S_028814_CULL_FRONT(!!(vkraster->cullMode & VK_CULL_MODE_FRONT_BIT)) |
+		S_028814_CULL_BACK(!!(vkraster->cullMode & VK_CULL_MODE_BACK_BIT)) |
+		S_028814_POLY_MODE(vkraster->polygonMode != VK_POLYGON_MODE_FILL) |
+		S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(vkraster->polygonMode)) |
+		S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(vkraster->polygonMode)) |
+		S_028814_POLY_OFFSET_FRONT_ENABLE(vkraster->depthBiasEnable ? 1 : 0) |
+		S_028814_POLY_OFFSET_BACK_ENABLE(vkraster->depthBiasEnable ? 1 : 0) |
+		S_028814_POLY_OFFSET_PARA_ENABLE(vkraster->depthBiasEnable ? 1 : 0);
 
 	/* Conservative rasterization. */
 	if (mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {

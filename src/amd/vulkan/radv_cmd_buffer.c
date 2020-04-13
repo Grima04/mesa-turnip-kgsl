@@ -96,6 +96,8 @@ const struct radv_dynamic_state default_dynamic_state = {
 		.factor = 0u,
 		.pattern = 0u,
 	},
+	.cull_mode = 0u,
+	.front_face = 0u,
 };
 
 static void
@@ -218,6 +220,20 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 			   sizeof(src->line_stipple))) {
 			dest->line_stipple = src->line_stipple;
 			dest_mask |= RADV_DYNAMIC_LINE_STIPPLE;
+		}
+	}
+
+	if (copy_mask & RADV_DYNAMIC_CULL_MODE) {
+		if (dest->cull_mode != src->cull_mode) {
+			dest->cull_mode = src->cull_mode;
+			dest_mask |= RADV_DYNAMIC_CULL_MODE;
+		}
+	}
+
+	if (copy_mask & RADV_DYNAMIC_FRONT_FACE) {
+		if (dest->front_face != src->front_face) {
+			dest->front_face = src->front_face;
+			dest_mask |= RADV_DYNAMIC_FRONT_FACE;
 		}
 	}
 
@@ -1188,6 +1204,12 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 	     pipeline->graphics.can_use_guardband)
 		cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
 
+	if (!cmd_buffer->state.emitted_pipeline ||
+	    cmd_buffer->state.emitted_pipeline->graphics.pa_su_sc_mode_cntl !=
+	    pipeline->graphics.pa_su_sc_mode_cntl)
+		cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
+					   RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
+
 	radeon_emit_array(cmd_buffer->cs, pipeline->cs.buf, pipeline->cs.cdw);
 
 	if (!cmd_buffer->state.emitted_pipeline ||
@@ -1336,6 +1358,29 @@ radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
 			       S_028A0C_LINE_PATTERN(d->line_stipple.pattern) |
 			       S_028A0C_REPEAT_COUNT(d->line_stipple.factor - 1) |
 			       S_028A0C_AUTO_RESET_CNTL(auto_reset_cntl));
+}
+
+static void
+radv_emit_culling(struct radv_cmd_buffer *cmd_buffer, uint32_t states)
+{
+	unsigned pa_su_sc_mode_cntl = cmd_buffer->state.pipeline->graphics.pa_su_sc_mode_cntl;
+	struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+	if (states & RADV_CMD_DIRTY_DYNAMIC_CULL_MODE) {
+		pa_su_sc_mode_cntl &= C_028814_CULL_FRONT;
+		pa_su_sc_mode_cntl |= S_028814_CULL_FRONT(!!(d->cull_mode & VK_CULL_MODE_FRONT_BIT));
+
+		pa_su_sc_mode_cntl &= C_028814_CULL_BACK;
+		pa_su_sc_mode_cntl |= S_028814_CULL_BACK(!!(d->cull_mode & VK_CULL_MODE_BACK_BIT));
+	}
+
+	if (states & RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE) {
+		pa_su_sc_mode_cntl &= C_028814_FACE;
+		pa_su_sc_mode_cntl |= S_028814_FACE(d->front_face);
+	}
+
+	radeon_set_context_reg(cmd_buffer->cs, R_028814_PA_SU_SC_MODE_CNTL,
+			       pa_su_sc_mode_cntl);
 }
 
 static void
@@ -2241,6 +2286,10 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 
 	if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE)
 		radv_emit_line_stipple(cmd_buffer);
+
+	if (states & (RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
+		      RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE))
+		radv_emit_culling(cmd_buffer, states);
 
 	cmd_buffer->state.dirty &= ~states;
 }
@@ -4189,6 +4238,36 @@ void radv_CmdSetLineStippleEXT(
 	state->dynamic.line_stipple.pattern = lineStipplePattern;
 
 	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
+}
+
+void radv_CmdSetCullModeEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkCullModeFlags                             cullMode)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+
+	if (state->dynamic.cull_mode == cullMode)
+		return;
+
+	state->dynamic.cull_mode = cullMode;
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_CULL_MODE;
+}
+
+void radv_CmdSetFrontFaceEXT(
+	VkCommandBuffer                             commandBuffer,
+	VkFrontFace                                 frontFace)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+
+	if (state->dynamic.front_face == frontFace)
+		return;
+
+	state->dynamic.front_face = frontFace;
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
 }
 
 void radv_CmdExecuteCommands(

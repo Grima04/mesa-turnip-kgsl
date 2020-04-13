@@ -1132,6 +1132,9 @@ struct radv_dynamic_state {
 		uint32_t factor;
 		uint16_t pattern;
 	} line_stipple;
+
+	VkCullModeFlags cull_mode;
+	VkFrontFace front_face;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -1650,6 +1653,7 @@ struct radv_pipeline {
 			bool disable_out_of_order_rast_for_occlusion;
 			uint8_t topology;
 			unsigned tess_patch_control_points;
+			unsigned pa_su_sc_mode_cntl;
 
 			/* Used for rbplus */
 			uint32_t col_format;
