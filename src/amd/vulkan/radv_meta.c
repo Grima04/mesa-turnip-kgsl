@@ -67,6 +67,22 @@ radv_meta_save(struct radv_meta_saved_state *state,
 		state->front_face = cmd_buffer->state.dynamic.front_face;
 
 		state->primitive_topology = cmd_buffer->state.dynamic.primitive_topology;
+
+		state->depth_test_enable = cmd_buffer->state.dynamic.depth_test_enable;
+		state->depth_write_enable = cmd_buffer->state.dynamic.depth_write_enable;
+		state->depth_compare_op = cmd_buffer->state.dynamic.depth_compare_op;
+		state->depth_bounds_test_enable = cmd_buffer->state.dynamic.depth_bounds_test_enable;
+		state->stencil_test_enable = cmd_buffer->state.dynamic.stencil_test_enable;
+
+		state->stencil_op.front.compare_op = cmd_buffer->state.dynamic.stencil_op.front.compare_op;
+		state->stencil_op.front.fail_op = cmd_buffer->state.dynamic.stencil_op.front.fail_op;
+		state->stencil_op.front.pass_op = cmd_buffer->state.dynamic.stencil_op.front.pass_op;
+		state->stencil_op.front.depth_fail_op = cmd_buffer->state.dynamic.stencil_op.front.depth_fail_op;
+
+		state->stencil_op.back.compare_op = cmd_buffer->state.dynamic.stencil_op.back.compare_op;
+		state->stencil_op.back.fail_op = cmd_buffer->state.dynamic.stencil_op.back.fail_op;
+		state->stencil_op.back.pass_op = cmd_buffer->state.dynamic.stencil_op.back.pass_op;
+		state->stencil_op.back.depth_fail_op = cmd_buffer->state.dynamic.stencil_op.back.depth_fail_op;
 	}
 
 	if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
@@ -133,11 +149,33 @@ radv_meta_restore(const struct radv_meta_saved_state *state,
 
 		cmd_buffer->state.dynamic.primitive_topology = state->primitive_topology;
 
+		cmd_buffer->state.dynamic.depth_test_enable = state->depth_test_enable;
+		cmd_buffer->state.dynamic.depth_write_enable = state->depth_write_enable;
+		cmd_buffer->state.dynamic.depth_compare_op = state->depth_compare_op;
+		cmd_buffer->state.dynamic.depth_bounds_test_enable = state->depth_bounds_test_enable;
+		cmd_buffer->state.dynamic.stencil_test_enable = state->stencil_test_enable;
+
+		cmd_buffer->state.dynamic.stencil_op.front.compare_op = state->stencil_op.front.compare_op;
+		cmd_buffer->state.dynamic.stencil_op.front.fail_op = state->stencil_op.front.fail_op;
+		cmd_buffer->state.dynamic.stencil_op.front.pass_op = state->stencil_op.front.pass_op;
+		cmd_buffer->state.dynamic.stencil_op.front.depth_fail_op = state->stencil_op.front.depth_fail_op;
+
+		cmd_buffer->state.dynamic.stencil_op.back.compare_op = state->stencil_op.back.compare_op;
+		cmd_buffer->state.dynamic.stencil_op.back.fail_op = state->stencil_op.back.fail_op;
+		cmd_buffer->state.dynamic.stencil_op.back.pass_op = state->stencil_op.back.pass_op;
+		cmd_buffer->state.dynamic.stencil_op.back.depth_fail_op = state->stencil_op.back.depth_fail_op;
+
 		cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
 					   RADV_CMD_DIRTY_DYNAMIC_SCISSOR |
 					   RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
 					   RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
-					   RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
+					   RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
+					   RADV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE |
+					   RADV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
+					   RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
+					   RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
+					   RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
+					   RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
 	}
 
 	if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {

@@ -814,30 +814,6 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 	return blend;
 }
 
-static uint32_t si_translate_stencil_op(enum VkStencilOp op)
-{
-	switch (op) {
-	case VK_STENCIL_OP_KEEP:
-		return V_02842C_STENCIL_KEEP;
-	case VK_STENCIL_OP_ZERO:
-		return V_02842C_STENCIL_ZERO;
-	case VK_STENCIL_OP_REPLACE:
-		return V_02842C_STENCIL_REPLACE_TEST;
-	case VK_STENCIL_OP_INCREMENT_AND_CLAMP:
-		return V_02842C_STENCIL_ADD_CLAMP;
-	case VK_STENCIL_OP_DECREMENT_AND_CLAMP:
-		return V_02842C_STENCIL_SUB_CLAMP;
-	case VK_STENCIL_OP_INVERT:
-		return V_02842C_STENCIL_INVERT;
-	case VK_STENCIL_OP_INCREMENT_AND_WRAP:
-		return V_02842C_STENCIL_ADD_WRAP;
-	case VK_STENCIL_OP_DECREMENT_AND_WRAP:
-		return V_02842C_STENCIL_SUB_WRAP;
-	default:
-		return 0;
-	}
-}
-
 static uint32_t si_translate_fill(VkPolygonMode func)
 {
 	switch(func) {
@@ -944,6 +920,30 @@ radv_order_invariant_stencil_state(const VkStencilOpState *state)
 }
 
 static bool
+radv_pipeline_has_dynamic_ds_states(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	VkDynamicState ds_states[] = {
+		VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT,
+		VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT,
+		VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT,
+		VK_DYNAMIC_STATE_STENCIL_OP_EXT,
+	};
+
+	if (pCreateInfo->pDynamicState) {
+		uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+		for (uint32_t i = 0; i < count; i++) {
+			for (uint32_t j = 0; j < ARRAY_SIZE(ds_states); j++) {
+				if (pCreateInfo->pDynamicState->pDynamicStates[i] == ds_states[j])
+					return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool
 radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
 				struct radv_blend_state *blend,
 				const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -959,6 +959,13 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
 
 	/* Be conservative if a logic operation is enabled with color buffers. */
 	if (colormask && vkblend && vkblend->logicOpEnable)
+		return false;
+
+	/* Be conservative if an extended dynamic depth/stencil state is
+	 * enabled because the driver can't update out-of-order rasterization
+	 * dynamically.
+	 */
+	if (radv_pipeline_has_dynamic_ds_states(pCreateInfo))
 		return false;
 
 	/* Default depth/stencil invariance when no attachment is bound. */
@@ -1274,6 +1281,18 @@ static unsigned radv_dynamic_state_mask(VkDynamicState state)
 		return RADV_DYNAMIC_FRONT_FACE;
 	case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT:
 		return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY;
+	case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT:
+		return RADV_DYNAMIC_DEPTH_TEST_ENABLE;
+	case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT:
+		return RADV_DYNAMIC_DEPTH_WRITE_ENABLE;
+	case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT:
+		return RADV_DYNAMIC_DEPTH_COMPARE_OP;
+	case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT:
+		return RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE;
+	case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT:
+		return RADV_DYNAMIC_STENCIL_TEST_ENABLE;
+	case VK_DYNAMIC_STATE_STENCIL_OP_EXT:
+		return RADV_DYNAMIC_STENCIL_OP;
 	default:
 		unreachable("Unhandled dynamic state");
 	}
@@ -1450,6 +1469,51 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 				pCreateInfo->pDepthStencilState->front.reference;
 			dynamic->stencil_reference.back =
 				pCreateInfo->pDepthStencilState->back.reference;
+		}
+
+		if (states & RADV_DYNAMIC_DEPTH_TEST_ENABLE) {
+			dynamic->depth_test_enable =
+				pCreateInfo->pDepthStencilState->depthTestEnable;
+		}
+
+		if (states & RADV_DYNAMIC_DEPTH_WRITE_ENABLE) {
+			dynamic->depth_write_enable =
+				pCreateInfo->pDepthStencilState->depthWriteEnable;
+		}
+
+		if (states & RADV_DYNAMIC_DEPTH_COMPARE_OP) {
+			dynamic->depth_compare_op =
+				pCreateInfo->pDepthStencilState->depthCompareOp;
+		}
+
+		if (states & RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE) {
+			dynamic->depth_bounds_test_enable =
+				pCreateInfo->pDepthStencilState->depthBoundsTestEnable;
+		}
+
+		if (states & RADV_DYNAMIC_STENCIL_TEST_ENABLE) {
+			dynamic->stencil_test_enable =
+				pCreateInfo->pDepthStencilState->stencilTestEnable;
+		}
+
+		if (states & RADV_DYNAMIC_STENCIL_OP) {
+			dynamic->stencil_op.front.compare_op =
+				pCreateInfo->pDepthStencilState->front.compareOp;
+			dynamic->stencil_op.front.fail_op =
+				pCreateInfo->pDepthStencilState->front.failOp;
+			dynamic->stencil_op.front.pass_op =
+				pCreateInfo->pDepthStencilState->front.passOp;
+			dynamic->stencil_op.front.depth_fail_op =
+				pCreateInfo->pDepthStencilState->front.depthFailOp;
+
+			dynamic->stencil_op.back.compare_op =
+				pCreateInfo->pDepthStencilState->back.compareOp;
+			dynamic->stencil_op.back.fail_op =
+				pCreateInfo->pDepthStencilState->back.failOp;
+			dynamic->stencil_op.back.pass_op =
+				pCreateInfo->pDepthStencilState->back.passOp;
+			dynamic->stencil_op.back.depth_fail_op =
+				pCreateInfo->pDepthStencilState->back.depthFailOp;
 		}
 	}
 
@@ -3541,7 +3605,7 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 	struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
 	struct radv_render_pass_attachment *attachment = NULL;
-	uint32_t db_depth_control = 0, db_stencil_control = 0;
+	uint32_t db_depth_control = 0;
 	uint32_t db_render_control = 0, db_render_override2 = 0;
 	uint32_t db_render_override = 0;
 
@@ -3567,14 +3631,8 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 	if (has_stencil_attachment && vkds && vkds->stencilTestEnable) {
 		db_depth_control |= S_028800_STENCIL_ENABLE(1) | S_028800_BACKFACE_ENABLE(1);
 		db_depth_control |= S_028800_STENCILFUNC(vkds->front.compareOp);
-		db_stencil_control |= S_02842C_STENCILFAIL(si_translate_stencil_op(vkds->front.failOp));
-		db_stencil_control |= S_02842C_STENCILZPASS(si_translate_stencil_op(vkds->front.passOp));
-		db_stencil_control |= S_02842C_STENCILZFAIL(si_translate_stencil_op(vkds->front.depthFailOp));
 
 		db_depth_control |= S_028800_STENCILFUNC_BF(vkds->back.compareOp);
-		db_stencil_control |= S_02842C_STENCILFAIL_BF(si_translate_stencil_op(vkds->back.failOp));
-		db_stencil_control |= S_02842C_STENCILZPASS_BF(si_translate_stencil_op(vkds->back.passOp));
-		db_stencil_control |= S_02842C_STENCILZFAIL_BF(si_translate_stencil_op(vkds->back.depthFailOp));
 	}
 
 	if (attachment && extra) {
@@ -3606,12 +3664,11 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 		db_render_override |= S_02800C_DISABLE_VIEWPORT_CLAMP(1);
 	}
 
-	radeon_set_context_reg(ctx_cs, R_028800_DB_DEPTH_CONTROL, db_depth_control);
-	radeon_set_context_reg(ctx_cs, R_02842C_DB_STENCIL_CONTROL, db_stencil_control);
-
 	radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, db_render_control);
 	radeon_set_context_reg(ctx_cs, R_02800C_DB_RENDER_OVERRIDE, db_render_override);
 	radeon_set_context_reg(ctx_cs, R_028010_DB_RENDER_OVERRIDE2, db_render_override2);
+
+	pipeline->graphics.db_depth_control = db_depth_control;
 }
 
 static void

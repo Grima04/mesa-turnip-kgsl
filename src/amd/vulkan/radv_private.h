@@ -1120,6 +1120,22 @@ struct radv_dynamic_state {
 	} stencil_write_mask;
 
 	struct {
+		struct {
+			VkStencilOp fail_op;
+			VkStencilOp pass_op;
+			VkStencilOp depth_fail_op;
+			VkCompareOp compare_op;
+		} front;
+
+		struct {
+			VkStencilOp fail_op;
+			VkStencilOp pass_op;
+			VkStencilOp depth_fail_op;
+			VkCompareOp compare_op;
+		} back;
+	} stencil_op;
+
+	struct {
 		uint32_t                                  front;
 		uint32_t                                  back;
 	} stencil_reference;
@@ -1136,6 +1152,12 @@ struct radv_dynamic_state {
 	VkCullModeFlags cull_mode;
 	VkFrontFace front_face;
 	unsigned primitive_topology;
+
+	bool depth_test_enable;
+	bool depth_write_enable;
+	VkCompareOp depth_compare_op;
+	bool depth_bounds_test_enable;
+	bool stencil_test_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -1655,6 +1677,7 @@ struct radv_pipeline {
 			bool disable_out_of_order_rast_for_occlusion;
 			unsigned tess_patch_control_points;
 			unsigned pa_su_sc_mode_cntl;
+			unsigned db_depth_control;
 
 			/* Used for rbplus */
 			uint32_t col_format;
@@ -2518,6 +2541,30 @@ static inline uint32_t si_translate_prim(unsigned topology)
 		return V_008958_DI_PT_PATCH;
 	default:
 		assert(0);
+		return 0;
+	}
+}
+
+static inline uint32_t si_translate_stencil_op(enum VkStencilOp op)
+{
+	switch (op) {
+	case VK_STENCIL_OP_KEEP:
+		return V_02842C_STENCIL_KEEP;
+	case VK_STENCIL_OP_ZERO:
+		return V_02842C_STENCIL_ZERO;
+	case VK_STENCIL_OP_REPLACE:
+		return V_02842C_STENCIL_REPLACE_TEST;
+	case VK_STENCIL_OP_INCREMENT_AND_CLAMP:
+		return V_02842C_STENCIL_ADD_CLAMP;
+	case VK_STENCIL_OP_DECREMENT_AND_CLAMP:
+		return V_02842C_STENCIL_SUB_CLAMP;
+	case VK_STENCIL_OP_INVERT:
+		return V_02842C_STENCIL_INVERT;
+	case VK_STENCIL_OP_INCREMENT_AND_WRAP:
+		return V_02842C_STENCIL_ADD_WRAP;
+	case VK_STENCIL_OP_DECREMENT_AND_WRAP:
+		return V_02842C_STENCIL_SUB_WRAP;
+	default:
 		return 0;
 	}
 }
