@@ -392,7 +392,8 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs,
                    A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt),
                    A6XX_RB_DEPTH_BUFFER_PITCH(tu_image_stride(iview->image, iview->base_mip)),
-                   A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(iview->image->layout.layer_size),
+                   A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(
+                           fdl_layer_stride(&iview->image->layout, iview->base_mip)),
                    A6XX_RB_DEPTH_BUFFER_BASE(tu_image_view_base_ref(iview)),
                    A6XX_RB_DEPTH_BUFFER_BASE_GMEM(cmd->state.pass->attachments[a].gmem_offset));
 
@@ -444,7 +445,8 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
                                            .color_format = format.fmt,
                                            .color_swap = format.swap),
                       A6XX_RB_MRT_PITCH(i, tu_image_stride(iview->image, iview->base_mip)),
-                      A6XX_RB_MRT_ARRAY_PITCH(i, iview->image->layout.layer_size),
+                      A6XX_RB_MRT_ARRAY_PITCH(i,
+                              fdl_layer_stride(&iview->image->layout, iview->base_mip)),
                       A6XX_RB_MRT_BASE(i, tu_image_view_base_ref(iview)),
                       A6XX_RB_MRT_BASE_GMEM(i, cmd->state.pass->attachments[a].gmem_offset));
 
