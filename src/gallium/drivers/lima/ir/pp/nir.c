@@ -104,42 +104,13 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
       case ppir_op_const:
          child = ppir_node_clone(node->block, child);
          break;
-      case ppir_op_load_varying: {
-         bool is_load_coords = false;
+      case ppir_op_load_varying:
+         /* If at least one successor is load_texture, promote it to
+          * load_coords to ensure that is has exactly one successor */
          if (node->op == ppir_op_load_texture) {
             nir_tex_src *nts = (nir_tex_src *)ns;
             if (nts->src_type == nir_tex_src_coord)
-               is_load_coords = true;
-         }
-
-         if (!is_load_coords) {
-            /* Clone varying loads for each block */
-            if (child->block != node->block) {
-               ppir_node *new = ppir_node_clone(node->block, child);
-               /* If we clone it for every block and there is no user of
-                * the original load left, delete the original one. */
-               ppir_delete_if_orphan(node->block, child);
-               child = new;
-               comp->var_nodes[ns->ssa->index] = child;
-            }
-            break;
-         }
-         /* At least one successor is load_texture, promote it to load_coords
-          * to ensure that is has exactly one successor */
-         child->op = ppir_op_load_coords;
-      }
-         /* Fallthrough */
-      case ppir_op_load_uniform:
-      case ppir_op_load_coords:
-      case ppir_op_load_coords_reg:
-         /* Clone uniform and texture coord loads for each block.
-          * Also ensure that each load has a single successor.
-          * Let's do a fetch each time and hope for a cache hit instead
-          * of increasing reg pressure.
-          */
-         if (child->block != node->block || !ppir_node_is_root(child)) {
-            child = ppir_node_clone(node->block, child);
-            comp->var_nodes[ns->ssa->index] = child;
+               child->op = ppir_op_load_coords;
          }
          break;
       default:
