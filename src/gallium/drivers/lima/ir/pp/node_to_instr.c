@@ -42,23 +42,37 @@ static bool create_new_instr(ppir_block *block, ppir_node *node)
  * successor.
  * Since it has a pipeline dest, it must have only one successor and since we
  * schedule nodes backwards, its successor must have already been scheduled.
+ * Load varyings can't output to a pipeline register but are also potentially
+ * trivial to insert and save an instruction if they have a single successor.
  */
-static bool ppir_do_node_to_instr_pipeline(ppir_block *block, ppir_node *node)
+static bool ppir_do_node_to_instr_try_insert(ppir_block *block, ppir_node *node)
 {
    ppir_dest *dest = ppir_node_get_dest(node);
 
-   if (!dest || dest->type != ppir_target_pipeline)
+   if (dest && dest->type == ppir_target_pipeline) {
+      assert(ppir_node_has_single_src_succ(node));
+      ppir_node *succ = ppir_node_first_succ(node);
+      assert(succ);
+      assert(succ->instr);
+
+      return ppir_instr_insert_node(succ->instr, node);
+   }
+
+   switch (node->type) {
+      case ppir_node_type_load:
+         break;
+      default:
+         return false;
+   }
+
+   if (!ppir_node_has_single_src_succ(node))
       return false;
 
-   assert(ppir_node_has_single_src_succ(node));
    ppir_node *succ = ppir_node_first_succ(node);
    assert(succ);
    assert(succ->instr);
 
-   if (!ppir_instr_insert_node(succ->instr, node))
-      return false;
-
-   return true;
+   return ppir_instr_insert_node(succ->instr, node);
 }
 
 static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_node **next)
@@ -184,7 +198,7 @@ static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
    ppir_node *next = node;
 
    /* first try pipeline sched, if that didn't succeed try normal scheduling */
-   if (!ppir_do_node_to_instr_pipeline(block, node))
+   if (!ppir_do_node_to_instr_try_insert(block, node))
       if (!ppir_do_one_node_to_instr(block, node, &next))
          return false;
 
