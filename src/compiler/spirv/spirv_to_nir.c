@@ -1569,9 +1569,14 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          vtn_mode_to_address_format(b, vtn_variable_mode_function));
 
       const struct vtn_type *sampled_type = vtn_get_type(b, w[2]);
-      vtn_fail_if(sampled_type->base_type != vtn_base_type_scalar ||
-                  glsl_get_bit_size(sampled_type->type) != 32,
-                  "Sampled type of OpTypeImage must be a 32-bit scalar");
+      if (b->shader->info.stage == MESA_SHADER_KERNEL) {
+         vtn_fail_if(sampled_type->base_type != vtn_base_type_void,
+                     "Sampled type of OpTypeImage must be void for kernels");
+      } else {
+         vtn_fail_if(sampled_type->base_type != vtn_base_type_scalar ||
+                     glsl_get_bit_size(sampled_type->type) != 32,
+                     "Sampled type of OpTypeImage must be a 32-bit scalar");
+      }
 
       enum glsl_sampler_dim dim;
       switch ((SpvDim)w[3]) {
@@ -1597,6 +1602,9 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 
       if (count > 9)
          val->type->access_qualifier = w[9];
+      else if (b->shader->info.stage == MESA_SHADER_KERNEL)
+         /* Per the CL C spec: If no qualifier is provided, read_only is assumed. */
+         val->type->access_qualifier = SpvAccessQualifierReadOnly;
       else
          val->type->access_qualifier = SpvAccessQualifierReadWrite;
 
@@ -1619,6 +1627,9 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       } else if (sampled == 2) {
          val->type->glsl_image = glsl_image_type(dim, is_array,
                                                  sampled_base_type);
+      } else if (b->shader->info.stage == MESA_SHADER_KERNEL) {
+         val->type->glsl_image = glsl_image_type(dim, is_array,
+                                                 GLSL_TYPE_VOID);
       } else {
          vtn_fail("We need to know if the image will be sampled");
       }
@@ -4171,6 +4182,9 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityImageBasic:
+         spv_check_supported(kernel_image, cap);
+         break;
+
       case SpvCapabilityImageReadWrite:
       case SpvCapabilityImageMipmap:
       case SpvCapabilityPipes:
@@ -5484,9 +5498,20 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
       in_var->data.mode = nir_var_uniform;
       in_var->data.read_only = true;
       in_var->data.location = i;
+      if (param_type->base_type == vtn_base_type_image) {
+         in_var->data.access = 0;
+         if (param_type->access_qualifier & SpvAccessQualifierReadOnly)
+            in_var->data.access |= ACCESS_NON_WRITEABLE;
+         if (param_type->access_qualifier & SpvAccessQualifierWriteOnly)
+            in_var->data.access |= ACCESS_NON_READABLE;
+      }
 
       if (is_by_val)
          in_var->type = param_type->deref->type;
+      else if (param_type->base_type == vtn_base_type_image)
+         in_var->type = param_type->glsl_image;
+      else if (param_type->base_type == vtn_base_type_sampler)
+         in_var->type = glsl_bare_sampler_type();
       else
          in_var->type = param_type->type;
 
@@ -5501,6 +5526,10 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
          nir_copy_var(&b->nb, copy_var, in_var);
          call->params[i] =
             nir_src_for_ssa(&nir_build_deref_var(&b->nb, copy_var)->dest.ssa);
+      } else if (param_type->base_type == vtn_base_type_image ||
+                 param_type->base_type == vtn_base_type_sampler) {
+         /* Don't load the var, just pass a deref of it */
+         call->params[i] = nir_src_for_ssa(&nir_build_deref_var(&b->nb, in_var)->dest.ssa);
       } else {
          call->params[i] = nir_src_for_ssa(nir_load_var(&b->nb, in_var));
       }

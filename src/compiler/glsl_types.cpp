@@ -1018,6 +1018,19 @@ glsl_type::get_image_instance(enum glsl_sampler_dim dim,
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return error_type;
       }
+   case GLSL_TYPE_VOID:
+      switch (dim) {
+      case GLSL_SAMPLER_DIM_1D:
+         return (array ? vimage1DArray_type : vimage1D_type);
+      case GLSL_SAMPLER_DIM_2D:
+         return (array ? vimage2DArray_type : vimage2D_type);
+      case GLSL_SAMPLER_DIM_3D:
+         return (array ? error_type : vimage3D_type);
+      case GLSL_SAMPLER_DIM_BUF:
+         return (array ? error_type : vbuffer_type);
+      default:
+         return error_type;
+      }
    default:
       return error_type;
    }

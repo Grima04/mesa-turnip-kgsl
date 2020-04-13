@@ -57,6 +57,7 @@ struct spirv_supported_capabilities {
    bool int64_atomics;
    bool integer_functions2;
    bool kernel;
+   bool kernel_image;
    bool min_lod;
    bool multiview;
    bool physical_storage_buffer_address;
