@@ -328,8 +328,12 @@ typedef struct ppir_instr {
    /* for liveness analysis */
    struct ppir_liveness *live_in;
    struct ppir_liveness *live_out;
+   /* live_internal is to mark registers only live within an
+    * instruction, without propagation */
+   struct ppir_liveness *live_internal;
    struct set *live_in_set;
    struct set *live_out_set;
+   struct set *live_internal_set;
 } ppir_instr;
 
 typedef struct ppir_block {
