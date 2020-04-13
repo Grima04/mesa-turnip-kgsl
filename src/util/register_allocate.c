@@ -76,6 +76,7 @@
 #include "ralloc.h"
 #include "main/macros.h"
 #include "util/bitset.h"
+#include "util/u_dynarray.h"
 #include "u_math.h"
 #include "register_allocate.h"
 
@@ -126,9 +127,8 @@ struct ra_node {
     * symmetric with the other node.
     */
    BITSET_WORD *adjacency;
-   unsigned int *adjacency_list;
-   unsigned int adjacency_list_size;
-   unsigned int adjacency_count;
+
+   struct util_dynarray adjacency_list;
    /** @} */
 
    unsigned int class;
@@ -452,16 +452,7 @@ ra_add_node_adjacency(struct ra_graph *g, unsigned int n1, unsigned int n2)
    int n2_class = g->nodes[n2].class;
    g->nodes[n1].q_total += g->regs->classes[n1_class]->q[n2_class];
 
-   if (g->nodes[n1].adjacency_count >=
-       g->nodes[n1].adjacency_list_size) {
-      g->nodes[n1].adjacency_list_size *= 2;
-      g->nodes[n1].adjacency_list = reralloc(g, g->nodes[n1].adjacency_list,
-                                             unsigned int,
-                                             g->nodes[n1].adjacency_list_size);
-   }
-
-   g->nodes[n1].adjacency_list[g->nodes[n1].adjacency_count] = n2;
-   g->nodes[n1].adjacency_count++;
+   util_dynarray_append(&g->nodes[n1].adjacency_list, unsigned int, n2);
 }
 
 static void
@@ -475,18 +466,8 @@ ra_node_remove_adjacency(struct ra_graph *g, unsigned int n1, unsigned int n2)
    int n2_class = g->nodes[n2].class;
    g->nodes[n1].q_total -= g->regs->classes[n1_class]->q[n2_class];
 
-   unsigned int i;
-   for (i = 0; i < g->nodes[n1].adjacency_count; i++) {
-      if (g->nodes[n1].adjacency_list[i] == n2) {
-         memmove(&g->nodes[n1].adjacency_list[i],
-                 &g->nodes[n1].adjacency_list[i + 1],
-                 (g->nodes[n1].adjacency_count - i - 1) *
-                 sizeof(g->nodes[n1].adjacency_list[0]));
-         break;
-      }
-   }
-   assert(i < g->nodes[n1].adjacency_count);
-   g->nodes[n1].adjacency_count--;
+   util_dynarray_delete_unordered(&g->nodes[n1].adjacency_list, unsigned int,
+                                  n2);
 }
 
 static void
@@ -516,10 +497,7 @@ ra_realloc_interference_graph(struct ra_graph *g, unsigned int alloc)
    for (unsigned i = g->alloc; i < alloc; i++) {
       memset(&g->nodes[i], 0, sizeof(g->nodes[i]));
       g->nodes[i].adjacency = rzalloc_array(g, BITSET_WORD, bitset_count);
-      g->nodes[i].adjacency_list_size = 4;
-      g->nodes[i].adjacency_list =
-         ralloc_array(g, unsigned int, g->nodes[i].adjacency_list_size);
-      g->nodes[i].adjacency_count = 0;
+      util_dynarray_init(&g->nodes[i].adjacency_list, g);
       g->nodes[i].q_total = 0;
 
       g->nodes[i].forced_reg = NO_REG;
@@ -611,12 +589,13 @@ ra_add_node_interference(struct ra_graph *g,
 void
 ra_reset_node_interference(struct ra_graph *g, unsigned int n)
 {
-   for (unsigned int i = 0; i < g->nodes[n].adjacency_count; i++)
-      ra_node_remove_adjacency(g, g->nodes[n].adjacency_list[i], n);
+   util_dynarray_foreach(&g->nodes[n].adjacency_list, unsigned int, n2p) {
+      ra_node_remove_adjacency(g, *n2p, n);
+   }
 
    memset(g->nodes[n].adjacency, 0,
           BITSET_WORDS(g->count) * sizeof(BITSET_WORD));
-   g->nodes[n].adjacency_count = 0;
+   util_dynarray_clear(&g->nodes[n].adjacency_list);
 }
 
 static void
@@ -645,13 +624,12 @@ update_pq_info(struct ra_graph *g, unsigned int n)
 static void
 add_node_to_stack(struct ra_graph *g, unsigned int n)
 {
-   unsigned int i;
    int n_class = g->nodes[n].class;
 
    assert(!BITSET_TEST(g->tmp.in_stack, n));
 
-   for (i = 0; i < g->nodes[n].adjacency_count; i++) {
-      unsigned int n2 = g->nodes[n].adjacency_list[i];
+   util_dynarray_foreach(&g->nodes[n].adjacency_list, unsigned int, n2p) {
+      unsigned int n2 = *n2p;
       unsigned int n2_class = g->nodes[n2].class;
 
       if (!BITSET_TEST(g->tmp.in_stack, n2) &&
@@ -784,10 +762,8 @@ ra_simplify(struct ra_graph *g)
 static bool
 ra_any_neighbors_conflict(struct ra_graph *g, unsigned int n, unsigned int r)
 {
-   unsigned int i;
-
-   for (i = 0; i < g->nodes[n].adjacency_count; i++) {
-      unsigned int n2 = g->nodes[n].adjacency_list[i];
+   util_dynarray_foreach(&g->nodes[n].adjacency_list, unsigned int, n2p) {
+      unsigned int n2 = *n2p;
 
       if (!BITSET_TEST(g->tmp.in_stack, n2) &&
           BITSET_TEST(g->regs->regs[r].conflicts, g->nodes[n2].reg)) {
@@ -815,8 +791,8 @@ ra_compute_available_regs(struct ra_graph *g, unsigned int n, BITSET_WORD *regs)
    /* Remove any regs that conflict with nodes that we're adjacent to and have
     * already colored.
     */
-   for (int i = 0; i < g->nodes[n].adjacency_count; i++) {
-      unsigned int n2 = g->nodes[n].adjacency_list[i];
+   util_dynarray_foreach(&g->nodes[n].adjacency_list, unsigned int, n2p) {
+      unsigned int n2 = *n2p;
       unsigned int r = g->nodes[n2].reg;
 
       if (!BITSET_TEST(g->tmp.in_stack, n2)) {
@@ -945,7 +921,6 @@ ra_set_node_reg(struct ra_graph *g, unsigned int n, unsigned int reg)
 static float
 ra_get_spill_benefit(struct ra_graph *g, unsigned int n)
 {
-   unsigned int j;
    float benefit = 0;
    int n_class = g->nodes[n].class;
 
@@ -954,8 +929,8 @@ ra_get_spill_benefit(struct ra_graph *g, unsigned int n)
     * "count number of edges" approach of traditional graph coloring,
     * but takes classes into account.
     */
-   for (j = 0; j < g->nodes[n].adjacency_count; j++) {
-      unsigned int n2 = g->nodes[n].adjacency_list[j];
+   util_dynarray_foreach(&g->nodes[n].adjacency_list, unsigned int, n2p) {
+      unsigned int n2 = *n2p;
       unsigned int n2_class = g->nodes[n2].class;
       benefit += ((float)g->regs->classes[n_class]->q[n2_class] /
                   g->regs->classes[n_class]->p);
