@@ -264,6 +264,82 @@ biti_special(float Q, enum bi_special_op op)
         }
 }
 
+/* For BI_CONVERT. */
+
+#define _AS_ROUNDMODE(mode) \
+        ((mode == BIFROST_RTZ) ? FP_INT_TOWARDZERO : \
+        (mode == BIFROST_RTE) ? FP_INT_TONEAREST : \
+        (mode == BIFROST_RTN) ? FP_INT_DOWNWARD : \
+        FP_INT_UPWARD)
+
+static float
+bit_as_float32(nir_alu_type T, bit_t src, unsigned C)
+{
+        switch (T) {
+        case nir_type_int32:   return src.i32;
+        case nir_type_uint32:  return src.u32;
+        case nir_type_float16: return bf(src.u16[C]);
+        default: unreachable("Invalid");
+        }
+}
+
+static uint32_t
+bit_as_uint32(nir_alu_type T, bit_t src, unsigned C, enum bifrost_roundmode rm)
+{
+        switch (T) {
+        case nir_type_float16: return bf(src.u16[C]);
+        case nir_type_float32: return ufromfpf(src.f32, _AS_ROUNDMODE(rm), 32);
+        default: unreachable("Invalid");
+        }
+}
+
+static int32_t
+bit_as_int32(nir_alu_type T, bit_t src, unsigned C, enum bifrost_roundmode rm)
+{
+        switch (T) {
+        case nir_type_float16: return bf(src.u16[C]);
+        case nir_type_float32: return fromfpf(src.f32, _AS_ROUNDMODE(rm), 32);
+        default: unreachable("Invalid");
+        }
+}
+
+static uint16_t
+bit_as_float16(nir_alu_type T, bit_t src, unsigned C)
+{
+        switch (T) {
+        case nir_type_int32:   return bh(src.i32);
+        case nir_type_uint32:  return bh(src.u32);
+        case nir_type_float32: return bh(src.f32);
+        case nir_type_int16:   return bh(src.i16[C]);
+        case nir_type_uint16:  return bh(src.u16[C]);
+        default: unreachable("Invalid");
+        }
+}
+
+static uint16_t
+bit_as_uint16(nir_alu_type T, bit_t src, unsigned C, enum bifrost_roundmode rm)
+{
+        switch (T) {
+        case nir_type_int32:   return src.i32;
+        case nir_type_uint32:  return src.u32;
+        case nir_type_float16: return ufromfpf(bf(src.u16[C]), _AS_ROUNDMODE(rm), 16);
+        case nir_type_float32: return src.f32;
+        default: unreachable("Invalid");
+        }
+}
+
+static int16_t
+bit_as_int16(nir_alu_type T, bit_t src, unsigned C, enum bifrost_roundmode rm)
+{
+        switch (T) {
+        case nir_type_int32:   return src.i32;
+        case nir_type_uint32:  return src.u32;
+        case nir_type_float16: return fromfpf(bf(src.u16[C]), _AS_ROUNDMODE(rm), 16);
+        case nir_type_float32: return src.f32;
+        default: unreachable("Invalid");
+        }
+}
+
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 {
@@ -300,8 +376,39 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         case BI_BRANCH:
         case BI_CMP:
         case BI_BITWISE:
-        case BI_CONVERT:
                 unreachable("Unsupported op");
+
+        case BI_CONVERT: {
+                /* If it exists */
+                unsigned comp = ins->swizzle[0][1];
+
+                if (ins->dest_type == nir_type_float32)
+                        dest.f32 = bit_as_float32(ins->src_types[0], srcs[0], comp);
+                else if (ins->dest_type == nir_type_uint32)
+                        dest.u32 = bit_as_uint32(ins->src_types[0], srcs[0], comp, ins->roundmode);
+                else if (ins->dest_type == nir_type_int32)
+                        dest.i32 = bit_as_int32(ins->src_types[0], srcs[0], comp, ins->roundmode);
+                else if (ins->dest_type == nir_type_float16) {
+                        dest.u16[0] = bit_as_float16(ins->src_types[0], srcs[0], ins->swizzle[0][0]);
+
+                        if (ins->src_types[0] == nir_type_float32) {
+                                /* TODO: Second argument */
+                                dest.u16[1] = 0;
+                        } else {
+                                dest.u16[1] = bit_as_float16(ins->src_types[0], srcs[0], ins->swizzle[0][1]);
+                        }
+                } else if (ins->dest_type == nir_type_uint16) {
+                        dest.u16[0] = bit_as_uint16(ins->src_types[0], srcs[0], ins->swizzle[0][0], ins->roundmode);
+                        dest.u16[1] = bit_as_uint16(ins->src_types[0], srcs[0], ins->swizzle[0][1], ins->roundmode);
+                } else if (ins->dest_type == nir_type_int16) {
+                        dest.i16[0] = bit_as_int16(ins->src_types[0], srcs[0], ins->swizzle[0][0], ins->roundmode);
+                        dest.i16[1] = bit_as_int16(ins->src_types[0], srcs[0], ins->swizzle[0][1], ins->roundmode);
+                } else {
+                        unreachable("Unknown convert type");
+                }
+
+                break;
+        }
 
         case BI_CSEL: {
                 bool direct = ins->csel_cond == BI_COND_ALWAYS;
