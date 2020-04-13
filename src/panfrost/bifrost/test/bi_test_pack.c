@@ -286,6 +286,58 @@ bit_special_helper(struct panfrost_device *dev,
         }
 }
 
+static void
+bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
+                unsigned to_size, unsigned cx, unsigned cy, bool FMA,
+                enum bifrost_roundmode roundmode,
+                uint32_t *input, enum bit_debug debug)
+{
+        bi_instruction ins = {
+                .type = BI_CONVERT,
+                .dest = BIR_INDEX_REGISTER | 0,
+                .writemask = 0xF,
+                .src = { BIR_INDEX_REGISTER | 0 }
+        };
+
+        nir_alu_type Ts[3] = { nir_type_float, nir_type_uint, nir_type_int };
+
+        for (unsigned from_base = 0; from_base < 3; ++from_base) {
+                for (unsigned to_base = 0; to_base < 3; ++to_base) {
+                        /* Discard invalid combinations.. */
+                        if ((from_size == to_size) && (from_base == to_base))
+                                continue;
+
+                        /* Can't switch signedness */
+                        if (from_base && to_base)
+                                continue;
+
+                        /* No F16_TO_I32, etc */
+                        if (from_size != to_size && from_base == 0 && to_base)
+                                continue;
+
+                        if (from_size != to_size && from_base && to_base == 0)
+                                continue;
+
+                        /* No need, just ignore the upper half */
+                        if (from_size > to_size && from_base == to_base && from_base)
+                                continue;
+
+                        ins.dest_type = Ts[to_base] | to_size;
+                        ins.src_types[0] = Ts[from_base] | from_size;
+                        ins.roundmode = roundmode;
+                        ins.swizzle[0][0] = cx;
+                        ins.swizzle[0][1] = cy;
+
+                        if (!bit_test_single(dev, &ins, input, FMA, debug)) {
+                                fprintf(stderr, "FAIL: convert.%u-%u.%u-%u.%u%u\n",
+                                                from_base, from_size,
+                                                to_base, to_size,
+                                                cx, cy);
+                        }
+                }
+        }
+}
+
 void
 bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 {
@@ -324,4 +376,18 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 
                 bit_special_helper(dev, sz, input, debug);
         }
+
+        for (unsigned rm = 0; rm < 4; ++rm) {
+                bit_convert_helper(dev, 32, 32, 0, 0, false, rm, (uint32_t *) input32, debug);
+
+                for (unsigned c = 0; c < 2; ++c)
+                        bit_convert_helper(dev, 32, 16, c, 0, false, rm, (uint32_t *) input32, debug);
+
+                bit_convert_helper(dev, 16, 32, 0, 0, false, rm, (uint32_t *) input16, debug);
+
+                for (unsigned c = 0; c < 4; ++c)
+                        bit_convert_helper(dev, 16, 16, c & 1, c >> 1, false, rm, (uint32_t *) input16, debug);
+        }
+
+
 }
