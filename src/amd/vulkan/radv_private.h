@@ -1036,6 +1036,8 @@ enum radv_cmd_flush_bits {
 struct radv_vertex_binding {
 	struct radv_buffer *                          buffer;
 	VkDeviceSize                                 offset;
+	VkDeviceSize size;
+	VkDeviceSize stride;
 };
 
 struct radv_streamout_binding {
@@ -1678,6 +1680,7 @@ struct radv_pipeline {
 			unsigned tess_patch_control_points;
 			unsigned pa_su_sc_mode_cntl;
 			unsigned db_depth_control;
+			bool uses_dynamic_stride;
 
 			/* Used for rbplus */
 			uint32_t col_format;

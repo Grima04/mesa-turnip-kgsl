@@ -1293,6 +1293,8 @@ static unsigned radv_dynamic_state_mask(VkDynamicState state)
 		return RADV_DYNAMIC_STENCIL_TEST_ENABLE;
 	case VK_DYNAMIC_STATE_STENCIL_OP_EXT:
 		return RADV_DYNAMIC_STENCIL_OP;
+	case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT:
+		return RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE;
 	default:
 		unreachable("Unhandled dynamic state");
 	}
@@ -1304,10 +1306,11 @@ static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreat
 
 	/* If rasterization is disabled we do not care about any of the
 	 * dynamic states, since they are all rasterization related only,
-	 * except primitive topology.
+	 * except primitive topology and vertex binding stride.
 	 */
 	if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
-		return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY;
+		return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY |
+		       RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE;
 
 	if (!pCreateInfo->pRasterizationState->depthBiasEnable)
 		states &= ~RADV_DYNAMIC_DEPTH_BIAS;
@@ -1558,6 +1561,9 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 		dynamic->line_stipple.factor = rast_line_info->lineStippleFactor;
 		dynamic->line_stipple.pattern = rast_line_info->lineStipplePattern;
 	}
+
+	if (!(states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE))
+		pipeline->graphics.uses_dynamic_stride = true;
 
 	pipeline->dynamic_state.mask = states;
 }

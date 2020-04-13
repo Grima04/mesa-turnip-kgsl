@@ -2689,8 +2689,8 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 			uint32_t *desc = &((uint32_t *)vb_ptr)[i * 4];
 			uint32_t offset;
 			struct radv_buffer *buffer = cmd_buffer->vertex_bindings[i].buffer;
-			uint32_t stride = cmd_buffer->state.pipeline->binding_stride[i];
 			unsigned num_records;
+			unsigned stride;
 
 			if (!buffer)
 				continue;
@@ -2700,7 +2700,18 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 			offset = cmd_buffer->vertex_bindings[i].offset;
 			va += offset + buffer->offset;
 
-			num_records = buffer->size - offset;
+			if (cmd_buffer->vertex_bindings[i].size) {
+				num_records = cmd_buffer->vertex_bindings[i].size;
+			} else {
+				num_records = buffer->size - offset;
+			}
+
+			if (cmd_buffer->state.pipeline->graphics.uses_dynamic_stride) {
+				stride = cmd_buffer->vertex_bindings[i].stride;
+			} else {
+				stride = cmd_buffer->state.pipeline->binding_stride[i];
+			}
+
 			if (cmd_buffer->device->physical_device->rad_info.chip_class != GFX8 && stride)
 				num_records /= stride;
 
@@ -3691,11 +3702,25 @@ VkResult radv_BeginCommandBuffer(
 }
 
 void radv_CmdBindVertexBuffers(
+        VkCommandBuffer                             commandBuffer,
+        uint32_t                                    firstBinding,
+        uint32_t                                    bindingCount,
+        const VkBuffer*                             pBuffers,
+        const VkDeviceSize*                         pOffsets)
+{
+	radv_CmdBindVertexBuffers2EXT(commandBuffer, firstBinding,
+				      bindingCount, pBuffers, pOffsets,
+				      NULL, NULL);
+}
+
+void radv_CmdBindVertexBuffers2EXT(
 	VkCommandBuffer                             commandBuffer,
 	uint32_t                                    firstBinding,
 	uint32_t                                    bindingCount,
 	const VkBuffer*                             pBuffers,
-	const VkDeviceSize*                         pOffsets)
+	const VkDeviceSize*                         pOffsets,
+	const VkDeviceSize*                         pSizes,
+	const VkDeviceSize*                         pStrides)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_vertex_binding *vb = cmd_buffer->vertex_bindings;
@@ -3708,15 +3733,22 @@ void radv_CmdBindVertexBuffers(
 	for (uint32_t i = 0; i < bindingCount; i++) {
 		RADV_FROM_HANDLE(radv_buffer, buffer, pBuffers[i]);
 		uint32_t idx = firstBinding + i;
+		VkDeviceSize size = pSizes ? pSizes[i] : 0;
+		VkDeviceSize stride = pStrides ? pStrides[i] : 0;
 
+		/* pSizes and pStrides are optional. */
 		if (!changed &&
 		    (vb[idx].buffer != buffer ||
-		     vb[idx].offset != pOffsets[i])) {
+		     vb[idx].offset != pOffsets[i] ||
+		     vb[idx].size != size ||
+		     vb[idx].stride != stride)) {
 			changed = true;
 		}
 
 		vb[idx].buffer = buffer;
 		vb[idx].offset = pOffsets[i];
+		vb[idx].size = size;
+		vb[idx].stride = stride;
 
 		if (buffer) {
 			radv_cs_add_buffer(cmd_buffer->device->ws,
