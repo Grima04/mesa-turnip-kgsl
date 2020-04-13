@@ -82,9 +82,7 @@
 
 struct ra_reg {
    BITSET_WORD *conflicts;
-   unsigned int *conflict_list;
-   unsigned int conflict_list_size;
-   unsigned int num_conflicts;
+   struct util_dynarray conflict_list;
 };
 
 struct ra_regs {
@@ -225,16 +223,10 @@ ra_alloc_reg_set(void *mem_ctx, unsigned int count, bool need_conflict_lists)
                                               BITSET_WORDS(count));
       BITSET_SET(regs->regs[i].conflicts, i);
 
-      if (need_conflict_lists) {
-         regs->regs[i].conflict_list = ralloc_array(regs->regs,
-                                                    unsigned int, 4);
-         regs->regs[i].conflict_list_size = 4;
-         regs->regs[i].conflict_list[0] = i;
-      } else {
-         regs->regs[i].conflict_list = NULL;
-         regs->regs[i].conflict_list_size = 0;
-      }
-      regs->regs[i].num_conflicts = 1;
+      util_dynarray_init(&regs->regs[i].conflict_list,
+                         need_conflict_lists ? regs->regs : NULL);
+      if (need_conflict_lists)
+         util_dynarray_append(&regs->regs[i].conflict_list, unsigned int, i);
    }
 
    return regs;
@@ -261,13 +253,8 @@ ra_add_conflict_list(struct ra_regs *regs, unsigned int r1, unsigned int r2)
 {
    struct ra_reg *reg1 = &regs->regs[r1];
 
-   if (reg1->conflict_list) {
-      if (reg1->conflict_list_size == reg1->num_conflicts) {
-         reg1->conflict_list_size *= 2;
-         reg1->conflict_list = reralloc(regs->regs, reg1->conflict_list,
-                                        unsigned int, reg1->conflict_list_size);
-      }
-      reg1->conflict_list[reg1->num_conflicts++] = r2;
+   if (reg1->conflict_list.mem_ctx) {
+      util_dynarray_append(&reg1->conflict_list, unsigned int, r2);
    }
    BITSET_SET(reg1->conflicts, r2);
 }
@@ -293,12 +280,11 @@ void
 ra_add_transitive_reg_conflict(struct ra_regs *regs,
                                unsigned int base_reg, unsigned int reg)
 {
-   unsigned int i;
-
    ra_add_reg_conflict(regs, reg, base_reg);
 
-   for (i = 0; i < regs->regs[base_reg].num_conflicts; i++) {
-      ra_add_reg_conflict(regs, reg, regs->regs[base_reg].conflict_list[i]);
+   util_dynarray_foreach(&regs->regs[base_reg].conflict_list, unsigned int,
+                         r2p) {
+      ra_add_reg_conflict(regs, reg, *r2p);
    }
 }
 
@@ -313,17 +299,15 @@ void
 ra_add_transitive_reg_pair_conflict(struct ra_regs *regs,
                                     unsigned int base_reg, unsigned int reg0, unsigned int reg1)
 {
-   unsigned int i;
-
    ra_add_reg_conflict(regs, reg0, base_reg);
    ra_add_reg_conflict(regs, reg1, base_reg);
 
-   for (i = 0; i < regs->regs[base_reg].num_conflicts; i++) {
-      unsigned int conflict = regs->regs[base_reg].conflict_list[i];
+   util_dynarray_foreach(&regs->regs[base_reg].conflict_list, unsigned int, i) {
+      unsigned int conflict = *i;
       if (conflict != reg1)
-         ra_add_reg_conflict(regs, reg0, regs->regs[base_reg].conflict_list[i]);
+         ra_add_reg_conflict(regs, reg0, conflict);
       if (conflict != reg0)
-         ra_add_reg_conflict(regs, reg1, regs->regs[base_reg].conflict_list[i]);
+         ra_add_reg_conflict(regs, reg1, conflict);
    }
 }
 
@@ -418,13 +402,13 @@ ra_set_finalize(struct ra_regs *regs, unsigned int **q_values)
 
             for (rc = 0; rc < regs->count; rc++) {
                int conflicts = 0;
-               unsigned int i;
 
                if (!reg_belongs_to_class(rc, regs->classes[c]))
                   continue;
 
-               for (i = 0; i < regs->regs[rc].num_conflicts; i++) {
-                  unsigned int rb = regs->regs[rc].conflict_list[i];
+               util_dynarray_foreach(&regs->regs[rc].conflict_list,
+                                     unsigned int, rbp) {
+                  unsigned int rb = *rbp;
                   if (reg_belongs_to_class(rb, regs->classes[b]))
                      conflicts++;
                }
@@ -436,8 +420,7 @@ ra_set_finalize(struct ra_regs *regs, unsigned int **q_values)
    }
 
    for (b = 0; b < regs->count; b++) {
-      ralloc_free(regs->regs[b].conflict_list);
-      regs->regs[b].conflict_list = NULL;
+      util_dynarray_fini(&regs->regs[b].conflict_list);
    }
 }
 
