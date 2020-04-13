@@ -3698,6 +3698,9 @@ std::pair<Temp, unsigned> get_tcs_per_patch_output_vmem_offset(isel_context *ctx
 
 bool tcs_driver_location_matches_api_mask(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex, uint64_t mask, bool *indirect)
 {
+   if (mask == 0)
+      return false;
+
    unsigned off = nir_intrinsic_base(instr) * 4u;
    nir_src *off_src = nir_get_io_offset_src(instr);
 
@@ -3822,23 +3825,35 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 }
 
-bool should_write_tcs_patch_output_to_vmem(isel_context *ctx, nir_intrinsic_instr *instr)
+bool tcs_output_is_tess_factor(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
 {
-   unsigned off = nir_intrinsic_base(instr) * 4u;
-   return off != ctx->tcs_tess_lvl_out_loc &&
-          off != ctx->tcs_tess_lvl_in_loc;
-}
-
-bool should_write_tcs_output_to_lds(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
-{
-   /* When none of the appropriate outputs are read, we are OK to never write to LDS */
-   if (per_vertex ? ctx->shader->info.outputs_read == 0U : ctx->shader->info.patch_outputs_read == 0u)
+   if (per_vertex)
       return false;
 
+   unsigned off = nir_intrinsic_base(instr) * 4u;
+   return off == ctx->tcs_tess_lvl_out_loc ||
+          off == ctx->tcs_tess_lvl_in_loc;
+
+}
+
+bool tcs_output_is_read_by_tes(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
+{
+   uint64_t mask = per_vertex
+                   ? ctx->program->info->tcs.tes_inputs_read
+                   : ctx->program->info->tcs.tes_patch_inputs_read;
+
+   bool indirect_write = false;
+   bool output_read_by_tes = tcs_driver_location_matches_api_mask(ctx, instr, per_vertex, mask, &indirect_write);
+   return indirect_write || output_read_by_tes;
+}
+
+bool tcs_output_is_read_by_tcs(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
+{
    uint64_t mask = per_vertex
                    ? ctx->shader->info.outputs_read
                    : ctx->shader->info.patch_outputs_read;
-   bool indirect_write;
+
+   bool indirect_write = false;
    bool output_read = tcs_driver_location_matches_api_mask(ctx, instr, per_vertex, mask, &indirect_write);
    return indirect_write || output_read;
 }
@@ -3854,10 +3869,9 @@ void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool 
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
    unsigned write_mask = nir_intrinsic_write_mask(instr);
 
-   /* Only write to VMEM if the output is per-vertex or it's per-patch non tess factor */
-   bool write_to_vmem = per_vertex || should_write_tcs_patch_output_to_vmem(ctx, instr);
-   /* Only write to LDS if the output is read by the shader, or it's per-patch tess factor */
-   bool write_to_lds = !write_to_vmem || should_write_tcs_output_to_lds(ctx, instr, per_vertex);
+   bool is_tess_factor = tcs_output_is_tess_factor(ctx, instr, per_vertex);
+   bool write_to_vmem = !is_tess_factor && tcs_output_is_read_by_tes(ctx, instr, per_vertex);
+   bool write_to_lds = is_tess_factor || tcs_output_is_read_by_tcs(ctx, instr, per_vertex);
 
    if (write_to_vmem) {
       std::pair<Temp, unsigned> vmem_offs = per_vertex
