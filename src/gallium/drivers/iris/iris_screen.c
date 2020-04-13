@@ -211,6 +211,8 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FRAGMENT_SHADER_INTERLOCK:
    case PIPE_CAP_ATOMIC_FLOAT_MINMAX:
       return devinfo->gen >= 9;
+   case PIPE_CAP_DEPTH_BOUNDS_TEST:
+      return devinfo->gen >= 12;
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
       return 1;
    case PIPE_CAP_MAX_RENDER_TARGETS:
