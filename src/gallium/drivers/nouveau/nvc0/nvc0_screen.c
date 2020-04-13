@@ -75,14 +75,12 @@ nvc0_screen_is_format_supported(struct pipe_screen *pscreen,
           sample_count > 1)
          return false;
 
-   /* Restrict ETC2 and ASTC formats here. These are only supported on GK20A.
+   /* Restrict ETC2 and ASTC formats here. These are only supported on GK20A
+    * and GM20B.
     */
    if ((desc->layout == UTIL_FORMAT_LAYOUT_ETC ||
         desc->layout == UTIL_FORMAT_LAYOUT_ASTC) &&
-       /* The claim is that this should work on GM107 but it doesn't. Need to
-        * test further and figure out if it's a nouveau issue or a HW one.
-       nouveau_screen(pscreen)->class_3d < GM107_3D_CLASS &&
-        */
+       nouveau_screen(pscreen)->device->chipset != 0x12b &&
        nouveau_screen(pscreen)->class_3d != NVEA_3D_CLASS)
       return false;
 
