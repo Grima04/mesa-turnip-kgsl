@@ -335,6 +335,7 @@ struct bifrost_shift_add {
 
 /* Two sources for vectorization */
 #define BIFROST_FMA_FLOAT32_TO_16 (0xdd000 >> 3)
+#define BIFROST_ADD_FLOAT32_TO_16 (0x0EC00 >> 3)
 
 enum bifrost_convert_mode {
         BIFROST_CONV_UNK0 = 0,
@@ -361,6 +362,7 @@ enum bifrost_convert_mode {
         ((is_unsigned & 1) | ((roundmode & 3) << 1) | ((swizzle & 3) << 3) | ((mode & 7) << 5))
 
 #define BIFROST_FMA_CONVERT (0xe0000)
+#define BIFROST_ADD_CONVERT (0x07800)
 
 enum bifrost_ldst_type {
         BIFROST_LDST_F16 = 0,

@@ -740,7 +740,7 @@ bi_pack_fma_csel(bi_instruction *ins, struct bi_registers *regs)
  */
 
 static unsigned
-bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_convert(bi_instruction *ins, struct bi_registers *regs, bool FMA)
 {
         nir_alu_type from_base = nir_alu_type_get_base_type(ins->src_types[0]);
         unsigned from_size = nir_alu_type_get_type_size(ins->src_types[0]);
@@ -758,13 +758,23 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
         /* f32 to f16 is special */
         if (from_size == 32 && to_size == 16 && from_base == nir_type_float && to_base == from_base) {
                 /* TODO: second vectorized source? */
-                struct bifrost_fma_2src pack = {
+                struct bifrost_fma_2src pfma = {
                         .src0 = bi_get_src(ins, regs, 0, true),
                         .src1 = BIFROST_SRC_STAGE, /* 0 */
                         .op = BIFROST_FMA_FLOAT32_TO_16
                 };
 
-                RETURN_PACKED(pack);
+                struct bifrost_add_2src padd = {
+                        .src0 = bi_get_src(ins, regs, 0, true),
+                        .src1 = BIFROST_SRC_STAGE, /* 0 */
+                        .op = BIFROST_ADD_FLOAT32_TO_16
+                };
+
+                if (FMA) {
+                        RETURN_PACKED(pfma);
+                } else {
+                        RETURN_PACKED(padd);
+                }
         }
 
         /* Otherwise, figure out the mode */
@@ -822,7 +832,10 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
                         op |= 0x100;
         }
 
-        return bi_pack_fma_1src(ins, regs, BIFROST_FMA_CONVERT | op);
+        if (FMA)
+                return bi_pack_fma_1src(ins, regs, BIFROST_FMA_CONVERT | op);
+        else
+                return bi_pack_add_1src(ins, regs, BIFROST_ADD_CONVERT | op);
 }
 
 static unsigned
@@ -838,7 +851,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_BITWISE:
 		return BIFROST_FMA_NOP;
         case BI_CONVERT:
-		return bi_pack_fma_convert(bundle.fma, regs);
+		return bi_pack_convert(bundle.fma, regs, true);
         case BI_CSEL:
 		return bi_pack_fma_csel(bundle.fma, regs);
         case BI_FMA:
@@ -1101,7 +1114,9 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_BLEND:
                 return bi_pack_add_blend(clause, bundle.add, regs);
         case BI_BITWISE:
+                return BIFROST_ADD_NOP;
         case BI_CONVERT:
+		return bi_pack_convert(bundle.add, regs, false);
         case BI_DISCARD:
         case BI_FREXP:
         case BI_ISUB:
