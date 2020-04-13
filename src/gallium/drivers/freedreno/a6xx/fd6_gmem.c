@@ -77,8 +77,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 	unsigned srgb_cntl = 0;
 	unsigned i;
 
-	bool layered = false;
-	unsigned type = 0;
+	unsigned max_layer_index = 0;
 
 	for (i = 0; i < pfb->nr_cbufs; i++) {
 		enum a6xx_format format = 0;
@@ -117,18 +116,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		swap = fd6_resource_swap(rsc, pformat);
 
 		tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
-
-		if (psurf->u.tex.first_layer < psurf->u.tex.last_layer) {
-			layered = true;
-			if (psurf->texture->target == PIPE_TEXTURE_2D_ARRAY && psurf->texture->nr_samples > 0)
-				type = LAYER_MULTISAMPLE_ARRAY;
-			else if (psurf->texture->target == PIPE_TEXTURE_2D_ARRAY)
-				type = LAYER_2D_ARRAY;
-			else if (psurf->texture->target == PIPE_TEXTURE_CUBE)
-				type = LAYER_CUBEMAP;
-			else if (psurf->texture->target == PIPE_TEXTURE_3D)
-				type = LAYER_3D;
-		}
+		max_layer_index = psurf->u.tex.last_layer - psurf->u.tex.first_layer;
 
 		debug_assert((offset + slice->size0) <= fd_bo_size(rsc->bo));
 
@@ -174,7 +162,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		.rt6 = mrt_comp[6],
 		.rt7 = mrt_comp[7]));
 
-	OUT_REG(ring, A6XX_GRAS_LAYER_CNTL(.layered = layered, .type = type));
+	OUT_REG(ring, A6XX_GRAS_MAX_LAYER_INDEX(max_layer_index));
 }
 
 static void

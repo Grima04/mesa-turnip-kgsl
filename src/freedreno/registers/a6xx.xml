@@ -1848,10 +1848,8 @@ to upconvert to 32b float internally?
 	  <value value="0x3" name="LAYER_2D_ARRAY"/>
 	</enum>
 
-	<reg32 offset="0x8004" name="GRAS_LAYER_CNTL">
-		<bitfield name="LAYERED" pos="0" type="boolean"/>
-		<bitfield name="TYPE" low="1" high="2" type="a6xx_layer_type"/>
-	</reg32>
+	<!-- index of highest layer that can be written to via gl_Layer -->
+	<reg32 offset="0x8004" name="GRAS_MAX_LAYER_INDEX" type="uint"/>
 
 	<reg32 offset="0x8005" name="GRAS_CNTL">
 		<!-- see also RB_RENDER_CONTROL0 -->

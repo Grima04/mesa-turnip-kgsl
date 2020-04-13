@@ -489,10 +489,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
                       .rt6 = mrt_comp[6],
                       .rt7 = mrt_comp[7]));
 
-   // XXX: We probably can't hardcode LAYER_CNTL_TYPE.
-   tu_cs_emit_regs(cs,
-                   A6XX_GRAS_LAYER_CNTL(.layered = fb->layers > 1,
-                                        .type = LAYER_2D_ARRAY));
+   tu_cs_emit_regs(cs, A6XX_GRAS_MAX_LAYER_INDEX(fb->layers - 1));
 }
 
 void
