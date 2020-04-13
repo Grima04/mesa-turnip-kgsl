@@ -778,8 +778,6 @@ radv_compute_centroid_priority(struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 {
-	struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
-	struct radv_multisample_state *ms = &pipeline->graphics.ms;
 	struct radv_sample_locations_state *sample_location =
 		&cmd_buffer->state.dynamic.sample_location;
 	uint32_t num_samples = (uint32_t)sample_location->per_pixel;
@@ -842,13 +840,9 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 	}
 
 	/* Emit the maximum sample distance and the centroid priority. */
-	uint32_t pa_sc_aa_config = ms->pa_sc_aa_config;
-
-	pa_sc_aa_config &= C_028BE0_MAX_SAMPLE_DIST;
-	pa_sc_aa_config |= S_028BE0_MAX_SAMPLE_DIST(max_sample_dist);
-
-	radeon_set_context_reg_seq(cs, R_028BE0_PA_SC_AA_CONFIG, 1);
-	radeon_emit(cs, pa_sc_aa_config);
+	radeon_set_context_reg_rmw(cs, R_028BE0_PA_SC_AA_CONFIG,
+				   S_028BE0_MAX_SAMPLE_DIST(max_sample_dist),
+				   ~C_028BE0_MAX_SAMPLE_DIST);
 
 	radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
 	radeon_emit(cs, centroid_priority);
