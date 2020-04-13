@@ -1325,6 +1325,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features-> pipelineCreationCacheControl = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
+			VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *features =
+				(VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *) ext;
+			features->extendedDynamicState = true;
+			break;
+		}
 		default:
 			break;
 		}
