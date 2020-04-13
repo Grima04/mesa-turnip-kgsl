@@ -64,6 +64,7 @@ struct ra_ctx {
    std::unordered_map<unsigned, phi_info> phi_map;
    std::unordered_map<unsigned, unsigned> affinities;
    std::unordered_map<unsigned, Instruction*> vectors;
+   aco_ptr<Instruction> pseudo_dummy;
    unsigned max_used_sgpr = 0;
    unsigned max_used_vgpr = 0;
    std::bitset<64> defs_done; /* see MAX_ARGS in aco_instruction_selection_setup.cpp */
@@ -73,7 +74,10 @@ struct ra_ctx {
                               renames(program->blocks.size()),
                               incomplete_phis(program->blocks.size()),
                               filled(program->blocks.size()),
-                              sealed(program->blocks.size()) {}
+                              sealed(program->blocks.size())
+   {
+      pseudo_dummy.reset(create_instruction<Instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, 0, 0));
+   }
 };
 
 class RegisterFile {
@@ -1198,7 +1202,7 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
          pc_op.setFixed(operand.physReg());
 
          /* find free reg */
-         PhysReg reg = get_reg(ctx, register_file, pc_op.getTemp(), parallelcopy, instr);
+         PhysReg reg = get_reg(ctx, register_file, pc_op.getTemp(), parallelcopy, ctx.pseudo_dummy);
          Definition pc_def = Definition(PhysReg{reg}, pc_op.regClass());
          register_file.clear(pc_op);
          parallelcopy.emplace_back(pc_op, pc_def);
