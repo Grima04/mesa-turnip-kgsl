@@ -395,6 +395,14 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 
    /* best fit algorithm: find the smallest gap to fit in the variable */
    if (stride == 1) {
+
+      if (rc.type() == RegType::vgpr && (size == 4 || size == 8)) {
+         info.stride = 4;
+         std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
+         if (res.second)
+            return res;
+      }
+
       unsigned best_pos = 0xFFFF;
       unsigned gap_size = 0xFFFF;
       unsigned next_pos = 0xFFFF;
@@ -935,14 +943,7 @@ PhysReg get_reg(ra_ctx& ctx,
    DefInfo info(ctx, instr, temp.regClass());
 
    /* try to find space without live-range splits */
-   std::pair<PhysReg, bool> res;
-   if (info.rc.type() == RegType::vgpr && (info.size == 4 || info.size == 8)) {
-      DefInfo info_strided = {info.lb, info.ub, info.size, 4, info.rc};
-      std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info_strided);
-   }
-   if (!res.second)
-      res = get_reg_simple(ctx, reg_file, info);
-
+   std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
 
    if (res.second)
       return res.first;
