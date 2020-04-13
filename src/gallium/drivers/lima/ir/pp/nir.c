@@ -99,11 +99,7 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
 
    if (ns->is_ssa) {
       child = comp->var_nodes[ns->ssa->index];
-      /* Clone consts for each successor */
       switch (child->op) {
-      case ppir_op_const:
-         child = ppir_node_clone(node->block, child);
-         break;
       case ppir_op_load_varying:
          /* If at least one successor is load_texture, promote it to
           * load_coords to ensure that is has exactly one successor */

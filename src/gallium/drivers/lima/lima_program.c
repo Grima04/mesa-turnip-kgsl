@@ -250,6 +250,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s,
 
    NIR_PASS_V(s, lima_nir_duplicate_load_uniforms);
    NIR_PASS_V(s, lima_nir_duplicate_load_inputs);
+   NIR_PASS_V(s, lima_nir_duplicate_load_consts);
 
    nir_sweep(s);
 }
