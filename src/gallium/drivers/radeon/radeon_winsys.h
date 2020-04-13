@@ -444,6 +444,14 @@ struct radeon_winsys {
     */
    enum radeon_bo_domain (*buffer_get_initial_domain)(struct pb_buffer *buf);
 
+   /**
+    * Query the flags used for creation of this buffer.
+    *
+    * Note that for imported buffer this may be lossy since not all flags
+    * are passed 1:1.
+    */
+   enum radeon_bo_flag (*buffer_get_flags)(struct pb_buffer *buf);
+
    /**************************************************************************
     * Command submission.
     *

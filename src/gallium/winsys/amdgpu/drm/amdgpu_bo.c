@@ -148,6 +148,12 @@ static enum radeon_bo_domain amdgpu_bo_get_initial_domain(
    return ((struct amdgpu_winsys_bo*)buf)->initial_domain;
 }
 
+static enum radeon_bo_flag amdgpu_bo_get_flags(
+      struct pb_buffer *buf)
+{
+   return ((struct amdgpu_winsys_bo*)buf)->flags;
+}
+
 static void amdgpu_bo_remove_fences(struct amdgpu_winsys_bo *bo)
 {
    for (unsigned i = 0; i < bo->num_fences; ++i)
@@ -559,6 +565,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    bo->va = va;
    bo->u.real.va_handle = va_handle;
    bo->initial_domain = initial_domain;
+   bo->flags = flags;
    bo->unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
 
    if (initial_domain & RADEON_DOMAIN_VRAM)
@@ -1435,6 +1442,7 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    amdgpu_va_handle va_handle = NULL;
    struct amdgpu_bo_info info = {0};
    enum radeon_bo_domain initial = 0;
+   enum radeon_bo_flag flags = 0;
    int r;
 
    switch (whandle->type) {
@@ -1495,6 +1503,10 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
       initial |= RADEON_DOMAIN_VRAM;
    if (info.preferred_heap & AMDGPU_GEM_DOMAIN_GTT)
       initial |= RADEON_DOMAIN_GTT;
+   if (info.alloc_flags & AMDGPU_GEM_CREATE_NO_CPU_ACCESS)
+      flags |= RADEON_FLAG_NO_CPU_ACCESS;
+   if (info.alloc_flags & AMDGPU_GEM_CREATE_CPU_GTT_USWC)
+      flags |= RADEON_FLAG_GTT_WC;
 
    /* Initialize the structure. */
    simple_mtx_init(&bo->lock, mtx_plain);
@@ -1507,6 +1519,7 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    bo->va = va;
    bo->u.real.va_handle = va_handle;
    bo->initial_domain = initial;
+   bo->flags = flags;
    bo->unique_id = __sync_fetch_and_add(&ws->next_bo_unique_id, 1);
    bo->is_shared = true;
 
@@ -1705,4 +1718,5 @@ void amdgpu_bo_init_functions(struct amdgpu_screen_winsys *ws)
    ws->base.buffer_commit = amdgpu_bo_sparse_commit;
    ws->base.buffer_get_virtual_address = amdgpu_bo_get_va;
    ws->base.buffer_get_initial_domain = amdgpu_bo_get_initial_domain;
+   ws->base.buffer_get_flags = amdgpu_bo_get_flags;
 }

@@ -1303,6 +1303,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
          resource->vram_usage = resource->bo_size;
       else if (resource->domains & RADEON_DOMAIN_GTT)
          resource->gart_usage = resource->bo_size;
+      if (sscreen->ws->buffer_get_flags)
+         resource->flags = sscreen->ws->buffer_get_flags(resource->buf);
    }
 
    if (tex->cmask_buffer) {
