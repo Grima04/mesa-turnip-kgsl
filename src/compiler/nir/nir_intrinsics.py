@@ -386,16 +386,16 @@ atomic3("atomic_counter_comp_swap")
 # argument with the value to be written, and image atomic operations take
 # either one or two additional scalar arguments with the same meaning as in
 # the ARB_shader_image_load_store specification.
-def image(name, src_comp=[], **kwargs):
+def image(name, src_comp=[], extra_indices=[], **kwargs):
     intrinsic("image_deref_" + name, src_comp=[1] + src_comp,
-              indices=[ACCESS], **kwargs)
+              indices=[ACCESS] + extra_indices, **kwargs)
     intrinsic("image_" + name, src_comp=[1] + src_comp,
-              indices=[IMAGE_DIM, IMAGE_ARRAY, FORMAT, ACCESS], **kwargs)
+              indices=[IMAGE_DIM, IMAGE_ARRAY, FORMAT, ACCESS] + extra_indices, **kwargs)
     intrinsic("bindless_image_" + name, src_comp=[1] + src_comp,
-              indices=[IMAGE_DIM, IMAGE_ARRAY, FORMAT, ACCESS], **kwargs)
+              indices=[IMAGE_DIM, IMAGE_ARRAY, FORMAT, ACCESS] + extra_indices, **kwargs)
 
-image("load", src_comp=[4, 1, 1], dest_comp=0, flags=[CAN_ELIMINATE])
-image("store", src_comp=[4, 1, 0, 1])
+image("load", src_comp=[4, 1, 1], extra_indices=[TYPE], dest_comp=0, flags=[CAN_ELIMINATE])
+image("store", src_comp=[4, 1, 0, 1], extra_indices=[TYPE])
 image("atomic_add",  src_comp=[4, 1, 1], dest_comp=1)
 image("atomic_imin",  src_comp=[4, 1, 1], dest_comp=1)
 image("atomic_umin",  src_comp=[4, 1, 1], dest_comp=1)

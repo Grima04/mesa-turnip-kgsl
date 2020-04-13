@@ -3133,17 +3133,20 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicStore:
    case SpvOpImageWrite: {
       const uint32_t value_id = opcode == SpvOpAtomicStore ? w[4] : w[3];
-      nir_ssa_def *value = vtn_get_nir_ssa(b, value_id);
+      struct vtn_ssa_value *value = vtn_ssa_value(b, value_id);
       /* nir_intrinsic_image_deref_store always takes a vec4 value */
       assert(op == nir_intrinsic_image_deref_store);
       intrin->num_components = 4;
-      intrin->src[3] = nir_src_for_ssa(expand_to_vec4(&b->nb, value));
+      intrin->src[3] = nir_src_for_ssa(expand_to_vec4(&b->nb, value->def));
       /* Only OpImageWrite can support a lod parameter if
        * SPV_AMD_shader_image_load_store_lod is used but the current NIR
        * intrinsics definition for atomics requires us to set it for
        * OpAtomicStore.
        */
       intrin->src[4] = nir_src_for_ssa(image.lod);
+
+      if (opcode == SpvOpImageWrite)
+         nir_intrinsic_set_type(intrin, nir_get_nir_type_for_glsl_type(value->type));
       break;
    }
 
@@ -3196,6 +3199,9 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
          result = nir_channels(&b->nb, result, (1 << dest_components) - 1);
 
       vtn_push_nir_ssa(b, w[2], result);
+
+      if (opcode == SpvOpImageRead)
+         nir_intrinsic_set_type(intrin, nir_get_nir_type_for_glsl_type(type->type));
    } else {
       nir_builder_instr_insert(&b->nb, &intrin->instr);
    }
