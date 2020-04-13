@@ -92,9 +92,6 @@ struct DefInfo {
    uint8_t stride;
    RegClass rc;
 
-   DefInfo(uint32_t lb, uint32_t ub, uint32_t size, uint32_t stride, RegClass rc) :
-      lb(lb), ub(ub), size(size), stride(stride), rc(rc) {}
-
    DefInfo(ra_ctx& ctx, aco_ptr<Instruction>& instr, RegClass rc) : rc(rc) {
       size = rc.size();
       stride = 1;
@@ -509,14 +506,8 @@ bool get_regs_for_copies(ra_ctx& ctx,
    for (std::set<std::pair<unsigned, unsigned>>::const_reverse_iterator it = vars.rbegin(); it != vars.rend(); ++it) {
       unsigned id = it->second;
       assignment& var = ctx.assignments[id];
-      uint32_t size = var.rc.size();
-      uint32_t stride = 1;
-      if (var.rc.type() == RegType::sgpr) {
-         if (size == 2)
-            stride = 2;
-         if (size > 3)
-            stride = 4;
-      }
+      DefInfo info = DefInfo(ctx, ctx.pseudo_dummy, var.rc);
+      uint32_t size = info.size;
 
       /* check if this is a dead operand, then we can re-use the space from the definition */
       bool is_dead_operand = false;
@@ -538,15 +529,17 @@ bool get_regs_for_copies(ra_ctx& ctx,
                }
             }
          } else {
-            DefInfo info = {def_reg_lo, def_reg_hi + 1, size, stride, var.rc};
+            info.lb = def_reg_lo;
+            info.ub = def_reg_hi + 1;
             res = get_reg_simple(ctx, reg_file, info);
          }
       } else {
-         DefInfo info = {lb, def_reg_lo, size, stride, var.rc};
+         info.lb = lb;
+         info.ub = def_reg_lo;
          res = get_reg_simple(ctx, reg_file, info);
          if (!res.second) {
-            unsigned lb = (def_reg_hi + stride) & ~(stride - 1);
-            DefInfo info = {lb, ub, size, stride, var.rc};
+            info.lb = (def_reg_hi + info.stride) & ~(info.stride - 1);
+            info.ub = ub;
             res = get_reg_simple(ctx, reg_file, info);
          }
       }
@@ -571,6 +564,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
       /* we use a sliding window to find potential positions */
       unsigned reg_lo = lb;
       unsigned reg_hi = lb + size - 1;
+      unsigned stride = var.rc.is_subdword() ? 1 : info.stride;
       for (reg_lo = lb, reg_hi = lb + size - 1; reg_hi < ub; reg_lo += stride, reg_hi += stride) {
          if (!is_dead_operand && ((reg_lo >= def_reg_lo && reg_lo <= def_reg_hi) ||
                                   (reg_hi >= def_reg_lo && reg_hi <= def_reg_hi)))
@@ -661,11 +655,15 @@ bool get_regs_for_copies(ra_ctx& ctx,
 std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
                                       RegisterFile& reg_file,
                                       std::vector<std::pair<Operand, Definition>>& parallelcopies,
-                                      uint32_t lb, uint32_t ub,
-                                      uint32_t size, uint32_t stride,
-                                      RegClass rc,
+                                      DefInfo info,
                                       aco_ptr<Instruction>& instr)
 {
+   uint32_t lb = info.lb;
+   uint32_t ub = info.ub;
+   uint32_t size = info.size;
+   uint32_t stride = info.stride;
+   RegClass rc = info.rc;
+
    /* check how many free regs we have */
    unsigned regs_free = reg_file.count_zero(PhysReg{lb}, ub-lb);
 
@@ -887,28 +885,6 @@ bool get_reg_specified(ra_ctx& ctx,
    return true;
 }
 
-std::pair<PhysReg, bool> get_reg_vec(ra_ctx& ctx,
-                                     RegisterFile& reg_file,
-                                     RegClass rc)
-{
-   uint32_t size = rc.size();
-   uint32_t stride = 1;
-   uint32_t lb, ub;
-   if (rc.type() == RegType::vgpr) {
-      lb = 256;
-      ub = 256 + ctx.program->max_reg_demand.vgpr;
-   } else {
-      lb = 0;
-      ub = ctx.program->max_reg_demand.sgpr;
-      if (size == 2)
-         stride = 2;
-      else if (size >= 4)
-         stride = 4;
-   }
-   DefInfo info = {lb, ub, size, stride, rc};
-   return get_reg_simple(ctx, reg_file, info);
-}
-
 PhysReg get_reg(ra_ctx& ctx,
                 RegisterFile& reg_file,
                 Temp temp,
@@ -945,7 +921,8 @@ PhysReg get_reg(ra_ctx& ctx,
          k += op.bytes();
       }
 
-      std::pair<PhysReg, bool> res = get_reg_vec(ctx, reg_file, vec->definitions[0].regClass());
+      DefInfo info(ctx, ctx.pseudo_dummy, vec->definitions[0].regClass());
+      std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
       PhysReg reg = res.first;
       if (res.second) {
          reg.reg_b += byte_offset;
@@ -971,7 +948,7 @@ PhysReg get_reg(ra_ctx& ctx,
       return res.first;
 
    /* try to find space with live-range splits */
-   res = get_reg_impl(ctx, reg_file, parallelcopies, info.lb, info.ub, info.size, info.stride, info.rc, instr);
+   res = get_reg_impl(ctx, reg_file, parallelcopies, info, instr);
 
    if (res.second)
       return res.first;
