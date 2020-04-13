@@ -411,9 +411,7 @@ void ppir_node_print_prog(ppir_compiler *comp);
 void ppir_node_replace_child(ppir_node *parent, ppir_node *old_child, ppir_node *new_child);
 void ppir_node_replace_all_succ(ppir_node *dst, ppir_node *src);
 void ppir_node_replace_pred(ppir_dep *dep, ppir_node *new_pred);
-void ppir_delete_if_orphan(ppir_block *block, ppir_node *node);
 ppir_dep *ppir_dep_for_pred(ppir_node *node, ppir_node *pred);
-ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node);
 /* Assumes that node successors are in the same block */
 ppir_node *ppir_node_insert_mov(ppir_node *node);
 ppir_node *ppir_node_insert_mov_all_blocks(ppir_node *node);
