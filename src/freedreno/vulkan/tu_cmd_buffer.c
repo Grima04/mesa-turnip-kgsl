@@ -2526,6 +2526,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_DS,
    TU_DRAW_STATE_BLEND,
    TU_DRAW_STATE_VS_CONST,
+   TU_DRAW_STATE_GS_CONST,
    TU_DRAW_STATE_FS_CONST,
    TU_DRAW_STATE_DESC_SETS,
    TU_DRAW_STATE_DESC_SETS_GMEM,
@@ -2566,6 +2567,8 @@ tu6_stage2shadersb(gl_shader_stage type)
    switch (type) {
    case MESA_SHADER_VERTEX:
       return SB6_VS_SHADER;
+   case MESA_SHADER_GEOMETRY:
+      return SB6_GS_SHADER;
    case MESA_SHADER_FRAGMENT:
       return SB6_FS_SHADER;
    case MESA_SHADER_COMPUTE:
@@ -3032,6 +3035,12 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
             .id = TU_DRAW_STATE_VS_CONST,
             .enable_mask = ENABLE_ALL,
             .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_VERTEX)
+         };
+      draw_state_groups[draw_state_group_count++] =
+         (struct tu_draw_state_group) {
+            .id = TU_DRAW_STATE_GS_CONST,
+            .enable_mask = ENABLE_ALL,
+            .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_GEOMETRY)
          };
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
