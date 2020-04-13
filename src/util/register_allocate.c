@@ -400,11 +400,8 @@ ra_set_finalize(struct ra_regs *regs, unsigned int **q_values)
             unsigned int rc;
             int max_conflicts = 0;
 
-            for (rc = 0; rc < regs->count; rc++) {
+            BITSET_FOREACH_SET(rc, regs->classes[c]->regs, regs->count) {
                int conflicts = 0;
-
-               if (!reg_belongs_to_class(rc, regs->classes[c]))
-                  continue;
 
                util_dynarray_foreach(&regs->regs[rc].conflict_list,
                                      unsigned int, rbp) {
