@@ -477,7 +477,7 @@ bi_swiz16(bi_instruction *ins, unsigned src)
                 if (!bi_writes_component(ins, src)) continue;
 
                 unsigned k = ins->swizzle[src][c];
-                assert(k < 1);
+                assert(k <= 1);
                 swizzle |= (k << c);
         }
 
