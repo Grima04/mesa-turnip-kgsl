@@ -749,49 +749,80 @@ bi_pack_fma_convert(bi_instruction *ins, struct bi_registers *regs)
         nir_alu_type to_base = nir_alu_type_get_base_type(ins->dest_type);
         unsigned to_size = nir_alu_type_get_type_size(ins->dest_type);
         bool to_unsigned = to_base == nir_type_uint;
+        bool to_float = to_base == nir_type_float;
 
         /* Sanity check */
         assert((from_base != to_base) || (from_size != to_size));
         assert((MAX2(from_size, to_size) / MIN2(from_size, to_size)) <= 2);
 
-        if (from_size == 16 && to_size == 16) {
-                /* f2i_i2f16 */
-                unreachable("i16 not yet implemented");
-        } else if (from_size == 32 && to_size == 32) {
-                unsigned op = 0;
+        /* f32 to f16 is special */
+        if (from_size == 32 && to_size == 16 && from_base == nir_type_float && to_base == from_base) {
+                /* TODO: second vectorized source? */
+                struct bifrost_fma_2src pack = {
+                        .src0 = bi_get_src(ins, regs, 0, true),
+                        .src1 = BIFROST_SRC_STAGE, /* 0 */
+                        .op = BIFROST_FMA_FLOAT32_TO_16
+                };
 
-                if (from_base == nir_type_float) {
-                        op = BIFROST_FMA_FLOAT32_TO_INT(to_unsigned);
-                } else {
-                        op = BIFROST_FMA_INT_TO_FLOAT32(from_unsigned);
-                }
-
-                return bi_pack_fma_1src(ins, regs, op);
-        } else if (from_size == 16 && to_size == 32) {
-                bool from_y = ins->swizzle[0][0];
-
-                if (from_base == nir_type_float) {
-                        return bi_pack_fma_1src(ins, regs,
-                                        BIFROST_FMA_FLOAT16_TO_32(from_y));
-                } else {
-                        unreachable("i16 not yet implemented");
-                }
-        } else if (from_size == 32 && to_size == 16) {
-                if (from_base == nir_type_float) {
-                        /* TODO: second vectorized source? */
-                        struct bifrost_fma_2src pack = {
-                                .src0 = bi_get_src(ins, regs, 0, true),
-                                .src1 = BIFROST_SRC_STAGE, /* 0 */
-                                .op = BIFROST_FMA_FLOAT32_TO_16
-                        };
-
-                        RETURN_PACKED(pack);
-                } else {
-                        unreachable("i16 not yet implemented");
-                }
+                RETURN_PACKED(pack);
         }
 
-        unreachable("Unknown convert");
+        /* Otherwise, figure out the mode */
+        unsigned op = 0;
+
+        if (from_size == 16 && to_size == 32) {
+                unsigned component = ins->swizzle[0][0];
+                assert(component <= 1);
+
+                if (from_base == nir_type_float)
+                        op = BIFROST_CONVERT_5(component);
+                else
+                        op = BIFROST_CONVERT_4(from_unsigned, component, to_float);
+        } else {
+                unsigned mode = 0;
+                unsigned swizzle = (from_size == 16) ? bi_swiz16(ins, 0) : 0;
+                bool is_unsigned = from_unsigned;
+
+                if (from_base == nir_type_float) {
+                        assert(to_base != nir_type_float);
+                        is_unsigned = to_unsigned;
+
+                        if (from_size == 32 && to_size == 32)
+                                mode = BIFROST_CONV_F32_TO_I32;
+                        else if (from_size == 16 && to_size == 16)
+                                mode = BIFROST_CONV_F16_TO_I16;
+                        else
+                                unreachable("Invalid float conversion");
+                } else {
+                        assert(to_base == nir_type_float);
+                        assert(from_size == to_size);
+
+                        if (to_size == 32)
+                                mode = BIFROST_CONV_I32_TO_F32;
+                        else if (to_size == 16)
+                                mode = BIFROST_CONV_I16_TO_F16;
+                        else
+                                unreachable("Invalid int conversion");
+                }
+
+                /* Fixup swizzle for 32-bit only modes */
+
+                if (mode == BIFROST_CONV_I32_TO_F32)
+                        swizzle = 0b11;
+                else if (mode == BIFROST_CONV_F32_TO_I32)
+                        swizzle = 0b10;
+
+                op = BIFROST_CONVERT(is_unsigned, ins->roundmode, swizzle, mode);
+
+                /* Unclear what the top bit is for... maybe 16-bit related */
+                bool mode2 = mode == BIFROST_CONV_F16_TO_I16;
+                bool mode6 = mode == BIFROST_CONV_I16_TO_F16;
+
+                if (!(mode2 || mode6))
+                        op |= 0x100;
+        }
+
+        return bi_pack_fma_1src(ins, regs, BIFROST_FMA_CONVERT | op);
 }
 
 static unsigned

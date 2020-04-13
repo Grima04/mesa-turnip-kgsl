@@ -333,39 +333,34 @@ struct bifrost_shift_add {
         unsigned op : 7;
 } __attribute__((packed));
 
-#define BIFROST_FMA_INT16_TO_32 (0xe0198 >> 3)
-
-struct bifrost_fma_int16_to_32 {
-        unsigned src0 : 3;
-        unsigned is_unsigned : 1;
-        unsigned swizzle : 1;
-        unsigned to_float : 1;
-        unsigned op : 17;
-} __attribute__((packed));
-
-/* We could combine but it's easier to just use FMA_ONE_SRC */
-#define BIFROST_FMA_FLOAT16_TO_32(y) (0xe01a2 | ((y) ? 1 : 0))
-
 /* Two sources for vectorization */
 #define BIFROST_FMA_FLOAT32_TO_16 (0xdd000 >> 3)
 
-/* Again we could combine but easier to just ONE_SRC with an
- * argumnt for unsignedness */
-#define BIFROST_FMA_FLOAT32_TO_INT(u) (0xe0136 | ((u) ? 1 : 0))
-#define BIFROST_FMA_INT_TO_FLOAT32(u) (0xe0178 | ((u) ? 1 : 0))
+enum bifrost_convert_mode {
+        BIFROST_CONV_UNK0 = 0,
+        BIFROST_CONV_F32_TO_I32 = 1,
+        BIFROST_CONV_F16_TO_I16 = 2,
+        BIFROST_CONV_I32_TO_F32 = 3,
+        BIFROST_CONV_I16_TO_X32 = 4,
+        BIFROST_CONV_F16_TO_F32 = 5,
+        BIFROST_CONV_I16_TO_F16 = 6,
+        BIFROST_CONV_UNK7 = 7
+};
 
-/* Used for f2i16 and i2f16 */
-#define BIFROST_FMA_F2I16 (0xe00)
+/* i16 to x32 */
+#define BIFROST_CONVERT_4(is_unsigned, component, to_float) \
+        ((is_unsigned & 1) | ((component & 1) << 1) | ((to_float & 1) << 2) | \
+         ((0x3) << 3) | ((4) << 5) | 0x100)
 
-struct bifrost_fma_f2i_i2f16 {
-        unsigned src0 : 3;
-        unsigned is_unsigned : 1;
-        unsigned direction : 2; /* 00 for i2f, 11 for f2i */
-        unsigned swizzle : 2;
-        unsigned unk : 2; /* always 10 */
-        unsigned direction_2 : 1; /* 0 for f2i, 1 for i2f */
-        unsigned op : 12;
-} __attribute__((packed));
+/* f16 to f32 */
+#define BIFROST_CONVERT_5(component) \
+        ((component & 1) | ((1) << 1) | ((5) << 5) | 0x100)
+
+/* Other conversions */
+#define BIFROST_CONVERT(is_unsigned, roundmode, swizzle, mode) \
+        ((is_unsigned & 1) | ((roundmode & 3) << 1) | ((swizzle & 3) << 3) | ((mode & 7) << 5))
+
+#define BIFROST_FMA_CONVERT (0xe0000)
 
 enum bifrost_ldst_type {
         BIFROST_LDST_F16 = 0,
