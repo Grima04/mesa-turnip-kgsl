@@ -53,7 +53,7 @@ using namespace brw;
  */
 
 void
-fs_live_variables::setup_one_read(struct block_data *bd, fs_inst *inst,
+fs_live_variables::setup_one_read(struct block_data *bd,
                                   int ip, const fs_reg &reg)
 {
    int var = var_from_reg(reg);
@@ -121,7 +121,7 @@ fs_live_variables::setup_def_use()
                continue;
 
             for (unsigned j = 0; j < regs_read(inst, i); j++) {
-               setup_one_read(bd, inst, ip, reg);
+               setup_one_read(bd, ip, reg);
                reg.offset += REG_SIZE;
             }
 	 }

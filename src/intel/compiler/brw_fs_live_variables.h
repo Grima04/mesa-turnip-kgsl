@@ -132,8 +132,7 @@ public:
 
 protected:
    void setup_def_use();
-   void setup_one_read(struct block_data *bd, fs_inst *inst, int ip,
-                       const fs_reg &reg);
+   void setup_one_read(struct block_data *bd, int ip, const fs_reg &reg);
    void setup_one_write(struct block_data *bd, fs_inst *inst, int ip,
                         const fs_reg &reg);
    void compute_live_variables();
