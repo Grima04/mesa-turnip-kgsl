@@ -2602,6 +2602,13 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 		filled_stages |= (1 << MESA_SHADER_FRAGMENT);
 	}
 
+	if (nir[MESA_SHADER_TESS_CTRL]) {
+		infos[MESA_SHADER_TESS_CTRL].tcs.tes_inputs_read =
+			nir[MESA_SHADER_TESS_EVAL]->info.inputs_read;
+		infos[MESA_SHADER_TESS_CTRL].tcs.tes_patch_inputs_read =
+			nir[MESA_SHADER_TESS_EVAL]->info.patch_inputs_read;
+	}
+
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9 &&
 	    nir[MESA_SHADER_TESS_CTRL]) {
 		struct nir_shader *combined_nir[] = {nir[MESA_SHADER_VERTEX], nir[MESA_SHADER_TESS_CTRL]};

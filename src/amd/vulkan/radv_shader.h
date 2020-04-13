@@ -316,6 +316,8 @@ struct radv_shader_info {
 	struct {
 		uint64_t outputs_written;
 		uint64_t patch_outputs_written;
+		uint64_t tes_inputs_read;
+		uint64_t tes_patch_inputs_read;
 		unsigned tcs_vertices_out;
 		uint32_t num_patches;
 		uint32_t lds_size;
