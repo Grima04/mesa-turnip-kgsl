@@ -550,17 +550,6 @@ static inline ppir_reg *ppir_dest_get_reg(ppir_dest *dest)
    }
 }
 
-static inline ppir_src *ppir_node_get_src_for_pred(ppir_node *node, ppir_node *pred)
-{
-   for (int i = 0; i < ppir_node_get_src_num(node); i++) {
-      ppir_src *src = ppir_node_get_src(node, i);
-      if (src && src->node == pred)
-         return src;
-   }
-
-   return NULL;
-}
-
 static inline void ppir_node_target_assign(ppir_src *src, ppir_node *node)
 {
    ppir_dest *dest = ppir_node_get_dest(node);

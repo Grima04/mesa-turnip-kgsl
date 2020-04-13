@@ -123,10 +123,17 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
 
       /* Turn dest back to SSA, so we can update predecessors */
       ppir_node *succ = ppir_node_first_succ(node);
-      ppir_src *succ_src = ppir_node_get_src_for_pred(succ, node);
-      dest->type = ppir_target_ssa;
-      dest->ssa.index = -1;
-      ppir_node_target_assign(succ_src, node);
+
+      /* Single succ can still have multiple references to this node */
+      for (int i = 0; i < ppir_node_get_src_num(succ); i++) {
+         ppir_src *src = ppir_node_get_src(succ, i);
+         if (src && src->node == node) {
+            /* Can consume uniforms directly */
+            dest->type = ppir_target_ssa;
+            dest->ssa.index = -1;
+            ppir_node_target_assign(src, node);
+         }
+      }
 
       ppir_node *move = ppir_node_insert_mov(node);
       if (unlikely(!move))

@@ -37,17 +37,24 @@ static bool ppir_lower_const(ppir_block *block, ppir_node *node)
    assert(ppir_node_has_single_succ(node));
 
    ppir_node *succ = ppir_node_first_succ(node);
-   ppir_src *src = ppir_node_get_src_for_pred(succ, node);
    ppir_dest *dest = ppir_node_get_dest(node);
-   assert(src != NULL);
 
    switch (succ->type) {
    case ppir_node_type_alu:
    case ppir_node_type_branch:
       /* ALU and branch can consume consts directly */
-      dest->type = src->type = ppir_target_pipeline;
+      dest->type = ppir_target_pipeline;
       /* Reg will be updated in node_to_instr later */
-      dest->pipeline = src->pipeline = ppir_pipeline_reg_const0;
+      dest->pipeline = ppir_pipeline_reg_const0;
+
+      /* single succ can still have multiple references to this node */
+      for (int i = 0; i < ppir_node_get_src_num(succ); i++) {
+         ppir_src *src = ppir_node_get_src(succ, i);
+         if (src && src->node == node) {
+            src->type = ppir_target_pipeline;
+            src->pipeline = ppir_pipeline_reg_const0;
+         }
+      }
       return true;
    default:
       /* Create a move for everyone else */
@@ -105,10 +112,15 @@ static bool ppir_lower_load(ppir_block *block, ppir_node *node)
       switch (succ->type) {
       case ppir_node_type_alu:
       case ppir_node_type_branch: {
-         ppir_src *src = ppir_node_get_src_for_pred(succ, node);
-         /* Can consume uniforms directly */
-         src->type = dest->type = ppir_target_pipeline;
-         src->pipeline = dest->pipeline = ppir_pipeline_reg_uniform;
+         /* single succ can still have multiple references to this node */
+         for (int i = 0; i < ppir_node_get_src_num(succ); i++) {
+            ppir_src *src = ppir_node_get_src(succ, i);
+            if (src && src->node == node) {
+               /* Can consume uniforms directly */
+               src->type = dest->type = ppir_target_pipeline;
+               src->pipeline = dest->pipeline = ppir_pipeline_reg_uniform;
+            }
+         }
          return true;
       }
       default:
