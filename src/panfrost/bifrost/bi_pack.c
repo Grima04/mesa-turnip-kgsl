@@ -1130,6 +1130,16 @@ bi_pack_add_special(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
+bi_pack_add_table(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned op = 0;
+        assert(ins->dest_type == nir_type_float32);
+
+        op = BIFROST_ADD_OP_LOG2_HELP;
+        return bi_pack_add_1src(ins, regs, op);
+}
+
+static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         if (!bundle.add)
@@ -1173,6 +1183,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_SPECIAL:
                 return bi_pack_add_special(bundle.add, regs);
         case BI_TABLE:
+                return bi_pack_add_table(bundle.add, regs);
         case BI_SWIZZLE:
         case BI_TEX:
         case BI_ROUND:
