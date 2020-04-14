@@ -10199,7 +10199,7 @@ static void emit_stream_output(isel_context *ctx,
 
    Temp out[4];
    bool all_undef = true;
-   assert(ctx->stage == vertex_vs || ctx->stage == gs_copy_vs);
+   assert(ctx->stage & hw_vs);
    for (unsigned i = 0; i < num_comps; i++) {
       out[i] = ctx->outputs.temps[loc * 4 + start + i];
       all_undef = all_undef && !out[i].id();
