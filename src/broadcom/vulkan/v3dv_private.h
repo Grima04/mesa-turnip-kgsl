@@ -279,6 +279,9 @@ struct v3dv_format {
 
    /* Whether the return value is 16F/I/UI or 32F/I/UI. */
    uint8_t return_size;
+
+   /* If the format supports (linear) filtering when texturing. */
+   bool supports_filtering;
 };
 
 /**

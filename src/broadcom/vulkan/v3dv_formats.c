@@ -37,13 +37,14 @@
    PIPE_SWIZZLE_##w       \
 }
 
-#define FORMAT(vk, rt, tex, swiz, return_size)     \
-   [VK_FORMAT_##vk] = {                            \
-      true,                                        \
-      V3D_OUTPUT_IMAGE_FORMAT_##rt,                \
-      TEXTURE_DATA_FORMAT_##tex,                   \
-      swiz,                                        \
-      return_size,                                 \
+#define FORMAT(vk, rt, tex, swiz, return_size, supports_filtering)  \
+   [VK_FORMAT_##vk] = {                                             \
+      true,                                                         \
+      V3D_OUTPUT_IMAGE_FORMAT_##rt,                                 \
+      TEXTURE_DATA_FORMAT_##tex,                                    \
+      swiz,                                                         \
+      return_size,                                                  \
+      supports_filtering,                                           \
    }
 
 #define SWIZ_X001 SWIZ(X, 0, 0, 1)
@@ -65,96 +66,96 @@
  */
 static const struct v3dv_format format_table[] = {
    /* Color, 4 channels */
-   FORMAT(B8G8R8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_ZYXW, 16),
-   FORMAT(B8G8R8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_ZYXW, 16),
+   FORMAT(B8G8R8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_ZYXW, 16, true),
+   FORMAT(B8G8R8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_ZYXW, 16, true),
 
-   FORMAT(R8G8B8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_XYZW, 16),
-   FORMAT(R8G8B8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_XYZW, 16),
-   FORMAT(R8G8B8A8_SNORM,          NO,           RGBA8_SNORM,   SWIZ_XYZW, 16),
-   FORMAT(R8G8B8A8_SINT,           RGBA8I,       RGBA8I,        SWIZ_XYZW, 16),
-   FORMAT(R8G8B8A8_UINT,           RGBA8UI,      RGBA8UI,       SWIZ_XYZW, 16),
+   FORMAT(R8G8B8A8_SRGB,           SRGB8_ALPHA8, RGBA8,         SWIZ_XYZW, 16, true),
+   FORMAT(R8G8B8A8_UNORM,          RGBA8,        RGBA8,         SWIZ_XYZW, 16, true),
+   FORMAT(R8G8B8A8_SNORM,          NO,           RGBA8_SNORM,   SWIZ_XYZW, 16, true),
+   FORMAT(R8G8B8A8_SINT,           RGBA8I,       RGBA8I,        SWIZ_XYZW, 16, false),
+   FORMAT(R8G8B8A8_UINT,           RGBA8UI,      RGBA8UI,       SWIZ_XYZW, 16, false),
 
-   FORMAT(R16G16B16A16_SFLOAT,     RGBA16F,      RGBA16F,       SWIZ_XYZW, 16),
-   FORMAT(R16G16B16A16_UNORM,      NO,           RGBA16,        SWIZ_XYZW, 32),
-   FORMAT(R16G16B16A16_SNORM,      NO,           RGBA16_SNORM,  SWIZ_XYZW, 32),
-   FORMAT(R16G16B16A16_SINT,       RGBA16I,      RGBA16I,       SWIZ_XYZW, 16),
-   FORMAT(R16G16B16A16_UINT,       RGBA16UI,     RGBA16UI,      SWIZ_XYZW, 16),
+   FORMAT(R16G16B16A16_SFLOAT,     RGBA16F,      RGBA16F,       SWIZ_XYZW, 16, true),
+   FORMAT(R16G16B16A16_UNORM,      NO,           RGBA16,        SWIZ_XYZW, 32, true),
+   FORMAT(R16G16B16A16_SNORM,      NO,           RGBA16_SNORM,  SWIZ_XYZW, 32, true),
+   FORMAT(R16G16B16A16_SINT,       RGBA16I,      RGBA16I,       SWIZ_XYZW, 16, false),
+   FORMAT(R16G16B16A16_UINT,       RGBA16UI,     RGBA16UI,      SWIZ_XYZW, 16, false),
 
-   FORMAT(R32G32B32A32_SFLOAT,     RGBA32F,      RGBA32F,       SWIZ_XYZW, 32),
-   FORMAT(R32G32B32A32_SINT,       RGBA32I,      RGBA32I,       SWIZ_XYZW, 32),
-   FORMAT(R32G32B32A32_UINT,       RGBA32UI,     RGBA32UI,      SWIZ_XYZW, 32),
+   FORMAT(R32G32B32A32_SFLOAT,     RGBA32F,      RGBA32F,       SWIZ_XYZW, 32, false),
+   FORMAT(R32G32B32A32_SINT,       RGBA32I,      RGBA32I,       SWIZ_XYZW, 32, false),
+   FORMAT(R32G32B32A32_UINT,       RGBA32UI,     RGBA32UI,      SWIZ_XYZW, 32, false),
 
    /* Color, 3 channels */
-   FORMAT(R32G32B32_SFLOAT,        NO,           NO,            SWIZ_XYZ1,  0),
-   FORMAT(R32G32B32_UINT,          NO,           NO,            SWIZ_XYZ1,  0),
-   FORMAT(R32G32B32_SINT,          NO,           NO,            SWIZ_XYZ1,  0),
+   FORMAT(R32G32B32_SFLOAT,        NO,           NO,            SWIZ_XYZ1,  0, false),
+   FORMAT(R32G32B32_UINT,          NO,           NO,            SWIZ_XYZ1,  0, false),
+   FORMAT(R32G32B32_SINT,          NO,           NO,            SWIZ_XYZ1,  0, false),
 
    /* Color, 2 channels */
-   FORMAT(R8G8_UNORM,              RG8,          RG8,           SWIZ_XY01, 16),
-   FORMAT(R8G8_SNORM,              NO,           RG8_SNORM,     SWIZ_XY01, 16),
-   FORMAT(R8G8_SINT,               RG8I,         RG8I,          SWIZ_XY01, 16),
-   FORMAT(R8G8_UINT,               RG8UI,        RG8UI,         SWIZ_XY01, 16),
+   FORMAT(R8G8_UNORM,              RG8,          RG8,           SWIZ_XY01, 16, true),
+   FORMAT(R8G8_SNORM,              NO,           RG8_SNORM,     SWIZ_XY01, 16, true),
+   FORMAT(R8G8_SINT,               RG8I,         RG8I,          SWIZ_XY01, 16, false),
+   FORMAT(R8G8_UINT,               RG8UI,        RG8UI,         SWIZ_XY01, 16, false),
 
-   FORMAT(R16G16_UNORM,            NO,           RG16,          SWIZ_XY01, 32),
-   FORMAT(R16G16_SNORM,            NO,           RG16_SNORM,    SWIZ_XY01, 32),
-   FORMAT(R16G16_SFLOAT,           RG16F,        RG16F,         SWIZ_XY01, 16),
-   FORMAT(R16G16_SINT,             RG16I,        RG16I,         SWIZ_XY01, 16),
-   FORMAT(R16G16_UINT,             RG16UI,       RG16UI,        SWIZ_XY01, 16),
+   FORMAT(R16G16_UNORM,            NO,           RG16,          SWIZ_XY01, 32, true),
+   FORMAT(R16G16_SNORM,            NO,           RG16_SNORM,    SWIZ_XY01, 32, true),
+   FORMAT(R16G16_SFLOAT,           RG16F,        RG16F,         SWIZ_XY01, 16, true),
+   FORMAT(R16G16_SINT,             RG16I,        RG16I,         SWIZ_XY01, 16, false),
+   FORMAT(R16G16_UINT,             RG16UI,       RG16UI,        SWIZ_XY01, 16, false),
 
-   FORMAT(R32G32_SFLOAT,           RG32F,        RG32F,         SWIZ_XY01, 32),
-   FORMAT(R32G32_SINT,             RG32I,        RG32I,         SWIZ_XY01, 32),
-   FORMAT(R32G32_UINT,             RG32UI,       RG32UI,        SWIZ_XY01, 32),
+   FORMAT(R32G32_SFLOAT,           RG32F,        RG32F,         SWIZ_XY01, 32, false),
+   FORMAT(R32G32_SINT,             RG32I,        RG32I,         SWIZ_XY01, 32, false),
+   FORMAT(R32G32_UINT,             RG32UI,       RG32UI,        SWIZ_XY01, 32, false),
 
    /* Color, 1 channel */
-   FORMAT(R8_UNORM,                R8,           R8,            SWIZ_X001, 16),
-   FORMAT(R8_SNORM,                NO,           R8_SNORM,      SWIZ_X001, 16),
-   FORMAT(R8_SINT,                 R8I,          R8I,           SWIZ_X001, 16),
-   FORMAT(R8_UINT,                 R8UI,         R8UI,          SWIZ_X001, 16),
+   FORMAT(R8_UNORM,                R8,           R8,            SWIZ_X001, 16, true),
+   FORMAT(R8_SNORM,                NO,           R8_SNORM,      SWIZ_X001, 16, true),
+   FORMAT(R8_SINT,                 R8I,          R8I,           SWIZ_X001, 16, false),
+   FORMAT(R8_UINT,                 R8UI,         R8UI,          SWIZ_X001, 16, false),
 
-   FORMAT(R16_UNORM,               NO,           R16,           SWIZ_X001, 32),
-   FORMAT(R16_SNORM,               NO,           R16_SNORM,     SWIZ_X001, 32),
-   FORMAT(R16_SFLOAT,              R16F,         R16F,          SWIZ_X001, 16),
-   FORMAT(R16_SINT,                R16I,         R16I,          SWIZ_X001, 16),
-   FORMAT(R16_UINT,                R16UI,        R16UI,         SWIZ_X001, 16),
+   FORMAT(R16_UNORM,               NO,           R16,           SWIZ_X001, 32, true),
+   FORMAT(R16_SNORM,               NO,           R16_SNORM,     SWIZ_X001, 32, true),
+   FORMAT(R16_SFLOAT,              R16F,         R16F,          SWIZ_X001, 16, true),
+   FORMAT(R16_SINT,                R16I,         R16I,          SWIZ_X001, 16, false),
+   FORMAT(R16_UINT,                R16UI,        R16UI,         SWIZ_X001, 16, false),
 
-   FORMAT(R32_SFLOAT,              R32F,         R32F,          SWIZ_X001, 32),
-   FORMAT(R32_SINT,                R32I,         R32I,          SWIZ_X001, 32),
-   FORMAT(R32_UINT,                R32UI,        R32UI,         SWIZ_X001, 32),
+   FORMAT(R32_SFLOAT,              R32F,         R32F,          SWIZ_X001, 32, false),
+   FORMAT(R32_SINT,                R32I,         R32I,          SWIZ_X001, 32, false),
+   FORMAT(R32_UINT,                R32UI,        R32UI,         SWIZ_X001, 32, false),
 
    /* Color, packed */
-   FORMAT(B4G4R4A4_UNORM_PACK16,   ABGR4444,     RGBA4,         SWIZ_ZYXW, 16), /* Swap RB */
-   FORMAT(R5G6B5_UNORM_PACK16,     BGR565,       RGB565,        SWIZ_XYZ1, 16),
-   FORMAT(R5G5B5A1_UNORM_PACK16,   ABGR1555,     RGB5_A1,       SWIZ_XYZW, 16),
-   FORMAT(A1R5G5B5_UNORM_PACK16,   RGBA5551,     A1_RGB5,       SWIZ_ZYXW, 16), /* Swap RB */
-   FORMAT(A8B8G8R8_UNORM_PACK32,   RGBA8,        RGBA8,         SWIZ_XYZW, 16), /* RGBA8 UNORM */
-   FORMAT(A8B8G8R8_SNORM_PACK32,   NO,           RGBA8_SNORM,   SWIZ_XYZW, 16), /* RGBA8 SNORM */
-   FORMAT(A8B8G8R8_UINT_PACK32,    RGBA8UI,      RGBA8UI,       SWIZ_XYZW, 16), /* RGBA8 UINT */
-   FORMAT(A8B8G8R8_SINT_PACK32,    RGBA8I,       RGBA8I,        SWIZ_XYZW, 16), /* RGBA8 SINT */
-   FORMAT(A8B8G8R8_SRGB_PACK32,    SRGB8_ALPHA8, RGBA8,         SWIZ_XYZW, 16), /* RGBA8 sRGB */
-   FORMAT(A2B10G10R10_UNORM_PACK32,RGB10_A2,     RGB10_A2,      SWIZ_XYZW, 16),
-   FORMAT(A2B10G10R10_UINT_PACK32, RGB10_A2UI,   RGB10_A2UI,    SWIZ_XYZW, 16),
-   FORMAT(E5B9G9R9_UFLOAT_PACK32,  NO,           RGB9_E5,       SWIZ_XYZW, 16),
-   FORMAT(B10G11R11_UFLOAT_PACK32, R11F_G11F_B10F,R11F_G11F_B10F, SWIZ_XYZW, 16),
+   FORMAT(B4G4R4A4_UNORM_PACK16,   ABGR4444,     RGBA4,         SWIZ_ZYXW, 16, true), /* Swap RB */
+   FORMAT(R5G6B5_UNORM_PACK16,     BGR565,       RGB565,        SWIZ_XYZ1, 16, true),
+   FORMAT(R5G5B5A1_UNORM_PACK16,   ABGR1555,     RGB5_A1,       SWIZ_XYZW, 16, true),
+   FORMAT(A1R5G5B5_UNORM_PACK16,   RGBA5551,     A1_RGB5,       SWIZ_ZYXW, 16, true), /* Swap RB */
+   FORMAT(A8B8G8R8_UNORM_PACK32,   RGBA8,        RGBA8,         SWIZ_XYZW, 16, true), /* RGBA8 UNORM */
+   FORMAT(A8B8G8R8_SNORM_PACK32,   NO,           RGBA8_SNORM,   SWIZ_XYZW, 16, true), /* RGBA8 SNORM */
+   FORMAT(A8B8G8R8_UINT_PACK32,    RGBA8UI,      RGBA8UI,       SWIZ_XYZW, 16, true), /* RGBA8 UINT */
+   FORMAT(A8B8G8R8_SINT_PACK32,    RGBA8I,       RGBA8I,        SWIZ_XYZW, 16, true), /* RGBA8 SINT */
+   FORMAT(A8B8G8R8_SRGB_PACK32,    SRGB8_ALPHA8, RGBA8,         SWIZ_XYZW, 16, true), /* RGBA8 sRGB */
+   FORMAT(A2B10G10R10_UNORM_PACK32,RGB10_A2,     RGB10_A2,      SWIZ_XYZW, 16, true),
+   FORMAT(A2B10G10R10_UINT_PACK32, RGB10_A2UI,   RGB10_A2UI,    SWIZ_XYZW, 16, true),
+   FORMAT(E5B9G9R9_UFLOAT_PACK32,  NO,           RGB9_E5,       SWIZ_XYZW, 16, true),
+   FORMAT(B10G11R11_UFLOAT_PACK32, R11F_G11F_B10F,R11F_G11F_B10F, SWIZ_XYZW, 16, true),
 
    /* Depth */
-   FORMAT(D16_UNORM,               D16,          DEPTH_COMP16,  SWIZ_XXXX, 32),
-   FORMAT(D32_SFLOAT,              D32F,         DEPTH_COMP32F, SWIZ_XXXX, 32),
-   FORMAT(X8_D24_UNORM_PACK32,     D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32),
+   FORMAT(D16_UNORM,               D16,          DEPTH_COMP16,  SWIZ_XXXX, 32, false),
+   FORMAT(D32_SFLOAT,              D32F,         DEPTH_COMP32F, SWIZ_XXXX, 32, false),
+   FORMAT(X8_D24_UNORM_PACK32,     D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32, false),
 
    /* Depth + Stencil */
-   FORMAT(D24_UNORM_S8_UINT,       D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32),
+   FORMAT(D24_UNORM_S8_UINT,       D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32, false),
 
    /* Compressed: ETC2 / EAC */
-   FORMAT(ETC2_R8G8B8_UNORM_BLOCK,    NO,  RGB8_ETC2,                SWIZ_XYZ1, 16),
-   FORMAT(ETC2_R8G8B8_SRGB_BLOCK,     NO,  RGB8_ETC2,                SWIZ_XYZ1, 16),
-   FORMAT(ETC2_R8G8B8A1_UNORM_BLOCK,  NO,  RGB8_PUNCHTHROUGH_ALPHA1, SWIZ_XYZW, 16),
-   FORMAT(ETC2_R8G8B8A1_SRGB_BLOCK,   NO,  RGB8_PUNCHTHROUGH_ALPHA1, SWIZ_XYZW, 16),
-   FORMAT(ETC2_R8G8B8A8_UNORM_BLOCK,  NO,  RGBA8_ETC2_EAC,           SWIZ_XYZW, 16),
-   FORMAT(ETC2_R8G8B8A8_SRGB_BLOCK,   NO,  RGBA8_ETC2_EAC,           SWIZ_XYZW, 16),
-   FORMAT(EAC_R11_UNORM_BLOCK,        NO,  R11_EAC,                  SWIZ_X001, 16),
-   FORMAT(EAC_R11_SNORM_BLOCK,        NO,  SIGNED_R11_EAC,           SWIZ_X001, 16),
-   FORMAT(EAC_R11G11_UNORM_BLOCK,     NO,  RG11_EAC,                 SWIZ_XY01, 16),
-   FORMAT(EAC_R11G11_SNORM_BLOCK,     NO,  SIGNED_RG11_EAC,          SWIZ_XY01, 16),
+   FORMAT(ETC2_R8G8B8_UNORM_BLOCK,    NO,  RGB8_ETC2,                SWIZ_XYZ1, 16, true),
+   FORMAT(ETC2_R8G8B8_SRGB_BLOCK,     NO,  RGB8_ETC2,                SWIZ_XYZ1, 16, true),
+   FORMAT(ETC2_R8G8B8A1_UNORM_BLOCK,  NO,  RGB8_PUNCHTHROUGH_ALPHA1, SWIZ_XYZW, 16, true),
+   FORMAT(ETC2_R8G8B8A1_SRGB_BLOCK,   NO,  RGB8_PUNCHTHROUGH_ALPHA1, SWIZ_XYZW, 16, true),
+   FORMAT(ETC2_R8G8B8A8_UNORM_BLOCK,  NO,  RGBA8_ETC2_EAC,           SWIZ_XYZW, 16, true),
+   FORMAT(ETC2_R8G8B8A8_SRGB_BLOCK,   NO,  RGBA8_ETC2_EAC,           SWIZ_XYZW, 16, true),
+   FORMAT(EAC_R11_UNORM_BLOCK,        NO,  R11_EAC,                  SWIZ_X001, 16, true),
+   FORMAT(EAC_R11_SNORM_BLOCK,        NO,  SIGNED_R11_EAC,           SWIZ_X001, 16, true),
+   FORMAT(EAC_R11G11_UNORM_BLOCK,     NO,  RG11_EAC,                 SWIZ_XY01, 16, true),
+   FORMAT(EAC_R11G11_SNORM_BLOCK,     NO,  SIGNED_RG11_EAC,          SWIZ_XY01, 16, true),
 };
 
 const struct v3dv_format *
@@ -366,8 +367,10 @@ image_format_features(VkFormat vk_format,
 
    if (v3dv_format->tex_type != TEXTURE_DATA_FORMAT_NO) {
       flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-               VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
                VK_FORMAT_FEATURE_BLIT_SRC_BIT;
+
+      if (v3dv_format->supports_filtering)
+         flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
    }
 
    if (v3dv_format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
