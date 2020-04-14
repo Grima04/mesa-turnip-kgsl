@@ -490,7 +490,29 @@ bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
         /* (-a)(-b) = ab, so we only need one negate bit */
         bool negate_mul = ins->src_neg[0] ^ ins->src_neg[1];
 
-        if (ins->dest_type == nir_type_float32) {
+        if (ins->op.mscale) {
+                assert(!(ins->src_abs[0] && ins->src_abs[1]));
+                assert(!ins->src_abs[2] || !ins->src_neg[3] || !ins->src_abs[3]);
+
+                /* We can have exactly one abs, and can flip the multiplication
+                 * to make it fit if we have to */
+                bool flip_ab = ins->src_abs[1];
+
+                struct bifrost_fma_mscale pack = {
+                        .src0 = bi_get_src(ins, regs, flip_ab ? 1 : 0, true),
+                        .src1 = bi_get_src(ins, regs, flip_ab ? 0 : 1, true),
+                        .src2 = bi_get_src(ins, regs, 2, true),
+                        .src3 = bi_get_src(ins, regs, 3, true),
+                        .mscale_mode = 0,
+                        .mode = ins->outmod,
+                        .src0_abs = ins->src_abs[0] || ins->src_abs[1],
+                        .src1_neg = negate_mul,
+                        .src2_neg = ins->src_neg[2],
+                        .op = BIFROST_FMA_OP_MSCALE,
+                };
+
+                RETURN_PACKED(pack);
+        } else if (ins->dest_type == nir_type_float32) {
                 struct bifrost_fma_fma pack = {
                         .src0 = bi_get_src(ins, regs, 0, true),
                         .src1 = bi_get_src(ins, regs, 1, true),
