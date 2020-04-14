@@ -68,6 +68,7 @@ enum bi_class {
         BI_LOAD_VAR_ADDRESS,
         BI_MINMAX,
         BI_MOV,
+        BI_REDUCE_FMA,
         BI_SHIFT,
         BI_STORE,
         BI_STORE_VAR,
@@ -192,6 +193,13 @@ enum bi_table_op {
         BI_TABLE_LOG2_U_OVER_U_1_LOW,
 };
 
+enum bi_reduce_op {
+        /* Takes two fp32 arguments and returns x + frexp(y). Used in
+         * low-precision log2 argument reduction on newer models. */
+
+        BI_REDUCE_ADD_FREXPM,
+};
+
 enum bi_special_op {
         BI_SPECIAL_FRCP,
         BI_SPECIAL_FRSQ,
@@ -259,6 +267,7 @@ typedef struct {
                 enum bi_bitwise_op bitwise;
                 enum bi_round_op round;
                 enum bi_special_op special;
+                enum bi_reduce_op reduce;
                 enum bi_table_op table;
                 enum bi_cond compare;
         } op;

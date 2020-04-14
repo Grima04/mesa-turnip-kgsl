@@ -42,6 +42,7 @@ const char * bi_class_name(enum bi_class cl);
 const char * bi_cond_name(enum bi_cond cond);
 const char * bi_special_op_name(enum bi_special_op op);
 const char * bi_table_op_name(enum bi_table_op op);
+const char * bi_reduce_op_name(enum bi_reduce_op op);
 
 void bi_print_instruction(bi_instruction *ins, FILE *fp);
 void bi_print_bundle(bi_bundle *bundle, FILE *fp);

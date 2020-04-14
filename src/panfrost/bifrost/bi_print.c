@@ -272,6 +272,15 @@ bi_special_op_name(enum bi_special_op op)
         }
 }
 
+const char *
+bi_reduce_op_name(enum bi_reduce_op op)
+{
+        switch (op) {
+        case BI_REDUCE_ADD_FREXPM: return "add_frexpm";
+        default: return "invalid";
+        }
+}
+
 static void
 bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
 {
@@ -339,6 +348,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_special_op_name(ins->op.special));
         else if (ins->type == BI_TABLE)
                 fprintf(fp, "%s", bi_table_op_name(ins->op.table));
+        else if (ins->type == BI_REDUCE_FMA)
+                fprintf(fp, "%s", bi_reduce_op_name(ins->op.reduce));
         else if (ins->type == BI_CMP)
                 fprintf(fp, "%s", bi_cond_name(ins->op.compare));
         else

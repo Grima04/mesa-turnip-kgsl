@@ -553,6 +553,7 @@ static const struct fma_op_info FMAOpInfos[] = {
         { true,  0x01e08, "SEL.YX.i16", FMA_TWO_SRC },
         { true,  0x01e10, "SEL.XY.i16", FMA_TWO_SRC },
         { true,  0x01e18, "SEL.YY.i16", FMA_TWO_SRC },
+        { true,  0x01e80, "ADD_FREXPM.f32", FMA_TWO_SRC },
         { true,  0x00800, "IMAD", FMA_THREE_SRC },
         { true,  0x078db, "POPCNT", FMA_ONE_SRC },
 };

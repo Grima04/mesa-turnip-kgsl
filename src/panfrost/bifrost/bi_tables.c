@@ -48,6 +48,7 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_MINMAX] 		= BI_GENERIC | BI_SCHED_ADD | BI_NO_ABS_ABS_FP16_FMA | BI_MODS, /* | FMA on some? */
         [BI_MOV] 		= BI_SCHED_ALL,
         [BI_FMOV]               = BI_MODS | BI_SCHED_ALL,
+        [BI_REDUCE_FMA]         = BI_SCHED_FMA,
         [BI_SHIFT] 		= BI_SCHED_ALL,
         [BI_STORE] 		= BI_SCHED_HI_LATENCY | BI_SCHED_ADD | BI_VECTOR | BI_DATA_REG_SRC,
         [BI_STORE_VAR] 		= BI_SCHED_HI_LATENCY | BI_SCHED_ADD | BI_VECTOR | BI_DATA_REG_SRC,
