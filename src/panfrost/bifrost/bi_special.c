@@ -91,9 +91,96 @@ bi_emit_fexp2_new(bi_context *ctx, nir_alu_instr *instr)
         bi_emit(ctx, fexp);
 }
 
+/* Even on new Bifrost, there are a bunch of reductions to do */
+
+static void
+bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
+{
+        /* LOG_FREXPE X */
+        bi_instruction frexpe = {
+                .type = BI_FREXP,
+                .op = { .frexp = BI_FREXPE_LOG },
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_int32,
+                .writemask = 0xF,
+                .src = { bir_src_index(&instr->src[0].src) },
+                .src_types = { nir_type_float32 }
+        };
+
+        /* I32_TO_F32 m */
+        bi_instruction i2f = {
+                .type = BI_CONVERT,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .writemask = 0xF,
+                .src = { frexpe.dest },
+                .src_types = { nir_type_int32 },
+                .roundmode = BIFROST_RTZ
+        };
+
+        /* ADD_FREXPM (x-1), -1.0, X */
+        bi_instruction x_minus_1 = {
+                .type = BI_REDUCE_FMA,
+                .op = { .reduce = BI_REDUCE_ADD_FREXPM },
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .writemask = 0xF,
+                .src = {
+                        BIR_INDEX_CONSTANT,
+                        bir_src_index(&instr->src[0].src),
+                },
+                .src_types = { nir_type_float32, nir_type_float32 },
+                .constant = {
+                        .u64 = 0xBF800000 /* -1.0 */
+                }
+        };
+
+        /* FLOG2_HELP log2(x)/(x-1), x */
+        bi_instruction help = {
+                .type = BI_TABLE,
+                .op = { .table = BI_TABLE_LOG2_U_OVER_U_1_LOW },
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .writemask = 0xF,
+                .src = { bir_src_index(&instr->src[0].src) },
+                .src_types = { nir_type_float32 },
+        };
+
+        /* FMA log2(x)/(x - 1), (x - 1), M */
+        bi_instruction fma = {
+                .type = BI_FMA,
+                .dest = bir_dest_index(&instr->dest.dest),
+                .dest_type = nir_type_float32,
+                .writemask = 0xF,
+                .src = {
+                        help.dest,
+                        x_minus_1.dest,
+                        i2f.dest
+                },
+                .src_types = {
+                        nir_type_float32,
+                        nir_type_float32,
+                        nir_type_float32
+                }
+        };
+
+        bi_emit(ctx, frexpe);
+        bi_emit(ctx, i2f);
+        bi_emit(ctx, x_minus_1);
+        bi_emit(ctx, help);
+        bi_emit(ctx, fma);
+}
+
 void
 bi_emit_fexp2(bi_context *ctx, nir_alu_instr *instr)
 {
         /* TODO: G71 */
         bi_emit_fexp2_new(ctx, instr);
+}
+
+void
+bi_emit_flog2(bi_context *ctx, nir_alu_instr *instr)
+{
+        /* TODO: G71 */
+        bi_emit_flog2_new(ctx, instr);
 }

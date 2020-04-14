@@ -531,6 +531,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         case nir_op_fexp2:
                 bi_emit_fexp2(ctx, instr);
                 return;
+        case nir_op_flog2:
+                bi_emit_flog2(ctx, instr);
+                return;
         default:
                 break;
         }
