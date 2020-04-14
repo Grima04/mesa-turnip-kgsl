@@ -85,8 +85,6 @@ dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide
 dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide
-dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.int2_10_10_10.components4_quads1
-dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.int2_10_10_10.components4_quads256
 dEQP-GLES31.functional.atomic_counter.dec.1_counter_100_calls_10_threads
 dEQP-GLES31.functional.atomic_counter.dec.1_counter_100_calls_1_thread
 dEQP-GLES31.functional.atomic_counter.dec.1_counter_1_call_10_threads

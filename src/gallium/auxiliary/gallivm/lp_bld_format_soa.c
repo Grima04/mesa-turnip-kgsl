@@ -209,12 +209,12 @@ lp_build_extract_soa_chan(struct lp_build_context *bld,
             LLVMValueRef scale_val = lp_build_const_vec(gallivm, type, scale);
             input = LLVMBuildFMul(builder, input, scale_val, "");
             /*
-             * The formula above will produce value below -1.0 for most negative
-             * value but everything seems happy with that hence disable for now.
+             * The formula above will produce value below -1.0 for most negative values.
+             * compliance requires clamping it.
+             * GTF-GL45.gtf33.GL3Tests.vertex_type_2_10_10_10_rev.vertex_type_2_10_10_10_rev_conversion.
              */
-            if (0)
-               input = lp_build_max(bld, input,
-                                    lp_build_const_vec(gallivm, type, -1.0f));
+            input = lp_build_max(bld, input,
+                                 lp_build_const_vec(gallivm, type, -1.0f));
          }
       }
       else if (chan_desc.pure_integer) {

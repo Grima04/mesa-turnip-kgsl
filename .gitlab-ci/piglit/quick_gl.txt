@@ -880,7 +880,6 @@ spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16f: fail
 spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16i: fail
 spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8_snorm: fail
 spec/arb_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8i: fail
-spec/arb_texture_view/rendering-formats/clear gl_rgba8_snorm as gl_r32f: fail
 spec/arb_timer_query/query gl_timestamp: fail
 spec/arb_vertex_attrib_64bit/get_double_attribs-display-lists: skip
 spec/arb_vertex_program/vp-address-02: skip
@@ -1627,7 +1626,6 @@ spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16f: fail
 spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16i: fail
 spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8_snorm: fail
 spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8i: fail
-spec/oes_texture_view/rendering-formats/clear gl_rgba8_snorm as gl_r32f: fail
 spec/oes_texture_view/rendering-formats/render to gl_rgb16 as gl_rgb16f: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16 as gl_rgb16i: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16 as gl_rgb16ui: skip
@@ -1672,8 +1670,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    21853
-       fail:      202
+       pass:    21855
+       fail:      200
       crash:        0
        skip:     1445
     timeout:        0

@@ -86,8 +86,6 @@ dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide
 dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide
-dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.int2_10_10_10.components4_quads1
-dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.int2_10_10_10.components4_quads256
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.8
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.4
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.9
