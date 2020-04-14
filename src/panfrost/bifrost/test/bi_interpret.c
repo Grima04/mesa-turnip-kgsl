@@ -340,6 +340,28 @@ bit_as_int16(nir_alu_type T, bit_t src, unsigned C, enum bifrost_roundmode rm)
         }
 }
 
+static float
+frexp_log(float x, int *e)
+{
+        /* Ignore sign until end */
+        float xa = fabs(x);
+
+        /* frexp reduces to [0.5, 1) */
+        float f = frexpf(xa, e);
+
+        /* reduce to [0.75, 1.5) */
+        if (f < 0.75) {
+                f *= 2.0;
+                (*e)--;
+        }
+
+        /* Reattach sign */
+        if (xa < 0.0)
+                f = -f;
+
+        return f;
+}
+
 void
 bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 {
@@ -424,7 +446,18 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
                 unreachable("Unknown type");
         }
 
-        case BI_FREXP:
+        case BI_FREXP: {
+                if (ins->src_types[0] != nir_type_float32)
+                        unreachable("Unknown frexp type");
+
+
+                if (ins->op.frexp == BI_FREXPE_LOG)
+                        frexp_log(srcs[0].f32, &dest.i32);
+                else
+                        unreachable("Unknown frexp");
+
+                break;
+        }
         case BI_ISUB:
                 unreachable("Unsupported op");
 
