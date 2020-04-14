@@ -200,6 +200,10 @@ enum bi_reduce_op {
         BI_REDUCE_ADD_FREXPM,
 };
 
+enum bi_frexp_op {
+        BI_FREXPE_LOG,
+};
+
 enum bi_special_op {
         BI_SPECIAL_FRCP,
         BI_SPECIAL_FRSQ,
@@ -269,6 +273,7 @@ typedef struct {
                 enum bi_special_op special;
                 enum bi_reduce_op reduce;
                 enum bi_table_op table;
+                enum bi_frexp_op frexp;
                 enum bi_cond compare;
         } op;
 
