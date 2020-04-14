@@ -498,7 +498,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, uint32_t base,
 		buf = BLIT_MRT0;
 	}
 
-	stride = gmem->bin_w * rsc->layout.cpp;
+	stride = gmem->bin_w << fdl_cpp_shift(&rsc->layout);
 	size = stride * gmem->bin_h;
 
 	OUT_PKT4(ring, REG_A5XX_RB_BLIT_FLAG_DST_LO, 4);

@@ -36,6 +36,7 @@ fdl_layout_buffer(struct fdl_layout *layout, uint32_t size)
 	layout->height0 = 1;
 	layout->depth0 = 1;
 	layout->cpp = 1;
+	layout->cpp_shift = 0;
 	layout->size = size;
 	layout->format = PIPE_FORMAT_R8_UINT;
 	layout->nr_samples = 1;

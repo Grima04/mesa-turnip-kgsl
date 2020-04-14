@@ -93,6 +93,8 @@ fdl6_layout(struct fdl_layout *layout,
 
 	layout->cpp = util_format_get_blocksize(format);
 	layout->cpp *= nr_samples;
+	layout->cpp_shift = ffs(layout->cpp) - 1;
+
 	layout->format = format;
 	layout->nr_samples = nr_samples;
 	layout->layer_first = !is_3d;

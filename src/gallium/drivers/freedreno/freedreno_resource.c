@@ -886,6 +886,7 @@ fd_resource_layout_init(struct pipe_resource *prsc)
 
 	layout->cpp = util_format_get_blocksize(prsc->format);
 	layout->cpp *= fd_resource_nr_samples(prsc);
+	layout->cpp_shift = ffs(layout->cpp) - 1;
 }
 
 /**

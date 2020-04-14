@@ -97,7 +97,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 					psurf->u.tex.first_layer);
 
 			if (bin_w) {
-				stride = bin_w * rsc->layout.cpp;
+				stride = bin_w << fdl_cpp_shift(&rsc->layout);
 
 				if (bases) {
 					base = bases[i];

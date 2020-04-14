@@ -94,7 +94,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 			swap = rsc->layout.tile_mode ? WZYX : fd3_pipe2swap(pformat);
 
 			if (bin_w) {
-				stride = bin_w * rsc->layout.cpp;
+				stride = bin_w << fdl_cpp_shift(&rsc->layout);
 
 				if (bases) {
 					base = bases[i];
@@ -1009,11 +1009,13 @@ fd3_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 	OUT_RING(ring, reg);
 	if (pfb->zsbuf) {
 		struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
-		OUT_RING(ring, A3XX_RB_DEPTH_PITCH(rsc->layout.cpp * gmem->bin_w));
+		OUT_RING(ring, A3XX_RB_DEPTH_PITCH(gmem->bin_w <<
+						fdl_cpp_shift(&rsc->layout)));
 		if (rsc->stencil) {
 			OUT_PKT0(ring, REG_A3XX_RB_STENCIL_INFO, 2);
 			OUT_RING(ring, A3XX_RB_STENCIL_INFO_STENCIL_BASE(gmem->zsbuf_base[1]));
-			OUT_RING(ring, A3XX_RB_STENCIL_PITCH(rsc->stencil->layout.cpp * gmem->bin_w));
+			OUT_RING(ring, A3XX_RB_STENCIL_PITCH(gmem->bin_w <<
+							fdl_cpp_shift(&rsc->stencil->layout)));
 		}
 	} else {
 		OUT_RING(ring, 0x00000000);
