@@ -39,7 +39,6 @@ dEQP-GLES3.functional.clipping.triangle_vertex.clip_two.clip_neg_y_neg_z_and_neg
 dEQP-GLES3.functional.clipping.triangle_vertex.clip_two.clip_pos_y_pos_z_and_neg_x_neg_y_neg_z
 dEQP-GLES3.functional.draw.random.105
 dEQP-GLES3.functional.draw.random.114
-dEQP-GLES3.functional.draw.random.124
 dEQP-GLES3.functional.draw.random.135
 dEQP-GLES3.functional.draw.random.144
 dEQP-GLES3.functional.draw.random.155

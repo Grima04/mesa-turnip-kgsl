@@ -848,13 +848,15 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
             lod = lp_build_log2(lodf_bld, rho);
          }
          else {
+            /* get more accurate results if we just sqaure rho always */
+            if (!rho_squared)
+               rho = lp_build_mul(lodf_bld, rho, rho);
             lod = lp_build_fast_log2(lodf_bld, rho);
          }
-         if (rho_squared) {
-            /* log2(x^2) == 0.5*log2(x) */
-            lod = lp_build_mul(lodf_bld, lod,
-                               lp_build_const_vec(bld->gallivm, lodf_bld->type, 0.5F));
-         }
+
+         /* log2(x^2) == 0.5*log2(x) */
+         lod = lp_build_mul(lodf_bld, lod,
+                            lp_build_const_vec(bld->gallivm, lodf_bld->type, 0.5F));
 
          /* add shader lod bias */
          if (lod_bias) {
