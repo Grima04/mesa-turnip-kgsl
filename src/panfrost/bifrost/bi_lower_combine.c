@@ -96,7 +96,7 @@ bi_rewrite_uses(bi_context *ctx,
                         if (ins->src[s] != old) continue;
 
                         for (unsigned i = 0; i < 16; ++i)
-                                ins->swizzle[s][0] += (newc - oldc);
+                                ins->swizzle[s][i] += (newc - oldc);
 
                         ins->src[s] = new;
                 }
