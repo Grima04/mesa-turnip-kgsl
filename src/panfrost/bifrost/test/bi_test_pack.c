@@ -287,6 +287,21 @@ bit_special_helper(struct panfrost_device *dev,
 }
 
 static void
+bit_table_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug debug)
+{
+        bi_instruction ins = bit_ins(BI_TABLE, 1, nir_type_float, 32);
+
+        for (enum bi_table_op op = 0; op <= BI_TABLE_LOG2_U_OVER_U_1_LOW; ++op) {
+                ins.op.table = op;
+
+                if (!bit_test_single(dev, &ins, input, false, debug)) {
+                        fprintf(stderr, "FAIL: table.%s\n",
+                                        bi_table_op_name(op));
+                }
+        }
+}
+
+static void
 bit_frexp_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug debug)
 {
         bi_instruction ins = bit_ins(BI_FREXP, 1, nir_type_float, 32);
@@ -399,6 +414,8 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 
         float special[4] = { 0.9 };
         uint32_t special16[4] = { _mesa_float_to_half(special[0]) | (_mesa_float_to_half(0.2) << 16) };
+
+        bit_table_helper(dev, (uint32_t *) special, debug);
 
         for (unsigned sz = 16; sz <= 32; sz *= 2) {
                 uint32_t *input =
