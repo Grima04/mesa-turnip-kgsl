@@ -641,7 +641,7 @@ radv_alloc_shader_memory(struct radv_device *device,
 			}
 			offset = align_u64(s->bo_offset + s->code_size, 256);
 		}
-		if (slab->size - offset >= shader->code_size) {
+		if (offset <= slab->size && slab->size - offset >= shader->code_size) {
 			shader->bo = slab->bo;
 			shader->bo_offset = offset;
 			list_addtail(&shader->slab_list, &slab->shaders);
@@ -653,7 +653,7 @@ radv_alloc_shader_memory(struct radv_device *device,
 	mtx_unlock(&device->shader_slab_mutex);
 	struct radv_shader_slab *slab = calloc(1, sizeof(struct radv_shader_slab));
 
-	slab->size = 256 * 1024;
+	slab->size = MAX2(256 * 1024, shader->code_size);
 	slab->bo = device->ws->buffer_create(device->ws, slab->size, 256,
 	                                     RADEON_DOMAIN_VRAM,
 					     RADEON_FLAG_NO_INTERPROCESS_SHARING |
