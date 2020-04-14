@@ -4639,15 +4639,19 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       b->shader->info.fs.depth_layout = FRAG_DEPTH_LAYOUT_UNCHANGED;
       break;
 
+   case SpvExecutionModeLocalSizeHint:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_KERNEL);
+      b->shader->info.cs.local_size_hint[0] = mode->operands[0];
+      b->shader->info.cs.local_size_hint[1] = mode->operands[1];
+      b->shader->info.cs.local_size_hint[2] = mode->operands[2];
+      break;
+
    case SpvExecutionModeLocalSize:
       vtn_assert(gl_shader_stage_is_compute(b->shader->info.stage));
       b->shader->info.cs.local_size[0] = mode->operands[0];
       b->shader->info.cs.local_size[1] = mode->operands[1];
       b->shader->info.cs.local_size[2] = mode->operands[2];
       break;
-
-   case SpvExecutionModeLocalSizeHint:
-      break; /* Nothing to do with this */
 
    case SpvExecutionModeOutputVertices:
       if (b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
@@ -4854,7 +4858,10 @@ vtn_handle_execution_mode_id(struct vtn_builder *b, struct vtn_value *entry_poin
       break;
 
    case SpvExecutionModeLocalSizeHintId:
-      /* Nothing to do with this hint. */
+      vtn_assert(b->shader->info.stage == MESA_SHADER_KERNEL);
+      b->shader->info.cs.local_size_hint[0] = vtn_constant_uint(b, mode->operands[0]);
+      b->shader->info.cs.local_size_hint[1] = vtn_constant_uint(b, mode->operands[1]);
+      b->shader->info.cs.local_size_hint[2] = vtn_constant_uint(b, mode->operands[2]);
       break;
 
    default:
