@@ -1401,6 +1401,11 @@ else
 endif
 
 _shared_llvm = get_option('shared-llvm')
+if _shared_llvm == 'auto'
+  _shared_llvm = (host_machine.system() != 'windows')
+else
+  _shared_llvm = (_shared_llvm == 'true')
+endif
 _llvm = get_option('llvm')
 
 # The cmake method will never find libllvm.so|dylib; this is fine for windows

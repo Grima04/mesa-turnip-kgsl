@@ -250,9 +250,10 @@ option(
 )
 option(
   'shared-llvm',
-  type : 'boolean',
-  value : true,
-  description : 'Whether to link llvm shared or statically.'
+  type : 'combo',
+  value : 'auto',
+  choices : ['auto', 'true', 'false'],
+  description : 'Whether to link LLVM shared or statically.'
 )
 option(
   'valgrind',
