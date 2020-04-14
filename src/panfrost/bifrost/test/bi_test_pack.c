@@ -303,6 +303,21 @@ bit_frexp_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug de
 }
 
 static void
+bit_reduce_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug debug)
+{
+        bi_instruction ins = bit_ins(BI_REDUCE_FMA, 2, nir_type_float, 32);
+
+        for (enum bi_reduce_op op = 0; op <= BI_REDUCE_ADD_FREXPM; ++op) {
+                ins.op.reduce = op;
+
+                if (!bit_test_single(dev, &ins, input, true, debug)) {
+                        fprintf(stderr, "FAIL: reduce.%s\n",
+                                        bi_reduce_op_name(op));
+                }
+        }
+}
+
+static void
 bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
                 unsigned to_size, unsigned cx, unsigned cy, bool FMA,
                 enum bifrost_roundmode roundmode,
@@ -406,4 +421,5 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
         }
 
         bit_frexp_helper(dev, (uint32_t *) input32, debug);
+        bit_reduce_helper(dev, (uint32_t *) input32, debug);
 }
