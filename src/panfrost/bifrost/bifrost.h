@@ -111,6 +111,25 @@ struct bifrost_fma_2src {
         unsigned op   : 17;
 } __attribute__((packed));
 
+#define BIFROST_FMA_OP_MSCALE (0x50 >> 3)
+
+struct bifrost_fma_mscale {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src2 : 3;
+        unsigned src3 : 3;
+
+        /* If mscale_mode is set - an MSCALE specific mode. If it is not set, a
+         * regular outmod */
+        unsigned mode : 2;
+        unsigned mscale_mode : 1;
+
+        unsigned src0_abs : 1;
+        unsigned src1_neg : 1;
+        unsigned src2_neg : 1;
+        unsigned op   : 5;
+} __attribute__((packed));
+
 #define BIFROST_ADD_OP_BLEND (0x1952c)
 #define BIFROST_ADD_OP_FRCP_FAST_F32 (0x0cc00)
 #define BIFROST_ADD_OP_FRCP_FAST_F16_X (0x0ce10)
