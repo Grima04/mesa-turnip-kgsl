@@ -2700,7 +2700,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (dst.type() == RegType::vgpr) {
          bld.pseudo(aco_opcode::p_split_vector, bld.def(dst.regClass()), Definition(dst), get_alu_src(ctx, instr->src[0]));
       } else {
-         bld.sop2(aco_opcode::s_bfe_u32, Definition(dst), get_alu_src(ctx, instr->src[0]), Operand(uint32_t(16 << 16 | 16)));
+         bld.sop2(aco_opcode::s_bfe_u32, Definition(dst), bld.def(s1, scc), get_alu_src(ctx, instr->src[0]), Operand(uint32_t(16 << 16 | 16)));
       }
       break;
    case nir_op_pack_32_2x16_split: {
