@@ -2114,7 +2114,12 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (instr->src[0].src.ssa->bit_size == 16) {
          Temp tmp = bld.vop1(aco_opcode::v_frexp_exp_i16_f16, bld.def(v1), src);
-         bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), tmp, Operand(0u));
+         aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
+         sdwa->operands[0] = Operand(tmp);
+         sdwa->definitions[0] = Definition(dst);
+         sdwa->sel[0] = sdwa_sbyte;
+         sdwa->dst_sel = sdwa_sdword;
+         ctx->block->instructions.emplace_back(std::move(sdwa));
       } else if (instr->src[0].src.ssa->bit_size == 32) {
          bld.vop1(aco_opcode::v_frexp_exp_i32_f32, Definition(dst), src);
       } else if (instr->src[0].src.ssa->bit_size == 64) {
