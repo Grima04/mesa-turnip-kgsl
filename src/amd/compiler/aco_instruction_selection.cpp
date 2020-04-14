@@ -8458,7 +8458,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       if (instr->sampler_dim == GLSL_SAMPLER_DIM_1D && ctx->options->chip_class == GFX9) {
          assert(has_ddx && has_ddy && ddx.size() == 1 && ddy.size() == 1);
          Temp zero = bld.copy(bld.def(v1), Operand(0u));
-         derivs = {ddy, zero, ddy, zero};
+         derivs = {ddx, zero, ddy, zero};
       } else {
          for (unsigned i = 0; has_ddx && i < ddx.size(); i++)
             derivs.emplace_back(emit_extract_vector(ctx, ddx, i, v1));
