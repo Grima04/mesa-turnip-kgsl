@@ -393,7 +393,6 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
       stride = 1; /* stride in full registers */
    }
 
-   /* best fit algorithm: find the smallest gap to fit in the variable */
    if (stride == 1) {
 
       if (rc.type() == RegType::vgpr && (size == 4 || size == 8)) {
@@ -403,41 +402,39 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
             return res;
       }
 
+      /* best fit algorithm: find the smallest gap to fit in the variable */
       unsigned best_pos = 0xFFFF;
       unsigned gap_size = 0xFFFF;
-      unsigned next_pos = 0xFFFF;
+      unsigned last_pos = 0xFFFF;
 
       for (unsigned current_reg = lb; current_reg < ub; current_reg++) {
-         if (reg_file[current_reg] != 0 || ctx.war_hint[current_reg]) {
-            if (next_pos == 0xFFFF)
-               continue;
-
-            /* check if the variable fits */
-            if (next_pos + size > current_reg) {
-               next_pos = 0xFFFF;
-               continue;
-            }
-
-            /* check if the tested gap is smaller */
-            if (current_reg - next_pos < gap_size) {
-               best_pos = next_pos;
-               gap_size = current_reg - next_pos;
-            }
-            next_pos = 0xFFFF;
+         if (reg_file[current_reg] == 0 && !ctx.war_hint[current_reg]) {
+            if (last_pos == 0xFFFF)
+               last_pos = current_reg;
             continue;
          }
 
-         if (next_pos == 0xFFFF)
-            next_pos = current_reg;
+         if (last_pos == 0xFFFF)
+            continue;
+
+         /* early return on exact matches */
+         if (last_pos + size == current_reg) {
+            adjust_max_used_regs(ctx, rc, last_pos);
+            return {PhysReg{last_pos}, true};
+         }
+
+         /* check if it fits and the gap size is smaller */
+         if (last_pos + size < current_reg && current_reg - last_pos < gap_size) {
+            best_pos = last_pos;
+            gap_size = current_reg - last_pos;
+         }
+         last_pos = 0xFFFF;
       }
 
       /* final check */
-      if (next_pos != 0xFFFF &&
-          next_pos + size <= ub &&
-          ub - next_pos < gap_size) {
-         best_pos = next_pos;
-         gap_size = ub - next_pos;
-      }
+      if (last_pos + size <= ub && ub - last_pos < gap_size)
+         best_pos = last_pos;
+
       if (best_pos != 0xFFFF) {
          adjust_max_used_regs(ctx, rc, best_pos);
          return {PhysReg{best_pos}, true};
