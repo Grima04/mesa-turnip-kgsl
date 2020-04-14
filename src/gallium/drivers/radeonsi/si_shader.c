@@ -1276,13 +1276,24 @@ static void si_optimize_vs_outputs(struct si_shader_context *ctx)
 {
    struct si_shader *shader = ctx->shader;
    struct si_shader_info *info = &shader->selector->info;
+   unsigned skip_vs_optim_mask = 0;
 
    if ((ctx->type != PIPE_SHADER_VERTEX && ctx->type != PIPE_SHADER_TESS_EVAL) ||
        shader->key.as_ls || shader->key.as_es)
       return;
 
+   /* Optimizing these outputs is not possible, since they might be overriden
+    * at runtime with S_028644_PT_SPRITE_TEX. */
+   for (int i = 0; i < info->num_outputs; i++) {
+      if (info->output_semantic_name[i] == TGSI_SEMANTIC_PCOORD ||
+          info->output_semantic_name[i] == TGSI_SEMANTIC_TEXCOORD) {
+         skip_vs_optim_mask |= 1u << shader->info.vs_output_param_offset[i];
+      }
+   }
+
    ac_optimize_vs_outputs(&ctx->ac, ctx->main_fn, shader->info.vs_output_param_offset,
-                          info->num_outputs, &shader->info.nr_param_exports);
+                          info->num_outputs, skip_vs_optim_mask,
+                          &shader->info.nr_param_exports);
 }
 
 static bool si_vs_needs_prolog(const struct si_shader_selector *sel,

@@ -3081,6 +3081,7 @@ void ac_optimize_vs_outputs(struct ac_llvm_context *ctx,
 			    LLVMValueRef main_fn,
 			    uint8_t *vs_output_param_offset,
 			    uint32_t num_outputs,
+			    uint32_t skip_output_mask,
 			    uint8_t *num_param_exports)
 {
 	LLVMBasicBlockRef bb;
@@ -3123,6 +3124,9 @@ void ac_optimize_vs_outputs(struct ac_llvm_context *ctx,
 				continue;
 
 			target -= V_008DFC_SQ_EXP_PARAM;
+
+			if ((1u << target) & skip_output_mask)
+				continue;
 
 			/* Parse the instruction. */
 			memset(&exp, 0, sizeof(exp));

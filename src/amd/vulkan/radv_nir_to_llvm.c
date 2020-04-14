@@ -3705,7 +3705,7 @@ ac_nir_eliminate_const_vs_outputs(struct radv_shader_context *ctx)
 	ac_optimize_vs_outputs(&ctx->ac,
 			       ctx->main_function,
 			       outinfo->vs_output_param_offset,
-			       VARYING_SLOT_MAX,
+			       VARYING_SLOT_MAX, 0,
 			       &outinfo->param_exports);
 }
 
