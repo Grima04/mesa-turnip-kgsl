@@ -1413,12 +1413,14 @@ else
 endif
 _llvm = get_option('llvm')
 
-# The cmake method will never find libllvm.so|dylib; this is fine for windows
-# because llvm doesn't support libllvm.dll
-_llvm_method = 'config-tool'
-if (meson.version().version_compare('>= 0.51.0') and
-    host_machine.system() == 'windows')
-  _llvm_method = 'cmake'
+# the cmake method can only link statically, so don't attempt to use it if we
+# want to link dynamically. Before 0.54.0 meson will try cmake even when shared
+# linking is requested, so we need to force the config-tool method to be used
+# in that case, but in 0.54.0 meson won't try the cmake method if shared
+# linking is requested.
+_llvm_method = 'auto'
+if meson.version().version_compare('< 0.54.0') and _shared_llvm
+  _llvm_method = 'config-tool'
 endif
 
 dep_llvm = null_dep
