@@ -147,45 +147,42 @@ ir3_shader_create(struct ir3_compiler *compiler,
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, &stream_output);
 
-	if (fd_mesa_debug & FD_DBG_SHADERDB) {
-		/* if shader-db run, create a standard variant immediately
-		 * (as otherwise nothing will trigger the shader to be
-		 * actually compiled)
+	/* Compile standard variants immediately to try to avoid draw-time stalls
+	 * to run the compiler.
+	 */
+	struct ir3_shader_key key = {
+		.tessellation = IR3_TESS_NONE,
+	};
+
+	switch (nir->info.stage) {
+	case MESA_SHADER_TESS_EVAL:
+		key.tessellation = ir3_tess_mode(nir->info.tess.primitive_mode);
+		break;
+
+	case MESA_SHADER_TESS_CTRL:
+		/* The primitive_mode field, while it exists for TCS, is not
+		 * populated (since separable shaders between TCS/TES are legal,
+		 * so TCS wouldn't have access to TES's declaration).  Make a
+		 * guess so that we shader-db something plausible for TCS.
 		 */
-		struct ir3_shader_key key = {
-			.tessellation = IR3_TESS_NONE,
-		};
+		if (nir->info.outputs_written & VARYING_BIT_TESS_LEVEL_INNER)
+			key.tessellation = IR3_TESS_TRIANGLES;
+		else
+			key.tessellation = IR3_TESS_ISOLINES;
+		break;
 
-		switch (nir->info.stage) {
-		case MESA_SHADER_TESS_EVAL:
-			key.tessellation = ir3_tess_mode(nir->info.tess.primitive_mode);
-			break;
+	case MESA_SHADER_GEOMETRY:
+		key.has_gs = true;
+		break;
 
-		case MESA_SHADER_TESS_CTRL:
-			/* The primitive_mode field, while it exists for TCS, is not
-			 * populated (since separable shaders between TCS/TES are legal,
-			 * so TCS wouldn't have access to TES's declaration).  Make a
-			 * guess so that we shader-db something plausible for TCS.
-			 */
-			if (nir->info.outputs_written & VARYING_BIT_TESS_LEVEL_INNER)
-				key.tessellation = IR3_TESS_TRIANGLES;
-			else
-				key.tessellation = IR3_TESS_ISOLINES;
-			break;
-
-		case MESA_SHADER_GEOMETRY:
-			key.has_gs = true;
-			break;
-
-		default:
-			break;
-		}
-
-		ir3_shader_variant(shader, key, false, debug);
-
-		if (nir->info.stage == MESA_SHADER_VERTEX)
-			ir3_shader_variant(shader, key, true, debug);
+	default:
+		break;
 	}
+
+	ir3_shader_variant(shader, key, false, debug);
+
+	if (nir->info.stage == MESA_SHADER_VERTEX)
+		ir3_shader_variant(shader, key, true, debug);
 
 	shader->initial_variants_done = true;
 
@@ -215,14 +212,12 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, NULL);
 
-	if (fd_mesa_debug & FD_DBG_SHADERDB) {
-		/* if shader-db run, create a standard variant immediately
-		 * (as otherwise nothing will trigger the shader to be
-		 * actually compiled)
-		 */
-		static struct ir3_shader_key key; /* static is implicitly zeroed */
-		ir3_shader_variant(shader, key, false, debug);
-	}
+	/* Immediately compile a standard variant.  We have so few variants in our
+	 * shaders, that doing so almost eliminates draw-time recompiles.  (This
+	 * is also how we get data from shader-db's ./run)
+	 */
+	static struct ir3_shader_key key; /* static is implicitly zeroed */
+	ir3_shader_variant(shader, key, false, debug);
 
 	shader->initial_variants_done = true;
 
