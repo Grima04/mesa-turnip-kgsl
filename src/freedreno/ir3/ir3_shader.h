@@ -225,6 +225,9 @@ struct ir3_sampler_prefetch {
 /* Configuration key used to identify a shader variant.. different
  * shader variants can be used to implement features not supported
  * in hw (two sided color), binning-pass vertex shader, etc.
+ *
+ * When adding to this struct, please update ir3_shader_variant()'s debug
+ * output.
  */
 struct ir3_shader_key {
 	union {
@@ -650,6 +653,11 @@ struct ir3_shader {
 	/* shader id (for debug): */
 	uint32_t id;
 	uint32_t variant_count;
+
+	/* Set by freedreno after shader_state_create, so we can emit debug info
+	 * when recompiling a shader at draw time.
+	 */
+	bool initial_variants_done;
 
 	struct ir3_compiler *compiler;
 

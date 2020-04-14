@@ -86,6 +86,17 @@ ir3_shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 	v = ir3_shader_get_variant(shader, &key, binning_pass, &created);
 
 	if (created) {
+		if (shader->initial_variants_done) {
+			pipe_debug_message(debug, SHADER_INFO,
+					"%s shader: recompiling at draw time: global 0x%08x, vsats %x/%x/%x, fsats %x/%x/%x, vfsamples %x/%x, astc %x/%x\n",
+					ir3_shader_stage(v),
+					key.global,
+					key.vsaturate_s, key.vsaturate_t, key.vsaturate_r,
+					key.fsaturate_s, key.fsaturate_t, key.fsaturate_r,
+					key.vsamples, key.fsamples,
+					key.vastc_srgb, key.fastc_srgb);
+
+		}
 		dump_shader_info(v, binning_pass, debug);
 	}
 
@@ -176,6 +187,8 @@ ir3_shader_create(struct ir3_compiler *compiler,
 			ir3_shader_variant(shader, key, true, debug);
 	}
 
+	shader->initial_variants_done = true;
+
 	return shader;
 }
 
@@ -210,6 +223,8 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 		static struct ir3_shader_key key; /* static is implicitly zeroed */
 		ir3_shader_variant(shader, key, false, debug);
 	}
+
+	shader->initial_variants_done = true;
 
 	return shader;
 }
