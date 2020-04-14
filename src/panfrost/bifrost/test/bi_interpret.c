@@ -489,7 +489,14 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 
         case BI_SPECIAL: {
                 assert(nir_alu_type_get_base_type(ins->dest_type) == nir_type_float);
-                assert(nir_alu_type_get_base_type(ins->dest_type) != nir_type_float64);
+                assert(ins->dest_type != nir_type_float64);
+
+                if (ins->op.special == BI_SPECIAL_EXP2_LOW) {
+                        assert(ins->dest_type == nir_type_float32);
+                        dest.f32 = exp2f(srcs[1].f32);
+                        break;
+                }
+
                 float Q = (ins->dest_type == nir_type_float16) ?
                         bf(srcs[0].u16[ins->swizzle[0][0]]) :
                         srcs[0].f32;
