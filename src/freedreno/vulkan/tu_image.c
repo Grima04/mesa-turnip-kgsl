@@ -282,8 +282,7 @@ tu_image_view_init(struct tu_image_view *iview,
    uint64_t ubwc_addr = image->bo->iova + image->bo_offset +
       fdl_ubwc_offset(layout, range->baseMipLevel, range->baseArrayLayer);
 
-   uint32_t pitch = layout->slices[range->baseMipLevel].pitch * layout->cpp /
-                     util_format_get_blockwidth(layout->format);
+   uint32_t pitch = layout->slices[range->baseMipLevel].pitch;
    uint32_t ubwc_pitch = layout->ubwc_slices[range->baseMipLevel].pitch;
    uint32_t layer_size = fdl_layer_stride(layout, range->baseMipLevel);
 
@@ -513,7 +512,7 @@ tu_GetImageSubresourceLayout(VkDevice _device,
                                         pSubresource->arrayLayer);
    pLayout->size = slice->size0;
    pLayout->rowPitch =
-      slice->pitch * vk_format_get_blocksize(image->vk_format);
+      slice->pitch * vk_format_get_blockheight(image->vk_format);
    pLayout->arrayPitch = image->layout.layer_size;
    pLayout->depthPitch = slice->size0;
 

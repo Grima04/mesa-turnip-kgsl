@@ -542,7 +542,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	ptrans->level = level;
 	ptrans->usage = usage;
 	ptrans->box = *box;
-	ptrans->stride = util_format_get_nblocksx(format, slice->pitch) * rsc->layout.cpp;
+	ptrans->stride = slice->pitch;
 	ptrans->layer_stride = fd_resource_layer_stride(rsc, level);
 
 	/* we always need a staging texture for tiled buffers:
@@ -560,8 +560,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 				fd_resource_slice(staging_rsc, 0);
 			// TODO for PIPE_TRANSFER_READ, need to do untiling blit..
 			trans->staging_prsc = &staging_rsc->base;
-			trans->base.stride = util_format_get_nblocksx(format,
-				staging_slice->pitch) * staging_rsc->layout.cpp;
+			trans->base.stride = staging_slice->pitch;
 			trans->base.layer_stride = fd_resource_layer_stride(staging_rsc, 0);
 			trans->staging_box = *box;
 			trans->staging_box.x = 0;
@@ -661,8 +660,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 					struct fdl_slice *staging_slice =
 						fd_resource_slice(staging_rsc, 0);
 					trans->staging_prsc = &staging_rsc->base;
-					trans->base.stride = util_format_get_nblocksx(format,
-						staging_slice->pitch) * staging_rsc->layout.cpp;
+					trans->base.stride = staging_slice->pitch;
 					trans->base.layer_stride =
 						fd_resource_layer_stride(staging_rsc, 0);
 					trans->staging_box = *box;
@@ -759,7 +757,7 @@ fd_resource_get_handle(struct pipe_screen *pscreen,
 	handle->modifier = fd_resource_modifier(rsc);
 
 	return fd_screen_bo_get_handle(pscreen, rsc->bo, rsc->scanout,
-			fd_resource_slice(rsc, 0)->pitch * rsc->layout.cpp, handle);
+			fd_resource_slice(rsc, 0)->pitch, handle);
 }
 
 static uint32_t
@@ -783,10 +781,10 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		uint32_t blocks;
 
 		if (layout == UTIL_FORMAT_LAYOUT_ASTC)
-			slice->pitch = width =
-				util_align_npot(width, pitchalign * util_format_get_blockwidth(format));
+			width = util_align_npot(width, pitchalign * util_format_get_blockwidth(format));
 		else
-			slice->pitch = width = align(width, pitchalign);
+			width = align(width, pitchalign);
+		slice->pitch = util_format_get_nblocksx(format, width) * rsc->layout.cpp;
 		slice->offset = size;
 		blocks = util_format_get_nblocks(format, width, height);
 		/* 1d array and 2d array textures must all have the same layer size
@@ -1051,7 +1049,7 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	struct fd_resource *rsc = CALLOC_STRUCT(fd_resource);
 	struct fdl_slice *slice = fd_resource_slice(rsc, 0);
 	struct pipe_resource *prsc = &rsc->base;
-	uint32_t pitchalign = fd_screen(pscreen)->gmem_alignw;
+	uint32_t pitchalign = fd_screen(pscreen)->gmem_alignw * rsc->layout.cpp;
 
 	DBG("target=%d, format=%s, %ux%ux%u, array_size=%u, last_level=%u, "
 			"nr_samples=%u, usage=%u, bind=%x, flags=%x",
@@ -1077,11 +1075,11 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 		goto fail;
 
 	rsc->internal_format = tmpl->format;
-	slice->pitch = handle->stride / rsc->layout.cpp;
+	slice->pitch = handle->stride;
 	slice->offset = handle->offset;
 	slice->size0 = handle->stride * prsc->height0;
 
-	if ((slice->pitch < align(prsc->width0, pitchalign)) ||
+	if ((slice->pitch < align(prsc->width0 * rsc->layout.cpp, pitchalign)) ||
 			(slice->pitch & (pitchalign - 1)))
 		goto fail;
 

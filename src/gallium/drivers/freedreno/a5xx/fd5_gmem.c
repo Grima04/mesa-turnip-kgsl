@@ -89,7 +89,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 				size = stride * gmem->bin_h;
 				base = gmem->cbuf_base[i];
 			} else {
-				stride = slice->pitch * rsc->layout.cpp;
+				stride = slice->pitch;
 				size = slice->size0;
 
 				tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
@@ -145,7 +145,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 			size = stride * gmem->bin_h;
 		} else {
 			struct fdl_slice *slice = fd_resource_slice(rsc, 0);
-			stride = slice->pitch * rsc->layout.cpp;
+			stride = slice->pitch;
 			size = slice->size0;
 		}
 
@@ -192,7 +192,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 				size = stride * gmem->bin_h;
 			} else {
 				struct fdl_slice *slice = fd_resource_slice(rsc->stencil, 0);
-				stride = slice->pitch * rsc->layout.cpp;
+				stride = slice->pitch;
 				size = slice->size0;
 			}
 
@@ -491,7 +491,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, uint32_t base,
 		OUT_RING(ring, A5XX_RB_MRT_BUF_INFO_COLOR_FORMAT(format) |
 				A5XX_RB_MRT_BUF_INFO_COLOR_TILE_MODE(rsc->layout.tile_mode) |
 				A5XX_RB_MRT_BUF_INFO_COLOR_SWAP(WZYX));
-		OUT_RING(ring, A5XX_RB_MRT_PITCH(slice->pitch * rsc->layout.cpp));
+		OUT_RING(ring, A5XX_RB_MRT_PITCH(slice->pitch));
 		OUT_RING(ring, A5XX_RB_MRT_ARRAY_PITCH(slice->size0));
 		OUT_RELOC(ring, rsc->bo, 0, 0, 0);  /* BASE_LO/HI */
 
@@ -635,7 +635,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, uint32_t base,
 	OUT_RING(ring, 0x00000004 |   /* XXX RB_RESOLVE_CNTL_3 */
 			COND(tiled, A5XX_RB_RESOLVE_CNTL_3_TILED));
 	OUT_RELOCW(ring, rsc->bo, offset, 0, 0);     /* RB_BLIT_DST_LO/HI */
-	OUT_RING(ring, A5XX_RB_BLIT_DST_PITCH(slice->pitch * rsc->layout.cpp));
+	OUT_RING(ring, A5XX_RB_BLIT_DST_PITCH(slice->pitch));
 	OUT_RING(ring, A5XX_RB_BLIT_DST_ARRAY_PITCH(slice->size0));
 
 	OUT_PKT4(ring, REG_A5XX_RB_BLIT_CNTL, 1);

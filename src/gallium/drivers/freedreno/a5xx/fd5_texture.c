@@ -275,8 +275,7 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 			A5XX_TEX_CONST_1_HEIGHT(u_minify(prsc->height0, lvl));
 		so->texconst2 =
 			A5XX_TEX_CONST_2_FETCHSIZE(fd5_pipe2fetchsize(format)) |
-			A5XX_TEX_CONST_2_PITCH(
-				util_format_get_nblocksx(format, slice->pitch) * rsc->layout.cpp);
+			A5XX_TEX_CONST_2_PITCH(slice->pitch);
 		so->offset = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
 	}
 

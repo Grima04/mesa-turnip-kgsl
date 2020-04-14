@@ -112,7 +112,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		offset = fd_resource_offset(rsc, psurf->u.tex.level,
 				psurf->u.tex.first_layer);
 
-		stride = slice->pitch * rsc->layout.cpp;
+		stride = slice->pitch;
 		swap = fd6_resource_swap(rsc, pformat);
 
 		tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
@@ -173,7 +173,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		struct fd_resource *rsc = fd_resource(zsbuf->texture);
 		enum a6xx_depth_format fmt = fd6_pipe2depth(zsbuf->format);
 		struct fdl_slice *slice = fd_resource_slice(rsc, 0);
-		uint32_t stride = slice->pitch * rsc->layout.cpp;
+		uint32_t stride = slice->pitch;
 		uint32_t size = slice->size0;
 		uint32_t base = gmem ? gmem->zsbuf_base[0] : 0;
 		uint32_t offset = fd_resource_offset(rsc, zsbuf->u.tex.level,
@@ -216,7 +216,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 		if (rsc->stencil) {
 			struct fdl_slice *slice = fd_resource_slice(rsc->stencil, 0);
-			stride = slice->pitch * rsc->stencil->layout.cpp;
+			stride = slice->pitch;
 			size = slice->size0;
 			uint32_t base = gmem ? gmem->zsbuf_base[1] : 0;
 
@@ -949,7 +949,7 @@ emit_blit(struct fd_batch *batch,
 	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
 	enum a6xx_format format = fd6_pipe2color(pfmt);
-	uint32_t stride = slice->pitch * rsc->layout.cpp;
+	uint32_t stride = slice->pitch;
 	uint32_t size = slice->size0;
 	enum a3xx_color_swap swap = fd6_resource_swap(rsc, pfmt);
 	enum a3xx_msaa_samples samples =

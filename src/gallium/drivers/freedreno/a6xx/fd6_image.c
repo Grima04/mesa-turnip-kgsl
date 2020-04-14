@@ -102,7 +102,7 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 
 		img->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, pimg->u.tex.first_layer);
 		img->offset = fd_resource_offset(rsc, lvl, pimg->u.tex.first_layer);
-		img->pitch  = slice->pitch * rsc->layout.cpp;
+		img->pitch  = slice->pitch;
 
 		switch (prsc->target) {
 		case PIPE_TEXTURE_RECT:

@@ -369,7 +369,7 @@ ir3_emit_image_dims(struct fd_screen *screen, const struct ir3_shader_variant *v
 				 * be the same, so use original dimensions for y and z
 				 * stride:
 				 */
-				dims[off + 1] = slice->pitch * rsc->layout.cpp;
+				dims[off + 1] = slice->pitch;
 				/* see corresponding logic in fd_resource_offset(): */
 				if (rsc->layout.layer_first) {
 					dims[off + 2] = rsc->layout.layer_size;

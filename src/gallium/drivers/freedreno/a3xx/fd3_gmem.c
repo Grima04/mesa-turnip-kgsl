@@ -100,7 +100,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 					base = bases[i];
 				}
 			} else {
-				stride = slice->pitch * rsc->layout.cpp;
+				stride = slice->pitch;
 				tile_mode = rsc->layout.tile_mode;
 			}
 		} else if (i < nr_bufs && bases) {
@@ -345,7 +345,7 @@ emit_gmem2mem_surf(struct fd_batch *batch,
 				 A3XX_RB_COPY_CONTROL_DEPTH32_RESOLVE));
 
 	OUT_RELOCW(ring, rsc->bo, offset, 0, -1);    /* RB_COPY_DEST_BASE */
-	OUT_RING(ring, A3XX_RB_COPY_DEST_PITCH_PITCH(slice->pitch * rsc->layout.cpp));
+	OUT_RING(ring, A3XX_RB_COPY_DEST_PITCH_PITCH(slice->pitch));
 	OUT_RING(ring, A3XX_RB_COPY_DEST_INFO_TILE(rsc->layout.tile_mode) |
 			A3XX_RB_COPY_DEST_INFO_FORMAT(fd3_pipe2color(format)) |
 			A3XX_RB_COPY_DEST_INFO_COMPONENT_ENABLE(0xf) |
@@ -739,10 +739,9 @@ fd3_emit_sysmem_prep(struct fd_batch *batch)
 		struct pipe_surface *psurf = pfb->cbufs[i];
 		if (!psurf)
 			continue;
-		struct fdl_slice *slice =
-			fd_resource_slice(fd_resource(psurf->texture),
-				psurf->u.tex.level);
-		pitch = slice->pitch;
+		struct fd_resource *rsc = fd_resource(psurf->texture);
+		struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
+		pitch = slice->pitch / rsc->layout.cpp;
 	}
 
 	fd3_emit_restore(batch, ring);

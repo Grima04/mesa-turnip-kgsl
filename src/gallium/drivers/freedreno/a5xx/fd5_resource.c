@@ -84,14 +84,17 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 				aligned_height = align(aligned_height, 32);
 		}
 
+		unsigned pitch_pixels;
 		if (layout == UTIL_FORMAT_LAYOUT_ASTC)
-			slice->pitch =
+			pitch_pixels =
 				util_align_npot(width, pitchalign * util_format_get_blockwidth(format));
 		else
-			slice->pitch = align(width, pitchalign);
+			pitch_pixels = align(width, pitchalign);
 
 		slice->offset = size;
-		blocks = util_format_get_nblocks(format, slice->pitch, aligned_height);
+		blocks = util_format_get_nblocks(format, pitch_pixels, aligned_height);
+		slice->pitch = util_format_get_nblocksx(format, pitch_pixels) *
+			rsc->layout.cpp;
 
 		/* 1d array and 2d array textures must all have the same layer size
 		 * for each miplevel on a3xx. 3d textures can have different layer

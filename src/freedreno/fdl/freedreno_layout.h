@@ -79,7 +79,7 @@
 
 struct fdl_slice {
 	uint32_t offset;         /* offset of first layer in slice */
-	uint32_t pitch;
+	uint32_t pitch;          /* pitch in bytes between rows. */
 	uint32_t size0;          /* size of first layer in slice */
 };
 

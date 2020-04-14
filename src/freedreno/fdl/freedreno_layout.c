@@ -56,9 +56,9 @@ fdl_dump_layout(struct fdl_layout *layout)
 				u_minify(layout->depth0, level),
 				layout->cpp, layout->nr_samples,
 				level,
-				slice->pitch * layout->cpp,
+				slice->pitch,
 				slice->size0, ubwc_slice->size0,
-				slice->size0 / (slice->pitch * layout->cpp),
+				slice->size0 / slice->pitch,
 				slice->offset, ubwc_slice->offset,
 				layout->layer_size, layout->ubwc_layer_size,
 				fdl_tile_mode(layout, level));
