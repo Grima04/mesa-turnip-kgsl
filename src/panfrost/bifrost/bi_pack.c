@@ -747,6 +747,16 @@ bi_pack_fma_frexp(bi_instruction *ins, struct bi_registers *regs)
         return bi_pack_fma_1src(ins, regs, op);
 }
 
+static unsigned
+bi_pack_fma_reduce(bi_instruction *ins, struct bi_registers *regs)
+{
+        if (ins->op.reduce == BI_REDUCE_ADD_FREXPM) {
+                return bi_pack_fma_2src(ins, regs, BIFROST_FMA_OP_ADD_FREXPM);
+        } else {
+                unreachable("Invalid reduce op");
+        }
+}
+
 /* We have a single convert opcode in the IR but a number of opcodes that could
  * come out. In particular we have native opcodes for:
  *
@@ -887,6 +897,8 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_SWIZZLE:
         case BI_ROUND:
 		return BIFROST_FMA_NOP;
+        case BI_REDUCE_FMA:
+                return bi_pack_fma_reduce(bundle.fma, regs);
         default:
                 unreachable("Cannot encode class as FMA");
         }
