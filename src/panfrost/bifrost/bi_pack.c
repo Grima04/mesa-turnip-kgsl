@@ -115,13 +115,15 @@ bi_lookup_constant(bi_clause *clause, uint64_t cons, bool *hi, bool b64)
                 /* Only check top 60-bits since that's what's actually embedded
                  * in the clause, the bottom 4-bits are bundle-inline */
 
-                unsigned candidates[2] = {
+                uint64_t candidates[2] = {
                         clause->constants[i] >> 4,
                         clause->constants[i] >> 36
                 };
 
+                /* For <64-bit mode, we treat lo/hi separately */
+
                 if (!b64)
-                        candidates[0] &= 0xFFFFFFFF;
+                        candidates[0] &= (0xFFFFFFFF >> 4);
 
                 if (candidates[0] == want)
                         return i;
