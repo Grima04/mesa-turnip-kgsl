@@ -1568,10 +1568,10 @@ ir3_SAM(struct ir3_block *block, opc_t opc, type_t type,
 		__ssa_src(sam, samp_tex, IR3_REG_HALF);
 	}
 	if (src0) {
-		__ssa_src(sam, src0, 0)->wrmask = (1 << (src0->regs_count - 1)) - 1;
+		__ssa_src(sam, src0, 0);
 	}
 	if (src1) {
-		__ssa_src(sam, src1, 0)->wrmask =(1 << (src1->regs_count - 1)) - 1;
+		__ssa_src(sam, src1, 0);
 	}
 	sam->cat5.type  = type;
 
