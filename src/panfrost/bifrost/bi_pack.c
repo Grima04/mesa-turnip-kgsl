@@ -1140,6 +1140,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return bi_pack_add_st_vary(clause, bundle.add, regs);
         case BI_SPECIAL:
                 return bi_pack_add_special(bundle.add, regs);
+        case BI_TABLE:
         case BI_SWIZZLE:
         case BI_TEX:
         case BI_ROUND:

@@ -71,8 +71,9 @@ enum bi_class {
         BI_SHIFT,
         BI_STORE,
         BI_STORE_VAR,
-        BI_SPECIAL, /* _FAST, _TABLE on supported GPUs */
+        BI_SPECIAL, /* _FAST on supported GPUs */
         BI_SWIZZLE,
+        BI_TABLE,
         BI_TEX,
         BI_ROUND,
         BI_NUM_CLASSES
@@ -182,6 +183,15 @@ enum bi_round_op {
         BI_ROUND_ROUND /* i.e.: fround() */
 };
 
+enum bi_table_op {
+        /* fp32 log2() with low precision, suitable for GL or half_log2() in
+         * CL. In the first argument, takes x. Letting u be such that x =
+         * 2^{-m} u with m integer and 0.75 <= u < 1.5, returns
+         * log2(u) / (u - 1). */
+
+        BI_TABLE_LOG2_U_OVER_U_1_LOW,
+};
+
 enum bi_special_op {
         BI_SPECIAL_FRCP,
         BI_SPECIAL_FRSQ,
@@ -244,6 +254,7 @@ typedef struct {
                 enum bi_bitwise_op bitwise;
                 enum bi_round_op round;
                 enum bi_special_op special;
+                enum bi_table_op table;
                 enum bi_cond compare;
         } op;
 

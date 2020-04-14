@@ -152,6 +152,7 @@ bi_class_name(enum bi_class cl)
         case BI_STORE_VAR: return "store_var";
         case BI_SPECIAL: return "special";
         case BI_SWIZZLE: return "swizzle";
+        case BI_TABLE: return "table";
         case BI_TEX: return "tex";
         case BI_ROUND: return "round";
         default: return "unknown_class";
@@ -252,6 +253,15 @@ bi_bitwise_op_name(enum bi_bitwise_op op)
 }
 
 const char *
+bi_table_op_name(enum bi_table_op op)
+{
+        switch (op) {
+        case BI_TABLE_LOG2_U_OVER_U_1_LOW: return "log2.help";
+        default: return "invalid";
+        }
+}
+
+const char *
 bi_special_op_name(enum bi_special_op op)
 {
         switch (op) {
@@ -326,6 +336,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, ins->op.round == BI_ROUND_MODE ? "roundMode": "round");
         else if (ins->type == BI_SPECIAL)
                 fprintf(fp, "%s", bi_special_op_name(ins->op.special));
+        else if (ins->type == BI_TABLE)
+                fprintf(fp, "%s", bi_table_op_name(ins->op.table));
         else if (ins->type == BI_CMP)
                 fprintf(fp, "%s", bi_cond_name(ins->op.compare));
         else
