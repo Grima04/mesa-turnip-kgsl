@@ -408,10 +408,16 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
       unsigned last_pos = 0xFFFF;
 
       for (unsigned current_reg = lb; current_reg < ub; current_reg++) {
+
          if (reg_file[current_reg] == 0 && !ctx.war_hint[current_reg]) {
             if (last_pos == 0xFFFF)
                last_pos = current_reg;
-            continue;
+
+            /* stop searching after max_used_gpr */
+            if (current_reg == ctx.max_used_sgpr + 1 || current_reg == 256 + ctx.max_used_vgpr + 1)
+               break;
+            else
+               continue;
          }
 
          if (last_pos == 0xFFFF)
