@@ -728,6 +728,13 @@ bi_pack_fma_csel(bi_instruction *ins, struct bi_registers *regs)
         RETURN_PACKED(pack);
 }
 
+static unsigned
+bi_pack_fma_frexp(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned op = BIFROST_FMA_OP_FREXPE_LOG;
+        return bi_pack_fma_1src(ins, regs, op);
+}
+
 /* We have a single convert opcode in the IR but a number of opcodes that could
  * come out. In particular we have native opcodes for:
  *
@@ -857,6 +864,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_FMA:
                 return bi_pack_fma_fma(bundle.fma, regs);
         case BI_FREXP:
+                return bi_pack_fma_frexp(bundle.fma, regs);
         case BI_ISUB:
                 return BIFROST_FMA_NOP;
         case BI_MINMAX:
