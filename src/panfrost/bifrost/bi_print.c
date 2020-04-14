@@ -366,6 +366,9 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         else
                 fprintf(fp, "%s", bi_class_name(ins->type));
 
+        if ((ins->type == BI_ADD || ins->type == BI_FMA) && ins->op.mscale)
+                fprintf(fp, ".mscale");
+
         if (ins->type == BI_MINMAX)
                 fprintf(fp, "%s", bi_minmax_mode_name(ins->minmax));
         else if (ins->type == BI_LOAD_VAR)

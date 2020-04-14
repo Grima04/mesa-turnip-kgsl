@@ -275,6 +275,9 @@ typedef struct {
                 enum bi_table_op table;
                 enum bi_frexp_op frexp;
                 enum bi_cond compare;
+
+                /* For FMA/ADD, should we add a biased exponent? */
+                bool mscale;
         } op;
 
         /* Union for class-specific information */
