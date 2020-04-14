@@ -159,23 +159,37 @@ bi_class_name(enum bi_class cl)
         }
 }
 
-static void
-bi_print_index(FILE *fp, bi_instruction *ins, unsigned index)
+static bool
+bi_print_dest_index(FILE *fp, bi_instruction *ins, unsigned index)
 {
         if (!index)
                 fprintf(fp, "_");
         else if (index & BIR_INDEX_REGISTER)
                 fprintf(fp, "br%u", index & ~BIR_INDEX_REGISTER);
-        else if (index & BIR_INDEX_UNIFORM)
+        else if (index & BIR_IS_REG)
+                fprintf(fp, "r%u", index >> 1);
+        else if (!(index & BIR_SPECIAL))
+                fprintf(fp, "%u", (index >> 1) - 1);
+        else
+                return false;
+
+        return true;
+}
+
+static void
+bi_print_index(FILE *fp, bi_instruction *ins, unsigned index, unsigned s)
+{
+        if (bi_print_dest_index(fp, ins, index))
+                return;
+
+        if (index & BIR_INDEX_UNIFORM)
                 fprintf(fp, "u%u", index & ~BIR_INDEX_UNIFORM);
         else if (index & BIR_INDEX_CONSTANT)
                 fprintf(fp, "#0x%" PRIx64, bi_get_immediate(ins, index));
         else if (index & BIR_INDEX_ZERO)
                 fprintf(fp, "#0");
-        else if (index & BIR_IS_REG)
-                fprintf(fp, "r%u", index >> 1);
         else
-                fprintf(fp, "%u", (index >> 1) - 1);
+                fprintf(fp, "#err");
 }
 
 static void
@@ -192,7 +206,7 @@ bi_print_src(FILE *fp, bi_instruction *ins, unsigned s)
         if (abs)
                 fprintf(fp, "abs(");
 
-        bi_print_index(fp, ins, src);
+        bi_print_index(fp, ins, src, s);
 
         if (abs)
                 fprintf(fp, ")");
@@ -392,7 +406,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_round_mode_name(ins->roundmode));
 
         fprintf(fp, " ");
-        bi_print_index(fp, ins, ins->dest);
+        bool succ = bi_print_dest_index(fp, ins, ins->dest);
+        assert(succ);
 
         if (ins->dest)
                 bi_print_writemask(ins, fp);
