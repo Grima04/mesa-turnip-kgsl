@@ -2515,8 +2515,7 @@ emit_tex_info(struct ir3_context *ctx, nir_tex_instr *tex, unsigned idx)
 	/* even though there is only one component, since it ends
 	 * up in .y/.z/.w rather than .x, we need a split_dest()
 	 */
-	if (idx)
-		ir3_split_dest(b, dst, sam, 0, idx + 1);
+	ir3_split_dest(b, dst, sam, idx, 1);
 
 	/* The # of levels comes from getinfo.z. We need to add 1 to it, since
 	 * the value in TEX_CONST_0 is zero-based.
