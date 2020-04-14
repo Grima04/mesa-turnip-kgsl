@@ -162,7 +162,7 @@ bi_assign_uniform_constant_single(
                 if (ins->src[s] & BIR_INDEX_CONSTANT) {
                         bool hi = false;
                         bool b64 = nir_alu_type_get_type_size(ins->src_types[s]) > 32;
-                        uint64_t cons = bi_get_immediate(ins, ins->src[s]);
+                        uint64_t cons = bi_get_immediate(ins, s);
                         unsigned idx = bi_lookup_constant(clause, cons, &hi, b64);
                         unsigned f = bi_constant_field(idx) | (cons & 0xF);
 
@@ -944,7 +944,7 @@ bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
 
         if (ins->src[0] & BIR_INDEX_CONSTANT) {
                 /* Direct uses address field directly */
-                packed_addr = bi_get_immediate(ins, ins->src[0]);
+                packed_addr = bi_get_immediate(ins, 0);
                 assert(packed_addr < 0b1000);
         } else {
                 /* Indirect gets an extra source */
@@ -1051,7 +1051,7 @@ bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_regist
         struct bifrost_ld_var_addr pack = {
                 .src0 = bi_get_src(ins, regs, 1, false),
                 .src1 = bi_get_src(ins, regs, 2, false),
-                .location = bi_get_immediate(ins, ins->src[0]),
+                .location = bi_get_immediate(ins, 0),
                 .type = bi_pack_ldst_type(ins->src_types[3]),
                 .op = BIFROST_ADD_OP_LD_VAR_ADDR
         };
@@ -1066,7 +1066,7 @@ bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, struct bi_registers 
         struct bifrost_ld_attr pack = {
                 .src0 = bi_get_src(ins, regs, 1, false),
                 .src1 = bi_get_src(ins, regs, 2, false),
-                .location = bi_get_immediate(ins, ins->src[0]),
+                .location = bi_get_immediate(ins, 0),
                 .channels = MALI_POSITIVE(bi_load32_components(ins)),
                 .type = bi_pack_ldst_type(ins->dest_type),
                 .op = BIFROST_ADD_OP_LD_ATTR

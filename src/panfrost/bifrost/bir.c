@@ -140,9 +140,18 @@ bi_bytemask_of_read_components(bi_instruction *ins, unsigned node)
 uint64_t
 bi_get_immediate(bi_instruction *ins, unsigned index)
 {
-        assert(index & BIR_INDEX_CONSTANT);
-        unsigned shift = index & ~BIR_INDEX_CONSTANT;
-        return ins->constant.u64 >> shift;
+        unsigned v = ins->src[index];
+        assert(v & BIR_INDEX_CONSTANT);
+        unsigned shift = v & ~BIR_INDEX_CONSTANT;
+        uint64_t shifted = ins->constant.u64 >> shift;
+
+        /* Mask off the accessed part */
+        unsigned sz = nir_alu_type_get_type_size(ins->src_types[index]);
+
+        if (sz == 64)
+                return shifted;
+        else
+                return shifted & ((1ull << sz) - 1);
 }
 
 bool
