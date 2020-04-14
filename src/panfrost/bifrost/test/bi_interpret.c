@@ -472,6 +472,21 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         case BI_MOV:
                 bpoly(mov);
 
+        case BI_REDUCE_FMA: {
+                if (ins->src_types[0] != nir_type_float32)
+                        unreachable("Unknown reduce type");
+
+                if (ins->op.reduce == BI_REDUCE_ADD_FREXPM) {
+                        int _nop = 0;
+                        float f = frexp_log(srcs[1].f32, &_nop);
+                        dest.f32 = srcs[0].f32 + f;
+                } else {
+                        unreachable("Unknown reduce");
+                }
+
+                break;
+        }
+
         case BI_SPECIAL: {
                 assert(nir_alu_type_get_base_type(ins->dest_type) == nir_type_float);
                 assert(nir_alu_type_get_base_type(ins->dest_type) != nir_type_float64);
