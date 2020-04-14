@@ -295,14 +295,28 @@ static void
 bit_special_helper(struct panfrost_device *dev,
                 unsigned size, uint32_t *input, enum bit_debug debug)
 {
-        bi_instruction ins = bit_ins(BI_SPECIAL, 1, nir_type_float, size);
+        bi_instruction ins = bit_ins(BI_SPECIAL, 2, nir_type_float, size);
+        uint32_t exp_input[4];
 
-        for (enum bi_special_op op = BI_SPECIAL_FRCP; op <= BI_SPECIAL_FRSQ; ++op) {
+        for (enum bi_special_op op = BI_SPECIAL_FRCP; op <= BI_SPECIAL_EXP2_LOW; ++op) {
+                if (op == BI_SPECIAL_EXP2_LOW) {
+                        /* exp2 only supported in fp32 mode */
+                        if (size != 32)
+                                continue;
+
+                        /* Give expected input */
+                        exp_input[1] = input[0];
+                        float *ff = (float *) input;
+                        exp_input[0] = (int) (ff[0] * (1 << 24));
+                }
+
                 for (unsigned c = 0; c < ((size == 16) ? 2 : 1); ++c) {
                         ins.op.special = op;
                         ins.swizzle[0][0] = c;
 
-                        if (!bit_test_single(dev, &ins, input, false, debug)) {
+                        if (!bit_test_single(dev, &ins,
+                                                op == BI_SPECIAL_EXP2_LOW ? exp_input : input,
+                                                false, debug)) {
                                 fprintf(stderr, "FAIL: special%u.%s\n",
                                                 size, bi_special_op_name(op));
                         }
