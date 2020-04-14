@@ -2548,10 +2548,10 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
 
 	dst = ir3_get_dst(ctx, &tex->dest, 4);
 
-	compile_assert(ctx, tex->num_srcs == 1);
-	compile_assert(ctx, tex->src[0].src_type == nir_tex_src_lod);
+	int lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+	compile_assert(ctx, lod_idx >= 0);
 
-	lod = ir3_get_src(ctx, &tex->src[0].src)[0];
+	lod = ir3_get_src(ctx, &tex->src[lod_idx].src)[0];
 
 	sam = emit_sam(ctx, OPC_GETSIZE, info, dst_type, 0b1111, lod, NULL);
 	ir3_split_dest(b, dst, sam, 0, 4);
