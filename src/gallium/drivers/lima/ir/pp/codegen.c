@@ -201,7 +201,6 @@ static void ppir_codegen_encode_vec_mul(ppir_node *node, void *code)
       f->op = shift_to_op(alu->shift);
       break;
    case ppir_op_mov:
-   case ppir_op_store_color:
       f->op = ppir_codegen_vec4_mul_op_mov;
       break;
    case ppir_op_max:
@@ -344,7 +343,6 @@ static void ppir_codegen_encode_vec_add(ppir_node *node, void *code)
       f->op = ppir_codegen_vec4_acc_op_add;
       break;
    case ppir_op_mov:
-   case ppir_op_store_color:
       f->op = ppir_codegen_vec4_acc_op_mov;
       break;
    case ppir_op_sum3:

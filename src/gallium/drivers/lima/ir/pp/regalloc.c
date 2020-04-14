@@ -138,7 +138,7 @@ static void ppir_regalloc_update_reglist_ssa(ppir_compiler *comp)
 {
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
       list_for_each_entry(ppir_node, node, &block->node_list, list) {
-         if (node->op == ppir_op_store_color)
+         if (node->is_end)
             continue;
 
          if (!node->instr || node->op == ppir_op_const)

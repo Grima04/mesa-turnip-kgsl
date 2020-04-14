@@ -108,7 +108,6 @@ typedef enum {
    ppir_op_load_temp,
 
    ppir_op_store_temp,
-   ppir_op_store_color,
 
    ppir_op_const,
 
@@ -162,6 +161,7 @@ typedef struct ppir_node {
    struct ppir_instr *instr;
    int instr_pos;
    struct ppir_block *block;
+   bool is_end;
 
    /* for scheduler */
    struct list_head succ_list;
@@ -385,6 +385,7 @@ typedef struct ppir_compiler {
 
    struct ra_regs *ra;
    struct lima_fs_shader_state *prog;
+   bool uses_discard;
 
    /* for scheduler */
    int sched_instr_base;

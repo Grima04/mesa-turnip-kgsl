@@ -178,7 +178,6 @@ ppir_liveness_instr_dest(ppir_compiler *comp, ppir_instr *instr)
       switch(node->op) {
          case ppir_op_const:
          case ppir_op_undef:
-         case ppir_op_store_color: /* never clear dest if its store output */
             continue;
          default:
             break;

@@ -75,7 +75,7 @@ static bool ppir_do_node_to_instr_try_insert(ppir_block *block, ppir_node *node)
    return ppir_instr_insert_node(succ->instr, node);
 }
 
-static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_node **next)
+static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node)
 {
    switch (node->type) {
    case ppir_node_type_alu:
@@ -104,9 +104,6 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
       /* can't inserted to any existing instr, create one */
       if (!node->instr && !create_new_instr(block, node))
          return false;
-
-      if (node->op == ppir_op_store_color)
-         node->instr->is_end = true;
 
       break;
    }
@@ -195,15 +192,13 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
 
 static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
 {
-   ppir_node *next = node;
-
    /* first try pipeline sched, if that didn't succeed try normal scheduling */
    if (!ppir_do_node_to_instr_try_insert(block, node))
-      if (!ppir_do_one_node_to_instr(block, node, &next))
+      if (!ppir_do_one_node_to_instr(block, node))
          return false;
 
-   /* next may have been updated in ppir_do_one_node_to_instr */
-   node = next;
+   if (node->is_end)
+      node->instr->is_end = true;
 
    /* we have to make sure the dep not be destroyed (due to
     * succ change) in ppir_do_node_to_instr, otherwise we can't

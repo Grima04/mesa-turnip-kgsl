@@ -352,7 +352,26 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       return true;
 
    case nir_intrinsic_store_output: {
-      alu_node = ppir_node_create_dest(block, ppir_op_store_color, NULL, 0);
+      /* In simple cases where the store_output is ssa, that register
+       * can be directly marked as the output.
+       * If discard is used or the source is not ssa, things can get a
+       * lot more complicated, so don't try to optimize those and fall
+       * back to inserting a mov at the end.
+       * If the source node will only be able to output to pipeline
+       * registers, fall back to the mov as well. */
+      if (!block->comp->uses_discard && instr->src->is_ssa) {
+         node = block->comp->var_nodes[instr->src->ssa->index];
+         switch (node->op) {
+         case ppir_op_load_uniform:
+         case ppir_op_const:
+            break;
+         default:
+            node->is_end = 1;
+            return true;
+         }
+      }
+
+      alu_node = ppir_node_create_dest(block, ppir_op_mov, NULL, 0);
       if (!alu_node)
          return false;
 
@@ -369,6 +388,8 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
 
       ppir_node_add_src(block->comp, &alu_node->node, alu_node->src, instr->src,
                         u_bit_consecutive(0, instr->num_components));
+
+      alu_node->node.is_end = 1;
 
       list_addtail(&alu_node->node.list, &block->node_list);
       return true;
@@ -724,9 +745,9 @@ static ppir_compiler *ppir_compiler_create(void *prog, unsigned num_reg, unsigne
 static void ppir_add_ordering_deps(ppir_compiler *comp)
 {
    /* Some intrinsics do not have explicit dependencies and thus depend
-    * on instructions order. Consider discard_if and store_ouput as
-    * example. If we don't add fake dependency of discard_if to store_output
-    * scheduler may put store_output first and since store_output terminates
+    * on instructions order. Consider discard_if and the is_end node as
+    * example. If we don't add fake dependency of discard_if to is_end,
+    * scheduler may put the is_end first and since is_end terminates
     * shader on Utgard PP, rest of it will never be executed.
     * Add fake dependencies for discard/branch/store to preserve
     * instruction order.
@@ -753,8 +774,8 @@ static void ppir_add_ordering_deps(ppir_compiler *comp)
          if (prev_node && ppir_node_is_root(node) && node->op != ppir_op_const) {
             ppir_node_add_dep(prev_node, node, ppir_dep_sequence);
          }
-         if (node->op == ppir_op_discard ||
-             node->op == ppir_op_store_color ||
+         if (node->is_end ||
+             node->op == ppir_op_discard ||
              node->op == ppir_op_store_temp ||
              node->op == ppir_op_branch) {
             prev_node = node;
@@ -818,6 +839,7 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
       return false;
 
    comp->ra = ra;
+   comp->uses_discard = nir->info.fs.uses_discard;
 
    /* 1st pass: create ppir blocks */
    nir_foreach_function(function, nir) {

@@ -313,14 +313,6 @@ const ppir_op_info ppir_op_infos[] = {
       .name = "const",
       .type = ppir_node_type_const,
    },
-   [ppir_op_store_color] = {
-      .name = "st_col",
-      .type = ppir_node_type_alu,
-      .slots = (int []) {
-         PPIR_INSTR_SLOT_ALU_VEC_ADD, PPIR_INSTR_SLOT_ALU_VEC_MUL,
-         PPIR_INSTR_SLOT_END
-      },
-   },
    [ppir_op_store_temp] = {
       .name = "st_temp",
       .type = ppir_node_type_store,
@@ -631,6 +623,11 @@ ppir_node *ppir_node_insert_mov(ppir_node *node)
    ppir_node_replace_all_succ(move, node);
    ppir_node_add_dep(move, node, ppir_dep_src);
    list_addtail(&move->list, &node->list);
+
+   if (node->is_end) {
+      node->is_end = false;
+      move->is_end = true;
+   }
 
    return move;
 }
