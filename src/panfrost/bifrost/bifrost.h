@@ -138,6 +138,7 @@ struct bifrost_fma_mscale {
 #define BIFROST_ADD_OP_FRSQ_FAST_F16_X (0x0ce50)
 #define BIFROST_ADD_OP_FRSQ_FAST_F16_Y (0x0ce70)
 #define BIFROST_ADD_OP_LOG2_HELP  (0x0cc68)
+#define BIFROST_ADD_OP_FEXP2_FAST (0x0cd58)
 
 struct bifrost_add_inst {
         unsigned src0 : 3;

@@ -1140,12 +1140,17 @@ bi_pack_add_special(bi_instruction *ins, struct bi_registers *regs)
                         (Y ? BIFROST_ADD_OP_FRCP_FAST_F16_Y :
                         BIFROST_ADD_OP_FRCP_FAST_F16_X) :
                         BIFROST_ADD_OP_FRCP_FAST_F32;
-        } else {
+        } else if (ins->op.special == BI_SPECIAL_FRSQ) {
                 op = fp16 ?
                         (Y ? BIFROST_ADD_OP_FRSQ_FAST_F16_Y :
                         BIFROST_ADD_OP_FRSQ_FAST_F16_X) :
                         BIFROST_ADD_OP_FRSQ_FAST_F32;
 
+        } else if (ins->op.special == BI_SPECIAL_EXP2_LOW) {
+                assert(!fp16);
+                op = BIFROST_ADD_OP_FEXP2_FAST;
+        } else {
+                unreachable("Unknown special op");
         }
 
         return bi_pack_add_1src(ins, regs, op);

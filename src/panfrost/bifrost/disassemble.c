@@ -1041,6 +1041,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x0cc00, "FRCP_FAST.f32", ADD_ONE_SRC },
         { 0x0cc20, "FRSQ_FAST.f32", ADD_ONE_SRC },
         { 0x0cc68, "FLOG2_U.f32", ADD_ONE_SRC },
+        { 0x0cd58, "FEXP2_FAST.f32", ADD_ONE_SRC },
         { 0x0ce00, "FRCP_TABLE", ADD_ONE_SRC },
         { 0x0ce10, "FRCP_FAST.f16.X", ADD_ONE_SRC },
         { 0x0ce20, "FRSQ_TABLE", ADD_ONE_SRC },
