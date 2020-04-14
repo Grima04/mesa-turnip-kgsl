@@ -226,21 +226,10 @@ sanitize_cf_list(nir_function_impl *impl, bool *divergent, struct exec_list *cf_
 
 RegClass get_reg_class(isel_context *ctx, RegType type, unsigned components, unsigned bitsize)
 {
-   switch (bitsize) {
-   case 1:
+   if (bitsize == 1)
       return RegClass(RegType::sgpr, ctx->program->lane_mask.size() * components);
-   case 8:
-      return type == RegType::sgpr ? s1 : RegClass(type, components).as_subdword();
-   case 16:
-      return type == RegType::sgpr ? RegClass(type, DIV_ROUND_UP(components, 2)) :
-                                     RegClass(type, 2 * components).as_subdword();
-   case 32:
-      return RegClass(type, components);
-   case 64:
-      return RegClass(type, components * 2);
-   default:
-      unreachable("Unsupported bit size");
-   }
+   else
+      return RegClass::get(type, components * bitsize / 8u);
 }
 
 void init_context(isel_context *ctx, nir_shader *shader)

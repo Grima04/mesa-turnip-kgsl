@@ -230,6 +230,15 @@ struct RegClass {
    constexpr RegClass as_linear() const { return RegClass((RC) (rc | (1 << 6))); }
    constexpr RegClass as_subdword() const { return RegClass((RC) (rc | 1 << 7)); }
 
+   static constexpr RegClass get(RegType type, unsigned bytes) {
+      if (type == RegType::sgpr) {
+         return RegClass(type, DIV_ROUND_UP(bytes, 4u));
+      } else {
+         return bytes % 4u ? RegClass(type, bytes).as_subdword() :
+                             RegClass(type, bytes / 4u);
+      }
+   }
+
 private:
    RC rc;
 };
