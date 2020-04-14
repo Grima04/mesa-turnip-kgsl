@@ -162,10 +162,34 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node)
 
       break;
    }
-   case ppir_node_type_const:
-      /* Const nodes are supposed to go through do_node_to_instr_pipeline() */
-      assert(false);
+   case ppir_node_type_const: {
+      /* Const cannot be pipelined, too many consts in the instruction.
+       * Create a mov. */
+
+      ppir_node *move = ppir_node_insert_mov(node);
+      if (!create_new_instr(block, move))
+         return false;
+
+      ppir_debug("node_to_instr create move %d for const %d\n",
+                 move->index, node->index);
+
+      ppir_dest *dest = ppir_node_get_dest(node);
+      ppir_src *mov_src = ppir_node_get_src(move, 0);
+
+      /* update succ from ^const to ssa mov output */
+      ppir_dest *move_dest = ppir_node_get_dest(move);
+      move_dest->type = ppir_target_ssa;
+      ppir_node *succ = ppir_node_first_succ(move);
+      ppir_node_replace_child(succ, node, move);
+
+      mov_src->type = dest->type = ppir_target_pipeline;
+      mov_src->pipeline = dest->pipeline = ppir_pipeline_reg_const0;
+
+      if (!ppir_instr_insert_node(move->instr, node))
+         return false;
+
       break;
+   }
    case ppir_node_type_store:
    {
       if (node->op == ppir_op_store_temp) {
