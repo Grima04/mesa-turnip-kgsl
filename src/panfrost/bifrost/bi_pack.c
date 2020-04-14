@@ -164,7 +164,8 @@ bi_assign_uniform_constant_single(
                         bool b64 = nir_alu_type_get_type_size(ins->src_types[s]) > 32;
                         uint64_t cons = bi_get_immediate(ins, s);
                         unsigned idx = bi_lookup_constant(clause, cons, &hi, b64);
-                        unsigned f = bi_constant_field(idx) | (cons & 0xF);
+                        unsigned lo = clause->constants[idx] & 0xF;
+                        unsigned f = bi_constant_field(idx) | lo;
 
                         if (assigned && regs->uniform_constant != f)
                                 unreachable("Mismatched uniform/const field: imm");
