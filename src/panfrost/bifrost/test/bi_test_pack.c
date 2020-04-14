@@ -249,6 +249,30 @@ bit_fma_helper(struct panfrost_device *dev,
 }
 
 static void
+bit_fma_mscale_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug debug)
+{
+        bi_instruction ins = bit_ins(BI_FMA, 4, nir_type_float, 32);
+        ins.op.mscale = true;
+        ins.src_types[3] = nir_type_int32;
+        ins.src[2] = ins.src[3]; /* Not enough ports! */
+
+        for (unsigned outmod = 0; outmod < 4; ++outmod) {
+                for (unsigned inmod = 0; inmod < 8; ++inmod) {
+                        ins.outmod = outmod;
+                        ins.src_abs[0] = (inmod & 0x1);
+                        ins.src_neg[1] = (inmod & 0x2);
+                        ins.src_neg[2] = (inmod & 0x4);
+
+                        if (!bit_test_single(dev, &ins, input, true, debug)) {
+                                fprintf(stderr, "FAIL: fma_mscale%s.%u\n",
+                                                outmod ? bi_output_mod_name(outmod) : ".none",
+                                                inmod);
+                        }
+                }
+        }
+}
+
+static void
 bit_csel_helper(struct panfrost_device *dev,
                 unsigned size, uint32_t *input, enum bit_debug debug)
 {
@@ -439,4 +463,9 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 
         bit_frexp_helper(dev, (uint32_t *) input32, debug);
         bit_reduce_helper(dev, (uint32_t *) input32, debug);
+
+        uint32_t mscale_input[4];
+        memcpy(mscale_input, input32, sizeof(input32));
+        mscale_input[3] = 0x7;
+        bit_fma_mscale_helper(dev, mscale_input, debug);
 }
