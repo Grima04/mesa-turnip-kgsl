@@ -1203,7 +1203,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
 			VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures *features =
 				(VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures *)ext;
-			features->shaderSubgroupExtendedTypes = true;
+			features->shaderSubgroupExtendedTypes = !pdevice->use_aco;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR: {
@@ -1266,7 +1266,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->scalarBlockLayout = pdevice->rad_info.chip_class >= GFX7;
 			features->imagelessFramebuffer = true;
 			features->uniformBufferStandardLayout = true;
-			features->shaderSubgroupExtendedTypes = true;
+			features->shaderSubgroupExtendedTypes = !pdevice->use_aco;
 			features->separateDepthStencilLayouts = true;
 			features->hostQueryReset = true;
 			features->timelineSemaphore = pdevice->rad_info.has_syncobj_wait_for_submit;
