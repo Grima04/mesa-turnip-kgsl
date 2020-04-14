@@ -558,6 +558,10 @@ pan_next_block(pan_block *block)
         return list_first_entry(&(block->link), pan_block, link);
 }
 
+/* Special functions */
+
+void bi_emit_fexp2(bi_context *ctx, nir_alu_instr *instr);
+
 /* BIR manipulation */
 
 bool bi_has_outmod(bi_instruction *ins);

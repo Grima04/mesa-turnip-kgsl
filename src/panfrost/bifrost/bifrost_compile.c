@@ -526,7 +526,16 @@ bi_fuse_csel_cond(bi_instruction *csel, nir_alu_src cond,
 static void
 emit_alu(bi_context *ctx, nir_alu_instr *instr)
 {
-        /* Assume it's something we can handle normally */
+        /* Try some special functions */
+        switch (instr->op) {
+        case nir_op_fexp2:
+                bi_emit_fexp2(ctx, instr);
+                return;
+        default:
+                break;
+        }
+
+        /* Otherwise, assume it's something we can handle normally */
         bi_instruction alu = {
                 .type = bi_class_for_nir_alu(instr->op),
                 .dest = bir_dest_index(&instr->dest.dest),
