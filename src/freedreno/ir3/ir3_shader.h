@@ -364,62 +364,6 @@ ir3_shader_key_changes_vs(struct ir3_shader_key *key, struct ir3_shader_key *las
 	return false;
 }
 
-/* clears shader-key flags which don't apply to the given shader
- * stage
- */
-static inline void
-ir3_normalize_key(struct ir3_shader_key *key, gl_shader_stage type)
-{
-	switch (type) {
-	case MESA_SHADER_FRAGMENT:
-		if (key->has_per_samp) {
-			key->vsaturate_s = 0;
-			key->vsaturate_t = 0;
-			key->vsaturate_r = 0;
-			key->vastc_srgb = 0;
-			key->vsamples = 0;
-			key->has_gs = false; /* FS doesn't care */
-			key->tessellation = IR3_TESS_NONE;
-		}
-		break;
-	case MESA_SHADER_VERTEX:
-	case MESA_SHADER_GEOMETRY:
-		key->color_two_side = false;
-		key->rasterflat = false;
-		if (key->has_per_samp) {
-			key->fsaturate_s = 0;
-			key->fsaturate_t = 0;
-			key->fsaturate_r = 0;
-			key->fastc_srgb = 0;
-			key->fsamples = 0;
-		}
-
-		/* VS and GS only care about whether or not we're tessellating. */
-		key->tessellation = !!key->tessellation;
-		break;
-	case MESA_SHADER_TESS_CTRL:
-	case MESA_SHADER_TESS_EVAL:
-		key->color_two_side = false;
-		key->rasterflat = false;
-		if (key->has_per_samp) {
-			key->fsaturate_s = 0;
-			key->fsaturate_t = 0;
-			key->fsaturate_r = 0;
-			key->fastc_srgb = 0;
-			key->fsamples = 0;
-			key->vsaturate_s = 0;
-			key->vsaturate_t = 0;
-			key->vsaturate_r = 0;
-			key->vastc_srgb = 0;
-			key->vsamples = 0;
- 		}
-		break;
-	default:
-		/* TODO */
-		break;
-	}
-}
-
 /**
  * On a4xx+a5xx, Images share state with textures and SSBOs:
  *
@@ -674,6 +618,11 @@ struct ir3_shader {
 
 	/* Map from driver_location to byte offset in per-primitive storage */
 	unsigned output_loc[32];
+
+	/* Bitmask of bits of the shader key used by this shader.  Used to avoid
+	 * recompiles for GL NOS that doesn't actually apply to the shader.
+	 */
+	struct ir3_shader_key key_mask;
 };
 
 void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id);
@@ -691,6 +640,18 @@ ir3_glsl_type_size(const struct glsl_type *type, bool bindless);
 /*
  * Helper/util:
  */
+
+/* clears shader-key flags which don't apply to the given shader.
+ */
+static inline void
+ir3_key_clear_unused(struct ir3_shader_key *key, struct ir3_shader *shader)
+{
+	uint32_t *key_bits = (uint32_t *)key;
+	uint32_t *key_mask = (uint32_t *)&shader->key_mask;
+	STATIC_ASSERT(sizeof(*key) % 4 == 0);
+	for (int i = 0; i < sizeof(*key) >> 2; i++)
+		key_bits[i] &= key_mask[i];
+}
 
 static inline int
 ir3_find_output(const struct ir3_shader_variant *so, gl_varying_slot slot)

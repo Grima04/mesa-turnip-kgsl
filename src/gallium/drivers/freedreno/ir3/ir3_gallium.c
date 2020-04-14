@@ -77,11 +77,11 @@ ir3_shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 	struct ir3_shader_variant *v;
 	bool created = false;
 
-	/* some shader key values only apply to vertex or frag shader,
-	 * so normalize the key to avoid constructing multiple identical
-	 * variants:
+	/* Some shader key values may not be used by a given ir3_shader (for
+	 * example, fragment shader saturates in the vertex shader), so clean out
+	 * those flags to avoid recompiling.
 	 */
-	ir3_normalize_key(&key, shader->type);
+	ir3_key_clear_unused(&key, shader);
 
 	v = ir3_shader_get_variant(shader, &key, binning_pass, &created);
 
