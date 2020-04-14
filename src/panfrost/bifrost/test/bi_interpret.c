@@ -509,6 +509,19 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
                 break;
         }
 
+        case BI_TABLE: {
+                if (ins->op.table == BI_TABLE_LOG2_U_OVER_U_1_LOW) {
+                        assert(ins->dest_type == nir_type_float32);
+                        int _nop = 0;
+                        float f = frexp_log(srcs[0].f32, &_nop);
+                        dest.f32 = log2f(f) / (f - 1.0);
+                        dest.u32++; /* Sorry. */
+                } else {
+                        unreachable("Unknown table op");
+                }
+                break;
+       }
+
         case BI_SHIFT:
         case BI_SWIZZLE:
         case BI_ROUND:
