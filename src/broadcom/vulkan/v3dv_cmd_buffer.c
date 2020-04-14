@@ -247,7 +247,8 @@ attachment_list_is_subset(struct v3dv_subpass_attachment *l1, uint32_t l1_count,
  }
 
 static bool
-cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer)
+cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
+                             uint32_t subpass_idx)
 {
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(state->pass);
@@ -265,7 +266,7 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer)
       return false;
 
    /* Each render pass starts a new job */
-   if (state->subpass_idx == 0)
+   if (subpass_idx == 0)
       return false;
 
    /* Two subpasses can be merged in the same job if we can emit a single RCL
@@ -273,9 +274,9 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer)
     * triggers the "render job finished" interrupt). We can do this so long
     * as both subpasses render against the same attachments.
     */
-   uint32_t prev_subpass_idx = state->subpass_idx - 1;
-   struct v3dv_subpass *prev_subpass = &state->pass->subpasses[prev_subpass_idx];
-   struct v3dv_subpass *subpass = &state->pass->subpasses[state->subpass_idx];
+   assert(state->subpass_idx == subpass_idx - 1);
+   struct v3dv_subpass *prev_subpass = &state->pass->subpasses[state->subpass_idx];
+   struct v3dv_subpass *subpass = &state->pass->subpasses[subpass_idx];
 
    /* Because the list of subpass attachments can include VK_ATTACHMENT_UNUSED,
     * we need to check that for each subpass all its used attachments are
@@ -546,7 +547,7 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
     */
    if (cmd_buffer->state.pass &&
        subpass_idx != -1 &&
-       cmd_buffer_can_merge_subpass(cmd_buffer)) {
+       cmd_buffer_can_merge_subpass(cmd_buffer, subpass_idx)) {
       cmd_buffer->state.job->is_subpass_finish = false;
       return cmd_buffer->state.job;
    }
