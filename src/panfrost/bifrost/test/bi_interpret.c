@@ -548,6 +548,17 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
                 unreachable("Unsupported op");
         }
 
+        /* Apply _MSCALE */
+        if ((ins->type == BI_FMA || ins->type == BI_ADD) && ins->op.mscale) {
+                unsigned idx = (ins->type == BI_FMA) ? 3 : 2;
+
+                assert(ins->src_types[idx] == nir_type_int32);
+                assert(ins->dest_type == nir_type_float32);
+
+                int32_t scale = srcs[idx].i32;
+                dest.f32 *= exp2f(scale);
+        }
+
         /* Apply outmod */
         if (bi_has_outmod(ins) && ins->outmod != BIFROST_NONE) {
                 if (ins->dest_type == nir_type_float16) {
