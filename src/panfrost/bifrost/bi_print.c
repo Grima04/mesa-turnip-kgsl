@@ -267,6 +267,7 @@ bi_special_op_name(enum bi_special_op op)
         switch (op) {
         case BI_SPECIAL_FRCP: return "frcp";
         case BI_SPECIAL_FRSQ: return "frsq";
+        case BI_SPECIAL_EXP2_LOW: return "exp2_low";
         default: return "invalid";
         }
 }

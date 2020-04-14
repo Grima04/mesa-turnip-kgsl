@@ -195,6 +195,11 @@ enum bi_table_op {
 enum bi_special_op {
         BI_SPECIAL_FRCP,
         BI_SPECIAL_FRSQ,
+
+        /* fp32 exp2() with low precision, suitable for half_exp2() in CL or
+         * exp2() in GL. In the first argument, it takes f2i_rte(x * 2^24). In
+         * the second, it takes x itself. */
+        BI_SPECIAL_EXP2_LOW,
 };
 
 typedef struct {
