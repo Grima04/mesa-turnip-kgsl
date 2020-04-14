@@ -643,6 +643,18 @@ bi_pack_fma_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
 }
 
 static unsigned
+bi_pack_fma_2src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
+{
+        struct bifrost_fma_2src pack = {
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .src1 = bi_get_src(ins, regs, 1, true),
+                .op = op
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_add_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
 {
         struct bifrost_add_inst pack = {
