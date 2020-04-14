@@ -54,7 +54,6 @@ typedef enum {
    ppir_op_normalize3,
    ppir_op_normalize4,
 
-   ppir_op_sel_cond,
    ppir_op_select,
 
    ppir_op_sin,
@@ -630,7 +629,7 @@ static inline int ppir_src_get_mask(ppir_src *src)
    return mask;
 }
 
-static inline bool ppir_target_is_scaler(ppir_dest *dest)
+static inline bool ppir_target_is_scalar(ppir_dest *dest)
 {
    switch (dest->type) {
    case ppir_target_ssa:
@@ -654,6 +653,17 @@ static inline bool ppir_target_is_scaler(ppir_dest *dest)
    default:
       return false;
    }
+}
+
+static inline bool ppir_node_schedulable_slot(ppir_node *node,
+                                              enum ppir_instr_slot slot)
+{
+   int *slots = ppir_op_infos[node->op].slots;
+   for (int i = 0; slots[i] != PPIR_INSTR_SLOT_END; i++)
+      if (slots[i] == slot)
+         return true;
+
+   return false;
 }
 
 ppir_instr *ppir_instr_create(ppir_block *block);

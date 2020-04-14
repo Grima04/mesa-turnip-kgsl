@@ -225,14 +225,6 @@ const ppir_op_info ppir_op_infos[] = {
          PPIR_INSTR_SLOT_END
       },
    },
-   [ppir_op_sel_cond] = {
-      /* effectively mov, but must be scheduled only to
-       * PPIR_INSTR_SLOT_ALU_SCL_MUL */
-      .name = "sel_cond",
-      .slots = (int []) {
-         PPIR_INSTR_SLOT_ALU_SCL_MUL, PPIR_INSTR_SLOT_END
-      },
-   },
    [ppir_op_select] = {
       .name = "select",
       .slots = (int []) {

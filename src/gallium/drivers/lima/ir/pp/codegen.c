@@ -276,9 +276,6 @@ static void ppir_codegen_encode_scl_mul(ppir_node *node, void *code)
    case ppir_op_mov:
       f->op = ppir_codegen_float_mul_op_mov;
       break;
-   case ppir_op_sel_cond:
-      f->op = ppir_codegen_float_mul_op_mov;
-      break;
    case ppir_op_max:
       f->op = ppir_codegen_float_mul_op_max;
       break;

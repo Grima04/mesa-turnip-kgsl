@@ -212,23 +212,56 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    return true;
 }
 
-/* insert a move as the select condition to make sure it can
- * be inserted to select instr float mul slot
- */
+/* Check if the select condition and ensure it can be inserted to
+ * the scalar mul slot */
 static bool ppir_lower_select(ppir_block *block, ppir_node *node)
 {
    ppir_alu_node *alu = ppir_node_to_alu(node);
+   ppir_src *src0 = &alu->src[0];
+   ppir_src *src1 = &alu->src[1];
+   ppir_src *src2 = &alu->src[2];
 
-   ppir_node *move = ppir_node_create(block, ppir_op_sel_cond, -1, 0);
+   /* If the condition is already an alu scalar whose only successor
+    * is the select node, just turn it into pipeline output. */
+   /* The (src2->node == cond) case is a tricky exception.
+    * The reason is that we must force cond to output to ^fmul -- but
+    * then it no longer writes to a register and it is impossible to
+    * reference ^fmul in src2. So in that exceptional case, also fall
+    * back to the mov. */
+   ppir_node *cond = src0->node;
+   if (cond &&
+       cond->type == ppir_node_type_alu &&
+       ppir_node_has_single_succ(cond) &&
+       ppir_target_is_scalar(ppir_node_get_dest(cond)) &&
+       ppir_node_schedulable_slot(cond, PPIR_INSTR_SLOT_ALU_SCL_MUL) &&
+       src2->node != cond) {
+
+      ppir_dest *cond_dest = ppir_node_get_dest(cond);
+      cond_dest->type = ppir_target_pipeline;
+      cond_dest->pipeline = ppir_pipeline_reg_fmul;
+
+      ppir_node_target_assign(src0, cond);
+
+      /* src1 could also be a reference from the same node as
+       * the condition, so update it in that case. */
+      if (src1->node && src1->node == cond)
+         ppir_node_target_assign(src1, cond);
+
+      return true;
+   }
+
+   /* If the condition can't be used for any reason, insert a mov
+    * so that the condition can end up in ^fmul */
+   ppir_node *move = ppir_node_create(block, ppir_op_mov, -1, 0);
    if (!move)
       return false;
    list_addtail(&move->list, &node->list);
 
    ppir_alu_node *move_alu = ppir_node_to_alu(move);
-   ppir_src *move_src = move_alu->src, *src = alu->src;
-   move_src->type = src->type;
-   move_src->ssa = src->ssa;
-   move_src->swizzle[0] = src->swizzle[0];
+   ppir_src *move_src = move_alu->src;
+   move_src->type = src0->type;
+   move_src->ssa = src0->ssa;
+   move_src->swizzle[0] = src0->swizzle[0];
    move_alu->num_src = 1;
 
    ppir_dest *move_dest = &move_alu->dest;
@@ -236,7 +269,7 @@ static bool ppir_lower_select(ppir_block *block, ppir_node *node)
    move_dest->pipeline = ppir_pipeline_reg_fmul;
    move_dest->write_mask = 1;
 
-   ppir_node *pred = alu->src[0].node;
+   ppir_node *pred = src0->node;
    ppir_dep *dep = ppir_dep_for_pred(node, pred);
    if (dep)
       ppir_node_replace_pred(dep, move);
@@ -247,8 +280,12 @@ static bool ppir_lower_select(ppir_block *block, ppir_node *node)
    if (pred)
       ppir_node_add_dep(move, pred, ppir_dep_src);
 
-   src->swizzle[0] = 0;
-   ppir_node_target_assign(alu->src, move);
+   ppir_node_target_assign(src0, move);
+
+   /* src1 could also be a reference from the same node as
+    * the condition, so update it in that case. */
+   if (src1->node && src1->node == pred)
+      ppir_node_target_assign(src1, move);
 
    return true;
 }
