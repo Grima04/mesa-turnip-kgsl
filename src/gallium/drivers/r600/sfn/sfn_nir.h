@@ -28,6 +28,7 @@
 #define SFN_NIR_H
 
 #include "nir.h"
+#include "nir_builder.h"
 
 #ifdef __cplusplus
 #include "sfn_shader_base.h"
@@ -96,14 +97,32 @@ private:
 
 #endif
 
+static inline nir_ssa_def *
+r600_imm_ivec3(nir_builder *build, int x, int y, int z)
+{
+   nir_const_value v[3] = {
+      nir_const_value_for_int(x, 32),
+      nir_const_value_for_int(y, 32),
+      nir_const_value_for_int(z, 32),
+   };
+
+   return nir_build_imm(build, 3, 32, v);
+}
+
+bool r600_lower_tess_io(nir_shader *shader, enum pipe_prim_type prim_type);
+bool r600_append_tcs_TF_emission(nir_shader *shader, enum pipe_prim_type prim_type);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 bool r600_vectorize_vs_inputs(nir_shader *shader);
+
+
 int r600_shader_from_nir(struct r600_context *rctx,
                          struct r600_pipe_shader *pipeshader,
                          union r600_shader_key *key);
+
 
 #ifdef __cplusplus
 }

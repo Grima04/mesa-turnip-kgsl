@@ -151,6 +151,7 @@ files_r600 = files(
   'sfn/sfn_nir.h',
   'sfn/sfn_nir_lower_fs_out_to_vector.cpp',
   'sfn/sfn_nir_lower_fs_out_to_vector.h',
+  'sfn/sfn_nir_lower_tess_io.cpp',
   'sfn/sfn_nir_vectorize_vs_inputs.c',
   'sfn/sfn_shader_base.cpp',
   'sfn/sfn_shader_base.h',
