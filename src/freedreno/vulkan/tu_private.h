@@ -1648,6 +1648,10 @@ struct tu_subpass
    struct tu_subpass_attachment depth_stencil_attachment;
 
    VkSampleCountFlagBits samples;
+
+   /* pre-filled register values */
+   uint32_t render_components;
+   uint32_t srgb_cntl;
 };
 
 struct tu_render_pass_attachment

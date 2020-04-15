@@ -421,8 +421,6 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
              struct tu_cs *cs)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   unsigned char mrt_comp[MAX_RTS] = { 0 };
-   unsigned srgb_cntl = 0;
 
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       uint32_t a = subpass->color_attachments[i].attachment;
@@ -431,10 +429,6 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
 
       const struct tu_image_view *iview = fb->attachments[a].attachment;
 
-      mrt_comp[i] = 0xf;
-
-      if (vk_format_is_srgb(iview->vk_format))
-         srgb_cntl |= (1 << i);
 
       struct tu_native_format format =
          tu6_format_image(iview->image, iview->vk_format, iview->base_mip);
@@ -462,32 +456,14 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
    }
 
    tu_cs_emit_regs(cs,
-                   A6XX_RB_SRGB_CNTL(.dword = srgb_cntl));
+                   A6XX_RB_SRGB_CNTL(.dword = subpass->srgb_cntl));
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_SRGB_CNTL(.dword = subpass->srgb_cntl));
 
    tu_cs_emit_regs(cs,
-                   A6XX_SP_SRGB_CNTL(.dword = srgb_cntl));
-
+                   A6XX_RB_RENDER_COMPONENTS(.dword = subpass->render_components));
    tu_cs_emit_regs(cs,
-                   A6XX_RB_RENDER_COMPONENTS(
-                      .rt0 = mrt_comp[0],
-                      .rt1 = mrt_comp[1],
-                      .rt2 = mrt_comp[2],
-                      .rt3 = mrt_comp[3],
-                      .rt4 = mrt_comp[4],
-                      .rt5 = mrt_comp[5],
-                      .rt6 = mrt_comp[6],
-                      .rt7 = mrt_comp[7]));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_SP_FS_RENDER_COMPONENTS(
-                      .rt0 = mrt_comp[0],
-                      .rt1 = mrt_comp[1],
-                      .rt2 = mrt_comp[2],
-                      .rt3 = mrt_comp[3],
-                      .rt4 = mrt_comp[4],
-                      .rt5 = mrt_comp[5],
-                      .rt6 = mrt_comp[6],
-                      .rt7 = mrt_comp[7]));
+                   A6XX_SP_FS_RENDER_COMPONENTS(.dword = subpass->render_components));
 
    tu_cs_emit_regs(cs, A6XX_GRAS_MAX_LAYER_INDEX(fb->layers - 1));
 }

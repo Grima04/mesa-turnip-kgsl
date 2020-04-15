@@ -39,8 +39,8 @@ static void update_samples(struct tu_subpass *subpass,
 #define GMEM_ALIGN 0x4000
 
 static void
-compute_gmem_offsets(struct tu_render_pass *pass,
-                     const struct tu_physical_device *phys_dev)
+create_render_pass_common(struct tu_render_pass *pass,
+                          const struct tu_physical_device *phys_dev)
 {
    /* calculate total bytes per pixel */
    uint32_t cpp_total = 0;
@@ -84,6 +84,24 @@ compute_gmem_offsets(struct tu_render_pass *pass,
    }
 
    pass->gmem_pixels = pixels;
+
+   for (uint32_t i = 0; i < pass->subpass_count; i++) {
+      struct tu_subpass *subpass = &pass->subpasses[i];
+
+      subpass->srgb_cntl = 0;
+      subpass->render_components = 0;
+
+      for (uint32_t i = 0; i < subpass->color_count; ++i) {
+         uint32_t a = subpass->color_attachments[i].attachment;
+         if (a == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         subpass->render_components |= 0xf << (i * 4);
+
+         if (vk_format_is_srgb(pass->attachments[a].format))
+            subpass->srgb_cntl |= 1 << i;
+      }
+   }
 }
 
 VkResult
@@ -209,7 +227,7 @@ tu_CreateRenderPass(VkDevice _device,
 
    *pRenderPass = tu_render_pass_to_handle(pass);
 
-   compute_gmem_offsets(pass, device->physical_device);
+   create_render_pass_common(pass, device->physical_device);
 
    return VK_SUCCESS;
 }
@@ -338,7 +356,7 @@ tu_CreateRenderPass2(VkDevice _device,
 
    *pRenderPass = tu_render_pass_to_handle(pass);
 
-   compute_gmem_offsets(pass, device->physical_device);
+   create_render_pass_common(pass, device->physical_device);
 
    return VK_SUCCESS;
 }
