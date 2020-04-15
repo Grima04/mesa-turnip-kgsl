@@ -235,10 +235,7 @@ nvc0_rasterizer_state_create(struct pipe_context *pipe,
     SB_IMMED_3D(so, MULTISAMPLE_ENABLE, cso->multisample);
 
     SB_IMMED_3D(so, LINE_SMOOTH_ENABLE, cso->line_smooth);
-    /* On GM20x+, LINE_WIDTH_SMOOTH controls both aliased and smooth
-     * rendering and LINE_WIDTH_ALIASED seems to be ignored
-     */
-    if (cso->line_smooth || cso->multisample || class_3d >= GM200_3D_CLASS)
+    if (cso->line_smooth || cso->multisample)
        SB_BEGIN_3D(so, LINE_WIDTH_SMOOTH, 1);
     else
        SB_BEGIN_3D(so, LINE_WIDTH_ALIASED, 1);
