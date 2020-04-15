@@ -561,7 +561,7 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 	}
 
 	cat6->type      = instr->cat6.type;
-	cat6->d         = instr->cat6.d - 1;
+	cat6->d         = instr->cat6.d - (instr->opc == OPC_LDC ? 0 : 1);
 	cat6->typed     = instr->cat6.typed;
 	cat6->type_size = instr->cat6.iim_val - 1;
 	cat6->opc       = instr->opc;

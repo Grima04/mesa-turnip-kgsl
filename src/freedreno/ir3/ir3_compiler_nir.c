@@ -748,8 +748,8 @@ emit_intrinsic_load_ubo_ldc(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	struct ir3_instruction *idx = ir3_get_src(ctx, &intr->src[0])[0];
 	struct ir3_instruction *ldc = ir3_LDC(b, idx, 0, offset, 0);
 	ldc->regs[0]->wrmask = MASK(ncomp);
-	ldc->cat6.iim_val = intr->num_components;
-	ldc->cat6.d = 1;
+	ldc->cat6.iim_val = ncomp;
+	ldc->cat6.d = nir_intrinsic_base(intr);
 	ldc->cat6.type = TYPE_U32;
 
 	nir_intrinsic_instr *bindless = ir3_bindless_resource(intr->src[0]);
@@ -768,13 +768,6 @@ static void
 emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		struct ir3_instruction **dst)
 {
-	if (ir3_bindless_resource(intr->src[0])) {
-		/* TODO: We should be using ldc for non-bindless things on a6xx as
-		 * well.
-		 */
-		emit_intrinsic_load_ubo_ldc(ctx, intr, dst);
-		return;
-	}
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *base_lo, *base_hi, *addr, *src0, *src1;
 	/* UBO addresses are the first driver params, but subtract 2 here to
@@ -1611,6 +1604,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	case nir_intrinsic_load_ubo:
 		emit_intrinsic_load_ubo(ctx, intr, dst);
+		break;
+	case nir_intrinsic_load_ubo_ir3:
+		emit_intrinsic_load_ubo_ldc(ctx, intr, dst);
 		break;
 	case nir_intrinsic_load_frag_coord:
 		ir3_split_dest(b, dst, get_frag_coord(ctx), 0, 4);

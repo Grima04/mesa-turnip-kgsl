@@ -940,6 +940,8 @@ static void print_instr_cat6_a6xx(struct disasm_ctx *ctx, instr_t *instr)
 		fprintf(ctx->out, ".%s", cat6->typed ? "typed" : "untyped");
 		fprintf(ctx->out, ".%dd", cat6->d + 1);
 		fprintf(ctx->out, ".%s", type[cat6->type]);
+	} else {
+		fprintf(ctx->out, ".offset%d", cat6->d);
 	}
 	fprintf(ctx->out, ".%u", cat6->type_size + 1);
 
