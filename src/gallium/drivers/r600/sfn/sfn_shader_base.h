@@ -76,15 +76,17 @@ public:
    void remap_registers();
 
    const nir_variable *get_deref_location(const nir_src& src) const;
+
+   r600_shader& sh_info() {return m_sh_info;}
+   void add_param_output_reg(int loc, const GPRVector *gpr);
+   void set_output(unsigned pos, PValue var);
+   const GPRVector *output_register(unsigned location) const;
+   void evaluate_spi_sid(r600_shader_io &io);
+
 protected:
 
    void set_var_address(nir_deref_instr *instr);
    void set_input(unsigned pos, PValue var);
-   void set_output(unsigned pos, PValue var);
-
-   void evaluate_spi_sid(r600_shader_io &io);
-
-   r600_shader& sh_info() {return m_sh_info;}
 
    bool scan_instruction(nir_instr *instr);
 
