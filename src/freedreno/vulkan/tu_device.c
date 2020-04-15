@@ -2003,14 +2003,6 @@ tu_DestroyBuffer(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, buffer);
 }
 
-static uint32_t
-tu_surface_max_layer_count(struct tu_image_view *iview)
-{
-   return iview->type == VK_IMAGE_VIEW_TYPE_3D
-             ? iview->extent.depth
-             : (iview->base_layer + iview->layer_count);
-}
-
 VkResult
 tu_CreateFramebuffer(VkDevice _device,
                      const VkFramebufferCreateInfo *pCreateInfo,
@@ -2037,11 +2029,6 @@ tu_CreateFramebuffer(VkDevice _device,
       VkImageView _iview = pCreateInfo->pAttachments[i];
       struct tu_image_view *iview = tu_image_view_from_handle(_iview);
       framebuffer->attachments[i].attachment = iview;
-
-      framebuffer->width = MIN2(framebuffer->width, iview->extent.width);
-      framebuffer->height = MIN2(framebuffer->height, iview->extent.height);
-      framebuffer->layers =
-         MIN2(framebuffer->layers, tu_surface_max_layer_count(iview));
    }
 
    *pFramebuffer = tu_framebuffer_to_handle(framebuffer);
