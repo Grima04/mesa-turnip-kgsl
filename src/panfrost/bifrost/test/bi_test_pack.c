@@ -422,6 +422,33 @@ bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
         }
 }
 
+static void
+bit_constant_helper(struct panfrost_device *dev,
+                uint32_t *input, enum bit_debug debug)
+{
+        enum bi_class C[3] = { BI_MOV, BI_ADD, BI_FMA };
+
+        for (unsigned doubled = 0; doubled < 2; ++doubled) {
+                for (unsigned count = 1; count <= 3; ++count) {
+                        bi_instruction ins = bit_ins(C[count - 1], count, nir_type_float, 32);
+
+                        ins.src[0] = BIR_INDEX_CONSTANT | 0;
+                        ins.src[1] = (count >= 2) ? BIR_INDEX_CONSTANT | (doubled ? 32 : 0) : 0;
+                        ins.src[2] = (count >= 3) ? BIR_INDEX_ZERO : 0;
+
+                        ins.constant.u64 = doubled ?
+                                0x3f800000ull | (0x3f000000ull << 32ull) :
+                                0x3f800000ull;
+
+                        if (!bit_test_single(dev, &ins, input, true, debug)) {
+                                fprintf(stderr, "FAIL: constants.%s.%u\n",
+                                                doubled ? "two" : "one",
+                                                count);
+                        }
+                }
+        }
+}
+
 void
 bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 {
@@ -430,6 +457,8 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 
         bit_generate_float4(input32);
         bit_generate_half8(input16);
+
+        bit_constant_helper(dev, (uint32_t *) input32, debug);
 
         for (unsigned sz = 16; sz <= 32; sz *= 2) {
                 uint32_t *input =
