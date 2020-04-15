@@ -141,7 +141,35 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		 * (as otherwise nothing will trigger the shader to be
 		 * actually compiled)
 		 */
-		static struct ir3_shader_key key; /* static is implicitly zeroed */
+		struct ir3_shader_key key = {
+			.tessellation = IR3_TESS_NONE,
+		};
+
+		switch (nir->info.stage) {
+		case MESA_SHADER_TESS_EVAL:
+			key.tessellation = ir3_tess_mode(nir->info.tess.primitive_mode);
+			break;
+
+		case MESA_SHADER_TESS_CTRL:
+			/* The primitive_mode field, while it exists for TCS, is not
+			 * populated (since separable shaders between TCS/TES are legal,
+			 * so TCS wouldn't have access to TES's declaration).  Make a
+			 * guess so that we shader-db something plausible for TCS.
+			 */
+			if (nir->info.outputs_written & VARYING_BIT_TESS_LEVEL_INNER)
+				key.tessellation = IR3_TESS_TRIANGLES;
+			else
+				key.tessellation = IR3_TESS_ISOLINES;
+			break;
+
+		case MESA_SHADER_GEOMETRY:
+			key.has_gs = true;
+			break;
+
+		default:
+			break;
+		}
+
 		ir3_shader_variant(shader, key, false, debug);
 
 		if (nir->info.stage == MESA_SHADER_VERTEX)

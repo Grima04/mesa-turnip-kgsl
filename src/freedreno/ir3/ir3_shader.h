@@ -288,6 +288,21 @@ struct ir3_shader_key {
 	uint16_t vastc_srgb, fastc_srgb;
 };
 
+static inline unsigned
+ir3_tess_mode(unsigned gl_tess_mode)
+{
+	switch (gl_tess_mode) {
+	case GL_ISOLINES:
+		return  IR3_TESS_ISOLINES;
+	case GL_TRIANGLES:
+		return IR3_TESS_TRIANGLES;
+	case GL_QUADS:
+		return IR3_TESS_QUADS;
+	default:
+		unreachable("bad tessmode");
+	}
+}
+
 static inline bool
 ir3_shader_key_equal(struct ir3_shader_key *a, struct ir3_shader_key *b)
 {
