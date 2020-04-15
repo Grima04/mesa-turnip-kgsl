@@ -21,7 +21,7 @@
     <enum name="VIEWPORT_SWIZZLE_NEGATIVE_Y_NV" value="0x9353"/>
     <enum name="VIEWPORT_SWIZZLE_POSITIVE_Z_NV" value="0x9354"/>
     <enum name="VIEWPORT_SWIZZLE_NEGATIVE_Z_NV" value="0x9355"/>
-    <enum name="VIEWPORT_SWIZZLE_POSITIVE_W_NV" value="0x9358"/>
+    <enum name="VIEWPORT_SWIZZLE_POSITIVE_W_NV" value="0x9356"/>
     <enum name="VIEWPORT_SWIZZLE_NEGATIVE_W_NV" value="0x9357"/>
 
     <enum name="VIEWPORT_SWIZZLE_X_NV" value="0x9358"/>
