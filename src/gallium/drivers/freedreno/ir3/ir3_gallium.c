@@ -144,7 +144,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		static struct ir3_shader_key key; /* static is implicitly zeroed */
 		ir3_shader_variant(shader, key, false, debug);
 
-		if (nir->info.stage != MESA_SHADER_FRAGMENT)
+		if (nir->info.stage == MESA_SHADER_VERTEX)
 			ir3_shader_variant(shader, key, true, debug);
 	}
 
