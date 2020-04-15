@@ -1506,7 +1506,7 @@ if host_machine.system() == 'windows'
   if prog_flex.found()
     # windows compatibility (uses <io.h> instead of <unistd.h> and _isatty,
     # _fileno functions)
-    prog_flex = [prog_flex, '--wincompat']
+    prog_flex = [prog_flex, '--wincompat', '-D__STDC_VERSION__=199901']
   else
     prog_flex = [find_program('lex', 'flex', required : with_any_opengl)]
   endif
