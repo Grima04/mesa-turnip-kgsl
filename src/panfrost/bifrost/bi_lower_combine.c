@@ -231,6 +231,10 @@ bi_lower_combine(bi_context *ctx, bi_block *block)
                 unsigned R = bi_make_temp_reg(ctx);
 
                 bi_foreach_src(ins, s) {
+                        /* We're done early for vec2/3 */
+                        if (!ins->src[s])
+                                continue;
+
                         unsigned vec_count = 0;
 
                         if (bi_lower_combine_src(ctx, ins, s, R, &vec_count)) {
