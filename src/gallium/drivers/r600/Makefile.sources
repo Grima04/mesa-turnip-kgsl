@@ -144,6 +144,10 @@ CXX_SOURCES = \
 	sfn/sfn_shader_fragment.h \
 	sfn/sfn_shader_geometry.cpp \
 	sfn/sfn_shader_geometry.h \
+	sfn/sfn_shader_tcs.cpp \
+        sfn/sfn_shader_tcs.h \
+        sfn/sfn_shader_tess_eval.cpp \
+        sfn/sfn_shader_tess_eval.h \
 	sfn/sfn_shader_vertex.cpp \
 	sfn/sfn_shader_vertex.h \
 	sfn/sfn_shaderio.cpp \

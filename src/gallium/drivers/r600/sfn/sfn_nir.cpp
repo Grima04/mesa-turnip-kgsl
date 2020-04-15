@@ -36,6 +36,8 @@
 #include "sfn_shader_fragment.h"
 #include "sfn_shader_geometry.h"
 #include "sfn_shader_compute.h"
+#include "sfn_shader_tcs.h"
+#include "sfn_shader_tess_eval.h"
 #include "sfn_nir_lower_fs_out_to_vector.h"
 #include "sfn_ir_to_assembly.h"
 
@@ -62,6 +64,13 @@ bool ShaderFromNir::lower(const nir_shader *shader, r600_pipe_shader *pipe_shade
    case MESA_SHADER_VERTEX:
       impl.reset(new VertexShaderFromNir(pipe_shader, *sel, key, gs_shader));
       break;
+   case MESA_SHADER_TESS_CTRL:
+      sfn_log << SfnLog::trans << "Start TCS\n";
+      impl.reset(new TcsShaderFromNir(pipe_shader, *sel, key));
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      sfn_log << SfnLog::trans << "Start TESS_EVAL\n";
+      impl.reset(new TEvalShaderFromNir(pipe_shader, *sel, key, gs_shader));
       break;
    case MESA_SHADER_GEOMETRY:
       sfn_log << SfnLog::trans << "Start GS\n";
@@ -585,13 +594,31 @@ int r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sel->nir, r600_lower_fs_out_to_vector);
 
    if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
-       sel->nir->info.stage == MESA_SHADER_TESS_EVAL)
-      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, r600_glsl_type_size,
-                 nir_lower_io_lower_64bit_to_32);
-
-   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL)
+       (sel->nir->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
       NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_out, r600_glsl_type_size,
                  nir_lower_io_lower_64bit_to_32);
+      NIR_PASS_V(sel->nir, r600_lower_tess_io, (pipe_prim_type)key->tcs.prim_mode);
+   }
+
+   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
+       sel->nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, r600_glsl_type_size,
+                 nir_lower_io_lower_64bit_to_32);
+   }
+
+   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL ||
+       sel->nir->info.stage == MESA_SHADER_TESS_EVAL ||
+       (sel->nir->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
+      auto prim_type = sel->nir->info.stage == MESA_SHADER_TESS_CTRL ?
+                          key->tcs.prim_mode : sel->nir->info.tess.primitive_mode;
+      NIR_PASS_V(sel->nir, r600_lower_tess_io, static_cast<pipe_prim_type>(prim_type));
+   }
+
+
+   if (sel->nir->info.stage == MESA_SHADER_TESS_CTRL)
+      NIR_PASS_V(sel->nir, r600_append_tcs_TF_emission,
+                 (pipe_prim_type)key->tcs.prim_mode);
+
 
    const nir_function *func = reinterpret_cast<const nir_function *>(exec_list_get_head_const(&sel->nir->functions));
    bool optimize = func->impl->registers.length() == 0 && !has_saturate(func);
