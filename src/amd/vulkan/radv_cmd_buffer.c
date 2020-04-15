@@ -3453,19 +3453,22 @@ void radv_CmdBindVertexBuffers(
 
 	assert(firstBinding + bindingCount <= MAX_VBS);
 	for (uint32_t i = 0; i < bindingCount; i++) {
+		RADV_FROM_HANDLE(radv_buffer, buffer, pBuffers[i]);
 		uint32_t idx = firstBinding + i;
 
 		if (!changed &&
-		    (vb[idx].buffer != radv_buffer_from_handle(pBuffers[i]) ||
+		    (vb[idx].buffer != buffer ||
 		     vb[idx].offset != pOffsets[i])) {
 			changed = true;
 		}
 
-		vb[idx].buffer = radv_buffer_from_handle(pBuffers[i]);
+		vb[idx].buffer = buffer;
 		vb[idx].offset = pOffsets[i];
 
-		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
-				   vb[idx].buffer->bo);
+		if (buffer) {
+			radv_cs_add_buffer(cmd_buffer->device->ws,
+					   cmd_buffer->cs, vb[idx].buffer->bo);
+		}
 	}
 
 	if (!changed) {
