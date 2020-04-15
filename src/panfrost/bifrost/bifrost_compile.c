@@ -483,9 +483,18 @@ bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
 
         /* Try to inline a constant */
         if (nir_src_is_const(instr->src[i].src) && *constants_left && (dest_bits == bits)) {
-                alu->constant.u64 |=
-                        (nir_src_as_uint(instr->src[i].src)) << *constant_shift;
+                uint64_t mask = (1ull << dest_bits) - 1;
+                uint64_t cons = nir_src_as_uint(instr->src[i].src);
 
+                /* Try to reuse a constant */
+                for (unsigned i = 0; i < (*constant_shift); i += dest_bits) {
+                        if (((alu->constant.u64 >> i) & mask) == cons) {
+                                alu->src[to] = BIR_INDEX_CONSTANT | i;
+                                return;
+                        }
+                }
+
+                alu->constant.u64 |= cons << *constant_shift;
                 alu->src[to] = BIR_INDEX_CONSTANT | (*constant_shift);
                 --(*constants_left);
                 (*constant_shift) += dest_bits;
