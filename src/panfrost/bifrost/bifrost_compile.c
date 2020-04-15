@@ -189,6 +189,9 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         address.dest_type = nir_type_uint32;
         address.writemask = (1 << 12) - 1;
 
+        unsigned nr = nir_intrinsic_src_components(instr, 0);
+        assert(nir_intrinsic_write_mask(instr) == ((1 << nr) - 1));
+
         bi_instruction st = {
                 .type = BI_STORE_VAR,
                 .src = {
@@ -200,11 +203,14 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                         nir_type_uint32, nir_type_uint32, nir_type_uint32,
                 },
                 .swizzle = {
-                        { 0, 1, 2, 3 },
+                        { 0 },
                         { 0 }, { 1 }, { 2}
                 },
-                .store_channels = 4, /* TODO: WRITEMASK */
+                .store_channels = nr, 
         };
+
+        for (unsigned i = 0; i < nr; ++i)
+                st.swizzle[0][i] = i;
 
         bi_emit(ctx, address);
         bi_emit(ctx, st);
