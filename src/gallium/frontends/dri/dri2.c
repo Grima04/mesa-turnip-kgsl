@@ -739,6 +739,7 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    unsigned tex_usage = 0;
    int i;
    bool use_lowered = false;
+   const unsigned format_planes = util_format_get_num_planes(map->pipe_format);
 
    if (pscreen->is_format_supported(pscreen, map->pipe_format, screen->target, 0, 0,
                                     PIPE_BIND_RENDER_TARGET))
@@ -773,7 +774,23 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    templ.depth0 = 1;
    templ.array_size = 1;
 
-   for (i = (use_lowered ? map->nplanes : num_handles) - 1; i >= 0; i--) {
+   for (i = num_handles - 1; i >= format_planes; i--) {
+      struct pipe_resource *tex;
+
+      templ.next = img->texture;
+
+      tex = pscreen->resource_from_handle(pscreen, &templ, &whandle[i],
+                                          PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE);
+      if (!tex) {
+         pipe_resource_reference(&img->texture, NULL);
+         FREE(img);
+         return NULL;
+      }
+
+      img->texture = tex;
+   }
+
+   for (i = (use_lowered ? map->nplanes : format_planes) - 1; i >= 0; i--) {
       struct pipe_resource *tex;
 
       templ.next = img->texture;
@@ -891,7 +908,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
                           int *strides, int *offsets, unsigned *error,
                           void *loaderPrivate)
 {
-   struct winsys_handle whandles[3];
+   struct winsys_handle whandles[4];
    const struct dri2_format_mapping *map = dri2_get_mapping_by_fourcc(fourcc);
    __DRIimage *img = NULL;
    unsigned err = __DRI_IMAGE_ERROR_SUCCESS;
