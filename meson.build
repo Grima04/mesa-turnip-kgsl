@@ -1030,11 +1030,16 @@ if host_machine.system() == 'windows'
   if cc.get_id() == 'msvc'
     add_project_link_arguments(
       '/fixed:no',
-      '/incremental:no',
       '/dynamicbase',
       '/nxcompat',
       language : ['c', 'cpp'],
     )
+    if get_option('buildtype') != 'debug'
+      add_project_link_arguments(
+        '/incremental:no',
+        language : ['c', 'cpp'],
+      )
+    endif
   else
     add_project_link_arguments(
       '-Wl,--nxcompat',
