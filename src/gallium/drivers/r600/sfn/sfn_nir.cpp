@@ -625,7 +625,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    NIR_PASS_V(sel->nir, nir_lower_vars_to_scratch,
               nir_var_function_temp,
-              100,
+              40,
               r600_get_natural_size_align_bytes);
 
    while (optimize && optimize_once(sel->nir));
