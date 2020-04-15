@@ -1772,6 +1772,7 @@ radv_build_param_exports(struct radv_shader_context *ctx,
 
 		if (slot_name != VARYING_SLOT_LAYER &&
 		    slot_name != VARYING_SLOT_PRIMITIVE_ID &&
+		    slot_name != VARYING_SLOT_VIEWPORT &&
 		    slot_name != VARYING_SLOT_CLIP_DIST0 &&
 		    slot_name != VARYING_SLOT_CLIP_DIST1 &&
 		    slot_name < VARYING_SLOT_VAR0)
