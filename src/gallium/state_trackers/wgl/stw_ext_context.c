@@ -179,8 +179,8 @@ wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList)
       }
       else {
          /* not using ICD */
-         dhglrc = (DHGLRC) context;
-         share_dhglrc = (DHGLRC) hShareContext;
+         dhglrc = (DHGLRC)(INT_PTR)context;
+         share_dhglrc = (DHGLRC)(INT_PTR)hShareContext;
       }
 
       c = stw_create_context_attribs(hDC, layerPlane, share_dhglrc,

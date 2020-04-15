@@ -68,7 +68,7 @@ wglCreateContext(
    HDC hdc )
 {
    overrideOpenGL32EntryPoints();
-   return (HGLRC) DrvCreateContext(hdc);
+   return (HGLRC)(UINT_PTR)DrvCreateContext(hdc);
 }
 
 WINGDIAPI HGLRC APIENTRY
@@ -77,7 +77,7 @@ wglCreateLayerContext(
    int iLayerPlane )
 {
    overrideOpenGL32EntryPoints();
-   return (HGLRC) DrvCreateLayerContext( hdc, iLayerPlane );
+   return (HGLRC)(UINT_PTR)DrvCreateLayerContext( hdc, iLayerPlane );
 }
 
 WINGDIAPI BOOL APIENTRY
