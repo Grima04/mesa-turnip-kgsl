@@ -169,9 +169,6 @@ emit_binning_workaround(struct fd_batch *batch)
 			.debug = &ctx->debug,
 			.vtx = &ctx->solid_vbuf_state,
 			.prog = &ctx->solid_prog,
-			.key = {
-				.half_precision = true,
-			},
 	};
 
 	OUT_PKT0(ring, REG_A3XX_RB_MODE_CONTROL, 2);
@@ -367,9 +364,6 @@ fd3_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 			.debug = &ctx->debug,
 			.vtx = &ctx->solid_vbuf_state,
 			.prog = &ctx->solid_prog,
-			.key = {
-				.half_precision = true,
-			},
 	};
 	int i;
 
@@ -551,9 +545,6 @@ fd3_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 			.sprite_coord_enable = 1,
 			/* NOTE: They all use the same VP, this is for vtx bufs. */
 			.prog = &ctx->blit_prog[0],
-			.key = {
-				.half_precision = fd_half_precision(pfb),
-			},
 	};
 	float x0, y0, x1, y1;
 	unsigned bin_w = tile->bin_w;
@@ -680,14 +671,12 @@ fd3_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 			 * components, so half precision is always sufficient.
 			 */
 			emit.prog = &ctx->blit_prog[0];
-			emit.key.half_precision = true;
 		} else {
 			/* Float depth needs special blit shader that writes depth */
 			if (pfb->zsbuf->format == PIPE_FORMAT_Z32_FLOAT)
 				emit.prog = &ctx->blit_z;
 			else
 				emit.prog = &ctx->blit_zs;
-			emit.key.half_precision = false;
 		}
 		emit.fs = NULL;      /* frag shader changed so clear cache */
 		fd3_program_emit(ring, &emit, 1, &pfb->zsbuf);

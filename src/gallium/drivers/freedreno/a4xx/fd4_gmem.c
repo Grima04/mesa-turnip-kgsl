@@ -197,9 +197,6 @@ fd4_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 			.debug = &ctx->debug,
 			.vtx = &ctx->solid_vbuf_state,
 			.prog = &ctx->solid_prog,
-			.key = {
-				.half_precision = true,
-			},
 	};
 
 	OUT_PKT0(ring, REG_A4XX_RB_DEPTH_CONTROL, 1);
@@ -337,9 +334,6 @@ fd4_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 			.sprite_coord_enable = 1,
 			/* NOTE: They all use the same VP, this is for vtx bufs. */
 			.prog = &ctx->blit_prog[0],
-			.key = {
-				.half_precision = fd_half_precision(pfb),
-			},
 			.no_decode_srgb = true,
 	};
 	unsigned char mrt_comp[A4XX_MAX_RENDER_TARGETS] = {0};
@@ -470,7 +464,6 @@ fd4_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 		case PIPE_FORMAT_Z32_FLOAT:
 			emit.prog = (pfb->zsbuf->format == PIPE_FORMAT_Z32_FLOAT) ?
 					&ctx->blit_z : &ctx->blit_zs;
-			emit.key.half_precision = false;
 
 			OUT_PKT0(ring, REG_A4XX_RB_DEPTH_CONTROL, 1);
 			OUT_RING(ring, A4XX_RB_DEPTH_CONTROL_Z_ENABLE |
@@ -490,7 +483,6 @@ fd4_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 			 * components, so half precision is always sufficient.
 			 */
 			emit.prog = &ctx->blit_prog[0];
-			emit.key.half_precision = true;
 			break;
 		}
 		emit.fs = NULL;      /* frag shader changed so clear cache */

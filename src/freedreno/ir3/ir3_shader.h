@@ -248,7 +248,6 @@ struct ir3_shader_key {
 			unsigned sample_shading : 1;
 			unsigned msaa           : 1;
 			unsigned color_two_side : 1;
-			unsigned half_precision : 1;
 			/* used when shader needs to handle flat varyings (a4xx)
 			 * for front/back color inputs to frag shader:
 			 */
@@ -331,9 +330,6 @@ ir3_shader_key_changes_fs(struct ir3_shader_key *key, struct ir3_shader_key *las
 	if (last_key->color_two_side != key->color_two_side)
 		return true;
 
-	if (last_key->half_precision != key->half_precision)
-		return true;
-
 	if (last_key->rasterflat != key->rasterflat)
 		return true;
 
@@ -386,7 +382,6 @@ ir3_normalize_key(struct ir3_shader_key *key, gl_shader_stage type)
 	case MESA_SHADER_VERTEX:
 	case MESA_SHADER_GEOMETRY:
 		key->color_two_side = false;
-		key->half_precision = false;
 		key->rasterflat = false;
 		if (key->has_per_samp) {
 			key->fsaturate_s = 0;
@@ -402,7 +397,6 @@ ir3_normalize_key(struct ir3_shader_key *key, gl_shader_stage type)
 	case MESA_SHADER_TESS_CTRL:
 	case MESA_SHADER_TESS_EVAL:
 		key->color_two_side = false;
-		key->half_precision = false;
 		key->rasterflat = false;
 		if (key->has_per_samp) {
 			key->fsaturate_s = 0;

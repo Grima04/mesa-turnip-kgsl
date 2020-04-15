@@ -326,7 +326,6 @@ int main(int argc, char **argv)
 
 		if (!strcmp(argv[n], "--half-precision")) {
 			debug_printf(" %s", argv[n]);
-			key.half_precision = true;
 			n++;
 			continue;
 		}
