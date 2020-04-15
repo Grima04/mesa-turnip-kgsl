@@ -412,7 +412,7 @@ r600_lower_ubo_to_align16_impl(nir_builder *b, nir_instr *instr, void *_options)
    load->num_components = const_address ? op->num_components : 4;
    load->src[0] = op->src[0];
    load->src[1] = nir_src_for_ssa(new_offset);
-   nir_intrinsic_set_align(load, nir_intrinsic_align(op), nir_intrinsic_align_offset(op));
+   nir_intrinsic_set_align(load, nir_intrinsic_align_mul(op), nir_intrinsic_align_offset(op));
 
    nir_ssa_dest_init(&load->instr, &load->dest, load->num_components, 32, NULL);
    nir_builder_instr_insert(b, &load->instr);
