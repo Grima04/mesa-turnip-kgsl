@@ -426,42 +426,37 @@ r600_lower_ubo_to_align16_impl(nir_builder *b, nir_instr *instr, void *_options)
     * because then we have to assume that any component can be the first one and we
     * have to pick the result manually. */
    nir_ssa_def *first_comp = nir_iand(b, nir_ishr(b, offset,  nir_imm_int(b, 2)),
-                                     nir_imm_int(b,3));
+                                      nir_imm_int(b,3));
 
-   const unsigned swz_000[4] = {0, 0, 0, 0};
-   nir_ssa_def *component_select = nir_ieq(b, nir_imm_ivec4(b, 0, 1, 2, 3),
-                                           nir_swizzle(b, first_comp, swz_000, 4));
-
-   const unsigned szw_0[1] = {0};
-   const unsigned szw_1[1] = {1};
-   const unsigned szw_2[1] = {2};
+   const unsigned swz_000[4] = {0, 0, 0};
+   nir_ssa_def *component_select = nir_ieq(b, r600_imm_ivec3(b, 0, 1, 2),
+                                           nir_swizzle(b, first_comp, swz_000, 3));
 
    if (op->num_components == 1) {
-      const unsigned szw_3[1] = {3};
-      nir_ssa_def *check0 = nir_bcsel(b, nir_swizzle(b, component_select, szw_0, 1),
-                                      nir_swizzle(b, &load->dest.ssa, szw_0, 1),
-                                      nir_swizzle(b, &load->dest.ssa, szw_3, 1));
-      nir_ssa_def *check1 = nir_bcsel(b, nir_swizzle(b, component_select, szw_1, 1),
-                                      nir_swizzle(b, &load->dest.ssa, szw_1, 1),
+      nir_ssa_def *check0 = nir_bcsel(b, nir_channel(b, component_select, 0),
+                                      nir_channel(b, &load->dest.ssa, 0),
+                                      nir_channel(b, &load->dest.ssa, 3));
+      nir_ssa_def *check1 = nir_bcsel(b, nir_channel(b, component_select, 1),
+                                      nir_channel(b, &load->dest.ssa, 1),
                                       check0);
-      return nir_bcsel(b, nir_swizzle(b, component_select, szw_2, 1),
-                       nir_swizzle(b, &load->dest.ssa, szw_2, 1),
+      return nir_bcsel(b, nir_channel(b, component_select, 2),
+                       nir_channel(b, &load->dest.ssa, 2),
                        check1);
    } else if (op->num_components == 2) {
       const unsigned szw_01[2] = {0, 1};
       const unsigned szw_12[2] = {1, 2};
       const unsigned szw_23[2] = {2, 3};
 
-      nir_ssa_def *check0 = nir_bcsel(b, nir_swizzle(b, component_select, szw_0, 1),
+      nir_ssa_def *check0 = nir_bcsel(b, nir_channel(b, component_select, 0),
                                       nir_swizzle(b, &load->dest.ssa, szw_01, 2),
                                       nir_swizzle(b, &load->dest.ssa, szw_23, 2));
-      return nir_bcsel(b, nir_swizzle(b, component_select, szw_1, 1),
+      return nir_bcsel(b, nir_channel(b, component_select, 1),
                                       nir_swizzle(b, &load->dest.ssa, szw_12, 2),
                                       check0);
    } else {
-      const unsigned szw_012[3] = {0, 1, 3};
+      const unsigned szw_012[3] = {0, 1, 2};
       const unsigned szw_123[3] = {1, 2, 3};
-      return nir_bcsel(b, nir_swizzle(b, component_select, szw_0, 1),
+      return nir_bcsel(b, nir_channel(b, component_select, 0),
                        nir_swizzle(b, &load->dest.ssa, szw_012, 3),
                        nir_swizzle(b, &load->dest.ssa, szw_123, 3));
    }
