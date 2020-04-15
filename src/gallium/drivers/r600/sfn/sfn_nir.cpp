@@ -529,9 +529,6 @@ optimize_once(nir_shader *shader)
    NIR_PASS(progress, shader, nir_opt_conditional_discard);
    NIR_PASS(progress, shader, nir_opt_dce);
    NIR_PASS(progress, shader, nir_opt_undef);
-
-   NIR_PASS(progress, shader, nir_remove_dead_variables, nir_var_shader_in);
-   NIR_PASS(progress, shader, nir_remove_dead_variables,  nir_var_shader_out);
    return progress;
 }
 
@@ -609,6 +606,10 @@ int r600_shader_from_nir(struct r600_context *rctx,
     */
    if (optimize)
       while(optimize_once(sel->nir));
+
+   NIR_PASS_V(sel->nir, nir_remove_dead_variables, nir_var_shader_in);
+   NIR_PASS_V(sel->nir, nir_remove_dead_variables,  nir_var_shader_out);
+
 
    NIR_PASS_V(sel->nir, nir_lower_vars_to_scratch,
               nir_var_function_temp,
