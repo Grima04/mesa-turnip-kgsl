@@ -150,7 +150,7 @@ VkResult radv_CreateDescriptorSetLayout(
 	for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
 		const VkDescriptorSetLayoutBinding *binding = bindings + j;
 		uint32_t b = binding->binding;
-		uint32_t alignment;
+		uint32_t alignment = 0;
 		unsigned binding_buffer_count = 0;
 		uint32_t descriptor_count = binding->descriptorCount;
 		bool has_ycbcr_sampler = false;
@@ -214,7 +214,6 @@ VkResult radv_CreateDescriptorSetLayout(
 			descriptor_count = 1;
 			break;
 		default:
-			unreachable("unknown descriptor type\n");
 			break;
 		}
 
@@ -363,7 +362,6 @@ void radv_GetDescriptorSetLayoutSupport(VkDevice device,
 			descriptor_count = 1;
 			break;
 		default:
-			unreachable("unknown descriptor type\n");
 			break;
 		}
 
@@ -673,7 +671,6 @@ VkResult radv_CreateDescriptorPool(
 			bo_size += pCreateInfo->pPoolSizes[i].descriptorCount;
 			break;
 		default:
-			unreachable("unknown descriptor type\n");
 			break;
 		}
 	}
@@ -1050,7 +1047,6 @@ void radv_update_descriptor_sets(
 				}
 				break;
 			default:
-				unreachable("unimplemented descriptor type");
 				break;
 			}
 			ptr += binding_layout->size / 4;
@@ -1303,7 +1299,6 @@ void radv_update_descriptor_set_with_template(struct radv_device *device,
 					memcpy(pDst, templ->entry[i].immutable_samplers + 4 * j, 16);
 				break;
 			default:
-				unreachable("unimplemented descriptor type");
 				break;
 			}
 		        pSrc += templ->entry[i].src_stride;
