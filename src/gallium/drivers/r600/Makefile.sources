@@ -152,7 +152,9 @@ CXX_SOURCES = \
 	sfn/sfn_value_gpr.cpp \
 	sfn/sfn_value_gpr.h \
 	sfn/sfn_valuepool.cpp \
-	sfn/sfn_valuepool.h
+	sfn/sfn_valuepool.h \
+	sfn/sfn_vertexstageexport.cpp \
+        sfn/sfn_vertexstageexport.h
 
 R600_GENERATED_FILES = \
 	egd_tables.h

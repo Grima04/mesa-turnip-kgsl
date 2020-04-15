@@ -170,6 +170,8 @@ files_r600 = files(
   'sfn/sfn_value_gpr.h',
   'sfn/sfn_valuepool.cpp',
   'sfn/sfn_valuepool.h',
+  'sfn/sfn_vertexstageexport.cpp',
+  'sfn/sfn_vertexstageexport.h',
   )
 
 egd_tables_h = custom_target(

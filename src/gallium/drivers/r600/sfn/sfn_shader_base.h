@@ -105,11 +105,10 @@ protected:
    bool emit_store_local_shared(nir_intrinsic_instr* instr);
 
    bool emit_barrier(nir_intrinsic_instr* instr);
-   const GPRVector *output_register(unsigned location) const;
 
    bool load_preloaded_value(const nir_dest& dest, int chan, PValue value,
                              bool as_last = true);
-   void add_param_output_reg(int loc, const GPRVector *gpr);
+
    void inc_atomic_file_count();
    std::bitset<8> m_sv_values;
 
