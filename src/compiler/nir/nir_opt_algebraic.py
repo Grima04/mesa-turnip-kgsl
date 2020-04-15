@@ -1076,6 +1076,10 @@ optimizations.extend([
 
    (('bcsel', ('ine', a, -1), ('ifind_msb', a), -1), ('ifind_msb', a)),
 
+   (('fmin3@64', a, b, c), ('fmin@64', a, ('fmin@64', b, c))),
+   (('fmax3@64', a, b, c), ('fmax@64', a, ('fmax@64', b, c))),
+   (('fmed3@64', a, b, c), ('fmax@64', ('fmin@64', ('fmax@64', a, b), c), ('fmin@64', a, b))),
+
    # Misc. lowering
    (('fmod', a, b), ('fsub', a, ('fmul', b, ('ffloor', ('fdiv', a, b)))), 'options->lower_fmod'),
    (('frem', a, b), ('fsub', a, ('fmul', b, ('ftrunc', ('fdiv', a, b)))), 'options->lower_fmod'),
