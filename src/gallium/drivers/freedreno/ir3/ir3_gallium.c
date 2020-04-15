@@ -152,6 +152,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 	 */
 	struct ir3_shader_key key = {
 		.tessellation = IR3_TESS_NONE,
+		.msaa = true,
 	};
 
 	switch (nir->info.stage) {
