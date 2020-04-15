@@ -32,7 +32,7 @@
 #include "util/u_prim.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
-
+#include "util/ralloc.h"
 static inline int
 draw_tes_get_input_index(int semantic, int index,
                          const struct tgsi_shader_info *input_info)
@@ -498,6 +498,8 @@ void draw_delete_tess_ctrl_shader(struct draw_context *draw,
       assert(shader->variants_cached == 0);
    }
 #endif
+   if (dtcs->state.ir.nir)
+      ralloc_free(dtcs->state.ir.nir);
    FREE(dtcs);
 }
 
@@ -614,6 +616,8 @@ void draw_delete_tess_eval_shader(struct draw_context *draw,
       align_free(dtes->tes_input);
    }
 #endif
+   if (dtes->state.ir.nir)
+      ralloc_free(dtes->state.ir.nir);
    FREE(dtes);
 }
 
