@@ -110,16 +110,24 @@ protected:
                              bool as_last = true);
 
    void inc_atomic_file_count();
-   std::bitset<8> m_sv_values;
 
    enum ESlots {
       es_face,
       es_instanceid,
+      es_invocation_id,
+      es_patch_id,
       es_pos,
+      es_rel_patch_id,
       es_sample_mask_in,
       es_sample_id,
+      es_tess_factor_base,
       es_vertexid,
+      es_tess_coord,
+      es_primitive_id,
+      es_last
    };
+
+   std::bitset<es_last> m_sv_values;
 
 private:
    virtual bool allocate_reserved_registers() = 0;

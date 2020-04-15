@@ -28,6 +28,7 @@
 #include "pipe/p_defines.h"
 #include "tgsi/tgsi_from_mesa.h"
 #include "sfn_shader_vertex.h"
+#include "sfn_instruction_lds.h"
 
 #include <queue>
 
@@ -133,6 +134,9 @@ bool VertexShaderFromNir::scan_sysvalue_access(nir_instr *instr)
       case nir_intrinsic_load_instance_id:
          m_sv_values.set(es_instanceid);
          break;
+      case nir_intrinsic_load_tcs_rel_patch_id_r600:
+         m_sv_values.set(es_rel_patch_id);
+         break;
       default:
          ;
       }
@@ -148,8 +152,12 @@ bool VertexShaderFromNir::emit_intrinsic_instruction_override(nir_intrinsic_inst
    switch (instr->intrinsic) {
    case nir_intrinsic_load_vertex_id:
       return load_preloaded_value(instr->dest, 0, m_vertex_id);
+   case nir_intrinsic_load_tcs_rel_patch_id_r600:
+      return load_preloaded_value(instr->dest, 0, m_rel_vertex_id);
    case nir_intrinsic_load_instance_id:
       return load_preloaded_value(instr->dest, 0, m_instance_id);
+   case nir_intrinsic_store_local_shared_r600:
+      return emit_store_local_shared(instr);
    default:
       return false;
    }
