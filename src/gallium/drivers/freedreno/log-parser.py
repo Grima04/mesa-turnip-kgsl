@@ -2,6 +2,8 @@
 
 import re
 import sys
+import gzip
+import io
 
 
 class GMEMPass:
@@ -59,7 +61,12 @@ def dump_gmem_passes(gmem_passes, blit_time, sysmem_time, total_time):
         ))
 
 def main():
-    file = open(sys.argv[1], "r")
+    filename = sys.argv[1]
+    if filename.endswith(".gz"):
+        file = gzip.open(filename, "r")
+        file = io.TextIOWrapper(file)
+    else:
+        file = open(filename, "r")
     lines = file.read().split('\n')
 
     compute_match = re.compile(r"COMPUTE: START")
