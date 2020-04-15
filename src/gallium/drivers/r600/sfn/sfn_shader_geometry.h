@@ -28,17 +28,18 @@
 #ifndef SFN_GEOMETRYSHADERFROMNIR_H
 #define SFN_GEOMETRYSHADERFROMNIR_H
 
-#include "sfn_shader_base.h"
+#include "sfn_vertexstageexport.h"
 
 namespace r600 {
 
-class GeometryShaderFromNir : public ShaderFromNirProcessor
+class GeometryShaderFromNir : public VertexStage
 {
 public:
    GeometryShaderFromNir(r600_pipe_shader *sh, r600_pipe_shader_selector& sel, const r600_shader_key& key);
    bool do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr) override;
    bool do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr) override;
    bool scan_sysvalue_access(nir_instr *instr) override;
+   PValue primitive_id() override {return m_primitive_id;}
 
 private:
    struct ArrayDeref {
