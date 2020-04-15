@@ -74,6 +74,7 @@ bi_load(enum bi_class T, nir_intrinsic_instr *instr)
                 .type = T,
                 .writemask = bi_mask_for_channels_32(instr->num_components),
                 .src = { BIR_INDEX_CONSTANT },
+                .src_types = { nir_type_uint32 },
                 .constant = { .u64 = nir_intrinsic_base(instr) },
         };
 
@@ -245,6 +246,7 @@ bi_emit_sysval(bi_context *ctx, nir_instr *instr,
                 .type = BI_LOAD_UNIFORM,
                 .writemask = (1 << (nr_components * 4)) - 1,
                 .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
+                .src_types = { nir_type_uint32, nir_type_uint32 },
                 .constant = { (uniform * 16) + offset },
                 .dest = bir_dest_index(&nir_dest),
                 .dest_type = nir_type_uint32, /* TODO */
