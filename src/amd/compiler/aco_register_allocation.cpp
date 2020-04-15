@@ -1410,7 +1410,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
          /* add vector affinities */
          if (instr->opcode == aco_opcode::p_create_vector) {
             for (const Operand& op : instr->operands) {
-               if (op.isTemp() && op.getTemp().type() == instr->definitions[0].getTemp().type())
+               if (op.isTemp() && op.isFirstKill() && op.getTemp().type() == instr->definitions[0].getTemp().type())
                   ctx.vectors[op.tempId()] = instr.get();
             }
          }
