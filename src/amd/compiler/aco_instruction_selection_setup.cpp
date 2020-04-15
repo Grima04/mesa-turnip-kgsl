@@ -751,7 +751,8 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
    uint64_t mask = ctx->output_masks[nir->info.stage];
    while (mask) {
       int idx = u_bit_scan64(&mask);
-      if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER || idx == VARYING_SLOT_PRIMITIVE_ID ||
+      if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
+          idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT ||
           ((idx == VARYING_SLOT_CLIP_DIST0 || idx == VARYING_SLOT_CLIP_DIST1) && export_clip_dists)) {
          if (outinfo->vs_output_param_offset[idx] == AC_EXP_PARAM_UNDEFINED)
             outinfo->vs_output_param_offset[idx] = outinfo->param_exports++;

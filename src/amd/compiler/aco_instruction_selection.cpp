@@ -9769,7 +9769,8 @@ static void create_vs_exports(isel_context *ctx)
    for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
       if (i < VARYING_SLOT_VAR0 &&
           i != VARYING_SLOT_LAYER &&
-          i != VARYING_SLOT_PRIMITIVE_ID)
+          i != VARYING_SLOT_PRIMITIVE_ID &&
+          i != VARYING_SLOT_VIEWPORT)
          continue;
 
       export_vs_varying(ctx, i, false, NULL);
