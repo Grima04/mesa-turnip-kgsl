@@ -1255,6 +1255,14 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->overallocationBehavior = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
+			VkPhysicalDeviceRobustness2FeaturesEXT *features =
+				(VkPhysicalDeviceRobustness2FeaturesEXT *)ext;
+			features->robustBufferAccess2 = true;
+			features->robustImageAccess2 = true;
+			features->nullDescriptor = true;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1884,6 +1892,13 @@ void radv_GetPhysicalDeviceProperties2(
 			VkPhysicalDeviceLineRasterizationPropertiesEXT *props =
 				(VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
 			props->lineSubPixelPrecisionBits = 4;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+			VkPhysicalDeviceRobustness2PropertiesEXT *properties =
+				(VkPhysicalDeviceRobustness2PropertiesEXT *)ext;
+			properties->robustStorageBufferAccessSizeAlignment = 4;
+			properties->robustUniformBufferAccessSizeAlignment = 4;
 			break;
 		}
 		default:
