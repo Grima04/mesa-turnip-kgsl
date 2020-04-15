@@ -35,21 +35,6 @@
 
 static const bool split_blorp_blit_debug = false;
 
-/**
- * Enum to specify the order of arguments in a sampler message
- */
-enum sampler_message_arg
-{
-   SAMPLER_MESSAGE_ARG_U_FLOAT,
-   SAMPLER_MESSAGE_ARG_V_FLOAT,
-   SAMPLER_MESSAGE_ARG_U_INT,
-   SAMPLER_MESSAGE_ARG_V_INT,
-   SAMPLER_MESSAGE_ARG_R_INT,
-   SAMPLER_MESSAGE_ARG_SI_INT,
-   SAMPLER_MESSAGE_ARG_MCS_INT,
-   SAMPLER_MESSAGE_ARG_ZERO_INT,
-};
-
 struct brw_blorp_blit_vars {
    /* Input values from brw_blorp_wm_inputs */
    nir_variable *v_discard_rect;
