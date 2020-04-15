@@ -3138,6 +3138,8 @@ llvmpipe_delete_fs_state(struct pipe_context *pipe, void *fs)
    /* Delete draw module's data */
    draw_delete_fragment_shader(llvmpipe->draw, shader->draw_data);
 
+   if (shader->base.ir.nir)
+      ralloc_free(shader->base.ir.nir);
    assert(shader->variants_cached == 0);
    FREE((void *) shader->base.tokens);
    FREE(shader);
