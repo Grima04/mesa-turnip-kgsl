@@ -41,7 +41,7 @@
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
-
+#include "util/ralloc.h"
 /* fixme: move it from here */
 #define MAX_PRIMITIVES 64
 
@@ -962,6 +962,9 @@ void draw_delete_geometry_shader(struct draw_context *draw,
 
    for (i = 0; i < TGSI_MAX_VERTEX_STREAMS; i++)
       FREE(dgs->stream[i].primitive_lengths);
+
+   if (dgs->state.ir.nir)
+      ralloc_free(dgs->state.ir.nir);
    FREE((void*) dgs->state.tokens);
    FREE(dgs);
 }
