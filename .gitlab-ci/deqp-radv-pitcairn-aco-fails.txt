@@ -1,8 +1,2 @@
-# SPIR-V->NIR issues.
-dEQP-VK.glsl.builtin.precision.asin.highp.scalar
-dEQP-VK.glsl.builtin.precision.asin.highp.vec2
-dEQP-VK.glsl.builtin.precision.asin.highp.vec3
-dEQP-VK.glsl.builtin.precision.asin.highp.vec4
-
 # CTS bug (list of extensions not up-to-date).
 dEQP-VK.info.device_extensions

@@ -172,17 +172,18 @@ matrix_inverse(struct vtn_builder *b, struct vtn_ssa_value *src)
 }
 
 /**
- * Approximate asin(x) by the formula:
- *    asin~(x) = sign(x) * (pi/2 - sqrt(1 - |x|) * (pi/2 + |x|(pi/4 - 1 + |x|(p0 + |x|p1))))
+ * Approximate asin(x) by the piecewise formula:
+ * for |x| < 0.5, asin~(x) = x * (1 + x²(pS0 + x²(pS1 + x²*pS2)) / (1 + x²*qS1))
+ * for |x| ≥ 0.5, asin~(x) = sign(x) * (π/2 - sqrt(1 - |x|) * (π/2 + |x|(π/4 - 1 + |x|(p0 + |x|p1))))
  *
- * which is correct to first order at x=0 and x=±1 regardless of the p
+ * The latter is correct to first order at x=0 and x=±1 regardless of the p
  * coefficients but can be made second-order correct at both ends by selecting
  * the fit coefficients appropriately.  Different p coefficients can be used
  * in the asin and acos implementation to minimize some relative error metric
  * in each case.
  */
 static nir_ssa_def *
-build_asin(nir_builder *b, nir_ssa_def *x, float p0, float p1)
+build_asin(nir_builder *b, nir_ssa_def *x, float p0, float p1, bool piecewise)
 {
    if (x->bit_size == 16) {
       /* The polynomial approximation isn't precise enough to meet half-float
@@ -195,10 +196,10 @@ build_asin(nir_builder *b, nir_ssa_def *x, float p0, float p1)
        * approximation in 32-bit math and then we convert the result back to
        * 16-bit.
        */
-      return nir_f2f16(b, build_asin(b, nir_f2f32(b, x), p0, p1));
+      return nir_f2f16(b, build_asin(b, nir_f2f32(b, x), p0, p1, piecewise));
    }
-
    nir_ssa_def *one = nir_imm_floatN_t(b, 1.0f, x->bit_size);
+   nir_ssa_def *half = nir_imm_floatN_t(b, 0.5f, x->bit_size);
    nir_ssa_def *abs_x = nir_fabs(b, x);
 
    nir_ssa_def *p0_plus_xp1 = nir_fadd_imm(b, nir_fmul_imm(b, abs_x, p1), p0);
@@ -210,10 +211,33 @@ build_asin(nir_builder *b, nir_ssa_def *x, float p0, float p1)
                                                   M_PI_4f - 1.0f)),
                       M_PI_2f);
 
-   return nir_fmul(b, nir_fsign(b, x),
+   nir_ssa_def *result0 = nir_fmul(b, nir_fsign(b, x),
                       nir_fsub(b, nir_imm_floatN_t(b, M_PI_2f, x->bit_size),
                                   nir_fmul(b, nir_fsqrt(b, nir_fsub(b, one, abs_x)),
                                                            expr_tail)));
+   if (piecewise) {
+      /* approximation for |x| < 0.5 */
+      const float pS0 =  1.6666586697e-01f;
+      const float pS1 = -4.2743422091e-02f;
+      const float pS2 = -8.6563630030e-03f;
+      const float qS1 = -7.0662963390e-01f;
+
+      nir_ssa_def *x2 = nir_fmul(b, x, x);
+      nir_ssa_def *p = nir_fmul(b,
+                                x2,
+                                nir_fadd_imm(b,
+                                             nir_fmul(b,
+                                                      x2,
+                                                      nir_fadd_imm(b, nir_fmul_imm(b, x2, pS2),
+                                                                   pS1)),
+                                             pS0));
+
+      nir_ssa_def *q = nir_fadd(b, one, nir_fmul_imm(b, x2, qS1));
+      nir_ssa_def *result1 = nir_fadd(b, x, nir_fmul(b, x, nir_fdiv(b, p, q)));
+      return nir_bcsel(b, nir_flt(b, abs_x, half), result1, result0);
+   } else {
+      return result0;
+   }
 }
 
 static nir_op
@@ -487,13 +511,13 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    }
 
    case GLSLstd450Asin:
-      val->ssa->def = build_asin(nb, src[0], 0.086566724, -0.03102955);
+      val->ssa->def = build_asin(nb, src[0], 0.086566724, -0.03102955, true);
       return;
 
    case GLSLstd450Acos:
       val->ssa->def =
          nir_fsub(nb, nir_imm_floatN_t(nb, M_PI_2f, src[0]->bit_size),
-                      build_asin(nb, src[0], 0.08132463, -0.02363318));
+                      build_asin(nb, src[0], 0.08132463, -0.02363318, false));
       return;
 
    case GLSLstd450Atan:
