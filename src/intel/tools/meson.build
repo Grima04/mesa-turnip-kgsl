@@ -73,6 +73,10 @@ sanitize_data.set(
   'install_libexecdir',
   join_paths(get_option('prefix'), get_option('libexecdir'))
 )
+sanitize_data.set(
+  'install_libdir',
+  join_paths(get_option('prefix'), get_option('libdir'))
+)
 configure_file(
   input : 'intel_sanitize_gpu.in',
   output : '@BASENAME@',
@@ -113,6 +117,26 @@ libintel_dump_gpu = shared_library(
   install_dir : get_option('libexecdir'),
   install : true
 )
+
+if with_tools.contains('drm-shim')
+  configure_file(
+    input : 'intel_stub_gpu.in',
+    output : '@BASENAME@',
+    install_dir : get_option('bindir'),
+    configuration : sanitize_data,
+    install : true
+  )
+
+  libintel_stub_gpu = shared_library(
+    ['intel_noop_drm_shim'],
+    'intel_noop_drm_shim.c',
+    include_directories: [inc_include, inc_src, inc_intel],
+    link_with: libintel_dev,
+    dependencies: [dep_libdrm, dep_drm_shim, idep_mesautil, idep_libintel_common],
+    c_args : c_vis_args,
+    install : true,
+  )
+endif
 
 if with_tools.contains('intel-ui')
   subdir('imgui')
