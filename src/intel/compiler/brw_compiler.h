@@ -1254,11 +1254,16 @@ union brw_any_prog_data {
    struct brw_cs_prog_data cs;
 };
 
-#define DEFINE_PROG_DATA_DOWNCAST(stage)                       \
-static inline struct brw_##stage##_prog_data *                 \
-brw_##stage##_prog_data(struct brw_stage_prog_data *prog_data) \
-{                                                              \
-   return (struct brw_##stage##_prog_data *) prog_data;        \
+#define DEFINE_PROG_DATA_DOWNCAST(stage)                                   \
+static inline struct brw_##stage##_prog_data *                             \
+brw_##stage##_prog_data(struct brw_stage_prog_data *prog_data)             \
+{                                                                          \
+   return (struct brw_##stage##_prog_data *) prog_data;                    \
+}                                                                          \
+static inline const struct brw_##stage##_prog_data *                       \
+brw_##stage##_prog_data_const(const struct brw_stage_prog_data *prog_data) \
+{                                                                          \
+   return (const struct brw_##stage##_prog_data *) prog_data;              \
 }
 DEFINE_PROG_DATA_DOWNCAST(vue)
 DEFINE_PROG_DATA_DOWNCAST(vs)
