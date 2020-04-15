@@ -395,8 +395,10 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
 
    if (stride == 1) {
 
-      if (rc.type() == RegType::vgpr && (size == 4 || size == 8)) {
-         info.stride = 4;
+      for (unsigned stride = 8; stride > 1; stride /= 2) {
+         if (size % stride)
+            continue;
+         info.stride = stride;
          std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
          if (res.second)
             return res;
