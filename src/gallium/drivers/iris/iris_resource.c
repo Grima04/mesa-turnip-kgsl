@@ -1145,7 +1145,7 @@ iris_resource_get_param(struct pipe_screen *pscreen,
    switch (param) {
    case PIPE_RESOURCE_PARAM_NPLANES:
       if (mod_with_aux) {
-         *value = 2;
+         *value = 2 * util_format_get_num_planes(res->external_format);
       } else {
          unsigned count = 0;
          for (struct pipe_resource *cur = resource; cur; cur = cur->next)
