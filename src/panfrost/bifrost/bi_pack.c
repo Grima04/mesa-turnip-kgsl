@@ -1261,18 +1261,23 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
 
         /* TODO: Pos */
         assert(index == 0 && clause->bundle_count == 1);
+        assert(only);
+
+        uint64_t hi = clause->constants[index + 0] >> 60ull;
 
         struct bifrost_fmt_constant quad = {
                 .pos = 0, /* TODO */
                 .tag = done ? BIFROST_FMTC_FINAL : BIFROST_FMTC_CONSTANTS,
                 .imm_1 = clause->constants[index + 0] >> 4,
-                .imm_2 = only ? 0 : clause->constants[index + 1] >> 4
+                .imm_2 = ((hi < 8) ? (hi << 60ull) : 0) >> 4,
         };
 
         /* XXX: On G71, Connor observed that the difference of the top 4 bits
          * of the second constant with the first must be less than 8, otherwise
-         * we have to swap them. I am not able to reproduce this on G52,
-         * further investigation needed. Possibly an errata. XXX */
+         * we have to swap them. On G52, I'm able to reproduce a similar issue
+         * but with a different workaround (modeled above with a single
+         * constant, unclear how to workaround for multiple constants.) Further
+         * investigation needed. Possibly an errata. XXX */
 
         util_dynarray_append(emission, struct bifrost_fmt_constant, quad);
 
