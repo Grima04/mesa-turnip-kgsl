@@ -3793,7 +3793,7 @@ _mesa_print_arrays(struct gl_context *ctx)
               array->Ptr, _mesa_enum_to_string(array->Format.Type),
               array->Format.Size,
               array->Format._ElementSize, binding->Stride, bo ? bo->Name : 0,
-              (unsigned long) bo ? bo->Size : 0);
+              (unsigned long)(bo ? bo->Size : 0));
    }
 }
 
