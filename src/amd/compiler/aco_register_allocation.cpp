@@ -440,14 +440,25 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
       }
 
       /* final check */
-      if (last_pos + size <= ub && ub - last_pos < gap_size)
+      if (last_pos + size <= ub && ub - last_pos < gap_size) {
          best_pos = last_pos;
-
-      if (best_pos != 0xFFFF) {
-         adjust_max_used_regs(ctx, rc, best_pos);
-         return {PhysReg{best_pos}, true};
+         gap_size = ub - last_pos;
       }
-      return {{}, false};
+
+      if (best_pos == 0xFFFF)
+         return {{}, false};
+
+      /* find best position within gap by leaving a good stride for other variables*/
+      unsigned buffer = gap_size - size;
+      if (buffer > 1) {
+         if (((best_pos + size) % 8 != 0 && (best_pos + buffer) % 8 == 0) ||
+             ((best_pos + size) % 4 != 0 && (best_pos + buffer) % 4 == 0) ||
+             ((best_pos + size) % 2 != 0 && (best_pos + buffer) % 2 == 0))
+            best_pos = best_pos + buffer;
+      }
+
+      adjust_max_used_regs(ctx, rc, best_pos);
+      return {PhysReg{best_pos}, true};
    }
 
    bool found = false;
