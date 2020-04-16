@@ -985,8 +985,12 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				A6XX_RB_STENCILREF_BFREF(sr->ref_value[1]));
 	}
 
-	/* NOTE: scissor enabled bit is part of rasterizer state: */
-	if (dirty & (FD_DIRTY_SCISSOR | FD_DIRTY_RASTERIZER)) {
+	/* NOTE: scissor enabled bit is part of rasterizer state, but
+	 * fd_rasterizer_state_bind() will mark scissor dirty if needed:
+	 */
+	if (dirty & FD_DIRTY_SCISSOR) {
+		struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
+				emit->ctx->batch->submit, 3*4, FD_RINGBUFFER_STREAMING);
 		struct pipe_scissor_state *scissor = fd_context_get_scissor(ctx);
 
 		OUT_PKT4(ring, REG_A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0, 2);
@@ -994,6 +998,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(scissor->miny));
 		OUT_RING(ring, A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(scissor->maxx - 1) |
 				A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(scissor->maxy - 1));
+
+		fd6_emit_take_group(emit, ring, FD6_GROUP_SCISSOR, ENABLE_ALL);
 
 		ctx->batch->max_scissor.minx = MIN2(ctx->batch->max_scissor.minx, scissor->minx);
 		ctx->batch->max_scissor.miny = MIN2(ctx->batch->max_scissor.miny, scissor->miny);
