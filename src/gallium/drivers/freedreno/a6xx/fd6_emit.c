@@ -1111,17 +1111,10 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	if (info->num_outputs)
 		fd6_emit_streamout(ring, emit, info);
 
-	if (dirty & FD_DIRTY_BLEND) {
-		struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
-		fd6_emit_add_group(emit, blend->stateobj, FD6_GROUP_BLEND, ENABLE_DRAW);
-	}
-
 	if (dirty & (FD_DIRTY_BLEND | FD_DIRTY_SAMPLE_MASK)) {
-		struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
-
-		OUT_PKT4(ring, REG_A6XX_RB_BLEND_CNTL, 1);
-		OUT_RING(ring, blend->rb_blend_cntl |
-				A6XX_RB_BLEND_CNTL_SAMPLE_MASK(ctx->sample_mask));
+		struct fd6_blend_variant *blend = fd6_blend_variant(ctx->blend,
+				pfb->samples, ctx->sample_mask);
+		fd6_emit_add_group(emit, blend->stateobj, FD6_GROUP_BLEND, ENABLE_DRAW);
 	}
 
 	if (dirty & FD_DIRTY_BLEND_COLOR) {

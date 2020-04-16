@@ -297,7 +297,7 @@ OUT_RB(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
 
 static inline void BEGIN_RING(struct fd_ringbuffer *ring, uint32_t ndwords)
 {
-	if (ring->cur + ndwords > ring->end)
+	if (unlikely(ring->cur + ndwords > ring->end))
 		fd_ringbuffer_grow(ring, ndwords);
 }
 
