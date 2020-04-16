@@ -93,7 +93,8 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
    }
    case 9:
    case 10:
-   case 11: {
+   case 11:
+   case 12:{
       struct gen9_mdapi_metrics *mdapi_data = (struct gen9_mdapi_metrics *) data;
 
       if (data_size < sizeof(*mdapi_data))
@@ -131,7 +132,7 @@ void
 gen_perf_register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
                                         const struct gen_device_info *devinfo)
 {
-   if (!(devinfo->gen >= 7 && devinfo->gen <= 11))
+   if (!(devinfo->gen >= 7 && devinfo->gen <= 12))
       return;
 
    struct gen_perf_query_info *query =
@@ -226,9 +227,9 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
    struct gen_perf_query_info *query = NULL;
 
    /* MDAPI requires different structures for pretty much every generation
-    * (right now we have definitions for gen 7 to 11).
+    * (right now we have definitions for gen 7 to 12).
     */
-   if (!(devinfo->gen >= 7 && devinfo->gen <= 11))
+   if (!(devinfo->gen >= 7 && devinfo->gen <= 12))
       return;
 
    switch (devinfo->gen) {
@@ -294,7 +295,8 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
    }
    case 9:
    case 10:
-   case 11: {
+   case 11:
+   case 12: {
       query = gen_perf_append_query_info(perf, 2 + 36 + 16 + 16 + 16 + 2);
       query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
 

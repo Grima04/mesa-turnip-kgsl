@@ -1413,6 +1413,7 @@ read_gt_frequency(struct gen_perf_context *perf_ctx,
    case 9:
    case 10:
    case 11:
+   case 12:
       obj->oa.gt_frequency[0] = GET_FIELD(start, GEN9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
       obj->oa.gt_frequency[1] = GET_FIELD(end, GEN9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
       break;
