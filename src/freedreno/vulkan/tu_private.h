@@ -92,8 +92,6 @@ typedef uint32_t xcb_window_t;
 #define MAX_DYNAMIC_STORAGE_BUFFERS 8
 #define MAX_DYNAMIC_BUFFERS                                                  \
    (MAX_DYNAMIC_UNIFORM_BUFFERS + MAX_DYNAMIC_STORAGE_BUFFERS)
-#define MAX_SAMPLES_LOG2 4
-#define NUM_META_FS_KEYS 13
 #define TU_MAX_DRM_DEVICES 8
 #define MAX_VIEWS 8
 #define MAX_BIND_POINTS 2 /* compute + graphics */
@@ -106,82 +104,10 @@ typedef uint32_t xcb_window_t;
  */
 #define MAX_UNIFORM_BUFFER_RANGE 0x10000
 
-#define NUM_DEPTH_CLEAR_PIPELINES 3
-
-/*
- * This is the point we switch from using CP to compute shader
- * for certain buffer operations.
- */
-#define TU_BUFFER_OPS_CS_THRESHOLD 4096
-
 #define A6XX_TEX_CONST_DWORDS 16
 #define A6XX_TEX_SAMP_DWORDS 4
 
-enum tu_mem_heap
-{
-   TU_MEM_HEAP_VRAM,
-   TU_MEM_HEAP_VRAM_CPU_ACCESS,
-   TU_MEM_HEAP_GTT,
-   TU_MEM_HEAP_COUNT
-};
-
-enum tu_mem_type
-{
-   TU_MEM_TYPE_VRAM,
-   TU_MEM_TYPE_GTT_WRITE_COMBINE,
-   TU_MEM_TYPE_VRAM_CPU_ACCESS,
-   TU_MEM_TYPE_GTT_CACHED,
-   TU_MEM_TYPE_COUNT
-};
-
 #define tu_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
-
-static inline uint32_t
-align_u32(uint32_t v, uint32_t a)
-{
-   assert(a != 0 && a == (a & -a));
-   return (v + a - 1) & ~(a - 1);
-}
-
-static inline uint32_t
-align_u32_npot(uint32_t v, uint32_t a)
-{
-   return (v + a - 1) / a * a;
-}
-
-static inline uint64_t
-align_u64(uint64_t v, uint64_t a)
-{
-   assert(a != 0 && a == (a & -a));
-   return (v + a - 1) & ~(a - 1);
-}
-
-static inline int32_t
-align_i32(int32_t v, int32_t a)
-{
-   assert(a != 0 && a == (a & -a));
-   return (v + a - 1) & ~(a - 1);
-}
-
-/** Alignment must be a power of 2. */
-static inline bool
-tu_is_aligned(uintmax_t n, uintmax_t a)
-{
-   assert(a == (a & -a));
-   return (n & (a - 1)) == 0;
-}
-
-static inline uint32_t
-round_up_u32(uint32_t v, uint32_t a)
-{
-   return (v + a - 1) / a;
-}
-
-static inline uint64_t
-round_up_u64(uint64_t v, uint64_t a)
-{
-   return (v + a - 1) / a;
-}
 
 static inline uint32_t
 tu_minify(uint32_t n, uint32_t levels)
@@ -190,29 +116,6 @@ tu_minify(uint32_t n, uint32_t levels)
       return 0;
    else
       return MAX2(n >> levels, 1);
-}
-static inline float
-tu_clamp_f(float f, float min, float max)
-{
-   assert(min < max);
-
-   if (f > max)
-      return max;
-   else if (f < min)
-      return min;
-   else
-      return f;
-}
-
-static inline bool
-tu_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
-{
-   if (*inout_mask & clear_mask) {
-      *inout_mask &= ~clear_mask;
-      return true;
-   } else {
-      return false;
-   }
 }
 
 #define for_each_bit(b, dword)                                               \
@@ -253,11 +156,7 @@ __tu_finishme(const char *file, int line, const char *format, ...)
 void
 tu_loge(const char *format, ...) tu_printflike(1, 2);
 void
-tu_loge_v(const char *format, va_list va);
-void
 tu_logi(const char *format, ...) tu_printflike(1, 2);
-void
-tu_logi_v(const char *format, va_list va);
 
 /**
  * Print a FINISHME message, including its source location.
@@ -270,17 +169,6 @@ tu_logi_v(const char *format, va_list va);
          reported = true;                                                    \
       }                                                                      \
    } while (0)
-
-/* A non-fatal assert.  Useful for debugging. */
-#ifdef DEBUG
-#define tu_assert(x)                                                         \
-   ({                                                                        \
-      if (unlikely(!(x)))                                                    \
-         fprintf(stderr, "%s:%d ASSERT: %s\n", __FILE__, __LINE__, #x);      \
-   })
-#else
-#define tu_assert(x)
-#endif
 
 /* Suppress -Wunused in stub functions */
 #define tu_use_args(...) __tu_use_args(0, ##__VA_ARGS__)
@@ -406,39 +294,6 @@ struct tu_pipeline_key
 {
 };
 
-void
-tu_pipeline_cache_init(struct tu_pipeline_cache *cache,
-                       struct tu_device *device);
-void
-tu_pipeline_cache_finish(struct tu_pipeline_cache *cache);
-void
-tu_pipeline_cache_load(struct tu_pipeline_cache *cache,
-                       const void *data,
-                       size_t size);
-
-struct tu_shader_variant;
-
-bool
-tu_create_shader_variants_from_pipeline_cache(
-   struct tu_device *device,
-   struct tu_pipeline_cache *cache,
-   const unsigned char *sha1,
-   struct tu_shader_variant **variants);
-
-void
-tu_pipeline_cache_insert_shaders(struct tu_device *device,
-                                 struct tu_pipeline_cache *cache,
-                                 const unsigned char *sha1,
-                                 struct tu_shader_variant **variants,
-                                 const void *const *codes,
-                                 const unsigned *code_sizes);
-
-struct tu_meta_state
-{
-   VkAllocationCallbacks alloc;
-
-   struct tu_pipeline_cache cache;
-};
 
 /* queue types */
 #define TU_QUEUE_GENERAL 0
@@ -493,8 +348,6 @@ struct tu_device
 
    struct tu_instance *instance;
 
-   struct tu_meta_state meta_state;
-
    struct tu_queue *queues[TU_MAX_QUEUE_FAMILIES];
    int queue_count[TU_MAX_QUEUE_FAMILIES];
 
@@ -522,9 +375,6 @@ struct tu_device
    } scratch_bos[48 - MIN_SCRATCH_BO_SIZE_LOG2];
 
    struct tu_bo border_color;
-
-   struct list_head shader_slabs;
-   mtx_t shader_slab_mutex;
 
    struct tu_device_extension_table enabled_extensions;
 };
@@ -1203,11 +1053,6 @@ tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      enum vgt_event_type event);
 
-bool
-tu_get_memory_fd(struct tu_device *device,
-                 struct tu_device_memory *memory,
-                 int *pFD);
-
 static inline struct tu_descriptor_state *
 tu_get_descriptors_state(struct tu_cmd_buffer *cmd_buffer,
                          VkPipelineBindPoint bind_point)
@@ -1215,35 +1060,10 @@ tu_get_descriptors_state(struct tu_cmd_buffer *cmd_buffer,
    return &cmd_buffer->descriptors[bind_point];
 }
 
-/*
- * Takes x,y,z as exact numbers of invocations, instead of blocks.
- *
- * Limitations: Can't call normal dispatch functions without binding or
- * rebinding
- *              the compute pipeline.
- */
-void
-tu_unaligned_dispatch(struct tu_cmd_buffer *cmd_buffer,
-                      uint32_t x,
-                      uint32_t y,
-                      uint32_t z);
-
 struct tu_event
 {
    struct tu_bo bo;
 };
-
-struct tu_shader_module;
-
-#define TU_HASH_SHADER_IS_GEOM_COPY_SHADER (1 << 0)
-#define TU_HASH_SHADER_SISCHED (1 << 1)
-#define TU_HASH_SHADER_UNSAFE_MATH (1 << 2)
-void
-tu_hash_shaders(unsigned char *hash,
-                const VkPipelineShaderStageCreateInfo **stages,
-                const struct tu_pipeline_layout *layout,
-                const struct tu_pipeline_key *key,
-                uint32_t flags);
 
 static inline gl_shader_stage
 vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
@@ -1504,27 +1324,6 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          uint32_t a,
                          uint32_t gmem_a);
 
-struct tu_userdata_info *
-tu_lookup_user_sgpr(struct tu_pipeline *pipeline,
-                    gl_shader_stage stage,
-                    int idx);
-
-struct tu_shader_variant *
-tu_get_shader(struct tu_pipeline *pipeline, gl_shader_stage stage);
-
-struct tu_graphics_pipeline_create_info
-{
-   bool use_rectlist;
-   bool db_depth_clear;
-   bool db_stencil_clear;
-   bool db_depth_disable_expclear;
-   bool db_stencil_disable_expclear;
-   bool db_flush_depth_inplace;
-   bool db_flush_stencil_inplace;
-   bool db_resummarize;
-   uint32_t custom_blend_mode;
-};
-
 enum tu_supported_formats {
    FMT_VERTEX = 1,
    FMT_TEXTURE = 2,
@@ -1581,11 +1380,6 @@ struct tu_image
    struct tu_bo *bo;
    VkDeviceSize bo_offset;
 };
-
-unsigned
-tu_image_queue_family_mask(const struct tu_image *image,
-                           uint32_t family,
-                           uint32_t queue_family);
 
 static inline uint32_t
 tu_get_layerCount(const struct tu_image *image,
@@ -1700,38 +1494,6 @@ tu_buffer_view_init(struct tu_buffer_view *view,
                     struct tu_device *device,
                     const VkBufferViewCreateInfo *pCreateInfo);
 
-static inline struct VkExtent3D
-tu_sanitize_image_extent(const VkImageType imageType,
-                         const struct VkExtent3D imageExtent)
-{
-   switch (imageType) {
-   case VK_IMAGE_TYPE_1D:
-      return (VkExtent3D) { imageExtent.width, 1, 1 };
-   case VK_IMAGE_TYPE_2D:
-      return (VkExtent3D) { imageExtent.width, imageExtent.height, 1 };
-   case VK_IMAGE_TYPE_3D:
-      return imageExtent;
-   default:
-      unreachable("invalid image type");
-   }
-}
-
-static inline struct VkOffset3D
-tu_sanitize_image_offset(const VkImageType imageType,
-                         const struct VkOffset3D imageOffset)
-{
-   switch (imageType) {
-   case VK_IMAGE_TYPE_1D:
-      return (VkOffset3D) { imageOffset.x, 0, 0 };
-   case VK_IMAGE_TYPE_2D:
-      return (VkOffset3D) { imageOffset.x, imageOffset.y, 0 };
-   case VK_IMAGE_TYPE_3D:
-      return imageOffset;
-   default:
-      unreachable("invalid image type");
-   }
-}
-
 struct tu_attachment_info
 {
    struct tu_image_view *attachment;
@@ -1801,11 +1563,6 @@ struct tu_render_pass
    struct tu_subpass subpasses[0];
 };
 
-VkResult
-tu_device_init_meta(struct tu_device *device);
-void
-tu_device_finish_meta(struct tu_device *device);
-
 struct tu_query_pool
 {
    VkQueryType type;
@@ -1843,14 +1600,6 @@ tu_update_descriptor_set_with_template(
    struct tu_descriptor_set *set,
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData);
-
-void
-tu_meta_push_descriptor_set(struct tu_cmd_buffer *cmd_buffer,
-                            VkPipelineBindPoint pipelineBindPoint,
-                            VkPipelineLayout _layout,
-                            uint32_t set,
-                            uint32_t descriptorWriteCount,
-                            const VkWriteDescriptorSet *pDescriptorWrites);
 
 int
 tu_drm_get_gpu_id(const struct tu_physical_device *dev, uint32_t *id);

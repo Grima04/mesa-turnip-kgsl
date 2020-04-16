@@ -313,10 +313,10 @@ tu_GetDescriptorSetLayoutSupport(
       uint64_t descriptor_sz = descriptor_size(binding->descriptorType);
       uint64_t descriptor_alignment = 8;
 
-      if (size && !align_u64(size, descriptor_alignment)) {
+      if (size && !ALIGN_POT(size, descriptor_alignment)) {
          supported = false;
       }
-      size = align_u64(size, descriptor_alignment);
+      size = ALIGN_POT(size, descriptor_alignment);
 
       uint64_t max_count = UINT64_MAX;
       if (descriptor_sz)

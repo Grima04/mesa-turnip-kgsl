@@ -354,28 +354,6 @@ tu_dynamic_state_bit(VkDynamicState state)
    }
 }
 
-static gl_shader_stage
-tu_shader_stage(VkShaderStageFlagBits stage)
-{
-   switch (stage) {
-   case VK_SHADER_STAGE_VERTEX_BIT:
-      return MESA_SHADER_VERTEX;
-   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-      return MESA_SHADER_TESS_CTRL;
-   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-      return MESA_SHADER_TESS_EVAL;
-   case VK_SHADER_STAGE_GEOMETRY_BIT:
-      return MESA_SHADER_GEOMETRY;
-   case VK_SHADER_STAGE_FRAGMENT_BIT:
-      return MESA_SHADER_FRAGMENT;
-   case VK_SHADER_STAGE_COMPUTE_BIT:
-      return MESA_SHADER_COMPUTE;
-   default:
-      unreachable("invalid VkShaderStageFlagBits");
-      return MESA_SHADER_NONE;
-   }
-}
-
 static bool
 tu_logic_op_reads_dst(VkLogicOp op)
 {
@@ -2052,7 +2030,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
    };
    for (uint32_t i = 0; i < builder->create_info->stageCount; i++) {
       gl_shader_stage stage =
-         tu_shader_stage(builder->create_info->pStages[i].stage);
+         vk_to_mesa_shader_stage(builder->create_info->pStages[i].stage);
       stage_infos[stage] = &builder->create_info->pStages[i];
    }
 

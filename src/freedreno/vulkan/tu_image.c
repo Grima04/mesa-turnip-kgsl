@@ -48,12 +48,12 @@ tu_image_create(VkDevice _device,
    struct tu_image *image = NULL;
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
 
-   tu_assert(pCreateInfo->mipLevels > 0);
-   tu_assert(pCreateInfo->arrayLayers > 0);
-   tu_assert(pCreateInfo->samples > 0);
-   tu_assert(pCreateInfo->extent.width > 0);
-   tu_assert(pCreateInfo->extent.height > 0);
-   tu_assert(pCreateInfo->extent.depth > 0);
+   assert(pCreateInfo->mipLevels > 0);
+   assert(pCreateInfo->arrayLayers > 0);
+   assert(pCreateInfo->samples > 0);
+   assert(pCreateInfo->extent.width > 0);
+   assert(pCreateInfo->extent.height > 0);
+   assert(pCreateInfo->extent.depth > 0);
 
    image = vk_zalloc2(&device->alloc, alloc, sizeof(*image), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -515,20 +515,6 @@ tu_image_view_init(struct tu_image_view *iview,
       .color_format = cfmt.fmt,
       .color_swap = cfmt.swap,
       .flags = ubwc_enabled).value;
-}
-
-unsigned
-tu_image_queue_family_mask(const struct tu_image *image,
-                           uint32_t family,
-                           uint32_t queue_family)
-{
-   if (!image->exclusive)
-      return image->queue_family_mask;
-   if (family == VK_QUEUE_FAMILY_EXTERNAL)
-      return (1u << TU_MAX_QUEUE_FAMILIES) - 1u;
-   if (family == VK_QUEUE_FAMILY_IGNORED)
-      return 1u << queue_family;
-   return 1u << family;
 }
 
 VkResult

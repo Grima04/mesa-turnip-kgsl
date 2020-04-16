@@ -1211,13 +1211,13 @@ tu_CmdBlitImage(VkCommandBuffer commandBuffer,
 static VkFormat
 copy_format(VkFormat format)
 {
-   switch (vk_format_get_blocksizebits(format)) {
-   case 8:  return VK_FORMAT_R8_UINT;
-   case 16: return VK_FORMAT_R16_UINT;
-   case 32: return VK_FORMAT_R32_UINT;
-   case 64: return VK_FORMAT_R32G32_UINT;
-   case 96: return VK_FORMAT_R32G32B32_UINT;
-   case 128:return VK_FORMAT_R32G32B32A32_UINT;
+   switch (vk_format_get_blocksize(format)) {
+   case 1: return VK_FORMAT_R8_UINT;
+   case 2: return VK_FORMAT_R16_UINT;
+   case 4: return VK_FORMAT_R32_UINT;
+   case 8: return VK_FORMAT_R32G32_UINT;
+   case 12:return VK_FORMAT_R32G32B32_UINT;
+   case 16:return VK_FORMAT_R32G32B32A32_UINT;
    default:
       unreachable("unhandled format size");
    }
