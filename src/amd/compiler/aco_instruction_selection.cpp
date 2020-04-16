@@ -3825,6 +3825,29 @@ unsigned calculate_lds_alignment(isel_context *ctx, unsigned const_offset)
 }
 
 
+aco_opcode get_buffer_store_op(bool smem, unsigned bytes)
+{
+   switch (bytes) {
+   case 1:
+      assert(!smem);
+      return aco_opcode::buffer_store_byte;
+   case 2:
+      assert(!smem);
+      return aco_opcode::buffer_store_short;
+   case 4:
+      return smem ? aco_opcode::s_buffer_store_dword : aco_opcode::buffer_store_dword;
+   case 8:
+      return smem ? aco_opcode::s_buffer_store_dwordx2 : aco_opcode::buffer_store_dwordx2;
+   case 12:
+      assert(!smem);
+      return aco_opcode::buffer_store_dwordx3;
+   case 16:
+      return smem ? aco_opcode::s_buffer_store_dwordx4 : aco_opcode::buffer_store_dwordx4;
+   }
+   unreachable("Unexpected store size");
+   return aco_opcode::num_opcodes;
+}
+
 void split_buffer_store(isel_context *ctx, nir_intrinsic_instr *instr, bool smem, RegType dst_type,
                         Temp data, unsigned writemask, int swizzle_element_size,
                         unsigned *write_count, Temp *write_datas, unsigned *offsets)
@@ -3940,7 +3963,7 @@ void emit_single_mubuf_store(isel_context *ctx, Temp descriptor, Temp voffset, T
    assert(vdata.size() >= 1 && vdata.size() <= 4);
 
    Builder bld(ctx->program, ctx->block);
-   aco_opcode op = (aco_opcode) ((unsigned) aco_opcode::buffer_store_dword + vdata.size() - 1);
+   aco_opcode op = get_buffer_store_op(false, vdata.bytes());
    const_offset = resolve_excess_vmem_const_offset(bld, voffset, const_offset);
 
    Operand voffset_op = voffset.id() ? Operand(as_vgpr(ctx, voffset)) : Operand(v1);
@@ -6122,38 +6145,12 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
                       data, writemask, 16, &write_count, write_datas, offsets);
 
    for (unsigned i = 0; i < write_count; i++) {
-      aco_opcode vmem_op, smem_op = aco_opcode::last_opcode;
-      switch (write_datas[i].bytes()) {
-         case 1:
-            vmem_op = aco_opcode::buffer_store_byte;
-            break;
-         case 2:
-            vmem_op = aco_opcode::buffer_store_short;
-            break;
-         case 4:
-            vmem_op = aco_opcode::buffer_store_dword;
-            smem_op = aco_opcode::s_buffer_store_dword;
-            break;
-         case 8:
-            vmem_op = aco_opcode::buffer_store_dwordx2;
-            smem_op = aco_opcode::s_buffer_store_dwordx2;
-            break;
-         case 12:
-            vmem_op = aco_opcode::buffer_store_dwordx3;
-            assert(!smem && ctx->options->chip_class > GFX6);
-            break;
-         case 16:
-            vmem_op = aco_opcode::buffer_store_dwordx4;
-            smem_op = aco_opcode::s_buffer_store_dwordx4;
-            break;
-         default:
-            unreachable("Store SSBO not implemented for this size.");
-      }
-      if (ctx->stage == fragment_fs)
-         smem_op = aco_opcode::p_fs_buffer_store_smem;
+      aco_opcode op = get_buffer_store_op(smem, write_datas[i].bytes());
+      if (smem && ctx->stage == fragment_fs)
+         op = aco_opcode::p_fs_buffer_store_smem;
 
       if (smem) {
-         aco_ptr<SMEM_instruction> store{create_instruction<SMEM_instruction>(smem_op, Format::SMEM, 3, 0)};
+         aco_ptr<SMEM_instruction> store{create_instruction<SMEM_instruction>(op, Format::SMEM, 3, 0)};
          store->operands[0] = Operand(rsrc);
          if (offsets[i]) {
             Temp off = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
@@ -6162,7 +6159,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          } else {
             store->operands[1] = Operand(offset);
          }
-         if (smem_op != aco_opcode::p_fs_buffer_store_smem)
+         if (op != aco_opcode::p_fs_buffer_store_smem)
             store->operands[1].setFixed(m0);
          store->operands[2] = Operand(write_datas[i]);
          store->glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
@@ -6171,12 +6168,12 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          store->barrier = barrier_buffer;
          ctx->block->instructions.emplace_back(std::move(store));
          ctx->program->wb_smem_l1_on_end = true;
-         if (smem_op == aco_opcode::p_fs_buffer_store_smem) {
+         if (op == aco_opcode::p_fs_buffer_store_smem) {
             ctx->block->kind |= block_kind_needs_lowering;
             ctx->program->needs_exact = true;
          }
       } else {
-         aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(vmem_op, Format::MUBUF, 4, 0)};
+         aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, 0)};
          store->operands[0] = Operand(rsrc);
          store->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
          store->operands[2] = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
@@ -6394,26 +6391,7 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
       } else {
          assert(ctx->options->chip_class == GFX6);
 
-         aco_opcode op;
-         switch (write_datas[i].bytes()) {
-         case 1:
-            op = aco_opcode::buffer_store_byte;
-            break;
-         case 2:
-            op = aco_opcode::buffer_store_short;
-            break;
-         case 4:
-            op = aco_opcode::buffer_store_dword;
-            break;
-         case 8:
-            op = aco_opcode::buffer_store_dwordx2;
-            break;
-         case 16:
-            op = aco_opcode::buffer_store_dwordx4;
-            break;
-         default:
-            unreachable("store_global not implemented for this size.");
-         }
+         aco_opcode op = get_buffer_store_op(false, write_datas[i].bytes());
 
          Temp rsrc = get_gfx6_global_rsrc(bld, addr);
 
@@ -6813,30 +6791,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
                       16, &write_count, write_datas, offsets);
 
    for (unsigned i = 0; i < write_count; i++) {
-      aco_opcode op;
-      switch (write_datas[i].bytes()) {
-         case 1:
-            op = aco_opcode::buffer_store_byte;
-            break;
-         case 2:
-            op = aco_opcode::buffer_store_short;
-            break;
-         case 4:
-            op = aco_opcode::buffer_store_dword;
-            break;
-         case 8:
-            op = aco_opcode::buffer_store_dwordx2;
-            break;
-         case 12:
-            op = aco_opcode::buffer_store_dwordx3;
-            break;
-         case 16:
-            op = aco_opcode::buffer_store_dwordx4;
-            break;
-         default:
-            unreachable("Invalid data size for nir_intrinsic_store_scratch.");
-      }
-
+      aco_opcode op = get_buffer_store_op(false, write_datas[i].bytes());
       bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true);
    }
 }
