@@ -3606,37 +3606,6 @@ Temp load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
    return dst;
 }
 
-Temp extract_subvector(isel_context *ctx, Temp data, unsigned start, unsigned size, RegType type)
-{
-   if (start == 0 && size == data.size())
-      return type == RegType::vgpr ? as_vgpr(ctx, data) : data;
-
-   unsigned size_hint = 1;
-   auto it = ctx->allocated_vec.find(data.id());
-   if (it != ctx->allocated_vec.end())
-      size_hint = it->second[0].size();
-   if (size % size_hint || start % size_hint)
-      size_hint = 1;
-
-   start /= size_hint;
-   size /= size_hint;
-
-   Temp elems[size];
-   for (unsigned i = 0; i < size; i++)
-      elems[i] = emit_extract_vector(ctx, data, start + i, RegClass(type, size_hint));
-
-   if (size == 1)
-      return type == RegType::vgpr ? as_vgpr(ctx, elems[0]) : elems[0];
-
-   aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, size, 1)};
-   for (unsigned i = 0; i < size; i++)
-      vec->operands[i] = Operand(elems[i]);
-   Temp res = {ctx->program->allocateId(), RegClass(type, size * size_hint)};
-   vec->definitions[0] = Definition(res);
-   ctx->block->instructions.emplace_back(std::move(vec));
-   return res;
-}
-
 void split_store_data(isel_context *ctx, RegType dst_type, unsigned count, Temp *dst, unsigned *offsets, Temp src)
 {
    if (!count)
@@ -3990,35 +3959,17 @@ void store_vmem_mubuf(isel_context *ctx, Temp src, Temp descriptor, Temp voffset
    Builder bld(ctx->program, ctx->block);
    assert(elem_size_bytes == 4 || elem_size_bytes == 8);
    assert(write_mask);
+   write_mask = widen_mask(write_mask, elem_size_bytes);
 
-   if (elem_size_bytes == 8) {
-      elem_size_bytes = 4;
-      write_mask = widen_mask(write_mask, 2);
-   }
+   unsigned write_count = 0;
+   Temp write_datas[32];
+   unsigned offsets[32];
+   split_buffer_store(ctx, NULL, false, RegType::vgpr, src, write_mask,
+                      allow_combining ? 16 : 4, &write_count, write_datas, offsets);
 
-   while (write_mask) {
-      int start = 0;
-      int count = 0;
-      u_bit_scan_consecutive_range(&write_mask, &start, &count);
-      assert(count > 0);
-      assert(start >= 0);
-
-      while (count > 0) {
-         unsigned sub_count = allow_combining ? MIN2(count, 4) : 1;
-         unsigned const_offset = (unsigned) start * elem_size_bytes + base_const_offset;
-
-         /* GFX6 doesn't have buffer_store_dwordx3, so make sure not to emit that here either. */
-         if (unlikely(ctx->program->chip_class == GFX6 && sub_count == 3))
-            sub_count = 2;
-
-         Temp elem = extract_subvector(ctx, src, start, sub_count, RegType::vgpr);
-         emit_single_mubuf_store(ctx, descriptor, voffset, soffset, elem, const_offset, reorder, slc);
-
-         count -= sub_count;
-         start += sub_count;
-      }
-
-      assert(count == 0);
+   for (unsigned i = 0; i < write_count; i++) {
+      unsigned const_offset = offsets[i] + base_const_offset;
+      emit_single_mubuf_store(ctx, descriptor, voffset, soffset, write_datas[i], const_offset, reorder, slc);
    }
 }
 
