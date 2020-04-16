@@ -6102,7 +6102,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    Builder bld(ctx->program, ctx->block);
    Temp data = get_ssa_temp(ctx, instr->src[0].ssa);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
-   unsigned writemask = nir_intrinsic_write_mask(instr);
+   unsigned writemask = widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
    Temp offset = get_ssa_temp(ctx, instr->src[2].ssa);
 
    Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
@@ -6115,66 +6115,15 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
       offset = bld.as_uniform(offset);
    bool smem_nonfs = smem && ctx->stage != fragment_fs;
 
-   while (writemask) {
-      int start, count;
-      u_bit_scan_consecutive_range(&writemask, &start, &count);
-      if (count == 3 && (smem || ctx->options->chip_class == GFX6)) {
-         /* GFX6 doesn't support storing vec3, split it. */
-         writemask |= 1u << (start + 2);
-         count = 2;
-      }
-      int num_bytes = count * elem_size_bytes;
+   unsigned write_count = 0;
+   Temp write_datas[32];
+   unsigned offsets[32];
+   split_buffer_store(ctx, instr, smem, smem_nonfs ? RegType::sgpr : (smem ? data.type() : RegType::vgpr),
+                      data, writemask, 16, &write_count, write_datas, offsets);
 
-      /* dword or larger stores have to be dword-aligned */
-      if (elem_size_bytes < 4 && num_bytes > 2) {
-         // TODO: improve alignment check of sub-dword stores
-         unsigned count_new = 2 / elem_size_bytes;
-         writemask |= ((1 << (count - count_new)) - 1) << (start + count_new);
-         count = count_new;
-         num_bytes = 2;
-      }
-
-      if (num_bytes > 16) {
-         assert(elem_size_bytes == 8);
-         writemask |= (((count - 2) << 1) - 1) << (start + 2);
-         count = 2;
-         num_bytes = 16;
-      }
-
-      Temp write_data;
-      if (elem_size_bytes < 4) {
-         if (data.type() == RegType::sgpr) {
-            data = as_vgpr(ctx, data);
-            emit_split_vector(ctx, data, 4 * data.size() / elem_size_bytes);
-         }
-         RegClass rc = RegClass(RegType::vgpr, elem_size_bytes).as_subdword();
-         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
-         for (int i = 0; i < count; i++)
-            vec->operands[i] = Operand(emit_extract_vector(ctx, data, start + i, rc));
-         write_data = bld.tmp(RegClass(RegType::vgpr, num_bytes).as_subdword());
-         vec->definitions[0] = Definition(write_data);
-         bld.insert(std::move(vec));
-      } else if (count != instr->num_components) {
-         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
-         for (int i = 0; i < count; i++) {
-            Temp elem = emit_extract_vector(ctx, data, start + i, RegClass(data.type(), elem_size_bytes / 4));
-            vec->operands[i] = Operand(smem_nonfs ? bld.as_uniform(elem) : elem);
-         }
-         write_data = bld.tmp(!smem ? RegType::vgpr : smem_nonfs ? RegType::sgpr : data.type(), count * elem_size_bytes / 4);
-         vec->definitions[0] = Definition(write_data);
-         ctx->block->instructions.emplace_back(std::move(vec));
-      } else if (!smem && data.type() != RegType::vgpr) {
-         assert(num_bytes % 4 == 0);
-         write_data = bld.copy(bld.def(RegType::vgpr, num_bytes / 4), data);
-      } else if (smem_nonfs && data.type() == RegType::vgpr) {
-         assert(num_bytes % 4 == 0);
-         write_data = bld.as_uniform(data);
-      } else {
-         write_data = data;
-      }
-
+   for (unsigned i = 0; i < write_count; i++) {
       aco_opcode vmem_op, smem_op = aco_opcode::last_opcode;
-      switch (num_bytes) {
+      switch (write_datas[i].bytes()) {
          case 1:
             vmem_op = aco_opcode::buffer_store_byte;
             break;
@@ -6206,16 +6155,16 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
       if (smem) {
          aco_ptr<SMEM_instruction> store{create_instruction<SMEM_instruction>(smem_op, Format::SMEM, 3, 0)};
          store->operands[0] = Operand(rsrc);
-         if (start) {
+         if (offsets[i]) {
             Temp off = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
-                                offset, Operand(start * elem_size_bytes));
+                                offset, Operand(offsets[i]));
             store->operands[1] = Operand(off);
          } else {
             store->operands[1] = Operand(offset);
          }
          if (smem_op != aco_opcode::p_fs_buffer_store_smem)
             store->operands[1].setFixed(m0);
-         store->operands[2] = Operand(write_data);
+         store->operands[2] = Operand(write_datas[i]);
          store->glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
          store->dlc = false;
          store->disable_wqm = true;
@@ -6231,8 +6180,8 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          store->operands[0] = Operand(rsrc);
          store->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
          store->operands[2] = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
-         store->operands[3] = Operand(write_data);
-         store->offset = start * elem_size_bytes;
+         store->operands[3] = Operand(write_datas[i]);
+         store->offset = offsets[i];
          store->offen = (offset.type() == RegType::vgpr);
          store->glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
          store->dlc = false;
