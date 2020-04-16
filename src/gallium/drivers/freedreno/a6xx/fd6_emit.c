@@ -698,15 +698,13 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 static struct fd_ringbuffer *
 build_lrz(struct fd6_emit *emit, bool binning_pass)
 {
-	struct fd6_blend_stateobj *blend = fd6_blend_stateobj(emit->ctx->blend);
-	struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(emit->ctx->zsa);
-	struct pipe_framebuffer_state *pfb = &emit->ctx->batch->framebuffer;
+	struct fd_context *ctx = emit->ctx;
+	struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
+	struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(ctx->zsa);
+	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
 	struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
 	uint32_t gras_lrz_cntl = zsa->gras_lrz_cntl;
 	uint32_t rb_lrz_cntl = zsa->rb_lrz_cntl;
-
-	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(emit->ctx->batch->submit,
-			16, FD_RINGBUFFER_STREAMING);
 
 	if (zsa->invalidate_lrz) {
 		rsc->lrz_valid = false;
@@ -718,6 +716,18 @@ build_lrz(struct fd6_emit *emit, bool binning_pass)
 	} else if (binning_pass && blend->lrz_write && zsa->lrz_write) {
 		gras_lrz_cntl |= A6XX_GRAS_LRZ_CNTL_LRZ_WRITE;
 	}
+
+	struct fd6_context *fd6_ctx = fd6_context(ctx);
+	if ((fd6_ctx->last.lrz[binning_pass].gras_lrz_cntl == gras_lrz_cntl) &&
+			(fd6_ctx->last.lrz[binning_pass].rb_lrz_cntl == rb_lrz_cntl) &&
+			!ctx->last.dirty)
+		return NULL;
+
+	fd6_ctx->last.lrz[binning_pass].gras_lrz_cntl = gras_lrz_cntl;
+	fd6_ctx->last.lrz[binning_pass].rb_lrz_cntl = rb_lrz_cntl;
+
+	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(ctx->batch->submit,
+			16, FD_RINGBUFFER_STREAMING);
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_CNTL, 1);
 	OUT_RING(ring, gras_lrz_cntl);
@@ -970,11 +980,15 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *state;
 
 		state = build_lrz(emit, false);
-		fd6_emit_take_group(emit, state, FD6_GROUP_LRZ, ENABLE_DRAW);
+		if (state) {
+			fd6_emit_take_group(emit, state, FD6_GROUP_LRZ, ENABLE_DRAW);
+		}
 
 		state = build_lrz(emit, true);
-		fd6_emit_take_group(emit, state,
-				FD6_GROUP_LRZ_BINNING, CP_SET_DRAW_STATE__0_BINNING);
+		if (state) {
+			fd6_emit_take_group(emit, state,
+					FD6_GROUP_LRZ_BINNING, CP_SET_DRAW_STATE__0_BINNING);
+		}
 	}
 
 	if (dirty & FD_DIRTY_STENCIL_REF) {

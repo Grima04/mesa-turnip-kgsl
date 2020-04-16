@@ -105,6 +105,17 @@ struct fd6_context {
 		uint32_t PC_UNKNOWN_9805;
 		uint32_t SP_UNKNOWN_A0F8;
 	} magic;
+
+
+	struct {
+		/* previous binning/draw lrz state, which is a function of multiple
+		 * gallium stateobjs, but doesn't necessarily change as frequently:
+		 */
+		struct {
+			uint32_t gras_lrz_cntl;
+			uint32_t rb_lrz_cntl;
+		} lrz[2];
+	} last;
 };
 
 static inline struct fd6_context *
