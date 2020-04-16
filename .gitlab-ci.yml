@@ -214,7 +214,7 @@ arm_test:
     WINDOWS_IMAGE: "$CI_REGISTRY_IMAGE/windows/x64_build:$WINDOWS_TAG"
     WINDOWS_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/windows/x64_build:$WINDOWS_TAG"
 
-.windows_build_vs2019:
+windows_build_vs2019:
   extends:
     - .container
     - .windows-docker-vs2019
@@ -233,7 +233,7 @@ arm_test:
   extends: .windows-docker-vs2019
   image: "$WINDOWS_IMAGE"
   needs:
-    - .windows_build_vs2019
+    - windows_build_vs2019
 
 # BUILD
 
@@ -438,7 +438,7 @@ meson-clang:
     CC: "ccache clang-9"
     CXX: "ccache clang++-9"
 
-.meson-windows-vs2019:
+meson-windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
