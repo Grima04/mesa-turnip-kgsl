@@ -525,6 +525,7 @@ need_input_attachment_state(const struct anv_render_pass_attachment *att)
 static void
 transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
                         const struct anv_image *image,
+                        uint32_t base_layer, uint32_t layer_count,
                         VkImageLayout initial_layout,
                         VkImageLayout final_layout)
 {
@@ -560,11 +561,11 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
    if (final_needs_depth && !initial_depth_valid) {
       assert(initial_hiz_valid);
       anv_image_hiz_op(cmd_buffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
-                       0, 0, 1, ISL_AUX_OP_FULL_RESOLVE);
+                       0, base_layer, layer_count, ISL_AUX_OP_FULL_RESOLVE);
    } else if (final_needs_hiz && !initial_hiz_valid) {
       assert(initial_depth_valid);
       anv_image_hiz_op(cmd_buffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
-                       0, 0, 1, ISL_AUX_OP_AMBIGUATE);
+                       0, base_layer, layer_count, ISL_AUX_OP_AMBIGUATE);
    }
 }
 
@@ -2348,6 +2349,7 @@ void genX(CmdPipelineBarrier)(
 
       if (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
          transition_depth_buffer(cmd_buffer, image,
+                                 base_layer, layer_count,
                                  pImageMemoryBarriers[i].oldLayout,
                                  pImageMemoryBarriers[i].newLayout);
       }
@@ -5035,6 +5037,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
 
       if (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
          transition_depth_buffer(cmd_buffer, image,
+                                 base_layer, layer_count,
                                  att_state->current_layout, target_layout);
          att_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, image,
@@ -5155,12 +5158,10 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       } else if (att_state->pending_clear_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
                                                      VK_IMAGE_ASPECT_STENCIL_BIT)) {
          if (att_state->fast_clear && !is_multiview) {
-            /* We currently only support HiZ for single-layer images */
+            /* We currently only support HiZ for single-LOD images */
             if (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
                assert(iview->image->planes[0].aux_usage == ISL_AUX_USAGE_HIZ);
                assert(iview->planes[0].isl.base_level == 0);
-               assert(iview->planes[0].isl.base_array_layer == 0);
-               assert(fb->layers == 1);
             }
 
             anv_image_hiz_clear(cmd_buffer, image,
@@ -5437,6 +5438,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
           * able to handle.
           */
          transition_depth_buffer(cmd_buffer, src_iview->image,
+                                 src_iview->planes[0].isl.base_array_layer,
+                                 fb->layers,
                                  src_state->current_layout,
                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
          src_state->aux_usage =
@@ -5462,6 +5465,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
             dst_initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
          transition_depth_buffer(cmd_buffer, dst_iview->image,
+                                 dst_iview->planes[0].isl.base_array_layer,
+                                 fb->layers,
                                  dst_initial_layout,
                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
          dst_state->aux_usage =
@@ -5649,6 +5654,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
 
       if (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
          transition_depth_buffer(cmd_buffer, image,
+                                 base_layer, layer_count,
                                  att_state->current_layout, target_layout);
       }
 

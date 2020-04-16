@@ -388,12 +388,6 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (image->array_size > 1) {
-         anv_perf_warn(device, image,
-                       "Implement multi-arrayLayer HiZ clears and resolves");
-         return VK_SUCCESS;
-      }
-
       if (device->info.gen == 8 && image->samples > 1) {
          anv_perf_warn(device, image, "Enable gen8 multisampled HiZ");
          return VK_SUCCESS;
