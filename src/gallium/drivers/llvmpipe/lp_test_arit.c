@@ -468,9 +468,11 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
          }
 
          if (test->ref == &expf && util_inf_sign(testval) == -1) {
-            /* XXX: 64bits MSVCRT's expf(-inf) returns -inf instead of 0 */
+            /* Some older 64-bit MSVCRT versions return -inf instead of 0
+	     * for expf(-inf). As detecting the VC runtime version is
+	     * non-trivial, just ignore the test result. */
 #if defined(_MSC_VER) && defined(_WIN64)
-            expected_pass = FALSE;
+            expected_pass = pass;
 #endif
          }
 
