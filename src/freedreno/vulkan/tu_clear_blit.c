@@ -247,22 +247,23 @@ static void
 r2d_setup_common(struct tu_cmd_buffer *cmd,
                  struct tu_cs *cs,
                  VkFormat vk_format,
+                 VkImageAspectFlags aspect_mask,
                  enum a6xx_rotation rotation,
                  bool clear,
-                 uint8_t mask,
                  bool scissor)
 {
    enum a6xx_format format = tu6_base_format(vk_format);
    enum a6xx_2d_ifmt ifmt = format_to_ifmt(format);
    uint32_t unknown_8c01 = 0;
 
-   if (format == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8) {
-      /* preserve depth channels */
-      if (mask == 0x8)
-         unknown_8c01 = 0x00084001;
+   /* note: the only format with partial clearing is D24S8 */
+   if (vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
       /* preserve stencil channel */
-      if (mask == 0x7)
+      if (aspect_mask == VK_IMAGE_ASPECT_DEPTH_BIT)
          unknown_8c01 = 0x08000041;
+      /* preserve depth channels */
+      if (aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT)
+         unknown_8c01 = 0x00084001;
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_8C01, 1);
@@ -299,13 +300,13 @@ static void
 r2d_setup(struct tu_cmd_buffer *cmd,
           struct tu_cs *cs,
           VkFormat vk_format,
+          VkImageAspectFlags aspect_mask,
           enum a6xx_rotation rotation,
-          bool clear,
-          uint8_t mask)
+          bool clear)
 {
    tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
 
-   r2d_setup_common(cmd, cs, vk_format, rotation, clear, mask, false);
+   r2d_setup_common(cmd, cs, vk_format, aspect_mask, rotation, clear, false);
 }
 
 static void
@@ -759,13 +760,30 @@ r3d_dst_buffer(struct tu_cs *cs, VkFormat vk_format, uint64_t va, uint32_t pitch
    tu_cs_emit_regs(cs, A6XX_RB_RENDER_CNTL());
 }
 
+static uint8_t
+aspect_write_mask(VkFormat vk_format, VkImageAspectFlags aspect_mask)
+{
+   uint8_t mask = 0xf;
+   assert(aspect_mask);
+   /* note: the only format with partial writing is D24S8,
+    * clear/blit uses the _AS_R8G8B8A8 format to access it
+    */
+   if (vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
+      if (aspect_mask == VK_IMAGE_ASPECT_DEPTH_BIT)
+         mask = 0x7;
+      if (aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT)
+         mask = 0x8;
+   }
+   return mask;
+}
+
 static void
 r3d_setup(struct tu_cmd_buffer *cmd,
           struct tu_cs *cs,
           VkFormat vk_format,
+          VkImageAspectFlags aspect_mask,
           enum a6xx_rotation rotation,
-          bool clear,
-          uint8_t mask)
+          bool clear)
 {
    if (!cmd->state.pass) {
       tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
@@ -810,7 +828,8 @@ r3d_setup(struct tu_cmd_buffer *cmd,
                         .color_sint = vk_format_is_sint(vk_format),
                         .color_uint = vk_format_is_uint(vk_format)));
 
-   tu_cs_emit_regs(cs, A6XX_RB_MRT_CONTROL(0, .component_enable = mask));
+   tu_cs_emit_regs(cs, A6XX_RB_MRT_CONTROL(0,
+      .component_enable = aspect_write_mask(vk_format, aspect_mask)));
    tu_cs_emit_regs(cs, A6XX_RB_SRGB_CNTL(vk_format_is_srgb(vk_format)));
    tu_cs_emit_regs(cs, A6XX_SP_SRGB_CNTL(vk_format_is_srgb(vk_format)));
 }
@@ -849,9 +868,9 @@ struct blit_ops {
    void (*setup)(struct tu_cmd_buffer *cmd,
                  struct tu_cs *cs,
                  VkFormat vk_format,
+                 VkImageAspectFlags aspect_mask,
                  enum a6xx_rotation rotation,
-                 bool clear,
-                 uint8_t mask);
+                 bool clear);
    void (*run)(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
 };
 
@@ -970,15 +989,6 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
       layers = info->dstSubresource.layerCount;
    }
 
-   uint8_t mask = 0xf;
-   if (dst_image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
-      assert(info->srcSubresource.aspectMask == info->dstSubresource.aspectMask);
-      if (info->dstSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT)
-         mask = 0x7;
-      if (info->dstSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
-         mask = 0x8;
-   }
-
    /* BC1_RGB_* formats need to have their last components overriden with 1
     * when sampling, which is normally handled with the texture descriptor
     * swizzle. The 2d path can't handle that, so use the 3d path.
@@ -997,7 +1007,8 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
     * figure out why (should be able to pass all tests with only shader path)
     */
 
-   ops->setup(cmd, cs, dst_image->vk_format, rotate[mirror_y][mirror_x], false, mask);
+   ops->setup(cmd, cs, dst_image->vk_format, info->dstSubresource.aspectMask,
+              rotate[mirror_y][mirror_x], false);
 
    if (ops == &r3d_ops) {
       r3d_coords_raw(cs, false, (float[]) {
@@ -1105,19 +1116,11 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
    VkFormat src_format = dst_image->vk_format;
    const struct blit_ops *ops = &r2d_ops;
 
-   uint8_t mask = 0xf;
-
-   if (dst_image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
-      switch (info->imageSubresource.aspectMask) {
-      case VK_IMAGE_ASPECT_STENCIL_BIT:
-         src_format = VK_FORMAT_R8_UNORM; /* changes how src buffer is interpreted */
-         mask = 0x8;
-         ops = &r3d_ops;
-         break;
-      case VK_IMAGE_ASPECT_DEPTH_BIT:
-         mask = 0x7;
-         break;
-      }
+   /* special case for buffer to stencil */
+   if (dst_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+       info->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      src_format = VK_FORMAT_R8_UNORM;
+      ops = &r3d_ops;
    }
 
    VkOffset3D offset = info->imageOffset;
@@ -1134,7 +1137,7 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
    uint32_t pitch = src_width * vk_format_get_blocksize(src_format);
    uint32_t layer_size = src_height * pitch;
 
-   ops->setup(cmd, cs, dst_format, ROTATE_0, false, mask);
+   ops->setup(cmd, cs, dst_format, info->imageSubresource.aspectMask, ROTATE_0, false);
 
    struct tu_image_view dst;
    tu_image_view_blit2(&dst, dst_image, dst_format, &info->imageSubresource, offset.z, false);
@@ -1213,7 +1216,7 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
    uint32_t pitch = dst_width * vk_format_get_blocksize(dst_format);
    uint32_t layer_size = pitch * dst_height;
 
-   ops->setup(cmd, cs, dst_format, ROTATE_0, false, 0xf);
+   ops->setup(cmd, cs, dst_format, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, false);
 
    struct tu_image_view src;
    tu_image_view_blit2(&src, src_image, src_format, &info->imageSubresource, offset.z, stencil_read);
@@ -1295,14 +1298,6 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 {
    const struct blit_ops *ops = &r2d_ops;
    struct tu_cs *cs = &cmd->cs;
-
-   uint8_t mask = 0xf;
-   if (dst_image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
-      if (info->dstSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT)
-         mask = 0x7;
-      if (info->dstSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
-         mask = 0x8;
-   }
 
    if (dst_image->samples > 1)
       ops = &r3d_ops;
@@ -1429,7 +1424,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu_image_view_blit2(&staging, &staging_image, src_format,
                           &staging_subresource, 0, false);
 
-      ops->setup(cmd, cs, src_format, ROTATE_0, false, mask);
+      ops->setup(cmd, cs, src_format, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, false);
       coords(ops, cs, &staging_offset, &src_offset, &extent);
 
       for (uint32_t i = 0; i < info->extent.depth; i++) {
@@ -1447,7 +1442,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu_image_view_blit2(&staging, &staging_image, dst_format,
                           &staging_subresource, 0, false);
 
-      ops->setup(cmd, cs, dst_format, ROTATE_0, false, mask);
+      ops->setup(cmd, cs, dst_format, info->dstSubresource.aspectMask, ROTATE_0, false);
       coords(ops, cs, &dst_offset, &staging_offset, &extent);
 
       for (uint32_t i = 0; i < info->extent.depth; i++) {
@@ -1459,7 +1454,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu_image_view_blit2(&dst, dst_image, format, &info->dstSubresource, dst_offset.z, false);
       tu_image_view_blit2(&src, src_image, format, &info->srcSubresource, src_offset.z, false);
 
-      ops->setup(cmd, cs, format, ROTATE_0, false, mask);
+      ops->setup(cmd, cs, format, info->dstSubresource.aspectMask, ROTATE_0, false);
       coords(ops, cs, &dst_offset, &src_offset, &extent);
 
       for (uint32_t i = 0; i < info->extent.depth; i++) {
@@ -1502,7 +1497,7 @@ copy_buffer(struct tu_cmd_buffer *cmd,
    VkFormat format = block_size == 4 ? VK_FORMAT_R32_UINT : VK_FORMAT_R8_UNORM;
    uint64_t blocks = size / block_size;
 
-   ops->setup(cmd, cs, format, ROTATE_0, false, 0xf);
+   ops->setup(cmd, cs, format, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, false);
 
    while (blocks) {
       uint32_t src_x = (src_va & 63) / block_size;
@@ -1585,7 +1580,7 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
    uint64_t dst_va = tu_buffer_iova(buffer) + dstOffset;
    uint32_t blocks = fillSize / 4;
 
-   ops->setup(cmd, cs, VK_FORMAT_R32_UINT, ROTATE_0, true, 0xf);
+   ops->setup(cmd, cs, VK_FORMAT_R32_UINT, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, true);
    ops->clear_value(cs, VK_FORMAT_R32_UINT, &(VkClearValue){.color = {.uint32[0] = data}});
 
    while (blocks) {
@@ -1619,7 +1614,7 @@ tu_CmdResolveImage(VkCommandBuffer commandBuffer,
    tu_bo_list_add(&cmd->bo_list, src_image->bo, MSM_SUBMIT_BO_READ);
    tu_bo_list_add(&cmd->bo_list, dst_image->bo, MSM_SUBMIT_BO_WRITE);
 
-   ops->setup(cmd, cs, dst_image->vk_format, ROTATE_0, false, 0xf);
+   ops->setup(cmd, cs, dst_image->vk_format, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, false);
 
    for (uint32_t i = 0; i < regionCount; ++i) {
       const VkImageResolve *info = &pRegions[i];
@@ -1657,7 +1652,7 @@ tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
 
    assert(src->image->vk_format == dst->image->vk_format);
 
-   ops->setup(cmd, cs, dst->image->vk_format, ROTATE_0, false, 0xf);
+   ops->setup(cmd, cs, dst->image->vk_format, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, false);
    ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
 
    for (uint32_t i = 0; i < layers; i++) {
@@ -1685,18 +1680,9 @@ clear_image(struct tu_cmd_buffer *cmd,
       assert(range->baseArrayLayer == 0);
    }
 
-   uint8_t mask = 0xf;
-   if (image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
-      mask = 0;
-      if (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-         mask |= 0x7;
-      if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-         mask |= 0x8;
-   }
-
    const struct blit_ops *ops = image->samples > 1 ? &r3d_ops : &r2d_ops;
 
-   ops->setup(cmd, cs, format, ROTATE_0, true, mask);
+   ops->setup(cmd, cs, format, range->aspectMask, ROTATE_0, true);
    ops->clear_value(cs, image->vk_format, clear_value);
 
    for (unsigned j = 0; j < level_count; j++) {
@@ -1811,18 +1797,10 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
          if (a == VK_ATTACHMENT_UNUSED)
                continue;
 
-         uint8_t mask = 0xf;
-         if (cmd->state.pass->attachments[a].format == VK_FORMAT_D24_UNORM_S8_UINT) {
-            if (!(attachments[j].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
-               mask &= ~0x7;
-            if (!(attachments[j].aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT))
-               mask &= ~0x8;
-         }
-
          const struct tu_image_view *iview =
             cmd->state.framebuffer->attachments[a].attachment;
 
-         ops->setup(cmd, cs, iview->image->vk_format, ROTATE_0, true, mask);
+         ops->setup(cmd, cs, iview->image->vk_format, attachments[j].aspectMask, ROTATE_0, true);
          ops->clear_value(cs, iview->image->vk_format, &attachments[j].clearValue);
 
          /* Wait for the flushes we triggered manually to complete */
@@ -2061,19 +2039,17 @@ static void
 tu_emit_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                               struct tu_cs *cs,
                               uint32_t attachment,
-                              uint8_t component_mask,
+                              VkImageAspectFlags mask,
                               const VkClearValue *value)
 {
    VkFormat vk_format = cmd->state.pass->attachments[attachment].format;
-   /* note: component_mask is 0x7 for depth and 0x8 for stencil
-    * because D24S8 is cleared with AS_R8G8B8A8 format
-    */
+
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
    tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(tu6_base_format(vk_format)));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_INFO_GMEM | A6XX_RB_BLIT_INFO_CLEAR_MASK(component_mask));
+   tu_cs_emit_regs(cs, A6XX_RB_BLIT_INFO(.gmem = 1,
+      .clear_mask = aspect_write_mask(vk_format, mask)));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_BASE_GMEM, 1);
    tu_cs_emit(cs, cmd->state.pass->attachments[attachment].gmem_offset);
@@ -2121,15 +2097,7 @@ tu_clear_gmem_attachments(struct tu_cmd_buffer *cmd,
          if (a == VK_ATTACHMENT_UNUSED)
                continue;
 
-         unsigned clear_mask = 0xf;
-         if (cmd->state.pass->attachments[a].format == VK_FORMAT_D24_UNORM_S8_UINT) {
-            if (!(attachments[j].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
-               clear_mask &= ~0x7;
-            if (!(attachments[j].aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT))
-               clear_mask &= ~0x8;
-         }
-
-         tu_emit_clear_gmem_attachment(cmd, cs, a, clear_mask,
+         tu_emit_clear_gmem_attachment(cmd, cs, a, attachments[j].aspectMask,
                                        &attachments[j].clearValue);
       }
    }
@@ -2164,23 +2132,15 @@ tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
    const struct tu_image_view *iview = fb->attachments[a].attachment;
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
-   uint8_t mask = 0;
 
-   if (attachment->clear_mask == VK_IMAGE_ASPECT_COLOR_BIT)
-      mask = 0xf;
-   if (attachment->clear_mask & VK_IMAGE_ASPECT_DEPTH_BIT)
-      mask |= 0x7;
-   if (attachment->clear_mask & VK_IMAGE_ASPECT_STENCIL_BIT)
-      mask |= 0x8;
-
-   if (!mask)
+   if (!attachment->clear_mask)
       return;
 
    const struct blit_ops *ops = &r2d_ops;
    if (attachment->samples > 1)
       ops = &r3d_ops;
 
-   ops->setup(cmd, cs, attachment->format, ROTATE_0, true, mask);
+   ops->setup(cmd, cs, attachment->format, attachment->clear_mask, ROTATE_0, true);
    ops->coords(cs, &info->renderArea.offset, NULL, &info->renderArea.extent);
    ops->clear_value(cs, attachment->format, &info->pClearValues[a]);
 
@@ -2218,21 +2178,13 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
 {
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
-   unsigned clear_mask = 0;
 
-   if (attachment->clear_mask == VK_IMAGE_ASPECT_COLOR_BIT)
-      clear_mask = 0xf;
-   if (attachment->clear_mask & VK_IMAGE_ASPECT_DEPTH_BIT)
-      clear_mask |= 0x7;
-   if (attachment->clear_mask & VK_IMAGE_ASPECT_STENCIL_BIT)
-      clear_mask |= 0x8;
-
-   if (!clear_mask)
+   if (!attachment->clear_mask)
       return;
 
    tu_cs_emit_regs(cs, A6XX_RB_MSAA_CNTL(tu_msaa_samples(attachment->samples)));
 
-   tu_emit_clear_gmem_attachment(cmd, cs, a, clear_mask,
+   tu_emit_clear_gmem_attachment(cmd, cs, a, attachment->clear_mask,
                                  &info->pClearValues[a]);
 }
 
@@ -2360,7 +2312,7 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       return;
    }
 
-   r2d_setup_common(cmd, cs, dst->format, ROTATE_0, false, 0xf, true);
+   r2d_setup_common(cmd, cs, dst->format, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, false, true);
    r2d_dst(cs, iview, 0);
    r2d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
 
