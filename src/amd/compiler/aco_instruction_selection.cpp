@@ -6319,38 +6319,25 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
+   unsigned writemask = widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
 
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Temp addr = get_ssa_temp(ctx, instr->src[1].ssa);
+   bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
 
    if (ctx->options->chip_class >= GFX7)
       addr = as_vgpr(ctx, addr);
 
-   unsigned writemask = nir_intrinsic_write_mask(instr);
-   while (writemask) {
-      int start, count;
-      u_bit_scan_consecutive_range(&writemask, &start, &count);
-      if (count == 3 && ctx->options->chip_class == GFX6) {
-         /* GFX6 doesn't support storing vec3, split it. */
-         writemask |= 1u << (start + 2);
-         count = 2;
-      }
-      unsigned num_bytes = count * elem_size_bytes;
+   unsigned write_count = 0;
+   Temp write_datas[32];
+   unsigned offsets[32];
+   split_buffer_store(ctx, instr, false, RegType::vgpr, data, writemask,
+                      16, &write_count, write_datas, offsets);
 
-      Temp write_data = data;
-      if (count != instr->num_components) {
-         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
-         for (int i = 0; i < count; i++)
-            vec->operands[i] = Operand(emit_extract_vector(ctx, data, start + i, v1));
-         write_data = bld.tmp(RegType::vgpr, count);
-         vec->definitions[0] = Definition(write_data);
-         ctx->block->instructions.emplace_back(std::move(vec));
-      }
-
-      bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
-      unsigned offset = start * elem_size_bytes;
-
+   for (unsigned i = 0; i < write_count; i++) {
       if (ctx->options->chip_class >= GFX7) {
+         unsigned offset = offsets[i];
+         Temp store_addr = addr;
          if (offset > 0 && ctx->options->chip_class < GFX9) {
             Temp addr0 = bld.tmp(v1), addr1 = bld.tmp(v1);
             Temp new_addr0 = bld.tmp(v1), new_addr1 = bld.tmp(v1);
@@ -6363,14 +6350,20 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
                      Operand(0u), addr1,
                      carry).def(1).setHint(vcc);
 
-            addr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), new_addr0, new_addr1);
+            store_addr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), new_addr0, new_addr1);
 
             offset = 0;
          }
 
          bool global = ctx->options->chip_class >= GFX9;
          aco_opcode op;
-         switch (num_bytes) {
+         switch (write_datas[i].bytes()) {
+         case 1:
+            op = global ? aco_opcode::global_store_byte : aco_opcode::flat_store_byte;
+            break;
+         case 2:
+            op = global ? aco_opcode::global_store_short : aco_opcode::flat_store_short;
+            break;
          case 4:
             op = global ? aco_opcode::global_store_dword : aco_opcode::flat_store_dword;
             break;
@@ -6388,9 +6381,9 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
          }
 
          aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 3, 0)};
-         flat->operands[0] = Operand(addr);
+         flat->operands[0] = Operand(store_addr);
          flat->operands[1] = Operand(s1);
-         flat->operands[2] = Operand(data);
+         flat->operands[2] = Operand(write_datas[i]);
          flat->glc = glc;
          flat->dlc = false;
          flat->offset = offset;
@@ -6402,7 +6395,13 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
          assert(ctx->options->chip_class == GFX6);
 
          aco_opcode op;
-         switch (num_bytes) {
+         switch (write_datas[i].bytes()) {
+         case 1:
+            op = aco_opcode::buffer_store_byte;
+            break;
+         case 2:
+            op = aco_opcode::buffer_store_short;
+            break;
          case 4:
             op = aco_opcode::buffer_store_dword;
             break;
@@ -6422,10 +6421,10 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
          mubuf->operands[0] = Operand(rsrc);
          mubuf->operands[1] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
          mubuf->operands[2] = Operand(0u);
-         mubuf->operands[3] = Operand(write_data);
+         mubuf->operands[3] = Operand(write_datas[i]);
          mubuf->glc = glc;
          mubuf->dlc = false;
-         mubuf->offset = offset;
+         mubuf->offset = offsets[i];
          mubuf->addr64 = addr.type() == RegType::vgpr;
          mubuf->disable_wqm = true;
          mubuf->barrier = barrier_buffer;
