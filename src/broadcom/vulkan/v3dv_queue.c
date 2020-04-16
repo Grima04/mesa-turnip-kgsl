@@ -302,22 +302,6 @@ queue_submit_job(struct v3dv_queue *queue,
    return VK_SUCCESS;
 }
 
-static VkResult
-queue_submit_cmd_buffer(struct v3dv_queue *queue,
-                        struct v3dv_cmd_buffer *cmd_buffer,
-                        const VkSubmitInfo *pSubmit)
-{
-   list_for_each_entry_safe(struct v3dv_job, job,
-                            &cmd_buffer->submit_jobs, list_link) {
-      VkResult result = queue_submit_job(queue, job,
-                                         pSubmit->waitSemaphoreCount > 0);
-      if (result != VK_SUCCESS)
-         return result;
-   }
-
-   return VK_SUCCESS;
-}
-
 static void
 emit_noop_bin(struct v3dv_job *job)
 {
@@ -506,6 +490,27 @@ fail_fence:
 
 fail_job:
    return result;
+}
+
+static VkResult
+queue_submit_cmd_buffer(struct v3dv_queue *queue,
+                        struct v3dv_cmd_buffer *cmd_buffer,
+                        const VkSubmitInfo *pSubmit)
+{
+   assert(cmd_buffer);
+
+   if (list_is_empty(&cmd_buffer->submit_jobs))
+      return queue_submit_noop_job(queue, pSubmit);
+
+   list_for_each_entry_safe(struct v3dv_job, job,
+                            &cmd_buffer->submit_jobs, list_link) {
+      VkResult result = queue_submit_job(queue, job,
+                                         pSubmit->waitSemaphoreCount > 0);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return VK_SUCCESS;
 }
 
 static VkResult
