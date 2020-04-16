@@ -6798,46 +6798,29 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
 }
 
 void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
-   assert(instr->src[0].ssa->bit_size == 32 || instr->src[0].ssa->bit_size == 64);
    Builder bld(ctx->program, ctx->block);
    Temp rsrc = get_scratch_resource(ctx);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Temp offset = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
 
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
-   unsigned writemask = nir_intrinsic_write_mask(instr);
+   unsigned writemask = widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
 
-   while (writemask) {
-      int start, count;
-      u_bit_scan_consecutive_range(&writemask, &start, &count);
-      int num_bytes = count * elem_size_bytes;
+   unsigned write_count = 0;
+   Temp write_datas[32];
+   unsigned offsets[32];
+   split_buffer_store(ctx, instr, false, RegType::vgpr, data, writemask,
+                      16, &write_count, write_datas, offsets);
 
-      if (num_bytes > 16) {
-         assert(elem_size_bytes == 8);
-         writemask |= (((count - 2) << 1) - 1) << (start + 2);
-         count = 2;
-         num_bytes = 16;
-      }
-
-      // TODO: check alignment of sub-dword stores
-      // TODO: split 3 bytes. there is no store instruction for that
-
-      Temp write_data;
-      if (count != instr->num_components) {
-         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
-         for (int i = 0; i < count; i++) {
-            Temp elem = emit_extract_vector(ctx, data, start + i, RegClass(RegType::vgpr, elem_size_bytes / 4));
-            vec->operands[i] = Operand(elem);
-         }
-         write_data = bld.tmp(RegClass(RegType::vgpr, count * elem_size_bytes / 4));
-         vec->definitions[0] = Definition(write_data);
-         ctx->block->instructions.emplace_back(std::move(vec));
-      } else {
-         write_data = data;
-      }
-
+   for (unsigned i = 0; i < write_count; i++) {
       aco_opcode op;
-      switch (num_bytes) {
+      switch (write_datas[i].bytes()) {
+         case 1:
+            op = aco_opcode::buffer_store_byte;
+            break;
+         case 2:
+            op = aco_opcode::buffer_store_short;
+            break;
          case 4:
             op = aco_opcode::buffer_store_dword;
             break;
@@ -6854,7 +6837,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
             unreachable("Invalid data size for nir_intrinsic_store_scratch.");
       }
 
-      bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_data, start * elem_size_bytes, true);
+      bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true);
    }
 }
 
