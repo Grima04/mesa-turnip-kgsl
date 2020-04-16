@@ -78,6 +78,9 @@ struct fd6_context {
 	 */
 	struct ir3_shader_key last_key;
 
+	/* Is there current VS driver-param state set? */
+	bool has_dp_state;
+
 	/* number of active samples-passed queries: */
 	int samples_passed_queries;
 

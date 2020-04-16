@@ -915,6 +915,7 @@ void
 fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 {
 	struct fd_context *ctx = emit->ctx;
+	struct fd6_context *fd6_ctx = fd6_context(ctx);
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
 	const struct fd6_program_state *prog = fd6_emit_get_prog(emit);
 	const struct ir3_shader_variant *vs = emit->vs;
@@ -1067,8 +1068,10 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				ctx->batch->submit, IR3_DP_VS_COUNT * 4, FD_RINGBUFFER_STREAMING);
 		ir3_emit_vs_driver_params(vs, dpconstobj, ctx, emit->info);
 		fd6_emit_take_group(emit, dpconstobj, FD6_GROUP_VS_DRIVER_PARAMS, ENABLE_ALL);
-	} else {
+		fd6_ctx->has_dp_state = true;
+	} else if (fd6_ctx->has_dp_state) {
 		fd6_emit_take_group(emit, NULL, FD6_GROUP_VS_DRIVER_PARAMS, ENABLE_ALL);
+		fd6_ctx->has_dp_state = false;
 	}
 
 	struct ir3_stream_output_info *info = &fd6_last_shader(prog)->shader->stream_output;
