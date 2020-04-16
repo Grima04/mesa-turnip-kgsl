@@ -327,6 +327,9 @@ struct radv_physical_device {
 	/* Whether to enable NGG. */
 	bool use_ngg;
 
+	/* Whether to enable NGG GS. */
+	bool use_ngg_gs;
+
 	/* Whether to enable NGG streamout. */
 	bool use_ngg_streamout;
 

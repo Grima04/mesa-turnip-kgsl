@@ -412,6 +412,8 @@ radv_physical_device_init(struct radv_physical_device *device,
 			  device->rad_info.family != CHIP_NAVI14 &&
 			  !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
 
+	/* TODO: Implement NGG GS with ACO. */
+	device->use_ngg_gs = device->use_ngg && !device->use_aco;
 	device->use_ngg_streamout = false;
 
 	/* Determine the number of threads per wave for all stages. */

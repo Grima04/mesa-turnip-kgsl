@@ -2461,17 +2461,13 @@ radv_fill_shader_keys(struct radv_device *device,
 			keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
 		}
 
-		if (device->physical_device->use_aco) {
-			/* Disable NGG GS when ACO is used */
+		if (!device->physical_device->use_ngg_gs) {
 			if (nir[MESA_SHADER_GEOMETRY]) {
 				if (nir[MESA_SHADER_TESS_CTRL])
 					keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
 				else
 					keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = false;
 			}
-
-			/* NGG streamout not yet supported by ACO */
-			assert(!device->physical_device->use_ngg_streamout);
 		}
 
 		gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
