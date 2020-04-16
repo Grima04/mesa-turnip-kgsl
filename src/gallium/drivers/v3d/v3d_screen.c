@@ -123,7 +123,6 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
         case PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES:
         case PIPE_CAP_VERTEX_SHADER_SATURATE:
-        case PIPE_CAP_TEXTURE_QUERY_LOD:
         case PIPE_CAP_PRIMITIVE_RESTART:
         case PIPE_CAP_OCCLUSION_QUERY:
         case PIPE_CAP_POINT_SPRITE:
@@ -138,6 +137,10 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
         case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
                 return 1;
+
+        case PIPE_CAP_TEXTURE_QUERY_LOD:
+                return screen->devinfo.ver >= 42;
+                break;
 
         case PIPE_CAP_PACKED_UNIFORMS:
                 /* We can't enable this flag, because it results in load_ubo

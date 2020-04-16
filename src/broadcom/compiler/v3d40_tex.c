@@ -58,29 +58,6 @@ static const struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked_default = {
         .op = V3D_TMU_OP_REGULAR,
 };
 
-/*
- * This method returns if the texture operation requires a sampler as
- * a general rule, see the documentation of
- * nir_tex_instr::sampler_index. Note that the specific hw would
- * require a sampler in any case, for some other reason.
- */
-static bool
-texture_instr_need_sampler(nir_tex_instr *instr)
-{
-        switch(instr->op) {
-        case nir_texop_txf:
-        case nir_texop_txf_ms:
-        case nir_texop_txs:
-        case nir_texop_lod:
-        case nir_texop_query_levels:
-        case nir_texop_texture_samples:
-        case nir_texop_samples_identical:
-                return false;
-        default:
-                return true;
-        }
-}
-
 void
 v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 {
@@ -89,6 +66,8 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
 
         struct V3D41_TMU_CONFIG_PARAMETER_0 p0_unpacked = {
         };
+
+        assert(instr->op != nir_texop_lod || c->devinfo->ver >= 42);
 
         struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked = {
                 .op = V3D_TMU_OP_REGULAR,
@@ -101,7 +80,11 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 .disable_autolod = instr->op == nir_texop_tg4
         };
 
-        int non_array_components = instr->coord_components - instr->is_array;
+        int non_array_components =
+           instr->op != nir_texop_lod ?
+           instr->coord_components - instr->is_array :
+           instr->coord_components;
+
         struct qreg s;
 
         for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -201,6 +184,13 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                                           (uint8_t *)&p2_packed,
                                           &p2_unpacked);
 
+        /* We manually set the LOD Query bit (see
+         * V3D42_TMU_CONFIG_PARAMETER_2) as right now is the only V42 specific
+         * feature over V41 we are using
+         */
+        if (instr->op == nir_texop_lod)
+           p2_packed |= 1UL << 24;
+
         /* Load unit number into the high bits of the texture address field,
          * which will be be used by the driver to decide which texture to put
          * in the actual address field.
@@ -220,10 +210,11 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
          * p1 is optional, but we can skip it only if p2 can be skipped too
          */
         bool needs_p2_config =
-                memcmp(&p2_unpacked, &p2_unpacked_default, sizeof(p2_unpacked)) != 0;
+                (instr->op == nir_texop_lod ||
+                 memcmp(&p2_unpacked, &p2_unpacked_default, sizeof(p2_unpacked)) != 0);
 
         if (needs_p2_config || output_type_32_bit ||
-            texture_instr_need_sampler(instr)) {
+            nir_tex_instr_need_sampler(instr)) {
                 struct V3D41_TMU_CONFIG_PARAMETER_1 p1_unpacked = {
                         .output_type_32_bit = output_type_32_bit,
 
