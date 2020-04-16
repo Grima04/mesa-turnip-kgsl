@@ -3247,6 +3247,12 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
+   /* Apply any pending pipeline flushes we may have.  We want to apply them
+    * now because, if any of those flushes are for things like push constants,
+    * the GPU will read the state at weird times.
+    */
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
    uint32_t vb_emit = cmd_buffer->state.gfx.vb_dirty & pipeline->vb_used;
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE)
       vb_emit |= pipeline->vb_used;
@@ -4146,6 +4152,12 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
    genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->base.l3_config);
 
    genX(flush_pipeline_select_gpgpu)(cmd_buffer);
+
+   /* Apply any pending pipeline flushes we may have.  We want to apply them
+    * now because, if any of those flushes are for things like push constants,
+    * the GPU will read the state at weird times.
+    */
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    if (cmd_buffer->state.compute.pipeline_dirty) {
       /* From the Sky Lake PRM Vol 2a, MEDIA_VFE_STATE:
