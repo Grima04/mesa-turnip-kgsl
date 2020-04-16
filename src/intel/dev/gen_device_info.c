@@ -76,6 +76,12 @@ gen_device_name_to_pci_device_id(const char *name)
          return name_map[i].pci_id;
    }
 
+   fprintf(stderr, "Unknown platform '%s'. Supported names: %s",
+           name, name_map[0].name);
+   for (unsigned i = 1; i < ARRAY_SIZE(name_map); i++)
+      fprintf(stderr, ", %s", name_map[i].name);
+   fprintf(stderr, "\n");
+
    return -1;
 }
 
