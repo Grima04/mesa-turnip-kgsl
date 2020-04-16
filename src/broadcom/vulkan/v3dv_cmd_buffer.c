@@ -527,15 +527,25 @@ v3dv_job_init(struct v3dv_job *job,
    v3dv_cl_init(job, &job->indirect);
    v3dv_cl_begin(&job->indirect);
 
-   /* Keep track of the first subpass that we are recording in this new job.
-    * We will use this when we emit the RCL to decide how to emit our loads
-    * and stores.
-    */
-   if (cmd_buffer && cmd_buffer->state.pass)
-      job->first_subpass = subpass_idx;
-
    if (V3D_DEBUG & V3D_DEBUG_ALWAYS_FLUSH)
       job->always_flush = true;
+
+   if (cmd_buffer) {
+      /* Flag all state as dirty. Generally, we need to re-emit state for each
+       * new job.
+       *
+       * FIXME: there may be some exceptions, in which case we could skip some
+       * bits.
+       */
+      cmd_buffer->state.dirty = ~0;
+
+      /* Keep track of the first subpass that we are recording in this new job.
+       * We will use this when we emit the RCL to decide how to emit our loads
+       * and stores.
+       */
+      if (cmd_buffer->state.pass)
+         job->first_subpass = subpass_idx;
+   }
 }
 
 struct v3dv_job *
