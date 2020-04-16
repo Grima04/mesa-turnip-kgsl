@@ -698,6 +698,9 @@ mem_vectorize_callback(unsigned align, unsigned bit_size,
       return false;
 
    switch (low->intrinsic) {
+   case nir_intrinsic_load_global:
+   case nir_intrinsic_store_global:
+      return align % 4 == 0;
    case nir_intrinsic_store_ssbo:
       if (low->src[0].ssa->bit_size < 32 || high->src[0].ssa->bit_size < 32)
          return false;
@@ -1032,18 +1035,23 @@ setup_nir(isel_context *ctx, nir_shader *nir)
    setup_variables(ctx, nir);
 
    /* optimize and lower memory operations */
+   if (nir_lower_explicit_io(nir, nir_var_mem_global, nir_address_format_64bit_global)) {
+      nir_opt_constant_folding(nir);
+      nir_opt_cse(nir);
+   }
+
    bool lower_to_scalar = false;
    bool lower_pack = false;
    if (nir_opt_load_store_vectorize(nir,
                                     (nir_variable_mode)(nir_var_mem_ssbo | nir_var_mem_ubo |
-                                                        nir_var_mem_push_const | nir_var_mem_shared),
+                                                        nir_var_mem_push_const | nir_var_mem_shared |
+                                                        nir_var_mem_global),
                                     mem_vectorize_callback)) {
       lower_to_scalar = true;
       lower_pack = true;
    }
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       nir_lower_io(nir, (nir_variable_mode)(nir_var_shader_in | nir_var_shader_out), type_size, (nir_lower_io_options)0);
-   nir_lower_explicit_io(nir, nir_var_mem_global, nir_address_format_64bit_global);
 
    if (lower_to_scalar)
       nir_lower_alu_to_scalar(nir, NULL, NULL);
