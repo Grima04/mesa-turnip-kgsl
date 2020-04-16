@@ -895,20 +895,35 @@ fd6_emit_tess_const(struct fd6_emit *emit)
 }
 
 static void
-fd6_emit_consts(struct fd6_emit *emit, const struct ir3_shader_variant *v,
-		enum pipe_shader_type type, enum fd6_state_id id, unsigned enable_mask)
+fd6_emit_consts(struct fd6_emit *emit)
 {
+	static const enum pipe_shader_type types[] = {
+			PIPE_SHADER_VERTEX, PIPE_SHADER_TESS_CTRL, PIPE_SHADER_TESS_EVAL,
+			PIPE_SHADER_GEOMETRY, PIPE_SHADER_FRAGMENT,
+	};
+	const struct ir3_shader_variant *variants[] = {
+			emit->vs, emit->hs, emit->ds, emit->gs, emit->fs,
+	};
 	struct fd_context *ctx = emit->ctx;
+	unsigned sz = 0;
 
-	if (v && ctx->dirty_shader[type] & (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_CONST)) {
-		struct fd_ringbuffer *constobj = fd_submit_new_ringbuffer(
-				ctx->batch->submit, v->shader->ubo_state.cmdstream_size,
-				FD_RINGBUFFER_STREAMING);
-
-		ir3_emit_user_consts(ctx->screen, v, constobj, &ctx->constbuf[type]);
-		ir3_emit_ubos(ctx->screen, v, constobj, &ctx->constbuf[type]);
-		fd6_emit_take_group(emit, constobj, id, enable_mask);
+	for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
+		if (!variants[i])
+			continue;
+		sz += variants[i]->shader->ubo_state.cmdstream_size;
 	}
+
+	struct fd_ringbuffer *constobj = fd_submit_new_ringbuffer(
+			ctx->batch->submit, sz, FD_RINGBUFFER_STREAMING);
+
+	for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
+		if (!variants[i])
+			continue;
+		ir3_emit_user_consts(ctx->screen, variants[i], constobj, &ctx->constbuf[types[i]]);
+		ir3_emit_ubos(ctx->screen, variants[i], constobj, &ctx->constbuf[types[i]]);
+	}
+
+	fd6_emit_take_group(emit, constobj, FD6_GROUP_CONST, ENABLE_ALL);
 }
 
 void
@@ -1053,11 +1068,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		fd6_emit_take_group(emit, ring, FD6_GROUP_PROG_FB_RAST, ENABLE_DRAW);
 	}
 
-	fd6_emit_consts(emit, vs, PIPE_SHADER_VERTEX, FD6_GROUP_VS_CONST, ENABLE_ALL);
-	fd6_emit_consts(emit, hs, PIPE_SHADER_TESS_CTRL, FD6_GROUP_HS_CONST, ENABLE_ALL);
-	fd6_emit_consts(emit, ds, PIPE_SHADER_TESS_EVAL, FD6_GROUP_DS_CONST, ENABLE_ALL);
-	fd6_emit_consts(emit, gs, PIPE_SHADER_GEOMETRY, FD6_GROUP_GS_CONST, ENABLE_ALL);
-	fd6_emit_consts(emit, fs, PIPE_SHADER_FRAGMENT, FD6_GROUP_FS_CONST, ENABLE_DRAW);
+	if (dirty & (FD_DIRTY_CONST | FD_DIRTY_PROG)) {
+		fd6_emit_consts(emit);
+	}
 
 	if (emit->key.key.has_gs || emit->key.key.tessellation)
 		fd6_emit_tess_const(emit);
