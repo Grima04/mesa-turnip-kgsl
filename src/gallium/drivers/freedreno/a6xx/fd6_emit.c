@@ -1053,7 +1053,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 						   FD6_GROUP_RASTERIZER, ENABLE_ALL);
 	}
 
-	if (dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_RASTERIZER | FD_DIRTY_PROG)) {
+	if (dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_RASTERIZER_DISCARD | FD_DIRTY_PROG)) {
 		struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
 				emit->ctx->batch->submit, 5 * 4, FD_RINGBUFFER_STREAMING);
 

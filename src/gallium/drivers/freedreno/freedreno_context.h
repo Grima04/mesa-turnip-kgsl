@@ -131,7 +131,6 @@ enum fd_dirty_3d_state {
 	FD_DIRTY_VTXSTATE    = BIT(9),
 	FD_DIRTY_VTXBUF      = BIT(10),
 	FD_DIRTY_MIN_SAMPLES = BIT(11),
-
 	FD_DIRTY_SCISSOR     = BIT(12),
 	FD_DIRTY_STREAMOUT   = BIT(13),
 	FD_DIRTY_UCP         = BIT(14),
@@ -148,6 +147,11 @@ enum fd_dirty_3d_state {
 
 	/* only used by a2xx.. possibly can be removed.. */
 	FD_DIRTY_TEXSTATE    = BIT(21),
+
+	/* fine grained state changes, for cases where state is not orthogonal
+	 * from hw perspective:
+	 */
+	FD_DIRTY_RASTERIZER_DISCARD = BIT(24),
 };
 
 /* per shader-stage dirty state: */

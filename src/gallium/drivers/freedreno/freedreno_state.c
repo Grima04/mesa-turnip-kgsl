@@ -395,6 +395,7 @@ fd_rasterizer_state_bind(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct pipe_scissor_state *old_scissor = fd_context_get_scissor(ctx);
+	bool discard = ctx->rasterizer && ctx->rasterizer->rasterizer_discard;
 
 	ctx->rasterizer = hwcso;
 	ctx->dirty |= FD_DIRTY_RASTERIZER;
@@ -406,6 +407,9 @@ fd_rasterizer_state_bind(struct pipe_context *pctx, void *hwcso)
 	 */
 	if (old_scissor != fd_context_get_scissor(ctx))
 		ctx->dirty |= FD_DIRTY_SCISSOR;
+
+	if (ctx->rasterizer && (discard != ctx->rasterizer->rasterizer_discard))
+		ctx->dirty |= FD_DIRTY_RASTERIZER_DISCARD;
 }
 
 static void
