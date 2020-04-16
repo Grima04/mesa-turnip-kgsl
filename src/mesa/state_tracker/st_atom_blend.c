@@ -201,6 +201,8 @@ st_update_blend( struct st_context *st )
 
    memset(blend, 0, sizeof(*blend));
 
+   blend->max_rt = MAX2(1, num_cb) - 1;
+
    if (num_cb > 1 &&
        (blend_per_rt(st, num_cb) || colormask_per_rt(ctx, num_cb))) {
       num_state = num_cb;

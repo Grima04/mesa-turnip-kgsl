@@ -280,6 +280,7 @@ clear_with_quad(struct gl_context *ctx, unsigned clear_buffers)
          int i;
 
          blend.independent_blend_enable = num_buffers > 1;
+         blend.max_rt = num_buffers - 1;
 
          for (i = 0; i < num_buffers; i++) {
             if (!(clear_buffers & (PIPE_CLEAR_COLOR0 << i)))
