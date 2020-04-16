@@ -954,6 +954,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                ctx.info[instr->definitions[i].tempId()].set_constant(vec_op.constantValue());
             else if (vec_op.size() == 2)
                ctx.info[instr->definitions[i].tempId()].set_constant_64bit(vec_op.constantValue());
+         } else if (vec_op.isUndefined()) {
+            ctx.info[instr->definitions[i].tempId()].set_undefined();
          } else {
             assert(vec_op.isTemp());
             ctx.info[instr->definitions[i].tempId()].set_temp(vec_op.getTemp());
@@ -991,6 +993,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                ctx.info[instr->definitions[0].tempId()].set_constant(op.constantValue());
             else if (op.size() == 2)
                ctx.info[instr->definitions[0].tempId()].set_constant_64bit(op.constantValue());
+         } else if (op.isUndefined()) {
+            ctx.info[instr->definitions[0].tempId()].set_undefined();
          } else {
             assert(op.isTemp());
             ctx.info[instr->definitions[0].tempId()].set_temp(op.getTemp());
