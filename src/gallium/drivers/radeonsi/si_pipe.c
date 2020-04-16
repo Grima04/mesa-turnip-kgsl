@@ -712,7 +712,7 @@ static struct pipe_context *si_pipe_create_context(struct pipe_screen *screen, v
             sscreen->info.is_amdgpu ? si_create_fence : NULL,
             &((struct si_context *)ctx)->tc);
 
-   if (os_get_total_physical_memory(&total_ram)) {
+   if (tc && tc != ctx && os_get_total_physical_memory(&total_ram)) {
       ((struct threaded_context *) tc)->bytes_mapped_limit = total_ram / 4;
    }
 
