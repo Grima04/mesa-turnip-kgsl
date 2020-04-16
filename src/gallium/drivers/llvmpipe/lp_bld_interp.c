@@ -289,13 +289,22 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
             case LP_INTERP_LINEAR:
                if (attrib == 0 && chan == 0) {
                   dadx = coeff_bld->one;
-                  if (bld->pos_offset) {
+                  if (sample_id) {
+                     LLVMValueRef x_val_idx = LLVMBuildMul(gallivm->builder, sample_id, lp_build_const_int32(gallivm, 2), "");
+                     x_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, x_val_idx);
+                     a = lp_build_broadcast_scalar(coeff_bld, x_val_idx);
+                  } else if (bld->pos_offset) {
                      a = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
                   }
                }
                else if (attrib == 0 && chan == 1) {
                   dady = coeff_bld->one;
-                  if (bld->pos_offset) {
+                  if (sample_id) {
+                     LLVMValueRef y_val_idx = LLVMBuildMul(gallivm->builder, sample_id, lp_build_const_int32(gallivm, 2), "");
+                     y_val_idx = LLVMBuildAdd(gallivm->builder, y_val_idx, lp_build_const_int32(gallivm, 1), "");
+                     y_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, y_val_idx);
+                     a = lp_build_broadcast_scalar(coeff_bld, y_val_idx);
+                  } else if (bld->pos_offset) {
                      a = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
                   }
                }
