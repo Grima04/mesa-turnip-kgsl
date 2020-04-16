@@ -592,8 +592,20 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
     * profile, so that u_vbuf is bypassed completely if there is nothing else
     * to do.
     */
-   unsigned cso_flags =
-      ctx->API == API_OPENGL_CORE ? CSO_NO_USER_VERTEX_BUFFERS : 0;
+   unsigned cso_flags;
+   switch (ctx->API) {
+   case API_OPENGL_CORE:
+      cso_flags = CSO_NO_USER_VERTEX_BUFFERS;
+      break;
+   case API_OPENGLES:
+   case API_OPENGLES2:
+      cso_flags = CSO_NO_64B_VERTEX_BUFFERS;
+      break;
+   default:
+      cso_flags = 0;
+      break;
+   }
+
    st->cso_context = cso_create_context(pipe, cso_flags);
 
    st_init_atoms(st);

@@ -291,8 +291,9 @@ static void cso_init_vbuf(struct cso_context *cso, unsigned flags)
 {
    struct u_vbuf_caps caps;
    bool uses_user_vertex_buffers = !(flags & CSO_NO_USER_VERTEX_BUFFERS);
+   bool needs64b = !(flags & CSO_NO_64B_VERTEX_BUFFERS);
 
-   u_vbuf_get_caps(cso->pipe->screen, &caps);
+   u_vbuf_get_caps(cso->pipe->screen, &caps, needs64b);
 
    /* Enable u_vbuf if needed. */
    if (caps.fallback_always ||
