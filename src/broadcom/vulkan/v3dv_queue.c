@@ -77,6 +77,101 @@ get_absolute_timeout(uint64_t timeout)
 }
 
 static VkResult
+handle_reset_query_cpu_job(struct v3dv_job *job)
+{
+   /* We are about to reset query counters so we need to make sure that
+    * The GPU is not using them.
+    *
+    * FIXME: we could avoid blocking the main thread for this if we use
+    *        submission thread.
+    */
+   v3dv_DeviceWaitIdle(v3dv_device_to_handle(job->device));
+
+   struct v3dv_reset_query_cpu_job_info *info = &job->cpu.query_reset;
+   for (uint32_t i = info->first; i < info->first + info->count; i++) {
+      assert(i < info->pool->query_count);
+      struct v3dv_query *query = &info->pool->queries[i];
+      query->maybe_available = false;
+      uint32_t *counter = (uint32_t *) query->bo->map;
+      *counter = 0;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+handle_end_query_cpu_job(struct v3dv_job *job)
+{
+   struct v3dv_end_query_cpu_job_info *info = &job->cpu.query_end;
+   assert(info->query < info->pool->query_count);
+   struct v3dv_query *query = &info->pool->queries[info->query];
+   query->maybe_available = true;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+handle_copy_query_results_cpu_job(struct v3dv_job *job)
+{
+   struct v3dv_copy_query_results_cpu_job_info *info =
+      &job->cpu.query_copy_results;
+
+   assert(info->dst && info->dst->mem && info->dst->mem->bo);
+   struct v3dv_bo *bo = info->dst->mem->bo;
+   const uint32_t bo_size = info->dst->size;
+
+   /* Map the entire dst buffer for the CPU copy */
+   bool dst_was_mapped = bo->map != NULL;
+   uint32_t map_size = bo->map_size;
+   bool needs_map = false;
+   if (!dst_was_mapped) {
+      needs_map = true;
+   } else if (map_size < bo_size) {
+      v3dv_bo_unmap(job->device, bo);
+      needs_map = true;
+   }
+   if (needs_map && !v3dv_bo_map(job->device, bo, bo_size))
+      return vk_error(job->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   /* FIXME: if flags includes VK_QUERY_RESULT_WAIT_BIT this could trigger a
+    * sync wait on the CPU for the corresponding GPU jobs to finish. We might
+    * want to use a submission thread to avoid blocking on the main thread.
+    */
+   v3dv_get_query_pool_results_cpu(job->device,
+                                   info->pool,
+                                   info->first,
+                                   info->count,
+                                   bo->map + info->dst->mem_offset,
+                                   info->stride,
+                                   info->flags);
+
+   if (needs_map) {
+      v3dv_bo_unmap(job->device, bo);
+      if (dst_was_mapped) {
+         if (!v3dv_bo_map(job->device, bo, map_size))
+            return vk_error(job->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+handle_cpu_job(struct v3dv_job *job)
+{
+   switch (job->type) {
+   case V3DV_JOB_TYPE_CPU_RESET_QUERIES:
+      return handle_reset_query_cpu_job(job);
+   case V3DV_JOB_TYPE_CPU_END_QUERY:
+      return handle_end_query_cpu_job(job);
+   case V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS:
+      return handle_copy_query_results_cpu_job(job);
+   default:
+      unreachable("Unhandled job type");
+   }
+}
+
+static VkResult
 process_semaphores_to_signal(struct v3dv_device *device,
                              uint32_t count, const VkSemaphore *sems)
 {
@@ -132,9 +227,14 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
 }
 
 static VkResult
-queue_submit_job(struct v3dv_queue *queue, struct v3dv_job *job, bool do_wait)
+queue_submit_job(struct v3dv_queue *queue,
+                 struct v3dv_job *job,
+                 bool do_wait)
 {
    assert(job);
+
+   if (job->type != V3DV_JOB_TYPE_GPU)
+      return handle_cpu_job(job);
 
    struct v3dv_device *device = queue->device;
 
@@ -311,7 +411,7 @@ queue_create_noop_job(struct v3dv_queue *queue, struct v3dv_job **job)
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!*job)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-   v3dv_job_init(*job, device, NULL, -1);
+   v3dv_job_init(*job, V3DV_JOB_TYPE_GPU, device, NULL, -1);
 
    emit_noop_bin(*job);
    emit_noop_render(*job);

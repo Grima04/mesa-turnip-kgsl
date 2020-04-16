@@ -161,29 +161,31 @@ v3dv_job_destroy(struct v3dv_job *job)
 
    list_del(&job->list_link);
 
-   v3dv_cl_destroy(&job->bcl);
-   v3dv_cl_destroy(&job->rcl);
-   v3dv_cl_destroy(&job->indirect);
+   if (job->type == V3DV_JOB_TYPE_GPU) {
+      v3dv_cl_destroy(&job->bcl);
+      v3dv_cl_destroy(&job->rcl);
+      v3dv_cl_destroy(&job->indirect);
 
-   /* Since we don't ref BOs, when we add them to the command buffer, don't
-    * unref them here either.
-    */
+      /* Since we don't ref BOs, when we add them to the command buffer, don't
+       * unref them here either.
+       */
 #if 0
-   set_foreach(job->bos, entry) {
-      struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
-      v3dv_bo_free(cmd_buffer->device, bo);
-   }
+      set_foreach(job->bos, entry) {
+         struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
+         v3dv_bo_free(cmd_buffer->device, bo);
+      }
 #endif
-   _mesa_set_destroy(job->bos, NULL);
+      _mesa_set_destroy(job->bos, NULL);
 
-   set_foreach(job->extra_bos, entry) {
-      struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
-      v3dv_bo_free(job->device, bo);
+      set_foreach(job->extra_bos, entry) {
+         struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
+         v3dv_bo_free(job->device, bo);
+      }
+      _mesa_set_destroy(job->extra_bos, NULL);
+
+      v3dv_bo_free(job->device, job->tile_alloc);
+      v3dv_bo_free(job->device, job->tile_state);
    }
-   _mesa_set_destroy(job->extra_bos, NULL);
-
-   v3dv_bo_free(job->device, job->tile_alloc);
-   v3dv_bo_free(job->device, job->tile_state);
 
    vk_free(&job->device->alloc, job);
 }
@@ -205,6 +207,9 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
       assert(cmd_buffer->state.attachment_count > 0);
       vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
    }
+
+   if (cmd_buffer->state.query.end.alloc_count > 0)
+      vk_free(&cmd_buffer->device->alloc, cmd_buffer->state.query.end.states);
 
    if (cmd_buffer->push_constants_resource.bo)
       v3dv_bo_free(cmd_buffer->device, cmd_buffer->push_constants_resource.bo);
@@ -447,9 +452,6 @@ v3dv_job_start_frame(struct v3dv_job *job,
    /* There's definitely nothing in the VCD cache we want. */
    cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
 
-   /* Disable any leftover OQ state from another job. */
-   cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter);
-
    /* "Binning mode lists must have a Start Tile Binning item (6) after
     *  any prefix state data before the binning list proper starts."
     */
@@ -478,6 +480,38 @@ cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_job_emit_binning_flush(cmd_buffer->state.job);
 }
 
+static struct v3dv_job *
+cmd_buffer_create_cpu_job(struct v3dv_device *device,
+                          enum v3dv_job_type type,
+                          struct v3dv_cmd_buffer *cmd_buffer,
+                          uint32_t subpass_idx)
+{
+   struct v3dv_job *job = vk_zalloc(&device->alloc,
+                                    sizeof(struct v3dv_job), 8,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   v3dv_job_init(job, type, device, cmd_buffer, subpass_idx);
+   return job;
+}
+
+static void
+cmd_buffer_add_cpu_jobs_for_pending_state(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+
+   if (state->query.end.used_count > 0) {
+      const uint32_t query_count = state->query.end.used_count;
+      for (uint32_t i = 0; i < query_count; i++) {
+         assert(i < state->query.end.used_count);
+         struct v3dv_job *job =
+            cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                      V3DV_JOB_TYPE_CPU_END_QUERY,
+                                      cmd_buffer, -1);
+         job->cpu.query_end = state->query.end.states[i];
+         list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+      }
+   }
+}
+
 void
 v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -498,37 +532,47 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
 
    list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
    cmd_buffer->state.job = NULL;
+
+   /* If we have recorded any state with this last GPU job that requires to
+    * emit CPU jobs after the job is completed, add them now.
+    */
+   cmd_buffer_add_cpu_jobs_for_pending_state(cmd_buffer);
 }
 
 void
 v3dv_job_init(struct v3dv_job *job,
+              enum v3dv_job_type type,
               struct v3dv_device *device,
               struct v3dv_cmd_buffer *cmd_buffer,
               int32_t subpass_idx)
 {
    assert(job);
 
+   job->type = type;
+
    job->device = device;
    job->cmd_buffer = cmd_buffer;
 
-   job->bos =
-      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   job->bo_count = 0;
+   if (type == V3DV_JOB_TYPE_GPU) {
+      job->bos =
+         _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+      job->bo_count = 0;
 
-   job->extra_bos =
-      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+      job->extra_bos =
+         _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
-   v3dv_cl_init(job, &job->bcl);
-   v3dv_cl_begin(&job->bcl);
+      v3dv_cl_init(job, &job->bcl);
+      v3dv_cl_begin(&job->bcl);
 
-   v3dv_cl_init(job, &job->rcl);
-   v3dv_cl_begin(&job->rcl);
+      v3dv_cl_init(job, &job->rcl);
+      v3dv_cl_begin(&job->rcl);
 
-   v3dv_cl_init(job, &job->indirect);
-   v3dv_cl_begin(&job->indirect);
+      v3dv_cl_init(job, &job->indirect);
+      v3dv_cl_begin(&job->indirect);
 
-   if (V3D_DEBUG & V3D_DEBUG_ALWAYS_FLUSH)
-      job->always_flush = true;
+      if (V3D_DEBUG & V3D_DEBUG_ALWAYS_FLUSH)
+         job->always_flush = true;
+   }
 
    if (cmd_buffer) {
       /* Flag all state as dirty. Generally, we need to re-emit state for each
@@ -579,7 +623,8 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
       return NULL;
    }
 
-   v3dv_job_init(job, cmd_buffer->device, cmd_buffer, subpass_idx);
+   v3dv_job_init(job, V3DV_JOB_TYPE_GPU, cmd_buffer->device,
+                 cmd_buffer, subpass_idx);
 
    return job;
 }
@@ -1813,13 +1858,15 @@ v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE;
 
    struct v3dv_job *job = cmd_buffer->state.job;
-   if (!job)
-      return VK_SUCCESS;
-
-   /* We get here if we recorded commands after the last render pass in the
-    * command buffer. Make sure we finish this last job. */
-   assert(v3dv_cl_offset(&job->bcl) != 0);
-   v3dv_cmd_buffer_finish_job(cmd_buffer);
+   if (job) {
+      /* We get here if we recorded commands after the last render pass in the
+       * command buffer. Make sure we finish this last job.
+       *
+       * FIXME: is this even possible?
+       */
+      assert(v3dv_cl_offset(&job->bcl) != 0);
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
+   }
 
    return VK_SUCCESS;
 }
@@ -2734,6 +2781,22 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
                                 V3DV_CMD_DIRTY_PUSH_CONSTANTS);
 }
 
+static void
+emit_occlusion_query(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter) {
+      if (cmd_buffer->state.query.active_query) {
+         counter.address =
+            v3dv_cl_address(cmd_buffer->state.query.active_query, 0);
+      }
+   }
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+}
+
 /* This stores command buffer state for the current subpass that we are
  * about to interrupt to emit a meta pass.
  */
@@ -2963,6 +3026,9 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_BLEND_CONSTANTS))
       emit_blend(cmd_buffer);
+
+   if (*dirty & V3DV_CMD_DIRTY_OCCLUSION_QUERY)
+      emit_occlusion_query(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PIPELINE;
 }
@@ -3295,4 +3361,145 @@ v3dv_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
           sizeof(state->dynamic.blend_constants));
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_BLEND_CONSTANTS;
+}
+
+void
+v3dv_cmd_buffer_reset_queries(struct v3dv_cmd_buffer *cmd_buffer,
+                              struct v3dv_query_pool *pool,
+                              uint32_t first,
+                              uint32_t count)
+{
+   /* Resets can only happen outside a render pass instance so we should not
+    * be in the middle of job recording.
+    */
+   assert(cmd_buffer->state.pass == NULL);
+   assert(cmd_buffer->state.job == NULL);
+
+   assert(first < pool->query_count);
+   assert(first + count <= pool->query_count);
+
+   struct v3dv_job *job =
+      cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                V3DV_JOB_TYPE_CPU_RESET_QUERIES,
+                                cmd_buffer, -1);
+   job->cpu.query_reset.pool = pool;
+   job->cpu.query_reset.first = first;
+   job->cpu.query_reset.count = count;
+
+   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+}
+
+static bool
+ensure_query_state(const struct v3dv_device *device,
+                   uint32_t slot_size,
+                   uint32_t used_count,
+                   uint32_t *alloc_count,
+                   void **ptr)
+{
+   if (used_count >= *alloc_count) {
+      const uint32_t prev_slot_count = *alloc_count;
+      void *old_buffer = *ptr;
+
+      const uint32_t new_slot_count = MAX2(*alloc_count * 2, 4);
+      const uint32_t bytes = new_slot_count * slot_size;
+      *ptr = vk_alloc(&device->alloc, bytes, 8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (*ptr == NULL) {
+         fprintf(stderr, "Error: failed to allocate CPU buffer for query.\n");
+         return false;
+      }
+
+      memcpy(*ptr, old_buffer, prev_slot_count * slot_size);
+      *alloc_count = new_slot_count;
+   }
+   assert(used_count < *alloc_count);
+   return true;
+}
+
+void
+v3dv_cmd_buffer_begin_query(struct v3dv_cmd_buffer *cmd_buffer,
+                            struct v3dv_query_pool *pool,
+                            uint32_t query,
+                            VkQueryControlFlags flags)
+{
+   /* FIXME: we only support one active query for now */
+   assert(cmd_buffer->state.query.active_query == NULL);
+   assert(query < pool->query_count);
+
+   cmd_buffer->state.query.active_query = pool->queries[query].bo;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+}
+
+void
+v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
+                          struct v3dv_query_pool *pool,
+                          uint32_t query)
+{
+   assert(query < pool->query_count);
+   assert(cmd_buffer->state.query.active_query != NULL);
+
+   if  (cmd_buffer->state.pass) {
+      /* Queue the EndQuery in the command buffer state, we will create a CPU
+       * job to flag all of these queries as possibly available right after the
+       * render pass job in which they have been recorded.
+       */
+      struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+      ensure_query_state(cmd_buffer->device,
+                         sizeof(struct v3dv_end_query_cpu_job_info),
+                         state->query.end.used_count,
+                         &state->query.end.alloc_count,
+                         (void **) &state->query.end.states);
+
+      struct v3dv_end_query_cpu_job_info *info =
+         &state->query.end.states[state->query.end.used_count++];
+
+      info->pool = pool;
+      info->query = query;
+   } else {
+      /* Otherwise, schedule the CPU job immediately */
+      struct v3dv_job *job =
+         cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                   V3DV_JOB_TYPE_CPU_END_QUERY,
+                                   cmd_buffer, -1);
+      job->cpu.query_end.pool = pool;
+      job->cpu.query_end.query = query;
+      list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   }
+
+   cmd_buffer->state.query.active_query = NULL;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+}
+
+void
+v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
+                                   struct v3dv_query_pool *pool,
+                                   uint32_t first,
+                                   uint32_t count,
+                                   struct v3dv_buffer *dst,
+                                   uint32_t offset,
+                                   uint32_t stride,
+                                   VkQueryResultFlags flags)
+{
+   /* Copies can only happen outside a render pass instance so we should not
+    * be in the middle of job recording.
+    */
+   assert(cmd_buffer->state.pass == NULL);
+   assert(cmd_buffer->state.job == NULL);
+
+   assert(first < pool->query_count);
+   assert(first + count <= pool->query_count);
+
+   struct v3dv_job *job =
+      cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS,
+                                cmd_buffer, -1);
+   job->cpu.query_copy_results.pool = pool;
+   job->cpu.query_copy_results.first = first;
+   job->cpu.query_copy_results.count = count;
+   job->cpu.query_copy_results.dst = dst;
+   job->cpu.query_copy_results.offset = offset;
+   job->cpu.query_copy_results.stride = stride;
+   job->cpu.query_copy_results.flags = flags;
+
+   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
 }

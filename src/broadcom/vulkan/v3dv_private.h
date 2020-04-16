@@ -553,6 +553,7 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_PUSH_CONSTANTS            = 1 << 8,
    V3DV_CMD_DIRTY_BLEND_CONSTANTS           = 1 << 9,
    V3DV_CMD_DIRTY_SHADER_VARIANTS           = 1 << 10,
+   V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 11,
 };
 
 
@@ -598,8 +599,38 @@ enum v3dv_ez_state {
    VC5_EZ_DISABLED,
 };
 
+enum v3dv_job_type {
+   V3DV_JOB_TYPE_GPU = 0,
+   V3DV_JOB_TYPE_CPU_RESET_QUERIES,
+   V3DV_JOB_TYPE_CPU_END_QUERY,
+   V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS,
+};
+
+struct v3dv_reset_query_cpu_job_info {
+   struct v3dv_query_pool *pool;
+   uint32_t first;
+   uint32_t count;
+};
+
+struct v3dv_end_query_cpu_job_info {
+   struct v3dv_query_pool *pool;
+   uint32_t query;
+};
+
+struct v3dv_copy_query_results_cpu_job_info {
+   struct v3dv_query_pool *pool;
+   uint32_t first;
+   uint32_t count;
+   struct v3dv_buffer *dst;
+   uint32_t offset;
+   uint32_t stride;
+   VkQueryResultFlags flags;
+};
+
 struct v3dv_job {
    struct list_head list_link;
+
+   enum v3dv_job_type type;
 
    struct v3dv_device *device;
 
@@ -657,9 +688,17 @@ struct v3dv_job {
     * require this behavior.
     */
    bool always_flush;
+
+   /* Job specs for CPU jobs */
+   union {
+      struct v3dv_reset_query_cpu_job_info        query_reset;
+      struct v3dv_end_query_cpu_job_info          query_end;
+      struct v3dv_copy_query_results_cpu_job_info query_copy_results;
+   } cpu;
 };
 
 void v3dv_job_init(struct v3dv_job *job,
+                   enum v3dv_job_type type,
                    struct v3dv_device *device,
                    struct v3dv_cmd_buffer *cmd_buffer,
                    int32_t subpass_idx);
@@ -742,6 +781,25 @@ struct v3dv_cmd_buffer_state {
 
       struct v3dv_dynamic_state dynamic;
    } meta;
+
+   /* Command buffer state for queries */
+   struct {
+      /* A list of vkCmdQueryEnd commands recorded in the command buffer during
+       * a render pass. We queue these here and then schedule the corresponding
+       * CPU jobs for them at the time we finish the GPU job in which they have
+       * been recorded.
+       */
+      struct {
+         uint32_t used_count;
+         uint32_t alloc_count;
+         struct v3dv_end_query_cpu_job_info *states;
+      } end;
+
+      /* This is not NULL if we have an active query, that is, we have called
+       * vkCmdBeginQuery but not vkCmdEndQuery.
+       */
+      struct v3dv_bo *active_query;
+   } query;
 };
 
 struct v3dv_descriptor {
@@ -769,6 +827,24 @@ struct v3dv_resource {
    struct v3dv_bo *bo;
    uint32_t offset;
 };
+
+struct v3dv_query {
+   bool maybe_available;
+   struct v3dv_bo *bo;
+};
+
+struct v3dv_query_pool {
+   uint32_t query_count;
+   struct v3dv_query *queries;
+};
+
+VkResult v3dv_get_query_pool_results_cpu(struct v3dv_device *device,
+                                         struct v3dv_query_pool *pool,
+                                         uint32_t first,
+                                         uint32_t count,
+                                         void *data,
+                                         VkDeviceSize stride,
+                                         VkQueryResultFlags flags);
 
 struct v3dv_cmd_buffer {
    VK_LOADER_DATA _loader_data;
@@ -812,6 +888,29 @@ void v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
                                           uint32_t *rt_bpp,
                                           uint32_t *rt_type,
                                           uint32_t *rt_clamp);
+
+void v3dv_cmd_buffer_reset_queries(struct v3dv_cmd_buffer *cmd_buffer,
+                                   struct v3dv_query_pool *pool,
+                                   uint32_t first,
+                                   uint32_t count);
+
+void v3dv_cmd_buffer_begin_query(struct v3dv_cmd_buffer *cmd_buffer,
+                                 struct v3dv_query_pool *pool,
+                                 uint32_t query,
+                                 VkQueryControlFlags flags);
+
+void v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
+                               struct v3dv_query_pool *pool,
+                               uint32_t query);
+
+void v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
+                                        struct v3dv_query_pool *pool,
+                                        uint32_t first,
+                                        uint32_t count,
+                                        struct v3dv_buffer *dst,
+                                        uint32_t offset,
+                                        uint32_t stride,
+                                        VkQueryResultFlags flags);
 
 struct v3dv_semaphore {
    /* A syncobject handle associated with this semaphore */
@@ -1356,6 +1455,7 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline, VkPipeline)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline_layout, VkPipelineLayout)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_query_pool, VkQueryPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_sampler, VkSampler)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_semaphore, VkSemaphore)
