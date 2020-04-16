@@ -588,6 +588,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 			        info->family == CHIP_RENOIR);
 
 	info->has_out_of_order_rast = info->chip_class >= GFX8 &&
+				      info->chip_class <= GFX9 &&
 				      info->max_se >= 2;
 
 	/* Whether chips support double rate packed math instructions. */
