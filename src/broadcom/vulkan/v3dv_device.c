@@ -1026,17 +1026,12 @@ queue_init(struct v3dv_device *device, struct v3dv_queue *queue)
    queue->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    queue->device = device;
    queue->flags = 0;
-   list_inithead(&queue->noop_jobs);
    return VK_SUCCESS;
 }
 
 static void
 queue_finish(struct v3dv_queue *queue)
 {
-   /* We wait for the device to be idle before finishing the queue, so
-    * this should any pending jobs.
-    */
-   v3dv_queue_destroy_completed_noop_jobs(queue);
 }
 
 static void

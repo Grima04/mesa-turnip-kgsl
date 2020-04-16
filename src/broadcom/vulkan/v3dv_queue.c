@@ -403,93 +403,21 @@ queue_create_noop_job(struct v3dv_queue *queue, struct v3dv_job **job)
    return VK_SUCCESS;
 }
 
-void
-v3dv_queue_destroy_completed_noop_jobs(struct v3dv_queue *queue)
-{
-   struct v3dv_device *device = queue->device;
-   VkDevice _device = v3dv_device_to_handle(device);
-
-   list_for_each_entry_safe(struct v3dv_job, job,
-                            &queue->noop_jobs, list_link) {
-      assert(job->fence);
-      if (!drmSyncobjWait(device->render_fd, &job->fence->sync, 1, 0, 0, NULL)) {
-         v3dv_job_destroy(job);
-         v3dv_DestroyFence(_device, v3dv_fence_to_handle(job->fence), NULL);
-      }
-   }
-}
-
 static VkResult
 queue_submit_noop_job(struct v3dv_queue *queue, const VkSubmitInfo *pSubmit)
 {
-   VkResult result;
-   bool can_destroy_job = true;
-
-   struct v3dv_device *device = queue->device;
-   VkDevice _device = v3dv_device_to_handle(device);
-
-   /* Create noop job */
-   struct v3dv_job *job;
-   result = queue_create_noop_job(queue, &job);
-   if (result != VK_SUCCESS)
-      goto fail_job;
-
-   /* Create a fence for the job */
-   VkFence _fence;
-   VkFenceCreateInfo fence_info = {
-      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-      .pNext = NULL,
-      .flags = 0
-   };
-
-   result = v3dv_CreateFence(_device, &fence_info, NULL, &_fence);
-   if (result != VK_SUCCESS)
-      goto fail_fence;
-
-   /* Submit the job */
-   result = queue_submit_job(queue, job, pSubmit->waitSemaphoreCount > 0);
-   if (result != VK_SUCCESS)
-      goto fail_submit;
-
-   list_addtail(&job->list_link, &queue->noop_jobs);
-
-   /* At this point we have submitted the job for execution and we can no
-    * longer destroy it until we know it has completed execution on the GPU.
+   /* VkQueue host access is externally synchronized so we don't need to lock
+    * here for the static variable.
     */
-   can_destroy_job = false;
+   static struct v3dv_job *noop_job = NULL;
 
-   /* Bind a fence to the job we have just submitted so we can poll if the job
-    * has completed.
-    */
-   if (process_fence_to_signal(device, _fence) != VK_SUCCESS) {
-      /* If we could not bind the fence, then we need to do a sync wait so
-       * we don't leak the job. If the sync wait also fails, then we are
-       * out of options.
-       */
-      int ret = drmSyncobjWait(device->render_fd,
-                               &device->last_job_sync, 1, INT64_MAX, 0, NULL);
-      if (!ret)
-         can_destroy_job = true;
-      else
-         result = vk_error(device->instance, VK_ERROR_DEVICE_LOST);
-
-      goto fail_signal_fence;
+   if (!noop_job) {
+      VkResult result = queue_create_noop_job(queue, &noop_job);
+      if (result != VK_SUCCESS)
+         return result;
    }
 
-   job->fence = v3dv_fence_from_handle(_fence);
-
-   return result;
-
-fail_signal_fence:
-fail_submit:
-   v3dv_DestroyFence(_device, _fence, NULL);
-
-fail_fence:
-   if (can_destroy_job)
-      v3dv_job_destroy(job);
-
-fail_job:
-   return result;
+   return queue_submit_job(queue, noop_job, pSubmit->waitSemaphoreCount > 0);
 }
 
 static VkResult
@@ -556,8 +484,6 @@ v3dv_QueueSubmit(VkQueue _queue,
                  VkFence fence)
 {
    V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
-
-   v3dv_queue_destroy_completed_noop_jobs(queue);
 
    VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < submitCount; i++) {

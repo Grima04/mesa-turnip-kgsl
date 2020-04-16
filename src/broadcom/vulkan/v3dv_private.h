@@ -206,17 +206,7 @@ struct v3dv_queue {
    struct v3dv_device *device;
 
    VkDeviceQueueCreateFlags flags;
-
-   /* When the client submits to the queue without a command buffer the queue
-    * needs to create and submit a no-op job and it is then responsible from
-    * destroying it once it has completed execution. This list keeps references
-    * to all no-op jobs in flight so we can do that.
-    */
-   struct list_head noop_jobs;
 };
-
-void v3dv_queue_destroy_completed_noop_jobs(struct v3dv_queue *queue);
-
 
 struct v3dv_meta_color_clear_pipeline {
    VkPipeline pipeline;
@@ -671,14 +661,6 @@ struct v3dv_job {
 
    enum v3dv_ez_state ez_state;
    enum v3dv_ez_state first_ez_state;
-
-   /* Typically, the client is responsible for handling the life-time of
-    * command buffers by using fences to tell when they are no longer in
-    * use by the GPU, however, when the jobs that are submitted to the GPU
-    * are created internally by the driver (for example when we need to
-    * submit no-op jobs), then it is our responsibility to do that.
-    */
-   struct v3dv_fence *fence;
 
    /* Number of draw calls recorded into the job */
    uint32_t draw_count;
