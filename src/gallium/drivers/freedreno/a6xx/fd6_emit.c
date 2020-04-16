@@ -1126,12 +1126,16 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 
 	if (dirty & FD_DIRTY_BLEND_COLOR) {
 		struct pipe_blend_color *bcolor = &ctx->blend_color;
+		struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
+				emit->ctx->batch->submit, 5*4, FD_RINGBUFFER_STREAMING);
 
 		OUT_PKT4(ring, REG_A6XX_RB_BLEND_RED_F32, 4);
 		OUT_RING(ring, A6XX_RB_BLEND_RED_F32(bcolor->color[0]));
 		OUT_RING(ring, A6XX_RB_BLEND_GREEN_F32(bcolor->color[1]));
 		OUT_RING(ring, A6XX_RB_BLEND_BLUE_F32(bcolor->color[2]));
 		OUT_RING(ring, A6XX_RB_BLEND_ALPHA_F32(bcolor->color[3]));
+
+		fd6_emit_take_group(emit, ring, FD6_GROUP_BLEND_COLOR, ENABLE_DRAW);
 	}
 
 	needs_border |= fd6_emit_combined_textures(ring, emit, PIPE_SHADER_VERTEX, vs);
