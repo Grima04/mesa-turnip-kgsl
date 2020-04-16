@@ -6598,7 +6598,6 @@ void visit_load_shared(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    // TODO: implement sparse reads using ds_read2_b32 and nir_ssa_def_components_read()
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   assert(instr->dest.ssa.bit_size >= 32 && "Bitsize not supported in load_shared.");
    Temp address = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Builder bld(ctx->program, ctx->block);
 
@@ -6613,7 +6612,6 @@ void visit_store_shared(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp data = get_ssa_temp(ctx, instr->src[0].ssa);
    Temp address = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
-   assert(elem_size_bytes >= 4 && "Only 32bit & 64bit store_shared currently supported.");
 
    unsigned align = nir_intrinsic_align_mul(instr) ? nir_intrinsic_align(instr) : elem_size_bytes;
    store_lds(ctx, elem_size_bytes, data, writemask, address, nir_intrinsic_base(instr), align);
