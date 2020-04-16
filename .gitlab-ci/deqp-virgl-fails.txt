@@ -30,7 +30,6 @@ dEQP-GLES2.functional.rasterization.interpolation.basic.lines_wide
 dEQP-GLES2.functional.rasterization.interpolation.projected.line_loop_wide
 dEQP-GLES2.functional.rasterization.interpolation.projected.line_strip_wide
 dEQP-GLES2.functional.rasterization.interpolation.projected.lines_wide
-dEQP-GLES2.functional.rasterization.limits.points
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_corner
 dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_center
 dEQP-GLES3.functional.clipping.triangle_vertex.clip_two.clip_neg_y_neg_z_and_neg_x_neg_y_pos_z
