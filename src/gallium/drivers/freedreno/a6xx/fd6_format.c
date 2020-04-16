@@ -132,6 +132,8 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
 	V__(R8G8B8_SSCALED, 8_8_8_SINT,              WZYX),
 
 	/* 32-bit */
+	V__(R32_UNORM,   32_UNORM,                   WZYX),
+	V__(R32_SNORM,   32_SNORM,                   WZYX),
 	VTC(R32_UINT,    32_UINT,                    WZYX),
 	VTC(R32_SINT,    32_SINT,                    WZYX),
 	V__(R32_USCALED, 32_UINT,                    WZYX),
@@ -232,6 +234,8 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
 	VTC(R16G16B16A16_FLOAT,   16_16_16_16_FLOAT, WZYX),
 	VTC(R16G16B16X16_FLOAT,   16_16_16_16_FLOAT, WZYX),
 
+	V__(R32G32_UNORM,   32_32_UNORM,             WZYX),
+	V__(R32G32_SNORM,   32_32_SNORM,             WZYX),
 	VTC(R32G32_UINT,    32_32_UINT,              WZYX),
 	VTC(R32G32_SINT,    32_32_SINT,              WZYX),
 	V__(R32G32_USCALED, 32_32_UINT,              WZYX),
@@ -243,6 +247,8 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
 	_T_(L32A32_SINT,    32_32_SINT,              WZYX),
 
 	/* 96-bit */
+	V__(R32G32B32_UNORM,   32_32_32_UNORM,       WZYX),
+	V__(R32G32B32_SNORM,   32_32_32_SNORM,       WZYX),
 	VT_(R32G32B32_UINT,    32_32_32_UINT,        WZYX),
 	VT_(R32G32B32_SINT,    32_32_32_SINT,        WZYX),
 	V__(R32G32B32_USCALED, 32_32_32_UINT,        WZYX),
@@ -251,6 +257,8 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
 	V__(R32G32B32_FIXED,   32_32_32_FIXED,       WZYX),
 
 	/* 128-bit */
+	V__(R32G32B32A32_UNORM,   32_32_32_32_UNORM, WZYX),
+	V__(R32G32B32A32_SNORM,   32_32_32_32_SNORM, WZYX),
 	VTC(R32G32B32A32_UINT,    32_32_32_32_UINT,  WZYX),
 	_TC(R32G32B32X32_UINT,    32_32_32_32_UINT,  WZYX),
 	VTC(R32G32B32A32_SINT,    32_32_32_32_SINT,  WZYX),
