@@ -627,13 +627,20 @@ _mesa_update_array_format(struct gl_context *ctx,
                           GLuint relativeOffset)
 {
    struct gl_array_attributes *const array = &vao->VertexAttrib[attrib];
+   struct gl_vertex_format new_format;
 
    assert(!vao->SharedAndImmutable);
    assert(size <= 4);
 
-   array->RelativeOffset = relativeOffset;
-   _mesa_set_vertex_format(&array->Format, size, type, format,
+   _mesa_set_vertex_format(&new_format, size, type, format,
                            normalized, integer, doubles);
+
+   if ((array->RelativeOffset == relativeOffset) &&
+       !memcmp(&new_format, &array->Format, sizeof(new_format)))
+      return;
+
+   array->RelativeOffset = relativeOffset;
+   array->Format = new_format;
 
    vao->NewArrays |= vao->Enabled & VERT_BIT(attrib);
 }
@@ -891,13 +898,11 @@ update_array(struct gl_context *ctx,
 
    /* The Stride and Ptr fields are not set by update_array_format() */
    struct gl_array_attributes *array = &vao->VertexAttrib[attrib];
-   array->Stride = stride;
-   /* For updating the pointer we would need to add the vao->NewArrays flag
-    * to the VAO. But but that is done already unconditionally in
-    * _mesa_update_array_format called above.
-    */
-   assert((vao->NewArrays | ~vao->Enabled) & VERT_BIT(attrib));
-   array->Ptr = ptr;
+   if ((array->Stride != stride) || (array->Ptr != ptr)) {
+      array->Stride = stride;
+      array->Ptr = ptr;
+      vao->NewArrays |= vao->Enabled & VERT_BIT(attrib);
+   }
 
    /* Update the vertex buffer binding */
    GLsizei effectiveStride = stride != 0 ?

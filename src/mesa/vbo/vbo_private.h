@@ -243,12 +243,7 @@ _vbo_set_attrib_format(struct gl_context *ctx,
       size /= 2;
    _mesa_update_array_format(ctx, vao, attr, size, type, GL_RGBA,
                              GL_FALSE, integer, doubles, offset);
-   /* Ptr for userspace arrays.
-    * For updating the pointer we would need to add the vao->NewArrays flag
-    * to the VAO. But but that is done already unconditionally in
-    * _mesa_update_array_format called above.
-    */
-   assert((vao->NewArrays | ~vao->Enabled) & VERT_BIT(attr));
+   vao->NewArrays |= vao->Enabled & VERT_BIT(attr);
    vao->VertexAttrib[attr].Ptr = ADD_POINTERS(buffer_offset, offset);
 }
 
