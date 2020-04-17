@@ -328,7 +328,6 @@ struct tu_physical_device
 #define GMEM_ALIGN_H 4
 
    struct {
-      uint32_t RB_UNKNOWN_8E04_blit;    /* for CP_BLIT's */
       uint32_t PC_UNKNOWN_9805;
       uint32_t SP_UNKNOWN_A0F8;
    } magic;
