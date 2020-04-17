@@ -1448,12 +1448,15 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
             if (it != temp_to_phi_ressources.end() && def.regClass() == phi_ressources[it->second][0].regClass()) {
                phi_ressources[it->second][0] = def.getTemp();
                /* try to coalesce phi affinities with parallelcopies */
-               if (!def.isFixed() && instr->opcode == aco_opcode::p_parallelcopy) {
-                  Operand op = instr->operands[i];
-                  if (op.isTemp() && op.isFirstKillBeforeDef() && def.regClass() == op.regClass()) {
-                     phi_ressources[it->second].emplace_back(op.getTemp());
-                     temp_to_phi_ressources[op.tempId()] = it->second;
-                  }
+               Operand op = Operand();
+               if (!def.isFixed() && instr->opcode == aco_opcode::p_parallelcopy)
+                  op = instr->operands[i];
+               else if (instr->opcode == aco_opcode::v_mad_f32 && !instr->usesModifiers())
+                  op = instr->operands[2];
+
+               if (op.isTemp() && op.isFirstKillBeforeDef() && def.regClass() == op.regClass()) {
+                  phi_ressources[it->second].emplace_back(op.getTemp());
+                  temp_to_phi_ressources[op.tempId()] = it->second;
                }
             }
          }
@@ -1728,15 +1731,10 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
              instr->operands[2].isKillBeforeDef() &&
              instr->operands[2].getTemp().type() == RegType::vgpr &&
              instr->operands[1].isTemp() &&
-             instr->operands[1].getTemp().type() == RegType::vgpr) { /* TODO: swap src0 and src1 in this case */
-            VOP3A_instruction* vop3 = static_cast<VOP3A_instruction*>(instr.get());
-            bool can_use_mac = !(vop3->abs[0] || vop3->abs[1] || vop3->abs[2] ||
-                                 vop3->neg[0] || vop3->neg[1] || vop3->neg[2] ||
-                                 vop3->clamp || vop3->omod || vop3->opsel);
-            if (can_use_mac) {
-               instr->format = Format::VOP2;
-               instr->opcode = aco_opcode::v_mac_f32;
-            }
+             instr->operands[1].getTemp().type() == RegType::vgpr &&
+             !instr->usesModifiers()) {
+            instr->format = Format::VOP2;
+            instr->opcode = aco_opcode::v_mac_f32;
          }
 
          /* handle definitions which must have the same register as an operand */
