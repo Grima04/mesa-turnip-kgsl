@@ -69,7 +69,7 @@ fd_ringbuffer_new_object(struct fd_pipe *pipe, uint32_t size)
 
 void fd_ringbuffer_del(struct fd_ringbuffer *ring)
 {
-	if (!atomic_dec_and_test(&ring->refcnt))
+	if (--ring->refcnt > 0)
 		return;
 
 	ring->funcs->destroy(ring);
@@ -78,7 +78,7 @@ void fd_ringbuffer_del(struct fd_ringbuffer *ring)
 struct fd_ringbuffer *
 fd_ringbuffer_ref(struct fd_ringbuffer *ring)
 {
-	p_atomic_inc(&ring->refcnt);
+	ring->refcnt++;
 	return ring;
 }
 
