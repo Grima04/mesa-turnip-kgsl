@@ -799,10 +799,6 @@ struct vtn_ssa_value *vtn_ssa_transpose(struct vtn_builder *b,
 
 nir_deref_instr *vtn_nir_deref(struct vtn_builder *b, uint32_t id);
 
-struct vtn_pointer *vtn_pointer_for_variable(struct vtn_builder *b,
-                                             struct vtn_variable *var,
-                                             struct vtn_type *ptr_type);
-
 nir_deref_instr *vtn_pointer_to_deref(struct vtn_builder *b,
                                       struct vtn_pointer *ptr);
 nir_ssa_def *

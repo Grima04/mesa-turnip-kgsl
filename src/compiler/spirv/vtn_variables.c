@@ -609,23 +609,6 @@ vtn_pointer_dereference(struct vtn_builder *b,
    }
 }
 
-struct vtn_pointer *
-vtn_pointer_for_variable(struct vtn_builder *b,
-                         struct vtn_variable *var, struct vtn_type *ptr_type)
-{
-   struct vtn_pointer *pointer = rzalloc(b, struct vtn_pointer);
-
-   pointer->mode = var->mode;
-   pointer->type = var->type;
-   vtn_assert(ptr_type->base_type == vtn_base_type_pointer);
-   vtn_assert(ptr_type->deref->type == var->type->type);
-   pointer->ptr_type = ptr_type;
-   pointer->var = var;
-   pointer->access = var->access | var->type->access;
-
-   return pointer;
-}
-
 /* Returns an atomic_uint type based on the original uint type. The returned
  * type will be equivalent to the original one but will have an atomic_uint
  * type as leaf instead of an uint.
@@ -2211,8 +2194,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    var->mode = mode;
    var->base_location = -1;
 
-   vtn_assert(val->value_type == vtn_value_type_pointer);
-   val->pointer = vtn_pointer_for_variable(b, var, ptr_type);
+   val->pointer = rzalloc(b, struct vtn_pointer);
+   val->pointer->mode = var->mode;
+   val->pointer->type = var->type;
+   val->pointer->ptr_type = ptr_type;
+   val->pointer->var = var;
+   val->pointer->access = var->type->access;
 
    switch (var->mode) {
    case vtn_variable_mode_function:
@@ -2381,6 +2368,9 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
 
    vtn_foreach_decoration(b, val, var_decoration_cb, var);
    vtn_foreach_decoration(b, val, ptr_decoration_cb, val->pointer);
+
+   /* Propagate access flags from the OpVariable decorations. */
+   val->pointer->access |= var->access;
 
    if ((var->mode == vtn_variable_mode_input ||
         var->mode == vtn_variable_mode_output) &&
