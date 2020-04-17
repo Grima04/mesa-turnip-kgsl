@@ -690,6 +690,7 @@ llvmpipe-gles2:
     LP_NUM_THREADS: 0
     DEQP_EXPECTED_FAILS: deqp-llvmpipe-fails.txt
     LIBGL_ALWAYS_SOFTWARE: "true"
+    DEQP_EXPECTED_RENDERER: llvmpipe
   extends:
     - .deqp-test-gl
     - .llvmpipe-rules
@@ -702,6 +703,7 @@ softpipe-gles2:
     DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
     DEQP_SKIPS: deqp-softpipe-skips.txt
     GALLIUM_DRIVER: "softpipe"
+    DEQP_EXPECTED_RENDERER: softpipe
 
 softpipe-gles3:
   parallel: 2
@@ -727,6 +729,7 @@ virgl-gles2:
     DEQP_EXPECTED_FAILS: deqp-virgl-fails.txt
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "virpipe"
+    DEQP_EXPECTED_RENDERER: virgl
   extends:
     - .deqp-test-gl
     - .virgl-rules
@@ -775,6 +778,7 @@ arm64_a630_gles2:
     NIR_VALIDATE: 0
     DEQP_PARALLEL: 4
     FLAKES_CHANNEL: "#freedreno-ci"
+    DEQP_EXPECTED_RENDERER: FD630
   tags:
     - mesa-cheza
   dependencies:
@@ -809,6 +813,7 @@ arm64_a306_gles2:
     DEQP_SKIPS: deqp-freedreno-a307-skips.txt
     DEQP_VER: gles2
     DEQP_PARALLEL: 4
+    DEQP_EXPECTED_RENDERER: FD307
   script:
     - .gitlab-ci/bare-metal/fastboot.sh
   needs:
@@ -835,6 +840,7 @@ arm64_a530_gles2:
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a530-fails.txt
     DEQP_SKIPS: deqp-freedreno-a530-skips.txt
+    DEQP_EXPECTED_RENDERER: FD530
   tags:
     - google-freedreno-db820c
 

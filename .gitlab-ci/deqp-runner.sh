@@ -188,6 +188,11 @@ parse_renderer() {
     VERSION=`grep -A1 TestCaseResult.\*info.version $RESULTS/deqp-info.qpa | grep '<Text' | sed 's|.*<Text>||g' | sed 's|</Text>||g'`
     echo "Renderer: $RENDERER"
     echo "Version: $VERSION "
+
+    if ! echo $RENDERER | grep -q $DEQP_EXPECTED_RENDERER; then
+        echo "Expected GL_RENDERER $DEQP_EXPECTED_RENDERER"
+        exit 1
+    fi
 }
 
 check_renderer() {

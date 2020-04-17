@@ -46,6 +46,7 @@ cp -Rp $BM_ROOTFS rootfs
 cp $BM/init.sh rootfs/init
 sed -i "s|DEQP_VER_REPLACE|$DEQP_VER|g" rootfs/init
 sed -i "s|DEQP_PARALLEL_REPLACE|$DEQP_PARALLEL|g" rootfs/init
+sed -i "s|DEQP_EXPECTED_RENDERER_REPLACE|$DEQP_EXPECTED_RENDERER|g" rootfs/init
 sed -i "s|CI_NODE_INDEX_REPLACE|$CI_NODE_INDEX|g" rootfs/init
 sed -i "s|CI_NODE_TOTAL_REPLACE|$CI_NODE_TOTAL|g" rootfs/init
 
