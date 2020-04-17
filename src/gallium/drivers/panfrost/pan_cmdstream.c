@@ -483,6 +483,33 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
                 hw->max_lod = hw->min_lod + 1;
 }
 
+void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
+                                        struct bifrost_sampler_descriptor *hw)
+{
+        *hw = (struct bifrost_sampler_descriptor) {
+                .unk1 = 0x1,
+                .wrap_s = translate_tex_wrap(cso->wrap_s),
+                .wrap_t = translate_tex_wrap(cso->wrap_t),
+                .wrap_r = translate_tex_wrap(cso->wrap_r),
+                .unk8 = 0x8,
+                .unk2 = 0x2,
+                .min_filter = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST,
+                .norm_coords = cso->normalized_coords,
+                .mip_filter = cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR,
+                .mag_filter = cso->mag_img_filter == PIPE_TEX_FILTER_LINEAR,
+                .min_lod = FIXED_16(cso->min_lod, false), /* clamp at 0 */
+                .max_lod = FIXED_16(cso->max_lod, false),
+        };
+
+        /* If necessary, we disable mipmapping in the sampler descriptor by
+         * clamping the LOD as tight as possible (from 0 to epsilon,
+         * essentially -- remember these are fixed point numbers, so
+         * epsilon=1/256) */
+
+        if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
+                hw->max_lod = hw->min_lod + 1;
+}
+
 static void
 panfrost_make_stencil_state(const struct pipe_stencil_state *in,
                             struct mali_stencil_test *out)
@@ -1251,20 +1278,34 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                   struct mali_vertex_tiler_postfix *postfix)
 {
         struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *device = pan_device(ctx->base.screen);
 
         if (!ctx->sampler_count[stage])
                 return;
 
-        size_t desc_size = sizeof(struct mali_sampler_descriptor);
-        size_t transfer_size = desc_size * ctx->sampler_count[stage];
-        struct panfrost_transfer transfer = panfrost_allocate_transient(batch,
-                                                                        transfer_size);
-        struct mali_sampler_descriptor *desc = (struct mali_sampler_descriptor *)transfer.cpu;
+        if (device->quirks & IS_BIFROST) {
+                size_t desc_size = sizeof(struct bifrost_sampler_descriptor);
+                size_t transfer_size = desc_size * ctx->sampler_count[stage];
+                struct panfrost_transfer transfer = panfrost_allocate_transient(batch,
+                                                                                transfer_size);
+                struct bifrost_sampler_descriptor *desc = (struct bifrost_sampler_descriptor *)transfer.cpu;
 
-        for (int i = 0; i < ctx->sampler_count[stage]; ++i)
-                desc[i] = ctx->samplers[stage][i]->hw;
+                for (int i = 0; i < ctx->sampler_count[stage]; ++i)
+                        desc[i] = ctx->samplers[stage][i]->bifrost_hw;
 
-        postfix->sampler_descriptor = transfer.gpu;
+                postfix->sampler_descriptor = transfer.gpu;
+        } else {
+                size_t desc_size = sizeof(struct mali_sampler_descriptor);
+                size_t transfer_size = desc_size * ctx->sampler_count[stage];
+                struct panfrost_transfer transfer = panfrost_allocate_transient(batch,
+                                                                                transfer_size);
+                struct mali_sampler_descriptor *desc = (struct mali_sampler_descriptor *)transfer.cpu;
+
+                for (int i = 0; i < ctx->sampler_count[stage]; ++i)
+                        desc[i] = ctx->samplers[stage][i]->midgard_hw;
+
+                postfix->sampler_descriptor = transfer.gpu;
+        }
 }
 
 void

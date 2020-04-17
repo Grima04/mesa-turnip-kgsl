@@ -592,9 +592,14 @@ panfrost_create_sampler_state(
         const struct pipe_sampler_state *cso)
 {
         struct panfrost_sampler_state *so = CALLOC_STRUCT(panfrost_sampler_state);
+        struct panfrost_device *device = pan_device(pctx->screen);
+
         so->base = *cso;
 
-        panfrost_sampler_desc_init(cso, &so->hw);
+        if (device->quirks & IS_BIFROST)
+                panfrost_sampler_desc_init_bifrost(cso, &so->bifrost_hw);
+        else
+                panfrost_sampler_desc_init(cso, &so->midgard_hw);
 
         return so;
 }
@@ -986,7 +991,9 @@ panfrost_sampler_view_destroy(
         struct panfrost_sampler_view *view = (struct panfrost_sampler_view *) pview;
 
         pipe_resource_reference(&pview->texture, NULL);
-        panfrost_bo_unreference(view->bo);
+        panfrost_bo_unreference(view->midgard_bo);
+        if (view->bifrost_descriptor)
+                ralloc_free(view->bifrost_descriptor);
         ralloc_free(view);
 }
 
