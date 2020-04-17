@@ -3503,3 +3503,47 @@ v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
 
    list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
 }
+
+void
+v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
+                 VkEvent event,
+                 VkPipelineStageFlags stageMask)
+{
+   assert(!"vkCmdSetEvent not implemented yet");
+}
+
+void
+v3dv_CmdResetEvent(VkCommandBuffer commandBuffer,
+                   VkEvent event,
+                   VkPipelineStageFlags stageMask)
+{
+   assert(!"vkCmdResetEvent not implemented yet");
+}
+
+void
+v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
+                   uint32_t eventCount,
+                   const VkEvent *pEvents,
+                   VkPipelineStageFlags srcStageMask,
+                   VkPipelineStageFlags dstStageMask,
+                   uint32_t memoryBarrierCount,
+                   const VkMemoryBarrier *pMemoryBarriers,
+                   uint32_t bufferMemoryBarrierCount,
+                   const VkBufferMemoryBarrier *pBufferMemoryBarriers,
+                   uint32_t imageMemoryBarrierCount,
+                   const VkImageMemoryBarrier *pImageMemoryBarriers)
+{
+   assert(!"vkCmdWaitEvents not implemented yet");
+}
+
+void
+v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
+                  VkImage srcImage,
+                  VkImageLayout srcImageLayout,
+                  VkImage dstImage,
+                  VkImageLayout dstImageLayout,
+                  uint32_t regionCount,
+                  const VkImageBlit* pRegions, VkFilter filter)
+{
+   assert(!"vkCmdBlitImage not implemented yet");
+}
