@@ -84,6 +84,7 @@ run_cts() {
         --output $output \
         --caselist $caselist \
         --exclude-list $INSTALL/$DEQP_SKIPS \
+        --compact-display false \
         $XFAIL \
         $JOB \
 	--allow-flakes true \

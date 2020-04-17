@@ -721,7 +721,6 @@ virgl-gles2:
     DEQP_PARALLEL: 4
     NIR_VALIDATE: 0
     DEQP_NO_SAVE_RESULTS: 1
-    DEQP_RUNNER_OPTIONS: "--compact-display false"
     # Don't use threads inside llvmpipe, we've already got all 4 cores
     # busy with DEQP_PARALLEL.
     LP_NUM_THREADS: 0
@@ -737,7 +736,7 @@ virgl-gles3:
     DEQP_VER: gles3
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 3
-    DEQP_RUNNER_OPTIONS: "--compact-display false --timeout 120"
+    DEQP_RUNNER_OPTIONS: "--timeout 120"
   extends: virgl-gles2
 
 virgl-gles31:
@@ -746,7 +745,7 @@ virgl-gles31:
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 10
     DEQP_OPTIONS: "--deqp-log-images=disable"
-    DEQP_RUNNER_OPTIONS: "--compact-display false --timeout 120"
+    DEQP_RUNNER_OPTIONS: "--timeout 120"
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"
   extends: virgl-gles2
