@@ -577,9 +577,11 @@ bi_pack_fma_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fmadd_min_f16(bi_instruction *ins, struct bi_registers *regs, bool FMA)
 {
         unsigned op =
+                (!FMA) ? ((ins->op.minmax == BI_MINMAX_MIN) ?
+                        BIFROST_ADD_OP_FMIN16 : BIFROST_ADD_OP_FMAX16) :
                 (ins->type == BI_ADD) ? BIFROST_FMA_OP_FADD16 :
                 (ins->op.minmax == BI_MINMAX_MIN) ? BIFROST_FMA_OP_FMIN16 :
                 BIFROST_FMA_OP_FMAX16;
@@ -618,6 +620,8 @@ bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
         bool l = false;
         bool flip = false;
 
+        assert(!(abs_0 && abs_1));
+
         if (!abs_0 && !abs_1) {
                 /* Force k = 0 <===> NOT(src1 < src0) */
                 flip = (src_1 < src_0);
@@ -631,18 +635,37 @@ bi_pack_fma_addmin_f16(bi_instruction *ins, struct bi_registers *regs)
                 l = true;
         }
 
-        struct bifrost_fma_add_minmax16 pack = {
-                .src0 = flip ? src_1 : src_0,
-                .src1 = flip ? src_0 : src_1,
-                .src0_neg = ins->src_neg[flip ? 1 : 0],
-                .src1_neg = ins->src_neg[flip ? 0 : 1],
-                .abs1 = l,
-                .outmod = ins->outmod,
-                .mode = (ins->type == BI_ADD) ? ins->roundmode : ins->minmax,
-                .op = op
-        };
+        if (FMA) {
+                struct bifrost_fma_add_minmax16 pack = {
+                        .src0 = flip ? src_1 : src_0,
+                        .src1 = flip ? src_0 : src_1,
+                        .src0_neg = ins->src_neg[flip ? 1 : 0],
+                        .src1_neg = ins->src_neg[flip ? 0 : 1],
+                        .abs1 = l,
+                        .outmod = ins->outmod,
+                        .mode = (ins->type == BI_ADD) ? ins->roundmode : ins->minmax,
+                        .op = op
+                };
 
-        RETURN_PACKED(pack);
+                RETURN_PACKED(pack);
+        } else {
+                /* Can't have modes for fp16 */
+                assert(ins->outmod == 0);
+
+                struct bifrost_add_fmin16 pack = {
+                        .src0 = flip ? src_1 : src_0,
+                        .src1 = flip ? src_0 : src_1,
+                        .src0_neg = ins->src_neg[flip ? 1 : 0],
+                        .src1_neg = ins->src_neg[flip ? 0 : 1],
+                        .abs1 = l,
+                        .src0_swizzle = bi_swiz16(ins, 0),
+                        .src1_swizzle = bi_swiz16(ins, 1), 
+                        .mode = ins->minmax,
+                        .op = op
+                };
+
+                RETURN_PACKED(pack);
+        }
 }
 
 static unsigned
@@ -651,7 +674,7 @@ bi_pack_fma_addmin(bi_instruction *ins, struct bi_registers *regs)
         if (ins->dest_type == nir_type_float32)
                 return bi_pack_fma_addmin_f32(ins, regs);
         else if(ins->dest_type == nir_type_float16)
-                return bi_pack_fma_addmin_f16(ins, regs);
+                return bi_pack_fmadd_min_f16(ins, regs, true);
         else
                 unreachable("Unknown FMA/ADD type");
 }
@@ -1039,8 +1062,7 @@ bi_pack_add_addmin(bi_instruction *ins, struct bi_registers *regs)
                 if (ins->type == BI_ADD)
                         return bi_pack_add_add_f16(ins, regs);
                 else
-                        unreachable("TODO");
-                        //return bi_pack_add_min_f16(ins, regs);
+                        return bi_pack_fmadd_min_f16(ins, regs, false);
         } else
                 unreachable("Unknown FMA/ADD type");
 }
