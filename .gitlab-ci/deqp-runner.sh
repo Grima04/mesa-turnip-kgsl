@@ -135,7 +135,7 @@ extract_xml_result() {
                     if [ "$line" = "#endTestCaseResult" ]; then
                         echo $line >> $dst
                         echo "#endSession" >> $dst
-                        /deqp/executor/testlog-to-xml $dst "$RESULTS/$testcase.xml"
+                        /deqp/executor/testlog-to-xml $dst "$RESULTS/$testcase$DEQP_RUN_SUFFIX.xml"
                         # copy the stylesheets here so they only end up in artifacts
                         # if we have one or more result xml in artifacts
                         cp /deqp/testlog.css "$RESULTS/"
@@ -229,57 +229,61 @@ if [ $DEQP_VER != vk ]; then
     quiet check_renderer
 fi
 
-run_cts $DEQP /tmp/case-list.txt $RESULTS/cts-runner-results.txt
+RESULTSFILE=$RESULTS/cts-runner-results$DEQP_RUN_SUFFIX.txt
+UNEXPECTED_RESULTSFILE=$RESULTS/cts-runner-unexpected-results$DEQP_RUN_SUFFIX.txt
+FLAKESFILE=$RESULTS/cts-runner-flakes$DEQP_RUN_SUFFIX.txt
+
+run_cts $DEQP /tmp/case-list.txt $RESULTSFILE
 DEQP_EXITCODE=$?
 
 # junit is disabled, because it overloads gitlab.freedesktop.org to parse it.
-#quiet generate_junit $RESULTS/cts-runner-results.txt > $RESULTS/results.xml
+#quiet generate_junit $RESULTSFILE > $RESULTS/results.xml
 
 if [ $DEQP_EXITCODE -ne 0 ]; then
     # preserve caselist files in case of failures:
     cp /tmp/deqp_runner.*.txt $RESULTS/
-    cat $RESULTS/cts-runner-results.txt | \
+    cat $RESULTSFILE | \
         grep -v ",Pass" | \
         grep -v ",Skip" | \
         grep -v ",ExpectedFail" > \
-        $RESULTS/cts-runner-unexpected-results.txt
+        $UNEXPECTED_RESULTSFILE.txt
 
     if [ -z "$DEQP_NO_SAVE_RESULTS" ]; then
         echo "Some unexpected results found (see cts-runner-results.txt in artifacts for full results):"
-        head -n 50 $RESULTS/cts-runner-unexpected-results.txt
+        head -n 50 $UNEXPECTED_RESULTSFILE.txt
 
         # Save the logs for up to the first 50 unexpected results:
-        head -n 50 $RESULTS/cts-runner-unexpected-results.txt | quiet extract_xml_results /tmp/*.qpa
+        head -n 50 $UNEXPECTED_RESULTSFILE.txt | quiet extract_xml_results /tmp/*.qpa
     else
         echo "Unexpected results found:"
-        cat $RESULTS/cts-runner-unexpected-results.txt
+        cat $UNEXPECTED_RESULTSFILE.txt
     fi
 
-    count=`cat $RESULTS/cts-runner-unexpected-results.txt | wc -l`
+    count=`cat $UNEXPECTED_RESULTSFILE.txt | wc -l`
 
     # Re-run fails to detect flakes.  But use a small threshold, if
     # something was fundamentally broken, we don't want to re-run
     # the entire caselist
 else
-    cat $RESULTS/cts-runner-results.txt | \
+    cat $RESULTSFILE | \
         grep ",Flake" > \
-        $RESULTS/cts-runner-flakes.txt
+        $FLAKESFILE
 
-    count=`cat $RESULTS/cts-runner-flakes.txt | wc -l`
+    count=`cat $FLAKESFILE | wc -l`
     if [ $count -gt 0 ]; then
         echo "Some flakes found (see cts-runner-flakes.txt in artifacts for full results):"
-        head -n 50 $RESULTS/cts-runner-flakes.txt
+        head -n 50 $FLAKESFILE
 
         if [ -z "$DEQP_NO_SAVE_RESULTS" ]; then
             # Save the logs for up to the first 50 flakes:
-            head -n 50 $RESULTS/cts-runner-flakes.txt | quiet extract_xml_results /tmp/*.qpa
+            head -n 50 $FLAKESFILE | quiet extract_xml_results /tmp/*.qpa
         fi
 
         # Report the flakes to IRC channel for monitoring (if configured):
-        quiet report_flakes $RESULTS/cts-runner-flakes.txt
+        quiet report_flakes $FLAKESFILE
     else
         # no flakes, so clean-up:
-        rm $RESULTS/cts-runner-flakes.txt
+        rm $FLAKESFILE
     fi
 fi
 
