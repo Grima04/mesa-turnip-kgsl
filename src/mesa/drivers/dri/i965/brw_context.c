@@ -602,14 +602,6 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.MaxIntegerSamples = max_samples;
    ctx->Const.MaxImageSamples = 0;
 
-   /* gen6_set_sample_maps() sets SampleMap{2,4,8}x variables which are used
-    * to map indices of rectangular grid to sample numbers within a pixel.
-    * These variables are used by GL_EXT_framebuffer_multisample_blit_scaled
-    * extension implementation. For more details see the comment above
-    * gen6_set_sample_maps() definition.
-    */
-   gen6_set_sample_maps(ctx);
-
    ctx->Const.MinLineWidth = 1.0;
    ctx->Const.MinLineWidthAA = 1.0;
    if (devinfo->gen >= 6) {
