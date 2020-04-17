@@ -818,7 +818,7 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
    for (; offset < copy.bytes;) {
       Definition def;
       Operand op;
-      split_copy(offset, &def, &op, copy, true, 4);
+      split_copy(offset, &def, &op, copy, true, 8);
 
       assert(op.regClass() == def.regClass());
       Operand def_as_op = Operand(def.physReg(), def.regClass());
@@ -851,6 +851,15 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
             bld.sop2(aco_opcode::s_xor_b32, def, Definition(scc, s1), op, def_as_op);
             bld.sop2(aco_opcode::s_xor_b32, op_as_def, Definition(scc, s1), op, def_as_op);
          }
+         ctx->program->statistics[statistic_copies] += 3;
+      } else if (def.regClass() == s2) {
+         if (preserve_scc)
+            bld.sop1(aco_opcode::s_mov_b32, Definition(pi->scratch_sgpr, s1), Operand(scc, s1));
+         bld.sop2(aco_opcode::s_xor_b64, op_as_def, Definition(scc, s1), op, def_as_op);
+         bld.sop2(aco_opcode::s_xor_b64, def, Definition(scc, s1), op, def_as_op);
+         bld.sop2(aco_opcode::s_xor_b64, op_as_def, Definition(scc, s1), op, def_as_op);
+         if (preserve_scc)
+            bld.sopc(aco_opcode::s_cmp_lg_i32, Definition(scc, s1), Operand(pi->scratch_sgpr, s1), Operand(0u));
          ctx->program->statistics[statistic_copies] += 3;
       } else if (ctx->program->chip_class >= GFX9 && def.bytes() == 2 && def.physReg().reg() == op.physReg().reg()) {
          aco_ptr<VOP3P_instruction> vop3p{create_instruction<VOP3P_instruction>(aco_opcode::v_pk_add_u16, Format::VOP3P, 2, 1)};
