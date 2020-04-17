@@ -2189,7 +2189,7 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                            MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
          }
 
-         tu_cs_emit_call(&cmd->cs, &secondary->cs);
+         tu_cs_add_entries(&cmd->cs, &secondary->cs);
       }
    }
    cmd->state.dirty = ~0u; /* TODO: set dirty only what needs to be */
