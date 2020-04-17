@@ -1382,7 +1382,7 @@ fd6_emit_tile_fini(struct fd_batch *batch)
 
 	fd6_emit_lrz_flush(ring);
 
-	fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
+	fd6_event_write(batch, ring, PC_CCU_RESOLVE_TS, true);
 
 	if (use_hw_binning(batch)) {
 		check_vsc_overflow(batch->ctx);
