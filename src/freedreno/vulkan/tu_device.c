@@ -921,8 +921,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->maxTransformFeedbackStreamDataSize = 512;
          properties->maxTransformFeedbackBufferDataSize = 512;
          properties->maxTransformFeedbackBufferDataStride = 512;
-         /* TODO: enable xfb query */
-         properties->transformFeedbackQueries = false;
+         properties->transformFeedbackQueries = true;
          properties->transformFeedbackStreamsLinesTriangles = false;
          properties->transformFeedbackRasterizationStreamSelect = false;
          properties->transformFeedbackDraw = true;
