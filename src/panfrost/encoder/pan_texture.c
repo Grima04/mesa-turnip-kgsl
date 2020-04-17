@@ -242,6 +242,47 @@ panfrost_new_texture(
         }
 }
 
+void
+panfrost_new_texture_bifrost(
+        struct bifrost_texture_descriptor *descriptor,
+        uint16_t width, uint16_t height,
+        uint16_t depth, uint16_t array_size,
+        enum pipe_format format,
+        enum mali_texture_type type,
+        enum mali_texture_layout layout,
+        unsigned first_level, unsigned last_level,
+        unsigned first_layer, unsigned last_layer,
+        unsigned cube_stride,
+        unsigned swizzle,
+        mali_ptr base,
+        struct panfrost_slice *slices)
+{
+        const struct util_format_description *desc =
+                util_format_description(format);
+
+        enum mali_format mali_format = panfrost_find_format(desc);
+
+        descriptor->format_unk = 0x2;
+        descriptor->type = type;
+        descriptor->format_unk2 = 0x100;
+        descriptor->format = mali_format;
+        descriptor->srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
+        descriptor->format_unk3 = 0x0;
+        descriptor->width = MALI_POSITIVE(u_minify(width, first_level));
+        descriptor->height = MALI_POSITIVE(u_minify(height, first_level));
+        descriptor->swizzle = swizzle;
+        descriptor->unk0 = 0x1;
+        descriptor->levels = last_level - first_level;
+        descriptor->unk1 = 0x0;
+        descriptor->levels_unk = 0;
+        descriptor->level_2 = 0;
+        descriptor->payload = base;
+        descriptor->array_size = MALI_POSITIVE(array_size);
+        descriptor->unk4 = 0x0;
+        descriptor->depth = MALI_POSITIVE(u_minify(depth, first_level));
+        descriptor->unk5 = 0x0;
+}
+
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile.
  * Checksumming is believed to be a CRC variant (CRC64 based on the size?).
  * This feature is also known as "transaction elimination". */

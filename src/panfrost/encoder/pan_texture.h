@@ -87,6 +87,21 @@ panfrost_new_texture(
         mali_ptr base,
         struct panfrost_slice *slices);
 
+void
+panfrost_new_texture_bifrost(
+        struct bifrost_texture_descriptor *descriptor,
+        uint16_t width, uint16_t height,
+        uint16_t depth, uint16_t array_size,
+        enum pipe_format format,
+        enum mali_texture_type type,
+        enum mali_texture_layout layout,
+        unsigned first_level, unsigned last_level,
+        unsigned first_layer, unsigned last_layer,
+        unsigned cube_stride,
+        unsigned swizzle,
+        mali_ptr base,
+        struct panfrost_slice *slices);
+
 
 unsigned
 panfrost_get_layer_stride(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level);

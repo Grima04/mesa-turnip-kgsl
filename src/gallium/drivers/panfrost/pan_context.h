@@ -256,7 +256,8 @@ struct panfrost_sampler_state {
 
 struct panfrost_sampler_view {
         struct pipe_sampler_view base;
-        struct panfrost_bo *bo;
+        struct panfrost_bo *midgard_bo;
+        struct bifrost_texture_descriptor *bifrost_descriptor;
 };
 
 static inline struct panfrost_context *

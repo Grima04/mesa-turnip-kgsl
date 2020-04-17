@@ -1243,11 +1243,11 @@ panfrost_get_tex_desc(struct panfrost_batch *batch,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               panfrost_bo_access_for_stage(st));
 
-        panfrost_batch_add_bo(batch, view->bo,
+        panfrost_batch_add_bo(batch, view->midgard_bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               panfrost_bo_access_for_stage(st));
 
-        return view->bo->gpu;
+        return view->midgard_bo->gpu;
 }
 
 void
@@ -1256,20 +1256,45 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                   struct mali_vertex_tiler_postfix *postfix)
 {
         struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *device = pan_device(ctx->base.screen);
 
         if (!ctx->sampler_view_count[stage])
                 return;
 
-        uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+        if (device->quirks & IS_BIFROST) {
+                struct bifrost_texture_descriptor *descriptors;
 
-         for (int i = 0; i < ctx->sampler_view_count[stage]; ++i)
-                trampolines[i] = panfrost_get_tex_desc(batch, stage,
-                                                       ctx->sampler_views[stage][i]);
+                descriptors = malloc(sizeof(struct bifrost_texture_descriptor) *
+                                     ctx->sampler_view_count[stage]);
 
-         postfix->texture_trampoline = panfrost_upload_transient(batch,
-                                                                 trampolines,
-                                                                 sizeof(uint64_t) *
-                                                                 ctx->sampler_view_count[stage]);
+                for (int i = 0; i < ctx->sampler_view_count[stage]; ++i) {
+                        struct panfrost_sampler_view *view = ctx->sampler_views[stage][i];
+                        struct pipe_sampler_view *pview = &view->base;
+                        struct panfrost_resource *rsrc = pan_resource(pview->texture);
+
+                        panfrost_batch_add_bo(batch, rsrc->bo,
+                                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
+                                              panfrost_bo_access_for_stage(stage));
+
+                        memcpy(&descriptors[i], view->bifrost_descriptor, sizeof(*view->bifrost_descriptor));
+                }
+
+                postfix->textures = panfrost_upload_transient(batch,
+                                                              descriptors,
+                                                              sizeof(struct bifrost_texture_descriptor) *
+                                                                      ctx->sampler_view_count[stage]);
+        } else {
+                uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+
+                for (int i = 0; i < ctx->sampler_view_count[stage]; ++i)
+                        trampolines[i] = panfrost_get_tex_desc(batch, stage,
+                                                               ctx->sampler_views[stage][i]);
+
+                postfix->textures = panfrost_upload_transient(batch,
+                                                              trampolines,
+                                                              sizeof(uint64_t) *
+                                                              ctx->sampler_view_count[stage]);
+        }
 }
 
 void
