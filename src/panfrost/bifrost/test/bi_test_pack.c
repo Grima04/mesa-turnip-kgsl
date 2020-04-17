@@ -200,7 +200,10 @@ bit_fmod_helper(struct panfrost_device *dev,
 {
         bi_instruction ins = bit_ins(c, 2, nir_type_float, size);
 
-        for (unsigned outmod = 0; outmod < 4; ++outmod) {
+        bool fp16 = (size == 16);
+        bool has_outmods = fma || !fp16;
+
+        for (unsigned outmod = 0; outmod < (has_outmods ? 4 : 1); ++outmod) {
                 for (unsigned inmod = 0; inmod < 16; ++inmod) {
                         ins.outmod = outmod;
                         ins.op.minmax = op;
@@ -209,8 +212,8 @@ bit_fmod_helper(struct panfrost_device *dev,
                         ins.src_neg[0] = (inmod & 0x4);
                         ins.src_neg[1] = (inmod & 0x8);
 
-                        /* Skip over tests that cannot run on FMA */
-                        if (fma && (size == 16) && ins.src_abs[0] && ins.src_abs[1])
+                        /* Skip over tests that cannot run */
+                        if ((fma || c == BI_MINMAX) && fp16 && ins.src_abs[0] && ins.src_abs[1])
                                 continue;
 
                         if (!bit_test_single(dev, &ins, input, fma, debug)) {
@@ -466,12 +469,10 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
                         (uint32_t *) input32;
 
                 bit_fmod_helper(dev, BI_ADD, sz, true, input, debug, 0);
+                bit_fmod_helper(dev, BI_ADD, sz, false, input, debug, 0);
 
-                if (sz == 32) {
-                        bit_fmod_helper(dev, BI_ADD, sz, false, input, debug, 0);
-                        bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MIN);
-                        bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MAX);
-                }
+                bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MIN);
+                bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MAX);
 
                 bit_fma_helper(dev, sz, input, debug);
         }
