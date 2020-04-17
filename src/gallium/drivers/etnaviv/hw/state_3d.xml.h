@@ -10,11 +10,11 @@ git clone git://0x04.net/rules-ng-ng
 The rules-ng-ng source files this header was generated from are:
 - state.xml     (  26877 bytes, from 2020-02-14 10:19:56)
 - common.xml    (  35468 bytes, from 2020-01-04 20:02:31)
-- common_3d.xml (  15058 bytes, from 2020-01-24 10:28:28)
-- state_hi.xml  (  34405 bytes, from 2020-01-17 08:52:59)
+- common_3d.xml (  15058 bytes, from 2020-04-17 16:31:50)
+- state_hi.xml  (  34851 bytes, from 2020-04-17 16:25:34)
 - copyright.xml (   1597 bytes, from 2018-02-10 13:09:26)
 - state_2d.xml  (  51552 bytes, from 2018-02-10 13:09:26)
-- state_3d.xml  (  83654 bytes, from 2020-02-14 10:16:12)
+- state_3d.xml  (  83771 bytes, from 2020-04-17 17:15:55)
 - state_blt.xml (  14252 bytes, from 2020-01-10 14:36:29)
 - state_vg.xml  (   5975 bytes, from 2018-02-10 13:09:26)
 
@@ -1795,7 +1795,7 @@ DEALINGS IN THE SOFTWARE.
 
 #define VIVS_NTE_DESCRIPTOR_SAMP_LOD_BIAS_MIRROR(i0)	       (0x00016600 + 0x4*(i0))
 
-#define VIVS_NTE_DESCRIPTOR_UNK17400_MIRROR(i0)		       (0x00016800 + 0x4*(i0))
+#define VIVS_NTE_DESCRIPTOR_SAMP_ANISOTROPY_MIRROR(i0)	       (0x00016800 + 0x4*(i0))
 
 #define VIVS_NTE_DESCRIPTOR_SAMP_CTRL0(i0)		       (0x00016c00 + 0x4*(i0))
 #define VIVS_NTE_DESCRIPTOR_SAMP_CTRL0_UWRAP__MASK		0x00000007
@@ -1846,7 +1846,7 @@ DEALINGS IN THE SOFTWARE.
 #define VIVS_NTE_DESCRIPTOR_SAMP_LOD_BIAS_BIAS(x)		(((x) << VIVS_NTE_DESCRIPTOR_SAMP_LOD_BIAS_BIAS__SHIFT) & VIVS_NTE_DESCRIPTOR_SAMP_LOD_BIAS_BIAS__MASK)
 #define VIVS_NTE_DESCRIPTOR_SAMP_LOD_BIAS_ENABLE		0x00010000
 
-#define VIVS_NTE_DESCRIPTOR_UNK17400(i0)		       (0x00017400 + 0x4*(i0))
+#define VIVS_NTE_DESCRIPTOR_SAMP_ANISOTROPY(i0)		       (0x00017400 + 0x4*(i0))
 
 #define VIVS_SH							0x00000000
 
