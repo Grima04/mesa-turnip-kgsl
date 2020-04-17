@@ -1009,14 +1009,39 @@ bi_pack_add_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
+bi_pack_add_add_f16(bi_instruction *ins, struct bi_registers *regs)
+{
+        /* ADD.v2f16 can't have outmod */
+        assert(ins->outmod == BIFROST_NONE);
+
+        struct bifrost_add_faddmin pack = {
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .src1 = bi_get_src(ins, regs, 1, true),
+                .src0_abs = ins->src_abs[0],
+                .src1_abs = ins->src_abs[1],
+                .src0_neg = ins->src_neg[0],
+                .src1_neg = ins->src_neg[1],
+                .select = bi_swiz16(ins, 0), /* swizzle_0 */
+                .outmod = bi_swiz16(ins, 1), /* swizzle_1 */
+                .mode = ins->roundmode,
+                .op = BIFROST_ADD_OP_FADD16
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_add_addmin(bi_instruction *ins, struct bi_registers *regs)
 {
         if (ins->dest_type == nir_type_float32)
                 return bi_pack_add_addmin_f32(ins, regs);
-        else if(ins->dest_type == nir_type_float16)
-                unreachable("todo");
-                //return bi_pack_add_addmin_f16(ins, regs);
-        else
+        else if (ins->dest_type == nir_type_float16) {
+                if (ins->type == BI_ADD)
+                        return bi_pack_add_add_f16(ins, regs);
+                else
+                        unreachable("TODO");
+                        //return bi_pack_add_min_f16(ins, regs);
+        } else
                 unreachable("Unknown FMA/ADD type");
 }
 
