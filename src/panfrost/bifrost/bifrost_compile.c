@@ -497,7 +497,7 @@ bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
                 alu->constant.u64 |= cons << *constant_shift;
                 alu->src[to] = BIR_INDEX_CONSTANT | (*constant_shift);
                 --(*constants_left);
-                (*constant_shift) += dest_bits;
+                (*constant_shift) += MAX2(dest_bits, 32); /* lo/hi */
                 return;
         }
 
