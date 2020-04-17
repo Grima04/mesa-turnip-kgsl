@@ -1313,7 +1313,7 @@ tu6_tile_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_lrz_flush(cmd, cs);
 
-   tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_RESOLVE_TS, true);
 
    tu_cs_sanity_check(cs);
 }
