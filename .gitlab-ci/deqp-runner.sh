@@ -242,11 +242,7 @@ DEQP_EXITCODE=$?
 if [ $DEQP_EXITCODE -ne 0 ]; then
     # preserve caselist files in case of failures:
     cp /tmp/deqp_runner.*.txt $RESULTS/
-    cat $RESULTSFILE | \
-        grep -v ",Pass" | \
-        grep -v ",Skip" | \
-        grep -v ",ExpectedFail" > \
-        $UNEXPECTED_RESULTSFILE.txt
+    egrep -v ",Pass|,Skip|,ExpectedFail" $RESULTSFILE > $UNEXPECTED_RESULTSFILE.txt
 
     if [ -z "$DEQP_NO_SAVE_RESULTS" ]; then
         echo "Some unexpected results found (see cts-runner-results.txt in artifacts for full results):"
@@ -259,17 +255,15 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
         cat $UNEXPECTED_RESULTSFILE.txt
     fi
 
-    count=`cat $UNEXPECTED_RESULTSFILE.txt | wc -l`
+    count=`wc -l $UNEXPECTED_RESULTSFILE.txt`
 
     # Re-run fails to detect flakes.  But use a small threshold, if
     # something was fundamentally broken, we don't want to re-run
     # the entire caselist
 else
-    cat $RESULTSFILE | \
-        grep ",Flake" > \
-        $FLAKESFILE
+    grep ",Flake" $RESULTSFILE > $FLAKESFILE
 
-    count=`cat $FLAKESFILE | wc -l`
+    count=`wc -l $FLAKESFILE`
     if [ $count -gt 0 ]; then
         echo "Some flakes found (see cts-runner-flakes.txt in artifacts for full results):"
         head -n 50 $FLAKESFILE
