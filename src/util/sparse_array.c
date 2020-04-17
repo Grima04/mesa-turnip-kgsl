@@ -270,7 +270,7 @@ util_sparse_array_free_list_pop_idx(struct util_sparse_array_free_list *fl)
       uint32_t head_idx = current_head; /* Index is the bottom 32 bits */
       void *head_elem = util_sparse_array_get(fl->arr, head_idx);
       uint32_t *head_next = (uint32_t *)((char *)head_elem + fl->next_offset);
-      uint32_t new_head = free_list_head(current_head, *head_next);
+      uint64_t new_head = free_list_head(current_head, *head_next);
       uint64_t old_head = p_atomic_cmpxchg(&fl->head, current_head, new_head);
       if (old_head == current_head)
          return head_idx;
@@ -291,7 +291,7 @@ util_sparse_array_free_list_pop_elem(struct util_sparse_array_free_list *fl)
       uint32_t head_idx = current_head; /* Index is the bottom 32 bits */
       void *head_elem = util_sparse_array_get(fl->arr, head_idx);
       uint32_t *head_next = (uint32_t *)((char *)head_elem + fl->next_offset);
-      uint32_t new_head = free_list_head(current_head, *head_next);
+      uint64_t new_head = free_list_head(current_head, *head_next);
       uint64_t old_head = p_atomic_cmpxchg(&fl->head, current_head, new_head);
       if (old_head == current_head)
          return head_elem;
