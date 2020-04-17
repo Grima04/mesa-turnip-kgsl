@@ -594,6 +594,7 @@ void ir3_block_clear_mark(struct ir3_block *block);
 void ir3_clear_mark(struct ir3 *shader);
 
 unsigned ir3_count_instructions(struct ir3 *ir);
+unsigned ir3_count_instructions_ra(struct ir3 *ir);
 
 void ir3_find_ssa_uses(struct ir3 *ir, void *mem_ctx, bool falsedeps);
 

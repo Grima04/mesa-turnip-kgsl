@@ -541,7 +541,7 @@ ra_init(struct ir3_ra_ctx *ctx)
 	unsigned n, base;
 
 	ir3_clear_mark(ctx->ir);
-	n = ir3_count_instructions(ctx->ir);
+	n = ir3_count_instructions_ra(ctx->ir);
 
 	ctx->instrd = rzalloc_array(NULL, struct ir3_ra_instr_data, n);
 
@@ -950,6 +950,15 @@ ra_calc_block_live_values(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 
 	/* the remaining live should match liveout (for extra sanity testing): */
 	if (RA_DEBUG) {
+		unsigned new_dead = 0;
+		BITSET_FOREACH_SET (name, live, ctx->alloc_count) {
+			/* Is this the last use? */
+			if (ctx->use[name] != block->end_ip)
+				continue;
+			new_dead += name_size(ctx, name);
+			d("NEW_DEAD: %u (new_dead=%u)", name, new_dead);
+			BITSET_CLEAR(live, name);
+		}
 		unsigned liveout = 0;
 		BITSET_FOREACH_SET (name, bd->liveout, ctx->alloc_count) {
 			liveout += name_size(ctx, name);
