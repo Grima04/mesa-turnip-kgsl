@@ -1649,6 +1649,7 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                 dump_16swizzle(fp, (ADD.op >> 8) & 0x3);
                 if (abs1 && abs2)
                         fprintf(fp, ")");
+                fprintf(fp, "/* %X */\n", (ADD.op >> 10) & 0x3); /* mode */
                 break;
         }
         case ADD_FADDMscale: {
