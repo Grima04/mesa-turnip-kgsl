@@ -413,7 +413,9 @@ static bool get_display_flag(const struct ac_surf_config *config,
 	unsigned num_channels = config->info.num_channels;
 	unsigned bpe = surf->bpe;
 
-	if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
+	if (!config->is_3d &&
+	    !config->is_cube &&
+	    !(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
 	    surf->flags & RADEON_SURF_SCANOUT &&
 	    config->info.samples <= 1 &&
 	    surf->blk_w <= 2 && surf->blk_h == 1) {
@@ -1612,6 +1614,7 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 	surf->tc_compatible_htile_allowed = surf->htile_size != 0;
 
 	/* Query whether the surface is displayable. */
+	/* This is only useful for surfaces that are allocated without SCANOUT. */
 	bool displayable = false;
 	if (!config->is_3d && !config->is_cube) {
 		r = Addr2IsValidDisplaySwizzleMode(addrlib, surf->u.gfx9.surf.swizzle_mode,
@@ -1627,6 +1630,9 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 			displayable = false;
 	}
 	surf->is_displayable = displayable;
+
+	/* Validate that we allocated a displayable surface if requested. */
+	assert(!AddrSurfInfoIn.flags.display || surf->is_displayable);
 
 	switch (surf->u.gfx9.surf.swizzle_mode) {
 		/* S = standard. */
