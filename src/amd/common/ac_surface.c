@@ -1034,6 +1034,40 @@ static bool is_dcc_supported_by_CB(const struct radeon_info *info, unsigned sw_m
 	return sw_mode != ADDR_SW_LINEAR;
 }
 
+ASSERTED static bool is_dcc_supported_by_L2(const struct radeon_info *info,
+					    const struct radeon_surf *surf)
+{
+	if (info->chip_class <= GFX9) {
+		/* Only independent 64B blocks are supported. */
+		return surf->u.gfx9.dcc.independent_64B_blocks &&
+		       !surf->u.gfx9.dcc.independent_128B_blocks &&
+		       surf->u.gfx9.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B;
+	}
+
+	if (info->family == CHIP_NAVI10) {
+		/* Only independent 128B blocks are supported. */
+		return !surf->u.gfx9.dcc.independent_64B_blocks &&
+		       surf->u.gfx9.dcc.independent_128B_blocks &&
+		       surf->u.gfx9.dcc.max_compressed_block_size <= V_028C78_MAX_BLOCK_SIZE_128B;
+	}
+
+	if (info->family == CHIP_NAVI12 ||
+	    info->family == CHIP_NAVI14) {
+		/* Either 64B or 128B can be used, but not both.
+		 * If 64B is used, DCC image stores are unsupported.
+		 */
+		return surf->u.gfx9.dcc.independent_64B_blocks !=
+		       surf->u.gfx9.dcc.independent_128B_blocks &&
+		       (!surf->u.gfx9.dcc.independent_64B_blocks ||
+			surf->u.gfx9.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B) &&
+		       (!surf->u.gfx9.dcc.independent_128B_blocks ||
+			surf->u.gfx9.dcc.max_compressed_block_size <= V_028C78_MAX_BLOCK_SIZE_128B);
+	}
+
+	unreachable("unhandled chip");
+	return false;
+}
+
 static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
 				    const struct ac_surf_config *config,
 				    const struct radeon_surf *surf,
@@ -1702,6 +1736,41 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 
 	/* Validate that we allocated a displayable surface if requested. */
 	assert(!AddrSurfInfoIn.flags.display || surf->is_displayable);
+
+	/* Validate that DCC is set up correctly. */
+	if (surf->num_dcc_levels) {
+		assert(is_dcc_supported_by_L2(info, surf));
+		if (AddrSurfInfoIn.flags.color)
+			assert(is_dcc_supported_by_CB(info, surf->u.gfx9.surf.swizzle_mode));
+		if (AddrSurfInfoIn.flags.display) {
+			assert(is_dcc_supported_by_DCN(info, config, surf,
+						       surf->u.gfx9.dcc.rb_aligned,
+						       surf->u.gfx9.dcc.pipe_aligned));
+		}
+	}
+
+	if (info->has_graphics &&
+	    !compressed &&
+	    !config->is_3d &&
+	    config->info.levels == 1 &&
+	    AddrSurfInfoIn.flags.color &&
+	    !surf->is_linear &&
+	    surf->surf_alignment >= 64 * 1024 && /* 64KB tiling */
+	    !(surf->flags & (RADEON_SURF_DISABLE_DCC |
+			     RADEON_SURF_FORCE_SWIZZLE_MODE |
+			     RADEON_SURF_FORCE_MICRO_TILE_MODE))) {
+		/* Validate that DCC is enabled if DCN can do it. */
+		if ((info->use_display_dcc_unaligned ||
+		     info->use_display_dcc_with_retile_blit) &&
+		    AddrSurfInfoIn.flags.display &&
+		    surf->bpe == 4) {
+			assert(surf->num_dcc_levels);
+		}
+
+		/* Validate that non-scanout DCC is always enabled. */
+		if (!AddrSurfInfoIn.flags.display)
+			assert(surf->num_dcc_levels);
+	}
 
 	switch (surf->u.gfx9.surf.swizzle_mode) {
 		/* S = standard. */
