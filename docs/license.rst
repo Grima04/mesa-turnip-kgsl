@@ -68,22 +68,22 @@ respective licenses.
 Mesa Component Licenses
 -----------------------
 
-::
-
-   Component         Location               License
-   ------------------------------------------------------------------
-   Main Mesa code    src/mesa/              MIT
-
-   Device drivers    src/mesa/drivers/*     MIT, generally
-
-   Gallium code      src/gallium/           MIT
-
-   Ext headers       include/GL/glext.h     Khronos
-                     include/GL/glxext.h
-
-   GLX client code   src/glx/               SGI Free Software License B
-
-   C11 thread        include/c11/threads*.h Boost (permissive)
-   emulation
++-----------------+------------------------+-----------------------------+
+| Component       | Location               | License                     |
++=================+========================+=============================+
+| Main Mesa code  | src/mesa/              | MIT                         |
++-----------------+------------------------+-----------------------------+
+| Device drivers  | src/mesa/drivers/*     | MIT, generally              |
++-----------------+------------------------+-----------------------------+
+| Gallium code    | src/gallium/           | MIT                         |
++-----------------+------------------------+-----------------------------+
+| Ext headers     | include/GL/glext.h,    | Khronos                     |
+|                 | include/GL/glxext.h    |                             |
++-----------------+------------------------+-----------------------------+
+| GLX client code | src/glx/               | SGI Free Software License B |
++-----------------+------------------------+-----------------------------+
+| C11 thread      | include/c11/threads*.h | Boost (permissive)          |
+| emulation       |                        |                             |
++-----------------+------------------------+-----------------------------+
 
 In general, consult the source files for license terms.
