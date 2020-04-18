@@ -7,19 +7,6 @@ Compiling and Installing
 
    meson
 
-#. `Prerequisites for building <#prereq-general>`__
-
-   -  `General prerequisites <#prereq-general>`__
-   -  `For DRI and hardware acceleration <#prereq-dri>`__
-
-#. `Building with meson <#meson>`__
-#. `Building with SCons (Windows/Linux) <#scons>`__
-#. `Building with AOSP (Android) <#android>`__
-#. `Library Information <#libs>`__
-#. `Building OpenGL programs with pkg-config <#pkg-config>`__
-
-.. _prereq-general:
-
 1. Prerequisites for building
 -----------------------------
 
@@ -73,8 +60,6 @@ Third party/extra tools.
    Some versions can be buggy (eg. flex 2.6.2) so do try others
    if things fail.
 
-.. _prereq-dri:
-
 1.2 Requirements
 ~~~~~~~~~~~~~~~~
 
@@ -92,8 +77,6 @@ on the packaging tool used by your distro.
      dnf builddep mesa # dnf Fedora
      apt-get build-dep mesa # Debian and derivatives
      ... # others
-
-.. _meson:
 
 2. Building with meson
 ----------------------
@@ -121,8 +104,6 @@ On windows you can also use the visual studio backend
 
 Please read the `detailed meson instructions <meson.html>`__ for more
 information
-
-.. _scons:
 
 3. Building with SCons (Windows/Linux)
 --------------------------------------
@@ -154,8 +135,6 @@ This will create:
 Put them all in the same directory to test them. Additional information
 is available in `README.WIN32 <README.WIN32>`__.
 
-.. _android:
-
 4. Building with AOSP (Android)
 -------------------------------
 
@@ -168,8 +147,6 @@ the libGLES_mesa library.
 
 FINISHME: Improve on the instructions add references to Rob H
 repos/Jenkins, Android-x86 and/or other resources.
-
-.. _libs:
 
 5. Library Information
 ----------------------
@@ -201,8 +178,6 @@ If you built the DRI hardware drivers, you'll also see the DRI drivers:
 
 If you built with Gallium support, look in lib/gallium/ for
 Gallium-based versions of libGL and device drivers.
-
-.. _pkg-config:
 
 6. Building OpenGL programs with pkg-config
 -------------------------------------------

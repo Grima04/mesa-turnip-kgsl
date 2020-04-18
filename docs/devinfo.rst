@@ -1,10 +1,6 @@
 Development Notes
 =================
 
--  `Adding Extensions <#extensions>`__
-
-.. _extensions:
-
 Adding Extensions
 -----------------
 

@@ -1,18 +1,6 @@
 Submitting Patches
 ==================
 
--  `Basic guidelines <#guidelines>`__
--  `Patch formatting <#formatting>`__
--  `Testing Patches <#testing>`__
--  `Submitting Patches <#submit>`__
--  `Reviewing Patches <#reviewing>`__
--  `Nominating a commit for a stable branch <#nominations>`__
--  `Criteria for accepting patches to the stable branch <#criteria>`__
--  `Sending backports for the stable branch <#backports>`__
--  `Git tips <#gittips>`__
-
-.. _guidelines:
-
 Basic guidelines
 ----------------
 
@@ -259,8 +247,6 @@ project. The submitter is expected to evaluate whether they have an
 appropriate amount of review feedback from people who also understand
 the code before merging their patches.
 
-.. _nominations:
-
 Nominating a commit for a stable branch
 ---------------------------------------
 
@@ -280,8 +266,6 @@ nomination request.
 
 The current patch status can be observed in the `staging
 branch <releasing.html#stagingbranch>`__.
-
-.. _thetag:
 
 The stable tag
 ~~~~~~~~~~~~~~
@@ -374,8 +358,6 @@ appropriate. The MR should be based on and target the
 staging/year.quarter branch, not on the year.quarter branch, per the
 stable branch policy. Assigning the MR to release maintainer for said
 branch or mentioning them is helpful, but not required.
-
-.. _gittips:
 
 Git tips
 --------

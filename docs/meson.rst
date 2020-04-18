@@ -1,13 +1,6 @@
 Compilation and Installation Using Meson
 ========================================
 
--  `Introduction <#intro>`__
--  `Basic Usage <#basic>`__
--  `Advanced Usage <#advanced>`__
--  `Cross-compilation and 32-bit builds <#cross-compilation>`__
-
-.. _intro:
-
 1. Introduction
 ---------------
 
@@ -73,8 +66,6 @@ Then install meson using pip
 
 You may need to add the python3 scripts directory to your path for
 meson.
-
-.. _basic:
 
 2. Basic Usage
 --------------
@@ -172,8 +163,6 @@ visual studio integration or you just like msbuild, passing
 ``--backend=vs`` to meson will generate a visual studio solution. If you
 want to use ICL or clang-cl with the vsbackend you will need meson
 0.52.0 or greater. Older versions always use the microsoft compiler.
-
-.. _advanced:
 
 3. Advanced Usage
 -----------------
@@ -414,8 +403,6 @@ For those coming from autotools be aware of the following:
    ``false`` (the default) assertions are enabled, when set to true they
    are disabled. This is unrelated to the ``buildtype``; setting the
    latter to ``release`` will not turn off assertions.
-
-.. _cross-compilation:
 
 4. Cross-compilation and 32-bit builds
 --------------------------------------

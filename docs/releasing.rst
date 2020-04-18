@@ -1,15 +1,6 @@
 Releasing Process
 =================
 
--  `Overview <#overview>`__
--  `Release schedule <#schedule>`__
--  `Cherry-pick and test <#pickntest>`__
--  `Staging branch <#stagingbranch>`__
--  `Making a branchpoint <#branch>`__
--  `Making a new release <#release>`__
--  `Announce the release <#announce>`__
--  `Update Gitlab Issues <#gitlab>`__
-
 Overview
 --------
 
@@ -170,8 +161,6 @@ Notes:
    regressions.
 -  The branch history is not stable and it **will** be rebased,
 
-.. _branch:
-
 Making a branchpoint
 --------------------
 
@@ -210,8 +199,6 @@ needed. For example: files being overwritten on install, etc. Happens
 extremely rarely - we had only one case so far (see commit
 2ced8eb136528914e1bf4e000dea06a9d53c7e04).
 
-.. _release:
-
 Making a new release
 --------------------
 
@@ -222,8 +209,6 @@ Get latest source files
 
 Ensure the latest code is available - both in your local master and the
 relevant branch.
-
-.. _basictesting:
 
 Perform basic testing
 ~~~~~~~~~~~~~~~~~~~~~
@@ -333,8 +318,6 @@ looks correct and push:
 
       git push origin master X.Y
 
-.. _announce:
-
 Announce the release
 --------------------
 
@@ -342,8 +325,6 @@ Use the generated template during the releasing process.
 
 Again, pay attention to add a note to warn about a final release in a
 series, if that is the case.
-
-.. _gitlab:
 
 Update gitlab issues
 --------------------

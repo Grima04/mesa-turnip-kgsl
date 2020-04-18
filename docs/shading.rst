@@ -4,17 +4,6 @@ Shading Language
 This page describes the features and status of Mesa's support for the
 `OpenGL Shading Language <https://opengl.org/documentation/glsl/>`__.
 
-Contents
-
--  `Environment variables <#envvars>`__
--  `GLSL 1.40 support <#support>`__
--  `Unsupported Features <#unsup>`__
--  `Implementation Notes <#notes>`__
--  `Programming Hints <#hints>`__
--  `Stand-alone GLSL Compiler <#standalone>`__
--  `Compiler Implementation <#implementation>`__
--  `Compiler Validation <#validation>`__
-
 .. _envvars:
 
 Environment Variables
@@ -74,8 +63,6 @@ which compiler developers can use to gather statistics about shaders
 Notably, this captures linked GLSL shaders - with all stages together -
 as well as ARB programs.
 
-.. _support:
-
 GLSL Version
 ------------
 
@@ -87,8 +74,6 @@ Several GLSL extensions are also supported:
 -  GL_ARB_draw_buffers
 -  GL_ARB_fragment_coord_conventions
 -  GL_ARB_shader_bit_encoding
-
-.. _unsup:
 
 Unsupported Features
 --------------------
@@ -105,8 +90,6 @@ supported in Mesa:
    without perspective correction
 
 All other major features of the shading language should function.
-
-.. _notes:
 
 Implementation Notes
 --------------------
@@ -127,8 +110,6 @@ Implementation Notes
 
 These issues will be addressed/resolved in the future.
 
-.. _hints:
-
 Programming Hints
 -----------------
 
@@ -144,8 +125,6 @@ Programming Hints
    ::
 
       float x = inversesqrt(y);
-
-.. _standalone:
 
 Stand-alone GLSL Compiler
 -------------------------
@@ -180,8 +159,6 @@ Options include
    any header or separator
 -  **--version** - [Mandatory] define the GLSL version to use
 
-.. _implementation:
-
 Compiler Implementation
 -----------------------
 
@@ -193,8 +170,6 @@ XXX provide some info about the compiler....
 The final vertex and fragment programs may be interpreted in software
 (see prog_execute.c) or translated into a specific hardware architecture
 (see drivers/dri/i915/i915_fragprog.c for example).
-
-.. _validation:
 
 Compiler Validation
 -------------------

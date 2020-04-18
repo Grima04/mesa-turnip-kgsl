@@ -3,16 +3,6 @@ Frequently Asked Questions
 
 Last updated: 19 September 2018
 
-Index
------
-
-#. `High-level Questions and Answers <#part1>`__
-#. `Compilation and Installation Problems <#part2>`__
-#. `Runtime / Rendering Problems <#part3>`__
-#. `Developer Questions <#part4>`__
-
-.. _part1:
-
 1. High-level Questions and Answers
 -----------------------------------
 
@@ -129,8 +119,6 @@ is an OpenGL subset library for TI graphing calculators.
 There may be other open OpenGL implementations, but Mesa is the most
 popular and feature-complete.
 
-.. _part2:
-
 2. Compilation and Installation Problems
 ----------------------------------------
 
@@ -205,8 +193,6 @@ Mesa with
 ``meson configure --prefix=/usr --libdir=xxx -D dri-drivers-path=xxx``
 and then install with ``sudo ninja install``.
 
-.. _part3:
-
 3. Runtime / Rendering Problems
 -------------------------------
 
@@ -269,8 +255,6 @@ rounding problem. But this is not a bug. See Appendix H of the OpenGL
 Programming Guide - "OpenGL Correctness Tips". Basically, applying a
 translation of (0.375, 0.375, 0.0) to your coordinates will fix the
 problem.
-
-.. _part4:
 
 4. Developer Questions
 ----------------------
