@@ -1223,6 +1223,10 @@ static unsigned eg_tile_split_rev(unsigned eg_tile_split)
    }
 }
 
+#define AMDGPU_TILING_DCC_INDEPENDENT_128B_SHIFT	44
+#define AMDGPU_TILING_DCC_INDEPENDENT_128B_MASK		0x1
+#define AMDGPU_TILING_DCC_MAX_COMPRESSED_BLOCK_SIZE_SHIFT  45
+#define AMDGPU_TILING_DCC_MAX_COMPRESSED_BLOCK_SIZE_MASK   0x3
 #define AMDGPU_TILING_SCANOUT_SHIFT		63
 #define AMDGPU_TILING_SCANOUT_MASK		0x1
 
@@ -1248,6 +1252,8 @@ static void amdgpu_buffer_get_metadata(struct pb_buffer *_buf,
       md->u.gfx9.dcc_offset_256B = AMDGPU_TILING_GET(tiling_flags, DCC_OFFSET_256B);
       md->u.gfx9.dcc_pitch_max = AMDGPU_TILING_GET(tiling_flags, DCC_PITCH_MAX);
       md->u.gfx9.dcc_independent_64B = AMDGPU_TILING_GET(tiling_flags, DCC_INDEPENDENT_64B);
+      md->u.gfx9.dcc_independent_128B = AMDGPU_TILING_GET(tiling_flags, DCC_INDEPENDENT_128B);
+      md->u.gfx9.dcc_max_compressed_block_size = AMDGPU_TILING_GET(tiling_flags, DCC_MAX_COMPRESSED_BLOCK_SIZE);
       md->u.gfx9.scanout = AMDGPU_TILING_GET(tiling_flags, SCANOUT);
    } else {
       md->u.legacy.microtile = RADEON_LAYOUT_LINEAR;
@@ -1286,6 +1292,8 @@ static void amdgpu_buffer_set_metadata(struct pb_buffer *_buf,
       tiling_flags |= AMDGPU_TILING_SET(DCC_OFFSET_256B, md->u.gfx9.dcc_offset_256B);
       tiling_flags |= AMDGPU_TILING_SET(DCC_PITCH_MAX, md->u.gfx9.dcc_pitch_max);
       tiling_flags |= AMDGPU_TILING_SET(DCC_INDEPENDENT_64B, md->u.gfx9.dcc_independent_64B);
+      tiling_flags |= AMDGPU_TILING_SET(DCC_INDEPENDENT_128B, md->u.gfx9.dcc_independent_128B);
+      tiling_flags |= AMDGPU_TILING_SET(DCC_MAX_COMPRESSED_BLOCK_SIZE, md->u.gfx9.dcc_max_compressed_block_size);
       tiling_flags |= AMDGPU_TILING_SET(SCANOUT, md->u.gfx9.scanout);
    } else {
       if (md->u.legacy.macrotile == RADEON_LAYOUT_TILED)

@@ -139,6 +139,9 @@ struct gfx9_surf_flags {
 struct gfx9_surf_meta_flags {
     unsigned                    rb_aligned:1;   /* optimal for RBs */
     unsigned                    pipe_aligned:1; /* optimal for TC */
+    unsigned                    independent_64B_blocks:1;
+    unsigned                    independent_128B_blocks:1;
+    unsigned                    max_compressed_block_size:2;
 };
 
 struct gfx9_surf_layout {

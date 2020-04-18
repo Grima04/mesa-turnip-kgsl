@@ -32,6 +32,7 @@
 #include "util/macros.h"
 #include "util/u_atomic.h"
 #include "util/u_math.h"
+#include "sid.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -377,10 +378,6 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib,
 
 	return 0;
 }
-
-#define   G_009910_MICRO_TILE_MODE(x)          (((x) >> 0) & 0x03)
-#define     V_009910_ADDR_SURF_THICK_MICRO_TILING                   0x03
-#define   G_009910_MICRO_TILE_MODE_NEW(x)      (((x) >> 22) & 0x07)
 
 static void gfx6_set_micro_tile_mode(struct radeon_surf *surf,
 				     const struct radeon_info *info)
@@ -1046,12 +1043,37 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
 	    !info->use_display_dcc_with_retile_blit)
 		return false;
 
+	/* 16bpp and 64bpp are more complicated, so they are disallowed for now. */
+	if (surf->bpe != 4)
+		return false;
+
 	/* Handle unaligned DCC. */
 	if (info->use_display_dcc_unaligned &&
 	    (rb_aligned || pipe_aligned))
 		return false;
 
-	return true;
+	switch (info->chip_class) {
+	case GFX9:
+		/* There are more constraints, but we always set
+		 * INDEPENDENT_64B_BLOCKS = 1 and MAX_COMPRESSED_BLOCK_SIZE = 64B,
+		 * which always works.
+		 */
+		assert(surf->u.gfx9.dcc.independent_64B_blocks &&
+		       surf->u.gfx9.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B);
+		return true;
+	case GFX10:
+		/* DCN requires INDEPENDENT_128B_BLOCKS = 0.
+		 * For 4K, it also requires INDEPENDENT_64B_BLOCKS = 1.
+		 */
+		return !surf->u.gfx9.dcc.independent_128B_blocks &&
+		       ((config->info.width <= 2560 &&
+			 config->info.height <= 2560) ||
+			(surf->u.gfx9.dcc.independent_64B_blocks &&
+			 surf->u.gfx9.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B));
+	default:
+		unreachable("unhandled chip");
+		return false;
+	}
 }
 
 static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
@@ -1552,17 +1574,43 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 	AddrSurfInfoIn.flags.metaPipeUnaligned = 0;
 	AddrSurfInfoIn.flags.metaRbUnaligned = 0;
 
-	/* The display hardware can only read DCC with RB_ALIGNED=0 and
-	 * PIPE_ALIGNED=0. PIPE_ALIGNED really means L2CACHE_ALIGNED.
-	 *
-	 * The CB block requires RB_ALIGNED=1 except 1 RB chips.
-	 * PIPE_ALIGNED is optional, but PIPE_ALIGNED=0 requires L2 flushes
-	 * after rendering, so PIPE_ALIGNED=1 is recommended.
-	 */
-	if (info->use_display_dcc_unaligned &&
-	    AddrSurfInfoIn.flags.display) {
-		AddrSurfInfoIn.flags.metaPipeUnaligned = 1;
-		AddrSurfInfoIn.flags.metaRbUnaligned = 1;
+	/* Optimal values for the L2 cache. */
+	if (info->chip_class == GFX9) {
+		surf->u.gfx9.dcc.independent_64B_blocks = 1;
+		surf->u.gfx9.dcc.independent_128B_blocks = 0;
+		surf->u.gfx9.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
+	} else if (info->chip_class >= GFX10) {
+		surf->u.gfx9.dcc.independent_64B_blocks = 0;
+		surf->u.gfx9.dcc.independent_128B_blocks = 1;
+		surf->u.gfx9.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
+	}
+
+	if (AddrSurfInfoIn.flags.display) {
+		/* The display hardware can only read DCC with RB_ALIGNED=0 and
+		 * PIPE_ALIGNED=0. PIPE_ALIGNED really means L2CACHE_ALIGNED.
+		 *
+		 * The CB block requires RB_ALIGNED=1 except 1 RB chips.
+		 * PIPE_ALIGNED is optional, but PIPE_ALIGNED=0 requires L2 flushes
+		 * after rendering, so PIPE_ALIGNED=1 is recommended.
+		 */
+		if (info->use_display_dcc_unaligned) {
+			AddrSurfInfoIn.flags.metaPipeUnaligned = 1;
+			AddrSurfInfoIn.flags.metaRbUnaligned = 1;
+		}
+
+		/* Adjust DCC settings to meet DCN requirements. */
+		if (info->use_display_dcc_unaligned ||
+		    info->use_display_dcc_with_retile_blit) {
+			/* Only Navi12/14 support independent 64B blocks in L2,
+			 * but without DCC image stores.
+			 */
+			if (info->family == CHIP_NAVI12 ||
+			    info->family == CHIP_NAVI14) {
+				surf->u.gfx9.dcc.independent_64B_blocks = 1;
+				surf->u.gfx9.dcc.independent_128B_blocks = 0;
+				surf->u.gfx9.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
+			}
+		}
 	}
 
 	switch (mode) {

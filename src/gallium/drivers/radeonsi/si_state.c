@@ -2416,10 +2416,10 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
          min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_64B;
 
       surf->cb_dcc_control = S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
-                             S_028C78_MAX_COMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_128B) |
+                             S_028C78_MAX_COMPRESSED_BLOCK_SIZE(tex->surface.u.gfx9.dcc.max_compressed_block_size) |
                              S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
-                             S_028C78_INDEPENDENT_64B_BLOCKS(0) |
-                             S_028C78_INDEPENDENT_128B_BLOCKS(1);
+                             S_028C78_INDEPENDENT_64B_BLOCKS(tex->surface.u.gfx9.dcc.independent_64B_blocks) |
+                             S_028C78_INDEPENDENT_128B_BLOCKS(tex->surface.u.gfx9.dcc.independent_128B_blocks);
    } else if (sctx->chip_class >= GFX8) {
       unsigned max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
       unsigned min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_32B;
@@ -3799,7 +3799,7 @@ static void gfx10_make_texture_descriptor(
 
    if (tex->surface.dcc_offset) {
       state[6] |= S_00A018_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
-                  S_00A018_MAX_COMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_128B) |
+                  S_00A018_MAX_COMPRESSED_BLOCK_SIZE(tex->surface.u.gfx9.dcc.max_compressed_block_size) |
                   S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(screen, pipe_format));
    }
 

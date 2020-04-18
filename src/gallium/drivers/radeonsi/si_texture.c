@@ -339,12 +339,11 @@ static void si_get_display_metadata(struct si_screen *sscreen, struct radeon_sur
          *array_mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
 
       surf->u.gfx9.surf.swizzle_mode = metadata->u.gfx9.swizzle_mode;
+      surf->u.gfx9.dcc.independent_64B_blocks = metadata->u.gfx9.dcc_independent_64B;
+      surf->u.gfx9.dcc.independent_128B_blocks = metadata->u.gfx9.dcc_independent_128B;
+      surf->u.gfx9.dcc.max_compressed_block_size = metadata->u.gfx9.dcc_max_compressed_block_size;
+      surf->u.gfx9.display_dcc_pitch_max = metadata->u.gfx9.dcc_pitch_max;
       *is_scanout = metadata->u.gfx9.scanout;
-
-      if (metadata->u.gfx9.dcc_offset_256B) {
-         surf->u.gfx9.display_dcc_pitch_max = metadata->u.gfx9.dcc_pitch_max;
-         assert(metadata->u.gfx9.dcc_independent_64B == 1);
-      }
    } else {
       surf->u.legacy.pipe_config = metadata->u.legacy.pipe_config;
       surf->u.legacy.bankw = metadata->u.legacy.bankw;
@@ -613,7 +612,9 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
          assert((dcc_offset >> 8) != 0 && (dcc_offset >> 8) < (1 << 24));
          md.u.gfx9.dcc_offset_256B = dcc_offset >> 8;
          md.u.gfx9.dcc_pitch_max = tex->surface.u.gfx9.display_dcc_pitch_max;
-         md.u.gfx9.dcc_independent_64B = 1;
+         md.u.gfx9.dcc_independent_64B = tex->surface.u.gfx9.dcc.independent_64B_blocks;
+         md.u.gfx9.dcc_independent_128B = tex->surface.u.gfx9.dcc.independent_128B_blocks;
+         md.u.gfx9.dcc_max_compressed_block_size = tex->surface.u.gfx9.dcc.max_compressed_block_size;
       }
    } else {
       md.u.legacy.microtile = surface->u.legacy.level[0].mode >= RADEON_SURF_MODE_1D
