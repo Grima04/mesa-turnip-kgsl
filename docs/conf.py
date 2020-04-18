@@ -113,6 +113,7 @@ html_copy_source = False
 html_static_path = []
 
 html_extra_path = [
+  '_extra/',
   'features.txt',
   'libGL.txt',
   'README.UVD',
