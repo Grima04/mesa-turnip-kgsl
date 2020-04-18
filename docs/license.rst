@@ -5,8 +5,7 @@ Disclaimer
 ----------
 
 Mesa is a 3-D graphics library with an API which is very similar to that
-of
-`OpenGL <https://www.opengl.org/>`__\ :sup:`[`\ `1 <#trademark>`__\ :sup:`]`.
+of `OpenGL <https://www.opengl.org/>`_ [1]_.
 To the extent that Mesa utilizes the OpenGL command syntax or state
 machine, it is being used with authorization from `Silicon Graphics,
 Inc. <https://www.sgi.com/>`__\ (SGI). However, the author does not
@@ -18,8 +17,8 @@ licensed vendor.
 Please do not refer to the library as *MesaGL* (for legal reasons). It's
 just *Mesa* or *The Mesa 3-D graphics library*.
 
-[1]: OpenGL is a trademark of `Silicon Graphics
-Incorporated <https://www.sgi.com/>`__.
+.. [1] OpenGL is a trademark of `Silicon Graphics
+       Incorporated <https://www.sgi.com/>`__.
 
 License / Copyright Information
 -------------------------------
