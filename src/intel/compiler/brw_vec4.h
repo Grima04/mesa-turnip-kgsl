@@ -312,8 +312,8 @@ public:
 
    bool optimize_predicate(nir_alu_instr *instr, enum brw_predicate *predicate);
 
-   void emit_conversion_from_double(dst_reg dst, src_reg src, bool saturate);
-   void emit_conversion_to_double(dst_reg dst, src_reg src, bool saturate);
+   void emit_conversion_from_double(dst_reg dst, src_reg src);
+   void emit_conversion_to_double(dst_reg dst, src_reg src);
 
    vec4_instruction *shuffle_64bit_data(dst_reg dst, src_reg src,
                                         bool for_write,

@@ -406,9 +406,6 @@ fs_visitor::nir_emit_if(nir_if *if_stmt)
     */
    nir_alu_instr *cond = nir_src_as_alu_instr(if_stmt->condition);
    if (cond != NULL && cond->op == nir_op_inot) {
-      assert(!cond->src[0].negate);
-      assert(!cond->src[0].abs);
-
       invert = true;
       cond_reg = get_nir_src(cond->src[0].src);
    } else {
@@ -544,15 +541,6 @@ fs_visitor::optimize_extract_to_float(nir_alu_instr *instr,
        src0->op != nir_op_extract_i8 && src0->op != nir_op_extract_i16)
       return false;
 
-   /* If either opcode has source modifiers, bail.
-    *
-    * TODO: We can potentially handle source modifiers if both of the opcodes
-    * we're combining are signed integers.
-    */
-   if (instr->src[0].abs || instr->src[0].negate ||
-       src0->src[0].abs || src0->src[0].negate)
-      return false;
-
    unsigned element = nir_src_as_uint(src0->src[1].src);
 
    /* Element type to extract.*/
@@ -566,8 +554,7 @@ fs_visitor::optimize_extract_to_float(nir_alu_instr *instr,
                      nir_src_bit_size(src0->src[0].src)));
    op0 = offset(op0, bld, src0->src[0].swizzle[0]);
 
-   set_saturate(instr->dest.saturate,
-                bld.MOV(result, subscript(op0, type, element)));
+   bld.MOV(result, subscript(op0, type, element));
    return true;
 }
 
@@ -739,13 +726,17 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
       (nir_alu_type)(nir_op_infos[instr->op].output_type |
                      nir_dest_bit_size(instr->dest.dest)));
 
+   assert(!instr->dest.saturate);
+
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
+      /* We don't lower to source modifiers so they should not exist. */
+      assert(!instr->src[i].abs);
+      assert(!instr->src[i].negate);
+
       op[i] = get_nir_src(instr->src[i].src);
       op[i].type = brw_type_for_nir_type(devinfo,
          (nir_alu_type)(nir_op_infos[instr->op].input_types[i] |
                         nir_src_bit_size(instr->src[i].src)));
-      op[i].abs = instr->src[i].abs;
-      op[i].negate = instr->src[i].negate;
    }
 
    /* Move and vecN instrutions may still be vectored.  Return the raw,
@@ -793,8 +784,7 @@ fs_visitor::resolve_inot_sources(const fs_builder &bld, nir_alu_instr *instr,
    for (unsigned i = 0; i < 2; i++) {
       nir_alu_instr *inot_instr = nir_src_as_alu_instr(instr->src[i].src);
 
-      if (inot_instr != NULL && inot_instr->op == nir_op_inot &&
-          !inot_instr->src[0].abs && !inot_instr->src[0].negate) {
+      if (inot_instr != NULL && inot_instr->op == nir_op_inot) {
          /* The source of the inot is now the source of instr. */
          prepare_alu_destination_and_sources(bld, inot_instr, &op[i], false);
 
@@ -863,8 +853,6 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
       const nir_alu_instr *const fsign_instr =
          nir_src_as_alu_instr(instr->src[fsign_src].src);
 
-      assert(!fsign_instr->dest.saturate);
-
       /* op[fsign_src] has the nominal result of the fsign, and op[1 -
        * fsign_src] has the other multiply source.  This must be rearranged so
        * that op[0] is the source of the fsign op[1] is the other multiply
@@ -880,8 +868,6 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
                         nir_src_bit_size(fsign_instr->src[0].src));
 
       op[0].type = brw_type_for_nir_type(devinfo, t);
-      op[0].abs = fsign_instr->src[0].abs;
-      op[0].negate = fsign_instr->src[0].negate;
 
       unsigned channel = 0;
       if (nir_op_infos[instr->op].output_size == 0) {
@@ -903,8 +889,6 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
          bld.MOV(tmp, op[1]);
          op[1] = tmp;
       }
-   } else {
-      assert(!instr->dest.saturate);
    }
 
    if (op[0].abs) {
@@ -1029,8 +1013,7 @@ can_fuse_fmul_fsign(nir_alu_instr *instr, unsigned fsign_src)
     * have already been taken (in nir_opt_algebraic) to ensure that.
     */
    return fsign_instr != NULL && fsign_instr->op == nir_op_fsign &&
-          is_used_once(fsign_instr) &&
-          !instr->src[fsign_src].abs && !instr->src[fsign_src].negate;
+          is_used_once(fsign_instr);
 }
 
 void
@@ -1072,7 +1055,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
             inst = bld.MOV(offset(temp, bld, i),
                            offset(op[i], bld, instr->src[i].swizzle[0]));
          }
-         inst->saturate = instr->dest.saturate;
       }
 
       /* In this case the source and destination registers were the same,
@@ -1095,7 +1077,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       if (optimize_extract_to_float(instr, result))
          return;
       inst = bld.MOV(result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_f2f16_rtne:
@@ -1122,7 +1103,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        */
       assert(type_sz(op[0].type) < 8); /* brw_nir_lower_conversions */
       inst = bld.MOV(result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
    }
 
@@ -1170,7 +1150,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          assert(type_sz(result.type) < 8); /* brw_nir_lower_conversions */
 
       inst = bld.MOV(result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fsat:
@@ -1182,8 +1161,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_ineg:
       op[0].negate = true;
       inst = bld.MOV(result, op[0]);
-      if (instr->op == nir_op_fneg)
-         inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fabs:
@@ -1191,8 +1168,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       op[0].negate = false;
       op[0].abs = true;
       inst = bld.MOV(result, op[0]);
-      if (instr->op == nir_op_fabs)
-         inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_f2f32:
@@ -1207,7 +1182,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          assert(type_sz(result.type) < 8); /* brw_nir_lower_conversions */
 
       inst = bld.MOV(result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fsign:
@@ -1216,27 +1190,22 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_frcp:
       inst = bld.emit(SHADER_OPCODE_RCP, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fexp2:
       inst = bld.emit(SHADER_OPCODE_EXP2, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_flog2:
       inst = bld.emit(SHADER_OPCODE_LOG2, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fsin:
       inst = bld.emit(SHADER_OPCODE_SIN, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fcos:
       inst = bld.emit(SHADER_OPCODE_COS, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fddx:
@@ -1245,15 +1214,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       } else {
          inst = bld.emit(FS_OPCODE_DDX_COARSE, result, op[0]);
       }
-      inst->saturate = instr->dest.saturate;
       break;
    case nir_op_fddx_fine:
       inst = bld.emit(FS_OPCODE_DDX_FINE, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
    case nir_op_fddx_coarse:
       inst = bld.emit(FS_OPCODE_DDX_COARSE, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
    case nir_op_fddy:
       if (fs_key->high_quality_derivatives) {
@@ -1261,15 +1227,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       } else {
          inst = bld.emit(FS_OPCODE_DDY_COARSE, result, op[0]);
       }
-      inst->saturate = instr->dest.saturate;
       break;
    case nir_op_fddy_fine:
       inst = bld.emit(FS_OPCODE_DDY_FINE, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
    case nir_op_fddy_coarse:
       inst = bld.emit(FS_OPCODE_DDY_COARSE, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fadd:
@@ -1282,13 +1245,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       /* fallthrough */
    case nir_op_iadd:
       inst = bld.ADD(result, op[0], op[1]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_iadd_sat:
    case nir_op_uadd_sat:
       inst = bld.ADD(result, op[0], op[1]);
-      inst->saturate = true;
       break;
 
    case nir_op_isub_sat:
@@ -1344,7 +1305,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       }
 
       inst = bld.MUL(result, op[0], op[1]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_imul_2x32_64:
@@ -1513,11 +1473,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          if (inot_src_instr != NULL &&
              (inot_src_instr->op == nir_op_ior ||
               inot_src_instr->op == nir_op_ixor ||
-              inot_src_instr->op == nir_op_iand) &&
-             !inot_src_instr->src[0].abs &&
-             !inot_src_instr->src[0].negate &&
-             !inot_src_instr->src[1].abs &&
-             !inot_src_instr->src[1].negate) {
+              inot_src_instr->op == nir_op_iand)) {
             /* The sources of the source logical instruction are now the
              * sources of the instruction that will be generated.
              */
@@ -1611,12 +1567,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_fsqrt:
       inst = bld.emit(SHADER_OPCODE_SQRT, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_frsq:
       inst = bld.emit(SHADER_OPCODE_RSQ, result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_i2b32:
@@ -1665,7 +1619,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
                        bld.ADD(result, result, brw_imm_f(1.0f)));
          inst = bld.MOV(result, result); /* for potential saturation */
       }
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fceil: {
@@ -1674,16 +1627,13 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       bld.RNDD(temp, op[0]);
       temp.negate = true;
       inst = bld.MOV(result, temp);
-      inst->saturate = instr->dest.saturate;
       break;
    }
    case nir_op_ffloor:
       inst = bld.RNDD(result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
    case nir_op_ffract:
       inst = bld.FRC(result, op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
    case nir_op_fround_even:
       inst = bld.RNDE(result, op[0]);
@@ -1693,7 +1643,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
                        bld.ADD(result, result, brw_imm_f(1.0f)));
          inst = bld.MOV(result, result); /* for potential saturation */
       }
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fquantize2f16: {
@@ -1720,7 +1669,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       /* Select that or zero based on normal status */
       inst = bld.SEL(result, zero, tmp32);
       inst->predicate = BRW_PREDICATE_NORMAL;
-      inst->saturate = instr->dest.saturate;
       break;
    }
 
@@ -1728,14 +1676,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_umin:
    case nir_op_fmin:
       inst = bld.emit_minmax(result, op[0], op[1], BRW_CONDITIONAL_L);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_imax:
    case nir_op_umax:
    case nir_op_fmax:
       inst = bld.emit_minmax(result, op[0], op[1], BRW_CONDITIONAL_GE);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_pack_snorm_2x16:
@@ -1756,7 +1702,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_unpack_half_2x16_split_x:
       inst = bld.emit(BRW_OPCODE_F16TO32, result,
                       subscript(op[0], BRW_REGISTER_TYPE_UW, 0));
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_unpack_half_2x16_split_y_flush_to_zero:
@@ -1765,7 +1710,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_unpack_half_2x16_split_y:
       inst = bld.emit(BRW_OPCODE_F16TO32, result,
                       subscript(op[0], BRW_REGISTER_TYPE_UW, 1));
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_pack_64_2x32_split:
@@ -1793,7 +1737,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_fpow:
       inst = bld.emit(SHADER_OPCODE_POW, result, op[0], op[1]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_bitfield_reverse:
@@ -1914,7 +1857,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       }
 
       inst = bld.MAD(result, op[2], op[1], op[0]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_flrp:
@@ -1926,7 +1868,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       }
 
       inst = bld.LRP(result, op[0], op[1], op[2]);
-      inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_b32csel:
