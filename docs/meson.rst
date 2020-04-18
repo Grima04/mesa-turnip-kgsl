@@ -177,7 +177,7 @@ want to use ICL or clang-cl with the vsbackend you will need meson
 -----------------
 
 Installation Location
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 Meson default to installing libGL.so in your system's main lib/
 directory and DRI drivers to a dri/ subdirectory.
@@ -197,7 +197,7 @@ that location to run/test the driver.
 Meson also honors ``DESTDIR`` for installs.
 
 Compiler Options
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 Meson supports the common CFLAGS, CXXFLAGS, etc. environment variables
 but their use is discouraged because of the many caveats in using them.
@@ -214,7 +214,7 @@ for C++ sources:
    meson builddir/ -Dc_args=-fmax-errors=10 -Dcpp_args=-DMAGIC=123
 
 Compiler Specification
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 Meson supports the standard CC and CXX environment variables for
 changing the default compiler. Note that Meson does not allow changing
@@ -237,7 +237,7 @@ most of the popular compilers, a complete list is available
 `here <https://mesonbuild.com/Reference-tables.html#compiler-ids>`__.
 
 LLVM
-~~~~
+^^^^
 
 Meson includes upstream logic to wrap llvm-config using its standard
 dependency interface.
@@ -373,7 +373,7 @@ not, workarounds for the wrong version of LLVM might be used resulting
 in build failures.
 
 ``PKG_CONFIG_PATH``
-~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^
 
 The ``pkg-config`` utility is a hard requirement for configuring and
 building Mesa on Unix-like systems. It is used to search for external
@@ -383,7 +383,7 @@ the search path for ``pkg-config``. For instance, setting
 metadata in ``/usr/X11R6`` before the standard directories.
 
 Options
-~~~~~~~
+^^^^^^^
 
 One of the oddities of meson is that some options are different when
 passed to the ``meson`` than to ``meson configure``. These options are
