@@ -1071,8 +1071,12 @@ ASSERTED static bool is_dcc_supported_by_L2(const struct radeon_info *info,
 			surf->u.gfx9.dcc.max_compressed_block_size <= V_028C78_MAX_BLOCK_SIZE_128B);
 	}
 
-	unreachable("unhandled chip");
-	return false;
+	/* 128B is recommended, but 64B can be set too if needed for 4K by DCN.
+	 * Since there is no reason to ever disable 128B, require it.
+	 * DCC image stores are always supported.
+	 */
+	return surf->u.gfx9.dcc.independent_128B_blocks &&
+	       surf->u.gfx9.dcc.max_compressed_block_size <= V_028C78_MAX_BLOCK_SIZE_128B;
 }
 
 static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
@@ -1103,11 +1107,14 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
 		       surf->u.gfx9.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B);
 		return true;
 	case GFX10:
-		/* DCN requires INDEPENDENT_128B_BLOCKS = 0.
-		 * For 4K, it also requires INDEPENDENT_64B_BLOCKS = 1.
-		 */
-		return !surf->u.gfx9.dcc.independent_128B_blocks &&
-		       ((config->info.width <= 2560 &&
+	case GFX10_3:
+		/* DCN requires INDEPENDENT_128B_BLOCKS = 0 only on Navi1x. */
+		if (info->chip_class == GFX10 &&
+		    surf->u.gfx9.dcc.independent_128B_blocks)
+			return false;
+
+		/* For 4K, DCN requires INDEPENDENT_64B_BLOCKS = 1. */
+		return ((config->info.width <= 2560 &&
 			 config->info.height <= 2560) ||
 			(surf->u.gfx9.dcc.independent_64B_blocks &&
 			 surf->u.gfx9.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B));
@@ -1653,6 +1660,12 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 			    info->family == CHIP_NAVI14) {
 				surf->u.gfx9.dcc.independent_64B_blocks = 1;
 				surf->u.gfx9.dcc.independent_128B_blocks = 0;
+				surf->u.gfx9.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
+			}
+
+			if (info->chip_class >= GFX10_3) {
+				surf->u.gfx9.dcc.independent_64B_blocks = 1;
+				surf->u.gfx9.dcc.independent_128B_blocks = 1;
 				surf->u.gfx9.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
 			}
 		}
