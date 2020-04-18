@@ -120,13 +120,13 @@ can_coalesce_vars(const fs_live_variables &live,
    int start_ip = MAX2(dst_start, src_start);
    int end_ip = MIN2(dst_end, src_end);
 
-   foreach_block(block, cfg) {
-      if (block->end_ip < start_ip)
+   foreach_block(scan_block, cfg) {
+      if (scan_block->end_ip < start_ip)
          continue;
 
-      int scan_ip = block->start_ip - 1;
+      int scan_ip = scan_block->start_ip - 1;
 
-      foreach_inst_in_block(fs_inst, scan_inst, block) {
+      foreach_inst_in_block(fs_inst, scan_inst, scan_block) {
          scan_ip++;
 
          /* Ignore anything before the intersection of the live ranges */
