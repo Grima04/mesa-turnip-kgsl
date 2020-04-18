@@ -1029,12 +1029,29 @@ gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib,
 	return 0;
 }
 
-static bool gfx9_is_dcc_capable(const struct radeon_info *info, unsigned sw_mode)
+static bool is_dcc_supported_by_CB(const struct radeon_info *info, unsigned sw_mode)
 {
 	if (info->chip_class >= GFX10)
 		return sw_mode == ADDR_SW_64KB_Z_X || sw_mode == ADDR_SW_64KB_R_X;
 
 	return sw_mode != ADDR_SW_LINEAR;
+}
+
+static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
+				    const struct ac_surf_config *config,
+				    const struct radeon_surf *surf,
+				    bool rb_aligned, bool pipe_aligned)
+{
+	if (!info->use_display_dcc_unaligned &&
+	    !info->use_display_dcc_with_retile_blit)
+		return false;
+
+	/* Handle unaligned DCC. */
+	if (info->use_display_dcc_unaligned &&
+	    (rb_aligned || pipe_aligned))
+		return false;
+
+	return true;
 }
 
 static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
@@ -1163,7 +1180,11 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 		if (info->has_graphics &&
 		    !(surf->flags & RADEON_SURF_DISABLE_DCC) &&
 		    !compressed &&
-		    gfx9_is_dcc_capable(info, in->swizzleMode)) {
+		    is_dcc_supported_by_CB(info, in->swizzleMode) &&
+		    (!in->flags.display ||
+		     is_dcc_supported_by_DCN(info, config, surf,
+					     !in->flags.metaRbUnaligned,
+					     !in->flags.metaPipeUnaligned))) {
 			ADDR2_COMPUTE_DCCINFO_INPUT din = {0};
 			ADDR2_COMPUTE_DCCINFO_OUTPUT dout = {0};
 			ADDR2_META_MIP_INFO meta_mip_info[RADEON_SURF_MAX_LEVELS] = {};
@@ -1623,10 +1644,10 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 			goto error;
 
 		/* Display needs unaligned DCC. */
-		if (info->use_display_dcc_unaligned &&
-		    surf->num_dcc_levels &&
-		    (surf->u.gfx9.dcc.pipe_aligned ||
-		     surf->u.gfx9.dcc.rb_aligned))
+		if (surf->num_dcc_levels &&
+		    !is_dcc_supported_by_DCN(info, config, surf,
+					     surf->u.gfx9.dcc.rb_aligned,
+					     surf->u.gfx9.dcc.pipe_aligned))
 			displayable = false;
 	}
 	surf->is_displayable = displayable;
@@ -1735,9 +1756,8 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 	}
 
 	if (surf->dcc_size &&
-	    (info->use_display_dcc_unaligned ||
-	     info->use_display_dcc_with_retile_blit ||
-	     !(surf->flags & RADEON_SURF_SCANOUT))) {
+	    /* dcc_size is computed on GFX9+ only if it's displayable. */
+	    (info->chip_class >= GFX9 || !get_display_flag(config, surf))) {
 		surf->dcc_offset = align64(surf->total_size, surf->dcc_alignment);
 		surf->total_size = surf->dcc_offset + surf->dcc_size;
 

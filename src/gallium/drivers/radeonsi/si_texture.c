@@ -789,18 +789,7 @@ static bool si_has_displayable_dcc(struct si_texture *tex)
    if (sscreen->info.chip_class <= GFX8)
       return false;
 
-   /* This needs a cache flush before scanout.
-    * (it can't be scanned out and rendered to simultaneously)
-    */
-   if (sscreen->info.use_display_dcc_unaligned && tex->surface.dcc_offset &&
-       !tex->surface.u.gfx9.dcc.pipe_aligned && !tex->surface.u.gfx9.dcc.rb_aligned)
-      return true;
-
-   /* This needs an explicit flush (flush_resource). */
-   if (sscreen->info.use_display_dcc_with_retile_blit && tex->surface.display_dcc_offset)
-      return true;
-
-   return false;
+   return tex->surface.is_displayable && tex->surface.dcc_offset;
 }
 
 static bool si_resource_get_param(struct pipe_screen *screen, struct pipe_context *context,
