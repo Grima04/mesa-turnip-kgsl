@@ -112,6 +112,15 @@ html_copy_source = False
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
+html_extra_path = [
+  'features.txt',
+  'libGL.txt',
+  'README.UVD',
+  'README.VCE',
+  'README.WIN32',
+  'VERSIONS'
+]
+
 
 # -- Options for HTMLHelp output ------------------------------------------
 
