@@ -1639,7 +1639,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_fsub: {
       Temp src0 = get_alu_src(ctx, instr->src[0]);
-      Temp src1 = as_vgpr(ctx, get_alu_src(ctx, instr->src[1]));
+      Temp src1 = get_alu_src(ctx, instr->src[1]);
       if (dst.regClass() == v2b) {
          Temp tmp = bld.tmp(v1);
          if (src1.type() == RegType::vgpr || src0.type() != RegType::vgpr)
