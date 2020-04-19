@@ -32,6 +32,8 @@
 #include "freedreno_fence.h"
 #include "freedreno_context.h"
 #include "freedreno_util.h"
+/* TODO: Use the interface drm/freedreno_drmif.h instead of calling directly */
+#include <xf86drm.h>
 
 struct pipe_fence_handle {
 	struct pipe_reference reference;
@@ -44,6 +46,7 @@ struct pipe_fence_handle {
 	struct fd_screen *screen;
 	int fence_fd;
 	uint32_t timestamp;
+	uint32_t syncobj;
 };
 
 static void fence_flush(struct pipe_fence_handle *fence)
@@ -99,7 +102,7 @@ bool fd_fence_finish(struct pipe_screen *pscreen,
 }
 
 static struct pipe_fence_handle * fence_create(struct fd_context *ctx,
-		struct fd_batch *batch, uint32_t timestamp, int fence_fd)
+		struct fd_batch *batch, uint32_t timestamp, int fence_fd, int syncobj)
 {
 	struct pipe_fence_handle *fence;
 
@@ -114,6 +117,7 @@ static struct pipe_fence_handle * fence_create(struct fd_context *ctx,
 	fence->screen = ctx->screen;
 	fence->timestamp = timestamp;
 	fence->fence_fd = fence_fd;
+	fence->syncobj = syncobj;
 
 	return fence;
 }
@@ -122,8 +126,27 @@ void fd_create_fence_fd(struct pipe_context *pctx,
 		struct pipe_fence_handle **pfence, int fd,
 		enum pipe_fd_type type)
 {
-	assert(type == PIPE_FD_TYPE_NATIVE_SYNC);
-	*pfence = fence_create(fd_context(pctx), NULL, 0, os_dupfd_cloexec(fd));
+	struct fd_context *ctx = fd_context(pctx);
+
+	switch (type) {
+	case PIPE_FD_TYPE_NATIVE_SYNC:
+		*pfence = fence_create(fd_context(pctx), NULL, 0, os_dupfd_cloexec(fd), 0);
+		break;
+	case PIPE_FD_TYPE_SYNCOBJ: {
+		int ret;
+		uint32_t syncobj;
+
+		assert(ctx->screen->has_syncobj);
+		ret = drmSyncobjFDToHandle(fd_device_fd(ctx->screen->dev), fd, &syncobj);
+		if (!ret)
+			close(fd);
+
+		*pfence = fence_create(fd_context(pctx), NULL, 0, -1, syncobj);
+		break;
+	}
+	default:
+		unreachable("Unhandled fence type");
+	}
 }
 
 void fd_fence_server_sync(struct pipe_context *pctx,
@@ -143,6 +166,16 @@ void fd_fence_server_sync(struct pipe_context *pctx,
 	}
 }
 
+void fd_fence_server_signal(struct pipe_context *pctx,
+		struct pipe_fence_handle *fence)
+{
+	struct fd_context *ctx = fd_context(pctx);
+
+	if (fence->syncobj) {
+		drmSyncobjSignal(fd_device_fd(ctx->screen->dev), &fence->syncobj, 1);
+	}
+}
+
 int fd_fence_get_fd(struct pipe_screen *pscreen,
 		struct pipe_fence_handle *fence)
 {
@@ -157,5 +190,5 @@ bool fd_fence_is_fd(struct pipe_fence_handle *fence)
 
 struct pipe_fence_handle * fd_fence_create(struct fd_batch *batch)
 {
-	return fence_create(batch->ctx, batch, 0, -1);
+	return fence_create(batch->ctx, batch, 0, -1, 0);
 }

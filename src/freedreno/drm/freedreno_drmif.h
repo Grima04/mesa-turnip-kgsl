@@ -98,6 +98,8 @@ enum fd_version {
 };
 enum fd_version fd_device_version(struct fd_device *dev);
 
+bool fd_has_syncobj(struct fd_device *dev);
+
 /* pipe functions:
  */
 

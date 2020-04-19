@@ -457,6 +457,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return fd_device_version(screen->dev) >= FD_VERSION_MEMORY_FD;
 	case PIPE_CAP_NATIVE_FENCE_FD:
 		return fd_device_version(screen->dev) >= FD_VERSION_FENCE_FD;
+	case PIPE_CAP_FENCE_SIGNAL:
+		return screen->has_syncobj;
 	default:
 		return u_pipe_screen_get_param_defaults(pscreen, param);
 	}
@@ -929,6 +931,8 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 
 	if (fd_device_version(dev) >= FD_VERSION_ROBUSTNESS)
 		screen->has_robustness = true;
+
+	screen->has_syncobj = fd_has_syncobj(screen->dev);
 
 	struct sysinfo si;
 	sysinfo(&si);

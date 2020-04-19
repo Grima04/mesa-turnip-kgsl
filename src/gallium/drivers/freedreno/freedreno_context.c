@@ -428,6 +428,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	pctx->get_device_reset_status = fd_get_device_reset_status;
 	pctx->create_fence_fd = fd_create_fence_fd;
 	pctx->fence_server_sync = fd_fence_server_sync;
+	pctx->fence_server_signal = fd_fence_server_signal;
 	pctx->texture_barrier = fd_texture_barrier;
 	pctx->memory_barrier = fd_memory_barrier;
 

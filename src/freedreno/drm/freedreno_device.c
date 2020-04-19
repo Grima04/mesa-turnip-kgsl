@@ -153,3 +153,11 @@ bool fd_dbg(void)
 
 	return dbg == 1;
 }
+
+bool fd_has_syncobj(struct fd_device *dev)
+{
+	uint64_t value;
+	if (drmGetCap(dev->fd, DRM_CAP_SYNCOBJ, &value))
+		return false;
+	return value && dev->version >= FD_VERSION_FENCE_FD;
+}

@@ -76,6 +76,7 @@ struct fd_screen {
 	uint32_t priority_mask;
 	bool has_timestamp;
 	bool has_robustness;
+	bool has_syncobj;
 
 	unsigned num_perfcntr_groups;
 	const struct fd_perfcntr_group *perfcntr_groups;
