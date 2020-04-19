@@ -149,7 +149,7 @@ panfrost-t860-gles3:arm64:
   tags:
     - mesa-ci-aarch64-lava-baylibre
 
-lima-mali400-test:armhf:
+.lima-mali400-test:armhf:
   parallel: 2
   extends:
     - .lava-test:armhf
@@ -161,7 +161,7 @@ lima-mali400-test:armhf:
   tags:
     - mesa-ci-aarch64-lava-baylibre
 
-lima-mali450-test:arm64:
+.lima-mali450-test:arm64:
   extends:
     - .lava-test:arm64
     - .lima-rules
