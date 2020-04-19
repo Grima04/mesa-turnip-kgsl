@@ -34,6 +34,8 @@
 #include "drm-uapi/drm.h"
 #include "util/u_range.h"
 
+#define LAYOUT_CONVERT_THRESHOLD 8
+
 struct panfrost_resource {
         struct pipe_resource base;
         struct {
@@ -57,8 +59,14 @@ struct panfrost_resource {
         /* Internal layout (tiled?) */
         enum mali_texture_layout layout;
 
+        /* Whether the layout can be changed */
+        bool layout_constant;
+
         /* Is transaciton elimination enabled? */
         bool checksummed;
+
+        /* Used to decide when to convert to another layout */
+        uint16_t layout_updates;
 
         enum pipe_format internal_format;
 

@@ -427,6 +427,7 @@ panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resourc
         /* Set the layout appropriately */
         assert(!(must_tile && !can_tile)); /* must_tile => can_tile */
         pres->layout = ((can_tile && should_tile) || must_tile) ? MALI_TEXTURE_TILED : MALI_TEXTURE_LINEAR;
+        pres->layout_constant = must_tile || !can_tile;
 
         size_t bo_size;
 
@@ -725,14 +726,48 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                         } else if (prsrc->layout == MALI_TEXTURE_TILED) {
                                 assert(transfer->box.depth == 1);
 
-                                panfrost_store_tiled_image(
-                                        bo->cpu + prsrc->slices[transfer->level].offset,
-                                        trans->map,
-                                        transfer->box.x, transfer->box.y,
-                                        transfer->box.width, transfer->box.height,
-                                        prsrc->slices[transfer->level].stride,
-                                        transfer->stride,
-                                        prsrc->internal_format);
+                                /* Do we overwrite the entire resource? If so,
+                                 * we don't need an intermediate blit so it's a
+                                 * good time to switch the layout. */
+
+                                bool discards_content = prsrc->base.last_level == 0
+                                    && transfer->box.width == prsrc->base.width0
+                                    && transfer->box.height == prsrc->base.height0
+                                    && transfer->box.x == 0
+                                    && transfer->box.y == 0
+                                    && !prsrc->layout_constant;
+
+                                /* It also serves as a good heuristic for
+                                 * streaming textures (e.g. in video players),
+                                 * but we could do better */
+
+                                if (discards_content)
+                                        ++prsrc->layout_updates;
+
+                                if (prsrc->layout_updates >= LAYOUT_CONVERT_THRESHOLD)
+                                {
+                                        prsrc->layout = MALI_TEXTURE_LINEAR;
+
+                                        util_copy_rect(
+                                                bo->cpu + prsrc->slices[0].offset,
+                                                prsrc->base.format,
+                                                prsrc->slices[0].stride,
+                                                0, 0,
+                                                transfer->box.width,
+                                                transfer->box.height,
+                                                trans->map,
+                                                transfer->stride,
+                                                0, 0);
+                                } else {
+                                        panfrost_store_tiled_image(
+                                                bo->cpu + prsrc->slices[transfer->level].offset,
+                                                trans->map,
+                                                transfer->box.x, transfer->box.y,
+                                                transfer->box.width, transfer->box.height,
+                                                prsrc->slices[transfer->level].stride,
+                                                transfer->stride,
+                                                prsrc->internal_format);
+                                }
                         }
                 }
         }
