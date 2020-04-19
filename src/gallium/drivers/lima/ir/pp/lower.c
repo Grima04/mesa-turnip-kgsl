@@ -160,42 +160,7 @@ static bool ppir_lower_ddxy(ppir_block *block, ppir_node *node)
 
 static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
 {
-   ppir_load_texture_node *load_tex = ppir_node_to_load_texture(node);
    ppir_dest *dest = ppir_node_get_dest(node);
-   ppir_node *src_coords = ppir_node_get_src(node, 0)->node;
-   ppir_load_node *load = NULL;
-
-   if (src_coords && ppir_node_has_single_src_succ(src_coords) &&
-       (src_coords->op == ppir_op_load_coords))
-      load = ppir_node_to_load(src_coords);
-   else {
-      /* Create load_coords node */
-      load = ppir_node_create(block, ppir_op_load_coords_reg, -1, 0);
-      if (!load)
-         return false;
-      list_addtail(&load->node.list, &node->list);
-
-      load->src = load_tex->src[0];
-      load->num_src = 1;
-      if (load_tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
-         load->num_components = 3;
-      else
-         load->num_components = 2;
-
-      ppir_debug("%s create load_coords node %d for %d\n",
-                 __FUNCTION__, load->node.index, node->index);
-
-      ppir_node_foreach_pred_safe(node, dep) {
-         ppir_node *pred = dep->pred;
-         ppir_node_remove_dep(dep);
-         ppir_node_add_dep(&load->node, pred, ppir_dep_src);
-      }
-      ppir_node_add_dep(node, &load->node, ppir_dep_src);
-   }
-
-   assert(load);
-   load_tex->src[0].type = load->dest.type = ppir_target_pipeline;
-   load_tex->src[0].pipeline = load->dest.pipeline = ppir_pipeline_reg_discard;
 
    /* Always create move node since there can be successors in other blocks */
    ppir_node *move = ppir_node_insert_mov(node);

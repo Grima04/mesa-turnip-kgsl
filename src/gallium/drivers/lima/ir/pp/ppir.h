@@ -270,8 +270,7 @@ typedef struct {
 typedef struct {
    ppir_node node;
    ppir_dest dest;
-   ppir_src src[2]; /* src[0] temporarily stores src_coords,
-                       not to be used after lowering */
+   ppir_src src[2];
    int num_src;
    int sampler;
    int sampler_dim;
