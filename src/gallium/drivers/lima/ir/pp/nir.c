@@ -627,7 +627,9 @@ static bool ppir_emit_if(ppir_compiler *comp, nir_if *if_stmt)
    else_branch->negate = true;
    list_addtail(&else_branch->node.list, &block->node_list);
 
-   ppir_emit_cf_list(comp, &if_stmt->then_list);
+   if (!ppir_emit_cf_list(comp, &if_stmt->then_list))
+      return false;
+
    if (empty_else_block) {
       nir_block *nblock = nir_if_last_else_block(if_stmt);
       assert(nblock->successors[0]);
@@ -654,7 +656,8 @@ static bool ppir_emit_if(ppir_compiler *comp, nir_if *if_stmt)
    /* Target should be after_block, will fixup later */
    list_addtail(&after_branch->node.list, &block->node_list);
 
-   ppir_emit_cf_list(comp, &if_stmt->else_list);
+   if (!ppir_emit_cf_list(comp, &if_stmt->else_list))
+      return false;
 
    return true;
 }
@@ -669,7 +672,8 @@ static bool ppir_emit_loop(ppir_compiler *comp, nir_loop *nloop)
 
    comp->loop_cont_block = ppir_get_block(comp, nir_loop_first_block(nloop));
 
-   ppir_emit_cf_list(comp, &nloop->body);
+   if (!ppir_emit_cf_list(comp, &nloop->body))
+      return false;
 
    loop_last_block = nir_loop_last_block(nloop);
    block = ppir_get_block(comp, loop_last_block);
