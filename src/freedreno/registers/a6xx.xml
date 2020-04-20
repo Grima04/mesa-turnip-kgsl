@@ -2617,7 +2617,7 @@ to upconvert to 32b float internally?
 			plus # of transform-feedback (streamout) varyings if using the
 			hw streamout (rather than stg instructions in shader)
 		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="6" type="uint"/>
+		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
 		<bitfield name="PSIZE" pos="8" type="boolean"/>
 	</reg32>
 
@@ -2625,7 +2625,7 @@ to upconvert to 32b float internally?
 		<doc>
 		  geometry shader
 		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="6" type="uint"/>
+		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
 		<bitfield name="PSIZE" pos="8" type="boolean"/>
 		<bitfield name="LAYER" pos="9" type="boolean"/>
 		<bitfield name="PRIMITIVE_ID" pos="11" type="boolean"/>
@@ -2639,7 +2639,7 @@ to upconvert to 32b float internally?
 			plus # of transform-feedback (streamout) varyings if using the
 			hw streamout (rather than stg instructions in shader)
 		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="6" type="uint"/>
+		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
 		<bitfield name="PSIZE" pos="8" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x9b04" name="PC_PRIMITIVE_CNTL_4">
@@ -2649,7 +2649,7 @@ to upconvert to 32b float internally?
 			plus # of transform-feedback (streamout) varyings if using the
 			hw streamout (rather than stg instructions in shader)
 		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="6" type="uint"/>
+		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
 		<bitfield name="PSIZE" pos="8" type="boolean"/>
 	</reg32>
 
@@ -2808,7 +2808,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa800" name="SP_VS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0"/>
 	<reg32 offset="0xa802" name="SP_PRIMITIVE_CNTL">
 		<!-- # of VS outputs including pos/psize -->
-		<bitfield name="VSOUT" low="0" high="4" type="uint"/>
+		<bitfield name="VSOUT" low="0" high="5" type="uint"/>
 	</reg32>
 	<array offset="0xa803" name="SP_VS_OUT" stride="1" length="16">
 		<reg32 offset="0x0" name="REG">
@@ -2884,7 +2884,7 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xa873" name="SP_PRIMITIVE_CNTL_GS">
 		<!-- # of VS outputs including pos/psize -->
-		<bitfield name="GSOUT" low="0" high="4" type="uint"/>
+		<bitfield name="GSOUT" low="0" high="5" type="uint"/>
 		<bitfield name="FLAGS_REGID" low="6" high="13" type="a3xx_regid"/>
 	</reg32>
 
