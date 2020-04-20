@@ -22,6 +22,8 @@ The way the release schedule works is explained
 Take a look `here <submittingpatches.rst#criteria>`__ if you'd like to
 nominate a patch in the next stable release.
 
+.. _calendar:
+
 Calendar
 --------
 
