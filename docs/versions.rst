@@ -4,7 +4,7 @@ Mesa Version History
 .. note::
 
    Changes for Mesa 6.4 and later are documented in the corresponding
-   `release notes <relnotes.html>`__ file.
+   `release notes <relnotes.rst>`__ file.
 
 1.0 beta February 1995
 ----------------------
@@ -1653,4 +1653,4 @@ Bug fixes:
 .. note::
 
    Changes for Mesa 6.4 and later are documented in the corresponding
-   `release notes <relnotes.html>`__ file.
+   `release notes <relnotes.rst>`__ file.

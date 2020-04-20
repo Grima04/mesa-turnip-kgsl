@@ -7,7 +7,7 @@ Basic guidelines
 -  Patches should not mix code changes with code formatting changes
    (except, perhaps, in very trivial cases.)
 -  Code patches should follow Mesa `coding
-   conventions <codingstyle.html>`__.
+   conventions <codingstyle.rst>`__.
 -  Whenever possible, patches should only affect individual Mesa/Gallium
    components.
 -  Patches should never introduce build breaks and should be bisectable
@@ -265,7 +265,7 @@ If you are not the author of the original patch, please Cc: them in your
 nomination request.
 
 The current patch status can be observed in the `staging
-branch <releasing.html#stagingbranch>`__.
+branch <releasing.rst#stagingbranch>`__.
 
 The stable tag
 ~~~~~~~~~~~~~~
@@ -332,7 +332,7 @@ broad discretion in rejecting patches that have been nominated.
    numbers to represent your measurements.
 
 If the patch complies with the rules it will be
-`cherry-picked <releasing.html#pickntest>`__. Alternatively the release
+`cherry-picked <releasing.rst#pickntest>`__. Alternatively the release
 manager will reply to the patch in question stating why the patch has
 been rejected or would request a backport. The stable-release manager
 may at times need to force-push changes to the stable branches, for

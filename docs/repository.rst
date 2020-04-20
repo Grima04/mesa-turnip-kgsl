@@ -54,7 +54,7 @@ please follow this procedure:
    `mesa-dev <https://lists.freedesktop.org/mailman/listinfo/mesa-dev>`__
    mailing list.
 #. Start contributing to the project by `submitting
-   patches <submittingpatches.html>`__. Specifically,
+   patches <submittingpatches.rst>`__. Specifically,
 
    -  Use `gitlab <https://gitlab.freedesktop.org/>`__ to create your
       merge requests.

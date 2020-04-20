@@ -31,10 +31,10 @@ Hardware drivers include:
 
 Software drivers include:
 
--  `llvmpipe <llvmpipe.html>`__ - uses LLVM for x86 JIT code generation
+-  `llvmpipe <llvmpipe.rst>`__ - uses LLVM for x86 JIT code generation
    and is multi-threaded
 -  softpipe - a reference Gallium driver
--  `svga <vmware-guest.html>`__ - driver for vmware virtual gpu
+-  `svga <vmware-guest.rst>`__ - driver for vmware virtual gpu
 -  `swr <https://www.openswr.org/>`__ - x86-optimized software renderer
    for visualization workloads
 -  `virgl <https://virgil3d.github.io/>`__ - research project for
@@ -45,7 +45,7 @@ Additional driver information:
 
 -  `DRI hardware drivers <https://dri.freedesktop.org/>`__ for the X
    Window System
--  `Xlib / swrast driver <xlibdriver.html>`__ for the X Window System
+-  `Xlib / swrast driver <xlibdriver.rst>`__ for the X Window System
    and Unix-like operating systems
 -  `Microsoft Windows <README.WIN32>`__
 
