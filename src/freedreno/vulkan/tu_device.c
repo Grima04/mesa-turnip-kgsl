@@ -943,6 +943,13 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->variableSampleLocations = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
+         VkPhysicalDeviceSamplerFilterMinmaxProperties *properties =
+            (VkPhysicalDeviceSamplerFilterMinmaxProperties *)ext;
+         properties->filterMinmaxImageComponentMapping = true;
+         properties->filterMinmaxSingleComponentFormats = true;
+         break;
+      }
 
       default:
          break;
@@ -2112,6 +2119,9 @@ tu_init_sampler(struct tu_device *device,
                 struct tu_sampler *sampler,
                 const VkSamplerCreateInfo *pCreateInfo)
 {
+   const struct VkSamplerReductionModeCreateInfo *reduction =
+      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_REDUCTION_MODE_CREATE_INFO);
+
    unsigned aniso = pCreateInfo->anisotropyEnable ?
       util_last_bit(MIN2((uint32_t)pCreateInfo->maxAnisotropy >> 1, 8)) : 0;
    bool miplinear = (pCreateInfo->mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR);
@@ -2140,6 +2150,11 @@ tu_init_sampler(struct tu_device *device,
       A6XX_TEX_SAMP_2_BCOLOR_OFFSET((unsigned) pCreateInfo->borderColor *
                                     sizeof(struct bcolor_entry));
    sampler->descriptor[3] = 0;
+
+   if (reduction) {
+      /* note: vulkan enum matches hw */
+      sampler->descriptor[2] |= A6XX_TEX_SAMP_2_REDUCTION_MODE(reduction->reductionMode);
+   }
 
    /* TODO:
     * A6XX_TEX_SAMP_1_MIPFILTER_LINEAR_FAR disables mipmapping, but vk has no NONE mipfilter?

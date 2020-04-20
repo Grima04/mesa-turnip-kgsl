@@ -3307,6 +3307,12 @@ to upconvert to 32b float internally?
 		<value name="A6XX_TEX_ANISO_8" value="3"/>
 		<value name="A6XX_TEX_ANISO_16" value="4"/>
 	</enum>
+	<enum name="a6xx_reduction_mode">
+		<value name="A6XX_REDUCTION_MODE_AVERAGE" value="0"/>
+		<value name="A6XX_REDUCTION_MODE_MIN" value="1"/>
+		<value name="A6XX_REDUCTION_MODE_MAX" value="2"/>
+	</enum>
+
 	<reg32 offset="0" name="0">
 		<bitfield name="MIPFILTER_LINEAR_NEAR" pos="0" type="boolean"/>
 		<bitfield name="XY_MAG" low="1" high="2" type="a6xx_tex_filter"/>
@@ -3326,7 +3332,8 @@ to upconvert to 32b float internally?
 		<bitfield name="MIN_LOD" low="20" high="31" type="ufixed" radix="8"/>
 	</reg32>
 	<reg32 offset="2" name="2">
-		<bitfield name="BCOLOR_OFFSET" low="0" high="31"/>
+		<bitfield name="REDUCTION_MODE" low="0" high="1" type="a6xx_reduction_mode"/>
+		<bitfield name="BCOLOR_OFFSET" low="7" high="31" shr="7"/>
 	</reg32>
 	<reg32 offset="3" name="3"/>
 </domain>
