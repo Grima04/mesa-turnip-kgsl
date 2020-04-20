@@ -1113,6 +1113,14 @@ nir_assign_io_var_locations(struct exec_list *var_list, unsigned *size,
 
       unsigned var_size;
       if (var->data.compact) {
+         /* If we are inside a partial compact,
+          * don't allow another compact to be in this slot
+          * if it starts at component 0.
+          */
+         if (last_partial && var->data.location_frac == 0) {
+            location++;
+         }
+
          /* compact variables must be arrays of scalars */
          assert(glsl_type_is_array(type));
          assert(glsl_type_is_scalar(glsl_get_array_element(type)));
