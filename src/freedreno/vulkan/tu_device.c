@@ -584,7 +584,7 @@ tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
    *pFeatures = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = false,
       .fullDrawIndexUint32 = true,
-      .imageCubeArray = false,
+      .imageCubeArray = true,
       .independentBlend = true,
       .geometryShader = true,
       .tessellationShader = false,
