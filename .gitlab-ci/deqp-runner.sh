@@ -2,7 +2,7 @@
 
 set -ex
 
-DEQP_OPTIONS="--deqp-surface-width=256 --deqp-surface-height=256"
+DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-width=256 --deqp-surface-height=256"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=pbuffer"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=rgba8888d24s8ms0"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
