@@ -216,7 +216,14 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         bool output_type_32_bit = (c->key->tex[unit].return_size == 32 &&
                                    !instr->is_shadow);
 
-        if (output_type_32_bit || texture_instr_need_sampler(instr)) {
+        /*
+         * p1 is optional, but we can skip it only if p2 can be skipped too
+         */
+        bool needs_p2_config =
+                memcmp(&p2_unpacked, &p2_unpacked_default, sizeof(p2_unpacked)) != 0;
+
+        if (needs_p2_config || output_type_32_bit ||
+            texture_instr_need_sampler(instr)) {
                 struct V3D41_TMU_CONFIG_PARAMETER_1 p1_unpacked = {
                         .output_type_32_bit = output_type_32_bit,
 
@@ -248,7 +255,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 vir_WRTMUC(c, QUNIFORM_TMU_CONFIG_P1, p1_packed);
         }
 
-        if (memcmp(&p2_unpacked, &p2_unpacked_default, sizeof(p2_unpacked)) != 0)
+        if (needs_p2_config)
                 vir_WRTMUC(c, QUNIFORM_CONSTANT, p2_packed);
 
         if (instr->op == nir_texop_txf) {
