@@ -561,16 +561,8 @@ void emit_vop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
          Temp t = src0;
          src0 = src1;
          src1 = t;
-      } else if (src0.type() == RegType::vgpr &&
-                 op != aco_opcode::v_madmk_f32 &&
-                 op != aco_opcode::v_madak_f32 &&
-                 op != aco_opcode::v_madmk_f16 &&
-                 op != aco_opcode::v_madak_f16) {
-         /* If the instruction is not commutative, we emit a VOP3A instruction */
-         bld.vop2_e64(op, Definition(dst), src0, src1);
-         return;
       } else {
-         src1 = bld.copy(bld.def(RegType::vgpr, src1.size()), src1); //TODO: as_vgpr
+         src1 = as_vgpr(ctx, src1);
       }
    }
 
