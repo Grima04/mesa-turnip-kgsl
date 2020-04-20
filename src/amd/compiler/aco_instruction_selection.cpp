@@ -1654,7 +1654,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
             emit_vop2_instruction(ctx, instr, aco_opcode::v_subrev_f32, dst, true);
       } else if (dst.regClass() == v2) {
          Instruction* add = bld.vop3(aco_opcode::v_add_f64, Definition(dst),
-                                     src0, src1);
+                                     as_vgpr(ctx, src0), as_vgpr(ctx, src1));
          VOP3A_instruction* sub = static_cast<VOP3A_instruction*>(add);
          sub->neg[1] = true;
       } else {
