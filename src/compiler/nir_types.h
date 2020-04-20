@@ -201,6 +201,7 @@ const struct glsl_type *glsl_sampler_type(enum glsl_sampler_dim dim,
                                           bool is_shadow, bool is_array,
                                           enum glsl_base_type base_type);
 const struct glsl_type *glsl_bare_sampler_type();
+const struct glsl_type *glsl_bare_shadow_sampler_type();
 const struct glsl_type *glsl_image_type(enum glsl_sampler_dim dim,
                                         bool is_array,
                                         enum glsl_base_type base_type);
