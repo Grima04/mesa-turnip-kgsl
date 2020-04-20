@@ -161,7 +161,7 @@ v3dv_job_destroy(struct v3dv_job *job)
 
    list_del(&job->list_link);
 
-   if (job->type == V3DV_JOB_TYPE_GPU) {
+   if (job->type == V3DV_JOB_TYPE_GPU_CL) {
       v3dv_cl_destroy(&job->bcl);
       v3dv_cl_destroy(&job->rcl);
       v3dv_cl_destroy(&job->indirect);
@@ -553,7 +553,7 @@ v3dv_job_init(struct v3dv_job *job,
    job->device = device;
    job->cmd_buffer = cmd_buffer;
 
-   if (type == V3DV_JOB_TYPE_GPU) {
+   if (type == V3DV_JOB_TYPE_GPU_CL) {
       job->bos =
          _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
       job->bo_count = 0;
@@ -623,7 +623,7 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
       return NULL;
    }
 
-   v3dv_job_init(job, V3DV_JOB_TYPE_GPU, cmd_buffer->device,
+   v3dv_job_init(job, V3DV_JOB_TYPE_GPU_CL, cmd_buffer->device,
                  cmd_buffer, subpass_idx);
 
    return job;
@@ -3505,6 +3505,19 @@ v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 void
+v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
+                            struct drm_v3d_submit_tfu *tfu)
+{
+   struct v3dv_device *device = cmd_buffer->device;
+   struct v3dv_job *job = vk_zalloc(&device->alloc,
+                                    sizeof(struct v3dv_job), 8,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   v3dv_job_init(job, V3DV_JOB_TYPE_GPU_TFU, device, cmd_buffer, -1);
+   job->tfu = *tfu;
+   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+}
+
+void
 v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
                  VkEvent event,
                  VkPipelineStageFlags stageMask)
@@ -3534,16 +3547,4 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
                    const VkImageMemoryBarrier *pImageMemoryBarriers)
 {
    assert(!"vkCmdWaitEvents not implemented yet");
-}
-
-void
-v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
-                  VkImage srcImage,
-                  VkImageLayout srcImageLayout,
-                  VkImage dstImage,
-                  VkImageLayout dstImageLayout,
-                  uint32_t regionCount,
-                  const VkImageBlit* pRegions, VkFilter filter)
-{
-   assert(!"vkCmdBlitImage not implemented yet");
 }

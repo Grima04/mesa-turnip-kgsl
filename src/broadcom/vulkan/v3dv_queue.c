@@ -157,21 +157,6 @@ handle_copy_query_results_cpu_job(struct v3dv_job *job)
 }
 
 static VkResult
-handle_cpu_job(struct v3dv_job *job)
-{
-   switch (job->type) {
-   case V3DV_JOB_TYPE_CPU_RESET_QUERIES:
-      return handle_reset_query_cpu_job(job);
-   case V3DV_JOB_TYPE_CPU_END_QUERY:
-      return handle_end_query_cpu_job(job);
-   case V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS:
-      return handle_copy_query_results_cpu_job(job);
-   default:
-      unreachable("Unhandled job type");
-   }
-}
-
-static VkResult
 process_semaphores_to_signal(struct v3dv_device *device,
                              uint32_t count, const VkSemaphore *sems)
 {
@@ -227,15 +212,10 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
 }
 
 static VkResult
-queue_submit_job(struct v3dv_queue *queue,
-                 struct v3dv_job *job,
-                 bool do_wait)
+handle_cl_job(struct v3dv_queue *queue,
+              struct v3dv_job *job,
+              bool do_wait)
 {
-   assert(job);
-
-   if (job->type != V3DV_JOB_TYPE_GPU)
-      return handle_cpu_job(job);
-
    struct v3dv_device *device = queue->device;
 
    struct drm_v3d_submit_cl submit;
@@ -300,6 +280,48 @@ queue_submit_job(struct v3dv_queue *queue,
       return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
 
    return VK_SUCCESS;
+}
+
+static VkResult
+handle_tfu_job(struct v3dv_queue *queue,
+               struct v3dv_job *job,
+               bool do_wait)
+{
+   const struct v3dv_device *device = queue->device;
+
+   job->tfu.in_sync = do_wait ? device->last_job_sync : 0;
+   job->tfu.out_sync = device->last_job_sync;
+
+   int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_TFU, &job->tfu);
+   if (ret != 0) {
+      fprintf(stderr, "Failed to submit TFU job: %d\n", ret);
+      return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+queue_submit_job(struct v3dv_queue *queue,
+                 struct v3dv_job *job,
+                 bool do_wait)
+{
+   assert(job);
+
+   switch (job->type) {
+   case V3DV_JOB_TYPE_GPU_CL:
+      return handle_cl_job(queue, job, do_wait);
+   case V3DV_JOB_TYPE_GPU_TFU:
+      return handle_tfu_job(queue, job, do_wait);
+   case V3DV_JOB_TYPE_CPU_RESET_QUERIES:
+      return handle_reset_query_cpu_job(job);
+   case V3DV_JOB_TYPE_CPU_END_QUERY:
+      return handle_end_query_cpu_job(job);
+   case V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS:
+      return handle_copy_query_results_cpu_job(job);
+   default:
+      unreachable("Unhandled job type");
+   }
 }
 
 static void
@@ -395,7 +417,7 @@ queue_create_noop_job(struct v3dv_queue *queue, struct v3dv_job **job)
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!*job)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-   v3dv_job_init(*job, V3DV_JOB_TYPE_GPU, device, NULL, -1);
+   v3dv_job_init(*job, V3DV_JOB_TYPE_GPU_CL, device, NULL, -1);
 
    emit_noop_bin(*job);
    emit_noop_render(*job);

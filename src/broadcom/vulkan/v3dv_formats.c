@@ -319,6 +319,41 @@ v3dv_get_tex_return_size(const struct v3dv_format *vf,
    return vf->return_size;
 }
 
+bool
+v3dv_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
+                             uint32_t tex_format)
+{
+   assert(devinfo->ver >= 41);
+
+   switch (tex_format) {
+   case TEXTURE_DATA_FORMAT_R8:
+   case TEXTURE_DATA_FORMAT_R8_SNORM:
+   case TEXTURE_DATA_FORMAT_RG8:
+   case TEXTURE_DATA_FORMAT_RG8_SNORM:
+   case TEXTURE_DATA_FORMAT_RGBA8:
+   case TEXTURE_DATA_FORMAT_RGBA8_SNORM:
+   case TEXTURE_DATA_FORMAT_RGB565:
+   case TEXTURE_DATA_FORMAT_RGBA4:
+   case TEXTURE_DATA_FORMAT_RGB5_A1:
+   case TEXTURE_DATA_FORMAT_RGB10_A2:
+   case TEXTURE_DATA_FORMAT_R16:
+   case TEXTURE_DATA_FORMAT_R16_SNORM:
+   case TEXTURE_DATA_FORMAT_RG16:
+   case TEXTURE_DATA_FORMAT_RG16_SNORM:
+   case TEXTURE_DATA_FORMAT_RGBA16:
+   case TEXTURE_DATA_FORMAT_RGBA16_SNORM:
+   case TEXTURE_DATA_FORMAT_R16F:
+   case TEXTURE_DATA_FORMAT_RG16F:
+   case TEXTURE_DATA_FORMAT_RGBA16F:
+   case TEXTURE_DATA_FORMAT_R11F_G11F_B10F:
+   case TEXTURE_DATA_FORMAT_R4:
+      return true;
+   default:
+      return false;
+   }
+}
+
+
 static bool
 format_supports_blending(const struct v3dv_format *format)
 {

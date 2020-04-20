@@ -63,6 +63,8 @@
 #include "v3dv_extensions.h"
 #include "v3dv_bo.h"
 
+#include "drm-uapi/v3d_drm.h"
+
 /* FIXME: hooks for the packet definition functions. */
 static inline void
 pack_emit_reloc(void *cl, const void *reloc) {}
@@ -590,7 +592,8 @@ enum v3dv_ez_state {
 };
 
 enum v3dv_job_type {
-   V3DV_JOB_TYPE_GPU = 0,
+   V3DV_JOB_TYPE_GPU_CL = 0,
+   V3DV_JOB_TYPE_GPU_TFU,
    V3DV_JOB_TYPE_CPU_RESET_QUERIES,
    V3DV_JOB_TYPE_CPU_END_QUERY,
    V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS,
@@ -677,6 +680,9 @@ struct v3dv_job {
       struct v3dv_end_query_cpu_job_info          query_end;
       struct v3dv_copy_query_results_cpu_job_info query_copy_results;
    } cpu;
+
+   /* Job spects for TFU jobs */
+   struct drm_v3d_submit_tfu tfu;
 };
 
 void v3dv_job_init(struct v3dv_job *job,
@@ -893,6 +899,9 @@ void v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
                                         uint32_t offset,
                                         uint32_t stride,
                                         VkQueryResultFlags flags);
+
+void v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
+                                 struct drm_v3d_submit_tfu *tfu);
 
 struct v3dv_semaphore {
    /* A syncobject handle associated with this semaphore */
@@ -1334,6 +1343,9 @@ const struct v3dv_format *v3dv_get_format(VkFormat);
 const uint8_t *v3dv_get_format_swizzle(VkFormat f);
 void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *type, uint32_t *bpp);
 uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, bool compare_enable);
+bool v3dv_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
+                                  uint32_t tex_format);
+
 
 
 uint32_t v3d_utile_width(int cpp);
