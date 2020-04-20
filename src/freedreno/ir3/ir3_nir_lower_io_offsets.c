@@ -277,7 +277,7 @@ lower_offset_for_ubo(nir_intrinsic_instr *intrinsic, nir_builder *b)
 		nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_ubo_ir3);
 
 	debug_assert(intrinsic->dest.is_ssa);
-	new_intrinsic->src[0] = nir_src_for_ssa(intrinsic->src[0].ssa);
+	new_intrinsic->src[0] = intrinsic->src[0];
 
 	nir_ssa_def *offset = intrinsic->src[1].ssa;
 	nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, offset, -4);
