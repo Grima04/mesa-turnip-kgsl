@@ -39,7 +39,7 @@ Contents
 --------
 
 Proceed to the `compilation and installation
-instructions <install.html>`__.
+instructions <install.rst>`__.
 
 Demos, GLUT, and GLU
 --------------------

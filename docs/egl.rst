@@ -28,7 +28,7 @@ Build EGL
               -D gallium-drivers=...
 
    The main library and OpenGL is enabled by default. The first two
-   options above enables `OpenGL ES 1.x and 2.x <opengles.html>`__. The
+   options above enables `OpenGL ES 1.x and 2.x <opengles.rst>`__. The
    last two options enables the listed classic and Gallium drivers
    respectively.
 

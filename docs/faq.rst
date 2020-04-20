@@ -85,7 +85,7 @@ drivers within the DRI (Direct Rendering Infrastructure):
 
 This wasn't easy in the past. Now, the DRI drivers are included in the
 Mesa tree and can be compiled separately from the X server. Just follow
-the Mesa `compilation instructions <install.html>`__.
+the Mesa `compilation instructions <install.rst>`__.
 
 1.6 Are there other open-source implementations of OpenGL?
 ----------------------------------------------------------
@@ -262,7 +262,7 @@ problem.
 4.1 How can I contribute?
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-First, join the `mesa-dev mailing list <lists.html>`__. That's where
+First, join the `mesa-dev mailing list <lists.rst>`__. That's where
 Mesa development is discussed.
 
 The `OpenGL Specification <https://www.opengl.org/documentation>`__ is

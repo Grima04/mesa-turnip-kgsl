@@ -27,7 +27,7 @@ Release schedule
 Releases should happen on Wednesdays. Delays can occur although those
 should be kept to a minimum.
 
-See our `calendar <release-calendar.html>`__ for information about how
+See our `calendar <release-calendar.rst>`__ for information about how
 the release schedule is planned, and the date and other details for
 individual releases.
 
@@ -58,7 +58,7 @@ Stable releases
    This also involves that, as a final release may be delayed due to the
    need of additional candidates to solve some blocking regression(s), the
    release manager might have to update the
-   `calendar <release-calendar.html>`__ with additional bug fix releases of
+   `calendar <release-calendar.rst>`__ with additional bug fix releases of
    the current stable branch.
 
 .. _pickntest:
@@ -67,7 +67,7 @@ Cherry-picking and testing
 --------------------------
 
 Commits nominated for the active branch are picked as based on the
-`criteria <submittingpatches.html#criteria>`__ as described in the same
+`criteria <submittingpatches.rst#criteria>`__ as described in the same
 section.
 
 Nominations happen via special tags in the commit messages, and via
@@ -174,7 +174,7 @@ to stabilisation and bugfixing.
    should be tackled already.
 
 Check if the version number is going to remain as, alternatively
-``git mv docs/relnotes/{current,new}.html`` as appropriate.
+``git mv docs/relnotes/{current,new}.rst`` as appropriate.
 
 To setup the branchpoint:
 
@@ -290,7 +290,7 @@ respectively.
 Add the sha256sums to the release notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Edit docs/relnotes/X.Y.Z.html to add the sha256sum as available in the
+Edit docs/relnotes/X.Y.Z.rst to add the sha256sum as available in the
 mesa-X.Y.Z.announce template. Commit this change.
 
 Back on mesa master, add the new release notes into the tree
@@ -310,7 +310,7 @@ Then run the
    ./bin/post_version.py X.Y.Z
 
 , where X.Y.Z is the version you just made. This will updated
-docs/relnotes.html, docs/index.html, and docs/release-calendar.html. It
+docs/relnotes.rst, docs/index.rst, and docs/release-calendar.rst. It
 will then generate a git commit automatically. Check that everything
 looks correct and push:
 
@@ -329,7 +329,7 @@ series, if that is the case.
 Update gitlab issues
 --------------------
 
-Parse through the bug reports as listed in the docs/relnotes/X.Y.Z.html
+Parse through the bug reports as listed in the docs/relnotes/X.Y.Z.rst
 document. If there's outstanding action, close the bug referencing the
 commit ID which addresses the bug and mention the Mesa version that has
 the fix.

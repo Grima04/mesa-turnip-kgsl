@@ -163,14 +163,14 @@ Core Mesa environment variables
    variable is set), or else within ``.cache/mesa_shader_cache`` within
    the user's home directory.
 ``MESA_GLSL``
-   `shading language compiler options <shading.html#envvars>`__
+   `shading language compiler options <shading.rst#envvars>`__
 ``MESA_NO_MINMAX_CACHE``
    when set, the minmax index cache is globally disabled.
 ``MESA_SHADER_CAPTURE_PATH``
-   see `Capturing Shaders <shading.html#capture>`__
+   see `Capturing Shaders <shading.rst#capture>`__
 ``MESA_SHADER_DUMP_PATH`` and ``MESA_SHADER_READ_PATH``
    see `Experimenting with Shader
-   Replacements <shading.html#replacement>`__
+   Replacements <shading.rst#replacement>`__
 ``MESA_VK_VERSION_OVERRIDE``
    changes the Vulkan physical device version as returned in
    ``VkPhysicalDeviceProperties::apiVersion``.
@@ -202,7 +202,7 @@ Mesa Xlib driver environment variables
 --------------------------------------
 
 The following are only applicable to the Mesa Xlib software driver. See
-the `Xlib software driver page <xlibdriver.html>`__ for details.
+the `Xlib software driver page <xlibdriver.rst>`__ for details.
 
 ``MESA_RGB_VISUAL``
    specifies the X visual and depth for RGB mode
@@ -342,7 +342,7 @@ EGL environment variables
 -------------------------
 
 Mesa EGL supports different sets of environment variables. See the `Mesa
-EGL <egl.html>`__ page for the details.
+EGL <egl.rst>`__ page for the details.
 
 Gallium environment variables
 -----------------------------

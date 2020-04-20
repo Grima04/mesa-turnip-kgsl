@@ -44,5 +44,5 @@ before running the game.
 Viewperf
 --------
 
-See the `Viewperf issues <viewperf.html>`__ page for a detailed list of
+See the `Viewperf issues <viewperf.rst>`__ page for a detailed list of
 Viewperf issues.

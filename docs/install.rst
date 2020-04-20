@@ -102,7 +102,7 @@ On windows you can also use the visual studio backend
      cd builddir
      msbuild mesa.sln /m
 
-Please read the `detailed meson instructions <meson.html>`__ for more
+Please read the `detailed meson instructions <meson.rst>`__ for more
 information
 
 3. Building with SCons (Windows/Linux)

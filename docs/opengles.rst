@@ -5,7 +5,7 @@ Mesa implements OpenGL ES 1.1 and OpenGL ES 2.0. More information about
 OpenGL ES can be found at https://www.khronos.org/opengles/.
 
 OpenGL ES depends on a working EGL implementation. Please refer to `Mesa
-EGL <egl.html>`__ for more information about EGL.
+EGL <egl.rst>`__ for more information about EGL.
 
 Build the Libraries
 -------------------

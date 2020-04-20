@@ -17,9 +17,9 @@ used, best practices and other details, the member in charge of the next
 feature release will be in constant rotation.
 
 The way the release schedule works is explained
-`here <releasing.html#schedule>`__.
+`here <releasing.rst#schedule>`__.
 
-Take a look `here <submittingpatches.html#criteria>`__ if you'd like to
+Take a look `here <submittingpatches.rst#criteria>`__ if you'd like to
 nominate a patch in the next stable release.
 
 Calendar
