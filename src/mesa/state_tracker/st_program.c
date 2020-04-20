@@ -535,6 +535,7 @@ st_translate_vertex_program(struct st_context *st,
           */
          nir_shader_gather_info(stp->Base.nir,
                                 nir_shader_get_entrypoint(stp->Base.nir));
+         st_nir_assign_vs_in_locations(stp->Base.nir);
          stp->Base.info = stp->Base.nir->info;
 
          /* For st_draw_feedback, we need to generate TGSI too if draw doesn't
