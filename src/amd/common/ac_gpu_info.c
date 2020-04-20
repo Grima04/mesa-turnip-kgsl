@@ -659,10 +659,13 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	assert(ib_align);
 	info->ib_start_alignment = ib_align;
 
-	if (info->drm_minor >= 31 &&
-	    (info->family == CHIP_RAVEN ||
-	     info->family == CHIP_RAVEN2 ||
-	     info->family == CHIP_RENOIR)) {
+        if ((info->drm_minor >= 31 &&
+             (info->family == CHIP_RAVEN ||
+              info->family == CHIP_RAVEN2 ||
+              info->family == CHIP_RENOIR)) ||
+            (info->drm_minor >= 34 &&
+             (info->family == CHIP_NAVI12 ||
+              info->family == CHIP_NAVI14))) {
 		if (info->num_render_backends == 1)
 			info->use_display_dcc_unaligned = true;
 		else
