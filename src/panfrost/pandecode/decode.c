@@ -2019,13 +2019,6 @@ pandecode_texture(mali_ptr u,
 
         pandecode_make_indent();
 
-        /* TODO: Are there others? */
-        bool is_zs = f.format == MALI_Z32_UNORM;
-
-        /* Recall Z/S switched the meaning of linear/tiled .. */
-        if (is_zs && f.layout == MALI_TEXTURE_LINEAR)
-                pandecode_msg("XXX: depth/stencil cannot be tiled\n");
-
         /* Print the layout. Default is linear; a modifier can denote AFBC or
          * u-interleaved/tiled modes */
 
