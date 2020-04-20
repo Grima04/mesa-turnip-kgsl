@@ -1572,17 +1572,6 @@ glsl_to_tgsi_visitor::visit_expression(ir_expression* ir, st_src_reg *op)
       emit_asm(ir, TGSI_OPCODE_DFRACEXP, undef_dst, result_dst, op[0]);
       break;
 
-   case ir_unop_noise: {
-      /* At some point, a motivated person could add a better
-       * implementation of noise.  Currently not even the nvidia
-       * binary drivers do anything more than this.  In any case, the
-       * place to do this is in the GL state tracker, not the poor
-       * driver.
-       */
-      emit_asm(ir, TGSI_OPCODE_MOV, result_dst, st_src_reg_for_float(0.5));
-      break;
-   }
-
    case ir_binop_add:
       emit_asm(ir, TGSI_OPCODE_ADD, result_dst, op[0], op[1]);
       break;

@@ -2047,48 +2047,6 @@ nir_visitor::visit(ir_expression *ir)
       result = nir_find_lsb(&b, srcs[0]);
       break;
 
-   case ir_unop_noise:
-      switch (ir->type->vector_elements) {
-      case 1:
-         switch (ir->operands[0]->type->vector_elements) {
-            case 1: result = nir_fnoise1_1(&b, srcs[0]); break;
-            case 2: result = nir_fnoise1_2(&b, srcs[0]); break;
-            case 3: result = nir_fnoise1_3(&b, srcs[0]); break;
-            case 4: result = nir_fnoise1_4(&b, srcs[0]); break;
-            default: unreachable("not reached");
-         }
-         break;
-      case 2:
-         switch (ir->operands[0]->type->vector_elements) {
-            case 1: result = nir_fnoise2_1(&b, srcs[0]); break;
-            case 2: result = nir_fnoise2_2(&b, srcs[0]); break;
-            case 3: result = nir_fnoise2_3(&b, srcs[0]); break;
-            case 4: result = nir_fnoise2_4(&b, srcs[0]); break;
-            default: unreachable("not reached");
-         }
-         break;
-      case 3:
-         switch (ir->operands[0]->type->vector_elements) {
-            case 1: result = nir_fnoise3_1(&b, srcs[0]); break;
-            case 2: result = nir_fnoise3_2(&b, srcs[0]); break;
-            case 3: result = nir_fnoise3_3(&b, srcs[0]); break;
-            case 4: result = nir_fnoise3_4(&b, srcs[0]); break;
-            default: unreachable("not reached");
-         }
-         break;
-      case 4:
-         switch (ir->operands[0]->type->vector_elements) {
-            case 1: result = nir_fnoise4_1(&b, srcs[0]); break;
-            case 2: result = nir_fnoise4_2(&b, srcs[0]); break;
-            case 3: result = nir_fnoise4_3(&b, srcs[0]); break;
-            case 4: result = nir_fnoise4_4(&b, srcs[0]); break;
-            default: unreachable("not reached");
-         }
-         break;
-      default:
-         unreachable("not reached");
-      }
-      break;
    case ir_unop_get_buffer_size: {
       nir_intrinsic_instr *load = nir_intrinsic_instr_create(
          this->shader,

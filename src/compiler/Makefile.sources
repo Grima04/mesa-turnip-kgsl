@@ -108,7 +108,6 @@ LIBGLSL_FILES = \
 	glsl/lower_int64.cpp \
 	glsl/lower_jumps.cpp \
 	glsl/lower_mat_op_to_vec.cpp \
-	glsl/lower_noise.cpp \
 	glsl/lower_offset_array.cpp \
 	glsl/lower_packed_varyings.cpp \
 	glsl/lower_named_interface_blocks.cpp \
