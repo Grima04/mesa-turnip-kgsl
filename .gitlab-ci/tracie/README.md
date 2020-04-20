@@ -28,8 +28,8 @@ traces:
         checksum: ff827f7eb069afd87cc305a422cba939
 ```
 
-The traces-db entry can be absent, in which case it is assumed that the
-current directory is the traces-db directory.
+The `traces-db` entry can be absent, in which case it is assumed that
+the traces can be found in the `CWD/traces-db` directory.
 
 Traces that don't have an expectation for the current device are skipped
 during trace replay.
@@ -99,21 +99,16 @@ publisher.
 Mesa traces CI uses a set of scripts to replay traces and check the output
 against reference checksums.
 
-The high level script [tracie.sh](.gitlab-ci/tracie/tracie.sh) accepts
-a traces definition file and the type of traces
-(apitrace/renderdoc/gfxreconstruct) to run:
+The high level script [tracie.py](.gitlab-ci/tracie/tracie.py) accepts
+a traces definition file and the name of the device to be tested:
 
-    tracie.sh .gitlab-ci/traces.yml renderdoc
+    tracie.py --file .gitlab-ci/traces.yml --device-name gl-vmware-llvmpipe
 
-tracie.sh copies produced artifacts to the `$CI_PROJECT_DIR/result`
+tracie.py copies the produced artifacts to the `$CI_PROJECT_DIR/result`
 directory. By default, created images from traces are only stored in case of a
 checksum mismatch. The `TRACIE_STORE_IMAGES` CI/environment variable can be set
 to `1` to force storing images, e.g., to get a complete set of reference
 images.
-
-The `tracie.sh` script requires that the environment variable `DEVICE_NAME` is
-properly set for the target machine, and matches the `device` field of the
-relevant trace expectations in the used `traces.yml` file.
 
 At a lower level the
 [dump_trace_images.py](.gitlab-ci/tracie/dump_trace_images.py) script is
