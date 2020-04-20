@@ -5,13 +5,14 @@ Home of the Mesa trace testing effort.
 
 ### Traces definition file
 
-The trace definition file contains information about the git repo/commit to get
-the traces from, and a list of the traces to run along with their expected image
-checksums on each device. An example:
+The trace definition file contains information about the GitLab
+project and git commit to get the traces from, and a list of the
+traces to run along with their expected image checksums on each
+device. An example:
 
 ```yaml
 traces-db:
-  repo: https://gitlab.freedesktop.org/gfx-ci/tracie/traces-db
+  gitlab-project-url: https://gitlab.freedesktop.org/gfx-ci/tracie/traces-db
   commit: master
 
 traces:
@@ -39,11 +40,12 @@ with the [image_checksum.py](.gitlab-ci/tracie/image_checksum.py) script.
 Alternatively, an arbitrary checksum can be used, and during replay (see below)
 the scripts will report the mismatch and expected checksum.
 
-### Trace-db repos
+### Trace-db GitLab projects
 
-The trace-db repos are assumed to be git repositories using LFS for their trace
-files. This is so that trace files can be potentially checked out and replayed
-individually, thus reducing storage requirements during CI runs.
+The trace-db GitLab projects are assumed to have git repositories
+using LFS for their trace files. This is so that trace files can be
+potentially checked out and replayed individually, thus reducing
+storage requirements during CI runs.
 
 ### Enabling trace testing on a new device
 
