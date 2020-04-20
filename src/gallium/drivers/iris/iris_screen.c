@@ -565,22 +565,22 @@ iris_get_disk_shader_cache(struct pipe_screen *pscreen)
 }
 
 static int
-iris_getparam(struct iris_screen *screen, int param, int *value)
+iris_getparam(int fd, int param, int *value)
 {
    struct drm_i915_getparam gp = { .param = param, .value = value };
 
-   if (ioctl(screen->fd, DRM_IOCTL_I915_GETPARAM, &gp) == -1)
+   if (ioctl(fd, DRM_IOCTL_I915_GETPARAM, &gp) == -1)
       return -errno;
 
    return 0;
 }
 
 static int
-iris_getparam_integer(struct iris_screen *screen, int param)
+iris_getparam_integer(int fd, int param)
 {
    int value = -1;
 
-   if (iris_getparam(screen, param, &value) == 0)
+   if (iris_getparam(fd, param, &value) == 0)
       return value;
 
    return -1;
@@ -637,6 +637,20 @@ iris_shader_perf_log(void *data, const char *fmt, ...)
 struct pipe_screen *
 iris_screen_create(int fd, const struct pipe_screen_config *config)
 {
+   /* Here are the i915 features we need for Iris (in chronoligical order) :
+    *    - I915_PARAM_HAS_EXEC_NO_RELOC     (3.10)
+    *    - I915_PARAM_HAS_EXEC_HANDLE_LUT   (3.10)
+    *    - I915_PARAM_HAS_EXEC_BATCH_FIRST  (4.13)
+    *    - I915_PARAM_HAS_EXEC_FENCE_ARRAY  (4.14)
+    *    - I915_PARAM_HAS_CONTEXT_ISOLATION (4.16)
+    *
+    * Checking the last feature availability will include all previous ones.
+    */
+   if (!iris_getparam_integer(fd, I915_PARAM_HAS_CONTEXT_ISOLATION)) {
+      debug_error("Kernel is too old for Iris. Consider upgrading to kernel v4.16.\n");
+      return NULL;
+   }
+
    struct iris_screen *screen = rzalloc(NULL, struct iris_screen);
    if (!screen)
       return NULL;
@@ -706,7 +720,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
                       sizeof(struct iris_transfer), 64);
 
    screen->subslice_total =
-      iris_getparam_integer(screen, I915_PARAM_SUBSLICE_TOTAL);
+      iris_getparam_integer(screen->fd, I915_PARAM_SUBSLICE_TOTAL);
    assert(screen->subslice_total >= 1);
 
    struct pipe_screen *pscreen = &screen->base;
