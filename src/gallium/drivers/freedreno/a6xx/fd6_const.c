@@ -104,39 +104,6 @@ fd6_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
 	}
 }
 
-static void
-fd6_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type,
-		uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
-{
-	uint32_t anum = align(num, 2);
-	uint32_t i;
-
-	debug_assert((regid % 4) == 0);
-
-	OUT_PKT7(ring, fd6_stage2opcode(type), 3 + (2 * anum));
-	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid/4) |
-			CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS)|
-			CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-			CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(type)) |
-			CP_LOAD_STATE6_0_NUM_UNIT(anum/2));
-	OUT_RING(ring, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-	OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-
-	for (i = 0; i < num; i++) {
-		if (prscs[i]) {
-			OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
-		} else {
-			OUT_RING(ring, 0xbad00000 | (i << 16));
-			OUT_RING(ring, 0xbad00000 | (i << 16));
-		}
-	}
-
-	for (; i < anum; i++) {
-		OUT_RING(ring, 0xffffffff);
-		OUT_RING(ring, 0xffffffff);
-	}
-}
-
 static bool
 is_stateobj(struct fd_ringbuffer *ring)
 {
@@ -160,9 +127,7 @@ emit_const_bo(struct fd_ringbuffer *ring,
 		const struct ir3_shader_variant *v, uint32_t dst_offset,
 		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
 {
-	/* TODO inline this */
-	assert(dst_offset + num < v->constlen * 4);
-	fd6_emit_const_bo(ring, v->type, dst_offset, num, prscs, offsets);
+	unreachable("shouldn't be called on a6xx");
 }
 
 static void
@@ -263,6 +228,42 @@ emit_tess_consts(struct fd6_emit *emit)
 }
 
 static void
+fd6_emit_ubos(const struct ir3_shader_variant *v,
+		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
+{
+	if (!v->shader->num_ubos)
+		return;
+
+	int num_ubos = v->shader->num_ubos;
+
+	OUT_PKT7(ring, fd6_stage2opcode(v->type), 3 + (2 * num_ubos));
+	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
+			CP_LOAD_STATE6_0_STATE_TYPE(ST6_UBO)|
+			CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+			CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(v->type)) |
+			CP_LOAD_STATE6_0_NUM_UNIT(num_ubos));
+	OUT_RING(ring, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+	OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+
+	for (int i = 0; i < num_ubos; i++) {
+		/* Note: gallium constbuf 0 was always lowered to hardware constbuf,
+		 * and UBO load indices decremented by one.
+		 */
+		struct pipe_constant_buffer *cb = &constbuf->cb[i + 1];
+		if (cb->buffer) {
+			int size_vec4s = DIV_ROUND_UP(cb->buffer_size, 16);
+			OUT_RELOC(ring, fd_resource(cb->buffer)->bo,
+					cb->buffer_offset,
+					(uint64_t)A6XX_UBO_1_SIZE(size_vec4s) << 32,
+					0);
+		} else {
+			OUT_RING(ring, 0xbad00000 | (i << 16));
+			OUT_RING(ring, 0xbad00000 | (i << 16));
+		}
+	}
+}
+
+static void
 emit_user_consts(struct fd6_emit *emit)
 {
 	static const enum pipe_shader_type types[] = {
@@ -288,7 +289,7 @@ emit_user_consts(struct fd6_emit *emit)
 		if (!variants[i])
 			continue;
 		ir3_emit_user_consts(ctx->screen, variants[i], constobj, &ctx->constbuf[types[i]]);
-		ir3_emit_ubos(ctx->screen, variants[i], constobj, &ctx->constbuf[types[i]]);
+		fd6_emit_ubos(variants[i], constobj, &ctx->constbuf[types[i]]);
 	}
 
 	fd6_emit_take_group(emit, constobj, FD6_GROUP_CONST, ENABLE_ALL);
@@ -335,6 +336,7 @@ fd6_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 		struct fd_context *ctx, const struct pipe_grid_info *info)
 {
 	ir3_emit_cs_consts(v, ring, ctx, info);
+	fd6_emit_ubos(v, ring, &ctx->constbuf[PIPE_SHADER_COMPUTE]);
 }
 
 void

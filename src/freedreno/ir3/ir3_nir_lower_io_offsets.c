@@ -255,15 +255,12 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 }
 
 static bool
-lower_offset_for_ubo(nir_intrinsic_instr *intrinsic, nir_builder *b)
+lower_offset_for_ubo(nir_intrinsic_instr *intrinsic, nir_builder *b, int gpu_id)
 {
-	/* We only need to lower offset if using LDC. Currently, we only use LDC
-	 * in the bindless mode. Also, LDC is introduced on A6xx, but currently we
-	 * only use bindless in turnip which is A6xx only.
-	 *
-	 * TODO: We should be using LDC always on A6xx+.
+	/* We only need to lower offset if using LDC, which takes an offset in
+	 * vec4 units and has the start component baked into the instruction.
 	 */
-	if (!ir3_bindless_resource(intrinsic->src[0]))
+	if (gpu_id < 600)
 		return false;
 
 	/* TODO handle other bitsizes, including non-dword-aligned loads */
@@ -333,7 +330,7 @@ lower_offset_for_ubo(nir_intrinsic_instr *intrinsic, nir_builder *b)
 }
 
 static bool
-lower_io_offsets_block(nir_block *block, nir_builder *b, void *mem_ctx)
+lower_io_offsets_block(nir_block *block, nir_builder *b, void *mem_ctx, int gpu_id)
 {
 	bool progress = false;
 
@@ -345,7 +342,7 @@ lower_io_offsets_block(nir_block *block, nir_builder *b, void *mem_ctx)
 
 		/* UBO */
 		if (intr->intrinsic == nir_intrinsic_load_ubo) {
-			progress |= lower_offset_for_ubo(intr, b);
+			progress |= lower_offset_for_ubo(intr, b, gpu_id);
 			continue;
 		}
 
@@ -364,7 +361,7 @@ lower_io_offsets_block(nir_block *block, nir_builder *b, void *mem_ctx)
 }
 
 static bool
-lower_io_offsets_func(nir_function_impl *impl)
+lower_io_offsets_func(nir_function_impl *impl, int gpu_id)
 {
 	void *mem_ctx = ralloc_parent(impl);
 	nir_builder b;
@@ -372,7 +369,7 @@ lower_io_offsets_func(nir_function_impl *impl)
 
 	bool progress = false;
 	nir_foreach_block_safe (block, impl) {
-		progress |= lower_io_offsets_block(block, &b, mem_ctx);
+		progress |= lower_io_offsets_block(block, &b, mem_ctx, gpu_id);
 	}
 
 	if (progress) {
@@ -384,13 +381,13 @@ lower_io_offsets_func(nir_function_impl *impl)
 }
 
 bool
-ir3_nir_lower_io_offsets(nir_shader *shader)
+ir3_nir_lower_io_offsets(nir_shader *shader, int gpu_id)
 {
 	bool progress = false;
 
 	nir_foreach_function (function, shader) {
 		if (function->impl)
-			progress |= lower_io_offsets_func(function->impl);
+			progress |= lower_io_offsets_func(function->impl, gpu_id);
 	}
 
 	return progress;

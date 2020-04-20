@@ -317,7 +317,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	const bool ubo_progress = !key && OPT(s, ir3_nir_analyze_ubo_ranges, shader);
 	const bool idiv_progress = OPT(s, nir_lower_idiv, nir_lower_idiv_fast);
 	/* UBO offset lowering has to come after we've decided what will be left as load_ubo */
-	OPT_V(s, ir3_nir_lower_io_offsets);
+	OPT_V(s, ir3_nir_lower_io_offsets, shader->compiler->gpu_id);
 
 	if (ubo_progress || idiv_progress)
 		ir3_optimize_loop(s);
@@ -449,7 +449,13 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 			MAX2(const_state->num_driver_params, IR3_DP_VTXCNT_MAX + 1);
 	}
 
-	const_state->num_ubos = nir->info.num_ubos;
+	/* On a6xx, we use UBO descriptors and LDC instead of UBO pointers in the
+	 * constbuf.
+	 */
+	if (compiler->gpu_id >= 600)
+		shader->num_ubos = nir->info.num_ubos;
+	else
+		const_state->num_ubos = nir->info.num_ubos;
 
 	/* num_driver_params is scalar, align to vec4: */
 	const_state->num_driver_params = align(const_state->num_driver_params, 4);

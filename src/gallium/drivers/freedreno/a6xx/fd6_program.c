@@ -1022,7 +1022,7 @@ fd6_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_stat
 
 	/* also account for UBO addresses: */
 	packets += 1;
-	size += 2 * align(shader->const_state.num_ubos, 2);
+	size += 2 * shader->num_ubos;
 
 	unsigned sizedwords = (4 * packets) + size;
 	shader->ubo_state.cmdstream_size = sizedwords * 4;
