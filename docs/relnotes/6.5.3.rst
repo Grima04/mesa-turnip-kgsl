@@ -37,7 +37,7 @@ New features
 
 -  OpenGL 2.0 and 2.1 API support.
 -  Entirely new Shading Language code generator. See the `Shading
-   Language <../shading.html>`__ page for more information.
+   Language <../shading.rst>`__ page for more information.
 -  Much faster software execution of vertex, fragment shaders.
 -  New vertex buffer object (vbo) infrastructure
 -  Updated glext.h file (version 39)

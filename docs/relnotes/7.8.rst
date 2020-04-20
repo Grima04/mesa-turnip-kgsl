@@ -9,7 +9,7 @@ Mesa 7.8 implements the OpenGL 2.1 API, but the version reported by
 glGetString(GL_VERSION) depends on the particular driver being used.
 Some drivers don't support all the features required in OpenGL 2.1.
 
-See the `Compiling/Installing page <../install.html>`__ for
+See the `Compiling/Installing page <../install.rst>`__ for
 prerequisites for DRI hardware acceleration.
 
 MD5 checksums
@@ -37,8 +37,8 @@ New features
 -  GL_EXT_texture_array extension (swrast driver only)
 -  GL_APPLE_object_purgeable extension (swrast and i945/i965 DRI
    drivers)
--  Much improved support for `EGL in Mesa <../egl.html>`__
--  New state trackers for `OpenGL ES 1.1 and 2.0 <../opengles.html>`__
+-  Much improved support for `EGL in Mesa <../egl.rst>`__
+-  New state trackers for `OpenGL ES 1.1 and 2.0 <../opengles.rst>`__
 -  Dedicated documentation for Gallium
 
 Bug fixes

@@ -13,7 +13,7 @@ Mesa 7.5 implements the OpenGL 2.1 API, but the version reported by
 glGetString(GL_VERSION) depends on the particular driver being used.
 Some drivers don't support all the features required in OpenGL 2.1.
 
-See the `Compiling/Installing page <../install.html>`__ for
+See the `Compiling/Installing page <../install.rst>`__ for
 prerequisites for DRI hardware acceleration.
 
 Note that the Mesa project is no longer using odd/even version numbers

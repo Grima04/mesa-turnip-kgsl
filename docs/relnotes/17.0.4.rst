@@ -23,7 +23,7 @@ Next release
 ------------
 
 Mesa 17.0.5 is expected in approximatelly two weeks. See the release
-`calendar <../release-calendar.html#calendar>`__ for details.
+`calendar <../release-calendar.rst#calendar>`__ for details.
 
 New features
 ------------

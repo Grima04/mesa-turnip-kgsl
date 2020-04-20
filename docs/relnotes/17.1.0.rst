@@ -3,7 +3,7 @@ Mesa 17.1.0 Release Notes / May 10, 2017
 
 Mesa 17.1.0 is a new development release. People who are concerned with
 stability and reliability should stick with a previous release or wait
-for `Mesa 17.1.1 <../release-calendar.html#calendar>`__.
+for `Mesa 17.1.1 <../release-calendar.rst#calendar>`__.
 
 Mesa 17.1.0 implements the OpenGL 4.5 API, but the version reported by
 glGetString(GL_VERSION) or glGetIntegerv(GL_MAJOR_VERSION) /
