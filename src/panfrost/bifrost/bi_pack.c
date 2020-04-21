@@ -1215,6 +1215,24 @@ bi_pack_add_table(bi_instruction *ins, struct bi_registers *regs)
         op = BIFROST_ADD_OP_LOG2_HELP;
         return bi_pack_add_1src(ins, regs, op);
 }
+static unsigned
+bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+{
+        bool f16 = ins->dest_type == nir_type_float16;
+
+        struct bifrost_tex_compact pack = {
+                .src0 = bi_get_src(ins, regs, 0, false),
+                .src1 = bi_get_src(ins, regs, 1, false),
+                .op = f16 ? BIFROST_ADD_OP_TEX_COMPACT_F16 :
+                        BIFROST_ADD_OP_TEX_COMPACT_F32,
+                .unknown = 1,
+                .tex_index = 0,
+                .sampler_index = 0
+        };
+
+        bi_write_data_register(clause, ins);
+        RETURN_PACKED(pack);
+}
 
 static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
@@ -1262,7 +1280,12 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_TABLE:
                 return bi_pack_add_table(bundle.add, regs);
         case BI_SWIZZLE:
+                return BIFROST_ADD_NOP;
         case BI_TEX:
+                if (bundle.add->op.texture == BI_TEX_COMPACT)
+                        return bi_pack_add_tex_compact(clause, bundle.add, regs);
+                else
+                        unreachable("Unknown tex type");
         case BI_ROUND:
                 return BIFROST_ADD_NOP;
         default:
