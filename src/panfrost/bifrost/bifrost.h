@@ -483,6 +483,18 @@ struct bifrost_dual_tex_ctrl {
         unsigned unk1 : 22;
 } __attribute__((packed));
 
+#define BIFROST_ADD_OP_TEX_COMPACT_F32 (0x0b000 >> 10)
+#define BIFROST_ADD_OP_TEX_COMPACT_F16 (0x1b000 >> 10)
+
+struct bifrost_tex_compact {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned tex_index : 3;
+        unsigned unknown : 1;
+        unsigned sampler_index : 3;
+        unsigned op   : 7;
+} __attribute__((packed));
+
 enum branch_bit_size {
         BR_SIZE_32 = 0,
         BR_SIZE_16XX = 1,
