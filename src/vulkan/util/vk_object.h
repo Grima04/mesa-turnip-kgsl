@@ -36,12 +36,22 @@ struct vk_device;
 
 struct vk_object_base {
    VK_LOADER_DATA _loader_data;
+#ifndef NDEBUG
+   VkObjectType type;
+#endif
 };
 
 void vk_object_base_init(UNUSED struct vk_device *device,
                          struct vk_object_base *base,
                          UNUSED VkObjectType obj_type);
 void vk_object_base_finish(UNUSED struct vk_object_base *base);
+
+static inline void
+vk_object_base_assert_valid(ASSERTED struct vk_object_base *base,
+                            ASSERTED VkObjectType obj_type)
+{
+   assert(base == NULL || base->type == obj_type);
+}
 
 
 struct vk_device {
@@ -59,13 +69,16 @@ void vk_device_finish(struct vk_device *device);
    static inline struct __driver_type *                                    \
    __driver_type ## _from_handle(__VkType _handle)                         \
    {                                                                       \
+      struct vk_object_base *base = (struct vk_object_base *)_handle;      \
+      vk_object_base_assert_valid(base, __VK_TYPE);                        \
       STATIC_ASSERT(offsetof(struct __driver_type, __base) == 0);          \
-      return (struct __driver_type *) _handle;                             \
+      return (struct __driver_type *) base;                                \
    }                                                                       \
                                                                            \
    static inline __VkType                                                  \
    __driver_type ## _to_handle(struct __driver_type *_obj)                 \
    {                                                                       \
+      vk_object_base_assert_valid(&_obj->__base, __VK_TYPE);               \
       return (__VkType) _obj;                                              \
    }
 
@@ -73,13 +86,17 @@ void vk_device_finish(struct vk_device *device);
    static inline struct __driver_type *                                    \
    __driver_type ## _from_handle(__VkType _handle)                         \
    {                                                                       \
+      struct vk_object_base *base =                                        \
+         (struct vk_object_base *)(uintptr_t)_handle;                      \
+      vk_object_base_assert_valid(base, __VK_TYPE);                        \
       STATIC_ASSERT(offsetof(struct __driver_type, __base) == 0);          \
-      return (struct __driver_type *)(uintptr_t) _handle;                  \
+      return (struct __driver_type *)base;                                 \
    }                                                                       \
                                                                            \
    static inline __VkType                                                  \
    __driver_type ## _to_handle(struct __driver_type *_obj)                 \
    {                                                                       \
+      vk_object_base_assert_valid(&_obj->__base, __VK_TYPE);               \
       return (__VkType)(uintptr_t) _obj;                                   \
    }
 
