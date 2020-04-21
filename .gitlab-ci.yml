@@ -146,7 +146,7 @@ x86_build:
 x86_test-gl:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-04-20"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-04-21"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
