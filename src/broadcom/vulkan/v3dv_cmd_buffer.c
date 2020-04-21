@@ -1951,12 +1951,8 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-cmd_buffer_update_ez_state(struct v3dv_cmd_buffer *cmd_buffer,
-                           struct v3dv_pipeline *pipeline)
+job_update_ez_state(struct v3dv_job *job, struct v3dv_pipeline *pipeline)
 {
-   struct v3dv_job *job = cmd_buffer->state.job;
-   assert(job);
-
    switch (pipeline->ez_state) {
    case VC5_EZ_UNDECIDED:
       /* If the pipeline didn't pick a direction but didn't disable, then go
@@ -2181,7 +2177,6 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.pipeline = pipeline;
 
    cmd_buffer_bind_pipeline_static_state(cmd_buffer, &pipeline->dynamic_state);
-   cmd_buffer_update_ez_state(cmd_buffer, pipeline);
 
    if (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_SHADER_VARIANTS) {
       if (update_pipeline_variants(cmd_buffer))
@@ -2633,7 +2628,12 @@ static void
 emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
    struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(pipeline);
+
+   job_update_ez_state(job, pipeline);
 
    cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
       config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
