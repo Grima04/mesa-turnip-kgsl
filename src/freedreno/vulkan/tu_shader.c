@@ -596,6 +596,7 @@ tu_shader_compile_options_init(
    const VkGraphicsPipelineCreateInfo *pipeline_info)
 {
    bool has_gs = false;
+   bool msaa = false;
    if (pipeline_info) {
       for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
          if (pipeline_info->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
@@ -603,12 +604,17 @@ tu_shader_compile_options_init(
             break;
          }
       }
+
+      if (!pipeline_info->pRasterizationState->rasterizerDiscardEnable &&
+          pipeline_info->pMultisampleState->rasterizationSamples > 1)
+         msaa = true;
    }
 
    *options = (struct tu_shader_compile_options) {
       /* TODO: Populate the remaining fields of ir3_shader_key. */
       .key = {
          .has_gs = has_gs,
+         .msaa = msaa,
       },
       /* TODO: VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT
        * some optimizations need to happen otherwise shader might not compile
