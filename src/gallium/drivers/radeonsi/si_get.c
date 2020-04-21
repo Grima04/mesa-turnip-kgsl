@@ -160,6 +160,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SHADER_SAMPLES_IDENTICAL:
    case PIPE_CAP_GL_SPIRV:
    case PIPE_CAP_DRAW_INFO_START_WITH_USER_INDICES:
+   case PIPE_CAP_ALPHA_TO_COVERAGE_DITHER_CONTROL:
       return 1;
 
    case PIPE_CAP_QUERY_SO_OVERFLOW:

@@ -461,11 +461,19 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
       color_control |= S_028808_ROP3(0xcc);
    }
 
-   si_pm4_set_reg(pm4, R_028B70_DB_ALPHA_TO_MASK,
-                  S_028B70_ALPHA_TO_MASK_ENABLE(state->alpha_to_coverage) |
-                     S_028B70_ALPHA_TO_MASK_OFFSET0(3) | S_028B70_ALPHA_TO_MASK_OFFSET1(1) |
-                     S_028B70_ALPHA_TO_MASK_OFFSET2(0) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
-                     S_028B70_OFFSET_ROUND(1));
+   if (state->alpha_to_coverage && state->alpha_to_coverage_dither) {
+      si_pm4_set_reg(pm4, R_028B70_DB_ALPHA_TO_MASK,
+                     S_028B70_ALPHA_TO_MASK_ENABLE(state->alpha_to_coverage) |
+                        S_028B70_ALPHA_TO_MASK_OFFSET0(3) | S_028B70_ALPHA_TO_MASK_OFFSET1(1) |
+                        S_028B70_ALPHA_TO_MASK_OFFSET2(0) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
+                        S_028B70_OFFSET_ROUND(1));
+   } else {
+      si_pm4_set_reg(pm4, R_028B70_DB_ALPHA_TO_MASK,
+                     S_028B70_ALPHA_TO_MASK_ENABLE(state->alpha_to_coverage) |
+                        S_028B70_ALPHA_TO_MASK_OFFSET0(2) | S_028B70_ALPHA_TO_MASK_OFFSET1(2) |
+                        S_028B70_ALPHA_TO_MASK_OFFSET2(2) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
+                        S_028B70_OFFSET_ROUND(0));
+   }
 
    if (state->alpha_to_coverage)
       blend->need_src_alpha_4bit |= 0xf;
