@@ -684,7 +684,27 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
 static void
 emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
 {
-        unreachable("stub");
+        bi_instruction tex = {
+                .type = BI_TEX,
+                .op = { .texture = BI_TEX_COMPACT },
+                .dest = bir_dest_index(&instr->dest),
+                .dest_type = instr->dest_type,
+                .src_types = { nir_type_float32, nir_type_float32 },
+                .writemask = instr->dest_type == nir_type_float32 ?
+                        0xFFFF : 0xFF,
+        };
+
+        for (unsigned i = 0; i < instr->num_srcs; ++i) {
+                int index = bir_src_index(&instr->src[i].src);
+                assert (instr->src[i].src_type == nir_tex_src_coord);
+
+                tex.src[0] = index;
+                tex.src[1] = index;
+                tex.swizzle[0][0] = 0;
+                tex.swizzle[1][0] = 1;
+        }
+
+        bi_emit(ctx, tex);
 }
 
 static void
