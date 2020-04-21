@@ -608,14 +608,6 @@ dEQP-GLES3.functional.texture.format.sized.3d.rgb10_a2ui_pot
 dEQP-GLES3.functional.texture.format.sized.cube.rgb10_a2ui_npot
 dEQP-GLES3.functional.texture.format.sized.cube.rgb10_a2ui_pot
 dEQP-GLES3.functional.texture.mipmap.cube.max_level.linear_nearest
-dEQP-GLES3.functional.texture.shadow.2d.linear.less_or_equal_depth_component32f
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.equal_depth_component32f
-dEQP-GLES3.functional.texture.shadow.2d_array.linear.equal_depth_component32f
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest.less_depth_component32f
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.less_or_equal_depth_component32f
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.less_or_equal_depth_component32f
-dEQP-GLES3.functional.texture.shadow.cube.nearest.less_or_equal_depth_component32f
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.equal_depth_component32f
 dEQP-GLES3.functional.texture.specification.basic_teximage2d.r8i_2d
 dEQP-GLES3.functional.texture.specification.basic_teximage2d.r8i_cube
 dEQP-GLES3.functional.texture.specification.basic_teximage2d.r8ui_2d
