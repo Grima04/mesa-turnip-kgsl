@@ -524,6 +524,9 @@ emit_tess_epilouge(nir_builder *b, struct state *state)
 	nir_ssa_def *tessfactor_address = nir_load_tess_factor_base_ir3(b);
 	nir_ssa_def *levels[2];
 
+	if (!state->outer_levels[0])
+		return;
+
 	/* Then emit the epilogue that actually writes out the tessellation levels
 	 * to the BOs.
 	 */
