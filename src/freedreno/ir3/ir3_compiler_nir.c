@@ -3236,24 +3236,13 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 	}
 }
 
-static int
-max_drvloc(struct exec_list *vars)
-{
-	int drvloc = -1;
-	nir_foreach_variable (var, vars) {
-		drvloc = MAX2(drvloc, (int)var->data.driver_location);
-	}
-	return drvloc;
-}
-
 static void
 emit_instructions(struct ir3_context *ctx)
 {
 	nir_function_impl *fxn = nir_shader_get_entrypoint(ctx->s);
 
-	ctx->ninputs  = (max_drvloc(&ctx->s->inputs) + 1) * 4;
-	ctx->noutputs = (max_drvloc(&ctx->s->outputs) + 1) * 4;
-
+	ctx->ninputs = ctx->s->num_inputs * 4;
+	ctx->noutputs = ctx->s->num_outputs * 4;
 	ctx->inputs  = rzalloc_array(ctx, struct ir3_instruction *, ctx->ninputs);
 	ctx->outputs = rzalloc_array(ctx, struct ir3_instruction *, ctx->noutputs);
 
