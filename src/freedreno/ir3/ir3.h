@@ -1168,6 +1168,8 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 	list_for_each_entry(struct ir3_block, __block, __list, node)
 #define foreach_block_safe(__block, __list) \
 	list_for_each_entry_safe(struct ir3_block, __block, __list, node)
+#define foreach_block_rev(__block, __list) \
+	list_for_each_entry_rev(struct ir3_block, __block, __list, node)
 
 /* iterators for arrays: */
 #define foreach_array(__array, __list) \
