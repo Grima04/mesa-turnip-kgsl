@@ -1007,7 +1007,7 @@ struct anv_memory_heap {
 };
 
 struct anv_physical_device {
-    VK_LOADER_DATA                              _loader_data;
+    struct vk_object_base                       base;
 
     /* Link in anv_instance::physical_devices */
     struct list_head                            link;
@@ -1100,7 +1100,7 @@ struct anv_app_info {
 };
 
 struct anv_instance {
-    VK_LOADER_DATA                              _loader_data;
+    struct vk_object_base                       base;
 
     VkAllocationCallbacks                       alloc;
 
@@ -1177,7 +1177,7 @@ struct anv_queue_submit {
 };
 
 struct anv_queue {
-    VK_LOADER_DATA                              _loader_data;
+    struct vk_object_base                       base;
 
     struct anv_device *                         device;
 
@@ -1190,6 +1190,7 @@ struct anv_queue {
 };
 
 struct anv_pipeline_cache {
+   struct vk_object_base                        base;
    struct anv_device *                          device;
    pthread_mutex_t                              mutex;
 
@@ -1727,6 +1728,8 @@ _anv_combine_address(struct anv_batch *batch, void *location,
          }))
 
 struct anv_device_memory {
+   struct vk_object_base                        base;
+
    struct list_head                             link;
 
    struct anv_bo *                              bo;
@@ -1880,6 +1883,8 @@ bool anv_descriptor_requires_bindless(const struct anv_physical_device *pdevice,
                                       bool sampler);
 
 struct anv_descriptor_set_layout {
+   struct vk_object_base base;
+
    /* Descriptor set layouts can be destroyed at almost any time */
    uint32_t ref_cnt;
 
@@ -1908,6 +1913,9 @@ struct anv_descriptor_set_layout {
    struct anv_descriptor_set_binding_layout binding[0];
 };
 
+void anv_descriptor_set_layout_destroy(struct anv_device *device,
+                                       struct anv_descriptor_set_layout *layout);
+
 static inline void
 anv_descriptor_set_layout_ref(struct anv_descriptor_set_layout *layout)
 {
@@ -1921,7 +1929,7 @@ anv_descriptor_set_layout_unref(struct anv_device *device,
 {
    assert(layout && layout->ref_cnt >= 1);
    if (p_atomic_dec_zero(&layout->ref_cnt))
-      vk_free(&device->vk.alloc, layout);
+      anv_descriptor_set_layout_destroy(device, layout);
 }
 
 struct anv_descriptor {
@@ -1945,6 +1953,8 @@ struct anv_descriptor {
 };
 
 struct anv_descriptor_set {
+   struct vk_object_base base;
+
    struct anv_descriptor_pool *pool;
    struct anv_descriptor_set_layout *layout;
    uint32_t size;
@@ -1964,6 +1974,8 @@ struct anv_descriptor_set {
 };
 
 struct anv_buffer_view {
+   struct vk_object_base base;
+
    enum isl_format format; /**< VkBufferViewCreateInfo::format */
    uint64_t range; /**< VkBufferViewCreateInfo::range */
 
@@ -1992,6 +2004,8 @@ struct anv_push_descriptor_set {
 };
 
 struct anv_descriptor_pool {
+   struct vk_object_base base;
+
    uint32_t size;
    uint32_t next;
    uint32_t free_list;
@@ -2034,6 +2048,8 @@ struct anv_descriptor_template_entry {
 };
 
 struct anv_descriptor_update_template {
+    struct vk_object_base base;
+
     VkPipelineBindPoint bind_point;
 
    /* The descriptor set this template corresponds to. This value is only
@@ -2164,6 +2180,8 @@ struct anv_push_range {
 };
 
 struct anv_pipeline_layout {
+   struct vk_object_base base;
+
    struct {
       struct anv_descriptor_set_layout *layout;
       uint32_t dynamic_offset_start;
@@ -2175,6 +2193,8 @@ struct anv_pipeline_layout {
 };
 
 struct anv_buffer {
+   struct vk_object_base                        base;
+
    struct anv_device *                          device;
    VkDeviceSize                                 size;
 
@@ -2764,6 +2784,7 @@ struct anv_cmd_state {
 };
 
 struct anv_cmd_pool {
+   struct vk_object_base                        base;
    VkAllocationCallbacks                        alloc;
    struct list_head                             cmd_buffers;
 };
@@ -2779,7 +2800,7 @@ enum anv_cmd_buffer_exec_mode {
 };
 
 struct anv_cmd_buffer {
-   VK_LOADER_DATA                               _loader_data;
+   struct vk_object_base                        base;
 
    struct anv_device *                          device;
 
@@ -2946,6 +2967,8 @@ struct anv_fence_impl {
 };
 
 struct anv_fence {
+   struct vk_object_base base;
+
    /* Permanent fence state.  Every fence has some form of permanent state
     * (type != ANV_SEMAPHORE_TYPE_NONE).  This may be a BO to fence on (for
     * cross-process fences) or it could just be a dummy for use internally.
@@ -2966,6 +2989,7 @@ void anv_fence_reset_temporary(struct anv_device *device,
                                struct anv_fence *fence);
 
 struct anv_event {
+   struct vk_object_base                        base;
    uint64_t                                     semaphore;
    struct anv_state                             state;
 };
@@ -3038,6 +3062,8 @@ struct anv_semaphore_impl {
 };
 
 struct anv_semaphore {
+   struct vk_object_base base;
+
    uint32_t refcount;
 
    /* Permanent semaphore state.  Every semaphore has some form of permanent
@@ -3061,6 +3087,8 @@ void anv_semaphore_reset_temporary(struct anv_device *device,
                                    struct anv_semaphore *semaphore);
 
 struct anv_shader_module {
+   struct vk_object_base                        base;
+
    unsigned char                                sha1[20];
    uint32_t                                     size;
    char                                         data[0];
@@ -3175,6 +3203,8 @@ enum anv_pipeline_type {
 };
 
 struct anv_pipeline {
+   struct vk_object_base                        base;
+
    struct anv_device *                          device;
 
    struct anv_batch                             batch;
@@ -3462,6 +3492,8 @@ struct anv_surface {
 };
 
 struct anv_image {
+   struct vk_object_base base;
+
    VkImageType type; /**< VkImageCreateInfo::imageType */
    /* The original VkFormat provided by the client.  This may not match any
     * of the actual surface formats.
@@ -3878,6 +3910,8 @@ anv_image_aspects_compatible(VkImageAspectFlags aspects1,
 }
 
 struct anv_image_view {
+   struct vk_object_base base;
+
    const struct anv_image *image; /**< VkImageViewCreateInfo::image */
 
    VkImageAspectFlags aspect_mask;
@@ -4018,6 +4052,8 @@ anv_clear_color_from_att_state(union isl_color_value *clear_color,
 
 
 struct anv_ycbcr_conversion {
+   struct vk_object_base base;
+
    const struct anv_format *        format;
    VkSamplerYcbcrModelConversion    ycbcr_model;
    VkSamplerYcbcrRange              ycbcr_range;
@@ -4028,6 +4064,8 @@ struct anv_ycbcr_conversion {
 };
 
 struct anv_sampler {
+   struct vk_object_base        base;
+
    uint32_t                     state[3][4];
    uint32_t                     n_planes;
    struct anv_ycbcr_conversion *conversion;
@@ -4039,6 +4077,8 @@ struct anv_sampler {
 };
 
 struct anv_framebuffer {
+   struct vk_object_base                        base;
+
    uint32_t                                     width;
    uint32_t                                     height;
    uint32_t                                     layers;
@@ -4112,6 +4152,8 @@ struct anv_render_pass_attachment {
 };
 
 struct anv_render_pass {
+   struct vk_object_base                        base;
+
    uint32_t                                     attachment_count;
    uint32_t                                     subpass_count;
    /* An array of subpass_count+1 flushes, one per subpass boundary */
@@ -4123,6 +4165,8 @@ struct anv_render_pass {
 #define ANV_PIPELINE_STATISTICS_MASK 0x000007ff
 
 struct anv_query_pool {
+   struct vk_object_base                        base;
+
    VkQueryType                                  type;
    VkQueryPipelineStatisticFlags                pipeline_statistics;
    /** Stride between slots, in bytes */
@@ -4244,7 +4288,6 @@ ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_render_pass, VkRenderPass)
 ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_sampler, VkSampler)
 ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_semaphore, VkSemaphore)
 ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_shader_module, VkShaderModule)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(vk_debug_report_callback, VkDebugReportCallbackEXT)
 ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_ycbcr_conversion, VkSamplerYcbcrConversion)
 
 /* Gen-specific function declarations */

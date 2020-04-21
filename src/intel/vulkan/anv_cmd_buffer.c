@@ -203,9 +203,11 @@ static VkResult anv_create_cmd_buffer(
    if (cmd_buffer == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &cmd_buffer->base,
+                       VK_OBJECT_TYPE_COMMAND_BUFFER);
+
    cmd_buffer->batch.status = VK_SUCCESS;
 
-   cmd_buffer->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
    cmd_buffer->level = level;
@@ -280,6 +282,7 @@ anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer)
 
    anv_cmd_state_finish(cmd_buffer);
 
+   vk_object_base_finish(&cmd_buffer->base);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
 
@@ -906,6 +909,8 @@ VkResult anv_CreateCommandPool(
    if (pool == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &pool->base, VK_OBJECT_TYPE_COMMAND_POOL);
+
    if (pAllocator)
       pool->alloc = *pAllocator;
    else
@@ -934,6 +939,7 @@ void anv_DestroyCommandPool(
       anv_cmd_buffer_destroy(cmd_buffer);
    }
 
+   vk_object_base_finish(&pool->base);
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 

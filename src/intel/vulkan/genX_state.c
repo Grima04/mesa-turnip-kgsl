@@ -363,6 +363,7 @@ VkResult genX(CreateSampler)(
    if (!sampler)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &sampler->base, VK_OBJECT_TYPE_SAMPLER);
    sampler->n_planes = 1;
 
    uint32_t border_color_stride = GEN_IS_HASWELL ? 512 : 64;

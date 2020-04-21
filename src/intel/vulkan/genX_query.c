@@ -106,6 +106,7 @@ VkResult genX(CreateQueryPool)(
    if (pool == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &pool->base, VK_OBJECT_TYPE_QUERY_POOL);
    pool->type = pCreateInfo->queryType;
    pool->pipeline_statistics = pipeline_statistics;
    pool->stride = uint64s_per_slot * sizeof(uint64_t);
@@ -152,6 +153,7 @@ void genX(DestroyQueryPool)(
       return;
 
    anv_device_release_bo(device, pool->bo);
+   vk_object_base_finish(&pool->base);
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 

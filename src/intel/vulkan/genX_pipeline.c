@@ -2279,6 +2279,8 @@ compute_pipeline_create(
    if (pipeline == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &pipeline->base.base,
+                       VK_OBJECT_TYPE_PIPELINE);
    pipeline->base.device = device;
    pipeline->base.type = ANV_PIPELINE_COMPUTE;
 

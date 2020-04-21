@@ -1293,6 +1293,8 @@ VkResult anv_CreateSamplerYcbcrConversion(
 
    memset(conversion, 0, sizeof(*conversion));
 
+   vk_object_base_init(&device->vk, &conversion->base,
+                       VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION);
    conversion->format = anv_get_format(pCreateInfo->format);
    conversion->ycbcr_model = pCreateInfo->ycbcrModel;
    conversion->ycbcr_range = pCreateInfo->ycbcrRange;
@@ -1342,5 +1344,6 @@ void anv_DestroySamplerYcbcrConversion(
    if (!conversion)
       return;
 
+   vk_object_base_finish(&conversion->base);
    vk_free2(&device->vk.alloc, pAllocator, conversion);
 }

@@ -282,6 +282,8 @@ anv_pipeline_cache_init(struct anv_pipeline_cache *cache,
                         struct anv_device *device,
                         bool cache_enabled)
 {
+   vk_object_base_init(&device->vk, &cache->base,
+                       VK_OBJECT_TYPE_PIPELINE_CACHE);
    cache->device = device;
    pthread_mutex_init(&cache->mutex, NULL);
 
@@ -318,6 +320,8 @@ anv_pipeline_cache_finish(struct anv_pipeline_cache *cache)
 
       _mesa_hash_table_destroy(cache->nir_cache, NULL);
    }
+
+   vk_object_base_finish(&cache->base);
 }
 
 static struct anv_shader_bin *

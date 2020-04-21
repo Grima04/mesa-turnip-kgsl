@@ -695,6 +695,7 @@ anv_image_create(VkDevice _device,
    if (!image)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &image->base, VK_OBJECT_TYPE_IMAGE);
    image->type = pCreateInfo->imageType;
    image->extent = pCreateInfo->extent;
    image->vk_format = pCreateInfo->format;
@@ -889,6 +890,7 @@ anv_DestroyImage(VkDevice _device, VkImage _image,
       }
    }
 
+   vk_object_base_finish(&image->base);
    vk_free2(&device->vk.alloc, pAllocator, image);
 }
 
@@ -1916,6 +1918,8 @@ anv_CreateImageView(VkDevice _device,
    if (iview == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &iview->base, VK_OBJECT_TYPE_IMAGE_VIEW);
+
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
 
    assert(range->layerCount > 0);
@@ -2190,6 +2194,7 @@ anv_CreateBufferView(VkDevice _device,
 
    /* TODO: Handle the format swizzle? */
 
+   vk_object_base_init(&device->vk, &view->base, VK_OBJECT_TYPE_BUFFER_VIEW);
    view->format = anv_get_isl_format(&device->info, pCreateInfo->format,
                                      VK_IMAGE_ASPECT_COLOR_BIT,
                                      VK_IMAGE_TILING_LINEAR);
@@ -2267,5 +2272,6 @@ anv_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
       anv_state_pool_free(&device->surface_state_pool,
                           view->writeonly_storage_surface_state);
 
+   vk_object_base_finish(&view->base);
    vk_free2(&device->vk.alloc, pAllocator, view);
 }

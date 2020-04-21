@@ -377,7 +377,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
       goto fail_fd;
    }
 
-   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
    device->instance = instance;
 
    assert(strlen(path) < ARRAY_SIZE(device->path));
@@ -595,6 +595,7 @@ anv_physical_device_destroy(struct anv_physical_device *device)
    close(device->local_fd);
    if (device->master_fd >= 0)
       close(device->master_fd);
+   vk_object_base_finish(&device->base);
    vk_free(&device->instance->alloc, device);
 }
 
@@ -676,7 +677,7 @@ VkResult anv_CreateInstance(
    if (!instance)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   instance->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(NULL, &instance->base, VK_OBJECT_TYPE_INSTANCE);
 
    if (pAllocator)
       instance->alloc = *pAllocator;
@@ -796,6 +797,7 @@ void anv_DestroyInstance(
    driDestroyOptionCache(&instance->dri_options);
    driDestroyOptionInfo(&instance->available_dri_options);
 
+   vk_object_base_finish(&instance->base);
    vk_free(&instance->alloc, instance);
 }
 
@@ -3360,6 +3362,7 @@ VkResult anv_AllocateMemory(
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.type_count);
+   vk_object_base_init(&device->vk, &mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY);
    mem->type = mem_type;
    mem->map = NULL;
    mem->map_size = 0;
@@ -3683,6 +3686,7 @@ void anv_FreeMemory(
       AHardwareBuffer_release(mem->ahw);
 #endif
 
+   vk_object_base_finish(&mem->base);
    vk_free2(&device->vk.alloc, pAllocator, mem);
 }
 
@@ -4087,6 +4091,7 @@ VkResult anv_CreateEvent(
    if (event == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &event->base, VK_OBJECT_TYPE_EVENT);
    event->state = anv_state_pool_alloc(&device->dynamic_state_pool,
                                        sizeof(uint64_t), 8);
    *(uint64_t *)event->state.map = VK_EVENT_RESET;
@@ -4108,6 +4113,8 @@ void anv_DestroyEvent(
       return;
 
    anv_state_pool_free(&device->dynamic_state_pool, event->state);
+
+   vk_object_base_finish(&event->base);
    vk_free2(&device->vk.alloc, pAllocator, event);
 }
 
@@ -4172,6 +4179,7 @@ VkResult anv_CreateBuffer(
    if (buffer == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
    buffer->size = pCreateInfo->size;
    buffer->usage = pCreateInfo->usage;
    buffer->address = ANV_NULL_ADDRESS;
@@ -4192,6 +4200,7 @@ void anv_DestroyBuffer(
    if (!buffer)
       return;
 
+   vk_object_base_finish(&buffer->base);
    vk_free2(&device->vk.alloc, pAllocator, buffer);
 }
 
@@ -4257,6 +4266,7 @@ void anv_DestroySampler(
                           sampler->bindless_state);
    }
 
+   vk_object_base_finish(&sampler->base);
    vk_free2(&device->vk.alloc, pAllocator, sampler);
 }
 
@@ -4299,6 +4309,9 @@ VkResult anv_CreateFramebuffer(
       framebuffer->attachment_count = 0;
    }
 
+   vk_object_base_init(&device->vk, &framebuffer->base,
+                       VK_OBJECT_TYPE_FRAMEBUFFER);
+
    framebuffer->width = pCreateInfo->width;
    framebuffer->height = pCreateInfo->height;
    framebuffer->layers = pCreateInfo->layers;
@@ -4319,6 +4332,7 @@ void anv_DestroyFramebuffer(
    if (!fb)
       return;
 
+   vk_object_base_finish(&fb->base);
    vk_free2(&device->vk.alloc, pAllocator, fb);
 }
 

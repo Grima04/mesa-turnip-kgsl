@@ -32,8 +32,20 @@
 extern "C" {
 #endif
 
-struct vk_device {
+struct vk_device;
+
+struct vk_object_base {
    VK_LOADER_DATA _loader_data;
+};
+
+void vk_object_base_init(UNUSED struct vk_device *device,
+                         struct vk_object_base *base,
+                         UNUSED VkObjectType obj_type);
+void vk_object_base_finish(UNUSED struct vk_object_base *base);
+
+
+struct vk_device {
+   struct vk_object_base base;
    VkAllocationCallbacks alloc;
 };
 

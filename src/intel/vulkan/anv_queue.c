@@ -381,7 +381,7 @@ _anv_queue_submit(struct anv_queue *queue, struct anv_queue_submit **_submit,
 VkResult
 anv_queue_init(struct anv_device *device, struct anv_queue *queue)
 {
-   queue->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(&device->vk, &queue->base, VK_OBJECT_TYPE_QUEUE);
    queue->device = device;
    queue->flags = 0;
 
@@ -393,6 +393,7 @@ anv_queue_init(struct anv_device *device, struct anv_queue *queue)
 void
 anv_queue_finish(struct anv_queue *queue)
 {
+   vk_object_base_finish(&queue->base);
 }
 
 static VkResult
@@ -1105,6 +1106,8 @@ VkResult anv_CreateFence(
    if (fence == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &fence->base, VK_OBJECT_TYPE_FENCE);
+
    if (device->physical->has_syncobj_wait) {
       fence->permanent.type = ANV_FENCE_TYPE_SYNCOBJ;
 
@@ -1191,6 +1194,7 @@ void anv_DestroyFence(
    anv_fence_impl_cleanup(device, &fence->temporary);
    anv_fence_impl_cleanup(device, &fence->permanent);
 
+   vk_object_base_finish(&fence->base);
    vk_free2(&device->vk.alloc, pAllocator, fence);
 }
 
@@ -1787,6 +1791,8 @@ VkResult anv_CreateSemaphore(
    if (semaphore == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &semaphore->base, VK_OBJECT_TYPE_SEMAPHORE);
+
    p_atomic_set(&semaphore->refcount, 1);
 
    const VkExportSemaphoreCreateInfo *export =
@@ -1900,6 +1906,8 @@ anv_semaphore_unref(struct anv_device *device, struct anv_semaphore *semaphore)
 
    anv_semaphore_impl_cleanup(device, &semaphore->temporary);
    anv_semaphore_impl_cleanup(device, &semaphore->permanent);
+
+   vk_object_base_finish(&semaphore->base);
    vk_free(&device->vk.alloc, semaphore);
 }
 

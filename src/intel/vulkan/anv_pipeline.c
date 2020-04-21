@@ -61,6 +61,8 @@ VkResult anv_CreateShaderModule(
    if (module == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_object_base_init(&device->vk, &module->base,
+                       VK_OBJECT_TYPE_SHADER_MODULE);
    module->size = pCreateInfo->codeSize;
    memcpy(module->data, pCreateInfo->pCode, module->size);
 
@@ -82,6 +84,7 @@ void anv_DestroyShaderModule(
    if (!module)
       return;
 
+   vk_object_base_finish(&module->base);
    vk_free2(&device->vk.alloc, pAllocator, module);
 }
 
@@ -340,6 +343,7 @@ void anv_DestroyPipeline(
       unreachable("invalid pipeline type");
    }
 
+   vk_object_base_finish(&pipeline->base);
    vk_free2(&device->vk.alloc, pAllocator, pipeline);
 }
 
@@ -1981,6 +1985,8 @@ anv_pipeline_init(struct anv_graphics_pipeline *pipeline,
    if (alloc == NULL)
       alloc = &device->vk.alloc;
 
+   vk_object_base_init(&device->vk, &pipeline->base.base,
+                       VK_OBJECT_TYPE_PIPELINE);
    pipeline->base.device = device;
    pipeline->base.type = ANV_PIPELINE_GRAPHICS;
 

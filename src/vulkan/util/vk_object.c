@@ -24,12 +24,25 @@
 #include "vk_object.h"
 
 void
+vk_object_base_init(UNUSED struct vk_device *device,
+                    struct vk_object_base *base,
+                    UNUSED VkObjectType obj_type)
+{
+   base->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+}
+
+void
+vk_object_base_finish(UNUSED struct vk_object_base *base)
+{
+}
+
+void
 vk_device_init(struct vk_device *device,
                UNUSED const VkDeviceCreateInfo *pCreateInfo,
                const VkAllocationCallbacks *instance_alloc,
                const VkAllocationCallbacks *device_alloc)
 {
-   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(device, &device->base, VK_OBJECT_TYPE_DEVICE);
    if (device_alloc)
       device->alloc = *device_alloc;
    else
@@ -39,4 +52,5 @@ vk_device_init(struct vk_device *device,
 void
 vk_device_finish(UNUSED struct vk_device *device)
 {
+   vk_object_base_finish(&device->base);
 }
