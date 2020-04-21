@@ -93,9 +93,7 @@ occlusion_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_ADDR_LO, 2);
 	OUT_RELOCW(ring, query_sample(aq, stop));
 
-	OUT_PKT7(ring, CP_EVENT_WRITE, 1);
-	OUT_RING(ring, ZPASS_DONE);
-	fd_reset_wfi(batch);
+	fd6_event_write(batch, ring, ZPASS_DONE, false);
 
 	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
 	OUT_RING(ring, 0x00000014);   // XXX
