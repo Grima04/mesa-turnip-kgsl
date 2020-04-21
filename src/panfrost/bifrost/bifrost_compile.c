@@ -678,6 +678,41 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         bi_emit(ctx, alu);
 }
 
+/* TEX_COMPACT instructions assume normal 2D f32 operation but are more
+ * space-efficient and with simpler RA/scheduling requirements*/
+
+static void
+emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
+{
+        unreachable("stub");
+}
+
+static void
+emit_tex_full(bi_context *ctx, nir_tex_instr *instr)
+{
+        unreachable("stub");
+}
+
+static void
+emit_tex(bi_context *ctx, nir_tex_instr *instr)
+{
+        nir_alu_type base = nir_alu_type_get_base_type(instr->dest_type);
+        unsigned sz =  nir_dest_bit_size(instr->dest);
+        instr->dest_type = base | sz;
+
+        bool is_normal = instr->op == nir_texop_tex;
+        bool is_2d = instr->sampler_dim == GLSL_SAMPLER_DIM_2D ||
+                instr->sampler_dim == GLSL_SAMPLER_DIM_EXTERNAL;
+        bool is_f = base == nir_type_float && (sz == 16 || sz == 32);
+
+        bool is_compact = is_normal && is_2d && is_f && !instr->is_shadow;
+
+        if (is_compact)
+                emit_tex_compact(ctx, instr);
+        else
+                emit_tex_full(ctx, instr);
+}
+
 static void
 emit_instr(bi_context *ctx, struct nir_instr *instr)
 {
@@ -694,11 +729,9 @@ emit_instr(bi_context *ctx, struct nir_instr *instr)
                 emit_alu(ctx, nir_instr_as_alu(instr));
                 break;
 
-#if 0
         case nir_instr_type_tex:
                 emit_tex(ctx, nir_instr_as_tex(instr));
                 break;
-#endif
 
         case nir_instr_type_jump:
                 emit_jump(ctx, nir_instr_as_jump(instr));
@@ -709,7 +742,7 @@ emit_instr(bi_context *ctx, struct nir_instr *instr)
                 break;
 
         default:
-                //unreachable("Unhandled instruction type");
+                unreachable("Unhandled instruction type");
                 break;
         }
 }
