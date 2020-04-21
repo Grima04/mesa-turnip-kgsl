@@ -206,6 +206,8 @@ wsi_swapchain_init(const struct wsi_device *wsi,
 
    memset(chain, 0, sizeof(*chain));
 
+   vk_object_base_init(NULL, &chain->base, VK_OBJECT_TYPE_SWAPCHAIN_KHR);
+
    chain->wsi = wsi;
    chain->device = device;
    chain->alloc = *pAllocator;
@@ -305,6 +307,8 @@ wsi_swapchain_finish(struct wsi_swapchain *chain)
                                      &chain->alloc);
    }
    vk_free(&chain->alloc, chain->cmd_pools);
+
+   vk_object_base_finish(&chain->base);
 }
 
 static uint32_t
@@ -1061,7 +1065,7 @@ wsi_common_destroy_swapchain(VkDevice device,
                              VkSwapchainKHR _swapchain,
                              const VkAllocationCallbacks *pAllocator)
 {
-   WSI_FROM_HANDLE(wsi_swapchain, swapchain, _swapchain);
+   VK_FROM_HANDLE(wsi_swapchain, swapchain, _swapchain);
    if (!swapchain)
       return;
 
@@ -1073,7 +1077,7 @@ wsi_common_get_images(VkSwapchainKHR _swapchain,
                       uint32_t *pSwapchainImageCount,
                       VkImage *pSwapchainImages)
 {
-   WSI_FROM_HANDLE(wsi_swapchain, swapchain, _swapchain);
+   VK_FROM_HANDLE(wsi_swapchain, swapchain, _swapchain);
    VK_OUTARRAY_MAKE(images, pSwapchainImages, pSwapchainImageCount);
 
    for (uint32_t i = 0; i < swapchain->image_count; i++) {
@@ -1091,7 +1095,7 @@ wsi_common_acquire_next_image2(const struct wsi_device *wsi,
                                const VkAcquireNextImageInfoKHR *pAcquireInfo,
                                uint32_t *pImageIndex)
 {
-   WSI_FROM_HANDLE(wsi_swapchain, swapchain, pAcquireInfo->swapchain);
+   VK_FROM_HANDLE(wsi_swapchain, swapchain, pAcquireInfo->swapchain);
 
    VkResult result = swapchain->acquire_next_image(swapchain, pAcquireInfo,
                                                    pImageIndex);
@@ -1135,7 +1139,7 @@ wsi_common_queue_present(const struct wsi_device *wsi,
       vk_find_struct_const(pPresentInfo->pNext, PRESENT_REGIONS_KHR);
 
    for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
-      WSI_FROM_HANDLE(wsi_swapchain, swapchain, pPresentInfo->pSwapchains[i]);
+      VK_FROM_HANDLE(wsi_swapchain, swapchain, pPresentInfo->pSwapchains[i]);
       uint32_t image_index = pPresentInfo->pImageIndices[i];
       VkResult result;
 
