@@ -1395,6 +1395,13 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                 int tex_index;
                 int sampler_index;
                 bool dualTex = false;
+
+                fprintf(fp, "coords <");
+                dump_src(fp, ADD.src0, regs, consts, false);
+                fprintf(fp, ", ");
+                dump_src(fp, ADD.op & 0x7, regs, consts, false);
+                fprintf(fp, ">, ");
+
                 if (info.src_type == ADD_TEX_COMPACT) {
                         tex_index = (ADD.op >> 3) & 0x7;
                         sampler_index = (ADD.op >> 7) & 0x7;
