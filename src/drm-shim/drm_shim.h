@@ -85,3 +85,4 @@ uint64_t drm_shim_bo_get_mmap_offset(struct shim_fd *shim_fd,
 
 /* driver-specific hooks. */
 void drm_shim_driver_init(void);
+extern bool drm_shim_driver_prefers_new_render_node;

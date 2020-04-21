@@ -97,9 +97,11 @@ struct file_override {
 };
 static struct file_override file_overrides[10];
 static int file_overrides_count;
+extern bool drm_shim_driver_prefers_first_render_node;
 
-/* Come up with a filename for a render node that doesn't actually exist on
- * the system.
+/* Pick the minor and filename for our shimmed render node.  This can be
+ * either a new one that didn't exist on the system, or if the driver wants,
+ * it can replace the first render node.
  */
 static void
 get_dri_render_node_minor(void)
@@ -110,7 +112,8 @@ get_dri_render_node_minor(void)
       asprintf(&render_node_path, "/dev/dri/%s",
                render_node_dirent_name);
       struct stat st;
-      if (stat(render_node_path, &st) == -1) {
+      if (drm_shim_driver_prefers_first_render_node ||
+          stat(render_node_path, &st) == -1) {
 
          render_node_minor = minor;
          return;
