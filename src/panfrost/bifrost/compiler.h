@@ -214,6 +214,12 @@ enum bi_special_op {
         BI_SPECIAL_EXP2_LOW,
 };
 
+enum bi_tex_op {
+        BI_TEX_NORMAL,
+        BI_TEX_COMPACT,
+        BI_TEX_DUAL
+};
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
@@ -275,6 +281,7 @@ typedef struct {
                 enum bi_table_op table;
                 enum bi_frexp_op frexp;
                 enum bi_cond compare;
+                enum bi_tex_op texture;
 
                 /* For FMA/ADD, should we add a biased exponent? */
                 bool mscale;

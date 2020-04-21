@@ -304,6 +304,17 @@ bi_frexp_op_name(enum bi_frexp_op op)
         }
 }
 
+const char *
+bi_tex_op_name(enum bi_tex_op op)
+{
+        switch (op) {
+        case BI_TEX_NORMAL: return "normal";
+        case BI_TEX_COMPACT: return "compact";
+        case BI_TEX_DUAL: return "dual";
+        default: return "invalid";
+        }
+}
+
 static void
 bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
 {
@@ -395,6 +406,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, ".loc%u", ins->blend_location);
         else if (ins->type == BI_STORE || ins->type == BI_STORE_VAR)
                 fprintf(fp, ".v%u", ins->store_channels);
+        else if (ins->type == BI_TEX)
+                fprintf(fp, ".%s", bi_tex_op_name(ins->op.texture));
 
         if (ins->dest)
                 bi_print_alu_type(ins->dest_type, fp);
