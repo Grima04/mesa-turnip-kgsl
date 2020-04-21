@@ -898,6 +898,11 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 
    switch (instr->opcode) {
    case aco_opcode::p_create_vector: {
+      if (instr->operands.size() == 1 && instr->operands[0].isTemp())
+         ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
+      else
+         ctx.info[instr->definitions[0].tempId()].set_vec(instr.get());
+
       unsigned num_ops = instr->operands.size();
       for (const Operand& op : instr->operands) {
          if (op.isTemp() && ctx.info[op.tempId()].is_vec())
@@ -923,10 +928,6 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          }
          assert(k == num_ops);
       }
-      if (instr->operands.size() == 1 && instr->operands[0].isTemp())
-         ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
-      else
-         ctx.info[instr->definitions[0].tempId()].set_vec(instr.get());
       break;
    }
    case aco_opcode::p_split_vector: {
