@@ -1843,8 +1843,9 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    }
 
    /* We are no longer inside a render pass */
-   state->pass = NULL;
    state->framebuffer = NULL;
+   state->pass = NULL;
+   state->subpass_idx = -1;
 }
 
 VkResult
