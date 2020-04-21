@@ -78,7 +78,7 @@ __fd6_setup_blend_variant(struct fd6_blend_stateobj *blend, unsigned sample_mask
 			((A6XX_MAX_RENDER_TARGETS * 4) + 6) * 4);
 	so->stateobj = ring;
 
-	for (unsigned i = 0; i < A6XX_MAX_RENDER_TARGETS; i++) {
+	for (unsigned i = 0; i <= cso->max_rt; i++) {
 		const struct pipe_rt_blend_state *rt;
 
 		if (cso->independent_blend_enable)
@@ -162,8 +162,8 @@ fd6_blend_state_create(struct pipe_context *pctx,
 	so->ctx = fd_context(pctx);
 	so->lrz_write = true;  /* unless blend enabled for any MRT */
 
-	unsigned nr = cso->independent_blend_enable ? A6XX_MAX_RENDER_TARGETS : 1;
-	for (unsigned i = 0; i < nr; i++) {
+	unsigned nr = cso->independent_blend_enable ? cso->max_rt : 0;
+	for (unsigned i = 0; i <= nr; i++) {
 		const struct pipe_rt_blend_state *rt = &cso->rt[i];
 
 		if (rt->blend_enable) {
