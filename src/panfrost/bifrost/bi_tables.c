@@ -55,6 +55,6 @@ unsigned bi_class_props[BI_NUM_CLASSES] = {
         [BI_SPECIAL] 		= BI_SCHED_ADD | BI_SCHED_SLOW,
         [BI_TABLE]              = BI_SCHED_ADD,
         [BI_SWIZZLE]            = BI_SCHED_ALL | BI_SWIZZLABLE,
-        [BI_TEX] 		= BI_SCHED_HI_LATENCY | BI_SCHED_ADD | BI_VECTOR,
+        [BI_TEX] 		= BI_SCHED_HI_LATENCY | BI_SCHED_ADD | BI_VECTOR | BI_DATA_REG_DEST,
         [BI_ROUND] 		= BI_GENERIC | BI_ROUNDMODE | BI_SCHED_ALL,
 };
