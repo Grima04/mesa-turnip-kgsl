@@ -270,7 +270,7 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
                 return false;
 
         pthread_mutex_lock(&dev->bo_cache.lock);
-        struct list_head *bucket = pan_bucket(dev, bo->size);
+        struct list_head *bucket = pan_bucket(dev, MAX2(bo->size, 4096));
         struct drm_panfrost_madvise madv;
         struct timespec time;
 
