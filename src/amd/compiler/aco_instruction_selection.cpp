@@ -3768,11 +3768,8 @@ bool load_input_from_temps(isel_context *ctx, nir_intrinsic_instr *instr, Temp d
 
    unsigned idx = nir_intrinsic_base(instr) + nir_intrinsic_component(instr) + 4 * nir_src_as_uint(*off_src);
    Temp *src = &ctx->inputs.temps[idx];
-   Temp vec = create_vec_from_array(ctx, src, dst.size(), dst.regClass().type(), 4u);
-   assert(vec.size() == dst.size());
+   create_vec_from_array(ctx, src, dst.size(), dst.regClass().type(), 4u, 0, dst);
 
-   Builder bld(ctx->program, ctx->block);
-   bld.copy(Definition(dst), vec);
    return true;
 }
 
