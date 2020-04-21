@@ -1682,6 +1682,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         if (fs->reads_frag_coord)
                 varyings[gl_FragCoord].elements = MALI_VARYING_FRAG_COORD;
 
+        struct panfrost_device *device = pan_device(ctx->base.screen);
+        assert(!(device->quirks & IS_BIFROST) || !(reads_point_coord || fs->reads_face || fs->reads_frag_coord));
+
         /* Let's go ahead and link varying meta to the buffer in question, now
          * that that information is available. VARYING_SLOT_POS is mapped to
          * gl_FragCoord for fragment shaders but gl_Positionf or vertex shaders
