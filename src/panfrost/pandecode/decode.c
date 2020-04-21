@@ -2161,7 +2161,6 @@ pandecode_bifrost_texture(const struct bifrost_texture_descriptor *t, unsigned j
         pandecode_prop("width = %" PRId32, t->width);
         pandecode_prop("height = %" PRId32, t->height);
         pandecode_prop("swizzle = 0x%" PRIx32, t->swizzle);
-        pandecode_prop("unk0 = 0x%" PRIx32, t->unk0);
         pandecode_prop("levels = %" PRId32, t->levels);
         pandecode_prop("unk1 = 0x%" PRIx32, t->unk1);
         pandecode_prop("levels_unk = %" PRId32, t->levels_unk);
@@ -2178,19 +2177,17 @@ pandecode_bifrost_texture(const struct bifrost_texture_descriptor *t, unsigned j
         bool is_cube = t->type == MALI_TEX_CUBE;
         unsigned dimension = is_cube ? 2 : t->type;
 
-#if 0
         /* Print the layout. Default is linear; a modifier can denote AFBC or
          * u-interleaved/tiled modes */
 
-        if (f.layout == MALI_TEXTURE_AFBC)
+        if (t->layout == MALI_TEXTURE_AFBC)
                 pandecode_log_cont("afbc");
-        else if (f.layout == MALI_TEXTURE_TILED)
+        else if (t->layout == MALI_TEXTURE_TILED)
                 pandecode_log_cont("tiled");
-        else if (f.layout == MALI_TEXTURE_LINEAR)
+        else if (t->layout == MALI_TEXTURE_LINEAR)
                 pandecode_log_cont("linear");
         else
-                pandecode_msg("XXX: invalid texture layout 0x%X\n", f.layout);
-#endif
+                pandecode_msg("XXX: invalid texture layout 0x%X\n", t->layout);
 
         pandecode_swizzle(t->swizzle, t->format);
         pandecode_log_cont(" ");

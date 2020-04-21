@@ -271,7 +271,7 @@ panfrost_new_texture_bifrost(
         descriptor->width = MALI_POSITIVE(u_minify(width, first_level));
         descriptor->height = MALI_POSITIVE(u_minify(height, first_level));
         descriptor->swizzle = swizzle;
-        descriptor->unk0 = 0x1;
+        descriptor->layout = layout;
         descriptor->levels = last_level - first_level;
         descriptor->unk1 = 0x0;
         descriptor->levels_unk = 0;

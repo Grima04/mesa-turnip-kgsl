@@ -1255,7 +1255,7 @@ struct bifrost_texture_descriptor {
 
         /* OpenGL swizzle */
         unsigned swizzle : 12;
-        unsigned unk0 : 4; /* 1 */
+        enum mali_texture_layout layout : 4;
         uint8_t levels : 8; /* Number of levels-1 if mipmapped, 0 if not */
         unsigned unk1 : 4;
 
