@@ -499,10 +499,6 @@ spec/arb_geometry_shader4/arb_geometry_shader4-program-parameter-vertices-out ma
 spec/arb_geometry_shader4/arb_geometry_shader4-program-parameter-vertices-out tf 1: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-program-parameter-vertices-out tf max: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-vertices-in: skip
-spec/arb_get_program_binary/reset-uniform: skip
-spec/arb_get_program_binary/restore-implicit-use-program: skip
-spec/arb_get_program_binary/restore-sso-program: fail
-spec/arb_get_program_binary/xfb-varyings: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-dlist-uniforms: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-ssbo: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-ssbo: skip
@@ -1762,10 +1758,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    21749
-       fail:      226
+       pass:    21753
+       fail:      225
       crash:        0
-       skip:     1511
+       skip:     1508
     timeout:        0
        warn:        6
  incomplete:        0

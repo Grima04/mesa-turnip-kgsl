@@ -114,7 +114,6 @@ spec/arb_geometry_shader4/linker/no-vertex-shader-only-built-in-input-varyings-e
 spec/arb_geometry_shader4/linker/no-vertex-shader-user-defined-input-varying: skip
 spec/arb_geometry_shader4/linker/varying-mismatch: skip
 spec/arb_geometry_shader4/linker/verticesin-const: skip
-spec/arb_get_program_binary/execution/uniform-after-restore: skip
 spec/arb_gl_spirv/execution/ssbo/aoa: skip
 spec/arb_gl_spirv/execution/ssbo/aoa-2: skip
 spec/arb_gl_spirv/execution/ssbo/array: skip
@@ -5151,10 +5150,10 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:    11218
+       pass:    11219
        fail:       54
       crash:      120
-       skip:     4976
+       skip:     4975
     timeout:        0
        warn:        0
  incomplete:        0

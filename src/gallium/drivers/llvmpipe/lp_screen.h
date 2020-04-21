@@ -38,7 +38,7 @@
 #include "pipe/p_defines.h"
 #include "os/os_thread.h"
 #include "gallivm/lp_bld.h"
-
+#include "gallivm/lp_bld_misc.h"
 
 struct sw_winsys;
 struct lp_cs_tpool;
@@ -62,9 +62,18 @@ struct llvmpipe_screen
    mtx_t cs_mutex;
 
    bool use_tgsi;
+
+   struct disk_cache *disk_shader_cache;
+   unsigned num_disk_shader_cache_hits;
+   unsigned num_disk_shader_cache_misses;
 };
 
-
+void lp_disk_cache_find_shader(struct llvmpipe_screen *screen,
+                               struct lp_cached_code *cache,
+                               unsigned char ir_sha1_cache_key[20]);
+void lp_disk_cache_insert_shader(struct llvmpipe_screen *screen,
+                                 struct lp_cached_code *cache,
+                                 unsigned char ir_sha1_cache_key[20]);
 
 
 static inline struct llvmpipe_screen *

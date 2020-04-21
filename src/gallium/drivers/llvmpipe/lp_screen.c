@@ -38,7 +38,7 @@
 #include "draw/draw_context.h"
 #include "gallivm/lp_bld_type.h"
 #include "gallivm/lp_bld_nir.h"
-
+#include "util/disk_cache.h"
 #include "util/os_misc.h"
 #include "util/os_time.h"
 #include "lp_texture.h"
@@ -75,6 +75,7 @@ static const struct debug_named_value lp_debug_flags[] = {
    { "cs", DEBUG_CS, NULL },
    { "tgsi_ir", DEBUG_TGSI_IR, NULL },
    { "cl", DEBUG_CL, NULL },
+   { "cache_stats", DEBUG_CACHE_STATS, NULL },
    DEBUG_NAMED_VALUE_END
 };
 #endif
@@ -787,6 +788,10 @@ llvmpipe_destroy_screen( struct pipe_screen *_screen )
 
    lp_jit_screen_cleanup(screen);
 
+   if (LP_DEBUG & DEBUG_CACHE_STATS)
+      printf("disk shader cache:   hits = %u, misses = %u\n", screen->num_disk_shader_cache_hits,
+             screen->num_disk_shader_cache_misses);
+   disk_cache_destroy(screen->disk_shader_cache);
    if(winsys->destroy)
       winsys->destroy(winsys);
 
@@ -844,6 +849,63 @@ llvmpipe_get_timestamp(struct pipe_screen *_screen)
    return os_time_get_nano();
 }
 
+static void lp_disk_cache_create(struct llvmpipe_screen *screen)
+{
+   struct mesa_sha1 ctx;
+   unsigned char sha1[20];
+   char cache_id[20 * 2 + 1];
+   _mesa_sha1_init(&ctx);
+
+   if (!disk_cache_get_function_identifier(lp_disk_cache_create, &ctx) ||
+       !disk_cache_get_function_identifier(LLVMLinkInMCJIT, &ctx))
+      return;
+
+   _mesa_sha1_final(&ctx, sha1);
+   disk_cache_format_hex_id(cache_id, sha1, 20 * 2);
+
+   screen->disk_shader_cache = disk_cache_create("llvmpipe", cache_id, 0);
+}
+
+static struct disk_cache *lp_get_disk_shader_cache(struct pipe_screen *_screen)
+{
+   struct llvmpipe_screen *screen = llvmpipe_screen(_screen);
+
+   return screen->disk_shader_cache;
+}
+
+void lp_disk_cache_find_shader(struct llvmpipe_screen *screen,
+                               struct lp_cached_code *cache,
+                               unsigned char ir_sha1_cache_key[20])
+{
+   unsigned char sha1[CACHE_KEY_SIZE];
+
+   if (!screen->disk_shader_cache)
+      return;
+   disk_cache_compute_key(screen->disk_shader_cache, ir_sha1_cache_key, 20, sha1);
+
+   size_t binary_size;
+   uint8_t *buffer = disk_cache_get(screen->disk_shader_cache, sha1, &binary_size);
+   if (!buffer) {
+      cache->data_size = 0;
+      p_atomic_inc(&screen->num_disk_shader_cache_misses);
+      return;
+   }
+   cache->data_size = binary_size;
+   cache->data = buffer;
+   p_atomic_inc(&screen->num_disk_shader_cache_hits);
+}
+
+void lp_disk_cache_insert_shader(struct llvmpipe_screen *screen,
+                                 struct lp_cached_code *cache,
+                                 unsigned char ir_sha1_cache_key[20])
+{
+   unsigned char sha1[CACHE_KEY_SIZE];
+
+   if (!screen->disk_shader_cache || !cache->data_size || cache->dont_cache)
+      return;
+   disk_cache_compute_key(screen->disk_shader_cache, ir_sha1_cache_key, 20, sha1);
+   disk_cache_put(screen->disk_shader_cache, sha1, cache->data, cache->data_size, NULL);
+}
 /**
  * Create a new pipe_screen object
  * Note: we're not presently subclassing pipe_screen (no llvmpipe_screen).
@@ -894,6 +956,8 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    screen->base.get_timestamp = llvmpipe_get_timestamp;
 
    screen->base.finalize_nir = llvmpipe_finalize_nir;
+
+   screen->base.get_disk_shader_cache = lp_get_disk_shader_cache;
    llvmpipe_init_screen_resource_funcs(&screen->base);
 
    screen->use_tgsi = (LP_DEBUG & DEBUG_TGSI_IR);
@@ -921,5 +985,6 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    }
    (void) mtx_init(&screen->cs_mutex, mtx_plain);
 
+   lp_disk_cache_create(screen);
    return &screen->base;
 }
