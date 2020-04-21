@@ -1590,6 +1590,7 @@ convert_from_blend_type(struct gallivm_state *gallivm,
       for (j = 0; j < src_fmt->nr_channels; ++j) {
          unsigned mask = 0;
          unsigned sa = src_fmt->channel[j].shift;
+         unsigned sz_a = src_fmt->channel[j].size;
 #if UTIL_ARCH_LITTLE_ENDIAN
          unsigned from_lsb = j;
 #else
@@ -1618,6 +1619,10 @@ convert_from_blend_type(struct gallivm_state *gallivm,
          if (src_type.norm) {
             chans[j] = scale_bits(gallivm, blend_type.width,
                                   src_fmt->channel[j].size, chans[j], src_type);
+         } else if (!src_type.floating && sz_a < blend_type.width) {
+            LLVMValueRef mask_val = lp_build_const_int_vec(gallivm, src_type, (1UL << sz_a) - 1);
+            LLVMValueRef mask = LLVMBuildICmp(builder, LLVMIntUGT, chans[j], mask_val, "");
+            chans[j] = LLVMBuildSelect(builder, mask, mask_val, chans[j], "");
          }
 
          /* Insert bits */
