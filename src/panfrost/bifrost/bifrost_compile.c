@@ -684,6 +684,10 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
 static void
 emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
 {
+        /* TODO: Pipe through indices */
+        assert(instr->texture_index == 0);
+        assert(instr->sampler_index == 0);
+
         bi_instruction tex = {
                 .type = BI_TEX,
                 .op = { .texture = BI_TEX_COMPACT },
