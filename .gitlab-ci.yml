@@ -931,3 +931,14 @@ radv-polaris10-traces:
     DEVICE_NAME: "vk-amd-polaris10"
   tags:
     - polaris10
+
+virgl-traces:
+  extends:
+    - .traces-test-gl
+    - .virgl-rules
+  variables:
+    LIBGL_ALWAYS_SOFTWARE: "true"
+    GALLIUM_DRIVER: "virpipe"
+    DEVICE_NAME: "gl-virgl"
+    MESA_GLES_VERSION_OVERRIDE: "3.1"
+    MESA_GLSL_VERSION_OVERRIDE: "310"
