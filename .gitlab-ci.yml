@@ -739,6 +739,17 @@ virgl-gles3:
     DEQP_RUNNER_OPTIONS: "--compact-display false --timeout 120"
   extends: virgl-gles2
 
+virgl-gles31:
+  variables:
+    DEQP_VER: gles31
+    CI_NODE_INDEX: 1
+    CI_NODE_TOTAL: 10
+    DEQP_OPTIONS: "--deqp-log-images=disable"
+    DEQP_RUNNER_OPTIONS: "--compact-display false --timeout 120"
+    MESA_GLES_VERSION_OVERRIDE: "3.1"
+    MESA_GLSL_VERSION_OVERRIDE: "310"
+  extends: virgl-gles2
+
 # Rules for tests that should not be present in MRs or the main
 # project's pipeline (don't block marge or report red on
 # mesa/mesamaster) but should be present on pipelines in personal
