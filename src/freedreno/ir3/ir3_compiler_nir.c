@@ -3262,7 +3262,6 @@ emit_instructions(struct ir3_context *ctx)
 	/* Create inputs in first block: */
 	ctx->block = get_block(ctx, nir_start_block(fxn));
 	ctx->in_block = ctx->block;
-	list_addtail(&ctx->block->node, &ctx->ir->block_list);
 
 	/* for fragment shader, the vcoord input register is used as the
 	 * base for bary.f varying fetch instrs:
