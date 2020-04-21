@@ -3664,11 +3664,15 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
 
       /* GLSLang, prior to commit 8297936dd6eb3, emitted OpControlBarrier with
        * memory semantics of None for GLSL barrier().
+       * And before that, prior to c3f1cdfa, emitted the OpControlBarrier with
+       * Device instead of Workgroup for execution scope.
        */
       if (b->wa_glslang_cs_barrier &&
           b->nb.shader->info.stage == MESA_SHADER_COMPUTE &&
-          execution_scope == SpvScopeWorkgroup &&
+          (execution_scope == SpvScopeWorkgroup ||
+           execution_scope == SpvScopeDevice) &&
           memory_semantics == SpvMemorySemanticsMaskNone) {
+         execution_scope = SpvScopeWorkgroup;
          memory_scope = SpvScopeWorkgroup;
          memory_semantics = SpvMemorySemanticsAcquireReleaseMask |
                             SpvMemorySemanticsWorkgroupMemoryMask;
