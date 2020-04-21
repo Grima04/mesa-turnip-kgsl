@@ -3150,12 +3150,10 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 	unsigned n = out->data.driver_location;
 	unsigned frac = out->data.location_frac;
 	unsigned slot = out->data.location;
-	unsigned comp = 0;
 
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 		switch (slot) {
 		case FRAG_RESULT_DEPTH:
-			comp = 2;  /* tgsi will write to .z component */
 			so->writes_pos = true;
 			break;
 		case FRAG_RESULT_COLOR:
@@ -3213,7 +3211,7 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 	compile_assert(ctx, n < ARRAY_SIZE(so->outputs));
 
 	so->outputs[n].slot = slot;
-	so->outputs[n].regid = regid(n, comp);
+	so->outputs[n].regid = regid(n, 0);
 	so->outputs_count = MAX2(so->outputs_count, n + 1);
 
 	for (int i = 0; i < ncomp; i++) {
