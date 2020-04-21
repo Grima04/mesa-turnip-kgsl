@@ -1415,7 +1415,11 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                         struct bifrost_tex_ctrl ctrl;
                         memcpy((char *) &ctrl, (char *) &controlBits, sizeof(ctrl));
 
-                        // TODO: figure out what actually triggers dual-tex
+                        /* Dual-tex triggered for adjacent texturing
+                         * instructions with the same coordinates to different
+                         * textures/samplers. Observed for the compact
+                         * (2D/normal) case. */
+
                         if (ctrl.result_type == 9) {
                                 struct bifrost_dual_tex_ctrl dualCtrl;
                                 memcpy((char *) &dualCtrl, (char *) &controlBits, sizeof(ctrl));
