@@ -1420,12 +1420,15 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                          * textures/samplers. Observed for the compact
                          * (2D/normal) case. */
 
-                        if (ctrl.result_type == 9) {
+                        if ((ctrl.result_type & 7) == 1) {
+                                bool f32 = ctrl.result_type & 8;
+
                                 struct bifrost_dual_tex_ctrl dualCtrl;
                                 memcpy((char *) &dualCtrl, (char *) &controlBits, sizeof(ctrl));
-                                fprintf(fp, "(dualtex) tex0:%d samp0:%d tex1:%d samp1:%d ",
+                                fprintf(fp, "(dualtex) tex0:%d samp0:%d tex1:%d samp1:%d %s",
                                        dualCtrl.tex_index0, dualCtrl.sampler_index0,
-                                       dualCtrl.tex_index1, dualCtrl.sampler_index1);
+                                       dualCtrl.tex_index1, dualCtrl.sampler_index1,
+                                       f32 ? "f32" : "f16");
                                 if (dualCtrl.unk0 != 3)
                                         fprintf(fp, "unk:%d ", dualCtrl.unk0);
                                 dualTex = true;
