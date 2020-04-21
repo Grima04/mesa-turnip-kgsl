@@ -1237,6 +1237,12 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+         VkPhysicalDevicePrivateDataFeaturesEXT *features = (void *)ext;
+         features->privateData = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
          VkPhysicalDeviceProtectedMemoryFeatures *features = (void *)ext;
          CORE_FEATURE(1, 1, protectedMemory);
@@ -4510,4 +4516,50 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     */
    *pSupportedVersion = MIN2(*pSupportedVersion, 4u);
    return VK_SUCCESS;
+}
+
+VkResult anv_CreatePrivateDataSlotEXT(
+    VkDevice                                    _device,
+    const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkPrivateDataSlotEXT*                       pPrivateDataSlot)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   return vk_private_data_slot_create(&device->vk, pCreateInfo, pAllocator,
+                                      pPrivateDataSlot);
+}
+
+void anv_DestroyPrivateDataSlotEXT(
+    VkDevice                                    _device,
+    VkPrivateDataSlotEXT                        privateDataSlot,
+    const VkAllocationCallbacks*                pAllocator)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   vk_private_data_slot_destroy(&device->vk, privateDataSlot, pAllocator);
+}
+
+VkResult anv_SetPrivateDataEXT(
+    VkDevice                                    _device,
+    VkObjectType                                objectType,
+    uint64_t                                    objectHandle,
+    VkPrivateDataSlotEXT                        privateDataSlot,
+    uint64_t                                    data)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   return vk_object_base_set_private_data(&device->vk,
+                                          objectType, objectHandle,
+                                          privateDataSlot, data);
+}
+
+void anv_GetPrivateDataEXT(
+    VkDevice                                    _device,
+    VkObjectType                                objectType,
+    uint64_t                                    objectHandle,
+    VkPrivateDataSlotEXT                        privateDataSlot,
+    uint64_t*                                   pData)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   vk_object_base_get_private_data(&device->vk,
+                                   objectType, objectHandle,
+                                   privateDataSlot, pData);
 }

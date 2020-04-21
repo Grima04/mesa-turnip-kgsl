@@ -27,6 +27,7 @@
 #include <vulkan/vk_icd.h>
 
 #include "util/macros.h"
+#include "util/sparse_array.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,6 +38,9 @@ struct vk_device;
 struct vk_object_base {
    VK_LOADER_DATA _loader_data;
    VkObjectType type;
+
+   /* For VK_EXT_private_data */
+   struct util_sparse_array private_data;
 };
 
 void vk_object_base_init(UNUSED struct vk_device *device,
@@ -51,10 +55,21 @@ vk_object_base_assert_valid(ASSERTED struct vk_object_base *base,
    assert(base == NULL || base->type == obj_type);
 }
 
+static inline struct vk_object_base *
+vk_object_base_from_u64_handle(uint64_t handle, VkObjectType obj_type)
+{
+   struct vk_object_base *base = (struct vk_object_base *)(uintptr_t)handle;
+   vk_object_base_assert_valid(base, obj_type);
+   return base;
+}
+
 
 struct vk_device {
    struct vk_object_base base;
    VkAllocationCallbacks alloc;
+
+   /* For VK_EXT_private_data */
+   uint32_t private_data_next_index;
 };
 
 void vk_device_init(struct vk_device *device,
@@ -100,6 +115,37 @@ void vk_device_finish(struct vk_device *device);
 
 #define VK_FROM_HANDLE(__driver_type, __name, __handle) \
    struct __driver_type *__name = __driver_type ## _from_handle(__handle)
+
+
+struct vk_private_data_slot {
+   struct vk_object_base base;
+   uint32_t index;
+};
+VK_DEFINE_NONDISP_HANDLE_CASTS(vk_private_data_slot, base,
+                               VkPrivateDataSlotEXT,
+                               VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT);
+
+VkResult
+vk_private_data_slot_create(struct vk_device *device,
+                            const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
+                            const VkAllocationCallbacks* pAllocator,
+                            VkPrivateDataSlotEXT* pPrivateDataSlot);
+void
+vk_private_data_slot_destroy(struct vk_device *device,
+                             VkPrivateDataSlotEXT privateDataSlot,
+                             const VkAllocationCallbacks *pAllocator);
+VkResult
+vk_object_base_set_private_data(struct vk_device *device,
+                                VkObjectType objectType,
+                                uint64_t objectHandle,
+                                VkPrivateDataSlotEXT privateDataSlot,
+                                uint64_t data);
+void
+vk_object_base_get_private_data(struct vk_device *device,
+                                VkObjectType objectType,
+                                uint64_t objectHandle,
+                                VkPrivateDataSlotEXT privateDataSlot,
+                                uint64_t *pData);
 
 #ifdef __cplusplus
 }
