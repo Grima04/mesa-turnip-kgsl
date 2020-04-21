@@ -287,6 +287,9 @@ st_update_blend( struct st_context *st )
        */
       blend->alpha_to_coverage = ctx->Multisample.SampleAlphaToCoverage;
       blend->alpha_to_one = ctx->Multisample.SampleAlphaToOne;
+      blend->alpha_to_coverage_dither =
+         ctx->Multisample.SampleAlphaToCoverageDitherControl !=
+         GL_ALPHA_TO_COVERAGE_DITHER_DISABLE_NV;
    }
 
    cso_set_blend(st->cso_context, blend);

@@ -911,6 +911,10 @@ const struct function common_desktop_functions_possible[] = {
    { "glDepthRangeArrayv", 43, -1 },
    { "glDepthRangeIndexed", 43, -1 },
 
+/* GL 4.4 */
+   /* GL_NV_alpha_to_coverage_dither_control */
+   { "glAlphaToCoverageDitherControlNV", 44, -1 },
+
 /* GL 4.5 */
    /* aliased versions checked above */
    //{ "glGetGraphicsResetStatus", 45, -1 },

@@ -382,6 +382,9 @@ descriptor=[
   [ "MAX_DEPTH_STENCIL_FRAMEBUFFER_SAMPLES_AMD", "CONTEXT_INT(Const.MaxDepthStencilFramebufferSamples), extra_AMD_framebuffer_multisample_advanced" ],
   [ "NUM_SUPPORTED_MULTISAMPLE_MODES_AMD", "CONTEXT_INT(Const.NumSupportedMultisampleModes), extra_AMD_framebuffer_multisample_advanced" ],
   [ "SUPPORTED_MULTISAMPLE_MODES_AMD", "LOC_CUSTOM, TYPE_INT_N, 0, extra_AMD_framebuffer_multisample_advanced" ],
+
+# GL_NV_alpha_to_coverage_dither_control
+  [ "ALPHA_TO_COVERAGE_DITHER_MODE_NV", "CONTEXT_ENUM(Multisample.SampleAlphaToCoverageDitherControl ), NO_EXTRA" ],
 ]},
 
 # GLES3 is not a typo.

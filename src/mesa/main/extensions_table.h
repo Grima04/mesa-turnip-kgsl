@@ -371,6 +371,7 @@ EXT(MESA_ycbcr_texture                      , MESA_ycbcr_texture                
 
 EXT(NVX_gpu_memory_info                     , NVX_gpu_memory_info                    , GLL, GLC,  x ,  x , 2013)
 
+EXT(NV_alpha_to_coverage_dither_control     , NV_alpha_to_coverage_dither_control    , GLL, GLC,  x , ES2, 2017)
 EXT(NV_blend_square                         , dummy_true                             , GLL,  x ,  x ,  x , 1999)
 EXT(NV_compute_shader_derivatives           , NV_compute_shader_derivatives          , GLL, GLC,  x ,  32, 2018)
 EXT(NV_conditional_render                   , NV_conditional_render                  , GLL, GLC,  x , ES2, 2008)

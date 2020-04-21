@@ -1519,6 +1519,8 @@ _mesa_PopAttrib(void)
 
                _mesa_SampleCoverage(ms->SampleCoverageValue,
                                        ms->SampleCoverageInvert);
+
+               _mesa_AlphaToCoverageDitherControlNV(ms->SampleAlphaToCoverageDitherControl);
             }
             break;
 

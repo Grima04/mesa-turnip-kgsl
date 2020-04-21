@@ -689,6 +689,9 @@ struct gl_multisample_attrib
 
    /** The GL spec defines this as an array but >32x MSAA is madness */
    GLbitfield SampleMaskValue;
+
+   /* NV_alpha_to_coverage_dither_control */
+   GLenum SampleAlphaToCoverageDitherControl;
 };
 
 
@@ -4387,6 +4390,7 @@ struct gl_extensions
    GLboolean EXT_shader_framebuffer_fetch_non_coherent;
    GLboolean MESA_shader_integer_functions;
    GLboolean MESA_ycbcr_texture;
+   GLboolean NV_alpha_to_coverage_dither_control;
    GLboolean NV_compute_shader_derivatives;
    GLboolean NV_conditional_render;
    GLboolean NV_copy_image;
