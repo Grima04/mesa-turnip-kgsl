@@ -215,6 +215,11 @@ struct v3dv_meta_color_clear_pipeline {
    VkRenderPass pass;
 };
 
+struct v3dv_meta_blit_pipeline {
+   VkPipeline pipeline;
+   VkRenderPass pass;
+};
+
 struct v3dv_device {
    VK_LOADER_DATA _loader_data;
 
@@ -242,6 +247,12 @@ struct v3dv_device {
          VkPipelineLayout playout;
          struct hash_table *cache; /* v3dv_meta_color_clear_pipeline */
       } color_clear;
+      struct {
+         VkDescriptorPool dspool;
+         VkDescriptorSetLayout dslayout;
+         VkPipelineLayout playout;
+         struct hash_table *cache; /* v3dv_meta_blit_pipeline */
+      } blit;
    } meta;
 };
 

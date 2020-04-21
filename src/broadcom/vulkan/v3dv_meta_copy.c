@@ -23,6 +23,7 @@
 
 #include "v3dv_private.h"
 
+#include "compiler/nir/nir_builder.h"
 #include "broadcom/cle/v3dx_pack.h"
 #include "vk_format_info.h"
 #include "util/u_pack_color.h"
@@ -1716,10 +1717,6 @@ emit_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
              uint32_t width,
              uint32_t height)
 {
-   /* Blit jobs can only happen outside a render pass */
-   assert(cmd_buffer->state.pass == NULL);
-   assert(cmd_buffer->state.job == NULL);
-
    const struct v3d_resource_slice *src_slice = &src->slices[src_mip_level];
    const struct v3d_resource_slice *dst_slice = &dst->slices[src_mip_level];
 
@@ -1877,6 +1874,800 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
+static inline uint64_t
+get_blit_pipeline_cache_key(VkFormat dst_format)
+{
+   uint64_t key = 0;
+   uint32_t bit_offset = 0;
+
+   key |= dst_format;
+   bit_offset += 32;
+
+   return key;
+}
+
+static bool
+create_blit_pipeline_layout(struct v3dv_device *device,
+                            VkDescriptorSetLayout *descriptor_set_layout,
+                            VkPipelineLayout *pipeline_layout)
+{
+   VkResult result;
+
+   if (*descriptor_set_layout == 0) {
+      VkDescriptorSetLayoutBinding descriptor_set_layout_binding = {
+         .binding = 0,
+         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+         .descriptorCount = 1,
+         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      };
+      VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {
+         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+         .bindingCount = 1,
+         .pBindings = &descriptor_set_layout_binding,
+      };
+      result =
+         v3dv_CreateDescriptorSetLayout(v3dv_device_to_handle(device),
+                                        &descriptor_set_layout_info,
+                                        &device->alloc,
+                                        descriptor_set_layout);
+      if (result != VK_SUCCESS)
+         return false;
+   }
+
+   assert(*pipeline_layout == 0);
+   VkPipelineLayoutCreateInfo pipeline_layout_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 1,
+      .pSetLayouts = descriptor_set_layout,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges =
+         &(VkPushConstantRange) { VK_SHADER_STAGE_VERTEX_BIT, 0, 16 },
+   };
+
+   result =
+      v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
+                                &pipeline_layout_info,
+                                &device->alloc,
+                                pipeline_layout);
+   return result == VK_SUCCESS;
+}
+
+static bool
+create_blit_render_pass(struct v3dv_device *device,
+                        VkFormat format,
+                        VkRenderPass *pass)
+{
+   /* FIXME: if blitting to tile boundaries or to the whole image, we could
+    * use LOAD_DONT_CARE, but then we would have to include that in the
+    * pipeline hash key. Or maybe we should just create both render passes and
+    * use one or the other at draw time since they would both be compatible
+    * with the pipeline anyway
+    */
+   VkAttachmentDescription att = {
+      .format = format,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .finalLayout = VK_IMAGE_LAYOUT_GENERAL,
+   };
+
+   VkAttachmentReference att_ref = {
+      .attachment = 0,
+      .layout = VK_IMAGE_LAYOUT_GENERAL,
+   };
+
+   VkSubpassDescription subpass = {
+      .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+      .inputAttachmentCount = 0,
+      .colorAttachmentCount = 1,
+      .pColorAttachments = &att_ref,
+      .pResolveAttachments = NULL,
+      .pDepthStencilAttachment = NULL,
+      .preserveAttachmentCount = 0,
+      .pPreserveAttachments = NULL,
+   };
+
+   VkRenderPassCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+      .attachmentCount = 1,
+      .pAttachments = &att,
+      .subpassCount = 1,
+      .pSubpasses = &subpass,
+      .dependencyCount = 0,
+      .pDependencies = NULL,
+   };
+
+   VkResult result = v3dv_CreateRenderPass(v3dv_device_to_handle(device),
+                                           &info, &device->alloc, pass);
+   return result == VK_SUCCESS;
+}
+
+static nir_ssa_def *
+gen_rect_vertices(nir_builder *b)
+{
+   nir_intrinsic_instr *vertex_id =
+      nir_intrinsic_instr_create(b->shader,
+                                 nir_intrinsic_load_vertex_id);
+   nir_ssa_dest_init(&vertex_id->instr, &vertex_id->dest, 1, 32, "vertexid");
+   nir_builder_instr_insert(b, &vertex_id->instr);
+
+
+   /* vertex 0: -1.0, -1.0
+    * vertex 1: -1.0,  1.0
+    * vertex 2:  1.0, -1.0
+    * vertex 3:  1.0,  1.0
+    *
+    * so:
+    *
+    * channel 0 is vertex_id < 2 ? -1.0 :  1.0
+    * channel 1 is vertex id & 1 ?  1.0 : -1.0
+    */
+
+   nir_ssa_def *one = nir_imm_int(b, 1);
+   nir_ssa_def *c0cmp = nir_ilt(b, &vertex_id->dest.ssa, nir_imm_int(b, 2));
+   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, &vertex_id->dest.ssa, one), one);
+
+   nir_ssa_def *comp[4];
+   comp[0] = nir_bcsel(b, c0cmp,
+                       nir_imm_float(b, -1.0f),
+                       nir_imm_float(b, 1.0f));
+
+   comp[1] = nir_bcsel(b, c1cmp,
+                       nir_imm_float(b, 1.0f),
+                       nir_imm_float(b, -1.0f));
+   comp[2] = nir_imm_float(b, 0.0f);
+   comp[3] = nir_imm_float(b, 1.0f);
+   return nir_vec(b, comp, 4);
+}
+
+static nir_ssa_def *
+gen_tex_coords(nir_builder *b)
+{
+   nir_intrinsic_instr *tex_box =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
+   tex_box->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+   nir_intrinsic_set_base(tex_box, 0);
+   nir_intrinsic_set_range(tex_box, 16);
+   tex_box->num_components = 4;
+   nir_ssa_dest_init(&tex_box->instr, &tex_box->dest, 4, 32, "tex_box");
+   nir_builder_instr_insert(b, &tex_box->instr);
+
+   nir_intrinsic_instr *vertex_id =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_vertex_id);
+   nir_ssa_dest_init(&vertex_id->instr, &vertex_id->dest, 1, 32, "vertexid");
+   nir_builder_instr_insert(b, &vertex_id->instr);
+
+   /* vertex 0: src0_x, src0_y
+    * vertex 1: src0_x, src1_y
+    * vertex 2: src1_x, src0_y
+    * vertex 3: src1_x, src1_y
+    *
+    * So:
+    *
+    * channel 0 is vertex_id < 2 ? src0_x : src1_x
+    * channel 1 is vertex id & 1 ? src1_y : src0_y
+    */
+
+   nir_ssa_def *one = nir_imm_int(b, 1);
+   nir_ssa_def *c0cmp = nir_ilt(b, &vertex_id->dest.ssa, nir_imm_int(b, 2));
+   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, &vertex_id->dest.ssa, one), one);
+
+   nir_ssa_def *comp[4];
+   comp[0] = nir_bcsel(b, c0cmp,
+                       nir_channel(b, &tex_box->dest.ssa, 0),
+                       nir_channel(b, &tex_box->dest.ssa, 2));
+
+   comp[1] = nir_bcsel(b, c1cmp,
+                       nir_channel(b, &tex_box->dest.ssa, 3),
+                       nir_channel(b, &tex_box->dest.ssa, 1));
+   comp[2] = nir_imm_float(b, 0.0f);
+   comp[3] = nir_imm_float(b, 1.0f);
+   return nir_vec(b, comp, 4);
+}
+
+static nir_ssa_def *
+build_nir_tex_op(struct nir_builder *b,
+                 struct v3dv_device *device,
+                 nir_ssa_def *tex_pos,
+                 enum glsl_base_type tex_type)
+{
+   const enum glsl_sampler_dim dim = GLSL_SAMPLER_DIM_2D;
+   const struct glsl_type *sampler_type =
+      glsl_sampler_type(dim, false, false, tex_type);
+   nir_variable *sampler =
+      nir_variable_create(b->shader, nir_var_uniform, sampler_type, "s_tex");
+   sampler->data.descriptor_set = 0;
+   sampler->data.binding = 0;
+
+   nir_ssa_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
+   tex->sampler_dim = dim;
+   tex->op = nir_texop_tex;
+   tex->src[0].src_type = nir_tex_src_coord;
+   tex->src[0].src = nir_src_for_ssa(tex_pos);
+   tex->src[1].src_type = nir_tex_src_texture_deref;
+   tex->src[1].src = nir_src_for_ssa(tex_deref);
+   tex->src[2].src_type = nir_tex_src_sampler_deref;
+   tex->src[2].src = nir_src_for_ssa(tex_deref);
+   tex->dest_type =
+      nir_alu_type_get_base_type(nir_get_nir_type_for_glsl_base_type(tex_type));
+   tex->is_array = glsl_sampler_type_is_array(sampler_type);
+   tex->coord_components = tex_pos->num_components;
+
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");
+   nir_builder_instr_insert(b, &tex->instr);
+   return &tex->dest.ssa;
+}
+
+static nir_shader *
+get_blit_vs()
+{
+   nir_builder b;
+   const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
+   nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_VERTEX, options);
+   b.shader->info.name = ralloc_strdup(b.shader, "meta blit vs");
+
+   const struct glsl_type *vec4 = glsl_vec4_type();
+
+   nir_variable *vs_out_pos =
+      nir_variable_create(b.shader, nir_var_shader_out, vec4, "gl_Position");
+   vs_out_pos->data.location = VARYING_SLOT_POS;
+
+   nir_variable *vs_out_tex_coord =
+      nir_variable_create(b.shader, nir_var_shader_out, vec4, "out_tex_coord");
+   vs_out_tex_coord->data.location = VARYING_SLOT_VAR0;
+   vs_out_tex_coord->data.interpolation = INTERP_MODE_SMOOTH;
+
+   nir_ssa_def *pos = gen_rect_vertices(&b);
+   nir_store_var(&b, vs_out_pos, pos, 0xf);
+
+   nir_ssa_def *tex_coord = gen_tex_coords(&b);
+   nir_store_var(&b, vs_out_tex_coord, tex_coord, 0xf);
+
+   return b.shader;
+}
+
+static nir_shader *
+get_blit_fs(struct v3dv_device *device,
+            struct v3dv_render_pass *pass)
+{
+   nir_builder b;
+   const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
+   nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, options);
+   b.shader->info.name = ralloc_strdup(b.shader, "meta blit fs");
+
+   const struct glsl_type *vec4 = glsl_vec4_type();
+
+   nir_variable *fs_in_tex_coord =
+      nir_variable_create(b.shader, nir_var_shader_in, vec4, "in_tex_coord");
+   fs_in_tex_coord->data.location = VARYING_SLOT_VAR0;
+
+   assert(pass->attachment_count == 1);
+   VkFormat rt_format = pass->attachments[0].desc.format;
+   const struct glsl_type *fs_out_type =
+      vk_format_is_int(rt_format) ? glsl_uvec4_type() : glsl_vec4_type();
+
+   nir_variable *fs_out_color =
+      nir_variable_create(b.shader, nir_var_shader_out, fs_out_type, "out_color");
+   fs_out_color->data.location = FRAG_RESULT_DATA0;
+
+   nir_ssa_def *tex_coord = nir_load_var(&b, fs_in_tex_coord);
+   nir_ssa_def *tex_coord_xy = nir_channels(&b, tex_coord, 0x3);
+   nir_ssa_def *color = build_nir_tex_op(&b, device, tex_coord_xy,
+                                         glsl_get_base_type(fs_out_type));
+   nir_store_var(&b, fs_out_color, color, 0xf);
+
+   return b.shader;
+}
+
+static bool
+create_pipeline(struct v3dv_device *device,
+                struct v3dv_render_pass *pass,
+                struct nir_shader *vs_nir,
+                struct nir_shader *fs_nir,
+                const VkPipelineVertexInputStateCreateInfo *vi_state,
+                const VkPipelineDepthStencilStateCreateInfo *ds_state,
+                const VkPipelineColorBlendStateCreateInfo *cb_state,
+                const VkPipelineLayout layout,
+                VkPipeline *pipeline)
+{
+   struct v3dv_shader_module vs_m = { .nir = vs_nir };
+   struct v3dv_shader_module fs_m = { .nir = fs_nir };
+
+   VkPipelineShaderStageCreateInfo stages[2] = {
+      {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         .stage = VK_SHADER_STAGE_VERTEX_BIT,
+         .module = v3dv_shader_module_to_handle(&vs_m),
+         .pName = "main",
+      },
+      {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+         .module = v3dv_shader_module_to_handle(&fs_m),
+         .pName = "main",
+      },
+   };
+
+   VkGraphicsPipelineCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+
+      .stageCount = 2,
+      .pStages = stages,
+
+      .pVertexInputState = vi_state,
+
+      .pInputAssemblyState = &(VkPipelineInputAssemblyStateCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+         .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+         .primitiveRestartEnable = false,
+      },
+
+      .pViewportState = &(VkPipelineViewportStateCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+         .viewportCount = 1,
+         .scissorCount = 1,
+      },
+
+      .pRasterizationState = &(VkPipelineRasterizationStateCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+         .rasterizerDiscardEnable = false,
+         .polygonMode = VK_POLYGON_MODE_FILL,
+         .cullMode = VK_CULL_MODE_NONE,
+         .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+         .depthBiasEnable = false,
+      },
+
+      .pMultisampleState = &(VkPipelineMultisampleStateCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+         .sampleShadingEnable = false,
+         .pSampleMask = NULL,
+         .alphaToCoverageEnable = false,
+         .alphaToOneEnable = false,
+      },
+
+      .pDepthStencilState = ds_state,
+
+      .pColorBlendState = cb_state,
+
+      /* The meta clear pipeline declares all state as dynamic.
+       * As a consequence, vkCmdBindPipeline writes no dynamic state
+       * to the cmd buffer. Therefore, at the end of the meta clear,
+       * we need only restore dynamic state that was vkCmdSet.
+       *
+       * FIXME: Update this when we support more dynamic states (adding
+       * them now will assert because they are not supported).
+       */
+      .pDynamicState = &(VkPipelineDynamicStateCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+         .dynamicStateCount = 6,
+         .pDynamicStates = (VkDynamicState[]) {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
+            VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+            VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+            VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+            VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+#if 0
+            VK_DYNAMIC_STATE_LINE_WIDTH,
+            VK_DYNAMIC_STATE_DEPTH_BIAS,
+            VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+#endif
+         },
+      },
+
+      .flags = 0,
+      .layout = layout,
+      .renderPass = v3dv_render_pass_to_handle(pass),
+      .subpass = 0,
+   };
+
+   VkResult result =
+      v3dv_CreateGraphicsPipelines(v3dv_device_to_handle(device),
+                                   VK_NULL_HANDLE,
+                                   1, &info,
+                                   &device->alloc,
+                                   pipeline);
+
+   ralloc_free(vs_nir);
+   ralloc_free(fs_nir);
+
+   return result == VK_SUCCESS;
+}
+
+static bool
+create_blit_pipeline(struct v3dv_device *device,
+                     VkRenderPass _pass,
+                     VkPipelineLayout pipeline_layout,
+                     VkPipeline *pipeline)
+{
+   struct v3dv_render_pass *pass = v3dv_render_pass_from_handle(_pass);
+
+   nir_shader *vs_nir = get_blit_vs();
+   nir_shader *fs_nir = get_blit_fs(device, pass);
+
+   const VkPipelineVertexInputStateCreateInfo vi_state = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+      .vertexBindingDescriptionCount = 0,
+      .vertexAttributeDescriptionCount = 0,
+   };
+
+   const VkPipelineDepthStencilStateCreateInfo ds_state = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+      .depthTestEnable = false,
+      .depthWriteEnable = false,
+      .depthBoundsTestEnable = false,
+      .stencilTestEnable = false,
+   };
+
+   VkPipelineColorBlendAttachmentState blend_att_state[1] = { 0 };
+   blend_att_state[0] = (VkPipelineColorBlendAttachmentState) {
+      .blendEnable = false,
+      .colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                        VK_COLOR_COMPONENT_G_BIT |
+                        VK_COLOR_COMPONENT_B_BIT |
+                        VK_COLOR_COMPONENT_A_BIT,
+   };
+
+   const VkPipelineColorBlendStateCreateInfo cb_state = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      .logicOpEnable = false,
+      .attachmentCount = 1,
+      .pAttachments = blend_att_state
+   };
+
+   return create_pipeline(device,
+                          pass,
+                          vs_nir, fs_nir,
+                          &vi_state,
+                          &ds_state,
+                          &cb_state,
+                          pipeline_layout,
+                          pipeline);
+}
+
+static bool
+get_blit_pipeline(struct v3dv_device *device,
+                  VkFormat dst_format,
+                  struct v3dv_meta_blit_pipeline **pipeline)
+{
+   bool ok = true;
+
+   mtx_lock(&device->meta.mtx);
+   if (!device->meta.blit.playout) {
+      ok = create_blit_pipeline_layout(device,
+                                       &device->meta.blit.dslayout,
+                                       &device->meta.blit.playout);
+   }
+   mtx_unlock(&device->meta.mtx);
+   if (!ok)
+      return false;
+
+   const uint64_t key = get_blit_pipeline_cache_key(dst_format);
+   mtx_lock(&device->meta.mtx);
+   struct hash_entry *entry =
+      _mesa_hash_table_search(device->meta.blit.cache, &key);
+   if (entry) {
+      mtx_unlock(&device->meta.mtx);
+      *pipeline = entry->data;
+      return true;
+   }
+
+   *pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(**pipeline), 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (*pipeline == NULL)
+      goto fail;
+
+   ok = create_blit_render_pass(device, dst_format, &(*pipeline)->pass);
+   if (!ok)
+      goto fail;
+
+   ok = create_blit_pipeline(device,
+                             (*pipeline)->pass,
+                             device->meta.blit.playout,
+                             &(*pipeline)->pipeline);
+   if (!ok)
+      goto fail;
+
+   _mesa_hash_table_insert(device->meta.blit.cache, &key, *pipeline);
+
+   mtx_unlock(&device->meta.mtx);
+   return true;
+
+fail:
+   mtx_unlock(&device->meta.mtx);
+
+   VkDevice _device = v3dv_device_to_handle(device);
+   if (*pipeline) {
+      if ((*pipeline)->pass)
+         v3dv_DestroyRenderPass(_device, (*pipeline)->pass, &device->alloc);
+      if ((*pipeline)->pipeline)
+         v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->alloc);
+      vk_free(&device->alloc, *pipeline);
+      *pipeline = NULL;
+   }
+
+   return false;
+}
+
+static void
+compute_blit_box(const VkOffset3D *offsets,
+                 struct v3dv_image *image,
+                 uint32_t *x, uint32_t *y, uint32_t *w, uint32_t *h,
+                 bool *mirror_x, bool *mirror_y)
+{
+   if (offsets[1].x >= offsets[0].x) {
+      *mirror_x = false;
+      *x = MIN2(offsets[0].x, image->extent.width - 1);
+      *w = MIN2(offsets[1].x - offsets[0].x,
+                image->extent.width - offsets[0].x);
+   } else {
+      *mirror_x = true;
+      *x = MIN2(offsets[1].x, image->extent.width - 1);
+      *w = MIN2(offsets[0].x - offsets[1].x,
+                image->extent.width - offsets[1].x);
+   }
+   if (offsets[1].y >= offsets[0].y) {
+      *mirror_y = false;
+      *y = MIN2(offsets[0].y, image->extent.height - 1);
+      *h = MIN2(offsets[1].y - offsets[0].y,
+                image->extent.height - offsets[0].y);
+   } else {
+      *mirror_y = true;
+      *y = MIN2(offsets[1].y, image->extent.height - 1);
+      *h = MIN2(offsets[0].y - offsets[1].y,
+                image->extent.height - offsets[1].y);
+   }
+}
+
+static bool
+blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
+            struct v3dv_image *dst,
+            struct v3dv_image *src,
+            const VkImageBlit *region,
+            VkFilter filter)
+{
+   /* FIXME: we only support 2D color blits for now */
+   if (region->dstSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
+      return false;
+   if (dst->type != VK_IMAGE_TYPE_2D || src->type != VK_IMAGE_TYPE_2D)
+      return false;
+
+   uint32_t dst_x, dst_y, dst_w, dst_h;
+   bool dst_mirror_x, dst_mirror_y;
+   compute_blit_box(region->dstOffsets, dst,
+                    &dst_x, &dst_y, &dst_w, &dst_h,
+                    &dst_mirror_x, &dst_mirror_y);
+
+   uint32_t src_x, src_y, src_w, src_h;
+   bool src_mirror_x, src_mirror_y;
+   compute_blit_box(region->srcOffsets, src,
+                    &src_x, &src_y, &src_w, &src_h,
+                    &src_mirror_x, &src_mirror_y);
+
+   /* Translate source blit coordinates to normalized texture coordinates
+    * and handle mirroring.
+    */
+   const float coords[4] =  {
+      (float)src_x / (float)src->extent.width,
+      (float)src_y / (float)src->extent.height,
+      (float)(src_x + src_w) / (float)src->extent.width,
+      (float)(src_y + src_h) / (float)src->extent.height
+   };
+
+   const bool mirror_x = dst_mirror_x != src_mirror_x;
+   const bool mirror_y = dst_mirror_y != src_mirror_y;
+   const float tex_coords[4] = {
+      !mirror_x ? coords[0] : coords[2],
+      !mirror_y ? coords[1] : coords[3],
+      !mirror_x ? coords[2] : coords[0],
+      !mirror_y ? coords[3] : coords[1],
+   };
+
+   /* Get the blit pipeline */
+   struct v3dv_meta_blit_pipeline *pipeline = NULL;
+   bool ok =
+      get_blit_pipeline(cmd_buffer->device, dst->vk_format, &pipeline);
+   if (!ok)
+      return false;
+   assert(pipeline && pipeline->pipeline && pipeline->pass);
+
+   struct v3dv_device *device = cmd_buffer->device;
+   assert(device->meta.blit.dspool);
+   assert(device->meta.blit.dslayout);
+
+   /* Push command buffer state before starting meta operation */
+   v3dv_cmd_buffer_meta_state_push(cmd_buffer, true);
+
+   /* Setup framebuffer */
+   VkDevice _device = v3dv_device_to_handle(device);
+   VkCommandBuffer _cmd_buffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
+
+   VkResult result;
+   uint32_t dirty_dynamic_state = 0;
+   for (uint32_t i = 0; i < region->dstSubresource.layerCount; i++) {
+      VkImageViewCreateInfo dst_image_view_info = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+         .image = v3dv_image_to_handle(dst),
+         .viewType = VK_IMAGE_VIEW_TYPE_2D, /* FIXME */
+         .format = dst->vk_format,
+         .subresourceRange = {
+            .aspectMask = dst->aspects,
+            .baseMipLevel = region->dstSubresource.mipLevel,
+            .levelCount = 1,
+            .baseArrayLayer = region->dstSubresource.baseArrayLayer + i,
+            .layerCount = 1
+         },
+      };
+      VkImageView dst_image_view;
+      result = v3dv_CreateImageView(_device, &dst_image_view_info,
+                                    &device->alloc, &dst_image_view);
+      if (result != VK_SUCCESS) {
+         ok = false;
+         goto fail_dst_image_view;
+      }
+
+      VkFramebufferCreateInfo fb_info = {
+         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+         .renderPass = pipeline->pass,
+         .attachmentCount = 1,
+         .pAttachments = &dst_image_view,
+         .width = dst->extent.width,
+         .height = dst->extent.height,
+         .layers = 1,
+      };
+
+      VkFramebuffer fb;
+      result = v3dv_CreateFramebuffer(_device, &fb_info,
+                                      &cmd_buffer->device->alloc, &fb);
+      if (result != VK_SUCCESS) {
+         ok = false;
+         goto fail_framebuffer;
+      }
+
+      /* Setup descriptor set for blit source texture */
+      VkDescriptorSet set;
+      VkDescriptorSetAllocateInfo set_alloc_info = {
+         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+         .descriptorPool = device->meta.blit.dspool,
+         .descriptorSetCount = 1,
+         .pSetLayouts = &device->meta.blit.dslayout,
+      };
+      result = v3dv_AllocateDescriptorSets(_device, &set_alloc_info, &set);
+      if (result != VK_SUCCESS) {
+         ok = false;
+         goto fail_descriptor_set;
+      }
+
+      VkSamplerCreateInfo sampler_info = {
+         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+         .magFilter = filter,
+         .minFilter = filter,
+         .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+         .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+         .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+         .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+      };
+      VkSampler sampler;
+      result = v3dv_CreateSampler(_device, &sampler_info, &device->alloc,
+                                  &sampler);
+      if (result != VK_SUCCESS) {
+         ok = false;
+         goto fail_sampler;
+      }
+
+      VkImageViewCreateInfo src_image_view_info = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+         .image = v3dv_image_to_handle(src),
+         .viewType = VK_IMAGE_VIEW_TYPE_2D, /* FIXME */
+         .format = src->vk_format,
+         .subresourceRange = {
+            .aspectMask = src->aspects,
+            .baseMipLevel = region->srcSubresource.mipLevel,
+            .levelCount = 1,
+            .baseArrayLayer = region->srcSubresource.baseArrayLayer + i,
+            .layerCount = 1
+         },
+      };
+      VkImageView src_image_view;
+      result = v3dv_CreateImageView(_device, &src_image_view_info,
+                                    &device->alloc, &src_image_view);
+      if (result != VK_SUCCESS) {
+         ok = false;
+         goto fail_src_image_view;
+      }
+
+      VkDescriptorImageInfo image_info = {
+         .sampler = sampler,
+         .imageView = src_image_view,
+         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      };
+      VkWriteDescriptorSet write = {
+         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+         .dstSet = set,
+         .dstBinding = 0,
+         .dstArrayElement = 0,
+         .descriptorCount = 1,
+         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+         .pImageInfo = &image_info,
+      };
+      v3dv_UpdateDescriptorSets(_device, 1, &write, 0, NULL);
+
+      /* Record blit */
+      VkRenderPassBeginInfo rp_info = {
+         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+         .renderPass = pipeline->pass,
+         .framebuffer = fb,
+         .renderArea = {
+            .offset = { dst_x, dst_y },
+            .extent = { dst_w, dst_h }
+         },
+         .clearValueCount = 0,
+      };
+
+      v3dv_CmdBeginRenderPass(_cmd_buffer, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
+      struct v3dv_job *job = cmd_buffer->state.job;
+      if (!job) {
+         ok = false;
+         goto fail_job;
+      }
+
+      v3dv_CmdPushConstants(_cmd_buffer,
+                            device->meta.blit.playout,
+                            VK_SHADER_STAGE_VERTEX_BIT, 0, 16,
+                            &tex_coords);
+
+      v3dv_CmdBindPipeline(_cmd_buffer,
+                           VK_PIPELINE_BIND_POINT_GRAPHICS,
+                           pipeline->pipeline);
+
+      v3dv_CmdBindDescriptorSets(_cmd_buffer,
+                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                 device->meta.blit.playout,
+                                 0, 1, &set,
+                                 0, NULL);
+
+      const VkViewport viewport = {
+         .x = dst_x,
+         .y = dst_y,
+         .width = dst_w,
+         .height = dst_h,
+         .minDepth = 0.0f,
+         .maxDepth = 1.0f
+      };
+      v3dv_CmdSetViewport(_cmd_buffer, 0, 1, &viewport);
+      const VkRect2D scissor = {
+         .offset = { dst_x, dst_y },
+         .extent = { dst_w, dst_h }
+      };
+      v3dv_CmdSetScissor(_cmd_buffer, 0, 1, &scissor);
+
+      v3dv_CmdDraw(_cmd_buffer, 4, 1, 0, 0);
+
+      v3dv_CmdEndRenderPass(_cmd_buffer);
+      dirty_dynamic_state = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
+
+   fail_job:
+      v3dv_DestroySampler(_device, sampler, &cmd_buffer->device->alloc);
+   fail_src_image_view:
+      v3dv_DestroyImageView(_device, src_image_view, &cmd_buffer->device->alloc);
+   fail_sampler:
+      v3dv_FreeDescriptorSets(_device, device->meta.blit.dspool, 1, &set);
+   fail_descriptor_set:
+      v3dv_DestroyFramebuffer(_device, fb, &cmd_buffer->device->alloc);
+   fail_framebuffer:
+      v3dv_DestroyImageView(_device, dst_image_view, &cmd_buffer->device->alloc);
+   }
+
+fail_dst_image_view:
+   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state);
+
+   return ok;
+}
+
 void
 v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
                   VkImage srcImage,
@@ -1891,12 +2682,19 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_image, src, srcImage);
    V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
 
+    /* This command can only happen outside a render pass */
+   assert(cmd_buffer->state.pass == NULL);
+   assert(cmd_buffer->state.job == NULL);
+
    /* From the Vulkan 1.0 spec, vkCmdBlitImage valid usage */
-   assert (dst->samples == VK_SAMPLE_COUNT_1_BIT &&
-           src->samples == VK_SAMPLE_COUNT_1_BIT);
+   assert(dst->samples == VK_SAMPLE_COUNT_1_BIT &&
+          src->samples == VK_SAMPLE_COUNT_1_BIT);
 
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (!blit_tfu(cmd_buffer, dst, src, &pRegions[i], filter))
-         assert(!"Fallback path for vkCmdBlitImage not implemented.");
+      if (blit_tfu(cmd_buffer, dst, src, &pRegions[i], filter))
+         continue;
+      if (blit_shader(cmd_buffer, dst, src, &pRegions[i], filter))
+         continue;
+      assert(!"Unsupported blit operation");
    }
 }

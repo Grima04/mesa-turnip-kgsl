@@ -1053,26 +1053,60 @@ init_device_dispatch(struct v3dv_device *device)
 }
 
 static uint32_t
-meta_color_clear_cache_hash(const void *key)
+u64_hash(const void *key)
 {
    return _mesa_hash_data(key, sizeof(uint64_t));
 }
 
 static bool
-meta_color_clear_cache_compare(const void *key1, const void *key2)
+u64_compare(const void *key1, const void *key2)
 {
    return memcmp(key1, key2, sizeof(uint64_t)) == 0;
+}
+
+static void
+init_meta_color_clear_resources(struct v3dv_device *device)
+{
+   device->meta.color_clear.cache =
+      _mesa_hash_table_create(NULL, u64_hash, u64_compare);
+}
+
+static void
+create_meta_blit_descriptor_pool(struct v3dv_device *device)
+{
+   VkDescriptorPoolSize pool_size = {
+      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = 256,
+   };
+
+   VkDescriptorPoolCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .maxSets = 256,
+      .poolSizeCount = 1,
+      .pPoolSizes = &pool_size,
+      .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+   };
+
+   v3dv_CreateDescriptorPool(v3dv_device_to_handle(device),
+                             &info, &device->alloc,
+                             &device->meta.blit.dspool);
+}
+
+static void
+init_meta_blit_resources(struct v3dv_device *device)
+{
+   device->meta.blit.cache =
+      _mesa_hash_table_create(NULL, u64_hash, u64_compare);
+
+   create_meta_blit_descriptor_pool(device);
 }
 
 static void
 init_device_meta(struct v3dv_device *device)
 {
    mtx_init(&device->meta.mtx, mtx_plain);
-
-   device->meta.color_clear.cache =
-      _mesa_hash_table_create(NULL,
-                              meta_color_clear_cache_hash,
-                              meta_color_clear_cache_compare);
+   init_meta_color_clear_resources(device);
+   init_meta_blit_resources(device);
 }
 
 static void
@@ -1092,6 +1126,29 @@ destroy_device_meta(struct v3dv_device *device)
 
    if (device->meta.color_clear.playout) {
       v3dv_DestroyPipelineLayout(_device, device->meta.color_clear.playout,
+                                 &device->alloc);
+   }
+
+   hash_table_foreach(device->meta.blit.cache, entry) {
+      struct v3dv_meta_blit_pipeline *item = entry->data;
+      v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
+      v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
+      vk_free(&device->alloc, item);
+   }
+   _mesa_hash_table_destroy(device->meta.blit.cache, NULL);
+
+   if (device->meta.blit.playout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.blit.playout,
+                                 &device->alloc);
+   }
+
+   if (device->meta.blit.dslayout) {
+      v3dv_DestroyDescriptorSetLayout(_device, device->meta.blit.dslayout,
+                                      &device->alloc);
+   }
+
+   if (device->meta.blit.dspool) {
+      v3dv_DestroyDescriptorPool(_device, device->meta.blit.dspool,
                                  &device->alloc);
    }
 }
