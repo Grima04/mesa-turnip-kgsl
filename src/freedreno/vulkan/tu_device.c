@@ -928,6 +928,22 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->transformFeedbackDraw = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
+         VkPhysicalDeviceSampleLocationsPropertiesEXT *properties =
+            (VkPhysicalDeviceSampleLocationsPropertiesEXT *)ext;
+         properties->sampleLocationSampleCounts = 0;
+         if (pdevice->supported_extensions.EXT_sample_locations) {
+            properties->sampleLocationSampleCounts =
+               VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
+         }
+         properties->maxSampleLocationGridSize = (VkExtent2D) { 1 , 1 };
+         properties->sampleLocationCoordinateRange[0] = 0.0f;
+         properties->sampleLocationCoordinateRange[1] = 0.9375f;
+         properties->sampleLocationSubPixelBits = 4;
+         properties->variableSampleLocations = true;
+         break;
+      }
+
       default:
          break;
       }
@@ -2318,4 +2334,17 @@ tu_GetDeviceGroupPeerMemoryFeatures(
                           VK_PEER_MEMORY_FEATURE_COPY_DST_BIT |
                           VK_PEER_MEMORY_FEATURE_GENERIC_SRC_BIT |
                           VK_PEER_MEMORY_FEATURE_GENERIC_DST_BIT;
+}
+
+void tu_GetPhysicalDeviceMultisamplePropertiesEXT(
+   VkPhysicalDevice                            physicalDevice,
+   VkSampleCountFlagBits                       samples,
+   VkMultisamplePropertiesEXT*                 pMultisampleProperties)
+{
+   TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
+
+   if (samples <= VK_SAMPLE_COUNT_4_BIT && pdevice->supported_extensions.EXT_sample_locations)
+      pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){ 1, 1 };
+   else
+      pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){ 0, 0 };
 }

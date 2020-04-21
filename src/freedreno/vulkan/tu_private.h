@@ -722,7 +722,8 @@ enum tu_dynamic_state_bits
    TU_DYNAMIC_STENCIL_WRITE_MASK = 1 << 7,
    TU_DYNAMIC_STENCIL_REFERENCE = 1 << 8,
    TU_DYNAMIC_DISCARD_RECTANGLE = 1 << 9,
-   TU_DYNAMIC_ALL = (1 << 10) - 1,
+   TU_DYNAMIC_SAMPLE_LOCATIONS = 1 << 10,
+   TU_DYNAMIC_ALL = (1 << 11) - 1,
 };
 
 struct tu_vertex_binding
@@ -1264,6 +1265,9 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport);
 
 void
 tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor);
+
+void
+tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp_loc);
 
 void
 tu6_emit_gras_su_cntl(struct tu_cs *cs,

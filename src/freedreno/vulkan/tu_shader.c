@@ -26,6 +26,7 @@
 #include "spirv/nir_spirv.h"
 #include "util/mesa-sha1.h"
 #include "nir/nir_xfb_info.h"
+#include "vk_util.h"
 
 #include "ir3/ir3_nir.h"
 
@@ -605,9 +606,16 @@ tu_shader_compile_options_init(
          }
       }
 
+      const VkPipelineMultisampleStateCreateInfo *msaa_info = pipeline_info->pMultisampleState;
+      const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
+         vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
       if (!pipeline_info->pRasterizationState->rasterizerDiscardEnable &&
-          pipeline_info->pMultisampleState->rasterizationSamples > 1)
+          (msaa_info->rasterizationSamples > 1 ||
+          /* also set msaa key when sample location is not the default
+           * since this affects varying interpolation */
+           (sample_locations && sample_locations->sampleLocationsEnable))) {
          msaa = true;
+      }
    }
 
    *options = (struct tu_shader_compile_options) {

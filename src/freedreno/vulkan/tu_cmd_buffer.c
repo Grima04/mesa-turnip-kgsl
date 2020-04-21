@@ -692,15 +692,6 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
 
       tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
       tu_cs_emit(cs, 0x0);
-
-      tu_cs_emit_regs(cs,
-                      A6XX_RB_UNKNOWN_8804(0));
-
-      tu_cs_emit_regs(cs,
-                      A6XX_SP_TP_UNKNOWN_B304(0));
-
-      tu_cs_emit_regs(cs,
-                      A6XX_GRAS_UNKNOWN_80A4(0));
    } else {
       tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
       tu_cs_emit(cs, 0x1);
@@ -852,14 +843,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9981, 0x3);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9E72, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9108, 0x3);
-   tu_cs_emit_write_reg(cs, REG_A6XX_SP_TP_UNKNOWN_B304, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_TP_UNKNOWN_B309, 0x000000a2);
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8804, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_80A4, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_80A5, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_80A6, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8805, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8806, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8878, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8879, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_CONTROL_5_REG, 0xfc);
@@ -2150,6 +2134,15 @@ tu_CmdSetStencilReference(VkCommandBuffer commandBuffer,
 
    /* the front/back references must be updated together */
    cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
+}
+
+void
+tu_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
+                            const VkSampleLocationsInfoEXT* pSampleLocationsInfo)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   tu6_emit_sample_locations(&cmd->draw_cs, pSampleLocationsInfo);
 }
 
 void

@@ -1933,12 +1933,25 @@ to upconvert to 32b float internally?
 		<bitfield name="MSAA_DISABLE" pos="2" type="boolean"/>
 	</reg32>
 
-	<!-- always 0x0 -->
-	<reg32 offset="0x80a4" name="GRAS_UNKNOWN_80A4"/>
-	<!-- always 0x0 -->
-	<reg32 offset="0x80a5" name="GRAS_UNKNOWN_80A5"/>
-	<!-- always 0x0 -->
-	<reg32 offset="0x80a6" name="GRAS_UNKNOWN_80A6"/>
+	<bitset name="a6xx_sample_config" inline="yes">
+		<bitfield name="LOCATION_ENABLE" pos="1" type="boolean"/>
+	</bitset>
+
+	<bitset name="a6xx_sample_locations" inline="yes">
+		<bitfield name="SAMPLE_0_X" low="0" high="3" radix="4" type="fixed"/>
+		<bitfield name="SAMPLE_0_Y" low="4" high="7" radix="4" type="fixed"/>
+		<bitfield name="SAMPLE_1_X" low="8" high="11" radix="4" type="fixed"/>
+		<bitfield name="SAMPLE_1_Y" low="12" high="15" radix="4" type="fixed"/>
+		<bitfield name="SAMPLE_2_X" low="16" high="19" radix="4" type="fixed"/>
+		<bitfield name="SAMPLE_2_Y" low="20" high="23" radix="4" type="fixed"/>
+		<bitfield name="SAMPLE_3_X" low="24" high="27" radix="4" type="fixed"/>
+		<bitfield name="SAMPLE_3_Y" low="28" high="31" radix="4" type="fixed"/>
+	</bitset>
+
+	<reg32 offset="0x80a4" name="GRAS_SAMPLE_CONFIG" type="a6xx_sample_config"/>
+	<reg32 offset="0x80a5" name="GRAS_SAMPLE_LOCATION_0" type="a6xx_sample_locations"/>
+	<reg32 offset="0x80a6" name="GRAS_SAMPLE_LOCATION_1" type="a6xx_sample_locations"/>
+
 	<!-- always 0x0 -->
 	<reg32 offset="0x80af" name="GRAS_UNKNOWN_80AF"/>
 
@@ -2058,12 +2071,9 @@ to upconvert to 32b float internally?
 		<bitfield name="MSAA_DISABLE" pos="2" type="boolean"/>
 	</reg32>
 
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x8804" name="RB_UNKNOWN_8804"/>
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x8805" name="RB_UNKNOWN_8805"/>
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x8806" name="RB_UNKNOWN_8806"/>
+	<reg32 offset="0x8804" name="RB_SAMPLE_CONFIG" type="a6xx_sample_config"/>
+	<reg32 offset="0x8805" name="RB_SAMPLE_LOCATION_0" type="a6xx_sample_locations"/>
+	<reg32 offset="0x8806" name="RB_SAMPLE_LOCATION_1" type="a6xx_sample_locations"/>
 
 	<!--
 	note: maybe not actually called RB_RENDER_CONTROLn (since RB_RENDER_CNTL
@@ -3132,8 +3142,9 @@ to upconvert to 32b float internally?
 	<reg64 offset="0xb302" name="SP_TP_BORDER_COLOR_BASE_ADDR" type="address"/>
 	<reg32 offset="0xb302" name="SP_TP_BORDER_COLOR_BASE_ADDR_LO"/>
 	<reg32 offset="0xb303" name="SP_TP_BORDER_COLOR_BASE_ADDR_HI"/>
-	<!-- always 0x0 ? -->
-	<reg32 offset="0xb304" name="SP_TP_UNKNOWN_B304"/>
+	<reg32 offset="0xb304" name="SP_TP_SAMPLE_CONFIG" type="a6xx_sample_config"/>
+	<reg32 offset="0xb305" name="SP_TP_SAMPLE_LOCATION_0" type="a6xx_sample_locations"/>
+	<reg32 offset="0xb306" name="SP_TP_SAMPLE_LOCATION_1" type="a6xx_sample_locations"/>
 
 	<reg32 offset="0xb309" name="SP_TP_UNKNOWN_B309"/>
 

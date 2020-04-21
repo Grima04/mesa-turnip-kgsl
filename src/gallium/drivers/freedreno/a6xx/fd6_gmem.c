@@ -889,15 +889,6 @@ fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 
 		OUT_PKT7(ring, CP_SET_MODE, 1);
 		OUT_RING(ring, 0x0);
-
-		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8804, 1);
-		OUT_RING(ring, 0x0);
-
-		OUT_PKT4(ring, REG_A6XX_SP_TP_UNKNOWN_B304, 1);
-		OUT_RING(ring, 0x0);
-
-		OUT_PKT4(ring, REG_A6XX_GRAS_UNKNOWN_80A4, 1);
-		OUT_RING(ring, 0x0);
 	} else {
 		set_window_offset(ring, x1, y1);
 

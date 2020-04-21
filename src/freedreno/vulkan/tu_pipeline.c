@@ -325,6 +325,8 @@ tu_dynamic_state_bit(VkDynamicState state)
       return TU_DYNAMIC_STENCIL_WRITE_MASK;
    case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
       return TU_DYNAMIC_STENCIL_REFERENCE;
+   case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
+      return TU_DYNAMIC_SAMPLE_LOCATIONS;
    default:
       unreachable("invalid dynamic state");
       return 0;
@@ -1733,6 +1735,47 @@ tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
                      A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(max.y - 1));
 }
 
+void
+tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp_loc)
+{
+   if (!samp_loc) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CONFIG, 1);
+      tu_cs_emit(cs, 0);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_CONFIG, 1);
+      tu_cs_emit(cs, 0);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_SAMPLE_CONFIG, 1);
+      tu_cs_emit(cs, 0);
+      return;
+   }
+
+   assert(samp_loc->sampleLocationsPerPixel == samp_loc->sampleLocationsCount);
+   assert(samp_loc->sampleLocationGridSize.width == 1);
+   assert(samp_loc->sampleLocationGridSize.height == 1);
+
+   uint32_t sample_config =
+      A6XX_RB_SAMPLE_CONFIG_LOCATION_ENABLE;
+   uint32_t sample_locations = 0;
+   for (uint32_t i = 0; i < samp_loc->sampleLocationsCount; i++) {
+      sample_locations |=
+         (A6XX_RB_SAMPLE_LOCATION_0_SAMPLE_0_X(samp_loc->pSampleLocations[i].x) |
+          A6XX_RB_SAMPLE_LOCATION_0_SAMPLE_0_Y(samp_loc->pSampleLocations[i].y)) << i*8;
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CONFIG, 2);
+   tu_cs_emit(cs, sample_config);
+   tu_cs_emit(cs, sample_locations);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_CONFIG, 2);
+   tu_cs_emit(cs, sample_config);
+   tu_cs_emit(cs, sample_locations);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_SAMPLE_CONFIG, 2);
+   tu_cs_emit(cs, sample_config);
+   tu_cs_emit(cs, sample_locations);
+}
+
 static void
 tu6_emit_gras_unknowns(struct tu_cs *cs)
 {
@@ -2414,6 +2457,17 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
 
    if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_BLEND_CONSTANTS))
       tu6_emit_blend_constants(&blend_cs, blend_info->blendConstants);
+
+   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_SAMPLE_LOCATIONS)) {
+      const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
+         vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
+      const VkSampleLocationsInfoEXT *samp_loc = NULL;
+
+      if (sample_locations && sample_locations->sampleLocationsEnable)
+         samp_loc = &sample_locations->sampleLocationsInfo;
+
+      tu6_emit_sample_locations(&blend_cs, samp_loc);
+   }
 
    tu6_emit_blend_control(&blend_cs, blend_enable_mask, msaa_info);
 
