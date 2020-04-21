@@ -132,8 +132,6 @@ ir3_nir_try_propagate_bit_shift(nir_builder *b, nir_ssa_def *offset, int32_t shi
 	nir_ssa_def *shift_ssa;
 	nir_ssa_def *new_offset = NULL;
 
-	b->cursor = nir_after_instr(&alu->instr);
-
 	/* the first src could be something like ssa_18.x, but we only want
 	 * the single component.  Otherwise the ishl/ishr/ushr could turn
 	 * into a vec4 operation:
@@ -183,6 +181,8 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 	nir_intrinsic_instr *new_intrinsic;
 	nir_src *target_src;
 
+	b->cursor = nir_before_instr(&intrinsic->instr);
+
 	/* 'offset_src_idx' holds the index of the source that represent the offset. */
 	new_intrinsic =
 		nir_intrinsic_instr_create(b->shader, ir3_ssbo_opcode);
@@ -221,8 +221,6 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 		new_intrinsic->const_index[i] = intrinsic->const_index[i];
 
 	new_intrinsic->num_components = intrinsic->num_components;
-
-	b->cursor = nir_before_instr(&intrinsic->instr);
 
 	/* If we managed to propagate the division by 4, just use the new offset
 	 * register and don't emit the SHR.
