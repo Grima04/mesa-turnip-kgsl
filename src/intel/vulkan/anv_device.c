@@ -2746,6 +2746,9 @@ VkResult anv_CreateDevice(
    if (!device)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   vk_device_init(&device->vk, pCreateInfo,
+                  &physical_device->instance->alloc, pAllocator);
+
    if (INTEL_DEBUG & DEBUG_BATCH) {
       const unsigned decode_flags =
          GEN_BATCH_DECODE_FULL |
@@ -2759,15 +2762,9 @@ VkResult anv_CreateDevice(
                                 decode_get_bo, NULL, device);
    }
 
-   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->physical = physical_device;
    device->no_hw = physical_device->no_hw;
    device->_lost = false;
-
-   if (pAllocator)
-      device->alloc = *pAllocator;
-   else
-      device->alloc = physical_device->instance->alloc;
 
    /* XXX(chadv): Can we dup() physicalDevice->fd here? */
    device->fd = open(physical_device->path, O_RDWR | O_CLOEXEC);
@@ -3010,7 +3007,7 @@ VkResult anv_CreateDevice(
  fail_fd:
    close(device->fd);
  fail_device:
-   vk_free(&device->alloc, device);
+   vk_free(&device->vk.alloc, device);
 
    return result;
 }
@@ -3076,7 +3073,8 @@ void anv_DestroyDevice(
 
    close(device->fd);
 
-   vk_free(&device->alloc, device);
+   vk_device_finish(&device->vk);
+   vk_free(&device->vk.alloc, device);
 }
 
 VkResult anv_EnumerateInstanceLayerProperties(
@@ -3356,7 +3354,7 @@ VkResult anv_AllocateMemory(
    if (mem_heap_used + aligned_alloc_size > mem_heap->size)
       return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   mem = vk_alloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
+   mem = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (mem == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -3585,7 +3583,7 @@ VkResult anv_AllocateMemory(
    return VK_SUCCESS;
 
  fail:
-   vk_free2(&device->alloc, pAllocator, mem);
+   vk_free2(&device->vk.alloc, pAllocator, mem);
 
    return result;
 }
@@ -3685,7 +3683,7 @@ void anv_FreeMemory(
       AHardwareBuffer_release(mem->ahw);
 #endif
 
-   vk_free2(&device->alloc, pAllocator, mem);
+   vk_free2(&device->vk.alloc, pAllocator, mem);
 }
 
 VkResult anv_MapMemory(
@@ -4193,7 +4191,7 @@ VkResult anv_CreateBuffer(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
-   buffer = vk_alloc2(&device->alloc, pAllocator, sizeof(*buffer), 8,
+   buffer = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*buffer), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (buffer == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -4218,7 +4216,7 @@ void anv_DestroyBuffer(
    if (!buffer)
       return;
 
-   vk_free2(&device->alloc, pAllocator, buffer);
+   vk_free2(&device->vk.alloc, pAllocator, buffer);
 }
 
 VkDeviceAddress anv_GetBufferDeviceAddress(
@@ -4283,7 +4281,7 @@ void anv_DestroySampler(
                           sampler->bindless_state);
    }
 
-   vk_free2(&device->alloc, pAllocator, sampler);
+   vk_free2(&device->vk.alloc, pAllocator, sampler);
 }
 
 VkResult anv_CreateFramebuffer(
@@ -4306,7 +4304,7 @@ VkResult anv_CreateFramebuffer(
     */
    if (!(pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR)) {
       size += sizeof(struct anv_image_view *) * pCreateInfo->attachmentCount;
-      framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
+      framebuffer = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (framebuffer == NULL)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -4317,7 +4315,7 @@ VkResult anv_CreateFramebuffer(
       }
       framebuffer->attachment_count = pCreateInfo->attachmentCount;
    } else {
-      framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
+      framebuffer = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (framebuffer == NULL)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -4345,7 +4343,7 @@ void anv_DestroyFramebuffer(
    if (!fb)
       return;
 
-   vk_free2(&device->alloc, pAllocator, fb);
+   vk_free2(&device->vk.alloc, pAllocator, fb);
 }
 
 static const VkTimeDomainEXT anv_time_domains[] = {

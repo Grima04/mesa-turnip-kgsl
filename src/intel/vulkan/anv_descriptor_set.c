@@ -358,7 +358,7 @@ VkResult anv_CreateDescriptorSetLayout(
    anv_multialloc_add(&ma, &bindings, max_binding + 1);
    anv_multialloc_add(&ma, &samplers, immutable_sampler_count);
 
-   if (!anv_multialloc_alloc(&ma, &device->alloc,
+   if (!anv_multialloc_alloc(&ma, &device->vk.alloc,
                              VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -587,7 +587,7 @@ VkResult anv_CreatePipelineLayout(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
 
-   layout = vk_alloc2(&device->alloc, pAllocator, sizeof(*layout), 8,
+   layout = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*layout), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (layout == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -641,7 +641,7 @@ void anv_DestroyPipelineLayout(
    for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
       anv_descriptor_set_layout_unref(device, pipeline_layout->set[i].layout);
 
-   vk_free2(&device->alloc, pAllocator, pipeline_layout);
+   vk_free2(&device->vk.alloc, pAllocator, pipeline_layout);
 }
 
 /*
@@ -731,7 +731,7 @@ VkResult anv_CreateDescriptorPool(
       buffer_view_count * sizeof(struct anv_buffer_view);
    const size_t total_size = sizeof(*pool) + pool_size;
 
-   pool = vk_alloc2(&device->alloc, pAllocator, total_size, 8,
+   pool = vk_alloc2(&device->vk.alloc, pAllocator, total_size, 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pool)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -748,7 +748,7 @@ VkResult anv_CreateDescriptorPool(
                                             0 /* explicit_address */,
                                             &pool->bo);
       if (result != VK_SUCCESS) {
-         vk_free2(&device->alloc, pAllocator, pool);
+         vk_free2(&device->vk.alloc, pAllocator, pool);
          return result;
       }
 
@@ -788,7 +788,7 @@ void anv_DestroyDescriptorPool(
       anv_device_release_bo(device, pool->bo);
    anv_state_stream_finish(&pool->surface_state_stream);
 
-   vk_free2(&device->alloc, pAllocator, pool);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
 VkResult anv_ResetDescriptorPool(
@@ -1599,7 +1599,7 @@ VkResult anv_CreateDescriptorUpdateTemplate(
 
    size_t size = sizeof(*template) +
       pCreateInfo->descriptorUpdateEntryCount * sizeof(template->entries[0]);
-   template = vk_alloc2(&device->alloc, pAllocator, size, 8,
+   template = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (template == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1639,7 +1639,7 @@ void anv_DestroyDescriptorUpdateTemplate(
    ANV_FROM_HANDLE(anv_descriptor_update_template, template,
                    descriptorUpdateTemplate);
 
-   vk_free2(&device->alloc, pAllocator, template);
+   vk_free2(&device->vk.alloc, pAllocator, template);
 }
 
 void anv_UpdateDescriptorSetWithTemplate(

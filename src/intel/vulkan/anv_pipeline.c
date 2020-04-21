@@ -55,7 +55,7 @@ VkResult anv_CreateShaderModule(
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
    assert(pCreateInfo->flags == 0);
 
-   module = vk_alloc2(&device->alloc, pAllocator,
+   module = vk_alloc2(&device->vk.alloc, pAllocator,
                        sizeof(*module) + pCreateInfo->codeSize, 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (module == NULL)
@@ -82,7 +82,7 @@ void anv_DestroyShaderModule(
    if (!module)
       return;
 
-   vk_free2(&device->alloc, pAllocator, module);
+   vk_free2(&device->vk.alloc, pAllocator, module);
 }
 
 #define SPIR_V_MAGIC_NUMBER 0x07230203
@@ -307,7 +307,7 @@ void anv_DestroyPipeline(
       return;
 
    anv_reloc_list_finish(&pipeline->batch_relocs,
-                         pAllocator ? pAllocator : &device->alloc);
+                         pAllocator ? pAllocator : &device->vk.alloc);
 
    ralloc_free(pipeline->mem_ctx);
 
@@ -340,7 +340,7 @@ void anv_DestroyPipeline(
       unreachable("invalid pipeline type");
    }
 
-   vk_free2(&device->alloc, pAllocator, pipeline);
+   vk_free2(&device->vk.alloc, pAllocator, pipeline);
 }
 
 static const uint32_t vk_to_gen_primitive_type[] = {
@@ -1979,7 +1979,7 @@ anv_pipeline_init(struct anv_graphics_pipeline *pipeline,
    anv_pipeline_validate_create_info(pCreateInfo);
 
    if (alloc == NULL)
-      alloc = &device->alloc;
+      alloc = &device->vk.alloc;
 
    pipeline->base.device = device;
    pipeline->base.type = ANV_PIPELINE_GRAPHICS;

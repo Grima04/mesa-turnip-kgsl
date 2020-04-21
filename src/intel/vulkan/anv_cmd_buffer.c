@@ -901,7 +901,7 @@ VkResult anv_CreateCommandPool(
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct anv_cmd_pool *pool;
 
-   pool = vk_alloc2(&device->alloc, pAllocator, sizeof(*pool), 8,
+   pool = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pool == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -909,7 +909,7 @@ VkResult anv_CreateCommandPool(
    if (pAllocator)
       pool->alloc = *pAllocator;
    else
-      pool->alloc = device->alloc;
+      pool->alloc = device->vk.alloc;
 
    list_inithead(&pool->cmd_buffers);
 
@@ -934,7 +934,7 @@ void anv_DestroyCommandPool(
       anv_cmd_buffer_destroy(cmd_buffer);
    }
 
-   vk_free2(&device->alloc, pAllocator, pool);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
 VkResult anv_ResetCommandPool(

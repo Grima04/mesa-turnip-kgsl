@@ -101,7 +101,7 @@ VkResult genX(CreateQueryPool)(
       assert(!"Invalid query type");
    }
 
-   pool = vk_alloc2(&device->alloc, pAllocator, sizeof(*pool), 8,
+   pool = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pool == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -135,7 +135,7 @@ VkResult genX(CreateQueryPool)(
    return VK_SUCCESS;
 
  fail:
-   vk_free2(&device->alloc, pAllocator, pool);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
 
    return result;
 }
@@ -152,7 +152,7 @@ void genX(DestroyQueryPool)(
       return;
 
    anv_device_release_bo(device, pool->bo);
-   vk_free2(&device->alloc, pAllocator, pool);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
 static struct anv_address

@@ -1286,7 +1286,7 @@ VkResult anv_CreateSamplerYcbcrConversion(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO);
 
-   conversion = vk_alloc2(&device->alloc, pAllocator, sizeof(*conversion), 8,
+   conversion = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*conversion), 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!conversion)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1342,5 +1342,5 @@ void anv_DestroySamplerYcbcrConversion(
    if (!conversion)
       return;
 
-   vk_free2(&device->alloc, pAllocator, conversion);
+   vk_free2(&device->vk.alloc, pAllocator, conversion);
 }

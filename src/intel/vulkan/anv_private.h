@@ -62,6 +62,7 @@
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
+#include "vk_object.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -1260,9 +1261,7 @@ anv_device_upload_nir(struct anv_device *device,
                       unsigned char sha1_key[20]);
 
 struct anv_device {
-    VK_LOADER_DATA                              _loader_data;
-
-    VkAllocationCallbacks                       alloc;
+    struct vk_device                            vk;
 
     struct anv_physical_device *                physical;
     bool                                        no_hw;
@@ -1922,7 +1921,7 @@ anv_descriptor_set_layout_unref(struct anv_device *device,
 {
    assert(layout && layout->ref_cnt >= 1);
    if (p_atomic_dec_zero(&layout->ref_cnt))
-      vk_free(&device->alloc, layout);
+      vk_free(&device->vk.alloc, layout);
 }
 
 struct anv_descriptor {

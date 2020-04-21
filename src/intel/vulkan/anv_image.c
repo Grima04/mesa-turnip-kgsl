@@ -690,7 +690,7 @@ anv_image_create(VkDevice _device,
    anv_assert(pCreateInfo->extent.height > 0);
    anv_assert(pCreateInfo->extent.depth > 0);
 
-   image = vk_zalloc2(&device->alloc, alloc, sizeof(*image), 8,
+   image = vk_zalloc2(&device->vk.alloc, alloc, sizeof(*image), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!image)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -757,7 +757,7 @@ anv_image_create(VkDevice _device,
 
 fail:
    if (image)
-      vk_free2(&device->alloc, alloc, image);
+      vk_free2(&device->vk.alloc, alloc, image);
 
    return r;
 }
@@ -889,7 +889,7 @@ anv_DestroyImage(VkDevice _device, VkImage _image,
       }
    }
 
-   vk_free2(&device->alloc, pAllocator, image);
+   vk_free2(&device->vk.alloc, pAllocator, image);
 }
 
 static void anv_image_bind_memory_plane(struct anv_device *device,
@@ -1911,7 +1911,7 @@ anv_CreateImageView(VkDevice _device,
    ANV_FROM_HANDLE(anv_image, image, pCreateInfo->image);
    struct anv_image_view *iview;
 
-   iview = vk_zalloc2(&device->alloc, pAllocator, sizeof(*iview), 8,
+   iview = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*iview), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (iview == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -2169,7 +2169,7 @@ anv_DestroyImageView(VkDevice _device, VkImageView _iview,
       }
    }
 
-   vk_free2(&device->alloc, pAllocator, iview);
+   vk_free2(&device->vk.alloc, pAllocator, iview);
 }
 
 
@@ -2183,7 +2183,7 @@ anv_CreateBufferView(VkDevice _device,
    ANV_FROM_HANDLE(anv_buffer, buffer, pCreateInfo->buffer);
    struct anv_buffer_view *view;
 
-   view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
+   view = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*view), 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!view)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -2267,5 +2267,5 @@ anv_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
       anv_state_pool_free(&device->surface_state_pool,
                           view->writeonly_storage_surface_state);
 
-   vk_free2(&device->alloc, pAllocator, view);
+   vk_free2(&device->vk.alloc, pAllocator, view);
 }

@@ -259,7 +259,7 @@ VkResult anv_CreateRenderPass(
    }
    anv_multialloc_add(&ma, &subpass_attachments, subpass_attachment_count);
 
-   if (!anv_multialloc_alloc2(&ma, &device->alloc, pAllocator,
+   if (!anv_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -433,7 +433,7 @@ VkResult anv_CreateRenderPass2(
    }
    anv_multialloc_add(&ma, &subpass_attachments, subpass_attachment_count);
 
-   if (!anv_multialloc_alloc2(&ma, &device->alloc, pAllocator,
+   if (!anv_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -591,7 +591,7 @@ void anv_DestroyRenderPass(
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_render_pass, pass, _pass);
 
-   vk_free2(&device->alloc, pAllocator, pass);
+   vk_free2(&device->vk.alloc, pAllocator, pass);
 }
 
 void anv_GetRenderAreaGranularity(

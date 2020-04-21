@@ -139,13 +139,13 @@ anv_timeline_finish(struct anv_device *device,
                             &timeline->free_points, link) {
       list_del(&point->link);
       anv_device_release_bo(device, point->bo);
-      vk_free(&device->alloc, point);
+      vk_free(&device->vk.alloc, point);
    }
    list_for_each_entry_safe(struct anv_timeline_point, point,
                             &timeline->points, link) {
       list_del(&point->link);
       anv_device_release_bo(device, point->bo);
-      vk_free(&device->alloc, point);
+      vk_free(&device->vk.alloc, point);
    }
 }
 
@@ -159,7 +159,7 @@ anv_timeline_add_point_locked(struct anv_device *device,
 
    if (list_is_empty(&timeline->free_points)) {
       *point =
-         vk_zalloc(&device->alloc, sizeof(**point),
+         vk_zalloc(&device->vk.alloc, sizeof(**point),
                    8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
       if (!(*point))
          result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -170,7 +170,7 @@ anv_timeline_add_point_locked(struct anv_device *device,
                                       0 /* explicit_address */,
                                       &(*point)->bo);
          if (result != VK_SUCCESS)
-            vk_free(&device->alloc, *point);
+            vk_free(&device->vk.alloc, *point);
       }
    } else {
       *point = list_first_entry(&timeline->free_points,
@@ -545,7 +545,7 @@ anv_queue_submit_add_timeline_signal(struct anv_queue_submit* submit,
 static struct anv_queue_submit *
 anv_queue_submit_alloc(struct anv_device *device)
 {
-   const VkAllocationCallbacks *alloc = &device->alloc;
+   const VkAllocationCallbacks *alloc = &device->vk.alloc;
    VkSystemAllocationScope alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE;
 
    struct anv_queue_submit *submit = vk_zalloc(alloc, sizeof(*submit), 8, alloc_scope);
@@ -1100,7 +1100,7 @@ VkResult anv_CreateFence(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FENCE_CREATE_INFO);
 
-   fence = vk_zalloc2(&device->alloc, pAllocator, sizeof(*fence), 8,
+   fence = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*fence), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (fence == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1191,7 +1191,7 @@ void anv_DestroyFence(
    anv_fence_impl_cleanup(device, &fence->temporary);
    anv_fence_impl_cleanup(device, &fence->permanent);
 
-   vk_free2(&device->alloc, pAllocator, fence);
+   vk_free2(&device->vk.alloc, pAllocator, fence);
 }
 
 VkResult anv_ResetFences(
@@ -1297,7 +1297,7 @@ anv_wait_for_syncobj_fences(struct anv_device *device,
                             bool waitAll,
                             uint64_t abs_timeout_ns)
 {
-   uint32_t *syncobjs = vk_zalloc(&device->alloc,
+   uint32_t *syncobjs = vk_zalloc(&device->vk.alloc,
                                   sizeof(*syncobjs) * fenceCount, 8,
                                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!syncobjs)
@@ -1325,7 +1325,7 @@ anv_wait_for_syncobj_fences(struct anv_device *device,
                                  abs_timeout_ns, waitAll);
    } while (ret == -1 && errno == ETIME && anv_gettime_ns() < abs_timeout_ns);
 
-   vk_free(&device->alloc, syncobjs);
+   vk_free(&device->vk.alloc, syncobjs);
 
    if (ret == -1) {
       if (errno == ETIME) {
@@ -1782,7 +1782,7 @@ VkResult anv_CreateSemaphore(
    uint64_t timeline_value = 0;
    VkSemaphoreTypeKHR sem_type = get_semaphore_type(pCreateInfo->pNext, &timeline_value);
 
-   semaphore = vk_alloc(&device->alloc, sizeof(*semaphore), 8,
+   semaphore = vk_alloc(&device->vk.alloc, sizeof(*semaphore), 8,
                         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (semaphore == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1801,7 +1801,7 @@ VkResult anv_CreateSemaphore(
       else
          result = timeline_semaphore_create(device, &semaphore->permanent, timeline_value);
       if (result != VK_SUCCESS) {
-         vk_free2(&device->alloc, pAllocator, semaphore);
+         vk_free2(&device->vk.alloc, pAllocator, semaphore);
          return result;
       }
    } else if (handleTypes & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT) {
@@ -1809,7 +1809,7 @@ VkResult anv_CreateSemaphore(
       assert(sem_type == VK_SEMAPHORE_TYPE_BINARY_KHR);
       result = binary_semaphore_create(device, &semaphore->permanent, true);
       if (result != VK_SUCCESS) {
-         vk_free2(&device->alloc, pAllocator, semaphore);
+         vk_free2(&device->vk.alloc, pAllocator, semaphore);
          return result;
       }
    } else if (handleTypes & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT) {
@@ -1819,7 +1819,7 @@ VkResult anv_CreateSemaphore(
          semaphore->permanent.type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
          semaphore->permanent.syncobj = anv_gem_syncobj_create(device, 0);
          if (!semaphore->permanent.syncobj) {
-            vk_free2(&device->alloc, pAllocator, semaphore);
+            vk_free2(&device->vk.alloc, pAllocator, semaphore);
             return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          }
       } else {
@@ -1828,7 +1828,7 @@ VkResult anv_CreateSemaphore(
       }
    } else {
       assert(!"Unknown handle type");
-      vk_free2(&device->alloc, pAllocator, semaphore);
+      vk_free2(&device->vk.alloc, pAllocator, semaphore);
       return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 
@@ -1900,7 +1900,7 @@ anv_semaphore_unref(struct anv_device *device, struct anv_semaphore *semaphore)
 
    anv_semaphore_impl_cleanup(device, &semaphore->temporary);
    anv_semaphore_impl_cleanup(device, &semaphore->permanent);
-   vk_free(&device->alloc, semaphore);
+   vk_free(&device->vk.alloc, semaphore);
 }
 
 void anv_DestroySemaphore(
@@ -2295,17 +2295,17 @@ VkResult anv_WaitSemaphores(
       return VK_SUCCESS;
 
    struct anv_timeline **timelines =
-      vk_alloc(&device->alloc,
+      vk_alloc(&device->vk.alloc,
                pWaitInfo->semaphoreCount * sizeof(*timelines),
                8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!timelines)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   uint64_t *values = vk_alloc(&device->alloc,
+   uint64_t *values = vk_alloc(&device->vk.alloc,
                                pWaitInfo->semaphoreCount * sizeof(*values),
                                8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!values) {
-      vk_free(&device->alloc, timelines);
+      vk_free(&device->vk.alloc, timelines);
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -2333,8 +2333,8 @@ VkResult anv_WaitSemaphores(
                                   timeout);
    }
 
-   vk_free(&device->alloc, timelines);
-   vk_free(&device->alloc, values);
+   vk_free(&device->vk.alloc, timelines);
+   vk_free(&device->vk.alloc, values);
 
    return result;
 }
