@@ -4230,65 +4230,61 @@ anv_get_subpass_id(const struct anv_cmd_state * const cmd_state)
 struct gen_perf_config *anv_get_perf(const struct gen_device_info *devinfo, int fd);
 void anv_device_perf_init(struct anv_device *device);
 
-#define ANV_DEFINE_HANDLE_CASTS(__anv_type, __VkType)                      \
-                                                                           \
-   static inline struct __anv_type *                                       \
-   __anv_type ## _from_handle(__VkType _handle)                            \
-   {                                                                       \
-      return (struct __anv_type *) _handle;                                \
-   }                                                                       \
-                                                                           \
-   static inline __VkType                                                  \
-   __anv_type ## _to_handle(struct __anv_type *_obj)                       \
-   {                                                                       \
-      return (__VkType) _obj;                                              \
-   }
-
-#define ANV_DEFINE_NONDISP_HANDLE_CASTS(__anv_type, __VkType)              \
-                                                                           \
-   static inline struct __anv_type *                                       \
-   __anv_type ## _from_handle(__VkType _handle)                            \
-   {                                                                       \
-      return (struct __anv_type *)(uintptr_t) _handle;                     \
-   }                                                                       \
-                                                                           \
-   static inline __VkType                                                  \
-   __anv_type ## _to_handle(struct __anv_type *_obj)                       \
-   {                                                                       \
-      return (__VkType)(uintptr_t) _obj;                                   \
-   }
-
 #define ANV_FROM_HANDLE(__anv_type, __name, __handle) \
-   struct __anv_type *__name = __anv_type ## _from_handle(__handle)
+   VK_FROM_HANDLE(__anv_type, __name, __handle)
 
-ANV_DEFINE_HANDLE_CASTS(anv_cmd_buffer, VkCommandBuffer)
-ANV_DEFINE_HANDLE_CASTS(anv_device, VkDevice)
-ANV_DEFINE_HANDLE_CASTS(anv_instance, VkInstance)
-ANV_DEFINE_HANDLE_CASTS(anv_physical_device, VkPhysicalDevice)
-ANV_DEFINE_HANDLE_CASTS(anv_queue, VkQueue)
+VK_DEFINE_HANDLE_CASTS(anv_cmd_buffer, base, VkCommandBuffer,
+                       VK_OBJECT_TYPE_COMMAND_BUFFER)
+VK_DEFINE_HANDLE_CASTS(anv_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
+VK_DEFINE_HANDLE_CASTS(anv_instance, base, VkInstance, VK_OBJECT_TYPE_INSTANCE)
+VK_DEFINE_HANDLE_CASTS(anv_physical_device, base, VkPhysicalDevice,
+                       VK_OBJECT_TYPE_PHYSICAL_DEVICE)
+VK_DEFINE_HANDLE_CASTS(anv_queue, base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_cmd_pool, VkCommandPool)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer, VkBuffer)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer_view, VkBufferView)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_pool, VkDescriptorPool)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_set, VkDescriptorSet)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_set_layout, VkDescriptorSetLayout)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_update_template, VkDescriptorUpdateTemplate)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_device_memory, VkDeviceMemory)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_fence, VkFence)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_event, VkEvent)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_framebuffer, VkFramebuffer)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_image, VkImage)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_image_view, VkImageView);
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline_cache, VkPipelineCache)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline, VkPipeline)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline_layout, VkPipelineLayout)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_query_pool, VkQueryPool)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_render_pass, VkRenderPass)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_sampler, VkSampler)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_semaphore, VkSemaphore)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_shader_module, VkShaderModule)
-ANV_DEFINE_NONDISP_HANDLE_CASTS(anv_ycbcr_conversion, VkSamplerYcbcrConversion)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_cmd_pool, base, VkCommandPool,
+                               VK_OBJECT_TYPE_COMMAND_POOL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer, base, VkBuffer,
+                               VK_OBJECT_TYPE_BUFFER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer_view, base, VkBufferView,
+                               VK_OBJECT_TYPE_BUFFER_VIEW)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_pool, base, VkDescriptorPool,
+                               VK_OBJECT_TYPE_DESCRIPTOR_POOL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_set, base, VkDescriptorSet,
+                               VK_OBJECT_TYPE_DESCRIPTOR_SET)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_set_layout, base,
+                               VkDescriptorSetLayout,
+                               VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_update_template, base,
+                               VkDescriptorUpdateTemplate,
+                               VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_device_memory, base, VkDeviceMemory,
+                               VK_OBJECT_TYPE_DEVICE_MEMORY)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_fence, base, VkFence, VK_OBJECT_TYPE_FENCE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_framebuffer, base, VkFramebuffer,
+                               VK_OBJECT_TYPE_FRAMEBUFFER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_image, base, VkImage, VK_OBJECT_TYPE_IMAGE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_image_view, base, VkImageView,
+                               VK_OBJECT_TYPE_IMAGE_VIEW);
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline_cache, base, VkPipelineCache,
+                               VK_OBJECT_TYPE_PIPELINE_CACHE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline, base, VkPipeline,
+                               VK_OBJECT_TYPE_PIPELINE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline_layout, base, VkPipelineLayout,
+                               VK_OBJECT_TYPE_PIPELINE_LAYOUT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_query_pool, base, VkQueryPool,
+                               VK_OBJECT_TYPE_QUERY_POOL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_render_pass, base, VkRenderPass,
+                               VK_OBJECT_TYPE_RENDER_PASS)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_sampler, base, VkSampler,
+                               VK_OBJECT_TYPE_SAMPLER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_semaphore, base, VkSemaphore,
+                               VK_OBJECT_TYPE_SEMAPHORE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_shader_module, base, VkShaderModule,
+                               VK_OBJECT_TYPE_SHADER_MODULE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_ycbcr_conversion, base,
+                               VkSamplerYcbcrConversion,
+                               VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
 
 /* Gen-specific function declarations */
 #ifdef genX

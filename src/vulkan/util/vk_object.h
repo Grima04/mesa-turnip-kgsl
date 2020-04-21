@@ -55,6 +55,37 @@ void vk_device_init(struct vk_device *device,
                     const VkAllocationCallbacks *device_alloc);
 void vk_device_finish(struct vk_device *device);
 
+#define VK_DEFINE_HANDLE_CASTS(__driver_type, __base, __VkType, __VK_TYPE) \
+   static inline struct __driver_type *                                    \
+   __driver_type ## _from_handle(__VkType _handle)                         \
+   {                                                                       \
+      STATIC_ASSERT(offsetof(struct __driver_type, __base) == 0);          \
+      return (struct __driver_type *) _handle;                             \
+   }                                                                       \
+                                                                           \
+   static inline __VkType                                                  \
+   __driver_type ## _to_handle(struct __driver_type *_obj)                 \
+   {                                                                       \
+      return (__VkType) _obj;                                              \
+   }
+
+#define VK_DEFINE_NONDISP_HANDLE_CASTS(__driver_type, __base, __VkType, __VK_TYPE) \
+   static inline struct __driver_type *                                    \
+   __driver_type ## _from_handle(__VkType _handle)                         \
+   {                                                                       \
+      STATIC_ASSERT(offsetof(struct __driver_type, __base) == 0);          \
+      return (struct __driver_type *)(uintptr_t) _handle;                  \
+   }                                                                       \
+                                                                           \
+   static inline __VkType                                                  \
+   __driver_type ## _to_handle(struct __driver_type *_obj)                 \
+   {                                                                       \
+      return (__VkType)(uintptr_t) _obj;                                   \
+   }
+
+#define VK_FROM_HANDLE(__driver_type, __name, __handle) \
+   struct __driver_type *__name = __driver_type ## _from_handle(__handle)
+
 #ifdef __cplusplus
 }
 #endif
