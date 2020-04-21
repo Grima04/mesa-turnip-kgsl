@@ -428,6 +428,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 512 * 1024;
 
    case PIPE_CAP_SYSTEM_SVM:
+   case PIPE_CAP_ALPHA_TO_COVERAGE_DITHER_CONTROL:
       return 0;
 
    default:
