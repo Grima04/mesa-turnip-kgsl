@@ -1973,6 +1973,63 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
 }
 
 static void
+pandecode_texture_payload(mali_ptr payload,
+                          enum mali_texture_type type,
+                          enum mali_texture_layout layout,
+                          bool manual_stride,
+                          uint8_t levels,
+                          uint16_t depth,
+                          uint16_t array_size,
+                          struct pandecode_mapped_memory *tmem)
+{
+        pandecode_log(".payload = {\n");
+        pandecode_indent++;
+
+        /* A bunch of bitmap pointers follow.
+         * We work out the correct number,
+         * based on the mipmap/cubemap
+         * properties, but dump extra
+         * possibilities to futureproof */
+
+        int bitmap_count = levels + 1;
+
+        /* Miptree for each face */
+        if (type == MALI_TEX_CUBE)
+                bitmap_count *= 6;
+        else if (type == MALI_TEX_3D && layout == MALI_TEXTURE_LINEAR)
+                bitmap_count *= (depth + 1);
+
+        /* Array of textures */
+        bitmap_count *= (array_size + 1);
+
+        /* Stride for each element */
+        if (manual_stride)
+                bitmap_count *= 2;
+
+        mali_ptr *pointers_and_strides = pandecode_fetch_gpu_mem(tmem,
+                payload, sizeof(mali_ptr) * bitmap_count);
+        for (int i = 0; i < bitmap_count; ++i) {
+                /* How we dump depends if this is a stride or a pointer */
+
+                if (manual_stride && (i & 1)) {
+                        /* signed 32-bit snuck in as a 64-bit pointer */
+                        uint64_t stride_set = pointers_and_strides[i];
+                        uint32_t clamped_stride = stride_set;
+                        int32_t stride = clamped_stride;
+                        assert(stride_set == clamped_stride);
+                        pandecode_log("(mali_ptr) %d /* stride */, \n", stride);
+                } else {
+                        char *a = pointer_as_memory_reference(pointers_and_strides[i]);
+                        pandecode_log("%s, \n", a);
+                        free(a);
+                }
+        }
+
+        pandecode_indent--;
+        pandecode_log("},\n");
+}
+
+static void
 pandecode_texture(mali_ptr u,
                 struct pandecode_mapped_memory *tmem,
                 unsigned job_no, unsigned tex)
@@ -2096,58 +2153,17 @@ pandecode_texture(mali_ptr u,
                 pandecode_prop("unknown7 = 0x%" PRIx32, t->unknown7);
         }
 
-        pandecode_log(".payload = {\n");
-        pandecode_indent++;
-
-        /* A bunch of bitmap pointers follow.
-         * We work out the correct number,
-         * based on the mipmap/cubemap
-         * properties, but dump extra
-         * possibilities to futureproof */
-
-        int bitmap_count = t->levels + 1;
-
-        /* Miptree for each face */
-        if (f.type == MALI_TEX_CUBE)
-                bitmap_count *= 6;
-        else if (f.type == MALI_TEX_3D && f.layout == MALI_TEXTURE_LINEAR)
-                bitmap_count *= (t->depth + 1);
-
-        /* Array of textures */
-        bitmap_count *= (t->array_size + 1);
-
-        /* Stride for each element */
-        if (f.manual_stride)
-                bitmap_count *= 2;
-
-        mali_ptr *pointers_and_strides = pandecode_fetch_gpu_mem(tmem,
-                u + sizeof(*t), sizeof(mali_ptr) * bitmap_count);
-        for (int i = 0; i < bitmap_count; ++i) {
-                /* How we dump depends if this is a stride or a pointer */
-
-                if (f.manual_stride && (i & 1)) {
-                        /* signed 32-bit snuck in as a 64-bit pointer */
-                        uint64_t stride_set = pointers_and_strides[i];
-                        uint32_t clamped_stride = stride_set;
-                        int32_t stride = clamped_stride;
-                        assert(stride_set == clamped_stride);
-                        pandecode_log("(mali_ptr) %d /* stride */, \n", stride);
-                } else {
-                        char *a = pointer_as_memory_reference(pointers_and_strides[i]);
-                        pandecode_log("%s, \n", a);
-                        free(a);
-                }
-        }
-
-        pandecode_indent--;
-        pandecode_log("},\n");
+        pandecode_texture_payload(u + sizeof(*t), f.type, f.layout, f.manual_stride, t->levels, t->depth, t->array_size, tmem);
 
         pandecode_indent--;
         pandecode_log("};\n");
 }
 
 static void
-pandecode_bifrost_texture(const struct bifrost_texture_descriptor *t, unsigned job_no, unsigned tex)
+pandecode_bifrost_texture(
+                const struct bifrost_texture_descriptor *t,
+                unsigned job_no,
+                unsigned tex)
 {
         pandecode_log("struct bifrost_texture_descriptor texture_descriptor_%d_%d = {\n", job_no, tex);
         pandecode_indent++;
@@ -2228,7 +2244,10 @@ pandecode_bifrost_texture(const struct bifrost_texture_descriptor *t, unsigned j
 
         pandecode_log_cont("\n");
 
-        pandecode_prop("payload = 0x%" PRIx64, t->payload);
+        struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(t->payload);
+        pandecode_texture_payload(t->payload, t->type, t->layout,
+                                  true, t->levels, t->depth,
+                                  t->array_size, tmem);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -2360,7 +2379,7 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
                         pandecode_prop("wrap_t = %s", pandecode_wrap_mode(s->wrap_t));
                         pandecode_prop("wrap_r = %s", pandecode_wrap_mode(s->wrap_r));
 
-                        if (s->unk1 != 8) {
+                        if (s->unk1 != 0x8) {
                                 pandecode_msg("XXX: unk8 tripped\n");
                                 pandecode_prop("unk8 = 0x%x", s->unk8);
                         }

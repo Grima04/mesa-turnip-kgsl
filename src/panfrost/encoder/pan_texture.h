@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include "util/format/u_format.h"
 #include "panfrost-job.h"
+#include "pan_bo.h"
 
 struct panfrost_slice {
         unsigned offset;
@@ -67,7 +68,7 @@ panfrost_afbc_header_size(unsigned width, unsigned height);
 /* mali_texture_descriptor */
 
 unsigned
-panfrost_estimate_texture_size(
+panfrost_estimate_texture_payload_size(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
                 enum mali_texture_type type, enum mali_texture_layout layout);
@@ -100,7 +101,8 @@ panfrost_new_texture_bifrost(
         unsigned cube_stride,
         unsigned swizzle,
         mali_ptr base,
-        struct panfrost_slice *slices);
+        struct panfrost_slice *slices,
+        struct panfrost_bo *payload);
 
 
 unsigned

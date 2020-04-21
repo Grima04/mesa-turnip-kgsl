@@ -930,6 +930,20 @@ panfrost_create_sampler_view(
                 panfrost_translate_texture_type(template->target);
 
         if (device->quirks & IS_BIFROST) {
+                const struct util_format_description *desc =
+                        util_format_description(template->format);
+                unsigned char composed_swizzle[4];
+                util_format_compose_swizzles(desc->swizzle, user_swizzle, composed_swizzle);
+
+                unsigned size = panfrost_estimate_texture_payload_size(
+                                template->u.tex.first_level,
+                                template->u.tex.last_level,
+                                template->u.tex.first_layer,
+                                template->u.tex.last_layer,
+                                type, prsrc->layout);
+
+                so->bifrost_bo = pan_bo_create(device, size, 0);
+
                 so->bifrost_descriptor = rzalloc(pctx, struct bifrost_texture_descriptor);
                 panfrost_new_texture_bifrost(
                                 so->bifrost_descriptor,
@@ -942,16 +956,18 @@ panfrost_create_sampler_view(
                                 template->u.tex.first_layer,
                                 template->u.tex.last_layer,
                                 prsrc->cubemap_stride,
-                                panfrost_translate_swizzle_4(user_swizzle),
+                                panfrost_translate_swizzle_4(composed_swizzle),
                                 prsrc->bo->gpu,
-                                prsrc->slices);
+                                prsrc->slices,
+                                so->bifrost_bo);
         } else {
-                unsigned size = panfrost_estimate_texture_size(
+                unsigned size = panfrost_estimate_texture_payload_size(
                                 template->u.tex.first_level,
                                 template->u.tex.last_level,
                                 template->u.tex.first_layer,
                                 template->u.tex.last_layer,
                                 type, prsrc->layout);
+                size += sizeof(struct mali_texture_descriptor);
 
                 so->midgard_bo = pan_bo_create(device, size, 0);
 
@@ -1010,6 +1026,7 @@ panfrost_sampler_view_destroy(
 
         pipe_resource_reference(&pview->texture, NULL);
         panfrost_bo_unreference(view->midgard_bo);
+        panfrost_bo_unreference(view->bifrost_bo);
         if (view->bifrost_descriptor)
                 ralloc_free(view->bifrost_descriptor);
         ralloc_free(view);
