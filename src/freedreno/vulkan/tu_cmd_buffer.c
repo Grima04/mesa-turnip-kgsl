@@ -2344,13 +2344,15 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
    if (subpass->resolve_attachments) {
+      tu6_emit_blit_scissor(cmd, cs, true);
+
       for (unsigned i = 0; i < subpass->color_count; i++) {
          uint32_t a = subpass->resolve_attachments[i].attachment;
          if (a == VK_ATTACHMENT_UNUSED)
             continue;
 
          tu_store_gmem_attachment(cmd, cs, a,
-                                    subpass->color_attachments[i].attachment);
+                                  subpass->color_attachments[i].attachment);
 
          if (pass->attachments[a].gmem_offset < 0)
             continue;
