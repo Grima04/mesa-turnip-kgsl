@@ -4478,6 +4478,8 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
    struct si_sampler_state *rstate = CALLOC_STRUCT(si_sampler_state);
    unsigned max_aniso = sscreen->force_aniso >= 0 ? sscreen->force_aniso : state->max_anisotropy;
    unsigned max_aniso_ratio = si_tex_aniso_filter(max_aniso);
+   bool trunc_coord = state->min_img_filter == PIPE_TEX_FILTER_NEAREST &&
+                      state->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
    union pipe_color_union clamped_border_color;
 
    if (!rstate) {
@@ -4494,6 +4496,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
        S_008F30_FORCE_UNNORMALIZED(!state->normalized_coords) |
        S_008F30_ANISO_THRESHOLD(max_aniso_ratio >> 1) | S_008F30_ANISO_BIAS(max_aniso_ratio) |
        S_008F30_DISABLE_CUBE_WRAP(!state->seamless_cube_map) |
+       S_008F30_TRUNC_COORD(trunc_coord) |
        S_008F30_COMPAT_MODE(sctx->chip_class == GFX8 || sctx->chip_class == GFX9));
    rstate->val[1] = (S_008F34_MIN_LOD(S_FIXED(CLAMP(state->min_lod, 0, 15), 8)) |
                      S_008F34_MAX_LOD(S_FIXED(CLAMP(state->max_lod, 0, 15), 8)) |
