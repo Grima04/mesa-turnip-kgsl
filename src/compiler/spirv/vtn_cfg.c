@@ -216,9 +216,9 @@ vtn_handle_function_call(struct vtn_builder *b, SpvOp opcode,
             vtn_value(b, arg_id, vtn_value_type_sampled_image)->sampled_image;
 
          call->params[param_idx++] =
-            nir_src_for_ssa(&sampled_image->image->deref->dest.ssa);
+            nir_src_for_ssa(vtn_pointer_to_ssa(b, sampled_image->image));
          call->params[param_idx++] =
-            nir_src_for_ssa(&sampled_image->sampler->deref->dest.ssa);
+            nir_src_for_ssa(vtn_pointer_to_ssa(b, sampled_image->sampler));
       } else if (arg_type->base_type == vtn_base_type_pointer ||
                  arg_type->base_type == vtn_base_type_image ||
                  arg_type->base_type == vtn_base_type_sampler) {
@@ -327,12 +327,16 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
 
          val->sampled_image = ralloc(b, struct vtn_sampled_image);
 
+         struct vtn_type *image_type = rzalloc(b, struct vtn_type);
+         image_type->base_type = vtn_base_type_image;
+         image_type->type = type->type;
+
          struct vtn_type *sampler_type = rzalloc(b, struct vtn_type);
          sampler_type->base_type = vtn_base_type_sampler;
          sampler_type->type = glsl_bare_sampler_type();
 
          val->sampled_image->image =
-            vtn_load_param_pointer(b, type, b->func_param_idx++);
+            vtn_load_param_pointer(b, image_type, b->func_param_idx++);
          val->sampled_image->sampler =
             vtn_load_param_pointer(b, sampler_type, b->func_param_idx++);
       } else if (type->base_type == vtn_base_type_pointer &&
