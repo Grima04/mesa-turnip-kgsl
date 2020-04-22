@@ -364,6 +364,8 @@ vmw_svga_winsys_buffer_map(struct svga_winsys_screen *sws,
                  (unsigned) PIPE_TRANSFER_DONTBLOCK);
    STATIC_ASSERT((unsigned) PB_USAGE_UNSYNCHRONIZED ==
                  (unsigned) PIPE_TRANSFER_UNSYNCHRONIZED);
+   STATIC_ASSERT((unsigned) PB_USAGE_PERSISTENT ==
+                 (unsigned) PIPE_TRANSFER_PERSISTENT);
 
    map = pb_map(vmw_pb_buffer(buf), flags & PB_USAGE_ALL, NULL);
 
