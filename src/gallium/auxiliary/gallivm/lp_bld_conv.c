@@ -321,7 +321,10 @@ lp_build_clamped_float_to_unsigned_norm(struct gallivm_state *gallivm,
 
       res = LLVMBuildFMul(builder, src,
                           lp_build_const_vec(gallivm, src_type, scale), "");
-      res = LLVMBuildFPToSI(builder, res, int_vec_type, "");
+      if (!src_type.sign && src_type.width == 32)
+         res = LLVMBuildFPToUI(builder, res, int_vec_type, "");
+      else
+         res = LLVMBuildFPToSI(builder, res, int_vec_type, "");
 
       /*
        * Align the most significant bit to its final place.
