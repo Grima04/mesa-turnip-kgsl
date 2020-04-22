@@ -62,10 +62,23 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
          const void *data = spec_info->pData + entry->offset;
          assert(data + entry->size <= spec_info->pData + spec_info->dataSize);
          spec[i].id = entry->constantID;
-         if (entry->size == 8)
-            spec[i].data64 = *(const uint64_t *) data;
-         else
-            spec[i].data32 = *(const uint32_t *) data;
+         switch (entry->size) {
+         case 8:
+            spec[i].data64 = *(const uint64_t *)data;
+            break;
+         case 4:
+            spec[i].data32 = *(const uint32_t *)data;
+            break;
+         case 2:
+            spec[i].data32 = *(const uint16_t *)data;
+            break;
+         case 1:
+            spec[i].data32 = *(const uint8_t *)data;
+            break;
+         default:
+            assert(!"Invalid spec constant size");
+            break;
+         }
          spec[i].defined_on_module = false;
       }
 
