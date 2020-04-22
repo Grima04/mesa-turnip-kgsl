@@ -4078,16 +4078,18 @@ VkResult anv_CreateEvent(
     VkEvent*                                    pEvent)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_state state;
    struct anv_event *event;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_EVENT_CREATE_INFO);
 
-   state = anv_state_pool_alloc(&device->dynamic_state_pool,
-                                sizeof(*event), 8);
-   event = state.map;
-   event->state = state;
-   event->semaphore = VK_EVENT_RESET;
+   event = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*event), 8,
+                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (event == NULL)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   event->state = anv_state_pool_alloc(&device->dynamic_state_pool,
+                                       sizeof(uint64_t), 8);
+   *(uint64_t *)event->state.map = VK_EVENT_RESET;
 
    *pEvent = anv_event_to_handle(event);
 
@@ -4106,6 +4108,7 @@ void anv_DestroyEvent(
       return;
 
    anv_state_pool_free(&device->dynamic_state_pool, event->state);
+   vk_free2(&device->vk.alloc, pAllocator, event);
 }
 
 VkResult anv_GetEventStatus(
@@ -4118,7 +4121,7 @@ VkResult anv_GetEventStatus(
    if (anv_device_is_lost(device))
       return VK_ERROR_DEVICE_LOST;
 
-   return event->semaphore;
+   return *(uint64_t *)event->state.map;
 }
 
 VkResult anv_SetEvent(
@@ -4127,7 +4130,7 @@ VkResult anv_SetEvent(
 {
    ANV_FROM_HANDLE(anv_event, event, _event);
 
-   event->semaphore = VK_EVENT_SET;
+   *(uint64_t *)event->state.map = VK_EVENT_SET;
 
    return VK_SUCCESS;
 }
@@ -4138,7 +4141,7 @@ VkResult anv_ResetEvent(
 {
    ANV_FROM_HANDLE(anv_event, event, _event);
 
-   event->semaphore = VK_EVENT_RESET;
+   *(uint64_t *)event->state.map = VK_EVENT_RESET;
 
    return VK_SUCCESS;
 }
