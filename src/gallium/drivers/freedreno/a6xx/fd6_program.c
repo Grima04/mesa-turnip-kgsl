@@ -429,20 +429,13 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 	struct ir3_shader_linkage l = {0};
 	const struct ir3_shader_variant *last_shader = fd6_last_shader(state);
-	ir3_link_shaders(&l, last_shader, fs);
-
-	BITSET_DECLARE(varbs, 128) = {0};
-	uint32_t *varmask = (uint32_t *)varbs;
-
-	for (i = 0; i < l.cnt; i++)
-		for (j = 0; j < util_last_bit(l.var[i].compmask); j++)
-			BITSET_SET(varbs, l.var[i].loc + j);
+	ir3_link_shaders(&l, last_shader, fs, true);
 
 	OUT_PKT4(ring, REG_A6XX_VPC_VAR_DISABLE(0), 4);
-	OUT_RING(ring, ~varmask[0]);  /* VPC_VAR[0].DISABLE */
-	OUT_RING(ring, ~varmask[1]);  /* VPC_VAR[1].DISABLE */
-	OUT_RING(ring, ~varmask[2]);  /* VPC_VAR[2].DISABLE */
-	OUT_RING(ring, ~varmask[3]);  /* VPC_VAR[3].DISABLE */
+	OUT_RING(ring, ~l.varmask[0]);  /* VPC_VAR[0].DISABLE */
+	OUT_RING(ring, ~l.varmask[1]);  /* VPC_VAR[1].DISABLE */
+	OUT_RING(ring, ~l.varmask[2]);  /* VPC_VAR[2].DISABLE */
+	OUT_RING(ring, ~l.varmask[3]);  /* VPC_VAR[3].DISABLE */
 
 	/* Add stream out outputs after computing the VPC_VAR_DISABLE bitmask. */
 	if (last_shader->shader->stream_output.num_outputs > 0)

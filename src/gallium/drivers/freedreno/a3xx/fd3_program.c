@@ -237,7 +237,7 @@ fd3_program_emit(struct fd_ringbuffer *ring, struct fd3_emit *emit,
 			A3XX_SP_VS_PARAM_REG_TOTALVSOUTVAR(fp->varying_in));
 
 	struct ir3_shader_linkage l = {0};
-	ir3_link_shaders(&l, vp, fp);
+	ir3_link_shaders(&l, vp, fp, false);
 
 	for (i = 0, j = 0; (i < 16) && (j < l.cnt); i++) {
 		uint32_t reg = 0;

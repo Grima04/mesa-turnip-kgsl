@@ -929,23 +929,16 @@ tu6_emit_vpc(struct tu_cs *cs,
    bool has_gs = gs->type != MESA_SHADER_NONE;
    const struct ir3_shader_variant *last_shader = has_gs ? gs : vs;
    struct ir3_shader_linkage linkage = { 0 };
-   ir3_link_shaders(&linkage, last_shader, fs);
+   ir3_link_shaders(&linkage, last_shader, fs, true);
 
    if (last_shader->shader->stream_output.num_outputs)
       tu6_link_streamout(&linkage, last_shader);
 
-   BITSET_DECLARE(vpc_var_enables, 128) = { 0 };
-   for (uint32_t i = 0; i < linkage.cnt; i++) {
-      const uint32_t comp_count = util_last_bit(linkage.var[i].compmask);
-      for (uint32_t j = 0; j < comp_count; j++)
-         BITSET_SET(vpc_var_enables, linkage.var[i].loc + j);
-   }
-
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VAR_DISABLE(0), 4);
-   tu_cs_emit(cs, ~vpc_var_enables[0]);
-   tu_cs_emit(cs, ~vpc_var_enables[1]);
-   tu_cs_emit(cs, ~vpc_var_enables[2]);
-   tu_cs_emit(cs, ~vpc_var_enables[3]);
+   tu_cs_emit(cs, ~linkage.varmask[0]);
+   tu_cs_emit(cs, ~linkage.varmask[1]);
+   tu_cs_emit(cs, ~linkage.varmask[2]);
+   tu_cs_emit(cs, ~linkage.varmask[3]);
 
    /* a6xx finds position/pointsize at the end */
    const uint32_t position_regid =
