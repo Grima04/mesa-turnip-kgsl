@@ -3195,7 +3195,6 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 	compile_assert(ctx, n < ARRAY_SIZE(so->outputs));
 
 	so->outputs[n].slot = slot;
-	so->outputs[n].regid = regid(n, 0);
 	so->outputs_count = MAX2(so->outputs_count, n + 1);
 
 	for (int i = 0; i < ncomp; i++) {
