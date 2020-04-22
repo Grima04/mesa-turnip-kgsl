@@ -768,6 +768,8 @@ struct v3dv_cmd_buffer_state {
       VkRect2D render_area;
 
       struct v3dv_dynamic_state dynamic;
+
+      struct v3dv_descriptor_state descriptor_state;
    } meta;
 
    /* Command buffer state for queries */
@@ -867,7 +869,8 @@ struct v3dv_job *v3dv_cmd_buffer_subpass_resume(struct v3dv_cmd_buffer *cmd_buff
 
 void v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
 
-void v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer);
+void v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
+                                     bool push_descriptor_state);
 void v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
                                     uint32_t dirty_dynamic_state);
 

@@ -507,7 +507,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
     * it to emit the color clear pass and then finish the job for the
     * interrupted subpass.
     */
-   v3dv_cmd_buffer_meta_state_push(cmd_buffer);
+   v3dv_cmd_buffer_meta_state_push(cmd_buffer, false);
    v3dv_cmd_buffer_finish_job(cmd_buffer);
 
    struct v3dv_framebuffer *subpass_fb =

@@ -2802,7 +2802,8 @@ emit_occlusion_query(struct v3dv_cmd_buffer *cmd_buffer)
  * a meta operation.
  */
 void
-v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer)
+v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
+                                bool push_descriptor_state)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
 
@@ -2835,6 +2836,11 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer)
    state->meta.pipeline = v3dv_pipeline_to_handle(state->pipeline);
    if (state->meta.pipeline)
       memcpy(&state->meta.dynamic, &state->dynamic, sizeof(state->dynamic));
+
+   if (push_descriptor_state && state->descriptor_state.valid != 0) {
+      memcpy(&state->meta.descriptor_state, &state->descriptor_state,
+             sizeof(state->descriptor_state));
+   }
 }
 
 /* This restores command buffer state after a meta operation
@@ -2876,10 +2882,18 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
       state->pipeline = VK_NULL_HANDLE;
    }
 
+   if (state->meta.descriptor_state.valid != 0) {
+      memcpy(&state->descriptor_state, &state->meta.descriptor_state,
+             sizeof(state->descriptor_state));
+   } else {
+      state->descriptor_state.valid = 0;
+   }
+
    state->meta.pipeline = VK_NULL_HANDLE;
    state->meta.framebuffer = VK_NULL_HANDLE;
    state->meta.pass = VK_NULL_HANDLE;
    state->meta.subpass_idx = -1;
+   state->meta.descriptor_state.valid = 0;
 }
 
 /* FIXME: C&P from v3dx_draw. Refactor to common place? */
