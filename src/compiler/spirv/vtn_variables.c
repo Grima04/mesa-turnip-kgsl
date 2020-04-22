@@ -2751,7 +2751,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
    case SpvOpConvertUToPtr: {
       struct vtn_value *ptr_val =
          vtn_push_value(b, w[2], vtn_value_type_pointer);
-      struct vtn_value *u_val = vtn_value(b, w[3], vtn_value_type_ssa);
+      struct vtn_value *u_val = vtn_untyped_value(b, w[3]);
 
       vtn_fail_if(ptr_val->type->type == NULL,
                   "OpConvertUToPtr can only be used on physical pointers");
@@ -2761,7 +2761,8 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                   "OpConvertUToPtr can only be used to cast from a vector or "
                   "scalar type");
 
-      nir_ssa_def *ptr_ssa = nir_sloppy_bitcast(&b->nb, u_val->ssa->def,
+      struct vtn_ssa_value *u_ssa = vtn_ssa_value(b, w[3]);
+      nir_ssa_def *ptr_ssa = nir_sloppy_bitcast(&b->nb, u_ssa->def,
                                                 ptr_val->type->type);
       ptr_val->pointer = vtn_pointer_from_ssa(b, ptr_ssa, ptr_val->type);
       vtn_foreach_decoration(b, ptr_val, ptr_decoration_cb, ptr_val->pointer);
