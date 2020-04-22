@@ -4089,12 +4089,6 @@ VkResult anv_CreateEvent(
    event->state = state;
    event->semaphore = VK_EVENT_RESET;
 
-   if (!device->info.has_llc) {
-      /* Make sure the writes we're flushing have landed. */
-      __builtin_ia32_mfence();
-      __builtin_ia32_clflush(event);
-   }
-
    *pEvent = anv_event_to_handle(event);
 
    return VK_SUCCESS;
@@ -4124,13 +4118,6 @@ VkResult anv_GetEventStatus(
    if (anv_device_is_lost(device))
       return VK_ERROR_DEVICE_LOST;
 
-   if (!device->info.has_llc) {
-      /* Invalidate read cache before reading event written by GPU. */
-      __builtin_ia32_clflush(event);
-      __builtin_ia32_mfence();
-
-   }
-
    return event->semaphore;
 }
 
@@ -4138,16 +4125,9 @@ VkResult anv_SetEvent(
     VkDevice                                    _device,
     VkEvent                                     _event)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_event, event, _event);
 
    event->semaphore = VK_EVENT_SET;
-
-   if (!device->info.has_llc) {
-      /* Make sure the writes we're flushing have landed. */
-      __builtin_ia32_mfence();
-      __builtin_ia32_clflush(event);
-   }
 
    return VK_SUCCESS;
 }
@@ -4156,16 +4136,9 @@ VkResult anv_ResetEvent(
     VkDevice                                    _device,
     VkEvent                                     _event)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_event, event, _event);
 
    event->semaphore = VK_EVENT_RESET;
-
-   if (!device->info.has_llc) {
-      /* Make sure the writes we're flushing have landed. */
-      __builtin_ia32_mfence();
-      __builtin_ia32_clflush(event);
-   }
 
    return VK_SUCCESS;
 }
