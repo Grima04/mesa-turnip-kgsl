@@ -64,7 +64,6 @@ struct vmw_region
    uint32_t handle;
    uint64_t map_handle;
    void *data;
-   uint32_t map_count;
    int drm_fd;
    uint32_t size;
 };
@@ -637,7 +636,6 @@ vmw_ioctl_region_create(struct vmw_winsys_screen *vws, uint32_t size)
    region->data = NULL;
    region->handle = rep->handle;
    region->map_handle = rep->map_handle;
-   region->map_count = 0;
    region->size = size;
    region->drm_fd = vws->ioctl.drm_fd;
 
@@ -659,10 +657,7 @@ vmw_ioctl_region_destroy(struct vmw_region *region)
    vmw_printf("%s: gmrId = %u, offset = %u\n", __FUNCTION__,
               region->ptr.gmrId, region->ptr.offset);
 
-   if (region->data) {
-      os_munmap(region->data, region->size);
-      region->data = NULL;
-   }
+   assert(region->data == NULL);
 
    memset(&arg, 0, sizeof(arg));
    arg.handle = region->handle;
@@ -701,8 +696,6 @@ vmw_ioctl_region_map(struct vmw_region *region)
       region->data = map;
    }
 
-   ++region->map_count;
-
    return region->data;
 }
 
@@ -711,7 +704,9 @@ vmw_ioctl_region_unmap(struct vmw_region *region)
 {
    vmw_printf("%s: gmrId = %u, offset = %u\n", __FUNCTION__,
               region->ptr.gmrId, region->ptr.offset);
-   --region->map_count;
+
+   os_munmap(region->data, region->size);
+   region->data = NULL;
 }
 
 /**

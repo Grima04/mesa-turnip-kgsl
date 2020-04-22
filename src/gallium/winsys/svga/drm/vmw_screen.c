@@ -67,6 +67,7 @@ vmw_winsys_create( int fd )
 {
    struct vmw_winsys_screen *vws;
    struct stat stat_buf;
+   const char *getenv_val;
 
    if (dev_hash == NULL) {
       dev_hash = _mesa_hash_table_create(NULL, vmw_dev_hash, vmw_dev_compare);
@@ -97,6 +98,8 @@ vmw_winsys_create( int fd )
    vws->base.have_gb_dma = !vws->force_coherent;
    vws->base.need_to_rebind_resources = FALSE;
    vws->base.have_transfer_from_buffer_cmd = vws->base.have_vgpu10;
+   getenv_val = getenv("SVGA_FORCE_KERNEL_UNMAPS");
+   vws->cache_maps = !getenv_val || strcmp(getenv_val, "0") == 0;
    vws->fence_ops = vmw_fence_ops_create(vws);
    if (!vws->fence_ops)
       goto out_no_fence_ops;
