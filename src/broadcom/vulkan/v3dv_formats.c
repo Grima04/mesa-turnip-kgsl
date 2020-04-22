@@ -400,7 +400,11 @@ image_format_features(VkFormat vk_format,
 
    VkFormatFeatureFlags flags = 0;
 
-   if (v3dv_format->tex_type != TEXTURE_DATA_FORMAT_NO) {
+   /* Raster format is only supported for 1D textures, so let's just
+    * always require optimal tiling for anything that requires sampling.
+    */
+   if (v3dv_format->tex_type != TEXTURE_DATA_FORMAT_NO &&
+       tiling == VK_IMAGE_TILING_OPTIMAL) {
       flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
                VK_FORMAT_FEATURE_BLIT_SRC_BIT;
 
