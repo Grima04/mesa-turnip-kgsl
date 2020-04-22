@@ -1758,9 +1758,9 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 	if (surf->dcc_size &&
 	    /* dcc_size is computed on GFX9+ only if it's displayable. */
 	    (info->chip_class >= GFX9 || !get_display_flag(config, surf))) {
-		surf->dcc_offset = align64(surf->total_size, surf->dcc_alignment);
-		surf->total_size = surf->dcc_offset + surf->dcc_size;
-
+		/* It's better when displayable DCC is immediately after
+		 * the image due to hw-specific reasons.
+		 */
 		if (info->chip_class >= GFX9 &&
 		    surf->u.gfx9.dcc_retile_num_elements) {
 			/* Add space for the displayable DCC buffer. */
@@ -1781,6 +1781,9 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 						   surf->u.gfx9.dcc_retile_num_elements * 4;
 			}
 		}
+
+		surf->dcc_offset = align64(surf->total_size, surf->dcc_alignment);
+		surf->total_size = surf->dcc_offset + surf->dcc_size;
 	}
 
 	return 0;
