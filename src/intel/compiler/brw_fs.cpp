@@ -8755,7 +8755,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    /* Currently, the compiler only supports SIMD32 on SNB+ */
    if (v8->max_dispatch_width >= 32 && !use_rep_send &&
-       devinfo->gen >= 6 && simd16_cfg) {
+       devinfo->gen >= 6 && simd16_cfg &&
+       !(INTEL_DEBUG & DEBUG_NO32)) {
       /* Try a SIMD32 compile */
       v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base, shader, 32, shader_time_index32);
