@@ -400,6 +400,12 @@ fd_rasterizer_state_bind(struct pipe_context *pctx, void *hwcso)
 	ctx->rasterizer = hwcso;
 	ctx->dirty |= FD_DIRTY_RASTERIZER;
 
+	if (ctx->rasterizer && ctx->rasterizer->scissor) {
+		ctx->current_scissor = &ctx->scissor;
+	} else {
+		ctx->current_scissor = &ctx->disabled_scissor;
+	}
+
 	/* if scissor enable bit changed we need to mark scissor
 	 * state as dirty as well:
 	 * NOTE: we can do a shallow compare, since we only care

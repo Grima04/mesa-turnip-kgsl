@@ -278,6 +278,9 @@ struct fd_context {
 	 */
 	bool in_discard_blit : 1;
 
+	/* points to either scissor or disabled_scissor depending on rast state: */
+	struct pipe_scissor_state *current_scissor;
+
 	struct pipe_scissor_state scissor;
 
 	/* we don't have a disable/enable bit for scissor, so instead we keep
@@ -463,9 +466,7 @@ fd_context_all_clean(struct fd_context *ctx)
 static inline struct pipe_scissor_state *
 fd_context_get_scissor(struct fd_context *ctx)
 {
-	if (ctx->rasterizer && ctx->rasterizer->scissor)
-		return &ctx->scissor;
-	return &ctx->disabled_scissor;
+	return ctx->current_scissor;
 }
 
 static inline bool

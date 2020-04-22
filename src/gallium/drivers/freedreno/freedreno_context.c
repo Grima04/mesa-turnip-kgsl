@@ -427,6 +427,8 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	list_add(&ctx->node, &ctx->screen->context_list);
 	fd_screen_unlock(ctx->screen);
 
+	ctx->current_scissor = &ctx->disabled_scissor;
+
 	ctx->log_out = stdout;
 
 	if ((fd_mesa_debug & FD_DBG_LOG) &&
