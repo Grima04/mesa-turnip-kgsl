@@ -1006,17 +1006,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
 
       bool did_copy = do_copy(ctx, bld, it->second, &preserve_scc);
 
-      /* reduce the number of uses of the operand reg by one */
-      if (did_copy && !it->second.op.isConstant()) {
-         for (std::pair<const PhysReg, copy_operation>& copy : copy_map) {
-             for (uint16_t i = 0; i < copy.second.bytes; i++) {
-               /* distance might underflow */
-               unsigned distance = copy.first.reg_b + i - it->second.op.physReg().reg_b;
-               if (distance < it->second.bytes && !it->second.uses[distance])
-                  copy.second.uses[i] -= 1;
-            }
-         }
-      }
+      std::pair<PhysReg, copy_operation> copy = *it;
 
       if (it->second.is_used == 0) {
          /* the target reg is not used as operand for any other copy, so we
@@ -1046,6 +1036,20 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          }
 
          it = copy_map.begin();
+      }
+
+      /* Reduce the number of uses of the operand reg by one. Do this after
+       * splitting the copy or removing it in case the copy writes to it's own
+       * operand (for example, v[7:8] = v[8:9]) */
+      if (did_copy && !copy.second.op.isConstant()) {
+         for (std::pair<const PhysReg, copy_operation>& other : copy_map) {
+             for (uint16_t i = 0; i < other.second.bytes; i++) {
+               /* distance might underflow */
+               unsigned distance = other.first.reg_b + i - copy.second.op.physReg().reg_b;
+               if (distance < copy.second.bytes && !copy.second.uses[distance])
+                  other.second.uses[i] -= 1;
+            }
+         }
       }
    }
 
