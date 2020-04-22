@@ -1152,12 +1152,16 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
 
    switch (type) {
    case VK_DESCRIPTOR_TYPE_SAMPLER:
-      sampler = anv_sampler_from_handle(info->sampler);
+      sampler = bind_layout->immutable_samplers ?
+                bind_layout->immutable_samplers[element] :
+                anv_sampler_from_handle(info->sampler);
       break;
 
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       image_view = anv_image_view_from_handle(info->imageView);
-      sampler = anv_sampler_from_handle(info->sampler);
+      sampler = bind_layout->immutable_samplers ?
+                bind_layout->immutable_samplers[element] :
+                anv_sampler_from_handle(info->sampler);
       break;
 
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -1169,13 +1173,6 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
    default:
       unreachable("invalid descriptor type");
    }
-
-   /* If this descriptor has an immutable sampler, we don't want to stomp on
-    * it.
-    */
-   sampler = bind_layout->immutable_samplers ?
-             bind_layout->immutable_samplers[element] :
-             sampler;
 
    *desc = (struct anv_descriptor) {
       .type = type,
