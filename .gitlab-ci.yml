@@ -829,7 +829,6 @@ arm64_a306_gles3:
 arm64_a530_gles2:
   extends:
     - arm64_a306_gles2
-  stage: freedreno
   variables:
     BM_KERNEL: /lava-files/db820c-kernel
     BM_DTB: /lava-files/db820c.dtb
