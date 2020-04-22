@@ -3130,7 +3130,8 @@ static void
 setup_output(struct ir3_context *ctx, nir_variable *out)
 {
 	struct ir3_shader_variant *so = ctx->so;
-	unsigned ncomp = glsl_get_components(out->type);
+	unsigned slots = glsl_count_vec4_slots(out->type, false, false);
+	unsigned ncomp = glsl_get_components(glsl_without_array(out->type));
 	unsigned n = out->data.driver_location;
 	unsigned frac = out->data.location_frac;
 	unsigned slot = out->data.location;
@@ -3192,29 +3193,33 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 		ir3_context_error(ctx, "unknown shader type: %d\n", ctx->so->type);
 	}
 
-	compile_assert(ctx, n < ARRAY_SIZE(so->outputs));
 
-	so->outputs[n].slot = slot;
-	so->outputs_count = MAX2(so->outputs_count, n + 1);
+	so->outputs_count = out->data.driver_location + slots;
+	compile_assert(ctx, so->outputs_count < ARRAY_SIZE(so->outputs));
 
-	for (int i = 0; i < ncomp; i++) {
-		unsigned idx = (n * 4) + i + frac;
-		compile_assert(ctx, idx < ctx->noutputs);
-		ctx->outputs[idx] = create_immed(ctx->block, fui(0.0));
-	}
+	for (int i = 0; i < slots; i++) {
+		int slot_base = n + i;
+		so->outputs[slot_base].slot = slot + i;
 
-	/* if varying packing doesn't happen, we could end up in a situation
-	 * with "holes" in the output, and since the per-generation code that
-	 * sets up varying linkage registers doesn't expect to have more than
-	 * one varying per vec4 slot, pad the holes.
-	 *
-	 * Note that this should probably generate a performance warning of
-	 * some sort.
-	 */
-	for (int i = 0; i < frac; i++) {
-		unsigned idx = (n * 4) + i;
-		if (!ctx->outputs[idx]) {
+		for (int i = 0; i < ncomp; i++) {
+			unsigned idx = (slot_base * 4) + i + frac;
+			compile_assert(ctx, idx < ctx->noutputs);
 			ctx->outputs[idx] = create_immed(ctx->block, fui(0.0));
+		}
+
+		/* if varying packing doesn't happen, we could end up in a situation
+		 * with "holes" in the output, and since the per-generation code that
+		 * sets up varying linkage registers doesn't expect to have more than
+		 * one varying per vec4 slot, pad the holes.
+		 *
+		 * Note that this should probably generate a performance warning of
+		 * some sort.
+		 */
+		for (int i = 0; i < frac; i++) {
+			unsigned idx = (slot_base * 4) + i;
+			if (!ctx->outputs[idx]) {
+				ctx->outputs[idx] = create_immed(ctx->block, fui(0.0));
+			}
 		}
 	}
 }
