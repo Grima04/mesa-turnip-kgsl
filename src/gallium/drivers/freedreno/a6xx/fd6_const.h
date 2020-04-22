@@ -28,12 +28,6 @@
 
 #include "fd6_emit.h"
 
-void fd6_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
-		uint32_t regid, uint32_t offset, uint32_t sizedwords,
-		const uint32_t *dwords, struct pipe_resource *prsc);
-void fd6_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean write,
-		uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets);
-
 void fd6_emit_consts(struct fd6_emit *emit);
 void fd6_emit_ibo_consts(struct fd6_emit *emit, const struct ir3_shader_variant *v,
 		enum pipe_shader_type stage, struct fd_ringbuffer *ring);

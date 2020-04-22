@@ -196,7 +196,7 @@ fd5_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 		cs_program_emit(ring, v, info);
 
 	fd5_emit_cs_state(ctx, ring, v);
-	ir3_emit_cs_consts(v, ring, ctx, info);
+	fd5_emit_cs_consts(v, ring, ctx, info);
 
 	foreach_bit(i, ctx->global_bindings.enabled_mask)
 		nglobal++;

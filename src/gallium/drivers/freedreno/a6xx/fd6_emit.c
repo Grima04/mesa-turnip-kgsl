@@ -1220,8 +1220,6 @@ void
 fd6_emit_init_screen(struct pipe_screen *pscreen)
 {
 	struct fd_screen *screen = fd_screen(pscreen);
-	screen->emit_const = fd6_emit_const;
-	screen->emit_const_bo = fd6_emit_const_bo;
 	screen->emit_ib = fd6_emit_ib;
 	screen->mem_to_mem = fd6_mem_to_mem;
 }

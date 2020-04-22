@@ -46,6 +46,8 @@
 #include "fd5_format.h"
 #include "fd5_zsa.h"
 
+#include "ir3_const.h"
+
 /* regid:          base const register
  * prsc or dwords: buffer containing constant values
  * sizedwords:     size of const value buffer
@@ -124,6 +126,41 @@ fd5_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean writ
 		OUT_RING(ring, 0xffffffff);
 		OUT_RING(ring, 0xffffffff);
 	}
+}
+
+static bool
+is_stateobj(struct fd_ringbuffer *ring)
+{
+	return false;
+}
+
+void
+emit_const(struct fd_ringbuffer *ring,
+		const struct ir3_shader_variant *v, uint32_t dst_offset,
+		uint32_t offset, uint32_t size, const void *user_buffer,
+		struct pipe_resource *buffer)
+{
+	/* TODO inline this */
+	assert(dst_offset + size <= v->constlen * 4);
+	fd5_emit_const(ring, v->type, dst_offset,
+			offset, size, user_buffer, buffer);
+}
+
+static void
+emit_const_bo(struct fd_ringbuffer *ring,
+		const struct ir3_shader_variant *v, bool write, uint32_t dst_offset,
+		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
+{
+	/* TODO inline this */
+	assert(dst_offset + num < v->constlen * 4);
+	fd5_emit_const_bo(ring, v->type, write, dst_offset, num, prscs, offsets);
+}
+
+void
+fd5_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
+		struct fd_context *ctx, const struct pipe_grid_info *info)
+{
+	ir3_emit_cs_consts(v, ring, ctx, info);
 }
 
 /* Border color layout is diff from a4xx/a5xx.. if it turns out to be
@@ -1116,8 +1153,6 @@ void
 fd5_emit_init_screen(struct pipe_screen *pscreen)
 {
 	struct fd_screen *screen = fd_screen(pscreen);
-	screen->emit_const = fd5_emit_const;
-	screen->emit_const_bo = fd5_emit_const_bo;
 	screen->emit_ib = fd5_emit_ib;
 	screen->mem_to_mem = fd5_mem_to_mem;
 }

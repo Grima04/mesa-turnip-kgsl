@@ -43,6 +43,8 @@
 #include "fd3_format.h"
 #include "fd3_zsa.h"
 
+#include "ir3_const.h"
+
 static const enum adreno_state_block sb[] = {
 	[MESA_SHADER_VERTEX]   = SB_VERT_SHADER,
 	[MESA_SHADER_FRAGMENT] = SB_FRAG_SHADER,
@@ -121,6 +123,34 @@ fd3_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean writ
 
 	for (; i < anum; i++)
 		OUT_RING(ring, 0xffffffff);
+}
+
+static bool
+is_stateobj(struct fd_ringbuffer *ring)
+{
+	return false;
+}
+
+void
+emit_const(struct fd_ringbuffer *ring,
+		const struct ir3_shader_variant *v, uint32_t dst_offset,
+		uint32_t offset, uint32_t size, const void *user_buffer,
+		struct pipe_resource *buffer)
+{
+	/* TODO inline this */
+	assert(dst_offset + size <= v->constlen * 4);
+	fd3_emit_const(ring, v->type, dst_offset,
+			offset, size, user_buffer, buffer);
+}
+
+static void
+emit_const_bo(struct fd_ringbuffer *ring,
+		const struct ir3_shader_variant *v, bool write, uint32_t dst_offset,
+		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
+{
+	/* TODO inline this */
+	assert(dst_offset + num < v->constlen * 4);
+	fd3_emit_const_bo(ring, v->type, write, dst_offset, num, prscs, offsets);
 }
 
 #define VERT_TEX_OFF    0
@@ -942,8 +972,6 @@ void
 fd3_emit_init_screen(struct pipe_screen *pscreen)
 {
 	struct fd_screen *screen = fd_screen(pscreen);
-	screen->emit_const = fd3_emit_const;
-	screen->emit_const_bo = fd3_emit_const_bo;
 	screen->emit_ib = fd3_emit_ib;
 }
 

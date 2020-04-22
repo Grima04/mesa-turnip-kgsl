@@ -213,6 +213,7 @@ files_libfreedreno = files(
   'a6xx/fd6_zsa.h',
   'ir3/ir3_cache.c',
   'ir3/ir3_cache.h',
+  'ir3/ir3_const.h',
   'ir3/ir3_gallium.c',
   'ir3/ir3_gallium.h',
 )
