@@ -22,9 +22,9 @@
  */
 
 #include "ir3/ir3_compiler.h"
+#include "ir3/ir3_parser.h"
 
 #include "ir3_asm.h"
-#include "ir3_parser.h"
 
 struct ir3_kernel *
 ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
