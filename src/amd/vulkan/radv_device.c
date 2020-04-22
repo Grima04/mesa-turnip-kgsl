@@ -1469,7 +1469,8 @@ radv_get_physical_device_properties_1_1(struct radv_physical_device *pdevice,
 	p->deviceNodeMask = 0;
 
 	p->subgroupSize = RADV_SUBGROUP_SIZE;
-	p->subgroupSupportedStages = VK_SHADER_STAGE_ALL;
+	p->subgroupSupportedStages = VK_SHADER_STAGE_ALL_GRAPHICS |
+				     VK_SHADER_STAGE_COMPUTE_BIT;
 	p->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT |
 					 VK_SUBGROUP_FEATURE_VOTE_BIT |
 					 VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
