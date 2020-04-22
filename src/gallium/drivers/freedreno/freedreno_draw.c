@@ -193,7 +193,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 			resource_written(batch, so->sb[i].buffer);
 
 		foreach_bit (i, so->enabled_mask & ~so->writable_mask)
-				resource_read(batch, so->sb[i].buffer);
+			resource_read(batch, so->sb[i].buffer);
 	}
 
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_IMAGE) {
