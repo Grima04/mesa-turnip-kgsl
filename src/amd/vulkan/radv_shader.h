@@ -59,6 +59,7 @@ struct radv_vs_out_key {
 	uint32_t export_prim_id:1;
 	uint32_t export_layer_id:1;
 	uint32_t export_clip_dists:1;
+	uint32_t export_viewport_index:1;
 };
 
 struct radv_vs_variant_key {
@@ -294,6 +295,7 @@ struct radv_shader_info {
 		bool has_pcoord;
 		bool prim_id_input;
 		bool layer_input;
+		bool viewport_index_input;
 		uint8_t num_input_clips_culls;
 		uint32_t input_mask;
 		uint32_t flat_shaded_mask;

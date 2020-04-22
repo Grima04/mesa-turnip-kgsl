@@ -2578,12 +2578,16 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 		        infos[MESA_SHADER_FRAGMENT].ps.layer_input;
 		keys[MESA_SHADER_VERTEX].vs_common_out.export_clip_dists =
 		        !!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls;
+		keys[MESA_SHADER_VERTEX].vs_common_out.export_viewport_index =
+		        infos[MESA_SHADER_FRAGMENT].ps.viewport_index_input;
 		keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_prim_id =
 		        infos[MESA_SHADER_FRAGMENT].ps.prim_id_input;
 		keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_layer_id =
 		        infos[MESA_SHADER_FRAGMENT].ps.layer_input;
 		keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_clip_dists =
 		        !!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls;
+		keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_viewport_index =
+		        infos[MESA_SHADER_FRAGMENT].ps.viewport_index_input;
 
 		/* NGG passthrough mode can't be enabled for vertex shaders
 		 * that export the primitive ID.
@@ -4344,6 +4348,15 @@ radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs,
 	if (ps->info.ps.layer_input ||
 	    ps->info.needs_multiview_view_index) {
 		unsigned vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_LAYER];
+		if (vs_offset != AC_EXP_PARAM_UNDEFINED)
+			ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, true, false, false);
+		else
+			ps_input_cntl[ps_offset] = offset_to_ps_input(AC_EXP_PARAM_DEFAULT_VAL_0000, true, false, false);
+		++ps_offset;
+	}
+
+	if (ps->info.ps.viewport_index_input) {
+		unsigned vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_VIEWPORT];
 		if (vs_offset != AC_EXP_PARAM_UNDEFINED)
 			ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, true, false, false);
 		else

@@ -458,6 +458,9 @@ gather_info_input_decl_ps(const nir_shader *nir, const nir_variable *var,
 	case VARYING_SLOT_CLIP_DIST1:
 		info->ps.num_input_clips_culls += attrib_count;
 		break;
+	case VARYING_SLOT_VIEWPORT:
+		info->ps.viewport_index_input = true;
+		break;
 	default:
 		break;
 	}
@@ -724,6 +727,23 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
 			break;
 		case MESA_SHADER_GEOMETRY:
 			info->vs.outinfo.export_prim_id = true;
+			break;
+		default:
+			break;
+		}
+	}
+
+	/* Make sure to export the ViewportIndex if the fragment shader needs it. */
+	if (key->vs_common_out.export_viewport_index) {
+		switch (nir->info.stage) {
+		case MESA_SHADER_VERTEX:
+			info->vs.output_usage_mask[VARYING_SLOT_VIEWPORT] |= 0x1;
+			break;
+		case MESA_SHADER_TESS_EVAL:
+			info->tes.output_usage_mask[VARYING_SLOT_VIEWPORT] |= 0x1;
+			break;
+		case MESA_SHADER_GEOMETRY:
+			info->gs.output_usage_mask[VARYING_SLOT_VIEWPORT] |= 0x1;
 			break;
 		default:
 			break;
