@@ -879,35 +879,9 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
       }
 
       op[0] = offset(op[0], bld, fsign_instr->src[0].swizzle[channel]);
-
-      /* Resolve any source modifiers.  We could do slightly better on Gen8+
-       * if the only source modifier is negation, but *shrug*.
-       */
-      if (op[1].negate || op[1].abs) {
-         fs_reg tmp = bld.vgrf(op[1].type);
-
-         bld.MOV(tmp, op[1]);
-         op[1] = tmp;
-      }
    }
 
-   if (op[0].abs) {
-      /* Straightforward since the source can be assumed to be either strictly
-       * >= 0 or strictly <= 0 depending on the setting of the negate flag.
-       */
-      set_condmod(BRW_CONDITIONAL_NZ, bld.MOV(result, op[0]));
-
-      if (instr->op == nir_op_fsign) {
-         inst = (op[0].negate)
-            ? bld.MOV(result, brw_imm_f(-1.0f))
-            : bld.MOV(result, brw_imm_f(1.0f));
-      } else {
-         op[1].negate = (op[0].negate != op[1].negate);
-         inst = bld.MOV(result, op[1]);
-      }
-
-      set_predicate(BRW_PREDICATE_NORMAL, inst);
-   } else if (type_sz(op[0].type) == 2) {
+   if (type_sz(op[0].type) == 2) {
       /* AND(val, 0x8000) gives the sign bit.
        *
        * Predicated OR ORs 1.0 (0x3c00) with the sign bit if val is not zero.
