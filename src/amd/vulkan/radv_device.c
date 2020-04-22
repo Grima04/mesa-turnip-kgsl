@@ -180,6 +180,15 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 			.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
 		};
 	}
+
+	if (device->rad_info.gart_size > 0) {
+		gart_index = device->memory_properties.memoryHeapCount++;
+		device->memory_properties.memoryHeaps[gart_index] = (VkMemoryHeap) {
+			.size = device->rad_info.gart_size,
+			.flags = 0,
+		};
+	}
+
 	if (visible_vram_size) {
 		visible_vram_index = device->memory_properties.memoryHeapCount++;
 		device->memory_properties.memoryHeaps[visible_vram_index] = (VkMemoryHeap) {
@@ -187,24 +196,29 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 			.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
 		};
 	}
-	if (device->rad_info.gart_size > 0) {
-		gart_index = device->memory_properties.memoryHeapCount++;
-		device->memory_properties.memoryHeaps[gart_index] = (VkMemoryHeap) {
-			.size = device->rad_info.gart_size,
-			.flags = device->rad_info.has_dedicated_vram ? 0 : VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
-		};
-	}
 
 	STATIC_ASSERT(RADV_MEM_TYPE_COUNT <= VK_MAX_MEMORY_TYPES);
 	unsigned type_count = 0;
-	if (vram_index >= 0) {
-		device->mem_type_indices[type_count] = RADV_MEM_TYPE_VRAM;
-		device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
-			.propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			.heapIndex = vram_index,
-		};
+
+	if (device->rad_info.has_dedicated_vram) {
+		if (vram_index >= 0) {
+			device->mem_type_indices[type_count] = RADV_MEM_TYPE_VRAM;
+			device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
+				.propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				.heapIndex = vram_index,
+			};
+		}
+	} else {
+		if (visible_vram_index >= 0) {
+			device->mem_type_indices[type_count] = RADV_MEM_TYPE_VRAM;
+			device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
+				.propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				.heapIndex = visible_vram_index,
+			};
+		}
 	}
-	if (gart_index >= 0 && device->rad_info.has_dedicated_vram) {
+
+	if (gart_index >= 0) {
 		device->mem_type_indices[type_count] = RADV_MEM_TYPE_GTT_WRITE_COMBINE;
 		device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
 			.propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -221,26 +235,13 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 			.heapIndex = visible_vram_index,
 		};
 	}
-	if (gart_index >= 0 && !device->rad_info.has_dedicated_vram) {
-		/* Put GTT after visible VRAM for GPUs without dedicated VRAM
-		 * as they have identical property flags, and according to the
-		 * spec, for types with identical flags, the one with greater
-		 * performance must be given a lower index. */
-		device->mem_type_indices[type_count] = RADV_MEM_TYPE_GTT_WRITE_COMBINE;
-		device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
-			.propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			.heapIndex = gart_index,
-		};
-	}
+
 	if (gart_index >= 0) {
 		device->mem_type_indices[type_count] = RADV_MEM_TYPE_GTT_CACHED;
 		device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
 			.propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-			VK_MEMORY_PROPERTY_HOST_CACHED_BIT |
-			(device->rad_info.has_dedicated_vram ? 0 : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+			VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
 			.heapIndex = gart_index,
 		};
 	}
