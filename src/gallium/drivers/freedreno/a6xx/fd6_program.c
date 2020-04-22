@@ -35,6 +35,7 @@
 #include "freedreno_program.h"
 
 #include "fd6_program.h"
+#include "fd6_const.h"
 #include "fd6_emit.h"
 #include "fd6_texture.h"
 #include "fd6_format.h"
@@ -425,7 +426,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			COND(vs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE));
 
 	fd6_emit_shader(ring, vs);
-	ir3_emit_immediates(screen, vs, ring);
+	fd6_emit_immediates(screen, vs, ring);
 
 	struct ir3_shader_linkage l = {0};
 	const struct ir3_shader_variant *last_shader = fd6_last_shader(state);
@@ -510,8 +511,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			COND(hs->need_pixlod, A6XX_SP_HS_CTRL_REG0_PIXLODENABLE));
 
 		fd6_emit_shader(ring, hs);
-		ir3_emit_immediates(screen, hs, ring);
-		ir3_emit_link_map(screen, vs, hs, ring);
+		fd6_emit_immediates(screen, hs, ring);
+		fd6_emit_link_map(screen, vs, hs, ring);
 
 		OUT_PKT4(ring, REG_A6XX_SP_DS_CTRL_REG0, 1);
 		OUT_RING(ring, A6XX_SP_DS_CTRL_REG0_THREADSIZE(TWO_QUADS) |
@@ -520,8 +521,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			COND(ds->need_pixlod, A6XX_SP_DS_CTRL_REG0_PIXLODENABLE));
 
 		fd6_emit_shader(ring, ds);
-		ir3_emit_immediates(screen, ds, ring);
-		ir3_emit_link_map(screen, hs, ds, ring);
+		fd6_emit_immediates(screen, ds, ring);
+		fd6_emit_link_map(screen, hs, ds, ring);
 
 		shader_info *hs_info = &hs->shader->nir->info;
 		OUT_PKT4(ring, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
@@ -701,11 +702,11 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			COND(gs->need_pixlod, A6XX_SP_GS_CTRL_REG0_PIXLODENABLE));
 
 		fd6_emit_shader(ring, gs);
-		ir3_emit_immediates(screen, gs, ring);
+		fd6_emit_immediates(screen, gs, ring);
 		if (ds)
-			ir3_emit_link_map(screen, ds, gs, ring);
+			fd6_emit_link_map(screen, ds, gs, ring);
 		else
-			ir3_emit_link_map(screen, vs, gs, ring);
+			fd6_emit_link_map(screen, vs, gs, ring);
 
 		OUT_PKT4(ring, REG_A6XX_VPC_PACK_GS, 1);
 		OUT_RING(ring, A6XX_VPC_PACK_GS_POSITIONLOC(pos_loc) |
@@ -818,7 +819,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_RING(ring, COND(fragz, A6XX_GRAS_SU_DEPTH_PLANE_CNTL_FRAG_WRITES_Z));
 
 	if (!binning_pass)
-		ir3_emit_immediates(screen, fs, ring);
+		fd6_emit_immediates(screen, fs, ring);
 }
 
 static struct fd_ringbuffer *
@@ -1026,7 +1027,7 @@ fd6_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_stat
 	unsigned packets, size;
 
 	/* pre-calculate size required for userconst stateobj: */
-	ir3_user_consts_size(&shader->ubo_state, &packets, &size);
+	fd6_user_consts_size(&shader->ubo_state, &packets, &size);
 
 	/* also account for UBO addresses: */
 	packets += 1;

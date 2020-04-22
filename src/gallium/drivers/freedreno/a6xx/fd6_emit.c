@@ -38,6 +38,7 @@
 
 #include "fd6_emit.h"
 #include "fd6_blend.h"
+#include "fd6_const.h"
 #include "fd6_context.h"
 #include "fd6_image.h"
 #include "fd6_program.h"
@@ -45,92 +46,6 @@
 #include "fd6_texture.h"
 #include "fd6_format.h"
 #include "fd6_zsa.h"
-
-/* regid:          base const register
- * prsc or dwords: buffer containing constant values
- * sizedwords:     size of const value buffer
- */
-static void
-fd6_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
-		uint32_t regid, uint32_t offset, uint32_t sizedwords,
-		const uint32_t *dwords, struct pipe_resource *prsc)
-{
-	uint32_t i, sz, align_sz;
-	enum a6xx_state_src src;
-
-	debug_assert((regid % 4) == 0);
-
-	if (prsc) {
-		sz = 0;
-		src = SS6_INDIRECT;
-	} else {
-		sz = sizedwords;
-		src = SS6_DIRECT;
-	}
-
-	align_sz = align(sz, 4);
-
-	OUT_PKT7(ring, fd6_stage2opcode(type), 3 + align_sz);
-	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid/4) |
-			CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-			CP_LOAD_STATE6_0_STATE_SRC(src) |
-			CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(type)) |
-			CP_LOAD_STATE6_0_NUM_UNIT(DIV_ROUND_UP(sizedwords, 4)));
-	if (prsc) {
-		struct fd_bo *bo = fd_resource(prsc)->bo;
-		OUT_RELOC(ring, bo, offset, 0, 0);
-	} else {
-		OUT_RING(ring, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-		OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-		dwords = (uint32_t *)&((uint8_t *)dwords)[offset];
-	}
-
-	for (i = 0; i < sz; i++) {
-		OUT_RING(ring, dwords[i]);
-	}
-
-	/* Zero-pad to multiple of 4 dwords */
-	for (i = sz; i < align_sz; i++) {
-		OUT_RING(ring, 0);
-	}
-}
-
-static void
-fd6_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean write,
-		uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
-{
-	uint32_t anum = align(num, 2);
-	uint32_t i;
-
-	debug_assert((regid % 4) == 0);
-
-	OUT_PKT7(ring, fd6_stage2opcode(type), 3 + (2 * anum));
-	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid/4) |
-			CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS)|
-			CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-			CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(type)) |
-			CP_LOAD_STATE6_0_NUM_UNIT(anum/2));
-	OUT_RING(ring, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-	OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-
-	for (i = 0; i < num; i++) {
-		if (prscs[i]) {
-			if (write) {
-				OUT_RELOCW(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
-			} else {
-				OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
-			}
-		} else {
-			OUT_RING(ring, 0xbad00000 | (i << 16));
-			OUT_RING(ring, 0xbad00000 | (i << 16));
-		}
-	}
-
-	for (; i < anum; i++) {
-		OUT_RING(ring, 0xffffffff);
-		OUT_RING(ring, 0xffffffff);
-	}
-}
 
 /* Border color layout is diff from a4xx/a5xx.. if it turns out to be
  * the same as a6xx then move this somewhere common ;-)
@@ -807,140 +722,10 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 	}
 }
 
-static void
-emit_tess_bos(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3_shader_variant *s)
-{
-	struct fd_context *ctx = emit->ctx;
-	const unsigned regid = s->shader->const_state.offsets.primitive_param * 4 + 4;
-	uint32_t dwords = 16;
-
-	OUT_PKT7(ring, fd6_stage2opcode(s->type), 3);
-	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid / 4) |
-			CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS)|
-			CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-			CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(s->type)) |
-			CP_LOAD_STATE6_0_NUM_UNIT(dwords / 4));
-	OUT_RB(ring, ctx->batch->tess_addrs_constobj);
-}
-
-static void
-emit_stage_tess_consts(struct fd_ringbuffer *ring, struct ir3_shader_variant *v,
-		uint32_t *params, int num_params)
-{
-	const unsigned regid = v->shader->const_state.offsets.primitive_param;
-	int size = MIN2(1 + regid, v->constlen) - regid;
-	if (size > 0)
-		fd6_emit_const(ring, v->type, regid * 4, 0, num_params, params, NULL);
-}
-
-static void
-fd6_emit_tess_const(struct fd6_emit *emit)
-{
-	struct fd_context *ctx = emit->ctx;
-
-	struct fd_ringbuffer *constobj = fd_submit_new_ringbuffer(
-		ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
-
-	/* VS sizes are in bytes since that's what STLW/LDLW use, while the HS
-	 * size is dwords, since that's what LDG/STG use.
-	 */
-	unsigned num_vertices =
-		emit->hs ?
-		emit->info->vertices_per_patch :
-		emit->gs->shader->nir->info.gs.vertices_in;
-
-	uint32_t vs_params[4] = {
-		emit->vs->shader->output_size * num_vertices * 4,	/* vs primitive stride */
-		emit->vs->shader->output_size * 4,					/* vs vertex stride */
-		0,
-		0
-	};
-
-	emit_stage_tess_consts(constobj, emit->vs, vs_params, ARRAY_SIZE(vs_params));
-
-	if (emit->hs) {
-		uint32_t hs_params[4] = {
-			emit->vs->shader->output_size * num_vertices * 4,	/* vs primitive stride */
-			emit->vs->shader->output_size * 4,					/* vs vertex stride */
-			emit->hs->shader->output_size,
-			emit->info->vertices_per_patch
-		};
-
-		emit_stage_tess_consts(constobj, emit->hs, hs_params, ARRAY_SIZE(hs_params));
-		emit_tess_bos(constobj, emit, emit->hs);
-
-		if (emit->gs)
-			num_vertices = emit->gs->shader->nir->info.gs.vertices_in;
-
-		uint32_t ds_params[4] = {
-			emit->ds->shader->output_size * num_vertices * 4,	/* ds primitive stride */
-			emit->ds->shader->output_size * 4,					/* ds vertex stride */
-			emit->hs->shader->output_size,                      /* hs vertex stride (dwords) */
-			emit->hs->shader->nir->info.tess.tcs_vertices_out
-		};
-
-		emit_stage_tess_consts(constobj, emit->ds, ds_params, ARRAY_SIZE(ds_params));
-		emit_tess_bos(constobj, emit, emit->ds);
-	}
-
-	if (emit->gs) {
-		struct ir3_shader_variant *prev;
-		if (emit->ds)
-			prev = emit->ds;
-		else
-			prev = emit->vs;
-
-		uint32_t gs_params[4] = {
-			prev->shader->output_size * num_vertices * 4,	/* ds primitive stride */
-			prev->shader->output_size * 4,					/* ds vertex stride */
-			0,
-			0,
-		};
-
-		num_vertices = emit->gs->shader->nir->info.gs.vertices_in;
-		emit_stage_tess_consts(constobj, emit->gs, gs_params, ARRAY_SIZE(gs_params));
-	}
-
-	fd6_emit_take_group(emit, constobj, FD6_GROUP_PRIMITIVE_PARAMS, ENABLE_ALL);
-}
-
-static void
-fd6_emit_consts(struct fd6_emit *emit)
-{
-	static const enum pipe_shader_type types[] = {
-			PIPE_SHADER_VERTEX, PIPE_SHADER_TESS_CTRL, PIPE_SHADER_TESS_EVAL,
-			PIPE_SHADER_GEOMETRY, PIPE_SHADER_FRAGMENT,
-	};
-	const struct ir3_shader_variant *variants[] = {
-			emit->vs, emit->hs, emit->ds, emit->gs, emit->fs,
-	};
-	struct fd_context *ctx = emit->ctx;
-	unsigned sz = 0;
-
-	for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
-		if (!variants[i])
-			continue;
-		sz += variants[i]->shader->ubo_state.cmdstream_size;
-	}
-
-	struct fd_ringbuffer *constobj = fd_submit_new_ringbuffer(
-			ctx->batch->submit, sz, FD_RINGBUFFER_STREAMING);
-
-	for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
-		if (!variants[i])
-			continue;
-		ir3_emit_user_consts(ctx->screen, variants[i], constobj, &ctx->constbuf[types[i]]);
-		ir3_emit_ubos(ctx->screen, variants[i], constobj, &ctx->constbuf[types[i]]);
-	}
-
-	fd6_emit_take_group(emit, constobj, FD6_GROUP_CONST, ENABLE_ALL);
-}
-
 void
 fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 {
 	struct fd_context *ctx = emit->ctx;
-	struct fd6_context *fd6_ctx = fd6_context(ctx);
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
 	const struct fd6_program_state *prog = fd6_emit_get_prog(emit);
 	const struct ir3_shader_variant *vs = emit->vs;
@@ -1088,24 +873,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		fd6_emit_take_group(emit, ring, FD6_GROUP_PROG_FB_RAST, ENABLE_DRAW);
 	}
 
-	if (dirty & (FD_DIRTY_CONST | FD_DIRTY_PROG)) {
-		fd6_emit_consts(emit);
-	}
-
-	if (emit->key.key.has_gs || emit->key.key.tessellation)
-		fd6_emit_tess_const(emit);
-
-	/* if driver-params are needed, emit each time: */
-	if (ir3_needs_vs_driver_params(vs)) {
-		struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
-				ctx->batch->submit, IR3_DP_VS_COUNT * 4, FD_RINGBUFFER_STREAMING);
-		ir3_emit_vs_driver_params(vs, dpconstobj, ctx, emit->info);
-		fd6_emit_take_group(emit, dpconstobj, FD6_GROUP_VS_DRIVER_PARAMS, ENABLE_ALL);
-		fd6_ctx->has_dp_state = true;
-	} else if (fd6_ctx->has_dp_state) {
-		fd6_emit_take_group(emit, NULL, FD6_GROUP_VS_DRIVER_PARAMS, ENABLE_ALL);
-		fd6_ctx->has_dp_state = false;
-	}
+	fd6_emit_consts(emit);
 
 	struct ir3_stream_output_info *info = &fd6_last_shader(prog)->shader->stream_output;
 	if (info->num_outputs)
@@ -1177,10 +945,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_COUNT, 1);
 		OUT_RING(obj, ir3_shader_nibo(fs));
 
-		ir3_emit_ssbo_sizes(ctx->screen, fs, obj,
-				&ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
-		ir3_emit_image_dims(ctx->screen, fs, obj,
-				&ctx->shaderimg[PIPE_SHADER_FRAGMENT]);
+		fd6_emit_ibo_consts(emit, fs, PIPE_SHADER_FRAGMENT, ring);
 
 		fd6_emit_take_group(emit, obj, FD6_GROUP_IBO, ENABLE_DRAW);
 		fd_ringbuffer_del(state);
