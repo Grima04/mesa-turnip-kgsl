@@ -2559,7 +2559,10 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9304" name="VPC_CNTL_0">
 		<bitfield name="NUMNONPOSVAR" low="0" high="7" type="uint"/>
+		<!-- for fixed-function (i.e. no GS) gl_PrimitiveID in FS -->
+		<bitfield name="PRIMIDLOC" low="8" high="15" type="uint"/>
 		<bitfield name="VARYING" pos="16" type="boolean"/>
+		<bitfield name="UNKLOC" low="24" high="31" type="uint"/>
 	</reg32>
 
 	<reg32 offset="0x9305" name="VPC_SO_BUF_CNTL">
@@ -2607,7 +2610,11 @@ to upconvert to 32b float internally?
 
 	<!-- always 0x1 ? -->
 	<reg32 offset="0x9805" name="PC_UNKNOWN_9805"/>
-	<reg32 offset="0x9806" name="PC_UNKNOWN_9806"/>
+
+	<!-- probably a mirror of VFD_CONTROL_6 -->
+	<reg32 offset="0x9806" name="PC_PRIMID_CNTL">
+		<bitfield name="PRIMID_PASSTHRU" pos="0" type="boolean"/>
+	</reg32>
 
 	<reg32 offset="0x9980" name="PC_UNKNOWN_9980"/>
 	<reg32 offset="0x9981" name="PC_UNKNOWN_9981"/>
@@ -2721,6 +2728,12 @@ to upconvert to 32b float internally?
 		<bitfield name="REGID_GSHEADER" low="0" high="7" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0xa006" name="VFD_CONTROL_6">
+		<!--
+			True if gl_PrimitiveID is read via the FS and there is
+			no matching write from the GS, and therefore it needs to
+			be passed through via fixed-function logic.
+		-->
+		<bitfield name="PRIMID_PASSTHRU" pos="0" type="boolean"/>
 	</reg32>
 
 	<reg32 offset="0xa007" name="VFD_MODE_CNTL">
