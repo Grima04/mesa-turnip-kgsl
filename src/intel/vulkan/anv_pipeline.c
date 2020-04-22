@@ -147,10 +147,23 @@ anv_shader_compile_to_nir(struct anv_device *device,
          assert(data + entry.size <= spec_info->pData + spec_info->dataSize);
 
          spec_entries[i].id = spec_info->pMapEntries[i].constantID;
-         if (spec_info->dataSize == 8)
+         switch (entry.size) {
+         case 8:
             spec_entries[i].data64 = *(const uint64_t *)data;
-         else
+            break;
+         case 4:
             spec_entries[i].data32 = *(const uint32_t *)data;
+            break;
+         case 2:
+            spec_entries[i].data32 = *(const uint16_t *)data;
+            break;
+         case 1:
+            spec_entries[i].data32 = *(const uint8_t *)data;
+            break;
+         default:
+            assert(!"Invalid spec constant size");
+            break;
+         }
       }
    }
 
