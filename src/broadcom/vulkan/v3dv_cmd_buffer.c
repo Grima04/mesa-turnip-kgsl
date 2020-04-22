@@ -2841,6 +2841,13 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
       memcpy(&state->meta.descriptor_state, &state->descriptor_state,
              sizeof(state->descriptor_state));
    }
+
+   /* FIXME: if we keep track of wether we have bound any push constant state
+    *        at all we could restruct this only to cases where it is actually
+    *        necessary.
+    */
+   memcpy(state->meta.push_constants, cmd_buffer->push_constants_data,
+          sizeof(state->meta.push_constants));
 }
 
 /* This restores command buffer state after a meta operation
@@ -2888,6 +2895,9 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
    } else {
       state->descriptor_state.valid = 0;
    }
+
+   memcpy(cmd_buffer->push_constants_data, state->meta.push_constants,
+          sizeof(state->meta.push_constants));
 
    state->meta.pipeline = VK_NULL_HANDLE;
    state->meta.framebuffer = VK_NULL_HANDLE;

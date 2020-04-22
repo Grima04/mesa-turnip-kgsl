@@ -770,6 +770,8 @@ struct v3dv_cmd_buffer_state {
       struct v3dv_dynamic_state dynamic;
 
       struct v3dv_descriptor_state descriptor_state;
+
+      uint32_t push_constants[MAX_PUSH_CONSTANTS_SIZE / 4];
    } meta;
 
    /* Command buffer state for queries */
