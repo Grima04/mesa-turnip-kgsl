@@ -732,7 +732,8 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
 static void
 tu6_emit_vs_system_values(struct tu_cs *cs,
                           const struct ir3_shader_variant *vs,
-                          const struct ir3_shader_variant *gs)
+                          const struct ir3_shader_variant *gs,
+                          bool primid_passthru)
 {
    const uint32_t vertexid_regid =
          ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
@@ -755,7 +756,7 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
    tu_cs_emit(cs, 0x000000fc); /* VFD_CONTROL_4 */
    tu_cs_emit(cs, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gsheader_regid) |
                   0xfc00); /* VFD_CONTROL_5 */
-   tu_cs_emit(cs, 0x00000000); /* VFD_CONTROL_6 */
+   tu_cs_emit(cs, COND(primid_passthru, A6XX_VFD_CONTROL_6_PRIMID_PASSTHRU)); /* VFD_CONTROL_6 */
 }
 
 /* Add any missing varyings needed for stream-out. Otherwise varyings not
@@ -934,6 +935,12 @@ tu6_emit_vpc(struct tu_cs *cs,
    if (last_shader->shader->stream_output.num_outputs)
       tu6_link_streamout(&linkage, last_shader);
 
+   /* We do this after linking shaders in order to know whether PrimID
+    * passthrough needs to be enabled.
+    */
+   bool primid_passthru = linkage.primid_loc != 0xff;
+   tu6_emit_vs_system_values(cs, vs, gs, primid_passthru);
+
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VAR_DISABLE(0), 4);
    tu_cs_emit(cs, ~linkage.varmask[0]);
    tu_cs_emit(cs, ~linkage.varmask[1]);
@@ -991,10 +998,14 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_VPC_DST_REG(0), sp_vpc_dst_count);
    tu_cs_emit_array(cs, sp_vpc_dst, sp_vpc_dst_count);
 
+   tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMID_CNTL, 1);
+   tu_cs_emit(cs, COND(primid_passthru, A6XX_PC_PRIMID_CNTL_PRIMID_PASSTHRU));
+
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_CNTL_0, 1);
    tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs->total_in) |
                      (fs->total_in > 0 ? A6XX_VPC_CNTL_0_VARYING : 0) |
-                     0xff00ff00);
+                     A6XX_VPC_CNTL_0_PRIMIDLOC(linkage.primid_loc) |
+                     A6XX_VPC_CNTL_0_UNKLOC(0xff));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK, 1);
    tu_cs_emit(cs, A6XX_VPC_PACK_POSITIONLOC(position_loc) |
@@ -1547,7 +1558,6 @@ tu6_emit_program(struct tu_cs *cs,
    tu6_emit_gs_config(cs, builder->shaders[MESA_SHADER_GEOMETRY], gs);
    tu6_emit_fs_config(cs, builder->shaders[MESA_SHADER_FRAGMENT], fs);
 
-   tu6_emit_vs_system_values(cs, vs, gs);
    tu6_emit_vpc(cs, vs, gs, fs, binning_pass, tf);
    tu6_emit_vpc_varying_modes(cs, fs, binning_pass);
    tu6_emit_fs_inputs(cs, fs);
