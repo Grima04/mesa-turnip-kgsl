@@ -53,7 +53,7 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
    struct nir_spirv_specialization *spec = NULL;
    uint32_t num_spec = 0;
    if (spec_info && spec_info->mapEntryCount) {
-      spec = malloc(sizeof(*spec) * spec_info->mapEntryCount);
+      spec = calloc(spec_info->mapEntryCount, sizeof(*spec));
       if (!spec)
          return NULL;
 
@@ -64,16 +64,16 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
          spec[i].id = entry->constantID;
          switch (entry->size) {
          case 8:
-            spec[i].data64 = *(const uint64_t *)data;
+            spec[i].value.u64 = *(const uint64_t *)data;
             break;
          case 4:
-            spec[i].data32 = *(const uint32_t *)data;
+            spec[i].value.u32 = *(const uint32_t *)data;
             break;
          case 2:
-            spec[i].data32 = *(const uint16_t *)data;
+            spec[i].value.u16 = *(const uint16_t *)data;
             break;
          case 1:
-            spec[i].data32 = *(const uint8_t *)data;
+            spec[i].value.u8 = *(const uint8_t *)data;
             break;
          default:
             assert(!"Invalid spec constant size");

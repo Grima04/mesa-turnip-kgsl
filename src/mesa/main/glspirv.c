@@ -239,7 +239,7 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
 
    for (unsigned i = 0; i < spirv_data->NumSpecializationConstants; ++i) {
       spec_entries[i].id = spirv_data->SpecializationConstantsIndex[i];
-      spec_entries[i].data32 = spirv_data->SpecializationConstantsValue[i];
+      spec_entries[i].value.u32 = spirv_data->SpecializationConstantsValue[i];
       spec_entries[i].defined_on_module = false;
    }
 
@@ -370,7 +370,7 @@ _mesa_SpecializeShaderARB(GLuint shader,
 
    for (unsigned i = 0; i < numSpecializationConstants; ++i) {
       spec_entries[i].id = pConstantIndex[i];
-      spec_entries[i].data32 = pConstantValue[i];
+      spec_entries[i].value.u32 = pConstantValue[i];
       spec_entries[i].defined_on_module = false;
    }
 

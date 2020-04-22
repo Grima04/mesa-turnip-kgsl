@@ -163,14 +163,6 @@ _vtn_fail(struct vtn_builder *b, const char *file, unsigned line,
    longjmp(b->fail_jump, 1);
 }
 
-struct spec_constant_value {
-   bool is_double;
-   union {
-      uint32_t data32;
-      uint64_t data64;
-   };
-};
-
 static struct vtn_ssa_value *
 vtn_undef_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
 {
@@ -1547,39 +1539,13 @@ spec_constant_decoration_cb(struct vtn_builder *b, UNUSED struct vtn_value *val,
    if (dec->decoration != SpvDecorationSpecId)
       return;
 
-   struct spec_constant_value *const_value = data;
-
+   nir_const_value *value = data;
    for (unsigned i = 0; i < b->num_specializations; i++) {
       if (b->specializations[i].id == dec->operands[0]) {
-         if (const_value->is_double)
-            const_value->data64 = b->specializations[i].data64;
-         else
-            const_value->data32 = b->specializations[i].data32;
+         *value = b->specializations[i].value;
          return;
       }
    }
-}
-
-static uint32_t
-get_specialization(struct vtn_builder *b, struct vtn_value *val,
-                   uint32_t const_value)
-{
-   struct spec_constant_value data;
-   data.is_double = false;
-   data.data32 = const_value;
-   vtn_foreach_decoration(b, val, spec_constant_decoration_cb, &data);
-   return data.data32;
-}
-
-static uint64_t
-get_specialization64(struct vtn_builder *b, struct vtn_value *val,
-                   uint64_t const_value)
-{
-   struct spec_constant_value data;
-   data.is_double = true;
-   data.data64 = const_value;
-   vtn_foreach_decoration(b, val, spec_constant_decoration_cb, &data);
-   return data.data64;
 }
 
 static void
@@ -1613,18 +1579,21 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
                   "Result type of %s must be OpTypeBool",
                   spirv_op_to_string(opcode));
 
-      uint32_t int_val = (opcode == SpvOpConstantTrue ||
-                          opcode == SpvOpSpecConstantTrue);
+      bool bval = (opcode == SpvOpConstantTrue ||
+                   opcode == SpvOpSpecConstantTrue);
+
+      nir_const_value u32val = nir_const_value_for_uint(bval, 32);
 
       if (opcode == SpvOpSpecConstantTrue ||
           opcode == SpvOpSpecConstantFalse)
-         int_val = get_specialization(b, val, int_val);
+         vtn_foreach_decoration(b, val, spec_constant_decoration_cb, &u32val);
 
-      val->constant->values[0].b = int_val != 0;
+      val->constant->values[0].b = u32val.u32 != 0;
       break;
    }
 
-   case SpvOpConstant: {
+   case SpvOpConstant:
+   case SpvOpSpecConstant: {
       vtn_fail_if(val->type->base_type != vtn_base_type_scalar,
                   "Result type of %s must be a scalar",
                   spirv_op_to_string(opcode));
@@ -1645,31 +1614,10 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
       default:
          vtn_fail("Unsupported SpvOpConstant bit size: %u", bit_size);
       }
-      break;
-   }
 
-   case SpvOpSpecConstant: {
-      vtn_fail_if(val->type->base_type != vtn_base_type_scalar,
-                  "Result type of %s must be a scalar",
-                  spirv_op_to_string(opcode));
-      int bit_size = glsl_get_bit_size(val->type->type);
-      switch (bit_size) {
-      case 64:
-         val->constant->values[0].u64 =
-            get_specialization64(b, val, vtn_u64_literal(&w[3]));
-         break;
-      case 32:
-         val->constant->values[0].u32 = get_specialization(b, val, w[3]);
-         break;
-      case 16:
-         val->constant->values[0].u16 = get_specialization(b, val, w[3]);
-         break;
-      case 8:
-         val->constant->values[0].u8 = get_specialization(b, val, w[3]);
-         break;
-      default:
-         vtn_fail("Unsupported SpvOpSpecConstant bit size");
-      }
+      if (opcode == SpvOpSpecConstant)
+         vtn_foreach_decoration(b, val, spec_constant_decoration_cb,
+                                &val->constant->values[0]);
       break;
    }
 
@@ -1719,7 +1667,9 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpSpecConstantOp: {
-      SpvOp opcode = get_specialization(b, val, w[3]);
+      nir_const_value u32op = nir_const_value_for_uint(w[3], 32);
+      vtn_foreach_decoration(b, val, spec_constant_decoration_cb, &u32op);
+      SpvOp opcode = u32op.u32;
       switch (opcode) {
       case SpvOpVectorShuffle: {
          struct vtn_value *v0 = &b->values[w[4]];

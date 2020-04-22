@@ -140,7 +140,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    struct nir_spirv_specialization *spec_entries = NULL;
    if (spec_info && spec_info->mapEntryCount > 0) {
       num_spec_entries = spec_info->mapEntryCount;
-      spec_entries = malloc(num_spec_entries * sizeof(*spec_entries));
+      spec_entries = calloc(num_spec_entries, sizeof(*spec_entries));
       for (uint32_t i = 0; i < num_spec_entries; i++) {
          VkSpecializationMapEntry entry = spec_info->pMapEntries[i];
          const void *data = spec_info->pData + entry.offset;
@@ -149,16 +149,16 @@ anv_shader_compile_to_nir(struct anv_device *device,
          spec_entries[i].id = spec_info->pMapEntries[i].constantID;
          switch (entry.size) {
          case 8:
-            spec_entries[i].data64 = *(const uint64_t *)data;
+            spec_entries[i].value.u64 = *(const uint64_t *)data;
             break;
          case 4:
-            spec_entries[i].data32 = *(const uint32_t *)data;
+            spec_entries[i].value.u32 = *(const uint32_t *)data;
             break;
          case 2:
-            spec_entries[i].data32 = *(const uint16_t *)data;
+            spec_entries[i].value.u16 = *(const uint16_t *)data;
             break;
          case 1:
-            spec_entries[i].data32 = *(const uint8_t *)data;
+            spec_entries[i].value.u8 = *(const uint8_t *)data;
             break;
          default:
             assert(!"Invalid spec constant size");
