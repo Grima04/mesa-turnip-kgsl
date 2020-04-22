@@ -41,6 +41,7 @@
 #include "fd6_const.h"
 #include "fd6_context.h"
 #include "fd6_image.h"
+#include "fd6_pack.h"
 #include "fd6_program.h"
 #include "fd6_rasterizer.h"
 #include "fd6_texture.h"
@@ -792,11 +793,16 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				emit->ctx->batch->submit, 3*4, FD_RINGBUFFER_STREAMING);
 		struct pipe_scissor_state *scissor = fd_context_get_scissor(ctx);
 
-		OUT_PKT4(ring, REG_A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0, 2);
-		OUT_RING(ring, A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(scissor->minx) |
-				A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(scissor->miny));
-		OUT_RING(ring, A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(scissor->maxx - 1) |
-				A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(scissor->maxy - 1));
+		OUT_REG(ring,
+				A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0(
+					.x = scissor->minx,
+					.y = scissor->miny
+				),
+				A6XX_GRAS_SC_SCREEN_SCISSOR_BR_0(
+					.x = MAX2(scissor->maxx, 1) - 1,
+					.y = MAX2(scissor->maxy, 1) - 1
+				)
+			);
 
 		fd6_emit_take_group(emit, ring, FD6_GROUP_SCISSOR, ENABLE_ALL);
 
@@ -809,26 +815,34 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	if (dirty & FD_DIRTY_VIEWPORT) {
 		struct pipe_scissor_state *scissor = &ctx->viewport_scissor;
 
-		OUT_PKT4(ring, REG_A6XX_GRAS_CL_VPORT_XOFFSET_0, 6);
-		OUT_RING(ring, A6XX_GRAS_CL_VPORT_XOFFSET_0(ctx->viewport.translate[0]));
-		OUT_RING(ring, A6XX_GRAS_CL_VPORT_XSCALE_0(ctx->viewport.scale[0]));
-		OUT_RING(ring, A6XX_GRAS_CL_VPORT_YOFFSET_0(ctx->viewport.translate[1]));
-		OUT_RING(ring, A6XX_GRAS_CL_VPORT_YSCALE_0(ctx->viewport.scale[1]));
-		OUT_RING(ring, A6XX_GRAS_CL_VPORT_ZOFFSET_0(ctx->viewport.translate[2]));
-		OUT_RING(ring, A6XX_GRAS_CL_VPORT_ZSCALE_0(ctx->viewport.scale[2]));
+		OUT_REG(ring,
+				A6XX_GRAS_CL_VPORT_XOFFSET_0(ctx->viewport.translate[0]),
+				A6XX_GRAS_CL_VPORT_XSCALE_0(ctx->viewport.scale[0]),
+				A6XX_GRAS_CL_VPORT_YOFFSET_0(ctx->viewport.translate[1]),
+				A6XX_GRAS_CL_VPORT_YSCALE_0(ctx->viewport.scale[1]),
+				A6XX_GRAS_CL_VPORT_ZOFFSET_0(ctx->viewport.translate[2]),
+				A6XX_GRAS_CL_VPORT_ZSCALE_0(ctx->viewport.scale[2])
+			);
 
-		OUT_PKT4(ring, REG_A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0, 2);
-		OUT_RING(ring, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(scissor->minx) |
-				A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(scissor->miny));
-		OUT_RING(ring, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(scissor->maxx - 1) |
-				A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(scissor->maxy - 1));
+		OUT_REG(ring,
+				A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0(
+					.x = scissor->minx,
+					.y = scissor->miny
+				),
+				A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR_0(
+					.x = MAX2(scissor->maxx, 1) - 1,
+					.y = MAX2(scissor->maxy, 1) - 1
+				)
+			);
 
 		unsigned guardband_x = fd_calc_guardband(scissor->maxx - scissor->minx);
 		unsigned guardband_y = fd_calc_guardband(scissor->maxy - scissor->miny);
 
-		OUT_PKT4(ring, REG_A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ, 1);
-		OUT_RING(ring, A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_HORZ(guardband_x) |
-				A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_VERT(guardband_y));
+		OUT_REG(ring, A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ(
+					.horz = guardband_x,
+					.vert = guardband_y
+				)
+			);
 	}
 
 	if (dirty & FD_DIRTY_PROG) {
@@ -890,11 +904,12 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
 				emit->ctx->batch->submit, 5*4, FD_RINGBUFFER_STREAMING);
 
-		OUT_PKT4(ring, REG_A6XX_RB_BLEND_RED_F32, 4);
-		OUT_RING(ring, A6XX_RB_BLEND_RED_F32(bcolor->color[0]));
-		OUT_RING(ring, A6XX_RB_BLEND_GREEN_F32(bcolor->color[1]));
-		OUT_RING(ring, A6XX_RB_BLEND_BLUE_F32(bcolor->color[2]));
-		OUT_RING(ring, A6XX_RB_BLEND_ALPHA_F32(bcolor->color[3]));
+		OUT_REG(ring,
+				A6XX_RB_BLEND_RED_F32(bcolor->color[0]),
+				A6XX_RB_BLEND_GREEN_F32(bcolor->color[1]),
+				A6XX_RB_BLEND_BLUE_F32(bcolor->color[2]),
+				A6XX_RB_BLEND_ALPHA_F32(bcolor->color[3])
+			);
 
 		fd6_emit_take_group(emit, ring, FD6_GROUP_BLEND_COLOR, ENABLE_DRAW);
 	}
