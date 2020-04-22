@@ -1949,6 +1949,30 @@ typedef struct {
    unsigned sampler_index;
 } nir_tex_instr;
 
+/*
+ * Returns true if the texture operation requires a sampler as a general rule,
+ * see the documentation of sampler_index.
+ *
+ * Note that the specific hw/driver backend could require to a sampler
+ * object/configuration packet in any case, for some other reason.
+ */
+static inline bool
+nir_tex_instr_need_sampler(const nir_tex_instr *instr)
+{
+   switch (instr->op) {
+   case nir_texop_txf:
+   case nir_texop_txf_ms:
+   case nir_texop_txs:
+   case nir_texop_lod:
+   case nir_texop_query_levels:
+   case nir_texop_texture_samples:
+   case nir_texop_samples_identical:
+      return false;
+   default:
+      return true;
+   }
+}
+
 static inline unsigned
 nir_tex_instr_dest_size(const nir_tex_instr *instr)
 {
