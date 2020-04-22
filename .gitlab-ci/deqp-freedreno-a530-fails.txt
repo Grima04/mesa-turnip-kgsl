@@ -1991,3 +1991,10 @@ dEQP-GLES3.functional.ubo.single_struct.single_buffer.shared_instance_array_both
 dEQP-GLES3.functional.ubo.single_struct.single_buffer.shared_instance_array_vertex
 dEQP-GLES3.functional.ubo.single_struct.single_buffer.std140_instance_array_both
 dEQP-GLES3.functional.ubo.single_struct.single_buffer.std140_instance_array_vertex
+dEQP-GLES31.functional.image_load_store.cube.format_reinterpret.rgba32f_rgba32ui
+dEQP-GLES31.functional.image_load_store.cube.format_reinterpret.rgba8_snorm_r32ui
+dEQP-GLES31.functional.image_load_store.cube.load_store.rgba32i_single_layer
+dEQP-GLES31.functional.separate_shader.random.99
+dEQP-GLES31.functional.texture.texture_buffer.render.as_index_array_as_fragment_texture.offset_7_alignments
+dEQP-GLES31.functional.ubo.random.all_per_block_buffers.21
+dEQP-GLES31.functional.ubo.random.all_shared_buffer.22

@@ -848,6 +848,12 @@ arm64_a530_gles3:
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 100
 
+arm64_a530_gles31:
+  extends:
+    - arm64_a530_gles3
+  variables:
+    DEQP_VER: gles31
+
 # RADV CI
 .test-radv:
   extends: .radv-rules
