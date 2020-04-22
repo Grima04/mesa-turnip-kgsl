@@ -2093,7 +2093,8 @@ tu6_tex_filter(VkFilter filter, unsigned aniso)
       return A6XX_TEX_NEAREST;
    case VK_FILTER_LINEAR:
       return aniso ? A6XX_TEX_ANISO : A6XX_TEX_LINEAR;
-   case VK_FILTER_CUBIC_IMG:
+   case VK_FILTER_CUBIC_EXT:
+      return A6XX_TEX_CUBIC;
    default:
       unreachable("illegal texture filter");
       break;

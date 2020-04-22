@@ -3291,6 +3291,7 @@ to upconvert to 32b float internally?
 		<value name="A6XX_TEX_NEAREST" value="0"/>
 		<value name="A6XX_TEX_LINEAR" value="1"/>
 		<value name="A6XX_TEX_ANISO" value="2"/>
+		<value name="A6XX_TEX_CUBIC" value="3"/> <!-- a650 only -->
 	</enum>
 	<enum name="a6xx_tex_clamp"> <!-- same as a4xx? -->
 		<value name="A6XX_TEX_REPEAT" value="0"/>

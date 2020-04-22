@@ -82,6 +82,8 @@ EXTENSIONS = [
     Extension('VK_ANDROID_native_buffer',                 1, True),
     Extension('VK_KHR_external_semaphore_fd',             1, True),
     Extension('VK_KHR_external_fence_fd',                 1, True),
+    Extension('VK_IMG_filter_cubic',                      1, 'device->gpu_id == 650'),
+    Extension('VK_EXT_filter_cubic',                      1, 'device->gpu_id == 650'),
 ]
 
 class VkVersion:
