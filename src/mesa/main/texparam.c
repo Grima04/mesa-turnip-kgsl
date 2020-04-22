@@ -45,6 +45,7 @@
 #include "main/teximage.h"
 #include "main/texstate.h"
 #include "program/prog_instruction.h"
+#include "util/u_math.h"
 
 
 /**
@@ -2423,16 +2424,30 @@ get_tex_parameteriv(struct gl_context *ctx,
             goto invalid_pname;
          /* GL spec 'Data Conversions' section specifies that floating-point
           * value in integer Get function is rounded to nearest integer
+          *
+          * Section 2.2.2 (Data Conversions For State Query Commands) of the
+          * OpenGL 4.5 spec says:
+          *
+          *   Following these steps, if a value is so large in magnitude that
+          *   it cannot be represented by the returned data type, then the
+          *   nearest value representable using that type is returned.
           */
-         *params = lroundf(obj->Sampler.MinLod);
+         *params = CLAMP(lroundf(obj->Sampler.MinLod), INT_MIN, INT_MAX);
          break;
       case GL_TEXTURE_MAX_LOD:
          if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
             goto invalid_pname;
          /* GL spec 'Data Conversions' section specifies that floating-point
           * value in integer Get function is rounded to nearest integer
+          *
+          * Section 2.2.2 (Data Conversions For State Query Commands) of the
+          * OpenGL 4.5 spec says:
+          *
+          *   Following these steps, if a value is so large in magnitude that
+          *   it cannot be represented by the returned data type, then the
+          *   nearest value representable using that type is returned.
           */
-         *params = lroundf(obj->Sampler.MaxLod);
+         *params = CLAMP(lroundf(obj->Sampler.MaxLod), INT_MIN, INT_MAX);
          break;
       case GL_TEXTURE_BASE_LEVEL:
          if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
@@ -2448,8 +2463,15 @@ get_tex_parameteriv(struct gl_context *ctx,
             goto invalid_pname;
          /* GL spec 'Data Conversions' section specifies that floating-point
           * value in integer Get function is rounded to nearest integer
+          *
+          * Section 2.2.2 (Data Conversions For State Query Commands) of the
+          * OpenGL 4.5 spec says:
+          *
+          *   Following these steps, if a value is so large in magnitude that
+          *   it cannot be represented by the returned data type, then the
+          *   nearest value representable using that type is returned.
           */
-         *params = lroundf(obj->Sampler.MaxAnisotropy);
+         *params = CLAMP(lroundf(obj->Sampler.MaxAnisotropy), INT_MIN, INT_MAX);
          break;
       case GL_GENERATE_MIPMAP_SGIS:
          if (ctx->API != API_OPENGL_COMPAT && ctx->API != API_OPENGLES)
@@ -2486,8 +2508,15 @@ get_tex_parameteriv(struct gl_context *ctx,
 
          /* GL spec 'Data Conversions' section specifies that floating-point
           * value in integer Get function is rounded to nearest integer
+          *
+          * Section 2.2.2 (Data Conversions For State Query Commands) of the
+          * OpenGL 4.5 spec says:
+          *
+          *   Following these steps, if a value is so large in magnitude that
+          *   it cannot be represented by the returned data type, then the
+          *   nearest value representable using that type is returned.
           */
-         *params = lroundf(obj->Sampler.LodBias);
+         *params = CLAMP(lroundf(obj->Sampler.LodBias), INT_MIN, INT_MAX);
          break;
       case GL_TEXTURE_CROP_RECT_OES:
          if (ctx->API != API_OPENGLES || !ctx->Extensions.OES_draw_texture)
