@@ -1146,13 +1146,13 @@ bi_pack_add_st_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
 static unsigned
 bi_pack_add_atest(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
-        /* TODO: fp16 */
-        assert(ins->src_types[1] == nir_type_float32);
+        bool fp16 = (ins->src_types[1] == nir_type_float16);
 
         struct bifrost_add_atest pack = {
                 .src0 = bi_get_src(ins, regs, 0, false),
                 .src1 = bi_get_src(ins, regs, 1, false),
-                .component = 1, /* Set for fp32 */
+                .half = fp16,
+                .component = fp16 ? ins->swizzle[1][0] : 1, /* Set for fp32 */
                 .op = BIFROST_ADD_OP_ATEST,
         };
 
