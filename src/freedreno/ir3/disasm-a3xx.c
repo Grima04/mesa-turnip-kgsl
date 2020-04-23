@@ -618,7 +618,7 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 	case OPC_STP:
 	case OPC_STLW:
 	case OPC_STIB:
-		dst.full  = true;
+		dst.full  = type_size(cat6->type) == 32;
 		src1.full = type_size(cat6->type) == 32;
 		src2.full = type_size(cat6->type) == 32;
 		break;
