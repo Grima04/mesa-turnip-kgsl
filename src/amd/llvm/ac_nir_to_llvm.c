@@ -589,6 +589,10 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 	unsigned num_components = instr->dest.dest.ssa.num_components;
 	unsigned src_components;
 	LLVMTypeRef def_type = get_def_type(ctx, &instr->dest.dest.ssa);
+	bool saved_inexact = false;
+
+	if (instr->exact)
+		saved_inexact = ac_disable_inexact_math(ctx->ac.builder);
 
 	assert(nir_op_infos[instr->op].num_inputs <= ARRAY_SIZE(src));
 	switch (instr->op) {
@@ -1182,6 +1186,9 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		result = ac_to_integer_or_pointer(&ctx->ac, result);
 		ctx->ssa_defs[instr->dest.dest.ssa.index] = result;
 	}
+
+	if (instr->exact)
+		ac_restore_inexact_math(ctx->ac.builder, saved_inexact);
 }
 
 static void visit_load_const(struct ac_nir_context *ctx,
