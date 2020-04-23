@@ -118,6 +118,7 @@ EXTENSIONS = [
     Extension('VK_EXT_buffer_device_address',             1, 'device->has_a64_buffer_access'),
     Extension('VK_EXT_calibrated_timestamps',             1, True),
     Extension('VK_EXT_conditional_rendering',             1, 'device->info.gen >= 8 || device->info.is_haswell'),
+    Extension('VK_EXT_custom_border_color',               12, 'device->info.gen >= 8'),
     Extension('VK_EXT_debug_report',                      8, True),
     Extension('VK_EXT_depth_clip_enable',                 1, True),
     Extension('VK_EXT_descriptor_indexing',               2,

@@ -1318,6 +1318,8 @@ struct anv_device {
     struct anv_state_pool                       binding_table_pool;
     struct anv_state_pool                       surface_state_pool;
 
+    struct anv_state_reserved_pool              custom_border_colors;
+
     /** BO used for various workarounds
      *
      * There are a number of workarounds on our hardware which require writing
@@ -4077,6 +4079,34 @@ anv_clear_color_from_att_state(union isl_color_value *clear_color,
 }
 
 
+/* Haswell border color is a bit of a disaster.  Float and unorm formats use a
+ * straightforward 32-bit float color in the first 64 bytes.  Instead of using
+ * a nice float/integer union like Gen8+, Haswell specifies the integer border
+ * color as a separate entry /after/ the float color.  The layout of this entry
+ * also depends on the format's bpp (with extra hacks for RG32), and overlaps.
+ *
+ * Since we don't know the format/bpp, we can't make any of the border colors
+ * containing '1' work for all formats, as it would be in the wrong place for
+ * some of them.  We opt to make 32-bit integers work as this seems like the
+ * most common option.  Fortunately, transparent black works regardless, as
+ * all zeroes is the same in every bit-size.
+ */
+struct hsw_border_color {
+   float float32[4];
+   uint32_t _pad0[12];
+   uint32_t uint32[4];
+   uint32_t _pad1[108];
+};
+
+struct gen8_border_color {
+   union {
+      float float32[4];
+      uint32_t uint32[4];
+   };
+   /* Pad out to 64 bytes */
+   uint32_t _pad[12];
+};
+
 struct anv_ycbcr_conversion {
    struct vk_object_base base;
 
@@ -4100,6 +4130,8 @@ struct anv_sampler {
     * and with a 32-byte stride for use as bindless samplers.
     */
    struct anv_state             bindless_state;
+
+   struct anv_state             custom_border_color;
 };
 
 struct anv_framebuffer {

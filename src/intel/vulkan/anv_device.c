@@ -1123,6 +1123,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+         VkPhysicalDeviceCustomBorderColorFeaturesEXT *features =
+            (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
+         features->customBorderColors = pdevice->info.gen >= 8;
+         features->customBorderColorWithoutFormat = pdevice->info.gen >= 8;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
          VkPhysicalDeviceDepthClipEnableFeaturesEXT *features =
             (VkPhysicalDeviceDepthClipEnableFeaturesEXT *)ext;
@@ -1400,6 +1408,8 @@ void anv_GetPhysicalDeviceFeatures2(
 
 #define MAX_PER_STAGE_DESCRIPTOR_INPUT_ATTACHMENTS 64
 #define MAX_DESCRIPTOR_SET_INPUT_ATTACHMENTS       256
+
+#define MAX_CUSTOM_BORDER_COLORS                   4096
 
 void anv_GetPhysicalDeviceProperties(
     VkPhysicalDevice                            physicalDevice,
@@ -1756,6 +1766,13 @@ void anv_GetPhysicalDeviceProperties2(
 
    vk_foreach_struct(ext, pProperties->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
+         VkPhysicalDeviceCustomBorderColorPropertiesEXT *properties =
+            (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
+         properties->maxCustomBorderColorSamplers = MAX_CUSTOM_BORDER_COLORS;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR: {
          VkPhysicalDeviceDepthStencilResolvePropertiesKHR *properties =
             (VkPhysicalDeviceDepthStencilResolvePropertiesKHR *)ext;
@@ -2359,34 +2376,6 @@ anv_state_pool_emit_data(struct anv_state_pool *pool, size_t size, size_t align,
    return state;
 }
 
-/* Haswell border color is a bit of a disaster.  Float and unorm formats use a
- * straightforward 32-bit float color in the first 64 bytes.  Instead of using
- * a nice float/integer union like Gen8+, Haswell specifies the integer border
- * color as a separate entry /after/ the float color.  The layout of this entry
- * also depends on the format's bpp (with extra hacks for RG32), and overlaps.
- *
- * Since we don't know the format/bpp, we can't make any of the border colors
- * containing '1' work for all formats, as it would be in the wrong place for
- * some of them.  We opt to make 32-bit integers work as this seems like the
- * most common option.  Fortunately, transparent black works regardless, as
- * all zeroes is the same in every bit-size.
- */
-struct hsw_border_color {
-   float float32[4];
-   uint32_t _pad0[12];
-   uint32_t uint32[4];
-   uint32_t _pad1[108];
-};
-
-struct gen8_border_color {
-   union {
-      float float32[4];
-      uint32_t uint32[4];
-   };
-   /* Pad out to 64 bytes */
-   uint32_t _pad[12];
-};
-
 static void
 anv_device_init_border_colors(struct anv_device *device)
 {
@@ -2877,6 +2866,19 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_batch_bo_pool;
 
+   if (device->info.gen >= 8) {
+      /* The border color pointer is limited to 24 bits, so we need to make
+       * sure that any such color used at any point in the program doesn't
+       * exceed that limit.
+       * We achieve that by reserving all the custom border colors we support
+       * right off the bat, so they are close to the base address.
+       */
+      anv_state_reserved_pool_init(&device->custom_border_colors,
+                                   &device->dynamic_state_pool,
+                                   sizeof(struct gen8_border_color),
+                                   MAX_CUSTOM_BORDER_COLORS, 64);
+   }
+
    result = anv_state_pool_init(&device->instruction_state_pool, device,
                                 INSTRUCTION_STATE_POOL_MIN_ADDRESS, 0, 16384);
    if (result != VK_SUCCESS)
@@ -2997,6 +2999,8 @@ VkResult anv_CreateDevice(
  fail_instruction_state_pool:
    anv_state_pool_finish(&device->instruction_state_pool);
  fail_dynamic_state_pool:
+   if (device->info.gen >= 8)
+      anv_state_reserved_pool_finish(&device->custom_border_colors);
    anv_state_pool_finish(&device->dynamic_state_pool);
  fail_batch_bo_pool:
    anv_bo_pool_finish(&device->batch_bo_pool);
@@ -3042,6 +3046,8 @@ void anv_DestroyDevice(
    /* We only need to free these to prevent valgrind errors.  The backing
     * BO will go away in a couple of lines so we don't actually leak.
     */
+   if (device->info.gen >= 8)
+      anv_state_reserved_pool_finish(&device->custom_border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->slice_hash);
 #endif
@@ -4272,6 +4278,11 @@ void anv_DestroySampler(
    if (sampler->bindless_state.map) {
       anv_state_pool_free(&device->dynamic_state_pool,
                           sampler->bindless_state);
+   }
+
+   if (sampler->custom_border_color.map) {
+      anv_state_reserved_pool_free(&device->custom_border_colors,
+                                   sampler->custom_border_color);
    }
 
    vk_object_base_finish(&sampler->base);

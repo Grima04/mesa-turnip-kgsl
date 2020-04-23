@@ -367,9 +367,18 @@ VkResult genX(CreateSampler)(
    sampler->n_planes = 1;
 
    uint32_t border_color_stride = GEN_IS_HASWELL ? 512 : 64;
-   uint32_t border_color_offset = device->border_colors.offset +
-                                  pCreateInfo->borderColor *
-                                  border_color_stride;
+   uint32_t border_color_offset;
+   ASSERTED bool has_custom_color = false;
+   if (pCreateInfo->borderColor <= VK_BORDER_COLOR_INT_OPAQUE_WHITE) {
+      border_color_offset = device->border_colors.offset +
+                            pCreateInfo->borderColor *
+                            border_color_stride;
+   } else {
+      assert(GEN_GEN >= 8);
+      sampler->custom_border_color =
+         anv_state_reserved_pool_alloc(&device->custom_border_colors);
+      border_color_offset = sampler->custom_border_color.offset;
+   }
 
 #if GEN_GEN >= 9
    unsigned sampler_reduction_mode = STD_FILTER;
@@ -406,11 +415,36 @@ VkResult genX(CreateSampler)(
          break;
       }
 #endif
+      case VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT: {
+         VkSamplerCustomBorderColorCreateInfoEXT *custom_border_color =
+            (VkSamplerCustomBorderColorCreateInfoEXT *) ext;
+         if (sampler->custom_border_color.map == NULL)
+            break;
+         struct gen8_border_color *cbc = sampler->custom_border_color.map;
+         if (custom_border_color->format == VK_FORMAT_B4G4R4A4_UNORM_PACK16) {
+            /* B4G4R4A4_UNORM_PACK16 is treated as R4G4B4A4_UNORM_PACK16 with
+             * a swizzle, but this does not carry over to the sampler for
+             * border colors, so we need to do the swizzle ourselves here.
+             */
+            cbc->uint32[0] = custom_border_color->customBorderColor.uint32[2];
+            cbc->uint32[1] = custom_border_color->customBorderColor.uint32[1];
+            cbc->uint32[2] = custom_border_color->customBorderColor.uint32[0];
+            cbc->uint32[3] = custom_border_color->customBorderColor.uint32[3];
+         } else {
+            /* Both structs share the same layout, so just copy them over. */
+            memcpy(cbc, &custom_border_color->customBorderColor,
+                   sizeof(VkClearColorValue));
+         }
+         has_custom_color = true;
+         break;
+      }
       default:
          anv_debug_ignored_stype(ext->sType);
          break;
       }
    }
+
+   assert((sampler->custom_border_color.map == NULL) || has_custom_color);
 
    if (device->physical->has_bindless_samplers) {
       /* If we have bindless, allocate enough samplers.  We allocate 32 bytes
