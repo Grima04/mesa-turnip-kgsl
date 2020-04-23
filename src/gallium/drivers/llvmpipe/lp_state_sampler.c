@@ -39,6 +39,7 @@
 #include "lp_state.h"
 #include "lp_debug.h"
 #include "frontend/sw_winsys.h"
+#include "lp_flush.h"
 
 
 static void *
@@ -137,6 +138,9 @@ llvmpipe_set_sampler_views(struct pipe_context *pipe,
          debug_printf("Illegal setting of sampler_view %d created in another "
                       "context\n", i);
       }
+
+      if (views[i])
+         llvmpipe_flush_resource(pipe, views[i]->texture, 0, true, false, false, "sampler_view");
       pipe_sampler_view_reference(&llvmpipe->sampler_views[shader][start + i],
                                   views[i]);
    }
