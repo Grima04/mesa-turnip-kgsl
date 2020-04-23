@@ -830,6 +830,11 @@ static void write_texel_buffer_descriptor(struct radv_device *device,
 {
 	RADV_FROM_HANDLE(radv_buffer_view, buffer_view, _buffer_view);
 
+	if (!buffer_view) {
+		memset(dst, 0, 4 * 4);
+		return;
+	}
+
 	memcpy(dst, buffer_view->state, 4 * 4);
 
 	if (cmd_buffer)
@@ -845,6 +850,12 @@ static void write_buffer_descriptor(struct radv_device *device,
                                     const VkDescriptorBufferInfo *buffer_info)
 {
 	RADV_FROM_HANDLE(radv_buffer, buffer, buffer_info->buffer);
+
+	if (!buffer) {
+		memset(dst, 0, 4 * 4);
+		return;
+	}
+
 	uint64_t va = radv_buffer_get_va(buffer->bo);
 	uint32_t range = buffer_info->range;
 
@@ -898,8 +909,14 @@ static void write_dynamic_buffer_descriptor(struct radv_device *device,
                                             const VkDescriptorBufferInfo *buffer_info)
 {
 	RADV_FROM_HANDLE(radv_buffer, buffer, buffer_info->buffer);
-	uint64_t va = radv_buffer_get_va(buffer->bo);
-	unsigned size = buffer_info->range;
+	uint64_t va;
+	unsigned size;
+
+	if (!buffer)
+		return;
+
+	va = radv_buffer_get_va(buffer->bo);
+	size = buffer_info->range;
 
 	if (buffer_info->range == VK_WHOLE_SIZE)
 		size = buffer->size - buffer_info->offset;
@@ -927,6 +944,11 @@ write_image_descriptor(struct radv_device *device,
 {
 	RADV_FROM_HANDLE(radv_image_view, iview, image_info->imageView);
 	union radv_descriptor *descriptor;
+
+	if (!iview) {
+		memset(dst, 0, size);
+		return;
+	}
 
 	if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
 		descriptor = &iview->storage_descriptor;
