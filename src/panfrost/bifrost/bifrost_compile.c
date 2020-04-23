@@ -127,7 +127,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                         },
                         .src_types = {
                                 nir_type_uint32,
-                                nir_type_float32
+                                nir_intrinsic_type(instr)
                         },
                         .swizzle = {
                                 { 0 },
@@ -151,7 +151,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                         BIR_INDEX_REGISTER | 60 /* Can this be arbitrary? */,
                 },
                 .src_types = {
-                        nir_type_float32,
+                        nir_intrinsic_type(instr),
                         nir_type_uint32
                 },
                 .swizzle = {
