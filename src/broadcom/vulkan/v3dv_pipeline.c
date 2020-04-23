@@ -103,6 +103,8 @@ destroy_pipeline_stage(struct v3dv_device *device,
       }
    }
 
+   ralloc_free(p_stage->nir);
+
    _mesa_hash_table_destroy(p_stage->cache, NULL);
 
    vk_free2(&device->alloc, pAllocator, p_stage);
@@ -365,7 +367,13 @@ shader_module_compile_to_nir(struct v3dv_device *device,
       nir_validate_shader(nir, "after spirv_to_nir");
       free(spec_entries);
    } else {
-      nir = stage->module->nir;
+      /* For NIR modules created by the driver we can't consume the NIR
+       * directly, we need to clone it first, since ownership of the NIR code
+       * (as with SPIR-V code for SPIR-V shaders), belongs to the creator
+       * of the module and modules can be destroyed immediately after been used
+       * to create pipelines.
+       */
+      nir = nir_shader_clone(NULL, stage->module->nir);
       nir_validate_shader(nir, "nir module");
    }
    assert(nir->info.stage == stage->stage);
@@ -1052,7 +1060,7 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
    p_stage->stage = src->stage;
    p_stage->entrypoint = src->entrypoint;
    p_stage->module = src->module;
-   p_stage->nir = src->nir;
+   p_stage->nir = nir_shader_clone(NULL, src->nir);
 
    /* Technically we could share the hash_table, but having their own makes
     * destroy p_stage more straightforward
@@ -1403,8 +1411,14 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
           */
          assert(pipeline->fs);
 
-         pipeline->vs = p_stage;
+         /* Make sure we do all our common lowering *before* we create the vs
+          * and vs_bin pipeline stages, since from that point forward we need to
+          * run lowerings for both of them separately, since each stage will
+          * own its NIR code.
+          */
+         lower_vs_io(p_stage->nir);
 
+         pipeline->vs = p_stage;
          pipeline->vs_bin = pipeline_stage_create_vs_bin(pipeline->vs, pAllocator);
 
          /* FIXME: likely this to be moved to a gather info method to a full
@@ -1413,8 +1427,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          const VkPipelineInputAssemblyStateCreateInfo *ia_info =
             pCreateInfo->pInputAssemblyState;
          pipeline->vs->topology = vk_to_pipe_prim_type[ia_info->topology];
-
-         lower_vs_io(p_stage->nir);
 
          /* Note that at this point we would compile twice, one for vs and
           * other for vs_bin. For now we are maintaining two pipeline_stages.
