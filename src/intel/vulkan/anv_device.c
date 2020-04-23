@@ -4299,7 +4299,6 @@ VkResult anv_CreateFramebuffer(
       }
       framebuffer->attachment_count = pCreateInfo->attachmentCount;
    } else {
-      assert(device->enabled_extensions.KHR_imageless_framebuffer);
       framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (framebuffer == NULL)
