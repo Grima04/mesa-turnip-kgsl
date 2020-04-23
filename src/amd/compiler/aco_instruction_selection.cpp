@@ -10614,9 +10614,9 @@ void ngg_emit_nogs_output(isel_context *ctx)
          Temp wave_id_in_tg = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
                                        get_arg(ctx, ctx->args->merged_wave_info), Operand(24u | (4u << 16)));
          Temp thread_id_in_wave = emit_mbcnt(ctx, bld.def(v1));
-         Temp wave_id_mul = bld.v_mul_imm(bld.def(v1), as_vgpr(ctx, wave_id_in_tg), ctx->program->wave_size);
+         Temp wave_id_mul = bld.v_mul24_imm(bld.def(v1), as_vgpr(ctx, wave_id_in_tg), ctx->program->wave_size);
          Temp thread_id_in_tg = bld.vadd32(bld.def(v1), Operand(wave_id_mul), Operand(thread_id_in_wave));
-         Temp addr = bld.v_mul_imm(bld.def(v1), thread_id_in_tg, 4u);
+         Temp addr = bld.v_mul24_imm(bld.def(v1), thread_id_in_tg, 4u);
 
          /* Load primitive ID from LDS. */
          prim_id = load_lds(ctx, 4, bld.tmp(v1), addr, 0u, 4u);
