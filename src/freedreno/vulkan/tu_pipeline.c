@@ -897,6 +897,8 @@ tu6_emit_link_map(struct tu_cs *cs,
    int size = DIV_ROUND_UP(num_loc, 4);
 
    size = (MIN2(size + base, consumer->constlen) - base) * 4;
+   if (size <= 0)
+      return;
 
    tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, base, SB6_GS_SHADER, 0, size,
                   patch_locs);
