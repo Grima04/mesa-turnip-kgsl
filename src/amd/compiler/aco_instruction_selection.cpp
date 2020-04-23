@@ -501,10 +501,11 @@ Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
          return vec;
 
       Temp dst{ctx->program->allocateId(), s1};
-      aco_ptr<SOP2_instruction> bfe{create_instruction<SOP2_instruction>(aco_opcode::s_bfe_u32, Format::SOP2, 2, 1)};
+      aco_ptr<SOP2_instruction> bfe{create_instruction<SOP2_instruction>(aco_opcode::s_bfe_u32, Format::SOP2, 2, 2)};
       bfe->operands[0] = Operand(vec);
       bfe->operands[1] = Operand(uint32_t((src.src.ssa->bit_size << 16) | (src.src.ssa->bit_size * swizzle)));
       bfe->definitions[0] = Definition(dst);
+      bfe->definitions[1] = Definition(ctx->program->allocateId(), scc, s1);
       ctx->block->instructions.emplace_back(std::move(bfe));
       return dst;
    }
