@@ -99,7 +99,7 @@ destroy_pipeline_stage(struct v3dv_device *device,
 
       if (variant->assembly_bo) {
          v3dv_bo_free(device, variant->assembly_bo);
-         variant->assembly_bo = NULL;
+         vk_free2(&device->alloc, pAllocator, variant);
       }
    }
 
