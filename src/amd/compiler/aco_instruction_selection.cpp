@@ -3504,7 +3504,7 @@ std::pair<Temp, unsigned> offset_add_from_nir(isel_context *ctx, const std::pair
 
       /* Calculate indirect offset with stride */
       if (likely(indirect_offset_arg.regClass() == v1))
-         with_stride = bld.v_mul_imm(bld.def(v1), indirect_offset_arg, stride);
+         with_stride = bld.v_mul24_imm(bld.def(v1), indirect_offset_arg, stride);
       else if (indirect_offset_arg.regClass() == s1)
          with_stride = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(stride), indirect_offset_arg);
       else
@@ -3556,7 +3556,7 @@ std::pair<Temp, unsigned> offset_mul(isel_context *ctx, const std::pair<Temp, un
 
    Temp offset = unlikely(offs.first.regClass() == s1)
                  ? bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(multiplier), offs.first)
-                 : bld.v_mul_imm(bld.def(v1), offs.first, multiplier);
+                 : bld.v_mul24_imm(bld.def(v1), offs.first, multiplier);
 
    return std::make_pair(offset, const_offset);
 }
@@ -3690,7 +3690,7 @@ std::pair<Temp, unsigned> get_tcs_per_patch_output_vmem_offset(isel_context *ctx
       offs.second += const_base_offset * attr_stride;
 
    Temp rel_patch_id = get_tess_rel_patch_id(ctx);
-   Temp patch_off = bld.v_mul_imm(bld.def(v1), rel_patch_id, 16u);
+   Temp patch_off = bld.v_mul24_imm(bld.def(v1), rel_patch_id, 16u);
    offs = offset_add(ctx, offs, std::make_pair(patch_off, per_patch_data_offset));
 
    return offs;
@@ -3814,7 +3814,7 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
           */
          unsigned num_tcs_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
          Temp vertex_idx = get_arg(ctx, ctx->args->rel_auto_id);
-         lds_base = bld.v_mul_imm(bld.def(v1), vertex_idx, num_tcs_inputs * 16u);
+         lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, num_tcs_inputs * 16u);
       } else {
          unreachable("Invalid LS or ES stage");
       }
@@ -10067,7 +10067,7 @@ static void write_tcs_tess_factors(isel_context *ctx)
 
    Temp rel_patch_id = get_tess_rel_patch_id(ctx);
    Temp tf_base = get_arg(ctx, ctx->args->tess_factor_offset);
-   Temp byte_offset = bld.v_mul_imm(bld.def(v1), rel_patch_id, stride * 4u);
+   Temp byte_offset = bld.v_mul24_imm(bld.def(v1), rel_patch_id, stride * 4u);
    unsigned tf_const_offset = 0;
 
    if (ctx->program->chip_class <= GFX8) {
