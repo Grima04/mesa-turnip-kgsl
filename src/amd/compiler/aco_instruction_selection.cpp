@@ -304,20 +304,21 @@ void emit_split_vector(isel_context* ctx, Temp vec_src, unsigned num_components)
       return;
    if (ctx->allocated_vec.find(vec_src.id()) != ctx->allocated_vec.end())
       return;
-   aco_ptr<Pseudo_instruction> split{create_instruction<Pseudo_instruction>(aco_opcode::p_split_vector, Format::PSEUDO, 1, num_components)};
-   split->operands[0] = Operand(vec_src);
-   std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
    RegClass rc;
    if (num_components > vec_src.size()) {
-      if (vec_src.type() == RegType::sgpr)
+      if (vec_src.type() == RegType::sgpr) {
+         /* should still help get_alu_src() */
+         emit_split_vector(ctx, vec_src, vec_src.size());
          return;
-
+      }
       /* sub-dword split */
-      assert(vec_src.type() == RegType::vgpr);
       rc = RegClass(RegType::vgpr, vec_src.bytes() / num_components).as_subdword();
    } else {
       rc = RegClass(vec_src.type(), vec_src.size() / num_components);
    }
+   aco_ptr<Pseudo_instruction> split{create_instruction<Pseudo_instruction>(aco_opcode::p_split_vector, Format::PSEUDO, 1, num_components)};
+   split->operands[0] = Operand(vec_src);
+   std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
    for (unsigned i = 0; i < num_components; i++) {
       elems[i] = {ctx->program->allocateId(), rc};
       split->definitions[i] = Definition(elems[i]);
