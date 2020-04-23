@@ -584,6 +584,136 @@ get_next_index(struct nir_link_uniforms_state *state,
    return index;
 }
 
+/* Update the uniforms info for the current shader stage */
+static void
+update_uniforms_shader_info(struct gl_shader_program *prog,
+                            struct nir_link_uniforms_state *state,
+                            struct gl_uniform_storage *uniform,
+                            const struct glsl_type *type,
+                            unsigned stage)
+{
+   unsigned values = glsl_get_component_slots(type);
+   const struct glsl_type *type_no_array = glsl_without_array(type);
+
+   if (glsl_type_is_sampler(type_no_array)) {
+      bool init_idx;
+      unsigned *next_index = state->current_var->data.bindless ?
+         &state->next_bindless_sampler_index :
+         &state->next_sampler_index;
+      int sampler_index = get_next_index(state, uniform, next_index, &init_idx);
+      struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+
+      if (state->current_var->data.bindless) {
+         if (init_idx) {
+            sh->Program->sh.BindlessSamplers =
+               rerzalloc(sh->Program, sh->Program->sh.BindlessSamplers,
+                         struct gl_bindless_sampler,
+                         sh->Program->sh.NumBindlessSamplers,
+                         state->next_bindless_sampler_index);
+
+            for (unsigned j = sh->Program->sh.NumBindlessSamplers;
+                 j < state->next_bindless_sampler_index; j++) {
+               sh->Program->sh.BindlessSamplers[j].target =
+                  glsl_get_sampler_target(type_no_array);
+            }
+
+            sh->Program->sh.NumBindlessSamplers =
+               state->next_bindless_sampler_index;
+         }
+
+         if (!state->var_is_in_block)
+            state->num_shader_uniform_components += values;
+      } else {
+         /* Samplers (bound or bindless) are counted as two components
+          * as specified by ARB_bindless_texture.
+          */
+         state->num_shader_samplers += values / 2;
+
+         if (init_idx) {
+            const unsigned shadow = glsl_sampler_type_is_shadow(type_no_array);
+            for (unsigned i = sampler_index;
+                 i < MIN2(state->next_sampler_index, MAX_SAMPLERS); i++) {
+               sh->Program->sh.SamplerTargets[i] =
+                  glsl_get_sampler_target(type_no_array);
+               state->shader_samplers_used |= 1U << i;
+               state->shader_shadow_samplers |= shadow << i;
+            }
+         }
+      }
+
+      uniform->opaque[stage].active = true;
+      uniform->opaque[stage].index = sampler_index;
+   } else if (glsl_type_is_image(type_no_array)) {
+      struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+
+      /* Set image access qualifiers */
+      enum gl_access_qualifier image_access =
+         state->current_var->data.access;
+      const GLenum access =
+         (image_access & ACCESS_NON_WRITEABLE) ?
+         ((image_access & ACCESS_NON_READABLE) ? GL_NONE :
+                                                 GL_READ_ONLY) :
+         ((image_access & ACCESS_NON_READABLE) ? GL_WRITE_ONLY :
+                                                 GL_READ_WRITE);
+
+      int image_index;
+      if (state->current_var->data.bindless) {
+         image_index = state->next_bindless_image_index;
+         state->next_bindless_image_index += MAX2(1, uniform->array_elements);
+
+         sh->Program->sh.BindlessImages =
+            rerzalloc(sh->Program, sh->Program->sh.BindlessImages,
+                      struct gl_bindless_image,
+                      sh->Program->sh.NumBindlessImages,
+                      state->next_bindless_image_index);
+
+         for (unsigned j = sh->Program->sh.NumBindlessImages;
+              j < state->next_bindless_image_index; j++) {
+            sh->Program->sh.BindlessImages[j].access = access;
+         }
+
+         sh->Program->sh.NumBindlessImages = state->next_bindless_image_index;
+
+      } else {
+         image_index = state->next_image_index;
+         state->next_image_index += MAX2(1, uniform->array_elements);
+
+         /* Images (bound or bindless) are counted as two components as
+          * specified by ARB_bindless_texture.
+          */
+         state->num_shader_images += values / 2;
+
+         for (unsigned i = image_index;
+              i < MIN2(state->next_image_index, MAX_IMAGE_UNIFORMS); i++) {
+            sh->Program->sh.ImageAccess[i] = access;
+         }
+      }
+
+      uniform->opaque[stage].active = true;
+      uniform->opaque[stage].index = image_index;
+
+      if (!uniform->is_shader_storage)
+         state->num_shader_uniform_components += values;
+   } else {
+      if (glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE) {
+         struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+
+         uniform->opaque[stage].index = state->next_subroutine;
+         uniform->opaque[stage].active = true;
+
+         sh->Program->sh.NumSubroutineUniforms++;
+
+         /* Increment the subroutine index by 1 for non-arrays and by the
+          * number of array elements for arrays.
+          */
+         state->next_subroutine += MAX2(1, uniform->array_elements);
+      }
+
+      if (!state->var_is_in_block)
+         state->num_shader_uniform_components += values;
+   }
+}
+
 static bool
 find_and_update_named_uniform_storage(struct gl_context *ctx,
                                       struct gl_shader_program *prog,
@@ -662,133 +792,9 @@ find_and_update_named_uniform_storage(struct gl_context *ctx,
             var->data.location = uniform - prog->data->UniformStorage;
          }
 
-         unsigned values = glsl_get_component_slots(type);
+         update_uniforms_shader_info(prog, state, uniform, type, stage);
+
          const struct glsl_type *type_no_array = glsl_without_array(type);
-         if (glsl_type_is_sampler(type_no_array)) {
-            bool init_idx;
-            unsigned *next_index = state->current_var->data.bindless ?
-               &state->next_bindless_sampler_index :
-               &state->next_sampler_index;
-            int sampler_index =
-               get_next_index(state, uniform, next_index, &init_idx);
-            struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
-
-            if (state->current_var->data.bindless) {
-               if (init_idx) {
-                  sh->Program->sh.BindlessSamplers =
-                     rerzalloc(sh->Program, sh->Program->sh.BindlessSamplers,
-                               struct gl_bindless_sampler,
-                               sh->Program->sh.NumBindlessSamplers,
-                               state->next_bindless_sampler_index);
-
-                  for (unsigned j = sh->Program->sh.NumBindlessSamplers;
-                       j < state->next_bindless_sampler_index; j++) {
-                     sh->Program->sh.BindlessSamplers[j].target =
-                        glsl_get_sampler_target(type_no_array);
-                  }
-
-                  sh->Program->sh.NumBindlessSamplers =
-                     state->next_bindless_sampler_index;
-               }
-
-               if (!state->var_is_in_block)
-                  state->num_shader_uniform_components += values;
-
-            } else {
-               /* Samplers (bound or bindless) are counted as two components
-                * as specified by ARB_bindless_texture.
-                */
-               state->num_shader_samplers += values / 2;
-
-               if (init_idx) {
-                  const unsigned shadow =
-                     glsl_sampler_type_is_shadow(type_no_array);
-                  for (unsigned i = sampler_index;
-                       i < MIN2(state->next_sampler_index, MAX_SAMPLERS);
-                       i++) {
-                     sh->Program->sh.SamplerTargets[i] =
-                        glsl_get_sampler_target(type_no_array);
-                     state->shader_samplers_used |= 1U << i;
-                     state->shader_shadow_samplers |= shadow << i;
-                  }
-               }
-            }
-
-            uniform->opaque[stage].active = true;
-            uniform->opaque[stage].index = sampler_index;
-         } else if (glsl_type_is_image(type_no_array)) {
-            struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
-
-            /* Set image access qualifiers */
-            enum gl_access_qualifier image_access =
-               state->current_var->data.access;
-            const GLenum access =
-               (image_access & ACCESS_NON_WRITEABLE) ?
-               ((image_access & ACCESS_NON_READABLE) ? GL_NONE :
-                                                       GL_READ_ONLY) :
-               ((image_access & ACCESS_NON_READABLE) ? GL_WRITE_ONLY :
-                                                       GL_READ_WRITE);
-
-            int image_index;
-            if (state->current_var->data.bindless) {
-               image_index = state->next_bindless_image_index;
-               state->next_bindless_image_index +=
-                  MAX2(1, uniform->array_elements);
-
-               sh->Program->sh.BindlessImages =
-                  rerzalloc(sh->Program, sh->Program->sh.BindlessImages,
-                            struct gl_bindless_image,
-                            sh->Program->sh.NumBindlessImages,
-                            state->next_bindless_image_index);
-
-               for (unsigned j = sh->Program->sh.NumBindlessImages;
-                    j < state->next_bindless_image_index; j++) {
-                  sh->Program->sh.BindlessImages[j].access = access;
-               }
-
-               sh->Program->sh.NumBindlessImages =
-                  state->next_bindless_image_index;
-
-            } else {
-               image_index = state->next_image_index;
-               state->next_image_index += MAX2(1, uniform->array_elements);
-
-               /* Images (bound or bindless) are counted as two components as
-                * specified by ARB_bindless_texture.
-                */
-               state->num_shader_images += values / 2;
-
-               for (unsigned i = image_index;
-                    i < MIN2(state->next_image_index, MAX_IMAGE_UNIFORMS);
-                    i++) {
-                  sh->Program->sh.ImageAccess[i] = access;
-               }
-            }
-
-            uniform->opaque[stage].active = true;
-            uniform->opaque[stage].index = image_index;
-
-            if (!uniform->is_shader_storage)
-               state->num_shader_uniform_components += values;
-         } else {
-            if (glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE) {
-               struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
-
-               uniform->opaque[stage].index = state->next_subroutine;
-               uniform->opaque[stage].active = true;
-
-               sh->Program->sh.NumSubroutineUniforms++;
-
-               /* Increment the subroutine index by 1 for non-arrays and by the
-                * number of array elements for arrays.
-                */
-               state->next_subroutine += MAX2(1, uniform->array_elements);
-            }
-
-            if (!state->var_is_in_block)
-               state->num_shader_uniform_components += values;
-         }
-
          struct hash_entry *entry =
             _mesa_hash_table_search(state->referenced_uniforms,
                                     state->current_var);
@@ -1310,125 +1316,7 @@ nir_link_uniform(struct gl_context *ctx,
       unsigned entries = MAX2(1, uniform->array_elements);
       unsigned values = glsl_get_component_slots(type);
 
-      if (glsl_type_is_sampler(type_no_array)) {
-         bool init_idx;
-         unsigned *next_index = state->current_var->data.bindless ?
-            &state->next_bindless_sampler_index : &state->next_sampler_index;
-         int sampler_index =
-            get_next_index(state, uniform, next_index, &init_idx);
-
-         if (state->current_var->data.bindless) {
-
-            if (init_idx) {
-               stage_program->sh.BindlessSamplers =
-                  rerzalloc(stage_program, stage_program->sh.BindlessSamplers,
-                            struct gl_bindless_sampler,
-                            stage_program->sh.NumBindlessSamplers,
-                            state->next_bindless_sampler_index);
-
-               for (unsigned j = stage_program->sh.NumBindlessSamplers;
-                    j < state->next_bindless_sampler_index; j++) {
-                  stage_program->sh.BindlessSamplers[j].target =
-                     glsl_get_sampler_target(type_no_array);
-               }
-
-               stage_program->sh.NumBindlessSamplers =
-                  state->next_bindless_sampler_index;
-            }
-
-            if (!state->var_is_in_block)
-               state->num_shader_uniform_components += values;
-
-         } else {
-            /* Samplers (bound or bindless) are counted as two components as
-             * specified by ARB_bindless_texture.
-             */
-            state->num_shader_samplers += values / 2;
-
-            if (init_idx) {
-               const unsigned shadow =
-                  glsl_sampler_type_is_shadow(type_no_array);
-               for (unsigned i = sampler_index;
-                    i < MIN2(state->next_sampler_index, MAX_SAMPLERS);
-                    i++) {
-                  stage_program->sh.SamplerTargets[i] =
-                     glsl_get_sampler_target(type_no_array);
-                  state->shader_samplers_used |= 1U << i;
-                  state->shader_shadow_samplers |= shadow << i;
-               }
-            }
-         }
-
-         uniform->opaque[stage].active = true;
-         uniform->opaque[stage].index = sampler_index;
-      } else if (glsl_type_is_image(type_no_array)) {
-
-         /* Set image access qualifiers */
-         enum gl_access_qualifier image_access =
-            state->current_var->data.access;
-         const GLenum access =
-            (image_access & ACCESS_NON_WRITEABLE) ?
-            ((image_access & ACCESS_NON_READABLE) ? GL_NONE :
-                                                    GL_READ_ONLY) :
-            ((image_access & ACCESS_NON_READABLE) ? GL_WRITE_ONLY :
-                                                    GL_READ_WRITE);
-
-         int image_index;
-         if (state->current_var->data.bindless) {
-            image_index = state->next_bindless_image_index;
-            state->next_bindless_image_index += entries;
-
-            stage_program->sh.BindlessImages =
-               rerzalloc(stage_program, stage_program->sh.BindlessImages,
-                         struct gl_bindless_image,
-                         stage_program->sh.NumBindlessImages,
-                         state->next_bindless_image_index);
-
-            for (unsigned j = stage_program->sh.NumBindlessImages;
-                 j < state->next_bindless_image_index; j++) {
-               stage_program->sh.BindlessImages[j].access = access;
-            }
-
-            stage_program->sh.NumBindlessImages =
-               state->next_bindless_image_index;
-
-         } else {
-            image_index = state->next_image_index;
-            state->next_image_index += entries;
-
-            /* Images (bound or bindless) are counted as two components as
-             * specified by ARB_bindless_texture.
-             */
-            state->num_shader_images += values / 2;
-
-            for (unsigned i = image_index;
-                  i < MIN2(state->next_image_index, MAX_IMAGE_UNIFORMS);
-                 i++) {
-               stage_program->sh.ImageAccess[i] = access;
-            }
-         }
-
-         uniform->opaque[stage].active = true;
-         uniform->opaque[stage].index = image_index;
-
-         if (!uniform->is_shader_storage)
-            state->num_shader_uniform_components += values;
-      } else {
-         if (glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE) {
-            uniform->opaque[stage].index = state->next_subroutine;
-            uniform->opaque[stage].active = true;
-
-            prog->_LinkedShaders[stage]->Program->sh.NumSubroutineUniforms++;
-
-            /* Increment the subroutine index by 1 for non-arrays and by the
-             * number of array elements for arrays.
-             */
-            state->next_subroutine += MAX2(1, uniform->array_elements);
-         }
-
-         if (!state->var_is_in_block)
-            state->num_shader_uniform_components += values;
-      }
+      update_uniforms_shader_info(prog, state, uniform, type, stage);
 
       if (uniform->remap_location != UNMAPPED_UNIFORM_LOC &&
           state->max_uniform_location < uniform->remap_location + entries)
