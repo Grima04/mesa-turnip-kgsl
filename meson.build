@@ -455,8 +455,6 @@ if with_dri
   endif
 endif
 
-prog_pkgconfig = find_program('pkg-config')
-
 _vdpau = get_option('gallium-vdpau')
 if not system_has_kms_drm
   if _vdpau == 'true'
@@ -483,9 +481,7 @@ with_gallium_vdpau = false
 if _vdpau != 'false'
   dep_vdpau = dependency('vdpau', version : '>= 1.1', required : _vdpau == 'true')
   if dep_vdpau.found()
-    dep_vdpau = declare_dependency(
-      compile_args : run_command(prog_pkgconfig, ['vdpau', '--cflags']).stdout().split()
-    )
+    dep_vdpau = dep_vdpau.partial_dependency(compile_args : true)
     with_gallium_vdpau = true
   endif
 endif
@@ -635,9 +631,7 @@ dep_va = null_dep
 if _va != 'false'
   dep_va = dependency('libva', version : '>= 0.38.0', required : _va == 'true')
   if dep_va.found()
-    dep_va_headers = declare_dependency(
-      compile_args : run_command(prog_pkgconfig, ['libva', '--cflags']).stdout().split()
-    )
+    dep_va_headers = dep_va.partial_dependency(compile_args : true)
     with_gallium_va = true
   endif
 endif
@@ -1590,8 +1584,7 @@ if with_platform_wayland
   dep_wayland_server = dependency('wayland-server', version : '>=1.11')
   if with_egl
     dep_wayland_egl = dependency('wayland-egl-backend', version : '>= 3')
-    dep_wayland_egl_headers = declare_dependency(
-      compile_args : run_command(prog_pkgconfig, ['wayland-egl-backend', '--cflags']).stdout().split())
+    dep_wayland_egl_headers = dep_wayland_egl.partial_dependency(compile_args : true)
   endif
   wayland_dmabuf_xml = join_paths(
     dep_wl_protocols.get_pkgconfig_variable('pkgdatadir'), 'unstable',
