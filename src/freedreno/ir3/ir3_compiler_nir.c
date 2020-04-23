@@ -236,7 +236,6 @@ create_cov(struct ir3_context *ctx, struct ir3_instruction *src,
 	case nir_op_f2f16_rtne:
 	case nir_op_f2f16_rtz:
 	case nir_op_f2f16:
-		/* TODO how to handle rounding mode? */
 	case nir_op_i2f16:
 	case nir_op_u2f16:
 		dst_type = TYPE_F16;
@@ -276,7 +275,13 @@ create_cov(struct ir3_context *ctx, struct ir3_instruction *src,
 		ir3_context_error(ctx, "invalid conversion op: %u", op);
 	}
 
-	return ir3_COV(ctx->block, src, src_type, dst_type);
+	struct ir3_instruction *cov =
+		ir3_COV(ctx->block, src, src_type, dst_type);
+
+	if (op == nir_op_f2f16_rtne)
+		cov->regs[0]->flags |= IR3_REG_EVEN;
+
+	return cov;
 }
 
 static void
