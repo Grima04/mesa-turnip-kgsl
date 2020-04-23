@@ -2617,7 +2617,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 		radv_nir_shader_info_pass(nir[MESA_SHADER_FRAGMENT],
 					  pipeline->layout,
 					  &keys[MESA_SHADER_FRAGMENT],
-					  &infos[MESA_SHADER_FRAGMENT]);
+					  &infos[MESA_SHADER_FRAGMENT],
+					  pipeline->device->physical_device->use_aco);
 
 		/* TODO: These are no longer used as keys we should refactor this */
 		keys[MESA_SHADER_VERTEX].vs_common_out.export_prim_id =
@@ -2668,7 +2669,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 		for (int i = 0; i < 2; i++) {
 			radv_nir_shader_info_pass(combined_nir[i],
 						  pipeline->layout, &key,
-						  &infos[MESA_SHADER_TESS_CTRL]);
+						  &infos[MESA_SHADER_TESS_CTRL],
+						  pipeline->device->physical_device->use_aco);
 		}
 
 		keys[MESA_SHADER_TESS_EVAL].tes.num_patches =
@@ -2691,7 +2693,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 			radv_nir_shader_info_pass(combined_nir[i],
 						  pipeline->layout,
 						  &keys[pre_stage],
-						  &infos[MESA_SHADER_GEOMETRY]);
+						  &infos[MESA_SHADER_GEOMETRY],
+						  pipeline->device->physical_device->use_aco);
 		}
 
 		filled_stages |= (1 << pre_stage);
@@ -2716,7 +2719,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
 		radv_nir_shader_info_init(&infos[i]);
 		radv_nir_shader_info_pass(nir[i], pipeline->layout,
-					  &keys[i], &infos[i]);
+					  &keys[i], &infos[i], pipeline->device->physical_device->use_aco);
 	}
 
 	for (int i = 0; i < MESA_SHADER_STAGES; i++) {
@@ -2975,7 +2978,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 
 			radv_nir_shader_info_pass(nir[MESA_SHADER_GEOMETRY],
 						  pipeline->layout, &key,
-						  &info);
+						  &info, pipeline->device->physical_device->use_aco);
 			info.wave_size = 64; /* Wave32 not supported. */
 			info.ballot_bit_size = 64;
 

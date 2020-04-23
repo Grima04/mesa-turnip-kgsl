@@ -796,14 +796,6 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
       radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
-   } else if (ctx->stage == vertex_geometry_gs || ctx->stage == vertex_es) {
-      /* TODO: radv_nir_shader_info_pass() already sets this but it's larger
-       * than it needs to be in order to set it better, we have to improve
-       * radv_nir_shader_info_pass() because gfx9_get_gs_info() uses
-       * esgs_itemsize and has to be done before compilation
-       */
-      /* radv_es_output_info *outinfo = &ctx->program->info->vs.es_info;
-      outinfo->esgs_itemsize = util_bitcount64(ctx->output_masks[nir->info.stage]) * 16u; */
    } else if (ctx->stage == vertex_ls) {
       ctx->tcs_num_inputs = ctx->program->info->vs.num_linked_outputs;
    }
