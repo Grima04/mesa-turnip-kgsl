@@ -173,7 +173,8 @@ struct entry {
       uint64_t offset; /* sign-extended */
       int64_t offset_signed;
    };
-   uint32_t best_align;
+   uint32_t align_mul;
+   uint32_t align_offset;
 
    nir_instr *instr;
    nir_intrinsic_instr *intrin;
@@ -537,6 +538,25 @@ aliasing_modes(nir_variable_mode modes)
    return modes;
 }
 
+static void
+calc_alignment(struct entry *entry)
+{
+   uint32_t align_mul = 31;
+   for (unsigned i = 0; i < entry->key->offset_def_count; i++) {
+      if (entry->key->offset_defs_mul[i])
+         align_mul = MIN2(align_mul, ffsll(entry->key->offset_defs_mul[i]));
+   }
+
+   entry->align_mul = 1u << (align_mul - 1);
+   bool has_align = nir_intrinsic_infos[entry->intrin->intrinsic].index_map[NIR_INTRINSIC_ALIGN_MUL];
+   if (!has_align || entry->align_mul >= nir_intrinsic_align_mul(entry->intrin)) {
+      entry->align_offset = entry->offset % entry->align_mul;
+   } else {
+      entry->align_mul = nir_intrinsic_align_mul(entry->intrin);
+      entry->align_offset = nir_intrinsic_align_offset(entry->intrin);
+   }
+}
+
 static struct entry *
 create_entry(struct vectorize_ctx *ctx,
              const struct intrinsic_info *info,
@@ -546,7 +566,6 @@ create_entry(struct vectorize_ctx *ctx,
    entry->intrin = intrin;
    entry->instr = &intrin->instr;
    entry->info = info;
-   entry->best_align = UINT32_MAX;
    entry->is_store = entry->info->value_src >= 0;
 
    if (entry->info->deref_src >= 0) {
@@ -582,6 +601,8 @@ create_entry(struct vectorize_ctx *ctx,
    restrict_modes |= nir_var_system_value | nir_var_mem_shared;
    if (get_variable_mode(entry) & restrict_modes)
       entry->access |= ACCESS_RESTRICT;
+
+   calc_alignment(entry);
 
    return entry;
 }
@@ -623,40 +644,6 @@ writemask_representable(unsigned write_mask, unsigned old_bit_size, unsigned new
    return true;
 }
 
-static uint64_t
-gcd(uint64_t a, uint64_t b)
-{
-   while (b) {
-      uint64_t old_b = b;
-      b = a % b;
-      a = old_b;
-   }
-   return a;
-}
-
-static uint32_t
-get_best_align(struct entry *entry)
-{
-   if (entry->best_align != UINT32_MAX)
-      return entry->best_align;
-
-   uint64_t best_align = entry->offset;
-   for (unsigned i = 0; i < entry->key->offset_def_count; i++) {
-      if (!best_align)
-         best_align = entry->key->offset_defs_mul[i];
-      else if (entry->key->offset_defs_mul[i])
-         best_align = gcd(best_align, entry->key->offset_defs_mul[i]);
-   }
-
-   if (nir_intrinsic_has_align_mul(entry->intrin))
-      best_align = MAX2(best_align, nir_intrinsic_align(entry->intrin));
-
-   /* ensure the result is a power of two that fits in a int32_t */
-   entry->best_align = gcd(best_align, 1u << 30);
-
-   return entry->best_align;
-}
-
 /* Return true if "new_bit_size" is a usable bit size for a vectorized load/store
  * of "low" and "high". */
 static bool
@@ -680,7 +667,8 @@ new_bitsize_acceptable(struct vectorize_ctx *ctx, unsigned new_bit_size,
    if (new_bit_size / common_bit_size > NIR_MAX_VEC_COMPONENTS)
       return false;
 
-   if (!ctx->callback(get_best_align(low), new_bit_size, new_num_components,
+   uint32_t align = low->align_offset ? 1 << (ffs(low->align_offset) - 1) : low->align_mul;
+   if (!ctx->callback(align, new_bit_size, new_num_components,
                       high_offset, low->intrin, high->intrin))
       return false;
 
@@ -747,18 +735,6 @@ static nir_deref_instr *subtract_deref(nir_builder *b, nir_deref_instr *deref, i
                                 glsl_scalar_type(GLSL_TYPE_UINT8), 1);
    return nir_build_deref_ptr_as_array(
       b, deref, nir_imm_intN_t(b, -offset, deref->dest.ssa.bit_size));
-}
-
-static bool update_align(struct entry *entry)
-{
-   if (nir_intrinsic_has_align_mul(entry->intrin)) {
-      unsigned align = get_best_align(entry);
-      if (align != nir_intrinsic_align(entry->intrin)) {
-         nir_intrinsic_set_align(entry->intrin, align, 0);
-         return true;
-      }
-   }
-   return false;
 }
 
 static void
@@ -838,9 +814,9 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
 
    first->key = low->key;
    first->offset = low->offset;
-   first->best_align = get_best_align(low);
 
-   update_align(first);
+   first->align_mul = low->align_mul;
+   first->align_offset = low->align_offset;
 
    nir_instr_remove(second->instr);
 }
@@ -920,9 +896,9 @@ vectorize_stores(nir_builder *b, struct vectorize_ctx *ctx,
 
    second->key = low->key;
    second->offset = low->offset;
-   second->best_align = get_best_align(low);
 
-   update_align(second);
+   second->align_mul = low->align_mul;
+   second->align_offset = low->align_offset;
 
    list_del(&first->head);
    nir_instr_remove(first->instr);
@@ -1131,6 +1107,18 @@ try_vectorize(nir_function_impl *impl, struct vectorize_ctx *ctx,
 }
 
 static bool
+update_align(struct entry *entry)
+{
+   if (nir_intrinsic_has_align_mul(entry->intrin) &&
+       (entry->align_mul != nir_intrinsic_align_mul(entry->intrin) ||
+        entry->align_offset != nir_intrinsic_align_offset(entry->intrin))) {
+      nir_intrinsic_set_align(entry->intrin, entry->align_mul, entry->align_offset);
+      return true;
+   }
+   return false;
+}
+
+static bool
 vectorize_entries(struct vectorize_ctx *ctx, nir_function_impl *impl, struct hash_table *ht)
 {
    if (!ht)
@@ -1152,10 +1140,8 @@ vectorize_entries(struct vectorize_ctx *ctx, nir_function_impl *impl, struct has
          struct entry *high = *util_dynarray_element(arr, struct entry *, i + 1);
 
          uint64_t diff = high->offset_signed - low->offset_signed;
-         if (diff > get_bit_size(low) / 8u * low->intrin->num_components) {
-            progress |= update_align(low);
+         if (diff > get_bit_size(low) / 8u * low->intrin->num_components)
             continue;
-         }
 
          struct entry *first = low->index < high->index ? low : high;
          struct entry *second = low->index < high->index ? high : low;
@@ -1164,13 +1150,13 @@ vectorize_entries(struct vectorize_ctx *ctx, nir_function_impl *impl, struct has
             *util_dynarray_element(arr, struct entry *, i) = NULL;
             *util_dynarray_element(arr, struct entry *, i + 1) = low->is_store ? second : first;
             progress = true;
-         } else {
-            progress |= update_align(low);
          }
       }
 
-      struct entry *last = *util_dynarray_element(arr, struct entry *, i);
-      progress |= update_align(last);
+      util_dynarray_foreach(arr, struct entry *, elem) {
+         if (*elem)
+            progress |= update_align(*elem);
+      }
    }
 
    _mesa_hash_table_clear(ht, delete_entry_dynarray);

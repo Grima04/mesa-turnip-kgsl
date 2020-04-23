@@ -605,7 +605,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_identical_store_intersecting)
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 
-   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo));
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
@@ -619,7 +619,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_identical_store_identical)
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 
-   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo));
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
@@ -633,7 +633,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_store_identical_load_identical)
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
 
-   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo));
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
 }
@@ -776,7 +776,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier)
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 
-   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo));
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
@@ -1043,7 +1043,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_32_64)
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
 
-   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo));
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
 }
@@ -1521,7 +1521,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_alias0)
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 
-   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo));
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
@@ -1619,7 +1619,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_alias5)
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 
-   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo));
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
@@ -1743,7 +1743,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_offset_overflow_robust)
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 
-   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo, false, nir_var_mem_ssbo));
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo, false, nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
