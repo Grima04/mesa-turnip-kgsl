@@ -70,7 +70,7 @@ enum ac_target_machine_options {
 
 enum ac_float_mode {
 	AC_FLOAT_MODE_DEFAULT,
-	AC_FLOAT_MODE_NO_SIGNED_ZEROS_FP_MATH,
+	AC_FLOAT_MODE_DEFAULT_OPENGL,
 	AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO,
 };
 

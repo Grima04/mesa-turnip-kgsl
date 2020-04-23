@@ -84,8 +84,18 @@ LLVMBuilderRef ac_create_builder(LLVMContextRef ctx,
 	case AC_FLOAT_MODE_DEFAULT:
 	case AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO:
 		break;
-	case AC_FLOAT_MODE_NO_SIGNED_ZEROS_FP_MATH:
-		flags.setNoSignedZeros();
+
+	case AC_FLOAT_MODE_DEFAULT_OPENGL:
+		/* Allow optimizations to treat the sign of a zero argument or
+		 * result as insignificant.
+		 */
+		flags.setNoSignedZeros(); /* nsz */
+
+		/* Allow optimizations to use the reciprocal of an argument
+		 * rather than perform division.
+		 */
+		flags.setAllowReciprocal(); /* arcp */
+
 		llvm::unwrap(builder)->setFastMathFlags(flags);
 		break;
 	}
