@@ -650,6 +650,9 @@ v3dv_DestroyImageView(VkDevice _device,
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    V3DV_FROM_HANDLE(v3dv_image_view, image_view, imageView);
 
+   if (image_view->texture_shader_state)
+      v3dv_bo_free(device, image_view->texture_shader_state);
+
    vk_free2(&device->alloc, pAllocator, image_view);
 }
 
