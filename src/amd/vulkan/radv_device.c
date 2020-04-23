@@ -2901,6 +2901,24 @@ radv_create_pthread_cond(pthread_cond_t *cond)
 	return VK_SUCCESS;
 }
 
+static VkResult
+check_physical_device_features(VkPhysicalDevice physicalDevice,
+			       const VkPhysicalDeviceFeatures *features)
+{
+	RADV_FROM_HANDLE(radv_physical_device, physical_device, physicalDevice);
+	VkPhysicalDeviceFeatures supported_features;
+	radv_GetPhysicalDeviceFeatures(physicalDevice, &supported_features);
+	VkBool32 *supported_feature = (VkBool32 *)&supported_features;
+	VkBool32 *enabled_feature = (VkBool32 *)features;
+	unsigned num_features = sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32);
+	for (uint32_t i = 0; i < num_features; i++) {
+		if (enabled_feature[i] && !supported_feature[i])
+			return vk_error(physical_device->instance, VK_ERROR_FEATURE_NOT_PRESENT);
+	}
+
+	return VK_SUCCESS;
+}
+
 VkResult radv_CreateDevice(
 	VkPhysicalDevice                            physicalDevice,
 	const VkDeviceCreateInfo*                   pCreateInfo,
@@ -2912,17 +2930,34 @@ VkResult radv_CreateDevice(
 	struct radv_device *device;
 
 	bool keep_shader_info = false;
+	bool robust_buffer_access = false;
 
 	/* Check enabled features */
 	if (pCreateInfo->pEnabledFeatures) {
-		VkPhysicalDeviceFeatures supported_features;
-		radv_GetPhysicalDeviceFeatures(physicalDevice, &supported_features);
-		VkBool32 *supported_feature = (VkBool32 *)&supported_features;
-		VkBool32 *enabled_feature = (VkBool32 *)pCreateInfo->pEnabledFeatures;
-		unsigned num_features = sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32);
-		for (uint32_t i = 0; i < num_features; i++) {
-			if (enabled_feature[i] && !supported_feature[i])
-				return vk_error(physical_device->instance, VK_ERROR_FEATURE_NOT_PRESENT);
+		result = check_physical_device_features(physicalDevice,
+							pCreateInfo->pEnabledFeatures);
+		if (result != VK_SUCCESS)
+			return result;
+
+		if (pCreateInfo->pEnabledFeatures->robustBufferAccess)
+			robust_buffer_access = true;
+	}
+
+	vk_foreach_struct_const(ext, pCreateInfo->pNext) {
+		switch (ext->sType) {
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
+			const VkPhysicalDeviceFeatures2 *features = (const void *)ext;
+			result = check_physical_device_features(physicalDevice,
+								&features->features);
+			if (result != VK_SUCCESS)
+				return result;
+
+			if (features->features.robustBufferAccess)
+				robust_buffer_access = true;
+			break;
+		}
+		default:
+			break;
 		}
 	}
 
@@ -2966,8 +3001,7 @@ VkResult radv_CreateDevice(
 		device->enabled_extensions.EXT_buffer_device_address ||
 		device->enabled_extensions.KHR_buffer_device_address;
 
-	device->robust_buffer_access = pCreateInfo->pEnabledFeatures &&
-	                               pCreateInfo->pEnabledFeatures->robustBufferAccess;
+	device->robust_buffer_access = robust_buffer_access;
 
 	mtx_init(&device->shader_slab_mutex, mtx_plain);
 	list_inithead(&device->shader_slabs);
