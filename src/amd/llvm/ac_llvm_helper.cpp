@@ -101,6 +101,11 @@ LLVMBuilderRef ac_create_builder(LLVMContextRef ctx,
 		 */
 		flags.setAllowContract(); /* contract */
 
+		/* Allow reassociation transformations for floating-point
+		 * instructions. This may dramatically change results.
+		 */
+		flags.setAllowReassoc(); /* reassoc */
+
 		llvm::unwrap(builder)->setFastMathFlags(flags);
 		break;
 	}
@@ -113,11 +118,13 @@ bool ac_disable_inexact_math(LLVMBuilderRef builder)
 {
 	auto *b = llvm::unwrap(builder);
 	llvm::FastMathFlags flags = b->getFastMathFlags();
+	assert(flags.allowContract() == flags.allowReassoc());
 
 	if (!flags.allowContract())
 		return false;
 
 	flags.setAllowContract(false);
+	flags.setAllowReassoc(false);
 	b->setFastMathFlags(flags);
 	return true;
 }
@@ -126,11 +133,13 @@ void ac_restore_inexact_math(LLVMBuilderRef builder, bool value)
 {
 	auto *b = llvm::unwrap(builder);
 	llvm::FastMathFlags flags = b->getFastMathFlags();
+	assert(flags.allowContract() == flags.allowReassoc());
 
 	if (flags.allowContract() == value)
 		return;
 
 	flags.setAllowContract(value);
+	flags.setAllowReassoc(value);
 	b->setFastMathFlags(flags);
 }
 
