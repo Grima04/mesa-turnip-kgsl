@@ -150,6 +150,7 @@ files_libnir = files(
   'nir_lower_io_to_temporaries.c',
   'nir_lower_io_to_scalar.c',
   'nir_lower_io_to_vector.c',
+  'nir_lower_mediump_outputs.c',
   'nir_lower_non_uniform_access.c',
   'nir_lower_packing.c',
   'nir_lower_passthrough_edgeflags.c',
