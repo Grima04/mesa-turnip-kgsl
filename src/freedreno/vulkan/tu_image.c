@@ -274,8 +274,18 @@ tu_image_view_init(struct tu_image_view *iview,
 
    uint32_t width = u_minify(image->extent.width, range->baseMipLevel);
    uint32_t height = u_minify(image->extent.height, range->baseMipLevel);
-   uint32_t depth = pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_3D ?
-      u_minify(image->extent.depth, range->baseMipLevel) : tu_get_layerCount(image, range);
+   uint32_t depth = tu_get_layerCount(image, range);
+   switch (pCreateInfo->viewType) {
+   case VK_IMAGE_VIEW_TYPE_3D:
+      depth = u_minify(image->extent.depth, range->baseMipLevel);
+      break;
+   case VK_IMAGE_VIEW_TYPE_CUBE:
+   case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
+      depth /= 6;
+      break;
+   default:
+      break;
+  }
 
    uint64_t base_addr = image->bo->iova + image->bo_offset +
       fdl_surface_offset(layout, range->baseMipLevel, range->baseArrayLayer);
