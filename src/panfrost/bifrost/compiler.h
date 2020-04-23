@@ -387,6 +387,7 @@ typedef struct {
        bi_block *break_block;
        bi_block *continue_block;
        bool emitted_atest;
+       nir_alu_type *blend_types;
 
        /* For creating temporaries */
        unsigned temp_alloc;

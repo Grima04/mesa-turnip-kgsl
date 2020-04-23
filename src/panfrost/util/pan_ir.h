@@ -86,6 +86,9 @@ typedef struct {
         int work_register_count;
         int uniform_cutoff;
 
+        /* For Bifrost - output type for each RT */
+        nir_alu_type blend_types[8];
+
         /* Prepended before uniforms, mapping to SYSVAL_ names for the
          * sysval */
 

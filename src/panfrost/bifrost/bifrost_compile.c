@@ -163,6 +163,10 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 .writemask = 0xF
         };
 
+        assert(blend.blend_location < 8);
+        assert(ctx->blend_types);
+        ctx->blend_types[blend.blend_location] = blend.src_types[0];
+
         bi_emit(ctx, blend);
         bi_schedule_barrier(ctx);
 }
@@ -1074,6 +1078,7 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
         panfrost_nir_assign_sysvals(&ctx->sysvals, nir);
         program->sysval_count = ctx->sysvals.sysval_count;
         memcpy(program->sysvals, ctx->sysvals.sysvals, sizeof(ctx->sysvals.sysvals[0]) * ctx->sysvals.sysval_count);
+        ctx->blend_types = program->blend_types;
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)
