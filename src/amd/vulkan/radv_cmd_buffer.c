@@ -3870,9 +3870,7 @@ void radv_CmdBindPipeline(
 		/* Prefetch all pipeline shaders at first draw time. */
 		cmd_buffer->state.prefetch_L2_mask |= RADV_PREFETCH_SHADERS;
 
-		if ((cmd_buffer->device->physical_device->rad_info.family == CHIP_NAVI10 ||
-		     cmd_buffer->device->physical_device->rad_info.family == CHIP_NAVI12 ||
-		     cmd_buffer->device->physical_device->rad_info.family == CHIP_NAVI14) &&
+		if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX10 &&
 		    cmd_buffer->state.emitted_pipeline &&
 		    radv_pipeline_has_ngg(cmd_buffer->state.emitted_pipeline) &&
 		    !radv_pipeline_has_ngg(cmd_buffer->state.pipeline)) {

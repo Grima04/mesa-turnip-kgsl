@@ -4082,9 +4082,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	 *
 	 * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
 	 */
-	if ((pipeline->device->physical_device->rad_info.family == CHIP_NAVI10 ||
-	     pipeline->device->physical_device->rad_info.family == CHIP_NAVI12 ||
-	     pipeline->device->physical_device->rad_info.family == CHIP_NAVI14) &&
+	if (pipeline->device->physical_device->rad_info.chip_class == GFX10 &&
 	    !radv_pipeline_has_tess(pipeline) &&
 	    ngg_state->hw_max_esverts != 256) {
 		ge_cntl &= C_03096C_VERT_GRP_SIZE;

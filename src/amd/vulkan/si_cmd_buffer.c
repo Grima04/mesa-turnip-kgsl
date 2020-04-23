@@ -416,9 +416,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 				  S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
 		radeon_set_sh_reg(cs, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
 
-		if (physical_device->rad_info.family == CHIP_NAVI10 ||
-		    physical_device->rad_info.family == CHIP_NAVI12 ||
-		    physical_device->rad_info.family == CHIP_NAVI14) {
+		if (physical_device->rad_info.chip_class == GFX10) {
 			/* SQ_NON_EVENT must be emitted before GE_PC_ALLOC is written. */
 			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 			radeon_emit(cs, EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
