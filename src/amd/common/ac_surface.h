@@ -49,12 +49,14 @@ enum radeon_surf_mode {
     RADEON_SURF_MODE_2D = 3,
 };
 
-/* These are defined exactly like GB_TILE_MODEn.MICRO_TILE_MODE_NEW. */
+/* This describes D/S/Z/R swizzle modes.
+ * Defined in the GB_TILE_MODEn.MICRO_TILE_MODE_NEW order.
+ */
 enum radeon_micro_mode {
     RADEON_MICRO_MODE_DISPLAY = 0,
-    RADEON_MICRO_MODE_THIN = 1,
+    RADEON_MICRO_MODE_STANDARD = 1,
     RADEON_MICRO_MODE_DEPTH = 2,
-    RADEON_MICRO_MODE_ROTATED = 3, /* gfx10+: render target */
+    RADEON_MICRO_MODE_RENDER = 3, /* gfx9 and older: rotated */
 };
 
 /* the first 16 bits are reserved for libdrm_radeon, don't use them */

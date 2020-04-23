@@ -297,11 +297,11 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen, struct si_
          tex->surface.u.gfx9.surf.swizzle_mode &= ~0x3;
          tex->surface.u.gfx9.surf.swizzle_mode += 2; /* D */
          break;
-      case RADEON_MICRO_MODE_THIN:
+      case RADEON_MICRO_MODE_STANDARD:
          tex->surface.u.gfx9.surf.swizzle_mode &= ~0x3;
          tex->surface.u.gfx9.surf.swizzle_mode += 1; /* S */
          break;
-      case RADEON_MICRO_MODE_ROTATED:
+      case RADEON_MICRO_MODE_RENDER:
          tex->surface.u.gfx9.surf.swizzle_mode &= ~0x3;
          tex->surface.u.gfx9.surf.swizzle_mode += 3; /* R */
          break;
@@ -318,10 +318,10 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen, struct si_
       case RADEON_MICRO_MODE_DISPLAY:
          tex->surface.u.legacy.tiling_index[0] = 10;
          break;
-      case RADEON_MICRO_MODE_THIN:
+      case RADEON_MICRO_MODE_STANDARD:
          tex->surface.u.legacy.tiling_index[0] = 14;
          break;
-      case RADEON_MICRO_MODE_ROTATED:
+      case RADEON_MICRO_MODE_RENDER:
          tex->surface.u.legacy.tiling_index[0] = 28;
          break;
       default: /* depth, thick */
@@ -343,7 +343,7 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen, struct si_
             break;
          }
          break;
-      case RADEON_MICRO_MODE_THIN:
+      case RADEON_MICRO_MODE_STANDARD:
          switch (tex->surface.bpe) {
          case 1:
             tex->surface.u.legacy.tiling_index[0] = 14;

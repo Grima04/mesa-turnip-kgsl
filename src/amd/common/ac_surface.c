@@ -952,14 +952,14 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 	surf->is_linear = surf->u.legacy.level[0].mode == RADEON_SURF_MODE_LINEAR_ALIGNED;
 	surf->is_displayable = surf->is_linear ||
 			       surf->micro_tile_mode == RADEON_MICRO_MODE_DISPLAY ||
-			       surf->micro_tile_mode == RADEON_MICRO_MODE_ROTATED;
+			       surf->micro_tile_mode == RADEON_MICRO_MODE_RENDER;
 
 	/* The rotated micro tile mode doesn't work if both CMASK and RB+ are
 	 * used at the same time. This case is not currently expected to occur
 	 * because we don't use rotated. Enforce this restriction on all chips
 	 * to facilitate testing.
 	 */
-	if (surf->micro_tile_mode == RADEON_MICRO_MODE_ROTATED) {
+	if (surf->micro_tile_mode == RADEON_MICRO_MODE_RENDER) {
 		assert(!"rotate micro tile mode is unsupported");
 		return ADDR_ERROR;
 	}
@@ -1008,11 +1008,11 @@ gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib,
 
 		if (surf->micro_tile_mode == RADEON_MICRO_MODE_DISPLAY)
 			sin.preferredSwSet.sw_D = 1;
-		else if (surf->micro_tile_mode == RADEON_MICRO_MODE_THIN)
+		else if (surf->micro_tile_mode == RADEON_MICRO_MODE_STANDARD)
 			sin.preferredSwSet.sw_S = 1;
 		else if (surf->micro_tile_mode == RADEON_MICRO_MODE_DEPTH)
 			sin.preferredSwSet.sw_Z = 1;
-		else if (surf->micro_tile_mode == RADEON_MICRO_MODE_ROTATED)
+		else if (surf->micro_tile_mode == RADEON_MICRO_MODE_RENDER)
 			sin.preferredSwSet.sw_R = 1;
 	}
 
@@ -1634,7 +1634,7 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 		case ADDR_SW_64KB_S_T:
 		case ADDR_SW_4KB_S_X:
 		case ADDR_SW_64KB_S_X:
-			surf->micro_tile_mode = RADEON_MICRO_MODE_THIN;
+			surf->micro_tile_mode = RADEON_MICRO_MODE_STANDARD;
 			break;
 
 		/* D = display. */
@@ -1662,7 +1662,7 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 			 */
 			assert(info->chip_class >= GFX10 ||
 			       !"rotate micro tile mode is unsupported");
-			surf->micro_tile_mode = RADEON_MICRO_MODE_ROTATED;
+			surf->micro_tile_mode = RADEON_MICRO_MODE_RENDER;
 			break;
 
 		/* Z = depth. */
