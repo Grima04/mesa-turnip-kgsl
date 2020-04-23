@@ -457,6 +457,15 @@ struct midgard_blend_rt {
 /* On Bifrost systems (all MRT), each render target gets one of these
  * descriptors */
 
+enum bifrost_shader_type {
+        BIFROST_BLEND_F16 = 0,
+        BIFROST_BLEND_F32 = 1,
+        BIFROST_BLEND_I32 = 2,
+        BIFROST_BLEND_U32 = 3,
+        BIFROST_BLEND_I16 = 4,
+        BIFROST_BLEND_U16 = 5,
+};
+
 struct bifrost_blend_rt {
         /* This is likely an analogue of the flags on
          * midgard_blend_rt */
@@ -499,14 +508,8 @@ struct bifrost_blend_rt {
 			enum mali_format format : 8;
 
 			/* Type of the shader output variable. Note, this can
-			 * be different from the format.
-			 *
-			 * 0: f16 (mediump float)
-			 * 1: f32 (highp float)
-			 * 2: i32 (highp int)
-			 * 3: u32 (highp uint)
-			 * 4: i16 (mediump int)
-			 * 5: u16 (mediump uint)
+                         * be different from the format.
+                         * enum bifrost_shader_type
 			 */
 			u32 shader_type : 3;
 			u32 zero : 9;
