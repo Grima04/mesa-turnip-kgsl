@@ -349,6 +349,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
          node = block->comp->var_nodes[instr->src->ssa->index];
          switch (node->op) {
          case ppir_op_load_uniform:
+         case ppir_op_load_texture:
          case ppir_op_const:
             break;
          default:

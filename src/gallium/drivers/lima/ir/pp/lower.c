@@ -162,7 +162,22 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
 {
    ppir_dest *dest = ppir_node_get_dest(node);
 
-   /* Always create move node since there can be successors in other blocks */
+   if (ppir_node_has_single_succ(node)) {
+      ppir_node *succ = ppir_node_first_succ(node);
+      dest->type = ppir_target_pipeline;
+      dest->pipeline = ppir_pipeline_reg_sampler;
+
+      for (int i = 0; i < ppir_node_get_src_num(succ); i++) {
+         ppir_src *src = ppir_node_get_src(succ, i);
+         if (src && src->node == node) {
+            src->type = ppir_target_pipeline;
+            src->pipeline = ppir_pipeline_reg_sampler;
+         }
+      }
+      return true;
+   }
+
+   /* Create move node as fallback */
    ppir_node *move = ppir_node_insert_mov(node);
    if (unlikely(!move))
       return false;
@@ -170,7 +185,7 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    ppir_debug("lower texture create move %d for %d\n",
               move->index, node->index);
 
-   ppir_src *mov_src=  ppir_node_get_src(move, 0);
+   ppir_src *mov_src = ppir_node_get_src(move, 0);
    mov_src->type = dest->type = ppir_target_pipeline;
    mov_src->pipeline = dest->pipeline = ppir_pipeline_reg_sampler;
 
