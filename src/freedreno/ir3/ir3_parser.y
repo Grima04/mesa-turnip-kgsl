@@ -196,6 +196,7 @@ int yydebug;
 
 extern int yylex(void);
 extern FILE *ir3_yyin;
+void ir3_yyset_lineno(int _line_number);
 
 int yyparse(void);
 
@@ -207,6 +208,7 @@ static void yyerror(const char *error)
 struct ir3 * ir3_parse(struct ir3_shader_variant *v,
 		struct ir3_kernel_info *k, FILE *f)
 {
+	ir3_yyset_lineno(1);
 	ir3_yyin = f;
 #ifdef YYDEBUG
 	yydebug = 1;
