@@ -1519,8 +1519,8 @@ void collect_presched_stats(Program *program);
 void collect_preasm_stats(Program *program);
 void collect_postasm_stats(Program *program, const std::vector<uint32_t>& code);
 
-void aco_print_instr(Instruction *instr, FILE *output);
-void aco_print_program(Program *program, FILE *output);
+void aco_print_instr(const Instruction *instr, FILE *output);
+void aco_print_program(const Program *program, FILE *output);
 
 /* utilities for dealing with register demand */
 RegisterDemand get_live_changes(aco_ptr<Instruction>& instr);
