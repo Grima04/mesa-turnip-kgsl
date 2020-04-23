@@ -466,13 +466,13 @@ struct nir_link_uniforms_state {
    unsigned num_hidden_uniforms;
    unsigned num_values;
    unsigned max_uniform_location;
-   unsigned next_subroutine;
 
    /* per-shader stage */
    unsigned next_bindless_image_index;
    unsigned next_bindless_sampler_index;
    unsigned next_image_index;
    unsigned next_sampler_index;
+   unsigned next_subroutine;
    unsigned num_shader_samplers;
    unsigned num_shader_images;
    unsigned num_shader_uniform_components;
@@ -769,6 +769,23 @@ find_and_update_named_uniform_storage(struct gl_context *ctx,
             uniform->opaque[stage].index = image_index;
 
             if (!uniform->is_shader_storage)
+               state->num_shader_uniform_components += values;
+         } else {
+            if (glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE) {
+               struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+
+               uniform->opaque[stage].index = state->next_subroutine;
+               uniform->opaque[stage].active = true;
+
+               sh->Program->sh.NumSubroutineUniforms++;
+
+               /* Increment the subroutine index by 1 for non-arrays and by the
+                * number of array elements for arrays.
+                */
+               state->next_subroutine += MAX2(1, uniform->array_elements);
+            }
+
+            if (!state->var_is_in_block)
                state->num_shader_uniform_components += values;
          }
 
