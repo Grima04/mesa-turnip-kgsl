@@ -67,7 +67,7 @@ enum radeon_micro_mode {
 /* bits 19 and 20 are reserved for libdrm_radeon, don't use them */
 #define RADEON_SURF_FMASK                       (1 << 21)
 #define RADEON_SURF_DISABLE_DCC                 (1 << 22)
-#define RADEON_SURF_TC_COMPATIBLE_HTILE         (1 << 23)
+/* gap */
 #define RADEON_SURF_IMPORTED                    (1 << 24)
 #define RADEON_SURF_OPTIMIZE_FOR_SPACE          (1 << 25)
 #define RADEON_SURF_SHAREABLE                   (1 << 26)
@@ -189,6 +189,7 @@ struct radeon_surf {
     unsigned                    has_stencil:1;
     /* This might be true even if micro_tile_mode isn't displayable or rotated. */
     unsigned                    is_displayable:1;
+    unsigned                    tc_compatible_htile_allowed:1;
     /* Displayable, thin, depth, rotated. AKA D,S,Z,R swizzle modes. */
     unsigned                    micro_tile_mode:3;
     uint32_t                    flags;

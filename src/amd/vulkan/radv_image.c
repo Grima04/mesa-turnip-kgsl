@@ -437,11 +437,8 @@ radv_init_surface(struct radv_device *device,
 		unreachable("unhandled image type");
 	}
 
-	if (is_depth) {
+	if (is_depth)
 		surface->flags |= RADEON_SURF_ZBUFFER;
-		if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
-			surface->flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
-	}
 
 	if (is_stencil)
 		surface->flags |= RADEON_SURF_SBUFFER;
@@ -1353,6 +1350,8 @@ static void radv_image_disable_htile(struct radv_image *image)
 {
 	for (unsigned i = 0; i < image->plane_count; ++i)
 		image->planes[i].surface.htile_size = 0;
+
+	image->tc_compatible_htile = false;
 }
 
 VkResult
@@ -1424,7 +1423,8 @@ radv_image_create_layout(struct radv_device *device,
 			/* Otherwise, try to enable HTILE for depth surfaces. */
 			if (radv_image_can_enable_htile(image) &&
 			    !(device->instance->debug_flags & RADV_DEBUG_NO_HIZ)) {
-				image->tc_compatible_htile = image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
+				if (!image->planes[0].surface.tc_compatible_htile_allowed)
+					image->tc_compatible_htile = false;
 				radv_image_alloc_htile(device, image);
 			} else {
 				radv_image_disable_htile(image);
@@ -1501,6 +1501,10 @@ radv_image_create(VkDevice _device,
 	if (!vk_format_is_depth_or_stencil(format) && !image->shareable) {
 		image->info.surf_index = &device->image_mrt_offset_counter;
 	}
+
+	image->tc_compatible_htile =
+		radv_use_tc_compat_htile_for_image(device, create_info->vk_info,
+		                                   image->vk_format);
 
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
 		radv_init_surface(device, image, &image->planes[plane].surface, plane, pCreateInfo, format);

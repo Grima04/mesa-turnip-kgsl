@@ -652,7 +652,8 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 	AddrSurfInfoIn.flags.cube = config->is_cube;
 	AddrSurfInfoIn.flags.display = get_display_flag(config, surf);
 	AddrSurfInfoIn.flags.pow2Pad = config->info.levels > 1;
-	AddrSurfInfoIn.flags.tcCompatible = (surf->flags & RADEON_SURF_TC_COMPATIBLE_HTILE) != 0;
+	AddrSurfInfoIn.flags.tcCompatible = info->chip_class >= GFX8 &&
+					    AddrSurfInfoIn.flags.depth;
 
 	/* Only degrade the tile mode for space if TC-compatible HTILE hasn't been
 	 * requested, because TC-compatible HTILE requires 2D tiling.
@@ -773,6 +774,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 	surf->htile_size = 0;
 	surf->htile_slice_size = 0;
 	surf->htile_alignment = 1;
+	surf->tc_compatible_htile_allowed = AddrSurfInfoIn.flags.tcCompatible;
 
 	const bool only_stencil = (surf->flags & RADEON_SURF_SBUFFER) &&
 				  !(surf->flags & RADEON_SURF_ZBUFFER);
@@ -789,10 +791,11 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 			if (level > 0)
 				continue;
 
-			if (!AddrSurfInfoOut.tcCompatible) {
+			if (!AddrSurfInfoOut.tcCompatible)
 				AddrSurfInfoIn.flags.tcCompatible = 0;
-				surf->flags &= ~RADEON_SURF_TC_COMPATIBLE_HTILE;
-			}
+
+			if (!AddrSurfInfoOut.tcCompatible || !surf->htile_size)
+				surf->tc_compatible_htile_allowed = false;
 
 			if (AddrSurfInfoIn.flags.matchStencilTileCfg) {
 				AddrSurfInfoIn.flags.matchStencilTileCfg = 0;
@@ -938,7 +941,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 	 * TC-compatible HTILE even for levels where it's disabled by DB.
 	 */
 	if (surf->htile_size && config->info.levels > 1 &&
-	    surf->flags & RADEON_SURF_TC_COMPATIBLE_HTILE) {
+	    surf->tc_compatible_htile_allowed) {
 		/* MSAA can't occur with levels > 1, so ignore the sample count. */
 		const unsigned total_pixels = surf->surf_size / surf->bpe;
 		const unsigned htile_block_size = 8 * 8;
@@ -1487,14 +1490,12 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 		AddrSurfInfoIn.bpp = surf->bpe * 8;
 	}
 
-	bool is_color_surface = !(surf->flags & RADEON_SURF_Z_OR_SBUFFER);
-	AddrSurfInfoIn.flags.color = is_color_surface &&
+	AddrSurfInfoIn.flags.color = !(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
 	                             !(surf->flags & RADEON_SURF_NO_RENDER_TARGET);
 	AddrSurfInfoIn.flags.depth = (surf->flags & RADEON_SURF_ZBUFFER) != 0;
 	AddrSurfInfoIn.flags.display = get_display_flag(config, surf);
 	/* flags.texture currently refers to TC-compatible HTILE */
-	AddrSurfInfoIn.flags.texture = is_color_surface ||
-				       surf->flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
+	AddrSurfInfoIn.flags.texture = 1;
 	AddrSurfInfoIn.flags.opt4space = 1;
 
 	AddrSurfInfoIn.numMipLevels = config->info.levels;
@@ -1535,7 +1536,7 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 	 * PIPE_ALIGNED is optional, but PIPE_ALIGNED=0 requires L2 flushes
 	 * after rendering, so PIPE_ALIGNED=1 is recommended.
 	 */
-	if (info->use_display_dcc_unaligned && is_color_surface &&
+	if (info->use_display_dcc_unaligned &&
 	    AddrSurfInfoIn.flags.display) {
 		AddrSurfInfoIn.flags.metaPipeUnaligned = 1;
 		AddrSurfInfoIn.flags.metaRbUnaligned = 1;
@@ -1608,6 +1609,7 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 	}
 
 	surf->is_linear = surf->u.gfx9.surf.swizzle_mode == ADDR_SW_LINEAR;
+	surf->tc_compatible_htile_allowed = surf->htile_size != 0;
 
 	/* Query whether the surface is displayable. */
 	bool displayable = false;
