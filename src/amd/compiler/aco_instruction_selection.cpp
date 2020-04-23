@@ -10472,10 +10472,11 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx)
    /* Request the SPI to allocate space for the primitives and vertices that will be exported by the threadgroup. */
    bld.sopp(aco_opcode::s_sendmsg, bld.m0(tmp), -1, sendmsg_gs_alloc_req);
 
-   /* After the GS_ALLOC_REQ is done, reset priority to default (0). */
-   bld.sopp(aco_opcode::s_setprio, -1u, 0x0u);
-
    end_uniform_if(ctx, &ic);
+
+   /* After the GS_ALLOC_REQ is done, reset priority to default (0). */
+   bld.reset(ctx->block);
+   bld.sopp(aco_opcode::s_setprio, -1u, 0x0u);
 }
 
 Temp ngg_get_prim_exp_arg(isel_context *ctx, unsigned num_vertices, const Temp vtxindex[])
