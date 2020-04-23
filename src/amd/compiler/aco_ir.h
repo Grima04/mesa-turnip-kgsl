@@ -116,7 +116,7 @@ enum barrier_interaction : uint8_t {
    barrier_gs_sendmsg = 0x20,
    /* used by barriers. created by s_barrier */
    barrier_barrier = 0x40,
-   barrier_count = 6,
+   barrier_count = 7,
 };
 
 enum fp_round {
