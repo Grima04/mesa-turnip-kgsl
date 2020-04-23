@@ -455,6 +455,10 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
    blend->dual_src_blend = util_blend_state_is_dual(state, 0);
    blend->logicop_enable = logicop_enable;
 
+   unsigned num_shader_outputs = state->max_rt + 1; /* estimate */
+   if (blend->dual_src_blend)
+      num_shader_outputs = MAX2(num_shader_outputs, 2);
+
    if (logicop_enable) {
       color_control |= S_028808_ROP3(state->logicop_func | (state->logicop_func << 4));
    } else {
@@ -481,7 +485,7 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
    blend->cb_target_mask = 0;
    blend->cb_target_enabled_4bit = 0;
 
-   for (int i = 0; i < 8; i++) {
+   for (int i = 0; i < num_shader_outputs; i++) {
       /* state->rt entries > 0 only written if independent blending */
       const int j = state->independent_blend_enable ? i : 0;
 
@@ -609,13 +613,13 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
        * Vulkan does this.
        */
       if (blend->dual_src_blend) {
-         for (int i = 0; i < 8; i++) {
+         for (int i = 0; i < num_shader_outputs; i++) {
             sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_NONE) |
                                   S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_NONE);
          }
       }
 
-      for (int i = 0; i < 8; i++)
+      for (int i = 0; i < num_shader_outputs; i++)
          si_pm4_set_reg(pm4, R_028760_SX_MRT0_BLEND_OPT + i * 4, sx_mrt_blend_opt[i]);
 
       /* RB+ doesn't work with dual source blending, logic op, and RESOLVE. */
