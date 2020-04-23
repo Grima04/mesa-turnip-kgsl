@@ -260,6 +260,9 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_A_INVOCATIONID
 %token <tok> T_A_WGID
 %token <tok> T_A_NUMWG
+%token <tok> T_A_IN
+%token <tok> T_A_OUT
+%token <tok> T_A_TEX
 /* todo, re-add @sampler/@uniform/@varying if needed someday */
 
 /* src register flags */
@@ -506,6 +509,9 @@ header:            localsize_header
 |                  invocationid_header
 |                  wgid_header
 |                  numwg_header
+|                  in_header
+|                  out_header
+|                  tex_header
 
 const_val:         T_FLOAT   { $$ = fui($1); }
 |                  T_INT     { $$ = $1;      }
@@ -548,6 +554,18 @@ numwg_header:      T_A_NUMWG '(' T_CONSTANT ')' {
                        /* reserve space in immediates for the actual value to be plugged in later: */
                        add_const($3, 0, 0, 0, 0);
 }
+
+/* Stubs for now */
+in_header:         T_A_IN '(' T_REGISTER ')' T_IDENTIFIER '(' T_IDENTIFIER '=' integer ')' { }
+
+out_header:        T_A_OUT '(' T_REGISTER ')' T_IDENTIFIER '(' T_IDENTIFIER '=' integer ')' { }
+
+tex_header:        T_A_TEX '(' T_REGISTER ')'
+                       T_IDENTIFIER '=' integer ',' /* src */
+                       T_IDENTIFIER '=' integer ',' /* samp */
+                       T_IDENTIFIER '=' integer ',' /* tex */
+                       T_IDENTIFIER '=' integer ',' /* wrmask */
+                       T_IDENTIFIER '=' integer     /* cmd */ { }
 
 iflag:             T_SY   { iflags.flags |= IR3_INSTR_SY; }
 |                  T_SS   { iflags.flags |= IR3_INSTR_SS; }
