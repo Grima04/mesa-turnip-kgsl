@@ -2969,18 +2969,6 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 
 			if (slot == VARYING_SLOT_POS) {
 				ir3_context_error(ctx, "fragcoord should be a sysval!\n");
-			} else if (slot == VARYING_SLOT_PNTC) {
-				/* see for example st_nir_fixup_varying_slots().. this is
-				 * maybe a bit mesa/st specific.  But we need things to line
-				 * up for this in fdN_program:
-				 *    unsigned texmask = 1 << (slot - VARYING_SLOT_VAR0);
-				 *    if (emit->sprite_coord_enable & texmask) {
-				 *       ...
-				 *    }
-				 */
-				so->inputs[n].slot = VARYING_SLOT_VAR8;
-				so->inputs[n].bary = true;
-				instr = create_frag_input(ctx, false, idx);
 			} else {
 				/* detect the special case for front/back colors where
 				 * we need to do flat vs smooth shading depending on
