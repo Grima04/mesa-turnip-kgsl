@@ -227,6 +227,8 @@ physical_device_finish(struct v3dv_physical_device *device)
 {
    v3dv_wsi_finish(device);
 
+   v3d_compiler_free(device->compiler);
+
    close(device->render_fd);
    if (device->display_fd >= 0)
       close(device->display_fd);
