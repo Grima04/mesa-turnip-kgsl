@@ -930,6 +930,7 @@ static void print_instr_cat6_a6xx(struct disasm_ctx *ctx, instr_t *instr)
 	bool indirect_ssbo = desc_features[cat6->desc_mode].indirect;
 	bool bindless = desc_features[cat6->desc_mode].bindless;
 	bool uniform = desc_features[cat6->desc_mode].uniform;
+	bool type_full = cat6->type != TYPE_U16;
 
 
 	memset(&src1, 0, sizeof(src1));
@@ -952,7 +953,7 @@ static void print_instr_cat6_a6xx(struct disasm_ctx *ctx, instr_t *instr)
 	fprintf(ctx->out, " ");
 
 	src2.reg = (reg_t)(cat6->src2);
-	src2.full = true; // XXX
+	src2.full = type_full;
 	print_src(ctx, &src2);
 	fprintf(ctx->out, ", ");
 

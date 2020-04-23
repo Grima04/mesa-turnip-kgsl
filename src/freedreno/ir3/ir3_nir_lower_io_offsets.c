@@ -168,9 +168,15 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 					  unsigned ir3_ssbo_opcode, uint8_t offset_src_idx)
 {
 	unsigned num_srcs = nir_intrinsic_infos[intrinsic->intrinsic].num_srcs;
+	int shift = 2;
 
 	bool has_dest = nir_intrinsic_infos[intrinsic->intrinsic].has_dest;
 	nir_ssa_def *new_dest = NULL;
+
+	/* for 16-bit ssbo access, offset is in 16-bit words instead of dwords */
+	if ((has_dest && intrinsic->dest.ssa.bit_size == 16) ||
+		(!has_dest && intrinsic->src[0].ssa->bit_size == 16))
+		shift = 1;
 
 	/* Here we create a new intrinsic and copy over all contents from the old one. */
 
@@ -192,7 +198,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 	 * Here we use the convention that shifting right is negative while shifting
 	 * left is positive. So 'x / 4' ~ 'x >> 2' or 'x << -2'.
 	 */
-	nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, offset, -2);
+	nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, offset, -shift);
 
 	/* The new source that will hold the dword-offset is always the last
 	 * one for every intrinsic.
@@ -224,7 +230,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 	if (new_offset)
 		offset = new_offset;
 	else
-		offset = nir_ushr(b, offset, nir_imm_int(b, 2));
+		offset = nir_ushr(b, offset, nir_imm_int(b, shift));
 
 	/* Insert the new intrinsic right before the old one. */
 	nir_builder_instr_insert(b, &new_intrinsic->instr);
