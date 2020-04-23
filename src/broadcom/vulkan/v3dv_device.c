@@ -2109,6 +2109,9 @@ v3dv_DestroySampler(VkDevice _device,
    if (!sampler)
       return;
 
+   if (sampler->state)
+      v3dv_bo_free(device, sampler->state);
+
    vk_free2(&device->alloc, pAllocator, sampler);
 }
 
