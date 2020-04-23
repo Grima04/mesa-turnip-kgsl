@@ -835,6 +835,7 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       nir_foreach_variable(variable, &nir->inputs) {
          variable->data.driver_location = util_bitcount64(ctx->input_masks[nir->info.stage] & ((1ull << variable->data.location) - 1ull)) * 4;
       }
+      ctx->program->config->lds_size = ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
    } else if (ctx->stage == geometry_gs) {
       //TODO: make this more compact
       nir_foreach_variable(variable, &nir->inputs) {
