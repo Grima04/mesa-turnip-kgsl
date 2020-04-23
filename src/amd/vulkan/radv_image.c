@@ -449,8 +449,6 @@ radv_init_surface(struct radv_device *device,
 	    vk_format_is_compressed(image_format))
 		surface->flags |= RADEON_SURF_NO_RENDER_TARGET;
 
-	surface->flags |= RADEON_SURF_OPTIMIZE_FOR_SPACE;
-
 	if (!radv_use_dcc_for_image(device, image, pCreateInfo, image_format))
 		surface->flags |= RADEON_SURF_DISABLE_DCC;
 

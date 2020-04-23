@@ -661,7 +661,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 	AddrSurfInfoIn.flags.opt4Space = !AddrSurfInfoIn.flags.tcCompatible &&
 					 !AddrSurfInfoIn.flags.fmask &&
 					 config->info.samples <= 1 &&
-					 (surf->flags & RADEON_SURF_OPTIMIZE_FOR_SPACE);
+					 !(surf->flags & RADEON_SURF_FORCE_SWIZZLE_MODE);
 
 	/* DCC notes:
 	 * - If we add MSAA support, keep in mind that CB can't decompress 8bpp

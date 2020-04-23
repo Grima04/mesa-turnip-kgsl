@@ -289,8 +289,6 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
       flags |= RADEON_SURF_SHAREABLE;
    if (is_imported)
       flags |= RADEON_SURF_IMPORTED | RADEON_SURF_SHAREABLE;
-   if (!(ptex->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING))
-      flags |= RADEON_SURF_OPTIMIZE_FOR_SPACE;
    if (sscreen->debug_flags & DBG(NO_FMASK))
       flags |= RADEON_SURF_NO_FMASK;
 
@@ -299,9 +297,11 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
       surface->micro_tile_mode = SI_RESOURCE_FLAG_MICRO_TILE_MODE_GET(ptex->flags);
    }
 
-   if (sscreen->info.chip_class >= GFX10 && (ptex->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING)) {
+   if (ptex->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING) {
       flags |= RADEON_SURF_FORCE_SWIZZLE_MODE;
-      surface->u.gfx9.surf.swizzle_mode = ADDR_SW_64KB_R_X;
+
+      if (sscreen->info.chip_class >= GFX10)
+         surface->u.gfx9.surf.swizzle_mode = ADDR_SW_64KB_R_X;
    }
 
    r = sscreen->ws->surface_init(sscreen->ws, ptex, flags, bpe, array_mode, surface);
