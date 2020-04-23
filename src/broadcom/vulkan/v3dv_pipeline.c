@@ -136,6 +136,9 @@ v3dv_DestroyPipeline(VkDevice _device,
    if (pipeline->combined_index_map)
       _mesa_hash_table_destroy(pipeline->combined_index_map, NULL);
 
+   if (pipeline->default_attribute_values)
+      v3dv_bo_free(device, pipeline->default_attribute_values);
+
    vk_free2(&device->alloc, pAllocator, pipeline);
 }
 
