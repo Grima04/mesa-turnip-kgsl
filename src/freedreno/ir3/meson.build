@@ -111,3 +111,13 @@ libfreedreno_ir3 = static_library(
   build_by_default : false,
 )
 
+test('ir3_disasm',
+  executable(
+    'ir3_disasm',
+    'tests/disasm.c',
+    link_with: libfreedreno_ir3,
+    dependencies: idep_mesautil,
+    include_directories: [inc_freedreno, inc_include, inc_src],
+  ),
+  suite: ['freedreno'],
+)
