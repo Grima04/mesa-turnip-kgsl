@@ -71,6 +71,8 @@ st_nir_fixup_varying_slots(struct st_context *st, struct exec_list *var_list)
    nir_foreach_variable(var, var_list) {
       if (var->data.location >= VARYING_SLOT_VAR0) {
          var->data.location += 9;
+      } else if (var->data.location == VARYING_SLOT_PNTC) {
+         var->data.location = VARYING_SLOT_VAR8;
       } else if ((var->data.location >= VARYING_SLOT_TEX0) &&
                (var->data.location <= VARYING_SLOT_TEX7)) {
          var->data.location += VARYING_SLOT_VAR0 - VARYING_SLOT_TEX0;
