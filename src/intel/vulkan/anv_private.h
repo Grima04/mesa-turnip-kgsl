@@ -897,6 +897,12 @@ struct anv_state_pool {
    struct anv_fixed_size_state_pool buckets[ANV_STATE_BUCKETS];
 };
 
+struct anv_state_reserved_pool {
+   struct anv_state_pool *pool;
+   union anv_free_list reserved_blocks;
+   uint32_t count;
+};
+
 struct anv_state_stream {
    struct anv_state_pool *state_pool;
 
@@ -944,6 +950,15 @@ void anv_state_stream_init(struct anv_state_stream *stream,
 void anv_state_stream_finish(struct anv_state_stream *stream);
 struct anv_state anv_state_stream_alloc(struct anv_state_stream *stream,
                                         uint32_t size, uint32_t alignment);
+
+void anv_state_reserved_pool_init(struct anv_state_reserved_pool *pool,
+                                      struct anv_state_pool *parent,
+                                      uint32_t count, uint32_t size,
+                                      uint32_t alignment);
+void anv_state_reserved_pool_finish(struct anv_state_reserved_pool *pool);
+struct anv_state anv_state_reserved_pool_alloc(struct anv_state_reserved_pool *pool);
+void anv_state_reserved_pool_free(struct anv_state_reserved_pool *pool,
+                                  struct anv_state state);
 
 VkResult anv_state_table_init(struct anv_state_table *table,
                              struct anv_device *device,
