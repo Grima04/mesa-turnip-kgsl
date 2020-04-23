@@ -454,7 +454,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	/* print pre-dispatch texture fetches: */
 	for (i = 0; i < so->num_sampler_prefetch; i++) {
 		const struct ir3_sampler_prefetch *fetch = &so->sampler_prefetch[i];
-		fprintf(out, "@tex(%sr%d.%c)\tsrc=%u, samp=%u, tex=%u, wrmask=%x, cmd=%u\n",
+		fprintf(out, "@tex(%sr%d.%c)\tsrc=%u, samp=%u, tex=%u, wrmask=0x%x, cmd=%u\n",
 				fetch->half_precision ? "h" : "",
 				fetch->dst >> 2, "xyzw"[fetch->dst & 0x3],
 				fetch->src, fetch->samp_id, fetch->tex_id,
