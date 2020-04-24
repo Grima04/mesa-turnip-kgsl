@@ -36,24 +36,19 @@
 #ifndef GALLIUM_D3D12
 #error "This file must be compiled only with the D3D12 driver"
 #endif
-#include "d3d12/d3d12_public.h"
+#include "d3d12/wgl/d3d12_wgl_public.h"
 
 static struct pipe_screen *
 gdi_screen_create(HDC hDC)
 {
    struct pipe_screen *screen = NULL;
    struct sw_winsys *winsys;
-   LUID *adapter_luid = NULL, local_luid;
 
    winsys = gdi_create_sw_winsys();
    if(!winsys)
       goto no_winsys;
 
-   if (stw_dev && stw_dev->callbacks.pfnGetAdapterLuid) {
-      stw_dev->callbacks.pfnGetAdapterLuid(hDC, &local_luid);
-      adapter_luid = &local_luid;
-   }
-   screen = d3d12_create_screen( winsys, adapter_luid );
+   screen = d3d12_wgl_create_screen( winsys, hDC );
 
    if(!screen)
       goto no_screen;
@@ -72,20 +67,7 @@ gdi_present(struct pipe_screen *screen,
             struct pipe_resource *res,
             HDC hDC)
 {
-   /* This will fail if any interposing layer (trace, debug, etc) has
-    * been introduced between the state-trackers and the pipe driver.
-    *
-    * Ideally this would get replaced with a call to
-    * pipe_screen::flush_frontbuffer().
-    *
-    * Failing that, it may be necessary for intervening layers to wrap
-    * other structs such as this stw_winsys as well...
-    */
-
-   struct sw_winsys *winsys = NULL;
-   struct sw_displaytarget *dt = NULL;
-
-   screen->flush_frontbuffer(screen, res, 0, 0, hDC, NULL);
+   d3d12_wgl_present(screen, res, hDC);
 }
 
 

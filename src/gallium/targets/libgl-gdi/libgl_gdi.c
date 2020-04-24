@@ -57,7 +57,7 @@
 #include "swr/swr_public.h"
 #endif
 #ifdef GALLIUM_D3D12
-#include "d3d12/d3d12_public.h"
+#include "d3d12/wgl/d3d12_wgl_public.h"
 #endif
 
 #ifdef GALLIUM_ZINK
@@ -117,12 +117,7 @@ gdi_screen_create(HDC hDC)
 #endif
 #ifdef GALLIUM_D3D12
    if (strcmp(driver, "d3d12") == 0) {
-      LUID* adapter_luid = NULL, local_luid;
-      if (stw_dev && stw_dev->callbacks.pfnGetAdapterLuid) {
-         stw_dev->callbacks.pfnGetAdapterLuid(hDC, &local_luid);
-         adapter_luid = &local_luid;
-      }
-      screen = d3d12_create_screen( winsys, adapter_luid );
+      screen = d3d12_wgl_create_screen( winsys, hDC );
       if (screen)
          use_d3d12 = TRUE;
    }
@@ -188,7 +183,7 @@ gdi_present(struct pipe_screen *screen,
 
 #ifdef GALLIUM_D3D12
    if (use_d3d12) {
-      screen->flush_frontbuffer(screen, res, 0, 0, hDC, NULL);
+      d3d12_wgl_present(screen, res, hDC);
       return;
    }
 #endif

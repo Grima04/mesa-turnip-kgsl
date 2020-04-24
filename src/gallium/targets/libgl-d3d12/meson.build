@@ -24,11 +24,11 @@ libopenglon12 = shared_library(
   vs_module_defs : 'openglon12.def',
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux,
-    inc_wgl, inc_gallium_winsys_sw, inc_gallium_drivers,
+    inc_wgl, inc_gallium_winsys, inc_gallium_winsys_sw, inc_gallium_drivers,
   ],
   link_whole : [libwgl],
   link_with : [
-    libgallium, libglsl, libmesa_gallium, libwsgdi, libglapi_static, libglapi
+    libgallium, libglsl, libmesa_gallium, libwsgdi, libd3d12winsys, libglapi_static, libglapi
   ],
   dependencies : [
     dep_ws2_32, idep_nir, idep_mesautil, driver_d3d12
