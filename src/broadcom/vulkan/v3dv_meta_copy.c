@@ -1875,13 +1875,18 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static inline uint64_t
-get_blit_pipeline_cache_key(VkFormat dst_format)
+get_blit_pipeline_cache_key(VkFormat dst_format, VkFormat src_format)
 {
    uint64_t key = 0;
    uint32_t bit_offset = 0;
 
    key |= dst_format;
    bit_offset += 32;
+
+   if (vk_format_is_int(dst_format)) {
+      key |= ((uint64_t)src_format) << bit_offset;
+      bit_offset += 32;
+   }
 
    return key;
 }
@@ -2130,7 +2135,8 @@ get_blit_vs()
 
 static nir_shader *
 get_blit_fs(struct v3dv_device *device,
-            struct v3dv_render_pass *pass)
+            VkFormat dst_format,
+            VkFormat src_format)
 {
    nir_builder b;
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
@@ -2143,10 +2149,9 @@ get_blit_fs(struct v3dv_device *device,
       nir_variable_create(b.shader, nir_var_shader_in, vec4, "in_tex_coord");
    fs_in_tex_coord->data.location = VARYING_SLOT_VAR0;
 
-   assert(pass->attachment_count == 1);
-   VkFormat rt_format = pass->attachments[0].desc.format;
+   const bool is_int_blit = vk_format_is_int(dst_format);
    const struct glsl_type *fs_out_type =
-      vk_format_is_int(rt_format) ? glsl_uvec4_type() : glsl_vec4_type();
+      is_int_blit ? glsl_uvec4_type() : glsl_vec4_type();
 
    nir_variable *fs_out_color =
       nir_variable_create(b.shader, nir_var_shader_out, fs_out_type, "out_color");
@@ -2154,8 +2159,49 @@ get_blit_fs(struct v3dv_device *device,
 
    nir_ssa_def *tex_coord = nir_load_var(&b, fs_in_tex_coord);
    nir_ssa_def *tex_coord_xy = nir_channels(&b, tex_coord, 0x3);
+
    nir_ssa_def *color = build_nir_tex_op(&b, device, tex_coord_xy,
                                          glsl_get_base_type(fs_out_type));
+
+   /* For integer textures, if the bit-size of the destination is too small to
+    * hold source value, Vulkan (CTS) expects the implementation to clamp to the
+    * maximum value the destination can hold, however, the hardware doesn't do
+    * this and instead it just takes the souce bits that fit into the
+    * destination. Fix that by clamping manually.
+    */
+   if (is_int_blit) {
+      enum pipe_format src_pformat = vk_format_to_pipe_format(src_format);
+      enum pipe_format dst_pformat = vk_format_to_pipe_format(dst_format);
+
+      nir_ssa_def *c[4];
+      for (uint32_t i = 0; i < 4; i++) {
+         c[i] = nir_channel(&b, color, i);
+
+         const uint32_t src_bit_size =
+            util_format_get_component_bits(src_pformat,
+                                           UTIL_FORMAT_COLORSPACE_RGB,
+                                           i);
+         const uint32_t dst_bit_size =
+            util_format_get_component_bits(dst_pformat,
+                                           UTIL_FORMAT_COLORSPACE_RGB,
+                                           i);
+
+         if (dst_bit_size >= src_bit_size)
+            continue;
+
+         if (util_format_is_pure_uint(dst_pformat)) {
+            nir_ssa_def *max = nir_imm_int(&b, (1 << dst_bit_size) - 1);
+            c[i] = nir_umin(&b, c[i], max);
+         } else {
+            nir_ssa_def *max = nir_imm_int(&b, (1 << (dst_bit_size - 1)) - 1);
+            nir_ssa_def *min = nir_imm_int(&b, -(1 << (dst_bit_size - 1)));
+            c[i] = nir_imax(&b, nir_imin(&b, c[i], max), min);
+         }
+      }
+
+      color = nir_vec4(&b, c[0], c[1], c[2], c[3]);
+   }
+
    nir_store_var(&b, fs_out_color, color, 0xf);
 
    return b.shader;
@@ -2279,6 +2325,8 @@ create_pipeline(struct v3dv_device *device,
 
 static bool
 create_blit_pipeline(struct v3dv_device *device,
+                     VkFormat dst_format,
+                     VkFormat src_format,
                      VkRenderPass _pass,
                      VkPipelineLayout pipeline_layout,
                      VkPipeline *pipeline)
@@ -2286,7 +2334,7 @@ create_blit_pipeline(struct v3dv_device *device,
    struct v3dv_render_pass *pass = v3dv_render_pass_from_handle(_pass);
 
    nir_shader *vs_nir = get_blit_vs();
-   nir_shader *fs_nir = get_blit_fs(device, pass);
+   nir_shader *fs_nir = get_blit_fs(device, dst_format, src_format);
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -2331,6 +2379,7 @@ create_blit_pipeline(struct v3dv_device *device,
 static bool
 get_blit_pipeline(struct v3dv_device *device,
                   VkFormat dst_format,
+                  VkFormat src_format,
                   struct v3dv_meta_blit_pipeline **pipeline)
 {
    bool ok = true;
@@ -2345,7 +2394,7 @@ get_blit_pipeline(struct v3dv_device *device,
    if (!ok)
       return false;
 
-   const uint64_t key = get_blit_pipeline_cache_key(dst_format);
+   const uint64_t key = get_blit_pipeline_cache_key(dst_format, src_format);
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
       _mesa_hash_table_search(device->meta.blit.cache, &key);
@@ -2366,6 +2415,8 @@ get_blit_pipeline(struct v3dv_device *device,
       goto fail;
 
    ok = create_blit_pipeline(device,
+                             dst_format,
+                             src_format,
                              (*pipeline)->pass,
                              device->meta.blit.playout,
                              &(*pipeline)->pipeline);
@@ -2469,8 +2520,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
    /* Get the blit pipeline */
    struct v3dv_meta_blit_pipeline *pipeline = NULL;
-   bool ok =
-      get_blit_pipeline(cmd_buffer->device, dst->vk_format, &pipeline);
+   bool ok = get_blit_pipeline(cmd_buffer->device,
+                               dst->vk_format, src->vk_format, &pipeline);
    if (!ok)
       return false;
    assert(pipeline && pipeline->pipeline && pipeline->pass);
