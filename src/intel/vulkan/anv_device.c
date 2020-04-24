@@ -3909,12 +3909,6 @@ void anv_GetImageMemoryRequirements(
     */
    uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
 
-   /* We must have image allocated or imported at this point. According to the
-    * specification, external images must have been bound to memory before
-    * calling GetImageMemoryRequirements.
-    */
-   assert(image->size > 0);
-
    pMemoryRequirements->size = image->size;
    pMemoryRequirements->alignment = image->alignment;
    pMemoryRequirements->memoryTypeBits = memory_types;
@@ -3953,12 +3947,6 @@ void anv_GetImageMemoryRequirements2(
           */
          pMemoryRequirements->memoryRequirements.memoryTypeBits =
                (1ull << device->physical->memory.type_count) - 1;
-
-         /* We must have image allocated or imported at this point. According to the
-          * specification, external images must have been bound to memory before
-          * calling GetImageMemoryRequirements.
-          */
-         assert(image->planes[plane].size > 0);
 
          pMemoryRequirements->memoryRequirements.size = image->planes[plane].size;
          pMemoryRequirements->memoryRequirements.alignment =
