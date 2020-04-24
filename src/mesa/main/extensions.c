@@ -236,7 +236,7 @@ free_unknown_extensions_strings(void)
  *    - Collect unrecognized extension names in a new string.
  */
 void
-_mesa_one_time_init_extension_overrides(struct gl_context *ctx)
+_mesa_one_time_init_extension_overrides(void)
 {
    const char *env_const = getenv("MESA_EXTENSION_OVERRIDE");
    char *env;
@@ -289,14 +289,14 @@ _mesa_one_time_init_extension_overrides(struct gl_context *ctx)
 
             if (!warned) {
                warned = true;
-               _mesa_problem(ctx, "Trying to enable too many unknown extension. "
-                                  "Only the first %d will be honoured",
-                                  MAX_UNRECOGNIZED_EXTENSIONS);
+               _mesa_problem(NULL, "Trying to enable too many unknown extension. "
+                                   "Only the first %d will be honoured",
+                                   MAX_UNRECOGNIZED_EXTENSIONS);
             }
          } else {
             unrecognized_extensions.names[unknown_ext] = ext;
             unknown_ext++;
-            _mesa_problem(ctx, "Trying to enable unknown extension: %s", ext);
+            _mesa_problem(NULL, "Trying to enable unknown extension: %s", ext);
          }
       }
    }
