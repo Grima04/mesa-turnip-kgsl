@@ -441,6 +441,13 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 
       ctx->abi.interp_at_sample_force_center =
          ctx->shader->key.mono.u.ps.interpolate_at_sample_force_center;
+
+      ctx->abi.kill_ps_if_inf_interp =
+         (ctx->screen->debug_flags & DBG(KILL_PS_INF_INTERP)) &&
+         (ctx->shader->selector->info.uses_persp_center ||
+          ctx->shader->selector->info.uses_persp_centroid ||
+          ctx->shader->selector->info.uses_persp_sample);
+
    } else if (nir->info.stage == MESA_SHADER_COMPUTE) {
       if (nir->info.cs.user_data_components_amd) {
          ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->cs_user_data);

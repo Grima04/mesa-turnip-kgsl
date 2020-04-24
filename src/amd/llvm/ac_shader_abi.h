@@ -186,6 +186,9 @@ struct ac_shader_abi {
 
 	/* Whether bounds checks are required */
 	bool robust_buffer_access;
+
+	/* Check for Inf interpolation coeff */
+	bool kill_ps_if_inf_interp;
 };
 
 #endif /* AC_SHADER_ABI_H */
