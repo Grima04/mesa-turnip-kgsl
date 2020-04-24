@@ -1359,9 +1359,6 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    /* All images that use an auxiliary surface are required to be tiled. */
    assert(image->planes[plane].surface.isl.tiling != ISL_TILING_LINEAR);
 
-   /* Stencil has no aux */
-   assert(aspect != VK_IMAGE_ASPECT_STENCIL_BIT);
-
    /* Handle a few special cases */
    switch (layout) {
    /* Invalid layouts */
@@ -1460,6 +1457,7 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
 
       case ISL_AUX_USAGE_CCS_E:
       case ISL_AUX_USAGE_MCS:
+      case ISL_AUX_USAGE_STC_CCS:
          break;
 
       default:
@@ -1495,6 +1493,10 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
       } else {
          return ISL_AUX_STATE_PASS_THROUGH;
       }
+
+   case ISL_AUX_USAGE_STC_CCS:
+      assert(aux_supported);
+      return ISL_AUX_STATE_COMPRESSED_NO_CLEAR;
 
    default:
       unreachable("Unsupported aux usage");
