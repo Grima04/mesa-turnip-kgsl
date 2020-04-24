@@ -5265,10 +5265,8 @@ ast_declarator_list::hir(exec_list *instructions,
       apply_layout_qualifier_to_variable(&this->type->qualifier, var, state,
                                          &loc);
 
-      if ((var->data.mode == ir_var_auto || var->data.mode == ir_var_temporary
-           || var->data.mode == ir_var_shader_out)
-          && (var->type->is_numeric() || var->type->is_boolean())
-          && state->zero_init) {
+      if ((state->zero_init & (1u << var->data.mode)) &&
+          (var->type->is_numeric() || var->type->is_boolean())) {
          const ir_constant_data data = { { 0 } };
          var->data.has_initializer = true;
          var->constant_initializer = new(var) ir_constant(var->type, &data);
@@ -5860,6 +5858,13 @@ ast_parameter_declarator::hir(exec_list *instructions,
     */
    apply_type_qualifier_to_variable(& this->type->qualifier, var, state, & loc,
                                     true);
+
+   if (((1u << var->data.mode) & state->zero_init) &&
+       (var->type->is_numeric() || var->type->is_boolean())) {
+         const ir_constant_data data = { { 0 } };
+         var->data.has_initializer = true;
+         var->constant_initializer = new(var) ir_constant(var->type, &data);
+   }
 
    /* From section 4.1.7 of the GLSL 4.40 spec:
     *

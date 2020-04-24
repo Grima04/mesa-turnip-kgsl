@@ -82,7 +82,11 @@ _mesa_glsl_parse_state::_mesa_glsl_parse_state(struct gl_context *_ctx,
    /* Set default language version and extensions */
    this->language_version = 110;
    this->forced_language_version = ctx->Const.ForceGLSLVersion;
-   this->zero_init = ctx->Const.GLSLZeroInit;
+   if (ctx->Const.GLSLZeroInit == 1) {
+      this->zero_init = (1u << ir_var_auto) | (1u << ir_var_temporary) | (1u << ir_var_shader_out);
+   } else {
+      this->zero_init = 0;
+   }
    this->gl_version = 20;
    this->compat_shader = true;
    this->es_shader = false;

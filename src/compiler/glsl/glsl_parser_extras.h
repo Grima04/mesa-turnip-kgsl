@@ -388,7 +388,8 @@ struct _mesa_glsl_parse_state {
    bool compat_shader;
    unsigned language_version;
    unsigned forced_language_version;
-   bool zero_init;
+   /* Bitfield of ir_variable_mode to zero init */
+   uint32_t zero_init;
    unsigned gl_version;
    gl_shader_stage stage;
 
