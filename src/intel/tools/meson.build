@@ -162,48 +162,50 @@ if with_tools.contains('intel-ui')
 endif
 
 i965_gram_tab = custom_target(
-   'i965_gram.tab.[ch]',
-   input : 'i965_gram.y',
-   output : ['i965_gram.tab.c', 'i965_gram.tab.h'],
-   command : [
-      prog_bison, '@INPUT@', '--defines=@OUTPUT1@',
-      '--output=@OUTPUT0@'
-   ]
+  'i965_gram.tab.[ch]',
+  input : 'i965_gram.y',
+  output : ['i965_gram.tab.c', 'i965_gram.tab.h'],
+  command : [
+    prog_bison, '@INPUT@', '--defines=@OUTPUT1@',
+    '--output=@OUTPUT0@'
+  ]
 )
 
 i965_lex_yy_c = custom_target(
-   'i965_lex.yy.c',
-   input : 'i965_lex.l',
-   output : 'i965_lex.yy.c',
-   command : [prog_flex, '-o', '@OUTPUT@', '@INPUT@']
+  'i965_lex.yy.c',
+  input : 'i965_lex.l',
+  output : 'i965_lex.yy.c',
+  command : [prog_flex, '-o', '@OUTPUT@', '@INPUT@']
 )
 
 i965_asm = executable(
-   'i965_asm',
-   ['i965_asm.c', i965_gram_tab[0], i965_gram_tab[1], i965_lex_yy_c],
-   dependencies : [idep_mesautil, dep_thread],
-   include_directories : [inc_include, inc_src, inc_mesa, inc_intel],
-   link_with : [libintel_common, libintel_compiler, libintel_dev],
-   c_args : [no_override_init_args],
-   gnu_symbol_visibility : 'hidden',
-   install : true
+  'i965_asm',
+  ['i965_asm.c', i965_gram_tab[0], i965_gram_tab[1], i965_lex_yy_c],
+  dependencies : [idep_mesautil, dep_thread],
+  include_directories : [inc_include, inc_src, inc_mesa, inc_intel],
+  link_with : [libintel_common, libintel_compiler, libintel_dev],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  install : true
 )
 
 asm_testcases = [
-   ['brw', 'tests/gen4'],
-   ['g4x', 'tests/gen4.5'],
-   ['ilk', 'tests/gen5'],
-   ['snb', 'tests/gen6'],
-   ['ivb', 'tests/gen7'],
-   ['hsw', 'tests/gen7.5'],
-   ['bdw', 'tests/gen8'],
-   ['skl', 'tests/gen9'],
-   ['icl', 'tests/gen11'],
+  ['brw', 'tests/gen4'],
+  ['g4x', 'tests/gen4.5'],
+  ['ilk', 'tests/gen5'],
+  ['snb', 'tests/gen6'],
+  ['ivb', 'tests/gen7'],
+  ['hsw', 'tests/gen7.5'],
+  ['bdw', 'tests/gen8'],
+  ['skl', 'tests/gen9'],
+  ['icl', 'tests/gen11'],
 ]
 
 test_runner = find_program('tests/run-test.sh')
 foreach testcase : asm_testcases
-   test('i965_asm : ' + testcase[1], test_runner,
-        args : [i965_asm, testcase[1], testcase[0]],
-        env : ['srcdir=' + meson.current_source_dir()])
+  test(
+    'i965_asm : ' + testcase[1], test_runner,
+    args : [i965_asm, testcase[1], testcase[0]],
+    env : ['srcdir=' + meson.current_source_dir()]
+  )
 endforeach
