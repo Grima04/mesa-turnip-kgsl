@@ -65,61 +65,92 @@
  * emitted so the GPU looks at the new backing bo.
  */
 static void
-rebind_resource(struct fd_context *ctx, struct pipe_resource *prsc)
+rebind_resource_in_ctx(struct fd_context *ctx, struct fd_resource *rsc)
 {
+	struct pipe_resource *prsc = &rsc->base;
+
 	/* VBOs */
-	for (unsigned i = 0; i < ctx->vtx.vertexbuf.count && !(ctx->dirty & FD_DIRTY_VTXBUF); i++) {
-		if (ctx->vtx.vertexbuf.vb[i].buffer.resource == prsc)
-			ctx->dirty |= FD_DIRTY_VTXBUF;
+	if (rsc->dirty & FD_DIRTY_VTXBUF) {
+		struct fd_vertexbuf_stateobj *vb = &ctx->vtx.vertexbuf;
+		for (unsigned i = 0; i < vb->count && !(ctx->dirty & FD_DIRTY_VTXBUF); i++) {
+			if (vb->vb[i].buffer.resource == prsc)
+				ctx->dirty |= FD_DIRTY_VTXBUF;
+		}
 	}
+
+	const enum fd_dirty_3d_state per_stage_dirty =
+			FD_DIRTY_CONST | FD_DIRTY_TEX | FD_DIRTY_IMAGE | FD_DIRTY_SSBO;
+
+	if (!(rsc->dirty & per_stage_dirty))
+		return;
 
 	/* per-shader-stage resources: */
 	for (unsigned stage = 0; stage < PIPE_SHADER_TYPES; stage++) {
 		/* Constbufs.. note that constbuf[0] is normal uniforms emitted in
 		 * cmdstream rather than by pointer..
 		 */
-		const unsigned num_ubos = util_last_bit(ctx->constbuf[stage].enabled_mask);
-		for (unsigned i = 1; i < num_ubos; i++) {
-			if (ctx->dirty_shader[stage] & FD_DIRTY_SHADER_CONST)
-				break;
-			if (ctx->constbuf[stage].cb[i].buffer == prsc) {
-				ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_CONST;
-				ctx->dirty |= FD_DIRTY_CONST;
+		if ((rsc->dirty & FD_DIRTY_CONST) &&
+				!(ctx->dirty_shader[stage] & FD_DIRTY_CONST)) {
+			struct fd_constbuf_stateobj *cb = &ctx->constbuf[stage];
+			const unsigned num_ubos = util_last_bit(cb->enabled_mask);
+			for (unsigned i = 1; i < num_ubos; i++) {
+				if (cb->cb[i].buffer == prsc) {
+					ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_CONST;
+					ctx->dirty |= FD_DIRTY_CONST;
+					break;
+				}
 			}
 		}
 
 		/* Textures */
-		for (unsigned i = 0; i < ctx->tex[stage].num_textures; i++) {
-			if (ctx->dirty_shader[stage] & FD_DIRTY_SHADER_TEX)
-				break;
-			if (ctx->tex[stage].textures[i] && (ctx->tex[stage].textures[i]->texture == prsc)) {
-				ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_TEX;
-				ctx->dirty |= FD_DIRTY_TEX;
+		if ((rsc->dirty & FD_DIRTY_TEX) &&
+				!(ctx->dirty_shader[stage] & FD_DIRTY_TEX)) {
+			struct fd_texture_stateobj *tex = &ctx->tex[stage];
+			for (unsigned i = 0; i < tex->num_textures; i++) {
+				if (tex->textures[i] && (tex->textures[i]->texture == prsc)) {
+					ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_TEX;
+					ctx->dirty |= FD_DIRTY_TEX;
+					break;
+				}
 			}
 		}
 
 		/* Images */
-		const unsigned num_images = util_last_bit(ctx->shaderimg[stage].enabled_mask);
-		for (unsigned i = 0; i < num_images; i++) {
-			if (ctx->dirty_shader[stage] & FD_DIRTY_SHADER_IMAGE)
-				break;
-			if (ctx->shaderimg[stage].si[i].resource == prsc) {
-				ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_IMAGE;
-				ctx->dirty |= FD_DIRTY_IMAGE;
+		if ((rsc->dirty & FD_DIRTY_IMAGE) &&
+				!(ctx->dirty_shader[stage] & FD_DIRTY_IMAGE)) {
+			struct fd_shaderimg_stateobj *si = &ctx->shaderimg[stage];
+			const unsigned num_images = util_last_bit(si->enabled_mask);
+			for (unsigned i = 0; i < num_images; i++) {
+				if (si->si[i].resource == prsc) {
+					ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_IMAGE;
+					ctx->dirty |= FD_DIRTY_IMAGE;
+					break;
+				}
 			}
 		}
 
 		/* SSBOs */
-		const unsigned num_ssbos = util_last_bit(ctx->shaderbuf[stage].enabled_mask);
-		for (unsigned i = 0; i < num_ssbos; i++) {
-			if (ctx->dirty_shader[stage] & FD_DIRTY_SHADER_SSBO)
-				break;
-			if (ctx->shaderbuf[stage].sb[i].buffer == prsc) {
-				ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_SSBO;
-				ctx->dirty |= FD_DIRTY_SSBO;
+		if ((rsc->dirty & FD_DIRTY_SSBO) &&
+				!(ctx->dirty_shader[stage] & FD_DIRTY_SSBO)) {
+			struct fd_shaderbuf_stateobj *sb = &ctx->shaderbuf[stage];
+			const unsigned num_ssbos = util_last_bit(sb->enabled_mask);
+			for (unsigned i = 0; i < num_ssbos; i++) {
+				if (sb->sb[i].buffer == prsc) {
+					ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_SSBO;
+					ctx->dirty |= FD_DIRTY_SSBO;
+					break;
+				}
 			}
 		}
 	}
+}
+
+static void
+rebind_resource(struct fd_context *ctx, struct fd_resource *rsc)
+{
+	fd_resource_lock(rsc);
+	rebind_resource_in_ctx(ctx, rsc);
+	fd_resource_unlock(rsc);
 }
 
 static void
@@ -358,7 +389,7 @@ fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)
 	 * enough that they mostly only show up in deqp.
 	 */
 
-	rebind_resource(ctx, &rsc->base);
+	rebind_resource(ctx, rsc);
 }
 
 static struct fd_resource *
@@ -607,7 +638,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
 		if (needs_flush || fd_resource_busy(rsc, op)) {
 			realloc_bo(rsc, fd_bo_size(rsc->bo));
-			rebind_resource(ctx, prsc);
+			rebind_resource(ctx, rsc);
 		}
 	} else if ((usage & PIPE_TRANSFER_WRITE) &&
 			   prsc->target == PIPE_BUFFER &&
@@ -650,7 +681,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 			if (needs_flush && fd_try_shadow_resource(ctx, rsc, level,
 							box, DRM_FORMAT_MOD_LINEAR)) {
 				needs_flush = busy = false;
-				rebind_resource(ctx, prsc);
+				rebind_resource(ctx, rsc);
 				ctx->stats.shadow_uploads++;
 			} else {
 				struct fd_resource *staging_rsc;
@@ -739,6 +770,7 @@ fd_resource_destroy(struct pipe_screen *pscreen,
 		renderonly_scanout_destroy(rsc->scanout, fd_screen(pscreen)->ro);
 
 	util_range_destroy(&rsc->valid_buffer_range);
+	simple_mtx_destroy(&rsc->lock);
 	FREE(rsc);
 }
 
@@ -997,6 +1029,8 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
 	util_range_init(&rsc->valid_buffer_range);
 
+	simple_mtx_init(&rsc->lock, mtx_plain);
+
 	rsc->internal_format = format;
 
 	rsc->layout.ubwc = rsc->layout.tile_mode && is_a6xx(screen) && allow_ubwc;
@@ -1079,6 +1113,8 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	prsc->screen = pscreen;
 
 	util_range_init(&rsc->valid_buffer_range);
+
+	simple_mtx_init(&rsc->lock, mtx_plain);
 
 	rsc->bo = fd_screen_bo_from_handle(pscreen, handle);
 	if (!rsc->bo)

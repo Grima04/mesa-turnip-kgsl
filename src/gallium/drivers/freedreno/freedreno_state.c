@@ -115,6 +115,8 @@ fd_set_constant_buffer(struct pipe_context *pctx,
 	so->enabled_mask |= 1 << index;
 	ctx->dirty_shader[shader] |= FD_DIRTY_SHADER_CONST;
 	ctx->dirty |= FD_DIRTY_CONST;
+
+	fd_resource_set_usage(cb->buffer, FD_DIRTY_CONST);
 }
 
 static void
@@ -146,6 +148,8 @@ fd_set_shader_buffers(struct pipe_context *pctx,
 			buf->buffer_size = buffers[i].buffer_size;
 			pipe_resource_reference(&buf->buffer, buffers[i].buffer);
 
+			fd_resource_set_usage(buffers[i].buffer, FD_DIRTY_SSBO);
+
 			so->enabled_mask |= BIT(n);
 		} else {
 			pipe_resource_reference(&buf->buffer, NULL);
@@ -153,6 +157,7 @@ fd_set_shader_buffers(struct pipe_context *pctx,
 	}
 
 	ctx->dirty_shader[shader] |= FD_DIRTY_SHADER_SSBO;
+	ctx->dirty |= FD_DIRTY_SSBO;
 }
 
 void
@@ -180,10 +185,12 @@ fd_set_shader_images(struct pipe_context *pctx,
 			mask |= BIT(n);
 			util_copy_image_view(buf, &images[i]);
 
-			if (buf->resource)
+			if (buf->resource) {
+				fd_resource_set_usage(buf->resource, FD_DIRTY_IMAGE);
 				so->enabled_mask |= BIT(n);
-			else
+			} else {
 				so->enabled_mask &= ~BIT(n);
+			}
 		}
 	} else {
 		mask = (BIT(count) - 1) << start;
@@ -199,6 +206,7 @@ fd_set_shader_images(struct pipe_context *pctx,
 	}
 
 	ctx->dirty_shader[shader] |= FD_DIRTY_SHADER_IMAGE;
+	ctx->dirty |= FD_DIRTY_IMAGE;
 }
 
 static void
@@ -348,7 +356,15 @@ fd_set_vertex_buffers(struct pipe_context *pctx,
 	util_set_vertex_buffers_mask(so->vb, &so->enabled_mask, vb, start_slot, count);
 	so->count = util_last_bit(so->enabled_mask);
 
+	if (!vb)
+		return;
+
 	ctx->dirty |= FD_DIRTY_VTXBUF;
+
+	for (unsigned i = 0; i < count; i++) {
+		assert(!vb[i].is_user_buffer);
+		fd_resource_set_usage(vb[i].buffer.resource, FD_DIRTY_VTXBUF);
+	}
 }
 
 static void
