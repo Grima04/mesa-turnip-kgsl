@@ -2696,6 +2696,7 @@ to upconvert to 32b float internally?
 		<bitfield name="PRIMITIVE_RESTART" pos="0" type="boolean"/>
 		<!-- maybe?  b1 seems always set, so just assume it is for now: -->
 		<bitfield name="PROVOKING_VTX_LAST" pos="1" type="boolean"/>
+		<bitfield name="TESS_UPPER_LEFT_DOMAIN_ORIGIN" pos="2" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x9b01" name="PC_PRIMITIVE_CNTL_1">
 		<doc>

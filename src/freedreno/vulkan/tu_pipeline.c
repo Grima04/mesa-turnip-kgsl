@@ -2137,6 +2137,10 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
    assert(pipeline->ia.primtype == DI_PT_PATCHES0);
    assert(tess_info->patchControlPoints <= 32);
    pipeline->ia.primtype += tess_info->patchControlPoints;
+   const VkPipelineTessellationDomainOriginStateCreateInfo *domain_info =
+         vk_find_struct_const(tess_info->pNext, PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
+   pipeline->tess.upper_left_domain_origin = !domain_info ||
+         domain_info->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
    const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
    const struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
    pipeline->tess.hs_bo_regid = hs->const_state->offsets.primitive_param + 1;

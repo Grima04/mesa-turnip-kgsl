@@ -1110,6 +1110,7 @@ struct tu_pipeline
       uint32_t per_patch_output_size;
       uint32_t hs_bo_regid;
       uint32_t ds_bo_regid;
+      bool upper_left_domain_origin;
    } tess;
 
    struct

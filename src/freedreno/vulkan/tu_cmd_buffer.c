@@ -3155,9 +3155,11 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 
    /* TODO lrz */
 
-   tu_cs_emit_regs(cs,
-                   A6XX_PC_PRIMITIVE_CNTL_0(.primitive_restart =
-                                            pipeline->ia.primitive_restart && draw->indexed));
+   tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0(
+         .primitive_restart =
+               pipeline->ia.primitive_restart && draw->indexed,
+         .tess_upper_left_domain_origin =
+               pipeline->tess.upper_left_domain_origin));
 
    if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
       cmd->state.shader_const_ib[MESA_SHADER_VERTEX] =
@@ -3310,6 +3312,30 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    return VK_SUCCESS;
 }
 
+static uint32_t
+compute_tess_draw0(struct tu_pipeline *pipeline)
+{
+   uint32_t patch_type = pipeline->tess.patch_type;
+   uint32_t tess_draw0 = 0;
+   switch (patch_type) {
+   case IR3_TESS_TRIANGLES:
+      tess_draw0 = CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_TRIANGLES);
+      break;
+   case IR3_TESS_ISOLINES:
+      tess_draw0 = CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_ISOLINES);
+      break;
+   case IR3_TESS_NONE:
+   case IR3_TESS_QUADS:
+      tess_draw0 = CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_QUADS);
+      break;
+   default:
+      unreachable("invalid tess patch type");
+   }
+   if (patch_type != IR3_TESS_NONE)
+      tess_draw0 |= CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
+   return tess_draw0;
+}
+
 static void
 tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
@@ -3323,6 +3349,7 @@ tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
                    A6XX_VFD_INDEX_OFFSET(draw->vertex_offset),
                    A6XX_VFD_INSTANCE_START_OFFSET(draw->first_instance));
 
+   uint32_t tess_draw0 = compute_tess_draw0(cmd->state.pipeline);
    if (draw->indexed) {
       const enum a4xx_index_size index_size =
          tu6_index_size(cmd->state.index_type);
@@ -3337,7 +3364,8 @@ tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
          CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
          CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE) | 0x2000;
+         tess_draw0 |
+         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_INDIRECT, 6);
       tu_cs_emit(cs, cp_draw_indx);
@@ -3349,7 +3377,8 @@ tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
          CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
          CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE) | 0x2000;
+         tess_draw0 |
+         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT, 3);
       tu_cs_emit(cs, cp_draw_indx);
@@ -3373,6 +3402,7 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
                    A6XX_VFD_INDEX_OFFSET(draw->vertex_offset),
                    A6XX_VFD_INSTANCE_START_OFFSET(draw->first_instance));
 
+   uint32_t tess_draw0 = compute_tess_draw0(cmd->state.pipeline);
    /* TODO hw binning */
    if (draw->indexed) {
       const enum a4xx_index_size index_size =
@@ -3389,7 +3419,8 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
          CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
          CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE) | 0x2000;
+         tess_draw0 |
+         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 7);
       tu_cs_emit(cs, cp_draw_indx);
@@ -3403,7 +3434,8 @@ tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
          CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
          CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
          CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE) | 0x2000;
+         tess_draw0 |
+         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
 
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
       tu_cs_emit(cs, cp_draw_indx);
