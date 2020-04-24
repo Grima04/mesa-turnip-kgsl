@@ -1288,6 +1288,16 @@ radv-polaris10-traces:
   tags:
     - polaris10
 
+radv-raven-traces:
+  extends:
+    - .traces-test-vk
+    - .test-radv
+    - .test-manual
+  variables:
+    DEVICE_NAME: "vk-amd-raven"
+  tags:
+    - raven
+
 virgl-traces:
   extends:
     - .traces-test-gl
