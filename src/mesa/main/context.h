@@ -107,6 +107,9 @@ _mesa_destroy_visual( struct gl_config *vis );
 /** \name Context-related functions */
 /*@{*/
 
+extern void
+_mesa_initialize(void);
+
 extern GLboolean
 _mesa_initialize_context( struct gl_context *ctx,
                           gl_api api,

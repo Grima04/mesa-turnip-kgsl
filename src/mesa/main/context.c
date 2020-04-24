@@ -368,8 +368,8 @@ one_time_fini(void)
  *
  * \sa _math_init().
  */
-static void
-one_time_init(void)
+void
+_mesa_initialize(void)
 {
    static bool initialized;
 
@@ -1204,7 +1204,7 @@ _mesa_initialize_context(struct gl_context *ctx,
    _mesa_override_gl_version(ctx);
 
    /* misc one-time initializations */
-   one_time_init();
+   _mesa_initialize();
 
    /* Plug in driver functions and context pointer here.
     * This is important because when we call alloc_shared_state() below
