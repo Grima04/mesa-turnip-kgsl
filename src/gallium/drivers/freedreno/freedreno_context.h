@@ -324,6 +324,9 @@ struct fd_context {
 
 	struct pipe_debug_callback debug;
 
+	/* Called on rebind_resource() for any per-gen cleanup required: */
+	void (*rebind_resource)(struct fd_context *ctx, struct fd_resource *rsc);
+
 	/* GMEM/tile handling fxns: */
 	void (*emit_tile_init)(struct fd_batch *batch);
 	void (*emit_tile_prep)(struct fd_batch *batch, const struct fd_tile *tile);

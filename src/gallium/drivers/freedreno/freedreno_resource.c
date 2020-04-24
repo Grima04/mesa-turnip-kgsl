@@ -69,6 +69,9 @@ rebind_resource_in_ctx(struct fd_context *ctx, struct fd_resource *rsc)
 {
 	struct pipe_resource *prsc = &rsc->base;
 
+	if (ctx->rebind_resource)
+		ctx->rebind_resource(ctx, rsc);
+
 	/* VBOs */
 	if (rsc->dirty & FD_DIRTY_VTXBUF) {
 		struct fd_vertexbuf_stateobj *vb = &ctx->vtx.vertexbuf;
