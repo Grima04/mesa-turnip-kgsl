@@ -594,9 +594,13 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	if (usage & PIPE_TRANSFER_WRITE)
 		op |= DRM_FREEDRENO_PREP_WRITE;
 
+	bool needs_flush = pending(rsc, !!(usage & PIPE_TRANSFER_WRITE));
+
 	if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
-		realloc_bo(rsc, fd_bo_size(rsc->bo));
-		rebind_resource(ctx, prsc);
+		if (needs_flush || fd_resource_busy(rsc, op)) {
+			realloc_bo(rsc, fd_bo_size(rsc->bo));
+			rebind_resource(ctx, prsc);
+		}
 	} else if ((usage & PIPE_TRANSFER_WRITE) &&
 			   prsc->target == PIPE_BUFFER &&
 			   !util_ranges_intersect(&rsc->valid_buffer_range,
@@ -621,9 +625,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		/* If the GPU is writing to the resource, or if it is reading from the
 		 * resource and we're trying to write to it, flush the renders.
 		 */
-		bool needs_flush = pending(rsc, !!(usage & PIPE_TRANSFER_WRITE));
-		bool busy = needs_flush || (0 != fd_bo_cpu_prep(rsc->bo,
-				ctx->pipe, op | DRM_FREEDRENO_PREP_NOSYNC));
+		bool busy = needs_flush || fd_resource_busy(rsc, op);
 
 		/* if we need to flush/stall, see if we can make a shadow buffer
 		 * to avoid this:
