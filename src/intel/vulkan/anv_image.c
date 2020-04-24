@@ -426,6 +426,16 @@ add_aux_surface_if_supported(struct anv_device *device,
          image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS;
       }
       add_surface(image, &image->planes[plane].aux_surface, plane);
+   } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+
+      if (INTEL_DEBUG & DEBUG_NO_RBC)
+         return VK_SUCCESS;
+
+      if (!isl_surf_supports_ccs(&device->isl_dev,
+                                 &image->planes[plane].surface.isl))
+         return VK_SUCCESS;
+
+      image->planes[plane].aux_usage = ISL_AUX_USAGE_STC_CCS;
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->samples == 1) {
       if (image->n_planes != 1) {
          /* Multiplanar images seem to hit a sampler bug with CCS and R16G16
