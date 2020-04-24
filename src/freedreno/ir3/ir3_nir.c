@@ -176,6 +176,7 @@ ir3_optimize_loop(nir_shader *s)
 		progress |= OPT(s, nir_opt_intrinsics);
 		progress |= OPT(s, nir_opt_algebraic);
 		progress |= OPT(s, nir_lower_alu);
+		progress |= OPT(s, nir_lower_pack);
 		progress |= OPT(s, nir_opt_constant_folding);
 
 		if (lower_flrp != 0) {
