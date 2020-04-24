@@ -88,7 +88,23 @@ struct disasm_ctx {
 	unsigned instructions;
 };
 
-static void print_reg(struct disasm_ctx *ctx, reg_t reg, bool full, bool r,
+static const char *float_imms[] = {
+	"0.0",
+	"0.5",
+	"1.0",
+	"2.0",
+	"e",
+	"pi",
+	"1/pi",
+	"1/log2(e)",
+	"log2(e)",
+	"1/log2(10)",
+	"log2(10)",
+	"4.0",
+};
+
+static void print_reg(struct disasm_ctx *ctx, reg_t reg, bool full,
+		bool is_float, bool r,
 		bool c, bool im, bool neg, bool abs, bool addr_rel)
 {
 	const char type = c ? 'c' : 'r';
@@ -107,7 +123,11 @@ static void print_reg(struct disasm_ctx *ctx, reg_t reg, bool full, bool r,
 		fprintf(ctx->out, "(r)");
 
 	if (im) {
-		fprintf(ctx->out, "%d", reg.iim_val);
+		if (is_float && full && reg.iim_val < ARRAY_SIZE(float_imms)) {
+			fprintf(ctx->out, "(%s)", float_imms[reg.iim_val]);
+		} else {
+			fprintf(ctx->out, "%d", reg.iim_val);
+		}
 	} else if (addr_rel) {
 		/* I would just use %+d but trying to make it diff'able with
 		 * libllvm-a3xx...
@@ -146,7 +166,7 @@ static reg_t idxreg(unsigned idx)
 static void print_reg_dst(struct disasm_ctx *ctx, reg_t reg, bool full, bool addr_rel)
 {
 	reg = idxreg(regidx(reg) + ctx->repeatidx);
-	print_reg(ctx, reg, full, false, false, false, false, false, addr_rel);
+	print_reg(ctx, reg, full, false, false, false, false, false, false, addr_rel);
 }
 
 /* TODO switch to using reginfo struct everywhere, since more readable
@@ -158,6 +178,7 @@ struct reginfo {
 	bool full;
 	bool r;
 	bool c;
+	bool f; /* src reg is interpreted as float, used for printing immediates */
 	bool im;
 	bool neg;
 	bool abs;
@@ -171,7 +192,7 @@ static void print_src(struct disasm_ctx *ctx, struct reginfo *info)
 	if (info->r)
 		reg = idxreg(regidx(info->reg) + ctx->repeatidx);
 
-	print_reg(ctx, reg, info->full, info->r, info->c, info->im,
+	print_reg(ctx, reg, info->full, info->f, info->r, info->c, info->im,
 			info->neg, info->abs, info->addr_rel);
 }
 
@@ -273,6 +294,7 @@ static void print_instr_cat1(struct disasm_ctx *ctx, instr_t *instr)
 static void print_instr_cat2(struct disasm_ctx *ctx, instr_t *instr)
 {
 	instr_cat2_t *cat2 = &instr->cat2;
+	int opc = _OPC(2, cat2->opc);
 	static const char *cond[] = {
 			"lt",
 			"le",
@@ -283,7 +305,7 @@ static void print_instr_cat2(struct disasm_ctx *ctx, instr_t *instr)
 			"?6?",
 	};
 
-	switch (_OPC(2, cat2->opc)) {
+	switch (opc) {
 	case OPC_CMPS_F:
 	case OPC_CMPS_U:
 	case OPC_CMPS_S:
@@ -303,6 +325,7 @@ static void print_instr_cat2(struct disasm_ctx *ctx, instr_t *instr)
 	struct reginfo src1 = {
 		.full = cat2->full,
 		.r = cat2->repeat ? cat2->src1_r : 0,
+		.f = is_cat2_float(opc),
 		.im = cat2->src1_im,
 		.abs = cat2->src1_abs,
 		.neg = cat2->src1_neg,
@@ -323,11 +346,12 @@ static void print_instr_cat2(struct disasm_ctx *ctx, instr_t *instr)
 	struct reginfo src2 = {
 		.r = cat2->repeat ? cat2->src2_r : 0,
 		.full = cat2->full,
+		.f = is_cat2_float(opc),
 		.abs = cat2->src2_abs,
 		.neg = cat2->src2_neg,
 		.im = cat2->src2_im,
 	};
-	switch (_OPC(2, cat2->opc)) {
+	switch (opc) {
 	case OPC_ABSNEG_F:
 	case OPC_ABSNEG_S:
 	case OPC_CLZ_B:

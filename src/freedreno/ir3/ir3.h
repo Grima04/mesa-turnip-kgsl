@@ -957,42 +957,6 @@ static inline bool ir3_cat2_int(opc_t opc)
 	}
 }
 
-static inline bool ir3_cat2_float(opc_t opc)
-{
-	switch (opc) {
-	case OPC_ADD_F:
-	case OPC_MIN_F:
-	case OPC_MAX_F:
-	case OPC_MUL_F:
-	case OPC_SIGN_F:
-	case OPC_CMPS_F:
-	case OPC_ABSNEG_F:
-	case OPC_CMPV_F:
-	case OPC_FLOOR_F:
-	case OPC_CEIL_F:
-	case OPC_RNDNE_F:
-	case OPC_RNDAZ_F:
-	case OPC_TRUNC_F:
-		return true;
-
-	default:
-		return false;
-	}
-}
-
-static inline bool ir3_cat3_float(opc_t opc)
-{
-	switch (opc) {
-	case OPC_MAD_F16:
-	case OPC_MAD_F32:
-	case OPC_SEL_F16:
-	case OPC_SEL_F32:
-		return true;
-	default:
-		return false;
-	}
-}
-
 /* map cat2 instruction to valid abs/neg flags: */
 static inline unsigned ir3_cat2_absneg(opc_t opc)
 {

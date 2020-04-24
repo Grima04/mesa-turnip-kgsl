@@ -478,8 +478,8 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 		if (!valid_flags(instr, n, new_flags)) {
 			/* See if lowering an immediate to const would help. */
 			if (valid_flags(instr, n, (new_flags & ~IR3_REG_IMMED) | IR3_REG_CONST)) {
-				bool f_opcode = (ir3_cat2_float(instr->opc) ||
-						ir3_cat3_float(instr->opc)) ? true : false;
+				bool f_opcode = (is_cat2_float(instr->opc) ||
+						is_cat3_float(instr->opc)) ? true : false;
 
 				debug_assert(new_flags & IR3_REG_IMMED);
 
@@ -533,7 +533,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			if (src->cat1.dst_type == TYPE_F16) {
 				if (instr->opc == OPC_MOV && !type_float(instr->cat1.src_type))
 					return false;
-				if (!ir3_cat2_float(instr->opc) && !ir3_cat3_float(instr->opc))
+				if (!is_cat2_float(instr->opc) && !is_cat3_float(instr->opc))
 					return false;
 			}
 
@@ -594,8 +594,8 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 
 				return true;
 			} else if (valid_flags(instr, n, (new_flags & ~IR3_REG_IMMED) | IR3_REG_CONST)) {
-				bool f_opcode = (ir3_cat2_float(instr->opc) ||
-						ir3_cat3_float(instr->opc)) ? true : false;
+				bool f_opcode = (is_cat2_float(instr->opc) ||
+						is_cat3_float(instr->opc)) ? true : false;
 
 				/* See if lowering an immediate to const would help. */
 				instr->regs[n+1] = lower_immed(ctx, src_reg, new_flags, f_opcode);

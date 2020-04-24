@@ -77,6 +77,20 @@ static const struct test {
 	/* discard stuff */
 	INSTR_6XX(42b400f8_20010004, "cmps.s.eq p0.x, r1.x, 1"),
 	INSTR_6XX(02800000_00000000, "kill p0.x"),
+
+	/* Immediates */
+	INSTR_6XX(40100007_68000008, "add.f r1.w, r2.x, (neg)(0.0)"),
+	INSTR_6XX(40100007_68010008, "add.f r1.w, r2.x, (neg)(0.5)"),
+	INSTR_6XX(40100007_68020008, "add.f r1.w, r2.x, (neg)(1.0)"),
+	INSTR_6XX(40100007_68030008, "add.f r1.w, r2.x, (neg)(2.0)"),
+	INSTR_6XX(40100007_68040008, "add.f r1.w, r2.x, (neg)(e)"),
+	INSTR_6XX(40100007_68050008, "add.f r1.w, r2.x, (neg)(pi)"),
+	INSTR_6XX(40100007_68060008, "add.f r1.w, r2.x, (neg)(1/pi)"),
+	INSTR_6XX(40100007_68070008, "add.f r1.w, r2.x, (neg)(1/log2(e))"),
+	INSTR_6XX(40100007_68080008, "add.f r1.w, r2.x, (neg)(log2(e))"),
+	INSTR_6XX(40100007_68090008, "add.f r1.w, r2.x, (neg)(1/log2(10))"),
+	INSTR_6XX(40100007_680a0008, "add.f r1.w, r2.x, (neg)(log2(10))"),
+	INSTR_6XX(40100007_680b0008, "add.f r1.w, r2.x, (neg)(4.0)"),
 };
 
 static void
