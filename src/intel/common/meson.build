@@ -44,7 +44,8 @@ libintel_common = static_library(
   ['intel_common', genX_xml_h],
   files_libintel_common,
   include_directories : [inc_include, inc_src, inc_mesa, inc_gallium, inc_intel],
-  c_args : [c_vis_args, no_override_init_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   link_with : [libisl],
   dependencies : [dep_expat, dep_libdrm, dep_thread, idep_genxml],
 )
@@ -68,9 +69,10 @@ if install_intel_gpu_tests
       'intel_@0@_mi_builder_test'.format(g[1]),
       files('tests/gen_mi_builder_test.cpp'),
       cpp_args : [
-        cpp_vis_args, cpp_msvc_compat_args,
+        cpp_msvc_compat_args,
         '-DGEN_VERSIONx10=@0@'.format(g[0])
       ],
+      gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_intel],
       link_with : [libintel_dev],
       dependencies : [dep_libdrm, idep_gtest, idep_genxml, idep_mesautil],

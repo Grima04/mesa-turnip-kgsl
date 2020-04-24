@@ -29,11 +29,11 @@ libva_st = static_library(
     'subpicture.c', 'surface.c', 'picture_h264_enc.c', 'picture_hevc_enc.c',
   ),
   c_args : [
-    c_vis_args,
     '-DVA_DRIVER_INIT_FUNC=__vaDriverInit_@0@_@1@'.format(
       libva_version[0], libva_version[1]
     ),
   ],
+  gnu_symbol_visibility : 'hidden',
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   dependencies : [
     dep_va_headers, dep_x11_xcb, dep_xcb, dep_xcb_dri2, dep_xcb_dri3,

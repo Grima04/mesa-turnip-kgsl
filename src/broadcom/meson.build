@@ -43,7 +43,8 @@ foreach ver : v3d_versions
       v3d_xml_pack
     ],
     include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_broadcom],
-    c_args : [c_vis_args, no_override_init_args, '-DV3D_VERSION=' + ver],
+    c_args : [no_override_init_args, '-DV3D_VERSION=' + ver],
+    gnu_symbol_visibility : 'hidden',
     dependencies: [dep_valgrind, dep_thread],
   )
 endforeach
@@ -55,7 +56,8 @@ libbroadcom_v3d = static_library(
     v3d_xml_pack,
   ],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_broadcom],
-  c_args : [c_vis_args, no_override_init_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   link_whole : v3d_libs + per_version_libs,
   build_by_default : false,
   dependencies: [dep_valgrind, dep_thread],

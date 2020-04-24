@@ -98,7 +98,7 @@ files_etnaviv = files(
 libetnaviv = static_library(
   'etnaviv',
   files_etnaviv,
-  c_args : [c_vis_args],
+  gnu_symbol_visibility : 'hidden',
   include_directories : [
     inc_include, inc_src, inc_gallium, inc_gallium_aux, inc_etnaviv,
   ],

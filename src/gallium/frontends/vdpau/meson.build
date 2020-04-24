@@ -28,10 +28,10 @@ libvdpau_st = static_library(
     'output.c', 'preemption.c', 'presentation.c', 'query.c', 'surface.c',
   ),
   c_args : [
-    c_vis_args,
     '-DVER_MAJOR=@0@'.format(VDPAU_MAJOR),
     '-DVER_MINOR=@0@'.format(VDPAU_MINOR),
   ],
+  gnu_symbol_visibility : 'hidden',
   include_directories : [
     inc_include, inc_src, inc_util, inc_gallium, inc_gallium_aux,
   ],

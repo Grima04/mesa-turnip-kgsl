@@ -38,7 +38,8 @@ libxa_st = static_library(
     'xa_composite.c', 'xa_context.c', 'xa_renderer.c', 'xa_tgsi.c',
     'xa_tracker.c', 'xa_yuv.c',
   )],
-  c_args : [c_vis_args, '-pedantic'],
+  c_args : ['-pedantic'],
+  gnu_symbol_visibility : 'hidden',
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
 )
 

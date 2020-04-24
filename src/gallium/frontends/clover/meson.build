@@ -63,7 +63,6 @@ libclllvm = static_library(
     clover_cpp_args,
     clover_opencl_cpp_args,
     clover_spirv_cpp_args,
-    cpp_vis_args,
     '-DLIBCLC_INCLUDEDIR="@0@/"'.format(dep_clc.get_pkgconfig_variable('includedir')),
     '-DLIBCLC_LIBEXECDIR="@0@/"'.format(dep_clc.get_pkgconfig_variable('libexecdir')),
     '-DCLANG_RESOURCE_DIR="@0@"'.format(join_paths(
@@ -71,6 +70,7 @@ libclllvm = static_library(
       dep_llvm.version(), 'include',
     )),
   ],
+  gnu_symbol_visibility : 'hidden',
   dependencies : [dep_llvm, dep_elf, dep_llvmspirvlib],
   override_options : clover_cpp_std,
 )
@@ -79,7 +79,8 @@ libclspirv = static_library(
   'clspirv',
   files('spirv/invocation.cpp', 'spirv/invocation.hpp'),
   include_directories : clover_incs,
-  cpp_args : [clover_opencl_cpp_args, clover_spirv_cpp_args, cpp_vis_args],
+  cpp_args : [clover_opencl_cpp_args, clover_spirv_cpp_args],
+  gnu_symbol_visibility : 'hidden',
   dependencies : [dep_spirv_tools],
   override_options : clover_cpp_std,
 )
@@ -89,7 +90,8 @@ libclnir = static_library(
   files('nir/invocation.cpp', 'nir/invocation.hpp'),
   include_directories : [clover_incs, inc_mesa],
   dependencies : idep_nir,
-  cpp_args : [clover_opencl_cpp_args, clover_spirv_cpp_args, cpp_vis_args],
+  cpp_args : [clover_opencl_cpp_args, clover_spirv_cpp_args],
+  gnu_symbol_visibility : 'hidden',
   override_options : clover_cpp_std,
 )
 
@@ -157,8 +159,8 @@ libclover = static_library(
     clover_opencl_cpp_args,
     clover_spirv_cpp_args,
     clover_cpp_args,
-    cpp_vis_args
   ],
+  gnu_symbol_visibility : 'hidden',
   link_with : [libclllvm, libclspirv, libclnir],
   override_options : clover_cpp_std,
 )

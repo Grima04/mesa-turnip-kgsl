@@ -65,7 +65,8 @@ endif
 libomx_st = static_library(
   'omx_st',
   files_omx,
-  c_args : [c_vis_args, '-fcommon'],
+  c_args : ['-fcommon'],
+  gnu_symbol_visibility : 'hidden',
   include_directories : inc_st_omx,
   dependencies : dep_st_omx,
 )

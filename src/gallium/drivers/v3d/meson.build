@@ -78,8 +78,8 @@ foreach ver : v3d_versions
       inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
       inc_gallium_drivers,
     ],
-    c_args : [c_vis_args, v3d_args, '-DV3D_VERSION=' + ver],
-    cpp_args : [cpp_vis_args],
+    c_args : [v3d_args, '-DV3D_VERSION=' + ver],
+    gnu_symbol_visibility : 'hidden',
     dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind, idep_nir_headers],
 )
 
@@ -97,7 +97,8 @@ libv3d_neon = static_library(
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
     inc_gallium_drivers,
   ],
-  c_args : [c_vis_args, v3d_args, v3d_neon_c_args],
+  c_args : [v3d_args, v3d_neon_c_args],
+  gnu_symbol_visibility : 'hidden',
   dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind, idep_nir_headers],
 )
 
@@ -112,8 +113,9 @@ libv3d = static_library(
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_broadcom,
     inc_gallium_drivers,
   ],
-  c_args : [c_vis_args, v3d_args],
-  cpp_args : [cpp_vis_args, v3d_args],
+  c_args : [v3d_args],
+  cpp_args : [v3d_args],
+  gnu_symbol_visibility : 'hidden',
   dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind, idep_nir_headers],
   link_with: [per_version_libs, libv3d_neon],
 )

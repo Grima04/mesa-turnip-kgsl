@@ -44,7 +44,8 @@ libgl = shared_library(
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_gallium_winsys, inc_gallium_drivers,
     include_directories('../../frontends/glx/xlib'),
   ],
-  c_args : [c_vis_args, gallium_xlib_c_args],
+  c_args : [gallium_xlib_c_args],
+  gnu_symbol_visibility : 'hidden',
   link_args : [ld_args_bsymbolic, ld_args_gc_sections, gallium_xlib_ld_args],
   link_depends : gallium_xlib_link_depends,
   link_with : [

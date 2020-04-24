@@ -142,8 +142,8 @@ libintel_compiler = static_library(
   'intel_compiler',
   [libintel_compiler_files, brw_nir_trig, ir_expression_operation_h],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel],
-  c_args : [c_vis_args, no_override_init_args],
-  cpp_args : [cpp_vis_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   dependencies : idep_nir_headers,
   build_by_default : false,
 )

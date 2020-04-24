@@ -105,8 +105,8 @@ libfreedreno_ir3 = static_library(
   'freedreno_ir3',
   [libfreedreno_ir3_files, ir3_nir_trig_c, ir3_nir_imul_c, ir3_parser[0], ir3_parser[1], ir3_lexer],
   include_directories : [inc_freedreno, inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-  c_args : [c_vis_args, no_override_init_args],
-  cpp_args : [cpp_vis_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   dependencies : idep_nir_headers,
   build_by_default : false,
 )

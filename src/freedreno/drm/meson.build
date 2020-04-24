@@ -50,8 +50,8 @@ libfreedreno_drm = static_library(
     inc_gallium,
     inc_gallium_aux,
   ],
-  c_args : [c_vis_args, no_override_init_args],
-  cpp_args : [cpp_vis_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   dependencies : [
     dep_libdrm,
     dep_valgrind,

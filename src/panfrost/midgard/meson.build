@@ -71,7 +71,7 @@ libpanfrost_midgard = static_library(
    idep_nir
   ],
   link_with: [libpanfrost_util],
-  c_args : [c_vis_args, no_override_init_args],
-  cpp_args : [cpp_vis_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   build_by_default : false,
 )

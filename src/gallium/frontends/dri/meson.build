@@ -53,6 +53,7 @@ libdri = static_library(
     inc_include, inc_util, inc_mesa, inc_mapi, inc_src, inc_gallium,
     inc_gallium_aux, inc_dri_common,
   ],
-  c_args : [c_vis_args, libdri_c_args],
+  c_args : [libdri_c_args],
+  gnu_symbol_visibility : 'hidden',
   dependencies : dep_libdrm,
 )

@@ -24,7 +24,8 @@ libaub = static_library(
   include_directories : [inc_include, inc_src, inc_intel],
   dependencies : idep_mesautil,
   link_with : [libintel_common, libintel_dev],
-  c_args : [c_vis_args, no_override_init_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   install : false
 )
 
@@ -34,7 +35,8 @@ aubinator = executable(
   dependencies : [idep_mesautil, dep_expat, dep_zlib, dep_dl, dep_thread, dep_m],
   include_directories : [inc_include, inc_src, inc_intel],
   link_with : [libintel_common, libintel_compiler, libintel_dev, libaub],
-  c_args : [c_vis_args, no_override_init_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   install : true
 )
 
@@ -44,7 +46,8 @@ aubinator_error_decode = executable(
   dependencies : [idep_mesautil, dep_zlib, dep_thread],
   include_directories : [inc_include, inc_src, inc_intel],
   link_with : [libintel_common, libintel_compiler, libintel_dev],
-  c_args : [c_vis_args, no_override_init_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   install : true
 )
 
@@ -54,7 +57,8 @@ i965_disasm = executable(
   dependencies : [idep_mesautil, dep_thread],
   include_directories : [inc_include, inc_src, inc_mesa, inc_intel],
   link_with : [libintel_common, libintel_compiler, libintel_dev],
-  c_args : [c_vis_args, no_override_init_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   install : true
 )
 
@@ -64,7 +68,8 @@ error2aub = executable(
   dependencies : [dep_zlib, dep_dl, dep_thread, dep_m],
   include_directories : [inc_include, inc_src, inc_intel],
   link_with : [libintel_dev],
-  c_args : [c_vis_args, no_override_init_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   install : true
 )
 
@@ -91,7 +96,8 @@ libintel_sanitize_gpu = shared_library(
   dependencies : [idep_mesautil, dep_dl, dep_thread],
   include_directories : [inc_include, inc_src, inc_intel],
   link_with : libintel_common,
-  c_args : [c_vis_args, no_override_init_args, c_sse2_args],
+  c_args : [no_override_init_args, c_sse2_args],
+  gnu_symbol_visibility : 'hidden',
   install_dir : get_option('libexecdir'),
   install : true
 )
@@ -113,7 +119,8 @@ libintel_dump_gpu = shared_library(
   dependencies : dep_dl,
   include_directories : [inc_include, inc_src, inc_intel],
   link_with : libintel_dev,
-  c_args : [c_vis_args, no_override_init_args],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   install_dir : get_option('libexecdir'),
   install : true
 )
@@ -133,7 +140,7 @@ if with_tools.contains('drm-shim')
     include_directories: [inc_include, inc_src, inc_intel],
     link_with: libintel_dev,
     dependencies: [dep_libdrm, dep_drm_shim, idep_mesautil, idep_libintel_common],
-    c_args : c_vis_args,
+    gnu_symbol_visibility : 'hidden',
     install : true,
   )
 endif
@@ -147,7 +154,8 @@ if with_tools.contains('intel-ui')
     dependencies : [idep_mesautil, dep_zlib, dep_dl, dep_thread, dep_m, libintel_imgui_gtk_dep],
     include_directories : [inc_include, inc_src, inc_intel],
     link_with : [libintel_common, libintel_compiler, libintel_dev, libaub],
-    c_args : [c_vis_args, no_override_init_args],
+    c_args : [no_override_init_args],
+    gnu_symbol_visibility : 'hidden',
     cpp_args : ['-fpermissive', '-Wno-parentheses', '-Wno-class-memaccess'],
     install : true
   )
@@ -176,7 +184,8 @@ i965_asm = executable(
    dependencies : [idep_mesautil, dep_thread],
    include_directories : [inc_include, inc_src, inc_mesa, inc_intel],
    link_with : [libintel_common, libintel_compiler, libintel_dev],
-   c_args : [c_vis_args, no_override_init_args],
+   c_args : [no_override_init_args],
+   gnu_symbol_visibility : 'hidden',
    install : true
 )
 

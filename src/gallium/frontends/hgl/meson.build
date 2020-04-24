@@ -37,5 +37,6 @@ libsthgl = static_library(
     inc_include, inc_haikugl, inc_util, inc_mesa, inc_mapi, inc_src,
     inc_gallium, inc_gallium_aux
   ],
-  c_args : [c_vis_args, libsthgl_c_args],
+  c_args : [libsthgl_c_args],
+  gnu_symbol_visibility : 'hidden',
 )

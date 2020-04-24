@@ -35,8 +35,7 @@ _xa_version = '.'.join(xa_version)
 libxatracker = shared_library(
   'xatracker',
   'target.c',
-  c_args : c_vis_args,
-  cpp_args : cpp_vis_args,
+  gnu_symbol_visibility : 'hidden',
   link_args : [xa_link_args, ld_args_gc_sections],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_util, inc_gallium_winsys, inc_gallium_drivers,

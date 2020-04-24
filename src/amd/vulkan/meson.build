@@ -171,9 +171,10 @@ libvulkan_radeon = shared_library(
     dep_valgrind, radv_deps, idep_aco,
     idep_mesautil, idep_nir, idep_vulkan_util, idep_amdgfxregs_h, idep_xmlconfig,
   ],
-  c_args : [c_vis_args, no_override_init_args, radv_flags],
-  cpp_args : [cpp_vis_args, radv_flags],
+  c_args : [no_override_init_args, radv_flags],
+  cpp_args : [radv_flags],
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
+  gnu_symbol_visibility : 'hidden',
   install : true,
 )
 

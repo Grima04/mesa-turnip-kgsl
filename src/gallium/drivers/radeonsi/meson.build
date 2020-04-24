@@ -122,8 +122,8 @@ libradeonsi = static_library(
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_amd_common, inc_amd_common_llvm,
     inc_gallium_drivers,
   ],
-  c_args : ['-Wstrict-overflow=0', c_vis_args],
-  cpp_args : [cpp_vis_args],
+  c_args : ['-Wstrict-overflow=0'],
+  gnu_symbol_visibility : 'hidden',
   dependencies : [dep_llvm, dep_clock, dep_libdrm_radeon, idep_nir_headers, idep_amdgfxregs_h],
 )
 

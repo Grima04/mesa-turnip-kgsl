@@ -64,8 +64,7 @@ libamd_common = static_library(
     dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
     idep_nir_headers,
   ],
-  c_args : [c_vis_args],
-  cpp_args : [cpp_vis_args],
+  gnu_symbol_visibility : 'hidden',
 )
 
 idep_amdgfxregs_h = declare_dependency(sources : [amdgfxregs_h])

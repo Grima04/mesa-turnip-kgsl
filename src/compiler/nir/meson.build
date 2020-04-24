@@ -258,7 +258,8 @@ _libnir = static_library(
    nir_opcodes_h, nir_constant_expressions_c, nir_builder_opcodes_h,
    vtn_gather_types_c, nir_intrinsics_c, nir_intrinsics_h],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_compiler, include_directories('../spirv')],
-  c_args : [c_vis_args, c_msvc_compat_args, no_override_init_args],
+  c_args : [c_msvc_compat_args, no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   link_with : libcompiler,
   build_by_default : false,
 )
@@ -283,7 +284,8 @@ if with_tests
     executable(
       'nir_builder_test',
       files('tests/builder_tests.cpp'),
-      cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
+      cpp_args : [cpp_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
@@ -295,7 +297,8 @@ if with_tests
     executable(
       'nir_control_flow_test',
       files('tests/control_flow_tests.cpp'),
-      cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
+      cpp_args : [cpp_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
@@ -307,7 +310,8 @@ if with_tests
     executable(
       'nir_vars_test',
       files('tests/vars_tests.cpp'),
-      cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
+      cpp_args : [cpp_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
@@ -328,7 +332,8 @@ if with_tests
     executable(
       'negative_equal',
       files('tests/negative_equal_tests.cpp'),
-      c_args : [c_vis_args, c_msvc_compat_args, no_override_init_args],
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
@@ -340,7 +345,8 @@ if with_tests
     executable(
       'comparison_pre',
       files('tests/comparison_pre_tests.cpp'),
-      c_args : [c_vis_args, c_msvc_compat_args, no_override_init_args],
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
@@ -352,7 +358,8 @@ if with_tests
     executable(
       'load_store_vectorizer',
       files('tests/load_store_vectorizer_tests.cpp'),
-      cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
+      cpp_args : [cpp_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
@@ -365,7 +372,8 @@ if with_tests
     executable(
       'nir_serialize_test',
       files('tests/serialize_tests.cpp'),
-      cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
+      cpp_args : [cpp_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),

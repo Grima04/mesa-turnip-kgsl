@@ -34,8 +34,7 @@ endif
 libxvmc_gallium = shared_library(
   'XvMCgallium',
   'target.c',
-  c_args : c_vis_args,
-  cpp_args : cpp_vis_args,
+  gnu_symbol_visibility : 'hidden',
   link_args : [xvmc_link_args, ld_args_gc_sections],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_util, inc_gallium_winsys, inc_gallium_drivers,

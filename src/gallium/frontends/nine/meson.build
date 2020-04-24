@@ -62,7 +62,7 @@ nine_st_files = files(
 libnine_st = static_library(
   'nine_st',
   nine_st_files,
-  c_args : c_vis_args,
+  gnu_symbol_visibility : 'hidden',
   include_directories : [
     inc_d3d9, inc_gallium, inc_include, inc_src, inc_gallium_aux,
   ],

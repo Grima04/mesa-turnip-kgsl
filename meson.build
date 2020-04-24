@@ -882,11 +882,9 @@ endif
 
 # Check for generic C arguments
 c_args = []
-c_vis_args = []
 c_msvc_compat_args = []
 no_override_init_args = []
 cpp_args = []
-cpp_vis_args = []
 cpp_msvc_compat_args = []
 if cc.get_id() == 'msvc'
   foreach a : ['/wd4018',  # signed/unsigned mismatch
@@ -970,10 +968,6 @@ else
     endif
   endforeach
 
-  if cc.has_argument('-fvisibility=hidden')
-    c_vis_args += '-fvisibility=hidden'
-  endif
-
   # Check for C and C++ arguments for MSVC compatibility. These are only used
   # in parts of the mesa code base that need to compile with MSVC, mainly
   # common code
@@ -985,11 +979,6 @@ else
       cpp_msvc_compat_args += a
     endif
   endforeach
-
-  if cpp.has_argument('-fvisibility=hidden')
-    cpp_vis_args += '-fvisibility=hidden'
-  endif
-
 endif
 
 # set linker arguments

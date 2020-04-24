@@ -162,10 +162,10 @@ libegl = shared_library(
   egl_lib_name,
   files_egl,
   c_args : [
-    c_vis_args,
     c_args_for_egl,
     '-D_EGL_NATIVE_PLATFORM=_EGL_PLATFORM_@0@'.format(egl_native_platform.to_upper()),
   ],
+  gnu_symbol_visibility : 'hidden',
   include_directories : incs_for_egl,
   link_with : [link_for_egl, libglapi],
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
