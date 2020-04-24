@@ -1672,7 +1672,26 @@ tu_pipeline_shader_key_init(struct ir3_shader_key *key,
    if (msaa_info->sampleShadingEnable)
       key->sample_shading = true;
 
-   /* TODO: Populate the remaining fields of ir3_shader_key. */
+   /* We set this after we compile to NIR because we need the prim mode */
+   key->tessellation = IR3_TESS_NONE;
+}
+
+static uint32_t
+tu6_get_tessmode(struct tu_shader* shader)
+{
+   uint32_t primitive_mode = shader->ir3_shader->nir->info.tess.primitive_mode;
+   switch (primitive_mode) {
+   case GL_ISOLINES:
+      return IR3_TESS_ISOLINES;
+   case GL_TRIANGLES:
+      return IR3_TESS_TRIANGLES;
+   case GL_QUADS:
+      return IR3_TESS_QUADS;
+   case GL_NONE:
+      return IR3_TESS_NONE;
+   default:
+      unreachable("bad tessmode");
+   }
 }
 
 static VkResult
@@ -1701,6 +1720,14 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
                           builder->alloc);
       if (!shader)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      /* In SPIR-V generated from GLSL, the primitive mode is specified in the
+       * tessellation evaluation shader, but in SPIR-V generated from HLSL,
+       * the mode is specified in the tessellation control shader. */
+      if ((stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_TESS_CTRL) &&
+          key.tessellation == IR3_TESS_NONE) {
+         key.tessellation = tu6_get_tessmode(shader);
+      }
 
       builder->shaders[stage] = shader;
    }

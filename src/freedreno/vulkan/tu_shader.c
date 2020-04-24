@@ -43,8 +43,11 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
    const struct spirv_to_nir_options spirv_options = {
       .frag_coord_is_sysval = true,
       .lower_ubo_ssbo_access_to_offsets = true,
+      .tess_levels_are_sysvals = true,
+      .lower_tess_levels_to_vec = true,
       .caps = {
-         .transform_feedback = compiler->gpu_id >= 600,
+         .transform_feedback = true,
+         .tessellation = true,
       },
    };
    const nir_shader_compiler_options *nir_options =
@@ -608,6 +611,11 @@ tu_shader_create(struct tu_device *dev,
    NIR_PASS_V(nir, nir_opt_combine_stores, nir_var_all);
 
    /* ir3 doesn't support indirect input/output */
+   /* TODO: We shouldn't perform this lowering pass on gl_TessLevelInner
+    * and gl_TessLevelOuter. Since the tess levels are actually stored in
+    * a global BO, they can be directly accessed via stg and ldg.
+    * nir_lower_indirect_derefs will instead generate a big if-ladder which
+    * isn't *incorrect* but is much less efficient. */
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out);
 
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
