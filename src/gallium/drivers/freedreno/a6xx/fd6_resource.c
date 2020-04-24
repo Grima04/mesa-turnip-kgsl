@@ -83,6 +83,7 @@ ok_ubwc_format(struct fd_resource *rsc, enum pipe_format pfmt)
 	case FMT6_8_8_SINT:
 	case FMT6_8_8_UINT:
 	case FMT6_8_8_UNORM:
+	case FMT6_8_UNORM:
 	case FMT6_Z24_UNORM_S8_UINT:
 	case FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8:
 		return true;
