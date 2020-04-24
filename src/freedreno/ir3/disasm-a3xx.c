@@ -1250,7 +1250,7 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 		nop = (instr->cat3.src2_r * 2) + instr->cat3.src1_r;
 	ctx->instructions += nop;
 	if (nop)
-		fprintf(ctx->out, "(nop%d)", nop);
+		fprintf(ctx->out, "(nop%d) ", nop);
 
 	if (instr->ul && ((2 <= instr->opc_cat) && (instr->opc_cat <= 4)))
 		fprintf(ctx->out, "(ul)");
