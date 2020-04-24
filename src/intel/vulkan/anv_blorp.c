@@ -1830,10 +1830,12 @@ anv_image_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
 
    struct blorp_surf stencil = {};
    if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      uint32_t plane = anv_image_aspect_to_plane(image->aspects,
+                                                 VK_IMAGE_ASPECT_STENCIL_BIT);
       get_blorp_surf_for_anv_image(cmd_buffer->device,
                                    image, VK_IMAGE_ASPECT_STENCIL_BIT,
                                    0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
-                                   ISL_AUX_USAGE_NONE, &stencil);
+                                   image->planes[plane].aux_usage, &stencil);
    }
 
    /* Blorp may choose to clear stencil using RGBA32_UINT for better
