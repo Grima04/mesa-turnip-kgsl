@@ -991,6 +991,7 @@ pandecode_rt_format(struct mali_rt_format format)
         pandecode_prop("unk1 = 0x%" PRIx32, format.unk1);
         pandecode_prop("unk2 = 0x%" PRIx32, format.unk2);
         pandecode_prop("unk3 = 0x%" PRIx32, format.unk3);
+        pandecode_prop("unk4 = 0x%" PRIx32, format.unk4);
 
         pandecode_prop("block = %s", pandecode_block_format(format.block));
 

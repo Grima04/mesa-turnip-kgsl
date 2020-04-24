@@ -1637,7 +1637,8 @@ struct mali_rt_format {
 
         unsigned nr_channels : 2; /* MALI_POSITIVE */
 
-        unsigned unk3 : 5;
+        unsigned unk3 : 4;
+        unsigned unk4 : 1;
         enum mali_block_format block : 2;
         unsigned flags : 4;
 

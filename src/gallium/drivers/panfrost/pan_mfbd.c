@@ -31,6 +31,9 @@
 static struct mali_rt_format
 panfrost_mfbd_format(struct pipe_surface *surf)
 {
+        struct panfrost_device *dev = pan_device(surf->context->screen);
+        bool is_bifrost = dev->quirks & IS_BIFROST;
+
         /* Explode details on the format */
 
         const struct util_format_description *desc =
@@ -48,6 +51,7 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 .unk2 = 0x1,
                 .nr_channels = MALI_POSITIVE(desc->nr_channels),
                 .unk3 = 0x4,
+                .unk4 = is_bifrost,
                 .flags = 0x8,
                 .swizzle = panfrost_translate_swizzle_4(swizzle),
                 .no_preload = true
