@@ -839,39 +839,15 @@ foreach b : ['bswap32', 'bswap64', 'clz', 'clzll', 'ctz', 'expect', 'ffs',
 endforeach
 
 # check for GCC __attribute__
-foreach a : ['const', 'flatten', 'malloc', 'pure', 'unused',
-             'warn_unused_result', 'weak',]
-  if cc.compiles('int foo(void) __attribute__((@0@));'.format(a),
-                 name : '__attribute__((@0@))'.format(a))
-    pre_args += '-DHAVE_FUNC_ATTRIBUTE_@0@'.format(a.to_upper())
-  endif
+_attributes = [
+  'const', 'flatten', 'malloc', 'pure', 'unused', 'warn_unused_result',
+  'weak', 'format', 'packed', 'returns_nonnull', 'alias', 'noreturn',
+]
+foreach a : cc.get_supported_function_attributes(_attributes)
+  pre_args += '-DHAVE_FUNC_ATTRIBUTE_@0@'.format(a.to_upper())
 endforeach
-if cc.compiles('int foo(const char *p, ...) __attribute__((format(printf, 1, 2)));',
-               name : '__attribute__((format(...)))')
-  pre_args += '-DHAVE_FUNC_ATTRIBUTE_FORMAT'
-endif
-if cc.compiles('struct __attribute__((packed)) foo { int bar; };',
-               name : '__attribute__((packed))')
-  pre_args += '-DHAVE_FUNC_ATTRIBUTE_PACKED'
-endif
-if cc.compiles('int *foo(void) __attribute__((returns_nonnull));',
-               name : '__attribute__((returns_nonnull))')
-  pre_args += '-DHAVE_FUNC_ATTRIBUTE_RETURNS_NONNULL'
-endif
-if cc.compiles('''int foo_def(void) __attribute__((visibility("default")));
-                  int foo_hid(void) __attribute__((visibility("hidden")));
-                  int foo_int(void) __attribute__((visibility("internal")));
-                  int foo_pro(void) __attribute__((visibility("protected")));''',
-               name : '__attribute__((visibility(...)))')
+if cc.has_function_attribute('visibility:hidden')
   pre_args += '-DHAVE_FUNC_ATTRIBUTE_VISIBILITY'
-endif
-if cc.compiles('int foo(void) { return 0; } int bar(void) __attribute__((alias("foo")));',
-               name : '__attribute__((alias(...)))')
-  pre_args += '-DHAVE_FUNC_ATTRIBUTE_ALIAS'
-endif
-if cc.compiles('int foo(void) __attribute__((__noreturn__));',
-               name : '__attribute__((__noreturn__))')
-  pre_args += '-DHAVE_FUNC_ATTRIBUTE_NORETURN'
 endif
 if cc.compiles('__uint128_t foo(void) { return 0; }',
                name : '__uint128_t')
