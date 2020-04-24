@@ -143,9 +143,11 @@ enum fd_dirty_3d_state {
 	FD_DIRTY_PROG        = BIT(16),
 	FD_DIRTY_CONST       = BIT(17),
 	FD_DIRTY_TEX         = BIT(18),
+	FD_DIRTY_IMAGE       = BIT(19),
+	FD_DIRTY_SSBO        = BIT(20),
 
 	/* only used by a2xx.. possibly can be removed.. */
-	FD_DIRTY_TEXSTATE    = BIT(19),
+	FD_DIRTY_TEXSTATE    = BIT(21),
 };
 
 /* per shader-stage dirty state: */

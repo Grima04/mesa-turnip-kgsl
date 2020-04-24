@@ -61,7 +61,7 @@
 /**
  * Go through the entire state and see if the resource is bound
  * anywhere. If it is, mark the relevant state as dirty. This is
- * called on realloc_bo to ensure the neccessary state is re-
+ * called on realloc_bo to ensure the necessary state is re-
  * emitted so the GPU looks at the new backing bo.
  */
 static void
@@ -82,16 +82,20 @@ rebind_resource(struct fd_context *ctx, struct pipe_resource *prsc)
 		for (unsigned i = 1; i < num_ubos; i++) {
 			if (ctx->dirty_shader[stage] & FD_DIRTY_SHADER_CONST)
 				break;
-			if (ctx->constbuf[stage].cb[i].buffer == prsc)
+			if (ctx->constbuf[stage].cb[i].buffer == prsc) {
 				ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_CONST;
+				ctx->dirty |= FD_DIRTY_CONST;
+			}
 		}
 
 		/* Textures */
 		for (unsigned i = 0; i < ctx->tex[stage].num_textures; i++) {
 			if (ctx->dirty_shader[stage] & FD_DIRTY_SHADER_TEX)
 				break;
-			if (ctx->tex[stage].textures[i] && (ctx->tex[stage].textures[i]->texture == prsc))
+			if (ctx->tex[stage].textures[i] && (ctx->tex[stage].textures[i]->texture == prsc)) {
 				ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_TEX;
+				ctx->dirty |= FD_DIRTY_TEX;
+			}
 		}
 
 		/* Images */
@@ -99,8 +103,10 @@ rebind_resource(struct fd_context *ctx, struct pipe_resource *prsc)
 		for (unsigned i = 0; i < num_images; i++) {
 			if (ctx->dirty_shader[stage] & FD_DIRTY_SHADER_IMAGE)
 				break;
-			if (ctx->shaderimg[stage].si[i].resource == prsc)
+			if (ctx->shaderimg[stage].si[i].resource == prsc) {
 				ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_IMAGE;
+				ctx->dirty |= FD_DIRTY_IMAGE;
+			}
 		}
 
 		/* SSBOs */
@@ -108,8 +114,10 @@ rebind_resource(struct fd_context *ctx, struct pipe_resource *prsc)
 		for (unsigned i = 0; i < num_ssbos; i++) {
 			if (ctx->dirty_shader[stage] & FD_DIRTY_SHADER_SSBO)
 				break;
-			if (ctx->shaderbuf[stage].sb[i].buffer == prsc)
+			if (ctx->shaderbuf[stage].sb[i].buffer == prsc) {
 				ctx->dirty_shader[stage] |= FD_DIRTY_SHADER_SSBO;
+				ctx->dirty |= FD_DIRTY_SSBO;
+			}
 		}
 	}
 }
