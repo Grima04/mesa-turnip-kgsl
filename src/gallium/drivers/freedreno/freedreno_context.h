@@ -162,6 +162,8 @@ enum fd_dirty_shader_state {
 struct fd_context {
 	struct pipe_context base;
 
+	struct list_head node;   /* node in screen->context_list */
+
 	/* We currently need to serialize emitting GMEM batches, because of
 	 * VSC state access in the context.
 	 *

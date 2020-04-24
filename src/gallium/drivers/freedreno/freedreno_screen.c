@@ -961,6 +961,8 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 
 	fd_bc_init(&screen->batch_cache);
 
+	list_inithead(&screen->context_list);
+
 	(void) mtx_init(&screen->lock, mtx_plain);
 
 	pscreen->destroy = fd_screen_destroy;

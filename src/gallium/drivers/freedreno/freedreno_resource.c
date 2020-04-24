@@ -146,11 +146,19 @@ rebind_resource_in_ctx(struct fd_context *ctx, struct fd_resource *rsc)
 }
 
 static void
-rebind_resource(struct fd_context *ctx, struct fd_resource *rsc)
+rebind_resource(struct fd_resource *rsc)
 {
+	struct fd_screen *screen = fd_screen(rsc->base.screen);
+
+	mtx_lock(&screen->lock);
 	fd_resource_lock(rsc);
-	rebind_resource_in_ctx(ctx, rsc);
+
+	if (rsc->dirty)
+		list_for_each_entry (struct fd_context, ctx, &screen->context_list, node)
+			rebind_resource_in_ctx(ctx, rsc);
+
 	fd_resource_unlock(rsc);
+	mtx_unlock(&screen->lock);
 }
 
 static void
@@ -379,17 +387,7 @@ fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)
 	/* shadow should not fail in any cases where we need to uncompress: */
 	debug_assert(success);
 
-	/*
-	 * TODO what if rsc is used in other contexts, we don't currently
-	 * have a good way to rebind_resource() in other contexts.  And an
-	 * app that is reading one resource in multiple contexts, isn't
-	 * going to expect that the resource is modified.
-	 *
-	 * Hopefully the edge cases where we need to uncompress are rare
-	 * enough that they mostly only show up in deqp.
-	 */
-
-	rebind_resource(ctx, rsc);
+	rebind_resource(rsc);
 }
 
 static struct fd_resource *
@@ -638,7 +636,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
 		if (needs_flush || fd_resource_busy(rsc, op)) {
 			realloc_bo(rsc, fd_bo_size(rsc->bo));
-			rebind_resource(ctx, rsc);
+			rebind_resource(rsc);
 		}
 	} else if ((usage & PIPE_TRANSFER_WRITE) &&
 			   prsc->target == PIPE_BUFFER &&
@@ -681,7 +679,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 			if (needs_flush && fd_try_shadow_resource(ctx, rsc, level,
 							box, DRM_FORMAT_MOD_LINEAR)) {
 				needs_flush = busy = false;
-				rebind_resource(ctx, rsc);
+				rebind_resource(rsc);
 				ctx->stats.shadow_uploads++;
 			} else {
 				struct fd_resource *staging_rsc;

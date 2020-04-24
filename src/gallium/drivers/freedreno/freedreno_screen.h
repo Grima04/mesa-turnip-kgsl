@@ -46,6 +46,8 @@ struct fd_bo;
 struct fd_screen {
 	struct pipe_screen base;
 
+	struct list_head context_list;
+
 	mtx_t lock;
 
 	/* it would be tempting to use pipe_reference here, but that
