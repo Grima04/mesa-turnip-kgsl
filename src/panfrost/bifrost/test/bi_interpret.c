@@ -530,7 +530,7 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
        }
 
         case BI_SHIFT:
-        case BI_SWIZZLE:
+        case BI_SELECT:
         case BI_ROUND:
                 unreachable("Unsupported op");
         

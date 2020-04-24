@@ -948,7 +948,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_MOV:
                 return bi_pack_fma_1src(bundle.fma, regs, BIFROST_FMA_OP_MOV);
         case BI_SHIFT:
-        case BI_SWIZZLE:
+        case BI_SELECT:
         case BI_ROUND:
 		return BIFROST_FMA_NOP;
         case BI_REDUCE_FMA:
@@ -1284,7 +1284,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return bi_pack_add_special(bundle.add, regs);
         case BI_TABLE:
                 return bi_pack_add_table(bundle.add, regs);
-        case BI_SWIZZLE:
+        case BI_SELECT:
                 return BIFROST_ADD_NOP;
         case BI_TEX:
                 if (bundle.add->op.texture == BI_TEX_COMPACT)
