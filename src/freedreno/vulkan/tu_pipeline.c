@@ -494,6 +494,8 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
 static void
 tu6_emit_vs_system_values(struct tu_cs *cs,
                           const struct ir3_shader_variant *vs,
+                          const struct ir3_shader_variant *hs,
+                          const struct ir3_shader_variant *ds,
                           const struct ir3_shader_variant *gs,
                           bool primid_passthru)
 {
@@ -501,6 +503,21 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
          ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
    const uint32_t instanceid_regid =
          ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
+   const uint32_t tess_coord_x_regid = hs ?
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_TESS_COORD) :
+         regid(63, 0);
+   const uint32_t tess_coord_y_regid = VALIDREG(tess_coord_x_regid) ?
+         tess_coord_x_regid + 1 :
+         regid(63, 0);
+   const uint32_t hs_patch_regid = hs ?
+         ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID) :
+         regid(63, 0);
+   const uint32_t ds_patch_regid = hs ?
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID) :
+         regid(63, 0);
+   const uint32_t hs_invocation_regid = hs ?
+         ir3_find_sysval_regid(hs, SYSTEM_VALUE_TCS_HEADER_IR3) :
+         regid(63, 0);
    const uint32_t primitiveid_regid = gs ?
          ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) :
          regid(63, 0);
@@ -513,8 +530,12 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
                   A6XX_VFD_CONTROL_1_REGID4INST(instanceid_regid) |
                   A6XX_VFD_CONTROL_1_REGID4PRIMID(primitiveid_regid) |
                   0xfc000000);
-   tu_cs_emit(cs, 0x0000fcfc); /* VFD_CONTROL_2 */
-   tu_cs_emit(cs, 0xfcfcfcfc); /* VFD_CONTROL_3 */
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_2_REGID_HSPATCHID(hs_patch_regid) |
+                  A6XX_VFD_CONTROL_2_REGID_INVOCATIONID(hs_invocation_regid));
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_3_REGID_DSPATCHID(ds_patch_regid) |
+                  A6XX_VFD_CONTROL_3_REGID_TESSX(tess_coord_x_regid) |
+                  A6XX_VFD_CONTROL_3_REGID_TESSY(tess_coord_y_regid) |
+                  0xfc);
    tu_cs_emit(cs, 0x000000fc); /* VFD_CONTROL_4 */
    tu_cs_emit(cs, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gsheader_regid) |
                   0xfc00); /* VFD_CONTROL_5 */
@@ -652,7 +673,9 @@ tu6_emit_const(struct tu_cs *cs, uint32_t opcode, uint32_t base,
 static void
 tu6_emit_link_map(struct tu_cs *cs,
                   const struct ir3_shader_variant *producer,
-                  const struct ir3_shader_variant *consumer) {
+                  const struct ir3_shader_variant *consumer,
+                  enum a6xx_state_block sb)
+{
    const struct ir3_const_state *const_state = ir3_const_state(consumer);
    uint32_t base = const_state->offsets.primitive_map;
    uint32_t patch_locs[MAX_VARYING] = { }, num_loc;
@@ -663,8 +686,8 @@ tu6_emit_link_map(struct tu_cs *cs,
    if (size <= 0)
       return;
 
-   tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, base, SB6_GS_SHADER, 0,
-                         size, patch_locs);
+   tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, base, sb, 0, size,
+                         patch_locs);
 }
 
 static uint16_t
@@ -684,11 +707,20 @@ gl_primitive_to_tess(uint16_t primitive) {
 void
 tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
+             const struct ir3_shader_variant *hs,
+             const struct ir3_shader_variant *ds,
              const struct ir3_shader_variant *gs,
              const struct ir3_shader_variant *fs,
              struct tu_streamout_state *tf)
 {
-   const struct ir3_shader_variant *last_shader = gs ?: vs;
+   const struct ir3_shader_variant *last_shader;
+   if (gs) {
+      last_shader = gs;
+   } else if (hs) {
+      last_shader = ds;
+   } else {
+      last_shader = vs;
+   }
    struct ir3_shader_linkage linkage = { .primid_loc = 0xff };
    if (fs)
       ir3_link_shaders(&linkage, last_shader, fs, true);
@@ -700,7 +732,7 @@ tu6_emit_vpc(struct tu_cs *cs,
     * passthrough needs to be enabled.
     */
    bool primid_passthru = linkage.primid_loc != 0xff;
-   tu6_emit_vs_system_values(cs, vs, gs, primid_passthru);
+   tu6_emit_vs_system_values(cs, vs, hs, ds, gs, primid_passthru);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VAR_DISABLE(0), 4);
    tu_cs_emit(cs, ~linkage.varmask[0]);
@@ -749,12 +781,16 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    if (gs)
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_OUT_REG(0), sp_out_count);
+   else if (hs)
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_DS_OUT_REG(0), sp_out_count);
    else
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_OUT_REG(0), sp_out_count);
    tu_cs_emit_array(cs, sp_out, sp_out_count);
 
    if (gs)
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_VPC_DST_REG(0), sp_vpc_dst_count);
+   else if (hs)
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_DS_VPC_DST_REG(0), sp_vpc_dst_count);
    else
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_VPC_DST_REG(0), sp_vpc_dst_count);
    tu_cs_emit_array(cs, sp_vpc_dst, sp_vpc_dst_count);
@@ -770,14 +806,100 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK, 1);
    tu_cs_emit(cs, A6XX_VPC_PACK_POSITIONLOC(position_loc) |
-                     A6XX_VPC_PACK_PSIZELOC(pointsize_loc) |
-                     A6XX_VPC_PACK_STRIDE_IN_VPC(linkage.max_loc));
+                  A6XX_VPC_PACK_PSIZELOC(pointsize_loc) |
+                  A6XX_VPC_PACK_STRIDE_IN_VPC(linkage.max_loc));
+
+   if (hs) {
+      shader_info *hs_info = &hs->shader->nir->info;
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
+      tu_cs_emit(cs, hs_info->tess.tcs_vertices_out);
+
+      /* Total attribute slots in HS incoming patch. */
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_UNKNOWN_9801, 1);
+      tu_cs_emit(cs,
+            hs_info->tess.tcs_vertices_out * vs->output_size / 4);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
+      tu_cs_emit(cs, vs->output_size);
+      /* In SPIR-V generated from GLSL, the tessellation primitive params are
+       * are specified in the tess eval shader, but in SPIR-V generated from
+       * HLSL, they are specified in the tess control shader. */
+      shader_info *tess_info =
+            ds->shader->nir->info.tess.spacing == TESS_SPACING_UNSPECIFIED ?
+            &hs->shader->nir->info : &ds->shader->nir->info;
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_CNTL, 1);
+      uint32_t output;
+      if (tess_info->tess.point_mode)
+         output = TESS_POINTS;
+      else if (tess_info->tess.primitive_mode == GL_ISOLINES)
+         output = TESS_LINES;
+      else if (tess_info->tess.ccw)
+         output = TESS_CCW_TRIS;
+      else
+         output = TESS_CW_TRIS;
+
+      enum a6xx_tess_spacing spacing;
+      switch (tess_info->tess.spacing) {
+      case TESS_SPACING_EQUAL:
+         spacing = TESS_EQUAL;
+         break;
+      case TESS_SPACING_FRACTIONAL_ODD:
+         spacing = TESS_FRACTIONAL_ODD;
+         break;
+      case TESS_SPACING_FRACTIONAL_EVEN:
+         spacing = TESS_FRACTIONAL_EVEN;
+         break;
+      case TESS_SPACING_UNSPECIFIED:
+      default:
+         unreachable("invalid tess spacing");
+      }
+      tu_cs_emit(cs, A6XX_PC_TESS_CNTL_SPACING(spacing) |
+            A6XX_PC_TESS_CNTL_OUTPUT(output));
+
+      /* xxx: Misc tess unknowns: */
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_UNKNOWN_9103, 1);
+      tu_cs_emit(cs, 0x00ffff00);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_UNKNOWN_9106, 1);
+      tu_cs_emit(cs, 0x0000ffff);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_809D, 1);
+      tu_cs_emit(cs, 0x0);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8002, 1);
+      tu_cs_emit(cs, 0x0);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK, 1);
+      tu_cs_emit(cs, A6XX_VPC_PACK_POSITIONLOC(position_loc) |
+             A6XX_VPC_PACK_PSIZELOC(255) |
+             A6XX_VPC_PACK_STRIDE_IN_VPC(linkage.max_loc));
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK_3, 1);
+      tu_cs_emit(cs, A6XX_VPC_PACK_3_POSITIONLOC(position_loc) |
+             A6XX_VPC_PACK_3_PSIZELOC(pointsize_loc) |
+             A6XX_VPC_PACK_3_STRIDE_IN_VPC(linkage.max_loc));
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_DS_PRIMITIVE_CNTL, 1);
+      tu_cs_emit(cs, A6XX_SP_DS_PRIMITIVE_CNTL_DSOUT(linkage.cnt));
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_4, 1);
+      tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_4_STRIDE_IN_VPC(linkage.max_loc) |
+            CONDREG(pointsize_regid, 0x100));
+
+      tu6_emit_link_map(cs, vs, hs, SB6_HS_SHADER);
+      tu6_emit_link_map(cs, hs, ds, SB6_DS_SHADER);
+   }
+
 
    if (gs) {
       uint32_t vertices_out, invocations, output, vec4_size;
       /* this detects the tu_clear_blit path, which doesn't set ->nir */
       if (gs->shader->nir) {
-         tu6_emit_link_map(cs, vs, gs);
+         if (hs) {
+            tu6_emit_link_map(cs, ds, gs, SB6_GS_SHADER);
+         } else {
+            tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
+         }
          vertices_out = gs->shader->nir->info.gs.vertices_out - 1;
          output = gl_primitive_to_tess(gs->shader->nir->info.gs.output_primitive);
          invocations = gs->shader->nir->info.gs.invocations - 1;
@@ -1233,7 +1355,7 @@ tu6_emit_program(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
    tu_cs_emit(cs, 0);
 
-   tu6_emit_vpc(cs, vs, gs, fs, tf);
+   tu6_emit_vpc(cs, vs, hs, ds, gs, fs, tf);
    tu6_emit_vpc_varying_modes(cs, fs);
 
    if (fs) {

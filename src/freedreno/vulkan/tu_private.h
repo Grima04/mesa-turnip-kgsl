@@ -1161,6 +1161,8 @@ tu6_emit_xs_config(struct tu_cs *cs,
 void
 tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
+             const struct ir3_shader_variant *hs,
+             const struct ir3_shader_variant *ds,
              const struct ir3_shader_variant *gs,
              const struct ir3_shader_variant *fs,
              struct tu_streamout_state *tf);
