@@ -149,15 +149,6 @@ static void print_reg_dst(struct disasm_ctx *ctx, reg_t reg, bool full, bool add
 	print_reg(ctx, reg, full, false, false, false, false, false, addr_rel);
 }
 
-static void print_reg_src(struct disasm_ctx *ctx, reg_t reg, bool full, bool r,
-		bool c, bool im, bool neg, bool abs, bool addr_rel)
-{
-	if (r)
-		reg = idxreg(regidx(reg) + ctx->repeatidx);
-
-	print_reg(ctx, reg, full, r, c, im, neg, abs, addr_rel);
-}
-
 /* TODO switch to using reginfo struct everywhere, since more readable
  * than passing a bunch of bools to print_reg_src
  */
@@ -175,7 +166,12 @@ struct reginfo {
 
 static void print_src(struct disasm_ctx *ctx, struct reginfo *info)
 {
-	print_reg_src(ctx, info->reg, info->full, info->r, info->c, info->im,
+	reg_t reg = info->reg;
+
+	if (info->r)
+		reg = idxreg(regidx(info->reg) + ctx->repeatidx);
+
+	print_reg(ctx, reg, info->full, info->r, info->c, info->im,
 			info->neg, info->abs, info->addr_rel);
 }
 
