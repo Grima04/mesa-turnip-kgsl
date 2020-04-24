@@ -814,7 +814,8 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9101, 0xffff00);
    tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9107, 0);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9236, 1);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9236,
+                        A6XX_VPC_UNKNOWN_9236_POINT_COORD_INVERT(0));
    tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9300, 0);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_VPC_SO_OVERRIDE,
