@@ -369,14 +369,14 @@ one_time_fini(void)
  * \sa _math_init().
  */
 static void
-one_time_init( struct gl_context *ctx )
+one_time_init(void)
 {
-   static GLbitfield api_init_mask = 0x0;
+   static bool initialized;
 
    mtx_lock(&OneTimeLock);
 
    /* truly one-time init */
-   if (!api_init_mask) {
+   if (!initialized) {
       GLuint i;
 
       STATIC_ASSERT(sizeof(GLbyte) == 1);
@@ -400,7 +400,7 @@ one_time_init( struct gl_context *ctx )
 
 #if defined(DEBUG)
       if (MESA_VERBOSE != 0) {
-         _mesa_debug(ctx, "Mesa " PACKAGE_VERSION " DEBUG build" MESA_GIT_SHA1 "\n");
+         _mesa_debug(NULL, "Mesa " PACKAGE_VERSION " DEBUG build" MESA_GIT_SHA1 "\n");
       }
 #endif
 
@@ -412,7 +412,7 @@ one_time_init( struct gl_context *ctx )
       _mesa_init_remap_table();
    }
 
-   api_init_mask |= 1 << ctx->API;
+   initialized = true;
 
    mtx_unlock(&OneTimeLock);
 }
@@ -1204,7 +1204,7 @@ _mesa_initialize_context(struct gl_context *ctx,
    _mesa_override_gl_version(ctx);
 
    /* misc one-time initializations */
-   one_time_init(ctx);
+   one_time_init();
 
    /* Plug in driver functions and context pointer here.
     * This is important because when we call alloc_shared_state() below
