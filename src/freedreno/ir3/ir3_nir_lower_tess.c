@@ -503,9 +503,12 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 			b->cursor = nir_before_instr(&intr->instr);
 
 			if (levels) {
-				for (int i = 0; i < 4; i++)
-					if (nir_intrinsic_write_mask(intr) & (1 << i))
-						levels[i] = nir_channel(b, intr->src[0].ssa, i);
+				for (int i = 0; i < 4; i++) {
+					if (nir_intrinsic_write_mask(intr) & (1 << i)) {
+						uint32_t component = nir_intrinsic_component(intr);
+						levels[i + component] = nir_channel(b, intr->src[0].ssa, i);
+					}
+				}
 				nir_instr_remove(&intr->instr);
 			} else {
 				nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
