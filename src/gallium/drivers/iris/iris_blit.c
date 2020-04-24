@@ -379,7 +379,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    bool src_clear_supported = isl_aux_usage_has_fast_clears(src_aux_usage) &&
                               src_res->surf.format == src_fmt.fmt;
 
-   iris_resource_prepare_access(ice, batch, src_res, info->src.level, 1,
+   iris_resource_prepare_access(ice, src_res, info->src.level, 1,
                                 info->src.box.z, info->src.box.depth,
                                 src_aux_usage, src_clear_supported);
 
@@ -398,7 +398,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                 info->dst.resource, dst_aux_usage,
                                 info->dst.level, true);
 
-   iris_resource_prepare_access(ice, batch, dst_res, info->dst.level, 1,
+   iris_resource_prepare_access(ice, dst_res, info->dst.level, 1,
                                 info->dst.box.z, info->dst.box.depth,
                                 dst_aux_usage, dst_clear_supported);
 
@@ -524,10 +524,10 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       stc_dst_aux_usage =
          iris_resource_blorp_write_aux_usage(ice, stc_dst, dst_fmt.fmt);
 
-      iris_resource_prepare_access(ice, batch, src_res, info->src.level, 1,
+      iris_resource_prepare_access(ice, src_res, info->src.level, 1,
                                    info->src.box.z, info->src.box.depth,
                                    stc_src_aux_usage, false);
-      iris_resource_prepare_access(ice, batch, stc_dst, info->dst.level, 1,
+      iris_resource_prepare_access(ice, stc_dst, info->dst.level, 1,
                                    info->dst.box.z, info->dst.box.depth,
                                    stc_dst_aux_usage, false);
       iris_blorp_surf_for_resource(&screen->isl_dev, &src_surf,
@@ -680,10 +680,10 @@ iris_copy_region(struct blorp_context *blorp,
       iris_blorp_surf_for_resource(&screen->isl_dev, &dst_surf,
                                    dst, dst_aux_usage, dst_level, true);
 
-      iris_resource_prepare_access(ice, batch, src_res, src_level, 1,
+      iris_resource_prepare_access(ice, src_res, src_level, 1,
                                    src_box->z, src_box->depth,
                                    src_aux_usage, src_clear_supported);
-      iris_resource_prepare_access(ice, batch, dst_res, dst_level, 1,
+      iris_resource_prepare_access(ice, dst_res, dst_level, 1,
                                    dstz, src_box->depth,
                                    dst_aux_usage, dst_clear_supported);
 

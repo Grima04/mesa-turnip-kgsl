@@ -1108,11 +1108,10 @@ static void
 iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
-   struct iris_batch *render_batch = &ice->batches[IRIS_BATCH_RENDER];
    struct iris_resource *res = (void *) resource;
    const struct isl_drm_modifier_info *mod = res->mod_info;
 
-   iris_resource_prepare_access(ice, render_batch, res,
+   iris_resource_prepare_access(ice, res,
                                 0, INTEL_REMAINING_LEVELS,
                                 0, INTEL_REMAINING_LAYERS,
                                 mod ? mod->aux_usage : ISL_AUX_USAGE_NONE,
@@ -1918,8 +1917,7 @@ iris_transfer_map(struct pipe_context *ctx,
       /* Otherwise we're free to map on the CPU. */
 
       if (need_resolve) {
-         iris_resource_access_raw(ice, &ice->batches[IRIS_BATCH_RENDER], res,
-                                  level, box->z, box->depth,
+         iris_resource_access_raw(ice, res, level, box->z, box->depth,
                                   usage & PIPE_TRANSFER_WRITE);
       }
 

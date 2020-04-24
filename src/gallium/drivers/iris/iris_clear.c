@@ -254,7 +254,7 @@ fast_clear_color(struct iris_context *ice,
              * Fortunately, few applications ever change their clear color at
              * different levels/layers, so this shouldn't happen often.
              */
-            iris_resource_prepare_access(ice, batch, res,
+            iris_resource_prepare_access(ice, res,
                                          res_lvl, 1, layer, 1,
                                          res->aux.usage,
                                          false);
@@ -603,7 +603,7 @@ clear_depth_stencil(struct iris_context *ice,
 
    uint8_t stencil_mask = clear_stencil && stencil_res ? 0xff : 0;
    if (stencil_mask) {
-      iris_resource_prepare_access(ice, batch, stencil_res, level, 1, box->z,
+      iris_resource_prepare_access(ice, stencil_res, level, 1, box->z,
                                    box->depth, stencil_res->aux.usage, false);
       iris_blorp_surf_for_resource(&batch->screen->isl_dev,
                                    &stencil_surf, &stencil_res->base,

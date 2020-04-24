@@ -102,7 +102,7 @@ resolve_sampler_views(struct iris_context *ice,
                                   "for sampling");
          }
 
-         iris_resource_prepare_texture(ice, batch, res, isv->view.format,
+         iris_resource_prepare_texture(ice, res, isv->view.format,
                                        isv->view.base_level, isv->view.levels,
                                        isv->view.base_array_layer,
                                        isv->view.array_len);
@@ -140,7 +140,7 @@ resolve_image_views(struct iris_context *ice,
          enum isl_aux_usage aux_usage =
             iris_image_view_aux_usage(ice, pview, info);
 
-         iris_resource_prepare_access(ice, batch, res,
+         iris_resource_prepare_access(ice, res,
                                       pview->u.tex.level, 1,
                                       pview->u.tex.first_layer, num_layers,
                                       aux_usage, false);
@@ -219,7 +219,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
             struct iris_surface *surf = (void *) cso_fb->cbufs[i];
             struct iris_resource *res = (void *) cso_fb->cbufs[i]->texture;
 
-            iris_resource_prepare_texture(ice, batch, res, surf->view.format,
+            iris_resource_prepare_texture(ice, res, surf->view.format,
                                           surf->view.base_level, 1,
                                           surf->view.base_array_layer,
                                           surf->view.array_len);
@@ -817,13 +817,17 @@ iris_has_color_unresolved(const struct iris_resource *res,
 
 void
 iris_resource_prepare_access(struct iris_context *ice,
-                             struct iris_batch *batch,
                              struct iris_resource *res,
                              uint32_t start_level, uint32_t num_levels,
                              uint32_t start_layer, uint32_t num_layers,
                              enum isl_aux_usage aux_usage,
                              bool fast_clear_supported)
 {
+   /* We can't do resolves on the compute engine, so awkwardly, we have to
+    * do them on the render batch...
+    */
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
    const uint32_t clamped_levels =
       miptree_level_range_length(res, start_level, num_levels);
    for (uint32_t l = 0; l < clamped_levels; l++) {
@@ -1051,7 +1055,6 @@ isl_formats_are_fast_clear_compatible(enum isl_format a, enum isl_format b)
 
 void
 iris_resource_prepare_texture(struct iris_context *ice,
-                              struct iris_batch *batch,
                               struct iris_resource *res,
                               enum isl_format view_format,
                               uint32_t start_level, uint32_t num_levels,
@@ -1069,7 +1072,7 @@ iris_resource_prepare_texture(struct iris_context *ice,
    if (!isl_formats_are_fast_clear_compatible(res->surf.format, view_format))
       clear_supported = false;
 
-   iris_resource_prepare_access(ice, batch, res, start_level, num_levels,
+   iris_resource_prepare_access(ice, res, start_level, num_levels,
                                 start_layer, num_layers,
                                 aux_usage, clear_supported);
 }
@@ -1123,7 +1126,7 @@ iris_resource_prepare_render(struct iris_context *ice,
                              uint32_t start_layer, uint32_t layer_count,
                              enum isl_aux_usage aux_usage)
 {
-   iris_resource_prepare_access(ice, batch, res, level, 1, start_layer,
+   iris_resource_prepare_access(ice, res, level, 1, start_layer,
                                 layer_count, aux_usage,
                                 isl_aux_usage_has_fast_clears(aux_usage));
 }
@@ -1144,7 +1147,7 @@ iris_resource_prepare_depth(struct iris_context *ice,
                             struct iris_resource *res, uint32_t level,
                             uint32_t start_layer, uint32_t layer_count)
 {
-   iris_resource_prepare_access(ice, batch, res, level, 1, start_layer,
+   iris_resource_prepare_access(ice, res, level, 1, start_layer,
                                 layer_count, res->aux.usage, !!res->aux.bo);
 }
 
