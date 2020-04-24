@@ -264,6 +264,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	 * should empty/destroy rsc->batches hashset)
 	 */
 	fd_bc_invalidate_resource(rsc, false);
+	rebind_resource(rsc);
 
 	mtx_lock(&ctx->screen->lock);
 
@@ -386,8 +387,6 @@ fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)
 
 	/* shadow should not fail in any cases where we need to uncompress: */
 	debug_assert(success);
-
-	rebind_resource(rsc);
 }
 
 static struct fd_resource *
@@ -635,8 +634,8 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 
 	if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
 		if (needs_flush || fd_resource_busy(rsc, op)) {
-			realloc_bo(rsc, fd_bo_size(rsc->bo));
 			rebind_resource(rsc);
+			realloc_bo(rsc, fd_bo_size(rsc->bo));
 		}
 	} else if ((usage & PIPE_TRANSFER_WRITE) &&
 			   prsc->target == PIPE_BUFFER &&
@@ -679,7 +678,6 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 			if (needs_flush && fd_try_shadow_resource(ctx, rsc, level,
 							box, DRM_FORMAT_MOD_LINEAR)) {
 				needs_flush = busy = false;
-				rebind_resource(rsc);
 				ctx->stats.shadow_uploads++;
 			} else {
 				struct fd_resource *staging_rsc;
