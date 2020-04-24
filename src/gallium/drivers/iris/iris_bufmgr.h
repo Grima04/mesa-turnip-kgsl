@@ -89,6 +89,34 @@ enum iris_memory_zone {
 #define IRIS_BORDER_COLOR_POOL_ADDRESS IRIS_MEMZONE_DYNAMIC_START
 #define IRIS_BORDER_COLOR_POOL_SIZE (64 * 1024)
 
+/**
+ * Classification of the various incoherent caches of the GPU into a number of
+ * caching domains.
+ */
+enum iris_domain {
+   /** Render color cache. */
+   IRIS_DOMAIN_RENDER_WRITE = 0,
+   /** (Hi)Z/stencil cache. */
+   IRIS_DOMAIN_DEPTH_WRITE,
+   /** Any other read-write cache. */
+   IRIS_DOMAIN_OTHER_WRITE,
+   /** Any other read-only cache. */
+   IRIS_DOMAIN_OTHER_READ,
+   /** Number of caching domains. */
+   NUM_IRIS_DOMAINS,
+   /** Not a real cache, use to opt out of the cache tracking mechanism. */
+   IRIS_DOMAIN_NONE = NUM_IRIS_DOMAINS
+};
+
+/**
+ * Whether a caching domain is guaranteed not to write any data to memory.
+ */
+static inline bool
+iris_domain_is_read_only(enum iris_domain access)
+{
+   return access == IRIS_DOMAIN_OTHER_READ;
+}
+
 struct iris_bo {
    /**
     * Size in bytes of the buffer object.
@@ -164,6 +192,15 @@ struct iris_bo {
 
    /** BO cache list */
    struct list_head head;
+
+   /**
+    * Synchronization sequence number of most recent access of this BO from
+    * each caching domain.
+    *
+    * Although this is a global field, use in multiple contexts should be
+    * safe, see iris_emit_buffer_barrier_for() for details.
+    */
+   uint64_t last_seqnos[NUM_IRIS_DOMAINS];
 
    /**
     * Boolean of whether the GPU is definitely not accessing the buffer.
@@ -375,6 +412,24 @@ iris_bo_offset_from_base_address(struct iris_bo *bo)
     */
    assert(bo->gtt_offset < IRIS_MEMZONE_OTHER_START);
    return bo->gtt_offset;
+}
+
+/**
+ * Track access of a BO from the specified caching domain and sequence number.
+ *
+ * Can be used without locking.  Only the most recent access (i.e. highest
+ * seqno) is tracked.
+ */
+static inline void
+iris_bo_bump_seqno(struct iris_bo *bo, uint64_t seqno,
+                   enum iris_domain type)
+{
+   uint64_t *const last_seqno = &bo->last_seqnos[type];
+   uint64_t tmp, prev_seqno = p_atomic_read(last_seqno);
+
+   while (prev_seqno < seqno &&
+          prev_seqno != (tmp = p_atomic_cmpxchg(last_seqno, prev_seqno, seqno)))
+      prev_seqno = tmp;
 }
 
 enum iris_memory_zone iris_memzone_for_address(uint64_t address);
