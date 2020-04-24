@@ -244,12 +244,9 @@ bi_print_alu_type(nir_alu_type t, FILE *fp)
 static void
 bi_print_swizzle(bi_instruction *ins, unsigned src, FILE *fp)
 {
-        unsigned size = nir_alu_type_get_type_size(ins->dest_type);
-        unsigned count = (size == 64) ? 1 : (32 / size);
-
         fprintf(fp, ".");
 
-        for (unsigned u = 0; u < count; ++u) {
+        for (unsigned u = 0; u < bi_get_component_count(ins, src); ++u) {
                 assert(ins->swizzle[src][u] < 4);
                 fputc("xyzw"[ins->swizzle[src][u]], fp);
         }
@@ -348,27 +345,6 @@ bi_print_branch(struct bi_branch *branch, FILE *fp)
         fprintf(fp, ".%s", bi_cond_name(branch->cond));
 }
 
-static void
-bi_print_writemask(bi_instruction *ins, FILE *fp)
-{
-        unsigned bits_per_comp = nir_alu_type_get_type_size(ins->dest_type);
-        assert(bits_per_comp);
-        unsigned bytes_per_comp = bits_per_comp / 8;
-        unsigned comps = 16 / bytes_per_comp;
-        unsigned smask = (1 << bytes_per_comp) - 1;
-        fprintf(fp, ".");
-
-        for (unsigned i = 0; i < comps; ++i) {
-                unsigned masked = (ins->writemask >> (i * bytes_per_comp)) & smask;
-                if (!masked)
-                        continue;
-
-                assert(masked == smask);
-                assert(i < 4);
-                fputc("xyzw"[i], fp);
-        }
-}
-
 void
 bi_print_instruction(bi_instruction *ins, FILE *fp)
 {
@@ -404,10 +380,11 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, ".%s", bi_cond_name(ins->csel_cond));
         else if (ins->type == BI_BLEND)
                 fprintf(fp, ".loc%u", ins->blend_location);
-        else if (ins->type == BI_STORE || ins->type == BI_STORE_VAR)
-                fprintf(fp, ".v%u", ins->store_channels);
         else if (ins->type == BI_TEX)
                 fprintf(fp, ".%s", bi_tex_op_name(ins->op.texture));
+
+        if (ins->vector_channels)
+                fprintf(fp, ".v%u", ins->vector_channels);
 
         if (ins->dest)
                 bi_print_alu_type(ins->dest_type, fp);
@@ -422,8 +399,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         bool succ = bi_print_dest_index(fp, ins, ins->dest);
         assert(succ);
 
-        if (ins->dest)
-                bi_print_writemask(ins, fp);
+        if (ins->dest_offset)
+                fprintf(fp, "+%u", ins->dest_offset);
 
         fprintf(fp, ", ");
 

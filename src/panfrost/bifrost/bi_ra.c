@@ -25,6 +25,7 @@
  */
 
 #include "compiler.h"
+#include "bi_print.h"
 #include "panfrost/util/lcra.h"
 #include "util/u_memory.h"
 
@@ -44,7 +45,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l)
                         if (ins->dest && (ins->dest < l->node_count)) {
                                 for (unsigned i = 1; i < l->node_count; ++i) {
                                         if (live[i])
-                                                lcra_add_node_interference(l, ins->dest, ins->writemask, i, live[i]);
+                                                lcra_add_node_interference(l, ins->dest, bi_writemask(ins), i, live[i]);
                                 }
                         }
 
@@ -101,10 +102,10 @@ bi_reg_from_index(struct lcra_state *l, unsigned index, unsigned offset)
         if (solution < 0)
                 return index;
 
-        solution += offset;
-
         assert((solution & 0x3) == 0);
         unsigned reg = solution / 4;
+        reg += offset;
+
         return BIR_INDEX_REGISTER | reg;
 }
 
@@ -121,19 +122,10 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
                 /* TODO: Do we do anything here? */
         } else {
                 /* Use the swizzle as component select */
-                nir_alu_type T = ins->src_types[src];
-                unsigned size = nir_alu_type_get_type_size(T);
-                assert(size <= 32); /* TODO: 64-bit */
-                unsigned comps_per_reg = 32 / size;
                 unsigned components = bi_get_component_count(ins, src);
 
                 for (unsigned i = 0; i < components; ++i) {
-                        /* If we're not writing the component, who cares? */
-                        if (!bi_writes_component(ins, i))
-                                continue;
-
-                        unsigned off = ins->swizzle[src][i] / comps_per_reg;
-                        off *= 4; /* 32-bit registers */
+                        unsigned off = ins->swizzle[src][i] / components;
 
                         /* We can't cross register boundaries in a swizzle */
                         if (i == 0)
@@ -141,7 +133,7 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
                         else
                                 assert(off == offset);
 
-                        ins->swizzle[src][i] %= comps_per_reg;
+                        ins->swizzle[src][i] %= components;
                 }
         }
 
@@ -154,25 +146,7 @@ bi_adjust_dest_ra(bi_instruction *ins, struct lcra_state *l)
         if (ins->dest >= l->node_count)
                 return;
 
-        bool vector = (bi_class_props[ins->type] & BI_VECTOR);
-        unsigned offset = 0;
-
-        if (!vector) {
-                /* Look at the writemask to get an offset, specifically the
-                 * trailing zeros */
-
-                unsigned tz = __builtin_ctz(ins->writemask);
-
-                /* Recall writemask is one bit per byte, so tz is in eytes */
-                unsigned regs = tz / 4;
-                offset = regs * 4;
-
-                /* Adjust writemask to compensate */
-                ins->writemask >>= offset;
-        }
-
-        ins->dest = bi_reg_from_index(l, ins->dest, offset);
-
+        ins->dest = bi_reg_from_index(l, ins->dest, ins->dest_offset);
 }
 
 static void

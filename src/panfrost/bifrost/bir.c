@@ -93,26 +93,15 @@ bi_from_bytemask(uint16_t bytemask, unsigned bytes)
 }
 
 unsigned
-bi_get_component_count(bi_instruction *ins, unsigned src)
+bi_get_component_count(bi_instruction *ins, signed src)
 {
         if (bi_class_props[ins->type] & BI_VECTOR) {
-                return (src == 0) ? 4 : 1;
+                assert(ins->vector_channels);
+                return (src <= 0) ? ins->vector_channels : 1;
         } else {
-                /* Stores imply VECTOR */
-                assert(ins->dest_type);
-                unsigned bytes = nir_alu_type_get_type_size(ins->dest_type);
-                return 32 / bytes;
+                unsigned bytes = nir_alu_type_get_type_size(src < 0 ? ins->dest_type : ins->src_types[src]);
+                return MAX2(32 / bytes, 1);
         }
-}
-
-unsigned
-bi_load32_components(bi_instruction *ins)
-{
-        unsigned mask = bi_from_bytemask(ins->writemask, 4);
-        unsigned count = util_bitcount(mask);
-        assert(mask == ((1 << count) - 1));
-        assert(count >= 1 && count <= 4);
-        return count;
 }
 
 uint16_t
@@ -157,11 +146,18 @@ bi_get_immediate(bi_instruction *ins, unsigned index)
 bool
 bi_writes_component(bi_instruction *ins, unsigned comp)
 {
-        /* TODO: Do we want something less coarse? */
-        if (bi_class_props[ins->type] & BI_VECTOR)
-                return true;
+        return comp < bi_get_component_count(ins, -1);
+}
 
+unsigned
+bi_writemask(bi_instruction *ins)
+{
         nir_alu_type T = ins->dest_type;
         unsigned size = nir_alu_type_get_type_size(T);
-        return ins->writemask & (0xF << (comp * (size / 8)));
+        unsigned bytes_per_comp = size / 8;
+        unsigned components = bi_get_component_count(ins, -1);
+        unsigned bytes = bytes_per_comp * components;
+        unsigned mask = (1 << bytes) - 1;
+        unsigned shift = ins->dest_offset * 4; /* 32-bit words */
+        return (mask << shift);
 }

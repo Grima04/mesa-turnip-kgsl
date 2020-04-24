@@ -114,8 +114,7 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
  * the end of a clause. Implies ADD */
 #define BI_SCHED_HI_LATENCY (1 << 7)
 
-/* Intrinsic is vectorized and should read 4 components in the first source
- * regardless of writemask */
+/* Intrinsic is vectorized and acts with `vector_channels` components */
 #define BI_VECTOR (1 << 8)
 
 /* Use a data register for src0/dest respectively, bypassing the usual
@@ -229,6 +228,10 @@ typedef struct {
         unsigned dest;
         unsigned src[BIR_SRC_COUNT];
 
+        /* 32-bit word offset for destination, added to the register number in
+         * RA when lowering combines */
+        unsigned dest_offset;
+
         /* If one of the sources has BIR_INDEX_CONSTANT */
         union {
                 uint64_t u64;
@@ -246,14 +249,6 @@ typedef struct {
         /* Round mode (requires BI_ROUNDMODE) */
         enum bifrost_roundmode roundmode;
 
-        /* Writemask (bit for each affected byte). This is quite restricted --
-         * ALU ops can only write to a single channel (exception: <32 in which
-         * you can write to 32/N contiguous aligned channels). Load/store can
-         * only write to all channels at once, in a sense. But it's still
-         * better to use this generic form than have synthetic ops flying
-         * about, since we're not essentially vector for RA purposes. */
-        uint16_t writemask;
-
         /* Destination type. Usually the type of the instruction
          * itself, but if sources and destination have different
          * types, the type of the destination wins (so f2i would be
@@ -268,6 +263,9 @@ typedef struct {
          * sense. On non-SIMD instructions, it can be used for component
          * selection, so we don't have to special case extraction. */
         uint8_t swizzle[BIR_SRC_COUNT][NIR_MAX_VEC_COMPONENTS];
+
+        /* For VECTOR ops, how many channels are written? */
+        unsigned vector_channels;
 
         /* A class-specific op from which the actual opcode can be derived
          * (along with the above information) */
@@ -299,9 +297,6 @@ typedef struct {
 
                 /* For BLEND -- the location 0-7 */
                 unsigned blend_location;
-
-                /* For STORE, STORE_VAR -- channel count */
-                unsigned store_channels;
         };
 } bi_instruction;
 
@@ -578,11 +573,11 @@ bool bi_has_source_mods(bi_instruction *ins);
 bool bi_is_src_swizzled(bi_instruction *ins, unsigned s);
 bool bi_has_arg(bi_instruction *ins, unsigned arg);
 uint16_t bi_from_bytemask(uint16_t bytemask, unsigned bytes);
-unsigned bi_get_component_count(bi_instruction *ins, unsigned s);
-unsigned bi_load32_components(bi_instruction *ins);
+unsigned bi_get_component_count(bi_instruction *ins, signed s);
 uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 uint64_t bi_get_immediate(bi_instruction *ins, unsigned index);
 bool bi_writes_component(bi_instruction *ins, unsigned comp);
+unsigned bi_writemask(bi_instruction *ins);
 
 /* BIR passes */
 

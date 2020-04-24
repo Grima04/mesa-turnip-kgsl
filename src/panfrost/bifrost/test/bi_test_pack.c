@@ -56,12 +56,12 @@ bit_test_single(struct panfrost_device *dev,
                 },
                 .dest = BIR_INDEX_REGISTER | 0,
                 .dest_type = nir_type_uint32,
-                .writemask = 0xFFFF
+                .vector_channels = 4,
         };
 
         bi_instruction ldva = {
                 .type = BI_LOAD_VAR_ADDRESS,
-                .writemask = (1 << 12) - 1,
+                .vector_channels = 3,
                 .dest = BIR_INDEX_REGISTER | 32,
                 .dest_type = nir_type_uint32,
                 .src = {
@@ -88,7 +88,7 @@ bit_test_single(struct panfrost_device *dev,
                         nir_type_uint32,
                         nir_type_uint32, nir_type_uint32, nir_type_uint32,
                 },
-                .store_channels = 4
+                .vector_channels = 4
         };
 
         bi_context *ctx = rzalloc(NULL, bi_context);
@@ -382,7 +382,6 @@ bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
         bi_instruction ins = {
                 .type = BI_CONVERT,
                 .dest = BIR_INDEX_REGISTER | 0,
-                .writemask = 0xF,
                 .src = { BIR_INDEX_REGISTER | 0 }
         };
 

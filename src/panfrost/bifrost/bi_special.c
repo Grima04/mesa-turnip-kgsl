@@ -42,7 +42,6 @@ bi_emit_fexp2_new(bi_context *ctx, nir_alu_instr *instr)
                 .op = { .mscale = true },
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_float32,
-                .writemask = 0xF,
                 .src = {
                         bir_src_index(&instr->src[0].src),
                         BIR_INDEX_CONSTANT | 0,
@@ -68,7 +67,6 @@ bi_emit_fexp2_new(bi_context *ctx, nir_alu_instr *instr)
                 .type = BI_CONVERT,
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_int32,
-                .writemask = 0xF,
                 .src = { mscale.dest },
                 .src_types = { nir_type_float32 },
                 .roundmode = BIFROST_RTE
@@ -81,7 +79,6 @@ bi_emit_fexp2_new(bi_context *ctx, nir_alu_instr *instr)
                 .op = { .special = BI_SPECIAL_EXP2_LOW },
                 .dest = bir_dest_index(&instr->dest.dest),
                 .dest_type = nir_type_float32,
-                .writemask = 0xF,
                 .src = { f2i.dest, mscale.src[0] },
                 .src_types = { nir_type_int32, nir_type_float32 },
         };
@@ -102,7 +99,6 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .op = { .frexp = BI_FREXPE_LOG },
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_int32,
-                .writemask = 0xF,
                 .src = { bir_src_index(&instr->src[0].src) },
                 .src_types = { nir_type_float32 }
         };
@@ -112,7 +108,6 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .type = BI_CONVERT,
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_float32,
-                .writemask = 0xF,
                 .src = { frexpe.dest },
                 .src_types = { nir_type_int32 },
                 .roundmode = BIFROST_RTZ
@@ -124,7 +119,6 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .op = { .reduce = BI_REDUCE_ADD_FREXPM },
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_float32,
-                .writemask = 0xF,
                 .src = {
                         BIR_INDEX_CONSTANT,
                         bir_src_index(&instr->src[0].src),
@@ -141,7 +135,6 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .op = { .table = BI_TABLE_LOG2_U_OVER_U_1_LOW },
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_float32,
-                .writemask = 0xF,
                 .src = { bir_src_index(&instr->src[0].src) },
                 .src_types = { nir_type_float32 },
         };
@@ -151,7 +144,6 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .type = BI_FMA,
                 .dest = bir_dest_index(&instr->dest.dest),
                 .dest_type = nir_type_float32,
-                .writemask = 0xF,
                 .src = {
                         help.dest,
                         x_minus_1.dest,

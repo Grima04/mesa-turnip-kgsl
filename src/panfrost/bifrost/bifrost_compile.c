@@ -59,19 +59,12 @@ emit_jump(bi_context *ctx, nir_jump_instr *instr)
         pan_block_add_successor(&ctx->current_block->base, &branch->branch.target->base);
 }
 
-/* Gets a bytemask for a complete vecN write */
-static unsigned
-bi_mask_for_channels_32(unsigned i)
-{
-        return (1 << (4 * i)) - 1;
-}
-
 static bi_instruction
 bi_load(enum bi_class T, nir_intrinsic_instr *instr)
 {
         bi_instruction load = {
                 .type = T,
-                .writemask = bi_mask_for_channels_32(instr->num_components),
+                .vector_channels = instr->num_components,
                 .src = { BIR_INDEX_CONSTANT },
                 .src_types = { nir_type_uint32 },
                 .constant = { .u64 = nir_intrinsic_base(instr) },
@@ -135,7 +128,6 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                         },
                         .dest = BIR_INDEX_REGISTER | 60 /* TODO: RA */,
                         .dest_type = nir_type_uint32,
-                        .writemask = 0xF
                 };
 
                 bi_emit(ctx, ins);
@@ -160,7 +152,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 },
                 .dest = BIR_INDEX_REGISTER | 48 /* Looks like magic */,
                 .dest_type = nir_type_uint32,
-                .writemask = 0xF
+                .vector_channels = 4
         };
 
         assert(blend.blend_location < 8);
@@ -190,7 +182,7 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         bi_instruction address = bi_load_with_r61(BI_LOAD_VAR_ADDRESS, instr);
         address.dest = bi_make_temp(ctx);
         address.dest_type = nir_type_uint32;
-        address.writemask = (1 << 12) - 1;
+        address.vector_channels = 3;
 
         unsigned nr = nir_intrinsic_src_components(instr, 0);
         assert(nir_intrinsic_write_mask(instr) == ((1 << nr) - 1));
@@ -209,7 +201,7 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
                         { 0 },
                         { 0 }, { 1 }, { 2}
                 },
-                .store_channels = nr,
+                .vector_channels = nr,
         };
 
         for (unsigned i = 0; i < nr; ++i)
@@ -253,7 +245,7 @@ bi_emit_sysval(bi_context *ctx, nir_instr *instr,
 
         bi_instruction load = {
                 .type = BI_LOAD_UNIFORM,
-                .writemask = (1 << (nr_components * 4)) - 1,
+                .vector_channels = nr_components,
                 .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                 .src_types = { nir_type_uint32, nir_type_uint32 },
                 .constant = { (uniform * 16) + offset },
@@ -327,7 +319,6 @@ emit_load_const(bi_context *ctx, nir_load_const_instr *instr)
                 .type = BI_MOV,
                 .dest = bir_ssa_index(&instr->def),
                 .dest_type = instr->def.bit_size | nir_type_uint,
-                .writemask = (1 << (instr->def.bit_size / 8)) - 1,
                 .src = {
                         BIR_INDEX_CONSTANT
                 },
@@ -476,7 +467,7 @@ bi_cond_for_nir(nir_op op, bool soft)
 
 static void
 bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
-                unsigned *constants_left, unsigned *constant_shift)
+                unsigned *constants_left, unsigned *constant_shift, unsigned comps)
 {
         unsigned bits = nir_src_bit_size(instr->src[i].src);
         unsigned dest_bits = nir_dest_bit_size(instr->dest.dest);
@@ -506,13 +497,19 @@ bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
 
         alu->src[to] = bir_src_index(&instr->src[i].src);
 
-        /* We assert scalarization above */
-        alu->swizzle[to][0] = instr->src[i].swizzle[0];
+        /* Copy swizzle for all vectored components, replicating last component
+         * to fill undersized */
+
+        unsigned vec = alu->type == BI_COMBINE ? 1 :
+                MAX2(1, 32 / dest_bits);
+
+        for (unsigned j = 0; j < vec; ++j)
+                alu->swizzle[to][j] = instr->src[i].swizzle[MIN2(j, comps - 1)];
 }
 
 static void
 bi_fuse_csel_cond(bi_instruction *csel, nir_alu_src cond,
-                unsigned *constants_left, unsigned *constant_shift)
+                unsigned *constants_left, unsigned *constant_shift, unsigned comps)
 {
         /* Bail for vector weirdness */
         if (cond.swizzle[0] != 0)
@@ -537,8 +534,8 @@ bi_fuse_csel_cond(bi_instruction *csel, nir_alu_src cond,
 
         /* We found one, let's fuse it in */
         csel->csel_cond = bcond;
-        bi_copy_src(csel, alu, 0, 0, constants_left, constant_shift);
-        bi_copy_src(csel, alu, 1, 1, constants_left, constant_shift);
+        bi_copy_src(csel, alu, 0, 0, constants_left, constant_shift, comps);
+        bi_copy_src(csel, alu, 1, 1, constants_left, constant_shift, comps);
 }
 
 static void
@@ -567,22 +564,14 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         /* TODO: Implement lowering of special functions for older Bifrost */
         assert((alu.type != BI_SPECIAL) || !(ctx->quirks & BIFROST_NO_FAST_OP));
 
-        if (instr->dest.dest.is_ssa) {
-                /* Construct a writemask */
-                unsigned bits_per_comp = instr->dest.dest.ssa.bit_size;
-                unsigned comps = instr->dest.dest.ssa.num_components;
+        unsigned comps = nir_dest_num_components(instr->dest.dest);
 
-                if (alu.type != BI_COMBINE)
-                        assert(comps == 1);
+        if (alu.type != BI_COMBINE)
+                assert(comps <= MAX2(1, 32 / comps));
 
-                unsigned bits = bits_per_comp * comps;
-                unsigned bytes = bits / 8;
-                alu.writemask = (1 << bytes) - 1;
-        } else {
-                unsigned comp_mask = instr->dest.write_mask;
-
-                alu.writemask = pan_to_bytemask(nir_dest_bit_size(instr->dest.dest),
-                                comp_mask);
+        if (!instr->dest.dest.is_ssa) {
+                for (unsigned i = 0; i < comps; ++i)
+                        assert(instr->dest.write_mask);
         }
 
         /* We inline constants as we go. This tracks how many constants have
@@ -607,7 +596,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 if (i && alu.type == BI_CSEL)
                         f++;
 
-                bi_copy_src(&alu, instr, i, i + f, &constants_left, &constant_shift);
+                bi_copy_src(&alu, instr, i, i + f, &constants_left, &constant_shift, comps);
         }
 
         /* Op-specific fixup */
@@ -676,7 +665,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.src_types[1] = alu.src_types[0];
 
                 bi_fuse_csel_cond(&alu, instr->src[0],
-                                &constants_left, &constant_shift);
+                                &constants_left, &constant_shift, comps);
         }
 
         bi_emit(ctx, alu);
@@ -698,8 +687,7 @@ emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
                 .dest = bir_dest_index(&instr->dest),
                 .dest_type = instr->dest_type,
                 .src_types = { nir_type_float32, nir_type_float32 },
-                .writemask = instr->dest_type == nir_type_float32 ?
-                        0xFFFF : 0xFF,
+                .vector_channels = 4
         };
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {

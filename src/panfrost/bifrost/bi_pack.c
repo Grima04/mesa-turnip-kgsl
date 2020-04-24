@@ -968,10 +968,6 @@ bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
                 BIFROST_ADD_OP_LD_VAR_32 :
                 BIFROST_ADD_OP_LD_VAR_16;
 
-        unsigned cmask = bi_from_bytemask(ins->writemask, size / 8);
-        unsigned channels = util_bitcount(cmask);
-        assert(cmask == ((1 << channels) - 1));
-
         unsigned packed_addr = 0;
 
         if (ins->src[0] & BIR_INDEX_CONSTANT) {
@@ -987,6 +983,7 @@ bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
         assert(ins->dest & BIR_INDEX_REGISTER);
         clause->data_register = ins->dest & ~BIR_INDEX_REGISTER;
 
+        unsigned channels = ins->vector_channels;
         assert(channels >= 1 && channels <= 4);
 
         struct bifrost_ld_var pack = {
@@ -1076,7 +1073,7 @@ bi_pack_add_addmin(bi_instruction *ins, struct bi_registers *regs)
 static unsigned
 bi_pack_add_ld_ubo(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
-        unsigned components = bi_load32_components(ins);
+        assert(ins->vector_channels >= 1 && ins->vector_channels <= 4);
 
         const unsigned ops[4] = {
                 BIFROST_ADD_OP_LD_UBO_1,
@@ -1086,7 +1083,7 @@ bi_pack_add_ld_ubo(bi_clause *clause, bi_instruction *ins, struct bi_registers *
         };
 
         bi_write_data_register(clause, ins);
-        return bi_pack_add_2src(ins, regs, ops[components - 1]);
+        return bi_pack_add_2src(ins, regs, ops[ins->vector_channels - 1]);
 }
 
 static enum bifrost_ldst_type
@@ -1119,11 +1116,13 @@ bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_regist
 static unsigned
 bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
+        assert(ins->vector_channels >= 0 && ins->vector_channels <= 4);
+
         struct bifrost_ld_attr pack = {
                 .src0 = bi_get_src(ins, regs, 1, false),
                 .src1 = bi_get_src(ins, regs, 2, false),
                 .location = bi_get_immediate(ins, 0),
-                .channels = MALI_POSITIVE(bi_load32_components(ins)),
+                .channels = MALI_POSITIVE(ins->vector_channels),
                 .type = bi_pack_ldst_type(ins->dest_type),
                 .op = BIFROST_ADD_OP_LD_ATTR
         };
@@ -1135,13 +1134,13 @@ bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, struct bi_registers 
 static unsigned
 bi_pack_add_st_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
 {
-        assert(ins->store_channels >= 1 && ins->store_channels <= 4);
+        assert(ins->vector_channels >= 1 && ins->vector_channels <= 4);
 
         struct bifrost_st_vary pack = {
                 .src0 = bi_get_src(ins, regs, 1, false),
                 .src1 = bi_get_src(ins, regs, 2, false),
                 .src2 = bi_get_src(ins, regs, 3, false),
-                .channels = MALI_POSITIVE(ins->store_channels),
+                .channels = MALI_POSITIVE(ins->vector_channels),
                 .op = BIFROST_ADD_OP_ST_VAR
         };
 
