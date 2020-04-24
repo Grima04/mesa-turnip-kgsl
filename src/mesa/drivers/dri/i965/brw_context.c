@@ -924,7 +924,7 @@ brw_process_driconf_options(struct brw_context *brw)
    ctx->Const.ForceGLSLAbsSqrt =
       driQueryOptionb(options, "force_glsl_abs_sqrt");
 
-   ctx->Const.GLSLZeroInit = driQueryOptionb(options, "glsl_zero_init");
+   ctx->Const.GLSLZeroInit = driQueryOptionb(options, "glsl_zero_init") ? 1 : 0;
 
    brw->dual_color_blend_by_location =
       driQueryOptionb(options, "dual_color_blend_by_location");

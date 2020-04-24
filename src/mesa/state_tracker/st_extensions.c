@@ -1203,7 +1203,9 @@ void st_init_extensions(struct pipe_screen *screen,
       extensions->EXT_texture_integer = GL_FALSE;
    }
 
-   consts->GLSLZeroInit = options->glsl_zero_init;
+   if (options->glsl_zero_init) {
+      consts->GLSLZeroInit = 1;
+   }
 
    consts->ForceIntegerTexNearest = options->force_integer_tex_nearest;
 

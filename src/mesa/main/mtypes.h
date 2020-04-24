@@ -3868,9 +3868,9 @@ struct gl_constants
    GLboolean ForceGLSLAbsSqrt;
 
    /**
-    * Force uninitialized variables to default to zero.
+    * Types of variable to default initialized to zero.
     */
-   GLboolean GLSLZeroInit;
+   GLuint GLSLZeroInit;
 
    /**
     * Treat integer textures using GL_LINEAR filters as GL_NEAREST.

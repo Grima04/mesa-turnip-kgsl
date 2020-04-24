@@ -84,6 +84,8 @@ _mesa_glsl_parse_state::_mesa_glsl_parse_state(struct gl_context *_ctx,
    this->forced_language_version = ctx->Const.ForceGLSLVersion;
    if (ctx->Const.GLSLZeroInit == 1) {
       this->zero_init = (1u << ir_var_auto) | (1u << ir_var_temporary) | (1u << ir_var_shader_out);
+   } else if (ctx->Const.GLSLZeroInit == 2) {
+      this->zero_init = (1u << ir_var_auto) | (1u << ir_var_temporary) | (1u << ir_var_function_out);
    } else {
       this->zero_init = 0;
    }
