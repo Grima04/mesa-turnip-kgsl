@@ -8797,8 +8797,14 @@ detect_conflicting_assignments(struct _mesa_glsl_parse_state *state,
       if (!var || !var->data.assigned)
          continue;
 
-      if (strcmp(var->name, "gl_FragColor") == 0)
+      if (strcmp(var->name, "gl_FragColor") == 0) {
          gl_FragColor_assigned = true;
+         if (!var->constant_initializer && state->zero_init) {
+            const ir_constant_data data = { { 0 } };
+            var->data.has_initializer = true;
+            var->constant_initializer = new(var) ir_constant(var->type, &data);
+         }
+      }
       else if (strcmp(var->name, "gl_FragData") == 0)
          gl_FragData_assigned = true;
         else if (strcmp(var->name, "gl_SecondaryFragColorEXT") == 0)
