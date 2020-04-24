@@ -146,4 +146,7 @@ panfrost_get_default_swizzle(unsigned components)
         }
 }
 
+enum mali_format
+panfrost_format_to_bifrost_blend(const struct util_format_description *desc);
+
 #endif

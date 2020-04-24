@@ -195,6 +195,8 @@ struct panfrost_shader_state {
         unsigned stack_size;
         unsigned shared_size;
 
+        /* For Bifrost - output type for each RT */
+        enum bifrost_shader_type blend_types[BIFROST_MAX_RENDER_TARGET_COUNT];
 
         unsigned int varying_count;
         struct mali_attr_meta varyings[PIPE_MAX_ATTRIBS];

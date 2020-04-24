@@ -466,6 +466,8 @@ enum bifrost_shader_type {
         BIFROST_BLEND_U16 = 5,
 };
 
+#define BIFROST_MAX_RENDER_TARGET_COUNT 8
+
 struct bifrost_blend_rt {
         /* This is likely an analogue of the flags on
          * midgard_blend_rt */
@@ -482,51 +484,53 @@ struct bifrost_blend_rt {
          * constant_hi = int(f / 255)
          * constant_lo = 65535*f - (65535/255) * constant_hi
          */
-
         u16 constant;
 
         struct mali_blend_equation equation;
+
         /*
          * - 0x19 normally
          * - 0x3 when this slot is unused (everything else is 0 except the index)
          * - 0x11 when this is the fourth slot (and it's used)
-+	 * - 0 when there is a blend shader
+         * - 0 when there is a blend shader
          */
         u16 unk2;
+
         /* increments from 0 to 3 */
         u16 index;
 
-	union {
-		struct {
-			/* So far, I've only seen:
-			 * - R001 for 1-component formats
-			 * - RG01 for 2-component formats
-			 * - RGB1 for 3-component formats
-			 * - RGBA for 4-component formats
-			 */
-			u32 swizzle : 12;
-			enum mali_format format : 8;
+        union {
+                struct {
+                        /* So far, I've only seen:
+                         * - R001 for 1-component formats
+                         * - RG01 for 2-component formats
+                         * - RGB1 for 3-component formats
+                         * - RGBA for 4-component formats
+                         */
+                        u32 swizzle : 12;
+                        enum mali_format format : 8;
 
-			/* Type of the shader output variable. Note, this can
-                         * be different from the format.
-                         * enum bifrost_shader_type
-			 */
-			u32 shader_type : 3;
-			u32 zero : 9;
-		};
+                        /* Type of the shader output variable. Note, this can
+                          * be different from the format.
+                          * enum bifrost_shader_type
+                         */
+                        u32 zero1 : 4;
+                        u32 shader_type : 3;
+                        u32 zero2 : 5;
+                };
 
-		/* Only the low 32 bits of the blend shader are stored, the
-		 * high 32 bits are implicitly the same as the original shader.
-		 * According to the kernel driver, the program counter for
-		 * shaders is actually only 24 bits, so shaders cannot cross
-		 * the 2^24-byte boundary, and neither can the blend shader.
-		 * The blob handles this by allocating a 2^24 byte pool for
-		 * shaders, and making sure that any blend shaders are stored
-		 * in the same pool as the original shader. The kernel will
-		 * make sure this allocation is aligned to 2^24 bytes.
-		 */
-		u32 shader;
-	};
+                /* Only the low 32 bits of the blend shader are stored, the
+                 * high 32 bits are implicitly the same as the original shader.
+                 * According to the kernel driver, the program counter for
+                 * shaders is actually only 24 bits, so shaders cannot cross
+                 * the 2^24-byte boundary, and neither can the blend shader.
+                 * The blob handles this by allocating a 2^24 byte pool for
+                 * shaders, and making sure that any blend shaders are stored
+                 * in the same pool as the original shader. The kernel will
+                 * make sure this allocation is aligned to 2^24 bytes.
+                 */
+                u32 shader;
+        };
 } __attribute__((packed));
 
 /* Descriptor for the shader. Following this is at least one, up to four blend

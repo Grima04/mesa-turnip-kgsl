@@ -1606,8 +1606,51 @@ pandecode_bifrost_blend(void *descs, int job_no, int rt_no)
 
         /* TODO figure out blend shader enable bit */
         pandecode_blend_equation(&b->equation);
+
         pandecode_prop("unk2 = 0x%" PRIx16, b->unk2);
         pandecode_prop("index = 0x%" PRIx16, b->index);
+
+        pandecode_log(".format = ");
+        pandecode_format_short(b->format, false);
+        pandecode_swizzle(b->swizzle, b->format);
+        pandecode_log_cont(",\n");
+
+        pandecode_prop("swizzle = 0x%" PRIx32, b->swizzle);
+        pandecode_prop("format = 0x%" PRIx32, b->format);
+
+        if (b->zero1) {
+                pandecode_msg("XXX: pandecode_bifrost_blend zero1 tripped\n");
+                pandecode_prop("zero1 = 0x%" PRIx32, b->zero1);
+        }
+
+        pandecode_log(".shader_type = ");
+        switch(b->shader_type) {
+        case BIFROST_BLEND_F16:
+                pandecode_log_cont("BIFROST_BLEND_F16");
+                break;
+        case BIFROST_BLEND_F32:
+                pandecode_log_cont("BIFROST_BLEND_F32");
+                break;
+        case BIFROST_BLEND_I32:
+                pandecode_log_cont("BIFROST_BLEND_I32");
+                break;
+        case BIFROST_BLEND_U32:
+                pandecode_log_cont("BIFROST_BLEND_U32");
+                break;
+        case BIFROST_BLEND_I16:
+                pandecode_log_cont("BIFROST_BLEND_I16");
+                break;
+        case BIFROST_BLEND_U16:
+                pandecode_log_cont("BIFROST_BLEND_U16");
+                break;
+        }
+        pandecode_log_cont(",\n");
+
+        if (b->zero2) {
+                pandecode_msg("XXX: pandecode_bifrost_blend zero2 tripped\n");
+                pandecode_prop("zero2 = 0x%" PRIx32, b->zero2);
+        }
+
         pandecode_prop("shader = 0x%" PRIx32, b->shader);
 
         pandecode_indent--;

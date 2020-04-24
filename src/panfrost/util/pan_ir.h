@@ -87,7 +87,7 @@ typedef struct {
         int uniform_cutoff;
 
         /* For Bifrost - output type for each RT */
-        nir_alu_type blend_types[8];
+        nir_alu_type blend_types[BIFROST_MAX_RENDER_TARGET_COUNT];
 
         /* Prepended before uniforms, mapping to SYSVAL_ names for the
          * sysval */

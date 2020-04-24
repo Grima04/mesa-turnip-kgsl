@@ -615,7 +615,7 @@ panfrost_frag_meta_zsa_update(struct panfrost_context *ctx,
 static void
 panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 struct mali_shader_meta *fragmeta,
-                                struct midgard_blend_rt *rts)
+                                void *rts)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
 
@@ -679,22 +679,56 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
         /* Additional blend descriptor tacked on for jobs using MFBD */
 
         for (unsigned i = 0; i < rt_count; ++i) {
-                rts[i].flags = 0x200;
+                if (dev->quirks & IS_BIFROST) {
+                        struct bifrost_blend_rt *brts = rts;
+                        struct panfrost_shader_state *fs;
+                        fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
-                bool is_srgb = (ctx->pipe_framebuffer.nr_cbufs > i) &&
-                               (ctx->pipe_framebuffer.cbufs[i]) &&
-                               util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
+                        brts[i].flags = 0x200;
+                        if (blend[i].is_shader) {
+                                /* The blend shader's address needs to be at
+                                 * the same top 32 bit as the fragment shader.
+                                 * TODO: Ensure that's always the case.
+                                 */
+                                assert((blend[i].shader.gpu & (0xffffffffull << 32)) ==
+                                       (fs->bo->gpu & (0xffffffffull << 32)));
+                                brts[i].shader = blend[i].shader.gpu;
+                                brts[i].unk2 = 0x0;
+                        } else {
+                                enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
+                                const struct util_format_description *format_desc;
+                                format_desc = util_format_description(format);
 
-                SET_BIT(rts[i].flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
-                SET_BIT(rts[i].flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
-                SET_BIT(rts[i].flags, MALI_BLEND_SRGB, is_srgb);
-                SET_BIT(rts[i].flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
+                                brts[i].equation = *blend[i].equation.equation;
 
-                if (blend[i].is_shader) {
-                        rts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
+                                /* TODO: this is a bit more complicated */
+                                brts[i].constant = blend[i].equation.constant;
+
+                                brts[i].format = panfrost_format_to_bifrost_blend(format_desc);
+                                brts[i].unk2 = 0x19;
+
+                                brts[i].shader_type = fs->blend_types[i];
+                        }
                 } else {
-                        rts[i].blend.equation = *blend[i].equation.equation;
-                        rts[i].blend.constant = blend[i].equation.constant;
+                        struct midgard_blend_rt *mrts = rts;
+
+                        mrts[i].flags = 0x200;
+
+                        bool is_srgb = (ctx->pipe_framebuffer.nr_cbufs > i) &&
+                                       (ctx->pipe_framebuffer.cbufs[i]) &&
+                                       util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
+
+                        SET_BIT(mrts[i].flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
+                        SET_BIT(mrts[i].flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
+                        SET_BIT(mrts[i].flags, MALI_BLEND_SRGB, is_srgb);
+                        SET_BIT(mrts[i].flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
+
+                        if (blend[i].is_shader) {
+                                mrts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
+                        } else {
+                                mrts[i].blend.equation = *blend[i].equation.equation;
+                                mrts[i].blend.constant = blend[i].equation.constant;
+                        }
                 }
         }
 }
@@ -702,7 +736,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
 static void
 panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                                struct mali_shader_meta *fragmeta,
-                               struct midgard_blend_rt *rts)
+                               void *rts)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs;
@@ -779,20 +813,31 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
                 struct panfrost_device *dev = pan_device(ctx->base.screen);
                 unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
                 size_t desc_size = sizeof(meta);
-                struct midgard_blend_rt rts[4];
+                void *rts = NULL;
                 struct panfrost_transfer xfer;
+                unsigned rt_size;
 
-                assert(rt_count <= ARRAY_SIZE(rts));
+                if (dev->quirks & MIDGARD_SFBD)
+                        rt_size = 0;
+                else if (dev->quirks & IS_BIFROST)
+                        rt_size = sizeof(struct bifrost_blend_rt);
+                else
+                        rt_size = sizeof(struct midgard_blend_rt);
+
+                desc_size += rt_size * rt_count;
+
+                if (rt_size)
+                        rts = rzalloc_size(ctx, rt_size * rt_count);
 
                 panfrost_frag_shader_meta_init(ctx, &meta, rts);
-
-                if (!(dev->quirks & MIDGARD_SFBD))
-                        desc_size += sizeof(*rts) * rt_count;
 
                 xfer = panfrost_allocate_transient(batch, desc_size);
 
                 memcpy(xfer.cpu, &meta, sizeof(meta));
-                memcpy(xfer.cpu + sizeof(meta), rts, sizeof(*rts) * rt_count);
+                memcpy(xfer.cpu + sizeof(meta), rts, rt_size * rt_count);
+
+                if (rt_size)
+                        ralloc_free(rts);
 
                 shader_ptr = xfer.gpu;
         } else {

@@ -90,6 +90,31 @@ pan_format_from_glsl(const struct glsl_type *type)
                 MALI_NR_CHANNELS(4);
 }
 
+static enum bifrost_shader_type
+bifrost_blend_type_from_nir(nir_alu_type nir_type)
+{
+        switch(nir_type) {
+        case 0: /* Render target not in use */
+                return 0;
+        case nir_type_float16:
+                return BIFROST_BLEND_F16;
+        case nir_type_float32:
+                return BIFROST_BLEND_F32;
+        case nir_type_int32:
+                return BIFROST_BLEND_I32;
+        case nir_type_uint32:
+                return BIFROST_BLEND_U32;
+        case nir_type_int16:
+                return BIFROST_BLEND_I16;
+        case nir_type_uint16:
+                return BIFROST_BLEND_U16;
+        default:
+                DBG("Unsupported blend shader type for NIR alu type %d", nir_type);
+                assert(0);
+                return 0;
+        }
+}
+
 void
 panfrost_shader_compile(struct panfrost_context *ctx,
                         enum pipe_shader_ir ir_type,
@@ -196,6 +221,10 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->uniform_count = s->num_uniforms + program.sysval_count;
         state->uniform_cutoff = program.uniform_cutoff;
         state->work_reg_count = program.work_register_count;
+
+        if (dev->quirks & IS_BIFROST)
+                for (unsigned i = 0; i < BIFROST_MAX_RENDER_TARGET_COUNT; i++)
+                        state->blend_types[i] = bifrost_blend_type_from_nir(program.blend_types[i]);
 
         unsigned default_vec1_swizzle = panfrost_get_default_swizzle(1);
         unsigned default_vec2_swizzle = panfrost_get_default_swizzle(2);
