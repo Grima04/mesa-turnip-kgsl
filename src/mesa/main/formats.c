@@ -404,7 +404,7 @@ _mesa_array_format_flip_channels(mesa_array_format format)
    num_channels = _mesa_array_format_get_num_channels(format);
    _mesa_array_format_get_swizzle(format, swizzle);
 
-   if (num_channels == 1)
+   if (num_channels == 1 || num_channels == 3)
       return format;
 
    if (num_channels == 2) {
