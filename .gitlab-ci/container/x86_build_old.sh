@@ -45,13 +45,19 @@ apt-get install -y --no-remove \
       llvm-3.9-dev \
       llvm-4.0-dev \
       llvm-5.0-dev \
-      meson \
+      ninja-build \
       pkg-config \
       python-mako \
       python3-mako \
+      python3-pip \
+      python3-setuptools \
+      python3-wheel \
       scons \
       xz-utils \
       zlib1g-dev
+
+# We need at least 0.52.0, which is not in stretch
+python3 -m pip install meson>=0.52
 
 . .gitlab-ci/container/container_pre_build.sh
 

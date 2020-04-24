@@ -21,10 +21,8 @@ STABLE_EPHEMERAL=" \
       libxkbcommon-dev \
       libxrender-dev \
       make \
-      meson \
       patch \
       pkg-config \
-      python3-distutils \
       python3.7-dev \
       wget \
       xz-utils \
@@ -43,7 +41,6 @@ apt-get install -y --no-remove \
 # Install packages we need from Debian testing last, to avoid pulling in more
 apt-get install -y -t testing \
       $TESTING_EPHEMERAL
-
 
 . .gitlab-ci/container/container_pre_build.sh
 

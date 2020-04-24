@@ -80,7 +80,6 @@ apt-get install -y --no-remove \
       llvm-6.0-dev \
       llvm-7-dev \
       llvm-9-dev \
-      meson \
       pkg-config \
       python-mako \
       python3-mako \
@@ -95,7 +94,8 @@ apt-get install -y --no-remove \
       zlib1g-dev
 
 apt-get install -y --no-remove -t buster-backports \
-      libclang-8-dev
+      libclang-8-dev \
+      meson
 
 # Cross-build Mesa deps
 for arch in $CROSS_ARCHITECTURES; do

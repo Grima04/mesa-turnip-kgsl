@@ -14,6 +14,7 @@ apt-key add .gitlab-ci/container/llvm-snapshot.gpg.key
 echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-9 main" >/etc/apt/sources.list.d/llvm9.list
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
+echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources.list.d/backports.list
 echo 'deb https://deb.debian.org/debian testing main' >/etc/apt/sources.list.d/testing.list
 
 apt-get update
@@ -47,6 +48,7 @@ apt-get install -y --no-remove \
       libxrandr2 \
       libxrender1 \
       python \
+      python3-distutils \
       python3-mako \
       python3-numpy \
       python3-pil \
@@ -65,5 +67,8 @@ apt-get install -y --no-remove \
 
 apt-get purge -y \
       gnupg
+
+apt-get install -t buster-backports -y --no-remove \
+    meson
 
 apt-get autoremove -y --purge

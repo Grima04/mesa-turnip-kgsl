@@ -41,16 +41,19 @@ apt-get -y install \
 	libvulkan-dev:armhf \
 	llvm-7-dev:armhf \
 	llvm-8-dev \
-	meson \
 	pkg-config \
 	python \
 	python3-distutils \
+	python3-setuptools \
 	python3-mako \
 	python3-serial \
 	unzip \
 	wget \
 	xz-utils \
 	zlib1g-dev
+
+apt install -y --no-remove -t buster-backports \
+    meson
 
 . .gitlab-ci/container/container_pre_build.sh
 
@@ -72,7 +75,6 @@ DEBIAN_ARCH=arm64 . .gitlab-ci/container/lava_arm.sh
 DEBIAN_ARCH=armhf . .gitlab-ci/container/lava_arm.sh
 
 apt-get purge -y \
-        python3-distutils \
         wget
 
 . .gitlab-ci/container/container_post_build.sh

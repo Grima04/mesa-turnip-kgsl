@@ -1,4 +1,4 @@
-# Copyright © 2017-2019 Intel Corporation
+# Copyright © 2017-2020 Intel Corporation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@ project(
     [find_program('python', 'python3'), 'bin/meson_get_version.py']
   ).stdout(),
   license : 'MIT',
-  meson_version : '>= 0.46',
+  meson_version : '>= 0.52',
   default_options : ['buildtype=debugoptimized', 'b_ndebug=if-release', 'c_std=c99', 'cpp_std=c++14']
 )
 
@@ -208,10 +208,6 @@ with_gallium_virgl = gallium_drivers.contains('virgl')
 with_gallium_swr = gallium_drivers.contains('swr')
 with_gallium_lima = gallium_drivers.contains('lima')
 with_gallium_zink = gallium_drivers.contains('zink')
-
-if cc.get_id().startswith('intel') and meson.version().version_compare('< 0.49.1')
-  error('Meson does not have sufficient support of ICC before 0.49.1 to compile mesa')
-endif
 
 with_gallium = gallium_drivers.length() != 0 and gallium_drivers != ['']
 
@@ -792,11 +788,7 @@ if with_platform_haiku
   pre_args += '-DHAVE_HAIKU_PLATFORM'
 endif
 
-if meson.version().version_compare('>=0.50')
-  prog_python = import('python').find_installation('python3')
-else
-  prog_python = import('python3').find_python()
-endif
+prog_python = import('python').find_installation('python3')
 has_mako = run_command(
   prog_python, '-c',
   '''
@@ -1453,11 +1445,9 @@ if with_llvm
   # has also been added, so we'll use that if we can, to cover the cmake case.
   if dep_llvm.type_name() == 'internal'
     _rtti = subproject('llvm').get_variable('has_rtti', true)
-  elif meson.version().version_compare('>=0.51')
+  else
     # The CMake finder will return 'ON', the llvm-config will return 'YES'
     _rtti = ['ON', 'YES'].contains(dep_llvm.get_variable(cmake : 'LLVM_ENABLE_RTTI', configtool: 'has-rtti'))
-  else
-    _rtti = dep_llvm.get_configtool_variable('has-rtti') == 'YES'
   endif
   if not _rtti
     if with_gallium_nouveau
@@ -1530,8 +1520,8 @@ else
 
   # Disable deprecated keyword warnings, since we have to use them for
   # old-bison compat.  See discussion in
-  # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/2161
-  if meson.version().version_compare('>= 0.52.0') and find_program('bison', required : false, version : '> 2.3').found()
+  # https://gitlab.freedesktop.org/mesa/mesa/merge_requests/2161
+  if find_program('bison', required : false, version : '> 2.3').found()
     prog_bison = [prog_bison, '-Wno-deprecated']
   endif
 

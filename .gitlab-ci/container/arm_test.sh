@@ -30,7 +30,6 @@ apt-get install -y --no-remove \
         fastboot \
         flex \
         git \
-        meson \
         netcat \
         python3-distutils \
         python3-minimal \
@@ -40,6 +39,9 @@ apt-get install -y --no-remove \
         procps \
         u-boot-tools \
         unzip
+
+apt install -t buster-backports -y --no-remove \
+    meson
 
 # Cross-build test deps
 for arch in $CROSS_ARCHITECTURES; do
