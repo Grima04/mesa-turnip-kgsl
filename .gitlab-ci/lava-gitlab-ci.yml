@@ -137,7 +137,7 @@ panfrost-t860-gles3:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-t820-gles2:arm64:
+panfrost-t820-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
