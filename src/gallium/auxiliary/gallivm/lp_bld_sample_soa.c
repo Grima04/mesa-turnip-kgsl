@@ -195,9 +195,17 @@ lp_build_sample_texel_soa(struct lp_build_sample_context *bld,
       for (chan = 0; chan < 4; chan++) {
          unsigned chan_s;
          /* reverse-map channel... */
-         for (chan_s = 0; chan_s < 4; chan_s++) {
-            if (chan_s == format_desc->swizzle[chan]) {
+         if (util_format_has_stencil(format_desc)) {
+            if (chan == 0)
+               chan_s = 0;
+            else
                break;
+         }
+         else {
+            for (chan_s = 0; chan_s < 4; chan_s++) {
+               if (chan_s == format_desc->swizzle[chan]) {
+                  break;
+               }
             }
          }
          if (chan_s <= 3) {
