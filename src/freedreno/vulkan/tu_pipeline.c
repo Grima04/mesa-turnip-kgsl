@@ -1930,6 +1930,21 @@ tu_pipeline_static_state(struct tu_pipeline *pipeline, struct tu_cs *cs,
 }
 
 static void
+tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
+                                       struct tu_pipeline *pipeline)
+{
+   const VkPipelineTessellationStateCreateInfo *tess_info =
+      builder->create_info->pTessellationState;
+
+   if (!tess_info)
+      return;
+
+   assert(pipeline->ia.primtype == DI_PT_PATCHES0);
+   assert(tess_info->patchControlPoints <= 32);
+   pipeline->ia.primtype += tess_info->patchControlPoints;
+}
+
+static void
 tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
                                    struct tu_pipeline *pipeline)
 {
@@ -2151,6 +2166,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    tu_pipeline_builder_parse_shader_stages(builder, *pipeline);
    tu_pipeline_builder_parse_vertex_input(builder, *pipeline);
    tu_pipeline_builder_parse_input_assembly(builder, *pipeline);
+   tu_pipeline_builder_parse_tessellation(builder, *pipeline);
    tu_pipeline_builder_parse_viewport(builder, *pipeline);
    tu_pipeline_builder_parse_rasterization(builder, *pipeline);
    tu_pipeline_builder_parse_depth_stencil(builder, *pipeline);

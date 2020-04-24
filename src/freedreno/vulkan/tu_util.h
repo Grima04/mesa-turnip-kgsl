@@ -124,7 +124,8 @@ tu6_primtype(VkPrimitiveTopology topology)
       [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY]     = DI_PT_LINESTRIP_ADJ,
       [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY]  = DI_PT_TRI_ADJ,
       [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = DI_PT_TRISTRIP_ADJ,
-      [VK_PRIMITIVE_TOPOLOGY_PATCH_LIST] = 0,
+      /* Return PATCH0 and update in tu_pipeline_builder_parse_tessellation */
+      [VK_PRIMITIVE_TOPOLOGY_PATCH_LIST]                    = DI_PT_PATCHES0,
    };
    assert(topology < ARRAY_SIZE(lookup));
    return lookup[topology];
