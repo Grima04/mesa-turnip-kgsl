@@ -526,10 +526,12 @@ static void
 iris_load_register_mem32(struct iris_batch *batch, uint32_t reg,
                          struct iris_bo *bo, uint32_t offset)
 {
+   iris_batch_sync_region_start(batch);
    iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
       lrm.RegisterAddress = reg;
       lrm.MemoryAddress = ro_bo(bo, offset);
    }
+   iris_batch_sync_region_end(batch);
 }
 
 /**
@@ -549,11 +551,13 @@ iris_store_register_mem32(struct iris_batch *batch, uint32_t reg,
                           struct iris_bo *bo, uint32_t offset,
                           bool predicated)
 {
+   iris_batch_sync_region_start(batch);
    iris_emit_cmd(batch, GENX(MI_STORE_REGISTER_MEM), srm) {
       srm.RegisterAddress = reg;
       srm.MemoryAddress = rw_bo(bo, offset);
       srm.PredicateEnable = predicated;
    }
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -570,10 +574,12 @@ iris_store_data_imm32(struct iris_batch *batch,
                       struct iris_bo *bo, uint32_t offset,
                       uint32_t imm)
 {
+   iris_batch_sync_region_start(batch);
    iris_emit_cmd(batch, GENX(MI_STORE_DATA_IMM), sdi) {
       sdi.Address = rw_bo(bo, offset);
       sdi.ImmediateData = imm;
    }
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -585,11 +591,13 @@ iris_store_data_imm64(struct iris_batch *batch,
     * 2 in genxml but it's actually variable length and we need 5 DWords.
     */
    void *map = iris_get_command_space(batch, 4 * 5);
+   iris_batch_sync_region_start(batch);
    _iris_pack_command(batch, GENX(MI_STORE_DATA_IMM), map, sdi) {
       sdi.DWordLength = 5 - 2;
       sdi.Address = rw_bo(bo, offset);
       sdi.ImmediateData = imm;
    }
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -602,6 +610,7 @@ iris_copy_mem_mem(struct iris_batch *batch,
    assert(bytes % 4 == 0);
    assert(dst_offset % 4 == 0);
    assert(src_offset % 4 == 0);
+   iris_batch_sync_region_start(batch);
 
    for (unsigned i = 0; i < bytes; i += 4) {
       iris_emit_cmd(batch, GENX(MI_COPY_MEM_MEM), cp) {
@@ -609,6 +618,8 @@ iris_copy_mem_mem(struct iris_batch *batch,
          cp.SourceMemoryAddress = ro_bo(src_bo, src_offset + i);
       }
    }
+
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -898,6 +909,8 @@ iris_init_render_context(struct iris_batch *batch)
    UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
    uint32_t reg_val;
 
+   iris_batch_sync_region_start(batch);
+
    emit_pipeline_select(batch, _3D);
 
    iris_emit_l3_config(batch, batch->screen->l3_config_3d);
@@ -1003,15 +1016,20 @@ iris_init_render_context(struct iris_batch *batch)
 
    iris_alloc_push_constants(batch);
 
+
 #if GEN_GEN >= 12
    init_aux_map_state(batch);
 #endif
+
+   iris_batch_sync_region_end(batch);
 }
 
 static void
 iris_init_compute_context(struct iris_batch *batch)
 {
    UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
+
+   iris_batch_sync_region_start(batch);
 
    /* GEN:BUG:1607854226:
     *
@@ -1040,6 +1058,7 @@ iris_init_compute_context(struct iris_batch *batch)
    init_aux_map_state(batch);
 #endif
 
+   iris_batch_sync_region_end(batch);
 }
 
 struct iris_vertex_buffer_state {
@@ -5079,6 +5098,8 @@ iris_update_surface_base_address(struct iris_batch *batch,
 
    uint32_t mocs = batch->screen->isl_dev.mocs.internal;
 
+   iris_batch_sync_region_start(batch);
+
    flush_before_state_base_change(batch);
 
 #if GEN_GEN == 12
@@ -5119,6 +5140,7 @@ iris_update_surface_base_address(struct iris_batch *batch,
 #endif
 
    flush_after_state_base_change(batch);
+   iris_batch_sync_region_end(batch);
 
    batch->last_surface_base_address = binder->bo->gtt_offset;
 }
@@ -6290,6 +6312,8 @@ iris_upload_render_state(struct iris_context *ice,
 {
    bool use_predicate = ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
 
+   iris_batch_sync_region_start(batch);
+
    /* Always pin the binder.  If we're emitting new binding table pointers,
     * we need it.  If not, we're probably inheriting old tables via the
     * context, and need it anyway.  Since true zero-bindings cases are
@@ -6496,6 +6520,8 @@ iris_upload_render_state(struct iris_context *ice,
          }
       }
    }
+
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -6517,6 +6543,8 @@ iris_upload_compute_state(struct iris_context *ice,
    const unsigned simd_size =
       brw_cs_simd_size_for_group_size(devinfo, cs_prog_data, group_size);
    const unsigned threads = DIV_ROUND_UP(group_size, simd_size);
+
+   iris_batch_sync_region_start(batch);
 
    /* Always pin the binder.  If we're emitting new binding table pointers,
     * we need it.  If not, we're probably inheriting old tables via the
@@ -6676,6 +6704,8 @@ iris_upload_compute_state(struct iris_context *ice,
       iris_restore_compute_saved_bos(ice, batch, grid);
       batch->contains_draw = true;
    }
+
+   iris_batch_sync_region_end(batch);
 }
 
 /**
@@ -7297,6 +7327,8 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
               imm, reason);
    }
 
+   iris_batch_sync_region_start(batch);
+
    iris_emit_cmd(batch, GENX(PIPE_CONTROL), pc) {
 #if GEN_GEN >= 12
       pc.TileCacheFlushEnable = flags & PIPE_CONTROL_TILE_CACHE_FLUSH;
@@ -7334,6 +7366,8 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       pc.Address = rw_bo(bo, offset);
       pc.ImmediateData = imm;
    }
+
+   iris_batch_sync_region_end(batch);
 }
 
 #if GEN_GEN == 9
@@ -7418,10 +7452,12 @@ iris_emit_mi_report_perf_count(struct iris_batch *batch,
                                uint32_t offset_in_bytes,
                                uint32_t report_id)
 {
+   iris_batch_sync_region_start(batch);
    iris_emit_cmd(batch, GENX(MI_REPORT_PERF_COUNT), mi_rpc) {
       mi_rpc.MemoryAddress = rw_bo(bo, offset_in_bytes);
       mi_rpc.ReportID = report_id;
    }
+   iris_batch_sync_region_end(batch);
 }
 
 /**

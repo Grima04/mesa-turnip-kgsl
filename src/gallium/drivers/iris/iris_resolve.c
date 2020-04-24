@@ -499,6 +499,7 @@ iris_resolve_color(struct iris_context *ice,
    iris_emit_end_of_pipe_sync(batch, "color resolve: pre-flush",
                               PIPE_CONTROL_RENDER_TARGET_FLUSH);
 
+   iris_batch_sync_region_start(batch);
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
    /* On Gen >= 12, Stencil buffer with lossless compression needs to be
@@ -517,6 +518,7 @@ iris_resolve_color(struct iris_context *ice,
    /* See comment above */
    iris_emit_end_of_pipe_sync(batch, "color resolve: post-flush",
                               PIPE_CONTROL_RENDER_TARGET_FLUSH);
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -536,11 +538,13 @@ iris_mcs_partial_resolve(struct iris_context *ice,
                                 &res->base, res->aux.usage, 0, true);
 
    struct blorp_batch blorp_batch;
+   iris_batch_sync_region_start(batch);
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
    blorp_mcs_partial_resolve(&blorp_batch, &surf,
                              isl_format_srgb_to_linear(res->surf.format),
                              start_layer, num_layers);
    blorp_batch_finish(&blorp_batch);
+   iris_batch_sync_region_end(batch);
 }
 
 
@@ -681,6 +685,8 @@ iris_hiz_exec(struct iris_context *ice,
 
    iris_batch_maybe_flush(batch, 1500);
 
+   iris_batch_sync_region_start(batch);
+
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
                                 &res->base, res->aux.usage, level, true);
@@ -712,6 +718,8 @@ iris_hiz_exec(struct iris_context *ice,
                                 "hiz op: post flush",
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                 PIPE_CONTROL_DEPTH_STALL);
+
+   iris_batch_sync_region_end(batch);
 }
 
 static bool

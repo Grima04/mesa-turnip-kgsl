@@ -711,6 +711,8 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    struct gen_mi_builder b;
    gen_mi_builder_init(&b, batch);
 
+   iris_batch_sync_region_start(batch);
+
    struct gen_mi_value result = calculate_result_on_gpu(devinfo, &b, q);
    struct gen_mi_value dst =
       result_type <= PIPE_QUERY_TYPE_U32 ? gen_mi_mem32(rw_bo(dst_bo, offset))
@@ -723,6 +725,8 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    } else {
       gen_mi_store(&b, dst, result);
    }
+
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -762,6 +766,8 @@ set_predicate_for_result(struct iris_context *ice,
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
+
+   iris_batch_sync_region_start(batch);
 
    /* The CPU doesn't have the query result yet; use hardware predication */
    ice->state.predicate = IRIS_PREDICATE_STATE_USE_BIT;
@@ -809,6 +815,8 @@ set_predicate_for_result(struct iris_context *ice,
    gen_mi_store(&b, query_mem64(q, offsetof(struct iris_query_snapshots,
                                             predicate_result)), result);
    ice->state.compute_predicate = bo;
+
+   iris_batch_sync_region_end(batch);
 }
 
 static void
