@@ -529,8 +529,20 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
                 break;
        }
 
+        case BI_SELECT: {
+                if (ins->dest_type == nir_type_uint16) {
+                        for (unsigned c = 0; c < 2; ++c)
+                                dest.u16[c] = srcs[c].u16[ins->swizzle[c][0]];
+                } else if (ins->dest_type == nir_type_uint8) {
+                        for (unsigned c = 0; c < 4; ++c)
+                                dest.u8[c] = srcs[c].u8[ins->swizzle[c][0]];
+                } else {
+                        unreachable("Unknown type");
+                }
+                break;
+        }
+
         case BI_SHIFT:
-        case BI_SELECT:
         case BI_ROUND:
                 unreachable("Unsupported op");
         
