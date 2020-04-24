@@ -3868,9 +3868,13 @@ struct gl_constants
    GLboolean ForceGLSLAbsSqrt;
 
    /**
-    * Types of variable to default initialized to zero.
+    * Types of variable to default initialized to zero. Supported values are:
+    *   - 0: no zero initialization
+    *   - 1: all shader variables and gl_FragColor are initialiazed to 0
+    *   - 2: same as 1, but shader out variables are *not* initialized, while
+    *        function out variables are now initialized.
     */
-   GLuint GLSLZeroInit;
+   GLchar GLSLZeroInit;
 
    /**
     * Treat integer textures using GL_LINEAR filters as GL_NEAREST.
