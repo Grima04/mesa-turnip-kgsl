@@ -38,6 +38,10 @@
 #include "pipe/p_format.h"
 #include "frontend/api.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct stw_pixelformat_info
 {
    PIXELFORMATDESCRIPTOR pfd;
@@ -67,5 +71,9 @@ stw_pixelformat_choose( HDC hdc,
 
 int
 stw_pixelformat_get(HDC hdc);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STW_PIXELFORMAT_H */
