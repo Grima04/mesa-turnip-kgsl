@@ -7261,7 +7261,7 @@ VkResult radv_GetMemoryFdPropertiesKHR(VkDevice _device,
 
    switch (handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-      pMemoryFdProperties->memoryTypeBits = (1 << RADV_MEM_TYPE_COUNT) - 1;
+      pMemoryFdProperties->memoryTypeBits = (1 << device->physical_device->memory_properties.memoryTypeCount) - 1;
       return VK_SUCCESS;
 
    default:
