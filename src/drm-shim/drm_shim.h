@@ -25,6 +25,7 @@
 
 #include "util/macros.h"
 #include "util/hash_table.h"
+#include "util/vma.h"
 
 #include <xf86drm.h>
 
@@ -39,6 +40,12 @@ struct shim_bo;
 struct shim_device {
    /* Mapping from int fd to struct shim_fd *. */
    struct hash_table *fd_map;
+
+   mtx_t mem_lock;
+   /* Heap from which shim_bo are allocated */
+   struct util_vma_heap mem_heap;
+
+   int mem_fd;
 
    int (**driver_ioctls)(int fd, unsigned long request, void *arg);
    int driver_ioctl_count;
@@ -61,7 +68,7 @@ struct shim_fd {
 };
 
 struct shim_bo {
-   int fd;
+   uint64_t mem_addr;
    void *map;
    int refcount;
    uint32_t size;

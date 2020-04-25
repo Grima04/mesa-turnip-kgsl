@@ -42,6 +42,7 @@
 #include "util/hash_table.h"
 #include "util/u_atomic.h"
 
+#define SHIM_MEM_SIZE (4ull * 1024 * 1024 * 1024)
 
 #ifndef HAVE_MEMFD_CREATE
 #include <sys/syscall.h>
@@ -78,6 +79,16 @@ drm_shim_device_init(void)
    shim_device.fd_map = _mesa_hash_table_create(NULL,
                                                 uint_key_hash,
                                                 uint_key_compare);
+
+   mtx_init(&shim_device.mem_lock, mtx_plain);
+
+   shim_device.mem_fd = memfd_create("shim mem", MFD_CLOEXEC);
+   assert(shim_device.mem_fd != -1);
+
+   int ret = ftruncate(shim_device.mem_fd, SHIM_MEM_SIZE);
+   assert(ret == 0);
+
+   util_vma_heap_init(&shim_device.mem_heap, 4096, SHIM_MEM_SIZE - 4096);
 
    drm_shim_driver_init();
 }
@@ -256,17 +267,13 @@ drm_shim_ioctl(int fd, unsigned long request, void *arg)
 void
 drm_shim_bo_init(struct shim_bo *bo, size_t size)
 {
-   bo->size = size;
-   bo->fd = memfd_create("shim bo", MFD_CLOEXEC);
-   if (bo->fd == -1) {
-      fprintf(stderr, "Failed to create BO: %s\n", strerror(errno));
-      abort();
-   }
 
-   if (ftruncate(bo->fd, size) == -1) {
-      fprintf(stderr, "Failed to size BO: %s\n", strerror(errno));
-      abort();
-   }
+   mtx_lock(&shim_device.mem_lock);
+   bo->mem_addr = util_vma_heap_alloc(&shim_device.mem_heap, size, 4096);
+   mtx_unlock(&shim_device.mem_lock);
+   assert(bo->mem_addr);
+
+   bo->size = size;
 }
 
 struct shim_bo *
@@ -301,7 +308,10 @@ drm_shim_bo_put(struct shim_bo *bo)
 
    if (shim_device.driver_bo_free)
       shim_device.driver_bo_free(bo);
-   close(bo->fd);
+
+   mtx_lock(&shim_device.mem_lock);
+   util_vma_heap_free(&shim_device.mem_heap, bo->mem_addr, bo->size);
+   mtx_unlock(&shim_device.mem_lock);
    free(bo);
 }
 
@@ -350,5 +360,5 @@ drm_shim_mmap(struct shim_fd *shim_fd, size_t length, int prot, int flags,
 {
    struct shim_bo *bo = (void *)(uintptr_t)offset;
 
-   return mmap(NULL, length, prot, flags, bo->fd, 0);
+   return mmap(NULL, length, prot, flags, shim_device.mem_fd, bo->mem_addr);
 }
