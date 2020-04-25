@@ -708,6 +708,9 @@ reg(FILE *file, unsigned _reg_file, unsigned _reg_nr)
          format(file, "mask%d", _reg_nr & 0x0f);
          break;
       case BRW_ARF_MASK_STACK:
+         format(file, "ms%d", _reg_nr & 0x0f);
+         break;
+      case BRW_ARF_MASK_STACK_DEPTH:
          format(file, "msd%d", _reg_nr & 0x0f);
          break;
       case BRW_ARF_STATE:

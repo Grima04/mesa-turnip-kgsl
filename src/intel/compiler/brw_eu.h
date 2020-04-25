@@ -1102,7 +1102,7 @@ brw_inst *brw_WHILE(struct brw_codegen *p);
 
 brw_inst *brw_BREAK(struct brw_codegen *p);
 brw_inst *brw_CONT(struct brw_codegen *p);
-brw_inst *gen6_HALT(struct brw_codegen *p);
+brw_inst *brw_HALT(struct brw_codegen *p);
 
 /* Forward jumps:
  */

@@ -3482,13 +3482,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       cmp->predicate = BRW_PREDICATE_NORMAL;
       cmp->flag_subreg = sample_mask_flag_subreg(this);
 
-      if (devinfo->gen >= 6) {
-         /* Due to the way we implement discard, the jump will only happen
-          * when the whole quad is discarded.  So we can do this even for
-          * demote as it won't break its uniformity promises.
-          */
-         emit_discard_jump();
-      }
+      emit_discard_jump();
 
       if (devinfo->gen < 7)
          limit_dispatch_width(

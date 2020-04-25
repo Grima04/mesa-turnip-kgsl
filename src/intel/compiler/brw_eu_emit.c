@@ -1725,14 +1725,23 @@ brw_CONT(struct brw_codegen *p)
 }
 
 brw_inst *
-gen6_HALT(struct brw_codegen *p)
+brw_HALT(struct brw_codegen *p)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    brw_inst *insn;
 
    insn = next_insn(p, BRW_OPCODE_HALT);
    brw_set_dest(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
-   if (devinfo->gen < 8) {
+   if (devinfo->gen < 6) {
+      /* From the Gen4 PRM:
+       *
+       *    "IP register must be put (for example, by the assembler) at <dst>
+       *    and <src0> locations.
+       */
+      brw_set_dest(p, insn, brw_ip_reg());
+      brw_set_src0(p, insn, brw_ip_reg());
+      brw_set_src1(p, insn, brw_imm_d(0x0)); /* exitcode updated later. */
+   } else if (devinfo->gen < 8) {
       brw_set_src0(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
       brw_set_src1(p, insn, brw_imm_d(0x0)); /* UIP and JIP, updated later. */
    } else if (devinfo->gen < 12) {
