@@ -1277,6 +1277,17 @@ bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, struct bi_regist
 }
 
 static unsigned
+bi_pack_add_select(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned size = nir_alu_type_get_type_size(ins->dest_type);
+        assert(size == 16);
+
+        unsigned swiz = (ins->swizzle[0][0] | (ins->swizzle[1][0] << 1));
+        unsigned op = BIFROST_ADD_SEL_16(swiz);
+        return bi_pack_add_2src(ins, regs, op);
+}
+
+static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         if (!bundle.add)
@@ -1322,7 +1333,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_TABLE:
                 return bi_pack_add_table(bundle.add, regs);
         case BI_SELECT:
-                return BIFROST_ADD_NOP;
+                return bi_pack_add_select(bundle.add, regs);
         case BI_TEX:
                 if (bundle.add->op.texture == BI_TEX_COMPACT)
                         return bi_pack_add_tex_compact(clause, bundle.add, regs);
