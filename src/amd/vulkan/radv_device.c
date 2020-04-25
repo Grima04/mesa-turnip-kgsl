@@ -7186,28 +7186,74 @@ VkResult radv_GetMemoryFdKHR(VkDevice _device,
 	return VK_SUCCESS;
 }
 
+static uint32_t radv_compute_valid_memory_types_attempt(struct radv_physical_device *dev,
+                                                        enum radeon_bo_domain domains,
+                                                        enum radeon_bo_flag flags,
+                                                        enum radeon_bo_flag ignore_flags)
+{
+	/* Don't count GTT/CPU as relevant:
+	 * 
+	 * - We're not fully consistent between the two.
+	 * - Sometimes VRAM gets VRAM|GTT.
+	 */
+	const enum radeon_bo_domain relevant_domains = RADEON_DOMAIN_VRAM | 
+	                                               RADEON_DOMAIN_GDS |
+	                                               RADEON_DOMAIN_OA;
+	uint32_t bits = 0;
+	for (unsigned i = 0; i < dev->memory_properties.memoryTypeCount; ++i) {
+		if ((domains & relevant_domains) != (dev->memory_domains[i] & relevant_domains))
+			continue;
+
+		if ((flags & ~ignore_flags) != (dev->memory_flags[i] & ~ignore_flags))
+			continue;
+
+		bits |= 1u << i;
+	}
+
+	return bits;
+}
+
+static uint32_t radv_compute_valid_memory_types(struct radv_physical_device *dev,
+                                                enum radeon_bo_domain domains,
+                                                enum radeon_bo_flag flags)
+{
+	enum radeon_bo_flag ignore_flags = ~(RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_GTT_WC);
+	uint32_t bits = radv_compute_valid_memory_types_attempt(dev, domains, flags, ignore_flags);
+
+	if (!bits) {
+		ignore_flags |= RADEON_FLAG_NO_CPU_ACCESS;
+		bits = radv_compute_valid_memory_types_attempt(dev, domains, flags, ignore_flags);
+	}
+
+	return bits;
+}
 VkResult radv_GetMemoryFdPropertiesKHR(VkDevice _device,
 				       VkExternalMemoryHandleTypeFlagBits handleType,
 				       int fd,
 				       VkMemoryFdPropertiesKHR *pMemoryFdProperties)
 {
-   RADV_FROM_HANDLE(radv_device, device, _device);
+	RADV_FROM_HANDLE(radv_device, device, _device);
 
-   switch (handleType) {
-   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-      pMemoryFdProperties->memoryTypeBits = (1 << device->physical_device->memory_properties.memoryTypeCount) - 1;
-      return VK_SUCCESS;
+	switch (handleType) {
+	case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT: {
+		enum radeon_bo_domain domains;
+		enum radeon_bo_flag flags;
+		if (!device->ws->buffer_get_flags_from_fd(device->ws, fd, &domains, &flags))
+			return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
-   default:
-      /* The valid usage section for this function says:
-       *
-       *    "handleType must not be one of the handle types defined as
-       *    opaque."
-       *
-       * So opaque handle types fall into the default "unsupported" case.
-       */
-      return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
-   }
+		pMemoryFdProperties->memoryTypeBits = radv_compute_valid_memory_types(device->physical_device, domains, flags);
+		return VK_SUCCESS;
+	}
+	default:
+		/* The valid usage section for this function says:
+		 *
+		 *    "handleType must not be one of the handle types defined as
+		 *    opaque."
+		 *
+		 * So opaque handle types fall into the default "unsupported" case.
+		 */
+		return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+	}
 }
 
 static VkResult radv_import_opaque_fd(struct radv_device *device,
