@@ -53,5 +53,5 @@ unsigned
 d3d12_wgl_get_pfd_flags(struct pipe_screen *screen)
 {
    (void)screen;
-   return stw_pfd_gdi_support;
+   return stw_pfd_gdi_support | stw_pfd_double_buffer;
 }

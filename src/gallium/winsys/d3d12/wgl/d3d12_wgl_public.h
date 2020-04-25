@@ -46,6 +46,11 @@ d3d12_wgl_present(struct pipe_screen *screen,
 unsigned
 d3d12_wgl_get_pfd_flags(struct pipe_screen *screen);
 
+struct stw_winsys_framebuffer *
+d3d12_wgl_create_framebuffer(struct pipe_screen *screen,
+                             HDC hDC,
+                             int iPixelFormat);
+
 #ifdef __cplusplus
 }
 #endif
