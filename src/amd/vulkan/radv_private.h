@@ -106,25 +106,6 @@ struct gfx10_format {
 
 #include "gfx10_format_table.h"
 
-enum radv_mem_heap {
-	RADV_MEM_HEAP_VRAM,
-	RADV_MEM_HEAP_VRAM_CPU_ACCESS,
-	RADV_MEM_HEAP_GTT,
-	RADV_MEM_HEAP_COUNT
-};
-
-enum radv_mem_type {
-	RADV_MEM_TYPE_VRAM,
-	RADV_MEM_TYPE_GTT_WRITE_COMBINE,
-	RADV_MEM_TYPE_VRAM_CPU_ACCESS,
-	RADV_MEM_TYPE_GTT_CACHED,
-	RADV_MEM_TYPE_VRAM_UNCACHED,
-	RADV_MEM_TYPE_GTT_WRITE_COMBINE_VRAM_UNCACHED,
-	RADV_MEM_TYPE_VRAM_CPU_ACCESS_UNCACHED,
-	RADV_MEM_TYPE_GTT_CACHED_VRAM_UNCACHED,
-	RADV_MEM_TYPE_COUNT
-};
-
 enum radv_secure_compile_type {
 	RADV_SC_TYPE_INIT_SUCCESS,
 	RADV_SC_TYPE_INIT_FAILURE,
@@ -347,7 +328,8 @@ struct radv_physical_device {
 	struct disk_cache *                          disk_cache;
 
 	VkPhysicalDeviceMemoryProperties memory_properties;
-	enum radv_mem_type mem_type_indices[RADV_MEM_TYPE_COUNT];
+	enum radeon_bo_domain memory_domains[VK_MAX_MEMORY_TYPES];
+	enum radeon_bo_flag memory_flags[VK_MAX_MEMORY_TYPES];
 
 	drmPciBusInfo bus_info;
 
@@ -885,7 +867,6 @@ struct radv_device_memory {
 	/* for dedicated allocations */
 	struct radv_image                            *image;
 	struct radv_buffer                           *buffer;
-	uint32_t                                     type_index;
 	VkDeviceSize                                 map_size;
 	void *                                       map;
 	void *                                       user_ptr;
