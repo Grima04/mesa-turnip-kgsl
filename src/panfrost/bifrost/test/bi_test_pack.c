@@ -374,6 +374,36 @@ bit_reduce_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug d
 }
 
 static void
+bit_select_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, enum bit_debug debug)
+{
+        unsigned C = 32 / size;
+        bi_instruction ins = bit_ins(BI_SELECT, C, nir_type_uint, 32);
+
+        for (unsigned c = 0; c < C; ++c)
+                ins.src_types[c] = nir_type_uint | size;
+
+        if (size == 8) {
+                /* SCHEDULER: We can only read 3 registers at once. */
+                ins.src[2] = ins.src[0];
+        }
+
+        /* Each argument has swizzle {lo, hi} so 2^C options */
+        unsigned hi = (size == 16) ? 1 : 2;
+
+        for (unsigned add = 0; add < ((size == 16) ? 2 : 1); ++add) {
+                for (unsigned swizzle = 0; swizzle < (1 << C); ++swizzle) {
+                        for (unsigned i = 0; i < C; ++i)
+                                ins.swizzle[i][0] = ((swizzle >> i) & 1) ? hi : 0;
+
+                        if (!bit_test_single(dev, &ins, input, !add, debug)) {
+                                fprintf(stderr, "FAIL: select.%u.%u\n",
+                                                size, swizzle);
+                        }
+                }
+        }
+}
+
+static void
 bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
                 unsigned to_size, unsigned cx, unsigned cy, bool FMA,
                 enum bifrost_roundmode roundmode,
@@ -511,4 +541,8 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
         memcpy(mscale_input, input32, sizeof(input32));
         mscale_input[3] = 0x7;
         bit_fma_mscale_helper(dev, mscale_input, debug);
+
+        for (unsigned sz = 8; sz <= 16; sz *= 2) {
+                bit_select_helper(dev, (uint32_t *) input32, 8, debug);
+        }
 }
