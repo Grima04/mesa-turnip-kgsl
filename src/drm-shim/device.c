@@ -42,7 +42,6 @@
 #include "util/hash_table.h"
 #include "util/u_atomic.h"
 
-static mtx_t handle_lock = _MTX_INITIALIZER_NP;
 
 #ifndef HAVE_MEMFD_CREATE
 #include <sys/syscall.h>
@@ -89,6 +88,7 @@ drm_shim_file_create(int fd)
    struct shim_fd *shim_fd = calloc(1, sizeof(*shim_fd));
 
    shim_fd->fd = fd;
+   mtx_init(&shim_fd->handle_lock, mtx_plain);
    shim_fd->handles = _mesa_hash_table_create(NULL,
                                               uint_key_hash,
                                               uint_key_compare);
@@ -174,18 +174,18 @@ drm_shim_ioctl_gem_close(int fd, unsigned long request, void *arg)
    if (!c->handle)
       return 0;
 
-   mtx_lock(&handle_lock);
+   mtx_lock(&shim_fd->handle_lock);
    struct hash_entry *entry =
       _mesa_hash_table_search(shim_fd->handles, (void *)(uintptr_t)c->handle);
    if (!entry) {
-      mtx_unlock(&handle_lock);
+      mtx_unlock(&shim_fd->handle_lock);
       return -EINVAL;
    }
 
    struct shim_bo *bo = entry->data;
    _mesa_hash_table_remove(shim_fd->handles, entry);
    drm_shim_bo_put(bo);
-   mtx_unlock(&handle_lock);
+   mtx_unlock(&shim_fd->handle_lock);
    return 0;
 }
 
@@ -275,11 +275,11 @@ drm_shim_bo_lookup(struct shim_fd *shim_fd, int handle)
    if (!handle)
       return NULL;
 
-   mtx_lock(&handle_lock);
+   mtx_lock(&shim_fd->handle_lock);
    struct hash_entry *entry =
       _mesa_hash_table_search(shim_fd->handles, (void *)(uintptr_t)handle);
    struct shim_bo *bo = entry ? entry->data : NULL;
-   mtx_unlock(&handle_lock);
+   mtx_unlock(&shim_fd->handle_lock);
 
    if (bo)
       p_atomic_inc(&bo->refcount);
@@ -311,17 +311,17 @@ drm_shim_bo_get_handle(struct shim_fd *shim_fd, struct shim_bo *bo)
    /* We should probably have some real datastructure for finding the free
     * number.
     */
-   mtx_lock(&handle_lock);
+   mtx_lock(&shim_fd->handle_lock);
    for (int new_handle = 1; ; new_handle++) {
       void *key = (void *)(uintptr_t)new_handle;
       if (!_mesa_hash_table_search(shim_fd->handles, key)) {
          drm_shim_bo_get(bo);
          _mesa_hash_table_insert(shim_fd->handles, key, bo);
-         mtx_unlock(&handle_lock);
+         mtx_unlock(&shim_fd->handle_lock);
          return new_handle;
       }
    }
-   mtx_unlock(&handle_lock);
+   mtx_unlock(&shim_fd->handle_lock);
 
    return 0;
 }

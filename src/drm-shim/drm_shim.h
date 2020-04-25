@@ -21,6 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <c11/threads.h>
+
 #include "util/macros.h"
 #include "util/hash_table.h"
 
@@ -53,6 +55,7 @@ extern struct shim_device shim_device;
 
 struct shim_fd {
    int fd;
+   mtx_t handle_lock;
    /* mapping from int gem handle to struct shim_bo *. */
    struct hash_table *handles;
 };
