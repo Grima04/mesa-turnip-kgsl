@@ -922,6 +922,20 @@ bi_pack_convert(bi_instruction *ins, struct bi_registers *regs, bool FMA)
 }
 
 static unsigned
+bi_pack_fma_select(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned size = nir_alu_type_get_type_size(ins->src_types[0]);
+
+        if (size == 16) {
+                unsigned swiz = (ins->swizzle[0][0] | (ins->swizzle[1][0] << 1));
+                unsigned op = BIFROST_FMA_SEL_16(swiz);
+                return bi_pack_fma_2src(ins, regs, op);
+        } else {
+                unreachable("Unimplemented");
+        }
+}
+
+static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         if (!bundle.fma)
@@ -948,7 +962,9 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_MOV:
                 return bi_pack_fma_1src(bundle.fma, regs, BIFROST_FMA_OP_MOV);
         case BI_SHIFT:
+		return BIFROST_FMA_NOP;
         case BI_SELECT:
+                return bi_pack_fma_select(bundle.fma, regs);
         case BI_ROUND:
 		return BIFROST_FMA_NOP;
         case BI_REDUCE_FMA:

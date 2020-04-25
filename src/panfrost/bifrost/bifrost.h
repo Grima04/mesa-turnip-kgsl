@@ -99,6 +99,7 @@ enum bifrost_packed_src {
 #define BIFROST_FMA_OP_MOV BIFROST_FMA_EXT | (0x32d)
 #define BIFROST_FMA_OP_FREXPE_LOG BIFROST_FMA_EXT | 0x3c5
 #define BIFROST_FMA_OP_ADD_FREXPM ((BIFROST_FMA_EXT | 0x1e80) >> 3)
+#define BIFROST_FMA_SEL_16(swiz) (((BIFROST_FMA_EXT | 0x1e00) >> 3) | (swiz))
 
 struct bifrost_fma_inst {
         unsigned src0 : 3;
@@ -149,6 +150,7 @@ struct bifrost_add_inst {
 #define BIFROST_ADD_OP_LD_UBO_2 (0x0c1e0 >> 3)
 #define BIFROST_ADD_OP_LD_UBO_3 (0x0caa0 >> 3)
 #define BIFROST_ADD_OP_LD_UBO_4 (0x0c220 >> 3)
+#define BIFROST_ADD_SEL_16(swiz) ((0xea60 >> 3) | (swiz))
 
 struct bifrost_add_2src {
         unsigned src0 : 3;
