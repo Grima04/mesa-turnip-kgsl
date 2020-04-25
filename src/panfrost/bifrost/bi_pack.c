@@ -930,6 +930,27 @@ bi_pack_fma_select(bi_instruction *ins, struct bi_registers *regs)
                 unsigned swiz = (ins->swizzle[0][0] | (ins->swizzle[1][0] << 1));
                 unsigned op = BIFROST_FMA_SEL_16(swiz);
                 return bi_pack_fma_2src(ins, regs, op);
+        } else if (size == 8) {
+                unsigned swiz = 0;
+
+                for (unsigned c = 0; c < 4; ++c) {
+                        if (ins->swizzle[c][0]) {
+                                /* Ensure lowering restriction is met */
+                                assert(ins->swizzle[c][0] == 2);
+                                swiz |= (1 << c);
+                        }
+                }
+
+                struct bifrost_fma_sel8 pack = {
+                        .src0 = bi_get_src(ins, regs, 0, true),
+                        .src1 = bi_get_src(ins, regs, 1, true),
+                        .src2 = bi_get_src(ins, regs, 2, true),
+                        .src3 = bi_get_src(ins, regs, 3, true),
+                        .swizzle = swiz,
+                        .op = BIFROST_FMA_OP_SEL8
+                };
+
+                RETURN_PACKED(pack);
         } else {
                 unreachable("Unimplemented");
         }

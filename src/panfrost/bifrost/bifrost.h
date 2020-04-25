@@ -112,6 +112,17 @@ struct bifrost_fma_2src {
         unsigned op   : 17;
 } __attribute__((packed));
 
+#define BIFROST_FMA_OP_SEL8 (0x71)
+
+struct bifrost_fma_sel8 {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned src2 : 3;
+        unsigned src3 : 3;
+        unsigned swizzle : 4;
+        unsigned op   : 7;
+} __attribute__((packed));
+
 #define BIFROST_FMA_OP_MSCALE (0x50 >> 3)
 
 struct bifrost_fma_mscale {
