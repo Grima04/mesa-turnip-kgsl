@@ -33,7 +33,7 @@
 #include <stdio.h>
 
 #include <xf86drm.h>
-#include <amdgpu_drm.h>
+#include "drm-uapi/amdgpu_drm.h"
 
 #include <amdgpu.h>
 

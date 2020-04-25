@@ -50,7 +50,7 @@
 #include "vk_util.h"
 #include <xf86drm.h>
 #include <amdgpu.h>
-#include <amdgpu_drm.h>
+#include "drm-uapi/amdgpu_drm.h"
 #include "winsys/amdgpu/radv_amdgpu_winsys_public.h"
 #include "winsys/null/radv_null_winsys_public.h"
 #include "ac_llvm_util.h"

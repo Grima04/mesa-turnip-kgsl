@@ -36,7 +36,7 @@
 #include "util/u_hash_table.h"
 #include "util/hash_table.h"
 #include "util/xmlconfig.h"
-#include <amdgpu_drm.h>
+#include "drm-uapi/amdgpu_drm.h"
 #include <xf86drm.h>
 #include <stdio.h>
 #include <sys/stat.h>

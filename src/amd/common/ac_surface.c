@@ -37,7 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <amdgpu.h>
-#include <amdgpu_drm.h>
+#include "drm-uapi/amdgpu_drm.h"
 
 #include "addrlib/inc/addrinterface.h"
 

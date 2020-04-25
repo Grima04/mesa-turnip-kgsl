@@ -31,7 +31,7 @@
 #include "radv_amdgpu_bo.h"
 
 #include <amdgpu.h>
-#include <amdgpu_drm.h>
+#include "drm-uapi/amdgpu_drm.h"
 #include <inttypes.h>
 #include <pthread.h>
 #include <unistd.h>
