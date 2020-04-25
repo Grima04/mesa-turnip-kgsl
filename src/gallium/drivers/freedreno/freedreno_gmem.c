@@ -353,7 +353,7 @@ __fd_gmem_destroy(struct fd_gmem_stateobj *gmem)
 }
 
 static struct gmem_key *
-key_init(struct fd_batch *batch)
+gmem_key_init(struct fd_batch *batch, bool assume_zs)
 {
 	struct fd_screen *screen = batch->ctx->screen;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -361,7 +361,7 @@ key_init(struct fd_batch *batch)
 		FD_GMEM_STENCIL_ENABLED | FD_GMEM_CLEARS_DEPTH_STENCIL));
 	struct gmem_key *key = rzalloc(screen->gmem_cache.ht, struct gmem_key);
 
-	if (has_zs) {
+	if (has_zs || assume_zs) {
 		struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
 		key->zsbuf_cpp[0] = rsc->layout.cpp;
 		if (rsc->stencil)
@@ -412,12 +412,12 @@ key_init(struct fd_batch *batch)
 }
 
 static struct fd_gmem_stateobj *
-lookup_gmem_state(struct fd_batch *batch)
+lookup_gmem_state(struct fd_batch *batch, bool assume_zs)
 {
 	struct fd_screen *screen = batch->ctx->screen;
 	struct fd_gmem_cache *cache = &screen->gmem_cache;
 	struct fd_gmem_stateobj *gmem = NULL;
-	struct gmem_key *key = key_init(batch);
+	struct gmem_key *key = gmem_key_init(batch, assume_zs);
 	uint32_t hash = gmem_key_hash(key);
 
 	mtx_lock(&screen->lock);
@@ -610,7 +610,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 		render_sysmem(batch);
 		ctx->stats.batch_sysmem++;
 	} else {
-		struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch);
+		struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch, false);
 		batch->gmem_state = gmem;
 		fd_log(batch, "%p: rendering %dx%d tiles %ux%u (%s/%s)",
 			batch, pfb->width, pfb->height, gmem->nbins_x, gmem->nbins_y,
@@ -629,6 +629,24 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 	}
 
 	flush_ring(batch);
+}
+
+/* Determine a worst-case estimate (ie. assuming we don't eliminate an
+ * unused depth/stencil) number of bins per vsc pipe.
+ */
+unsigned
+fd_gmem_estimate_bins_per_pipe(struct fd_batch *batch)
+{
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+	struct fd_screen *screen = batch->ctx->screen;
+	struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch, !!pfb->zsbuf);
+	unsigned nbins = gmem->maxpw * gmem->maxph;
+
+	mtx_lock(&screen->lock);
+	fd_gmem_reference(&gmem, NULL);
+	mtx_unlock(&screen->lock);
+
+	return nbins;
 }
 
 /* When deciding whether a tile needs mem2gmem, we need to take into
