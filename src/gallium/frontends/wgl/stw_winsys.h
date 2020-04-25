@@ -31,6 +31,7 @@
 #include <windows.h> /* for HDC */
 
 #include "pipe/p_compiler.h"
+#include "frontend/api.h"
 
 struct pipe_screen;
 struct pipe_context;
@@ -43,6 +44,24 @@ typedef enum
    stw_pfd_gdi_support   = 1 << 0,
    stw_pfd_double_buffer = 1 << 1,
 } stw_pfd_flag;
+
+struct stw_winsys_framebuffer
+{
+   void
+   (*destroy)(struct stw_winsys_framebuffer *fb);
+
+   boolean
+   (*present)(struct stw_winsys_framebuffer *fb);
+
+   void
+   (*resize)(struct stw_winsys_framebuffer *fb,
+             struct pipe_context *context,
+             struct pipe_resource *templ);
+
+   struct pipe_resource *
+   (*get_resource)(struct stw_winsys_framebuffer *fb,
+                   enum st_attachment_type statt);
+};
 
 struct stw_winsys
 {
@@ -104,6 +123,14 @@ struct stw_winsys
     */
    unsigned
    (*get_pfd_flags)( struct pipe_screen *screen );
+
+   /**
+    * Create a winsys-specific object for a given DC's framebuffer
+    */
+   struct stw_winsys_framebuffer *
+   (*create_framebuffer)( struct pipe_screen *screen,
+                          HDC hDC,
+                          int iPixelFormat );
 };
 
 boolean
