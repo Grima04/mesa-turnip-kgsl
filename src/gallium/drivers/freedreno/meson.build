@@ -205,6 +205,8 @@ files_libfreedreno = files(
   'a6xx/fd6_screen.h',
   'a6xx/fd6_texture.c',
   'a6xx/fd6_texture.h',
+  'a6xx/fd6_vsc.c',
+  'a6xx/fd6_vsc.h',
   'a6xx/fd6_zsa.c',
   'a6xx/fd6_zsa.h',
   'ir3/ir3_cache.c',

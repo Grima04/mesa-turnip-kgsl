@@ -326,6 +326,27 @@ update_vsc_pipe(struct fd_batch *batch)
 	struct fd_ringbuffer *ring = batch->gmem;
 	int i;
 
+	if (batch->draw_strm_bits/8 > fd6_ctx->vsc_draw_strm_pitch) {
+		if (fd6_ctx->vsc_draw_strm)
+			fd_bo_del(fd6_ctx->vsc_draw_strm);
+		fd6_ctx->vsc_draw_strm = NULL;
+		/* Note: probably only need to align to 0x40, but aligning stronger
+		 * reduces the odds that we will have to realloc again on the next
+		 * frame:
+		 */
+		fd6_ctx->vsc_draw_strm_pitch = align(batch->draw_strm_bits/8, 0x4000);
+		debug_printf("pre-resize VSC_DRAW_STRM_PITCH to: 0x%x\n",
+				fd6_ctx->vsc_draw_strm_pitch);
+	}
+
+	if (batch->prim_strm_bits/8 > fd6_ctx->vsc_prim_strm_pitch) {
+		if (fd6_ctx->vsc_prim_strm)
+			fd_bo_del(fd6_ctx->vsc_prim_strm);
+		fd6_ctx->vsc_prim_strm = NULL;
+		fd6_ctx->vsc_prim_strm_pitch = align(batch->prim_strm_bits/8, 0x4000);
+		debug_printf("pre-resize VSC_PRIM_STRM_PITCH to: 0x%x\n",
+				fd6_ctx->vsc_prim_strm_pitch);
+	}
 
 	if (!fd6_ctx->vsc_draw_strm) {
 		fd6_ctx->vsc_draw_strm = fd_bo_new(ctx->screen->dev,

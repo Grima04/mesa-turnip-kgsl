@@ -84,6 +84,9 @@ batch_init(struct fd_batch *batch)
 	batch->gmem_reason = 0;
 	batch->num_draws = 0;
 	batch->num_vertices = 0;
+	batch->num_bins_per_pipe = 0;
+	batch->prim_strm_bits = 0;
+	batch->draw_strm_bits = 0;
 	batch->stage = FD_STAGE_NULL;
 
 	fd_reset_wfi(batch);

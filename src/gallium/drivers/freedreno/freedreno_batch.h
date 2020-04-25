@@ -129,8 +129,15 @@ struct fd_batch {
 	 */
 	const struct fd_gmem_stateobj *gmem_state;
 
-	unsigned num_draws;   /* number of draws in current batch */
+	unsigned num_draws;      /* number of draws in current batch */
 	unsigned num_vertices;   /* number of vertices in current batch */
+
+	/* Currently only used on a6xx, to calculate vsc prim/draw stream
+	 * sizes:
+	 */
+	unsigned num_bins_per_pipe;
+	unsigned prim_strm_bits;
+	unsigned draw_strm_bits;
 
 	/* Track the maximal bounds of the scissor of all the draws within a
 	 * batch.  Used at the tile rendering step (fd_gmem_render_tiles(),

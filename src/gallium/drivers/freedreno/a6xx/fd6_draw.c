@@ -38,6 +38,7 @@
 #include "fd6_emit.h"
 #include "fd6_program.h"
 #include "fd6_format.h"
+#include "fd6_vsc.h"
 #include "fd6_zsa.h"
 
 static void
@@ -191,6 +192,9 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 	if (emit.key.gs)
 		emit.key.key.has_gs = true;
+
+	if (!(emit.key.hs || emit.key.ds || emit.key.gs || info->indirect))
+		fd6_vsc_update_sizes(ctx->batch, info);
 
 	fixup_shader_state(ctx, &emit.key.key);
 
