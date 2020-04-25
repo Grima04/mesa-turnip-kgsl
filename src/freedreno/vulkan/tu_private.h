@@ -503,10 +503,10 @@ struct tu_device
    /* Backup in-memory cache to be used if the app doesn't provide one */
    struct tu_pipeline_cache *mem_cache;
 
-   struct tu_bo vsc_data;
-   struct tu_bo vsc_data2;
-   uint32_t vsc_data_pitch;
-   uint32_t vsc_data2_pitch;
+   struct tu_bo vsc_draw_strm;
+   struct tu_bo vsc_prim_strm;
+   uint32_t vsc_draw_strm_pitch;
+   uint32_t vsc_prim_strm_pitch;
 
    struct tu_bo border_color;
 
@@ -1026,10 +1026,10 @@ struct tu_cmd_buffer
    struct tu_bo scratch_bo;
    uint32_t scratch_seqno;
 
-   struct tu_bo vsc_data;
-   struct tu_bo vsc_data2;
-   uint32_t vsc_data_pitch;
-   uint32_t vsc_data2_pitch;
+   struct tu_bo vsc_draw_strm;
+   struct tu_bo vsc_prim_strm;
+   uint32_t vsc_draw_strm_pitch;
+   uint32_t vsc_prim_strm_pitch;
    bool use_vsc_data;
 
    bool wait_for_idle;

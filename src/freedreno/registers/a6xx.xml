@@ -1741,9 +1741,9 @@ to upconvert to 32b float internally?
 		<bitfield name="WIDTH" low="0" high="7" shr="5" type="uint"/>
 		<bitfield name="HEIGHT" low="8" high="16" shr="4" type="uint"/>
 	</reg32>
-	<reg32 offset="0x0c03" name="VSC_SIZE_ADDRESS_LO"/>
-	<reg32 offset="0x0c04" name="VSC_SIZE_ADDRESS_HI"/>
-	<reg64 offset="0x0c03" name="VSC_SIZE_ADDRESS" type="waddress"/>
+	<reg32 offset="0x0c03" name="VSC_DRAW_STRM_SIZE_ADDRESS_LO"/>
+	<reg32 offset="0x0c04" name="VSC_DRAW_STRM_SIZE_ADDRESS_HI"/>
+	<reg64 offset="0x0c03" name="VSC_DRAW_STRM_SIZE_ADDRESS" type="waddress"/>
 	<reg32 offset="0x0c06" name="VSC_BIN_COUNT">
 		<bitfield name="NX" low="1" high="10" type="uint"/>
 		<bitfield name="NY" low="11" high="20" type="uint"/>
@@ -1765,33 +1765,23 @@ to upconvert to 32b float internally?
 		</reg32>
 	</array>
 	<!--
-	compared to a5xx and earlier, we just program the address of the first
-	visibility stream and hw adds (pipe_num * VSC_PIPE_DATA_PITCH)
+	HW binning primitive & draw streams, which enable draws and primitives
+	within a draw to be skipped in the main tile pass.  See:
+	https://github.com/freedreno/freedreno/wiki/Visibility-Stream-Format
 
-	TODO now there seem to be two buffers of VSC data (both referenced by
-	CP_SET_BIN_DATA packet.  Not sure what this new DATA2 one is, but seems
-	to have the larger pitch.
-
-	The "DATA2" buffer is probably actually the main visibility stream; it
-	is at least the larger of the two.
-
-	For VSC_DATA_PITCH, 0x20 actually seems to be sufficient (although blob
-	uses something somewhat larger) for many cases, although required value
-	can ramp up somewhat higher.  Values less than 0x20 trigger GPU hangs
-	even with small amount of geometry (so possibly 0x20 is minimum
-	alignment or something like that).  So far I can't seem to find any-
-	thing that needs values larger than 0x20
+	Compared to a5xx and earlier, we just program the address of the first
+	stream and hw adds (pipe_num * VSC_*_STRM_PITCH)
 	 -->
-	<reg32 offset="0x0c30" name="VSC_PIPE_DATA2_ADDRESS_LO"/>
-	<reg32 offset="0x0c31" name="VSC_PIPE_DATA2_ADDRESS_HI"/>
-	<reg64 offset="0x0c30" name="VSC_PIPE_DATA2_ADDRESS" type="waddress"/>
-	<reg32 offset="0x0c32" name="VSC_PIPE_DATA2_PITCH"/>
-	<reg32 offset="0x0c33" name="VSC_PIPE_DATA2_ARRAY_PITCH" shr="4" type="uint"/>
-	<reg32 offset="0x0c34" name="VSC_PIPE_DATA_ADDRESS_LO"/>
-	<reg32 offset="0x0c35" name="VSC_PIPE_DATA_ADDRESS_HI"/>
-	<reg64 offset="0x0c34" name="VSC_PIPE_DATA_ADDRESS" type="waddress"/>
-	<reg32 offset="0x0c36" name="VSC_PIPE_DATA_PITCH"/>
-	<reg32 offset="0x0c37" name="VSC_PIPE_DATA_ARRAY_PITCH" shr="4" type="uint"/>
+	<reg32 offset="0x0c30" name="VSC_PRIM_STRM_ADDRESS_LO"/>
+	<reg32 offset="0x0c31" name="VSC_PRIM_STRM_ADDRESS_HI"/>
+	<reg64 offset="0x0c30" name="VSC_PRIM_STRM_ADDRESS" type="waddress"/>
+	<reg32 offset="0x0c32" name="VSC_PRIM_STRM_PITCH"/>
+	<reg32 offset="0x0c33" name="VSC_PRIM_STRM_ARRAY_PITCH" shr="4" type="uint"/>
+	<reg32 offset="0x0c34" name="VSC_DRAW_STRM_ADDRESS_LO"/>
+	<reg32 offset="0x0c35" name="VSC_DRAW_STRM_ADDRESS_HI"/>
+	<reg64 offset="0x0c34" name="VSC_DRAW_STRM_ADDRESS" type="waddress"/>
+	<reg32 offset="0x0c36" name="VSC_DRAW_STRM_PITCH"/>
+	<reg32 offset="0x0c37" name="VSC_DRAW_STRM_ARRAY_PITCH" shr="4" type="uint"/>
 
 	<array offset="0x0c38" name="VSC_STATE" stride="1" length="32">
 		<doc>
@@ -1804,18 +1794,18 @@ to upconvert to 32b float internally?
 		<reg32 offset="0x0" name="REG"/>
 	</array>
 
-	<array offset="0x0c58" name="VSC_SIZE2" stride="1" length="32">
+	<array offset="0x0c58" name="VSC_PRIM_STRM_SIZE" stride="1" length="32">
 		<doc>
-			Has the size of data written to corresponding VSC_DATA2
+			Has the size of data written to corresponding VSC_PRIM_STRM
 			buffer.
 		</doc>
 		<reg32 offset="0x0" name="REG"/>
 	</array>
 
-	<array offset="0x0c78" name="VSC_SIZE" stride="1" length="32">
+	<array offset="0x0c78" name="VSC_DRAW_STRM_SIZE" stride="1" length="32">
 		<doc>
 			Has the size of data written to corresponding VSC pipe, ie.
-			same thing that is written out to VSC_SIZE_ADDRESS_LO/HI
+			same thing that is written out to VSC_DRAW_STRM_SIZE_ADDRESS_LO/HI
 		</doc>
 		<reg32 offset="0x0" name="REG"/>
 	</array>

@@ -1217,17 +1217,17 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (!device->compiler)
       goto fail_queues;
 
-#define VSC_DATA_SIZE(pitch)  ((pitch) * 32 + 0x100)  /* extra size to store VSC_SIZE */
-#define VSC_DATA2_SIZE(pitch) ((pitch) * 32)
+#define VSC_DRAW_STRM_SIZE(pitch)  ((pitch) * 32 + 0x100)  /* extra size to store VSC_SIZE */
+#define VSC_PRIM_STRM_SIZE(pitch) ((pitch) * 32)
 
-   device->vsc_data_pitch = 0x440 * 4;
-   device->vsc_data2_pitch = 0x1040 * 4;
+   device->vsc_draw_strm_pitch = 0x440 * 4;
+   device->vsc_prim_strm_pitch = 0x1040 * 4;
 
-   result = tu_bo_init_new(device, &device->vsc_data, VSC_DATA_SIZE(device->vsc_data_pitch));
+   result = tu_bo_init_new(device, &device->vsc_draw_strm, VSC_DRAW_STRM_SIZE(device->vsc_draw_strm_pitch));
    if (result != VK_SUCCESS)
       goto fail_vsc_data;
 
-   result = tu_bo_init_new(device, &device->vsc_data2, VSC_DATA2_SIZE(device->vsc_data2_pitch));
+   result = tu_bo_init_new(device, &device->vsc_prim_strm, VSC_PRIM_STRM_SIZE(device->vsc_prim_strm_pitch));
    if (result != VK_SUCCESS)
       goto fail_vsc_data2;
 
@@ -1264,10 +1264,10 @@ fail_border_color_map:
    tu_bo_finish(device, &device->border_color);
 
 fail_border_color:
-   tu_bo_finish(device, &device->vsc_data2);
+   tu_bo_finish(device, &device->vsc_prim_strm);
 
 fail_vsc_data2:
-   tu_bo_finish(device, &device->vsc_data);
+   tu_bo_finish(device, &device->vsc_draw_strm);
 
 fail_vsc_data:
    ralloc_free(device->compiler);
@@ -1292,8 +1292,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    if (!device)
       return;
 
-   tu_bo_finish(device, &device->vsc_data);
-   tu_bo_finish(device, &device->vsc_data2);
+   tu_bo_finish(device, &device->vsc_draw_strm);
+   tu_bo_finish(device, &device->vsc_prim_strm);
 
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++)

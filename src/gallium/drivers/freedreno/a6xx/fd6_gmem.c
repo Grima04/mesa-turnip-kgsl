@@ -313,8 +313,9 @@ update_render_cntl(struct fd_batch *batch, struct pipe_framebuffer_state *pfb, b
 		A6XX_RB_RENDER_CNTL_FLAG_MRTS(mrts_ubwc_enable));
 }
 
-#define VSC_DATA_SIZE(pitch)  ((pitch) * 32 + 0x100)  /* extra size to store VSC_SIZE */
-#define VSC_DATA2_SIZE(pitch) ((pitch) * 32)
+/* extra size to store VSC_DRAW_STRM_SIZE: */
+#define VSC_DRAW_STRM_SIZE(pitch)  ((pitch) * 32 + 0x100)
+#define VSC_PRIM_STRM_SIZE(pitch) ((pitch) * 32)
 
 static void
 update_vsc_pipe(struct fd_batch *batch)
@@ -326,21 +327,23 @@ update_vsc_pipe(struct fd_batch *batch)
 	int i;
 
 
-	if (!fd6_ctx->vsc_data) {
-		fd6_ctx->vsc_data = fd_bo_new(ctx->screen->dev,
-			VSC_DATA_SIZE(fd6_ctx->vsc_data_pitch),
-			DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_data");
+	if (!fd6_ctx->vsc_draw_strm) {
+		fd6_ctx->vsc_draw_strm = fd_bo_new(ctx->screen->dev,
+			VSC_DRAW_STRM_SIZE(fd6_ctx->vsc_draw_strm_pitch),
+			DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_draw_strm");
 	}
 
-	if (!fd6_ctx->vsc_data2) {
-		fd6_ctx->vsc_data2 = fd_bo_new(ctx->screen->dev,
-			VSC_DATA2_SIZE(fd6_ctx->vsc_data2_pitch),
-			DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_data2");
+	if (!fd6_ctx->vsc_prim_strm) {
+		fd6_ctx->vsc_prim_strm = fd_bo_new(ctx->screen->dev,
+			VSC_PRIM_STRM_SIZE(fd6_ctx->vsc_prim_strm_pitch),
+			DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_prim_strm");
 	}
 
 	OUT_REG(ring,
 		A6XX_VSC_BIN_SIZE(.width = gmem->bin_w, .height = gmem->bin_h),
-		A6XX_VSC_SIZE_ADDRESS(.bo = fd6_ctx->vsc_data, .bo_offset = 32 * fd6_ctx->vsc_data_pitch));
+		A6XX_VSC_DRAW_STRM_SIZE_ADDRESS(
+			.bo = fd6_ctx->vsc_draw_strm,
+			.bo_offset = 32 * fd6_ctx->vsc_draw_strm_pitch));
 
 	OUT_REG(ring, A6XX_VSC_BIN_COUNT(.nx = gmem->nbins_x,
 					.ny = gmem->nbins_y));
@@ -355,14 +358,14 @@ update_vsc_pipe(struct fd_batch *batch)
 	}
 
 	OUT_REG(ring,
-		A6XX_VSC_PIPE_DATA2_ADDRESS(.bo = fd6_ctx->vsc_data2),
-		A6XX_VSC_PIPE_DATA2_PITCH(.dword = fd6_ctx->vsc_data2_pitch),
-		A6XX_VSC_PIPE_DATA2_ARRAY_PITCH(.dword = fd_bo_size(fd6_ctx->vsc_data2)));
+		A6XX_VSC_PRIM_STRM_ADDRESS(.bo = fd6_ctx->vsc_prim_strm),
+		A6XX_VSC_PRIM_STRM_PITCH(.dword = fd6_ctx->vsc_prim_strm_pitch),
+		A6XX_VSC_PRIM_STRM_ARRAY_PITCH(.dword = fd_bo_size(fd6_ctx->vsc_prim_strm)));
 
 	OUT_REG(ring,
-		A6XX_VSC_PIPE_DATA_ADDRESS(.bo = fd6_ctx->vsc_data),
-		A6XX_VSC_PIPE_DATA_PITCH(.dword = fd6_ctx->vsc_data_pitch),
-		A6XX_VSC_PIPE_DATA_ARRAY_PITCH(.dword = fd_bo_size(fd6_ctx->vsc_data)));
+		A6XX_VSC_DRAW_STRM_ADDRESS(.bo = fd6_ctx->vsc_draw_strm),
+		A6XX_VSC_DRAW_STRM_PITCH(.dword = fd6_ctx->vsc_draw_strm_pitch),
+		A6XX_VSC_DRAW_STRM_ARRAY_PITCH(.dword = fd_bo_size(fd6_ctx->vsc_draw_strm)));
 }
 
 /* TODO we probably have more than 8 scratch regs.. although the first
@@ -372,8 +375,8 @@ update_vsc_pipe(struct fd_batch *batch)
 #define OVERFLOW_FLAG_REG REG_A6XX_CP_SCRATCH_REG(0)
 
 /*
- * If overflow is detected, either 0x1 (VSC_DATA overflow) or 0x3
- * (VSC_DATA2 overflow) plus the size of the overflowed buffer is
+ * If overflow is detected, either 0x1 (VSC_DRAW_STRM overflow) or 0x3
+ * (VSC_PRIM_STRM overflow) plus the size of the overflowed buffer is
  * written to control->vsc_overflow.  This allows the CPU to
  * detect which buffer overflowed (and, since the current size is
  * encoded as well, this protects against already-submitted but
@@ -392,8 +395,8 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 
-	debug_assert((fd6_ctx->vsc_data_pitch & 0x3) == 0);
-	debug_assert((fd6_ctx->vsc_data2_pitch & 0x3) == 0);
+	debug_assert((fd6_ctx->vsc_draw_strm_pitch & 0x3) == 0);
+	debug_assert((fd6_ctx->vsc_prim_strm_pitch & 0x3) == 0);
 
 	/* Clear vsc_scratch: */
 	OUT_PKT7(ring, CP_MEM_WRITE, 3);
@@ -405,22 +408,22 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 		OUT_PKT7(ring, CP_COND_WRITE5, 8);
 		OUT_RING(ring, CP_COND_WRITE5_0_FUNCTION(WRITE_GE) |
 				CP_COND_WRITE5_0_WRITE_MEMORY);
-		OUT_RING(ring, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_SIZE_REG(i)));
+		OUT_RING(ring, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_DRAW_STRM_SIZE_REG(i)));
 		OUT_RING(ring, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
-		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_data_pitch));
+		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_draw_strm_pitch));
 		OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
 		OUT_RELOCW(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
-		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(1 + fd6_ctx->vsc_data_pitch));
+		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(1 + fd6_ctx->vsc_draw_strm_pitch));
 
 		OUT_PKT7(ring, CP_COND_WRITE5, 8);
 		OUT_RING(ring, CP_COND_WRITE5_0_FUNCTION(WRITE_GE) |
 				CP_COND_WRITE5_0_WRITE_MEMORY);
-		OUT_RING(ring, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_SIZE2_REG(i)));
+		OUT_RING(ring, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_PRIM_STRM_SIZE_REG(i)));
 		OUT_RING(ring, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
-		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_data2_pitch));
+		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_prim_strm_pitch));
 		OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
 		OUT_RELOCW(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
-		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(3 + fd6_ctx->vsc_data2_pitch));
+		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(3 + fd6_ctx->vsc_prim_strm_pitch));
 	}
 
 	OUT_PKT7(ring, CP_WAIT_MEM_WRITES, 0);
@@ -444,7 +447,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 
 	BEGIN_RING(ring, 10);  /* ensure if/else doesn't get split */
 
-	/* b0 will be set if VSC_DATA or VSC_DATA2 overflow: */
+	/* b0 will be set if VSC_DRAW_STRM or VSC_PRIM_STRM overflow: */
 	OUT_PKT7(ring, CP_REG_TEST, 1);
 	OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
 			A6XX_CP_REG_TEST_0_BIT(0) |
@@ -492,9 +495,9 @@ check_vsc_overflow(struct fd_context *ctx)
 	unsigned size = vsc_overflow & ~0x3;
 
 	if (buffer == 0x1) {
-		/* VSC_PIPE_DATA overflow: */
+		/* VSC_DRAW_STRM overflow: */
 
-		if (size < fd6_ctx->vsc_data_pitch) {
+		if (size < fd6_ctx->vsc_draw_strm_pitch) {
 			/* we've already increased the size, this overflow is
 			 * from a batch submitted before resize, but executed
 			 * after
@@ -502,25 +505,27 @@ check_vsc_overflow(struct fd_context *ctx)
 			return;
 		}
 
-		fd_bo_del(fd6_ctx->vsc_data);
-		fd6_ctx->vsc_data = NULL;
-		fd6_ctx->vsc_data_pitch *= 2;
+		fd_bo_del(fd6_ctx->vsc_draw_strm);
+		fd6_ctx->vsc_draw_strm = NULL;
+		fd6_ctx->vsc_draw_strm_pitch *= 2;
 
-		debug_printf("resized VSC_DATA_PITCH to: 0x%x\n", fd6_ctx->vsc_data_pitch);
+		debug_printf("resized VSC_DRAW_STRM_PITCH to: 0x%x\n",
+				fd6_ctx->vsc_draw_strm_pitch);
 
 	} else if (buffer == 0x3) {
-		/* VSC_PIPE_DATA2 overflow: */
+		/* VSC_PRIM_STRM overflow: */
 
-		if (size < fd6_ctx->vsc_data2_pitch) {
+		if (size < fd6_ctx->vsc_prim_strm_pitch) {
 			/* we've already increased the size */
 			return;
 		}
 
-		fd_bo_del(fd6_ctx->vsc_data2);
-		fd6_ctx->vsc_data2 = NULL;
-		fd6_ctx->vsc_data2_pitch *= 2;
+		fd_bo_del(fd6_ctx->vsc_prim_strm);
+		fd6_ctx->vsc_prim_strm = NULL;
+		fd6_ctx->vsc_prim_strm_pitch *= 2;
 
-		debug_printf("resized VSC_DATA2_PITCH to: 0x%x\n", fd6_ctx->vsc_data2_pitch);
+		debug_printf("resized VSC_PRIM_STRM_PITCH to: 0x%x\n",
+				fd6_ctx->vsc_prim_strm_pitch);
 
 	} else {
 		/* NOTE: it's possible, for example, for overflow to corrupt the
@@ -865,12 +870,12 @@ fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 			OUT_PKT7(ring, CP_SET_BIN_DATA5, 7);
 			OUT_RING(ring, CP_SET_BIN_DATA5_0_VSC_SIZE(pipe->w * pipe->h) |
 					CP_SET_BIN_DATA5_0_VSC_N(tile->n));
-			OUT_RELOC(ring, fd6_ctx->vsc_data,       /* VSC_PIPE[p].DATA_ADDRESS */
-					(tile->p * fd6_ctx->vsc_data_pitch), 0, 0);
-			OUT_RELOC(ring, fd6_ctx->vsc_data,       /* VSC_SIZE_ADDRESS + (p * 4) */
-					(tile->p * 4) + (32 * fd6_ctx->vsc_data_pitch), 0, 0);
-			OUT_RELOC(ring, fd6_ctx->vsc_data2,
-					(tile->p * fd6_ctx->vsc_data2_pitch), 0, 0);
+			OUT_RELOC(ring, fd6_ctx->vsc_draw_strm,       /* per-pipe draw-stream address */
+					(tile->p * fd6_ctx->vsc_draw_strm_pitch), 0, 0);
+			OUT_RELOC(ring, fd6_ctx->vsc_draw_strm,       /* VSC_DRAW_STRM_ADDRESS + (p * 4) */
+					(tile->p * 4) + (32 * fd6_ctx->vsc_draw_strm_pitch), 0, 0);
+			OUT_RELOC(ring, fd6_ctx->vsc_prim_strm,
+					(tile->p * fd6_ctx->vsc_prim_strm_pitch), 0, 0);
 
 			OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
 			OUT_RING(ring, 0x0);

@@ -675,9 +675,9 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
          tu_cs_emit_pkt7(cs, CP_SET_BIN_DATA5, 7);
          tu_cs_emit(cs, cmd->state.tiling_config.pipe_sizes[tile->pipe] |
                         CP_SET_BIN_DATA5_0_VSC_N(tile->slot));
-         tu_cs_emit_qw(cs, cmd->vsc_data.iova + tile->pipe * cmd->vsc_data_pitch);
-         tu_cs_emit_qw(cs, cmd->vsc_data.iova + (tile->pipe * 4) + (32 * cmd->vsc_data_pitch));
-         tu_cs_emit_qw(cs, cmd->vsc_data2.iova + (tile->pipe * cmd->vsc_data2_pitch));
+         tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + tile->pipe * cmd->vsc_draw_strm_pitch);
+         tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + (tile->pipe * 4) + (32 * cmd->vsc_draw_strm_pitch));
+         tu_cs_emit_qw(cs, cmd->vsc_prim_strm.iova + (tile->pipe * cmd->vsc_prim_strm_pitch));
 
          tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
          tu_cs_emit(cs, 0x0);
@@ -919,8 +919,8 @@ update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs,
                    A6XX_VSC_BIN_SIZE(.width = tiling->tile0.extent.width,
                                      .height = tiling->tile0.extent.height),
-                   A6XX_VSC_SIZE_ADDRESS(.bo = &cmd->vsc_data,
-                                         .bo_offset = 32 * cmd->vsc_data_pitch));
+                   A6XX_VSC_DRAW_STRM_SIZE_ADDRESS(.bo = &cmd->vsc_draw_strm,
+                                                   .bo_offset = 32 * cmd->vsc_draw_strm_pitch));
 
    tu_cs_emit_regs(cs,
                    A6XX_VSC_BIN_COUNT(.nx = tiling->tile_count.width,
@@ -931,14 +931,14 @@ update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit(cs, tiling->pipe_config[i]);
 
    tu_cs_emit_regs(cs,
-                   A6XX_VSC_PIPE_DATA2_ADDRESS(.bo = &cmd->vsc_data2),
-                   A6XX_VSC_PIPE_DATA2_PITCH(cmd->vsc_data2_pitch),
-                   A6XX_VSC_PIPE_DATA2_ARRAY_PITCH(cmd->vsc_data2.size));
+                   A6XX_VSC_PRIM_STRM_ADDRESS(.bo = &cmd->vsc_prim_strm),
+                   A6XX_VSC_PRIM_STRM_PITCH(cmd->vsc_prim_strm_pitch),
+                   A6XX_VSC_PRIM_STRM_ARRAY_PITCH(cmd->vsc_prim_strm.size));
 
    tu_cs_emit_regs(cs,
-                   A6XX_VSC_PIPE_DATA_ADDRESS(.bo = &cmd->vsc_data),
-                   A6XX_VSC_PIPE_DATA_PITCH(cmd->vsc_data_pitch),
-                   A6XX_VSC_PIPE_DATA_ARRAY_PITCH(cmd->vsc_data.size));
+                   A6XX_VSC_DRAW_STRM_ADDRESS(.bo = &cmd->vsc_draw_strm),
+                   A6XX_VSC_DRAW_STRM_PITCH(cmd->vsc_draw_strm_pitch),
+                   A6XX_VSC_DRAW_STRM_ARRAY_PITCH(cmd->vsc_draw_strm.size));
 }
 
 static void
@@ -958,22 +958,22 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit_pkt7(cs, CP_COND_WRITE5, 8);
       tu_cs_emit(cs, CP_COND_WRITE5_0_FUNCTION(WRITE_GE) |
             CP_COND_WRITE5_0_WRITE_MEMORY);
-      tu_cs_emit(cs, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_SIZE_REG(i)));
+      tu_cs_emit(cs, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_DRAW_STRM_SIZE_REG(i)));
       tu_cs_emit(cs, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
-      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_data_pitch));
+      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_draw_strm_pitch));
       tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
       tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
-      tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(1 + cmd->vsc_data_pitch));
+      tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(1 + cmd->vsc_draw_strm_pitch));
 
       tu_cs_emit_pkt7(cs, CP_COND_WRITE5, 8);
       tu_cs_emit(cs, CP_COND_WRITE5_0_FUNCTION(WRITE_GE) |
             CP_COND_WRITE5_0_WRITE_MEMORY);
-      tu_cs_emit(cs, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_SIZE2_REG(i)));
+      tu_cs_emit(cs, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_PRIM_STRM_SIZE_REG(i)));
       tu_cs_emit(cs, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
-      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_data2_pitch));
+      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_prim_strm_pitch));
       tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
       tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
-      tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(3 + cmd->vsc_data2_pitch));
+      tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(3 + cmd->vsc_prim_strm_pitch));
    }
 
    tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
@@ -995,7 +995,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
     * if (b0 set)..
     */
 
-   /* b0 will be set if VSC_DATA or VSC_DATA2 overflow: */
+   /* b0 will be set if VSC_DRAW_STRM or VSC_PRIM_STRM overflow: */
    tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
    tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
          A6XX_CP_REG_TEST_0_BIT(0) |
@@ -1567,10 +1567,10 @@ tu_create_cmd_buffer(struct tu_device *device,
       goto fail_scratch_bo;
 
    /* TODO: resize on overflow */
-   cmd_buffer->vsc_data_pitch = device->vsc_data_pitch;
-   cmd_buffer->vsc_data2_pitch = device->vsc_data2_pitch;
-   cmd_buffer->vsc_data = device->vsc_data;
-   cmd_buffer->vsc_data2 = device->vsc_data2;
+   cmd_buffer->vsc_draw_strm_pitch = device->vsc_draw_strm_pitch;
+   cmd_buffer->vsc_prim_strm_pitch = device->vsc_prim_strm_pitch;
+   cmd_buffer->vsc_draw_strm = device->vsc_draw_strm;
+   cmd_buffer->vsc_prim_strm = device->vsc_prim_strm;
 
    return VK_SUCCESS;
 
@@ -1953,9 +1953,9 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
    }
 
    if (cmd_buffer->use_vsc_data) {
-      tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->vsc_data,
+      tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->vsc_draw_strm,
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-      tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->vsc_data2,
+      tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->vsc_prim_strm,
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
    }
 

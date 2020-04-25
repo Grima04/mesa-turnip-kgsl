@@ -50,10 +50,10 @@ fd6_context_destroy(struct pipe_context *pctx)
 
 	fd_context_destroy(pctx);
 
-	if (fd6_ctx->vsc_data)
-		fd_bo_del(fd6_ctx->vsc_data);
-	if (fd6_ctx->vsc_data2)
-		fd_bo_del(fd6_ctx->vsc_data2);
+	if (fd6_ctx->vsc_draw_strm)
+		fd_bo_del(fd6_ctx->vsc_draw_strm);
+	if (fd6_ctx->vsc_prim_strm)
+		fd_bo_del(fd6_ctx->vsc_prim_strm);
 	fd_bo_del(fd6_ctx->control_mem);
 
 	fd_context_cleanup_common_vbos(&fd6_ctx->base);
@@ -176,8 +176,8 @@ PC_UNKNOWN_9805:
 	/* initial sizes for VSC buffers (or rather the per-pipe sizes
 	 * which is used to derive entire buffer size:
 	 */
-	fd6_ctx->vsc_data_pitch = 0x440;
-	fd6_ctx->vsc_data2_pitch = 0x1040;
+	fd6_ctx->vsc_draw_strm_pitch = 0x440;
+	fd6_ctx->vsc_prim_strm_pitch = 0x1040;
 
 	fd6_ctx->control_mem = fd_bo_new(screen->dev, 0x1000,
 			DRM_FREEDRENO_GEM_TYPE_KMEM, "control");
