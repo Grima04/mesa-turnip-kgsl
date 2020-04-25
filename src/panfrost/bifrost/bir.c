@@ -100,6 +100,10 @@ bi_get_component_count(bi_instruction *ins, signed src)
                 return (src <= 0) ? ins->vector_channels : 1;
         } else {
                 unsigned bytes = nir_alu_type_get_type_size(src < 0 ? ins->dest_type : ins->src_types[src]);
+                
+                if (ins->type == BI_ATEST || ins->type == BI_SELECT)
+                        return 1;
+
                 return MAX2(32 / bytes, 1);
         }
 }
