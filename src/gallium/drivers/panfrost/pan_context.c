@@ -512,7 +512,7 @@ panfrost_create_vertex_elements_state(
                 enum pipe_format fmt = elements[i].src_format;
                 const struct util_format_description *desc = util_format_description(fmt);
                 so->hw[i].unknown1 = 0x2;
-                so->hw[i].swizzle = panfrost_get_default_swizzle(desc->nr_channels);
+                so->hw[i].swizzle = panfrost_translate_swizzle_4(desc->swizzle);
 
                 so->hw[i].format = panfrost_find_format(desc);
         }
