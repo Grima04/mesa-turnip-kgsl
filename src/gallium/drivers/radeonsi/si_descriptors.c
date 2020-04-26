@@ -279,7 +279,7 @@ static void si_set_buf_desc_address(struct si_resource *buf, uint64_t offset, ui
 void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture *tex,
                                     const struct legacy_surf_level *base_level_info,
                                     unsigned base_level, unsigned first_level, unsigned block_width,
-                                    bool is_stencil, uint32_t *state)
+                                    bool is_stencil, bool force_dcc_off, uint32_t *state)
 {
    uint64_t va, meta_va = 0;
 
@@ -313,7 +313,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
    if (sscreen->info.chip_class >= GFX8) {
       state[6] &= C_008F28_COMPRESSION_EN;
 
-      if (vi_dcc_enabled(tex, first_level)) {
+      if (!force_dcc_off && vi_dcc_enabled(tex, first_level)) {
          meta_va =
             (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.dcc_offset;
 
@@ -436,7 +436,7 @@ static void si_set_sampler_view_desc(struct si_context *sctx, struct si_sampler_
 
       si_set_mutable_tex_desc_fields(sctx->screen, tex, sview->base_level_info, sview->base_level,
                                      sview->base.u.tex.first_level, sview->block_width,
-                                     is_separate_stencil, desc);
+                                     is_separate_stencil, false, desc);
    }
 
    if (!is_buffer && tex->surface.fmask_size) {
@@ -662,6 +662,7 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
       assert(fmask_desc || tex->surface.fmask_offset == 0);
 
       if (uses_dcc && !skip_decompress &&
+          !(access & SI_IMAGE_ACCESS_DCC_OFF) &&
           (access & PIPE_IMAGE_ACCESS_WRITE ||
            !vi_dcc_formats_compatible(screen, res->b.b.format, view->format))) {
          /* If DCC can't be disabled, at least decompress it.
@@ -697,7 +698,8 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
          screen, tex, false, res->b.b.target, view->format, swizzle, hw_level, hw_level,
          view->u.tex.first_layer, view->u.tex.last_layer, width, height, depth, desc, fmask_desc);
       si_set_mutable_tex_desc_fields(screen, tex, &tex->surface.u.legacy.level[level], level, level,
-                                     util_format_get_blockwidth(view->format), false, desc);
+                                     util_format_get_blockwidth(view->format), false,
+                                     view->access & SI_IMAGE_ACCESS_DCC_OFF, desc);
    }
 }
 

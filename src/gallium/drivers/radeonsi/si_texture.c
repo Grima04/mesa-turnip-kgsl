@@ -661,7 +661,7 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
                                     res->width0, res->height0, res->depth0, desc, NULL);
 
    si_set_mutable_tex_desc_fields(sscreen, tex, &tex->surface.u.legacy.level[0], 0, 0,
-                                  tex->surface.blk_w, false, desc);
+                                  tex->surface.blk_w, false, false, desc);
 
    /* Clear the base address and set the relative DCC offset. */
    desc[0] = 0;
