@@ -1112,6 +1112,14 @@ ttn_ucmp(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 }
 
 static void
+ttn_barrier(nir_builder *b)
+{
+   nir_intrinsic_instr *barrier =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_control_barrier);
+   nir_builder_instr_insert(b, &barrier->instr);
+}
+
+static void
 ttn_kill(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 {
    nir_intrinsic_instr *discard =
@@ -2223,6 +2231,10 @@ ttn_emit_instruction(struct ttn_compile *c)
 
    case TGSI_OPCODE_ENDLOOP:
       ttn_endloop(c);
+      break;
+
+   case TGSI_OPCODE_BARRIER:
+      ttn_barrier(b);
       break;
 
    default:
