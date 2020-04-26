@@ -1843,6 +1843,21 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    assert(!(texture->flags & SI_RESOURCE_FLAG_TRANSFER));
    assert(box->width && box->height && box->depth);
 
+   /* If we are uploading into FP16 or R11G11B10_FLOAT via a blit, CB clobbers NaNs,
+    * so in order to preserve them exactly, we have to use the compute blit.
+    * The compute blit is used only when the destination doesn't have DCC, so
+    * disable it here, which is kinda a hack.
+    *
+    * This makes KHR-GL45.texture_view.view_classes pass on gfx9.
+    * gfx10 has the same issue, but the test doesn't use a large enough texture
+    * to enable DCC and fail, so it always passes.
+    */
+   const struct util_format_description *desc = util_format_description(texture->format);
+   if (vi_dcc_enabled(tex, level) &&
+       desc->channel[0].type == UTIL_FORMAT_TYPE_FLOAT &&
+       desc->channel[0].size < 32)
+      si_texture_disable_dcc(sctx, tex);
+
    if (tex->is_depth) {
       /* Depth textures use staging unconditionally. */
       use_staging_texture = true;
