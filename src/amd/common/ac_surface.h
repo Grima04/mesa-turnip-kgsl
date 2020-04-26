@@ -167,6 +167,10 @@ struct gfx9_surf_layout {
 
     uint64_t                    stencil_offset; /* separate stencil */
 
+    uint8_t                     dcc_block_width;
+    uint8_t                     dcc_block_height;
+    uint8_t                     dcc_block_depth;
+
     /* Displayable DCC. This is always rb_aligned=0 and pipe_aligned=0.
      * The 3D engine doesn't support that layout except for chips with 1 RB.
      * All other chips must set rb_aligned=1.

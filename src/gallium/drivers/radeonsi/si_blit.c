@@ -419,6 +419,7 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
                    first_level, last_level, level_mask);
 
    if (need_dcc_decompress) {
+      assert(sctx->chip_class == GFX8);
       custom_blend = sctx->custom_blend_dcc_decompress;
 
       assert(tex->surface.dcc_offset);
@@ -834,7 +835,8 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
        !sdst->surface.dcc_offset &&
        !(dst->target != src->target &&
          (src->target == PIPE_TEXTURE_1D_ARRAY || dst->target == PIPE_TEXTURE_1D_ARRAY))) {
-      si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz, src_box);
+      si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
+                            src_box, false);
       return;
    }
 
@@ -1226,8 +1228,29 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
    if (!tex->surface.dcc_offset || !sctx->has_graphics)
       return;
 
-   si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level, 0,
-                            util_max_layer(&tex->buffer.b.b, 0), true, false);
+   if (sctx->chip_class == GFX8) {
+      si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level, 0,
+                               util_max_layer(&tex->buffer.b.b, 0), true, false);
+   } else {
+      struct pipe_resource *ptex = &tex->buffer.b.b;
+
+      /* DCC decompression using a compute shader. */
+      for (unsigned level = 0; level < tex->surface.num_dcc_levels; level++) {
+         struct pipe_box box;
+
+         u_box_3d(0, 0, 0, u_minify(ptex->width0, level),
+                  u_minify(ptex->height0, level),
+                  util_num_layers(ptex, level), &box);
+         si_compute_copy_image(sctx, ptex, level, ptex, level, 0, 0, 0, &box,
+                               true);
+      }
+
+      /* Now clear DCC metadata to uncompressed. */
+      uint32_t clear_value = DCC_UNCOMPRESSED;
+      si_clear_buffer(sctx, ptex, tex->surface.dcc_offset,
+                      tex->surface.dcc_size, &clear_value, 4,
+                      SI_COHERENCY_CB_META, false);
+   }
 }
 
 void si_init_blit_functions(struct si_context *sctx)

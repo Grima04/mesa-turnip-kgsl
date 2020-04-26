@@ -1269,6 +1269,9 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 
 			surf->u.gfx9.dcc.rb_aligned = din.dccKeyFlags.rbAligned;
 			surf->u.gfx9.dcc.pipe_aligned = din.dccKeyFlags.pipeAligned;
+			surf->u.gfx9.dcc_block_width = dout.compressBlkWidth;
+			surf->u.gfx9.dcc_block_height = dout.compressBlkHeight;
+			surf->u.gfx9.dcc_block_depth = dout.compressBlkDepth;
 			surf->dcc_size = dout.dccRamSize;
 			surf->dcc_alignment = dout.dccRamBaseAlign;
 			surf->num_dcc_levels = in->numMipLevels;

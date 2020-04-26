@@ -376,7 +376,8 @@ void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct p
 
 void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, unsigned dst_level,
                            struct pipe_resource *src, unsigned src_level, unsigned dstx,
-                           unsigned dsty, unsigned dstz, const struct pipe_box *src_box)
+                           unsigned dsty, unsigned dstz, const struct pipe_box *src_box,
+                           bool is_dcc_decompress)
 {
    struct pipe_context *ctx = &sctx->b;
    unsigned width = src_box->width;
@@ -396,7 +397,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
        * we must keep the original values to get the correct results.
        */
    }
-   unsigned data[] = {src_box->x, src_box->y, src_box->z, 0, dstx, dsty, dstz, 0};
 
    if (width == 0 || height == 0)
       return;
@@ -413,7 +413,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
                               ((struct si_texture *)src)->surface.u.gfx9.dcc.pipe_aligned);
 
    struct pipe_constant_buffer saved_cb = {};
-   si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
 
    struct si_images *images = &sctx->images[PIPE_SHADER_COMPUTE];
    struct pipe_image_view saved_image[2] = {0};
@@ -422,10 +421,16 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    void *saved_cs = sctx->cs_shader_state.program;
 
-   struct pipe_constant_buffer cb = {};
-   cb.buffer_size = sizeof(data);
-   cb.user_buffer = data;
-   ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &cb);
+   if (!is_dcc_decompress) {
+      unsigned data[] = {src_box->x, src_box->y, src_box->z, 0, dstx, dsty, dstz, 0};
+
+      si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
+
+      struct pipe_constant_buffer cb = {};
+      cb.buffer_size = sizeof(data);
+      cb.user_buffer = data;
+      ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &cb);
+   }
 
    struct pipe_image_view image[2] = {0};
    image[0].resource = src;
@@ -454,11 +459,44 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       image[0].format = image[1].format = util_format_snorm8_to_sint8(dst->format);
    }
 
+   if (is_dcc_decompress)
+      image[1].access |= SI_IMAGE_ACCESS_DCC_OFF;
+
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, image);
 
    struct pipe_grid_info info = {0};
 
-   if (dst->target == PIPE_TEXTURE_1D_ARRAY && src->target == PIPE_TEXTURE_1D_ARRAY) {
+   if (is_dcc_decompress) {
+      /* The DCC decompression is a normal blit where the load is compressed
+       * and the store is uncompressed. The workgroup size is either equal to
+       * the DCC block size or a multiple thereof. The shader uses a barrier
+       * between loads and stores to safely overwrite each DCC block of pixels.
+       */
+      struct si_texture *tex = (struct si_texture*)src;
+      unsigned dim[3] = {src_box->width, src_box->height, src_box->depth};
+
+      assert(src == dst);
+      assert(dst->target != PIPE_TEXTURE_1D && dst->target != PIPE_TEXTURE_1D_ARRAY);
+
+      if (!sctx->cs_dcc_decompress)
+         sctx->cs_dcc_decompress = si_create_dcc_decompress_cs(ctx);
+      ctx->bind_compute_state(ctx, sctx->cs_dcc_decompress);
+
+      info.block[0] = tex->surface.u.gfx9.dcc_block_width;
+      info.block[1] = tex->surface.u.gfx9.dcc_block_height;
+      info.block[2] = tex->surface.u.gfx9.dcc_block_depth;
+
+      /* Make sure the block size is at least the same as wave size. */
+      while (info.block[0] * info.block[1] * info.block[2] <
+             sctx->screen->compute_wave_size) {
+         info.block[0] *= 2;
+      }
+
+      for (unsigned i = 0; i < 3; i++) {
+         info.last_block[i] = dim[i] % info.block[i];
+         info.grid[i] = DIV_ROUND_UP(dim[i], info.block[i]);
+      }
+   } else if (dst->target == PIPE_TEXTURE_1D_ARRAY && src->target == PIPE_TEXTURE_1D_ARRAY) {
       if (!sctx->cs_copy_image_1d_array)
          sctx->cs_copy_image_1d_array = si_create_copy_image_compute_shader_1d_array(ctx);
       ctx->bind_compute_state(ctx, sctx->cs_copy_image_1d_array);
@@ -487,10 +525,12 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
                            SI_CS_WAIT_FOR_IDLE | SI_CS_IMAGE_OP);
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, saved_image);
-   ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
    for (int i = 0; i < 2; i++)
       pipe_resource_reference(&saved_image[i].resource, NULL);
-   pipe_resource_reference(&saved_cb.buffer, NULL);
+   if (!is_dcc_decompress) {
+      ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
+      pipe_resource_reference(&saved_cb.buffer, NULL);
+   }
 }
 
 void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
