@@ -1762,11 +1762,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         .format = midgard_tex_format(instr->sampler_dim),
                         .texture_handle = texture_index,
                         .sampler_handle = sampler_index,
-
-                        /* TODO: half */
-                        .in_reg_full = 1,
-                        .out_full = 1,
-
                         .sampler_type = midgard_sampler_type(instr->dest_type),
                         .shadow = instr->is_shadow,
                 }

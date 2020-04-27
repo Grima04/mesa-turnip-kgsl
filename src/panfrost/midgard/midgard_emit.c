@@ -474,6 +474,15 @@ emit_binary_bundle(compiler_context *ctx,
                 ins->texture.mask = ins->mask;
                 mir_pack_swizzle_tex(ins);
 
+                unsigned osz = nir_alu_type_get_type_size(ins->dest_type);
+                unsigned isz = nir_alu_type_get_type_size(ins->src_types[1]);
+
+                assert(osz == 32 || osz == 16);
+                assert(isz == 32 || isz == 16);
+
+                ins->texture.out_full = (osz == 32);
+                ins->texture.in_reg_full = (isz == 32);
+
                 ctx->texture_op_count--;
 
                 if (mir_op_computes_derivatives(ctx->stage, ins->texture.op)) {
