@@ -197,6 +197,21 @@ class nir_split_vars_test : public nir_vars_test {};
 
 } // namespace
 
+static nir_ssa_def *
+nir_load_var_volatile(nir_builder *b, nir_variable *var)
+{
+   return nir_load_deref_with_access(b, nir_build_deref_var(b, var),
+                                     ACCESS_VOLATILE);
+}
+
+static void
+nir_store_var_volatile(nir_builder *b, nir_variable *var,
+                       nir_ssa_def *value, nir_component_mask_t writemask)
+{
+   nir_store_deref_with_access(b, nir_build_deref_var(b, var),
+                               value, writemask, ACCESS_VOLATILE);
+}
+
 TEST_F(nir_redundant_load_vars_test, duplicated_load)
 {
    /* Load a variable twice in the same block.  One should be removed. */
@@ -217,6 +232,41 @@ TEST_F(nir_redundant_load_vars_test, duplicated_load)
    nir_validate_shader(b->shader, NULL);
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+}
+
+TEST_F(nir_redundant_load_vars_test, duplicated_load_volatile)
+{
+   /* Load a variable twice in the same block.  One should be removed. */
+
+   nir_variable *in = create_int(nir_var_shader_in, "in");
+   nir_variable **out = create_many_int(nir_var_shader_out, "out", 3);
+
+   /* Volatile prevents us from eliminating a load by combining it with
+    * another.  It shouldn't however, prevent us from combing other
+    * non-volatile loads.
+    */
+   nir_store_var(b, out[0], nir_load_var(b, in), 1);
+   nir_store_var(b, out[1], nir_load_var_volatile(b, in), 1);
+   nir_store_var(b, out[2], nir_load_var(b, in), 1);
+
+   nir_validate_shader(b->shader, NULL);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 3);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 2);
+
+   nir_intrinsic_instr *first_store = get_intrinsic(nir_intrinsic_store_deref, 0);
+   ASSERT_TRUE(first_store->src[1].is_ssa);
+
+   nir_intrinsic_instr *third_store = get_intrinsic(nir_intrinsic_store_deref, 2);
+   ASSERT_TRUE(third_store->src[1].is_ssa);
+
+   EXPECT_EQ(first_store->src[1].ssa, third_store->src[1].ssa);
 }
 
 TEST_F(nir_redundant_load_vars_test, duplicated_load_in_two_blocks)
@@ -340,6 +390,22 @@ TEST_F(nir_copy_prop_vars_test, simple_copies)
    ASSERT_TRUE(second_copy->src[1].is_ssa);
 
    EXPECT_EQ(first_copy->src[1].ssa, second_copy->src[1].ssa);
+}
+
+TEST_F(nir_copy_prop_vars_test, self_copy)
+{
+   nir_variable *v = create_int(nir_var_mem_ssbo, "v");
+
+   nir_copy_var(b, v, v);
+
+   nir_validate_shader(b->shader, NULL);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_copy_deref), 0);
 }
 
 TEST_F(nir_copy_prop_vars_test, simple_store_load)
@@ -469,6 +535,77 @@ TEST_F(nir_copy_prop_vars_test, store_store_load_different_components_in_many_bl
    nir_intrinsic_instr *store_to_v1 = get_intrinsic(nir_intrinsic_store_deref, 2);
    ASSERT_EQ(nir_intrinsic_get_var(store_to_v1, 0), v[1]);
    ASSERT_EQ(nir_src_comp_as_uint(store_to_v1->src[1], 1), 20);
+}
+
+TEST_F(nir_copy_prop_vars_test, store_volatile)
+{
+   nir_variable **v = create_many_ivec2(nir_var_function_temp, "v", 2);
+   unsigned mask = 1 | 2;
+
+   nir_ssa_def *first_value = nir_imm_ivec2(b, 10, 20);
+   nir_store_var(b, v[0], first_value, mask);
+
+   nir_ssa_def *second_value = nir_imm_ivec2(b, 30, 40);
+   nir_store_var_volatile(b, v[0], second_value, mask);
+
+   nir_ssa_def *third_value = nir_imm_ivec2(b, 50, 60);
+   nir_store_var(b, v[0], third_value, mask);
+
+   nir_ssa_def *read_value = nir_load_var(b, v[0]);
+   nir_store_var(b, v[1], read_value, mask);
+
+   nir_validate_shader(b->shader, NULL);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 4);
+
+   /* Our approach here is a bit scorched-earth.  We expect the volatile store
+    * in the middle to cause both that store and the one before it to be kept.
+    * Technically, volatile only prevents combining the volatile store with
+    * another store and one could argue that the store before the volatile and
+    * the one after it could be combined.  However, it seems safer to just
+    * treat a volatile store like an atomic and prevent any combining across
+    * it.
+    */
+   nir_intrinsic_instr *store_to_v1 = get_intrinsic(nir_intrinsic_store_deref, 3);
+   ASSERT_EQ(nir_intrinsic_get_var(store_to_v1, 0), v[1]);
+   ASSERT_TRUE(store_to_v1->src[1].is_ssa);
+   EXPECT_EQ(store_to_v1->src[1].ssa, third_value);
+}
+
+TEST_F(nir_copy_prop_vars_test, self_copy_volatile)
+{
+   nir_variable *v = create_int(nir_var_mem_ssbo, "v");
+
+   nir_copy_var(b, v, v);
+   nir_copy_deref_with_access(b, nir_build_deref_var(b, v),
+                                 nir_build_deref_var(b, v),
+                                 (gl_access_qualifier)0, ACCESS_VOLATILE);
+   nir_copy_deref_with_access(b, nir_build_deref_var(b, v),
+                                 nir_build_deref_var(b, v),
+                                 ACCESS_VOLATILE, (gl_access_qualifier)0);
+   nir_copy_var(b, v, v);
+
+   nir_validate_shader(b->shader, NULL);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_copy_deref), 2);
+
+   /* Store to v[1] should use second_value directly. */
+   nir_intrinsic_instr *first = get_intrinsic(nir_intrinsic_copy_deref, 0);
+   nir_intrinsic_instr *second = get_intrinsic(nir_intrinsic_copy_deref, 1);
+   ASSERT_EQ(nir_intrinsic_src_access(first), ACCESS_VOLATILE);
+   ASSERT_EQ(nir_intrinsic_dst_access(first), (gl_access_qualifier)0);
+   ASSERT_EQ(nir_intrinsic_src_access(second), (gl_access_qualifier)0);
+   ASSERT_EQ(nir_intrinsic_dst_access(second), ACCESS_VOLATILE);
 }
 
 TEST_F(nir_copy_prop_vars_test, memory_barrier_in_two_blocks)

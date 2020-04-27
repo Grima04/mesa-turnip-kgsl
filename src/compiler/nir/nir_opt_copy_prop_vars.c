@@ -998,6 +998,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          if (nir_compare_derefs(src, dst) & nir_derefs_equal_bit) {
             /* This is a no-op self-copy.  Get rid of it */
             nir_instr_remove(instr);
+            state->progress = true;
             continue;
          }
 
