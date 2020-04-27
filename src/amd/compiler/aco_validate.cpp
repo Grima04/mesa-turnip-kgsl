@@ -591,7 +591,7 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
             }
             if (def.regClass().is_subdword() && !instr_can_access_subdword(instr)) {
                for (unsigned j = tmp.bytes(); j < 4; j++)
-                  if (reg.reg_b + j)
+                  if (regs[reg.reg_b + j])
                      err |= ra_fail(output, loc, assignments.at(regs[reg.reg_b + j]).defloc, "Assignment of element %d of %%%d overwrites the full register taken by %%%d from instruction", i, tmp.id(), regs[reg.reg_b + j]);
             }
          }
