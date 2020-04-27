@@ -1041,12 +1041,13 @@ struct bifrost_tiler_heap_meta {
 } __attribute__((packed));
 
 struct bifrost_tiler_meta {
-        u64 zero0;
+        u32 tiler_heap_next_start;  /* To be written by the GPU */
+        u32 used_hierarchy_mask;  /* To be written by the GPU */
         u16 hierarchy_mask; /* Five values observed: 0xa, 0x14, 0x28, 0x50, 0xa0 */
         u16 flags;
         u16 width;
         u16 height;
-        u64 zero1;
+        u64 zero0;
         mali_ptr tiler_heap_meta;
         /* TODO what is this used for? */
         u64 zeros[20];

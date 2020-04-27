@@ -2890,11 +2890,8 @@ pandecode_tiler_meta(mali_ptr gpu_va, int job_no)
         pandecode_log("struct bifrost_tiler_meta tiler_meta_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
 
-        if (t->zero0 || t->zero1) {
-                pandecode_msg("XXX: tiler meta zero tripped\n");
-                pandecode_prop("zero0 = 0x%" PRIx64, t->zero0);
-                pandecode_prop("zero1 = 0x%" PRIx64, t->zero1);
-        }
+        pandecode_prop("tiler_heap_next_start = 0x%" PRIx32, t->tiler_heap_next_start);
+        pandecode_prop("used_hierarchy_mask = 0x%" PRIx32, t->used_hierarchy_mask);
 
         if (t->hierarchy_mask != 0xa &&
             t->hierarchy_mask != 0x14 &&
@@ -2909,6 +2906,11 @@ pandecode_tiler_meta(mali_ptr gpu_va, int job_no)
 
         pandecode_prop("width = MALI_POSITIVE(%d)", t->width + 1);
         pandecode_prop("height = MALI_POSITIVE(%d)", t->height + 1);
+
+        if (t->zero0) {
+                pandecode_msg("XXX: tiler meta zero tripped\n");
+                pandecode_prop("zero0 = 0x%" PRIx64, t->zero0);
+        }
 
         for (int i = 0; i < 12; i++) {
                 if (t->zeros[i] != 0) {
