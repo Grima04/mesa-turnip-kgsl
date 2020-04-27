@@ -157,11 +157,11 @@ public:
       return false;
    }
 
-   void block(PhysReg start, unsigned num_bytes) {
-      if (start.byte() || num_bytes % 4)
-         fill_subdword(start, num_bytes, 0xFFFFFFFF);
+   void block(PhysReg start, RegClass rc) {
+      if (rc.is_subdword())
+         fill_subdword(start, rc.bytes(), 0xFFFFFFFF);
       else
-         fill(start, num_bytes / 4, 0xFFFFFFFF);
+         fill(start, rc.size(), 0xFFFFFFFF);
    }
 
    bool is_blocked(PhysReg start) {
@@ -570,7 +570,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
 
       if (res.second) {
          /* mark the area as blocked */
-         reg_file.block(res.first, var.rc.bytes());
+         reg_file.block(res.first, var.rc);
 
          /* create parallelcopy pair (without definition id) */
          Temp tmp = Temp(id, var.rc);
@@ -657,7 +657,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
       std::set<std::pair<unsigned, unsigned>> new_vars = collect_vars(ctx, reg_file, PhysReg{reg_lo}, size);
 
       /* mark the area as blocked */
-      reg_file.block(PhysReg{reg_lo}, size * 4);
+      reg_file.block(PhysReg{reg_lo}, var.rc);
 
       if (!get_regs_for_copies(ctx, reg_file, parallelcopies, new_vars, lb, ub, instr, def_reg_lo, def_reg_hi))
          return false;
@@ -700,7 +700,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
           instr->operands[j].physReg() < ub) {
          assert(instr->operands[j].isFixed());
          assert(!reg_file.test(instr->operands[j].physReg(), instr->operands[j].bytes()));
-         reg_file.block(instr->operands[j].physReg(), instr->operands[j].bytes());
+         reg_file.block(instr->operands[j].physReg(), instr->operands[j].regClass());
          killed_ops += instr->operands[j].getTemp().size();
       }
    }
@@ -1934,7 +1934,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                }
                for (const Operand& op : instr->operands) {
                   if (op.isTemp() && op.isFirstKill())
-                     register_file.block(op.physReg(), op.bytes());
+                     register_file.block(op.physReg(), op.regClass());
                }
 
                handle_pseudo(ctx, register_file, pc.get());
@@ -1987,7 +1987,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                   register_file.clear(def);
                for (const Operand& op : instr->operands) {
                   if (op.isTemp() && op.isFirstKill())
-                     register_file.block(op.physReg(), op.bytes());
+                     register_file.block(op.physReg(), op.regClass());
                }
                Temp tmp = {program->allocateId(), can_sgpr ? s1 : v1};
                ctx.assignments.emplace_back();
