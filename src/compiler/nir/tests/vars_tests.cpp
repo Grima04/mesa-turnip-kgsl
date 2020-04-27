@@ -1345,6 +1345,48 @@ TEST_F(nir_dead_write_vars_test, no_dead_writes_different_components_in_block)
    ASSERT_FALSE(progress);
 }
 
+TEST_F(nir_dead_write_vars_test, volatile_write)
+{
+   nir_variable *v = create_int(nir_var_mem_ssbo, "v");
+
+   nir_store_var(b, v, nir_imm_int(b, 0), 0x1);
+   nir_store_var_volatile(b, v, nir_imm_int(b, 1), 0x1);
+   nir_store_var(b, v, nir_imm_int(b, 2), 0x1);
+
+   /* Our approach here is a bit scorched-earth.  We expect the volatile store
+    * in the middle to cause both that store and the one before it to be kept.
+    * Technically, volatile only prevents combining the volatile store with
+    * another store and one could argue that the store before the volatile and
+    * the one after it could be combined.  However, it seems safer to just
+    * treat a volatile store like an atomic and prevent any combining across
+    * it.
+    */
+   bool progress = nir_opt_dead_write_vars(b->shader);
+   ASSERT_FALSE(progress);
+}
+
+TEST_F(nir_dead_write_vars_test, volatile_copies)
+{
+   nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 2);
+
+   nir_copy_var(b, v[0], v[1]);
+   nir_copy_deref_with_access(b, nir_build_deref_var(b, v[0]),
+                                 nir_build_deref_var(b, v[1]),
+                                 ACCESS_VOLATILE, (gl_access_qualifier)0);
+   nir_copy_var(b, v[0], v[1]);
+
+   /* Our approach here is a bit scorched-earth.  We expect the volatile store
+    * in the middle to cause both that store and the one before it to be kept.
+    * Technically, volatile only prevents combining the volatile store with
+    * another store and one could argue that the store before the volatile and
+    * the one after it could be combined.  However, it seems safer to just
+    * treat a volatile store like an atomic and prevent any combining across
+    * it.
+    */
+   bool progress = nir_opt_dead_write_vars(b->shader);
+   ASSERT_FALSE(progress);
+}
+
 TEST_F(nir_dead_write_vars_test, no_dead_writes_in_if_statement)
 {
    nir_variable **v = create_many_int(nir_var_mem_ssbo, "v", 6);
