@@ -1711,11 +1711,23 @@ void st_init_extensions(struct pipe_screen *screen,
       struct spirv_supported_capabilities *spirv_caps = &consts->SpirVCapabilities;
 
       spirv_caps->atomic_storage             = extensions->ARB_shader_atomic_counters;
+      spirv_caps->demote_to_helper_invocation = extensions->EXT_demote_to_helper_invocation;
       spirv_caps->draw_parameters            = extensions->ARB_shader_draw_parameters;
       spirv_caps->float64                    = extensions->ARB_gpu_shader_fp64;
       spirv_caps->geometry_streams           = extensions->ARB_gpu_shader5;
+      spirv_caps->image_ms_array             = extensions->ARB_shader_image_load_store &&
+                                               consts->MaxImageSamples > 1;
+      spirv_caps->image_read_without_format  = extensions->EXT_shader_image_load_formatted;
       spirv_caps->image_write_without_format = extensions->ARB_shader_image_load_store;
       spirv_caps->int64                      = extensions->ARB_gpu_shader_int64;
+      spirv_caps->post_depth_coverage        = extensions->ARB_post_depth_coverage;
+      spirv_caps->shader_clock               = extensions->ARB_shader_clock;
+      spirv_caps->shader_viewport_index_layer = extensions->ARB_shader_viewport_layer_array;
+      spirv_caps->stencil_export             = extensions->ARB_shader_stencil_export;
+      spirv_caps->storage_image_ms           = extensions->ARB_shader_image_load_store &&
+                                               consts->MaxImageSamples > 1;
+      spirv_caps->subgroup_ballot            = extensions->ARB_shader_ballot;
+      spirv_caps->subgroup_vote              = extensions->ARB_shader_group_vote;
       spirv_caps->tessellation               = extensions->ARB_tessellation_shader;
       spirv_caps->transform_feedback         = extensions->ARB_transform_feedback3;
       spirv_caps->variable_pointers          =
