@@ -61,6 +61,25 @@ bi_combine_mov32(bi_context *ctx, bi_instruction *parent, unsigned comp, unsigne
         bi_emit_before(ctx, parent, move);
 }
 
+static void
+bi_combine_sel16(bi_context *ctx, bi_instruction *parent, unsigned comp, unsigned R)
+{
+        bi_instruction sel = {
+                .type = BI_SELECT,
+                .dest = R,
+                .dest_type = nir_type_uint32,
+                .dest_offset = comp >> 1,
+                .src = { parent->src[comp], parent->src[comp + 1] },
+                .src_types = { nir_type_uint16, nir_type_uint16 },
+                .swizzle = { {
+                        parent->swizzle[comp][0],
+                        parent->swizzle[comp + 1][0],
+                } }
+        };
+
+        bi_emit_before(ctx, parent, sel);
+}
+
 /* Gets the instruction generating a given source. Combine lowering is
  * accidentally O(n^2) right now because this function is O(n) instead of O(1).
  * If this pass is slow, this cost can be avoided in favour for better
@@ -196,7 +215,12 @@ bi_lower_combine(bi_context *ctx, bi_block *block)
                                 bi_insert_combine_mov(ctx, ins, s, R);
                         }
 #endif
-                        bi_combine_mov32(ctx, ins, s, R);
+                        if (ins->dest_type == nir_type_uint32)
+                                bi_combine_mov32(ctx, ins, s, R);
+                        else {
+                                bi_combine_sel16(ctx, ins, s, R);
+                                s++;
+                        }
                 }
 
 
