@@ -178,11 +178,6 @@ enum bi_bitwise_op {
         BI_BITWISE_XOR
 };
 
-enum bi_round_op {
-        BI_ROUND_MODE, /* use round mode */
-        BI_ROUND_ROUND /* i.e.: fround() */
-};
-
 enum bi_table_op {
         /* fp32 log2() with low precision, suitable for GL or half_log2() in
          * CL. In the first argument, takes x. Letting u be such that x =
@@ -273,7 +268,6 @@ typedef struct {
         union {
                 enum bi_minmax_op minmax;
                 enum bi_bitwise_op bitwise;
-                enum bi_round_op round;
                 enum bi_special_op special;
                 enum bi_reduce_op reduce;
                 enum bi_table_op table;

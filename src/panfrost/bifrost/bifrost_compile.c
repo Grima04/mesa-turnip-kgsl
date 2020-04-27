@@ -639,19 +639,15 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.cond = bi_cond_for_nir(instr->op, false);
                 break;
         case nir_op_fround_even:
-                alu.op.round = BI_ROUND_MODE;
                 alu.roundmode = BIFROST_RTE;
                 break;
         case nir_op_fceil:
-                alu.op.round = BI_ROUND_MODE;
                 alu.roundmode = BIFROST_RTP;
                 break;
         case nir_op_ffloor:
-                alu.op.round = BI_ROUND_MODE;
                 alu.roundmode = BIFROST_RTN;
                 break;
         case nir_op_ftrunc:
-                alu.op.round = BI_ROUND_MODE;
                 alu.roundmode = BIFROST_RTZ;
                 break;
         default:

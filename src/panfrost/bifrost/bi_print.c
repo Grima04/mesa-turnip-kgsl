@@ -352,8 +352,6 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", ins->op.minmax == BI_MINMAX_MIN ? "min" : "max");
         else if (ins->type == BI_BITWISE)
                 fprintf(fp, "%s", bi_bitwise_op_name(ins->op.bitwise));
-        else if (ins->type == BI_ROUND)
-                fprintf(fp, ins->op.round == BI_ROUND_MODE ? "roundMode": "round");
         else if (ins->type == BI_SPECIAL)
                 fprintf(fp, "%s", bi_special_op_name(ins->op.special));
         else if (ins->type == BI_TABLE)
