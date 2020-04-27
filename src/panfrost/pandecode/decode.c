@@ -2817,7 +2817,7 @@ pandecode_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p, int jo
 
         if (p->zero5) {
                 pandecode_msg("XXX: vertex only zero tripped");
-                pandecode_prop("zero5 = 0x%" PRIx32, p->zero5);
+                pandecode_prop("zero5 = 0x%" PRIx64, p->zero5);
         }
 
         MEMORY_PROP(p, position_varying);
