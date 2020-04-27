@@ -1274,7 +1274,6 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 static void
 ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned nprecolor)
 {
-	unsigned num_precolor = 0;
 	for (unsigned i = 0; i < nprecolor; i++) {
 		if (precolor[i] && !(precolor[i]->flags & IR3_INSTR_UNUSED)) {
 			struct ir3_instruction *instr = precolor[i];
@@ -1314,7 +1313,6 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 			unsigned reg = ctx->set->gpr_to_ra_reg[id->cls][regid];
 			unsigned name = ra_name(ctx, id);
 			ra_set_node_reg(ctx->g, name, reg);
-			num_precolor = MAX2(regid, num_precolor);
 		}
 	}
 
