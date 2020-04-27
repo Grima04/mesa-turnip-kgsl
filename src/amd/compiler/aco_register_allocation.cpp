@@ -1832,7 +1832,8 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                definition.setFixed(definition.physReg());
             else if (instr->opcode == aco_opcode::p_split_vector) {
                PhysReg reg = instr->operands[0].physReg();
-               reg.reg_b += i * definition.bytes();
+               for (unsigned j = 0; j < i; j++)
+                  reg.reg_b += instr->definitions[j].bytes();
                if (get_reg_specified(ctx, register_file, definition.regClass(), parallelcopy, instr, reg))
                   definition.setFixed(reg);
             } else if (instr->opcode == aco_opcode::p_wqm) {
