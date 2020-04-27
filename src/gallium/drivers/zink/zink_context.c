@@ -515,7 +515,7 @@ get_render_pass(struct zink_context *ctx)
 }
 
 static struct zink_framebuffer *
-get_framebuffer(struct zink_context *ctx)
+create_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
@@ -536,16 +536,7 @@ get_framebuffer(struct zink_context *ctx)
    state.height = ctx->fb_state.height;
    state.layers = MAX2(ctx->fb_state.layers, 1);
 
-   struct hash_entry *entry = _mesa_hash_table_search(ctx->framebuffer_cache,
-                                                      &state);
-   if (!entry) {
-      struct zink_framebuffer *fb = zink_create_framebuffer(screen, &state);
-      entry = _mesa_hash_table_insert(ctx->framebuffer_cache, &state, fb);
-      if (!entry)
-         return NULL;
-   }
-
-   return entry->data;
+   return zink_create_framebuffer(screen, &state);
 }
 
 void
@@ -647,7 +638,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
 
-   struct zink_framebuffer *fb = get_framebuffer(ctx);
+   struct zink_framebuffer *fb = create_framebuffer(ctx);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
    zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, fb->rp);
 
@@ -912,20 +903,6 @@ equals_render_pass_state(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct zink_render_pass_state)) == 0;
 }
 
-static uint32_t
-hash_framebuffer_state(const void *key)
-{
-   struct zink_framebuffer_state *s = (struct zink_framebuffer_state*)key;
-   return _mesa_hash_data(key, sizeof(struct zink_framebuffer_state) + sizeof(s->attachments) * s->num_attachments);
-}
-
-static bool
-equals_framebuffer_state(const void *a, const void *b)
-{
-   struct zink_framebuffer_state *s = (struct zink_framebuffer_state*)a;
-   return memcmp(a, b, sizeof(struct zink_framebuffer_state) + sizeof(s->attachments) * s->num_attachments) == 0;
-}
-
 static void
 zink_flush(struct pipe_context *pctx,
            struct pipe_fence_handle **pfence,
@@ -1165,12 +1142,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->render_pass_cache = _mesa_hash_table_create(NULL,
                                                     hash_render_pass_state,
                                                     equals_render_pass_state);
-   ctx->framebuffer_cache = _mesa_hash_table_create(NULL,
-                                                    hash_framebuffer_state,
-                                                    equals_framebuffer_state);
-
-   if (!ctx->program_cache || !ctx->render_pass_cache ||
-       !ctx->framebuffer_cache)
+   if (!ctx->program_cache || !ctx->render_pass_cache)
       goto fail;
 
    const uint8_t data[] = { 0 };

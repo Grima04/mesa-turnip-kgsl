@@ -82,7 +82,6 @@ struct zink_context {
    unsigned dirty_program : 1;
 
    struct hash_table *render_pass_cache;
-   struct hash_table *framebuffer_cache;
 
    struct primconvert_context *primconvert;
 
