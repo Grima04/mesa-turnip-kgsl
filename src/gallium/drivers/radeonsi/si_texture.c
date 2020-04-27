@@ -1659,6 +1659,15 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
    tex->buffer.external_usage = usage;
    tex->num_planes = 1;
 
+   /* Account for multiple planes with lowered yuv import. */
+   struct pipe_resource *next_plane = tex->buffer.b.b.next;
+   while(next_plane) {
+      struct si_texture *next_tex = (struct si_texture *)next_plane;
+      ++next_tex->num_planes;
+      ++tex->num_planes;
+      next_plane = next_plane->next;
+   }
+
    if (!si_read_tex_bo_metadata(sscreen, tex, offset, &metadata)) {
       si_texture_reference(&tex, NULL);
       return NULL;
