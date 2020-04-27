@@ -649,15 +649,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         unsigned nr_components = nir_dest_num_components(instr->dest.dest);
         unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
-
-        /* Most Midgard ALU ops have a 1:1 correspondance to NIR ops; these are
-         * supported. A few do not and are commented for now. Also, there are a
-         * number of NIR ops which Midgard does not support and need to be
-         * lowered, also TODO. This switch block emits the opcode and calling
-         * convention of the Midgard instruction; actual packing is done in
-         * emit_alu below */
-
-        unsigned op;
+        unsigned op = 0;
 
         /* Number of components valid to check for the instruction (the rest
          * will be forced to the last), or 0 to use as-is. Relevant as
