@@ -1293,7 +1293,11 @@ setup_isel_context(Program* program,
       program->workgroup_size = program->wave_size;
    } else if (program->stage & hw_gs) {
       /* If on-chip GS (LDS rings) are enabled on GFX9 or later, merged GS operates in workgroups */
-      program->workgroup_size = UINT_MAX; /* TODO: set by VGT_GS_ONCHIP_CNTL, which is not plumbed to ACO */
+      assert(program->chip_class >= GFX9);
+      uint32_t es_verts_per_subgrp = G_028A44_ES_VERTS_PER_SUBGRP(program->info->gs_ring_info.vgt_gs_onchip_cntl);
+      uint32_t gs_instr_prims_in_subgrp = G_028A44_GS_INST_PRIMS_IN_SUBGRP(program->info->gs_ring_info.vgt_gs_onchip_cntl);
+      uint32_t workgroup_size = MAX2(es_verts_per_subgrp, gs_instr_prims_in_subgrp);
+      program->workgroup_size = MAX2(MIN2(workgroup_size, 256), 1);
    } else if (program->stage == vertex_ls) {
       /* Unmerged LS operates in workgroups */
       program->workgroup_size = UINT_MAX; /* TODO: probably tcs_num_patches * tcs_vertices_in, but those are not plumbed to ACO for LS */
