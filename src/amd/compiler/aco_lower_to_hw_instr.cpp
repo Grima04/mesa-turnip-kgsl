@@ -1091,6 +1091,39 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
 
       /* to resolve the cycle, we have to swap the src reg with the dst reg */
       copy_operation swap = it->second;
+
+      /* if this is self-intersecting, we have to split it because
+       * self-intersecting swaps don't make sense */
+      PhysReg lower = swap.def.physReg();
+      PhysReg higher = swap.op.physReg();
+      if (lower.reg_b > higher.reg_b)
+         std::swap(lower, higher);
+      if (higher.reg_b - lower.reg_b < (int)swap.bytes) {
+         unsigned offset = higher.reg_b - lower.reg_b;
+         RegType type = swap.def.regClass().type();
+
+         copy_operation middle;
+         lower.reg_b += offset;
+         higher.reg_b += offset;
+         middle.bytes = swap.bytes - offset * 2;
+         memcpy(middle.uses, swap.uses + offset, middle.bytes);
+         middle.op = Operand(lower, RegClass::get(type, middle.bytes));
+         middle.def = Definition(higher, RegClass::get(type, middle.bytes));
+         copy_map[higher] = middle;
+
+         copy_operation end;
+         lower.reg_b += middle.bytes;
+         higher.reg_b += middle.bytes;
+         end.bytes = swap.bytes - (offset + middle.bytes);
+         memcpy(end.uses, swap.uses + offset + middle.bytes, end.bytes);
+         end.op = Operand(lower, RegClass::get(type, end.bytes));
+         end.def = Definition(higher, RegClass::get(type, end.bytes));
+         copy_map[higher] = end;
+
+         memset(swap.uses + offset, 0, swap.bytes - offset);
+         swap.bytes = offset;
+      }
+
       do_swap(ctx, bld, swap, preserve_scc, pi);
 
       /* remove from map */
