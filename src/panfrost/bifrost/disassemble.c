@@ -1070,6 +1070,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x0ea78, "SEL.YY.i16", ADD_TWO_SRC },
         { 0x0ec00, "F32_TO_F16", ADD_TWO_SRC },
         { 0x0e840, "CSEL.64",    ADD_THREE_SRC }, // u2u32(src2) ? src0 : src1
+        { 0x0e940, "CSEL.8",    ADD_THREE_SRC }, // (src2 != 0) ? src0 : src1
         { 0x0f640, "ICMP.GL.GT", ADD_TWO_SRC }, // src0 > src1 ? 1 : 0
         { 0x0f648, "ICMP.GL.GE", ADD_TWO_SRC },
         { 0x0f650, "UCMP.GL.GT", ADD_TWO_SRC },
