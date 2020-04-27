@@ -4469,6 +4469,8 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 
 	if (instr->op == nir_texop_texture_samples) {
 		LLVMValueRef res, samples, is_msaa;
+		LLVMValueRef default_sample;
+
 		res = LLVMBuildBitCast(ctx->ac.builder, args.resource, ctx->ac.v8i32, "");
 		samples = LLVMBuildExtractElement(ctx->ac.builder, res,
 						  LLVMConstInt(ctx->ac.i32, 3, false), "");
@@ -4485,8 +4487,27 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 				       LLVMConstInt(ctx->ac.i32, 0xf, false), "");
 		samples = LLVMBuildShl(ctx->ac.builder, ctx->ac.i32_1,
 				       samples, "");
+
+		if (ctx->abi->robust_buffer_access) {
+			LLVMValueRef dword1, is_null_descriptor;
+
+			/* Extract the second dword of the descriptor, if it's
+			 * all zero, then it's a null descriptor.
+			 */
+			dword1 = LLVMBuildExtractElement(ctx->ac.builder, res,
+							 LLVMConstInt(ctx->ac.i32, 1, false), "");
+			is_null_descriptor =
+				LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, dword1,
+					      LLVMConstInt(ctx->ac.i32, 0, false), "");
+			default_sample =
+				LLVMBuildSelect(ctx->ac.builder, is_null_descriptor,
+						ctx->ac.i32_0, ctx->ac.i32_1, "");
+		} else {
+			default_sample = ctx->ac.i32_1;
+		}
+
 		samples = LLVMBuildSelect(ctx->ac.builder, is_msaa, samples,
-					  ctx->ac.i32_1, "");
+					  default_sample, "");
 		result = samples;
 		goto write_result;
 	}
