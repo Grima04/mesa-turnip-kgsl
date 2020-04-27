@@ -425,10 +425,6 @@ mir_is_alu_bundle(midgard_bundle *bundle)
         return IS_ALU(bundle->tag);
 }
 
-/* Registers/SSA are distinguish in the backend by the bottom-most bit */
-
-#define IS_REG (1)
-
 static inline unsigned
 make_compiler_temp(compiler_context *ctx)
 {
@@ -438,7 +434,7 @@ make_compiler_temp(compiler_context *ctx)
 static inline unsigned
 make_compiler_temp_reg(compiler_context *ctx)
 {
-        return ((ctx->func->impl->reg_alloc + ctx->temp_alloc++) << 1) | IS_REG;
+        return ((ctx->func->impl->reg_alloc + ctx->temp_alloc++) << 1) | PAN_IS_REG;
 }
 
 static inline unsigned
@@ -454,7 +450,7 @@ nir_src_index(compiler_context *ctx, nir_src *src)
                 return nir_ssa_index(src->ssa);
         else {
                 assert(!src->reg.indirect);
-                return (src->reg.reg->index << 1) | IS_REG;
+                return (src->reg.reg->index << 1) | PAN_IS_REG;
         }
 }
 
@@ -465,7 +461,7 @@ nir_dest_index(nir_dest *dst)
                 return (dst->ssa.index << 1) | 0;
         else {
                 assert(!dst->reg.indirect);
-                return (dst->reg.reg->index << 1) | IS_REG;
+                return (dst->reg.reg->index << 1) | PAN_IS_REG;
         }
 }
 

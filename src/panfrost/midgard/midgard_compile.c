@@ -2287,7 +2287,7 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
 
                 /* TODO: Registers? */
                 unsigned src = ins->src[1];
-                if (src & IS_REG) continue;
+                if (src & PAN_IS_REG) continue;
 
                 /* There might be a source modifier, too */
                 if (mir_nontrivial_source2_mod(ins)) continue;
