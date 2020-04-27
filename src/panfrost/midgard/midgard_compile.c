@@ -626,6 +626,15 @@ reg_mode_for_nir(nir_alu_instr *instr)
 }
 
 static void
+mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigned to)
+{
+        unsigned bits = nir_src_bit_size(instr->src[i].src);
+
+        ins->src[to] = nir_src_index(NULL, &instr->src[i].src);
+        ins->src_types[to] = nir_op_infos[instr->op].input_types[i] | bits;
+}
+
+static void
 emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
         /* Derivatives end up emitted on the texture pipe, not the ALUs. This
@@ -908,28 +917,21 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         unsigned opcode_props = alu_opcode_props[op].props;
         bool quirk_flipped_r24 = opcode_props & QUIRK_FLIPPED_R24;
 
-        /* src0 will always exist afaik, but src1 will not for 1-argument
-         * instructions. The latter can only be fetched if the instruction
-         * needs it, or else we may segfault. */
-
-        unsigned src0 = nir_src_index(ctx, &instr->src[0].src);
-        unsigned src1 = nr_inputs >= 2 ? nir_src_index(ctx, &instr->src[1].src) : ~0;
-        unsigned src2 = nr_inputs == 3 ? nir_src_index(ctx, &instr->src[2].src) : ~0;
-        assert(nr_inputs <= 3);
-
-        /* Rather than use the instruction generation helpers, we do it
-         * ourselves here to avoid the mess */
-
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
-                .src = {
-                        quirk_flipped_r24 ? ~0 : src0,
-                        quirk_flipped_r24 ? src0       : src1,
-                        src2,
-                        ~0
-                },
                 .dest = dest,
         };
+
+        for (unsigned i = nr_inputs; i < ARRAY_SIZE(ins.src); ++i)
+                ins.src[i] = ~0;
+
+        if (quirk_flipped_r24) {
+                ins.src[0] = ~0;
+                mir_copy_src(&ins, instr, 0, 1);
+        } else {
+                for (unsigned i = 0; i < nr_inputs; ++i)
+                        mir_copy_src(&ins, instr, i, quirk_flipped_r24 ? 1 : i);
+        }
 
         nir_alu_src *nirmods[3] = { NULL };
 
