@@ -12,7 +12,6 @@ dEQP-VK.glsl.builtin.precision.asin.highp.vec4
 dEQP-VK.info.device_extensions
 
 # ACO specific issues.
-dEQP-VK.graphicsfuzz.for-with-ifs-and-return
 dEQP-VK.graphicsfuzz.loops-ifs-continues-call
 
 # Interesting failures...
