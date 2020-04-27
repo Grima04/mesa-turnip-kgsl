@@ -715,11 +715,11 @@ static void si_set_shader_image(struct si_context *ctx, unsigned shader, unsigne
 
    res = si_resource(view->resource);
 
-   if (&images->views[slot] != view)
-      util_copy_image_view(&images->views[slot], view);
-
    si_set_shader_image_desc(ctx, view, skip_decompress, descs->list + si_get_image_slot(slot) * 8,
                             descs->list + si_get_image_slot(slot + SI_NUM_IMAGES) * 8);
+
+   if (&images->views[slot] != view)
+      util_copy_image_view(&images->views[slot], view);
 
    if (res->b.b.target == PIPE_BUFFER || view->shader_access & SI_IMAGE_ACCESS_AS_BUFFER) {
       images->needs_color_decompress_mask &= ~(1 << slot);
