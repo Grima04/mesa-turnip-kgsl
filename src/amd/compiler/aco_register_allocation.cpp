@@ -391,6 +391,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
       }
 
       stride = 1; /* stride in full registers */
+      rc = info.rc = RegClass(RegType::vgpr, size);
    }
 
    if (stride == 1) {
