@@ -877,6 +877,8 @@ bool get_reg_specified(ra_ctx& ctx,
 {
    if (rc.is_subdword() && reg.byte() && !instr_can_access_subdword(instr))
       return false;
+   if (!rc.is_subdword() && reg.byte())
+      return false;
 
    uint32_t size = rc.size();
    uint32_t stride = 1;
