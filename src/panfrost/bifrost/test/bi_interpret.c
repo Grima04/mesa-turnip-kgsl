@@ -433,7 +433,7 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         }
 
         case BI_CSEL: {
-                bool direct = ins->csel_cond == BI_COND_ALWAYS;
+                bool direct = ins->cond == BI_COND_ALWAYS;
                 bool cond = direct ? srcs[0].u32 :
                         bit_eval_cond(ins->csel_cond, srcs[0], srcs[1], ins->src_types[0], 0);
 

@@ -362,8 +362,6 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_reduce_op_name(ins->op.reduce));
         else if (ins->type == BI_FREXP)
                 fprintf(fp, "%s", bi_frexp_op_name(ins->op.frexp));
-        else if (ins->type == BI_CMP)
-                fprintf(fp, "%s", bi_cond_name(ins->op.compare));
         else
                 fprintf(fp, "%s", bi_class_name(ins->type));
 
@@ -376,8 +374,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 bi_print_load_vary(&ins->load_vary, fp);
         else if (ins->type == BI_BRANCH)
                 bi_print_branch(&ins->branch, fp);
-        else if (ins->type == BI_CSEL)
-                fprintf(fp, ".%s", bi_cond_name(ins->csel_cond));
+        else if (ins->type == BI_CSEL || ins->type == BI_CMP)
+                fprintf(fp, ".%s", bi_cond_name(ins->cond));
         else if (ins->type == BI_BLEND)
                 fprintf(fp, ".loc%u", ins->blend_location);
         else if (ins->type == BI_TEX)

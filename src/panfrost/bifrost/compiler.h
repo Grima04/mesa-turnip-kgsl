@@ -278,7 +278,6 @@ typedef struct {
                 enum bi_reduce_op reduce;
                 enum bi_table_op table;
                 enum bi_frexp_op frexp;
-                enum bi_cond compare;
                 enum bi_tex_op texture;
 
                 /* For FMA/ADD, should we add a biased exponent? */
@@ -293,7 +292,7 @@ typedef struct {
 
                 /* For CSEL, the comparison op. BI_COND_ALWAYS doesn't make
                  * sense here but you can always just use a move for that */
-                enum bi_cond csel_cond;
+                enum bi_cond cond;
 
                 /* For BLEND -- the location 0-7 */
                 unsigned blend_location;

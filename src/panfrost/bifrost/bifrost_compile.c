@@ -533,7 +533,7 @@ bi_fuse_csel_cond(bi_instruction *csel, nir_alu_src cond,
                 return;
 
         /* We found one, let's fuse it in */
-        csel->csel_cond = bcond;
+        csel->cond = bcond;
         bi_copy_src(csel, alu, 0, 0, constants_left, constant_shift, comps);
         bi_copy_src(csel, alu, 1, 1, constants_left, constant_shift, comps);
 }
@@ -636,7 +636,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         BI_CASE_CMP(nir_op_ieq)
         BI_CASE_CMP(nir_op_fne)
         BI_CASE_CMP(nir_op_ine)
-                alu.op.compare = bi_cond_for_nir(instr->op, false);
+                alu.cond = bi_cond_for_nir(instr->op, false);
                 break;
         case nir_op_fround_even:
                 alu.op.round = BI_ROUND_MODE;
@@ -660,7 +660,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
 
         if (alu.type == BI_CSEL) {
                 /* Default to csel3 */
-                alu.csel_cond = BI_COND_NE;
+                alu.cond = BI_COND_NE;
                 alu.src[1] = BIR_INDEX_ZERO;
                 alu.src_types[1] = alu.src_types[0];
 

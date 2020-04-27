@@ -285,7 +285,7 @@ bit_csel_helper(struct panfrost_device *dev,
         ins.src[2] = ins.src[0];
 
         for (enum bi_cond cond = BI_COND_LT; cond <= BI_COND_NE; ++cond) {
-                ins.csel_cond = cond;
+                ins.cond = cond;
 
                 if (!bit_test_single(dev, &ins, input, true, debug)) {
                         fprintf(stderr, "FAIL: csel%u.%s\n",

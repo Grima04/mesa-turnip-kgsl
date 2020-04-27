@@ -772,7 +772,7 @@ bi_pack_fma_csel(bi_instruction *ins, struct bi_registers *regs)
         bool flip = false, invert = false;
 
         enum bifrost_csel_cond cond =
-                bi_cond_to_csel(ins->csel_cond, &flip, &invert, ins->src_types[0]);
+                bi_cond_to_csel(ins->cond, &flip, &invert, ins->src_types[0]);
 
         unsigned size = nir_alu_type_get_type_size(ins->dest_type);
 
