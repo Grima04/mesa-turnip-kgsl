@@ -518,8 +518,10 @@ v_mov(unsigned src, unsigned dest)
                 .type = TAG_ALU_4,
                 .mask = 0xF,
                 .src = { ~0, src, ~0, ~0 },
+                .src_types = { 0, nir_type_uint32 },
                 .swizzle = SWIZZLE_IDENTITY,
                 .dest = dest,
+                .dest_type = nir_type_uint32,
                 .alu = {
                         .op = midgard_alu_op_imov,
                         .reg_mode = midgard_reg_mode_32,
