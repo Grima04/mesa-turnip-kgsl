@@ -2954,51 +2954,58 @@ lower_bit_size_callback(const nir_alu_instr *alu, void *_)
 	enum chip_class chip = device->physical_device->rad_info.chip_class;
 
 	if (alu->dest.dest.ssa.bit_size & (8 | 16)) {
+		unsigned bit_size = alu->dest.dest.ssa.bit_size;
 		switch (alu->op) {
 		case nir_op_iabs:
-		case nir_op_iadd:
 		case nir_op_iand:
 		case nir_op_bitfield_select:
 		case nir_op_udiv:
 		case nir_op_idiv:
-		case nir_op_imax:
-		case nir_op_umax:
-		case nir_op_imin:
-		case nir_op_umin:
 		case nir_op_umod:
 		case nir_op_imod:
-		case nir_op_imul:
 		case nir_op_imul_high:
 		case nir_op_umul_high:
 		case nir_op_ineg:
 		case nir_op_inot:
 		case nir_op_ior:
 		case nir_op_irem:
-		case nir_op_ishl:
-		case nir_op_ishr:
-		case nir_op_ushr:
 		case nir_op_isign:
-		case nir_op_isub:
 		case nir_op_ixor:
 			return 32;
+		case nir_op_imax:
+		case nir_op_umax:
+		case nir_op_imin:
+		case nir_op_umin:
+		case nir_op_ishr:
+		case nir_op_ushr:
+		case nir_op_ishl:
+		case nir_op_iadd:
+		case nir_op_uadd_sat:
+		case nir_op_isub:
+		case nir_op_imul:
+			return (bit_size == 8 ||
+			        !(chip >= GFX8 && nir_dest_is_divergent(alu->dest.dest))) ? 32 : 0;
 		default:
 			return 0;
 		}
 	}
 
 	if (nir_src_bit_size(alu->src[0].src) & (8 | 16)) {
+		unsigned bit_size = nir_src_bit_size(alu->src[0].src);
 		switch (alu->op) {
 		case nir_op_bit_count:
 		case nir_op_find_lsb:
 		case nir_op_ufind_msb:
-		case nir_op_ieq:
-		case nir_op_ige:
-		case nir_op_uge:
-		case nir_op_ilt:
-		case nir_op_ult:
-		case nir_op_ine:
 		case nir_op_i2b1:
 			return 32;
+		case nir_op_ilt:
+		case nir_op_ige:
+		case nir_op_ieq:
+		case nir_op_ine:
+		case nir_op_ult:
+		case nir_op_uge:
+			return (bit_size == 8 ||
+			        !(chip >= GFX8 && nir_dest_is_divergent(alu->dest.dest))) ? 32 : 0;
 		default:
 			return 0;
 		}

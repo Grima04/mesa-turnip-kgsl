@@ -391,7 +391,8 @@ public:
    Result vadd32(Definition dst, Op a, Op b, bool carry_out=false, Op carry_in=Op(Operand(s2)), bool post_ra=false) {
       if (!b.op.isTemp() || b.op.regClass().type() != RegType::vgpr)
          std::swap(a, b);
-      assert((post_ra || b.op.hasRegClass()) && b.op.regClass().type() == RegType::vgpr);
+      if (!post_ra && (!b.op.hasRegClass() || b.op.regClass().type() == RegType::sgpr))
+         b = copy(def(v1), b);
 
       if (!carry_in.op.isUndefined())
          return vop2(aco_opcode::v_addc_co_u32, Definition(dst), hint_vcc(def(lm)), a, b, carry_in);
@@ -411,7 +412,8 @@ public:
       bool reverse = !b.op.isTemp() || b.op.regClass().type() != RegType::vgpr;
       if (reverse)
          std::swap(a, b);
-      assert(b.op.isTemp() && b.op.regClass().type() == RegType::vgpr);
+      if (!b.op.hasRegClass() || b.op.regClass().type() == RegType::sgpr)
+         b = copy(def(v1), b);
 
       aco_opcode op;
       Temp carry;

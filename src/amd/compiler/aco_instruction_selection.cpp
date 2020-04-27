@@ -784,13 +784,13 @@ void emit_vop2_instruction_logic64(isel_context *ctx, nir_alu_instr *instr,
 }
 
 void emit_vop3a_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode op, Temp dst,
-                            bool flush_denorms = false, unsigned num_sources = 2)
+                            bool flush_denorms = false, unsigned num_sources = 2, bool swap_srcs = false)
 {
    assert(num_sources == 2 || num_sources == 3);
    Temp src[3] = { Temp(0, v1), Temp(0, v1), Temp(0, v1) };
    bool has_sgpr = false;
    for (unsigned i = 0; i < num_sources; i++) {
-      src[i] = get_alu_src(ctx, instr->src[i]);
+      src[i] = get_alu_src(ctx, instr->src[swap_srcs ? 1 - i : i]);
       if (has_sgpr)
          src[i] = as_vgpr(ctx, src[i]);
       else
@@ -1307,7 +1307,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_imax: {
-      if (dst.regClass() == v1) {
+      if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_max_i16_e64, dst);
+      } else if (dst.regClass() == v2b) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_max_i16, dst, true);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_max_i32, dst, true);
       } else if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_max_i32, dst, true);
@@ -1317,7 +1321,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_umax: {
-      if (dst.regClass() == v1) {
+      if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_max_u16_e64, dst);
+      } else if (dst.regClass() == v2b) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_max_u16, dst, true);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_max_u32, dst, true);
       } else if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_max_u32, dst, true);
@@ -1327,7 +1335,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_imin: {
-      if (dst.regClass() == v1) {
+      if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_min_i16_e64, dst);
+      } else if (dst.regClass() == v2b) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_min_i16, dst, true);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_min_i32, dst, true);
       } else if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_min_i32, dst, true);
@@ -1337,7 +1349,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_umin: {
-      if (dst.regClass() == v1) {
+      if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_min_u16_e64, dst);
+      } else if (dst.regClass() == v2b) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_min_u16, dst, true);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_min_u32, dst, true);
       } else if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_min_u32, dst, true);
@@ -1395,7 +1411,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_ushr: {
-      if (dst.regClass() == v1) {
+      if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_lshrrev_b16_e64, dst, false, 2, true);
+      } else if (dst.regClass() == v2b) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_lshrrev_b16, dst, false, true);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_lshrrev_b32, dst, false, true);
       } else if (dst.regClass() == v2 && ctx->program->chip_class >= GFX8) {
          bld.vop3(aco_opcode::v_lshrrev_b64, Definition(dst),
@@ -1412,7 +1432,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_ishl: {
-      if (dst.regClass() == v1) {
+      if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_lshlrev_b16_e64, dst, false, 2, true);
+      } else if (dst.regClass() == v2b) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_lshlrev_b16, dst, false, true);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_lshlrev_b32, dst, false, true);
       } else if (dst.regClass() == v2 && ctx->program->chip_class >= GFX8) {
          bld.vop3(aco_opcode::v_lshlrev_b64, Definition(dst),
@@ -1429,7 +1453,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_ishr: {
-      if (dst.regClass() == v1) {
+      if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_ashrrev_i16_e64, dst, false, 2, true);
+      } else if (dst.regClass() == v2b) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_ashrrev_i16, dst, false, true);
+      } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_ashrrev_i32, dst, false, true);
       } else if (dst.regClass() == v2 && ctx->program->chip_class >= GFX8) {
          bld.vop3(aco_opcode::v_ashrrev_i64, Definition(dst),
@@ -1499,6 +1527,12 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_add_u32, dst, true);
          break;
+      } else if (dst.regClass() == v2b && ctx->program->chip_class < GFX10) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_add_u16, dst, true);
+         break;
+      } else if (dst.regClass() == v2b) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_add_u16_e64, dst);
+         break;
       }
 
       Temp src0 = get_alu_src(ctx, instr->src[0]);
@@ -1539,6 +1573,16 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          bld.sop2(aco_opcode::s_add_u32, Definition(tmp), bld.scc(Definition(carry)),
                   src0, src1);
          bld.sop2(aco_opcode::s_cselect_b32, Definition(dst), Operand((uint32_t) -1), tmp, bld.scc(carry));
+      } else if (dst.regClass() == v2b) {
+         Instruction *instr;
+         if (ctx->program->chip_class >= GFX10) {
+            instr = bld.vop3(aco_opcode::v_add_u16_e64, Definition(dst), src0, src1).instr;
+         } else {
+            if (src1.type() == RegType::sgpr)
+               std::swap(src0, src1);
+            instr = bld.vop2_e64(aco_opcode::v_add_u16, Definition(dst), src0, as_vgpr(ctx, src1)).instr;
+         }
+         static_cast<VOP3A_instruction*>(instr)->clamp = 1;
       } else if (dst.regClass() == v1) {
          if (ctx->options->chip_class >= GFX9) {
             aco_ptr<VOP3A_instruction> add{create_instruction<VOP3A_instruction>(aco_opcode::v_add_u32, asVOP3(Format::VOP2), 2, 1)};
@@ -1604,6 +1648,14 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       Temp src1 = get_alu_src(ctx, instr->src[1]);
       if (dst.regClass() == v1) {
          bld.vsub32(Definition(dst), src0, src1);
+         break;
+      } else if (dst.regClass() == v2b) {
+         if (ctx->program->chip_class >= GFX10)
+            bld.vop3(aco_opcode::v_sub_u16_e64, Definition(dst), src0, src1);
+         else if (src1.type() == RegType::sgpr)
+            bld.vop2(aco_opcode::v_subrev_u16, Definition(dst), src1, as_vgpr(ctx, src0));
+         else
+            bld.vop2(aco_opcode::v_sub_u16, Definition(dst), src0, as_vgpr(ctx, src1));
          break;
       }
 
@@ -1671,6 +1723,10 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          } else {
             emit_vop3a_instruction(ctx, instr, aco_opcode::v_mul_lo_u32, dst);
          }
+      } else if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10) {
+         emit_vop3a_instruction(ctx, instr, aco_opcode::v_mul_lo_u16_e64, dst);
+      } else if (dst.regClass() == v2b) {
+         emit_vop2_instruction(ctx, instr, aco_opcode::v_mul_lo_u16, dst, true);
       } else if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_mul_i32, dst, false);
       } else {
