@@ -1084,6 +1084,13 @@ static const struct add_op_info add_op_infos[] = {
         { 0x0f6d0, "UCMP.D3D.GT", ADD_TWO_SRC },
         { 0x0f6d8, "UCMP.D3D.GE", ADD_TWO_SRC },
         { 0x0f6e0, "ICMP.D3D.EQ", ADD_TWO_SRC },
+        { 0x0f700, "ICMP.64.GT.PT1", ADD_TWO_SRC },
+        { 0x0f708, "ICMP.64.GE.PT1", ADD_TWO_SRC },
+        { 0x0f710, "UCMP.64.GT.PT1", ADD_TWO_SRC },
+        { 0x0f718, "UCMP.64.GE.PT1", ADD_TWO_SRC },
+        { 0x0f720, "ICMP.64.EQ.PT1", ADD_TWO_SRC },
+        { 0x0f728, "ICMP.64.NE.PT1", ADD_TWO_SRC },
+        { 0x0f7c0, "ICMP.64.PT2", ADD_THREE_SRC }, // src3 = result of PT1
         { 0x10000, "MAX.v2f16", ADD_FMINMAX16 },
         { 0x11000, "ADD_MSCALE.f32", ADD_FADDMscale },
         { 0x12000, "MIN.v2f16", ADD_FMINMAX16 },
