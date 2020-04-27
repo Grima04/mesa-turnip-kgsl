@@ -647,7 +647,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         bool is_ssa = instr->dest.dest.is_ssa;
 
-        unsigned dest = nir_dest_index(&instr->dest.dest);
         unsigned nr_components = nir_dest_num_components(instr->dest.dest);
         unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
 
@@ -919,7 +918,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
-                .dest = dest,
+                .dest = nir_dest_index(&instr->dest.dest),
+                .dest_type = nir_op_infos[instr->op].output_type
+                        | nir_dest_bit_size(instr->dest.dest),
         };
 
         for (unsigned i = nr_inputs; i < ARRAY_SIZE(ins.src); ++i)
