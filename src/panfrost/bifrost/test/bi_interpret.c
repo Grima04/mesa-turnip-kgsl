@@ -226,26 +226,26 @@ bit_srcmod(float raw, bool abs, bool neg)
         else { return true; }
 
 static bool
-bit_eval_cond(enum bi_cond cond, bit_t l, bit_t r, nir_alu_type T, unsigned c)
+bit_eval_cond(enum bi_cond cond, bit_t l, bit_t r, nir_alu_type T, unsigned cl, unsigned cr)
 {
         if (T == nir_type_float32) {
                 BIT_COND(cond, l.f32, r.f32);
         } else if (T == nir_type_float16) {
-                float left = bf(l.f16[c]);
-                float right = bf(r.f16[c]);
+                float left = bf(l.f16[cl]);
+                float right = bf(r.f16[cr]);
                 BIT_COND(cond, left, right);
         } else if (T == nir_type_int32) {
-                int32_t left = (int32_t) l.u32;
-                int32_t right = (int32_t) r.u32;
+                int32_t left = l.u32;
+                int32_t right = r.u32;
                 BIT_COND(cond, left, right);
         } else if (T == nir_type_int16) {
-                int16_t left = (int16_t) l.u32;
-                int16_t right = (int16_t) r.u32;
+                int16_t left = l.i16[cl];
+                int16_t right = r.i16[cr];
                 BIT_COND(cond, left, right);
         } else if (T == nir_type_uint32) {
                 BIT_COND(cond, l.u32, r.u32);
         } else if (T == nir_type_uint16) {
-                BIT_COND(cond, l.u16[c], r.u16[c]);
+                BIT_COND(cond, l.u16[cl], r.u16[cr]);
         } else {
                 unreachable("Unknown type evaluated");
         }
@@ -435,7 +435,7 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         case BI_CSEL: {
                 bool direct = ins->cond == BI_COND_ALWAYS;
                 bool cond = direct ? srcs[0].u32 :
-                        bit_eval_cond(ins->csel_cond, srcs[0], srcs[1], ins->src_types[0], 0);
+                        bit_eval_cond(ins->cond, srcs[0], srcs[1], ins->src_types[0], 0, 0);
 
                 dest = cond ? srcs[2] : srcs[3];
                 break;
