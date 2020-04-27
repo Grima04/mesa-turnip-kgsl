@@ -1017,8 +1017,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
 
       if (instr->dest.dest.ssa.bit_size >= 32 || dst.type() == RegType::vgpr) {
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, instr->dest.dest.ssa.num_components, 1)};
-         for (unsigned i = 0; i < num; ++i)
-            vec->operands[i] = Operand{elems[i]};
+         RegClass elem_rc = RegClass::get(RegType::vgpr, instr->dest.dest.ssa.bit_size / 8u);
+         for (unsigned i = 0; i < num; ++i) {
+            if (elems[i].type() == RegType::sgpr && elem_rc.is_subdword())
+               vec->operands[i] = Operand(emit_extract_vector(ctx, elems[i], 0, elem_rc));
+            else
+               vec->operands[i] = Operand{elems[i]};
+         }
          vec->definitions[0] = Definition(dst);
          ctx->block->instructions.emplace_back(std::move(vec));
          ctx->allocated_vec.emplace(dst.id(), elems);
