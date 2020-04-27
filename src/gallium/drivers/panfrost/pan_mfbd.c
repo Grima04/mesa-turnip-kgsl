@@ -502,7 +502,6 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         if (batch->key.nr_cbufs == 1) {
                 struct pipe_surface *surf = batch->key.cbufs[0];
                 struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                struct panfrost_bo *bo = rsrc->bo;
 
                 if (rsrc->checksummed) {
                         unsigned level = surf->u.tex.level;
@@ -511,7 +510,10 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                         fb.mfbd_flags |= MALI_MFBD_EXTRA;
                         fbx.flags_lo |= MALI_EXTRA_PRESENT;
                         fbx.checksum_stride = slice->checksum_stride;
-                        fbx.checksum = bo->gpu + slice->checksum_offset;
+                        if (slice->checksum_bo)
+                                fbx.checksum = slice->checksum_bo->gpu;
+                        else
+                                fbx.checksum = rsrc->bo->gpu + slice->checksum_offset;
                 }
         }
 
