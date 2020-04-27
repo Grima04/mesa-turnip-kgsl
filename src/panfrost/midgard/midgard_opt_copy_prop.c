@@ -74,8 +74,6 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 
                 /* We only work on pure SSA */
 
-                if (to >= SSA_FIXED_MINIMUM) continue;
-                if (from >= SSA_FIXED_MINIMUM) continue;
                 if (to & PAN_IS_REG) continue;
                 if (from & PAN_IS_REG) continue;
 

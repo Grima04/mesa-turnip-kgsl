@@ -211,7 +211,7 @@ midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block)
 static bool
 mir_strip_inverted(compiler_context *ctx, unsigned node)
 {
-        if (node >= SSA_FIXED_MINIMUM)
+        if (node == SSA_FIXED_REGISTER(26))
                 return false;
 
        /* Strips and returns the invert off a node */
