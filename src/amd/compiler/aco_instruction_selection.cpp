@@ -8303,10 +8303,20 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       Temp samples_log2 = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), dword3, Operand(16u | 4u<<16));
       Temp samples = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), Operand(1u), samples_log2);
       Temp type = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), dword3, Operand(28u | 4u<<16 /* offset=28, width=4 */));
-      Temp is_msaa = bld.sopc(aco_opcode::s_cmp_ge_u32, bld.def(s1, scc), type, Operand(14u));
 
+      Operand default_sample = Operand(1u);
+      if (ctx->options->robust_buffer_access) {
+         /* Extract the second dword of the descriptor, if it's
+	  * all zero, then it's a null descriptor.
+	  */
+         Temp dword1 = emit_extract_vector(ctx, resource, 1, s1);
+         Temp is_non_null_descriptor = bld.sopc(aco_opcode::s_cmp_gt_u32, bld.def(s1, scc), dword1, Operand(0u));
+         default_sample = Operand(is_non_null_descriptor);
+      }
+
+      Temp is_msaa = bld.sopc(aco_opcode::s_cmp_ge_u32, bld.def(s1, scc), type, Operand(14u));
       bld.sop2(aco_opcode::s_cselect_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               samples, Operand(1u), bld.scc(is_msaa));
+               samples, default_sample, bld.scc(is_msaa));
       return;
    }
 
