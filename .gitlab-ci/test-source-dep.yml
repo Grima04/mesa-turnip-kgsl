@@ -138,7 +138,9 @@
         *gallium_core_file_list
       when: on_success
     - changes:
+      - src/gallium/drivers/llvmpipe/**/*
       - src/gallium/drivers/virgl/**/*
       - src/gallium/winsys/virgl/**/*
+      - src/gallium/winsys/sw/**/*
       when: on_success
     - when: never
