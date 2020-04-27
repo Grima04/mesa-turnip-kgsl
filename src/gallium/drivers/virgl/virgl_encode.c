@@ -763,7 +763,7 @@ static void virgl_encoder_transfer3d_common(struct virgl_screen *vs,
    if (encode_stride == virgl_transfer3d_explicit_stride) {
       stride = transfer->stride;
       layer_stride = transfer->layer_stride;
-   } else if (virgl_transfer3d_host_inferred_stride) {
+   } else if (encode_stride == virgl_transfer3d_host_inferred_stride) {
       stride = 0;
       layer_stride = 0;
    } else {
