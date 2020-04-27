@@ -1757,6 +1757,59 @@ TEST_F(nir_combine_stores_test, direct_array_derefs)
    ASSERT_EQ(vec->src[3].swizzle[0], 0);
 }
 
+static int64_t
+vec_src_comp_as_int(nir_src src, unsigned comp)
+{
+   if (nir_src_is_const(src))
+      return nir_src_comp_as_int(src, comp);
+
+   assert(src.is_ssa);
+   nir_ssa_scalar s = { src.ssa, comp };
+   assert(nir_op_is_vec(nir_ssa_scalar_alu_op(s)));
+   return nir_ssa_scalar_as_int(nir_ssa_scalar_chase_alu_src(s, comp));
+}
+
+TEST_F(nir_combine_stores_test, store_volatile)
+{
+   nir_variable *out = create_ivec4(nir_var_shader_out, "out");
+
+   nir_store_var(b, out, nir_imm_ivec4(b, 0, 0, 0, 0), 1 << 0);
+   nir_store_var(b, out, nir_imm_ivec4(b, 1, 1, 1, 1), 1 << 1);
+   nir_store_var_volatile(b, out, nir_imm_ivec4(b, -1, -2, -3, -4), 0xf);
+   nir_store_var(b, out, nir_imm_ivec4(b, 2, 2, 2, 2), 1 << 2);
+   nir_store_var(b, out, nir_imm_ivec4(b, 3, 3, 3, 3), 1 << 3);
+
+   nir_validate_shader(b->shader, NULL);
+
+   bool progress = nir_opt_combine_stores(b->shader, nir_var_shader_out);
+   ASSERT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+
+   /* Clean up the stored values */
+   nir_opt_constant_folding(b->shader);
+   nir_opt_dce(b->shader);
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   nir_intrinsic_instr *first = get_intrinsic(nir_intrinsic_store_deref, 0);
+   ASSERT_EQ(nir_intrinsic_write_mask(first), 0x3);
+   ASSERT_EQ(vec_src_comp_as_int(first->src[1], 0), 0);
+   ASSERT_EQ(vec_src_comp_as_int(first->src[1], 1), 1);
+
+   nir_intrinsic_instr *second = get_intrinsic(nir_intrinsic_store_deref, 1);
+   ASSERT_EQ(nir_intrinsic_write_mask(second), 0xf);
+   ASSERT_EQ(vec_src_comp_as_int(second->src[1], 0), -1);
+   ASSERT_EQ(vec_src_comp_as_int(second->src[1], 1), -2);
+   ASSERT_EQ(vec_src_comp_as_int(second->src[1], 2), -3);
+   ASSERT_EQ(vec_src_comp_as_int(second->src[1], 3), -4);
+
+   nir_intrinsic_instr *third = get_intrinsic(nir_intrinsic_store_deref, 2);
+   ASSERT_EQ(nir_intrinsic_write_mask(third), 0xc);
+   ASSERT_EQ(vec_src_comp_as_int(third->src[1], 2), 2);
+   ASSERT_EQ(vec_src_comp_as_int(third->src[1], 3), 3);
+}
+
 TEST_F(nir_split_vars_test, simple_split)
 {
    nir_variable **in = create_many_int(nir_var_shader_in, "in", 4);
