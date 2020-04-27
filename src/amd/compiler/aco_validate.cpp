@@ -456,7 +456,7 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                err |= ra_fail(output, loc, Location(), "Operand %d is not assigned a register", i);
             if (assignments.count(op.tempId()) && assignments[op.tempId()].reg != op.physReg())
                err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d has an inconsistent register assignment with instruction", i);
-            if ((op.getTemp().type() == RegType::vgpr && op.physReg() + op.size() > 256 + program->config->num_vgprs) ||
+            if ((op.getTemp().type() == RegType::vgpr && op.physReg().reg_b + op.bytes() > (256 + program->config->num_vgprs) * 4) ||
                 (op.getTemp().type() == RegType::sgpr && op.physReg() + op.size() > program->config->num_sgprs && op.physReg() < program->sgpr_limit))
                err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d has an out-of-bounds register assignment", i);
             if (op.physReg() == vcc && !program->needs_vcc)
@@ -477,7 +477,7 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                err |= ra_fail(output, loc, Location(), "Definition %d is not assigned a register", i);
             if (assignments[def.tempId()].defloc.block)
                err |= ra_fail(output, loc, assignments.at(def.tempId()).defloc, "Temporary %%%d also defined by instruction", def.tempId());
-            if ((def.getTemp().type() == RegType::vgpr && def.physReg() + def.size() > 256 + program->config->num_vgprs) ||
+            if ((def.getTemp().type() == RegType::vgpr && def.physReg().reg_b + def.bytes() > (256 + program->config->num_vgprs) * 4) ||
                 (def.getTemp().type() == RegType::sgpr && def.physReg() + def.size() > program->config->num_sgprs && def.physReg() < program->sgpr_limit))
                err |= ra_fail(output, loc, assignments.at(def.tempId()).firstloc, "Definition %d has an out-of-bounds register assignment", i);
             if (def.physReg() == vcc && !program->needs_vcc)
