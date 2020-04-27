@@ -2422,7 +2422,7 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
                         pandecode_prop("wrap_t = %s", pandecode_wrap_mode(s->wrap_t));
                         pandecode_prop("wrap_r = %s", pandecode_wrap_mode(s->wrap_r));
 
-                        if (s->unk1 != 0x8) {
+                        if (s->unk8 != 0x8) {
                                 pandecode_msg("XXX: unk8 tripped\n");
                                 pandecode_prop("unk8 = 0x%x", s->unk8);
                         }
