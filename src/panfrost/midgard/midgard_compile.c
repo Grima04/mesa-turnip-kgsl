@@ -1747,12 +1747,15 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         int texture_index = instr->texture_index;
         int sampler_index = texture_index;
 
-        /* No helper to build texture words -- we do it all here */
+        nir_alu_type dest_base = nir_alu_type_get_base_type(instr->dest_type);
+        nir_alu_type dest_type = dest_base | nir_dest_bit_size(instr->dest);
+
         midgard_instruction ins = {
                 .type = TAG_TEXTURE_4,
                 .mask = 0xF,
                 .dest = nir_dest_index(&instr->dest),
                 .src = { ~0, ~0, ~0, ~0 },
+                .dest_type = dest_type,
                 .swizzle = SWIZZLE_IDENTITY_4,
                 .texture = {
                         .op = midgard_texop,
@@ -1781,6 +1784,8 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 int index = nir_src_index(ctx, &instr->src[i].src);
                 unsigned nr_components = nir_src_num_components(instr->src[i].src);
+                unsigned sz = nir_src_bit_size(instr->src[i].src);
+                nir_alu_type T = nir_tex_instr_src_type(instr, i) | sz;
 
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord: {
@@ -1803,6 +1808,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                                 midgard_instruction ld = m_ld_cubemap_coords(coords, 0);
                                 ld.src[1] = index;
+                                ld.src_types[1] = T;
                                 ld.mask = 0x3; /* xy */
                                 ld.load_store.arg_1 = 0x20;
                                 ld.swizzle[1][3] = COMPONENT_X;
@@ -1825,6 +1831,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         }
 
                         ins.src[1] = coords;
+                        ins.src_types[1] = T;
 
                         /* Texelfetch coordinates uses all four elements
                          * (xyz/index) regardless of texture dimensionality,
@@ -1875,6 +1882,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                         ins.texture.lod_register = true;
                         ins.src[2] = index;
+                        ins.src_types[2] = T;
 
                         for (unsigned c = 0; c < MIR_VEC_COMPONENTS; ++c)
                                 ins.swizzle[2][c] = COMPONENT_X;
@@ -1887,6 +1895,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 case nir_tex_src_offset: {
                         ins.texture.offset_register = true;
                         ins.src[3] = index;
+                        ins.src_types[3] = T;
 
                         for (unsigned c = 0; c < MIR_VEC_COMPONENTS; ++c)
                                 ins.swizzle[3][c] = (c > COMPONENT_Z) ? 0 : c;
