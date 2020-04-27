@@ -5659,8 +5659,12 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, std::vec
    ctx->block->instructions.emplace_back(std::move(load));
 
    Operand sample_index4;
-   if (sample_index.isConstant() && sample_index.constantValue() < 16) {
-      sample_index4 = Operand(sample_index.constantValue() << 2);
+   if (sample_index.isConstant()) {
+      if (sample_index.constantValue() < 16) {
+         sample_index4 = Operand(sample_index.constantValue() << 2);
+      } else {
+         sample_index4 = Operand(0u);
+      }
    } else if (sample_index.regClass() == s1) {
       sample_index4 = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), sample_index, Operand(2u));
    } else {
