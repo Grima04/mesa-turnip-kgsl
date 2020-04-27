@@ -385,6 +385,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
             if (reg_found) {
                PhysReg res{entry.first};
                res.reg_b += i;
+               adjust_max_used_regs(ctx, rc, entry.first);
                return {res, true};
             }
          }
