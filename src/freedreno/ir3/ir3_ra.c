@@ -1267,6 +1267,62 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 	}
 }
 
+static void
+assign_arr_base(struct ir3_ra_ctx *ctx, struct ir3_array *arr,
+		struct ir3_instruction **precolor, unsigned nprecolor)
+{
+	unsigned base = 0;
+
+	/* figure out what else we conflict with which has already
+	 * been assigned:
+	 */
+retry:
+	foreach_array (arr2, &ctx->ir->array_list) {
+		if (arr2 == arr)
+			break;
+		if (arr2->end_ip == 0)
+			continue;
+		/* if it intersects with liverange AND register range.. */
+		if (intersects(arr->start_ip, arr->end_ip,
+				arr2->start_ip, arr2->end_ip) &&
+			intersects(base, base + reg_size_for_array(arr),
+				arr2->reg, arr2->reg + reg_size_for_array(arr2))) {
+			base = MAX2(base, arr2->reg + reg_size_for_array(arr2));
+			goto retry;
+		}
+	}
+
+	/* also need to not conflict with any pre-assigned inputs: */
+	for (unsigned i = 0; i < nprecolor; i++) {
+		struct ir3_instruction *instr = precolor[i];
+
+		if (!instr || (instr->flags & IR3_INSTR_UNUSED))
+			continue;
+
+		struct ir3_ra_instr_data *id = &ctx->instrd[instr->ip];
+
+		/* only consider the first component: */
+		if (id->off > 0)
+			continue;
+
+		unsigned name = ra_name(ctx, id);
+		unsigned regid = instr->regs[0]->num;
+
+		/* Check if array intersects with liverange AND register
+		 * range of the input:
+		 */
+		if (intersects(arr->start_ip, arr->end_ip,
+						ctx->def[name], ctx->use[name]) &&
+				intersects(base, base + reg_size_for_array(arr),
+						regid, regid + class_sizes[id->cls])) {
+			base = MAX2(base, regid + class_sizes[id->cls]);
+			goto retry;
+		}
+	}
+
+	arr->reg = base;
+}
+
 /* handle pre-colored registers.  This includes "arrays" (which could be of
  * length 1, used for phi webs lowered to registers in nir), as well as
  * special shader input values that need to be pinned to certain registers.
@@ -1323,59 +1379,13 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 	 * But on a5xx and earlier it will need to track two bases.
 	 */
 	foreach_array (arr, &ctx->ir->array_list) {
-		unsigned base = 0;
 
 		if (arr->end_ip == 0)
 			continue;
 
-		/* figure out what else we conflict with which has already
-		 * been assigned:
-		 */
-retry:
-		foreach_array (arr2, &ctx->ir->array_list) {
-			if (arr2 == arr)
-				break;
-			if (arr2->end_ip == 0)
-				continue;
-			/* if it intersects with liverange AND register range.. */
-			if (intersects(arr->start_ip, arr->end_ip,
-					arr2->start_ip, arr2->end_ip) &&
-				intersects(base, base + reg_size_for_array(arr),
-					arr2->reg, arr2->reg + reg_size_for_array(arr2))) {
-				base = MAX2(base, arr2->reg + reg_size_for_array(arr2));
-				goto retry;
-			}
-		}
+		assign_arr_base(ctx, arr, precolor, nprecolor);
 
-		/* also need to not conflict with any pre-assigned inputs: */
-		for (unsigned i = 0; i < nprecolor; i++) {
-			struct ir3_instruction *instr = precolor[i];
-
-			if (!instr || (instr->flags & IR3_INSTR_UNUSED))
-				continue;
-
-			struct ir3_ra_instr_data *id = &ctx->instrd[instr->ip];
-
-			/* only consider the first component: */
-			if (id->off > 0)
-				continue;
-
-			unsigned name = ra_name(ctx, id);
-			unsigned regid = instr->regs[0]->num;
-
-			/* Check if array intersects with liverange AND register
-			 * range of the input:
-			 */
-			if (intersects(arr->start_ip, arr->end_ip,
-							ctx->def[name], ctx->use[name]) &&
-					intersects(base, base + reg_size_for_array(arr),
-							regid, regid + class_sizes[id->cls])) {
-				base = MAX2(base, regid + class_sizes[id->cls]);
-				goto retry;
-			}
-		}
-
-		arr->reg = base;
+		unsigned base = arr->reg;
 
 		for (unsigned i = 0; i < arr->length; i++) {
 			unsigned name, reg;
