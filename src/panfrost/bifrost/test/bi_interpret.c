@@ -251,6 +251,20 @@ bit_eval_cond(enum bi_cond cond, bit_t l, bit_t r, nir_alu_type T, unsigned cl, 
         }
 }
 
+static unsigned
+bit_cmp(enum bi_cond cond, bit_t l, bit_t r, nir_alu_type T, unsigned cl, unsigned cr, bool d3d)
+{
+        bool v = bit_eval_cond(cond, l, r, T, cl, cr);
+
+        /* Fill for D3D but only up to 32-bit... 64-bit is only partial
+         * (although we probably need a cleverer representation for 64-bit) */
+
+        unsigned sz = MIN2(nir_alu_type_get_type_size(T), 32);
+        unsigned max = (sz == 32) ? (~0) : ((1 << sz) - 1);
+
+        return v ? (d3d ? max : 1) : 0;
+}
+
 static float
 biti_special(float Q, enum bi_special_op op)
 {
@@ -396,7 +410,33 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
                 bpoly(add);
 
         case BI_BRANCH:
-        case BI_CMP:
+                unreachable("Unsupported op");
+
+        case BI_CMP: {
+                nir_alu_type T = ins->src_types[0];
+                unsigned sz = nir_alu_type_get_type_size(T);
+
+                if (sz == 32 || sz == 64) {
+                        dest.u32 = bit_cmp(ins->cond, srcs[0], srcs[1], T, 0, 0, false);
+                } else if (sz == 16) {
+                        for (unsigned c = 0; c < 2; ++c) {
+                                dest.u16[c] = bit_cmp(ins->cond, srcs[0], srcs[1],
+                                                T, ins->swizzle[0][c], ins->swizzle[1][c],
+                                                false);
+                        }
+                } else if (sz == 8) {
+                        for (unsigned c = 0; c < 4; ++c) {
+                                dest.u8[c] = bit_cmp(ins->cond, srcs[0], srcs[1],
+                                                T, ins->swizzle[0][c], ins->swizzle[1][c],
+                                                false);
+                        }
+                } else {
+                        unreachable("Invalid");
+                }
+
+                break;
+        }
+
         case BI_BITWISE:
                 unreachable("Unsupported op");
 
