@@ -381,7 +381,7 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
                reg_found &= entry.second[i + j] == 0;
 
             /* check neighboring reg if needed */
-            reg_found &= (i <= 4 - rc.bytes() || reg_file[entry.first + 1] == 0);
+            reg_found &= ((int)i <= 4 - (int)rc.bytes() || reg_file[entry.first + 1] == 0);
             if (reg_found) {
                PhysReg res{entry.first};
                res.reg_b += i;
