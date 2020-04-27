@@ -6362,10 +6362,10 @@ texture_buffer_range(struct gl_context *ctx,
  */
 static bool
 check_texture_buffer_target(struct gl_context *ctx, GLenum target,
-                            const char *caller)
+                            const char *caller, bool dsa)
 {
    if (target != GL_TEXTURE_BUFFER_ARB) {
-      _mesa_error(ctx, GL_INVALID_ENUM,
+      _mesa_error(ctx, dsa ? GL_INVALID_OPERATION : GL_INVALID_ENUM,
                   "%s(texture target is not GL_TEXTURE_BUFFER)", caller);
       return false;
    }
@@ -6435,7 +6435,7 @@ _mesa_TexBuffer(GLenum target, GLenum internalFormat, GLuint buffer)
    /* Need to catch a bad target before it gets to
     * _mesa_get_current_tex_object.
     */
-   if (!check_texture_buffer_target(ctx, target, "glTexBuffer"))
+   if (!check_texture_buffer_target(ctx, target, "glTexBuffer", false))
       return;
 
    if (buffer) {
@@ -6467,7 +6467,7 @@ _mesa_TexBufferRange(GLenum target, GLenum internalFormat, GLuint buffer,
    /* Need to catch a bad target before it gets to
     * _mesa_get_current_tex_object.
     */
-   if (!check_texture_buffer_target(ctx, target, "glTexBufferRange"))
+   if (!check_texture_buffer_target(ctx, target, "glTexBufferRange", false))
       return;
 
    if (buffer) {
@@ -6516,7 +6516,7 @@ _mesa_TextureBufferRangeEXT(GLuint texture, GLenum target, GLenum internalFormat
    if (!texObj)
       return;
 
-   if (!check_texture_buffer_target(ctx, target, "glTextureBufferRangeEXT"))
+   if (!check_texture_buffer_target(ctx, target, "glTextureBufferRangeEXT", true))
       return;
 
    if (buffer) {
@@ -6566,7 +6566,7 @@ _mesa_TextureBuffer(GLuint texture, GLenum internalFormat, GLuint buffer)
    if (!texObj)
       return;
 
-   if (!check_texture_buffer_target(ctx, texObj->Target, "glTextureBuffer"))
+   if (!check_texture_buffer_target(ctx, texObj->Target, "glTextureBuffer", true))
       return;
 
    texture_buffer_range(ctx, texObj, internalFormat,
@@ -6595,7 +6595,7 @@ _mesa_TextureBufferEXT(GLuint texture, GLenum target,
                                            "glTextureBufferEXT");
 
    if (!texObj ||
-       !check_texture_buffer_target(ctx, texObj->Target, "glTextureBufferEXT"))
+       !check_texture_buffer_target(ctx, texObj->Target, "glTextureBufferEXT", true))
       return;
 
    texture_buffer_range(ctx, texObj, internalFormat,
@@ -6625,7 +6625,7 @@ _mesa_MultiTexBufferEXT(GLenum texunit, GLenum target,
                                                    "glMultiTexBufferEXT");
 
    if (!texObj ||
-       !check_texture_buffer_target(ctx, texObj->Target, "glMultiTexBufferEXT"))
+       !check_texture_buffer_target(ctx, texObj->Target, "glMultiTexBufferEXT", false))
       return;
 
    texture_buffer_range(ctx, texObj, internalFormat,
@@ -6670,7 +6670,7 @@ _mesa_TextureBufferRange(GLuint texture, GLenum internalFormat, GLuint buffer,
       return;
 
    if (!check_texture_buffer_target(ctx, texObj->Target,
-       "glTextureBufferRange"))
+       "glTextureBufferRange", true))
       return;
 
    texture_buffer_range(ctx, texObj, internalFormat,
