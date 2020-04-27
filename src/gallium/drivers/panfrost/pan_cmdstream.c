@@ -1328,6 +1328,8 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                                               descriptors,
                                                               sizeof(struct bifrost_texture_descriptor) *
                                                                       ctx->sampler_view_count[stage]);
+
+                free(descriptors);
         } else {
                 uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
