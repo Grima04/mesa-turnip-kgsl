@@ -652,11 +652,11 @@ namespace SwrJit
         Value* pDst, Value* vSrc, Value* vOffsets, Value* vMask, MEM_CLIENT usage)
     {
         AssertMemoryUsageParams(pDst, usage);
-//        if (vSrc->getType() != mSimdFP32Ty)
-//        {
-//            vSrc = BITCAST(vSrc, mSimdFP32Ty);
-//        }
+#if LLVM_VERSION_MAJOR >= 11
+        SWR_ASSERT(cast<VectorType>(vSrc->getType())->getElementType()->isFloatTy());
+#else
         SWR_ASSERT(vSrc->getType()->getVectorElementType()->isFloatTy());
+#endif
         VSCATTERPS(pDst, vMask, vOffsets, vSrc, C(1));
         return;
 
