@@ -97,6 +97,10 @@ typedef struct midgard_instruction {
         /* vec16 swizzle, unpacked, per source */
         unsigned swizzle[MIR_SRC_COUNT][MIR_VEC_COMPONENTS];
 
+        /* Types! */
+        nir_alu_type src_types[MIR_SRC_COUNT];
+        nir_alu_type dest_type;
+
         /* Special fields for an ALU instruction */
         midgard_reg_info registers;
 

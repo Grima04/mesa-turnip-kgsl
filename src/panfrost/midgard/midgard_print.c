@@ -333,6 +333,7 @@ mir_print_instruction(midgard_instruction *ins)
 
         printf(" ");
         mir_print_index(ins->dest);
+        pan_print_alu_type(ins->dest_type, stdout);
 
         if (ins->mask != 0xF)
                 mir_print_mask(ins->mask);
@@ -345,6 +346,7 @@ mir_print_instruction(midgard_instruction *ins)
                 mir_print_embedded_constant(ins, 0);
         else {
                 mir_print_index(ins->src[0]);
+                pan_print_alu_type(ins->src_types[0], stdout);
                 mir_print_swizzle(ins->swizzle[0]);
         }
         printf(", ");
@@ -355,16 +357,16 @@ mir_print_instruction(midgard_instruction *ins)
                 mir_print_embedded_constant(ins, 1);
         else {
                 mir_print_index(ins->src[1]);
+                pan_print_alu_type(ins->src_types[1], stdout);
                 mir_print_swizzle(ins->swizzle[1]);
         }
 
-        printf(", ");
-        mir_print_index(ins->src[2]);
-        mir_print_swizzle(ins->swizzle[2]);
-
-        printf(", ");
-        mir_print_index(ins->src[3]);
-        mir_print_swizzle(ins->swizzle[3]);
+        for (unsigned c = 2; c <= 3; ++c) {
+                printf(", ");
+                mir_print_index(ins->src[c]);
+                pan_print_alu_type(ins->src_types[c], stdout);
+                mir_print_swizzle(ins->swizzle[c]);
+        }
 
         if (ins->no_spill)
                 printf(" /* no spill */");
