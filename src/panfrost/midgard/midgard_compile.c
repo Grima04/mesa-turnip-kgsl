@@ -173,20 +173,12 @@ vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count,
         return alu_src;
 }
 
-/* load/store instructions have both 32-bit and 16-bit variants, depending on
- * whether we are using vectors composed of highp or mediump. At the moment, we
- * don't support half-floats -- this requires changes in other parts of the
- * compiler -- therefore the 16-bit versions are commented out. */
-
-//M_LOAD(ld_attr_16);
 M_LOAD(ld_attr_32);
-//M_LOAD(ld_vary_16);
 M_LOAD(ld_vary_32);
 M_LOAD(ld_ubo_int4);
 M_LOAD(ld_int4);
 M_STORE(st_int4);
 M_LOAD(ld_color_buffer_32u);
-//M_STORE(st_vary_16);
 M_STORE(st_vary_32);
 M_LOAD(ld_cubemap_coords);
 M_LOAD(ld_compute_id);
