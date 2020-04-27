@@ -638,7 +638,11 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
 
-   struct zink_framebuffer *fb = create_framebuffer(ctx);
+   struct zink_framebuffer *fb = ctx->framebuffer;
+   /* explicitly unref previous fb to ensure it gets destroyed */
+   if (fb)
+      zink_framebuffer_reference(screen, &fb, NULL);
+   fb = create_framebuffer(ctx);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
    zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, fb->rp);
 
