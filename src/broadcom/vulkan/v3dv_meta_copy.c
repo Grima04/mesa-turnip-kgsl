@@ -2446,31 +2446,27 @@ fail:
 
 static void
 compute_blit_box(const VkOffset3D *offsets,
-                 struct v3dv_image *image,
+                 uint32_t image_w, uint32_t image_h,
                  uint32_t *x, uint32_t *y, uint32_t *w, uint32_t *h,
                  bool *mirror_x, bool *mirror_y)
 {
    if (offsets[1].x >= offsets[0].x) {
       *mirror_x = false;
-      *x = MIN2(offsets[0].x, image->extent.width - 1);
-      *w = MIN2(offsets[1].x - offsets[0].x,
-                image->extent.width - offsets[0].x);
+      *x = MIN2(offsets[0].x, image_w - 1);
+      *w = MIN2(offsets[1].x - offsets[0].x, image_w - offsets[0].x);
    } else {
       *mirror_x = true;
-      *x = MIN2(offsets[1].x, image->extent.width - 1);
-      *w = MIN2(offsets[0].x - offsets[1].x,
-                image->extent.width - offsets[1].x);
+      *x = MIN2(offsets[1].x, image_w - 1);
+      *w = MIN2(offsets[0].x - offsets[1].x, image_w - offsets[1].x);
    }
    if (offsets[1].y >= offsets[0].y) {
       *mirror_y = false;
-      *y = MIN2(offsets[0].y, image->extent.height - 1);
-      *h = MIN2(offsets[1].y - offsets[0].y,
-                image->extent.height - offsets[0].y);
+      *y = MIN2(offsets[0].y, image_h - 1);
+      *h = MIN2(offsets[1].y - offsets[0].y, image_h - offsets[0].y);
    } else {
       *mirror_y = true;
-      *y = MIN2(offsets[1].y, image->extent.height - 1);
-      *h = MIN2(offsets[0].y - offsets[1].y,
-                image->extent.height - offsets[1].y);
+      *y = MIN2(offsets[1].y, image_h - 1);
+      *h = MIN2(offsets[0].y - offsets[1].y, image_h - offsets[1].y);
    }
 }
 
@@ -2487,15 +2483,26 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    if (dst->type != VK_IMAGE_TYPE_2D || src->type != VK_IMAGE_TYPE_2D)
       return false;
 
+   const uint32_t dst_level_w = u_minify(dst->extent.width,
+                                         region->dstSubresource.mipLevel);
+   const uint32_t dst_level_h = u_minify(dst->extent.height,
+                                         region->dstSubresource.mipLevel);
+   const uint32_t src_level_w = u_minify(src->extent.width,
+                                         region->srcSubresource.mipLevel);
+   const uint32_t src_level_h = u_minify(src->extent.height,
+                                         region->srcSubresource.mipLevel);
+
    uint32_t dst_x, dst_y, dst_w, dst_h;
    bool dst_mirror_x, dst_mirror_y;
-   compute_blit_box(region->dstOffsets, dst,
+   compute_blit_box(region->dstOffsets,
+                    dst_level_w, dst_level_h,
                     &dst_x, &dst_y, &dst_w, &dst_h,
                     &dst_mirror_x, &dst_mirror_y);
 
    uint32_t src_x, src_y, src_w, src_h;
    bool src_mirror_x, src_mirror_y;
-   compute_blit_box(region->srcOffsets, src,
+   compute_blit_box(region->srcOffsets,
+                    src_level_w, src_level_h,
                     &src_x, &src_y, &src_w, &src_h,
                     &src_mirror_x, &src_mirror_y);
 
@@ -2503,10 +2510,10 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
     * and handle mirroring.
     */
    const float coords[4] =  {
-      (float)src_x / (float)src->extent.width,
-      (float)src_y / (float)src->extent.height,
-      (float)(src_x + src_w) / (float)src->extent.width,
-      (float)(src_y + src_h) / (float)src->extent.height
+      (float)src_x / (float)src_level_w,
+      (float)src_y / (float)src_level_h,
+      (float)(src_x + src_w) / (float)src_level_w,
+      (float)(src_y + src_h) / (float)src_level_h,
    };
 
    const bool mirror_x = dst_mirror_x != src_mirror_x;
@@ -2566,8 +2573,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          .renderPass = pipeline->pass,
          .attachmentCount = 1,
          .pAttachments = &dst_image_view,
-         .width = dst->extent.width,
-         .height = dst->extent.height,
+         .width = dst_level_w,
+         .height = dst_level_h,
          .layers = 1,
       };
 
