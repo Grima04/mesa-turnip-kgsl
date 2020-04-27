@@ -517,10 +517,10 @@ optimizations.extend([
    (('iand@32', a, ('inot', ('ishr', a, 31))), ('imax', a, 0)),
 
    # Simplify logic to detect sign of an integer.
-   (('ieq', ('iand', a, 0x80000000), 0x00000000), ('ige', a, 0)),
-   (('ine', ('iand', a, 0x80000000), 0x80000000), ('ige', a, 0)),
-   (('ine', ('iand', a, 0x80000000), 0x00000000), ('ilt', a, 0)),
-   (('ieq', ('iand', a, 0x80000000), 0x80000000), ('ilt', a, 0)),
+   (('ieq', ('iand', 'a@32', 0x80000000), 0x00000000), ('ige', a, 0)),
+   (('ine', ('iand', 'a@32', 0x80000000), 0x80000000), ('ige', a, 0)),
+   (('ine', ('iand', 'a@32', 0x80000000), 0x00000000), ('ilt', a, 0)),
+   (('ieq', ('iand', 'a@32', 0x80000000), 0x80000000), ('ilt', a, 0)),
    (('ine', ('ushr', 'a@32', 31), 0), ('ilt', a, 0)),
    (('ieq', ('ushr', 'a@32', 31), 0), ('ige', a, 0)),
    (('ieq', ('ushr', 'a@32', 31), 1), ('ilt', a, 0)),
