@@ -2042,15 +2042,10 @@ inline_alu_constants(compiler_context *ctx, midgard_block *block)
                         /* Corner case: _two_ vec4 constants, for instance with a
                          * csel. For this case, we can only use a constant
                          * register for one, we'll have to emit a move for the
-                         * other. Note, if both arguments are constants, then
-                         * necessarily neither argument depends on the value of
-                         * any particular register. As the destination register
-                         * will be wiped, that means we can spill the constant
-                         * to the destination register.
-                         */
+                         * other. */
 
                         void *entry = _mesa_hash_table_u64_search(ctx->ssa_constants, alu->src[1] + 1);
-                        unsigned scratch = alu->dest;
+                        unsigned scratch = make_compiler_temp(ctx);
 
                         if (entry) {
                                 midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), scratch);
