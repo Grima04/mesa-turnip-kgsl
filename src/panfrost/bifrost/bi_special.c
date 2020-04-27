@@ -43,7 +43,7 @@ bi_emit_fexp2_new(bi_context *ctx, nir_alu_instr *instr)
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_float32,
                 .src = {
-                        bir_src_index(&instr->src[0].src),
+                        pan_src_index(&instr->src[0].src),
                         BIR_INDEX_CONSTANT | 0,
                         BIR_INDEX_ZERO,
                         BIR_INDEX_CONSTANT | 32,
@@ -77,7 +77,7 @@ bi_emit_fexp2_new(bi_context *ctx, nir_alu_instr *instr)
         bi_instruction fexp = {
                 .type = BI_SPECIAL,
                 .op = { .special = BI_SPECIAL_EXP2_LOW },
-                .dest = bir_dest_index(&instr->dest.dest),
+                .dest = pan_dest_index(&instr->dest.dest),
                 .dest_type = nir_type_float32,
                 .src = { f2i.dest, mscale.src[0] },
                 .src_types = { nir_type_int32, nir_type_float32 },
@@ -99,7 +99,7 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .op = { .frexp = BI_FREXPE_LOG },
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_int32,
-                .src = { bir_src_index(&instr->src[0].src) },
+                .src = { pan_src_index(&instr->src[0].src) },
                 .src_types = { nir_type_float32 }
         };
 
@@ -121,7 +121,7 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .dest_type = nir_type_float32,
                 .src = {
                         BIR_INDEX_CONSTANT,
-                        bir_src_index(&instr->src[0].src),
+                        pan_src_index(&instr->src[0].src),
                 },
                 .src_types = { nir_type_float32, nir_type_float32 },
                 .constant = {
@@ -135,14 +135,14 @@ bi_emit_flog2_new(bi_context *ctx, nir_alu_instr *instr)
                 .op = { .table = BI_TABLE_LOG2_U_OVER_U_1_LOW },
                 .dest = bi_make_temp(ctx),
                 .dest_type = nir_type_float32,
-                .src = { bir_src_index(&instr->src[0].src) },
+                .src = { pan_src_index(&instr->src[0].src) },
                 .src_types = { nir_type_float32 },
         };
 
         /* FMA log2(x)/(x - 1), (x - 1), M */
         bi_instruction fma = {
                 .type = BI_FMA,
-                .dest = bir_dest_index(&instr->dest.dest),
+                .dest = pan_dest_index(&instr->dest.dest),
                 .dest_type = nir_type_float32,
                 .src = {
                         help.dest,

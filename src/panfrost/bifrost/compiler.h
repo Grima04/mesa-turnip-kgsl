@@ -223,7 +223,7 @@ typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
 
-        /* Indices, see bir_ssa_index etc. Note zero is special cased
+        /* Indices, see pan_ssa_index etc. Note zero is special cased
          * to "no argument" */
         unsigned dest;
         unsigned src[BIR_SRC_COUNT];
@@ -419,10 +419,6 @@ bi_remove_instruction(bi_instruction *ins)
         list_del(&ins->link);
 }
 
-/* So we can distinguish between SSA/reg/sentinel quickly */
-#define BIR_NO_ARG (0)
-#define BIR_IS_REG (1)
-
 /* If high bits are set, instead of SSA/registers, we have specials indexed by
  * the low bits if necessary.
  *
@@ -460,36 +456,7 @@ bi_make_temp(bi_context *ctx)
 static inline unsigned
 bi_make_temp_reg(bi_context *ctx)
 {
-        return ((ctx->impl->reg_alloc + ctx->temp_alloc++) << 1) | BIR_IS_REG;
-}
-
-static inline unsigned
-bir_ssa_index(nir_ssa_def *ssa)
-{
-        /* Off-by-one ensures BIR_NO_ARG is skipped */
-        return ((ssa->index + 1) << 1) | 0;
-}
-
-static inline unsigned
-bir_src_index(nir_src *src)
-{
-        if (src->is_ssa)
-                return bir_ssa_index(src->ssa);
-        else {
-                assert(!src->reg.indirect);
-                return (src->reg.reg->index << 1) | BIR_IS_REG;
-        }
-}
-
-static inline unsigned
-bir_dest_index(nir_dest *dst)
-{
-        if (dst->is_ssa)
-                return bir_ssa_index(&dst->ssa);
-        else {
-                assert(!dst->reg.indirect);
-                return (dst->reg.reg->index << 1) | BIR_IS_REG;
-        }
+        return ((ctx->impl->reg_alloc + ctx->temp_alloc++) << 1) | PAN_IS_REG;
 }
 
 /* Iterators for Bifrost IR */

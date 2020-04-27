@@ -73,7 +73,7 @@ bi_load(enum bi_class T, nir_intrinsic_instr *instr)
         const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];
 
         if (info->has_dest)
-                load.dest = bir_dest_index(&instr->dest);
+                load.dest = pan_dest_index(&instr->dest);
 
         if (info->has_dest && info->index_map[NIR_INTRINSIC_TYPE] > 0)
                 load.dest_type = nir_intrinsic_type(instr);
@@ -83,7 +83,7 @@ bi_load(enum bi_class T, nir_intrinsic_instr *instr)
         if (nir_src_is_const(*offset))
                 load.constant.u64 += nir_src_as_uint(*offset);
         else
-                load.src[0] = bir_src_index(offset);
+                load.src[0] = pan_src_index(offset);
 
         return load;
 }
@@ -116,7 +116,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                         .type = BI_ATEST,
                         .src = {
                                 BIR_INDEX_REGISTER | 60 /* TODO: RA */,
-                                bir_src_index(&instr->src[0])
+                                pan_src_index(&instr->src[0])
                         },
                         .src_types = {
                                 nir_type_uint32,
@@ -139,7 +139,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 .type = BI_BLEND,
                 .blend_location = nir_intrinsic_base(instr),
                 .src = {
-                        bir_src_index(&instr->src[0]),
+                        pan_src_index(&instr->src[0]),
                         BIR_INDEX_REGISTER | 60 /* Can this be arbitrary? */,
                 },
                 .src_types = {
@@ -190,7 +190,7 @@ bi_emit_st_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         bi_instruction st = {
                 .type = BI_STORE_VAR,
                 .src = {
-                        bir_src_index(&instr->src[0]),
+                        pan_src_index(&instr->src[0]),
                         address.dest, address.dest, address.dest,
                 },
                 .src_types = {
@@ -249,7 +249,7 @@ bi_emit_sysval(bi_context *ctx, nir_instr *instr,
                 .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                 .src_types = { nir_type_uint32, nir_type_uint32 },
                 .constant = { (uniform * 16) + offset },
-                .dest = bir_dest_index(&nir_dest),
+                .dest = pan_dest_index(&nir_dest),
                 .dest_type = nir_type_uint32, /* TODO */
         };
 
@@ -317,7 +317,7 @@ emit_load_const(bi_context *ctx, nir_load_const_instr *instr)
 
         bi_instruction move = {
                 .type = BI_MOV,
-                .dest = bir_ssa_index(&instr->def),
+                .dest = pan_ssa_index(&instr->def),
                 .dest_type = instr->def.bit_size | nir_type_uint,
                 .src = {
                         BIR_INDEX_CONSTANT
@@ -500,7 +500,7 @@ bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
                 return;
         }
 
-        alu->src[to] = bir_src_index(&instr->src[i].src);
+        alu->src[to] = pan_src_index(&instr->src[i].src);
 
         /* Copy swizzle for all vectored components, replicating last component
          * to fill undersized */
@@ -561,7 +561,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         /* Otherwise, assume it's something we can handle normally */
         bi_instruction alu = {
                 .type = bi_class_for_nir_alu(instr->op),
-                .dest = bir_dest_index(&instr->dest.dest),
+                .dest = pan_dest_index(&instr->dest.dest),
                 .dest_type = nir_op_infos[instr->op].output_type
                         | nir_dest_bit_size(instr->dest.dest),
         };
@@ -698,14 +698,14 @@ emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
         bi_instruction tex = {
                 .type = BI_TEX,
                 .op = { .texture = BI_TEX_COMPACT },
-                .dest = bir_dest_index(&instr->dest),
+                .dest = pan_dest_index(&instr->dest),
                 .dest_type = instr->dest_type,
                 .src_types = { nir_type_float32, nir_type_float32 },
                 .vector_channels = 4
         };
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
-                int index = bir_src_index(&instr->src[i].src);
+                int index = pan_src_index(&instr->src[i].src);
                 assert (instr->src[i].src_type == nir_tex_src_coord);
 
                 tex.src[0] = index;
@@ -853,7 +853,7 @@ static void
 bi_set_branch_cond(bi_instruction *branch, nir_src *cond, bool invert)
 {
         /* TODO: Try to unwrap instead of always bailing */
-        branch->src[0] = bir_src_index(cond);
+        branch->src[0] = pan_src_index(cond);
         branch->src[1] = BIR_INDEX_ZERO;
         branch->src_types[0] = branch->src_types[1] = nir_type_uint16;
         branch->branch.cond = invert ? BI_COND_EQ : BI_COND_NE;

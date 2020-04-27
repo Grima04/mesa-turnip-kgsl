@@ -167,7 +167,7 @@ bi_lower_combine_src(bi_context *ctx, bi_instruction *ins, unsigned s, unsigned 
         /* We currently only handle SSA */
 
         if (!src) return false;
-        if (src & (BIR_SPECIAL | BIR_IS_REG)) return false;
+        if (src & (BIR_SPECIAL | PAN_IS_REG)) return false;
 
         /* We are SSA. Lookup the generating instruction. */
         unsigned bytes = nir_alu_type_get_type_size(ins->dest_type) / 8;

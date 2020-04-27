@@ -166,7 +166,7 @@ bi_print_dest_index(FILE *fp, bi_instruction *ins, unsigned index)
                 fprintf(fp, "_");
         else if (index & BIR_INDEX_REGISTER)
                 fprintf(fp, "br%u", index & ~BIR_INDEX_REGISTER);
-        else if (index & BIR_IS_REG)
+        else if (index & PAN_IS_REG)
                 fprintf(fp, "r%u", index >> 1);
         else if (!(index & BIR_SPECIAL))
                 fprintf(fp, "%u", (index >> 1) - 1);

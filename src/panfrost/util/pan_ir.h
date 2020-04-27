@@ -195,7 +195,7 @@ pan_src_index(nir_src *src)
                 return pan_ssa_index(src->ssa);
         else {
                 assert(!src->reg.indirect);
-                return (src->reg.reg->index << 1) | BIR_IS_REG;
+                return (src->reg.reg->index << 1) | PAN_IS_REG;
         }
 }
 
@@ -206,7 +206,7 @@ pan_dest_index(nir_dest *dst)
                 return pan_ssa_index(&dst->ssa);
         else {
                 assert(!dst->reg.indirect);
-                return (dst->reg.reg->index << 1) | BIR_IS_REG;
+                return (dst->reg.reg->index << 1) | PAN_IS_REG;
         }
 }
 
