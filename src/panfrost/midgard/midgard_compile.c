@@ -100,7 +100,7 @@ schedule_barrier(compiler_context *ctx)
 
 #define EMIT(op, ...) emit_mir_instruction(ctx, v_##op(__VA_ARGS__));
 
-#define M_LOAD_STORE(name, store) \
+#define M_LOAD_STORE(name, store, T) \
 	static midgard_instruction m_##name(unsigned ssa, unsigned address) { \
 		midgard_instruction i = { \
 			.type = TAG_LOAD_STORE_4, \
@@ -114,16 +114,18 @@ schedule_barrier(compiler_context *ctx)
 			} \
 		}; \
                 \
-                if (store) \
+                if (store) { \
                         i.src[0] = ssa; \
-                else \
+                        i.src_types[0] = T; \
+                } else { \
                         i.dest = ssa; \
-		\
+                        i.dest_type = T; \
+                } \
 		return i; \
 	}
 
-#define M_LOAD(name) M_LOAD_STORE(name, false)
-#define M_STORE(name) M_LOAD_STORE(name, true)
+#define M_LOAD(name, T) M_LOAD_STORE(name, false, T)
+#define M_STORE(name, T) M_LOAD_STORE(name, true, T)
 
 /* Inputs a NIR ALU source, with modifiers attached if necessary, and outputs
  * the corresponding Midgard source */
@@ -173,15 +175,15 @@ vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count,
         return alu_src;
 }
 
-M_LOAD(ld_attr_32);
-M_LOAD(ld_vary_32);
-M_LOAD(ld_ubo_int4);
-M_LOAD(ld_int4);
-M_STORE(st_int4);
-M_LOAD(ld_color_buffer_32u);
-M_STORE(st_vary_32);
-M_LOAD(ld_cubemap_coords);
-M_LOAD(ld_compute_id);
+M_LOAD(ld_attr_32, nir_type_uint32);
+M_LOAD(ld_vary_32, nir_type_uint32);
+M_LOAD(ld_ubo_int4, nir_type_uint32);
+M_LOAD(ld_int4, nir_type_uint32);
+M_STORE(st_int4, nir_type_uint32);
+M_LOAD(ld_color_buffer_32u, nir_type_uint32);
+M_STORE(st_vary_32, nir_type_uint32);
+M_LOAD(ld_cubemap_coords, nir_type_uint32);
+M_LOAD(ld_compute_id, nir_type_uint32);
 
 static midgard_instruction
 v_branch(bool conditional, bool invert)
