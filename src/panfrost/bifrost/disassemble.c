@@ -1095,6 +1095,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x11000, "ADD_MSCALE.f32", ADD_FADDMscale },
         { 0x12000, "MIN.v2f16", ADD_FMINMAX16 },
         { 0x14000, "ADD.v2f16", ADD_FADD16 },
+        { 0x16000, "FCMP.GL", ADD_FCMP16 },
         { 0x17000, "FCMP.D3D", ADD_FCMP16 },
         { 0x17880, "ADD.v4i8", ADD_TWO_SRC },
         { 0x178c0, "ADD.i32",  ADD_TWO_SRC },
