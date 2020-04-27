@@ -15,6 +15,12 @@ if [ -z "$BM_POWERUP" ]; then
   exit 1
 fi
 
+if [ -z "$BM_POWERDOWN" ]; then
+  echo "Must set BM_POWERDOWN in your gitlab-runner config.toml [[runners]] environment"
+  echo "This is a shell script that should power off the device."
+  exit 1
+fi
+
 if [ -z "$BM_FASTBOOT_SERIAL" ]; then
   echo "Must set BM_FASTBOOT_SERIAL in your gitlab-runner config.toml [[runners]] environment"
   echo "This must be the a stable-across-resets fastboot serial number."
@@ -89,6 +95,9 @@ fastboot boot -s $BM_FASTBOOT_SERIAL artifacts/fastboot.img
 
 # Wait for the device to complete the deqp run
 $BM/expect-output.sh artifacts/serial-output.txt "DEQP RESULT"
+
+# power down the device
+PATH=$BM:$PATH $BM_POWERDOWN
 
 set +e
 if grep -q "DEQP RESULT: pass" artifacts/serial-output.txt; then
