@@ -210,4 +210,7 @@ pan_dest_index(nir_dest *dst)
         }
 }
 
+/* IR printing helpers */
+void pan_print_alu_type(nir_alu_type t, FILE *fp);
+
 #endif

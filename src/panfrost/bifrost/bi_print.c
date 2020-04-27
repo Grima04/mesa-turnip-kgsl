@@ -215,35 +215,6 @@ bi_print_src(FILE *fp, bi_instruction *ins, unsigned s)
                 fprintf(fp, ")");
 }
 
-/* Prints a NIR ALU type in Bifrost-style ".f32" ".i8" etc */
-
-static void
-bi_print_alu_type(nir_alu_type t, FILE *fp)
-{
-        unsigned size = nir_alu_type_get_type_size(t);
-        nir_alu_type base = nir_alu_type_get_base_type(t);
-
-        switch (base) {
-        case nir_type_int:
-                fprintf(fp, ".i");
-                break;
-        case nir_type_uint:
-                fprintf(fp, ".u");
-                break;
-        case nir_type_bool:
-                fprintf(fp, ".b");
-                break;
-        case nir_type_float:
-                fprintf(fp, ".f");
-                break;
-        default:
-                fprintf(fp, ".unknown");
-                break;
-        }
-
-        fprintf(fp, "%u", size);
-}
-
 static void
 bi_print_swizzle(bi_instruction *ins, unsigned src, FILE *fp)
 {
@@ -388,7 +359,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, ".v%u", ins->vector_channels);
 
         if (ins->dest)
-                bi_print_alu_type(ins->dest_type, fp);
+                pan_print_alu_type(ins->dest_type, fp);
 
         if (bi_has_outmod(ins))
                 fprintf(fp, "%s", bi_output_mod_name(ins->outmod));
@@ -409,7 +380,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 bi_print_src(fp, ins, s);
 
                 if (ins->src[s] && !(ins->src[s] & (BIR_INDEX_CONSTANT | BIR_INDEX_ZERO))) {
-                        bi_print_alu_type(ins->src_types[s], fp);
+                        pan_print_alu_type(ins->src_types[s], fp);
                         bi_print_swizzle(ins, s, fp);
                 }
 
