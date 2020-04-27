@@ -115,6 +115,13 @@ vk_format_has_depth(VkFormat format)
    return aspects & VK_IMAGE_ASPECT_DEPTH_BIT;
 }
 
+static inline bool
+vk_format_has_stencil(VkFormat format)
+{
+   const VkImageAspectFlags aspects = vk_format_aspects(format);
+   return aspects & VK_IMAGE_ASPECT_STENCIL_BIT;
+}
+
 static inline unsigned
 vk_format_get_blocksize(VkFormat format)
 {

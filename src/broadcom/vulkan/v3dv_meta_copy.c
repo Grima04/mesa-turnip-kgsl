@@ -1942,6 +1942,8 @@ create_blit_render_pass(struct v3dv_device *device,
                         VkFormat format,
                         VkRenderPass *pass)
 {
+   const bool is_color_blit = !vk_format_is_depth_or_stencil(format);
+
    /* FIXME: if blitting to tile boundaries or to the whole image, we could
     * use LOAD_DONT_CARE, but then we would have to include that in the
     * pipeline hash key. Or maybe we should just create both render passes and
@@ -1965,10 +1967,10 @@ create_blit_render_pass(struct v3dv_device *device,
    VkSubpassDescription subpass = {
       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
       .inputAttachmentCount = 0,
-      .colorAttachmentCount = 1,
-      .pColorAttachments = &att_ref,
+      .colorAttachmentCount = is_color_blit ? 1 : 0,
+      .pColorAttachments = is_color_blit ? &att_ref : NULL,
       .pResolveAttachments = NULL,
-      .pDepthStencilAttachment = NULL,
+      .pDepthStencilAttachment = is_color_blit ? NULL : &att_ref,
       .preserveAttachmentCount = 0,
       .pPreserveAttachments = NULL,
    };
@@ -2134,9 +2136,9 @@ get_blit_vs()
 }
 
 static nir_shader *
-get_blit_fs(struct v3dv_device *device,
-            VkFormat dst_format,
-            VkFormat src_format)
+get_color_blit_fs(struct v3dv_device *device,
+                  VkFormat dst_format,
+                  VkFormat src_format)
 {
    nir_builder b;
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
@@ -2204,6 +2206,36 @@ get_blit_fs(struct v3dv_device *device,
 
    nir_store_var(&b, fs_out_color, color, 0xf);
 
+   return b.shader;
+}
+
+static nir_shader *
+get_depth_blit_fs(struct v3dv_device *device, VkFormat format)
+{
+   assert(vk_format_has_depth(format));
+
+   nir_builder b;
+   const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
+   nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, options);
+   b.shader->info.name = ralloc_strdup(b.shader, "meta blit fs");
+
+   const struct glsl_type *vec4 = glsl_vec4_type();
+
+   nir_variable *fs_in_tex_coord =
+      nir_variable_create(b.shader, nir_var_shader_in, vec4, "in_tex_coord");
+   fs_in_tex_coord->data.location = VARYING_SLOT_VAR0;
+
+   nir_variable *fs_out_depth =
+      nir_variable_create(b.shader, nir_var_shader_out, vec4, "out_depth");
+   fs_out_depth->data.location = FRAG_RESULT_DEPTH;
+
+   nir_ssa_def *tex_coord = nir_load_var(&b, fs_in_tex_coord);
+   nir_ssa_def *tex_coord_xy = nir_channels(&b, tex_coord, 0x3);
+
+   nir_ssa_def *depth = build_nir_tex_op(&b, device, tex_coord_xy,
+                                         GLSL_TYPE_FLOAT);
+
+   nir_store_var(&b, fs_out_depth, depth, 0x1);
    return b.shader;
 }
 
@@ -2333,8 +2365,16 @@ create_blit_pipeline(struct v3dv_device *device,
 {
    struct v3dv_render_pass *pass = v3dv_render_pass_from_handle(_pass);
 
+   const bool has_depth = vk_format_has_depth(dst_format);
+   assert(!has_depth || src_format == dst_format);
+
+   /* FIXME: */
+   assert(!vk_format_has_stencil(dst_format));
+
    nir_shader *vs_nir = get_blit_vs();
-   nir_shader *fs_nir = get_blit_fs(device, dst_format, src_format);
+   nir_shader *fs_nir = has_depth ?
+      get_depth_blit_fs(device, dst_format) :
+      get_color_blit_fs(device, dst_format, src_format);
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -2342,13 +2382,14 @@ create_blit_pipeline(struct v3dv_device *device,
       .vertexAttributeDescriptionCount = 0,
    };
 
-   const VkPipelineDepthStencilStateCreateInfo ds_state = {
+   VkPipelineDepthStencilStateCreateInfo ds_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-      .depthTestEnable = false,
-      .depthWriteEnable = false,
-      .depthBoundsTestEnable = false,
-      .stencilTestEnable = false,
    };
+   if (has_depth) {
+      ds_state.depthTestEnable = true;
+      ds_state.depthWriteEnable = true;
+      ds_state.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+   }
 
    VkPipelineColorBlendAttachmentState blend_att_state[1] = { 0 };
    blend_att_state[0] = (VkPipelineColorBlendAttachmentState) {
@@ -2478,8 +2519,6 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             VkFilter filter)
 {
    /* FIXME: we only support 2D color blits for now */
-   if (region->dstSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
-      return false;
    if (dst->type != VK_IMAGE_TYPE_2D || src->type != VK_IMAGE_TYPE_2D)
       return false;
 
