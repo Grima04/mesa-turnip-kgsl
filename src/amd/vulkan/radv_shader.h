@@ -259,6 +259,7 @@ struct radv_shader_info {
 		bool as_es;
 		bool as_ls;
 		bool export_prim_id;
+		uint8_t num_linked_outputs;
 	} vs;
 	struct {
 		uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
@@ -273,6 +274,7 @@ struct radv_shader_info {
 		unsigned output_prim;
 		unsigned invocations;
 		unsigned es_type; /* GFX9: VS or TES */
+		uint8_t num_linked_inputs;
 	} gs;
 	struct {
 		uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
@@ -284,6 +286,9 @@ struct radv_shader_info {
 		bool ccw;
 		bool point_mode;
 		bool export_prim_id;
+		uint8_t num_linked_inputs;
+		uint8_t num_linked_patch_inputs;
+		uint8_t num_linked_outputs;
 	} tes;
 	struct {
 		bool force_persample;
@@ -321,6 +326,9 @@ struct radv_shader_info {
 		unsigned tcs_vertices_out;
 		uint32_t num_patches;
 		uint32_t lds_size;
+		uint8_t num_linked_inputs;
+		uint8_t num_linked_outputs;
+		uint8_t num_linked_patch_outputs;
 	} tcs;
 
 	struct radv_streamout_info so;

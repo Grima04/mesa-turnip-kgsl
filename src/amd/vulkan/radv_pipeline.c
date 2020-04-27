@@ -2254,6 +2254,54 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders)
 	}
 }
 
+static void
+radv_set_linked_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
+                                 struct radv_shader_info infos[MESA_SHADER_STAGES])
+{
+	bool has_tess = shaders[MESA_SHADER_TESS_CTRL];
+	bool has_gs = shaders[MESA_SHADER_GEOMETRY];
+
+	if (!has_tess && !has_gs)
+		return;
+
+	unsigned vs_info_idx = MESA_SHADER_VERTEX;
+	unsigned tes_info_idx = MESA_SHADER_TESS_EVAL;
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9) {
+		/* These are merged into the next stage */
+		vs_info_idx = has_tess ? MESA_SHADER_TESS_CTRL : MESA_SHADER_GEOMETRY;
+		tes_info_idx = has_gs ? MESA_SHADER_GEOMETRY : MESA_SHADER_TESS_EVAL;
+	}
+
+	if (has_tess) {
+		nir_linked_io_var_info vs2tcs =
+			nir_assign_linked_io_var_locations(shaders[MESA_SHADER_VERTEX], shaders[MESA_SHADER_TESS_CTRL]);
+		nir_linked_io_var_info tcs2tes =
+			nir_assign_linked_io_var_locations(shaders[MESA_SHADER_TESS_CTRL], shaders[MESA_SHADER_TESS_EVAL]);
+
+		infos[vs_info_idx].vs.num_linked_outputs = vs2tcs.num_linked_io_vars;
+		infos[MESA_SHADER_TESS_CTRL].tcs.num_linked_inputs = vs2tcs.num_linked_io_vars;
+		infos[MESA_SHADER_TESS_CTRL].tcs.num_linked_outputs = tcs2tes.num_linked_io_vars;
+		infos[MESA_SHADER_TESS_CTRL].tcs.num_linked_patch_outputs = tcs2tes.num_linked_patch_io_vars;
+		infos[tes_info_idx].tes.num_linked_inputs = tcs2tes.num_linked_io_vars;
+		infos[tes_info_idx].tes.num_linked_patch_inputs = tcs2tes.num_linked_patch_io_vars;
+
+		if (has_gs) {
+			nir_linked_io_var_info tes2gs =
+				nir_assign_linked_io_var_locations(shaders[MESA_SHADER_TESS_EVAL], shaders[MESA_SHADER_GEOMETRY]);
+
+			infos[tes_info_idx].tes.num_linked_outputs = tes2gs.num_linked_io_vars;
+			infos[MESA_SHADER_GEOMETRY].gs.num_linked_inputs = tes2gs.num_linked_io_vars;
+		}
+	} else if (has_gs) {
+		nir_linked_io_var_info vs2gs =
+			nir_assign_linked_io_var_locations(shaders[MESA_SHADER_VERTEX], shaders[MESA_SHADER_GEOMETRY]);
+
+		infos[vs_info_idx].vs.num_linked_outputs = vs2gs.num_linked_io_vars;
+		infos[MESA_SHADER_GEOMETRY].gs.num_linked_inputs = vs2gs.num_linked_io_vars;
+	}
+}
+
 static uint32_t
 radv_get_attrib_stride(const VkPipelineVertexInputStateCreateInfo *input_state,
 		       uint32_t attrib_binding)
@@ -2863,6 +2911,8 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 
 	if (!(flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT))
 		radv_link_shaders(pipeline, nir);
+
+	radv_set_linked_driver_locations(pipeline, nir, infos);
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (nir[i]) {
