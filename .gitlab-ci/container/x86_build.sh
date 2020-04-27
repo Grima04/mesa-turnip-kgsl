@@ -121,11 +121,6 @@ done
 apt-get install -y --no-remove -t buster-backports \
       llvm-8-dev \
 
-# for 64bit windows cross-builds
-apt-get install -y --no-remove \
-      libz-mingw-w64-dev \
-      mingw-w64
-
 
 # Install packages we need from Debian testing last, to avoid pulling in more
 
@@ -136,6 +131,8 @@ apt-get install -y -t testing \
       libstdc++6:s390x
 
 apt-get install -y --no-remove -t testing \
+      g++-mingw-w64-x86-64-win32 \
+      libz-mingw-w64-dev \
       wine \
       wine32 \
       wine64
