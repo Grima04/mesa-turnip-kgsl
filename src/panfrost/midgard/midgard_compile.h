@@ -40,6 +40,7 @@ static const nir_shader_compiler_options midgard_nir_options = {
         .lower_ffma = true,
         .lower_sub = true,
         .lower_scmp = true,
+        .lower_flrp16 = true,
         .lower_flrp32 = true,
         .lower_flrp64 = true,
         .lower_ffract = true,
