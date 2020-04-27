@@ -657,7 +657,7 @@ VOP2 = {
    (  -1,   -1, 0x29, 0x29,   -1, "v_mul_lo_u16", False),
    (  -1,   -1, 0x2a, 0x2a,   -1, "v_lshlrev_b16", False),
    (  -1,   -1, 0x2b, 0x2b,   -1, "v_lshrrev_b16", False),
-   (  -1,   -1, 0x2c, 0x2c,   -1, "v_ashrrev_b16", False),
+   (  -1,   -1, 0x2c, 0x2c,   -1, "v_ashrrev_i16", False),
    (  -1,   -1, 0x2d, 0x2d, 0x39, "v_max_f16", True),
    (  -1,   -1, 0x2e, 0x2e, 0x3a, "v_min_f16", True),
    (  -1,   -1, 0x2f, 0x2f,   -1, "v_max_u16", False),
@@ -1028,7 +1028,16 @@ VOP3 = {
    (   -1,    -1,    -1,    -1, 0x30f, "v_add_co_u32_e64", False, False),
    (   -1,    -1,    -1,    -1, 0x310, "v_sub_co_u32_e64", False, False),
    (   -1,    -1,    -1,    -1, 0x319, "v_subrev_co_u32_e64", False, False),
-# TODO: many 16bit instructions moved from VOP2 to VOP3 on GFX10
+   (   -1,    -1,    -1,    -1, 0x303, "v_add_u16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x304, "v_sub_u16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x305, "v_mul_lo_u16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x309, "v_max_u16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x30a, "v_max_i16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x30b, "v_min_u16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x30c, "v_min_i16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x307, "v_lshrrev_b16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x308, "v_ashrrev_i16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x314, "v_lshlrev_b16_e64", False, False),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name, in_mod, out_mod) in VOP3:
    opcode(name, gfx7, gfx9, gfx10, Format.VOP3A, in_mod, out_mod)
