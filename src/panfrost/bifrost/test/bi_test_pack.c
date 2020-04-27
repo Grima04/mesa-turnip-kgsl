@@ -543,6 +543,6 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
         bit_fma_mscale_helper(dev, mscale_input, debug);
 
         for (unsigned sz = 8; sz <= 16; sz *= 2) {
-                bit_select_helper(dev, (uint32_t *) input32, 8, debug);
+                bit_select_helper(dev, (uint32_t *) input32, sz, debug);
         }
 }

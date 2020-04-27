@@ -1279,7 +1279,7 @@ bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, struct bi_regist
 static unsigned
 bi_pack_add_select(bi_instruction *ins, struct bi_registers *regs)
 {
-        unsigned size = nir_alu_type_get_type_size(ins->dest_type);
+        unsigned size = nir_alu_type_get_type_size(ins->src_types[0]);
         assert(size == 16);
 
         unsigned swiz = (ins->swizzle[0][0] | (ins->swizzle[1][0] << 1));
