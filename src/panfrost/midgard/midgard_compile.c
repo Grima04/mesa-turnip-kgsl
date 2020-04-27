@@ -920,9 +920,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * instructions. The latter can only be fetched if the instruction
          * needs it, or else we may segfault. */
 
-        unsigned src0 = nir_alu_src_index(ctx, &instr->src[0]);
-        unsigned src1 = nr_inputs >= 2 ? nir_alu_src_index(ctx, &instr->src[1]) : ~0;
-        unsigned src2 = nr_inputs == 3 ? nir_alu_src_index(ctx, &instr->src[2]) : ~0;
+        unsigned src0 = nir_src_index(ctx, &instr->src[0].src);
+        unsigned src1 = nr_inputs >= 2 ? nir_src_index(ctx, &instr->src[1].src) : ~0;
+        unsigned src2 = nr_inputs == 3 ? nir_src_index(ctx, &instr->src[2].src) : ~0;
         assert(nr_inputs <= 3);
 
         /* Rather than use the instruction generation helpers, we do it
