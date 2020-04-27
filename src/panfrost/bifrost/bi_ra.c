@@ -124,8 +124,14 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
                 /* Use the swizzle as component select */
                 unsigned components = bi_get_component_count(ins, src);
 
+                nir_alu_type T = ins->src_types[src];
+                unsigned size = nir_alu_type_get_type_size(T);
+ 
+                /* TODO: 64-bit? */
+                unsigned components_per_word = MAX2(32 / size, 1);
+
                 for (unsigned i = 0; i < components; ++i) {
-                        unsigned off = ins->swizzle[src][i] / components;
+                        unsigned off = ins->swizzle[src][i] / components_per_word;
 
                         /* We can't cross register boundaries in a swizzle */
                         if (i == 0)
@@ -133,7 +139,7 @@ bi_adjust_src_ra(bi_instruction *ins, struct lcra_state *l, unsigned src)
                         else
                                 assert(off == offset);
 
-                        ins->swizzle[src][i] %= components;
+                        ins->swizzle[src][i] %= components_per_word;
                 }
         }
 
@@ -147,6 +153,7 @@ bi_adjust_dest_ra(bi_instruction *ins, struct lcra_state *l)
                 return;
 
         ins->dest = bi_reg_from_index(l, ins->dest, ins->dest_offset);
+        ins->dest_offset = 0;
 }
 
 static void
