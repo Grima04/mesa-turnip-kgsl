@@ -56,8 +56,9 @@ unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
    }
 }
 
-#define SI_CS_IMAGE_OP        (1 << 0)
-#define SI_CS_WAIT_FOR_IDLE   (1 << 1)
+#define SI_CS_IMAGE_OP           (1 << 0)
+#define SI_CS_WAIT_FOR_IDLE      (1 << 1)
+#define SI_CS_RENDER_COND_ENABLE (1 << 2)
 
 static void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *info,
                                     void *restore_cs, unsigned flags)
@@ -71,7 +72,10 @@ static void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_in
    /* Set settings for driver-internal compute dispatches. */
    sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
    sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
-   sctx->render_cond_force_off = true;
+
+   if (!(flags & SI_CS_RENDER_COND_ENABLE))
+      sctx->render_cond_force_off = true;
+
    /* Skip decompression to prevent infinite recursion. */
    if (sctx->blitter)
       sctx->blitter->running = true;
@@ -715,8 +719,6 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
       memcpy(data + 4, color->ui, sizeof(color->ui));
    }
 
-   sctx->render_cond_force_off = !render_condition_enabled;
-
    si_make_CB_shader_coherent(sctx, dstsurf->texture->nr_samples, true,
                               true /* DCC is not possible with image stores */);
 
@@ -772,7 +774,8 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
    }
 
    si_launch_grid_internal(sctx, &info, saved_cs,
-                           SI_CS_WAIT_FOR_IDLE | SI_CS_IMAGE_OP);
+                           SI_CS_WAIT_FOR_IDLE | SI_CS_IMAGE_OP |
+                           (render_condition_enabled ? SI_CS_RENDER_COND_ENABLE : 0));
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_image);
    ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
