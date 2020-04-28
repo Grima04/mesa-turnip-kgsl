@@ -179,7 +179,7 @@ build_primitive_map(nir_shader *shader, struct primitive_map *map, struct exec_l
 }
 
 static void
-lower_vs_block(nir_block *block, nir_builder *b, struct state *state)
+lower_block_to_explicit_output(nir_block *block, nir_builder *b, struct state *state)
 {
 	nir_foreach_instr_safe (instr, block) {
 		if (instr->type != nir_instr_type_intrinsic)
@@ -222,7 +222,7 @@ local_thread_id(nir_builder *b)
 }
 
 void
-ir3_nir_lower_to_explicit_io(nir_shader *shader, struct ir3_shader *s, unsigned topology)
+ir3_nir_lower_to_explicit_output(nir_shader *shader, struct ir3_shader *s, unsigned topology)
 {
 	struct state state = { };
 
@@ -242,7 +242,7 @@ ir3_nir_lower_to_explicit_io(nir_shader *shader, struct ir3_shader *s, unsigned 
 		state.header = nir_load_gs_header_ir3(&b);
 
 	nir_foreach_block_safe (block, impl)
-		lower_vs_block(block, &b, &state);
+		lower_block_to_explicit_output(block, &b, &state);
 
 	nir_metadata_preserve(impl, nir_metadata_block_index |
 			nir_metadata_dominance);
