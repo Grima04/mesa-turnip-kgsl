@@ -38,14 +38,15 @@ bi_has_outmod(bi_instruction *ins)
         return classy && floaty;
 }
 
-/* Technically we should check the source type, not the dest
- * type, but the type converting opcodes (i2f, f2i) don't
- * actually support mods so it doesn't matter. */
+/* Have to check source for e.g. compares */
 
 bool
 bi_has_source_mods(bi_instruction *ins)
 {
-        return bi_has_outmod(ins);
+        bool classy = bi_class_props[ins->type] & BI_MODS;
+        bool floaty = nir_alu_type_get_base_type(ins->src_types[0]) == nir_type_float;
+
+        return classy && floaty;
 }
 
 /* A source is swizzled if the op is swizzlable, in 8-bit or
