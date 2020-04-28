@@ -349,6 +349,11 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_isub:
                 return BI_ISUB;
 
+        case nir_op_iand:
+        case nir_op_ior:
+        case nir_op_ixor:
+                return BI_BITWISE;
+
         BI_CASE_CMP(nir_op_flt)
         BI_CASE_CMP(nir_op_fge)
         BI_CASE_CMP(nir_op_feq)
@@ -650,6 +655,15 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         case nir_op_ftrunc:
                 alu.roundmode = BIFROST_RTZ;
                 break;
+        case nir_op_iand:
+                alu.op.bitwise = BI_BITWISE_AND;
+                break;
+        case nir_op_ior:
+                alu.op.bitwise = BI_BITWISE_OR;
+                break;
+        case nir_op_ixor:
+                alu.op.bitwise = BI_BITWISE_XOR;
+                break;
         default:
                 break;
         }
@@ -662,6 +676,10 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
 
                 bi_fuse_csel_cond(&alu, instr->src[0],
                                 &constants_left, &constant_shift, comps);
+        } else if (alu.type == BI_BITWISE) {
+                /* Implicit shift argument... at some point we should fold */
+                alu.src[2] = BIR_INDEX_ZERO;
+                alu.src_types[2] = alu.src_types[1];
         }
 
         bi_emit(ctx, alu);
