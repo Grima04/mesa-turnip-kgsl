@@ -68,7 +68,7 @@ struct virgl_winsys {
                                uint32_t width, uint32_t height,
                                uint32_t depth, uint32_t array_size,
                                uint32_t last_level, uint32_t nr_samples,
-                               uint32_t size);
+                               uint32_t flags, uint32_t size);
 
    void (*resource_reference)(struct virgl_winsys *qws,
                               struct virgl_hw_res **dres,

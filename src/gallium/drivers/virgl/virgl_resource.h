@@ -105,7 +105,7 @@ static inline struct virgl_transfer *virgl_transfer(struct pipe_transfer *trans)
 void virgl_buffer_init(struct virgl_resource *res);
 
 static inline unsigned pipe_to_virgl_bind(const struct virgl_screen *vs,
-                                          unsigned pbind, unsigned flags)
+                                          unsigned pbind)
 {
    unsigned outbind = 0;
    if (pbind & PIPE_BIND_DEPTH_STENCIL)
@@ -146,6 +146,19 @@ static inline unsigned pipe_to_virgl_bind(const struct virgl_screen *vs,
    assert(!(outbind & VIRGL_BIND_STAGING));
 
    return outbind;
+}
+
+static inline unsigned pipe_to_virgl_flags(const struct virgl_screen *vs,
+                                           unsigned pflags)
+{
+   unsigned out_flags = 0;
+   if (pflags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT)
+      out_flags |= VIRGL_RESOURCE_FLAG_MAP_PERSISTENT;
+
+   if (pflags & PIPE_RESOURCE_FLAG_MAP_COHERENT)
+      out_flags |= VIRGL_RESOURCE_FLAG_MAP_COHERENT;
+
+   return out_flags;
 }
 
 void *

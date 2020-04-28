@@ -44,6 +44,7 @@ struct virgl_hw_res {
 
    struct virgl_resource_cache_entry cache_entry;
    uint32_t bind;
+   uint32_t flags;
    uint32_t flink_name;
 
    /* true when the resource is imported or exported */

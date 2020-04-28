@@ -335,10 +335,11 @@ virgl_resource_realloc(struct virgl_context *vctx, struct virgl_resource *res)
 {
    struct virgl_screen *vs = virgl_screen(vctx->base.screen);
    const struct pipe_resource *templ = &res->u.b;
-   unsigned vbind;
+   unsigned vbind, vflags;
    struct virgl_hw_res *hw_res;
 
-   vbind = pipe_to_virgl_bind(vs, templ->bind, templ->flags);
+   vbind = pipe_to_virgl_bind(vs, templ->bind);
+   vflags = pipe_to_virgl_flags(vs, templ->flags);
    hw_res = vs->vws->resource_create(vs->vws,
                                      templ->target,
                                      templ->format,
@@ -349,6 +350,7 @@ virgl_resource_realloc(struct virgl_context *vctx, struct virgl_resource *res)
                                      templ->array_size,
                                      templ->last_level,
                                      templ->nr_samples,
+                                     vflags,
                                      res->metadata.total_size);
    if (!hw_res)
       return false;
@@ -501,14 +503,15 @@ static void virgl_resource_layout(struct pipe_resource *pt,
 static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
                                                    const struct pipe_resource *templ)
 {
-   unsigned vbind;
+   unsigned vbind, vflags;
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_resource *res = CALLOC_STRUCT(virgl_resource);
 
    res->u.b = *templ;
    res->u.b.screen = &vs->base;
    pipe_reference_init(&res->u.b.reference, 1);
-   vbind = pipe_to_virgl_bind(vs, templ->bind, templ->flags);
+   vbind = pipe_to_virgl_bind(vs, templ->bind);
+   vflags = pipe_to_virgl_flags(vs, templ->flags);
    virgl_resource_layout(&res->u.b, &res->metadata, 0, 0, 0, 0);
 
    if ((vs->caps.caps.v2.capability_bits & VIRGL_CAP_APP_TWEAK_SUPPORT) &&
@@ -528,6 +531,7 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
                                           templ->array_size,
                                           templ->last_level,
                                           templ->nr_samples,
+                                          vflags,
                                           res->metadata.total_size);
    if (!res->hw_res) {
       FREE(res);

@@ -55,7 +55,7 @@
 #define cache_entry_container_res(ptr) \
     (struct virgl_hw_res*)((char*)ptr - offsetof(struct virgl_hw_res, cache_entry))
 
-static inline boolean can_cache_resource_with_bind(uint32_t bind)
+static inline boolean can_cache_resource(uint32_t bind)
 {
    return bind == VIRGL_BIND_CONSTANT_BUFFER ||
           bind == VIRGL_BIND_INDEX_BUFFER ||
@@ -132,7 +132,7 @@ static void virgl_drm_resource_reference(struct virgl_winsys *qws,
 
    if (pipe_reference(&(*dres)->reference, &sres->reference)) {
 
-      if (!can_cache_resource_with_bind(old->bind) ||
+      if (!can_cache_resource(old->bind) ||
           p_atomic_read(&old->external)) {
          virgl_hw_res_destroy(qdws, old);
       } else {
@@ -202,7 +202,7 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
     */
    p_atomic_set(&res->maybe_busy, for_fencing);
 
-   virgl_resource_cache_entry_init(&res->cache_entry, size, bind, format);
+   virgl_resource_cache_entry_init(&res->cache_entry, size, bind, format, 0);
 
    return res;
 }
@@ -272,19 +272,20 @@ virgl_drm_winsys_resource_cache_create(struct virgl_winsys *qws,
                                        uint32_t array_size,
                                        uint32_t last_level,
                                        uint32_t nr_samples,
+                                       uint32_t flags,
                                        uint32_t size)
 {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
    struct virgl_hw_res *res;
    struct virgl_resource_cache_entry *entry;
 
-   if (!can_cache_resource_with_bind(bind))
+   if (!can_cache_resource(bind))
       goto alloc;
 
    mtx_lock(&qdws->mutex);
 
    entry = virgl_resource_cache_remove_compatible(&qdws->cache, size,
-                                                  bind, format);
+                                                  bind, format, flags);
    if (entry) {
       res = cache_entry_container_res(entry);
       mtx_unlock(&qdws->mutex);
