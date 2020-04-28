@@ -482,7 +482,7 @@ panfrost_bo_import(struct panfrost_device *dev, int fd)
                 panfrost_bo_mmap(newbo);
         } else {
                 ralloc_free(newbo);
-                /* bo->refcnt != 0 can happen if the BO
+                /* bo->refcnt == 0 can happen if the BO
                  * was being released but panfrost_bo_import() acquired the
                  * lock before panfrost_bo_unreference(). In that case, refcnt
                  * is 0 and we can't use panfrost_bo_reference() directly, we
@@ -492,7 +492,7 @@ panfrost_bo_import(struct panfrost_device *dev, int fd)
                  * make sure the object is not freed if panfrost_bo_import()
                  * acquired it in the meantime.
                  */
-                if (p_atomic_read(&bo->refcnt))
+                if (p_atomic_read(&bo->refcnt) == 0)
                         p_atomic_set(&newbo->refcnt, 1);
                 else
                         panfrost_bo_reference(bo);
