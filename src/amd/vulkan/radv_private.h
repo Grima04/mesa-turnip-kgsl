@@ -867,7 +867,6 @@ struct radv_device_memory {
 	/* for dedicated allocations */
 	struct radv_image                            *image;
 	struct radv_buffer                           *buffer;
-	VkDeviceSize                                 map_size;
 	void *                                       map;
 	void *                                       user_ptr;
 
