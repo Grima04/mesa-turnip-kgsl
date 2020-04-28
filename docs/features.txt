@@ -474,6 +474,7 @@ Vulkan 1.2 -- all DONE: anv
 Khronos extensions that are not part of any Vulkan version:
 
   VK_KHR_android_surface                                not started
+  VK_KHR_copy_commands2                                 DONE (anv, radv)
   VK_KHR_display                                        DONE (anv, radv)
   VK_KHR_display_swapchain                              not started
   VK_KHR_external_fence_fd                              DONE (anv, radv)
@@ -482,6 +483,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_external_memory_win32                          not started
   VK_KHR_external_semaphore_fd                          DONE (anv, radv)
   VK_KHR_external_semaphore_win32                       not started
+  VK_KHR_fragment_shading_rate                          not started
   VK_KHR_get_display_properties2                        DONE (anv, radv)
   VK_KHR_get_surface_capabilities2                      DONE (anv, radv)
   VK_KHR_incremental_present                            DONE (anv, radv)
@@ -490,6 +492,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_push_descriptor                                DONE (anv, radv)
   VK_KHR_shader_clock                                   DONE (anv, radv)
   VK_KHR_shader_non_semantic_info                       DONE (anv, radv)
+  VK_KHR_shader_terminate_invocation                    DONE (anv, radv)
   VK_KHR_shared_presentable_image                       not started
   VK_KHR_surface                                        DONE (anv, radv)
   VK_KHR_surface_protected_capabilities                 DONE (anv, radv)
