@@ -396,6 +396,9 @@ enum bifrost_fcmp_cond {
         BIFROST_OLE = 5,
 };
 
+#define BIFROST_FMA_OP_FCMP_GL (0x48000 >> 13)
+#define BIFROST_FMA_OP_FCMP_D3D (0x4c000 >> 13)
+
 struct bifrost_fma_fcmp {
         unsigned src0 : 3;
         unsigned src1 : 3;

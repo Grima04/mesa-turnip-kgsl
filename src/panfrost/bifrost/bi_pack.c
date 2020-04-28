@@ -956,6 +956,87 @@ bi_pack_fma_select(bi_instruction *ins, struct bi_registers *regs)
         }
 }
 
+static enum bifrost_fcmp_cond
+bi_fcmp_cond(enum bi_cond cond)
+{
+        switch (cond) {
+        case BI_COND_LT: return BIFROST_OLT;
+        case BI_COND_LE: return BIFROST_OLE;
+        case BI_COND_GE: return BIFROST_OGE;
+        case BI_COND_GT: return BIFROST_OGT;
+        case BI_COND_EQ: return BIFROST_OEQ;
+        case BI_COND_NE: return BIFROST_UNE;
+        default:         unreachable("Unknown bi_cond");
+        }
+}
+
+/* a <?> b <==> b <flip(?)> a (TODO: NaN behaviour?) */
+
+static enum bifrost_fcmp_cond
+bi_flip_fcmp(enum bifrost_fcmp_cond cond)
+{
+        switch (cond) {
+        case BIFROST_OGT:
+                return BIFROST_OLT;
+        case BIFROST_OGE:
+                return BIFROST_OLE;
+        case BIFROST_OLT:
+                return BIFROST_OGT;
+        case BIFROST_OLE:
+                return BIFROST_OGE;
+        case BIFROST_OEQ:
+        case BIFROST_UNE:
+                return cond;
+        default:
+                unreachable("Unknown fcmp cond");
+        }
+}
+
+static unsigned
+bi_pack_fma_cmp(bi_instruction *ins, struct bi_registers *regs)
+{
+        nir_alu_type Tl = ins->src_types[0];
+        nir_alu_type Tr = ins->src_types[1];
+
+        if (Tl == nir_type_float32 || Tr == nir_type_float32) {
+                /* TODO: Mixed 32/16 cmp */
+                assert(Tl == Tr);
+
+                enum bifrost_fcmp_cond cond = bi_fcmp_cond(ins->cond);
+
+                /* Only src1 has neg, so we arrange:
+                 *      a < b   --- native
+                 *      a < -b  --- native
+                 *      -a < -b <===> a > b
+                 *      -a < b  <===> a > -b
+                 * TODO: Is this NaN-precise?
+                 */
+
+                bool flip = ins->src_neg[0];
+                bool neg =  ins->src_neg[0] ^ ins->src_neg[1];
+
+                if (flip)
+                        cond = bi_flip_fcmp(cond);
+
+                struct bifrost_fma_fcmp pack = {
+                        .src0 = bi_get_src(ins, regs, 0, true),
+                        .src1 = bi_get_src(ins, regs, 1, true),
+                        .src0_abs = ins->src_abs[0],
+                        .src1_abs = ins->src_abs[1],
+                        .src1_neg = neg,
+                        .src_expand = 0,
+                        .unk1 = 0,
+                        .cond = cond,
+                        .op = BIFROST_FMA_OP_FCMP_GL
+                };
+
+                RETURN_PACKED(pack);
+        } else {
+                unreachable("Unknown cmp type");
+        }
+}
+ 
+
 static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
@@ -966,6 +1047,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_ADD:
                 return bi_pack_fma_addmin(bundle.fma, regs);
         case BI_CMP:
+                return bi_pack_fma_cmp(bundle.fma, regs);
         case BI_BITWISE:
 		return BIFROST_FMA_NOP;
         case BI_CONVERT:
