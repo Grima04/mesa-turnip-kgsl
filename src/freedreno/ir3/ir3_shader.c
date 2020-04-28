@@ -302,6 +302,9 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 	if (stream_output)
 		memcpy(&shader->stream_output, stream_output, sizeof(shader->stream_output));
 
+	if (nir->info.stage == MESA_SHADER_GEOMETRY)
+		NIR_PASS_V(nir, ir3_nir_lower_gs);
+
 	NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size,
 			   (nir_lower_io_options)0);
 
