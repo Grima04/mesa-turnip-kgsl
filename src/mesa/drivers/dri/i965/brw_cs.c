@@ -118,6 +118,8 @@ brw_codegen_cs_prog(struct brw_context *brw,
          gl_ctx->Const.MaxComputeVariableGroupInvocations;
    }
 
+   brw_nir_lower_cs_intrinsics(nir);
+
    char *error_str;
    program = brw_compile_cs(brw->screen->compiler, brw, mem_ctx, key,
                             &prog_data, nir, st_index, NULL, &error_str);

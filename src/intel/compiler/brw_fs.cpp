@@ -9006,8 +9006,6 @@ compile_cs_to_nir(const struct brw_compiler *compiler,
    nir_shader *shader = nir_shader_clone(mem_ctx, src_shader);
    brw_nir_apply_key(shader, compiler, &key->base, dispatch_width, true);
 
-   NIR_PASS_V(shader, brw_nir_lower_cs_intrinsics);
-
    NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
 
    /* Clean up after the local index and ID calculations. */

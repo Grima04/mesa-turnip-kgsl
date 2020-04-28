@@ -1660,6 +1660,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                  nir_var_mem_shared, shared_type_info);
       NIR_PASS_V(stage.nir, nir_lower_explicit_io,
                  nir_var_mem_shared, nir_address_format_32bit_offset);
+      NIR_PASS_V(stage.nir, brw_nir_lower_cs_intrinsics);
 
       stage.num_stats = 1;
       stage.code = brw_compile_cs(compiler, pipeline->base.device, mem_ctx,
