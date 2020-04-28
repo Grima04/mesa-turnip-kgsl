@@ -251,7 +251,7 @@ struct v3dv_device {
          VkDescriptorPool dspool;
          VkDescriptorSetLayout dslayout;
          VkPipelineLayout playout;
-         struct hash_table *cache; /* v3dv_meta_blit_pipeline */
+         struct hash_table *cache[3]; /* v3dv_meta_blit_pipeline for 1d, 2d, 3d */
       } blit;
    } meta;
 };
@@ -357,6 +357,8 @@ struct v3dv_image {
    struct v3dv_device_memory *mem;
    VkDeviceSize mem_offset;
 };
+
+VkImageViewType v3dv_image_type_to_view_type(VkImageType type);
 
 struct v3dv_image_view {
    const struct v3dv_image *image;

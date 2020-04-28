@@ -395,6 +395,18 @@ v3dv_DestroyImage(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, image);
 }
 
+VkImageViewType
+v3dv_image_type_to_view_type(VkImageType type)
+{
+   switch (type) {
+   case VK_IMAGE_TYPE_1D: return VK_IMAGE_VIEW_TYPE_1D;
+   case VK_IMAGE_TYPE_2D: return VK_IMAGE_VIEW_TYPE_2D;
+   case VK_IMAGE_TYPE_3D: return VK_IMAGE_VIEW_TYPE_3D;
+   default:
+      unreachable("Invalid image type");
+   }
+}
+
 /*
  * This method translates pipe_swizzle to the swizzle values used at the
  * packet TEXTURE_SHADER_STATE

@@ -1926,7 +1926,7 @@ create_blit_pipeline_layout(struct v3dv_device *device,
       .pSetLayouts = descriptor_set_layout,
       .pushConstantRangeCount = 1,
       .pPushConstantRanges =
-         &(VkPushConstantRange) { VK_SHADER_STAGE_VERTEX_BIT, 0, 16 },
+         &(VkPushConstantRange) { VK_SHADER_STAGE_VERTEX_BIT, 0, 20 },
    };
 
    result =
@@ -2040,6 +2040,15 @@ gen_tex_coords(nir_builder *b)
    nir_ssa_dest_init(&tex_box->instr, &tex_box->dest, 4, 32, "tex_box");
    nir_builder_instr_insert(b, &tex_box->instr);
 
+   nir_intrinsic_instr *tex_z =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
+   tex_z->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+   nir_intrinsic_set_base(tex_z, 16);
+   nir_intrinsic_set_range(tex_z, 4);
+   tex_z->num_components = 1;
+   nir_ssa_dest_init(&tex_z->instr, &tex_z->dest, 1, 32, "tex_z");
+   nir_builder_instr_insert(b, &tex_z->instr);
+
    nir_intrinsic_instr *vertex_id =
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_vertex_id);
    nir_ssa_dest_init(&vertex_id->instr, &vertex_id->dest, 1, 32, "vertexid");
@@ -2068,7 +2077,7 @@ gen_tex_coords(nir_builder *b)
    comp[1] = nir_bcsel(b, c1cmp,
                        nir_channel(b, &tex_box->dest.ssa, 3),
                        nir_channel(b, &tex_box->dest.ssa, 1));
-   comp[2] = nir_imm_float(b, 0.0f);
+   comp[2] = &tex_z->dest.ssa;
    comp[3] = nir_imm_float(b, 1.0f);
    return nir_vec(b, comp, 4);
 }
@@ -2077,9 +2086,9 @@ static nir_ssa_def *
 build_nir_tex_op(struct nir_builder *b,
                  struct v3dv_device *device,
                  nir_ssa_def *tex_pos,
-                 enum glsl_base_type tex_type)
+                 enum glsl_base_type tex_type,
+                 enum glsl_sampler_dim dim)
 {
-   const enum glsl_sampler_dim dim = GLSL_SAMPLER_DIM_2D;
    const struct glsl_type *sampler_type =
       glsl_sampler_type(dim, false, false, tex_type);
    nir_variable *sampler =
@@ -2135,10 +2144,23 @@ get_blit_vs()
    return b.shader;
 }
 
+static uint32_t
+get_channel_mask_for_sampler_dim(enum glsl_sampler_dim sampler_dim)
+{
+   switch (sampler_dim) {
+   case GLSL_SAMPLER_DIM_1D: return 0x1;
+   case GLSL_SAMPLER_DIM_2D: return 0x3;
+   case GLSL_SAMPLER_DIM_3D: return 0x7;
+   default:
+      unreachable("invalid sampler dim");
+   };
+}
+
 static nir_shader *
 get_color_blit_fs(struct v3dv_device *device,
                   VkFormat dst_format,
-                  VkFormat src_format)
+                  VkFormat src_format,
+                  enum glsl_sampler_dim sampler_dim)
 {
    nir_builder b;
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
@@ -2160,10 +2182,12 @@ get_color_blit_fs(struct v3dv_device *device,
    fs_out_color->data.location = FRAG_RESULT_DATA0;
 
    nir_ssa_def *tex_coord = nir_load_var(&b, fs_in_tex_coord);
-   nir_ssa_def *tex_coord_xy = nir_channels(&b, tex_coord, 0x3);
+   const uint32_t channel_mask = get_channel_mask_for_sampler_dim(sampler_dim);
+   tex_coord = nir_channels(&b, tex_coord, channel_mask);
 
-   nir_ssa_def *color = build_nir_tex_op(&b, device, tex_coord_xy,
-                                         glsl_get_base_type(fs_out_type));
+   nir_ssa_def *color = build_nir_tex_op(&b, device, tex_coord,
+                                         glsl_get_base_type(fs_out_type),
+                                         sampler_dim);
 
    /* For integer textures, if the bit-size of the destination is too small to
     * hold source value, Vulkan (CTS) expects the implementation to clamp to the
@@ -2210,7 +2234,9 @@ get_color_blit_fs(struct v3dv_device *device,
 }
 
 static nir_shader *
-get_depth_blit_fs(struct v3dv_device *device, VkFormat format)
+get_depth_blit_fs(struct v3dv_device *device,
+                  VkFormat format,
+                  enum glsl_sampler_dim sampler_dim)
 {
    assert(vk_format_has_depth(format));
 
@@ -2230,10 +2256,12 @@ get_depth_blit_fs(struct v3dv_device *device, VkFormat format)
    fs_out_depth->data.location = FRAG_RESULT_DEPTH;
 
    nir_ssa_def *tex_coord = nir_load_var(&b, fs_in_tex_coord);
-   nir_ssa_def *tex_coord_xy = nir_channels(&b, tex_coord, 0x3);
+   const uint32_t channel_mask = get_channel_mask_for_sampler_dim(sampler_dim);
+   tex_coord = nir_channels(&b, tex_coord, channel_mask);
 
-   nir_ssa_def *depth = build_nir_tex_op(&b, device, tex_coord_xy,
-                                         GLSL_TYPE_FLOAT);
+   nir_ssa_def *depth = build_nir_tex_op(&b, device, tex_coord,
+                                         GLSL_TYPE_FLOAT,
+                                         sampler_dim);
 
    nir_store_var(&b, fs_out_depth, depth, 0x1);
    return b.shader;
@@ -2355,10 +2383,23 @@ create_pipeline(struct v3dv_device *device,
    return result == VK_SUCCESS;
 }
 
+static enum glsl_sampler_dim
+get_sampler_dim_for_image_type(VkImageType type)
+{
+   switch (type) {
+   case VK_IMAGE_TYPE_1D: return GLSL_SAMPLER_DIM_1D;
+   case VK_IMAGE_TYPE_2D: return GLSL_SAMPLER_DIM_2D;
+   case VK_IMAGE_TYPE_3D: return GLSL_SAMPLER_DIM_3D;
+   default:
+      unreachable("Invalid image type");
+   }
+}
+
 static bool
 create_blit_pipeline(struct v3dv_device *device,
                      VkFormat dst_format,
                      VkFormat src_format,
+                     VkImageType src_type,
                      VkRenderPass _pass,
                      VkPipelineLayout pipeline_layout,
                      VkPipeline *pipeline)
@@ -2371,10 +2412,13 @@ create_blit_pipeline(struct v3dv_device *device,
    /* FIXME: */
    assert(!vk_format_has_stencil(dst_format));
 
+   const enum glsl_sampler_dim sampler_dim =
+      get_sampler_dim_for_image_type(src_type);
+
    nir_shader *vs_nir = get_blit_vs();
    nir_shader *fs_nir = has_depth ?
-      get_depth_blit_fs(device, dst_format) :
-      get_color_blit_fs(device, dst_format, src_format);
+      get_depth_blit_fs(device, dst_format, sampler_dim) :
+      get_color_blit_fs(device, dst_format, src_format, sampler_dim);
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -2421,6 +2465,7 @@ static bool
 get_blit_pipeline(struct v3dv_device *device,
                   VkFormat dst_format,
                   VkFormat src_format,
+                  VkImageType src_type,
                   struct v3dv_meta_blit_pipeline **pipeline)
 {
    bool ok = true;
@@ -2438,7 +2483,7 @@ get_blit_pipeline(struct v3dv_device *device,
    const uint64_t key = get_blit_pipeline_cache_key(dst_format, src_format);
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
-      _mesa_hash_table_search(device->meta.blit.cache, &key);
+      _mesa_hash_table_search(device->meta.blit.cache[src_type], &key);
    if (entry) {
       mtx_unlock(&device->meta.mtx);
       *pipeline = entry->data;
@@ -2458,13 +2503,14 @@ get_blit_pipeline(struct v3dv_device *device,
    ok = create_blit_pipeline(device,
                              dst_format,
                              src_format,
+                             src_type,
                              (*pipeline)->pass,
                              device->meta.blit.playout,
                              &(*pipeline)->pipeline);
    if (!ok)
       goto fail;
 
-   _mesa_hash_table_insert(device->meta.blit.cache, &key, *pipeline);
+   _mesa_hash_table_insert(device->meta.blit.cache[src_type], &key, *pipeline);
 
    mtx_unlock(&device->meta.mtx);
    return true;
@@ -2518,10 +2564,6 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             const VkImageBlit *region,
             VkFilter filter)
 {
-   /* FIXME: we only support 2D color blits for now */
-   if (dst->type != VK_IMAGE_TYPE_2D || src->type != VK_IMAGE_TYPE_2D)
-      return false;
-
    const uint32_t dst_level_w = u_minify(dst->extent.width,
                                          region->dstSubresource.mipLevel);
    const uint32_t dst_level_h = u_minify(dst->extent.height,
@@ -2529,6 +2571,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t src_level_w = u_minify(src->extent.width,
                                          region->srcSubresource.mipLevel);
    const uint32_t src_level_h = u_minify(src->extent.height,
+                                         region->srcSubresource.mipLevel);
+   const uint32_t src_level_d = u_minify(src->extent.depth,
                                          region->srcSubresource.mipLevel);
 
    uint32_t dst_x, dst_y, dst_w, dst_h;
@@ -2545,6 +2589,28 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                     &src_x, &src_y, &src_w, &src_h,
                     &src_mirror_x, &src_mirror_y);
 
+   uint32_t min_dst_layer;
+   uint32_t max_dst_layer;
+   if (dst->type != VK_IMAGE_TYPE_3D) {
+      min_dst_layer = region->dstSubresource.baseArrayLayer;
+      max_dst_layer = min_dst_layer + region->dstSubresource.layerCount;
+   } else {
+      min_dst_layer = region->dstOffsets[0].z;
+      max_dst_layer = region->dstOffsets[1].z;
+   }
+
+   uint32_t min_src_layer;
+   uint32_t max_src_layer;
+   if (src->type != VK_IMAGE_TYPE_3D) {
+      min_src_layer = region->srcSubresource.baseArrayLayer;
+      max_src_layer = min_src_layer + region->srcSubresource.layerCount;
+   } else {
+      min_src_layer = region->srcOffsets[0].z;
+      max_src_layer = region->srcOffsets[1].z;
+   }
+
+   uint32_t layer_count = max_dst_layer - min_dst_layer;
+
    /* Translate source blit coordinates to normalized texture coordinates
     * and handle mirroring.
     */
@@ -2557,17 +2623,30 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
    const bool mirror_x = dst_mirror_x != src_mirror_x;
    const bool mirror_y = dst_mirror_y != src_mirror_y;
-   const float tex_coords[4] = {
+   float tex_coords[5] = {
       !mirror_x ? coords[0] : coords[2],
       !mirror_y ? coords[1] : coords[3],
       !mirror_x ? coords[2] : coords[0],
       !mirror_y ? coords[3] : coords[1],
+      /* Z coordinate for 3D blit sources, to be filled for each
+       * destination layer
+       */
+      0.0f
    };
+
+
+   /* For blits from 3D images we also need to compute the slice coordinate to
+    * sample from, which will change for each layer in the destination.
+    * Compute the step we should increase for each iteration.
+    */
+   const float src_z_step =
+      (float)(max_src_layer - min_src_layer) / (float)layer_count;
 
    /* Get the blit pipeline */
    struct v3dv_meta_blit_pipeline *pipeline = NULL;
    bool ok = get_blit_pipeline(cmd_buffer->device,
-                               dst->vk_format, src->vk_format, &pipeline);
+                               dst->vk_format, src->vk_format, src->type,
+                               &pipeline);
    if (!ok)
       return false;
    assert(pipeline && pipeline->pipeline && pipeline->pass);
@@ -2585,17 +2664,17 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
    VkResult result;
    uint32_t dirty_dynamic_state = 0;
-   for (uint32_t i = 0; i < region->dstSubresource.layerCount; i++) {
+   for (uint32_t i = 0; i < layer_count; i++) {
       VkImageViewCreateInfo dst_image_view_info = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
          .image = v3dv_image_to_handle(dst),
-         .viewType = VK_IMAGE_VIEW_TYPE_2D, /* FIXME */
+         .viewType = v3dv_image_type_to_view_type(dst->type),
          .format = dst->vk_format,
          .subresourceRange = {
             .aspectMask = dst->aspects,
             .baseMipLevel = region->dstSubresource.mipLevel,
             .levelCount = 1,
-            .baseArrayLayer = region->dstSubresource.baseArrayLayer + i,
+            .baseArrayLayer = min_dst_layer + i,
             .layerCount = 1
          },
       };
@@ -2659,13 +2738,14 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       VkImageViewCreateInfo src_image_view_info = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
          .image = v3dv_image_to_handle(src),
-         .viewType = VK_IMAGE_VIEW_TYPE_2D, /* FIXME */
+         .viewType = v3dv_image_type_to_view_type(src->type),
          .format = src->vk_format,
          .subresourceRange = {
             .aspectMask = src->aspects,
             .baseMipLevel = region->srcSubresource.mipLevel,
             .levelCount = 1,
-            .baseArrayLayer = region->srcSubresource.baseArrayLayer + i,
+            .baseArrayLayer =
+               src->type == VK_IMAGE_TYPE_3D ? 0 : min_src_layer + i,
             .layerCount = 1
          },
       };
@@ -2712,9 +2792,12 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          goto fail_job;
       }
 
+      if (src->type == VK_IMAGE_TYPE_3D)
+         tex_coords[4] = (min_src_layer + i * src_z_step) / (float)src_level_d;
+
       v3dv_CmdPushConstants(_cmd_buffer,
                             device->meta.blit.playout,
-                            VK_SHADER_STAGE_VERTEX_BIT, 0, 16,
+                            VK_SHADER_STAGE_VERTEX_BIT, 0, 20,
                             &tex_coords);
 
       v3dv_CmdBindPipeline(_cmd_buffer,

@@ -1097,9 +1097,10 @@ create_meta_blit_descriptor_pool(struct v3dv_device *device)
 static void
 init_meta_blit_resources(struct v3dv_device *device)
 {
-   device->meta.blit.cache =
-      _mesa_hash_table_create(NULL, u64_hash, u64_compare);
-
+   for (uint32_t i = 0; i < 3; i++) {
+      device->meta.blit.cache[i] =
+         _mesa_hash_table_create(NULL, u64_hash, u64_compare);
+   }
    create_meta_blit_descriptor_pool(device);
 }
 
@@ -1131,13 +1132,15 @@ destroy_device_meta(struct v3dv_device *device)
                                  &device->alloc);
    }
 
-   hash_table_foreach(device->meta.blit.cache, entry) {
-      struct v3dv_meta_blit_pipeline *item = entry->data;
-      v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
-      v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
-      vk_free(&device->alloc, item);
+   for (uint32_t i = 0; i < 3; i++) {
+      hash_table_foreach(device->meta.blit.cache[i], entry) {
+         struct v3dv_meta_blit_pipeline *item = entry->data;
+         v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
+         v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
+         vk_free(&device->alloc, item);
+      }
+      _mesa_hash_table_destroy(device->meta.blit.cache[i], NULL);
    }
-   _mesa_hash_table_destroy(device->meta.blit.cache, NULL);
 
    if (device->meta.blit.playout) {
       v3dv_DestroyPipelineLayout(_device, device->meta.blit.playout,
