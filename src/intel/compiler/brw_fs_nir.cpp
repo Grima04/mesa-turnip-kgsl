@@ -105,7 +105,8 @@ fs_visitor::nir_setup_uniforms()
       assert(uniforms == prog_data->nr_params);
 
       uint32_t *param;
-      if (nir->info.cs.local_size_variable) {
+      if (nir->info.cs.local_size_variable &&
+          compiler->lower_variable_group_size) {
          param = brw_stage_prog_data_add_params(prog_data, 3);
          for (unsigned i = 0; i < 3; i++) {
             param[i] = (BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_X + i);
@@ -3869,6 +3870,8 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
    }
 
    case nir_intrinsic_load_local_group_size: {
+      assert(compiler->lower_variable_group_size);
+      assert(nir->info.cs.local_size_variable);
       for (unsigned i = 0; i < 3; i++) {
          bld.MOV(retype(offset(dest, bld, i), BRW_REGISTER_TYPE_UD),
             group_size[i]);
