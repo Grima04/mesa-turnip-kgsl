@@ -645,6 +645,9 @@ system_value("color1", 4)
 # System value for internal compute shaders in radeonsi.
 system_value("user_data_amd", 4)
 
+# Number of data items being operated on for a SIMD program.
+system_value("simd_width_intel", 1)
+
 # Barycentric coordinate intrinsics.
 #
 # These set up the barycentric coordinates for a particular interpolation.

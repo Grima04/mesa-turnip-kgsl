@@ -8946,6 +8946,56 @@ cs_fill_push_const_info(const struct gen_device_info *devinfo,
              prog_data->nr_params);
 }
 
+static bool
+filter_simd(const nir_instr *instr, const void *_options)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   switch (nir_instr_as_intrinsic(instr)->intrinsic) {
+   case nir_intrinsic_load_simd_width_intel:
+   case nir_intrinsic_load_subgroup_id:
+      return true;
+
+   default:
+      return false;
+   }
+}
+
+static nir_ssa_def *
+lower_simd(nir_builder *b, nir_instr *instr, void *options)
+{
+   uintptr_t simd_width = (uintptr_t)options;
+
+   switch (nir_instr_as_intrinsic(instr)->intrinsic) {
+   case nir_intrinsic_load_simd_width_intel:
+      return nir_imm_int(b, simd_width);
+
+   case nir_intrinsic_load_subgroup_id:
+      /* If the whole workgroup fits in one thread, we can lower subgroup_id
+       * to a constant zero.
+       */
+      if (!b->shader->info.cs.local_size_variable) {
+         unsigned local_workgroup_size = b->shader->info.cs.local_size[0] *
+                                         b->shader->info.cs.local_size[1] *
+                                         b->shader->info.cs.local_size[2];
+         if (local_workgroup_size <= simd_width)
+            return nir_imm_int(b, 0);
+      }
+      return NULL;
+
+   default:
+      return NULL;
+   }
+}
+
+static void
+brw_nir_lower_simd(nir_shader *nir, unsigned dispatch_width)
+{
+   nir_shader_lower_instructions(nir, filter_simd, lower_simd,
+                                 (void *)(uintptr_t)dispatch_width);
+}
+
 static nir_shader *
 compile_cs_to_nir(const struct brw_compiler *compiler,
                   void *mem_ctx,
@@ -8956,7 +9006,9 @@ compile_cs_to_nir(const struct brw_compiler *compiler,
    nir_shader *shader = nir_shader_clone(mem_ctx, src_shader);
    brw_nir_apply_key(shader, compiler, &key->base, dispatch_width, true);
 
-   NIR_PASS_V(shader, brw_nir_lower_cs_intrinsics, dispatch_width);
+   NIR_PASS_V(shader, brw_nir_lower_cs_intrinsics);
+
+   NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
 
    /* Clean up after the local index and ID calculations. */
    NIR_PASS_V(shader, nir_opt_constant_folding);
