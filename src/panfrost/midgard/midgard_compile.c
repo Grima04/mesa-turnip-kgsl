@@ -2518,6 +2518,7 @@ mir_add_writeout_loops(compiler_context *ctx)
                 unsigned popped = br->branch.target_block;
                 pan_block_add_successor(&(mir_get_block(ctx, popped - 1)->base), &ctx->current_block->base);
                 br->branch.target_block = emit_fragment_epilogue(ctx, rt);
+                br->branch.target_type = TARGET_GOTO;
 
                 /* If we have more RTs, we'll need to restore back after our
                  * loop terminates */
@@ -2525,6 +2526,7 @@ mir_add_writeout_loops(compiler_context *ctx)
                 if ((rt + 1) < ARRAY_SIZE(ctx->writeout_branch) && ctx->writeout_branch[rt + 1]) {
                         midgard_instruction uncond = v_branch(false, false);
                         uncond.branch.target_block = popped;
+                        uncond.branch.target_type = TARGET_GOTO;
                         emit_mir_instruction(ctx, uncond);
                         pan_block_add_successor(&ctx->current_block->base, &(mir_get_block(ctx, popped)->base));
                         schedule_barrier(ctx);
