@@ -465,6 +465,14 @@ struct bifrost_fma_icmp32 {
         unsigned op : 12;
 } __attribute__((packed));
 
+struct bifrost_fma_icmp16 {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        unsigned unk : 5; /* 11010 */
+        enum bifrost_icmp_cond cond : 3;
+        unsigned op : 9;
+} __attribute__((packed));
+
 /* Two sources for vectorization */
 #define BIFROST_FMA_FLOAT32_TO_16 (0xdd000 >> 3)
 #define BIFROST_ADD_FLOAT32_TO_16 (0x0EC00 >> 3)
