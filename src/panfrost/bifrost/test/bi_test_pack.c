@@ -404,6 +404,47 @@ bit_select_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, e
 }
 
 static void
+bit_fcmp_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, enum bit_debug debug, bool FMA)
+{
+        bi_instruction ins = bit_ins(BI_CMP, 2, nir_type_float, size);
+        ins.dest_type = nir_type_uint | size;
+
+        /* 16-bit has swizzles and abs. 32-bit has abs/neg mods. */
+        unsigned max_mods = (size == 16) ? 64 : (size == 32) ? 16 : 1;
+
+        for (enum bi_cond cond = BI_COND_LT; cond <= BI_COND_NE; ++cond) {
+                for (unsigned mods = 0; mods < max_mods; ++mods) {
+                        ins.cond = cond;
+
+                        if (size == 16) {
+                                for (unsigned i = 0; i < 2; ++i) {
+                                        ins.swizzle[i][0] = ((mods >> (i * 2)) & 1) ? 1 : 0;
+                                        ins.swizzle[i][1] = ((mods >> (i * 2)) & 2) ? 1 : 0;
+                                }
+
+                                ins.src_abs[0] = (mods & 16) ? true : false;
+                                ins.src_abs[1] = (mods & 32) ? true : false;
+                        } else if (size == 8) {
+                                for (unsigned i = 0; i < 2; ++i) {
+                                        for (unsigned j = 0; j < 4; ++j)
+                                                ins.swizzle[i][j] = j;
+                                }
+                        } else if (size == 32) {
+                                ins.src_abs[0] = (mods & 1) ? true : false;
+                                ins.src_abs[1] = (mods & 2) ? true : false;
+                                ins.src_neg[0] = (mods & 4) ? true : false;
+                                ins.src_neg[1] = (mods & 8) ? true : false;
+                        }
+
+                        if (!bit_test_single(dev, &ins, input, FMA, debug)) {
+                                fprintf(stderr, "FAIL: cmp.%s.%u.%u.%u\n",
+                                                FMA ? "fma" : "add", size, mods, cond);
+                        }
+                }
+        }
+}
+
+static void
 bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
                 unsigned to_size, unsigned cx, unsigned cy, bool FMA,
                 enum bifrost_roundmode roundmode,
@@ -545,4 +586,7 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
         for (unsigned sz = 8; sz <= 16; sz *= 2) {
                 bit_select_helper(dev, (uint32_t *) input32, sz, debug);
         }
+
+        bit_fcmp_helper(dev, (uint32_t *) input32, 32, debug, true);
+        bit_fcmp_helper(dev, (uint32_t *) input32, 16, debug, true);
 }
