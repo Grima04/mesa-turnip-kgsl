@@ -631,6 +631,17 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
                         fprintf(fp, "/* do%u */ ", override);
         }
 
+        /* Instructions like fdot4 do *not* replicate, ensure the
+         * mask is of only a single component */
+
+        unsigned rep = GET_CHANNEL_COUNT(alu_opcode_props[alu_field->op].props);
+
+        if (rep) {
+                unsigned comp_mask = condense_writemask(mask, bits_for_mode(mode));
+                unsigned num_comp = util_bitcount(comp_mask);
+                if (num_comp != 1)
+                        fprintf(fp, "/* err too many components */");
+        }
         print_mask(fp, mask, bits_for_mode(mode), override);
 
         fprintf(fp, ", ");
