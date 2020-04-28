@@ -460,12 +460,6 @@ lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
                          struct v3dv_pipeline *pipeline)
 {
    assert(instr->intrinsic == nir_intrinsic_load_push_constant);
-
-   /* FIXME: next assert it not something that should happen in general, just
-    * to catch any test example under that case and deal with it
-    */
-   assert(nir_intrinsic_base(instr) == 0);
-
    instr->intrinsic = nir_intrinsic_load_uniform;
 }
 
