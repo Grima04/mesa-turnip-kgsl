@@ -1331,7 +1331,8 @@ radv_image_can_enable_cmask(struct radv_image *image)
 static inline bool
 radv_image_can_enable_fmask(struct radv_image *image)
 {
-	return image->info.samples > 1 && vk_format_is_color(image->vk_format);
+	return image->info.samples > 1 &&
+	       image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 }
 
 static inline bool
