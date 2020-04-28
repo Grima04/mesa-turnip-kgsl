@@ -242,6 +242,12 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
                         }
 
                         src[i].rep_high = upper;
+
+                        /* Replicate for now.. should really pick a side for
+                         * dot products */
+
+                        if (ins->alu.reg_mode == midgard_reg_mode_16)
+                                src[i].rep_low = true;
                 }
 
                 src[i].swizzle = packed;
