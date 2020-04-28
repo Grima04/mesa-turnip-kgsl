@@ -206,6 +206,9 @@ bi_print_src(FILE *fp, bi_instruction *ins, unsigned s)
         if (abs)
                 fprintf(fp, "abs(");
 
+        if (ins->type == BI_BITWISE && ins->bitwise.src_invert[s])
+                fprintf(fp, "~");
+
         bi_print_index(fp, ins, src, s);
 
         if (abs)
@@ -378,6 +381,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, ".loc%u", ins->blend_location);
         else if (ins->type == BI_TEX)
                 fprintf(fp, ".%s", bi_tex_op_name(ins->op.texture));
+        else if (ins->type == BI_BITWISE)
+                fprintf(fp, ".%cshift", ins->bitwise.rshift ? 'r' : 'l');
 
         if (ins->vector_channels)
                 fprintf(fp, ".v%u", ins->vector_channels);

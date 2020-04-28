@@ -214,6 +214,11 @@ enum bi_tex_op {
         BI_TEX_DUAL
 };
 
+struct bi_bitwise {
+        bool src_invert[2];
+        bool rshift; /* false for lshift */
+};
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
@@ -290,6 +295,8 @@ typedef struct {
 
                 /* For BLEND -- the location 0-7 */
                 unsigned blend_location;
+
+                struct bi_bitwise bitwise;
         };
 } bi_instruction;
 
