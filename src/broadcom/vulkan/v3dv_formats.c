@@ -404,6 +404,8 @@ image_format_features(VkFormat vk_format,
 
    /* Raster format is only supported for 1D textures, so let's just
     * always require optimal tiling for anything that requires sampling.
+    * Note: even if the user requests optimal for a 1D image, we will still
+    * use raster format since that is what the HW requires.
     */
    if (v3dv_format->tex_type != TEXTURE_DATA_FORMAT_NO &&
        tiling == VK_IMAGE_TILING_OPTIMAL) {
@@ -561,6 +563,16 @@ get_image_format_properties(
       if (!(format_feature_flags & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) {
          goto unsupported;
       }
+
+      /* Sampling of raster depth/stencil images is not supported. Since 1D
+       * images are always raster, even if the user requested optimal tiling,
+       * we can't have them be used as transfer sources, since that includes
+       * using them for blit sources, which might require sampling.
+       */
+      if (info->type == VK_IMAGE_TYPE_1D &&
+          vk_format_is_depth_or_stencil(info->format)) {
+         goto unsupported;
+      }
    }
 
    if (info->usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
@@ -571,6 +583,15 @@ get_image_format_properties(
 
    if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+         goto unsupported;
+      }
+
+      /* Sampling of raster depth/stencil images is not supported. Since 1D
+       * images are always raster, even if the user requested optimal tiling,
+       * we can't allow sampling if the format is depth/stencil.
+       */
+      if (info->type == VK_IMAGE_TYPE_1D &&
+          vk_format_is_depth_or_stencil(info->format)) {
          goto unsupported;
       }
    }
