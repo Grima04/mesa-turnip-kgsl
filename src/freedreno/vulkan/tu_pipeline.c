@@ -2457,7 +2457,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
                                      : &dummy_blend_info;
 
    struct tu_cs blend_cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, MAX_RTS * 3 + 9, &blend_cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, MAX_RTS * 3 + 18, &blend_cs);
 
    uint32_t blend_enable_mask;
    tu6_emit_rb_mrt_controls(&blend_cs, blend_info,
