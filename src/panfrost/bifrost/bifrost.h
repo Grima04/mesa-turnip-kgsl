@@ -422,6 +422,9 @@ struct bifrost_add_fcmp {
         unsigned op   : 6;
 } __attribute__((packed));
 
+#define BIFROST_FMA_OP_FCMP_GL_16 (0xc8000 >> 13)
+#define BIFROST_FMA_OP_FCMP_D3D_16 (0xcc000 >> 13)
+
 struct bifrost_fma_fcmp16 {
         unsigned src0 : 3;
         unsigned src1 : 3;

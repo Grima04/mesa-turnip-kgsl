@@ -1039,6 +1039,26 @@ bi_pack_fma_cmp(bi_instruction *ins, struct bi_registers *regs)
                 };
 
                 RETURN_PACKED(pack);
+        } else if (Tl == nir_type_float16 && Tr == nir_type_float16) {
+                bool flip = false;
+                bool l = bi_pack_fp16_abs(ins, regs, &flip);
+                enum bifrost_fcmp_cond cond = bi_fcmp_cond(ins->cond);
+
+                if (flip)
+                        cond = bi_flip_fcmp(cond);
+
+                struct bifrost_fma_fcmp16 pack = {
+                        .src0 = bi_get_src(ins, regs, flip ? 1 : 0, true),
+                        .src1 = bi_get_src(ins, regs, flip ? 0 : 1, true),
+                        .src0_swizzle = bi_swiz16(ins, flip ? 1 : 0),
+                        .src1_swizzle = bi_swiz16(ins, flip ? 0 : 1),
+                        .abs1 = l,
+                        .unk = 0,
+                        .cond = cond,
+                        .op = BIFROST_FMA_OP_FCMP_GL_16,
+                };
+
+                RETURN_PACKED(pack);
         } else {
                 unreachable("Unknown cmp type");
         }
