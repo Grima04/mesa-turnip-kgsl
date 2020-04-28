@@ -400,26 +400,32 @@ image_format_features(VkFormat vk_format,
 
    VkFormatFeatureFlags flags = 0;
 
+   bool is_combined_depth_stencil = (aspects & zs_aspects) == zs_aspects;
+
    /* Raster format is only supported for 1D textures, so let's just
     * always require optimal tiling for anything that requires sampling.
     */
    if (v3dv_format->tex_type != TEXTURE_DATA_FORMAT_NO &&
        tiling == VK_IMAGE_TILING_OPTIMAL) {
-      flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-               VK_FORMAT_FEATURE_BLIT_SRC_BIT;
+      flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+
+      if (!is_combined_depth_stencil)
+         flags |= VK_FORMAT_FEATURE_BLIT_SRC_BIT;
 
       if (v3dv_format->supports_filtering)
          flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
    }
 
    if (v3dv_format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
-      flags |= VK_FORMAT_FEATURE_BLIT_DST_BIT;
       if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-         flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+         flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                  VK_FORMAT_FEATURE_BLIT_DST_BIT;
          if (format_supports_blending(v3dv_format))
             flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
       } else if (aspects & zs_aspects) {
          flags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+         if (!is_combined_depth_stencil)
+            flags |= VK_FORMAT_FEATURE_BLIT_DST_BIT;
       }
    }
 
