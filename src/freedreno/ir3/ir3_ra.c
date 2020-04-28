@@ -1383,7 +1383,8 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 		if (arr->end_ip == 0)
 			continue;
 
-		assign_arr_base(ctx, arr, precolor, nprecolor);
+		if (!ctx->scalar_pass)
+			assign_arr_base(ctx, arr, precolor, nprecolor);
 
 		unsigned base = arr->reg;
 
