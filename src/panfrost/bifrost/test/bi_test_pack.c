@@ -522,6 +522,35 @@ bit_constant_helper(struct panfrost_device *dev,
         }
 }
 
+static void
+bit_bitwise_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, enum bit_debug debug)
+{
+        bi_instruction ins = bit_ins(BI_BITWISE, 3, nir_type_uint, size);
+
+        /* TODO: shifts */
+        ins.src[2] = BIR_INDEX_ZERO;
+
+        /* Force identity swizzle -- bitwise is not swizzleable */
+        for (unsigned i = 0; i < 2; ++i) {
+                for (unsigned j = 0; j < (32 / size); ++j)
+                        ins.swizzle[i][j] = j;
+        }
+
+        for (unsigned op = BI_BITWISE_AND; op <= BI_BITWISE_XOR; ++op) {
+                ins.op.bitwise = op;
+
+                for (unsigned mods = 0; mods < 4; ++mods) {
+                        ins.bitwise.src_invert[0] = mods & 1;
+                        ins.bitwise.src_invert[1] = mods & 2;
+
+                        if (!bit_test_single(dev, &ins, input, true, debug)) {
+                                fprintf(stderr, "FAIL: bitwise.%u.%u.%u\n",
+                                                size, op, mods);
+                        }
+                }
+        }
+}
+
 void
 bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 {
@@ -589,4 +618,7 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 
         bit_fcmp_helper(dev, (uint32_t *) input32, 32, debug, true);
         bit_fcmp_helper(dev, (uint32_t *) input32, 16, debug, true);
+
+        for (unsigned sz = 8; sz <= 32; sz *= 2)
+                bit_bitwise_helper(dev, (uint32_t *) input32, sz, debug);
 }
