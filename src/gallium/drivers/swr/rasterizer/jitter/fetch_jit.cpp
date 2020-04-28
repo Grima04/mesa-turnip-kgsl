@@ -874,10 +874,8 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
                             Value* pGatherHi =
                                 GATHERPD(vZeroDouble, pStreamBaseGFX, vOffsetsHi, vMaskHi);
 
-                            pGatherLo = VCVTPD2PS(pGatherLo);
-                            pGatherHi = VCVTPD2PS(pGatherHi);
-
                             Value* pGather = VSHUFFLE(pGatherLo, pGatherHi, vShufAll);
+                            pGather        = FP_TRUNC(pGather, mSimdFP32Ty);
 
                             vVertexElements[currentVertexElement++] = pGather;
                         }
