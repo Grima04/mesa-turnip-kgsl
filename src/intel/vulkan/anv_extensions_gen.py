@@ -125,6 +125,7 @@ _TEMPLATE_C = Template(COPYRIGHT + """
 #   define ANDROID true
 #else
 #   define ANDROID false
+#   define ANDROID_API_LEVEL 0
 #endif
 
 #define ANV_HAS_SURFACE (VK_USE_PLATFORM_WAYLAND_KHR || \\
@@ -149,7 +150,7 @@ const VkExtensionProperties anv_instance_extensions[ANV_INSTANCE_EXTENSION_COUNT
 
 const struct anv_instance_extension_table anv_instance_extensions_supported = {
 %for ext in instance_extensions:
-   .${ext.name[3:]} = ${ext.enable},
+   .${ext.name[3:]} = ${get_extension_condition(ext.name, ext.enable)},
 %endfor
 };
 
@@ -183,7 +184,7 @@ anv_physical_device_get_supported_extensions(const struct anv_physical_device *d
 {
    *extensions = (struct anv_device_extension_table) {
 %for ext in device_extensions:
-      .${ext.name[3:]} = ${ext.enable},
+      .${ext.name[3:]} = ${get_extension_condition(ext.name, ext.enable)},
 %endfor
    };
 }
@@ -212,6 +213,7 @@ if __name__ == '__main__':
         'instance_extensions': [e for e in EXTENSIONS if e.type == 'instance'],
         'device_extensions': [e for e in EXTENSIONS if e.type == 'device'],
         'platform_defines': platform_defines,
+        'get_extension_condition': get_extension_condition,
     }
 
     if args.out_h:
