@@ -860,6 +860,11 @@ struct radv_device {
 	void *thread_trace_ptr;
 	uint32_t thread_trace_buffer_size;
 	int thread_trace_start_frame;
+
+	/* Overallocation. */
+	bool overallocation_disallowed;
+	uint64_t allocated_memory_size[VK_MAX_MEMORY_HEAPS];
+	mtx_t overallocation_mutex;
 };
 
 struct radv_device_memory {
@@ -867,6 +872,8 @@ struct radv_device_memory {
 	/* for dedicated allocations */
 	struct radv_image                            *image;
 	struct radv_buffer                           *buffer;
+	uint32_t                                     heap_index;
+	uint64_t                                     alloc_size;
 	void *                                       map;
 	void *                                       user_ptr;
 

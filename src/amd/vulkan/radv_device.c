@@ -2887,6 +2887,7 @@ VkResult radv_CreateDevice(
 
 	bool keep_shader_info = false;
 	bool robust_buffer_access = false;
+	bool overallocation_disallowed = false;
 
 	/* Check enabled features */
 	if (pCreateInfo->pEnabledFeatures) {
@@ -2910,6 +2911,12 @@ VkResult radv_CreateDevice(
 
 			if (features->features.robustBufferAccess)
 				robust_buffer_access = true;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD: {
+			const VkDeviceMemoryOverallocationCreateInfoAMD *overallocation = (const void *)ext;
+			if (overallocation->overallocationBehavior == VK_MEMORY_OVERALLOCATION_BEHAVIOR_DISALLOWED_AMD)
+				overallocation_disallowed = true;
 			break;
 		}
 		default:
@@ -2961,6 +2968,9 @@ VkResult radv_CreateDevice(
 
 	mtx_init(&device->shader_slab_mutex, mtx_plain);
 	list_inithead(&device->shader_slabs);
+
+	device->overallocation_disallowed = overallocation_disallowed;
+	mtx_init(&device->overallocation_mutex, mtx_plain);
 
 	radv_bo_list_init(&device->bo_list);
 
@@ -5050,6 +5060,12 @@ static void radv_free_memory(struct radv_device *device,
 #endif
 
 	if (mem->bo) {
+		if (device->overallocation_disallowed) {
+			mtx_lock(&device->overallocation_mutex);
+			device->allocated_memory_size[mem->heap_index] -= mem->alloc_size;
+			mtx_unlock(&device->overallocation_mutex);
+		}
+
 		radv_bo_list_remove(device, mem->bo);
 		device->ws->buffer_destroy(mem->bo);
 		mem->bo = NULL;
@@ -5159,6 +5175,9 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		}
 	} else {
 		uint64_t alloc_size = align_u64(pAllocateInfo->allocationSize, 4096);
+		uint32_t heap_index;
+
+		heap_index = device->physical_device->memory_properties.memoryTypes[pAllocateInfo->memoryTypeIndex].heapIndex;
 		domain = device->physical_device->memory_domains[pAllocateInfo->memoryTypeIndex];
 		flags = device->physical_device->memory_flags[pAllocateInfo->memoryTypeIndex];
 
@@ -5169,13 +5188,35 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 			}
 		}
 
+		if (device->overallocation_disallowed) {
+			uint64_t total_size =
+				device->physical_device->memory_properties.memoryHeaps[heap_index].size;
+
+			mtx_lock(&device->overallocation_mutex);
+			if (device->allocated_memory_size[heap_index] + alloc_size > total_size) {
+				mtx_unlock(&device->overallocation_mutex);
+				result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+				goto fail;
+			}
+			device->allocated_memory_size[heap_index] += alloc_size;
+			mtx_unlock(&device->overallocation_mutex);
+		}
+
 		mem->bo = device->ws->buffer_create(device->ws, alloc_size, device->physical_device->rad_info.max_alignment,
 		                                    domain, flags, priority);
 
 		if (!mem->bo) {
+			if (device->overallocation_disallowed) {
+				mtx_lock(&device->overallocation_mutex);
+				device->allocated_memory_size[heap_index] -= alloc_size;
+				mtx_unlock(&device->overallocation_mutex);
+			}
 			result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
 			goto fail;
 		}
+
+		mem->heap_index = heap_index;
+		mem->alloc_size = alloc_size;
 	}
 
 	if (!wsi_info) {
