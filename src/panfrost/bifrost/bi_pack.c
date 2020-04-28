@@ -617,7 +617,7 @@ bi_pack_fp16_abs(bi_instruction *ins, struct bi_registers *regs, bool *flip)
         unsigned src_0 = bi_get_src(ins, regs, 0, true);
         unsigned src_1 = bi_get_src(ins, regs, 1, true);
 
-        assert(!(abs_0 && abs_1));
+        assert(!(abs_0 && abs_1 && src_0 == src_1));
 
         if (!abs_0 && !abs_1) {
                 /* Force k = 0 <===> NOT(src1 < src0) */
