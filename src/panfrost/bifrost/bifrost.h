@@ -448,6 +448,23 @@ struct bifrost_add_fcmp16 {
         unsigned op   : 6;
 } __attribute__((packed));
 
+enum bifrost_icmp_cond {
+        BIFROST_ICMP_IGT = 0,
+        BIFROST_ICMP_IGE = 1,
+        BIFROST_ICMP_UGT = 2,
+        BIFROST_ICMP_UGE = 3,
+        BIFROST_ICMP_EQ  = 4,
+};
+
+struct bifrost_fma_icmp32 {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        enum bifrost_icmp_cond cond : 3;
+        unsigned unk1 : 1; /* set */
+        unsigned d3d : 1;
+        unsigned op : 12;
+} __attribute__((packed));
+
 /* Two sources for vectorization */
 #define BIFROST_FMA_FLOAT32_TO_16 (0xdd000 >> 3)
 #define BIFROST_ADD_FLOAT32_TO_16 (0x0EC00 >> 3)
