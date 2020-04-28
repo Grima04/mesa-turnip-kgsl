@@ -34,7 +34,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_memory.h"
 #include "util/slab.h"
-#include "os/os_thread.h"
+#include "util/simple_mtx.h"
 #include "renderonly/renderonly.h"
 
 #include "freedreno_batch_cache.h"
@@ -48,7 +48,7 @@ struct fd_screen {
 
 	struct list_head context_list;
 
-	mtx_t lock;
+	simple_mtx_t lock;
 
 	/* it would be tempting to use pipe_reference here, but that
 	 * really doesn't work well if it isn't the first member of
@@ -137,19 +137,19 @@ fd_screen(struct pipe_screen *pscreen)
 static inline void
 fd_screen_lock(struct fd_screen *screen)
 {
-	mtx_lock(&screen->lock);
+	simple_mtx_lock(&screen->lock);
 }
 
 static inline void
 fd_screen_unlock(struct fd_screen *screen)
 {
-	mtx_unlock(&screen->lock);
+	simple_mtx_unlock(&screen->lock);
 }
 
 static inline void
 fd_screen_assert_locked(struct fd_screen *screen)
 {
-	pipe_mutex_assert_locked(screen->lock);
+	simple_mtx_assert_locked(&screen->lock);
 }
 
 bool fd_screen_bo_get_handle(struct pipe_screen *pscreen,

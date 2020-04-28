@@ -156,7 +156,7 @@ fd_screen_destroy(struct pipe_screen *pscreen)
 
 	slab_destroy_parent(&screen->transfer_pool);
 
-	mtx_destroy(&screen->lock);
+	simple_mtx_destroy(&screen->lock);
 
 	ralloc_free(screen->compiler);
 
@@ -964,7 +964,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 
 	list_inithead(&screen->context_list);
 
-	(void) mtx_init(&screen->lock, mtx_plain);
+	(void) simple_mtx_init(&screen->lock, mtx_plain);
 
 	pscreen->destroy = fd_screen_destroy;
 	pscreen->get_param = fd_screen_get_param;
