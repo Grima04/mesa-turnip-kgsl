@@ -134,6 +134,24 @@ fd_screen(struct pipe_screen *pscreen)
 	return (struct fd_screen *)pscreen;
 }
 
+static inline void
+fd_screen_lock(struct fd_screen *screen)
+{
+	mtx_lock(&screen->lock);
+}
+
+static inline void
+fd_screen_unlock(struct fd_screen *screen)
+{
+	mtx_unlock(&screen->lock);
+}
+
+static inline void
+fd_screen_assert_locked(struct fd_screen *screen)
+{
+	pipe_mutex_assert_locked(screen->lock);
+}
+
 bool fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 		struct fd_bo *bo,
 		struct renderonly_scanout *scanout,

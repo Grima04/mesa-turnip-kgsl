@@ -218,7 +218,7 @@ batch_flush_reset_dependencies(struct fd_batch *batch, bool flush)
 static void
 batch_reset_resources_locked(struct fd_batch *batch)
 {
-	pipe_mutex_assert_locked(batch->ctx->screen->lock);
+	fd_screen_assert_locked(batch->ctx->screen);
 
 	set_foreach(batch->resources, entry) {
 		struct fd_resource *rsc = (struct fd_resource *)entry->key;
@@ -233,9 +233,9 @@ batch_reset_resources_locked(struct fd_batch *batch)
 static void
 batch_reset_resources(struct fd_batch *batch)
 {
-	mtx_lock(&batch->ctx->screen->lock);
+	fd_screen_lock(batch->ctx->screen);
 	batch_reset_resources_locked(batch);
-	mtx_unlock(&batch->ctx->screen->lock);
+	fd_screen_unlock(batch->ctx->screen);
 }
 
 static void
@@ -314,9 +314,9 @@ batch_flush(struct fd_batch *batch)
 
 	debug_assert(batch->reference.count > 0);
 
-	mtx_lock(&batch->ctx->screen->lock);
+	fd_screen_lock(batch->ctx->screen);
 	fd_bc_invalidate_batch(batch, false);
-	mtx_unlock(&batch->ctx->screen->lock);
+	fd_screen_unlock(batch->ctx->screen);
 }
 
 /* NOTE: could drop the last ref to batch
@@ -364,7 +364,7 @@ recursive_dependents_mask(struct fd_batch *batch)
 void
 fd_batch_add_dep(struct fd_batch *batch, struct fd_batch *dep)
 {
-	pipe_mutex_assert_locked(batch->ctx->screen->lock);
+	fd_screen_assert_locked(batch->ctx->screen);
 
 	if (batch->dependents_mask & (1 << dep->idx))
 		return;
@@ -384,9 +384,9 @@ flush_write_batch(struct fd_resource *rsc)
 	struct fd_batch *b = NULL;
 	fd_batch_reference_locked(&b, rsc->write_batch);
 
-	mtx_unlock(&b->ctx->screen->lock);
+	fd_screen_unlock(b->ctx->screen);
 	fd_batch_flush(b);
-	mtx_lock(&b->ctx->screen->lock);
+	fd_screen_lock(b->ctx->screen);
 
 	fd_bc_invalidate_batch(b, false);
 	fd_batch_reference_locked(&b, NULL);
@@ -395,7 +395,7 @@ flush_write_batch(struct fd_resource *rsc)
 void
 fd_batch_resource_used(struct fd_batch *batch, struct fd_resource *rsc, bool write)
 {
-	pipe_mutex_assert_locked(batch->ctx->screen->lock);
+	fd_screen_assert_locked(batch->ctx->screen);
 
 	if (rsc->stencil)
 		fd_batch_resource_used(batch, rsc->stencil, write);

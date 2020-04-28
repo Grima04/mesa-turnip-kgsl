@@ -191,14 +191,14 @@ fd_bc_invalidate_context(struct fd_context *ctx)
 	struct fd_batch_cache *cache = &ctx->screen->batch_cache;
 	struct fd_batch *batch;
 
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 
 	foreach_batch(batch, cache, cache->batch_mask) {
 		if (batch->ctx == ctx)
 			fd_bc_invalidate_batch(batch, true);
 	}
 
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 }
 
 /**
@@ -250,7 +250,7 @@ fd_bc_invalidate_resource(struct fd_resource *rsc, bool destroy)
 	struct fd_screen *screen = fd_screen(rsc->base.screen);
 	struct fd_batch *batch;
 
-	mtx_lock(&screen->lock);
+	fd_screen_lock(screen);
 
 	if (destroy) {
 		foreach_batch(batch, &screen->batch_cache, rsc->batch_mask) {
@@ -267,7 +267,7 @@ fd_bc_invalidate_resource(struct fd_resource *rsc, bool destroy)
 
 	rsc->bc_batch_mask = 0;
 
-	mtx_unlock(&screen->lock);
+	fd_screen_unlock(screen);
 }
 
 struct fd_batch *
@@ -276,7 +276,7 @@ fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx, bool non
 	struct fd_batch *batch;
 	uint32_t idx;
 
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 
 	while ((idx = ffs(~cache->batch_mask)) == 0) {
 #if 0
@@ -302,10 +302,10 @@ fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx, bool non
 		/* we can drop lock temporarily here, since we hold a ref,
 		 * flush_batch won't disappear under us.
 		 */
-		mtx_unlock(&ctx->screen->lock);
+		fd_screen_unlock(ctx->screen);
 		DBG("%p: too many batches!  flush forced!", flush_batch);
 		fd_batch_flush(flush_batch);
-		mtx_lock(&ctx->screen->lock);
+		fd_screen_lock(ctx->screen);
 
 		/* While the resources get cleaned up automatically, the flush_batch
 		 * doesn't get removed from the dependencies of other batches, so
@@ -342,7 +342,7 @@ fd_bc_alloc_batch(struct fd_batch_cache *cache, struct fd_context *ctx, bool non
 	cache->batches[idx] = batch;
 
 out:
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 
 	return batch;
 }
@@ -377,7 +377,7 @@ batch_from_key(struct fd_batch_cache *cache, struct key *key,
 	if (!batch)
 		return NULL;
 
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 
 	_mesa_hash_table_insert_pre_hashed(cache->ht, hash, key, batch);
 	batch->key = key;
@@ -388,7 +388,7 @@ batch_from_key(struct fd_batch_cache *cache, struct key *key,
 		rsc->bc_batch_mask = (1 << batch->idx);
 	}
 
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 
 	return batch;
 }

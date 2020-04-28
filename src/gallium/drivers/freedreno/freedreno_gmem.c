@@ -343,7 +343,7 @@ __fd_gmem_destroy(struct fd_gmem_stateobj *gmem)
 {
 	struct fd_gmem_cache *cache = &gmem->screen->gmem_cache;
 
-	pipe_mutex_assert_locked(gmem->screen->lock);
+	fd_screen_assert_locked(gmem->screen);
 
 	_mesa_hash_table_remove_key(cache->ht, gmem->key);
 	list_del(&gmem->node);
@@ -420,7 +420,7 @@ lookup_gmem_state(struct fd_batch *batch, bool assume_zs)
 	struct gmem_key *key = gmem_key_init(batch, assume_zs);
 	uint32_t hash = gmem_key_hash(key);
 
-	mtx_lock(&screen->lock);
+	fd_screen_lock(screen);
 
 	struct hash_entry *entry =
 		_mesa_hash_table_search_pre_hashed(cache->ht, hash, key);
@@ -447,7 +447,7 @@ found:
 	list_delinit(&gmem->node);
 	list_add(&gmem->node, &cache->lru);
 
-	mtx_unlock(&screen->lock);
+	fd_screen_unlock(screen);
 
 	return gmem;
 }
@@ -621,9 +621,9 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 		render_tiles(batch, gmem);
 		batch->gmem_state = NULL;
 
-		mtx_lock(&ctx->screen->lock);
+		fd_screen_lock(ctx->screen);
 		fd_gmem_reference(&gmem, NULL);
-		mtx_unlock(&ctx->screen->lock);
+		fd_screen_unlock(ctx->screen);
 
 		ctx->stats.batch_gmem++;
 	}
@@ -642,9 +642,9 @@ fd_gmem_estimate_bins_per_pipe(struct fd_batch *batch)
 	struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch, !!pfb->zsbuf);
 	unsigned nbins = gmem->maxpw * gmem->maxph;
 
-	mtx_lock(&screen->lock);
+	fd_screen_lock(screen);
 	fd_gmem_reference(&gmem, NULL);
-	mtx_unlock(&screen->lock);
+	fd_screen_unlock(screen);
 
 	return nbins;
 }

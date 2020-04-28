@@ -638,12 +638,12 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	fd6_emit_restore(batch, batch->draw);
 	fd6_emit_lrz_flush(batch->draw);
 
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 
 	fd_batch_resource_used(batch, fd_resource(info->src.resource), false);
 	fd_batch_resource_used(batch, fd_resource(info->dst.resource), true);
 
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 
 	fd_batch_set_stage(batch, FD_STAGE_BLIT);
 

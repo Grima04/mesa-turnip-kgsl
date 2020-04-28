@@ -415,19 +415,19 @@ fd_context(struct pipe_context *pctx)
 static inline void
 fd_context_assert_locked(struct fd_context *ctx)
 {
-	pipe_mutex_assert_locked(ctx->screen->lock);
+	fd_screen_assert_locked(ctx->screen);
 }
 
 static inline void
 fd_context_lock(struct fd_context *ctx)
 {
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 }
 
 static inline void
 fd_context_unlock(struct fd_context *ctx)
 {
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 }
 
 /* mark all state dirty: */

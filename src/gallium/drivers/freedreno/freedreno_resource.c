@@ -153,7 +153,7 @@ rebind_resource(struct fd_resource *rsc)
 {
 	struct fd_screen *screen = fd_screen(rsc->base.screen);
 
-	mtx_lock(&screen->lock);
+	fd_screen_lock(screen);
 	fd_resource_lock(rsc);
 
 	if (rsc->dirty)
@@ -161,7 +161,7 @@ rebind_resource(struct fd_resource *rsc)
 			rebind_resource_in_ctx(ctx, rsc);
 
 	fd_resource_unlock(rsc);
-	mtx_unlock(&screen->lock);
+	fd_screen_unlock(screen);
 }
 
 static void
@@ -269,7 +269,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	fd_bc_invalidate_resource(rsc, false);
 	rebind_resource(rsc);
 
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 
 	/* Swap the backing bo's, so shadow becomes the old buffer,
 	 * blit from shadow to new buffer.  From here on out, we
@@ -303,7 +303,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	}
 	swap(rsc->batch_mask, shadow->batch_mask);
 
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 
 	struct pipe_blit_info blit = {};
 	blit.dst.resource = prsc;
@@ -481,9 +481,9 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 {
 	struct fd_batch *write_batch = NULL;
 
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 	fd_batch_reference_locked(&write_batch, rsc->write_batch);
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 
 	if (usage & PIPE_TRANSFER_WRITE) {
 		struct fd_batch *batch, *batches[32] = {};
@@ -494,11 +494,11 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 		 * to iterate the batches which reference this resource.  So
 		 * we must first grab references under a lock, then flush.
 		 */
-		mtx_lock(&ctx->screen->lock);
+		fd_screen_lock(ctx->screen);
 		batch_mask = rsc->batch_mask;
 		foreach_batch(batch, &ctx->screen->batch_cache, batch_mask)
 			fd_batch_reference_locked(&batches[batch->idx], batch);
-		mtx_unlock(&ctx->screen->lock);
+		fd_screen_unlock(ctx->screen);
 
 		foreach_batch(batch, &ctx->screen->batch_cache, batch_mask)
 			fd_batch_flush(batch);

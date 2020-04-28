@@ -178,9 +178,9 @@ fd_context_destroy(struct pipe_context *pctx)
 
 	DBG("");
 
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 	list_del(&ctx->node);
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 
 	fd_log_process(ctx, true);
 	assert(list_is_empty(&ctx->log_chunks));
@@ -423,9 +423,9 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	list_inithead(&ctx->acc_active_queries);
 	list_inithead(&ctx->log_chunks);
 
-	mtx_lock(&ctx->screen->lock);
+	fd_screen_lock(ctx->screen);
 	list_add(&ctx->node, &ctx->screen->context_list);
-	mtx_unlock(&ctx->screen->lock);
+	fd_screen_unlock(ctx->screen);
 
 	ctx->log_out = stdout;
 
