@@ -859,6 +859,8 @@ optimizations.extend([
    # D3D Boolean emulation
    (('bcsel', a, -1, 0), ('ineg', ('b2i', 'a@1'))),
    (('bcsel', a, 0, -1), ('ineg', ('b2i', ('inot', a)))),
+   (('bcsel', a, 1, 0), ('b2i', 'a@1')),
+   (('bcsel', a, 0, 1), ('b2i', ('inot', a))),
    (('iand', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))),
     ('ineg', ('b2i', ('iand', a, b)))),
    (('ior', ('ineg', ('b2i','a@1')), ('ineg', ('b2i', 'b@1'))),
