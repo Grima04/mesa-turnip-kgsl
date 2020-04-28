@@ -408,6 +408,17 @@ struct bifrost_fma_fcmp {
         unsigned op   : 7;
 } __attribute__((packed));
 
+struct bifrost_add_fcmp {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        enum bifrost_fcmp_cond cond : 3;
+        unsigned src_expand : 2;
+        unsigned src0_abs : 1;
+        unsigned src1_abs : 1;
+        unsigned src1_neg : 1;
+        unsigned op   : 6;
+} __attribute__((packed));
+
 /* Two sources for vectorization */
 #define BIFROST_FMA_FLOAT32_TO_16 (0xdd000 >> 3)
 #define BIFROST_ADD_FLOAT32_TO_16 (0x0EC00 >> 3)
