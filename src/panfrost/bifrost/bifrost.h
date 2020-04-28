@@ -363,11 +363,23 @@ struct bifrost_csel4 {
         unsigned op   : 8;
 } __attribute__((packed));
 
+#define BIFROST_FMA_OP_RSHIFT_NAND     (0x60000 >> 12)
+#define BIFROST_FMA_OP_RSHIFT_AND      (0x61000 >> 12)
+#define BIFROST_FMA_OP_LSHIFT_NAND     (0x62000 >> 12)
+#define BIFROST_FMA_OP_LSHIFT_AND      (0x63000 >> 12)
+#define BIFROST_FMA_OP_RSHIFT_XOR      (0x64000 >> 12)
+#define BIFROST_FMA_OP_LSHIFT_ADD_32   (0x65200 >> 6)
+#define BIFROST_FMA_OP_LSHIFT_SUB_32   (0x65600 >> 6)
+#define BIFROST_FMA_OP_LSHIFT_RSUB_32  (0x65a00 >> 6)
+#define BIFROST_FMA_OP_RSHIFT_ADD_32   (0x65e00 >> 6)
+#define BIFROST_FMA_OP_RSHIFT_SUB_32   (0x66200 >> 6)
+#define BIFROST_FMA_OP_RSHIFT_RSUB_32  (0x66600 >> 6)
+
 struct bifrost_shift_fma {
         unsigned src0 : 3;
         unsigned src1 : 3;
         unsigned src2 : 3;
-        unsigned half : 3; /* 000 for i32, 100 for i8, 111 for v2i16 */
+        unsigned half : 3;
         unsigned unk  : 1; /* always set? */
         unsigned invert_1 : 1; /* Inverts sources to combining op */
         /* For XOR, switches RSHIFT to LSHIFT since only one invert needed */

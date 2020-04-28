@@ -1063,8 +1063,71 @@ bi_pack_fma_cmp(bi_instruction *ins, struct bi_registers *regs)
                 unreachable("Unknown cmp type");
         }
 }
- 
 
+static unsigned
+bi_fma_bitwise_op(enum bi_bitwise_op op, bool rshift)
+{
+        switch (op) {
+        case BI_BITWISE_OR:
+                /* Via De Morgan's */
+                return rshift ?
+                        BIFROST_FMA_OP_RSHIFT_NAND :
+                        BIFROST_FMA_OP_LSHIFT_NAND;
+        case BI_BITWISE_AND:
+                return rshift ?
+                        BIFROST_FMA_OP_RSHIFT_AND :
+                        BIFROST_FMA_OP_LSHIFT_AND;
+        case BI_BITWISE_XOR:
+                /* Shift direction handled out of band */
+                return BIFROST_FMA_OP_RSHIFT_XOR;
+        default:
+                unreachable("Unknown op");
+        }
+}
+ 
+static unsigned
+bi_pack_fma_bitwise(bi_instruction *ins, struct bi_registers *regs)
+{
+        unsigned size = nir_alu_type_get_type_size(ins->dest_type);
+        assert(size <= 32);
+
+        bool invert_0 = ins->bitwise.src_invert[0];
+        bool invert_1 = ins->bitwise.src_invert[1];
+
+        if (ins->op.bitwise == BI_BITWISE_OR) {
+                /* Becomes NAND, so via De Morgan's:
+                 *      f(A) | f(B) = ~(~f(A) & ~f(B))
+                 *                  = NAND(~f(A), ~f(B))
+                 */
+
+                invert_0 = !invert_0;
+                invert_1 = !invert_1;
+        } else if (ins->op.bitwise == BI_BITWISE_XOR) {
+                /* ~A ^ ~B = ~(A ^ ~B) = ~(~(A ^ B)) = A ^ B
+                 * ~A ^  B = ~(A ^ B) = A ^ ~B
+                 */
+
+                invert_0 ^= invert_1;
+                invert_1 = false;
+
+                /* invert_1 ends up specifying shift direction */
+                invert_1 = !ins->bitwise.rshift;
+        }
+
+        struct bifrost_shift_fma pack = {
+                .src0 = bi_get_src(ins, regs, 0, true),
+                .src1 = bi_get_src(ins, regs, 1, true),
+                .src2 = bi_get_src(ins, regs, 2, true),
+                .half = (size == 32) ? 0 : (size == 16) ? 0x7 : (size == 8) ? 0x4 : 0,
+                .unk = 1, /* XXX */
+                .invert_1 = invert_0,
+                .invert_2 = invert_1,
+                .op = bi_fma_bitwise_op(ins->op.bitwise, ins->bitwise.rshift)
+        };
+
+        RETURN_PACKED(pack);
+}
+ 
 static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
@@ -1077,7 +1140,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_CMP:
                 return bi_pack_fma_cmp(bundle.fma, regs);
         case BI_BITWISE:
-		return BIFROST_FMA_NOP;
+                return bi_pack_fma_bitwise(bundle.fma, regs);
         case BI_CONVERT:
 		return bi_pack_convert(bundle.fma, regs, true);
         case BI_CSEL:
