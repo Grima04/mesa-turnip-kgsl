@@ -71,12 +71,18 @@ mir_print_mask(unsigned mask)
 }
 
 static void
-mir_print_swizzle(unsigned *swizzle)
+mir_print_swizzle(unsigned *swizzle, nir_alu_type T)
 {
+        unsigned sz = nir_alu_type_get_type_size(T);
+        unsigned comps = 128 / sz;
+
         printf(".");
 
-        for (unsigned i = 0; i < 16; ++i)
-                putchar(components[swizzle[i]]);
+        for (unsigned i = 0; i < comps; ++i) {
+                unsigned C = swizzle[i];
+                assert(C < comps);
+                putchar(components[C]);
+        }
 }
 
 static const char *
@@ -352,7 +358,7 @@ mir_print_instruction(midgard_instruction *ins)
 
                 if (ins->src[0] != ~0) {
                         pan_print_alu_type(ins->src_types[0], stdout);
-                        mir_print_swizzle(ins->swizzle[0]);
+                        mir_print_swizzle(ins->swizzle[0], ins->src_types[0]);
                 }
         }
         printf(", ");
@@ -366,7 +372,7 @@ mir_print_instruction(midgard_instruction *ins)
 
                 if (ins->src[1] != ~0) {
                         pan_print_alu_type(ins->src_types[1], stdout);
-                        mir_print_swizzle(ins->swizzle[1]);
+                        mir_print_swizzle(ins->swizzle[1], ins->src_types[1]);
                 }
         }
 
@@ -376,7 +382,7 @@ mir_print_instruction(midgard_instruction *ins)
 
                 if (ins->src[c] != ~0) {
                         pan_print_alu_type(ins->src_types[c], stdout);
-                        mir_print_swizzle(ins->swizzle[c]);
+                        mir_print_swizzle(ins->swizzle[c], ins->src_types[c]);
                 }
         }
 
