@@ -189,6 +189,9 @@ struct ac_shader_abi {
 
 	/* Check for Inf interpolation coeff */
 	bool kill_ps_if_inf_interp;
+
+	/* Whether undef values must be converted to zero */
+	bool convert_undef_to_zero;
 };
 
 #endif /* AC_SHADER_ABI_H */

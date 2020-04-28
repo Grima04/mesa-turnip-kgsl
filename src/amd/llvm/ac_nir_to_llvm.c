@@ -4799,19 +4799,46 @@ static void phi_post_pass(struct ac_nir_context *ctx)
 }
 
 
+static bool is_def_used_in_an_export(const nir_ssa_def* def) {
+	nir_foreach_use(use_src, def) {
+		if (use_src->parent_instr->type == nir_instr_type_intrinsic) {
+			nir_intrinsic_instr *instr = nir_instr_as_intrinsic(use_src->parent_instr);
+			if (instr->intrinsic == nir_intrinsic_store_deref)
+				return true;
+		} else if (use_src->parent_instr->type == nir_instr_type_alu) {
+			nir_alu_instr *instr = nir_instr_as_alu(use_src->parent_instr);
+			if (instr->op == nir_op_vec4 &&
+			    is_def_used_in_an_export(&instr->dest.dest.ssa)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 static void visit_ssa_undef(struct ac_nir_context *ctx,
 			    const nir_ssa_undef_instr *instr)
 {
 	unsigned num_components = instr->def.num_components;
 	LLVMTypeRef type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
-	LLVMValueRef undef;
 
-	if (num_components == 1)
-		undef = LLVMGetUndef(type);
-	else {
-		undef = LLVMGetUndef(LLVMVectorType(type, num_components));
+	if (!ctx->abi->convert_undef_to_zero || is_def_used_in_an_export(&instr->def)) {
+		LLVMValueRef undef;
+
+		if (num_components == 1)
+			undef = LLVMGetUndef(type);
+		else {
+			undef = LLVMGetUndef(LLVMVectorType(type, num_components));
+		}
+		ctx->ssa_defs[instr->def.index] = undef;
+	} else {
+		LLVMValueRef zero = LLVMConstInt(type, 0, false);
+		if (num_components > 1) {
+			zero = ac_build_gather_values_extended(
+				&ctx->ac, &zero, 4, 0, false, false);
+		}
+		ctx->ssa_defs[instr->def.index] = zero;
 	}
-	ctx->ssa_defs[instr->def.index] = undef;
 }
 
 static void visit_jump(struct ac_llvm_context *ctx,
