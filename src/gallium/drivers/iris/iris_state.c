@@ -3214,6 +3214,10 @@ upload_sysvals(struct iris_context *ice,
          value = fui(ice->state.default_inner_level[0]);
       } else if (sysval == BRW_PARAM_BUILTIN_TESS_LEVEL_INNER_Y) {
          value = fui(ice->state.default_inner_level[1]);
+      } else if (sysval >= BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_X &&
+                 sysval <= BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_Z) {
+         unsigned i = sysval - BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_X;
+         value = ice->state.last_block[i];
       } else {
          assert(!"unhandled system value");
       }

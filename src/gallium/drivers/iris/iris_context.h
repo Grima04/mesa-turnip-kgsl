@@ -639,6 +639,9 @@ struct iris_context {
 
       bool window_space_position;
 
+      /** The last compute group size */
+      uint32_t last_block[3];
+
       /** The last compute grid size */
       uint32_t last_grid[3];
       /** Reference to the BO containing the compute grid size */

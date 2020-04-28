@@ -227,4 +227,6 @@ iris_is_format_supported(struct pipe_screen *pscreen,
 
 void iris_disk_cache_init(struct iris_screen *screen);
 
+uint32_t iris_get_max_var_invocations(const struct iris_screen *screen);
+
 #endif

@@ -96,6 +96,7 @@ iris_lost_context_state(struct iris_batch *batch)
 
    ice->state.dirty = ~0ull;
    ice->state.current_hash_scale = 0;
+   memset(ice->state.last_block, 0, sizeof(ice->state.last_block));
    memset(ice->state.last_grid, 0, sizeof(ice->state.last_grid));
    batch->last_surface_base_address = ~0ull;
    batch->last_aux_map_state = 0;

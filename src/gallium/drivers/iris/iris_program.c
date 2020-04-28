@@ -393,6 +393,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    unsigned patch_vert_idx = -1;
    unsigned ucp_idx[IRIS_MAX_CLIP_PLANES];
    unsigned img_idx[PIPE_MAX_SHADER_IMAGES];
+   unsigned variable_group_size_idx = -1;
    memset(ucp_idx, -1, sizeof(ucp_idx));
    memset(img_idx, -1, sizeof(img_idx));
 
@@ -514,6 +515,21 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                get_aoa_deref_offset(&b, deref, BRW_IMAGE_PARAM_SIZE * 4),
                nir_imm_int(&b, img_idx[var->data.binding] * 4 +
                                nir_intrinsic_base(intrin) * 16));
+            break;
+         }
+         case nir_intrinsic_load_local_group_size: {
+            assert(nir->info.cs.local_size_variable);
+            if (variable_group_size_idx == -1) {
+               variable_group_size_idx = num_system_values;
+               num_system_values += 3;
+               for (int i = 0; i < 3; i++) {
+                  system_values[variable_group_size_idx + i] =
+                     BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_X + i;
+               }
+            }
+
+            b.cursor = nir_before_instr(instr);
+            offset = nir_imm_int(&b, variable_group_size_idx * sizeof(uint32_t));
             break;
          }
          default:
@@ -1946,6 +1962,11 @@ iris_compile_cs(struct iris_context *ice,
    unsigned num_cbufs;
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
+
+   if (nir->info.cs.local_size_variable) {
+      nir->info.cs.max_variable_local_size =
+         iris_get_max_var_invocations(screen);
+   }
 
    NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
 

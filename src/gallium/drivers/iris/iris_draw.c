@@ -355,6 +355,12 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
 
    iris_update_compiled_compute_shader(ice);
 
+   if (memcmp(ice->state.last_block, grid->block, sizeof(grid->block)) != 0) {
+      memcpy(ice->state.last_block, grid->block, sizeof(grid->block));
+      ice->state.dirty |= IRIS_DIRTY_CONSTANTS_CS;
+      ice->state.shaders[MESA_SHADER_COMPUTE].sysvals_need_upload = true;
+   }
+
    iris_update_grid_size_resource(ice, grid);
 
    iris_binder_reserve_compute(ice);
