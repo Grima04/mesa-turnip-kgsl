@@ -775,7 +775,7 @@ static int virgl_drm_get_caps(struct virgl_winsys *vws,
    virgl_ws_fill_new_caps_defaults(caps);
 
    memset(&args, 0, sizeof(args));
-   if (vdws->has_capset_query_fix) {
+   if (params[param_capset_fix].value) {
       /* if we have the query fix - try and get cap set id 2 first */
       args.cap_set_id = 2;
       args.size = sizeof(union virgl_caps);
@@ -941,13 +941,17 @@ virgl_drm_winsys_create(int drmFD)
    struct virgl_drm_winsys *qdws;
    int drm_version;
    int ret;
-   int gl = 0;
-   struct drm_virtgpu_getparam getparam = {0};
 
-   getparam.param = VIRTGPU_PARAM_3D_FEATURES;
-   getparam.value = (uint64_t)(uintptr_t)&gl;
-   ret = drmIoctl(drmFD, DRM_IOCTL_VIRTGPU_GETPARAM, &getparam);
-   if (ret < 0 || !gl)
+   for (uint32_t i = 0; i < ARRAY_SIZE(params); i++) {
+      struct drm_virtgpu_getparam getparam = { 0 };
+      uint64_t value = 0;
+      getparam.param = params[i].param;
+      getparam.value = (uint64_t)(uintptr_t)&value;
+      ret = drmIoctl(drmFD, DRM_IOCTL_VIRTGPU_GETPARAM, &getparam);
+      params[i].value = (ret == 0) ? value : 0;
+   }
+
+   if (!params[param_3d_features].value)
       return NULL;
 
    drm_version = virgl_drm_get_version(drmFD);
@@ -989,20 +993,12 @@ virgl_drm_winsys_create(int drmFD)
    qdws->base.fence_reference = virgl_fence_reference;
    qdws->base.fence_server_sync = virgl_fence_server_sync;
    qdws->base.fence_get_fd = virgl_fence_get_fd;
+   qdws->base.get_caps = virgl_drm_get_caps;
    qdws->base.supports_fences =  drm_version >= VIRGL_DRM_VERSION_FENCE_FD;
    qdws->base.supports_encoded_transfers = 1;
 
-   qdws->base.get_caps = virgl_drm_get_caps;
-
-   uint32_t value = 0;
-   getparam.param = VIRTGPU_PARAM_CAPSET_QUERY_FIX;
-   getparam.value = (uint64_t)(uintptr_t)&value;
-   ret = drmIoctl(qdws->fd, DRM_IOCTL_VIRTGPU_GETPARAM, &getparam);
-   if (ret == 0) {
-      if (value == 1)
-         qdws->has_capset_query_fix = true;
-   }
-
+   qdws->base.supports_coherent = params[param_resource_blob].value &&
+                                  params[param_host_visible].value;
    return &qdws->base;
 
 }

@@ -47,6 +47,7 @@ struct virgl_winsys {
    unsigned pci_id;
    int supports_fences; /* In/Out fences are supported */
    int supports_encoded_transfers; /* Encoded transfers are supported */
+   int supports_coherent;          /* Coherent memory is supported */
 
    void (*destroy)(struct virgl_winsys *vws);
 

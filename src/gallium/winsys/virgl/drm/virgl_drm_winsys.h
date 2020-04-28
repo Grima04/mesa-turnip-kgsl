@@ -54,6 +54,30 @@ struct virgl_hw_res {
    int maybe_busy;
 };
 
+
+struct param {
+   uint64_t param;
+   const char *name;
+   uint64_t value;
+};
+
+enum param_id {
+   param_3d_features,
+   param_capset_fix,
+   param_resource_blob,
+   param_host_visible,
+   param_max,
+};
+
+#define PARAM(x) (struct param) { x, #x, 0 }
+
+struct param params[] = { PARAM(VIRTGPU_PARAM_3D_FEATURES),
+                          PARAM(VIRTGPU_PARAM_CAPSET_QUERY_FIX),
+                          PARAM(VIRTGPU_PARAM_RESOURCE_BLOB),
+                          PARAM(VIRTGPU_PARAM_HOST_VISIBLE),
+                          PARAM(VIRTGPU_PARAM_CROSS_DEVICE)
+};
+
 struct virgl_drm_winsys
 {
    struct virgl_winsys base;
@@ -64,7 +88,6 @@ struct virgl_drm_winsys
    struct hash_table *bo_handles;
    struct hash_table *bo_names;
    mtx_t bo_handles_mutex;
-   bool has_capset_query_fix;
 };
 
 struct virgl_drm_fence {
