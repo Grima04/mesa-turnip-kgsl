@@ -5988,7 +5988,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_VERTEX_BUFFERS) {
       int count = util_bitcount64(ice->state.bound_vertex_buffers);
-      int dynamic_bound = ice->state.bound_vertex_buffers;
+      uint64_t dynamic_bound = ice->state.bound_vertex_buffers;
 
       if (ice->state.vs_uses_draw_params) {
          assert(ice->draw.draw_params.res);
