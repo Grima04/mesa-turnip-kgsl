@@ -830,27 +830,6 @@ lower_gs_block(nir_block *block, nir_builder *b, struct state *state)
 	}
 }
 
-static void
-clean_up_split_vars(nir_shader *shader, struct exec_list *list)
-{
-	uint32_t components[32] = {};
-
-	nir_foreach_variable (var, list) {
-		uint32_t mask =
-			((1 << glsl_get_components(glsl_without_array(var->type))) - 1) << var->data.location_frac;
-		components[var->data.driver_location] |= mask;
-	}
-
-	nir_foreach_variable_safe (var, list) {
-		uint32_t mask =
-			((1 << glsl_get_components(glsl_without_array(var->type))) - 1) << var->data.location_frac;
-		bool subset =
-			(components[var->data.driver_location] | mask) != mask;
-		if (subset)
-			exec_node_remove(&var->node);
-	}
-}
-
 void
 ir3_nir_lower_gs(nir_shader *shader)
 {
@@ -860,9 +839,6 @@ ir3_nir_lower_gs(nir_shader *shader)
 		fprintf(stderr, "NIR (before gs lowering):\n");
 		nir_print_shader(shader, stderr);
 	}
-
-	clean_up_split_vars(shader, &shader->inputs);
-	clean_up_split_vars(shader, &shader->outputs);
 
 	build_primitive_map(shader, &state.map, &shader->inputs);
 
