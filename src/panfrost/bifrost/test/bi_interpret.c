@@ -437,8 +437,28 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
                 break;
         }
 
-        case BI_BITWISE:
-                unreachable("Unsupported op");
+        case BI_BITWISE: {
+                /* Apply inverts first */
+                if (ins->bitwise.src_invert[0])
+                        srcs[0].u64 = ~srcs[0].u64;
+
+                if (ins->bitwise.src_invert[1])
+                        srcs[1].u64 = ~srcs[1].u64;
+
+                /* TODO: Shifting */
+                assert(srcs[2].u32 == 0);
+
+                if (ins->op.bitwise == BI_BITWISE_AND)
+                        dest.u64 = srcs[0].u64 & srcs[1].u64;
+                else if (ins->op.bitwise == BI_BITWISE_OR)
+                        dest.u64 = srcs[0].u64 | srcs[1].u64;
+                else if (ins->op.bitwise == BI_BITWISE_XOR)
+                        dest.u64 = srcs[0].u64 ^ srcs[1].u64;
+                else
+                        unreachable("Unsupported op");
+
+                break;
+         }
 
         case BI_CONVERT: {
                 /* If it exists */
