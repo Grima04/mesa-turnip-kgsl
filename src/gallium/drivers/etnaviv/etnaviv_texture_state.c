@@ -232,8 +232,7 @@ etna_create_sampler_view_state(struct pipe_context *pctx, struct pipe_resource *
       VIVS_TE_SAMPLER_LOG_SIZE_WIDTH(etna_log2_fixp55(res->base.width0)) |
       VIVS_TE_SAMPLER_LOG_SIZE_HEIGHT(etna_log2_fixp55(base_height)) |
       COND(util_format_is_srgb(so->format) && !astc, VIVS_TE_SAMPLER_LOG_SIZE_SRGB) |
-      COND(astc, VIVS_TE_SAMPLER_LOG_SIZE_ASTC) |
-      COND(texture_use_int_filter(so, false), VIVS_TE_SAMPLER_LOG_SIZE_INT_FILTER);
+      COND(astc, VIVS_TE_SAMPLER_LOG_SIZE_ASTC);
    sv->TE_SAMPLER_3D_CONFIG =
       VIVS_TE_SAMPLER_3D_CONFIG_DEPTH(base_depth) |
       VIVS_TE_SAMPLER_3D_CONFIG_LOG_DEPTH(etna_log2_fixp55(base_depth));
@@ -335,6 +334,7 @@ etna_emit_texture_state(struct etna_context *ctx)
       }
    }
    if (unlikely(dirty & (ETNA_DIRTY_SAMPLER_VIEWS))) {
+      struct etna_sampler_state *ss;
       struct etna_sampler_view *sv;
 
       for (int x = 0; x < VIVS_TE_SAMPLER__LEN; ++x) {
@@ -345,7 +345,12 @@ etna_emit_texture_state(struct etna_context *ctx)
       }
       for (int x = 0; x < VIVS_TE_SAMPLER__LEN; ++x) {
          if ((1 << x) & active_samplers) {
+            ss = etna_sampler_state(ctx->sampler[x]);
             sv = etna_sampler_view(ctx->sampler_view[x]);
+
+            if (texture_use_int_filter(&sv->base, &ss->base, false))
+               sv->TE_SAMPLER_LOG_SIZE |= VIVS_TE_SAMPLER_LOG_SIZE_INT_FILTER;
+
             /*02080*/ EMIT_STATE(TE_SAMPLER_LOG_SIZE(x), sv->TE_SAMPLER_LOG_SIZE);
          }
       }

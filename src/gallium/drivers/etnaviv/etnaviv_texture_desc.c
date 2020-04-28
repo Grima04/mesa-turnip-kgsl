@@ -161,9 +161,6 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
    if (util_format_is_srgb(so->format))
       sv->SAMP_CTRL1 |= VIVS_NTE_DESCRIPTOR_SAMP_CTRL1_SRGB;
 
-   if (texture_use_int_filter(so, true))
-      sv->SAMP_CTRL0 |= VIVS_NTE_DESCRIPTOR_SAMP_CTRL0_INT_FILTER;
-
    /* Create texture descriptor */
    sv->bo = etna_bo_new(ctx->screen->dev, 0x100, DRM_ETNA_GEM_CACHE_WC);
    if (!sv->bo)
@@ -293,6 +290,10 @@ etna_emit_texture_desc(struct etna_context *ctx)
          if ((1 << x) & active_samplers) {
             struct etna_sampler_state_desc *ss = etna_sampler_state_desc(ctx->sampler[x]);
             struct etna_sampler_view_desc *sv = etna_sampler_view_desc(ctx->sampler_view[x]);
+
+            if (texture_use_int_filter(&sv->base, &ss->base, true))
+               sv->SAMP_CTRL0 |= VIVS_NTE_DESCRIPTOR_SAMP_CTRL0_INT_FILTER;
+
             etna_set_state(stream, VIVS_NTE_DESCRIPTOR_TX_CTRL(x),
                COND(sv->ts.enable, VIVS_NTE_DESCRIPTOR_TX_CTRL_TS_ENABLE) |
                VIVS_NTE_DESCRIPTOR_TX_CTRL_TS_MODE(sv->ts.mode) |
