@@ -1295,7 +1295,7 @@ void radv_GetPhysicalDeviceProperties(
 		.maxImageDimension3D                      = (1 << 11),
 		.maxImageDimensionCube                    = (1 << 14),
 		.maxImageArrayLayers                      = (1 << 11),
-		.maxTexelBufferElements                   = 128 * 1024 * 1024,
+		.maxTexelBufferElements                   = UINT32_MAX,
 		.maxUniformBufferRange                    = UINT32_MAX,
 		.maxStorageBufferRange                    = UINT32_MAX,
 		.maxPushConstantsSize                     = MAX_PUSH_CONSTANTS_SIZE,
