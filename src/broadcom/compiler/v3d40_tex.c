@@ -136,7 +136,7 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 case nir_tex_src_offset: {
                         if (nir_src_is_const(instr->src[i].src)) {
                                 p2_unpacked.offset_s = nir_src_comp_as_int(instr->src[i].src, 0);
-                                if (instr->coord_components >= 2)
+                                if (non_array_components >= 2)
                                         p2_unpacked.offset_t =
                                                 nir_src_comp_as_int(instr->src[i].src, 1);
                                 if (non_array_components >= 3)
