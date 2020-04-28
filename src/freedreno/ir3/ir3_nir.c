@@ -226,6 +226,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 			break;
 		case MESA_SHADER_TESS_CTRL:
 			NIR_PASS_V(s, ir3_nir_lower_tess_ctrl, shader, key->tessellation);
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input);
 			break;
 		case MESA_SHADER_TESS_EVAL:
 			NIR_PASS_V(s, ir3_nir_lower_tess_eval, key->tessellation);
@@ -234,6 +235,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 			break;
 		case MESA_SHADER_GEOMETRY:
 			NIR_PASS_V(s, ir3_nir_lower_gs, shader);
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input);
 			break;
 		default:
 			break;

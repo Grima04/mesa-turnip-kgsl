@@ -250,6 +250,68 @@ ir3_nir_lower_to_explicit_output(nir_shader *shader, struct ir3_shader *s, unsig
 	s->output_size = state.map.stride;
 }
 
+
+static void
+lower_block_to_explicit_input(nir_block *block, nir_builder *b, struct state *state)
+{
+	nir_foreach_instr_safe (instr, block) {
+		if (instr->type != nir_instr_type_intrinsic)
+			continue;
+
+		nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+		switch (intr->intrinsic) {
+		case nir_intrinsic_load_per_vertex_input: {
+			// src[] = { vertex, offset }.
+
+			b->cursor = nir_before_instr(&intr->instr);
+
+			nir_ssa_def *offset = build_local_offset(b, state,
+					intr->src[0].ssa, // this is typically gl_InvocationID
+					nir_intrinsic_base(intr),
+					intr->src[1].ssa);
+
+			replace_intrinsic(b, intr, nir_intrinsic_load_shared_ir3, offset, NULL, NULL);
+			break;
+		}
+
+		case nir_intrinsic_load_invocation_id: {
+			b->cursor = nir_before_instr(&intr->instr);
+
+			nir_ssa_def *iid = build_invocation_id(b, state);
+			nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(iid));
+			nir_instr_remove(&intr->instr);
+			break;
+		}
+
+		default:
+			break;
+		}
+	}
+}
+
+void
+ir3_nir_lower_to_explicit_input(nir_shader *shader)
+{
+ 	struct state state = { };
+
+	nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+	assert(impl);
+
+	nir_builder b;
+	nir_builder_init(&b, impl);
+	b.cursor = nir_before_cf_list(&impl->body);
+
+	if (shader->info.stage == MESA_SHADER_GEOMETRY)
+		state.header = nir_load_gs_header_ir3(&b);
+	else
+		state.header = nir_load_tcs_header_ir3(&b);
+
+	nir_foreach_block_safe (block, impl)
+		lower_block_to_explicit_input(block, &b, &state);
+}
+
+
 static nir_ssa_def *
 build_per_vertex_offset(nir_builder *b, struct state *state,
 		nir_ssa_def *vertex, nir_ssa_def *offset, nir_variable *var)
@@ -339,15 +401,6 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 		nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
 		switch (intr->intrinsic) {
-		case nir_intrinsic_load_invocation_id:
-			b->cursor = nir_before_instr(&intr->instr);
-
-			nir_ssa_def *invocation_id = build_invocation_id(b, state);
-			nir_ssa_def_rewrite_uses(&intr->dest.ssa,
-									 nir_src_for_ssa(invocation_id));
-			nir_instr_remove(&intr->instr);
-			break;
-
 		case nir_intrinsic_control_barrier:
 		case nir_intrinsic_memory_barrier_tcs_patch:
 			/* Hull shaders dispatch 32 wide so an entire patch will always
@@ -390,20 +443,6 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
 			nir_intrinsic_set_write_mask(store, nir_intrinsic_write_mask(intr));
 
-			break;
-		}
-
-		case nir_intrinsic_load_per_vertex_input: {
-			// src[] = { vertex, offset }.
-
-			b->cursor = nir_before_instr(&intr->instr);
-
-			nir_ssa_def *offset = build_local_offset(b, state,
-					intr->src[0].ssa, // this is typically gl_InvocationID
-					nir_intrinsic_base(intr),
-					intr->src[1].ssa);
-
-			replace_intrinsic(b, intr, nir_intrinsic_load_shared_ir3, offset, NULL, NULL);
 			break;
 		}
 
@@ -801,29 +840,6 @@ lower_gs_block(nir_block *block, nir_builder *b, struct state *state)
 					nir_iadd(b, count, nir_imm_int(b, 1)), 0x1); /* .x */
 			nir_store_var(b, state->vertex_flags_var, nir_imm_int(b, 0), 0x1);
 
-			break;
-		}
-
-		case nir_intrinsic_load_per_vertex_input: {
-			// src[] = { vertex, offset }.
-
-			b->cursor = nir_before_instr(&intr->instr);
-
-			nir_ssa_def *offset = build_local_offset(b, state,
-					intr->src[0].ssa, // this is typically gl_InvocationID
-					nir_intrinsic_base(intr),
-					intr->src[1].ssa);
-
-			replace_intrinsic(b, intr, nir_intrinsic_load_shared_ir3, offset, NULL, NULL);
-			break;
-		}
-
-		case nir_intrinsic_load_invocation_id: {
-			b->cursor = nir_before_instr(&intr->instr);
-
-			nir_ssa_def *iid = build_invocation_id(b, state);
-			nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(iid));
-			nir_instr_remove(&intr->instr);
 			break;
 		}
 
