@@ -980,6 +980,10 @@ iris_bo_map_cpu(struct pipe_debug_callback *dbg,
    if (!bo->map_cpu) {
       DBG("iris_bo_map_cpu: %d (%s)\n", bo->gem_handle, bo->name);
       void *map = iris_bo_gem_mmap(dbg, bo, false);
+      if (!map) {
+         return NULL;
+      }
+
       VG_DEFINED(map, bo->size);
 
       if (p_atomic_cmpxchg(&bo->map_cpu, NULL, map)) {
@@ -1027,6 +1031,10 @@ iris_bo_map_wc(struct pipe_debug_callback *dbg,
    if (!bo->map_wc) {
       DBG("iris_bo_map_wc: %d (%s)\n", bo->gem_handle, bo->name);
       void *map = iris_bo_gem_mmap(dbg, bo, true);
+      if (!map) {
+         return NULL;
+      }
+
       VG_DEFINED(map, bo->size);
 
       if (p_atomic_cmpxchg(&bo->map_wc, NULL, map)) {
