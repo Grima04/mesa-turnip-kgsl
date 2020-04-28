@@ -582,16 +582,9 @@ bi_pack_fma_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
         RETURN_PACKED(pack);
 }
 
-static unsigned
-bi_pack_fmadd_min_f16(bi_instruction *ins, struct bi_registers *regs, bool FMA)
+static bool
+bi_pack_fp16_abs(bi_instruction *ins, struct bi_registers *regs, bool *flip)
 {
-        unsigned op =
-                (!FMA) ? ((ins->op.minmax == BI_MINMAX_MIN) ?
-                        BIFROST_ADD_OP_FMIN16 : BIFROST_ADD_OP_FMAX16) :
-                (ins->type == BI_ADD) ? BIFROST_FMA_OP_FADD16 :
-                (ins->op.minmax == BI_MINMAX_MIN) ? BIFROST_FMA_OP_FMIN16 :
-                BIFROST_FMA_OP_FMAX16;
-
         /* Absolute values are packed in a quirky way. Let k = src1 < src0. Let
          * l be an auxiliary bit we encode. Then the hardware determines:
          *
@@ -623,23 +616,38 @@ bi_pack_fmadd_min_f16(bi_instruction *ins, struct bi_registers *regs, bool FMA)
         unsigned abs_0 = ins->src_abs[0], abs_1 = ins->src_abs[1];
         unsigned src_0 = bi_get_src(ins, regs, 0, true);
         unsigned src_1 = bi_get_src(ins, regs, 1, true);
-        bool l = false;
-        bool flip = false;
 
         assert(!(abs_0 && abs_1));
 
         if (!abs_0 && !abs_1) {
                 /* Force k = 0 <===> NOT(src1 < src0) */
-                flip = (src_1 < src_0);
+                *flip = (src_1 < src_0);
+                return false;
         } else if (abs_0 && !abs_1) {
-                l = src_1 >= src_0;
+                return src_1 >= src_0;
         } else if (abs_1 && !abs_0) {
-                flip = true;
-                l = src_0 >= src_1;
+                *flip = true;
+                return src_0 >= src_1;
         } else {
-                flip = (src_0 >= src_1);
-                l = true;
+                *flip = (src_0 >= src_1);
+                return true;
         }
+}
+
+static unsigned
+bi_pack_fmadd_min_f16(bi_instruction *ins, struct bi_registers *regs, bool FMA)
+{
+        unsigned op =
+                (!FMA) ? ((ins->op.minmax == BI_MINMAX_MIN) ?
+                        BIFROST_ADD_OP_FMIN16 : BIFROST_ADD_OP_FMAX16) :
+                (ins->type == BI_ADD) ? BIFROST_FMA_OP_FADD16 :
+                (ins->op.minmax == BI_MINMAX_MIN) ? BIFROST_FMA_OP_FMIN16 :
+                BIFROST_FMA_OP_FMAX16;
+
+        bool flip = false;
+        bool l = bi_pack_fp16_abs(ins, regs, &flip);
+        unsigned src_0 = bi_get_src(ins, regs, 0, true);
+        unsigned src_1 = bi_get_src(ins, regs, 1, true);
 
         if (FMA) {
                 struct bifrost_fma_add_minmax16 pack = {
