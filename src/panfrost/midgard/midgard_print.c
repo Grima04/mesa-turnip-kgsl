@@ -298,7 +298,8 @@ mir_print_instruction(midgard_instruction *ins)
 
                 if (ins->branch.target_type != TARGET_DISCARD)
                         printf(" %s -> block(%d)\n",
-                               branch_target_names[ins->branch.target_type],
+                               ins->branch.target_type < 4 ?
+                                       branch_target_names[ins->branch.target_type] : "??",
                                ins->branch.target_block);
 
                 return;
