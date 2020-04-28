@@ -485,7 +485,6 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_get_display_properties2                        DONE (anv, radv)
   VK_KHR_get_surface_capabilities2                      DONE (anv, radv)
   VK_KHR_incremental_present                            DONE (anv, radv)
-  VK_KHR_mir_surface                                    not started
   VK_KHR_performance_query                              DONE (anv/gen8+)
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv)
   VK_KHR_push_descriptor                                DONE (anv, radv)
