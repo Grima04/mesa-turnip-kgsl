@@ -308,6 +308,7 @@ midgard_opt_csel_invert(compiler_context *ctx, midgard_block *block)
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
                 if (!OP_IS_CSEL(ins->alu.op)) continue;
+                if (!is_ssa_or_constant(ins->src[2])) continue;
                 if (!mir_single_use(ctx, ins->src[2])) continue;
                 if (!mir_strip_inverted(ctx, ins->src[2])) continue;
 
