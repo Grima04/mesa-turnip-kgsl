@@ -1003,6 +1003,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 ins.has_inline_constant = false;
                 ins.src[1] = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
+                ins.src_types[1] = nir_type_float32;
                 ins.has_constants = true;
 
                 if (instr->op == nir_op_b2f32)
@@ -1016,6 +1017,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 /* Lots of instructions need a 0 plonked in */
                 ins.has_inline_constant = false;
                 ins.src[1] = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
+                ins.src_types[1] = nir_type_uint32;
                 ins.has_constants = true;
                 ins.constants.u32[0] = 0;
 
@@ -1100,6 +1102,7 @@ emit_ubo_read(
 
         if (indirect_offset) {
                 ins.src[2] = nir_src_index(ctx, indirect_offset);
+                ins.src_types[2] = nir_type_uint32;
                 ins.load_store.arg_2 = (indirect_shift << 5);
         } else {
                 ins.load_store.arg_2 = 0x1E;
@@ -1163,9 +1166,10 @@ emit_varying_read(
         memcpy(&u, &p, sizeof(p));
         ins.load_store.varying_parameters = u;
 
-        if (indirect_offset)
+        if (indirect_offset) {
                 ins.src[2] = nir_src_index(ctx, indirect_offset);
-        else
+                ins.src_types[2] = nir_type_uint32;
+        } else
                 ins.load_store.arg_2 = 0x1E;
 
         ins.load_store.arg_1 = 0x9E;
@@ -1274,6 +1278,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, enum midgard_rt_id rt)
 
         /* Add dependencies */
         ins.src[0] = src;
+        ins.src_types[0] = nir_type_uint32;
         ins.constants.u32[0] = rt == MIDGARD_ZS_RT ?
                                0xFF : (rt - MIDGARD_COLOR_RT0) * 0x100;
 
@@ -1360,8 +1365,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 struct midgard_instruction discard = v_branch(conditional, false);
                 discard.branch.target_type = TARGET_DISCARD;
 
-                if (conditional)
+                if (conditional) {
                         discard.src[0] = nir_src_index(ctx, &instr->src[0]);
+                        discard.src_types[0] = nir_type_uint32;
+                }
 
                 emit_mir_instruction(ctx, discard);
                 schedule_barrier(ctx);
@@ -2344,6 +2351,7 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
         EMIT(branch, true, true);
         midgard_instruction *then_branch = mir_last_in_block(ctx->current_block);
         then_branch->src[0] = nir_src_index(ctx, &nif->condition);
+        then_branch->src_types[0] = nir_type_uint32;
 
         /* Emit the two subblocks. */
         midgard_block *then_block = emit_cf_list(ctx, &nif->then_list);
