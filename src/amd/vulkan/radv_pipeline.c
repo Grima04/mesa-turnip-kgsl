@@ -191,7 +191,7 @@ radv_pipeline_destroy(struct radv_device *device,
 
 	if(pipeline->cs.buf)
 		free(pipeline->cs.buf);
-	vk_free2(&device->alloc, allocator, pipeline);
+	vk_free2(&device->vk.alloc, allocator, pipeline);
 }
 
 void radv_DestroyPipeline(
@@ -5260,7 +5260,7 @@ radv_graphics_pipeline_create(
 	struct radv_pipeline *pipeline;
 	VkResult result;
 
-	pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
+	pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
 			      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (pipeline == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -5398,7 +5398,7 @@ static VkResult radv_compute_pipeline_create(
 	struct radv_pipeline *pipeline;
 	VkResult result;
 
-	pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
+	pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
 			      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (pipeline == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);

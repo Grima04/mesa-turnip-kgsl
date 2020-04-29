@@ -2520,7 +2520,7 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 			struct radv_pipeline *pipeline;
 			bool sc_read = true;
 
-			pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(*pipeline), 8,
+			pipeline = vk_zalloc2(&device->vk.alloc, NULL, sizeof(*pipeline), 8,
 					      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
 			pipeline->device = device;
@@ -2646,7 +2646,7 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 				free((void *) pStages[i]);
 			}
 
-			vk_free(&device->alloc, pipeline);
+			vk_free(&device->vk.alloc, pipeline);
 
 			sc_type = RADV_SC_TYPE_COMPILE_PIPELINE_FINISHED;
 			write(fd_secure_output, &sc_type, sizeof(sc_type));
@@ -2761,7 +2761,7 @@ static void destroy_secure_compile_device(struct radv_device *device, unsigned p
 
 static VkResult fork_secure_compile_idle_device(struct radv_device *device)
 {
-	device->sc_state = vk_zalloc(&device->alloc,
+	device->sc_state = vk_zalloc(&device->vk.alloc,
 				     sizeof(struct radv_secure_compile_state),
 				     8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
@@ -2788,7 +2788,7 @@ static VkResult fork_secure_compile_idle_device(struct radv_device *device)
 		}
 	}
 
-	device->sc_state->secure_compile_processes = vk_zalloc(&device->alloc,
+	device->sc_state->secure_compile_processes = vk_zalloc(&device->vk.alloc,
 								sizeof(struct radv_secure_compile_process) * sc_threads, 8,
 								VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
@@ -2961,21 +2961,19 @@ VkResult radv_CreateDevice(
 	if (!device)
 		return vk_error(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-	device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+	vk_device_init(&device->vk, pCreateInfo,
+		       &physical_device->instance->alloc, pAllocator);
+
 	device->instance = physical_device->instance;
 	device->physical_device = physical_device;
 
 	device->ws = physical_device->ws;
-	if (pAllocator)
-		device->alloc = *pAllocator;
-	else
-		device->alloc = physical_device->instance->alloc;
 
 	for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
 		const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
 		int index = radv_get_device_extension_index(ext_name);
 		if (index < 0 || !physical_device->supported_extensions.extensions[index]) {
-			vk_free(&device->alloc, device);
+			vk_free(&device->vk.alloc, device);
 			return vk_error(physical_device->instance, VK_ERROR_EXTENSION_NOT_PRESENT);
 		}
 
@@ -3013,7 +3011,7 @@ VkResult radv_CreateDevice(
 
 		assert(!global_priority || device->physical_device->rad_info.has_ctx_priority);
 
-		device->queues[qfi] = vk_alloc(&device->alloc,
+		device->queues[qfi] = vk_alloc(&device->vk.alloc,
 					       queue_create->queueCount * sizeof(struct radv_queue), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 		if (!device->queues[qfi]) {
 			result = VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -3197,10 +3195,10 @@ fail:
 		for (unsigned q = 0; q < device->queue_count[i]; q++)
 			radv_queue_finish(&device->queues[i][q]);
 		if (device->queue_count[i])
-			vk_free(&device->alloc, device->queues[i]);
+			vk_free(&device->vk.alloc, device->queues[i]);
 	}
 
-	vk_free(&device->alloc, device);
+	vk_free(&device->vk.alloc, device);
 	return result;
 }
 
@@ -3223,7 +3221,7 @@ void radv_DestroyDevice(
 		for (unsigned q = 0; q < device->queue_count[i]; q++)
 			radv_queue_finish(&device->queues[i][q]);
 		if (device->queue_count[i])
-			vk_free(&device->alloc, device->queues[i]);
+			vk_free(&device->vk.alloc, device->queues[i]);
 		if (device->empty_cs[i])
 			device->ws->cs_destroy(device->empty_cs[i]);
 	}
@@ -3247,10 +3245,10 @@ void radv_DestroyDevice(
 
 	if (device->sc_state) {
 		free(device->sc_state->uid);
-		vk_free(&device->alloc, device->sc_state->secure_compile_processes);
+		vk_free(&device->vk.alloc, device->sc_state->secure_compile_processes);
 	}
-	vk_free(&device->alloc, device->sc_state);
-	vk_free(&device->alloc, device);
+	vk_free(&device->vk.alloc, device->sc_state);
+	vk_free(&device->vk.alloc, device);
 }
 
 VkResult radv_EnumerateInstanceLayerProperties(
@@ -5102,7 +5100,7 @@ static void radv_free_memory(struct radv_device *device,
 		mem->bo = NULL;
 	}
 
-	vk_free2(&device->alloc, pAllocator, mem);
+	vk_free2(&device->vk.alloc, pAllocator, mem);
 }
 
 static VkResult radv_alloc_memory(struct radv_device *device,
@@ -5139,7 +5137,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 		return VK_SUCCESS;
 	}
 
-	mem = vk_zalloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
+	mem = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8,
 			  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (mem == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -5596,7 +5594,7 @@ VkResult radv_CreateFence(
 	VkExternalFenceHandleTypeFlags handleTypes =
 		export ? export->handleTypes : 0;
 
-	struct radv_fence *fence = vk_alloc2(&device->alloc, pAllocator,
+	struct radv_fence *fence = vk_alloc2(&device->vk.alloc, pAllocator,
 					       sizeof(*fence), 8,
 					       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
@@ -5608,7 +5606,7 @@ VkResult radv_CreateFence(
 	if (device->always_use_syncobj || handleTypes) {
 		int ret = device->ws->create_syncobj(device->ws, &fence->syncobj);
 		if (ret) {
-			vk_free2(&device->alloc, pAllocator, fence);
+			vk_free2(&device->vk.alloc, pAllocator, fence);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 		if (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT) {
@@ -5618,7 +5616,7 @@ VkResult radv_CreateFence(
 	} else {
 		fence->fence = device->ws->create_fence();
 		if (!fence->fence) {
-			vk_free2(&device->alloc, pAllocator, fence);
+			vk_free2(&device->vk.alloc, pAllocator, fence);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 		fence->syncobj = 0;
@@ -5650,7 +5648,7 @@ void radv_DestroyFence(
 		device->ws->destroy_fence(fence->fence);
 	if (fence->fence_wsi)
 		fence->fence_wsi->destroy(fence->fence_wsi);
-	vk_free2(&device->alloc, pAllocator, fence);
+	vk_free2(&device->vk.alloc, pAllocator, fence);
 }
 
 
@@ -6062,7 +6060,7 @@ VkResult radv_CreateSemaphore(
 	uint64_t initial_value = 0;
 	VkSemaphoreTypeKHR type = radv_get_semaphore_type(pCreateInfo->pNext, &initial_value);
 
-	struct radv_semaphore *sem = vk_alloc2(&device->alloc, pAllocator,
+	struct radv_semaphore *sem = vk_alloc2(&device->vk.alloc, pAllocator,
 					       sizeof(*sem), 8,
 					       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (!sem)
@@ -6078,14 +6076,14 @@ VkResult radv_CreateSemaphore(
 		assert (device->physical_device->rad_info.has_syncobj);
 		int ret = device->ws->create_syncobj(device->ws, &sem->permanent.syncobj);
 		if (ret) {
-			vk_free2(&device->alloc, pAllocator, sem);
+			vk_free2(&device->vk.alloc, pAllocator, sem);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 		sem->permanent.kind = RADV_SEMAPHORE_SYNCOBJ;
 	} else {
 		sem->permanent.ws_sem = device->ws->create_sem(device->ws);
 		if (!sem->permanent.ws_sem) {
-			vk_free2(&device->alloc, pAllocator, sem);
+			vk_free2(&device->vk.alloc, pAllocator, sem);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 		sem->permanent.kind = RADV_SEMAPHORE_WINSYS;
@@ -6107,7 +6105,7 @@ void radv_DestroySemaphore(
 
 	radv_destroy_semaphore_part(device, &sem->temporary);
 	radv_destroy_semaphore_part(device, &sem->permanent);
-	vk_free2(&device->alloc, pAllocator, sem);
+	vk_free2(&device->vk.alloc, pAllocator, sem);
 }
 
 VkResult
@@ -6221,7 +6219,7 @@ VkResult radv_CreateEvent(
 	VkEvent*                                    pEvent)
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
-	struct radv_event *event = vk_alloc2(&device->alloc, pAllocator,
+	struct radv_event *event = vk_alloc2(&device->vk.alloc, pAllocator,
 					       sizeof(*event), 8,
 					       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
@@ -6233,7 +6231,7 @@ VkResult radv_CreateEvent(
 					      RADEON_FLAG_VA_UNCACHED | RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
 					      RADV_BO_PRIORITY_FENCE);
 	if (!event->bo) {
-		vk_free2(&device->alloc, pAllocator, event);
+		vk_free2(&device->vk.alloc, pAllocator, event);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 	}
 
@@ -6255,7 +6253,7 @@ void radv_DestroyEvent(
 	if (!event)
 		return;
 	device->ws->buffer_destroy(event->bo);
-	vk_free2(&device->alloc, pAllocator, event);
+	vk_free2(&device->vk.alloc, pAllocator, event);
 }
 
 VkResult radv_GetEventStatus(
@@ -6303,7 +6301,7 @@ VkResult radv_CreateBuffer(
 
 	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
-	buffer = vk_alloc2(&device->alloc, pAllocator, sizeof(*buffer), 8,
+	buffer = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*buffer), 8,
 			     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (buffer == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -6323,7 +6321,7 @@ VkResult radv_CreateBuffer(
 		                                       4096, 0, RADEON_FLAG_VIRTUAL,
 		                                       RADV_BO_PRIORITY_VIRTUAL);
 		if (!buffer->bo) {
-			vk_free2(&device->alloc, pAllocator, buffer);
+			vk_free2(&device->vk.alloc, pAllocator, buffer);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 		}
 	}
@@ -6347,7 +6345,7 @@ void radv_DestroyBuffer(
 	if (buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
 		device->ws->buffer_destroy(buffer->bo);
 
-	vk_free2(&device->alloc, pAllocator, buffer);
+	vk_free2(&device->vk.alloc, pAllocator, buffer);
 }
 
 VkDeviceAddress radv_GetBufferDeviceAddress(
@@ -6911,7 +6909,7 @@ VkResult radv_CreateFramebuffer(
 	size_t size = sizeof(*framebuffer);
 	if (!imageless_create_info)
 		size += sizeof(struct radv_image_view*) * pCreateInfo->attachmentCount;
-	framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
+	framebuffer = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
 				  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (framebuffer == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -6953,7 +6951,7 @@ void radv_DestroyFramebuffer(
 
 	if (!fb)
 		return;
-	vk_free2(&device->alloc, pAllocator, fb);
+	vk_free2(&device->vk.alloc, pAllocator, fb);
 }
 
 static unsigned radv_tex_wrap(VkSamplerAddressMode address_mode)
@@ -7169,7 +7167,7 @@ VkResult radv_CreateSampler(
 
 	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
-	sampler = vk_alloc2(&device->alloc, pAllocator, sizeof(*sampler), 8,
+	sampler = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*sampler), 8,
 			      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (!sampler)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -7192,7 +7190,7 @@ void radv_DestroySampler(
 
 	if (!sampler)
 		return;
-	vk_free2(&device->alloc, pAllocator, sampler);
+	vk_free2(&device->vk.alloc, pAllocator, sampler);
 }
 
 /* vk_icd.h does not declare this function, so we declare it here to

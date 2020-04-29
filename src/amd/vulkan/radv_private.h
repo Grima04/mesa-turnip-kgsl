@@ -51,6 +51,7 @@
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
+#include "vk_object.h"
 
 #include "radv_radeon_winsys.h"
 #include "ac_binary.h"
@@ -780,9 +781,7 @@ struct radv_secure_compile_state {
 };
 
 struct radv_device {
-	VK_LOADER_DATA                              _loader_data;
-
-	VkAllocationCallbacks                       alloc;
+	struct vk_device vk;
 
 	struct radv_instance *                       instance;
 	struct radeon_winsys *ws;

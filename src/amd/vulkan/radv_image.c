@@ -1444,7 +1444,7 @@ radv_image_create(VkDevice _device,
 	radv_assert(pCreateInfo->extent.height > 0);
 	radv_assert(pCreateInfo->extent.depth > 0);
 
-	image = vk_zalloc2(&device->alloc, alloc, image_struct_size, 8,
+	image = vk_zalloc2(&device->vk.alloc, alloc, image_struct_size, 8,
 			   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (!image)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1508,7 +1508,7 @@ radv_image_create(VkDevice _device,
 		image->bo = device->ws->buffer_create(device->ws, image->size, image->alignment,
 		                                      0, RADEON_FLAG_VIRTUAL, RADV_BO_PRIORITY_VIRTUAL);
 		if (!image->bo) {
-			vk_free2(&device->alloc, alloc, image);
+			vk_free2(&device->vk.alloc, alloc, image);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 		}
 	}
@@ -1844,7 +1844,7 @@ radv_DestroyImage(VkDevice _device, VkImage _image,
 	if (image->owned_memory != VK_NULL_HANDLE)
 		radv_FreeMemory(_device, image->owned_memory, pAllocator);
 
-	vk_free2(&device->alloc, pAllocator, image);
+	vk_free2(&device->vk.alloc, pAllocator, image);
 }
 
 void radv_GetImageSubresourceLayout(
@@ -1908,7 +1908,7 @@ radv_CreateImageView(VkDevice _device,
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	struct radv_image_view *view;
 
-	view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
+	view = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*view), 8,
 			   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (view == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1929,7 +1929,7 @@ radv_DestroyImageView(VkDevice _device, VkImageView _iview,
 
 	if (!iview)
 		return;
-	vk_free2(&device->alloc, pAllocator, iview);
+	vk_free2(&device->vk.alloc, pAllocator, iview);
 }
 
 void radv_buffer_view_init(struct radv_buffer_view *view,
@@ -1956,7 +1956,7 @@ radv_CreateBufferView(VkDevice _device,
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	struct radv_buffer_view *view;
 
-	view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
+	view = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*view), 8,
 			   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (!view)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1978,5 +1978,5 @@ radv_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
 	if (!view)
 		return;
 
-	vk_free2(&device->alloc, pAllocator, view);
+	vk_free2(&device->vk.alloc, pAllocator, view);
 }

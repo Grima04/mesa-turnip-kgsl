@@ -1276,7 +1276,7 @@ VkResult radv_CreateQueryPool(
 	VkQueryPool*                                pQueryPool)
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
-	struct radv_query_pool *pool = vk_alloc2(&device->alloc, pAllocator,
+	struct radv_query_pool *pool = vk_alloc2(&device->vk.alloc, pAllocator,
 					       sizeof(*pool), 8,
 					       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
@@ -1313,7 +1313,7 @@ VkResult radv_CreateQueryPool(
 					     RADV_BO_PRIORITY_QUERY_POOL);
 
 	if (!pool->bo) {
-		vk_free2(&device->alloc, pAllocator, pool);
+		vk_free2(&device->vk.alloc, pAllocator, pool);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 	}
 
@@ -1321,7 +1321,7 @@ VkResult radv_CreateQueryPool(
 
 	if (!pool->ptr) {
 		device->ws->buffer_destroy(pool->bo);
-		vk_free2(&device->alloc, pAllocator, pool);
+		vk_free2(&device->vk.alloc, pAllocator, pool);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 	}
 
@@ -1341,7 +1341,7 @@ void radv_DestroyQueryPool(
 		return;
 
 	device->ws->buffer_destroy(pool->bo);
-	vk_free2(&device->alloc, pAllocator, pool);
+	vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
 VkResult radv_GetQueryPoolResults(
