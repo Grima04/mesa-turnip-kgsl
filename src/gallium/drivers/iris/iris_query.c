@@ -63,7 +63,7 @@ struct iris_query {
 
    struct iris_state_ref query_state_ref;
    struct iris_query_snapshots *map;
-   struct iris_syncpt *syncpt;
+   struct iris_syncobj *syncobj;
 
    int batch_idx;
 
@@ -481,7 +481,7 @@ iris_destroy_query(struct pipe_context *ctx, struct pipe_query *p_query)
       iris_destroy_monitor_object(ctx, query->monitor);
       query->monitor = NULL;
    } else {
-      iris_syncpt_reference(screen, &query->syncpt, NULL);
+      iris_syncobj_reference(screen, &query->syncobj, NULL);
       screen->base.fence_reference(ctx->screen, &query->fence, NULL);
    }
    free(query);
@@ -555,7 +555,7 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
 
    if (q->type == PIPE_QUERY_TIMESTAMP) {
       iris_begin_query(ctx, query);
-      iris_batch_reference_signal_syncpt(batch, &q->syncpt);
+      iris_batch_reference_signal_syncobj(batch, &q->syncobj);
       mark_available(ice, q);
       return true;
    }
@@ -573,7 +573,7 @@ iris_end_query(struct pipe_context *ctx, struct pipe_query *query)
                   q->query_state_ref.offset +
                   offsetof(struct iris_query_snapshots, end));
 
-   iris_batch_reference_signal_syncpt(batch, &q->syncpt);
+   iris_batch_reference_signal_syncobj(batch, &q->syncobj);
    mark_available(ice, q);
 
    return true;
@@ -624,12 +624,12 @@ iris_get_query_result(struct pipe_context *ctx,
 
    if (!q->ready) {
       struct iris_batch *batch = &ice->batches[q->batch_idx];
-      if (q->syncpt == iris_batch_get_signal_syncpt(batch))
+      if (q->syncobj == iris_batch_get_signal_syncobj(batch))
          iris_batch_flush(batch);
 
       while (!READ_ONCE(q->map->snapshots_landed)) {
          if (wait)
-            iris_wait_syncpt(ctx->screen, q->syncpt, INT64_MAX);
+            iris_wait_syncobj(ctx->screen, q->syncobj, INT64_MAX);
          else
             return false;
       }
@@ -672,7 +672,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
        * now so that progress happens.  Either way, copy the snapshots
        * landed field to the destination resource.
        */
-      if (q->syncpt == iris_batch_get_signal_syncpt(batch))
+      if (q->syncobj == iris_batch_get_signal_syncobj(batch))
          iris_batch_flush(batch);
 
       batch->screen->vtbl.copy_mem_mem(batch, dst_bo, offset,

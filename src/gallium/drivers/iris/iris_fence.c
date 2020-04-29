@@ -62,27 +62,27 @@ gem_syncobj_destroy(int fd, uint32_t handle)
 /**
  * Make a new sync-point.
  */
-struct iris_syncpt *
-iris_create_syncpt(struct iris_screen *screen)
+struct iris_syncobj *
+iris_create_syncobj(struct iris_screen *screen)
 {
-   struct iris_syncpt *syncpt = malloc(sizeof(*syncpt));
+   struct iris_syncobj *syncobj = malloc(sizeof(*syncobj));
 
-   if (!syncpt)
+   if (!syncobj)
       return NULL;
 
-   syncpt->handle = gem_syncobj_create(screen->fd, 0);
-   assert(syncpt->handle);
+   syncobj->handle = gem_syncobj_create(screen->fd, 0);
+   assert(syncobj->handle);
 
-   pipe_reference_init(&syncpt->ref, 1);
+   pipe_reference_init(&syncobj->ref, 1);
 
-   return syncpt;
+   return syncobj;
 }
 
 void
-iris_syncpt_destroy(struct iris_screen *screen, struct iris_syncpt *syncpt)
+iris_syncobj_destroy(struct iris_screen *screen, struct iris_syncobj *syncobj)
 {
-   gem_syncobj_destroy(screen->fd, syncpt->handle);
-   free(syncpt);
+   gem_syncobj_destroy(screen->fd, syncobj->handle);
+   free(syncobj);
 }
 
 /**
@@ -91,30 +91,30 @@ iris_syncpt_destroy(struct iris_screen *screen, struct iris_syncpt *syncpt)
  * \p flags   One of I915_EXEC_FENCE_WAIT or I915_EXEC_FENCE_SIGNAL.
  */
 void
-iris_batch_add_syncpt(struct iris_batch *batch,
-                      struct iris_syncpt *syncpt,
-                      unsigned flags)
+iris_batch_add_syncobj(struct iris_batch *batch,
+                       struct iris_syncobj *syncobj,
+                       unsigned flags)
 {
    struct drm_i915_gem_exec_fence *fence =
       util_dynarray_grow(&batch->exec_fences, struct drm_i915_gem_exec_fence, 1);
 
    *fence = (struct drm_i915_gem_exec_fence) {
-      .handle = syncpt->handle,
+      .handle = syncobj->handle,
       .flags = flags,
    };
 
-   struct iris_syncpt **store =
-      util_dynarray_grow(&batch->syncpts, struct iris_syncpt *, 1);
+   struct iris_syncobj **store =
+      util_dynarray_grow(&batch->syncobjs, struct iris_syncobj *, 1);
 
    *store = NULL;
-   iris_syncpt_reference(batch->screen, store, syncpt);
+   iris_syncobj_reference(batch->screen, store, syncobj);
 }
 
 /* ------------------------------------------------------------------- */
 
 struct pipe_fence_handle {
    struct pipe_reference ref;
-   struct iris_syncpt *syncpt[IRIS_BATCH_COUNT];
+   struct iris_syncobj *syncobj[IRIS_BATCH_COUNT];
    unsigned count;
 };
 
@@ -125,7 +125,7 @@ iris_fence_destroy(struct pipe_screen *p_screen,
    struct iris_screen *screen = (struct iris_screen *)p_screen;
 
    for (unsigned i = 0; i < fence->count; i++)
-      iris_syncpt_reference(screen, &fence->syncpt[i], NULL);
+      iris_syncobj_reference(screen, &fence->syncobj[i], NULL);
 
    free(fence);
 }
@@ -143,16 +143,16 @@ iris_fence_reference(struct pipe_screen *p_screen,
 }
 
 bool
-iris_wait_syncpt(struct pipe_screen *p_screen,
-                 struct iris_syncpt *syncpt,
-                 int64_t timeout_nsec)
+iris_wait_syncobj(struct pipe_screen *p_screen,
+                  struct iris_syncobj *syncobj,
+                  int64_t timeout_nsec)
 {
-   if (!syncpt)
+   if (!syncobj)
       return false;
 
    struct iris_screen *screen = (struct iris_screen *)p_screen;
    struct drm_syncobj_wait args = {
-      .handles = (uintptr_t)&syncpt->handle,
+      .handles = (uintptr_t)&syncobj->handle,
       .count_handles = 1,
       .timeout_nsec = timeout_nsec,
    };
@@ -196,11 +196,11 @@ iris_fence_flush(struct pipe_context *ctx,
    pipe_reference_init(&fence->ref, 1);
 
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
-      if (!iris_wait_syncpt(ctx->screen, ice->batches[b].last_syncpt, 0))
+      if (!iris_wait_syncobj(ctx->screen, ice->batches[b].last_syncobj, 0))
          continue;
 
-      iris_syncpt_reference(screen, &fence->syncpt[fence->count++],
-                            ice->batches[b].last_syncpt);
+      iris_syncobj_reference(screen, &fence->syncobj[fence->count++],
+                             ice->batches[b].last_syncobj);
    }
 
    iris_fence_reference(ctx->screen, out_fence, NULL);
@@ -215,7 +215,7 @@ iris_fence_await(struct pipe_context *ctx,
 
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
       for (unsigned i = 0; i < fence->count; i++) {
-         iris_batch_add_syncpt(&ice->batches[b], fence->syncpt[i],
+         iris_batch_add_syncobj(&ice->batches[b], fence->syncobj[i],
                                I915_EXEC_FENCE_WAIT);
       }
    }
@@ -258,9 +258,9 @@ iris_fence_finish(struct pipe_screen *p_screen,
    if (!fence->count)
       return true;
 
-   uint32_t handles[ARRAY_SIZE(fence->syncpt)];
+   uint32_t handles[ARRAY_SIZE(fence->syncobj)];
    for (unsigned i = 0; i < fence->count; i++)
-      handles[i] = fence->syncpt[i]->handle;
+      handles[i] = fence->syncobj[i]->handle;
 
    struct drm_syncobj_wait args = {
       .handles = (uintptr_t)handles,
@@ -318,7 +318,7 @@ iris_fence_get_fd(struct pipe_screen *p_screen,
 
    for (unsigned i = 0; i < fence->count; i++) {
       struct drm_syncobj_handle args = {
-         .handle = fence->syncpt[i]->handle,
+         .handle = fence->syncobj[i]->handle,
          .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE,
          .fd = -1,
       };
@@ -352,13 +352,13 @@ iris_fence_create_fd(struct pipe_context *ctx,
       return;
    }
 
-   struct iris_syncpt *syncpt = malloc(sizeof(*syncpt));
-   syncpt->handle = args.handle;
-   pipe_reference_init(&syncpt->ref, 1);
+   struct iris_syncobj *syncobj = malloc(sizeof(*syncobj));
+   syncobj->handle = args.handle;
+   pipe_reference_init(&syncobj->ref, 1);
 
    struct pipe_fence_handle *fence = malloc(sizeof(*fence));
    pipe_reference_init(&fence->ref, 1);
-   fence->syncpt[0] = syncpt;
+   fence->syncobj[0] = syncobj;
    fence->count = 1;
 
    *out = fence;

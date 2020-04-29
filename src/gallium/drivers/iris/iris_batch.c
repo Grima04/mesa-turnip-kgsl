@@ -188,7 +188,7 @@ iris_init_batch(struct iris_batch *batch,
    iris_hw_context_set_priority(screen->bufmgr, batch->hw_ctx_id, priority);
 
    util_dynarray_init(&batch->exec_fences, ralloc_context(NULL));
-   util_dynarray_init(&batch->syncpts, ralloc_context(NULL));
+   util_dynarray_init(&batch->syncobjs, ralloc_context(NULL));
 
    batch->exec_count = 0;
    batch->exec_array_size = 100;
@@ -315,8 +315,8 @@ iris_use_pinned_bo(struct iris_batch *batch,
          if (other_entry &&
              ((other_entry->flags & EXEC_OBJECT_WRITE) || writable)) {
             iris_batch_flush(batch->other_batches[b]);
-            iris_batch_add_syncpt(batch, batch->other_batches[b]->last_syncpt,
-                                  I915_EXEC_FENCE_WAIT);
+            iris_batch_add_syncobj(batch, batch->other_batches[b]->last_syncobj,
+                                   I915_EXEC_FENCE_WAIT);
          }
       }
    }
@@ -387,9 +387,9 @@ iris_batch_reset(struct iris_batch *batch)
    create_batch(batch);
    assert(batch->bo->index == 0);
 
-   struct iris_syncpt *syncpt = iris_create_syncpt(screen);
-   iris_batch_add_syncpt(batch, syncpt, I915_EXEC_FENCE_SIGNAL);
-   iris_syncpt_reference(screen, &syncpt, NULL);
+   struct iris_syncobj *syncobj = iris_create_syncobj(screen);
+   iris_batch_add_syncobj(batch, syncobj, I915_EXEC_FENCE_SIGNAL);
+   iris_syncobj_reference(screen, &syncobj, NULL);
 
    iris_cache_sets_clear(batch);
 
@@ -410,11 +410,11 @@ iris_batch_free(struct iris_batch *batch)
 
    ralloc_free(batch->exec_fences.mem_ctx);
 
-   util_dynarray_foreach(&batch->syncpts, struct iris_syncpt *, s)
-      iris_syncpt_reference(screen, s, NULL);
-   ralloc_free(batch->syncpts.mem_ctx);
+   util_dynarray_foreach(&batch->syncobjs, struct iris_syncobj *, s)
+      iris_syncobj_reference(screen, s, NULL);
+   ralloc_free(batch->syncobjs.mem_ctx);
 
-   iris_syncpt_reference(screen, &batch->last_syncpt, NULL);
+   iris_syncobj_reference(screen, &batch->last_syncobj, NULL);
 
    iris_bo_unreference(batch->bo);
    batch->bo = NULL;
@@ -689,13 +689,13 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
    batch->exec_count = 0;
    batch->aperture_space = 0;
 
-   struct iris_syncpt *syncpt =
-      ((struct iris_syncpt **) util_dynarray_begin(&batch->syncpts))[0];
-   iris_syncpt_reference(screen, &batch->last_syncpt, syncpt);
+   struct iris_syncobj *syncobj =
+      ((struct iris_syncobj **) util_dynarray_begin(&batch->syncobjs))[0];
+   iris_syncobj_reference(screen, &batch->last_syncobj, syncobj);
 
-   util_dynarray_foreach(&batch->syncpts, struct iris_syncpt *, s)
-      iris_syncpt_reference(screen, s, NULL);
-   util_dynarray_clear(&batch->syncpts);
+   util_dynarray_foreach(&batch->syncobjs, struct iris_syncobj *, s)
+      iris_syncobj_reference(screen, s, NULL);
+   util_dynarray_clear(&batch->syncobjs);
 
    util_dynarray_clear(&batch->exec_fences);
 
