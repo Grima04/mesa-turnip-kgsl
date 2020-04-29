@@ -84,8 +84,10 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_UMin: return nir_op_umin;
    case OpenCLstd_Fmod: return nir_op_fmod;
    case OpenCLstd_Mix: return nir_op_flrp;
+   case OpenCLstd_Native_cos: return nir_op_fcos;
    case OpenCLstd_Native_exp2: return nir_op_fexp2;
    case OpenCLstd_Native_log2: return nir_op_flog2;
+   case OpenCLstd_Native_sin: return nir_op_fsin;
    case OpenCLstd_SMul_hi: return nir_op_imul_high;
    case OpenCLstd_UMul_hi: return nir_op_umul_high;
    case OpenCLstd_Popcount: return nir_op_bit_count;
@@ -352,8 +354,10 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_SMin:
    case OpenCLstd_UMin:
    case OpenCLstd_Mix:
+   case OpenCLstd_Native_cos:
    case OpenCLstd_Native_exp2:
    case OpenCLstd_Native_log2:
+   case OpenCLstd_Native_sin:
    case OpenCLstd_Fmod:
    case OpenCLstd_SMul_hi:
    case OpenCLstd_UMul_hi:
