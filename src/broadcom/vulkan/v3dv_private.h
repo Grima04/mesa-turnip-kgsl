@@ -851,6 +851,15 @@ VkResult v3dv_get_query_pool_results_cpu(struct v3dv_device *device,
                                          VkDeviceSize stride,
                                          VkQueryResultFlags flags);
 
+typedef void (*v3dv_cmd_buffer_private_obj_destroy_cb)(VkDevice device,
+                                                       void *pobj,
+                                                       VkAllocationCallbacks *alloc);
+struct v3dv_cmd_buffer_private_obj {
+   struct list_head list_link;
+   void *obj;
+   v3dv_cmd_buffer_private_obj_destroy_cb destroy_cb;
+};
+
 struct v3dv_cmd_buffer {
    VK_LOADER_DATA _loader_data;
 
@@ -868,6 +877,12 @@ struct v3dv_cmd_buffer {
 
    uint32_t push_constants_data[MAX_PUSH_CONSTANTS_SIZE / 4];
    struct v3dv_resource push_constants_resource;
+
+   /* Collection of Vulkan objects created internally by the driver (typically
+    * during recording of meta operations) that are part of the command buffer
+    * and should be destroyed with it.
+    */
+   struct list_head private_objs; /* v3dv_cmd_buffer_private_obj */
 
    /* List of jobs to submit to the kernel */
    struct list_head submit_jobs;
@@ -920,6 +935,10 @@ void v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
 
 void v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
                                  struct drm_v3d_submit_tfu *tfu);
+
+void v3dv_cmd_buffer_add_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
+                                     void *obj,
+                                     v3dv_cmd_buffer_private_obj_destroy_cb destroy_cb);
 
 struct v3dv_semaphore {
    /* A syncobject handle associated with this semaphore */

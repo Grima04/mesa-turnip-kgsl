@@ -122,6 +122,7 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->pool = pool;
    cmd_buffer->level = level;
 
+   list_inithead(&cmd_buffer->private_objs);
    list_inithead(&cmd_buffer->submit_jobs);
 
    assert(pool);
@@ -190,6 +191,37 @@ v3dv_job_destroy(struct v3dv_job *job)
    vk_free(&job->device->alloc, job);
 }
 
+void
+v3dv_cmd_buffer_add_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
+                                void *obj,
+                                v3dv_cmd_buffer_private_obj_destroy_cb destroy_cb)
+{
+   struct v3dv_cmd_buffer_private_obj *pobj =
+      vk_alloc(&cmd_buffer->device->alloc, sizeof(*pobj), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!pobj) {
+      cmd_buffer->state.oom = true;
+      return;
+   }
+
+   pobj->obj = obj;
+   pobj->destroy_cb = destroy_cb;
+
+   list_addtail(&pobj->list_link, &cmd_buffer->private_objs);
+}
+
+static void
+cmd_buffer_destroy_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
+                               struct v3dv_cmd_buffer_private_obj *pobj)
+{
+   assert(pobj && pobj->obj && pobj->destroy_cb);
+   pobj->destroy_cb(v3dv_device_to_handle(cmd_buffer->device),
+                    pobj->obj,
+                    &cmd_buffer->device->alloc);
+   list_del(&pobj->list_link);
+   vk_free(&cmd_buffer->device->alloc, pobj);
+}
+
 static void
 cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -213,6 +245,11 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->push_constants_resource.bo)
       v3dv_bo_free(cmd_buffer->device, cmd_buffer->push_constants_resource.bo);
+
+   list_for_each_entry_safe(struct v3dv_cmd_buffer_private_obj, pobj,
+                            &cmd_buffer->private_objs, list_link) {
+      cmd_buffer_destroy_private_obj(cmd_buffer, pobj);
+   }
 }
 
 static void
