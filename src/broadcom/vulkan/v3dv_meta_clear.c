@@ -519,22 +519,10 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
     * then we need to configure the framebuffer to the compatible color
     * format.
     */
-   struct v3dv_image_view attachment_layer_view;
-   memcpy(&attachment_layer_view, subpass_fb->attachments[attachment_idx],
-          sizeof(struct v3dv_image_view));
-   if (vk_format_is_depth_or_stencil(attachment_layer_view.vk_format)) {
-      attachment_layer_view.aspects = VK_IMAGE_ASPECT_COLOR_BIT;
-      attachment_layer_view.vk_format = rt_format;
-      attachment_layer_view.format = v3dv_get_format(rt_format);
-      assert(attachment_layer_view.format &&
-             attachment_layer_view.format->supported &&
-             attachment_layer_view.format->rt_type !=
-                V3D_OUTPUT_IMAGE_FORMAT_NO);
-      v3dv_get_internal_type_bpp_for_output_format(
-         attachment_layer_view.format->rt_type,
-         &attachment_layer_view.internal_type,
-         &attachment_layer_view.internal_bpp);
-   }
+   const struct v3dv_image_view *att_iview =
+      subpass_fb->attachments[attachment_idx];
+   const bool is_depth_or_stencil =
+      vk_format_is_depth_or_stencil(att_iview->vk_format);
 
    /* Emit the pass for each attachment layer, which creates a framebuffer
     * for each selected layer of the attachment and then renders a scissored
@@ -542,13 +530,31 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
     */
    uint32_t dirty_dynamic_state = 0;
    for (uint32_t i = 0; i < rect->layerCount; i++) {
-      attachment_layer_view.first_layer =
-         subpass_fb->attachments[attachment_idx]->first_layer +
-         rect->baseArrayLayer + i;
-      attachment_layer_view.last_layer = attachment_layer_view.first_layer;
+      VkImageViewCreateInfo fb_layer_view_info = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+         .image = v3dv_image_to_handle((struct v3dv_image *)att_iview->image),
+         .viewType =
+            v3dv_image_type_to_view_type(att_iview->image->type),
+         .format = is_depth_or_stencil ? rt_format : att_iview->vk_format,
+         .subresourceRange = {
+            .aspectMask = is_depth_or_stencil ? VK_IMAGE_ASPECT_COLOR_BIT :
+                                                att_iview->aspects,
+            .baseMipLevel = att_iview->base_level,
+            .levelCount = att_iview->max_level - att_iview->base_level + 1,
+            .baseArrayLayer = att_iview->first_layer + rect->baseArrayLayer + i,
+            .layerCount = 1,
+         },
+      };
+      VkImageView fb_attachment;
+      result = v3dv_CreateImageView(v3dv_device_to_handle(device),
+                                    &fb_layer_view_info,
+                                    &device->alloc, &fb_attachment);
+      if (result != VK_SUCCESS)
+         goto fail;
 
-      VkImageView fb_attachment =
-         v3dv_image_view_to_handle(&attachment_layer_view);
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void *)fb_attachment,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
 
       VkFramebufferCreateInfo fb_info = {
          .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -561,8 +567,14 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
       };
 
       VkFramebuffer fb;
-      v3dv_CreateFramebuffer(device_handle, &fb_info,
-                             &cmd_buffer->device->alloc, &fb);
+      result = v3dv_CreateFramebuffer(device_handle, &fb_info,
+                                      &cmd_buffer->device->alloc, &fb);
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void *)fb,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
 
       VkRenderPassBeginInfo rp_info = {
          .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -578,10 +590,8 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
                               VK_SUBPASS_CONTENTS_INLINE);
 
       struct v3dv_job *job = cmd_buffer->state.job;
-      if (!job) {
-         v3dv_DestroyFramebuffer(device_handle, fb, NULL);
-         goto fail_job_start;
-      }
+      if (!job)
+         goto fail;
       job->is_subpass_continue = true;
 
       v3dv_CmdPushConstants(cmd_buffer_handle,
@@ -607,14 +617,6 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_CmdDraw(cmd_buffer_handle, 4, 1, 0, 0);
 
       v3dv_CmdEndRenderPass(cmd_buffer_handle);
-
-      /* The Vulkan spec doesn't allow to destroy the framebuffer until all
-       * command buffers that use it have completed execution, however, in
-       * our particular case this is fine, since copy into all framebuffer
-       * info we need to submit and execute the job into the command buffer,
-       * so we don't need to keep the framebuffer object around.
-       */
-      v3dv_DestroyFramebuffer(device_handle, fb, &cmd_buffer->device->alloc);
    }
 
    /* The clear pipeline sets viewport and scissor state, so we need
@@ -622,7 +624,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
     */
    dirty_dynamic_state = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
 
-fail_job_start:
+fail:
    v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state);
 }
 
