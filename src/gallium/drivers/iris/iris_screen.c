@@ -635,6 +635,14 @@ iris_shader_perf_log(void *data, const char *fmt, ...)
    va_end(args);
 }
 
+static void
+iris_detect_kernel_features(struct iris_screen *screen)
+{
+   /* Kernel 5.2+ */
+   if (gen_gem_supports_syncobj_wait(screen->fd))
+      screen->kernel_features |= KERNEL_HAS_WAIT_FOR_SUBMIT;
+}
+
 struct pipe_screen *
 iris_screen_create(int fd, const struct pipe_screen_config *config)
 {
@@ -723,6 +731,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    screen->subslice_total =
       iris_getparam_integer(screen->fd, I915_PARAM_SUBSLICE_TOTAL);
    assert(screen->subslice_total >= 1);
+
+   iris_detect_kernel_features(screen);
 
    struct pipe_screen *pscreen = &screen->base;
 

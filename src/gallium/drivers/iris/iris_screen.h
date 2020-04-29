@@ -168,6 +168,10 @@ struct iris_screen {
       bool always_flush_cache;
    } driconf;
 
+   /** Does the kernel support various features (KERNEL_HAS_* bitfield)? */
+   unsigned kernel_features;
+#define KERNEL_HAS_WAIT_FOR_SUBMIT (1<<0)
+
    unsigned subslice_total;
 
    uint64_t aperture_bytes;
