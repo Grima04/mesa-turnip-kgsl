@@ -250,6 +250,12 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
                             &cmd_buffer->private_objs, list_link) {
       cmd_buffer_destroy_private_obj(cmd_buffer, pobj);
    }
+
+   if (cmd_buffer->meta.blit.dspool) {
+      v3dv_DestroyDescriptorPool(v3dv_device_to_handle(cmd_buffer->device),
+                                 cmd_buffer->meta.blit.dspool,
+                                 &cmd_buffer->device->alloc);
+   }
 }
 
 static void

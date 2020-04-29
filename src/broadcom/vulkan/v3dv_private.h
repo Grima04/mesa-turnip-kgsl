@@ -248,7 +248,6 @@ struct v3dv_device {
          struct hash_table *cache; /* v3dv_meta_color_clear_pipeline */
       } color_clear;
       struct {
-         VkDescriptorPool dspool;
          VkDescriptorSetLayout dslayout;
          VkPipelineLayout playout;
          struct hash_table *cache[3]; /* v3dv_meta_blit_pipeline for 1d, 2d, 3d */
@@ -883,6 +882,13 @@ struct v3dv_cmd_buffer {
     * and should be destroyed with it.
     */
    struct list_head private_objs; /* v3dv_cmd_buffer_private_obj */
+
+   /* Per-command buffer resources for meta operations. */
+   struct {
+      struct {
+         VkDescriptorPool dspool;
+      } blit;
+   } meta;
 
    /* List of jobs to submit to the kernel */
    struct list_head submit_jobs;

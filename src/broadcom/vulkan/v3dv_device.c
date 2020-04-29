@@ -1074,34 +1074,12 @@ init_meta_color_clear_resources(struct v3dv_device *device)
 }
 
 static void
-create_meta_blit_descriptor_pool(struct v3dv_device *device)
-{
-   VkDescriptorPoolSize pool_size = {
-      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = 256,
-   };
-
-   VkDescriptorPoolCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-      .maxSets = 256,
-      .poolSizeCount = 1,
-      .pPoolSizes = &pool_size,
-      .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-   };
-
-   v3dv_CreateDescriptorPool(v3dv_device_to_handle(device),
-                             &info, &device->alloc,
-                             &device->meta.blit.dspool);
-}
-
-static void
 init_meta_blit_resources(struct v3dv_device *device)
 {
    for (uint32_t i = 0; i < 3; i++) {
       device->meta.blit.cache[i] =
          _mesa_hash_table_create(NULL, u64_hash, u64_compare);
    }
-   create_meta_blit_descriptor_pool(device);
 }
 
 static void
@@ -1150,11 +1128,6 @@ destroy_device_meta(struct v3dv_device *device)
    if (device->meta.blit.dslayout) {
       v3dv_DestroyDescriptorSetLayout(_device, device->meta.blit.dslayout,
                                       &device->alloc);
-   }
-
-   if (device->meta.blit.dspool) {
-      v3dv_DestroyDescriptorPool(_device, device->meta.blit.dspool,
-                                 &device->alloc);
    }
 }
 

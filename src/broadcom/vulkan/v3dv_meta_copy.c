@@ -2557,6 +2557,39 @@ compute_blit_box(const VkOffset3D *offsets,
    }
 }
 
+static void
+ensure_meta_blit_descriptor_pool(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   if (cmd_buffer->meta.blit.dspool)
+      return;
+
+   /*
+    * FIXME: the size for the descriptor pool is based on what it is needed
+    * for the tests/programs that we tested. It would be good to try to use a
+    * smaller value, and create descriptor pool on demand as we find ourselves
+    * running out of pool space.
+    */
+   const uint32_t POOL_DESCRIPTOR_COUNT = 1024;
+
+   VkDescriptorPoolSize pool_size = {
+      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = POOL_DESCRIPTOR_COUNT,
+   };
+
+   VkDescriptorPoolCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .maxSets = POOL_DESCRIPTOR_COUNT,
+      .poolSizeCount = 1,
+      .pPoolSizes = &pool_size,
+      .flags = 0,
+   };
+
+   v3dv_CreateDescriptorPool(v3dv_device_to_handle(cmd_buffer->device),
+                             &info,
+                             &cmd_buffer->device->alloc,
+                             &cmd_buffer->meta.blit.dspool);
+}
+
 static bool
 blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             struct v3dv_image *dst,
@@ -2642,6 +2675,9 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    const float src_z_step =
       (float)(max_src_layer - min_src_layer) / (float)layer_count;
 
+   /* Create the descriptor pool for the source blit texture if needed */
+   ensure_meta_blit_descriptor_pool(cmd_buffer);
+
    /* Get the blit pipeline */
    struct v3dv_meta_blit_pipeline *pipeline = NULL;
    bool ok = get_blit_pipeline(cmd_buffer->device,
@@ -2652,7 +2688,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    assert(pipeline && pipeline->pipeline && pipeline->pass);
 
    struct v3dv_device *device = cmd_buffer->device;
-   assert(device->meta.blit.dspool);
+   assert(cmd_buffer->meta.blit.dspool);
    assert(device->meta.blit.dslayout);
 
    /* Push command buffer state before starting meta operation */
@@ -2683,8 +2719,11 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                                     &device->alloc, &dst_image_view);
       if (result != VK_SUCCESS) {
          ok = false;
-         goto fail_dst_image_view;
+         goto fail;
       }
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void *)dst_image_view,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
 
       VkFramebufferCreateInfo fb_info = {
          .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -2701,21 +2740,28 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                                       &cmd_buffer->device->alloc, &fb);
       if (result != VK_SUCCESS) {
          ok = false;
-         goto fail_framebuffer;
+         goto fail;
       }
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void *)fb,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
 
-      /* Setup descriptor set for blit source texture */
+      /* Setup descriptor set for blit source texture. We don't have to
+       * register the descriptor as a private command buffer object since
+       * all descriptors will be freed automatically with the descriptor
+       * pool.
+       */
       VkDescriptorSet set;
       VkDescriptorSetAllocateInfo set_alloc_info = {
          .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-         .descriptorPool = device->meta.blit.dspool,
+         .descriptorPool = cmd_buffer->meta.blit.dspool,
          .descriptorSetCount = 1,
          .pSetLayouts = &device->meta.blit.dslayout,
       };
       result = v3dv_AllocateDescriptorSets(_device, &set_alloc_info, &set);
       if (result != VK_SUCCESS) {
          ok = false;
-         goto fail_descriptor_set;
+         goto fail;
       }
 
       VkSamplerCreateInfo sampler_info = {
@@ -2732,8 +2778,11 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                                   &sampler);
       if (result != VK_SUCCESS) {
          ok = false;
-         goto fail_sampler;
+         goto fail;
       }
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void*)sampler,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroySampler);
 
       VkImageViewCreateInfo src_image_view_info = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -2754,8 +2803,11 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                                     &device->alloc, &src_image_view);
       if (result != VK_SUCCESS) {
          ok = false;
-         goto fail_src_image_view;
+         goto fail;
       }
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void *)src_image_view,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
 
       VkDescriptorImageInfo image_info = {
          .sampler = sampler,
@@ -2789,7 +2841,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       struct v3dv_job *job = cmd_buffer->state.job;
       if (!job) {
          ok = false;
-         goto fail_job;
+         goto fail;
       }
 
       if (src->type == VK_IMAGE_TYPE_3D)
@@ -2829,20 +2881,9 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
       v3dv_CmdEndRenderPass(_cmd_buffer);
       dirty_dynamic_state = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
-
-   fail_job:
-      v3dv_DestroySampler(_device, sampler, &cmd_buffer->device->alloc);
-   fail_src_image_view:
-      v3dv_DestroyImageView(_device, src_image_view, &cmd_buffer->device->alloc);
-   fail_sampler:
-      v3dv_FreeDescriptorSets(_device, device->meta.blit.dspool, 1, &set);
-   fail_descriptor_set:
-      v3dv_DestroyFramebuffer(_device, fb, &cmd_buffer->device->alloc);
-   fail_framebuffer:
-      v3dv_DestroyImageView(_device, dst_image_view, &cmd_buffer->device->alloc);
    }
 
-fail_dst_image_view:
+fail:
    v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state);
 
    return ok;
