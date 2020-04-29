@@ -603,6 +603,15 @@ static void
 mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigned to, bool *abs, bool *neg, bool is_int, unsigned bcast_count)
 {
         nir_alu_src src = instr->src[i];
+
+        if (!is_int) {
+                if (pan_has_source_mod(&src, nir_op_fneg))
+                        *neg = !(*neg);
+
+                if (pan_has_source_mod(&src, nir_op_fabs))
+                        *abs = true;
+        }
+
         unsigned bits = nir_src_bit_size(src.src);
 
         ins->src[to] = nir_src_index(NULL, &src.src);
