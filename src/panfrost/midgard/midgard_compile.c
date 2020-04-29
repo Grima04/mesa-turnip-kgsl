@@ -592,20 +592,6 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
                 broadcast_swizzle = count; \
                 assert(src_bitsize == dst_bitsize); \
                 break;
-static bool
-nir_is_fzero_constant(nir_src src)
-{
-        if (!nir_src_is_const(src))
-                return false;
-
-        for (unsigned c = 0; c < nir_src_num_components(src); ++c) {
-                if (nir_src_comp_as_float(src, c) != 0.0)
-                        return false;
-        }
-
-        return true;
-}
-
 /* Analyze the sizes of the inputs to determine which reg mode. Ops needed
  * special treatment override this anyway. */
 
@@ -892,20 +878,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 outmod = sat ? midgard_outmod_sat : midgard_outmod_none;
         }
 
-        /* fmax(a, 0.0) can turn into a .pos modifier as an optimization */
-
-        if (instr->op == nir_op_fmax) {
-                if (nir_is_fzero_constant(instr->src[0].src)) {
-                        op = midgard_alu_op_fmov;
-                        nr_inputs = 1;
-                        outmod = midgard_outmod_pos;
-                        instr->src[0] = instr->src[1];
-                } else if (nir_is_fzero_constant(instr->src[1].src)) {
-                        op = midgard_alu_op_fmov;
-                        nr_inputs = 1;
-                        outmod = midgard_outmod_pos;
-                }
-        }
 
         /* Fetch unit, quirks, etc information */
         unsigned opcode_props = alu_opcode_props[op].props;
@@ -2182,67 +2154,6 @@ midgard_cull_dead_branch(compiler_context *ctx, midgard_block *block)
         }
 }
 
-/* fmov.pos is an idiom for fpos. Propoagate the .pos up to the source, so then
- * the move can be propagated away entirely */
-
-static bool
-mir_compose_float_outmod(midgard_outmod_float *outmod, midgard_outmod_float comp)
-{
-        /* Nothing to do */
-        if (comp == midgard_outmod_none)
-                return true;
-
-        if (*outmod == midgard_outmod_none) {
-                *outmod = comp;
-                return true;
-        }
-
-        /* TODO: Compose rules */
-        return false;
-}
-
-static bool
-midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
-{
-        bool progress = false;
-
-        mir_foreach_instr_in_block_safe(block, ins) {
-                if (ins->type != TAG_ALU_4) continue;
-                if (ins->alu.op != midgard_alu_op_fmov) continue;
-                if (ins->alu.outmod != midgard_outmod_pos) continue;
-
-                /* TODO: Registers? */
-                unsigned src = ins->src[1];
-                if (src & PAN_IS_REG) continue;
-
-                /* There might be a source modifier, too */
-                if (mir_nontrivial_source2_mod(ins)) continue;
-
-                /* Backpropagate the modifier */
-                mir_foreach_instr_in_block_from_rev(block, v, mir_prev_op(ins)) {
-                        if (v->type != TAG_ALU_4) continue;
-                        if (v->dest != src) continue;
-
-                        /* Can we even take a float outmod? */
-                        if (midgard_is_integer_out_op(v->alu.op)) continue;
-
-                        midgard_outmod_float temp = v->alu.outmod;
-                        progress |= mir_compose_float_outmod(&temp, ins->alu.outmod);
-
-                        /* Throw in the towel.. */
-                        if (!progress) break;
-
-                        /* Otherwise, transfer the modifier */
-                        v->alu.outmod = temp;
-                        ins->alu.outmod = midgard_outmod_none;
-
-                        break;
-                }
-        }
-
-        return progress;
-}
-
 static unsigned
 emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
 {
@@ -2588,7 +2499,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
                 mir_foreach_block(ctx, _block) {
                         midgard_block *block = (midgard_block *) _block;
-                        progress |= midgard_opt_pos_propagate(ctx, block);
                         progress |= midgard_opt_copy_prop(ctx, block);
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
                         progress |= midgard_opt_combine_projection(ctx, block);
