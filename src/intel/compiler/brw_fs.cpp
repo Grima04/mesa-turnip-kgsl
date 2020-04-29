@@ -8981,9 +8981,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    prog_data->slm_size = src_shader->num_shared;
 
    unsigned local_workgroup_size;
-   if (prog_data->uses_variable_group_size) {
-      prog_data->max_variable_local_size =
-         src_shader->info.cs.max_variable_local_size;
+   if (src_shader->info.cs.local_size_variable) {
       local_workgroup_size = src_shader->info.cs.max_variable_local_size;
    } else {
       prog_data->local_size[0] = src_shader->info.cs.local_size[0];

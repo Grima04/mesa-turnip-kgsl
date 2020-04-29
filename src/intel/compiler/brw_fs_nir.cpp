@@ -105,7 +105,7 @@ fs_visitor::nir_setup_uniforms()
       assert(uniforms == prog_data->nr_params);
 
       uint32_t *param;
-      if (brw_cs_prog_data(prog_data)->uses_variable_group_size) {
+      if (nir->info.cs.local_size_variable) {
          param = brw_stage_prog_data_add_params(prog_data, 3);
          for (unsigned i = 0; i < 3; i++) {
             param[i] = (BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_X + i);
@@ -3732,7 +3732,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
        * invocations are already executed lock-step.  Instead of an actual
        * barrier just emit a scheduling fence, that will generate no code.
        */
-      if (!cs_prog_data->uses_variable_group_size &&
+      if (!nir->info.cs.local_size_variable &&
           workgroup_size() <= dispatch_width) {
          bld.exec_all().group(1, 0).emit(FS_OPCODE_SCHEDULING_FENCE);
          break;
@@ -4297,7 +4297,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        *
        * TODO: Check if applies for many HW threads sharing same Data Port.
        */
-      if (!brw_cs_prog_data(prog_data)->uses_variable_group_size &&
+      if (!nir->info.cs.local_size_variable &&
           slm_fence && workgroup_size() <= dispatch_width)
          slm_fence = false;
 
