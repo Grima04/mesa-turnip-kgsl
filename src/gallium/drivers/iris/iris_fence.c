@@ -26,6 +26,8 @@
  * Fences for driver and IPC serialisation, scheduling and synchronisation.
  */
 
+#include <linux/sync_file.h>
+
 #include "util/u_inlines.h"
 #include "intel/common/gen_gem.h"
 
@@ -268,24 +270,6 @@ iris_fence_finish(struct pipe_screen *p_screen,
    };
    return gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_WAIT, &args) == 0;
 }
-
-#ifndef SYNC_IOC_MAGIC
-/* duplicated from linux/sync_file.h to avoid build-time dependency
- * on new (v4.7) kernel headers.  Once distro's are mostly using
- * something newer than v4.7 drop this and #include <linux/sync_file.h>
- * instead.
- */
-struct sync_merge_data {
-   char  name[32];
-   __s32 fd2;
-   __s32 fence;
-   __u32 flags;
-   __u32 pad;
-};
-
-#define SYNC_IOC_MAGIC '>'
-#define SYNC_IOC_MERGE _IOWR(SYNC_IOC_MAGIC, 3, struct sync_merge_data)
-#endif
 
 static int
 sync_merge_fd(int sync_fd, int new_fd)
