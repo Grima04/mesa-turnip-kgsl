@@ -2053,17 +2053,13 @@ v3dv_CreateSampler(VkDevice _device,
       sampler->state = v3dv_bo_alloc(device, cl_packet_length(SAMPLER_STATE),
                                      "sampler_state");
 
-      if (!sampler->state) {
-         fprintf(stderr, "Failed to allocate memory for sampler state\n");
-         abort();
-      }
+      if (!sampler->state)
+         goto fail_alloc;
 
       bool ok = v3dv_bo_map(device, sampler->state,
                             cl_packet_length(SAMPLER_STATE));
-      if (!ok) {
-         fprintf(stderr, "failed to map sampler state buffer\n");
-         abort();
-      }
+      if (!ok)
+         goto fail_map;
    }
 
    sampler->compare_enable = pCreateInfo->compareEnable;
@@ -2072,6 +2068,12 @@ v3dv_CreateSampler(VkDevice _device,
    *pSampler = v3dv_sampler_to_handle(sampler);
 
    return VK_SUCCESS;
+
+fail_map:
+   v3dv_bo_free(device, sampler->state);
+fail_alloc:
+   vk_free2(&device->alloc, pAllocator, sampler);
+   return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 }
 
 void
