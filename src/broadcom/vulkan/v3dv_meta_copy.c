@@ -829,13 +829,18 @@ emit_copy_image_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
-static void
+static bool
 copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                struct v3dv_image *dst,
                struct v3dv_image *src,
-               VkFormat fb_format,
                const VkImageCopy *region)
 {
+   VkFormat fb_format;
+   if (!can_use_tlb(src, &region->srcOffset, &fb_format) ||
+       !can_use_tlb(dst, &region->dstOffset, &fb_format)) {
+      return false;
+   }
+
    /* From the Vulkan spec, VkImageCopy valid usage:
     *
     *    "If neither the calling command’s srcImage nor the calling command’s
@@ -864,7 +869,7 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
    if (!job)
-      return;
+      return false;
 
    v3dv_job_start_frame(job,
                         region->extent.width,
@@ -879,6 +884,71 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    emit_copy_image_rcl(job, dst, src, &framebuffer, region);
 
    v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+   return true;
+}
+
+static bool
+blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
+            struct v3dv_image *dst,
+            VkFormat dst_format,
+            struct v3dv_image *src,
+            VkFormat src_format,
+            const VkImageBlit *region,
+            VkFilter filter);
+
+static bool
+copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
+                struct v3dv_image *dst,
+                struct v3dv_image *src,
+                const VkImageCopy *region)
+{
+   /* We need to make sure that we choose a copy format that is renderable,
+    * since we are going to emit a blit shader.
+    *
+    * FIXME: for some reason, some tests fail if we choose the format from
+    * the destination rather than the source. This might be pointing at
+    * something wrong with the texture setup code, since the only difference
+    * should be that when we choose the source format it is more likely that
+    * the texture view for the blit source has the same format as the
+    * underlying image.
+    */
+   VkFormat format =
+      src->format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO ?
+         src->vk_format : get_compatible_tlb_format(src->vk_format);
+   if (format == VK_FORMAT_UNDEFINED)
+      return false;
+
+   const struct v3dv_format *f = v3dv_get_format(format);
+   if (!f->supported || f->tex_type == TEXTURE_DATA_FORMAT_NO)
+      return false;
+
+
+   const VkOffset3D src_start = region->srcOffset;
+   const VkOffset3D src_end = {
+      src_start.x + region->extent.width,
+      src_start.y + region->extent.height,
+      src_start.z + region->extent.depth,
+   };
+
+   const VkOffset3D dst_start = region->dstOffset;
+   const VkOffset3D dst_end = {
+      dst_start.x + region->extent.width,
+      dst_start.y + region->extent.height,
+      dst_start.z + region->extent.depth,
+   };
+
+   const VkImageBlit blit_region = {
+      .srcSubresource = region->srcSubresource,
+      .srcOffsets = { src_start, src_end },
+      .dstSubresource = region->dstSubresource,
+      .dstOffsets = { dst_start, dst_end },
+   };
+   return blit_shader(cmd_buffer,
+                      dst, format,
+                      src, format,
+                      &blit_region,
+                      VK_FILTER_NEAREST);
 }
 
 void
@@ -894,14 +964,12 @@ v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_image, src, srcImage);
    V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
 
-   VkFormat compat_format;
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb(src, &pRegions[i].srcOffset, &compat_format) &&
-          can_use_tlb(dst, &pRegions[i].dstOffset, &compat_format)) {
-         copy_image_tlb(cmd_buffer, dst, src, compat_format, &pRegions[i]);
-      } else {
-         assert(!"Fallback path for vkCopyImageToImage not implemented");
-      }
+      if (copy_image_tlb(cmd_buffer, dst, src, &pRegions[i]))
+         continue;
+      if (copy_image_blit(cmd_buffer, dst, src, &pRegions[i]))
+         continue;
+      unreachable("Image copy not supported");
    }
 }
 
@@ -2593,7 +2661,9 @@ ensure_meta_blit_descriptor_pool(struct v3dv_cmd_buffer *cmd_buffer)
 static bool
 blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             struct v3dv_image *dst,
+            VkFormat dst_format,
             struct v3dv_image *src,
+            VkFormat src_format,
             const VkImageBlit *region,
             VkFilter filter)
 {
@@ -2681,7 +2751,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    /* Get the blit pipeline */
    struct v3dv_meta_blit_pipeline *pipeline = NULL;
    bool ok = get_blit_pipeline(cmd_buffer->device,
-                               dst->vk_format, src->vk_format, src->type,
+                               dst_format, src_format, src->type,
                                &pipeline);
    if (!ok)
       return false;
@@ -2705,7 +2775,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
          .image = v3dv_image_to_handle(dst),
          .viewType = v3dv_image_type_to_view_type(dst->type),
-         .format = dst->vk_format,
+         .format = dst_format,
          .subresourceRange = {
             .aspectMask = dst->aspects,
             .baseMipLevel = region->dstSubresource.mipLevel,
@@ -2788,7 +2858,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
          .image = v3dv_image_to_handle(src),
          .viewType = v3dv_image_type_to_view_type(src->type),
-         .format = src->vk_format,
+         .format = src_format,
          .subresourceRange = {
             .aspectMask = src->aspects,
             .baseMipLevel = region->srcSubresource.mipLevel,
@@ -2914,8 +2984,12 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < regionCount; i++) {
       if (blit_tfu(cmd_buffer, dst, src, &pRegions[i], filter))
          continue;
-      if (blit_shader(cmd_buffer, dst, src, &pRegions[i], filter))
+      if (blit_shader(cmd_buffer,
+                      dst, dst->vk_format,
+                      src, src->vk_format,
+                      &pRegions[i], filter)) {
          continue;
+      }
       assert(!"Unsupported blit operation");
    }
 }
