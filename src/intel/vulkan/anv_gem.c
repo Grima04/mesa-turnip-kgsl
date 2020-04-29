@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <linux/sync_file.h>
 
 #include "anv_private.h"
 #include "common/gen_defines.h"
@@ -460,24 +461,6 @@ anv_gem_reg_read(struct anv_device *device, uint32_t offset, uint64_t *result)
    *result = args.val;
    return ret;
 }
-
-#ifndef SYNC_IOC_MAGIC
-/* duplicated from linux/sync_file.h to avoid build-time dependency
- * on new (v4.7) kernel headers.  Once distro's are mostly using
- * something newer than v4.7 drop this and #include <linux/sync_file.h>
- * instead.
- */
-struct sync_merge_data {
-   char  name[32];
-   __s32 fd2;
-   __s32 fence;
-   __u32 flags;
-   __u32 pad;
-};
-
-#define SYNC_IOC_MAGIC '>'
-#define SYNC_IOC_MERGE _IOWR(SYNC_IOC_MAGIC, 3, struct sync_merge_data)
-#endif
 
 int
 anv_gem_sync_file_merge(struct anv_device *device, int fd1, int fd2)
