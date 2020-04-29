@@ -166,6 +166,9 @@ VkResult radv_CreateShaderModule(
 	if (module == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &module->base,
+			    VK_OBJECT_TYPE_SHADER_MODULE);
+
 	module->nir = NULL;
 	module->size = pCreateInfo->codeSize;
 	memcpy(module->data, pCreateInfo->pCode, module->size);
@@ -188,6 +191,7 @@ void radv_DestroyShaderModule(
 	if (!module)
 		return;
 
+	vk_object_base_finish(&module->base);
 	vk_free2(&device->vk.alloc, pAllocator, module);
 }
 

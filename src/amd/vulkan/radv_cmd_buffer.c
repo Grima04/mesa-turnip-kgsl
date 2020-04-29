@@ -277,7 +277,9 @@ static VkResult radv_create_cmd_buffer(
 	if (cmd_buffer == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-	cmd_buffer->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+	vk_object_base_init(&device->vk, &cmd_buffer->base,
+			    VK_OBJECT_TYPE_COMMAND_BUFFER);
+
 	cmd_buffer->device = device;
 	cmd_buffer->pool = pool;
 	cmd_buffer->level = level;
@@ -327,6 +329,8 @@ radv_cmd_buffer_destroy(struct radv_cmd_buffer *cmd_buffer)
 
 	for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
 		free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
+
+	vk_object_base_finish(&cmd_buffer->base);
 
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
@@ -3318,7 +3322,6 @@ VkResult radv_AllocateCommandBuffers(
 			list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
 
 			result = radv_reset_cmd_buffer(cmd_buffer);
-			cmd_buffer->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
 			cmd_buffer->level = pAllocateInfo->level;
 
 			pCommandBuffers[i] = radv_cmd_buffer_to_handle(cmd_buffer);
@@ -4261,6 +4264,9 @@ VkResult radv_CreateCommandPool(
 	if (pool == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &pool->base,
+			    VK_OBJECT_TYPE_COMMAND_POOL);
+
 	if (pAllocator)
 		pool->alloc = *pAllocator;
 	else
@@ -4298,6 +4304,7 @@ void radv_DestroyCommandPool(
 		radv_cmd_buffer_destroy(cmd_buffer);
 	}
 
+	vk_object_base_finish(&pool->base);
 	vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 

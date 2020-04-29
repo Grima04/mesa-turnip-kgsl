@@ -1283,6 +1283,8 @@ VkResult radv_CreateQueryPool(
 	if (!pool)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &pool->base,
+			    VK_OBJECT_TYPE_QUERY_POOL);
 
 	switch(pCreateInfo->queryType) {
 	case VK_QUERY_TYPE_OCCLUSION:
@@ -1341,6 +1343,8 @@ void radv_DestroyQueryPool(
 		return;
 
 	device->ws->buffer_destroy(pool->bo);
+
+	vk_object_base_finish(&pool->base);
 	vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 

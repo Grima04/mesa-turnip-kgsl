@@ -191,6 +191,8 @@ radv_pipeline_destroy(struct radv_device *device,
 
 	if(pipeline->cs.buf)
 		free(pipeline->cs.buf);
+
+	vk_object_base_finish(&pipeline->base);
 	vk_free2(&device->vk.alloc, allocator, pipeline);
 }
 
@@ -5265,6 +5267,9 @@ radv_graphics_pipeline_create(
 	if (pipeline == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &pipeline->base,
+			    VK_OBJECT_TYPE_PIPELINE);
+
 	result = radv_pipeline_init(pipeline, device, cache,
 				    pCreateInfo, extra);
 	if (result != VK_SUCCESS) {
@@ -5402,6 +5407,9 @@ static VkResult radv_compute_pipeline_create(
 			      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (pipeline == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+	vk_object_base_init(&device->vk, &pipeline->base,
+			    VK_OBJECT_TYPE_PIPELINE);
 
 	pipeline->device = device;
 	pipeline->layout = radv_pipeline_layout_from_handle(pCreateInfo->layout);

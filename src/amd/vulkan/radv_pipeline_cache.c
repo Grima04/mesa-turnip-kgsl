@@ -578,6 +578,9 @@ VkResult radv_CreatePipelineCache(
 	if (cache == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &cache->base,
+			    VK_OBJECT_TYPE_PIPELINE_CACHE);
+
 	if (pAllocator)
 		cache->alloc = *pAllocator;
 	else
@@ -608,6 +611,7 @@ void radv_DestroyPipelineCache(
 		return;
 	radv_pipeline_cache_finish(cache);
 
+	vk_object_base_finish(&cache->base);
 	vk_free2(&device->vk.alloc, pAllocator, cache);
 }
 

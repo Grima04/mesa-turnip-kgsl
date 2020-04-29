@@ -325,6 +325,10 @@ VkResult radv_CreateRenderPass(
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
 	memset(pass, 0, size);
+
+	vk_object_base_init(&device->vk, &pass->base,
+			    VK_OBJECT_TYPE_RENDER_PASS);
+
 	pass->attachment_count = pCreateInfo->attachmentCount;
 	pass->subpass_count = pCreateInfo->subpassCount;
 	pass->attachments = (void *) pass + attachments_offset;
@@ -507,6 +511,10 @@ VkResult radv_CreateRenderPass2(
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
 	memset(pass, 0, size);
+
+	vk_object_base_init(&device->vk, &pass->base,
+			    VK_OBJECT_TYPE_RENDER_PASS);
+
 	pass->attachment_count = pCreateInfo->attachmentCount;
 	pass->subpass_count = pCreateInfo->subpassCount;
 	pass->attachments = (void *) pass + attachments_offset;
@@ -681,6 +689,8 @@ void radv_DestroyRenderPass(
 
 	if (!_pass)
 		return;
+
+	vk_object_base_finish(&pass->base);
 	vk_free2(&device->vk.alloc, pAllocator, pass->subpass_attachments);
 	vk_free2(&device->vk.alloc, pAllocator, pass);
 }

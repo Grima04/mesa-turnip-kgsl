@@ -114,6 +114,9 @@ VkResult radv_CreateDescriptorSetLayout(
 	if (!set_layout)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &set_layout->base,
+			    VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
+
 	set_layout->flags = pCreateInfo->flags;
 	set_layout->layout_size = size;
 
@@ -132,6 +135,7 @@ VkResult radv_CreateDescriptorSetLayout(
 	VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(pCreateInfo->pBindings,
 	                                                                pCreateInfo->bindingCount);
 	if (!bindings) {
+		vk_object_base_finish(&set_layout->base);
 		vk_free2(&device->vk.alloc, pAllocator, set_layout);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 	}
@@ -295,6 +299,7 @@ void radv_DestroyDescriptorSetLayout(
 	if (!set_layout)
 		return;
 
+	vk_object_base_finish(&set_layout->base);
 	vk_free2(&device->vk.alloc, pAllocator, set_layout);
 }
 
@@ -413,6 +418,9 @@ VkResult radv_CreatePipelineLayout(
 	if (layout == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &layout->base,
+			    VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+
 	layout->num_sets = pCreateInfo->setLayoutCount;
 
 	unsigned dynamic_offset_count = 0;
@@ -462,6 +470,8 @@ void radv_DestroyPipelineLayout(
 
 	if (!pipeline_layout)
 		return;
+
+	vk_object_base_finish(&pipeline_layout->base);
 	vk_free2(&device->vk.alloc, pAllocator, pipeline_layout);
 }
 
@@ -504,6 +514,9 @@ radv_descriptor_set_create(struct radv_device *device,
 	}
 
 	memset(set, 0, mem_size);
+
+	vk_object_base_init(&device->vk, &set->base,
+			    VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
 	if (layout->dynamic_offset_count) {
 		set->dynamic_descriptors = (struct radv_descriptor_range*)((uint8_t*)set + range_offset);
@@ -612,6 +625,7 @@ radv_descriptor_set_destroy(struct radv_device *device,
 			}
 		}
 	}
+	vk_object_base_finish(&set->base);
 	vk_free2(&device->vk.alloc, NULL, set);
 }
 
@@ -691,6 +705,9 @@ VkResult radv_CreateDescriptorPool(
 
 	memset(pool, 0, sizeof(*pool));
 
+	vk_object_base_init(&device->vk, &pool->base,
+			    VK_OBJECT_TYPE_DESCRIPTOR_POOL);
+
 	if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)) {
 		pool->host_memory_base = (uint8_t*)pool + sizeof(struct radv_descriptor_pool);
 		pool->host_memory_ptr = pool->host_memory_base;
@@ -732,6 +749,8 @@ void radv_DestroyDescriptorPool(
 
 	if (pool->bo)
 		device->ws->buffer_destroy(pool->bo);
+
+	vk_object_base_finish(&pool->base);
 	vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
@@ -1183,6 +1202,9 @@ VkResult radv_CreateDescriptorUpdateTemplate(VkDevice _device,
 	if (!templ)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &templ->base,
+			    VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
+
 	templ->entry_count = entry_count;
 
 	if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR) {
@@ -1266,6 +1288,7 @@ void radv_DestroyDescriptorUpdateTemplate(VkDevice _device,
 	if (!templ)
 		return;
 
+	vk_object_base_finish(&templ->base);
 	vk_free2(&device->vk.alloc, pAllocator, templ);
 }
 
@@ -1368,6 +1391,9 @@ VkResult radv_CreateSamplerYcbcrConversion(VkDevice _device,
 	if (conversion == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &conversion->base,
+			    VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION);
+
 	conversion->format = pCreateInfo->format;
 	conversion->ycbcr_model = pCreateInfo->ycbcrModel;
 	conversion->ycbcr_range = pCreateInfo->ycbcrRange;
@@ -1388,6 +1414,9 @@ void radv_DestroySamplerYcbcrConversion(VkDevice _device,
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_sampler_ycbcr_conversion, ycbcr_conversion, ycbcrConversion);
 
-	if (ycbcr_conversion)
-		vk_free2(&device->vk.alloc, pAllocator, ycbcr_conversion);
+	if (!ycbcr_conversion)
+		return;
+
+	vk_object_base_finish(&ycbcr_conversion->base);
+	vk_free2(&device->vk.alloc, pAllocator, ycbcr_conversion);
 }

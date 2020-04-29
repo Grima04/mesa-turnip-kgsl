@@ -1449,6 +1449,8 @@ radv_image_create(VkDevice _device,
 	if (!image)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &image->base, VK_OBJECT_TYPE_IMAGE);
+
 	image->type = pCreateInfo->imageType;
 	image->info.width = pCreateInfo->extent.width;
 	image->info.height = pCreateInfo->extent.height;
@@ -1844,6 +1846,7 @@ radv_DestroyImage(VkDevice _device, VkImage _image,
 	if (image->owned_memory != VK_NULL_HANDLE)
 		radv_FreeMemory(_device, image->owned_memory, pAllocator);
 
+	vk_object_base_finish(&image->base);
 	vk_free2(&device->vk.alloc, pAllocator, image);
 }
 
@@ -1913,6 +1916,9 @@ radv_CreateImageView(VkDevice _device,
 	if (view == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &view->base,
+			    VK_OBJECT_TYPE_IMAGE_VIEW);
+
 	radv_image_view_init(view, device, pCreateInfo, NULL);
 
 	*pView = radv_image_view_to_handle(view);
@@ -1929,6 +1935,8 @@ radv_DestroyImageView(VkDevice _device, VkImageView _iview,
 
 	if (!iview)
 		return;
+
+	vk_object_base_finish(&iview->base);
 	vk_free2(&device->vk.alloc, pAllocator, iview);
 }
 
@@ -1961,6 +1969,9 @@ radv_CreateBufferView(VkDevice _device,
 	if (!view)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &view->base,
+			    VK_OBJECT_TYPE_BUFFER_VIEW);
+
 	radv_buffer_view_init(view, device, pCreateInfo);
 
 	*pView = radv_buffer_view_to_handle(view);
@@ -1978,5 +1989,6 @@ radv_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
 	if (!view)
 		return;
 
+	vk_object_base_finish(&view->base);
 	vk_free2(&device->vk.alloc, pAllocator, view);
 }

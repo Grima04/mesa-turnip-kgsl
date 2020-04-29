@@ -606,7 +606,7 @@ VkResult radv_CreateInstance(
 	if (!instance)
 		return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-	instance->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+	vk_object_base_init(NULL, &instance->base, VK_OBJECT_TYPE_INSTANCE);
 
 	if (pAllocator)
 		instance->alloc = *pAllocator;
@@ -755,6 +755,7 @@ void radv_DestroyInstance(
 
 	vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
 
+	vk_object_base_finish(&instance->base);
 	vk_free(&instance->alloc, instance);
 }
 
@@ -5100,6 +5101,7 @@ static void radv_free_memory(struct radv_device *device,
 		mem->bo = NULL;
 	}
 
+	vk_object_base_finish(&mem->base);
 	vk_free2(&device->vk.alloc, pAllocator, mem);
 }
 
@@ -5141,6 +5143,9 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 			  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (mem == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+	vk_object_base_init(&device->vk, &mem->base,
+			    VK_OBJECT_TYPE_DEVICE_MEMORY);
 
 	if (wsi_info && wsi_info->implicit_sync)
 		flags |= RADEON_FLAG_IMPLICIT_SYNC;
@@ -5601,6 +5606,8 @@ VkResult radv_CreateFence(
 	if (!fence)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &fence->base, VK_OBJECT_TYPE_FENCE);
+
 	fence->fence_wsi = NULL;
 	fence->temp_syncobj = 0;
 	if (device->always_use_syncobj || handleTypes) {
@@ -5648,6 +5655,8 @@ void radv_DestroyFence(
 		device->ws->destroy_fence(fence->fence);
 	if (fence->fence_wsi)
 		fence->fence_wsi->destroy(fence->fence_wsi);
+
+	vk_object_base_finish(&fence->base);
 	vk_free2(&device->vk.alloc, pAllocator, fence);
 }
 
@@ -6066,6 +6075,9 @@ VkResult radv_CreateSemaphore(
 	if (!sem)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &sem->base,
+			    VK_OBJECT_TYPE_SEMAPHORE);
+
 	sem->temporary.kind = RADV_SEMAPHORE_NONE;
 	sem->permanent.kind = RADV_SEMAPHORE_NONE;
 
@@ -6105,6 +6117,7 @@ void radv_DestroySemaphore(
 
 	radv_destroy_semaphore_part(device, &sem->temporary);
 	radv_destroy_semaphore_part(device, &sem->permanent);
+	vk_object_base_finish(&sem->base);
 	vk_free2(&device->vk.alloc, pAllocator, sem);
 }
 
@@ -6226,6 +6239,8 @@ VkResult radv_CreateEvent(
 	if (!event)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &event->base, VK_OBJECT_TYPE_EVENT);
+
 	event->bo = device->ws->buffer_create(device->ws, 8, 8,
 					      RADEON_DOMAIN_GTT,
 					      RADEON_FLAG_VA_UNCACHED | RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
@@ -6253,6 +6268,7 @@ void radv_DestroyEvent(
 	if (!event)
 		return;
 	device->ws->buffer_destroy(event->bo);
+	vk_object_base_finish(&event->base);
 	vk_free2(&device->vk.alloc, pAllocator, event);
 }
 
@@ -6306,6 +6322,8 @@ VkResult radv_CreateBuffer(
 	if (buffer == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
+
 	buffer->size = pCreateInfo->size;
 	buffer->usage = pCreateInfo->usage;
 	buffer->bo = NULL;
@@ -6345,6 +6363,7 @@ void radv_DestroyBuffer(
 	if (buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
 		device->ws->buffer_destroy(buffer->bo);
 
+	vk_object_base_finish(&buffer->base);
 	vk_free2(&device->vk.alloc, pAllocator, buffer);
 }
 
@@ -6914,6 +6933,9 @@ VkResult radv_CreateFramebuffer(
 	if (framebuffer == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &framebuffer->base,
+			    VK_OBJECT_TYPE_FRAMEBUFFER);
+
 	framebuffer->attachment_count = pCreateInfo->attachmentCount;
 	framebuffer->width = pCreateInfo->width;
 	framebuffer->height = pCreateInfo->height;
@@ -6951,6 +6973,7 @@ void radv_DestroyFramebuffer(
 
 	if (!fb)
 		return;
+	vk_object_base_finish(&fb->base);
 	vk_free2(&device->vk.alloc, pAllocator, fb);
 }
 
@@ -7172,6 +7195,9 @@ VkResult radv_CreateSampler(
 	if (!sampler)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+	vk_object_base_init(&device->vk, &sampler->base,
+			    VK_OBJECT_TYPE_SAMPLER);
+
 	radv_init_sampler(device, sampler, pCreateInfo);
 
 	sampler->ycbcr_sampler = ycbcr_conversion ? radv_sampler_ycbcr_conversion_from_handle(ycbcr_conversion->conversion): NULL;
@@ -7190,6 +7216,7 @@ void radv_DestroySampler(
 
 	if (!sampler)
 		return;
+	vk_object_base_finish(&sampler->base);
 	vk_free2(&device->vk.alloc, pAllocator, sampler);
 }
 
