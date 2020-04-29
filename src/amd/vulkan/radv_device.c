@@ -239,9 +239,9 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 }
 
 static VkResult
-radv_physical_device_init(struct radv_physical_device *device,
-			  struct radv_instance *instance,
-			  drmDevicePtr drm_device)
+radv_physical_device_try_create(struct radv_instance *instance,
+				drmDevicePtr drm_device,
+				struct radv_physical_device **device_out)
 {
 	VkResult result;
 	int fd = -1;
@@ -285,6 +285,14 @@ radv_physical_device_init(struct radv_physical_device *device,
 				radv_logi("Found compatible device '%s'.", path);
 	}
 
+	struct radv_physical_device *device =
+		vk_zalloc2(&instance->alloc, NULL, sizeof(*device), 8,
+			   VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+	if (!device) {
+		result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+		goto fail_fd;
+	}
+
 	device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
 	device->instance = instance;
 
@@ -297,7 +305,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 
 	if (!device->ws) {
 		result = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
-		goto fail_fd;
+		goto fail_alloc;
 	}
 
 	if (drm_device && instance->enabled_extensions.KHR_display) {
@@ -402,12 +410,16 @@ radv_physical_device_init(struct radv_physical_device *device,
 		goto fail_disk_cache;
 	}
 
+	*device_out = device;
+
 	return VK_SUCCESS;
 
 fail_disk_cache:
 	disk_cache_destroy(device->disk_cache);
 fail_wsi:
 	device->ws->destroy(device->ws);
+fail_alloc:
+	vk_free(&instance->alloc, device);
 fail_fd:
 	close(fd);
 	if (master_fd != -1)
@@ -416,7 +428,7 @@ fail_fd:
 }
 
 static void
-radv_physical_device_finish(struct radv_physical_device *device)
+radv_physical_device_destroy(struct radv_physical_device *device)
 {
 	radv_finish_wsi(device);
 	device->ws->destroy(device->ws);
@@ -424,6 +436,7 @@ radv_physical_device_finish(struct radv_physical_device *device)
 	close(device->local_fd);
 	if (device->master_fd != -1)
 		close(device->master_fd);
+	vk_free(&device->instance->alloc, device);
 }
 
 static void *
@@ -611,8 +624,6 @@ VkResult radv_CreateInstance(
 	if (instance->apiVersion == 0)
 		instance->apiVersion = VK_API_VERSION_1_0;
 
-	instance->physicalDeviceCount = -1;
-
 	/* Get secure compile thread count. NOTE: We cap this at 32 */
 #define MAX_SC_PROCS 32
 	char *num_sc_threads = getenv("RADV_SECURE_COMPILE_THREADS");
@@ -696,6 +707,9 @@ VkResult radv_CreateInstance(
 		}
 	}
 
+	instance->physical_devices_enumerated = false;
+	list_inithead(&instance->physical_devices);
+
 	result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
 	if (result != VK_SUCCESS) {
 		vk_free2(&default_alloc, pAllocator, instance);
@@ -723,8 +737,9 @@ void radv_DestroyInstance(
 	if (!instance)
 		return;
 
-	for (int i = 0; i < instance->physicalDeviceCount; ++i) {
-		radv_physical_device_finish(instance->physicalDevices + i);
+	list_for_each_entry_safe(struct radv_physical_device, pdevice,
+				 &instance->physical_devices, link) {
+		radv_physical_device_destroy(pdevice);
 	}
 
 	vk_free(&instance->alloc, instance->engineName);
@@ -744,23 +759,28 @@ void radv_DestroyInstance(
 static VkResult
 radv_enumerate_physical_devices(struct radv_instance *instance)
 {
+	if (instance->physical_devices_enumerated)
+		return VK_SUCCESS;
+
+	instance->physical_devices_enumerated = true;
+
 	/* TODO: Check for more devices ? */
 	drmDevicePtr devices[8];
 	VkResult result = VK_SUCCESS;
 	int max_devices;
-
-	instance->physicalDeviceCount = 0;
 
 	if (getenv("RADV_FORCE_FAMILY")) {
 		/* When RADV_FORCE_FAMILY is set, the driver creates a nul
 		 * device that allows to test the compiler without having an
 		 * AMDGPU instance.
 		 */
-		result = radv_physical_device_init(instance->physicalDevices +
-			                           instance->physicalDeviceCount,
-			                           instance, NULL);
+		struct radv_physical_device *pdevice;
 
-		++instance->physicalDeviceCount;
+		result = radv_physical_device_try_create(instance, NULL, &pdevice);
+		if (result != VK_SUCCESS)
+			return result;
+
+		list_addtail(&pdevice->link, &instance->physical_devices);
 		return VK_SUCCESS;
 	}
 
@@ -777,10 +797,9 @@ radv_enumerate_physical_devices(struct radv_instance *instance)
 		    devices[i]->bustype == DRM_BUS_PCI &&
 		    devices[i]->deviceinfo.pci->vendor_id == ATI_VENDOR_ID) {
 
-			result = radv_physical_device_init(instance->physicalDevices +
-			                                   instance->physicalDeviceCount,
-			                                   instance,
-			                                   devices[i]);
+			struct radv_physical_device *pdevice;
+			result = radv_physical_device_try_create(instance, devices[i],
+								 &pdevice);
 			/* Incompatible DRM device, skip. */
 			if (result == VK_ERROR_INCOMPATIBLE_DRIVER) {
 				result = VK_SUCCESS;
@@ -791,7 +810,7 @@ radv_enumerate_physical_devices(struct radv_instance *instance)
 			if (result != VK_SUCCESS)
 				break;
 
-			++instance->physicalDeviceCount;
+			list_addtail(&pdevice->link, &instance->physical_devices);
 		}
 	}
 	drmFreeDevices(devices, max_devices);
@@ -806,24 +825,20 @@ VkResult radv_EnumeratePhysicalDevices(
 	VkPhysicalDevice*                           pPhysicalDevices)
 {
 	RADV_FROM_HANDLE(radv_instance, instance, _instance);
-	VkResult result;
+	VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
 
-	if (instance->physicalDeviceCount < 0) {
-		result = radv_enumerate_physical_devices(instance);
-		if (result != VK_SUCCESS)
-			return result;
+	VkResult result = radv_enumerate_physical_devices(instance);
+	if (result != VK_SUCCESS)
+		return result;
+
+	list_for_each_entry(struct radv_physical_device, pdevice,
+			    &instance->physical_devices, link) {
+		vk_outarray_append(&out, i) {
+			*i = radv_physical_device_to_handle(pdevice);
+		}
 	}
 
-	if (!pPhysicalDevices) {
-		*pPhysicalDeviceCount = instance->physicalDeviceCount;
-	} else {
-		*pPhysicalDeviceCount = MIN2(*pPhysicalDeviceCount, instance->physicalDeviceCount);
-		for (unsigned i = 0; i < *pPhysicalDeviceCount; ++i)
-			pPhysicalDevices[i] = radv_physical_device_to_handle(instance->physicalDevices + i);
-	}
-
-	return *pPhysicalDeviceCount < instance->physicalDeviceCount ? VK_INCOMPLETE
-	                                                             : VK_SUCCESS;
+	return vk_outarray_status(&out);
 }
 
 VkResult radv_EnumeratePhysicalDeviceGroups(
@@ -832,26 +847,24 @@ VkResult radv_EnumeratePhysicalDeviceGroups(
     VkPhysicalDeviceGroupProperties*            pPhysicalDeviceGroupProperties)
 {
 	RADV_FROM_HANDLE(radv_instance, instance, _instance);
-	VkResult result;
+	VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties,
+			      pPhysicalDeviceGroupCount);
 
-	if (instance->physicalDeviceCount < 0) {
-		result = radv_enumerate_physical_devices(instance);
-		if (result != VK_SUCCESS)
-			return result;
-	}
+	VkResult result = radv_enumerate_physical_devices(instance);
+	if (result != VK_SUCCESS)
+		return result;
 
-	if (!pPhysicalDeviceGroupProperties) {
-		*pPhysicalDeviceGroupCount = instance->physicalDeviceCount;
-	} else {
-		*pPhysicalDeviceGroupCount = MIN2(*pPhysicalDeviceGroupCount, instance->physicalDeviceCount);
-		for (unsigned i = 0; i < *pPhysicalDeviceGroupCount; ++i) {
-			pPhysicalDeviceGroupProperties[i].physicalDeviceCount = 1;
-			pPhysicalDeviceGroupProperties[i].physicalDevices[0] = radv_physical_device_to_handle(instance->physicalDevices + i);
-			pPhysicalDeviceGroupProperties[i].subsetAllocation = false;
+	list_for_each_entry(struct radv_physical_device, pdevice,
+			    &instance->physical_devices, link) {
+		vk_outarray_append(&out, p) {
+			p->physicalDeviceCount = 1;
+			memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
+			p->physicalDevices[0] = radv_physical_device_to_handle(pdevice);
+			p->subsetAllocation = false;
 		}
 	}
-	return *pPhysicalDeviceGroupCount < instance->physicalDeviceCount ? VK_INCOMPLETE
-	                                                                  : VK_SUCCESS;
+
+	return vk_outarray_status(&out);
 }
 
 void radv_GetPhysicalDeviceFeatures(

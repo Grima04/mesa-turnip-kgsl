@@ -284,6 +284,9 @@ void *radv_lookup_entrypoint(const char *name);
 struct radv_physical_device {
 	VK_LOADER_DATA                              _loader_data;
 
+	/* Link in radv_instance::physical_devices */
+	struct list_head                            link;
+
 	struct radv_instance *                       instance;
 
 	struct radeon_winsys *ws;
@@ -342,8 +345,6 @@ struct radv_instance {
 	VkAllocationCallbacks                       alloc;
 
 	uint32_t                                    apiVersion;
-	int                                         physicalDeviceCount;
-	struct radv_physical_device                 physicalDevices[RADV_MAX_DRM_DEVICES];
 
 	char *                                      engineName;
 	uint32_t                                    engineVersion;
@@ -358,6 +359,9 @@ struct radv_instance {
 	struct radv_instance_dispatch_table          dispatch;
 	struct radv_physical_device_dispatch_table   physical_device_dispatch;
 	struct radv_device_dispatch_table            device_dispatch;
+
+	bool                                        physical_devices_enumerated;
+	struct list_head                            physical_devices;
 
 	struct driOptionCache dri_options;
 	struct driOptionCache available_dri_options;
