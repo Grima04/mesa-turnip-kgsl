@@ -497,11 +497,6 @@ optimise_nir(nir_shader *nir, unsigned quirks)
         /* Now that booleans are lowered, we can run out late opts */
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_late);
 
-        /* Lower mods for float ops only. Integer ops don't support modifiers
-         * (saturate doesn't make sense on integers, neg/abs require dedicated
-         * instructions) */
-
-        NIR_PASS(progress, nir, nir_lower_to_source_mods, nir_lower_float_source_mods);
         NIR_PASS(progress, nir, nir_copy_prop);
         NIR_PASS(progress, nir, nir_opt_dce);
 
