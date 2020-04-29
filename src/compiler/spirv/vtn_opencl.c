@@ -90,6 +90,7 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_Native_log2: return nir_op_flog2;
    case OpenCLstd_Native_powr: return nir_op_fpow;
    case OpenCLstd_Native_recip: return nir_op_frcp;
+   case OpenCLstd_Native_rsqrt: return nir_op_frsq;
    case OpenCLstd_Native_sin: return nir_op_fsin;
    case OpenCLstd_SMul_hi: return nir_op_imul_high;
    case OpenCLstd_UMul_hi: return nir_op_umul_high;
@@ -363,6 +364,7 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Native_log2:
    case OpenCLstd_Native_powr:
    case OpenCLstd_Native_recip:
+   case OpenCLstd_Native_rsqrt:
    case OpenCLstd_Native_sin:
    case OpenCLstd_Fmod:
    case OpenCLstd_SMul_hi:
