@@ -270,6 +270,9 @@ typedef struct compiler_context {
         int temp_count;
         int max_hash;
 
+        /* Set of NIR indices that were already emitted as outmods */
+        BITSET_WORD *already_emitted;
+
         /* Just the count of the max register used. Higher count => higher
          * register pressure */
         int work_registers;
