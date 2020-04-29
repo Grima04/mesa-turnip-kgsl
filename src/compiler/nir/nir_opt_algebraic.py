@@ -1779,10 +1779,14 @@ for op in ['fpow']:
         (('bcsel', a, (op, b, c), (op + '(is_used_once)', d, c)), (op, ('bcsel', a, b, d), c)),
     ]
 
-for op in ['frcp', 'frsq', 'fsqrt', 'fexp2', 'flog2', 'fsign', 'fsin', 'fcos']:
+for op in ['frcp', 'frsq', 'fsqrt', 'fexp2', 'flog2', 'fsign', 'fsin', 'fcos', 'fneg', 'fabs', 'fsign']:
     optimizations += [
-        (('bcsel', a, (op + '(is_used_once)', b), (op, c)), (op, ('bcsel', a, b, c))),
-        (('bcsel', a, (op, b), (op + '(is_used_once)', c)), (op, ('bcsel', a, b, c))),
+        (('bcsel', c, (op + '(is_used_once)', a), (op + '(is_used_once)', b)), (op, ('bcsel', c, a, b))),
+    ]
+
+for op in ['ineg', 'iabs', 'inot', 'isign']:
+    optimizations += [
+        ((op, ('bcsel', c, '#a', '#b')), ('bcsel', c, (op, a), (op, b))),
     ]
 
 # This section contains optimizations to propagate downsizing conversions of
