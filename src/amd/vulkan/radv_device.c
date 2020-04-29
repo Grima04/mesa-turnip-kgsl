@@ -5200,7 +5200,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 
 		heap_index = device->physical_device->memory_properties.memoryTypes[pAllocateInfo->memoryTypeIndex].heapIndex;
 		domain = device->physical_device->memory_domains[pAllocateInfo->memoryTypeIndex];
-		flags = device->physical_device->memory_flags[pAllocateInfo->memoryTypeIndex];
+		flags |= device->physical_device->memory_flags[pAllocateInfo->memoryTypeIndex];
 
 		if (!dedicate_info && !import_info && (!export_info || !export_info->handleTypes)) {
 			flags |= RADEON_FLAG_NO_INTERPROCESS_SHARING;
