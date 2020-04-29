@@ -297,7 +297,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 
 	if (!device->ws) {
 		result = vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
-		goto fail;
+		goto fail_fd;
 	}
 
 	if (drm_device && instance->enabled_extensions.KHR_display) {
@@ -328,10 +328,9 @@ radv_physical_device_init(struct radv_physical_device *device,
 		 device->rad_info.name);
 
 	if (radv_device_get_cache_uuid(device->rad_info.family, device->cache_uuid)) {
-		device->ws->destroy(device->ws);
 		result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
 				   "cannot generate UUID");
-		goto fail;
+		goto fail_wsi;
 	}
 
 	/* These flags affect shader compilation. */
@@ -399,14 +398,17 @@ radv_physical_device_init(struct radv_physical_device *device,
 	 */
 	result = radv_init_wsi(device);
 	if (result != VK_SUCCESS) {
-		device->ws->destroy(device->ws);
 		vk_error(instance, result);
-		goto fail;
+		goto fail_disk_cache;
 	}
 
 	return VK_SUCCESS;
 
-fail:
+fail_disk_cache:
+	disk_cache_destroy(device->disk_cache);
+fail_wsi:
+	device->ws->destroy(device->ws);
+fail_fd:
 	close(fd);
 	if (master_fd != -1)
 		close(master_fd);
