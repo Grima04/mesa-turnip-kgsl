@@ -232,7 +232,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    struct pipe_transfer *ubo_transfer[PIPE_MAX_CONSTANT_BUFFERS] = {0};
    assert(prog->info.num_ubos <= ARRAY_SIZE(ubo_transfer));
 
-   for (unsigned i = 0; i < prog->info.num_ubos; i++) {
+   for (unsigned i = 0; i < prog->sh.NumUniformBlocks; i++) {
       struct gl_buffer_binding *binding =
          &st->ctx->UniformBufferBindings[prog->sh.UniformBlocks[i]->Binding];
       struct st_buffer_object *st_obj = st_buffer_object(binding->BufferObject);
