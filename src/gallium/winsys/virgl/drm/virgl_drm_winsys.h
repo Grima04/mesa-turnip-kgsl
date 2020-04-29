@@ -85,6 +85,7 @@ struct virgl_drm_winsys
    struct virgl_resource_cache cache;
    mtx_t mutex;
 
+   int32_t blob_id;
    struct hash_table *bo_handles;
    struct hash_table *bo_names;
    mtx_t bo_handles_mutex;

@@ -39,6 +39,7 @@
 #include "frontend/drm_driver.h"
 #include "virgl/virgl_screen.h"
 #include "virgl/virgl_public.h"
+#include "virtio-gpu/virgl_protocol.h"
 
 #include <xf86drm.h>
 #include <libsync.h>
@@ -142,6 +143,78 @@ static void virgl_drm_resource_reference(struct virgl_winsys *qws,
       }
    }
    *dres = sres;
+}
+
+static struct virgl_hw_res *
+virgl_drm_winsys_resource_create_blob(struct virgl_winsys *qws,
+                                      enum pipe_texture_target target,
+                                      uint32_t format,
+                                      uint32_t bind,
+                                      uint32_t width,
+                                      uint32_t height,
+                                      uint32_t depth,
+                                      uint32_t array_size,
+                                      uint32_t last_level,
+                                      uint32_t nr_samples,
+                                      uint32_t flags,
+                                      uint32_t size)
+{
+   int ret;
+   int32_t blob_id;
+   uint32_t cmd[VIRGL_PIPE_RES_CREATE_SIZE + 1] = { 0 };
+   struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
+   struct drm_virtgpu_resource_create_blob drm_rc_blob = { 0 };
+   struct virgl_hw_res *res;
+
+   res = CALLOC_STRUCT(virgl_hw_res);
+   if (!res)
+      return NULL;
+
+   /* Make sure blob is page aligned. */
+   if (flags & (VIRGL_RESOURCE_FLAG_MAP_PERSISTENT |
+                VIRGL_RESOURCE_FLAG_MAP_COHERENT)) {
+      width = ALIGN(width, getpagesize());
+      size = ALIGN(width, getpagesize());
+   }
+
+   blob_id = p_atomic_inc_return(&qdws->blob_id);
+   cmd[0] = VIRGL_CMD0(VIRGL_CCMD_PIPE_RESOURCE_CREATE, 0, VIRGL_PIPE_RES_CREATE_SIZE);
+   cmd[VIRGL_PIPE_RES_CREATE_FORMAT] = format;
+   cmd[VIRGL_PIPE_RES_CREATE_BIND] = bind;
+   cmd[VIRGL_PIPE_RES_CREATE_TARGET] = target;
+   cmd[VIRGL_PIPE_RES_CREATE_WIDTH] = width;
+   cmd[VIRGL_PIPE_RES_CREATE_HEIGHT] = height;
+   cmd[VIRGL_PIPE_RES_CREATE_DEPTH] = depth;
+   cmd[VIRGL_PIPE_RES_CREATE_ARRAY_SIZE] = array_size;
+   cmd[VIRGL_PIPE_RES_CREATE_LAST_LEVEL] = last_level;
+   cmd[VIRGL_PIPE_RES_CREATE_NR_SAMPLES] = nr_samples;
+   cmd[VIRGL_PIPE_RES_CREATE_FLAGS] = flags;
+   cmd[VIRGL_PIPE_RES_CREATE_BLOB_ID] = blob_id;
+
+   drm_rc_blob.cmd = (unsigned long)(void *)&cmd;
+   drm_rc_blob.cmd_size = 4 * (VIRGL_PIPE_RES_CREATE_SIZE + 1);
+   drm_rc_blob.size = size;
+   drm_rc_blob.blob_mem = VIRTGPU_BLOB_MEM_HOST3D;
+   drm_rc_blob.blob_flags = VIRTGPU_BLOB_FLAG_USE_MAPPABLE;
+   drm_rc_blob.blob_id = (uint64_t) blob_id;
+
+   ret = drmIoctl(qdws->fd, DRM_IOCTL_VIRTGPU_RESOURCE_CREATE_BLOB, &drm_rc_blob);
+   if (ret != 0) {
+      FREE(res);
+      return NULL;
+   }
+
+   res->bind = bind;
+   res->res_handle = drm_rc_blob.res_handle;
+   res->bo_handle = drm_rc_blob.bo_handle;
+   res->size = size;
+   res->flags = flags;
+   pipe_reference_init(&res->reference, 1);
+   p_atomic_set(&res->external, false);
+   p_atomic_set(&res->num_cs_references, 0);
+   virgl_resource_cache_entry_init(&res->cache_entry, size, bind, format,
+                                    flags);
+   return res;
 }
 
 static struct virgl_hw_res *
@@ -969,6 +1042,8 @@ virgl_drm_winsys_create(int drmFD)
                              qdws);
    (void) mtx_init(&qdws->mutex, mtx_plain);
    (void) mtx_init(&qdws->bo_handles_mutex, mtx_plain);
+   p_atomic_set(&qdws->blob_id, 0);
+
    qdws->bo_handles = util_hash_table_create_ptr_keys();
    qdws->bo_names = util_hash_table_create_ptr_keys();
    qdws->base.destroy = virgl_drm_winsys_destroy;
