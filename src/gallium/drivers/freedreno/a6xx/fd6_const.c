@@ -23,6 +23,7 @@
  */
 
 #include "fd6_const.h"
+#include "fd6_pack.h"
 
 #include "ir3_const.h"
 
@@ -35,43 +36,71 @@ fd6_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
 		uint32_t regid, uint32_t offset, uint32_t sizedwords,
 		const uint32_t *dwords, struct pipe_resource *prsc)
 {
-	uint32_t i, sz, align_sz;
-	enum a6xx_state_src src;
-
-	debug_assert((regid % 4) == 0);
-
-	if (prsc) {
-		sz = 0;
-		src = SS6_INDIRECT;
-	} else {
-		sz = sizedwords;
-		src = SS6_DIRECT;
-	}
-
-	align_sz = align(sz, 4);
-
-	OUT_PKT7(ring, fd6_stage2opcode(type), 3 + align_sz);
-	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid/4) |
-			CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-			CP_LOAD_STATE6_0_STATE_SRC(src) |
-			CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(type)) |
-			CP_LOAD_STATE6_0_NUM_UNIT(DIV_ROUND_UP(sizedwords, 4)));
 	if (prsc) {
 		struct fd_bo *bo = fd_resource(prsc)->bo;
-		OUT_RELOC(ring, bo, offset, 0, 0);
+
+		if (fd6_geom_stage(type)) {
+			OUT_PKT(ring, CP_LOAD_STATE6_GEOM,
+					CP_LOAD_STATE6_0(
+							.dst_off     = regid/4,
+							.state_type  = ST6_CONSTANTS,
+							.state_src   = SS6_INDIRECT,
+							.state_block = fd6_stage2shadersb(type),
+							.num_unit    = DIV_ROUND_UP(sizedwords, 4)
+						),
+					CP_LOAD_STATE6_EXT_SRC_ADDR(
+							.bo          = bo,
+							.bo_offset   = offset
+						)
+				);
+		} else {
+			OUT_PKT(ring, CP_LOAD_STATE6_FRAG,
+					CP_LOAD_STATE6_0(
+							.dst_off     = regid/4,
+							.state_type  = ST6_CONSTANTS,
+							.state_src   = SS6_INDIRECT,
+							.state_block = fd6_stage2shadersb(type),
+							.num_unit    = DIV_ROUND_UP(sizedwords, 4)
+						),
+					CP_LOAD_STATE6_EXT_SRC_ADDR(
+							.bo          = bo,
+							.bo_offset   = offset
+						)
+				);
+		}
 	} else {
-		OUT_RING(ring, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-		OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+		/* NOTE we cheat a bit here, since we know mesa is aligning
+		 * the size of the user buffer to 16 bytes.  And we want to
+		 * cut cycles in a hot path.
+		 */
+		uint32_t align_sz = align(sizedwords, 4);
 		dwords = (uint32_t *)&((uint8_t *)dwords)[offset];
-	}
 
-	for (i = 0; i < sz; i++) {
-		OUT_RING(ring, dwords[i]);
-	}
-
-	/* Zero-pad to multiple of 4 dwords */
-	for (i = sz; i < align_sz; i++) {
-		OUT_RING(ring, 0);
+		if (fd6_geom_stage(type)) {
+			OUT_PKTBUF(ring, CP_LOAD_STATE6_GEOM, dwords, align_sz,
+					CP_LOAD_STATE6_0(
+							.dst_off     = regid/4,
+							.state_type  = ST6_CONSTANTS,
+							.state_src   = SS6_DIRECT,
+							.state_block = fd6_stage2shadersb(type),
+							.num_unit    = DIV_ROUND_UP(sizedwords, 4)
+						),
+					CP_LOAD_STATE6_1(),
+					CP_LOAD_STATE6_2()
+				);
+		} else {
+			OUT_PKTBUF(ring, CP_LOAD_STATE6_FRAG, dwords, align_sz,
+					CP_LOAD_STATE6_0(
+							.dst_off     = regid/4,
+							.state_type  = ST6_CONSTANTS,
+							.state_src   = SS6_DIRECT,
+							.state_block = fd6_stage2shadersb(type),
+							.num_unit    = DIV_ROUND_UP(sizedwords, 4)
+						),
+					CP_LOAD_STATE6_1(),
+					CP_LOAD_STATE6_2()
+				);
+		}
 	}
 }
 
