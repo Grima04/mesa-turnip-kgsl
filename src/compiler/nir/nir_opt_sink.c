@@ -45,7 +45,8 @@ nir_can_move_instr(nir_instr *instr, nir_move_options options)
       return options & nir_move_const_undef;
    }
    case nir_instr_type_alu: {
-      if (nir_op_is_vec(nir_instr_as_alu(instr)->op))
+      if (nir_op_is_vec(nir_instr_as_alu(instr)->op) ||
+          nir_instr_as_alu(instr)->op == nir_op_b2i32)
          return options & nir_move_copies;
       if (nir_alu_instr_is_comparison(nir_instr_as_alu(instr)))
          return options & nir_move_comparisons;
