@@ -1,2 +1,2 @@
 GL_ARB_compute_variable_group_size on Iris.
-VK_EXT_private_data on ANV.
+VK_EXT_private_data on ANV and RADV.
