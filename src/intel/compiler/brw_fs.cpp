@@ -8306,6 +8306,9 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
          }
       }
 
+      if (nir->info.writes_memory)
+         wm_prog_data->has_side_effects = true;
+
       emit_nir_code();
 
       if (failed)
