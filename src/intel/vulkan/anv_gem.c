@@ -572,34 +572,7 @@ anv_gem_syncobj_reset(struct anv_device *device, uint32_t handle)
 bool
 anv_gem_supports_syncobj_wait(int fd)
 {
-   int ret;
-
-   struct drm_syncobj_create create = {
-      .flags = 0,
-   };
-   ret = gen_ioctl(fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
-   if (ret)
-      return false;
-
-   uint32_t syncobj = create.handle;
-
-   struct drm_syncobj_wait wait = {
-      .handles = (uint64_t)(uintptr_t)&create,
-      .count_handles = 1,
-      .timeout_nsec = 0,
-      .flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT,
-   };
-   ret = gen_ioctl(fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
-
-   struct drm_syncobj_destroy destroy = {
-      .handle = syncobj,
-   };
-   gen_ioctl(fd, DRM_IOCTL_SYNCOBJ_DESTROY, &destroy);
-
-   /* If it timed out, then we have the ioctl and it supports the
-    * DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT flag.
-    */
-   return ret == -1 && errno == ETIME;
+   return gen_gem_supports_syncobj_wait(fd);
 }
 
 int

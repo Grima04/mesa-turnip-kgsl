@@ -18,6 +18,7 @@ COMMON_FILES = \
 	common/gen_disasm.c \
 	common/gen_disasm.h \
 	common/gen_defines.h \
+	common/gen_gem.c \
 	common/gen_gem.h \
 	common/gen_guardband.h \
 	common/gen_l3_config.c \

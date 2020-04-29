@@ -30,6 +30,7 @@ files_libintel_common = files(
   'gen_decoder.h',
   'gen_disasm.c',
   'gen_disasm.h',
+  'gen_gem.c',
   'gen_gem.h',
   'gen_guardband.h',
   'gen_l3_config.c',
