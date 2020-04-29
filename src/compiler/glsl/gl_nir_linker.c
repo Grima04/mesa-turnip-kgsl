@@ -654,6 +654,14 @@ check_image_resources(struct gl_context *ctx, struct gl_shader_program *prog)
 bool
 gl_nir_link_glsl(struct gl_context *ctx, struct gl_shader_program *prog)
 {
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      struct gl_linked_shader *shader = prog->_LinkedShaders[i];
+      if (shader) {
+         nir_remove_dead_variables(shader->Program->nir, nir_var_uniform,
+                                   &can_remove_uniform);
+      }
+   }
+
    if (!gl_nir_link_uniforms(ctx, prog, true))
       return false;
 
