@@ -343,6 +343,9 @@ lower_immed(struct ir3_cp_ctx *ctx, struct ir3_register *reg, unsigned new_flags
 		const_state->immediates_size += 4;
 		const_state->immediates = realloc (const_state->immediates,
 			const_state->immediates_size * sizeof(const_state->immediates[0]));
+
+		for (int i = const_state->immediate_idx; i < const_state->immediates_size * 4; i++)
+			const_state->immediates[i / 4].val[i % 4] = 0xd0d0d0d0;
 	}
 
 	for (i = 0; i < const_state->immediate_idx; i++) {
