@@ -1394,7 +1394,11 @@ optimizations.extend([
     'options->lower_pack_split'),
 
    (('isign', a), ('imin', ('imax', a, -1), 1), 'options->lower_isign'),
+   (('imin', ('imax', a, -1), 1), ('isign', a), '!options->lower_isign'),
+   (('imax', ('imin', a, 1), -1), ('isign', a), '!options->lower_isign'),
    (('fsign', a), ('fsub', ('b2f', ('flt', 0.0, a)), ('b2f', ('flt', a, 0.0))), 'options->lower_fsign'),
+   (('fadd', ('b2f32', ('flt', 0.0, 'a@32')), ('fneg', ('b2f32', ('flt', 'a@32', 0.0)))), ('fsign', a), '!options->lower_fsign'),
+   (('iadd', ('b2i32', ('flt', 0, 'a@32')), ('ineg', ('b2i32', ('flt', 'a@32', 0)))), ('f2i32', ('fsign', a)), '!options->lower_fsign'),
 
    # Address/offset calculations:
    # Drivers supporting imul24 should use the nir_lower_amul() pass, this
