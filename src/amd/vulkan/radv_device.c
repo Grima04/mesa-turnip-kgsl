@@ -304,7 +304,8 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	}
 
 	if (!device->ws) {
-		result = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
+		result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+				   "failed to initialize winsys");
 		goto fail_alloc;
 	}
 
