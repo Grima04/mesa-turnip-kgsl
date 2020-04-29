@@ -41,9 +41,11 @@
 #include "fd6_vsc.h"
 #include "fd6_zsa.h"
 
+#include "fd6_pack.h"
+
 static void
 draw_emit_indirect(struct fd_ringbuffer *ring,
-				   uint32_t draw0,
+				   struct CP_DRAW_INDX_OFFSET_0 *draw0,
 				   const struct pipe_draw_info *info,
 				   unsigned index_offset)
 {
@@ -53,22 +55,26 @@ draw_emit_indirect(struct fd_ringbuffer *ring,
 		struct pipe_resource *idx = info->index.resource;
 		unsigned max_indicies = (idx->width0 - index_offset) / info->index_size;
 
-		OUT_PKT7(ring, CP_DRAW_INDX_INDIRECT, 6);
-		OUT_RING(ring, draw0);
-		OUT_RELOC(ring, fd_resource(idx)->bo,
-				  index_offset, 0, 0);
-		OUT_RING(ring, A5XX_CP_DRAW_INDX_INDIRECT_3_MAX_INDICES(max_indicies));
-		OUT_RELOC(ring, ind->bo, info->indirect->offset, 0, 0);
+		OUT_PKT(ring, CP_DRAW_INDX_INDIRECT,
+				pack_CP_DRAW_INDX_OFFSET_0(*draw0),
+				A5XX_CP_DRAW_INDX_INDIRECT_INDX_BASE(
+						fd_resource(idx)->bo, index_offset),
+				A5XX_CP_DRAW_INDX_INDIRECT_3(.max_indices = max_indicies),
+				A5XX_CP_DRAW_INDX_INDIRECT_INDIRECT(
+						ind->bo, info->indirect->offset)
+			);
 	} else {
-		OUT_PKT7(ring, CP_DRAW_INDIRECT, 3);
-		OUT_RING(ring, draw0);
-		OUT_RELOC(ring, ind->bo, info->indirect->offset, 0, 0);
+		OUT_PKT(ring, CP_DRAW_INDIRECT,
+				pack_CP_DRAW_INDX_OFFSET_0(*draw0),
+				A5XX_CP_DRAW_INDIRECT_INDIRECT(
+						ind->bo, info->indirect->offset)
+			);
 	}
 }
 
 static void
 draw_emit(struct fd_ringbuffer *ring,
-		  uint32_t draw0,
+		  struct CP_DRAW_INDX_OFFSET_0 *draw0,
 		  const struct pipe_draw_info *info,
 		  unsigned index_offset)
 {
@@ -79,18 +85,21 @@ draw_emit(struct fd_ringbuffer *ring,
 		uint32_t idx_size = info->index_size * info->count;
 		uint32_t idx_offset = index_offset + info->start * info->index_size;
 
-		OUT_PKT7(ring, CP_DRAW_INDX_OFFSET, 7);
-		OUT_RING(ring, draw0);
-		OUT_RING(ring, info->instance_count);    /* NumInstances */
-		OUT_RING(ring, info->count);             /* NumIndices */
-		OUT_RING(ring, 0x0);           /* XXX */
-		OUT_RELOC(ring, fd_resource(idx_buffer)->bo, idx_offset, 0, 0);
-		OUT_RING (ring, idx_size);
+		OUT_PKT(ring, CP_DRAW_INDX_OFFSET,
+				pack_CP_DRAW_INDX_OFFSET_0(*draw0),
+				CP_DRAW_INDX_OFFSET_1(.num_instances = info->instance_count),
+				CP_DRAW_INDX_OFFSET_2(.num_indices = info->count),
+				CP_DRAW_INDX_OFFSET_3(0),
+				A5XX_CP_DRAW_INDX_OFFSET_INDX_BASE(
+						fd_resource(idx_buffer)->bo, idx_offset),
+				A5XX_CP_DRAW_INDX_OFFSET_6(.indx_size = idx_size)
+			);
 	} else {
-		OUT_PKT7(ring, CP_DRAW_INDX_OFFSET, 3);
-		OUT_RING(ring, draw0);
-		OUT_RING(ring, info->instance_count);    /* NumInstances */
-		OUT_RING(ring, info->count);             /* NumIndices */
+		OUT_PKT(ring, CP_DRAW_INDX_OFFSET,
+				pack_CP_DRAW_INDX_OFFSET_0(*draw0),
+				CP_DRAW_INDX_OFFSET_1(.num_instances = info->instance_count),
+				CP_DRAW_INDX_OFFSET_2(.num_indices = info->count)
+			);
 	}
 }
 
@@ -228,34 +237,43 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	emit.no_lrz_write = emit.fs->writes_pos || emit.fs->no_earlyz;
 
 	struct fd_ringbuffer *ring = ctx->batch->draw;
-	enum pc_di_primtype primtype = ctx->primtypes[info->mode];
 
-	uint32_t tess_draw0 = 0;
+	struct CP_DRAW_INDX_OFFSET_0 draw0 = {
+			.prim_type = ctx->primtypes[info->mode],
+			.vis_cull  = USE_VISIBILITY,
+			.gs_enable = !!emit.key.gs,
+	};
+
+	if (info->index_size) {
+		draw0.source_select = DI_SRC_SEL_DMA;
+		draw0.index_size = fd4_size2indextype(info->index_size);
+	} else {
+		draw0.source_select = DI_SRC_SEL_AUTO_INDEX;
+	}
+
 	if (info->mode == PIPE_PRIM_PATCHES) {
 		shader_info *ds_info = &emit.ds->shader->nir->info;
 		uint32_t factor_stride;
-		uint32_t patch_type;
 
 		switch (ds_info->tess.primitive_mode) {
 		case GL_ISOLINES:
-			patch_type = TESS_ISOLINES;
+			draw0.patch_type = TESS_ISOLINES;
 			factor_stride = 12;
 			break;
 		case GL_TRIANGLES:
-			patch_type = TESS_TRIANGLES;
+			draw0.patch_type = TESS_TRIANGLES;
 			factor_stride = 20;
 			break;
 		case GL_QUADS:
-			patch_type = TESS_QUADS;
+			draw0.patch_type = TESS_QUADS;
 			factor_stride = 28;
 			break;
 		default:
 			unreachable("bad tessmode");
 		}
 
-		primtype = DI_PT_PATCHES0 + info->vertices_per_patch;
-		tess_draw0 |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(patch_type) |
-			CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
+		draw0.prim_type = DI_PT_PATCHES0 + info->vertices_per_patch;
+		draw0.tess_enable = true;
 
 		ctx->batch->tessellation = true;
 		ctx->batch->tessparam_size = MAX2(ctx->batch->tessparam_size,
@@ -309,25 +327,10 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	 */
 	emit_marker6(ring, 7);
 
-	uint32_t draw0 =
-		CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-		CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
-		tess_draw0 |
-		COND(emit.key.gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
-
-	if (info->index_size) {
-		draw0 |=
-			CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
-			CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(fd4_size2indextype(info->index_size));
-	} else {
-		draw0 |=
-			CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX);
-	}
-
 	if (info->indirect) {
-		draw_emit_indirect(ring, draw0, info, index_offset);
+		draw_emit_indirect(ring, &draw0, info, index_offset);
 	} else {
-		draw_emit(ring, draw0, info, index_offset);
+		draw_emit(ring, &draw0, info, index_offset);
 	}
 
 	emit_marker6(ring, 7);
