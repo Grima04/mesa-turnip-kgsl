@@ -1505,8 +1505,10 @@ void anv_GetPhysicalDeviceProperties(
        * case of R32G32B32A32 which is 16 bytes.
        */
       .minTexelBufferOffsetAlignment            = 16,
-      /* We need 16 for UBO block reads to work and 32 for push UBOs */
-      .minUniformBufferOffsetAlignment          = 32,
+      /* We need 16 for UBO block reads to work and 32 for push UBOs.
+       *  However, we use 64 here to avoid cache issues.
+       */
+      .minUniformBufferOffsetAlignment          = 64,
       .minStorageBufferOffsetAlignment          = 4,
       .minTexelOffset                           = -8,
       .maxTexelOffset                           = 7,
