@@ -369,9 +369,17 @@ virgl_drm_winsys_resource_cache_create(struct virgl_winsys *qws,
    mtx_unlock(&qdws->mutex);
 
 alloc:
-   res = virgl_drm_winsys_resource_create(qws, target, format, bind,
-                                           width, height, depth, array_size,
-                                           last_level, nr_samples, size, false);
+   if (flags & (VIRGL_RESOURCE_FLAG_MAP_PERSISTENT |
+                VIRGL_RESOURCE_FLAG_MAP_COHERENT))
+      res = virgl_drm_winsys_resource_create_blob(qws, target, format, bind,
+                                                  width, height, depth,
+                                                  array_size, last_level,
+                                                  nr_samples, flags, size);
+   else
+      res = virgl_drm_winsys_resource_create(qws, target, format, bind, width,
+                                             height, depth, array_size,
+                                             last_level, nr_samples, size,
+                                             false);
    return res;
 }
 

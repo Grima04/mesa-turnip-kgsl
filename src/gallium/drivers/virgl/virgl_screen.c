@@ -291,6 +291,10 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return !!(vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_MULTI_DRAW_INDIRECT);
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
       return !!(vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_INDIRECT_PARAMS);
+   case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
+      return (vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_ARB_BUFFER_STORAGE) &&
+             (vscreen->caps.caps.v2.host_feature_check_version >= 4) &&
+              vscreen->vws->supports_coherent;
    case PIPE_CAP_PCI_GROUP:
    case PIPE_CAP_PCI_BUS:
    case PIPE_CAP_PCI_DEVICE:
