@@ -3,7 +3,7 @@ variables:
 
 include:
   - project: 'freedesktop/ci-templates'
-    ref: 4b2997287317808830e9cb4eb0f99b691787da88
+    ref: 59de540b620c45739871d1a073d76d5521989d11
     file: '/templates/debian.yml'
   - local: '.gitlab-ci/lava-gitlab-ci.yml'
   - local: '.gitlab-ci/test-source-dep.yml'
