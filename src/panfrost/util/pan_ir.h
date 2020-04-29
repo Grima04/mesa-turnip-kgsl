@@ -220,4 +220,8 @@ pan_dest_index(nir_dest *dst)
 /* IR printing helpers */
 void pan_print_alu_type(nir_alu_type t, FILE *fp);
 
+/* Until it can be upstreamed.. */
+bool pan_has_source_mod(nir_alu_src *src, nir_op op);
+bool pan_has_dest_mod(nir_dest **dest, nir_op op);
+
 #endif
