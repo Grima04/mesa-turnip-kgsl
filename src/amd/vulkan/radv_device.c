@@ -296,7 +296,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 	}
 
 	if (!device->ws) {
-		result = vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+		result = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
 		goto fail_fd;
 	}
 
