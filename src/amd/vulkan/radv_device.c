@@ -740,7 +740,7 @@ void radv_DestroyInstance(
 }
 
 static VkResult
-radv_enumerate_devices(struct radv_instance *instance)
+radv_enumerate_physical_devices(struct radv_instance *instance)
 {
 	/* TODO: Check for more devices ? */
 	drmDevicePtr devices[8];
@@ -799,7 +799,7 @@ VkResult radv_EnumeratePhysicalDevices(
 	VkResult result;
 
 	if (instance->physicalDeviceCount < 0) {
-		result = radv_enumerate_devices(instance);
+		result = radv_enumerate_physical_devices(instance);
 		if (result != VK_SUCCESS &&
 		    result != VK_ERROR_INCOMPATIBLE_DRIVER)
 			return result;
@@ -826,7 +826,7 @@ VkResult radv_EnumeratePhysicalDeviceGroups(
 	VkResult result;
 
 	if (instance->physicalDeviceCount < 0) {
-		result = radv_enumerate_devices(instance);
+		result = radv_enumerate_physical_devices(instance);
 		if (result != VK_SUCCESS &&
 		    result != VK_ERROR_INCOMPATIBLE_DRIVER)
 			return result;
