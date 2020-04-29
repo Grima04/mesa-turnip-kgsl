@@ -111,14 +111,11 @@ destroy_pipeline_stage(struct v3dv_device *device,
    vk_free2(&device->alloc, pAllocator, p_stage);
 }
 
-void
-v3dv_DestroyPipeline(VkDevice _device,
-                     VkPipeline _pipeline,
-                     const VkAllocationCallbacks *pAllocator)
+static void
+v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
+                      struct v3dv_device *device,
+                      const VkAllocationCallbacks *pAllocator)
 {
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   V3DV_FROM_HANDLE(v3dv_pipeline, pipeline, _pipeline);
-
    if (!pipeline)
       return;
 
@@ -141,6 +138,20 @@ v3dv_DestroyPipeline(VkDevice _device,
       v3dv_bo_free(device, pipeline->default_attribute_values);
 
    vk_free2(&device->alloc, pAllocator, pipeline);
+}
+
+void
+v3dv_DestroyPipeline(VkDevice _device,
+                     VkPipeline _pipeline,
+                     const VkAllocationCallbacks *pAllocator)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_pipeline, pipeline, _pipeline);
+
+   if (!pipeline)
+      return;
+
+   v3dv_destroy_pipeline(pipeline, device, pAllocator);
 }
 
 static const struct spirv_to_nir_options default_spirv_options =  {
@@ -1077,8 +1088,10 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
  * 4096, so that would allow to use less memory.
  *
  * For now one-bo per-assembly would work.
+ *
+ * Returns false if it was not able to allocate or map the assembly bo memory.
  */
-static void
+static bool
 upload_assembly(struct v3dv_pipeline_stage *p_stage,
                 struct v3dv_shader_variant *variant,
                 const void *data,
@@ -1107,13 +1120,13 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
    struct v3dv_bo *bo = v3dv_bo_alloc(device, size, name);
    if (!bo) {
       fprintf(stderr, "failed to allocate memory for shader\n");
-      abort();
+      return false;
    }
 
    bool ok = v3dv_bo_map(device, bo, size);
    if (!ok) {
       fprintf(stderr, "failed to map source shader buffer\n");
-      abort();
+      return false;
    }
 
    memcpy(bo->map, data, size);
@@ -1121,27 +1134,41 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
    v3dv_bo_unmap(device, bo);
 
    variant->assembly_bo = bo;
+
+   return true;
 }
 
 /* For a given key, it returns the compiled version of the shader. If it was
  * already compiled, it gets it from the p_stage cache, if not it compiles is
  * through the v3d compiler
+ *
+ * If the method returns NULL it means that it was not able to allocate the
+ * resources for the variant. out_vk_result would return which OOM applies.
  */
 struct v3dv_shader_variant*
 v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                         struct v3d_key *key,
-                        size_t key_size)
+                        size_t key_size,
+                        const VkAllocationCallbacks *pAllocator,
+                        VkResult *out_vk_result)
 {
    struct hash_table *ht = p_stage->cache;
    struct hash_entry *entry = _mesa_hash_table_search(ht, key);
 
-   if (entry)
+   if (entry) {
+      *out_vk_result = VK_SUCCESS;
       return entry->data;
+   }
 
    struct v3dv_device *device = p_stage->pipeline->device;
    struct v3dv_shader_variant *variant =
       vk_zalloc(&device->alloc, sizeof(*variant), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   if (variant == NULL) {
+      *out_vk_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return NULL;
+   }
 
    struct v3dv_physical_device *physical_device =
       &p_stage->pipeline->device->instance->physicalDevice;
@@ -1175,7 +1202,13 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
               gl_shader_stage_name(p_stage->stage),
               p_stage->program_id);
    } else {
-      upload_assembly(p_stage, variant, qpu_insts, qpu_insts_size);
+      if (!upload_assembly(p_stage, variant, qpu_insts, qpu_insts_size)) {
+         free(qpu_insts);
+         vk_free2(&device->alloc, pAllocator, variant);
+
+         *out_vk_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+         return NULL;
+      }
    }
 
    free(qpu_insts);
@@ -1190,6 +1223,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
    /* FIXME: pending provide scratch space for register spilling */
    assert(variant->prog_data.base->spill_size == 0);
 
+   *out_vk_result = VK_SUCCESS;
    return variant;
 }
 
@@ -1433,13 +1467,21 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
           */
          struct v3d_vs_key *key = &pipeline->vs->key.vs;
          pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
+         VkResult vk_result;
          pipeline->vs->current_variant =
-            v3dv_get_shader_variant(pipeline->vs, &key->base, sizeof(*key));
+            v3dv_get_shader_variant(pipeline->vs, &key->base, sizeof(*key),
+                                    pAllocator, &vk_result);
+         if (vk_result != VK_SUCCESS)
+            return vk_result;
 
          key = &pipeline->vs_bin->key.vs;
          pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs_bin);
          pipeline->vs_bin->current_variant =
-            v3dv_get_shader_variant(pipeline->vs_bin, &key->base, sizeof(*key));
+            v3dv_get_shader_variant(pipeline->vs_bin, &key->base, sizeof(*key),
+                                    pAllocator, &vk_result);
+         if (vk_result != VK_SUCCESS)
+            return vk_result;
+
          break;
       }
       case MESA_SHADER_FRAGMENT: {
@@ -1451,8 +1493,12 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
          lower_fs_io(p_stage->nir);
 
+         VkResult vk_result;
          p_stage->current_variant =
-            v3dv_get_shader_variant(p_stage, &key->base, sizeof(*key));
+            v3dv_get_shader_variant(p_stage, &key->base, sizeof(*key),
+                                    pAllocator, &vk_result);
+         if (vk_result != VK_SUCCESS)
+            return vk_result;
 
          break;
       }
@@ -2110,7 +2156,7 @@ get_attr_type(const struct util_format_description *desc)
    return attr_type;
 }
 
-static void
+static bool
 create_default_attribute_values(struct v3dv_pipeline *pipeline,
                                 const VkPipelineVertexInputStateCreateInfo *vi_info)
 {
@@ -2123,6 +2169,7 @@ create_default_attribute_values(struct v3dv_pipeline *pipeline,
       if (!pipeline->default_attribute_values) {
          fprintf(stderr, "failed to allocate memory for the default "
                  "attribute values\n");
+         return false;
       }
    }
 
@@ -2130,7 +2177,7 @@ create_default_attribute_values(struct v3dv_pipeline *pipeline,
                          pipeline->default_attribute_values, size);
    if (!ok) {
       fprintf(stderr, "failed to map default attribute values buffer\n");
-      abort();
+      return false;
    }
 
    uint32_t *attrs = pipeline->default_attribute_values->map;
@@ -2147,6 +2194,8 @@ create_default_attribute_values(struct v3dv_pipeline *pipeline,
    }
 
    v3dv_bo_unmap(pipeline->device, pipeline->default_attribute_values);
+
+   return true;
 }
 
 static void
@@ -2269,7 +2318,9 @@ pipeline_init(struct v3dv_pipeline *pipeline,
          pipeline->va_count++;
       }
    }
-   create_default_attribute_values(pipeline, vi_info);
+
+   if (!create_default_attribute_values(pipeline, vi_info))
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
    return result;
 }
@@ -2296,7 +2347,7 @@ graphics_pipeline_create(VkDevice _device,
                           pAllocator);
 
    if (result != VK_SUCCESS) {
-      vk_free2(&device->alloc, pAllocator, pipeline);
+      v3dv_destroy_pipeline(pipeline, device, pAllocator);
       return result;
    }
 

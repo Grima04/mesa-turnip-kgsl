@@ -2118,8 +2118,15 @@ update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    memcpy(&local_key, &p_stage->key.fs, sizeof(struct v3d_fs_key));
 
    if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
+      VkResult vk_result;
       variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                        sizeof(struct v3d_fs_key));
+                                        sizeof(struct v3d_fs_key),
+                                        &cmd_buffer->device->alloc,
+                                        &vk_result);
+      /* At this point we are not creating a vulkan object to return to the
+       * API user, so we can't really return back a OOM error
+       */
+      assert(variant);
 
       if (p_stage->current_variant != variant) {
          p_stage->current_variant = variant;
@@ -2142,8 +2149,15 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
 
    if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
+      VkResult vk_result;
       variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                        sizeof(struct v3d_vs_key));
+                                        sizeof(struct v3d_vs_key),
+                                        &cmd_buffer->device->alloc,
+                                        &vk_result);
+      /* At this point we are not creating a vulkan object to return to the
+       * API user, so we can't really return back a OOM error
+       */
+      assert(variant);
 
       if (p_stage->current_variant != variant) {
          p_stage->current_variant = variant;
@@ -2156,8 +2170,16 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
 
    if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
+      VkResult vk_result;
       variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                        sizeof(struct v3d_vs_key));
+                                        sizeof(struct v3d_vs_key),
+                                        &cmd_buffer->device->alloc,
+                                        &vk_result);
+
+      /* At this point we are not creating a vulkan object to return to the
+       * API user, so we can't really return back a OOM error
+       */
+      assert(variant);
 
       if (p_stage->current_variant != variant) {
          p_stage->current_variant = variant;

@@ -1412,7 +1412,9 @@ struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 struct v3dv_shader_variant *
 v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                         struct v3d_key *key,
-                        size_t key_size);
+                        size_t key_size,
+                        const VkAllocationCallbacks *pAllocator,
+                        VkResult *out_vk_result);
 
 struct v3dv_descriptor *
 v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_state,
