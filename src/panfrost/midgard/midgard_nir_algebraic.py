@@ -37,6 +37,9 @@ algebraic_late = [
 
     (('ineg', a), ('isub', 0, a)),
 
+    # Likewise we want fsub lowered but not isub
+    (('fsub', a, b), ('fadd', a, ('fneg', b))),
+
     # These two special-cases save space/an op than the actual csel op +
     # scheduler flexibility
 
