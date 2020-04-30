@@ -136,6 +136,9 @@ typedef struct midgard_instruction {
 
         bool invert;
 
+        /* For accepting ALU ops - invert the nth source */
+        bool src_invert[MIR_SRC_COUNT];
+
         /* Hint for the register allocator not to spill the destination written
          * from this instruction (because it is a spill/unspill node itself).
          * Bitmask of spilled classes */

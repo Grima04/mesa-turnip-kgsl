@@ -486,6 +486,7 @@ optimise_nir(nir_shader *nir, unsigned quirks)
 
         /* Now that booleans are lowered, we can run out late opts */
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_late);
+        NIR_PASS(progress, nir, midgard_nir_cancel_inot);
 
         NIR_PASS(progress, nir, nir_copy_prop);
         NIR_PASS(progress, nir, nir_opt_dce);
@@ -599,8 +600,25 @@ reg_mode_for_nir(nir_alu_instr *instr)
         }
 }
 
+/* Compare mir_lower_invert */
+static bool
+nir_accepts_inot(nir_op op, unsigned src)
+{
+        switch (op) {
+        case nir_op_ior:
+        case nir_op_iand:
+        case nir_op_ixor:
+                return true;
+        case nir_op_b32csel:
+                /* Only the condition */
+                return (src == 0);
+        default:
+                return false;
+        }
+}
+
 static void
-mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigned to, bool *abs, bool *neg, bool is_int, unsigned bcast_count)
+mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigned to, bool *abs, bool *neg, bool *not, bool is_int, unsigned bcast_count)
 {
         nir_alu_src src = instr->src[i];
 
@@ -611,6 +629,9 @@ mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigne
                 if (pan_has_source_mod(&src, nir_op_fabs))
                         *abs = true;
         }
+
+        if (nir_accepts_inot(instr->op, i) && pan_has_source_mod(&src, nir_op_inot))
+                *not = true;
 
         unsigned bits = nir_src_bit_size(src.src);
 
@@ -750,8 +771,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fsin, fsin);
                 ALU_CASE(fcos, fcos);
 
-                /* We'll set invert */
-                ALU_CASE(inot, imov);
+                /* We'll get 0 in the second arg, so:
+                 * ~a = ~(a | 0) = nor(a, 0) */
+                ALU_CASE(inot, inor);
                 ALU_CASE(iand, iand);
                 ALU_CASE(ior, ior);
                 ALU_CASE(ixor, ixor);
@@ -899,7 +921,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         if (quirk_flipped_r24) {
                 ins.src[0] = ~0;
-                mir_copy_src(&ins, instr, 0, 1, &abs[1], &neg[1], is_int, broadcast_swizzle);
+                mir_copy_src(&ins, instr, 0, 1, &abs[1], &neg[1], &ins.src_invert[1], is_int, broadcast_swizzle);
         } else {
                 for (unsigned i = 0; i < nr_inputs; ++i) {
                         unsigned to = i;
@@ -912,13 +934,21 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                                 if (i == 0)
                                         to = 2;
+                                else if (flip_src12)
+                                        to = 2 - i;
                                 else
                                         to = i - 1;
                         } else if (flip_src12) {
                                 to = 1 - to;
                         }
 
-                        mir_copy_src(&ins, instr, i, to, &abs[to], &neg[to], is_int, broadcast_swizzle);
+                        mir_copy_src(&ins, instr, i, to, &abs[to], &neg[to], &ins.src_invert[to], is_int, broadcast_swizzle);
+
+                        /* (!c) ? a : b = c ? b : a */
+                        if (instr->op == nir_op_b32csel && ins.src_invert[2]) {
+                                ins.src_invert[2] = false;
+                                flip_src12 ^= true;
+                        }
                 }
         }
 
@@ -952,6 +982,13 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         ins.alu = alu;
 
+        /* Arrange for creation of iandnot/iornot */
+        if (ins.src_invert[0] && !ins.src_invert[1]) {
+                mir_flip(&ins);
+                ins.src_invert[0] = false;
+                ins.src_invert[1] = true;
+        }
+
         /* Late fixup for emulated instructions */
 
         if (instr->op == nir_op_b2f32 || instr->op == nir_op_b2i32) {
@@ -982,8 +1019,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 for (unsigned c = 0; c < 16; ++c)
                         ins.swizzle[1][c] = 0;
-        } else if (instr->op == nir_op_inot) {
-                ins.invert = true;
         }
 
         if ((opcode_props & UNITS_ALL) == UNIT_VLUT) {
@@ -2494,18 +2529,20 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
                         progress |= midgard_opt_combine_projection(ctx, block);
                         progress |= midgard_opt_varying_projection(ctx, block);
+#if 0
                         progress |= midgard_opt_not_propagate(ctx, block);
                         progress |= midgard_opt_fuse_src_invert(ctx, block);
                         progress |= midgard_opt_fuse_dest_invert(ctx, block);
                         progress |= midgard_opt_csel_invert(ctx, block);
                         progress |= midgard_opt_drop_cmp_invert(ctx, block);
                         progress |= midgard_opt_invert_branch(ctx, block);
+#endif
                 }
         } while (progress);
 
         mir_foreach_block(ctx, _block) {
                 midgard_block *block = (midgard_block *) _block;
-                midgard_lower_invert(ctx, block);
+                //midgard_lower_invert(ctx, block);
                 midgard_lower_derivatives(ctx, block);
         }
 

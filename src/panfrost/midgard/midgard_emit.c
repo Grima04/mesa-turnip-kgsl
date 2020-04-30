@@ -329,6 +329,51 @@ mir_pack_ldst_mask(midgard_instruction *ins)
 }
 
 static void
+mir_lower_inverts(midgard_instruction *ins)
+{
+        bool inv[3] = {
+                ins->src_invert[0],
+                ins->src_invert[1],
+                ins->src_invert[2]
+        };
+
+        switch (ins->alu.op) {
+        case midgard_alu_op_iand:
+                /* a & ~b = iandnot(a, b) */
+                /* ~a & ~b = ~(a | b) = inor(a, b) */
+
+                if (inv[0] && inv[1])
+                        ins->alu.op = midgard_alu_op_inor;
+                else if (inv[1])
+                        ins->alu.op = midgard_alu_op_iandnot;
+
+                break;
+        case midgard_alu_op_ior:
+                /*  a | ~b = iornot(a, b) */
+                /* ~a | ~b = ~(a & b) = inand(a, b) */
+
+                if (inv[0] && inv[1])
+                        ins->alu.op = midgard_alu_op_inand;
+                else if (inv[1])
+                        ins->alu.op = midgard_alu_op_iornot;
+
+                break;
+
+        case midgard_alu_op_ixor:
+                /* ~a ^ b = a ^ ~b = ~(a ^ b) = inxor(a, b) */
+                /* ~a ^ ~b = a ^ b */
+
+                if (inv[0] ^ inv[1])
+                        ins->alu.op = midgard_alu_op_inxor;
+
+                break;
+
+        default:
+                break;
+        }
+}
+
+static void
 emit_alu_bundle(compiler_context *ctx,
                 midgard_bundle *bundle,
                 struct util_dynarray *emission,
@@ -360,6 +405,9 @@ emit_alu_bundle(compiler_context *ctx,
 
                 /* In case we demote to a scalar */
                 midgard_scalar_alu scalarized;
+
+                if (!ins->compact_branch)
+                        mir_lower_inverts(ins);
 
                 if (ins->unit & UNITS_ANY_VECTOR) {
                         mir_pack_mask_alu(ins);

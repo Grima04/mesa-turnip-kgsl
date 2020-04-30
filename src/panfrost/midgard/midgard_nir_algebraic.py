@@ -113,6 +113,11 @@ constant_switch = [
         (('ult32', '#a', 'b'), ('inot', ('uge32', a, b)))
 ]
 
+# ..since the above switching happens after algebraic stuff is done
+cancel_inot = [
+        (('inot', ('inot', a)), a)
+]
+
 # Midgard scales fsin/fcos arguments by pi.
 # Pass must be run only once, after the main loop
 
@@ -139,6 +144,9 @@ def run():
 
     print(nir_algebraic.AlgebraicPass("midgard_nir_scale_trig",
                                       scale_trig).render())
+
+    print(nir_algebraic.AlgebraicPass("midgard_nir_cancel_inot",
+                                      cancel_inot).render())
 
 
 if __name__ == '__main__':
