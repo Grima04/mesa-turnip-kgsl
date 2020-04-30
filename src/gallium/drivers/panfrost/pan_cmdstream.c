@@ -327,9 +327,19 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
         meta->sampler_count = ctx->sampler_count[st];
 
         if (dev->quirks & IS_BIFROST) {
-                meta->bifrost1.unk1 = 0x800200;
+                if (st == PIPE_SHADER_VERTEX)
+                        meta->bifrost1.unk1 = 0x800000;
+                else {
+                        /* First clause ATEST |= 0x4000000.
+                         * Less than 32 regs |= 0x200 */
+                        meta->bifrost1.unk1 = 0x958020;
+                }
+
                 meta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
-                meta->bifrost2.preload_regs = 0xC0;
+                if (st == PIPE_SHADER_VERTEX)
+                        meta->bifrost2.preload_regs = 0xC0;
+                else
+                        meta->bifrost2.preload_regs = 0x1;
                 meta->bifrost2.uniform_count = MIN2(ss->uniform_count,
                                                     ss->uniform_cutoff);
         } else {
@@ -340,7 +350,6 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
                 meta->midgard1.flags_lo = 0x220;
                 meta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
         }
-
 }
 
 static unsigned
