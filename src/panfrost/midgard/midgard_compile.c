@@ -2073,19 +2073,9 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
 
                 int op = ins->alu.op;
 
-                if (ins->src[0] == SSA_FIXED_REGISTER(REGISTER_CONSTANT)) {
-                        bool flip = alu_opcode_props[op].props & OP_COMMUTES;
-
-                        switch (op) {
-                        case midgard_alu_op_fcsel:
-                        case midgard_alu_op_icsel:
-                                DBG("Missed non-commutative flip (%s)\n", alu_opcode_props[op].name);
-                        default:
-                                break;
-                        }
-
-                        if (flip)
-                                mir_flip(ins);
+                if (ins->src[0] == SSA_FIXED_REGISTER(REGISTER_CONSTANT) &&
+                                alu_opcode_props[op].props & OP_COMMUTES) {
+                        mir_flip(ins);
                 }
 
                 if (ins->src[1] == SSA_FIXED_REGISTER(REGISTER_CONSTANT)) {
