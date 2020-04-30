@@ -704,6 +704,18 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
       winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
 }
 
+static bool
+load_device_extensions(struct zink_screen *screen)
+{
+   if (screen->have_KHR_external_memory_fd) {
+      screen->vk_GetMemoryFdKHR = (PFN_vkGetMemoryFdKHR)vkGetDeviceProcAddr(screen->dev, "vkGetMemoryFdKHR");
+      if (!screen->vk_GetMemoryFdKHR)
+         return false;
+   }
+
+   return true;
+}
+
 static struct pipe_screen *
 zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
@@ -783,6 +795,9 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    dci.ppEnabledExtensionNames = extensions;
    dci.enabledExtensionCount = num_extensions;
    if (vkCreateDevice(screen->pdev, &dci, NULL, &screen->dev) != VK_SUCCESS)
+      goto fail;
+
+   if (!load_device_extensions(screen))
       goto fail;
 
    screen->winsys = winsys;

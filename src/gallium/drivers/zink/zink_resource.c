@@ -318,11 +318,6 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
    }
 
    if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
-
-      if (!screen->vk_GetMemoryFdKHR)
-         screen->vk_GetMemoryFdKHR = (PFN_vkGetMemoryFdKHR)vkGetDeviceProcAddr(screen->dev, "vkGetMemoryFdKHR");
-      if (!screen->vk_GetMemoryFdKHR)
-         return false;
       fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
       fd_info.memory = res->mem;
       fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
