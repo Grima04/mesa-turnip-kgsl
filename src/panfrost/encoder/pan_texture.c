@@ -166,6 +166,24 @@ panfrost_estimate_texture_payload_size(
         return sizeof(mali_ptr) * elements;
 }
 
+/* Bifrost requires a tile stride for tiled textures. This stride is computed
+ * as (16 * bpp * width) assuming there is at least one tile (width >= 16).
+ * Otherwise if width < 16, the blob puts zero. Interactions with AFBC are
+ * currently unknown.
+ */
+
+static unsigned
+panfrost_nonlinear_stride(enum mali_texture_layout layout,
+                unsigned bytes_per_pixel,
+                unsigned width)
+{
+        if (layout == MALI_TEXTURE_TILED) {
+                return (width < 16) ? 0 : (16 * bytes_per_pixel * width);
+        } else {
+                unreachable("TODO: AFBC on Bifrost");
+        }
+}
+
 static void
 panfrost_emit_texture_payload(
         mali_ptr *payload,
@@ -173,6 +191,7 @@ panfrost_emit_texture_payload(
         enum mali_format mali_format,
         enum mali_texture_type type,
         enum mali_texture_layout layout,
+        unsigned width,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
         unsigned cube_stride,
@@ -201,8 +220,13 @@ panfrost_emit_texture_payload(
                                                 slices, type == MALI_TEX_3D,
                                                 cube_stride, l, w * face_mult + f);
 
-                                if (manual_stride)
-                                        payload[idx++] = slices[l].stride;
+                                if (manual_stride) {
+                                        payload[idx++] = (layout == MALI_TEXTURE_LINEAR) ?
+                                                slices[l].stride :
+                                                panfrost_nonlinear_stride(layout,
+                                                                MAX2(desc->block.bits / 8, 1),
+                                                                u_minify(width, l));
+                                }
                         }
                 }
         }
@@ -261,6 +285,7 @@ panfrost_new_texture(
                 mali_format,
                 type,
                 layout,
+                width,
                 first_level, last_level,
                 first_layer, last_layer,
                 cube_stride,
@@ -290,19 +315,17 @@ panfrost_new_texture_bifrost(
 
         enum mali_format mali_format = panfrost_find_format(desc);
 
-        /* Apparently it's always needed in Bifrost? */
-        bool manual_stride = true;
-
         panfrost_emit_texture_payload(
                 (mali_ptr *) payload->cpu,
                 desc,
                 mali_format,
                 type,
                 layout,
+                width,
                 first_level, last_level,
                 first_layer, last_layer,
                 cube_stride,
-                manual_stride,
+                true, /* Stride explicit on Bifrost */
                 base,
                 slices);
 
