@@ -101,6 +101,9 @@ enum bifrost_packed_src {
 #define BIFROST_FMA_OP_ADD_FREXPM ((BIFROST_FMA_EXT | 0x1e80) >> 3)
 #define BIFROST_FMA_SEL_16(swiz) (((BIFROST_FMA_EXT | 0x1e00) >> 3) | (swiz))
 
+#define BIFROST_FMA_ROUND_16(mode, swiz) (BIFROST_FMA_EXT | 0x1800 | (swiz) | ((mode) << 6))
+#define BIFROST_FMA_ROUND_32(mode) (BIFROST_FMA_EXT | 0x1805 | ((mode) << 6))
+
 struct bifrost_fma_inst {
         unsigned src0 : 3;
         unsigned op   : 20;

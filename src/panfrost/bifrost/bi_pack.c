@@ -1127,6 +1127,19 @@ bi_pack_fma_bitwise(bi_instruction *ins, struct bi_registers *regs)
 
         RETURN_PACKED(pack);
 }
+
+static unsigned
+bi_pack_fma_round(bi_instruction *ins, struct bi_registers *regs)
+{
+        bool fp16 = ins->dest_type == nir_type_float16;
+        assert(fp16 || ins->dest_type == nir_type_float32);
+
+        unsigned op = fp16
+                ? BIFROST_FMA_ROUND_16(ins->roundmode, bi_swiz16(ins, 0))
+                : BIFROST_FMA_ROUND_32(ins->roundmode);
+
+        return bi_pack_fma_1src(ins, regs, op);
+}
  
 static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
@@ -1160,7 +1173,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_SELECT:
                 return bi_pack_fma_select(bundle.fma, regs);
         case BI_ROUND:
-		return BIFROST_FMA_NOP;
+                return bi_pack_fma_round(bundle.fma, regs);
         case BI_REDUCE_FMA:
                 return bi_pack_fma_reduce(bundle.fma, regs);
         default:
