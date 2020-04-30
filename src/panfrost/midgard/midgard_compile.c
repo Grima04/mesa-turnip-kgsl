@@ -1350,6 +1350,19 @@ search_var(struct exec_list *vars, unsigned driver_loc)
         return NULL;
 }
 
+static unsigned
+mir_get_branch_cond(nir_src *src, bool *invert)
+{
+        /* Wrap it. No swizzle since it's a scalar */
+
+        nir_alu_src alu = {
+                .src = *src
+        };
+
+        *invert = pan_has_source_mod(&alu, nir_op_inot);
+        return nir_src_index(NULL, &alu.src);
+}
+
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1363,7 +1376,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 discard.branch.target_type = TARGET_DISCARD;
 
                 if (conditional) {
-                        discard.src[0] = nir_src_index(ctx, &instr->src[0]);
+                        discard.src[0] = mir_get_branch_cond(&instr->src[0],
+                                        &discard.branch.invert_conditional);
                         discard.src_types[0] = nir_type_uint32;
                 }
 
@@ -2230,10 +2244,12 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
         midgard_block *before_block = ctx->current_block;
 
         /* Speculatively emit the branch, but we can't fill it in until later */
+        bool inv = false;
         EMIT(branch, true, true);
         midgard_instruction *then_branch = mir_last_in_block(ctx->current_block);
-        then_branch->src[0] = nir_src_index(ctx, &nif->condition);
+        then_branch->src[0] = mir_get_branch_cond(&nif->condition, &inv);
         then_branch->src_types[0] = nir_type_uint32;
+        then_branch->branch.invert_conditional = !inv;
 
         /* Emit the two subblocks. */
         midgard_block *then_block = emit_cf_list(ctx, &nif->then_list);
