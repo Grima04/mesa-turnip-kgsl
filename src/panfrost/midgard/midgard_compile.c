@@ -2045,41 +2045,6 @@ inline_alu_constants(compiler_context *ctx, midgard_block *block)
         }
 }
 
-/* Being a little silly with the names, but returns the op that is the bitwise
- * inverse of the op with the argument switched. I.e. (f and g are
- * contrapositives):
- *
- * f(a, b) = ~g(b, a)
- *
- * Corollary: if g is the contrapositve of f, f is the contrapositive of g:
- *
- *      f(a, b) = ~g(b, a)
- *      ~f(a, b) = g(b, a)
- *      ~f(a, b) = ~h(a, b) where h is the contrapositive of g
- *      f(a, b) = h(a, b)
- *
- * Thus we define this function in pairs.
- */
-
-static inline midgard_alu_op
-mir_contrapositive(midgard_alu_op op)
-{
-        switch (op) {
-        case midgard_alu_op_flt:
-                return midgard_alu_op_fle;
-        case midgard_alu_op_fle:
-                return midgard_alu_op_flt;
-
-        case midgard_alu_op_ilt:
-                return midgard_alu_op_ile;
-        case midgard_alu_op_ile:
-                return midgard_alu_op_ilt;
-
-        default:
-                unreachable("No known contrapositive");
-        }
-}
-
 /* Midgard supports two types of constants, embedded constants (128-bit) and
  * inline constants (16-bit). Sometimes, especially with scalar ops, embedded
  * constants can be demoted to inline constants, for space savings and
@@ -2112,16 +2077,6 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                         bool flip = alu_opcode_props[op].props & OP_COMMUTES;
 
                         switch (op) {
-                        /* Conditionals can be inverted */
-                        case midgard_alu_op_flt:
-                        case midgard_alu_op_ilt:
-                        case midgard_alu_op_fle:
-                        case midgard_alu_op_ile:
-                                ins->alu.op = mir_contrapositive(ins->alu.op);
-                                ins->invert = true;
-                                flip = true;
-                                break;
-
                         case midgard_alu_op_fcsel:
                         case midgard_alu_op_icsel:
                                 DBG("Missed non-commutative flip (%s)\n", alu_opcode_props[op].name);

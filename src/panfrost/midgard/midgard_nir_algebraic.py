@@ -92,6 +92,20 @@ SPECIAL = ['fexp2', 'flog2', 'fsin', 'fcos', 'frcp', 'frsq']
 for op in SPECIAL:
         converts += [((op + '@16', a), ('f2f16', (op, ('f2f32', a))))]
 
+# Try to force constants to the right
+constant_switch = [
+        # fge gets flipped to fle, so we invert to keep the order
+        (('fge', 'a', '#b'), (('inot', ('flt', a, b)))),
+        (('fge32', 'a', '#b'), (('inot', ('flt32', a, b)))),
+        (('ige32', 'a', '#b'), (('inot', ('ilt32', a, b)))),
+        (('uge32', 'a', '#b'), (('inot', ('ult32', a, b)))),
+
+        # fge gets mapped to fle with a flip
+        (('flt32', '#a', 'b'), ('inot', ('fge32', a, b))),
+        (('ilt32', '#a', 'b'), ('inot', ('ige32', a, b))),
+        (('ult32', '#a', 'b'), ('inot', ('uge32', a, b)))
+]
+
 # Midgard scales fsin/fcos arguments by pi.
 # Pass must be run only once, after the main loop
 
@@ -114,7 +128,7 @@ def run():
     print('#include "midgard_nir.h"')
 
     print(nir_algebraic.AlgebraicPass("midgard_nir_lower_algebraic_late",
-                                      algebraic_late + converts).render())
+                                      algebraic_late + converts + constant_switch).render())
 
     print(nir_algebraic.AlgebraicPass("midgard_nir_scale_trig",
                                       scale_trig).render())
