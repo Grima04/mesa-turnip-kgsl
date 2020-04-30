@@ -489,6 +489,7 @@ optimise_nir(nir_shader *nir, unsigned quirks)
         } while (progress);
 
         NIR_PASS(progress, nir, nir_opt_algebraic_late);
+        NIR_PASS(progress, nir, nir_opt_algebraic_distribute_src_mods);
 
         /* We implement booleans as 32-bit 0/~0 */
         NIR_PASS(progress, nir, nir_lower_bool_to_int32);
