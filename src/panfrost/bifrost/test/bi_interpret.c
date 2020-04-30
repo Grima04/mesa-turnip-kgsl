@@ -189,6 +189,10 @@ bit_make_float(fma, (a * b) + c);
 bit_make_poly(mov, a);
 bit_make_poly(min, MIN2(a, b));
 bit_make_poly(max, MAX2(a, b));
+bit_make_float_2(floor, floorf(a), floor(a));
+bit_make_float_2(ceil,  ceilf(a), ceil(a));
+bit_make_float_2(trunc, truncf(a), trunc(a));
+bit_make_float_2(nearbyint, nearbyintf(a), nearbyint(a));
 
 /* Modifiers */
 
@@ -606,8 +610,22 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         }
 
         case BI_SHIFT:
-        case BI_ROUND:
                 unreachable("Unsupported op");
+
+        case BI_ROUND: {
+                if (ins->roundmode == BIFROST_RTP) {
+                        bfloat(bit_f64ceil, bit_f32ceil);
+                } else if (ins->roundmode == BIFROST_RTN) {
+                        bfloat(bit_f64floor, bit_f32floor);
+                } else if (ins->roundmode == BIFROST_RTE) {
+                        bfloat(bit_f64nearbyint, bit_f32nearbyint);
+                } else if (ins->roundmode == BIFROST_RTZ) {
+                        bfloat(bit_f64trunc, bit_f32trunc);
+                } else
+                        unreachable("Invalid");
+
+                break;
+        }
         
         /* We only interpret vertex shaders */
         case BI_DISCARD:
