@@ -39,7 +39,7 @@ Feature                                                 Status
 GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl
 
   glBindFragDataLocation, glGetFragDataLocation         DONE
-  GL_NV_conditional_render (Conditional rendering)      DONE ()
+  GL_NV_conditional_render (Conditional rendering)      DONE (zink)
   GL_ARB_map_buffer_range (Map buffer subranges)        DONE (v3d, zink)
   GL_ARB_color_buffer_float (Clamping controls)         DONE (v3d, zink)
   GL_ARB_texture_float (Float textures, renderbuffers)  DONE (v3d, zink)
