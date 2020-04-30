@@ -359,6 +359,21 @@ bit_frexp_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug de
 }
 
 static void
+bit_round_helper(struct panfrost_device *dev, uint32_t *input, unsigned sz, bool FMA, enum bit_debug debug)
+{
+        bi_instruction ins = bit_ins(BI_ROUND, 1, nir_type_float, sz);
+
+        for (enum bifrost_roundmode mode = 0; mode <= 3; ++mode) {
+                ins.roundmode = mode;
+
+                if (!bit_test_single(dev, &ins, input, FMA, debug)) {
+                        fprintf(stderr, "FAIL: round.%u.%u\n",
+                                        sz, mode);
+                }
+        }
+}
+
+static void
 bit_reduce_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug debug)
 {
         bi_instruction ins = bit_ins(BI_REDUCE_FMA, 2, nir_type_float, 32);
@@ -569,6 +584,7 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 
                 bit_fmod_helper(dev, BI_ADD, sz, true, input, debug, 0);
                 bit_fmod_helper(dev, BI_ADD, sz, false, input, debug, 0);
+                bit_round_helper(dev, (uint32_t *) input32, sz, true, debug);
 
                 bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MIN);
                 bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MAX);
