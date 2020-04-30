@@ -259,7 +259,7 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
         cat $UNEXPECTED_RESULTSFILE.txt
     fi
 
-    count=`wc -l $UNEXPECTED_RESULTSFILE.txt`
+    count=`cat $UNEXPECTED_RESULTSFILE.txt | wc -l`
 
     # Re-run fails to detect flakes.  But use a small threshold, if
     # something was fundamentally broken, we don't want to re-run
@@ -267,7 +267,7 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
 else
     grep ",Flake" $RESULTSFILE > $FLAKESFILE
 
-    count=`wc -l $FLAKESFILE`
+    count=`cat $FLAKESFILE | wc -l`
     if [ $count -gt 0 ]; then
         echo "Some flakes found (see cts-runner-flakes.txt in artifacts for full results):"
         head -n 50 $FLAKESFILE
