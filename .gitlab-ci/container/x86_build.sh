@@ -52,6 +52,7 @@ apt-get install -y --no-remove \
       libclang-7-dev \
       libclang-9-dev \
       libclc-dev \
+      libdrm-dev:s390x \
       libelf-dev \
       libepoxy-dev \
       libexpat1-dev \
@@ -59,6 +60,7 @@ apt-get install -y --no-remove \
       libgtk-3-dev \
       libomxil-bellagio-dev \
       libpciaccess-dev \
+      libpciaccess-dev:i386 \
       libtool \
       libunwind-dev \
       libva-dev \
@@ -99,7 +101,6 @@ apt-get install -y --no-remove -t buster-backports \
 for arch in $CROSS_ARCHITECTURES; do
     apt-get install -y --no-remove \
             crossbuild-essential-${arch} \
-            libdrm-dev:${arch} \
             libelf-dev:${arch} \
             libexpat1-dev:${arch} \
             libffi-dev:${arch} \
@@ -108,12 +109,6 @@ for arch in $CROSS_ARCHITECTURES; do
 
     apt-get install -y --no-remove -t buster-backports \
             libllvm8:${arch}
-
-    if [ "$arch" == "i386" ]; then
-        # libpciaccess-dev is only needed for Intel.
-        apt-get install -y --no-remove \
-            libpciaccess-dev:${arch}
-    fi
 
     mkdir /var/cache/apt/archives/${arch}
     # Download llvm-* packages, but don't install them yet, since they can
