@@ -29,6 +29,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define BIFROST_DBG_MSGS        0x0001
+#define BIFROST_DBG_SHADERS     0x0002
+
+extern int bifrost_debug;
+
 enum bifrost_clause_type {
         BIFROST_CLAUSE_NONE       = 0,
         BIFROST_CLAUSE_LOAD_VARY  = 1,

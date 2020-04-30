@@ -28,6 +28,7 @@
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/nir_types.h"
 #include "compiler/nir/nir_builder.h"
+#include "util/u_debug.h"
 
 #include "disassemble.h"
 #include "bifrost_compile.h"
@@ -35,6 +36,21 @@
 #include "compiler.h"
 #include "bi_quirks.h"
 #include "bi_print.h"
+
+static const struct debug_named_value debug_options[] = {
+        {"msgs",      BIFROST_DBG_MSGS,		"Print debug messages"},
+        {"shaders",   BIFROST_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
+        DEBUG_NAMED_VALUE_END
+};
+
+DEBUG_GET_ONCE_FLAGS_OPTION(bifrost_debug, "BIFROST_MESA_DEBUG", debug_options, 0)
+
+int bifrost_debug = 0;
+
+#define DBG(fmt, ...) \
+		do { if (bifrost_debug & BIFROST_DBG_MSGS) \
+			fprintf(stderr, "%s:%d: "fmt, \
+				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
 static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
 static bi_instruction *bi_emit_branch(bi_context *ctx);
@@ -1051,6 +1067,8 @@ bi_optimize_nir(nir_shader *nir)
 void
 bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned product_id)
 {
+        bifrost_debug = debug_get_option_bifrost_debug();
+
         bi_context *ctx = rzalloc(NULL, bi_context);
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
@@ -1077,7 +1095,10 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
         NIR_PASS_V(nir, nir_lower_mediump_outputs);
 
         bi_optimize_nir(nir);
-        nir_print_shader(nir, stdout);
+
+        if (bifrost_debug & BIFROST_DBG_SHADERS) {
+                nir_print_shader(nir, stdout);
+        }
 
         panfrost_nir_assign_sysvals(&ctx->sysvals, nir);
         program->sysval_count = ctx->sysvals.sysval_count;
@@ -1109,12 +1130,16 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
                 }
         } while(progress);
 
-        bi_print_shader(ctx, stdout);
+        if (bifrost_debug & BIFROST_DBG_SHADERS)
+                bi_print_shader(ctx, stdout);
         bi_schedule(ctx);
         bi_register_allocate(ctx);
-        bi_print_shader(ctx, stdout);
+        if (bifrost_debug & BIFROST_DBG_SHADERS)
+                bi_print_shader(ctx, stdout);
         bi_pack(ctx, &program->compiled);
-        disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
+
+        if (bifrost_debug & BIFROST_DBG_SHADERS)
+                disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
 
         ralloc_free(ctx);
 }
