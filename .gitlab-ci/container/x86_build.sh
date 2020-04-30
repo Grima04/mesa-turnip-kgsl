@@ -97,8 +97,6 @@ apt-get install -y --no-remove \
       xz-utils \
       zlib1g-dev
 
-. .gitlab-ci/container/container_pre_build.sh
-
 # Cross-build Mesa deps
 for arch in $CROSS_ARCHITECTURES; do
     apt-get install -y --no-remove \
@@ -132,6 +130,10 @@ apt-get install -y --no-remove \
       libz-mingw-w64-dev \
       mingw-w64 \
       winehq-stable
+
+
+. .gitlab-ci/container/container_pre_build.sh
+
 
 # Debian's pkg-config wrapers for mingw are broken, and there's no sign that
 # they're going to be fixed, so we'll just have to fix it ourselves
