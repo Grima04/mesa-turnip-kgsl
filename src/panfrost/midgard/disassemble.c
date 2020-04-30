@@ -162,7 +162,7 @@ print_reg(FILE *fp, unsigned reg, unsigned bits)
 static char *outmod_names_float[4] = {
         "",
         ".pos",
-        ".one",
+        ".sat_signed",
         ".sat"
 };
 
