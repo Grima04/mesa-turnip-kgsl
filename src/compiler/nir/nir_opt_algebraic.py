@@ -1136,6 +1136,7 @@ optimizations.extend([
 
    (('~fmul', ('bcsel(is_used_once)', c, -1.0, 1.0), b), ('bcsel', c, ('fneg', b), b)),
    (('~fmul', ('bcsel(is_used_once)', c, 1.0, -1.0), b), ('bcsel', c, b, ('fneg', b))),
+   (('~bcsel', ('flt', a, 0.0), ('fneg', a), a), ('fabs', a)),
 
    (('fmin3@64', a, b, c), ('fmin@64', a, ('fmin@64', b, c))),
    (('fmax3@64', a, b, c), ('fmax@64', a, ('fmax@64', b, c))),
