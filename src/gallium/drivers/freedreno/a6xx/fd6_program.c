@@ -624,7 +624,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_PKT4(ring, REG_A6XX_SP_FS_CTRL_REG0, 1);
 	OUT_RING(ring, A6XX_SP_FS_CTRL_REG0_THREADSIZE(fssz) |
 			COND(enable_varyings, A6XX_SP_FS_CTRL_REG0_VARYING) |
-			COND(fs->frag_coord, A6XX_SP_FS_CTRL_REG0_VARYING) |
 			0x1000000 |
 			A6XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(fs->info.max_reg + 1) |
 			A6XX_SP_FS_CTRL_REG0_MERGEDREGS |
