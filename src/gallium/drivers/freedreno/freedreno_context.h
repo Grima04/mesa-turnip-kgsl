@@ -450,6 +450,7 @@ fd_context_all_dirty(struct fd_context *ctx)
 static inline void
 fd_context_all_clean(struct fd_context *ctx)
 {
+	ctx->last.dirty = false;
 	ctx->dirty = 0;
 	for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
 		/* don't mark compute state as clean, since it is not emitted

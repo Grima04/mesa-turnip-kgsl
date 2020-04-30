@@ -137,8 +137,6 @@ fixup_draw_state(struct fd_context *ctx, struct fd6_emit *emit)
 		ctx->dirty |= FD_DIRTY_RASTERIZER;
 		ctx->last.primitive_restart = emit->primitive_restart;
 	}
-
-	ctx->last.dirty = false;
 }
 
 static bool
