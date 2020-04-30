@@ -276,12 +276,16 @@ static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo)
 		amdgpu_bo_free(bo->bo);
 	}
 
-	if (bo->initial_domain & RADEON_DOMAIN_VRAM)
-		p_atomic_add(&ws->allocated_vram,
-			     -align64(bo->size, ws->info.gart_page_size));
-	if (bo->base.vram_cpu_access)
-		p_atomic_add(&ws->allocated_vram_vis,
-			     -align64(bo->size, ws->info.gart_page_size));
+	if (bo->initial_domain & RADEON_DOMAIN_VRAM) {
+		if (bo->base.vram_no_cpu_access) {
+			p_atomic_add(&ws->allocated_vram,
+				     -align64(bo->size, ws->info.gart_page_size));
+		} else {
+			p_atomic_add(&ws->allocated_vram_vis,
+				     -align64(bo->size, ws->info.gart_page_size));
+		}
+	}
+
 	if (bo->initial_domain & RADEON_DOMAIN_GTT)
 		p_atomic_add(&ws->allocated_gtt,
 			     -align64(bo->size, ws->info.gart_page_size));
@@ -366,12 +370,12 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 	if (initial_domain & RADEON_DOMAIN_OA)
 		request.preferred_heap |= AMDGPU_GEM_DOMAIN_OA;
 
-	if (flags & RADEON_FLAG_CPU_ACCESS) {
-		bo->base.vram_cpu_access = initial_domain & RADEON_DOMAIN_VRAM;
+	if (flags & RADEON_FLAG_CPU_ACCESS)
 		request.flags |= AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
-	}
-	if (flags & RADEON_FLAG_NO_CPU_ACCESS)
+	if (flags & RADEON_FLAG_NO_CPU_ACCESS) {
+		bo->base.vram_no_cpu_access = initial_domain & RADEON_DOMAIN_VRAM;
 		request.flags |= AMDGPU_GEM_CREATE_NO_CPU_ACCESS;
+	}
 	if (flags & RADEON_FLAG_GTT_WC)
 		request.flags |= AMDGPU_GEM_CREATE_CPU_GTT_USWC;
 	if (!(flags & RADEON_FLAG_IMPLICIT_SYNC) && ws->info.drm_minor >= 22)
@@ -411,12 +415,24 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 	r = amdgpu_bo_export(buf_handle, amdgpu_bo_handle_type_kms, &bo->bo_handle);
 	assert(!r);
 
-	if (initial_domain & RADEON_DOMAIN_VRAM)
-		p_atomic_add(&ws->allocated_vram,
-			     align64(bo->size, ws->info.gart_page_size));
-	if (bo->base.vram_cpu_access)
-		p_atomic_add(&ws->allocated_vram_vis,
-			     align64(bo->size, ws->info.gart_page_size));
+	if (initial_domain & RADEON_DOMAIN_VRAM) {
+		/* Buffers allocated in VRAM with the NO_CPU_ACCESS flag
+		 * aren't mappable and they are counted as part of the VRAM
+		 * counter.
+		 *
+		 * Otherwise, buffers with the CPU_ACCESS flag or without any
+		 * of both (imported buffers) are counted as part of the VRAM
+		 * visible counter because they can be mapped.
+		 */
+		if (bo->base.vram_no_cpu_access) {
+			p_atomic_add(&ws->allocated_vram,
+				     align64(bo->size, ws->info.gart_page_size));
+		} else {
+			p_atomic_add(&ws->allocated_vram_vis,
+				     align64(bo->size, ws->info.gart_page_size));
+		}
+	}
+
 	if (initial_domain & RADEON_DOMAIN_GTT)
 		p_atomic_add(&ws->allocated_gtt,
 			     align64(bo->size, ws->info.gart_page_size));

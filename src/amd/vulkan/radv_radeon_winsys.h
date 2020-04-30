@@ -162,7 +162,7 @@ struct radeon_winsys_fence;
 struct radeon_winsys_bo {
 	uint64_t va;
 	bool is_local;
-	bool vram_cpu_access;
+	bool vram_no_cpu_access;
 };
 struct radv_winsys_sem_counts {
 	uint32_t syncobj_count;
