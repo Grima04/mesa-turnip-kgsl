@@ -2529,34 +2529,13 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
                         progress |= midgard_opt_combine_projection(ctx, block);
                         progress |= midgard_opt_varying_projection(ctx, block);
-#if 0
-                        progress |= midgard_opt_not_propagate(ctx, block);
-                        progress |= midgard_opt_fuse_src_invert(ctx, block);
-                        progress |= midgard_opt_fuse_dest_invert(ctx, block);
-                        progress |= midgard_opt_csel_invert(ctx, block);
-                        progress |= midgard_opt_drop_cmp_invert(ctx, block);
-                        progress |= midgard_opt_invert_branch(ctx, block);
-#endif
                 }
         } while (progress);
 
         mir_foreach_block(ctx, _block) {
                 midgard_block *block = (midgard_block *) _block;
-                //midgard_lower_invert(ctx, block);
                 midgard_lower_derivatives(ctx, block);
-        }
-
-        /* Nested control-flow can result in dead branches at the end of the
-         * block. This messes with our analysis and is just dead code, so cull
-         * them */
-        mir_foreach_block(ctx, _block) {
-                midgard_block *block = (midgard_block *) _block;
                 midgard_cull_dead_branch(ctx, block);
-        }
-
-        /* Ensure we were lowered */
-        mir_foreach_instr_global(ctx, ins) {
-                assert(!ins->invert);
         }
 
         if (ctx->stage == MESA_SHADER_FRAGMENT)

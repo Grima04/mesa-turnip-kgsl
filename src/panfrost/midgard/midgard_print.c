@@ -342,7 +342,7 @@ mir_print_instruction(midgard_instruction *ins)
                 assert(0);
         }
 
-        if (ins->invert || (ins->compact_branch && ins->branch.invert_conditional))
+        if (ins->compact_branch && ins->branch.invert_conditional)
                 printf(".not");
 
         printf(" ");

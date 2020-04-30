@@ -166,10 +166,6 @@ mir_nontrivial_outmod(midgard_instruction *ins)
         bool is_int = midgard_is_integer_op(ins->alu.op);
         unsigned mod = ins->alu.outmod;
 
-        /* Pseudo-outmod */
-        if (ins->invert)
-                return true;
-
         /* Type conversion is a sort of outmod */
         if (ins->alu.dest_override != midgard_dest_override_none)
                 return true;

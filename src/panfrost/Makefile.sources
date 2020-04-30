@@ -54,7 +54,6 @@ midgard_FILES := \
         midgard/midgard_opt_copy_prop.c \
         midgard/midgard_opt_dce.c \
         midgard/midgard_opt_float.c \
-        midgard/midgard_opt_invert.c \
         midgard/midgard_opt_perspective.c \
         midgard/midgard-parse.h \
         midgard/midgard_print.c \
