@@ -140,17 +140,20 @@ bit_write(struct bit_state *s, unsigned index, nir_alu_type T, bit_t value, bool
         bint(bit_i64 ## name, bit_i32 ## name, bit_i16 ## name, bit_i8 ## name); \
         unreachable("Invalid type");
 
-#define bit_make_float(name, expr) \
+#define bit_make_float_2(name, expr32, expr64) \
         static inline double \
         bit_f64 ## name(double a, double b, double c, double d) \
         { \
-                return expr; \
+                return expr64; \
         } \
         static inline float \
         bit_f32 ## name(float a, float b, float c, float d) \
         { \
-                return expr; \
+                return expr32; \
         } \
+
+#define bit_make_float(name, expr) \
+        bit_make_float_2(name, expr, expr)
 
 #define bit_make_int(name, expr) \
         static inline int64_t \
