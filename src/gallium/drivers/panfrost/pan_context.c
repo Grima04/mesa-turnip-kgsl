@@ -909,30 +909,20 @@ panfrost_translate_texture_type(enum pipe_texture_target t) {
         }
 }
 
-static struct pipe_sampler_view *
-panfrost_create_sampler_view(
-        struct pipe_context *pctx,
-        struct pipe_resource *texture,
-        const struct pipe_sampler_view *template)
+void
+panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
+                                struct pipe_context *pctx,
+                                struct pipe_resource *texture)
 {
         struct panfrost_device *device = pan_device(pctx->screen);
-        struct panfrost_sampler_view *so = rzalloc(pctx, struct panfrost_sampler_view);
-
-        pipe_reference(NULL, &texture->reference);
-
-        struct panfrost_resource *prsrc = (struct panfrost_resource *) texture;
+        struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
         assert(prsrc->bo);
 
-        so->base = *template;
-        so->base.texture = texture;
-        so->base.reference.count = 1;
-        so->base.context = pctx;
-
         unsigned char user_swizzle[4] = {
-                template->swizzle_r,
-                template->swizzle_g,
-                template->swizzle_b,
-                template->swizzle_a
+                so->base.swizzle_r,
+                so->base.swizzle_g,
+                so->base.swizzle_b,
+                so->base.swizzle_a
         };
 
         /* In the hardware, array_size refers specifically to array textures,
@@ -940,26 +930,26 @@ panfrost_create_sampler_view(
 
         unsigned array_size = texture->array_size;
 
-        if (template->target == PIPE_TEXTURE_CUBE) {
+        if (so->base.target == PIPE_TEXTURE_CUBE) {
                 /* TODO: Cubemap arrays */
                 assert(array_size == 6);
                 array_size /= 6;
         }
 
         enum mali_texture_type type =
-                panfrost_translate_texture_type(template->target);
+                panfrost_translate_texture_type(so->base.target);
 
         if (device->quirks & IS_BIFROST) {
                 const struct util_format_description *desc =
-                        util_format_description(template->format);
+                        util_format_description(so->base.format);
                 unsigned char composed_swizzle[4];
                 util_format_compose_swizzles(desc->swizzle, user_swizzle, composed_swizzle);
 
                 unsigned size = panfrost_estimate_texture_payload_size(
-                                template->u.tex.first_level,
-                                template->u.tex.last_level,
-                                template->u.tex.first_layer,
-                                template->u.tex.last_layer,
+                                so->base.u.tex.first_level,
+                                so->base.u.tex.last_level,
+                                so->base.u.tex.first_layer,
+                                so->base.u.tex.last_layer,
                                 type, prsrc->layout);
 
                 so->bifrost_bo = pan_bo_create(device, size, 0);
@@ -969,12 +959,12 @@ panfrost_create_sampler_view(
                                 so->bifrost_descriptor,
                                 texture->width0, texture->height0,
                                 texture->depth0, array_size,
-                                template->format,
+                                so->base.format,
                                 type, prsrc->layout,
-                                template->u.tex.first_level,
-                                template->u.tex.last_level,
-                                template->u.tex.first_layer,
-                                template->u.tex.last_layer,
+                                so->base.u.tex.first_level,
+                                so->base.u.tex.last_level,
+                                so->base.u.tex.first_layer,
+                                so->base.u.tex.last_layer,
                                 prsrc->cubemap_stride,
                                 panfrost_translate_swizzle_4(composed_swizzle),
                                 prsrc->bo->gpu,
@@ -982,10 +972,10 @@ panfrost_create_sampler_view(
                                 so->bifrost_bo);
         } else {
                 unsigned size = panfrost_estimate_texture_payload_size(
-                                template->u.tex.first_level,
-                                template->u.tex.last_level,
-                                template->u.tex.first_layer,
-                                template->u.tex.last_layer,
+                                so->base.u.tex.first_level,
+                                so->base.u.tex.last_level,
+                                so->base.u.tex.first_layer,
+                                so->base.u.tex.last_layer,
                                 type, prsrc->layout);
                 size += sizeof(struct mali_texture_descriptor);
 
@@ -995,17 +985,35 @@ panfrost_create_sampler_view(
                                 so->midgard_bo->cpu,
                                 texture->width0, texture->height0,
                                 texture->depth0, array_size,
-                                template->format,
+                                so->base.format,
                                 type, prsrc->layout,
-                                template->u.tex.first_level,
-                                template->u.tex.last_level,
-                                template->u.tex.first_layer,
-                                template->u.tex.last_layer,
+                                so->base.u.tex.first_level,
+                                so->base.u.tex.last_level,
+                                so->base.u.tex.first_layer,
+                                so->base.u.tex.last_layer,
                                 prsrc->cubemap_stride,
                                 panfrost_translate_swizzle_4(user_swizzle),
                                 prsrc->bo->gpu,
                                 prsrc->slices);
         }
+}
+
+static struct pipe_sampler_view *
+panfrost_create_sampler_view(
+        struct pipe_context *pctx,
+        struct pipe_resource *texture,
+        const struct pipe_sampler_view *template)
+{
+        struct panfrost_sampler_view *so = rzalloc(pctx, struct panfrost_sampler_view);
+
+        pipe_reference(NULL, &texture->reference);
+
+        so->base = *template;
+        so->base.texture = texture;
+        so->base.reference.count = 1;
+        so->base.context = pctx;
+
+        panfrost_create_sampler_view_bo(so, pctx, texture);
 
         return (struct pipe_sampler_view *) so;
 }

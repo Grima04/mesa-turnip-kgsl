@@ -334,6 +334,11 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 unsigned
 panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage);
 
+void
+panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
+                                struct pipe_context *pctx,
+                                struct pipe_resource *texture);
+
 /* Instancing */
 
 mali_ptr
