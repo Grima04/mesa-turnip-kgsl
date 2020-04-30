@@ -165,6 +165,7 @@ def main():
                 all_ok = all_ok and ok
                 results.update(result)
 
+    os.makedirs(RESULTS_PATH, exist_ok=True)
     with open(os.path.join(RESULTS_PATH, 'results.yml'), 'w') as f:
         yaml.safe_dump(results, f, default_flow_style=False)
 

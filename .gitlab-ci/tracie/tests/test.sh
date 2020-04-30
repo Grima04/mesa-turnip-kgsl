@@ -86,6 +86,7 @@ tracie_fails_on_image_mismatch() {
 }
 
 tracie_skips_traces_without_checksum() {
+    echo "traces:" > "$TEST_DIR/tests/traces.yml"
     echo "  - path: trace1/red.testtrace" >> "$TEST_DIR/tests/traces.yml"
     echo "    expectations:" >> "$TEST_DIR/tests/traces.yml"
     echo "    - device: bla" >> "$TEST_DIR/tests/traces.yml"
