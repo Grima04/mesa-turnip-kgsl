@@ -2288,9 +2288,11 @@ pandecode_bifrost_texture(
         pandecode_log_cont("\n");
 
         struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(t->payload);
-        pandecode_texture_payload(t->payload, t->type, t->layout,
-                                  true, t->levels, t->depth,
-                                  t->array_size, tmem);
+        if (t->payload) {
+                pandecode_texture_payload(t->payload, t->type, t->layout,
+                                          true, t->levels, t->depth,
+                                          t->array_size, tmem);
+        }
 
         pandecode_indent--;
         pandecode_log("};\n");
