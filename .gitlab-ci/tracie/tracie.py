@@ -106,11 +106,13 @@ def gitlab_check_trace(project_url, repo_commit, device_name, trace, expectation
 
     result = {}
     result[trace['path']] = {}
+    result[trace['path']]['expected'] = expectation['checksum']
 
     trace_path = Path(TRACES_DB_PATH + trace['path'])
     checksum, image_file, log_file = replay(trace_path, device_name)
     if checksum is None:
-        return False
+        result[trace['path']]['actual'] = 'error'
+        return False, result
     elif checksum == expectation['checksum']:
         print("[check_image] Images match for %s" % (trace['path']))
         ok = True
@@ -131,7 +133,6 @@ def gitlab_check_trace(project_url, repo_commit, device_name, trace, expectation
         shutil.move(image_file, os.path.join(results_path, image_name))
         result[trace['path']]['image'] = os.path.join(dir_in_results, image_name)
 
-    result[trace['path']]['expected'] = expectation['checksum']
     result[trace['path']]['actual'] = checksum
 
     return ok, result
