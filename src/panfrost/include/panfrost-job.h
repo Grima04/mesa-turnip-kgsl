@@ -1361,11 +1361,10 @@ struct bifrost_sampler_descriptor {
 
         int16_t min_lod;
         int16_t max_lod;
-        int8_t zero2;
-        int8_t zero3;
 
-        uint32_t zero4;
-        uint32_t zero5;
+        uint64_t zero2;
+        uint64_t zero3;
+        uint64_t zero4;
 } __attribute__((packed));
 
 /* viewport0/viewport1 form the arguments to glViewport. viewport1 is

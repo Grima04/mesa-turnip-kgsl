@@ -2441,9 +2441,9 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
                         pandecode_prop("min_lod = FIXED_16(%f)", DECODE_FIXED_16(s->min_lod));
                         pandecode_prop("max_lod = FIXED_16(%f)", DECODE_FIXED_16(s->max_lod));
 
-                        if (s->zero1 || s->zero2 || s->zero3 || s->zero4 || s->zero5) {
+                        if (s->zero1 || s->zero2 || s->zero3 || s->zero4) {
                                 pandecode_msg("XXX: sampler zero tripped\n");
-                                pandecode_prop("zero = 0x%X, 0x%X, 0x%X, 0x%X, 0x%X\n", s->zero1, s->zero2, s->zero3, s->zero4, s->zero5);
+                                pandecode_prop("zero = 0x" PRIx64 ", 0x" PRIx64 ", 0x" PRIx64 ", 0x" PRIx64 "\n", s->zero1, s->zero2, s->zero3, s->zero4);
                         }
 
                         pandecode_indent--;
