@@ -55,6 +55,8 @@ glsl_get_struct_field_data(const struct glsl_type *type, unsigned index);
 enum glsl_interface_packing
 glsl_get_internal_ifc_packing(const struct glsl_type *type,
                               bool std430_supported);
+enum glsl_interface_packing
+glsl_get_ifc_packing(const struct glsl_type *type);
 
 unsigned glsl_get_std140_base_alignment(const struct glsl_type *type,
                                         bool row_major);
