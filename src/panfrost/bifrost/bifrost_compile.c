@@ -1074,6 +1074,7 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
         NIR_PASS_V(nir, nir_lower_io, nir_var_all, glsl_type_size, 0);
         NIR_PASS_V(nir, nir_lower_ssbo);
+        NIR_PASS_V(nir, nir_lower_mediump_outputs);
 
         bi_optimize_nir(nir);
         nir_print_shader(nir, stdout);
