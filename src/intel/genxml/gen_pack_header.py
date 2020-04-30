@@ -10,6 +10,7 @@ import re
 import sys
 import copy
 import textwrap
+from util import *
 
 license =  """/*
  * Copyright (C) 2016 Intel Corporation
@@ -181,40 +182,6 @@ __gen_ufixed(float v, uint32_t start, NDEBUG_UNUSED uint32_t end, uint32_t fract
 #endif
 
 """
-
-def to_alphanum(name):
-    substitutions = {
-        ' ': '',
-        '/': '',
-        '[': '',
-        ']': '',
-        '(': '',
-        ')': '',
-        '-': '',
-        ':': '',
-        '.': '',
-        ',': '',
-        '=': '',
-        '>': '',
-        '#': '',
-        '&': '',
-        '*': '',
-        '"': '',
-        '+': '',
-        '\'': '',
-    }
-
-    for i, j in substitutions.items():
-        name = name.replace(i, j)
-
-    return name
-
-def safe_name(name):
-    name = to_alphanum(name)
-    if not name[0].isalpha():
-        name = '_' + name
-
-    return name
 
 def num_from_str(num_str):
     if num_str.lower().startswith('0x'):

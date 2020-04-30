@@ -25,10 +25,10 @@ from __future__ import (
 
 import argparse
 import os
-import re
 import xml.parsers.expat
 
 from mako.template import Template
+from util import *
 
 TEMPLATE = Template("""\
 <%!
@@ -131,17 +131,6 @@ ${emit_per_gen_prop_func(field, 'start')}
 #endif
 
 #endif /* ${guard} */""", output_encoding='utf-8')
-
-alphanum_nono = re.compile(r'[ /\[\]()\-:.,=>#&*"+\\]+')
-def to_alphanum(name):
-    global alphanum_nono
-    return alphanum_nono.sub('', name)
-
-def safe_name(name):
-    name = to_alphanum(name)
-    if not name[0].isalpha():
-        name = '_' + name
-    return name
 
 class Gen(object):
 
