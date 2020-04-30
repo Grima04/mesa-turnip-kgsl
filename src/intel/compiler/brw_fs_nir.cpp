@@ -3162,7 +3162,15 @@ fs_visitor::nir_emit_gs_intrinsic(const fs_builder &bld,
 static fs_reg
 fetch_render_target_array_index(const fs_builder &bld)
 {
-   if (bld.shader->devinfo->gen >= 6) {
+   if (bld.shader->devinfo->gen >= 12) {
+      /* The render target array index is provided in the thread payload as
+       * bits 26:16 of r1.1.
+       */
+      const fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.AND(idx, brw_uw1_reg(BRW_GENERAL_REGISTER_FILE, 1, 3),
+              brw_imm_uw(0x7ff));
+      return idx;
+   } else if (bld.shader->devinfo->gen >= 6) {
       /* The render target array index is provided in the thread payload as
        * bits 26:16 of r0.0.
        */
