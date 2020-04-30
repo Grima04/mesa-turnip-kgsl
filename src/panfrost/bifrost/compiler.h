@@ -219,6 +219,12 @@ struct bi_bitwise {
         bool rshift; /* false for lshift */
 };
 
+struct bi_texture {
+        /* Constant indices. Indirect would need to be in src[..] like normal,
+         * we can reserve some sentinels there for that for future. */
+        unsigned texture_index, sampler_index;
+};
+
 typedef struct {
         struct list_head link; /* Must be first */
         enum bi_class type;
@@ -297,6 +303,7 @@ typedef struct {
                 unsigned blend_location;
 
                 struct bi_bitwise bitwise;
+                struct bi_texture texture;
         };
 } bi_instruction;
 

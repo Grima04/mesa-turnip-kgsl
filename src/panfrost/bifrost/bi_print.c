@@ -319,6 +319,13 @@ bi_print_branch(struct bi_branch *branch, FILE *fp)
         fprintf(fp, ".%s", bi_cond_name(branch->cond));
 }
 
+static void
+bi_print_texture(struct bi_texture *tex, FILE *fp)
+{
+        fprintf(fp, " - texture %u, sampler %u",
+                        tex->texture_index, tex->sampler_index);
+}
+
 void
 bi_print_instruction(bi_instruction *ins, FILE *fp)
 {
@@ -350,9 +357,9 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, ".%s", bi_cond_name(ins->cond));
         else if (ins->type == BI_BLEND)
                 fprintf(fp, ".loc%u", ins->blend_location);
-        else if (ins->type == BI_TEX)
+        else if (ins->type == BI_TEX) {
                 fprintf(fp, ".%s", bi_tex_op_name(ins->op.texture));
-        else if (ins->type == BI_BITWISE)
+        } else if (ins->type == BI_BITWISE)
                 fprintf(fp, ".%cshift", ins->bitwise.rshift ? 'r' : 'l');
 
         if (ins->vector_channels)
@@ -393,6 +400,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                         fprintf(fp, "-> block%u", ins->branch.target->base.name);
                 else
                         fprintf(fp, "-> blockhole");
+        } else if (ins->type == BI_TEX) {
+                bi_print_texture(&ins->texture, fp);
         }
 
         fprintf(fp, "\n");
