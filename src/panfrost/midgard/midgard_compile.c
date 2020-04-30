@@ -2166,7 +2166,7 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
  * per block is legal semantically */
 
 static void
-midgard_opt_cull_dead_branch(compiler_context *ctx, midgard_block *block)
+midgard_cull_dead_branch(compiler_context *ctx, midgard_block *block)
 {
         bool branched = false;
 
@@ -2611,7 +2611,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
          * them */
         mir_foreach_block(ctx, _block) {
                 midgard_block *block = (midgard_block *) _block;
-                midgard_opt_cull_dead_branch(ctx, block);
+                midgard_cull_dead_branch(ctx, block);
         }
 
         /* Ensure we were lowered */
