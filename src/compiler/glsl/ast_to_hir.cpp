@@ -4630,6 +4630,7 @@ process_initializer(ir_variable *var, ast_declaration *decl,
       if (!error_emitted) {
          var->constant_initializer = rhs->constant_expression_value(mem_ctx);
          var->data.has_initializer = true;
+         var->data.is_implicit_initializer = false;
 
          /* If the declared variable is an unsized array, it must inherrit
          * its full type from the initializer.  A declaration such as
@@ -5269,6 +5270,7 @@ ast_declarator_list::hir(exec_list *instructions,
           (var->type->is_numeric() || var->type->is_boolean())) {
          const ir_constant_data data = { { 0 } };
          var->data.has_initializer = true;
+         var->data.is_implicit_initializer = true;
          var->constant_initializer = new(var) ir_constant(var->type, &data);
       }
 
@@ -5863,6 +5865,7 @@ ast_parameter_declarator::hir(exec_list *instructions,
        (var->type->is_numeric() || var->type->is_boolean())) {
          const ir_constant_data data = { { 0 } };
          var->data.has_initializer = true;
+         var->data.is_implicit_initializer = true;
          var->constant_initializer = new(var) ir_constant(var->type, &data);
    }
 
@@ -8776,6 +8779,7 @@ ast_cs_input_layout::hir(exec_list *instructions,
    var->constant_initializer =
       new(var) ir_constant(glsl_type::uvec3_type, &data);
    var->data.has_initializer = true;
+   var->data.is_implicit_initializer = false;
 
    return NULL;
 }
@@ -8807,6 +8811,7 @@ detect_conflicting_assignments(struct _mesa_glsl_parse_state *state,
          if (!var->constant_initializer && state->zero_init) {
             const ir_constant_data data = { { 0 } };
             var->data.has_initializer = true;
+            var->data.is_implicit_initializer = true;
             var->constant_initializer = new(var) ir_constant(var->type, &data);
          }
       }

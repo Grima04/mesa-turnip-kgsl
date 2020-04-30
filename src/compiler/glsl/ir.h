@@ -759,6 +759,11 @@ public:
       unsigned has_initializer:1;
 
       /**
+       * Is the initializer created by the compiler (glsl_zero_init)
+       */
+      unsigned is_implicit_initializer:1;
+
+      /**
        * Is this variable a generic output or input that has not yet been matched
        * up to a variable in another stage of the pipeline?
        *

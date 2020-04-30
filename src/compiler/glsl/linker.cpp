@@ -1064,9 +1064,13 @@ cross_validate_globals(struct gl_context *ctx, struct gl_shader_program *prog,
           * no vendor actually implemented that behavior.  The 4.20
           * behavior matches the implemented behavior of at least one other
           * vendor, so we'll implement that for all GLSL versions.
+          * If (at least) one of these constant expressions is implicit,
+          * because it was added by glsl_zero_init, we skip the verification.
           */
          if (var->constant_initializer != NULL) {
-            if (existing->constant_initializer != NULL) {
+            if (existing->constant_initializer != NULL &&
+                !existing->data.is_implicit_initializer &&
+                !var->data.is_implicit_initializer) {
                if (!var->constant_initializer->has_value(existing->constant_initializer)) {
                   linker_error(prog, "initializers for %s "
                                "`%s' have differing values\n",
@@ -1078,7 +1082,8 @@ cross_validate_globals(struct gl_context *ctx, struct gl_shader_program *prog,
                 * not have an initializer but a later instance does,
                 * replace the former with the later.
                 */
-               variables->replace_variable(existing->name, var);
+               if (!var->data.is_implicit_initializer)
+                  variables->replace_variable(existing->name, var);
             }
          }
 
