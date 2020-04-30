@@ -1352,9 +1352,10 @@ struct bifrost_sampler_descriptor {
         enum mali_wrap_mode wrap_s : 4;
         uint8_t unk8 : 4;
 
-        uint8_t unk2 : 3;
-        uint8_t min_filter : 1;
+        uint8_t unk2 : 1;
         uint8_t norm_coords : 1;
+        uint8_t unk3 : 1;
+        uint8_t min_filter : 1;
         uint8_t zero1 : 1;
         uint8_t mag_filter : 1;
         uint8_t mip_filter : 1;

@@ -2427,11 +2427,8 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
                                 pandecode_prop("unk8 = 0x%x", s->unk8);
                         }
 
-                        if (s->unk2 != 2) {
-                                pandecode_msg("XXX: unk2 tripped\n");
-                                pandecode_prop("unk2 = 0x%x", s->unk2);
-                        }
-
+                        pandecode_prop("unk2 = 0x%x", s->unk2);
+                        pandecode_prop("unk3 = 0x%x", s->unk3);
                         pandecode_prop("min_filter = %s", s->min_filter ? "nearest" : "linear");
                         pandecode_prop("norm_coords = 0x%x", s->norm_coords & 0x1);
                         pandecode_prop("zero1 = 0x%x", s->zero1 & 0x1);
