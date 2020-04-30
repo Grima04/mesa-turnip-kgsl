@@ -35,6 +35,34 @@
 
 #include "drm-uapi/i915_drm.h"
 
+static const struct {
+   const char *name;
+   int pci_id;
+} name_map[] = {
+   { "brw", 0x2a02 },
+   { "g4x", 0x2a42 },
+   { "ilk", 0x0042 },
+   { "snb", 0x0126 },
+   { "ivb", 0x016a },
+   { "hsw", 0x0d2e },
+   { "byt", 0x0f33 },
+   { "bdw", 0x162e },
+   { "chv", 0x22B3 },
+   { "skl", 0x1912 },
+   { "bxt", 0x5A85 },
+   { "kbl", 0x5912 },
+   { "aml", 0x591C },
+   { "glk", 0x3185 },
+   { "cfl", 0x3E9B },
+   { "whl", 0x3EA1 },
+   { "cml", 0x9b41 },
+   { "cnl", 0x5a52 },
+   { "icl", 0x8a52 },
+   { "ehl", 0x4500 },
+   { "jsl", 0x4E71 },
+   { "tgl", 0x9a49 },
+};
+
 /**
  * Get the PCI ID for the device name.
  *
@@ -43,63 +71,9 @@
 int
 gen_device_name_to_pci_device_id(const char *name)
 {
-   static const struct {
-      const char *name;
-      int pci_id;
-   } name_map[] = {
-      { "brw", 0x2a02 },
-      { "g4x", 0x2a42 },
-      { "ilk", 0x0042 },
-      { "snb", 0x0126 },
-      { "ivb", 0x016a },
-      { "hsw", 0x0d2e },
-      { "byt", 0x0f33 },
-      { "bdw", 0x162e },
-      { "chv", 0x22B3 },
-      { "skl", 0x1912 },
-      { "bxt", 0x5A85 },
-      { "kbl", 0x5912 },
-      { "aml", 0x591C },
-      { "glk", 0x3185 },
-      { "cfl", 0x3E9B },
-      { "whl", 0x3EA1 },
-      { "cml", 0x9b41 },
-      { "cnl", 0x5a52 },
-      { "icl", 0x8a52 },
-      { "ehl", 0x4500 },
-      { "jsl", 0x4E71 },
-      { "tgl", 0x9a49 },
-   };
-
    for (unsigned i = 0; i < ARRAY_SIZE(name_map); i++) {
       if (!strcmp(name_map[i].name, name))
          return name_map[i].pci_id;
-   }
-
-   fprintf(stderr, "Unknown platform '%s'. Supported names: %s",
-           name, name_map[0].name);
-   for (unsigned i = 1; i < ARRAY_SIZE(name_map); i++)
-      fprintf(stderr, ", %s", name_map[i].name);
-   fprintf(stderr, "\n");
-
-   return -1;
-}
-
-/**
- * Get the overridden PCI ID for the device. This is set with the
- * INTEL_DEVID_OVERRIDE environment variable.
- *
- * Returns -1 if the override is not set.
- */
-static int
-get_pci_device_id_override(void)
-{
-   if (geteuid() == getuid()) {
-      const char *devid_override = getenv("INTEL_DEVID_OVERRIDE");
-      if (devid_override) {
-         const int id = gen_device_name_to_pci_device_id(devid_override);
-         return id >= 0 ? id : strtol(devid_override, NULL, 0);
-      }
    }
 
    return -1;
@@ -1437,7 +1411,30 @@ query_topology(struct gen_device_info *devinfo, int fd)
 bool
 gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
 {
-   int devid = get_pci_device_id_override();
+   int devid = 0;
+
+   const char *devid_override = getenv("INTEL_DEVID_OVERRIDE");
+   if (devid_override && strlen(devid_override) > 0) {
+      if (geteuid() == getuid()) {
+         devid = gen_device_name_to_pci_device_id(devid_override);
+         /* Fallback to PCI ID. */
+         if (devid <= 0)
+            devid = strtol(devid_override, NULL, 0);
+         if (devid <= 0) {
+            fprintf(stderr, "Invalid INTEL_DEVID_OVERRIDE=\"%s\". "
+                    "Use a valid numeric PCI ID or one of the supported "
+                    "platform names: %s", devid_override, name_map[0].name);
+            for (unsigned i = 1; i < ARRAY_SIZE(name_map); i++)
+               fprintf(stderr, ", %s", name_map[i].name);
+            fprintf(stderr, "\n");
+            return false;
+         }
+      } else {
+         fprintf(stderr, "Ignoring INTEL_DEVID_OVERRIDE=\"%s\" because "
+                 "real and effective user ID don't match.\n", devid_override);
+      }
+   }
+
    if (devid > 0) {
       if (!gen_get_device_info_from_pci_id(devid, devinfo))
          return false;
