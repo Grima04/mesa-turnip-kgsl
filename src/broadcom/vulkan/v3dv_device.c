@@ -1073,12 +1073,26 @@ init_meta_color_clear_resources(struct v3dv_device *device)
       _mesa_hash_table_create(NULL, u64_hash, u64_compare);
 }
 
+static uint32_t
+meta_blit_key_hash(const void *key)
+{
+   return _mesa_hash_data(key, V3DV_META_BLIT_CACHE_KEY_SIZE);
+}
+
+static bool
+meta_blit_key_compare(const void *key1, const void *key2)
+{
+   return memcmp(key1, key2, V3DV_META_BLIT_CACHE_KEY_SIZE) == 0;
+}
+
 static void
 init_meta_blit_resources(struct v3dv_device *device)
 {
    for (uint32_t i = 0; i < 3; i++) {
       device->meta.blit.cache[i] =
-         _mesa_hash_table_create(NULL, u64_hash, u64_compare);
+         _mesa_hash_table_create(NULL,
+                                 meta_blit_key_hash,
+                                 meta_blit_key_compare);
    }
 }
 
