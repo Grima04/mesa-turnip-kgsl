@@ -648,7 +648,7 @@ tu6_emit_gs_config(struct tu_cs *cs, struct tu_shader *shader,
                    const struct ir3_shader_variant *gs)
 {
    bool has_gs = gs->type != MESA_SHADER_NONE;
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);
    tu_cs_emit(cs, 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CONFIG, 2);
@@ -1080,7 +1080,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_UNKNOWN_9B07, 1);
       tu_cs_emit(cs, 0);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);
       tu_cs_emit(cs, vs->shader->output_size);
    }
 

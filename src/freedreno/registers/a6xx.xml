@@ -2819,6 +2819,12 @@ to upconvert to 32b float internally?
 	</bitset>
 
 	<reg32 offset="0xa800" name="SP_VS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0"/>
+	<reg32 offset="0xa801" name="SP_VS_BRANCH_COND" type="hex">
+		<!--
+		bitmask of true/false conditions for VS brac.N instructions,
+		bit N corresponds to brac.N
+		 -->
+	</reg32>
 	<reg32 offset="0xa802" name="SP_PRIMITIVE_CNTL">
 		<!-- # of VS outputs including pos/psize -->
 		<bitfield name="VSOUT" low="0" high="5" type="uint"/>
@@ -2893,7 +2899,15 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa864" name="SP_DS_INSTRLEN" type="uint"/>
 
 	<reg32 offset="0xa870" name="SP_GS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0"/>
-	<reg32 offset="0xa871" name="SP_GS_UNKNOWN_A871"/>
+	<reg32 offset="0xa871" name="SP_GS_PRIM_SIZE">
+		<!-- size of output of previous stage -->
+	</reg32>
+	<reg32 offset="0xa872" name="SP_GS_BRANCH_COND" type="hex">
+		<!--
+		bitmask of true/false conditions for FS brac.N instructions,
+		bit N corresponds to brac.N
+		 -->
+	</reg32>
 
 	<reg32 offset="0xa873" name="SP_PRIMITIVE_CNTL_GS">
 		<!-- # of VS outputs including pos/psize -->
@@ -2943,13 +2957,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa8af" name="SP_GS_TEX_CONST_HI"/>
 
 	<reg32 offset="0xa980" name="SP_FS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0"/>
-	<reg32 offset="0xa981" name="SP_UNKNOWN_A981">
-		<bitfield name="FACE0" pos="0" type="boolean"/>
-		<bitfield name="FACE1" pos="1" type="boolean"/>
-		<bitfield name="FACE2" pos="2" type="boolean"/>
-		<bitfield name="FACE3" pos="3" type="boolean"/>
-		<bitfield name="FACE4" pos="4" type="boolean"/>
-		<bitfield name="FACE5" pos="5" type="boolean"/>
+	<reg32 offset="0xa981" name="SP_FS_BRANCH_COND" type="hex">
+		<!--
+		bitmask of true/false conditions for FS brac.N instructions,
+		bit N corresponds to brac.N
+		 -->
 	</reg32>
 	<reg32 offset="0xa982" name="SP_UNKNOWN_A982"/>
 	<reg32 offset="0xa983" name="SP_FS_OBJ_START_LO"/>

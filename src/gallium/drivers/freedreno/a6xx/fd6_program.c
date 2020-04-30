@@ -772,12 +772,12 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9B07, 1);
 		OUT_RING(ring, 0);
 
-		OUT_PKT4(ring, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_GS_PRIM_SIZE, 1);
 		OUT_RING(ring, prev->shader->output_size);
 	} else {
 		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
 		OUT_RING(ring, 0);
-		OUT_PKT4(ring, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
+		OUT_PKT4(ring, REG_A6XX_SP_GS_PRIM_SIZE, 1);
 		OUT_RING(ring, 0);
 	}
 
