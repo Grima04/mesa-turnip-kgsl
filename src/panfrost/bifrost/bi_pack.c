@@ -1441,8 +1441,8 @@ bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, struct bi_regist
                 .op = f16 ? BIFROST_ADD_OP_TEX_COMPACT_F16 :
                         BIFROST_ADD_OP_TEX_COMPACT_F32,
                 .unknown = 1,
-                .tex_index = 0,
-                .sampler_index = 0
+                .tex_index = ins->texture.texture_index,
+                .sampler_index = ins->texture.sampler_index
         };
 
         bi_write_data_register(clause, ins);
