@@ -352,6 +352,25 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_discard_if(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        nir_src cond = instr->src[0];
+        nir_alu_type T = nir_type_uint | nir_src_bit_size(cond);
+
+        bi_instruction discard = {
+                .type = BI_DISCARD,
+                .cond = BI_COND_NE,
+                .src_types = { T, T },
+                .src = {
+                        pan_src_index(&cond),
+                        BIR_INDEX_ZERO
+                },
+        };
+
+        bi_emit(ctx, discard);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -385,6 +404,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_frag_coord:
                 bi_emit_ld_frag_coord(ctx, instr);
+                break;
+
+        case nir_intrinsic_discard_if:
+                bi_emit_discard_if(ctx, instr);
                 break;
 
         case nir_intrinsic_load_ssbo_address:
