@@ -169,6 +169,10 @@ bi_assign_uniform_constant_single(
                 if (s == 0 && (ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_ATTR)) continue;
 
                 if (ins->src[s] & BIR_INDEX_CONSTANT) {
+                        /* Let direct addresses through */
+                        if (ins->type == BI_LOAD_VAR)
+                                continue;
+
                         bool hi = false;
                         bool b64 = nir_alu_type_get_type_size(ins->src_types[s]) > 32;
                         uint64_t cons = bi_get_immediate(ins, s);
@@ -1199,7 +1203,6 @@ bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
         if (ins->src[0] & BIR_INDEX_CONSTANT) {
                 /* Direct uses address field directly */
                 packed_addr = bi_get_immediate(ins, 0);
-                assert(packed_addr < 0b1000);
         } else {
                 /* Indirect gets an extra source */
                 packed_addr = bi_get_src(ins, regs, 0, false) | 0b11000;
