@@ -773,8 +773,12 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.src[1] = BIR_INDEX_ZERO;
                 alu.src_types[1] = alu.src_types[0];
 
+                /* TODO: Reenable cond fusing when we can split up registers
+                 * when scheduling */
+#if 0
                 bi_fuse_csel_cond(&alu, instr->src[0],
                                 &constants_left, &constant_shift, comps);
+#endif
         } else if (alu.type == BI_BITWISE) {
                 /* Implicit shift argument... at some point we should fold */
                 alu.src[2] = BIR_INDEX_ZERO;
