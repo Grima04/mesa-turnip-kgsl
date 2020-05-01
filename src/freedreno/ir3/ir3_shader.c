@@ -290,7 +290,8 @@ ir3_shader_destroy(struct ir3_shader *shader)
 }
 
 struct ir3_shader *
-ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir)
+ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
+		struct ir3_stream_output_info *stream_output)
 {
 	struct ir3_shader *shader = CALLOC_STRUCT(ir3_shader);
 
@@ -298,6 +299,8 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir)
 	shader->compiler = compiler;
 	shader->id = p_atomic_inc_return(&shader->compiler->shader_count);
 	shader->type = nir->info.stage;
+	if (stream_output)
+		memcpy(&shader->stream_output, stream_output, sizeof(shader->stream_output));
 
 	NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size,
 			   (nir_lower_io_options)0);

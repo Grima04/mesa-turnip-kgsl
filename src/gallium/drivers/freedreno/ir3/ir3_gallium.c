@@ -131,9 +131,10 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		nir = tgsi_to_nir(cso->tokens, screen);
 	}
 
-	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir);
+	struct ir3_stream_output_info stream_output;
+	copy_stream_out(&stream_output, &cso->stream_output);
 
-	copy_stream_out(&shader->stream_output, &cso->stream_output);
+	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, &stream_output);
 
 	if (fd_mesa_debug & FD_DBG_SHADERDB) {
 		/* if shader-db run, create a standard variant immediately
@@ -171,7 +172,7 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 		nir = tgsi_to_nir(cso->prog, screen);
 	}
 
-	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir);
+	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, NULL);
 
 	if (fd_mesa_debug & FD_DBG_SHADERDB) {
 		/* if shader-db run, create a standard variant immediately
