@@ -321,7 +321,7 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                 break;
 
         default:
-                /* todo */
+                unreachable("Unknown intrinsic");
                 break;
         }
 }
