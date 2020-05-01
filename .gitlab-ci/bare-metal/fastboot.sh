@@ -72,7 +72,25 @@ find -H | \
   xz --check=crc32 -T4 - > $CI_PROJECT_DIR/rootfs.cpio.gz
 popd
 
-cat $BM_KERNEL $BM_DTB > Image.gz-dtb
+# Make the combined kernel image and dtb for passing to fastboot.  For normal
+# Mesa development, we build the kernel and store it in the docker container
+# that this script is running in.
+#
+# However, container builds are expensive, so when you're hacking on the
+# kernel, it's nice to be able to skip the half hour container build and plus
+# moving that container to the runner.  So, if BM_KERNEL+BM_DTB are URLs,
+# fetch them instead of looking in the container.
+if echo "$BM_KERNEL $BM_DTB" | grep -q http; then
+  apt install -y wget
+
+  wget $BM_KERNEL -O kernel
+  wget $BM_DTB -O dtb
+
+  cat kernel dtb > Image.gz-dtb
+  rm kernel dtb
+else
+  cat $BM_KERNEL $BM_DTB > Image.gz-dtb
+fi
 
 abootimg \
   --create artifacts/fastboot.img \

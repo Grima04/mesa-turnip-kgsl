@@ -57,10 +57,33 @@ rsync -a --delete $BM_ROOTFS/ /nfs/
 mkdir -p /nfs/results
 . $BM/rootfs-setup.sh /nfs
 
-# Set up the TFTP kernel/cmdline.  When we support more than one board with
-# this method, we'll need to do some check on the runner name or something.
+# Put the kernel/dtb image and the boot command line in the tftp directory for
+# the board to find.  For normal Mesa development, we build the kernel and
+# store it in the docker container that this script is running in.
+#
+# However, container builds are expensive, so when you're hacking on the
+# kernel, it's nice to be able to skip the half hour container build and plus
+# moving that container to the runner.  So, if BM_KERNEL is a URL, fetch it
+# instead of looking in the container.  Note that the kernel build should be
+# the output of:
+#
+# make Image.lzma
+#
+# mkimage \
+#  -A arm64 \
+#  -f auto \
+#  -C lzma \
+#  -d arch/arm64/boot/Image.lzma \
+#  -b arch/arm64/boot/dts/qcom/sdm845-cheza-r3.dtb \
+#  cheza-image.img
+
 rm -rf /tftp/*
-cp $BM_KERNEL /tftp/vmlinuz
+if echo "$BM_KERNEL" | grep -q http; then
+  apt install -y wget
+  wget $BM_KERNEL -O /tftp/vmlinuz
+else
+  cp $BM_KERNEL /tftp/vmlinuz
+fi
 echo "$BM_CMDLINE" > /tftp/cmdline
 
 set +e
