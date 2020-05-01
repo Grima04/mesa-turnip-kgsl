@@ -28,6 +28,15 @@
 
 /* Finds the clause type required or return none */
 
+static bool
+bi_is_fragz(bi_instruction *ins)
+{
+        if (!(ins->src[0] & BIR_INDEX_CONSTANT))
+                return false;
+
+        return (ins->constant.u32 == BIFROST_FRAGZ);
+}
+
 static enum bifrost_clause_type
 bi_clause_type_for_ins(bi_instruction *ins)
 {
@@ -43,6 +52,9 @@ bi_clause_type_for_ins(bi_instruction *ins)
                 return BIFROST_CLAUSE_NONE;
 
         case BI_LOAD_VAR:
+                if (bi_is_fragz(ins))
+                        return BIFROST_CLAUSE_FRAGZ;
+
                 return BIFROST_CLAUSE_LOAD_VARY;
 
         case BI_LOAD_UNIFORM:
