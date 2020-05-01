@@ -2644,7 +2644,6 @@ get_block(struct ir3_context *ctx, const nir_block *nblock)
 	block->nblock = nblock;
 	_mesa_hash_table_insert(ctx->block_ht, nblock, block);
 
-	block->predecessors = _mesa_pointer_set_create(block);
 	set_foreach(nblock->predecessors, sentry) {
 		_mesa_set_add(block->predecessors, get_block(ctx, sentry->key));
 	}
@@ -2758,10 +2757,12 @@ emit_cf_list(struct ir3_context *ctx, struct exec_list *list)
  *      // succs: blockStreamOut, blockNewEnd
  *   }
  *   blockStreamOut {
+ *      // preds: blockOrigEnd
  *      ... stream-out instructions ...
  *      // succs: blockNewEnd
  *   }
  *   blockNewEnd {
+ *      // preds: blockOrigEnd, blockStreamOut
  *   }
  */
 static void
@@ -2787,7 +2788,6 @@ emit_stream_out(struct ir3_context *ctx)
 	 */
 	orig_end_block = ctx->block;
 
-// TODO these blocks need to update predecessors..
 // maybe w/ store_global intrinsic, we could do this
 // stuff in nir->nir pass
 
@@ -2799,7 +2799,12 @@ emit_stream_out(struct ir3_context *ctx)
 
 	orig_end_block->successors[0] = stream_out_block;
 	orig_end_block->successors[1] = new_end_block;
+
 	stream_out_block->successors[0] = new_end_block;
+	_mesa_set_add(stream_out_block->predecessors, orig_end_block);
+
+	_mesa_set_add(new_end_block->predecessors, orig_end_block);
+	_mesa_set_add(new_end_block->predecessors, stream_out_block);
 
 	/* setup 'if (vtxcnt < maxvtxcnt)' condition: */
 	cond = ir3_CMPS_S(ctx->block, vtxcnt, 0, maxvtxcnt, 0);

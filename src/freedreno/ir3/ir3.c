@@ -1023,6 +1023,7 @@ struct ir3_block * ir3_block_create(struct ir3 *shader)
 	block->shader = shader;
 	list_inithead(&block->node);
 	list_inithead(&block->instr_list);
+	block->predecessors = _mesa_pointer_set_create(block);
 	return block;
 }
 
