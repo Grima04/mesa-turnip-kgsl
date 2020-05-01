@@ -42,6 +42,7 @@ enum bifrost_clause_type {
         BIFROST_CLAUSE_SSBO_LOAD  = 5,
         BIFROST_CLAUSE_SSBO_STORE = 6,
         BIFROST_CLAUSE_BLEND      = 9,
+        BIFROST_CLAUSE_FRAGZ      = 12,
         BIFROST_CLAUSE_ATEST      = 13,
         BIFROST_CLAUSE_64BIT      = 15
 };

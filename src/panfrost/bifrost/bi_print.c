@@ -37,6 +37,7 @@ bi_clause_type_name(enum bifrost_clause_type T)
         case BIFROST_CLAUSE_SSBO_LOAD: return "load";
         case BIFROST_CLAUSE_SSBO_STORE: return "store";
         case BIFROST_CLAUSE_BLEND: return "blend";
+        case BIFROST_CLAUSE_FRAGZ: return "fragz";
         case BIFROST_CLAUSE_ATEST: return "atest";
         case BIFROST_CLAUSE_64BIT: return "64";
         default: return "??";
