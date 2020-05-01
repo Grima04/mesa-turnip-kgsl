@@ -304,9 +304,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
       ice->state.sizes = _mesa_hash_table_u64_create(ice);
 
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      iris_init_batch(&ice->batches[i], screen, &ice->dbg,
-                      &ice->reset, ice->state.sizes,
-                      ice->batches, (enum iris_batch_name) i, priority);
+      iris_init_batch(ice, (enum iris_batch_name) i, priority);
    }
 
    screen->vtbl.init_render_context(&ice->batches[IRIS_BATCH_RENDER]);

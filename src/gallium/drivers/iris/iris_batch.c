@@ -167,19 +167,17 @@ decode_batch(struct iris_batch *batch)
 }
 
 void
-iris_init_batch(struct iris_batch *batch,
-                struct iris_screen *screen,
-                struct pipe_debug_callback *dbg,
-                struct pipe_device_reset_callback *reset,
-                struct hash_table_u64 *state_sizes,
-                struct iris_batch *all_batches,
+iris_init_batch(struct iris_context *ice,
                 enum iris_batch_name name,
                 int priority)
 {
+   struct iris_batch *batch = &ice->batches[name];
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+
    batch->screen = screen;
-   batch->dbg = dbg;
-   batch->reset = reset;
-   batch->state_sizes = state_sizes;
+   batch->dbg = &ice->dbg;
+   batch->reset = &ice->reset;
+   batch->state_sizes = ice->state.sizes;
    batch->name = name;
 
    batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
@@ -205,8 +203,8 @@ iris_init_batch(struct iris_batch *batch,
    memset(batch->other_batches, 0, sizeof(batch->other_batches));
 
    for (int i = 0, j = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (&all_batches[i] != batch)
-         batch->other_batches[j++] = &all_batches[i];
+      if (i != name)
+         batch->other_batches[j++] = &ice->batches[i];
    }
 
    if (unlikely(INTEL_DEBUG)) {

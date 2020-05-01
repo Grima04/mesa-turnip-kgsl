@@ -35,6 +35,8 @@
 
 #include "iris_fence.h"
 
+struct iris_context;
+
 /* The kernel assumes batchbuffers are smaller than 256kB. */
 #define MAX_BATCH_SIZE (256 * 1024)
 
@@ -141,12 +143,7 @@ struct iris_batch {
    uint32_t last_aux_map_state;
 };
 
-void iris_init_batch(struct iris_batch *batch,
-                     struct iris_screen *screen,
-                     struct pipe_debug_callback *dbg,
-                     struct pipe_device_reset_callback *reset,
-                     struct hash_table_u64 *state_sizes,
-                     struct iris_batch *all_batches,
+void iris_init_batch(struct iris_context *ice,
                      enum iris_batch_name name,
                      int priority);
 void iris_chain_to_new_batch(struct iris_batch *batch);
