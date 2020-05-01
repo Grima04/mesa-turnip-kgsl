@@ -22,6 +22,7 @@
  */
 
 #include "compiler.h"
+#include "bi_print.h"
 
 #define RETURN_PACKED(str) { \
         uint64_t temp = 0; \
@@ -468,8 +469,10 @@ bi_get_src(bi_instruction *ins, struct bi_registers *regs, unsigned s, bool is_f
                 return BIFROST_SRC_STAGE;
         else if (src & BIR_INDEX_PASS)
                 return src & ~BIR_INDEX_PASS;
-        else
-                unreachable("Unknown src");
+        else {
+                bi_print_instruction(ins, stderr);
+                unreachable("Unknown src in above instruction");
+        }
 }
 
 /* Constructs a packed 2-bit swizzle for a 16-bit vec2 source. Source must be
