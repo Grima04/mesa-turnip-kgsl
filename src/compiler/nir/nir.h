@@ -547,6 +547,16 @@ typedef struct nir_variable {
 
          struct {
             /**
+             * For OpenCL inline samplers. See cl_sampler_addressing_mode and cl_sampler_filter_mode
+             */
+            unsigned is_inline_sampler : 1;
+            unsigned addressing_mode : 3;
+            unsigned normalized_coordinates : 1;
+            unsigned filter_mode : 1;
+         } sampler;
+
+         struct {
+            /**
              * Transform feedback buffer.
              */
             uint16_t buffer:2;

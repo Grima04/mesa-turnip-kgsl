@@ -298,6 +298,29 @@ get_var_name(nir_variable *var, print_state *state)
    return name;
 }
 
+static const char *
+get_constant_sampler_addressing_mode(enum cl_sampler_addressing_mode mode)
+{
+   switch (mode) {
+   case SAMPLER_ADDRESSING_MODE_NONE: return "none";
+   case SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE: return "clamp_to_edge";
+   case SAMPLER_ADDRESSING_MODE_CLAMP: return "clamp";
+   case SAMPLER_ADDRESSING_MODE_REPEAT: return "repeat";
+   case SAMPLER_ADDRESSING_MODE_REPEAT_MIRRORED: return "repeat_mirrored";
+   default: unreachable("Invalid addressing mode");
+   }
+}
+
+static const char *
+get_constant_sampler_filter_mode(enum cl_sampler_filter_mode mode)
+{
+   switch (mode) {
+   case SAMPLER_FILTER_MODE_NEAREST: return "nearest";
+   case SAMPLER_FILTER_MODE_LINEAR: return "linear";
+   default: unreachable("Invalid filter mode");
+   }
+}
+
 static void
 print_constant(nir_constant *c, const struct glsl_type *type, print_state *state)
 {
@@ -570,6 +593,12 @@ print_var_decl(nir_variable *var, print_state *state)
       fprintf(fp, " = { ");
       print_constant(var->constant_initializer, var->type, state);
       fprintf(fp, " }");
+   }
+   if (glsl_type_is_sampler(var->type) && var->data.sampler.is_inline_sampler) {
+      fprintf(fp, " = { %s, %s, %s }",
+              get_constant_sampler_addressing_mode(var->data.sampler.addressing_mode),
+              var->data.sampler.normalized_coordinates ? "true" : "false",
+              get_constant_sampler_filter_mode(var->data.sampler.filter_mode));
    }
    if (var->pointer_initializer)
       fprintf(fp, " = &%s", get_var_name(var->pointer_initializer, state));
