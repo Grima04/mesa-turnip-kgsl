@@ -681,8 +681,8 @@ bi_pack_fmadd_min_f16(bi_instruction *ins, struct bi_registers *regs, bool FMA)
                         .src0_neg = ins->src_neg[flip ? 1 : 0],
                         .src1_neg = ins->src_neg[flip ? 0 : 1],
                         .abs1 = l,
-                        .src0_swizzle = bi_swiz16(ins, 0),
-                        .src1_swizzle = bi_swiz16(ins, 1), 
+                        .src0_swizzle = bi_swiz16(ins, flip ? 1 : 0),
+                        .src1_swizzle = bi_swiz16(ins, flip ? 0 : 1), 
                         .mode = ins->minmax,
                         .op = op
                 };
