@@ -63,16 +63,16 @@ emit_jump(bi_context *ctx, nir_jump_instr *instr)
 
         switch (instr->type) {
         case nir_jump_break:
-                branch->branch.target = ctx->break_block;
+                branch->branch_target = ctx->break_block;
                 break;
         case nir_jump_continue:
-                branch->branch.target = ctx->continue_block;
+                branch->branch_target = ctx->continue_block;
                 break;
         default:
                 unreachable("Unhandled jump type");
         }
 
-        pan_block_add_successor(&ctx->current_block->base, &branch->branch.target->base);
+        pan_block_add_successor(&ctx->current_block->base, &branch->branch_target->base);
 }
 
 static bi_instruction
@@ -937,9 +937,7 @@ bi_emit_branch(bi_context *ctx)
 {
         bi_instruction branch = {
                 .type = BI_BRANCH,
-                .branch = {
-                        .cond = BI_COND_ALWAYS
-                }
+                .cond = BI_COND_ALWAYS
         };
 
         return bi_emit(ctx, branch);
@@ -959,7 +957,7 @@ bi_set_branch_cond(bi_instruction *branch, nir_src *cond, bool invert)
         branch->src[0] = pan_src_index(cond);
         branch->src[1] = BIR_INDEX_ZERO;
         branch->src_types[0] = branch->src_types[1] = nir_type_uint16;
-        branch->branch.cond = invert ? BI_COND_EQ : BI_COND_NE;
+        branch->cond = invert ? BI_COND_EQ : BI_COND_NE;
 }
 
 static void
@@ -993,16 +991,16 @@ emit_if(bi_context *ctx, nir_if *nif)
         if (ctx->instruction_count == count_in) {
                 /* The else block is empty, so don't emit an exit jump */
                 bi_remove_instruction(then_exit);
-                then_branch->branch.target = ctx->after_block;
+                then_branch->branch_target = ctx->after_block;
         } else {
-                then_branch->branch.target = else_block;
-                then_exit->branch.target = ctx->after_block;
-                pan_block_add_successor(&end_then_block->base, &then_exit->branch.target->base);
+                then_branch->branch_target = else_block;
+                then_exit->branch_target = ctx->after_block;
+                pan_block_add_successor(&end_then_block->base, &then_exit->branch_target->base);
         }
 
         /* Wire up the successors */
 
-        pan_block_add_successor(&before_block->base, &then_branch->branch.target->base); /* then_branch */
+        pan_block_add_successor(&before_block->base, &then_branch->branch_target->base); /* then_branch */
 
         pan_block_add_successor(&before_block->base, &then_block->base); /* fallthrough */
         pan_block_add_successor(&end_else_block->base, &ctx->after_block->base); /* fallthrough */
@@ -1026,7 +1024,7 @@ emit_loop(bi_context *ctx, nir_loop *nloop)
 
         /* Branch back to loop back */
         bi_instruction *br_back = bi_emit_branch(ctx);
-        br_back->branch.target = ctx->continue_block;
+        br_back->branch_target = ctx->continue_block;
         pan_block_add_successor(&start_block->base, &ctx->continue_block->base);
         pan_block_add_successor(&ctx->current_block->base, &ctx->continue_block->base);
 

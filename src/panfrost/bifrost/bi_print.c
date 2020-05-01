@@ -315,12 +315,6 @@ bi_cond_name(enum bi_cond cond)
 }
 
 static void
-bi_print_branch(struct bi_branch *branch, FILE *fp)
-{
-        fprintf(fp, ".%s", bi_cond_name(branch->cond));
-}
-
-static void
 bi_print_texture(struct bi_texture *tex, FILE *fp)
 {
         fprintf(fp, " - texture %u, sampler %u",
@@ -352,16 +346,15 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_minmax_mode_name(ins->minmax));
         else if (ins->type == BI_LOAD_VAR)
                 bi_print_load_vary(&ins->load_vary, fp);
-        else if (ins->type == BI_BRANCH)
-                bi_print_branch(&ins->branch, fp);
-        else if (ins->type == BI_CSEL || ins->type == BI_CMP)
-                fprintf(fp, ".%s", bi_cond_name(ins->cond));
         else if (ins->type == BI_BLEND)
                 fprintf(fp, ".loc%u", ins->blend_location);
         else if (ins->type == BI_TEX) {
                 fprintf(fp, ".%s", bi_tex_op_name(ins->op.texture));
         } else if (ins->type == BI_BITWISE)
                 fprintf(fp, ".%cshift", ins->bitwise.rshift ? 'r' : 'l');
+
+        if (bi_class_props[ins->type] & BI_CONDITIONAL)
+                fprintf(fp, ".%s", bi_cond_name(ins->cond));
 
         if (ins->vector_channels)
                 fprintf(fp, ".v%u", ins->vector_channels);
@@ -397,10 +390,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         }
 
         if (ins->type == BI_BRANCH) {
-                if (ins->branch.target)
-                        fprintf(fp, "-> block%u", ins->branch.target->base.name);
-                else
-                        fprintf(fp, "-> blockhole");
+                assert(ins->branch_target);
+                fprintf(fp, "-> block%u", ins->branch_target->base.name);
         } else if (ins->type == BI_TEX) {
                 bi_print_texture(&ins->texture, fp);
         }
