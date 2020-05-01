@@ -202,11 +202,11 @@ iris_destroy_context(struct pipe_context *ctx)
    u_upload_destroy(ice->state.dynamic_uploader);
    u_upload_destroy(ice->query_buffer_uploader);
 
-   slab_destroy_child(&ice->transfer_pool);
-
    iris_batch_free(&ice->batches[IRIS_BATCH_RENDER]);
    iris_batch_free(&ice->batches[IRIS_BATCH_COMPUTE]);
    iris_destroy_binder(&ice->state.binder);
+
+   slab_destroy_child(&ice->transfer_pool);
 
    ralloc_free(ice);
 }
