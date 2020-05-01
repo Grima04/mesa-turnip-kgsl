@@ -86,10 +86,7 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 /* abs/neg/outmod valid for a float op */
 #define BI_MODS (1 << 0)
 
-/* Generic enough that little class-specific information is required. In other
- * words, it acts as a "normal" ALU op, even if the encoding ends up being
- * irregular enough to warrant a separate class */
-#define BI_GENERIC (1 << 1)
+/* bit 1 unused */
 
 /* Accepts a bifrost_roundmode */
 #define BI_ROUNDMODE (1 << 2)
