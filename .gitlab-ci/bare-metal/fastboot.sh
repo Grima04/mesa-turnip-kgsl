@@ -55,11 +55,17 @@ cp $BM/init.sh rootfs/init
 touch rootfs/set-job-env-vars.sh
 chmod +x rootfs/set-job-env-vars.sh
 for var in \
+    CI_JOB_URL \
+    CI_MERGE_REQUEST_SOURCE_BRANCH_NAME \
+    CI_MERGE_REQUEST_TITLE \
     CI_NODE_INDEX \
     CI_NODE_TOTAL \
+    CI_PIPELINE_ID \
+    CI_RUNNER_DESCRIPTION \
     DEQP_EXPECTED_RENDERER \
     DEQP_PARALLEL \
     DEQP_VER \
+    FLAKES_CHANNEL \
     ; do
   val=`echo ${!var} | sed 's|"||g'`
   echo "export $var=\"${val}\"" >> rootfs/set-job-env-vars.sh

@@ -174,7 +174,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-04-01-jflags"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-05-01-netcat"
 
 .use-arm_build:
   variables:
@@ -825,6 +825,7 @@ arm64_a306_gles2:
     BM_DTB: /lava-files/apq8016-sbc.dtb
     BM_ROOTFS: /lava-files/rootfs-arm64
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
+    FLAKES_CHANNEL: "#freedreno-ci"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
     DEQP_SKIPS: deqp-freedreno-a307-skips.txt
     DEQP_VER: gles2

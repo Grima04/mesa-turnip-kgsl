@@ -11,6 +11,8 @@ mount -t devpts devpts /dev/pts
 export DEQP_NO_SAVE_RESULTS=1
 . /set-job-env-vars.sh
 
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+
 export DEQP_SKIPS=deqp-skips.txt
 if [ -e /install/deqp-expected-fails.txt ]; then
   export DEQP_EXPECTED_FAILS=deqp-expected-fails.txt

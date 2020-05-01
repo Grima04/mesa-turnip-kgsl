@@ -12,6 +12,7 @@ apt-get -y install --no-install-recommends \
     libdrm2 \
     libdrm-nouveau2 \
     firmware-qcom-media \
+    netcat-openbsd \
     wget \
     xz-utils
 passwd root -d
