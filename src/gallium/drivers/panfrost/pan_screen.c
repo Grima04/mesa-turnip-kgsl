@@ -93,6 +93,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 {
         /* We expose in-dev stuff for dEQP that we don't want apps to use yet */
         bool is_deqp = pan_debug & PAN_DBG_DEQP;
+        struct panfrost_device *dev = pan_device(screen);
 
         /* Our GLES3 implementation is WIP */
         bool is_gles3 = pan_debug & PAN_DBG_GLES3;
@@ -195,10 +196,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_GENERATE_MIPMAP:
                 return 1;
 
-        /* We would prefer varyings */
+        /* We would prefer varyings on Midgard, but proper sysvals on Bifrost */
         case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
         case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
-                return 0;
+                return dev->quirks & IS_BIFROST;
 
         /* I really don't want to set this CAP but let's not swim against the
          * tide.. */
