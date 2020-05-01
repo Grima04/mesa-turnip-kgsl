@@ -266,7 +266,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 struct mali_attr_meta v = {
                         .format = p_varying_type[i],
                         .swizzle = default_vec4_swizzle,
-                        .unknown1 = 0x2,
+                        .unknown1 = dev->quirks & IS_BIFROST ? 0x0 : 0x2,
                 };
 
                 /* Check for special cases, otherwise assume general varying */
