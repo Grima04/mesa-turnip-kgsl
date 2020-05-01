@@ -273,6 +273,84 @@ bi_emit_sysval(bi_context *ctx, nir_instr *instr,
         bi_emit(ctx, load);
 }
 
+/* gl_FragCoord.xy = u16_to_f32(R59.xy) + 0.5
+ * gl_FragCoord.z = ld_vary(fragz)
+ * gl_FragCoord.w = ld_vary(fragw)
+ */
+
+static void
+bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        /* Future proofing for mediump fragcoord at some point.. */
+        nir_alu_type T = nir_type_float32;
+
+        /* First, sketch a combine */
+        bi_instruction combine = {
+                .type = BI_COMBINE,
+                .dest_type = nir_type_uint32,
+                .dest = pan_dest_index(&instr->dest),
+                .src_types = { T, T, T, T },
+        };
+
+        /* Second, handle xy */
+        for (unsigned i = 0; i < 2; ++i) {
+                bi_instruction conv = {
+                        .type = BI_CONVERT,
+                        .dest_type = T,
+                        .dest = bi_make_temp(ctx),
+                        .src = {
+                                /* TODO: RA XXX */
+                                BIR_INDEX_REGISTER | 59
+                        },
+                        .src_types = { nir_type_uint16 },
+                        .swizzle = { { i } }
+                };
+
+                bi_instruction add = {
+                        .type = BI_ADD,
+                        .dest_type = T,
+                        .dest = bi_make_temp(ctx),
+                        .src = { conv.dest, BIR_INDEX_CONSTANT },
+                        .src_types = { T, T },
+                };
+
+                float half = 0.5;
+                memcpy(&add.constant.u32, &half, sizeof(float));
+
+                bi_emit(ctx, conv);
+                bi_emit(ctx, add);
+
+                combine.src[i] = add.dest;
+        }
+
+        /* Third, zw */
+        for (unsigned i = 0; i < 2; ++i) {
+                bi_instruction load = {
+                        .type = BI_LOAD_VAR,
+                        .load_vary = {
+                                .interp_mode = BIFROST_INTERP_DEFAULT,
+                                .reuse = false,
+                                .flat = true
+                        },
+                        .vector_channels = 1,
+                        .dest_type = nir_type_float32,
+                        .dest = bi_make_temp(ctx),
+                        .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
+                        .src_types = { nir_type_uint32, nir_type_uint32 },
+                        .constant = {
+                                .u32 = (i == 0) ? BIFROST_FRAGZ : BIFROST_FRAGW
+                        }
+                };
+
+                bi_emit(ctx, load);
+
+                combine.src[i + 2] = load.dest;
+        }
+
+        /* Finally, emit the combine */
+        bi_emit(ctx, combine);
+}
+
 static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -303,6 +381,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_uniform:
                 bi_emit_ld_uniform(ctx, instr);
+                break;
+
+        case nir_intrinsic_load_frag_coord:
+                bi_emit_ld_frag_coord(ctx, instr);
                 break;
 
         case nir_intrinsic_load_ssbo_address:

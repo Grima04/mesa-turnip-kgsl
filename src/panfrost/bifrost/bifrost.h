@@ -579,6 +579,10 @@ enum bifrost_interp_mode {
 #define BIFROST_ADD_OP_LD_VAR_16 (0x1a << 1)
 #define BIFROST_ADD_OP_LD_VAR_32 (0x0a << 1)
 
+/* Fixed location for gl_FragCoord.zw */
+#define BIFROST_FRAGZ (23)
+#define BIFROST_FRAGW (22)
+
 struct bifrost_ld_var {
         unsigned src0 : 3;
 
