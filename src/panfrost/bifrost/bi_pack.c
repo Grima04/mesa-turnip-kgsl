@@ -1481,6 +1481,51 @@ bi_pack_add_select(bi_instruction *ins, struct bi_registers *regs)
         return bi_pack_add_2src(ins, regs, op);
 }
 
+static enum bifrost_discard_cond
+bi_cond_to_discard(enum bi_cond cond, bool *flip)
+{
+        switch (cond){
+        case BI_COND_GT:
+                *flip = true;
+                /* fallthrough */
+        case BI_COND_LT:
+                return BIFROST_DISCARD_FLT;
+        case BI_COND_GE:
+                *flip = true;
+                /* fallthrough */
+        case BI_COND_LE:
+                return BIFROST_DISCARD_FLE;
+        case BI_COND_NE:
+                return BIFROST_DISCARD_FNE;
+        case BI_COND_EQ:
+                return BIFROST_DISCARD_FEQ;
+        default:
+                unreachable("Invalid op for discard");
+        }
+}
+
+static unsigned
+bi_pack_add_discard(bi_instruction *ins, struct bi_registers *regs)
+{
+        bool fp16 = ins->src_types[0] == nir_type_float16;
+        assert(fp16 || ins->src_types[0] == nir_type_float32);
+
+        bool flip = false;
+        enum bifrost_discard_cond cond = bi_cond_to_discard(ins->cond, &flip);
+
+        struct bifrost_add_discard pack = {
+                .src0 = bi_get_src(ins, regs, flip ? 1 : 0, false),
+                .src1 = bi_get_src(ins, regs, flip ? 0 : 1, false),
+                .cond = cond,
+                .src0_select = fp16 ? ins->swizzle[0][0] : 0,
+                .src1_select = fp16 ? ins->swizzle[1][0] : 0,
+                .fp32 = fp16 ? 0 : 1,
+                .op = BIFROST_ADD_OP_DISCARD
+        };
+
+        RETURN_PACKED(pack);
+}
+
 static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
@@ -1502,6 +1547,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_CONVERT:
 		return bi_pack_convert(bundle.add, regs, false);
         case BI_DISCARD:
+                return bi_pack_add_discard(bundle.add, regs);
         case BI_FREXP:
         case BI_ISUB:
         case BI_LOAD:
