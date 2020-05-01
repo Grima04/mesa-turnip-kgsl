@@ -1109,7 +1109,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x17dd0, "ADD.i32.u16.Y", ADD_TWO_SRC },
         { 0x18000, "LD_VAR_ADDR", ADD_VARYING_ADDRESS, false },
         { 0x19100, "DISCARD.FEQ.f16", ADD_TWO_SRC, false },
-        { 0x19188, "DISCARD.FNE.f16", ADD_TWO_SRC, false },
+        { 0x19108, "DISCARD.FNE.f16", ADD_TWO_SRC, false },
         { 0x19110, "DISCARD.FLE.f16", ADD_TWO_SRC, false },
         { 0x19118, "DISCARD.FLT.f16", ADD_TWO_SRC, false },
         { 0x19180, "DISCARD.FEQ.f32", ADD_TWO_SRC, false },

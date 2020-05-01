@@ -166,6 +166,26 @@ struct bifrost_add_inst {
         unsigned op   : 17;
 } __attribute__((packed));
 
+#define BIFROST_ADD_OP_DISCARD (0x19100 >> 8)
+
+enum bifrost_discard_cond {
+        BIFROST_DISCARD_FEQ = 0,
+        BIFROST_DISCARD_FNE = 1,
+        BIFROST_DISCARD_FLE = 2,
+        BIFROST_DISCARD_FLT = 3,
+};
+
+struct bifrost_add_discard {
+        unsigned src0 : 3;
+        unsigned src1 : 3;
+        enum bifrost_discard_cond cond : 2;
+        /* Zero for fp32 */
+        unsigned src0_select : 1;
+        unsigned src1_select : 1;
+        unsigned fp32 : 1;
+        unsigned op   : 9;
+} __attribute__((packed));
+
 #define BIFROST_ADD_OP_LD_UBO_1 (0x0c1a0 >> 3)
 #define BIFROST_ADD_OP_LD_UBO_2 (0x0c1e0 >> 3)
 #define BIFROST_ADD_OP_LD_UBO_3 (0x0caa0 >> 3)
