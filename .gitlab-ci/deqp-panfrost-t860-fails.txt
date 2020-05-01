@@ -1034,8 +1034,6 @@ dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_switch.vec3_highp
 dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_switch.vec3_mediump
 dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_switch.vec4_highp
 dEQP-GLES3.functional.shaders.derivate.fwidth.uniform_switch.vec4_mediump
-dEQP-GLES3.functional.shaders.discard.dynamic_loop_always
-dEQP-GLES3.functional.shaders.discard.dynamic_loop_uniform
 dEQP-GLES3.functional.shaders.fragdepth.compare.const
 dEQP-GLES3.functional.shaders.fragdepth.compare.dynamic
 dEQP-GLES3.functional.shaders.fragdepth.compare.dynamic_conditional_write
