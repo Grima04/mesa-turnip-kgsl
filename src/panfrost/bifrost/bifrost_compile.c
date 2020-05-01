@@ -352,6 +352,20 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_discard(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        /* Goofy lowering */
+        bi_instruction discard = {
+                .type = BI_DISCARD,
+                .cond = BI_COND_EQ,
+                .src_types = { nir_type_uint32, nir_type_uint32 },
+                .src = { BIR_INDEX_ZERO, BIR_INDEX_ZERO },
+        };
+
+        bi_emit(ctx, discard);
+}
+
+static void
 bi_emit_discard_if(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         nir_src cond = instr->src[0];
@@ -404,6 +418,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_frag_coord:
                 bi_emit_ld_frag_coord(ctx, instr);
+                break;
+
+        case nir_intrinsic_discard:
+                bi_emit_discard(ctx, instr);
                 break;
 
         case nir_intrinsic_discard_if:
