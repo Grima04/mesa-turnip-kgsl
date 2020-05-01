@@ -917,6 +917,8 @@ glsl_type::get_sampler_instance(enum glsl_sampler_dim dim,
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
          return error_type;
       }
+   case GLSL_TYPE_VOID:
+      return shadow ? samplerShadow_type : sampler_type;
    default:
       return error_type;
    }
@@ -2656,8 +2658,8 @@ union packed_type {
       unsigned dimensionality:4;
       unsigned shadow:1;
       unsigned array:1;
-      unsigned sampled_type:2;
-      unsigned _pad:19;
+      unsigned sampled_type:5;
+      unsigned _pad:16;
    } sampler;
    struct {
       unsigned base_type:5;

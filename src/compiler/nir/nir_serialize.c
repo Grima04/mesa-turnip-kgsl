@@ -1442,7 +1442,7 @@ read_ssa_undef(read_ctx *ctx, union packed_instr header)
 union packed_tex_data {
    uint32_t u32;
    struct {
-      enum glsl_sampler_dim sampler_dim:4;
+      unsigned sampler_dim:4;
       unsigned dest_type:8;
       unsigned coord_components:3;
       unsigned is_array:1;
