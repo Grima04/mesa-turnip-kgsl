@@ -402,7 +402,10 @@ iris_cache_flush_for_render(struct iris_batch *batch,
       _mesa_hash_table_insert_pre_hashed(batch->cache.render, bo->hash, bo,
                                          format_aux_tuple(format, aux_usage));
    } else if (entry->data != format_aux_tuple(format, aux_usage)) {
-      iris_flush_depth_and_render_caches(batch);
+      iris_emit_pipe_control_flush(batch,
+                                   "cache tracker: render format mismatch",
+                                   PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                   PIPE_CONTROL_CS_STALL);
       entry->data = format_aux_tuple(format, aux_usage);
    }
 }
