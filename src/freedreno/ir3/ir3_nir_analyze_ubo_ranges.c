@@ -33,8 +33,6 @@ get_ubo_load_range(nir_intrinsic_instr *instr)
 	struct ir3_ubo_range r;
 
 	int offset = nir_src_as_uint(instr->src[1]);
-	if (instr->intrinsic == nir_intrinsic_load_ubo_ir3)
-		offset *= 16;
 	const int bytes = nir_intrinsic_dest_components(instr) * 4;
 
 	r.start = ROUND_DOWN_TO(offset, 16 * 4);
@@ -242,9 +240,8 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 	 * offset is in units of 16 bytes, so we need to multiply by 4. And
 	 * also the same for the constant part of the offset:
 	 */
-
-	const int shift = instr->intrinsic == nir_intrinsic_load_ubo_ir3 ? 2 : -2;
-	nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, ubo_offset, shift);
+	const int shift = -2;
+	nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, ubo_offset, -2);
 	nir_ssa_def *uniform_offset = NULL;
 	if (new_offset) {
 		uniform_offset = new_offset;
@@ -254,13 +251,8 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 			nir_ushr(b, ubo_offset, nir_imm_int(b, -shift));
 	}
 
-	if (instr->intrinsic == nir_intrinsic_load_ubo_ir3) {
-		const_offset <<= 2;
-		const_offset += nir_intrinsic_base(instr);
-	} else {
-		debug_assert(!(const_offset & 0x3));
-		const_offset >>= 2;
-	}
+	debug_assert(!(const_offset & 0x3));
+	const_offset >>= 2;
 
 	const int range_offset = ((int)range->offset - (int)range->start) / 4;
 	const_offset += range_offset;
@@ -300,7 +292,11 @@ instr_is_load_ubo(nir_instr *instr)
 		return false;
 
 	nir_intrinsic_op op = nir_instr_as_intrinsic(instr)->intrinsic;
-	return op == nir_intrinsic_load_ubo || op == nir_intrinsic_load_ubo_ir3;
+
+	/* ir3_nir_lower_io_offsets happens after this pass. */
+	assert(op != nir_intrinsic_load_ubo_ir3);
+
+	return op == nir_intrinsic_load_ubo;
 }
 
 bool

@@ -274,7 +274,6 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	}
 
 	OPT_V(s, nir_lower_regs_to_ssa);
-	OPT_V(s, ir3_nir_lower_io_offsets);
 
 	if (key) {
 		if (s->info.stage == MESA_SHADER_VERTEX) {
@@ -317,6 +316,9 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	 */
 	const bool ubo_progress = !key && OPT(s, ir3_nir_analyze_ubo_ranges, shader);
 	const bool idiv_progress = OPT(s, nir_lower_idiv, nir_lower_idiv_fast);
+	/* UBO offset lowering has to come after we've decided what will be left as load_ubo */
+	OPT_V(s, ir3_nir_lower_io_offsets);
+
 	if (ubo_progress || idiv_progress)
 		ir3_optimize_loop(s);
 
