@@ -190,6 +190,23 @@ bit_ins(enum bi_class C, unsigned argc, nir_alu_type base, unsigned size)
         return ins;
 }
 
+#define BIT_FOREACH_SWIZZLE(swz, args, sz) \
+        for (unsigned swz = 0; swz < ((sz == 16) ? (1 << (2 * args)) : 1); ++swz)
+
+static void
+bit_apply_swizzle(bi_instruction *ins, unsigned swz, unsigned args, unsigned sz)
+{
+        unsigned slots_per_arg = (sz == 16) ? 4 : 1;
+        unsigned slots_per_chan = (sz == 16) ? 1 : 0;
+        unsigned mask = (sz == 16) ? 1 : 0;
+
+        for (unsigned i = 0; i < args; ++i) {
+                for (unsigned j = 0; j < (32 / sz); ++j) {
+                        ins->swizzle[i][j] = ((swz >> (slots_per_arg * i)) >> (slots_per_chan * j)) & mask;
+                }
+        }
+}
+
 /* Tests all 64 combinations of floating point modifiers for a given
  * instruction / floating-type / test type */
 
@@ -204,6 +221,7 @@ bit_fmod_helper(struct panfrost_device *dev,
         bool has_outmods = fma || !fp16;
 
         for (unsigned outmod = 0; outmod < (has_outmods ? 4 : 1); ++outmod) {
+        BIT_FOREACH_SWIZZLE(swz, 2, size) {
                 for (unsigned inmod = 0; inmod < 16; ++inmod) {
                         ins.outmod = outmod;
                         ins.op.minmax = op;
@@ -211,10 +229,7 @@ bit_fmod_helper(struct panfrost_device *dev,
                         ins.src_abs[1] = (inmod & 0x2);
                         ins.src_neg[0] = (inmod & 0x4);
                         ins.src_neg[1] = (inmod & 0x8);
-
-                        /* Skip over tests that cannot run */
-                        if ((fma || c == BI_MINMAX) && fp16 && ins.src_abs[0] && ins.src_abs[1])
-                                continue;
+                        bit_apply_swizzle(&ins, swz, 2, size);
 
                         if (!bit_test_single(dev, &ins, input, fma, debug)) {
                                 fprintf(stderr, "FAIL: fmod.%s%u.%s%s.%u\n",
@@ -225,6 +240,7 @@ bit_fmod_helper(struct panfrost_device *dev,
                                                 inmod);
                         }
                 }
+        }
         }
 }
 
