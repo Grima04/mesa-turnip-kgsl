@@ -1163,13 +1163,13 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_FREXP:
                 return bi_pack_fma_frexp(bundle.fma, regs);
         case BI_ISUB:
-                return BIFROST_FMA_NOP;
+                unreachable("Packing todo");
         case BI_MINMAX:
                 return bi_pack_fma_addmin(bundle.fma, regs);
         case BI_MOV:
                 return bi_pack_fma_1src(bundle.fma, regs, BIFROST_FMA_OP_MOV);
         case BI_SHIFT:
-		return BIFROST_FMA_NOP;
+                unreachable("Packing todo");
         case BI_SELECT:
                 return bi_pack_fma_select(bundle.fma, regs);
         case BI_ROUND:
@@ -1486,18 +1486,18 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return bi_pack_add_atest(clause, bundle.add, regs);
         case BI_BRANCH:
         case BI_CMP:
-                return BIFROST_ADD_NOP;
+                unreachable("Packing todo");
         case BI_BLEND:
                 return bi_pack_add_blend(clause, bundle.add, regs);
         case BI_BITWISE:
-                return BIFROST_ADD_NOP;
+                unreachable("Packing todo");
         case BI_CONVERT:
 		return bi_pack_convert(bundle.add, regs, false);
         case BI_DISCARD:
         case BI_FREXP:
         case BI_ISUB:
         case BI_LOAD:
-                return BIFROST_ADD_NOP;
+                unreachable("Packing todo");
         case BI_LOAD_ATTR:
                 return bi_pack_add_ld_attr(clause, bundle.add, regs);
         case BI_LOAD_UNIFORM:
@@ -1511,7 +1511,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_MOV:
         case BI_SHIFT:
         case BI_STORE:
-                return BIFROST_ADD_NOP;
+                unreachable("Packing todo");
         case BI_STORE_VAR:
                 return bi_pack_add_st_vary(clause, bundle.add, regs);
         case BI_SPECIAL:
@@ -1526,7 +1526,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 else
                         unreachable("Unknown tex type");
         case BI_ROUND:
-                return BIFROST_ADD_NOP;
+                unreachable("Packing todo");
         default:
                 unreachable("Cannot encode class as ADD");
         }
