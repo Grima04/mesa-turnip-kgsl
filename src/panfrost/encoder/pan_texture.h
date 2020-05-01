@@ -147,6 +147,13 @@ panfrost_get_default_swizzle(unsigned components)
         }
 }
 
+static inline unsigned
+panfrost_bifrost_swizzle(unsigned components)
+{
+        /* Set all components to 0 and force w if needed */
+        return components < 4 ? 0x10 : 0x00;
+}
+
 enum mali_format
 panfrost_format_to_bifrost_blend(const struct util_format_description *desc);
 

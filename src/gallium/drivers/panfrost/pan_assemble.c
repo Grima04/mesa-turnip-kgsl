@@ -226,9 +226,19 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 for (unsigned i = 0; i < BIFROST_MAX_RENDER_TARGET_COUNT; i++)
                         state->blend_types[i] = bifrost_blend_type_from_nir(program.blend_types[i]);
 
-        unsigned default_vec1_swizzle = panfrost_get_default_swizzle(1);
-        unsigned default_vec2_swizzle = panfrost_get_default_swizzle(2);
-        unsigned default_vec4_swizzle = panfrost_get_default_swizzle(4);
+        unsigned default_vec1_swizzle;
+        unsigned default_vec2_swizzle;
+        unsigned default_vec4_swizzle;
+
+        if (dev->quirks & HAS_SWIZZLES) {
+                default_vec1_swizzle = panfrost_get_default_swizzle(1);
+                default_vec2_swizzle = panfrost_get_default_swizzle(2);
+                default_vec4_swizzle = panfrost_get_default_swizzle(4);
+        } else {
+                default_vec1_swizzle = panfrost_bifrost_swizzle(1);
+                default_vec2_swizzle = panfrost_bifrost_swizzle(2);
+                default_vec4_swizzle = panfrost_bifrost_swizzle(4);
+        }
 
         /* Record the varying mapping for the command stream's bookkeeping */
 

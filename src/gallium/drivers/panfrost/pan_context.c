@@ -503,6 +503,7 @@ panfrost_create_vertex_elements_state(
         const struct pipe_vertex_element *elements)
 {
         struct panfrost_vertex_state *so = CALLOC_STRUCT(panfrost_vertex_state);
+        struct panfrost_device *dev = pan_device(pctx->screen);
 
         so->num_elements = num_elements;
         memcpy(so->pipe, elements, sizeof(*elements) * num_elements);
@@ -513,16 +514,27 @@ panfrost_create_vertex_elements_state(
                 enum pipe_format fmt = elements[i].src_format;
                 const struct util_format_description *desc = util_format_description(fmt);
                 so->hw[i].unknown1 = 0x2;
-                so->hw[i].swizzle = panfrost_translate_swizzle_4(desc->swizzle);
+
+                if (dev->quirks & HAS_SWIZZLES)
+                        so->hw[i].swizzle = panfrost_translate_swizzle_4(desc->swizzle);
+                else
+                        so->hw[i].swizzle = panfrost_bifrost_swizzle(desc->nr_channels);
 
                 so->hw[i].format = panfrost_find_format(desc);
         }
 
         /* Let's also prepare vertex builtins */
         so->hw[PAN_VERTEX_ID].format = MALI_R32UI;
-        so->hw[PAN_VERTEX_ID].swizzle = panfrost_get_default_swizzle(1);
+        if (dev->quirks & HAS_SWIZZLES)
+                so->hw[PAN_VERTEX_ID].swizzle = panfrost_get_default_swizzle(1);
+        else
+                so->hw[PAN_VERTEX_ID].swizzle = panfrost_bifrost_swizzle(1);
+
         so->hw[PAN_INSTANCE_ID].format = MALI_R32UI;
-        so->hw[PAN_INSTANCE_ID].swizzle = panfrost_get_default_swizzle(1);
+        if (dev->quirks & HAS_SWIZZLES)
+                so->hw[PAN_INSTANCE_ID].swizzle = panfrost_get_default_swizzle(1);
+        else
+                so->hw[PAN_INSTANCE_ID].swizzle = panfrost_bifrost_swizzle(1);
 
         return so;
 }

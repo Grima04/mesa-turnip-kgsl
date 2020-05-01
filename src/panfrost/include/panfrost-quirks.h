@@ -47,9 +47,12 @@
 /* What it says on the tin */
 #define IS_BIFROST (1 << 3)
 
+/* What it says on the tin */
+#define HAS_SWIZZLES (1 << 4)
+
 /* Quirk collections common to particular uarchs */
 
-#define MIDGARD_QUIRKS (MIDGARD_BROKEN_FP16)
+#define MIDGARD_QUIRKS (MIDGARD_BROKEN_FP16 | HAS_SWIZZLES)
 
 #define BIFROST_QUIRKS (IS_BIFROST)
 
@@ -72,6 +75,9 @@ panfrost_get_quirks(unsigned gpu_id)
         case 0x860:
         case 0x880:
                 return MIDGARD_QUIRKS;
+
+        case 0x6000: /* G71 */
+                return BIFROST_QUIRKS | HAS_SWIZZLES;
 
         case 0x7093: /* G31 */
         case 0x7212: /* G52 */

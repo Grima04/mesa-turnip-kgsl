@@ -1837,7 +1837,11 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                 /* Set the type appropriately. TODO: Integer varyings XXX */
                 assert(o->stream == 0);
                 ovs[i].format = pan_xfb_format(o->num_components);
-                ovs[i].swizzle = panfrost_get_default_swizzle(o->num_components);
+
+                if (device->quirks & HAS_SWIZZLES)
+                        ovs[i].swizzle = panfrost_get_default_swizzle(o->num_components);
+                else
+                        ovs[i].swizzle = panfrost_bifrost_swizzle(o->num_components);
 
                 /* Link to the fragment */
                 signed fs_idx = -1;
