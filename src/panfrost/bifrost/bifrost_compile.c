@@ -653,8 +653,9 @@ bi_copy_src(bi_instruction *alu, nir_alu_instr *instr, unsigned i, unsigned to,
 }
 
 static void
-bi_fuse_csel_cond(bi_instruction *csel, nir_alu_src cond,
-                unsigned *constants_left, unsigned *constant_shift, unsigned comps)
+bi_fuse_cond(bi_instruction *csel, nir_alu_src cond,
+                unsigned *constants_left, unsigned *constant_shift,
+                unsigned comps, bool float_only)
 {
         /* Bail for vector weirdness */
         if (cond.swizzle[0] != 0)
@@ -676,6 +677,15 @@ bi_fuse_csel_cond(bi_instruction *csel, nir_alu_src cond,
 
         if (bcond == BI_COND_ALWAYS)
                 return;
+
+        /* Some instructions can't compare ints */
+        if (float_only) {
+                nir_alu_type T = nir_op_infos[alu->op].input_types[0];
+                T = nir_alu_type_get_base_type(T);
+
+                if (T != nir_type_float)
+                        return;
+        }
 
         /* We found one, let's fuse it in */
         csel->cond = bcond;
@@ -817,8 +827,8 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 /* TODO: Reenable cond fusing when we can split up registers
                  * when scheduling */
 #if 0
-                bi_fuse_csel_cond(&alu, instr->src[0],
-                                &constants_left, &constant_shift, comps);
+                bi_fuse_cond(&alu, instr->src[0],
+                                &constants_left, &constant_shift, comps, false);
 #endif
         } else if (alu.type == BI_BITWISE) {
                 /* Implicit shift argument... at some point we should fold */
