@@ -2848,7 +2848,7 @@ emit_stream_out(struct ir3_context *ctx)
 			struct ir3_instruction *base, *out, *stg;
 
 			base = bases[strmout->output[i].output_buffer];
-			out = ctx->ir->outputs[regid(strmout->output[i].register_index, c)];
+			out = ctx->outputs[regid(strmout->output[i].register_index, c)];
 
 			stg = ir3_STG(ctx->block, base, 0, out, 0,
 					create_immed(ctx->block, 1), 0);
