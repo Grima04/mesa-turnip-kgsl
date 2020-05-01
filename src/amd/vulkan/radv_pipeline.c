@@ -2943,6 +2943,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				           nir_lower_non_uniform_ssbo_access |
 				           nir_lower_non_uniform_texture_access |
 				           nir_lower_non_uniform_image_access);
+				NIR_PASS_V(nir[i], nir_lower_memory_model);
 			}
 		}
 	}
