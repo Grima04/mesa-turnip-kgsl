@@ -596,7 +596,7 @@ cat0_src:          '!' T_P0        { instr->cat0.inv = true; instr->cat0.comp = 
 cat0_immed:        '#' integer     { instr->cat0.immed = $2; }
 
 cat0_instr:        T_OP_NOP        { new_instr(OPC_NOP); }
-|                  T_OP_BR         { new_instr(OPC_BR); }    cat0_src ',' cat0_immed
+|                  T_OP_BR         { new_instr(OPC_B); }    cat0_src ',' cat0_immed
 |                  T_OP_JUMP       { new_instr(OPC_JUMP); }  cat0_immed
 |                  T_OP_CALL       { new_instr(OPC_CALL); }  cat0_immed
 |                  T_OP_RET        { new_instr(OPC_RET); }

@@ -264,8 +264,8 @@ print_instr(struct ir3_instruction *instr, int lvl)
 
 	if (is_flow(instr) && instr->cat0.target) {
 		/* the predicate register src is implied: */
-		if (instr->opc == OPC_BR) {
-			printf(" %sp0.x", instr->cat0.inv ? "!" : "");
+		if (instr->opc == OPC_B) {
+			printf("r %sp0.x", instr->cat0.inv ? "!" : "");
 		}
 		printf(", target=block%u", block_id(instr->cat0.target));
 	}

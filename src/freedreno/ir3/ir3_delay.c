@@ -123,7 +123,7 @@ count_instruction(struct ir3_instruction *n)
 	 * be eliminated later in resolve_jumps().. really should do that
 	 * earlier so we don't have this constraint.
 	 */
-	return is_alu(n) || (is_flow(n) && (n->opc != OPC_JUMP) && (n->opc != OPC_BR));
+	return is_alu(n) || (is_flow(n) && (n->opc != OPC_JUMP) && (n->opc != OPC_B));
 }
 
 /**

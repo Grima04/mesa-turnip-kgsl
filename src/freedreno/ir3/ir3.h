@@ -1423,15 +1423,15 @@ ir3_##name(struct ir3_block *block,                                      \
 #define INSTR4(name)        __INSTR4(0, name, OPC_##name)
 
 /* cat0 instructions: */
-INSTR1(BR)
+INSTR1(B)
 INSTR0(JUMP)
 INSTR1(KILL)
 INSTR0(END)
 INSTR0(CHSH)
 INSTR0(CHMASK)
-INSTR1(IF)
-INSTR0(ELSE)
-INSTR0(ENDIF)
+INSTR1(PREDT)
+INSTR0(PREDF)
+INSTR0(PREDE)
 
 /* cat2 instructions, most 2 src but some 1 src: */
 INSTR2(ADD_F)

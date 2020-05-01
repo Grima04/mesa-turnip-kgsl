@@ -138,7 +138,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			regmask_init(&state->needs_sy);
 		}
 
-		if (last_n && (last_n->opc == OPC_IF)) {
+		if (last_n && (last_n->opc == OPC_PREDT)) {
 			n->flags |= IR3_INSTR_SS;
 			regmask_init(&state->needs_ss_war);
 			regmask_init(&state->needs_ss);
@@ -574,12 +574,12 @@ block_sched(struct ir3 *ir)
 			/* create "else" branch first (since "then" block should
 			 * frequently/always end up being a fall-thru):
 			 */
-			br = ir3_BR(block, block->condition, 0);
+			br = ir3_B(block, block->condition, 0);
 			br->cat0.inv = true;
 			br->cat0.target = block->successors[1];
 
 			/* "then" branch: */
-			br = ir3_BR(block, block->condition, 0);
+			br = ir3_B(block, block->condition, 0);
 			br->cat0.target = block->successors[0];
 
 		} else if (block->successors[0]) {
@@ -633,7 +633,7 @@ kill_sched(struct ir3 *ir, struct ir3_shader_variant *so)
 			if (instr->opc != OPC_KILL)
 				continue;
 
-			struct ir3_instruction *br = ir3_instr_create(block, OPC_BR);
+			struct ir3_instruction *br = ir3_instr_create(block, OPC_B);
 			br->regs[1] = instr->regs[1];
 			br->cat0.target =
 				list_last_entry(&ir->block_list, struct ir3_block, node);

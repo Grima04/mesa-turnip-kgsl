@@ -141,22 +141,13 @@ static int emit_cat0(struct ir3_instruction *instr, void *ptr,
 	}
 	cat0->repeat   = instr->repeat;
 	cat0->ss       = !!(instr->flags & IR3_INSTR_SS);
-	cat0->inv      = instr->cat0.inv;
-	cat0->comp     = instr->cat0.comp;
+	cat0->inv0     = instr->cat0.inv;
+	cat0->comp0    = instr->cat0.comp;
 	cat0->opc      = instr->opc;
+	cat0->opc_hi   = instr->opc >= 16;
 	cat0->jmp_tgt  = !!(instr->flags & IR3_INSTR_JP);
 	cat0->sync     = !!(instr->flags & IR3_INSTR_SY);
 	cat0->opc_cat  = 0;
-
-	switch (instr->opc) {
-	case OPC_IF:
-	case OPC_ELSE:
-	case OPC_ENDIF:
-		cat0->dummy4 = 16;
-		break;
-	default:
-		break;
-	}
 
 	return 0;
 }

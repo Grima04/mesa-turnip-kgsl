@@ -41,6 +41,9 @@ static const struct test {
 	INSTR_6XX(03000000_00000000, "end"),
 	INSTR_6XX(00800000_00000004, "br p0.x, #4"),
 	INSTR_6XX(00900000_00000003, "br !p0.x, #3"),
+	INSTR_6XX(03820000_00000015, "shps #21"), /* emit */
+	INSTR_6XX(04021000_00000000, "(ss)shpe"), /* cut */
+	INSTR_6XX(02820000_00000014, "getone #20"), /* kill p0.x */
 
 	/* cat1 */
 	INSTR_6XX(20244000_00000020, "mov.f32f32 r0.x, c8.x"),

@@ -203,26 +203,54 @@ static void print_src(struct disasm_ctx *ctx, struct reginfo *info)
 
 static void print_instr_cat0(struct disasm_ctx *ctx, instr_t *instr)
 {
+	static const struct {
+		const char *suffix;
+		int nsrc;
+		bool idx;
+	} brinfo[7] = {
+		[BRANCH_PLAIN] = { "r",   1, false },
+		[BRANCH_OR]    = { "rao", 2, false },
+		[BRANCH_AND]   = { "raa", 2, false },
+		[BRANCH_CONST] = { "rac", 0, true  },
+		[BRANCH_ANY]   = { "any", 1, false },
+		[BRANCH_ALL]   = { "all", 1, false },
+		[BRANCH_X]     = { "rax", 0, false },
+	};
 	instr_cat0_t *cat0 = &instr->cat0;
 
-	switch (cat0->opc) {
+	switch (instr_opc(instr, ctx->gpu_id)) {
 	case OPC_KILL:
-	case OPC_IF:
-		fprintf(ctx->out, " %sp0.%c", cat0->inv ? "!" : "",
-				component[cat0->comp]);
+	case OPC_PREDT:
+	case OPC_PREDF:
+		fprintf(ctx->out, " %sp0.%c", cat0->inv0 ? "!" : "",
+				component[cat0->comp0]);
 		break;
-	case OPC_BR:
-		fprintf(ctx->out, " %sp0.%c, #%d", cat0->inv ? "!" : "",
-				component[cat0->comp], cat0->a3xx.immed);
+	case OPC_B:
+		fprintf(ctx->out, "%s", brinfo[cat0->brtype].suffix);
+		if (brinfo[cat0->brtype].idx) {
+			fprintf(ctx->out, ".%u", cat0->idx);
+		}
+		if (brinfo[cat0->brtype].nsrc >= 1) {
+			fprintf(ctx->out, " %sp0.%c,", cat0->inv0 ? "!" : "",
+					component[cat0->comp0]);
+		}
+		if (brinfo[cat0->brtype].nsrc >= 2) {
+			fprintf(ctx->out, " %sp0.%c,", cat0->inv1 ? "!" : "",
+					component[cat0->comp1]);
+		}
+		fprintf(ctx->out, " #%d", cat0->a3xx.immed);
 		break;
 	case OPC_JUMP:
 	case OPC_CALL:
+	case OPC_BKT:
+	case OPC_GETONE:
+	case OPC_SHPS:
 		fprintf(ctx->out, " #%d", cat0->a3xx.immed);
 		break;
 	}
 
-	if ((debug & PRINT_VERBOSE) && (cat0->dummy2|cat0->dummy3|cat0->dummy4))
-		fprintf(ctx->out, "\t{0: %x,%x,%x}", cat0->dummy2, cat0->dummy3, cat0->dummy4);
+	if ((debug & PRINT_VERBOSE) && (cat0->dummy3|cat0->dummy4))
+		fprintf(ctx->out, "\t{0: %x,%x}", cat0->dummy3, cat0->dummy4);
 }
 
 static void print_instr_cat1(struct disasm_ctx *ctx, instr_t *instr)
@@ -1065,7 +1093,7 @@ static const struct opc_info {
 #define OPC(cat, opc, name) [(opc)] = { (cat), (opc), #name, print_instr_cat##cat }
 	/* category 0: */
 	OPC(0, OPC_NOP,          nop),
-	OPC(0, OPC_BR,           br),
+	OPC(0, OPC_B,            b),
 	OPC(0, OPC_JUMP,         jump),
 	OPC(0, OPC_CALL,         call),
 	OPC(0, OPC_RET,          ret),
@@ -1076,9 +1104,18 @@ static const struct opc_info {
 	OPC(0, OPC_CHMASK,       chmask),
 	OPC(0, OPC_CHSH,         chsh),
 	OPC(0, OPC_FLOW_REV,     flow_rev),
-	OPC(0, OPC_IF,           if),
-	OPC(0, OPC_ELSE,         else),
-	OPC(0, OPC_ENDIF,        endif),
+	OPC(0, OPC_PREDT,        predt),
+	OPC(0, OPC_PREDF,        predf),
+	OPC(0, OPC_PREDE,        prede),
+	OPC(0, OPC_BKT,          bkt),
+	OPC(0, OPC_STKS,         stks),
+	OPC(0, OPC_STKR,         stkr),
+	OPC(0, OPC_XSET,         xset),
+	OPC(0, OPC_XCLR,         xclr),
+	OPC(0, OPC_GETONE,       getone),
+	OPC(0, OPC_DBG,          dbg),
+	OPC(0, OPC_SHPS,         shps),
+	OPC(0, OPC_SHPE,         shpe),
 
 	/* category 1: */
 	OPC(1, OPC_MOV, ),
@@ -1292,6 +1329,8 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 	}
 	if (instr->jmp_tgt)
 		fprintf(ctx->out, "(jp)");
+	if ((instr->opc_cat == 0) && instr->cat0.eq)
+		fprintf(ctx->out, "(eq)");
 	if (instr_sat(instr))
 		fprintf(ctx->out, "(sat)");
 	if (ctx->repeat)
