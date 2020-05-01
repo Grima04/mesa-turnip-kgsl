@@ -829,10 +829,12 @@ typedef union PACKED {
 /* Similar to cat5_desc_mode_t, describes how the descriptor is loaded.
  */
 typedef enum {
-	/* Use old GL binding model with an immediate index.
-	 * TODO: find CAT6_UNIFORM and CAT6_NONUNIFORM
-	 */
+	/* Use old GL binding model with an immediate index. */
 	CAT6_IMM = 0,
+
+	CAT6_UNIFORM = 1,
+
+	CAT6_NONUNIFORM = 2,
 
 	/* Use the bindless model, with an immediate index.
 	 */

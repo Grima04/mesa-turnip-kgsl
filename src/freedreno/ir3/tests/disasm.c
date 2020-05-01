@@ -76,8 +76,8 @@ static const struct test {
 	/* cat6 */
 	INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x"),
 	INSTR_6XX(c1100000_c1000000, "stl.f16 l[0], hr0.x, hr48.y"),
-	INSTR_6XX(c0260000_0063c200, "resinfo.untyped.2d.u32.1 r0.x, r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
-	INSTR_6XX(c0260000_0063c000, "resinfo.untyped.1d.u32.1 r0.x, r0.x, 0"), /* resinfo.u32.1d.mode0.base0 r0.x, 0 */
+	INSTR_6XX(c0260000_0063c200, "resinfo.untyped.2d.u32.1.imm r0.x, r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
+	INSTR_6XX(c0260000_0063c000, "resinfo.untyped.1d.u32.1.imm r0.x, r0.x, 0"), /* resinfo.u32.1d.mode0.base0 r0.x, 0 */
 
 	/* discard stuff */
 	INSTR_6XX(42b400f8_20010004, "cmps.s.eq p0.x, r1.x, 1"),
@@ -101,16 +101,16 @@ static const struct test {
 	 * important info they lack(?!), but same goes the other way.
 	 */
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.uniform_fragment */
-	INSTR_6XX(c0260000_00c78040, "ldc.offset0.1 r0.x, r0.x, 0"), /* ldc.1.mode1.base0 r0.x, 0, r0.x */
-	INSTR_6XX(c0260201_00c78040, "ldc.offset0.1 r0.y, r0.x, 1"), /* ldc.1.mode1.base0 r0.y, 0, r0.y */
+	INSTR_6XX(c0260000_00c78040, "ldc.offset0.1.uniform r0.x, r0.x, r0.x"), /* ldc.1.mode1.base0 r0.x, 0, r0.x */
+	INSTR_6XX(c0260201_00c78040, "ldc.offset0.1.uniform r0.y, r0.x, r0.y"), /* ldc.1.mode1.base0 r0.y, 0, r0.y */
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.dynamically_uniform_fragment  */
-	INSTR_6XX(c0260000_00c78080, "ldc.offset0.1 r0.x, r0.x, 0"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
-	INSTR_6XX(c0260201_00c78080, "ldc.offset0.1 r0.y, r0.x, 1"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
+	INSTR_6XX(c0260000_00c78080, "ldc.offset0.1.nonuniform r0.x, r0.x, r0.x"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
+	INSTR_6XX(c0260201_00c78080, "ldc.offset0.1.nonuniform r0.y, r0.x, r0.y"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
 	/* custom shaders, loading .x, .y, .z, .w from an array of vec4 in block 0 */
-	INSTR_6XX(c0260000_00478000, "ldc.offset0.1 r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
-	INSTR_6XX(c0260000_00478200, "ldc.offset1.1 r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
-	INSTR_6XX(c0260000_00478400, "ldc.offset2.1 r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
-	INSTR_6XX(c0260000_00478600, "ldc.offset3.1 r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+	INSTR_6XX(c0260000_00478000, "ldc.offset0.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+	INSTR_6XX(c0260000_00478200, "ldc.offset1.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+	INSTR_6XX(c0260000_00478400, "ldc.offset2.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+	INSTR_6XX(c0260000_00478600, "ldc.offset3.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
 
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.fragment.sampler2d */
 	INSTR_6XX(a0c01f04_0cc00005, "sam (f32)(xyzw)r1.x, r0.z, s#6, t#6"),

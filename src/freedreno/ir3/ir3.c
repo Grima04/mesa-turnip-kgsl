@@ -572,9 +572,10 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 		}
 		cat6->base = instr->cat6.base;
 	} else {
-		/* TODO figure out mode for indirect SSBO index in !bindless */
-		iassert(ssbo->flags & IR3_REG_IMMED);
-		cat6->desc_mode = CAT6_IMM;
+		if (ssbo->flags & IR3_REG_IMMED)
+			cat6->desc_mode = CAT6_IMM;
+		else
+			cat6->desc_mode = CAT6_UNIFORM;
 	}
 
 	switch (instr->opc) {
