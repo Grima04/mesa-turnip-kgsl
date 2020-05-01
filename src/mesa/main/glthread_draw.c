@@ -332,7 +332,7 @@ multi_draw_arrays_async(struct gl_context *ctx, GLenum mode,
    }
 }
 
-void
+void GLAPIENTRY
 _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
                               const GLsizei *count, GLsizei draw_count)
 {
