@@ -366,6 +366,11 @@ bi_emit_discard(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_fuse_cond(bi_instruction *csel, nir_alu_src cond,
+                unsigned *constants_left, unsigned *constant_shift,
+                unsigned comps, bool float_only);
+
+static void
 bi_emit_discard_if(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         nir_src cond = instr->src[0];
@@ -380,6 +385,17 @@ bi_emit_discard_if(bi_context *ctx, nir_intrinsic_instr *instr)
                         BIR_INDEX_ZERO
                 },
         };
+
+        /* Try to fuse in the condition */
+        unsigned constants_left = 1, constant_shift = 0;
+
+        /* Scalar so no swizzle */
+        nir_alu_src wrap = {
+                .src = instr->src[0]
+        };
+
+        /* May or may not succeed but we're optimistic */
+        bi_fuse_cond(&discard, wrap, &constants_left, &constant_shift, 1, true);
 
         bi_emit(ctx, discard);
 }
