@@ -636,7 +636,7 @@ bi_pack_fp16_abs(bi_instruction *ins, struct bi_registers *regs, bool *flip)
                 *flip = true;
                 return src_0 >= src_1;
         } else {
-                *flip = (src_0 >= src_1);
+                *flip = !(src_1 < src_0);
                 return true;
         }
 }
