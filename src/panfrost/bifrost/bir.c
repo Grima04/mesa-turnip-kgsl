@@ -96,6 +96,11 @@ bi_from_bytemask(uint16_t bytemask, unsigned bytes)
 unsigned
 bi_get_component_count(bi_instruction *ins, signed src)
 {
+        /* Discards and branches are oddball since they're not BI_VECTOR but no
+         * destination. So special case.. */
+        if (ins->type == BI_DISCARD || ins->type == BI_BRANCH)
+                return 1;
+
         if (bi_class_props[ins->type] & BI_VECTOR) {
                 assert(ins->vector_channels);
                 return (src <= 0) ? ins->vector_channels : 1;
