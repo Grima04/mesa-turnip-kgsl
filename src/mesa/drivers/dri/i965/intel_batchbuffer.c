@@ -130,7 +130,11 @@ intel_batchbuffer_init(struct brw_context *brw)
    struct intel_batchbuffer *batch = &brw->batch;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
-   batch->use_shadow_copy = !devinfo->has_llc;
+   if (unlikely(INTEL_DEBUG & DEBUG_BATCH)) {
+      /* The shadow doesn't get relocs written so state decode fails. */
+      batch->use_shadow_copy = false;
+   } else
+      batch->use_shadow_copy = !devinfo->has_llc;
 
    init_reloc_list(&batch->batch_relocs, 250);
    init_reloc_list(&batch->state_relocs, 250);
