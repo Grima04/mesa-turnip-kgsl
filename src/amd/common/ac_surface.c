@@ -1912,3 +1912,117 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 
 	return 0;
 }
+
+static unsigned eg_tile_split(unsigned tile_split)
+{
+   switch (tile_split) {
+   case 0:     tile_split = 64;    break;
+   case 1:     tile_split = 128;   break;
+   case 2:     tile_split = 256;   break;
+   case 3:     tile_split = 512;   break;
+   default:
+   case 4:     tile_split = 1024;  break;
+   case 5:     tile_split = 2048;  break;
+   case 6:     tile_split = 4096;  break;
+   }
+   return tile_split;
+}
+
+static unsigned eg_tile_split_rev(unsigned eg_tile_split)
+{
+   switch (eg_tile_split) {
+   case 64:    return 0;
+   case 128:   return 1;
+   case 256:   return 2;
+   case 512:   return 3;
+   default:
+   case 1024:  return 4;
+   case 2048:  return 5;
+   case 4096:  return 6;
+   }
+}
+
+#define AMDGPU_TILING_DCC_MAX_COMPRESSED_BLOCK_SIZE_SHIFT  45
+#define AMDGPU_TILING_DCC_MAX_COMPRESSED_BLOCK_SIZE_MASK   0x3
+
+/* This should be called before ac_compute_surface. */
+void ac_surface_set_bo_metadata(const struct radeon_info *info,
+                                struct radeon_surf *surf, uint64_t tiling_flags,
+                                enum radeon_surf_mode *mode)
+{
+   bool scanout;
+
+   if (info->chip_class >= GFX9) {
+      surf->u.gfx9.surf.swizzle_mode = AMDGPU_TILING_GET(tiling_flags, SWIZZLE_MODE);
+      surf->u.gfx9.dcc.independent_64B_blocks = AMDGPU_TILING_GET(tiling_flags, DCC_INDEPENDENT_64B);
+      surf->u.gfx9.dcc.independent_128B_blocks = AMDGPU_TILING_GET(tiling_flags, DCC_INDEPENDENT_128B);
+      surf->u.gfx9.dcc.max_compressed_block_size = AMDGPU_TILING_GET(tiling_flags, DCC_MAX_COMPRESSED_BLOCK_SIZE);
+      surf->u.gfx9.display_dcc_pitch_max = AMDGPU_TILING_GET(tiling_flags, DCC_PITCH_MAX);
+      scanout = AMDGPU_TILING_GET(tiling_flags, SCANOUT);
+      *mode = surf->u.gfx9.surf.swizzle_mode > 0 ? RADEON_SURF_MODE_2D : RADEON_SURF_MODE_LINEAR_ALIGNED;
+   } else {
+      surf->u.legacy.pipe_config = AMDGPU_TILING_GET(tiling_flags, PIPE_CONFIG);
+      surf->u.legacy.bankw = 1 << AMDGPU_TILING_GET(tiling_flags, BANK_WIDTH);
+      surf->u.legacy.bankh = 1 << AMDGPU_TILING_GET(tiling_flags, BANK_HEIGHT);
+      surf->u.legacy.tile_split = eg_tile_split(AMDGPU_TILING_GET(tiling_flags, TILE_SPLIT));
+      surf->u.legacy.mtilea = 1 << AMDGPU_TILING_GET(tiling_flags, MACRO_TILE_ASPECT);
+      surf->u.legacy.num_banks = 2 << AMDGPU_TILING_GET(tiling_flags, NUM_BANKS);
+      scanout = AMDGPU_TILING_GET(tiling_flags, MICRO_TILE_MODE) == 0; /* DISPLAY */
+
+      if (AMDGPU_TILING_GET(tiling_flags, ARRAY_MODE) == 4)  /* 2D_TILED_THIN1 */
+         *mode = RADEON_SURF_MODE_2D;
+      else if (AMDGPU_TILING_GET(tiling_flags, ARRAY_MODE) == 2) /* 1D_TILED_THIN1 */
+         *mode = RADEON_SURF_MODE_1D;
+      else
+         *mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
+   }
+
+   if (scanout)
+      surf->flags |= RADEON_SURF_SCANOUT;
+   else
+      surf->flags &= ~RADEON_SURF_SCANOUT;
+}
+
+void ac_surface_get_bo_metadata(const struct radeon_info *info,
+                                struct radeon_surf *surf, uint64_t *tiling_flags)
+{
+   *tiling_flags = 0;
+
+   if (info->chip_class >= GFX9) {
+      uint64_t dcc_offset = 0;
+
+      if (surf->dcc_offset) {
+         uint64_t dcc_offset = surf->display_dcc_offset ? surf->display_dcc_offset
+                                                        : surf->dcc_offset;
+         assert((dcc_offset >> 8) != 0 && (dcc_offset >> 8) < (1 << 24));
+      }
+
+      *tiling_flags |= AMDGPU_TILING_SET(SWIZZLE_MODE, surf->u.gfx9.surf.swizzle_mode);
+      *tiling_flags |= AMDGPU_TILING_SET(DCC_OFFSET_256B, dcc_offset >> 8);
+      *tiling_flags |= AMDGPU_TILING_SET(DCC_PITCH_MAX, surf->u.gfx9.display_dcc_pitch_max);
+      *tiling_flags |= AMDGPU_TILING_SET(DCC_INDEPENDENT_64B, surf->u.gfx9.dcc.independent_64B_blocks);
+      *tiling_flags |= AMDGPU_TILING_SET(DCC_INDEPENDENT_128B, surf->u.gfx9.dcc.independent_128B_blocks);
+      *tiling_flags |= AMDGPU_TILING_SET(DCC_MAX_COMPRESSED_BLOCK_SIZE, surf->u.gfx9.dcc.max_compressed_block_size);
+      *tiling_flags |= AMDGPU_TILING_SET(SCANOUT, (surf->flags & RADEON_SURF_SCANOUT) != 0);
+   } else {
+      if (surf->u.legacy.level[0].mode >= RADEON_SURF_MODE_2D)
+         *tiling_flags |= AMDGPU_TILING_SET(ARRAY_MODE, 4); /* 2D_TILED_THIN1 */
+      else if (surf->u.legacy.level[0].mode >= RADEON_SURF_MODE_1D)
+         *tiling_flags |= AMDGPU_TILING_SET(ARRAY_MODE, 2); /* 1D_TILED_THIN1 */
+      else
+         *tiling_flags |= AMDGPU_TILING_SET(ARRAY_MODE, 1); /* LINEAR_ALIGNED */
+
+      *tiling_flags |= AMDGPU_TILING_SET(PIPE_CONFIG, surf->u.legacy.pipe_config);
+      *tiling_flags |= AMDGPU_TILING_SET(BANK_WIDTH, util_logbase2(surf->u.legacy.bankw));
+      *tiling_flags |= AMDGPU_TILING_SET(BANK_HEIGHT, util_logbase2(surf->u.legacy.bankh));
+      if (surf->u.legacy.tile_split)
+         *tiling_flags |= AMDGPU_TILING_SET(TILE_SPLIT, eg_tile_split_rev(surf->u.legacy.tile_split));
+      *tiling_flags |= AMDGPU_TILING_SET(MACRO_TILE_ASPECT, util_logbase2(surf->u.legacy.mtilea));
+      *tiling_flags |= AMDGPU_TILING_SET(NUM_BANKS, util_logbase2(surf->u.legacy.num_banks)-1);
+
+      if (surf->flags & RADEON_SURF_SCANOUT)
+         *tiling_flags |= AMDGPU_TILING_SET(MICRO_TILE_MODE, 0); /* DISPLAY_MICRO_TILING */
+      else
+         *tiling_flags |= AMDGPU_TILING_SET(MICRO_TILE_MODE, 1); /* THIN_MICRO_TILING */
+   }
+}

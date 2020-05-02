@@ -330,41 +330,6 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
    return 0;
 }
 
-static void si_get_display_metadata(struct si_screen *sscreen, struct radeon_surf *surf,
-                                    struct radeon_bo_metadata *metadata,
-                                    enum radeon_surf_mode *array_mode, bool *is_scanout)
-{
-   if (sscreen->info.chip_class >= GFX9) {
-      if (metadata->u.gfx9.swizzle_mode > 0)
-         *array_mode = RADEON_SURF_MODE_2D;
-      else
-         *array_mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
-
-      surf->u.gfx9.surf.swizzle_mode = metadata->u.gfx9.swizzle_mode;
-      surf->u.gfx9.dcc.independent_64B_blocks = metadata->u.gfx9.dcc_independent_64B;
-      surf->u.gfx9.dcc.independent_128B_blocks = metadata->u.gfx9.dcc_independent_128B;
-      surf->u.gfx9.dcc.max_compressed_block_size = metadata->u.gfx9.dcc_max_compressed_block_size;
-      surf->u.gfx9.display_dcc_pitch_max = metadata->u.gfx9.dcc_pitch_max;
-      *is_scanout = metadata->u.gfx9.scanout;
-   } else {
-      surf->u.legacy.pipe_config = metadata->u.legacy.pipe_config;
-      surf->u.legacy.bankw = metadata->u.legacy.bankw;
-      surf->u.legacy.bankh = metadata->u.legacy.bankh;
-      surf->u.legacy.tile_split = metadata->u.legacy.tile_split;
-      surf->u.legacy.mtilea = metadata->u.legacy.mtilea;
-      surf->u.legacy.num_banks = metadata->u.legacy.num_banks;
-
-      if (metadata->u.legacy.macrotile == RADEON_LAYOUT_TILED)
-         *array_mode = RADEON_SURF_MODE_2D;
-      else if (metadata->u.legacy.microtile == RADEON_LAYOUT_TILED)
-         *array_mode = RADEON_SURF_MODE_1D;
-      else
-         *array_mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
-
-      *is_scanout = metadata->u.legacy.scanout;
-   }
-}
-
 void si_eliminate_fast_color_clear(struct si_context *sctx, struct si_texture *tex)
 {
    struct si_screen *sscreen = sctx->screen;
@@ -597,43 +562,10 @@ static uint32_t si_get_bo_metadata_word1(struct si_screen *sscreen)
 
 static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture *tex)
 {
-   struct radeon_surf *surface = &tex->surface;
    struct pipe_resource *res = &tex->buffer.b.b;
    struct radeon_bo_metadata md;
 
    memset(&md, 0, sizeof(md));
-
-   if (sscreen->info.chip_class >= GFX9) {
-      md.u.gfx9.swizzle_mode = surface->u.gfx9.surf.swizzle_mode;
-      md.u.gfx9.scanout = (surface->flags & RADEON_SURF_SCANOUT) != 0;
-
-      if (tex->surface.dcc_offset && !tex->dcc_separate_buffer) {
-         uint64_t dcc_offset = tex->surface.display_dcc_offset ? tex->surface.display_dcc_offset
-                                                               : tex->surface.dcc_offset;
-
-         assert((dcc_offset >> 8) != 0 && (dcc_offset >> 8) < (1 << 24));
-         md.u.gfx9.dcc_offset_256B = dcc_offset >> 8;
-         md.u.gfx9.dcc_pitch_max = tex->surface.u.gfx9.display_dcc_pitch_max;
-         md.u.gfx9.dcc_independent_64B = tex->surface.u.gfx9.dcc.independent_64B_blocks;
-         md.u.gfx9.dcc_independent_128B = tex->surface.u.gfx9.dcc.independent_128B_blocks;
-         md.u.gfx9.dcc_max_compressed_block_size = tex->surface.u.gfx9.dcc.max_compressed_block_size;
-      }
-   } else {
-      md.u.legacy.microtile = surface->u.legacy.level[0].mode >= RADEON_SURF_MODE_1D
-                                 ? RADEON_LAYOUT_TILED
-                                 : RADEON_LAYOUT_LINEAR;
-      md.u.legacy.macrotile = surface->u.legacy.level[0].mode >= RADEON_SURF_MODE_2D
-                                 ? RADEON_LAYOUT_TILED
-                                 : RADEON_LAYOUT_LINEAR;
-      md.u.legacy.pipe_config = surface->u.legacy.pipe_config;
-      md.u.legacy.bankw = surface->u.legacy.bankw;
-      md.u.legacy.bankh = surface->u.legacy.bankh;
-      md.u.legacy.tile_split = surface->u.legacy.tile_split;
-      md.u.legacy.mtilea = surface->u.legacy.mtilea;
-      md.u.legacy.num_banks = surface->u.legacy.num_banks;
-      md.u.legacy.stride = surface->u.legacy.level[0].nblk_x * surface->bpe;
-      md.u.legacy.scanout = (surface->flags & RADEON_SURF_SCANOUT) != 0;
-   }
 
    assert(tex->dcc_separate_buffer == NULL);
    assert(tex->surface.fmask_size == 0);
@@ -702,7 +634,7 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
       md.size_metadata += (1 + res->last_level) * 4;
    }
 
-   sscreen->ws->buffer_set_metadata(tex->buffer.buf, &md);
+   sscreen->ws->buffer_set_metadata(tex->buffer.buf, &md, &tex->surface);
 }
 
 static bool si_read_tex_bo_metadata(struct si_screen *sscreen, struct si_texture *tex,
@@ -1591,11 +1523,9 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
                                                            unsigned offset, unsigned usage,
                                                            bool dedicated)
 {
-   enum radeon_surf_mode array_mode;
    struct radeon_surf surface = {};
    struct radeon_bo_metadata metadata = {};
    struct si_texture *tex;
-   bool is_scanout;
    int r;
 
    /* Ignore metadata for non-zero planes. */
@@ -1603,8 +1533,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
       dedicated = false;
 
    if (dedicated) {
-      sscreen->ws->buffer_get_metadata(buf, &metadata);
-      si_get_display_metadata(sscreen, &surface, &metadata, &array_mode, &is_scanout);
+      sscreen->ws->buffer_get_metadata(buf, &metadata, &surface);
    } else {
       /**
        * The bo metadata is unset for un-dedicated images. So we fall
@@ -1628,12 +1557,11 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
        * tiling information when the TexParameter TEXTURE_TILING_EXT
        * is set.
        */
-      array_mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
-      is_scanout = false;
+      metadata.mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
    }
 
-   r =
-      si_init_surface(sscreen, &surface, templ, array_mode, stride, true, is_scanout, false, false);
+   r = si_init_surface(sscreen, &surface, templ, metadata.mode, stride, true,
+                       surface.flags & RADEON_SURF_SCANOUT, false, false);
    if (r)
       return NULL;
 

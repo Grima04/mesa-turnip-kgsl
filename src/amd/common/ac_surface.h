@@ -290,6 +290,12 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 		       enum radeon_surf_mode mode,
 		       struct radeon_surf *surf);
 
+void ac_surface_set_bo_metadata(const struct radeon_info *info,
+                                struct radeon_surf *surf, uint64_t tiling_flags,
+                                enum radeon_surf_mode *mode);
+void ac_surface_get_bo_metadata(const struct radeon_info *info,
+                                struct radeon_surf *surf, uint64_t *tiling_flags);
+
 #ifdef __cplusplus
 }
 #endif
