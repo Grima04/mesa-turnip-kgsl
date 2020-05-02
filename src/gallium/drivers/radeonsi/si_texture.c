@@ -241,6 +241,8 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
           */
          if (sscreen->info.chip_class == GFX8)
             bpe = 4;
+
+         flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
       }
 
       if (is_stencil)
@@ -1186,8 +1188,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
                                                    const struct radeon_surf *surface,
                                                    const struct si_texture *plane0,
                                                    struct pb_buffer *imported_buf, uint64_t offset,
-                                                   uint64_t alloc_size, unsigned alignment,
-                                                   bool tc_compatible_htile)
+                                                   uint64_t alloc_size, unsigned alignment)
 {
    struct si_texture *tex;
    struct si_resource *resource;
@@ -1206,8 +1207,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    /* don't include stencil-only formats which we don't support for rendering */
    tex->is_depth = util_format_has_depth(util_format_description(tex->buffer.b.b.format));
    tex->surface = *surface;
-   tex->tc_compatible_htile = tex->surface.tc_compatible_htile_allowed &&
-                              tc_compatible_htile;
+   tex->tc_compatible_htile =
+      tex->surface.htile_size != 0 && (tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE);
 
    /* TC-compatible HTILE:
     * - GFX8 only supports Z32_FLOAT.
@@ -1568,8 +1569,7 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
    for (unsigned i = 0; i < num_planes; i++) {
       struct si_texture *tex =
          si_texture_create_object(screen, &plane_templ[i], &surface[i], plane0, NULL,
-                                  plane_offset[i], total_size, max_alignment,
-                                  tc_compatible_htile);
+                                  plane_offset[i], total_size, max_alignment);
       if (!tex) {
          si_texture_reference(&plane0, NULL);
          return NULL;
@@ -1641,7 +1641,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
    if (r)
       return NULL;
 
-   tex = si_texture_create_object(&sscreen->b, templ, &surface, NULL, buf, offset, 0, 0, false);
+   tex = si_texture_create_object(&sscreen->b, templ, &surface, NULL, buf, offset, 0, 0);
    if (!tex)
       return NULL;
 
