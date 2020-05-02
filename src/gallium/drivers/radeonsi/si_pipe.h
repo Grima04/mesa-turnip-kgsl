@@ -239,6 +239,7 @@ enum si_coherency
    SI_COHERENCY_NONE, /* no cache flushes needed */
    SI_COHERENCY_SHADER,
    SI_COHERENCY_CB_META,
+   SI_COHERENCY_DB_META,
    SI_COHERENCY_CP,
 };
 
@@ -336,6 +337,7 @@ struct si_texture {
    uint8_t stencil_clear_value;
    bool fmask_is_identity : 1;
    bool tc_compatible_htile : 1;
+   bool enable_tc_compatible_htile_next_clear : 1;
    bool htile_stencil_disabled : 1;
    bool depth_cleared : 1;   /* if it was cleared at least once */
    bool stencil_cleared : 1; /* if it was cleared at least once */

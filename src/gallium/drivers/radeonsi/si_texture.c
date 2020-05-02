@@ -1207,13 +1207,12 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    /* don't include stencil-only formats which we don't support for rendering */
    tex->is_depth = util_format_has_depth(util_format_description(tex->buffer.b.b.format));
    tex->surface = *surface;
-   tex->tc_compatible_htile =
-      tex->surface.htile_size != 0 && (tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE);
+   tex->tc_compatible_htile = false; /* This will be enabled on demand. */
 
    /* TC-compatible HTILE:
     * - GFX8 only supports Z32_FLOAT.
     * - GFX9 only supports Z32_FLOAT and Z16_UNORM. */
-   if (tex->tc_compatible_htile) {
+   if (tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE) {
       if (sscreen->info.chip_class >= GFX9 && base->format == PIPE_FORMAT_Z16_UNORM)
          tex->db_render_format = base->format;
       else {

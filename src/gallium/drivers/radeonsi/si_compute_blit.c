@@ -33,7 +33,9 @@
 static enum si_cache_policy get_cache_policy(struct si_context *sctx, enum si_coherency coher,
                                              uint64_t size)
 {
-   if ((sctx->chip_class >= GFX9 && (coher == SI_COHERENCY_CB_META || coher == SI_COHERENCY_CP)) ||
+   if ((sctx->chip_class >= GFX9 && (coher == SI_COHERENCY_CB_META ||
+                                     coher == SI_COHERENCY_DB_META ||
+                                     coher == SI_COHERENCY_CP)) ||
        (sctx->chip_class >= GFX7 && coher == SI_COHERENCY_SHADER))
       return size <= 256 * 1024 ? L2_LRU : L2_STREAM;
 
@@ -53,6 +55,8 @@ unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
              (cache_policy == L2_BYPASS ? SI_CONTEXT_INV_L2 : 0);
    case SI_COHERENCY_CB_META:
       return SI_CONTEXT_FLUSH_AND_INV_CB;
+   case SI_COHERENCY_DB_META:
+      return SI_CONTEXT_FLUSH_AND_INV_DB;
    }
 }
 

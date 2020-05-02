@@ -359,6 +359,17 @@ static void si_decompress_depth(struct si_context *sctx, struct si_texture *tex,
             tex->stencil_dirty_level_mask &= ~levels_s;
       }
 
+      /* We just had to completely decompress Z/S for texturing. Enable
+       * TC-compatible HTILE on the next clear, so that the decompression
+       * doesn't have to be done for this texture ever again.
+       *
+       * TC-compatible HTILE might slightly reduce Z/S performance, but
+       * the decompression is much worse.
+       */
+      if (has_htile && !tc_compat_htile &&
+          tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE)
+         tex->enable_tc_compatible_htile_next_clear = true;
+
       /* Only in-place decompression needs to flush DB caches, or
        * when we don't decompress but TC-compatible planes are dirty.
        */
