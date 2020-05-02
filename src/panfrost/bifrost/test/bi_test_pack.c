@@ -483,6 +483,27 @@ bit_fcmp_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, enu
 }
 
 static void
+bit_icmp_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, nir_alu_type T, enum bit_debug debug)
+{
+        bi_instruction ins = bit_ins(BI_CMP, 2, T, size);
+        ins.dest_type = nir_type_uint | size;
+
+        for (enum bi_cond cond = BI_COND_LT; cond <= BI_COND_NE; ++cond) { 
+        BIT_FOREACH_SWIZZLE(swz, 2, size) {
+                ins.cond = cond;
+                bit_apply_swizzle(&ins, swz, 2, size);
+
+                if (!bit_test_single(dev, &ins, input, false, debug)) {
+                        fprintf(stderr, "FAIL: icmp.%u.%u.%u\n",
+                                        size, swz, cond);
+                }
+        }
+        }
+}
+
+
+
+static void
 bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
                 unsigned to_size, unsigned cx, unsigned cy, bool FMA,
                 enum bifrost_roundmode roundmode,
@@ -613,6 +634,8 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
                 bit_fmod_helper(dev, BI_MINMAX, sz, false, input, debug, BI_MINMAX_MAX);
 
                 bit_fma_helper(dev, sz, input, debug);
+                bit_icmp_helper(dev, input, sz, nir_type_uint, debug);
+                bit_icmp_helper(dev, input, sz, nir_type_int, debug);
         }
 
         for (unsigned sz = 32; sz <= 32; sz *= 2)
