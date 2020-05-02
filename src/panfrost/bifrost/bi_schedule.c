@@ -101,6 +101,14 @@ bi_ambiguous_abs(bi_instruction *ins)
         return classy && typey && absy;
 }
 
+/* New Bifrost (which?) don't seem to have ICMP on FMA */
+static bool
+bi_icmp(bi_instruction *ins)
+{
+        bool ic = nir_alu_type_get_base_type(ins->src_types[0]) != nir_type_float;
+        return ic && (ins->type == BI_CMP);
+}
+
 /* Lowers FMOV to ADD #0, since FMOV doesn't exist on the h/w and this is the
  * latest time it's sane to lower (it's useful to distinguish before, but we'll
  * need this handle during scheduling to ensure the ports get modeled
@@ -150,6 +158,7 @@ bi_schedule(bi_context *ctx)
                         bool can_add = props & BI_SCHED_ADD;
 
                         can_fma &= !bi_ambiguous_abs(ins);
+                        can_fma &= !bi_icmp(ins);
 
                         assert(can_fma || can_add);
 
