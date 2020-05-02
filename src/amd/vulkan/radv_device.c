@@ -6810,10 +6810,10 @@ radv_initialise_ds_surface(struct radv_device *device,
 				iview->image->htile_offset;
 			ds->db_htile_data_base = va >> 8;
 			ds->db_htile_surface = S_028ABC_FULL_CACHE(1) |
-				S_028ABC_PIPE_ALIGNED(surf->u.gfx9.htile.pipe_aligned);
+				S_028ABC_PIPE_ALIGNED(1);
 
 			if (device->physical_device->rad_info.chip_class == GFX9) {
-				ds->db_htile_surface |= S_028ABC_RB_ALIGNED(surf->u.gfx9.htile.rb_aligned);
+				ds->db_htile_surface |= S_028ABC_RB_ALIGNED(1);
 			}
 		}
 	} else {

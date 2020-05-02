@@ -2540,9 +2540,9 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
 
          surf->db_htile_data_base = (tex->buffer.gpu_address + tex->surface.htile_offset) >> 8;
          surf->db_htile_surface =
-            S_028ABC_FULL_CACHE(1) | S_028ABC_PIPE_ALIGNED(tex->surface.u.gfx9.htile.pipe_aligned);
+            S_028ABC_FULL_CACHE(1) | S_028ABC_PIPE_ALIGNED(1);
          if (sctx->chip_class == GFX9) {
-            surf->db_htile_surface |= S_028ABC_RB_ALIGNED(tex->surface.u.gfx9.htile.rb_aligned);
+            surf->db_htile_surface |= S_028ABC_RB_ALIGNED(1);
          }
       }
    } else {

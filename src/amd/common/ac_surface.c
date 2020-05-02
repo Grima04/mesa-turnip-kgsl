@@ -1178,8 +1178,11 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 		hin.size = sizeof(ADDR2_COMPUTE_HTILE_INFO_INPUT);
 		hout.size = sizeof(ADDR2_COMPUTE_HTILE_INFO_OUTPUT);
 
-		hin.hTileFlags.pipeAligned = !in->flags.metaPipeUnaligned;
-		hin.hTileFlags.rbAligned = !in->flags.metaRbUnaligned;
+		assert(in->flags.metaPipeUnaligned == 0);
+		assert(in->flags.metaRbUnaligned == 0);
+
+		hin.hTileFlags.pipeAligned = 1;
+		hin.hTileFlags.rbAligned = 1;
 		hin.depthFlags = in->flags;
 		hin.swizzleMode = in->swizzleMode;
 		hin.unalignedWidth = in->width;
@@ -1192,8 +1195,6 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 		if (ret != ADDR_OK)
 			return ret;
 
-		surf->u.gfx9.htile.rb_aligned = hin.hTileFlags.rbAligned;
-		surf->u.gfx9.htile.pipe_aligned = hin.hTileFlags.pipeAligned;
 		surf->htile_size = hout.htileBytes;
 		surf->htile_slice_size = hout.sliceSize;
 		surf->htile_alignment = hout.baseAlign;
@@ -1604,7 +1605,7 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 	else
 		AddrSurfInfoIn.numSlices = config->info.array_size;
 
-	/* This is propagated to HTILE/DCC. */
+	/* This is propagated to DCC. It must be 0 for HTILE and CMASK. */
 	AddrSurfInfoIn.flags.metaPipeUnaligned = 0;
 	AddrSurfInfoIn.flags.metaRbUnaligned = 0;
 

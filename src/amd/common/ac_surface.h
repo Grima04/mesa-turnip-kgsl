@@ -150,7 +150,6 @@ struct gfx9_surf_layout {
     struct gfx9_surf_flags      stencil; /* added to surf_size, use stencil_offset */
 
     struct gfx9_surf_meta_flags dcc;   /* metadata of color */
-    struct gfx9_surf_meta_flags htile; /* metadata of depth and stencil */
 
     enum gfx9_resource_type     resource_type; /* 1D, 2D or 3D */
     uint16_t                    surf_pitch; /* in blocks */

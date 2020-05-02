@@ -1072,11 +1072,9 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
 
       if (tex->surface.htile_offset) {
          u_log_printf(log,
-                      "  HTile: offset=%" PRIu64 ", size=%u, alignment=%u, "
-                      "rb_aligned=%u, pipe_aligned=%u\n",
+                      "  HTile: offset=%" PRIu64 ", size=%u, alignment=%u\n",
                       tex->surface.htile_offset, tex->surface.htile_size,
-                      tex->surface.htile_alignment, tex->surface.u.gfx9.htile.rb_aligned,
-                      tex->surface.u.gfx9.htile.pipe_aligned);
+                      tex->surface.htile_alignment);
       }
 
       if (tex->surface.dcc_offset) {

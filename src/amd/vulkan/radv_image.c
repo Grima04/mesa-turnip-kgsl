@@ -609,12 +609,13 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			    C_00A018_META_PIPE_ALIGNED;
 
 		if (meta_va) {
-			struct gfx9_surf_meta_flags meta;
+			struct gfx9_surf_meta_flags meta = {
+				.rb_aligned = 1,
+				.pipe_aligned = 1,
+			};
 
 			if (image->dcc_offset)
 				meta = plane->surface.u.gfx9.dcc;
-			else
-				meta = plane->surface.u.gfx9.htile;
 
 			state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
 				    S_00A018_META_DATA_ADDRESS_LO(meta_va >> 8);
@@ -637,12 +638,13 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			    C_008F24_META_PIPE_ALIGNED &
 			    C_008F24_META_RB_ALIGNED;
 		if (meta_va) {
-			struct gfx9_surf_meta_flags meta;
+			struct gfx9_surf_meta_flags meta = {
+				.rb_aligned = 1,
+				.pipe_aligned = 1,
+			};
 
 			if (image->dcc_offset)
 				meta = plane->surface.u.gfx9.dcc;
-			else
-				meta = plane->surface.u.gfx9.htile;
 
 			state[5] |= S_008F24_META_DATA_ADDRESS(meta_va >> 40) |
 				    S_008F24_META_PIPE_ALIGNED(meta.pipe_aligned) |
