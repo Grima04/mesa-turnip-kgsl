@@ -1527,19 +1527,21 @@ bi_pack_add_discard(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static enum bifrost_icmp_cond
-bi_cond_to_icmp(enum bi_cond cond, bool *flip, bool is_unsigned)
+bi_cond_to_icmp(enum bi_cond cond, bool *flip, bool is_unsigned, bool is_16)
 {
         switch (cond){
         case BI_COND_LT:
                 *flip = true;
                 /* fallthrough */
         case BI_COND_GT:
-                return is_unsigned ? BIFROST_ICMP_UGT : BIFROST_ICMP_IGT;
+                return is_unsigned ? (is_16 ? BIFROST_ICMP_IGE : BIFROST_ICMP_UGT)
+                        : BIFROST_ICMP_IGT;
         case BI_COND_LE:
                 *flip = true;
                 /* fallthrough */
         case BI_COND_GE:
-                return is_unsigned ? BIFROST_ICMP_UGE : BIFROST_ICMP_IGE;
+                return is_unsigned ? BIFROST_ICMP_UGE : 
+                        (is_16 ? BIFROST_ICMP_UGT : BIFROST_ICMP_IGE);
         case BI_COND_NE:
                 return BIFROST_ICMP_NEQ;
         case BI_COND_EQ:
@@ -1566,6 +1568,23 @@ bi_pack_add_icmp32(bi_instruction *ins, struct bi_registers *regs, bool flip,
 }
 
 static unsigned
+bi_pack_add_icmp16(bi_instruction *ins, struct bi_registers *regs, bool flip,
+                enum bifrost_icmp_cond cond)
+{
+        struct bifrost_add_icmp16 pack = {
+                .src0 = bi_get_src(ins, regs, flip ? 1 : 0, false),
+                .src1 = bi_get_src(ins, regs, flip ? 0 : 1, false),
+                .src0_swizzle = bi_swiz16(ins, flip ? 1 : 0),
+                .src1_swizzle = bi_swiz16(ins, flip ? 0 : 1),
+                .cond = cond,
+                .d3d = false,
+                .op = BIFROST_ADD_OP_ICMP_16
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_add_cmp(bi_instruction *ins, struct bi_registers *regs)
 {
         nir_alu_type Tl = ins->src_types[0];
@@ -1578,11 +1597,14 @@ bi_pack_add_cmp(bi_instruction *ins, struct bi_registers *regs)
 
                 bool flip = false;
 
-                enum bifrost_icmp_cond cond =
-                        bi_cond_to_icmp(ins->cond, &flip, Bl == nir_type_uint);
+                enum bifrost_icmp_cond cond = bi_cond_to_icmp(
+                                sz == 16 ? /*bi_invert_cond*/(ins->cond) : ins->cond,
+                                &flip, Bl == nir_type_uint, sz == 16);
 
                 if (sz == 32)
                         return bi_pack_add_icmp32(ins, regs, flip, cond);
+                else if (sz == 16)
+                        return bi_pack_add_icmp16(ins, regs, flip, cond);
                 else
                         unreachable("TODO");
         } else {

@@ -497,8 +497,8 @@ struct bifrost_add_fcmp16 {
 
 enum bifrost_icmp_cond {
         BIFROST_ICMP_IGT = 0,
-        BIFROST_ICMP_IGE = 1,
-        BIFROST_ICMP_UGT = 2,
+        BIFROST_ICMP_IGE = 1, /* swapped for 16-bit */
+        BIFROST_ICMP_UGT = 2, /* swapped for 16-bit */
         BIFROST_ICMP_UGE = 3,
         BIFROST_ICMP_EQ  = 4,
         BIFROST_ICMP_NEQ  = 5,
