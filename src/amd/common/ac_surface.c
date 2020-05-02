@@ -946,6 +946,9 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 		surf->htile_size = (total_pixels / htile_block_size) *
 				   htile_element_size;
 		surf->htile_size = align(surf->htile_size, surf->htile_alignment);
+	} else if (!surf->htile_size) {
+		/* Unset this if HTILE is not present. */
+		surf->flags &= ~RADEON_SURF_TC_COMPATIBLE_HTILE;
 	}
 
 	surf->is_linear = surf->u.legacy.level[0].mode == RADEON_SURF_MODE_LINEAR_ALIGNED;
@@ -1773,6 +1776,11 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 		/* Validate that non-scanout DCC is always enabled. */
 		if (!AddrSurfInfoIn.flags.display)
 			assert(surf->num_dcc_levels);
+	}
+
+	if (!surf->htile_size) {
+		/* Unset this if HTILE is not present. */
+		surf->flags &= ~RADEON_SURF_TC_COMPATIBLE_HTILE;
 	}
 
 	switch (surf->u.gfx9.surf.swizzle_mode) {
