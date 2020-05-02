@@ -1478,14 +1478,11 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 			cin.size = sizeof(ADDR2_COMPUTE_CMASK_INFO_INPUT);
 			cout.size = sizeof(ADDR2_COMPUTE_CMASK_INFO_OUTPUT);
 
-			if (in->numSamples > 1) {
-				/* FMASK is always aligned. */
-				cin.cMaskFlags.pipeAligned = 1;
-				cin.cMaskFlags.rbAligned = 1;
-			} else {
-				cin.cMaskFlags.pipeAligned = !in->flags.metaPipeUnaligned;
-				cin.cMaskFlags.rbAligned = !in->flags.metaRbUnaligned;
-			}
+			assert(in->flags.metaPipeUnaligned == 0);
+			assert(in->flags.metaRbUnaligned == 0);
+
+			cin.cMaskFlags.pipeAligned = 1;
+			cin.cMaskFlags.rbAligned = 1;
 			cin.colorFlags = in->flags;
 			cin.resourceType = in->resourceType;
 			cin.unalignedWidth = in->width;
@@ -1501,8 +1498,6 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 			if (ret != ADDR_OK)
 				return ret;
 
-			surf->u.gfx9.cmask.rb_aligned = cin.cMaskFlags.rbAligned;
-			surf->u.gfx9.cmask.pipe_aligned = cin.cMaskFlags.pipeAligned;
 			surf->cmask_size = cout.cmaskBytes;
 			surf->cmask_alignment = cout.baseAlign;
 		}
@@ -1609,7 +1604,7 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 	else
 		AddrSurfInfoIn.numSlices = config->info.array_size;
 
-	/* This is propagated to HTILE/DCC/CMASK. */
+	/* This is propagated to HTILE/DCC. */
 	AddrSurfInfoIn.flags.metaPipeUnaligned = 0;
 	AddrSurfInfoIn.flags.metaRbUnaligned = 0;
 

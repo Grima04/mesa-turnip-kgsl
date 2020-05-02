@@ -6469,18 +6469,20 @@ radv_initialise_color_surface(struct radv_device *device,
 	cb->cb_color_base = va >> 8;
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
-		struct gfx9_surf_meta_flags meta;
-		if (iview->image->dcc_offset)
-			meta = surf->u.gfx9.dcc;
-		else
-			meta = surf->u.gfx9.cmask;
-
 		if (device->physical_device->rad_info.chip_class >= GFX10) {
 			cb->cb_color_attrib3 |=	S_028EE0_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
 				S_028EE0_FMASK_SW_MODE(surf->u.gfx9.fmask.swizzle_mode) |
-				S_028EE0_CMASK_PIPE_ALIGNED(surf->u.gfx9.cmask.pipe_aligned) |
+				S_028EE0_CMASK_PIPE_ALIGNED(1) |
 				S_028EE0_DCC_PIPE_ALIGNED(surf->u.gfx9.dcc.pipe_aligned);
 		} else {
+			struct gfx9_surf_meta_flags meta = {
+				.rb_aligned = 1,
+				.pipe_aligned = 1,
+			};
+
+			if (iview->image->dcc_offset)
+				meta = surf->u.gfx9.dcc;
+
 			cb->cb_color_attrib |= S_028C74_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
 				S_028C74_FMASK_SW_MODE(surf->u.gfx9.fmask.swizzle_mode) |
 				S_028C74_RB_ALIGNED(meta.rb_aligned) |

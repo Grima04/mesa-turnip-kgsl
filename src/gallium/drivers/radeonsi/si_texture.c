@@ -1065,10 +1065,9 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
       if (tex->cmask_buffer) {
          u_log_printf(log,
                       "  CMask: offset=%" PRIu64 ", size=%u, "
-                      "alignment=%u, rb_aligned=%u, pipe_aligned=%u\n",
+                      "alignment=%u\n",
                       tex->surface.cmask_offset, tex->surface.cmask_size,
-                      tex->surface.cmask_alignment, tex->surface.u.gfx9.cmask.rb_aligned,
-                      tex->surface.u.gfx9.cmask.pipe_aligned);
+                      tex->surface.cmask_alignment);
       }
 
       if (tex->surface.htile_offset) {

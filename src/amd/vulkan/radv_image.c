@@ -844,7 +844,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 		fmask_state[4] = S_00A010_DEPTH(last_layer) |
 				 S_00A010_BASE_ARRAY(first_layer);
 		fmask_state[5] = 0;
-		fmask_state[6] = S_00A018_META_PIPE_ALIGNED(image->planes[0].surface.u.gfx9.cmask.pipe_aligned);
+		fmask_state[6] = S_00A018_META_PIPE_ALIGNED(1);
 		fmask_state[7] = 0;
 	} else if (fmask_state)
 		memset(fmask_state, 0, 8 * 4);
@@ -1032,8 +1032,8 @@ si_make_texture_descriptor(struct radv_device *device,
 			fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode);
 			fmask_state[4] |= S_008F20_DEPTH(last_layer) |
 					  S_008F20_PITCH(image->planes[0].surface.u.gfx9.fmask.epitch);
-			fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(image->planes[0].surface.u.gfx9.cmask.pipe_aligned) |
-					  S_008F24_META_RB_ALIGNED(image->planes[0].surface.u.gfx9.cmask.rb_aligned);
+			fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(1) |
+					  S_008F24_META_RB_ALIGNED(1);
 
 			if (radv_image_is_tc_compat_cmask(image)) {
 				va = gpu_address + image->offset + image->cmask_offset;

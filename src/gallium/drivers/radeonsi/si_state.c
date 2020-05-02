@@ -3049,7 +3049,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          cb_color_attrib3 = cb->cb_color_attrib3 |
                             S_028EE0_COLOR_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode) |
                             S_028EE0_FMASK_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode) |
-                            S_028EE0_CMASK_PIPE_ALIGNED(tex->surface.u.gfx9.cmask.pipe_aligned) |
+                            S_028EE0_CMASK_PIPE_ALIGNED(1) |
                             S_028EE0_DCC_PIPE_ALIGNED(tex->surface.u.gfx9.dcc.pipe_aligned);
 
          radeon_set_context_reg_seq(cs, R_028C60_CB_COLOR0_BASE + i * 0x3C, 14);
@@ -3077,12 +3077,13 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          radeon_set_context_reg(cs, R_028EC0_CB_COLOR0_ATTRIB2 + i * 4, cb->cb_color_attrib2);
          radeon_set_context_reg(cs, R_028EE0_CB_COLOR0_ATTRIB3 + i * 4, cb_color_attrib3);
       } else if (sctx->chip_class == GFX9) {
-         struct gfx9_surf_meta_flags meta;
+         struct gfx9_surf_meta_flags meta = {
+            .rb_aligned = 1,
+            .pipe_aligned = 1,
+         };
 
          if (tex->surface.dcc_offset)
             meta = tex->surface.u.gfx9.dcc;
-         else
-            meta = tex->surface.u.gfx9.cmask;
 
          /* Set mutable surface parameters. */
          cb_color_base += tex->surface.u.gfx9.surf_offset >> 8;
@@ -3878,7 +3879,7 @@ static void gfx10_make_texture_descriptor(
          S_00A00C_TYPE(si_tex_dim(screen, tex, target, 0));
       fmask_state[4] = S_00A010_DEPTH(last_layer) | S_00A010_BASE_ARRAY(first_layer);
       fmask_state[5] = 0;
-      fmask_state[6] = S_00A018_META_PIPE_ALIGNED(tex->surface.u.gfx9.cmask.pipe_aligned);
+      fmask_state[6] = S_00A018_META_PIPE_ALIGNED(1);
       fmask_state[7] = 0;
    }
 }
@@ -4201,8 +4202,8 @@ static void si_make_texture_descriptor(struct si_screen *screen, struct si_textu
          fmask_state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode);
          fmask_state[4] |=
             S_008F20_DEPTH(last_layer) | S_008F20_PITCH(tex->surface.u.gfx9.fmask.epitch);
-         fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(tex->surface.u.gfx9.cmask.pipe_aligned) |
-                           S_008F24_META_RB_ALIGNED(tex->surface.u.gfx9.cmask.rb_aligned);
+         fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(1) |
+                           S_008F24_META_RB_ALIGNED(1);
       } else {
          fmask_state[3] |= S_008F1C_TILING_INDEX(tex->surface.u.legacy.fmask.tiling_index);
          fmask_state[4] |= S_008F20_DEPTH(depth - 1) |
