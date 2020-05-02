@@ -55,4 +55,6 @@ IRIS_C_SOURCES = \
 	iris_resource.c \
 	iris_resource.h \
 	iris_screen.c \
-	iris_screen.h
+	iris_screen.h \
+	iris_seqno.c \
+	iris_seqno.h
