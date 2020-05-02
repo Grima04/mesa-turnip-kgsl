@@ -1913,6 +1913,14 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 	return 0;
 }
 
+/* This is meant to be used for disabling DCC. */
+void ac_surface_zero_dcc_fields(struct radeon_surf *surf)
+{
+   surf->dcc_offset = 0;
+   surf->display_dcc_offset = 0;
+   surf->dcc_retile_map_offset = 0;
+}
+
 static unsigned eg_tile_split(unsigned tile_split)
 {
    switch (tile_split) {
@@ -2024,5 +2032,160 @@ void ac_surface_get_bo_metadata(const struct radeon_info *info,
          *tiling_flags |= AMDGPU_TILING_SET(MICRO_TILE_MODE, 0); /* DISPLAY_MICRO_TILING */
       else
          *tiling_flags |= AMDGPU_TILING_SET(MICRO_TILE_MODE, 1); /* THIN_MICRO_TILING */
+   }
+}
+
+static uint32_t ac_get_umd_metadata_word1(const struct radeon_info *info)
+{
+   return (ATI_VENDOR_ID << 16) | info->pci_id;
+}
+
+/* This should be called after ac_compute_surface. */
+bool ac_surface_set_umd_metadata(const struct radeon_info *info,
+                                 struct radeon_surf *surf,
+                                 unsigned num_storage_samples,
+                                 unsigned num_mipmap_levels,
+                                 unsigned size_metadata,
+                                 uint32_t metadata[64])
+{
+   uint32_t *desc = &metadata[2];
+   uint64_t offset;
+
+   if (info->chip_class >= GFX9)
+      offset = surf->u.gfx9.surf_offset;
+   else
+      offset = surf->u.legacy.level[0].offset;
+
+   if (offset ||                 /* Non-zero planes ignore metadata. */
+       size_metadata < 10 * 4 || /* at least 2(header) + 8(desc) dwords */
+       metadata[0] == 0 ||       /* invalid version number */
+       metadata[1] != ac_get_umd_metadata_word1(info)) /* invalid PCI ID */ {
+      /* Disable DCC because it might not be enabled. */
+      ac_surface_zero_dcc_fields(surf);
+
+      /* Don't report an error if the texture comes from an incompatible driver,
+       * but this might not work.
+       */
+      return true;
+   }
+
+   /* Validate that sample counts and the number of mipmap levels match. */
+   unsigned desc_last_level = G_008F1C_LAST_LEVEL(desc[3]);
+   unsigned type = G_008F1C_TYPE(desc[3]);
+
+   if (type == V_008F1C_SQ_RSRC_IMG_2D_MSAA || type == V_008F1C_SQ_RSRC_IMG_2D_MSAA_ARRAY) {
+      unsigned log_samples = util_logbase2(MAX2(1, num_storage_samples));
+
+      if (desc_last_level != log_samples) {
+         fprintf(stderr,
+                 "amdgpu: invalid MSAA texture import, "
+                 "metadata has log2(samples) = %u, the caller set %u\n",
+                 desc_last_level, log_samples);
+         return false;
+      }
+   } else {
+      if (desc_last_level != num_mipmap_levels - 1) {
+         fprintf(stderr,
+                 "amdgpu: invalid mipmapped texture import, "
+                 "metadata has last_level = %u, the caller set %u\n",
+                 desc_last_level, num_mipmap_levels - 1);
+         return false;
+      }
+   }
+
+   if (info->chip_class >= GFX8 && G_008F28_COMPRESSION_EN(desc[6])) {
+      /* Read DCC information. */
+      switch (info->chip_class) {
+      case GFX8:
+         surf->dcc_offset = (uint64_t)desc[7] << 8;
+         break;
+
+      case GFX9:
+         surf->dcc_offset =
+            ((uint64_t)desc[7] << 8) | ((uint64_t)G_008F24_META_DATA_ADDRESS(desc[5]) << 40);
+         surf->u.gfx9.dcc.pipe_aligned = G_008F24_META_PIPE_ALIGNED(desc[5]);
+         surf->u.gfx9.dcc.rb_aligned = G_008F24_META_RB_ALIGNED(desc[5]);
+
+         /* If DCC is unaligned, this can only be a displayable image. */
+         if (!surf->u.gfx9.dcc.pipe_aligned && !surf->u.gfx9.dcc.rb_aligned)
+            assert(surf->is_displayable);
+         break;
+
+      case GFX10:
+         surf->dcc_offset =
+            ((uint64_t)G_00A018_META_DATA_ADDRESS_LO(desc[6]) << 8) | ((uint64_t)desc[7] << 16);
+         surf->u.gfx9.dcc.pipe_aligned = G_00A018_META_PIPE_ALIGNED(desc[6]);
+         break;
+
+      default:
+         assert(0);
+         return false;
+      }
+   } else {
+      /* Disable DCC. dcc_offset is always set by texture_from_handle
+       * and must be cleared here.
+       */
+      ac_surface_zero_dcc_fields(surf);
+   }
+
+   return true;
+}
+
+void ac_surface_get_umd_metadata(const struct radeon_info *info,
+                                 struct radeon_surf *surf,
+                                 unsigned num_mipmap_levels,
+                                 uint32_t desc[8],
+                                 unsigned *size_metadata, uint32_t metadata[64])
+{
+   /* Clear the base address and set the relative DCC offset. */
+   desc[0] = 0;
+   desc[1] &= C_008F14_BASE_ADDRESS_HI;
+
+   switch (info->chip_class) {
+   case GFX6:
+   case GFX7:
+      break;
+   case GFX8:
+      desc[7] = surf->dcc_offset >> 8;
+      break;
+   case GFX9:
+      desc[7] = surf->dcc_offset >> 8;
+      desc[5] &= C_008F24_META_DATA_ADDRESS;
+      desc[5] |= S_008F24_META_DATA_ADDRESS(surf->dcc_offset >> 40);
+      break;
+   case GFX10:
+      desc[6] &= C_00A018_META_DATA_ADDRESS_LO;
+      desc[6] |= S_00A018_META_DATA_ADDRESS_LO(surf->dcc_offset >> 8);
+      desc[7] = surf->dcc_offset >> 16;
+      break;
+   default:
+      assert(0);
+   }
+
+   /* Metadata image format format version 1:
+    * [0] = 1 (metadata format identifier)
+    * [1] = (VENDOR_ID << 16) | PCI_ID
+    * [2:9] = image descriptor for the whole resource
+    *         [2] is always 0, because the base address is cleared
+    *         [9] is the DCC offset bits [39:8] from the beginning of
+    *             the buffer
+    * [10:10+LAST_LEVEL] = mipmap level offset bits [39:8] for each level
+    */
+
+   metadata[0] = 1; /* metadata image format version 1 */
+
+   /* Tiling modes are ambiguous without a PCI ID. */
+   metadata[1] = ac_get_umd_metadata_word1(info);
+
+   /* Dwords [2:9] contain the image descriptor. */
+   memcpy(&metadata[2], desc, 8 * 4);
+   *size_metadata = 10 * 4;
+
+   /* Dwords [10:..] contain the mipmap level offsets. */
+   if (info->chip_class <= GFX8) {
+      for (unsigned i = 0; i < num_mipmap_levels; i++)
+         metadata[10 + i] = surf->u.legacy.level[i].offset >> 8;
+
+      *size_metadata += num_mipmap_levels * 4;
    }
 }

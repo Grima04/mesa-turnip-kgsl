@@ -380,13 +380,6 @@ static bool si_can_disable_dcc(struct si_texture *tex)
            !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
 }
 
-static void si_texture_zero_dcc_fields(struct si_texture *tex)
-{
-   tex->surface.dcc_offset = 0;
-   tex->surface.display_dcc_offset = 0;
-   tex->surface.dcc_retile_map_offset = 0;
-}
-
 static bool si_texture_discard_dcc(struct si_screen *sscreen, struct si_texture *tex)
 {
    if (!si_can_disable_dcc(tex))
@@ -395,7 +388,7 @@ static bool si_texture_discard_dcc(struct si_screen *sscreen, struct si_texture 
    assert(tex->dcc_separate_buffer == NULL);
 
    /* Disable DCC. */
-   si_texture_zero_dcc_fields(tex);
+   ac_surface_zero_dcc_fields(&tex->surface);
 
    /* Notify all contexts about the change. */
    p_atomic_inc(&sscreen->dirty_tex_counter);
@@ -555,11 +548,6 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
    p_atomic_inc(&sctx->screen->dirty_tex_counter);
 }
 
-static uint32_t si_get_bo_metadata_word1(struct si_screen *sscreen)
-{
-   return (ATI_VENDOR_ID << 16) | sscreen->info.pci_id;
-}
-
 static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture *tex)
 {
    struct pipe_resource *res = &tex->buffer.b.b;
@@ -570,21 +558,6 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
    assert(tex->dcc_separate_buffer == NULL);
    assert(tex->surface.fmask_size == 0);
 
-   /* Metadata image format format version 1:
-    * [0] = 1 (metadata format identifier)
-    * [1] = (VENDOR_ID << 16) | PCI_ID
-    * [2:9] = image descriptor for the whole resource
-    *         [2] is always 0, because the base address is cleared
-    *         [9] is the DCC offset bits [39:8] from the beginning of
-    *             the buffer
-    * [10:10+LAST_LEVEL] = mipmap level offset bits [39:8] for each level
-    */
-
-   md.metadata[0] = 1; /* metadata image format version 1 */
-
-   /* TILE_MODE_INDEX is ambiguous without a PCI ID. */
-   md.metadata[1] = si_get_bo_metadata_word1(sscreen);
-
    static const unsigned char swizzle[] = {PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z,
                                            PIPE_SWIZZLE_W};
    bool is_array = util_texture_is_array(res->target);
@@ -593,128 +566,13 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
    sscreen->make_texture_descriptor(sscreen, tex, true, res->target, res->format, swizzle, 0,
                                     res->last_level, 0, is_array ? res->array_size - 1 : 0,
                                     res->width0, res->height0, res->depth0, desc, NULL);
-
    si_set_mutable_tex_desc_fields(sscreen, tex, &tex->surface.u.legacy.level[0], 0, 0,
                                   tex->surface.blk_w, false, false, desc);
 
-   /* Clear the base address and set the relative DCC offset. */
-   desc[0] = 0;
-   desc[1] &= C_008F14_BASE_ADDRESS_HI;
-
-   switch (sscreen->info.chip_class) {
-   case GFX6:
-   case GFX7:
-      break;
-   case GFX8:
-      desc[7] = tex->surface.dcc_offset >> 8;
-      break;
-   case GFX9:
-      desc[7] = tex->surface.dcc_offset >> 8;
-      desc[5] &= C_008F24_META_DATA_ADDRESS;
-      desc[5] |= S_008F24_META_DATA_ADDRESS(tex->surface.dcc_offset >> 40);
-      break;
-   case GFX10:
-      desc[6] &= C_00A018_META_DATA_ADDRESS_LO;
-      desc[6] |= S_00A018_META_DATA_ADDRESS_LO(tex->surface.dcc_offset >> 8);
-      desc[7] = tex->surface.dcc_offset >> 16;
-      break;
-   default:
-      assert(0);
-   }
-
-   /* Dwords [2:9] contain the image descriptor. */
-   memcpy(&md.metadata[2], desc, sizeof(desc));
-   md.size_metadata = 10 * 4;
-
-   /* Dwords [10:..] contain the mipmap level offsets. */
-   if (sscreen->info.chip_class <= GFX8) {
-      for (unsigned i = 0; i <= res->last_level; i++)
-         md.metadata[10 + i] = tex->surface.u.legacy.level[i].offset >> 8;
-
-      md.size_metadata += (1 + res->last_level) * 4;
-   }
-
+   ac_surface_get_umd_metadata(&sscreen->info, &tex->surface,
+                               tex->buffer.b.b.last_level + 1,
+                               desc, &md.size_metadata, md.metadata);
    sscreen->ws->buffer_set_metadata(tex->buffer.buf, &md, &tex->surface);
-}
-
-static bool si_read_tex_bo_metadata(struct si_screen *sscreen, struct si_texture *tex,
-                                    uint64_t offset, struct radeon_bo_metadata *md)
-{
-   uint32_t *desc = &md->metadata[2];
-
-   if (offset ||                     /* Non-zero planes ignore metadata. */
-       md->size_metadata < 10 * 4 || /* at least 2(header) + 8(desc) dwords */
-       md->metadata[0] == 0 ||       /* invalid version number */
-       md->metadata[1] != si_get_bo_metadata_word1(sscreen)) /* invalid PCI ID */ {
-      /* Disable DCC because it might not be enabled. */
-      si_texture_zero_dcc_fields(tex);
-
-      /* Don't report an error if the texture comes from an incompatible driver,
-       * but this might not work.
-       */
-      return true;
-   }
-
-   /* Validate that sample counts and the number of mipmap levels match. */
-   unsigned last_level = G_008F1C_LAST_LEVEL(desc[3]);
-   unsigned type = G_008F1C_TYPE(desc[3]);
-
-   if (type == V_008F1C_SQ_RSRC_IMG_2D_MSAA || type == V_008F1C_SQ_RSRC_IMG_2D_MSAA_ARRAY) {
-      unsigned log_samples = util_logbase2(MAX2(1, tex->buffer.b.b.nr_storage_samples));
-
-      if (last_level != log_samples) {
-         fprintf(stderr,
-                 "radeonsi: invalid MSAA texture import, "
-                 "metadata has log2(samples) = %u, the caller set %u\n",
-                 last_level, log_samples);
-         return false;
-      }
-   } else {
-      if (last_level != tex->buffer.b.b.last_level) {
-         fprintf(stderr,
-                 "radeonsi: invalid mipmapped texture import, "
-                 "metadata has last_level = %u, the caller set %u\n",
-                 last_level, tex->buffer.b.b.last_level);
-         return false;
-      }
-   }
-
-   if (sscreen->info.chip_class >= GFX8 && G_008F28_COMPRESSION_EN(desc[6])) {
-      /* Read DCC information. */
-      switch (sscreen->info.chip_class) {
-      case GFX8:
-         tex->surface.dcc_offset = (uint64_t)desc[7] << 8;
-         break;
-
-      case GFX9:
-         tex->surface.dcc_offset =
-            ((uint64_t)desc[7] << 8) | ((uint64_t)G_008F24_META_DATA_ADDRESS(desc[5]) << 40);
-         tex->surface.u.gfx9.dcc.pipe_aligned = G_008F24_META_PIPE_ALIGNED(desc[5]);
-         tex->surface.u.gfx9.dcc.rb_aligned = G_008F24_META_RB_ALIGNED(desc[5]);
-
-         /* If DCC is unaligned, this can only be a displayable image. */
-         if (!tex->surface.u.gfx9.dcc.pipe_aligned && !tex->surface.u.gfx9.dcc.rb_aligned)
-            assert(tex->surface.is_displayable);
-         break;
-
-      case GFX10:
-         tex->surface.dcc_offset =
-            ((uint64_t)G_00A018_META_DATA_ADDRESS_LO(desc[6]) << 8) | ((uint64_t)desc[7] << 16);
-         tex->surface.u.gfx9.dcc.pipe_aligned = G_00A018_META_PIPE_ALIGNED(desc[6]);
-         break;
-
-      default:
-         assert(0);
-         return false;
-      }
-   } else {
-      /* Disable DCC. dcc_offset is always set by texture_from_handle
-       * and must be cleared here.
-       */
-      si_texture_zero_dcc_fields(tex);
-   }
-
-   return true;
 }
 
 static bool si_has_displayable_dcc(struct si_texture *tex)
@@ -1582,7 +1440,11 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
       next_plane = next_plane->next;
    }
 
-   if (!si_read_tex_bo_metadata(sscreen, tex, offset, &metadata)) {
+   if (!ac_surface_set_umd_metadata(&sscreen->info, &tex->surface,
+                                    tex->buffer.b.b.nr_storage_samples,
+                                    tex->buffer.b.b.last_level + 1,
+                                    metadata.size_metadata,
+                                    metadata.metadata)) {
       si_texture_reference(&tex, NULL);
       return NULL;
    }
