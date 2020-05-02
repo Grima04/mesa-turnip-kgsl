@@ -40,9 +40,6 @@
 #include "util/u_memory.h"
 #include "util/u_math.h"
 
-#define AMDGPU_TILING_SCANOUT_SHIFT 63
-#define AMDGPU_TILING_SCANOUT_MASK 1
-
 static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo);
 
 static int

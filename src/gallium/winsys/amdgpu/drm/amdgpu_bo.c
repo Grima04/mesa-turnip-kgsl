@@ -1223,12 +1223,8 @@ static unsigned eg_tile_split_rev(unsigned eg_tile_split)
    }
 }
 
-#define AMDGPU_TILING_DCC_INDEPENDENT_128B_SHIFT	44
-#define AMDGPU_TILING_DCC_INDEPENDENT_128B_MASK		0x1
 #define AMDGPU_TILING_DCC_MAX_COMPRESSED_BLOCK_SIZE_SHIFT  45
 #define AMDGPU_TILING_DCC_MAX_COMPRESSED_BLOCK_SIZE_MASK   0x3
-#define AMDGPU_TILING_SCANOUT_SHIFT		63
-#define AMDGPU_TILING_SCANOUT_MASK		0x1
 
 static void amdgpu_buffer_get_metadata(struct pb_buffer *_buf,
                                        struct radeon_bo_metadata *md)

@@ -44,10 +44,6 @@
 #include "ac_llvm_util.h"
 #include "sid.h"
 
-#ifndef AMDGPU_INFO_NUM_VRAM_CPU_PAGE_FAULTS
-#define AMDGPU_INFO_NUM_VRAM_CPU_PAGE_FAULTS	0x1E
-#endif
-
 static struct hash_table *dev_tab = NULL;
 static simple_mtx_t dev_tab_mutex = _SIMPLE_MTX_INITIALIZER_NP;
 

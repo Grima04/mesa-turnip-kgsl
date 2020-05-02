@@ -35,14 +35,6 @@
 
 DEBUG_GET_ONCE_BOOL_OPTION(noop, "RADEON_NOOP", false)
 
-#ifndef AMDGPU_IB_FLAG_RESET_GDS_MAX_WAVE_ID
-#define AMDGPU_IB_FLAG_RESET_GDS_MAX_WAVE_ID  (1 << 4)
-#endif
-
-#ifndef AMDGPU_CHUNK_ID_SCHEDULED_DEPENDENCIES
-#define AMDGPU_CHUNK_ID_SCHEDULED_DEPENDENCIES	0x07
-#endif
-
 /* FENCES */
 
 static struct pipe_fence_handle *
