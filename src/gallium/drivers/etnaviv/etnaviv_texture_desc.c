@@ -109,8 +109,7 @@ etna_create_sampler_state_desc(struct pipe_context *pipe,
    cs->SAMP_LOD_BIAS =
       VIVS_NTE_DESCRIPTOR_SAMP_LOD_BIAS_BIAS(etna_float_to_fixp88(ss->lod_bias)) |
       COND(ss->lod_bias != 0.0, VIVS_NTE_DESCRIPTOR_SAMP_LOD_BIAS_ENABLE);
-   cs->SAMP_ANISOTROPY =
-      VIVS_NTE_DESCRIPTOR_SAMP_ANISOTROPY(COND(ansio, etna_log2_fixp88(ss->max_anisotropy)));
+   cs->SAMP_ANISOTROPY = COND(ansio, etna_log2_fixp88(ss->max_anisotropy));
 
    return cs;
 }
