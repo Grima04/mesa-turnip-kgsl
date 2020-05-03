@@ -958,7 +958,7 @@ radv_get_physical_device_features_1_1(struct radv_physical_device *pdevice,
 	f->storageBuffer16BitAccess            = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
 	f->uniformAndStorageBuffer16BitAccess  = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
 	f->storagePushConstant16               = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
-	f->storageInputOutput16                = pdevice->rad_info.has_double_rate_fp16 && (LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco);
+	f->storageInputOutput16                = pdevice->rad_info.has_packed_math_16bit && (LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco);
 	f->multiview                           = true;
 	f->multiviewGeometryShader             = true;
 	f->multiviewTessellationShader         = true;
@@ -982,7 +982,7 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
 	f->storagePushConstant8 = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
 	f->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 	f->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9;
-	f->shaderFloat16 = pdevice->rad_info.has_double_rate_fp16 && !pdevice->use_aco;
+	f->shaderFloat16 = pdevice->rad_info.has_packed_math_16bit && !pdevice->use_aco;
 	f->shaderInt8 = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
 
 	f->descriptorIndexing = true;
@@ -1564,7 +1564,7 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 	/* On AMD hardware, denormals and rounding modes for fp16/fp64 are
 	 * controlled by the same config register.
 	 */
-	if (pdevice->rad_info.has_double_rate_fp16) {
+	if (pdevice->rad_info.has_packed_math_16bit) {
 		p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
 		p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
 	} else {
@@ -1587,10 +1587,10 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 	p->shaderSignedZeroInfNanPreserveFloat32 = true;
 
 	p->shaderDenormFlushToZeroFloat16 = false;
-	p->shaderDenormPreserveFloat16 = pdevice->rad_info.has_double_rate_fp16;
-	p->shaderRoundingModeRTEFloat16 = pdevice->rad_info.has_double_rate_fp16;
+	p->shaderDenormPreserveFloat16 = pdevice->rad_info.has_packed_math_16bit;
+	p->shaderRoundingModeRTEFloat16 = pdevice->rad_info.has_packed_math_16bit;
 	p->shaderRoundingModeRTZFloat16 = false;
-	p->shaderSignedZeroInfNanPreserveFloat16 = pdevice->rad_info.has_double_rate_fp16;
+	p->shaderSignedZeroInfNanPreserveFloat16 = pdevice->rad_info.has_packed_math_16bit;
 
 	p->shaderDenormFlushToZeroFloat64 = false;
 	p->shaderDenormPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
