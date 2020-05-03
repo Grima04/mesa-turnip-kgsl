@@ -490,6 +490,7 @@ struct si_screen {
    struct disk_cache *disk_shader_cache;
 
    struct radeon_info info;
+   struct nir_shader_compiler_options nir_options;
    uint64_t debug_flags;
    char renderer_string[183];
 

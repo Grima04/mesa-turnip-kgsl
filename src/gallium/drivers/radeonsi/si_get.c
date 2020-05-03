@@ -450,37 +450,13 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
    return 0;
 }
 
-static const struct nir_shader_compiler_options nir_options = {
-   .lower_scmp = true,
-   .lower_flrp32 = true,
-   .lower_flrp64 = true,
-   .lower_fsat = true,
-   .lower_fdiv = true,
-   .lower_bitfield_insert_to_bitfield_select = true,
-   .lower_bitfield_extract = true,
-   .lower_sub = true,
-   .fuse_ffma = true,
-   .lower_fmod = true,
-   .lower_pack_snorm_4x8 = true,
-   .lower_pack_unorm_4x8 = true,
-   .lower_unpack_snorm_2x16 = true,
-   .lower_unpack_snorm_4x8 = true,
-   .lower_unpack_unorm_2x16 = true,
-   .lower_unpack_unorm_4x8 = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_rotate = true,
-   .lower_to_scalar = true,
-   .optimize_sample_mask_in = true,
-   .max_unroll_iterations = 32,
-   .use_interpolated_input_intrinsics = true,
-};
-
 static const void *si_get_compiler_options(struct pipe_screen *screen, enum pipe_shader_ir ir,
                                            enum pipe_shader_type shader)
 {
+   struct si_screen *sscreen = (struct si_screen *)screen;
+
    assert(ir == PIPE_SHADER_IR_NIR);
-   return &nir_options;
+   return &sscreen->nir_options;
 }
 
 static void si_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
@@ -951,4 +927,31 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
    }
 
    si_init_renderer_string(sscreen);
+
+   const struct nir_shader_compiler_options nir_options = {
+      .lower_scmp = true,
+      .lower_flrp32 = true,
+      .lower_flrp64 = true,
+      .lower_fsat = true,
+      .lower_fdiv = true,
+      .lower_bitfield_insert_to_bitfield_select = true,
+      .lower_bitfield_extract = true,
+      .lower_sub = true,
+      .fuse_ffma = true,
+      .lower_fmod = true,
+      .lower_pack_snorm_4x8 = true,
+      .lower_pack_unorm_4x8 = true,
+      .lower_unpack_snorm_2x16 = true,
+      .lower_unpack_snorm_4x8 = true,
+      .lower_unpack_unorm_2x16 = true,
+      .lower_unpack_unorm_4x8 = true,
+      .lower_extract_byte = true,
+      .lower_extract_word = true,
+      .lower_rotate = true,
+      .lower_to_scalar = true,
+      .optimize_sample_mask_in = true,
+      .max_unroll_iterations = 32,
+      .use_interpolated_input_intrinsics = true,
+   };
+   sscreen->nir_options = nir_options;
 }
