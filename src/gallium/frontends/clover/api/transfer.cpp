@@ -422,6 +422,50 @@ clEnqueueWriteBufferRect(cl_command_queue d_q, cl_mem d_mem, cl_bool blocking,
 }
 
 CLOVER_API cl_int
+clEnqueueFillBuffer(cl_command_queue d_queue, cl_mem d_mem,
+                    const void *pattern, size_t pattern_size,
+                    size_t offset, size_t size,
+                    cl_uint num_deps, const cl_event *d_deps,
+                    cl_event *rd_ev) try {
+   auto &q = obj(d_queue);
+   auto &mem = obj<buffer>(d_mem);
+   auto deps = objs<wait_list_tag>(d_deps, num_deps);
+   vector_t region = { size, 1, 1 };
+   vector_t dst_origin = { offset };
+   auto dst_pitch = pitch(region, {{ 1 }});
+
+   validate_common(q, deps);
+   validate_object(q, mem, dst_origin, dst_pitch, region);
+
+   if (!pattern)
+      return CL_INVALID_VALUE;
+
+   if (!util_is_power_of_two_nonzero(pattern_size) ||
+      pattern_size > 128 || size % pattern_size
+      || offset % pattern_size) {
+      return CL_INVALID_VALUE;
+   }
+
+   auto sub = dynamic_cast<sub_buffer *>(&mem);
+   if (sub && sub->offset() % q.device().mem_base_addr_align()) {
+      return CL_MISALIGNED_SUB_BUFFER_OFFSET;
+   }
+
+   std::string data = std::string((char *)pattern, pattern_size);
+   auto hev = create<hard_event>(
+      q, CL_COMMAND_FILL_BUFFER, deps,
+      [=, &q, &mem](event &) {
+         mem.resource(q).clear(q, offset, size, &data[0], data.size());
+      });
+
+   ret_object(rd_ev, hev);
+   return CL_SUCCESS;
+
+} catch (error &e) {
+   return e.get();
+}
+
+CLOVER_API cl_int
 clEnqueueCopyBuffer(cl_command_queue d_q, cl_mem d_src_mem, cl_mem d_dst_mem,
                     size_t src_offset, size_t dst_offset, size_t size,
                     cl_uint num_deps, const cl_event *d_deps,

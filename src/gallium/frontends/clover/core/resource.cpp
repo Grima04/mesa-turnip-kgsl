@@ -64,6 +64,14 @@ resource::copy(command_queue &q, const vector &origin, const vector &region,
                                 box(src_res.offset + src_origin, region));
 }
 
+void
+resource::clear(command_queue &q, const size_t origin, const size_t size,
+                const void *pattern, const size_t pattern_size) {
+   auto p = offset[0] + origin;
+
+   q.pipe->clear_buffer(q.pipe, pipe, p, size, pattern, pattern_size);
+}
+
 void *
 resource::add_map(command_queue &q, cl_map_flags flags, bool blocking,
                   const vector &origin, const vector &region) {

@@ -20,6 +20,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <algorithm>
 #include <unistd.h>
 #include "core/device.hpp"
 #include "core/platform.hpp"
@@ -215,9 +216,9 @@ device::has_unified_memory() const {
    return pipe->get_param(pipe, PIPE_CAP_UMA);
 }
 
-cl_uint
+size_t
 device::mem_base_addr_align() const {
-   return sysconf(_SC_PAGESIZE);
+   return std::max((size_t)sysconf(_SC_PAGESIZE), sizeof(cl_long) * 16);
 }
 
 cl_device_svm_capabilities

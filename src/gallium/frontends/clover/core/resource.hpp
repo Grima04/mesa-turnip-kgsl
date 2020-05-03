@@ -50,6 +50,9 @@ namespace clover {
       void copy(command_queue &q, const vector &origin, const vector &region,
                 resource &src_resource, const vector &src_origin);
 
+      void clear(command_queue &q, const size_t origin, const size_t size,
+                 const void *pattern, const size_t pattern_size);
+
       void *add_map(command_queue &q, cl_map_flags flags, bool blocking,
                     const vector &origin, const vector &region);
       void del_map(void *p);
