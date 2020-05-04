@@ -26,7 +26,7 @@ RESULTS=`pwd`/results
 mkdir -p $RESULTS
 
 # Perform a self-test to ensure tracie is working properly.
-"$INSTALL/tracie/tests/test.sh"
+python3 -m pytest -v --pyargs $INSTALL/tracie/tests/test.py
 
 if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     # tracie is to use virpipe, and virgl_test_server llvmpipe

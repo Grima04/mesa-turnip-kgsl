@@ -64,6 +64,7 @@ apt-get install -y --no-remove \
       python \
       python3-distutils \
       python3-pil \
+      python3-pytest \
       python3-requests \
       python3-yaml \
       vulkan-tools \
