@@ -346,15 +346,11 @@ bit_round_helper(struct panfrost_device *dev, uint32_t *input, unsigned sz, bool
         bi_instruction ins = bit_ins(BI_ROUND, 1, nir_type_float, sz);
 
         for (enum bifrost_roundmode mode = 0; mode <= 3; ++mode) {
-                for (unsigned swizzle = 0; swizzle < (sz == 16 ? 4 : 1); ++swizzle) {
-                        if (sz == 16) {
-                                for (unsigned i = 0; i < 2; ++i)
-                                        ins.swizzle[0][i] = ((swizzle >> i) & 1) ? 1 : 0;
-                        }
-
-                        ins.roundmode = mode;
-                        bit_test_single(dev, &ins, input, FMA, debug);
-                }
+        BIT_FOREACH_SWIZZLE(swz, 1, sz) {
+                bit_apply_swizzle(&ins, swz, 1, sz);
+                ins.roundmode = mode;
+                bit_test_single(dev, &ins, input, FMA, debug);
+        }
         }
 }
 
