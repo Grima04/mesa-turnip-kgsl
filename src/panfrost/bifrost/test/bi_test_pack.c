@@ -545,6 +545,18 @@ bit_bitwise_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, 
         }
 }
 
+static void
+bit_imath_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, enum bit_debug debug, bool FMA)
+{
+        bi_instruction ins = bit_ins(BI_IMATH, 2, nir_type_uint, size);
+        bit_swizzle_identity(&ins, 2, size);
+
+        for (unsigned op = BI_IMATH_ADD; op <= BI_IMATH_SUB; ++op) {
+                ins.op.imath = op;
+                bit_test_single(dev, &ins, input, FMA, debug);
+        }
+}
+
 void
 bit_packing(struct panfrost_device *dev, enum bit_debug debug)
 {
@@ -616,6 +628,10 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
         bit_fcmp_helper(dev, (uint32_t *) input32, 32, debug, true);
         bit_fcmp_helper(dev, (uint32_t *) input32, 16, debug, true);
 
-        for (unsigned sz = 8; sz <= 32; sz *= 2)
+        for (unsigned sz = 8; sz <= 32; sz *= 2) {
                 bit_bitwise_helper(dev, (uint32_t *) input32, sz, debug);
+                bit_imath_helper(dev, (uint32_t *) input32, sz, debug, false);
+        }
+
+        bit_imath_helper(dev, (uint32_t *) input32, 32, debug, true);
 }
