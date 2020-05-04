@@ -1209,7 +1209,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                         pandecode_prop("checksum_stride = %d", fbx->checksum_stride);
 
                 pandecode_log(".flags_hi = ");
-                pandecode_log_decoded_flags(mfbd_extra_flag_hi_info, fbx->flags_lo);
+                pandecode_log_decoded_flags(mfbd_extra_flag_hi_info, fbx->flags_hi);
                 pandecode_log_cont(",\n");
 
                 pandecode_log(".flags_lo = ");
