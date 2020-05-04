@@ -884,14 +884,6 @@ arm64_a530_gles31:
     VK_DRIVER: radeon
     RADV_DEBUG: checkir
 
-.test-radv-fossilize:
-  extends:
-    - .fossilize-test
-    - .test-radv
-  script:
-    - ./install/fossilize-runner.sh
-    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./install/fossilize-runner.sh
-
 # Can only be triggered manually on personal branches because RADV is the only
 # driver that does Vulkan testing at the moment.
 radv_polaris10_vkcts:
