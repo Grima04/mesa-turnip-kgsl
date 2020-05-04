@@ -1250,7 +1250,6 @@ vk_image_layout_to_usage_flags(VkImageLayout layout,
       assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
       return VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT;
 
-   case VK_IMAGE_LAYOUT_RANGE_SIZE:
    case VK_IMAGE_LAYOUT_MAX_ENUM:
       unreachable("Invalid image layout.");
    }
@@ -1294,7 +1293,6 @@ vk_image_layout_is_read_only(VkImageLayout layout,
    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
       return aspect == VK_IMAGE_ASPECT_STENCIL_BIT;
 
-   case VK_IMAGE_LAYOUT_RANGE_SIZE:
    case VK_IMAGE_LAYOUT_MAX_ENUM:
       unreachable("Invalid image layout.");
    }
@@ -1348,7 +1346,6 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    /* Handle a few special cases */
    switch (layout) {
    /* Invalid layouts */
-   case VK_IMAGE_LAYOUT_RANGE_SIZE:
    case VK_IMAGE_LAYOUT_MAX_ENUM:
       unreachable("Invalid image layout.");
 
