@@ -4429,7 +4429,8 @@ typedef bool (*nir_should_vectorize_mem_func)(unsigned align, unsigned bit_size,
                                               nir_intrinsic_instr *low, nir_intrinsic_instr *high);
 
 bool nir_opt_load_store_vectorize(nir_shader *shader, nir_variable_mode modes,
-                                  nir_should_vectorize_mem_func callback);
+                                  nir_should_vectorize_mem_func callback,
+                                  nir_variable_mode robust_modes);
 
 void nir_schedule(nir_shader *shader, int threshold);
 

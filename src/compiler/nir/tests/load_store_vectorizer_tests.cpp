@@ -38,7 +38,8 @@ protected:
    nir_intrinsic_instr *get_intrinsic(nir_intrinsic_op intrinsic,
                                       unsigned index);
 
-   bool run_vectorizer(nir_variable_mode modes, bool cse=false);
+   bool run_vectorizer(nir_variable_mode modes, bool cse=false,
+                       nir_variable_mode robust_modes = (nir_variable_mode)0);
 
    nir_ssa_def *get_resource(uint32_t binding, bool ssbo);
 
@@ -134,11 +135,13 @@ nir_load_store_vectorize_test::get_intrinsic(nir_intrinsic_op intrinsic,
 }
 
 bool
-nir_load_store_vectorize_test::run_vectorizer(nir_variable_mode modes, bool cse)
+nir_load_store_vectorize_test::run_vectorizer(nir_variable_mode modes,
+                                              bool cse,
+                                              nir_variable_mode robust_modes)
 {
    if (modes & nir_var_mem_shared)
       nir_lower_vars_to_explicit_types(b->shader, nir_var_mem_shared, shared_type_info);
-   bool progress = nir_opt_load_store_vectorize(b->shader, modes, mem_vectorize_callback);
+   bool progress = nir_opt_load_store_vectorize(b->shader, modes, mem_vectorize_callback, robust_modes);
    if (progress) {
       nir_validate_shader(b->shader, NULL);
       if (cse)
@@ -1770,6 +1773,19 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_distant_indirect_64bit)
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 
    EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
+}
+
+TEST_F(nir_load_store_vectorize_test, ssbo_offset_overflow_robust)
+{
+   create_load(nir_var_mem_ssbo, 0, 0xfffffffc, 0x1);
+   create_load(nir_var_mem_ssbo, 0, 0x0, 0x2);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
+
+   EXPECT_FALSE(run_vectorizer(nir_var_mem_ssbo, false, nir_var_mem_ssbo));
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }

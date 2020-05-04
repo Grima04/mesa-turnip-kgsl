@@ -187,6 +187,7 @@ struct entry {
 struct vectorize_ctx {
    nir_variable_mode modes;
    nir_should_vectorize_mem_func callback;
+   nir_variable_mode robust_modes;
    struct list_head entries[nir_num_variable_modes];
    struct hash_table *loads[nir_num_variable_modes];
    struct hash_table *stores[nir_num_variable_modes];
@@ -1054,6 +1055,22 @@ check_for_aliasing(struct vectorize_ctx *ctx, struct entry *first, struct entry 
 }
 
 static bool
+check_for_robustness(struct vectorize_ctx *ctx, struct entry *low)
+{
+   nir_variable_mode mode = get_variable_mode(low);
+   if (mode & ctx->robust_modes) {
+      unsigned low_bit_size = get_bit_size(low);
+      unsigned low_size = low->intrin->num_components * low_bit_size;
+
+      /* don't attempt to vectorize accesses if the offset can overflow. */
+      /* TODO: handle indirect accesses. */
+      return low->offset_signed < 0 && low->offset_signed + low_size >= 0;
+   }
+
+   return false;
+}
+
+static bool
 is_strided_vector(const struct glsl_type *type)
 {
    if (glsl_type_is_vector(type)) {
@@ -1075,6 +1092,9 @@ try_vectorize(nir_function_impl *impl, struct vectorize_ctx *ctx,
       return false;
 
    if (check_for_aliasing(ctx, first, second))
+      return false;
+
+   if (check_for_robustness(ctx, low))
       return false;
 
    /* we can only vectorize non-volatile loads/stores of the same type and with
@@ -1327,13 +1347,15 @@ process_block(nir_function_impl *impl, struct vectorize_ctx *ctx, nir_block *blo
 
 bool
 nir_opt_load_store_vectorize(nir_shader *shader, nir_variable_mode modes,
-                             nir_should_vectorize_mem_func callback)
+                             nir_should_vectorize_mem_func callback,
+                             nir_variable_mode robust_modes)
 {
    bool progress = false;
 
    struct vectorize_ctx *ctx = rzalloc(NULL, struct vectorize_ctx);
    ctx->modes = modes;
    ctx->callback = callback;
+   ctx->robust_modes = robust_modes;
 
    nir_index_vars(shader, NULL, modes);
 

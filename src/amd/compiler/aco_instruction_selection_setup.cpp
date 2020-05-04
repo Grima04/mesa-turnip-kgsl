@@ -998,7 +998,8 @@ setup_nir(isel_context *ctx, nir_shader *nir)
                                     (nir_variable_mode)(nir_var_mem_ssbo | nir_var_mem_ubo |
                                                         nir_var_mem_push_const | nir_var_mem_shared |
                                                         nir_var_mem_global),
-                                    mem_vectorize_callback)) {
+                                    mem_vectorize_callback,
+                                    (nir_variable_mode)0)) {
       lower_to_scalar = true;
       lower_pack = true;
    }
