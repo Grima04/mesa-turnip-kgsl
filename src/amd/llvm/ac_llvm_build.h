@@ -338,7 +338,8 @@ LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx,
 					 LLVMValueRef voffset,
 					 unsigned num_channels,
 					 unsigned cache_policy,
-					 bool can_speculate);
+					 bool can_speculate,
+					 bool d16);
 
 LLVMValueRef
 ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,

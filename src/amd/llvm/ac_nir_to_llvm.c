@@ -1436,12 +1436,14 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx,
 	if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
 		unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
 
+		assert(instr->dest.is_ssa);
 		return ac_build_buffer_load_format(&ctx->ac,
 			                           args->resource,
 			                           args->coords[0],
 			                           ctx->ac.i32_0,
 			                           util_last_bit(mask),
-			                           0, true);
+			                           0, true,
+						   instr->dest.ssa.bit_size == 16);
 	}
 
 	args->opcode = ac_image_sample;
@@ -2782,11 +2784,13 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 		vindex = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
 						 ctx->ac.i32_0, "");
 
+		assert(instr->dest.is_ssa);
 		bool can_speculate = access & ACCESS_CAN_REORDER;
 		res = ac_build_buffer_load_format(&ctx->ac, rsrc, vindex,
 						  ctx->ac.i32_0, num_channels,
 						  args.cache_policy,
-						  can_speculate);
+						  can_speculate,
+						  instr->dest.ssa.bit_size == 16);
 		res = ac_build_expand_to_vec4(&ctx->ac, res, num_channels);
 
 		res = ac_trim_vector(&ctx->ac, res, instr->dest.ssa.num_components);

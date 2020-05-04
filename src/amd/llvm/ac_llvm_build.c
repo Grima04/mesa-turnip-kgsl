@@ -1314,6 +1314,10 @@ ac_build_buffer_load_common(struct ac_llvm_context *ctx,
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
 
+	/* D16 is only supported on gfx8+ */
+	assert((channel_type != ctx->f16 && channel_type != ctx->i16) ||
+	       ctx->chip_class >= GFX8);
+
 	LLVMTypeRef type = func > 1 ? LLVMVectorType(channel_type, func) : channel_type;
 	ac_build_type_name_for_intr(type, type_name, sizeof(type_name));
 
@@ -1389,10 +1393,12 @@ LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx,
 					 LLVMValueRef voffset,
 					 unsigned num_channels,
 					 unsigned cache_policy,
-					 bool can_speculate)
+					 bool can_speculate,
+					 bool d16)
 {
 	return ac_build_buffer_load_common(ctx, rsrc, vindex, voffset,
-					   ctx->i32_0, num_channels, ctx->f32,
+					   ctx->i32_0, num_channels,
+					   d16 ? ctx->f16 : ctx->f32,
 					   cache_policy, can_speculate,
 					   true, true);
 }
