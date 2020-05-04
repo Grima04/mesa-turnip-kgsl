@@ -503,7 +503,7 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_fsub:
                 return BI_ADD;
         case nir_op_isub:
-                return BI_ISUB;
+                return BI_IMATH;
 
         case nir_op_iand:
         case nir_op_ior:

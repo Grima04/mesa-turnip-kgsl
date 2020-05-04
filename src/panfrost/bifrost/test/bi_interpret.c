@@ -525,7 +525,7 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 
                 break;
         }
-        case BI_ISUB:
+        case BI_IMATH:
                 unreachable("Unsupported op");
 
         case BI_MINMAX: {

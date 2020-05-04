@@ -1171,7 +1171,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return bi_pack_fma_fma(bundle.fma, regs);
         case BI_FREXP:
                 return bi_pack_fma_frexp(bundle.fma, regs);
-        case BI_ISUB:
+        case BI_IMATH:
                 unreachable("Packing todo");
         case BI_MINMAX:
                 return bi_pack_fma_addmin(bundle.fma, regs);
@@ -1636,7 +1636,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_DISCARD:
                 return bi_pack_add_discard(bundle.add, regs);
         case BI_FREXP:
-        case BI_ISUB:
+        case BI_IMATH:
         case BI_LOAD:
                 unreachable("Packing todo");
         case BI_LOAD_ATTR:
