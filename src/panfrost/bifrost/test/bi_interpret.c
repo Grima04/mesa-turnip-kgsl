@@ -185,6 +185,7 @@ bit_write(struct bit_state *s, unsigned index, nir_alu_type T, bit_t value, bool
         bit_make_int(name, expr) \
         
 bit_make_poly(add, a + b);
+bit_make_int(sub, a - b);
 bit_make_float(fma, (a * b) + c);
 bit_make_poly(mov, a);
 bit_make_poly(min, MIN2(a, b));
@@ -525,8 +526,18 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
 
                 break;
         }
-        case BI_IMATH:
-                unreachable("Unsupported op");
+
+        case BI_IMATH: {
+                if (ins->op.imath == BI_IMATH_ADD) {
+                        bint(bit_i64add, bit_i32add, bit_i16add, bit_i8add);
+                } else if (ins->op.imath == BI_IMATH_SUB) {
+                        bint(bit_i64sub, bit_i32sub, bit_i16sub, bit_i8sub);
+                } else {
+                        unreachable("Unsupported op");
+                }
+
+                break;
+        }
 
         case BI_MINMAX: {
                 if (ins->op.minmax == BI_MINMAX_MIN) {
