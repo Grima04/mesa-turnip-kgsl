@@ -2807,6 +2807,9 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 		args.dmask = 15;
 		args.attributes = AC_FUNC_ATTR_READONLY;
 
+		assert(instr->dest.is_ssa);
+		args.d16 = instr->dest.ssa.bit_size == 16;
+
 		res = ac_build_image_opcode(&ctx->ac, &args);
 	}
 	return exit_waterfall(ctx, &wctx, res);
@@ -2873,6 +2876,7 @@ static void visit_image_store(struct ac_nir_context *ctx,
 		if (!level_zero)
 			args.lod = get_src(ctx, instr->src[4]);
 		args.dmask = 15;
+		args.d16 = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(args.data[0])) == 16;
 
 		ac_build_image_opcode(&ctx->ac, &args);
 	}
@@ -4735,6 +4739,9 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 			args.dim = ac_image_2darray;
 		}
 	}
+
+	assert(instr->dest.is_ssa);
+	args.d16 = instr->dest.ssa.bit_size == 16;
 
 	result = build_tex_intrinsic(ctx, instr, &args);
 

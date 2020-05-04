@@ -554,6 +554,7 @@ struct ac_image_args {
 	unsigned cache_policy : 3;
 	bool unorm : 1;
 	bool level_zero : 1;
+	bool d16 : 1; /* data and return values are 16-bit, requires GFX8+ */
 	unsigned attributes; /* additional call-site specific AC_FUNC_ATTRs */
 
 	LLVMValueRef resource;

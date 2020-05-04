@@ -2375,6 +2375,11 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 	assert((a->min_lod ? 1 : 0) +
 	       (a->lod ? 1 : 0) +
 	       (a->level_zero ? 1 : 0) <= 1);
+	assert(!a->d16 || (ctx->chip_class >= GFX8 &&
+			   a->opcode != ac_image_atomic &&
+			   a->opcode != ac_image_atomic_cmpswap &&
+			   a->opcode != ac_image_get_lod &&
+			   a->opcode != ac_image_get_resinfo));
 
 	if (a->opcode == ac_image_get_lod) {
 		switch (dim) {
@@ -2497,7 +2502,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 		 a->min_lod ? ".cl" : "",
 		 a->offset ? ".o" : "",
 		 dimname,
-		 atomic ? "i32" : "v4f32",
+		 atomic ? "i32" : (a->d16 ? "v4f16" : "v4f32"),
 		 overload[0], overload[1], overload[2]);
 
 	LLVMTypeRef retty;
@@ -2506,15 +2511,14 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 	else if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip)
 		retty = ctx->voidt;
 	else
-		retty = ctx->v4f32;
+		retty = a->d16 ? ctx->v4f16 : ctx->v4f32;
 
 	LLVMValueRef result =
 		ac_build_intrinsic(ctx, intr_name, retty, args, num_args,
 				   a->attributes);
-	if (!sample && retty == ctx->v4f32) {
-		result = LLVMBuildBitCast(ctx->builder, result,
-					  ctx->v4i32, "");
-	}
+	if (!sample && !atomic && retty != ctx->voidt)
+		result = ac_to_integer(ctx, result);
+
 	return result;
 }
 
