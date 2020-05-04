@@ -881,6 +881,11 @@ struct anv_state_table {
 struct anv_state_pool {
    struct anv_block_pool block_pool;
 
+   /* Offset into the relevant state base address where the state pool starts
+    * allocating memory.
+    */
+   int32_t start_offset;
+
    struct anv_state_table table;
 
    /* The size of blocks which will be allocated from the block pool */
@@ -925,7 +930,8 @@ size);
 
 VkResult anv_state_pool_init(struct anv_state_pool *pool,
                              struct anv_device *device,
-                             uint64_t start_address,
+                             uint64_t base_address,
+                             int32_t start_offset,
                              uint32_t block_size);
 void anv_state_pool_finish(struct anv_state_pool *pool);
 struct anv_state anv_state_pool_alloc(struct anv_state_pool *pool,

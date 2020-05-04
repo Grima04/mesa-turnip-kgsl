@@ -2867,23 +2867,27 @@ VkResult anv_CreateDevice(
    anv_bo_pool_init(&device->batch_bo_pool, device);
 
    result = anv_state_pool_init(&device->dynamic_state_pool, device,
-                                DYNAMIC_STATE_POOL_MIN_ADDRESS, 16384);
+                                DYNAMIC_STATE_POOL_MIN_ADDRESS, 0, 16384);
    if (result != VK_SUCCESS)
       goto fail_batch_bo_pool;
 
    result = anv_state_pool_init(&device->instruction_state_pool, device,
-                                INSTRUCTION_STATE_POOL_MIN_ADDRESS, 16384);
+                                INSTRUCTION_STATE_POOL_MIN_ADDRESS, 0, 16384);
    if (result != VK_SUCCESS)
       goto fail_dynamic_state_pool;
 
    result = anv_state_pool_init(&device->surface_state_pool, device,
-                                SURFACE_STATE_POOL_MIN_ADDRESS, 4096);
+                                SURFACE_STATE_POOL_MIN_ADDRESS, 0, 4096);
    if (result != VK_SUCCESS)
       goto fail_instruction_state_pool;
 
    if (physical_device->use_softpin) {
+      int64_t bt_pool_offset = (int64_t)BINDING_TABLE_POOL_MIN_ADDRESS -
+                               (int64_t)SURFACE_STATE_POOL_MIN_ADDRESS;
+      assert(INT32_MIN < bt_pool_offset && bt_pool_offset < 0);
       result = anv_state_pool_init(&device->binding_table_pool, device,
-                                   BINDING_TABLE_POOL_MIN_ADDRESS, 4096);
+                                   SURFACE_STATE_POOL_MIN_ADDRESS,
+                                   bt_pool_offset, 4096);
       if (result != VK_SUCCESS)
          goto fail_surface_state_pool;
    }
