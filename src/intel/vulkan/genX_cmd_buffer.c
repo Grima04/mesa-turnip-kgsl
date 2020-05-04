@@ -4383,7 +4383,8 @@ void genX(CmdEndTransformFeedbackEXT)(
 void
 genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_compute_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
+   struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
+   struct anv_compute_pipeline *pipeline = comp_state->pipeline;
 
    assert(pipeline->cs);
 
@@ -4449,15 +4450,17 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 
    if (cmd_buffer->state.push_constants_dirty & VK_SHADER_STAGE_COMPUTE_BIT) {
-      struct anv_state push_state =
+      comp_state->push_data =
          anv_cmd_buffer_cs_push_constants(cmd_buffer);
 
-      if (push_state.alloc_size) {
+#if GEN_GEN <= 12 && !GEN_IS_GEN12HP
+      if (comp_state->push_data.alloc_size) {
          anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_CURBE_LOAD), curbe) {
-            curbe.CURBETotalDataLength    = push_state.alloc_size;
-            curbe.CURBEDataStartAddress   = push_state.offset;
+            curbe.CURBETotalDataLength    = comp_state->push_data.alloc_size;
+            curbe.CURBEDataStartAddress   = comp_state->push_data.offset;
          }
       }
+#endif
 
       cmd_buffer->state.push_constants_dirty &= ~VK_SHADER_STAGE_COMPUTE_BIT;
    }
@@ -4526,6 +4529,7 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
                     uint32_t groupCountX, uint32_t groupCountY,
                     uint32_t groupCountZ)
 {
+   struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
    const struct anv_shader_bin *cs_bin = pipeline->cs;
    bool predicate = cmd_buffer->state.conditional_render_enabled;
    const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
@@ -4534,6 +4538,8 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
       cw.IndirectParameterEnable        = indirect;
       cw.PredicateEnable                = predicate;
       cw.SIMDSize                       = cs_params.simd_size / 16;
+      cw.IndirectDataStartAddress       = comp_state->push_data.offset;
+      cw.IndirectDataLength             = comp_state->push_data.alloc_size;
       cw.LocalXMaximum                  = prog_data->local_size[0] - 1;
       cw.LocalYMaximum                  = prog_data->local_size[1] - 1;
       cw.LocalZMaximum                  = prog_data->local_size[2] - 1;
@@ -4542,7 +4548,6 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
       cw.ThreadGroupIDZDimension        = groupCountZ;
       cw.ExecutionMask                  = pipeline->cs_right_mask;
 
-      assert(brw_cs_push_const_total_size(prog_data, cs_params.threads) == 0);
       cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA_HP)) {
          .KernelStartPointer = cs_bin->kernel.offset,
          .SamplerStatePointer =

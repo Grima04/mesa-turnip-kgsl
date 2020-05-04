@@ -35,6 +35,7 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
                             void *mem_ctx)
 {
    const struct brw_compiler *compiler = pdevice->compiler;
+   const struct gen_device_info *devinfo = compiler->devinfo;
    memset(map->push_ranges, 0, sizeof(map->push_ranges));
 
    bool has_const_ubo = false;
@@ -91,7 +92,8 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
       push_end = MAX2(push_end, push_reg_mask_end);
    }
 
-   if (nir->info.stage == MESA_SHADER_COMPUTE) {
+   if (nir->info.stage == MESA_SHADER_COMPUTE &&
+       (devinfo->gen <= 12 && !gen_device_info_is_12hp(devinfo))) {
       /* For compute shaders, we always have to have the subgroup ID.  The
        * back-end compiler will "helpfully" add it for us in the last push
        * constant slot.  Yes, there is an off-by-one error here but that's

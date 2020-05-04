@@ -2922,6 +2922,8 @@ struct anv_cmd_compute_state {
 
    bool pipeline_dirty;
 
+   struct anv_state push_data;
+
    struct anv_address num_workgroups;
 };
 
