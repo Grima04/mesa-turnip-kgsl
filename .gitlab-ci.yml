@@ -883,6 +883,7 @@ arm64_a530_gles31:
   variables:
     VK_DRIVER: radeon
     RADV_DEBUG: checkir
+    ACO_DEBUG: validateir,validatera
 
 # Can only be triggered manually on personal branches because RADV is the only
 # driver that does Vulkan testing at the moment.
@@ -904,15 +905,15 @@ radv-fossils:
     # Polaris10
     - export RADV_FORCE_FAMILY="polaris10"
     - ./install/fossilize-runner.sh
-    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./install/fossilize-runner.sh
+    - RADV_PERFTEST=aco ./install/fossilize-runner.sh
     # Vega10
     - export RADV_FORCE_FAMILY="gfx900"
     - ./install/fossilize-runner.sh
-    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./install/fossilize-runner.sh
+    - RADV_PERFTEST=aco ./install/fossilize-runner.sh
     # Navi10
     - export RADV_FORCE_FAMILY="gfx1010"
     - ./install/fossilize-runner.sh
-    - ACO_DEBUG=validateir,validatera RADV_PERFTEST=aco ./install/fossilize-runner.sh
+    - RADV_PERFTEST=aco ./install/fossilize-runner.sh
 
 # Traces CI
 .traces-test:
