@@ -115,6 +115,9 @@ struct bifrost_fma_inst {
         unsigned op   : 20;
 } __attribute__((packed));
 
+#define BIFROST_FMA_IADD_32 (0x4ff98 >> 3)
+#define BIFROST_FMA_ISUB_32 (0x4ffd8 >> 3)
+
 struct bifrost_fma_2src {
         unsigned src0 : 3;
         unsigned src1 : 3;

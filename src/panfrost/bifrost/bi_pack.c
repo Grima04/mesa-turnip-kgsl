@@ -1149,7 +1149,20 @@ bi_pack_fma_round(bi_instruction *ins, struct bi_registers *regs)
 
         return bi_pack_fma_1src(ins, regs, op);
 }
- 
+
+static unsigned
+bi_pack_fma_imath(bi_instruction *ins, struct bi_registers *regs)
+{
+        /* Scheduler: only ADD can have 8/16-bit imath */
+        assert(ins->dest_type == nir_type_int32 || ins->dest_type == nir_type_uint32);
+
+        unsigned op = ins->op.imath == BI_IMATH_ADD
+                ? BIFROST_FMA_IADD_32
+                : BIFROST_FMA_ISUB_32;
+
+        return bi_pack_fma_2src(ins, regs, op);
+}
+
 static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
@@ -1172,7 +1185,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_FREXP:
                 return bi_pack_fma_frexp(bundle.fma, regs);
         case BI_IMATH:
-                unreachable("Packing todo");
+                return bi_pack_fma_imath(bundle.fma, regs);
         case BI_MINMAX:
                 return bi_pack_fma_addmin(bundle.fma, regs);
         case BI_MOV:
