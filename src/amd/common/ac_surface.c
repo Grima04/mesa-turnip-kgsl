@@ -2204,6 +2204,8 @@ void ac_surface_override_offset_stride(const struct radeon_info *info,
                (uint64_t)pitch * surf->u.gfx9.surf_height * surf->bpe;
       }
       surf->u.gfx9.surf_offset = offset;
+      if (surf->u.gfx9.stencil_offset)
+         surf->u.gfx9.stencil_offset += offset;
    } else {
       surf->u.legacy.level[0].nblk_x = pitch;
       surf->u.legacy.level[0].slice_size_dw =
@@ -2214,4 +2216,17 @@ void ac_surface_override_offset_stride(const struct radeon_info *info,
             surf->u.legacy.level[i].offset += offset;
       }
    }
+
+   if (surf->htile_offset)
+      surf->htile_offset += offset;
+   if (surf->fmask_offset)
+      surf->fmask_offset += offset;
+   if (surf->cmask_offset)
+      surf->cmask_offset += offset;
+   if (surf->dcc_offset)
+      surf->dcc_offset += offset;
+   if (surf->display_dcc_offset)
+      surf->display_dcc_offset += offset;
+   if (surf->dcc_retile_map_offset)
+      surf->dcc_retile_map_offset += offset;
 }
