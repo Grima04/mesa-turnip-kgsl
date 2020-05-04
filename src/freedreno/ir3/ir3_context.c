@@ -114,6 +114,43 @@ ir3_context_init(struct ir3_compiler *compiler,
 
 	NIR_PASS_V(ctx->s, nir_convert_from_ssa, true);
 
+	/* Super crude heuristic to limit # of tex prefetch in small
+	 * shaders.  This completely ignores loops.. but that's really
+	 * not the worst of it's problems.  (A frag shader that has
+	 * loops is probably going to be big enough to not trigger a
+	 * lower threshold.)
+	 *
+	 *   1) probably want to do this in terms of ir3 instructions
+	 *   2) probably really want to decide this after scheduling
+	 *      (or at least pre-RA sched) so we have a rough idea about
+	 *      nops, and don't count things that get cp'd away
+	 *   3) blob seems to use higher thresholds with a mix of more
+	 *      SFU instructions.  Which partly makes sense, more SFU
+	 *      instructions probably means you want to get the real
+	 *      shader started sooner, but that considers where in the
+	 *      shader the SFU instructions are, which blob doesn't seem
+	 *      to do.
+	 *
+	 * This uses more conservative thresholds assuming a more alu
+	 * than sfu heavy instruction mix.
+	 */
+	if (so->type == MESA_SHADER_FRAGMENT) {
+		nir_function_impl *fxn = nir_shader_get_entrypoint(ctx->s);
+
+		unsigned instruction_count = 0;
+		nir_foreach_block (block, fxn) {
+			instruction_count += exec_list_length(&block->instr_list);
+		}
+
+		if (instruction_count < 50) {
+			ctx->prefetch_limit = 2;
+		} else if (instruction_count < 70) {
+			ctx->prefetch_limit = 3;
+		} else {
+			ctx->prefetch_limit = IR3_MAX_SAMPLER_PREFETCH;
+		}
+	}
+
 	if (shader_debug_enabled(so->type)) {
 		fprintf(stdout, "NIR (final form) for %s shader %s:\n",
 			ir3_shader_stage(so), so->shader->nir->info.name);

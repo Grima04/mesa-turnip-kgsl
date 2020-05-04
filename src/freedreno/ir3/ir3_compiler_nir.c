@@ -2261,7 +2261,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 		compile_assert(ctx, nir_tex_instr_src_index(tex, nir_tex_src_texture_offset) < 0);
 		compile_assert(ctx, nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset) < 0);
 
-		if (ctx->so->num_sampler_prefetch < IR3_MAX_SAMPLER_PREFETCH) {
+		if (ctx->so->num_sampler_prefetch < ctx->prefetch_limit) {
 			opc = OPC_META_TEX_PREFETCH;
 			ctx->so->num_sampler_prefetch++;
 			break;
