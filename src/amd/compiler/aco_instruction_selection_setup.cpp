@@ -994,12 +994,20 @@ setup_nir(isel_context *ctx, nir_shader *nir)
 
    bool lower_to_scalar = false;
    bool lower_pack = false;
+   nir_variable_mode robust_modes = (nir_variable_mode)0;
+
+   if (ctx->options->robust_buffer_access) {
+      robust_modes = (nir_variable_mode)(nir_var_mem_ubo |
+                                         nir_var_mem_ssbo |
+                                         nir_var_mem_global |
+                                         nir_var_mem_push_const);
+   }
+
    if (nir_opt_load_store_vectorize(nir,
                                     (nir_variable_mode)(nir_var_mem_ssbo | nir_var_mem_ubo |
                                                         nir_var_mem_push_const | nir_var_mem_shared |
                                                         nir_var_mem_global),
-                                    mem_vectorize_callback,
-                                    (nir_variable_mode)0)) {
+                                    mem_vectorize_callback, robust_modes)) {
       lower_to_scalar = true;
       lower_pack = true;
    }
