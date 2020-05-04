@@ -72,11 +72,25 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 {
    struct radeon_cmdbuf *cs = ctx->gfx_cs;
    struct radeon_winsys *ws = ctx->ws;
+   struct si_screen *sscreen = ctx->screen;
    const unsigned wait_ps_cs = SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH;
    unsigned wait_flags = 0;
 
    if (ctx->gfx_flush_in_progress)
       return;
+
+   /* The amdgpu kernel driver synchronizes execution for shared DMABUFs between
+    * processes on DRM >= 3.39.0, so we don't have to wait at the end of IBs to
+    * make sure everything is idle.
+    *
+    * The amdgpu winsys synchronizes execution for buffers shared by different
+    * contexts within the same process.
+    *
+    * Interop with AMDVLK, RADV, or OpenCL within the same process requires
+    * explicit fences or glFinish.
+    */
+   if (sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 39)
+      flags |= RADEON_FLUSH_START_NEXT_GFX_IB_NOW;
 
    if (!ctx->screen->info.kernel_flushes_tc_l2_after_ib) {
       wait_flags |= wait_ps_cs | SI_CONTEXT_INV_L2;
