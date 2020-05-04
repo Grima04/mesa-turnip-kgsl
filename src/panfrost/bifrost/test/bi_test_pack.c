@@ -517,18 +517,22 @@ bit_constant_helper(struct panfrost_device *dev,
 }
 
 static void
+bit_swizzle_identity(bi_instruction *ins, unsigned args, unsigned size)
+{
+        for (unsigned i = 0; i < 2; ++i) {
+                for (unsigned j = 0; j < (32 / size); ++j)
+                        ins->swizzle[i][j] = j;
+        }
+}
+
+static void
 bit_bitwise_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, enum bit_debug debug)
 {
         bi_instruction ins = bit_ins(BI_BITWISE, 3, nir_type_uint, size);
+        bit_swizzle_identity(&ins, 2, size);
 
         /* TODO: shifts */
         ins.src[2] = BIR_INDEX_ZERO;
-
-        /* Force identity swizzle -- bitwise is not swizzleable */
-        for (unsigned i = 0; i < 2; ++i) {
-                for (unsigned j = 0; j < (32 / size); ++j)
-                        ins.swizzle[i][j] = j;
-        }
 
         for (unsigned op = BI_BITWISE_AND; op <= BI_BITWISE_XOR; ++op) {
                 ins.op.bitwise = op;
