@@ -2189,3 +2189,29 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info,
       *size_metadata += num_mipmap_levels * 4;
    }
 }
+
+void ac_surface_override_offset_stride(const struct radeon_info *info,
+                                       struct radeon_surf *surf,
+                                       unsigned num_mipmap_levels,
+                                       uint64_t offset, unsigned pitch)
+{
+   if (info->chip_class >= GFX9) {
+      if (pitch) {
+         surf->u.gfx9.surf_pitch = pitch;
+         if (num_mipmap_levels == 1)
+            surf->u.gfx9.surf.epitch = pitch - 1;
+         surf->u.gfx9.surf_slice_size =
+               (uint64_t)pitch * surf->u.gfx9.surf_height * surf->bpe;
+      }
+      surf->u.gfx9.surf_offset = offset;
+   } else {
+      surf->u.legacy.level[0].nblk_x = pitch;
+      surf->u.legacy.level[0].slice_size_dw =
+            ((uint64_t)pitch * surf->u.legacy.level[0].nblk_y * surf->bpe) / 4;
+
+      if (offset) {
+         for (unsigned i = 0; i < ARRAY_SIZE(surf->u.legacy.level); ++i)
+            surf->u.legacy.level[i].offset += offset;
+      }
+   }
+}

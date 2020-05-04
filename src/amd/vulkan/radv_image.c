@@ -1178,27 +1178,9 @@ radv_image_override_offset_stride(struct radv_device *device,
                                   struct radv_image *image,
                                   uint64_t offset, uint32_t stride)
 {
-	struct radeon_surf *surface = &image->planes[0].surface;
-	unsigned bpe = vk_format_get_blocksizebits(image->vk_format) / 8;
-
-	if (device->physical_device->rad_info.chip_class >= GFX9) {
-		if (stride) {
-			surface->u.gfx9.surf_pitch = stride;
-			surface->u.gfx9.surf_slice_size =
-				(uint64_t)stride * surface->u.gfx9.surf_height * bpe;
-		}
-		surface->u.gfx9.surf_offset = offset;
-	} else {
-		surface->u.legacy.level[0].nblk_x = stride;
-		surface->u.legacy.level[0].slice_size_dw =
-			((uint64_t)stride * surface->u.legacy.level[0].nblk_y * bpe) / 4;
-
-		if (offset) {
-			for (unsigned i = 0; i < ARRAY_SIZE(surface->u.legacy.level); ++i)
-				surface->u.legacy.level[i].offset += offset;
-		}
-
-	}
+	ac_surface_override_offset_stride(&device->physical_device->rad_info,
+					  &image->planes[0].surface,
+					  image->info.levels, offset, stride);
 }
 
 static void

@@ -209,8 +209,8 @@ static unsigned si_texture_get_offset(struct si_screen *sscreen, struct si_textu
 
 static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surface,
                            const struct pipe_resource *ptex, enum radeon_surf_mode array_mode,
-                           unsigned pitch_in_bytes_override, bool is_imported, bool is_scanout,
-                           bool is_flushed_depth, bool tc_compatible_htile)
+                           bool is_imported, bool is_scanout, bool is_flushed_depth,
+                           bool tc_compatible_htile)
 {
    const struct util_format_description *desc = util_format_description(ptex->format);
    bool is_depth, is_stencil;
@@ -311,22 +311,6 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
       return r;
    }
 
-   unsigned pitch = pitch_in_bytes_override / bpe;
-
-   if (sscreen->info.chip_class >= GFX9) {
-      if (pitch) {
-         surface->u.gfx9.surf_pitch = pitch;
-         if (ptex->last_level == 0)
-            surface->u.gfx9.surf.epitch = pitch - 1;
-         surface->u.gfx9.surf_slice_size = (uint64_t)pitch * surface->u.gfx9.surf_height * bpe;
-      }
-   } else {
-      if (pitch) {
-         surface->u.legacy.level[0].nblk_x = pitch;
-         surface->u.legacy.level[0].slice_size_dw =
-            ((uint64_t)pitch * surface->u.legacy.level[0].nblk_y * bpe) / 4;
-      }
-   }
    return 0;
 }
 
@@ -974,7 +958,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
                                                    const struct pipe_resource *base,
                                                    const struct radeon_surf *surface,
                                                    const struct si_texture *plane0,
-                                                   struct pb_buffer *imported_buf, uint64_t offset,
+                                                   struct pb_buffer *imported_buf,
+                                                   uint64_t offset, unsigned pitch_in_bytes,
                                                    uint64_t alloc_size, unsigned alignment)
 {
    struct si_texture *tex;
@@ -1020,12 +1005,9 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
     */
    tex->ps_draw_ratio = 0;
 
-   if (sscreen->info.chip_class >= GFX9) {
-      tex->surface.u.gfx9.surf_offset = offset;
-   } else {
-      for (unsigned i = 0; i < ARRAY_SIZE(surface->u.legacy.level); ++i)
-         tex->surface.u.legacy.level[i].offset += offset;
-   }
+   ac_surface_override_offset_stride(&sscreen->info, &tex->surface,
+                                     tex->buffer.b.b.last_level + 1,
+                                     offset, pitch_in_bytes / tex->surface.bpe);
 
    if (tex->is_depth) {
       if (sscreen->info.chip_class >= GFX9) {
@@ -1340,7 +1322,7 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
       if (num_planes > 1)
          plane_templ[i].bind |= PIPE_BIND_SHARED;
 
-      if (si_init_surface(sscreen, &surface[i], &plane_templ[i], tile_mode, 0, false,
+      if (si_init_surface(sscreen, &surface[i], &plane_templ[i], tile_mode, false,
                           plane_templ[i].bind & PIPE_BIND_SCANOUT, is_flushed_depth,
                           tc_compatible_htile))
          return NULL;
@@ -1355,7 +1337,7 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
    for (unsigned i = 0; i < num_planes; i++) {
       struct si_texture *tex =
          si_texture_create_object(screen, &plane_templ[i], &surface[i], plane0, NULL,
-                                  plane_offset[i], total_size, max_alignment);
+                                  plane_offset[i], 0, total_size, max_alignment);
       if (!tex) {
          si_texture_reference(&plane0, NULL);
          return NULL;
@@ -1378,7 +1360,7 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *sscreen,
                                                            const struct pipe_resource *templ,
                                                            struct pb_buffer *buf, unsigned stride,
-                                                           unsigned offset, unsigned usage,
+                                                           uint64_t offset, unsigned usage,
                                                            bool dedicated)
 {
    struct radeon_surf surface = {};
@@ -1418,12 +1400,13 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
       metadata.mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
    }
 
-   r = si_init_surface(sscreen, &surface, templ, metadata.mode, stride, true,
+   r = si_init_surface(sscreen, &surface, templ, metadata.mode, true,
                        surface.flags & RADEON_SURF_SCANOUT, false, false);
    if (r)
       return NULL;
 
-   tex = si_texture_create_object(&sscreen->b, templ, &surface, NULL, buf, offset, 0, 0);
+   tex = si_texture_create_object(&sscreen->b, templ, &surface, NULL, buf,
+                                  offset, stride, 0, 0);
    if (!tex)
       return NULL;
 

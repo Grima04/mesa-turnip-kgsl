@@ -309,6 +309,11 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info,
                                  uint32_t desc[8],
                                  unsigned *size_metadata, uint32_t metadata[64]);
 
+void ac_surface_override_offset_stride(const struct radeon_info *info,
+                                       struct radeon_surf *surf,
+                                       unsigned num_mipmap_levels,
+                                       uint64_t offset, unsigned pitch);
+
 #ifdef __cplusplus
 }
 #endif
