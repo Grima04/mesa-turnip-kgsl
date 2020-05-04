@@ -1052,9 +1052,9 @@
 
   <packet code="121" name="Tile Rendering Mode Cfg (Color)" cl="R" min_ver="41">
 
-    <field name="Pad" size="28" start="34" type="uint"/>
+    <field name="Pad" size="28" start="36" type="uint"/>
 
-    <field name="Render Target 3 Clamp" size="2" start="32" type="Render Target Clamp"/>
+    <field name="Render Target 3 Clamp" size="2" start="34" type="Render Target Clamp"/>
     <field name="Render Target 3 Internal Type" size="4" start="30" type="Internal Type"/>
     <field name="Render Target 3 Internal BPP" size="2" start="28" type="Internal BPP"/>
 
