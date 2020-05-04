@@ -1040,7 +1040,7 @@ static const struct gen_device_info gen_device_info_ehl_4 = {
       GEN12_URB_MIN_MAX_ENTRIES,                    \
    }
 
-#define GEN12_FEATURES(_gt, _slices, _dual_subslices, _l3)      \
+#define GEN12_FEATURES(_gt, _slices, _l3)                       \
    GEN8_FEATURES,                                               \
    GEN12_HW_INFO,                                               \
    .has_64bit_float = false,                                    \
@@ -1049,17 +1049,20 @@ static const struct gen_device_info gen_device_info_ehl_4 = {
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3,           \
    .simulator_id = 22,                                          \
    .urb.size = (_gt) == 1 ? 512 : 1024,                         \
-   .num_subslices = _dual_subslices,                            \
    .num_eu_per_subslice = 16
 
 #define dual_subslices(args...) { args, }
 
+#define GEN12_GT_FEATURES(_gt)                                  \
+   GEN12_FEATURES(1, 1, _gt == 1 ? 4 : 8),                      \
+   .num_subslices = dual_subslices(_gt == 1 ? 2 : 6)
+
 static const struct gen_device_info gen_device_info_tgl_gt1 = {
-   GEN12_FEATURES(1, 1, dual_subslices(2), 8),
+   GEN12_GT_FEATURES(1),
 };
 
 static const struct gen_device_info gen_device_info_tgl_gt2 = {
-   GEN12_FEATURES(2, 1, dual_subslices(6), 8),
+   GEN12_GT_FEATURES(2),
 };
 
 static void
