@@ -325,7 +325,7 @@ radv_cmd_buffer_destroy(struct radv_cmd_buffer *cmd_buffer)
 		cmd_buffer->device->ws->buffer_destroy(cmd_buffer->upload.upload_bo);
 	cmd_buffer->device->ws->cs_destroy(cmd_buffer->cs);
 
-	for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++)
+	for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
 		free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
 
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
@@ -364,7 +364,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 
 	memset(cmd_buffer->vertex_bindings, 0, sizeof(cmd_buffer->vertex_bindings));
 
-	for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
+	for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
 		cmd_buffer->descriptors[i].dirty = 0;
 		cmd_buffer->descriptors[i].valid = 0;
 		cmd_buffer->descriptors[i].push_dirty = false;

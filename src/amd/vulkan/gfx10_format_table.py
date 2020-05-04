@@ -84,15 +84,28 @@ header_template = mako.template.Template("""\
    { .img_format = V_008F0C_IMG_FORMAT_##_img_format, \
      ##__VA_ARGS__ }
 
-static const struct gfx10_format gfx10_format_table[VK_FORMAT_RANGE_SIZE] = {
 % for vk_format, args in formats:
- % if args is not None:
-  [${vk_format}] = FMT(${args}),
- % else:
-/* ${vk_format} is not supported */
- % endif
+    % if args is not None:
+    static const struct gfx10_format gfx10_info_${vk_format} = FMT(${args});
+    % else:
+    /* ${vk_format} is not supported */
+    % endif
 % endfor
-};
+
+static const struct gfx10_format gfx10_unsupported_format = { 0 };
+
+static inline const struct gfx10_format* gfx10_format_description(VkFormat format)
+{
+    switch(format)
+    {
+    % for vk_format, args in formats:
+     % if args is not None:
+        case ${vk_format}: return &gfx10_info_${vk_format};
+     % endif
+    % endfor
+        default: return &gfx10_unsupported_format;
+    }
+}
 """)
 
 class Gfx10Format(object):

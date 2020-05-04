@@ -1356,7 +1356,7 @@ struct radv_cmd_buffer {
 	VkShaderStageFlags push_constant_stages;
 	struct radv_descriptor_set meta_push_descriptors;
 
-	struct radv_descriptor_state descriptors[VK_PIPELINE_BIND_POINT_RANGE_SIZE];
+	struct radv_descriptor_state descriptors[MAX_BIND_POINTS];
 
 	struct radv_cmd_buffer_upload upload;
 
