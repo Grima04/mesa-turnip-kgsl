@@ -1283,14 +1283,40 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
 	}
 }
 
+
+static void
+radv_image_reset_layout(struct radv_image *image)
+{
+	image->size = 0;
+	image->alignment = 1;
+
+	image->tc_compatible_cmask = image->tc_compatible_htile = 0;
+	image->fce_pred_offset = image->dcc_pred_offset = 0;
+	image->clear_value_offset = image->tc_compat_zrange_offset = 0;
+
+	for (unsigned i = 0; i < image->plane_count; ++i) {
+		VkFormat format = vk_format_get_plane_format(image->vk_format, i);
+
+		uint32_t flags = image->planes[i].surface.flags;
+		memset(image->planes + i, 0, sizeof(image->planes[i]));
+
+		image->planes[i].surface.flags = flags;
+		image->planes[i].surface.blk_w = vk_format_get_blockwidth(format);
+		image->planes[i].surface.blk_h = vk_format_get_blockheight(format);
+		image->planes[i].surface.bpe = vk_format_get_blocksize(vk_format_depth_only(format));
+
+		/* align byte per element on dword */
+		if (image->planes[i].surface.bpe == 3) {
+			image->planes[i].surface.bpe = 4;
+		}
+	}
+}
+
 VkResult
 radv_image_create_layout(struct radv_device *device,
                          struct radv_image_create_info create_info,
                          struct radv_image *image)
 {
-	/* Check that we did not initialize things earlier */
-	assert(!image->planes[0].surface.surf_size);
-
 	/* Clear the pCreateInfo pointer so we catch issues in the delayed case when we test in the
 	 * common internal case. */
 	create_info.vk_info = NULL;
@@ -1300,8 +1326,8 @@ radv_image_create_layout(struct radv_device *device,
 	if (result != VK_SUCCESS)
 		return result;
 
-	image->size = 0;
-	image->alignment = 1;
+	radv_image_reset_layout(image);
+
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
 		struct ac_surf_info info = image_info;
 
