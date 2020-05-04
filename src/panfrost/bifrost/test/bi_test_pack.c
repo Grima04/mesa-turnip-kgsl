@@ -31,7 +31,7 @@
 
 /* Instruction packing tests */
 
-static bool
+static void
 bit_test_single(struct panfrost_device *dev,
                 bi_instruction *ins, 
                 uint32_t input[4],
@@ -152,7 +152,8 @@ bit_test_single(struct panfrost_device *dev,
                 disassemble_bifrost(stderr, prog.compiled.data, prog.compiled.size, true);
         }
 
-        return succ;
+        if (!succ)
+                fprintf(stderr, "FAIL\n");
 }
 
 /* Utilities for generating tests */
@@ -230,15 +231,7 @@ bit_fmod_helper(struct panfrost_device *dev,
                         ins.src_neg[0] = (inmod & 0x4);
                         ins.src_neg[1] = (inmod & 0x8);
                         bit_apply_swizzle(&ins, swz, 2, size);
-
-                        if (!bit_test_single(dev, &ins, input, fma, debug)) {
-                                fprintf(stderr, "FAIL: fmod.%s%u.%s%s.%u\n",
-                                                bi_class_name(c),
-                                                size,
-                                                fma ? "fma" : "add",
-                                                outmod ? bi_output_mod_name(outmod) : ".none",
-                                                inmod);
-                        }
+                        bit_test_single(dev, &ins, input, fma, debug);
                 }
         }
         }
@@ -256,13 +249,7 @@ bit_fma_helper(struct panfrost_device *dev,
                         ins.src_neg[0] = (inmod & 0x1);
                         ins.src_neg[1] = (inmod & 0x2);
                         ins.src_neg[2] = (inmod & 0x4);
-
-                        if (!bit_test_single(dev, &ins, input, true, debug)) {
-                                fprintf(stderr, "FAIL: fma%u%s.%u\n",
-                                                size,
-                                                outmod ? bi_output_mod_name(outmod) : ".none",
-                                                inmod);
-                        }
+                        bit_test_single(dev, &ins, input, true, debug);
                 }
         }
 }
@@ -281,12 +268,7 @@ bit_fma_mscale_helper(struct panfrost_device *dev, uint32_t *input, enum bit_deb
                         ins.src_abs[0] = (inmod & 0x1);
                         ins.src_neg[1] = (inmod & 0x2);
                         ins.src_neg[2] = (inmod & 0x4);
-
-                        if (!bit_test_single(dev, &ins, input, true, debug)) {
-                                fprintf(stderr, "FAIL: fma_mscale%s.%u\n",
-                                                outmod ? bi_output_mod_name(outmod) : ".none",
-                                                inmod);
-                        }
+                        bit_test_single(dev, &ins, input, true, debug);
                 }
         }
 }
@@ -302,11 +284,7 @@ bit_csel_helper(struct panfrost_device *dev,
 
         for (enum bi_cond cond = BI_COND_LT; cond <= BI_COND_NE; ++cond) {
                 ins.cond = cond;
-
-                if (!bit_test_single(dev, &ins, input, true, debug)) {
-                        fprintf(stderr, "FAIL: csel%u.%s\n",
-                                        size, bi_cond_name(cond));
-                }
+                bit_test_single(dev, &ins, input, true, debug);
         }
 }
 
@@ -332,13 +310,9 @@ bit_special_helper(struct panfrost_device *dev,
                 for (unsigned c = 0; c < ((size == 16) ? 2 : 1); ++c) {
                         ins.op.special = op;
                         ins.swizzle[0][0] = c;
-
-                        if (!bit_test_single(dev, &ins,
+                        bit_test_single(dev, &ins,
                                                 op == BI_SPECIAL_EXP2_LOW ? exp_input : input,
-                                                false, debug)) {
-                                fprintf(stderr, "FAIL: special%u.%s\n",
-                                                size, bi_special_op_name(op));
-                        }
+                                                false, debug);
                 }
         }
 }
@@ -350,11 +324,7 @@ bit_table_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug de
 
         for (enum bi_table_op op = 0; op <= BI_TABLE_LOG2_U_OVER_U_1_LOW; ++op) {
                 ins.op.table = op;
-
-                if (!bit_test_single(dev, &ins, input, false, debug)) {
-                        fprintf(stderr, "FAIL: table.%s\n",
-                                        bi_table_op_name(op));
-                }
+                bit_test_single(dev, &ins, input, false, debug);
         }
 }
 
@@ -366,11 +336,7 @@ bit_frexp_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug de
 
         for (enum bi_frexp_op op = 0; op <= BI_FREXPE_LOG; ++op) {
                 ins.op.frexp = op;
-
-                if (!bit_test_single(dev, &ins, input, true, debug)) {
-                        fprintf(stderr, "FAIL: frexp.%s\n",
-                                        bi_frexp_op_name(op));
-                }
+                bit_test_single(dev, &ins, input, true, debug);
         }
 }
 
@@ -387,11 +353,7 @@ bit_round_helper(struct panfrost_device *dev, uint32_t *input, unsigned sz, bool
                         }
 
                         ins.roundmode = mode;
-
-                        if (!bit_test_single(dev, &ins, input, FMA, debug)) {
-                                fprintf(stderr, "FAIL: round.%u.%u\n",
-                                                sz, mode);
-                        }
+                        bit_test_single(dev, &ins, input, FMA, debug);
                 }
         }
 }
@@ -403,11 +365,7 @@ bit_reduce_helper(struct panfrost_device *dev, uint32_t *input, enum bit_debug d
 
         for (enum bi_reduce_op op = 0; op <= BI_REDUCE_ADD_FREXPM; ++op) {
                 ins.op.reduce = op;
-
-                if (!bit_test_single(dev, &ins, input, true, debug)) {
-                        fprintf(stderr, "FAIL: reduce.%s\n",
-                                        bi_reduce_op_name(op));
-                }
+                bit_test_single(dev, &ins, input, true, debug);
         }
 }
 
@@ -433,10 +391,7 @@ bit_select_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, e
                         for (unsigned i = 0; i < C; ++i)
                                 ins.swizzle[i][0] = ((swizzle >> i) & 1) ? hi : 0;
 
-                        if (!bit_test_single(dev, &ins, input, !add, debug)) {
-                                fprintf(stderr, "FAIL: select.%u.%u\n",
-                                                size, swizzle);
-                        }
+                        bit_test_single(dev, &ins, input, !add, debug);
                 }
         }
 }
@@ -474,10 +429,7 @@ bit_fcmp_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, enu
                                 ins.src_neg[1] = (mods & 8) ? true : false;
                         }
 
-                        if (!bit_test_single(dev, &ins, input, FMA, debug)) {
-                                fprintf(stderr, "FAIL: cmp.%s.%u.%u.%u\n",
-                                                FMA ? "fma" : "add", size, mods, cond);
-                        }
+                        bit_test_single(dev, &ins, input, FMA, debug);
                 }
         }
 }
@@ -492,11 +444,7 @@ bit_icmp_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, nir
         BIT_FOREACH_SWIZZLE(swz, 2, size) {
                 ins.cond = cond;
                 bit_apply_swizzle(&ins, swz, 2, size);
-
-                if (!bit_test_single(dev, &ins, input, false, debug)) {
-                        fprintf(stderr, "FAIL: icmp.%u.%u.%u\n",
-                                        size, swz, cond);
-                }
+                bit_test_single(dev, &ins, input, false, debug);
         }
         }
 }
@@ -544,12 +492,7 @@ bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
                         ins.swizzle[0][0] = cx;
                         ins.swizzle[0][1] = cy;
 
-                        if (!bit_test_single(dev, &ins, input, FMA, debug)) {
-                                fprintf(stderr, "FAIL: convert.%u-%u.%u-%u.%u%u\n",
-                                                from_base, from_size,
-                                                to_base, to_size,
-                                                cx, cy);
-                        }
+                        bit_test_single(dev, &ins, input, FMA, debug);
                 }
         }
 }
@@ -572,11 +515,7 @@ bit_constant_helper(struct panfrost_device *dev,
                                 0x3f800000ull | (0x3f000000ull << 32ull) :
                                 0x3f800000ull;
 
-                        if (!bit_test_single(dev, &ins, input, true, debug)) {
-                                fprintf(stderr, "FAIL: constants.%s.%u\n",
-                                                doubled ? "two" : "one",
-                                                count);
-                        }
+                        bit_test_single(dev, &ins, input, true, debug);
                 }
         }
 }
@@ -601,11 +540,7 @@ bit_bitwise_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, 
                 for (unsigned mods = 0; mods < 4; ++mods) {
                         ins.bitwise.src_invert[0] = mods & 1;
                         ins.bitwise.src_invert[1] = mods & 2;
-
-                        if (!bit_test_single(dev, &ins, input, true, debug)) {
-                                fprintf(stderr, "FAIL: bitwise.%u.%u.%u\n",
-                                                size, op, mods);
-                        }
+                        bit_test_single(dev, &ins, input, true, debug);
                 }
         }
 }
