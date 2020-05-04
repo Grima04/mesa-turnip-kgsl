@@ -108,6 +108,14 @@ bit_write(struct bit_state *s, unsigned index, nir_alu_type T, bit_t value, bool
                                         srcs[3].u16[ins->swizzle[3][c]]); \
         }
 
+#define bv4i8(fxn) \
+        for (unsigned c = 0; c < 4; ++c) { \
+                dest.u8[c] = fxn(srcs[0].u8[ins->swizzle[0][c]], \
+                                        srcs[1].u8[ins->swizzle[1][c]], \
+                                        srcs[2].u8[ins->swizzle[2][c]], \
+                                        srcs[3].u8[ins->swizzle[3][c]]); \
+        }
+
 #define bf32(fxn) dest.f32 = fxn(srcs[0].f32, srcs[1].f32, srcs[2].f32, srcs[3].f32)
 #define bi32(fxn) dest.i32 = fxn(srcs[0].u32, srcs[1].u32, srcs[2].u32, srcs[3].i32)
 
@@ -132,7 +140,8 @@ bit_write(struct bit_state *s, unsigned index, nir_alu_type T, bit_t value, bool
                 bv2i16(fxn16); \
                 break; \
         } else if (ins->dest_type == nir_type_int8 || ins->dest_type == nir_type_uint8) { \
-                unreachable("TODO: 8-bit"); \
+                bv4i8(fxn8); \
+                break; \
         }
 
 #define bpoly(name) \
