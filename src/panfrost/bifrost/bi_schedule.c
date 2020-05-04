@@ -109,6 +109,14 @@ bi_icmp(bi_instruction *ins)
         return ic && (ins->type == BI_CMP);
 }
 
+/* No 8/16-bit IADD/ISUB on FMA */
+static bool
+bi_imath_small(bi_instruction *ins)
+{
+        bool sz = nir_alu_type_get_type_size(ins->src_types[0]) < 32;
+        return sz && (ins->type == BI_IMATH);
+}
+
 /* Lowers FMOV to ADD #0, since FMOV doesn't exist on the h/w and this is the
  * latest time it's sane to lower (it's useful to distinguish before, but we'll
  * need this handle during scheduling to ensure the ports get modeled
@@ -159,6 +167,7 @@ bi_schedule(bi_context *ctx)
 
                         can_fma &= !bi_ambiguous_abs(ins);
                         can_fma &= !bi_icmp(ins);
+                        can_fma &= !bi_imath_small(ins);
 
                         assert(can_fma || can_add);
 
