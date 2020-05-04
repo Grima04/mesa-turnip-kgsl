@@ -601,6 +601,14 @@ bool
 gl_nir_link_spirv(struct gl_context *ctx, struct gl_shader_program *prog,
                   const struct gl_nir_linker_options *options)
 {
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      struct gl_linked_shader *shader = prog->_LinkedShaders[i];
+      if (shader) {
+         nir_remove_dead_variables(shader->Program->nir, nir_var_uniform,
+                                   &can_remove_uniform);
+      }
+   }
+
    if (!gl_nir_link_uniform_blocks(ctx, prog))
       return false;
 
