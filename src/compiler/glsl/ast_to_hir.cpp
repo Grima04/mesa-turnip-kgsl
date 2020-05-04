@@ -250,7 +250,7 @@ get_implicit_conversion_operation(const glsl_type *to, const glsl_type *from,
       }
 
    case GLSL_TYPE_UINT:
-      if (!state->has_implicit_uint_to_int_conversion())
+      if (!state->has_implicit_int_to_uint_conversion())
          return (ir_expression_operation)0;
       switch (from->base_type) {
          case GLSL_TYPE_INT: return ir_unop_i2u;

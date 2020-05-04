@@ -1667,7 +1667,7 @@ glsl_type::can_implicitly_convert_to(const glsl_type *desired,
     * state-dependent checks have already happened though, so allow anything
     * that's allowed in any shader version.
     */
-   if ((!state || state->has_implicit_uint_to_int_conversion()) &&
+   if ((!state || state->has_implicit_int_to_uint_conversion()) &&
          desired->base_type == GLSL_TYPE_UINT && this->base_type == GLSL_TYPE_INT)
       return true;
 
