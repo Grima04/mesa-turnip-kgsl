@@ -657,6 +657,57 @@ mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigne
         }
 }
 
+/* Midgard features both fcsel and icsel, depending on whether you want int or
+ * float modifiers. NIR's csel is typeless, so we want a heuristic to guess if
+ * we should emit an int or float csel depending on what modifiers could be
+ * placed. In the absense of modifiers, this is probably arbitrary. */
+
+static bool
+mir_is_bcsel_float(nir_alu_instr *instr)
+{
+        nir_op intmods[] = {
+                nir_op_i2i8, nir_op_i2i16,
+                nir_op_i2i32, nir_op_i2i64
+        };
+
+        nir_op floatmods[] = {
+                nir_op_fabs, nir_op_fneg,
+                nir_op_f2f16, nir_op_f2f32,
+                nir_op_f2f64
+        };
+
+        nir_op floatdestmods[] = {
+                nir_op_fsat, nir_op_fsat_signed, nir_op_fclamp_pos,
+                nir_op_f2f16, nir_op_f2f32
+        };
+
+        signed score = 0;
+
+        for (unsigned i = 1; i < 3; ++i) {
+                nir_alu_src s = instr->src[i];
+                for (unsigned q = 0; q < ARRAY_SIZE(intmods); ++q) {
+                        if (pan_has_source_mod(&s, intmods[q]))
+                                score--;
+                }
+        }
+
+        for (unsigned i = 1; i < 3; ++i) {
+                nir_alu_src s = instr->src[i];
+                for (unsigned q = 0; q < ARRAY_SIZE(floatmods); ++q) {
+                        if (pan_has_source_mod(&s, floatmods[q]))
+                                score++;
+                }
+        }
+
+        for (unsigned q = 0; q < ARRAY_SIZE(floatdestmods); ++q) {
+                nir_dest *dest = &instr->dest.dest;
+                if (pan_has_dest_mod(&dest, floatdestmods[q]))
+                        score++;
+        }
+
+        return (score > 0);
+}
+
 static void
 emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
@@ -878,17 +929,11 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         }
 
         case nir_op_b32csel: {
-                /* Midgard features both fcsel and icsel, depending on
-                 * the type of the arguments/output. However, as long
-                 * as we're careful we can _always_ use icsel and
-                 * _never_ need fcsel, since the latter does additional
-                 * floating-point-specific processing whereas the
-                 * former just moves bits on the wire. It's not obvious
-                 * why these are separate opcodes, save for the ability
-                 * to do things like sat/pos/abs/neg for free */
-
                 bool mixed = nir_is_non_scalar_swizzle(&instr->src[0], nr_components);
-                op = mixed ? midgard_alu_op_icsel_v : midgard_alu_op_icsel;
+                bool is_float = mir_is_bcsel_float(instr);
+                op = is_float ?
+                        (mixed ? midgard_alu_op_fcsel_v : midgard_alu_op_fcsel) :
+                        (mixed ? midgard_alu_op_icsel_v : midgard_alu_op_icsel);
 
                 break;
         }
