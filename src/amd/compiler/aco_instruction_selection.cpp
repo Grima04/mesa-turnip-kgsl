@@ -6690,7 +6690,7 @@ void visit_shared_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
          op32 = aco_opcode::ds_write_b32;
          op64 = aco_opcode::ds_write_b64;
          op32_rtn = aco_opcode::ds_wrxchg_rtn_b32;
-         op64_rtn = aco_opcode::ds_wrxchg2_rtn_b64;
+         op64_rtn = aco_opcode::ds_wrxchg_rtn_b64;
          break;
       case nir_intrinsic_shared_atomic_comp_swap:
          op32 = aco_opcode::ds_cmpst_b32;
