@@ -617,6 +617,18 @@ nir_accepts_inot(nir_op op, unsigned src)
         }
 }
 
+static bool
+mir_accept_dest_mod(compiler_context *ctx, nir_dest **dest, nir_op op)
+{
+        if (pan_has_dest_mod(dest, op)) {
+                assert((*dest)->is_ssa);
+                BITSET_SET(ctx->already_emitted, (*dest)->ssa.index);
+                return true;
+        }
+
+        return false;
+}
+
 static void
 mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigned to, bool *abs, bool *neg, bool *not, bool is_int, unsigned bcast_count)
 {
@@ -908,6 +920,33 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         /* Fetch unit, quirks, etc information */
         unsigned opcode_props = alu_opcode_props[op].props;
         bool quirk_flipped_r24 = opcode_props & QUIRK_FLIPPED_R24;
+
+        /* Look for floating point mods. We have the mods fsat, fsat_signed,
+         * and fpos. We also have the relations (note 3 * 2 = 6 cases):
+         *
+         * fsat_signed(fpos(x)) = fsat(x)
+         * fsat_signed(fsat(x)) = fsat(x)
+         * fpos(fsat_signed(x)) = fsat(x)
+         * fpos(fsat(x)) = fsat(x)
+         * fsat(fsat_signed(x)) = fsat(x)
+         * fsat(fpos(x)) = fsat(x)
+         *
+         * So by cases any composition of output modifiers is equivalent to
+         * fsat alone.
+         */
+
+        if (!is_int && !(opcode_props & OP_TYPE_CONVERT)) {
+                bool fpos = mir_accept_dest_mod(ctx, &dest, nir_op_fclamp_pos);
+                bool fsat = mir_accept_dest_mod(ctx, &dest, nir_op_fsat);
+                bool ssat = mir_accept_dest_mod(ctx, &dest, nir_op_fsat_signed);
+                bool prior = (outmod != midgard_outmod_none);
+                int count = (int) prior + (int) fpos + (int) ssat + (int) fsat;
+
+                outmod = ((count > 1) || fsat) ? midgard_outmod_sat :
+                        fpos ? midgard_outmod_pos :
+                        ssat ? midgard_outmod_sat_signed :
+                        outmod;
+        }
 
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
