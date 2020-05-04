@@ -96,6 +96,7 @@ typedef uint32_t xcb_window_t;
 #define NUM_META_FS_KEYS 13
 #define TU_MAX_DRM_DEVICES 8
 #define MAX_VIEWS 8
+#define MAX_BIND_POINTS 2 /* compute + graphics */
 /* The Qualcomm driver exposes 0x20000058 */
 #define MAX_STORAGE_BUFFER_RANGE 0x20000000
 /* We use ldc for uniform buffer loads, just like the Qualcomm driver, so
@@ -1011,7 +1012,7 @@ struct tu_cmd_buffer
    VkShaderStageFlags push_constant_stages;
    struct tu_descriptor_set meta_push_descriptors;
 
-   struct tu_descriptor_state descriptors[VK_PIPELINE_BIND_POINT_RANGE_SIZE];
+   struct tu_descriptor_state descriptors[MAX_BIND_POINTS];
 
    struct tu_cmd_buffer_upload upload;
 
