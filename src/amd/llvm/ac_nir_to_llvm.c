@@ -194,13 +194,13 @@ static LLVMValueRef emit_intrin_1f_param(struct ac_llvm_context *ctx,
 					 LLVMTypeRef result_type,
 					 LLVMValueRef src0)
 {
-	char name[64];
+	char name[64], type[64];
 	LLVMValueRef params[] = {
 		ac_to_float(ctx, src0),
 	};
 
-	ASSERTED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
-						 ac_get_elem_bits(ctx, result_type));
+	ac_build_type_name_for_intr(LLVMTypeOf(params[0]), type, sizeof(type));
+	ASSERTED const int length = snprintf(name, sizeof(name), "%s.%s", intrin, type);
 	assert(length < sizeof(name));
 	return ac_build_intrinsic(ctx, name, result_type, params, 1, AC_FUNC_ATTR_READNONE);
 }
@@ -210,14 +210,14 @@ static LLVMValueRef emit_intrin_2f_param(struct ac_llvm_context *ctx,
 				       LLVMTypeRef result_type,
 				       LLVMValueRef src0, LLVMValueRef src1)
 {
-	char name[64];
+	char name[64], type[64];
 	LLVMValueRef params[] = {
 		ac_to_float(ctx, src0),
 		ac_to_float(ctx, src1),
 	};
 
-	ASSERTED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
-						 ac_get_elem_bits(ctx, result_type));
+	ac_build_type_name_for_intr(LLVMTypeOf(params[0]), type, sizeof(type));
+	ASSERTED const int length = snprintf(name, sizeof(name), "%s.%s", intrin, type);
 	assert(length < sizeof(name));
 	return ac_build_intrinsic(ctx, name, result_type, params, 2, AC_FUNC_ATTR_READNONE);
 }
@@ -227,15 +227,15 @@ static LLVMValueRef emit_intrin_3f_param(struct ac_llvm_context *ctx,
 					 LLVMTypeRef result_type,
 					 LLVMValueRef src0, LLVMValueRef src1, LLVMValueRef src2)
 {
-	char name[64];
+	char name[64], type[64];
 	LLVMValueRef params[] = {
 		ac_to_float(ctx, src0),
 		ac_to_float(ctx, src1),
 		ac_to_float(ctx, src2),
 	};
 
-	ASSERTED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
-						 ac_get_elem_bits(ctx, result_type));
+	ac_build_type_name_for_intr(LLVMTypeOf(params[0]), type, sizeof(type));
+	ASSERTED const int length = snprintf(name, sizeof(name), "%s.%s", intrin, type);
 	assert(length < sizeof(name));
 	return ac_build_intrinsic(ctx, name, result_type, params, 3, AC_FUNC_ATTR_READNONE);
 }
