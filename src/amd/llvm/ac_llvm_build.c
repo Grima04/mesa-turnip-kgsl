@@ -3125,9 +3125,6 @@ void ac_optimize_vs_outputs(struct ac_llvm_context *ctx,
 
 			target -= V_008DFC_SQ_EXP_PARAM;
 
-			if ((1u << target) & skip_output_mask)
-				continue;
-
 			/* Parse the instruction. */
 			memset(&exp, 0, sizeof(exp));
 			exp.offset = target;
@@ -3151,12 +3148,13 @@ void ac_optimize_vs_outputs(struct ac_llvm_context *ctx,
 			}
 
 			/* Eliminate constant and duplicated PARAM exports. */
-			if (ac_eliminate_const_output(vs_output_param_offset,
-						      num_outputs, &exp) ||
-			    ac_eliminate_duplicated_output(ctx,
-							   vs_output_param_offset,
-							   num_outputs, &exports,
-							   &exp)) {
+			if (!((1u << target) & skip_output_mask) &&
+                            (ac_eliminate_const_output(vs_output_param_offset,
+						       num_outputs, &exp) ||
+			     ac_eliminate_duplicated_output(ctx,
+							    vs_output_param_offset,
+							    num_outputs, &exports,
+							    &exp))) {
 				removed_any = true;
 			} else {
 				exports.exp[exports.num++] = exp;
