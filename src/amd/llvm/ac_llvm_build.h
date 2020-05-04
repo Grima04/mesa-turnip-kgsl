@@ -318,7 +318,6 @@ ac_build_buffer_store_format(struct ac_llvm_context *ctx,
 			     LLVMValueRef data,
 			     LLVMValueRef vindex,
 			     LLVMValueRef voffset,
-			     unsigned num_channels,
 			     unsigned cache_policy);
 
 LLVMValueRef

@@ -1183,8 +1183,6 @@ ac_build_buffer_store_common(struct ac_llvm_context *ctx,
 			     LLVMValueRef vindex,
 			     LLVMValueRef voffset,
 			     LLVMValueRef soffset,
-			     unsigned num_channels,
-			     LLVMTypeRef return_channel_type,
 			     unsigned cache_policy,
 			     bool use_format,
 			     bool structurized)
@@ -1198,12 +1196,10 @@ ac_build_buffer_store_common(struct ac_llvm_context *ctx,
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, cache_policy, 0);
-	unsigned func = !ac_has_vec3_support(ctx->chip_class, use_format) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
 
-	LLVMTypeRef type = func > 1 ? LLVMVectorType(return_channel_type, func) : return_channel_type;
-	ac_build_type_name_for_intr(type, type_name, sizeof(type_name));
+	ac_build_type_name_for_intr(LLVMTypeOf(data), type_name, sizeof(type_name));
 
 	if (use_format) {
 		snprintf(name, sizeof(name), "llvm.amdgcn.%s.buffer.store.format.%s",
@@ -1223,13 +1219,10 @@ ac_build_buffer_store_format(struct ac_llvm_context *ctx,
 			     LLVMValueRef data,
 			     LLVMValueRef vindex,
 			     LLVMValueRef voffset,
-			     unsigned num_channels,
 			     unsigned cache_policy)
 {
-	ac_build_buffer_store_common(ctx, rsrc, data, vindex,
-				     voffset, NULL, num_channels,
-				     ctx->f32, cache_policy,
-				     true, true);
+	ac_build_buffer_store_common(ctx, rsrc, data, vindex, voffset, NULL,
+				     cache_policy, true, true);
 }
 
 /* TBUFFER_STORE_FORMAT_{X,XY,XYZ,XYZW} <- the suffix is selected by num_channels=1..4.
@@ -1278,7 +1271,6 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 
 		ac_build_buffer_store_common(ctx, rsrc, ac_to_float(ctx, vdata),
 					     ctx->i32_0, voffset, offset,
-					     num_channels, ctx->f32,
 					     cache_policy, false, false);
 		return;
 	}
@@ -1936,8 +1928,7 @@ ac_build_tbuffer_store_short(struct ac_llvm_context *ctx,
 	if (LLVM_VERSION_MAJOR >= 9) {
 		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
 		ac_build_buffer_store_common(ctx, rsrc, vdata, NULL,
-					     voffset, soffset, 1,
-					     ctx->i16, cache_policy,
+					     voffset, soffset, cache_policy,
 					     false, false);
 	} else {
 		unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_16;
@@ -1963,8 +1954,7 @@ ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx,
 	if (LLVM_VERSION_MAJOR >= 9) {
 		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
 		ac_build_buffer_store_common(ctx, rsrc, vdata, NULL,
-					     voffset, soffset, 1,
-					     ctx->i8, cache_policy,
+					     voffset, soffset, cache_policy,
 					     false, false);
 	} else {
 		unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_8;

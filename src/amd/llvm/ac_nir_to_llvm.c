@@ -2857,8 +2857,7 @@ static void visit_image_store(struct ac_nir_context *ctx,
 						 ctx->ac.i32_0, "");
 
 		ac_build_buffer_store_format(&ctx->ac, rsrc, src, vindex,
-					     ctx->ac.i32_0, src_channels,
-					     args.cache_policy);
+					     ctx->ac.i32_0, args.cache_policy);
 	} else {
 		bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
 
