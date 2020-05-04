@@ -267,6 +267,8 @@ static VkResult anv_create_cmd_buffer(
                          &device->surface_state_pool, 4096);
    anv_state_stream_init(&cmd_buffer->dynamic_state_stream,
                          &device->dynamic_state_pool, 16384);
+   anv_state_stream_init(&cmd_buffer->general_state_stream,
+                         &device->general_state_pool, 16384);
 
    anv_cmd_state_init(cmd_buffer);
 
@@ -319,6 +321,7 @@ anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer)
 
    anv_state_stream_finish(&cmd_buffer->surface_state_stream);
    anv_state_stream_finish(&cmd_buffer->dynamic_state_stream);
+   anv_state_stream_finish(&cmd_buffer->general_state_stream);
 
    anv_cmd_state_finish(cmd_buffer);
 
@@ -357,6 +360,11 @@ anv_cmd_buffer_reset(struct anv_cmd_buffer *cmd_buffer)
    anv_state_stream_finish(&cmd_buffer->dynamic_state_stream);
    anv_state_stream_init(&cmd_buffer->dynamic_state_stream,
                          &cmd_buffer->device->dynamic_state_pool, 16384);
+
+   anv_state_stream_finish(&cmd_buffer->general_state_stream);
+   anv_state_stream_init(&cmd_buffer->general_state_stream,
+                         &cmd_buffer->device->general_state_pool, 16384);
+
    return VK_SUCCESS;
 }
 

@@ -1487,6 +1487,14 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       }
 
       struct anv_block_pool *pool;
+      pool = &cmd_buffer->device->general_state_pool.block_pool;
+      anv_block_pool_foreach_bo(bo, pool) {
+         result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
+                                     bo, NULL, 0);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
       pool = &cmd_buffer->device->dynamic_state_pool.block_pool;
       anv_block_pool_foreach_bo(bo, pool) {
          result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,

@@ -2918,10 +2918,19 @@ VkResult anv_CreateDevice(
 
    anv_bo_pool_init(&device->batch_bo_pool, device);
 
+   /* Because scratch is also relative to General State Base Address, we leave
+    * the base address 0 and start the pool memory at an offset.  This way we
+    * get the correct offsets in the anv_states that get allocated from it.
+    */
+   result = anv_state_pool_init(&device->general_state_pool, device,
+                                0, GENERAL_STATE_POOL_MIN_ADDRESS, 16384);
+   if (result != VK_SUCCESS)
+      goto fail_batch_bo_pool;
+
    result = anv_state_pool_init(&device->dynamic_state_pool, device,
                                 DYNAMIC_STATE_POOL_MIN_ADDRESS, 0, 16384);
    if (result != VK_SUCCESS)
-      goto fail_batch_bo_pool;
+      goto fail_general_state_pool;
 
    if (device->info.gen >= 8) {
       /* The border color pointer is limited to 24 bits, so we need to make
@@ -3075,6 +3084,8 @@ VkResult anv_CreateDevice(
    if (device->info.gen >= 8)
       anv_state_reserved_pool_finish(&device->custom_border_colors);
    anv_state_pool_finish(&device->dynamic_state_pool);
+ fail_general_state_pool:
+   anv_state_pool_finish(&device->general_state_pool);
  fail_batch_bo_pool:
    anv_bo_pool_finish(&device->batch_bo_pool);
    anv_bo_cache_finish(&device->bo_cache);
@@ -3142,6 +3153,7 @@ void anv_DestroyDevice(
    anv_state_pool_finish(&device->surface_state_pool);
    anv_state_pool_finish(&device->instruction_state_pool);
    anv_state_pool_finish(&device->dynamic_state_pool);
+   anv_state_pool_finish(&device->general_state_pool);
 
    anv_bo_pool_finish(&device->batch_bo_pool);
 

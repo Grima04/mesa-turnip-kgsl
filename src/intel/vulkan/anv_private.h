@@ -121,8 +121,10 @@ struct gen_perf_query_result;
  * various reasons. This healthy margin prevents reads from wrapping around
  * 48-bit addresses.
  */
-#define LOW_HEAP_MIN_ADDRESS               0x000000001000ULL /* 4 KiB */
-#define LOW_HEAP_MAX_ADDRESS               0x0000bfffffffULL
+#define GENERAL_STATE_POOL_MIN_ADDRESS     0x000000010000ULL /* 64 KiB */
+#define GENERAL_STATE_POOL_MAX_ADDRESS     0x00003fffffffULL
+#define LOW_HEAP_MIN_ADDRESS               0x000040000000ULL /* 1 GiB */
+#define LOW_HEAP_MAX_ADDRESS               0x00007fffffffULL
 #define DYNAMIC_STATE_POOL_MIN_ADDRESS     0x0000c0000000ULL /* 3 GiB */
 #define DYNAMIC_STATE_POOL_MAX_ADDRESS     0x0000ffffffffULL
 #define BINDING_TABLE_POOL_MIN_ADDRESS     0x000100000000ULL /* 4 GiB */
@@ -135,6 +137,8 @@ struct gen_perf_query_result;
 #define CLIENT_VISIBLE_HEAP_MAX_ADDRESS    0x0002bfffffffULL
 #define HIGH_HEAP_MIN_ADDRESS              0x0002c0000000ULL /* 11 GiB */
 
+#define GENERAL_STATE_POOL_SIZE     \
+   (GENERAL_STATE_POOL_MAX_ADDRESS - GENERAL_STATE_POOL_MIN_ADDRESS + 1)
 #define LOW_HEAP_SIZE               \
    (LOW_HEAP_MAX_ADDRESS - LOW_HEAP_MIN_ADDRESS + 1)
 #define DYNAMIC_STATE_POOL_SIZE     \
@@ -1370,6 +1374,7 @@ struct anv_device {
 
     struct anv_bo_cache                         bo_cache;
 
+    struct anv_state_pool                       general_state_pool;
     struct anv_state_pool                       dynamic_state_pool;
     struct anv_state_pool                       instruction_state_pool;
     struct anv_state_pool                       binding_table_pool;
@@ -3049,6 +3054,7 @@ struct anv_cmd_buffer {
    /* Stream objects for storing temporary data */
    struct anv_state_stream                      surface_state_stream;
    struct anv_state_stream                      dynamic_state_stream;
+   struct anv_state_stream                      general_state_stream;
 
    VkCommandBufferUsageFlags                    usage_flags;
    VkCommandBufferLevel                         level;
