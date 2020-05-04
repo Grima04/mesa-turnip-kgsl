@@ -1942,6 +1942,20 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
+static bool
+format_needs_software_int_clamp(VkFormat format)
+{
+   switch (format) {
+      case VK_FORMAT_A2R10G10B10_UINT_PACK32:
+      case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+      case VK_FORMAT_A2B10G10R10_UINT_PACK32:
+      case VK_FORMAT_A2B10G10R10_SINT_PACK32:
+         return true;
+      default:
+         return false;
+   };
+}
+
 static void
 get_blit_pipeline_cache_key(VkImageAspectFlags aspect,
                            VkFormat dst_format,
@@ -1955,7 +1969,17 @@ get_blit_pipeline_cache_key(VkImageAspectFlags aspect,
    *p = dst_format;
    p++;
 
-   *p = vk_format_is_int(dst_format) ? src_format : 0;
+   /* Generally, when blitting from a larger format to a smaller format
+    * the hardware takes care of clamping the source to the RT range.
+    * Specifically, for integer formats, this is done by using
+    * V3D_RENDER_TARGET_CLAMP_INT in the render target setup, however, this
+    * clamps to the bit-size of the render type, and some formats, such as
+    * rgb10a2_uint have a 16-bit type, so it won't do what we need and we
+    * require to clamp in software. In these cases, we need to amend the blit
+    * shader with clamp code that depends on both the src and dst formats, so
+    * we need the src format to be part of the key.
+    */
+   *p = format_needs_software_int_clamp(dst_format) ? src_format : 0;
    p++;
 
    *p = aspect;
@@ -2266,11 +2290,13 @@ get_color_blit_fs(struct v3dv_device *device,
 
    /* For integer textures, if the bit-size of the destination is too small to
     * hold source value, Vulkan (CTS) expects the implementation to clamp to the
-    * maximum value the destination can hold, however, the hardware doesn't do
-    * this and instead it just takes the souce bits that fit into the
-    * destination. Fix that by clamping manually.
+    * maximum value the destination can hold. The hardware can clamp to the
+    * render target type, which usually matches the component bit-size, but
+    * there are some cases that won't match, such as rgb10a2, which has a 16-bit
+    * render target type, so in these cases we need to clamp manually.
     */
-   if (is_int_blit) {
+   if (format_needs_software_int_clamp(dst_format)) {
+      assert(is_int_blit);
       enum pipe_format src_pformat = vk_format_to_pipe_format(src_format);
       enum pipe_format dst_pformat = vk_format_to_pipe_format(dst_format);
 

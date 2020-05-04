@@ -1080,7 +1080,8 @@ v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
 
    *rt_bpp = iview->internal_bpp;
    *rt_type = iview->internal_type;
-   *rt_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
+   *rt_clamp =vk_format_is_int(iview->vk_format) ?
+      V3D_RENDER_TARGET_CLAMP_INT : V3D_RENDER_TARGET_CLAMP_NONE;
 }
 
 static void
