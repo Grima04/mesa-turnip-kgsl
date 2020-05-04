@@ -1101,7 +1101,9 @@ static const struct add_op_info add_op_infos[] = {
         { 0x17880, "ADD.v4i8", ADD_TWO_SRC },
         { 0x178c0, "ADD.i32",  ADD_TWO_SRC },
         { 0x17900, "ADD.v2i16", ADD_TWO_SRC },
+        { 0x17a80, "SUB.v4i8", ADD_TWO_SRC },
         { 0x17ac0, "SUB.i32",  ADD_TWO_SRC },
+        { 0x17b00, "SUB.v2i16",  ADD_TWO_SRC },
         { 0x17c10, "ADDC.i32", ADD_TWO_SRC }, // adds src0 to the bottom bit of src1
         { 0x17d80, "ADD.i32.i16.X", ADD_TWO_SRC },
         { 0x17d90, "ADD.i32.u16.X", ADD_TWO_SRC },
