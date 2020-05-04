@@ -498,10 +498,11 @@ static enum bi_class
 bi_class_for_nir_alu(nir_op op)
 {
         switch (op) {
-        case nir_op_iadd:
         case nir_op_fadd:
         case nir_op_fsub:
                 return BI_ADD;
+
+        case nir_op_iadd:
         case nir_op_isub:
                 return BI_IMATH;
 
@@ -787,6 +788,12 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_fsub:
                 alu.src_neg[1] = true; /* FADD */
+                break;
+        case nir_op_iadd:
+                alu.op.imath = BI_IMATH_ADD;
+                break;
+        case nir_op_isub:
+                alu.op.imath = BI_IMATH_SUB;
                 break;
         case nir_op_fmax:
         case nir_op_imax:

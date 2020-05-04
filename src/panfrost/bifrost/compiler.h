@@ -167,6 +167,11 @@ enum bi_bitwise_op {
         BI_BITWISE_XOR
 };
 
+enum bi_imath_op {
+        BI_IMATH_ADD,
+        BI_IMATH_SUB,
+};
+
 enum bi_table_op {
         /* fp32 log2() with low precision, suitable for GL or half_log2() in
          * CL. In the first argument, takes x. Letting u be such that x =
@@ -276,6 +281,7 @@ typedef struct {
                 enum bi_table_op table;
                 enum bi_frexp_op frexp;
                 enum bi_tex_op texture;
+                enum bi_imath_op imath;
 
                 /* For FMA/ADD, should we add a biased exponent? */
                 bool mscale;

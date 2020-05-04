@@ -238,6 +238,16 @@ bi_bitwise_op_name(enum bi_bitwise_op op)
         }
 }
 
+static const char *
+bi_imath_op_name(enum bi_imath_op op)
+{
+        switch (op) {
+        case BI_IMATH_ADD: return "iadd";
+        case BI_IMATH_SUB: return "isub";
+        default: return "invalid";
+        }
+}
+
 const char *
 bi_table_op_name(enum bi_table_op op)
 {
@@ -328,6 +338,8 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", ins->op.minmax == BI_MINMAX_MIN ? "min" : "max");
         else if (ins->type == BI_BITWISE)
                 fprintf(fp, "%s", bi_bitwise_op_name(ins->op.bitwise));
+        else if (ins->type == BI_IMATH)
+                fprintf(fp, "%s", bi_imath_op_name(ins->op.imath));
         else if (ins->type == BI_SPECIAL)
                 fprintf(fp, "%s", bi_special_op_name(ins->op.special));
         else if (ins->type == BI_TABLE)
