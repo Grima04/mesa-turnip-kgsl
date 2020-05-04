@@ -165,7 +165,7 @@ static void interp_fs_color(struct si_shader_context *ctx, unsigned input_index,
 
    if (interp) {
       interp_param =
-         LLVMBuildBitCast(ctx->ac.builder, interp_param, LLVMVectorType(ctx->ac.f32, 2), "");
+         LLVMBuildBitCast(ctx->ac.builder, interp_param, ctx->ac.v2f32, "");
 
       i = LLVMBuildExtractElement(ctx->ac.builder, interp_param, ctx->ac.i32_0, "");
       j = LLVMBuildExtractElement(ctx->ac.builder, interp_param, ctx->ac.i32_1, "");

@@ -1574,13 +1574,13 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx,
 
 	if (instr->dest.ssa.bit_size == 8) {
 		unsigned load_dwords = instr->dest.ssa.num_components > 1 ? 2 : 1;
-		LLVMTypeRef vec_type = LLVMVectorType(LLVMInt8TypeInContext(ctx->ac.context), 4 * load_dwords);
+		LLVMTypeRef vec_type = LLVMVectorType(ctx->ac.i8, 4 * load_dwords);
 		ptr = ac_cast_ptr(&ctx->ac, ptr, vec_type);
 		LLVMValueRef res = LLVMBuildLoad(ctx->ac.builder, ptr, "");
 
 		LLVMValueRef params[3];
 		if (load_dwords > 1) {
-			LLVMValueRef res_vec = LLVMBuildBitCast(ctx->ac.builder, res, LLVMVectorType(ctx->ac.i32, 2), "");
+			LLVMValueRef res_vec = LLVMBuildBitCast(ctx->ac.builder, res, ctx->ac.v2i32, "");
 			params[0] = LLVMBuildExtractElement(ctx->ac.builder, res_vec, LLVMConstInt(ctx->ac.i32, 1, false), "");
 			params[1] = LLVMBuildExtractElement(ctx->ac.builder, res_vec, LLVMConstInt(ctx->ac.i32, 0, false), "");
 		} else {
@@ -1593,11 +1593,11 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx,
 
 		res = LLVMBuildTrunc(ctx->ac.builder, res, LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.num_components * 8), "");
 		if (instr->dest.ssa.num_components > 1)
-			res = LLVMBuildBitCast(ctx->ac.builder, res, LLVMVectorType(LLVMInt8TypeInContext(ctx->ac.context), instr->dest.ssa.num_components), "");
+			res = LLVMBuildBitCast(ctx->ac.builder, res, LLVMVectorType(ctx->ac.i8, instr->dest.ssa.num_components), "");
 		return res;
 	} else if (instr->dest.ssa.bit_size == 16) {
 		unsigned load_dwords = instr->dest.ssa.num_components / 2 + 1;
-		LLVMTypeRef vec_type = LLVMVectorType(LLVMInt16TypeInContext(ctx->ac.context), 2 * load_dwords);
+		LLVMTypeRef vec_type = LLVMVectorType(ctx->ac.i16, 2 * load_dwords);
 		ptr = ac_cast_ptr(&ctx->ac, ptr, vec_type);
 		LLVMValueRef res = LLVMBuildLoad(ctx->ac.builder, ptr, "");
 		res = LLVMBuildBitCast(ctx->ac.builder, res, vec_type, "");

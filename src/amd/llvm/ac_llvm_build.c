@@ -89,6 +89,9 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->f32 = LLVMFloatTypeInContext(ctx->context);
 	ctx->f64 = LLVMDoubleTypeInContext(ctx->context);
 	ctx->v2i16 = LLVMVectorType(ctx->i16, 2);
+	ctx->v4i16 = LLVMVectorType(ctx->i16, 4);
+	ctx->v2f16 = LLVMVectorType(ctx->f16, 2);
+	ctx->v4f16 = LLVMVectorType(ctx->f16, 4);
 	ctx->v2i32 = LLVMVectorType(ctx->i32, 2);
 	ctx->v3i32 = LLVMVectorType(ctx->i32, 3);
 	ctx->v4i32 = LLVMVectorType(ctx->i32, 4);
@@ -2249,13 +2252,10 @@ void ac_build_export(struct ac_llvm_context *ctx, struct ac_export_args *a)
 	args[1] = LLVMConstInt(ctx->i32, a->enabled_channels, 0);
 
 	if (a->compr) {
-		LLVMTypeRef i16 = LLVMInt16TypeInContext(ctx->context);
-		LLVMTypeRef v2i16 = LLVMVectorType(i16, 2);
-
 		args[2] = LLVMBuildBitCast(ctx->builder, a->out[0],
-				v2i16, "");
+				ctx->v2i16, "");
 		args[3] = LLVMBuildBitCast(ctx->builder, a->out[1],
-				v2i16, "");
+				ctx->v2i16, "");
 		args[4] = LLVMConstInt(ctx->i1, a->done, 0);
 		args[5] = LLVMConstInt(ctx->i1, a->valid_mask, 0);
 
@@ -2540,10 +2540,7 @@ LLVMValueRef ac_build_image_get_sample_count(struct ac_llvm_context *ctx,
 LLVMValueRef ac_build_cvt_pkrtz_f16(struct ac_llvm_context *ctx,
 				    LLVMValueRef args[2])
 {
-	LLVMTypeRef v2f16 =
-		LLVMVectorType(LLVMHalfTypeInContext(ctx->context), 2);
-
-	return ac_build_intrinsic(ctx, "llvm.amdgcn.cvt.pkrtz", v2f16,
+	return ac_build_intrinsic(ctx, "llvm.amdgcn.cvt.pkrtz", ctx->v2f16,
 				  args, 2, AC_FUNC_ATTR_READNONE);
 }
 
@@ -3712,9 +3709,7 @@ ac_build_mbcnt(struct ac_llvm_context *ctx, LLVMValueRef mask)
 					  (LLVMValueRef []) { mask, ctx->i32_0 },
 					  2, AC_FUNC_ATTR_READNONE);
 	}
-	LLVMValueRef mask_vec = LLVMBuildBitCast(ctx->builder, mask,
-						 LLVMVectorType(ctx->i32, 2),
-						 "");
+	LLVMValueRef mask_vec = LLVMBuildBitCast(ctx->builder, mask, ctx->v2i32, "");
 	LLVMValueRef mask_lo = LLVMBuildExtractElement(ctx->builder, mask_vec,
 						       ctx->i32_0, "");
 	LLVMValueRef mask_hi = LLVMBuildExtractElement(ctx->builder, mask_vec,
