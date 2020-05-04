@@ -567,6 +567,9 @@ tu_shader_create(struct tu_device *dev,
    if (stage == MESA_SHADER_FRAGMENT)
       NIR_PASS_V(nir, nir_lower_input_attachments, true);
 
+   if (stage == MESA_SHADER_GEOMETRY)
+      NIR_PASS_V(nir, ir3_nir_lower_gs);
+
    NIR_PASS_V(nir, tu_lower_io, shader, layout);
 
    NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size, 0);
