@@ -195,6 +195,13 @@ struct bifrost_add_discard {
 #define BIFROST_ADD_OP_LD_UBO_4 (0x0c220 >> 3)
 #define BIFROST_ADD_SEL_16(swiz) ((0xea60 >> 3) | (swiz))
 
+#define BIFROST_ADD_IADD_8  (0x17880 >> 3)
+#define BIFROST_ADD_IADD_16 (0x17900 >> 3)
+#define BIFROST_ADD_IADD_32 (0x178c0 >> 3)
+#define BIFROST_ADD_ISUB_8  (0x17a80 >> 3)
+#define BIFROST_ADD_ISUB_16 (0x17b00 >> 3)
+#define BIFROST_ADD_ISUB_32 (0x17ac0 >> 3)
+
 struct bifrost_add_2src {
         unsigned src0 : 3;
         unsigned src1 : 3;

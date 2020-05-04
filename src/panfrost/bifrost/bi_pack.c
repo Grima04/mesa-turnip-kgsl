@@ -1626,6 +1626,32 @@ bi_pack_add_cmp(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
+bi_pack_add_imath(bi_instruction *ins, struct bi_registers *regs)
+{
+        /* TODO: 32+16 add */
+        assert(ins->src_types[0] == ins->src_types[1]);
+        unsigned sz = nir_alu_type_get_type_size(ins->src_types[0]);
+        enum bi_imath_op p = ins->op.imath;
+
+        unsigned op = 0;
+
+        if (sz == 8) {
+                op = (p == BI_IMATH_ADD) ? BIFROST_ADD_IADD_8 :
+                        BIFROST_ADD_ISUB_8;
+        } else if (sz == 16) {
+                op = (p == BI_IMATH_ADD) ? BIFROST_ADD_IADD_16 :
+                        BIFROST_ADD_ISUB_16;
+        } else if (sz == 32) {
+                op = (p == BI_IMATH_ADD) ? BIFROST_ADD_IADD_32 :
+                        BIFROST_ADD_ISUB_32;
+        } else {
+                unreachable("64-bit todo");
+        }
+
+        return bi_pack_add_2src(ins, regs, op);
+}
+
+static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 {
         if (!bundle.add)
@@ -1649,7 +1675,9 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
         case BI_DISCARD:
                 return bi_pack_add_discard(bundle.add, regs);
         case BI_FREXP:
+                unreachable("Packing todo");
         case BI_IMATH:
+                return bi_pack_add_imath(bundle.add, regs);
         case BI_LOAD:
                 unreachable("Packing todo");
         case BI_LOAD_ATTR:
