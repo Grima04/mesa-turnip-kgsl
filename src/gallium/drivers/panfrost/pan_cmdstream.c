@@ -733,7 +733,6 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 if (dev->quirks & IS_BIFROST) {
                         struct bifrost_blend_rt *brts = rts;
 
-                        brts[i].flags = 0x200;
                         if (blend[i].is_shader) {
                                 /* The blend shader's address needs to be at
                                  * the same top 32 bit as the fragment shader.
@@ -743,7 +742,8 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                        (fs->bo->gpu & (0xffffffffull << 32)));
                                 brts[i].shader = blend[i].shader.gpu;
                                 brts[i].unk2 = 0x0;
-                        } else {
+                                brts[i].flags = 0x200;
+                        } else if (ctx->pipe_framebuffer.nr_cbufs > i) {
                                 enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
                                 const struct util_format_description *format_desc;
                                 format_desc = util_format_description(format);
@@ -756,6 +756,11 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 brts[i].format = panfrost_format_to_bifrost_blend(format_desc);
                                 brts[i].unk2 = 0x19;
 
+                                brts[i].shader_type = fs->blend_types[i];
+                                brts[i].flags = 0x200;
+                        } else {
+                                /* Dummy attachment for depth-only */
+                                brts[i].unk2 = 0x3;
                                 brts[i].shader_type = fs->blend_types[i];
                         }
                 } else {
