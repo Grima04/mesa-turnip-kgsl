@@ -3087,6 +3087,11 @@ typedef struct nir_shader_compiler_options {
    bool lower_to_scalar;
 
    /**
+    * Whether nir_opt_vectorize should only create 16-bit 2D vectors.
+    */
+   bool vectorize_vec2_16bit;
+
+   /**
     * Should the linker unify inputs_read/outputs_written between adjacent
     * shader stages which are linked into a single program?
     */
