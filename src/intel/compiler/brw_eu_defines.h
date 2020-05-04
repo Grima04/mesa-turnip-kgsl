@@ -1311,6 +1311,14 @@ enum brw_message_target {
 #define BRW_DATAPORT_OWORD_BLOCK_2_OWORDS     2
 #define BRW_DATAPORT_OWORD_BLOCK_4_OWORDS     3
 #define BRW_DATAPORT_OWORD_BLOCK_8_OWORDS     4
+#define GEN12_DATAPORT_OWORD_BLOCK_16_OWORDS  5
+#define BRW_DATAPORT_OWORD_BLOCK_OWORDS(n)              \
+   ((n) == 1 ? BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW :    \
+    (n) == 2 ? BRW_DATAPORT_OWORD_BLOCK_2_OWORDS :      \
+    (n) == 4 ? BRW_DATAPORT_OWORD_BLOCK_4_OWORDS :      \
+    (n) == 8 ? BRW_DATAPORT_OWORD_BLOCK_8_OWORDS :      \
+    (n) == 16 ? GEN12_DATAPORT_OWORD_BLOCK_16_OWORDS :  \
+    (abort(), ~0))
 #define BRW_DATAPORT_OWORD_BLOCK_DWORDS(n)              \
    ((n) == 4 ? BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW :    \
     (n) == 8 ? BRW_DATAPORT_OWORD_BLOCK_2_OWORDS :      \
