@@ -175,6 +175,7 @@ stw_st_framebuffer_validate(struct st_context_iface *stctx,
  */
 static bool
 stw_st_framebuffer_present_locked(HDC hdc,
+                                  struct st_context_iface *stctx,
                                   struct st_framebuffer_iface *stfb,
                                   enum st_attachment_type statt)
 {
@@ -212,7 +213,7 @@ stw_st_framebuffer_flush_front(struct st_context_iface *stctx,
 
    hDC = GetDC(stwfb->fb->hWnd);
 
-   ret = stw_st_framebuffer_present_locked(hDC, &stwfb->base, statt);
+   ret = stw_st_framebuffer_present_locked(hDC, stctx, &stwfb->base, statt);
 
    ReleaseDC(stwfb->fb->hWnd, hDC);
 
@@ -268,7 +269,8 @@ stw_st_destroy_framebuffer_locked(struct st_framebuffer_iface *stfb)
  * Swap the buffers of the given framebuffer.
  */
 bool
-stw_st_swap_framebuffer_locked(HDC hdc, struct st_framebuffer_iface *stfb)
+stw_st_swap_framebuffer_locked(HDC hdc, struct st_context_iface *stctx,
+                               struct st_framebuffer_iface *stfb)
 {
    struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
    unsigned front = ST_ATTACHMENT_FRONT_LEFT, back = ST_ATTACHMENT_BACK_LEFT;
@@ -293,7 +295,7 @@ stw_st_swap_framebuffer_locked(HDC hdc, struct st_framebuffer_iface *stfb)
    stwfb->texture_mask = mask;
 
    front = ST_ATTACHMENT_FRONT_LEFT;
-   return stw_st_framebuffer_present_locked(hdc, &stwfb->base, front);
+   return stw_st_framebuffer_present_locked(hdc, stctx, &stwfb->base, front);
 }
 
 

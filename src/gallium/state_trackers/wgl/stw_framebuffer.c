@@ -656,7 +656,7 @@ DrvSwapBuffers(HDC hdc)
       wait_swap_interval(fb);
    }
 
-   return stw_st_swap_framebuffer_locked(hdc, fb->stfb);
+   return stw_st_swap_framebuffer_locked(hdc, ctx->st, fb->stfb);
 }
 
 
