@@ -66,14 +66,10 @@ static const struct {
 static int
 fdl6_pitchalign(struct fdl_layout *layout, int ta, int level)
 {
-	const struct util_format_description *format_desc =
-		util_format_description(layout->format);
-
 	uint32_t pitchalign = 64;
 	if (fdl_tile_mode(layout, level))
 		pitchalign = tile_alignment[ta].pitchalign;
-	if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC)
-		pitchalign *= util_format_get_blockwidth(layout->format);
+
 	return pitchalign;
 }
 
@@ -142,8 +138,9 @@ fdl6_layout(struct fdl_layout *layout,
 			height = u_minify(height0, level);
 		}
 
+		uint32_t nblocksy = util_format_get_nblocksy(format, height);
 		if (tile_mode)
-			height = align(height, tile_alignment[ta].heightalign);
+			nblocksy = align(nblocksy, tile_alignment[ta].heightalign);
 
 		/* The blits used for mem<->gmem work at a granularity of
 		 * 32x32, which can cause faults due to over-fetch on the
@@ -153,17 +150,16 @@ fdl6_layout(struct fdl_layout *layout,
 		 * may not be:
 		 */
 		if (level == mip_levels - 1)
-			height = align(height, 32);
+			nblocksy = align(nblocksy, 32);
 
-		uint32_t pitch_pixels = util_align_npot(u_minify(pitch0, level),
-				fdl6_pitchalign(layout, ta, level));
+		uint32_t nblocksx =
+			util_align_npot(util_format_get_nblocksx(format, u_minify(pitch0, level)),
+					fdl6_pitchalign(layout, ta, level));
 
 		slice->offset = layout->size;
-		uint32_t blocks = util_format_get_nblocks(format,
-				pitch_pixels, height);
+		uint32_t blocks = nblocksx * nblocksy;
 
-		slice->pitch = util_format_get_nblocksx(format, pitch_pixels) *
-			layout->cpp;
+		slice->pitch = nblocksx * layout->cpp;
 
 		/* 1d array and 2d array textures must all have the same layer size
 		 * for each miplevel on a6xx. 3d textures can have different layer
