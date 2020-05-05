@@ -31,6 +31,12 @@
 
 namespace clover {
    namespace spirv {
+      // Returns whether the binary starts with the SPIR-V magic word.
+      //
+      // The first word is interpreted as little endian and big endian, but
+      // only one of them has to match.
+      bool is_binary_spirv(const std::string &binary);
+
       // Returns whether the given binary is considered valid for the given
       // OpenCL version.
       //

@@ -676,6 +676,20 @@ namespace {
 
 }
 
+bool
+clover::spirv::is_binary_spirv(const std::string &binary)
+{
+   // A SPIR-V binary is at the very least 5 32-bit words, which represent the
+   // SPIR-V header.
+   if (binary.size() < 20u)
+      return false;
+
+   const uint32_t first_word =
+      reinterpret_cast<const uint32_t *>(binary.data())[0u];
+   return (first_word == SpvMagicNumber) ||
+          (util_bswap32(first_word) == SpvMagicNumber);
+}
+
 module
 clover::spirv::compile_program(const std::vector<char> &binary,
                                const device &dev, std::string &r_log,
@@ -850,6 +864,12 @@ clover::spirv::to_spirv_version_encoding(cl_version version) {
 }
 
 #else
+bool
+clover::spirv::is_binary_spirv(const std::string &binary)
+{
+   return false;
+}
+
 bool
 clover::spirv::is_valid_spirv(const std::vector<char> &/*binary*/,
                               const cl_version opencl_version,
