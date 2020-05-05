@@ -574,6 +574,10 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    else
       height = region->bufferImageHeight;
 
+   /* Handle copy from compressed format */
+   width /= vk_format_get_blockwidth(image->vk_format);
+   height /= vk_format_get_blockheight(image->vk_format);
+
    /* If we are storing stencil from a combined depth/stencil format the
     * Vulkan spec states that the output buffer must have packed stencil
     * values, where each stencil value is 1 byte.
@@ -658,10 +662,13 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    if (!job)
       return;
 
-   v3dv_job_start_frame(job,
-                        region->imageExtent.width,
-                        region->imageExtent.height,
-                        num_layers, 1, internal_bpp);
+   /* Handle copy from compressed format using a compatible format */
+   const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
+   const uint32_t block_h = vk_format_get_blockheight(image->vk_format);
+   const uint32_t width = region->imageExtent.width / block_w;
+   const uint32_t height = region->imageExtent.height / block_h;
+
+   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, fb_format, internal_type,
@@ -703,6 +710,27 @@ get_compatible_tlb_format(VkFormat format)
 
    case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
       return VK_FORMAT_R32_SFLOAT;
+
+   /* We can't render to compressed formats using the TLB so instead we use
+    * a compatible format with the same bpp as the compressed format. Because
+    * the compressed format's bpp is for a full block (i.e. 4x4 pixels in the
+    * case of ETC), when we implement copies with the compatible format we
+    * will have to divide offsets and dimensions on the compressed image by
+    * the compressed block size.
+    */
+   case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
+   case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+   case VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
+   case VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
+      return VK_FORMAT_R32G32B32A32_UINT;
+
+   case VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
+   case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+   case VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
+   case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+   case VK_FORMAT_EAC_R11_UNORM_BLOCK:
+   case VK_FORMAT_EAC_R11_SNORM_BLOCK:
+      return VK_FORMAT_R16G16B16A16_UINT;
 
    default:
       return VK_FORMAT_UNDEFINED;
@@ -871,10 +899,13 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    if (!job)
       return false;
 
-   v3dv_job_start_frame(job,
-                        region->extent.width,
-                        region->extent.height,
-                        num_layers, 1, internal_bpp);
+   /* Handle copy to compressed image using compatible format */
+   const uint32_t block_w = vk_format_get_blockwidth(dst->vk_format);
+   const uint32_t block_h = vk_format_get_blockheight(dst->vk_format);
+   const uint32_t width = region->extent.width / block_w;
+   const uint32_t height = region->extent.height / block_h;
+
+   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, fb_format, internal_type,
@@ -903,37 +934,92 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_image *src,
                 const VkImageCopy *region)
 {
-   /* We need to make sure that we choose a copy format that is renderable,
-    * since we are going to emit a blit shader.
-    *
-    * FIXME: for some reason, some tests fail if we choose the format from
-    * the destination rather than the source. This might be pointing at
-    * something wrong with the texture setup code, since the only difference
-    * should be that when we choose the source format it is more likely that
-    * the texture view for the blit source has the same format as the
-    * underlying image.
+   /* We need to choose a single format for the blit to ensure that this is
+    * really a copy and there are not format conversions going on. Since we
+    * going to blit, we need to make sure that the selected format can be
+    * both rendered to and textured from.
     */
-   VkFormat format =
-      src->format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO ?
+   VkFormat format;
+   uint32_t divisor = 1;
+   if (vk_format_is_compressed(src->vk_format)) {
+      /* If we are copying from a compressed format we should be aware that we
+       * are going to texture from the source image, and the texture setup
+       * knows the actual size of the image, so we need to choose a format
+       * that has a per-texel (not per-block) bpp that is compatible for that
+       * image size. For example, for a source image with size Bw*WxBh*H image
+       * and format ETC2_RGBA8_UNORM copied to a WxH image of format RGBA32UI,
+       * each of the Bw*WxBh*H texels in the compressed source image is 8-bit
+       * (which translates to a 128-bit 4x4 RGBA32 block when uncompressed),
+       * so we specify a blit with size Bw*WxBh*H and we choose a format with
+       * a bpp of 8-bit per texel (R8_UINT).
+       *
+       * Unfortunately, when copying from a format like ETC2_RGB8A1_UNORM we
+       * would need a 4-bit format, which we don't have, so instead we still
+       * choose an 8-bit format, but we apply a divisor to the row dimensions
+       * of the blit, since we are copying two texels per item.
+       */
+      format = VK_FORMAT_R8_UINT;
+      switch (src->cpp) {
+      case 16:
+         break;
+      case 8:
+         divisor = 2;
+         break;
+      default:
+         unreachable("Unsupported compressed format");
+      }
+   } else {
+      format = src->format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO ?
          src->vk_format : get_compatible_tlb_format(src->vk_format);
-   if (format == VK_FORMAT_UNDEFINED)
-      return false;
+      if (format == VK_FORMAT_UNDEFINED)
+         return false;
 
-   const struct v3dv_format *f = v3dv_get_format(format);
-   if (!f->supported || f->tex_type == TEXTURE_DATA_FORMAT_NO)
-      return false;
+      const struct v3dv_format *f = v3dv_get_format(format);
+      if (!f->supported || f->tex_type == TEXTURE_DATA_FORMAT_NO)
+         return false;
+   }
 
-
-   const VkOffset3D src_start = region->srcOffset;
+   /* Given an uncompressed image with size WxH, if we copy it to a compressed
+    * image, it will result in an image with size W*bWxH*bH, where bW and bH
+    * are the compressed format's block width and height. This means that
+    * copies between compressed and uncompressed images involve different
+    * image sizes, and therefore, we need to take that into account when
+    * setting up the source and destination blit regions below, so they are
+    * consistent from the point of view of the single compatible format
+    * selected for the copy.
+    *
+    * We should take into account that the dimensions of the region provided
+    * to the copy command are specified in terms of the source image. With that
+    * in mind, below we adjust the blit destination region to be consistent with
+    * the source region for the compatible format, so basically, we apply
+    * the block size factor to the destination offset provided by the copy
+    * command (because it is specified in terms of the destination image, not
+    * the source), and then we just add the region copy dimensions to that
+    * (since the region dimensions are already specified in terms of the source
+    * image).
+    */
+   const VkOffset3D src_start = {
+      region->srcOffset.x / divisor,
+      region->srcOffset.y,
+      region->srcOffset.z,
+   };
    const VkOffset3D src_end = {
-      src_start.x + region->extent.width,
+      src_start.x + region->extent.width / divisor,
       src_start.y + region->extent.height,
       src_start.z + region->extent.depth,
    };
 
-   const VkOffset3D dst_start = region->dstOffset;
+   const uint32_t src_block_w = vk_format_get_blockwidth(src->vk_format);
+   const uint32_t src_block_h = vk_format_get_blockheight(src->vk_format);
+   const uint32_t dst_block_w = vk_format_get_blockwidth(dst->vk_format);
+   const uint32_t dst_block_h = vk_format_get_blockheight(dst->vk_format);
+   const VkOffset3D dst_start = {
+      region->dstOffset.x * src_block_w / dst_block_w / divisor,
+      region->dstOffset.y * src_block_h / dst_block_h,
+      region->dstOffset.z,
+   };
    const VkOffset3D dst_end = {
-      dst_start.x + region->extent.width,
+      dst_start.x + region->extent.width / divisor,
       dst_start.y + region->extent.height,
       dst_start.z + region->extent.depth,
    };
@@ -947,8 +1033,7 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
    return blit_shader(cmd_buffer,
                       dst, format,
                       src, format,
-                      &blit_region,
-                      VK_FILTER_NEAREST);
+                      &blit_region, VK_FILTER_NEAREST);
 }
 
 void
@@ -1592,6 +1677,10 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
    else
       height = region->bufferImageHeight;
 
+   /* Handle copy to compressed format using a compatible format */
+   width /= vk_format_get_blockwidth(image->vk_format);
+   height /= vk_format_get_blockheight(image->vk_format);
+
    uint32_t cpp = imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ?
                   1 : image->cpp;
    uint32_t buffer_stride = width * cpp;
@@ -1712,10 +1801,13 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    if (!job)
       return;
 
-   v3dv_job_start_frame(job,
-                        region->imageExtent.width,
-                        region->imageExtent.height,
-                        num_layers, 1, internal_bpp);
+   /* Handle copy to compressed format using a compatible format */
+   const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
+   const uint32_t block_h = vk_format_get_blockheight(image->vk_format);
+   const uint32_t width = region->imageExtent.width / block_w;
+   const uint32_t height = region->imageExtent.height / block_h;
+
+   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, fb_format, internal_type,
@@ -2730,16 +2822,29 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             const VkImageBlit *region,
             VkFilter filter)
 {
-   const uint32_t dst_level_w = u_minify(dst->extent.width,
-                                         region->dstSubresource.mipLevel);
-   const uint32_t dst_level_h = u_minify(dst->extent.height,
-                                         region->dstSubresource.mipLevel);
-   const uint32_t src_level_w = u_minify(src->extent.width,
-                                         region->srcSubresource.mipLevel);
-   const uint32_t src_level_h = u_minify(src->extent.height,
-                                         region->srcSubresource.mipLevel);
-   const uint32_t src_level_d = u_minify(src->extent.depth,
-                                         region->srcSubresource.mipLevel);
+   /* When we get here from a copy between compressed / uncompressed images
+    * we choose to specify the destination blit region based on the size
+    * semantics of the source image of the copy (see copy_image_blit), so we
+    * need to apply those same semantics here when we compute the size of the
+    * destination image level.
+    */
+   const uint32_t dst_block_w = vk_format_get_blockwidth(dst->vk_format);
+   const uint32_t dst_block_h = vk_format_get_blockheight(dst->vk_format);
+   const uint32_t src_block_w = vk_format_get_blockwidth(src->vk_format);
+   const uint32_t src_block_h = vk_format_get_blockheight(src->vk_format);
+   const uint32_t dst_level_w =
+      u_minify(dst->extent.width * src_block_w / dst_block_w,
+               region->dstSubresource.mipLevel);
+   const uint32_t dst_level_h =
+      u_minify(dst->extent.height * src_block_h / dst_block_h,
+               region->dstSubresource.mipLevel);
+
+   const uint32_t src_level_w =
+      u_minify(src->extent.width, region->srcSubresource.mipLevel);
+   const uint32_t src_level_h =
+      u_minify(src->extent.height, region->srcSubresource.mipLevel);
+   const uint32_t src_level_d =
+      u_minify(src->extent.depth, region->srcSubresource.mipLevel);
 
    uint32_t dst_x, dst_y, dst_w, dst_h;
    bool dst_mirror_x, dst_mirror_y;
