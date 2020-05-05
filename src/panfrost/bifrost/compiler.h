@@ -584,6 +584,7 @@ bool bi_is_live_after(bi_context *ctx, bi_block *block, bi_instruction *start, i
 /* Layout */
 
 bool bi_can_insert_bundle(bi_clause *clause, bool constant);
+unsigned bi_clause_quadwords(bi_clause *clause);
 
 /* Code emit */
 

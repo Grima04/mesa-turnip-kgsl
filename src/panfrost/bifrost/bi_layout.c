@@ -49,3 +49,43 @@ bi_can_insert_bundle(bi_clause *clause, bool constant)
 
         return (constant_count + bundle_count) <= 13;
 }
+
+/* Helper to calculate the number of quadwords in a clause. This is a function
+ * of the number of instructions and constants; it doesn't require actually
+ * packing, which is useful for branch offsets.
+ *
+ * Table of instruction count to instruction quadwords, per the packing
+ * algorithm, where * indicates a constant is packed for free:
+ *
+ *   X | Y
+ *  ---|---
+ *   1 | 1
+ *   2 | 2
+ *   3 | 3*
+ *   4 | 3
+ *   5 | 4*
+ *   6 | 5*
+ *   7 | 5
+ *   8 | 6*
+ * 
+ * Y = { X      if X <= 3
+ *     { X - 1  if 4 <= X <= 6
+ *     { X - 2  if 7 <= X <= 8
+ *
+ * and there is a constant for free if X is in {3, 5, 6, 8}. The remaining
+ * constants are packed two-by-two as constant quadwords.
+ */
+
+unsigned
+bi_clause_quadwords(bi_clause *clause)
+{
+        unsigned X = clause->bundle_count;
+        unsigned Y = X - ((X >= 7) ? 2 : (X >= 4) ? 1 : 0);
+
+        unsigned constants = clause->constant_count;
+
+        if ((X != 4) && (X != 7) && (X >= 3) && constants)
+                constants--;
+
+        return Y + DIV_ROUND_UP(constants, 2);
+}
