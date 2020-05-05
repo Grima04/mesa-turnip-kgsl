@@ -216,7 +216,7 @@ bi_assign_port_read(bi_registers *regs, unsigned src)
                 return;
         }
 
-        bi_print_ports(regs);
+        bi_print_ports(regs, stderr);
         unreachable("Failed to find a free port for src");
 }
 
