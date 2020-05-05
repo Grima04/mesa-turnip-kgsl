@@ -3469,9 +3469,11 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpCopyLogical:
-   case SpvOpCopyObject:
       ssa = vtn_composite_copy(b, vtn_ssa_value(b, w[3]));
       break;
+   case SpvOpCopyObject:
+      vtn_copy_value(b, w[3], w[2]);
+      return;
 
    default:
       vtn_fail_with_opcode("unknown composite operation", opcode);

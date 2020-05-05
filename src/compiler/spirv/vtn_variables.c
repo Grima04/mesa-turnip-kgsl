@@ -78,13 +78,19 @@ vtn_push_value_pointer(struct vtn_builder *b, uint32_t value_id,
 
 static void
 ssa_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
-                  const struct vtn_decoration *dec, void *void_ssa)
+                  const struct vtn_decoration *dec, void *void_ctx)
 {
-   struct vtn_ssa_value *ssa = void_ssa;
-
    switch (dec->decoration) {
    case SpvDecorationNonUniformEXT:
-      ssa->access |= ACCESS_NON_UNIFORM;
+      if (val->value_type == vtn_value_type_ssa) {
+         val->ssa->access |= ACCESS_NON_UNIFORM;
+      } else if (val->value_type == vtn_value_type_pointer) {
+         val->pointer->access |= ACCESS_NON_UNIFORM;
+      } else if (val->value_type == vtn_value_type_sampled_image) {
+         val->sampled_image->image->access |= ACCESS_NON_UNIFORM;
+      } else if (val->value_type == vtn_value_type_image_pointer) {
+         val->image->image->access |= ACCESS_NON_UNIFORM;
+      }
       break;
 
    default:
@@ -102,9 +108,28 @@ vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
    } else {
       val = vtn_push_value(b, value_id, vtn_value_type_ssa);
       val->ssa = ssa;
-      vtn_foreach_decoration(b, val, ssa_decoration_cb, val->ssa);
+      vtn_foreach_decoration(b, val, ssa_decoration_cb, NULL);
    }
    return val;
+}
+
+void
+vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,
+               uint32_t dst_value_id)
+{
+   struct vtn_value *src = vtn_untyped_value(b, src_value_id);
+   struct vtn_value *dst = vtn_push_value(b, dst_value_id, src->value_type);
+   struct vtn_value src_copy = *src;
+
+   vtn_fail_if(dst->type->id != src->type->id,
+               "Result Type must equal Operand type");
+
+   src_copy.name = dst->name;
+   src_copy.decoration = dst->decoration;
+   src_copy.type = dst->type;
+   *dst = src_copy;
+
+   vtn_foreach_decoration(b, dst, ssa_decoration_cb, NULL);
 }
 
 static struct vtn_access_chain *
