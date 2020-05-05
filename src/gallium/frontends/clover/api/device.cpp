@@ -27,6 +27,23 @@
 
 using namespace clover;
 
+namespace {
+   std::string
+   supported_il_versions_as_string(const device &dev) {
+      std::string il_versions_string;
+
+      for (const auto &il_version : dev.supported_il_versions()) {
+         if (!il_versions_string.empty())
+            il_versions_string += " ";
+
+         il_versions_string += std::string(il_version.name) + "_" +
+            std::to_string(CL_VERSION_MAJOR(il_version.version)) + "." +
+            std::to_string(CL_VERSION_MINOR(il_version.version));
+      }
+      return il_versions_string;
+   }
+}
+
 CLOVER_API cl_int
 clGetDeviceIDs(cl_platform_id d_platform, cl_device_type device_type,
                cl_uint num_entries, cl_device_id *rd_devices,
@@ -428,12 +445,13 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       break;
 
    case CL_DEVICE_IL_VERSION:
-      buf.as_string() = "";
+      if (dev.supported_extensions_as_string().find("cl_khr_il_program") == std::string::npos)
+         throw error(CL_INVALID_VALUE);
+      buf.as_string() = supported_il_versions_as_string(dev);
       break;
 
    case CL_DEVICE_ILS_WITH_VERSION:
-      if (r_size)
-         *r_size = 0;
+      buf.as_vector<cl_name_version>() = dev.supported_il_versions();
       break;
 
    case CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION:
