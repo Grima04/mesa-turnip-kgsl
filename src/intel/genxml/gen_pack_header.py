@@ -617,7 +617,13 @@ class Parser(object):
                 continue
             if field.default is None:
                 continue
-            default_fields.append("   .%-35s = %6d" % (field.name, field.default))
+
+            if field.is_builtin_type():
+                default_fields.append("   .%-35s = %6d" % (field.name, field.default))
+            else:
+                # Default values should not apply to structures
+                assert field.is_enum_type()
+                default_fields.append("   .%-35s = (enum %s) %6d" % (field.name, self.gen_prefix(safe_name(field.type)), field.default))
 
         if default_fields:
             print('#define %-40s\\' % (self.gen_prefix(name + '_header')))
