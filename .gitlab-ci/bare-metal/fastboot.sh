@@ -57,6 +57,7 @@ chmod +x rootfs/set-job-env-vars.sh
 for var in \
     CI_COMMIT_BRANCH \
     CI_COMMIT_TITLE \
+    CI_JOB_ID \
     CI_JOB_URL \
     CI_MERGE_REQUEST_SOURCE_BRANCH_NAME \
     CI_MERGE_REQUEST_TITLE \
