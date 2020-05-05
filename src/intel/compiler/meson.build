@@ -85,6 +85,7 @@ libintel_compiler_files = files(
   'brw_nir_lower_alpha_to_coverage.c',
   'brw_nir_lower_image_load_store.c',
   'brw_nir_lower_mem_access_bit_sizes.c',
+  'brw_nir_lower_scoped_barriers.c',
   'brw_nir_opt_peephole_ffma.c',
   'brw_nir_tcs_workarounds.c',
   'brw_nir_clamp_image_1d_2d_array_sizes.c',
