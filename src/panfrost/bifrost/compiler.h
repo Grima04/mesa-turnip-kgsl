@@ -373,7 +373,13 @@ typedef struct {
         /* Corresponds to the usual bit but shifted by a clause */
         bool data_register_write_barrier;
 
-        /* Constants read by this clause. ISA limit. */
+        /* Constants read by this clause. ISA limit. Must satisfy:
+         *
+         *      constant_count + bundle_count <= 13
+         *
+         * Also implicitly constant_count <= bundle_count since a bundle only
+         * reads a single constant.
+         */
         uint64_t constants[8];
         unsigned constant_count;
 
