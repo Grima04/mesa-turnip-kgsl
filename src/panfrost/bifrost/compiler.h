@@ -339,17 +339,10 @@ typedef struct {
         struct list_head link;
 
         /* A clause can have 8 instructions in bundled FMA/ADD sense, so there
-         * can be 8 bundles. But each bundle can have both an FMA and an ADD,
-         * so a clause can have up to 16 bi_instructions. Whether bundles or
-         * instructions are used depends on where in scheduling we are. */
+         * can be 8 bundles. */
 
-        unsigned instruction_count;
         unsigned bundle_count;
-
-        union {
-                bi_instruction *instructions[16];
-                bi_bundle bundles[8];
-        };
+        bi_bundle bundles[8];
 
         /* For scoreboarding -- the clause ID (this is not globally unique!)
          * and its dependencies in terms of other clauses, computed during

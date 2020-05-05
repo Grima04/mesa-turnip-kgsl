@@ -469,17 +469,8 @@ bi_print_clause(bi_clause *clause, FILE *fp)
 
         fprintf(fp, "\n");
 
-        if (clause->instruction_count) {
-                assert(!clause->bundle_count);
-
-                for (unsigned i = 0; i < clause->instruction_count; ++i)
-                        bi_print_instruction(clause->instructions[i], fp);
-        } else {
-                assert(clause->bundle_count);
-
-                for (unsigned i = 0; i < clause->bundle_count; ++i)
-                        bi_print_bundle(&clause->bundles[i], fp);
-        }
+        for (unsigned i = 0; i < clause->bundle_count; ++i)
+                bi_print_bundle(&clause->bundles[i], fp);
 
         if (clause->constant_count) {
                 for (unsigned i = 0; i < clause->constant_count; ++i)
