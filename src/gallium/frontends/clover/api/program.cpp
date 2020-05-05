@@ -526,8 +526,10 @@ clGetProgramInfo(cl_program d_prog, cl_program_info param,
       break;
 
    case CL_PROGRAM_IL:
-      if (r_size)
-         *r_size = 0;
+      if (prog.il_type() != program::il_type::none)
+         buf.as_string() = prog.source();
+      else if (r_size)
+         *r_size = 0u;
       break;
    default:
       throw error(CL_INVALID_VALUE);
