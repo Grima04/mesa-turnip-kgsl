@@ -36,6 +36,17 @@
 
 #define UNMAPPED_UNIFORM_LOC ~0u
 
+struct uniform_array_info {
+   /** List of dereferences of the uniform array. */
+   struct util_dynarray *deref_list;
+
+   /** Set of bit-flags to note which array elements have been accessed. */
+   BITSET_WORD *indices;
+
+   /** Have we rezized this array yet */
+   bool resized;
+};
+
 /**
  * Built-in / reserved GL variables names start with "gl_"
  */
@@ -349,18 +360,25 @@ add_var_use_deref(nir_deref_instr *deref, struct hash_table *live,
 
    nir_deref_path_finish(&path);
 
-   /** Set of bit-flags to note which array elements have been accessed. */
-   BITSET_WORD *bits = NULL;
+
+   struct uniform_array_info *ainfo = NULL;
 
    struct hash_entry *entry =
       _mesa_hash_table_search(live, deref->var);
    if (!entry && glsl_type_is_array(deref->var->type)) {
+      ainfo = ralloc(live, struct uniform_array_info);
+
       unsigned num_bits = MAX2(1, glsl_get_aoa_size(deref->var->type));
-      bits = rzalloc_array(live, BITSET_WORD, BITSET_WORDS(num_bits));
+      ainfo->indices = rzalloc_array(live, BITSET_WORD, BITSET_WORDS(num_bits));
+
+      ainfo->deref_list = ralloc(live, struct util_dynarray);
+      util_dynarray_init(ainfo->deref_list, live);
+
+      ainfo->resized = false;
    }
 
    if (entry)
-      bits = (BITSET_WORD *) entry->data;
+      ainfo = (struct uniform_array_info *) entry->data;
 
    if (glsl_type_is_array(deref->var->type)) {
       /* Count the "depth" of the arrays-of-arrays. */
@@ -372,11 +390,13 @@ add_var_use_deref(nir_deref_instr *deref, struct hash_table *live,
       }
 
       link_util_mark_array_elements_referenced(*derefs, num_derefs, array_depth,
-                                               bits);
+                                               ainfo->indices);
+
+      util_dynarray_append(ainfo->deref_list, nir_deref_instr *, deref);
    }
 
    assert(deref->mode == deref->var->data.mode);
-   _mesa_hash_table_insert(live, deref->var, bits);
+   _mesa_hash_table_insert(live, deref->var, ainfo);
 }
 
 /* Iterate over the shader and collect infomation about uniform use */
@@ -1546,8 +1566,9 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                      struct hash_entry *entry =
                         _mesa_hash_table_search(state.referenced_uniforms, var);
                      if (entry) {
-                        BITSET_WORD *bits = (BITSET_WORD *) entry->data;
-                        if (BITSET_TEST(bits, blocks[i].linearized_array_index))
+                        struct uniform_array_info *ainfo =
+                           (struct uniform_array_info *) entry->data;
+                        if (BITSET_TEST(ainfo->indices, blocks[i].linearized_array_index))
                            blocks[i].stageref |= 1U << shader_type;
                      }
                   }
