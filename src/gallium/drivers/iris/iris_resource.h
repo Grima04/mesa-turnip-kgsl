@@ -494,6 +494,9 @@ bool iris_has_color_unresolved(const struct iris_resource *res,
                                unsigned start_level, unsigned num_levels,
                                unsigned start_layer, unsigned num_layers);
 
+bool iris_render_formats_color_compatible(enum isl_format a,
+                                          enum isl_format b,
+                                          union isl_color_value color);
 enum isl_aux_usage iris_resource_render_aux_usage(struct iris_context *ice,
                                                   struct iris_resource *res,
                                                   enum isl_format render_fmt,

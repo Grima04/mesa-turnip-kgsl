@@ -986,6 +986,25 @@ iris_resource_prepare_texture(struct iris_context *ice,
                                 aux_usage, clear_supported);
 }
 
+/* Whether or not rendering a color value with either format results in the
+ * same pixel. This can return false negatives.
+ */
+bool
+iris_render_formats_color_compatible(enum isl_format a, enum isl_format b,
+                                     union isl_color_value color)
+{
+   if (a == b)
+      return true;
+
+   /* A difference in color space doesn't matter for 0/1 values. */
+   if (isl_format_srgb_to_linear(a) == isl_format_srgb_to_linear(b) &&
+       isl_color_value_is_zero_one(color, a)) {
+      return true;
+   }
+
+   return false;
+}
+
 enum isl_aux_usage
 iris_resource_render_aux_usage(struct iris_context *ice,
                                struct iris_resource *res,
@@ -1014,6 +1033,22 @@ iris_resource_render_aux_usage(struct iris_context *ice,
           isl_format_is_srgb(render_format) &&
           !isl_color_value_is_zero_one(res->aux.clear_color, render_format))
          return ISL_AUX_USAGE_NONE;
+
+      /* Disable CCS for some cases of texture-view rendering. On gen12, HW
+       * may convert some subregions of shader output to fast-cleared blocks
+       * if CCS is enabled and the shader output matches the clear color.
+       * Existing fast-cleared blocks are correctly interpreted by the clear
+       * color and the resource format (see can_fast_clear_color). To avoid
+       * gaining new fast-cleared blocks that can't be interpreted by the
+       * resource format (and to avoid misinterpreting existing ones), shut
+       * off CCS when the interpretation of the clear color differs between
+       * the render_format and the resource format.
+       */
+      if (!iris_render_formats_color_compatible(render_format,
+                                                res->surf.format,
+                                                res->aux.clear_color)) {
+         return ISL_AUX_USAGE_NONE;
+      }
 
       if (res->aux.usage == ISL_AUX_USAGE_CCS_E &&
           format_ccs_e_compat_with_resource(devinfo, res, render_format))

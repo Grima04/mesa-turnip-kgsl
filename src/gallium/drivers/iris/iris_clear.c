@@ -92,8 +92,8 @@ can_fast_clear_color(struct iris_context *ice,
     * during resolves because the resolve operations only know about the
     * resource and not the renderbuffer.
     */
-   if (isl_format_srgb_to_linear(render_format) !=
-       isl_format_srgb_to_linear(res->surf.format)) {
+   if (!iris_render_formats_color_compatible(render_format, res->surf.format,
+                                             color)) {
       return false;
    }
 
