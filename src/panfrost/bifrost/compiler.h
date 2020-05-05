@@ -325,10 +325,12 @@ struct bi_registers {
 };
 
 /* A bi_bundle contains two paired instruction pointers. If a slot is unfilled,
- * leave it NULL; the emitter will fill in a nop.
+ * leave it NULL; the emitter will fill in a nop. Instructions reference
+ * registers via ports which are assigned per bundle.
  */
 
 typedef struct {
+        struct bi_registers regs;
         bi_instruction *fma;
         bi_instruction *add;
 } bi_bundle;

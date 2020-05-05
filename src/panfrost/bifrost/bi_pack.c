@@ -221,63 +221,61 @@ bi_assign_port_read(struct bi_registers *regs, unsigned src)
 }
 
 static struct bi_registers
-bi_assign_ports(bi_bundle now, bi_bundle prev)
+bi_assign_ports(bi_bundle *now, bi_bundle *prev)
 {
-        struct bi_registers regs = { 0 };
-
         /* We assign ports for the main register mechanism. Special ops
          * use the data registers, which has its own mechanism entirely
          * and thus gets skipped over here. */
 
-        unsigned read_dreg = now.add &&
-                bi_class_props[now.add->type] & BI_DATA_REG_SRC;
+        unsigned read_dreg = now->add &&
+                bi_class_props[now->add->type] & BI_DATA_REG_SRC;
 
-        unsigned write_dreg = prev.add &&
-                bi_class_props[prev.add->type] & BI_DATA_REG_DEST;
+        unsigned write_dreg = prev->add &&
+                bi_class_props[prev->add->type] & BI_DATA_REG_DEST;
 
         /* First, assign reads */
 
-        if (now.fma)
-                bi_foreach_src(now.fma, src)
-                        bi_assign_port_read(&regs, now.fma->src[src]);
+        if (now->fma)
+                bi_foreach_src(now->fma, src)
+                        bi_assign_port_read(&now->regs, now->fma->src[src]);
 
-        if (now.add) {
-                bi_foreach_src(now.add, src) {
+        if (now->add) {
+                bi_foreach_src(now->add, src) {
                         if (!(src == 0 && read_dreg))
-                                bi_assign_port_read(&regs, now.add->src[src]);
+                                bi_assign_port_read(&now->regs, now->add->src[src]);
                 }
         }
 
         /* Next, assign writes */
 
-        if (prev.add && prev.add->dest & BIR_INDEX_REGISTER && !write_dreg) {
-                regs.port[2] = prev.add->dest & ~BIR_INDEX_REGISTER;
-                regs.write_add = true;
+        if (prev->add && prev->add->dest & BIR_INDEX_REGISTER && !write_dreg) {
+                now->regs.port[2] = prev->add->dest & ~BIR_INDEX_REGISTER;
+                now->regs.write_add = true;
         }
 
-        if (prev.fma && prev.fma->dest & BIR_INDEX_REGISTER) {
-                unsigned r = prev.fma->dest & ~BIR_INDEX_REGISTER;
+        if (prev->fma && prev->fma->dest & BIR_INDEX_REGISTER) {
+                unsigned r = prev->fma->dest & ~BIR_INDEX_REGISTER;
 
-                if (regs.write_add) {
+                if (now->regs.write_add) {
                         /* Scheduler constraint: cannot read 3 and write 2 */
-                        assert(!regs.read_port3);
-                        regs.port[3] = r;
+                        assert(!now->regs.read_port3);
+                        now->regs.port[3] = r;
                 } else {
-                        regs.port[2] = r;
+                        now->regs.port[2] = r;
                 }
 
-                regs.write_fma = true;
+                now->regs.write_fma = true;
         }
 
         /* Finally, ensure port 1 > port 0 for the 63-x trick to function */
 
-        if (regs.enabled[0] && regs.enabled[1] && regs.port[1] < regs.port[0]) {
-                unsigned temp = regs.port[0];
-                regs.port[0] = regs.port[1];
-                regs.port[1] = temp;
+        if (now->regs.enabled[0] && now->regs.enabled[1] && now->regs.port[1] < now->regs.port[0]) {
+                unsigned temp = now->regs.port[0];
+                now->regs.port[0] = now->regs.port[1];
+                now->regs.port[1] = temp;
         }
 
-        return regs;
+        return now->regs;
 }
 
 /* Determines the register control field, ignoring the first? flag */
@@ -1681,13 +1679,13 @@ struct bi_packed_bundle {
 static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle, gl_shader_stage stage)
 {
-        struct bi_registers regs = bi_assign_ports(bundle, prev);
-        bi_assign_uniform_constant(clause, &regs, bundle);
-        regs.first_instruction = first_bundle;
+        bi_assign_ports(&bundle, &prev);
+        bi_assign_uniform_constant(clause, &bundle.regs, bundle);
+        bundle.regs.first_instruction = first_bundle;
 
-        uint64_t reg = bi_pack_registers(regs);
-        uint64_t fma = bi_pack_fma(clause, bundle, &regs);
-        uint64_t add = bi_pack_add(clause, bundle, &regs, stage);
+        uint64_t reg = bi_pack_registers(bundle.regs);
+        uint64_t fma = bi_pack_fma(clause, bundle, &bundle.regs);
+        uint64_t add = bi_pack_add(clause, bundle, &bundle.regs, stage);
 
         struct bi_packed_bundle packed = {
                 .lo = reg | (fma << 35) | ((add & 0b111111) << 58),
