@@ -1525,6 +1525,7 @@ typedef enum {
 } nir_memory_semantics;
 
 typedef enum {
+   NIR_SCOPE_NONE,
    NIR_SCOPE_INVOCATION,
    NIR_SCOPE_SUBGROUP,
    NIR_SCOPE_WORKGROUP,
@@ -1696,6 +1697,11 @@ typedef enum {
     */
    NIR_INTRINSIC_MEMORY_SCOPE,
 
+   /**
+    * Value of nir_scope.
+    */
+   NIR_INTRINSIC_EXECUTION_SCOPE,
+
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
@@ -1835,6 +1841,7 @@ INTRINSIC_IDX_ACCESSORS(driver_location, DRIVER_LOCATION, unsigned)
 INTRINSIC_IDX_ACCESSORS(memory_semantics, MEMORY_SEMANTICS, nir_memory_semantics)
 INTRINSIC_IDX_ACCESSORS(memory_modes, MEMORY_MODES, nir_variable_mode)
 INTRINSIC_IDX_ACCESSORS(memory_scope, MEMORY_SCOPE, nir_scope)
+INTRINSIC_IDX_ACCESSORS(execution_scope, EXECUTION_SCOPE, nir_scope)
 
 static inline void
 nir_intrinsic_set_align(nir_intrinsic_instr *intrin,
@@ -3127,10 +3134,10 @@ typedef struct nir_shader_compiler_options {
     * to imul with masked inputs and iadd */
    bool has_umad24;
 
-   /* Whether to generate only scoped_memory_barrier intrinsics instead of the
-    * set of memory barrier intrinsics based on GLSL.
+   /* Whether to generate only scoped_barrier intrinsics instead of the set of
+    * memory and control barrier intrinsics based on GLSL.
     */
-   bool use_scoped_memory_barrier;
+   bool use_scoped_barrier;
 
    /**
     * Is this the Intel vec4 backend?

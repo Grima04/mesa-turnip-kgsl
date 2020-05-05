@@ -786,6 +786,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       [NIR_INTRINSIC_MEMORY_SEMANTICS] = "mem_semantics",
       [NIR_INTRINSIC_MEMORY_MODES] = "mem_modes",
       [NIR_INTRINSIC_MEMORY_SCOPE] = "mem_scope",
+      [NIR_INTRINSIC_EXECUTION_SCOPE] = "exec_scope",
    };
    for (unsigned idx = 1; idx < NIR_INTRINSIC_NUM_INDEX_FLAGS; idx++) {
       if (!info->index_map[idx])
@@ -896,9 +897,11 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          break;
       }
 
+      case NIR_INTRINSIC_EXECUTION_SCOPE:
       case NIR_INTRINSIC_MEMORY_SCOPE: {
-         fprintf(fp, " mem_scope=");
+         fprintf(fp, " %s=", index_name[idx]);
          switch (nir_intrinsic_memory_scope(instr)) {
+         case NIR_SCOPE_NONE:         fprintf(fp, "NONE");         break;
          case NIR_SCOPE_DEVICE:       fprintf(fp, "DEVICE");       break;
          case NIR_SCOPE_QUEUE_FAMILY: fprintf(fp, "QUEUE_FAMILY"); break;
          case NIR_SCOPE_WORKGROUP:    fprintf(fp, "WORKGROUP");    break;

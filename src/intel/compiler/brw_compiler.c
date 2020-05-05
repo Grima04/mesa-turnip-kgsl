@@ -48,7 +48,7 @@
    .use_interpolated_input_intrinsics = true,                                 \
    .vertex_id_zero_based = true,                                              \
    .lower_base_vertex = true,                                                 \
-   .use_scoped_memory_barrier = true,                                         \
+   .use_scoped_barrier = true,                                                \
    .support_8bit_alu = true,                                                  \
    .support_16bit_alu = true
 

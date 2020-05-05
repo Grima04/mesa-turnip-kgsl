@@ -2137,14 +2137,8 @@ vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
    if (nir_semantics == 0 || modes == 0)
       return;
 
-   nir_scope nir_scope = vtn_scope_to_nir_scope(b, scope);
-   nir_intrinsic_instr *intrin =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_scoped_memory_barrier);
-   nir_intrinsic_set_memory_semantics(intrin, nir_semantics);
-
-   nir_intrinsic_set_memory_modes(intrin, modes);
-   nir_intrinsic_set_memory_scope(intrin, nir_scope);
-   nir_builder_instr_insert(&b->nb, &intrin->instr);
+   nir_scope nir_mem_scope = vtn_scope_to_nir_scope(b, scope);
+   nir_scoped_barrier(&b->nb, NIR_SCOPE_NONE, nir_mem_scope, nir_semantics, modes);
 }
 
 struct vtn_ssa_value *
@@ -3525,7 +3519,7 @@ void
 vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
                         SpvMemorySemanticsMask semantics)
 {
-   if (b->shader->options->use_scoped_memory_barrier) {
+   if (b->shader->options->use_scoped_barrier) {
       vtn_emit_scoped_memory_barrier(b, scope, semantics);
       return;
    }

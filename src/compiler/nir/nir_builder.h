@@ -1360,17 +1360,28 @@ nir_compare_func(nir_builder *b, enum compare_func func,
 }
 
 static inline void
+nir_scoped_barrier(nir_builder *b,
+                   nir_scope exec_scope,
+                   nir_scope mem_scope,
+                   nir_memory_semantics mem_semantics,
+                   nir_variable_mode mem_modes)
+{
+   nir_intrinsic_instr *intrin =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_scoped_barrier);
+   nir_intrinsic_set_execution_scope(intrin, exec_scope);
+   nir_intrinsic_set_memory_scope(intrin, mem_scope);
+   nir_intrinsic_set_memory_semantics(intrin, mem_semantics);
+   nir_intrinsic_set_memory_modes(intrin, mem_modes);
+   nir_builder_instr_insert(b, &intrin->instr);
+}
+
+static inline void
 nir_scoped_memory_barrier(nir_builder *b,
                           nir_scope scope,
                           nir_memory_semantics semantics,
                           nir_variable_mode modes)
 {
-   nir_intrinsic_instr *intrin =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_scoped_memory_barrier);
-   nir_intrinsic_set_memory_scope(intrin, scope);
-   nir_intrinsic_set_memory_semantics(intrin, semantics);
-   nir_intrinsic_set_memory_modes(intrin, modes);
-   nir_builder_instr_insert(b, &intrin->instr);
+   nir_scoped_barrier(b, NIR_SCOPE_NONE, scope, semantics, modes);
 }
 
 #endif /* NIR_BUILDER_H */
