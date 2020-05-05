@@ -642,6 +642,17 @@ Mesa EGL supports different sets of environment variables.  See the
 <dd>force anisotropy filter (up to 16)</dd>
 <dt><code>RADV_TRACE_FILE</code></dt>
 <dd>generate cmdbuffer tracefiles when a GPU hang is detected</dd>
+<dt><code>ACO_DEBUG</code></dt>
+<dd>a comma-separated list of named flags, which do various things:
+<dl>
+   <dt><code>validateir</code></dt>
+   <dd>validate the ACO IR at various points of compilation (enabled by default for debug/debugoptimized builds)</dd>
+   <dt><code>validatera</code></dt>
+   <dd>validate register assignment of ACO IR and catches many RA bugs</dd>
+   <dt><code>perfwarn</code></dt>
+   <dd>abort on some suboptimal code generation</dd>
+</dl>
+</dd>
 </dl>
 
 <h3>radeonsi driver environment variables</h3>
