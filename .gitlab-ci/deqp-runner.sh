@@ -111,8 +111,10 @@ report_flakes() {
     echo "JOIN $channel"
     sleep 1
     desc="Flakes detected in job: $CI_JOB_URL on $CI_RUNNER_DESCRIPTION"
-    if [ -n "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
+    if [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
         desc="$desc on branch $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME ($CI_MERGE_REQUEST_TITLE)"
+    elif [ -n "$CI_COMMIT_BRANCH" ]; then
+        desc="$desc on branch $CI_COMMIT_BRANCH ($CI_COMMIT_TITLE)"
     fi
     echo "PRIVMSG $channel :$desc"
     for flake in `cat $flakes`; do
