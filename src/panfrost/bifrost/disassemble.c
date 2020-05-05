@@ -2024,6 +2024,9 @@ bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offset, boo
                                 case 0xd:
                                         const_idx = 4;
                                         break;
+                                case 0xe:
+                                        const_idx = 5;
+                                        break;
                                 default:
                                         fprintf(fp, "# unknown pos 0x%x\n", pos);
                                         break;
