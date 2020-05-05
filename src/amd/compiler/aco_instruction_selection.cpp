@@ -4000,8 +4000,8 @@ inline unsigned resolve_excess_vmem_const_offset(Builder &bld, Temp &voffset, un
 }
 
 void emit_single_mubuf_store(isel_context *ctx, Temp descriptor, Temp voffset, Temp soffset, Temp vdata,
-                             unsigned const_offset = 0u, bool allow_reorder = true, bool slc = false,
-                             bool swizzled = false)
+                             unsigned const_offset = 0u, memory_sync_info sync=memory_sync_info(),
+                             bool slc = false, bool swizzled = false)
 {
    assert(vdata.id());
    assert(vdata.size() != 3 || ctx->program->chip_class != GFX6);
@@ -4018,13 +4018,12 @@ void emit_single_mubuf_store(isel_context *ctx, Temp descriptor, Temp voffset, T
                                  /* idxen*/ false, /* addr64 */ false, /* disable_wqm */ false, /* glc */ true,
                                  /* dlc*/ false, /* slc */ slc);
 
-   if (!allow_reorder)
-      static_cast<MUBUF_instruction *>(r.instr)->sync = memory_sync_info(storage_buffer, semantic_private);
+   static_cast<MUBUF_instruction *>(r.instr)->sync = sync;
 }
 
 void store_vmem_mubuf(isel_context *ctx, Temp src, Temp descriptor, Temp voffset, Temp soffset,
                                    unsigned base_const_offset, unsigned elem_size_bytes, unsigned write_mask,
-                                   bool allow_combining = true, bool reorder = true, bool slc = false)
+                                   bool allow_combining = true, memory_sync_info sync=memory_sync_info(), bool slc = false)
 {
    Builder bld(ctx->program, ctx->block);
    assert(elem_size_bytes == 2 || elem_size_bytes == 4 || elem_size_bytes == 8);
@@ -4039,7 +4038,7 @@ void store_vmem_mubuf(isel_context *ctx, Temp src, Temp descriptor, Temp voffset
 
    for (unsigned i = 0; i < write_count; i++) {
       unsigned const_offset = offsets[i] + base_const_offset;
-      emit_single_mubuf_store(ctx, descriptor, voffset, soffset, write_datas[i], const_offset, reorder, slc, !allow_combining);
+      emit_single_mubuf_store(ctx, descriptor, voffset, soffset, write_datas[i], const_offset, sync, slc, !allow_combining);
    }
 }
 
@@ -4359,7 +4358,7 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
       /* GFX6-8: ES stage is not merged into GS, data is passed from ES to GS in VMEM. */
       Temp esgs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_VS * 16u));
       Temp es2gs_offset = get_arg(ctx, ctx->args->es2gs_offset);
-      store_vmem_mubuf(ctx, src, esgs_ring, offs.first, es2gs_offset, offs.second, elem_size_bytes, write_mask, false, true, true);
+      store_vmem_mubuf(ctx, src, esgs_ring, offs.first, es2gs_offset, offs.second, elem_size_bytes, write_mask, false, memory_sync_info(), true);
    } else {
       Temp lds_base;
 
@@ -4444,7 +4443,7 @@ void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool 
 
       Temp hs_ring_tess_offchip = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_HS_TESS_OFFCHIP * 16u));
       Temp oc_lds = get_arg(ctx, ctx->args->oc_lds);
-      store_vmem_mubuf(ctx, store_val, hs_ring_tess_offchip, vmem_offs.first, oc_lds, vmem_offs.second, elem_size_bytes, write_mask, true, false);
+      store_vmem_mubuf(ctx, store_val, hs_ring_tess_offchip, vmem_offs.first, oc_lds, vmem_offs.second, elem_size_bytes, write_mask, true, memory_sync_info(storage_vmem_output));
    }
 
    if (write_to_lds) {
@@ -10435,7 +10434,7 @@ static void write_tcs_tess_factors(isel_context *ctx)
 
    assert(stride == 2 || stride == 4 || stride == 6);
    Temp tf_vec = create_vec_from_array(ctx, out, stride, RegType::vgpr, 4u);
-   store_vmem_mubuf(ctx, tf_vec, hs_ring_tess_factor, byte_offset, tf_base, tf_const_offset, 4, (1 << stride) - 1, true, false);
+   store_vmem_mubuf(ctx, tf_vec, hs_ring_tess_factor, byte_offset, tf_base, tf_const_offset, 4, (1 << stride) - 1, true, memory_sync_info());
 
    /* Store to offchip for TES to read - only if TES reads them */
    if (ctx->args->options->key.tcs.tes_reads_tess_factors) {
@@ -10443,11 +10442,11 @@ static void write_tcs_tess_factors(isel_context *ctx)
       Temp oc_lds = get_arg(ctx, ctx->args->oc_lds);
 
       std::pair<Temp, unsigned> vmem_offs_outer = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, ctx->tcs_tess_lvl_out_loc);
-      store_vmem_mubuf(ctx, tf_outer_vec, hs_ring_tess_offchip, vmem_offs_outer.first, oc_lds, vmem_offs_outer.second, 4, (1 << outer_comps) - 1, true, false);
+      store_vmem_mubuf(ctx, tf_outer_vec, hs_ring_tess_offchip, vmem_offs_outer.first, oc_lds, vmem_offs_outer.second, 4, (1 << outer_comps) - 1, true, memory_sync_info(storage_vmem_output));
 
       if (likely(inner_comps)) {
          std::pair<Temp, unsigned> vmem_offs_inner = get_tcs_per_patch_output_vmem_offset(ctx, nullptr, ctx->tcs_tess_lvl_in_loc);
-         store_vmem_mubuf(ctx, tf_inner_vec, hs_ring_tess_offchip, vmem_offs_inner.first, oc_lds, vmem_offs_inner.second, 4, (1 << inner_comps) - 1, true, false);
+         store_vmem_mubuf(ctx, tf_inner_vec, hs_ring_tess_offchip, vmem_offs_inner.first, oc_lds, vmem_offs_inner.second, 4, (1 << inner_comps) - 1, true, memory_sync_info(storage_vmem_output));
       }
    }
 
