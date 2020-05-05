@@ -27,6 +27,15 @@ each directory.
 <li><b>include</b> - Public OpenGL header files
 <li><b>src</b>
   <ul>
+  <li><b>amd</b> - AMD-specific sources
+    <ul>
+    <li><b>addrlib</b> - common sources for creating images
+    <li><b>common</b> - common code between RADV, radeonsi and ACO
+    <li><b>compiler</b> - ACO shader compiler
+    <li><b>llvm</b> - common code between RADV and radeonsi for compiling shaders using LLVM
+    <li><b>registers</b> - register definitions
+    <li><b>vulkan</b> - RADV Vulkan implementation for AMD Southern Island and newer
+    </ul>
   <li><b>compiler</b> - Common utility sources for different compilers.
     <ul>
     <li><b>glsl</b> - the GLSL IR and compiler
