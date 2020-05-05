@@ -16,8 +16,8 @@ from urllib import parse
 
 import dump_trace_images
 
-TRACES_DB_PATH = os.getcwd() + "/traces-db/"
-RESULTS_PATH = os.getcwd() + "/results/"
+TRACES_DB_PATH = "./traces-db/"
+RESULTS_PATH = "./results/"
 
 def replay(trace_path, device_name):
     success = dump_trace_images.dump_from_trace(trace_path, [], device_name)
