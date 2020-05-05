@@ -471,6 +471,32 @@ namespace {
    }
 
    bool
+   check_spirv_version(const device &dev, const char *binary,
+                       std::string &r_log) {
+      const auto spirv_version = get<uint32_t>(binary, 1u);
+      const auto supported_spirv_versions = clover::spirv::supported_versions();
+      const auto compare_versions =
+         [module_version =
+            clover::spirv::to_opencl_version_encoding(spirv_version)](const cl_name_version &supported){
+         return supported.version == module_version;
+      };
+
+      if (std::find_if(supported_spirv_versions.cbegin(),
+                       supported_spirv_versions.cend(),
+                       compare_versions) != supported_spirv_versions.cend())
+         return true;
+
+      r_log += "SPIR-V version " +
+               clover::spirv::version_to_string(spirv_version) +
+               " is not supported; supported versions:";
+      for (const auto &version : supported_spirv_versions) {
+         r_log += " " + clover::spirv::version_to_string(version.version);
+      }
+      r_log += "\n";
+      return false;
+   }
+
+   bool
    check_capabilities(const device &dev, const std::string &source,
                       std::string &r_log) {
       const size_t length = source.size() / sizeof(uint32_t);
@@ -691,6 +717,14 @@ clover::spirv::is_binary_spirv(const std::string &binary)
           (util_bswap32(first_word) == SpvMagicNumber);
 }
 
+std::string
+clover::spirv::version_to_string(uint32_t version) {
+   const uint32_t major_version = (version >> 16) & 0xff;
+   const uint32_t minor_version = (version >> 8) & 0xff;
+   return std::to_string(major_version) + '.' +
+      std::to_string(minor_version);
+}
+
 module
 clover::spirv::compile_program(const std::string &binary,
                                const device &dev, std::string &r_log,
@@ -700,6 +734,8 @@ clover::spirv::compile_program(const std::string &binary,
    if (validate && !is_valid_spirv(source, dev.device_version(), r_log))
       throw build_error();
 
+   if (!check_spirv_version(dev, source.data(), r_log))
+      throw build_error();
    if (!check_capabilities(dev, source, r_log))
       throw build_error();
    if (!check_extensions(dev, source, r_log))
@@ -760,6 +796,9 @@ clover::spirv::link_program(const std::vector<module> &modules,
 
       const auto c_il = ((struct pipe_binary_program_header*)msec.data.data())->blob;
       const auto length = msec.size;
+
+      if (!check_spirv_version(dev, c_il, r_log))
+         throw error(CL_LINK_PROGRAM_FAILURE);
 
       sections.push_back(reinterpret_cast<const uint32_t *>(c_il));
       lengths.push_back(length / sizeof(uint32_t));
@@ -876,6 +915,11 @@ clover::spirv::is_valid_spirv(const std::string &/*binary*/,
                               const cl_version opencl_version,
                               std::string &/*r_log*/) {
    return false;
+}
+
+std::string
+clover::spirv::version_to_string(uint32_t version) {
+   return "";
 }
 
 module

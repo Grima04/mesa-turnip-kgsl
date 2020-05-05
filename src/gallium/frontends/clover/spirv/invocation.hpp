@@ -46,6 +46,9 @@ namespace clover {
                           const cl_version opencl_version,
                           std::string &r_log);
 
+      // Converts an integer SPIR-V version into its textual representation.
+      std::string version_to_string(uint32_t version);
+
       // Creates a clover module out of the given SPIR-V binary.
       module compile_program(const std::string &binary,
                              const device &dev, std::string &r_log,
