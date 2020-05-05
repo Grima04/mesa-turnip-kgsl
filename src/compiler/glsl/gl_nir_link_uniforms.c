@@ -642,7 +642,7 @@ struct nir_link_uniforms_state {
    int top_level_array_stride;
 
    struct type_tree_entry *current_type;
-   struct hash_table *referenced_uniforms;
+   struct hash_table *referenced_uniforms[MESA_SHADER_STAGES];
    struct hash_table *uniform_hash;
 };
 
@@ -947,7 +947,7 @@ find_and_update_named_uniform_storage(struct gl_context *ctx,
 
          const struct glsl_type *type_no_array = glsl_without_array(type);
          struct hash_entry *entry =
-            _mesa_hash_table_search(state->referenced_uniforms,
+            _mesa_hash_table_search(state->referenced_uniforms[stage],
                                     state->current_var);
          if (entry != NULL ||
              glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE)
@@ -1330,7 +1330,7 @@ nir_link_uniform(struct gl_context *ctx,
       uniform->top_level_array_stride = state->top_level_array_stride;
 
       struct hash_entry *entry =
-         _mesa_hash_table_search(state->referenced_uniforms,
+         _mesa_hash_table_search(state->referenced_uniforms[stage],
                                  state->current_var);
       if (entry != NULL ||
           glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE)
@@ -1505,6 +1505,23 @@ gl_nir_link_uniforms(struct gl_context *ctx,
    prog->data->UniformStorage = NULL;
    prog->data->NumUniformStorage = 0;
 
+   /* Iterate through all linked shaders */
+   struct nir_link_uniforms_state state = {0,};
+
+   /* Gather information on uniform use */
+   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+      if (!sh)
+         continue;
+
+      state.referenced_uniforms[stage] =
+         _mesa_hash_table_create(NULL, _mesa_hash_pointer,
+                                 _mesa_key_pointer_equal);
+
+      nir_shader *nir = sh->Program->nir;
+      add_var_use_shader(nir, state.referenced_uniforms[stage]);
+   }
+
    /* Count total number of uniforms and allocate storage */
    unsigned storage_size = 0;
    if (!prog->data->spirv) {
@@ -1543,7 +1560,6 @@ gl_nir_link_uniforms(struct gl_context *ctx,
    }
 
    /* Iterate through all linked shaders */
-   struct nir_link_uniforms_state state = {0,};
    state.uniform_hash = _mesa_hash_table_create(NULL, _mesa_hash_string,
                                                 _mesa_key_string_equal);
 
@@ -1555,9 +1571,6 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       nir_shader *nir = sh->Program->nir;
       assert(nir);
 
-      state.referenced_uniforms =
-         _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                 _mesa_key_pointer_equal);
       state.next_bindless_image_index = 0;
       state.next_bindless_sampler_index = 0;
       state.next_image_index = 0;
@@ -1569,8 +1582,6 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       state.shader_samplers_used = 0;
       state.shader_shadow_samplers = 0;
       state.params = fill_parameters ? sh->Program->Parameters : NULL;
-
-      add_var_use_shader(nir, state.referenced_uniforms);
 
       nir_foreach_variable(var, &nir->uniforms) {
          state.current_var = var;
@@ -1667,7 +1678,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                         buffer_block_index = i;
 
                      struct hash_entry *entry =
-                        _mesa_hash_table_search(state.referenced_uniforms, var);
+                        _mesa_hash_table_search(state.referenced_uniforms[shader_type], var);
                      if (entry) {
                         struct uniform_array_info *ainfo =
                            (struct uniform_array_info *) entry->data;
@@ -1682,7 +1693,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                      buffer_block_index = i;
 
                      struct hash_entry *entry =
-                        _mesa_hash_table_search(state.referenced_uniforms, var);
+                        _mesa_hash_table_search(state.referenced_uniforms[shader_type], var);
                      if (entry)
                         blocks[i].stageref |= 1U << shader_type;
 
@@ -1745,7 +1756,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                      location = j;
 
                      struct hash_entry *entry =
-                        _mesa_hash_table_search(state.referenced_uniforms, var);
+                        _mesa_hash_table_search(state.referenced_uniforms[shader_type], var);
                      if (entry)
                         blocks[i].stageref |= 1U << shader_type;
 
@@ -1802,7 +1813,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             return false;
       }
 
-      _mesa_hash_table_destroy(state.referenced_uniforms, NULL);
+      _mesa_hash_table_destroy(state.referenced_uniforms[shader_type], NULL);
 
       if (state.num_shader_samplers >
           ctx->Const.Program[shader_type].MaxTextureImageUnits) {
