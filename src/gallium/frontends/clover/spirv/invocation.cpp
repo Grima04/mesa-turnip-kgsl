@@ -654,6 +654,9 @@ clover::spirv::link_program(const std::vector<module> &modules,
    if (!is_valid_spirv(final_binary, opencl_version, r_log))
       throw error(CL_LINK_PROGRAM_FAILURE);
 
+   if (has_flag(llvm::debug::spirv))
+      llvm::debug::log(".spvasm", spirv::print_module(final_binary, dev.device_version()));
+
    for (const auto &mod : modules)
       m.syms.insert(m.syms.end(), mod.syms.begin(), mod.syms.end());
 
