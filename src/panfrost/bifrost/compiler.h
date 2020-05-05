@@ -301,11 +301,7 @@ typedef struct {
         };
 } bi_instruction;
 
-/* Scheduling takes place in two steps. Step 1 groups instructions within a
- * block into distinct clauses (bi_clause). Step 2 schedules instructions
- * within a clause into FMA/ADD pairs (bi_bundle).
- *
- * A bi_bundle contains two paired instruction pointers. If a slot is unfilled,
+/* A bi_bundle contains two paired instruction pointers. If a slot is unfilled,
  * leave it NULL; the emitter will fill in a nop.
  */
 
