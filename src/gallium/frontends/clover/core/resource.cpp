@@ -127,8 +127,6 @@ root_resource::root_resource(clover::device &dev, memory_obj &obj,
                              command_queue &q, const std::string &data) :
    resource(dev, obj) {
    pipe_resource info {};
-   const bool user_ptr_support = dev.pipe->get_param(dev.pipe,
-         PIPE_CAP_RESOURCE_FROM_USER_MEMORY);
 
    if (image *img = dynamic_cast<image *>(&obj)) {
       info.format = translate_format(img->format());
@@ -147,7 +145,7 @@ root_resource::root_resource(clover::device &dev, memory_obj &obj,
                 PIPE_BIND_COMPUTE_RESOURCE |
                 PIPE_BIND_GLOBAL);
 
-   if (obj.flags() & CL_MEM_USE_HOST_PTR && user_ptr_support) {
+   if (obj.flags() & CL_MEM_USE_HOST_PTR && dev.allows_user_pointers()) {
       // Page alignment is normally required for this, just try, hope for the
       // best and fall back if it fails.
       pipe = dev.pipe->resource_from_user_memory(dev.pipe, &info, obj.host_ptr());
