@@ -267,14 +267,6 @@ bi_assign_ports(bi_bundle *now, bi_bundle *prev)
                 now->regs.write_fma = true;
         }
 
-        /* Finally, ensure port 1 > port 0 for the 63-x trick to function */
-
-        if (now->regs.enabled[0] && now->regs.enabled[1] && now->regs.port[1] < now->regs.port[0]) {
-                unsigned temp = now->regs.port[0];
-                now->regs.port[0] = now->regs.port[1];
-                now->regs.port[1] = temp;
-        }
-
         return now->regs;
 }
 
@@ -1676,12 +1668,28 @@ struct bi_packed_bundle {
         uint64_t hi;
 };
 
+/* We must ensure port 1 > port 0 for the 63-x trick to function, so we fix
+ * this up at pack time. (Scheduling doesn't care.) */
+
+static void
+bi_flip_ports(bi_registers *regs)
+{
+        if (regs->enabled[0] && regs->enabled[1] && regs->port[1] < regs->port[0]) {
+                unsigned temp = regs->port[0];
+                regs->port[0] = regs->port[1];
+                regs->port[1] = temp;
+        }
+
+}
+
 static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle, gl_shader_stage stage)
 {
         bi_assign_ports(&bundle, &prev);
         bi_assign_uniform_constant(clause, &bundle.regs, bundle);
         bundle.regs.first_instruction = first_bundle;
+
+        bi_flip_ports(&bundle.regs);
 
         uint64_t reg = bi_pack_registers(bundle.regs);
         uint64_t fma = bi_pack_fma(clause, bundle, &bundle.regs);
