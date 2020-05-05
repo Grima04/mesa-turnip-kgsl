@@ -84,6 +84,109 @@ uniform_storage_size(const struct glsl_type *type)
    }
 }
 
+/**
+ * Update the sizes of linked shader uniform arrays to the maximum
+ * array index used.
+ *
+ * From page 81 (page 95 of the PDF) of the OpenGL 2.1 spec:
+ *
+ *     If one or more elements of an array are active,
+ *     GetActiveUniform will return the name of the array in name,
+ *     subject to the restrictions listed above. The type of the array
+ *     is returned in type. The size parameter contains the highest
+ *     array element index used, plus one. The compiler or linker
+ *     determines the highest index used.  There will be only one
+ *     active uniform reported by the GL per uniform array.
+ */
+static void
+update_array_sizes(struct gl_shader_program *prog, nir_variable *var,
+                   struct hash_table **referenced_uniforms)
+{
+   /* For now we only resize 1D arrays.
+    * TODO: add support for resizing more complex array types ??
+    */
+   if (!glsl_type_is_array(var->type) ||
+       glsl_type_is_array(glsl_get_array_element(var->type)))
+      return;
+
+   /* GL_ARB_uniform_buffer_object says that std140 uniforms
+    * will not be eliminated.  Since we always do std140, just
+    * don't resize arrays in UBOs.
+    *
+    * Atomic counters are supposed to get deterministic
+    * locations assigned based on the declaration ordering and
+    * sizes, array compaction would mess that up.
+    *
+    * Subroutine uniforms are not removed.
+    */
+   if (nir_variable_is_in_block(var) || glsl_contains_atomic(var->type) ||
+       glsl_get_base_type(glsl_without_array(var->type)) == GLSL_TYPE_SUBROUTINE ||
+       var->constant_initializer)
+      return;
+
+   struct uniform_array_info *ainfo = NULL;
+   int words = BITSET_WORDS(glsl_array_size(var->type));
+   int max_array_size = 0;
+   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+      if (!sh)
+         continue;
+
+      struct hash_entry *entry =
+         _mesa_hash_table_search(referenced_uniforms[stage], var);
+      if (entry) {
+         ainfo = (struct uniform_array_info *)  entry->data;
+         if (ainfo->resized)
+            return;
+
+         max_array_size = MAX2(BITSET_LAST_BIT(ainfo->indices, words),
+                               max_array_size);
+      }
+
+      if (max_array_size == glsl_array_size(var->type))
+         return;
+   }
+
+   if (max_array_size != glsl_array_size(var->type)) {
+      /* If this is a built-in uniform (i.e., it's backed by some
+       * fixed-function state), adjust the number of state slots to
+       * match the new array size.  The number of slots per array entry
+       * is not known.  It seems safe to assume that the total number of
+       * slots is an integer multiple of the number of array elements.
+       * Determine the number of slots per array element by dividing by
+       * the old (total) size.
+       */
+      const unsigned num_slots = var->num_state_slots;
+      if (num_slots > 0) {
+         var->num_state_slots =
+            (max_array_size * (num_slots / glsl_array_size(var->type)));
+      }
+
+      var->type = glsl_array_type(glsl_get_array_element(var->type),
+                                  max_array_size, 0);
+
+      /* Update the types of dereferences in case we changed any. */
+      for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+         struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+         if (!sh)
+            continue;
+
+         struct hash_entry *entry =
+            _mesa_hash_table_search(referenced_uniforms[stage], var);
+         if (entry) {
+            struct uniform_array_info *ainfo =
+               (struct uniform_array_info *) entry->data;
+            util_dynarray_foreach(ainfo->deref_list, nir_deref_instr *, deref) {
+               (*deref)->type = var->type;
+            }
+         }
+      }
+
+      if (ainfo)
+         ainfo->resized = true;
+   }
+}
+
 static void
 nir_setup_uniform_remap_tables(struct gl_context *ctx,
                                struct gl_shader_program *prog)
