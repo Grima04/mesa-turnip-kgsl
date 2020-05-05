@@ -137,16 +137,9 @@ def gitlab_check_trace(project_url, repo_commit, device_name, trace, expectation
 
     return ok, result
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--file', required=True,
-                        help='the name of the traces.yml file listing traces and their checksums for each device')
-    parser.add_argument('--device-name', required=True,
-                        help="the name of the graphics device used to replay traces")
+def run(filename, device_name):
 
-    args = parser.parse_args()
-
-    with open(args.file, 'r') as f:
+    with open(filename, 'r') as f:
         y = yaml.safe_load(f)
 
     if "traces-db" in y:
@@ -161,8 +154,10 @@ def main():
     results = {}
     for trace in traces:
         for expectation in trace['expectations']:
-            if expectation['device'] == args.device_name:
-                ok, result = gitlab_check_trace(project_url, commit_id, args.device_name, trace, expectation)
+            if expectation['device'] == device_name:
+                ok, result = gitlab_check_trace(project_url, commit_id,
+                                                device_name, trace,
+                                                expectation)
                 all_ok = all_ok and ok
                 results.update(result)
 
@@ -170,8 +165,18 @@ def main():
     with open(os.path.join(RESULTS_PATH, 'results.yml'), 'w') as f:
         yaml.safe_dump(results, f, default_flow_style=False)
 
+    return all_ok
 
-    sys.exit(0 if all_ok else 1)
+def main(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--file', required=True,
+                        help='the name of the traces.yml file listing traces and their checksums for each device')
+    parser.add_argument('--device-name', required=True,
+                        help="the name of the graphics device used to replay traces")
+
+    args = parser.parse_args(args)
+    return run(args.file, args.device_name)
 
 if __name__ == "__main__":
-    main()
+    all_ok = main(sys.argv[1:])
+    sys.exit(0 if all_ok else 1)
