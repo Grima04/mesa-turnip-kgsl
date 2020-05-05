@@ -1522,6 +1522,17 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       add_var_use_shader(nir, state.referenced_uniforms[stage]);
    }
 
+   /* Resize uniform arrays based on the maximum array index */
+   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+      if (!sh)
+         continue;
+
+      nir_shader *nir = sh->Program->nir;
+      nir_foreach_variable(var, &nir->uniforms)
+         update_array_sizes(prog, var, state.referenced_uniforms);
+   }
+
    /* Count total number of uniforms and allocate storage */
    unsigned storage_size = 0;
    if (!prog->data->spirv) {

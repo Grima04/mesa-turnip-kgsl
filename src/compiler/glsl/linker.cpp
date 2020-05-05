@@ -4444,21 +4444,20 @@ static void
 link_and_validate_uniforms(struct gl_context *ctx,
                            struct gl_shader_program *prog)
 {
+   assert(!ctx->Const.UseNIRGLSLLinker);
+
    update_array_sizes(prog);
+   link_assign_uniform_locations(prog, ctx);
 
-   if (!ctx->Const.UseNIRGLSLLinker) {
-      link_assign_uniform_locations(prog, ctx);
+   if (prog->data->LinkStatus == LINKING_FAILURE)
+      return;
 
-      if (prog->data->LinkStatus == LINKING_FAILURE)
-         return;
-
-      link_util_calculate_subroutine_compat(prog);
-      link_util_check_uniform_resources(ctx, prog);
-      link_util_check_subroutine_resources(prog);
-      check_image_resources(ctx, prog);
-      link_assign_atomic_counter_resources(ctx, prog);
-      link_check_atomic_counter_resources(ctx, prog);
-   }
+   link_util_calculate_subroutine_compat(prog);
+   link_util_check_uniform_resources(ctx, prog);
+   link_util_check_subroutine_resources(prog);
+   check_image_resources(ctx, prog);
+   link_assign_atomic_counter_resources(ctx, prog);
+   link_check_atomic_counter_resources(ctx, prog);
 }
 
 static bool
@@ -4505,7 +4504,8 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
    if (!link_varyings(prog, first, last, ctx, mem_ctx))
       return false;
 
-   link_and_validate_uniforms(ctx, prog);
+   if (!ctx->Const.UseNIRGLSLLinker)
+      link_and_validate_uniforms(ctx, prog);
 
    if (!prog->data->LinkStatus)
       return false;
