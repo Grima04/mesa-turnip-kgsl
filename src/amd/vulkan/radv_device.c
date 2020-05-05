@@ -956,9 +956,9 @@ radv_get_physical_device_features_1_1(struct radv_physical_device *pdevice,
 {
 	assert(f->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES);
 
-	f->storageBuffer16BitAccess            = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
-	f->uniformAndStorageBuffer16BitAccess  = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
-	f->storagePushConstant16               = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
+	f->storageBuffer16BitAccess            = true;
+	f->uniformAndStorageBuffer16BitAccess  = true;
+	f->storagePushConstant16               = true;
 	f->storageInputOutput16                = pdevice->rad_info.has_packed_math_16bit && (LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco);
 	f->multiview                           = true;
 	f->multiviewGeometryShader             = true;
@@ -978,9 +978,9 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
 
 	f->samplerMirrorClampToEdge = true;
 	f->drawIndirectCount = true;
-	f->storageBuffer8BitAccess = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
-	f->uniformAndStorageBuffer8BitAccess = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
-	f->storagePushConstant8 = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
+	f->storageBuffer8BitAccess = true;
+	f->uniformAndStorageBuffer8BitAccess = true;
+	f->storagePushConstant8 = true;
 	f->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco;
 	f->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco;
 	f->shaderFloat16 = pdevice->rad_info.has_packed_math_16bit && !pdevice->use_aco;
