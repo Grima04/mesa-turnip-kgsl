@@ -1846,12 +1846,15 @@ ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
          instr->src[3] = nir_src_for_ssa(nir_imm_int(b, 0)); /* LOD */
       }
 
+      unsigned num_components = util_last_bit(tgsi_inst->Dst[0].Register.WriteMask);
+
       if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_STORE) {
-         instr->src[3] = nir_src_for_ssa(nir_swizzle(b, src[1], SWIZ(X, Y, Z, W), 4));
+         instr->src[3] = nir_src_for_ssa(nir_swizzle(b, src[1], SWIZ(X, Y, Z, W),
+                                                     num_components));
          instr->src[4] = nir_src_for_ssa(nir_imm_int(b, 0)); /* LOD */
       }
 
-      instr->num_components = 4;
+      instr->num_components = num_components;
    } else {
       unreachable("unexpected file");
    }
