@@ -557,6 +557,7 @@ static const struct fma_op_info FMAOpInfos[] = {
         { true,  0x02000, "SWZ.XXXX.v4i8", FMA_ONE_SRC },
         { true,  0x03e00, "SWZ.ZZZZ.v4i8", FMA_ONE_SRC },
         { true,  0x00800, "IMAD", FMA_THREE_SRC },
+        { true,  0x07818, "MUL.i32", FMA_TWO_SRC },
         { true,  0x078db, "POPCNT", FMA_ONE_SRC },
 };
 
