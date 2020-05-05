@@ -42,6 +42,7 @@ struct stw_st_framebuffer {
    struct st_visual stvis;
 
    struct pipe_resource *textures[ST_ATTACHMENT_COUNT];
+   struct pipe_resource *msaa_textures[ST_ATTACHMENT_COUNT];
    unsigned texture_width, texture_height;
    unsigned texture_mask;
 };
@@ -83,8 +84,10 @@ stw_st_framebuffer_validate_locked(struct st_framebuffer_iface *stfb,
 
    /* remove outdated textures */
    if (stwfb->texture_width != width || stwfb->texture_height != height) {
-      for (i = 0; i < ST_ATTACHMENT_COUNT; i++)
+      for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
+         pipe_resource_reference(&stwfb->msaa_textures[i], NULL);
          pipe_resource_reference(&stwfb->textures[i], NULL);
+      }
    }
 
    memset(&templ, 0, sizeof(templ));
@@ -94,8 +97,6 @@ stw_st_framebuffer_validate_locked(struct st_framebuffer_iface *stfb,
    templ.depth0 = 1;
    templ.array_size = 1;
    templ.last_level = 0;
-   templ.nr_samples = stwfb->stvis.samples;
-   templ.nr_storage_samples = stwfb->stvis.samples;;
 
    for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
       enum pipe_format format;
@@ -128,8 +129,18 @@ stw_st_framebuffer_validate_locked(struct st_framebuffer_iface *stfb,
 
       if (format != PIPE_FORMAT_NONE) {
          templ.format = format;
-         templ.bind = bind;
 
+         if (bind != PIPE_BIND_DEPTH_STENCIL && stwfb->stvis.samples > 1) {
+            templ.bind = PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_RENDER_TARGET;
+            templ.nr_samples = templ.nr_storage_samples =
+               stwfb->stvis.samples;
+
+            stwfb->msaa_textures[i] =
+               stw_dev->screen->resource_create(stw_dev->screen, &templ);
+         }
+
+         templ.bind = bind;
+         templ.nr_samples = templ.nr_storage_samples = 1;
          stwfb->textures[i] =
             stw_dev->screen->resource_create(stw_dev->screen, &templ);
       }
@@ -162,12 +173,61 @@ stw_st_framebuffer_validate(struct st_context_iface *stctx,
       stwfb->fb->must_resize = FALSE;
    }
 
+   struct pipe_resource **textures =
+      stwfb->stvis.samples > 1 ? stwfb->msaa_textures
+                               : stwfb->textures;
+
    for (i = 0; i < count; i++)
-      pipe_resource_reference(&out[i], stwfb->textures[statts[i]]);
+      pipe_resource_reference(&out[i], textures[statts[i]]);
 
    stw_framebuffer_unlock(stwfb->fb);
 
    return true;
+}
+
+static void
+stw_pipe_blit(struct pipe_context *pipe,
+              struct pipe_resource *dst,
+              struct pipe_resource *src)
+{
+   struct pipe_blit_info blit;
+
+   /* From the GL spec, version 4.2, section 4.1.11 (Additional Multisample
+    *  Fragment Operations):
+    *
+    *      If a framebuffer object is not bound, after all operations have
+    *      been completed on the multisample buffer, the sample values for
+    *      each color in the multisample buffer are combined to produce a
+    *      single color value, and that value is written into the
+    *      corresponding color buffers selected by DrawBuffer or
+    *      DrawBuffers. An implementation may defer the writing of the color
+    *      buffers until a later time, but the state of the framebuffer must
+    *      behave as if the color buffers were updated as each fragment was
+    *      processed. The method of combination is not specified. If the
+    *      framebuffer contains sRGB values, then it is recommended that the
+    *      an average of sample values is computed in a linearized space, as
+    *      for blending (see section 4.1.7).
+    *
+    * In other words, to do a resolve operation in a linear space, we have
+    * to set sRGB formats if the original resources were sRGB, so don't use
+    * util_format_linear.
+    */
+
+   memset(&blit, 0, sizeof(blit));
+   blit.dst.resource = dst;
+   blit.dst.box.width = dst->width0;
+   blit.dst.box.height = dst->height0;
+   blit.dst.box.depth = 1;
+   blit.dst.format = dst->format;
+   blit.src.resource = src;
+   blit.src.box.width = src->width0;
+   blit.src.box.height = src->height0;
+   blit.src.box.depth = 1;
+   blit.src.format = src->format;
+   blit.mask = PIPE_MASK_RGBA;
+   blit.filter = PIPE_TEX_FILTER_NEAREST;
+
+   pipe->blit(pipe, &blit);
 }
 
 /**
@@ -183,6 +243,12 @@ stw_st_framebuffer_present_locked(HDC hdc,
    struct pipe_resource *resource;
 
    assert(stw_own_mutex(&stwfb->fb->mutex));
+
+   if (stwfb->stvis.samples > 1) {
+      stw_pipe_blit(stctx->pipe,
+                    stwfb->textures[statt],
+                    stwfb->msaa_textures[statt]);
+   }
 
    resource = stwfb->textures[statt];
    if (resource) {
@@ -254,8 +320,10 @@ stw_st_destroy_framebuffer_locked(struct st_framebuffer_iface *stfb)
    struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
    int i;
 
-   for (i = 0; i < ST_ATTACHMENT_COUNT; i++)
+   for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
+      pipe_resource_reference(&stwfb->msaa_textures[i], NULL);
       pipe_resource_reference(&stwfb->textures[i], NULL);
+   }
 
    /* Notify the st manager that the framebuffer interface is no
     * longer valid.
@@ -281,6 +349,11 @@ stw_st_swap_framebuffer_locked(HDC hdc, struct st_context_iface *stctx,
    ptex = stwfb->textures[front];
    stwfb->textures[front] = stwfb->textures[back];
    stwfb->textures[back] = ptex;
+
+   /* swap msaa_textures */
+   ptex = stwfb->msaa_textures[front];
+   stwfb->msaa_textures[front] = stwfb->msaa_textures[back];
+   stwfb->msaa_textures[back] = ptex;
 
    /* convert to mask */
    front = 1 << front;
