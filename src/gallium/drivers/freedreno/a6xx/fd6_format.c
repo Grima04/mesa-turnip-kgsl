@@ -378,10 +378,7 @@ fd6_pipe2fetchsize(enum pipe_format format)
 	if (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)
 		format = PIPE_FORMAT_Z32_FLOAT;
 
-	if (util_format_description(format)->layout == UTIL_FORMAT_LAYOUT_ASTC)
-		return TFETCH6_16_BYTE;
-
-	switch (util_format_get_blocksizebits(format) / util_format_get_blockwidth(format)) {
+	switch (util_format_get_blocksizebits(format)) {
 	case 8:   return TFETCH6_1_BYTE;
 	case 16:  return TFETCH6_2_BYTE;
 	case 32:  return TFETCH6_4_BYTE;
