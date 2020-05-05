@@ -412,6 +412,27 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 }
 
 void
+bi_print_ports(struct bi_registers *regs)
+{
+        for (unsigned i = 0; i < 2; ++i) {
+                if (regs->enabled[i])
+                        printf("port %u: %u\n", i, regs->port[i]);
+        }
+
+        if (regs->write_fma || regs->write_add) {
+                printf("port 2 (%s): %u\n",
+                                regs->write_add ? "ADD" : "FMA",
+                                regs->port[2]);
+        }
+
+        if ((regs->write_fma && regs->write_add) || regs->read_port3) {
+                printf("port 3 (%s): %u\n",
+                                regs->read_port3 ? "read" : "FMA",
+                                regs->port[3]);
+        }
+}
+
+void
 bi_print_bundle(bi_bundle *bundle, FILE *fp)
 {
         bi_instruction *ins[2] = { bundle->fma, bundle->add };

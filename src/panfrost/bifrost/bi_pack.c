@@ -59,50 +59,6 @@ bi_pack_header(bi_clause *clause, bi_clause *next, bool is_fragment)
         return u;
 }
 
-/* Represents the assignment of ports for a given bundle */
-
-struct bi_registers {
-        /* Register to assign to each port */
-        unsigned port[4];
-
-        /* Read ports can be disabled */
-        bool enabled[2];
-
-        /* Should we write FMA? what about ADD? If only a single port is
-         * enabled it is in port 2, else ADD/FMA is 2/3 respectively */
-        bool write_fma, write_add;
-
-        /* Should we read with port 3? */
-        bool read_port3;
-
-        /* Packed uniform/constant */
-        uint8_t uniform_constant;
-
-        /* Whether writes are actually for the last instruction */
-        bool first_instruction;
-};
-
-static inline void
-bi_print_ports(struct bi_registers *regs)
-{
-        for (unsigned i = 0; i < 2; ++i) {
-                if (regs->enabled[i])
-                        printf("port %u: %u\n", i, regs->port[i]);
-        }
-
-        if (regs->write_fma || regs->write_add) {
-                printf("port 2 (%s): %u\n",
-                                regs->write_add ? "ADD" : "FMA",
-                                regs->port[2]);
-        }
-
-        if ((regs->write_fma && regs->write_add) || regs->read_port3) {
-                printf("port 3 (%s): %u\n",
-                                regs->read_port3 ? "read" : "FMA",
-                                regs->port[3]);
-        }
-}
-
 /* The uniform/constant slot allows loading a contiguous 64-bit immediate or
  * pushed uniform per bundle. Figure out which one we need in the bundle (the
  * scheduler needs to ensure we only have one type per bundle), validate

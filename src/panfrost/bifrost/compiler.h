@@ -301,6 +301,29 @@ typedef struct {
         };
 } bi_instruction;
 
+/* Represents the assignment of ports for a given bi_bundle */
+
+struct bi_registers {
+        /* Register to assign to each port */
+        unsigned port[4];
+
+        /* Read ports can be disabled */
+        bool enabled[2];
+
+        /* Should we write FMA? what about ADD? If only a single port is
+         * enabled it is in port 2, else ADD/FMA is 2/3 respectively */
+        bool write_fma, write_add;
+
+        /* Should we read with port 3? */
+        bool read_port3;
+
+        /* Packed uniform/constant */
+        uint8_t uniform_constant;
+
+        /* Whether writes are actually for the last instruction */
+        bool first_instruction;
+};
+
 /* A bi_bundle contains two paired instruction pointers. If a slot is unfilled,
  * leave it NULL; the emitter will fill in a nop.
  */
