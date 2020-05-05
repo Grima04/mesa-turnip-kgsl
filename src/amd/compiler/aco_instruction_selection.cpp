@@ -6958,7 +6958,7 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
    info.align_mul = nir_intrinsic_align_mul(instr);
    info.align_offset = nir_intrinsic_align_offset(instr);
    info.swizzle_component_size = ctx->program->chip_class <= GFX8 ? 4 : 0;
-   info.sync = memory_sync_info(storage_buffer, semantic_private);
+   info.sync = memory_sync_info(storage_scratch, semantic_private);
    info.soffset = ctx->program->scratch_offset;
    emit_scratch_load(ctx, bld, &info);
 }
@@ -6982,7 +6982,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
    for (unsigned i = 0; i < write_count; i++) {
       aco_opcode op = get_buffer_store_op(false, write_datas[i].bytes());
       Instruction *instr = bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true, true);
-      static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_buffer, semantic_private);
+      static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_scratch, semantic_private);
    }
 }
 
