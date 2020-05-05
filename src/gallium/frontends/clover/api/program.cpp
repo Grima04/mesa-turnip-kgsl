@@ -214,6 +214,14 @@ clover::CreateProgramWithILKHR(cl_context d_ctx, const void *il,
 }
 
 CLOVER_API cl_program
+clCreateProgramWithIL(cl_context d_ctx,
+                      const void *il,
+                      size_t length,
+                      cl_int *r_errcode) {
+   return CreateProgramWithILKHR(d_ctx, il, length, r_errcode);
+}
+
+CLOVER_API cl_program
 clCreateProgramWithBuiltInKernels(cl_context d_ctx, cl_uint n,
                                   const cl_device_id *d_devs,
                                   const char *kernel_names,
