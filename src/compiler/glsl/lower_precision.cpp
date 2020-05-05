@@ -646,8 +646,10 @@ find_precision_visitor::visit_enter(ir_call *ir)
 
    if (!ir->callee->is_builtin() ||
        ir->return_deref == NULL ||
-       ir->return_deref->variable_referenced()->data.precision !=
-       GLSL_PRECISION_MEDIUM)
+       (ir->return_deref->variable_referenced()->data.precision !=
+        GLSL_PRECISION_MEDIUM &&
+        ir->return_deref->variable_referenced()->data.precision !=
+        GLSL_PRECISION_LOW))
       return visit_continue;
 
    ir->callee = map_builtin(ir->callee);
