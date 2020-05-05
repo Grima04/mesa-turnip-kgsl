@@ -412,7 +412,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 }
 
 void
-bi_print_ports(struct bi_registers *regs)
+bi_print_ports(bi_registers *regs)
 {
         for (unsigned i = 0; i < 2; ++i) {
                 if (regs->enabled[i])

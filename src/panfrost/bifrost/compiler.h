@@ -303,7 +303,7 @@ typedef struct {
 
 /* Represents the assignment of ports for a given bi_bundle */
 
-struct bi_registers {
+typedef struct {
         /* Register to assign to each port */
         unsigned port[4];
 
@@ -322,7 +322,7 @@ struct bi_registers {
 
         /* Whether writes are actually for the last instruction */
         bool first_instruction;
-};
+} bi_registers;
 
 /* A bi_bundle contains two paired instruction pointers. If a slot is unfilled,
  * leave it NULL; the emitter will fill in a nop. Instructions reference
@@ -330,7 +330,7 @@ struct bi_registers {
  */
 
 typedef struct {
-        struct bi_registers regs;
+        bi_registers regs;
         bi_instruction *fma;
         bi_instruction *add;
 } bi_bundle;

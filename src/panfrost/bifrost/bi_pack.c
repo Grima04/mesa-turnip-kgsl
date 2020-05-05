@@ -110,7 +110,7 @@ bi_constant_field(unsigned idx)
 
 static bool
 bi_assign_uniform_constant_single(
-                struct bi_registers *regs,
+                bi_registers *regs,
                 bi_clause *clause,
                 bi_instruction *ins, bool assigned, bool fast_zero)
 {
@@ -171,7 +171,7 @@ bi_assign_uniform_constant_single(
 static void
 bi_assign_uniform_constant(
                 bi_clause *clause,
-                struct bi_registers *regs,
+                bi_registers *regs,
                 bi_bundle bundle)
 {
         bool assigned =
@@ -183,7 +183,7 @@ bi_assign_uniform_constant(
 /* Assigns a port for reading, before anything is written */
 
 static void
-bi_assign_port_read(struct bi_registers *regs, unsigned src)
+bi_assign_port_read(bi_registers *regs, unsigned src)
 {
         /* We only assign for registers */
         if (!(src & BIR_INDEX_REGISTER))
@@ -220,7 +220,7 @@ bi_assign_port_read(struct bi_registers *regs, unsigned src)
         unreachable("Failed to find a free port for src");
 }
 
-static struct bi_registers
+static bi_registers
 bi_assign_ports(bi_bundle *now, bi_bundle *prev)
 {
         /* We assign ports for the main register mechanism. Special ops
@@ -281,7 +281,7 @@ bi_assign_ports(bi_bundle *now, bi_bundle *prev)
 /* Determines the register control field, ignoring the first? flag */
 
 static enum bifrost_reg_control
-bi_pack_register_ctrl_lo(struct bi_registers r)
+bi_pack_register_ctrl_lo(bi_registers r)
 {
         if (r.write_fma) {
                 if (r.write_add) {
@@ -307,7 +307,7 @@ bi_pack_register_ctrl_lo(struct bi_registers r)
 /* Ditto but account for the first? flag this time */
 
 static enum bifrost_reg_control
-bi_pack_register_ctrl(struct bi_registers r)
+bi_pack_register_ctrl(bi_registers r)
 {
         enum bifrost_reg_control ctrl = bi_pack_register_ctrl_lo(r);
 
@@ -324,7 +324,7 @@ bi_pack_register_ctrl(struct bi_registers r)
 }
 
 static uint64_t
-bi_pack_registers(struct bi_registers regs)
+bi_pack_registers(bi_registers regs)
 {
         enum bifrost_reg_control ctrl = bi_pack_register_ctrl(regs);
         struct bifrost_regs s = { 0 };
@@ -406,7 +406,7 @@ bi_write_data_register(bi_clause *clause, bi_instruction *ins)
 }
 
 static enum bifrost_packed_src
-bi_get_src_reg_port(struct bi_registers *regs, unsigned src)
+bi_get_src_reg_port(bi_registers *regs, unsigned src)
 {
         unsigned reg = src & ~BIR_INDEX_REGISTER;
 
@@ -421,7 +421,7 @@ bi_get_src_reg_port(struct bi_registers *regs, unsigned src)
 }
 
 static enum bifrost_packed_src
-bi_get_src(bi_instruction *ins, struct bi_registers *regs, unsigned s)
+bi_get_src(bi_instruction *ins, bi_registers *regs, unsigned s)
 {
         unsigned src = ins->src[s];
 
@@ -457,7 +457,7 @@ bi_swiz16(bi_instruction *ins, unsigned src)
 }
 
 static unsigned
-bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_fma(bi_instruction *ins, bi_registers *regs)
 {
         /* (-a)(-b) = ab, so we only need one negate bit */
         bool negate_mul = ins->src_neg[0] ^ ins->src_neg[1];
@@ -522,7 +522,7 @@ bi_pack_fma_fma(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_addmin_f32(bi_instruction *ins, bi_registers *regs)
 {
         unsigned op =
                 (ins->type == BI_ADD) ? BIFROST_FMA_OP_FADD32 :
@@ -546,7 +546,7 @@ bi_pack_fma_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static bool
-bi_pack_fp16_abs(bi_instruction *ins, struct bi_registers *regs, bool *flip)
+bi_pack_fp16_abs(bi_instruction *ins, bi_registers *regs, bool *flip)
 {
         /* Absolute values are packed in a quirky way. Let k = src1 < src0. Let
          * l be an auxiliary bit we encode. Then the hardware determines:
@@ -598,7 +598,7 @@ bi_pack_fp16_abs(bi_instruction *ins, struct bi_registers *regs, bool *flip)
 }
 
 static unsigned
-bi_pack_fmadd_min_f16(bi_instruction *ins, struct bi_registers *regs, bool FMA)
+bi_pack_fmadd_min_f16(bi_instruction *ins, bi_registers *regs, bool FMA)
 {
         unsigned op =
                 (!FMA) ? ((ins->op.minmax == BI_MINMAX_MIN) ?
@@ -648,7 +648,7 @@ bi_pack_fmadd_min_f16(bi_instruction *ins, struct bi_registers *regs, bool FMA)
 }
 
 static unsigned
-bi_pack_fma_addmin(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_addmin(bi_instruction *ins, bi_registers *regs)
 {
         if (ins->dest_type == nir_type_float32)
                 return bi_pack_fma_addmin_f32(ins, regs);
@@ -659,7 +659,7 @@ bi_pack_fma_addmin(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
+bi_pack_fma_1src(bi_instruction *ins, bi_registers *regs, unsigned op)
 {
         struct bifrost_fma_inst pack = {
                 .src0 = bi_get_src(ins, regs, 0),
@@ -670,7 +670,7 @@ bi_pack_fma_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
 }
 
 static unsigned
-bi_pack_fma_2src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
+bi_pack_fma_2src(bi_instruction *ins, bi_registers *regs, unsigned op)
 {
         struct bifrost_fma_2src pack = {
                 .src0 = bi_get_src(ins, regs, 0),
@@ -682,7 +682,7 @@ bi_pack_fma_2src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
 }
 
 static unsigned
-bi_pack_add_1src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
+bi_pack_add_1src(bi_instruction *ins, bi_registers *regs, unsigned op)
 {
         struct bifrost_add_inst pack = {
                 .src0 = bi_get_src(ins, regs, 0),
@@ -739,7 +739,7 @@ bi_cond_to_csel(enum bi_cond cond, bool *flip, bool *invert, nir_alu_type T)
 }
 
 static unsigned
-bi_pack_fma_csel(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_csel(bi_instruction *ins, bi_registers *regs)
 {
         /* TODO: Use csel3 as well */
         bool flip = false, invert = false;
@@ -768,14 +768,14 @@ bi_pack_fma_csel(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_frexp(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_frexp(bi_instruction *ins, bi_registers *regs)
 {
         unsigned op = BIFROST_FMA_OP_FREXPE_LOG;
         return bi_pack_fma_1src(ins, regs, op);
 }
 
 static unsigned
-bi_pack_fma_reduce(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_reduce(bi_instruction *ins, bi_registers *regs)
 {
         if (ins->op.reduce == BI_REDUCE_ADD_FREXPM) {
                 return bi_pack_fma_2src(ins, regs, BIFROST_FMA_OP_ADD_FREXPM);
@@ -796,7 +796,7 @@ bi_pack_fma_reduce(bi_instruction *ins, struct bi_registers *regs)
  */
 
 static unsigned
-bi_pack_convert(bi_instruction *ins, struct bi_registers *regs, bool FMA)
+bi_pack_convert(bi_instruction *ins, bi_registers *regs, bool FMA)
 {
         nir_alu_type from_base = nir_alu_type_get_base_type(ins->src_types[0]);
         unsigned from_size = nir_alu_type_get_type_size(ins->src_types[0]);
@@ -895,7 +895,7 @@ bi_pack_convert(bi_instruction *ins, struct bi_registers *regs, bool FMA)
 }
 
 static unsigned
-bi_pack_fma_select(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_select(bi_instruction *ins, bi_registers *regs)
 {
         unsigned size = nir_alu_type_get_type_size(ins->src_types[0]);
 
@@ -966,7 +966,7 @@ bi_flip_fcmp(enum bifrost_fcmp_cond cond)
 }
 
 static unsigned
-bi_pack_fma_cmp(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_cmp(bi_instruction *ins, bi_registers *regs)
 {
         nir_alu_type Tl = ins->src_types[0];
         nir_alu_type Tr = ins->src_types[1];
@@ -1051,7 +1051,7 @@ bi_fma_bitwise_op(enum bi_bitwise_op op, bool rshift)
 }
  
 static unsigned
-bi_pack_fma_bitwise(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_bitwise(bi_instruction *ins, bi_registers *regs)
 {
         unsigned size = nir_alu_type_get_type_size(ins->dest_type);
         assert(size <= 32);
@@ -1094,7 +1094,7 @@ bi_pack_fma_bitwise(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_round(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_round(bi_instruction *ins, bi_registers *regs)
 {
         bool fp16 = ins->dest_type == nir_type_float16;
         assert(fp16 || ins->dest_type == nir_type_float32);
@@ -1107,7 +1107,7 @@ bi_pack_fma_round(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma_imath(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_fma_imath(bi_instruction *ins, bi_registers *regs)
 {
         /* Scheduler: only ADD can have 8/16-bit imath */
         assert(ins->dest_type == nir_type_int32 || ins->dest_type == nir_type_uint32);
@@ -1120,7 +1120,7 @@ bi_pack_fma_imath(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
+bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
 {
         if (!bundle.fma)
                 return BIFROST_FMA_NOP;
@@ -1160,7 +1160,7 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 {
         unsigned size = nir_alu_type_get_type_size(ins->dest_type);
         assert(size == 32 || size == 16);
@@ -1200,7 +1200,7 @@ bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
 }
 
 static unsigned
-bi_pack_add_2src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
+bi_pack_add_2src(bi_instruction *ins, bi_registers *regs, unsigned op)
 {
         struct bifrost_add_2src pack = {
                 .src0 = bi_get_src(ins, regs, 0),
@@ -1212,7 +1212,7 @@ bi_pack_add_2src(bi_instruction *ins, struct bi_registers *regs, unsigned op)
 }
 
 static unsigned
-bi_pack_add_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_addmin_f32(bi_instruction *ins, bi_registers *regs)
 {
         unsigned op =
                 (ins->type == BI_ADD) ? BIFROST_ADD_OP_FADD32 :
@@ -1235,7 +1235,7 @@ bi_pack_add_addmin_f32(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add_add_f16(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_add_f16(bi_instruction *ins, bi_registers *regs)
 {
         /* ADD.v2f16 can't have outmod */
         assert(ins->outmod == BIFROST_NONE);
@@ -1257,7 +1257,7 @@ bi_pack_add_add_f16(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add_addmin(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_addmin(bi_instruction *ins, bi_registers *regs)
 {
         if (ins->dest_type == nir_type_float32)
                 return bi_pack_add_addmin_f32(ins, regs);
@@ -1271,7 +1271,7 @@ bi_pack_add_addmin(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add_ld_ubo(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_ld_ubo(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 {
         assert(ins->vector_channels >= 1 && ins->vector_channels <= 4);
 
@@ -1299,7 +1299,7 @@ bi_pack_ldst_type(nir_alu_type T)
 }
 
 static unsigned
-bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 {
         struct bifrost_ld_var_addr pack = {
                 .src0 = bi_get_src(ins, regs, 1),
@@ -1314,7 +1314,7 @@ bi_pack_add_ld_var_addr(bi_clause *clause, bi_instruction *ins, struct bi_regist
 }
 
 static unsigned
-bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 {
         assert(ins->vector_channels >= 0 && ins->vector_channels <= 4);
 
@@ -1332,7 +1332,7 @@ bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, struct bi_registers 
 }
 
 static unsigned
-bi_pack_add_st_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_st_vary(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 {
         assert(ins->vector_channels >= 1 && ins->vector_channels <= 4);
 
@@ -1349,7 +1349,7 @@ bi_pack_add_st_vary(bi_clause *clause, bi_instruction *ins, struct bi_registers 
 }
 
 static unsigned
-bi_pack_add_atest(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_atest(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 {
         bool fp16 = (ins->src_types[1] == nir_type_float16);
 
@@ -1369,7 +1369,7 @@ bi_pack_add_atest(bi_clause *clause, bi_instruction *ins, struct bi_registers *r
 }
 
 static unsigned
-bi_pack_add_blend(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_blend(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
 {
         struct bifrost_add_inst pack = {
                 .src0 = bi_get_src(ins, regs, 1),
@@ -1384,7 +1384,7 @@ bi_pack_add_blend(bi_clause *clause, bi_instruction *ins, struct bi_registers *r
 }
 
 static unsigned
-bi_pack_add_special(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_special(bi_instruction *ins, bi_registers *regs)
 {
         unsigned op = 0;
         bool fp16 = ins->dest_type == nir_type_float16;
@@ -1412,7 +1412,7 @@ bi_pack_add_special(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add_table(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_table(bi_instruction *ins, bi_registers *regs)
 {
         unsigned op = 0;
         assert(ins->dest_type == nir_type_float32);
@@ -1421,7 +1421,7 @@ bi_pack_add_table(bi_instruction *ins, struct bi_registers *regs)
         return bi_pack_add_1src(ins, regs, op);
 }
 static unsigned
-bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs, gl_shader_stage stage)
+bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, bi_registers *regs, gl_shader_stage stage)
 {
         bool f16 = ins->dest_type == nir_type_float16;
         bool vtx = stage != MESA_SHADER_FRAGMENT;
@@ -1441,7 +1441,7 @@ bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, struct bi_regist
 }
 
 static unsigned
-bi_pack_add_select(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_select(bi_instruction *ins, bi_registers *regs)
 {
         unsigned size = nir_alu_type_get_type_size(ins->src_types[0]);
         assert(size == 16);
@@ -1475,7 +1475,7 @@ bi_cond_to_discard(enum bi_cond cond, bool *flip)
 }
 
 static unsigned
-bi_pack_add_discard(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_discard(bi_instruction *ins, bi_registers *regs)
 {
         bool fp16 = ins->src_types[0] == nir_type_float16;
         assert(fp16 || ins->src_types[0] == nir_type_float32);
@@ -1522,7 +1522,7 @@ bi_cond_to_icmp(enum bi_cond cond, bool *flip, bool is_unsigned, bool is_16)
 }
 
 static unsigned
-bi_pack_add_icmp32(bi_instruction *ins, struct bi_registers *regs, bool flip,
+bi_pack_add_icmp32(bi_instruction *ins, bi_registers *regs, bool flip,
                 enum bifrost_icmp_cond cond)
 {
         struct bifrost_add_icmp pack = {
@@ -1538,7 +1538,7 @@ bi_pack_add_icmp32(bi_instruction *ins, struct bi_registers *regs, bool flip,
 }
 
 static unsigned
-bi_pack_add_icmp16(bi_instruction *ins, struct bi_registers *regs, bool flip,
+bi_pack_add_icmp16(bi_instruction *ins, bi_registers *regs, bool flip,
                 enum bifrost_icmp_cond cond)
 {
         struct bifrost_add_icmp16 pack = {
@@ -1555,7 +1555,7 @@ bi_pack_add_icmp16(bi_instruction *ins, struct bi_registers *regs, bool flip,
 }
 
 static unsigned
-bi_pack_add_cmp(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_cmp(bi_instruction *ins, bi_registers *regs)
 {
         nir_alu_type Tl = ins->src_types[0];
         nir_alu_type Tr = ins->src_types[1];
@@ -1583,7 +1583,7 @@ bi_pack_add_cmp(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add_imath(bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_imath(bi_instruction *ins, bi_registers *regs)
 {
         /* TODO: 32+16 add */
         assert(ins->src_types[0] == ins->src_types[1]);
@@ -1609,7 +1609,7 @@ bi_pack_add_imath(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs, gl_shader_stage stage)
+bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_stage stage)
 {
         if (!bundle.add)
                 return BIFROST_ADD_NOP;
