@@ -161,8 +161,6 @@ brw_create_nir(struct brw_context *brw,
       }
    }
 
-   NIR_PASS_V(nir, brw_nir_lower_uniforms, is_scalar);
-
    return nir;
 }
 
@@ -183,6 +181,7 @@ brw_nir_lower_resources(nir_shader *nir, struct gl_shader_program *shader_prog,
                         struct gl_program *prog,
                         const struct gen_device_info *devinfo)
 {
+   NIR_PASS_V(nir, brw_nir_lower_uniforms, nir->options->lower_to_scalar);
    NIR_PASS_V(prog->nir, gl_nir_lower_samplers, shader_prog);
    prog->info.textures_used = prog->nir->info.textures_used;
    prog->info.textures_used_by_txf = prog->nir->info.textures_used_by_txf;
