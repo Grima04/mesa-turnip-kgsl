@@ -2116,7 +2116,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
    for (gl_shader_stage stage = MESA_SHADER_STAGES - 1;
         stage > MESA_SHADER_NONE; stage--) {
       const VkPipelineShaderStageCreateInfo *stage_info = stage_infos[stage];
-      if (!stage_info)
+      if (!stage_info && stage != MESA_SHADER_FRAGMENT)
          continue;
 
       struct tu_shader *shader =

@@ -472,8 +472,6 @@ tu_shader_create(struct tu_device *dev,
                  struct tu_pipeline_layout *layout,
                  const VkAllocationCallbacks *alloc)
 {
-   const struct tu_shader_module *module =
-      tu_shader_module_from_handle(stage_info->module);
    struct tu_shader *shader;
 
    const uint32_t max_variant_count = (stage == MESA_SHADER_VERTEX) ? 2 : 1;
@@ -484,11 +482,25 @@ tu_shader_create(struct tu_device *dev,
    if (!shader)
       return NULL;
 
-   /* translate SPIR-V to NIR */
-   assert(module->code_size % 4 == 0);
-   nir_shader *nir = tu_spirv_to_nir(
-      dev->compiler, (const uint32_t *) module->code, module->code_size / 4,
-      stage, stage_info->pName, stage_info->pSpecializationInfo);
+   nir_shader *nir;
+   if (stage_info) {
+      /* translate SPIR-V to NIR */
+      const struct tu_shader_module *module =
+         tu_shader_module_from_handle(stage_info->module);
+      assert(module->code_size % 4 == 0);
+      nir = tu_spirv_to_nir(
+         dev->compiler, (const uint32_t *) module->code, module->code_size / 4,
+         stage, stage_info->pName, stage_info->pSpecializationInfo);
+   } else {
+      assert(stage == MESA_SHADER_FRAGMENT);
+      nir_builder fs_b;
+      const nir_shader_compiler_options *nir_options =
+         ir3_get_compiler_options(dev->compiler);
+      nir_builder_init_simple_shader(&fs_b, NULL, MESA_SHADER_FRAGMENT, nir_options);
+      fs_b.shader->info.name = ralloc_strdup(fs_b.shader, "noop_fs");
+      nir = fs_b.shader;
+   }
+
    if (!nir) {
       vk_free2(&dev->alloc, alloc, shader);
       return NULL;
