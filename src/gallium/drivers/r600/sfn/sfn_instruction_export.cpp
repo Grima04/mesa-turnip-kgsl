@@ -295,7 +295,7 @@ bool MemRingOutIntruction::is_equal_to(const Instruction& lhs) const
 static const char *write_type_str[4] = {"WRITE", "WRITE_IDX", "WRITE_ACK", "WRITE_IDX_ACK" };
 void MemRingOutIntruction::do_print(std::ostream& os) const
 {
-   os << "MEM_RING" << m_ring_op;
+   os << "MEM_RING " << m_ring_op;
    os << " " << write_type_str[m_type] << " " << m_base_address;
    os << " " << gpr();
    if (m_type == mem_write_ind || m_type == mem_write_ind_ack)
