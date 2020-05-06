@@ -124,6 +124,18 @@ struct ir3_sched_node {
 	 * If so, we should prioritize it when possible
 	 */
 	bool kill_path;
+
+	/* This node represents a shader output.  A semi-common pattern in
+	 * shaders is something along the lines of:
+	 *
+	 *    fragcolor.w = 1.0
+	 *
+	 * Which we'd prefer to schedule as late as possible, since it
+	 * produces a live value that is never killed/consumed.  So detect
+	 * outputs up-front, and avoid scheduling them unless the reduce
+	 * register pressure (or at least are neutral)
+	 */
+	bool output;
 };
 
 #define foreach_sched_node(__n, __list) \
@@ -394,12 +406,18 @@ live_effect(struct ir3_instruction *instr)
 	return new_live - freed_live;
 }
 
+static struct ir3_sched_node * choose_instr_inc(struct ir3_sched_ctx *ctx,
+		struct ir3_sched_notes *notes, bool avoid_output);
+
 /**
  * Chooses an instruction to schedule using the Goodman/Hsu (1988) CSR (Code
  * Scheduling for Register pressure) heuristic.
+ *
+ * Only handles the case of choosing instructions that reduce register pressure
+ * or are even.
  */
 static struct ir3_sched_node *
-choose_instr_csr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
+choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 {
 	struct ir3_sched_node *chosen = NULL;
 
@@ -422,7 +440,7 @@ choose_instr_csr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "csr: chose (freed+ready)");
+		di(chosen->instr, "dec: chose (freed+ready)");
 		return chosen;
 	}
 
@@ -440,7 +458,7 @@ choose_instr_csr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "csr: chose (freed)");
+		di(chosen->instr, "dec: chose (freed)");
 		return chosen;
 	}
 
@@ -468,7 +486,7 @@ choose_instr_csr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "csr: chose (neutral+ready)");
+		di(chosen->instr, "dec: chose (neutral+ready)");
 		return chosen;
 	}
 
@@ -484,9 +502,22 @@ choose_instr_csr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "csr: chose (neutral)");
+		di(chosen->instr, "dec: chose (neutral)");
 		return chosen;
 	}
+
+	return choose_instr_inc(ctx, notes, true);
+}
+
+/**
+ * When we can't choose an instruction that reduces register pressure or
+ * is neutral, we end up here to try and pick the least bad option.
+ */
+static struct ir3_sched_node *
+choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
+		bool avoid_output)
+{
+	struct ir3_sched_node *chosen = NULL;
 
 	/*
 	 * From hear on out, we are picking something that increases
@@ -497,6 +528,9 @@ choose_instr_csr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 
 	/* Pick the max delay of the remaining ready set. */
 	foreach_sched_node (n, &ctx->dag->heads) {
+		if (avoid_output && n->output)
+			continue;
+
 		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
 
 		if (d > 0)
@@ -514,12 +548,15 @@ choose_instr_csr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "csr: chose (distance+ready)");
+		di(chosen->instr, "inc: chose (distance+ready)");
 		return chosen;
 	}
 
 	/* Pick the max delay of the remaining leaders. */
 	foreach_sched_node (n, &ctx->dag->heads) {
+		if (avoid_output && n->output)
+			continue;
+
 		if (!check_instr(ctx, notes, n->instr))
 			continue;
 
@@ -532,7 +569,7 @@ choose_instr_csr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "csr: chose (distance)");
+		di(chosen->instr, "inc: chose (distance)");
 		return chosen;
 	}
 
@@ -594,7 +631,11 @@ choose_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	if (chosen)
 		return chosen->instr;
 
-	chosen = choose_instr_csr(ctx, notes);
+	chosen = choose_instr_dec(ctx, notes);
+	if (chosen)
+		return chosen->instr;
+
+	chosen = choose_instr_inc(ctx, notes, false);
 	if (chosen)
 		return chosen->instr;
 
@@ -759,6 +800,39 @@ mark_kill_path(struct ir3_instruction *instr)
 	}
 }
 
+/* Is it an output? */
+static bool
+is_output_collect(struct ir3_instruction *instr)
+{
+	struct ir3 *ir = instr->block->shader;
+
+	for (unsigned i = 0; i < ir->outputs_count; i++) {
+		struct ir3_instruction *collect = ir->outputs[i];
+		assert(collect->opc == OPC_META_COLLECT);
+		if (instr == collect)
+			return true;
+	}
+
+	return false;
+}
+
+/* Is it's only use as output? */
+static bool
+is_output_only(struct ir3_instruction *instr)
+{
+	if (!writes_gpr(instr))
+		return false;
+
+	if (!(instr->regs[0]->flags & IR3_REG_SSA))
+		return false;
+
+	foreach_ssa_use (use, instr)
+		if (!is_output_collect(use))
+			return false;
+
+	return true;
+}
+
 static void
 sched_node_add_deps(struct ir3_instruction *instr)
 {
@@ -776,6 +850,11 @@ sched_node_add_deps(struct ir3_instruction *instr)
 	 */
 	if (is_kill(instr) || is_input(instr)) {
 		mark_kill_path(instr);
+	}
+
+	if (is_output_only(instr)) {
+		struct ir3_sched_node *n = instr->data;
+		n->output = true;
 	}
 }
 

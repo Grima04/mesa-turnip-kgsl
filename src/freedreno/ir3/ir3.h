@@ -846,6 +846,20 @@ static inline unsigned dest_regs(struct ir3_instruction *instr)
 	return util_last_bit(instr->regs[0]->wrmask);
 }
 
+static inline bool
+writes_gpr(struct ir3_instruction *instr)
+{
+	if (dest_regs(instr) == 0)
+		return false;
+	/* is dest a normal temp register: */
+	struct ir3_register *reg = instr->regs[0];
+	debug_assert(!(reg->flags & (IR3_REG_CONST | IR3_REG_IMMED)));
+	if ((reg_num(reg) == REG_A0) ||
+			(reg->num == regid(REG_P0, 0)))
+		return false;
+	return true;
+}
+
 static inline bool writes_addr0(struct ir3_instruction *instr)
 {
 	if (instr->regs_count > 0) {

@@ -205,20 +205,6 @@ scalar_name(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr, unsigned n)
 	return ra_name(ctx, &ctx->instrd[instr->ip]) + n;
 }
 
-static inline bool
-writes_gpr(struct ir3_instruction *instr)
-{
-	if (dest_regs(instr) == 0)
-		return false;
-	/* is dest a normal temp register: */
-	struct ir3_register *reg = instr->regs[0];
-	debug_assert(!(reg->flags & (IR3_REG_CONST | IR3_REG_IMMED)));
-	if ((reg_num(reg) == REG_A0) ||
-			(reg->num == regid(REG_P0, 0)))
-		return false;
-	return true;
-}
-
 #define NO_NAME ~0
 
 /*
