@@ -83,7 +83,7 @@ bool VertexShaderFromNir::do_process_inputs(nir_variable *input)
    return false;
 }
 
-bool VertexShaderFromNir::allocate_reserved_registers()
+bool VertexShaderFromNir::do_allocate_reserved_registers()
 {
    /* Since the vertex ID is nearly always used, we add it here as an input so
     * that the registers used for vertex attributes don't get clobbered by the

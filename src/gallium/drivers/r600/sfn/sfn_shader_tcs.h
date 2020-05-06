@@ -12,7 +12,7 @@ public:
    bool scan_sysvalue_access(nir_instr *instr) override;
 
 private:
-   bool allocate_reserved_registers() override;
+   bool do_allocate_reserved_registers() override;
    bool emit_intrinsic_instruction_override(nir_intrinsic_instr* instr) override;
    bool store_tess_factor(nir_intrinsic_instr* instr);
 

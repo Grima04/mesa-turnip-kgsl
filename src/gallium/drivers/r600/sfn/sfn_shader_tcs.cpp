@@ -56,7 +56,7 @@ bool TcsShaderFromNir::do_process_outputs(nir_variable *output)
    return true;
 }
 
-bool TcsShaderFromNir::allocate_reserved_registers()
+bool TcsShaderFromNir::do_allocate_reserved_registers()
 {
    if (m_sv_values.test(es_primitive_id)) {
       m_reserved_registers = 1;

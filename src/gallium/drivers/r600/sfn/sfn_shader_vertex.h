@@ -61,7 +61,7 @@ private:
 
    void emit_shader_start() override;
    bool do_process_inputs(nir_variable *input) override;
-   bool allocate_reserved_registers() override;
+   bool do_allocate_reserved_registers() override;
    bool do_process_outputs(nir_variable *output) override;
    bool emit_intrinsic_instruction_override(nir_intrinsic_instr* instr) override;
    bool emit_store_local_shared(nir_intrinsic_instr* instr);

@@ -137,7 +137,7 @@ bool FragmentShaderFromNir::scan_sysvalue_access(nir_instr *instr)
    return true;
 }
 
-bool FragmentShaderFromNir::allocate_reserved_registers()
+bool FragmentShaderFromNir::do_allocate_reserved_registers()
 {
    assert(!m_reserved_registers);
 

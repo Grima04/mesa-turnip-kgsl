@@ -66,7 +66,7 @@ bool TEvalShaderFromNir::scan_sysvalue_access(nir_instr *instr)
    return true;
 }
 
-bool TEvalShaderFromNir::allocate_reserved_registers()
+bool TEvalShaderFromNir::do_allocate_reserved_registers()
 {
    if (m_sv_values.test(es_tess_coord)) {
       m_reserved_registers = 1;

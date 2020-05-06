@@ -130,8 +130,10 @@ protected:
 
    std::bitset<es_last> m_sv_values;
 
+   bool allocate_reserved_registers();
+
 private:
-   virtual bool allocate_reserved_registers() = 0;
+   virtual bool do_allocate_reserved_registers() = 0;
 
    bool emit_alu_instruction(nir_instr *instr);
    bool emit_deref_instruction(nir_deref_instr* instr);

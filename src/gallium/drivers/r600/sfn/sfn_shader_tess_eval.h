@@ -15,7 +15,7 @@ public:
         bool scan_sysvalue_access(nir_instr *instr) override;
         PValue primitive_id() override {return m_primitive_id;}
      private:
-        bool allocate_reserved_registers() override;
+        bool do_allocate_reserved_registers() override;
         bool emit_intrinsic_instruction_override(nir_intrinsic_instr* instr) override;
         bool emit_load_tess_coord(nir_intrinsic_instr* instr);
         bool load_tess_z_coord(nir_intrinsic_instr* instr);

@@ -102,6 +102,12 @@ enum chip_class ShaderFromNirProcessor::get_chip_class(void) const
   return m_chip_class;
 }
 
+bool ShaderFromNirProcessor::allocate_reserved_registers()
+{
+   bool retval = do_allocate_reserved_registers();
+   return retval;
+}
+
 static void remap_shader_info(r600_shader& sh_info,
                               std::vector<rename_reg_pair>& map,
                               UNUSED ValueMap& values)

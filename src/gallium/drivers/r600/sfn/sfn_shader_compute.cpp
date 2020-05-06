@@ -43,7 +43,7 @@ bool ComputeShaderFromNir::scan_sysvalue_access(UNUSED nir_instr *instr)
 {
    return true;
 }
-bool ComputeShaderFromNir::allocate_reserved_registers()
+bool ComputeShaderFromNir::do_allocate_reserved_registers()
 {
    int thread_id_sel = m_reserved_registers++;
    int wg_id_sel = m_reserved_registers++;

@@ -143,7 +143,7 @@ bool GeometryShaderFromNir::do_process_outputs(nir_variable *output)
 }
 
 
-bool GeometryShaderFromNir::allocate_reserved_registers()
+bool GeometryShaderFromNir::do_allocate_reserved_registers()
 {
    const int sel[6] = {0, 0 ,0, 1, 1, 1};
    const int chan[6] = {0, 1 ,3, 0, 1, 2};
