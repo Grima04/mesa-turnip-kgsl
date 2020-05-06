@@ -62,6 +62,7 @@ struct ir3_postsched_ctx {
 	bool error;
 
 	int sfu_delay;
+	int tex_delay;
 };
 
 struct ir3_postsched_node {
@@ -92,6 +93,12 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 
 	list_addtail(&instr->node, &instr->block->instr_list);
 
+	struct ir3_postsched_node *n = instr->data;
+	dag_prune_head(ctx->dag, &n->dag);
+
+	if (is_meta(instr) && (instr->opc != OPC_META_TEX_PREFETCH))
+		return;
+
 	if (is_sfu(instr)) {
 		ctx->sfu_delay = 8;
 	} else if (check_src_cond(instr, is_sfu)) {
@@ -100,8 +107,13 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 		ctx->sfu_delay--;
 	}
 
-	struct ir3_postsched_node *n = instr->data;
-	dag_prune_head(ctx->dag, &n->dag);
+	if (is_tex_or_prefetch(instr)) {
+		ctx->tex_delay = 10;
+	} else if (check_src_cond(instr, is_tex_or_prefetch)) {
+		ctx->tex_delay = 0;
+	} else if (ctx->tex_delay > 0) {
+		ctx->tex_delay--;
+	}
 }
 
 static void
@@ -132,6 +144,11 @@ would_sync(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 {
 	if (ctx->sfu_delay) {
 		if (check_src_cond(instr, is_sfu))
+			return true;
+	}
+
+	if (ctx->tex_delay) {
+		if (check_src_cond(instr, is_tex_or_prefetch))
 			return true;
 	}
 
