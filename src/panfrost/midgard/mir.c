@@ -197,25 +197,6 @@ mir_special_index(compiler_context *ctx, unsigned idx)
         return false;
 }
 
-/* Is a node written before a given instruction? */
-
-bool
-mir_is_written_before(compiler_context *ctx, midgard_instruction *ins, unsigned node)
-{
-        if (node >= SSA_FIXED_MINIMUM)
-                return true;
-
-        mir_foreach_instr_global(ctx, q) {
-                if (q == ins)
-                        break;
-
-                if (q->dest == node)
-                        return true;
-        }
-
-        return false;
-}
-
 /* Grabs the type size. */
 
 midgard_reg_mode
