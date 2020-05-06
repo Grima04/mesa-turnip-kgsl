@@ -45,7 +45,7 @@ void si_test_dma_perf(struct si_screen *sscreen)
    struct si_context *sctx = (struct si_context *)ctx;
    const uint32_t clear_value = 0x12345678;
    static const unsigned cs_dwords_per_thread_list[] = {64, 32, 16, 8, 4, 2, 1};
-   static const unsigned cs_waves_per_sh_list[] = {1, 2, 4, 8, 16, 0};
+   static const unsigned cs_waves_per_sh_list[] = {0, 2, 4, 8, 16};
 
 #define NUM_SHADERS ARRAY_SIZE(cs_dwords_per_thread_list)
 #define NUM_METHODS (4 + 2 * NUM_SHADERS * ARRAY_SIZE(cs_waves_per_sh_list))
