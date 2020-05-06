@@ -210,6 +210,21 @@ ir3_optimize_loop(nir_shader *s)
 	} while (progress);
 }
 
+static bool
+should_split_wrmask(const nir_instr *instr, const void *data)
+{
+	nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+	switch (intr->intrinsic) {
+	case nir_intrinsic_store_ssbo:
+	case nir_intrinsic_store_shared:
+	case nir_intrinsic_store_global:
+		return true;
+	default:
+		return false;
+	}
+}
+
 void
 ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 		const struct ir3_shader_key *key)
@@ -274,6 +289,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	}
 
 	OPT_V(s, nir_lower_regs_to_ssa);
+	OPT_V(s, nir_lower_wrmasks, should_split_wrmask, s);
 
 	if (key) {
 		if (s->info.stage == MESA_SHADER_VERTEX) {

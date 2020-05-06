@@ -878,40 +878,26 @@ emit_intrinsic_store_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *stl, *offset;
 	struct ir3_instruction * const *value;
-	unsigned base, wrmask;
+	unsigned base, wrmask, ncomp;
 
 	value  = ir3_get_src(ctx, &intr->src[0]);
 	offset = ir3_get_src(ctx, &intr->src[1])[0];
 
 	base   = nir_intrinsic_base(intr);
 	wrmask = nir_intrinsic_write_mask(intr);
+	ncomp  = ffs(~wrmask) - 1;
 
-	/* Combine groups of consecutive enabled channels in one write
-	 * message. We use ffs to find the first enabled channel and then ffs on
-	 * the bit-inverse, down-shifted writemask to determine the length of
-	 * the block of enabled bits.
-	 *
-	 * (trick stolen from i965's fs_visitor::nir_emit_cs_intrinsic())
-	 */
-	while (wrmask) {
-		unsigned first_component = ffs(wrmask) - 1;
-		unsigned length = ffs(~(wrmask >> first_component)) - 1;
+	assert(wrmask == BITFIELD_MASK(intr->num_components));
 
-		stl = ir3_STL(b, offset, 0,
-			ir3_create_collect(ctx, &value[first_component], length), 0,
-			create_immed(b, length), 0);
-		stl->cat6.dst_offset = first_component + base;
-		stl->cat6.type = utype_src(intr->src[0]);
-		stl->barrier_class = IR3_BARRIER_SHARED_W;
-		stl->barrier_conflict = IR3_BARRIER_SHARED_R | IR3_BARRIER_SHARED_W;
+	stl = ir3_STL(b, offset, 0,
+		ir3_create_collect(ctx, value, ncomp), 0,
+		create_immed(b, ncomp), 0);
+	stl->cat6.dst_offset = base;
+	stl->cat6.type = utype_src(intr->src[0]);
+	stl->barrier_class = IR3_BARRIER_SHARED_W;
+	stl->barrier_conflict = IR3_BARRIER_SHARED_R | IR3_BARRIER_SHARED_W;
 
-		array_insert(b, b->keeps, stl);
-
-		/* Clear the bits in the writemask that we just wrote, then try
-		 * again to see if more channels are left.
-		 */
-		wrmask &= (15 << (first_component + length));
-	}
+	array_insert(b, b->keeps, stl);
 }
 
 /* src[] = { offset }. const_index[] = { base } */

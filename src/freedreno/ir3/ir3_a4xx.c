@@ -73,12 +73,10 @@ emit_intrinsic_store_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *stgb, *src0, *src1, *src2, *byte_offset, *offset;
-	/* TODO handle wrmask properly, see _store_shared().. but I think
-	 * it is more a PITA than that, since blob ends up loading the
-	 * masked components and writing them back out.
-	 */
 	unsigned wrmask = nir_intrinsic_write_mask(intr);
 	unsigned ncomp = ffs(~wrmask) - 1;
+
+	assert(wrmask == BITFIELD_MASK(intr->num_components));
 
 	/* can this be non-const buffer_index?  how do we handle that? */
 	int ibo_idx = ir3_ssbo_to_ibo(ctx->so->shader, nir_src_as_uint(intr->src[1]));
