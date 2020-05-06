@@ -133,17 +133,22 @@ fdl6_layout(struct fdl_layout *layout,
 
 	uint32_t ubwc_width0 = width0;
 	uint32_t ubwc_height0 = height0;
+	uint32_t ubwc_tile_height_alignment = RGB_TILE_HEIGHT_ALIGNMENT;
 	if (mip_levels > 1) {
 		/* With mipmapping enabled, UBWC layout is power-of-two sized,
-		 * specified in log2 width/height in the descriptors.
+		 * specified in log2 width/height in the descriptors.  The height
+		 * alignment is 64 for mipmapping, but for buffer sharing (always
+		 * single level) other participants expect 16.
 		 */
 		ubwc_width0 = util_next_power_of_two(width0);
 		ubwc_height0 = util_next_power_of_two(height0);
+		ubwc_tile_height_alignment = 64;
 	}
 	ubwc_width0 = align(DIV_ROUND_UP(ubwc_width0, ta->ubwc_blockwidth),
 			RGB_TILE_WIDTH_ALIGNMENT);
-	ubwc_height0 = align(DIV_ROUND_UP(ubwc_height0, ta->ubwc_blockheight),
-			RGB_TILE_HEIGHT_ALIGNMENT);
+	ubwc_height0 = align(DIV_ROUND_UP(ubwc_height0,
+					ta->ubwc_blockheight),
+			ubwc_tile_height_alignment);
 
 	for (uint32_t level = 0; level < mip_levels; level++) {
 		uint32_t depth = u_minify(depth0, level);
@@ -207,7 +212,7 @@ fdl6_layout(struct fdl_layout *layout,
 			uint32_t meta_pitch = align(u_minify(ubwc_width0, level),
 					RGB_TILE_WIDTH_ALIGNMENT);
 			uint32_t meta_height = align(u_minify(ubwc_height0, level),
-					RGB_TILE_HEIGHT_ALIGNMENT);
+					ubwc_tile_height_alignment);
 
 			ubwc_slice->size0 = align(meta_pitch * meta_height, UBWC_PLANE_SIZE_ALIGNMENT);
 			ubwc_slice->pitch = meta_pitch;
