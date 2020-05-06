@@ -592,9 +592,8 @@ bool ShaderFromNirProcessor::emit_store_scratch(nir_intrinsic_instr* instr)
 {
    PValue address = from_nir(instr->src[1], 0, 0);
 
-   std::unique_ptr<GPRVector> vec(vec_from_nir_with_fetch_constant(instr->src[0], (1 << instr->num_components) - 1,
-                                  swizzle_from_mask(instr->num_components)));
-   GPRVector value(*vec);
+   auto value = vec_from_nir_with_fetch_constant(instr->src[0], (1 << instr->num_components) - 1,
+         swizzle_from_comps(instr->num_components));
 
    int writemask = nir_intrinsic_write_mask(instr);
    int align = nir_intrinsic_align_mul(instr);
@@ -629,21 +628,44 @@ bool ShaderFromNirProcessor::emit_load_scratch(nir_intrinsic_instr* instr)
    return true;
 }
 
-GPRVector *ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src& src,
-                                                                    UNUSED unsigned mask,
-                                                                    const GPRVector::Swizzle& swizzle)
+GPRVector ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src& src,
+                                                                   unsigned mask,
+                                                                   const GPRVector::Swizzle& swizzle,
+                                                                   bool match)
 {
-   GPRVector *result = nullptr;
-   int sel = lookup_register_index(src);
-   if (sel >= 0 && from_nir(src, 0)->type() == Value::gpr &&
-       from_nir(src, 0)->chan() == 0) {
-      /* If the x-channel is really an x-channel register then we are pretty
-       * save that the value come like we need them */
-      result = new GPRVector(from_nir(src, 0)->sel(), swizzle);
-   } else {
+   bool use_same = true;
+   GPRVector::Values v;
+
+   for (int i = 0; i < 4 && use_same; ++i)  {
+      if ((1 << i) & mask) {
+         if (swizzle[i] < 4) {
+            v[i] = from_nir(src, swizzle[i]);
+            assert(v[i]);
+            if (v[i]->type() != Value::gpr)
+               use_same = false;
+            if (match && (v[i]->chan() != swizzle[i]))
+                use_same = false;
+         }
+      }
+   }
+
+   if (use_same) {
+      int i = 0;
+      while (!v[i] && i < 4) ++i;
+      assert(i < 4);
+
+      unsigned sel = v[i]->sel();
+      for (i = 0; i < 4 && use_same; ++i) {
+         if (!v[i])
+            v[i] = PValue(new GPRValue(sel, swizzle[i]));
+         else
+            use_same &= v[i]->sel() == sel;
+      }
+   }
+
+   if (!use_same) {
       AluInstruction *ir = nullptr;
       int sel = allocate_temp_register();
-      GPRVector::Values v;
       for (int i = 0; i < 4; ++i) {
          v[i] = PValue(new GPRValue(sel, swizzle[i]));
          if (swizzle[i] < 4 && (mask & (1 << i))) {
@@ -654,10 +676,8 @@ GPRVector *ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_sr
       }
       if (ir)
          ir->set_flag(alu_last_instr);
-
-      result = new GPRVector(v);
    }
-   return result;
+   return GPRVector(v);;
 }
 
 bool ShaderFromNirProcessor::emit_load_ubo(nir_intrinsic_instr* instr)

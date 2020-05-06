@@ -62,8 +62,8 @@ public:
    void emit_instruction(Instruction *ir);
 
    PValue from_nir_with_fetch_constant(const nir_src& src, unsigned component);
-   GPRVector *vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
-                                               const GPRVector::Swizzle& swizzle);
+   GPRVector vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
+                                              const GPRVector::Swizzle& swizzle, bool match = false);
 
    bool emit_instruction(EAluOp opcode, PValue dest,
                          std::vector<PValue> src0,
@@ -79,7 +79,7 @@ public:
 
    r600_shader& sh_info() {return m_sh_info;}
    void add_param_output_reg(int loc, const GPRVector *gpr);
-   void set_output(unsigned pos, PValue var);
+   void set_output(unsigned pos, int sel);
    const GPRVector *output_register(unsigned location) const;
    void evaluate_spi_sid(r600_shader_io &io);
 
@@ -176,7 +176,7 @@ private:
    std::set<nir_variable*> m_arrays;
 
    std::map<unsigned, PValue> m_inputs;
-   std::map<unsigned, PValue> m_outputs;
+   std::map<unsigned, int> m_outputs;
 
    std::map<unsigned, nir_variable*> m_var_derefs;
    std::map<const nir_variable *, nir_variable_mode> m_var_mode;

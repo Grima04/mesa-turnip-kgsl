@@ -177,11 +177,19 @@ inline size_t GPRArrayValue::array_size() const
    return m_array->size();
 }
 
-inline GPRVector::Swizzle swizzle_from_mask(unsigned ncomp)
+inline GPRVector::Swizzle swizzle_from_comps(unsigned ncomp)
 {
    GPRVector::Swizzle swz = {0,1,2,3};
    for (int i = ncomp; i < 4; ++i)
       swz[i] = 7;
+   return swz;
+}
+
+inline GPRVector::Swizzle swizzle_from_mask(unsigned mask)
+{
+   GPRVector::Swizzle swz;
+   for (int i = 0; i < 4; ++i)
+      swz[i] =  ((1 << i) & mask) ? i : 7;
    return swz;
 }
 

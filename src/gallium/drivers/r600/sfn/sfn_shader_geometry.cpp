@@ -57,18 +57,15 @@ bool GeometryShaderFromNir::do_emit_load_deref(UNUSED const nir_variable *in_var
 
 bool GeometryShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
 {
-   uint32_t write_mask =  (1 << instr->num_components) - 1;
-   GPRVector::Swizzle swz = swizzle_from_mask(instr->num_components);
-   std::unique_ptr<GPRVector> vec(vec_from_nir_with_fetch_constant(instr->src[1], write_mask, swz));
+   uint32_t write_mask = nir_intrinsic_write_mask(instr);
+   GPRVector::Swizzle swz = swizzle_from_mask(write_mask);
+   auto out_value = vec_from_nir_with_fetch_constant(instr->src[1], write_mask, swz, true);
 
-   GPRVector out_value  = *vec;
-
-   sh_info().output[out_var->data.driver_location].write_mask =
-         (1 << instr->num_components) - 1;
+   sh_info().output[out_var->data.driver_location].write_mask = write_mask;
 
    auto ir = new MemRingOutIntruction(cf_mem_ring, mem_write_ind, out_value,
                                       4 * out_var->data.driver_location,
-                                      4, m_export_base);
+                                      instr->num_components, m_export_base);
    emit_instruction(ir);
 
    return true;

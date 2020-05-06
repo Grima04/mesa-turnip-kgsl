@@ -113,9 +113,9 @@ bool TcsShaderFromNir::store_tess_factor(nir_intrinsic_instr* instr)
 {
    const GPRVector::Swizzle& swizzle = (instr->src[0].ssa->num_components == 4) ?
             GPRVector::Swizzle({0, 1, 2, 3}) : GPRVector::Swizzle({0, 1, 7, 7});
-   std::unique_ptr<GPRVector> val(vec_from_nir_with_fetch_constant(instr->src[0],
-                                  0xf, swizzle));
-   emit_instruction(new GDSStoreTessFactor(*val));
+   auto val = vec_from_nir_with_fetch_constant(instr->src[0],
+         (1 << instr->src[0].ssa->num_components) - 1, swizzle);
+   emit_instruction(new GDSStoreTessFactor(val));
    return true;
 }
 

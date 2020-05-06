@@ -77,13 +77,21 @@ protected:
                          const std::set<AluModifiers>& m_flags);
 
    PValue from_nir_with_fetch_constant(const nir_src& src, unsigned component);
-   GPRVector *vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
-                                               const GPRVector::Swizzle& swizzle);
+   GPRVector vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
+                                              const GPRVector::Swizzle& swizzle, bool match = false);
 
+   void add_uniform(unsigned index, const PValue &value);
    void load_uniform(const nir_alu_src& src);
    const nir_variable *get_deref_location(const nir_src& v) const;
 
    enum chip_class get_chip_class(void) const;
+
+   PValue literal(uint32_t value);
+
+   GPRVector vec_from_nir(const nir_dest& dst, int num_components);
+
+   bool inject_register(unsigned sel, unsigned swizzle,
+                        const PValue& reg, bool map);
 
 private:
 

@@ -664,17 +664,26 @@ bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_i
 
    std::array<uint32_t,4> swizzle;
    unsigned writemask = nir_intrinsic_write_mask(instr);
-   if (out_var->data.location != FRAG_RESULT_STENCIL) {
+   switch (out_var->data.location) {
+   case FRAG_RESULT_STENCIL:
+      writemask = 2;
+      swizzle = {7,0,7,7};
+      break;
+   case FRAG_RESULT_SAMPLE_MASK:
+      writemask = 4;
+      swizzle = {7,7,0,7};
+      break;
+   default:
+      std::cerr << "Swizzle = ";
       for (int i = 0; i < 4; ++i) {
          swizzle[i] = (i < instr->num_components) ? i : 7;
+         std::cerr << swizzle[i] << ", ";
       }
-   } else {
-      swizzle = {7,0,7,7};
    }
 
-   GPRVector *value = vec_from_nir_with_fetch_constant(instr->src[1], writemask, swizzle);
+   auto value = vec_from_nir_with_fetch_constant(instr->src[1], writemask, swizzle);
 
-   set_output(out_var->data.driver_location, PValue(value));
+   set_output(out_var->data.driver_location, value.sel());
 
    if (out_var->data.location == FRAG_RESULT_COLOR ||
        (out_var->data.location >= FRAG_RESULT_DATA0 &&
@@ -688,7 +697,7 @@ bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_i
             continue;
          }
 
-         m_last_pixel_export = new ExportInstruction(location, *value, ExportInstruction::et_pixel);
+         m_last_pixel_export = new ExportInstruction(location, value, ExportInstruction::et_pixel);
 
          if (sh_info().ps_export_highest < location)
             sh_info().ps_export_highest = location;
@@ -701,16 +710,14 @@ bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_i
          emit_export_instruction(m_last_pixel_export);
          ++m_max_counted_color_exports;
       };
-   } else if (out_var->data.location == FRAG_RESULT_DEPTH) {
+   } else if (out_var->data.location == FRAG_RESULT_DEPTH ||
+              out_var->data.location == FRAG_RESULT_STENCIL ||
+              out_var->data.location == FRAG_RESULT_SAMPLE_MASK) {
       m_depth_exports++;
-      emit_export_instruction(new ExportInstruction(61, *value, ExportInstruction::et_pixel));
-   } else if (out_var->data.location == FRAG_RESULT_STENCIL) {
-      m_depth_exports++;
-      emit_export_instruction(new ExportInstruction(61, *value, ExportInstruction::et_pixel));
+      emit_export_instruction(new ExportInstruction(61, value, ExportInstruction::et_pixel));
    } else {
       return false;
    }
-
    return true;
 }
 

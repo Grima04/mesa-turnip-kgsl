@@ -98,10 +98,15 @@ PValue EmitInstruction::from_nir_with_fetch_constant(const nir_src& src, unsigne
    return m_proc.from_nir_with_fetch_constant(src, component);
 }
 
-GPRVector *EmitInstruction::vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
-                                            const GPRVector::Swizzle& swizzle)
+GPRVector EmitInstruction::vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
+                                                            const GPRVector::Swizzle& swizzle, bool match)
 {
-   return m_proc.vec_from_nir_with_fetch_constant(src, mask, swizzle);
+   return m_proc.vec_from_nir_with_fetch_constant(src, mask, swizzle, match);
+}
+
+void EmitInstruction::add_uniform(unsigned index, const PValue &value)
+{
+   m_proc.add_uniform(index, value);
 }
 
 void EmitInstruction::load_uniform(const nir_alu_src& src)
@@ -152,6 +157,24 @@ enum chip_class EmitInstruction::get_chip_class(void) const
 {
    return m_proc.get_chip_class();
 }
+
+PValue EmitInstruction::literal(uint32_t value)
+{
+   return m_proc.literal(value);
+}
+
+GPRVector EmitInstruction::vec_from_nir(const nir_dest& dst, int num_components)
+{
+   return m_proc.vec_from_nir(dst, num_components);
+}
+
+bool EmitInstruction::inject_register(unsigned sel, unsigned swizzle,
+                                      const PValue& reg, bool map)
+{
+   return m_proc.inject_register(sel, swizzle, reg, map);
+}
+
+
 
 const std::set<AluModifiers> EmitInstruction::empty = {};
 const std::set<AluModifiers> EmitInstruction::write = {alu_write};

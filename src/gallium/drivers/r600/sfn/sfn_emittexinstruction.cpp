@@ -658,15 +658,19 @@ bool EmitTexInstruction::emit_tex_tg4(nir_tex_instr* instr, TexInputs& src)
          for (unsigned i = 0; i < instr->coord_components; ++i)
             swizzle[i] = i;
 
-         std::unique_ptr<GPRVector> ofs(vec_from_nir_with_fetch_constant(*src.offset,
-                                                                         ( 1 << instr->coord_components) -1,
-                                                                         swizzle));
+         int noffsets = instr->coord_components;
+         if (instr->is_array)
+            --noffsets;
+
+         auto ofs = vec_from_nir_with_fetch_constant(*src.offset,
+                                                     ( 1 << noffsets) - 1,
+                                                     swizzle);
          GPRVector dummy(0, {7,7,7,7});
          tex_op = (tex_op == TexInstruction::gather4_c) ?
                      TexInstruction::gather4_c_o : TexInstruction::gather4_o;
 
          auto set_ofs = new TexInstruction(TexInstruction::set_offsets, dummy,
-                                           *ofs, sampler.id,
+                                           ofs, sampler.id,
                                            sampler.id + R600_MAX_CONST_BUFFERS, src.sampler_offset);
          set_ofs->set_dest_swizzle({7,7,7,7});
          emit_instruction(set_ofs);
@@ -838,29 +842,25 @@ bool EmitTexInstruction::get_inputs(const nir_tex_instr& instr, TexInputs &src)
          break;
 
       case nir_tex_src_coord: {
-         std::unique_ptr<GPRVector> coord(vec_from_nir_with_fetch_constant(instr.src[i].src,
-                                                                           (1 << instr.coord_components) - 1,
-                                                                           {0,1,2,3}));
-         src.coord = *coord;
-
+         src.coord = vec_from_nir_with_fetch_constant(instr.src[i].src,
+                                                      (1 << instr.coord_components) - 1,
+         {0,1,2,3});
       } break;
       case nir_tex_src_comparator:
          src.comperator = from_nir(instr.src[i], 0);
          break;
       case nir_tex_src_ddx: {
          sfn_log << SfnLog::tex << "Get DDX ";
-         std::unique_ptr<GPRVector> coord(vec_from_nir_with_fetch_constant(instr.src[i].src,
-                                                                           (1 << grad_components) - 1,
-                                                                           swizzle_from_mask(grad_components)));
-         src.ddx = *coord;
+         src.ddx = vec_from_nir_with_fetch_constant(instr.src[i].src,
+                                                    (1 << grad_components) - 1,
+                                                    swizzle_from_comps(grad_components));
          sfn_log << SfnLog::tex << src.ddx << "\n";
       } break;
       case nir_tex_src_ddy:{
          sfn_log << SfnLog::tex << "Get DDY ";
-         std::unique_ptr<GPRVector> coord(vec_from_nir_with_fetch_constant(instr.src[i].src,
-                                                                           (1 << grad_components) - 1,
-                                                                           swizzle_from_mask(grad_components)));
-         src.ddy = *coord;
+         src.ddy = vec_from_nir_with_fetch_constant(instr.src[i].src,
+                                                    (1 << grad_components) - 1,
+                                                    swizzle_from_comps(grad_components));
          sfn_log << SfnLog::tex << src.ddy << "\n";
       }  break;
       case nir_tex_src_lod:

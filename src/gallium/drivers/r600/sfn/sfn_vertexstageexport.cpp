@@ -159,8 +159,8 @@ bool VertexStageExportForFS::emit_varying_pos(const nir_variable *out_var, nir_i
 
    m_proc.sh_info().output[out_var->data.driver_location].write_mask = write_mask;
 
-   GPRVector *value = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask, swizzle);
-   m_proc.set_output(out_var->data.driver_location, PValue(value));
+   GPRVector value = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask, swizzle);
+   m_proc.set_output(out_var->data.driver_location, value.sel());
 
    int export_slot = 0;
 
@@ -168,8 +168,8 @@ bool VertexStageExportForFS::emit_varying_pos(const nir_variable *out_var, nir_i
    case VARYING_SLOT_EDGE: {
       m_proc.sh_info().vs_out_misc_write = 1;
       m_proc.sh_info().vs_out_edgeflag = 1;
-      m_proc.emit_instruction(op1_mov, value->reg_i(1), {value->reg_i(1)}, {alu_write, alu_dst_clamp, alu_last_instr});
-      m_proc.emit_instruction(op1_flt_to_int, value->reg_i(1), {value->reg_i(1)}, {alu_write, alu_last_instr});
+      m_proc.emit_instruction(op1_mov, value.reg_i(1), {value.reg_i(1)}, {alu_write, alu_dst_clamp, alu_last_instr});
+      m_proc.emit_instruction(op1_flt_to_int, value.reg_i(1), {value.reg_i(1)}, {alu_write, alu_last_instr});
       m_proc.sh_info().output[out_var->data.driver_location].write_mask = 0xf;
    }
       /* fallthrough */
@@ -189,7 +189,7 @@ bool VertexStageExportForFS::emit_varying_pos(const nir_variable *out_var, nir_i
       return false;
    }
 
-   m_last_pos_export = new ExportInstruction(export_slot, *value, ExportInstruction::et_pos);
+   m_last_pos_export = new ExportInstruction(export_slot, value, ExportInstruction::et_pos);
    m_proc.emit_export_instruction(m_last_pos_export);
    m_proc.add_param_output_reg(out_var->data.driver_location, m_last_pos_export->gpr_ptr());
    return true;
@@ -207,16 +207,16 @@ bool VertexStageExportForFS::emit_varying_param(const nir_variable *out_var, nir
 
    m_proc.sh_info().output[out_var->data.driver_location].write_mask = write_mask;
 
-   GPRVector *value = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask, swizzle);
-   m_proc.sh_info().output[out_var->data.driver_location].gpr = value->sel();
+   GPRVector value = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask, swizzle);
+   m_proc.sh_info().output[out_var->data.driver_location].gpr = value.sel();
 
    /* This should use the registers!! */
-   m_proc.set_output(out_var->data.driver_location, PValue(value));
+   m_proc.set_output(out_var->data.driver_location, value.sel());
 
    auto param_loc = m_param_map.find(out_var->data.location);
    assert(param_loc != m_param_map.end());
 
-   m_last_param_export = new ExportInstruction(param_loc->second, *value, ExportInstruction::et_param);
+   m_last_param_export = new ExportInstruction(param_loc->second, value, ExportInstruction::et_param);
    m_proc.emit_export_instruction(m_last_param_export);
    m_proc.add_param_output_reg(out_var->data.driver_location, m_last_param_export->gpr_ptr());
    return true;
@@ -227,7 +227,7 @@ bool VertexStageExportForFS::emit_clip_vertices(const nir_variable *out_var, nir
    m_proc.sh_info().cc_dist_mask = 0xff;
    m_proc.sh_info().clip_dist_write = 0xff;
 
-   std::unique_ptr<GPRVector> clip_vertex(m_proc.vec_from_nir_with_fetch_constant(instr->src[1], 0xf, {0,1,2,3}));
+   GPRVector clip_vertex = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], 0xf, {0,1,2,3});
 
    for (int i = 0; i < 4; ++i)
       m_proc.sh_info().output[out_var->data.driver_location].write_mask |= 1 << i;
@@ -239,7 +239,7 @@ bool VertexStageExportForFS::emit_clip_vertices(const nir_variable *out_var, nir
       int ochan = i & 3;
       AluInstruction *ir = nullptr;
       for (int j = 0; j < 4; j++) {
-         ir = new AluInstruction(op2_dot4_ieee, clip_dist[oreg].reg_i(j), clip_vertex->reg_i(j),
+         ir = new AluInstruction(op2_dot4_ieee, clip_dist[oreg].reg_i(j), clip_vertex.reg_i(j),
                                  PValue(new UniformValue(512 + i, j, R600_BUFFER_INFO_CONST_BUFFER)),
                                  (j == ochan) ? EmitInstruction::write : EmitInstruction::empty);
          m_proc.emit_instruction(ir);
@@ -419,10 +419,10 @@ bool VertexStageExportForGS::store_deref(const nir_variable *out_var, nir_intrin
 
    uint32_t write_mask =  (1 << instr->num_components) - 1;
 
-   std::unique_ptr<GPRVector> value(m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask,
-                                    swizzle_from_mask(instr->num_components)));
+   GPRVector value = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask,
+         swizzle_from_comps(instr->num_components));
 
-   auto ir = new MemRingOutIntruction(cf_mem_ring, mem_write, *value,
+   auto ir = new MemRingOutIntruction(cf_mem_ring, mem_write, value,
                                       ring_offset >> 2, 4, PValue());
    m_proc.emit_export_instruction(ir);
 

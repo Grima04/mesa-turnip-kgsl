@@ -242,17 +242,18 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
    emit_instruction(ir);
 #else
 
-   PValue value(from_nir_with_fetch_constant(instr->src[0], 0));
-   GPRVector out_vec({value, value, value, value});
+   auto values = vec_from_nir_with_fetch_constant(instr->src[0],
+         (1 << instr->src[0].ssa->num_components) - 1, {0,1,2,3}, true);
+
    emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
-                                       out_vec, addr_vec, 0, rat_id, 1,
+                                       values, addr_vec, 0, rat_id, 1,
                                        1, 0, false));
    for (int i = 1; i < instr->src[0].ssa->num_components; ++i) {
-      emit_instruction(new AluInstruction(op1_mov, out_vec.reg_i(0), from_nir(instr->src[0], i), write));
+      emit_instruction(new AluInstruction(op1_mov, values.reg_i(0), from_nir(instr->src[0], i), write));
       emit_instruction(new AluInstruction(op2_add_int, addr_vec.reg_i(0),
                                           {addr_vec.reg_i(0), Value::one_i}, last_write));
       emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
-                                          out_vec, addr_vec, 0, rat_id, 1,
+                                          values, addr_vec, 0, rat_id, 1,
                                           1, 0, false));
    }
 #endif
