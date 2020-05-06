@@ -4338,6 +4338,8 @@ bool nir_lower_wpos_ytransform(nir_shader *shader,
                                const nir_lower_wpos_ytransform_options *options);
 bool nir_lower_wpos_center(nir_shader *shader, const bool for_sample_shading);
 
+bool nir_lower_wrmasks(nir_shader *shader, nir_instr_filter_cb cb, const void *data);
+
 bool nir_lower_fb_read(nir_shader *shader);
 
 typedef struct nir_lower_drawpixels_options {
