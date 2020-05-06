@@ -94,6 +94,8 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 
 	if (is_sfu(instr)) {
 		ctx->sfu_delay = 8;
+	} else if (check_src_cond(instr, is_sfu)) {
+		ctx->sfu_delay = 0;
 	} else if (ctx->sfu_delay > 0) {
 		ctx->sfu_delay--;
 	}
@@ -129,10 +131,8 @@ static bool
 would_sync(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 {
 	if (ctx->sfu_delay) {
-		struct ir3_register *reg;
-		foreach_src (reg, instr)
-			if (reg->instr && is_sfu(reg->instr))
-				return true;
+		if (check_src_cond(instr, is_sfu))
+			return true;
 	}
 
 	return false;

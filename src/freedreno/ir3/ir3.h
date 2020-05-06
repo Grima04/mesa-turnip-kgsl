@@ -1139,6 +1139,35 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 #define foreach_array(__array, __list) \
 	list_for_each_entry(struct ir3_array, __array, __list, node)
 
+/* Check if condition is true for any src instruction.
+ */
+static inline bool
+check_src_cond(struct ir3_instruction *instr, bool (*cond)(struct ir3_instruction *))
+{
+	struct ir3_register *reg;
+
+	/* Note that this is also used post-RA so skip the ssa iterator: */
+	foreach_src (reg, instr) {
+		struct ir3_instruction *src = reg->instr;
+
+		if (!src)
+			continue;
+
+		/* meta:split/collect aren't real instructions, the thing that
+		 * we actually care about is *their* srcs
+		 */
+		if ((src->opc == OPC_META_SPLIT) || (src->opc == OPC_META_COLLECT)) {
+			if (check_src_cond(src, cond))
+				return true;
+		} else {
+			if (cond(src))
+				return true;
+		}
+	}
+
+	return false;
+}
+
 /* dump: */
 void ir3_print(struct ir3 *ir);
 void ir3_print_instr(struct ir3_instruction *instr);
