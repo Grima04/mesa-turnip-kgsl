@@ -431,7 +431,7 @@ static bool test_layout(const struct testcase *testcase)
 		}
 
 		if (layout.ubwc_slices[l].offset != testcase->layout.ubwc_slices[l].offset) {
-			fprintf(stderr, "%s %dx%dx%d@%dx lvl%d: offset 0x%x != 0x%x\n",
+			fprintf(stderr, "%s %dx%dx%d@%dx lvl%d: UBWC offset 0x%x != 0x%x\n",
 					util_format_short_name(testcase->format),
 					layout.width0, layout.height0, layout.depth0,
 					layout.nr_samples, l,
@@ -440,7 +440,7 @@ static bool test_layout(const struct testcase *testcase)
 			ok = false;
 		}
 		if (layout.ubwc_slices[l].pitch != testcase->layout.ubwc_slices[l].pitch) {
-			fprintf(stderr, "%s %dx%dx%d@%dx lvl%d: pitch %d != %d\n",
+			fprintf(stderr, "%s %dx%dx%d@%dx lvl%d: UBWC pitch %d != %d\n",
 					util_format_short_name(testcase->format),
 					layout.width0, layout.height0, layout.depth0,
 					layout.nr_samples, l,
