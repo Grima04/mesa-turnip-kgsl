@@ -2626,7 +2626,22 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
       vtn_assert_types_equal(b, opcode, dest->type->deref, src->type->deref);
 
+      unsigned idx = 3, dest_alignment, src_alignment;
+      SpvMemoryAccessMask dest_access, src_access;
+      SpvScope dest_scope, src_scope;
+      vtn_get_mem_operands(b, w, count, &idx, &dest_access, &dest_alignment,
+                           &dest_scope, &src_scope);
+      if (!vtn_get_mem_operands(b, w, count, &idx, &src_access, &src_alignment,
+                                NULL, &src_scope)) {
+         src_alignment = dest_alignment;
+         src_access = dest_access;
+      }
+
+      vtn_emit_make_visible_barrier(b, src_access, src_scope, src->pointer->mode);
+
       vtn_variable_copy(b, dest->pointer, src->pointer);
+
+      vtn_emit_make_available_barrier(b, dest_access, dest_scope, dest->pointer->mode);
       break;
    }
 
