@@ -39,6 +39,9 @@ static const struct tile_alignment {
 	unsigned basealign;
 	unsigned pitchalign;
 	unsigned heightalign;
+	/* UBWC block width/height.  Used in size alignment, and calculating a
+	 * descriptor's FLAG_BUFFER_LOG2W/H for mipmapping.
+	 */
 	uint8_t ubwc_blockwidth;
 	uint8_t ubwc_blockheight;
 } tile_alignment[] = {
@@ -56,7 +59,7 @@ static const struct tile_alignment {
 	[64] = { 256,  64, 16 },
 
 	/* special cases for r8g8: */
-	[0]  = { 256, 64, 32, 16, 4 },
+	[0]  = { 256, 64, 32, 16, 8 },
 };
 
 #define RGB_TILE_WIDTH_ALIGNMENT 64
