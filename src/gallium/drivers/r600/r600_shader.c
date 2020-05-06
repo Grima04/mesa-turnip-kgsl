@@ -500,24 +500,26 @@ static int tgsi_is_supported(struct r600_shader_ctx *ctx)
 #endif
 	for (j = 0; j < i->Instruction.NumSrcRegs; j++) {
 		if (i->Src[j].Register.Dimension) {
-		   switch (i->Src[j].Register.File) {
-		   case TGSI_FILE_CONSTANT:
-		   case TGSI_FILE_HW_ATOMIC:
-			   break;
-		   case TGSI_FILE_INPUT:
-			   if (ctx->type == PIPE_SHADER_GEOMETRY ||
-			       ctx->type == PIPE_SHADER_TESS_CTRL ||
-			       ctx->type == PIPE_SHADER_TESS_EVAL)
-				   break;
-		   case TGSI_FILE_OUTPUT:
-			   if (ctx->type == PIPE_SHADER_TESS_CTRL)
-				   break;
-		   default:
-			   R600_ERR("unsupported src %d (file %d, dimension %d)\n", j,
-				    i->Src[j].Register.File,
-				    i->Src[j].Register.Dimension);
-			   return -EINVAL;
-		   }
+			switch (i->Src[j].Register.File) {
+			case TGSI_FILE_CONSTANT:
+			case TGSI_FILE_HW_ATOMIC:
+				break;
+			case TGSI_FILE_INPUT:
+				if (ctx->type == PIPE_SHADER_GEOMETRY ||
+				    ctx->type == PIPE_SHADER_TESS_CTRL ||
+				    ctx->type == PIPE_SHADER_TESS_EVAL)
+					break;
+				/* fallthrough */
+			case TGSI_FILE_OUTPUT:
+				if (ctx->type == PIPE_SHADER_TESS_CTRL)
+					break;
+				/* fallthrough */
+			default:
+				R600_ERR("unsupported src %d (file %d, dimension %d)\n", j,
+					 i->Src[j].Register.File,
+					 i->Src[j].Register.Dimension);
+				return -EINVAL;
+			}
 		}
 	}
 	for (j = 0; j < i->Instruction.NumDstRegs; j++) {

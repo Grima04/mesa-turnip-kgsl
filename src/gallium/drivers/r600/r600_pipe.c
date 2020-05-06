@@ -561,9 +561,11 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 	case PIPE_SHADER_TESS_EVAL:
 		if (rscreen->b.family >= CHIP_CEDAR)
 			break;
+		/* fallthrough */
 	case PIPE_SHADER_COMPUTE:
 		if (!is_nir_enabled(&rscreen->b))
 			break;
+		/* fallthrough */
 	default:
 		return 0;
 	}
