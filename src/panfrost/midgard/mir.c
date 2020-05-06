@@ -176,27 +176,6 @@ mir_nontrivial_outmod(midgard_instruction *ins)
                 return mod != midgard_outmod_none;
 }
 
-/* Checks if an index will be used as a special register -- basically, if we're
- * used as the input to a non-ALU op */
-
-bool
-mir_special_index(compiler_context *ctx, unsigned idx)
-{
-        mir_foreach_instr_global(ctx, ins) {
-                bool is_ldst = ins->type == TAG_LOAD_STORE_4;
-                bool is_tex = ins->type == TAG_TEXTURE_4;
-                bool is_writeout = ins->compact_branch && ins->writeout;
-
-                if (!(is_ldst || is_tex || is_writeout))
-                        continue;
-
-                if (mir_has_arg(ins, idx))
-                        return true;
-        }
-
-        return false;
-}
-
 /* Grabs the type size. */
 
 midgard_reg_mode
