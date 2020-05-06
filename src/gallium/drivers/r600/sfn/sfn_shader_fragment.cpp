@@ -285,7 +285,8 @@ bool FragmentShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir
    if ((out_var->data.location >= FRAG_RESULT_DATA0 &&
         out_var->data.location <= FRAG_RESULT_DATA7) ||
        out_var->data.location == FRAG_RESULT_DEPTH ||
-       out_var->data.location == FRAG_RESULT_STENCIL)
+       out_var->data.location == FRAG_RESULT_STENCIL ||
+       out_var->data.location == FRAG_RESULT_SAMPLE_MASK)
       return emit_export_pixel(out_var, instr, false);
 
    sfn_log << SfnLog::err << "r600-NIR: Unimplemented store_deref for " <<
@@ -326,7 +327,8 @@ bool FragmentShaderFromNir::do_process_outputs(nir_variable *output)
       return true;
    }
    if (output->data.location == FRAG_RESULT_DEPTH ||
-       output->data.location == FRAG_RESULT_STENCIL) {
+       output->data.location == FRAG_RESULT_STENCIL ||
+       output->data.location == FRAG_RESULT_SAMPLE_MASK) {
       io.write_mask = 15;
       return true;
    }
