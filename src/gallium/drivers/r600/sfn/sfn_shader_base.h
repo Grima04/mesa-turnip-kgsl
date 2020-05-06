@@ -121,6 +121,7 @@ protected:
       es_rel_patch_id,
       es_sample_mask_in,
       es_sample_id,
+      es_sample_pos,
       es_tess_factor_base,
       es_vertexid,
       es_tess_coord,

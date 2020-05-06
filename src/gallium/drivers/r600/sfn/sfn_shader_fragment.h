@@ -70,6 +70,7 @@ private:
 
    bool emit_load_front_face(nir_intrinsic_instr* instr);
    bool emit_load_sample_mask_in(nir_intrinsic_instr* instr);
+   bool emit_load_sample_pos(nir_intrinsic_instr* instr);
    bool emit_load_sample_id(nir_intrinsic_instr* instr);
    bool emit_interp_deref_at_sample(nir_intrinsic_instr* instr);
    bool emit_interp_deref_at_offset(nir_intrinsic_instr* instr);

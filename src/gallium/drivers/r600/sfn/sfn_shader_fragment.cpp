@@ -120,6 +120,9 @@ bool FragmentShaderFromNir::scan_sysvalue_access(nir_instr *instr)
       case nir_intrinsic_load_sample_mask_in:
          m_sv_values.set(es_sample_mask_in);
          break;
+      case nir_intrinsic_load_sample_pos:
+         m_sv_values.set(es_sample_pos);
+         /* fallthrough */
       case nir_intrinsic_load_sample_id:
          m_sv_values.set(es_sample_id);
          break;
@@ -346,6 +349,9 @@ bool FragmentShaderFromNir::emit_intrinsic_instruction_override(nir_intrinsic_in
       return emit_interp_deref_at_offset(instr);
    case nir_intrinsic_interp_deref_at_centroid:
       return emit_interp_deref_at_centroid(instr);
+   case nir_intrinsic_load_sample_pos:
+      return emit_load_sample_pos(instr);
+
    default:
       return false;
    }
@@ -361,6 +367,34 @@ void FragmentShaderFromNir::load_front_face()
                                 Value::zero, {alu_write, alu_last_instr});
    m_front_face_loaded = true;
    emit_instruction(ir);
+}
+
+bool FragmentShaderFromNir::emit_load_sample_pos(nir_intrinsic_instr* instr)
+{
+   GPRVector dest = vec_from_nir(instr->dest, nir_dest_num_components(instr->dest));
+   auto fetch = new FetchInstruction(vc_fetch,
+                                     no_index_offset,
+                                     fmt_32_32_32_32_float,
+                                     vtx_nf_scaled,
+                                     vtx_es_none,
+                                     m_sample_id_reg,
+                                     dest,
+                                     0,
+                                     false,
+                                     0xf,
+                                     R600_BUFFER_INFO_CONST_BUFFER,
+                                     0,
+                                     bim_none,
+                                     false,
+                                     false,
+                                     0,
+                                     0,
+                                     0,
+                                     PValue(),
+                                     {0,1,2,3});
+   fetch->set_flag(vtx_srf_mode);
+   emit_instruction(fetch);
+   return true;
 }
 
 bool FragmentShaderFromNir::emit_interp_deref_at_sample(nir_intrinsic_instr* instr)
