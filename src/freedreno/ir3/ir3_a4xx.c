@@ -77,7 +77,7 @@ emit_intrinsic_store_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	 * it is more a PITA than that, since blob ends up loading the
 	 * masked components and writing them back out.
 	 */
-	unsigned wrmask = intr->const_index[0];
+	unsigned wrmask = nir_intrinsic_write_mask(intr);
 	unsigned ncomp = ffs(~wrmask) - 1;
 
 	/* can this be non-const buffer_index?  how do we handle that? */
