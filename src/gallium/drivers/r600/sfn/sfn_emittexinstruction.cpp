@@ -481,7 +481,8 @@ bool EmitTexInstruction::emit_tex_txf(nir_tex_instr* instr, TexInputs& src)
 
    auto dst = make_dest(*instr);
 
-   emit_instruction(new AluInstruction(op1_mov, src.coord.reg_i(3), src.lod, {alu_write, alu_last_instr}));
+   if (*src.coord.reg_i(3) != *src.lod)
+      emit_instruction(new AluInstruction(op1_mov, src.coord.reg_i(3), src.lod, {alu_write, alu_last_instr}));
 
    auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect);
