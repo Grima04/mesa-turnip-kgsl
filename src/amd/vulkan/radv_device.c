@@ -553,15 +553,6 @@ radv_handle_per_app_options(struct radv_instance *instance,
 	}
 }
 
-static int radv_get_instance_extension_index(const char *name)
-{
-	for (unsigned i = 0; i < RADV_INSTANCE_EXTENSION_COUNT; ++i) {
-		if (strcmp(name, radv_instance_extensions[i].extensionName) == 0)
-			return i;
-	}
-	return -1;
-}
-
 static const char radv_dri_options_xml[] =
 DRI_CONF_BEGIN
 	DRI_CONF_SECTION_PERFORMANCE
@@ -593,23 +584,6 @@ VkResult radv_CreateInstance(
 	struct radv_instance *instance;
 	VkResult result;
 
-	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
-
-	uint32_t client_version;
-	if (pCreateInfo->pApplicationInfo &&
-	    pCreateInfo->pApplicationInfo->apiVersion != 0) {
-		client_version = pCreateInfo->pApplicationInfo->apiVersion;
-	} else {
-		client_version = VK_API_VERSION_1_0;
-	}
-
-	const char *engine_name = NULL;
-	uint32_t engine_version = 0;
-	if (pCreateInfo->pApplicationInfo) {
-		engine_name = pCreateInfo->pApplicationInfo->pEngineName;
-		engine_version = pCreateInfo->pApplicationInfo->engineVersion;
-	}
-
 	instance = vk_zalloc2(&default_alloc, pAllocator, sizeof(*instance), 8,
 			      VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 	if (!instance)
@@ -622,7 +596,19 @@ VkResult radv_CreateInstance(
 	else
 		instance->alloc = default_alloc;
 
-	instance->apiVersion = client_version;
+	if (pCreateInfo->pApplicationInfo) {
+		const VkApplicationInfo *app = pCreateInfo->pApplicationInfo;
+
+		instance->engineName =
+			vk_strdup(&instance->alloc, app->pEngineName,
+				  VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+		instance->engineVersion = app->engineVersion;
+		instance->apiVersion = app->apiVersion;
+	}
+
+	if (instance->apiVersion == 0)
+		instance->apiVersion = VK_API_VERSION_1_0;
+
 	instance->physicalDeviceCount = -1;
 
 	/* Get secure compile thread count. NOTE: We cap this at 32 */
@@ -648,15 +634,20 @@ VkResult radv_CreateInstance(
 		radv_logi("Created an instance");
 
 	for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
-		const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
-		int index = radv_get_instance_extension_index(ext_name);
+		int idx;
+		for (idx = 0; idx < RADV_INSTANCE_EXTENSION_COUNT; idx++) {
+			if (!strcmp(pCreateInfo->ppEnabledExtensionNames[i],
+				    radv_instance_extensions[idx].extensionName))
+				break;
+		}
 
-		if (index < 0 || !radv_supported_instance_extensions.extensions[index]) {
+		if (idx >= RADV_INSTANCE_EXTENSION_COUNT ||
+		    !radv_supported_instance_extensions.extensions[idx]) {
 			vk_free2(&default_alloc, pAllocator, instance);
 			return vk_error(instance, VK_ERROR_EXTENSION_NOT_PRESENT);
 		}
 
-		instance->enabled_extensions.extensions[index] = true;
+		instance->enabled_extensions.extensions[idx] = true;
 	}
 
 	bool unchecked = instance->debug_flags & RADV_DEBUG_ALL_ENTRYPOINTS;
@@ -708,10 +699,6 @@ VkResult radv_CreateInstance(
 		vk_free2(&default_alloc, pAllocator, instance);
 		return vk_error(instance, result);
 	}
-
-	instance->engineName = vk_strdup(&instance->alloc, engine_name,
-					 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-	instance->engineVersion = engine_version;
 
 	glsl_type_singleton_init_or_ref();
 
