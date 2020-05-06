@@ -687,7 +687,8 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
    /* Clear FMASK to identity. */
    struct si_texture *stex = (struct si_texture *)tex;
    si_clear_buffer(sctx, tex, stex->surface.fmask_offset, stex->surface.fmask_size,
-                   (uint32_t *)&fmask_expand_values[log_fragments][log_samples - 1], 4,
+                   (uint32_t *)&fmask_expand_values[log_fragments][log_samples - 1],
+                   log_fragments >= 2 && log_samples == 4 ? 8 : 4,
                    SI_COHERENCY_SHADER, false);
 }
 
