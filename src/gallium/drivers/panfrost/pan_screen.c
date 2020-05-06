@@ -63,6 +63,7 @@ static const struct debug_named_value debug_options[] = {
         {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
         {"gles3",     PAN_DBG_GLES3,    "Enable experimental GLES3 implementation"},
+        {"fp16",     PAN_DBG_FP16,     "Enable buggy experimental (don't use!) fp16"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -289,6 +290,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                           enum pipe_shader_cap param)
 {
         bool is_deqp = pan_debug & PAN_DBG_DEQP;
+        bool is_fp16 = pan_debug & PAN_DBG_FP16;
         struct panfrost_device *dev = pan_device(screen);
 
         if (shader != PIPE_SHADER_VERTEX &&
@@ -346,7 +348,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 1;
 
         case PIPE_SHADER_CAP_FP16:
-                return !(dev->quirks & MIDGARD_BROKEN_FP16);
+                return !(dev->quirks & MIDGARD_BROKEN_FP16) || is_fp16;
 
         case PIPE_SHADER_CAP_INT64_ATOMICS:
         case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
