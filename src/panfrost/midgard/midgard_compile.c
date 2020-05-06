@@ -2622,11 +2622,11 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         do {
                 progress = false;
+                progress |= midgard_opt_dead_code_eliminate(ctx);
 
                 mir_foreach_block(ctx, _block) {
                         midgard_block *block = (midgard_block *) _block;
                         progress |= midgard_opt_copy_prop(ctx, block);
-                        progress |= midgard_opt_dead_code_eliminate(ctx, block);
                         progress |= midgard_opt_combine_projection(ctx, block);
                         progress |= midgard_opt_varying_projection(ctx, block);
                 }
