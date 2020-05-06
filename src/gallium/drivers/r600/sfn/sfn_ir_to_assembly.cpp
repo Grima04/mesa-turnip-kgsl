@@ -935,31 +935,27 @@ bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
    memset(&gds, 0, sizeof(struct r600_bytecode_gds));
 
    gds.op = ds_opcode_map.at(instr.op());
-	gds.dst_gpr = instr.dest_sel();
-	gds.uav_id = (uav_idx >= 0 ? uav_idx : 0) + instr.uav_base();
-	gds.uav_index_mode = uav_idx >= 0 ? bim_none : bim_one;
-	gds.src_gpr = instr.src_sel();
+   gds.dst_gpr = instr.dest_sel();
+   gds.uav_id = (uav_idx >= 0 ? uav_idx : 0) + instr.uav_base();
+   gds.uav_index_mode = uav_idx >= 0 ? bim_none : bim_one;
+   gds.src_gpr = instr.src_sel();
 
-   if (instr.op() == DS_OP_CMP_XCHG_RET) {
-      gds.src_sel_z = 1;
-   } else {
-      gds.src_sel_z = 7;
-   }
+   gds.src_sel_x = instr.src_swizzle(0);
+   gds.src_sel_y = instr.src_swizzle(1);
+   gds.src_sel_z = instr.src_swizzle(2);
 
-	gds.src_sel_x = instr.src_swizzle(0);
-	gds.src_sel_y = instr.src_swizzle(1);
-
-	gds.dst_sel_x = 0;
-	gds.dst_sel_y = 7;
-	gds.dst_sel_z = 7;
-	gds.dst_sel_w = 7;
-	gds.src_gpr2 = 0;
-	gds.alloc_consume = 1; // Not Cayman
+   gds.dst_sel_x = instr.dest_swizzle(0);
+   gds.dst_sel_y = 7;
+   gds.dst_sel_z = 7;
+   gds.dst_sel_w = 7;
+   gds.src_gpr2 = 0;
+   gds.alloc_consume = 1; // Not Cayman
 
    int r = r600_bytecode_add_gds(m_bc, &gds);
-	if (r)
-		return false;
-	m_bc->cf_last->vpm = 1;
+   if (r)
+      return false;
+   m_bc->cf_last->vpm = 1;
+   m_bc->cf_last->barrier = 1;
    return true;
 }
 
