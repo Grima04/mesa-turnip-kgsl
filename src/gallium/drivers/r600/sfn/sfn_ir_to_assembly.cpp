@@ -619,8 +619,8 @@ bool AssemblyFromShaderLegacyImpl::emit_memringwrite(const MemRingOutIntruction&
 
    output.gpr = instr.gpr().sel();
    output.type = instr.type();
-   output.elem_size = instr.ncomp();
-   output.comp_mask = 0xF;
+   output.elem_size = 3;
+   output.comp_mask = 0xf;
    output.burst_count = 1;
    output.op = instr.op();
    if (instr.type() == mem_write_ind || instr.type() == mem_write_ind_ack) {
