@@ -641,7 +641,8 @@ bool AssemblyFromShaderLegacyImpl::emit_tex(const TexInstruction & tex_instr)
 {
    auto addr = tex_instr.sampler_offset();
    if (addr && (!m_bc->index_loaded[1] || m_loop_nesting
-                ||  m_bc->index_reg[1] != addr->sel())) {
+                ||  m_bc->index_reg[1] != addr->sel()
+                ||  m_bc->index_reg_chan[1] != addr->chan())) {
       struct r600_bytecode_alu alu;
       memset(&alu, 0, sizeof(alu));
       alu.op = opcode_map.at(op1_mova_int);
@@ -666,6 +667,7 @@ bool AssemblyFromShaderLegacyImpl::emit_tex(const TexInstruction & tex_instr)
          return false;
 
       m_bc->index_reg[1] = addr->sel();
+      m_bc->index_reg_chan[1] = addr->chan();
       m_bc->index_loaded[1] = true;
    }
 
@@ -720,7 +722,9 @@ bool AssemblyFromShaderLegacyImpl::emit_vtx(const FetchInstruction& fetch_instr)
          buffer_offset = boffs.value();
       } else {
          index_mode = bim_zero;
-         if ((!m_bc->index_loaded[0] || m_loop_nesting  ||  m_bc->index_reg[0] != addr->sel())) {
+         if ((!m_bc->index_loaded[0] || m_loop_nesting  ||
+              m_bc->index_reg[0] != addr->sel() ||
+              m_bc->index_reg_chan[0] != addr->chan())) {
             struct r600_bytecode_alu alu;
             memset(&alu, 0, sizeof(alu));
             alu.op = opcode_map.at(op1_mova_int);
@@ -745,6 +749,7 @@ bool AssemblyFromShaderLegacyImpl::emit_vtx(const FetchInstruction& fetch_instr)
                return false;
 
             m_bc->index_reg[0] = addr->sel();
+            m_bc->index_reg_chan[0] = addr->chan();
             m_bc->index_loaded[0] = true;
          }
       }
@@ -878,7 +883,8 @@ bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
    auto addr = instr.uav_id();
    if (addr->type() != Value::literal) {
       if (!m_bc->index_loaded[1] || m_loop_nesting ||
-          m_bc->index_reg[1] != addr->sel()) {
+          m_bc->index_reg[1] != addr->sel()
+          || m_bc->index_reg_chan[1] != addr->chan()) {
          struct r600_bytecode_alu alu;
 
          memset(&alu, 0, sizeof(alu));
@@ -918,6 +924,7 @@ bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
             return false;
 
          m_bc->index_reg[1] = addr->sel();
+         m_bc->index_reg_chan[1] = addr->chan();
          m_bc->index_loaded[1] = true;
       }
    } else {
@@ -1075,7 +1082,9 @@ bool AssemblyFromShaderLegacyImpl::emit_rat(const RatInstruction& instr)
    if (addr) {
       if (addr->type() != Value::literal) {
          rat_index_mode = bim_one;
-         if (!m_bc->index_loaded[1] || m_loop_nesting ||  m_bc->index_reg[1] != addr->sel()) {
+         if (!m_bc->index_loaded[1] || m_loop_nesting ||
+             m_bc->index_reg[1] != addr->sel()
+             ||  m_bc->index_reg_chan[1] != addr->chan()) {
             struct r600_bytecode_alu alu;
 
             memset(&alu, 0, sizeof(alu));
@@ -1101,12 +1110,13 @@ bool AssemblyFromShaderLegacyImpl::emit_rat(const RatInstruction& instr)
                return false;
 
             m_bc->index_reg[1] = addr->sel();
+            m_bc->index_reg_chan[1] = addr->chan();
             m_bc->index_loaded[1] = true;
 
          }
       } else {
          const LiteralValue& addr_reg = static_cast<const LiteralValue&>(*addr);
-         rat_idx = addr_reg.value();
+         rat_idx += addr_reg.value();
       }
    }
    memset(&gds, 0, sizeof(struct r600_bytecode_gds));
@@ -1145,10 +1155,12 @@ bool AssemblyFromShaderLegacyImpl::copy_dst(r600_bytecode_alu_dst& dst,
    dst.sel = d.sel();
    dst.chan = d.chan();
 
-   if (m_bc->index_reg[1] == dst.sel)
+   if (m_bc->index_reg[1] == dst.sel &&
+       m_bc->index_reg_chan[1] == dst.chan)
       m_bc->index_loaded[1] = false;
 
-   if (m_bc->index_reg[0] == dst.sel)
+   if (m_bc->index_reg[0] == dst.sel &&
+       m_bc->index_reg_chan[0] == dst.chan)
       m_bc->index_loaded[0] = false;
 
    return true;
