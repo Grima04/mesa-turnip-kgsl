@@ -56,7 +56,7 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_i2b1: return emit_alu_i2orf2_b1(instr, op2_setne_int);
    case nir_op_f2b1: return emit_alu_i2orf2_b1(instr, op2_setne_dx10);
    case nir_op_b2b1:
-   case nir_op_mov:return emit_alu_op1(instr, op1_mov);
+   case nir_op_mov:return emit_mov(instr);
    case nir_op_ftrunc: return emit_alu_op1(instr, op1_trunc);
    case nir_op_fabs: return emit_alu_op1(instr, op1_mov, {1 << alu_src0_abs});
    case nir_op_fneg: return emit_alu_op1(instr, op1_mov, {1 << alu_src0_neg});
@@ -260,6 +260,30 @@ bool EmitAluInstruction::emit_alu_op1(const nir_alu_instr& instr, EAluOp opcode,
    make_last(ir);
 
    return true;
+}
+
+bool EmitAluInstruction::emit_mov(const nir_alu_instr& instr)
+{
+   /* If the op is a plain move beween SSA values we can just forward
+    * the register reference to the original register */
+   if (instr.dest.dest.is_ssa && instr.src[0].src.is_ssa &&
+       !instr.src[0].abs && !instr.src[0].negate  && !instr.dest.saturate) {
+      bool result = true;
+      for (int i = 0; i < 4 ; ++i) {
+         if (instr.dest.write_mask & (1 << i)){
+            auto src = from_nir(instr.src[0], i);
+            result &= inject_register(instr.dest.dest.ssa.index, i,
+                                      src, true);
+
+            if (src->type() == Value::kconst) {
+               add_uniform((instr.dest.dest.ssa.index << 2) + i, src);
+            }
+         }
+      }
+      return result;
+   } else {
+      return emit_alu_op1(instr, op1_mov);
+   }
 }
 
 bool EmitAluInstruction::emit_alu_trig_op1(const nir_alu_instr& instr, EAluOp opcode)
