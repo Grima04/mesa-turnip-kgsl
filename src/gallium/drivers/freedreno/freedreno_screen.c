@@ -403,9 +403,15 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
 	/* Texturing. */
 	case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
-		return 1 << (MAX_MIP_LEVELS - 1);
+		if (is_a6xx(screen) || is_a5xx(screen) || is_a4xx(screen))
+			return 16384;
+		else
+			return 8192;
 	case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
-		return MAX_MIP_LEVELS;
+		if (is_a6xx(screen) || is_a5xx(screen) || is_a4xx(screen))
+			return 15;
+		else
+			return 14;
 	case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
 		return 11;
 

@@ -75,7 +75,7 @@
  * texture.
  */
 
-#define FDL_MAX_MIP_LEVELS 14
+#define FDL_MAX_MIP_LEVELS 15
 
 struct fdl_slice {
 	uint32_t offset;         /* offset of first layer in slice */
