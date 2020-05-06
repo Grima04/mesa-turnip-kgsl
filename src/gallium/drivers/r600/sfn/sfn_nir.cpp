@@ -579,7 +579,6 @@ int r600_shader_from_nir(struct r600_context *rctx,
       .lower_txp = ~0u,
    };
    NIR_PASS_V(sel->nir, nir_lower_tex, &lower_tex_options);
-
    NIR_PASS_V(sel->nir, r600::r600_nir_lower_txl_txf_array_or_cube);
 
    NIR_PASS_V(sel->nir, r600_nir_lower_int_tg4);

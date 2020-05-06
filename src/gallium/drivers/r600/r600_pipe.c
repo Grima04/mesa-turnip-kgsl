@@ -341,6 +341,7 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_TGSI_TEXCOORD:
 		return 1;
 
+	case PIPE_CAP_NIR_IMAGES_AS_DEREF:
 	case PIPE_CAP_FAKE_SW_MSAA:
 		return 0;
 
