@@ -81,7 +81,7 @@ bool VertexStageExportBase::do_process_outputs(nir_variable *output)
 
       if (output->data.location == VARYING_SLOT_PSIZ ||
           output->data.location == VARYING_SLOT_EDGE ||
-          output->data.location == VARYING_SLOT_LAYER)
+          output->data.location == VARYING_SLOT_LAYER) // VIEWPORT?
             m_cur_clip_pos = 2;
 
       if (output->data.location != VARYING_SLOT_POS &&
@@ -109,6 +109,11 @@ bool VertexStageExportForFS::store_deref(const nir_variable *out_var, nir_intrin
    case VARYING_SLOT_EDGE: {
       std::array<uint32_t, 4> swizzle_override = {7 ,0, 7, 7};
       return emit_varying_pos(out_var, instr, &swizzle_override);
+   }
+   case VARYING_SLOT_VIEWPORT: {
+      std::array<uint32_t, 4> swizzle_override = {7, 7, 7, 0};
+      return emit_varying_pos(out_var, instr, &swizzle_override) &&
+            emit_varying_param(out_var, instr);
    }
    case VARYING_SLOT_CLIP_VERTEX:
       return emit_clip_vertices(out_var, instr);
@@ -175,6 +180,11 @@ bool VertexStageExportForFS::emit_varying_pos(const nir_variable *out_var, nir_i
       /* fallthrough */
    case VARYING_SLOT_PSIZ:
    case VARYING_SLOT_LAYER:
+      export_slot = 1;
+      break;
+   case VARYING_SLOT_VIEWPORT:
+      m_proc.sh_info().vs_out_misc_write = 1;
+      m_proc.sh_info().vs_out_viewport = 1;
       export_slot = 1;
       break;
    case VARYING_SLOT_POS:
@@ -407,8 +417,11 @@ bool VertexStageExportForGS::store_deref(const nir_variable *out_var, nir_intrin
       }
    }
 
-   if (out_var->data.location == VARYING_SLOT_VIEWPORT)
+   if (out_var->data.location == VARYING_SLOT_VIEWPORT) {
+      m_proc.sh_info().vs_out_viewport = 1;
+      m_proc.sh_info().vs_out_misc_write = 1;
       return true;
+   }
 
    if (ring_offset == -1) {
       sfn_log << SfnLog::err << "VS defines output at "

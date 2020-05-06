@@ -137,6 +137,11 @@ bool GeometryShaderFromNir::do_process_outputs(nir_variable *output)
           output->data.location == VARYING_SLOT_CLIP_DIST1) {
          m_num_clip_dist += 4;
       }
+
+      if (output->data.location == VARYING_SLOT_VIEWPORT) {
+         sh_info().vs_out_viewport = 1;
+         sh_info().vs_out_misc_write = 1;
+      }
       return true;
    }
    return false;
