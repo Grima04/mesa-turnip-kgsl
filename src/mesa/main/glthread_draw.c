@@ -27,6 +27,8 @@
  * index data, so that glthread doesn't have to execute synchronously.
  */
 
+#include "c99_alloca.h"
+
 #include "main/glthread_marshal.h"
 #include "main/dispatch.h"
 #include "main/varray.h"
