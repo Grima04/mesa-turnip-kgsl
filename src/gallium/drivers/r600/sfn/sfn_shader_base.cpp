@@ -988,10 +988,10 @@ void ShaderFromNirProcessor::set_input(unsigned pos, PValue var)
    m_inputs[pos] = var;
 }
 
-void ShaderFromNirProcessor::set_output(unsigned pos, PValue var)
+void ShaderFromNirProcessor::set_output(unsigned pos, int sel)
 {
-   r600::sfn_log << SfnLog::io << "Set output[" << pos << "] =" << *var <<  "\n";
-   m_outputs[pos] = var;
+   r600::sfn_log << SfnLog::io << "Set output[" << pos << "] =" << sel <<  "\n";
+   m_outputs[pos] = sel;
 }
 
 void ShaderFromNirProcessor::append_block(int nesting_change)
@@ -1008,7 +1008,7 @@ void ShaderFromNirProcessor::finalize()
       m_sh_info.input[i.first].gpr = i.second->sel();
 
    for (auto& i : m_outputs)
-      m_sh_info.output[i.first].gpr = i.second->sel();
+      m_sh_info.output[i.first].gpr = i.second;
 
    m_output.push_back(m_export_output);
 }
