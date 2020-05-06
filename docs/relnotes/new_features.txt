@@ -13,3 +13,4 @@ NGG GS support in ACO
 VK_KHR_shader_terminate_invocation on ANV
 driconf: add glx_extension_override
 driconf: add indirect_gl_extension_override
+VK_AMD_mixed_attachment_samples on RADV (GFX6-GFX7).

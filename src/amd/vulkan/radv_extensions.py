@@ -173,8 +173,7 @@ EXTENSIONS = [
     Extension('VK_AMD_gpu_shader_half_float',             2, 'device->rad_info.has_packed_math_16bit'),
     Extension('VK_AMD_gpu_shader_int16',                  2, 'device->rad_info.has_packed_math_16bit'),
     Extension('VK_AMD_memory_overallocation_behavior',    1, True),
-    # Disable mixed attachment samples on GFX6-GFX7 until the CTS failures have been resolved.
-    Extension('VK_AMD_mixed_attachment_samples',          1, 'device->rad_info.chip_class >= GFX8'),
+    Extension('VK_AMD_mixed_attachment_samples',          1, True),
     Extension('VK_AMD_rasterization_order',               1, 'device->rad_info.has_out_of_order_rast'),
     Extension('VK_AMD_shader_ballot',                     1, True),
     Extension('VK_AMD_shader_core_properties',            2, True),
