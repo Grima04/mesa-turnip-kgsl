@@ -333,8 +333,9 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	device->use_aco = instance->perftest_flags & RADV_PERFTEST_ACO;
 
 	snprintf(device->name, sizeof(device->name),
-		 "AMD RADV%s %s (LLVM " MESA_LLVM_VERSION_STRING ")", device->use_aco ? "/ACO" : "",
-		 device->rad_info.name);
+		 "AMD RADV %s (%s)",
+		 device->rad_info.name,
+		 device->use_aco ? "ACO" : "LLVM " MESA_LLVM_VERSION_STRING);
 
 	if (radv_device_get_cache_uuid(device->rad_info.family, device->cache_uuid)) {
 		result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
@@ -1481,8 +1482,8 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 	p->driverID = VK_DRIVER_ID_MESA_RADV;
 	snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "radv");
 	snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE,
-		 "Mesa " PACKAGE_VERSION MESA_GIT_SHA1
-		 " (LLVM " MESA_LLVM_VERSION_STRING ")");
+		 "Mesa " PACKAGE_VERSION MESA_GIT_SHA1 " (%s)",
+		 pdevice->use_aco ? "ACO" : "LLVM " MESA_LLVM_VERSION_STRING);
 	p->conformanceVersion = (VkConformanceVersion) {
 		.major = 1,
 		.minor = 2,
