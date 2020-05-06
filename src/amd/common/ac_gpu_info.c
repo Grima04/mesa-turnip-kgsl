@@ -494,11 +494,8 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->has_unaligned_shader_loads = info->chip_class != GFX6;
 	/* Disable sparse mappings on GFX6 due to VM faults in CP DMA. Enable them once
 	 * these faults are mitigated in software.
-	 * Disable sparse mappings on GFX9 due to hangs.
 	 */
-	info->has_sparse_vm_mappings =
-		info->chip_class >= GFX7 && info->chip_class <= GFX8 &&
-		info->drm_minor >= 13;
+	info->has_sparse_vm_mappings = info->chip_class >= GFX7 && info->drm_minor >= 13;
 	info->has_2d_tiling = true;
 	info->has_read_registers_query = true;
 	info->has_scheduled_fence_dependency = info->drm_minor >= 28;
