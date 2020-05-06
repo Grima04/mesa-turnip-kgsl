@@ -314,7 +314,8 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
    return 0;
 }
 
-void si_eliminate_fast_color_clear(struct si_context *sctx, struct si_texture *tex)
+void si_eliminate_fast_color_clear(struct si_context *sctx, struct si_texture *tex,
+                                   bool *ctx_flushed)
 {
    struct si_screen *sscreen = sctx->screen;
    struct pipe_context *ctx = &sctx->b;
@@ -326,8 +327,14 @@ void si_eliminate_fast_color_clear(struct si_context *sctx, struct si_texture *t
    ctx->flush_resource(ctx, &tex->buffer.b.b);
 
    /* Flush only if any fast clear elimination took place. */
+   bool flushed = false;
    if (n != sctx->num_decompress_calls)
+   {
       ctx->flush(ctx, NULL, 0);
+      flushed = true;
+   }
+   if (ctx_flushed)
+      *ctx_flushed = flushed;
 
    if (ctx == sscreen->aux_context)
       simple_mtx_unlock(&sscreen->aux_context_lock);
@@ -705,9 +712,11 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
       if (!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
           (tex->cmask_buffer || tex->surface.dcc_offset)) {
          /* Eliminate fast clear (both CMASK and DCC) */
-         si_eliminate_fast_color_clear(sctx, tex);
-         /* eliminate_fast_color_clear flushes the context */
-         flush = false;
+         bool flushed;
+         si_eliminate_fast_color_clear(sctx, tex, &flushed);
+         /* eliminate_fast_color_clear sometimes flushes the context */
+         if (flushed)
+            flush = false;
 
          /* Disable CMASK if flush_resource isn't going
           * to be called.
