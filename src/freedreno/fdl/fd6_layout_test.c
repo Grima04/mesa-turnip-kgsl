@@ -390,6 +390,84 @@ static const struct testcase testcases[] = {
 			},
 		},
 	},
+
+	/* UBWC: Pitch comes from POT-aligned level 0. */
+	/* Pitch fixed in this commit, but offsets broken.  Will be fixed in
+	 * following commits.
+	 */
+#if 0
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.tile_mode = TILE6_3,
+			.ubwc = true,
+			.width0 = 2049, .height0 = 128,
+			.slices = {
+				{ .offset = 0, .pitch = 8448 },
+				{ .offset = 1081344, .pitch = 4352 },
+				{ .offset = 1359872, .pitch = 2304 },
+				{ .offset = 1433600, .pitch = 1280 },
+				{ .offset = 1454080, .pitch = 768 },
+				{ .offset = 1466368, .pitch = 512 },
+				{ .offset = 1474560, .pitch = 256 },
+				{ .offset = 1478656, .pitch = 256 },
+				{ .offset = 1482752, .pitch = 256 },
+				{ .offset = 1486848, .pitch = 256 },
+				{ .offset = 1490944, .pitch = 256 },
+				{ .offset = 1495040, .pitch = 256 },
+			},
+			.ubwc_slices = {
+				{ .offset = 0, .pitch = 256 },
+				{ .offset = 16384, .pitch = 128 },
+				{ .offset = 24576, .pitch = 64 },
+				{ .offset = 28672, .pitch = 64 },
+				{ .offset = 32768, .pitch = 64 },
+				{ .offset = 36864, .pitch = 64 },
+				{ .offset = 40960, .pitch = 64 },
+				{ .offset = 45056, .pitch = 64 },
+				{ .offset = 49152, .pitch = 64 },
+				{ .offset = 53248, .pitch = 64 },
+				{ .offset = 57344, .pitch = 64 },
+				{ .offset = 61440, .pitch = 64 },
+			},
+		},
+	},
+#endif
+	/* UBWC: Height comes from POT-aligned level 0. */
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.tile_mode = TILE6_3,
+			.ubwc = true,
+			.width0 = 1024, .height0 = 1025,
+			.slices = {
+				{ .offset = 0, .pitch = 4096 },
+				{ .offset = 4259840, .pitch = 2048 },
+				{ .offset = 5308416, .pitch = 1024 },
+				{ .offset = 5570560, .pitch = 512 },
+				{ .offset = 5636096, .pitch = 256 },
+				{ .offset = 5652480, .pitch = 256 },
+				{ .offset = 5660672, .pitch = 256 },
+				{ .offset = 5664768, .pitch = 256 },
+				{ .offset = 5668864, .pitch = 256 },
+				{ .offset = 5672960, .pitch = 256 },
+				{ .offset = 5677056, .pitch = 256 },
+			},
+			.ubwc_slices = {
+				{ .offset = 0, .pitch = 64 },
+				{ .offset = 32768, .pitch = 64 },
+				{ .offset = 49152, .pitch = 64 },
+				{ .offset = 57344, .pitch = 64 },
+				{ .offset = 61440, .pitch = 64 },
+				{ .offset = 65536, .pitch = 64 },
+				{ .offset = 69632, .pitch = 64 },
+				{ .offset = 73728, .pitch = 64 },
+				{ .offset = 77824, .pitch = 64 },
+				{ .offset = 81920, .pitch = 64 },
+				{ .offset = 86016, .pitch = 64 },
+			},
+		},
+	},
 };
 
 static bool test_layout(const struct testcase *testcase)
