@@ -1071,7 +1071,7 @@ bool AssemblyFromShaderLegacyImpl::emit_rat(const RatInstruction& instr)
 {
    struct r600_bytecode_gds gds;
 
-   int rat_idx = -1;
+   int rat_idx = instr.rat_id();
    EBufferIndexMode rat_index_mode = bim_none;
    auto addr = instr.rat_id_offset();
 
@@ -1127,10 +1127,14 @@ bool AssemblyFromShaderLegacyImpl::emit_rat(const RatInstruction& instr)
    cf->output.index_gpr = instr.index_gpr();
    cf->output.comp_mask = instr.comp_mask();
    cf->output.burst_count = instr.burst_count();
-   cf->output.swizzle_x = instr.data_swz(0);
-   cf->output.swizzle_y = instr.data_swz(1);
-   cf->output.swizzle_z = instr.data_swz(2);
-   cf->output.swizzle_w = instr.data_swz(3);
+   assert(instr.data_swz(0) == PIPE_SWIZZLE_X);
+   if (cf->rat.inst != RatInstruction::STORE_TYPED) {
+      assert(instr.data_swz(1) == PIPE_SWIZZLE_Y ||
+             instr.data_swz(1) == PIPE_SWIZZLE_MAX) ;
+      assert(instr.data_swz(2) == PIPE_SWIZZLE_Z ||
+             instr.data_swz(2) == PIPE_SWIZZLE_MAX) ;
+   }
+
    cf->vpm = 1;
    cf->barrier = 1;
    cf->mark = instr.need_ack();
