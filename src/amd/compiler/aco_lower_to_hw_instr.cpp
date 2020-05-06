@@ -1042,6 +1042,29 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
          *preserve_scc = true;
       } else if (def.bytes() == 8 && def.getTemp().type() == RegType::sgpr) {
          bld.sop1(aco_opcode::s_mov_b64, def, Operand(op.physReg(), s2));
+      } else if (def.regClass().is_subdword() && ctx->program->chip_class < GFX8) {
+         if (op.physReg().byte()) {
+            assert(def.physReg().byte() == 0);
+            bld.vop2(aco_opcode::v_lshrrev_b32, def, Operand(op.physReg().byte() * 8), op);
+         } else if (def.physReg().byte() == 2) {
+            assert(op.physReg().byte() == 0);
+            /* preserve the target's lower half */
+            def = Definition(def.physReg().advance(-2), v1);
+            bld.vop2(aco_opcode::v_and_b32, Definition(op.physReg(), v1), Operand(0xFFFFu), op);
+            if (def.physReg().reg() != op.physReg().reg())
+               bld.vop2(aco_opcode::v_and_b32, def, Operand(0xFFFFu), Operand(def.physReg(), v2b));
+            bld.vop2(aco_opcode::v_cvt_pk_u16_u32, def, Operand(def.physReg(), v2b), op);
+         } else if (def.physReg().byte()) {
+            unsigned bits = def.physReg().byte() * 8;
+            assert(op.physReg().byte() == 0);
+            def = Definition(def.physReg().advance(-def.physReg().byte()), v1);
+            bld.vop2(aco_opcode::v_and_b32, def, Operand((1 << bits) - 1u), Operand(def.physReg(), op.regClass()));
+            bld.vop2(aco_opcode::v_lshlrev_b32, Definition(op.physReg(), def.regClass()), Operand(bits), op);
+            bld.vop2(aco_opcode::v_or_b32, def, Operand(def.physReg(), op.regClass()), op);
+            bld.vop2(aco_opcode::v_lshrrev_b32, Definition(op.physReg(), def.regClass()), Operand(bits), op);
+         } else {
+            bld.vop1(aco_opcode::v_mov_b32, def, op);
+         }
       } else {
          bld.copy(def, op);
       }
@@ -1092,7 +1115,8 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
       Definition op_as_def = Definition(op.physReg(), op.regClass());
       if (ctx->program->chip_class >= GFX9 && def.regClass() == v1) {
          bld.vop1(aco_opcode::v_swap_b32, def, op_as_def, op, def_as_op);
-      } else if (def.regClass() == v1) {
+      } else if (def.regClass() == v1 || (def.regClass().is_subdword() && ctx->program->chip_class < GFX8)) {
+         assert(def.physReg().byte() == 0 && op.physReg().byte() == 0);
          bld.vop2(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
          bld.vop2(aco_opcode::v_xor_b32, def, op, def_as_op);
          bld.vop2(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
