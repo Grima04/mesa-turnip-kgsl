@@ -1680,7 +1680,7 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx,
 	}
 
 	if (access & ACCESS_STREAM_CACHE_POLICY)
-		cache_policy |= ac_slc;
+		cache_policy |= ac_slc | ac_glc;
 
 	return cache_policy;
 }
