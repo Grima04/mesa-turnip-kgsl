@@ -449,7 +449,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         if (!ctx->temp_count)
                 return NULL;
 
-        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count, 1, 8, 16, 5);
+        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count, 16, 5);
 
         /* Starts of classes, in bytes */
         l->class_start[REG_CLASS_WORK]  = 16 * 0;

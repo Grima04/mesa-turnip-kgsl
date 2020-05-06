@@ -42,7 +42,6 @@
 struct lcra_state *
 lcra_alloc_equations(
                 unsigned node_count,
-                unsigned min_alignment, unsigned max_alignment,
                 unsigned bound, unsigned class_count)
 {
         struct lcra_state *l = calloc(1, sizeof(*l));
