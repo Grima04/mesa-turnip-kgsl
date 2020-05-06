@@ -37,6 +37,17 @@ def is_point_release(version: str) -> bool:
     return not version.endswith('.0')
 
 
+def is_release_candidate(version: str) -> bool:
+    return '-rc' in version
+
+
+def branch_name(version: str) -> str:
+    if is_release_candidate(version):
+        version = version.split('-')[0]
+    (major, minor, _) = version.split('.')
+    return f'{major}.{minor}'
+
+
 def update_index(is_point: bool, version: str) -> None:
     p = pathlib.Path(__file__).parent.parent / 'docs' / 'index.html'
     with p.open('rt') as f:
@@ -89,7 +100,7 @@ def update_calendar(version: str) -> None:
     with p.open('rt') as f:
         tree = html.parse(f)
 
-    base_version = version[:-2]
+    branch = branch_name(version)
 
     old = None
     new = None
@@ -100,7 +111,7 @@ def update_calendar(version: str) -> None:
             break
 
         for td in tr.xpath('./td'):
-            if td.text == base_version:
+            if td.text == branch:
                 old = tr
                 break
 
