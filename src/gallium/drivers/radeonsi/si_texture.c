@@ -1694,10 +1694,24 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    if (use_staging_texture) {
       struct pipe_resource resource;
       struct si_texture *staging;
-
       unsigned bo_usage = usage & PIPE_TRANSFER_READ ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
+      unsigned bo_flags = SI_RESOURCE_FLAG_FORCE_LINEAR;
+
+      /* The pixel shader has a bad access pattern for linear textures.
+       * If a pixel shader is used to blit to/from staging, don't disable caches.
+       *
+       * MSAA, depth/stencil textures, and compressed textures use the pixel shader
+       * to blit.
+       */
+      if (texture->nr_samples <= 1 &&
+          !tex->is_depth &&
+          !util_format_is_compressed(texture->format) &&
+          /* Texture uploads with DCC use the pixel shader to blit */
+          (!(usage & PIPE_TRANSFER_WRITE) || !vi_dcc_enabled(tex, level)))
+         bo_flags |= SI_RESOURCE_FLAG_UNCACHED;
+
       si_init_temp_resource_from_box(&resource, texture, box, level, bo_usage,
-                                     SI_RESOURCE_FLAG_FORCE_LINEAR);
+                                     bo_flags);
 
       /* Since depth-stencil textures don't support linear tiling,
        * blit from ZS to color and vice versa. u_blitter will do

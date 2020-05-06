@@ -182,6 +182,14 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    if (res->b.b.flags & SI_RESOURCE_FLAG_32BIT)
       res->flags |= RADEON_FLAG_32BIT;
 
+   /* For higher throughput and lower latency over PCIe assuming sequential access.
+    * Only CP DMA, SDMA, and optimized compute benefit from this.
+    * GFX8 and older don't support RADEON_FLAG_UNCACHED.
+    */
+   if (sscreen->info.chip_class >= GFX9 &&
+       res->b.b.flags & SI_RESOURCE_FLAG_UNCACHED)
+      res->flags |= RADEON_FLAG_UNCACHED;
+
    /* Set expected VRAM and GART usage for the buffer. */
    res->vram_usage = 0;
    res->gart_usage = 0;
