@@ -172,7 +172,7 @@ PValue ValuePool::create_register_from_nir_src(const nir_src& src, int comp)
                           get_local_register_index(*src.reg.reg);
 
    auto retval = lookup_register(idx, comp, false);
-   if (!retval)
+   if (!retval || retval->type() != Value::gpr || retval->type() != Value::gpr_array_value)
       retval = create_register(idx, comp);
    return retval;
 }
