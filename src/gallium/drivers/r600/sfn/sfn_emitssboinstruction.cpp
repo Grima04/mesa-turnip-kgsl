@@ -4,8 +4,39 @@
 #include "sfn_instruction_gds.h"
 #include "sfn_instruction_misc.h"
 #include "../r600_pipe.h"
+#include "../r600_asm.h"
 
 namespace r600 {
+
+EmitSSBOInstruction::EmitSSBOInstruction(ShaderFromNirProcessor& processor):
+   EmitInstruction(processor),
+   m_require_rat_return_address(false)
+{
+}
+
+
+void EmitSSBOInstruction::set_require_rat_return_address()
+{
+   m_require_rat_return_address = true;
+}
+
+bool
+EmitSSBOInstruction::load_rat_return_address()
+{
+   if (m_require_rat_return_address) {
+      m_rat_return_address = get_temp_vec4();
+      emit_instruction(new AluInstruction(op1_mbcnt_32lo_accum_prev_int, m_rat_return_address.reg_i(0), literal(-1), {alu_write}));
+      emit_instruction(new AluInstruction(op1_mbcnt_32hi_int, m_rat_return_address.reg_i(1), literal(-1), {alu_write}));
+      emit_instruction(new AluInstruction(op3_muladd_uint24, m_rat_return_address.reg_i(2), PValue(new InlineConstValue(ALU_SRC_SE_ID, 0)),
+                                          literal(256), PValue(new InlineConstValue(ALU_SRC_HW_WAVE_ID, 0)), {alu_write, alu_last_instr}));
+      emit_instruction(new AluInstruction(op3_muladd_uint24, m_rat_return_address.reg_i(1),
+                                          m_rat_return_address.reg_i(2), literal(0x40), m_rat_return_address.reg_i(0),
+      {alu_write, alu_last_instr}));
+      m_require_rat_return_address = false;
+   }
+   return true;
+}
+
 
 bool EmitSSBOInstruction::do_emit(nir_instr* instr)
 {
@@ -29,8 +60,24 @@ bool EmitSSBOInstruction::do_emit(nir_instr* instr)
       return emit_atomic_pre_dec(intr);
    case nir_intrinsic_load_ssbo:
        return emit_load_ssbo(intr);
-    case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_store_ssbo:
       return emit_store_ssbo(intr);
+   case nir_intrinsic_ssbo_atomic_add:
+      return emit_ssbo_atomic_op(intr);
+   case nir_intrinsic_image_store:
+      return emit_image_store(intr);
+   case nir_intrinsic_image_load:
+   case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_image_atomic_comp_swap:
+   case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_image_atomic_umax:
+   case nir_intrinsic_image_atomic_imin:
+   case nir_intrinsic_image_atomic_imax:
+      return emit_image_load(intr);
    default:
       return false;
    }
@@ -111,6 +158,48 @@ ESDOp EmitSSBOInstruction::get_opcode(const nir_intrinsic_op opcode)
    }
 }
 
+RatInstruction::ERatOp
+EmitSSBOInstruction::get_rat_opcode(const nir_intrinsic_op opcode, pipe_format format) const
+{
+   switch (opcode) {
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_image_atomic_add:
+      return RatInstruction::ADD_RTN;
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_image_atomic_and:
+      return RatInstruction::AND_RTN;
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_image_atomic_exchange:
+      return RatInstruction::XCHG_RTN;
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_image_atomic_or:
+      return RatInstruction::OR_RTN;
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_image_atomic_imin:
+      return RatInstruction::MIN_INT_RTN;
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_image_atomic_imax:
+      return RatInstruction::MAX_INT_RTN;
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_image_atomic_umin:
+      return RatInstruction::MIN_UINT_RTN;
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_image_atomic_umax:
+      return RatInstruction::MAX_UINT_RTN;
+   case nir_intrinsic_image_atomic_xor:
+      return RatInstruction::XOR_RTN;
+   case nir_intrinsic_image_atomic_comp_swap:
+      if (util_format_is_float(format))
+         return RatInstruction::CMPXCHG_FLT_RTN;
+      else
+         return RatInstruction::CMPXCHG_INT_RTN;
+   case nir_intrinsic_image_load:
+      return RatInstruction::NOP_RTN;
+   default:
+      unreachable("Unsupported RAT instruction");
+   }
+}
+
 
 bool EmitSSBOInstruction::emit_atomic_add(const nir_intrinsic_instr* instr)
 {
@@ -127,22 +216,19 @@ bool EmitSSBOInstruction::emit_atomic_add(const nir_intrinsic_instr* instr)
    return true;
 }
 
+bool EmitSSBOInstruction::load_atomic_inc_limits()
+{
+   m_atomic_update = get_temp_register();
+   emit_instruction(new AluInstruction(op1_mov, m_atomic_update, literal(1),
+   {alu_write, alu_last_instr}));
+   return true;
+}
+
 bool EmitSSBOInstruction::emit_atomic_inc(const nir_intrinsic_instr* instr)
 {
-   GPRVector dest = make_dest(instr);
-
    PValue uav_id = from_nir(instr->src[0], 0);
-
-
-   if (!m_atomic_limit) {
-      int one_tmp = allocate_temp_register();
-      m_atomic_limit = PValue(new GPRValue(one_tmp, 0));
-      emit_instruction(new AluInstruction(op1_mov, m_atomic_limit,
-                       PValue(new LiteralValue(0xffffffff)),
-                       {alu_write, alu_last_instr}));
-   }
-
-   auto ir = new GDSInstr(DS_OP_INC_RET, dest, m_atomic_limit, uav_id,
+   GPRVector dest = make_dest(instr);
+   auto ir = new GDSInstr(DS_OP_ADD_RET, dest, m_atomic_update, uav_id,
                           nir_intrinsic_base(instr));
    emit_instruction(ir);
    return true;
@@ -154,16 +240,8 @@ bool EmitSSBOInstruction::emit_atomic_pre_dec(const nir_intrinsic_instr *instr)
 
    PValue uav_id = from_nir(instr->src[0], 0);
 
-   int one_tmp = allocate_temp_register();
-   PValue value(new GPRValue(one_tmp, 0));
-   emit_instruction(new AluInstruction(op1_mov, value,  Value::one_i,
-                    {alu_write, alu_last_instr}));
-
-   auto ir = new GDSInstr(DS_OP_SUB_RET, dest, value, uav_id,
+   auto ir = new GDSInstr(DS_OP_SUB_RET, dest, m_atomic_update, uav_id,
                           nir_intrinsic_base(instr));
-   emit_instruction(ir);
-
-   ir = new GDSInstr(DS_OP_READ_RET, dest, uav_id, nir_intrinsic_base(instr));
    emit_instruction(ir);
 
    return true;
@@ -257,6 +335,169 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
                                           1, 0, false));
    }
 #endif
+   return true;
+}
+
+bool
+EmitSSBOInstruction::emit_image_store(const nir_intrinsic_instr *intrin)
+{
+   int imageid = 0;
+   PValue image_offset;
+
+   if (nir_src_is_const(intrin->src[0]))
+      imageid = nir_src_as_int(intrin->src[0]);
+   else
+      image_offset = from_nir(intrin->src[0], 0);
+
+   auto coord =  vec_from_nir_with_fetch_constant(intrin->src[1], 0xf, {0,1,2,3});
+   auto undef = from_nir(intrin->src[2], 0);
+   auto value = vec_from_nir_with_fetch_constant(intrin->src[3],  0xf, {0,1,2,3});
+   auto unknown  = from_nir(intrin->src[4], 0);
+
+   if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_1D &&
+       nir_intrinsic_image_array(intrin)) {
+      emit_instruction(new AluInstruction(op1_mov, coord.reg_i(2), coord.reg_i(1), {alu_write}));
+      emit_instruction(new AluInstruction(op1_mov, coord.reg_i(1), coord.reg_i(2), {alu_last_instr, alu_write}));
+   }
+
+   auto store = new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED, value, coord, imageid,
+                                   image_offset, 1, 0xf, 0, false);
+   emit_instruction(store);
+   return true;
+}
+
+bool
+EmitSSBOInstruction::emit_ssbo_atomic_op(const nir_intrinsic_instr *intrin)
+{
+   int imageid = 0;
+   PValue image_offset;
+
+   if (nir_src_is_const(intrin->src[0]))
+      imageid = nir_src_as_int(intrin->src[0]);
+   else
+      image_offset = from_nir(intrin->src[0], 0);
+
+   auto opcode = EmitSSBOInstruction::get_rat_opcode(intrin->intrinsic, PIPE_FORMAT_R32_UINT);
+
+   auto coord =  from_nir_with_fetch_constant(intrin->src[1], 0);
+
+   emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0), from_nir(intrin->src[2], 0), write));
+   emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(2), Value::zero, last_write));
+
+   GPRVector out_vec({coord, coord, coord, coord});
+
+   auto atomic = new RatInstruction(cf_mem_rat, opcode, m_rat_return_address, out_vec, imageid,
+                                   image_offset, 1, 0xf, 0, true);
+   emit_instruction(atomic);
+   emit_instruction(new WaitAck(0));
+
+   GPRVector dest = vec_from_nir(intrin->dest, intrin->dest.ssa.num_components);
+   auto fetch = new FetchInstruction(vc_fetch,
+                                     no_index_offset,
+                                     fmt_32,
+                                     vtx_nf_int,
+                                     vtx_es_none,
+                                     m_rat_return_address.reg_i(1),
+                                     dest,
+                                     0,
+                                     false,
+                                     0xf,
+                                     R600_IMAGE_IMMED_RESOURCE_OFFSET,
+                                     0,
+                                     bim_none,
+                                     false,
+                                     false,
+                                     0,
+                                     0,
+                                     0,
+                                     PValue(),
+                                     {0,7,7,7});
+   fetch->set_flag(vtx_srf_mode);
+   fetch->set_flag(vtx_use_tc);
+   emit_instruction(fetch);
+   return true;
+
+}
+
+bool
+EmitSSBOInstruction::emit_image_load(const nir_intrinsic_instr *intrin)
+{
+   int imageid = 0;
+   PValue image_offset;
+
+   if (nir_src_is_const(intrin->src[0]))
+      imageid = nir_src_as_int(intrin->src[0]);
+   else
+      image_offset = from_nir(intrin->src[0], 0);
+
+   auto rat_op = get_rat_opcode(intrin->intrinsic, nir_intrinsic_format(intrin));
+
+   GPRVector::Swizzle swz = {0,1,2,3};
+   auto coord =  vec_from_nir_with_fetch_constant(intrin->src[1], 0xf, swz);
+
+   if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_1D &&
+       nir_intrinsic_image_array(intrin)) {
+      emit_instruction(new AluInstruction(op1_mov, coord.reg_i(2), coord.reg_i(1), {alu_write}));
+      emit_instruction(new AluInstruction(op1_mov, coord.reg_i(1), coord.reg_i(2), {alu_last_instr, alu_write}));
+   }
+
+   if (intrin->intrinsic != nir_intrinsic_image_load) {
+      if (intrin->intrinsic == nir_intrinsic_image_atomic_comp_swap) {
+         emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0),
+                                             from_nir(intrin->src[4], 0), {alu_write}));
+         emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(3),
+                                             from_nir(intrin->src[3], 0), {alu_last_instr, alu_write}));
+      } else {
+         emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0),
+                                             from_nir(intrin->src[3], 0), {alu_last_instr, alu_write}));
+      }
+   }
+
+   auto store = new RatInstruction(cf_mem_rat, rat_op, m_rat_return_address, coord, imageid,
+                                   image_offset, 1, 0xf, 0, true);
+   emit_instruction(store);
+   return fetch_return_value(intrin);
+}
+
+bool EmitSSBOInstruction::fetch_return_value(const nir_intrinsic_instr *intrin)
+{
+   emit_instruction(new WaitAck(0));
+
+   pipe_format format = nir_intrinsic_format(intrin);
+   unsigned fmt = fmt_32;
+   unsigned num_format = 0;
+   unsigned format_comp = 0;
+   unsigned endian = 0;
+
+   r600_vertex_data_type(format, &fmt, &num_format, &format_comp, &endian);
+
+   GPRVector dest = vec_from_nir(intrin->dest, nir_dest_num_components(intrin->dest));
+   auto fetch = new FetchInstruction(vc_fetch,
+                                     no_index_offset,
+                                     (EVTXDataFormat)fmt,
+                                     (EVFetchNumFormat)num_format,
+                                     (EVFetchEndianSwap)endian,
+                                     m_rat_return_address.reg_i(1),
+                                     dest,
+                                     0,
+                                     false,
+                                     0x3,
+                                     R600_IMAGE_IMMED_RESOURCE_OFFSET,
+                                     0,
+                                     bim_none,
+                                     false,
+                                     false,
+                                     0,
+                                     0,
+                                     0,
+                                     PValue(),
+                                     {0,1,2,3});
+   fetch->set_flag(vtx_srf_mode);
+   fetch->set_flag(vtx_use_tc);
+   if (format_comp)
+      fetch->set_flag(vtx_format_comp_signed);
+
+   emit_instruction(fetch);
    return true;
 }
 

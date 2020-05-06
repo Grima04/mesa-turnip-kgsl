@@ -93,6 +93,36 @@ bool ShaderFromNirProcessor::scan_instruction(nir_instr *instr)
       nir_tex_instr *t = nir_instr_as_tex(instr);
       if (t->sampler_dim == GLSL_SAMPLER_DIM_BUF)
          sh_info().uses_tex_buffers = true;
+      break;
+   }
+   case nir_instr_type_intrinsic: {
+      auto *i = nir_instr_as_intrinsic(instr);
+      switch (i->intrinsic) {
+      case nir_intrinsic_image_load:
+      case nir_intrinsic_ssbo_atomic_add:
+      case nir_intrinsic_image_atomic_add:
+      case nir_intrinsic_ssbo_atomic_and:
+      case nir_intrinsic_image_atomic_and:
+      case nir_intrinsic_ssbo_atomic_or:
+      case nir_intrinsic_image_atomic_or:
+      case nir_intrinsic_ssbo_atomic_imin:
+      case nir_intrinsic_image_atomic_imin:
+      case nir_intrinsic_ssbo_atomic_imax:
+      case nir_intrinsic_image_atomic_imax:
+      case nir_intrinsic_ssbo_atomic_umin:
+      case nir_intrinsic_image_atomic_umin:
+      case nir_intrinsic_ssbo_atomic_umax:
+      case nir_intrinsic_image_atomic_umax:
+      case nir_intrinsic_image_atomic_xor:
+      case nir_intrinsic_image_atomic_exchange:
+      case nir_intrinsic_image_atomic_comp_swap:
+         m_ssbo_instr.set_require_rat_return_address();
+         m_sel.info.writes_memory = 1;
+         break;
+      default:
+         ;
+      }
+
    }
    default:
       ;
@@ -490,6 +520,11 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    if (emit_intrinsic_instruction_override(instr))
       return true;
 
+   if (m_ssbo_instr.emit(&instr->instr)) {
+      m_sel.info.writes_memory = true;
+      return true;
+   }
+
    switch (instr->intrinsic) {
    case nir_intrinsic_load_deref: {
       auto var = get_deref_location(instr->src[0]);
@@ -524,39 +559,24 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
       return emit_discard_if(instr);
    case nir_intrinsic_load_ubo_r600:
       return emit_load_ubo(instr);
-   case nir_intrinsic_atomic_counter_add:
-   case nir_intrinsic_atomic_counter_and:
-   case nir_intrinsic_atomic_counter_exchange:
-   case nir_intrinsic_atomic_counter_max:
-   case nir_intrinsic_atomic_counter_min:
-   case nir_intrinsic_atomic_counter_or:
-   case nir_intrinsic_atomic_counter_xor:
-   case nir_intrinsic_atomic_counter_comp_swap:
-   case nir_intrinsic_atomic_counter_read:
-   case nir_intrinsic_atomic_counter_post_dec:
-   case nir_intrinsic_atomic_counter_inc:
-   case nir_intrinsic_atomic_counter_pre_dec:
-   case nir_intrinsic_store_ssbo:
-      m_sel.info.writes_memory = true;
-      /* fallthrough */
-   case nir_intrinsic_load_ssbo:
-      return m_ssbo_instr.emit(&instr->instr);
-      break;
-   case nir_intrinsic_copy_deref:
-   case nir_intrinsic_load_constant:
-   case nir_intrinsic_load_input:
-   case nir_intrinsic_store_output:
    case nir_intrinsic_load_tcs_in_param_base_r600:
       return emit_load_tcs_param_base(instr, 0);
    case nir_intrinsic_load_tcs_out_param_base_r600:
       return emit_load_tcs_param_base(instr, 16);
    case nir_intrinsic_load_local_shared_r600:
+   case nir_intrinsic_load_shared:
       return emit_load_local_shared(instr);
    case nir_intrinsic_store_local_shared_r600:
+   case nir_intrinsic_store_shared:
       return emit_store_local_shared(instr);
    case nir_intrinsic_control_barrier:
    case nir_intrinsic_memory_barrier_tcs_patch:
+   case nir_intrinsic_memory_barrier_shared:
       return emit_barrier(instr);
+   case nir_intrinsic_copy_deref:
+   case nir_intrinsic_load_constant:
+   case nir_intrinsic_load_input:
+   case nir_intrinsic_store_output:
 
    default:
       fprintf(stderr, "r600-nir: Unsupported intrinsic %d\n", instr->intrinsic);
