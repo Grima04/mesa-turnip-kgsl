@@ -33,21 +33,6 @@ VertexStageExportForFS::VertexStageExportForFS(VertexStage& proc,
 {
 }
 
-void VertexStageExportBase::setup_paramn_map()
-{
-   priority_queue<int, std::vector<int>, std::greater<int>>  q;
-   for (auto a: m_param_map) {
-      q.push(a.first);
-   }
-
-   int next_param = 0;
-   while (!q.empty()) {
-      int loc = q.top();
-      q.pop();
-      m_param_map[loc] = next_param++;
-   }
-}
-
 bool VertexStageExportBase::do_process_outputs(nir_variable *output)
 {
    if (output->data.location == VARYING_SLOT_COL0 ||

@@ -120,7 +120,6 @@ bool VertexShaderFromNir::do_allocate_reserved_registers()
 
 void VertexShaderFromNir::emit_shader_start()
 {
-   m_export_processor->setup_paramn_map();
 }
 
 bool VertexShaderFromNir::scan_sysvalue_access(nir_instr *instr)
