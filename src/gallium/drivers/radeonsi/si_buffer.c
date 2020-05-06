@@ -479,8 +479,9 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
       struct si_resource *staging;
 
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_TRANSFER_THREAD_SAFE)));
-      staging = si_resource(pipe_buffer_create(ctx->screen, 0, PIPE_USAGE_STAGING,
-                                               box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT)));
+      staging = si_aligned_buffer_create(ctx->screen, SI_RESOURCE_FLAG_UNCACHED,
+                                         PIPE_USAGE_STAGING,
+                                         box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT), 256);
       if (staging) {
          /* Copy the VRAM buffer to the staging buffer. */
          si_sdma_copy_buffer(sctx, &staging->b.b, resource, box->x % SI_MAP_BUFFER_ALIGNMENT,
