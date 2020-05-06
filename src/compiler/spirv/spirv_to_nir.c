@@ -2152,7 +2152,8 @@ vtn_split_barrier_semantics(struct vtn_builder *b,
                    SpvMemorySemanticsOutputMemoryMask);
 
    const SpvMemorySemanticsMask other_semantics =
-      semantics & ~(order_semantics | av_vis_semantics | storage_semantics);
+      semantics & ~(order_semantics | av_vis_semantics | storage_semantics |
+                    SpvMemorySemanticsVolatileMask);
 
    if (other_semantics)
       vtn_warn("Ignoring unhandled memory semantics: %u\n", other_semantics);
@@ -3089,6 +3090,9 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       vtn_fail_with_opcode("Invalid image opcode", opcode);
    }
 
+   if (semantics & SpvMemorySemanticsVolatileMask)
+      access |= ACCESS_VOLATILE;
+
    nir_intrinsic_op op;
    switch (opcode) {
 #define OP(S, N) case SpvOp##S: op = nir_intrinsic_image_deref_##N; break;
@@ -3353,6 +3357,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
 
    SpvScope scope = SpvScopeInvocation;
    SpvMemorySemanticsMask semantics = 0;
+   enum gl_access_qualifier access = 0;
 
    switch (opcode) {
    case SpvOpAtomicLoad:
@@ -3385,6 +3390,9 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    default:
       vtn_fail_with_opcode("Invalid SPIR-V atomic", opcode);
    }
+
+   if (semantics & SpvMemorySemanticsVolatileMask)
+      access |= ACCESS_VOLATILE;
 
    /* uniform as "atomic counter uniform" */
    if (ptr->mode == vtn_variable_mode_atomic_counter) {
@@ -3432,7 +3440,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_op op  = get_ssbo_nir_atomic_op(b, opcode);
       atomic = nir_intrinsic_instr_create(b->nb.shader, op);
 
-      nir_intrinsic_set_access(atomic, ACCESS_COHERENT);
+      nir_intrinsic_set_access(atomic, access | ACCESS_COHERENT);
 
       int src = 0;
       switch (opcode) {
@@ -3486,7 +3494,9 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       atomic->src[0] = nir_src_for_ssa(&deref->dest.ssa);
 
       if (ptr->mode != vtn_variable_mode_workgroup)
-         nir_intrinsic_set_access(atomic, ACCESS_COHERENT);
+         access |= ACCESS_COHERENT;
+
+      nir_intrinsic_set_access(atomic, access);
 
       switch (opcode) {
       case SpvOpAtomicLoad:
