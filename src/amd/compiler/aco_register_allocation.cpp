@@ -81,8 +81,10 @@ struct ra_ctx {
    }
 };
 
-bool instr_can_access_subdword(aco_ptr<Instruction>& instr)
+bool instr_can_access_subdword(ra_ctx& ctx, aco_ptr<Instruction>& instr)
 {
+   if (ctx.program->chip_class < GFX8)
+      return false;
    return instr->isSDWA() || instr->format == Format::PSEUDO;
 }
 
@@ -111,7 +113,7 @@ struct DefInfo {
 
       if (rc.is_subdword()) {
          /* stride in bytes */
-         if(!instr_can_access_subdword(instr))
+         if(!instr_can_access_subdword(ctx, instr))
             stride = 4;
          else if (rc.bytes() % 4 == 0)
             stride = 4;
@@ -878,7 +880,7 @@ bool get_reg_specified(ra_ctx& ctx,
                        aco_ptr<Instruction>& instr,
                        PhysReg reg)
 {
-   if (rc.is_subdword() && reg.byte() && !instr_can_access_subdword(instr))
+   if (rc.is_subdword() && reg.byte() && !instr_can_access_subdword(ctx, instr))
       return false;
    if (!rc.is_subdword() && reg.byte())
       return false;
@@ -1216,12 +1218,12 @@ void handle_pseudo(ra_ctx& ctx,
    }
 }
 
-bool operand_can_use_reg(aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
+bool operand_can_use_reg(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg)
 {
    if (instr->operands[idx].isFixed())
       return instr->operands[idx].physReg() == reg;
 
-   if (!instr_can_access_subdword(instr) && reg.byte())
+   if (reg.byte() && !instr_can_access_subdword(ctx, instr))
       return false;
 
    switch (instr->format) {
@@ -1737,7 +1739,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
             assert(ctx.assignments[operand.tempId()].assigned);
 
             PhysReg reg = ctx.assignments[operand.tempId()].reg;
-            if (operand_can_use_reg(instr, i, reg))
+            if (operand_can_use_reg(ctx, instr, i, reg))
                operand.setFixed(reg);
             else
                get_reg_for_operand(ctx, register_file, parallelcopy, instr, operand);
@@ -1898,7 +1900,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                Temp tmp = definition.getTemp();
                /* subdword instructions before RDNA write full registers */
                if (tmp.regClass().is_subdword() &&
-                   !instr_can_access_subdword(instr) &&
+                   !instr_can_access_subdword(ctx, instr) &&
                    ctx.program->chip_class <= GFX9) {
                   assert(tmp.bytes() <= 4);
                   tmp = Temp(definition.tempId(), v1);

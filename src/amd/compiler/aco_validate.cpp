@@ -46,11 +46,6 @@ void perfwarn(bool cond, const char *msg, Instruction *instr)
 }
 #endif
 
-bool instr_can_access_subdword(aco_ptr<Instruction>& instr)
-{
-   return instr->isSDWA() || instr->format == Format::PSEUDO;
-}
-
 void validate(Program* program, FILE * output)
 {
    if (!(debug_flags & DEBUG_VALIDATE))
@@ -178,7 +173,7 @@ void validate(Program* program, FILE * output)
          /* check subdword definitions */
          for (unsigned i = 0; i < instr->definitions.size(); i++) {
             if (instr->definitions[i].regClass().is_subdword())
-               check(instr_can_access_subdword(instr) || instr->definitions[i].bytes() <= 4, "Only SDWA and Pseudo instructions can write subdword registers larger than 4 bytes", instr.get());
+               check(instr->format == Format::PSEUDO || instr->definitions[i].bytes() <= 4, "Only Pseudo instructions can write subdword registers larger than 4 bytes", instr.get());
          }
 
          if (instr->isSALU() || instr->isVALU()) {
@@ -434,6 +429,13 @@ bool ra_fail(FILE *output, Location loc, Location loc2, const char *fmt, ...) {
    return true;
 }
 
+bool instr_can_access_subdword(Program* program, aco_ptr<Instruction>& instr)
+{
+   if (program->chip_class < GFX8)
+      return false;
+   return instr->isSDWA() || instr->format == Format::PSEUDO;
+}
+
 } /* end namespace */
 
 bool validate_ra(Program *program, const struct radv_nir_compiler_options *options, FILE *output) {
@@ -472,7 +474,7 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d has an out-of-bounds register assignment", i);
             if (op.physReg() == vcc && !program->needs_vcc)
                err |= ra_fail(output, loc, Location(), "Operand %d fixed to vcc but needs_vcc=false", i);
-            if (!instr_can_access_subdword(instr) && op.regClass().is_subdword() && op.physReg().byte())
+            if (!instr_can_access_subdword(program, instr) && op.regClass().is_subdword() && op.physReg().byte())
                err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d must be aligned to a full register", i);
             if (!assignments[op.tempId()].firstloc.block)
                assignments[op.tempId()].firstloc = loc;
@@ -493,7 +495,7 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                err |= ra_fail(output, loc, assignments.at(def.tempId()).firstloc, "Definition %d has an out-of-bounds register assignment", i);
             if (def.physReg() == vcc && !program->needs_vcc)
                err |= ra_fail(output, loc, Location(), "Definition %d fixed to vcc but needs_vcc=false", i);
-            if (!instr_can_access_subdword(instr) && def.regClass().is_subdword() && def.physReg().byte())
+            if (!instr_can_access_subdword(program, instr) && def.regClass().is_subdword() && def.physReg().byte())
                err |= ra_fail(output, loc, assignments.at(def.tempId()).firstloc, "Definition %d must be aligned to a full register", i);
             if (!assignments[def.tempId()].firstloc.block)
                assignments[def.tempId()].firstloc = loc;
@@ -600,7 +602,7 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                   err |= ra_fail(output, loc, assignments.at(regs[reg.reg_b + j]).defloc, "Assignment of element %d of %%%d already taken by %%%d from instruction", i, tmp.id(), regs[reg.reg_b + j]);
                regs[reg.reg_b + j] = tmp.id();
             }
-            if (def.regClass().is_subdword() && !instr_can_access_subdword(instr)) {
+            if (def.regClass().is_subdword() && !instr_can_access_subdword(program, instr)) {
                for (unsigned j = tmp.bytes(); j < 4; j++)
                   if (regs[reg.reg_b + j])
                      err |= ra_fail(output, loc, assignments.at(regs[reg.reg_b + j]).defloc, "Assignment of element %d of %%%d overwrites the full register taken by %%%d from instruction", i, tmp.id(), regs[reg.reg_b + j]);
