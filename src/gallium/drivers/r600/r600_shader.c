@@ -194,9 +194,18 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 			goto error;
 		}
 	} else {
-		if (sel->ir_type == PIPE_SHADER_IR_TGSI)
-			sel->nir = tgsi_to_nir_noscreen(sel->tokens, &r600_nir_options);
+		if (sel->ir_type == PIPE_SHADER_IR_TGSI) {
+			sel->nir = tgsi_to_nir(sel->tokens, ctx->screen, true);
+			/* Lower int64 ops because we have some r600 build-in shaders that use it */
+			if (!ctx->screen->get_param(ctx->screen, PIPE_CAP_DOUBLES)) {
+				NIR_PASS_V(sel->nir, nir_lower_regs_to_ssa);
+				NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, NULL, NULL);
+				NIR_PASS_V(sel->nir, nir_lower_int64, ~0);
+				NIR_PASS_V(sel->nir, nir_opt_vectorize);
+			}
+		}
 		nir_tgsi_scan_shader(sel->nir, &sel->info, true);
+
 		r = r600_shader_from_nir(rctx, shader, &key);
 		if (r) {
 			fprintf(stderr, "--Failed shader--------------------------------------------------\n");
