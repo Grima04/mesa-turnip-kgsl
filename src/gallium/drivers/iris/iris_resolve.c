@@ -450,6 +450,7 @@ iris_mcs_partial_resolve(struct iris_context *ice,
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
                                 &res->base, res->aux.usage, 0, true);
+   iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_RENDER_WRITE);
 
    struct blorp_batch blorp_batch;
    iris_batch_sync_region_start(batch);

@@ -382,6 +382,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    iris_resource_prepare_access(ice, src_res, info->src.level, 1,
                                 info->src.box.z, info->src.box.depth,
                                 src_aux_usage, src_clear_supported);
+   iris_emit_buffer_barrier_for(batch, src_res->bo, IRIS_DOMAIN_OTHER_READ);
 
    struct iris_format_info dst_fmt =
       iris_format_for_usage(devinfo, info->dst.format,
@@ -401,6 +402,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    iris_resource_prepare_access(ice, dst_res, info->dst.level, 1,
                                 info->dst.box.z, info->dst.box.depth,
                                 dst_aux_usage, dst_clear_supported);
+   iris_emit_buffer_barrier_for(batch, dst_res->bo, IRIS_DOMAIN_RENDER_WRITE);
 
    float src_x0 = info->src.box.x;
    float src_x1 = info->src.box.x + info->src.box.width;
@@ -527,9 +529,11 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       iris_resource_prepare_access(ice, src_res, info->src.level, 1,
                                    info->src.box.z, info->src.box.depth,
                                    stc_src_aux_usage, false);
+      iris_emit_buffer_barrier_for(batch, src_res->bo, IRIS_DOMAIN_OTHER_READ);
       iris_resource_prepare_access(ice, stc_dst, info->dst.level, 1,
                                    info->dst.box.z, info->dst.box.depth,
                                    stc_dst_aux_usage, false);
+      iris_emit_buffer_barrier_for(batch, stc_dst->bo, IRIS_DOMAIN_RENDER_WRITE);
       iris_blorp_surf_for_resource(&screen->isl_dev, &src_surf,
                                    &src_res->base, stc_src_aux_usage,
                                    info->src.level, false);
@@ -664,6 +668,11 @@ iris_copy_region(struct blorp_context *blorp,
          .reloc_flags = EXEC_OBJECT_WRITE,
       };
 
+      iris_emit_buffer_barrier_for(batch, iris_resource_bo(src),
+                                   IRIS_DOMAIN_OTHER_READ);
+      iris_emit_buffer_barrier_for(batch, iris_resource_bo(dst),
+                                   IRIS_DOMAIN_RENDER_WRITE);
+
       iris_batch_maybe_flush(batch, 1500);
 
       iris_batch_sync_region_start(batch);
@@ -686,6 +695,11 @@ iris_copy_region(struct blorp_context *blorp,
       iris_resource_prepare_access(ice, dst_res, dst_level, 1,
                                    dstz, src_box->depth,
                                    dst_aux_usage, dst_clear_supported);
+
+      iris_emit_buffer_barrier_for(batch, iris_resource_bo(src),
+                                   IRIS_DOMAIN_OTHER_READ);
+      iris_emit_buffer_barrier_for(batch, iris_resource_bo(dst),
+                                   IRIS_DOMAIN_RENDER_WRITE);
 
       blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
 

@@ -274,27 +274,17 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
                                 PIPE_CONTROL_STALL_AT_SCOREBOARD);
 #endif
 
-   /* Flush the sampler and render caches.  We definitely need to flush the
-    * sampler cache so that we get updated contents from the render cache for
-    * the glBlitFramebuffer() source.  Also, we are sometimes warned in the
-    * docs to flush the cache between reinterpretations of the same surface
-    * data with different formats, which blorp does for stencil and depth
-    * data.
+   /* Flush the render cache in cases where the same surface is reinterpreted
+    * with a differernt format, which blorp does for stencil and depth data
+    * among other things.  Invalidation of sampler caches and flushing of any
+    * caches which had previously written the source surfaces should already
+    * have been handled by the caller.
     */
-   if (params->src.enabled)
-      iris_emit_buffer_barrier_for(batch, params->src.addr.buffer,
-                                   IRIS_DOMAIN_OTHER_READ);
    if (params->dst.enabled) {
       iris_cache_flush_for_render(batch, params->dst.addr.buffer,
                                   params->dst.view.format,
                                   params->dst.aux_usage);
    }
-   if (params->depth.enabled)
-      iris_emit_buffer_barrier_for(batch, params->depth.addr.buffer,
-                                   IRIS_DOMAIN_DEPTH_WRITE);
-   if (params->stencil.enabled)
-      iris_emit_buffer_barrier_for(batch, params->stencil.addr.buffer,
-                                   IRIS_DOMAIN_DEPTH_WRITE);
 
    iris_require_command_space(batch, 1400);
 

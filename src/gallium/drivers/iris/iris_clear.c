@@ -378,6 +378,7 @@ clear_color(struct iris_context *ice,
 
    iris_resource_prepare_render(ice, batch, res, level,
                                 box->z, box->depth, aux_usage);
+   iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_RENDER_WRITE);
 
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
@@ -596,6 +597,7 @@ clear_depth_stencil(struct iris_context *ice,
 
    if (clear_depth && z_res) {
       iris_resource_prepare_depth(ice, batch, z_res, level, box->z, box->depth);
+      iris_emit_buffer_barrier_for(batch, z_res->bo, IRIS_DOMAIN_DEPTH_WRITE);
       iris_blorp_surf_for_resource(&batch->screen->isl_dev,
                                    &z_surf, &z_res->base, z_res->aux.usage,
                                    level, true);
@@ -605,6 +607,8 @@ clear_depth_stencil(struct iris_context *ice,
    if (stencil_mask) {
       iris_resource_prepare_access(ice, stencil_res, level, 1, box->z,
                                    box->depth, stencil_res->aux.usage, false);
+      iris_emit_buffer_barrier_for(batch, stencil_res->bo,
+                                   IRIS_DOMAIN_DEPTH_WRITE);
       iris_blorp_surf_for_resource(&batch->screen->isl_dev,
                                    &stencil_surf, &stencil_res->base,
                                    stencil_res->aux.usage, level, true);
