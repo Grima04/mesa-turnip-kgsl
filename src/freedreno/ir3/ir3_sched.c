@@ -93,8 +93,12 @@ struct ir3_sched_ctx {
 	struct ir3_instruction *pred;      /* current p0.x user, if any */
 
 	int remaining_kills;
+	int remaining_tex;
 
 	bool error;
+
+	int sfu_delay;
+	int tex_delay;
 };
 
 struct ir3_sched_node {
@@ -181,6 +185,7 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	ctx->scheduled = instr;
 
 	if (is_kill(instr)){
+		assert(ctx->remaining_kills > 0);
 		ctx->remaining_kills--;
 	}
 
@@ -200,6 +205,32 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	}
 
 	dag_prune_head(ctx->dag, &n->dag);
+
+	if (is_meta(instr) && (instr->opc != OPC_META_TEX_PREFETCH))
+		return;
+
+	if (is_sfu(instr)) {
+		ctx->sfu_delay = 8;
+	} else if (check_src_cond(instr, is_sfu)) {
+		ctx->sfu_delay = 0;
+	} else if (ctx->sfu_delay > 0) {
+		ctx->sfu_delay--;
+	}
+
+	if (is_tex_or_prefetch(instr)) {
+		/* NOTE that this isn't an attempt to hide texture fetch latency,
+		 * but an attempt to hide the cost of switching to another warp.
+		 * If we can, we'd like to try to schedule another texture fetch
+		 * before scheduling something that would sync.
+		 */
+		ctx->tex_delay = 10;
+		assert(ctx->remaining_tex > 0);
+		ctx->remaining_tex--;
+	} else if (check_src_cond(instr, is_tex_or_prefetch)) {
+		ctx->tex_delay = 0;
+	} else if (ctx->tex_delay > 0) {
+		ctx->tex_delay--;
+	}
 }
 
 struct ir3_sched_notes {
@@ -406,8 +437,35 @@ live_effect(struct ir3_instruction *instr)
 	return new_live - freed_live;
 }
 
-static struct ir3_sched_node * choose_instr_inc(struct ir3_sched_ctx *ctx,
-		struct ir3_sched_notes *notes, bool avoid_output);
+/* Determine if this is an instruction that we'd prefer not to schedule
+ * yet, in order to avoid an (ss)/(sy) sync.  This is limited by the
+ * sfu_delay/tex_delay counters, ie. the more cycles it has been since
+ * the last SFU/tex, the less costly a sync would be.
+ */
+static bool
+would_sync(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
+{
+	if (ctx->sfu_delay) {
+		if (check_src_cond(instr, is_sfu))
+			return true;
+	}
+
+	/* We mostly just want to try to schedule another texture fetch
+	 * before scheduling something that would (sy) sync, so we can
+	 * limit this rule to cases where there are remaining texture
+	 * fetches
+	 */
+	if (ctx->tex_delay && ctx->remaining_tex) {
+		if (check_src_cond(instr, is_tex_or_prefetch))
+			return true;
+	}
+
+	return false;
+}
+
+static struct ir3_sched_node *
+choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
+		bool avoid_sync, bool avoid_output);
 
 /**
  * Chooses an instruction to schedule using the Goodman/Hsu (1988) CSR (Code
@@ -417,12 +475,17 @@ static struct ir3_sched_node * choose_instr_inc(struct ir3_sched_ctx *ctx,
  * or are even.
  */
 static struct ir3_sched_node *
-choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
+choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
+		bool avoid_sync)
 {
+	const char *mode = avoid_sync ? "-as" : "";
 	struct ir3_sched_node *chosen = NULL;
 
 	/* Find a ready inst with regs freed and pick the one with max cost. */
 	foreach_sched_node (n, &ctx->dag->heads) {
+		if (avoid_sync && would_sync(ctx, n->instr))
+			continue;
+
 		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
 
 		if (d > 0)
@@ -440,12 +503,15 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "dec: chose (freed+ready)");
+		di(chosen->instr, "dec%s: chose (freed+ready)", mode);
 		return chosen;
 	}
 
 	/* Find a leader with regs freed and pick the one with max cost. */
 	foreach_sched_node (n, &ctx->dag->heads) {
+		if (avoid_sync && would_sync(ctx, n->instr))
+			continue;
+
 		if (live_effect(n->instr) > -1)
 			continue;
 
@@ -458,7 +524,7 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "dec: chose (freed)");
+		di(chosen->instr, "dec%s: chose (freed)", mode);
 		return chosen;
 	}
 
@@ -470,6 +536,9 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	 * XXX: Should this prioritize ready?
 	 */
 	foreach_sched_node (n, &ctx->dag->heads) {
+		if (avoid_sync && would_sync(ctx, n->instr))
+			continue;
+
 		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
 
 		if (d > 0)
@@ -486,11 +555,14 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "dec: chose (neutral+ready)");
+		di(chosen->instr, "dec%s: chose (neutral+ready)", mode);
 		return chosen;
 	}
 
 	foreach_sched_node (n, &ctx->dag->heads) {
+		if (avoid_sync && would_sync(ctx, n->instr))
+			continue;
+
 		if (live_effect(n->instr) > 0)
 			continue;
 
@@ -502,11 +574,11 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	}
 
 	if (chosen) {
-		di(chosen->instr, "dec: chose (neutral)");
+		di(chosen->instr, "dec%s: chose (neutral)", mode);
 		return chosen;
 	}
 
-	return choose_instr_inc(ctx, notes, true);
+	return choose_instr_inc(ctx, notes, avoid_sync, true);
 }
 
 /**
@@ -515,8 +587,9 @@ choose_instr_dec(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
  */
 static struct ir3_sched_node *
 choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
-		bool avoid_output)
+		bool avoid_sync, bool avoid_output)
 {
+	const char *mode = avoid_sync ? "-as" : "";
 	struct ir3_sched_node *chosen = NULL;
 
 	/*
@@ -531,6 +604,9 @@ choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (avoid_output && n->output)
 			continue;
 
+		if (avoid_sync && would_sync(ctx, n->instr))
+			continue;
+
 		unsigned d = ir3_delay_calc(ctx->block, n->instr, false, false);
 
 		if (d > 0)
@@ -548,13 +624,16 @@ choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 	}
 
 	if (chosen) {
-		di(chosen->instr, "inc: chose (distance+ready)");
+		di(chosen->instr, "inc%s: chose (distance+ready)", mode);
 		return chosen;
 	}
 
 	/* Pick the max delay of the remaining leaders. */
 	foreach_sched_node (n, &ctx->dag->heads) {
 		if (avoid_output && n->output)
+			continue;
+
+		if (avoid_sync && would_sync(ctx, n->instr))
 			continue;
 
 		if (!check_instr(ctx, notes, n->instr))
@@ -569,7 +648,7 @@ choose_instr_inc(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 	}
 
 	if (chosen) {
-		di(chosen->instr, "inc: chose (distance)");
+		di(chosen->instr, "inc%s: chose (distance)", mode);
 		return chosen;
 	}
 
@@ -631,11 +710,15 @@ choose_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes)
 	if (chosen)
 		return chosen->instr;
 
-	chosen = choose_instr_dec(ctx, notes);
+	chosen = choose_instr_dec(ctx, notes, true);
 	if (chosen)
 		return chosen->instr;
 
-	chosen = choose_instr_inc(ctx, notes, false);
+	chosen = choose_instr_dec(ctx, notes, false);
+	if (chosen)
+		return chosen->instr;
+
+	chosen = choose_instr_inc(ctx, notes, false, false);
 	if (chosen)
 		return chosen->instr;
 
@@ -912,9 +995,12 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	sched_dag_init(ctx);
 
 	ctx->remaining_kills = 0;
+	ctx->remaining_tex = 0;
 	foreach_instr_safe (instr, &ctx->unscheduled_list) {
 		if (is_kill(instr))
 			ctx->remaining_kills++;
+		if (is_tex_or_prefetch(instr))
+			ctx->remaining_tex++;
 	}
 
 	/* First schedule all meta:input instructions, followed by
