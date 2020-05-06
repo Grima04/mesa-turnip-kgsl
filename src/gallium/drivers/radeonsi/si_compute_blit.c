@@ -393,6 +393,8 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    unsigned depth = src_box->depth;
    enum pipe_format src_format = util_format_linear(src->format);
    enum pipe_format dst_format = util_format_linear(dst->format);
+   bool is_linear = ((struct si_texture*)src)->surface.is_linear ||
+                    ((struct si_texture*)dst)->surface.is_linear;
 
    assert(util_format_is_subsampled_422(src_format) == util_format_is_subsampled_422(dst_format));
 
@@ -519,13 +521,20 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       if (!sctx->cs_copy_image)
          sctx->cs_copy_image = si_create_copy_image_compute_shader(ctx);
       ctx->bind_compute_state(ctx, sctx->cs_copy_image);
-      info.block[0] = 8;
-      info.last_block[0] = width % 8;
-      info.block[1] = 8;
-      info.last_block[1] = height % 8;
+
+      /* This is better for access over PCIe. */
+      if (is_linear) {
+         info.block[0] = 64;
+         info.block[1] = 1;
+      } else {
+         info.block[0] = 8;
+         info.block[1] = 8;
+      }
+      info.last_block[0] = width % info.block[0];
+      info.last_block[1] = height % info.block[1];
       info.block[2] = 1;
-      info.grid[0] = DIV_ROUND_UP(width, 8);
-      info.grid[1] = DIV_ROUND_UP(height, 8);
+      info.grid[0] = DIV_ROUND_UP(width, info.block[0]);
+      info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
       info.grid[2] = depth;
    }
 
