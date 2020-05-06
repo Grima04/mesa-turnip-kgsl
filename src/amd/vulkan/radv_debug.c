@@ -567,8 +567,7 @@ radv_dump_device_name(struct radv_device *device, FILE *f)
 		snprintf(kernel_version, sizeof(kernel_version),
 			 " / %s", uname_data.release);
 
-	fprintf(f, "Device name: %s (%s DRM %i.%i.%i%s, LLVM "
-		MESA_LLVM_VERSION_STRING ")\n\n",
+	fprintf(f, "Device name: %s (%s / DRM %i.%i.%i%s)\n\n",
 		chip_name, device->physical_device->name,
 		info->drm_major, info->drm_minor, info->drm_patchlevel,
 		kernel_version);
