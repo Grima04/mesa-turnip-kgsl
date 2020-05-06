@@ -217,8 +217,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
 	for (unsigned i = 0; i < num_srcs; i++)
 		new_intrinsic->src[i] = nir_src_for_ssa(intrinsic->src[i].ssa);
 
-	for (unsigned i = 0; i < NIR_INTRINSIC_MAX_CONST_INDEX; i++)
-		new_intrinsic->const_index[i] = intrinsic->const_index[i];
+	nir_intrinsic_copy_const_indices(new_intrinsic, intrinsic);
 
 	new_intrinsic->num_components = intrinsic->num_components;
 

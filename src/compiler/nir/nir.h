@@ -1763,6 +1763,33 @@ nir_intrinsic_dest_components(nir_intrinsic_instr *intr)
       return intr->num_components;
 }
 
+/**
+ * Helper to copy const_index[] from src to dst, without assuming they
+ * match in order.
+ */
+static inline void
+nir_intrinsic_copy_const_indices(nir_intrinsic_instr *dst, nir_intrinsic_instr *src)
+{
+   if (src->intrinsic == dst->intrinsic) {
+      memcpy(dst->const_index, src->const_index, sizeof(dst->const_index));
+      return;
+   }
+
+   const nir_intrinsic_info *src_info = &nir_intrinsic_infos[src->intrinsic];
+   const nir_intrinsic_info *dst_info = &nir_intrinsic_infos[dst->intrinsic];
+
+   for (unsigned i = 0; i < NIR_INTRINSIC_NUM_INDEX_FLAGS; i++) {
+      if (src_info->index_map[i] == 0)
+         continue;
+
+      /* require that dst instruction also uses the same const_index[]: */
+      assert(dst_info->index_map[i] > 0);
+
+      dst->const_index[dst_info->index_map[i] - 1] =
+            src->const_index[src_info->index_map[i] - 1];
+   }
+}
+
 #define INTRINSIC_IDX_ACCESSORS(name, flag, type)                             \
 static inline type                                                            \
 nir_intrinsic_##name(const nir_intrinsic_instr *instr)                        \
