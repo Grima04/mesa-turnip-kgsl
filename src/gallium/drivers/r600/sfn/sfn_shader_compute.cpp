@@ -79,12 +79,8 @@ bool ComputeShaderFromNir::emit_intrinsic_instruction_override(nir_intrinsic_ins
 bool ComputeShaderFromNir::emit_load_3vec(nir_intrinsic_instr* instr,
                                           const std::array<PValue,3>& src)
 {
-   AluInstruction *ir = nullptr;
-   for (int i = 0; i < 3; ++i) {
-      ir = new AluInstruction(op1_mov, from_nir(instr->dest, i), src[i], {alu_write});
-      emit_instruction(ir);
-   }
-   ir->set_flag(alu_last_instr);
+   for (int i = 0; i < 3; ++i)
+      load_preloaded_value(instr->dest, i, src[i], i == 2);
    return true;
 }
 
