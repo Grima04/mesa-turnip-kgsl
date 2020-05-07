@@ -597,6 +597,11 @@ _eglComputeVersion(_EGLDisplay *disp)
        disp->Extensions.KHR_gl_colorspace &&
        disp->Extensions.KHR_surfaceless_context)
       disp->Version = 15;
+
+   /* For Android P and below limit the EGL version to 1.4 */
+#if defined(ANDROID) && ANDROID_API_LEVEL <= 28
+   disp->Version = 14;
+#endif
 }
 
 /**
