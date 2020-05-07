@@ -373,6 +373,23 @@ static const struct testcase testcases[] = {
 		},
 	},
 
+	/* Single-level RGBA8888 UBWC following UBWC alignment rules laid out in
+	 * msm_media_info.h to verify that we don't break buffer sharing.
+	 */
+	{
+		.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+		.layout = {
+			.tile_mode = TILE6_3,
+			.ubwc = true,
+			.width0 = 16384, .height0 = 129,
+			.slices = {
+				{ .offset = 1024 * 48, .pitch = 16384 * 4 },
+			},
+			.ubwc_slices = {
+				{ .offset = 0, .pitch = 1024 },
+			},
+		},
+	},
 };
 
 static bool test_layout(const struct testcase *testcase)
@@ -385,7 +402,7 @@ static bool test_layout(const struct testcase *testcase)
 
 	int max_size = MAX2(testcase->layout.width0, testcase->layout.height0);
 	int mip_levels = 1;
-	while (max_size > 1) {
+	while (max_size > 1 && testcase->layout.slices[mip_levels].pitch) {
 		mip_levels++;
 		max_size = u_minify(max_size, 1);
 	}
@@ -401,10 +418,11 @@ static bool test_layout(const struct testcase *testcase)
 			testcase->is_3d);
 
 	/* fdl lays out UBWC data before the color data, while all we have
-	 * recorded in this testcase are the color offsets.  Shift the fdl layout
-	 * down so we can compare color offsets.
+	 * recorded in this testcase are the color offsets (other than the UBWC
+	 * buffer sharing test).  Shift the fdl layout down so we can compare
+	 * color offsets.
 	 */
-	if (layout.ubwc) {
+	if (layout.ubwc && !testcase->layout.slices[0].offset) {
 		for (int l = 1; l < mip_levels; l++)
 			layout.slices[l].offset -= layout.slices[0].offset;
 		layout.slices[0].offset = 0;
