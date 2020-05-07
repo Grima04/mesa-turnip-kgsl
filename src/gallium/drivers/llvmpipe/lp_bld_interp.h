@@ -86,7 +86,6 @@ struct lp_build_interp_soa_context
    unsigned mask[1 + PIPE_MAX_SHADER_INPUTS]; /**< TGSI_WRITE_MASK_x */
    enum lp_interp interp[1 + PIPE_MAX_SHADER_INPUTS];
    unsigned interp_loc[1 + PIPE_MAX_SHADER_INPUTS];
-   boolean simple_interp;
    boolean depth_clamp;
 
    double pos_offset;
@@ -97,8 +96,6 @@ struct lp_build_interp_soa_context
    LLVMValueRef x;
    LLVMValueRef y;
 
-   LLVMValueRef a[1 + PIPE_MAX_SHADER_INPUTS][TGSI_NUM_CHANNELS];
-   LLVMValueRef dadq[1 + PIPE_MAX_SHADER_INPUTS][TGSI_NUM_CHANNELS];
    LLVMValueRef a0aos[1 + PIPE_MAX_SHADER_INPUTS];
    LLVMValueRef dadxaos[1 + PIPE_MAX_SHADER_INPUTS];
    LLVMValueRef dadyaos[1 + PIPE_MAX_SHADER_INPUTS];
