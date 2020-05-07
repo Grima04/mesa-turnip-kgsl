@@ -399,7 +399,9 @@ mir_adjust_constants(midgard_instruction *ins,
                 midgard_reg_mode src_mode = mir_srcsize(ins, src);
                 unsigned type_size = mir_bytes_for_mode(src_mode);
                 unsigned max_comp = 16 / type_size;
-                unsigned comp_mask = mir_from_bytemask(mir_bytemask_of_read_components_index(ins, src),
+                unsigned comp_mask = mir_from_bytemask(mir_round_bytemask_up(
+                                        mir_bytemask_of_read_components_index(ins, src),
+                                        dst_mode),
                                                        dst_mode);
                 unsigned type_mask = (1 << type_size) - 1;
 
