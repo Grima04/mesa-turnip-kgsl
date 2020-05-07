@@ -503,6 +503,10 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          if (sctx->family == CHIP_STONEY)
             continue;
 
+         /* Disable fast clear if tex is encrypted */
+         if (tex->buffer.flags & RADEON_FLAG_ENCRYPTED)
+            continue;
+
          /* ensure CMASK is enabled */
          si_alloc_separate_cmask(sctx->screen, tex);
          if (!tex->cmask_buffer)
