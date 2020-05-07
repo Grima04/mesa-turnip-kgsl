@@ -197,7 +197,8 @@ midgard_promote_uniforms(compiler_context *ctx)
                         if (ins->load_64)
                                 mov.alu.reg_mode = midgard_reg_mode_64;
 
-                        uint16_t rounded = mir_round_bytemask_up(mir_bytemask(ins), mov.alu.reg_mode);
+                        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
+                        uint16_t rounded = mir_round_bytemask_up(mir_bytemask(ins), type_size);
                         mir_set_bytemask(&mov, rounded);
                         mir_insert_instruction_before(ctx, ins, mov);
                 } else {

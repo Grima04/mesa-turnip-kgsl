@@ -176,120 +176,11 @@ mir_nontrivial_outmod(midgard_instruction *ins)
                 return mod != midgard_outmod_none;
 }
 
-/* Grabs the type size. */
-
-midgard_reg_mode
-mir_typesize(midgard_instruction *ins)
-{
-        if (ins->compact_branch)
-                return midgard_reg_mode_32;
-
-        /* TODO: Type sizes for texture */
-        if (ins->type == TAG_TEXTURE_4)
-                return midgard_reg_mode_32;
-
-        if (ins->type == TAG_LOAD_STORE_4)
-                return GET_LDST_SIZE(load_store_opcode_props[ins->load_store.op].props);
-
-        if (ins->type == TAG_ALU_4) {
-                midgard_reg_mode mode = ins->alu.reg_mode;
-
-                /* If we have an override, step down by half */
-                if (ins->alu.dest_override != midgard_dest_override_none) {
-                        assert(mode > midgard_reg_mode_8);
-                        mode--;
-                }
-
-                return mode;
-        }
-
-        unreachable("Invalid instruction type");
-}
-
-/* Grabs the size of a source */
-
-midgard_reg_mode
-mir_srcsize(midgard_instruction *ins, unsigned i)
-{
-        if (ins->type == TAG_LOAD_STORE_4) {
-                if (OP_HAS_ADDRESS(ins->load_store.op)) {
-                        if (i == 1)
-                                return midgard_reg_mode_64;
-                        else if (i == 2) {
-                                bool zext = ins->load_store.arg_1 & 0x80;
-                                return zext ? midgard_reg_mode_32 : midgard_reg_mode_64;
-                        }
-                }
-        }
-
-        /* TODO: 16-bit textures/ldst */
-        if (ins->type == TAG_TEXTURE_4 || ins->type == TAG_LOAD_STORE_4)
-                return midgard_reg_mode_32;
-
-        /* TODO: 16-bit branches */
-        if (ins->compact_branch)
-                return midgard_reg_mode_32;
-
-        if (i >= 2) {
-                /* TODO: 16-bit conditions, ffma */
-                return midgard_reg_mode_32;
-        }
-
-        /* Default to type of the instruction */
-
-        midgard_reg_mode mode = ins->alu.reg_mode;
-
-        /* If we have a half modifier, step down by half */
-
-        if ((mir_get_alu_src(ins, i)).half) {
-                assert(mode > midgard_reg_mode_8);
-                mode--;
-        }
-
-        return mode;
-}
-
-midgard_reg_mode
-mir_mode_for_destsize(unsigned size)
-{
-        switch (size) {
-        case 8:
-                return midgard_reg_mode_8;
-        case 16:
-                return midgard_reg_mode_16;
-        case 32:
-                return midgard_reg_mode_32;
-        case 64:
-                return midgard_reg_mode_64;
-        default:
-                unreachable("Unknown destination size");
-        }
-}
-
-/* ...and the inverse */
-
-unsigned
-mir_bytes_for_mode(midgard_reg_mode mode)
-{
-        switch (mode) {
-        case midgard_reg_mode_8:
-                return 1;
-        case midgard_reg_mode_16:
-                return 2;
-        case midgard_reg_mode_32:
-                return 4;
-        case midgard_reg_mode_64:
-                return 8;
-        default:
-                unreachable("Invalid register mode");
-        }
-}
-
 uint16_t
-mir_from_bytemask(uint16_t bytemask, midgard_reg_mode mode)
+mir_from_bytemask(uint16_t bytemask, unsigned bits)
 {
         unsigned value = 0;
-        unsigned count = mir_bytes_for_mode(mode);
+        unsigned count = bits / 8;
 
         for (unsigned c = 0, d = 0; c < 16; c += count, ++d) {
                 bool a = (bytemask & (1 << c)) != 0;
@@ -307,9 +198,9 @@ mir_from_bytemask(uint16_t bytemask, midgard_reg_mode mode)
  * component, and check if any bytes in the component are masked on */
 
 uint16_t
-mir_round_bytemask_up(uint16_t mask, midgard_reg_mode mode)
+mir_round_bytemask_up(uint16_t mask, unsigned bits)
 {
-        unsigned bytes = mir_bytes_for_mode(mode);
+        unsigned bytes = bits / 8;
         unsigned maxmask = mask_of(bytes);
         unsigned channels = 16 / bytes;
 
@@ -328,13 +219,15 @@ mir_round_bytemask_up(uint16_t mask, midgard_reg_mode mode)
 uint16_t
 mir_bytemask(midgard_instruction *ins)
 {
-        return pan_to_bytemask(mir_bytes_for_mode(mir_typesize(ins)) * 8, ins->mask);
+        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
+        return pan_to_bytemask(type_size, ins->mask);
 }
 
 void
 mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask)
 {
-        ins->mask = mir_from_bytemask(bytemask, mir_typesize(ins));
+        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
+        ins->mask = mir_from_bytemask(bytemask, type_size);
 }
 
 /* Checks if we should use an upper destination override, rather than the lower
@@ -350,14 +243,13 @@ mir_upper_override(midgard_instruction *ins)
         /* Make sure we didn't already lower somehow */
         assert(ins->alu.dest_override == midgard_dest_override_lower);
 
-        /* What is the mask in terms of currently? */
-        midgard_reg_mode type = mir_typesize(ins);
-
         /* There are 16 bytes per vector, so there are (16/bytes)
          * components per vector. So the magic half is half of
-         * (16/bytes), which simplifies to 8/bytes */
+         * (16/bytes), which simplifies to 8/bytes = 8 / (bits / 8) = 64 / bits
+         * */
 
-        unsigned threshold = 8 / mir_bytes_for_mode(type);
+        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
+        unsigned threshold = 64 / type_size;
 
         /* How many components did we shift over? */
         unsigned zeroes = __builtin_ctz(ins->mask);
@@ -375,7 +267,7 @@ mir_upper_override(midgard_instruction *ins)
  */
 
 static uint16_t
-mir_bytemask_of_read_components_single(unsigned *swizzle, unsigned inmask, midgard_reg_mode mode)
+mir_bytemask_of_read_components_single(unsigned *swizzle, unsigned inmask, unsigned bits)
 {
         unsigned cmask = 0;
 
@@ -384,7 +276,7 @@ mir_bytemask_of_read_components_single(unsigned *swizzle, unsigned inmask, midga
                 cmask |= (1 << swizzle[c]);
         }
 
-        return pan_to_bytemask(mir_bytes_for_mode(mode) * 8, cmask);
+        return pan_to_bytemask(bits, cmask);
 }
 
 uint16_t
@@ -423,7 +315,8 @@ mir_bytemask_of_read_components_index(midgard_instruction *ins, unsigned i)
                         qmask = mask_of(channel_override);
         }
 
-        return mir_bytemask_of_read_components_single(ins->swizzle[i], qmask, mir_srcsize(ins, i));
+        return mir_bytemask_of_read_components_single(ins->swizzle[i], qmask,
+                nir_alu_type_get_type_size(ins->src_types[i]));
 }
 
 uint16_t

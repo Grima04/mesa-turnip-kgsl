@@ -230,7 +230,7 @@ mir_print_constant_component(FILE *fp, const midgard_constants *consts, unsigned
 static void
 mir_print_embedded_constant(midgard_instruction *ins, unsigned src_idx)
 {
-        unsigned type_size = mir_bytes_for_mode(ins->alu.reg_mode);
+        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
         midgard_vector_alu_src src;
 
         assert(src_idx <= 1);
@@ -242,7 +242,7 @@ mir_print_embedded_constant(midgard_instruction *ins, unsigned src_idx)
         unsigned *swizzle = ins->swizzle[src_idx];
         unsigned comp_mask = effective_writemask(&ins->alu, ins->mask);
         unsigned num_comp = util_bitcount(comp_mask);
-        unsigned max_comp = 16 / type_size;
+        unsigned max_comp = 64 / type_size;
         bool first = true;
 
         printf("#");

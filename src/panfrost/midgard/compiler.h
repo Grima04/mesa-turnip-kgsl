@@ -484,13 +484,9 @@ bool mir_single_use(compiler_context *ctx, unsigned value);
 unsigned mir_use_count(compiler_context *ctx, unsigned value);
 uint16_t mir_bytemask_of_read_components(midgard_instruction *ins, unsigned node);
 uint16_t mir_bytemask_of_read_components_index(midgard_instruction *ins, unsigned i);
-midgard_reg_mode mir_typesize(midgard_instruction *ins);
-midgard_reg_mode mir_srcsize(midgard_instruction *ins, unsigned i);
-unsigned mir_bytes_for_mode(midgard_reg_mode mode);
-midgard_reg_mode mir_mode_for_destsize(unsigned size);
-uint16_t mir_from_bytemask(uint16_t bytemask, midgard_reg_mode mode);
+uint16_t mir_from_bytemask(uint16_t bytemask, unsigned bits);
 uint16_t mir_bytemask(midgard_instruction *ins);
-uint16_t mir_round_bytemask_up(uint16_t mask, midgard_reg_mode mode);
+uint16_t mir_round_bytemask_up(uint16_t mask, unsigned bits);
 void mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask);
 unsigned mir_upper_override(midgard_instruction *ins);
 

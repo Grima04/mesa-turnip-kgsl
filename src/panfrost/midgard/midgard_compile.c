@@ -117,6 +117,7 @@ schedule_barrier(compiler_context *ctx)
                 if (store) { \
                         i.src[0] = ssa; \
                         i.src_types[0] = T; \
+                        i.dest_type = T; \
                 } else { \
                         i.dest = ssa; \
                         i.dest_type = T; \

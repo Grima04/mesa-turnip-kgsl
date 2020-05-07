@@ -72,11 +72,11 @@ midgard_opt_dead_code_eliminate_block(compiler_context *ctx, midgard_block *bloc
 
         mir_foreach_instr_in_block_rev(block, ins) {
                 if (can_cull_mask(ctx, ins)) {
-                        midgard_reg_mode mode = mir_typesize(ins);
+                        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
                         unsigned oldmask = ins->mask;
 
-                        unsigned rounded = mir_round_bytemask_up(live[ins->dest], mode);
-                        unsigned cmask = mir_from_bytemask(rounded, mode);
+                        unsigned rounded = mir_round_bytemask_up(live[ins->dest], type_size);
+                        unsigned cmask = mir_from_bytemask(rounded, type_size);
 
                         ins->mask &= cmask;
                         progress |= (ins->mask != oldmask);

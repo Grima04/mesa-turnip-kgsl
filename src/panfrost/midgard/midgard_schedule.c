@@ -381,8 +381,6 @@ mir_adjust_constants(midgard_instruction *ins,
                 return true;
 
         unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
-        midgard_reg_mode dst_mode = mir_typesize(ins);
-
         unsigned bundle_constant_mask = pred->constant_mask;
         unsigned comp_mapping[2][16] = { };
         uint8_t bundle_constants[16];
@@ -396,13 +394,12 @@ mir_adjust_constants(midgard_instruction *ins,
                 if (ins->src[src] != SSA_FIXED_REGISTER(REGISTER_CONSTANT))
                         continue;
 
-                midgard_reg_mode src_mode = mir_srcsize(ins, src);
-                unsigned type_size = mir_bytes_for_mode(src_mode);
+                unsigned type_size = nir_alu_type_get_type_size(ins->src_types[src]) / 8;
                 unsigned max_comp = 16 / type_size;
                 unsigned comp_mask = mir_from_bytemask(mir_round_bytemask_up(
                                         mir_bytemask_of_read_components_index(ins, src),
-                                        dst_mode),
-                                                       dst_mode);
+                                        type_size * 8),
+                                                       type_size * 8);
                 unsigned type_mask = (1 << type_size) - 1;
 
                 for (unsigned comp = 0; comp < max_comp; comp++) {

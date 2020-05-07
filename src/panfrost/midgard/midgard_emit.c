@@ -188,12 +188,12 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
                 unsigned packed = 0;
 
                 if (ins->alu.reg_mode == midgard_reg_mode_64) {
-                        midgard_reg_mode mode = mir_srcsize(ins, i);
-                        unsigned components = 16 / mir_bytes_for_mode(mode);
+                        unsigned sz = nir_alu_type_get_type_size(ins->src_types[i]);
+                        unsigned components = 64 / sz;
 
                         packed = mir_pack_swizzle_64(ins->swizzle[i], components);
 
-                        if (mode == midgard_reg_mode_32) {
+                        if (sz == 32) {
                                 bool lo = ins->swizzle[i][0] >= COMPONENT_Z;
                                 bool hi = ins->swizzle[i][1] >= COMPONENT_Z;
                                 unsigned mask = mir_bytemask(ins);
@@ -207,7 +207,7 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
                                 } else {
                                         src[i].rep_low |= hi;
                                 }
-                        } else if (mode < midgard_reg_mode_32) {
+                        } else if (sz < 32) {
                                 unreachable("Cannot encode 8/16 swizzle in 64-bit");
                         }
                 } else {
@@ -221,7 +221,7 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
                         bool upper = ins->swizzle[i][first] > 3;
 
                         if (upper && ins->mask)
-                                assert(mir_srcsize(ins, i) <= midgard_reg_mode_16);
+                                assert(nir_alu_type_get_type_size(ins->src_types[i]) <= 16);
 
                         for (unsigned c = 0; c < 4; ++c) {
                                 unsigned v = ins->swizzle[i][c];
@@ -306,13 +306,13 @@ mir_pack_swizzle_tex(midgard_instruction *ins)
 static void
 mir_pack_ldst_mask(midgard_instruction *ins)
 {
-        midgard_reg_mode mode = mir_typesize(ins);
+        unsigned sz = nir_alu_type_get_type_size(ins->dest_type);
         unsigned packed = ins->mask;
 
-        if (mode == midgard_reg_mode_64) {
+        if (sz == 64) {
                 packed = ((ins->mask & 0x2) ? (0x8 | 0x4) : 0) |
                          ((ins->mask & 0x1) ? (0x2 | 0x1) : 0);
-        } else if (mode == midgard_reg_mode_16) {
+        } else if (sz == 16) {
                 packed = 0;
 
                 for (unsigned i = 0; i < 4; ++i) {
@@ -323,6 +323,8 @@ mir_pack_ldst_mask(midgard_instruction *ins)
 
                         packed |= (u << i);
                 }
+        } else {
+                assert(sz == 32);
         }
 
         ins->load_store.mask = packed;
