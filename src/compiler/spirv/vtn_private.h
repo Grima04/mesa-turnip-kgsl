@@ -130,6 +130,7 @@ enum vtn_branch_type {
    vtn_branch_type_loop_continue,
    vtn_branch_type_loop_back_edge,
    vtn_branch_type_discard,
+   vtn_branch_type_terminate,
    vtn_branch_type_return,
 };
 

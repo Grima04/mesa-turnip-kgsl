@@ -255,6 +255,7 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpBranchConditional:
    case SpvOpSwitch:
    case SpvOpKill:
+   case SpvOpTerminateInvocation:
    case SpvOpReturn:
    case SpvOpReturnValue:
    case SpvOpUnreachable:
@@ -690,6 +691,10 @@ vtn_process_block(struct vtn_builder *b,
       block->branch_type = vtn_branch_type_discard;
       return NULL;
 
+   case SpvOpTerminateInvocation:
+      block->branch_type = vtn_branch_type_terminate;
+      return NULL;
+
    case SpvOpBranchConditional: {
       struct vtn_value *cond_val = vtn_untyped_value(b, block->branch[1]);
       vtn_fail_if(!cond_val->type ||
@@ -949,6 +954,12 @@ vtn_emit_branch(struct vtn_builder *b, enum vtn_branch_type branch_type,
       nir_intrinsic_instr *discard =
          nir_intrinsic_instr_create(b->nb.shader, op);
       nir_builder_instr_insert(&b->nb, &discard->instr);
+      break;
+   }
+   case vtn_branch_type_terminate: {
+      nir_intrinsic_instr *terminate =
+         nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_terminate);
+      nir_builder_instr_insert(&b->nb, &terminate->instr);
       break;
    }
    default:
