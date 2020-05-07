@@ -143,7 +143,7 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
  * with (ie. not requiring value range tracking)
  */
 static void
-handle_partial_const(nir_builder *b, nir_ssa_def **srcp, unsigned *offp)
+handle_partial_const(nir_builder *b, nir_ssa_def **srcp, int *offp)
 {
 	if ((*srcp)->parent_instr->type != nir_instr_type_alu)
 		return;
@@ -233,7 +233,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 	}
 
 	nir_ssa_def *ubo_offset = nir_ssa_for_src(b, instr->src[1], 1);
-	unsigned const_offset = 0;
+	int const_offset = 0;
 
 	handle_partial_const(b, &ubo_offset, &const_offset);
 
@@ -262,8 +262,19 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 		const_offset >>= 2;
 	}
 
-	const int range_offset = (range->offset - range->start) / 4;
+	const int range_offset = ((int)range->offset - (int)range->start) / 4;
 	const_offset += range_offset;
+
+	/* The range_offset could be negative, if if only part of the UBO
+	 * block is accessed, range->start can be greater than range->offset.
+	 * But we can't underflow const_offset.  If necessary we need to
+	 * insert nir instructions to compensate (which can hopefully be
+	 * optimized away)
+	 */
+	if (const_offset < 0) {
+		uniform_offset = nir_iadd_imm(b, uniform_offset, const_offset);
+		const_offset = 0;
+	}
 
 	nir_intrinsic_instr *uniform =
 		nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_uniform);
