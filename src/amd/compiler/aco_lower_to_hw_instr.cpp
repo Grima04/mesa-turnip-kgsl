@@ -1063,9 +1063,8 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
 
    while (!copy_map.empty()) {
 
-      /* Perform larger swaps first, so that we don't have to split the uses of
-       * registers we swap (we don't have to because of alignment restrictions) and
-       * larger swaps swaps can make other swaps unnecessary. */
+      /* Perform larger swaps first, because larger swaps swaps can make other
+       * swaps unnecessary. */
       auto it = copy_map.begin();
       for (auto it2 = copy_map.begin(); it2 != copy_map.end(); ++it2) {
          if (it2->second.bytes > it->second.bytes) {
@@ -1129,7 +1128,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
       /* remove from map */
       copy_map.erase(it);
 
-      /* change the operand reg of the target's use and split uses if needed */
+      /* change the operand reg of the target's uses and split uses if needed */
       target = copy_map.begin();
       uint32_t bytes_left = u_bit_consecutive(0, swap.bytes);
       for (; target != copy_map.end(); ++target) {
@@ -1146,10 +1145,49 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
 
          assert(target->second.bytes < swap.bytes);
 
-         PhysReg new_reg = swap.op.physReg();
-         new_reg.reg_b += target->second.op.physReg().reg_b - swap.def.physReg().reg_b;
-         target->second.op.setFixed(new_reg);
+         int offset = (int)target->second.op.physReg().reg_b - (int)swap.def.physReg().reg_b;
 
+         /* split and update the middle (the portion that reads the swap's
+          * definition) to read the swap's operand instead */
+         int target_op_end = target->second.op.physReg().reg_b + target->second.bytes;
+         int swap_def_end = swap.def.physReg().reg_b + swap.bytes;
+         int before_bytes = MAX2(-offset, 0);
+         int after_bytes = MAX2(target_op_end - swap_def_end, 0);
+         int middle_bytes = target->second.bytes - before_bytes - after_bytes;
+
+         if (after_bytes) {
+            unsigned after_offset = before_bytes + middle_bytes;
+            assert(after_offset > 0);
+            copy_operation copy;
+            copy.bytes = after_bytes;
+            memcpy(copy.uses, target->second.uses + after_offset, copy.bytes);
+            RegClass rc = RegClass::get(target->second.op.regClass().type(), after_bytes);
+            copy.op = Operand(target->second.op.physReg().advance(after_offset), rc);
+            copy.def = Definition(target->second.def.physReg().advance(after_offset), rc);
+            copy_map[copy.def.physReg()] = copy;
+         }
+
+         if (middle_bytes) {
+            copy_operation copy;
+            copy.bytes = middle_bytes;
+            memcpy(copy.uses, target->second.uses + before_bytes, copy.bytes);
+            RegClass rc = RegClass::get(target->second.op.regClass().type(), middle_bytes);
+            copy.op = Operand(swap.op.physReg().advance(MAX2(offset, 0)), rc);
+            copy.def = Definition(target->second.def.physReg().advance(before_bytes), rc);
+            copy_map[copy.def.physReg()] = copy;
+         }
+
+         if (before_bytes) {
+            copy_operation copy;
+            target->second.bytes = before_bytes;
+            RegClass rc = RegClass::get(target->second.op.regClass().type(), before_bytes);
+            target->second.op = Operand(target->second.op.physReg(), rc);
+            target->second.def = Definition(target->second.def.physReg(), rc);
+            memset(target->second.uses + target->second.bytes, 0, 8 - target->second.bytes);
+         }
+
+         /* break early since we know each byte of the swap's definition is used
+          * at most once */
          bytes_left &= ~imask;
          if (!bytes_left)
             break;

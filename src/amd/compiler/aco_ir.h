@@ -307,6 +307,7 @@ struct PhysReg {
    constexpr bool operator==(PhysReg other) const { return reg_b == other.reg_b; }
    constexpr bool operator!=(PhysReg other) const { return reg_b != other.reg_b; }
    constexpr bool operator <(PhysReg other) const { return reg_b < other.reg_b; }
+   constexpr PhysReg advance(unsigned bytes) const { PhysReg res = *this; res.reg_b += bytes; return res; }
 
    uint16_t reg_b = 0;
 };
