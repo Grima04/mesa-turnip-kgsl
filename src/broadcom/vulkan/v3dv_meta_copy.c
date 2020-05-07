@@ -575,8 +575,8 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
       height = region->bufferImageHeight;
 
    /* Handle copy from compressed format */
-   width /= vk_format_get_blockwidth(image->vk_format);
-   height /= vk_format_get_blockheight(image->vk_format);
+   width = DIV_ROUND_UP(width, vk_format_get_blockwidth(image->vk_format));
+   height = DIV_ROUND_UP(height, vk_format_get_blockheight(image->vk_format));
 
    /* If we are storing stencil from a combined depth/stencil format the
     * Vulkan spec states that the output buffer must have packed stencil
@@ -665,8 +665,8 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    /* Handle copy from compressed format using a compatible format */
    const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
    const uint32_t block_h = vk_format_get_blockheight(image->vk_format);
-   const uint32_t width = region->imageExtent.width / block_w;
-   const uint32_t height = region->imageExtent.height / block_h;
+   const uint32_t width = DIV_ROUND_UP(region->imageExtent.width, block_w);
+   const uint32_t height = DIV_ROUND_UP(region->imageExtent.height, block_h);
 
    v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
 
@@ -906,8 +906,8 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    /* Handle copy to compressed image using compatible format */
    const uint32_t block_w = vk_format_get_blockwidth(dst->vk_format);
    const uint32_t block_h = vk_format_get_blockheight(dst->vk_format);
-   const uint32_t width = region->extent.width / block_w;
-   const uint32_t height = region->extent.height / block_h;
+   const uint32_t width = DIV_ROUND_UP(region->extent.width, block_w);
+   const uint32_t height = DIV_ROUND_UP(region->extent.height, block_h);
 
    v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
 
@@ -1022,8 +1022,8 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t dst_block_w = vk_format_get_blockwidth(dst->vk_format);
    const uint32_t dst_block_h = vk_format_get_blockheight(dst->vk_format);
    const VkOffset3D dst_start = {
-      region->dstOffset.x * src_block_w / dst_block_w / divisor,
-      region->dstOffset.y * src_block_h / dst_block_h,
+      DIV_ROUND_UP(region->dstOffset.x * src_block_w, dst_block_w) / divisor,
+      DIV_ROUND_UP(region->dstOffset.y * src_block_h, dst_block_h),
       region->dstOffset.z,
    };
    const VkOffset3D dst_end = {
@@ -1690,8 +1690,8 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
       height = region->bufferImageHeight;
 
    /* Handle copy to compressed format using a compatible format */
-   width /= vk_format_get_blockwidth(image->vk_format);
-   height /= vk_format_get_blockheight(image->vk_format);
+   width = DIV_ROUND_UP(width, vk_format_get_blockwidth(image->vk_format));
+   height = DIV_ROUND_UP(height, vk_format_get_blockheight(image->vk_format));
 
    uint32_t cpp = imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ?
                   1 : image->cpp;
@@ -1823,8 +1823,8 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    /* Handle copy to compressed format using a compatible format */
    const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
    const uint32_t block_h = vk_format_get_blockheight(image->vk_format);
-   const uint32_t width = region->imageExtent.width / block_w;
-   const uint32_t height = region->imageExtent.height / block_h;
+   const uint32_t width = DIV_ROUND_UP(region->imageExtent.width, block_w);
+   const uint32_t height = DIV_ROUND_UP(region->imageExtent.height, block_h);
 
    v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
 
@@ -3157,10 +3157,10 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t src_block_w = vk_format_get_blockwidth(src->vk_format);
    const uint32_t src_block_h = vk_format_get_blockheight(src->vk_format);
    const uint32_t dst_level_w =
-      u_minify(dst->extent.width * src_block_w / dst_block_w,
+      u_minify(DIV_ROUND_UP(dst->extent.width * src_block_w, dst_block_w),
                region->dstSubresource.mipLevel);
    const uint32_t dst_level_h =
-      u_minify(dst->extent.height * src_block_h / dst_block_h,
+      u_minify(DIV_ROUND_UP(dst->extent.height * src_block_h, dst_block_h),
                region->dstSubresource.mipLevel);
 
    const uint32_t src_level_w =
