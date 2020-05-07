@@ -1223,6 +1223,26 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          it->second.bytes = 8;
       }
 
+      /* try to coalesce copies */
+      if (it->second.bytes < 8 && !it->second.op.isConstant() &&
+          it->first.reg_b % util_next_power_of_two(it->second.bytes + 1) == 0 &&
+          it->second.op.physReg().reg_b % util_next_power_of_two(it->second.bytes + 1) == 0) {
+         // TODO try more relaxed alignment for subdword copies
+         PhysReg other_def_reg = it->first;
+         other_def_reg.reg_b += it->second.bytes;
+         PhysReg other_op_reg = it->second.op.physReg();
+         other_op_reg.reg_b += it->second.bytes;
+         std::map<PhysReg, copy_operation>::iterator other = copy_map.find(other_def_reg);
+         if (other != copy_map.end() &&
+             other->second.op.physReg() == other_op_reg &&
+             it->second.bytes + other->second.bytes <= 8) {
+            it->second.bytes += other->second.bytes;
+            it->second.def = Definition(it->first, RegClass::get(it->second.def.regClass().type(), it->second.bytes));
+            it->second.op = Operand(it->second.op.physReg(), RegClass::get(it->second.op.regClass().type(), it->second.bytes));
+            copy_map.erase(other);
+         }
+      }
+
       /* check if the definition reg is used by another copy operation */
       for (std::pair<const PhysReg, copy_operation>& copy : copy_map) {
          if (copy.second.op.isConstant())
