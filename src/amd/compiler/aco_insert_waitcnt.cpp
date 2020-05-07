@@ -402,22 +402,14 @@ wait_imm check_instr(Instruction* instr, wait_ctx& ctx)
             continue;
 
          /* Vector Memory reads and writes return in the order they were issued */
-         if (instr->isVMEM() && ((it->second.events & vm_events) == event_vmem)) {
-            it->second.remove_counter(counter_vm);
-            if (!it->second.counters)
-               it = ctx.gpr_map.erase(it);
+         if (instr->isVMEM() && ((it->second.events & vm_events) == event_vmem))
             continue;
-         }
 
          /* LDS reads and writes return in the order they were issued. same for GDS */
          if (instr->format == Format::DS) {
             bool gds = static_cast<DS_instruction*>(instr)->gds;
-            if ((it->second.events & lgkm_events) == (gds ? event_gds : event_lds)) {
-               it->second.remove_counter(counter_lgkm);
-               if (!it->second.counters)
-                  it = ctx.gpr_map.erase(it);
+            if ((it->second.events & lgkm_events) == (gds ? event_gds : event_lds))
                continue;
-            }
          }
 
          wait.combine(it->second.imm);
