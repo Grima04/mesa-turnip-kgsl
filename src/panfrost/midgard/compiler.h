@@ -554,6 +554,7 @@ v_load_store_scratch(
         midgard_instruction ins = {
                 .type = TAG_LOAD_STORE_4,
                 .mask = mask,
+                .dest_type = nir_type_uint32,
                 .dest = ~0,
                 .src = { ~0, ~0, ~0, ~0 },
                 .swizzle = SWIZZLE_IDENTITY_4,
@@ -573,6 +574,7 @@ v_load_store_scratch(
 
         if (is_store) {
                 ins.src[0] = srcdest;
+                ins.src_types[0] = nir_type_uint32;
 
                 /* Ensure we are tightly swizzled so liveness analysis is
                  * correct */

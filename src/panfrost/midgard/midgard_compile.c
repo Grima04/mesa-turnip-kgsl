@@ -1588,8 +1588,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 ld.load_store.arg_2 = 0x1E;
                         }
 
-                        for (unsigned c = 2; c < 16; ++c)
+                        for (unsigned c = 4; c < 16; ++c)
                                 ld.swizzle[0][c] = 0;
+
+                        ld.dest_type = nir_type_float16;
                 }
 
                 emit_mir_instruction(ctx, ld);
