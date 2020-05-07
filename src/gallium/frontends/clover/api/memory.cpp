@@ -234,7 +234,7 @@ clCreateImage2D(cl_context d_ctx, cl_mem_flags d_flags,
                 size_t width, size_t height, size_t row_pitch,
                 void *host_ptr, cl_int *r_errcode) {
    const cl_image_desc desc = { CL_MEM_OBJECT_IMAGE2D, width, height, 0, 0,
-                                row_pitch, 0, 0, 0, NULL };
+                                row_pitch, 0, 0, 0, { NULL } };
 
    return clCreateImage(d_ctx, d_flags, format, &desc, host_ptr, r_errcode);
 }
@@ -246,7 +246,7 @@ clCreateImage3D(cl_context d_ctx, cl_mem_flags d_flags,
                 size_t row_pitch, size_t slice_pitch,
                 void *host_ptr, cl_int *r_errcode) {
    const cl_image_desc desc = { CL_MEM_OBJECT_IMAGE3D, width, height, depth, 0,
-                                row_pitch, slice_pitch, 0, 0, NULL };
+                                row_pitch, slice_pitch, 0, 0, { NULL } };
 
    return clCreateImage(d_ctx, d_flags, format, &desc, host_ptr, r_errcode);
 }
