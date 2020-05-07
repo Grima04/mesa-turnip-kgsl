@@ -1227,7 +1227,7 @@ static enum radeon_surf_mode si_choose_tiling(struct si_screen *sscreen,
       return RADEON_SURF_MODE_2D;
 
    /* Transfer resources should be linear. */
-   if (templ->flags & SI_RESOURCE_FLAG_TRANSFER)
+   if (templ->flags & SI_RESOURCE_FLAG_FORCE_LINEAR)
       return RADEON_SURF_MODE_LINEAR_ALIGNED;
 
    /* Avoid Z/S decompress blits by forcing TC-compatible HTILE on GFX8,
@@ -1295,8 +1295,8 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
       }
    }
 
-   bool is_flushed_depth =
-      templ->flags & SI_RESOURCE_FLAG_FLUSHED_DEPTH || templ->flags & SI_RESOURCE_FLAG_TRANSFER;
+   bool is_flushed_depth = templ->flags & SI_RESOURCE_FLAG_FLUSHED_DEPTH ||
+                           templ->flags & SI_RESOURCE_FLAG_FORCE_LINEAR;
    bool tc_compatible_htile =
       sscreen->info.chip_class >= GFX8 &&
       /* There are issues with TC-compatible HTILE on Tonga (and
@@ -1559,7 +1559,7 @@ static void si_init_temp_resource_from_box(struct pipe_resource *res, struct pip
    res->usage = usage;
    res->flags = flags;
 
-   if (flags & SI_RESOURCE_FLAG_TRANSFER && util_format_is_compressed(orig->format)) {
+   if (flags & SI_RESOURCE_FLAG_FORCE_LINEAR && util_format_is_compressed(orig->format)) {
       /* Transfer resources are allocated with linear tiling, which is
        * not supported for compressed formats.
        */
@@ -1625,7 +1625,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    char *map;
    bool use_staging_texture = false;
 
-   assert(!(texture->flags & SI_RESOURCE_FLAG_TRANSFER));
+   assert(!(texture->flags & SI_RESOURCE_FLAG_FORCE_LINEAR));
    assert(box->width && box->height && box->depth);
 
    /* If we are uploading into FP16 or R11G11B10_FLOAT via a blit, CB clobbers NaNs,
@@ -1697,7 +1697,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
 
       unsigned bo_usage = usage & PIPE_TRANSFER_READ ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
       si_init_temp_resource_from_box(&resource, texture, box, level, bo_usage,
-                                     SI_RESOURCE_FLAG_TRANSFER);
+                                     SI_RESOURCE_FLAG_FORCE_LINEAR);
 
       /* Since depth-stencil textures don't support linear tiling,
        * blit from ZS to color and vice versa. u_blitter will do
