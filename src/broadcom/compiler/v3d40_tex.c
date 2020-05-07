@@ -123,8 +123,15 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                                       ntq_get_src(c, instr->src[i].src, 0),
                                       &tmu_writes);
 
-                        if (instr->op != nir_texop_txf)
+                        /* With texel fetch automatic LOD is already disabled,
+                         * and disable_autolod must not be enabled. For
+                         * non-cubes we can use the register TMUSLOD, that
+                         * implicitly sets disable_autolod.
+                         */
+                        if (instr->op != nir_texop_txf &&
+                            instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
                                 p2_unpacked.disable_autolod = true;
+                        }
                         break;
 
                 case nir_tex_src_comparator:
@@ -267,6 +274,8 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSF, s, &tmu_writes);
         } else if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
                 vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSCM, s, &tmu_writes);
+        } else if (instr->op == nir_texop_txl) {
+                vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUSLOD, s, &tmu_writes);
         } else {
                 vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUS, s, &tmu_writes);
         }
