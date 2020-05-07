@@ -93,12 +93,6 @@ for op in ('u2u', 'i2i', 'f2f', 'i2f', 'u2f', 'f2i', 'f2u'):
             srcsz *= 2
         dstsz *= 2
 
-# Midgard outputs fp32 for specials. The f2f32 will be folded in later.
-SPECIAL = ['fexp2', 'flog2', 'fsin', 'fcos', 'frcp', 'frsq']
-
-for op in SPECIAL:
-        converts += [((op + '@16', a), ('f2f16', (op, ('f2f32', a))))]
-
 # Try to force constants to the right
 constant_switch = [
         # fge gets flipped to fle, so we invert to keep the order

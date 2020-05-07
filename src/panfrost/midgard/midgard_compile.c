@@ -561,6 +561,27 @@ reg_mode_for_nir(nir_alu_instr *instr)
         unsigned dst_bitsize = nir_dest_bit_size(instr->dest.dest);
         unsigned max_bitsize = MAX2(src_bitsize, dst_bitsize);
 
+        /* We don't have fp16 LUTs, so we'll want to emit code like:
+         *
+         *      vlut.fsinr hr0, hr0
+         *
+         * where both input and output are 16-bit but the operation is carried
+         * out in 32-bit
+         */
+
+        switch (instr->op) {
+        case nir_op_fsqrt:
+        case nir_op_frcp:
+        case nir_op_frsq:
+        case nir_op_fsin:
+        case nir_op_fcos:
+        case nir_op_fexp2:
+        case nir_op_flog2:
+                max_bitsize = MAX2(max_bitsize, 32);
+        default:
+                break;
+        }
+
         switch (max_bitsize) {
         case 8:
                 return midgard_reg_mode_8;
