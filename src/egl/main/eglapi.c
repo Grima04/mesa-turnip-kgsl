@@ -1357,7 +1357,7 @@ eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
 static EGLBoolean
 _eglSwapBuffersWithDamageCommon(_EGLDisplay *disp, _EGLSurface *surf,
-                                EGLint *rects, EGLint n_rects)
+                                const EGLint *rects, EGLint n_rects)
 {
    _EGLContext *ctx = _eglGetCurrentContext();
    _EGLDriver *drv;
@@ -1392,7 +1392,7 @@ _eglSwapBuffersWithDamageCommon(_EGLDisplay *disp, _EGLSurface *surf,
 
 static EGLBoolean EGLAPIENTRY
 eglSwapBuffersWithDamageEXT(EGLDisplay dpy, EGLSurface surface,
-                            EGLint *rects, EGLint n_rects)
+                            const EGLint *rects, EGLint n_rects)
 {
    _EGLDisplay *disp = _eglLockDisplay(dpy);
    _EGLSurface *surf = _eglLookupSurface(surface, disp);
@@ -1402,7 +1402,7 @@ eglSwapBuffersWithDamageEXT(EGLDisplay dpy, EGLSurface surface,
 
 static EGLBoolean EGLAPIENTRY
 eglSwapBuffersWithDamageKHR(EGLDisplay dpy, EGLSurface surface,
-                            EGLint *rects, EGLint n_rects)
+                            const EGLint *rects, EGLint n_rects)
 {
    _EGLDisplay *disp = _eglLockDisplay(dpy);
    _EGLSurface *surf = _eglLookupSurface(surface, disp);
