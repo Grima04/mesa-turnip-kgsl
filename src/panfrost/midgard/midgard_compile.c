@@ -578,15 +578,33 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
                 broadcast_swizzle = count; \
                 assert(src_bitsize == dst_bitsize); \
                 break;
-/* Analyze the sizes of the inputs to determine which reg mode. Ops needed
- * special treatment override this anyway. */
+
+#define ALU_CHECK_CMP(sext) \
+               if (src_bitsize == 16 && dst_bitsize == 32) { \
+                        half_1 = true; \
+                        half_2 = true; \
+                        sext_1 = sext; \
+                        sext_2 = sext; \
+                } else { \
+                        assert(src_bitsize == dst_bitsize); \
+                } \
+
+#define ALU_CASE_CMP(nir, _op, sext) \
+	case nir_op_##nir: \
+		op = midgard_alu_op_##_op; \
+                ALU_CHECK_CMP(sext); \
+                 break;
+	
+/* Analyze the sizes of the dest and inputs to determine reg mode. */
 
 static midgard_reg_mode
 reg_mode_for_nir(nir_alu_instr *instr)
 {
         unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
+        unsigned dst_bitsize = nir_dest_bit_size(instr->dest.dest);
+        unsigned max_bitsize = MAX2(src_bitsize, dst_bitsize);
 
-        switch (src_bitsize) {
+        switch (max_bitsize) {
         case 8:
                 return midgard_reg_mode_8;
         case 16:
@@ -782,13 +800,13 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 ALU_CASE(mov, imov);
 
-                ALU_CASE(feq32, feq);
-                ALU_CASE(fne32, fne);
-                ALU_CASE(flt32, flt);
-                ALU_CASE(ieq32, ieq);
-                ALU_CASE(ine32, ine);
-                ALU_CASE(ilt32, ilt);
-                ALU_CASE(ult32, ult);
+                ALU_CASE_CMP(feq32, feq, false);
+                ALU_CASE_CMP(fne32, fne, false);
+                ALU_CASE_CMP(flt32, flt, false);
+                ALU_CASE_CMP(ieq32, ieq, true);
+                ALU_CASE_CMP(ine32, ine, true);
+                ALU_CASE_CMP(ilt32, ilt, true);
+                ALU_CASE_CMP(ult32, ult, false);
 
                 /* We don't have a native b2f32 instruction. Instead, like many
                  * GPUs, we exploit booleans as 0/~0 for false/true, and
@@ -801,14 +819,14 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                  * At the end of emit_alu (as MIR), we'll fix-up the constant
                  */
 
-                ALU_CASE(b2f32, iand);
-                ALU_CASE(b2i32, iand);
+                ALU_CASE_CMP(b2f32, iand, true);
+                ALU_CASE_CMP(b2i32, iand, true);
 
                 /* Likewise, we don't have a dedicated f2b32 instruction, but
                  * we can do a "not equal to 0.0" test. */
 
-                ALU_CASE(f2b32, fne);
-                ALU_CASE(i2b32, ine);
+                ALU_CASE_CMP(f2b32, fne, false);
+                ALU_CASE_CMP(i2b32, ine, true);
 
                 ALU_CASE(frcp, frcp);
                 ALU_CASE(frsq, frsqrt);
@@ -899,9 +917,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 if (dst_bitsize == (src_bitsize * 2)) {
                         /* Converting up */
                         half_2 = true;
-
-                        /* Use a greater register mode */
-                        reg_mode++;
                 } else if (src_bitsize == (dst_bitsize * 2)) {
                         /* Converting down */
                         dest_override = midgard_dest_override_lower;
@@ -925,6 +940,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         0;
 
                 flip_src12 = true;
+                ALU_CHECK_CMP(false);
                 break;
         }
 
