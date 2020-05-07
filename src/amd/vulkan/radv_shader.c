@@ -351,8 +351,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 				}
 			}
 		}
-		bool int8_int16_enable = !device->physical_device->use_aco ||
-					 device->physical_device->rad_info.chip_class >= GFX8;
+		bool int8_enable = !device->physical_device->use_aco ||
+				   device->physical_device->rad_info.chip_class >= GFX8;
 		const struct spirv_to_nir_options spirv_options = {
 			.lower_ubo_ssbo_access_to_offsets = true,
 			.caps = {
@@ -377,8 +377,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 				.image_ms_array = true,
 				.image_read_without_format = true,
 				.image_write_without_format = true,
-				.int8 = int8_int16_enable,
-				.int16 = int8_int16_enable,
+				.int8 = int8_enable,
+				.int16 = true,
 				.int64 = true,
 				.int64_atomics = true,
 				.min_lod = true,
