@@ -2144,13 +2144,6 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                 }
 
                 if (ins->src[1] == SSA_FIXED_REGISTER(REGISTER_CONSTANT)) {
-                        /* Extract the source information */
-
-                        midgard_vector_alu_src *src;
-                        int q = ins->alu.src2;
-                        midgard_vector_alu_src *m = (midgard_vector_alu_src *) &q;
-                        src = m;
-
                         /* Component is from the swizzle. Take a nonzero component */
                         assert(ins->mask);
                         unsigned first_comp = ffs(ins->mask) - 1;

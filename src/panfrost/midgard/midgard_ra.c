@@ -660,10 +660,7 @@ install_registers_instr(
 
                         ins->alu.src2 = imm << 2;
                 } else {
-                        midgard_vector_alu_src mod2 =
-                                vector_alu_from_unsigned(ins->alu.src2);
                         offset_swizzle(ins->swizzle[1], src2.offset, src2.size, dest.size, dest_offset);
-                        ins->alu.src2 = vector_alu_srco_unsigned(mod2);
 
                         ins->registers.src2_reg = src2.reg;
                 }
