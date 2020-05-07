@@ -266,7 +266,7 @@ namespace clover {
       S
       operator()(S &&it) const {
          std::advance(it, n);
-         return it;
+         return std::forward<S>(it);
       }
 
    private:

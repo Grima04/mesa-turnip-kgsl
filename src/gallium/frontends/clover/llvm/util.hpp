@@ -37,7 +37,7 @@ namespace clover {
       template<typename E> void
       fail(std::string &r_log, E &&e, const std::string &s) {
          r_log += s;
-         throw e;
+         throw std::forward<E>(e);
       }
 
       inline std::vector<std::string>
