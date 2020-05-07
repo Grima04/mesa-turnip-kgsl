@@ -507,5 +507,150 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_xlib_surface                                   DONE (anv, radv, v3dv)
 
 
+OpenCL 1.0 -- all DONE:
+
+  Image support                                         in progress
+
+
+OpenCL 1.1 -- all DONE:
+
+  Additional queries for clGetDeviceInfo                DONE (nvc0, r600, radeonsi)
+  CL_CONTEXT_NUM_DEVICES for clGetContextInfo           DONE
+  Optional image formats                                not started
+  clCreateSubBuffer                                     DONE
+  Read from, write to, copy rectangular regions         DONE
+  clSetMemObjectDestructorCallback                      DONE
+  Control OpenCL C version when building                DONE
+  Query for preferred work-group size multiple          DONE (nvc0, r600, radeonsi)
+  Support user events                                   DONE
+  clSetEventCallback                                    DONE
+  Minimum requirement changes for clGetDeviceInfo       DONE (nvc0, r600, radeonsi)
+  Arg prerequisite change for clEnqueueNDRangeKernel    DONE ()
+  3-component vector data types                         DONE (nvc0, r600, radeonsi)
+  cl_khr_byte_addressable_store                         DONE (nvc0, r600, radeonsi)
+  cl_khr_global_int32_base_atomics                      DONE (nvc0, r600, radeonsi)
+  cl_khr_global_int32_extended_atomics                  DONE (nvc0, r600, radeonsi)
+  cl_khr_local_int32_base_atomics                       DONE (nvc0, r600, radeonsi)
+  cl_khr_local_int32_extended_atomics                   DONE (nvc0, r600, radeonsi)
+
+
+OpenCL 1.2 -- all DONE:
+
+  Custom devices                                        DONE
+  Built-in kernels                                      DONE ()
+  Device partitioning                                   DONE ()
+  Separate compilation and linking of programs          DONE
+  Extend cl_mem_flags                                   DONE
+  clEnqueueFillBuffer, clEnqueueFillImage               DONE
+  Add CL_MAP_WRITE_INVALIDATE_REGION to cl_map_flags    DONE
+  New image types                                       not started
+  clCreateImage                                         DONE
+  clEnqueueMigrateMemObjects                            DONE
+  Retrieve kernels information from a program           DONE
+  clGetKernelArgInfo                                    DONE
+  clEnqueueMarkerWithWaitList                           DONE
+  clEnqueueBarrierWithWaitList                          DONE
+  clUnloadPlatformCompiler                              DONE
+  cl_khr_fp64                                           DONE (nvc0, r600, radeonsi)
+  printf                                                DONE (nvc0)
+  CL_KERNEL_ATTRIBUTES for clGetKernelInfo              DONE
+
+
+OpenCL 2.0 -- all DONE:
+
+  Shared virtual memory                                 DONE (nvc0)
+  Device queues                                         not started
+  - cl_khr_create_command_queue                         not started
+  - Additional queries for clGetDeviceInfo              not started
+  Pipes                                                 not started
+  Extended 2D images creation                           not started
+  - cl_khr_image2d_from_buffer                          not started
+  - cl_khr_depth_images                                 not started
+  - from sRGB images                                    not started
+  clCreateSamplerWithProperties                         not started
+  cl_khr_3d_image_writes                                not started
+
+
+OpenCL 2.1 -- all DONE:
+
+  Sub groups                                            not started
+  - cl_khr_subgroups                                    not started
+  - Additional queries for clGetDeviceInfo              not started
+  cl_khr_il_program                                     DONE (nvc0)
+  Device and host timer synchronization                 not started
+  clEnqueueSVMMigrateMem                                not started
+  clCloneKernel                                         not started
+  Default device command queue                          not started
+
+
+OpenCL 2.2 -- all DONE:
+
+  clSetProgramSpecializationConstant                    not started
+  clSetProgramReleaseCallback                           not started
+  Initialization and clean-up kernels                   not started
+  CL_MAX_SIZE_RESTRICTION_EXCEEDED for clSetKernelArg   not started
+  Support SPIR-V 1.1 and 1.2                            not started
+
+
+OpenCL 3.0 -- all DONE
+
+  Optional device capabilities queries                  in progress
+  cl_khr_extended_versioning                            DONE
+  clSetContextDestructorCallback                        DONE
+  clCreateBufferWithProperties                          DONE
+  clCreateImageWithProperties                           DONE
+  Query properties arrays                               in progress
+  Supported OpenCL C versions and features queries      DONE
+  CL_COMMAND_SVM_MIGRATE_MEM for clGetEventInfo         not started
+  Latest conformance version passed for devices         not started
+
+
+Khronos, and EXT extensions that are not part of any OpenCL version:
+
+  cl_ext_atomic_counters_32                             not started
+  cl_ext_atomic_counters_64                             not started
+  cl_ext_device_fission                                 not started
+  cl_ext_migrate_memobject                              not started
+  cl_khr_async_work_group_copy_fence                    not started
+  cl_khr_d3d10_sharing                                  not started
+  cl_khr_d3d11_sharing                                  not started
+  cl_khr_device_enqueue_local_arg_types                 not started
+  cl_khr_dx9_media_sharing                              not started
+  cl_khr_egl_event                                      not started
+  cl_khr_egl_image                                      not started
+  cl_khr_extended_async_copies                          not started
+  cl_khr_fp16                                           DONE ()
+  cl_khr_gl_depth_images                                not started
+  cl_khr_gl_event                                       not started
+  cl_khr_gl_msaa_sharing                                not started
+  cl_khr_gl_sharing                                     not started
+  cl_khr_icd                                            DONE
+  cl_khr_initialize_memory                              not started
+  cl_khr_int64_base_atomics                             DONE ()
+  cl_khr_int64_extended_atomics                         DONE ()
+  cl_khr_mipmap_image                                   not started
+  cl_khr_mipmap_image_writes                            not started
+  cl_khr_priority_hints                                 not started
+  cl_khr_select_fprounding_mode                         not started
+  cl_khr_spir                                           not started
+  cl_khr_srgb_image_writes                              not started
+  cl_khr_subgroup_named_barrier                         not started
+  cl_khr_subgroups                                      not started
+  cl_khr_terminate_context                              not started
+  cl_khr_throttle_hints                                 not started
+
+
+Vendor specific extensions that are not part of any OpenCL version:
+
+  cl_arm_shared_virtual_memory                          DONE (nvc0)
+
+
+The following extensions are not part of any OpenCL version, and we DO NOT WANT
+implementations of these extensions for Mesa.
+
+  cl_nv_d3d10_sharing                                   Superseded by cl_khr_d3d10_sharing
+  cl_nv_d3d11_sharing                                   Superseded by cl_khr_d3d10_sharing
+
+
 A graphical representation of this information can be found at
 https://mesamatrix.net/
