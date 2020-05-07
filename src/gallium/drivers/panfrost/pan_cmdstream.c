@@ -644,9 +644,11 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
 
          /* If there is a blend shader, work registers are shared. XXX: opt */
 
-        for (unsigned c = 0; c < rt_count; ++c) {
-                if (blend[c].is_shader)
-                        fragmeta->midgard1.work_count = 16;
+        if (!(dev->quirks & IS_BIFROST)) {
+                for (unsigned c = 0; c < rt_count; ++c) {
+                        if (blend[c].is_shader)
+                                fragmeta->midgard1.work_count = 16;
+                }
         }
 
         /* Even on MFBD, the shader descriptor gets blend shaders. It's *also*
@@ -763,29 +765,33 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
 
         SET_BIT(fragmeta->unknown2_4, 0x10, dev->quirks & MIDGARD_SFBD);
 
-        /* Depending on whether it's legal to in the given shader, we try to
-         * enable early-z testing (or forward-pixel kill?) */
+        if (dev->quirks & IS_BIFROST) {
+                /* TODO */
+        } else {
+                /* Depending on whether it's legal to in the given shader, we try to
+                 * enable early-z testing (or forward-pixel kill?) */
 
-        SET_BIT(fragmeta->midgard1.flags_lo, MALI_EARLY_Z,
-                !fs->can_discard && !fs->writes_depth);
+                SET_BIT(fragmeta->midgard1.flags_lo, MALI_EARLY_Z,
+                        !fs->can_discard && !fs->writes_depth);
 
-        /* Add the writes Z/S flags if needed. */
-        SET_BIT(fragmeta->midgard1.flags_lo, MALI_WRITES_Z, fs->writes_depth);
-        SET_BIT(fragmeta->midgard1.flags_hi, MALI_WRITES_S, fs->writes_stencil);
+                /* Add the writes Z/S flags if needed. */
+                SET_BIT(fragmeta->midgard1.flags_lo, MALI_WRITES_Z, fs->writes_depth);
+                SET_BIT(fragmeta->midgard1.flags_hi, MALI_WRITES_S, fs->writes_stencil);
 
-        /* Any time texturing is used, derivatives are implicitly calculated,
-         * so we need to enable helper invocations */
+                /* Any time texturing is used, derivatives are implicitly calculated,
+                 * so we need to enable helper invocations */
 
-        SET_BIT(fragmeta->midgard1.flags_lo, MALI_HELPER_INVOCATIONS,
-                fs->helper_invocations);
+                SET_BIT(fragmeta->midgard1.flags_lo, MALI_HELPER_INVOCATIONS,
+                        fs->helper_invocations);
 
-        /* CAN_DISCARD should be set if the fragment shader possibly contains a
-         * 'discard' instruction. It is likely this is related to optimizations
-         * related to forward-pixel kill, as per "Mali Performance 3: Is
-         * EGL_BUFFER_PRESERVED a good thing?" by Peter Harris */
+                /* CAN_DISCARD should be set if the fragment shader possibly contains a
+                 * 'discard' instruction. It is likely this is related to optimizations
+                 * related to forward-pixel kill, as per "Mali Performance 3: Is
+                 * EGL_BUFFER_PRESERVED a good thing?" by Peter Harris */
 
-        SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD, fs->can_discard);
-        SET_BIT(fragmeta->midgard1.flags_lo, 0x400, fs->can_discard);
+                SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD, fs->can_discard);
+                SET_BIT(fragmeta->midgard1.flags_lo, 0x400, fs->can_discard);
+        }
 
         panfrost_frag_meta_rasterizer_update(ctx, fragmeta);
         panfrost_frag_meta_zsa_update(ctx, fragmeta);
