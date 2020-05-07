@@ -1056,13 +1056,15 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
             bld.sop1(aco_opcode::s_mov_b64, Definition(dst), src);
          else
             unreachable("wrong src register class for nir_op_imov");
-      } else if (dst.regClass() == v1) {
-         bld.vop1(aco_opcode::v_mov_b32, Definition(dst), src);
-      } else if (dst.regClass() == v2) {
-         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), src);
       } else {
-         nir_print_instr(&instr->instr, stderr);
-         unreachable("Should have been lowered to scalar.");
+         if (dst.regClass() == v1)
+            bld.vop1(aco_opcode::v_mov_b32, Definition(dst), src);
+         else if (dst.regClass() == v1b ||
+                  dst.regClass() == v2b ||
+                  dst.regClass() == v2)
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), src);
+         else
+            unreachable("wrong src register class for nir_op_imov");
       }
       break;
    }
