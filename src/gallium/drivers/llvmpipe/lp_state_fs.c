@@ -2889,7 +2889,7 @@ generate_fragment(struct llvmpipe_context *lp,
                                                       num_loop_samp, "mask_store");
 
       LLVMTypeRef flt_type = LLVMFloatTypeInContext(gallivm->context);
-      LLVMValueRef glob_sample_pos = LLVMAddGlobal(gallivm->module, flt_type, "");
+      LLVMValueRef glob_sample_pos = LLVMAddGlobal(gallivm->module, LLVMArrayType(flt_type, key->coverage_samples * 2), "");
       LLVMValueRef sample_pos_array;
 
       if (key->multisample && key->coverage_samples == 4) {

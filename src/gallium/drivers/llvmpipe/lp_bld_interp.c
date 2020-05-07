@@ -317,10 +317,10 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                         LLVMValueRef x_val_idx = LLVMBuildMul(gallivm->builder, sample_id, lp_build_const_int32(gallivm, 2), "");
                         LLVMValueRef y_val_idx = LLVMBuildAdd(gallivm->builder, x_val_idx, lp_build_const_int32(gallivm, 1), "");
 
-                        x_val_idx = LLVMBuildGEP(builder, bld->sample_pos_array, &x_val_idx, 1, "");
-                        y_val_idx = LLVMBuildGEP(builder, bld->sample_pos_array, &y_val_idx, 1, "");
-                        xoffset = lp_build_broadcast_scalar(coeff_bld, LLVMBuildLoad(builder, x_val_idx, ""));
-                        yoffset = lp_build_broadcast_scalar(coeff_bld, LLVMBuildLoad(builder, y_val_idx, ""));
+                        x_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, x_val_idx);
+                        y_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, y_val_idx);
+                        xoffset = lp_build_broadcast_scalar(coeff_bld, x_val_idx);
+                        yoffset = lp_build_broadcast_scalar(coeff_bld, y_val_idx);
                      } else if (loc == TGSI_INTERPOLATE_LOC_CENTROID) {
                         LLVMValueRef centroid_x_offset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
                         LLVMValueRef centroid_y_offset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
@@ -342,10 +342,11 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                            LLVMValueRef x_val_idx = lp_build_const_int32(gallivm, s * 2);
                            LLVMValueRef y_val_idx = lp_build_const_int32(gallivm, s * 2 + 1);
 
-                           x_val_idx = LLVMBuildGEP(builder, bld->sample_pos_array, &x_val_idx, 1, "");
-                           y_val_idx = LLVMBuildGEP(builder, bld->sample_pos_array, &y_val_idx, 1, "");
-                           x_val_idx = lp_build_broadcast_scalar(coeff_bld, LLVMBuildLoad(builder, x_val_idx, ""));
-                           y_val_idx = lp_build_broadcast_scalar(coeff_bld, LLVMBuildLoad(builder, y_val_idx, ""));
+                           x_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, x_val_idx);
+                           y_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, y_val_idx);
+
+                           x_val_idx = lp_build_broadcast_scalar(coeff_bld, x_val_idx);
+                           y_val_idx = lp_build_broadcast_scalar(coeff_bld, y_val_idx);
                            centroid_x_offset = lp_build_select(coeff_bld, sample_cov, x_val_idx, centroid_x_offset);
                            centroid_y_offset = lp_build_select(coeff_bld, sample_cov, y_val_idx, centroid_y_offset);
                         }
