@@ -223,7 +223,11 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
                         if (upper && ins->mask)
                                 assert(nir_alu_type_get_type_size(ins->src_types[i]) <= 16);
 
-                        for (unsigned c = 0; c < 4; ++c) {
+                        bool dest_up =
+                                GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props) ? false :
+                                (first >= 4);
+
+                        for (unsigned c = (dest_up ? 4 : 0); c < (dest_up ? 8 : 4); ++c) {
                                 unsigned v = ins->swizzle[i][c];
 
                                 bool t_upper = v > 3;
@@ -238,16 +242,21 @@ mir_pack_swizzle_alu(midgard_instruction *ins)
                                 /* Use the non upper part */
                                 v &= 0x3;
 
-                                packed |= v << (2 * c);
+                                packed |= v << (2 * (c % 4));
                         }
 
-                        src[i].rep_high = upper;
 
                         /* Replicate for now.. should really pick a side for
                          * dot products */
 
-                        if (ins->alu.reg_mode == midgard_reg_mode_16)
-                                src[i].rep_low = true;
+                        if (ins->alu.reg_mode == midgard_reg_mode_16) {
+                                src[i].rep_low = !upper;
+                                src[i].rep_high = upper;
+                        } else if (ins->alu.reg_mode == midgard_reg_mode_32) {
+                                src[i].rep_low = upper;
+                        } else {
+                                unreachable("Unhandled reg mode");
+                        }
                 }
 
                 src[i].swizzle = packed;
