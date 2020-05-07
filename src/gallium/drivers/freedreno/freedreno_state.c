@@ -588,10 +588,6 @@ fd_set_global_binding(struct pipe_context *pctx,
 
 		for (unsigned i = 0; i < count; i++) {
 			unsigned n = i + first;
-			if (so->buf[n]) {
-				struct fd_resource *rsc = fd_resource(so->buf[n]);
-				fd_bo_put_iova(rsc->bo);
-			}
 			pipe_resource_reference(&so->buf[n], NULL);
 		}
 

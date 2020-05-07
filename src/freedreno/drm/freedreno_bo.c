@@ -72,6 +72,8 @@ static struct fd_bo * bo_from_handle(struct fd_device *dev,
 	bo->dev = fd_device_ref(dev);
 	bo->size = size;
 	bo->handle = handle;
+	bo->iova = bo->funcs->iova(bo);
+
 	p_atomic_set(&bo->refcnt, 1);
 	list_inithead(&bo->list);
 	/* add ourself into the handle table: */
@@ -225,14 +227,7 @@ out_unlock:
 
 uint64_t fd_bo_get_iova(struct fd_bo *bo)
 {
-	if (!bo->iova)
-		bo->iova = bo->funcs->iova(bo);
 	return bo->iova;
-}
-
-void fd_bo_put_iova(struct fd_bo *bo)
-{
-	/* currently a no-op */
 }
 
 struct fd_bo * fd_bo_ref(struct fd_bo *bo)

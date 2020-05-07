@@ -416,7 +416,7 @@ msm_ringbuffer_sp_emit_reloc(struct fd_ringbuffer *ring,
 		pipe = msm_ring->u.submit->pipe;
 	}
 
-	uint64_t iova = fd_bo_get_iova(reloc->bo) + reloc->offset;
+	uint64_t iova = reloc->bo->iova + reloc->offset;
 	int shift = reloc->shift;
 
 	if (shift < 0)
