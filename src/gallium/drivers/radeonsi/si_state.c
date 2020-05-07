@@ -2830,7 +2830,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
       else
          sctx->framebuffer.uncompressed_cb_mask |= 1 << i;
 
-      if (tex->surface.dcc_offset)
+      if (tex->surface.display_dcc_offset)
          sctx->framebuffer.displayable_dcc_cb_mask |= 1 << i;
 
       /* Don't update nr_color_samples for non-AA buffers.
