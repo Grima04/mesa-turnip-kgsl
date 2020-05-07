@@ -519,7 +519,8 @@ static void si_set_sampler_view(struct si_context *sctx, unsigned shader, unsign
             samplers->needs_color_decompress_mask &= ~(1u << slot);
          }
 
-         if (tex->surface.dcc_offset && p_atomic_read(&tex->framebuffers_bound))
+         if (vi_dcc_enabled(tex, view->u.tex.first_level) &&
+             p_atomic_read(&tex->framebuffers_bound))
             sctx->need_check_render_feedback = true;
       }
 
@@ -2349,7 +2350,8 @@ static void si_make_texture_handle_resident(struct pipe_context *ctx, uint64_t h
                                  struct si_texture_handle *, tex_handle);
          }
 
-         if (tex->surface.dcc_offset && p_atomic_read(&tex->framebuffers_bound))
+         if (vi_dcc_enabled(tex, sview->base.u.tex.first_level) &&
+             p_atomic_read(&tex->framebuffers_bound))
             sctx->need_check_render_feedback = true;
 
          si_update_bindless_texture_descriptor(sctx, tex_handle);

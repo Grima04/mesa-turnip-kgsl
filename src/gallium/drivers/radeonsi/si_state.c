@@ -3810,7 +3810,7 @@ static void gfx10_make_texture_descriptor(
    state[6] = 0;
    state[7] = 0;
 
-   if (tex->surface.dcc_offset) {
+   if (vi_dcc_enabled(tex, first_level)) {
       state[6] |= S_00A018_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
                   S_00A018_MAX_COMPRESSED_BLOCK_SIZE(tex->surface.u.gfx9.dcc.max_compressed_block_size) |
                   S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(screen, pipe_format));
@@ -4071,7 +4071,7 @@ static void si_make_texture_descriptor(struct si_screen *screen, struct si_textu
       state[5] |= S_008F24_LAST_ARRAY(last_layer);
    }
 
-   if (tex->surface.dcc_offset) {
+   if (vi_dcc_enabled(tex, first_level)) {
       state[6] = S_008F28_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(screen, pipe_format));
    } else {
       /* The last dword is unused by hw. The shader uses it to clear

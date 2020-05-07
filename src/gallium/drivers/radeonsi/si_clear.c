@@ -689,7 +689,7 @@ static void si_clear_render_target(struct pipe_context *ctx, struct pipe_surface
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_texture *sdst = (struct si_texture *)dst->texture;
 
-   if (dst->texture->nr_samples <= 1 && !sdst->surface.dcc_offset) {
+   if (dst->texture->nr_samples <= 1 && !vi_dcc_enabled(sdst, dst->u.tex.level)) {
       si_compute_clear_render_target(ctx, dst, color, dstx, dsty, width, height,
                                      render_condition_enabled);
       return;

@@ -433,7 +433,7 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
       assert(sctx->chip_class == GFX8);
       custom_blend = sctx->custom_blend_dcc_decompress;
 
-      assert(tex->surface.dcc_offset);
+      assert(vi_dcc_enabled(tex, first_level));
 
       /* disable levels without DCC */
       for (int i = first_level; i <= last_level; i++) {
@@ -504,7 +504,8 @@ static void si_decompress_color_texture(struct si_context *sctx, struct si_textu
                                         bool need_fmask_expand)
 {
    /* CMASK or DCC can be discarded and we can still end up here. */
-   if (!tex->cmask_buffer && !tex->surface.fmask_size && !tex->surface.dcc_offset)
+   if (!tex->cmask_buffer && !tex->surface.fmask_size &&
+       !vi_dcc_enabled(tex, first_level))
       return;
 
    si_blit_decompress_color(sctx, tex, first_level, last_level, 0,
@@ -561,7 +562,7 @@ static void si_check_render_feedback_texture(struct si_context *sctx, struct si_
 {
    bool render_feedback = false;
 
-   if (!tex->surface.dcc_offset)
+   if (!vi_dcc_enabled(tex, first_level))
       return;
 
    for (unsigned j = 0; j < sctx->framebuffer.state.nr_cbufs; ++j) {
@@ -793,7 +794,8 @@ void si_decompress_subresource(struct pipe_context *ctx, struct pipe_resource *t
          si_update_fb_dirtiness_after_rendering(sctx);
 
       si_decompress_depth(sctx, stex, planes, level, level, first_layer, last_layer);
-   } else if (stex->surface.fmask_size || stex->cmask_buffer || stex->surface.dcc_offset) {
+   } else if (stex->surface.fmask_size || stex->cmask_buffer ||
+              vi_dcc_enabled(stex, level)) {
       /* If we've rendered into the framebuffer and it's a blitting
        * source, make sure the decompression pass is invoked
        * by dirtying the framebuffer.
@@ -843,7 +845,7 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
 
    if (!util_format_is_compressed(src->format) && !util_format_is_compressed(dst->format) &&
        !util_format_is_depth_or_stencil(src->format) && src->nr_samples <= 1 &&
-       !sdst->surface.dcc_offset &&
+       !vi_dcc_enabled(sdst, dst_level) &&
        !(dst->target != src->target &&
          (src->target == PIPE_TEXTURE_1D_ARRAY || dst->target == PIPE_TEXTURE_1D_ARRAY))) {
       si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
@@ -1190,7 +1192,7 @@ static void si_flush_resource(struct pipe_context *ctx, struct pipe_resource *re
    if (tex->dcc_separate_buffer && !tex->separate_dcc_dirty)
       return;
 
-   if (!tex->is_depth && (tex->cmask_buffer || tex->surface.dcc_offset)) {
+   if (!tex->is_depth && (tex->cmask_buffer || vi_dcc_enabled(tex, 0))) {
       si_blit_decompress_color(sctx, tex, 0, res->last_level, 0, util_max_layer(res, 0),
                                tex->dcc_separate_buffer != NULL, false);
 
