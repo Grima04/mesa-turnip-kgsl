@@ -6233,11 +6233,11 @@
 
   <instruction name="PIPE_CONTROL" bias="2" length="6" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="4"/>
+    <field name="HDC Pipeline Flush Enable" start="9" end="9" type="bool"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="0"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="2"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="HDC Pipeline Flush Enable" start="9" end="9" type="bool"/>
     <field name="Depth Cache Flush Enable" start="32" end="32" type="bool"/>
     <field name="Stall At Pixel Scoreboard" start="33" end="33" type="bool"/>
     <field name="State Cache Invalidation Enable" start="34" end="34" type="bool"/>
@@ -7005,13 +7005,6 @@
     <field name="All Allocation" start="25" end="31" type="uint"/>
   </register>
 
-  <register name="TCCNTLREG" length="1" num="0xb0a4">
-    <field name="URB Partial Write Merging Enable" start="0" end="0" type="bool"/>
-    <field name="Color/Z Partial Write Merging Enable" start="1" end="1" type="bool"/>
-    <field name="L3 Data Partial Write Merging Enable" start="2" end="2" type="bool"/>
-    <field name="TC Disable" start="3" end="3" type="bool"/>
-  </register>
-
   <register name="PERFCNT1" length="2" num="0x91b8">
     <field name="Value" start="0" end="43" type="uint"/>
     <field name="Event Selection" start="52" end="59" type="uint"/>
@@ -7163,6 +7156,13 @@
 
   <register name="SO_WRITE_OFFSET3" length="1" num="0x528c">
     <field name="Write Offset" start="2" end="31" type="offset"/>
+  </register>
+
+  <register name="TCCNTLREG" length="1" num="0xb0a4">
+    <field name="URB Partial Write Merging Enable" start="0" end="0" type="bool"/>
+    <field name="Color/Z Partial Write Merging Enable" start="1" end="1" type="bool"/>
+    <field name="L3 Data Partial Write Merging Enable" start="2" end="2" type="bool"/>
+    <field name="TC Disable" start="3" end="3" type="bool"/>
   </register>
 
   <register name="VCS_INSTDONE" length="1" num="0x1206c">
