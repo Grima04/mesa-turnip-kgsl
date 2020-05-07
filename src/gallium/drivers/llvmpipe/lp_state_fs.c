@@ -653,7 +653,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    system_values.sample_pos = sample_pos_array;
 
-   lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, mask_store, system_values.sample_id);
+   lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, mask_store, sample_loop_state.counter);
 
    struct lp_build_tgsi_params params;
    memset(&params, 0, sizeof(params));
