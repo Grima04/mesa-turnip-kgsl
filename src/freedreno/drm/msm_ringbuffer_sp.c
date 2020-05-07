@@ -152,12 +152,11 @@ append_bo(struct msm_submit_sp *submit, struct fd_bo *bo, uint32_t flags)
 		msm_bo->idx = idx;
 	}
 
-	if (flags & FD_RELOC_READ)
-		submit->submit_bos[idx].flags |= MSM_SUBMIT_BO_READ;
-	if (flags & FD_RELOC_WRITE)
-		submit->submit_bos[idx].flags |= MSM_SUBMIT_BO_WRITE;
-	if (flags & FD_RELOC_DUMP)
-		submit->submit_bos[idx].flags |= MSM_SUBMIT_BO_DUMP;
+	STATIC_ASSERT(FD_RELOC_READ == MSM_SUBMIT_BO_READ);
+	STATIC_ASSERT(FD_RELOC_WRITE == MSM_SUBMIT_BO_WRITE);
+	STATIC_ASSERT(FD_RELOC_DUMP == MSM_SUBMIT_BO_DUMP);
+	submit->submit_bos[idx].flags |=
+		flags & (MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE | MSM_SUBMIT_BO_DUMP);
 
 	return idx;
 }
