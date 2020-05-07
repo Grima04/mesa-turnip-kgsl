@@ -1778,13 +1778,16 @@ emit_copy_buffer_to_image_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
-static void
+static bool
 copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_image *image,
                          struct v3dv_buffer *buffer,
-                         VkFormat fb_format,
                          const VkBufferImageCopy *region)
 {
+   VkFormat fb_format;
+   if (!can_use_tlb(image, &region->imageOffset, &fb_format))
+      return false;
+
    uint32_t internal_type, internal_bpp;
    get_internal_type_bpp_for_image_aspects(fb_format,
                                            region->imageSubresource.aspectMask,
@@ -1799,7 +1802,7 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
    if (!job)
-      return;
+      return false;
 
    /* Handle copy to compressed format using a compatible format */
    const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
@@ -1817,6 +1820,180 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    emit_copy_buffer_to_image_rcl(job, image, buffer, &framebuffer, region);
 
    v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+   return true;
+}
+
+static bool
+copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
+                          struct v3dv_image *image,
+                          struct v3dv_buffer *buffer,
+                          const VkBufferImageCopy *region)
+{
+   /* Select a copy format for the blit operation */
+   VkFormat format;
+   switch (image->cpp) {
+   case 16:
+      format = VK_FORMAT_R32G32B32A32_UINT;
+      break;
+   case 8:
+      format = VK_FORMAT_R16G16B16A16_UINT;
+      break;
+   case 4:
+      format = VK_FORMAT_R8G8B8A8_UINT;
+      break;
+   case 2:
+      format = VK_FORMAT_R16_UINT;
+      break;
+   case 1:
+      format = VK_FORMAT_R8_UINT;
+      break;
+   default:
+      unreachable("unsupported bpp");
+   }
+
+   /* Obtain the 2D buffer region spec */
+   uint32_t buf_width, buf_height;
+   if (region->bufferRowLength == 0)
+      buf_width = region->imageExtent.width;
+   else
+      buf_width = region->bufferRowLength;
+
+   if (region->bufferImageHeight == 0)
+      buf_height = region->imageExtent.height;
+   else
+      buf_height = region->bufferImageHeight;
+
+   /* Compute layers to copy */
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->imageSubresource.layerCount;
+   else
+      num_layers = region->imageExtent.depth;
+   assert(num_layers > 0);
+
+   struct v3dv_device *device = cmd_buffer->device;
+   VkDevice _device = v3dv_device_to_handle(device);
+   for (uint32_t i = 0; i < num_layers; i++) {
+      /* Create the source blit image from the source buffer.
+       *
+       * We can't texture from a linear image, so we can't just setup a blit
+       * straight from the buffer contents. Instead, we need to upload the
+       * buffer to a tiled image, and then copy that image to the selected
+       * region of the destination.
+       *
+       * FIXME: we could do better than this is we use a blit shader that has
+       * a UBO (for the buffer) as input instead of a texture. Then we would
+       * have to do some arithmetics in the shader to identify the offset into
+       * the UBO that we need to load for each pixel in the destination image
+       * (we would need to support all the possible copy formats we have above).
+       */
+      VkImageCreateInfo image_info = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+         .imageType = VK_IMAGE_TYPE_2D,
+         .format = format,
+         .extent = { buf_width, buf_height, 1 },
+         .mipLevels = 1,
+         .arrayLayers = 1,
+         .samples = VK_SAMPLE_COUNT_1_BIT,
+         .tiling = VK_IMAGE_TILING_OPTIMAL,
+         .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                  VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+         .queueFamilyIndexCount = 0,
+         .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+      };
+
+      VkImage buffer_image;
+      VkResult result =
+         v3dv_CreateImage(_device, &image_info, &device->alloc, &buffer_image);
+      if (result != VK_SUCCESS)
+         return false;
+
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void *)buffer_image,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
+
+      /* Allocate and bind memory for the image */
+      VkDeviceMemory mem;
+      VkMemoryRequirements reqs;
+      v3dv_GetImageMemoryRequirements(_device, buffer_image, &reqs);
+      VkMemoryAllocateInfo alloc_info = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+         .allocationSize = reqs.size,
+         .memoryTypeIndex = 0,
+      };
+      result = v3dv_AllocateMemory(_device, &alloc_info, &device->alloc, &mem);
+      if (result != VK_SUCCESS)
+         return false;
+
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void *)mem,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_FreeMemory);
+
+      result = v3dv_BindImageMemory(_device, buffer_image, mem, 0);
+      if (result != VK_SUCCESS)
+         return false;
+
+      /* Upload buffer contents for the selected layer */
+      VkDeviceSize buffer_offset =
+         region->bufferOffset + i * buf_height * buf_width * image->cpp;
+      const VkBufferImageCopy buffer_image_copy = {
+         .bufferOffset = buffer_offset,
+         .bufferRowLength = region->bufferRowLength,
+         .bufferImageHeight = region->bufferImageHeight,
+         .imageSubresource = {
+            .aspectMask = region->imageSubresource.aspectMask,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+         },
+         .imageOffset = { 0, 0, 0 },
+         .imageExtent = { buf_width, buf_height, 1 }
+      };
+      if (!copy_buffer_to_image_tlb(cmd_buffer,
+                                    v3dv_image_from_handle(buffer_image),
+                                    buffer, &buffer_image_copy)) {
+         return false;
+      }
+
+      /* Blit-copy the requested image extent from the buffer image to the
+       * destination image.
+       */
+      const VkImageBlit blit_region = {
+         .srcSubresource = {
+            .aspectMask = region->imageSubresource.aspectMask,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+         },
+         .srcOffsets = {
+            { 0, 0, 0 },
+            { region->imageExtent.width, region->imageExtent.height, 1 },
+         },
+         .dstSubresource = region->imageSubresource,
+         .dstOffsets = {
+            {
+               region->imageOffset.x,
+               region->imageOffset.y,
+               region->imageOffset.z + i,
+            },
+            {
+               region->imageOffset.x + region->imageExtent.width,
+               region->imageOffset.y + region->imageExtent.height,
+               region->imageOffset.z + i + 1,
+            },
+         },
+      };
+      bool ok = blit_shader(cmd_buffer,
+                            image, format,
+                            v3dv_image_from_handle(buffer_image), format,
+                            &blit_region, VK_FILTER_NEAREST);
+      if (!ok)
+         return false;
+   }
+
+   return true;
 }
 
 void
@@ -1831,14 +2008,12 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, srcBuffer);
    V3DV_FROM_HANDLE(v3dv_image, image, dstImage);
 
-   VkFormat compat_format;
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb(image, &pRegions[i].imageOffset, &compat_format)) {
-         copy_buffer_to_image_tlb(cmd_buffer, image, buffer, compat_format,
-                                  &pRegions[i]);
-      } else {
-         assert(!"Fallback path for vkCmdCopyBufferToImage not implemented");
-      }
+      if (copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]))
+         continue;
+      if (copy_buffer_to_image_blit(cmd_buffer, image, buffer, &pRegions[i]))
+         continue;
+      unreachable("Unsupported buffer to image copy.");
    }
 }
 
