@@ -887,6 +887,8 @@ swr_update_texture_state(struct swr_context *ctx,
          jit_tex->width = res->width0;
          jit_tex->height = res->height0;
          jit_tex->base_ptr = (uint8_t*)swr->xpBaseAddress;
+         jit_tex->num_samples = swr->numSamples;
+         jit_tex->sample_stride = 0;
          if (view->target != PIPE_BUFFER) {
             jit_tex->first_level = view->u.tex.first_level;
             jit_tex->last_level = view->u.tex.last_level;
