@@ -1271,12 +1271,8 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
          CONDREG(ij_samp_regid, A6XX_GRAS_CNTL_PERSAMP_VARYING) |
          COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_GRAS_CNTL_SIZE) |
          COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
-         COND(fs->frag_coord,
-               A6XX_GRAS_CNTL_SIZE |
-               A6XX_GRAS_CNTL_XCOORD |
-               A6XX_GRAS_CNTL_YCOORD |
-               A6XX_GRAS_CNTL_ZCOORD |
-               A6XX_GRAS_CNTL_WCOORD) |
+         COND(fs->fragcoord_compmask != 0, A6XX_GRAS_CNTL_SIZE |
+                              A6XX_GRAS_CNTL_COORD_MASK(fs->fragcoord_compmask)) |
          COND(fs->frag_face, A6XX_GRAS_CNTL_SIZE));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_RENDER_CONTROL0, 2);
@@ -1287,12 +1283,8 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
          COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_UNK10) |
          COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE) |
          COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |
-         COND(fs->frag_coord,
-               A6XX_RB_RENDER_CONTROL0_SIZE |
-               A6XX_RB_RENDER_CONTROL0_XCOORD |
-               A6XX_RB_RENDER_CONTROL0_YCOORD |
-               A6XX_RB_RENDER_CONTROL0_ZCOORD |
-               A6XX_RB_RENDER_CONTROL0_WCOORD) |
+         COND(fs->fragcoord_compmask != 0, A6XX_RB_RENDER_CONTROL0_SIZE |
+                              A6XX_RB_RENDER_CONTROL0_COORD_MASK(fs->fragcoord_compmask)) |
          COND(fs->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
    tu_cs_emit(cs,
          CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |

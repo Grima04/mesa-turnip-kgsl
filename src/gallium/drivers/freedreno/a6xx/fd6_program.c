@@ -643,12 +643,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			CONDREG(ij_samp_regid, A6XX_GRAS_CNTL_PERSAMP_VARYING) |
 			COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_GRAS_CNTL_SIZE) |
 			COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
-			COND(fs->frag_coord,
-					A6XX_GRAS_CNTL_SIZE |
-					A6XX_GRAS_CNTL_XCOORD |
-					A6XX_GRAS_CNTL_YCOORD |
-					A6XX_GRAS_CNTL_ZCOORD |
-					A6XX_GRAS_CNTL_WCOORD) |
+			COND(fs->fragcoord_compmask != 0, A6XX_GRAS_CNTL_SIZE |
+								A6XX_GRAS_CNTL_COORD_MASK(fs->fragcoord_compmask)) |
 			COND(fs->frag_face, A6XX_GRAS_CNTL_SIZE));
 
 	OUT_PKT4(ring, REG_A6XX_RB_RENDER_CONTROL0, 2);
@@ -659,12 +655,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_UNK10) |
 			COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE) |
 			COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |
-			COND(fs->frag_coord,
-					A6XX_RB_RENDER_CONTROL0_SIZE |
-					A6XX_RB_RENDER_CONTROL0_XCOORD |
-					A6XX_RB_RENDER_CONTROL0_YCOORD |
-					A6XX_RB_RENDER_CONTROL0_ZCOORD |
-					A6XX_RB_RENDER_CONTROL0_WCOORD) |
+			COND(fs->fragcoord_compmask != 0, A6XX_RB_RENDER_CONTROL0_SIZE |
+								A6XX_RB_RENDER_CONTROL0_COORD_MASK(fs->fragcoord_compmask)) |
 			COND(fs->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
 
 	OUT_RING(ring,

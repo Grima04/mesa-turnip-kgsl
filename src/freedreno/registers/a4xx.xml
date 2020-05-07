@@ -911,11 +911,7 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="SAMPLES" low="13" high="15" type="uint"/>
 	</reg32>
 	<reg32 offset="0x20a3" name="RB_RENDER_CONTROL2">
-		<bitfield name="XCOORD" pos="0" type="boolean"/>
-		<bitfield name="YCOORD" pos="1" type="boolean"/>
-		<!-- assuming zcoord/wcoord follows.. -->
-		<bitfield name="ZCOORD" pos="2" type="boolean"/>
-		<bitfield name="WCOORD" pos="3" type="boolean"/>
+		<bitfield name="COORD_MASK" low="0" high="3" type="hex"/>
 		<bitfield name="SAMPLEMASK" pos="4" type="boolean"/>
 		<bitfield name="FACENESS" pos="5" type="boolean"/>
 		<bitfield name="SAMPLEID" pos="6" type="boolean"/>

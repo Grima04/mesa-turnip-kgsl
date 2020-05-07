@@ -870,10 +870,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 			controlling blend or readback from GMEM??
 		 -->
 		<bitfield name="ENABLE_GMEM" pos="13" type="boolean"/>
-		<bitfield name="XCOORD" pos="14" type="boolean"/>
-		<bitfield name="YCOORD" pos="15" type="boolean"/>
-		<bitfield name="ZCOORD" pos="16" type="boolean"/>
-		<bitfield name="WCOORD" pos="17" type="boolean"/>
+		<bitfield name="COORD_MASK" low="14" high="17" type="hex"/>
 		<bitfield name="I_CLAMP_ENABLE" pos="19" type="boolean"/>
 		<bitfield name="COV_VALUE_OUTPUT_ENABLE" pos="20" type="boolean"/>
 		<bitfield name="ALPHA_TEST" pos="22" type="boolean"/>

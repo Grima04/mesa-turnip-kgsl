@@ -361,7 +361,7 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 				0x80000000 |      /* XXX */
 				COND(s[FS].v->frag_face, A4XX_SP_FS_CTRL_REG1_FACENESS) |
 				COND(s[FS].v->total_in > 0, A4XX_SP_FS_CTRL_REG1_VARYING) |
-				COND(s[FS].v->frag_coord, A4XX_SP_FS_CTRL_REG1_FRAGCOORD));
+				COND(s[FS].v->fragcoord_compmask != 0, A4XX_SP_FS_CTRL_REG1_FRAGCOORD));
 
 		OUT_PKT0(ring, REG_A4XX_SP_FS_OBJ_OFFSET_REG, 2);
 		OUT_RING(ring, A4XX_SP_FS_OBJ_OFFSET_REG_CONSTOBJECTOFFSET(s[FS].constoff) |
@@ -385,10 +385,8 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 	OUT_RING(ring, A4XX_RB_RENDER_CONTROL2_MSAA_SAMPLES(0) |
 			COND(s[FS].v->total_in > 0, A4XX_RB_RENDER_CONTROL2_VARYING) |
 			COND(s[FS].v->frag_face, A4XX_RB_RENDER_CONTROL2_FACENESS) |
-			COND(s[FS].v->frag_coord, A4XX_RB_RENDER_CONTROL2_XCOORD |
-					A4XX_RB_RENDER_CONTROL2_YCOORD |
-					A4XX_RB_RENDER_CONTROL2_ZCOORD |
-					A4XX_RB_RENDER_CONTROL2_WCOORD));
+			COND(s[FS].v->fragcoord_compmask != 0,
+					A4XX_RB_RENDER_CONTROL2_COORD_MASK(s[FS].v->fragcoord_compmask)));
 
 	OUT_PKT0(ring, REG_A4XX_RB_FS_OUTPUT_REG, 1);
 	OUT_RING(ring, A4XX_RB_FS_OUTPUT_REG_MRT(nr) |

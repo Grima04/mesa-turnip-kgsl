@@ -456,7 +456,8 @@ struct ir3_shader_variant {
 	 *   + From the vert shader, we only need the output regid
 	 */
 
-	bool frag_coord, frag_face, color0_mrt;
+	bool frag_face, color0_mrt;
+	uint8_t fragcoord_compmask;
 
 	/* NOTE: for input/outputs, slot is:
 	 *   gl_vert_attrib  - for VS inputs

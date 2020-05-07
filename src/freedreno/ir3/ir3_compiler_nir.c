@@ -1411,7 +1411,7 @@ get_barycentric_pixel(struct ir3_context *ctx)
 }
 
 static struct ir3_instruction *
-get_frag_coord(struct ir3_context *ctx)
+get_frag_coord(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
 	if (!ctx->frag_coord) {
 		struct ir3_block *b = ctx->in_block;
@@ -1436,8 +1436,10 @@ get_frag_coord(struct ir3_context *ctx)
 		}
 
 		ctx->frag_coord = ir3_create_collect(ctx, xyzw, 4);
-		ctx->so->frag_coord = true;
 	}
+
+	ctx->so->fragcoord_compmask |=
+			nir_ssa_def_components_read(&intr->dest.ssa);
 
 	return ctx->frag_coord;
 }
@@ -1599,7 +1601,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		emit_intrinsic_load_ubo_ldc(ctx, intr, dst);
 		break;
 	case nir_intrinsic_load_frag_coord:
-		ir3_split_dest(b, dst, get_frag_coord(ctx), 0, 4);
+		ir3_split_dest(b, dst, get_frag_coord(ctx, intr), 0, 4);
 		break;
 	case nir_intrinsic_load_sample_pos_from_id: {
 		/* NOTE: blob seems to always use TYPE_F16 and then cov.f16f32,

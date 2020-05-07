@@ -487,7 +487,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT4(ring, REG_A5XX_VPC_CNTL_0, 1);
 	OUT_RING(ring, A5XX_VPC_CNTL_0_STRIDE_IN_VPC(l.max_loc) |
 			COND(s[FS].v->total_in > 0, A5XX_VPC_CNTL_0_VARYING) |
-			COND(s[FS].v->frag_coord, A5XX_VPC_CNTL_0_VARYING) |
+			COND(s[FS].v->fragcoord_compmask != 0, A5XX_VPC_CNTL_0_VARYING) |
 			0x10000);    // XXX
 
 	fd5_context(ctx)->max_loc = l.max_loc;
@@ -518,7 +518,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	OUT_PKT4(ring, REG_A5XX_SP_FS_CTRL_REG0, 1);
 	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_SP_FS_CTRL_REG0_VARYING) |
-			COND(s[FS].v->frag_coord, A5XX_SP_FS_CTRL_REG0_VARYING) |
+			COND(s[FS].v->fragcoord_compmask != 0, A5XX_SP_FS_CTRL_REG0_VARYING) |
 			0x40006 | /* XXX set pretty much everywhere */
 			A5XX_SP_FS_CTRL_REG0_THREADSIZE(fssz) |
 			A5XX_SP_FS_CTRL_REG0_HALFREGFOOTPRINT(s[FS].i->max_half_reg + 1) |
@@ -537,19 +537,15 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	OUT_PKT4(ring, REG_A5XX_GRAS_CNTL, 1);
 	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_GRAS_CNTL_VARYING) |
-			COND(s[FS].v->frag_coord, A5XX_GRAS_CNTL_XCOORD |
-					A5XX_GRAS_CNTL_YCOORD |
-					A5XX_GRAS_CNTL_ZCOORD |
-					A5XX_GRAS_CNTL_WCOORD |
+			COND(s[FS].v->fragcoord_compmask != 0,
+					A5XX_GRAS_CNTL_COORD_MASK(s[FS].v->fragcoord_compmask) |
 					A5XX_GRAS_CNTL_UNK3) |
 			COND(s[FS].v->frag_face, A5XX_GRAS_CNTL_UNK3));
 
 	OUT_PKT4(ring, REG_A5XX_RB_RENDER_CONTROL0, 2);
 	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_RB_RENDER_CONTROL0_VARYING) |
-			COND(s[FS].v->frag_coord, A5XX_RB_RENDER_CONTROL0_XCOORD |
-					A5XX_RB_RENDER_CONTROL0_YCOORD |
-					A5XX_RB_RENDER_CONTROL0_ZCOORD |
-					A5XX_RB_RENDER_CONTROL0_WCOORD |
+			COND(s[FS].v->fragcoord_compmask != 0,
+					A5XX_RB_RENDER_CONTROL0_COORD_MASK(s[FS].v->fragcoord_compmask) |
 					A5XX_RB_RENDER_CONTROL0_UNK3) |
 			COND(s[FS].v->frag_face, A5XX_RB_RENDER_CONTROL0_UNK3));
 	OUT_RING(ring,

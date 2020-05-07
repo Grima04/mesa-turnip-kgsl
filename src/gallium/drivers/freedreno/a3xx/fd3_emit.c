@@ -541,10 +541,8 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			fd3_blend_stateobj(ctx->blend)->rb_render_control;
 
 		val |= COND(fp->frag_face, A3XX_RB_RENDER_CONTROL_FACENESS);
-		val |= COND(fp->frag_coord, A3XX_RB_RENDER_CONTROL_XCOORD |
-				A3XX_RB_RENDER_CONTROL_YCOORD |
-				A3XX_RB_RENDER_CONTROL_ZCOORD |
-				A3XX_RB_RENDER_CONTROL_WCOORD);
+		val |= COND(fp->fragcoord_compmask != 0,
+				A3XX_RB_RENDER_CONTROL_COORD_MASK(fp->fragcoord_compmask));
 
 		/* I suppose if we needed to (which I don't *think* we need
 		 * to), we could emit this for binning pass too.  But we
@@ -610,7 +608,7 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				->gras_cl_clip_cntl;
 		uint8_t planes = ctx->rasterizer->clip_plane_enable;
 		val |= COND(fp->writes_pos, A3XX_GRAS_CL_CLIP_CNTL_ZCLIP_DISABLE);
-		val |= COND(fp->frag_coord, A3XX_GRAS_CL_CLIP_CNTL_ZCOORD |
+		val |= COND(fp->fragcoord_compmask != 0, A3XX_GRAS_CL_CLIP_CNTL_ZCOORD |
 				A3XX_GRAS_CL_CLIP_CNTL_WCOORD);
 		if (!emit->key.ucp_enables)
 			val |= A3XX_GRAS_CL_CLIP_CNTL_NUM_USER_CLIP_PLANES(
