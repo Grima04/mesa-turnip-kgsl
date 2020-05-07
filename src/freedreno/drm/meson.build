@@ -37,7 +37,10 @@ libfreedreno_drm_files = files(
 
 libfreedreno_drm = static_library(
   'freedreno_drm',
-  libfreedreno_drm_files,
+  [
+    libfreedreno_drm_files,
+    freedreno_xml_header_files,
+  ],
   include_directories : [
     inc_freedreno,
     inc_include,
