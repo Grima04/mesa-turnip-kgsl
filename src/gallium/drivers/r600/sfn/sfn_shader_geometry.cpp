@@ -89,6 +89,7 @@ bool GeometryShaderFromNir::do_process_inputs(nir_variable *input)
        input->data.location == VARYING_SLOT_COL1 ||
        input->data.location == VARYING_SLOT_BFC0 ||
        input->data.location == VARYING_SLOT_BFC1 ||
+       input->data.location == VARYING_SLOT_PNTC ||
        (input->data.location >= VARYING_SLOT_VAR0 &&
        input->data.location <= VARYING_SLOT_VAR31) ||
        (input->data.location >= VARYING_SLOT_TEX0 &&
@@ -118,6 +119,7 @@ bool GeometryShaderFromNir::do_process_outputs(nir_variable *output)
        output->data.location <= VARYING_SLOT_TEX7) ||
        output->data.location == VARYING_SLOT_BFC0 ||
        output->data.location == VARYING_SLOT_BFC1 ||
+       output->data.location == VARYING_SLOT_PNTC ||
        output->data.location == VARYING_SLOT_CLIP_VERTEX ||
        output->data.location == VARYING_SLOT_CLIP_DIST0 ||
        output->data.location == VARYING_SLOT_CLIP_DIST1 ||
