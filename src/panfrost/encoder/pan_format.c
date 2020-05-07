@@ -285,6 +285,7 @@ panfrost_format_to_bifrost_blend(const struct util_format_description *desc)
         case MALI_RGBA4_UNORM:
                 return MALI_RGBA4;
         case MALI_RGBA8_UNORM:
+        case MALI_RGB8_UNORM:
                 return MALI_RGBA8_2;
         case MALI_RGB10_A2_UNORM:
                 return MALI_RGB10_A2_2;
