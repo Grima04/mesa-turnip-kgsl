@@ -1548,7 +1548,7 @@ bool si_init_flushed_depth_texture(struct pipe_context *ctx, struct pipe_resourc
  */
 static void si_init_temp_resource_from_box(struct pipe_resource *res, struct pipe_resource *orig,
                                            const struct pipe_box *box, unsigned level,
-                                           unsigned flags)
+                                           unsigned usage, unsigned flags)
 {
    memset(res, 0, sizeof(*res));
    res->format = orig->format;
@@ -1556,7 +1556,7 @@ static void si_init_temp_resource_from_box(struct pipe_resource *res, struct pip
    res->height0 = box->height;
    res->depth0 = 1;
    res->array_size = 1;
-   res->usage = flags & SI_RESOURCE_FLAG_TRANSFER ? PIPE_USAGE_STAGING : PIPE_USAGE_DEFAULT;
+   res->usage = usage;
    res->flags = flags;
 
    if (flags & SI_RESOURCE_FLAG_TRANSFER && util_format_is_compressed(orig->format)) {
@@ -1695,8 +1695,9 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
       struct pipe_resource resource;
       struct si_texture *staging;
 
-      si_init_temp_resource_from_box(&resource, texture, box, level, SI_RESOURCE_FLAG_TRANSFER);
-      resource.usage = (usage & PIPE_TRANSFER_READ) ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
+      unsigned bo_usage = usage & PIPE_TRANSFER_READ ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
+      si_init_temp_resource_from_box(&resource, texture, box, level, bo_usage,
+                                     SI_RESOURCE_FLAG_TRANSFER);
 
       /* Since depth-stencil textures don't support linear tiling,
        * blit from ZS to color and vice versa. u_blitter will do
