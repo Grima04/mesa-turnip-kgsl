@@ -505,17 +505,21 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
                 if (ins->dest >= SSA_FIXED_MINIMUM) continue;
 
+                unsigned size = nir_alu_type_get_type_size(ins->dest_type);
+
                 /* 0 for x, 1 for xy, 2 for xyz, 3 for xyzw */
-                int class = util_logbase2(ins->mask);
+                int comps1 = util_logbase2(ins->mask);
+
+                int bytes = (comps1 + 1) * (size / 8);
 
                 /* Use the largest class if there's ambiguity, this
                  * handles partial writes */
 
                 int dest = ins->dest;
-                found_class[dest] = MAX2(found_class[dest], class);
+                found_class[dest] = MAX2(found_class[dest], bytes);
 
                 /* XXX: Ensure swizzles align the right way with more LCRA constraints? */
-                if (ins->type == TAG_ALU_4 && ins->alu.reg_mode != midgard_reg_mode_32)
+                if (ins->type == TAG_ALU_4 && size != 32)
                         min_alignment[dest] = 3; /* (1 << 3) = 8 */
 
                 if (ins->type == TAG_LOAD_STORE_4 && ins->load_64)
@@ -532,7 +536,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
                 lcra_set_alignment(l, i, min_alignment[i] ? min_alignment[i] : 2);
-                lcra_restrict_range(l, i, (found_class[i] + 1) * 4);
+                lcra_restrict_range(l, i, found_class[i]);
         }
         
         free(found_class);
