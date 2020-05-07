@@ -38,13 +38,6 @@ void mir_rewrite_index_dst_single(midgard_instruction *ins, unsigned old, unsign
                 ins->dest = new;
 }
 
-static midgard_vector_alu_src
-mir_get_alu_src(midgard_instruction *ins, unsigned idx)
-{
-        unsigned b = (idx == 0) ? ins->alu.src1 : ins->alu.src2;
-        return vector_alu_from_unsigned(b);
-}
-
 static void
 mir_rewrite_index_src_single_swizzle(midgard_instruction *ins, unsigned old, unsigned new, unsigned *swizzle)
 {
