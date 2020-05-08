@@ -207,14 +207,14 @@ struct gen_device_info
 
    struct {
       /**
-       * Hardware default URB size.
+       * Fixed size of the URB.
        *
-       * The units this is expressed in are somewhat inconsistent: 512b units
-       * on Gen4-5, KB on Gen6-7, and KB times the slice count on Gen8+.
+       * On Gen6 and DG1, this is measured in KB.  Gen4-5 instead measure
+       * this in 512b blocks, as that's more convenient there.
        *
-       * Look up "URB Size" in the "Device Attributes" page, and take the
-       * maximum.  Look up the slice count for each GT SKU on the same page.
-       * urb.size = URB Size (kbytes) / slice count
+       * On most Gen7+ platforms, the URB is a section of the L3 cache,
+       * and can be resized based on the L3 programming.  For those platforms,
+       * simply leave this field blank (zero) - it isn't used.
        */
       unsigned size;
 

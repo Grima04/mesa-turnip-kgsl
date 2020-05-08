@@ -218,7 +218,6 @@ static const struct gen_device_info gen_device_info_ivb_gt1 = {
    .max_wm_threads = 48,
    .max_cs_threads = 36,
    .urb = {
-      .size = 128,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 32,
          [MESA_SHADER_TESS_EVAL] = 10,
@@ -248,7 +247,6 @@ static const struct gen_device_info gen_device_info_ivb_gt2 = {
    .max_wm_threads = 172,
    .max_cs_threads = 64,
    .urb = {
-      .size = 256,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 32,
          [MESA_SHADER_TESS_EVAL] = 10,
@@ -278,7 +276,6 @@ static const struct gen_device_info gen_device_info_byt = {
    .max_wm_threads = 48,
    .max_cs_threads = 32,
    .urb = {
-      .size = 128,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 32,
          [MESA_SHADER_TESS_EVAL] = 10,
@@ -313,7 +310,6 @@ static const struct gen_device_info gen_device_info_hsw_gt1 = {
    .max_wm_threads = 102,
    .max_cs_threads = 70,
    .urb = {
-      .size = 128,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 32,
          [MESA_SHADER_TESS_EVAL] = 10,
@@ -342,7 +338,6 @@ static const struct gen_device_info gen_device_info_hsw_gt2 = {
    .max_wm_threads = 204,
    .max_cs_threads = 70,
    .urb = {
-      .size = 256,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 10,
@@ -371,7 +366,6 @@ static const struct gen_device_info gen_device_info_hsw_gt3 = {
    .max_wm_threads = 408,
    .max_cs_threads = 70,
    .urb = {
-      .size = 512,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 10,
@@ -419,7 +413,6 @@ static const struct gen_device_info gen_device_info_bdw_gt1 = {
    .l3_banks = 2,
    .max_cs_threads = 42,
    .urb = {
-      .size = 192,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 34,
@@ -444,7 +437,6 @@ static const struct gen_device_info gen_device_info_bdw_gt2 = {
    .l3_banks = 4,
    .max_cs_threads = 56,
    .urb = {
-      .size = 384,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 34,
@@ -468,7 +460,6 @@ static const struct gen_device_info gen_device_info_bdw_gt3 = {
    .l3_banks = 8,
    .max_cs_threads = 56,
    .urb = {
-      .size = 384,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 34,
@@ -498,7 +489,6 @@ static const struct gen_device_info gen_device_info_chv = {
    .max_wm_threads = 128,
    .max_cs_threads = 6 * 7,
    .urb = {
-      .size = 192,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 34,
          [MESA_SHADER_TESS_EVAL] = 34,
@@ -522,7 +512,6 @@ static const struct gen_device_info gen_device_info_chv = {
    .max_cs_threads = 56,                            \
    .timestamp_frequency = 12000000,                 \
    .urb = {                                         \
-      .size = 384,                                  \
       .min_entries = {                              \
          [MESA_SHADER_VERTEX]    = 64,              \
          [MESA_SHADER_TESS_EVAL] = 34,              \
@@ -551,7 +540,6 @@ static const struct gen_device_info gen_device_info_chv = {
    .max_cs_threads = 6 * 6,                        \
    .timestamp_frequency = 19200000,                \
    .urb = {                                        \
-      .size = 192,                                 \
       .min_entries = {                             \
          [MESA_SHADER_VERTEX]    = 34,             \
          [MESA_SHADER_TESS_EVAL] = 34,             \
@@ -579,7 +567,6 @@ static const struct gen_device_info gen_device_info_chv = {
    .max_gs_threads = 56,                           \
    .max_cs_threads = 6 * 6,                        \
    .urb = {                                        \
-      .size = 128,                                 \
       .min_entries = {                             \
          [MESA_SHADER_VERTEX]    = 34,             \
          [MESA_SHADER_TESS_EVAL] = 34,             \
@@ -604,7 +591,6 @@ static const struct gen_device_info gen_device_info_skl_gt1 = {
    .num_subslices = { 2, },
    .num_eu_per_subslice = 6,
    .l3_banks = 2,
-   .urb.size = 192,
    /* GT1 seems to have a bug in the top of the pipe (VF/VS?) fixed functions
     * leading to some vertices to go missing if we use too much URB.
     */
@@ -647,7 +633,6 @@ static const struct gen_device_info gen_device_info_skl_gt4 = {
     * allocation of the L3 data array to provide 3*384KB=1152KB for URB, but
     * only 1008KB of this will be used."
     */
-   .urb.size = 1008 / 3,
    .simulator_id = 12,
 };
 
@@ -675,7 +660,6 @@ static const struct gen_device_info gen_device_info_kbl_gt1 = {
    .gt = 1,
 
    .max_cs_threads = 7 * 6,
-   .urb.size = 192,
    .num_slices = 1,
    .num_subslices = { 2, },
    .num_eu_per_subslice = 6,
@@ -739,7 +723,6 @@ static const struct gen_device_info gen_device_info_kbl_gt4 = {
     *  provide 3*384KB=1152KB for URB, but only 1008KB of this
     *  will be used."
     */
-   .urb.size = 1008 / 3,
    .num_slices = 3,
    .num_subslices = { 3, 3, 3, },
    .num_eu_per_subslice = 8,
@@ -770,7 +753,6 @@ static const struct gen_device_info gen_device_info_cfl_gt1 = {
    .num_subslices = { 2, },
    .num_eu_per_subslice = 6,
    .l3_banks = 2,
-   .urb.size = 192,
    /* GT1 seems to have a bug in the top of the pipe (VF/VS?) fixed functions
     * leading to some vertices to go missing if we use too much URB.
     */
@@ -811,7 +793,6 @@ static const struct gen_device_info gen_device_info_cfl_gt3 = {
    .max_cs_threads = 56,                            \
    .timestamp_frequency = 19200000,                 \
    .urb = {                                         \
-      .size = 256,                                  \
       .min_entries = {                              \
          [MESA_SHADER_VERTEX]    = 64,              \
          [MESA_SHADER_TESS_EVAL] = 34,              \
@@ -899,7 +880,6 @@ static const struct gen_device_info gen_device_info_cnl_gt2 = {
 static const struct gen_device_info gen_device_info_icl_gt2 = {
    GEN11_FEATURES(2, 1, subslices(8), 8),
    .urb = {
-      .size = 1024,
       GEN11_URB_MIN_MAX_ENTRIES,
    },
    .simulator_id = 19,
@@ -908,7 +888,6 @@ static const struct gen_device_info gen_device_info_icl_gt2 = {
 static const struct gen_device_info gen_device_info_icl_gt1_5 = {
    GEN11_FEATURES(1, 1, subslices(6), 6),
    .urb = {
-      .size = 768,
       GEN11_URB_MIN_MAX_ENTRIES,
    },
    .simulator_id = 19,
@@ -917,7 +896,6 @@ static const struct gen_device_info gen_device_info_icl_gt1_5 = {
 static const struct gen_device_info gen_device_info_icl_gt1 = {
    GEN11_FEATURES(1, 1, subslices(4), 6),
    .urb = {
-      .size = 768,
       GEN11_URB_MIN_MAX_ENTRIES,
    },
    .simulator_id = 19,
@@ -926,7 +904,6 @@ static const struct gen_device_info gen_device_info_icl_gt1 = {
 static const struct gen_device_info gen_device_info_icl_gt0_5 = {
    GEN11_FEATURES(1, 1, subslices(1), 6),
    .urb = {
-      .size = 768,
       GEN11_URB_MIN_MAX_ENTRIES,
    },
    .simulator_id = 19,
@@ -936,7 +913,6 @@ static const struct gen_device_info gen_device_info_ehl_7 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
    .is_elkhartlake = true,
    .urb = {
-      .size = 512,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 34,
@@ -956,7 +932,6 @@ static const struct gen_device_info gen_device_info_ehl_6 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
    .is_elkhartlake = true,
    .urb = {
-      .size = 512,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 34,
@@ -977,7 +952,6 @@ static const struct gen_device_info gen_device_info_ehl_5 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
    .is_elkhartlake = true,
    .urb = {
-      .size = 512,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 34,
@@ -998,7 +972,6 @@ static const struct gen_device_info gen_device_info_ehl_4 = {
    GEN11_FEATURES(1, 1, subslices(2), 4),
    .is_elkhartlake = true,
    .urb = {
-      .size = 512,
       .min_entries = {
          [MESA_SHADER_VERTEX]    = 64,
          [MESA_SHADER_TESS_EVAL] = 34,
@@ -1049,7 +1022,6 @@ static const struct gen_device_info gen_device_info_ehl_4 = {
    .has_integer_dword_mul = false,                              \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3,           \
    .simulator_id = 22,                                          \
-   .urb.size = (_gt) == 1 ? 512 : 1024,                         \
    .num_eu_per_subslice = 16
 
 #define dual_subslices(args...) { args, }
