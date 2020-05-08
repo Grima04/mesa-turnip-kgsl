@@ -165,14 +165,21 @@ struct fd_reloc {
 #define FD_RELOC_READ             0x0001
 #define FD_RELOC_WRITE            0x0002
 #define FD_RELOC_DUMP             0x0004
-	uint32_t flags;
 	uint32_t offset;
 	uint32_t or;
 	int32_t  shift;
 	uint32_t orhi;      /* used for a5xx+ */
 };
 
-#define FD_RELOC_FLAGS_INIT FD_RELOC_READ
+/* We always mark BOs for write, instead of tracking it across reloc
+ * sources in userspace.  On the kernel side, this means we track a single
+ * excl fence in the BO instead of a set of read fences, which is cheaper.
+ * The downside is that a dmabuf-shared device won't be able to read in
+ * parallel with a read-only access by freedreno, but most other drivers
+ * have decided that that usecase isn't important enough to do this
+ * tracking, as well.
+ */
+#define FD_RELOC_FLAGS_INIT (FD_RELOC_READ | FD_RELOC_WRITE)
 
 /* NOTE: relocs are 2 dwords on a5xx+ */
 
@@ -228,12 +235,11 @@ OUT_RING(struct fd_ringbuffer *ring, uint32_t data)
 }
 
 /*
- * NOTE: OUT_RELOC*() is 2 dwords (64b) on a5xx+
+ * NOTE: OUT_RELOC() is 2 dwords (64b) on a5xx+
  */
-
 static inline void
-__out_reloc(struct fd_ringbuffer *ring, struct fd_bo *bo,
-		uint32_t offset, uint64_t or, int32_t shift, uint32_t flags)
+OUT_RELOC(struct fd_ringbuffer *ring, struct fd_bo *bo,
+		uint32_t offset, uint64_t or, int32_t shift)
 {
 	if (LOG_DWORDS) {
 		fprintf(stderr, "ring[%p]: OUT_RELOC   %04x:  %p+%u << %d", ring,
@@ -242,7 +248,6 @@ __out_reloc(struct fd_ringbuffer *ring, struct fd_bo *bo,
 	debug_assert(offset < fd_bo_size(bo));
 	fd_ringbuffer_reloc(ring, &(struct fd_reloc){
 		.bo = bo,
-		.flags = flags,
 		.offset = offset,
 		.or = or,
 		.shift = shift,
@@ -250,19 +255,7 @@ __out_reloc(struct fd_ringbuffer *ring, struct fd_bo *bo,
 	});
 }
 
-static inline void
-OUT_RELOC(struct fd_ringbuffer *ring, struct fd_bo *bo,
-		uint32_t offset, uint64_t or, int32_t shift)
-{
-	__out_reloc(ring, bo, offset, or, shift, 0);
-}
-
-static inline void
-OUT_RELOCW(struct fd_ringbuffer *ring, struct fd_bo *bo,
-		uint32_t offset, uint64_t or, int32_t shift)
-{
-	__out_reloc(ring, bo, offset, or, shift, FD_RELOC_WRITE);
-}
+#define OUT_RELOCW OUT_RELOC
 
 static inline void
 OUT_RB(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
