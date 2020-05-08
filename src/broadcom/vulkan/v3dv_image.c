@@ -253,9 +253,9 @@ v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer
    const struct v3d_resource_slice *slice = &image->slices[level];
 
    if (image->type == VK_IMAGE_TYPE_3D)
-      return slice->offset + layer * slice->size;
+      return image->mem_offset + slice->offset + layer * slice->size;
    else
-      return slice->offset + layer * image->cube_map_stride;
+      return image->mem_offset + slice->offset + layer * image->cube_map_stride;
 }
 
 VkResult
