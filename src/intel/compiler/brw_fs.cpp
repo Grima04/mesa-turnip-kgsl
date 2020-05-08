@@ -1529,21 +1529,6 @@ fs_visitor::resolve_source_modifiers(const fs_reg &src)
 }
 
 void
-fs_visitor::emit_discard_jump()
-{
-   assert(brw_wm_prog_data(this->prog_data)->uses_kill);
-
-   /* For performance, after a discard, jump to the end of the
-    * shader if all relevant channels have been discarded.
-    */
-   fs_inst *discard_jump = bld.emit(FS_OPCODE_DISCARD_JUMP);
-   discard_jump->flag_subreg = sample_mask_flag_subreg(this);
-
-   discard_jump->predicate = BRW_PREDICATE_ALIGN1_ANY4H;
-   discard_jump->predicate_inverse = true;
-}
-
-void
 fs_visitor::emit_gs_thread_end()
 {
    assert(stage == MESA_SHADER_GEOMETRY);

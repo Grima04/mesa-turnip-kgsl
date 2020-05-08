@@ -3427,8 +3427,10 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_demote:
    case nir_intrinsic_discard:
+   case nir_intrinsic_terminate:
    case nir_intrinsic_demote_if:
-   case nir_intrinsic_discard_if: {
+   case nir_intrinsic_discard_if:
+   case nir_intrinsic_terminate_if: {
       /* We track our discarded pixels in f0.1/f1.0.  By predicating on it, we
        * can update just the flag bits that aren't yet discarded.  If there's
        * no condition, we emit a CMP of g0 != g0, so all currently executing
@@ -3436,7 +3438,8 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
        */
       fs_inst *cmp = NULL;
       if (instr->intrinsic == nir_intrinsic_demote_if ||
-          instr->intrinsic == nir_intrinsic_discard_if) {
+          instr->intrinsic == nir_intrinsic_discard_if ||
+          instr->intrinsic == nir_intrinsic_terminate_if) {
          nir_alu_instr *alu = nir_src_as_alu_instr(instr->src[0]);
 
          if (alu != NULL &&
@@ -3492,7 +3495,19 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       cmp->predicate = BRW_PREDICATE_NORMAL;
       cmp->flag_subreg = sample_mask_flag_subreg(this);
 
-      emit_discard_jump();
+      fs_inst *jump = bld.emit(FS_OPCODE_DISCARD_JUMP);
+      jump->flag_subreg = sample_mask_flag_subreg(this);
+      jump->predicate_inverse = true;
+
+      if (instr->intrinsic == nir_intrinsic_terminate ||
+          instr->intrinsic == nir_intrinsic_terminate_if) {
+         jump->predicate = BRW_PREDICATE_NORMAL;
+      } else {
+         /* Only jump when the whole quad is demoted.  For historical
+          * reasons this is also used for discard.
+          */
+         jump->predicate = BRW_PREDICATE_ALIGN1_ANY4H;
+      }
 
       if (devinfo->gen < 7)
          limit_dispatch_width(
