@@ -4593,6 +4593,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
       unsigned location = nir_intrinsic_base(instr) / 4 - VERT_ATTRIB_GENERIC0 + offset;
       unsigned component = nir_intrinsic_component(instr);
+      unsigned bitsize = instr->dest.ssa.bit_size;
       unsigned attrib_binding = ctx->options->key.vs.vertex_attribute_bindings[location];
       uint32_t attrib_offset = ctx->options->key.vs.vertex_attribute_offsets[location];
       uint32_t attrib_stride = ctx->options->key.vs.vertex_attribute_strides[location];
@@ -4649,7 +4650,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
       /* load channels */
       while (channel_start < num_channels) {
-         unsigned fetch_size = num_channels - channel_start;
+         unsigned fetch_component = num_channels - channel_start;
          unsigned fetch_offset = attrib_offset + channel_start * vtx_info->chan_byte_size;
          bool expanded = false;
 
@@ -4661,14 +4662,16 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
                           vtx_info->chan_byte_size == 4;
          unsigned fetch_dfmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
          if (!use_mubuf) {
-            fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, attrib_stride, &fetch_size);
+            fetch_dfmt = get_fetch_data_format(ctx, vtx_info, fetch_offset, attrib_stride, &fetch_component);
          } else {
-            if (fetch_size == 3 && ctx->options->chip_class == GFX6) {
+            if (fetch_component == 3 && ctx->options->chip_class == GFX6) {
                /* GFX6 only supports loading vec3 with MTBUF, expand to vec4. */
-               fetch_size = 4;
+               fetch_component = 4;
                expanded = true;
             }
          }
+
+         unsigned fetch_bytes = fetch_component * bitsize / 8;
 
          Temp fetch_index = index;
          if (attrib_stride != 0 && fetch_offset > attrib_stride) {
@@ -4683,19 +4686,37 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          }
 
          aco_opcode opcode;
-         switch (fetch_size) {
-         case 1:
-            opcode = use_mubuf ? aco_opcode::buffer_load_dword : aco_opcode::tbuffer_load_format_x;
-            break;
+         switch (fetch_bytes) {
          case 2:
-            opcode = use_mubuf ? aco_opcode::buffer_load_dwordx2 : aco_opcode::tbuffer_load_format_xy;
+            assert(!use_mubuf && bitsize == 16);
+            opcode = aco_opcode::tbuffer_load_format_d16_x;
             break;
-         case 3:
+         case 4:
+            if (bitsize == 16) {
+               assert(!use_mubuf);
+               opcode = aco_opcode::tbuffer_load_format_d16_xy;
+            } else {
+               opcode = use_mubuf ? aco_opcode::buffer_load_dword : aco_opcode::tbuffer_load_format_x;
+            }
+            break;
+         case 6:
+            assert(!use_mubuf && bitsize == 16);
+            opcode = aco_opcode::tbuffer_load_format_d16_xyz;
+            break;
+         case 8:
+            if (bitsize == 16) {
+               assert(!use_mubuf);
+               opcode = aco_opcode::tbuffer_load_format_d16_xyzw;
+            } else {
+               opcode = use_mubuf ? aco_opcode::buffer_load_dwordx2 : aco_opcode::tbuffer_load_format_xy;
+            }
+            break;
+         case 12:
             assert(ctx->options->chip_class >= GFX7 ||
                    (!use_mubuf && ctx->options->chip_class == GFX6));
             opcode = use_mubuf ? aco_opcode::buffer_load_dwordx3 : aco_opcode::tbuffer_load_format_xyz;
             break;
-         case 4:
+         case 16:
             opcode = use_mubuf ? aco_opcode::buffer_load_dwordx4 : aco_opcode::tbuffer_load_format_xyzw;
             break;
          default:
@@ -4703,13 +4724,13 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          }
 
          Temp fetch_dst;
-         if (channel_start == 0 && fetch_size == dst.size() && !post_shuffle &&
+         if (channel_start == 0 && fetch_bytes == dst.bytes() && !post_shuffle &&
              !expanded && (alpha_adjust == RADV_ALPHA_ADJUST_NONE ||
                            num_channels <= 3)) {
             direct_fetch = true;
             fetch_dst = dst;
          } else {
-            fetch_dst = bld.tmp(RegType::vgpr, fetch_size);
+            fetch_dst = bld.tmp(RegClass::get(RegType::vgpr, fetch_bytes));
          }
 
          if (use_mubuf) {
@@ -4726,14 +4747,15 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
          emit_split_vector(ctx, fetch_dst, fetch_dst.size());
 
-         if (fetch_size == 1) {
+         if (fetch_component == 1) {
             channels[channel_start] = fetch_dst;
          } else {
-            for (unsigned i = 0; i < MIN2(fetch_size, num_channels - channel_start); i++)
-               channels[channel_start + i] = emit_extract_vector(ctx, fetch_dst, i, v1);
+            for (unsigned i = 0; i < MIN2(fetch_component, num_channels - channel_start); i++)
+               channels[channel_start + i] = emit_extract_vector(ctx, fetch_dst, i,
+                                                                 bitsize == 16 ? v2b : v1);
          }
 
-         channel_start += fetch_size;
+         channel_start += fetch_component;
       }
 
       if (!direct_fetch) {
