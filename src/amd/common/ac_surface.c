@@ -2207,9 +2207,11 @@ void ac_surface_override_offset_stride(const struct radeon_info *info,
       if (surf->u.gfx9.stencil_offset)
          surf->u.gfx9.stencil_offset += offset;
    } else {
-      surf->u.legacy.level[0].nblk_x = pitch;
-      surf->u.legacy.level[0].slice_size_dw =
-            ((uint64_t)pitch * surf->u.legacy.level[0].nblk_y * surf->bpe) / 4;
+      if (pitch) {
+         surf->u.legacy.level[0].nblk_x = pitch;
+         surf->u.legacy.level[0].slice_size_dw =
+               ((uint64_t)pitch * surf->u.legacy.level[0].nblk_y * surf->bpe) / 4;
+      }
 
       if (offset) {
          for (unsigned i = 0; i < ARRAY_SIZE(surf->u.legacy.level); ++i)
