@@ -26,12 +26,15 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_icd.h>
 
+#include "c11/threads.h"
 #include "util/macros.h"
 #include "util/sparse_array.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct hash_table;
 
 struct vk_device;
 
@@ -70,6 +73,11 @@ struct vk_device {
 
    /* For VK_EXT_private_data */
    uint32_t private_data_next_index;
+
+#ifdef ANDROID
+   mtx_t swapchain_private_mtx;
+   struct hash_table *swapchain_private;
+#endif
 };
 
 void vk_device_init(struct vk_device *device,
