@@ -172,12 +172,29 @@ div_align(unsigned num, unsigned denom, unsigned al)
 	return align(DIV_ROUND_UP(num, denom), al);
 }
 
-static uint32_t
-total_size(struct gmem_key *key, uint32_t bin_w, uint32_t bin_h,
+static bool
+layout_gmem(struct gmem_key *key, uint32_t nbins_x, uint32_t nbins_y,
 		struct fd_gmem_stateobj *gmem)
 {
+	struct fd_screen *screen = gmem->screen;
 	uint32_t gmem_align = key->gmem_page_align * 0x1000;
 	uint32_t total = 0, i;
+
+	if ((nbins_x == 0) || (nbins_y == 0))
+		return false;
+
+	uint32_t bin_w, bin_h;
+	bin_w = div_align(key->width, nbins_x, screen->gmem_alignw);
+	bin_h = div_align(key->height, nbins_y, screen->gmem_alignh);
+
+	gmem->bin_w = bin_w;
+	gmem->bin_h = bin_h;
+
+	/* due to aligning bin_w/h, we could end up with one too
+	 * many bins in either dimension, so recalculate:
+	 */
+	gmem->nbins_x = DIV_ROUND_UP(key->width, bin_w);
+	gmem->nbins_y = DIV_ROUND_UP(key->height, bin_h);
 
 	for (i = 0; i < MAX_RENDER_TARGETS; i++) {
 		if (key->cbuf_cpp[i]) {
@@ -196,7 +213,7 @@ total_size(struct gmem_key *key, uint32_t bin_w, uint32_t bin_h,
 		total = gmem->zsbuf_base[1] + key->zsbuf_cpp[1] * bin_w * bin_h;
 	}
 
-	return total;
+	return total <= screen->gmemsize_bytes;
 }
 
 static struct fd_gmem_stateobj *
@@ -209,27 +226,12 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	gmem->key = key;
 	list_inithead(&gmem->node);
 
-	const uint32_t gmem_alignw = screen->gmem_alignw;
-	const uint32_t gmem_alignh = screen->gmem_alignh;
 	const unsigned npipes = screen->num_vsc_pipes;
-	const uint32_t gmem_size = screen->gmemsize_bytes;
 	uint32_t nbins_x = 1, nbins_y = 1;
-	uint32_t bin_w, bin_h;
 	uint32_t max_width = bin_width(screen);
 	uint32_t i, j, t, xoff, yoff;
 	uint32_t tpp_x, tpp_y;
 	int tile_n[npipes];
-
-	bin_w = div_align(key->width, 1, gmem_alignw);
-	bin_h = div_align(key->height, 1, gmem_alignh);
-
-	/* first, find a bin width that satisfies the maximum width
-	 * restrictions:
-	 */
-	while (bin_w > max_width) {
-		nbins_x++;
-		bin_w = div_align(key->width, nbins_x, gmem_alignw);
-	}
 
 	if (fd_mesa_debug & FD_DBG_MSGS) {
 		debug_printf("binning input: cbuf cpp:");
@@ -239,27 +241,44 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 				key->zsbuf_cpp[0], key->width, key->height);
 	}
 
+	/* first, find a bin width that satisfies the maximum width
+	 * restrictions:
+	 */
+	while (div_align(key->width, nbins_x, screen->gmem_alignw) > max_width) {
+		nbins_x++;
+	}
+
 	/* then find a bin width/height that satisfies the memory
 	 * constraints:
 	 */
-	while (total_size(key, bin_w, bin_h, gmem) > gmem_size) {
-		if (bin_w > bin_h) {
+	while (!layout_gmem(key, nbins_x, nbins_y, gmem)) {
+		if (nbins_y > nbins_x) {
 			nbins_x++;
-			bin_w = div_align(key->width, nbins_x, gmem_alignw);
 		} else {
 			nbins_y++;
-			bin_h = div_align(key->height, nbins_y, gmem_alignh);
 		}
 	}
 
-	DBG("using %d bins of size %dx%d", nbins_x*nbins_y, bin_w, bin_h);
+	/* Lets see if we can tweak the layout a bit and come up with
+	 * something better:
+	 */
+	if ((((nbins_x - 1) * (nbins_y + 1)) < (nbins_x * nbins_y)) &&
+			layout_gmem(key, nbins_x - 1, nbins_y + 1, gmem)) {
+		nbins_x--;
+		nbins_y++;
+	} else if ((((nbins_x + 1) * (nbins_y - 1)) < (nbins_x * nbins_y)) &&
+			layout_gmem(key, nbins_x + 1, nbins_y - 1, gmem)) {
+		nbins_x++;
+		nbins_y--;
+	}
+
+	layout_gmem(key, nbins_x, nbins_y, gmem);
+
+	DBG("using %d bins of size %dx%d", gmem->nbins_x * gmem->nbins_y,
+			gmem->bin_w, gmem->bin_h);
 
 	memcpy(gmem->cbuf_cpp, key->cbuf_cpp, sizeof(key->cbuf_cpp));
 	memcpy(gmem->zsbuf_cpp, key->zsbuf_cpp, sizeof(key->zsbuf_cpp));
-	gmem->bin_h = bin_h;
-	gmem->bin_w = bin_w;
-	gmem->nbins_x = nbins_x;
-	gmem->nbins_y = nbins_y;
 	gmem->minx = key->minx;
 	gmem->miny = key->miny;
 	gmem->width = key->width;
@@ -348,7 +367,7 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 		xoff = key->minx;
 
 		/* clip bin height: */
-		bh = MIN2(bin_h, key->miny + key->height - yoff);
+		bh = MIN2(gmem->bin_h, key->miny + key->height - yoff);
 
 		for (j = 0; j < nbins_x; j++) {
 			struct fd_tile *tile = &gmem->tile[t];
@@ -361,7 +380,7 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 			assert(p < gmem->num_vsc_pipes);
 
 			/* clip bin width: */
-			bw = MIN2(bin_w, key->minx + key->width - xoff);
+			bw = MIN2(gmem->bin_w, key->minx + key->width - xoff);
 			tile->n = !is_a20x(screen) ? tile_n[p]++ :
 				((i % tpp_y + 1) << 3 | (j % tpp_x + 1));
 			tile->p = p;
