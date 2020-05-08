@@ -408,7 +408,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding |= (0xFF & instr->operands[1].physReg());
 
       if (ctx.chip_class >= GFX10) {
-         encoding |= (((opcode & 0x08) >> 4) << 21); /* MSB of 4-bit OPCODE */
+         encoding |= (((opcode & 0x08) >> 3) << 21); /* MSB of 4-bit OPCODE */
       }
 
       out.push_back(encoding);
