@@ -29,9 +29,7 @@ vk_object_base_init(UNUSED struct vk_device *device,
                     UNUSED VkObjectType obj_type)
 {
    base->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
-#ifndef NDEBUG
    base->type = obj_type;
-#endif
 }
 
 void

@@ -36,9 +36,7 @@ struct vk_device;
 
 struct vk_object_base {
    VK_LOADER_DATA _loader_data;
-#ifndef NDEBUG
    VkObjectType type;
-#endif
 };
 
 void vk_object_base_init(UNUSED struct vk_device *device,
