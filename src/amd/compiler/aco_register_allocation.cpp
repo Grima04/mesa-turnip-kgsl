@@ -1410,9 +1410,10 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
       for (rit = block.instructions.rbegin(); rit != block.instructions.rend(); ++rit) {
          aco_ptr<Instruction>& instr = *rit;
          if (is_phi(instr)) {
-            live.erase(instr->definitions[0].getTemp());
-            if (instr->definitions[0].isKill() || instr->definitions[0].isFixed())
+            if (instr->definitions[0].isKill() || instr->definitions[0].isFixed()) {
+               live.erase(instr->definitions[0].getTemp());
                continue;
+            }
             /* collect information about affinity-related temporaries */
             std::vector<Temp> affinity_related;
             /* affinity_related[0] is the last seen affinity-related temp */
@@ -1425,21 +1426,20 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                }
             }
             phi_ressources.emplace_back(std::move(affinity_related));
-            continue;
-         }
-
-         /* add vector affinities */
-         if (instr->opcode == aco_opcode::p_create_vector) {
-            for (const Operand& op : instr->operands) {
-               if (op.isTemp() && op.isFirstKill() && op.getTemp().type() == instr->definitions[0].getTemp().type())
-                  ctx.vectors[op.tempId()] = instr.get();
+         } else {
+            /* add vector affinities */
+            if (instr->opcode == aco_opcode::p_create_vector) {
+               for (const Operand& op : instr->operands) {
+                  if (op.isTemp() && op.isFirstKill() && op.getTemp().type() == instr->definitions[0].getTemp().type())
+                     ctx.vectors[op.tempId()] = instr.get();
+               }
             }
-         }
 
-         /* add operands to live variables */
-         for (const Operand& op : instr->operands) {
-            if (op.isTemp())
-               live.emplace(op.getTemp());
+            /* add operands to live variables */
+            for (const Operand& op : instr->operands) {
+               if (op.isTemp())
+                  live.emplace(op.getTemp());
+            }
          }
 
          /* erase definitions from live */
