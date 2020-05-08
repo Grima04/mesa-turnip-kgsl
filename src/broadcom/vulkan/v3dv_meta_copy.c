@@ -1830,23 +1830,73 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                           struct v3dv_buffer *buffer,
                           const VkBufferImageCopy *region)
 {
-   /* Select a copy format for the blit operation */
-   VkFormat format;
-   switch (image->cpp) {
+   /* Generally, the bpp of the data in the buffer matches that of the
+    * destination image. The exception is the case where we are uploading
+    * stencil (8bpp) to a combined d24s8 image (32bpp).
+    */
+   uint32_t buffer_bpp = image->cpp;
+
+   const VkImageAspectFlags copy_aspect = region->imageSubresource.aspectMask;
+   VkImageAspectFlags upload_aspect = copy_aspect;
+
+   /* We are about to upload the buffer data to an image so we can then
+    * blit that to our destination region. Because we are going to implement
+    * the copy as a blit, we want our blit source and destination formats to be
+    * the same (to avoid any format conversions), so we choose a canonical
+    * format that matches the destination image bpp.
+    */
+   VkFormat upload_format;
+   switch (buffer_bpp) {
    case 16:
-      format = VK_FORMAT_R32G32B32A32_UINT;
+      assert(copy_aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      upload_format = VK_FORMAT_R32G32B32A32_UINT;
       break;
    case 8:
-      format = VK_FORMAT_R16G16B16A16_UINT;
+      assert(copy_aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      upload_format = VK_FORMAT_R16G16B16A16_UINT;
       break;
    case 4:
-      format = VK_FORMAT_R8G8B8A8_UINT;
+      switch (copy_aspect) {
+      case VK_IMAGE_ASPECT_COLOR_BIT:
+         upload_format = VK_FORMAT_R8G8B8A8_UINT;
+         break;
+      case VK_IMAGE_ASPECT_DEPTH_BIT:
+         assert(image->vk_format == VK_FORMAT_D32_SFLOAT ||
+                image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+                image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32);
+         if (!vk_format_has_stencil(image->vk_format))
+            upload_format = image->vk_format;
+         else
+            upload_format = VK_FORMAT_X8_D24_UNORM_PACK32;
+         break;
+      case VK_IMAGE_ASPECT_STENCIL_BIT:
+         /* Since we don't support separate stencil this is always a stencil
+          * copy to a combined depth/stencil image.
+          *
+          * Because we don't support separate stencil images, our copy/blit
+          * functions don't support them either, so to handle this case we
+          * upload the buffer to a compatible R8UI color image and then we
+          * emit a "blit stencil aspect from R8UI to S8D24" which the driver
+          * will recognize as a stencil blit and will handle properly as a
+          * special case.
+          */
+         assert(copy_aspect == VK_IMAGE_ASPECT_STENCIL_BIT);
+         assert(image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT);
+         upload_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+         upload_format = VK_FORMAT_R8_UINT;
+         buffer_bpp = 1;
+         break;
+      default:
+         unreachable("Unsupported aspect");
+      };
       break;
    case 2:
-      format = VK_FORMAT_R16_UINT;
+      upload_format = (copy_aspect == VK_IMAGE_ASPECT_COLOR_BIT) ?
+         VK_FORMAT_R16_UINT : image->vk_format;
       break;
    case 1:
-      format = VK_FORMAT_R8_UINT;
+      assert(copy_aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      upload_format = VK_FORMAT_R8_UINT;
       break;
    default:
       unreachable("unsupported bpp");
@@ -1891,7 +1941,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       VkImageCreateInfo image_info = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
          .imageType = VK_IMAGE_TYPE_2D,
-         .format = format,
+         .format = upload_format,
          .extent = { buf_width, buf_height, 1 },
          .mipLevels = 1,
          .arrayLayers = 1,
@@ -1937,13 +1987,13 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
 
       /* Upload buffer contents for the selected layer */
       VkDeviceSize buffer_offset =
-         region->bufferOffset + i * buf_height * buf_width * image->cpp;
+         region->bufferOffset + i * buf_height * buf_width * buffer_bpp;
       const VkBufferImageCopy buffer_image_copy = {
          .bufferOffset = buffer_offset,
          .bufferRowLength = region->bufferRowLength,
          .bufferImageHeight = region->bufferImageHeight,
          .imageSubresource = {
-            .aspectMask = region->imageSubresource.aspectMask,
+            .aspectMask = upload_aspect,
             .mipLevel = 0,
             .baseArrayLayer = 0,
             .layerCount = 1,
@@ -1959,10 +2009,16 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
 
       /* Blit-copy the requested image extent from the buffer image to the
        * destination image.
+       *
+       * Since we are copying, the blit must use the same format on the
+       * destination and source images to avoid format conversions. The
+       * only exception is copying stencil, which we upload to a R8UI source
+       * image, but that we need to blit to a S8D24 destination (the only
+       * stencil format we support).
        */
       const VkImageBlit blit_region = {
          .srcSubresource = {
-            .aspectMask = region->imageSubresource.aspectMask,
+            .aspectMask = copy_aspect,
             .mipLevel = 0,
             .baseArrayLayer = 0,
             .layerCount = 1,
@@ -1985,9 +2041,18 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
             },
          },
       };
+
+      VkFormat src_format = upload_format;
+      VkFormat dst_format;
+      if (copy_aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         assert(image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT);
+         dst_format = image->vk_format;
+      } else {
+         dst_format = src_format;
+      }
       bool ok = blit_shader(cmd_buffer,
-                            image, format,
-                            v3dv_image_from_handle(buffer_image), format,
+                            image, dst_format,
+                            v3dv_image_from_handle(buffer_image), src_format,
                             &blit_region, VK_FILTER_NEAREST);
       if (!ok)
          return false;
@@ -2830,6 +2895,51 @@ create_blit_pipeline(struct v3dv_device *device,
                           pipeline);
 }
 
+/* The only stencil format that we support is S8D24, which is compatible with
+ * RGBA8UI, so we implement stencil blits by reinterpreting the operation
+ * as a color blit to a RGBA8UI render target where we map stencil to the R
+ * channel and depth to the GBA channels.
+ */
+static void
+rewrite_stencil_blit_spec(VkFormat *dst_format,
+                          VkFormat *src_format,
+                          VkImageAspectFlags *aspects,
+                          VkColorComponentFlags *cmask)
+{
+   if (!(*aspects & VK_IMAGE_ASPECT_STENCIL_BIT))
+      return;
+
+   /* If we are blitting stencil, then we must be blitting from S8D24 to
+    * S8D24 (in which case we might be blitting depth too) or, as a special
+    * case, R8UI to S8D24 (in which case we are blitting only stencil). The
+    * latter is a special case that we use when are copying stencil from a
+    * buffer to a S8D24 image.
+    */
+   assert(*dst_format == VK_FORMAT_D24_UNORM_S8_UINT);
+   assert(*src_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+          (*src_format == VK_FORMAT_R8_UINT &&
+           *aspects == VK_IMAGE_ASPECT_STENCIL_BIT));
+
+   *dst_format = VK_FORMAT_R8G8B8A8_UINT;
+
+   if (*src_format == VK_FORMAT_D24_UNORM_S8_UINT)
+      *src_format = VK_FORMAT_R8G8B8A8_UINT;
+
+   /* If we are only copying stencil we want to make sure we only write to the
+    * R channel, otherwise we would stomp the depth aspect. We only need this
+    * information to create the blit pipeline.
+    */
+   if (cmask) {
+      *cmask = VK_COLOR_COMPONENT_R_BIT;
+      if (*aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+         *cmask |= VK_COLOR_COMPONENT_G_BIT |
+                   VK_COLOR_COMPONENT_B_BIT |
+                   VK_COLOR_COMPONENT_A_BIT;
+   }
+
+   *aspects = VK_IMAGE_ASPECT_COLOR_BIT;
+}
+
 /**
  * Return a pipeline suitable for blitting the requested aspect given the
  * destination and source formats.
@@ -2868,16 +2978,7 @@ get_blit_pipeline(struct v3dv_device *device,
    if (entry) {
       mtx_unlock(&device->meta.mtx);
       *pipeline = entry->data;
-
-      /* We implement stencil aspect (and stencil+depth) blits with a
-       * color pipeline.
-       */
-      if (*aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-         *dst_format = VK_FORMAT_R8G8B8A8_UINT;
-         *src_format = VK_FORMAT_R8G8B8A8_UINT;
-         *aspects = VK_IMAGE_ASPECT_COLOR_BIT;
-      }
-
+      rewrite_stencil_blit_spec(dst_format, src_format, aspects, NULL);
       return true;
    }
 
@@ -2887,20 +2988,11 @@ get_blit_pipeline(struct v3dv_device *device,
    if (*pipeline == NULL)
       goto fail;
 
-   /* We implement stencil aspect (and stencil+depth) blits with a
-    * color pipeline.
-    */
    VkColorComponentFlags cmask = VK_COLOR_COMPONENT_R_BIT |
                                  VK_COLOR_COMPONENT_G_BIT |
                                  VK_COLOR_COMPONENT_B_BIT |
                                  VK_COLOR_COMPONENT_A_BIT;
-   if (*aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-      *dst_format = VK_FORMAT_R8G8B8A8_UINT;
-      *src_format = VK_FORMAT_R8G8B8A8_UINT;
-      if (!(*aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
-         cmask = VK_COLOR_COMPONENT_R_BIT;
-      *aspects = VK_IMAGE_ASPECT_COLOR_BIT;
-   }
+   rewrite_stencil_blit_spec(dst_format, src_format, aspects, &cmask);
 
    ok = create_blit_render_pass(device, *aspects, *dst_format, *src_format,
                                 &(*pipeline)->pass);
