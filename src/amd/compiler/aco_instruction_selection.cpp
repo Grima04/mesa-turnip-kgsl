@@ -9847,6 +9847,7 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot)
 
    bool is_int8 = (ctx->options->key.fs.is_int8 >> slot) & 1;
    bool is_int10 = (ctx->options->key.fs.is_int10 >> slot) & 1;
+   bool is_16bit = values[0].regClass() == v2b;
 
    switch (col_format)
    {
@@ -9877,16 +9878,38 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot)
    case V_028714_SPI_SHADER_FP16_ABGR:
       enabled_channels = 0x5;
       compr_op = aco_opcode::v_cvt_pkrtz_f16_f32;
+      if (is_16bit) {
+         if (ctx->options->chip_class >= GFX9) {
+            /* Pack the FP16 values together instead of converting them to
+             * FP32 and back to FP16.
+             * TODO: use p_create_vector and let the compiler optimizes.
+             */
+            compr_op = aco_opcode::v_pack_b32_f16;
+         } else {
+            for (unsigned i = 0; i < 4; i++) {
+               if ((write_mask >> i) & 1)
+                  values[i] = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), values[i]);
+            }
+         }
+      }
       break;
 
    case V_028714_SPI_SHADER_UNORM16_ABGR:
       enabled_channels = 0x5;
-      compr_op = aco_opcode::v_cvt_pknorm_u16_f32;
+      if (is_16bit && ctx->options->chip_class >= GFX9) {
+         compr_op = aco_opcode::v_cvt_pknorm_u16_f16;
+      } else {
+         compr_op = aco_opcode::v_cvt_pknorm_u16_f32;
+      }
       break;
 
    case V_028714_SPI_SHADER_SNORM16_ABGR:
       enabled_channels = 0x5;
-      compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
+      if (is_16bit && ctx->options->chip_class >= GFX9) {
+         compr_op = aco_opcode::v_cvt_pknorm_i16_f16;
+      } else {
+         compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
+      }
       break;
 
    case V_028714_SPI_SHADER_UINT16_ABGR: {
@@ -9902,6 +9925,13 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot)
                values[i] = bld.vop2(aco_opcode::v_min_u32, bld.def(v1),
                                     i == 3 && is_int10 ? Operand(3u) : Operand(max_rgb_val),
                                     values[i]);
+            }
+         }
+      } else if (is_16bit) {
+         for (unsigned i = 0; i < 4; i++) {
+            if ((write_mask >> i) & 1) {
+               Temp tmp = convert_int(bld, values[i].getTemp(), 16, 32, false);
+               values[i] = Operand(tmp);
             }
          }
       }
@@ -9926,6 +9956,13 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot)
                values[i] = bld.vop2(aco_opcode::v_max_i32, bld.def(v1),
                                     i == 3 && is_int10 ? Operand(-2u) : Operand(min_rgb_val),
                                     values[i]);
+            }
+         }
+      } else if (is_16bit) {
+         for (unsigned i = 0; i < 4; i++) {
+            if ((write_mask >> i) & 1) {
+               Temp tmp = convert_int(bld, values[i].getTemp(), 16, 32, true);
+               values[i] = Operand(tmp);
             }
          }
       }
