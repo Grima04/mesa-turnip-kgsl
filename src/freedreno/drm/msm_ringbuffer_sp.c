@@ -385,9 +385,23 @@ msm_ringbuffer_sp_emit_reloc(struct fd_ringbuffer *ring,
 	struct fd_pipe *pipe;
 
 	if (ring->flags & _FD_RINGBUFFER_OBJECT) {
-		unsigned idx = APPEND(&msm_ring->u, reloc_bos);
-
-		msm_ring->u.reloc_bos[idx] = fd_bo_ref(reloc->bo);
+		/* Avoid emitting duplicate BO references into the list.  Ringbuffer
+		 * objects are long-lived, so this saves ongoing work at draw time in
+		 * exchange for a bit at context setup/first draw.  And the number of
+		 * relocs per ringbuffer object is fairly small, so the O(n^2) doesn't
+		 * hurt much.
+		 */
+		bool found = false;
+		for (int i = 0; i < msm_ring->u.nr_reloc_bos; i++) {
+			if (msm_ring->u.reloc_bos[i] == reloc->bo) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			unsigned idx = APPEND(&msm_ring->u, reloc_bos);
+			msm_ring->u.reloc_bos[idx] = fd_bo_ref(reloc->bo);
+		}
 
 		pipe = msm_ring->u.pipe;
 	} else {
