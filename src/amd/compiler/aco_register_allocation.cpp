@@ -64,6 +64,7 @@ struct ra_ctx {
    std::unordered_map<unsigned, phi_info> phi_map;
    std::unordered_map<unsigned, unsigned> affinities;
    std::unordered_map<unsigned, Instruction*> vectors;
+   std::unordered_map<unsigned, Instruction*> split_vectors;
    aco_ptr<Instruction> pseudo_dummy;
    unsigned max_used_sgpr = 0;
    unsigned max_used_vgpr = 0;
@@ -919,6 +920,21 @@ PhysReg get_reg(ra_ctx& ctx,
                 std::vector<std::pair<Operand, Definition>>& parallelcopies,
                 aco_ptr<Instruction>& instr)
 {
+   auto split_vec = ctx.split_vectors.find(temp.id());
+   if (split_vec != ctx.split_vectors.end()) {
+      unsigned offset = 0;
+      for (Definition def : split_vec->second->definitions) {
+         auto affinity_it = ctx.affinities.find(def.tempId());
+         if (affinity_it != ctx.affinities.end() && ctx.assignments[affinity_it->second].assigned) {
+            PhysReg reg = ctx.assignments[affinity_it->second].reg;
+            reg.reg_b -= offset;
+            if (get_reg_specified(ctx, reg_file, temp.regClass(), parallelcopies, instr, reg))
+               return reg;
+         }
+         offset += def.bytes();
+      }
+   }
+
    if (ctx.affinities.find(temp.id()) != ctx.affinities.end() &&
        ctx.assignments[ctx.affinities[temp.id()]].assigned) {
       PhysReg reg = ctx.assignments[ctx.affinities[temp.id()]].reg;
@@ -1434,6 +1450,9 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                      ctx.vectors[op.tempId()] = instr.get();
                }
             }
+
+            if (instr->opcode == aco_opcode::p_split_vector && instr->operands[0].isFirstKillBeforeDef())
+               ctx.split_vectors[instr->operands[0].tempId()] = instr.get();
 
             /* add operands to live variables */
             for (const Operand& op : instr->operands) {
