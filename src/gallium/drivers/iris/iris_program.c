@@ -125,6 +125,7 @@ iris_to_brw_fs_key(const struct gen_device_info *devinfo,
       .coherent_fb_fetch = key->coherent_fb_fetch,
       .color_outputs_valid = key->color_outputs_valid,
       .input_slots_valid = key->input_slots_valid,
+      .ignore_sample_mask_out = !key->multisample_fbo,
    };
 }
 

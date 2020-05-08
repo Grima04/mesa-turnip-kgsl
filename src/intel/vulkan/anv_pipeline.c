@@ -516,6 +516,8 @@ populate_wm_prog_key(const struct gen_device_info *devinfo,
    /* XXX Vulkan doesn't appear to specify */
    key->clamp_fragment_color = false;
 
+   key->ignore_sample_mask_out = false;
+
    assert(subpass->color_count <= MAX_RTS);
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED)

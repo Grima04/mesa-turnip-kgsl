@@ -457,6 +457,7 @@ struct brw_wm_prog_key {
    bool high_quality_derivatives:1;
    bool force_dual_color_blend:1;
    bool coherent_fb_fetch:1;
+   bool ignore_sample_mask_out:1;
 
    uint8_t color_outputs_valid;
    uint64_t input_slots_valid;
