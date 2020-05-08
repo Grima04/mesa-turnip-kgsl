@@ -226,6 +226,12 @@ out_unlock:
 	return bo;
 }
 
+void
+fd_bo_mark_for_dump(struct fd_bo *bo)
+{
+	bo->flags |= FD_RELOC_DUMP;
+}
+
 uint64_t fd_bo_get_iova(struct fd_bo *bo)
 {
 	return bo->iova;

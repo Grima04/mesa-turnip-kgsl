@@ -265,13 +265,6 @@ OUT_RELOCW(struct fd_ringbuffer *ring, struct fd_bo *bo,
 }
 
 static inline void
-OUT_RELOCD(struct fd_ringbuffer *ring, struct fd_bo *bo,
-		uint32_t offset, uint64_t or, int32_t shift)
-{
-	__out_reloc(ring, bo, offset, or, shift, FD_RELOC_DUMP);
-}
-
-static inline void
 OUT_RB(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
 {
 	fd_ringbuffer_emit_reloc_ring_full(ring, target, 0);

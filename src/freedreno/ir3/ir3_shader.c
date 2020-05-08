@@ -171,6 +171,8 @@ assemble_variant(struct ir3_shader_variant *v)
 			DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
 			DRM_FREEDRENO_GEM_TYPE_KMEM,
 			"%s:%s", ir3_shader_stage(v), info->name);
+	/* Always include shaders in kernel crash dumps. */
+	fd_bo_mark_for_dump(v->bo);
 
 	memcpy(fd_bo_map(v->bo), bin, sz);
 

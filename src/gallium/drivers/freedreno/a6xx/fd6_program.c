@@ -90,7 +90,7 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 			CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
 			CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
 			CP_LOAD_STATE6_0_NUM_UNIT(so->instrlen));
-	OUT_RELOCD(ring, so->bo, 0, 0, 0);
+	OUT_RELOC(ring, so->bo, 0, 0, 0);
 }
 
 /* Add any missing varyings needed for stream-out.  Otherwise varyings not

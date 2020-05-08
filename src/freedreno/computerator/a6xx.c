@@ -168,7 +168,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
 		CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
 		CP_LOAD_STATE6_0_STATE_BLOCK(SB6_CS_SHADER) |
 		CP_LOAD_STATE6_0_NUM_UNIT(v->instrlen));
-	OUT_RELOCD(ring, v->bo, 0, 0, 0);
+	OUT_RELOC(ring, v->bo, 0, 0, 0);
 }
 
 static void
