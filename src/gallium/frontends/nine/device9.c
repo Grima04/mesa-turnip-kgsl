@@ -217,14 +217,15 @@ NineDevice9_ctor( struct NineDevice9 *This,
      * instance. This is the Win 7 behavior.
      * Win XP shares this counter across multiple devices. */
     This->available_texture_mem = This->screen->get_param(This->screen, PIPE_CAP_VIDEO_MEMORY);
-    if (This->available_texture_mem < 4096)
-        This->available_texture_mem <<= 20;
-    else
-        This->available_texture_mem = UINT_MAX;
-    /* We cap texture memory usage to 80% of what is reported free initially
+    This->available_texture_mem <<= 20;
+#ifdef PIPE_ARCH_X86
+    /* To prevent overflows for 32bits apps - Not sure about this one */
+    This->available_texture_limit = MAX2(This->available_texture_limit, UINT_MAX - (64 << 20));
+#endif
+    /* We cap texture memory usage to 95% of what is reported free initially
      * This helps get closer Win behaviour. For example VertexBuffer allocation
      * still succeeds when texture allocation fails. */
-    This->available_texture_limit = This->available_texture_mem * 20LL / 100LL;
+    This->available_texture_limit = This->available_texture_mem * 5LL / 100LL;
 
     /* create implicit swapchains */
     This->nswapchains = ID3DPresentGroup_GetMultiheadCount(This->present);
