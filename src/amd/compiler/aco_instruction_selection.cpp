@@ -4424,10 +4424,40 @@ void emit_interp_instr(isel_context *ctx, unsigned idx, unsigned component, Temp
    Temp coord2 = emit_extract_vector(ctx, src, 1, v1);
 
    Builder bld(ctx->program, ctx->block);
-   Builder::Result interp_p1 = bld.vintrp(aco_opcode::v_interp_p1_f32, bld.def(v1), coord1, bld.m0(prim_mask), idx, component);
-   if (ctx->program->has_16bank_lds)
-      interp_p1.instr->operands[0].setLateKill(true);
-   bld.vintrp(aco_opcode::v_interp_p2_f32, Definition(dst), coord2, bld.m0(prim_mask), interp_p1, idx, component);
+
+   if (dst.regClass() == v2b) {
+      if (ctx->program->has_16bank_lds) {
+         assert(ctx->options->chip_class <= GFX8);
+         Builder::Result interp_p1 =
+            bld.vintrp(aco_opcode::v_interp_mov_f32, bld.def(v1),
+                       Operand(2u) /* P0 */, bld.m0(prim_mask), idx, component);
+         interp_p1 = bld.vintrp(aco_opcode::v_interp_p1lv_f16, bld.def(v2b),
+                                coord1, bld.m0(prim_mask), interp_p1, idx, component);
+         bld.vintrp(aco_opcode::v_interp_p2_legacy_f16, Definition(dst), coord2,
+                 bld.m0(prim_mask), interp_p1, idx, component);
+      } else {
+         aco_opcode interp_p2_op = aco_opcode::v_interp_p2_f16;
+
+         if (ctx->options->chip_class == GFX8)
+            interp_p2_op = aco_opcode::v_interp_p2_legacy_f16;
+
+         Builder::Result interp_p1 =
+            bld.vintrp(aco_opcode::v_interp_p1ll_f16, bld.def(v1),
+                       coord1, bld.m0(prim_mask), idx, component);
+         bld.vintrp(interp_p2_op, Definition(dst), coord2, bld.m0(prim_mask),
+                    interp_p1, idx, component);
+      }
+   } else {
+      Builder::Result interp_p1 =
+         bld.vintrp(aco_opcode::v_interp_p1_f32, bld.def(v1), coord1,
+                    bld.m0(prim_mask), idx, component);
+
+      if (ctx->program->has_16bank_lds)
+         interp_p1.instr->operands[0].setLateKill(true);
+
+      bld.vintrp(aco_opcode::v_interp_p2_f32, Definition(dst), coord2,
+                 bld.m0(prim_mask), interp_p1, idx, component);
+   }
 }
 
 void emit_load_frag_coord(isel_context *ctx, Temp dst, unsigned num_components)
