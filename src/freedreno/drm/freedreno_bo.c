@@ -132,9 +132,11 @@ fd_bo_new_ring(struct fd_device *dev, uint32_t size)
 {
 	uint32_t flags = DRM_FREEDRENO_GEM_GPUREADONLY;
 	struct fd_bo *bo = bo_new(dev, size, flags, &dev->ring_cache);
-	if (bo)
+	if (bo) {
 		bo->bo_reuse = RING_CACHE;
-	fd_bo_set_name(bo, "cmdstream");
+		bo->flags |= FD_RELOC_DUMP;
+		fd_bo_set_name(bo, "cmdstream");
+	}
 	return bo;
 }
 
