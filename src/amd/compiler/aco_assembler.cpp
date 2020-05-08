@@ -274,22 +274,50 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       Interp_instruction* interp = static_cast<Interp_instruction*>(instr);
       uint32_t encoding = 0;
 
-      if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
-         encoding = (0b110101 << 26); /* Vega ISA doc says 110010 but it's wrong */
-      } else {
-         encoding = (0b110010 << 26);
-      }
+      if (instr->opcode == aco_opcode::v_interp_p1ll_f16 ||
+          instr->opcode == aco_opcode::v_interp_p1lv_f16 ||
+          instr->opcode == aco_opcode::v_interp_p2_legacy_f16 ||
+          instr->opcode == aco_opcode::v_interp_p2_f16) {
+         if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
+            encoding = (0b110100 << 26);
+         } else if (ctx.chip_class == GFX10) {
+            encoding = (0b110101 << 26);
+         } else {
+            unreachable("Unknown chip_class.");
+         }
 
-      assert(encoding);
-      encoding |= (0xFF & instr->definitions[0].physReg()) << 18;
-      encoding |= opcode << 16;
-      encoding |= interp->attribute << 10;
-      encoding |= interp->component << 8;
-      if (instr->opcode == aco_opcode::v_interp_mov_f32)
-         encoding |= (0x3 & instr->operands[0].constantValue());
-      else
-         encoding |= (0xFF & instr->operands[0].physReg());
-      out.push_back(encoding);
+         encoding |= opcode << 16;
+         encoding |= (0xFF & instr->definitions[0].physReg());
+         out.push_back(encoding);
+
+         encoding = 0;
+         encoding |= interp->attribute;
+         encoding |= interp->component << 6;
+         encoding |= instr->operands[0].physReg() << 9;
+         if (instr->opcode == aco_opcode::v_interp_p2_f16 ||
+             instr->opcode == aco_opcode::v_interp_p2_legacy_f16 ||
+             instr->opcode == aco_opcode::v_interp_p1lv_f16) {
+            encoding |= instr->operands[2].physReg() << 18;
+         }
+         out.push_back(encoding);
+      } else {
+         if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
+            encoding = (0b110101 << 26); /* Vega ISA doc says 110010 but it's wrong */
+         } else {
+            encoding = (0b110010 << 26);
+         }
+
+         assert(encoding);
+         encoding |= (0xFF & instr->definitions[0].physReg()) << 18;
+         encoding |= opcode << 16;
+         encoding |= interp->attribute << 10;
+         encoding |= interp->component << 8;
+         if (instr->opcode == aco_opcode::v_interp_mov_f32)
+            encoding |= (0x3 & instr->operands[0].constantValue());
+         else
+            encoding |= (0xFF & instr->operands[0].physReg());
+         out.push_back(encoding);
+      }
       break;
    }
    case Format::DS: {
