@@ -85,8 +85,19 @@ void validate(Program* program, FILE * output)
             base_format = Format::VOP2;
          else if ((uint32_t)base_format & (uint32_t)Format::VOPC)
             base_format = Format::VOPC;
-         else if ((uint32_t)base_format & (uint32_t)Format::VINTRP)
-            base_format = Format::VINTRP;
+         else if ((uint32_t)base_format & (uint32_t)Format::VINTRP) {
+            if (instr->opcode == aco_opcode::v_interp_p1ll_f16 ||
+                instr->opcode == aco_opcode::v_interp_p1lv_f16 ||
+                instr->opcode == aco_opcode::v_interp_p2_legacy_f16 ||
+                instr->opcode == aco_opcode::v_interp_p2_f16) {
+               /* v_interp_*_fp16 are considered VINTRP by the compiler but
+                * they are emitted as VOP3.
+                */
+               base_format = Format::VOP3;
+            } else {
+               base_format = Format::VINTRP;
+            }
+         }
          check(base_format == instr_info.format[(int)instr->opcode], "Wrong base format for instruction", instr.get());
 
          /* check VOP3 modifiers */
