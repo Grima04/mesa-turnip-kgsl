@@ -35,8 +35,17 @@ echo 'deb https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Deb
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources.list.d/backports.list
+echo 'deb https://deb.debian.org/debian testing main' >/etc/apt/sources.list.d/testing.list
 
 apt-get update
+
+# Don't use newer packages from testing by default
+cat >/etc/apt/preferences <<EOF
+Package: *
+Pin: release a=testing
+Pin-Priority: 100
+EOF
+
 apt-get dist-upgrade -y
 
 apt-get install -y --no-remove \
@@ -54,7 +63,6 @@ apt-get install -y --no-remove \
       git \
       libclang-6.0-dev \
       libclang-7-dev \
-      libclang-8-dev \
       libclang-9-dev \
       libclc-dev \
       libelf-dev \
@@ -97,6 +105,9 @@ apt-get install -y --no-remove \
       xz-utils \
       zlib1g-dev
 
+apt-get install -y --no-remove -t buster-backports \
+      libclang-8-dev
+
 # Cross-build Mesa deps
 for arch in $CROSS_ARCHITECTURES; do
     apt-get install -y --no-remove \
@@ -105,9 +116,11 @@ for arch in $CROSS_ARCHITECTURES; do
             libelf-dev:${arch} \
             libexpat1-dev:${arch} \
             libffi-dev:${arch} \
-            libllvm8:${arch} \
             libstdc++6:${arch} \
             libtinfo-dev:${arch}
+
+    apt-get install -y --no-remove -t buster-backports \
+            libllvm8:${arch}
 
     if [ "$arch" == "i386" ]; then
         # libpciaccess-dev is only needed for Intel.
@@ -118,11 +131,12 @@ for arch in $CROSS_ARCHITECTURES; do
     mkdir /var/cache/apt/archives/${arch}
     # Download llvm-* packages, but don't install them yet, since they can
     # only be installed for one architecture at a time
-    apt-get install -o Dir::Cache::archives=/var/cache/apt/archives/$arch --download-only -y --no-remove \
+    apt-get install -o Dir::Cache::archives=/var/cache/apt/archives/$arch --download-only \
+       -y --no-remove -t buster-backports \
        llvm-8-dev:${arch}
 done
 
-apt-get install -y --no-remove \
+apt-get install -y --no-remove -t buster-backports \
       llvm-8-dev \
 
 # for 64bit windows cross-builds

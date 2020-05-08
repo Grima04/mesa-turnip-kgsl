@@ -133,7 +133,7 @@ x86_build:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-04-22-winehq"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-05-08"
 
 .use-x86_build:
   variables:
