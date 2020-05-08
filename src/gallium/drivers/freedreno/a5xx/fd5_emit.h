@@ -139,7 +139,7 @@ fd5_emit_blit(struct fd_context *ctx, struct fd_ringbuffer *ring)
 
 	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
 	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(BLIT));
-	OUT_RELOCW(ring, fd5_ctx->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
+	OUT_RELOC(ring, fd5_ctx->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
 	OUT_RING(ring, 0x00000000);
 
 	emit_marker5(ring, 7);

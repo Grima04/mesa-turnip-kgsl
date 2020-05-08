@@ -119,7 +119,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 			OUT_RING(ring, base);
 			OUT_RING(ring, A4XX_RB_MRT_CONTROL3_STRIDE(stride));
 		} else {
-			OUT_RELOCW(ring, rsc->bo, offset, 0, 0);
+			OUT_RELOC(ring, rsc->bo, offset, 0, 0);
 			/* RB_MRT[i].CONTROL3.STRIDE not emitted by c2d..
 			 * not sure if we need to skip it for bypass or
 			 * not.
@@ -174,7 +174,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, bool stencil,
 	OUT_RING(ring, A4XX_RB_COPY_CONTROL_MSAA_RESOLVE(MSAA_ONE) |
 			A4XX_RB_COPY_CONTROL_MODE(RB_COPY_RESOLVE) |
 			A4XX_RB_COPY_CONTROL_GMEM_BASE(base));
-	OUT_RELOCW(ring, rsc->bo, offset, 0, 0);   /* RB_COPY_DEST_BASE */
+	OUT_RELOC(ring, rsc->bo, offset, 0, 0);   /* RB_COPY_DEST_BASE */
 	OUT_RING(ring, A4XX_RB_COPY_DEST_PITCH_PITCH(slice->pitch));
 	OUT_RING(ring, A4XX_RB_COPY_DEST_INFO_TILE(TILE4_LINEAR) |
 			A4XX_RB_COPY_DEST_INFO_FORMAT(fd4_pipe2color(pformat)) |
@@ -349,7 +349,7 @@ fd4_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 	y1 = ((float)tile->yoff + bin_h) / ((float)pfb->height);
 
 	OUT_PKT3(ring, CP_MEM_WRITE, 5);
-	OUT_RELOCW(ring, fd_resource(ctx->blit_texcoord_vbuf)->bo, 0, 0, 0);
+	OUT_RELOC(ring, fd_resource(ctx->blit_texcoord_vbuf)->bo, 0, 0, 0);
 	OUT_RING(ring, fui(x0));
 	OUT_RING(ring, fui(y0));
 	OUT_RING(ring, fui(x1));
@@ -559,7 +559,7 @@ update_vsc_pipe(struct fd_batch *batch)
 	int i;
 
 	OUT_PKT0(ring, REG_A4XX_VSC_SIZE_ADDRESS, 1);
-	OUT_RELOCW(ring, fd4_ctx->vsc_size_mem, 0, 0, 0); /* VSC_SIZE_ADDRESS */
+	OUT_RELOC(ring, fd4_ctx->vsc_size_mem, 0, 0, 0); /* VSC_SIZE_ADDRESS */
 
 	OUT_PKT0(ring, REG_A4XX_VSC_PIPE_CONFIG_REG(0), 8);
 	for (i = 0; i < 8; i++) {
@@ -576,7 +576,7 @@ update_vsc_pipe(struct fd_batch *batch)
 			ctx->vsc_pipe_bo[i] = fd_bo_new(ctx->dev, 0x40000,
 					DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_pipe[%u]", i);
 		}
-		OUT_RELOCW(ring, ctx->vsc_pipe_bo[i], 0, 0, 0);       /* VSC_PIPE_DATA_ADDRESS[i] */
+		OUT_RELOC(ring, ctx->vsc_pipe_bo[i], 0, 0, 0);       /* VSC_PIPE_DATA_ADDRESS[i] */
 	}
 
 	OUT_PKT0(ring, REG_A4XX_VSC_PIPE_DATA_LENGTH_REG(0), 8);
@@ -770,8 +770,8 @@ fd4_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 				A4XX_PC_VSTREAM_CONTROL_N(tile->n));
 
 		OUT_PKT3(ring, CP_SET_BIN_DATA, 2);
-		OUT_RELOCW(ring, pipe_bo, 0, 0, 0);     /* BIN_DATA_ADDR <- VSC_PIPE[p].DATA_ADDRESS */
-		OUT_RELOCW(ring, fd4_ctx->vsc_size_mem, /* BIN_SIZE_ADDR <- VSC_SIZE_ADDRESS + (p * 4) */
+		OUT_RELOC(ring, pipe_bo, 0, 0, 0);     /* BIN_DATA_ADDR <- VSC_PIPE[p].DATA_ADDRESS */
+		OUT_RELOC(ring, fd4_ctx->vsc_size_mem, /* BIN_SIZE_ADDR <- VSC_SIZE_ADDRESS + (p * 4) */
 				(tile->p * 4), 0, 0);
 	} else {
 		OUT_PKT0(ring, REG_A4XX_PC_VSTREAM_CONTROL, 1);

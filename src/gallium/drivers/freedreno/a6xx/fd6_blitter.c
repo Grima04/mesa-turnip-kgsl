@@ -287,7 +287,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(FMT6_8_UNORM) |
 				 A6XX_RB_2D_DST_INFO_TILE_MODE(TILE6_LINEAR) |
 				 A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
-		OUT_RELOCW(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
+		OUT_RELOC(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
 		OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(p));
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
@@ -528,7 +528,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				 A6XX_RB_2D_DST_INFO_COLOR_SWAP(dswap) |
 				 COND(util_format_is_srgb(info->dst.format), A6XX_RB_2D_DST_INFO_SRGB) |
 				 COND(dubwc_enabled, A6XX_RB_2D_DST_INFO_FLAGS));
-		OUT_RELOCW(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
+		OUT_RELOC(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
 		OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(dslice->pitch));
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);

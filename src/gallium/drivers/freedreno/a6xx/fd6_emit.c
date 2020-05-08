@@ -671,7 +671,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 
 		OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_BASE_LO(i), 3);
 		/* VPC_SO[i].BUFFER_BASE_LO: */
-		OUT_RELOCW(ring, fd_resource(target->buffer)->bo, target->buffer_offset, 0, 0);
+		OUT_RELOC(ring, fd_resource(target->buffer)->bo, target->buffer_offset, 0, 0);
 		OUT_RING(ring, target->buffer_size - target->buffer_offset);
 
 		if (so->reset & (1 << i)) {
@@ -687,7 +687,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 		}
 
 		OUT_PKT4(ring, REG_A6XX_VPC_SO_FLUSH_BASE_LO(i), 2);
-		OUT_RELOCW(ring, control_ptr(fd6_context(ctx), flush_base[i]));
+		OUT_RELOC(ring, control_ptr(fd6_context(ctx), flush_base[i]));
 
 		so->reset &= ~(1 << i);
 
@@ -1187,8 +1187,8 @@ fd6_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
 	for (i = 0; i < sizedwords; i++) {
 		OUT_PKT7(ring, CP_MEM_TO_MEM, 5);
 		OUT_RING(ring, 0x00000000);
-		OUT_RELOCW(ring, dst_bo, dst_off, 0, 0);
-		OUT_RELOC (ring, src_bo, src_off, 0, 0);
+		OUT_RELOC(ring, dst_bo, dst_off, 0, 0);
+		OUT_RELOC(ring, src_bo, src_off, 0, 0);
 
 		dst_off += 4;
 		src_off += 4;

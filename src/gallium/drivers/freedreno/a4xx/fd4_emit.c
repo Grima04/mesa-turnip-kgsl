@@ -107,7 +107,7 @@ fd4_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean writ
 	for (i = 0; i < num; i++) {
 		if (prscs[i]) {
 			if (write) {
-				OUT_RELOCW(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
+				OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
 			} else {
 				OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
 			}
@@ -949,8 +949,8 @@ fd4_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
 	for (i = 0; i < sizedwords; i++) {
 		OUT_PKT3(ring, CP_MEM_TO_MEM, 3);
 		OUT_RING(ring, 0x00000000);
-		OUT_RELOCW(ring, dst_bo, dst_off, 0, 0);
-		OUT_RELOC (ring, src_bo, src_off, 0, 0);
+		OUT_RELOC(ring, dst_bo, dst_off, 0, 0);
+		OUT_RELOC(ring, src_bo, src_off, 0, 0);
 
 		dst_off += 4;
 		src_off += 4;

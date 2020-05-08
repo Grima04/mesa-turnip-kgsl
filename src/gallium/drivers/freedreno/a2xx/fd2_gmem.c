@@ -109,7 +109,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, uint32_t base,
 	OUT_PKT3(ring, CP_SET_CONSTANT, 5);
 	OUT_RING(ring, CP_REG(REG_A2XX_RB_COPY_CONTROL));
 	OUT_RING(ring, 0x00000000);             /* RB_COPY_CONTROL */
-	OUT_RELOCW(ring, rsc->bo, offset, 0, 0);     /* RB_COPY_DEST_BASE */
+	OUT_RELOC(ring, rsc->bo, offset, 0, 0);     /* RB_COPY_DEST_BASE */
 	OUT_RING(ring, pitch >> 5); /* RB_COPY_DEST_PITCH */
 	OUT_RING(ring,                          /* RB_COPY_DEST_INFO */
 			A2XX_RB_COPY_DEST_INFO_FORMAT(fd2_pipe2color(format)) |
@@ -452,7 +452,7 @@ fd2_emit_sysmem_prep(struct fd_batch *batch)
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_RB_COLOR_INFO));
-	OUT_RELOCW(ring, rsc->bo, offset,
+	OUT_RELOC(ring, rsc->bo, offset,
 		COND(!rsc->layout.tile_mode, A2XX_RB_COLOR_INFO_LINEAR) |
 		A2XX_RB_COLOR_INFO_SWAP(fmt2swap(psurf->format)) |
 		A2XX_RB_COLOR_INFO_FORMAT(fd2_pipe2color(psurf->format)), 0);
@@ -601,7 +601,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 			 * .z: 0x4B00D000 (?)
 			 * .w: 0x4B000000 (?) | max_index (?)
 			*/
-			OUT_RELOCW(ring, ctx->vsc_pipe_bo[i], 0, 0x40000000, -2);
+			OUT_RELOC(ring, ctx->vsc_pipe_bo[i], 0, 0x40000000, -2);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x4B00D000);
 			OUT_RING(ring, 0x4B000000 | bo_size);

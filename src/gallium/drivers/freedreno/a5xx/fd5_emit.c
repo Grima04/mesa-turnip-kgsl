@@ -112,7 +112,7 @@ fd5_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean writ
 	for (i = 0; i < num; i++) {
 		if (prscs[i]) {
 			if (write) {
-				OUT_RELOCW(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
+				OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
 			} else {
 				OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
 			}
@@ -468,7 +468,7 @@ emit_ssbos(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 		if (buf->buffer) {
 			struct fd_resource *rsc = fd_resource(buf->buffer);
-			OUT_RELOCW(ring, rsc->bo, buf->buffer_offset, 0, 0);
+			OUT_RELOC(ring, rsc->bo, buf->buffer_offset, 0, 0);
 		} else {
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
@@ -740,7 +740,7 @@ fd5_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 			OUT_PKT4(ring, REG_A5XX_VPC_SO_BUFFER_BASE_LO(i), 3);
 			/* VPC_SO[i].BUFFER_BASE_LO: */
-			OUT_RELOCW(ring, fd_resource(target->buffer)->bo, 0, 0, 0);
+			OUT_RELOC(ring, fd_resource(target->buffer)->bo, 0, 0, 0);
 			OUT_RING(ring, target->buffer_size + offset);
 
 			OUT_PKT4(ring, REG_A5XX_VPC_SO_BUFFER_OFFSET(i), 3);
@@ -749,7 +749,7 @@ fd5_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			// TODO just give hw a dummy addr for now.. we should
 			// be using this an then CP_MEM_TO_REG to set the
 			// VPC_SO[i].BUFFER_OFFSET for the next draw..
-			OUT_RELOCW(ring, fd5_context(ctx)->blit_mem, 0x100, 0, 0);
+			OUT_RELOC(ring, fd5_context(ctx)->blit_mem, 0x100, 0, 0);
 
 			emit->streamout_mask |= (1 << i);
 		}
@@ -1143,8 +1143,8 @@ fd5_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
 	for (i = 0; i < sizedwords; i++) {
 		OUT_PKT7(ring, CP_MEM_TO_MEM, 5);
 		OUT_RING(ring, 0x00000000);
-		OUT_RELOCW(ring, dst_bo, dst_off, 0, 0);
-		OUT_RELOC (ring, src_bo, src_off, 0, 0);
+		OUT_RELOC(ring, dst_bo, dst_off, 0, 0);
+		OUT_RELOC(ring, src_bo, src_off, 0, 0);
 
 		dst_off += 4;
 		src_off += 4;

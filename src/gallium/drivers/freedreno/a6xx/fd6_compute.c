@@ -156,7 +156,7 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info)
 		OUT_PKT7(ring, CP_NOP, 2 * nglobal);
 		foreach_bit(i, ctx->global_bindings.enabled_mask) {
 			struct pipe_resource *prsc = ctx->global_bindings.buf[i];
-			OUT_RELOCW(ring, fd_resource(prsc)->bo, 0, 0, 0);
+			OUT_RELOC(ring, fd_resource(prsc)->bo, 0, 0, 0);
 		}
 	}
 

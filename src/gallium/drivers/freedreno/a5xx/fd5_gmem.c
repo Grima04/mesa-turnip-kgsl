@@ -109,7 +109,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 			OUT_RING(ring, 0x00000000);     /* RB_MRT[i].BASE_HI */
 		} else {
 			debug_assert((offset + size) <= fd_bo_size(rsc->bo));
-			OUT_RELOCW(ring, rsc->bo, offset, 0, 0);  /* BASE_LO/HI */
+			OUT_RELOC(ring, rsc->bo, offset, 0, 0);  /* BASE_LO/HI */
 		}
 
 		OUT_PKT4(ring, REG_A5XX_SP_FS_MRT_REG(i), 1);
@@ -155,7 +155,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 			OUT_RING(ring, gmem->zsbuf_base[0]); /* RB_DEPTH_BUFFER_BASE_LO */
 			OUT_RING(ring, 0x00000000);          /* RB_DEPTH_BUFFER_BASE_HI */
 		} else {
-			OUT_RELOCW(ring, rsc->bo, 0, 0, 0);  /* RB_DEPTH_BUFFER_BASE_LO/HI */
+			OUT_RELOC(ring, rsc->bo, 0, 0, 0);  /* RB_DEPTH_BUFFER_BASE_LO/HI */
 		}
 		OUT_RING(ring, A5XX_RB_DEPTH_BUFFER_PITCH(stride));
 		OUT_RING(ring, A5XX_RB_DEPTH_BUFFER_ARRAY_PITCH(size));
@@ -170,11 +170,11 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 		if (rsc->lrz) {
 			OUT_PKT4(ring, REG_A5XX_GRAS_LRZ_BUFFER_BASE_LO, 3);
-			OUT_RELOCW(ring, rsc->lrz, 0x1000, 0, 0);
+			OUT_RELOC(ring, rsc->lrz, 0x1000, 0, 0);
 			OUT_RING(ring, A5XX_GRAS_LRZ_BUFFER_PITCH(rsc->lrz_pitch));
 
 			OUT_PKT4(ring, REG_A5XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO, 2);
-			OUT_RELOCW(ring, rsc->lrz, 0, 0, 0);
+			OUT_RELOC(ring, rsc->lrz, 0, 0, 0);
 		} else {
 			OUT_PKT4(ring, REG_A5XX_GRAS_LRZ_BUFFER_BASE_LO, 3);
 			OUT_RING(ring, 0x00000000);
@@ -202,7 +202,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 				OUT_RING(ring, gmem->zsbuf_base[1]);  /* RB_STENCIL_BASE_LO */
 				OUT_RING(ring, 0x00000000);           /* RB_STENCIL_BASE_HI */
 			} else {
-				OUT_RELOCW(ring, rsc->stencil->bo, 0, 0, 0);  /* RB_STENCIL_BASE_LO/HI */
+				OUT_RELOC(ring, rsc->stencil->bo, 0, 0, 0);  /* RB_STENCIL_BASE_LO/HI */
 			}
 			OUT_RING(ring, A5XX_RB_STENCIL_PITCH(stride));
 			OUT_RING(ring, A5XX_RB_STENCIL_ARRAY_PITCH(size));
@@ -269,7 +269,7 @@ update_vsc_pipe(struct fd_batch *batch)
 	OUT_PKT4(ring, REG_A5XX_VSC_BIN_SIZE, 3);
 	OUT_RING(ring, A5XX_VSC_BIN_SIZE_WIDTH(gmem->bin_w) |
 			A5XX_VSC_BIN_SIZE_HEIGHT(gmem->bin_h));
-	OUT_RELOCW(ring, fd5_ctx->vsc_size_mem, 0, 0, 0); /* VSC_SIZE_ADDRESS_LO/HI */
+	OUT_RELOC(ring, fd5_ctx->vsc_size_mem, 0, 0, 0); /* VSC_SIZE_ADDRESS_LO/HI */
 
 	OUT_PKT4(ring, REG_A5XX_UNKNOWN_0BC5, 2);
 	OUT_RING(ring, 0x00000000);   /* UNKNOWN_0BC5 */
@@ -290,7 +290,7 @@ update_vsc_pipe(struct fd_batch *batch)
 			ctx->vsc_pipe_bo[i] = fd_bo_new(ctx->dev, 0x20000,
 					DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_pipe[%u]", i);
 		}
-		OUT_RELOCW(ring, ctx->vsc_pipe_bo[i], 0, 0, 0);     /* VSC_PIPE_DATA_ADDRESS[i].LO/HI */
+		OUT_RELOC(ring, ctx->vsc_pipe_bo[i], 0, 0, 0);     /* VSC_PIPE_DATA_ADDRESS[i].LO/HI */
 	}
 
 	OUT_PKT4(ring, REG_A5XX_VSC_PIPE_DATA_LENGTH_REG(0), 16);
@@ -351,7 +351,7 @@ emit_binning_pass(struct fd_batch *batch)
 
 	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
 	OUT_RING(ring, CACHE_FLUSH_TS);
-	OUT_RELOCW(ring, fd5_context(ctx)->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
+	OUT_RELOC(ring, fd5_context(ctx)->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
 	OUT_RING(ring, 0x00000000);
 
 	// TODO CP_COND_WRITE's for all the vsc buffers (check for overflow??)
@@ -634,7 +634,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, uint32_t base,
 	OUT_PKT4(ring, REG_A5XX_RB_RESOLVE_CNTL_3, 5);
 	OUT_RING(ring, 0x00000004 |   /* XXX RB_RESOLVE_CNTL_3 */
 			COND(tiled, A5XX_RB_RESOLVE_CNTL_3_TILED));
-	OUT_RELOCW(ring, rsc->bo, offset, 0, 0);     /* RB_BLIT_DST_LO/HI */
+	OUT_RELOC(ring, rsc->bo, offset, 0, 0);     /* RB_BLIT_DST_LO/HI */
 	OUT_RING(ring, A5XX_RB_BLIT_DST_PITCH(slice->pitch));
 	OUT_RING(ring, A5XX_RB_BLIT_DST_ARRAY_PITCH(slice->size0));
 
@@ -776,7 +776,7 @@ fd5_emit_sysmem_fini(struct fd_batch *batch)
 
 	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
 	OUT_RING(ring, PC_CCU_FLUSH_COLOR_TS);
-	OUT_RELOCW(ring, fd5_ctx->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
+	OUT_RELOC(ring, fd5_ctx->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
 	OUT_RING(ring, 0x00000000);
 }
 

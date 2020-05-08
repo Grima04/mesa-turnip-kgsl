@@ -158,7 +158,7 @@ fd6_event_write(struct fd_batch *batch, struct fd_ringbuffer *ring,
 	if (timestamp) {
 		struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 		seqno = ++fd6_ctx->seqno;
-		OUT_RELOCW(ring, control_ptr(fd6_ctx, seqno));  /* ADDR_LO/HI */
+		OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));  /* ADDR_LO/HI */
 		OUT_RING(ring, seqno);
 	}
 

@@ -289,7 +289,7 @@ emit_blit_buffer(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, A5XX_RB_2D_DST_INFO_COLOR_FORMAT(RB5_R8_UNORM) |
 				A5XX_RB_2D_DST_INFO_TILE_MODE(TILE5_LINEAR) |
 				A5XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
-		OUT_RELOCW(ring, dst->bo, doff, 0, 0);   /* RB_2D_DST_LO/HI */
+		OUT_RELOC(ring, dst->bo, doff, 0, 0);   /* RB_2D_DST_LO/HI */
 		OUT_RING(ring, A5XX_RB_2D_DST_SIZE_PITCH(p) |
 				A5XX_RB_2D_DST_SIZE_ARRAY_PITCH(128));
 		OUT_RING(ring, 0x00000000);
@@ -419,7 +419,7 @@ emit_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, A5XX_RB_2D_DST_INFO_COLOR_FORMAT(dfmt) |
 				A5XX_RB_2D_DST_INFO_TILE_MODE(dtile) |
 				A5XX_RB_2D_DST_INFO_COLOR_SWAP(dswap));
-		OUT_RELOCW(ring, dst->bo, doff, 0, 0);   /* RB_2D_DST_LO/HI */
+		OUT_RELOC(ring, dst->bo, doff, 0, 0);   /* RB_2D_DST_LO/HI */
 		OUT_RING(ring, A5XX_RB_2D_DST_SIZE_PITCH(dpitch) |
 				A5XX_RB_2D_DST_SIZE_ARRAY_PITCH(dsize));
 		OUT_RING(ring, 0x00000000);

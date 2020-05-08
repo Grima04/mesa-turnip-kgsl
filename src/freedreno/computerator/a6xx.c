@@ -258,7 +258,7 @@ cs_ibo_emit(struct fd_ringbuffer *ring, struct fd_submit *submit,
 			A6XX_IBO_2_UNK4 | A6XX_IBO_2_UNK31 |
 			A6XX_IBO_2_TYPE(A6XX_TEX_1D));
 		OUT_RING(state, A6XX_IBO_3_ARRAY_PITCH(0));
-		OUT_RELOCW(state, kernel->bufs[i], 0, 0, 0);
+		OUT_RELOC(state, kernel->bufs[i], 0, 0, 0);
 		OUT_RING(state, 0x00000000);
 		OUT_RING(state, 0x00000000);
 		OUT_RING(state, 0x00000000);
@@ -300,7 +300,7 @@ event_write(struct fd_ringbuffer *ring, struct kernel *kernel,
 		struct ir3_kernel *ir3_kernel = to_ir3_kernel(kernel);
 		struct a6xx_backend *a6xx_backend = to_a6xx_backend(ir3_kernel->backend);
 		seqno = ++a6xx_backend->seqno;
-		OUT_RELOCW(ring, control_ptr(a6xx_backend, seqno));  /* ADDR_LO/HI */
+		OUT_RELOC(ring, control_ptr(a6xx_backend, seqno));  /* ADDR_LO/HI */
 		OUT_RING(ring, seqno);
 	}
 
@@ -398,7 +398,7 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3], struct fd_submit *submit
 			OUT_PKT7(ring, CP_REG_TO_MEM, 3);
 			OUT_RING(ring, CP_REG_TO_MEM_0_64B |
 				CP_REG_TO_MEM_0_REG(counter->counter_reg_lo));
-			OUT_RELOCW(ring, query_sample_idx(a6xx_backend, i, start));
+			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, start));
 		}
 	}
 
@@ -418,7 +418,7 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3], struct fd_submit *submit
 			OUT_PKT7(ring, CP_REG_TO_MEM, 3);
 			OUT_RING(ring, CP_REG_TO_MEM_0_64B |
 				CP_REG_TO_MEM_0_REG(counter->counter_reg_lo));
-			OUT_RELOCW(ring, query_sample_idx(a6xx_backend, i, stop));
+			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, stop));
 		}
 
 		/* and compute the result: */
@@ -427,7 +427,7 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3], struct fd_submit *submit
 			OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
 			OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE |
 					CP_MEM_TO_MEM_0_NEG_C);
-			OUT_RELOCW(ring, query_sample_idx(a6xx_backend, i, result));     /* dst */
+			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, result));     /* dst */
 			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, result));      /* srcA */
 			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, stop));        /* srcB */
 			OUT_RELOC(ring, query_sample_idx(a6xx_backend, i, start));       /* srcC */

@@ -255,8 +255,6 @@ OUT_RELOC(struct fd_ringbuffer *ring, struct fd_bo *bo,
 	});
 }
 
-#define OUT_RELOCW OUT_RELOC
-
 static inline void
 OUT_RB(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
 {

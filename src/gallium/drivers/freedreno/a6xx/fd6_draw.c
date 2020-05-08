@@ -410,7 +410,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(FMT6_16_UNORM) |
 			A6XX_RB_2D_DST_INFO_TILE_MODE(TILE6_LINEAR) |
 			A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
-	OUT_RELOCW(ring, zsbuf->lrz, 0, 0, 0);
+	OUT_RELOC(ring, zsbuf->lrz, 0, 0, 0);
 	OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(zsbuf->lrz_pitch * 2));
 	OUT_RING(ring, 0x00000000);
 	OUT_RING(ring, 0x00000000);

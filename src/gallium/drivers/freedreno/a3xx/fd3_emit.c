@@ -112,7 +112,7 @@ fd3_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean writ
 	for (i = 0; i < num; i++) {
 		if (prscs[i]) {
 			if (write) {
-				OUT_RELOCW(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
+				OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
 			} else {
 				OUT_RELOC(ring, fd_resource(prscs[i])->bo, offsets[i], 0, 0);
 			}

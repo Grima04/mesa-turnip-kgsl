@@ -58,7 +58,7 @@ fd6_emit_flag_reference(struct fd_ringbuffer *ring, struct fd_resource *rsc,
 		int level, int layer)
 {
 	if (fd_resource_ubwc_enabled(rsc, level)) {
-		OUT_RELOCW(ring, rsc->bo, fd_resource_ubwc_offset(rsc, level, layer), 0, 0);
+		OUT_RELOC(ring, rsc->bo, fd_resource_ubwc_offset(rsc, level, layer), 0, 0);
 		OUT_RING(ring,
 				A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(rsc->layout.ubwc_slices[level].pitch) |
 				A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->layout.ubwc_layer_size >> 2));
@@ -421,7 +421,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 
 	/* Clear vsc_scratch: */
 	OUT_PKT7(ring, CP_MEM_WRITE, 3);
-	OUT_RELOCW(ring, control_ptr(fd6_ctx, vsc_scratch));
+	OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));
 	OUT_RING(ring, 0x0);
 
 	/* Check for overflow, write vsc_scratch if detected: */
@@ -433,7 +433,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 		OUT_RING(ring, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
 		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_draw_strm_pitch));
 		OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
-		OUT_RELOCW(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
+		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
 		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(1 + fd6_ctx->vsc_draw_strm_pitch));
 
 		OUT_PKT7(ring, CP_COND_WRITE5, 8);
@@ -443,7 +443,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 		OUT_RING(ring, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
 		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_prim_strm_pitch));
 		OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
-		OUT_RELOCW(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
+		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
 		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(3 + fd6_ctx->vsc_prim_strm_pitch));
 	}
 
@@ -487,7 +487,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 		OUT_PKT7(ring, CP_REG_TO_MEM, 3);
 		OUT_RING(ring, CP_REG_TO_MEM_0_REG(OVERFLOW_FLAG_REG) |
 				CP_REG_TO_MEM_0_CNT(1 - 1));
-		OUT_RELOCW(ring, control_ptr(fd6_ctx, vsc_overflow));
+		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_overflow));
 
 		OUT_PKT4(ring, OVERFLOW_FLAG_REG, 1);
 		OUT_RING(ring, 0x0);
@@ -1461,11 +1461,11 @@ setup_tess_buffers(struct fd_batch *batch, struct fd_ringbuffer *ring)
 			DRM_FREEDRENO_GEM_TYPE_KMEM, "tessparam");
 
 	OUT_PKT4(ring, REG_A6XX_PC_TESSFACTOR_ADDR_LO, 2);
-	OUT_RELOCW(ring, batch->tessfactor_bo, 0, 0, 0);
+	OUT_RELOC(ring, batch->tessfactor_bo, 0, 0, 0);
 
 	batch->tess_addrs_constobj->cur = batch->tess_addrs_constobj->start;
-	OUT_RELOCW(batch->tess_addrs_constobj, batch->tessparam_bo, 0, 0, 0);
-	OUT_RELOCW(batch->tess_addrs_constobj, batch->tessfactor_bo, 0, 0, 0);
+	OUT_RELOC(batch->tess_addrs_constobj, batch->tessparam_bo, 0, 0, 0);
+	OUT_RELOC(batch->tess_addrs_constobj, batch->tessfactor_bo, 0, 0, 0);
 }
 
 static void
