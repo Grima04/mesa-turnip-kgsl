@@ -535,19 +535,16 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
                 assert(src_bitsize == dst_bitsize); \
 		break;
 
+#define ALU_CHECK_CMP(sext) \
+                assert(src_bitsize == 16 || src_bitsize == 32); \
+                assert(dst_bitsize == 16 || dst_bitsize == 32); \
+
 #define ALU_CASE_BCAST(nir, _op, count) \
         case nir_op_##nir: \
                 op = midgard_alu_op_##_op; \
                 broadcast_swizzle = count; \
-                assert(src_bitsize == dst_bitsize); \
+                ALU_CHECK_CMP(true); \
                 break;
-
-#define ALU_CHECK_CMP(sext) \
-               if (src_bitsize == 16 && dst_bitsize == 32) { \
-                       /* inferred */ \
-                } else { \
-                        assert(src_bitsize == dst_bitsize); \
-                } \
 
 #define ALU_CASE_CMP(nir, _op, sext) \
 	case nir_op_##nir: \
@@ -719,12 +716,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         midgard_reg_mode reg_mode =
                 reg_mode_for_nir(instr);
 
-        /* Do we need a destination override? Used for inline
-         * type conversion */
-
-        midgard_dest_override dest_override =
-                midgard_dest_override_none;
-
         /* Should we swap arguments? */
         bool flip_src12 = false;
 
@@ -819,19 +810,19 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 ALU_CASE_BCAST(b32all_fequal2, fball_eq, 2);
                 ALU_CASE_BCAST(b32all_fequal3, fball_eq, 3);
-                ALU_CASE(b32all_fequal4, fball_eq);
+                ALU_CASE_CMP(b32all_fequal4, fball_eq, true);
 
                 ALU_CASE_BCAST(b32any_fnequal2, fbany_neq, 2);
                 ALU_CASE_BCAST(b32any_fnequal3, fbany_neq, 3);
-                ALU_CASE(b32any_fnequal4, fbany_neq);
+                ALU_CASE_CMP(b32any_fnequal4, fbany_neq, true);
 
                 ALU_CASE_BCAST(b32all_iequal2, iball_eq, 2);
                 ALU_CASE_BCAST(b32all_iequal3, iball_eq, 3);
-                ALU_CASE(b32all_iequal4, iball_eq);
+                ALU_CASE_CMP(b32all_iequal4, iball_eq, true);
 
                 ALU_CASE_BCAST(b32any_inequal2, ibany_neq, 2);
                 ALU_CASE_BCAST(b32any_inequal3, ibany_neq, 3);
-                ALU_CASE(b32any_inequal4, ibany_neq);
+                ALU_CASE_CMP(b32any_inequal4, ibany_neq, true);
 
                 /* Source mods will be shoved in later */
                 ALU_CASE(fabs, fmov);
@@ -863,13 +854,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         op = midgard_alu_op_fmov;
                 else
                         op = midgard_alu_op_imov;
-
-                if (dst_bitsize == (src_bitsize * 2)) {
-                        /* inferred */
-                } else if (src_bitsize == (dst_bitsize * 2)) {
-                        /* Converting down */
-                        dest_override = midgard_dest_override_lower;
-                }
 
                 break;
         }
@@ -1020,7 +1004,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         midgard_vector_alu alu = {
                 .op = op,
                 .reg_mode = reg_mode,
-                .dest_override = dest_override,
                 .outmod = outmod,
         };
 

@@ -204,7 +204,6 @@ mir_is_scalar(midgard_instruction *ains)
         /* Only 16/32-bit can run on a scalar unit */
         could_scalar &= ains->alu.reg_mode != midgard_reg_mode_8;
         could_scalar &= ains->alu.reg_mode != midgard_reg_mode_64;
-        could_scalar &= ains->alu.dest_override == midgard_dest_override_none;
 
         if (ains->src[0] != ~0)
                 could_scalar &= (sz0 == 16) || (sz0 == 32);

@@ -202,22 +202,20 @@ mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask)
 /* Checks if we should use an upper destination override, rather than the lower
  * one in the IR. Returns zero if no, returns the bytes to shift otherwise */
 
-unsigned
-mir_upper_override(midgard_instruction *ins)
+signed
+mir_upper_override(midgard_instruction *ins, unsigned inst_size)
 {
-        /* If there is no override, there is no upper override, tautology */
-        if (ins->alu.dest_override == midgard_dest_override_none)
-                return 0;
+        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
 
-        /* Make sure we didn't already lower somehow */
-        assert(ins->alu.dest_override == midgard_dest_override_lower);
+        /* If the sizes are the same, there's nothing to override */
+        if (type_size == inst_size)
+                return -1;
 
         /* There are 16 bytes per vector, so there are (16/bytes)
          * components per vector. So the magic half is half of
          * (16/bytes), which simplifies to 8/bytes = 8 / (bits / 8) = 64 / bits
          * */
 
-        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
         unsigned threshold = 64 / type_size;
 
         /* How many components did we shift over? */

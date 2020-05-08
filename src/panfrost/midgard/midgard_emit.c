@@ -171,11 +171,16 @@ mir_pack_mask_alu(midgard_instruction *ins)
          * override to the lower or upper half, shifting the effective mask in
          * the latter, so AAAA.... becomes AAAA */
 
-        unsigned upper_shift = mir_upper_override(ins);
+        unsigned inst_size = 8 << ins->alu.reg_mode;
+        signed upper_shift = mir_upper_override(ins, inst_size);
 
-        if (upper_shift) {
+        if (upper_shift >= 0) {
                 effective >>= upper_shift;
-                ins->alu.dest_override = midgard_dest_override_upper;
+                ins->alu.dest_override = upper_shift ?
+                        midgard_dest_override_upper :
+                        midgard_dest_override_lower;
+        } else {
+                ins->alu.dest_override = midgard_dest_override_none;
         }
 
         if (ins->alu.reg_mode == midgard_reg_mode_32)
@@ -590,7 +595,13 @@ emit_binary_bundle(compiler_context *ctx,
 
                 ins->texture.type = bundle->tag;
                 ins->texture.next_type = next_tag;
-                ins->texture.mask = ins->mask;
+
+                signed override = mir_upper_override(ins, 32);
+
+                ins->texture.mask = override > 0 ?
+                        ins->mask >> override :
+                        ins->mask;
+
                 mir_pack_swizzle_tex(ins);
 
                 unsigned osz = nir_alu_type_get_type_size(ins->dest_type);
@@ -600,6 +611,7 @@ emit_binary_bundle(compiler_context *ctx,
                 assert(isz == 32 || isz == 16);
 
                 ins->texture.out_full = (osz == 32);
+                ins->texture.out_upper = override > 0;
                 ins->texture.in_reg_full = (isz == 32);
                 ins->texture.sampler_type = midgard_sampler_type(ins->dest_type);
 

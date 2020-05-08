@@ -500,7 +500,7 @@ uint16_t mir_from_bytemask(uint16_t bytemask, unsigned bits);
 uint16_t mir_bytemask(midgard_instruction *ins);
 uint16_t mir_round_bytemask_up(uint16_t mask, unsigned bits);
 void mir_set_bytemask(midgard_instruction *ins, uint16_t bytemask);
-unsigned mir_upper_override(midgard_instruction *ins);
+signed mir_upper_override(midgard_instruction *ins, unsigned inst_size);
 
 /* MIR printing */
 
@@ -534,7 +534,6 @@ v_mov(unsigned src, unsigned dest)
                 .alu = {
                         .op = midgard_alu_op_imov,
                         .reg_mode = midgard_reg_mode_32,
-                        .dest_override = midgard_dest_override_none,
                         .outmod = midgard_outmod_int_wrap
                 },
         };

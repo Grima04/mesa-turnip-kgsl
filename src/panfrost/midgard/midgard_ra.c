@@ -723,16 +723,14 @@ install_registers_instr(
                 struct phys_reg offset = index_to_reg(ctx, l, ins->src[3], src_size[3]);
 
                 /* First, install the texture coordinate */
-                ins->texture.in_reg_full = 1;
-                ins->texture.in_reg_upper = 0;
                 ins->texture.in_reg_select = coord.reg & 1;
                 offset_swizzle(ins->swizzle[1], coord.offset, coord.size, dest.size, 0);
 
                 /* Next, install the destination */
-                ins->texture.out_full = 1;
-                ins->texture.out_upper = 0;
                 ins->texture.out_reg_select = dest.reg & 1;
-                offset_swizzle(ins->swizzle[0], 0, 4, dest.size, dest.offset);
+                offset_swizzle(ins->swizzle[0], 0, 4, dest.size,
+                                dest_size == 2 ? dest.offset % 8 :
+                                dest.offset);
                 mir_set_bytemask(ins, mir_bytemask(ins) << dest.offset);
 
                 /* If there is a register LOD/bias, use it */
