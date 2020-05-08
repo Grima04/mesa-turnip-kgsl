@@ -707,11 +707,16 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
 static bool
 load_device_extensions(struct zink_screen *screen)
 {
-   if (screen->have_KHR_external_memory_fd) {
-      screen->vk_GetMemoryFdKHR = (PFN_vkGetMemoryFdKHR)vkGetDeviceProcAddr(screen->dev, "vkGetMemoryFdKHR");
-      if (!screen->vk_GetMemoryFdKHR)
-         return false;
-   }
+#define GET_PROC_ADDR(x) do {                                               \
+      screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x); \
+      if (!screen->vk_##x)                                                  \
+         return false;                                                      \
+   } while (0)
+
+   if (screen->have_KHR_external_memory_fd)
+      GET_PROC_ADDR(GetMemoryFdKHR);
+
+#undef GET_PROC_ADDR
 
    return true;
 }
