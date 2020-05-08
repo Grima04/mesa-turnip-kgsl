@@ -581,7 +581,7 @@ nir_accepts_inot(nir_op op, unsigned src)
 {
         switch (op) {
         case nir_op_ior:
-        case nir_op_iand:
+        case nir_op_iand: /* TODO: b2f16 */
         case nir_op_ixor:
                 return true;
         case nir_op_b32csel:
@@ -766,6 +766,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                  */
 
                 ALU_CASE_CMP(b2f32, iand, true);
+                ALU_CASE_CMP(b2f16, iand, true);
                 ALU_CASE_CMP(b2i32, iand, true);
 
                 /* Likewise, we don't have a dedicated f2b32 instruction, but
@@ -1016,13 +1017,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         ins.alu = alu;
 
-        /* Arrange for creation of iandnot/iornot */
-        if (ins.src_invert[0] && !ins.src_invert[1]) {
-                mir_flip(&ins);
-                ins.src_invert[0] = false;
-                ins.src_invert[1] = true;
-        }
-
         /* Late fixup for emulated instructions */
 
         if (instr->op == nir_op_b2f32 || instr->op == nir_op_b2i32) {
@@ -1043,6 +1037,14 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 for (unsigned c = 0; c < 16; ++c)
                         ins.swizzle[1][c] = 0;
+        } else if (instr->op == nir_op_b2f16) {
+                ins.src[1] = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
+                ins.src_types[1] = nir_type_float16;
+                ins.has_constants = true;
+                ins.constants.i16[0] = _mesa_float_to_half(1.0);
+
+                for (unsigned c = 0; c < 16; ++c)
+                        ins.swizzle[1][c] = 0;
         } else if (nr_inputs == 1 && !quirk_flipped_r24) {
                 /* Lots of instructions need a 0 plonked in */
                 ins.has_inline_constant = false;
@@ -1053,6 +1055,13 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 for (unsigned c = 0; c < 16; ++c)
                         ins.swizzle[1][c] = 0;
+        }
+
+        /* Arrange for creation of iandnot/iornot */
+        if (ins.src_invert[0] && !ins.src_invert[1]) {
+                mir_flip(&ins);
+                ins.src_invert[0] = false;
+                ins.src_invert[1] = true;
         }
 
         if ((opcode_props & UNITS_ALL) == UNIT_VLUT) {
