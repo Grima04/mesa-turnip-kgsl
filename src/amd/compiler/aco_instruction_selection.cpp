@@ -4213,10 +4213,12 @@ bool store_output_to_temps(isel_context *ctx, nir_intrinsic_instr *instr)
    if (instr->src[0].ssa->bit_size == 64)
       write_mask = widen_mask(write_mask, 2);
 
+   RegClass rc = instr->src[0].ssa->bit_size == 16 ? v2b : v1;
+
    for (unsigned i = 0; i < 8; ++i) {
       if (write_mask & (1 << i)) {
          ctx->outputs.mask[idx / 4u] |= 1 << (idx % 4u);
-         ctx->outputs.temps[idx] = emit_extract_vector(ctx, src, i, v1);
+         ctx->outputs.temps[idx] = emit_extract_vector(ctx, src, i, rc);
       }
       idx++;
    }
