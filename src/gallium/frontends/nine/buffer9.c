@@ -385,7 +385,7 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
      * with the secondary pipe, instead of waiting on the main pipe. */
     if (Flags & D3DLOCK_DISCARD && device->csmt_active) {
         struct pipe_screen *screen = NineDevice9_GetScreen(device);
-        struct pipe_resource *new_res = screen->resource_create(screen, &This->base.info);
+        struct pipe_resource *new_res = nine_resource_create_with_retry(device, screen, &This->base.info);
         if (new_res) {
             /* Use the new resource */
             pipe_resource_reference(&This->base.resource, new_res);

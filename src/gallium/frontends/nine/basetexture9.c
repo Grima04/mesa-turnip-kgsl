@@ -446,7 +446,7 @@ NineBaseTexture9_CreatePipeResource( struct NineBaseTexture9 *This,
             return D3D_OK;
     }
 
-    res = screen->resource_create(screen, &templ);
+    res = nine_resource_create_with_retry(This->base.base.device, screen, &templ);
     if (!res)
         return D3DERR_OUTOFVIDEOMEMORY;
     This->base.resource = res;
@@ -597,6 +597,7 @@ NineBaseTexture9_UnLoad( struct NineBaseTexture9 *This )
         This->managed.lod_resident == -1)
         return;
 
+    DBG("This=%p, releasing resource\n", This);
     pipe_resource_reference(&This->base.resource, NULL);
     This->managed.lod_resident = -1;
     This->managed.dirty = TRUE;

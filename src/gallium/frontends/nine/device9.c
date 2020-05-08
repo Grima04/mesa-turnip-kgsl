@@ -83,6 +83,28 @@ static void nine_setup_fpu(void)
 
 #endif
 
+struct pipe_resource *
+nine_resource_create_with_retry( struct NineDevice9 *This,
+                                 struct pipe_screen *screen,
+                                 const struct pipe_resource *templat )
+{
+    struct pipe_resource *res;
+    res = screen->resource_create(screen, templat);
+    if (res)
+        return res;
+    /* Allocation failed, retry after freeing some resources
+     * Note: Shouldn't be called from the worker thread */
+    if (!This)
+        return NULL;
+    /* Evict resources we can evict */
+    NineDevice9_EvictManagedResourcesInternal(This);
+    /* Execute anything pending, such that some
+     * deleted resources can be actually freed */
+    nine_csmt_process(This);
+    /* We could also finish the context, if needed */
+    return screen->resource_create(screen, templat);
+}
+
 void
 NineDevice9_SetDefaultState( struct NineDevice9 *This, boolean is_reset )
 {
@@ -650,6 +672,25 @@ UINT NINE_WINAPI
 NineDevice9_GetAvailableTextureMem( struct NineDevice9 *This )
 {
     return This->available_texture_mem;
+}
+
+void
+NineDevice9_EvictManagedResourcesInternal( struct NineDevice9 *This )
+{
+    struct NineBaseTexture9 *tex;
+
+    DBG("This=%p\n", This);
+
+    /* This function is called internally when an allocation fails.
+     * We are supposed to release old unused managed textures/buffers,
+     * until we have enough space for the allocation.
+     * For now just release everything, except the bound textures,
+     * as this function can be called when uploading bound textures.
+     */
+    LIST_FOR_EACH_ENTRY(tex, &This->managed_textures, list2) {
+        if (!tex->bind_count)
+            NineBaseTexture9_UnLoad(tex);
+    }
 }
 
 HRESULT NINE_WINAPI

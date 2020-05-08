@@ -80,17 +80,27 @@ NineResource9_ctor( struct NineResource9 *This,
             This->size = util_resource_size(&This->info);
 
             p_atomic_add(&This->base.device->available_texture_mem, -This->size);
-            if (This->base.device->available_texture_mem <=
+            /* Before failing allocation, evict MANAGED memory */
+            if (This->base.device &&
+                p_atomic_read(&This->base.device->available_texture_mem) <=
+                    This->base.device->available_texture_limit)
+                NineDevice9_EvictManagedResourcesInternal(This->base.device);
+            if (p_atomic_read(&This->base.device->available_texture_mem) <=
                     This->base.device->available_texture_limit) {
+                DBG("Memory allocation failure: software limit\n");
                 return D3DERR_OUTOFVIDEOMEMORY;
             }
         }
 
         DBG("(%p) Creating pipe_resource.\n", This);
-        This->resource = screen->resource_create(screen, &This->info);
+        This->resource = nine_resource_create_with_retry(This->base.device, screen, &This->info);
         if (!This->resource)
             return D3DERR_OUTOFVIDEOMEMORY;
     }
+
+    DBG("Current texture memory count: (%d/%d)KB\n",
+        (int)(This->base.device->available_texture_mem >> 10),
+        (int)(This->base.device->available_texture_limit >> 10));
 
     This->type = Type;
     This->pool = Pool;

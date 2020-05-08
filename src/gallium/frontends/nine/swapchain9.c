@@ -363,7 +363,7 @@ NineSwapChain9_Resize( struct NineSwapChain9 *This,
                                                    tmplt.bind, FALSE, FALSE);
         if (tmplt.format == PIPE_FORMAT_NONE)
             return D3DERR_INVALIDCALL;
-        resource = This->screen->resource_create(This->screen, &tmplt);
+        resource = nine_resource_create_with_retry(pDevice, This->screen, &tmplt);
         if (!resource) {
             DBG("Failed to create pipe_resource.\n");
             return D3DERR_OUTOFVIDEOMEMORY;
@@ -397,7 +397,7 @@ NineSwapChain9_Resize( struct NineSwapChain9 *This,
                 tmplt.bind |= PIPE_BIND_LINEAR;
             if (pParams->SwapEffect != D3DSWAPEFFECT_DISCARD)
                 tmplt.bind |= PIPE_BIND_RENDER_TARGET;
-            resource = This->screen->resource_create(This->screen, &tmplt);
+            resource = nine_resource_create_with_retry(pDevice, This->screen, &tmplt);
             pipe_resource_reference(&(This->present_buffers[i]), resource);
         }
         This->present_handles[i] = D3DWindowBuffer_create(This, resource, depth, false);
@@ -421,7 +421,7 @@ NineSwapChain9_Resize( struct NineSwapChain9 *This,
             return D3DERR_INVALIDCALL;
 
         if (This->zsbuf) {
-            resource = This->screen->resource_create(This->screen, &tmplt);
+            resource = nine_resource_create_with_retry(pDevice, This->screen, &tmplt);
             if (!resource) {
                 DBG("Failed to create pipe_resource for depth buffer.\n");
                 return D3DERR_OUTOFVIDEOMEMORY;
@@ -606,7 +606,7 @@ create_present_buffer( struct NineSwapChain9 *This,
     tmplt.nr_samples = 0;
     if (This->actx->linear_framebuffer)
         tmplt.bind |= PIPE_BIND_LINEAR;
-    *resource = This->screen->resource_create(This->screen, &tmplt);
+    *resource = nine_resource_create_with_retry(This->base.device, This->screen, &tmplt);
 
     *present_handle = D3DWindowBuffer_create(This, *resource, 24, true);
 
