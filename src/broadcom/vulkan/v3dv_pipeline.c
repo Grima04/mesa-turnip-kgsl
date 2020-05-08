@@ -718,6 +718,14 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                 const struct v3dv_pipeline_layout *layout)
 {
    switch (instr->intrinsic) {
+   case nir_intrinsic_load_layer_id:
+      /* FIXME: if layered rendering gets supported, this would need a real
+       * lowering
+       */
+      nir_ssa_def_rewrite_uses(&instr->dest.ssa,
+                               nir_src_for_ssa(nir_imm_int(b, 0)));
+      nir_instr_remove(&instr->instr);
+      return true;
 
    case nir_intrinsic_load_push_constant:
       lower_load_push_constant(b, instr, pipeline);
