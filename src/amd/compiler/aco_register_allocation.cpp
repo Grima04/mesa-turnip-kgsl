@@ -551,7 +551,7 @@ bool get_regs_for_copies(ra_ctx& ctx,
                   PhysReg reg(def_reg_lo);
                   reg.reg_b += offset;
                   assert(!reg_file.test(reg, var.rc.bytes()));
-                  res = {reg, true};
+                  res = {reg, reg.byte() == 0 || instr_can_access_subdword(ctx, instr)};
                   break;
                }
             }
