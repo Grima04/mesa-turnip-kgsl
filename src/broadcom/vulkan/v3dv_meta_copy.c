@@ -857,6 +857,10 @@ emit_copy_image_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
 static bool
 copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                struct v3dv_image *dst,
@@ -897,7 +901,7 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
    if (!job)
-      return false;
+      return true;
 
    /* Handle copy to compressed image using compatible format */
    const uint32_t block_w = vk_format_get_blockwidth(dst->vk_format);
@@ -928,6 +932,10 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             const VkImageBlit *region,
             VkFilter filter);
 
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
 static bool
 copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_image *dst,
@@ -1030,10 +1038,14 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       .dstSubresource = region->dstSubresource,
       .dstOffsets = { dst_start, dst_end },
    };
-   return blit_shader(cmd_buffer,
-                      dst, format,
-                      src, format,
-                      &blit_region, VK_FILTER_NEAREST);
+   bool handled = blit_shader(cmd_buffer,
+                              dst, format,
+                              src, format,
+                              &blit_region, VK_FILTER_NEAREST);
+
+   /* We should have selected formats that we can blit */
+   assert(handled);
+   return handled;
 }
 
 void
@@ -1778,6 +1790,10 @@ emit_copy_buffer_to_image_rcl(struct v3dv_job *job,
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
 static bool
 copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_image *image,
@@ -1802,7 +1818,7 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
    if (!job)
-      return false;
+      return true;
 
    /* Handle copy to compressed format using a compatible format */
    const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
@@ -1824,12 +1840,18 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
 static bool
 copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                           struct v3dv_image *image,
                           struct v3dv_buffer *buffer,
                           const VkBufferImageCopy *region)
 {
+   bool handled = false;
+
    /* Generally, the bpp of the data in the buffer matches that of the
     * destination image. The exception is the case where we are uploading
     * stencil (8bpp) to a combined d24s8 image (32bpp).
@@ -1887,7 +1909,8 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          buffer_bpp = 1;
          break;
       default:
-         unreachable("Unsupported aspect");
+         unreachable("unsupported aspect");
+         return handled;
       };
       break;
    case 2:
@@ -1899,8 +1922,12 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       upload_format = VK_FORMAT_R8_UINT;
       break;
    default:
-      unreachable("unsupported bpp");
+      unreachable("unsupported bit-size");
+      return handled;
    }
+
+   /* We should be able to handle the blit if we reached here */
+   handled = true;
 
    /* Obtain the 2D buffer region spec */
    uint32_t buf_width, buf_height;
@@ -1958,7 +1985,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       VkResult result =
          v3dv_CreateImage(_device, &image_info, &device->alloc, &buffer_image);
       if (result != VK_SUCCESS)
-         return false;
+         return handled;
 
       v3dv_cmd_buffer_add_private_obj(
          cmd_buffer, (void *)buffer_image,
@@ -1975,7 +2002,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       };
       result = v3dv_AllocateMemory(_device, &alloc_info, &device->alloc, &mem);
       if (result != VK_SUCCESS)
-         return false;
+         return handled;
 
       v3dv_cmd_buffer_add_private_obj(
          cmd_buffer, (void *)mem,
@@ -1983,7 +2010,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
 
       result = v3dv_BindImageMemory(_device, buffer_image, mem, 0);
       if (result != VK_SUCCESS)
-         return false;
+         return handled;
 
       /* Upload buffer contents for the selected layer */
       VkDeviceSize buffer_offset =
@@ -2001,9 +2028,14 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          .imageOffset = { 0, 0, 0 },
          .imageExtent = { buf_width, buf_height, 1 }
       };
-      if (!copy_buffer_to_image_tlb(cmd_buffer,
-                                    v3dv_image_from_handle(buffer_image),
-                                    buffer, &buffer_image_copy)) {
+      handled = copy_buffer_to_image_tlb(cmd_buffer,
+                                         v3dv_image_from_handle(buffer_image),
+                                         buffer, &buffer_image_copy);
+      if (!handled) {
+         /* This is unexpected, we should have setup the upload to be
+          * conformant to a TLB copy.
+          */
+         unreachable("Unable to copy buffer to image through TLB");
          return false;
       }
 
@@ -2050,14 +2082,18 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       } else {
          dst_format = src_format;
       }
-      bool ok = blit_shader(cmd_buffer,
+      handled = blit_shader(cmd_buffer,
                             image, dst_format,
                             v3dv_image_from_handle(buffer_image), src_format,
                             &blit_region, VK_FILTER_NEAREST);
-      if (!ok)
+      if (!handled) {
+         /* This is unexpected, we should have a supported blit spec */
+         unreachable("Unable to blit buffer to destination image");
          return false;
+      }
    }
 
+   assert(handled);
    return true;
 }
 
@@ -2184,6 +2220,10 @@ emit_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_cmd_buffer_add_tfu_job(cmd_buffer, &tfu);
 }
 
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
 static bool
 blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
          struct v3dv_image *dst,
@@ -3091,6 +3131,10 @@ ensure_meta_blit_descriptor_pool(struct v3dv_cmd_buffer *cmd_buffer)
                              &cmd_buffer->meta.blit.dspool);
 }
 
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
 static bool
 blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             struct v3dv_image *dst,
@@ -3100,6 +3144,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             const VkImageBlit *region,
             VkFilter filter)
 {
+   bool handled = true;
+
    /* When we get here from a copy between compressed / uncompressed images
     * we choose to specify the destination blit region based on the size
     * semantics of the source image of the copy (see copy_image_blit), so we
@@ -3201,7 +3247,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                                &aspects, &dst_format, &src_format, src->type,
                                &pipeline);
    if (!ok)
-      return false;
+      return handled;
    assert(pipeline && pipeline->pipeline && pipeline->pass);
 
    struct v3dv_device *device = cmd_buffer->device;
@@ -3234,10 +3280,9 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       VkImageView dst_image_view;
       result = v3dv_CreateImageView(_device, &dst_image_view_info,
                                     &device->alloc, &dst_image_view);
-      if (result != VK_SUCCESS) {
-         ok = false;
+      if (result != VK_SUCCESS)
          goto fail;
-      }
+
       v3dv_cmd_buffer_add_private_obj(
          cmd_buffer, (void *)dst_image_view,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
@@ -3255,10 +3300,9 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       VkFramebuffer fb;
       result = v3dv_CreateFramebuffer(_device, &fb_info,
                                       &cmd_buffer->device->alloc, &fb);
-      if (result != VK_SUCCESS) {
-         ok = false;
+      if (result != VK_SUCCESS)
          goto fail;
-      }
+
       v3dv_cmd_buffer_add_private_obj(
          cmd_buffer, (void *)fb,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
@@ -3276,10 +3320,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          .pSetLayouts = &device->meta.blit.dslayout,
       };
       result = v3dv_AllocateDescriptorSets(_device, &set_alloc_info, &set);
-      if (result != VK_SUCCESS) {
-         ok = false;
+      if (result != VK_SUCCESS)
          goto fail;
-      }
 
       VkSamplerCreateInfo sampler_info = {
          .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -3293,10 +3335,9 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       VkSampler sampler;
       result = v3dv_CreateSampler(_device, &sampler_info, &device->alloc,
                                   &sampler);
-      if (result != VK_SUCCESS) {
-         ok = false;
+      if (result != VK_SUCCESS)
          goto fail;
-      }
+
       v3dv_cmd_buffer_add_private_obj(
          cmd_buffer, (void*)sampler,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroySampler);
@@ -3318,10 +3359,9 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       VkImageView src_image_view;
       result = v3dv_CreateImageView(_device, &src_image_view_info,
                                     &device->alloc, &src_image_view);
-      if (result != VK_SUCCESS) {
-         ok = false;
+      if (result != VK_SUCCESS)
          goto fail;
-      }
+
       v3dv_cmd_buffer_add_private_obj(
          cmd_buffer, (void *)src_image_view,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
@@ -3356,10 +3396,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
       v3dv_CmdBeginRenderPass(_cmd_buffer, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
       struct v3dv_job *job = cmd_buffer->state.job;
-      if (!job) {
-         ok = false;
+      if (!job)
          goto fail;
-      }
 
       if (src->type == VK_IMAGE_TYPE_3D)
          tex_coords[4] = (min_src_layer + i * src_z_step) / (float)src_level_d;
@@ -3403,7 +3441,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 fail:
    v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state);
 
-   return ok;
+   return handled;
 }
 
 void
@@ -3437,6 +3475,6 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
                       &pRegions[i], filter)) {
          continue;
       }
-      assert(!"Unsupported blit operation");
+      unreachable("Unsupported blit operation");
    }
 }
