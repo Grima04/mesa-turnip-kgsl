@@ -118,6 +118,12 @@ static uint32_t bin_width(struct fd_screen *screen)
 	return 512;
 }
 
+static unsigned
+div_align(unsigned num, unsigned denom, unsigned al)
+{
+	return align(DIV_ROUND_UP(num, denom), al);
+}
+
 static uint32_t
 total_size(struct gmem_key *key, uint32_t bin_w, uint32_t bin_h,
 		struct fd_gmem_stateobj *gmem)
@@ -166,15 +172,15 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	uint32_t tpp_x, tpp_y;
 	int tile_n[npipes];
 
-	bin_w = align(key->width, gmem_alignw);
-	bin_h = align(key->height, gmem_alignh);
+	bin_w = div_align(key->width, 1, gmem_alignw);
+	bin_h = div_align(key->height, 1, gmem_alignh);
 
 	/* first, find a bin width that satisfies the maximum width
 	 * restrictions:
 	 */
 	while (bin_w > max_width) {
 		nbins_x++;
-		bin_w = align(key->width / nbins_x, gmem_alignw);
+		bin_w = div_align(key->width, nbins_x, gmem_alignw);
 	}
 
 	if (fd_mesa_debug & FD_DBG_MSGS) {
@@ -191,10 +197,10 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	while (total_size(key, bin_w, bin_h, gmem) > gmem_size) {
 		if (bin_w > bin_h) {
 			nbins_x++;
-			bin_w = align(key->width / nbins_x, gmem_alignw);
+			bin_w = div_align(key->width, nbins_x, gmem_alignw);
 		} else {
 			nbins_y++;
-			bin_h = align(key->height / nbins_y, gmem_alignh);
+			bin_h = div_align(key->height, nbins_y, gmem_alignh);
 		}
 	}
 
