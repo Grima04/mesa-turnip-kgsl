@@ -133,9 +133,6 @@ bool VertexStageExportForFS::store_deref(const nir_variable *out_var, nir_intrin
             emit_varying_param(out_var, instr);
 
    default:
-      if (out_var->data.location <= VARYING_SLOT_VAR31 ||
-          (out_var->data.location >= VARYING_SLOT_TEX0 &&
-           out_var->data.location <= VARYING_SLOT_TEX7))
          return emit_varying_param(out_var, instr);
    }
 
