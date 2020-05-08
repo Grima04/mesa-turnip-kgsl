@@ -73,6 +73,7 @@ static struct fd_bo * bo_from_handle(struct fd_device *dev,
 	bo->size = size;
 	bo->handle = handle;
 	bo->iova = bo->funcs->iova(bo);
+	bo->flags = FD_RELOC_FLAGS_INIT;
 
 	p_atomic_set(&bo->refcnt, 1);
 	list_inithead(&bo->list);

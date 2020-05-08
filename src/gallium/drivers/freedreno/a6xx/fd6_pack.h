@@ -58,9 +58,7 @@ struct fd_reg_pair {
 			if (regs[i].bo) {										\
 				struct fd_reloc reloc = {							\
 					.bo = regs[i].bo,								\
-					.flags = FD_RELOC_READ |						\
-						(regs[i].bo_write ? FD_RELOC_WRITE : 0),	\
-																	\
+					.flags = (regs[i].bo_write ? FD_RELOC_WRITE : 0),	\
 					.offset = regs[i].bo_offset,					\
 					.or = regs[i].value,							\
 					.shift = regs[i].bo_shift,						\

@@ -172,6 +172,8 @@ struct fd_reloc {
 	uint32_t orhi;      /* used for a5xx+ */
 };
 
+#define FD_RELOC_FLAGS_INIT FD_RELOC_READ
+
 /* NOTE: relocs are 2 dwords on a5xx+ */
 
 static inline void
@@ -252,21 +254,21 @@ static inline void
 OUT_RELOC(struct fd_ringbuffer *ring, struct fd_bo *bo,
 		uint32_t offset, uint64_t or, int32_t shift)
 {
-	__out_reloc(ring, bo, offset, or, shift, FD_RELOC_READ);
+	__out_reloc(ring, bo, offset, or, shift, 0);
 }
 
 static inline void
 OUT_RELOCW(struct fd_ringbuffer *ring, struct fd_bo *bo,
 		uint32_t offset, uint64_t or, int32_t shift)
 {
-	__out_reloc(ring, bo, offset, or, shift, FD_RELOC_READ | FD_RELOC_WRITE);
+	__out_reloc(ring, bo, offset, or, shift, FD_RELOC_WRITE);
 }
 
 static inline void
 OUT_RELOCD(struct fd_ringbuffer *ring, struct fd_bo *bo,
 		uint32_t offset, uint64_t or, int32_t shift)
 {
-	__out_reloc(ring, bo, offset, or, shift, FD_RELOC_READ | FD_RELOC_DUMP);
+	__out_reloc(ring, bo, offset, or, shift, FD_RELOC_DUMP);
 }
 
 static inline void
