@@ -943,6 +943,7 @@ void radv_GetPhysicalDeviceFeatures(
 		.shaderInt16                              = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8,
 		.sparseBinding                            = true,
 		.variableMultisampleRate                  = true,
+		.shaderResourceMinLod                     = true,
 		.inheritedQueries                         = true,
 	};
 }
