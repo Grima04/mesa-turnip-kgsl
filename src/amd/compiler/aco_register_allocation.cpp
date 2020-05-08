@@ -806,7 +806,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    /* now, we figured the placement for our definition */
    std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
-   if (instr->opcode == aco_opcode::p_create_vector) {
+   if (instr->opcode == aco_opcode::p_create_vector && ctx.program->chip_class >= GFX9) {
       /* move killed operands which aren't yet at the correct position */
       for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
          if (instr->operands[i].isTemp() && instr->operands[i].isFirstKillBeforeDef() &&
@@ -1118,18 +1118,26 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    /* collect variables to be moved */
    std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
-   /* move killed operands which aren't yet at the correct position */
-   uint64_t moved_operand_mask = 0;
-   for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
-      if (instr->operands[i].isTemp() &&
-          instr->operands[i].isFirstKillBeforeDef() &&
-          instr->operands[i].getTemp().type() == rc.type() &&
-          instr->operands[i].physReg().reg_b != best_pos * 4 + offset) {
-         vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
-         moved_operand_mask |= (uint64_t)1 << i;
+   /* GFX9+: move killed operands which aren't yet at the correct position
+    * Moving all killed operands generally leads to more register swaps.
+    * This is only done on GFX9+ because of the cheap v_swap instruction.
+    */
+   if (ctx.program->chip_class >= GFX9) {
+      for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
+         if (instr->operands[i].isTemp() &&
+             instr->operands[i].isFirstKillBeforeDef() &&
+             instr->operands[i].getTemp().type() == rc.type() &&
+             instr->operands[i].physReg().reg_b != best_pos * 4 + offset) {
+            vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
+         }
+      }
+   } else {
+      /* re-enable the killed operands */
+      for (unsigned j = 0; j < instr->operands.size(); j++) {
+         if (instr->operands[j].isTemp() && instr->operands[j].isFirstKill())
+            reg_file.fill(instr->operands[j]);
       }
    }
-
    ASSERTED bool success = false;
    success = get_regs_for_copies(ctx, reg_file, parallelcopies, vars, lb, ub, instr, best_pos, best_pos + size - 1);
    assert(success);
@@ -1137,10 +1145,13 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    update_renames(ctx, reg_file, parallelcopies, instr);
    adjust_max_used_regs(ctx, rc, best_pos);
 
-   while (moved_operand_mask) {
-      unsigned i = u_bit_scan64(&moved_operand_mask);
-      assert(instr->operands[i].isFirstKillBeforeDef());
-      reg_file.clear(instr->operands[i]);
+   /* remove killed operands from reg_file once again */
+   for (unsigned i = 0; i < instr->operands.size(); i++) {
+      if (!instr->operands[i].isTemp() || !instr->operands[i].isFixed())
+         continue;
+      assert(!instr->operands[i].isUndefined());
+      if (instr->operands[i].isFirstKillBeforeDef())
+         reg_file.clear(instr->operands[i]);
    }
 
    return PhysReg{best_pos};
