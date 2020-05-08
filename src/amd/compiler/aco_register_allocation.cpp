@@ -1738,8 +1738,14 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
              instr->operands[1].isTemp() &&
              instr->operands[1].getTemp().type() == RegType::vgpr &&
              !instr->usesModifiers()) {
-            instr->format = Format::VOP2;
-            instr->opcode = aco_opcode::v_mac_f32;
+            unsigned def_id = instr->definitions[0].tempId();
+            auto it = ctx.affinities.find(def_id);
+            if (it == ctx.affinities.end() || !ctx.assignments[it->second].assigned ||
+                instr->operands[2].physReg() == ctx.assignments[it->second].reg ||
+                register_file.test(ctx.assignments[it->second].reg, instr->operands[2].bytes())) {
+               instr->format = Format::VOP2;
+               instr->opcode = aco_opcode::v_mac_f32;
+            }
          }
 
          /* handle definitions which must have the same register as an operand */
