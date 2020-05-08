@@ -186,13 +186,25 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    bool progress = false;
 
    if ((instr->intrinsic == nir_intrinsic_demote_if ||
-        instr->intrinsic == nir_intrinsic_discard_if) &&
+        instr->intrinsic == nir_intrinsic_discard_if ||
+        instr->intrinsic == nir_intrinsic_terminate_if) &&
        nir_src_is_const(instr->src[0])) {
       if (nir_src_as_bool(instr->src[0])) {
          b->cursor = nir_before_instr(&instr->instr);
-         nir_intrinsic_op op = instr->intrinsic == nir_intrinsic_discard_if ?
-                               nir_intrinsic_discard :
-                               nir_intrinsic_demote;
+         nir_intrinsic_op op;
+         switch (instr->intrinsic) {
+         case nir_intrinsic_discard_if:
+            op = nir_intrinsic_discard;
+            break;
+         case nir_intrinsic_demote_if:
+            op = nir_intrinsic_demote;
+            break;
+         case nir_intrinsic_terminate_if:
+            op = nir_intrinsic_terminate;
+            break;
+         default:
+            unreachable("invalid intrinsic");
+         }
          nir_intrinsic_instr *new_instr =
             nir_intrinsic_instr_create(b->shader, op);
          nir_builder_instr_insert(b, &new_instr->instr);

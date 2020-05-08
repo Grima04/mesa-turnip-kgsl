@@ -1170,6 +1170,8 @@ handle_barrier(struct vectorize_ctx *ctx, bool *progress, nir_function_impl *imp
       /* prevent speculative loads/stores */
       case nir_intrinsic_discard_if:
       case nir_intrinsic_discard:
+      case nir_intrinsic_terminate_if:
+      case nir_intrinsic_terminate:
          modes = nir_var_all;
          break;
       case nir_intrinsic_demote_if:

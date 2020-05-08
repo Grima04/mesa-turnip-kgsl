@@ -228,6 +228,9 @@ barrier("discard")
 barrier("demote")
 intrinsic("is_helper_invocation", dest_comp=1, flags=[CAN_ELIMINATE])
 
+# SpvOpTerminateInvocation from SPIR-V.  Essentially a discard "for real".
+barrier("terminate")
+
 # A workgroup-level control barrier.  Any thread which hits this barrier will
 # pause until all threads within the current workgroup have also hit the
 # barrier.  For compute shaders, the workgroup is defined as the local group.
@@ -288,9 +291,10 @@ barrier("end_invocation_interlock")
 # Memory barrier for synchronizing TCS patch outputs
 barrier("memory_barrier_tcs_patch")
 
-# A conditional discard/demote, with a single boolean source.
+# A conditional discard/demote/terminate, with a single boolean source.
 intrinsic("discard_if", src_comp=[1])
 intrinsic("demote_if", src_comp=[1])
+intrinsic("terminate_if", src_comp=[1])
 
 # ARB_shader_group_vote intrinsics
 intrinsic("vote_any", src_comp=[1], dest_comp=1, flags=[CAN_ELIMINATE])
