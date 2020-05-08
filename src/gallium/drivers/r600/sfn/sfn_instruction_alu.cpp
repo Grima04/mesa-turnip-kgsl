@@ -56,6 +56,7 @@ AluInstruction::AluInstruction(EAluOp opcode, PValue dest,
    m_bank_swizzle(alu_vec_unknown),
    m_cf_type(cf_alu)
 {
+   assert(dest);
    m_src.swap(src);
    for (auto f : flags)
       m_flags.set(f);
