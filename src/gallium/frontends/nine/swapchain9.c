@@ -737,11 +737,23 @@ present( struct NineSwapChain9 *This,
      * to update everything. Let's ignore */
     (void) pDirtyRegion;
 
+    resource = This->buffers[0]->base.resource;
+
     if (pSourceRect) {
         DBG("pSourceRect = (%u..%u)x(%u..%u)\n",
             pSourceRect->left, pSourceRect->right,
             pSourceRect->top, pSourceRect->bottom);
         source_rect = *pSourceRect;
+        if (source_rect.top == 0 &&
+            source_rect.left == 0 &&
+            source_rect.bottom == resource->height0 &&
+            source_rect.right == resource->width0)
+            pSourceRect = NULL;
+        /* TODO: Handle more of pSourceRect.
+         * Currently we should support:
+         * . When there is no pSourceRect
+         * . When pSourceRect is the full buffer.
+         */
     }
     if (pDestRect) {
         DBG("pDestRect = (%u..%u)x(%u..%u)\n",
@@ -750,20 +762,8 @@ present( struct NineSwapChain9 *This,
         dest_rect = *pDestRect;
     }
 
-    /* TODO: in the case the source and destination rect have different size:
-     * We need to allocate a new buffer, and do a blit to it to resize.
-     * We can't use the present_buffer for that since when we created it,
-     * we couldn't guess which size would have been needed.
-     * If pDestRect or pSourceRect is null, we have to check the sizes
-     * from the source size, and the destination window size.
-     * In this case, either resize rngdata, or pass NULL instead
-     */
-    /* Note: This->buffers[0]->level should always be 0 */
-
     if (This->rendering_done)
         goto bypass_rendering;
-
-    resource = This->buffers[0]->base.resource;
 
     if (This->params.SwapEffect == D3DSWAPEFFECT_DISCARD)
         handle_draw_cursor_and_hud(This, resource);
@@ -830,7 +830,7 @@ present( struct NineSwapChain9 *This,
     if (This->present_buffers[0]) {
         memset(&blit, 0, sizeof(blit));
         blit.src.resource = resource;
-        blit.src.level = 0;
+        blit.src.level = 0; /* Note: This->buffers[0]->level should always be 0 */
         blit.src.format = resource->format;
         blit.src.box.z = 0;
         blit.src.box.depth = 1;
