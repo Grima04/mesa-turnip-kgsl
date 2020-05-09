@@ -461,6 +461,8 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
 		 * but the fast clear path requires an alignment of 32K
 		 */
 		key->gmem_page_align = 8;
+	} else if (is_a6xx(screen)) {
+		key->gmem_page_align = 1;
 	} else {
 		// TODO re-check this across gens.. maybe it should only
 		// be a single page in some cases:
