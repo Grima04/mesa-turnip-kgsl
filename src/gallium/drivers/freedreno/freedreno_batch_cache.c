@@ -377,6 +377,14 @@ batch_from_key(struct fd_batch_cache *cache, struct key *key,
 	if (!batch)
 		return NULL;
 
+	/* reset max_scissor, which will be adjusted on draws
+	 * according to the actual scissor.
+	 */
+	batch->max_scissor.minx = ~0;
+	batch->max_scissor.miny = ~0;
+	batch->max_scissor.maxx = 0;
+	batch->max_scissor.maxy = 0;
+
 	fd_screen_lock(ctx->screen);
 
 	_mesa_hash_table_insert_pre_hashed(cache->ht, hash, key, batch);
