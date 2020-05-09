@@ -2394,6 +2394,10 @@ glsl_to_tgsi_visitor::visit_expression(ir_expression* ir, st_src_reg *op)
    case ir_unop_f2fmp:
    case ir_unop_f162b:
    case ir_unop_b2f16:
+   case ir_unop_i2i:
+   case ir_unop_i2imp:
+   case ir_unop_u2u:
+   case ir_unop_u2ump:
       /* This operation is not supported, or should have already been handled.
        */
       assert(!"Invalid ir opcode in glsl_to_tgsi_visitor::visit()");
