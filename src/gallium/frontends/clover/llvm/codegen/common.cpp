@@ -134,6 +134,11 @@ namespace {
                               target_size, target_size,
                               target_align, module::argument::zero_ext);
 
+         } else if (type_name == "sampler_t") {
+            args.emplace_back(module::argument::sampler, arg_api_size,
+                              target_size, target_align,
+                              module::argument::zero_ext);
+
          } else if (type_name == "__llvm_image_size") {
             // Image size implicit argument.
             args.emplace_back(module::argument::scalar, sizeof(cl_uint),
