@@ -393,7 +393,7 @@ bool EmitTexInstruction::emit_buf_txf(nir_tex_instr* instr, TexInputs &src)
 
    auto ir = new FetchInstruction(vc_fetch, no_index_offset, dst, src.coord.reg_i(0), 0,
                                   instr->texture_index +  R600_MAX_CONST_BUFFERS,
-                                  PValue(), bim_none);
+                                  src.texture_offset, bim_none);
    ir->set_flag(vtx_use_const_field);
    emit_instruction(ir);
    return true;
