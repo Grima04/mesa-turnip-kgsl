@@ -733,6 +733,10 @@ present( struct NineSwapChain9 *This,
         This, pSourceRect, pDestRect, pDirtyRegion,
         hDestWindowOverride, (int)dwFlags, This->buffers[0]->base.resource);
 
+    /* We can choose to only update pDirtyRegion, but the backend can choose
+     * to update everything. Let's ignore */
+    (void) pDirtyRegion;
+
     if (pSourceRect) {
         DBG("pSourceRect = (%u..%u)x(%u..%u)\n",
             pSourceRect->left, pSourceRect->right,
@@ -921,7 +925,7 @@ bypass_rendering:
     if (!This->enable_threadpool) {
         This->tasks[0]=NULL;
 
-        hr = ID3DPresent_PresentBuffer(This->present, This->present_handles[0], hDestWindowOverride, pSourceRect, pDestRect ? &dest_rect : NULL, pDirtyRegion, dwFlags);
+        hr = ID3DPresent_PresentBuffer(This->present, This->present_handles[0], hDestWindowOverride, pSourceRect, pDestRect ? &dest_rect : NULL, NULL, dwFlags);
 
         if (FAILED(hr)) { UNTESTED(3);return hr; }
     }
