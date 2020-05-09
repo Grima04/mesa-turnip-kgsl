@@ -343,7 +343,7 @@ void st_init_limits(struct pipe_screen *screen,
       /* Initialize lower precision shader compiler option based on
        * the value of PIPE_SHADER_CAP_FP16.
        */
-      options->LowerPrecision =
+      options->LowerPrecisionFloat16 =
          screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16);
    }
 

@@ -31,7 +31,7 @@ Test = namedtuple("Test", "name source match_re")
 
 
 TESTS = [
-    Test("simple division",
+    Test("f32 simple division",
          """
          uniform mediump float a, b;
 
@@ -41,6 +41,36 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
+    Test("i32 simple division",
+         """
+         #version 300 es
+         precision mediump float;
+         precision mediump int;
+         uniform mediump int a, b;
+
+         out vec4 color;
+
+         void main()
+         {
+                 color = vec4(a / b);
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 simple division",
+         """
+         #version 300 es
+         precision mediump float;
+         precision mediump int;
+         uniform mediump uint a, b;
+
+         out vec4 color;
+
+         void main()
+         {
+                 color = vec4(a / b);
+         }
+         """,
+         r'\(expression +uint16_t +/'),
     Test("dot",
          """
          uniform mediump vec2 a, b;
@@ -51,7 +81,7 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +dot\b'),
-    Test("array with const index",
+    Test("f32 array with const index",
          """
          precision mediump float;
 
@@ -63,7 +93,39 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("array with uniform index",
+    Test("i32 array with const index",
+         """
+         #version 300 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int in_simple[2];
+
+         out vec4 color;
+
+         void main()
+         {
+                 color = vec4(in_simple[0] / in_simple[1]);
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 array with const index",
+         """
+         #version 300 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint in_simple[2];
+
+         out vec4 color;
+
+         void main()
+         {
+                 color = vec4(in_simple[0] / in_simple[1]);
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 array with uniform index",
          """
          precision mediump float;
 
@@ -76,7 +138,41 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("array-of-array with const index",
+    Test("i32 array with uniform index",
+         """
+         #version 300 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int in_simple[2];
+         uniform int i0, i1;
+
+         out vec4 color;
+
+         void main()
+         {
+                 color = vec4(in_simple[i0] / in_simple[i1]);
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 array with uniform index",
+         """
+         #version 300 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint in_simple[2];
+         uniform int i0, i1;
+
+         out vec4 color;
+
+         void main()
+         {
+                 color = vec4(in_simple[i0] / in_simple[i1]);
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 array-of-array with const index",
          """
          #version 310 es
          precision mediump float;
@@ -91,7 +187,39 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("array-of-array with uniform index",
+    Test("i32 array-of-array with const index",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int in_aoa[2][2];
+
+         layout(location = 0) out highp int out_color;
+
+         void main()
+         {
+                 out_color = in_aoa[0][0] / in_aoa[1][1];
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 array-of-array with const index",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint in_aoa[2][2];
+
+         layout(location = 0) out highp uint out_color;
+
+         void main()
+         {
+                 out_color = in_aoa[0][0] / in_aoa[1][1];
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 array-of-array with uniform index",
          """
          #version 310 es
          precision mediump float;
@@ -107,7 +235,41 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("array index",
+    Test("i32 array-of-array with uniform index",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int in_aoa[2][2];
+         uniform int i0, i1;
+
+         layout(location = 0) out highp int out_color;
+
+         void main()
+         {
+                 out_color = in_aoa[i0][i0] / in_aoa[i1][i1];
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 array-of-array with uniform index",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint in_aoa[2][2];
+         uniform int i0, i1;
+
+         layout(location = 0) out highp uint out_color;
+
+         void main()
+         {
+                 out_color = in_aoa[i0][i0] / in_aoa[i1][i1];
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 array index",
          """
          uniform mediump float a, b;
          uniform mediump float values[2];
@@ -118,7 +280,24 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("function",
+    Test("i32 array index",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform mediump int a, b;
+         uniform mediump int values[2];
+
+         out highp int color;
+
+         void main()
+         {
+                 color = values[a / b];
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("f32 function",
          """
          precision mediump float;
 
@@ -142,7 +321,63 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("function mediump args",
+    Test("i32 function",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int a, b;
+
+         mediump int
+         get_a()
+         {
+                 return a;
+         }
+
+         int
+         get_b()
+         {
+                 return b;
+         }
+
+         out highp int color;
+
+         void main()
+         {
+                 color = get_a() / get_b();
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 function",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint a, b;
+
+         mediump uint
+         get_a()
+         {
+                 return a;
+         }
+
+         uint
+         get_b()
+         {
+                 return b;
+         }
+
+         out highp uint color;
+
+         void main()
+         {
+                 color = get_a() / get_b();
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 function mediump args",
          """
          precision mediump float;
 
@@ -160,7 +395,51 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("function highp args",
+    Test("i32 function mediump args",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int a, b;
+
+         mediump int
+         do_div(int x, int y)
+         {
+                 return x / y;
+         }
+
+         out highp int color;
+
+         void main()
+         {
+                 color = do_div(a, b);
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 function mediump args",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint a, b;
+
+         mediump uint
+         do_div(uint x, uint y)
+         {
+                 return x / y;
+         }
+
+         out highp uint color;
+
+         void main()
+         {
+                 color = do_div(a, b);
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 function highp args",
          """
          precision mediump float;
 
@@ -178,7 +457,51 @@ TESTS = [
          }
          """,
          r'\(expression +float +/'),
-    Test("function inout different precision highp",
+    Test("i32 function highp args",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int a, b;
+
+         mediump int
+         do_div(highp int x, highp int y)
+         {
+                 return x / y;
+         }
+
+         out highp int color;
+
+         void main()
+         {
+                  color = do_div(a, b);
+         }
+         """,
+         r'\(expression +int +/'),
+    Test("u32 function highp args",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint a, b;
+
+         mediump uint
+         do_div(highp uint x, highp uint y)
+         {
+                 return x / y;
+         }
+
+         out highp uint color;
+
+         void main()
+         {
+                  color = do_div(a, b);
+         }
+         """,
+         r'\(expression +uint +/'),
+    Test("f32 function inout different precision highp",
          """
          uniform mediump float a, b;
 
@@ -196,7 +519,49 @@ TESTS = [
          }
          """,
          r'\(expression +float +/'),
-    Test("function inout different precision mediump",
+    Test("i32 function inout different precision highp",
+         """
+         #version 310 es
+         uniform mediump int a, b;
+
+         void
+         do_div(inout highp int x, highp int y)
+         {
+                 x = x / y;
+         }
+
+         out mediump int color;
+
+         void main()
+         {
+                 mediump int temp = a;
+                 do_div(temp, b);
+                 color = temp;
+         }
+         """,
+         r'\(expression +int +/'),
+    Test("u32 function inout different precision highp",
+         """
+         #version 310 es
+         uniform mediump uint a, b;
+
+         void
+         do_div(inout highp uint x, highp uint y)
+         {
+                 x = x / y;
+         }
+
+         out mediump uint color;
+
+         void main()
+         {
+                 mediump uint temp = a;
+                 do_div(temp, b);
+                 color = temp;
+         }
+         """,
+         r'\(expression +uint +/'),
+    Test("f32 function inout different precision mediump",
          """
          uniform highp float a, b;
 
@@ -214,7 +579,49 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("if",
+    Test("i32 function inout different precision mediump",
+         """
+         #version 310 es
+         uniform highp int a, b;
+
+         out highp int color;
+
+         void
+         do_div(inout mediump int x, mediump int y)
+         {
+                 x = x / y;
+         }
+
+         void main()
+         {
+                 highp int temp = a;
+                 do_div(temp, b);
+                 color = temp;
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 function inout different precision mediump",
+         """
+         #version 310 es
+         uniform highp uint a, b;
+
+         out highp uint color;
+
+         void
+         do_div(inout mediump uint x, mediump uint y)
+         {
+                 x = x / y;
+         }
+
+         void main()
+         {
+                 highp uint temp = a;
+                 do_div(temp, b);
+                 color = temp;
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 if",
          """
          precision mediump float;
 
@@ -230,6 +637,46 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
+    Test("i32 if",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int a, b;
+
+         out vec4 color;
+
+         void
+         main()
+         {
+                 if (a / b < 10)
+                         color = vec4(0.0, 1.0, 0.0, 1.0);
+                 else
+                         color = vec4(1.0, 0.0, 0.0, 1.0);
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 if",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint a, b;
+
+         out vec4 color;
+
+         void
+         main()
+         {
+                 if (a / b < 10u)
+                         color = vec4(0.0, 1.0, 0.0, 1.0);
+                 else
+                         color = vec4(1.0, 0.0, 0.0, 1.0);
+         }
+         """,
+         r'\(expression +uint16_t +/'),
     Test("matrix",
          """
          precision mediump float;
@@ -243,7 +690,7 @@ TESTS = [
          }
          """,
          r'\(expression +f16vec2 \*.*\bf16mat2\b'),
-    Test("simple struct deref",
+    Test("f32 simple struct deref",
          """
          precision mediump float;
 
@@ -259,7 +706,47 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("embedded struct deref",
+    Test("i32 simple struct deref",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         struct simple {
+                 int a, b;
+         };
+
+         uniform simple in_simple;
+
+         out highp int color;
+
+         void main()
+         {
+                 color = in_simple.a / in_simple.b;
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 simple struct deref",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         struct simple {
+                 uint a, b;
+         };
+
+         uniform simple in_simple;
+
+         out highp uint color;
+
+         void main()
+         {
+                 color = in_simple.a / in_simple.b;
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 embedded struct deref",
          """
          precision mediump float;
 
@@ -279,7 +766,55 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("arrayed struct deref",
+    Test("i32 embedded struct deref",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         struct simple {
+                 int a, b;
+         };
+
+         struct embedded {
+                 simple a, b;
+         };
+
+         uniform embedded in_embedded;
+
+         out highp int color;
+
+         void main()
+         {
+                 color = in_embedded.a.a / in_embedded.b.b;
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 embedded struct deref",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         struct simple {
+                 uint a, b;
+         };
+
+         struct embedded {
+                 simple a, b;
+         };
+
+         uniform embedded in_embedded;
+
+         out highp uint color;
+
+         void main()
+         {
+                 color = in_embedded.a.a / in_embedded.b.b;
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 arrayed struct deref",
          """
          precision mediump float;
 
@@ -299,7 +834,55 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("mixed precision not lowered",
+    Test("i32 arrayed struct deref",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         struct simple {
+                 int a, b;
+         };
+
+         struct arrayed {
+                 simple a[2];
+         };
+
+         uniform arrayed in_arrayed;
+
+         out highp int color;
+
+         void main()
+         {
+                 color = in_arrayed.a[0].a / in_arrayed.a[1].b;
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("u32 arrayed struct deref",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         struct simple {
+                 uint a, b;
+         };
+
+         struct arrayed {
+                 simple a[2];
+         };
+
+         uniform arrayed in_arrayed;
+
+         out highp uint color;
+
+         void main()
+         {
+                 color = in_arrayed.a[0].a / in_arrayed.a[1].b;
+         }
+         """,
+         r'\(expression +uint16_t +/'),
+    Test("f32 mixed precision not lowered",
          """
          uniform mediump float a;
          uniform highp float b;
@@ -310,7 +893,35 @@ TESTS = [
          }
          """,
          r'\(expression +float +/'),
-    Test("texture sample",
+    Test("i32 mixed precision not lowered",
+         """
+         #version 310 es
+         uniform mediump int a;
+         uniform highp int b;
+
+         out mediump int color;
+
+         void main()
+         {
+                 color = a / b;
+         }
+         """,
+         r'\(expression +int +/'),
+    Test("u32 mixed precision not lowered",
+         """
+         #version 310 es
+         uniform mediump uint a;
+         uniform highp uint b;
+
+         out mediump uint color;
+
+         void main()
+         {
+                 color = a / b;
+         }
+         """,
+         r'\(expression +uint +/'),
+    Test("f32 texture sample",
          """
          precision mediump float;
 
@@ -323,8 +934,44 @@ TESTS = [
                  gl_FragColor = texture2D(tex, coord) / divisor;
          }
          """,
-         r'\(expression +f16vec4 +/'),
-    Test("expression in lvalue",
+         r'\(expression +f16vec4 +/.*\(tex +f16vec4 +'),
+    Test("i32 texture sample",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform mediump isampler2D tex;
+         uniform vec2 coord;
+         uniform int divisor;
+
+         out highp ivec4 color;
+
+         void main()
+         {
+                 color = texture(tex, coord) / divisor;
+         }
+         """,
+         r'\(expression +i16vec4 +/.*\(tex +i16vec4 +'),
+    Test("u32 texture sample",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform mediump usampler2D tex;
+         uniform vec2 coord;
+         uniform uint divisor;
+
+         out highp uvec4 color;
+
+         void main()
+         {
+                 color = texture(tex, coord) / divisor;
+         }
+         """,
+         r'\(expression +u16vec4 +/.*\(tex +u16vec4 +'),
+    Test("f32 expression in lvalue",
          """
          uniform mediump float a, b;
 
@@ -335,7 +982,24 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t +/'),
-    Test("builtin with const arg",
+    Test("i32 expression in lvalue",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform mediump int a, b;
+
+         out vec4 color;
+
+         void main()
+         {
+                 color = vec4(1.0);
+                 color[a / b] = 0.5;
+         }
+         """,
+         r'\(expression +int16_t +/'),
+    Test("f32 builtin with const arg",
          """
          uniform mediump float a;
 
@@ -345,6 +1009,32 @@ TESTS = [
          }
          """,
          r'\(expression +float16_t min'),
+    Test("i32 builtin with const arg",
+         """
+         #version 310 es
+         uniform mediump int a;
+
+         out highp int color;
+
+         void main()
+         {
+                 color = min(a, 3);
+         }
+         """,
+         r'\(expression +int16_t min'),
+    Test("u32 builtin with const arg",
+         """
+         #version 310 es
+         uniform mediump uint a;
+
+         out highp uint color;
+
+         void main()
+         {
+                 color = min(a, 3u);
+         }
+         """,
+         r'\(expression +uint16_t min'),
 ]
 
 
@@ -364,6 +1054,7 @@ def run_test(standalone_compiler, test):
     ir = compile_shader(standalone_compiler, test.source)
 
     if re.search(test.match_re, ir) is None:
+        print(ir)
         return False
 
     return True
