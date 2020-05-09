@@ -103,8 +103,9 @@ namespace {
    validate_object(command_queue &q, image &img,
                    const vector_t &orig, const vector_t &region) {
       vector_t size = { img.width(), img.height(), img.depth() };
+      const auto &dev = q.device();
 
-      if (!q.device().image_support())
+      if (!dev.image_support())
          throw error(CL_INVALID_OPERATION);
 
       if (img.context() != q.context())
@@ -115,6 +116,24 @@ namespace {
 
       if (any_of(is_zero(), region))
          throw error(CL_INVALID_VALUE);
+
+      switch (img.type()) {
+      case CL_MEM_OBJECT_IMAGE2D: {
+         const size_t max = 1 << dev.max_image_levels_2d();
+         if (img.width() > max || img.height() > max)
+            throw error(CL_INVALID_IMAGE_SIZE);
+         break;
+      }
+      case CL_MEM_OBJECT_IMAGE3D: {
+         const size_t max = 1 << dev.max_image_levels_3d();
+         if (img.width() > max || img.height() > max || img.depth() > max)
+            throw error(CL_INVALID_IMAGE_SIZE);
+         break;
+      }
+      // XXX: Implement missing checks once Clover supports more image types.
+      default:
+         throw error(CL_INVALID_IMAGE_SIZE);
+      }
    }
 
    ///
@@ -456,11 +475,11 @@ clEnqueueFillBuffer(cl_command_queue d_queue, cl_mem d_mem,
    auto &mem = obj<buffer>(d_mem);
    auto deps = objs<wait_list_tag>(d_deps, num_deps);
    vector_t region = { size, 1, 1 };
-   vector_t dst_origin = { offset };
+   vector_t origin = { offset };
    auto dst_pitch = pitch(region, {{ 1 }});
 
    validate_common(q, deps);
-   validate_object(q, mem, dst_origin, dst_pitch, region);
+   validate_object(q, mem, origin, dst_pitch, region);
 
    if (!pattern)
       return CL_INVALID_VALUE;
@@ -480,7 +499,7 @@ clEnqueueFillBuffer(cl_command_queue d_queue, cl_mem d_mem,
    auto hev = create<hard_event>(
       q, CL_COMMAND_FILL_BUFFER, deps,
       [=, &q, &mem](event &) {
-         mem.resource_in(q).clear(q, offset, size, &data[0], data.size());
+         mem.resource_in(q).clear(q, origin, region, data);
       });
 
    ret_object(rd_ev, hev);
@@ -627,6 +646,38 @@ clEnqueueWriteImage(cl_command_queue d_q, cl_mem d_mem, cl_bool blocking,
 
    if (blocking)
        hev().wait_signalled();
+
+   ret_object(rd_ev, hev);
+   return CL_SUCCESS;
+
+} catch (error &e) {
+   return e.get();
+}
+
+CLOVER_API cl_int
+clEnqueueFillImage(cl_command_queue d_queue, cl_mem d_mem,
+                   const void *fill_color,
+                   const size_t *p_origin, const size_t *p_region,
+                   cl_uint num_deps, const cl_event *d_deps,
+                   cl_event *rd_ev) try {
+   auto &q = obj(d_queue);
+   auto &img = obj<image>(d_mem);
+   auto deps = objs<wait_list_tag>(d_deps, num_deps);
+   auto origin = vector(p_origin);
+   auto region = vector(p_region);
+
+   validate_common(q, deps);
+   validate_object(q, img, origin, region);
+
+   if (!fill_color)
+      return CL_INVALID_VALUE;
+
+   std::string data = std::string((char *)fill_color, sizeof(cl_uint4));
+   auto hev = create<hard_event>(
+      q, CL_COMMAND_FILL_IMAGE, deps,
+      [=, &q, &img](event &) {
+         img.resource_in(q).clear(q, origin, region, data);
+      });
 
    ret_object(rd_ev, hev);
    return CL_SUCCESS;

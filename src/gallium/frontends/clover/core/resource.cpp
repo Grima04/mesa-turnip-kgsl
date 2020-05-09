@@ -65,11 +65,18 @@ resource::copy(command_queue &q, const vector &origin, const vector &region,
 }
 
 void
-resource::clear(command_queue &q, const size_t origin, const size_t size,
-                const void *pattern, const size_t pattern_size) {
-   auto p = offset[0] + origin;
+resource::clear(command_queue &q, const vector &origin, const vector &region,
+                const std::string &data) {
+   auto from = offset + origin;
 
-   q.pipe->clear_buffer(q.pipe, pipe, p, size, pattern, pattern_size);
+   if (pipe->target == PIPE_BUFFER) {
+      q.pipe->clear_buffer(q.pipe, pipe, from[0], region[0], data.data(), data.size());
+   } else {
+      std::string texture_data;
+      texture_data.reserve(util_format_get_blocksize(pipe->format));
+      util_format_pack_rgba(pipe->format, &texture_data[0], data.data(), 1);
+      q.pipe->clear_texture(q.pipe, pipe, 0, box(from, region), texture_data.data());
+   }
 }
 
 void *
