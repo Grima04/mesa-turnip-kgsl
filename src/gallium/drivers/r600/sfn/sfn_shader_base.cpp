@@ -93,12 +93,15 @@ bool ShaderFromNirProcessor::scan_instruction(nir_instr *instr)
       nir_tex_instr *t = nir_instr_as_tex(instr);
       if (t->sampler_dim == GLSL_SAMPLER_DIM_BUF)
          sh_info().uses_tex_buffers = true;
+      if (t->op == nir_texop_txs &&
+          t->sampler_dim == GLSL_SAMPLER_DIM_CUBE &&
+          t->is_array)
+         sh_info().has_txq_cube_array_z_comp = true;
       break;
    }
    case nir_instr_type_intrinsic: {
       auto *i = nir_instr_as_intrinsic(instr);
       switch (i->intrinsic) {
-      case nir_intrinsic_image_load:
       case nir_intrinsic_ssbo_atomic_add:
       case nir_intrinsic_image_atomic_add:
       case nir_intrinsic_ssbo_atomic_and:
@@ -116,12 +119,21 @@ bool ShaderFromNirProcessor::scan_instruction(nir_instr *instr)
       case nir_intrinsic_image_atomic_xor:
       case nir_intrinsic_image_atomic_exchange:
       case nir_intrinsic_image_atomic_comp_swap:
-         m_ssbo_instr.set_require_rat_return_address();
          m_sel.info.writes_memory = 1;
+         /* fallthrough */
+      case nir_intrinsic_image_load:
+         m_ssbo_instr.set_require_rat_return_address();
          break;
+      case nir_intrinsic_image_size: {
+         if (nir_intrinsic_image_dim(i) == GLSL_SAMPLER_DIM_CUBE &&
+             nir_intrinsic_image_array(i) && nir_dest_num_components(i->dest) > 2)
+            sh_info().has_txq_cube_array_z_comp = true;
+      }
+
       default:
          ;
       }
+
 
    }
    default:

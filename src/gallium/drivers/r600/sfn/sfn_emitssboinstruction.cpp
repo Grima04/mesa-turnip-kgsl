@@ -9,6 +9,8 @@
 
 namespace r600 {
 
+#define R600_SHADER_BUFFER_INFO_SEL (512 + R600_BUFFER_INFO_OFFSET / 16)
+
 EmitSSBOInstruction::EmitSSBOInstruction(ShaderFromNirProcessor& processor):
    EmitInstruction(processor),
    m_require_rat_return_address(false)
@@ -507,20 +509,36 @@ bool EmitSSBOInstruction::fetch_return_value(const nir_intrinsic_instr *intrin)
 bool EmitSSBOInstruction::emit_image_size(const nir_intrinsic_instr *intrin)
 {
    GPRVector dest = vec_from_nir(intrin->dest, nir_dest_num_components(intrin->dest));
-   GPRVector src{9,{4,4,4,4}};
+   GPRVector src{0,{4,4,4,4}};
 
-   int res_id = R600_IMAGE_REAL_RESOURCE_OFFSET;
    auto const_offset = nir_src_as_const_value(intrin->src[0]);
    auto dyn_offset = PValue();
+   int res_id = R600_IMAGE_REAL_RESOURCE_OFFSET;
    if (const_offset)
       res_id += const_offset[0].u32;
    else
       dyn_offset = from_nir(intrin->src[0], 0);
 
-   auto ir = new TexInstruction(TexInstruction::get_resinfo, dest, src,
-                                0/* ?? */,
-                                res_id, dyn_offset);
-   emit_instruction(ir);
+   if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_BUF) {
+      emit_instruction(new FetchInstruction(dest, PValue(new GPRValue(0, 7)),
+                       res_id,
+                       bim_none));
+      return true;
+   } else {
+      emit_instruction(new TexInstruction(TexInstruction::get_resinfo, dest, src,
+                                             0/* ?? */,
+                                             res_id, dyn_offset));
+      if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_CUBE &&
+          nir_intrinsic_image_array(intrin) && nir_dest_num_components(intrin->dest) > 2) {
+         /* Need to load the layers from a const buffer */
+
+         unsigned lookup_resid = const_offset[0].u32;
+         emit_instruction(new AluInstruction(op1_mov, dest.reg_i(2),
+                                             PValue(new UniformValue(lookup_resid/4 + R600_SHADER_BUFFER_INFO_SEL, lookup_resid % 4,
+                                                                     R600_BUFFER_INFO_CONST_BUFFER)),
+         EmitInstruction::last_write));
+      }
+   }
    return true;
 }
 
