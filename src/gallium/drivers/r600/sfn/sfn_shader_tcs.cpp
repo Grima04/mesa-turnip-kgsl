@@ -9,7 +9,7 @@ TcsShaderFromNir::TcsShaderFromNir(r600_pipe_shader *sh,
                                    const r600_shader_key& key,
                                    enum chip_class chip_class):
    ShaderFromNirProcessor (PIPE_SHADER_TESS_CTRL, sel, sh->shader,
-                           sh->scratch_space_needed, chip_class),
+                           sh->scratch_space_needed, chip_class, key.tcs.first_atomic_counter),
    m_reserved_registers(0)
 {
    sh_info().tcs_prim_mode = key.tcs.prim_mode;

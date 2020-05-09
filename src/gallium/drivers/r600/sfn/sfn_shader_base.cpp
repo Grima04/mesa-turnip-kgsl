@@ -59,7 +59,8 @@ using namespace std;
 ShaderFromNirProcessor::ShaderFromNirProcessor(pipe_shader_type ptype,
                                                r600_pipe_shader_selector& sel,
                                                r600_shader &sh_info, int scratch_size,
-                                               enum chip_class chip_class):
+                                               enum chip_class chip_class,
+                                               int atomic_base):
    m_processor_type(ptype),
    m_nesting_depth(0),
    m_block_number(0),
@@ -72,9 +73,12 @@ ShaderFromNirProcessor::ShaderFromNirProcessor(pipe_shader_type ptype,
    m_pending_else(nullptr),
    m_scratch_size(scratch_size),
    m_next_hwatomic_loc(0),
-   m_sel(sel)
+   m_sel(sel),
+   m_atomic_base(atomic_base)
+
 {
    m_sh_info.processor_type = ptype;
+
 }
 
 
@@ -198,7 +202,7 @@ bool ShaderFromNirProcessor::process_uniforms(nir_variable *uniform)
       struct r600_shader_atomic& atom = sh_info().atomics[sh_info().nhwatomic_ranges];
       ++sh_info().nhwatomic_ranges;
       atom.buffer_id = uniform->data.binding;
-      atom.hw_idx = m_next_hwatomic_loc;
+      atom.hw_idx = m_atomic_base + m_next_hwatomic_loc;
       atom.start = m_next_hwatomic_loc;
       atom.end = atom.start + natomics - 1;
       m_next_hwatomic_loc = atom.end + 1;

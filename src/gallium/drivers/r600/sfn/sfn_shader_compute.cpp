@@ -34,7 +34,7 @@ ComputeShaderFromNir::ComputeShaderFromNir(r600_pipe_shader *sh,
                                            UNUSED const r600_shader_key& key,
                                            enum chip_class chip_class):
      ShaderFromNirProcessor (PIPE_SHADER_COMPUTE, sel, sh->shader,
-                             sh->scratch_space_needed, chip_class),
+                             sh->scratch_space_needed, chip_class, 0),
      m_reserved_registers(0)
 {
 }
