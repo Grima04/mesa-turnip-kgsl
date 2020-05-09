@@ -353,7 +353,7 @@ __fd_gmem_destroy(struct fd_gmem_stateobj *gmem)
 }
 
 static struct gmem_key *
-gmem_key_init(struct fd_batch *batch, bool assume_zs)
+gmem_key_init(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
 {
 	struct fd_screen *screen = batch->ctx->screen;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
@@ -382,7 +382,7 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs)
 		key->cbuf_cpp[i] *= pfb->samples;
 	}
 
-	if (fd_mesa_debug & FD_DBG_NOSCIS) {
+	if ((fd_mesa_debug & FD_DBG_NOSCIS) || no_scis_opt) {
 		key->minx = 0;
 		key->miny = 0;
 		key->width = pfb->width;
@@ -412,12 +412,12 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs)
 }
 
 static struct fd_gmem_stateobj *
-lookup_gmem_state(struct fd_batch *batch, bool assume_zs)
+lookup_gmem_state(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
 {
 	struct fd_screen *screen = batch->ctx->screen;
 	struct fd_gmem_cache *cache = &screen->gmem_cache;
 	struct fd_gmem_stateobj *gmem = NULL;
-	struct gmem_key *key = gmem_key_init(batch, assume_zs);
+	struct gmem_key *key = gmem_key_init(batch, assume_zs, no_scis_opt);
 	uint32_t hash = gmem_key_hash(key);
 
 	fd_screen_lock(screen);
@@ -610,7 +610,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 		render_sysmem(batch);
 		ctx->stats.batch_sysmem++;
 	} else {
-		struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch, false);
+		struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch, false, false);
 		batch->gmem_state = gmem;
 		fd_log(batch, "%p: rendering %dx%d tiles %ux%u (%s/%s)",
 			batch, pfb->width, pfb->height, gmem->nbins_x, gmem->nbins_y,
@@ -639,7 +639,7 @@ fd_gmem_estimate_bins_per_pipe(struct fd_batch *batch)
 {
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_screen *screen = batch->ctx->screen;
-	struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch, !!pfb->zsbuf);
+	struct fd_gmem_stateobj *gmem = lookup_gmem_state(batch, !!pfb->zsbuf, true);
 	unsigned nbins = gmem->maxpw * gmem->maxph;
 
 	fd_screen_lock(screen);
