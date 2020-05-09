@@ -3,6 +3,7 @@
 #include "sfn_instruction_fetch.h"
 #include "sfn_instruction_gds.h"
 #include "sfn_instruction_misc.h"
+#include "sfn_instruction_tex.h"
 #include "../r600_pipe.h"
 #include "../r600_asm.h"
 
@@ -78,6 +79,8 @@ bool EmitSSBOInstruction::do_emit(nir_instr* instr)
    case nir_intrinsic_image_atomic_imin:
    case nir_intrinsic_image_atomic_imax:
       return emit_image_load(intr);
+   case nir_intrinsic_image_size:
+      return emit_image_size(intr);
    default:
       return false;
    }
@@ -498,6 +501,26 @@ bool EmitSSBOInstruction::fetch_return_value(const nir_intrinsic_instr *intrin)
       fetch->set_flag(vtx_format_comp_signed);
 
    emit_instruction(fetch);
+   return true;
+}
+
+bool EmitSSBOInstruction::emit_image_size(const nir_intrinsic_instr *intrin)
+{
+   GPRVector dest = vec_from_nir(intrin->dest, nir_dest_num_components(intrin->dest));
+   GPRVector src{9,{4,4,4,4}};
+
+   int res_id = R600_IMAGE_REAL_RESOURCE_OFFSET;
+   auto const_offset = nir_src_as_const_value(intrin->src[0]);
+   auto dyn_offset = PValue();
+   if (const_offset)
+      res_id += const_offset[0].u32;
+   else
+      dyn_offset = from_nir(intrin->src[0], 0);
+
+   auto ir = new TexInstruction(TexInstruction::get_resinfo, dest, src,
+                                0/* ?? */,
+                                res_id, dyn_offset);
+   emit_instruction(ir);
    return true;
 }
 
