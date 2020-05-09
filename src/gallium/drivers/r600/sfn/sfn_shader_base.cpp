@@ -593,6 +593,7 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    case nir_intrinsic_control_barrier:
    case nir_intrinsic_memory_barrier_tcs_patch:
    case nir_intrinsic_memory_barrier_shared:
+   case nir_intrinsic_memory_barrier:
       return emit_barrier(instr);
    case nir_intrinsic_copy_deref:
    case nir_intrinsic_load_constant:
