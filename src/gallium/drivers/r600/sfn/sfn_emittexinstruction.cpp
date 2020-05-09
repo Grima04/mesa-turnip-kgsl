@@ -97,7 +97,10 @@ bool EmitTexInstruction::do_emit(nir_instr* instr)
          return emit_tex_txf_ms(ir, src);
       case nir_texop_query_levels:
          return emit_tex_txs(ir, src, {3,7,7,7});
+      case nir_texop_texture_samples:
+         return emit_tex_texture_samples(ir, src, {3,7,7,7});
       default:
+
          return false;
       }
    }
@@ -628,6 +631,22 @@ bool EmitTexInstruction::emit_tex_txs(nir_tex_instr* instr, TexInputs& tex_src,
 
    return true;
 
+}
+
+bool EmitTexInstruction::emit_tex_texture_samples(nir_tex_instr* instr, TexInputs& src,
+                                                  const std::array<int, 4> &dest_swz)
+{
+   GPRVector dest = vec_from_nir(instr->dest, nir_dest_num_components(instr->dest));
+   GPRVector help{0,{4,4,4,4}};
+
+   auto dyn_offset = PValue();
+   int res_id = R600_MAX_CONST_BUFFERS + instr->sampler_index;
+
+   auto ir = new TexInstruction(TexInstruction::get_nsampled, dest, help,
+                                0, res_id, src.sampler_offset);
+   ir->set_dest_swizzle(dest_swz);
+   emit_instruction(ir);
+   return true;
 }
 
 bool EmitTexInstruction::emit_tex_tg4(nir_tex_instr* instr, TexInputs& src)
