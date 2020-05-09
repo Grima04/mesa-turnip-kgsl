@@ -109,6 +109,54 @@ gmem_key_equals(const void *_a, const void *_b)
 	return memcmp(a, b, sizeof(*a)) == 0;
 }
 
+static void
+dump_gmem_key(const struct gmem_key *key)
+{
+	printf("{ .minx=%u, .miny=%u, .width=%u, .height=%u",
+			key->minx, key->miny, key->width, key->height);
+	printf(", .gmem_page_align=%u, .nr_cbufs=%u",
+			key->gmem_page_align, key->nr_cbufs);
+	printf(", .cbuf_cpp = {");
+	for (unsigned i = 0; i < ARRAY_SIZE(key->cbuf_cpp); i++)
+		printf("%u,", key->cbuf_cpp[i]);
+	printf("}, .zsbuf_cpp = {");
+	for (unsigned i = 0; i < ARRAY_SIZE(key->zsbuf_cpp); i++)
+		printf("%u,", key->zsbuf_cpp[i]);
+	printf("}},\n");
+}
+
+static void
+dump_gmem_state(const struct fd_gmem_stateobj *gmem)
+{
+	unsigned total = 0;
+	printf("GMEM LAYOUT: bin=%ux%u, nbins=%ux%u\n",
+			gmem->bin_w, gmem->bin_h, gmem->nbins_x, gmem->nbins_y);
+	for (int i = 0; i < ARRAY_SIZE(gmem->cbuf_base); i++) {
+		if (!gmem->cbuf_cpp[i])
+			continue;
+
+		unsigned size = gmem->cbuf_cpp[i] * gmem->bin_w * gmem->bin_h;
+		printf("  cbuf[%d]: base=0x%06x, size=0x%x, cpp=%u\n", i,
+				gmem->cbuf_base[i], size, gmem->cbuf_cpp[i]);
+
+		total = gmem->cbuf_base[i] + size;
+	}
+
+	for (int i = 0; i < ARRAY_SIZE(gmem->zsbuf_base); i++) {
+		if (!gmem->zsbuf_cpp[i])
+			continue;
+
+		unsigned size = gmem->zsbuf_cpp[i] * gmem->bin_w * gmem->bin_h;
+		printf("  zsbuf[%d]: base=0x%06x, size=0x%x, cpp=%u\n", i,
+				gmem->zsbuf_base[i], size, gmem->zsbuf_cpp[i]);
+
+		total = gmem->zsbuf_base[i] + size;
+	}
+
+	printf("total: 0x%06x (of 0x%06x)\n", total,
+			gmem->screen->gmemsize_bytes);
+}
+
 static uint32_t bin_width(struct fd_screen *screen)
 {
 	if (is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen))
@@ -216,6 +264,11 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	gmem->miny = key->miny;
 	gmem->width = key->width;
 	gmem->height = key->height;
+
+	if (BIN_DEBUG) {
+		dump_gmem_state(gmem);
+		dump_gmem_key(key);
+	}
 
 	/*
 	 * Assign tiles and pipes:
