@@ -89,7 +89,7 @@ namespace clover {
    class root_resource : public resource {
    public:
       root_resource(clover::device &dev, memory_obj &obj,
-                    command_queue &q, const std::string &data);
+                    command_queue &q, const void *data_ptr);
       root_resource(clover::device &dev, memory_obj &obj, root_resource &r);
       virtual ~root_resource();
    };

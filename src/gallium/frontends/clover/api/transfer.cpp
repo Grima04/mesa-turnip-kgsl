@@ -210,7 +210,7 @@ namespace {
    struct _map<image*> {
       _map(command_queue &q, image *img, cl_map_flags flags,
            vector_t offset, vector_t pitch, vector_t region) :
-         map(q, img->resource(q), flags, true, offset, region),
+         map(q, img->resource_in(q), flags, true, offset, region),
          pitch(map.pitch())
       { }
 
@@ -227,7 +227,7 @@ namespace {
    struct _map<buffer*> {
       _map(command_queue &q, buffer *mem, cl_map_flags flags,
            vector_t offset, vector_t pitch, vector_t region) :
-         map(q, mem->resource(q), flags, true,
+         map(q, mem->resource_in(q), flags, true,
              {{ dot(pitch, offset) }}, {{ size(pitch, region) }}),
          pitch(pitch)
       { }
@@ -294,8 +294,8 @@ namespace {
    hard_copy_op(command_queue &q, T dst_obj, const vector_t &dst_orig,
                 S src_obj, const vector_t &src_orig, const vector_t &region) {
       return [=, &q](event &) {
-         dst_obj->resource(q).copy(q, dst_orig, region,
-                                   src_obj->resource(q), src_orig);
+         dst_obj->resource_in(q).copy(q, dst_orig, region,
+                                      src_obj->resource_in(q), src_orig);
       };
    }
 }
@@ -480,7 +480,7 @@ clEnqueueFillBuffer(cl_command_queue d_queue, cl_mem d_mem,
    auto hev = create<hard_event>(
       q, CL_COMMAND_FILL_BUFFER, deps,
       [=, &q, &mem](event &) {
-         mem.resource(q).clear(q, offset, size, &data[0], data.size());
+         mem.resource_in(q).clear(q, offset, size, &data[0], data.size());
       });
 
    ret_object(rd_ev, hev);
@@ -755,7 +755,7 @@ clEnqueueMapBuffer(cl_command_queue d_q, cl_mem d_mem, cl_bool blocking,
    validate_object(q, mem, obj_origin, obj_pitch, region);
    validate_map_flags(mem, flags);
 
-   void *map = mem.resource(q).add_map(q, flags, blocking, obj_origin, region);
+   void *map = mem.resource_in(q).add_map(q, flags, blocking, obj_origin, region);
 
    auto hev = create<hard_event>(q, CL_COMMAND_MAP_BUFFER, deps);
    if (blocking)
@@ -787,7 +787,7 @@ clEnqueueMapImage(cl_command_queue d_q, cl_mem d_mem, cl_bool blocking,
    validate_object(q, img, origin, region);
    validate_map_flags(img, flags);
 
-   void *map = img.resource(q).add_map(q, flags, blocking, origin, region);
+   void *map = img.resource_in(q).add_map(q, flags, blocking, origin, region);
 
    auto hev = create<hard_event>(q, CL_COMMAND_MAP_IMAGE, deps);
    if (blocking)
@@ -815,7 +815,7 @@ clEnqueueUnmapMemObject(cl_command_queue d_q, cl_mem d_mem, void *ptr,
    auto hev = create<hard_event>(
       q, CL_COMMAND_UNMAP_MEM_OBJECT, deps,
       [=, &q, &mem](event &) {
-         mem.resource(q).del_map(ptr);
+         mem.resource_in(q).del_map(ptr);
       });
 
    ret_object(rd_ev, hev);
@@ -826,15 +826,54 @@ clEnqueueUnmapMemObject(cl_command_queue d_q, cl_mem d_mem, void *ptr,
 }
 
 CLOVER_API cl_int
-clEnqueueMigrateMemObjects(cl_command_queue command_queue,
-                           cl_uint num_mem_objects,
-                           const cl_mem *mem_objects,
+clEnqueueMigrateMemObjects(cl_command_queue d_q,
+                           cl_uint num_mems,
+                           const cl_mem *d_mems,
                            cl_mem_migration_flags flags,
-                           cl_uint num_events_in_wait_list,
-                           const cl_event *event_wait_list,
-                           cl_event *event) {
-   CLOVER_NOT_SUPPORTED_UNTIL("1.2");
-   return CL_INVALID_VALUE;
+                           cl_uint num_deps,
+                           const cl_event *d_deps,
+                           cl_event *rd_ev) try {
+   auto &q = obj(d_q);
+   auto mems = objs<memory_obj>(d_mems, num_mems);
+   auto deps = objs<wait_list_tag>(d_deps, num_deps);
+
+   validate_common(q, deps);
+
+   if (any_of([&](const memory_obj &m) {
+         return m.context() != q.context();
+         }, mems))
+      throw error(CL_INVALID_CONTEXT);
+
+   if (flags & ~(CL_MIGRATE_MEM_OBJECT_HOST |
+                 CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED))
+      throw error(CL_INVALID_VALUE);
+
+   auto hev = create<hard_event>(
+      q, CL_COMMAND_MIGRATE_MEM_OBJECTS, deps,
+      [=, &q](event &) {
+         for (auto &mem: mems) {
+            if (flags & CL_MIGRATE_MEM_OBJECT_HOST) {
+               if ((flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED))
+                  mem.resource_out(q);
+
+               // For flags == CL_MIGRATE_MEM_OBJECT_HOST only to be
+               // efficient we would need cl*ReadBuffer* to implement
+               // reading from host memory.
+
+            } else {
+               if (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)
+                  mem.resource_undef(q);
+               else
+                  mem.resource_in(q);
+            }
+         }
+      });
+
+   ret_object(rd_ev, hev);
+   return CL_SUCCESS;;
+
+} catch (error &e) {
+   return e.get();
 }
 
 cl_int

@@ -447,7 +447,7 @@ kernel::global_argument::bind(exec_context &ctx,
    align(ctx.input, marg.target_align);
 
    if (buf) {
-      const resource &r = buf->resource(*ctx.q);
+      const resource &r = buf->resource_in(*ctx.q);
       ctx.g_handles.push_back(ctx.input.size());
       ctx.g_buffers.push_back(r.pipe);
 
@@ -522,7 +522,7 @@ kernel::constant_argument::bind(exec_context &ctx,
    align(ctx.input, marg.target_align);
 
    if (buf) {
-      resource &r = buf->resource(*ctx.q);
+      resource &r = buf->resource_in(*ctx.q);
       auto v = bytes(ctx.resources.size() << 24 | r.offset[0]);
 
       extend(v, module::argument::zero_ext, marg.target_size);
@@ -540,7 +540,7 @@ kernel::constant_argument::bind(exec_context &ctx,
 void
 kernel::constant_argument::unbind(exec_context &ctx) {
    if (buf)
-      buf->resource(*ctx.q).unbind_surface(*ctx.q, st);
+      buf->resource_in(*ctx.q).unbind_surface(*ctx.q, st);
 }
 
 void
@@ -565,13 +565,13 @@ kernel::image_rd_argument::bind(exec_context &ctx,
    align(ctx.input, marg.target_align);
    insert(ctx.input, v);
 
-   st = img->resource(*ctx.q).bind_sampler_view(*ctx.q);
+   st = img->resource_in(*ctx.q).bind_sampler_view(*ctx.q);
    ctx.sviews.push_back(st);
 }
 
 void
 kernel::image_rd_argument::unbind(exec_context &ctx) {
-   img->resource(*ctx.q).unbind_sampler_view(*ctx.q, st);
+   img->resource_in(*ctx.q).unbind_sampler_view(*ctx.q, st);
 }
 
 void
@@ -596,13 +596,13 @@ kernel::image_wr_argument::bind(exec_context &ctx,
    align(ctx.input, marg.target_align);
    insert(ctx.input, v);
 
-   st = img->resource(*ctx.q).bind_surface(*ctx.q, true);
+   st = img->resource_in(*ctx.q).bind_surface(*ctx.q, true);
    ctx.resources.push_back(st);
 }
 
 void
 kernel::image_wr_argument::unbind(exec_context &ctx) {
-   img->resource(*ctx.q).unbind_surface(*ctx.q, st);
+   img->resource_in(*ctx.q).unbind_surface(*ctx.q, st);
 }
 
 void

@@ -124,7 +124,7 @@ resource::unbind_surface(command_queue &q, pipe_surface *st) {
 }
 
 root_resource::root_resource(clover::device &dev, memory_obj &obj,
-                             command_queue &q, const std::string &data) :
+                             command_queue &q, const void *data_ptr) :
    resource(dev, obj) {
    pipe_resource info {};
 
@@ -161,8 +161,7 @@ root_resource::root_resource(clover::device &dev, memory_obj &obj,
    if (!pipe)
       throw error(CL_OUT_OF_RESOURCES);
 
-   if (obj.flags() & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
-      const void *data_ptr = !data.empty() ? data.data() : obj.host_ptr();
+   if (data_ptr) {
       box rect { {{ 0, 0, 0 }}, {{ info.width0, info.height0, info.depth0 }} };
       unsigned cpp = util_format_get_blocksize(info.format);
 
