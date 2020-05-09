@@ -2,9 +2,12 @@
 
 BM=$CI_PROJECT_DIR/.gitlab-ci/bare-metal
 
-if [ -z "$BM_SERIAL" ]; then
-  echo "Must set BM_SERIAL in your gitlab-runner config.toml [[runners]] environment"
-  echo "This is the serial device to talk to for waiting for fastboot to be ready and logging from the kernel."
+if [ -z "$BM_SERIAL" -a -z "$BM_SERIAL_SCRIPT" ]; then
+  echo "Must set BM_SERIAL OR BM_SERIAL_SCRIPT in your gitlab-runner config.toml [[runners]] environment"
+  echo "BM_SERIAL:"
+  echo "  This is the serial device to talk to for waiting for fastboot to be ready and logging from the kernel."
+  echo "BM_SERIAL_SCRIPT:"
+  echo "  This is a shell script to talk to for waiting for fastboot to be ready and logging from the kernel."
   exit 1
 fi
 
@@ -63,7 +66,12 @@ abootimg \
 rm Image.gz-dtb
 
 # Start watching serial, and power up the device.
-$BM/serial-buffer.py $BM_SERIAL | tee artifacts/serial-output.txt &
+if [ -n "$BM_SERIAL" ]; then
+  $BM/serial-buffer.py $BM_SERIAL | tee artifacts/serial-output.txt &
+else
+  PATH=$BM:$PATH $BM_SERIAL_SCRIPT | tee artifacts/serial-output.txt &
+fi
+
 while [ ! -e artifacts/serial-output.txt ]; do
   sleep 1
 done
