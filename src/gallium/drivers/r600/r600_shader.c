@@ -203,6 +203,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 				NIR_PASS_V(sel->nir, nir_lower_int64, ~0);
 				NIR_PASS_V(sel->nir, nir_opt_vectorize);
 			}
+			NIR_PASS_V(sel->nir, nir_lower_flrp, ~0, false, false);
 		}
 		nir_tgsi_scan_shader(sel->nir, &sel->info, true);
 
