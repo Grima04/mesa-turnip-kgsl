@@ -26,6 +26,8 @@
 #include <vector>
 #include <string>
 
+#include "CL/cl.h"
+
 namespace clover {
    struct module {
       typedef uint32_t resource_id;
@@ -51,6 +53,25 @@ namespace clover {
          type type;
          size_t size;
          std::vector<char> data;
+      };
+
+      struct arg_info {
+         arg_info(const std::string &arg_name, const std::string &type_name,
+                  const cl_kernel_arg_type_qualifier type_qualifier,
+                  const cl_kernel_arg_address_qualifier address_qualifier,
+                  const cl_kernel_arg_access_qualifier access_qualifier) :
+            arg_name(arg_name), type_name(type_name),
+            type_qualifier(type_qualifier),
+            address_qualifier(address_qualifier),
+            access_qualifier(access_qualifier) { };
+         arg_info() : arg_name(""), type_name(""), type_qualifier(0),
+            address_qualifier(0), access_qualifier(0) { };
+
+         std::string arg_name;
+         std::string type_name;
+         cl_kernel_arg_type_qualifier type_qualifier;
+         cl_kernel_arg_address_qualifier address_qualifier;
+         cl_kernel_arg_access_qualifier access_qualifier;
       };
 
       struct argument {
@@ -103,6 +124,7 @@ namespace clover {
          size_t target_align;
          ext_type ext_type;
          semantic semantic;
+         arg_info info;
       };
 
       struct symbol {

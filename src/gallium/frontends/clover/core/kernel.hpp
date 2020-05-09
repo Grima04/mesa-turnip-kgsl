@@ -141,6 +141,7 @@ namespace clover {
 
       argument_range args();
       const_argument_range args() const;
+      std::vector<clover::module::arg_info> args_infos();
 
       const intrusive_ref<clover::program> program;
 

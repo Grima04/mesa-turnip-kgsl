@@ -153,6 +153,16 @@ kernel::args() const {
    return map(derefs(), _args);
 }
 
+std::vector<clover::module::arg_info>
+kernel::args_infos() {
+   std::vector<clover::module::arg_info> infos;
+   for (auto &marg: find(name_equals(_name), program().symbols()).args)
+      if (marg.semantic == clover::module::argument::general)
+         infos.emplace_back(marg.info);
+
+   return infos;
+}
+
 const module &
 kernel::module(const command_queue &q) const {
    return program().build(q.device()).binary;

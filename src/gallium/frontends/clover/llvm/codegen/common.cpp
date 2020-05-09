@@ -66,6 +66,43 @@ namespace {
          unreachable("Unknown image type");
    }
 
+   module::arg_info create_arg_info(const std::string &arg_name,
+                                    const std::string &type_name,
+                                    const std::string &type_qualifier,
+                                    const int address_qualifier,
+                                    const std::string &access_qualifier) {
+
+      cl_kernel_arg_type_qualifier cl_type_qualifier =
+                                                   CL_KERNEL_ARG_TYPE_NONE;
+      if (type_qualifier.find("const") != std::string::npos)
+         cl_type_qualifier |= CL_KERNEL_ARG_TYPE_CONST;
+      if (type_qualifier.find("restrict") != std::string::npos)
+         cl_type_qualifier |=  CL_KERNEL_ARG_TYPE_RESTRICT;
+      if (type_qualifier.find("volatile") != std::string::npos)
+         cl_type_qualifier |=  CL_KERNEL_ARG_TYPE_VOLATILE;
+
+      cl_kernel_arg_address_qualifier cl_address_qualifier =
+                                             CL_KERNEL_ARG_ADDRESS_PRIVATE;
+      if (address_qualifier == 1)
+         cl_address_qualifier = CL_KERNEL_ARG_ADDRESS_GLOBAL;
+      else if (address_qualifier == 2)
+         cl_address_qualifier =  CL_KERNEL_ARG_ADDRESS_CONSTANT;
+      else if (address_qualifier == 3)
+         cl_address_qualifier =  CL_KERNEL_ARG_ADDRESS_LOCAL;
+
+      cl_kernel_arg_access_qualifier cl_access_qualifier =
+                                                   CL_KERNEL_ARG_ACCESS_NONE;
+      if (access_qualifier == "read_only")
+         cl_access_qualifier = CL_KERNEL_ARG_ACCESS_READ_ONLY;
+      else if (access_qualifier == "write_only")
+         cl_access_qualifier = CL_KERNEL_ARG_ACCESS_WRITE_ONLY;
+      else if (access_qualifier == "read_write")
+         cl_access_qualifier = CL_KERNEL_ARG_ACCESS_READ_WRITE;
+
+      return module::arg_info(arg_name, type_name, cl_type_qualifier,
+                              cl_address_qualifier, cl_access_qualifier);
+   }
+
    std::vector<module::argument>
    make_kernel_args(const Module &mod, const std::string &kernel_name,
                     const clang::CompilerInstance &c) {
@@ -87,12 +124,11 @@ namespace {
          const unsigned target_size = dl.getTypeStoreSize(arg_type);
          const unsigned target_align = dl.getABITypeAlignment(arg_type);
 
-         const auto type_name = get_argument_metadata(f, arg,
-                                                      "kernel_arg_type");
-
+         const auto type_name = get_str_argument_metadata(f, arg,
+                                                          "kernel_arg_type");
          if (type_name == "image2d_t" || type_name == "image3d_t") {
             // Image.
-            const auto access_qual = get_argument_metadata(
+            const auto access_qual = get_str_argument_metadata(
                f, arg, "kernel_arg_access_qual");
             args.emplace_back(get_image_type(type_name, access_qual),
                               target_size, target_size,
@@ -152,6 +188,16 @@ namespace {
                                  target_size, target_align,
                                  (needs_sign_ext ? module::argument::sign_ext :
                                   module::argument::zero_ext));
+            }
+
+            // Add kernel argument infos if built with -cl-kernel-arg-info.
+            if (c.getCodeGenOpts().EmitOpenCLArgMetadata) {
+               args.back().info = create_arg_info(
+                  get_str_argument_metadata(f, arg, "kernel_arg_name"),
+                  type_name,
+                  get_str_argument_metadata(f, arg, "kernel_arg_type_qual"),
+                  get_uint_argument_metadata(f, arg, "kernel_arg_addr_space"),
+                  get_str_argument_metadata(f, arg, "kernel_arg_access_qual"));
             }
          }
       }

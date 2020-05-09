@@ -48,7 +48,10 @@ namespace clover {
          get_kernel_metadata_operands(const ::llvm::Function &f,
                                       const std::string &name) {
             const auto data_node = f.getMetadata(name);
-            return range(data_node->op_begin(), data_node->op_end());
+            if (data_node)
+               return range(data_node->op_begin(), data_node->op_end());
+            else
+               return iterator_range< ::llvm::MDNode::op_iterator>();
          }
       }
 
@@ -57,12 +60,35 @@ namespace clover {
       /// argument given by \p arg.
       ///
       inline std::string
-      get_argument_metadata(const ::llvm::Function &f,
+      get_str_argument_metadata(const ::llvm::Function &f,
                             const ::llvm::Argument &arg,
                             const std::string &name) {
-         return ::llvm::cast< ::llvm::MDString>(
-               detail::get_kernel_metadata_operands(f, name)[arg.getArgNo()])
-            ->getString().str();
+         auto operands = detail::get_kernel_metadata_operands(f, name);
+         if (operands.size() > arg.getArgNo()) {
+            return ::llvm::cast< ::llvm::MDString>(operands[arg.getArgNo()])
+               ->getString().str();
+         } else {
+            return "";
+         }
+      }
+
+      ///
+      /// Extract the int metadata node \p name corresponding to the kernel
+      /// argument given by \p arg.
+      ///
+      inline uint
+      get_uint_argument_metadata(const ::llvm::Function &f,
+                            const ::llvm::Argument &arg,
+                            const std::string &name) {
+         auto operands = detail::get_kernel_metadata_operands(f, name);
+         if (operands.size() >= arg.getArgNo()) {
+            auto meta_arg_value = ::llvm::cast< ::llvm::ConstantAsMetadata>(
+               operands[arg.getArgNo()])->getValue();
+            return ::llvm::cast< ::llvm::ConstantInt>(meta_arg_value)
+               ->getLimitedValue(UINT_MAX);
+         } else {
+            return 0;
+         }
       }
 
       ///
