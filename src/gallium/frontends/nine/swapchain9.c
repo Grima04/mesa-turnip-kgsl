@@ -724,6 +724,8 @@ present( struct NineSwapChain9 *This,
     HRESULT hr;
     struct pipe_blit_info blit;
     int target_width, target_height, target_depth, i;
+    RECT source_rect;
+    RECT dest_rect;
 
     DBG("present: This=%p pSourceRect=%p pDestRect=%p "
         "pDirtyRegion=%p hDestWindowOverride=%p"
@@ -731,14 +733,18 @@ present( struct NineSwapChain9 *This,
         This, pSourceRect, pDestRect, pDirtyRegion,
         hDestWindowOverride, (int)dwFlags, This->buffers[0]->base.resource);
 
-    if (pSourceRect)
+    if (pSourceRect) {
         DBG("pSourceRect = (%u..%u)x(%u..%u)\n",
             pSourceRect->left, pSourceRect->right,
             pSourceRect->top, pSourceRect->bottom);
-    if (pDestRect)
+        source_rect = *pSourceRect;
+    }
+    if (pDestRect) {
         DBG("pDestRect = (%u..%u)x(%u..%u)\n",
             pDestRect->left, pDestRect->right,
             pDestRect->top, pDestRect->bottom);
+        dest_rect = *pDestRect;
+    }
 
     /* TODO: in the case the source and destination rect have different size:
      * We need to allocate a new buffer, and do a blit to it to resize.
@@ -769,6 +775,15 @@ present( struct NineSwapChain9 *This,
         This->base.device->minor_version_num <= 2) {
         target_width = resource->width0;
         target_height = resource->height0;
+    }
+
+    if (pDestRect) {
+        dest_rect.top = MAX2(0, dest_rect.top);
+        dest_rect.left = MAX2(0, dest_rect.left);
+        dest_rect.bottom = MIN2(target_height, dest_rect.bottom);
+        dest_rect.right = MIN2(target_width, dest_rect.right);
+        target_height = dest_rect.bottom - dest_rect.top;
+        target_width = dest_rect.right - dest_rect.left;
     }
 
     /* Switch to using presentation buffers on window resize.
@@ -906,7 +921,7 @@ bypass_rendering:
     if (!This->enable_threadpool) {
         This->tasks[0]=NULL;
 
-        hr = ID3DPresent_PresentBuffer(This->present, This->present_handles[0], hDestWindowOverride, pSourceRect, pDestRect, pDirtyRegion, dwFlags);
+        hr = ID3DPresent_PresentBuffer(This->present, This->present_handles[0], hDestWindowOverride, pSourceRect, pDestRect ? &dest_rect : NULL, pDirtyRegion, dwFlags);
 
         if (FAILED(hr)) { UNTESTED(3);return hr; }
     }
