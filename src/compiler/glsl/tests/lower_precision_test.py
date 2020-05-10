@@ -921,12 +921,33 @@ TESTS = [
          }
          """,
          r'\(expression +uint +/'),
+    Test("f32 sampler array",
+         """
+         #version 320 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform sampler2D tex[2];
+         // highp shouldn't affect the return value of texture2D
+         uniform highp vec2 coord;
+         uniform float divisor;
+         uniform int index;
+
+         out highp vec4 color;
+
+         void main()
+         {
+                 color = texture2D(tex[index], coord) / divisor;
+         }
+         """,
+         r'\(expression +f16vec4 +/.*\(tex +f16vec4 +'),
     Test("f32 texture sample",
          """
          precision mediump float;
 
          uniform sampler2D tex;
-         uniform vec2 coord;
+         // highp shouldn't affect the return value of texture2D
+         uniform highp vec2 coord;
          uniform float divisor;
 
          void main()
@@ -942,7 +963,8 @@ TESTS = [
          precision mediump int;
 
          uniform mediump isampler2D tex;
-         uniform vec2 coord;
+         // highp shouldn't affect the return value of texture
+         uniform highp vec2 coord;
          uniform int divisor;
 
          out highp ivec4 color;
@@ -960,7 +982,8 @@ TESTS = [
          precision mediump int;
 
          uniform mediump usampler2D tex;
-         uniform vec2 coord;
+         // highp shouldn't affect the return value of texture
+         uniform highp vec2 coord;
          uniform uint divisor;
 
          out highp uvec4 color;
@@ -996,7 +1019,8 @@ TESTS = [
          precision mediump int;
 
          layout(rgba16f) readonly uniform mediump image2D img;
-         uniform ivec2 coord;
+         // highp shouldn't affect the return value of imageLoad
+         uniform highp ivec2 coord;
          uniform float divisor;
 
          out highp vec4 color;
@@ -1014,7 +1038,8 @@ TESTS = [
          precision mediump int;
 
          layout(rgba16i) readonly uniform mediump iimage2D img;
-         uniform ivec2 coord;
+         // highp shouldn't affect the return value of imageLoad
+         uniform highp ivec2 coord;
          uniform int divisor;
 
          out highp ivec4 color;
@@ -1032,7 +1057,8 @@ TESTS = [
          precision mediump int;
 
          layout(rgba16ui) readonly uniform mediump uimage2D img;
-         uniform ivec2 coord;
+         // highp shouldn't affect the return value of imageLoad
+         uniform highp ivec2 coord;
          uniform uint divisor;
 
          out highp uvec4 color;

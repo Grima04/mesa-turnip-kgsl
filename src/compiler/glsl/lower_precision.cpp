@@ -449,6 +449,24 @@ is_lowerable_builtin(ir_call *ir,
          return desc->channel[i].size <= 10; /* unorm/snorm */
    }
 
+   /* Handle special calls. */
+   if (ir->callee->is_builtin() && ir->actual_parameters.length()) {
+      ir_rvalue *param = (ir_rvalue*)ir->actual_parameters.get_head();
+      ir_variable *var = param->variable_referenced();
+
+      /* Handle builtin wrappers around ir_texture opcodes. These wrappers will
+       * be inlined by lower_precision() if we return true here, so that we can
+       * get to ir_texture later and do proper lowering.
+       *
+       * We should lower the type of the return value if the sampler type
+       * uses lower precision. The function parameters don't matter.
+       */
+      if (var && var->type->without_array()->is_sampler()) {
+         return var->data.precision == GLSL_PRECISION_MEDIUM ||
+                var->data.precision == GLSL_PRECISION_LOW;
+      }
+   }
+
    if (!ir->callee->is_builtin())
       return false;
 
