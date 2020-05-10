@@ -74,7 +74,8 @@ ShaderFromNirProcessor::ShaderFromNirProcessor(pipe_shader_type ptype,
    m_scratch_size(scratch_size),
    m_next_hwatomic_loc(0),
    m_sel(sel),
-   m_atomic_base(atomic_base)
+   m_atomic_base(atomic_base),
+   m_image_count(0)
 
 {
    m_sh_info.processor_type = ptype;
@@ -151,6 +152,10 @@ enum chip_class ShaderFromNirProcessor::get_chip_class(void) const
 bool ShaderFromNirProcessor::allocate_reserved_registers()
 {
    bool retval = do_allocate_reserved_registers();
+   m_ssbo_instr.load_rat_return_address();
+   if (sh_info().uses_atomics)
+      m_ssbo_instr.load_atomic_inc_limits();
+   m_ssbo_instr.set_ssbo_offset(m_image_count);
    return retval;
 }
 
@@ -258,6 +263,10 @@ bool ShaderFromNirProcessor::process_uniforms(nir_variable *uniform)
 
    if (uniform->type->is_image() || uniform->data.mode == nir_var_mem_ssbo) {
       sh_info().uses_images = 1;
+   }
+
+   if (uniform->type->is_image()) {
+      ++m_image_count;
    }
 
    return true;

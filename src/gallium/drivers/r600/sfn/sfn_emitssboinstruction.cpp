@@ -13,8 +13,14 @@ namespace r600 {
 
 EmitSSBOInstruction::EmitSSBOInstruction(ShaderFromNirProcessor& processor):
    EmitInstruction(processor),
-   m_require_rat_return_address(false)
+   m_require_rat_return_address(false),
+   m_ssbo_image_offset(0)
 {
+}
+
+void EmitSSBOInstruction::set_ssbo_offset(int offset)
+{
+   m_ssbo_image_offset = offset;
 }
 
 
@@ -329,7 +335,7 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
          (1 << nir_src_num_components(instr->src[0])) - 1, {0,1,2,3}, true);
 
    emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
-                                       values, addr_vec, 0, rat_id, 1,
+                                       values, addr_vec, m_ssbo_image_offset, rat_id, 1,
                                        1, 0, false));
    for (unsigned i = 1; i < nir_src_num_components(instr->src[0]); ++i) {
       emit_instruction(new AluInstruction(op1_mov, values.reg_i(0), from_nir(instr->src[0], i), write));
@@ -391,7 +397,7 @@ EmitSSBOInstruction::emit_ssbo_atomic_op(const nir_intrinsic_instr *intrin)
 
    GPRVector out_vec({coord, coord, coord, coord});
 
-   auto atomic = new RatInstruction(cf_mem_rat, opcode, m_rat_return_address, out_vec, imageid,
+   auto atomic = new RatInstruction(cf_mem_rat, opcode, m_rat_return_address, out_vec, imageid + m_ssbo_image_offset,
                                    image_offset, 1, 0xf, 0, true);
    emit_instruction(atomic);
    emit_instruction(new WaitAck(0));
@@ -474,9 +480,18 @@ bool EmitSSBOInstruction::fetch_return_value(const nir_intrinsic_instr *intrin)
    unsigned format_comp = 0;
    unsigned endian = 0;
 
+   int imageid = 0;
+   PValue image_offset;
+
+   if (nir_src_is_const(intrin->src[0]))
+      imageid = nir_src_as_int(intrin->src[0]);
+   else
+      image_offset = from_nir(intrin->src[0], 0);
+
    r600_vertex_data_type(format, &fmt, &num_format, &format_comp, &endian);
 
    GPRVector dest = vec_from_nir(intrin->dest, nir_dest_num_components(intrin->dest));
+
    auto fetch = new FetchInstruction(vc_fetch,
                                      no_index_offset,
                                      (EVTXDataFormat)fmt,
@@ -486,8 +501,8 @@ bool EmitSSBOInstruction::fetch_return_value(const nir_intrinsic_instr *intrin)
                                      dest,
                                      0,
                                      false,
-                                     0x3,
-                                     R600_IMAGE_IMMED_RESOURCE_OFFSET,
+                                     0xf,
+                                     R600_IMAGE_IMMED_RESOURCE_OFFSET + imageid,
                                      0,
                                      bim_none,
                                      false,
@@ -495,8 +510,7 @@ bool EmitSSBOInstruction::fetch_return_value(const nir_intrinsic_instr *intrin)
                                      0,
                                      0,
                                      0,
-                                     PValue(),
-                                     {0,1,2,3});
+                                     image_offset, {0,1,2,3});
    fetch->set_flag(vtx_srf_mode);
    fetch->set_flag(vtx_use_tc);
    if (format_comp)

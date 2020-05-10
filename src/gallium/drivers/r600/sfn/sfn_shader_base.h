@@ -208,6 +208,7 @@ private:
 
    r600_pipe_shader_selector& m_sel;
    int m_atomic_base ;
+   int m_image_count;
 };
 
 }

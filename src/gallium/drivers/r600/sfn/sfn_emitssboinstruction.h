@@ -10,6 +10,8 @@ class EmitSSBOInstruction: public EmitInstruction {
 public:
    EmitSSBOInstruction(ShaderFromNirProcessor& processor);
 
+   void set_ssbo_offset(int offset);
+
    void set_require_rat_return_address();
    bool load_rat_return_address();
    bool load_atomic_inc_limits();
@@ -42,6 +44,7 @@ private:
 
    bool m_require_rat_return_address;
    GPRVector m_rat_return_address;
+   int m_ssbo_image_offset;
 };
 
 }
