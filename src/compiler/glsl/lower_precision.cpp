@@ -163,6 +163,7 @@ find_lowerable_rvalues_visitor::can_lower_type(const glsl_type *type) const
     */
    case GLSL_TYPE_BOOL:
    case GLSL_TYPE_SAMPLER:
+   case GLSL_TYPE_IMAGE:
       return true;
 
    case GLSL_TYPE_FLOAT:
@@ -416,6 +417,38 @@ static bool
 is_lowerable_builtin(ir_call *ir,
                      const struct set *lowerable_rvalues)
 {
+   /* The intrinsic call is inside the wrapper imageLoad function that will
+    * be inlined. We have to handle both of them.
+    */
+   if (ir->callee->intrinsic_id == ir_intrinsic_image_load ||
+       (ir->callee->is_builtin() &&
+        !strcmp(ir->callee_name(), "imageLoad"))) {
+      ir_rvalue *param = (ir_rvalue*)ir->actual_parameters.get_head();
+      ir_variable *resource = param->variable_referenced();
+
+      assert(ir->callee->return_precision == GLSL_PRECISION_NONE);
+      assert(resource->type->without_array()->is_image());
+
+      /* GLSL ES 3.20 requires that images have a precision modifier, but if
+       * you set one, it doesn't do anything, because all intrinsics are
+       * defined with highp. This seems to be a spec bug.
+       *
+       * In theory we could set the return value to mediump if the image
+       * format has a lower precision. This appears to be the most sensible
+       * thing to do.
+       */
+      const struct util_format_description *desc =
+         util_format_description(resource->data.image_format);
+      unsigned i =
+         util_format_get_first_non_void_channel(resource->data.image_format);
+
+      if (desc->channel[i].pure_integer ||
+          desc->channel[i].type == UTIL_FORMAT_TYPE_FLOAT)
+         return desc->channel[i].size <= 16;
+      else
+         return desc->channel[i].size <= 10; /* unorm/snorm */
+   }
+
    if (!ir->callee->is_builtin())
       return false;
 
@@ -728,17 +761,28 @@ find_precision_visitor::visit_enter(ir_call *ir)
 {
    ir_rvalue_enter_visitor::visit_enter(ir);
 
+   ir_variable *return_var =
+      ir->return_deref ? ir->return_deref->variable_referenced() : NULL;
+
+   /* Don't do anything for image_load here. We have only changed the return
+    * value to mediump/lowp, so that following instructions can use reduced
+    * precision.
+    *
+    * The return value type of the intrinsic itself isn't changed here, but
+    * can be changed in NIR if all users use the *2*mp opcode.
+    */
+   if (ir->callee->intrinsic_id == ir_intrinsic_image_load)
+      return visit_continue;
+
    /* If this is a call to a builtin and the find_lowerable_rvalues_visitor
     * overrode the precision of the temporary return variable, then we can
     * replace the builtin implementation with a lowered version.
     */
 
    if (!ir->callee->is_builtin() ||
-       ir->return_deref == NULL ||
-       (ir->return_deref->variable_referenced()->data.precision !=
-        GLSL_PRECISION_MEDIUM &&
-        ir->return_deref->variable_referenced()->data.precision !=
-        GLSL_PRECISION_LOW))
+       return_var == NULL ||
+       (return_var->data.precision != GLSL_PRECISION_MEDIUM &&
+        return_var->data.precision != GLSL_PRECISION_LOW))
       return visit_continue;
 
    ir->callee = map_builtin(ir->callee);

@@ -971,6 +971,78 @@ TESTS = [
          }
          """,
          r'\(expression +u16vec4 +/.*\(tex +u16vec4 +'),
+    Test("f32 image array",
+         """
+         #version 320 es
+         precision mediump float;
+
+         layout(rgba16f) readonly uniform mediump image2D img[2];
+         // highp shouldn't affect the return value of imageLoad
+         uniform highp ivec2 coord;
+         uniform float divisor;
+
+         out highp vec4 color;
+
+         void main()
+         {
+                 color = imageLoad(img[1], coord) / divisor;
+         }
+         """,
+         r'\(expression +f16vec4 +/'),
+    Test("f32 image load",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         layout(rgba16f) readonly uniform mediump image2D img;
+         uniform ivec2 coord;
+         uniform float divisor;
+
+         out highp vec4 color;
+
+         void main()
+         {
+                 color = imageLoad(img, coord) / divisor;
+         }
+         """,
+         r'\(expression +f16vec4 +/'),
+    Test("i32 image load",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         layout(rgba16i) readonly uniform mediump iimage2D img;
+         uniform ivec2 coord;
+         uniform int divisor;
+
+         out highp ivec4 color;
+
+         void main()
+         {
+                 color = imageLoad(img, coord) / divisor;
+         }
+         """,
+         r'\(expression +i16vec4 +/'),
+    Test("u32 image load",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         layout(rgba16ui) readonly uniform mediump uimage2D img;
+         uniform ivec2 coord;
+         uniform uint divisor;
+
+         out highp uvec4 color;
+
+         void main()
+         {
+                 color = imageLoad(img, coord) / divisor;
+         }
+         """,
+         r'\(expression +u16vec4 +/'),
     Test("f32 expression in lvalue",
          """
          uniform mediump float a, b;
