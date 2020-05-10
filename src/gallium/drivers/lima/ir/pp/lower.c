@@ -198,7 +198,7 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    load_tex->src[0].pipeline = load->dest.pipeline = ppir_pipeline_reg_discard;
 
    /* Always create move node since there can be successors in other blocks */
-   ppir_node *move = ppir_node_insert_mov_all_blocks(node);
+   ppir_node *move = ppir_node_insert_mov(node);
    if (unlikely(!move))
       return false;
 

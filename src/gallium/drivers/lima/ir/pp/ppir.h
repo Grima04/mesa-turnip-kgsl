@@ -161,6 +161,7 @@ typedef struct ppir_node {
    int instr_pos;
    struct ppir_block *block;
    bool is_end;
+   bool succ_different_block;
 
    /* for scheduler */
    struct list_head succ_list;
@@ -414,7 +415,6 @@ void ppir_node_replace_pred(ppir_dep *dep, ppir_node *new_pred);
 ppir_dep *ppir_dep_for_pred(ppir_node *node, ppir_node *pred);
 /* Assumes that node successors are in the same block */
 ppir_node *ppir_node_insert_mov(ppir_node *node);
-ppir_node *ppir_node_insert_mov_all_blocks(ppir_node *node);
 
 static inline bool ppir_node_is_root(ppir_node *node)
 {
@@ -428,7 +428,8 @@ static inline bool ppir_node_is_leaf(ppir_node *node)
 
 static inline bool ppir_node_has_single_succ(ppir_node *node)
 {
-   return list_is_singular(&node->succ_list);
+   return list_is_singular(&node->succ_list)
+      && !node->succ_different_block;
 }
 
 bool ppir_node_has_single_src_succ(ppir_node *node);

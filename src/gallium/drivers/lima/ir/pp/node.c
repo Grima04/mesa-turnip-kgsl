@@ -388,8 +388,10 @@ void ppir_node_add_dep(ppir_node *succ, ppir_node *pred,
                        ppir_dep_type type)
 {
    /* don't add dep for two nodes from different block */
-   if (succ->block != pred->block)
+   if (succ->block != pred->block) {
+      pred->succ_different_block = true;
       return;
+   }
 
    /* don't add duplicated dep */
    ppir_node_foreach_pred(succ, dep) {
@@ -597,7 +599,7 @@ void ppir_node_print_prog(ppir_compiler *comp)
    printf("====================\n");
 }
 
-ppir_node *ppir_node_insert_mov(ppir_node *node)
+static ppir_node *ppir_node_insert_mov_local(ppir_node *node)
 {
    ppir_node *move = ppir_node_create(node->block, ppir_op_mov, -1, 0);
    if (unlikely(!move))
@@ -624,9 +626,9 @@ ppir_node *ppir_node_insert_mov(ppir_node *node)
    return move;
 }
 
-ppir_node *ppir_node_insert_mov_all_blocks(ppir_node *old)
+ppir_node *ppir_node_insert_mov(ppir_node *old)
 {
-   ppir_node *move = ppir_node_insert_mov(old);
+   ppir_node *move = ppir_node_insert_mov_local(old);
    ppir_compiler *comp = old->block->comp;
 
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
@@ -645,9 +647,10 @@ ppir_node *ppir_node_insert_mov_all_blocks(ppir_node *old)
 
    return move;
 }
+
 bool ppir_node_has_single_src_succ(ppir_node *node)
 {
-   if (list_is_singular(&node->succ_list) &&
+   if (ppir_node_has_single_succ(node) &&
        list_first_entry(&node->succ_list,
                         ppir_dep, succ_link)->type == ppir_dep_src)
       return true;
