@@ -349,6 +349,8 @@ etna_screen_get_shader_param(struct pipe_screen *pscreen,
       return VIV_FEATURE(screen, chipMinorFeatures0, HAS_SQRT_TRIG);
    case PIPE_SHADER_CAP_INT64_ATOMICS:
    case PIPE_SHADER_CAP_FP16:
+   case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+   case PIPE_SHADER_CAP_INT16:
       return 0;
    case PIPE_SHADER_CAP_INTEGERS:
       return DBG_ENABLED(ETNA_DBG_NIR) && screen->specs.halti >= 2;

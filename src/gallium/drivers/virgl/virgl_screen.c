@@ -463,6 +463,8 @@ virgl_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
       case PIPE_SHADER_CAP_INT64_ATOMICS:
       case PIPE_SHADER_CAP_FP16:
+      case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+      case PIPE_SHADER_CAP_INT16:
          return 0;
       default:
          return 0;

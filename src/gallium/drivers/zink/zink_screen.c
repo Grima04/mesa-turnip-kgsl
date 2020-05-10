@@ -421,6 +421,8 @@ zink_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_SUBROUTINES:
    case PIPE_SHADER_CAP_INT64_ATOMICS:
    case PIPE_SHADER_CAP_FP16:
+   case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+   case PIPE_SHADER_CAP_INT16:
       return 0; /* not implemented */
 
    case PIPE_SHADER_CAP_PREFERRED_IR:

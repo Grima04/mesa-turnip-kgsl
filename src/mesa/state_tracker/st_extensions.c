@@ -340,11 +340,12 @@ void st_init_limits(struct pipe_screen *screen,
             options->LowerBuiltinVariablesXfb |= VARYING_BIT_PSIZ;
       }
 
-      /* Initialize lower precision shader compiler option based on
-       * the value of PIPE_SHADER_CAP_FP16.
-       */
       options->LowerPrecisionFloat16 =
          screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16);
+      options->LowerPrecisionDerivatives =
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_DERIVATIVES);
+      options->LowerPrecisionInt16 =
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_INT16);
    }
 
    c->MaxUserAssignableUniformLocations =

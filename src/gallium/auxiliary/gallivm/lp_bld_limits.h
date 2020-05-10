@@ -126,6 +126,8 @@ gallivm_get_shader_param(enum pipe_shader_cap param)
       return 1;
    case PIPE_SHADER_CAP_INT64_ATOMICS:
    case PIPE_SHADER_CAP_FP16:
+   case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+   case PIPE_SHADER_CAP_INT16:
       return 0;
    case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
       return PIPE_MAX_SAMPLERS;

@@ -650,6 +650,10 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
 * ``PIPE_SHADER_CAP_INT64_ATOMICS``: Whether int64 atomic opcodes are supported. The device needs to support add, sub, swap, cmpswap, and, or, xor, min, and max.
 * ``PIPE_SHADER_CAP_FP16``: Whether half precision floating-point opcodes are supported.
    If unsupported, half precision ops need to be lowered to full precision.
+* ``PIPE_SHADER_CAP_FP16_DERIVATIVES``: Whether half precision floating-point
+  DDX and DDY opcodes are supported.
+* ``PIPE_SHADER_CAP_INT16``: Whether 16-bit signed and unsigned integer types
+  are supported.
 * ``PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS``: The maximum number of texture
   samplers.
 * ``PIPE_SHADER_CAP_PREFERRED_IR``: Preferred representation of the
