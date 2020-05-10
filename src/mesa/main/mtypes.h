@@ -3208,6 +3208,7 @@ struct gl_shader_compiler_options
     */
    GLboolean LowerPrecisionFloat16;
    GLboolean LowerPrecisionInt16;
+   GLboolean LowerPrecisionDerivatives;
 
    /**
     * \name Forms of indirect addressing the driver cannot do.

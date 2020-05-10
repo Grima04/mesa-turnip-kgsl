@@ -399,12 +399,13 @@ find_lowerable_rvalues_visitor::visit_enter(ir_expression *ir)
       stack.back().state = CANT_LOWER;
 
    /* Don't lower precision for derivative calculations */
-   if (ir->operation == ir_unop_dFdx ||
-         ir->operation == ir_unop_dFdx_coarse ||
-         ir->operation == ir_unop_dFdx_fine ||
-         ir->operation == ir_unop_dFdy ||
-         ir->operation == ir_unop_dFdy_coarse ||
-         ir->operation == ir_unop_dFdy_fine) {
+   if (!options->LowerPrecisionDerivatives &&
+       (ir->operation == ir_unop_dFdx ||
+        ir->operation == ir_unop_dFdx_coarse ||
+        ir->operation == ir_unop_dFdx_fine ||
+        ir->operation == ir_unop_dFdy ||
+        ir->operation == ir_unop_dFdy_coarse ||
+        ir->operation == ir_unop_dFdy_fine)) {
       stack.back().state = CANT_LOWER;
    }
 

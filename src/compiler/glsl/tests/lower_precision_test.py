@@ -1035,6 +1035,34 @@ TESTS = [
          }
          """,
          r'\(expression +uint16_t min'),
+    Test("dFdx",
+         """
+         #version 300 es
+         precision mediump float;
+
+         in vec4 var;
+         out vec4 color;
+
+         void main()
+         {
+                 color = dFdx(var);
+         }
+         """,
+         r'\(expression +f16vec4 +dFdx +\(expression +f16vec4'),
+    Test("dFdy",
+         """
+         #version 300 es
+         precision mediump float;
+
+         in vec4 var;
+         out vec4 color;
+
+         void main()
+         {
+                 color = dFdy(var);
+         }
+         """,
+         r'\(expression +f16vec4 +dFdy +\(expression +f16vec4'),
 ]
 
 
