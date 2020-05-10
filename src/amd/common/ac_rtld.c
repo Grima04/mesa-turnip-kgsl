@@ -82,9 +82,9 @@ struct ac_rtld_part {
 static void report_erroraf(const char *fmt, va_list va)
 {
 	char *msg;
-	int ret = asprintf(&msg, fmt, va);
+	int ret = vasprintf(&msg, fmt, va);
 	if (ret < 0)
-		msg = "(asprintf failed)";
+		msg = "(vasprintf failed)";
 
 	fprintf(stderr, "ac_rtld error: %s\n", msg);
 
