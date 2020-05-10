@@ -198,8 +198,8 @@ bool EmitSSBOInstruction::emit_load_ssbo(const nir_intrinsic_instr* instr)
    /* TODO fix resource index */
    auto ir = new FetchInstruction(dest, addr_temp,
                                   R600_IMAGE_REAL_RESOURCE_OFFSET, from_nir(instr->src[0], 0),
-                                  formats[instr->num_components-1], vtx_nf_int);
-   ir->set_dest_swizzle(dest_swt[instr->num_components - 1]);
+                                  formats[nir_dest_num_components(instr->dest) - 1], vtx_nf_int);
+   ir->set_dest_swizzle(dest_swt[nir_dest_num_components(instr->dest) - 1]);
    ir->set_flag(vtx_use_tc);
 
    emit_instruction(ir);
@@ -210,7 +210,7 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
 {
 
    GPRVector::Swizzle swz = {7,7,7,7};
-   for (int i = 0; i <  instr->src[0].ssa->num_components; ++i)
+   for (unsigned i = 0; i <  nir_src_num_components(instr->src[0]); ++i)
       swz[i] = i;
 
    auto orig_addr = from_nir(instr->src[2], 0);
@@ -243,12 +243,12 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
 #else
 
    auto values = vec_from_nir_with_fetch_constant(instr->src[0],
-         (1 << instr->src[0].ssa->num_components) - 1, {0,1,2,3}, true);
+         (1 << nir_src_num_components(instr->src[0])) - 1, {0,1,2,3}, true);
 
    emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
                                        values, addr_vec, 0, rat_id, 1,
                                        1, 0, false));
-   for (int i = 1; i < instr->src[0].ssa->num_components; ++i) {
+   for (unsigned i = 1; i < nir_src_num_components(instr->src[0]); ++i) {
       emit_instruction(new AluInstruction(op1_mov, values.reg_i(0), from_nir(instr->src[0], i), write));
       emit_instruction(new AluInstruction(op2_add_int, addr_vec.reg_i(0),
                                           {addr_vec.reg_i(0), Value::one_i}, last_write));
