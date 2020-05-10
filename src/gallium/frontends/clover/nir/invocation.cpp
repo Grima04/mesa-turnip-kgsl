@@ -58,6 +58,15 @@ dev_get_nir_compiler_options(const device &dev)
    return static_cast<const nir_shader_compiler_options*>(co);
 }
 
+static void debug_function(void *private_data,
+                   enum nir_spirv_debug_level level, size_t spirv_offset,
+                   const char *message)
+{
+   assert(private_data);
+   auto r_log = reinterpret_cast<std::string *>(private_data);
+   *r_log += message;
+}
+
 module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                                  std::string &r_log)
 {
@@ -80,6 +89,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
    spirv_options.caps.kernel = true;
    spirv_options.caps.int64_atomics = dev.has_int64_atomics();
    spirv_options.constant_as_global = true;
+   spirv_options.debug.func = &debug_function;
+   spirv_options.debug.private_data = &r_log;
 
    module m;
    // We only insert one section.
