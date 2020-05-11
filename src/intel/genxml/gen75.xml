@@ -878,7 +878,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
     <field name="MOCS" start="39" end="42" type="uint"/>
-    <field name="Binding Table Pool Enable" start="43" end="43" type="uint"/>
+    <field name="Binding Table Pool Enable" start="43" end="43" type="bool"/>
     <field name="Binding Table Pool Base Address" start="44" end="63" type="address"/>
     <field name="Binding Table Pool Upper Bound" start="76" end="95" type="address"/>
   </instruction>
