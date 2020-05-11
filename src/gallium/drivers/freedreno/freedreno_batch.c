@@ -392,12 +392,6 @@ flush_write_batch(struct fd_resource *rsc)
 	fd_batch_reference_locked(&b, NULL);
 }
 
-static bool
-fd_batch_references_resource(struct fd_batch *batch, struct fd_resource *rsc)
-{
-	return rsc->batch_mask & (1 << batch->idx);
-}
-
 static void
 fd_batch_add_resource(struct fd_batch *batch, struct fd_resource *rsc)
 {
@@ -456,16 +450,9 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
 }
 
 void
-fd_batch_resource_read(struct fd_batch *batch, struct fd_resource *rsc)
+fd_batch_resource_read_slowpath(struct fd_batch *batch, struct fd_resource *rsc)
 {
 	fd_screen_assert_locked(batch->ctx->screen);
-
-	/* Early out, if we hit this then we know we don't have anyone else
-	 * writing to it (since both _write and _read flush other writers), and
-	 * that we've already recursed for stencil.
-	 */
-	if (likely(fd_batch_references_resource(batch, rsc)))
-		return;
 
 	if (rsc->stencil)
 		fd_batch_resource_read(batch, rsc->stencil);
