@@ -1759,6 +1759,10 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 }
         };
 
+        if (instr->is_shadow && !instr->is_new_style_shadow)
+           for (int i = 0; i < 4; ++i)
+              ins.swizzle[0][i] = COMPONENT_X;
+
         /* We may need a temporary for the coordinate */
 
         bool needs_temp_coord =
