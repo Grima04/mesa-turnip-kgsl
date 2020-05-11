@@ -2000,8 +2000,8 @@ void ac_surface_get_bo_metadata(const struct radeon_info *info,
       uint64_t dcc_offset = 0;
 
       if (surf->dcc_offset) {
-         uint64_t dcc_offset = surf->display_dcc_offset ? surf->display_dcc_offset
-                                                        : surf->dcc_offset;
+         dcc_offset = surf->display_dcc_offset ? surf->display_dcc_offset
+                                               : surf->dcc_offset;
          assert((dcc_offset >> 8) != 0 && (dcc_offset >> 8) < (1 << 24));
       }
 
