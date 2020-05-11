@@ -39,6 +39,7 @@
 #include "compiler/glsl_types.h"
 #include "util/debug.h"
 #include "util/disk_cache.h"
+#include "util/u_atomic.h"
 #include "vk_format.h"
 #include "vk_util.h"
 
@@ -1256,6 +1257,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->mem_cache = tu_pipeline_cache_from_handle(pc);
 
+   for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++)
+      mtx_init(&device->scratch_bos[i].construct_mtx, mtx_plain);
+
    *pDevice = tu_device_to_handle(device);
    return VK_SUCCESS;
 
@@ -1302,6 +1306,11 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
          vk_free(&device->alloc, device->queues[i]);
    }
 
+   for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++) {
+      if (device->scratch_bos[i].initialized)
+         tu_bo_finish(device, &device->scratch_bos[i].bo);
+   }
+
    /* the compiler does not use pAllocator */
    ralloc_free(device->compiler);
 
@@ -1309,6 +1318,51 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    tu_DestroyPipelineCache(tu_device_to_handle(device), pc, NULL);
 
    vk_free(&device->alloc, device);
+}
+
+VkResult
+tu_get_scratch_bo(struct tu_device *dev, uint64_t size, struct tu_bo **bo)
+{
+   unsigned size_log2 = MAX2(util_logbase2_ceil64(size), MIN_SCRATCH_BO_SIZE_LOG2);
+   unsigned index = size_log2 - MIN_SCRATCH_BO_SIZE_LOG2;
+   assert(index < ARRAY_SIZE(dev->scratch_bos));
+
+   for (unsigned i = index; i < ARRAY_SIZE(dev->scratch_bos); i++) {
+      if (p_atomic_read(&dev->scratch_bos[i].initialized)) {
+         /* Fast path: just return the already-allocated BO. */
+         *bo = &dev->scratch_bos[i].bo;
+         return VK_SUCCESS;
+      }
+   }
+
+   /* Slow path: actually allocate the BO. We take a lock because the process
+    * of allocating it is slow, and we don't want to block the CPU while it
+    * finishes.
+   */
+   mtx_lock(&dev->scratch_bos[index].construct_mtx);
+
+   /* Another thread may have allocated it already while we were waiting on
+    * the lock. We need to check this in order to avoid double-allocating.
+    */
+   if (dev->scratch_bos[index].initialized) {
+      mtx_unlock(&dev->scratch_bos[index].construct_mtx);
+      *bo = &dev->scratch_bos[index].bo;
+      return VK_SUCCESS;
+   }
+
+   unsigned bo_size = 1ull << size_log2;
+   VkResult result = tu_bo_init_new(dev, &dev->scratch_bos[index].bo, bo_size);
+   if (result != VK_SUCCESS) {
+      mtx_unlock(&dev->scratch_bos[index].construct_mtx);
+      return result;
+   }
+
+   p_atomic_set(&dev->scratch_bos[index].initialized, true);
+
+   mtx_unlock(&dev->scratch_bos[index].construct_mtx);
+
+   *bo = &dev->scratch_bos[index].bo;
+   return VK_SUCCESS;
 }
 
 VkResult
