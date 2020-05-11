@@ -525,9 +525,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         (size == 64) ? 3 : /* (1 << 3) = 8-byte */
                         3; /* 8-bit todo */
 
-                if (ins->type == TAG_LOAD_STORE_4 && ins->load_64)
-                        min_alignment[dest] = 3;
-
                 /* We don't have a swizzle for the conditional and we don't
                  * want to muck with the conditional itself, so just force
                  * alignment for now */

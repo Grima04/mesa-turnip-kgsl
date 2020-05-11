@@ -192,12 +192,12 @@ midgard_promote_uniforms(compiler_context *ctx)
                         needs_move |= BITSET_TEST(special, ins->dest);
 
                 if (needs_move) {
+                        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
                         midgard_instruction mov = v_mov(promoted, ins->dest);
 
-                        if (ins->load_64)
+                        if (type_size == 64)
                                 mov.alu.reg_mode = midgard_reg_mode_64;
 
-                        unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
                         uint16_t rounded = mir_round_bytemask_up(mir_bytemask(ins), type_size);
                         mir_set_bytemask(&mov, rounded);
                         mir_insert_instruction_before(ctx, ins, mov);

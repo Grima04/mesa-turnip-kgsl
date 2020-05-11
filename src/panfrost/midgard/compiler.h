@@ -164,9 +164,6 @@ typedef struct midgard_instruction {
         unsigned nr_dependencies;
         BITSET_WORD *dependents;
 
-        /* For load/store ops.. force 64-bit destination */
-        bool load_64;
-
         union {
                 midgard_load_store_word load_store;
                 midgard_vector_alu alu;
