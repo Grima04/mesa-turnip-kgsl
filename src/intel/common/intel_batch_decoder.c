@@ -855,12 +855,18 @@ decode_3dstate_slice_table_state_pointers(struct intel_batch_decode_ctx *ctx,
 static void
 decode_load_register_imm(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 {
-   struct intel_group *reg = intel_spec_find_register(ctx->spec, p[1]);
+   struct intel_group *inst = intel_ctx_find_instruction(ctx, p);
+   const unsigned length = intel_group_get_length(inst, p);
+   assert(length & 1);
+   const unsigned nr_regs = (length - 1) / 2;
 
-   if (reg != NULL) {
-      fprintf(ctx->fp, "register %s (0x%x): 0x%x\n",
-              reg->name, reg->register_offset, p[2]);
-      ctx_print_group(ctx, reg, reg->register_offset, &p[2]);
+   for (unsigned i = 0; i < nr_regs; i++) {
+      struct intel_group *reg = intel_spec_find_register(ctx->spec, p[i * 2 + 1]);
+      if (reg != NULL) {
+         fprintf(ctx->fp, "register %s (0x%x): 0x%x\n",
+                 reg->name, reg->register_offset, p[2]);
+         ctx_print_group(ctx, reg, reg->register_offset, &p[2]);
+      }
    }
 }
 
