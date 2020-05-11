@@ -351,7 +351,8 @@ static bool
 mir_adjust_constant(midgard_instruction *ins, unsigned src,
                 unsigned *bundle_constant_mask,
                 unsigned *comp_mapping,
-                uint8_t *bundle_constants)
+                uint8_t *bundle_constants,
+                bool upper)
 {
         unsigned type_size = nir_alu_type_get_type_size(ins->src_types[src]) / 8;
         unsigned max_comp = 16 / type_size;
@@ -360,6 +361,15 @@ mir_adjust_constant(midgard_instruction *ins, unsigned src,
                                 type_size * 8),
                                                type_size * 8);
         unsigned type_mask = (1 << type_size) - 1;
+
+        /* Upper only makes sense for 16-bit */
+        if (type_size != 16 && upper)
+                return false;
+
+        /* For 16-bit, we need to stay on either upper or lower halves to avoid
+         * disrupting the swizzle */
+        unsigned start = upper ? 8 : 0;
+        unsigned length = (type_size == 2) ? 8 : 16;
 
         for (unsigned comp = 0; comp < max_comp; comp++) {
                 if (!(comp_mask & (1 << comp)))
@@ -370,13 +380,15 @@ mir_adjust_constant(midgard_instruction *ins, unsigned src,
                 signed best_place = -1;
                 unsigned i, j;
 
-                for (i = 0; i < 16; i += type_size) {
+                for (i = start; i < (start + length); i += type_size) {
                         unsigned reuse_bytes = 0;
 
                         for (j = 0; j < type_size; j++) {
                                 if (!(*bundle_constant_mask & (1 << (i + j))))
                                         continue;
                                 if (constantp[j] != bundle_constants[i + j])
+                                        break;
+                                if ((i + j) > (start + length))
                                         break;
 
                                 reuse_bytes++;
@@ -445,7 +457,7 @@ mir_adjust_constants(midgard_instruction *ins,
                         continue;
 
                 if (!mir_adjust_constant(ins, src, &bundle_constant_mask,
-                                comp_mapping[src], bundle_constants))
+                                comp_mapping[src], bundle_constants, false))
                         return false;
         }
 
