@@ -394,7 +394,9 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	}
 
 	radv_physical_device_init_mem_types(device);
-	radv_fill_device_extension_table(device, &device->supported_extensions);
+
+	radv_physical_device_get_supported_extensions(device,
+						      &device->supported_extensions);
 
 	if (drm_device)
 		device->bus_info = *drm_device->businfo.pci;
@@ -657,7 +659,7 @@ VkResult radv_CreateInstance(
 		}
 
 		if (idx >= RADV_INSTANCE_EXTENSION_COUNT ||
-		    !radv_supported_instance_extensions.extensions[idx]) {
+		    !radv_instance_extensions_supported.extensions[idx]) {
 			vk_free2(&default_alloc, pAllocator, instance);
 			return vk_error(instance, VK_ERROR_EXTENSION_NOT_PRESENT);
 		}
@@ -4935,7 +4937,7 @@ VkResult radv_EnumerateInstanceExtensionProperties(
 	VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
 
 	for (int i = 0; i < RADV_INSTANCE_EXTENSION_COUNT; i++) {
-		if (radv_supported_instance_extensions.extensions[i]) {
+		if (radv_instance_extensions_supported.extensions[i]) {
 			vk_outarray_append(&out, prop) {
 				*prop = radv_instance_extensions[i];
 			}
