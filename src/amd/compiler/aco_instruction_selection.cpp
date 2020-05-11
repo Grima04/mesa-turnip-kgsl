@@ -8194,10 +8194,8 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          break;
       }
       case nir_tex_src_bias:
-         if (instr->op == nir_texop_txb) {
-            bias = get_ssa_temp(ctx, instr->src[i].src.ssa);
-            has_bias = true;
-         }
+         bias = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         has_bias = true;
          break;
       case nir_tex_src_lod: {
          nir_const_value *val = nir_src_as_const_value(instr->src[i].src);
