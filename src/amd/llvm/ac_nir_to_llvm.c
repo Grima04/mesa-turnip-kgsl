@@ -971,7 +971,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 			}
 
 			assert(ac_get_llvm_num_components(src[0]) == 1);
-			LLVMValueRef param[2] = { src[0], ctx->ac.f32_0 };
+			LLVMValueRef param[2] = { src[0], LLVMGetUndef(ctx->ac.f32) };
 			result = ac_build_cvt_pkrtz_f16(&ctx->ac, param);
 			result = LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, "");
 		} else {
