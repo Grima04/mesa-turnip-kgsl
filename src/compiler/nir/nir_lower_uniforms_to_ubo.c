@@ -110,6 +110,7 @@ nir_lower_uniforms_to_ubo(nir_shader *shader, int multiplier)
                var->data.binding++;
          }
       }
+      shader->info.num_ubos++;
 
       if (shader->num_uniforms > 0) {
          const struct glsl_type *type = glsl_array_type(glsl_vec4_type(),
@@ -126,7 +127,6 @@ nir_lower_uniforms_to_ubo(nir_shader *shader, int multiplier)
          ubo->interface_type =
                glsl_interface_type(&field, 1, GLSL_INTERFACE_PACKING_STD430,
                                    false, "__ubo0_interface");
-         shader->info.num_ubos++;
       }
    }
 
