@@ -392,57 +392,17 @@ flush_write_batch(struct fd_resource *rsc)
 	fd_batch_reference_locked(&b, NULL);
 }
 
-void
-fd_batch_resource_used(struct fd_batch *batch, struct fd_resource *rsc, bool write)
+static bool
+fd_batch_references_resource(struct fd_batch *batch, struct fd_resource *rsc)
 {
-	fd_screen_assert_locked(batch->ctx->screen);
+	return rsc->batch_mask & (1 << batch->idx);
+}
 
-	if (rsc->stencil)
-		fd_batch_resource_used(batch, rsc->stencil, write);
+static void
+fd_batch_add_resource(struct fd_batch *batch, struct fd_resource *rsc)
+{
 
-	DBG("%p: %s %p", batch, write ? "write" : "read", rsc);
-
-	if (write)
-		rsc->valid = true;
-
-	/* note, invalidate write batch, to avoid further writes to rsc
-	 * resulting in a write-after-read hazard.
-	 */
-
-	if (write) {
-		/* if we are pending read or write by any other batch: */
-		if (rsc->batch_mask & ~(1 << batch->idx)) {
-			struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
-			struct fd_batch *dep;
-
-			if (rsc->write_batch && rsc->write_batch != batch)
-				flush_write_batch(rsc);
-
-			foreach_batch(dep, cache, rsc->batch_mask) {
-				struct fd_batch *b = NULL;
-				if (dep == batch)
-					continue;
-				/* note that batch_add_dep could flush and unref dep, so
-				 * we need to hold a reference to keep it live for the
-				 * fd_bc_invalidate_batch()
-				 */
-				fd_batch_reference(&b, dep);
-				fd_batch_add_dep(batch, b);
-				fd_bc_invalidate_batch(b, false);
-				fd_batch_reference_locked(&b, NULL);
-			}
-		}
-		fd_batch_reference_locked(&rsc->write_batch, batch);
-	} else {
-		/* If reading a resource pending a write, go ahead and flush the
-		 * writer.  This avoids situations where we end up having to
-		 * flush the current batch in _resource_used()
-		 */
-		if (rsc->write_batch && rsc->write_batch != batch)
-			flush_write_batch(rsc);
-	}
-
-	if (rsc->batch_mask & (1 << batch->idx)) {
+	if (likely(fd_batch_references_resource(batch, rsc))) {
 		debug_assert(_mesa_set_search(batch->resources, rsc));
 		return;
 	}
@@ -451,6 +411,68 @@ fd_batch_resource_used(struct fd_batch *batch, struct fd_resource *rsc, bool wri
 
 	_mesa_set_add(batch->resources, rsc);
 	rsc->batch_mask |= (1 << batch->idx);
+}
+
+void
+fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
+{
+	fd_screen_assert_locked(batch->ctx->screen);
+
+	if (rsc->stencil)
+		fd_batch_resource_write(batch, rsc->stencil);
+
+	DBG("%p: write %p", batch, rsc);
+
+	rsc->valid = true;
+
+	/* note, invalidate write batch, to avoid further writes to rsc
+	 * resulting in a write-after-read hazard.
+	 */
+	/* if we are pending read or write by any other batch: */
+	if (unlikely(rsc->batch_mask & ~(1 << batch->idx))) {
+		struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
+		struct fd_batch *dep;
+
+		if (rsc->write_batch && rsc->write_batch != batch)
+			flush_write_batch(rsc);
+
+		foreach_batch(dep, cache, rsc->batch_mask) {
+			struct fd_batch *b = NULL;
+			if (dep == batch)
+				continue;
+			/* note that batch_add_dep could flush and unref dep, so
+			 * we need to hold a reference to keep it live for the
+			 * fd_bc_invalidate_batch()
+			 */
+			fd_batch_reference(&b, dep);
+			fd_batch_add_dep(batch, b);
+			fd_bc_invalidate_batch(b, false);
+			fd_batch_reference_locked(&b, NULL);
+		}
+	}
+	fd_batch_reference_locked(&rsc->write_batch, batch);
+
+	fd_batch_add_resource(batch, rsc);
+}
+
+void
+fd_batch_resource_read(struct fd_batch *batch, struct fd_resource *rsc)
+{
+	fd_screen_assert_locked(batch->ctx->screen);
+
+	if (rsc->stencil)
+		fd_batch_resource_read(batch, rsc->stencil);
+
+	DBG("%p: read %p", batch, rsc);
+
+	/* If reading a resource pending a write, go ahead and flush the
+	 * writer.  This avoids situations where we end up having to
+	 * flush the current batch in _resource_used()
+	 */
+	if (unlikely(rsc->write_batch && rsc->write_batch != batch))
+		flush_write_batch(rsc);
+
+	fd_batch_add_resource(batch, rsc);
 }
 
 void

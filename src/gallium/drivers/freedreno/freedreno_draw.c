@@ -47,7 +47,7 @@ resource_read(struct fd_batch *batch, struct pipe_resource *prsc)
 {
 	if (!prsc)
 		return;
-	fd_batch_resource_used(batch, fd_resource(prsc), false);
+	fd_batch_resource_read(batch, fd_resource(prsc));
 }
 
 static void
@@ -55,7 +55,7 @@ resource_written(struct fd_batch *batch, struct pipe_resource *prsc)
 {
 	if (!prsc)
 		return;
-	fd_batch_resource_used(batch, fd_resource(prsc), true);
+	fd_batch_resource_write(batch, fd_resource(prsc));
 }
 
 static void

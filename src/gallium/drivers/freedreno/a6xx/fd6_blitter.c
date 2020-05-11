@@ -643,8 +643,8 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	fd_screen_lock(ctx->screen);
 
-	fd_batch_resource_used(batch, fd_resource(info->src.resource), false);
-	fd_batch_resource_used(batch, fd_resource(info->dst.resource), true);
+	fd_batch_resource_read(batch, fd_resource(info->src.resource));
+	fd_batch_resource_write(batch, fd_resource(info->dst.resource));
 
 	fd_screen_unlock(ctx->screen);
 
