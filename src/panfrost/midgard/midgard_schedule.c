@@ -347,6 +347,66 @@ struct midgard_predicate {
         unsigned pipeline_count;
 };
 
+static bool
+mir_adjust_constant(midgard_instruction *ins, unsigned src,
+                unsigned *bundle_constant_mask,
+                unsigned *comp_mapping,
+                uint8_t *bundle_constants)
+{
+        unsigned type_size = nir_alu_type_get_type_size(ins->src_types[src]) / 8;
+        unsigned max_comp = 16 / type_size;
+        unsigned comp_mask = mir_from_bytemask(mir_round_bytemask_up(
+                                mir_bytemask_of_read_components_index(ins, src),
+                                type_size * 8),
+                                               type_size * 8);
+        unsigned type_mask = (1 << type_size) - 1;
+
+        for (unsigned comp = 0; comp < max_comp; comp++) {
+                if (!(comp_mask & (1 << comp)))
+                        continue;
+
+                uint8_t *constantp = ins->constants.u8 + (type_size * comp);
+                unsigned best_reuse_bytes = 0;
+                signed best_place = -1;
+                unsigned i, j;
+
+                for (i = 0; i < 16; i += type_size) {
+                        unsigned reuse_bytes = 0;
+
+                        for (j = 0; j < type_size; j++) {
+                                if (!(*bundle_constant_mask & (1 << (i + j))))
+                                        continue;
+                                if (constantp[j] != bundle_constants[i + j])
+                                        break;
+
+                                reuse_bytes++;
+                        }
+
+                        /* Select the place where existing bytes can be
+                         * reused so we leave empty slots to others
+                         */
+                        if (j == type_size &&
+                            (reuse_bytes > best_reuse_bytes || best_place < 0)) {
+                                best_reuse_bytes = reuse_bytes;
+                                best_place = i;
+                                break;
+                        }
+                }
+
+                /* This component couldn't fit in the remaining constant slot,
+                 * no need check the remaining components, bail out now
+                 */
+                if (best_place < 0)
+                        return false;
+
+                memcpy(&bundle_constants[i], constantp, type_size);
+                *bundle_constant_mask |= type_mask << best_place;
+                comp_mapping[comp] = best_place / type_size;
+        }
+
+        return true;
+}
+
 /* For an instruction that can fit, adjust it to fit and update the constants
  * array, in destructive mode. Returns whether the fitting was successful. */
 
@@ -384,56 +444,9 @@ mir_adjust_constants(midgard_instruction *ins,
                 if (ins->src[src] != SSA_FIXED_REGISTER(REGISTER_CONSTANT))
                         continue;
 
-                unsigned type_size = nir_alu_type_get_type_size(ins->src_types[src]) / 8;
-                unsigned max_comp = 16 / type_size;
-                unsigned comp_mask = mir_from_bytemask(mir_round_bytemask_up(
-                                        mir_bytemask_of_read_components_index(ins, src),
-                                        type_size * 8),
-                                                       type_size * 8);
-                unsigned type_mask = (1 << type_size) - 1;
-
-                for (unsigned comp = 0; comp < max_comp; comp++) {
-                        if (!(comp_mask & (1 << comp)))
-                                continue;
-
-                        uint8_t *constantp = ins->constants.u8 + (type_size * comp);
-                        unsigned best_reuse_bytes = 0;
-                        signed best_place = -1;
-                        unsigned i, j;
-
-                        for (i = 0; i < 16; i += type_size) {
-                                unsigned reuse_bytes = 0;
-
-                                for (j = 0; j < type_size; j++) {
-                                        if (!(bundle_constant_mask & (1 << (i + j))))
-                                                continue;
-                                        if (constantp[j] != bundle_constants[i + j])
-                                                break;
-
-                                        reuse_bytes++;
-                                }
-
-                                /* Select the place where existing bytes can be
-                                 * reused so we leave empty slots to others
-                                 */
-                                if (j == type_size &&
-                                    (reuse_bytes > best_reuse_bytes || best_place < 0)) {
-                                        best_reuse_bytes = reuse_bytes;
-                                        best_place = i;
-                                        break;
-                                }
-                        }
-
-                        /* This component couldn't fit in the remaining constant slot,
-                         * no need check the remaining components, bail out now
-                         */
-                        if (best_place < 0)
-                                return false;
-
-                        memcpy(&bundle_constants[i], constantp, type_size);
-                        bundle_constant_mask |= type_mask << best_place;
-                        comp_mapping[src][comp] = best_place / type_size;
-                }
+                if (!mir_adjust_constant(ins, src, &bundle_constant_mask,
+                                comp_mapping[src], bundle_constants))
+                        return false;
         }
 
         /* If non-destructive, we're done */
