@@ -1103,6 +1103,7 @@ llvmpipe-piglit-quick_shader:
     - .piglit-test
     - .llvmpipe-test
   variables:
+    GALLIVM_PERF: "no_filter_hacks"
     LP_NUM_THREADS: 1
     PIGLIT_PROFILES: quick_shader
     PIGLIT_RESULTS: "llvmpipe-quick_shader"

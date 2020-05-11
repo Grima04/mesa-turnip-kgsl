@@ -356,7 +356,6 @@ spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/simple-ms8: skip
 spec/ext_shader_image_load_formatted/execution/image_checkerboard: skip
 spec/glsl-1.10/preprocessor/extension-defined-test: skip
 spec/glsl-1.10/preprocessor/extension-if-1: skip
-spec/glsl-1.30/execution/fs-texturegrad-miplevels: fail
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept: skip
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-reject: skip
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-different-from-position: skip
@@ -599,8 +598,8 @@ spec/nv_viewport_swizzle/viewport_swizzle: skip
 summary:
        name:  results
        ----  --------
-       pass:    15819
-       fail:       83
+       pass:    15820
+       fail:       82
       crash:      170
        skip:      345
     timeout:        0
