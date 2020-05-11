@@ -8170,9 +8170,11 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
    bool has_bias = false, has_lod = false, level_zero = false, has_compare = false,
-        has_offset = false, has_ddx = false, has_ddy = false, has_derivs = false, has_sample_index = false;
+        has_offset = false, has_ddx = false, has_ddy = false, has_derivs = false, has_sample_index = false,
+        has_clamped_lod = false;
    Temp resource, sampler, fmask_ptr, bias = Temp(), compare = Temp(), sample_index = Temp(),
-        lod = Temp(), offset = Temp(), ddx = Temp(), ddy = Temp();
+        lod = Temp(), offset = Temp(), ddx = Temp(), ddy = Temp(),
+        clamped_lod = Temp();
    std::vector<Temp> coords;
    std::vector<Temp> derivs;
    nir_const_value *sample_index_cv = NULL;
@@ -8208,6 +8210,10 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          }
          break;
       }
+      case nir_tex_src_min_lod:
+         clamped_lod = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         has_clamped_lod = true;
+         break;
       case nir_tex_src_comparator:
          if (instr->is_shadow) {
             compare = get_ssa_temp(ctx, instr->src[i].src.ssa);
@@ -8608,6 +8614,8 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       args.emplace_back(sample_index);
    if (has_lod)
       args.emplace_back(lod);
+   if (has_clamped_lod)
+      args.emplace_back(clamped_lod);
 
    Temp arg = bld.tmp(RegClass(RegType::vgpr, args.size()));
    aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, args.size(), 1)};
@@ -8652,7 +8660,21 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    // TODO: would be better to do this by adding offsets, but needs the opcodes ordered.
    aco_opcode opcode = aco_opcode::image_sample;
    if (has_offset) { /* image_sample_*_o */
-      if (has_compare) {
+      if (has_clamped_lod) {
+         if (has_compare) {
+            opcode = aco_opcode::image_sample_c_cl_o;
+            if (has_derivs)
+               opcode = aco_opcode::image_sample_c_d_cl_o;
+            if (has_bias)
+               opcode = aco_opcode::image_sample_c_b_cl_o;
+         } else {
+            opcode = aco_opcode::image_sample_cl_o;
+            if (has_derivs)
+               opcode = aco_opcode::image_sample_d_cl_o;
+            if (has_bias)
+               opcode = aco_opcode::image_sample_b_cl_o;
+         }
+      } else if (has_compare) {
          opcode = aco_opcode::image_sample_c_o;
          if (has_derivs)
             opcode = aco_opcode::image_sample_c_d_o;
@@ -8672,6 +8694,20 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
             opcode = aco_opcode::image_sample_lz_o;
          if (has_lod)
             opcode = aco_opcode::image_sample_l_o;
+      }
+   } else if (has_clamped_lod) { /* image_sample_*_cl */
+      if (has_compare) {
+         opcode = aco_opcode::image_sample_c_cl;
+         if (has_derivs)
+            opcode = aco_opcode::image_sample_c_d_cl;
+         if (has_bias)
+            opcode = aco_opcode::image_sample_c_b_cl;
+      } else {
+         opcode = aco_opcode::image_sample_cl;
+         if (has_derivs)
+            opcode = aco_opcode::image_sample_d_cl;
+         if (has_bias)
+            opcode = aco_opcode::image_sample_b_cl;
       }
    } else { /* no offset */
       if (has_compare) {
