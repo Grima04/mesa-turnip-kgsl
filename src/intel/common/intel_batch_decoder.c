@@ -244,7 +244,35 @@ handle_state_base_address(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 }
 
 static void
-dump_binding_table(struct intel_batch_decode_ctx *ctx, uint32_t offset, int count)
+handle_binding_table_pool_alloc(struct intel_batch_decode_ctx *ctx,
+                                const uint32_t *p)
+{
+   struct intel_group *inst = intel_ctx_find_instruction(ctx, p);
+
+   struct intel_field_iterator iter;
+   intel_field_iterator_init(&iter, inst, p, 0, false);
+
+   uint64_t bt_pool_base = 0;
+   bool bt_pool_enable = false;
+
+   while (intel_field_iterator_next(&iter)) {
+      if (strcmp(iter.name, "Binding Table Pool Base Address") == 0) {
+         bt_pool_base = iter.raw_value;
+      } else if (strcmp(iter.name, "Binding Table Pool Enable") == 0) {
+         bt_pool_enable = iter.raw_value;
+      }
+   }
+
+   if (bt_pool_enable) {
+      ctx->bt_pool_base = bt_pool_base;
+   } else {
+      ctx->bt_pool_base = 0;
+   }
+}
+
+static void
+dump_binding_table(struct intel_batch_decode_ctx *ctx,
+                   uint32_t offset, int count)
 {
    struct intel_group *strct =
       intel_spec_find_struct(ctx->spec, "RENDER_SURFACE_STATE");
@@ -257,9 +285,12 @@ dump_binding_table(struct intel_batch_decode_ctx *ctx, uint32_t offset, int coun
    if (ctx->use_256B_binding_tables)
       offset <<= 3;
 
+   const uint64_t bt_pool_base = ctx->bt_pool_base ? ctx->bt_pool_base :
+                                                     ctx->surface_base;
+
    if (count < 0) {
-      count = update_count(ctx, ctx->surface_base + offset,
-                           ctx->surface_base, 1, 8);
+      count = update_count(ctx, bt_pool_base + offset,
+                           bt_pool_base, 1, 8);
    }
 
    if (offset % 32 != 0 || offset >= UINT16_MAX) {
@@ -268,7 +299,7 @@ dump_binding_table(struct intel_batch_decode_ctx *ctx, uint32_t offset, int coun
    }
 
    struct intel_batch_decode_bo bind_bo =
-      ctx_get_bo(ctx, true, ctx->surface_base + offset);
+      ctx_get_bo(ctx, true, bt_pool_base + offset);
 
    if (bind_bo.map == NULL) {
       fprintf(ctx->fp, "  binding table unavailable\n");
@@ -1082,6 +1113,7 @@ struct custom_decoder {
    void (*decode)(struct intel_batch_decode_ctx *ctx, const uint32_t *p);
 } custom_decoders[] = {
    { "STATE_BASE_ADDRESS", handle_state_base_address },
+   { "3DSTATE_BINDING_TABLE_POOL_ALLOC", handle_binding_table_pool_alloc },
    { "MEDIA_INTERFACE_DESCRIPTOR_LOAD", handle_media_interface_descriptor_load },
    { "COMPUTE_WALKER", handle_compute_walker },
    { "3DSTATE_VERTEX_BUFFERS", handle_3dstate_vertex_buffers },
