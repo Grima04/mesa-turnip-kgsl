@@ -456,9 +456,18 @@ mir_adjust_constants(midgard_instruction *ins,
                 if (ins->src[src] != SSA_FIXED_REGISTER(REGISTER_CONSTANT))
                         continue;
 
-                if (!mir_adjust_constant(ins, src, &bundle_constant_mask,
+                /* First, try lower half (or whole for !16) */
+                if (mir_adjust_constant(ins, src, &bundle_constant_mask,
                                 comp_mapping[src], bundle_constants, false))
-                        return false;
+                        continue;
+
+                /* Next, try upper half */
+                if (mir_adjust_constant(ins, src, &bundle_constant_mask,
+                                comp_mapping[src], bundle_constants, true))
+                        continue;
+
+                /* Otherwise bail */
+                return false;
         }
 
         /* If non-destructive, we're done */
