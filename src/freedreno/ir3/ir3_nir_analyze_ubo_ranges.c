@@ -180,34 +180,57 @@ handle_partial_const(nir_builder *b, nir_ssa_def **srcp, unsigned *offp)
 }
 
 static void
+lower_ubo_block_decrement(nir_intrinsic_instr *instr, nir_builder *b)
+{
+	/* Skip shifting things for turnip's bindless resources. */
+	if (ir3_bindless_resource(instr->src[0]))
+		return;
+
+	/* Shift all GL nir_intrinsic_load_ubo UBO indices down by 1, because we
+	 * have lowered block 0 off of load_ubo to constbuf and ir3_const only
+	 * uploads pointers for block 1-N.
+	 */
+	nir_ssa_def *old_idx = nir_ssa_for_src(b, instr->src[0], 1);
+	nir_ssa_def *new_idx = nir_iadd_imm(b, old_idx, -1);
+	nir_instr_rewrite_src(&instr->instr, &instr->src[0],
+			nir_src_for_ssa(new_idx));
+}
+
+static void
 lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 						  struct ir3_ubo_analysis_state *state)
 {
+	b->cursor = nir_before_instr(&instr->instr);
+
 	/* We don't lower dynamic block index UBO loads to load_uniform, but we
 	 * could probably with some effort determine a block stride in number of
 	 * registers.
 	 */
 	struct ir3_ubo_range *range = get_existing_range(instr, state, false);
-	if (!range)
+	if (!range) {
+		lower_ubo_block_decrement(instr, b);
 		return;
+	}
 
 	if (range->bindless || range->block > 0) {
 		/* We don't lower dynamic array indexing either, but we definitely should.
 		 * We don't have a good way of determining the range of the dynamic
 		 * access, so for now just fall back to pulling.
 		 */
-		if (!nir_src_is_const(instr->src[1]))
+		if (!nir_src_is_const(instr->src[1])) {
+			lower_ubo_block_decrement(instr, b);
 			return;
+		}
 
 		/* After gathering the UBO access ranges, we limit the total
 		 * upload. Reject if we're now outside the range.
 		 */
 		const struct ir3_ubo_range r = get_ubo_load_range(instr);
-		if (!(range->start <= r.start && r.end <= range->end))
+		if (!(range->start <= r.start && r.end <= range->end)) {
+			lower_ubo_block_decrement(instr, b);
 			return;
+		}
 	}
-
-	b->cursor = nir_before_instr(&instr->instr);
 
 	nir_ssa_def *ubo_offset = nir_ssa_for_src(b, instr->src[1], 1);
 	unsigned const_offset = 0;
@@ -335,6 +358,12 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 								  nir_metadata_dominance);
 		}
 	}
+
+	/* If we previously had UBO 0, it's been lowered off of load_ubo and all
+	 * the others were shifted down.
+	 */
+	if (nir->info.num_ubos >= 1 && nir->info.first_ubo_is_default_ubo)
+		nir->info.num_ubos--;
 
 	return state->lower_count > 0;
 }

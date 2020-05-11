@@ -760,11 +760,8 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *base_lo, *base_hi, *addr, *src0, *src1;
-	/* UBO addresses are the first driver params, but subtract 2 here to
-	 * account for nir_lower_uniforms_to_ubo rebasing the UBOs such that UBO 0
-	 * is the uniforms: */
 	struct ir3_const_state *const_state = &ctx->so->shader->const_state;
-	unsigned ubo = regid(const_state->offsets.ubo, 0) - 2;
+	unsigned ubo = regid(const_state->offsets.ubo, 0);
 	const unsigned ptrsz = ir3_pointer_size(ctx->compiler);
 
 	int off = 0;
