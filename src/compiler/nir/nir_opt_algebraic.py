@@ -1777,6 +1777,42 @@ for op in ['frcp', 'frsq', 'fsqrt', 'fexp2', 'flog2', 'fsign', 'fsin', 'fcos']:
         (('bcsel', a, (op, b), (op + '(is_used_once)', c)), (op, ('bcsel', a, b, c))),
     ]
 
+# This section contains optimizations to propagate downsizing conversions of
+# constructed vectors into vectors of downsized components. Whether this is
+# useful depends on the SIMD semantics of the backend. On a true SIMD machine,
+# this reduces the register pressure of the vector itself and often enables the
+# conversions to be eliminated via other algebraic rules or constant folding.
+# In the worst case on a SIMD architecture, the propagated conversions may be
+# revectorized via nir_opt_vectorize so instruction count is minimally
+# impacted.
+#
+# On a machine with SIMD-within-a-register only, this actually
+# counterintuitively hurts instruction count. These machines are the same that
+# require vectorize_vec2_16bit, so we predicate the optimizations on that flag
+# not being set.
+#
+# Finally for scalar architectures, there should be no difference in generated
+# code since it all ends up scalarized at the end, but it might minimally help
+# compile-times.
+
+for i in range(2, 4 + 1):
+   for T in ('f', 'u', 'i'):
+      vec_inst = ('vec' + str(i),)
+
+      indices = ['a', 'b', 'c', 'd']
+      suffix_in = tuple((indices[j] + '@32') for j in range(i))
+
+      to_16 = '{}2{}16'.format(T, T)
+      to_mp = '{}2{}mp'.format(T, T)
+
+      out_16 = tuple((to_16, indices[j]) for j in range(i))
+      out_mp = tuple((to_mp, indices[j]) for j in range(i))
+
+      optimizations  += [
+         ((to_16, vec_inst + suffix_in), vec_inst + out_16, '!options->vectorize_vec2_16bit'),
+         ((to_mp, vec_inst + suffix_in), vec_inst + out_mp, '!options->vectorize_vec2_16bit')
+      ]
+
 # This section contains "late" optimizations that should be run before
 # creating ffmas and calling regular optimizations for the final time.
 # Optimizations should go here if they help code generation and conflict
