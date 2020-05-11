@@ -490,7 +490,7 @@ bool can_swap_operands(aco_ptr<Instruction>& instr)
    }
 }
 
-bool can_use_VOP3(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+bool can_use_VOP3(opt_ctx& ctx, const aco_ptr<Instruction>& instr)
 {
    if (instr->isVOP3())
       return true;

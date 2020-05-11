@@ -549,6 +549,11 @@ public:
       return (signext && (data_.i & 0x80000000u) ? 0xffffffff00000000ull : 0ull) | data_.i;
    }
 
+   constexpr bool isOfType(RegType type) const noexcept
+   {
+      return hasRegClass() && regClass().type() == type;
+   }
+
    /* Indicates that the killed operand's live range intersects with the
     * instruction's definitions. Unlike isKill() and isFirstKill(), this is
     * not set by liveness analysis. */
@@ -1220,10 +1225,12 @@ static inline bool is_phi(aco_ptr<Instruction>& instr)
 }
 
 barrier_interaction get_barrier_interaction(const Instruction* instr);
-
 bool is_dead(const std::vector<uint16_t>& uses, Instruction *instr);
 
 bool can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high);
+bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr);
+/* updates "instr" and returns the old instruction (or NULL if no update was needed) */
+aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr);
 
 enum block_kind {
    /* uniform indicates that leaving this block,

@@ -1255,6 +1255,7 @@ setup_isel_context(Program* program,
    ctx.block->kind = block_kind_top_level;
 
    setup_xnack(program);
+   program->sram_ecc_enabled = args->options->family == CHIP_ARCTURUS;
 
    return ctx;
 }

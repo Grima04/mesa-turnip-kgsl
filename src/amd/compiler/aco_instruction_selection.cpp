@@ -2294,7 +2294,6 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       assert(dst.size() == 1);
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (instr->src[0].src.ssa->bit_size == 8) {
-         //TODO: we should use v_cvt_f32_ubyte1/v_cvt_f32_ubyte2/etc depending on the register assignment
          bld.vop1(aco_opcode::v_cvt_f32_ubyte0, Definition(dst), src);
       } else {
          if (instr->src[0].src.ssa->bit_size == 16)
