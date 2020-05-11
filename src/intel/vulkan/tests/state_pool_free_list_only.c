@@ -32,7 +32,7 @@
 
 #include "state_pool_test_helper.h"
 
-int main(int argc, char **argv)
+int main(void)
 {
    struct anv_physical_device physical_device = { };
    struct anv_device device = {
