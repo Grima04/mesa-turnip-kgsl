@@ -3016,6 +3016,15 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       image.lod = NULL;
       break;
 
+   case SpvOpImageQueryFormat:
+   case SpvOpImageQueryOrder:
+      res_val = vtn_untyped_value(b, w[3]);
+      image.image = vtn_get_image(b, w[3]);
+      image.coord = NULL;
+      image.sample = NULL;
+      image.lod = NULL;
+      break;
+
    case SpvOpImageRead: {
       res_val = vtn_untyped_value(b, w[3]);
       image.image = vtn_get_image(b, w[3]);
@@ -3122,6 +3131,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    OP(AtomicOr,                  atomic_or)
    OP(AtomicXor,                 atomic_xor)
    OP(AtomicFAddEXT,             atomic_fadd)
+   OP(ImageQueryFormat,          format)
+   OP(ImageQueryOrder,           order)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid image opcode", opcode);
@@ -3131,13 +3142,19 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    intrin->src[0] = nir_src_for_ssa(&image.image->dest.ssa);
 
-   /* size doesn't take non-lod coordinate parameters */
-   if (opcode != SpvOpImageQuerySize && opcode != SpvOpImageQuerySizeLod) {
+   switch (opcode) {
+   case SpvOpImageQuerySize:
+   case SpvOpImageQuerySizeLod:
+   case SpvOpImageQueryFormat:
+   case SpvOpImageQueryOrder:
+      break;
+   default:
       /* The image coordinate is always 4 components but we may not have that
        * many.  Swizzle to compensate.
        */
       intrin->src[1] = nir_src_for_ssa(expand_to_vec4(&b->nb, image.coord));
       intrin->src[2] = nir_src_for_ssa(image.sample);
+      break;
    }
 
    /* The Vulkan spec says:
@@ -3157,6 +3174,10 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    nir_intrinsic_set_access(intrin, access);
 
    switch (opcode) {
+   case SpvOpImageQueryFormat:
+   case SpvOpImageQueryOrder:
+      /* No additional sources */
+      break;
    case SpvOpImageQuerySize:
       intrin->src[1] = nir_src_for_ssa(nir_imm_int(&b->nb, 0));
       break;
@@ -5087,6 +5108,8 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpImageRead:
    case SpvOpImageWrite:
    case SpvOpImageTexelPointer:
+   case SpvOpImageQueryFormat:
+   case SpvOpImageQueryOrder:
       vtn_handle_image(b, opcode, w, count);
       break;
 
