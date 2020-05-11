@@ -31,7 +31,12 @@ import xml.etree.cElementTree as et
 
 from mako.template import Template
 
-MAX_API_VERSION = '1.2.128'
+def _bool_to_c_expr(b):
+    if b is True:
+        return 'true'
+    if b is False:
+        return 'false'
+    return b
 
 class Extension:
     def __init__(self, name, ext_version, enable):
@@ -43,6 +48,24 @@ class Extension:
             self.enable = 'false';
         else:
             self.enable = enable;
+
+class ApiVersion:
+    def __init__(self, version, enable):
+        self.version = version
+        self.enable = _bool_to_c_expr(enable)
+
+# Supported API versions.  Each one is the maximum patch version for the given
+# version.  Version come in increasing order and each version is available if
+# it's provided "enable" condition is true and all previous versions are
+# available.
+# TODO: The patch version should be unified!
+API_VERSIONS = [
+    ApiVersion('1.0.68',  True),
+    ApiVersion('1.1.107', True),
+    ApiVersion('1.2.131', '!ANDROID'),
+]
+
+MAX_API_VERSION = None # Computed later
 
 # On Android, we disable all surface and swapchain extensions. Android's Vulkan
 # loader implements VK_KHR_surface and VK_KHR_swapchain, and applications
@@ -218,7 +241,11 @@ class VkVersion:
         return self.__int_ver() > other.__int_ver()
 
 
-MAX_API_VERSION = VkVersion(MAX_API_VERSION)
+MAX_API_VERSION = VkVersion('0.0.0')
+for version in API_VERSIONS:
+    version.version = VkVersion(version.version)
+    assert version.version > MAX_API_VERSION
+    MAX_API_VERSION = version.version
 
 def _init_exts_from_xml(xml):
     """ Walk the Vulkan XML and fill out extra extension information. """
@@ -412,6 +439,7 @@ _TEMPLATE_C = Template(COPYRIGHT + """
                          VK_USE_PLATFORM_XLIB_KHR || \\
                          VK_USE_PLATFORM_DISPLAY_KHR)
 
+static const uint32_t MAX_API_VERSION = ${MAX_API_VERSION.c_vk_version()};
 
 const VkExtensionProperties radv_instance_extensions[RADV_INSTANCE_EXTENSION_COUNT] = {
 %for ext in instance_extensions:
@@ -443,24 +471,26 @@ void radv_fill_device_extension_table(const struct radv_physical_device *device,
 VkResult radv_EnumerateInstanceVersion(
     uint32_t*                                   pApiVersion)
 {
-    *pApiVersion = ${MAX_API_VERSION.c_vk_version()};
+    *pApiVersion = MAX_API_VERSION;
     return VK_SUCCESS;
 }
 
 uint32_t
 radv_physical_device_api_version(struct radv_physical_device *dev)
 {
-    uint32_t override = vk_get_version_override();
-    uint32_t version = VK_MAKE_VERSION(1, 0, 68);
-    if (dev->rad_info.has_syncobj_wait_for_submit) {
-        if (ANDROID) {
-            version = VK_MAKE_VERSION(1, 1, 107);
-        } else {
-            version = ${MAX_API_VERSION.c_vk_version()};
-        }
-    }
+    uint32_t version = 0;
 
-    return override ? MIN2(override, version) : version;
+    uint32_t override = vk_get_version_override();
+    if (override)
+        return MIN2(override, MAX_API_VERSION);
+
+%for version in API_VERSIONS:
+    if (!(${version.enable}))
+        return version;
+    version = ${version.version.c_vk_version()};
+
+%endfor
+    return version;
 }
 """)
 
@@ -482,6 +512,7 @@ if __name__ == '__main__':
         assert ext.type == 'instance' or ext.type == 'device'
 
     template_env = {
+        'API_VERSIONS': API_VERSIONS,
         'MAX_API_VERSION': MAX_API_VERSION,
         'instance_extensions': [e for e in EXTENSIONS if e.type == 'instance'],
         'device_extensions': [e for e in EXTENSIONS if e.type == 'device'],
