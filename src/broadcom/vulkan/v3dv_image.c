@@ -225,13 +225,13 @@ v3d_setup_slices(struct v3dv_image *image)
     *
     * We additionally align to 4k, which improves UIF XOR performance.
     */
-   image->alignment = 4096;
-   uint32_t page_align_offset =
+   image->alignment = image->tiling == VK_IMAGE_TILING_LINEAR ? 4 : 4096;
+   uint32_t align_offset =
       align(image->slices[0].offset, image->alignment) - image->slices[0].offset;
-   if (page_align_offset) {
-      image->size += page_align_offset;
+   if (align_offset) {
+      image->size += align_offset;
       for (int i = 0; i < image->levels; i++)
-         image->slices[i].offset += page_align_offset;
+         image->slices[i].offset += align_offset;
    }
 
    /* Arrays and cube textures have a stride which is the distance from
