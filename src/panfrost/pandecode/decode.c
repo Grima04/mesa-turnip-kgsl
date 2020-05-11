@@ -3074,7 +3074,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         if ((s->min_tile_coord | s->max_tile_coord) & ~(MALI_X_COORD_MASK | MALI_Y_COORD_MASK)) {
                 pandecode_msg("XXX: unexpected tile coordinate bits\n");
                 pandecode_prop("min_tile_coord = 0x%X\n", s->min_tile_coord);
-                pandecode_prop("max_tile_coord = 0x%X\n", s->min_tile_coord);
+                pandecode_prop("max_tile_coord = 0x%X\n", s->max_tile_coord);
         }
 
         /* Extract tile coordinates */
