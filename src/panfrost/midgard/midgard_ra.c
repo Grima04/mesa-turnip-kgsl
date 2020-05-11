@@ -525,13 +525,25 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         (size == 64) ? 3 : /* (1 << 3) = 8-byte */
                         3; /* 8-bit todo */
 
+                /* We can't cross xy/zw boundaries. TODO: vec8 can */
+                if (size == 16)
+                        min_bound[dest] = 8;
+
                 /* We don't have a swizzle for the conditional and we don't
                  * want to muck with the conditional itself, so just force
                  * alignment for now */
 
-                if (ins->type == TAG_ALU_4 && OP_IS_CSEL_V(ins->alu.op))
+                if (ins->type == TAG_ALU_4 && OP_IS_CSEL_V(ins->alu.op)) {
                         min_alignment[dest] = 4; /* 1 << 4= 16-byte = vec4 */
 
+                        /* LCRA assumes bound >= alignment */
+                        min_bound[dest] = 16;
+                }
+
+                /* Since ld/st swizzles and masks are 32-bit only, we need them
+                 * aligned to enable final packing */
+                if (ins->type == TAG_LOAD_STORE_4)
+                        min_alignment[dest] = MAX2(min_alignment[dest], 2);
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
