@@ -1184,6 +1184,26 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
    do_copy(ctx, bld, tmp_copy, &preserve_scc, pi->scratch_sgpr);
 }
 
+void do_pack_2x16(lower_context *ctx, Builder& bld, Definition def, Operand lo, Operand hi)
+{
+   if (ctx->program->chip_class >= GFX9) {
+      Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, lo, hi);
+      /* opsel: 0 = select low half, 1 = select high half. [0] = src0, [1] = src1 */
+      static_cast<VOP3A_instruction*>(instr)->opsel = hi.physReg().byte() | (lo.physReg().byte() >> 1);
+   } else if (ctx->program->chip_class >= GFX8) {
+      // TODO: optimize with v_mov_b32 / v_lshlrev_b32
+      PhysReg reg = def.physReg();
+      bld.copy(Definition(reg, v2b), lo);
+      reg.reg_b += 2;
+      bld.copy(Definition(reg, v2b), hi);
+   } else {
+      assert(lo.physReg().byte() == 0 && hi.physReg().byte() == 0);
+      bld.vop2(aco_opcode::v_and_b32, Definition(lo.physReg(), v1), Operand(0xFFFFu), lo);
+      bld.vop2(aco_opcode::v_and_b32, Definition(hi.physReg(), v1), Operand(0xFFFFu), hi);
+      bld.vop2(aco_opcode::v_cvt_pk_u16_u32, def, lo, hi);
+   }
+}
+
 void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx, chip_class chip_class, Pseudo_instruction *pi)
 {
    Builder bld(ctx->program, &ctx->instructions);
@@ -1272,6 +1292,37 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
             break;
          skip_partial_copies = false;
          it = copy_map.begin();
+      }
+
+      /* check if we can pack one register at once */
+      if (it->first.byte() == 0 && it->second.bytes == 2) {
+         PhysReg reg_hi = it->first.advance(2);
+         std::map<PhysReg, copy_operation>::iterator other = copy_map.find(reg_hi);
+         if (other != copy_map.end() && other->second.bytes == 2) {
+            /* check if the target register is otherwise unused */
+            // TODO: also do this for self-intersecting registers
+            bool unused_lo = !it->second.is_used;
+            bool unused_hi = !other->second.is_used;
+            if (unused_lo && unused_hi) {
+               Operand lo = it->second.op;
+               Operand hi = other->second.op;
+               do_pack_2x16(ctx, bld, Definition(it->first, v1), lo, hi);
+               copy_map.erase(it);
+               copy_map.erase(other);
+
+               for (std::pair<const PhysReg, copy_operation>& other : copy_map) {
+                  for (uint16_t i = 0; i < other.second.bytes; i++) {
+                     /* distance might underflow */
+                     unsigned distance_lo = other.first.reg_b + i - lo.physReg().reg_b;
+                     unsigned distance_hi = other.first.reg_b + i - hi.physReg().reg_b;
+                     if (distance_lo < 2 || distance_hi < 2)
+                        other.second.uses[i] -= 1;
+                  }
+               }
+               it = copy_map.begin();
+               continue;
+            }
+         }
       }
 
       /* on GFX6/7, we need some small workarounds as there is no
