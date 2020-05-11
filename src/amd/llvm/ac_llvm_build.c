@@ -2373,6 +2373,9 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 	       (a->lod ? 1 : 0) +
 	       (a->level_zero ? 1 : 0) +
 	       (a->derivs[0] ? 1 : 0) <= 1);
+	assert((a->min_lod ? 1 : 0) +
+	       (a->lod ? 1 : 0) +
+	       (a->level_zero ? 1 : 0) <= 1);
 
 	if (a->opcode == ac_image_get_lod) {
 		switch (dim) {
@@ -2428,6 +2431,9 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 		args[num_args++] = LLVMBuildBitCast(ctx->builder, a->coords[i], coord_type, "");
 	if (a->lod)
 		args[num_args++] = LLVMBuildBitCast(ctx->builder, a->lod, coord_type, "");
+	if (a->min_lod)
+		args[num_args++] = LLVMBuildBitCast(ctx->builder, a->min_lod, coord_type, "");
+
 	overload[num_overloads++] = sample ? ".f32" : ".i32";
 
 	args[num_args++] = a->resource;
@@ -2481,7 +2487,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 	char intr_name[96];
 	snprintf(intr_name, sizeof(intr_name),
 		 "llvm.amdgcn.image.%s%s" /* base name */
-		 "%s%s%s" /* sample/gather modifiers */
+		 "%s%s%s%s" /* sample/gather modifiers */
 		 ".%s.%s%s%s%s", /* dimension and type overloads */
 		 name, atomic_subop,
 		 a->compare ? ".c" : "",
@@ -2489,6 +2495,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 		 lod_suffix ? ".l" :
 		 a->derivs[0] ? ".d" :
 		 a->level_zero ? ".lz" : "",
+		 a->min_lod ? ".cl" : "",
 		 a->offset ? ".o" : "",
 		 dimname,
 		 atomic ? "i32" : "v4f32",

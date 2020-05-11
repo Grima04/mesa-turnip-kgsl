@@ -561,6 +561,7 @@ struct ac_image_args {
 	LLVMValueRef derivs[6];
 	LLVMValueRef coords[4];
 	LLVMValueRef lod; // also used by ac_image_get_resinfo
+	LLVMValueRef min_lod;
 };
 
 LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,

@@ -4468,6 +4468,9 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 		case nir_tex_src_ddy:
 			ddy = get_src(ctx, instr->src[i].src);
 			break;
+		case nir_tex_src_min_lod:
+			args.min_lod = get_src(ctx, instr->src[i].src);
+			break;
 		case nir_tex_src_texture_offset:
 		case nir_tex_src_sampler_offset:
 		case nir_tex_src_plane:
