@@ -887,7 +887,6 @@ arm64_a630_noubo:
     DEQP_VER: gles31
     IR3_SHADER_DEBUG: nouboopt
     DEQP_CASELIST_FILTER: "functional.*ubo"
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-noubo-fails.txt
 
 # The driver does some guessing as to whether to render using gmem
 # or bypass, and some GLES3.1 features interact with either one.
