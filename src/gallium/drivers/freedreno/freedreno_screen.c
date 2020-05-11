@@ -90,6 +90,7 @@ static const struct debug_named_value debug_options[] = {
 		{"notile",    FD_DBG_NOTILE, "Disable tiling for all internal buffers"},
 		{"layout",    FD_DBG_LAYOUT, "Dump resource layouts"},
 		{"nofp16",    FD_DBG_NOFP16, "Disable mediump precision lowering"},
+		{"nohw",      FD_DBG_NOHW,   "Disable submitting commands to the HW"},
 		DEBUG_NAMED_VALUE_END
 };
 

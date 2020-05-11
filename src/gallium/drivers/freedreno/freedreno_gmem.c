@@ -612,6 +612,9 @@ flush_ring(struct fd_batch *batch)
 	uint32_t timestamp;
 	int out_fence_fd = -1;
 
+	if (unlikely(fd_mesa_debug & FD_DBG_NOHW))
+		return;
+
 	fd_submit_flush(batch->submit, batch->in_fence_fd,
 			batch->needs_out_fence_fd ? &out_fence_fd : NULL,
 			&timestamp);
