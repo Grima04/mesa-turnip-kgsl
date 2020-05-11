@@ -473,6 +473,28 @@ const glsl_type *glsl_type::get_float16_type() const
                        this->interface_row_major);
 }
 
+const glsl_type *glsl_type::get_int16_type() const
+{
+   assert(this->base_type == GLSL_TYPE_INT);
+
+   return get_instance(GLSL_TYPE_INT16,
+                       this->vector_elements,
+                       this->matrix_columns,
+                       this->explicit_stride,
+                       this->interface_row_major);
+}
+
+const glsl_type *glsl_type::get_uint16_type() const
+{
+   assert(this->base_type == GLSL_TYPE_UINT);
+
+   return get_instance(GLSL_TYPE_UINT16,
+                       this->vector_elements,
+                       this->matrix_columns,
+                       this->explicit_stride,
+                       this->interface_row_major);
+}
+
 static void
 hash_free_type_function(struct hash_entry *entry)
 {

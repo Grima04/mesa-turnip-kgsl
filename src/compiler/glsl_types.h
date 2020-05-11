@@ -401,6 +401,16 @@ public:
    const glsl_type *get_float16_type() const;
 
    /**
+    * Gets the int16 version of this type.
+    */
+   const glsl_type *get_int16_type() const;
+
+   /**
+    * Gets the uint16 version of this type.
+    */
+   const glsl_type *get_uint16_type() const;
+
+   /**
     * Get the instance of a built-in scalar, vector, or matrix type
     */
    static const glsl_type *get_instance(unsigned base_type, unsigned rows,

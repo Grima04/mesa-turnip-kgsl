@@ -632,6 +632,18 @@ glsl_float16_type(const struct glsl_type *type)
    return type->get_float16_type();
 }
 
+const glsl_type *
+glsl_int16_type(const struct glsl_type *type)
+{
+   return type->get_int16_type();
+}
+
+const glsl_type *
+glsl_uint16_type(const struct glsl_type *type)
+{
+   return type->get_uint16_type();
+}
+
 void
 glsl_get_natural_size_align_bytes(const struct glsl_type *type,
                                   unsigned *size, unsigned *align)
