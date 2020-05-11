@@ -2055,6 +2055,8 @@ ac_build_ddxy(struct ac_llvm_context *ctx,
 
 	if (result_type == ctx->f16)
 		val = LLVMBuildZExt(ctx->builder, val, ctx->i32, "");
+	else if (result_type == ctx->v2f16)
+		val = LLVMBuildBitCast(ctx->builder, val, ctx->i32, "");
 
 	for (unsigned i = 0; i < 4; ++i) {
 		tl_lanes[i] = i & mask;
