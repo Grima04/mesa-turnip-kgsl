@@ -238,6 +238,25 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 	}
 }
 
+static const char *
+radv_get_compiler_string(struct radv_physical_device *pdevice)
+{
+	if (pdevice->use_aco) {
+		/* Some games like SotTR apply shader workarounds if the LLVM
+		 * version is too old or if the LLVM version string is
+		 * missing. This gives 2-5% performance with SotTR and ACO.
+		 */
+		if (driQueryOptionb(&pdevice->instance->dri_options,
+				    "radv_report_llvm9_version_string")) {
+			return "ACO/LLVM 9.0.1";
+		}
+
+		return "ACO";
+	}
+
+	return "LLVM " MESA_LLVM_VERSION_STRING;
+}
+
 static VkResult
 radv_physical_device_try_create(struct radv_instance *instance,
 				drmDevicePtr drm_device,
@@ -334,8 +353,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 
 	snprintf(device->name, sizeof(device->name),
 		 "AMD RADV %s (%s)",
-		 device->rad_info.name,
-		 device->use_aco ? "ACO" : "LLVM " MESA_LLVM_VERSION_STRING);
+		 device->rad_info.name, radv_get_compiler_string(device));
 
 	if (radv_device_get_cache_uuid(device->rad_info.family, device->cache_uuid)) {
 		result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
@@ -578,6 +596,7 @@ DRI_CONF_BEGIN
 		DRI_CONF_ADAPTIVE_SYNC("true")
 		DRI_CONF_VK_X11_OVERRIDE_MIN_IMAGE_COUNT(0)
 		DRI_CONF_VK_X11_STRICT_IMAGE_COUNT("false")
+		DRI_CONF_RADV_REPORT_LLVM9_VERSION_STRING("false")
 	DRI_CONF_SECTION_END
 
 	DRI_CONF_SECTION_DEBUG
@@ -1492,7 +1511,7 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 	snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "radv");
 	snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE,
 		 "Mesa " PACKAGE_VERSION MESA_GIT_SHA1 " (%s)",
-		 pdevice->use_aco ? "ACO" : "LLVM " MESA_LLVM_VERSION_STRING);
+		 radv_get_compiler_string(pdevice));
 	p->conformanceVersion = (VkConformanceVersion) {
 		.major = 1,
 		.minor = 2,

@@ -421,3 +421,12 @@ DRI_CONF_OPT_END
 DRI_CONF_OPT_BEGIN_V(gles_samples_passed_value, def, minimum, maximum) \
         DRI_CONF_DESC(en,gettext("GL_SAMPLES_PASSED value when emulated by GL_ANY_SAMPLES_PASSED")) \
 DRI_CONF_OPT_END
+
+/**
+ * \brief RADV specific configuration options
+ */
+
+#define DRI_CONF_RADV_REPORT_LLVM9_VERSION_STRING(def) \
+DRI_CONF_OPT_BEGIN_B(radv_report_llvm9_version_string, def) \
+        DRI_CONF_DESC(en,gettext("Report LLVM 9.0.1 for games that apply shader workarounds if missing (for ACO only)")) \
+DRI_CONF_OPT_END
