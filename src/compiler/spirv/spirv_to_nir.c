@@ -3000,6 +3000,14 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       access |= ACCESS_COHERENT;
       break;
 
+   case SpvOpImageQuerySizeLod:
+      res_val = vtn_untyped_value(b, w[3]);
+      image.image = vtn_get_image(b, w[3]);
+      image.coord = NULL;
+      image.sample = NULL;
+      image.lod = vtn_ssa_value(b, w[4])->def;
+      break;
+
    case SpvOpImageQuerySize:
       res_val = vtn_untyped_value(b, w[3]);
       image.image = vtn_get_image(b, w[3]);
@@ -3094,6 +3102,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    switch (opcode) {
 #define OP(S, N) case SpvOp##S: op = nir_intrinsic_image_deref_##N; break;
    OP(ImageQuerySize,            size)
+   OP(ImageQuerySizeLod,         size)
    OP(ImageRead,                 load)
    OP(ImageWrite,                store)
    OP(AtomicLoad,                load)
@@ -3122,10 +3131,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    intrin->src[0] = nir_src_for_ssa(&image.image->dest.ssa);
 
-   if (opcode == SpvOpImageQuerySize) {
-      /* ImageQuerySize only has an LOD which is currently always 0 */
-      intrin->src[1] = nir_src_for_ssa(nir_imm_int(&b->nb, 0));
-   } else {
+   /* size doesn't take non-lod coordinate parameters */
+   if (opcode != SpvOpImageQuerySize && opcode != SpvOpImageQuerySizeLod) {
       /* The image coordinate is always 4 components but we may not have that
        * many.  Swizzle to compensate.
        */
@@ -3150,17 +3157,20 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    nir_intrinsic_set_access(intrin, access);
 
    switch (opcode) {
-   case SpvOpAtomicLoad:
    case SpvOpImageQuerySize:
+      intrin->src[1] = nir_src_for_ssa(nir_imm_int(&b->nb, 0));
+      break;
+   case SpvOpImageQuerySizeLod:
+      intrin->src[1] = nir_src_for_ssa(image.lod);
+      break;
+   case SpvOpAtomicLoad:
    case SpvOpImageRead:
-      if (opcode == SpvOpImageRead || opcode == SpvOpAtomicLoad) {
-         /* Only OpImageRead can support a lod parameter if
-          * SPV_AMD_shader_image_load_store_lod is used but the current NIR
-          * intrinsics definition for atomics requires us to set it for
-          * OpAtomicLoad.
-          */
-         intrin->src[3] = nir_src_for_ssa(image.lod);
-      }
+      /* Only OpImageRead can support a lod parameter if
+      * SPV_AMD_shader_image_load_store_lod is used but the current NIR
+      * intrinsics definition for atomics requires us to set it for
+      * OpAtomicLoad.
+      */
+      intrin->src[3] = nir_src_for_ssa(image.lod);
       break;
    case SpvOpAtomicStore:
    case SpvOpImageWrite: {
@@ -5068,7 +5078,6 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpImageFetch:
    case SpvOpImageGather:
    case SpvOpImageDrefGather:
-   case SpvOpImageQuerySizeLod:
    case SpvOpImageQueryLod:
    case SpvOpImageQueryLevels:
    case SpvOpImageQuerySamples:
@@ -5081,6 +5090,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       vtn_handle_image(b, opcode, w, count);
       break;
 
+   case SpvOpImageQuerySizeLod:
    case SpvOpImageQuerySize: {
       struct vtn_type *image_type = vtn_get_value_type(b, w[3]);
       vtn_assert(image_type->base_type == vtn_base_type_image);
