@@ -519,9 +519,11 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 int dest = ins->dest;
                 found_class[dest] = MAX2(found_class[dest], bytes);
 
-                /* XXX: Ensure swizzles align the right way with more LCRA constraints? */
-                if (ins->type == TAG_ALU_4 && size != 32)
-                        min_alignment[dest] = 3; /* (1 << 3) = 8 */
+                min_alignment[dest] =
+                        (size == 16) ? 1 : /* (1 << 1) = 2-byte */
+                        (size == 32) ? 2 : /* (1 << 2) = 4-byte */
+                        (size == 64) ? 3 : /* (1 << 3) = 8-byte */
+                        3; /* 8-bit todo */
 
                 if (ins->type == TAG_LOAD_STORE_4 && ins->load_64)
                         min_alignment[dest] = 3;
