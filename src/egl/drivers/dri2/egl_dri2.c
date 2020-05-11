@@ -1017,6 +1017,10 @@ dri2_setup_screen(_EGLDisplay *disp)
 
    if (dri2_dpy->buffer_damage && dri2_dpy->buffer_damage->set_damage_region)
       disp->Extensions.KHR_partial_update = EGL_TRUE;
+
+   disp->Extensions.EXT_protected_content =
+      dri2_renderer_query_integer(dri2_dpy,
+                                  __DRI2_RENDERER_HAS_PROTECTED_CONTENT);
 }
 
 void

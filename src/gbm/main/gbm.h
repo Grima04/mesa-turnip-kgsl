@@ -238,6 +238,12 @@ enum gbm_bo_flags {
     * Buffer is linear, i.e. not tiled.
     */
    GBM_BO_USE_LINEAR = (1 << 4),
+   /**
+    * Buffer is protected, i.e. encrypted and not readable by CPU or any
+    * other non-secure / non-trusted components nor by non-trusted OpenGL,
+    * OpenCL, and Vulkan applications.
+    */
+   GBM_BO_USE_PROTECTED = (1 << 5),
 };
 
 int

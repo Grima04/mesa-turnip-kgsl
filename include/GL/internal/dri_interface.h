@@ -1367,6 +1367,7 @@ struct __DRIdri2ExtensionRec {
  * could be read after a flush."
  */
 #define __DRI_IMAGE_USE_BACKBUFFER      0x0010
+#define __DRI_IMAGE_USE_PROTECTED       0x0020
 
 
 #define __DRI_IMAGE_TRANSFER_READ            0x1
@@ -1931,6 +1932,8 @@ typedef struct __DRIDriverVtableExtensionRec {
 #define   __DRI2_RENDERER_HAS_CONTEXT_PRIORITY_LOW            (1 << 0)
 #define   __DRI2_RENDERER_HAS_CONTEXT_PRIORITY_MEDIUM         (1 << 1)
 #define   __DRI2_RENDERER_HAS_CONTEXT_PRIORITY_HIGH           (1 << 2)
+
+#define __DRI2_RENDERER_HAS_PROTECTED_CONTENT                 0x000e
 
 typedef struct __DRI2rendererQueryExtensionRec __DRI2rendererQueryExtension;
 struct __DRI2rendererQueryExtensionRec {

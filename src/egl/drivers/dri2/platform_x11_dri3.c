@@ -183,6 +183,15 @@ dri3_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
       goto cleanup_pixmap;
    }
 
+   if (dri3_surf->surf.base.ProtectedContent &&
+       dri2_dpy->is_different_gpu) {
+      _eglError(EGL_BAD_ALLOC, "dri3_surface_create");
+      goto cleanup_pixmap;
+   }
+
+   dri3_surf->loader_drawable.is_protected_content =
+      dri3_surf->surf.base.ProtectedContent;
+
    return &dri3_surf->surf.base;
 
  cleanup_pixmap:

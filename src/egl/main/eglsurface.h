@@ -169,6 +169,8 @@ struct _egl_surface
 
    EGLBoolean PostSubBufferSupportedNV;
 
+   EGLBoolean ProtectedContent;
+
    struct _egl_hdr_metadata HdrMetadata;
 
    void *NativeSurface;

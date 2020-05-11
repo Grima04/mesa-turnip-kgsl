@@ -574,6 +574,13 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
 
    use_flags = __DRI_IMAGE_USE_SHARE | __DRI_IMAGE_USE_BACKBUFFER;
 
+   if (dri2_surf->base.ProtectedContent) {
+      /* Protected buffers can't be read from another GPU */
+      if (dri2_dpy->is_different_gpu)
+         return -1;
+      use_flags |= __DRI_IMAGE_USE_PROTECTED;
+   }
+
    if (dri2_dpy->is_different_gpu &&
        dri2_surf->back->linear_copy == NULL) {
       /* The LINEAR modifier should be a perfect alias of the LINEAR use

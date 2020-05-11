@@ -1419,7 +1419,9 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
                                                        format,
                                                        __DRI_IMAGE_USE_SHARE |
                                                        __DRI_IMAGE_USE_SCANOUT |
-                                                       __DRI_IMAGE_USE_BACKBUFFER,
+                                                       __DRI_IMAGE_USE_BACKBUFFER |
+                                                       (draw->is_protected_content ?
+                                                         __DRI_IMAGE_USE_PROTECTED : 0),
                                                        buffer);
 
       pixmap_buffer = buffer->image;

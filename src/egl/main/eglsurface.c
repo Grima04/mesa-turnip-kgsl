@@ -303,6 +303,14 @@ _eglParseSurfaceAttribList(_EGLSurface *surf, const EGLint *attrib_list)
          }
          surf->MipmapTexture = !!val;
          break;
+      case EGL_PROTECTED_CONTENT_EXT:
+         if (!disp->Extensions.EXT_protected_content) {
+            err = EGL_BAD_ATTRIBUTE;
+            break;
+         }
+         surf->ProtectedContent = val;
+         break;
+
       /* no pixmap surface specific attributes */
       default:
          err = EGL_BAD_ATTRIBUTE;
@@ -383,6 +391,7 @@ _eglInitSurface(_EGLSurface *surf, _EGLDisplay *disp, EGLint type,
    surf->VGAlphaFormat = EGL_VG_ALPHA_FORMAT_NONPRE;
    surf->VGColorspace = EGL_VG_COLORSPACE_sRGB;
    surf->GLColorspace = EGL_GL_COLORSPACE_LINEAR_KHR;
+   surf->ProtectedContent = EGL_FALSE;
 
    surf->MipmapLevel = 0;
    surf->MultisampleResolve = EGL_MULTISAMPLE_RESOLVE_DEFAULT;
@@ -580,6 +589,11 @@ _eglQuerySurface(_EGLDisplay *disp, _EGLSurface *surface,
       break;
    case EGL_CTA861_3_MAX_FRAME_AVERAGE_LEVEL_EXT:
       *value = surface->HdrMetadata.max_fall;
+      break;
+   case EGL_PROTECTED_CONTENT_EXT:
+      if (!disp->Extensions.EXT_protected_content)
+         return _eglError(EGL_BAD_ATTRIBUTE, "eglQuerySurface");
+      *value = surface->ProtectedContent;
       break;
    default:
       return _eglError(EGL_BAD_ATTRIBUTE, "eglQuerySurface");

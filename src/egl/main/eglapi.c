@@ -496,6 +496,7 @@ _eglCreateExtensionsString(_EGLDisplay *disp)
    _EGL_CHECK_EXTENSION(EXT_create_context_robustness);
    _EGL_CHECK_EXTENSION(EXT_image_dma_buf_import);
    _EGL_CHECK_EXTENSION(EXT_image_dma_buf_import_modifiers);
+   _EGL_CHECK_EXTENSION(EXT_protected_content);
    _EGL_CHECK_EXTENSION(EXT_surface_CTA861_3_metadata);
    _EGL_CHECK_EXTENSION(EXT_surface_SMPTE2086_metadata);
    _EGL_CHECK_EXTENSION(EXT_swap_buffers_with_damage);
@@ -890,6 +891,14 @@ eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read,
       RETURN_EGL_ERROR(disp, EGL_BAD_NATIVE_WINDOW, EGL_FALSE);
    if (read_surf && read_surf->Lost)
       RETURN_EGL_ERROR(disp, EGL_BAD_NATIVE_WINDOW, EGL_FALSE);
+   /* EGL_EXT_protected_surface spec says:
+    *     If EGL_PROTECTED_CONTENT_EXT attributes of read is EGL_TRUE and
+    *     EGL_PROTECTED_CONTENT_EXT attributes of draw is EGL_FALSE, an
+    *     EGL_BAD_ACCESS error is generated.
+    */
+   if (read_surf && read_surf->ProtectedContent &&
+       draw_surf && !draw_surf->ProtectedContent)
+      RETURN_EGL_ERROR(disp, EGL_BAD_ACCESS, EGL_FALSE);
 
    ret = disp->Driver->MakeCurrent(disp, draw_surf, read_surf, context);
 
@@ -1471,6 +1480,8 @@ eglCopyBuffers(EGLDisplay dpy, EGLSurface surface, EGLNativePixmapType target)
    native_pixmap_ptr = (void*) target;
 
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE);
+   if (surf->ProtectedContent)
+      RETURN_EGL_ERROR(disp, EGL_BAD_ACCESS, EGL_FALSE);
    ret = disp->Driver->CopyBuffers(disp, surf, native_pixmap_ptr);
 
    RETURN_EGL_EVAL(disp, ret);
