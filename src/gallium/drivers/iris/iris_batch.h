@@ -168,6 +168,7 @@ struct iris_batch {
    uint32_t sync_region_depth;
 
    uint32_t last_aux_map_state;
+   struct iris_measure_batch *measure;
 };
 
 void iris_init_batch(struct iris_context *ice,

@@ -32,6 +32,7 @@
 #include "intel/isl/isl.h"
 #include "iris_bufmgr.h"
 #include "iris_binder.h"
+#include "iris_measure.h"
 #include "iris_resource.h"
 
 struct gen_l3_config;
@@ -218,6 +219,8 @@ struct iris_screen {
    struct iris_address workaround_address;
 
    struct disk_cache *disk_cache;
+
+   struct intel_measure_device measure;
 };
 
 struct pipe_screen *
