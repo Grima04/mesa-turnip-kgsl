@@ -492,8 +492,6 @@ spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-dlist-uniforms: skip
 spec/arb_internalformat_query/minmax: skip
 spec/arb_internalformat_query/misc. api error checks: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-frag: fail
-spec/arb_pixel_buffer_object/cubemap npot pbo: fail
-spec/arb_pixel_buffer_object/cubemap pbo: fail
 spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: fail
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex/'vs_input2[1][0]' on gl_program_input: fail
 spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_int: fail
@@ -732,7 +730,6 @@ spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-32: sk
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-8: skip
 spec/arb_shader_texture_lod/execution/arb_shader_texture_lod-texgrad: fail
-spec/arb_shader_texture_lod/execution/arb_shader_texture_lod-texgradcube: fail
 spec/arb_sparse_buffer/basic: skip
 spec/arb_sparse_buffer/buffer-data: skip
 spec/arb_sparse_buffer/commit: skip
@@ -745,7 +742,6 @@ spec/arb_texture_cube_map/copyteximage cube samples=32: skip
 spec/arb_texture_cube_map/copyteximage cube samples=4: skip
 spec/arb_texture_cube_map/copyteximage cube samples=6: skip
 spec/arb_texture_cube_map/copyteximage cube samples=8: skip
-spec/arb_texture_cube_map/cubemap npot: fail
 spec/arb_texture_float/multisample-formats 16 gl_arb_texture_float: skip
 spec/arb_texture_float/multisample-formats 32 gl_arb_texture_float: skip
 spec/arb_texture_float/multisample-formats 6 gl_arb_texture_float: skip
@@ -1490,15 +1486,6 @@ spec/ext_window_rectangles/errors: skip
 spec/ext_window_rectangles/errors_gles3: skip
 spec/ext_window_rectangles/render: skip
 spec/ext_window_rectangles/render_gles3: skip
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture() cube: fail
-spec/glsl-1.20/execution/tex-miplevel-selection gl2:texture(bias) cube: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cube: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cubearray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cubearrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cubeshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cube: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubearray: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubeshadow: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
 spec/glsl-1.50/built-in constants compatibility: skip
 spec/intel_blackhole_render/intel_blackhole-blit: skip
@@ -1662,8 +1649,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23132
-       fail:      198
+       pass:    23145
+       fail:      185
       crash:        1
        skip:     1438
     timeout:        0

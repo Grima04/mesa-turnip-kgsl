@@ -1074,6 +1074,7 @@ llvmpipe-piglit-quick_gl:
     - .piglit-test
     - .llvmpipe-test
   variables:
+    GALLIVM_PERF: "no_filter_hacks"
     LP_NUM_THREADS: 0
     PIGLIT_OPTIONS: >
       --process-isolation false
