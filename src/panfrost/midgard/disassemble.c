@@ -365,16 +365,24 @@ print_vector_constants(FILE *fp, unsigned src_binary,
         comp_mask = effective_writemask(alu, condense_writemask(alu->mask, bits));
         num_comp = util_bitcount(comp_mask);
 
-        fprintf(fp, "#");
-        if (num_comp > 1)
-                fprintf(fp, "vec%d(", num_comp);
-
+        fprintf(fp, "<");
         bool first = true;
 
 	for (unsigned i = 0; i < max_comp; ++i) {
                 if (!(comp_mask & (1 << i))) continue;
 
                 unsigned c = (src->swizzle >> (i * 2)) & 3;
+
+                if (bits == 16 && !src->half) {
+                        if (i < 4)
+                                c += (src->rep_high * 4);
+                        else
+                                c += (!src->rep_low * 4);
+                } else if (bits == 32 && !src->half) {
+                        /* Implicitly ok */
+                } else {
+                        printf(" (%d%d%d)", src->rep_low, src->rep_high, src->half);
+                }
 
                 if (first)
                         first = false;
@@ -386,7 +394,7 @@ print_vector_constants(FILE *fp, unsigned src_binary,
         }
 
         if (num_comp > 1)
-                fprintf(fp, ")");
+                fprintf(fp, ">");
 }
 
 static void
