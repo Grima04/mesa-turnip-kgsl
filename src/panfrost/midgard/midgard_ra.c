@@ -292,7 +292,8 @@ mir_lower_special_reads(compiler_context *ctx)
                                 } else {
                                         idx = spill_idx++;
                                         m = v_mov(i, idx);
-                                        m.mask = mir_from_bytemask(mir_bytemask_of_read_components(pre_use, i), 32);
+                                        m.mask = mir_from_bytemask(mir_round_bytemask_up(
+                                                                mir_bytemask_of_read_components(pre_use, i), 32), 32);
                                         mir_insert_instruction_before(ctx, pre_use, m);
                                         mir_rewrite_index_src_single(pre_use, i, idx);
                                 }
@@ -920,7 +921,8 @@ mir_spill_register(
                                 /* Mask the load based on the component count
                                  * actually needed to prevent RA loops */
 
-                                st.mask = mir_from_bytemask(read_bytemask, 32);
+                                st.mask = mir_from_bytemask(mir_round_bytemask_up(
+                                                        read_bytemask, 32), 32);
 
                                 mir_insert_instruction_before_scheduled(ctx, block, before, st);
                         } else {
