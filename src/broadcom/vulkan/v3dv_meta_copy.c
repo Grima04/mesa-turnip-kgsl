@@ -28,6 +28,11 @@
 #include "vk_format_info.h"
 #include "util/u_pack_color.h"
 
+static inline bool
+can_use_tlb(struct v3dv_image *image,
+            const VkOffset3D *offset,
+            VkFormat *compat_format);
+
 /**
  * Copy operations implemented in this file don't operate on a framebuffer
  * object provided by the user, however, since most use the TLB for this,
@@ -638,14 +643,21 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
  * This only works if we are copying from offset (0,0), since a TLB store for
  * tile (x,y) will be written at the same tile offset into the destination.
  * When this requirement is not met, we need to use a blit instead.
+ *
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ *
  */
-static void
+static bool
 copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_buffer *buffer,
                          struct v3dv_image *image,
-                         VkFormat fb_format,
                          const VkBufferImageCopy *region)
 {
+   VkFormat fb_format;
+   if (!can_use_tlb(image, &region->imageOffset, &fb_format))
+      return false;
+
    uint32_t internal_type, internal_bpp;
    get_internal_type_bpp_for_image_aspects(fb_format,
                                            region->imageSubresource.aspectMask,
@@ -660,7 +672,7 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
    if (!job)
-      return;
+      return true;
 
    /* Handle copy from compressed format using a compatible format */
    const uint32_t block_w = vk_format_get_blockwidth(image->vk_format);
@@ -678,6 +690,257 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    emit_copy_image_to_buffer_rcl(job, buffer, image, &framebuffer, region);
 
    v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+   return true;
+}
+
+static bool
+blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
+            struct v3dv_image *dst,
+            VkFormat dst_format,
+            struct v3dv_image *src,
+            VkFormat src_format,
+            VkColorComponentFlags cmask,
+            VkComponentMapping *cswizzle,
+            const VkImageBlit *region,
+            VkFilter filter);
+
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
+static bool
+copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
+                          struct v3dv_buffer *buffer,
+                          struct v3dv_image *image,
+                          const VkBufferImageCopy *region)
+{
+   bool handled = false;
+
+   /* Generally, the bpp of the data in the buffer matches that of the
+    * source image. The exception is the case where we are copying
+    * stencil (8bpp) to a combined d24s8 image (32bpp).
+    */
+   uint32_t buffer_bpp = image->cpp;
+
+   VkImageAspectFlags copy_aspect = region->imageSubresource.aspectMask;
+
+   /* Because we are going to implement the copy as a blit, we need to create
+    * a linear image from the destination buffer and we also want our blit
+    * source and destination formats to be the same (to avoid any format
+    * conversions), so we choose a canonical format that matches the
+    * source image bpp.
+    *
+    * The exception to the above is copying from combined depth/stencil images
+    * because we are copying only one aspect of the image, so we need to setup
+    * our formats, color write mask and source swizzle mask to match that.
+    */
+   VkFormat dst_format;
+   VkFormat src_format;
+   VkColorComponentFlags cmask = VK_COLOR_COMPONENT_R_BIT |
+                                 VK_COLOR_COMPONENT_G_BIT |
+                                 VK_COLOR_COMPONENT_B_BIT |
+                                 VK_COLOR_COMPONENT_A_BIT;
+   VkComponentMapping cswizzle = {
+      .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+   };
+   switch (buffer_bpp) {
+   case 16:
+      assert(copy_aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      dst_format = VK_FORMAT_R32G32B32A32_UINT;
+      src_format = dst_format;
+      break;
+   case 8:
+      assert(copy_aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      dst_format = VK_FORMAT_R16G16B16A16_UINT;
+      src_format = dst_format;
+      break;
+   case 4:
+      switch (copy_aspect) {
+      case VK_IMAGE_ASPECT_COLOR_BIT:
+         src_format = VK_FORMAT_R8G8B8A8_UINT;
+         dst_format = VK_FORMAT_R8G8B8A8_UINT;
+         break;
+      case VK_IMAGE_ASPECT_DEPTH_BIT:
+         assert(image->vk_format == VK_FORMAT_D32_SFLOAT ||
+                image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+                image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32);
+         if (image->vk_format == VK_FORMAT_D32_SFLOAT) {
+            src_format = VK_FORMAT_R32_UINT;
+            dst_format = VK_FORMAT_R32_UINT;
+         } else {
+            /* We want to write depth in the buffer in the first 24-bits,
+             * however, the hardware has depth in bits 8-31, so swizzle the
+             * the source components to match what we want. Also, we don't
+             * want to write bits 24-31 in the destination.
+             */
+            src_format = VK_FORMAT_R8G8B8A8_UINT;
+            dst_format = VK_FORMAT_R8G8B8A8_UINT;
+            cmask &= ~VK_COLOR_COMPONENT_A_BIT;
+            cswizzle.r = VK_COMPONENT_SWIZZLE_G;
+            cswizzle.g = VK_COMPONENT_SWIZZLE_B;
+            cswizzle.b = VK_COMPONENT_SWIZZLE_A;
+            cswizzle.a = VK_COMPONENT_SWIZZLE_ZERO;
+         }
+         break;
+      case VK_IMAGE_ASPECT_STENCIL_BIT:
+         assert(copy_aspect == VK_IMAGE_ASPECT_STENCIL_BIT);
+         assert(image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT);
+         /* Copying from S8D24. We want to write 8-bit stencil values only,
+          * so adjust the buffer bpp for that. Since the hardware stores stencil
+          * in the LSB, we can just do a RGBA8UI to R8UI blit.
+          */
+         src_format = VK_FORMAT_R8G8B8A8_UINT;
+         dst_format = VK_FORMAT_R8_UINT;
+         buffer_bpp = 1;
+         break;
+      default:
+         unreachable("unsupported aspect");
+         return handled;
+      };
+      break;
+   case 2:
+      assert(copy_aspect == VK_IMAGE_ASPECT_COLOR_BIT ||
+             copy_aspect == VK_IMAGE_ASPECT_DEPTH_BIT);
+      dst_format = VK_FORMAT_R16_UINT;
+      src_format = dst_format;
+      break;
+   case 1:
+      assert(copy_aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      dst_format = VK_FORMAT_R8_UINT;
+      src_format = dst_format;
+      break;
+   default:
+      unreachable("unsupported bit-size");
+      return handled;
+   };
+
+   /* The hardware doesn't support linear depth/stencil stores, so we
+    * implement copies of depth/stencil aspect as color copies using a
+    * compatible color format.
+    */
+   assert(vk_format_is_color(src_format));
+   assert(vk_format_is_color(dst_format));
+   copy_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+
+   /* We should be able to handle the blit if we got this far */
+   handled = true;
+
+   /* Obtain the 2D buffer region spec */
+   uint32_t buf_width, buf_height;
+   if (region->bufferRowLength == 0)
+      buf_width = region->imageExtent.width;
+   else
+      buf_width = region->bufferRowLength;
+
+   if (region->bufferImageHeight == 0)
+      buf_height = region->imageExtent.height;
+   else
+      buf_height = region->bufferImageHeight;
+
+   /* Compute layers to copy */
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->imageSubresource.layerCount;
+   else
+      num_layers = region->imageExtent.depth;
+   assert(num_layers > 0);
+
+  /* Copy requested layers */
+   struct v3dv_device *device = cmd_buffer->device;
+   VkDevice _device = v3dv_device_to_handle(device);
+   for (uint32_t i = 0; i < num_layers; i++) {
+      /* Create the destination blit image from the destination buffer */
+      VkImageCreateInfo image_info = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+         .imageType = VK_IMAGE_TYPE_2D,
+         .format = dst_format,
+         .extent = { buf_width, buf_height, 1 },
+         .mipLevels = 1,
+         .arrayLayers = 1,
+         .samples = VK_SAMPLE_COUNT_1_BIT,
+         .tiling = VK_IMAGE_TILING_LINEAR,
+         .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+         .queueFamilyIndexCount = 0,
+         .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+      };
+
+      VkImage buffer_image;
+      VkResult result =
+         v3dv_CreateImage(_device, &image_info, &device->alloc, &buffer_image);
+      if (result != VK_SUCCESS)
+         return handled;
+
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (void *)buffer_image,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
+
+      /* Bind the buffer memory to the image */
+      VkDeviceSize buffer_offset = buffer->mem_offset + region->bufferOffset +
+         i * buf_width * buf_height * buffer_bpp;
+      result = v3dv_BindImageMemory(_device, buffer_image,
+                                    v3dv_device_memory_to_handle(buffer->mem),
+                                    buffer_offset);
+      if (result != VK_SUCCESS)
+         return handled;
+
+      /* Blit-copy the requested image extent.
+       *
+       * Since we are copying, the blit must use the same format on the
+       * destination and source images to avoid format conversions. The
+       * only exception is copying stencil, which we upload to a R8UI source
+       * image, but that we need to blit to a S8D24 destination (the only
+       * stencil format we support).
+       */
+      const VkImageBlit blit_region = {
+         .srcSubresource = {
+            .aspectMask = copy_aspect,
+            .mipLevel = region->imageSubresource.mipLevel,
+            .baseArrayLayer = region->imageSubresource.baseArrayLayer,
+            .layerCount = region->imageSubresource.layerCount,
+         },
+         .srcOffsets = {
+            {
+               region->imageOffset.x,
+               region->imageOffset.y,
+               region->imageOffset.z + i,
+            },
+            {
+               region->imageOffset.x + region->imageExtent.width,
+               region->imageOffset.y + region->imageExtent.height,
+               region->imageOffset.z + i + 1,
+            },
+         },
+         .dstSubresource = {
+            .aspectMask = copy_aspect,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+         },
+         .dstOffsets = {
+            { 0, 0, 0 },
+            { region->imageExtent.width, region->imageExtent.height, 1 },
+         },
+      };
+
+      handled = blit_shader(cmd_buffer,
+                            v3dv_image_from_handle(buffer_image), dst_format,
+                            image, src_format,
+                            cmask, &cswizzle,
+                            &blit_region, VK_FILTER_NEAREST);
+      if (!handled) {
+         /* This is unexpected, we should have a supported blit spec */
+         unreachable("Unable to blit buffer to destination image");
+         return false;
+      }
+   }
+
+   assert(handled);
+   return true;
 }
 
 static VkFormat
@@ -775,14 +1038,12 @@ v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_image, image, srcImage);
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, destBuffer);
 
-   VkFormat compat_format;
    for (uint32_t i = 0; i < regionCount; i++) {
-      if (can_use_tlb(image, &pRegions[i].imageOffset, &compat_format)) {
-         copy_image_to_buffer_tlb(cmd_buffer, buffer, image, compat_format,
-                                  &pRegions[i]);
-      } else {
-         assert(!"Fallback path for vkCopyImageToBuffer not implemented");
-      }
+      if (copy_image_to_buffer_tlb(cmd_buffer, buffer, image, &pRegions[i]))
+         continue;
+      if (copy_image_to_buffer_blit(cmd_buffer, buffer, image, &pRegions[i]))
+         continue;
+      unreachable("Unsupported image to buffer copy.");
    }
 }
 
@@ -923,15 +1184,6 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
-static bool
-blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
-            struct v3dv_image *dst,
-            VkFormat dst_format,
-            struct v3dv_image *src,
-            VkFormat src_format,
-            const VkImageBlit *region,
-            VkFilter filter);
-
 /**
  * Returns true if the implementation supports the requested operation (even if
  * it failed to process it, for example, due to an out-of-memory error).
@@ -1041,6 +1293,7 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
    bool handled = blit_shader(cmd_buffer,
                               dst, format,
                               src, format,
+                              0, NULL,
                               &blit_region, VK_FILTER_NEAREST);
 
    /* We should have selected formats that we can blit */
@@ -2085,6 +2338,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       handled = blit_shader(cmd_buffer,
                             image, dst_format,
                             v3dv_image_from_handle(buffer_image), src_format,
+                            0, NULL,
                             &blit_region, VK_FILTER_NEAREST);
       if (!handled) {
          /* This is unexpected, we should have a supported blit spec */
@@ -2332,6 +2586,7 @@ static void
 get_blit_pipeline_cache_key(VkImageAspectFlags aspects,
                            VkFormat dst_format,
                            VkFormat src_format,
+                           VkColorComponentFlags cmask,
                            uint8_t *key)
 {
    memset(key, 0, V3DV_META_BLIT_CACHE_KEY_SIZE);
@@ -2355,6 +2610,9 @@ get_blit_pipeline_cache_key(VkImageAspectFlags aspects,
    p++;
 
    *p = aspects;
+   p++;
+
+   *p = cmask;
    p++;
 
    assert(((uint8_t*)p - key) == V3DV_META_BLIT_CACHE_KEY_SIZE);
@@ -2949,25 +3207,30 @@ rewrite_stencil_blit_spec(VkFormat *dst_format,
    if (!(*aspects & VK_IMAGE_ASPECT_STENCIL_BIT))
       return;
 
-   /* If we are blitting stencil, then we must be blitting from S8D24 to
-    * S8D24 (in which case we might be blitting depth too) or, as a special
-    * case, R8UI to S8D24 (in which case we are blitting only stencil). The
-    * latter is a special case that we use when are copying stencil from a
-    * buffer to a S8D24 image.
+   /* If we are blitting stencil, then it must be one of 2 cases:
+    *
+    * a) S8D24 to S8D24, in which case we might be blitting depth too.
+    * b) R8UI to S8D24, in which case we are blitting only stencil.  This
+    *    is a special case that we use when are copying stencil from a
+    *    buffer to a S8D24 image.
     */
-   assert(*dst_format == VK_FORMAT_D24_UNORM_S8_UINT);
+   assert(*dst_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+           (*dst_format == VK_FORMAT_R8_UINT &&
+            *aspects == VK_IMAGE_ASPECT_STENCIL_BIT));
    assert(*src_format == VK_FORMAT_D24_UNORM_S8_UINT ||
           (*src_format == VK_FORMAT_R8_UINT &&
            *aspects == VK_IMAGE_ASPECT_STENCIL_BIT));
 
-   *dst_format = VK_FORMAT_R8G8B8A8_UINT;
+   if (*dst_format == VK_FORMAT_D24_UNORM_S8_UINT)
+      *dst_format = VK_FORMAT_R8G8B8A8_UINT;
 
    if (*src_format == VK_FORMAT_D24_UNORM_S8_UINT)
       *src_format = VK_FORMAT_R8G8B8A8_UINT;
 
    /* If we are only copying stencil we want to make sure we only write to the
-    * R channel, otherwise we would stomp the depth aspect. We only need this
-    * information to create the blit pipeline.
+    * R channel, otherwise we would stomp the depth aspect when blitting to a
+    * S8D24 destination. We only need this information to create the blit
+    * pipeline.
     */
    if (cmask) {
       *cmask = VK_COLOR_COMPONENT_R_BIT;
@@ -2995,6 +3258,7 @@ get_blit_pipeline(struct v3dv_device *device,
                   VkImageAspectFlags *aspects,
                   VkFormat *dst_format,
                   VkFormat *src_format,
+                  VkColorComponentFlags cmask,
                   VkImageType src_type,
                   struct v3dv_meta_blit_pipeline **pipeline)
 {
@@ -3011,7 +3275,7 @@ get_blit_pipeline(struct v3dv_device *device,
       return false;
 
    uint8_t key[V3DV_META_BLIT_CACHE_KEY_SIZE];
-   get_blit_pipeline_cache_key(*aspects, *dst_format, *src_format, key);
+   get_blit_pipeline_cache_key(*aspects, *dst_format, *src_format, cmask, key);
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
       _mesa_hash_table_search(device->meta.blit.cache[src_type], &key);
@@ -3028,10 +3292,6 @@ get_blit_pipeline(struct v3dv_device *device,
    if (*pipeline == NULL)
       goto fail;
 
-   VkColorComponentFlags cmask = VK_COLOR_COMPONENT_R_BIT |
-                                 VK_COLOR_COMPONENT_G_BIT |
-                                 VK_COLOR_COMPONENT_B_BIT |
-                                 VK_COLOR_COMPONENT_A_BIT;
    rewrite_stencil_blit_spec(dst_format, src_format, aspects, &cmask);
 
    ok = create_blit_render_pass(device, *aspects, *dst_format, *src_format,
@@ -3134,6 +3394,11 @@ ensure_meta_blit_descriptor_pool(struct v3dv_cmd_buffer *cmd_buffer)
 /**
  * Returns true if the implementation supports the requested operation (even if
  * it failed to process it, for example, due to an out-of-memory error).
+ *
+ * The caller can specify the channels on the destination to be written via the
+ * cmask parameter (which can be 0 to default to all channels), as well as a
+ * swizzle to apply to the source via the cswizzle parameter  (which can be NULL
+ * to use the default identity swizzle).
  */
 static bool
 blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
@@ -3141,10 +3406,28 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             VkFormat dst_format,
             struct v3dv_image *src,
             VkFormat src_format,
+            VkColorComponentFlags cmask,
+            VkComponentMapping *cswizzle,
             const VkImageBlit *region,
             VkFilter filter)
 {
    bool handled = true;
+
+   if (cmask == 0) {
+      cmask = VK_COLOR_COMPONENT_R_BIT |
+              VK_COLOR_COMPONENT_G_BIT |
+              VK_COLOR_COMPONENT_B_BIT |
+              VK_COLOR_COMPONENT_A_BIT;
+   }
+
+   VkComponentMapping ident_swizzle = {
+      .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+   };
+   if (!cswizzle)
+      cswizzle = &ident_swizzle;
 
    /* When we get here from a copy between compressed / uncompressed images
     * we choose to specify the destination blit region based on the size
@@ -3244,8 +3527,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    VkImageAspectFlags aspects = region->dstSubresource.aspectMask;
    struct v3dv_meta_blit_pipeline *pipeline = NULL;
    bool ok = get_blit_pipeline(cmd_buffer->device,
-                               &aspects, &dst_format, &src_format, src->type,
-                               &pipeline);
+                               &aspects, &dst_format, &src_format,
+                               cmask, src->type, &pipeline);
    if (!ok)
       return handled;
    assert(pipeline && pipeline->pipeline && pipeline->pass);
@@ -3347,6 +3630,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          .image = v3dv_image_to_handle(src),
          .viewType = v3dv_image_type_to_view_type(src->type),
          .format = src_format,
+         .components = *cswizzle,
          .subresourceRange = {
             .aspectMask = aspects,
             .baseMipLevel = region->srcSubresource.mipLevel,
@@ -3472,6 +3756,7 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
       if (blit_shader(cmd_buffer,
                       dst, dst->vk_format,
                       src, src->vk_format,
+                      0, NULL,
                       &pRegions[i], filter)) {
          continue;
       }
