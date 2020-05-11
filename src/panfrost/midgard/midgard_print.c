@@ -348,7 +348,7 @@ mir_print_instruction(midgard_instruction *ins)
         printf(" ");
         mir_print_index(ins->dest);
 
-        if (ins->dest) {
+        if (ins->dest != ~0) {
                 pan_print_alu_type(ins->dest_type, stdout);
                 mir_print_mask(ins->mask);
         }
