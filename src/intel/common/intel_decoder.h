@@ -240,6 +240,7 @@ struct intel_batch_decode_ctx {
    struct intel_spec *spec;
    enum intel_batch_decode_flags flags;
 
+   bool use_256B_binding_tables;
    uint64_t surface_base;
    uint64_t dynamic_base;
    uint64_t instruction_base;

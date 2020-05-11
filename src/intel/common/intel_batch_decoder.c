@@ -253,6 +253,10 @@ dump_binding_table(struct intel_batch_decode_ctx *ctx, uint32_t offset, int coun
       return;
    }
 
+   /* When 256B binding tables are enabled, we have to shift the offset */
+   if (ctx->use_256B_binding_tables)
+      offset <<= 3;
+
    if (count < 0) {
       count = update_count(ctx, ctx->surface_base + offset,
                            ctx->surface_base, 1, 8);
@@ -853,6 +857,38 @@ decode_3dstate_slice_table_state_pointers(struct intel_batch_decode_ctx *ctx,
 }
 
 static void
+handle_gt_mode(struct intel_batch_decode_ctx *ctx,
+               uint32_t reg_addr, uint32_t val)
+{
+   struct intel_group *reg = intel_spec_find_register(ctx->spec, reg_addr);
+
+   struct intel_field_iterator iter;
+   intel_field_iterator_init(&iter, reg, &val, 0, false);
+
+   uint32_t bt_alignment;
+   bool bt_alignment_mask = 0;
+
+   while (intel_field_iterator_next(&iter)) {
+      if (strcmp(iter.name, "Binding Table Alignment") == 0) {
+         bt_alignment = iter.raw_value;
+      } else if (strcmp(iter.name, "Binding Table Alignment Mask") == 0) {
+         bt_alignment_mask = iter.raw_value;
+      }
+   }
+
+   if (bt_alignment_mask)
+      ctx->use_256B_binding_tables = bt_alignment;
+}
+
+struct reg_handler {
+   const char *name;
+   void (*handler)(struct intel_batch_decode_ctx *ctx,
+                   uint32_t reg_addr, uint32_t val);
+} reg_handlers[] = {
+   { "GT_MODE", handle_gt_mode }
+};
+
+static void
 decode_load_register_imm(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 {
    struct intel_group *inst = intel_ctx_find_instruction(ctx, p);
@@ -866,6 +902,11 @@ decode_load_register_imm(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
          fprintf(ctx->fp, "register %s (0x%x): 0x%x\n",
                  reg->name, reg->register_offset, p[2]);
          ctx_print_group(ctx, reg, reg->register_offset, &p[2]);
+
+         for (unsigned i = 0; i < ARRAY_SIZE(reg_handlers); i++) {
+            if (strcmp(reg->name, reg_handlers[i].name) == 0)
+               reg_handlers[i].handler(ctx, p[1], p[2]);
+         }
       }
    }
 }
