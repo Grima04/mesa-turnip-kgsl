@@ -450,8 +450,13 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 
    const struct si_shader_info *info = &ctx->shader->selector->info;
    for (unsigned i = 0; i < info->num_outputs; i++) {
+      LLVMTypeRef type = ctx->ac.f32;
+
+      if (nir_alu_type_get_type_size(ctx->shader->selector->info.output_type[i]) == 16)
+         type = ctx->ac.f16;
+
       for (unsigned j = 0; j < 4; j++)
-         ctx->abi.outputs[i * 4 + j] = ac_build_alloca_undef(&ctx->ac, ctx->ac.f32, "");
+         ctx->abi.outputs[i * 4 + j] = ac_build_alloca_undef(&ctx->ac, type, "");
    }
 
    ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);

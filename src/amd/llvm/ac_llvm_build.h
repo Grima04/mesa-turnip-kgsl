@@ -432,6 +432,8 @@ LLVMValueRef ac_build_image_get_sample_count(struct ac_llvm_context *ctx, LLVMVa
 LLVMValueRef ac_build_cvt_pkrtz_f16(struct ac_llvm_context *ctx, LLVMValueRef args[2]);
 LLVMValueRef ac_build_cvt_pknorm_i16(struct ac_llvm_context *ctx, LLVMValueRef args[2]);
 LLVMValueRef ac_build_cvt_pknorm_u16(struct ac_llvm_context *ctx, LLVMValueRef args[2]);
+LLVMValueRef ac_build_cvt_pknorm_i16_f16(struct ac_llvm_context *ctx, LLVMValueRef args[2]);
+LLVMValueRef ac_build_cvt_pknorm_u16_f16(struct ac_llvm_context *ctx, LLVMValueRef args[2]);
 LLVMValueRef ac_build_cvt_pk_i16(struct ac_llvm_context *ctx, LLVMValueRef args[2], unsigned bits,
                                  bool hi);
 LLVMValueRef ac_build_cvt_pk_u16(struct ac_llvm_context *ctx, LLVMValueRef args[2], unsigned bits,

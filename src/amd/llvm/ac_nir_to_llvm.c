@@ -2450,6 +2450,7 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
       indir_index = get_src(ctx, offset);
 
    switch (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src))) {
+   case 16:
    case 32:
       break;
    case 64:

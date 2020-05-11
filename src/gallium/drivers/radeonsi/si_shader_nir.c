@@ -163,6 +163,11 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
                }
             }
 
+            if (nir_intrinsic_has_type(intr))
+               info->output_type[loc] = nir_intrinsic_type(intr);
+            else
+               info->output_type[loc] = nir_type_float32;
+
             info->output_usagemask[loc] |= mask;
             info->num_outputs = MAX2(info->num_outputs, loc + 1);
 
@@ -181,6 +186,13 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
                   if (semantic >= FRAG_RESULT_DATA0 && semantic <= FRAG_RESULT_DATA7) {
                      unsigned index = semantic - FRAG_RESULT_DATA0;
                      info->colors_written |= 1 << (index + i);
+
+                     if (nir_intrinsic_type(intr) == nir_type_float16)
+                        info->output_color_types |= SI_TYPE_FLOAT16 << (index * 2);
+                     else if (nir_intrinsic_type(intr) == nir_type_int16)
+                        info->output_color_types |= SI_TYPE_INT16 << (index * 2);
+                     else if (nir_intrinsic_type(intr) == nir_type_uint16)
+                        info->output_color_types |= SI_TYPE_UINT16 << (index * 2);
                   }
                   break;
                }
@@ -678,6 +690,12 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
    NIR_PASS_V(nir, nir_lower_var_copies);
    NIR_PASS_V(nir, nir_opt_access);
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT &&
+       sscreen->info.has_packed_math_16bit &&
+       sscreen->b.get_shader_param(&sscreen->b, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16))
+      NIR_PASS_V(nir, nir_lower_mediump_outputs);
+
    si_nir_opts(nir, true);
 
    /* Lower large variables that are always constant with load_constant

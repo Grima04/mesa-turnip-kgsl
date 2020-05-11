@@ -2260,6 +2260,7 @@ void si_get_ps_epilog_key(struct si_shader *shader, union si_shader_part_key *ke
    struct si_shader_info *info = &shader->selector->info;
    memset(key, 0, sizeof(*key));
    key->ps_epilog.colors_written = info->colors_written;
+   key->ps_epilog.color_types = info->output_color_types;
    key->ps_epilog.writes_z = info->writes_z;
    key->ps_epilog.writes_stencil = info->writes_stencil;
    key->ps_epilog.writes_samplemask = info->writes_samplemask;

@@ -315,6 +315,13 @@ struct si_compiler_ctx_state {
    bool is_debug_context;
 };
 
+enum si_color_output_type {
+   SI_TYPE_ANY32,
+   SI_TYPE_FLOAT16,
+   SI_TYPE_INT16,
+   SI_TYPE_UINT16,
+};
+
 struct si_shader_info {
    shader_info base;
 
@@ -330,6 +337,7 @@ struct si_shader_info {
    ubyte output_usagemask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_readmask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_streams[PIPE_MAX_SHADER_OUTPUTS];
+   ubyte output_type[PIPE_MAX_SHADER_OUTPUTS]; /* enum nir_alu_type */
 
    ubyte color_interpolate[2];
    ubyte color_interpolate_loc[2];
@@ -341,6 +349,7 @@ struct si_shader_info {
 
    ubyte colors_read; /**< which color components are read by the FS */
    ubyte colors_written;
+   uint16_t output_color_types; /**< Each bit pair is enum si_color_output_type */
    bool color0_writes_all_cbufs; /**< gl_FragColor */
    bool reads_samplemask;   /**< does fragment shader read sample mask? */
    bool reads_tess_factors; /**< If TES reads TESSINNER or TESSOUTER */
@@ -577,6 +586,7 @@ union si_shader_part_key {
    struct {
       struct si_ps_epilog_bits states;
       unsigned colors_written : 8;
+      unsigned color_types : 16;
       unsigned writes_z : 1;
       unsigned writes_stencil : 1;
       unsigned writes_samplemask : 1;

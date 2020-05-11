@@ -2285,6 +2285,28 @@ LLVMValueRef ac_build_cvt_pknorm_u16(struct ac_llvm_context *ctx, LLVMValueRef a
    return LLVMBuildBitCast(ctx->builder, res, ctx->i32, "");
 }
 
+LLVMValueRef ac_build_cvt_pknorm_i16_f16(struct ac_llvm_context *ctx,
+                                         LLVMValueRef args[2])
+{
+   LLVMTypeRef param_types[] = {ctx->f16, ctx->f16};
+   LLVMTypeRef calltype = LLVMFunctionType(ctx->i32, param_types, 2, false);
+   LLVMValueRef code = LLVMConstInlineAsm(calltype,
+                                          "v_cvt_pknorm_i16_f16 $0, $1, $2", "=v,v,v",
+                                          false, false);
+   return LLVMBuildCall(ctx->builder, code, args, 2, "");
+}
+
+LLVMValueRef ac_build_cvt_pknorm_u16_f16(struct ac_llvm_context *ctx,
+                                         LLVMValueRef args[2])
+{
+   LLVMTypeRef param_types[] = {ctx->f16, ctx->f16};
+   LLVMTypeRef calltype = LLVMFunctionType(ctx->i32, param_types, 2, false);
+   LLVMValueRef code = LLVMConstInlineAsm(calltype,
+                                          "v_cvt_pknorm_u16_f16 $0, $1, $2", "=v,v,v",
+                                          false, false);
+   return LLVMBuildCall(ctx->builder, code, args, 2, "");
+}
+
 /* The 8-bit and 10-bit clamping is for HW workarounds. */
 LLVMValueRef ac_build_cvt_pk_i16(struct ac_llvm_context *ctx, LLVMValueRef args[2], unsigned bits,
                                  bool hi)
