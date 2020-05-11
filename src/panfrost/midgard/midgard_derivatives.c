@@ -103,7 +103,8 @@ midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr)
                 .mask = mask_of(nr_components),
                 .dest = nir_dest_index(&instr->dest.dest),
                 .dest_type = nir_type_float32,
-                .src = { nir_src_index(ctx, &instr->src[0].src), ~0, ~0, ~0 },
+                .src = { ~0, nir_src_index(ctx, &instr->src[0].src), ~0, ~0 },
+                .swizzle = SWIZZLE_IDENTITY_4,
                 .src_types = { nir_type_float32, nir_type_float32 },
                 .texture = {
                         .op = mir_derivative_op(instr->op),
@@ -113,9 +114,6 @@ midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr)
                         .sampler_type = MALI_SAMPLER_FLOAT,
                 }
         };
-
-        ins.swizzle[0][2] = ins.swizzle[0][3] = COMPONENT_X;
-        ins.swizzle[1][2] = ins.swizzle[1][3] = COMPONENT_X;
 
         if (!instr->dest.dest.is_ssa)
                 ins.mask &= instr->dest.write_mask;
