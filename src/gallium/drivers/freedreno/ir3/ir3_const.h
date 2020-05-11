@@ -45,7 +45,7 @@ static void emit_const(struct fd_ringbuffer *ring,
 		const void *user_buffer, struct pipe_resource *buffer);
 
 static void emit_const_bo(struct fd_ringbuffer *ring,
-		const struct ir3_shader_variant *v, bool write, uint32_t dst_offset,
+		const struct ir3_shader_variant *v, uint32_t dst_offset,
 		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets);
 
 
@@ -151,7 +151,7 @@ ir3_emit_ubos(struct fd_screen *screen, const struct ir3_shader_variant *v,
 
 		assert(offset * 4 + params < v->constlen * 4);
 
-		emit_const_bo(ring, v, false, offset * 4, params, prscs, offsets);
+		emit_const_bo(ring, v, offset * 4, params, prscs, offsets);
 	}
 }
 
@@ -305,7 +305,7 @@ emit_tfbos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 
 		assert(offset * 4 + params < v->constlen * 4);
 
-		emit_const_bo(ring, v, true, offset * 4, params, prscs, offsets);
+		emit_const_bo(ring, v, offset * 4, params, prscs, offsets);
 	}
 }
 
