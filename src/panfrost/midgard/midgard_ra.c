@@ -449,7 +449,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         if (!ctx->temp_count)
                 return NULL;
 
-        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count, 16, 5);
+        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count, 5);
 
         /* Starts of classes, in bytes */
         l->class_start[REG_CLASS_WORK]  = 16 * 0;
@@ -476,6 +476,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
         unsigned *min_alignment = calloc(sizeof(unsigned), ctx->temp_count);
+        unsigned *min_bound = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_instr_global(ctx, ins) {
                 /* Swizzles of 32-bit sources on 64-bit instructions need to be
@@ -535,12 +536,14 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
-                lcra_set_alignment(l, i, min_alignment[i] ? min_alignment[i] : 2);
+                lcra_set_alignment(l, i, min_alignment[i] ? min_alignment[i] : 2,
+                                min_bound[i] ? min_bound[i] : 16);
                 lcra_restrict_range(l, i, found_class[i]);
         }
         
         free(found_class);
         free(min_alignment);
+        free(min_bound);
 
         /* Next, we'll determine semantic class. We default to zero (work).
          * But, if we're used with a special operation, that will force us to a
