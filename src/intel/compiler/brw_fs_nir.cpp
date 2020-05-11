@@ -4881,7 +4881,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       assert(nir_src_num_components(instr->src[0]) == 1);
       assert(nir_src_bit_size(instr->src[0]) <= 32);
       assert(nir_intrinsic_write_mask(instr) == 1);
-      assert(nir_intrinsic_align(instr) > 1);
+      assert(nir_intrinsic_align(instr) > 0);
       if (nir_src_bit_size(instr->src[0]) == 32 &&
           nir_intrinsic_align(instr) >= 4) {
          srcs[SURFACE_LOGICAL_SRC_DATA] = data;
