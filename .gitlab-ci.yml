@@ -858,18 +858,16 @@ virgl-gles2:
     - .virgl-rules
 
 virgl-gles3:
+  parallel: 2
   variables:
     DEQP_VER: gles3
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 3
     DEQP_RUNNER_OPTIONS: "--timeout 120"
   extends: virgl-gles2
 
 virgl-gles31:
+  parallel: 4
   variables:
     DEQP_VER: gles31
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 10
     DEQP_OPTIONS: "--deqp-log-images=disable"
     DEQP_RUNNER_OPTIONS: "--timeout 120"
     MESA_GLES_VERSION_OVERRIDE: "3.1"
