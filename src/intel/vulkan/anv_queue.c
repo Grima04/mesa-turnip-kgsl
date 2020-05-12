@@ -2246,9 +2246,10 @@ anv_timelines_wait(struct anv_device *device,
                    uint64_t abs_timeout_ns)
 {
    if (!wait_all && n_timelines > 1) {
+      pthread_mutex_lock(&device->mutex);
+
       while (1) {
          VkResult result;
-         pthread_mutex_lock(&device->mutex);
          for (uint32_t i = 0; i < n_timelines; i++) {
             result =
                anv_timeline_wait_locked(device, timelines[i], serials[i], 0);
