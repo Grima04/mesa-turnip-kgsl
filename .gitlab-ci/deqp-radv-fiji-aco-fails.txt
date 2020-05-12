@@ -11,9 +11,6 @@ dEQP-VK.glsl.builtin.precision.asin.highp.vec4
 # CTS bug (list of extensions not up-to-date).
 dEQP-VK.info.device_extensions
 
-# ACO specific issues.
-dEQP-VK.graphicsfuzz.loops-ifs-continues-call
-
 # Interesting failures...
 dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_16_64_6.samples_2.d32_sfloat_s8_uint.stencil_max
 dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_16_64_6.samples_2.d32_sfloat_s8_uint.stencil_min

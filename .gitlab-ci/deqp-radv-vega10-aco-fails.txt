@@ -10,4 +10,3 @@ dEQP-VK.info.device_extensions
 # ACO specific issues.
 dEQP-VK.transform_feedback.simple.multistreams_1
 dEQP-VK.transform_feedback.simple.multistreams_3
-dEQP-VK.graphicsfuzz.loops-ifs-continues-call
