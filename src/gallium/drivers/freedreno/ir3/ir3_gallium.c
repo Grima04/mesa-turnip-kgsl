@@ -139,7 +139,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		if (ir3_shader_debug & IR3_DBG_DISASM) {
 			tgsi_dump(cso->tokens, 0);
 		}
-		nir = tgsi_to_nir(cso->tokens, screen);
+		nir = tgsi_to_nir(cso->tokens, screen, false);
 	}
 
 	struct ir3_stream_output_info stream_output;
@@ -208,7 +208,7 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 		if (ir3_shader_debug & IR3_DBG_DISASM) {
 			tgsi_dump(cso->prog, 0);
 		}
-		nir = tgsi_to_nir(cso->prog, screen);
+		nir = tgsi_to_nir(cso->prog, screen, false);
 	}
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, NULL);

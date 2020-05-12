@@ -132,7 +132,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 s = nir_shader_clone(NULL, ir);
         } else {
                 assert (ir_type == PIPE_SHADER_IR_TGSI);
-                s = tgsi_to_nir(ir, ctx->base.screen);
+                s = tgsi_to_nir(ir, ctx->base.screen, false);
         }
 
         s->info.stage = stage;

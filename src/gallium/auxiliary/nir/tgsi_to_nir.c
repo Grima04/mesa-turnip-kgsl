@@ -2582,10 +2582,13 @@ ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
 
 struct nir_shader *
 tgsi_to_nir(const void *tgsi_tokens,
-            struct pipe_screen *screen)
+            struct pipe_screen *screen,
+            bool allow_disk_cache)
 {
    struct ttn_compile *c;
    struct nir_shader *s;
+
+   (void)allow_disk_cache;
 
    c = ttn_compile_init(tgsi_tokens, NULL, screen);
    s = c->build.shader;

@@ -298,7 +298,7 @@ lima_create_fs_state(struct pipe_context *pctx,
    else {
       assert(cso->type == PIPE_SHADER_IR_TGSI);
 
-      nir = tgsi_to_nir(cso->tokens, pctx->screen);
+      nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
    }
 
    so->base.type = PIPE_SHADER_IR_NIR;
@@ -454,7 +454,7 @@ lima_create_vs_state(struct pipe_context *pctx,
    else {
       assert(cso->type == PIPE_SHADER_IR_TGSI);
 
-      nir = tgsi_to_nir(cso->tokens, pctx->screen);
+      nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
    }
 
    lima_program_optimize_vs_nir(nir);

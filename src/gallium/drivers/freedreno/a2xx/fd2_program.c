@@ -98,7 +98,7 @@ fd2_fp_state_create(struct pipe_context *pctx,
 		return NULL;
 
 	so->nir = (cso->type == PIPE_SHADER_IR_NIR) ? cso->ir.nir :
-		tgsi_to_nir(cso->tokens, pctx->screen);
+		tgsi_to_nir(cso->tokens, pctx->screen, false);
 
 	NIR_PASS_V(so->nir, nir_lower_io, nir_var_all, ir2_glsl_type_size,
 			   (nir_lower_io_options)0);
@@ -135,7 +135,7 @@ fd2_vp_state_create(struct pipe_context *pctx,
 		return NULL;
 
 	so->nir = (cso->type == PIPE_SHADER_IR_NIR) ? cso->ir.nir :
-		tgsi_to_nir(cso->tokens, pctx->screen);
+		tgsi_to_nir(cso->tokens, pctx->screen, false);
 
 	NIR_PASS_V(so->nir, nir_lower_io, nir_var_all, ir2_glsl_type_size,
 			   (nir_lower_io_options)0);

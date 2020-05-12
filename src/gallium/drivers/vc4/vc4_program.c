@@ -2466,7 +2466,7 @@ vc4_shader_state_create(struct pipe_context *pctx,
                         tgsi_dump(cso->tokens, 0);
                         fprintf(stderr, "\n");
                 }
-                s = tgsi_to_nir(cso->tokens, pctx->screen);
+                s = tgsi_to_nir(cso->tokens, pctx->screen, false);
         }
 
         if (s->info.stage == MESA_SHADER_VERTEX)

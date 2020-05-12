@@ -406,7 +406,7 @@ etna_create_shader_state(struct pipe_context *pctx,
 
    if (DBG_ENABLED(ETNA_DBG_NIR))
       shader->nir = (pss->type == PIPE_SHADER_IR_NIR) ? pss->ir.nir :
-                     tgsi_to_nir(pss->tokens, pctx->screen);
+                     tgsi_to_nir(pss->tokens, pctx->screen, false);
    else
       shader->tokens = tgsi_dup_tokens(pss->tokens);
 

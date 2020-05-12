@@ -217,7 +217,7 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
    if (cso->ir_type != PIPE_SHADER_IR_NATIVE) {
       if (cso->ir_type == PIPE_SHADER_IR_TGSI) {
          program->ir_type = PIPE_SHADER_IR_NIR;
-         sel->nir = tgsi_to_nir(cso->prog, ctx->screen);
+         sel->nir = tgsi_to_nir(cso->prog, ctx->screen, false);
       } else {
          assert(cso->ir_type == PIPE_SHADER_IR_NIR);
          sel->nir = (struct nir_shader *)cso->prog;

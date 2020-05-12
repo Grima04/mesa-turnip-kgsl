@@ -303,7 +303,7 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
                         tgsi_dump(ir, 0);
                         fprintf(stderr, "\n");
                 }
-                s = tgsi_to_nir(ir, pctx->screen);
+                s = tgsi_to_nir(ir, pctx->screen, false);
         }
 
         nir_variable_mode lower_mode = nir_var_all & ~nir_var_uniform;

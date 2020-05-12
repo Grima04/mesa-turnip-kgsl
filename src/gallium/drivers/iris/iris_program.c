@@ -2217,7 +2217,7 @@ iris_create_shader_state(struct pipe_context *ctx,
    struct nir_shader *nir;
 
    if (state->type == PIPE_SHADER_IR_TGSI)
-      nir = tgsi_to_nir(state->tokens, ctx->screen);
+      nir = tgsi_to_nir(state->tokens, ctx->screen, false);
    else
       nir = state->ir.nir;
 

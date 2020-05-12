@@ -108,7 +108,7 @@ zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens)
       fprintf(stderr, "---8<---\n\n");
    }
 
-   return tgsi_to_nir(tokens, screen);
+   return tgsi_to_nir(tokens, screen, false);
 }
 
 static void
