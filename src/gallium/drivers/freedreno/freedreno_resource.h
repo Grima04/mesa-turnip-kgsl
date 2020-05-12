@@ -145,6 +145,11 @@ fd_resource_set_usage(struct pipe_resource *prsc, enum fd_dirty_3d_state usage)
 	if (!prsc)
 		return;
 	struct fd_resource *rsc = fd_resource(prsc);
+	/* Bits are only ever ORed in, and we expect many set_usage() per
+	 * resource, so do the quick check outside of the lock.
+	 */
+	if (likely(rsc->dirty & usage))
+		return;
 	fd_resource_lock(rsc);
 	rsc->dirty |= usage;
 	fd_resource_unlock(rsc);
