@@ -383,6 +383,8 @@ optimise_nir(nir_shader *nir, unsigned quirks)
         if (quirks & MIDGARD_BROKEN_LOD)
                 NIR_PASS_V(nir, midgard_nir_lod_errata);
 
+        NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
+
         do {
                 progress = false;
 

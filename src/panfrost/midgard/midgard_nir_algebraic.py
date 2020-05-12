@@ -30,6 +30,10 @@ a = 'a'
 b = 'b'
 c = 'c'
 
+algebraic = [
+   (('pack_unorm_4x8', a), ('pack_32_4x8', ('f2u8', ('fround_even', ('fmul', ('fsat', a), 255.0)))))
+]
+
 algebraic_late = [
     # ineg must be lowered late, but only for integers; floats will try to
     # have modifiers attached... hence why this has to be here rather than
@@ -140,6 +144,9 @@ def run():
     import nir_algebraic  # pylint: disable=import-error
 
     print('#include "midgard_nir.h"')
+
+    print(nir_algebraic.AlgebraicPass("midgard_nir_lower_algebraic_early",
+                                      algebraic).render())
 
     print(nir_algebraic.AlgebraicPass("midgard_nir_lower_algebraic_late",
                                       algebraic_late + converts + constant_switch).render())
