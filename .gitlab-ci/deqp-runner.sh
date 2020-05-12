@@ -246,11 +246,14 @@ if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     # deqp is to use virpipe, and virgl_test_server llvmpipe
     export GALLIUM_DRIVER="$GALLIUM_DRIVER"
 
+    VTEST_ARGS="--use-egl-surfaceless"
+    if [ "$VIRGL_HOST_API" = "GLES" ]; then
+        VTEST_ARGS="$VTEST_ARGS --use-gles"
+    fi
+
     GALLIUM_DRIVER=llvmpipe \
     GALLIVM_PERF="nopt,no_filter_hacks" \
-    VTEST_USE_EGL_SURFACELESS=1 \
-    VTEST_USE_GLES=1 \
-    virgl_test_server >$RESULTS/vtest-log.txt 2>&1 &
+    virgl_test_server $VTEST_ARGS >$RESULTS/vtest-log.txt 2>&1 &
 
     sleep 1
 fi

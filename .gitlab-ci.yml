@@ -840,7 +840,7 @@ softpipe-gles31:
     DEQP_VER: gles31
   extends: softpipe-gles2
 
-virgl-gles2:
+virgl-gles2-on-gl:
   variables:
     DEQP_VER: gles2
     DEQP_PARALLEL: 4
@@ -849,7 +849,8 @@ virgl-gles2:
     # Don't use threads inside llvmpipe, we've already got all 4 cores
     # busy with DEQP_PARALLEL.
     LP_NUM_THREADS: 0
-    DEQP_EXPECTED_FAILS: deqp-virgl-fails.txt
+    DEQP_EXPECTED_FAILS: deqp-virgl-gl-fails.txt
+    DEQP_OPTIONS: "--deqp-log-images=disable"
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "virpipe"
     DEQP_EXPECTED_RENDERER: virgl
@@ -857,23 +858,21 @@ virgl-gles2:
     - .deqp-test-gl
     - .virgl-rules
 
-virgl-gles3:
+virgl-gles3-on-gl:
   parallel: 2
   variables:
     DEQP_VER: gles3
-    DEQP_RUNNER_OPTIONS: "--timeout 120"
-  extends: virgl-gles2
+    DEQP_RUNNER_OPTIONS: "--timeout 180"
+  extends: virgl-gles2-on-gl
 
-virgl-gles31:
+virgl-gles31-on-gl:
   parallel: 4
   variables:
     DEQP_VER: gles31
-    DEQP_OPTIONS: "--deqp-log-images=disable"
-    DEQP_RUNNER_OPTIONS: "--timeout 120"
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"
     MESA_EXTENSION_OVERRIDE: "-GL_OES_tessellation_shader"
-  extends: virgl-gles2
+  extends: virgl-gles3-on-gl
 
 # Rules for tests that should not be present in MRs or the main
 # project's pipeline (don't block marge or report red on
@@ -887,6 +886,30 @@ virgl-gles31:
         *all_paths
       when: manual
     - when: never
+
+virgl-gles2-on-gles:
+  variables:
+    VIRGL_HOST_API: GLES
+    DEQP_EXPECTED_FAILS: deqp-virgl-gles-fails.txt
+  extends:
+    - virgl-gles2-on-gl
+    - .test-manual
+
+virgl-gles3-on-gles:
+  variables:
+    VIRGL_HOST_API: GLES
+    DEQP_EXPECTED_FAILS: deqp-virgl-gles-fails.txt
+  extends:
+    - virgl-gles3-on-gl
+    - .test-manual
+
+virgl-gles31-on-gles:
+  variables:
+    VIRGL_HOST_API: GLES
+    DEQP_EXPECTED_FAILS: deqp-virgl-gles-fails.txt
+  extends:
+    - virgl-gles31-on-gl
+    - .test-manual
 
 arm64_a630_gles2:
   extends:
