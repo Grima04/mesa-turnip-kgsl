@@ -253,6 +253,7 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
    LLVMValueRef pixoffx;
    LLVMValueRef pixoffy;
    LLVMValueRef ptr;
+   LLVMValueRef pix_center_offset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
 
    /* could do this with code-generated passed in pixel offsets too */
 
@@ -293,8 +294,8 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                      LLVMValueRef x_val_idx = LLVMBuildMul(gallivm->builder, sample_id, lp_build_const_int32(gallivm, 2), "");
                      x_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, x_val_idx);
                      a = lp_build_broadcast_scalar(coeff_bld, x_val_idx);
-                  } else if (bld->pos_offset) {
-                     a = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
+                  } else {
+                     a = pix_center_offset;
                   }
                }
                else if (attrib == 0 && chan == 1) {
@@ -304,8 +305,8 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                      y_val_idx = LLVMBuildAdd(gallivm->builder, y_val_idx, lp_build_const_int32(gallivm, 1), "");
                      y_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, y_val_idx);
                      a = lp_build_broadcast_scalar(coeff_bld, y_val_idx);
-                  } else if (bld->pos_offset) {
-                     a = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
+                  } else {
+                     a = pix_center_offset;
                   }
                }
                else {
@@ -320,8 +321,8 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                                                  index);
 
                   if (bld->coverage_samples > 1) {
-                     LLVMValueRef xoffset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
-                     LLVMValueRef yoffset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
+                     LLVMValueRef xoffset = pix_center_offset;
+                     LLVMValueRef yoffset = pix_center_offset;
                      if (loc == TGSI_INTERPOLATE_LOC_SAMPLE || (attrib == 0 && chan == 2 && sample_id)) {
                         LLVMValueRef x_val_idx = LLVMBuildMul(gallivm->builder, sample_id, lp_build_const_int32(gallivm, 2), "");
                         LLVMValueRef y_val_idx = LLVMBuildAdd(gallivm->builder, x_val_idx, lp_build_const_int32(gallivm, 1), "");
@@ -331,8 +332,8 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                         xoffset = lp_build_broadcast_scalar(coeff_bld, x_val_idx);
                         yoffset = lp_build_broadcast_scalar(coeff_bld, y_val_idx);
                      } else if (loc == TGSI_INTERPOLATE_LOC_CENTROID) {
-                        LLVMValueRef centroid_x_offset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
-                        LLVMValueRef centroid_y_offset = lp_build_const_vec(gallivm, coeff_bld->type, bld->pos_offset);
+                        LLVMValueRef centroid_x_offset = pix_center_offset;
+                        LLVMValueRef centroid_y_offset = pix_center_offset;
 
                         /* for centroid find covered samples for this quad. */
                         /* if all samples are covered use pixel centers */
