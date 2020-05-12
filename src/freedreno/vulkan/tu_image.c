@@ -157,7 +157,8 @@ tu_image_create(VkDevice _device,
                pCreateInfo->extent.depth,
                pCreateInfo->mipLevels,
                pCreateInfo->arrayLayers,
-               pCreateInfo->imageType == VK_IMAGE_TYPE_3D);
+               pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
+               NULL);
 
    *pImage = tu_image_to_handle(image);
 

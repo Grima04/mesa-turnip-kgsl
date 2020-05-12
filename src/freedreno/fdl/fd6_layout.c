@@ -90,12 +90,16 @@ fdl6_pitchalign(struct fdl_layout *layout, int level)
 /* NOTE: good way to test this is:  (for example)
  *  piglit/bin/texelFetch fs sampler3D 100x100x8
  */
-void
+bool
 fdl6_layout(struct fdl_layout *layout,
 		enum pipe_format format, uint32_t nr_samples,
 		uint32_t width0, uint32_t height0, uint32_t depth0,
-		uint32_t mip_levels, uint32_t array_size, bool is_3d)
+		uint32_t mip_levels, uint32_t array_size, bool is_3d,
+		struct fdl_slice *plane_layout)
 {
+	uint32_t offset;
+	uint32_t pitch0;
+
 	assert(nr_samples > 0);
 	layout->width0 = width0;
 	layout->height0 = height0;
@@ -129,7 +133,18 @@ fdl6_layout(struct fdl_layout *layout,
 		layout->base_align = 64;
 	}
 
-	uint32_t pitch0 = util_align_npot(width0, fdl6_pitchalign(layout, 0));
+	if (plane_layout) {
+		offset = plane_layout->offset;
+		pitch0 = plane_layout->pitch;
+		if (align(pitch0, fdl6_pitchalign(layout, 0) * layout->cpp) != pitch0)
+			return false;
+		pitch0 /= layout->cpp; /* explicit pitch is in bytes */
+		if (pitch0 < width0 && height0 > 1)
+			return false;
+	} else {
+		offset = 0;
+		pitch0 = util_align_npot(width0, fdl6_pitchalign(layout, 0));
+	}
 
 	uint32_t ubwc_width0 = width0;
 	uint32_t ubwc_height0 = height0;
@@ -182,7 +197,7 @@ fdl6_layout(struct fdl_layout *layout,
 			util_align_npot(util_format_get_nblocksx(format, u_minify(pitch0, level)),
 					fdl6_pitchalign(layout, level));
 
-		slice->offset = layout->size;
+		slice->offset = offset + layout->size;
 		uint32_t blocks = nblocksx * nblocksy;
 
 		slice->pitch = nblocksx * layout->cpp;
@@ -216,7 +231,7 @@ fdl6_layout(struct fdl_layout *layout,
 
 			ubwc_slice->size0 = align(meta_pitch * meta_height, UBWC_PLANE_SIZE_ALIGNMENT);
 			ubwc_slice->pitch = meta_pitch;
-			ubwc_slice->offset = layout->ubwc_layer_size;
+			ubwc_slice->offset = offset + layout->ubwc_layer_size;
 			layout->ubwc_layer_size += ubwc_slice->size0;
 		}
 	}
@@ -236,6 +251,11 @@ fdl6_layout(struct fdl_layout *layout,
 			layout->slices[level].offset += layout->ubwc_layer_size * array_size;
 		layout->size += layout->ubwc_layer_size * array_size;
 	}
+
+	/* include explicit offset in size */
+	layout->size += offset;
+
+	return true;
 }
 
 void
