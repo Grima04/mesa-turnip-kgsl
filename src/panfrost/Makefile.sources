@@ -47,6 +47,7 @@ midgard_FILES := \
         midgard/midgard_emit.c \
         midgard/midgard.h \
         midgard/midgard_liveness.c \
+        midgard/midgard_helper_invocations.c \
         midgard/midgard_nir.h \
         midgard/midgard_ops.c \
         midgard/midgard_ops.h \

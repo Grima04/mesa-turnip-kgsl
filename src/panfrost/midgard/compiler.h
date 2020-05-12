@@ -104,6 +104,10 @@ typedef struct midgard_instruction {
         /* Special fields for an ALU instruction */
         midgard_reg_info registers;
 
+        /* For textures: should helpers execute this instruction (instead of
+         * just helping with derivatives)? Should helpers terminate after? */
+        bool helper_terminate;
+
         /* I.e. (1 << alu_bit) */
         int unit;
 
@@ -179,6 +183,9 @@ typedef struct midgard_block {
 
         /* Indicates this is a fixed-function fragment epilogue block */
         bool epilogue;
+
+        /* Are helper invocations required by this block? */
+        bool helpers_in;
 } midgard_block;
 
 typedef struct midgard_bundle {
@@ -625,6 +632,8 @@ void
 midgard_lower_derivatives(compiler_context *ctx, midgard_block *block);
 
 bool mir_op_computes_derivatives(gl_shader_stage stage, unsigned op);
+
+void mir_analyze_helper_terminate(compiler_context *ctx);
 
 /* Final emission */
 

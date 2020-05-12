@@ -61,3 +61,100 @@
  * with union as the join operation and the generating set being the union of
  * sources of instructions writing executed values.
  */
+
+/* Does a block use helpers directly */
+static bool
+mir_block_uses_helpers(gl_shader_stage stage, midgard_block *block)
+{
+        mir_foreach_instr_in_block(block, ins) {
+                if (ins->type != TAG_TEXTURE_4) continue;
+                if (mir_op_computes_derivatives(stage, ins->texture.op))
+                        return true;
+        }
+
+        return false;
+}
+
+static bool
+mir_block_terminates_helpers(midgard_block *block)
+{
+        /* Can't terminate if there are no helpers */
+        if (!block->helpers_in)
+                return false;
+
+        /* Can't terminate if a successor needs helpers */
+        pan_foreach_successor((&block->base), succ) {
+                if (((midgard_block *) succ)->helpers_in)
+                        return false;
+        }
+
+        /* Otherwise we terminate */
+        return true;
+}
+
+void
+mir_analyze_helper_terminate(compiler_context *ctx)
+{
+        /* Set blocks as directly requiring helpers, and if they do add them to
+         * the worklist to propagate to their predecessors */
+
+        struct set *worklist = _mesa_set_create(NULL,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+        struct set *visited = _mesa_set_create(NULL,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
+                block->helpers_in |= mir_block_uses_helpers(ctx->stage, block);
+
+                if (block->helpers_in)
+                        _mesa_set_add(worklist, _block);
+        }
+
+        /* Next, propagate back. Since there are a finite number of blocks, the
+         * worklist (a subset of all the blocks) is finite. Since a block can
+         * only be added to the worklist if it is not on the visited list and
+         * the visited list - also a subset of the blocks - grows every
+         * iteration, the algorithm must terminate. */
+
+        struct set_entry *cur;
+
+        while((cur = _mesa_set_next_entry(worklist, NULL)) != NULL) {
+                /* Pop off a block requiring helpers */
+                pan_block *blk = (struct pan_block *) cur->key;
+                _mesa_set_remove(worklist, cur);
+
+                /* Its predecessors also require helpers */
+                pan_foreach_predecessor(blk, pred) {
+                        if (!_mesa_set_search(visited, pred)) {
+                                ((midgard_block *) pred)->helpers_in = true;
+                                _mesa_set_add(worklist, pred);
+                        }
+                }
+ 
+                _mesa_set_add(visited, blk);
+        }
+
+        _mesa_set_destroy(visited, NULL);
+        _mesa_set_destroy(worklist, NULL);
+
+        /* Finally, set helper_terminate on the last derivative-calculating
+         * instruction in a block that terminates helpers */
+        mir_foreach_block(ctx, _block) {
+                midgard_block *block = (midgard_block *) _block;
+
+                if (!mir_block_terminates_helpers(block))
+                        continue;
+
+                mir_foreach_instr_in_block_rev(block, ins) {
+                        if (ins->type != TAG_TEXTURE_4) continue;
+                        if (!mir_op_computes_derivatives(ctx->stage, ins->texture.op)) continue;
+
+                        ins->helper_terminate = true;
+                        break;
+                }
+        }
+}
