@@ -310,7 +310,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    tu_get_driver_uuid(&device->device_uuid);
    tu_get_device_uuid(&device->device_uuid);
 
-   tu_fill_device_extension_table(device, &device->supported_extensions);
+   tu_physical_device_get_supported_extensions(device, &device->supported_extensions);
 
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
@@ -445,7 +445,7 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
       int index = tu_get_instance_extension_index(ext_name);
 
-      if (index < 0 || !tu_supported_instance_extensions.extensions[index]) {
+      if (index < 0 || !tu_instance_extensions_supported.extensions[index]) {
          vk_free2(&default_alloc, pAllocator, instance);
          return vk_error(instance, VK_ERROR_EXTENSION_NOT_PRESENT);
       }
@@ -1519,7 +1519,7 @@ tu_EnumerateInstanceExtensionProperties(const char *pLayerName,
       return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 
    for (int i = 0; i < TU_INSTANCE_EXTENSION_COUNT; i++) {
-      if (tu_supported_instance_extensions.extensions[i]) {
+      if (tu_instance_extensions_supported.extensions[i]) {
          vk_outarray_append(&out, prop) { *prop = tu_instance_extensions[i]; }
       }
    }
