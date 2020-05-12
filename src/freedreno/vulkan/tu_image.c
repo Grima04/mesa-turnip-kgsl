@@ -151,10 +151,7 @@ tu_image_create(VkDevice _device,
 enum a6xx_tex_fetchsize
 tu6_fetchsize(VkFormat format)
 {
-   if (vk_format_description(format)->layout == UTIL_FORMAT_LAYOUT_ASTC)
-      return TFETCH6_16_BYTE;
-
-   switch (vk_format_get_blocksize(format) / vk_format_get_blockwidth(format)) {
+   switch (vk_format_get_blocksize(format)) {
    case 1: return TFETCH6_1_BYTE;
    case 2: return TFETCH6_2_BYTE;
    case 4: return TFETCH6_4_BYTE;
