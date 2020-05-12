@@ -304,6 +304,7 @@ extern "C"
 LLVMBool
 lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
                                         lp_generated_code **OutCode,
+                                        struct lp_cached_code *cache_out,
                                         LLVMModuleRef M,
                                         LLVMMCJITMemoryManagerRef CMM,
                                         unsigned OptLevel,

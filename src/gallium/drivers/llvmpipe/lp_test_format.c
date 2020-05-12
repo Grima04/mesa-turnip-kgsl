@@ -150,7 +150,7 @@ test_format_float(unsigned verbose, FILE *fp,
    unsigned i, j, k, l;
 
    context = LLVMContextCreate();
-   gallivm = gallivm_create("test_module_float", context);
+   gallivm = gallivm_create("test_module_float", context, NULL);
 
    fetch = add_fetch_rgba_test(gallivm, verbose, desc,
                                lp_float32_vec4_type(), use_cache);
@@ -251,7 +251,7 @@ test_format_unorm8(unsigned verbose, FILE *fp,
    unsigned i, j, k, l;
 
    context = LLVMContextCreate();
-   gallivm = gallivm_create("test_module_unorm8", context);
+   gallivm = gallivm_create("test_module_unorm8", context, NULL);
 
    fetch = add_fetch_rgba_test(gallivm, verbose, desc,
                                lp_unorm8_vec4_type(), use_cache);

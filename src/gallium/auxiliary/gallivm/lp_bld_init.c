@@ -211,6 +211,9 @@ gallivm_free_ir(struct gallivm_state *gallivm)
       LLVMDisposeModule(gallivm->module);
    }
 
+   if (gallivm->cache) {
+      free(gallivm->cache->data);
+   }
    FREE(gallivm->module_name);
 
    if (gallivm->target) {
@@ -230,6 +233,7 @@ gallivm_free_ir(struct gallivm_state *gallivm)
    gallivm->passmgr = NULL;
    gallivm->context = NULL;
    gallivm->builder = NULL;
+   gallivm->cache = NULL;
 }
 
 
@@ -265,6 +269,7 @@ init_gallivm_engine(struct gallivm_state *gallivm)
 
       ret = lp_build_create_jit_compiler_for_module(&gallivm->engine,
                                                     &gallivm->code,
+                                                    gallivm->cache,
                                                     gallivm->module,
                                                     gallivm->memorymgr,
                                                     (unsigned) optlevel,
@@ -310,7 +315,7 @@ fail:
  */
 static boolean
 init_gallivm_state(struct gallivm_state *gallivm, const char *name,
-                   LLVMContextRef context)
+                   LLVMContextRef context, struct lp_cached_code *cache)
 {
    assert(!gallivm->context);
    assert(!gallivm->module);
@@ -319,7 +324,7 @@ init_gallivm_state(struct gallivm_state *gallivm, const char *name,
       return FALSE;
 
    gallivm->context = context;
-
+   gallivm->cache = cache;
    if (!gallivm->context)
       goto fail;
 
@@ -496,13 +501,14 @@ lp_build_init(void)
  * Create a new gallivm_state object.
  */
 struct gallivm_state *
-gallivm_create(const char *name, LLVMContextRef context)
+gallivm_create(const char *name, LLVMContextRef context,
+               struct lp_cached_code *cache)
 {
    struct gallivm_state *gallivm;
 
    gallivm = CALLOC_STRUCT(gallivm_state);
    if (gallivm) {
-      if (!init_gallivm_state(gallivm, name, context)) {
+      if (!init_gallivm_state(gallivm, name, context, cache)) {
          FREE(gallivm);
          gallivm = NULL;
       }

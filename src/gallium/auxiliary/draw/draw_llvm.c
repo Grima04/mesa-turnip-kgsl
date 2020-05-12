@@ -850,7 +850,7 @@ draw_llvm_create_variant(struct draw_llvm *llvm,
    snprintf(module_name, sizeof(module_name), "draw_llvm_vs_variant%u",
             variant->shader->variants_cached);
 
-   variant->gallivm = gallivm_create(module_name, llvm->context);
+   variant->gallivm = gallivm_create(module_name, llvm->context, NULL);
 
    create_jit_types(variant);
 
@@ -2848,7 +2848,7 @@ draw_gs_llvm_create_variant(struct draw_llvm *llvm,
    snprintf(module_name, sizeof(module_name), "draw_llvm_gs_variant%u",
             variant->shader->variants_cached);
 
-   variant->gallivm = gallivm_create(module_name, llvm->context);
+   variant->gallivm = gallivm_create(module_name, llvm->context, NULL);
 
    create_gs_jit_types(variant);
 
@@ -3453,7 +3453,7 @@ draw_tcs_llvm_create_variant(struct draw_llvm *llvm,
    snprintf(module_name, sizeof(module_name), "draw_llvm_tcs_variant%u",
             variant->shader->variants_cached);
 
-   variant->gallivm = gallivm_create(module_name, llvm->context);
+   variant->gallivm = gallivm_create(module_name, llvm->context, NULL);
 
    create_tcs_jit_types(variant);
 
@@ -3928,7 +3928,7 @@ draw_tes_llvm_create_variant(struct draw_llvm *llvm,
    snprintf(module_name, sizeof(module_name), "draw_llvm_tes_variant%u",
             variant->shader->variants_cached);
 
-   variant->gallivm = gallivm_create(module_name, llvm->context);
+   variant->gallivm = gallivm_create(module_name, llvm->context, NULL);
 
    create_tes_jit_types(variant);
 
