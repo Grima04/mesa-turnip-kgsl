@@ -86,7 +86,8 @@ tu_image_create(VkDevice _device,
                            EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
 
    image->layout.tile_mode = TILE6_3;
-   bool ubwc_enabled = true;
+   bool ubwc_enabled =
+      !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
 
    /* disable tiling when linear is requested and for compressed formats */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
