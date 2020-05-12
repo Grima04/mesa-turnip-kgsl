@@ -38,6 +38,7 @@
 #include "stw_winsys.h"
 
 #include "d3d12/d3d12_format.h"
+#include "d3d12/d3d12_resource.h"
 #include "d3d12/d3d12_screen.h"
 
 using Microsoft::WRL::ComPtr;
@@ -49,6 +50,7 @@ struct d3d12_wgl_framebuffer {
    enum pipe_format pformat;
    HWND window;
    ComPtr<IDXGISwapChain3> swapchain;
+   struct pipe_resource *buffers[2];
 };
 
 static struct d3d12_wgl_framebuffer *
@@ -108,6 +110,12 @@ d3d12_wgl_framebuffer_resize(stw_winsys_framebuffer *fb,
          ctx->screen->fence_reference(ctx->screen, &fence, NULL);
       }
 
+      for (int i = 0; i < 2; ++i) {
+         if (framebuffer->buffers[i]) {
+            d3d12_resource_release(d3d12_resource(framebuffer->buffers[i]));
+            pipe_resource_reference(&framebuffer->buffers[i], NULL);
+         }
+      }
       if (FAILED(framebuffer->swapchain->ResizeBuffers(2, desc.Width, desc.Height, desc.Format, desc.Flags))) {
          debug_printf("D3D12: failed to resize swapchain");
       }
@@ -143,6 +151,11 @@ d3d12_wgl_framebuffer_get_resource(struct stw_winsys_framebuffer *pframebuffer,
    if (statt == ST_ATTACHMENT_FRONT_LEFT)
       index = !index;
 
+   if (framebuffer->buffers[index]) {
+      pipe_reference(NULL, &framebuffer->buffers[index]->reference);
+      return framebuffer->buffers[index];
+   }
+
    ID3D12Resource *res;
    framebuffer->swapchain->GetBuffer(index, IID_PPV_ARGS(&res));
    if (!res)
@@ -169,8 +182,10 @@ d3d12_wgl_framebuffer_get_resource(struct stw_winsys_framebuffer *pframebuffer,
    templ.usage = PIPE_USAGE_DEFAULT;
    templ.flags = 0;
 
-   return pscreen->resource_from_handle(pscreen, &templ, &handle,
-                                        PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE);
+   pipe_resource_reference(&framebuffer->buffers[index],
+                           pscreen->resource_from_handle(pscreen, &templ, &handle,
+                                                         PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
+   return framebuffer->buffers[index];
 }
 
 struct stw_winsys_framebuffer *
