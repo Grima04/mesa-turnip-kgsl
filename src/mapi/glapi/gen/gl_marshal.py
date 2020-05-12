@@ -152,9 +152,9 @@ class PrintCode(gl_XML.gl_print_base):
             'GLboolean': 1,
             'GLbyte': 1,
             'GLubyte': 1,
-            'GLenum': 2, # uses GLenum16
             'GLshort': 2,
             'GLushort': 2,
+            'GLenum': 4,
             'GLint': 4,
             'GLuint': 4,
             'GLbitfield': 4,
@@ -192,10 +192,7 @@ class PrintCode(gl_XML.gl_print_base):
                     out('{0} {1}[{2}];'.format(
                             p.get_base_type_string(), p.name, p.count))
                 else:
-                    type = p.type_string()
-                    if type == 'GLenum':
-                        type = 'GLenum16'
-                    out('{0} {1};'.format(type, p.name))
+                    out('{0} {1};'.format(p.type_string(), p.name))
 
             for p in func.variable_params:
                 if p.img_null_flag:

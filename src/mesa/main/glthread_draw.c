@@ -164,7 +164,7 @@ upload_vertices(struct gl_context *ctx, unsigned attrib_mask,
 struct marshal_cmd_DrawArraysInstancedBaseInstance
 {
    struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
+   GLenum mode;
    GLint first;
    GLsizei count;
    GLsizei instance_count;
@@ -267,7 +267,7 @@ _mesa_marshal_DrawArraysInstancedBaseInstance(GLenum mode, GLint first,
 struct marshal_cmd_MultiDrawArrays
 {
    struct marshal_cmd_base cmd_base;
-   GLenum16 mode;
+   GLenum mode;
    GLsizei draw_count;
    GLuint non_vbo_attrib_mask;
 };
@@ -399,8 +399,8 @@ struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance
 {
    struct marshal_cmd_base cmd_base;
    bool index_bounds_valid;
-   GLenum16 mode;
-   GLenum16 type;
+   GLenum mode;
+   GLenum type;
    GLsizei count;
    GLsizei instance_count;
    GLint basevertex;
@@ -590,8 +590,8 @@ struct marshal_cmd_MultiDrawElementsBaseVertex
 {
    struct marshal_cmd_base cmd_base;
    bool has_base_vertex;
-   GLenum16 mode;
-   GLenum16 type;
+   GLenum mode;
+   GLenum type;
    GLsizei draw_count;
    GLuint non_vbo_attrib_mask;
    struct gl_buffer_object *index_buffer;
