@@ -2627,6 +2627,11 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         if (ctx->stage == MESA_SHADER_FRAGMENT)
                 mir_add_writeout_loops(ctx);
 
+        /* Analyze now that the code is known but before scheduling creates
+         * pipeline registers which are harder to track */
+        mir_analyze_helper_terminate(ctx);
+        mir_analyze_helper_requirements(ctx);
+
         /* Schedule! */
         midgard_schedule_program(ctx);
         mir_ra(ctx);
