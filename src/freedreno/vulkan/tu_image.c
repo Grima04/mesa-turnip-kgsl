@@ -41,7 +41,8 @@ tu_image_create(VkDevice _device,
                 const VkImageCreateInfo *pCreateInfo,
                 const VkAllocationCallbacks *alloc,
                 VkImage *pImage,
-                uint64_t modifier)
+                uint64_t modifier,
+                const VkSubresourceLayout *plane_layouts)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_image *image = NULL;
@@ -150,19 +151,40 @@ tu_image_create(VkDevice _device,
 
    image->layout.ubwc = ubwc_enabled;
 
-   fdl6_layout(&image->layout, vk_format_to_pipe_format(image->vk_format),
-               image->samples,
-               pCreateInfo->extent.width,
-               pCreateInfo->extent.height,
-               pCreateInfo->extent.depth,
-               pCreateInfo->mipLevels,
-               pCreateInfo->arrayLayers,
-               pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
-               NULL);
+   struct fdl_slice plane_layout;
+
+   if (plane_layouts) {
+      /* only expect simple 2D images for now */
+      if (pCreateInfo->mipLevels != 1 ||
+          pCreateInfo->arrayLayers != 1 ||
+          image->extent.depth != 1)
+         goto invalid_layout;
+
+      plane_layout.offset = plane_layouts[0].offset;
+      plane_layout.pitch = plane_layouts[0].rowPitch;
+      /* note: use plane_layouts[0].arrayPitch to support array formats */
+   }
+
+   if (!fdl6_layout(&image->layout, vk_format_to_pipe_format(image->vk_format),
+                    image->samples,
+                    pCreateInfo->extent.width,
+                    pCreateInfo->extent.height,
+                    pCreateInfo->extent.depth,
+                    pCreateInfo->mipLevels,
+                    pCreateInfo->arrayLayers,
+                    pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
+                    plane_layouts ? &plane_layout : NULL)) {
+      assert(plane_layouts); /* can only fail with explicit layout */
+      goto invalid_layout;
+   }
 
    *pImage = tu_image_to_handle(image);
 
    return VK_SUCCESS;
+
+invalid_layout:
+   vk_free2(&device->alloc, alloc, image);
+   return vk_error(device->instance, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
 }
 
 enum a6xx_tex_fetchsize
@@ -525,15 +547,29 @@ tu_CreateImage(VkDevice device,
 #endif
 
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+   const VkSubresourceLayout *plane_layouts = NULL;
+
    if (pCreateInfo->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
       const VkImageDrmFormatModifierListCreateInfoEXT *mod_info =
          vk_find_struct_const(pCreateInfo->pNext,
                               IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
+      const VkImageDrmFormatModifierExplicitCreateInfoEXT *drm_explicit_info =
+         vk_find_struct_const(pCreateInfo->pNext,
+                              IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT);
 
-      modifier = DRM_FORMAT_MOD_LINEAR;
-      for (unsigned i = 0; i < mod_info->drmFormatModifierCount; i++) {
-         if (mod_info->pDrmFormatModifiers[i] == DRM_FORMAT_MOD_QCOM_COMPRESSED)
-            modifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
+      assert(mod_info || drm_explicit_info);
+
+      if (mod_info) {
+         modifier = DRM_FORMAT_MOD_LINEAR;
+         for (unsigned i = 0; i < mod_info->drmFormatModifierCount; i++) {
+            if (mod_info->pDrmFormatModifiers[i] == DRM_FORMAT_MOD_QCOM_COMPRESSED)
+               modifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
+         }
+      } else {
+         modifier = drm_explicit_info->drmFormatModifier;
+         assert(modifier == DRM_FORMAT_MOD_LINEAR ||
+                modifier == DRM_FORMAT_MOD_QCOM_COMPRESSED);
+         plane_layouts = drm_explicit_info->pPlaneLayouts;
       }
    } else {
       const struct wsi_image_create_info *wsi_info =
@@ -542,7 +578,7 @@ tu_CreateImage(VkDevice device,
          modifier = DRM_FORMAT_MOD_LINEAR;
    }
 
-   return tu_image_create(device, pCreateInfo, pAllocator, pImage, modifier);
+   return tu_image_create(device, pCreateInfo, pAllocator, pImage, modifier, plane_layouts);
 }
 
 void

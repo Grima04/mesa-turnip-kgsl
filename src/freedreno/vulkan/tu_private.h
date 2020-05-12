@@ -1535,7 +1535,8 @@ tu_image_create(VkDevice _device,
                 const VkImageCreateInfo *pCreateInfo,
                 const VkAllocationCallbacks *alloc,
                 VkImage *pImage,
-                uint64_t modifier);
+                uint64_t modifier,
+                const VkSubresourceLayout *plane_layouts);
 
 VkResult
 tu_image_from_gralloc(VkDevice device_h,

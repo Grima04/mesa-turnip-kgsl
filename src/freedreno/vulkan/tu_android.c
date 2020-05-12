@@ -122,7 +122,7 @@ tu_image_from_gralloc(VkDevice device_h,
    VkResult result;
 
    result = tu_image_create(device_h, base_info, alloc, &image_h,
-                            DRM_FORMAT_MOD_LINEAR);
+                            DRM_FORMAT_MOD_LINEAR, NULL);
    if (result != VK_SUCCESS)
       return result;
 
