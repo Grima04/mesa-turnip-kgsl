@@ -90,11 +90,14 @@ tu_image_create(VkDevice _device,
 
    /* disable tiling when linear is requested and for compressed formats */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
-       modifier == DRM_FORMAT_MOD_LINEAR ||
-       vk_format_is_compressed(image->vk_format)) {
+       modifier == DRM_FORMAT_MOD_LINEAR) {
       image->layout.tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
    }
+
+   /* don't use UBWC with compressed formats */
+   if (vk_format_is_compressed(image->vk_format))
+      ubwc_enabled = false;
 
    /* UBWC can't be used with E5B9G9R9 */
    if (image->vk_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
