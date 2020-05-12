@@ -626,14 +626,9 @@ emit_binning_pass(struct fd_batch *batch)
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 	struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 
-	uint32_t x1 = gmem->minx;
-	uint32_t y1 = gmem->miny;
-	uint32_t x2 = gmem->minx + gmem->width - 1;
-	uint32_t y2 = gmem->miny + gmem->height - 1;
-
 	debug_assert(!batch->tessellation);
 
-	set_scissor(ring, x1, y1, x2, y2);
+	set_scissor(ring, 0, 0, gmem->width - 1, gmem->height - 1);
 
 	emit_marker6(ring, 7);
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
@@ -929,13 +924,12 @@ fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 static void
 set_blit_scissor(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
-	struct pipe_scissor_state blit_scissor;
-	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+	struct pipe_scissor_state blit_scissor = batch->max_scissor;
 
-	blit_scissor.minx = 0;
-	blit_scissor.miny = 0;
-	blit_scissor.maxx = align(pfb->width, batch->ctx->screen->gmem_alignw);
-	blit_scissor.maxy = align(pfb->height, batch->ctx->screen->gmem_alignh);
+	blit_scissor.minx = ROUND_DOWN_TO(blit_scissor.minx, 16);
+	blit_scissor.miny = ROUND_DOWN_TO(blit_scissor.miny, 4);
+	blit_scissor.maxx = ALIGN(blit_scissor.maxx, 16);
+	blit_scissor.maxy = ALIGN(blit_scissor.maxy, 4);
 
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_SCISSOR_TL, 2);
 	OUT_RING(ring,

@@ -460,7 +460,10 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
 		key->cbuf_cpp[i] *= pfb->samples;
 	}
 
-	if ((fd_mesa_debug & FD_DBG_NOSCIS) || no_scis_opt) {
+	/* NOTE: on a6xx, the max-scissor-rect is handled in fd6_gmem, and
+	 * we just rely on CP_COND_EXEC to skip bins with no geometry.
+	 */
+	if ((fd_mesa_debug & FD_DBG_NOSCIS) || no_scis_opt || is_a6xx(screen)) {
 		key->minx = 0;
 		key->miny = 0;
 		key->width = pfb->width;
