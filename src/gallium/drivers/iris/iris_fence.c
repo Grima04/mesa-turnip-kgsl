@@ -466,7 +466,7 @@ iris_fence_create_fd(struct pipe_context *ctx,
    syncobj->handle = args.handle;
    pipe_reference_init(&syncobj->ref, 1);
 
-   struct iris_seqno *seqno = malloc(sizeof(*seqno));
+   struct iris_seqno *seqno = calloc(1, sizeof(*seqno));
    if (!seqno) {
       free(syncobj);
       *out = NULL;
