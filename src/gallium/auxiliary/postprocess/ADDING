@@ -6,7 +6,7 @@ These shaders may be written in any supported language, but are added here in TG
 assembly.
 
 You can translate GLSL/ARB fairly easily via llvmpipe (LP_DEBUG=tgsi). I don't know the
-status of the D3D state tracker, but if/when that works, I'd assume HLSL would be possible
+status of the D3D gallium frontend, but if/when that works, I'd assume HLSL would be possible
 too.
 
 

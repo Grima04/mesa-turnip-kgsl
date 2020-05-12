@@ -27,11 +27,11 @@
  * Thomas Hellstrom <thellstrom-at-vmware-dot-com>
  */
 
-The XA state tracker is intended as a versioned interface to gallium for
+The XA gallium frontend is intended as a versioned interface to gallium for
 xorg driver writers. Initially it's mostly based on Zack Rusin's
-composite / video work for the Xorg state tracker.
+composite / video work for the Xorg gallium frontend.
 
-The motivation behind this state tracker is that the Xorg state tracker has
+The motivation behind this gallium frontend is that the Xorg gallium frontend has
 a number of interfaces to work with:
 
 1) The Xorg sdk (versioned)
@@ -39,11 +39,11 @@ a number of interfaces to work with:
 3) KMS modesetting (versioned)
 4) Driver-private (hopefully versioned)
 
-Since Gallium3D is not versioned, the Xorg state tracker needs to be compiled
+Since Gallium3D is not versioned, the Xorg gallium frontend needs to be compiled
 with Gallium, but it's really beneficial to be able to compile xorg drivers
 standalone.
 
-Therefore the xa state tracker is intended to supply the following
+Therefore the xa gallium frontend is intended to supply the following
 functionality:
 
 1) Versioning.
@@ -56,7 +56,7 @@ functionality:
 
 The first user will be the vmwgfx xorg driver. When there are more users,
 we need to be able to load the appropriate gallium pipe driver, and we
-should investigate sharing the loadig mechanism with the EGL state tracker.
+should investigate sharing the loadig mechanism with the EGL gallium frontend.
 
 IMPORTANT:
 Version compatibilities:

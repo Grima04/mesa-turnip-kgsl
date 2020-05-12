@@ -49,7 +49,7 @@ ID3DAdapter9 is completely devoid of window system code, meaning this can be
 provided by wine, Xlib, Wayland, etc. It's inadvisible to write a non-Windows
 backend though, as we don't want to encourage linux developers to use this API.
 
-The state tracker is compiled, along with pipe-loader, into a library called
+The gallium frontend is compiled, along with pipe-loader, into a library called
 libd3dadapter9.so. This library loads pipe_[driver].so drivers on demand and
 exports a single symbol for getting a subsystem driver. Currently only DRM is
 supported.
@@ -68,7 +68,7 @@ The former is the global on-switch. The latter is per-exe.
 The driver search path can be set at configure time with
 --with-gallium-driver-dir and overridden at runtime with D3D9_DRIVERS_PATH.
 Debugging information can be gotten with the WINEDEBUG channels d3d9 and
-d3dadapter, and state_tracker debug information can be gotten with NINE_DEBUG.
+d3dadapter, and gallium frontend debug information can be gotten with NINE_DEBUG.
 Help on NINE_DEBUG is shown through NINE_DEBUG=help
 
 Finally, the ID3DPresent[Group] and ID3DAdapter9 interfaces are not set in
