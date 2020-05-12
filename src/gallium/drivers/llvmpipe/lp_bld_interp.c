@@ -151,6 +151,43 @@ calc_offsets(struct lp_build_context *coeff_bld,
    }
 }
 
+static void
+calc_centroid_offsets(struct lp_build_interp_soa_context *bld,
+                      struct gallivm_state *gallivm,
+                      LLVMValueRef loop_iter,
+                      LLVMValueRef mask_store,
+                      LLVMValueRef pix_center_offset,
+                      LLVMValueRef *centroid_x, LLVMValueRef *centroid_y)
+{
+   struct lp_build_context *coeff_bld = &bld->coeff_bld;
+   LLVMBuilderRef builder = gallivm->builder;
+   LLVMValueRef s_mask_and = NULL;
+   LLVMValueRef centroid_x_offset = pix_center_offset;
+   LLVMValueRef centroid_y_offset = pix_center_offset;
+   for (int s = bld->coverage_samples - 1; s >= 0; s--) {
+      LLVMValueRef sample_cov;
+      LLVMValueRef s_mask_idx = LLVMBuildMul(builder, bld->num_loop, lp_build_const_int32(gallivm, s), "");
+
+      s_mask_idx = LLVMBuildAdd(builder, s_mask_idx, loop_iter, "");
+      sample_cov = lp_build_pointer_get(builder, mask_store, s_mask_idx);
+      if (s == bld->coverage_samples - 1)
+         s_mask_and = sample_cov;
+      else
+         s_mask_and = LLVMBuildAnd(builder, s_mask_and, sample_cov, "");
+
+      LLVMValueRef x_val_idx = lp_build_const_int32(gallivm, s * 2);
+      LLVMValueRef y_val_idx = lp_build_const_int32(gallivm, s * 2 + 1);
+
+      x_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, x_val_idx);
+      y_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, y_val_idx);
+      x_val_idx = lp_build_broadcast_scalar(coeff_bld, x_val_idx);
+      y_val_idx = lp_build_broadcast_scalar(coeff_bld, y_val_idx);
+      centroid_x_offset = lp_build_select(coeff_bld, sample_cov, x_val_idx, centroid_x_offset);
+      centroid_y_offset = lp_build_select(coeff_bld, sample_cov, y_val_idx, centroid_y_offset);
+   }
+   *centroid_x = lp_build_select(coeff_bld, s_mask_and, pix_center_offset, centroid_x_offset);
+   *centroid_y = lp_build_select(coeff_bld, s_mask_and, pix_center_offset, centroid_y_offset);
+}
 
 /* Much easier, and significantly less instructions in the per-stamp
  * part (less than half) but overall more instructions so a loss if
@@ -332,36 +369,8 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                         xoffset = lp_build_broadcast_scalar(coeff_bld, x_val_idx);
                         yoffset = lp_build_broadcast_scalar(coeff_bld, y_val_idx);
                      } else if (loc == TGSI_INTERPOLATE_LOC_CENTROID) {
-                        LLVMValueRef centroid_x_offset = pix_center_offset;
-                        LLVMValueRef centroid_y_offset = pix_center_offset;
-
-                        /* for centroid find covered samples for this quad. */
-                        /* if all samples are covered use pixel centers */
-                        LLVMValueRef s_mask_and = NULL;
-                        for (int s = bld->coverage_samples - 1; s >= 0; s--) {
-                           LLVMValueRef sample_cov;
-                           LLVMValueRef s_mask_idx = LLVMBuildMul(builder, bld->num_loop, lp_build_const_int32(gallivm, s), "");
-
-                           s_mask_idx = LLVMBuildAdd(builder, s_mask_idx, loop_iter, "");
-                           sample_cov = lp_build_pointer_get(builder, mask_store, s_mask_idx);
-                           if (s == bld->coverage_samples - 1)
-                              s_mask_and = sample_cov;
-                           else
-                              s_mask_and = LLVMBuildAnd(builder, s_mask_and, sample_cov, "");
-
-                           LLVMValueRef x_val_idx = lp_build_const_int32(gallivm, s * 2);
-                           LLVMValueRef y_val_idx = lp_build_const_int32(gallivm, s * 2 + 1);
-
-                           x_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, x_val_idx);
-                           y_val_idx = lp_build_array_get(gallivm, bld->sample_pos_array, y_val_idx);
-
-                           x_val_idx = lp_build_broadcast_scalar(coeff_bld, x_val_idx);
-                           y_val_idx = lp_build_broadcast_scalar(coeff_bld, y_val_idx);
-                           centroid_x_offset = lp_build_select(coeff_bld, sample_cov, x_val_idx, centroid_x_offset);
-                           centroid_y_offset = lp_build_select(coeff_bld, sample_cov, y_val_idx, centroid_y_offset);
-                        }
-                        xoffset = lp_build_select(coeff_bld, s_mask_and, xoffset, centroid_x_offset);
-                        yoffset = lp_build_select(coeff_bld, s_mask_and, yoffset, centroid_y_offset);
+                        calc_centroid_offsets(bld, gallivm, loop_iter, mask_store,
+                                              pix_center_offset, &xoffset, &yoffset);
                      }
                      chan_pixoffx = lp_build_add(coeff_bld, chan_pixoffx, xoffset);
                      chan_pixoffy = lp_build_add(coeff_bld, chan_pixoffy, yoffset);
