@@ -119,9 +119,6 @@ midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr)
                 ins.mask &= instr->dest.write_mask;
 
         emit_mir_instruction(ctx, ins);
-
-        /* TODO: Set .cont/.last automatically via dataflow analysis */
-        ctx->texture_op_count++;
 }
 
 void
@@ -157,9 +154,6 @@ midgard_lower_derivatives(compiler_context *ctx, midgard_block *block)
 
                 /* Insert the new instruction */
                 mir_insert_instruction_before(ctx, mir_next_op(ins), dup);
-
-                /* TODO: Set .cont/.last automatically via dataflow analysis */
-                ctx->texture_op_count++;
 
                 /* We'll need both instructions to write to the same index, so
                  * rewrite to use a register */

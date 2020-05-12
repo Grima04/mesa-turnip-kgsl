@@ -274,10 +274,6 @@ typedef struct compiler_context {
          * register pressure */
         int work_registers;
 
-        /* Used for cont/last hinting. Increase when a tex op is added.
-         * Decrease when a tex op is removed. */
-        int texture_op_count;
-
         /* The number of uniforms allowable for the fast path */
         int uniform_cutoff;
 

@@ -1917,9 +1917,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         }
 
         emit_mir_instruction(ctx, ins);
-
-        /* Used for .cont and .last hinting */
-        ctx->texture_op_count++;
 }
 
 static void
