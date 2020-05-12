@@ -567,37 +567,8 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
    uint32_t lb = info.lb;
    uint32_t ub = info.ub;
    uint32_t size = info.size;
-   uint32_t stride = info.stride;
+   uint32_t stride = info.rc.is_subdword() ? DIV_ROUND_UP(info.stride, 4) : info.stride;
    RegClass rc = info.rc;
-
-   if (rc.is_subdword()) {
-      for (std::pair<uint32_t, std::array<uint32_t, 4>> entry : reg_file.subdword_regs) {
-         assert(reg_file[entry.first] == 0xF0000000);
-         if (lb > entry.first || entry.first >= ub)
-            continue;
-
-         for (unsigned i = 0; i < 4; i+= stride) {
-            if (entry.second[i] != 0)
-               continue;
-
-            bool reg_found = true;
-            for (unsigned j = 1; reg_found && i + j < 4 && j < rc.bytes(); j++)
-               reg_found &= entry.second[i + j] == 0;
-
-            /* check neighboring reg if needed */
-            reg_found &= ((int)i <= 4 - (int)rc.bytes() || reg_file[entry.first + 1] == 0);
-            if (reg_found) {
-               PhysReg res{entry.first};
-               res.reg_b += i;
-               adjust_max_used_regs(ctx, rc, entry.first);
-               return {res, true};
-            }
-         }
-      }
-
-      stride = 1; /* stride in full registers */
-      rc = info.rc = RegClass(RegType::vgpr, size);
-   }
 
    if (stride == 1) {
 
@@ -687,6 +658,35 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
       }
 
       reg_lo += stride;
+   }
+
+   /* do this late because using the upper bytes of a register can require
+    * larger instruction encodings or copies
+    * TODO: don't do this in situations where it doesn't benefit */
+   if (rc.is_subdword()) {
+      for (std::pair<uint32_t, std::array<uint32_t, 4>> entry : reg_file.subdword_regs) {
+         assert(reg_file[entry.first] == 0xF0000000);
+         if (lb > entry.first || entry.first >= ub)
+            continue;
+
+         for (unsigned i = 0; i < 4; i+= info.stride) {
+            if (entry.second[i] != 0)
+               continue;
+
+            bool reg_found = true;
+            for (unsigned j = 1; reg_found && i + j < 4 && j < rc.bytes(); j++)
+               reg_found &= entry.second[i + j] == 0;
+
+            /* check neighboring reg if needed */
+            reg_found &= ((int)i <= 4 - (int)rc.bytes() || reg_file[entry.first + 1] == 0);
+            if (reg_found) {
+               PhysReg res{entry.first};
+               res.reg_b += i;
+               adjust_max_used_regs(ctx, rc, entry.first);
+               return {res, true};
+            }
+         }
+      }
    }
 
    return {{}, false};
