@@ -1318,8 +1318,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       /* patched for gmem */
       dst[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
       dst[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
-      dst[2] &= ~(A6XX_TEX_CONST_2_TYPE__MASK | A6XX_TEX_CONST_2_PITCH__MASK);
-      dst[2] |=
+      dst[2] =
          A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
          A6XX_TEX_CONST_2_PITCH(cmd->state.tiling_config.tile0.extent.width * att->cpp);
       dst[3] = 0;

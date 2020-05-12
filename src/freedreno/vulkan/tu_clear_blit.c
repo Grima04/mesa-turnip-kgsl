@@ -709,7 +709,6 @@ r3d_src_buffer(struct tu_cmd_buffer *cmd,
       A6XX_TEX_CONST_0_SWIZ_W(vk_format == VK_FORMAT_R8_UNORM ? A6XX_TEX_X : A6XX_TEX_W);
    desc[1] = A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height);
    desc[2] =
-      A6XX_TEX_CONST_2_FETCHSIZE(tu6_fetchsize(vk_format)) |
       A6XX_TEX_CONST_2_PITCH(pitch) |
       A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D);
    desc[3] = 0;

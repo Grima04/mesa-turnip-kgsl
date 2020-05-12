@@ -187,20 +187,6 @@ invalid_layout:
    return vk_error(device->instance, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
 }
 
-enum a6xx_tex_fetchsize
-tu6_fetchsize(VkFormat format)
-{
-   switch (vk_format_get_blocksize(format)) {
-   case 1: return TFETCH6_1_BYTE;
-   case 2: return TFETCH6_2_BYTE;
-   case 4: return TFETCH6_4_BYTE;
-   case 8: return TFETCH6_8_BYTE;
-   case 16: return TFETCH6_16_BYTE;
-   default:
-      unreachable("bad block size");
-   }
-}
-
 static void
 compose_swizzle(unsigned char *swiz, const VkComponentMapping *mapping)
 {
@@ -398,7 +384,7 @@ tu_image_view_init(struct tu_image_view *iview,
       A6XX_TEX_CONST_0_MIPLVLS(tu_get_levelCount(image, range) - 1);
    iview->descriptor[1] = A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height);
    iview->descriptor[2] =
-      A6XX_TEX_CONST_2_FETCHSIZE(tu6_fetchsize(format)) |
+      A6XX_TEX_CONST_2_PITCHALIGN(layout->pitchalign) |
       A6XX_TEX_CONST_2_PITCH(pitch) |
       A6XX_TEX_CONST_2_TYPE(tu6_tex_type(pCreateInfo->viewType, false));
    iview->descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(layer_size);

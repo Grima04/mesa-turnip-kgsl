@@ -369,28 +369,6 @@ fd6_pipe2swap(enum pipe_format format)
 	return formats[format].swap;
 }
 
-// XXX possibly same as a4xx..
-enum a6xx_tex_fetchsize
-fd6_pipe2fetchsize(enum pipe_format format)
-{
-	if (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)
-		format = PIPE_FORMAT_Z32_FLOAT;
-
-	switch (util_format_get_blocksizebits(format)) {
-	case 8:   return TFETCH6_1_BYTE;
-	case 16:  return TFETCH6_2_BYTE;
-	case 32:  return TFETCH6_4_BYTE;
-	case 64:  return TFETCH6_8_BYTE;
-	case 96:  return TFETCH6_1_BYTE; /* Does this matter? */
-	case 128: return TFETCH6_16_BYTE;
-	default:
-		debug_printf("Unknown block size for format %s: %d\n",
-				util_format_name(format),
-				util_format_get_blocksizebits(format));
-		return TFETCH6_1_BYTE;
-	}
-}
-
 enum a6xx_depth_format
 fd6_pipe2depth(enum pipe_format format)
 {

@@ -39,7 +39,6 @@ struct fd6_image {
 	struct pipe_resource *prsc;
 	enum pipe_format pfmt;
 	enum a6xx_format fmt;
-	enum a6xx_tex_fetchsize fetchsize;
 	enum a6xx_tex_type type;
 	bool srgb;
 	uint32_t cpp;
@@ -69,7 +68,6 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 	img->prsc      = prsc;
 	img->pfmt      = format;
 	img->fmt       = fd6_pipe2tex(format);
-	img->fetchsize = fd6_pipe2fetchsize(format);
 	img->type      = fd6_tex_type(prsc->target);
 	img->srgb      = util_format_is_srgb(format);
 	img->cpp       = rsc->layout.cpp;
@@ -148,7 +146,6 @@ static void translate_buf(struct fd6_image *img, const struct pipe_shader_buffer
 	img->prsc      = prsc;
 	img->pfmt      = format;
 	img->fmt       = fd6_pipe2tex(format);
-	img->fetchsize = fd6_pipe2fetchsize(format);
 	img->type      = fd6_tex_type(prsc->target);
 	img->srgb      = util_format_is_srgb(format);
 	img->cpp       = rsc->layout.cpp;
@@ -179,7 +176,7 @@ static void emit_image_tex(struct fd_ringbuffer *ring, struct fd6_image *img)
 			PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W));
 	OUT_RING(ring, A6XX_TEX_CONST_1_WIDTH(img->width) |
 		A6XX_TEX_CONST_1_HEIGHT(img->height));
-	OUT_RING(ring, A6XX_TEX_CONST_2_FETCHSIZE(img->fetchsize) |
+	OUT_RING(ring,
 		COND(img->buffer, A6XX_TEX_CONST_2_UNK4 | A6XX_TEX_CONST_2_UNK31) |
 		A6XX_TEX_CONST_2_TYPE(img->type) |
 		A6XX_TEX_CONST_2_PITCH(img->pitch));

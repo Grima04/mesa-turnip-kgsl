@@ -37,7 +37,6 @@ enum a6xx_format fd6_pipe2vtx(enum pipe_format format);
 enum a6xx_format fd6_pipe2tex(enum pipe_format format);
 enum a6xx_format fd6_pipe2color(enum pipe_format format);
 enum a3xx_color_swap fd6_pipe2swap(enum pipe_format format);
-enum a6xx_tex_fetchsize fd6_pipe2fetchsize(enum pipe_format format);
 enum a6xx_depth_format fd6_pipe2depth(enum pipe_format format);
 enum a6xx_tex_swiz fd6_pipe2swiz(unsigned swiz);
 

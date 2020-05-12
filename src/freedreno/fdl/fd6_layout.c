@@ -165,6 +165,9 @@ fdl6_layout(struct fdl_layout *layout,
 					ta->ubwc_blockheight),
 			ubwc_tile_height_alignment);
 
+	layout->pitchalign =
+		util_logbase2_ceil(fdl6_pitchalign(layout, mip_levels - 1) * layout->cpp >> 6);
+
 	for (uint32_t level = 0; level < mip_levels; level++) {
 		uint32_t depth = u_minify(depth0, level);
 		struct fdl_slice *slice = &layout->slices[level];
