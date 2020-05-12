@@ -220,7 +220,7 @@ struct v3dv_meta_blit_pipeline {
    VkRenderPass pass;
 };
 
-#define V3DV_META_BLIT_CACHE_KEY_SIZE (4 * sizeof(uint32_t))
+#define V3DV_META_BLIT_CACHE_KEY_SIZE (3 * sizeof(uint32_t))
 
 struct v3dv_device {
    VK_LOADER_DATA _loader_data;
