@@ -1,2 +1,0 @@
-dEQP-GLES31.functional.stencil_texturing.render.depth24_stencil8_clear
-dEQP-GLES31.functional.stencil_texturing.render.depth24_stencil8_draw
