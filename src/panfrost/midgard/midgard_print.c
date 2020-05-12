@@ -332,6 +332,9 @@ mir_print_instruction(midgard_instruction *ins)
                 if (ins->helper_terminate)
                         printf(".terminate");
 
+                if (ins->helper_execute)
+                        printf(".execute");
+
                 break;
         }
 

@@ -158,3 +158,90 @@ mir_analyze_helper_terminate(compiler_context *ctx)
                 }
         }
 }
+
+static bool
+mir_helper_block_update(BITSET_WORD *deps, pan_block *_block, unsigned temp_count)
+{
+        bool progress = false;
+        midgard_block *block = (midgard_block *) _block;
+
+        mir_foreach_instr_in_block_rev(block, ins) {
+                /* Ensure we write to a helper dependency */
+                if (ins->dest >= temp_count || !BITSET_TEST(deps, ins->dest))
+                        continue;
+
+                /* Then add all of our dependencies */
+                mir_foreach_src(ins, s) {
+                        if (ins->src[s] >= temp_count)
+                                continue;
+
+                        /* Progress if the dependency set changes */
+                        progress |= !BITSET_TEST(deps, ins->src[s]);
+                        BITSET_SET(deps, ins->src[s]);
+                }
+        }
+
+        return progress;
+}
+
+void
+mir_analyze_helper_requirements(compiler_context *ctx)
+{
+        mir_compute_temp_count(ctx);
+        unsigned temp_count = ctx->temp_count;
+        BITSET_WORD *deps = calloc(sizeof(BITSET_WORD), BITSET_WORDS(temp_count));
+
+        /* Initialize with the sources of instructions consuming
+         * derivatives */
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->type != TAG_TEXTURE_4) continue;
+                if (ins->dest >= ctx->temp_count) continue;
+                if (!mir_op_computes_derivatives(ctx->stage, ins->texture.op)) continue;
+
+                mir_foreach_src(ins, s) {
+                        if (ins->src[s] < temp_count)
+                                BITSET_SET(deps, ins->src[s]);
+                }
+        }
+
+        /* Propagate that up */
+
+        struct set *work_list = _mesa_set_create(NULL,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+        struct set *visited = _mesa_set_create(NULL,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+        struct set_entry *cur = _mesa_set_add(work_list, pan_exit_block(&ctx->blocks));
+
+        do {
+                pan_block *blk = (struct pan_block *) cur->key;
+                _mesa_set_remove(work_list, cur);
+
+                bool progress = mir_helper_block_update(deps, blk, temp_count);
+
+                if (progress || !_mesa_set_search(visited, blk)) {
+                        pan_foreach_predecessor(blk, pred)
+                                _mesa_set_add(work_list, pred);
+                }
+
+                _mesa_set_add(visited, blk);
+        } while((cur = _mesa_set_next_entry(work_list, NULL)) != NULL);
+
+        _mesa_set_destroy(visited, NULL);
+        _mesa_set_destroy(work_list, NULL);
+
+        /* Set the execute bits */
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->type != TAG_TEXTURE_4) continue;
+                if (ins->dest >= ctx->temp_count) continue;
+
+                ins->helper_execute = BITSET_TEST(deps, ins->dest);
+        }
+
+        free(deps);
+}
