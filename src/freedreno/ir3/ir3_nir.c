@@ -404,14 +404,6 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 						layout->image_dims.count;
 					layout->image_dims.count += 3; /* three const per */
 					break;
-				case nir_intrinsic_load_ubo:
-					if (nir_src_is_const(intr->src[0])) {
-						layout->num_ubos = MAX2(layout->num_ubos,
-								nir_src_as_uint(intr->src[0]) + 1);
-					} else {
-						layout->num_ubos = shader->info.num_ubos;
-					}
-					break;
 				case nir_intrinsic_load_base_vertex:
 				case nir_intrinsic_load_first_vertex:
 					layout->num_driver_params =
@@ -457,6 +449,8 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 			MAX2(const_state->num_driver_params, IR3_DP_VTXCNT_MAX + 1);
 	}
 
+	const_state->num_ubos = nir->info.num_ubos;
+
 	/* num_driver_params is scalar, align to vec4: */
 	const_state->num_driver_params = align(const_state->num_driver_params, 4);
 
@@ -466,7 +460,7 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 
 	if (const_state->num_ubos > 0) {
 		const_state->offsets.ubo = constoff;
-		constoff += align(nir->info.num_ubos * ptrsz, 4) / 4;
+		constoff += align(const_state->num_ubos * ptrsz, 4) / 4;
 	}
 
 	if (const_state->ssbo_size.count > 0) {
