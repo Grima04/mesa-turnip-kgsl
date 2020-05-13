@@ -46,7 +46,7 @@
 #include "lp_surface.h"
 #include "lp_query.h"
 #include "lp_setup.h"
-
+#include "lp_screen.h"
 /* This is only safe if there's just one concurrent context */
 #ifdef EMBEDDED_DEVICE
 #define USE_GLOBAL_LLVM_CONTEXT
@@ -137,6 +137,22 @@ llvmpipe_texture_barrier(struct pipe_context *pipe, unsigned flags)
    llvmpipe_flush(pipe, NULL, __FUNCTION__);
 }
 
+static void lp_draw_disk_cache_find_shader(void *cookie,
+                                           struct lp_cached_code *cache,
+                                           unsigned char ir_sha1_cache_key[20])
+{
+   struct llvmpipe_screen *screen = cookie;
+   lp_disk_cache_find_shader(screen, cache, ir_sha1_cache_key);
+}
+
+static void lp_draw_disk_cache_insert_shader(void *cookie,
+                                             struct lp_cached_code *cache,
+                                             unsigned char ir_sha1_cache_key[20])
+{
+   struct llvmpipe_screen *screen = cookie;
+   lp_disk_cache_insert_shader(screen, cache, ir_sha1_cache_key);
+}
+
 struct pipe_context *
 llvmpipe_create_context(struct pipe_screen *screen, void *priv,
                         unsigned flags)
@@ -202,6 +218,10 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
    if (!llvmpipe->draw)
       goto fail;
 
+   draw_set_disk_cache_callbacks(llvmpipe->draw,
+                                 llvmpipe_screen(screen),
+                                 lp_draw_disk_cache_find_shader,
+                                 lp_draw_disk_cache_insert_shader);
    /* FIXME: devise alternative to draw_texture_samplers */
 
    llvmpipe->setup = lp_setup_create( &llvmpipe->pipe,
