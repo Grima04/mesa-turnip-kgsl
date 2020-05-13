@@ -96,8 +96,8 @@ rm -rf usr/share/misc/usb.ids
 # IMPORTANT: The Debian system is not longer functional at this point,
 # for example, apt and dpkg will stop working
 
-UNNEEDED_PACKAGES="apt libapt-pkg5.0 "\
-"ncurses-bin ncurses-base libncursesw5 libncurses5 "\
+UNNEEDED_PACKAGES="apt libapt-pkg6.0 "\
+"ncurses-bin ncurses-base libncursesw6 libncurses6 "\
 "perl-base "\
 "debconf libdebconfclient0 "\
 "e2fsprogs e2fslibs libfdisk1 "\

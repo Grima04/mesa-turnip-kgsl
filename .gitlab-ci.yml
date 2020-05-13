@@ -177,7 +177,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-05-14-baremetal-4"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-05-14-baremetal-5"
 
 .use-arm_build:
   variables:
