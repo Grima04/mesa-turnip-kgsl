@@ -64,12 +64,7 @@ rm -rf $LIBDRM_VERSION
 
 ############### Generate cross build file for Meson
 
-cross_file="/cross_file-armhf.txt"
-/usr/share/meson/debcrossgen --arch armhf -o "$cross_file"
-# Explicitly set ccache path for cross compilers
-sed -i "s|/usr/bin/\([^-]*\)-linux-gnu\([^-]*\)-g|/usr/lib/ccache/\\1-linux-gnu\\2-g|g" "$cross_file"
-# Don't need wrapper for armhf executables
-sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
+. .gitlab-ci/create-cross-file.sh armhf
 
 ############### Generate kernel, ramdisk, test suites, etc for LAVA jobs
 
