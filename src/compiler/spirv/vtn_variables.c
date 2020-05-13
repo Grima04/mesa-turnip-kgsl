@@ -1039,6 +1039,63 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL;
       set_mode_system_value(b, mode);
       break;
+   case SpvBuiltInLaunchIdKHR:
+      *location = SYSTEM_VALUE_RAY_LAUNCH_ID;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInLaunchSizeKHR:
+      *location = SYSTEM_VALUE_RAY_LAUNCH_SIZE;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInWorldRayOriginKHR:
+      *location = SYSTEM_VALUE_RAY_WORLD_ORIGIN;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInWorldRayDirectionKHR:
+      *location = SYSTEM_VALUE_RAY_WORLD_DIRECTION;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInObjectRayOriginKHR:
+      *location = SYSTEM_VALUE_RAY_OBJECT_ORIGIN;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInObjectRayDirectionKHR:
+      *location = SYSTEM_VALUE_RAY_OBJECT_DIRECTION;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInObjectToWorldKHR:
+      *location = SYSTEM_VALUE_RAY_OBJECT_TO_WORLD;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInWorldToObjectKHR:
+      *location = SYSTEM_VALUE_RAY_WORLD_TO_OBJECT;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInRayTminKHR:
+      *location = SYSTEM_VALUE_RAY_T_MIN;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInRayTmaxKHR:
+   case SpvBuiltInHitTNV:
+      *location = SYSTEM_VALUE_RAY_T_MAX;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInInstanceCustomIndexKHR:
+      *location = SYSTEM_VALUE_RAY_INSTANCE_CUSTOM_INDEX;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInHitKindKHR:
+      *location = SYSTEM_VALUE_RAY_HIT_KIND;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInIncomingRayFlagsKHR:
+      *location = SYSTEM_VALUE_RAY_FLAGS;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInRayGeometryIndexKHR:
+      *location = SYSTEM_VALUE_RAY_GEOMETRY_INDEX;
+      set_mode_system_value(b, mode);
+      break;
    default:
       vtn_fail("Unsupported builtin: %s (%u)",
                spirv_builtin_to_string(builtin), builtin);

@@ -658,6 +658,20 @@ system_value("scratch_base_ptr", 0, bit_sizes=[32,64], indices=[BASE])
 system_value("constant_base_ptr", 0, bit_sizes=[32,64])
 system_value("shared_base_ptr", 0, bit_sizes=[32,64])
 
+# System values for ray tracing.
+system_value("ray_launch_id", 3)
+system_value("ray_launch_size", 3)
+system_value("ray_world_origin", 3)
+system_value("ray_world_direction", 3)
+system_value("ray_object_origin", 3)
+system_value("ray_object_direction", 3)
+system_value("ray_t_min", 1)
+system_value("ray_t_max", 1)
+system_value("ray_hit_kind", 1)
+system_value("ray_flags", 1)
+system_value("ray_geometry_index", 1)
+system_value("ray_instance_custom_index", 1)
+
 # Driver-specific viewport scale/offset parameters.
 #
 # VC4 and V3D need to emit a scaled version of the position in the vertex

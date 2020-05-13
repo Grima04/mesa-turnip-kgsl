@@ -2216,6 +2216,30 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_work_dim;
    case SYSTEM_VALUE_USER_DATA_AMD:
       return nir_intrinsic_load_user_data_amd;
+   case SYSTEM_VALUE_RAY_LAUNCH_ID:
+      return nir_intrinsic_load_ray_launch_id;
+   case SYSTEM_VALUE_RAY_LAUNCH_SIZE:
+      return nir_intrinsic_load_ray_launch_size;
+   case SYSTEM_VALUE_RAY_WORLD_ORIGIN:
+      return nir_intrinsic_load_ray_world_origin;
+   case SYSTEM_VALUE_RAY_WORLD_DIRECTION:
+      return nir_intrinsic_load_ray_world_direction;
+   case SYSTEM_VALUE_RAY_OBJECT_ORIGIN:
+      return nir_intrinsic_load_ray_object_origin;
+   case SYSTEM_VALUE_RAY_OBJECT_DIRECTION:
+      return nir_intrinsic_load_ray_object_direction;
+   case SYSTEM_VALUE_RAY_T_MIN:
+      return nir_intrinsic_load_ray_t_min;
+   case SYSTEM_VALUE_RAY_T_MAX:
+      return nir_intrinsic_load_ray_t_max;
+   case SYSTEM_VALUE_RAY_HIT_KIND:
+      return nir_intrinsic_load_ray_hit_kind;
+   case SYSTEM_VALUE_RAY_FLAGS:
+      return nir_intrinsic_load_ray_flags;
+   case SYSTEM_VALUE_RAY_GEOMETRY_INDEX:
+      return nir_intrinsic_load_ray_geometry_index;
+   case SYSTEM_VALUE_RAY_INSTANCE_CUSTOM_INDEX:
+      return nir_intrinsic_load_ray_instance_custom_index;
    default:
       unreachable("system value does not directly correspond to intrinsic");
    }
@@ -2323,6 +2347,30 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_GS_HEADER_IR3;
    case nir_intrinsic_load_tcs_header_ir3:
       return SYSTEM_VALUE_TCS_HEADER_IR3;
+   case nir_intrinsic_load_ray_launch_id:
+      return SYSTEM_VALUE_RAY_LAUNCH_ID;
+   case nir_intrinsic_load_ray_launch_size:
+      return SYSTEM_VALUE_RAY_LAUNCH_SIZE;
+   case nir_intrinsic_load_ray_world_origin:
+      return SYSTEM_VALUE_RAY_WORLD_ORIGIN;
+   case nir_intrinsic_load_ray_world_direction:
+      return SYSTEM_VALUE_RAY_WORLD_DIRECTION;
+   case nir_intrinsic_load_ray_object_origin:
+      return SYSTEM_VALUE_RAY_OBJECT_ORIGIN;
+   case nir_intrinsic_load_ray_object_direction:
+      return SYSTEM_VALUE_RAY_OBJECT_DIRECTION;
+   case nir_intrinsic_load_ray_t_min:
+      return SYSTEM_VALUE_RAY_T_MIN;
+   case nir_intrinsic_load_ray_t_max:
+      return SYSTEM_VALUE_RAY_T_MAX;
+   case nir_intrinsic_load_ray_hit_kind:
+      return SYSTEM_VALUE_RAY_HIT_KIND;
+   case nir_intrinsic_load_ray_flags:
+      return SYSTEM_VALUE_RAY_FLAGS;
+   case nir_intrinsic_load_ray_geometry_index:
+      return SYSTEM_VALUE_RAY_GEOMETRY_INDEX;
+   case nir_intrinsic_load_ray_instance_custom_index:
+      return SYSTEM_VALUE_RAY_INSTANCE_CUSTOM_INDEX;
    default:
       unreachable("intrinsic doesn't produce a system value");
    }

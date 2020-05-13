@@ -670,6 +670,26 @@ typedef enum
    SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL,
 
    /**
+    * \name Ray tracing shader system values
+    */
+   /*@{*/
+   SYSTEM_VALUE_RAY_LAUNCH_ID,
+   SYSTEM_VALUE_RAY_LAUNCH_SIZE,
+   SYSTEM_VALUE_RAY_WORLD_ORIGIN,
+   SYSTEM_VALUE_RAY_WORLD_DIRECTION,
+   SYSTEM_VALUE_RAY_OBJECT_ORIGIN,
+   SYSTEM_VALUE_RAY_OBJECT_DIRECTION,
+   SYSTEM_VALUE_RAY_T_MIN,
+   SYSTEM_VALUE_RAY_T_MAX,
+   SYSTEM_VALUE_RAY_OBJECT_TO_WORLD,
+   SYSTEM_VALUE_RAY_WORLD_TO_OBJECT,
+   SYSTEM_VALUE_RAY_HIT_KIND,
+   SYSTEM_VALUE_RAY_FLAGS,
+   SYSTEM_VALUE_RAY_GEOMETRY_INDEX,
+   SYSTEM_VALUE_RAY_INSTANCE_CUSTOM_INDEX,
+   /*@}*/
+
+   /**
     * IR3 specific geometry shader and tesselation control shader system
     * values that packs invocation id, thread id and vertex id.  Having this
     * as a nir level system value lets us do the unpacking in nir.
