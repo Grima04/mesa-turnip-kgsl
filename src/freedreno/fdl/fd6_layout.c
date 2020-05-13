@@ -169,14 +169,14 @@ fdl6_layout(struct fdl_layout *layout,
 			nblocksy = align(nblocksy, ta->heightalign);
 
 		/* The blits used for mem<->gmem work at a granularity of
-		 * 32x32, which can cause faults due to over-fetch on the
+		 * 16x4, which can cause faults due to over-fetch on the
 		 * last level.  The simple solution is to over-allocate a
 		 * bit the last level to ensure any over-fetch is harmless.
 		 * The pitch is already sufficiently aligned, but height
-		 * may not be:
+		 * may not be. note this only matters if last level is linear
 		 */
 		if (level == mip_levels - 1)
-			nblocksy = align(nblocksy, 32);
+			height = align(nblocksy, 4);
 
 		uint32_t nblocksx =
 			util_align_npot(util_format_get_nblocksx(format, u_minify(pitch0, level)),
