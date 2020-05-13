@@ -2170,6 +2170,7 @@ anv_DestroyImageView(VkDevice _device, VkImageView _iview,
       }
    }
 
+   vk_object_base_finish(&iview->base);
    vk_free2(&device->vk.alloc, pAllocator, iview);
 }
 
