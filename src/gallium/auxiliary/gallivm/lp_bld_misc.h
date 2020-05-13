@@ -50,6 +50,7 @@ struct lp_cached_code {
    void *data;
    size_t data_size;
    bool dont_cache;
+   void *jit_obj_cache;
 };
 
 struct lp_generated_code;
@@ -88,6 +89,8 @@ lp_get_called_value(LLVMValueRef call);
 extern bool
 lp_is_function(LLVMValueRef v);
 
+void
+lp_free_objcache(void *objcache);
 #ifdef __cplusplus
 }
 #endif

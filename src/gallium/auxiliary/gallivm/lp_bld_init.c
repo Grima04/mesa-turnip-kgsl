@@ -212,6 +212,7 @@ gallivm_free_ir(struct gallivm_state *gallivm)
    }
 
    if (gallivm->cache) {
+      lp_free_objcache(gallivm->cache->jit_obj_cache);
       free(gallivm->cache->data);
    }
    FREE(gallivm->module_name);
