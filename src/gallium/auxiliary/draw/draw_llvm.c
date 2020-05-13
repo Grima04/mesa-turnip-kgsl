@@ -51,7 +51,7 @@
 #include "gallivm/lp_bld_type.h"
 #include "gallivm/lp_bld_pack.h"
 #include "gallivm/lp_bld_format.h"
-
+#include "gallivm/lp_bld_misc.h"
 #include "tgsi/tgsi_exec.h"
 #include "tgsi/tgsi_dump.h"
 
@@ -59,8 +59,8 @@
 #include "util/u_pointer.h"
 #include "util/u_string.h"
 #include "util/simple_list.h"
-
-
+#include "nir_serialize.h"
+#include "util/mesa-sha1.h"
 #define DEBUG_STORE 0
 
 
@@ -823,6 +823,30 @@ draw_llvm_destroy(struct draw_llvm *llvm)
    FREE(llvm);
 }
 
+static void
+draw_get_ir_cache_key(struct nir_shader *nir,
+                      const void *key, size_t key_size,
+                      uint32_t val_32bit,
+                      unsigned char ir_sha1_cache_key[20])
+{
+   struct blob blob = { 0 };
+   unsigned ir_size;
+   void *ir_binary;
+
+   blob_init(&blob);
+   nir_serialize(&blob, nir, true);
+   ir_binary = blob.data;
+   ir_size = blob.size;
+
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+   _mesa_sha1_update(&ctx, key, key_size);
+   _mesa_sha1_update(&ctx, ir_binary, ir_size);
+   _mesa_sha1_update(&ctx, &val_32bit, 4);
+   _mesa_sha1_final(&ctx, ir_sha1_cache_key);
+
+   blob_finish(&blob);
+}
 
 /**
  * Create LLVM-generated code for a vertex shader.
@@ -837,7 +861,9 @@ draw_llvm_create_variant(struct draw_llvm *llvm,
       llvm_vertex_shader(llvm->draw->vs.vertex_shader);
    LLVMTypeRef vertex_header;
    char module_name[64];
-
+   unsigned char ir_sha1_cache_key[20];
+   struct lp_cached_code cached = { 0 };
+   bool needs_caching = false;
    variant = MALLOC(sizeof *variant +
                     shader->variant_key_size -
                     sizeof variant->key);
@@ -846,15 +872,27 @@ draw_llvm_create_variant(struct draw_llvm *llvm,
 
    variant->llvm = llvm;
    variant->shader = shader;
+   memcpy(&variant->key, key, shader->variant_key_size);
 
    snprintf(module_name, sizeof(module_name), "draw_llvm_vs_variant%u",
             variant->shader->variants_cached);
 
-   variant->gallivm = gallivm_create(module_name, llvm->context, NULL);
+   if (shader->base.state.ir.nir && llvm->draw->disk_cache_cookie) {
+      draw_get_ir_cache_key(shader->base.state.ir.nir,
+                            key,
+                            shader->variant_key_size,
+                            num_inputs,
+                            ir_sha1_cache_key);
+
+      llvm->draw->disk_cache_find_shader(llvm->draw->disk_cache_cookie,
+                                         &cached,
+                                         ir_sha1_cache_key);
+      if (!cached.data_size)
+         needs_caching = true;
+   }
+   variant->gallivm = gallivm_create(module_name, llvm->context, &cached);
 
    create_jit_types(variant);
-
-   memcpy(&variant->key, key, shader->variant_key_size);
 
    if (gallivm_debug & (GALLIVM_DEBUG_TGSI | GALLIVM_DEBUG_IR)) {
       if (llvm->draw->vs.vertex_shader->state.type == PIPE_SHADER_IR_TGSI)
@@ -875,6 +913,10 @@ draw_llvm_create_variant(struct draw_llvm *llvm,
    variant->jit_func = (draw_jit_vert_func)
          gallivm_jit_function(variant->gallivm, variant->function);
 
+   if (needs_caching)
+      llvm->draw->disk_cache_insert_shader(llvm->draw->disk_cache_cookie,
+                                           &cached,
+                                           ir_sha1_cache_key);
    gallivm_free_ir(variant->gallivm);
 
    variant->list_item_global.base = variant;
@@ -1918,6 +1960,8 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
       if (LLVMGetTypeKind(arg_types[i]) == LLVMPointerTypeKind)
          lp_add_function_attr(variant_func, i + 1, LP_FUNC_ATTR_NOALIAS);
 
+   if (gallivm->cache && gallivm->cache->data_size)
+      return;
    context_ptr               = LLVMGetParam(variant_func, 0);
    io_ptr                    = LLVMGetParam(variant_func, 1);
    vbuffers_ptr              = LLVMGetParam(variant_func, 2);
@@ -2717,6 +2761,8 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
       if (LLVMGetTypeKind(arg_types[i]) == LLVMPointerTypeKind)
          lp_add_function_attr(variant_func, i + 1, LP_FUNC_ATTR_NOALIAS);
 
+   if (gallivm->cache && gallivm->cache->data_size)
+      return;
    context_ptr               = LLVMGetParam(variant_func, 0);
    input_array               = LLVMGetParam(variant_func, 1);
    io_ptr                    = LLVMGetParam(variant_func, 2);
@@ -2824,7 +2870,6 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    gallivm_verify_function(gallivm, variant_func);
 }
 
-
 struct draw_gs_llvm_variant *
 draw_gs_llvm_create_variant(struct draw_llvm *llvm,
                             unsigned num_outputs,
@@ -2835,6 +2880,9 @@ draw_gs_llvm_create_variant(struct draw_llvm *llvm,
       llvm_geometry_shader(llvm->draw->gs.geometry_shader);
    LLVMTypeRef vertex_header;
    char module_name[64];
+   unsigned char ir_sha1_cache_key[20];
+   struct lp_cached_code cached = { 0 };
+   bool needs_caching = false;
 
    variant = MALLOC(sizeof *variant +
                     shader->variant_key_size -
@@ -2848,11 +2896,24 @@ draw_gs_llvm_create_variant(struct draw_llvm *llvm,
    snprintf(module_name, sizeof(module_name), "draw_llvm_gs_variant%u",
             variant->shader->variants_cached);
 
-   variant->gallivm = gallivm_create(module_name, llvm->context, NULL);
+   memcpy(&variant->key, key, shader->variant_key_size);
+
+   if (shader->base.state.ir.nir && llvm->draw->disk_cache_cookie) {
+      draw_get_ir_cache_key(shader->base.state.ir.nir,
+                            key,
+                            shader->variant_key_size,
+                            num_outputs,
+                            ir_sha1_cache_key);
+
+      llvm->draw->disk_cache_find_shader(llvm->draw->disk_cache_cookie,
+                                         &cached,
+                                         ir_sha1_cache_key);
+      if (!cached.data_size)
+         needs_caching = true;
+   }
+   variant->gallivm = gallivm_create(module_name, llvm->context, &cached);
 
    create_gs_jit_types(variant);
-
-   memcpy(&variant->key, key, shader->variant_key_size);
 
    vertex_header = create_jit_vertex_header(variant->gallivm, num_outputs);
 
@@ -2865,6 +2926,10 @@ draw_gs_llvm_create_variant(struct draw_llvm *llvm,
    variant->jit_func = (draw_gs_jit_func)
          gallivm_jit_function(variant->gallivm, variant->function);
 
+   if (needs_caching)
+      llvm->draw->disk_cache_insert_shader(llvm->draw->disk_cache_cookie,
+                                           &cached,
+                                           ir_sha1_cache_key);
    gallivm_free_ir(variant->gallivm);
 
    variant->list_item_global.base = variant;
@@ -3259,6 +3324,8 @@ draw_tcs_llvm_generate(struct draw_llvm *llvm,
       }
    }
 
+   if (gallivm->cache && gallivm->cache->data_size)
+      return;
    context_ptr               = LLVMGetParam(variant_func, 0);
    input_array               = LLVMGetParam(variant_func, 1);
    output_array              = LLVMGetParam(variant_func, 2);
@@ -3441,6 +3508,9 @@ draw_tcs_llvm_create_variant(struct draw_llvm *llvm,
    struct draw_tcs_llvm_variant *variant;
    struct llvm_tess_ctrl_shader *shader = llvm_tess_ctrl_shader(llvm->draw->tcs.tess_ctrl_shader);
    char module_name[64];
+   unsigned char ir_sha1_cache_key[20];
+   struct lp_cached_code cached = { 0 };
+   bool needs_caching = false;
 
    variant = MALLOC(sizeof *variant +
                     shader->variant_key_size - sizeof variant->key);
@@ -3453,11 +3523,25 @@ draw_tcs_llvm_create_variant(struct draw_llvm *llvm,
    snprintf(module_name, sizeof(module_name), "draw_llvm_tcs_variant%u",
             variant->shader->variants_cached);
 
-   variant->gallivm = gallivm_create(module_name, llvm->context, NULL);
+   memcpy(&variant->key, key, shader->variant_key_size);
+
+   if (shader->base.state.ir.nir && llvm->draw->disk_cache_cookie) {
+      draw_get_ir_cache_key(shader->base.state.ir.nir,
+                            key,
+                            shader->variant_key_size,
+                            num_outputs,
+                            ir_sha1_cache_key);
+
+      llvm->draw->disk_cache_find_shader(llvm->draw->disk_cache_cookie,
+                                         &cached,
+                                         ir_sha1_cache_key);
+      if (!cached.data_size)
+         needs_caching = true;
+   }
+
+   variant->gallivm = gallivm_create(module_name, llvm->context, &cached);
 
    create_tcs_jit_types(variant);
-
-   memcpy(&variant->key, key, shader->variant_key_size);
 
    if (gallivm_debug & (GALLIVM_DEBUG_TGSI | GALLIVM_DEBUG_IR)) {
       nir_print_shader(llvm->draw->tcs.tess_ctrl_shader->state.ir.nir, stderr);
@@ -3473,6 +3557,10 @@ draw_tcs_llvm_create_variant(struct draw_llvm *llvm,
    variant->jit_func = (draw_tcs_jit_func)
       gallivm_jit_function(variant->gallivm, variant->function);
 
+   if (needs_caching)
+      llvm->draw->disk_cache_insert_shader(llvm->draw->disk_cache_cookie,
+                                           &cached,
+                                           ir_sha1_cache_key);
    gallivm_free_ir(variant->gallivm);
 
    variant->list_item_global.base = variant;
@@ -3783,6 +3871,8 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
       if (LLVMGetTypeKind(arg_types[i]) == LLVMPointerTypeKind)
          lp_add_function_attr(variant_func, i + 1, LP_FUNC_ATTR_NOALIAS);
 
+   if (gallivm->cache && gallivm->cache->data_size)
+      return;
    context_ptr               = LLVMGetParam(variant_func, 0);
    input_array               = LLVMGetParam(variant_func, 1);
    io_ptr                    = LLVMGetParam(variant_func, 2);
@@ -3916,6 +4006,9 @@ draw_tes_llvm_create_variant(struct draw_llvm *llvm,
    struct llvm_tess_eval_shader *shader = llvm_tess_eval_shader(llvm->draw->tes.tess_eval_shader);
    LLVMTypeRef vertex_header;
    char module_name[64];
+   unsigned char ir_sha1_cache_key[20];
+   struct lp_cached_code cached = { 0 };
+   bool needs_caching = false;
 
    variant = MALLOC(sizeof *variant +
                     shader->variant_key_size - sizeof variant->key);
@@ -3928,11 +4021,23 @@ draw_tes_llvm_create_variant(struct draw_llvm *llvm,
    snprintf(module_name, sizeof(module_name), "draw_llvm_tes_variant%u",
             variant->shader->variants_cached);
 
-   variant->gallivm = gallivm_create(module_name, llvm->context, NULL);
+   memcpy(&variant->key, key, shader->variant_key_size);
+   if (shader->base.state.ir.nir && llvm->draw->disk_cache_cookie) {
+      draw_get_ir_cache_key(shader->base.state.ir.nir,
+                            key,
+                            shader->variant_key_size,
+                            num_outputs,
+                            ir_sha1_cache_key);
+
+      llvm->draw->disk_cache_find_shader(llvm->draw->disk_cache_cookie,
+                                         &cached,
+                                         ir_sha1_cache_key);
+      if (!cached.data_size)
+         needs_caching = true;
+   }
+   variant->gallivm = gallivm_create(module_name, llvm->context, &cached);
 
    create_tes_jit_types(variant);
-
-   memcpy(&variant->key, key, shader->variant_key_size);
 
    vertex_header = create_jit_vertex_header(variant->gallivm, num_outputs);
 
@@ -3950,6 +4055,10 @@ draw_tes_llvm_create_variant(struct draw_llvm *llvm,
    variant->jit_func = (draw_tes_jit_func)
       gallivm_jit_function(variant->gallivm, variant->function);
 
+   if (needs_caching)
+      llvm->draw->disk_cache_insert_shader(llvm->draw->disk_cache_cookie,
+                                           &cached,
+                                           ir_sha1_cache_key);
    gallivm_free_ir(variant->gallivm);
 
    variant->list_item_global.base = variant;
