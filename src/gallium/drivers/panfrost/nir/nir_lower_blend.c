@@ -79,11 +79,12 @@ static nir_ssa_def *
 nir_alpha_saturate(
    nir_builder *b,
    nir_ssa_def *src, nir_ssa_def *dst,
-   unsigned chan)
+   unsigned chan,
+   bool half)
 {
    nir_ssa_def *Asrc = nir_channel(b, src, 3);
    nir_ssa_def *Adst = nir_channel(b, dst, 3);
-   nir_ssa_def *one = nir_imm_float(b, 1.0);
+   nir_ssa_def *one = half ? nir_imm_float16(b, 1.0) : nir_imm_float(b, 1.0);
    nir_ssa_def *Adsti = nir_fsub(b, one, Adst);
 
    return (chan < 3) ? nir_fmin(b, Asrc, Adsti) : one;
@@ -96,11 +97,12 @@ nir_blend_factor_value(
    nir_builder *b,
    nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bconst,
    unsigned chan,
-   enum blend_factor factor)
+   enum blend_factor factor,
+   bool half)
 {
    switch (factor) {
    case BLEND_FACTOR_ZERO:
-      return nir_imm_float(b, 0.0);
+      return half ? nir_imm_float16(b, 0.0) : nir_imm_float(b, 0.0);
    case BLEND_FACTOR_SRC_COLOR:
       return nir_channel(b, src, chan);
    case BLEND_FACTOR_DST_COLOR:
@@ -114,7 +116,7 @@ nir_blend_factor_value(
    case BLEND_FACTOR_CONSTANT_ALPHA:
       return nir_channel(b, bconst, 3);
    case BLEND_FACTOR_SRC_ALPHA_SATURATE:
-      return nir_alpha_saturate(b, src, dst, chan);
+      return nir_alpha_saturate(b, src, dst, chan, half);
    }
 
    unreachable("Invalid blend factor");
@@ -127,13 +129,16 @@ nir_blend_factor(
    nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bconst,
    unsigned chan,
    enum blend_factor factor,
-   bool inverted)
+   bool inverted,
+   bool half)
 {
    nir_ssa_def *f =
-      nir_blend_factor_value(b, src, dst, bconst, chan, factor);
+      nir_blend_factor_value(b, src, dst, bconst, chan, factor, half);
+
+   nir_ssa_def *unity = half ? nir_imm_float16(b, 1.0) : nir_imm_float(b, 1.0);
 
    if (inverted)
-      f = nir_fsub(b, nir_imm_float(b, 1.0), f);
+      f = nir_fsub(b, unity, f);
 
    return nir_fmul(b, raw_scalar, f);
 }
@@ -249,6 +254,9 @@ nir_blend(
    /* Grab the blend constant ahead of time */
    nir_ssa_def *bconst = nir_load_blend_const_color_rgba(b);
 
+   if (options.half)
+      bconst = nir_f2f16(b, bconst);
+
    /* We blend per channel and recombine later */
    nir_ssa_def *channels[4];
 
@@ -264,12 +272,12 @@ nir_blend(
          psrc = nir_blend_factor(
                    b, psrc,
                    src, dst, bconst, c,
-                   chan.src_factor, chan.invert_src_factor);
+                   chan.src_factor, chan.invert_src_factor, options.half);
 
          pdst = nir_blend_factor(
                    b, pdst,
                    src, dst, bconst, c,
-                   chan.dst_factor, chan.invert_dst_factor);
+                   chan.dst_factor, chan.invert_dst_factor, options.half);
       }
 
       channels[c] = nir_blend_func(b, chan.func, psrc, pdst);
