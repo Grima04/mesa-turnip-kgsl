@@ -167,10 +167,10 @@ rm -rf usr/lib/xtables
 rm -rf usr/lib/locale/*
 
 # partition helpers
-rm usr/sbin/*fdisk
+rm -rf usr/sbin/*fdisk
 
 # local compiler
-rm usr/bin/localedef
+rm -rf usr/bin/localedef
 
 # Systemd dns resolver
 find usr etc -name '*systemd-resolve*' -prune -exec rm -r {} \;
@@ -191,16 +191,16 @@ find usr etc -name '*fuse*' -prune -exec rm -r {} \;
 rm -rf usr/lib/lsb
 
 # Only needed when adding libraries
-rm usr/sbin/ldconfig*
+rm -rf usr/sbin/ldconfig*
 
 # Games, unused
 rmdir usr/games
 
 # Remove pam module to authenticate against a DB
 # plus libdb-5.3.so that is only used by this pam module
-rm usr/lib/*/security/pam_userdb.so
-rm usr/lib/*/libdb-5.3.so
+rm -rf usr/lib/*/security/pam_userdb.so
+rm -rf usr/lib/*/libdb-5.3.so
 
 # remove NSS support for nis, nisplus and hesiod
-rm usr/lib/*/libnss_hesiod*
-rm usr/lib/*/libnss_nis*
+rm -rf usr/lib/*/libnss_hesiod*
+rm -rf usr/lib/*/libnss_nis*
