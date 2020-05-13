@@ -1089,15 +1089,19 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         } else if (instr->op == nir_op_pack_32_2x16) {
                 ins.dest_type = nir_type_uint16;
                 ins.mask = mask_of(nr_components * 2);
+                ins.is_pack = true;
         } else if (instr->op == nir_op_pack_32_4x8) {
                 ins.dest_type = nir_type_uint8;
                 ins.mask = mask_of(nr_components * 4);
+                ins.is_pack = true;
         } else if (instr->op == nir_op_unpack_32_2x16) {
                 ins.dest_type = nir_type_uint32;
                 ins.mask = mask_of(nr_components >> 1);
+                ins.is_pack = true;
         } else if (instr->op == nir_op_unpack_32_4x8) {
                 ins.dest_type = nir_type_uint32;
                 ins.mask = mask_of(nr_components >> 2);
+                ins.is_pack = true;
         }
 
         /* Arrange for creation of iandnot/iornot */

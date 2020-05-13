@@ -511,6 +511,9 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
                 unsigned size = nir_alu_type_get_type_size(ins->dest_type);
 
+                if (ins->is_pack)
+                        size = 32;
+
                 /* 0 for x, 1 for xy, 2 for xyz, 3 for xyzw */
                 int comps1 = util_logbase2(ins->mask);
 

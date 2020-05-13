@@ -101,6 +101,11 @@ typedef struct midgard_instruction {
         nir_alu_type src_types[MIR_SRC_COUNT];
         nir_alu_type dest_type;
 
+        /* Packing ops have non-32-bit dest types even though they functionally
+         * work at the 32-bit level, use this as a signal to disable copyprop.
+         * We maybe need synthetic pack ops instead. */
+        bool is_pack;
+
         /* Modifiers, depending on type */
         union {
                 struct {
