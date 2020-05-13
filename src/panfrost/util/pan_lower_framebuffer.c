@@ -258,8 +258,30 @@ pan_unpack(nir_builder *b,
                 const struct util_format_description *desc,
                 nir_ssa_def *packed)
 {
-        /* Stub */
-        return packed;
+        if (util_format_is_unorm8(desc))
+                return pan_unpack_unorm_8(b, packed, desc->nr_channels);
+
+        if (desc->is_array) {
+                int c = util_format_get_first_non_void_channel(desc->format);
+                assert(c >= 0);
+                struct util_format_channel_description d = desc->channel[c];
+
+                if (d.size == 32 || d.size == 16) {
+                        assert(!d.normalized);
+                        assert(d.type == UTIL_FORMAT_TYPE_FLOAT || d.pure_integer);
+
+                        return d.size == 32 ? pan_unpack_pure_32(b, packed, desc->nr_channels) :
+                                pan_unpack_pure_16(b, packed, desc->nr_channels);
+                } else if (d.size == 8) {
+                        assert(d.pure_integer);
+                        return pan_unpack_pure_8(b, packed, desc->nr_channels);
+                } else {
+                        unreachable("Unrenderable size");
+                }
+        }
+
+        fprintf(stderr, "%s\n", desc->name);
+        unreachable("Unknown format");
 }
 
 static nir_ssa_def *
@@ -267,8 +289,30 @@ pan_pack(nir_builder *b,
                 const struct util_format_description *desc,
                 nir_ssa_def *unpacked)
 {
-        /* Stub */
-        return unpacked;
+        if (util_format_is_unorm8(desc))
+                return pan_pack_unorm_8(b, unpacked);
+
+        if (desc->is_array) {
+                int c = util_format_get_first_non_void_channel(desc->format);
+                assert(c >= 0);
+                struct util_format_channel_description d = desc->channel[c];
+
+                if (d.size == 32 || d.size == 16) {
+                        assert(!d.normalized);
+                        assert(d.type == UTIL_FORMAT_TYPE_FLOAT || d.pure_integer);
+
+                        return d.size == 32 ? pan_pack_pure_32(b, unpacked) :
+                                pan_pack_pure_16(b, unpacked);
+                } else if (d.size == 8) {
+                        assert(d.pure_integer);
+                        return pan_pack_pure_8(b, unpacked);
+                } else {
+                        unreachable("Unrenderable size");
+                }
+        }
+
+        fprintf(stderr, "%s\n", desc->name);
+        unreachable("Unknown format");
 }
 
 static void
