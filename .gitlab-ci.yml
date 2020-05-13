@@ -186,6 +186,20 @@ arm_build:
   needs:
     - arm_build
 
+# x86 image with ARM rootfses for baremetal testing.
+x86_cross_arm_test:
+  extends: x86_build
+  variables:
+    FDO_DISTRIBUTION_TAG: &x86_cross_arm_test "2020-05-13"
+
+.use-x86_cross_arm_test:
+  variables:
+    TAG: *x86_cross_arm_test
+  image: "$CI_REGISTRY_IMAGE/debian/x86_cross_arm_test:$TAG"
+  needs:
+    - x86_cross_arm_test
+
+
 # Debian 10 based ARM test image
 arm_test:
   extends: arm_build
@@ -822,7 +836,7 @@ arm64_a630_gles31_options:
 arm64_a306_gles2:
   extends:
     - .baremetal-test
-    - .use-arm_build
+    - .use-x86_cross_arm_test
     - .freedreno-rules
   variables:
     BM_KERNEL: /lava-files/Image.gz
@@ -838,6 +852,8 @@ arm64_a306_gles2:
   script:
     - .gitlab-ci/bare-metal/fastboot.sh
   needs:
+    - x86_cross_arm_test
+    - arm_build
     - meson-arm64
   tags:
     - google-freedreno-db410c
