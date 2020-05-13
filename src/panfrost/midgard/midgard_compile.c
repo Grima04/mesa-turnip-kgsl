@@ -909,6 +909,14 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 break;
         }
 
+        case nir_op_unpack_32_2x16:
+        case nir_op_unpack_32_4x8:
+        case nir_op_pack_32_2x16:
+        case nir_op_pack_32_4x8: {
+                op = midgard_alu_op_imov;
+                break;
+        }
+
         default:
                 DBG("Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
                 assert(0);
@@ -1076,6 +1084,18 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 for (unsigned c = 0; c < 16; ++c)
                         ins.swizzle[1][c] = 0;
+        } else if (instr->op == nir_op_pack_32_2x16) {
+                ins.dest_type = nir_type_uint16;
+                ins.mask = mask_of(nr_components * 2);
+        } else if (instr->op == nir_op_pack_32_4x8) {
+                ins.dest_type = nir_type_uint8;
+                ins.mask = mask_of(nr_components * 4);
+        } else if (instr->op == nir_op_unpack_32_2x16) {
+                ins.dest_type = nir_type_uint32;
+                ins.mask = mask_of(nr_components >> 1);
+        } else if (instr->op == nir_op_unpack_32_4x8) {
+                ins.dest_type = nir_type_uint32;
+                ins.mask = mask_of(nr_components >> 2);
         }
 
         /* Arrange for creation of iandnot/iornot */
