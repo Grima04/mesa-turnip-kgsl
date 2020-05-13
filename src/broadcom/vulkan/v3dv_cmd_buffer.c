@@ -23,6 +23,7 @@
 
 #include "v3dv_private.h"
 #include "broadcom/cle/v3dx_pack.h"
+#include "util/half_float.h"
 #include "util/u_pack_color.h"
 #include "vk_format_info.h"
 
@@ -2633,7 +2634,13 @@ emit_blend(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (pipeline->blend.needs_color_constants &&
        cmd_buffer->state.dirty & V3DV_CMD_DIRTY_BLEND_CONSTANTS) {
-         cl_emit_prepacked(&job->bcl, &pipeline->blend.constant_color);
+      struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+      cl_emit(&job->bcl, BLEND_CONSTANT_COLOR, color) {
+         color.red_f16 = _mesa_float_to_half(dynamic->blend_constants[0]);
+         color.green_f16 = _mesa_float_to_half(dynamic->blend_constants[1]);
+         color.blue_f16 = _mesa_float_to_half(dynamic->blend_constants[2]);
+         color.alpha_f16 = _mesa_float_to_half(dynamic->blend_constants[3]);
+      }
       cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_BLEND_CONSTANTS;
    }
 }

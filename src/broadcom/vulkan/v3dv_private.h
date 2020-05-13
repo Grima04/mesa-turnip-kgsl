@@ -1301,8 +1301,6 @@ struct v3dv_pipeline {
        * color constants.
        */
       bool needs_color_constants;
-      /* Blend constants packet */
-      uint8_t constant_color[cl_packet_length(BLEND_CONSTANT_COLOR)];
       /* Mask with enabled color channels for each RT (4 bits per RT) */
       uint32_t color_write_masks;
    } blend;

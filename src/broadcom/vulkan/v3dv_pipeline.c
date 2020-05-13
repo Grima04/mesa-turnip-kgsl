@@ -1756,15 +1756,6 @@ pack_blend(struct v3dv_pipeline *pipeline,
       }
    }
 
-   if (pipeline->blend.needs_color_constants) {
-      v3dv_pack(pipeline->blend.constant_color, BLEND_CONSTANT_COLOR, color) {
-         color.red_f16 = _mesa_float_to_half(cb_info->blendConstants[0]);
-         color.green_f16 = _mesa_float_to_half(cb_info->blendConstants[1]);
-         color.blue_f16 = _mesa_float_to_half(cb_info->blendConstants[2]);
-         color.alpha_f16 = _mesa_float_to_half(cb_info->blendConstants[3]);
-      }
-   }
-
    pipeline->blend.color_write_masks = color_write_masks;
 }
 
