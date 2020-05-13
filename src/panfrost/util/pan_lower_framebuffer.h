@@ -41,5 +41,6 @@ enum pan_format_class {
 
 nir_alu_type pan_unpacked_type_for_format(const struct util_format_description *desc);
 enum pan_format_class pan_format_class_load(const struct util_format_description *desc, unsigned quirks);
+enum pan_format_class pan_format_class_store(const struct util_format_description *desc, unsigned quirks);
 
 #endif

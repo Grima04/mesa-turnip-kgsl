@@ -113,3 +113,15 @@ pan_format_class_load(const struct util_format_description *desc, unsigned quirk
         /* Otherwise, we can do native */
         return PAN_FORMAT_NATIVE;
 }
+
+enum pan_format_class
+pan_format_class_store(const struct util_format_description *desc, unsigned quirks)
+{
+        /* Check if we can do anything better than software architecturally */
+        if (quirks & MIDGARD_NO_TYPED_BLEND_STORES) {
+                return (quirks & NO_BLEND_PACKS)
+                        ? PAN_FORMAT_SOFTWARE : PAN_FORMAT_PACK;
+        }
+
+        return PAN_FORMAT_NATIVE;
+}
