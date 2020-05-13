@@ -149,7 +149,7 @@ def run(filename, device_name):
         project_url = None
         commit_id = None
 
-    traces = y['traces']
+    traces = y['traces'] or []
     all_ok = True
     results = {}
     for trace in traces:

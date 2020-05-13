@@ -163,6 +163,17 @@ def test_tracie_only_traces_without_checksum():
     assert run_tracie()
 
 
+def test_tracie_with_no_traces():
+    filename = "./tests/traces.yml"
+    content = 'traces:'
+    write_to(content, filename)
+    assert run_tracie()
+    expectations = [
+        "{}",
+    ]
+    assert check_results_yaml_content(RESULTS_YAML, expectations)
+
+
 def test_tracie_fails_on_dump_image_error():
     # "invalid" should fail to parse as rgba and
     # cause an error
