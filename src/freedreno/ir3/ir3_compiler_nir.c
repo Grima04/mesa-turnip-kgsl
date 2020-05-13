@@ -939,48 +939,27 @@ emit_intrinsic_load_shared_ir3(struct ir3_context *ctx, nir_intrinsic_instr *int
 	ir3_split_dest(b, dst, load, 0, intr->num_components);
 }
 
-/* src[] = { value, offset }. const_index[] = { base, write_mask } */
+/* src[] = { value, offset }. const_index[] = { base } */
 static void
 emit_intrinsic_store_shared_ir3(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *store, *offset;
 	struct ir3_instruction * const *value;
-	unsigned base, wrmask;
 
 	value  = ir3_get_src(ctx, &intr->src[0]);
 	offset = ir3_get_src(ctx, &intr->src[1])[0];
 
-	base   = nir_intrinsic_base(intr);
-	wrmask = nir_intrinsic_write_mask(intr);
+	store = ir3_STLW(b, offset, 0,
+		ir3_create_collect(ctx, value, intr->num_components), 0,
+		create_immed(b, intr->num_components), 0);
 
-	/* Combine groups of consecutive enabled channels in one write
-	 * message. We use ffs to find the first enabled channel and then ffs on
-	 * the bit-inverse, down-shifted writemask to determine the length of
-	 * the block of enabled bits.
-	 *
-	 * (trick stolen from i965's fs_visitor::nir_emit_cs_intrinsic())
-	 */
-	while (wrmask) {
-		unsigned first_component = ffs(wrmask) - 1;
-		unsigned length = ffs(~(wrmask >> first_component)) - 1;
+	store->cat6.dst_offset = nir_intrinsic_base(intr);
+	store->cat6.type = utype_src(intr->src[0]);
+	store->barrier_class = IR3_BARRIER_SHARED_W;
+	store->barrier_conflict = IR3_BARRIER_SHARED_R | IR3_BARRIER_SHARED_W;
 
-		store = ir3_STLW(b, offset, 0,
-			ir3_create_collect(ctx, &value[first_component], length), 0,
-			create_immed(b, length), 0);
-
-		store->cat6.dst_offset = first_component + base;
-		store->cat6.type = utype_src(intr->src[0]);
-		store->barrier_class = IR3_BARRIER_SHARED_W;
-		store->barrier_conflict = IR3_BARRIER_SHARED_R | IR3_BARRIER_SHARED_W;
-
-		array_insert(b, b->keeps, store);
-
-		/* Clear the bits in the writemask that we just wrote, then try
-		 * again to see if more channels are left.
-		 */
-		wrmask &= (15 << (first_component + length));
-	}
+	array_insert(b, b->keeps, store);
 }
 
 /*

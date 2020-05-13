@@ -191,6 +191,13 @@ lower_block_to_explicit_output(nir_block *block, nir_builder *b, struct state *s
 		case nir_intrinsic_store_output: {
 			// src[] = { value, offset }.
 
+			/* nir_lower_io_to_temporaries replaces all access to output
+			 * variables with temp variables and then emits a nir_copy_var at
+			 * the end of the shader.  Thus, we should always get a full wrmask
+			 * here.
+			 */
+			assert(util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1));
+
 			b->cursor = nir_instr_remove(&intr->instr);
 
 			nir_ssa_def *vertex_id = build_vertex_id(b, state);
@@ -199,10 +206,8 @@ lower_block_to_explicit_output(nir_block *block, nir_builder *b, struct state *s
 			nir_intrinsic_instr *store =
 				nir_intrinsic_instr_create(b->shader, nir_intrinsic_store_shared_ir3);
 
-			nir_intrinsic_set_write_mask(store, MASK(intr->num_components));
 			store->src[0] = nir_src_for_ssa(intr->src[0].ssa);
 			store->src[1] = nir_src_for_ssa(offset);
-
 			store->num_components = intr->num_components;
 
 			nir_builder_instr_insert(b, &store->instr);
@@ -431,17 +436,21 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
 			b->cursor = nir_before_instr(&intr->instr);
 
+			/* nir_lower_io_to_temporaries replaces all access to output
+			 * variables with temp variables and then emits a nir_copy_var at
+			 * the end of the shader.  Thus, we should always get a full wrmask
+			 * here.
+			 */
+			assert(util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1));
+
 			nir_ssa_def *value = intr->src[0].ssa;
 			nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
 			nir_variable *var = get_var(&b->shader->outputs, nir_intrinsic_base(intr));
 			nir_ssa_def *offset = build_per_vertex_offset(b, state,
 					intr->src[1].ssa, intr->src[2].ssa, var);
 
-			nir_intrinsic_instr *store =
-				replace_intrinsic(b, intr, nir_intrinsic_store_global_ir3, value, address,
-								  nir_iadd(b, offset, nir_imm_int(b, nir_intrinsic_component(intr))));
-
-			nir_intrinsic_set_write_mask(store, nir_intrinsic_write_mask(intr));
+			replace_intrinsic(b, intr, nir_intrinsic_store_global_ir3, value, address,
+					nir_iadd(b, offset, nir_imm_int(b, nir_intrinsic_component(intr))));
 
 			break;
 		}
@@ -503,11 +512,15 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
 				debug_assert(nir_intrinsic_component(intr) == 0);
 
-				nir_intrinsic_instr *store =
-					replace_intrinsic(b, intr, nir_intrinsic_store_global_ir3,
-							intr->src[0].ssa, address, offset);
+				/* nir_lower_io_to_temporaries replaces all access to output
+				 * variables with temp variables and then emits a nir_copy_var at
+				 * the end of the shader.  Thus, we should always get a full wrmask
+				 * here.
+				 */
+				assert(util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1));
 
-				nir_intrinsic_set_write_mask(store, nir_intrinsic_write_mask(intr));
+				replace_intrinsic(b, intr, nir_intrinsic_store_global_ir3,
+						intr->src[0].ssa, address, offset);
 			}
 			break;
 		}
@@ -559,7 +572,6 @@ emit_tess_epilouge(nir_builder *b, struct state *state)
 	store->src[2] = nir_src_for_ssa(offset);
 	nir_builder_instr_insert(b, &store->instr);
 	store->num_components = levels[0]->num_components;
-	nir_intrinsic_set_write_mask(store, (1 << levels[0]->num_components) - 1);
 
 	if (levels[1]) {
 		store = nir_intrinsic_instr_create(b->shader, nir_intrinsic_store_global_ir3);
@@ -570,7 +582,6 @@ emit_tess_epilouge(nir_builder *b, struct state *state)
 		store->src[2] = nir_src_for_ssa(offset);
 		nir_builder_instr_insert(b, &store->instr);
 		store->num_components = levels[1]->num_components;
-		nir_intrinsic_set_write_mask(store, (1 << levels[1]->num_components) - 1);
 	}
 
 	/* Finally, Insert endpatch instruction:
