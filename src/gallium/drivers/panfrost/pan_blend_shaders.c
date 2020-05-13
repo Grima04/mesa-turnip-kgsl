@@ -76,7 +76,7 @@
 static nir_lower_blend_options
 nir_make_options(const struct pipe_blend_state *blend, unsigned i)
 {
-        nir_lower_blend_options options;
+        nir_lower_blend_options options = { 0 };
 
         if (blend->logicop_enable) {
             options.logicop_enable = true;
@@ -141,10 +141,25 @@ panfrost_compile_blend_shader(
         nir_function *fn = nir_function_create(shader, "main");
         nir_function_impl *impl = nir_function_impl_create(fn);
 
+        const struct util_format_description *format_desc =
+                util_format_description(format);
+
+        nir_alu_type T = pan_unpacked_type_for_format(format_desc);
+        enum glsl_base_type g =
+                (T == nir_type_float16) ? GLSL_TYPE_FLOAT16 :
+                (T == nir_type_float32) ? GLSL_TYPE_FLOAT :
+                (T == nir_type_int8) ? GLSL_TYPE_INT8 :
+                (T == nir_type_int16) ? GLSL_TYPE_INT16 :
+                (T == nir_type_int32) ? GLSL_TYPE_INT :
+                (T == nir_type_uint8) ? GLSL_TYPE_UINT8 :
+                (T == nir_type_uint16) ? GLSL_TYPE_UINT16 :
+                (T == nir_type_uint32) ? GLSL_TYPE_UINT :
+                GLSL_TYPE_FLOAT;
+
         /* Create the blend variables */
 
         nir_variable *c_src = nir_variable_create(shader, nir_var_shader_in, glsl_vector_type(GLSL_TYPE_FLOAT, 4), "gl_Color");
-        nir_variable *c_out = nir_variable_create(shader, nir_var_shader_out, glsl_vector_type(GLSL_TYPE_FLOAT, 4), "gl_FragColor");
+        nir_variable *c_out = nir_variable_create(shader, nir_var_shader_out, glsl_vector_type(g, 4), "gl_FragColor");
 
         c_src->data.location = VARYING_SLOT_COL0;
         c_out->data.location = FRAG_RESULT_COLOR;
@@ -160,6 +175,17 @@ panfrost_compile_blend_shader(
 
         nir_ssa_def *s_src = nir_load_var(b, c_src);
 
+        if (T == nir_type_float16)
+                s_src = nir_f2f16(b, s_src);
+        else if (T == nir_type_int16)
+                s_src = nir_i2i16(b, s_src);
+        else if (T == nir_type_uint16)
+                s_src = nir_u2u16(b, s_src);
+        else if (T == nir_type_int8)
+                s_src = nir_i2i8(b, s_src);
+        else if (T == nir_type_uint8)
+                s_src = nir_u2u8(b, s_src);
+
         /* Build a trivial blend shader */
         nir_store_var(b, c_out, s_src, 0xFF);
 
@@ -167,11 +193,10 @@ panfrost_compile_blend_shader(
                 nir_make_options(cso, rt);
         options.format = format;
 
+        if (T == nir_type_float16)
+                options.half = true;
+
         NIR_PASS_V(shader, nir_lower_blend, options);
-
-        const struct util_format_description *format_desc =
-                util_format_description(format);
-
         NIR_PASS_V(shader, pan_lower_framebuffer, format_desc, dev->quirks);
 
         /* Compile the built shader */
