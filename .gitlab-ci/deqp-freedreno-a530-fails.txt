@@ -1510,7 +1510,6 @@ dEQP-GLES3.functional.ubo.instance_array_basic_type.std140.column_major_mat3x4_b
 dEQP-GLES3.functional.ubo.instance_array_basic_type.std140.column_major_mat3x4_vertex
 dEQP-GLES3.functional.ubo.instance_array_basic_type.std140.column_major_mat4_both
 dEQP-GLES3.functional.ubo.instance_array_basic_type.std140.column_major_mat4_vertex
-dEQP-GLES3.functional.ubo.instance_array_basic_type.std140.column_major_mat4x2_both
 dEQP-GLES3.functional.ubo.instance_array_basic_type.std140.column_major_mat4x2_vertex
 dEQP-GLES3.functional.ubo.instance_array_basic_type.std140.column_major_mat4x3_both
 dEQP-GLES3.functional.ubo.instance_array_basic_type.std140.column_major_mat4x3_vertex
@@ -1695,7 +1694,6 @@ dEQP-GLES3.functional.ubo.random.all_shared_buffer.23
 dEQP-GLES3.functional.ubo.random.all_shared_buffer.24
 dEQP-GLES3.functional.ubo.random.all_shared_buffer.25
 dEQP-GLES3.functional.ubo.random.all_shared_buffer.26
-dEQP-GLES3.functional.ubo.random.all_shared_buffer.27
 dEQP-GLES3.functional.ubo.random.all_shared_buffer.28
 dEQP-GLES3.functional.ubo.random.all_shared_buffer.29
 dEQP-GLES3.functional.ubo.random.all_shared_buffer.2
@@ -1768,7 +1766,6 @@ dEQP-GLES3.functional.ubo.random.basic_instance_arrays.21
 dEQP-GLES3.functional.ubo.random.basic_instance_arrays.22
 dEQP-GLES3.functional.ubo.random.basic_instance_arrays.23
 dEQP-GLES3.functional.ubo.random.basic_instance_arrays.24
-dEQP-GLES3.functional.ubo.random.basic_instance_arrays.2
 dEQP-GLES3.functional.ubo.random.basic_instance_arrays.3
 dEQP-GLES3.functional.ubo.random.basic_instance_arrays.4
 dEQP-GLES3.functional.ubo.random.basic_instance_arrays.5
@@ -1868,7 +1865,6 @@ dEQP-GLES3.functional.ubo.random.nested_structs_arrays_instance_arrays.21
 dEQP-GLES3.functional.ubo.random.nested_structs_arrays_instance_arrays.22
 dEQP-GLES3.functional.ubo.random.nested_structs_arrays_instance_arrays.23
 dEQP-GLES3.functional.ubo.random.nested_structs_arrays_instance_arrays.24
-dEQP-GLES3.functional.ubo.random.nested_structs_arrays_instance_arrays.2
 dEQP-GLES3.functional.ubo.random.nested_structs_arrays_instance_arrays.3
 dEQP-GLES3.functional.ubo.random.nested_structs_arrays_instance_arrays.4
 dEQP-GLES3.functional.ubo.random.nested_structs_arrays_instance_arrays.5
@@ -1918,7 +1914,6 @@ dEQP-GLES3.functional.ubo.random.scalar_types.21
 dEQP-GLES3.functional.ubo.random.scalar_types.22
 dEQP-GLES3.functional.ubo.random.scalar_types.23
 dEQP-GLES3.functional.ubo.random.scalar_types.24
-dEQP-GLES3.functional.ubo.random.scalar_types.2
 dEQP-GLES3.functional.ubo.random.scalar_types.3
 dEQP-GLES3.functional.ubo.random.scalar_types.4
 dEQP-GLES3.functional.ubo.random.scalar_types.5
@@ -1997,4 +1992,3 @@ dEQP-GLES31.functional.image_load_store.cube.load_store.rgba32i_single_layer
 dEQP-GLES31.functional.separate_shader.random.99
 dEQP-GLES31.functional.texture.texture_buffer.render.as_index_array_as_fragment_texture.offset_7_alignments
 dEQP-GLES31.functional.ubo.random.all_per_block_buffers.21
-dEQP-GLES31.functional.ubo.random.all_shared_buffer.22

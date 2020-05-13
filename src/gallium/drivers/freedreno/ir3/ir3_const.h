@@ -106,6 +106,12 @@ ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *
 		uint32_t size = state->range[i].end - state->range[i].start;
 		uint32_t offset = cb->buffer_offset + state->range[i].start;
 
+		/* Pre-a6xx, we might have ranges enabled in the shader that aren't
+		 * used in the binning variant.
+		 */
+		if (16 * v->constlen <= state->range[i].offset)
+			continue;
+
 		/* and even if the start of the const buffer is before
 		 * first_immediate, the end may not be:
 		 */
