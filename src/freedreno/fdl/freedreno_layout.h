@@ -195,6 +195,9 @@ fdl_ubwc_offset(const struct fdl_layout *layout, unsigned level, unsigned layer)
 	return slice->offset + layer * layout->ubwc_layer_size;
 }
 
+/* Minimum layout width to enable UBWC. */
+#define FDL_MIN_UBWC_WIDTH 16
+
 static inline bool
 fdl_level_linear(const struct fdl_layout *layout, int level)
 {
@@ -202,7 +205,7 @@ fdl_level_linear(const struct fdl_layout *layout, int level)
 		return false;
 
 	unsigned w = u_minify(layout->width0, level);
-	if (w < 16)
+	if (w < FDL_MIN_UBWC_WIDTH)
 		return true;
 
 	return false;
