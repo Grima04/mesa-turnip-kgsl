@@ -231,6 +231,26 @@ pan_unpack_pure_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
         return nir_channels(b, unpacked, (1 << num_components) - 1);
 }
 
+/* UNORM 8 is unpacked to f16 vec4. We could directly use the un/pack_unorm_4x8
+ * ops provided we replicate appropriately, but for packing we'd rather stay in
+ * 8/16-bit whereas the NIR op forces 32-bit, so we do it manually */
+
+static nir_ssa_def *
+pan_pack_unorm_8(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_replicate_4(b, nir_pack_32_4x8(b,
+                nir_f2u8(b, nir_fround_even(b, nir_fmul(b, nir_fsat(b,
+                        pan_fill_4(b, v)), nir_imm_float16(b, 255.0))))));
+}
+
+static nir_ssa_def *
+pan_unpack_unorm_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
+{
+        assert(num_components <= 4);
+        nir_ssa_def *unpacked = nir_unpack_unorm_4x8(b, nir_channel(b, pack, 0));
+        return nir_f2f16(b, unpacked);
+}
+
 /* Generic dispatches for un/pack regardless of format */
 
 static nir_ssa_def *
