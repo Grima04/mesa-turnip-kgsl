@@ -194,6 +194,43 @@ pan_unpack_pure_16(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
         return nir_vec(b, unpacked, 4);
 }
 
+/* And likewise for x8. pan_fill_4 fills a 4-channel vector with a n-channel
+ * vector (n <= 4), replicating as needed. pan_replicate_4 constructs a
+ * 4-channel vector from a scalar via replication */
+
+static nir_ssa_def *
+pan_fill_4(nir_builder *b, nir_ssa_def *v)
+{
+        nir_ssa_def *q[4];
+        assert(v->num_components <= 4);
+
+        for (unsigned j = 0; j < 4; ++j)
+                q[j] = nir_channel(b, v, j % v->num_components);
+
+        return nir_vec(b, q, 4);
+}
+
+static nir_ssa_def *
+pan_replicate_4(nir_builder *b, nir_ssa_def *v)
+{
+        nir_ssa_def *replicated[4] = { v, v, v, v };
+        return nir_vec(b, replicated, 4);
+}
+
+static nir_ssa_def *
+pan_pack_pure_8(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_replicate_4(b, nir_pack_32_4x8(b, pan_fill_4(b, v)));
+}
+
+static nir_ssa_def *
+pan_unpack_pure_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
+{
+        assert(num_components <= 4);
+        nir_ssa_def *unpacked = nir_unpack_32_4x8(b, nir_channel(b, pack, 0));
+        return nir_channels(b, unpacked, (1 << num_components) - 1);
+}
+
 /* Generic dispatches for un/pack regardless of format */
 
 static nir_ssa_def *
