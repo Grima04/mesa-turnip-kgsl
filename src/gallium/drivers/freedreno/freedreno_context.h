@@ -503,6 +503,8 @@ fd_batch_set_stage(struct fd_batch *batch, enum fd_render_stage stage)
 
 void fd_context_setup_common_vbos(struct fd_context *ctx);
 void fd_context_cleanup_common_vbos(struct fd_context *ctx);
+void fd_emit_string(struct fd_ringbuffer *ring, const char *string, int len);
+void fd_emit_string5(struct fd_ringbuffer *ring, const char *string, int len);
 
 struct pipe_context * fd_context_init(struct fd_context *ctx,
 		struct pipe_screen *pscreen, const uint8_t *primtypes,
