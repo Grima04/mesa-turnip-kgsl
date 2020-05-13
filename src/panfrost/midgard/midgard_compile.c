@@ -1388,6 +1388,7 @@ emit_control_barrier(compiler_context *ctx)
 {
         midgard_instruction ins = {
                 .type = TAG_TEXTURE_4,
+                .dest = ~0,
                 .src = { ~0, ~0, ~0, ~0 },
                 .texture = {
                         .op = TEXTURE_OP_BARRIER,
