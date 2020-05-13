@@ -366,4 +366,14 @@ draw_get_shader_param_no_llvm(enum pipe_shader_type shader,
 boolean
 draw_get_option_use_llvm(void);
 
+struct lp_cached_code;
+void
+draw_set_disk_cache_callbacks(struct draw_context *draw,
+                              void *data_cookie,
+                              void (*find_shader)(void *cookie,
+                                                  struct lp_cached_code *cache,
+                                                  unsigned char ir_sha1_cache_key[20]),
+                              void (*insert_shader)(void *cookie,
+                                                    struct lp_cached_code *cache,
+                                                    unsigned char ir_sha1_cache_key[20]));
 #endif /* DRAW_CONTEXT_H */

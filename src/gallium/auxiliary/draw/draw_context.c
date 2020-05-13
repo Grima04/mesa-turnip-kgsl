@@ -1336,3 +1336,19 @@ draw_set_tess_state(struct draw_context *draw,
    for (unsigned i = 0; i < 2; i++)
       draw->default_inner_tess_level[i] = default_inner_level[i];
 }
+
+void
+draw_set_disk_cache_callbacks(struct draw_context *draw,
+                              void *data_cookie,
+                              void (*find_shader)(void *cookie,
+                                                  struct lp_cached_code *cache,
+                                                  unsigned char ir_sha1_cache_key[20]),
+                              void (*insert_shader)(void *cookie,
+                                                    struct lp_cached_code *cache,
+                                                    unsigned char ir_sha1_cache_key[20]))
+{
+   draw->disk_cache_find_shader = find_shader;
+   draw->disk_cache_insert_shader = insert_shader;
+   draw->disk_cache_cookie = data_cookie;
+
+}
