@@ -17,10 +17,15 @@ else
     KERNEL_IMAGE_NAME="zImage"
 fi
 
-############### Build dEQP runner
-if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
-    EXTRA_MESON_ARGS="--cross-file /cross_file-armhf.txt"
+# Determine if we're in a cross build.
+if [[ -e /cross_file-$DEBIAN_ARCH.txt ]]; then
+    EXTRA_MESON_ARGS="--cross-file /cross_file-$DEBIAN_ARCH.txt"
+
+    export ARCH=${KERNEL_ARCH}
+    export CROSS_COMPILE="${GCC_ARCH}-"
 fi
+
+############### Build dEQP runner
 . .gitlab-ci/build-cts-runner.sh
 mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin
 mv /usr/local/bin/deqp-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
@@ -35,11 +40,6 @@ mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.
 
 ############### Cross-build kernel
 KERNEL_URL="https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-panfrost-fixes/linux-v5.5-panfrost-fixes.tar.gz"
-
-if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
-    export ARCH=${KERNEL_ARCH}
-    export CROSS_COMPILE="${GCC_ARCH}-"
-fi
 
 mkdir -p kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
