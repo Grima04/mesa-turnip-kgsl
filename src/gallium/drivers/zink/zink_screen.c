@@ -449,8 +449,12 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
 
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
+#if 0 /* TODO: needs compiler support */
       return MIN2(screen->props.limits.maxPerStageDescriptorStorageImages,
                   PIPE_MAX_SHADER_IMAGES);
+#else
+      return 0;
+#endif
 
    case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
    case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
