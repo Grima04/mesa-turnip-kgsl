@@ -28,6 +28,7 @@
 #include "midgard/midgard_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "nir/nir_lower_blend.h"
+#include "panfrost/util/pan_lower_framebuffer.h"
 #include "gallium/auxiliary/util/u_blend.h"
 #include "util/u_memory.h"
 
@@ -168,7 +169,10 @@ panfrost_compile_blend_shader(
 
         NIR_PASS_V(shader, nir_lower_blend, options);
 
-        NIR_PASS_V(shader, nir_lower_framebuffer, format, dev->gpu_id);
+        const struct util_format_description *format_desc =
+                util_format_description(format);
+
+        NIR_PASS_V(shader, pan_lower_framebuffer, format_desc, dev->quirks);
 
         /* Compile the built shader */
 
