@@ -244,7 +244,7 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-06-04"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-06-15"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
@@ -873,6 +873,21 @@ virgl-gles31-on-gl:
     MESA_GLSL_VERSION_OVERRIDE: "310"
     MESA_EXTENSION_OVERRIDE: "-GL_OES_tessellation_shader"
   extends: virgl-gles3-on-gl
+
+virgl-gl30-on-gl:
+  variables:
+    DEQP_VER: gl30
+  extends: virgl-gles2-on-gl
+
+virgl-gl31-on-gl:
+  variables:
+    DEQP_VER: gl31
+  extends: virgl-gles2-on-gl
+
+virgl-gl32-on-gl:
+  variables:
+    DEQP_VER: gl32
+  extends: virgl-gles2-on-gl
 
 # Rules for tests that should not be present in MRs or the main
 # project's pipeline (don't block marge or report red on

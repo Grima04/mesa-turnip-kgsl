@@ -47,9 +47,14 @@ mkdir -p $RESULTS
 if [ "$DEQP_VER" = "vk" ]; then
    cp /deqp/mustpass/vk-master.txt /tmp/case-list.txt
    DEQP=/deqp/external/vulkancts/modules/vulkan/deqp-vk
-else
+elif [ "$DEQP_VER" = "gles2" -o "$DEQP_VER" = "gles3" -o "$DEQP_VER" = "gles31" ]; then
    cp /deqp/mustpass/$DEQP_VER-master.txt /tmp/case-list.txt
    DEQP=/deqp/modules/$DEQP_VER/deqp-$DEQP_VER
+   SUITE=dEQP
+else
+   cp /deqp/mustpass/$DEQP_VER-master.txt /tmp/case-list.txt
+   DEQP=/deqp/external/openglcts/modules/glcts
+   SUITE=KHR
 fi
 
 # If the job is parallel, take the corresponding fraction of the caselist.
@@ -220,7 +225,7 @@ check_renderer() {
     # debug.
     # export EGL_LOG_LEVEL=debug
     VERSION=`echo $DEQP_VER | tr '[a-z]' '[A-Z]'`
-    $DEQP $DEQP_OPTIONS --deqp-case=dEQP-$VERSION.info.\* --deqp-log-filename=$RESULTS/deqp-info.qpa
+    $DEQP $DEQP_OPTIONS --deqp-case=$SUITE-$VERSION.info.\* --deqp-log-filename=$RESULTS/deqp-info.qpa
     parse_renderer
 }
 
