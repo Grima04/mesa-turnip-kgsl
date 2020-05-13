@@ -196,7 +196,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return PIPE_ENDIAN_NATIVE; /* unsure */
 
    case PIPE_CAP_MAX_VIEWPORTS:
-      return screen->props.limits.maxViewports;
+      return 1; /* TODO: When GS is supported, use screen->props.limits.maxViewports */
 
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
       return 1;
