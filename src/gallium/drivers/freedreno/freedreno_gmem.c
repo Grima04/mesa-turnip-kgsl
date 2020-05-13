@@ -169,7 +169,7 @@ static uint32_t bin_width(struct fd_screen *screen)
 static unsigned
 div_align(unsigned num, unsigned denom, unsigned al)
 {
-	return align(DIV_ROUND_UP(num, denom), al);
+	return util_align_npot(DIV_ROUND_UP(num, denom), al);
 }
 
 static bool
@@ -198,18 +198,18 @@ layout_gmem(struct gmem_key *key, uint32_t nbins_x, uint32_t nbins_y,
 
 	for (i = 0; i < MAX_RENDER_TARGETS; i++) {
 		if (key->cbuf_cpp[i]) {
-			gmem->cbuf_base[i] = align(total, gmem_align);
+			gmem->cbuf_base[i] = util_align_npot(total, gmem_align);
 			total = gmem->cbuf_base[i] + key->cbuf_cpp[i] * bin_w * bin_h;
 		}
 	}
 
 	if (key->zsbuf_cpp[0]) {
-		gmem->zsbuf_base[0] = align(total, gmem_align);
+		gmem->zsbuf_base[0] = util_align_npot(total, gmem_align);
 		total = gmem->zsbuf_base[0] + key->zsbuf_cpp[0] * bin_w * bin_h;
 	}
 
 	if (key->zsbuf_cpp[1]) {
-		gmem->zsbuf_base[1] = align(total, gmem_align);
+		gmem->zsbuf_base[1] = util_align_npot(total, gmem_align);
 		total = gmem->zsbuf_base[1] + key->zsbuf_cpp[1] * bin_w * bin_h;
 	}
 
@@ -484,7 +484,7 @@ gmem_key_init(struct fd_batch *batch, bool assume_zs, bool no_scis_opt)
 		 */
 		key->gmem_page_align = 8;
 	} else if (is_a6xx(screen)) {
-		key->gmem_page_align = 1;
+		key->gmem_page_align = is_a650(screen) ? 3 : 1;
 	} else {
 		// TODO re-check this across gens.. maybe it should only
 		// be a single page in some cases:

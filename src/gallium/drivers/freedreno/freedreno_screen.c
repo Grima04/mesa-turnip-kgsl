@@ -936,6 +936,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 	case 618:
 	case 630:
 	case 640:
+	case 650:
 		fd6_screen_init(pscreen);
 		break;
 	default:
@@ -946,7 +947,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 	if (screen->gpu_id >= 600) {
 		screen->gmem_alignw = 16;
 		screen->gmem_alignh = 4;
-		screen->tile_alignw = 32;
+		screen->tile_alignw = is_a650(screen) ? 96 : 32;
 		screen->tile_alignh = 32;
 		screen->num_vsc_pipes = 32;
 	} else if (screen->gpu_id >= 500) {
