@@ -1539,6 +1539,8 @@ v3dv_dynamic_state_mask(VkDynamicState state)
       return V3DV_DYNAMIC_STENCIL_REFERENCE;
    case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
       return V3DV_DYNAMIC_BLEND_CONSTANTS;
+   case VK_DYNAMIC_STATE_DEPTH_BIAS:
+      return V3DV_DYNAMIC_DEPTH_BIAS;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -1590,7 +1592,6 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
    }
 
    if (pCreateInfo->pDepthStencilState != NULL) {
-
       if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_COMPARE_MASK)) {
          dynamic->stencil_compare_mask.front =
             pCreateInfo->pDepthStencilState->front.compareMask;
@@ -1618,6 +1619,17 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
       memcpy(dynamic->blend_constants,
              pCreateInfo->pColorBlendState->blendConstants,
              sizeof(dynamic->blend_constants));
+   }
+
+   if (pCreateInfo->pRasterizationState &&
+       !pCreateInfo->pRasterizationState->rasterizerDiscardEnable) {
+      if (pCreateInfo->pRasterizationState->depthBiasEnable &&
+          !(dynamic_states & V3DV_DYNAMIC_DEPTH_BIAS)) {
+         dynamic->depth_bias.constant_factor =
+            pCreateInfo->pRasterizationState->depthBiasConstantFactor;
+         dynamic->depth_bias.slope_factor =
+            pCreateInfo->pRasterizationState->depthBiasSlopeFactor;
+      }
    }
 
    pipeline->dynamic_state.mask = dynamic_states;
@@ -1928,6 +1940,44 @@ stencil_op_is_no_op(const VkStencilOpState *stencil)
 {
    return stencil->depthFailOp == VK_STENCIL_OP_KEEP &&
           stencil->compareOp == VK_COMPARE_OP_ALWAYS;
+}
+
+static void
+enable_depth_bias(struct v3dv_pipeline *pipeline,
+                  const VkGraphicsPipelineCreateInfo *pInfo)
+{
+   assert(pInfo);
+
+   pipeline->depth_bias.enabled = false;
+   pipeline->depth_bias.is_z16 = false;
+
+   if (!pInfo->pRasterizationState ||
+       !pInfo->pRasterizationState->depthBiasEnable ||
+       pInfo->pRasterizationState->rasterizerDiscardEnable)
+      return;
+
+   /* Check the depth/stencil attachment description for the subpass used with
+    * this pipeline.
+    */
+   struct v3dv_render_pass *pass =
+      v3dv_render_pass_from_handle(pInfo->renderPass);
+   assert(pass);
+
+   assert(pInfo->subpass < pass->subpass_count);
+   struct v3dv_subpass *subpass = &pass->subpasses[pInfo->subpass];
+   assert(subpass);
+
+   if (subpass->ds_attachment.attachment == VK_ATTACHMENT_UNUSED)
+      return;
+
+   assert(subpass->ds_attachment.attachment < pass->attachment_count);
+   struct v3dv_render_pass_attachment *att =
+      &pass->attachments[subpass->ds_attachment.attachment];
+
+   if (att->desc.format == VK_FORMAT_D16_UNORM)
+      pipeline->depth_bias.is_z16 = true;
+
+   pipeline->depth_bias.enabled = true;
 }
 
 static void
@@ -2267,6 +2317,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    pack_cfg_bits(pipeline, ds_info, rs_info);
    pack_stencil_cfg(pipeline, ds_info);
    pipeline_set_ez_state(pipeline, ds_info);
+   enable_depth_bias(pipeline, pCreateInfo);
 
    pipeline->primitive_restart =
       pCreateInfo->pInputAssemblyState->primitiveRestartEnable;

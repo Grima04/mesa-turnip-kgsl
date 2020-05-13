@@ -3046,9 +3046,9 @@ create_pipeline(struct v3dv_device *device,
             VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
             VK_DYNAMIC_STATE_STENCIL_REFERENCE,
             VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+            VK_DYNAMIC_STATE_DEPTH_BIAS,
 #if 0
             VK_DYNAMIC_STATE_LINE_WIDTH,
-            VK_DYNAMIC_STATE_DEPTH_BIAS,
             VK_DYNAMIC_STATE_DEPTH_BOUNDS,
 #endif
          },

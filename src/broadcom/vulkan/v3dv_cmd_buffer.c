@@ -49,6 +49,10 @@ const struct v3dv_dynamic_state default_dynamic_state = {
      .back = 0u,
    },
    .blend_constants = { 0.0f, 0.0f, 0.0f, 0.0f },
+   .depth_bias = {
+      .constant_factor = 0.0f,
+      .slope_factor = 0.0f,
+   },
 };
 
 void
@@ -1990,6 +1994,14 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   if (!(dynamic_mask & V3DV_DYNAMIC_DEPTH_BIAS)) {
+      if (memcmp(&dest->depth_bias, &src->depth_bias,
+                 sizeof(src->depth_bias))) {
+         memcpy(&dest->depth_bias, &src->depth_bias, sizeof(src->depth_bias));
+         dirty |= V3DV_CMD_DIRTY_DEPTH_BIAS;
+      }
+   }
+
    cmd_buffer->state.dynamic.mask = dynamic_mask;
    cmd_buffer->state.dirty |= dirty;
 }
@@ -2536,6 +2548,31 @@ emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
                V3DV_CMD_DIRTY_STENCIL_REFERENCE;
       cmd_buffer->state.dirty &= ~dynamic_stencil_dirty_flags;
    }
+}
+
+static void
+emit_depth_bias(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(pipeline);
+
+   if (!pipeline->depth_bias.enabled)
+      return;
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(DEPTH_OFFSET));
+
+   struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+   cl_emit(&job->bcl, DEPTH_OFFSET, bias) {
+      bias.depth_offset_factor = dynamic->depth_bias.slope_factor;
+      bias.depth_offset_units = dynamic->depth_bias.constant_factor;
+      if (pipeline->depth_bias.is_z16)
+         bias.depth_offset_units *= 256.0f;
+   }
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_DEPTH_BIAS;
 }
 
 static void
@@ -3113,6 +3150,9 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | dynamic_stencil_dirty_flags))
       emit_stencil(cmd_buffer);
 
+   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_DEPTH_BIAS))
+      emit_depth_bias(cmd_buffer);
+
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_BLEND_CONSTANTS))
       emit_blend(cmd_buffer);
 
@@ -3373,6 +3413,19 @@ v3dv_CmdSetStencilReference(VkCommandBuffer commandBuffer,
       cmd_buffer->state.dynamic.stencil_reference.back = reference & 0xff;
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_STENCIL_REFERENCE;
+}
+
+void
+v3dv_CmdSetDepthBias(VkCommandBuffer commandBuffer,
+                     float depthBiasConstantFactor,
+                     float depthBiasClamp,
+                     float depthBiasSlopeFactor)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.dynamic.depth_bias.constant_factor = depthBiasConstantFactor;
+   cmd_buffer->state.dynamic.depth_bias.slope_factor = depthBiasSlopeFactor;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DEPTH_BIAS;
 }
 
 void

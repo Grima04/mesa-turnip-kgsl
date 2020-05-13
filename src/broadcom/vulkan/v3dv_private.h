@@ -542,7 +542,8 @@ enum v3dv_dynamic_state_bits {
    V3DV_DYNAMIC_STENCIL_WRITE_MASK        = 1 << 3,
    V3DV_DYNAMIC_STENCIL_REFERENCE         = 1 << 4,
    V3DV_DYNAMIC_BLEND_CONSTANTS           = 1 << 5,
-   V3DV_DYNAMIC_ALL                       = (1 << 6) - 1,
+   V3DV_DYNAMIC_DEPTH_BIAS                = 1 << 6,
+   V3DV_DYNAMIC_ALL                       = (1 << 7) - 1,
 };
 
 /* Flags for dirty pipeline state.
@@ -560,6 +561,7 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_BLEND_CONSTANTS           = 1 << 9,
    V3DV_CMD_DIRTY_SHADER_VARIANTS           = 1 << 10,
    V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 11,
+   V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 12,
 };
 
 
@@ -590,6 +592,11 @@ struct v3dv_dynamic_state {
    } stencil_reference;
 
    float blend_constants[4];
+
+   struct {
+      float constant_factor;
+      float slope_factor;
+   } depth_bias;
 };
 
 extern const struct v3dv_dynamic_state default_dynamic_state;
@@ -1296,6 +1303,12 @@ struct v3dv_pipeline {
       /* Mask with enabled color channels for each RT (4 bits per RT) */
       uint32_t color_write_masks;
    } blend;
+
+   /* Depth bias */
+   struct {
+      bool enabled;
+      bool is_z16;
+   } depth_bias;
 
    /* Packets prepacked during pipeline creation
     */
