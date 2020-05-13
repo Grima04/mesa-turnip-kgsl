@@ -146,9 +146,52 @@ pan_pack_pure_32(nir_builder *b, nir_ssa_def *v)
 }
 
 static nir_ssa_def *
-pan_unpack_pure_f32(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
+pan_unpack_pure_32(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
 {
         return nir_channels(b, pack, (1 << num_components) - 1);
+}
+
+/* Pure x16 formats are x16 unpacked, so it's similar, but we need to pack
+ * upper/lower halves of course */
+
+static nir_ssa_def *
+pan_pack_pure_16(nir_builder *b, nir_ssa_def *v)
+{
+        nir_ssa_def *replicated[4];
+
+        for (unsigned i = 0; i < 4; ++i) {
+                unsigned c = 2 * i;
+
+                nir_ssa_def *parts[2] = {
+                        nir_channel(b, v, (c + 0) % v->num_components),
+                        nir_channel(b, v, (c + 1) % v->num_components)
+                };
+
+                replicated[i] = nir_pack_32_2x16(b, nir_vec(b, parts, 2));
+        }
+
+        return nir_vec(b, replicated, 4);
+}
+
+static nir_ssa_def *
+pan_unpack_pure_16(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
+{
+        nir_ssa_def *unpacked[4];
+
+        assert(num_components <= 4);
+
+        for (unsigned i = 0; i < num_components; i += 2) {
+                nir_ssa_def *halves = 
+                        nir_unpack_32_2x16(b, nir_channel(b, pack, i >> 1));
+
+                unpacked[i + 0] = nir_channel(b, halves, 0);
+                unpacked[i + 1] = nir_channel(b, halves, 1);
+        }
+
+        for (unsigned i = num_components; i < 4; ++i)
+                unpacked[i] = nir_imm_intN_t(b, 0, 16);
+
+        return nir_vec(b, unpacked, 4);
 }
 
 /* Generic dispatches for un/pack regardless of format */
