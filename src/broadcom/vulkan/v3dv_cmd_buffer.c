@@ -53,6 +53,7 @@ const struct v3dv_dynamic_state default_dynamic_state = {
       .constant_factor = 0.0f,
       .slope_factor = 0.0f,
    },
+   .line_width = 1.0f,
 };
 
 void
@@ -2002,6 +2003,13 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   if (!(dynamic_mask & V3DV_DYNAMIC_LINE_WIDTH)) {
+      if (dest->line_width != src->line_width) {
+         dest->line_width = src->line_width;
+         dirty |= V3DV_CMD_DIRTY_LINE_WIDTH;
+      }
+   }
+
    cmd_buffer->state.dynamic.mask = dynamic_mask;
    cmd_buffer->state.dirty |= dirty;
 }
@@ -2573,6 +2581,20 @@ emit_depth_bias(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_DEPTH_BIAS;
+}
+
+static void
+emit_line_width(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(LINE_WIDTH));
+   cl_emit(&job->bcl, LINE_WIDTH, line) {
+      line.line_width = cmd_buffer->state.dynamic.line_width;
+   }
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_LINE_WIDTH;
 }
 
 static void
@@ -3159,6 +3181,9 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    if (*dirty & V3DV_CMD_DIRTY_OCCLUSION_QUERY)
       emit_occlusion_query(cmd_buffer);
 
+   if (*dirty & V3DV_CMD_DIRTY_LINE_WIDTH)
+      emit_line_width(cmd_buffer);
+
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PIPELINE;
 }
 
@@ -3436,6 +3461,16 @@ v3dv_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
    /* We do not support depth bounds testing so we just ingore this. We are
     * already asserting that pipelines don't enable the feature anyway.
     */
+}
+
+void
+v3dv_CmdSetLineWidth(VkCommandBuffer commandBuffer,
+                     float lineWidth)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.dynamic.line_width = lineWidth;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_LINE_WIDTH;
 }
 
 void

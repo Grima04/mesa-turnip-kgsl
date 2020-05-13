@@ -1541,6 +1541,8 @@ v3dv_dynamic_state_mask(VkDynamicState state)
       return V3DV_DYNAMIC_BLEND_CONSTANTS;
    case VK_DYNAMIC_STATE_DEPTH_BIAS:
       return V3DV_DYNAMIC_DEPTH_BIAS;
+   case VK_DYNAMIC_STATE_LINE_WIDTH:
+      return V3DV_DYNAMIC_LINE_WIDTH;
 
    /* Depth bounds testing is not available in in V3D 4.2 so here we are just
     * ignoring this dynamic state. We are already asserting at pipeline creation
@@ -1638,6 +1640,8 @@ pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
          dynamic->depth_bias.slope_factor =
             pCreateInfo->pRasterizationState->depthBiasSlopeFactor;
       }
+      if (!(dynamic_states & V3DV_DYNAMIC_LINE_WIDTH))
+         dynamic->line_width = pCreateInfo->pRasterizationState->lineWidth;
    }
 
    pipeline->dynamic_state.mask = dynamic_states;

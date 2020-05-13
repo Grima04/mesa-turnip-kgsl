@@ -3032,9 +3032,6 @@ create_pipeline(struct v3dv_device *device,
        * As a consequence, vkCmdBindPipeline writes no dynamic state
        * to the cmd buffer. Therefore, at the end of the meta clear,
        * we need only restore dynamic state that was vkCmdSet.
-       *
-       * FIXME: Update this when we support more dynamic states (adding
-       * them now will assert because they are not supported).
        */
       .pDynamicState = &(VkPipelineDynamicStateCreateInfo) {
          .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -3047,9 +3044,7 @@ create_pipeline(struct v3dv_device *device,
             VK_DYNAMIC_STATE_STENCIL_REFERENCE,
             VK_DYNAMIC_STATE_BLEND_CONSTANTS,
             VK_DYNAMIC_STATE_DEPTH_BIAS,
-#if 0
             VK_DYNAMIC_STATE_LINE_WIDTH,
-#endif
          },
       },
 

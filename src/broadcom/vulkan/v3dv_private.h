@@ -543,7 +543,8 @@ enum v3dv_dynamic_state_bits {
    V3DV_DYNAMIC_STENCIL_REFERENCE         = 1 << 4,
    V3DV_DYNAMIC_BLEND_CONSTANTS           = 1 << 5,
    V3DV_DYNAMIC_DEPTH_BIAS                = 1 << 6,
-   V3DV_DYNAMIC_ALL                       = (1 << 7) - 1,
+   V3DV_DYNAMIC_LINE_WIDTH                = 1 << 7,
+   V3DV_DYNAMIC_ALL                       = (1 << 8) - 1,
 };
 
 /* Flags for dirty pipeline state.
@@ -562,8 +563,8 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_SHADER_VARIANTS           = 1 << 10,
    V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 11,
    V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 12,
+   V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 13,
 };
-
 
 struct v3dv_dynamic_state {
    /**
@@ -597,6 +598,8 @@ struct v3dv_dynamic_state {
       float constant_factor;
       float slope_factor;
    } depth_bias;
+
+   float line_width;
 };
 
 extern const struct v3dv_dynamic_state default_dynamic_state;
