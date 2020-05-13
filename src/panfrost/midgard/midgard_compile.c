@@ -580,13 +580,23 @@ reg_mode_for_nir(nir_alu_instr *instr)
         case nir_op_fexp2:
         case nir_op_flog2:
                 max_bitsize = MAX2(max_bitsize, 32);
+                break;
+
+        /* These get lowered to moves */
+        case nir_op_pack_32_4x8:
+                max_bitsize = 8;
+                break;
+        case nir_op_pack_32_2x16:
+                max_bitsize = 16;
+                break;
         default:
                 break;
         }
 
+
         switch (max_bitsize) {
+                /* Use 16 pipe for 8 since we don't support vec16 yet */
         case 8:
-                return midgard_reg_mode_8;
         case 16:
                 return midgard_reg_mode_16;
         case 32:
