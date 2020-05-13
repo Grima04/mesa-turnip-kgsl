@@ -907,13 +907,46 @@ coords(const struct blit_ops *ops,
    ops->coords(cs, (const VkOffset2D*) dst, (const VkOffset2D*) src, (const VkExtent2D*) extent);
 }
 
+static VkFormat
+copy_format(VkFormat format, VkImageAspectFlags aspect_mask, bool copy_buffer)
+{
+   if (vk_format_is_compressed(format)) {
+      switch (vk_format_get_blocksize(format)) {
+      case 1: return VK_FORMAT_R8_UINT;
+      case 2: return VK_FORMAT_R16_UINT;
+      case 4: return VK_FORMAT_R32_UINT;
+      case 8: return VK_FORMAT_R32G32_UINT;
+      case 16:return VK_FORMAT_R32G32B32A32_UINT;
+      default:
+         unreachable("unhandled format size");
+      }
+   }
+
+   switch (format) {
+   case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+      if (aspect_mask == VK_IMAGE_ASPECT_PLANE_1_BIT)
+         return VK_FORMAT_R8G8_UNORM;
+      /* fallthrough */
+   case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+      return VK_FORMAT_R8_UNORM;
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      if (aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT && copy_buffer)
+         return VK_FORMAT_R8_UNORM;
+      /* fallthrough */
+   default:
+      return format;
+   case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+      return VK_FORMAT_R32_UINT;
+   }
+}
+
 static void
-tu_image_view_blit2(struct tu_image_view *iview,
-                    struct tu_image *image,
-                    VkFormat format,
-                    const VkImageSubresourceLayers *subres,
-                    uint32_t layer,
-                    bool stencil_read)
+tu_image_view_copy_blit(struct tu_image_view *iview,
+                        struct tu_image *image,
+                        VkFormat format,
+                        const VkImageSubresourceLayers *subres,
+                        uint32_t layer,
+                        bool stencil_read)
 {
    VkImageAspectFlags aspect_mask = subres->aspectMask;
 
@@ -940,12 +973,24 @@ tu_image_view_blit2(struct tu_image_view *iview,
 }
 
 static void
+tu_image_view_copy(struct tu_image_view *iview,
+                   struct tu_image *image,
+                   VkFormat format,
+                   const VkImageSubresourceLayers *subres,
+                   uint32_t layer,
+                   bool stencil_read)
+{
+   format = copy_format(format, subres->aspectMask, false);
+   tu_image_view_copy_blit(iview, image, format, subres, layer, stencil_read);
+}
+
+static void
 tu_image_view_blit(struct tu_image_view *iview,
                    struct tu_image *image,
                    const VkImageSubresourceLayers *subres,
                    uint32_t layer)
 {
-   tu_image_view_blit2(iview, image, image->vk_format, subres, layer, false);
+   tu_image_view_copy_blit(iview, image, image->vk_format, subres, layer, false);
 }
 
 static void
@@ -1063,21 +1108,6 @@ tu_CmdBlitImage(VkCommandBuffer commandBuffer,
       tu6_blit_image(cmd, src_image, dst_image, pRegions + i, filter);
 }
 
-static VkFormat
-copy_format(VkFormat format)
-{
-   switch (vk_format_get_blocksize(format)) {
-   case 1: return VK_FORMAT_R8_UINT;
-   case 2: return VK_FORMAT_R16_UINT;
-   case 4: return VK_FORMAT_R32_UINT;
-   case 8: return VK_FORMAT_R32G32_UINT;
-   case 12:return VK_FORMAT_R32G32B32_UINT;
-   case 16:return VK_FORMAT_R32G32B32A32_UINT;
-   default:
-      unreachable("unhandled format size");
-   }
-}
-
 static void
 copy_compressed(VkFormat format,
                 VkOffset3D *offset,
@@ -1112,14 +1142,13 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
 {
    struct tu_cs *cs = &cmd->cs;
    uint32_t layers = MAX2(info->imageExtent.depth, info->imageSubresource.layerCount);
-   VkFormat dst_format = dst_image->vk_format;
-   VkFormat src_format = dst_image->vk_format;
+   VkFormat src_format =
+      copy_format(dst_image->vk_format, info->imageSubresource.aspectMask, true);
    const struct blit_ops *ops = &r2d_ops;
 
    /* special case for buffer to stencil */
-   if (dst_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+   if (dst_image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
        info->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      src_format = VK_FORMAT_R8_UNORM;
       ops = &r3d_ops;
    }
 
@@ -1128,19 +1157,17 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
    uint32_t src_width = info->bufferRowLength ?: extent.width;
    uint32_t src_height = info->bufferImageHeight ?: extent.height;
 
-   if (dst_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 || vk_format_is_compressed(src_format)) {
-      assert(src_format == dst_format);
-      copy_compressed(dst_format, &offset, &extent, &src_width, &src_height);
-      src_format = dst_format = copy_format(dst_format);
-   }
+   copy_compressed(dst_image->vk_format, &offset, &extent, &src_width, &src_height);
 
    uint32_t pitch = src_width * vk_format_get_blocksize(src_format);
    uint32_t layer_size = src_height * pitch;
 
-   ops->setup(cmd, cs, dst_format, info->imageSubresource.aspectMask, ROTATE_0, false);
+   ops->setup(cmd, cs,
+              copy_format(dst_image->vk_format, info->imageSubresource.aspectMask, false),
+              info->imageSubresource.aspectMask, ROTATE_0, false);
 
    struct tu_image_view dst;
-   tu_image_view_blit2(&dst, dst_image, dst_format, &info->imageSubresource, offset.z, false);
+   tu_image_view_copy(&dst, dst_image, dst_image->vk_format, &info->imageSubresource, offset.z, false);
 
    for (uint32_t i = 0; i < layers; i++) {
       ops->dst(cs, &dst, i);
@@ -1191,13 +1218,12 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
 {
    struct tu_cs *cs = &cmd->cs;
    uint32_t layers = MAX2(info->imageExtent.depth, info->imageSubresource.layerCount);
-   VkFormat src_format = src_image->vk_format;
-   VkFormat dst_format = src_image->vk_format;
+   VkFormat dst_format =
+      copy_format(src_image->vk_format, info->imageSubresource.aspectMask, true);
    bool stencil_read = false;
 
    if (src_image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
        info->imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      dst_format = VK_FORMAT_R8_UNORM;
       stencil_read = true;
    }
 
@@ -1207,11 +1233,7 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
    uint32_t dst_width = info->bufferRowLength ?: extent.width;
    uint32_t dst_height = info->bufferImageHeight ?: extent.height;
 
-   if (dst_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 || vk_format_is_compressed(dst_format)) {
-      assert(src_format == dst_format);
-      copy_compressed(dst_format, &offset, &extent, &dst_width, &dst_height);
-      src_format = dst_format = copy_format(dst_format);
-   }
+   copy_compressed(src_image->vk_format, &offset, &extent, &dst_width, &dst_height);
 
    uint32_t pitch = dst_width * vk_format_get_blocksize(dst_format);
    uint32_t layer_size = pitch * dst_height;
@@ -1219,7 +1241,7 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
    ops->setup(cmd, cs, dst_format, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, false);
 
    struct tu_image_view src;
-   tu_image_view_blit2(&src, src_image, src_format, &info->imageSubresource, offset.z, stencil_read);
+   tu_image_view_copy(&src, src_image, src_image->vk_format, &info->imageSubresource, offset.z, stencil_read);
 
    for (uint32_t i = 0; i < layers; i++) {
       ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST);
@@ -1286,7 +1308,7 @@ is_swapped_format(VkFormat format)
 static bool
 image_is_r8g8(struct tu_image *image)
 {
-   return image->layout.cpp == 2 &&
+   return image->layout[0].cpp == 2 &&
       vk_format_get_nr_components(image->vk_format) == 2;
 }
 
@@ -1301,8 +1323,6 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
    if (dst_image->samples > 1)
       ops = &r3d_ops;
-
-   assert(info->srcSubresource.aspectMask == info->dstSubresource.aspectMask);
 
    VkFormat format = VK_FORMAT_UNDEFINED;
    VkOffset3D src_offset = info->srcOffset;
@@ -1328,10 +1348,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
    copy_compressed(src_image->vk_format, &src_offset, &extent, NULL, NULL);
    copy_compressed(dst_image->vk_format, &dst_offset, NULL, NULL, NULL);
 
-   VkFormat dst_format = vk_format_is_compressed(dst_image->vk_format) ?
-      copy_format(dst_image->vk_format) : dst_image->vk_format;
-   VkFormat src_format = vk_format_is_compressed(src_image->vk_format) ?
-      copy_format(src_image->vk_format) : src_image->vk_format;
+   VkFormat dst_format = copy_format(dst_image->vk_format, info->dstSubresource.aspectMask, false);
+   VkFormat src_format = copy_format(src_image->vk_format, info->srcSubresource.aspectMask, false);
 
    bool use_staging_blit = false;
 
@@ -1340,12 +1358,12 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
        * the same as a blit.
        */
       format = src_format;
-   } else if (!src_image->layout.tile_mode) {
+   } else if (!src_image->layout[0].tile_mode) {
       /* If an image is linear, we can always safely reinterpret it with the
        * other image's format and then do a regular blit.
        */
       format = dst_format;
-   } else if (!dst_image->layout.tile_mode) {
+   } else if (!dst_image->layout[0].tile_mode) {
       format = src_format;
    } else if (image_is_r8g8(src_image) != image_is_r8g8(dst_image)) {
       /* We can't currently copy r8g8 images to/from other cpp=2 images,
@@ -1358,9 +1376,9 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
        * to/from it.
        */
       use_staging_blit = true;
-   } else if (!src_image->layout.ubwc) {
+   } else if (!src_image->layout[0].ubwc) {
       format = dst_format;
-   } else if (!dst_image->layout.ubwc) {
+   } else if (!dst_image->layout[0].ubwc) {
       format = src_format;
    } else {
       /* Both formats use UBWC and so neither can be reinterpreted.
@@ -1372,8 +1390,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
    struct tu_image_view dst, src;
 
    if (use_staging_blit) {
-      tu_image_view_blit2(&dst, dst_image, dst_format, &info->dstSubresource, dst_offset.z, false);
-      tu_image_view_blit2(&src, src_image, src_format, &info->srcSubresource, src_offset.z, false);
+      tu_image_view_copy(&dst, dst_image, dst_format, &info->dstSubresource, dst_offset.z, false);
+      tu_image_view_copy(&src, src_image, src_format, &info->srcSubresource, src_offset.z, false);
 
       struct tu_image staging_image = {
          .vk_format = src_format,
@@ -1395,10 +1413,10 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
       VkOffset3D staging_offset = { 0 };
 
-      staging_image.layout.tile_mode = TILE6_LINEAR;
-      staging_image.layout.ubwc = false;
+      staging_image.layout[0].tile_mode = TILE6_LINEAR;
+      staging_image.layout[0].ubwc = false;
 
-      fdl6_layout(&staging_image.layout,
+      fdl6_layout(&staging_image.layout[0],
                   vk_format_to_pipe_format(staging_image.vk_format),
                   staging_image.samples,
                   staging_image.extent.width,
@@ -1410,7 +1428,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
                   NULL);
 
       VkResult result = tu_get_scratch_bo(cmd->device,
-                                          staging_image.layout.size,
+                                          staging_image.layout[0].size,
                                           &staging_image.bo);
       if (result != VK_SUCCESS) {
          cmd->record_result = result;
@@ -1421,8 +1439,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
 
       struct tu_image_view staging;
-      tu_image_view_blit2(&staging, &staging_image, src_format,
-                          &staging_subresource, 0, false);
+      tu_image_view_copy(&staging, &staging_image, src_format,
+                         &staging_subresource, 0, false);
 
       ops->setup(cmd, cs, src_format, VK_IMAGE_ASPECT_COLOR_BIT, ROTATE_0, false);
       coords(ops, cs, &staging_offset, &src_offset, &extent);
@@ -1439,8 +1457,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
       tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
-      tu_image_view_blit2(&staging, &staging_image, dst_format,
-                          &staging_subresource, 0, false);
+      tu_image_view_copy(&staging, &staging_image, dst_format,
+                         &staging_subresource, 0, false);
 
       ops->setup(cmd, cs, dst_format, info->dstSubresource.aspectMask, ROTATE_0, false);
       coords(ops, cs, &dst_offset, &staging_offset, &extent);
@@ -1451,8 +1469,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
          ops->run(cmd, cs);
       }
    } else {
-      tu_image_view_blit2(&dst, dst_image, format, &info->dstSubresource, dst_offset.z, false);
-      tu_image_view_blit2(&src, src_image, format, &info->srcSubresource, src_offset.z, false);
+      tu_image_view_copy(&dst, dst_image, format, &info->dstSubresource, dst_offset.z, false);
+      tu_image_view_copy(&src, src_image, format, &info->srcSubresource, src_offset.z, false);
 
       ops->setup(cmd, cs, format, info->dstSubresource.aspectMask, ROTATE_0, false);
       coords(ops, cs, &dst_offset, &src_offset, &extent);
@@ -1695,7 +1713,7 @@ clear_image(struct tu_cmd_buffer *cmd,
                   });
 
       struct tu_image_view dst;
-      tu_image_view_blit2(&dst, image, format, &(VkImageSubresourceLayers) {
+      tu_image_view_copy_blit(&dst, image, format, &(VkImageSubresourceLayers) {
          .aspectMask = range->aspectMask,
          .mipLevel = range->baseMipLevel + j,
          .baseArrayLayer = range->baseArrayLayer,

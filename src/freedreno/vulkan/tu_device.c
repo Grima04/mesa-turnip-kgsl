@@ -1934,8 +1934,8 @@ tu_GetImageMemoryRequirements(VkDevice _device,
    TU_FROM_HANDLE(tu_image, image, _image);
 
    pMemoryRequirements->memoryTypeBits = 1;
-   pMemoryRequirements->size = image->layout.size;
-   pMemoryRequirements->alignment = image->layout.base_align;
+   pMemoryRequirements->size = image->total_size;
+   pMemoryRequirements->alignment = image->layout[0].base_align;
 }
 
 void

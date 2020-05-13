@@ -1221,7 +1221,8 @@ struct tu_image
    uint32_t layer_count;
    VkSampleCountFlagBits samples;
 
-   struct fdl_layout layout;
+   struct fdl_layout layout[3];
+   uint32_t total_size;
 
    unsigned queue_family_mask;
    bool exclusive;
