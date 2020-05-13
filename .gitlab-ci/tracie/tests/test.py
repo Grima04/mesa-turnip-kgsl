@@ -129,7 +129,24 @@ def test_tracie_fails_on_image_mismatch():
     assert check_results_yaml_content(RESULTS_YAML, expectations)
 
 
-def test_tracie_skips_traces_without_checksum():
+def test_tracie_traces_with_and_without_checksum():
+    filename = "./tests/traces.yml"
+    content = read_from(filename)
+    content += '''  - path: trace1/red.testtrace
+    expectations:
+    - device: bla
+      checksum: 000000000000000'''
+    write_to(content, filename)
+
+    # red.testtrace should be skipped, since it doesn't
+    # have any checksums for our device
+    filename = "./traces-db/trace1/red.testtrace"
+    content = "ff0000ff"
+    write_to(content, filename)
+    assert run_tracie()
+
+
+def test_tracie_only_traces_without_checksum():
     filename = "./tests/traces.yml"
     content = '''traces:
   - path: trace1/red.testtrace
