@@ -448,7 +448,7 @@ wait_imm perform_barrier(wait_ctx& ctx, memory_sync_info sync, unsigned semantic
 {
    wait_imm imm;
    sync_scope subgroup_scope = ctx.program->workgroup_size <= ctx.program->wave_size ? scope_workgroup : scope_subgroup;
-   if (sync.semantics & semantics) {
+   if ((sync.semantics & semantics) && sync.scope > subgroup_scope) {
       unsigned storage = sync.storage;
       while (storage) {
          unsigned idx = u_bit_scan(&storage);
@@ -459,6 +459,10 @@ wait_imm perform_barrier(wait_ctx& ctx, memory_sync_info sync, unsigned semantic
          uint16_t events = ctx.barrier_events[idx];
          if (bar_scope_lds <= subgroup_scope)
             events &= ~event_lds;
+
+         /* in non-WGP, the L1/L0 cache keeps all memory operations in-order for the same workgroup */
+         if (ctx.chip_class < GFX10 && sync.scope <= scope_workgroup)
+            events &= ~(event_vmem | event_vmem_store | event_smem);
 
          if (events)
             imm.combine(ctx.barrier_imm[idx]);
