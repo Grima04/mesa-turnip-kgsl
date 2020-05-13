@@ -299,7 +299,7 @@ tu_physical_device_init(struct tu_physical_device *device,
                    "testing use only.\n");
 
    fd_get_driver_uuid(device->driver_uuid);
-   fd_get_device_uuid(device->device_uuid);
+   fd_get_device_uuid(device->device_uuid, device->gpu_id);
 
    tu_physical_device_get_supported_extensions(device, &device->supported_extensions);
 

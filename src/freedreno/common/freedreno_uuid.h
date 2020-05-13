@@ -25,6 +25,6 @@
 #define __FREEDRENO_UUID_H__
 
 void fd_get_driver_uuid(void *uuid);
-void fd_get_device_uuid(void *uuid);
+void fd_get_device_uuid(void *uuid, unsigned gpu_id);
 
 #endif /* __FREEDRENO_UUID_H__ */
