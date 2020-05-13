@@ -78,6 +78,13 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 		unreachable("");
 	}
 
+#ifdef DEBUG
+	/* Name should generally match what you get with MESA_SHADER_CAPTURE_PATH: */
+	const char *name = so->shader->nir->info.name;
+	if (name)
+		fd_emit_string5(ring, name, strlen(name));
+#endif
+
 	OUT_PKT4(ring, instrlen, 1);
 	OUT_RING(ring, so->instrlen);
 
