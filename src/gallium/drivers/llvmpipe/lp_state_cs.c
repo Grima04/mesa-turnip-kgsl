@@ -46,6 +46,7 @@
 #include "lp_cs_tpool.h"
 #include "frontend/sw_winsys.h"
 #include "nir/nir_to_tgsi_info.h"
+#include "util/mesa-sha1.h"
 #include "nir_serialize.h"
 
 /** Fragment shader number (for debugging) */
@@ -139,6 +140,9 @@ generate_compute(struct llvmpipe_context *lp,
    }
 
    lp_build_coro_declare_malloc_hooks(gallivm);
+
+   if (variant->gallivm->cache->data_size)
+      return;
 
    context_ptr  = LLVMGetParam(function, 0);
    x_size_arg = LLVMGetParam(function, 1);
@@ -673,13 +677,39 @@ lp_debug_cs_variant(const struct lp_compute_shader_variant *variant)
    debug_printf("\n");
 }
 
+static void
+lp_cs_get_ir_cache_key(struct lp_compute_shader_variant *variant,
+                       unsigned char ir_sha1_cache_key[20])
+{
+   struct blob blob = { 0 };
+   unsigned ir_size;
+   void *ir_binary;
+
+   blob_init(&blob);
+   nir_serialize(&blob, variant->shader->base.ir.nir, true);
+   ir_binary = blob.data;
+   ir_size = blob.size;
+
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+   _mesa_sha1_update(&ctx, &variant->key, variant->shader->variant_key_size);
+   _mesa_sha1_update(&ctx, ir_binary, ir_size);
+   _mesa_sha1_final(&ctx, ir_sha1_cache_key);
+
+   blob_finish(&blob);
+}
+
 static struct lp_compute_shader_variant *
 generate_variant(struct llvmpipe_context *lp,
                  struct lp_compute_shader *shader,
                  const struct lp_compute_shader_variant_key *key)
 {
+   struct llvmpipe_screen *screen = llvmpipe_screen(lp->pipe.screen);
    struct lp_compute_shader_variant *variant;
    char module_name[64];
+   unsigned char ir_sha1_cache_key[20];
+   struct lp_cached_code cached = { 0 };
+   bool needs_caching = false;
    variant = MALLOC(sizeof *variant + shader->variant_key_size - sizeof variant->key);
    if (!variant)
       return NULL;
@@ -688,18 +718,27 @@ generate_variant(struct llvmpipe_context *lp,
    snprintf(module_name, sizeof(module_name), "cs%u_variant%u",
             shader->no, shader->variants_created);
 
-   variant->gallivm = gallivm_create(module_name, lp->context, NULL);
+   variant->shader = shader;
+   memcpy(&variant->key, key, shader->variant_key_size);
+
+   if (shader->base.ir.nir) {
+      lp_cs_get_ir_cache_key(variant, ir_sha1_cache_key);
+
+      lp_disk_cache_find_shader(screen, &cached, ir_sha1_cache_key);
+      if (!cached.data_size)
+         needs_caching = true;
+   }
+   variant->gallivm = gallivm_create(module_name, lp->context, &cached);
    if (!variant->gallivm) {
       FREE(variant);
       return NULL;
    }
 
-   variant->shader = shader;
    variant->list_item_global.base = variant;
    variant->list_item_local.base = variant;
    variant->no = shader->variants_created++;
 
-   memcpy(&variant->key, key, shader->variant_key_size);
+
 
    if ((LP_DEBUG & DEBUG_CS) || (gallivm_debug & GALLIVM_DEBUG_IR)) {
       lp_debug_cs_variant(variant);
@@ -716,6 +755,9 @@ generate_variant(struct llvmpipe_context *lp,
 
    variant->jit_function = (lp_jit_cs_func)gallivm_jit_function(variant->gallivm, variant->function);
 
+   if (needs_caching) {
+      lp_disk_cache_insert_shader(screen, &cached, ir_sha1_cache_key);
+   }
    gallivm_free_ir(variant->gallivm);
    return variant;
 }
