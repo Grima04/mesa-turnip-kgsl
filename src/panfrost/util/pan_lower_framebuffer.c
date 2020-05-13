@@ -51,3 +51,36 @@
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_format_convert.h"
 #include "util/format/u_format.h"
+#include "pan_lower_framebuffer.h"
+
+/* Determines the unpacked type best suiting a given format, so the rest of the
+ * pipeline may be adjusted accordingly */
+
+nir_alu_type
+pan_unpacked_type_for_format(const struct util_format_description *desc)
+{
+        int c = util_format_get_first_non_void_channel(desc->format);
+
+        if (c == -1)
+                unreachable("Void format not renderable");
+
+        bool large = (desc->channel[c].size > 16);
+        bool bit8 = (desc->channel[c].size == 8);
+        assert(desc->channel[c].size <= 32);
+
+        if (desc->channel[c].normalized)
+                return large ? nir_type_float32 : nir_type_float16;
+
+        switch (desc->channel[c].type) {
+        case UTIL_FORMAT_TYPE_UNSIGNED:
+                return bit8 ? nir_type_uint8 :
+                        large ? nir_type_uint32 : nir_type_uint16;
+        case UTIL_FORMAT_TYPE_SIGNED:
+                return bit8 ? nir_type_int8 :
+                        large ? nir_type_int32 : nir_type_int16;
+        case UTIL_FORMAT_TYPE_FLOAT:
+                return large ? nir_type_float32 : nir_type_float16;
+        default:
+                unreachable("Format not renderable");
+        }
+}
