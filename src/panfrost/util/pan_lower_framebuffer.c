@@ -125,3 +125,111 @@ pan_format_class_store(const struct util_format_description *desc, unsigned quir
 
         return PAN_FORMAT_NATIVE;
 }
+
+/* Generic dispatches for un/pack regardless of format */
+
+static nir_ssa_def *
+pan_unpack(nir_builder *b,
+                const struct util_format_description *desc,
+                nir_ssa_def *packed)
+{
+        /* Stub */
+        return packed;
+}
+
+static nir_ssa_def *
+pan_pack(nir_builder *b,
+                const struct util_format_description *desc,
+                nir_ssa_def *unpacked)
+{
+        /* Stub */
+        return unpacked;
+}
+
+static void
+pan_lower_fb_store(nir_shader *shader,
+                nir_builder *b,
+                nir_intrinsic_instr *intr,
+                const struct util_format_description *desc,
+                unsigned quirks)
+{
+        /* For stores, add conversion before */
+        nir_ssa_def *unpacked = nir_ssa_for_src(b, intr->src[1], 4);
+        nir_ssa_def *packed = pan_pack(b, desc, unpacked);
+
+        nir_intrinsic_instr *new =
+                nir_intrinsic_instr_create(shader, nir_intrinsic_store_raw_output_pan);
+        new->src[0] = nir_src_for_ssa(packed);
+        new->num_components = 4;
+        nir_builder_instr_insert(b, &new->instr);
+}
+
+static void
+pan_lower_fb_load(nir_shader *shader,
+                nir_builder *b,
+                nir_intrinsic_instr *intr,
+                const struct util_format_description *desc,
+                unsigned quirks)
+{
+        nir_intrinsic_instr *new = nir_intrinsic_instr_create(shader,
+                       nir_intrinsic_load_raw_output_pan);
+        new->num_components = 4;
+
+        nir_ssa_dest_init(&new->instr, &new->dest, 4, 32, NULL);
+        nir_builder_instr_insert(b, &new->instr);
+
+        /* Convert the raw value */
+        nir_ssa_def *packed = &new->dest.ssa;
+        nir_ssa_def *unpacked = pan_unpack(b, desc, packed);
+
+        nir_src rewritten = nir_src_for_ssa(unpacked);
+        nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, rewritten, &intr->instr);
+}
+
+void
+pan_lower_framebuffer(nir_shader *shader,
+                const struct util_format_description *desc,
+                unsigned quirks)
+{
+        /* Blend shaders are represented as special fragment shaders */
+        assert(shader->info.stage == MESA_SHADER_FRAGMENT);
+
+        nir_foreach_function(func, shader) {
+                nir_foreach_block(block, func->impl) {
+                        nir_foreach_instr_safe(instr, block) {
+                                if (instr->type != nir_instr_type_intrinsic)
+                                        continue;
+
+                                nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+                                bool is_load = intr->intrinsic == nir_intrinsic_load_deref;
+                                bool is_store = intr->intrinsic == nir_intrinsic_store_deref;
+
+                                if (!(is_load || is_store))
+                                        continue;
+
+                                /* Don't worry about MRT */
+                                nir_variable *var = nir_intrinsic_get_var(intr, 0);
+
+                                if (var->data.location != FRAG_RESULT_COLOR)
+                                        continue;
+
+                                nir_builder b;
+                                nir_builder_init(&b, func->impl);
+
+                                if (is_store) {
+                                        b.cursor = nir_before_instr(instr);
+                                        pan_lower_fb_store(shader, &b, intr, desc, quirks);
+                                } else {
+                                        b.cursor = nir_after_instr(instr);
+                                        pan_lower_fb_load(shader, &b, intr, desc, quirks);
+                                }
+
+                                nir_instr_remove(instr);
+                        }
+                }
+
+                nir_metadata_preserve(func->impl, nir_metadata_block_index |
+                                nir_metadata_dominance);
+        }
+}
