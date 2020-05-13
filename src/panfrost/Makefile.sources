@@ -87,4 +87,5 @@ util_FILES := \
         util/pan_ir.c \
         util/pan_ir.h \
         util/pan_liveness.c \
+        util/pan_lower_framebuffer.c \
         util/pan_sysval.c \
