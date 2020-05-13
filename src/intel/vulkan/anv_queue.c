@@ -2338,7 +2338,7 @@ VkResult anv_WaitSemaphores(
    if (handle_count > 0) {
       result = anv_timelines_wait(device, timelines, values, handle_count,
                                   !(pWaitInfo->flags & VK_SEMAPHORE_WAIT_ANY_BIT_KHR),
-                                  timeout);
+                                  anv_get_absolute_timeout(timeout));
    }
 
    vk_free(&device->vk.alloc, timelines);
