@@ -126,6 +126,31 @@ pan_format_class_store(const struct util_format_description *desc, unsigned quir
         return PAN_FORMAT_NATIVE;
 }
 
+/* Software packs/unpacks, by format class. Packs take in the pixel value typed
+ * as `pan_unpacked_type_for_format` of the format and return an i32vec4
+ * suitable for storing (with components replicated to fill). Unpacks do the
+ * reverse but cannot rely on replication.
+ *
+ * Pure 32 formats (R32F ... RGBA32F) are 32 unpacked, so just need to
+ * replicate to fill */
+
+static nir_ssa_def *
+pan_pack_pure_32(nir_builder *b, nir_ssa_def *v)
+{
+        nir_ssa_def *replicated[4];
+
+        for (unsigned i = 0; i < 4; ++i)
+                replicated[i] = nir_channel(b, v, i % v->num_components);
+
+        return nir_vec(b, replicated, 4);
+}
+
+static nir_ssa_def *
+pan_unpack_pure_f32(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
+{
+        return nir_channels(b, pack, (1 << num_components) - 1);
+}
+
 /* Generic dispatches for un/pack regardless of format */
 
 static nir_ssa_def *
