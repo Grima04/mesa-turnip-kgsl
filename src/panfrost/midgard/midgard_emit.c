@@ -257,8 +257,11 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                 /* Replicate for now.. should really pick a side for
                  * dot products */
 
-                if (reg_mode == midgard_reg_mode_16) {
+                if (reg_mode == midgard_reg_mode_16 && sz == 16) {
                         *rep_low = !upper;
+                        *rep_high = upper;
+                } else if (reg_mode == midgard_reg_mode_16 && sz == 8) {
+                        *rep_low = upper;
                         *rep_high = upper;
                 } else if (reg_mode == midgard_reg_mode_32) {
                         *rep_low = upper;
