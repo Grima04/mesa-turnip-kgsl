@@ -1541,6 +1541,14 @@ v3dv_dynamic_state_mask(VkDynamicState state)
       return V3DV_DYNAMIC_BLEND_CONSTANTS;
    case VK_DYNAMIC_STATE_DEPTH_BIAS:
       return V3DV_DYNAMIC_DEPTH_BIAS;
+
+   /* Depth bounds testing is not available in in V3D 4.2 so here we are just
+    * ignoring this dynamic state. We are already asserting at pipeline creation
+    * time that depth bounds testing is not enabled.
+    */
+   case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
+      return 0;
+
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -2312,6 +2320,11 @@ pipeline_init(struct v3dv_pipeline *pipeline,
 
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       raster_enabled ? pCreateInfo->pColorBlendState : NULL;
+
+   /* V3D 4.2 doesn't support depth bounds testing so we don't advertise that
+    * feature and it shouldn't be used by any pipeline.
+    */
+   assert(!ds_info || !ds_info->depthBoundsTestEnable);
 
    pack_blend(pipeline, cb_info);
    pack_cfg_bits(pipeline, ds_info, rs_info);

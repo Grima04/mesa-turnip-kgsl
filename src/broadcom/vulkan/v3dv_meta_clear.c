@@ -229,7 +229,6 @@ create_pipeline(struct v3dv_device *device,
             VK_DYNAMIC_STATE_DEPTH_BIAS,
 #if 0
             VK_DYNAMIC_STATE_LINE_WIDTH,
-            VK_DYNAMIC_STATE_DEPTH_BOUNDS,
 #endif
          },
       },

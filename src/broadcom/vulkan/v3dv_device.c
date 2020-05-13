@@ -552,7 +552,7 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .depthClamp = false,
       .depthBiasClamp = false,
       .fillModeNonSolid = false,
-      .depthBounds = false,
+      .depthBounds = false, /* Only available since V3D 4.3.16.2 */
       .wideLines = false,
       .largePoints = false,
       .alphaToOne = false,

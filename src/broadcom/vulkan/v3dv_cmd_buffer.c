@@ -3429,6 +3429,16 @@ v3dv_CmdSetDepthBias(VkCommandBuffer commandBuffer,
 }
 
 void
+v3dv_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
+                       float minDepthBounds,
+                       float maxDepthBounds)
+{
+   /* We do not support depth bounds testing so we just ingore this. We are
+    * already asserting that pipelines don't enable the feature anyway.
+    */
+}
+
+void
 v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                            VkPipelineBindPoint pipelineBindPoint,
                            VkPipelineLayout _layout,
