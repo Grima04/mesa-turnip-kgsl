@@ -1599,6 +1599,21 @@ tc_transfer_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
    struct threaded_transfer *ttrans = threaded_transfer(transfer);
    struct threaded_resource *tres = threaded_resource(transfer->resource);
 
+   /* PIPE_TRANSFER_THREAD_SAFE is only valid with UNSYNCHRONIZED. It can be
+    * called from any thread and bypasses all multithreaded queues.
+    */
+   if (transfer->usage & PIPE_TRANSFER_THREAD_SAFE) {
+      assert(transfer->usage & PIPE_TRANSFER_UNSYNCHRONIZED);
+      assert(!(transfer->usage & (PIPE_TRANSFER_FLUSH_EXPLICIT |
+                                  PIPE_TRANSFER_DISCARD_RANGE)));
+
+      struct pipe_context *pipe = tc->pipe;
+      pipe->transfer_unmap(pipe, transfer);
+      util_range_add(&tres->b, tres->base_valid_buffer_range,
+                      transfer->box.x, transfer->box.x + transfer->box.width);
+      return;
+   }
+
    if (tres->b.target == PIPE_BUFFER) {
       if (transfer->usage & PIPE_TRANSFER_WRITE &&
           !(transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT))
