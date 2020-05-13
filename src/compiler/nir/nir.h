@@ -2589,10 +2589,61 @@ typedef struct {
  */
 typedef enum {
    nir_metadata_none = 0x0,
+
+   /** Indicates that nir_block::index values are valid.
+    *
+    * The start block has index 0 and they increase through a natural walk of
+    * the CFG.  nir_function_impl::num_blocks is the number of blocks and
+    * every block index is in the range [0, nir_function_impl::num_blocks].
+    *
+    * A pass can preserve this metadata type if it doesn't touch the CFG.
+    */
    nir_metadata_block_index = 0x1,
+
+   /** Indicates that block dominance information is valid
+    *
+    * This includes:
+    *
+    *   - nir_block::num_dom_children
+    *   - nir_block::dom_children
+    *   - nir_block::dom_frontier
+    *   - nir_block::dom_pre_index
+    *   - nir_block::dom_post_index
+    *
+    * A pass can preserve this metadata type if it doesn't touch the CFG.
+    */
    nir_metadata_dominance = 0x2,
+
+   /** Indicates that SSA def data-flow liveness information is valid
+    *
+    * This includes:
+    *
+    *   - nir_ssa_def::live_index
+    *   - nir_block::live_in
+    *   - nir_block::live_out
+    *
+    * A pass can preserve this metadata type if it never adds or removes any
+    * SSA defs (most passes shouldn't preserve this metadata type).
+    */
    nir_metadata_live_ssa_defs = 0x4,
+
+   /** A dummy metadata value to track when a pass forgot to call
+    * nir_metadata_preserve.
+    *
+    * A pass should always clear this value even if it doesn't make any
+    * progress to indicate that it thought about preserving metadata.
+    */
    nir_metadata_not_properly_reset = 0x8,
+
+   /** Indicates that loop analysis information is valid.
+    *
+    * This includes everything pointed to by nir_loop::info.
+    *
+    * A pass can preserve this metadata type if it is guaranteed to not affect
+    * any loop metadata.  However, since loop metadata includes things like
+    * loop counts which depend on arithmetic in the loop, this is very hard to
+    * determine.  Most passes shouldn't preserve this metadata type.
+    */
    nir_metadata_loop_analysis = 0x10,
 } nir_metadata;
 
