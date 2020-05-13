@@ -596,6 +596,13 @@ emit_binary_bundle(compiler_context *ctx,
                 ins->texture.type = bundle->tag;
                 ins->texture.next_type = next_tag;
 
+                /* Nothing else to pack for barriers */
+                if (ins->texture.op == TEXTURE_OP_BARRIER) {
+                        ins->texture.cont = ins->texture.last = 1;
+                        util_dynarray_append(emission, midgard_texture_word, ins->texture);
+                        return;
+                }
+
                 signed override = mir_upper_override(ins, 32);
 
                 ins->texture.mask = override > 0 ?
