@@ -99,6 +99,7 @@ tbool8 = "bool8"
 tbool16 = "bool16"
 tbool32 = "bool32"
 tuint = "uint"
+tuint8 = "uint8"
 tuint16 = "uint16"
 tfloat16 = "float16"
 tfloat32 = "float32"
@@ -357,6 +358,9 @@ dst.x = (src0.x <<  0) |
         (src0.w << 24);
 """)
 
+unop_horiz("pack_32_4x8", 1, tuint32, 4, tuint8,
+           "dst.x = src0.x | ((uint32_t)src0.y << 8) | ((uint32_t)src0.z << 16) | ((uint32_t)src0.w << 24);")
+
 unop_horiz("pack_32_2x16", 1, tuint32, 2, tuint16,
            "dst.x = src0.x | ((uint32_t)src0.y << 16);")
 
@@ -374,6 +378,9 @@ unop_horiz("unpack_64_4x16", 4, tuint16, 1, tuint64,
 
 unop_horiz("unpack_32_2x16", 2, tuint16, 1, tuint32,
            "dst.x = src0.x; dst.y = src0.x >> 16;")
+
+unop_horiz("unpack_32_4x8", 4, tuint8, 1, tuint32,
+           "dst.x = src0.x; dst.y = src0.x >> 8; dst.z = src0.x >> 16; dst.w = src0.x >> 24;")
 
 unop_horiz("unpack_half_2x16_flush_to_zero", 2, tfloat32, 1, tuint32, """
 dst.x = unpack_half_1x16_flush_to_zero((uint16_t)(src0.x & 0xffff));
