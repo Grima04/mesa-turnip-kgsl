@@ -52,6 +52,7 @@
 #include "compiler/nir/nir_format_convert.h"
 #include "util/format/u_format.h"
 #include "pan_lower_framebuffer.h"
+#include "panfrost-quirks.h"
 
 /* Determines the unpacked type best suiting a given format, so the rest of the
  * pipeline may be adjusted accordingly */
@@ -83,4 +84,32 @@ pan_unpacked_type_for_format(const struct util_format_description *desc)
         default:
                 unreachable("Format not renderable");
         }
+}
+
+enum pan_format_class
+pan_format_class_load(const struct util_format_description *desc, unsigned quirks)
+{
+        /* Check if we can do anything better than software architecturally */
+        if (quirks & MIDGARD_NO_TYPED_BLEND_LOADS) {
+                return (quirks & NO_BLEND_PACKS)
+                        ? PAN_FORMAT_SOFTWARE : PAN_FORMAT_PACK;
+        }
+
+        /* Some formats are missing as typed on some GPUs but have unpacks */
+        if (quirks & MIDGARD_MISSING_LOADS) {
+                switch (desc->format) {
+                case PIPE_FORMAT_R11G11B10_FLOAT:
+                case PIPE_FORMAT_R10G10B10A2_UNORM:
+                case PIPE_FORMAT_B10G10R10A2_UNORM:
+                case PIPE_FORMAT_R10G10B10X2_UNORM:
+                case PIPE_FORMAT_B10G10R10X2_UNORM:
+                case PIPE_FORMAT_R10G10B10A2_UINT:
+                        return PAN_FORMAT_PACK;
+                default:
+                        return PAN_FORMAT_NATIVE;
+                }
+        }
+
+        /* Otherwise, we can do native */
+        return PAN_FORMAT_NATIVE;
 }
