@@ -494,11 +494,6 @@ HazardResult perform_hazard_query(hazard_query *query, Instruction *instr, bool 
    if (first->bar_classes && second->bar_classes)
       return hazard_fail_barrier;
 
-   /* Don't move memory loads/stores to before control barriers. This is to make
-    * memory barriers followed by control barriers work. */
-   if (first->has_control_barrier && (second->access_atomic | second->access_relaxed))
-      return hazard_fail_barrier;
-
    /* don't move memory loads/stores past potentially aliasing loads/stores */
    unsigned aliasing_storage = instr->format == Format::SMEM ?
                                query->aliasing_storage_smem :

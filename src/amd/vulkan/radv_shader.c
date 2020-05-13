@@ -130,6 +130,7 @@ static const struct nir_shader_compiler_options nir_options_aco = {
 				 nir_lower_dsqrt |
 				 nir_lower_drsq |
 				 nir_lower_ddiv,
+	.use_scoped_barrier = true,
 };
 
 bool
