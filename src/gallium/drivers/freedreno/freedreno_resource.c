@@ -855,7 +855,7 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 		struct renderonly_scanout *scanout;
 		struct winsys_handle handle;
 
-		/* apply freedreno alignment requirement */
+		/* note: alignment is wrong for a6xx */
 		scanout_templat.width0 = align(tmpl->width0, screen->gmem_alignw);
 
 		scanout = renderonly_scanout_for_resource(&scanout_templat,
@@ -1026,6 +1026,10 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	slice->size0 = handle->stride * prsc->height0;
 
 	uint32_t pitchalign = fd_screen(pscreen)->gmem_alignw * rsc->layout.cpp;
+
+	/* use 64 pitchalign on a6xx where gmem_alignw is not right */
+	if (is_a6xx(screen))
+		pitchalign = 64 * rsc->layout.cpp;
 
 	if ((slice->pitch < align(prsc->width0 * rsc->layout.cpp, pitchalign)) ||
 			(slice->pitch & (pitchalign - 1)))
