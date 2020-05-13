@@ -184,8 +184,8 @@ layout_gmem(struct gmem_key *key, uint32_t nbins_x, uint32_t nbins_y,
 		return false;
 
 	uint32_t bin_w, bin_h;
-	bin_w = div_align(key->width, nbins_x, screen->gmem_alignw);
-	bin_h = div_align(key->height, nbins_y, screen->gmem_alignh);
+	bin_w = div_align(key->width, nbins_x, screen->tile_alignw);
+	bin_h = div_align(key->height, nbins_y, screen->tile_alignh);
 
 	gmem->bin_w = bin_w;
 	gmem->bin_h = bin_h;
@@ -244,7 +244,7 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	/* first, find a bin width that satisfies the maximum width
 	 * restrictions:
 	 */
-	while (div_align(key->width, nbins_x, screen->gmem_alignw) > max_width) {
+	while (div_align(key->width, nbins_x, screen->tile_alignw) > max_width) {
 		nbins_x++;
 	}
 

@@ -70,7 +70,8 @@ struct fd_screen {
 	uint32_t max_freq;
 	uint32_t ram_size;
 	uint32_t max_rts;        /* max # of render targets */
-	uint32_t gmem_alignw, gmem_alignh;
+	uint32_t gmem_alignw, gmem_alignh; /* gmem load/store granularity */
+	uint32_t tile_alignw, tile_alignh; /* alignment for tile sizes */
 	uint32_t num_vsc_pipes;
 	uint32_t priority_mask;
 	bool has_timestamp;
