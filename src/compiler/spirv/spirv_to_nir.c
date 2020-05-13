@@ -4401,6 +4401,18 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(intel_subgroup_buffer_block_io, cap);
          break;
 
+      case SpvCapabilityRayTracingProvisionalKHR:
+         spv_check_supported(ray_tracing, cap);
+         break;
+
+      case SpvCapabilityRayQueryProvisionalKHR:
+         spv_check_supported(ray_query, cap);
+         break;
+
+      case SpvCapabilityRayTraversalPrimitiveCullingProvisionalKHR:
+         spv_check_supported(ray_traversal_primitive_culling, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
