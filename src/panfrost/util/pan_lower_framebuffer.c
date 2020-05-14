@@ -442,6 +442,48 @@ pan_unpack_r11g11b10(nir_builder *b, nir_ssa_def *v)
         return nir_vec(b, components, 4);
 }
 
+/* Wrapper around sRGB conversion */
+
+static nir_ssa_def *
+pan_linear_to_srgb(nir_builder *b, nir_ssa_def *linear)
+{
+        nir_ssa_def *rgb = nir_channels(b, linear, 0x7);
+
+        /* TODO: fp16 native conversion */
+        nir_ssa_def *srgb = nir_f2f16(b,
+                        nir_format_linear_to_srgb(b, nir_f2f32(b, rgb)));
+
+        nir_ssa_def *comp[4] = {
+                nir_channel(b, srgb, 0),
+                nir_channel(b, srgb, 1),
+                nir_channel(b, srgb, 2),
+                nir_channel(b, linear, 3),
+        };
+
+        return nir_vec(b, comp, 4);
+}
+
+static nir_ssa_def *
+pan_srgb_to_linear(nir_builder *b, nir_ssa_def *srgb)
+{
+        nir_ssa_def *rgb = nir_channels(b, srgb, 0x7);
+
+        /* TODO: fp16 native conversion */
+        nir_ssa_def *linear = nir_f2f16(b,
+                        nir_format_srgb_to_linear(b, nir_f2f32(b, rgb)));
+
+        nir_ssa_def *comp[4] = {
+                nir_channel(b, linear, 0),
+                nir_channel(b, linear, 1),
+                nir_channel(b, linear, 2),
+                nir_channel(b, srgb, 3),
+        };
+
+        return nir_vec(b, comp, 4);
+}
+
+
+
 /* Generic dispatches for un/pack regardless of format */
 
 static bool
@@ -514,6 +556,9 @@ pan_pack(nir_builder *b,
                 const struct util_format_description *desc,
                 nir_ssa_def *unpacked)
 {
+        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
+                unpacked = pan_linear_to_srgb(b, unpacked);
+
         if (util_format_is_unorm8(desc))
                 return pan_pack_unorm_8(b, unpacked);
 
@@ -593,6 +638,9 @@ pan_lower_fb_load(nir_shader *shader,
         /* Convert the raw value */
         nir_ssa_def *packed = &new->dest.ssa;
         nir_ssa_def *unpacked = pan_unpack(b, desc, packed);
+
+        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
+                unpacked = pan_srgb_to_linear(b, unpacked);
 
         nir_src rewritten = nir_src_for_ssa(unpacked);
         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, rewritten, &intr->instr);
