@@ -333,6 +333,60 @@ pan_unpack_unorm_565(nir_builder *b, nir_ssa_def *v)
                         nir_imm_ivec4(b, 3, 2, 3, 0));
 }
 
+/* RGB10_A2 is packed in the tilebuffer as the bottom 3 bytes being the top
+ * 8-bits of RGB and the top byte being RGBA as 2-bits packed. As imirkin
+ * pointed out, this means free conversion to RGBX8 */
+
+static nir_ssa_def *
+pan_pack_unorm_1010102(nir_builder *b, nir_ssa_def *v)
+{
+        nir_ssa_def *scale = nir_imm_vec4_16(b, 1023.0, 1023.0, 1023.0, 3.0);
+        nir_ssa_def *s = nir_f2u32(b, nir_fround_even(b, nir_f2f32(b, nir_fmul(b, nir_fsat(b, v), scale))));
+
+        nir_ssa_def *top8 = nir_ushr(b, s, nir_imm_ivec4(b, 0x2, 0x2, 0x2, 0x2));
+        nir_ssa_def *top8_rgb = nir_pack_32_4x8(b, nir_u2u8(b, top8));
+
+        nir_ssa_def *bottom2 = nir_iand(b, s, nir_imm_ivec4(b, 0x3, 0x3, 0x3, 0x3));
+
+        nir_ssa_def *top =
+                 nir_ior(b,
+                        nir_ior(b, 
+                                nir_ishl(b, nir_channel(b, bottom2, 0), nir_imm_int(b, 24 + 0)),
+                                nir_ishl(b, nir_channel(b, bottom2, 1), nir_imm_int(b, 24 + 2))),
+                        nir_ior(b, 
+                                nir_ishl(b, nir_channel(b, bottom2, 2), nir_imm_int(b, 24 + 4)),
+                                nir_ishl(b, nir_channel(b, bottom2, 3), nir_imm_int(b, 24 + 6))));
+
+        nir_ssa_def *p = nir_ior(b, top, top8_rgb);
+        return pan_replicate_4(b, p);
+}
+
+static nir_ssa_def *
+pan_unpack_unorm_1010102(nir_builder *b, nir_ssa_def *packed)
+{
+        nir_ssa_def *p = nir_channel(b, packed, 0);
+        nir_ssa_def *bytes = nir_unpack_32_4x8(b, p);
+        nir_ssa_def *ubytes = nir_u2u16(b, bytes);
+
+        nir_ssa_def *shifts = nir_ushr(b, pan_replicate_4(b, nir_channel(b, ubytes, 3)),
+                        nir_imm_ivec4(b, 0, 2, 4, 6));
+        nir_ssa_def *precision = nir_iand(b, shifts,
+                        nir_i2i16(b, nir_imm_ivec4(b, 0x3, 0x3, 0x3, 0x3)));
+
+        nir_ssa_def *top_rgb = nir_ishl(b, nir_channels(b, ubytes, 0x7), nir_imm_int(b, 2));
+        top_rgb = nir_ior(b, nir_channels(b, precision, 0x7), top_rgb);
+
+        nir_ssa_def *chans [4] = {
+                nir_channel(b, top_rgb, 0),
+                nir_channel(b, top_rgb, 1),
+                nir_channel(b, top_rgb, 2),
+                nir_channel(b, precision, 3)
+        };
+
+        nir_ssa_def *scale = nir_imm_vec4(b, 1.0 / 1023.0, 1.0 / 1023.0, 1.0 / 1023.0, 1.0 / 3.0);
+        return nir_f2f16(b, nir_fmul(b, nir_u2f32(b, nir_vec(b, chans, 4)), scale));
+}
+
 /* Generic dispatches for un/pack regardless of format */
 
 static bool
@@ -386,6 +440,8 @@ pan_unpack(nir_builder *b,
                 return pan_unpack_unorm_5551(b, packed);
         case PIPE_FORMAT_B5G6R5_UNORM:
                 return pan_unpack_unorm_565(b, packed);
+        case PIPE_FORMAT_R10G10B10A2_UNORM:
+                return pan_unpack_unorm_1010102(b, packed);
         default:
                 break;
         }
@@ -429,6 +485,8 @@ pan_pack(nir_builder *b,
                 return pan_pack_unorm_5551(b, unpacked);
         case PIPE_FORMAT_B5G6R5_UNORM:
                 return pan_pack_unorm_565(b, unpacked);
+        case PIPE_FORMAT_R10G10B10A2_UNORM:
+                return pan_pack_unorm_1010102(b, unpacked);
         default:
                 break;
         }
