@@ -1208,7 +1208,7 @@ bool ir3_sched_add_deps(struct ir3 *ir);
 int ir3_sched(struct ir3 *ir);
 
 struct ir3_context;
-int ir3_postsched(struct ir3_context *ctx);
+bool ir3_postsched(struct ir3 *ir);
 
 bool ir3_a6xx_fixup_atomic_dests(struct ir3 *ir, struct ir3_shader_variant *so);
 

@@ -3664,7 +3664,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	ir3_postsched(ctx);
+	ir3_postsched(ir);
 	ir3_debug_print(ir, "AFTER: ir3_postsched");
 
 	if (compiler->gpu_id >= 600) {
