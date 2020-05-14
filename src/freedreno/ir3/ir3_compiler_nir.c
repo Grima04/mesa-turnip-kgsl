@@ -3426,6 +3426,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	struct ir3_context *ctx;
 	struct ir3 *ir;
 	int ret = 0, max_bary;
+	bool progress;
 
 	assert(!so->ir);
 
@@ -3554,16 +3555,24 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 	ir3_debug_print(ir, "AFTER: nir->ir3");
 
-	IR3_PASS(ir, ir3_cf);
-	IR3_PASS(ir, ir3_cp, so);
+	do {
+		progress = false;
+
+		progress |= IR3_PASS(ir, ir3_cf);
+		progress |= IR3_PASS(ir, ir3_cp, so);
+		progress |= IR3_PASS(ir, ir3_dce, so);
+	} while (progress);
 
 	/* at this point, for binning pass, throw away unneeded outputs:
 	 * Note that for a6xx and later, we do this after ir3_cp to ensure
 	 * that the uniform/constant layout for BS and VS matches, so that
 	 * we can re-use same VS_CONST state group.
 	 */
-	if (so->binning_pass && (ctx->compiler->gpu_id >= 600))
+	if (so->binning_pass && (ctx->compiler->gpu_id >= 600)) {
 		fixup_binning_pass(ctx);
+		/* cleanup the result of removing unneeded outputs: */
+		while (IR3_PASS(ir, ir3_dce, so)) {}
+	}
 
 	IR3_PASS(ir, ir3_sched_add_deps);
 
@@ -3572,7 +3581,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 */
 	IR3_PASS(ir, ir3_group);
 
-	IR3_PASS(ir, ir3_dce, so);
+	/* At this point, all the dead code should be long gone: */
+	assert(!IR3_PASS(ir, ir3_dce, so));
 
 	ret = ir3_sched(ir);
 	if (ret) {

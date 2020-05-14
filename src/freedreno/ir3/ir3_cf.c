@@ -85,7 +85,11 @@ try_conversion_folding(struct ir3_instruction *conv)
 	if (!is_fp16_conv(conv))
 		return false;
 
+	/* NOTE: we can have non-ssa srcs after copy propagation: */
 	src = ssa(conv->regs[1]);
+	if (!src)
+		return false;
+
 	if (!is_alu(src))
 		return false;
 
