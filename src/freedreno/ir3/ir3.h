@@ -1192,7 +1192,7 @@ void ir3_remove_nops(struct ir3 *ir);
 
 /* dead code elimination: */
 struct ir3_shader_variant;
-void ir3_dce(struct ir3 *ir, struct ir3_shader_variant *so);
+bool ir3_dce(struct ir3 *ir, struct ir3_shader_variant *so);
 
 /* fp16 conversion folding */
 void ir3_cf(struct ir3 *ir);

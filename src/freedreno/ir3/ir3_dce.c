@@ -178,17 +178,20 @@ find_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 	return progress;
 }
 
-void
+bool
 ir3_dce(struct ir3 *ir, struct ir3_shader_variant *so)
 {
 	void *mem_ctx = ralloc_context(NULL);
-	bool progress;
+	bool progress, made_progress = false;
 
 	ir3_find_ssa_uses(ir, mem_ctx, true);
 
 	do {
 		progress = find_and_remove_unused(ir, so);
+		made_progress |= progress;
 	} while (progress);
 
 	ralloc_free(mem_ctx);
+
+	return made_progress;
 }
