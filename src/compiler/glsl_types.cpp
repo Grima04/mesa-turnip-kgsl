@@ -2620,16 +2620,6 @@ glsl_type::coordinate_components() const
 #include "compiler/builtin_type_macros.h"
 /** @} */
 
-static void
-get_struct_type_field_and_pointer_sizes(size_t *s_field_size,
-                                        size_t *s_field_ptrs)
-{
-   *s_field_size = sizeof(glsl_struct_field);
-   *s_field_ptrs =
-     sizeof(((glsl_struct_field *)0)->type) +
-     sizeof(((glsl_struct_field *)0)->name);
-}
-
 union packed_type {
    uint32_t u32;
    struct {
@@ -2659,6 +2649,32 @@ union packed_type {
       unsigned length:24;
    } strct;
 };
+
+static void
+encode_glsl_struct_field(blob *blob, const glsl_struct_field *struct_field)
+{
+   encode_type_to_blob(blob, struct_field->type);
+   blob_write_string(blob, struct_field->name);
+   blob_write_uint32(blob, struct_field->location);
+   blob_write_uint32(blob, struct_field->offset);
+   blob_write_uint32(blob, struct_field->xfb_buffer);
+   blob_write_uint32(blob, struct_field->xfb_stride);
+   blob_write_uint32(blob, struct_field->image_format);
+   blob_write_uint32(blob, struct_field->flags);
+}
+
+static void
+decode_glsl_struct_field_from_blob(blob_reader *blob, glsl_struct_field *struct_field)
+{
+   struct_field->type = decode_type_from_blob(blob);
+   struct_field->name = blob_read_string(blob);
+   struct_field->location = blob_read_uint32(blob);
+   struct_field->offset = blob_read_uint32(blob);
+   struct_field->xfb_buffer = blob_read_uint32(blob);
+   struct_field->xfb_stride = blob_read_uint32(blob);
+   struct_field->image_format = (pipe_format)blob_read_uint32(blob);
+   struct_field->flags = blob_read_uint32(blob);
+}
 
 void
 encode_type_to_blob(struct blob *blob, const glsl_type *type)
@@ -2749,18 +2765,8 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
       if (encoded.strct.length == 0xffffff)
          blob_write_uint32(blob, type->length);
 
-      size_t s_field_size, s_field_ptrs;
-      get_struct_type_field_and_pointer_sizes(&s_field_size, &s_field_ptrs);
-
-      for (unsigned i = 0; i < type->length; i++) {
-         encode_type_to_blob(blob, type->fields.structure[i].type);
-         blob_write_string(blob, type->fields.structure[i].name);
-
-         /* Write the struct field skipping the pointers */
-         blob_write_bytes(blob,
-                          ((char *)&type->fields.structure[i]) + s_field_ptrs,
-                          s_field_size - s_field_ptrs);
-      }
+      for (unsigned i = 0; i < type->length; i++)
+         encode_glsl_struct_field(blob, &type->fields.structure[i]);
       return;
    case GLSL_TYPE_VOID:
       break;
@@ -2842,18 +2848,10 @@ decode_type_from_blob(struct blob_reader *blob)
       if (num_fields == 0xffffff)
          num_fields = blob_read_uint32(blob);
 
-      size_t s_field_size, s_field_ptrs;
-      get_struct_type_field_and_pointer_sizes(&s_field_size, &s_field_ptrs);
-
       glsl_struct_field *fields =
-         (glsl_struct_field *) malloc(s_field_size * num_fields);
-      for (unsigned i = 0; i < num_fields; i++) {
-         fields[i].type = decode_type_from_blob(blob);
-         fields[i].name = blob_read_string(blob);
-
-         blob_copy_bytes(blob, ((uint8_t *) &fields[i]) + s_field_ptrs,
-                         s_field_size - s_field_ptrs);
-      }
+         (glsl_struct_field *) malloc(sizeof(glsl_struct_field) * num_fields);
+      for (unsigned i = 0; i < num_fields; i++)
+         decode_glsl_struct_field_from_blob(blob, &fields[i]);
 
       const glsl_type *t;
       if (base_type == GLSL_TYPE_INTERFACE) {
