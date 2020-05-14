@@ -390,20 +390,6 @@ anv_gem_get_context_param(int fd, int context, uint32_t param, uint64_t *value)
 }
 
 int
-anv_gem_get_aperture(int fd, uint64_t *size)
-{
-   struct drm_i915_gem_get_aperture aperture = { 0 };
-
-   int ret = gen_ioctl(fd, DRM_IOCTL_I915_GEM_GET_APERTURE, &aperture);
-   if (ret == -1)
-      return -1;
-
-   *size = aperture.aper_available_size;
-
-   return 0;
-}
-
-int
 anv_gem_gpu_get_reset_stats(struct anv_device *device,
                             uint32_t *active, uint32_t *pending)
 {

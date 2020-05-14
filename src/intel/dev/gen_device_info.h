@@ -252,6 +252,8 @@ struct gen_device_info
     */
    uint64_t timestamp_frequency;
 
+   uint64_t aperture_bytes;
+
    /**
     * ID to put into the .aub files.
     */
@@ -293,6 +295,7 @@ gen_device_info_timebase_scale(const struct gen_device_info *devinfo,
 bool gen_get_device_info_from_fd(int fh, struct gen_device_info *devinfo);
 bool gen_get_device_info_from_pci_id(int pci_id,
                                      struct gen_device_info *devinfo);
+int gen_get_aperture_size(int fd, uint64_t *size);
 
 #ifdef __cplusplus
 }

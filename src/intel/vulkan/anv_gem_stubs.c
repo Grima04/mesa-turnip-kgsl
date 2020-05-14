@@ -160,12 +160,6 @@ anv_gem_has_context_priority(int fd)
 }
 
 int
-anv_gem_get_aperture(int fd, uint64_t *size)
-{
-   unreachable("Unused");
-}
-
-int
 anv_gem_gpu_get_reset_stats(struct anv_device *device,
                             uint32_t *active, uint32_t *pending)
 {

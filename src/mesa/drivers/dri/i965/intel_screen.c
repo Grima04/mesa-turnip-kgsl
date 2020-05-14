@@ -1505,17 +1505,6 @@ static const __DRIimageExtension intelImageExtension = {
     .queryDmaBufFormatModifierAttribs   = intel_query_format_modifier_attribs,
 };
 
-static uint64_t
-get_aperture_size(int fd)
-{
-   struct drm_i915_gem_get_aperture aperture;
-
-   if (drmIoctl(fd, DRM_IOCTL_I915_GEM_GET_APERTURE, &aperture) != 0)
-      return 0;
-
-   return aperture.aper_size;
-}
-
 static int
 brw_query_renderer_integer(__DRIscreen *dri_screen,
                            int param, unsigned int *value)
@@ -2610,7 +2599,7 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
       screen->max_gtt_map_object_size = gtt_size / 4;
    }
 
-   screen->aperture_threshold = get_aperture_size(screen->fd) * 3 / 4;
+   screen->aperture_threshold = devinfo->aperture_bytes * 3 / 4;
 
    screen->hw_has_swizzling = intel_detect_swizzling(screen);
    screen->hw_has_timestamp = intel_detect_timestamp(screen);

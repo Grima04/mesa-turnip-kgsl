@@ -90,14 +90,6 @@ iris_get_name(struct pipe_screen *pscreen)
    return buf;
 }
 
-static uint64_t
-get_aperture_size(int fd)
-{
-   struct drm_i915_gem_get_aperture aperture = {};
-   gen_ioctl(fd, DRM_IOCTL_I915_GEM_GET_APERTURE, &aperture);
-   return aperture.aper_size;
-}
-
 static int
 iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
@@ -283,7 +275,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        * flushing, etc.  That's the big cliff apps will care about.
        */
       const unsigned gpu_mappable_megabytes =
-         (screen->aperture_bytes * 3 / 4) / (1024 * 1024);
+         (devinfo->aperture_bytes * 3 / 4) / (1024 * 1024);
 
       const long system_memory_pages = sysconf(_SC_PHYS_PAGES);
       const long system_page_size = sysconf(_SC_PAGE_SIZE);
@@ -717,8 +709,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
       return NULL;
 
    screen->fd = iris_bufmgr_get_fd(screen->bufmgr);
-
-   screen->aperture_bytes = get_aperture_size(fd);
 
    if (getenv("INTEL_NO_HW") != NULL)
       screen->no_hw = true;
