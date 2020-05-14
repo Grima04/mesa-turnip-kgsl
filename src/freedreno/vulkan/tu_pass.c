@@ -100,14 +100,11 @@ create_render_pass_common(struct tu_render_pass *pass,
       struct tu_subpass *subpass = &pass->subpasses[i];
 
       subpass->srgb_cntl = 0;
-      subpass->render_components = 0;
 
       for (uint32_t i = 0; i < subpass->color_count; ++i) {
          uint32_t a = subpass->color_attachments[i].attachment;
          if (a == VK_ATTACHMENT_UNUSED)
             continue;
-
-         subpass->render_components |= 0xf << (i * 4);
 
          if (vk_format_is_srgb(pass->attachments[a].format))
             subpass->srgb_cntl |= 1 << i;

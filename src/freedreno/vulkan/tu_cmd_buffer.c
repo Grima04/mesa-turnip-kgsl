@@ -448,11 +448,6 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs,
                    A6XX_SP_SRGB_CNTL(.dword = subpass->srgb_cntl));
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_RENDER_COMPONENTS(.dword = subpass->render_components));
-   tu_cs_emit_regs(cs,
-                   A6XX_SP_FS_RENDER_COMPONENTS(.dword = subpass->render_components));
-
    tu_cs_emit_regs(cs, A6XX_GRAS_MAX_LAYER_INDEX(fb->layers - 1));
 }
 

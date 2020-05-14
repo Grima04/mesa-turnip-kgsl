@@ -1322,6 +1322,8 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
          fragdata_regid[i] = ir3_find_output_regid(fs, FRAG_RESULT_DATA0 + i);
    }
 
+   uint32_t render_components = (1 << (4 * mrt_count)) - 1;
+
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
                   A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
@@ -1336,10 +1338,16 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
                         (false ? A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION : 0));
    }
 
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_FS_RENDER_COMPONENTS(.dword = render_components));
+
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
                   COND(fs->writes_smask, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK));
    tu_cs_emit(cs, A6XX_RB_FS_OUTPUT_CNTL1_MRT(mrt_count));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_RENDER_COMPONENTS(.dword = render_components));
 
    uint32_t gras_su_depth_plane_cntl = 0;
    uint32_t rb_depth_plane_cntl = 0;

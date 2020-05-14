@@ -1612,8 +1612,6 @@ struct tu_subpass
 
    VkSampleCountFlagBits samples;
 
-   /* pre-filled register values */
-   uint32_t render_components;
    uint32_t srgb_cntl;
 };
 
