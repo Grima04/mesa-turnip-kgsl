@@ -135,7 +135,12 @@ i915_ioctl_get_param(int fd, unsigned long request, void *arg)
       *gp->value = i915.devinfo.timestamp_frequency;
       return 0;
    case I915_PARAM_HAS_ALIASING_PPGTT:
-      *gp->value = i915.devinfo.is_haswell || i915.devinfo.gen >= 8;
+      if (i915.devinfo.gen < 6)
+         *gp->value = I915_GEM_PPGTT_NONE;
+      else if (i915.devinfo.gen <= 7)
+         *gp->value = I915_GEM_PPGTT_ALIASING;
+      else
+         *gp->value = I915_GEM_PPGTT_FULL;
       return 0;
    case I915_PARAM_HAS_WAIT_TIMEOUT:
    case I915_PARAM_HAS_EXECBUF2:
