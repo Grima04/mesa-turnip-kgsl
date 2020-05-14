@@ -1103,6 +1103,10 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
       break;
    }
+   case aco_opcode::v_mul_f16: {
+      ctx.info[instr->definitions[0].tempId()].set_mul(instr.get());
+      break;
+   }
    case aco_opcode::v_and_b32: /* abs */
       if (!instr->usesModifiers() && instr->operands[0].constantEquals(0x7FFFFFFF) &&
           instr->operands[1].isTemp() && instr->operands[1].getTemp().type() == RegType::vgpr)
@@ -2415,11 +2419,15 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
    bool mad32 = instr->opcode == aco_opcode::v_add_f32 ||
                 instr->opcode == aco_opcode::v_sub_f32 ||
                 instr->opcode == aco_opcode::v_subrev_f32;
-   if (mad32) {
-      bool need_fma = block.fp_mode.denorm32 != 0;
+   bool mad16 = instr->opcode == aco_opcode::v_add_f16 ||
+                instr->opcode == aco_opcode::v_sub_f16 ||
+                instr->opcode == aco_opcode::v_subrev_f16;
+   if (mad16 || mad32) {
+      bool need_fma = mad32 ? block.fp_mode.denorm32 != 0 :
+                              (block.fp_mode.denorm16_64 != 0 || ctx.program->chip_class >= GFX10);
       if (need_fma && instr->definitions[0].isPrecise())
          return;
-      if (need_fma && !ctx.program->has_fast_fma32)
+      if (need_fma && mad32 && !ctx.program->has_fast_fma32)
          return;
 
       uint32_t uses_src0 = UINT32_MAX;
@@ -2500,12 +2508,15 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
             /* neg of the multiplication result */
             neg[1] = neg[1] ^ vop3->neg[1 - add_op_idx];
          }
-         if (instr->opcode == aco_opcode::v_sub_f32)
+         if (instr->opcode == aco_opcode::v_sub_f32 || instr->opcode == aco_opcode::v_sub_f16)
             neg[1 + add_op_idx] = neg[1 + add_op_idx] ^ true;
-         else if (instr->opcode == aco_opcode::v_subrev_f32)
+         else if (instr->opcode == aco_opcode::v_subrev_f32 || instr->opcode == aco_opcode::v_subrev_f16)
             neg[2 - add_op_idx] = neg[2 - add_op_idx] ^ true;
 
          aco_opcode mad_op = need_fma ? aco_opcode::v_fma_f32 : aco_opcode::v_mad_f32;
+         if (mad16)
+            mad_op = need_fma ? (ctx.program->chip_class == GFX8 ? aco_opcode::v_fma_legacy_f16 : aco_opcode::v_fma_f16) :
+                                (ctx.program->chip_class == GFX8 ? aco_opcode::v_mad_legacy_f16 : aco_opcode::v_mad_f16);
 
          aco_ptr<VOP3A_instruction> mad{create_instruction<VOP3A_instruction>(mad_op, Format::VOP3A, 3, 1)};
          for (unsigned i = 0; i < 3; i++)
@@ -2730,7 +2741,8 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       /* check literals */
       else if (!instr->usesModifiers()) {
          /* FMA can only take literals on GFX10+ */
-         if (instr->opcode == aco_opcode::v_fma_f32 && ctx.program->chip_class < GFX10)
+         if ((instr->opcode == aco_opcode::v_fma_f32 || instr->opcode == aco_opcode::v_fma_f16) &&
+             ctx.program->chip_class < GFX10)
             return;
 
          bool sgpr_used = false;
@@ -2903,6 +2915,10 @@ void apply_literals(opt_ctx &ctx, aco_ptr<Instruction>& instr)
          aco_opcode new_op = info->literal_idx == 2 ? aco_opcode::v_madak_f32 : aco_opcode::v_madmk_f32;
          if (instr->opcode == aco_opcode::v_fma_f32)
             new_op = info->literal_idx == 2 ? aco_opcode::v_fmaak_f32 : aco_opcode::v_fmamk_f32;
+         else if (instr->opcode == aco_opcode::v_mad_f16 || instr->opcode == aco_opcode::v_mad_legacy_f16)
+            new_op = info->literal_idx == 2 ? aco_opcode::v_madak_f16 : aco_opcode::v_madmk_f16;
+         else if (instr->opcode == aco_opcode::v_fma_f16)
+            new_op = info->literal_idx == 2 ? aco_opcode::v_fmaak_f16 : aco_opcode::v_fmamk_f16;
 
          new_mad.reset(create_instruction<VOP2_instruction>(new_op, Format::VOP2, 3, 1));
          if (info->literal_idx == 2) { /* add literal -> madak */

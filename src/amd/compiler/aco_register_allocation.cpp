@@ -1735,7 +1735,10 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                if (!def.isFixed() && instr->opcode == aco_opcode::p_parallelcopy)
                   op = instr->operands[i];
                else if ((instr->opcode == aco_opcode::v_mad_f32 ||
-                        (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10)) && !instr->usesModifiers())
+                        (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10) ||
+                        instr->opcode == aco_opcode::v_mad_f16 ||
+                        instr->opcode == aco_opcode::v_mad_legacy_f16 ||
+                        (instr->opcode == aco_opcode::v_fma_f16 && program->chip_class >= GFX10)) && !instr->usesModifiers())
                   op = instr->operands[2];
 
                if (op.isTemp() && op.isFirstKillBeforeDef() && def.regClass() == op.regClass()) {
@@ -2011,13 +2014,19 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
 
          /* try to optimize v_mad_f32 -> v_mac_f32 */
          if ((instr->opcode == aco_opcode::v_mad_f32 ||
-              (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10)) &&
+              (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10) ||
+              instr->opcode == aco_opcode::v_mad_f16 ||
+              instr->opcode == aco_opcode::v_mad_legacy_f16 ||
+              (instr->opcode == aco_opcode::v_fma_f16 && program->chip_class >= GFX10)) &&
              instr->operands[2].isTemp() &&
              instr->operands[2].isKillBeforeDef() &&
              instr->operands[2].getTemp().type() == RegType::vgpr &&
              instr->operands[1].isTemp() &&
              instr->operands[1].getTemp().type() == RegType::vgpr &&
-             !instr->usesModifiers()) {
+             !instr->usesModifiers() &&
+             instr->operands[0].physReg().byte() == 0 &&
+             instr->operands[1].physReg().byte() == 0 &&
+             instr->operands[2].physReg().byte() == 0) {
             unsigned def_id = instr->definitions[0].tempId();
             auto it = ctx.affinities.find(def_id);
             if (it == ctx.affinities.end() || !ctx.assignments[it->second].assigned ||
@@ -2031,6 +2040,13 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                case aco_opcode::v_fma_f32:
                   instr->opcode = aco_opcode::v_fmac_f32;
                   break;
+               case aco_opcode::v_mad_f16:
+               case aco_opcode::v_mad_legacy_f16:
+                  instr->opcode = aco_opcode::v_mac_f16;
+                  break;
+               case aco_opcode::v_fma_f16:
+                  instr->opcode = aco_opcode::v_fmac_f16;
+                  break;
                default:
                   break;
                }
@@ -2041,6 +2057,8 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
          if (instr->opcode == aco_opcode::v_interp_p2_f32 ||
              instr->opcode == aco_opcode::v_mac_f32 ||
              instr->opcode == aco_opcode::v_fmac_f32 ||
+             instr->opcode == aco_opcode::v_mac_f16 ||
+             instr->opcode == aco_opcode::v_fmac_f16 ||
              instr->opcode == aco_opcode::v_writelane_b32 ||
              instr->opcode == aco_opcode::v_writelane_b32_e64) {
             instr->definitions[0].setFixed(instr->operands[2].physReg());
