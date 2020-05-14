@@ -325,6 +325,7 @@ enum vtn_base_type {
    vtn_base_type_image,
    vtn_base_type_sampler,
    vtn_base_type_sampled_image,
+   vtn_base_type_accel_struct,
    vtn_base_type_function,
    vtn_base_type_event,
 };
@@ -492,6 +493,7 @@ enum vtn_variable_mode {
    vtn_variable_mode_input,
    vtn_variable_mode_output,
    vtn_variable_mode_image,
+   vtn_variable_mode_accel_struct,
 };
 
 struct vtn_pointer {

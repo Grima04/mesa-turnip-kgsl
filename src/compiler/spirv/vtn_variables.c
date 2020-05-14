@@ -219,6 +219,8 @@ vk_desc_type_for_mode(struct vtn_builder *b, enum vtn_variable_mode mode)
       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
    case vtn_variable_mode_ssbo:
       return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+   case vtn_variable_mode_accel_struct:
+      return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
    default:
       vtn_fail("Invalid mode for vulkan_resource_index");
    }
@@ -231,7 +233,7 @@ vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
    vtn_assert(b->options->environment == NIR_SPIRV_VULKAN);
 
    if (!desc_array_index) {
-      vtn_assert(glsl_type_is_struct_or_ifc(var->type->type));
+      vtn_assert(var->type->base_type != vtn_base_type_array);
       desc_array_index = nir_imm_int(&b->nb, 0);
    }
 
@@ -311,7 +313,8 @@ vtn_pointer_dereference(struct vtn_builder *b,
    if (base->deref) {
       tail = base->deref;
    } else if (b->options->environment == NIR_SPIRV_VULKAN &&
-              vtn_pointer_is_external_block(b, base)) {
+              (vtn_pointer_is_external_block(b, base) ||
+               base->mode == vtn_variable_mode_accel_struct)) {
       nir_ssa_def *block_index = base->block_index;
 
       /* We dereferencing an external block pointer.  Correctness of this
@@ -339,10 +342,11 @@ vtn_pointer_dereference(struct vtn_builder *b,
        * completley toast.
        */
       nir_ssa_def *desc_arr_idx = NULL;
-      if (!block_index || vtn_type_contains_block(b, type)) {
+      if (!block_index || vtn_type_contains_block(b, type) ||
+          base->mode == vtn_variable_mode_accel_struct) {
          /* If our type contains a block, then we're still outside the block
           * and we need to process enough levels of dereferences to get inside
-          * of it.
+          * of it.  Same applies to acceleration structures.
           */
          if (deref_chain->ptr_as_array) {
             unsigned aoa_size = glsl_get_aoa_size(type->type);
@@ -559,6 +563,21 @@ vtn_local_store(struct vtn_builder *b, struct vtn_ssa_value *src,
    }
 }
 
+static nir_ssa_def *
+vtn_pointer_to_descriptor(struct vtn_builder *b, struct vtn_pointer *ptr)
+{
+   assert(ptr->mode == vtn_variable_mode_accel_struct);
+   if (!ptr->block_index) {
+      struct vtn_access_chain chain = {
+         .length = 0,
+      };
+      ptr = vtn_pointer_dereference(b, ptr, &chain);
+   }
+
+   vtn_assert(ptr->deref == NULL && ptr->block_index != NULL);
+   return vtn_descriptor_load(b, ptr->mode, ptr->block_index);
+}
+
 static void
 _vtn_variable_load_store(struct vtn_builder *b, bool load,
                          struct vtn_pointer *ptr,
@@ -582,6 +601,10 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
          (*inout)->def = vtn_sampled_image_to_nir_ssa(b, si);
          return;
       }
+   } else if (ptr->mode == vtn_variable_mode_accel_struct) {
+      vtn_assert(load);
+      (*inout)->def = vtn_pointer_to_descriptor(b, ptr);
+      return;
    }
 
    enum glsl_base_type base_type = glsl_get_base_type(ptr->type->type);
@@ -1332,8 +1355,19 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
          mode = vtn_variable_mode_constant;
          nir_mode = nir_var_mem_constant;
       } else {
-         mode = vtn_variable_mode_uniform;
-         nir_mode = nir_var_uniform;
+         /* interface_type is only NULL when OpTypeForwardPointer is used and
+          * OpTypeForwardPointer cannot be used with the UniformConstant
+          * storage class.
+          */
+         assert(interface_type != NULL);
+         interface_type = vtn_type_without_array(interface_type);
+         if (interface_type->base_type == vtn_base_type_accel_struct) {
+            mode = vtn_variable_mode_accel_struct;
+            nir_mode = nir_var_uniform;
+         } else {
+            mode = vtn_variable_mode_uniform;
+            nir_mode = nir_var_uniform;
+         }
       }
       break;
    case SpvStorageClassPushConstant:
@@ -1412,6 +1446,9 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
 
    case vtn_variable_mode_constant:
       return b->options->constant_addr_format;
+
+   case vtn_variable_mode_accel_struct:
+      return nir_address_format_64bit_global;
 
    case vtn_variable_mode_function:
       if (b->physical_ptrs)
@@ -1790,6 +1827,10 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       break;
    }
 
+   case vtn_variable_mode_accel_struct:
+      /* These don't need actual variables. */
+      break;
+
    case vtn_variable_mode_image:
    case vtn_variable_mode_phys_ssbo:
    case vtn_variable_mode_generic:
@@ -1846,7 +1887,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    } else if (var->var) {
       nir_shader_add_variable(b->shader, var->var);
    } else {
-      vtn_assert(vtn_pointer_is_external_block(b, val->pointer));
+      vtn_assert(vtn_pointer_is_external_block(b, val->pointer) ||
+                 var->mode == vtn_variable_mode_accel_struct);
    }
 }
 

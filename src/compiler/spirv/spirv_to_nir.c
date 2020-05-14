@@ -749,6 +749,9 @@ vtn_types_compatible(struct vtn_builder *b,
       }
       return true;
 
+   case vtn_base_type_accel_struct:
+      return true;
+
    case vtn_base_type_function:
       /* This case shouldn't get hit since you can't copy around function
        * types.  Just require them to be identical.
@@ -786,6 +789,7 @@ vtn_type_copy(struct vtn_builder *b, struct vtn_type *src)
    case vtn_base_type_sampler:
    case vtn_base_type_sampled_image:
    case vtn_base_type_event:
+   case vtn_base_type_accel_struct:
       /* Nothing more to do */
       break;
 
@@ -1698,6 +1702,11 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
        */
       val->type->type = nir_address_format_to_glsl_type(
          vtn_mode_to_address_format(b, vtn_variable_mode_function));
+      break;
+
+   case SpvOpTypeAccelerationStructureKHR:
+      val->type->base_type = vtn_base_type_accel_struct;
+      val->type->type = glsl_uint64_t_type();
       break;
 
    case SpvOpTypeOpaque:
@@ -4886,6 +4895,7 @@ vtn_handle_variable_or_type_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpTypeReserveId:
    case SpvOpTypeQueue:
    case SpvOpTypePipe:
+   case SpvOpTypeAccelerationStructureKHR:
       vtn_handle_type(b, opcode, w, count);
       break;
 
