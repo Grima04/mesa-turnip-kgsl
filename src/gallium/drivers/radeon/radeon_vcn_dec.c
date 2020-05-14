@@ -34,6 +34,7 @@
 #include "util/u_video.h"
 #include "vl/vl_mpeg12_decoder.h"
 #include "vl/vl_probs_table.h"
+#include "pspdecryptionparam.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -550,6 +551,47 @@ static rvcn_dec_message_vp9_t get_vp9_msg(struct radeon_decoder *dec,
    return result;
 }
 
+static void set_drm_keys(rvcn_dec_message_drm_t *drm, DECRYPT_PARAMETERS *decrypted)
+{
+   int cbc = decrypted->u.s.cbc;
+   int ctr = decrypted->u.s.ctr;
+   int id = decrypted->u.s.drm_id;
+   int ekc = 1;
+   int data1 = 1;
+   int data2 = 1;
+
+   drm->drm_cmd = 0;
+   drm->drm_cntl = 0;
+
+   drm->drm_cntl = 1 << DRM_CNTL_BYPASS_SHIFT;
+
+   if (cbc || ctr) {
+      drm->drm_cntl = 0 << DRM_CNTL_BYPASS_SHIFT;
+      drm->drm_cmd |= 0xff << DRM_CMD_BYTE_MASK_SHIFT;
+
+      if (ctr)
+         drm->drm_cmd |= 0x00 << DRM_CMD_ALGORITHM_SHIFT;
+      else if (cbc)
+         drm->drm_cmd |= 0x02 << DRM_CMD_ALGORITHM_SHIFT;
+
+      drm->drm_cmd |= 1 << DRM_CMD_GEN_MASK_SHIFT;
+      drm->drm_cmd |= ekc << DRM_CMD_UNWRAP_KEY_SHIFT;
+      drm->drm_cmd |= 0 << DRM_CMD_OFFSET_SHIFT;
+      drm->drm_cmd |= data2 << DRM_CMD_CNT_DATA_SHIFT;
+      drm->drm_cmd |= data1 << DRM_CMD_CNT_KEY_SHIFT;
+      drm->drm_cmd |= ekc << DRM_CMD_KEY_SHIFT;
+      drm->drm_cmd |= id << DRM_CMD_SESSION_SEL_SHIFT;
+
+      if (ekc)
+         memcpy(drm->drm_wrapped_key, decrypted->encrypted_key, 16);
+      if (data1)
+         memcpy(drm->drm_key, decrypted->session_iv, 16);
+      if (data2)
+         memcpy(drm->drm_counter, decrypted->encrypted_iv, 16);
+      drm->drm_offset = 0;
+   }
+}
+
 static unsigned calc_ctx_size_h265_main(struct radeon_decoder *dec)
 {
    unsigned width = align(dec->base.width, VL_MACROBLOCK_WIDTH);
@@ -796,29 +838,51 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
                                                  struct pipe_video_buffer *target,
                                                  struct pipe_picture_desc *picture)
 {
+   DECRYPT_PARAMETERS *decrypt = (DECRYPT_PARAMETERS *)picture->decrypt_key;
+   bool encrypted = (DECRYPT_PARAMETERS *)picture->protected_playback;
    struct si_texture *luma = (struct si_texture *)((struct vl_video_buffer *)target)->resources[0];
    struct si_texture *chroma =
       (struct si_texture *)((struct vl_video_buffer *)target)->resources[1];
+   ASSERTED struct si_screen *sscreen = (struct si_screen *)dec->screen;
    rvcn_dec_message_header_t *header;
+   rvcn_dec_message_index_t *index_drm;
    rvcn_dec_message_index_t *index;
    rvcn_dec_message_decode_t *decode;
    unsigned sizes = 0, offset_decode, offset_codec;
+   unsigned int offset_drm;
    void *codec;
+   rvcn_dec_message_drm_t *drm = NULL;
 
    header = dec->msg;
    sizes += sizeof(rvcn_dec_message_header_t);
-   index = (void *)header + sizeof(rvcn_dec_message_header_t);
-   sizes += sizeof(rvcn_dec_message_index_t);
+   if (encrypted) {
+      index_drm = (void*)header + sizeof(rvcn_dec_message_header_t);
+      sizes += sizeof(rvcn_dec_message_index_t);
+      index = (void*)index_drm + sizeof(rvcn_dec_message_index_t);
+      sizes += sizeof(rvcn_dec_message_index_t);
+   } else {
+      index = (void*)header + sizeof(rvcn_dec_message_header_t);
+      sizes += sizeof(rvcn_dec_message_index_t);
+   }
    offset_decode = sizes;
    decode = (void *)index + sizeof(rvcn_dec_message_index_t);
    sizes += sizeof(rvcn_dec_message_decode_t);
+   if (encrypted) {
+      offset_drm = sizes;
+      drm = (void*)decode + sizeof(rvcn_dec_message_decode_t);
+      sizes += sizeof(rvcn_dec_message_drm_t);
+      codec = (void*)drm + sizeof(rvcn_dec_message_drm_t);
+   } else
+      codec = (void*)decode + sizeof(rvcn_dec_message_decode_t);
    offset_codec = sizes;
-   codec = (void *)decode + sizeof(rvcn_dec_message_decode_t);
 
    memset(dec->msg, 0, sizes);
    header->header_size = sizeof(rvcn_dec_message_header_t);
    header->total_size = sizes;
-   header->num_buffers = 2;
+   if (encrypted)
+      header->num_buffers = 3;
+   else
+      header->num_buffers = 2;
    header->msg_type = RDECODE_MSG_DECODE;
    header->stream_handle = dec->stream_handle;
    header->status_report_feedback_number = dec->frame_number;
@@ -827,6 +891,12 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    header->index[0].offset = offset_decode;
    header->index[0].size = sizeof(rvcn_dec_message_decode_t);
    header->index[0].filled = 0;
+   if (encrypted) {
+      index_drm->message_id = RDECODE_MESSAGE_DRM;
+      index_drm->offset = offset_drm;
+      index_drm->size = sizeof(rvcn_dec_message_drm_t);
+      index_drm->filled = 0;
+   }
 
    index->offset = offset_codec;
    index->size = sizeof(rvcn_dec_message_avc_t);
@@ -843,7 +913,12 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       unsigned dpb_size = calc_dpb_size(dec);
       bool r;
       if (dpb_size) {
-         r = si_vid_create_buffer(dec->screen, &dec->dpb, dpb_size, PIPE_USAGE_DEFAULT);
+         if (encrypted) {
+            r = si_vid_create_tmz_buffer(dec->screen, &dec->dpb, dpb_size, PIPE_USAGE_DEFAULT);
+         } else {
+            r = si_vid_create_buffer(dec->screen, &dec->dpb, dpb_size, PIPE_USAGE_DEFAULT);
+         }
+         assert(encrypted == (bool)(dec->dpb.res->flags & RADEON_FLAG_ENCRYPTED));
          if (!r) {
             RVID_ERR("Can't allocated dpb.\n");
             return NULL;
@@ -857,7 +932,12 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       if (dec->stream_type == RDECODE_CODEC_H264_PERF) {
          unsigned ctx_size = calc_ctx_size_h264_perf(dec);
          bool r;
-         r = si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         if (encrypted) {
+            r = si_vid_create_tmz_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         } else {
+            r = si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         }
+         assert(encrypted == (bool)(dec->ctx.res->flags & RADEON_FLAG_ENCRYPTED));
 
          if (!r) {
             RVID_ERR("Can't allocated context buffer.\n");
@@ -888,7 +968,11 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
          if (dec->base.profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
             ctx_size += 8 * 2 * 4096;
 
-         r = si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         if (encrypted) {
+            r = si_vid_create_tmz_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         } else {
+            r = si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         }
          if (!r) {
             RVID_ERR("Can't allocated context buffer.\n");
             return NULL;
@@ -903,14 +987,26 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
          dec->bs_ptr = NULL;
       } else if (fmt == PIPE_VIDEO_FORMAT_HEVC) {
          unsigned ctx_size;
+         bool r;
          if (dec->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
             ctx_size = calc_ctx_size_h265_main10(dec, (struct pipe_h265_picture_desc *)picture);
          else
             ctx_size = calc_ctx_size_h265_main(dec);
-         if (!si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT))
+
+         if (encrypted) {
+            r = si_vid_create_tmz_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         } else {
+            r = si_vid_create_buffer(dec->screen, &dec->ctx, ctx_size, PIPE_USAGE_DEFAULT);
+         }
+         if (!r) {
             RVID_ERR("Can't allocated context buffer.\n");
+            return NULL;
+         }
          si_vid_clear_buffer(dec->base.context, &dec->ctx);
       }
+   }
+   if (encrypted != dec->ws->cs_is_secure(dec->cs)) {
+      dec->ws->cs_flush(dec->cs, RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
    }
 
    decode->dpb_size = dec->dpb.res->buf->size;
@@ -951,6 +1047,11 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    } else {
       decode->dt_luma_bottom_offset = decode->dt_luma_top_offset;
       decode->dt_chroma_bottom_offset = decode->dt_chroma_top_offset;
+   }
+
+   if (encrypted) {
+      assert(sscreen->info.has_tmz_support);
+      set_drm_keys(drm, decrypt);
    }
 
    switch (u_reduce_video_profile(picture->profile)) {
