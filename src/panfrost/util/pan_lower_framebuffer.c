@@ -251,7 +251,71 @@ pan_unpack_unorm_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
         return nir_f2f16(b, unpacked);
 }
 
+/* UNORM 4 is also unpacked to f16, which prevents us from using the shared
+ * unpack which strongly assumes fp32. However, on the tilebuffer it is actually packed as:
+ *      
+ *      [AAAA] [0000] [BBBB] [0000] [GGGG] [0000] [RRRR] [0000] 
+ *
+ * In other words, spacing it out so we're aligned to bytes and on top. So
+ * pack as:
+ *
+ *      pack_32_4x8(f2u8_rte(v * 15.0) << 4)
+ */
+
+static nir_ssa_def *
+pan_pack_unorm_small(nir_builder *b, nir_ssa_def *v,
+                nir_ssa_def *scales, nir_ssa_def *shifts)
+{
+        nir_ssa_def *f = nir_fmul(b, nir_fsat(b, pan_fill_4(b, v)), scales);
+        nir_ssa_def *u8 = nir_f2u8(b, nir_fround_even(b, f));
+        nir_ssa_def *s = nir_ishl(b, u8, shifts);
+        nir_ssa_def *repl = nir_pack_32_4x8(b, s);
+
+        return pan_replicate_4(b, repl);
+}
+
+static nir_ssa_def *
+pan_unpack_unorm_small(nir_builder *b, nir_ssa_def *pack,
+                nir_ssa_def *scales, nir_ssa_def *shifts)
+{
+        nir_ssa_def *channels = nir_unpack_32_4x8(b, nir_channel(b, pack, 0));
+        nir_ssa_def *raw = nir_ushr(b, nir_u2u16(b, channels), shifts);
+        return nir_fmul(b, nir_u2f16(b, raw), scales);
+}
+
+static nir_ssa_def *
+pan_pack_unorm_4(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_pack_unorm_small(b, v,
+                nir_imm_vec4_16(b, 15.0, 15.0, 15.0, 15.0),
+                nir_imm_ivec4(b, 4, 4, 4, 4));
+}
+
+static nir_ssa_def *
+pan_unpack_unorm_4(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_unpack_unorm_small(b, v,
+                        nir_imm_vec4_16(b, 1.0 / 15.0, 1.0 / 15.0, 1.0 / 15.0, 1.0 / 15.0),
+                        nir_imm_ivec4(b, 4, 4, 4, 4));
+}
+
 /* Generic dispatches for un/pack regardless of format */
+
+static bool
+pan_is_unorm4(const struct util_format_description *desc)
+{
+        switch (desc->format) {
+        case PIPE_FORMAT_B4G4R4A4_UNORM:
+        case PIPE_FORMAT_B4G4R4X4_UNORM:
+        case PIPE_FORMAT_A4R4_UNORM:
+        case PIPE_FORMAT_R4A4_UNORM:
+        case PIPE_FORMAT_A4B4G4R4_UNORM:
+                return true;
+        default:
+                return false;
+        }
+ 
+}
 
 static nir_ssa_def *
 pan_unpack(nir_builder *b,
@@ -260,6 +324,9 @@ pan_unpack(nir_builder *b,
 {
         if (util_format_is_unorm8(desc))
                 return pan_unpack_unorm_8(b, packed, desc->nr_channels);
+
+        if (pan_is_unorm4(desc))
+                return pan_unpack_unorm_4(b, packed);
 
         if (desc->is_array) {
                 int c = util_format_get_first_non_void_channel(desc->format);
@@ -291,6 +358,9 @@ pan_pack(nir_builder *b,
 {
         if (util_format_is_unorm8(desc))
                 return pan_pack_unorm_8(b, unpacked);
+
+        if (pan_is_unorm4(desc))
+                return pan_pack_unorm_4(b, unpacked);
 
         if (desc->is_array) {
                 int c = util_format_get_first_non_void_channel(desc->format);
