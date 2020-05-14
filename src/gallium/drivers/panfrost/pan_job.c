@@ -1258,18 +1258,12 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
 
                 pan_pack_color_32(packed, (a1 << 31) | (b5 << 25) | (g5 << 15) | (r5 << 5));
         } else {
-                /* Try Gallium's generic default path. Doesn't work for all
-                 * formats but it's a good guess. */
+                /* Otherwise, it's generic subject to replication */
 
-                union util_color out;
-
-                if (util_format_is_pure_integer(format)) {
-                        memcpy(out.ui, color->ui, 16);
-                } else {
-                        util_pack_color(color->f, format, &out);
-                }
-
+                union util_color out = { 0 };
                 unsigned size = util_format_get_blocksize(format);
+
+                util_pack_color(color->f, format, &out);
 
                 if (size == 1) {
                         unsigned b = out.ui[0];
