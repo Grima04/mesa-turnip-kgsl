@@ -373,6 +373,28 @@ intrinsic("end_primitive_with_counter", src_comp=[1, 1], indices=[STREAM_ID])
 # Contains the final total vertex and primitive counts in the current GS thread.
 intrinsic("set_vertex_and_primitive_count", src_comp=[1, 1], indices=[STREAM_ID])
 
+# Trace a ray through an acceleration structure
+#
+# This instruction has a lot of parameters:
+#   0. Acceleration Structure
+#   1. Ray Flags
+#   2. Cull Mask
+#   3. SBT Offset
+#   4. SBT Stride
+#   5. Miss shader index
+#   6. Ray Origin
+#   7. Ray Tmin
+#   8. Ray Direction
+#   9. Ray Tmax
+#   10. Payload
+intrinsic("trace_ray", src_comp=[-1, 1, 1, 1, 1, 1, 3, 1, 3, 1, -1])
+# src[] = { hit_t, hit_kind }
+intrinsic("report_ray_intersection", src_comp=[1, 1], dest_comp=1)
+intrinsic("ignore_ray_intersection")
+intrinsic("terminate_ray")
+# src[] = { sbt_index, payload }
+intrinsic("execute_callable", src_comp=[1, -1])
+
 # Atomic counters
 #
 # The *_var variants take an atomic_uint nir_variable, while the other,

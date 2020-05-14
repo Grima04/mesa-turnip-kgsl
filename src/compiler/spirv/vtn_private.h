@@ -844,6 +844,9 @@ nir_ssa_def *
 vtn_pointer_to_offset(struct vtn_builder *b, struct vtn_pointer *ptr,
                       nir_ssa_def **index_out);
 
+nir_deref_instr *
+vtn_get_call_payload_for_location(struct vtn_builder *b, uint32_t location_id);
+
 struct vtn_ssa_value *
 vtn_local_load(struct vtn_builder *b, nir_deref_instr *src,
                enum gl_access_qualifier access);

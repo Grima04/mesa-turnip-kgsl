@@ -1944,7 +1944,7 @@ typedef struct {
    unsigned _pad:7;
 } nir_io_semantics;
 
-#define NIR_INTRINSIC_MAX_INPUTS 5
+#define NIR_INTRINSIC_MAX_INPUTS 11
 
 typedef struct {
    const char *name;

@@ -5067,6 +5067,65 @@ vtn_handle_ptr(struct vtn_builder *b, SpvOp opcode,
    vtn_push_nir_ssa(b, w[2], def);
 }
 
+static void
+vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
+                         const uint32_t *w, unsigned count)
+{
+   nir_intrinsic_instr *intrin;
+
+   switch (opcode) {
+   case SpvOpTraceRayKHR: {
+      intrin = nir_intrinsic_instr_create(b->nb.shader,
+                                          nir_intrinsic_trace_ray);
+
+      /* The sources are in the same order in the NIR intrinsic */
+      for (unsigned i = 0; i < 10; i++)
+         intrin->src[i] = nir_src_for_ssa(vtn_ssa_value(b, w[i + 1])->def);
+
+      nir_deref_instr *payload = vtn_get_call_payload_for_location(b, w[11]);
+      intrin->src[10] = nir_src_for_ssa(&payload->dest.ssa);
+      nir_builder_instr_insert(&b->nb, &intrin->instr);
+      break;
+   }
+
+   case SpvOpReportIntersectionKHR: {
+      intrin = nir_intrinsic_instr_create(b->nb.shader,
+                                          nir_intrinsic_report_ray_intersection);
+      intrin->src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[3])->def);
+      intrin->src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[4])->def);
+      nir_ssa_dest_init(&intrin->instr, &intrin->dest, 1, 1, NULL);
+      nir_builder_instr_insert(&b->nb, &intrin->instr);
+      vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
+      break;
+   }
+
+   case SpvOpIgnoreIntersectionKHR:
+      intrin = nir_intrinsic_instr_create(b->nb.shader,
+                                          nir_intrinsic_ignore_ray_intersection);
+      nir_builder_instr_insert(&b->nb, &intrin->instr);
+      break;
+
+   case SpvOpTerminateRayKHR:
+      intrin = nir_intrinsic_instr_create(b->nb.shader,
+                                          nir_intrinsic_terminate_ray);
+      nir_builder_instr_insert(&b->nb, &intrin->instr);
+      break;
+
+   case SpvOpExecuteCallableKHR: {
+      intrin = nir_intrinsic_instr_create(b->nb.shader,
+                                          nir_intrinsic_execute_callable);
+      intrin->src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[1])->def);
+      nir_deref_instr *payload = vtn_get_call_payload_for_location(b, w[2]);
+      intrin->src[1] = nir_src_for_ssa(&payload->dest.ssa);
+      nir_builder_instr_insert(&b->nb, &intrin->instr);
+      break;
+   }
+
+   default:
+      vtn_fail_with_opcode("Unhandled opcode", opcode);
+   }
+}
+
 static bool
 vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
                             const uint32_t *w, unsigned count)
@@ -5475,6 +5534,14 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       vtn_push_nir_ssa(b, w[2], result);
       break;
    }
+
+   case SpvOpTraceRayKHR:
+   case SpvOpReportIntersectionKHR:
+   case SpvOpIgnoreIntersectionKHR:
+   case SpvOpTerminateRayKHR:
+   case SpvOpExecuteCallableKHR:
+      vtn_handle_ray_intrinsic(b, opcode, w, count);
+      break;
 
    case SpvOpLifetimeStart:
    case SpvOpLifetimeStop:

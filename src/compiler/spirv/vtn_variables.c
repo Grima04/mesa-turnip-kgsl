@@ -1716,6 +1716,18 @@ assign_missing_member_locations(struct vtn_variable *var)
    }
 }
 
+nir_deref_instr *
+vtn_get_call_payload_for_location(struct vtn_builder *b, uint32_t location_id)
+{
+   uint32_t location = vtn_constant_uint(b, location_id);
+   nir_foreach_variable_with_modes(var, b->nb.shader, nir_var_shader_temp) {
+      if (var->data.explicit_location &&
+          var->data.location == location)
+         return nir_build_deref_var(&b->nb, var);
+   }
+   vtn_fail("Couldn't find variable with a storage class of CallableDataKHR "
+            "or RayPayloadKHR and location %d", location);
+}
 
 static void
 vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
@@ -1813,6 +1825,14 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
       var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
+
+      /* This is a total hack but we need some way to flag variables which are
+       * going to be call payloads.  See get_call_payload_deref.
+       */
+      if (storage_class == SpvStorageClassCallableDataKHR ||
+          storage_class == SpvStorageClassRayPayloadKHR)
+         var->var->data.explicit_location = true;
+
       var->var->data.mode = nir_mode;
       var->var->data.location = -1;
       var->var->interface_type = NULL;
