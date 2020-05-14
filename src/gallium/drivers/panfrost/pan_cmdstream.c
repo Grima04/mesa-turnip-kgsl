@@ -553,20 +553,20 @@ panfrost_frag_meta_rasterizer_update(struct panfrost_context *ctx,
                 return;
         }
 
-        bool msaa = ctx->rasterizer->base.multisample;
+        struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
+
+        bool msaa = rast->multisample;
 
         /* TODO: Sample size */
         SET_BIT(fragmeta->unknown2_3, MALI_HAS_MSAA, msaa);
         SET_BIT(fragmeta->unknown2_4, MALI_NO_MSAA, !msaa);
-        fragmeta->depth_units = ctx->rasterizer->base.offset_units * 2.0f;
-        fragmeta->depth_factor = ctx->rasterizer->base.offset_scale;
+        fragmeta->depth_units = rast->offset_units * 2.0f;
+        fragmeta->depth_factor = rast->offset_scale;
 
         /* XXX: Which bit is which? Does this maybe allow offseting not-tri? */
 
-        SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_A,
-                ctx->rasterizer->base.offset_tri);
-        SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_B,
-                ctx->rasterizer->base.offset_tri);
+        SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_A, rast->offset_tri);
+        SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_B, rast->offset_tri);
 }
 
 static void
