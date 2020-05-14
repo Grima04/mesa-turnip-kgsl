@@ -987,7 +987,7 @@ typedef struct {
  * The values in this enum are carefully chosen so that the sized type is
  * just the unsized type OR the number of bits.
  */
-typedef enum {
+typedef enum PACKED {
    nir_type_invalid = 0, /* Not a valid type */
    nir_type_int =       2,
    nir_type_uint =      4,
@@ -1217,7 +1217,7 @@ typedef enum {
 typedef struct {
    const char *name;
 
-   unsigned num_inputs;
+   uint8_t num_inputs;
 
    /**
     * The number of components in the output
@@ -1236,7 +1236,7 @@ typedef struct {
     * though output_size is zero; in that case, the inputs with a zero
     * size act per-component, while the inputs with non-zero size don't.
     */
-   unsigned output_size;
+   uint8_t output_size;
 
    /**
     * The type of vector that the instruction outputs. Note that the
@@ -1248,7 +1248,7 @@ typedef struct {
    /**
     * The number of components in each input
     */
-   unsigned input_sizes[NIR_MAX_VEC_COMPONENTS];
+   uint8_t input_sizes[NIR_MAX_VEC_COMPONENTS];
 
    /**
     * The type of vector that each input takes. Note that negate and
@@ -1703,7 +1703,7 @@ typedef enum {
 typedef struct {
    const char *name;
 
-   unsigned num_srcs; /** < number of register/SSA inputs */
+   uint8_t num_srcs; /** < number of register/SSA inputs */
 
    /** number of components of each input register
     *
@@ -1712,7 +1712,7 @@ typedef struct {
     * intrinsic consumes however many components are provided and it is not
     * validated at all.
     */
-   int src_components[NIR_INTRINSIC_MAX_INPUTS];
+   int8_t src_components[NIR_INTRINSIC_MAX_INPUTS];
 
    bool has_dest;
 
@@ -1721,16 +1721,16 @@ typedef struct {
     * If this value is 0, the number of components is given by the
     * num_components field of nir_intrinsic_instr.
     */
-   unsigned dest_components;
+   uint8_t dest_components;
 
    /** bitfield of legal bit sizes */
-   unsigned dest_bit_sizes;
+   uint8_t dest_bit_sizes;
 
    /** the number of constant indices used by the intrinsic */
-   unsigned num_indices;
+   uint8_t num_indices;
 
    /** indicates the usage of intr->const_index[n] */
-   unsigned index_map[NIR_INTRINSIC_NUM_INDEX_FLAGS];
+   uint8_t index_map[NIR_INTRINSIC_NUM_INDEX_FLAGS];
 
    /** semantic flags for calls to this intrinsic */
    nir_intrinsic_semantic_flag flags;
