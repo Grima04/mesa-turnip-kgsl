@@ -182,6 +182,7 @@ struct mir_op_props alu_opcode_props[256] = {
 struct mir_ldst_op_props load_store_opcode_props[256] = {
         [midgard_op_unpack_colour] = {"unpack_colour", M32},
         [midgard_op_pack_colour] = {"pack_colour", M32},
+        [midgard_op_pack_colour_32] = {"pack_colour_32", M32},
         [midgard_op_ld_cubemap_coords] = {"ld_cubemap_coords", M32},
         [midgard_op_ld_compute_id] = {"ld_compute_id", M32},
         [midgard_op_ldst_perspective_division_z] = {"ldst_perspective_division_z", M32},
