@@ -299,6 +299,40 @@ pan_unpack_unorm_4(nir_builder *b, nir_ssa_def *v)
                         nir_imm_ivec4(b, 4, 4, 4, 4));
 }
 
+/* UNORM RGB5_A1 and RGB565 are similar */
+
+static nir_ssa_def *
+pan_pack_unorm_5551(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_pack_unorm_small(b, v,
+                        nir_imm_vec4_16(b, 31.0, 31.0, 31.0, 1.0),
+                        nir_imm_ivec4(b, 3, 3, 3, 7));
+}
+
+static nir_ssa_def *
+pan_unpack_unorm_5551(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_unpack_unorm_small(b, v,
+                        nir_imm_vec4_16(b, 1.0 / 31.0, 1.0 / 31.0, 1.0 / 31.0, 1.0),
+                        nir_imm_ivec4(b, 3, 3, 3, 7));
+}
+
+static nir_ssa_def *
+pan_pack_unorm_565(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_pack_unorm_small(b, v,
+                        nir_imm_vec4_16(b, 31.0, 63.0, 31.0, 0.0),
+                        nir_imm_ivec4(b, 3, 2, 3, 0));
+}
+
+static nir_ssa_def *
+pan_unpack_unorm_565(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_unpack_unorm_small(b, v,
+                        nir_imm_vec4_16(b, 1.0 / 31.0, 1.0 / 63.0, 1.0 / 31.0, 0.0),
+                        nir_imm_ivec4(b, 3, 2, 3, 0));
+}
+
 /* Generic dispatches for un/pack regardless of format */
 
 static bool
@@ -347,6 +381,15 @@ pan_unpack(nir_builder *b,
                 }
         }
 
+        switch (desc->format) {
+        case PIPE_FORMAT_B5G5R5A1_UNORM:
+                return pan_unpack_unorm_5551(b, packed);
+        case PIPE_FORMAT_B5G6R5_UNORM:
+                return pan_unpack_unorm_565(b, packed);
+        default:
+                break;
+        }
+
         fprintf(stderr, "%s\n", desc->name);
         unreachable("Unknown format");
 }
@@ -379,6 +422,15 @@ pan_pack(nir_builder *b,
                 } else {
                         unreachable("Unrenderable size");
                 }
+        }
+
+        switch (desc->format) {
+        case PIPE_FORMAT_B5G5R5A1_UNORM:
+                return pan_pack_unorm_5551(b, unpacked);
+        case PIPE_FORMAT_B5G6R5_UNORM:
+                return pan_pack_unorm_565(b, unpacked);
+        default:
+                break;
         }
 
         fprintf(stderr, "%s\n", desc->name);
