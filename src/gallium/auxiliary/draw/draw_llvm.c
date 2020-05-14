@@ -1891,8 +1891,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
 
    memset(&system_values, 0, sizeof(system_values));
    memset(&outputs, 0, sizeof(outputs));
-   snprintf(func_name, sizeof(func_name), "draw_llvm_vs_variant%u",
-            variant->shader->variants_cached);
+   snprintf(func_name, sizeof(func_name), "draw_llvm_vs_variant");
 
    i = 0;
    arg_types[i++] = get_context_ptr_type(variant);       /* context */
@@ -2693,8 +2692,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    memset(&system_values, 0, sizeof(system_values));
    memset(&outputs, 0, sizeof(outputs));
 
-   snprintf(func_name, sizeof(func_name), "draw_llvm_gs_variant%u",
-            variant->shader->variants_cached);
+   snprintf(func_name, sizeof(func_name), "draw_llvm_gs_variant");
 
    assert(variant->vertex_header_ptr_type);
 
@@ -3230,11 +3228,9 @@ draw_tcs_llvm_generate(struct draw_llvm *llvm,
 
    memset(&system_values, 0, sizeof(system_values));
 
-   snprintf(func_name, sizeof(func_name), "draw_llvm_tcs_variant%u",
-            variant->shader->variants_cached);
+   snprintf(func_name, sizeof(func_name), "draw_llvm_tcs_variant");
 
-   snprintf(func_name_coro, sizeof(func_name_coro), "draw_llvm_tcs_coro_variant%u",
-            variant->shader->variants_cached);
+   snprintf(func_name_coro, sizeof(func_name_coro), "draw_llvm_tcs_coro_variant");
 
    arg_types[0] = get_tcs_context_ptr_type(variant);    /* context */
    arg_types[1] = variant->input_array_type;           /* input */
@@ -3762,8 +3758,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    memset(&system_values, 0, sizeof(system_values));
    memset(&outputs, 0, sizeof(outputs));
 
-   snprintf(func_name, sizeof(func_name), "draw_llvm_tes_variant%u",
-            variant->shader->variants_cached);
+   snprintf(func_name, sizeof(func_name), "draw_llvm_tes_variant");
 
    arg_types[0] = get_tes_context_ptr_type(variant);    /* context */
    arg_types[1] = variant->input_array_type;           /* input */

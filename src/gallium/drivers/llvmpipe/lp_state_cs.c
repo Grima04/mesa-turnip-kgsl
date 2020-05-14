@@ -96,11 +96,9 @@ generate_compute(struct llvmpipe_context *lp,
    cs_type.norm = FALSE;         /* values are not limited to [0,1] or [-1,1] */
    cs_type.width = 32;           /* 32-bit float */
    cs_type.length = MIN2(lp_native_vector_width / 32, 16); /* n*4 elements per vector */
-   snprintf(func_name, sizeof(func_name), "cs%u_variant%u",
-            shader->no, variant->no);
+   snprintf(func_name, sizeof(func_name), "cs_variant");
 
-   snprintf(func_name_coro, sizeof(func_name), "cs_co_%u_variant%u",
-            shader->no, variant->no);
+   snprintf(func_name_coro, sizeof(func_name), "cs_co_variant");
 
    arg_types[0] = variant->jit_cs_context_ptr_type;       /* context */
    arg_types[1] = int32_type;                          /* block_x_size */

@@ -2816,8 +2816,8 @@ generate_fragment(struct llvmpipe_context *lp,
 
    blend_vec_type = lp_build_vec_type(gallivm, blend_type);
 
-   snprintf(func_name, sizeof(func_name), "fs%u_variant%u_%s",
-            shader->no, variant->no, partial_mask ? "partial" : "whole");
+   snprintf(func_name, sizeof(func_name), "fs_variant_%s",
+            partial_mask ? "partial" : "whole");
 
    arg_types[0] = variant->jit_context_ptr_type;       /* context */
    arg_types[1] = int32_type;                          /* x */
