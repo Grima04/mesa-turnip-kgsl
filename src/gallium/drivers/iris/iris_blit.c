@@ -328,8 +328,7 @@ iris_resource_blorp_write_aux_usage(struct iris_context *ice,
       assert(render_format == res->surf.format);
       return res->aux.usage;
    } else {
-      return iris_resource_render_aux_usage(ice, res, render_format,
-                                            false, false);
+      return iris_resource_render_aux_usage(ice, res, render_format, false);
    }
 }
 

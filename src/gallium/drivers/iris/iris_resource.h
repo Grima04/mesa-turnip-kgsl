@@ -500,7 +500,6 @@ bool iris_render_formats_color_compatible(enum isl_format a,
 enum isl_aux_usage iris_resource_render_aux_usage(struct iris_context *ice,
                                                   struct iris_resource *res,
                                                   enum isl_format render_fmt,
-                                                  bool blend_enabled,
                                                   bool draw_aux_disabled);
 void iris_resource_prepare_render(struct iris_context *ice,
                                   struct iris_batch *batch,

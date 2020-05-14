@@ -229,8 +229,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
       }
    }
 
-   if ((ice->state.dirty & IRIS_DIRTY_BLEND_STATE) ||
-       (ice->state.stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_FS)) {
+   if (ice->state.stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_FS) {
       for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
          struct iris_surface *surf = (void *) cso_fb->cbufs[i];
          if (!surf)
@@ -240,7 +239,6 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
 
          enum isl_aux_usage aux_usage =
             iris_resource_render_aux_usage(ice, res, surf->view.format,
-                                           ice->state.blend_enables & (1u << i),
                                            draw_aux_buffer_disabled[i]);
 
          if (ice->state.draw_aux_usage[i] != aux_usage) {
@@ -310,8 +308,7 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
    }
 
    bool may_have_resolved_color =
-      (ice->state.dirty & IRIS_DIRTY_BLEND_STATE) ||
-      (ice->state.stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_FS);
+      ice->state.stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_FS;
 
    for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
       struct iris_surface *surf = (void *) cso_fb->cbufs[i];
@@ -1009,7 +1006,6 @@ enum isl_aux_usage
 iris_resource_render_aux_usage(struct iris_context *ice,
                                struct iris_resource *res,
                                enum isl_format render_format,
-                               bool blend_enabled,
                                bool draw_aux_disabled)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
@@ -1025,15 +1021,6 @@ iris_resource_render_aux_usage(struct iris_context *ice,
 
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
-      /* Gen9+ hardware technically supports non-0/1 clear colors with sRGB
-       * formats.  However, there are issues with blending where it doesn't
-       * properly apply the sRGB curve to the clear color when blending.
-       */
-      if (devinfo->gen >= 9 && blend_enabled &&
-          isl_format_is_srgb(render_format) &&
-          !isl_color_value_is_zero_one(res->aux.clear_color, render_format))
-         return ISL_AUX_USAGE_NONE;
-
       /* Disable CCS for some cases of texture-view rendering. On gen12, HW
        * may convert some subregions of shader output to fast-cleared blocks
        * if CCS is enabled and the shader output matches the clear color.

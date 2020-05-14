@@ -670,9 +670,6 @@ struct iris_context {
 
       enum gen_urb_deref_block_size urb_deref_block_size;
 
-      /** Bitfield of whether color blending is enabled for RT[i] */
-      uint8_t blend_enables;
-
       /** Are depth writes enabled?  (Depth buffer may or may not exist.) */
       bool depth_writes_enabled;
 
