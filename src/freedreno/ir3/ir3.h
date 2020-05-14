@@ -324,7 +324,6 @@ struct ir3_instruction {
 	 */
 	struct set *uses;
 
-	int sun;            /* Sethi–Ullman number, used by sched */
 	int use_count;      /* currently just updated/used by cp */
 
 	/* Used during CP and RA stages.  For collect and shader inputs/
@@ -481,8 +480,6 @@ struct ir3 {
 
 	/* List of ir3_array's: */
 	struct list_head array_list;
-
-	unsigned max_sun;   /* max Sethi–Ullman number */
 
 #ifdef DEBUG
 	unsigned block_count, instr_count;
@@ -1205,9 +1202,6 @@ void ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so);
 
 /* group neighbors and insert mov's to resolve conflicts: */
 void ir3_group(struct ir3 *ir);
-
-/* Sethi–Ullman numbering: */
-void ir3_sun(struct ir3 *ir);
 
 /* scheduling: */
 void ir3_sched_add_deps(struct ir3 *ir);

@@ -3583,9 +3583,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 	ir3_debug_print(ir, "AFTER DCE");
 
-	/* do Sethi–Ullman numbering before scheduling: */
-	ir3_sun(ir);
-
 	ret = ir3_sched(ir);
 	if (ret) {
 		DBG("SCHED failed!");
@@ -3747,8 +3744,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	/* Note that actual_in counts inputs that are not bary.f'd for FS: */
 	if (so->type == MESA_SHADER_FRAGMENT)
 		so->total_in = max_bary + 1;
-
-	so->max_sun = ir->max_sun;
 
 	/* Collect sampling instructions eligible for pre-dispatch. */
 	collect_tex_prefetches(ctx, ir);
