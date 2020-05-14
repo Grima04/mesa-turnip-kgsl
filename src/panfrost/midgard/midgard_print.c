@@ -221,7 +221,13 @@ mir_print_constant_component(FILE *fp, const midgard_constants *consts, unsigned
                 break;
 
         case midgard_reg_mode_8:
-                unreachable("XXX TODO: sort out how 8-bit constant encoding works");
+                fprintf(fp, "0x%X", consts->u8[c]);
+
+                if (mod)
+                        fprintf(fp, " /* %u */", mod);
+
+                assert(!half); /* No 4-bit */
+
                 break;
         }
 }
