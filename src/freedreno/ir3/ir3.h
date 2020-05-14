@@ -1204,7 +1204,7 @@ bool ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so);
 void ir3_group(struct ir3 *ir);
 
 /* scheduling: */
-void ir3_sched_add_deps(struct ir3 *ir);
+bool ir3_sched_add_deps(struct ir3 *ir);
 int ir3_sched(struct ir3 *ir);
 
 struct ir3_context;

@@ -1202,20 +1202,19 @@ add_barrier_deps(struct ir3_block *block, struct ir3_instruction *instr)
  *  (2) reads that come before a write actually get scheduled before the
  *      write
  */
-static void
-calculate_deps(struct ir3_block *block)
-{
-	foreach_instr (instr, &block->instr_list) {
-		if (instr->barrier_class) {
-			add_barrier_deps(block, instr);
-		}
-	}
-}
-
-void
+bool
 ir3_sched_add_deps(struct ir3 *ir)
 {
+	bool progress = false;
+
 	foreach_block (block, &ir->block_list) {
-		calculate_deps(block);
+		foreach_instr (instr, &block->instr_list) {
+			if (instr->barrier_class) {
+				add_barrier_deps(block, instr);
+				progress = true;
+			}
+		}
 	}
+
+	return progress;
 }
