@@ -77,23 +77,23 @@ rewrite_uses(struct ir3_instruction *conv, struct ir3_instruction *replace)
 	}
 }
 
-static void
+static bool
 try_conversion_folding(struct ir3_instruction *conv)
 {
 	struct ir3_instruction *src;
 
 	if (!is_fp16_conv(conv))
-		return;
+		return false;
 
 	src = ssa(conv->regs[1]);
 	if (!is_alu(src))
-		return;
+		return false;
 
 	/* avoid folding f2f32(f2f16) together, in cases where this is legal to
 	 * do (glsl) nir should have handled that for us already:
 	 */
 	if (is_fp16_conv(src))
-		return;
+		return false;
 
 	switch (src->opc) {
 	case OPC_SEL_B32:
@@ -102,20 +102,20 @@ try_conversion_folding(struct ir3_instruction *conv)
 	case OPC_MIN_F:
 	case OPC_SIGN_F:
 	case OPC_ABSNEG_F:
-		return;
+		return false;
 	case OPC_MOV:
 		/* if src is a "cov" and type doesn't match, then it can't be folded
 		 * for example cov.u32u16+cov.f16f32 can't be folded to cov.u32f32
 		 */
 		if (src->cat1.dst_type != src->cat1.src_type &&
 			conv->cat1.src_type != src->cat1.dst_type)
-			return;
+			return false;
 	default:
 		break;
 	}
 
 	if (!all_uses_fp16_conv(src))
-		return;
+		return false;
 
 	if (src->opc == OPC_MOV) {
 		if (src->cat1.dst_type == src->cat1.src_type) {
@@ -141,20 +141,25 @@ try_conversion_folding(struct ir3_instruction *conv)
 	}
 
 	rewrite_uses(conv, src);
+
+	return true;
 }
 
-void
+bool
 ir3_cf(struct ir3 *ir)
 {
 	void *mem_ctx = ralloc_context(NULL);
+	bool progress = false;
 
 	ir3_find_ssa_uses(ir, mem_ctx, false);
 
 	foreach_block (block, &ir->block_list) {
 		foreach_instr_safe (instr, &block->instr_list) {
-			try_conversion_folding(instr);
+			progress |= try_conversion_folding(instr);
 		}
 	}
 
 	ralloc_free(mem_ctx);
+
+	return progress;
 }

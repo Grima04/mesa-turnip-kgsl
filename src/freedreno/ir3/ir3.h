@@ -1195,7 +1195,7 @@ struct ir3_shader_variant;
 bool ir3_dce(struct ir3 *ir, struct ir3_shader_variant *so);
 
 /* fp16 conversion folding */
-void ir3_cf(struct ir3 *ir);
+bool ir3_cf(struct ir3 *ir);
 
 /* copy-propagate: */
 void ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so);
