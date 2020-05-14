@@ -30,7 +30,10 @@ stages:
     # automatically once all dependency jobs have passed
     - changes: &all_paths
       - VERSION
-      - bin/**/*
+      - bin/git_sha1_gen.py
+      - bin/install_megadrivers.py
+      - bin/meson_get_version.py
+      - bin/symbols-check.py
       # GitLab CI
       - .gitlab-ci.yml
       - .gitlab-ci/**/*
