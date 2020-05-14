@@ -1259,6 +1259,86 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       &state->pass->subpasses[state->subpass_idx];
 
    bool has_stores = false;
+   bool use_per_buffer_clear = true;
+
+   /* FIXME: separate stencil */
+   uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
+   if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
+      const struct v3dv_render_pass_attachment *ds_attachment =
+         &state->pass->attachments[ds_attachment_idx];
+
+      assert(state->job->first_subpass >= ds_attachment->first_subpass);
+      assert(state->subpass_idx >= ds_attachment->first_subpass);
+      assert(state->subpass_idx <= ds_attachment->last_subpass);
+
+      /* From the Vulkan spec, VkImageSubresourceRange:
+       *
+       *   "When an image view of a depth/stencil image is used as a
+       *   depth/stencil framebuffer attachment, the aspectMask is ignored
+       *   and both depth and stencil image subresources are used."
+       *
+       * So we ignore the aspects from the subresource range of the image view
+       * for the depth/stencil attachment, but we still need to restrict this
+       * to aspects that actually exist in the image.
+       */
+      const VkImageAspectFlags aspects =
+         vk_format_aspects(ds_attachment->desc.format);
+
+      /* Only clear once on the first subpass that uses the attachment */
+      bool needs_depth_clear =
+         (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+         state->tile_aligned_render_area &&
+         state->job->first_subpass == ds_attachment->first_subpass &&
+         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+         !state->job->is_subpass_continue;
+
+      bool needs_stencil_clear =
+         (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+         state->tile_aligned_render_area &&
+         state->job->first_subpass == ds_attachment->first_subpass &&
+         ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+         !state->job->is_subpass_continue;
+
+      /* Skip the last store if it is not required  */
+      bool needs_depth_store =
+         (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+         (state->subpass_idx < ds_attachment->last_subpass ||
+          ds_attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
+          needs_depth_clear ||
+          !state->job->is_subpass_finish);
+
+      bool needs_stencil_store =
+         (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+         (state->subpass_idx < ds_attachment->last_subpass ||
+          ds_attachment->desc.stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE ||
+          needs_stencil_clear ||
+          !state->job->is_subpass_finish);
+
+      /* GFXH-1461/GFXH-1689: The per-buffer store command's clear
+       * buffer bit is broken for depth/stencil.  In addition, the
+       * clear packet's Z/S bit is broken, but the RTs bit ends up
+       * clearing Z/S.
+       *
+       * So if we have to emit a clear of depth or stencil we don't use
+       * per-buffer clears, not even for color, since we will have to emit
+       * a clear command for all tile buffers (including color) to handle
+       * the depth/stencil clears.
+       *
+       * Note that this bug is not reproduced in the simulator, where
+       * using the clear buffer bit in depth/stencil stores seems to work
+       * correctly.
+       */
+      use_per_buffer_clear = !needs_stencil_clear && !needs_depth_clear;
+      bool needs_ds_store = needs_stencil_store || needs_depth_store;
+      if (needs_ds_store) {
+         uint32_t zs_buffer = v3dv_zs_buffer_from_aspect_bits(aspects);
+         cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
+                                           ds_attachment_idx, layer,
+                                           zs_buffer, false);
+         has_stores = true;
+      }
+   }
+
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
 
@@ -1290,85 +1370,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            attachment_idx, layer,
                                            RENDER_TARGET_0 + i,
-                                           needs_clear);
-         has_stores = true;
-      }
-   }
-
-   /* FIXME: separate stencil
-    *
-    * GFXH-1461/GFXH-1689: The per-buffer store command's clear
-    * buffer bit is broken for depth/stencil.  In addition, the
-    * clear packet's Z/S bit is broken, but the RTs bit ends up
-    * clearing Z/S.
-    *
-    * This means that when we implement depth/stencil clearing we
-    * need to emit a separate clear before we start the render pass,
-    * since the RTs bit is for clearing all render targets, and we might
-    * not want to do that. We might want to consider emitting clears for
-    * all RTs needing clearing just once ahead of the first subpass.
-    */
-   bool needs_depth_clear = false;
-   bool needs_stencil_clear = false;
-   uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
-   if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
-      const struct v3dv_render_pass_attachment *ds_attachment =
-         &state->pass->attachments[ds_attachment_idx];
-
-      assert(state->job->first_subpass >= ds_attachment->first_subpass);
-      assert(state->subpass_idx >= ds_attachment->first_subpass);
-      assert(state->subpass_idx <= ds_attachment->last_subpass);
-
-      /* From the Vulkan spec, VkImageSubresourceRange:
-       *
-       *   "When an image view of a depth/stencil image is used as a
-       *   depth/stencil framebuffer attachment, the aspectMask is ignored
-       *   and both depth and stencil image subresources are used."
-       *
-       * So we ignore the aspects from the subresource range of the image view
-       * for the depth/stencil attachment, but we still need to restrict this
-       * to aspects that actually exist in the image.
-       */
-      const VkImageAspectFlags aspects =
-         vk_format_aspects(ds_attachment->desc.format);
-
-      /* Only clear once on the first subpass that uses the attachment */
-      needs_depth_clear =
-         (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
-         state->tile_aligned_render_area &&
-         state->job->first_subpass == ds_attachment->first_subpass &&
-         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         !state->job->is_subpass_continue;
-
-      needs_stencil_clear =
-         (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
-         state->tile_aligned_render_area &&
-         state->job->first_subpass == ds_attachment->first_subpass &&
-         ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         !state->job->is_subpass_continue;
-
-      /* Skip the last store if it is not required  */
-      bool needs_depth_store =
-         (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
-         (state->subpass_idx < ds_attachment->last_subpass ||
-          ds_attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
-          needs_depth_clear ||
-          !state->job->is_subpass_finish);
-
-      bool needs_stencil_store =
-         (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
-         (state->subpass_idx < ds_attachment->last_subpass ||
-          ds_attachment->desc.stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE ||
-          needs_stencil_clear ||
-          !state->job->is_subpass_finish);
-
-      bool needs_ds_clear = needs_stencil_clear || needs_depth_clear;
-      bool needs_ds_store = needs_stencil_store || needs_depth_store;
-      if (needs_ds_store) {
-         uint32_t zs_buffer = v3dv_zs_buffer_from_aspect_bits(aspects);
-         cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
-                                           ds_attachment_idx, layer,
-                                           zs_buffer, needs_ds_clear);
+                                           needs_clear && use_per_buffer_clear);
          has_stores = true;
       }
    }
@@ -1380,8 +1382,10 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
-   /* FIXME: see fixme remark for depth/stencil above */
-   if (needs_depth_clear && needs_stencil_clear) {
+   /* If we have any depth/stencil clears we can't use the per-buffer clear
+    * bit and instead we have to emit a single clear of all tile buffers.
+    */
+   if (!use_per_buffer_clear) {
       cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
          clear.clear_z_stencil_buffer = true;
          clear.clear_all_render_targets = true;
