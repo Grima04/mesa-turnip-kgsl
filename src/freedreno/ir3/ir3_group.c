@@ -139,45 +139,53 @@ restart:
 	}
 }
 
-static void
+static bool
 instr_find_neighbors(struct ir3_instruction *instr)
 {
 	struct ir3_instruction *src;
+	bool progress = false;
 
 	if (ir3_instr_check_mark(instr))
-		return;
+		return false;
 
-	if (instr->opc == OPC_META_COLLECT)
+	if (instr->opc == OPC_META_COLLECT) {
 		group_collect(instr);
+		progress = true;
+	}
 
 	foreach_ssa_src (src, instr)
-		instr_find_neighbors(src);
+		progress |= instr_find_neighbors(src);
+
+	return progress;
 }
 
-static void
+static bool
 find_neighbors(struct ir3 *ir)
 {
+	bool progress = false;
 	unsigned i;
 
 	struct ir3_instruction *out;
 	foreach_output (out, ir)
-		instr_find_neighbors(out);
+		progress |= instr_find_neighbors(out);
 
 	foreach_block (block, &ir->block_list) {
 		for (i = 0; i < block->keeps_count; i++) {
 			struct ir3_instruction *instr = block->keeps[i];
-			instr_find_neighbors(instr);
+			progress |= instr_find_neighbors(instr);
 		}
 
 		/* We also need to account for if-condition: */
 		if (block->condition)
-			instr_find_neighbors(block->condition);
+			progress |= instr_find_neighbors(block->condition);
 	}
+
+	return progress;
 }
 
-void
+bool
 ir3_group(struct ir3 *ir)
 {
 	ir3_clear_mark(ir);
-	find_neighbors(ir);
+	return find_neighbors(ir);
 }

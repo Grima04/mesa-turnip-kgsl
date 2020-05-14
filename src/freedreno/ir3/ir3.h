@@ -1201,7 +1201,7 @@ bool ir3_cf(struct ir3 *ir);
 bool ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so);
 
 /* group neighbors and insert mov's to resolve conflicts: */
-void ir3_group(struct ir3 *ir);
+bool ir3_group(struct ir3 *ir);
 
 /* scheduling: */
 bool ir3_sched_add_deps(struct ir3 *ir);
