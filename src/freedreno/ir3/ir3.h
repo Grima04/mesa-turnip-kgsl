@@ -1179,6 +1179,13 @@ check_src_cond(struct ir3_instruction *instr, bool (*cond)(struct ir3_instructio
 	return false;
 }
 
+#define IR3_PASS(ir, pass, ...) ({ \
+		bool progress = pass(ir, ##__VA_ARGS__); \
+		if (progress) \
+			ir3_debug_print(ir, "AFTER: " #pass); \
+		progress; \
+	})
+
 /* dump: */
 void ir3_print(struct ir3 *ir);
 void ir3_print_instr(struct ir3_instruction *instr);

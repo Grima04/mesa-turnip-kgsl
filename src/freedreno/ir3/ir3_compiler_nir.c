@@ -3528,13 +3528,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
 	ir3_debug_print(ir, "AFTER: nir->ir3");
 
-	ir3_cf(ir);
-
-	ir3_debug_print(ir, "AFTER: ir3_cf");
-
-	ir3_cp(ir, so);
-
-	ir3_debug_print(ir, "AFTER: ir3_cp");
+	IR3_PASS(ir, ir3_cf);
+	IR3_PASS(ir, ir3_cp, so);
 
 	/* at this point, for binning pass, throw away unneeded outputs:
 	 * Note that for a6xx and later, we do this after ir3_cp to ensure
@@ -3571,20 +3566,14 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	}
 
 
-	ir3_sched_add_deps(ir);
-
-	ir3_debug_print(ir, "AFTER: ir3_sched_add_deps");
+	IR3_PASS(ir, ir3_sched_add_deps);
 
 	/* Group left/right neighbors, inserting mov's where needed to
 	 * solve conflicts:
 	 */
-	ir3_group(ir);
+	IR3_PASS(ir, ir3_group);
 
-	ir3_debug_print(ir, "AFTER: ir3_group");
-
-	ir3_dce(ir, so);
-
-	ir3_debug_print(ir, "AFTER: ir3_dce");
+	IR3_PASS(ir, ir3_dce, so);
 
 	ret = ir3_sched(ir);
 	if (ret) {
@@ -3664,13 +3653,10 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	ir3_postsched(ir);
-	ir3_debug_print(ir, "AFTER: ir3_postsched");
+	IR3_PASS(ir, ir3_postsched);
 
 	if (compiler->gpu_id >= 600) {
-		if (ir3_a6xx_fixup_atomic_dests(ir, so)) {
-			ir3_debug_print(ir, "AFTER: ir3_a6xx_fixup_atomic_dests");
-		}
+		IR3_PASS(ir, ir3_a6xx_fixup_atomic_dests, so);
 	}
 
 	if (so->type == MESA_SHADER_FRAGMENT)
@@ -3725,9 +3711,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	/* We need to do legalize after (for frag shader's) the "bary.f"
 	 * offsets (inloc) have been assigned.
 	 */
-	ir3_legalize(ir, so, &max_bary);
-
-	ir3_debug_print(ir, "AFTER: ir3_legalize");
+	IR3_PASS(ir, ir3_legalize, so, &max_bary);
 
 	/* Set (ss)(sy) on first TCS and GEOMETRY instructions, since we don't
 	 * know what we might have to wait on when coming in from VS chsh.
