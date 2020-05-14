@@ -707,7 +707,7 @@ nop_sched(struct ir3 *ir)
 	}
 }
 
-void
+bool
 ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 {
 	struct ir3_legalize_ctx *ctx = rzalloc(ir, struct ir3_legalize_ctx);
@@ -747,4 +747,6 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 	mark_xvergence_points(ir);
 
 	ralloc_free(ctx);
+
+	return true;
 }
