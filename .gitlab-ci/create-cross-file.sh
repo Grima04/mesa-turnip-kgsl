@@ -11,3 +11,24 @@ if [ "$arch" = "i386" ]; then
 fi
 # Rely on qemu-user being configured in binfmt_misc on the host
 sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
+
+# Set up cmake cross compile toolchain file for dEQP builds
+toolchain_file="/toolchain-$arch.cmake"
+if [[ "$arch" = "arm64" ]]; then
+    GCC_ARCH="aarch64-linux-gnu"
+    DE_CPU="DE_CPU_ARM_64"
+    CMAKE_ARCH=arm
+elif [[ "$arch" = "armhf" ]]; then
+    GCC_ARCH="arm-linux-gnueabihf"
+    DE_CPU="DE_CPU_ARM"
+    CMAKE_ARCH=arm
+fi
+
+if [[ -n "$GCC_ARCH" ]]; then
+    echo "set(CMAKE_SYSTEM_NAME Linux)" > "$toolchain_file"
+    echo "set(CMAKE_SYSTEM_PROCESSOR arm)" >> "$toolchain_file"
+    echo "set(CMAKE_C_COMPILER /usr/lib/ccache/$GCC_ARCH-gcc)" >> "$toolchain_file"
+    echo "set(CMAKE_CXX_COMPILER /usr/lib/ccache/$GCC_ARCH-g++)" >> "$toolchain_file"
+    echo "set(ENV{PKG_CONFIG} \"/usr/bin/$GCC_ARCH-pkg-config\")" >> "$toolchain_file"
+    echo "set(DE_CPU $DE_CPU)" >> "$toolchain_file"
+fi

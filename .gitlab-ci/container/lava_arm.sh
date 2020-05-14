@@ -20,6 +20,7 @@ fi
 # Determine if we're in a cross build.
 if [[ -e /cross_file-$DEBIAN_ARCH.txt ]]; then
     EXTRA_MESON_ARGS="--cross-file /cross_file-$DEBIAN_ARCH.txt"
+    EXTRA_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=/toolchain-$DEBIAN_ARCH.cmake"
 
     export ARCH=${KERNEL_ARCH}
     export CROSS_COMPILE="${GCC_ARCH}-"
@@ -32,7 +33,6 @@ mv /usr/local/bin/deqp-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
 
 
 ############### Build dEQP
-EXTRA_CMAKE_ARGS="-DCMAKE_C_COMPILER=${GCC_ARCH}-gcc -DCMAKE_CXX_COMPILER=${GCC_ARCH}-g++"
 STRIP_CMD="${GCC_ARCH}-strip"
 . .gitlab-ci/build-deqp-gl.sh
 mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.
