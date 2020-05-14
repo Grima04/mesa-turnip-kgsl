@@ -1617,6 +1617,11 @@ apply_var_decoration(struct vtn_builder *b,
       switch (builtin) {
       case SpvBuiltInTessLevelOuter:
       case SpvBuiltInTessLevelInner:
+         /* Since the compact flag is only valid on arrays, don't set it if
+          * we are lowering TessLevelInner/Outer to vec4/vec2. */
+         if (!b->options || !b->options->lower_tess_levels_to_vec)
+            var_data->compact = true;
+         break;
       case SpvBuiltInClipDistance:
       case SpvBuiltInCullDistance:
          var_data->compact = true;
@@ -1824,6 +1829,22 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
          vtn_assert(vtn_var->mode == vtn_variable_mode_ubo ||
                     vtn_var->mode == vtn_variable_mode_ssbo ||
                     vtn_var->mode == vtn_variable_mode_push_constant);
+      }
+   }
+}
+
+static void
+var_decoration_tess_level_vec_cb(
+      struct vtn_builder *b, struct vtn_value *val, int member,
+      const struct vtn_decoration *dec, void *void_var)
+{
+   struct vtn_variable *vtn_var = void_var;
+   if (dec->decoration == SpvDecorationBuiltIn) {
+      SpvBuiltIn builtin = dec->operands[0];
+      if (builtin == SpvBuiltInTessLevelOuter) {
+         vtn_var->var->type = glsl_vector_type(GLSL_TYPE_FLOAT, 4);
+      } else if (builtin == SpvBuiltInTessLevelInner) {
+         vtn_var->var->type = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
       }
    }
 }
@@ -2406,6 +2427,9 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
 
    vtn_foreach_decoration(b, val, var_decoration_cb, var);
    vtn_foreach_decoration(b, val, ptr_decoration_cb, val->pointer);
+
+   if (b->options && b->options->lower_tess_levels_to_vec)
+      vtn_foreach_decoration(b, val, var_decoration_tess_level_vec_cb, var);
 
    /* Propagate access flags from the OpVariable decorations. */
    val->pointer->access |= var->access;
