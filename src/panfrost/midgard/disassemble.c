@@ -357,10 +357,11 @@ print_vector_constants(FILE *fp, unsigned src_binary,
 {
         midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
         unsigned bits = bits_for_mode_halved(alu->reg_mode, src->half);
-        unsigned max_comp = MIN2((sizeof(*consts) * 8) / bits, 8);
+        unsigned max_comp = (sizeof(*consts) * 8) / bits;
         unsigned comp_mask, num_comp = 0;
 
         assert(consts);
+        assert(max_comp <= 16);
 
         comp_mask = effective_writemask(alu, condense_writemask(alu->mask, bits));
         num_comp = util_bitcount(comp_mask);
@@ -380,6 +381,20 @@ print_vector_constants(FILE *fp, unsigned src_binary,
                                 c += (!src->rep_low * 4);
                 } else if (bits == 32 && !src->half) {
                         /* Implicitly ok */
+                } else if (bits == 8) {
+                        assert (!src->half);
+                        unsigned index = (i >> 1) & 3;
+                        unsigned base = (src->swizzle >> (index * 2)) & 3;
+                        c = base * 2;
+
+                        if (i < 8)
+                                c += (src->rep_high) * 8;
+                        else
+                                c += (!src->rep_low) * 8;
+
+                        /* We work on twos, actually */
+                        if (i & 1)
+                                c++;
                 } else {
                         printf(" (%d%d%d)", src->rep_low, src->rep_high, src->half);
                 }
