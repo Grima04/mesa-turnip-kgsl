@@ -42,6 +42,7 @@
 struct ir3_cp_ctx {
 	struct ir3 *shader;
 	struct ir3_shader_variant *so;
+	bool progress;
 };
 
 /* is it a type preserving mov, with ok flags?
@@ -617,13 +618,14 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
  * be eliminated)
  */
 static struct ir3_instruction *
-eliminate_output_mov(struct ir3_instruction *instr)
+eliminate_output_mov(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 {
 	if (is_eligible_mov(instr, NULL, false)) {
 		struct ir3_register *reg = instr->regs[1];
 		if (!(reg->flags & IR3_REG_ARRAY)) {
 			struct ir3_instruction *src_instr = ssa(reg);
 			debug_assert(src_instr);
+			ctx->progress = true;
 			return src_instr;
 		}
 	}
@@ -668,6 +670,7 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 				continue;
 
 			progress |= reg_cp(ctx, instr, reg, n);
+			ctx->progress |= progress;
 		}
 	} while (progress);
 
@@ -679,7 +682,7 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 
 	if (instr->address) {
 		instr_cp(ctx, instr->address);
-		ir3_instr_set_address(instr, eliminate_output_mov(instr->address));
+		ir3_instr_set_address(instr, eliminate_output_mov(ctx, instr->address));
 	}
 
 	/* we can end up with extra cmps.s from frontend, which uses a
@@ -710,6 +713,7 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			instr->barrier_class |= cond->barrier_class;
 			instr->barrier_conflict |= cond->barrier_conflict;
 			unuse(cond);
+			ctx->progress = true;
 			break;
 		default:
 			break;
@@ -748,11 +752,13 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			for (unsigned i = 1; i < instr->regs_count; i++) {
 				instr->regs[i] = instr->regs[i + 1];
 			}
+
+			ctx->progress = true;
 		}
 	}
 }
 
-void
+bool
 ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so)
 {
 	struct ir3_cp_ctx ctx = {
@@ -786,18 +792,20 @@ ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so)
 	struct ir3_instruction *out;
 	foreach_output_n (out, n, ir) {
 		instr_cp(&ctx, out);
-		ir->outputs[n] = eliminate_output_mov(out);
+		ir->outputs[n] = eliminate_output_mov(&ctx, out);
 	}
 
 	foreach_block (block, &ir->block_list) {
 		if (block->condition) {
 			instr_cp(&ctx, block->condition);
-			block->condition = eliminate_output_mov(block->condition);
+			block->condition = eliminate_output_mov(&ctx, block->condition);
 		}
 
 		for (unsigned i = 0; i < block->keeps_count; i++) {
 			instr_cp(&ctx, block->keeps[i]);
-			block->keeps[i] = eliminate_output_mov(block->keeps[i]);
+			block->keeps[i] = eliminate_output_mov(&ctx, block->keeps[i]);
 		}
 	}
+
+	return ctx.progress;
 }
