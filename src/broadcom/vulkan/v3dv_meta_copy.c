@@ -875,7 +875,7 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
          return handled;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void *)buffer_image,
+         cmd_buffer, (uintptr_t)buffer_image,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
 
       /* Bind the buffer memory to the image */
@@ -2242,7 +2242,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          return handled;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void *)buffer_image,
+         cmd_buffer, (uintptr_t)buffer_image,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
 
       /* Allocate and bind memory for the image */
@@ -2259,7 +2259,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          return handled;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void *)mem,
+         cmd_buffer, (uintptr_t)mem,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_FreeMemory);
 
       result = v3dv_BindImageMemory(_device, buffer_image, mem, 0);
@@ -3488,7 +3488,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          goto fail;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void *)dst_image_view,
+         cmd_buffer, (uintptr_t)dst_image_view,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
 
       VkFramebufferCreateInfo fb_info = {
@@ -3508,7 +3508,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          goto fail;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void *)fb,
+         cmd_buffer, (uintptr_t)fb,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
 
       /* Setup descriptor set for blit source texture. We don't have to
@@ -3543,7 +3543,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          goto fail;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void*)sampler,
+         cmd_buffer, (uintptr_t)sampler,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroySampler);
 
       VkImageViewCreateInfo src_image_view_info = {
@@ -3568,7 +3568,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          goto fail;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void *)src_image_view,
+         cmd_buffer, (uintptr_t)src_image_view,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
 
       VkDescriptorImageInfo image_info = {

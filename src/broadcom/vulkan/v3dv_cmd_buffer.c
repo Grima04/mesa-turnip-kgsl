@@ -199,7 +199,7 @@ v3dv_job_destroy(struct v3dv_job *job)
 
 void
 v3dv_cmd_buffer_add_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
-                                void *obj,
+                                uint64_t obj,
                                 v3dv_cmd_buffer_private_obj_destroy_cb destroy_cb)
 {
    struct v3dv_cmd_buffer_private_obj *pobj =

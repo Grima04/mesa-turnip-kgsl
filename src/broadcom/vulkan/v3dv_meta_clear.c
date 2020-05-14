@@ -547,7 +547,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
          goto fail;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void *)fb_attachment,
+         cmd_buffer, (uintptr_t)fb_attachment,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImageView);
 
       VkFramebufferCreateInfo fb_info = {
@@ -567,7 +567,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
          goto fail;
 
       v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (void *)fb,
+         cmd_buffer, (uintptr_t)fb,
          (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyFramebuffer);
 
       VkRenderPassBeginInfo rp_info = {

@@ -863,11 +863,11 @@ VkResult v3dv_get_query_pool_results_cpu(struct v3dv_device *device,
                                          VkQueryResultFlags flags);
 
 typedef void (*v3dv_cmd_buffer_private_obj_destroy_cb)(VkDevice device,
-                                                       void *pobj,
+                                                       uint64_t pobj,
                                                        VkAllocationCallbacks *alloc);
 struct v3dv_cmd_buffer_private_obj {
    struct list_head list_link;
-   void *obj;
+   uint64_t obj;
    v3dv_cmd_buffer_private_obj_destroy_cb destroy_cb;
 };
 
@@ -955,7 +955,7 @@ void v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
                                  struct drm_v3d_submit_tfu *tfu);
 
 void v3dv_cmd_buffer_add_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
-                                     void *obj,
+                                     uint64_t obj,
                                      v3dv_cmd_buffer_private_obj_destroy_cb destroy_cb);
 
 struct v3dv_semaphore {
