@@ -56,8 +56,17 @@ static inline unsigned
 condense_writemask(unsigned expanded_mask,
                    unsigned bits_per_component)
 {
-        if (bits_per_component == 8)
-                unreachable("XXX TODO: sort out how 8-bit constant encoding works");
+        if (bits_per_component == 8) {
+                /* Duplicate every bit to go from 8 to 16-channel wrmask */
+                unsigned omask = 0;
+
+                for (unsigned i = 0; i < 8; ++i) {
+                        if (expanded_mask & (1 << i))
+                                omask |= (3 << (2 * i));
+                }
+
+                return omask;
+        }
 
         unsigned slots_per_component = bits_per_component / 16;
         unsigned max_comp = (16 * 8) / bits_per_component;
