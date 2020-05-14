@@ -1369,12 +1369,6 @@ static void si_emit_db_render_state(struct si_context *sctx)
       if (sctx->chip_class >= GFX7) {
          unsigned log_sample_rate = sctx->framebuffer.log_samples;
 
-         /* Stoney doesn't increment occlusion query counters
-          * if the sample rate is 16x. Use 8x sample rate instead.
-          */
-         if (sctx->family == CHIP_STONEY)
-            log_sample_rate = MIN2(log_sample_rate, 3);
-
          db_count_control = S_028004_PERFECT_ZPASS_COUNTS(perfect) |
                             S_028004_DISABLE_CONSERVATIVE_ZPASS_COUNTS(gfx10_perfect) |
                             S_028004_SAMPLE_RATE(log_sample_rate) | S_028004_ZPASS_ENABLE(1) |
@@ -2140,17 +2134,23 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
           !util_is_power_of_two_or_zero(storage_sample_count))
          return false;
 
+      /* Chips with 1 RB don't increment occlusion queries at 16x MSAA sample rate,
+       * so don't expose 16 samples there.
+       */
+      const unsigned max_eqaa_samples = sscreen->info.num_render_backends == 1 ? 8 : 16;
+      const unsigned max_samples = 8;
+
       /* MSAA support without framebuffer attachments. */
-      if (format == PIPE_FORMAT_NONE && sample_count <= 16)
+      if (format == PIPE_FORMAT_NONE && sample_count <= max_eqaa_samples)
          return true;
 
       if (!sscreen->info.has_eqaa_surface_allocator || util_format_is_depth_or_stencil(format)) {
          /* Color without EQAA or depth/stencil. */
-         if (sample_count > 8 || sample_count != storage_sample_count)
+         if (sample_count > max_samples || sample_count != storage_sample_count)
             return false;
       } else {
          /* Color with EQAA. */
-         if (sample_count > 16 || storage_sample_count > 8)
+         if (sample_count > max_eqaa_samples || storage_sample_count > max_samples)
             return false;
       }
    }
