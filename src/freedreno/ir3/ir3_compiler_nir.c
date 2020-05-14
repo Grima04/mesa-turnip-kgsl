@@ -3112,6 +3112,7 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 			so->writes_smask = true;
 			break;
 		default:
+			slot += out->data.index; /* For dual-src blend */
 			if (slot >= FRAG_RESULT_DATA0)
 				break;
 			ir3_context_error(ctx, "unknown FS output name: %s\n",
