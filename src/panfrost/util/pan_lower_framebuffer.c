@@ -387,6 +387,35 @@ pan_unpack_unorm_1010102(nir_builder *b, nir_ssa_def *packed)
         return nir_f2f16(b, nir_fmul(b, nir_u2f32(b, nir_vec(b, chans, 4)), scale));
 }
 
+/* On the other hand, the pure int RGB10_A2 is identical to the spec */
+
+static nir_ssa_def *
+pan_pack_uint_1010102(nir_builder *b, nir_ssa_def *v)
+{
+        nir_ssa_def *shift = nir_ishl(b, nir_u2u32(b, v),
+                        nir_imm_ivec4(b, 0, 10, 20, 30));
+
+        nir_ssa_def *p = nir_ior(b,
+                        nir_ior(b, nir_channel(b, shift, 0), nir_channel(b, shift, 1)),
+                        nir_ior(b, nir_channel(b, shift, 2), nir_channel(b, shift, 3)));
+
+        return pan_replicate_4(b, p);
+}
+
+static nir_ssa_def *
+pan_unpack_uint_1010102(nir_builder *b, nir_ssa_def *packed)
+{
+        nir_ssa_def *chan = nir_channel(b, packed, 0);
+
+        nir_ssa_def *shift = nir_ushr(b, pan_replicate_4(b, chan),
+                        nir_imm_ivec4(b, 0, 10, 20, 30));
+
+        nir_ssa_def *mask = nir_iand(b, shift,
+                        nir_imm_ivec4(b, 0x3ff, 0x3ff, 0x3ff, 0x3));
+
+        return nir_u2u16(b, mask);
+}
+
 /* Generic dispatches for un/pack regardless of format */
 
 static bool
@@ -442,6 +471,8 @@ pan_unpack(nir_builder *b,
                 return pan_unpack_unorm_565(b, packed);
         case PIPE_FORMAT_R10G10B10A2_UNORM:
                 return pan_unpack_unorm_1010102(b, packed);
+        case PIPE_FORMAT_R10G10B10A2_UINT:
+                return pan_unpack_uint_1010102(b, packed);
         default:
                 break;
         }
@@ -487,6 +518,8 @@ pan_pack(nir_builder *b,
                 return pan_pack_unorm_565(b, unpacked);
         case PIPE_FORMAT_R10G10B10A2_UNORM:
                 return pan_pack_unorm_1010102(b, unpacked);
+        case PIPE_FORMAT_R10G10B10A2_UINT:
+                return pan_pack_uint_1010102(b, unpacked);
         default:
                 break;
         }
