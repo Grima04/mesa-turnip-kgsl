@@ -296,6 +296,7 @@ static ioctl_fn_t driver_ioctls[] = {
 
    [DRM_I915_GEM_CREATE] = i915_ioctl_gem_create,
    [DRM_I915_GEM_MMAP] = i915_ioctl_gem_mmap,
+   [DRM_I915_GEM_SET_TILING] = i915_ioctl_noop,
    [DRM_I915_GEM_CONTEXT_CREATE] = i915_ioctl_gem_context_create,
    [DRM_I915_GEM_CONTEXT_DESTROY] = i915_ioctl_noop,
    [DRM_I915_GEM_CONTEXT_GETPARAM] = i915_ioctl_gem_context_getparam,
