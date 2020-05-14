@@ -416,6 +416,32 @@ pan_unpack_uint_1010102(nir_builder *b, nir_ssa_def *packed)
         return nir_u2u16(b, mask);
 }
 
+/* NIR means we can *finally* catch a break */
+
+static nir_ssa_def *
+pan_pack_r11g11b10(nir_builder *b, nir_ssa_def *v)
+{
+        return pan_replicate_4(b, nir_format_pack_11f11f10f(b, 
+                                nir_f2f32(b, v)));
+}
+
+static nir_ssa_def *
+pan_unpack_r11g11b10(nir_builder *b, nir_ssa_def *v)
+{
+        nir_ssa_def *f32 = nir_format_unpack_11f11f10f(b, nir_channel(b, v, 0));
+        nir_ssa_def *f16 = nir_f2f16(b, f32);
+
+        /* Extend to vec4 with alpha */
+        nir_ssa_def *components[4] = {
+                nir_channel(b, f16, 0),
+                nir_channel(b, f16, 1),
+                nir_channel(b, f16, 2),
+                nir_imm_float16(b, 1.0)
+        };
+
+        return nir_vec(b, components, 4);
+}
+
 /* Generic dispatches for un/pack regardless of format */
 
 static bool
@@ -473,6 +499,8 @@ pan_unpack(nir_builder *b,
                 return pan_unpack_unorm_1010102(b, packed);
         case PIPE_FORMAT_R10G10B10A2_UINT:
                 return pan_unpack_uint_1010102(b, packed);
+        case PIPE_FORMAT_R11G11B10_FLOAT:
+                return pan_unpack_r11g11b10(b, packed);
         default:
                 break;
         }
@@ -520,6 +548,8 @@ pan_pack(nir_builder *b,
                 return pan_pack_unorm_1010102(b, unpacked);
         case PIPE_FORMAT_R10G10B10A2_UINT:
                 return pan_pack_uint_1010102(b, unpacked);
+        case PIPE_FORMAT_R11G11B10_FLOAT:
+                return pan_pack_r11g11b10(b, unpacked);
         default:
                 break;
         }
