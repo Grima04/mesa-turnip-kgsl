@@ -244,6 +244,12 @@ vk_format_is_srgb(VkFormat format)
 }
 
 static inline bool
+vk_format_is_unorm(VkFormat format)
+{
+   return util_format_is_unorm(vk_format_to_pipe_format(format));
+}
+
+static inline bool
 vk_format_is_snorm(VkFormat format)
 {
    return util_format_is_snorm(vk_format_to_pipe_format(format));

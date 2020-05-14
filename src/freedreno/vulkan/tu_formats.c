@@ -395,6 +395,13 @@ tu_physical_device_get_format_properties(
       optimal |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
                  VK_FORMAT_FEATURE_BLIT_SRC_BIT |
                  VK_FORMAT_FEATURE_BLIT_DST_BIT;
+
+      if (vk_format_is_float(format) ||
+          vk_format_is_unorm(format) ||
+          vk_format_is_snorm(format) ||
+          vk_format_is_srgb(format)) {
+         optimal |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
+      }
    }
 
    /* For the most part, we can do anything with a linear image that we could
