@@ -3522,23 +3522,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 	}
 
-	/* at this point, for binning pass, throw away unneeded outputs: */
-	if (so->binning_pass && (ctx->compiler->gpu_id < 600))
-		fixup_binning_pass(ctx);
-
-	ir3_debug_print(ir, "AFTER: nir->ir3");
-
-	IR3_PASS(ir, ir3_cf);
-	IR3_PASS(ir, ir3_cp, so);
-
-	/* at this point, for binning pass, throw away unneeded outputs:
-	 * Note that for a6xx and later, we do this after ir3_cp to ensure
-	 * that the uniform/constant layout for BS and VS matches, so that
-	 * we can re-use same VS_CONST state group.
-	 */
-	if (so->binning_pass && (ctx->compiler->gpu_id >= 600))
-		fixup_binning_pass(ctx);
-
 	/* for a6xx+, binning and draw pass VS use same VBO state, so we
 	 * need to make sure not to remove any inputs that are used by
 	 * the nonbinning VS.
@@ -3565,6 +3548,22 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 	}
 
+	/* at this point, for binning pass, throw away unneeded outputs: */
+	if (so->binning_pass && (ctx->compiler->gpu_id < 600))
+		fixup_binning_pass(ctx);
+
+	ir3_debug_print(ir, "AFTER: nir->ir3");
+
+	IR3_PASS(ir, ir3_cf);
+	IR3_PASS(ir, ir3_cp, so);
+
+	/* at this point, for binning pass, throw away unneeded outputs:
+	 * Note that for a6xx and later, we do this after ir3_cp to ensure
+	 * that the uniform/constant layout for BS and VS matches, so that
+	 * we can re-use same VS_CONST state group.
+	 */
+	if (so->binning_pass && (ctx->compiler->gpu_id >= 600))
+		fixup_binning_pass(ctx);
 
 	IR3_PASS(ir, ir3_sched_add_deps);
 
