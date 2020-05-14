@@ -1563,14 +1563,14 @@ ir3_ra(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	if (ret)
 		return ret;
 
-	ir3_debug_print(v->ir, "AFTER RA (1st pass)");
+	ir3_debug_print(v->ir, "AFTER: ir3_ra (1st pass)");
 
 	/* Second pass, assign the scalar registers: */
 	ret = ir3_ra_pass(v, precolor, nprecolor, true);
 	if (ret)
 		return ret;
 
-	ir3_debug_print(v->ir, "AFTER RA (2st pass)");
+	ir3_debug_print(v->ir, "AFTER: ir3_ra (2st pass)");
 
 #ifdef DEBUG
 #  define SANITY_CHECK DEBUG

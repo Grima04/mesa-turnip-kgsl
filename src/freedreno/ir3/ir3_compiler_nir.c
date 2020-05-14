@@ -3526,13 +3526,15 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	if (so->binning_pass && (ctx->compiler->gpu_id < 600))
 		fixup_binning_pass(ctx);
 
-	ir3_debug_print(ir, "BEFORE CF");
+	ir3_debug_print(ir, "AFTER: nir->ir3");
 
 	ir3_cf(ir);
 
-	ir3_debug_print(ir, "BEFORE CP");
+	ir3_debug_print(ir, "AFTER: ir3_cf");
 
 	ir3_cp(ir, so);
+
+	ir3_debug_print(ir, "AFTER: ir3_cp");
 
 	/* at this point, for binning pass, throw away unneeded outputs:
 	 * Note that for a6xx and later, we do this after ir3_cp to ensure
@@ -3568,20 +3570,21 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		}
 	}
 
-	ir3_debug_print(ir, "BEFORE GROUPING");
 
 	ir3_sched_add_deps(ir);
+
+	ir3_debug_print(ir, "AFTER: ir3_sched_add_deps");
 
 	/* Group left/right neighbors, inserting mov's where needed to
 	 * solve conflicts:
 	 */
 	ir3_group(ir);
 
-	ir3_debug_print(ir, "AFTER GROUPING");
+	ir3_debug_print(ir, "AFTER: ir3_group");
 
 	ir3_dce(ir, so);
 
-	ir3_debug_print(ir, "AFTER DCE");
+	ir3_debug_print(ir, "AFTER: ir3_dce");
 
 	ret = ir3_sched(ir);
 	if (ret) {
@@ -3589,7 +3592,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	ir3_debug_print(ir, "AFTER SCHED");
+	ir3_debug_print(ir, "AFTER: ir3_sched");
 
 	/* Pre-assign VS inputs on a6xx+ binning pass shader, to align
 	 * with draw pass VS, so binning and draw pass can both use the
@@ -3662,11 +3665,11 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	}
 
 	ir3_postsched(ctx);
-	ir3_debug_print(ir, "AFTER POSTSCHED");
+	ir3_debug_print(ir, "AFTER: ir3_postsched");
 
 	if (compiler->gpu_id >= 600) {
 		if (ir3_a6xx_fixup_atomic_dests(ir, so)) {
-			ir3_debug_print(ir, "AFTER ATOMIC FIXUP");
+			ir3_debug_print(ir, "AFTER: ir3_a6xx_fixup_atomic_dests");
 		}
 	}
 
@@ -3724,7 +3727,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	 */
 	ir3_legalize(ir, so, &max_bary);
 
-	ir3_debug_print(ir, "AFTER LEGALIZE");
+	ir3_debug_print(ir, "AFTER: ir3_legalize");
 
 	/* Set (ss)(sy) on first TCS and GEOMETRY instructions, since we don't
 	 * know what we might have to wait on when coming in from VS chsh.
