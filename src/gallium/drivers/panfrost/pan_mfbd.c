@@ -390,6 +390,25 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
 
 #undef UPLOAD
 
+/* Determines whether a framebuffer uses too much tilebuffer space (requiring
+ * us to scale up the tile at a performance penalty). This is conservative but
+ * afaict you get 128-bits per pixel normally */
+
+static bool
+pan_is_large_tib(struct panfrost_batch *batch)
+{
+        unsigned size = 0;
+
+        for (int cb = 0; cb < batch->key.nr_cbufs; ++cb) {
+                struct pipe_surface *surf = batch->key.cbufs[cb];
+                assert(surf);
+                unsigned bpp = util_format_get_blocksize(surf->format);
+                size += ALIGN_POT(bpp, 4);
+        }
+
+        return (size > 16);
+}
+
 static struct mali_framebuffer
 panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
@@ -406,7 +425,8 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 .width2 = MALI_POSITIVE(width),
                 .height2 = MALI_POSITIVE(height),
 
-                .unk1 = 0x1080,
+                /* Seems to configure tib size */
+                .unk1 = pan_is_large_tib(batch) ? 0xc80 : 0x1080,
 
                 .rt_count_1 = MALI_POSITIVE(batch->key.nr_cbufs),
                 .rt_count_2 = 4,
