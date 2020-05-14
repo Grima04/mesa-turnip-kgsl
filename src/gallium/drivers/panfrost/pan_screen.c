@@ -109,6 +109,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_VERTEX_SHADER_SATURATE:
         case PIPE_CAP_VERTEX_COLOR_UNCLAMPED:
         case PIPE_CAP_POINT_SPRITE:
+        case PIPE_CAP_DEPTH_CLIP_DISABLE:
+        case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:

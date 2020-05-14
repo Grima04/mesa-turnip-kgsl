@@ -550,6 +550,8 @@ panfrost_frag_meta_rasterizer_update(struct panfrost_context *ctx,
                 fragmeta->depth_factor = 0.0f;
                 SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_A, false);
                 SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_B, false);
+                SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_CLIP_NEAR, true);
+                SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_CLIP_FAR, true);
                 return;
         }
 
@@ -567,6 +569,9 @@ panfrost_frag_meta_rasterizer_update(struct panfrost_context *ctx,
 
         SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_A, rast->offset_tri);
         SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_B, rast->offset_tri);
+
+        SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_CLIP_NEAR, rast->depth_clip_near);
+        SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_CLIP_FAR, rast->depth_clip_far);
 }
 
 static void
@@ -826,7 +831,7 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
         fragmeta->alpha_coverage = ~MALI_ALPHA_COVERAGE(0.000000);
-        fragmeta->unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x3010;
+        fragmeta->unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10;
         fragmeta->unknown2_4 = 0x4e0;
 
         /* unknown2_4 has 0x10 bit set on T6XX and T720. We don't know why this
@@ -1024,8 +1029,16 @@ panfrost_mali_viewport_init(struct panfrost_context *ctx,
         mvp->viewport0[1] = miny;
         mvp->viewport1[1] = MALI_POSITIVE(maxy);
 
-        mvp->clip_minz = minz;
-        mvp->clip_maxz = maxz;
+        bool clip_near = true;
+        bool clip_far = true;
+
+        if (ctx->rasterizer) {
+                clip_near = ctx->rasterizer->base.depth_clip_near;
+                clip_far = ctx->rasterizer->base.depth_clip_far;
+        }
+
+        mvp->clip_minz = clip_near ? minz : -INFINITY;
+        mvp->clip_maxz = clip_far ? maxz : INFINITY;
 }
 
 void

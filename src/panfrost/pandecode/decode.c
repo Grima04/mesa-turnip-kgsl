@@ -226,6 +226,8 @@ static const struct pandecode_flag_info u3_flag_info[] = {
         FLAG_INFO(CAN_DISCARD),
         FLAG_INFO(HAS_BLEND_SHADER),
         FLAG_INFO(DEPTH_WRITEMASK),
+        FLAG_INFO(DEPTH_CLIP_NEAR),
+        FLAG_INFO(DEPTH_CLIP_FAR),
         {}
 };
 

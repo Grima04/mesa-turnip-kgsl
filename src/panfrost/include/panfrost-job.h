@@ -104,6 +104,9 @@ enum mali_func {
 
 #define MALI_DEPTH_WRITEMASK    (1 << 11)
 
+#define MALI_DEPTH_CLIP_NEAR    (1 << 12)
+#define MALI_DEPTH_CLIP_FAR     (1 << 13)
+
 /* Next flags to unknown2_4 */
 #define MALI_STENCIL_TEST      	(1 << 0)
 
