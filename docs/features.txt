@@ -61,7 +61,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   glGetStringi command                                  DONE
   glTexParameterI, glGetTexParameterI commands          DONE
   glVertexAttribI commands                              DONE
-  Depth format cube textures                            DONE ()
+  Depth format cube textures                            DONE (zink)
   GLX_ARB_create_context (GLX 1.4 is required)          DONE (v3d, zink)
   Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*), swr (*), zink)
   8 draw buffers                                        DONE (zink)
