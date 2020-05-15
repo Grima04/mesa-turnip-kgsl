@@ -1330,6 +1330,10 @@ print_jump_instr(nir_jump_instr *instr, print_state *state)
       fprintf(fp, "return");
       break;
 
+   case nir_jump_halt:
+      fprintf(fp, "halt");
+      break;
+
    case nir_jump_goto:
       fprintf(fp, "goto block_%u",
               instr->target ? instr->target->index : -1);

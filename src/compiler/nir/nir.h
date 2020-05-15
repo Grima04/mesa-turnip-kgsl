@@ -2560,6 +2560,23 @@ typedef enum {
     */
    nir_jump_return,
 
+   /** Immediately exit the current shader
+    *
+    * This instruction is roughly the equivalent of C's "exit()" in that it
+    * immediately terminates the current shader invocation.  From a CFG
+    * perspective, it looks like a jump to nir_function_impl::end_block but
+    * it actually jumps to the end block of the shader entrypoint.  A halt
+    * instruction in the shader entrypoint itself is semantically identical
+    * to a return.
+    *
+    * For shaders with built-in I/O, any outputs written prior to a halt
+    * instruction remain written and any outputs not written prior to the
+    * halt have undefined values.  It does NOT cause an implicit discard of
+    * written results.  If one wants discard results in a fragment shader,
+    * for instance, a discard or demote intrinsic is required.
+    */
+   nir_jump_halt,
+
    /** Break out of the inner-most loop
     *
     * This has the same semantics as C's "break" statement.

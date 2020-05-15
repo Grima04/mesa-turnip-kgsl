@@ -906,6 +906,7 @@ validate_jump_instr(nir_jump_instr *instr, validate_state *state)
 
    switch (instr->type) {
    case nir_jump_return:
+   case nir_jump_halt:
       validate_assert(state, block->successors[0] == state->impl->end_block);
       validate_assert(state, block->successors[1] == NULL);
       validate_assert(state, instr->target == NULL);
