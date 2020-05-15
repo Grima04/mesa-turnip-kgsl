@@ -105,8 +105,6 @@ dEQP-GLES3.functional.fbo.completeness.attachment_combinations.tex_rbo_rbo_rbo
 dEQP-GLES3.functional.fbo.completeness.attachment_combinations.tex_rbo_tex_none
 dEQP-GLES3.functional.fbo.completeness.attachment_combinations.tex_rbo_tex_tex
 dEQP-GLES3.functional.fbo.completeness.renderable.texture.depth.depth_component_unsigned_short
-dEQP-GLES3.functional.fbo.completeness.renderable.texture.depth.depth_stencil_unsigned_int_24_8
-dEQP-GLES3.functional.fbo.completeness.renderable.texture.stencil.depth_stencil_unsigned_int_24_8
 dEQP-GLES3.functional.fbo.completeness.samples.rbo0_rbo0_tex
 dEQP-GLES3.functional.fbo.completeness.samples.rbo0_tex_none
 dEQP-GLES3.functional.fbo.completeness.samples.rbo1_rbo1_rbo1

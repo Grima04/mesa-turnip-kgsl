@@ -462,19 +462,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
                 return false;
 
-        /* Format wishlist */
-        if (format == PIPE_FORMAT_X8Z24_UNORM)
-                return false;
-
-        if (format == PIPE_FORMAT_A1B5G5R5_UNORM ||
-            format == PIPE_FORMAT_X1B5G5R5_UNORM ||
-            format == PIPE_FORMAT_B2G3R3_UNORM)
-                return false;
-
-        /* TODO */
-        if (format == PIPE_FORMAT_B5G5R5A1_UNORM)
-                return FALSE;
-
         /* Don't confuse poorly written apps (workaround dEQP bug) that expect
          * more alpha than they ask for */
 
@@ -484,45 +471,14 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (scanout && renderable && !util_format_is_rgba8_variant(format_desc))
                 return false;
 
-        switch (format_desc->layout) {
-                case UTIL_FORMAT_LAYOUT_PLAIN:
-                case UTIL_FORMAT_LAYOUT_OTHER:
-                        break;
-                case UTIL_FORMAT_LAYOUT_ETC:
-                case UTIL_FORMAT_LAYOUT_ASTC:
-                        return true;
-                default:
-                        return false;
-        }
+        /* Check we support the format with the given bind */
 
-        if (format_desc->channel[0].size > 32)
-            return false;
+        unsigned relevant_bind = bind &
+                ( PIPE_BIND_DEPTH_STENCIL | PIPE_BIND_RENDER_TARGET
+                | PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_SAMPLER_VIEW);
 
-        /* Internally, formats that are depth/stencil renderable are limited.
-         *
-         * In particular: Z16, Z24, Z24S8, S8 are all identical from the GPU
-         * rendering perspective. That is, we render to Z24S8 (which we can
-         * AFBC compress), ignore the different when texturing (who cares?),
-         * and then in the off-chance there's a CPU read we blit back to
-         * staging.
-         *
-         * ...alternatively, we can make the gallium frontend deal with that. */
-
-        if (bind & PIPE_BIND_DEPTH_STENCIL) {
-                switch (format) {
-                        case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-                        case PIPE_FORMAT_Z24X8_UNORM:
-                        case PIPE_FORMAT_Z32_UNORM:
-                        case PIPE_FORMAT_Z32_FLOAT:
-                        case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-                                return true;
-
-                        default:
-                                return false;
-                }
-        }
-
-        return true;
+        struct panfrost_format fmt = panfrost_pipe_format_table[format];
+        return fmt.hw && ((relevant_bind & ~fmt.bind) == 0);
 }
 
 static int

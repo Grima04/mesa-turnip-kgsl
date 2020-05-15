@@ -520,7 +520,9 @@ panfrost_create_vertex_elements_state(
                 else
                         so->hw[i].swizzle = panfrost_bifrost_swizzle(desc->nr_channels);
 
-                so->hw[i].format = panfrost_find_format(desc);
+                enum mali_format hw_format = panfrost_pipe_format_table[desc->format].hw;
+                so->hw[i].format = hw_format;
+                assert(hw_format);
         }
 
         /* Let's also prepare vertex builtins */

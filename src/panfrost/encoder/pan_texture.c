@@ -252,7 +252,8 @@ panfrost_new_texture(
 
         unsigned bytes_per_pixel = util_format_get_blocksize(format);
 
-        enum mali_format mali_format = panfrost_find_format(desc);
+        enum mali_format mali_format = panfrost_pipe_format_table[desc->format].hw;
+        assert(mali_format);
 
         bool manual_stride = (layout == MALI_TEXTURE_LINEAR)
                 && panfrost_needs_explicit_stride(slices, width,
@@ -313,7 +314,8 @@ panfrost_new_texture_bifrost(
         const struct util_format_description *desc =
                 util_format_description(format);
 
-        enum mali_format mali_format = panfrost_find_format(desc);
+        enum mali_format mali_format = panfrost_pipe_format_table[desc->format].hw;
+        assert(mali_format);
 
         panfrost_emit_texture_payload(
                 (mali_ptr *) payload->cpu,
