@@ -173,16 +173,12 @@ panfrost_sfbd_set_zsbuf(
                 return;
 
         if (panfrost_is_z24s8_variant(surf->format)) {
-
                 /* Stencil data is interleaved with depth */
                 fb->stencil_buffer = fb->depth_buffer;
                 fb->stencil_stride = fb->depth_stride;
-        } else if (surf->format == PIPE_FORMAT_Z32_UNORM ||
-                   surf->format == PIPE_FORMAT_Z32_FLOAT) {
-
+        } else if (surf->format == PIPE_FORMAT_Z32_FLOAT) {
                 /* No stencil, nothing to do */
         } else if (surf->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT) {
-
                 /* Stencil data in separate buffer */
                 struct panfrost_resource *stencil = rsrc->separate_stencil;
                 struct panfrost_slice stencil_slice = stencil->slices[level];

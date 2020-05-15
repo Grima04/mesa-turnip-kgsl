@@ -298,8 +298,6 @@ panfrost_mfbd_set_zsbuf(
 
                 if (panfrost_is_z24s8_variant(surf->format)) {
                         fbx->flags_lo |= 0x1;
-                } else if (surf->format == PIPE_FORMAT_Z32_UNORM) {
-                        /* default flags (0 in bottom place) */
                 } else if (surf->format == PIPE_FORMAT_Z32_FLOAT) {
                         fbx->flags_lo |= 0xA;
                         fb->mfbd_flags ^= 0x100;
@@ -481,7 +479,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 
         /* When scanning out, the depth buffer is immediately invalidated, so
          * we don't need to waste bandwidth writing it out. This can improve
-         * performance substantially (Z32_UNORM 1080p @ 60fps is 475 MB/s of
+         * performance substantially (Z24X8_UNORM 1080p @ 60fps is 475 MB/s of
          * memory bandwidth!).
          *
          * The exception is ReadPixels, but this is not supported on GLES so we
