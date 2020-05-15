@@ -556,9 +556,6 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 {
 	const struct fd_vertex_state *vtx = emit->vtx;
 
-	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(emit->ctx->batch->submit,
-			4 * (10 * vp->inputs_count + 2), FD_RINGBUFFER_STREAMING);
-
 	/* Determine which inputs need VFD state */
 	int32_t map[32];
 	int32_t cnt = 0;
@@ -569,6 +566,13 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 			map[cnt++] = i;
 		}
 	}
+
+	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(emit->ctx->batch->submit,
+			4 * (2 + cnt * 10), FD_RINGBUFFER_STREAMING);
+
+	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_0, 1);
+	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(cnt) |
+			A6XX_VFD_CONTROL_0_DECODE_CNT(cnt));
 
 	for (int32_t j = 0; j < cnt; j++) {
 		int32_t i = map[j];
@@ -608,10 +612,6 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 		OUT_RING(ring, A6XX_VFD_DEST_CNTL_INSTR_WRITEMASK(vp->inputs[i].compmask) |
 				A6XX_VFD_DEST_CNTL_INSTR_REGID(vp->inputs[i].regid));
 	}
-
-	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_0, 1);
-	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(cnt) |
-			A6XX_VFD_CONTROL_0_DECODE_CNT(cnt));
 
 	return ring;
 }
