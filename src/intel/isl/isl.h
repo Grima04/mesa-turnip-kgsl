@@ -85,6 +85,10 @@ struct brw_image_param;
 #define ISL_DEV_IS_BAYTRAIL(__dev) ((__dev)->info->is_baytrail)
 #endif
 
+#ifndef ISL_DEV_IS_GEN12HP
+#define ISL_DEV_IS_GEN12HP(__dev) (gen_device_info_is_12hp((__dev)->info))
+#endif
+
 #ifndef ISL_DEV_USE_SEPARATE_STENCIL
 /**
  * You can define this as a compile-time constant in the CFLAGS. For example,
