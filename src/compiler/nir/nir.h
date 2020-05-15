@@ -5064,6 +5064,8 @@ bool nir_normalize_cubemap_coords(nir_shader *shader);
 
 void nir_live_ssa_defs_impl(nir_function_impl *impl);
 
+const BITSET_WORD *nir_get_live_ssa_defs(nir_cursor cursor, void *mem_ctx);
+
 void nir_loop_analyze_impl(nir_function_impl *impl,
                            nir_variable_mode indirect_mask);
 
