@@ -67,8 +67,10 @@ for var in \
     CI_RUNNER_DESCRIPTION \
     DEQP_EXPECTED_RENDERER \
     DEQP_PARALLEL \
+    DEQP_RUN_SUFFIX \
     DEQP_VER \
     FLAKES_CHANNEL \
+    NIR_VALIDATE \
     ; do
   val=`echo ${!var} | sed 's|"||g'`
   echo "export $var=\"${val}\"" >> rootfs/set-job-env-vars.sh
