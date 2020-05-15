@@ -242,6 +242,9 @@ struct vtn_block {
 
    /** Every block ends in a nop intrinsic so that we can find it again */
    nir_intrinsic_instr *end_nop;
+
+   /** attached nir_block */
+   struct nir_block *block;
 };
 
 struct vtn_function {

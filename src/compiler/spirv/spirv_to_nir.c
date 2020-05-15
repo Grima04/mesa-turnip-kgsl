@@ -5594,6 +5594,9 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    if (entry_point->num_params && b->shader->info.stage == MESA_SHADER_KERNEL)
       entry_point = vtn_emit_kernel_entry_point_wrapper(b, entry_point);
 
+   /* structurize the CFG */
+   nir_lower_goto_ifs(b->shader);
+
    entry_point->is_entrypoint = true;
 
    /* When multiple shader stages exist in the same SPIR-V module, we

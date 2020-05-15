@@ -732,8 +732,6 @@ reduce_cursor(nir_cursor cursor)
 {
    switch (cursor.option) {
    case nir_cursor_before_block:
-      assert(nir_cf_node_prev(&cursor.block->cf_node) == NULL ||
-             nir_cf_node_prev(&cursor.block->cf_node)->type != nir_cf_node_block);
       if (exec_list_is_empty(&cursor.block->instr_list)) {
          /* Empty block.  After is as good as before. */
          cursor.option = nir_cursor_after_block;

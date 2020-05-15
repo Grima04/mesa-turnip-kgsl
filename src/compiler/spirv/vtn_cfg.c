@@ -22,6 +22,7 @@
  */
 
 #include "vtn_private.h"
+#include "spirv_info.h"
 #include "nir/nir_vla.h"
 
 static struct vtn_block *
@@ -817,6 +818,9 @@ vtn_build_cfg(struct vtn_builder *b, const uint32_t *words, const uint32_t *end)
    vtn_foreach_instruction(b, words, end,
                            vtn_cfg_handle_prepass_instruction);
 
+   if (b->shader->info.stage == MESA_SHADER_KERNEL)
+      return;
+
    vtn_foreach_cf_node(func_node, &b->functions) {
       struct vtn_function *func = vtn_cf_node_as_function(func_node);
 
@@ -1186,6 +1190,141 @@ vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
    }
 }
 
+static struct nir_block *
+vtn_new_unstructured_block(struct vtn_builder *b, struct vtn_function *func)
+{
+   struct nir_block *n = nir_block_create(b->shader);
+   exec_list_push_tail(&func->impl->body, &n->cf_node.node);
+   n->cf_node.parent = &func->impl->cf_node;
+   return n;
+}
+
+static void
+vtn_add_unstructured_block(struct vtn_builder *b,
+                           struct vtn_function *func,
+                           struct list_head *work_list,
+                           struct vtn_block *block)
+{
+   if (!block->block) {
+      block->block = vtn_new_unstructured_block(b, func);
+      list_addtail(&block->node.link, work_list);
+   }
+}
+
+static void
+vtn_emit_cf_func_unstructured(struct vtn_builder *b, struct vtn_function *func,
+                              vtn_instruction_handler handler)
+{
+   struct list_head work_list;
+   list_inithead(&work_list);
+
+   func->start_block->block = nir_start_block(func->impl);
+   list_addtail(&func->start_block->node.link, &work_list);
+   while (!list_is_empty(&work_list)) {
+      struct vtn_block *block =
+         list_first_entry(&work_list, struct vtn_block, node.link);
+      list_del(&block->node.link);
+
+      vtn_assert(block->block);
+
+      const uint32_t *block_start = block->label;
+      const uint32_t *block_end = block->branch;
+
+      b->nb.cursor = nir_after_block(block->block);
+      block_start = vtn_foreach_instruction(b, block_start, block_end,
+                                            vtn_handle_phis_first_pass);
+      vtn_foreach_instruction(b, block_start, block_end, handler);
+      block->end_nop = nir_intrinsic_instr_create(b->nb.shader,
+                                                  nir_intrinsic_nop);
+      nir_builder_instr_insert(&b->nb, &block->end_nop->instr);
+
+      SpvOp op = *block_end & SpvOpCodeMask;
+      switch (op) {
+      case SpvOpBranch: {
+         struct vtn_block *branch_block = vtn_block(b, block->branch[1]);
+         vtn_add_unstructured_block(b, func, &work_list, branch_block);
+         nir_goto(&b->nb, branch_block->block);
+         break;
+      }
+
+      case SpvOpBranchConditional: {
+         nir_ssa_def *cond = vtn_ssa_value(b, block->branch[1])->def;
+         struct vtn_block *then_block = vtn_block(b, block->branch[2]);
+         struct vtn_block *else_block = vtn_block(b, block->branch[3]);
+
+         vtn_add_unstructured_block(b, func, &work_list, then_block);
+         if (then_block == else_block) {
+            nir_goto(&b->nb, then_block->block);
+         } else {
+            vtn_add_unstructured_block(b, func, &work_list, else_block);
+            nir_goto_if(&b->nb, then_block->block, nir_src_for_ssa(cond),
+                                else_block->block);
+         }
+
+         break;
+      }
+
+      case SpvOpSwitch: {
+         struct list_head cases;
+         list_inithead(&cases);
+         vtn_parse_switch(b, NULL, block->branch, &cases);
+
+         nir_ssa_def *sel = vtn_get_nir_ssa(b, block->branch[1]);
+
+         struct vtn_case *def = NULL;
+         vtn_foreach_cf_node(case_node, &cases) {
+            struct vtn_case *cse = vtn_cf_node_as_case(case_node);
+            if (cse->is_default) {
+               assert(def == NULL);
+               def = cse;
+               continue;
+            }
+
+            nir_ssa_def *cond = nir_imm_false(&b->nb);
+            util_dynarray_foreach(&cse->values, uint64_t, val) {
+               nir_ssa_def *imm = nir_imm_intN_t(&b->nb, *val, sel->bit_size);
+               cond = nir_ior(&b->nb, cond, nir_ieq(&b->nb, sel, imm));
+            }
+
+            /* block for the next check */
+            nir_block *e = vtn_new_unstructured_block(b, func);
+            vtn_add_unstructured_block(b, func, &work_list, cse->block);
+
+            /* add branching */
+            nir_goto_if(&b->nb, cse->block->block, nir_src_for_ssa(cond), e);
+            b->nb.cursor = nir_after_block(e);
+         }
+
+         vtn_assert(def != NULL);
+         vtn_add_unstructured_block(b, func, &work_list, def->block);
+
+         /* now that all cases are handled, branch into the default block */
+         nir_goto(&b->nb, def->block->block);
+         break;
+      }
+
+      case SpvOpKill: {
+         nir_intrinsic_instr *discard =
+            nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_discard);
+         nir_builder_instr_insert(&b->nb, &discard->instr);
+         nir_goto(&b->nb, b->func->impl->end_block);
+         break;
+      }
+
+      case SpvOpUnreachable:
+      case SpvOpReturn:
+      case SpvOpReturnValue: {
+         vtn_emit_ret_store(b, block);
+         nir_goto(&b->nb, b->func->impl->end_block);
+         break;
+      }
+
+      default:
+         vtn_fail("Unhandled opcode %s", spirv_op_to_string(op));
+      }
+   }
+}
+
 void
 vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
                   vtn_instruction_handler instruction_handler)
@@ -1197,7 +1336,13 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
    b->has_loop_continue = false;
    b->phi_table = _mesa_pointer_hash_table_create(b);
 
-   vtn_emit_cf_list_structured(b, &func->body, NULL, NULL, instruction_handler);
+   if (b->shader->info.stage == MESA_SHADER_KERNEL) {
+      b->func->impl->structured = false;
+      vtn_emit_cf_func_unstructured(b, func, instruction_handler);
+   } else {
+      vtn_emit_cf_list_structured(b, &func->body, NULL, NULL,
+                                  instruction_handler);
+   }
 
    vtn_foreach_instruction(b, func->start_block->label, func->end,
                            vtn_handle_phi_second_pass);
