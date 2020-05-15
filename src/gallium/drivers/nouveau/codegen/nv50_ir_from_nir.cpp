@@ -1617,6 +1617,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 {
    nir_intrinsic_op op = insn->intrinsic;
    const nir_intrinsic_info &opInfo = nir_intrinsic_infos[op];
+   unsigned dest_components = nir_intrinsic_dest_components(insn);
 
    switch (op) {
    case nir_intrinsic_load_uniform: {
@@ -1624,7 +1625,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       const DataType dType = getDType(insn);
       Value *indirect;
       uint32_t coffset = getIndirect(insn, 0, 0, indirect);
-      for (uint8_t i = 0; i < insn->num_components; ++i) {
+      for (uint8_t i = 0; i < dest_components; ++i) {
          loadFrom(FILE_MEMORY_CONST, 0, dType, newDefs[i], 16 * coffset, i, indirect);
       }
       break;
@@ -1635,7 +1636,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       DataType dType = getSType(insn->src[0], false, false);
       uint32_t idx = getIndirect(insn, op == nir_intrinsic_store_output ? 1 : 2, 0, indirect);
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+      for (uint8_t i = 0u; i < nir_intrinsic_src_components(insn, 0); ++i) {
          if (!((1u << i) & nir_intrinsic_write_mask(insn)))
             continue;
 
@@ -1688,7 +1689,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          srcs.push_back(mkOp1v(OP_RDSV, TYPE_U32, getSSA(), mkSysVal(SV_LAYER, 0)));
          srcs.push_back(mkOp1v(OP_RDSV, TYPE_U32, getSSA(), mkSysVal(SV_SAMPLE_INDEX, 0)));
 
-         for (uint8_t i = 0u; i < insn->num_components; ++i) {
+         for (uint8_t i = 0u; i < dest_components; ++i) {
             defs.push_back(newDefs[i]);
             mask |= 1 << i;
          }
@@ -1723,7 +1724,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          }
       }
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+      for (uint8_t i = 0u; i < dest_components; ++i) {
          uint32_t address = getSlotAddress(insn, idx, i);
          Symbol *sym = mkSymbol(input ? FILE_SHADER_INPUT : FILE_SHADER_OUTPUT, 0, dType, address);
          if (prog->getType() == Program::TYPE_FRAGMENT) {
@@ -1858,7 +1859,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       SVSemantic sv = convert(op);
       LValues &newDefs = convert(&insn->dest);
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+      for (uint8_t i = 0u; i < nir_intrinsic_dest_components(insn); ++i) {
          Value *def;
          if (typeSizeof(dType) == 8)
             def = getSSA();
@@ -1915,7 +1916,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       } else
          tmp = getSrc(&insn->src[1], 0);
 
-      for (uint8_t i = 0; i < insn->num_components; ++i) {
+      for (uint8_t i = 0; i < dest_components; ++i) {
          mkOp3(OP_SHFL, dType, newDefs[i], getSrc(&insn->src[0], i), tmp, mkImm(0x1f))
             ->subOp = NV50_IR_SUBOP_SHFL_IDX;
       }
@@ -1931,7 +1932,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       Value *vtxBase = mkOp2v(OP_PFETCH, TYPE_U32, getSSA(4, FILE_ADDRESS),
                               mkImm(baseVertex), indirectVertex);
-      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+      for (uint8_t i = 0u; i < dest_components; ++i) {
          uint32_t address = getSlotAddress(insn, idx, i);
          loadFrom(FILE_SHADER_INPUT, 0, dType, newDefs[i], address, 0,
                   indirectOffset, vtxBase, info->in[idx].patch);
@@ -1954,7 +1955,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       vtxBase = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, FILE_ADDRESS), outBase, vtxBase);
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+      for (uint8_t i = 0u; i < dest_components; ++i) {
          uint32_t address = getSlotAddress(insn, idx, i);
          loadFrom(FILE_SHADER_OUTPUT, 0, dType, newDefs[i], address, 0,
                   indirectOffset, vtxBase, info->in[idx].patch);
@@ -1978,7 +1979,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint32_t index = getIndirect(&insn->src[0], 0, indirectIndex) + 1;
       uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+      for (uint8_t i = 0u; i < dest_components; ++i) {
          loadFrom(FILE_MEMORY_CONST, index, dType, newDefs[i], offset, i,
                   indirectOffset, indirectIndex);
       }
@@ -2001,7 +2002,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint32_t buffer = getIndirect(&insn->src[1], 0, indirectBuffer);
       uint32_t offset = getIndirect(&insn->src[2], 0, indirectOffset);
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+      for (uint8_t i = 0u; i < nir_intrinsic_src_components(insn, 0); ++i) {
          if (!((1u << i) & nir_intrinsic_write_mask(insn)))
             continue;
          Symbol *sym = mkSymbol(FILE_MEMORY_BUFFER, buffer, sType,
@@ -2020,7 +2021,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint32_t buffer = getIndirect(&insn->src[0], 0, indirectBuffer);
       uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i)
+      for (uint8_t i = 0u; i < dest_components; ++i)
          loadFrom(FILE_MEMORY_BUFFER, buffer, dType, newDefs[i], offset, i,
                   indirectOffset, indirectBuffer);
 
@@ -2314,7 +2315,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       Value *indirectOffset;
       uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i) {
+      for (uint8_t i = 0u; i < nir_intrinsic_src_components(insn, 0); ++i) {
          if (!((1u << i) & nir_intrinsic_write_mask(insn)))
             continue;
          Symbol *sym = mkSymbol(FILE_MEMORY_SHARED, 0, sType, offset + i * typeSizeof(sType));
@@ -2328,7 +2329,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       Value *indirectOffset;
       uint32_t offset = getIndirect(&insn->src[0], 0, indirectOffset);
 
-      for (uint8_t i = 0u; i < insn->num_components; ++i)
+      for (uint8_t i = 0u; i < dest_components; ++i)
          loadFrom(FILE_MEMORY_SHARED, 0, dType, newDefs[i], offset, i, indirectOffset);
 
       break;
@@ -2367,7 +2368,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       Value *indirectOffset;
       uint32_t offset = getIndirect(&insn->src[0], 0, indirectOffset);
 
-      for (auto i = 0u; i < insn->num_components; ++i)
+      for (auto i = 0u; i < dest_components; ++i)
          loadFrom(FILE_MEMORY_GLOBAL, 0, dType, newDefs[i], offset, i, indirectOffset);
 
       info->io.globalAccess |= 0x1;
@@ -2376,7 +2377,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_store_global: {
       DataType sType = getSType(insn->src[0], false, false);
 
-      for (auto i = 0u; i < insn->num_components; ++i) {
+      for (auto i = 0u; i < nir_intrinsic_src_components(insn, 0); ++i) {
          if (!((1u << i) & nir_intrinsic_write_mask(insn)))
             continue;
          if (typeSizeof(sType) == 8) {
