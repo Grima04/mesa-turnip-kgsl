@@ -812,21 +812,19 @@ virgl-gles31:
 
 arm64_a630_gles2:
   extends:
-    - .deqp-test-gl
-    - .use-arm_test
-    - .freedreno-rules
+    - arm64_a306_gles2
   variables:
-    DEQP_VER: gles2
+    BM_KERNEL: /lava-files/cheza-kernel
+    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
     DEQP_SKIPS: deqp-freedreno-a630-skips.txt
     NIR_VALIDATE: 0
-    DEQP_PARALLEL: 4
-    FLAKES_CHANNEL: "#freedreno-ci"
     DEQP_EXPECTED_RENDERER: FD630
+    DEQP_NO_SAVE_RESULTS: ""
   tags:
-    - mesa-cheza
-  dependencies:
-    - meson-arm64
+    - google-freedreno-cheza
+  script:
+    - .gitlab-ci/bare-metal/cros-servo.sh
 
 arm64_a630_gles31:
   extends: arm64_a630_gles2
@@ -838,28 +836,48 @@ arm64_a630_gles3:
   variables:
     DEQP_VER: gles3
 
-arm64_a630_gles31_options:
-  extends: arm64_a630_gles2
+# We almost always manage to lower UBOs back to constant uploads in
+# the test suite, so get a little testing for it here.
+arm64_a630_noubo:
+  extends: arm64_a630_gles31
   variables:
     DEQP_VER: gles31
+    IR3_SHADER_DEBUG: nouboopt
+    DEQP_CASELIST_FILTER: "functional.*ubo"
+    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-noubo-fails.txt
+
+# The driver does some guessing as to whether to render using gmem
+# or bypass, and some GLES3.1 features interact with either one.
+# Do a little testing with gmem and bypass forced.
+arm64_a630_bypass:
+  extends: arm64_a630_gles31
+  variables:
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 5
-  script:
-    # We almost always manage to lower UBOs back to constant uploads in
-    # the test suite, so get a little testing for it here.
-    - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" DEQP_EXPECTED_FAILS=deqp-freedreno-a630-noubo-fails.txt CI_NODE_INDEX= ./install/deqp-runner.sh
-    # The driver does some guessing as to whether to render using gmem
-    # or bypass, and some GLES3.1 features interact with either one.
-    # Do a little testing with gmem and bypass forced.
-    - DEQP_RUN_SUFFIX=-bypass FD_MESA_DEBUG=nogmem DEQP_EXPECTED_FAILS=deqp-freedreno-a630-bypass-fails.txt ./install/deqp-runner.sh
-    - DEQP_RUN_SUFFIX=-gmem FD_MESA_DEBUG=nobypass ./install/deqp-runner.sh
-    # Check that we don't get obvious nir validation failures (though it's too expensive to run for the full CTS)
-    - DEQP_RUN_SUFFIX=-validate NIR_VALIDATE=1 ./install/deqp-runner.sh
+    FD_MESA_DEBUG: nogmem
+    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-bypass-fails.txt
+
+# Along with checking gmem path, check that we don't get obvious nir
+# validation failures (though it's too expensive to have it on for the
+# full CTS)
+arm64_a630_gmem:
+  extends: arm64_a630_gles31
+  variables:
+    CI_NODE_INDEX: 1
+    CI_NODE_TOTAL: 5
+    FD_MESA_DEBUG: nobypass
+    NIR_VALIDATE: 1
 
 .baremetal-test:
   extends:
     - .ci-run-policy
   stage: test
+  artifacts:
+    when: always
+    name: "mesa_${CI_JOB_NAME}"
+    paths:
+      - results/
+      - serial*.txt
 
 arm64_a306_gles2:
   extends:
