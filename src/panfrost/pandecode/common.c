@@ -32,20 +32,16 @@
 #include "decode.h"
 #include "util/macros.h"
 #include "util/u_debug.h"
+#include "util/hash_table.h"
 
 /* Memory handling */
 
-static struct pandecode_mapped_memory mmaps;
+static struct hash_table_u64 *mmap_table;
 
 struct pandecode_mapped_memory *
 pandecode_find_mapped_gpu_mem_containing(uint64_t addr)
 {
-        list_for_each_entry(struct pandecode_mapped_memory, pos, &mmaps.node, node) {
-                if (addr >= pos->gpu_va && addr < pos->gpu_va + pos->length)
-                        return pos;
-        }
-
-        return NULL;
+        return _mesa_hash_table_u64_search(mmap_table, addr & ~(4096 - 1));
 }
 
 static void
@@ -67,31 +63,30 @@ pandecode_inject_mmap(uint64_t gpu_va, void *cpu, unsigned sz, const char *name)
 {
         /* First, search if we already mapped this and are just updating an address */
 
-        list_for_each_entry(struct pandecode_mapped_memory, pos, &mmaps.node, node) {
-                if (pos->gpu_va == gpu_va) {
-                        /* TODO: Resizing weirdness. Only applies to tracing
-                         * the legacy driver, not for native traces */
+        struct pandecode_mapped_memory *existing =
+                pandecode_find_mapped_gpu_mem_containing(gpu_va);
 
-                        pos->length = sz;
-                        pos->addr = cpu;
-                        pandecode_add_name(pos, gpu_va, name);
-
-                        return;
-                }
+        if (existing && existing->gpu_va == gpu_va) {
+                existing->length = sz;
+                existing->addr = cpu;
+                pandecode_add_name(existing, gpu_va, name);
+                return;
         }
 
         /* Otherwise, add a fresh mapping */
         struct pandecode_mapped_memory *mapped_mem = NULL;
 
         mapped_mem = malloc(sizeof(*mapped_mem));
-        list_inithead(&mapped_mem->node);
-
         mapped_mem->gpu_va = gpu_va;
         mapped_mem->length = sz;
         mapped_mem->addr = cpu;
         pandecode_add_name(mapped_mem, gpu_va, name);
 
-        list_add(&mapped_mem->node, &mmaps.node);
+        /* Add it to the table */
+        assert((gpu_va & 4095) == 0);
+
+        for (unsigned i = 0; i < sz; i += 4096)
+                _mesa_hash_table_u64_insert(mmap_table, gpu_va + i, mapped_mem);
 }
 
 char *
@@ -154,7 +149,7 @@ pandecode_dump_file_close(void)
 void
 pandecode_initialize(bool to_stderr)
 {
-        list_inithead(&mmaps.node);
+        mmap_table = _mesa_hash_table_u64_create(NULL);
         pandecode_dump_file_open(to_stderr);
 }
 
@@ -169,5 +164,6 @@ pandecode_next_frame(void)
 void
 pandecode_close(void)
 {
+        _mesa_hash_table_u64_destroy(mmap_table, NULL);
         pandecode_dump_file_close();
 }
