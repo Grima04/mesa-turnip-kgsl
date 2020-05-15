@@ -337,7 +337,7 @@ class Operand final
 public:
    constexpr Operand()
       : reg_(PhysReg{128}), isTemp_(false), isFixed_(true), isConstant_(false),
-        isKill_(false), isUndef_(true), isFirstKill_(false), is64BitConst_(false),
+        isKill_(false), isUndef_(true), isFirstKill_(false), constSize(0),
         isLateKill_(false) {}
 
    explicit Operand(Temp r) noexcept
@@ -350,11 +350,51 @@ public:
          setFixed(PhysReg{128});
       }
    };
+   explicit Operand(uint8_t v) noexcept
+   {
+      /* 8-bit constants are only used for copies and copies from any 8-bit
+       * constant can be implemented with a SDWA v_mul_u32_u24. So consider all
+       * to be inline constants. */
+      data_.i = v;
+      isConstant_ = true;
+      constSize = 0;
+      setFixed(PhysReg{0u});
+   };
+   explicit Operand(uint16_t v) noexcept
+   {
+      data_.i = v;
+      isConstant_ = true;
+      constSize = 1;
+      if (v <= 64)
+         setFixed(PhysReg{128u + v});
+      else if (v >= 0xFFF0) /* [-16 .. -1] */
+         setFixed(PhysReg{192u + (0xFFFF - v)});
+      else if (v == 0x3800) /* 0.5 */
+         setFixed(PhysReg{240});
+      else if (v == 0xB800) /* -0.5 */
+         setFixed(PhysReg{241});
+      else if (v == 0x3C00) /* 1.0 */
+         setFixed(PhysReg{242});
+      else if (v == 0xBC00) /* -1.0 */
+         setFixed(PhysReg{243});
+      else if (v == 0x4000) /* 2.0 */
+         setFixed(PhysReg{244});
+      else if (v == 0xC000) /* -2.0 */
+         setFixed(PhysReg{245});
+      else if (v == 0x4400) /* 4.0 */
+         setFixed(PhysReg{246});
+      else if (v == 0xC400) /* -4.0 */
+         setFixed(PhysReg{247});
+      else if (v == 0x3118) /* 1/2 PI */
+         setFixed(PhysReg{248});
+      else /* Literal Constant */
+         setFixed(PhysReg{255});
+   };
    explicit Operand(uint32_t v, bool is64bit = false) noexcept
    {
       data_.i = v;
       isConstant_ = true;
-      is64BitConst_ = is64bit;
+      constSize = is64bit ? 3 : 2;
       if (v <= 64)
          setFixed(PhysReg{128 + v});
       else if (v >= 0xFFFFFFF0) /* [-16 .. -1] */
@@ -383,7 +423,7 @@ public:
    explicit Operand(uint64_t v) noexcept
    {
       isConstant_ = true;
-      is64BitConst_ = true;
+      constSize = 3;
       if (v <= 64) {
          data_.i = (uint32_t) v;
          setFixed(PhysReg{128 + (uint32_t) v});
@@ -465,7 +505,7 @@ public:
    constexpr unsigned bytes() const noexcept
    {
       if (isConstant())
-         return is64BitConst_ ? 8 : 4; //TODO: sub-dword constants
+         return 1 << constSize;
       else
          return data_.temp.bytes();
    }
@@ -473,7 +513,7 @@ public:
    constexpr unsigned size() const noexcept
    {
       if (isConstant())
-         return is64BitConst_ ? 2 : 1;
+         return constSize > 2 ? 2 : 1;
       else
          return data_.temp.size();
    }
@@ -521,7 +561,7 @@ public:
 
    constexpr uint64_t constantValue64(bool signext=false) const noexcept
    {
-      if (is64BitConst_) {
+      if (constSize == 3) {
          if (reg_ <= 192)
             return reg_ - 128;
          else if (reg_ <= 208)
@@ -545,6 +585,10 @@ public:
          case 247:
             return 0xC010000000000000;
          }
+      } else if (constSize == 1) {
+         return (signext && (data_.i & 0x8000u) ? 0xffffffffffff0000ull : 0ull) | data_.i;
+      } else if (constSize == 0) {
+         return (signext && (data_.i & 0x80u) ? 0xffffffffffffff00ull : 0ull) | data_.i;
       }
       return (signext && (data_.i & 0x80000000u) ? 0xffffffff00000000ull : 0ull) | data_.i;
    }
@@ -635,11 +679,11 @@ private:
          uint8_t isKill_:1;
          uint8_t isUndef_:1;
          uint8_t isFirstKill_:1;
-         uint8_t is64BitConst_:1;
+         uint8_t constSize:2;
          uint8_t isLateKill_:1;
       };
       /* can't initialize bit-fields in c++11, so work around using a union */
-      uint8_t control_ = 0;
+      uint16_t control_ = 0;
    };
 };
 

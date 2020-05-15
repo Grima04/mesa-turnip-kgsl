@@ -61,7 +61,7 @@ struct mad_info {
 
 enum Label {
    label_vec = 1 << 0,
-   label_constant = 1 << 1,
+   label_constant_32bit = 1 << 1,
    /* label_{abs,neg,mul,omod2,omod4,omod5,clamp} are used for both 16 and
     * 32-bit operations but this shouldn't cause any issues because we don't
     * look through any conversions */
@@ -91,13 +91,14 @@ enum Label {
    label_vcc_hint = 1 << 25,
    label_scc_needed = 1 << 26,
    label_b2i = 1 << 27,
+   label_constant_16bit = 1 << 29,
 };
 
 static constexpr uint32_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success |
                                          label_add_sub | label_bitwise | label_uniform_bitwise | label_minmax | label_fcmp;
 static constexpr uint32_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool |
                                         label_omod2 | label_omod4 | label_omod5 | label_clamp | label_scc_invert | label_b2i;
-static constexpr uint32_t val_labels = label_constant | label_constant_64bit | label_literal | label_mad;
+static constexpr uint32_t val_labels = label_constant_32bit | label_constant_64bit | label_constant_16bit | label_literal | label_mad;
 
 struct ssa_info {
    uint32_t val;
@@ -122,7 +123,10 @@ struct ssa_info {
          label &= ~instr_labels; /* instr and temp alias */
       }
 
-      if (new_label & val_labels)
+      uint32_t const_labels = label_literal | label_constant_32bit | label_constant_64bit | label_constant_16bit;
+      if (new_label & const_labels)
+         label &= ~val_labels | const_labels;
+      else if (new_label & val_labels)
          label &= ~val_labels;
 
       label |= new_label;
@@ -139,26 +143,85 @@ struct ssa_info {
       return label & label_vec;
    }
 
-   void set_constant(uint32_t constant)
+   void set_constant(chip_class chip, uint64_t constant)
    {
-      add_label(label_constant);
+      Operand op16((uint16_t)constant);
+      Operand op32((uint32_t)constant);
+      add_label(label_literal);
       val = constant;
+
+      if (chip >= GFX8 && !op16.isLiteral())
+         add_label(label_constant_16bit);
+
+      if (!op32.isLiteral() || ((uint32_t)constant == 0x3e22f983 && chip >= GFX8))
+         add_label(label_constant_32bit);
+
+      if (constant <= 64) {
+         add_label(label_constant_64bit);
+      } else if (constant >= 0xFFFFFFFFFFFFFFF0) { /* [-16 .. -1] */
+         add_label(label_constant_64bit);
+      } else if (constant == 0x3FE0000000000000) { /* 0.5 */
+         add_label(label_constant_64bit);
+      } else if (constant == 0xBFE0000000000000) { /* -0.5 */
+         add_label(label_constant_64bit);
+      } else if (constant == 0x3FF0000000000000) { /* 1.0 */
+         add_label(label_constant_64bit);
+      } else if (constant == 0xBFF0000000000000) { /* -1.0 */
+         add_label(label_constant_64bit);
+      } else if (constant == 0x4000000000000000) { /* 2.0 */
+         add_label(label_constant_64bit);
+      } else if (constant == 0xC000000000000000) { /* -2.0 */
+         add_label(label_constant_64bit);
+      } else if (constant == 0x4010000000000000) { /* 4.0 */
+         add_label(label_constant_64bit);
+      } else if (constant == 0xC010000000000000) { /* -4.0 */
+         add_label(label_constant_64bit);
+      }
+
+      if (label & label_constant_64bit) {
+         val = Operand(constant).constantValue();
+         if (val != constant)
+            label &= ~(label_literal | label_constant_16bit | label_constant_32bit);
+      }
    }
 
-   bool is_constant()
+   bool is_constant(unsigned bits)
    {
-      return label & label_constant;
+      switch (bits) {
+      case 8:
+         return label & label_literal;
+      case 16:
+         return label & label_constant_16bit;
+      case 32:
+         return label & label_constant_32bit;
+      case 64:
+         return label & label_constant_64bit;
+      }
+      return false;
    }
 
-   void set_constant_64bit(uint32_t constant)
+   bool is_literal(unsigned bits)
    {
-      add_label(label_constant_64bit);
-      val = constant;
+      bool is_lit = label & label_literal;
+      switch (bits) {
+      case 8:
+         return false;
+      case 16:
+         return is_lit && ~(label & label_constant_16bit);
+      case 32:
+         return is_lit && ~(label & label_constant_32bit);
+      case 64:
+         return false;
+      }
+      return false;
    }
 
-   bool is_constant_64bit()
+   bool is_constant_or_literal(unsigned bits)
    {
-      return label & label_constant_64bit;
+      if (bits == 64)
+         return label & label_constant_64bit;
+      else
+         return label & label_literal;
    }
 
    void set_abs(Temp abs_temp)
@@ -209,17 +272,6 @@ struct ssa_info {
    bool is_temp()
    {
       return label & label_temp;
-   }
-
-   void set_literal(uint32_t lit)
-   {
-      add_label(label_literal);
-      val = lit;
-   }
-
-   bool is_literal()
-   {
-      return label & label_literal;
    }
 
    void set_mad(Instruction* mad, uint32_t mad_info_idx)
@@ -319,11 +371,6 @@ struct ssa_info {
    bool is_vcc()
    {
       return label & label_vcc;
-   }
-
-   bool is_constant_or_literal()
-   {
-      return is_constant() || is_literal();
    }
 
    void set_b2f(Temp val)
@@ -655,7 +702,7 @@ bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp
       if (add_instr->operands[i].isConstant()) {
          *offset = add_instr->operands[i].constantValue();
       } else if (add_instr->operands[i].isTemp() &&
-                 ctx.info[add_instr->operands[i].tempId()].is_constant_or_literal()) {
+                 ctx.info[add_instr->operands[i].tempId()].is_constant_or_literal(32)) {
          *offset = ctx.info[add_instr->operands[i].tempId()].val;
       } else {
          continue;
@@ -687,11 +734,15 @@ unsigned get_operand_size(aco_ptr<Instruction>& instr, unsigned index)
       return 0;
 }
 
-Operand get_constant_op(opt_ctx &ctx, uint32_t val, bool is64bit = false)
+Operand get_constant_op(opt_ctx &ctx, ssa_info info, uint32_t bits)
 {
+   if (bits == 8)
+      return Operand((uint8_t)info.val);
+   if (bits == 16)
+      return Operand((uint16_t)info.val);
    // TODO: this functions shouldn't be needed if we store Operand instead of value.
-   Operand op(val, is64bit);
-   if (val == 0x3e22f983 && ctx.program->chip_class >= GFX8)
+   Operand op(info.val, bits == 64);
+   if (info.is_literal(32) && info.val == 0x3e22f983 && ctx.program->chip_class >= GFX8)
       op.setFixed(PhysReg{248}); /* 1/2 PI can be an inline constant on GFX8+ */
    return op;
 }
@@ -706,7 +757,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    if (instr->isSALU() || instr->isVALU() || instr->format == Format::PSEUDO) {
       ASSERTED bool all_const = false;
       for (Operand& op : instr->operands)
-         all_const = all_const && (!op.isTemp() || ctx.info[op.tempId()].is_constant_or_literal());
+         all_const = all_const && (!op.isTemp() || ctx.info[op.tempId()].is_constant_or_literal(32));
       perfwarn(all_const, "All instruction operands are constant", instr.get());
    }
 
@@ -728,13 +779,13 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       /* SALU / PSEUDO: propagate inline constants */
       if (instr->isSALU() || instr->format == Format::PSEUDO) {
          bool is_subdword = false;
-         // TODO: optimize SGPR and constant propagation for subdword pseudo instructions on gfx9+
+         // TODO: optimize SGPR propagation for subdword pseudo instructions on gfx9+
          if (instr->format == Format::PSEUDO) {
             is_subdword = std::any_of(instr->definitions.begin(), instr->definitions.end(),
                                       [] (const Definition& def) { return def.regClass().is_subdword();});
             is_subdword = is_subdword || std::any_of(instr->operands.begin(), instr->operands.end(),
                                                      [] (const Operand& op) { return op.hasRegClass() && op.regClass().is_subdword();});
-            if (is_subdword)
+            if (is_subdword && ctx.program->chip_class < GFX9)
                continue;
          }
 
@@ -760,9 +811,10 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                break;
             }
          }
-         if ((info.is_constant() || info.is_constant_64bit() || (info.is_literal() && instr->format == Format::PSEUDO)) &&
+         unsigned bits = get_operand_size(instr, i);
+         if ((info.is_constant(bits) || (!is_subdword && info.is_literal(bits) && instr->format == Format::PSEUDO)) &&
              !instr->operands[i].isFixed() && alu_can_accept_constant(instr->opcode, i)) {
-            instr->operands[i] = get_constant_op(ctx, info.val, info.is_constant_64bit());
+            instr->operands[i] = get_constant_op(ctx, info, bits);
             continue;
          }
       }
@@ -805,8 +857,9 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                static_cast<VOP3A_instruction*>(instr.get())->neg[i] = true;
             continue;
          }
-         if ((info.is_constant() || info.is_constant_64bit()) && alu_can_accept_constant(instr->opcode, i)) {
-            Operand op = get_constant_op(ctx, info.val, info.is_constant_64bit());
+         unsigned bits = get_operand_size(instr, i);
+         if (info.is_constant(bits) && alu_can_accept_constant(instr->opcode, i)) {
+            Operand op = get_constant_op(ctx, info, bits);
             perfwarn(instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
             if (i == 0 || instr->opcode == aco_opcode::v_readlane_b32 || instr->opcode == aco_opcode::v_writelane_b32) {
                instr->operands[i] = op;
@@ -831,13 +884,13 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          while (info.is_temp())
             info = ctx.info[info.temp.id()];
 
-         if (mubuf->offen && i == 1 && info.is_constant_or_literal() && mubuf->offset + info.val < 4096) {
+         if (mubuf->offen && i == 1 && info.is_constant_or_literal(32) && mubuf->offset + info.val < 4096) {
             assert(!mubuf->idxen);
             instr->operands[1] = Operand(v1);
             mubuf->offset += info.val;
             mubuf->offen = false;
             continue;
-         } else if (i == 2 && info.is_constant_or_literal() && mubuf->offset + info.val < 4096) {
+         } else if (i == 2 && info.is_constant_or_literal(32) && mubuf->offset + info.val < 4096) {
             instr->operands[2] = Operand((uint32_t) 0);
             mubuf->offset += info.val;
             continue;
@@ -891,7 +944,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          SMEM_instruction *smem = static_cast<SMEM_instruction *>(instr.get());
          Temp base;
          uint32_t offset;
-         if (i == 1 && info.is_constant_or_literal() &&
+         if (i == 1 && info.is_constant_or_literal(32) &&
              ((ctx.program->chip_class == GFX6 && info.val <= 0x3FF) ||
               (ctx.program->chip_class == GFX7 && info.val <= 0xFFFFFFFF) ||
               (ctx.program->chip_class >= GFX8 && info.val <= 0xFFFFF))) {
@@ -900,7 +953,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          } else if (i == 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset) && base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9) {
             bool soe = smem->operands.size() >= (!smem->definitions.empty() ? 3 : 4);
             if (soe &&
-                (!ctx.info[smem->operands.back().tempId()].is_constant_or_literal() ||
+                (!ctx.info[smem->operands.back().tempId()].is_constant_or_literal(32) ||
                  ctx.info[smem->operands.back().tempId()].val != 0)) {
                continue;
             }
@@ -996,12 +1049,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 
          Operand vec_op = vec->operands[vec_index];
          if (vec_op.isConstant()) {
-            if (vec_op.isLiteral())
-               ctx.info[instr->definitions[i].tempId()].set_literal(vec_op.constantValue());
-            else if (vec_op.size() == 1)
-               ctx.info[instr->definitions[i].tempId()].set_constant(vec_op.constantValue());
-            else if (vec_op.size() == 2)
-               ctx.info[instr->definitions[i].tempId()].set_constant_64bit(vec_op.constantValue());
+            ctx.info[instr->definitions[i].tempId()].set_constant(ctx.program->chip_class, vec_op.constantValue64());
          } else if (vec_op.isUndefined()) {
             ctx.info[instr->definitions[i].tempId()].set_undefined();
          } else {
@@ -1035,12 +1083,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          instr->operands[0] = op;
 
          if (op.isConstant()) {
-            if (op.isLiteral())
-               ctx.info[instr->definitions[0].tempId()].set_literal(op.constantValue());
-            else if (op.size() == 1)
-               ctx.info[instr->definitions[0].tempId()].set_constant(op.constantValue());
-            else if (op.size() == 2)
-               ctx.info[instr->definitions[0].tempId()].set_constant_64bit(op.constantValue());
+            ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, op.constantValue64());
          } else if (op.isUndefined()) {
             ctx.info[instr->definitions[0].tempId()].set_undefined();
          } else {
@@ -1060,12 +1103,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       } else if (instr->usesModifiers()) {
          // TODO
       } else if (instr->operands[0].isConstant()) {
-         if (instr->operands[0].isLiteral())
-            ctx.info[instr->definitions[0].tempId()].set_literal(instr->operands[0].constantValue());
-         else if (instr->operands[0].size() == 1)
-            ctx.info[instr->definitions[0].tempId()].set_constant(instr->operands[0].constantValue());
-         else if (instr->operands[0].size() == 2)
-            ctx.info[instr->definitions[0].tempId()].set_constant_64bit(instr->operands[0].constantValue());
+         ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, instr->operands[0].constantValue64());
       } else if (instr->operands[0].isTemp()) {
          ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
       } else {
@@ -1074,25 +1112,19 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       break;
    case aco_opcode::p_is_helper:
       if (!ctx.program->needs_wqm)
-         ctx.info[instr->definitions[0].tempId()].set_constant(0u);
+         ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, 0u);
       break;
    case aco_opcode::s_movk_i32: {
       uint32_t v = static_cast<SOPK_instruction*>(instr.get())->imm;
       v = v & 0x8000 ? (v | 0xffff0000) : v;
-      if (v <= 64 || v >= 0xfffffff0)
-         ctx.info[instr->definitions[0].tempId()].set_constant(v);
-      else
-         ctx.info[instr->definitions[0].tempId()].set_literal(v);
+      ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, v);
       break;
    }
    case aco_opcode::v_bfrev_b32:
    case aco_opcode::s_brev_b32: {
       if (instr->operands[0].isConstant()) {
          uint32_t v = util_bitreverse(instr->operands[0].constantValue());
-         if (v <= 64 || v >= 0xfffffff0)
-            ctx.info[instr->definitions[0].tempId()].set_constant(v);
-         else
-            ctx.info[instr->definitions[0].tempId()].set_literal(v);
+         ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, v);
       }
       break;
    }
@@ -1101,10 +1133,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          unsigned size = instr->operands[0].constantValue() & 0x1f;
          unsigned start = instr->operands[1].constantValue() & 0x1f;
          uint32_t v = ((1u << size) - 1u) << start;
-         if (v <= 64 || v >= 0xfffffff0)
-            ctx.info[instr->definitions[0].tempId()].set_constant(v);
-         else
-            ctx.info[instr->definitions[0].tempId()].set_literal(v);
+         ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, v);
       }
       break;
    }
@@ -1629,7 +1658,7 @@ bool combine_constant_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& in
    } else if (cmp->operands[constant_operand].isTemp()) {
       Temp tmp = cmp->operands[constant_operand].getTemp();
       unsigned id = original_temp_id(ctx, tmp);
-      if (!ctx.info[id].is_constant() && !ctx.info[id].is_literal())
+      if (!ctx.info[id].is_constant_or_literal(32))
          return false;
       constant = ctx.info[id].val;
    } else {
@@ -2115,7 +2144,7 @@ bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
             uint32_t val;
             if (operands[i].isConstant()) {
                val = operands[i].constantValue();
-            } else if (operands[i].isTemp() && ctx.info[operands[i].tempId()].is_constant_or_literal()) {
+            } else if (operands[i].isTemp() && ctx.info[operands[i].tempId()].is_constant_or_literal(32)) {
                val = ctx.info[operands[i].tempId()].val;
             } else {
                continue;
@@ -2791,9 +2820,10 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
             }
             if (!instr->operands[i].isTemp())
                continue;
+            unsigned bits = get_operand_size(instr, i);
             /* if one of the operands is sgpr, we cannot add a literal somewhere else on pre-GFX10 or operands other than the 1st */
             if (instr->operands[i].getTemp().type() == RegType::sgpr && (i > 0 || ctx.program->chip_class < GFX10)) {
-               if (!sgpr_used && ctx.info[instr->operands[i].tempId()].is_literal()) {
+               if (!sgpr_used && ctx.info[instr->operands[i].tempId()].is_literal(bits)) {
                   literal_uses = ctx.uses[instr->operands[i].tempId()];
                   literal_idx = i;
                } else {
@@ -2802,7 +2832,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
                sgpr_used = true;
                /* don't break because we still need to check constants */
             } else if (!sgpr_used &&
-                       ctx.info[instr->operands[i].tempId()].is_literal() &&
+                       ctx.info[instr->operands[i].tempId()].is_literal(bits) &&
                        ctx.uses[instr->operands[i].tempId()] < literal_uses) {
                literal_uses = ctx.uses[instr->operands[i].tempId()];
                literal_idx = i;
@@ -2881,6 +2911,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    /* choose a literal to apply */
    for (unsigned i = 0; i < num_operands; i++) {
       Operand op = instr->operands[i];
+      unsigned bits = get_operand_size(instr, i);
 
       if (instr->isVALU() && op.isTemp() && op.getTemp().type() == RegType::sgpr &&
           op.tempId() != sgpr_ids[0])
@@ -2889,7 +2920,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       if (op.isLiteral()) {
          current_literal = op;
          continue;
-      } else if (!op.isTemp() || !ctx.info[op.tempId()].is_literal()) {
+      } else if (!op.isTemp() || !ctx.info[op.tempId()].is_literal(bits)) {
          continue;
       }
 
@@ -2974,7 +3005,8 @@ void apply_literals(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    if (instr->isSALU() || instr->isVALU()) {
       for (unsigned i = 0; i < instr->operands.size(); i++) {
          Operand op = instr->operands[i];
-         if (op.isTemp() && ctx.info[op.tempId()].is_literal() && ctx.uses[op.tempId()] == 0) {
+         unsigned bits = get_operand_size(instr, i);
+         if (op.isTemp() && ctx.info[op.tempId()].is_literal(bits) && ctx.uses[op.tempId()] == 0) {
             Operand literal(ctx.info[op.tempId()].val);
             if (instr->isVALU() && i > 0)
                to_VOP3(ctx, instr);

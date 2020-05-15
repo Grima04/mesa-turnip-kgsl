@@ -153,8 +153,13 @@ static void print_constant(uint8_t reg, FILE *output)
 
 static void print_operand(const Operand *operand, FILE *output)
 {
-   if (operand->isLiteral()) {
-      fprintf(output, "0x%x", operand->constantValue());
+   if (operand->isLiteral() || (operand->isConstant() && operand->bytes() == 1)) {
+      if (operand->bytes() == 1)
+         fprintf(output, "0x%.2x", operand->constantValue());
+      else if (operand->bytes() == 2)
+         fprintf(output, "0x%.4x", operand->constantValue());
+      else
+         fprintf(output, "0x%x", operand->constantValue());
    } else if (operand->isConstant()) {
       print_constant(operand->physReg().reg(), output);
    } else if (operand->isUndefined()) {

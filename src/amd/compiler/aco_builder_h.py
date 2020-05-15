@@ -78,6 +78,8 @@ ds_pattern_bitmode(unsigned and_mask, unsigned or_mask, unsigned xor_mask)
 
 aco_ptr<Instruction> create_s_mov(Definition dst, Operand src);
 
+extern uint8_t int8_mul_table[512];
+
 enum sendmsg {
    sendmsg_none = 0,
    _sendmsg_gs = 2,
@@ -388,6 +390,36 @@ public:
         return vop1(aco_opcode::v_mov_b32, dst, op);
       } else if (op.bytes() > 2) {
          return pseudo(aco_opcode::p_create_vector, dst, op);
+      } else if (op.bytes() == 1 && op.isConstant()) {
+        uint8_t val = op.constantValue();
+        Operand op32((uint32_t)val | (val & 0x80u ? 0xffffff00u : 0u));
+        aco_ptr<SDWA_instruction> sdwa;
+        if (op32.isLiteral()) {
+            sdwa.reset(create_instruction<SDWA_instruction>(aco_opcode::v_mul_u32_u24, asSDWA(Format::VOP2), 2, 1));
+            uint32_t a = (uint32_t)int8_mul_table[val * 2];
+            uint32_t b = (uint32_t)int8_mul_table[val * 2 + 1];
+            sdwa->operands[0] = Operand(a | (a & 0x80u ? 0xffffff00u : 0x0u));
+            sdwa->operands[1] = Operand(b | (b & 0x80u ? 0xffffff00u : 0x0u));
+        } else {
+            sdwa.reset(create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1));
+            sdwa->operands[0] = op32;
+        }
+        sdwa->definitions[0] = dst;
+        sdwa->sel[0] = sdwa_udword;
+        sdwa->sel[1] = sdwa_udword;
+        sdwa->dst_sel = sdwa_ubyte;
+        sdwa->dst_preserve = true;
+        return insert(std::move(sdwa));
+      } else if (op.bytes() == 2 && op.isConstant() && !op.isLiteral()) {
+        aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_add_f16, asSDWA(Format::VOP2), 2, 1)};
+        sdwa->operands[0] = op;
+        sdwa->operands[1] = Operand(0u);
+        sdwa->definitions[0] = dst;
+        sdwa->sel[0] = sdwa_uword;
+        sdwa->sel[1] = sdwa_udword;
+        sdwa->dst_sel = dst.bytes() == 1 ? sdwa_ubyte : sdwa_uword;
+        sdwa->dst_preserve = true;
+        return insert(std::move(sdwa));
       } else if (dst.regClass().is_subdword()) {
         if (program->chip_class >= GFX8) {
             aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};

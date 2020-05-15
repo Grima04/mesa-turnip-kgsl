@@ -1925,7 +1925,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_fsat: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (dst.regClass() == v2b) {
-         bld.vop3(aco_opcode::v_med3_f16, Definition(dst), Operand(0u), Operand(0x3f800000u), src);
+         bld.vop3(aco_opcode::v_med3_f16, Definition(dst), Operand((uint16_t)0u), Operand((uint16_t)0x3c00), src);
       } else if (dst.regClass() == v1) {
          bld.vop3(aco_opcode::v_med3_f32, Definition(dst), Operand(0u), Operand(0x3f800000u), src);
          /* apparently, it is not necessary to flush denorms if this instruction is used with these operands */
