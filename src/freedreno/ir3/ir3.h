@@ -1345,7 +1345,9 @@ static inline struct ir3_instruction *
 ir3_MOV(struct ir3_block *block, struct ir3_instruction *src, type_t type)
 {
 	struct ir3_instruction *instr = ir3_instr_create(block, OPC_MOV);
-	__ssa_dst(instr);
+	unsigned flags = (type_size(type) < 32) ? IR3_REG_HALF : 0;
+
+	__ssa_dst(instr)->flags |= flags;
 	if (src->regs[0]->flags & IR3_REG_ARRAY) {
 		struct ir3_register *src_reg = __ssa_src(instr, src, IR3_REG_ARRAY);
 		src_reg->array = src->regs[0]->array;

@@ -34,7 +34,9 @@ static void
 insert_mov(struct ir3_instruction *collect, int idx)
 {
 	struct ir3_instruction *src = ssa(collect->regs[idx+1]);
-	struct ir3_instruction *mov = ir3_MOV(src->block, src, TYPE_F32);
+	struct ir3_instruction *mov = ir3_MOV(src->block, src,
+		(collect->regs[idx+1]->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32);
+
 	collect->regs[idx+1]->instr = mov;
 
 	/* if collect and src are in the same block, move the inserted mov
