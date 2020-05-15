@@ -1344,20 +1344,26 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    case aco_opcode::v_max_i16:
       ctx.info[instr->definitions[0].tempId()].set_minmax(instr.get());
       break;
-   case aco_opcode::v_cmp_lt_f32:
-   case aco_opcode::v_cmp_eq_f32:
-   case aco_opcode::v_cmp_le_f32:
-   case aco_opcode::v_cmp_gt_f32:
-   case aco_opcode::v_cmp_lg_f32:
-   case aco_opcode::v_cmp_ge_f32:
+   #define CMP(cmp) \
+   case aco_opcode::v_cmp_##cmp##_f16:\
+   case aco_opcode::v_cmp_##cmp##_f32:\
+   case aco_opcode::v_cmp_##cmp##_f64:\
+   case aco_opcode::v_cmp_n##cmp##_f16:\
+   case aco_opcode::v_cmp_n##cmp##_f32:\
+   case aco_opcode::v_cmp_n##cmp##_f64:
+   CMP(lt)
+   CMP(eq)
+   CMP(le)
+   CMP(gt)
+   CMP(lg)
+   CMP(ge)
+   case aco_opcode::v_cmp_o_f16:
+   case aco_opcode::v_cmp_u_f16:
    case aco_opcode::v_cmp_o_f32:
    case aco_opcode::v_cmp_u_f32:
-   case aco_opcode::v_cmp_nge_f32:
-   case aco_opcode::v_cmp_nlg_f32:
-   case aco_opcode::v_cmp_ngt_f32:
-   case aco_opcode::v_cmp_nle_f32:
-   case aco_opcode::v_cmp_neq_f32:
-   case aco_opcode::v_cmp_nlt_f32:
+   case aco_opcode::v_cmp_o_f64:
+   case aco_opcode::v_cmp_u_f64:
+   #undef CMP
       ctx.info[instr->definitions[0].tempId()].set_fcmp(instr.get());
       break;
    case aco_opcode::s_cselect_b64:
@@ -1384,17 +1390,32 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    }
 }
 
-ALWAYS_INLINE bool get_cmp_info(aco_opcode op, aco_opcode *ordered, aco_opcode *unordered, aco_opcode *inverse)
+struct CmpInfo {
+   aco_opcode ordered;
+   aco_opcode unordered;
+   aco_opcode inverse;
+   aco_opcode f32;
+   unsigned size;
+};
+
+ALWAYS_INLINE bool get_cmp_info(aco_opcode op, CmpInfo *info)
 {
-   *ordered = *unordered = op;
+   info->ordered = aco_opcode::num_opcodes;
+   info->unordered = aco_opcode::num_opcodes;
    switch (op) {
-   #define CMP(ord, unord) \
-   case aco_opcode::v_cmp_##ord##_f32:\
-   case aco_opcode::v_cmp_n##unord##_f32:\
-      *ordered = aco_opcode::v_cmp_##ord##_f32;\
-      *unordered = aco_opcode::v_cmp_n##unord##_f32;\
-      *inverse = op == aco_opcode::v_cmp_n##unord##_f32 ? aco_opcode::v_cmp_##unord##_f32 : aco_opcode::v_cmp_n##ord##_f32;\
+   #define CMP2(ord, unord, sz) \
+   case aco_opcode::v_cmp_##ord##_f##sz:\
+   case aco_opcode::v_cmp_n##unord##_f##sz:\
+      info->ordered = aco_opcode::v_cmp_##ord##_f##sz;\
+      info->unordered = aco_opcode::v_cmp_n##unord##_f##sz;\
+      info->inverse = op == aco_opcode::v_cmp_n##unord##_f##sz ? aco_opcode::v_cmp_##unord##_f##sz : aco_opcode::v_cmp_n##ord##_f##sz;\
+      info->f32 = op == aco_opcode::v_cmp_##ord##_f##sz ? aco_opcode::v_cmp_##ord##_f32 : aco_opcode::v_cmp_n##unord##_f32;\
+      info->size = sz;\
       return true;
+   #define CMP(ord, unord) \
+   CMP2(ord, unord, 16)\
+   CMP2(ord, unord, 32)\
+   CMP2(ord, unord, 64)
    CMP(lt, /*n*/ge)
    CMP(eq, /*n*/lg)
    CMP(le, /*n*/gt)
@@ -1402,6 +1423,22 @@ ALWAYS_INLINE bool get_cmp_info(aco_opcode op, aco_opcode *ordered, aco_opcode *
    CMP(lg, /*n*/eq)
    CMP(ge, /*n*/lt)
    #undef CMP
+   #undef CMP2
+   #define ORD_TEST(sz) \
+   case aco_opcode::v_cmp_u_f##sz:\
+      info->f32 = aco_opcode::v_cmp_u_f32;\
+      info->inverse = aco_opcode::v_cmp_o_f##sz;\
+      info->size = sz;\
+      return true;\
+   case aco_opcode::v_cmp_o_f##sz:\
+      info->f32 = aco_opcode::v_cmp_o_f32;\
+      info->inverse = aco_opcode::v_cmp_u_f##sz;\
+      info->size = sz;\
+      return true;
+   ORD_TEST(16)
+   ORD_TEST(32)
+   ORD_TEST(64)
+   #undef ORD_TEST
    default:
       return false;
    }
@@ -1409,26 +1446,38 @@ ALWAYS_INLINE bool get_cmp_info(aco_opcode op, aco_opcode *ordered, aco_opcode *
 
 aco_opcode get_ordered(aco_opcode op)
 {
-   aco_opcode ordered, unordered, inverse;
-   return get_cmp_info(op, &ordered, &unordered, &inverse) ? ordered : aco_opcode::num_opcodes;
+   CmpInfo info;
+   return get_cmp_info(op, &info) ? info.ordered : aco_opcode::num_opcodes;
 }
 
 aco_opcode get_unordered(aco_opcode op)
 {
-   aco_opcode ordered, unordered, inverse;
-   return get_cmp_info(op, &ordered, &unordered, &inverse) ? unordered : aco_opcode::num_opcodes;
+   CmpInfo info;
+   return get_cmp_info(op, &info) ? info.unordered : aco_opcode::num_opcodes;
 }
 
 aco_opcode get_inverse(aco_opcode op)
 {
-   aco_opcode ordered, unordered, inverse;
-   return get_cmp_info(op, &ordered, &unordered, &inverse) ? inverse : aco_opcode::num_opcodes;
+   CmpInfo info;
+   return get_cmp_info(op, &info) ? info.inverse : aco_opcode::num_opcodes;
+}
+
+aco_opcode get_f32_cmp(aco_opcode op)
+{
+   CmpInfo info;
+   return get_cmp_info(op, &info) ? info.f32 : aco_opcode::num_opcodes;
+}
+
+unsigned get_cmp_bitsize(aco_opcode op)
+{
+   CmpInfo info;
+   return get_cmp_info(op, &info) ? info.size : 0;
 }
 
 bool is_cmp(aco_opcode op)
 {
-   aco_opcode ordered, unordered, inverse;
-   return get_cmp_info(op, &ordered, &unordered, &inverse);
+   CmpInfo info;
+   return get_cmp_info(op, &info) && info.ordered != aco_opcode::num_opcodes;
 }
 
 unsigned original_temp_id(opt_ctx &ctx, Temp tmp)
@@ -1484,14 +1533,18 @@ bool combine_ordering_test(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    Instruction *op_instr[2];
    Temp op[2];
 
+   unsigned bitsize = 0;
    for (unsigned i = 0; i < 2; i++) {
       op_instr[i] = follow_operand(ctx, instr->operands[i], true);
       if (!op_instr[i])
          return false;
 
       aco_opcode expected_cmp = is_or ? aco_opcode::v_cmp_neq_f32 : aco_opcode::v_cmp_eq_f32;
+      unsigned op_bitsize = get_cmp_bitsize(op_instr[i]->opcode);
 
-      if (op_instr[i]->opcode != expected_cmp)
+      if (get_f32_cmp(op_instr[i]->opcode) != expected_cmp)
+         return false;
+      if (bitsize && op_bitsize != bitsize)
          return false;
       if (!op_instr[i]->operands[0].isTemp() || !op_instr[i]->operands[1].isTemp())
          return false;
@@ -1511,6 +1564,7 @@ bool combine_ordering_test(opt_ctx &ctx, aco_ptr<Instruction>& instr)
          return false;
 
       op[i] = op1;
+      bitsize = op_bitsize;
    }
 
    if (op[1].type() == RegType::sgpr)
@@ -1524,7 +1578,18 @@ bool combine_ordering_test(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    decrease_uses(ctx, op_instr[0]);
    decrease_uses(ctx, op_instr[1]);
 
-   aco_opcode new_op = is_or ? aco_opcode::v_cmp_u_f32 : aco_opcode::v_cmp_o_f32;
+   aco_opcode new_op = aco_opcode::num_opcodes;
+   switch (bitsize) {
+   case 16:
+      new_op = is_or ? aco_opcode::v_cmp_u_f16 : aco_opcode::v_cmp_o_f16;
+      break;
+   case 32:
+      new_op = is_or ? aco_opcode::v_cmp_u_f32 : aco_opcode::v_cmp_o_f32;
+      break;
+   case 64:
+      new_op = is_or ? aco_opcode::v_cmp_u_f64 : aco_opcode::v_cmp_o_f64;
+      break;
+   }
    Instruction *new_instr;
    if (neg[0] || neg[1] || abs[0] || abs[1] || opsel || num_sgprs > 1) {
       VOP3A_instruction *vop3 = create_instruction<VOP3A_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
@@ -1566,12 +1631,12 @@ bool combine_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    if (!nan_test || !cmp)
       return false;
 
-   if (cmp->opcode == expected_nan_test)
+   if (get_f32_cmp(cmp->opcode) == expected_nan_test)
       std::swap(nan_test, cmp);
-   else if (nan_test->opcode != expected_nan_test)
+   else if (get_f32_cmp(nan_test->opcode) != expected_nan_test)
       return false;
 
-   if (!is_cmp(cmp->opcode))
+   if (!is_cmp(cmp->opcode) || get_cmp_bitsize(cmp->opcode) != get_cmp_bitsize(nan_test->opcode))
       return false;
 
    if (!nan_test->operands[0].isTemp() || !nan_test->operands[1].isTemp())
@@ -1637,12 +1702,12 @@ bool combine_constant_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& in
       return false;
 
    aco_opcode expected_nan_test = is_or ? aco_opcode::v_cmp_neq_f32 : aco_opcode::v_cmp_eq_f32;
-   if (cmp->opcode == expected_nan_test)
+   if (get_f32_cmp(cmp->opcode) == expected_nan_test)
       std::swap(nan_test, cmp);
-   else if (nan_test->opcode != expected_nan_test)
+   else if (get_f32_cmp(nan_test->opcode) != expected_nan_test)
       return false;
 
-   if (!is_cmp(cmp->opcode))
+   if (!is_cmp(cmp->opcode) || get_cmp_bitsize(cmp->opcode) != get_cmp_bitsize(nan_test->opcode))
       return false;
 
    if (!nan_test->operands[0].isTemp() || !nan_test->operands[1].isTemp())
