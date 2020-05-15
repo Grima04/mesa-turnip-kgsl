@@ -652,7 +652,7 @@ private:
 class Definition final
 {
 public:
-   constexpr Definition() : temp(Temp(0, s1)), reg_(0), isFixed_(0), hasHint_(0), isKill_(0) {}
+   constexpr Definition() : temp(Temp(0, s1)), reg_(0), isFixed_(0), hasHint_(0), isKill_(0), isPrecise_(0) {}
    Definition(uint32_t index, RegClass type) noexcept
       : temp(index, type) {}
    explicit Definition(Temp tmp) noexcept
@@ -739,6 +739,16 @@ public:
       return isKill_;
    }
 
+   constexpr void setPrecise(bool precise) noexcept
+   {
+      isPrecise_ = precise;
+   }
+
+   constexpr bool isPrecise() const noexcept
+   {
+      return isPrecise_;
+   }
+
 private:
    Temp temp = Temp(0, s1);
    PhysReg reg_;
@@ -747,6 +757,7 @@ private:
          uint8_t isFixed_:1;
          uint8_t hasHint_:1;
          uint8_t isKill_:1;
+         uint8_t isPrecise_:1;
       };
       /* can't initialize bit-fields in c++11, so work around using a union */
       uint8_t control_ = 0;

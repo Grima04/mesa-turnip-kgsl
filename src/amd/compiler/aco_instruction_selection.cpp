@@ -590,6 +590,8 @@ void emit_vop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
                            bool commutative, bool swap_srcs=false, bool flush_denorms = false)
 {
    Builder bld(ctx->program, ctx->block);
+   bld.is_precise = instr->exact;
+
    Temp src0 = get_alu_src(ctx, instr->src[swap_srcs ? 1 : 0]);
    Temp src1 = get_alu_src(ctx, instr->src[swap_srcs ? 0 : 1]);
    if (src1.type() == RegType::sgpr) {
@@ -628,6 +630,7 @@ void emit_vop3a_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode 
       src2 = as_vgpr(ctx, src2);
 
    Builder bld(ctx->program, ctx->block);
+   bld.is_precise = instr->exact;
    if (flush_denorms && ctx->program->chip_class < GFX9) {
       assert(dst.size() == 1);
       Temp tmp = bld.vop3(op, Definition(dst), src0, src1, src2);
@@ -640,6 +643,7 @@ void emit_vop3a_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode 
 void emit_vop1_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode op, Temp dst)
 {
    Builder bld(ctx->program, ctx->block);
+   bld.is_precise = instr->exact;
    if (dst.type() == RegType::sgpr)
       bld.pseudo(aco_opcode::p_as_uniform, Definition(dst),
                  bld.vop1(op, bld.def(RegType::vgpr, dst.size()), get_alu_src(ctx, instr->src[0])));
@@ -1041,6 +1045,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       abort();
    }
    Builder bld(ctx->program, ctx->block);
+   bld.is_precise = instr->exact;
    Temp dst = get_ssa_temp(ctx, &instr->dest.dest.ssa);
    switch(instr->op) {
    case nir_op_vec2:
@@ -2703,7 +2708,6 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_unpack_half_2x16_split_x: {
       if (dst.regClass() == v1) {
-         Builder bld(ctx->program, ctx->block);
          bld.vop1(aco_opcode::v_cvt_f32_f16, Definition(dst), get_alu_src(ctx, instr->src[0]));
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -2714,7 +2718,6 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_unpack_half_2x16_split_y: {
       if (dst.regClass() == v1) {
-         Builder bld(ctx->program, ctx->block);
          /* TODO: use SDWA here */
          bld.vop1(aco_opcode::v_cvt_f32_f16, Definition(dst),
                   bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), Operand(16u), as_vgpr(ctx, get_alu_src(ctx, instr->src[0]))));

@@ -174,6 +174,8 @@ static void print_operand(const Operand *operand, FILE *output)
 static void print_definition(const Definition *definition, FILE *output)
 {
    print_reg_class(definition->regClass(), output);
+   if (definition->isPrecise())
+      fprintf(output, "(precise)");
    fprintf(output, "%%%d", definition->tempId());
 
    if (definition->isFixed())

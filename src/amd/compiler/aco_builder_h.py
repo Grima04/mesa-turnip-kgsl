@@ -166,10 +166,17 @@ public:
 
    std::vector<aco_ptr<Instruction>> *instructions;
    std::vector<aco_ptr<Instruction>>::iterator it;
+   bool is_precise = false;
 
    Builder(Program *pgm) : program(pgm), use_iterator(false), start(false), lm(pgm->lane_mask), instructions(NULL) {}
    Builder(Program *pgm, Block *block) : program(pgm), use_iterator(false), start(false), lm(pgm ? pgm->lane_mask : s2), instructions(&block->instructions) {}
    Builder(Program *pgm, std::vector<aco_ptr<Instruction>> *instrs) : program(pgm), use_iterator(false), start(false), lm(pgm ? pgm->lane_mask : s2), instructions(instrs) {}
+
+   Builder precise() const {
+      Builder res = *this;
+      res.is_precise = true;
+      return res;
+   };
 
    void moveEnd(Block *block) {
       instructions = &block->instructions;
@@ -524,6 +531,7 @@ formats = [("pseudo", [Format.PSEUDO], 'Pseudo_instruction', list(itertools.prod
       ${struct} *instr = create_instruction<${struct}>(opcode, (Format)(${'|'.join('(int)Format::%s' % f.name for f in formats)}), ${num_operands}, ${num_definitions});
         % for i in range(num_definitions):
             instr->definitions[${i}] = def${i};
+            instr->definitions[${i}].setPrecise(is_precise);
         % endfor
         % for i in range(num_operands):
             instr->operands[${i}] = op${i}.op;

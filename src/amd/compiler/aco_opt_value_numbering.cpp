@@ -401,6 +401,8 @@ void process_block(vn_ctx& ctx, Block& block)
                assert(instr->definitions[i].regClass() == orig_instr->definitions[i].regClass());
                assert(instr->definitions[i].isTemp());
                ctx.renames[instr->definitions[i].tempId()] = orig_instr->definitions[i].getTemp();
+               if (instr->definitions[i].isPrecise())
+                  orig_instr->definitions[i].setPrecise(true);
             }
          } else {
             ctx.expr_values.erase(res.first);
