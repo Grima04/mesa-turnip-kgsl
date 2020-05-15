@@ -1734,7 +1734,8 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                Operand op = Operand();
                if (!def.isFixed() && instr->opcode == aco_opcode::p_parallelcopy)
                   op = instr->operands[i];
-               else if (instr->opcode == aco_opcode::v_mad_f32 && !instr->usesModifiers())
+               else if ((instr->opcode == aco_opcode::v_mad_f32 ||
+                        (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10)) && !instr->usesModifiers())
                   op = instr->operands[2];
 
                if (op.isTemp() && op.isFirstKillBeforeDef() && def.regClass() == op.regClass()) {
@@ -2009,7 +2010,8 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
          }
 
          /* try to optimize v_mad_f32 -> v_mac_f32 */
-         if (instr->opcode == aco_opcode::v_mad_f32 &&
+         if ((instr->opcode == aco_opcode::v_mad_f32 ||
+              (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10)) &&
              instr->operands[2].isTemp() &&
              instr->operands[2].isKillBeforeDef() &&
              instr->operands[2].getTemp().type() == RegType::vgpr &&
@@ -2022,13 +2024,23 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                 instr->operands[2].physReg() == ctx.assignments[it->second].reg ||
                 register_file.test(ctx.assignments[it->second].reg, instr->operands[2].bytes())) {
                instr->format = Format::VOP2;
-               instr->opcode = aco_opcode::v_mac_f32;
+               switch (instr->opcode) {
+               case aco_opcode::v_mad_f32:
+                  instr->opcode = aco_opcode::v_mac_f32;
+                  break;
+               case aco_opcode::v_fma_f32:
+                  instr->opcode = aco_opcode::v_fmac_f32;
+                  break;
+               default:
+                  break;
+               }
             }
          }
 
          /* handle definitions which must have the same register as an operand */
          if (instr->opcode == aco_opcode::v_interp_p2_f32 ||
              instr->opcode == aco_opcode::v_mac_f32 ||
+             instr->opcode == aco_opcode::v_fmac_f32 ||
              instr->opcode == aco_opcode::v_writelane_b32 ||
              instr->opcode == aco_opcode::v_writelane_b32_e64) {
             instr->definitions[0].setFixed(instr->operands[2].physReg());

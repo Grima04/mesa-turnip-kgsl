@@ -1256,6 +1256,10 @@ setup_isel_context(Program* program,
 
    setup_xnack(program);
    program->sram_ecc_enabled = args->options->family == CHIP_ARCTURUS;
+   /* apparently gfx702 also has fast v_fma_f32 but I can't find a family for that */
+   program->has_fast_fma32 = program->chip_class >= GFX9;
+   if (args->options->family == CHIP_TAHITI || args->options->family == CHIP_CARRIZO || args->options->family == CHIP_HAWAII)
+      program->has_fast_fma32 = true;
 
    return ctx;
 }

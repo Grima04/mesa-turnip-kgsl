@@ -1451,6 +1451,7 @@ public:
 
    bool xnack_enabled = false;
    bool sram_ecc_enabled = false;
+   bool has_fast_fma32 = false;
 
    bool needs_vcc = false;
    bool needs_flat_scr = false;
