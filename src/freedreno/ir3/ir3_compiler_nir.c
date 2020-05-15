@@ -3586,6 +3586,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		fixup_binning_pass(ctx);
 
 	ir3_debug_print(ir, "AFTER: nir->ir3");
+	ir3_validate(ir);
 
 	do {
 		progress = false;

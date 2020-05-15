@@ -1183,10 +1183,15 @@ check_src_cond(struct ir3_instruction *instr, bool (*cond)(struct ir3_instructio
 
 #define IR3_PASS(ir, pass, ...) ({ \
 		bool progress = pass(ir, ##__VA_ARGS__); \
-		if (progress) \
+		if (progress) { \
 			ir3_debug_print(ir, "AFTER: " #pass); \
+			ir3_validate(ir); \
+		} \
 		progress; \
 	})
+
+/* validate: */
+void ir3_validate(struct ir3 *ir);
 
 /* dump: */
 void ir3_print(struct ir3 *ir);
