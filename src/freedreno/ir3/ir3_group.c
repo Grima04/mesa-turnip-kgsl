@@ -44,8 +44,7 @@ insert_mov(struct ir3_instruction *collect, int idx)
 	 * it should be safe to leave at the end of the block it is in:
 	 */
 	if (src->block == collect->block) {
-		list_delinit(&mov->node);
-		list_addtail(&mov->node, &collect->node);
+		ir3_instr_move_before(mov, collect);
 	}
 }
 

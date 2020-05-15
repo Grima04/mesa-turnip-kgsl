@@ -404,8 +404,7 @@ get_atomic_dest_mov(struct ir3_instruction *atomic)
 	/* it will have already been appended to the end of the block, which
 	 * isn't where we want it, so fix-up the location:
 	 */
-	list_delinit(&mov->node);
-	list_add(&mov->node, &atomic->node);
+	ir3_instr_move_after(mov, atomic);
 
 	return atomic->data = mov;
 }

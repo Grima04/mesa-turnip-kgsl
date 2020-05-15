@@ -303,8 +303,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			ir3_reg_create(baryf, regid(0, 0), 0);
 
 			/* insert the dummy bary.f after last_input: */
-			list_delinit(&baryf->node);
-			list_add(&baryf->node, &last_input->node);
+			ir3_instr_move_after(baryf, last_input);
 
 			last_input = baryf;
 

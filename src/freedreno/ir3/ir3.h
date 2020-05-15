@@ -593,6 +593,28 @@ void ir3_clear_mark(struct ir3 *shader);
 unsigned ir3_count_instructions(struct ir3 *ir);
 unsigned ir3_count_instructions_ra(struct ir3 *ir);
 
+/**
+ * Move 'instr' to just before 'after'
+ */
+static inline void
+ir3_instr_move_before(struct ir3_instruction *instr,
+		struct ir3_instruction *after)
+{
+	list_delinit(&instr->node);
+	list_addtail(&instr->node, &after->node);
+}
+
+/**
+ * Move 'instr' to just after 'before':
+ */
+static inline void
+ir3_instr_move_after(struct ir3_instruction *instr,
+		struct ir3_instruction *before)
+{
+	list_delinit(&instr->node);
+	list_add(&instr->node, &before->node);
+}
+
 void ir3_find_ssa_uses(struct ir3 *ir, void *mem_ctx, bool falsedeps);
 
 void ir3_set_dst_type(struct ir3_instruction *instr, bool half);
