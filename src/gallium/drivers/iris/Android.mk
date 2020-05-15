@@ -121,6 +121,26 @@ LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_genxml
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
+#
+# libiris for gen12hp
+#
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libmesa_iris_gen125
+LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+
+LOCAL_SRC_FILES := $(LIBIRIS_SRC_FILES)
+LOCAL_CFLAGS := -DGEN_VERSIONx10=125
+
+LOCAL_C_INCLUDES := $(IRIS_COMMON_INCLUDES)
+
+LOCAL_STATIC_LIBRARIES := $(LIBIRIS_STATIC_LIBS)
+
+LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_genxml
+
+include $(MESA_COMMON_MK)
+include $(BUILD_STATIC_LIBRARY)
+
 ###########################################################
 include $(CLEAR_VARS)
 
