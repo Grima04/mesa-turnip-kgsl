@@ -872,6 +872,16 @@ arm64_a306_gles3:
     CI_NODE_TOTAL: 25
     NIR_VALIDATE: 0
 
+# Fractional runs with debug options.  Note that since we're not
+# hitting the iommu faults, we can run in parallel (derive from gles2, not gles3).
+arm64_a306_gles3_options:
+  extends: arm64_a306_gles2
+  variables:
+    DEQP_VER: gles3
+  script:
+    # Check that the non-constbuf UBO case works.
+    - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" .gitlab-ci/bare-metal/fastboot.sh
+
 arm64_a530_gles2:
   extends:
     - arm64_a306_gles2

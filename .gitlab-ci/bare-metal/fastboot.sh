@@ -65,11 +65,14 @@ for var in \
     CI_NODE_TOTAL \
     CI_PIPELINE_ID \
     CI_RUNNER_DESCRIPTION \
+    DEQP_CASELIST_FILTER \
     DEQP_EXPECTED_RENDERER \
     DEQP_PARALLEL \
     DEQP_RUN_SUFFIX \
     DEQP_VER \
+    FD_MESA_DEBUG \
     FLAKES_CHANNEL \
+    IR3_SHADER_DEBUG \
     NIR_VALIDATE \
     ; do
   val=`echo ${!var} | sed 's|"||g'`
