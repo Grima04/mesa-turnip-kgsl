@@ -411,7 +411,7 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
    else if (instr->format == Format::PSEUDO)
       return std::make_pair(4, rc.size() * 4u);
 
-   bool can_do_partial = chip >= GFX10;
+   unsigned bytes_written = chip >= GFX10 ? rc.bytes() : 4u;
    switch (instr->opcode) {
    case aco_opcode::v_mad_f16:
    case aco_opcode::v_mad_u16:
@@ -419,11 +419,12 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
    case aco_opcode::v_fma_f16:
    case aco_opcode::v_div_fixup_f16:
    case aco_opcode::v_interp_p2_f16:
-      can_do_partial = chip >= GFX9;
+      bytes_written = chip >= GFX9 ? rc.bytes() : 4u;
       break;
    default:
       break;
    }
+   bytes_written = MAX2(bytes_written, instr_info.definition_size[(int)instr->opcode] / 8u);
 
    if (can_use_SDWA(chip, instr)) {
       return std::make_pair(rc.bytes(), rc.bytes());
@@ -450,7 +451,7 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
       break;
    }
 
-   return std::make_pair(4u, can_do_partial ? rc.bytes() : 4u);
+   return std::make_pair(4u, bytes_written);
 }
 
 void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg, bool is_partial)
