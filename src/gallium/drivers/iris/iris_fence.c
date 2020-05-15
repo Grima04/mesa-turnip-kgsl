@@ -366,6 +366,8 @@ iris_fence_finish(struct pipe_screen *p_screen,
                   struct pipe_fence_handle *fence,
                   uint64_t timeout)
 {
+   ctx = threaded_context_unwrap_sync(ctx);
+
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_screen *screen = (struct iris_screen *)p_screen;
 

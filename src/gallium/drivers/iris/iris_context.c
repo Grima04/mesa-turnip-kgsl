@@ -24,6 +24,7 @@
 #include <time.h>
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
+#include "util/debug.h"
 #include "util/ralloc.h"
 #include "util/u_inlines.h"
 #include "util/format/u_format.h"
@@ -362,5 +363,15 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    screen->vtbl.init_render_context(&ice->batches[IRIS_BATCH_RENDER]);
    screen->vtbl.init_compute_context(&ice->batches[IRIS_BATCH_COMPUTE]);
 
-   return ctx;
+   if (!(flags & PIPE_CONTEXT_PREFER_THREADED))
+      return ctx;
+
+   /* Clover doesn't support u_threaded_context */
+   if (flags & PIPE_CONTEXT_COMPUTE_ONLY)
+      return ctx;
+
+   return threaded_context_create(ctx, &screen->transfer_pool,
+                                  iris_replace_buffer_storage,
+                                  NULL, /* TODO: asynchronous flushes? */
+                                  &ice->thrctx);
 }

@@ -1271,6 +1271,8 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    bool mod_with_aux =
       res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
 
+   /* if ctx is ever used, do ctx = threaded_context_unwrap_sync(ctx) */
+
    iris_resource_disable_aux_on_first_query(resource, usage);
 
    struct iris_bo *bo;
@@ -1334,6 +1336,32 @@ resource_is_busy(struct iris_context *ice,
       busy |= iris_batch_references(&ice->batches[i], res->bo);
 
    return busy;
+}
+
+void
+iris_replace_buffer_storage(struct pipe_context *ctx,
+                            struct pipe_resource *p_dst,
+                            struct pipe_resource *p_src)
+{
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct iris_context *ice = (void *) ctx;
+   struct iris_resource *dst = (void *) p_dst;
+   struct iris_resource *src = (void *) p_src;
+
+   assert(memcmp(&dst->surf, &src->surf, sizeof(dst->surf)) == 0);
+
+   struct iris_bo *old_bo = dst->bo;
+
+   /* Swap out the backing storage */
+   iris_bo_reference(src->bo);
+   dst->bo = src->bo;
+
+   /* Rebind the buffer, replacing any state referring to the old BO's
+    * address, and marking state dirty so it's reemitted.
+    */
+   screen->vtbl.rebind_buffer(ice, dst);
+
+   iris_bo_unreference(old_bo);
 }
 
 static void
