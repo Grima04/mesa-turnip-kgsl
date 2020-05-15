@@ -3027,6 +3027,121 @@ tu6_emit_streamout(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    }
 }
 
+static uint64_t
+get_tess_param_bo_size(const struct tu_pipeline *pipeline,
+                       const struct tu_draw_info *draw_info)
+{
+   /* TODO: For indirect draws, we can't compute the BO size ahead of time.
+    * Still not sure what to do here, so just allocate a reasonably large
+    * BO and hope for the best for now.
+    * (maxTessellationControlPerVertexOutputComponents * 2048 vertices +
+    *  maxTessellationControlPerPatchOutputComponents * 512 patches) */
+   if (draw_info->indirect) {
+      return ((128 * 2048) + (128 * 512)) * 4;
+   }
+
+   /* For each patch, adreno lays out the tess param BO in memory as:
+    * (v_input[0][0])...(v_input[i][j])(p_input[0])...(p_input[k]).
+    * where i = # vertices per patch, j = # per-vertex outputs, and
+    * k = # per-patch outputs.*/
+   uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;
+   uint32_t num_patches = draw_info->count / verts_per_patch;
+   return draw_info->count * pipeline->tess.per_vertex_output_size +
+          pipeline->tess.per_patch_output_size * num_patches;
+}
+
+static uint64_t
+get_tess_factor_bo_size(const struct tu_pipeline *pipeline,
+                        const struct tu_draw_info *draw_info)
+{
+   /* TODO: For indirect draws, we can't compute the BO size ahead of time.
+    * Still not sure what to do here, so just allocate a reasonably large
+    * BO and hope for the best for now.
+    * (quad factor stride * 512 patches) */
+   if (draw_info->indirect) {
+      return (28 * 512) * 4;
+   }
+
+   /* Each distinct patch gets its own tess factor output. */
+   uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;
+   uint32_t num_patches = draw_info->count / verts_per_patch;
+   uint32_t factor_stride;
+   switch (pipeline->tess.patch_type) {
+   case IR3_TESS_ISOLINES:
+      factor_stride = 12;
+      break;
+   case IR3_TESS_TRIANGLES:
+      factor_stride = 20;
+      break;
+   case IR3_TESS_QUADS:
+      factor_stride = 28;
+      break;
+   default:
+      unreachable("bad tessmode");
+   }
+   return factor_stride * num_patches;
+}
+
+static VkResult
+tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
+                     const struct tu_draw_info *draw,
+                     const struct tu_pipeline *pipeline,
+                     struct tu_cs_entry *entry)
+{
+   struct tu_cs cs;
+   VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 20, &cs);
+   if (result != VK_SUCCESS)
+      return result;
+
+   uint64_t tess_factor_size = get_tess_factor_bo_size(pipeline, draw);
+   uint64_t tess_param_size = get_tess_param_bo_size(pipeline, draw);
+   uint64_t tess_bo_size =  tess_factor_size + tess_param_size;
+   if (tess_bo_size > 0) {
+      struct tu_bo *tess_bo;
+      result = tu_get_scratch_bo(cmd->device, tess_bo_size, &tess_bo);
+      if (result != VK_SUCCESS)
+         return result;
+
+      tu_bo_list_add(&cmd->bo_list, tess_bo,
+            MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
+      uint64_t tess_factor_iova = tess_bo->iova;
+      uint64_t tess_param_iova = tess_factor_iova + tess_factor_size;
+
+      tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
+      tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(pipeline->tess.hs_bo_regid) |
+            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+            CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+            CP_LOAD_STATE6_0_STATE_BLOCK(SB6_HS_SHADER) |
+            CP_LOAD_STATE6_0_NUM_UNIT(1));
+      tu_cs_emit(&cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+      tu_cs_emit(&cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+      tu_cs_emit_qw(&cs, tess_param_iova);
+      tu_cs_emit_qw(&cs, tess_factor_iova);
+
+      tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
+      tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(pipeline->tess.ds_bo_regid) |
+            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+            CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+            CP_LOAD_STATE6_0_STATE_BLOCK(SB6_DS_SHADER) |
+            CP_LOAD_STATE6_0_NUM_UNIT(1));
+      tu_cs_emit(&cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+      tu_cs_emit(&cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+      tu_cs_emit_qw(&cs, tess_param_iova);
+      tu_cs_emit_qw(&cs, tess_factor_iova);
+
+      tu_cs_emit_pkt4(&cs, REG_A6XX_PC_TESSFACTOR_ADDR_LO, 2);
+      tu_cs_emit_qw(&cs, tess_factor_iova);
+
+      /* TODO: Without this WFI here, the hardware seems unable to read these
+       * addresses we just emitted. Freedreno emits these consts as part of
+       * IB1 instead of in a draw state which might make this WFI unnecessary,
+       * but it requires a bit more indirection (SS6_INDIRECT for consts). */
+      tu_cs_emit_wfi(&cs);
+   }
+   *entry = tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
+   return VK_SUCCESS;
+}
+
 static VkResult
 tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
@@ -3092,6 +3207,15 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    if (result != VK_SUCCESS)
       return result;
 
+   bool has_tess =
+         pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+   struct tu_cs_entry tess_consts = {};
+   if (has_tess) {
+      result = tu6_emit_tess_consts(cmd, draw, pipeline, &tess_consts);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
    /* for the first draw in a renderpass, re-emit all the draw states
     *
     * and if a draw-state disabling path (CmdClearAttachments 3D fallback) was
@@ -3107,6 +3231,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_TESS, tess_consts);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VI, pipeline->vi.state_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VI_BINNING, pipeline->vi.binning_state_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_RAST, pipeline->rast.state_ib);
@@ -3132,6 +3257,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
        * note we eventually don't want to have to emit anything here
        */
       uint32_t draw_state_count =
+         has_tess +
          ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 3 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
@@ -3139,6 +3265,10 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 
          tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_count);
 
+         /* We may need to re-emit tess consts if the current draw call is
+          * sufficiently larger than the last draw call. */
+         if (has_tess)
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_TESS, tess_consts);
          if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const_ib[MESA_SHADER_VERTEX]);
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);

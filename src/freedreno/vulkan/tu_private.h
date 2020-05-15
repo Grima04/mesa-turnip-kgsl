@@ -427,6 +427,7 @@ enum tu_draw_state_group_id
 {
    TU_DRAW_STATE_PROGRAM,
    TU_DRAW_STATE_PROGRAM_BINNING,
+   TU_DRAW_STATE_TESS,
    TU_DRAW_STATE_VB,
    TU_DRAW_STATE_VI,
    TU_DRAW_STATE_VI_BINNING,
@@ -1099,6 +1100,15 @@ struct tu_pipeline
       enum pc_di_primtype primtype;
       bool primitive_restart;
    } ia;
+
+   struct
+   {
+      uint32_t patch_type;
+      uint32_t per_vertex_output_size;
+      uint32_t per_patch_output_size;
+      uint32_t hs_bo_regid;
+      uint32_t ds_bo_regid;
+   } tess;
 
    struct
    {

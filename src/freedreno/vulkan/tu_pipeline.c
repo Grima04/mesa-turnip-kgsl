@@ -663,8 +663,8 @@ tu6_emit_link_map(struct tu_cs *cs,
    if (size <= 0)
       return;
 
-   tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, base, SB6_GS_SHADER, 0, size,
-                  patch_locs);
+   tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, base, SB6_GS_SHADER, 0,
+                         size, patch_locs);
 }
 
 static uint16_t
@@ -1129,24 +1129,65 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 }
 
 static void
-tu6_emit_geometry_consts(struct tu_cs *cs,
-                         const struct ir3_shader_variant *vs,
-                         const struct ir3_shader_variant *gs) {
-   unsigned num_vertices = gs->shader->nir->info.gs.vertices_in;
+tu6_emit_geom_tess_consts(struct tu_cs *cs,
+                          const struct ir3_shader_variant *vs,
+                          const struct ir3_shader_variant *hs,
+                          const struct ir3_shader_variant *ds,
+                          const struct ir3_shader_variant *gs,
+                          uint32_t cps_per_patch)
+{
+   uint32_t num_vertices =
+         hs ? cps_per_patch : gs->shader->nir->info.gs.vertices_in;
 
-   uint32_t params[4] = {
-      vs->output_size * num_vertices * 4,  /* primitive stride */
-      vs->output_size * 4,                 /* vertex stride */
+   uint32_t vs_params[4] = {
+      vs->output_size * num_vertices * 4,  /* vs primitive stride */
+      vs->output_size * 4,                 /* vs vertex stride */
       0,
       0,
    };
    uint32_t vs_base = ir3_const_state(vs)->offsets.primitive_param;
    tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, vs_base, SB6_VS_SHADER, 0,
-                  ARRAY_SIZE(params), params);
+                  ARRAY_SIZE(vs_params), vs_params);
 
-   uint32_t gs_base = ir3_const_state(gs)->offsets.primitive_param;
-   tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, gs_base, SB6_GS_SHADER, 0,
-                  ARRAY_SIZE(params), params);
+   if (hs) {
+      assert(ds->type != MESA_SHADER_NONE);
+      uint32_t hs_params[4] = {
+         vs->output_size * num_vertices * 4,  /* hs primitive stride */
+         vs->output_size * 4,                 /* hs vertex stride */
+         hs->output_size,
+         cps_per_patch,
+      };
+
+      uint32_t hs_base = hs->const_state->offsets.primitive_param;
+      tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, hs_base, SB6_HS_SHADER, 0,
+                     ARRAY_SIZE(hs_params), hs_params);
+      if (gs)
+         num_vertices = gs->shader->nir->info.gs.vertices_in;
+
+      uint32_t ds_params[4] = {
+         ds->output_size * num_vertices * 4,  /* ds primitive stride */
+         ds->output_size * 4,                 /* ds vertex stride */
+         hs->output_size,                     /* hs vertex stride (dwords) */
+         hs->shader->nir->info.tess.tcs_vertices_out
+      };
+
+      uint32_t ds_base = ds->const_state->offsets.primitive_param;
+      tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, ds_base, SB6_DS_SHADER, 0,
+                     ARRAY_SIZE(ds_params), ds_params);
+   }
+
+   if (gs) {
+      const struct ir3_shader_variant *prev = ds ? ds : vs;
+      uint32_t gs_params[4] = {
+         prev->output_size * num_vertices * 4,  /* gs primitive stride */
+         prev->output_size * 4,                 /* gs vertex stride */
+         0,
+         0,
+      };
+      uint32_t gs_base = gs->const_state->offsets.primitive_param;
+      tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, gs_base, SB6_GS_SHADER, 0,
+                     ARRAY_SIZE(gs_params), gs_params);
+   }
 }
 
 static void
@@ -1158,6 +1199,8 @@ tu6_emit_program(struct tu_cs *cs,
 {
    const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
    const struct ir3_shader_variant *bs = builder->binning_variant;
+   const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
+   const struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
    const struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
    const struct ir3_shader_variant *fs = builder->variants[MESA_SHADER_FRAGMENT];
    gl_shader_stage stage = MESA_SHADER_VERTEX;
@@ -1207,8 +1250,11 @@ tu6_emit_program(struct tu_cs *cs,
                           builder->render_components);
    }
 
-   if (gs)
-      tu6_emit_geometry_consts(cs, vs, gs);
+   if (gs || hs) {
+      uint32_t cps_per_patch = builder->create_info->pTessellationState ?
+            builder->create_info->pTessellationState->patchControlPoints : 0;
+      tu6_emit_geom_tess_consts(cs, vs, hs, ds, gs, cps_per_patch);
+   }
 }
 
 static void
@@ -1695,7 +1741,8 @@ tu6_get_tessmode(struct tu_shader* shader)
 }
 
 static VkResult
-tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
+tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
+                                    struct tu_pipeline *pipeline)
 {
    const VkPipelineShaderStageCreateInfo *stage_infos[MESA_SHADER_STAGES] = {
       NULL
@@ -1732,6 +1779,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
       builder->shaders[stage] = shader;
    }
 
+   pipeline->tess.patch_type = key.tessellation;
+
    for (gl_shader_stage stage = MESA_SHADER_STAGES - 1;
         stage > MESA_SHADER_NONE; stage--) {
       if (!builder->shaders[stage])
@@ -1766,6 +1815,30 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
    builder->shader_total_size +=
       sizeof(uint32_t) * variant->info.sizedwords;
    builder->binning_variant = variant;
+
+   if (builder->shaders[MESA_SHADER_TESS_CTRL]) {
+      struct ir3_shader *hs =
+            builder->shaders[MESA_SHADER_TESS_CTRL]->ir3_shader;
+      assert(hs->type != MESA_SHADER_NONE);
+
+      /* Calculate and store the per-vertex and per-patch HS-output sizes. */
+      uint32_t per_vertex_output_size = 0;
+      uint32_t per_patch_output_size = 0;
+      nir_foreach_variable (output, &hs->nir->outputs) {
+         switch (output->data.location) {
+         case VARYING_SLOT_TESS_LEVEL_OUTER:
+         case VARYING_SLOT_TESS_LEVEL_INNER:
+            continue;
+         }
+         uint32_t size = glsl_count_attribute_slots(output->type, false) * 4;
+         if (output->data.patch)
+            per_patch_output_size += size;
+         else
+            per_vertex_output_size += size;
+      }
+      pipeline->tess.per_vertex_output_size = per_vertex_output_size;
+      pipeline->tess.per_patch_output_size = per_patch_output_size;
+   }
 
    return VK_SUCCESS;
 }
@@ -1942,6 +2015,10 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
    assert(pipeline->ia.primtype == DI_PT_PATCHES0);
    assert(tess_info->patchControlPoints <= 32);
    pipeline->ia.primtype += tess_info->patchControlPoints;
+   const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
+   const struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
+   pipeline->tess.hs_bo_regid = hs->const_state->offsets.primitive_param + 1;
+   pipeline->tess.ds_bo_regid = ds->const_state->offsets.primitive_param + 1;
 }
 
 static void
@@ -2151,7 +2228,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    (*pipeline)->layout = builder->layout;
 
    /* compile and upload shaders */
-   result = tu_pipeline_builder_compile_shaders(builder);
+   result = tu_pipeline_builder_compile_shaders(builder, *pipeline);
    if (result == VK_SUCCESS)
       result = tu_pipeline_builder_upload_shaders(builder, *pipeline);
    if (result != VK_SUCCESS) {
