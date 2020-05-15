@@ -95,21 +95,20 @@ occlusion_pause(struct fd_acc_query *aq, struct fd_batch *batch)
 
 	fd6_event_write(batch, ring, ZPASS_DONE, false);
 
-	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
-	OUT_RING(ring, 0x00000014);   // XXX
-	OUT_RELOC(ring, query_sample(aq, stop));
-	OUT_RING(ring, 0xffffffff);
-	OUT_RING(ring, 0xffffffff);
-	OUT_RING(ring, 0x00000010);   // XXX
+	/* To avoid stalling in the draw buffer, emit code the code to compute the
+	 * counter delta in the epilogue ring.
+	 */
+	struct fd_ringbuffer *epilogue = fd_batch_get_epilogue(batch);
+	fd_wfi(batch, epilogue);
 
 	/* result += stop - start: */
-	OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
-	OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE |
+	OUT_PKT7(epilogue, CP_MEM_TO_MEM, 9);
+	OUT_RING(epilogue, CP_MEM_TO_MEM_0_DOUBLE |
 			CP_MEM_TO_MEM_0_NEG_C);
-	OUT_RELOC(ring, query_sample(aq, result));     /* dst */
-	OUT_RELOC(ring, query_sample(aq, result));      /* srcA */
-	OUT_RELOC(ring, query_sample(aq, stop));        /* srcB */
-	OUT_RELOC(ring, query_sample(aq, start));       /* srcC */
+	OUT_RELOC(epilogue, query_sample(aq, result));     /* dst */
+	OUT_RELOC(epilogue, query_sample(aq, result));      /* srcA */
+	OUT_RELOC(epilogue, query_sample(aq, stop));        /* srcB */
+	OUT_RELOC(epilogue, query_sample(aq, start));       /* srcC */
 
 	fd6_context(batch->ctx)->samples_passed_queries--;
 }

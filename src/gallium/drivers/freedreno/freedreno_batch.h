@@ -184,6 +184,9 @@ struct fd_batch {
 	/** tiling/gmem (IB0) cmdstream: */
 	struct fd_ringbuffer *gmem;
 
+	/** epilogue cmdstream: */
+	struct fd_ringbuffer *epilogue;
+
 	// TODO maybe more generically split out clear and clear_binning rings?
 	struct fd_ringbuffer *lrz_clear;
 	struct fd_ringbuffer *tile_setup;
@@ -335,5 +338,15 @@ fd_event_write(struct fd_batch *batch, struct fd_ringbuffer *ring,
 	OUT_RING(ring, evt);
 	fd_reset_wfi(batch);
 }
+
+static inline struct fd_ringbuffer *
+fd_batch_get_epilogue(struct fd_batch *batch)
+{
+	if (batch->epilogue == NULL)
+		batch->epilogue = fd_submit_new_ringbuffer(batch->submit, 0x1000, 0);
+
+	return batch->epilogue;
+}
+
 
 #endif /* FREEDRENO_BATCH_H_ */

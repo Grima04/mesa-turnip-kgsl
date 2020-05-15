@@ -161,6 +161,11 @@ batch_fini(struct fd_batch *batch)
 		batch->lrz_clear = NULL;
 	}
 
+	if (batch->epilogue) {
+		fd_ringbuffer_del(batch->epilogue);
+		batch->epilogue = NULL;
+	}
+
 	if (batch->tile_setup) {
 		fd_ringbuffer_del(batch->tile_setup);
 		batch->tile_setup = NULL;
