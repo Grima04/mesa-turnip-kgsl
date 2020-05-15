@@ -573,6 +573,10 @@ gallivm_compile_module(struct gallivm_state *gallivm)
       gallivm->builder = NULL;
    }
 
+   if (gallivm->cache && gallivm->cache->data_size) {
+      goto skip_cached;
+   }
+
    /* Dump bitcode to a file */
    if (gallivm_debug & GALLIVM_DEBUG_DUMP_BC) {
       char filename[256];
@@ -640,6 +644,7 @@ gallivm_compile_module(struct gallivm_state *gallivm)
     * implicitly created by the EngineBuilder in
     * lp_build_create_jit_compiler_for_module()
     */
+ skip_cached:
    LLVMSetDataLayout(gallivm->module, "");
    assert(!gallivm->engine);
    if (!init_gallivm_engine(gallivm)) {
