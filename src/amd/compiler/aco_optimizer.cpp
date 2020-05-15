@@ -2414,7 +2414,7 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
    else if ((instr->opcode == aco_opcode::v_add_f32 ||
              instr->opcode == aco_opcode::v_sub_f32 ||
              instr->opcode == aco_opcode::v_subrev_f32) &&
-            block.fp_mode.denorm32 == 0 && !block.fp_mode.preserve_signed_zero_inf_nan32) {
+            block.fp_mode.denorm32 == 0) {
       //TODO: we could use fma instead when denormals are enabled if the NIR isn't marked as precise
 
       uint32_t uses_src0 = UINT32_MAX;
