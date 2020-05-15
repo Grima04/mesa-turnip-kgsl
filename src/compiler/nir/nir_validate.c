@@ -750,6 +750,43 @@ validate_phi_instr(nir_phi_instr *instr, validate_state *state)
 }
 
 static void
+validate_jump_instr(nir_jump_instr *instr, validate_state *state)
+{
+   nir_block *block = state->block;
+   validate_assert(state, &instr->instr == nir_block_last_instr(block));
+
+   switch (instr->type) {
+   case nir_jump_return:
+      validate_assert(state, block->successors[0] == state->impl->end_block);
+      validate_assert(state, block->successors[1] == NULL);
+      break;
+
+   case nir_jump_break:
+      validate_assert(state, state->loop != NULL);
+      if (state->loop) {
+         nir_block *after =
+            nir_cf_node_as_block(nir_cf_node_next(&state->loop->cf_node));
+         validate_assert(state, block->successors[0] == after);
+      }
+      validate_assert(state, block->successors[1] == NULL);
+      break;
+
+   case nir_jump_continue:
+      validate_assert(state, state->loop != NULL);
+      if (state->loop) {
+         nir_block *first = nir_loop_first_block(state->loop);
+         validate_assert(state, block->successors[0] == first);
+      }
+      validate_assert(state, block->successors[1] == NULL);
+      break;
+
+   default:
+      validate_assert(state, !"Invalid jump instruction type");
+      break;
+   }
+}
+
+static void
 validate_instr(nir_instr *instr, validate_state *state)
 {
    validate_assert(state, instr->block == state->block);
@@ -790,6 +827,7 @@ validate_instr(nir_instr *instr, validate_state *state)
       break;
 
    case nir_instr_type_jump:
+      validate_jump_instr(nir_instr_as_jump(instr), state);
       break;
 
    default:
@@ -848,10 +886,6 @@ validate_block(nir_block *block, validate_state *state)
                 nir_instr_prev(instr)->type == nir_instr_type_phi);
       }
 
-      if (instr->type == nir_instr_type_jump) {
-         validate_assert(state, instr == nir_block_last_instr(block));
-      }
-
       validate_instr(instr, state);
    }
 
@@ -874,32 +908,7 @@ validate_block(nir_block *block, validate_state *state)
              pred->successors[1] == block);
    }
 
-   if (!exec_list_is_empty(&block->instr_list) &&
-       nir_block_last_instr(block)->type == nir_instr_type_jump) {
-      validate_assert(state, block->successors[1] == NULL);
-      nir_jump_instr *jump = nir_instr_as_jump(nir_block_last_instr(block));
-      switch (jump->type) {
-      case nir_jump_break: {
-         nir_block *after =
-            nir_cf_node_as_block(nir_cf_node_next(&state->loop->cf_node));
-         validate_assert(state, block->successors[0] == after);
-         break;
-      }
-
-      case nir_jump_continue: {
-         nir_block *first = nir_loop_first_block(state->loop);
-         validate_assert(state, block->successors[0] == first);
-         break;
-      }
-
-      case nir_jump_return:
-         validate_assert(state, block->successors[0] == state->impl->end_block);
-         break;
-
-      default:
-         unreachable("bad jump type");
-      }
-   } else {
+   if (!nir_block_ends_in_jump(block)) {
       nir_cf_node *next = nir_cf_node_next(&block->cf_node);
       if (next == NULL) {
          switch (state->parent_node->type) {
