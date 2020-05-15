@@ -138,6 +138,8 @@ generate_compute(struct llvmpipe_context *lp,
       }
    }
 
+   lp_build_coro_declare_malloc_hooks(gallivm);
+
    context_ptr  = LLVMGetParam(function, 0);
    x_size_arg = LLVMGetParam(function, 1);
    y_size_arg = LLVMGetParam(function, 2);
@@ -709,6 +711,7 @@ generate_variant(struct llvmpipe_context *lp,
 
    gallivm_compile_module(variant->gallivm);
 
+   lp_build_coro_add_malloc_hooks(variant->gallivm);
    variant->nr_instrs += lp_build_count_ir_module(variant->gallivm->module);
 
    variant->jit_function = (lp_jit_cs_func)gallivm_jit_function(variant->gallivm, variant->function);

@@ -52,6 +52,8 @@ struct gallivm_state
    LLVMMCJITMemoryManagerRef memorymgr;
    struct lp_generated_code *code;
    unsigned compiled;
+   LLVMValueRef coro_malloc_hook;
+   LLVMValueRef coro_free_hook;
 };
 
 
