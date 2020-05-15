@@ -1536,4 +1536,29 @@ v3dv_ioctl(int fd, unsigned long request, void *arg)
       return drmIoctl(fd, request, arg);
 }
 
+/* Flags OOM conditions in command buffer state.
+ *
+ * Note: notice that no-op jobs don't have a command buffer reference.
+ */
+static inline void
+v3dv_flag_oom(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_job *job)
+{
+   if (cmd_buffer) {
+      cmd_buffer->state.oom = true;
+   } else {
+      assert(job);
+      if (job->cmd_buffer)
+         job->cmd_buffer->state.oom = true;
+   }
+}
+
+#define v3dv_return_if_oom(_cmd_buffer, _job) do {                  \
+   const struct v3dv_cmd_buffer *__cmd_buffer = _cmd_buffer;        \
+   if (__cmd_buffer && __cmd_buffer->state.oom)                     \
+      return;                                                       \
+   const struct v3dv_job *__job = _job;                             \
+   if (__job && __job->cmd_buffer && __job->cmd_buffer->state.oom)  \
+      return;                                                       \
+} while(0)                                                          \
+
 #endif /* V3DV_PRIVATE_H */

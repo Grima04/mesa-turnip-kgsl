@@ -206,7 +206,7 @@ v3dv_cmd_buffer_add_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
       vk_alloc(&cmd_buffer->device->alloc, sizeof(*pobj), 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pobj) {
-      cmd_buffer->state.oom = true;
+      v3dv_flag_oom(cmd_buffer, NULL);
       return;
    }
 
@@ -275,7 +275,10 @@ void
 v3dv_job_emit_binning_flush(struct v3dv_job *job)
 {
    assert(job);
+
    v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(FLUSH));
+   v3dv_return_if_oom(NULL, job);
+
    cl_emit(&job->bcl, FLUSH, flush);
 }
 
@@ -448,6 +451,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
                                render_target_count, max_internal_bpp);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
+   v3dv_return_if_oom(NULL, job);
 
    /* The PTB will request the tile alloc initial size per tile at start
     * of tile binning.
@@ -473,6 +477,11 @@ v3dv_job_start_frame(struct v3dv_job *job,
 
    job->tile_alloc = v3dv_bo_alloc(job->device, tile_alloc_size,
                                    "tile_alloc");
+   if (!job->tile_alloc) {
+      v3dv_flag_oom(NULL, job);
+      return;
+   }
+
    v3dv_job_add_bo(job, job->tile_alloc);
 
    const uint32_t tsda_per_tile_size = 256;
@@ -481,6 +490,11 @@ v3dv_job_start_frame(struct v3dv_job *job,
                                     tiling->draw_tiles_y *
                                     tsda_per_tile_size;
    job->tile_state = v3dv_bo_alloc(job->device, tile_state_size, "TSDA");
+   if (!job->tile_state) {
+      v3dv_flag_oom(NULL, job);
+      return;
+   }
+
    v3dv_job_add_bo(job, job->tile_state);
 
    /* This must go before the binning mode configuration. It is
@@ -568,6 +582,12 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
    if (!job)
       return;
 
+   if (cmd_buffer->state.oom) {
+      v3dv_job_destroy(job);
+      cmd_buffer->state.job = NULL;
+      return;
+   }
+
    assert(v3dv_cl_offset(&job->bcl) != 0);
 
    /* When we merge multiple subpasses into the same job we must only emit one
@@ -601,6 +621,8 @@ v3dv_job_init(struct v3dv_job *job,
 
    job->device = device;
    job->cmd_buffer = cmd_buffer;
+
+   list_inithead(&job->list_link);
 
    if (type == V3DV_JOB_TYPE_GPU_CL) {
       job->bos =
@@ -668,7 +690,7 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
 
    if (!job) {
       fprintf(stderr, "Error: failed to allocate CPU memory for job\n");
-      cmd_buffer->state.oom = true;
+      v3dv_flag_oom(cmd_buffer, NULL);
       return NULL;
    }
 
@@ -1405,6 +1427,8 @@ cmd_buffer_render_pass_emit_per_tile_rcl(struct v3dv_cmd_buffer *cmd_buffer,
     */
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
@@ -1568,6 +1592,7 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_cl_ensure_space_with_branch(&job->rcl, 200 +
                                     MAX2(fb_layers, 1) * 256 *
                                     cl_packet_length(SUPERTILE_COORDINATES));
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    assert(state->subpass_idx < state->pass->subpass_count);
    const struct v3dv_subpass *subpass =
@@ -2576,6 +2601,7 @@ emit_depth_bias(struct v3dv_cmd_buffer *cmd_buffer)
    assert(job);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(DEPTH_OFFSET));
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
    cl_emit(&job->bcl, DEPTH_OFFSET, bias) {
@@ -2595,6 +2621,8 @@ emit_line_width(struct v3dv_cmd_buffer *cmd_buffer)
    assert(job);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(LINE_WIDTH));
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    cl_emit(&job->bcl, LINE_WIDTH, line) {
       line.line_width = cmd_buffer->state.dynamic.line_width;
    }
@@ -2618,6 +2646,7 @@ emit_blend(struct v3dv_cmd_buffer *cmd_buffer)
       cl_packet_length(COLOR_WRITE_MASKS);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, blend_packets_size);
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    if (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PIPELINE) {
       if (pipeline->blend.enables) {
@@ -2810,6 +2839,7 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
                            num_elements_to_emit *
                            cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD),
                            32);
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit_with_prepacked(&job->indirect, GL_SHADER_STATE_RECORD,
                           pipeline->shader_state_record, shader) {

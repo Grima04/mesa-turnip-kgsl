@@ -768,6 +768,8 @@ emit_tlb_clear_per_tile_rcl(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
@@ -909,6 +911,7 @@ emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_cl_ensure_space_with_branch(rcl, 200 +
                                     layer_count * 256 *
                                     cl_packet_length(SUPERTILE_COORDINATES));
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {

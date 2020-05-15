@@ -213,6 +213,8 @@ emit_rcl_prologue(struct v3dv_job *job,
    v3dv_cl_ensure_space_with_branch(rcl, 200 +
                                     tiling->layers * 256 *
                                     cl_packet_length(SUPERTILE_COORDINATES));
+   if (job->cmd_buffer->state.oom)
+      return NULL;
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
       config.early_z_disable = true;
@@ -294,6 +296,8 @@ emit_frame_setup(struct v3dv_job *job,
                  uint32_t layer,
                  const union v3dv_clear_value *clear_value)
 {
+   v3dv_return_if_oom(NULL, job);
+
    const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
 
    struct v3dv_cl *rcl = &job->rcl;
@@ -343,6 +347,8 @@ static void
 emit_supertile_coordinates(struct v3dv_job *job,
                            struct framebuffer_data *framebuffer)
 {
+   v3dv_return_if_oom(NULL, job);
+
    struct v3dv_cl *rcl = &job->rcl;
 
    const uint32_t min_y = framebuffer->min_y_supertile;
@@ -550,6 +556,8 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(NULL, job);
+
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
@@ -633,6 +641,8 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
 {
    struct v3dv_cl *rcl =
       emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   v3dv_return_if_oom(NULL, job);
+
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
       emit_copy_layer_to_buffer(job, buffer, image, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -1056,6 +1066,8 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(NULL, job);
+
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
@@ -1112,6 +1124,8 @@ emit_copy_image_rcl(struct v3dv_job *job,
 {
    struct v3dv_cl *rcl =
       emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   v3dv_return_if_oom(NULL, job);
+
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
       emit_copy_image_layer(job, dst, src, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -1332,6 +1346,8 @@ emit_clear_image_per_tile_list(struct v3dv_job *job,
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(NULL, job);
+
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
@@ -1383,6 +1399,8 @@ emit_clear_image_rcl(struct v3dv_job *job,
 
    struct v3dv_cl *rcl =
       emit_rcl_prologue(job, framebuffer->internal_type, &clear_info);
+   v3dv_return_if_oom(NULL, job);
+
    emit_frame_setup(job, 0, clear_value);
    emit_clear_image(job, image, framebuffer, aspects, layer, level);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -1556,6 +1574,8 @@ emit_copy_buffer_per_tile_list(struct v3dv_job *job,
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(NULL, job);
+
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
@@ -1606,6 +1626,8 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
 {
    struct v3dv_cl *rcl =
       emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   v3dv_return_if_oom(NULL, job);
+
    emit_frame_setup(job, 0, NULL);
    emit_copy_buffer(job, dst, src, dst_offset, src_offset, framebuffer, format);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -1787,6 +1809,8 @@ emit_fill_buffer_per_tile_list(struct v3dv_job *job,
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(NULL, job);
+
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
@@ -1840,6 +1864,8 @@ emit_fill_buffer_rcl(struct v3dv_job *job,
 
    struct v3dv_cl *rcl =
       emit_rcl_prologue(job, framebuffer->internal_type, &clear_info);
+   v3dv_return_if_oom(NULL, job);
+
    emit_frame_setup(job, 0, &clear_value);
    emit_fill_buffer(job, bo, offset, framebuffer);
    cl_emit(rcl, END_OF_RENDERING, end);
@@ -1921,6 +1947,8 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
 {
    struct v3dv_cl *cl = &job->indirect;
    v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(NULL, job);
+
    struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
@@ -2037,6 +2065,8 @@ emit_copy_buffer_to_image_rcl(struct v3dv_job *job,
 {
    struct v3dv_cl *rcl =
       emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   v3dv_return_if_oom(NULL, job);
+
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
       emit_copy_buffer_to_layer(job, image, buffer, framebuffer, layer, region);
    cl_emit(rcl, END_OF_RENDERING, end);

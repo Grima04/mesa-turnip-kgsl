@@ -34,8 +34,10 @@ v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name)
 {
    struct v3dv_bo *bo = vk_alloc(&device->alloc, sizeof(struct v3dv_bo), 8,
                                  VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (!bo)
+   if (!bo) {
+      fprintf(stderr, "Failed to allocate host memory for BO\n");
       return NULL;
+   }
 
    const uint32_t page_align = 4096; /* Always allocate full pages */
    size = align(size, page_align);
@@ -45,6 +47,7 @@ v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name)
 
    int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_CREATE_BO, &create);
    if (ret != 0) {
+      fprintf(stderr, "Failed to allocate device memory for BO\n");
       return NULL;
    }
 
@@ -64,7 +67,8 @@ v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name)
 bool
 v3dv_bo_free(struct v3dv_device *device, struct v3dv_bo *bo)
 {
-   assert(bo);
+   if (!bo)
+      return true;
 
    if (bo->map)
       v3dv_bo_unmap(device, bo);

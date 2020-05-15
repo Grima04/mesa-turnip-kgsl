@@ -73,16 +73,18 @@ v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment)
 
    struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->device, space, "CL");
    if (!bo) {
-      fprintf(stderr, "failed to allocate memory for command list");
-      abort();
+      fprintf(stderr, "failed to allocate memory for command list\n");
+      v3dv_flag_oom(NULL, cl->job);
+      return 0;
    }
 
    v3dv_job_add_bo(cl->job, bo);
 
    bool ok = v3dv_bo_map(cl->job->device, bo, bo->size);
    if (!ok) {
-      fprintf(stderr, "failed to map command list buffer");
-      abort();
+      fprintf(stderr, "failed to map command list buffer\n");
+      v3dv_flag_oom(NULL, cl->job);
+      return 0;
    }
 
    cl->bo = bo;
@@ -93,7 +95,6 @@ v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment)
    return 0;
 }
 
-
 void
 v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
 {
@@ -102,8 +103,9 @@ v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
 
    struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->device, space, "CL");
    if (!bo) {
-      fprintf(stderr, "failed to allocate memory for command list");
-      abort();
+      fprintf(stderr, "failed to allocate memory for command list\n");
+      v3dv_flag_oom(NULL, cl->job);
+      return;
    }
 
    /* Chain to the new BO from the old one if needed */
@@ -117,8 +119,9 @@ v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
 
    bool ok = v3dv_bo_map(cl->job->device, bo, bo->size);
    if (!ok) {
-      fprintf(stderr, "failed to map command list buffer");
-      abort();
+      fprintf(stderr, "failed to map command list buffer\n");
+      v3dv_flag_oom(NULL, cl->job);
+      return;
    }
 
    cl->bo = bo;
