@@ -827,6 +827,8 @@ arm64_a630_gles31_options:
     # Do a little testing with gmem and bypass forced.
     - DEQP_RUN_SUFFIX=-bypass FD_MESA_DEBUG=nogmem DEQP_EXPECTED_FAILS=deqp-freedreno-a630-bypass-fails.txt ./install/deqp-runner.sh
     - DEQP_RUN_SUFFIX=-gmem FD_MESA_DEBUG=nobypass ./install/deqp-runner.sh
+    # Check that we don't get obvious nir validation failures (though it's too expensive to run for the full CTS)
+    - DEQP_RUN_SUFFIX=-validate NIR_VALIDATE=1 ./install/deqp-runner.sh
 
 .baremetal-test:
   extends:
