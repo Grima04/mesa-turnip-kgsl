@@ -257,8 +257,10 @@ ir3_put_dst(struct ir3_context *ctx, nir_dest *dst)
 		for (unsigned i = 0; i < ctx->last_dst_n; i++) {
 			struct ir3_instruction *dst = ctx->last_dst[i];
 			dst->regs[0]->flags |= IR3_REG_HALF;
-			if (ctx->last_dst[i]->opc == OPC_META_SPLIT)
+			if (dst->opc == OPC_META_SPLIT) {
 				dst->regs[1]->instr->regs[0]->flags |= IR3_REG_HALF;
+				dst->regs[1]->flags |= IR3_REG_HALF;
+			}
 		}
 	}
 
