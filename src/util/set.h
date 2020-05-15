@@ -110,6 +110,9 @@ _mesa_set_random_entry(struct set *set,
 struct set *
 _mesa_pointer_set_create(void *mem_ctx);
 
+bool
+_mesa_set_intersects(struct set *a, struct set *b);
+
 /**
  * This foreach function is safe against deletion, but not against
  * insertion (which may rehash the set, making entry a dangling
