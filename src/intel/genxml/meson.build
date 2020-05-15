@@ -29,6 +29,7 @@ gen_xml_files = [
   'gen9.xml',
   'gen11.xml',
   'gen12.xml',
+  'gen125.xml',
 ]
 
 genX_xml_h = custom_target(
