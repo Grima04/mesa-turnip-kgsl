@@ -54,6 +54,7 @@ struct gallivm_state
    unsigned compiled;
    LLVMValueRef coro_malloc_hook;
    LLVMValueRef coro_free_hook;
+   LLVMValueRef debug_printf_hook;
 };
 
 

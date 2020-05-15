@@ -643,6 +643,9 @@ gallivm_compile_module(struct gallivm_state *gallivm)
 
    ++gallivm->compiled;
 
+   if (gallivm->debug_printf_hook)
+      LLVMAddGlobalMapping(gallivm->engine, gallivm->debug_printf_hook, debug_printf);
+
    if (gallivm_debug & GALLIVM_DEBUG_ASM) {
       LLVMValueRef llvm_func = LLVMGetFirstFunction(gallivm->module);
 
