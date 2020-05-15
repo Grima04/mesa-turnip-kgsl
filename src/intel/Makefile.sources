@@ -345,6 +345,10 @@ VULKAN_GEN12_FILES := \
 	vulkan/gen8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
+VULKAN_GEN125_FILES := \
+	vulkan/gen8_cmd_buffer.c \
+	$(VULKAN_GENX_FILES)
+
 GEN_PERF_XML_FILES = \
 	perf/oa-hsw.xml \
 	perf/oa-bdw.xml \
