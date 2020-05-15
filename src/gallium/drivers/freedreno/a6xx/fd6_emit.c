@@ -555,58 +555,63 @@ static struct fd_ringbuffer *
 build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 {
 	const struct fd_vertex_state *vtx = emit->vtx;
-	int32_t i, j;
 
 	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(emit->ctx->batch->submit,
 			4 * (10 * vp->inputs_count + 2), FD_RINGBUFFER_STREAMING);
 
-	for (i = 0, j = 0; i <= vp->inputs_count; i++) {
+	/* Determine which inputs need VFD state */
+	int32_t map[32];
+	int32_t cnt = 0;
+	for (int32_t i = 0; i <= vp->inputs_count; i++) {
 		if (vp->inputs[i].sysval)
 			continue;
 		if (vp->inputs[i].compmask) {
-			struct pipe_vertex_element *elem = &vtx->vtx->pipe[i];
-			const struct pipe_vertex_buffer *vb =
-					&vtx->vertexbuf.vb[elem->vertex_buffer_index];
-			struct fd_resource *rsc = fd_resource(vb->buffer.resource);
-			enum pipe_format pfmt = elem->src_format;
-			enum a6xx_format fmt = fd6_pipe2vtx(pfmt);
-			bool isint = util_format_is_pure_integer(pfmt);
-			uint32_t off = vb->buffer_offset + elem->src_offset;
-			uint32_t size = fd_bo_size(rsc->bo) - off;
-			debug_assert(fmt != ~0);
-
-#ifdef DEBUG
-			/* see dEQP-GLES31.stress.vertex_attribute_binding.buffer_bounds.bind_vertex_buffer_offset_near_wrap_10
-			 */
-			if (off > fd_bo_size(rsc->bo))
-				continue;
-#endif
-
-			OUT_PKT4(ring, REG_A6XX_VFD_FETCH(j), 4);
-			OUT_RELOC(ring, rsc->bo, off, 0, 0);
-			OUT_RING(ring, size);           /* VFD_FETCH[j].SIZE */
-			OUT_RING(ring, vb->stride);     /* VFD_FETCH[j].STRIDE */
-
-			OUT_PKT4(ring, REG_A6XX_VFD_DECODE(j), 2);
-			OUT_RING(ring, A6XX_VFD_DECODE_INSTR_IDX(j) |
-					A6XX_VFD_DECODE_INSTR_FORMAT(fmt) |
-					COND(elem->instance_divisor, A6XX_VFD_DECODE_INSTR_INSTANCED) |
-					A6XX_VFD_DECODE_INSTR_SWAP(fd6_pipe2swap(pfmt)) |
-					A6XX_VFD_DECODE_INSTR_UNK30 |
-					COND(!isint, A6XX_VFD_DECODE_INSTR_FLOAT));
-			OUT_RING(ring, MAX2(1, elem->instance_divisor)); /* VFD_DECODE[j].STEP_RATE */
-
-			OUT_PKT4(ring, REG_A6XX_VFD_DEST_CNTL(j), 1);
-			OUT_RING(ring, A6XX_VFD_DEST_CNTL_INSTR_WRITEMASK(vp->inputs[i].compmask) |
-					A6XX_VFD_DEST_CNTL_INSTR_REGID(vp->inputs[i].regid));
-
-			j++;
+			map[cnt++] = i;
 		}
 	}
 
+	for (int32_t j = 0; j < cnt; j++) {
+		int32_t i = map[j];
+		struct pipe_vertex_element *elem = &vtx->vtx->pipe[i];
+		const struct pipe_vertex_buffer *vb =
+			&vtx->vertexbuf.vb[elem->vertex_buffer_index];
+		struct fd_resource *rsc = fd_resource(vb->buffer.resource);
+		enum pipe_format pfmt = elem->src_format;
+		enum a6xx_format fmt = fd6_pipe2vtx(pfmt);
+		bool isint = util_format_is_pure_integer(pfmt);
+		uint32_t off = vb->buffer_offset + elem->src_offset;
+		uint32_t size = fd_bo_size(rsc->bo) - off;
+		debug_assert(fmt != ~0);
+
+#ifdef DEBUG
+		/* see dEQP-GLES31.stress.vertex_attribute_binding.buffer_bounds.bind_vertex_buffer_offset_near_wrap_10
+		 */
+		if (off > fd_bo_size(rsc->bo))
+			continue;
+#endif
+
+		OUT_PKT4(ring, REG_A6XX_VFD_FETCH(j), 4);
+		OUT_RELOC(ring, rsc->bo, off, 0, 0);
+		OUT_RING(ring, size);           /* VFD_FETCH[j].SIZE */
+		OUT_RING(ring, vb->stride);     /* VFD_FETCH[j].STRIDE */
+
+		OUT_PKT4(ring, REG_A6XX_VFD_DECODE(j), 2);
+		OUT_RING(ring, A6XX_VFD_DECODE_INSTR_IDX(j) |
+				A6XX_VFD_DECODE_INSTR_FORMAT(fmt) |
+				COND(elem->instance_divisor, A6XX_VFD_DECODE_INSTR_INSTANCED) |
+				A6XX_VFD_DECODE_INSTR_SWAP(fd6_pipe2swap(pfmt)) |
+				A6XX_VFD_DECODE_INSTR_UNK30 |
+				COND(!isint, A6XX_VFD_DECODE_INSTR_FLOAT));
+		OUT_RING(ring, MAX2(1, elem->instance_divisor)); /* VFD_DECODE[j].STEP_RATE */
+
+		OUT_PKT4(ring, REG_A6XX_VFD_DEST_CNTL(j), 1);
+		OUT_RING(ring, A6XX_VFD_DEST_CNTL_INSTR_WRITEMASK(vp->inputs[i].compmask) |
+				A6XX_VFD_DEST_CNTL_INSTR_REGID(vp->inputs[i].regid));
+	}
+
 	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_0, 1);
-	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(j) |
-			A6XX_VFD_CONTROL_0_DECODE_CNT(j));
+	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(cnt) |
+			A6XX_VFD_CONTROL_0_DECODE_CNT(cnt));
 
 	return ring;
 }
