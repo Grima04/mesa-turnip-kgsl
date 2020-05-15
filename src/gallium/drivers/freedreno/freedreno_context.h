@@ -410,6 +410,7 @@ struct fd_context {
 		uint32_t index_start;
 		uint32_t instance_start;
 		uint32_t restart_index;
+		uint32_t streamout_mask;
 	} last;
 };
 

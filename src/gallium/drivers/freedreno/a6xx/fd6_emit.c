@@ -695,32 +695,26 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 	}
 
 	if (emit->streamout_mask) {
-		const struct fd6_streamout_state *tf = &prog->tf;
-
-		OUT_PKT7(ring, CP_CONTEXT_REG_BUNCH, 12 + (2 * tf->prog_count));
-		OUT_RING(ring, REG_A6XX_VPC_SO_BUF_CNTL);
-		OUT_RING(ring, tf->vpc_so_buf_cntl);
-		OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(0));
-		OUT_RING(ring, tf->ncomp[0]);
-		OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(1));
-		OUT_RING(ring, tf->ncomp[1]);
-		OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(2));
-		OUT_RING(ring, tf->ncomp[2]);
-		OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(3));
-		OUT_RING(ring, tf->ncomp[3]);
-		OUT_RING(ring, REG_A6XX_VPC_SO_CNTL);
-		OUT_RING(ring, A6XX_VPC_SO_CNTL_ENABLE);
-		for (unsigned i = 0; i < tf->prog_count; i++) {
-			OUT_RING(ring, REG_A6XX_VPC_SO_PROG);
-			OUT_RING(ring, tf->prog[i]);
-		}
+		fd6_emit_add_group(emit, prog->streamout_stateobj, FD6_GROUP_SO, ENABLE_ALL);
 	} else {
-		OUT_PKT7(ring, CP_CONTEXT_REG_BUNCH, 4);
-		OUT_RING(ring, REG_A6XX_VPC_SO_CNTL);
-		OUT_RING(ring, 0);
-		OUT_RING(ring, REG_A6XX_VPC_SO_BUF_CNTL);
-		OUT_RING(ring, 0);
+		/* If we transition from a draw with streamout to one without, turn
+		 * off streamout.
+		 */
+		if (ctx->last.streamout_mask != 0) {
+			struct fd_ringbuffer *obj = fd_submit_new_ringbuffer(emit->ctx->batch->submit,
+					5 * 4, FD_RINGBUFFER_STREAMING);
+
+			OUT_PKT7(obj, CP_CONTEXT_REG_BUNCH, 4);
+			OUT_RING(obj, REG_A6XX_VPC_SO_CNTL);
+			OUT_RING(obj, 0);
+			OUT_RING(obj, REG_A6XX_VPC_SO_BUF_CNTL);
+			OUT_RING(obj, 0);
+
+			fd6_emit_take_group(emit, obj, FD6_GROUP_SO, ENABLE_ALL);
+		}
 	}
+
+	ctx->last.streamout_mask = emit->streamout_mask;
 }
 
 void

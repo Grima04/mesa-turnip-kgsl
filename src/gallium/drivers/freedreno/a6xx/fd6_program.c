@@ -145,20 +145,24 @@ setup_stream_out(struct fd6_program_state *state, const struct ir3_shader_varian
 		struct ir3_shader_linkage *l)
 {
 	const struct ir3_stream_output_info *strmout = &v->shader->stream_output;
-	struct fd6_streamout_state *tf = &state->tf;
 
-	memset(tf, 0, sizeof(*tf));
+	uint32_t ncomp[PIPE_MAX_SO_BUFFERS];
+	uint32_t prog[256/2];
+	uint32_t prog_count;
 
-	tf->prog_count = align(l->max_loc, 2) / 2;
+	memset(ncomp, 0, sizeof(ncomp));
+	memset(prog, 0, sizeof(prog));
 
-	debug_assert(tf->prog_count < ARRAY_SIZE(tf->prog));
+	prog_count = align(l->max_loc, 2) / 2;
+
+	debug_assert(prog_count < ARRAY_SIZE(prog));
 
 	for (unsigned i = 0; i < strmout->num_outputs; i++) {
 		const struct ir3_stream_output *out = &strmout->output[i];
 		unsigned k = out->register_index;
 		unsigned idx;
 
-		tf->ncomp[out->output_buffer] += out->num_components;
+		ncomp[out->output_buffer] += out->num_components;
 
 		/* linkage map sorted by order frag shader wants things, so
 		 * a bit less ideal here..
@@ -175,22 +179,40 @@ setup_stream_out(struct fd6_program_state *state, const struct ir3_shader_varian
 			unsigned off = j + out->dst_offset;  /* in dwords */
 
 			if (loc & 1) {
-				tf->prog[loc/2] |= A6XX_VPC_SO_PROG_B_EN |
+				prog[loc/2] |= A6XX_VPC_SO_PROG_B_EN |
 						A6XX_VPC_SO_PROG_B_BUF(out->output_buffer) |
 						A6XX_VPC_SO_PROG_B_OFF(off * 4);
 			} else {
-				tf->prog[loc/2] |= A6XX_VPC_SO_PROG_A_EN |
+				prog[loc/2] |= A6XX_VPC_SO_PROG_A_EN |
 						A6XX_VPC_SO_PROG_A_BUF(out->output_buffer) |
 						A6XX_VPC_SO_PROG_A_OFF(off * 4);
 			}
 		}
 	}
 
-	tf->vpc_so_buf_cntl = A6XX_VPC_SO_BUF_CNTL_ENABLE |
-			COND(tf->ncomp[0] > 0, A6XX_VPC_SO_BUF_CNTL_BUF0) |
-			COND(tf->ncomp[1] > 0, A6XX_VPC_SO_BUF_CNTL_BUF1) |
-			COND(tf->ncomp[2] > 0, A6XX_VPC_SO_BUF_CNTL_BUF2) |
-			COND(tf->ncomp[3] > 0, A6XX_VPC_SO_BUF_CNTL_BUF3);
+	struct fd_ringbuffer *ring = state->streamout_stateobj;
+
+	OUT_PKT7(ring, CP_CONTEXT_REG_BUNCH, 12 + (2 * prog_count));
+	OUT_RING(ring, REG_A6XX_VPC_SO_BUF_CNTL);
+	OUT_RING(ring, A6XX_VPC_SO_BUF_CNTL_ENABLE |
+			COND(ncomp[0] > 0, A6XX_VPC_SO_BUF_CNTL_BUF0) |
+			COND(ncomp[1] > 0, A6XX_VPC_SO_BUF_CNTL_BUF1) |
+			COND(ncomp[2] > 0, A6XX_VPC_SO_BUF_CNTL_BUF2) |
+			COND(ncomp[3] > 0, A6XX_VPC_SO_BUF_CNTL_BUF3));
+	OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(0));
+	OUT_RING(ring, ncomp[0]);
+	OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(1));
+	OUT_RING(ring, ncomp[1]);
+	OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(2));
+	OUT_RING(ring, ncomp[2]);
+	OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(3));
+	OUT_RING(ring, ncomp[3]);
+	OUT_RING(ring, REG_A6XX_VPC_SO_CNTL);
+	OUT_RING(ring, A6XX_VPC_SO_CNTL_ENABLE);
+	for (unsigned i = 0; i < prog_count; i++) {
+		OUT_RING(ring, REG_A6XX_VPC_SO_PROG);
+		OUT_RING(ring, prog[i]);
+	}
 }
 
 static void
@@ -973,6 +995,8 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	state->config_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->binning_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
+	state->streamout_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
+
 
 #ifdef DEBUG
 	if (!ds) {
@@ -1000,6 +1024,7 @@ fd6_program_destroy(void *data, struct ir3_program_state *state)
 	fd_ringbuffer_del(so->binning_stateobj);
 	fd_ringbuffer_del(so->config_stateobj);
 	fd_ringbuffer_del(so->interp_stateobj);
+	fd_ringbuffer_del(so->streamout_stateobj);
 	free(so);
 }
 
