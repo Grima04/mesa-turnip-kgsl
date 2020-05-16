@@ -65,14 +65,24 @@ all_uses_fp16_conv(struct ir3_instruction *conv_src)
 	return true;
 }
 
+/* For an instruction which has a conversion folded in, re-write the
+ * uses of *all* conv's that used that src to be a simple mov that
+ * cp can eliminate.  This avoids invalidating the SSA uses, it just
+ * shifts the use to a simple mov.
+ */
 static void
-rewrite_uses(struct ir3_instruction *conv, struct ir3_instruction *replace)
+rewrite_src_uses(struct ir3_instruction *src)
 {
-	foreach_ssa_use (use, conv) {
-		foreach_ssa_src_n (src, n, use) {
-			if (src == conv)
-				use->regs[n]->instr = replace;
+	foreach_ssa_use (use, src) {
+		assert(is_fp16_conv(use));
+
+		if (is_half(src)) {
+			use->regs[1]->flags |= IR3_REG_HALF;
+		} else {
+			use->regs[1]->flags &= ~IR3_REG_HALF;
 		}
+
+		use->cat1.src_type = use->cat1.dst_type;
 	}
 }
 
@@ -113,6 +123,7 @@ try_conversion_folding(struct ir3_instruction *conv)
 		if (src->cat1.dst_type != src->cat1.src_type &&
 			conv->cat1.src_type != src->cat1.dst_type)
 			return false;
+		break;
 	default:
 		break;
 	}
@@ -137,13 +148,13 @@ try_conversion_folding(struct ir3_instruction *conv)
 		}
 	}
 
-	if (conv->regs[0]->flags & IR3_REG_HALF) {
+	if (is_half(conv)) {
 		src->regs[0]->flags |= IR3_REG_HALF;
 	} else {
 		src->regs[0]->flags &= ~IR3_REG_HALF;
 	}
 
-	rewrite_uses(conv, src);
+	rewrite_src_uses(src);
 
 	return true;
 }
@@ -157,7 +168,7 @@ ir3_cf(struct ir3 *ir)
 	ir3_find_ssa_uses(ir, mem_ctx, false);
 
 	foreach_block (block, &ir->block_list) {
-		foreach_instr_safe (instr, &block->instr_list) {
+		foreach_instr (instr, &block->instr_list) {
 			progress |= try_conversion_folding(instr);
 		}
 	}
