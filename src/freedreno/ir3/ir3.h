@@ -976,6 +976,22 @@ static inline type_t half_type(type_t type)
 	}
 }
 
+static inline type_t full_type(type_t type)
+{
+	switch (type) {
+	case TYPE_F16: return TYPE_F32;
+	case TYPE_U16: return TYPE_U32;
+	case TYPE_S16: return TYPE_S32;
+	case TYPE_F32:
+	case TYPE_U32:
+	case TYPE_S32:
+		return type;
+	default:
+		assert(0);
+		return ~0;
+	}
+}
+
 /* some cat2 instructions (ie. those which are not float) can embed an
  * immediate:
  */

@@ -99,6 +99,50 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 	}
 
 	_mesa_set_add(ctx->defs, instr);
+
+	/* Check that src/dst types match the register types, and for
+	 * instructions that have different opcodes depending on type,
+	 * that the opcodes are correct.
+	 */
+	switch (opc_cat(instr->opc)) {
+	case 1: /* move instructions */
+		if (instr->regs[0]->flags & IR3_REG_HALF) {
+			validate_assert(ctx, instr->cat1.dst_type == half_type(instr->cat1.dst_type));
+		} else {
+			validate_assert(ctx, instr->cat1.dst_type == full_type(instr->cat1.dst_type));
+		}
+		if (instr->regs[1]->flags & IR3_REG_HALF) {
+			validate_assert(ctx, instr->cat1.src_type == half_type(instr->cat1.src_type));
+		} else {
+			validate_assert(ctx, instr->cat1.src_type == full_type(instr->cat1.src_type));
+		}
+		break;
+	case 3:
+		/* Validate that cat3 opc matches the src type.  We've already checked that all
+		 * the src regs are same type
+		 */
+		if (instr->regs[1]->flags & IR3_REG_HALF) {
+			validate_assert(ctx, instr->opc == cat3_half_opc(instr->opc));
+		} else {
+			validate_assert(ctx, instr->opc == cat3_full_opc(instr->opc));
+		}
+		break;
+	case 4:
+		/* Validate that cat4 opc matches the dst type: */
+		if (instr->regs[0]->flags & IR3_REG_HALF) {
+			validate_assert(ctx, instr->opc == cat4_half_opc(instr->opc));
+		} else {
+			validate_assert(ctx, instr->opc == cat4_full_opc(instr->opc));
+		}
+		break;
+	case 5:
+		if (instr->regs[0]->flags & IR3_REG_HALF) {
+			validate_assert(ctx, instr->cat5.type == half_type(instr->cat5.type));
+		} else {
+			validate_assert(ctx, instr->cat5.type == full_type(instr->cat5.type));
+		}
+		break;
+	}
 }
 
 void

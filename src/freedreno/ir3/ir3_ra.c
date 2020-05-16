@@ -1105,60 +1105,6 @@ ra_add_interference(struct ir3_ra_ctx *ctx)
 	}
 }
 
-/* some instructions need fix-up if dst register is half precision: */
-static void fixup_half_instr_dst(struct ir3_instruction *instr)
-{
-	switch (opc_cat(instr->opc)) {
-	case 1: /* move instructions */
-		instr->cat1.dst_type = half_type(instr->cat1.dst_type);
-		break;
-	case 4:
-		switch (instr->opc) {
-		case OPC_RSQ:
-			instr->opc = OPC_HRSQ;
-			break;
-		case OPC_LOG2:
-			instr->opc = OPC_HLOG2;
-			break;
-		case OPC_EXP2:
-			instr->opc = OPC_HEXP2;
-			break;
-		default:
-			break;
-		}
-		break;
-	case 5:
-		instr->cat5.type = half_type(instr->cat5.type);
-		break;
-	}
-}
-/* some instructions need fix-up if src register is half precision: */
-static void fixup_half_instr_src(struct ir3_instruction *instr)
-{
-	switch (instr->opc) {
-	case OPC_MOV:
-		instr->cat1.src_type = half_type(instr->cat1.src_type);
-		break;
-	case OPC_MAD_F32:
-		instr->opc = OPC_MAD_F16;
-		break;
-	case OPC_SEL_B32:
-		instr->opc = OPC_SEL_B16;
-		break;
-	case OPC_SEL_S32:
-		instr->opc = OPC_SEL_S16;
-		break;
-	case OPC_SEL_F32:
-		instr->opc = OPC_SEL_F16;
-		break;
-	case OPC_SAD_S32:
-		instr->opc = OPC_SAD_S16;
-		break;
-	default:
-		break;
-	}
-}
-
 /* NOTE: instr could be NULL for IR3_REG_ARRAY case, for the first
  * array access(es) which do not have any previous access to depend
  * on from scheduling point of view
@@ -1241,8 +1187,6 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 		if (writes_gpr(instr)) {
 			if (should_assign(ctx, instr)) {
 				reg_assign(ctx, instr->regs[0], instr);
-				if (instr->regs[0]->flags & IR3_REG_HALF)
-					fixup_half_instr_dst(instr);
 			}
 		}
 
@@ -1258,9 +1202,6 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 			/* Note: reg->instr could be null for IR3_REG_ARRAY */
 			if (src || (reg->flags & IR3_REG_ARRAY))
 				reg_assign(ctx, instr->regs[n+1], src);
-
-			if (instr->regs[n+1]->flags & IR3_REG_HALF)
-				fixup_half_instr_src(instr);
 		}
 	}
 
