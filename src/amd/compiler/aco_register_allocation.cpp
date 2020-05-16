@@ -700,9 +700,9 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
       if (instr->operands[j].isTemp() &&
           instr->operands[j].isFirstKillBeforeDef() &&
           instr->operands[j].physReg() >= lb &&
-          instr->operands[j].physReg() < ub) {
+          instr->operands[j].physReg() < ub &&
+          !reg_file.test(instr->operands[j].physReg(), instr->operands[j].bytes())) {
          assert(instr->operands[j].isFixed());
-         assert(!reg_file.test(instr->operands[j].physReg(), instr->operands[j].bytes()));
          reg_file.block(instr->operands[j].physReg(), instr->operands[j].regClass());
          killed_ops += instr->operands[j].getTemp().size();
       }
