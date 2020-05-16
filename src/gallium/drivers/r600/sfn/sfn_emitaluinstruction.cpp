@@ -191,13 +191,13 @@ void EmitAluInstruction::split_constants(const nir_alu_instr& instr)
        return;
 
     int nconst = 0;
-    std::array<PValue,4> c;
+    std::array<const UniformValue *,4> c;
     std::array<int,4> idx;
     for (unsigned i = 0; i < op_info->num_inputs; ++i) {
        PValue src = from_nir(instr.src[i], 0);
        assert(src);
        if (src->type() == Value::kconst) {
-          c[nconst] = src;
+          c[nconst] = static_cast<const UniformValue *>(src.get());
 
           idx[nconst++] = i;
        }
@@ -206,11 +206,12 @@ void EmitAluInstruction::split_constants(const nir_alu_instr& instr)
        return;
 
     unsigned sel = c[0]->sel();
+    unsigned kcache =  c[0]->kcache_bank();
     sfn_log << SfnLog::reg << "split " << nconst << " constants, sel[0] = " << sel; ;
 
     for (int i = 1; i < nconst; ++i) {
        sfn_log << "sel[" << i << "] = " <<  c[i]->sel() << "\n";
-       if (c[i]->sel() != sel) {
+       if (c[i]->sel() != sel || c[i]->kcache_bank() != kcache) {
           load_uniform(instr.src[idx[i]]);
        }
     }
