@@ -10,6 +10,7 @@ include:
 
 stages:
   - container
+  - container-2
   - meson-x86_64
   - scons
   - meson-misc
@@ -145,17 +146,34 @@ x86_build:
   needs:
     - x86_build
 
-# Debian 10 based x86 test image for GL
-x86_test-gl:
+# Debian 10 based x86 test image base
+x86_test-base:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-05-18"
+    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-05-23"
+
+.use-x86_test-base:
+  extends:
+    - x86_build
+    - .ci-run-policy
+  stage: container-2
+  variables:
+    BASE_TAG: *x86_test-base
+    FDO_BASE_IMAGE: "$CI_REGISTRY_IMAGE/debian/x86_test-base:$BASE_TAG"
+  needs:
+    - x86_test-base
+
+# Debian 10 based x86 test image for GL
+x86_test-gl:
+  extends: .use-x86_test-base
+  variables:
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-05-23"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
-  extends: x86_build
+  extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-05-18"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-05-23"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
@@ -622,6 +640,7 @@ meson-mingw32-x86_64:
   needs:
     - x86_build
     - meson-testing
+    - x86_test-base
     - x86_test-gl
 
 .test-vk:
@@ -633,6 +652,7 @@ meson-mingw32-x86_64:
   needs:
     - x86_build
     - meson-testing
+    - x86_test-base
     - x86_test-vk
 
 .piglit-test:

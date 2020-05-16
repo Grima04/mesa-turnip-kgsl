@@ -5,74 +5,39 @@ set -o xtrace
 
 export DEBIAN_FRONTEND=noninteractive
 
-apt-get install -y \
-      ca-certificates \
-      gnupg
-
-# Upstream LLVM package repository
-apt-key add .gitlab-ci/container/llvm-snapshot.gpg.key
-echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-9 main" >/etc/apt/sources.list.d/llvm9.list
-
-sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
-echo 'deb https://deb.debian.org/debian testing main' >/etc/apt/sources.list.d/testing.list
-
-apt-get update
-
-# Don't use newer packages from testing by default
-cat >/etc/apt/preferences <<EOF
-Package: *
-Pin: release a=testing
-Pin-Priority: 100
-EOF
-
-apt-get dist-upgrade -y
-
-apt-get install -y --no-remove \
+# Ephemeral packages (installed for this script and removed again at the end)
+STABLE_EPHEMERAL=" \
       ccache \
       cmake \
       g++ \
       gcc \
-      git \
-      git-lfs \
-      libexpat1 \
       libgbm-dev \
       libgles2-mesa-dev \
-      libllvm9 \
-      liblz4-1 \
       liblz4-dev \
       libpng-dev \
-      libpng16-16 \
       libvulkan-dev \
-      libvulkan1 \
-      libwayland-client0 \
-      libwayland-server0 \
       libxcb-ewmh-dev \
-      libxcb-ewmh2 \
-      libxcb-keysyms1 \
       libxcb-keysyms1-dev \
-      libxcb-randr0 \
-      libxcb-xfixes0 \
       libxkbcommon-dev \
-      libxkbcommon0 \
       libxrandr-dev \
-      libxrandr2 \
       libxrender-dev \
-      libxrender1 \
       meson \
       p7zip \
       pkg-config \
-      python \
       python3-distutils \
-      python3-pil \
-      python3-pytest \
-      python3-requests \
-      python3-yaml \
-      vulkan-tools \
       wget \
-      xauth \
-      xvfb
+      "
 
-# We need multiarch for Wine
+TESTING_EPHEMERAL=" \
+      libc6-dev \
+      "
+
+apt-get update
+
+apt-get install -y --no-remove \
+      $STABLE_EPHEMERAL
+
+        # We need multiarch for Wine
 dpkg --add-architecture i386
 
 apt-get update
@@ -84,7 +49,7 @@ apt-get install -y --no-remove \
 
 # Install packages we need from Debian testing last, to avoid pulling in more
 apt-get install -y -t testing \
-      libc6-dev
+      $TESTING_EPHEMERAL
 
 
 ############### Set up Wine env variables
@@ -172,24 +137,7 @@ wine \
 ccache --show-stats
 
 apt-get purge -y \
-      ccache \
-      cmake \
-      g++ \
-      gcc \
-      gnupg \
-      libgbm-dev \
-      libgles2-mesa-dev \
-      liblz4-dev \
-      libpng-dev \
-      libvulkan-dev \
-      libxcb-ewmh-dev \
-      libxcb-keysyms1-dev \
-      libxkbcommon-dev \
-      libxrandr-dev \
-      libxrender-dev \
-      meson \
-      p7zip \
-      pkg-config \
-      wget
+      $STABLE_EPHEMERAL \
+      $TESTING_EPHEMERAL
 
 apt-get autoremove -y --purge
