@@ -211,6 +211,7 @@ arm_test:
     TAG: *arm_test
   image: "$CI_REGISTRY_IMAGE/debian/arm_test:$TAG"
   needs:
+    - arm_build
     - meson-arm64
     - arm_test
 
@@ -619,6 +620,7 @@ meson-mingw32-x86_64:
     TAG: *x86_test-gl
   image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:$TAG"
   needs:
+    - x86_build
     - meson-testing
     - x86_test-gl
 
@@ -629,6 +631,7 @@ meson-mingw32-x86_64:
     TAG: *x86_test-vk
   image: "$CI_REGISTRY_IMAGE/debian/x86_test-vk:$TAG"
   needs:
+    - x86_build
     - meson-testing
     - x86_test-vk
 
