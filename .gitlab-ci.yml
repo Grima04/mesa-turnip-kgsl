@@ -821,7 +821,7 @@ arm64_a630_gles31_options:
   script:
     # We almost always manage to lower UBOs back to constant uploads in
     # the test suite, so get a little testing for it here.
-    - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.\*ubo" ./install/deqp-runner.sh
+    - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" DEQP_EXPECTED_FAILS=deqp-freedreno-a630-noubo-fails.txt CI_NODE_INDEX= ./install/deqp-runner.sh
     # The driver does some guessing as to whether to render using gmem
     # or bypass, and some GLES3.1 features interact with either one.
     # Do a little testing with gmem and bypass forced.
