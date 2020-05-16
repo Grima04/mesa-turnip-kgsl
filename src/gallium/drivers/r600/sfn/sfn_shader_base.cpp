@@ -131,6 +131,8 @@ bool ShaderFromNirProcessor::scan_instruction(nir_instr *instr)
             sh_info().has_txq_cube_array_z_comp = true;
       }
 
+
+
       default:
          ;
       }
@@ -513,6 +515,51 @@ bool ShaderFromNirProcessor::emit_load_local_shared(nir_intrinsic_instr* instr)
    return true;
 }
 
+static unsigned
+lds_op_from_intrinsic(nir_intrinsic_op op) {
+   switch (op) {
+   case nir_intrinsic_shared_atomic_add:
+      return LDS_OP2_LDS_ADD_RET;
+   case nir_intrinsic_shared_atomic_and:
+      return LDS_OP2_LDS_AND_RET;
+   case nir_intrinsic_shared_atomic_or:
+      return LDS_OP2_LDS_OR_RET;
+   case nir_intrinsic_shared_atomic_imax:
+      return LDS_OP2_LDS_MAX_INT_RET;
+   case nir_intrinsic_shared_atomic_umax:
+      return LDS_OP2_LDS_MAX_UINT_RET;
+   case nir_intrinsic_shared_atomic_imin:
+      return LDS_OP2_LDS_MIN_INT_RET;
+   case nir_intrinsic_shared_atomic_umin:
+      return LDS_OP2_LDS_MIN_UINT_RET;
+   case nir_intrinsic_shared_atomic_xor:
+      return LDS_OP2_LDS_XOR_RET;
+   case nir_intrinsic_shared_atomic_exchange:
+      return LDS_OP2_LDS_XCHG_RET;
+   case nir_intrinsic_shared_atomic_comp_swap:
+      return LDS_OP3_LDS_CMP_XCHG_RET;
+   default:
+      unreachable("Unsupported shared atomic opcode");
+   }
+}
+
+bool ShaderFromNirProcessor::emit_atomic_local_shared(nir_intrinsic_instr* instr)
+{
+   auto address = from_nir(instr->src[0], 0);
+   auto dest_value = from_nir(instr->dest, 0);
+   auto value = from_nir(instr->src[1], 0);
+   auto op = lds_op_from_intrinsic(instr->intrinsic);
+
+   if (unlikely(instr->intrinsic ==nir_intrinsic_shared_atomic_comp_swap)) {
+      auto value2 = from_nir(instr->src[2], 0);
+      emit_instruction(new LDSAtomicInstruction(dest_value, value, value2, address, op));
+   } else {
+      emit_instruction(new LDSAtomicInstruction(dest_value, value, address, op));
+   }
+   return true;
+}
+
+
 bool ShaderFromNirProcessor::emit_store_local_shared(nir_intrinsic_instr* instr)
 {
    unsigned write_mask = nir_intrinsic_write_mask(instr);
@@ -595,6 +642,17 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    case nir_intrinsic_memory_barrier_shared:
    case nir_intrinsic_memory_barrier:
       return emit_barrier(instr);
+   case nir_intrinsic_shared_atomic_add:
+   case nir_intrinsic_shared_atomic_and:
+   case nir_intrinsic_shared_atomic_or:
+   case nir_intrinsic_shared_atomic_imax:
+   case nir_intrinsic_shared_atomic_umax:
+   case nir_intrinsic_shared_atomic_imin:
+   case nir_intrinsic_shared_atomic_umin:
+   case nir_intrinsic_shared_atomic_xor:
+   case nir_intrinsic_shared_atomic_exchange:
+   case nir_intrinsic_shared_atomic_comp_swap:
+      return emit_atomic_local_shared(instr);
    case nir_intrinsic_copy_deref:
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_input:

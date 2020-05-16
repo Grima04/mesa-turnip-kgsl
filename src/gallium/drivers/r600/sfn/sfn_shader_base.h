@@ -105,6 +105,7 @@ protected:
    bool emit_load_tcs_param_base(nir_intrinsic_instr* instr, int offset);
    bool emit_load_local_shared(nir_intrinsic_instr* instr);
    bool emit_store_local_shared(nir_intrinsic_instr* instr);
+   bool emit_atomic_local_shared(nir_intrinsic_instr* instr);
 
    bool emit_barrier(nir_intrinsic_instr* instr);
 

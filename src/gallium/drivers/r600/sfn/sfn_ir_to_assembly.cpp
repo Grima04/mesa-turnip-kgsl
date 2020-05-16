@@ -67,6 +67,7 @@ private:
    bool emit_rat(const RatInstruction& instr);
    bool emit_ldswrite(const LDSWriteInstruction& instr);
    bool emit_ldsread(const LDSReadInstruction& instr);
+   bool emit_ldsatomic(const LDSAtomicInstruction& instr);
    bool emit_tf_write(const GDSStoreTessFactor& instr);
 
    bool emit_load_addr(PValue addr);
@@ -200,6 +201,8 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
       return emit_ldswrite(static_cast<const LDSWriteInstruction&>(*i));
    case Instruction::lds_read:
       return emit_ldsread(static_cast<const LDSReadInstruction&>(*i));
+   case Instruction::lds_atomic:
+      return emit_ldsatomic(static_cast<const LDSAtomicInstruction&>(*i));
    case Instruction::tf_write:
       return emit_tf_write(static_cast<const GDSStoreTessFactor&>(*i));
    default:
@@ -1066,6 +1069,44 @@ bool AssemblyFromShaderLegacyImpl::emit_ldsread(const LDSReadInstruction& instr)
    }
    assert(m_bc->cf_last->nlds_read == m_bc->cf_last->nqueue_read);
 
+   return true;
+}
+
+bool AssemblyFromShaderLegacyImpl::emit_ldsatomic(const LDSAtomicInstruction& instr)
+{
+   if (m_bc->cf_last->ndw > 240 - 4)
+      m_bc->force_add_cf = 1;
+
+   r600_bytecode_alu alu_fetch;
+   r600_bytecode_alu alu_read;
+
+   memset(&alu_fetch, 0, sizeof(r600_bytecode_alu));
+   alu_fetch.is_lds_idx_op = true;
+   alu_fetch.op = instr.op();
+
+   copy_src(alu_fetch.src[0], instr.address());
+   auto& src0 = instr.src0();
+   alu_fetch.src[1].sel = src0.sel();
+   alu_fetch.src[1].chan = src0.chan();
+   if (instr.src1()) {
+      auto& src1 = *instr.src1();
+      alu_fetch.src[2].sel = src1.sel();
+      alu_fetch.src[2].chan = src1.chan();
+   }
+   alu_fetch.last = 1;
+   int r = r600_bytecode_add_alu(m_bc, &alu_fetch);
+   if (r)
+      return false;
+
+   memset(&alu_read, 0, sizeof(r600_bytecode_alu));
+   copy_dst(alu_read.dst, instr.dest());
+   alu_read.op = ALU_OP1_MOV;
+   alu_read.src[0].sel = EG_V_SQ_ALU_SRC_LDS_OQ_A_POP;
+   alu_read.last = 1;
+   alu_read.dst.write = 1;
+   r = r600_bytecode_add_alu(m_bc, &alu_read);
+   if (r)
+      return false;
    return true;
 }
 
