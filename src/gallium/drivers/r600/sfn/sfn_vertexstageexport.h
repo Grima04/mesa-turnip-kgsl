@@ -27,6 +27,7 @@ protected:
    std::map<unsigned, unsigned> m_param_map;
    int m_cur_clip_pos;
    int m_cur_param;
+   GPRVector m_clip_vertex;
 };
 
 class VertexStageExportForFS : public VertexStageExportBase

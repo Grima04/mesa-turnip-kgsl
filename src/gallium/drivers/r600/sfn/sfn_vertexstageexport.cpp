@@ -234,7 +234,8 @@ bool VertexStageExportForFS::emit_clip_vertices(const nir_variable *out_var, nir
    m_proc.sh_info().cc_dist_mask = 0xff;
    m_proc.sh_info().clip_dist_write = 0xff;
 
-   GPRVector clip_vertex = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], 0xf, {0,1,2,3});
+   m_clip_vertex = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], 0xf, {0,1,2,3});
+   m_proc.add_param_output_reg(out_var->data.driver_location, &m_clip_vertex);
 
    for (int i = 0; i < 4; ++i)
       m_proc.sh_info().output[out_var->data.driver_location].write_mask |= 1 << i;
@@ -246,7 +247,7 @@ bool VertexStageExportForFS::emit_clip_vertices(const nir_variable *out_var, nir
       int ochan = i & 3;
       AluInstruction *ir = nullptr;
       for (int j = 0; j < 4; j++) {
-         ir = new AluInstruction(op2_dot4_ieee, clip_dist[oreg].reg_i(j), clip_vertex.reg_i(j),
+         ir = new AluInstruction(op2_dot4_ieee, clip_dist[oreg].reg_i(j), m_clip_vertex.reg_i(j),
                                  PValue(new UniformValue(512 + i, j, R600_BUFFER_INFO_CONST_BUFFER)),
                                  (j == ochan) ? EmitInstruction::write : EmitInstruction::empty);
          m_proc.emit_instruction(ir);
