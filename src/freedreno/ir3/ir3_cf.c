@@ -148,12 +148,7 @@ try_conversion_folding(struct ir3_instruction *conv)
 		}
 	}
 
-	if (is_half(conv)) {
-		src->regs[0]->flags |= IR3_REG_HALF;
-	} else {
-		src->regs[0]->flags &= ~IR3_REG_HALF;
-	}
-
+	ir3_set_dst_type(src, is_half(conv));
 	rewrite_src_uses(src);
 
 	return true;

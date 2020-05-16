@@ -256,9 +256,11 @@ ir3_put_dst(struct ir3_context *ctx, nir_dest *dst)
 	if (bit_size == 16) {
 		for (unsigned i = 0; i < ctx->last_dst_n; i++) {
 			struct ir3_instruction *dst = ctx->last_dst[i];
-			dst->regs[0]->flags |= IR3_REG_HALF;
+			ir3_set_dst_type(dst, true);
+			ir3_fixup_src_type(dst);
 			if (dst->opc == OPC_META_SPLIT) {
-				dst->regs[1]->instr->regs[0]->flags |= IR3_REG_HALF;
+				ir3_set_dst_type(ssa(dst->regs[1]), true);
+				ir3_fixup_src_type(ssa(dst->regs[1]));
 				dst->regs[1]->flags |= IR3_REG_HALF;
 			}
 		}

@@ -595,6 +595,9 @@ unsigned ir3_count_instructions_ra(struct ir3 *ir);
 
 void ir3_find_ssa_uses(struct ir3 *ir, void *mem_ctx, bool falsedeps);
 
+void ir3_set_dst_type(struct ir3_instruction *instr, bool half);
+void ir3_fixup_src_type(struct ir3_instruction *instr);
+
 #include "util/set.h"
 #define foreach_ssa_use(__use, __instr) \
 	for (struct ir3_instruction *__use = (void *)~0; \
@@ -827,6 +830,54 @@ static inline bool is_bool(struct ir3_instruction *instr)
 		return true;
 	default:
 		return false;
+	}
+}
+
+static inline opc_t
+cat3_half_opc(opc_t opc)
+{
+	switch (opc) {
+	case OPC_MAD_F32: return OPC_MAD_F16;
+	case OPC_SEL_B32: return OPC_SEL_B16;
+	case OPC_SEL_S32: return OPC_SEL_S16;
+	case OPC_SEL_F32: return OPC_SEL_F16;
+	case OPC_SAD_S32: return OPC_SAD_S16;
+	default:          return opc;
+	}
+}
+
+static inline opc_t
+cat3_full_opc(opc_t opc)
+{
+	switch (opc) {
+	case OPC_MAD_F16: return OPC_MAD_F32;
+	case OPC_SEL_B16: return OPC_SEL_B32;
+	case OPC_SEL_S16: return OPC_SEL_S32;
+	case OPC_SEL_F16: return OPC_SEL_F32;
+	case OPC_SAD_S16: return OPC_SAD_S32;
+	default:          return opc;
+	}
+}
+
+static inline opc_t
+cat4_half_opc(opc_t opc)
+{
+	switch (opc) {
+	case OPC_RSQ:  return OPC_HRSQ;
+	case OPC_LOG2: return OPC_HLOG2;
+	case OPC_EXP2: return OPC_HEXP2;
+	default:       return opc;
+	}
+}
+
+static inline opc_t
+cat4_full_opc(opc_t opc)
+{
+	switch (opc) {
+	case OPC_HRSQ:  return OPC_RSQ;
+	case OPC_HLOG2: return OPC_LOG2;
+	case OPC_HEXP2: return OPC_EXP2;
+	default:        return opc;
 	}
 }
 

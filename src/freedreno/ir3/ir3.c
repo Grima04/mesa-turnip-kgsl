@@ -1211,3 +1211,69 @@ ir3_find_ssa_uses(struct ir3 *ir, void *mem_ctx, bool falsedeps)
 		}
 	}
 }
+
+/**
+ * Set the destination type of an instruction, for example if a
+ * conversion is folded in, handling the special cases where the
+ * instruction's dest type or opcode needs to be fixed up.
+ */
+void
+ir3_set_dst_type(struct ir3_instruction *instr, bool half)
+{
+	if (half) {
+		instr->regs[0]->flags |= IR3_REG_HALF;
+	} else {
+		instr->regs[0]->flags &= ~IR3_REG_HALF;
+	}
+
+	switch (opc_cat(instr->opc)) {
+	case 1: /* move instructions */
+		if (half) {
+			instr->cat1.dst_type = half_type(instr->cat1.dst_type);
+		} else {
+			instr->cat1.dst_type = full_type(instr->cat1.dst_type);
+		}
+		break;
+	case 4:
+		if (half) {
+			instr->opc = cat4_half_opc(instr->opc);
+		} else {
+			instr->opc = cat4_full_opc(instr->opc);
+		}
+		break;
+	case 5:
+		if (half) {
+			instr->cat5.type = half_type(instr->cat5.type);
+		} else {
+			instr->cat5.type = full_type(instr->cat5.type);
+		}
+		break;
+	}
+}
+
+/**
+ * One-time fixup for instruction src-types.  Other than cov's that
+ * are folded, an instruction's src type does not change.
+ */
+void
+ir3_fixup_src_type(struct ir3_instruction *instr)
+{
+	bool half = !!(instr->regs[1]->flags & IR3_REG_HALF);
+
+	switch (opc_cat(instr->opc)) {
+	case 1: /* move instructions */
+		if (half) {
+			instr->cat1.src_type = half_type(instr->cat1.src_type);
+		} else {
+			instr->cat1.src_type = full_type(instr->cat1.src_type);
+		}
+		break;
+	case 3:
+		if (half) {
+			instr->opc = cat3_half_opc(instr->opc);
+		} else {
+			instr->opc = cat3_full_opc(instr->opc);
+		}
+		break;
+	}
+}
