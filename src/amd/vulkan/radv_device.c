@@ -2668,6 +2668,10 @@ static void run_secure_compile_device(struct radv_device *device, unsigned proce
 
 			/* Compile the shaders */
 			VkPipelineCreationFeedbackEXT *stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
+
+			/* Not fully to spec but if we're doing sandboxed compilations already this doesn't matter. */
+			flags &= ~VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT;
+
 			radv_create_shaders(pipeline, device, NULL, &key, pStages, flags, NULL, stage_feedbacks);
 
 			/* free memory allocated above */
