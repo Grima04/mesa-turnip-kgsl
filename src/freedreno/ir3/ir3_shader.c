@@ -456,7 +456,6 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	uint8_t regid;
 	unsigned i;
 
-	struct ir3_instruction *instr;
 	foreach_input_n (instr, i, ir) {
 		reg = instr->regs[0];
 		regid = reg->num;

@@ -118,7 +118,6 @@ find_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 		}
 	}
 
-	struct ir3_instruction *out;
 	foreach_output (out, ir)
 		instr_dce(out, false);
 
@@ -168,7 +167,6 @@ find_and_remove_unused(struct ir3 *ir, struct ir3_shader_variant *so)
 	}
 
 	/* cleanup unused inputs: */
-	struct ir3_instruction *in;
 	foreach_input_n (in, n, ir)
 		if (in->flags & IR3_INSTR_UNUSED)
 			ir->inputs[n] = NULL;

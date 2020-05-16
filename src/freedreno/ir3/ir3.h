@@ -1120,15 +1120,17 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 
 /* iterators for shader inputs: */
 #define foreach_input_n(__ininstr, __cnt, __ir) \
-	for (unsigned __cnt = 0; __cnt < (__ir)->inputs_count; __cnt++) \
-		if ((__ininstr = (__ir)->inputs[__cnt]))
+	for (struct ir3_instruction *__ininstr = (void *)~0; __ininstr; __ininstr = NULL) \
+		for (unsigned __cnt = 0; __cnt < (__ir)->inputs_count; __cnt++) \
+			if ((__ininstr = (__ir)->inputs[__cnt]))
 #define foreach_input(__ininstr, __ir) \
 	foreach_input_n(__ininstr, __i, __ir)
 
 /* iterators for shader outputs: */
 #define foreach_output_n(__outinstr, __cnt, __ir) \
-	for (unsigned __cnt = 0; __cnt < (__ir)->outputs_count; __cnt++) \
-		if ((__outinstr = (__ir)->outputs[__cnt]))
+	for (struct ir3_instruction *__outinstr = (void *)~0; __outinstr; __outinstr = NULL) \
+		for (unsigned __cnt = 0; __cnt < (__ir)->outputs_count; __cnt++) \
+			if ((__outinstr = (__ir)->outputs[__cnt]))
 #define foreach_output(__outinstr, __ir) \
 	foreach_output_n(__outinstr, __i, __ir)
 

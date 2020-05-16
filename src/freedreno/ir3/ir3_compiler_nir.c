@@ -2963,7 +2963,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 			ctx->inputs[idx] = instr;
 		}
 	} else if (ctx->so->type == MESA_SHADER_VERTEX) {
-		struct ir3_instruction *input = NULL, *in;
+		struct ir3_instruction *input = NULL;
 		struct ir3_instruction *components[4];
 		unsigned mask = (1 << (ncomp + frac)) - 1;
 
@@ -3362,7 +3362,6 @@ fixup_binning_pass(struct ir3_context *ctx)
 			so->outputs[j] = so->outputs[i];
 
 			/* fixup outidx to point to new output table entry: */
-			struct ir3_instruction *out;
 			foreach_output (out, ir) {
 				if (out->collect.outidx == i) {
 					out->collect.outidx = j;
@@ -3638,7 +3637,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ret = ir3_ra(so, precolor, ARRAY_SIZE(precolor));
 	} else if (so->num_sampler_prefetch) {
 		assert(so->type == MESA_SHADER_FRAGMENT);
-		struct ir3_instruction *instr, *precolor[2];
+		struct ir3_instruction *precolor[2];
 		int idx = 0;
 
 		foreach_input (instr, ir) {
@@ -3685,7 +3684,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	for (unsigned i = 0; i < so->outputs_count; i++)
 		so->outputs[i].regid = INVALID_REG;
 
-	struct ir3_instruction *out;
 	foreach_output (out, ir) {
 		assert(out->opc == OPC_META_COLLECT);
 		unsigned outidx = out->collect.outidx;
@@ -3694,7 +3692,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		so->outputs[outidx].half  = !!(out->regs[0]->flags & IR3_REG_HALF);
 	}
 
-	struct ir3_instruction *in;
 	foreach_input (in, ir) {
 		assert(in->opc == OPC_META_INPUT);
 		unsigned inidx = in->input.inidx;

@@ -1269,8 +1269,6 @@ ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 	 * them in the first pass:
 	 */
 	if (!ctx->scalar_pass) {
-		struct ir3_instruction *in, *out;
-
 		foreach_input (in, ctx->ir) {
 			reg_assign(ctx, in->regs[0], in);
 		}

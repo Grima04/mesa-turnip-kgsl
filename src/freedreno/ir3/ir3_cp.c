@@ -786,7 +786,6 @@ ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so)
 
 	ir3_clear_mark(ir);
 
-	struct ir3_instruction *out;
 	foreach_output_n (out, n, ir) {
 		instr_cp(&ctx, out);
 		ir->outputs[n] = eliminate_output_mov(&ctx, out);
