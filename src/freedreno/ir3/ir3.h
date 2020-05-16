@@ -1063,8 +1063,9 @@ static inline unsigned ir3_cat3_absneg(opc_t opc)
 /* iterator for an instructions's sources (reg), also returns src #: */
 #define foreach_src_n(__srcreg, __n, __instr) \
 	if ((__instr)->regs_count) \
-		for (unsigned __cnt = (__instr)->regs_count - 1, __n = 0; __n < __cnt; __n++) \
-			if ((__srcreg = (__instr)->regs[__n + 1]))
+		for (struct ir3_register *__srcreg = (void *)~0; __srcreg; __srcreg = NULL) \
+			for (unsigned __cnt = (__instr)->regs_count - 1, __n = 0; __n < __cnt; __n++) \
+				if ((__srcreg = (__instr)->regs[__n + 1]))
 
 /* iterator for an instructions's sources (reg): */
 #define foreach_src(__srcreg, __instr) \
@@ -1155,8 +1156,6 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 static inline bool
 check_src_cond(struct ir3_instruction *instr, bool (*cond)(struct ir3_instruction *))
 {
-	struct ir3_register *reg;
-
 	/* Note that this is also used post-RA so skip the ssa iterator: */
 	foreach_src (reg, instr) {
 		struct ir3_instruction *src = reg->instr;

@@ -308,7 +308,6 @@ __ra_init_use_itr(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
 
 	ctx->namecnt = ctx->nameidx = 0;
 
-	struct ir3_register *reg;
 	foreach_src (reg, instr) {
 		if (reg->flags & IR3_REG_ARRAY) {
 			struct ir3_array *arr =

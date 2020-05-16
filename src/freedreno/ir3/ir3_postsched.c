@@ -400,7 +400,6 @@ static void
 calculate_deps(struct ir3_postsched_deps_state *state,
 		struct ir3_postsched_node *node)
 {
-	struct ir3_register *reg;
 	int b;
 
 	/* Add dependencies on instructions that previously (or next,
@@ -441,7 +440,7 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 	/* And then after we update the state for what this instruction
 	 * wrote:
 	 */
-	reg = node->instr->regs[0];
+	struct ir3_register *reg = node->instr->regs[0];
 	if (reg->flags & IR3_REG_RELATIV) {
 		/* mark the entire array as written: */
 		struct ir3_array *arr = ir3_lookup_array(state->ctx->ir, reg->array.id);
@@ -679,7 +678,6 @@ cleanup_self_movs(struct ir3 *ir)
 {
 	foreach_block (block, &ir->block_list) {
 		foreach_instr_safe (instr, &block->instr_list) {
-			struct ir3_register *reg;
 
 			foreach_src (reg, instr) {
 				if (!reg->instr)

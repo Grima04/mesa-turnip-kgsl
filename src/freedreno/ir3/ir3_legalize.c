@@ -113,7 +113,6 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 	list_inithead(&block->instr_list);
 
 	foreach_instr_safe (n, &instr_list) {
-		struct ir3_register *reg;
 		unsigned i;
 
 		n->flags &= ~(IR3_INSTR_SS | IR3_INSTR_SY);
@@ -151,7 +150,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		 * resulting in undefined results:
 		 */
 		for (i = 0; i < n->regs_count; i++) {
-			reg = n->regs[i];
+			struct ir3_register *reg = n->regs[i];
 
 			if (reg_gpr(reg)) {
 
@@ -181,7 +180,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		}
 
 		if (n->regs_count > 0) {
-			reg = n->regs[0];
+			struct ir3_register *reg = n->regs[0];
 			if (regmask_get(&state->needs_ss_war, reg)) {
 				n->flags |= IR3_INSTR_SS;
 				last_input_needs_ss = false;

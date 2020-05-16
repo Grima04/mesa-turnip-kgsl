@@ -639,8 +639,6 @@ eliminate_output_mov(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 static void
 instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 {
-	struct ir3_register *reg;
-
 	if (instr->regs_count == 0)
 		return;
 

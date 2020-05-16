@@ -156,7 +156,6 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 		 * need to find the distance between where actual array starts
 		 * and collect..  that probably doesn't happen currently.
 		 */
-		struct ir3_register *src;
 		int dsz, doff;
 
 		/* note: don't use foreach_ssa_src as this gets called once
@@ -1238,7 +1237,6 @@ static void
 ra_block_alloc(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 {
 	foreach_instr (instr, &block->instr_list) {
-		struct ir3_register *reg;
 
 		if (writes_gpr(instr)) {
 			if (should_assign(ctx, instr)) {
@@ -1481,7 +1479,6 @@ ra_precolor_assigned(struct ir3_ra_ctx *ctx)
 
 			precolor(ctx, instr);
 
-			struct ir3_register *src;
 			foreach_src (src, instr) {
 				if (!src->instr)
 					continue;
@@ -1519,7 +1516,6 @@ ra_sanity_check(struct ir3 *ir)
 				debug_assert(dst->num == (src->num + instr->split.off));
 			} else if (instr->opc == OPC_META_COLLECT) {
 				struct ir3_register *dst = instr->regs[0];
-				struct ir3_register *src;
 
 				foreach_src_n (src, n, instr) {
 					debug_assert(dst->num == (src->num - n));
