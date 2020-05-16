@@ -423,11 +423,7 @@ create_addr0(struct ir3_block *block, struct ir3_instruction *src, int align)
 {
 	struct ir3_instruction *instr, *immed;
 
-	/* TODO in at least some cases, the backend could probably be
-	 * made clever enough to propagate IR3_REG_HALF..
-	 */
 	instr = ir3_COV(block, src, TYPE_U32, TYPE_S16);
-	instr->regs[0]->flags |= IR3_REG_HALF;
 
 	switch(align){
 	case 1:
@@ -435,41 +431,29 @@ create_addr0(struct ir3_block *block, struct ir3_instruction *src, int align)
 		break;
 	case 2:
 		/* src *= 2	=> src <<= 1: */
-		immed = create_immed(block, 1);
-		immed->regs[0]->flags |= IR3_REG_HALF;
-
+		immed = create_immed_typed(block, 1, TYPE_S16);
 		instr = ir3_SHL_B(block, instr, 0, immed, 0);
-		instr->regs[0]->flags |= IR3_REG_HALF;
-		instr->regs[1]->flags |= IR3_REG_HALF;
 		break;
 	case 3:
 		/* src *= 3: */
-		immed = create_immed(block, 3);
-		immed->regs[0]->flags |= IR3_REG_HALF;
-
+		immed = create_immed_typed(block, 3, TYPE_S16);
 		instr = ir3_MULL_U(block, instr, 0, immed, 0);
-		instr->regs[0]->flags |= IR3_REG_HALF;
-		instr->regs[1]->flags |= IR3_REG_HALF;
 		break;
 	case 4:
 		/* src *= 4 => src <<= 2: */
-		immed = create_immed(block, 2);
-		immed->regs[0]->flags |= IR3_REG_HALF;
-
+		immed = create_immed_typed(block, 2, TYPE_S16);
 		instr = ir3_SHL_B(block, instr, 0, immed, 0);
-		instr->regs[0]->flags |= IR3_REG_HALF;
-		instr->regs[1]->flags |= IR3_REG_HALF;
 		break;
 	default:
 		unreachable("bad align");
 		return NULL;
 	}
 
+	instr->regs[0]->flags |= IR3_REG_HALF;
+
 	instr = ir3_MOV(block, instr, TYPE_S16);
 	instr->regs[0]->num = regid(REG_A0, 0);
 	instr->regs[0]->flags &= ~IR3_REG_SSA;
-	instr->regs[0]->flags |= IR3_REG_HALF;
-	instr->regs[1]->flags |= IR3_REG_HALF;
 
 	return instr;
 }
@@ -478,12 +462,10 @@ static struct ir3_instruction *
 create_addr1(struct ir3_block *block, unsigned const_val)
 {
 
-	struct ir3_instruction *immed = create_immed(block, const_val);
+	struct ir3_instruction *immed = create_immed_typed(block, const_val, TYPE_S16);
 	struct ir3_instruction *instr = ir3_MOV(block, immed, TYPE_S16);
 	instr->regs[0]->num = regid(REG_A0, 1);
 	instr->regs[0]->flags &= ~IR3_REG_SSA;
-	instr->regs[0]->flags |= IR3_REG_HALF;
-	instr->regs[1]->flags |= IR3_REG_HALF;
 	return instr;
 }
 
