@@ -772,7 +772,6 @@ ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so)
 	 */
 	foreach_block (block, &ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			struct ir3_instruction *src;
 
 			/* by the way, we don't account for false-dep's, so the CP
 			 * pass should always happen before false-dep's are inserted

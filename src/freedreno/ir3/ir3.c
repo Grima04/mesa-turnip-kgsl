@@ -1201,8 +1201,6 @@ ir3_find_ssa_uses(struct ir3 *ir, void *mem_ctx, bool falsedeps)
 
 	foreach_block (block, &ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			struct ir3_instruction *src;
-
 			foreach_ssa_src_n (src, n, instr) {
 				if (__is_false_dep(instr, n) && !falsedeps)
 					continue;

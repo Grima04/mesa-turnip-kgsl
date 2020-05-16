@@ -69,7 +69,6 @@ static void
 rewrite_uses(struct ir3_instruction *conv, struct ir3_instruction *replace)
 {
 	foreach_ssa_use (use, conv) {
-		struct ir3_instruction *src;
 		foreach_ssa_src_n (src, n, use) {
 			if (src == conv)
 				use->regs[n]->instr = replace;

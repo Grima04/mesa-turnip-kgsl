@@ -195,7 +195,6 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	 * collect srcs as partially live.
 	 */
 	if (n->collect) {
-		struct ir3_instruction *src;
 		foreach_ssa_src (src, n->collect) {
 			if (src->block != instr->block)
 				continue;
@@ -248,7 +247,6 @@ struct ir3_sched_notes {
 static bool
 could_sched(struct ir3_instruction *instr, struct ir3_instruction *src)
 {
-	struct ir3_instruction *other_src;
 	foreach_ssa_src (other_src, instr) {
 		/* if dependency not scheduled, we aren't ready yet: */
 		if ((src != other_src) && !is_scheduled(other_src)) {
@@ -413,7 +411,6 @@ static int
 live_effect(struct ir3_instruction *instr)
 {
 	struct ir3_sched_node *n = instr->data;
-	struct ir3_instruction *src;
 	int new_live = n->partially_live ? 0 : dest_regs(instr);
 	int freed_live = 0;
 
@@ -875,7 +872,7 @@ mark_kill_path(struct ir3_instruction *instr)
 {
 	struct ir3_sched_node *n = instr->data;
 	n->kill_path = true;
-	struct ir3_instruction *src;
+
 	foreach_ssa_src (src, instr) {
 		if (src->block != instr->block)
 			continue;
@@ -919,8 +916,6 @@ is_output_only(struct ir3_instruction *instr)
 static void
 sched_node_add_deps(struct ir3_instruction *instr)
 {
-	struct ir3_instruction *src;
-
 	/* Since foreach_ssa_src() already handles false-dep's we can construct
 	 * the DAG easily in a single pass.
 	 */

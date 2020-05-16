@@ -1110,8 +1110,9 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 
 /* iterator for an instruction's SSA sources (instr), also returns src #: */
 #define foreach_ssa_src_n(__srcinst, __n, __instr) \
-	foreach_ssa_srcp_n(__srcp, __n, __instr) \
-		if ((__srcinst = *__srcp))
+	for (struct ir3_instruction *__srcinst = (void *)~0; __srcinst; __srcinst = NULL) \
+		foreach_ssa_srcp_n(__srcp, __n, __instr) \
+			if ((__srcinst = *__srcp))
 
 /* iterator for an instruction's SSA sources (instr): */
 #define foreach_ssa_src(__srcinst, __instr) \

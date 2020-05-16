@@ -536,7 +536,6 @@ sched_dag_init(struct ir3_postsched_ctx *ctx)
 	 */
 	foreach_instr (instr, &ctx->unscheduled_list) {
 		struct ir3_postsched_node *n = instr->data;
-		struct ir3_instruction *src;
 
 		foreach_ssa_src_n (src, i, instr) {
 			if (src->block != instr->block)

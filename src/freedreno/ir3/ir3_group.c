@@ -142,7 +142,6 @@ restart:
 static bool
 instr_find_neighbors(struct ir3_instruction *instr)
 {
-	struct ir3_instruction *src;
 	bool progress = false;
 
 	if (ir3_instr_check_mark(instr))

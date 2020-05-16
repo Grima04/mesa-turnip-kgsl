@@ -36,8 +36,6 @@
 static void
 instr_dce(struct ir3_instruction *instr, bool falsedep)
 {
-	struct ir3_instruction *src;
-
 	/* don't mark falsedep's as used, but otherwise process them normally: */
 	if (!falsedep)
 		instr->flags &= ~IR3_INSTR_UNUSED;
