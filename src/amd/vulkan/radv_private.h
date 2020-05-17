@@ -386,8 +386,9 @@ struct cache_entry;
 
 struct radv_pipeline_cache {
 	struct vk_object_base                        base;
-	struct radv_device *                          device;
+	struct radv_device *                         device;
 	pthread_mutex_t                              mutex;
+	VkPipelineCacheCreateFlags                   flags;
 
 	uint32_t                                     total_size;
 	uint32_t                                     table_size;
