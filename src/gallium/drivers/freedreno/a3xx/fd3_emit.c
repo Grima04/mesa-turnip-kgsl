@@ -531,7 +531,7 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				A3XX_RB_MSAA_CONTROL_SAMPLE_MASK(ctx->sample_mask));
 	}
 
-	if ((dirty & (FD_DIRTY_ZSA | FD_DIRTY_PROG | FD_DIRTY_BLEND_DUAL)) &&
+	if ((dirty & (FD_DIRTY_ZSA | FD_DIRTY_RASTERIZER | FD_DIRTY_PROG | FD_DIRTY_BLEND_DUAL)) &&
 		!emit->binning_pass) {
 		uint32_t val = fd3_zsa_stateobj(ctx->zsa)->rb_render_control |
 			fd3_blend_stateobj(ctx->blend)->rb_render_control;
@@ -539,6 +539,8 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		val |= COND(fp->frag_face, A3XX_RB_RENDER_CONTROL_FACENESS);
 		val |= COND(fp->fragcoord_compmask != 0,
 				A3XX_RB_RENDER_CONTROL_COORD_MASK(fp->fragcoord_compmask));
+		val |= COND(ctx->rasterizer->rasterizer_discard,
+				A3XX_RB_RENDER_CONTROL_DISABLE_COLOR_PIPE);
 
 		/* I suppose if we needed to (which I don't *think* we need
 		 * to), we could emit this for binning pass too.  But we
