@@ -5312,8 +5312,14 @@ VkResult radv_CreateGraphicsPipelines(
 		if (r != VK_SUCCESS) {
 			result = r;
 			pPipelines[i] = VK_NULL_HANDLE;
+
+			if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+				break;
 		}
 	}
+
+	for (; i < count; ++i)
+		pPipelines[i] = VK_NULL_HANDLE;
 
 	return result;
 }
@@ -5487,8 +5493,14 @@ VkResult radv_CreateComputePipelines(
 		if (r != VK_SUCCESS) {
 			result = r;
 			pPipelines[i] = VK_NULL_HANDLE;
+
+			if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+				break;
 		}
 	}
+
+	for (; i < count; ++i)
+		pPipelines[i] = VK_NULL_HANDLE;
 
 	return result;
 }
