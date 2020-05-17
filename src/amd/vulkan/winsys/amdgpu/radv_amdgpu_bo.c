@@ -49,16 +49,21 @@ radv_amdgpu_bo_va_op(struct radv_amdgpu_winsys *ws,
 		     uint64_t size,
 		     uint64_t addr,
 		     uint32_t bo_flags,
+		     uint64_t internal_flags,
 		     uint32_t ops)
 {
-	uint64_t flags = AMDGPU_VM_PAGE_READABLE |
-			 AMDGPU_VM_PAGE_EXECUTABLE;
+	uint64_t flags = internal_flags;
+	if (bo) {
+		flags = AMDGPU_VM_PAGE_READABLE |
+		         AMDGPU_VM_PAGE_EXECUTABLE;
 
-	if ((bo_flags & RADEON_FLAG_VA_UNCACHED) && ws->info.chip_class >= GFX9)
-		flags |= AMDGPU_VM_MTYPE_UC;
+		if ((bo_flags & RADEON_FLAG_VA_UNCACHED) &&
+		    ws->info.chip_class >= GFX9)
+			flags |= AMDGPU_VM_MTYPE_UC;
 
-	if (!(bo_flags & RADEON_FLAG_READ_ONLY))
-		flags |= AMDGPU_VM_PAGE_WRITEABLE;
+		if (!(bo_flags & RADEON_FLAG_READ_ONLY))
+			flags |= AMDGPU_VM_PAGE_WRITEABLE;
+	}
 
 	size = align64(size, getpagesize());
 
@@ -70,15 +75,21 @@ static void
 radv_amdgpu_winsys_virtual_map(struct radv_amdgpu_winsys_bo *bo,
                                const struct radv_amdgpu_map_range *range)
 {
+	uint64_t internal_flags = 0;
 	assert(range->size);
 
-	if (!range->bo)
-		return; /* TODO: PRT mapping */
+	if (!range->bo) {
+		if (!bo->ws->info.has_sparse_vm_mappings)
+			return;
 
-	p_atomic_inc(&range->bo->ref_count);
-	int r = radv_amdgpu_bo_va_op(bo->ws, range->bo->bo, range->bo_offset,
-				     range->size, range->offset + bo->base.va,
-				     0, AMDGPU_VA_OP_MAP);
+		internal_flags |= AMDGPU_VM_PAGE_PRT;
+	} else
+		p_atomic_inc(&range->bo->ref_count);
+
+	int r = radv_amdgpu_bo_va_op(bo->ws, range->bo ? range->bo->bo : NULL,
+				     range->bo_offset, range->size,
+				     range->offset + bo->base.va, 0,
+				     internal_flags, AMDGPU_VA_OP_MAP);
 	if (r)
 		abort();
 }
@@ -87,17 +98,27 @@ static void
 radv_amdgpu_winsys_virtual_unmap(struct radv_amdgpu_winsys_bo *bo,
                                  const struct radv_amdgpu_map_range *range)
 {
+	uint64_t internal_flags = 0;
 	assert(range->size);
 
-	if (!range->bo)
-		return; /* TODO: PRT mapping */
+	if (!range->bo) {
+		if(!bo->ws->info.has_sparse_vm_mappings)
+			return;
 
-	int r = radv_amdgpu_bo_va_op(bo->ws, range->bo->bo, range->bo_offset,
-				     range->size, range->offset + bo->base.va,
-				     0, AMDGPU_VA_OP_UNMAP);
+		/* Even though this is an unmap, if we don't set this flag,
+		   AMDGPU is going to complain about the missing buffer. */
+		internal_flags |= AMDGPU_VM_PAGE_PRT;
+	}
+
+	int r = radv_amdgpu_bo_va_op(bo->ws, range->bo ? range->bo->bo : NULL,
+				     range->bo_offset, range->size,
+				     range->offset + bo->base.va, 0, internal_flags,
+				     AMDGPU_VA_OP_UNMAP);
 	if (r)
 		abort();
-	radv_amdgpu_winsys_bo_destroy((struct radeon_winsys_bo *)range->bo);
+
+	if (range->bo)
+		radv_amdgpu_winsys_bo_destroy((struct radeon_winsys_bo *)range->bo);
 }
 
 static int bo_comparator(const void *ap, const void *bp) {
@@ -269,7 +290,7 @@ static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo)
 			pthread_mutex_unlock(&bo->ws->global_bo_list_lock);
 		}
 		radv_amdgpu_bo_va_op(bo->ws, bo->bo, 0, bo->size, bo->base.va,
-				     0, AMDGPU_VA_OP_UNMAP);
+				     0, 0, AMDGPU_VA_OP_UNMAP);
 		amdgpu_bo_free(bo->bo);
 	}
 
@@ -399,7 +420,7 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 		goto error_bo_alloc;
 	}
 
-	r = radv_amdgpu_bo_va_op(ws, buf_handle, 0, size, va, flags,
+	r = radv_amdgpu_bo_va_op(ws, buf_handle, 0, size, va, flags, 0,
 				 AMDGPU_VA_OP_MAP);
 	if (r)
 		goto error_va_map;
@@ -589,7 +610,7 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws,
 		goto error_query;
 
 	r = radv_amdgpu_bo_va_op(ws, result.buf_handle, 0, result.alloc_size,
-				 va, 0, AMDGPU_VA_OP_MAP);
+				 va, 0, 0, AMDGPU_VA_OP_MAP);
 	if (r)
 		goto error_va_map;
 
