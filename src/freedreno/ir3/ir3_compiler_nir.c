@@ -2978,6 +2978,20 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 			input = create_input(ctx, mask);
 			input->input.inidx = n;
 		} else {
+			/* For aliased inputs, just append to the wrmask.. ie. if we
+			 * first see a vec2 index at slot N, and then later a vec4,
+			 * the wrmask of the resulting overlapped vec2 and vec4 is 0xf
+			 *
+			 * If the new input that aliases a previously processed input
+			 * sets no new bits, then just bail as there is nothing to see
+			 * here.
+			 *
+			 * Note that we don't expect to get an input w/ frac!=0, if we
+			 * did we'd have to adjust ncomp and frac to cover the entire
+			 * merged input.
+			 */
+			if (!(mask & ~input->regs[0]->wrmask))
+				return;
 			input->regs[0]->wrmask |= mask;
 		}
 
@@ -2986,6 +3000,25 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 		for (int i = 0; i < ncomp; i++) {
 			unsigned idx = (n * 4) + i + frac;
 			compile_assert(ctx, idx < ctx->ninputs);
+
+			/* With aliased inputs, since we add to the wrmask above, we
+			 * can end up with stale meta:split instructions in the inputs
+			 * table.  This is basically harmless, since eventually they
+			 * will get swept away by DCE, but the mismatch wrmask (since
+			 * they would be using the previous wrmask before we OR'd in
+			 * more bits) angers ir3_validate.  So just preemptively clean
+			 * them up.  See:
+			 *
+			 * dEQP-GLES2.functional.attribute_location.bind_aliasing.cond_vec2
+			 *
+			 * Note however that split_dest() will return the src if it is
+			 * scalar, so the previous ctx->inputs[idx] could be the input
+			 * itself (which we don't want to remove)
+			 */
+			if (ctx->inputs[idx] && (ctx->inputs[idx] != input)) {
+				list_del(&ctx->inputs[idx]->node);
+			}
+
 			ctx->inputs[idx] = components[i];
 		}
 	} else {
