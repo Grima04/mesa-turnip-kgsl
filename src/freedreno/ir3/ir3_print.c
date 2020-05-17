@@ -135,6 +135,28 @@ static void print_instr_name(struct ir3_instruction *instr, bool flags)
 		}
 		if (instr->flags & IR3_INSTR_S2EN)
 			printf(".s2en");
+
+		static const char *cond[0x7] = {
+				"lt",
+				"le",
+				"gt",
+				"ge",
+				"eq",
+				"ne",
+		};
+
+		switch (instr->opc) {
+		case OPC_CMPS_F:
+		case OPC_CMPS_U:
+		case OPC_CMPS_S:
+		case OPC_CMPV_F:
+		case OPC_CMPV_U:
+		case OPC_CMPV_S:
+			printf(".%s", cond[instr->cat2.condition & 0x7]);
+			break;
+		default:
+			break;
+		}
 	}
 }
 
