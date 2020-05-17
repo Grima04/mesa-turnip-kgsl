@@ -569,7 +569,7 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                                     (ws->info.family == CHIP_HAWAII &&
                                      ws->accel_working2 < 3);
    ws->info.tcc_cache_line_size = 64; /* TC L2 line size on GCN */
-   ws->info.ib_start_alignment = 4096;
+   ws->info.ib_alignment = 4096;
    ws->info.kernel_flushes_hdp_before_ib = ws->info.drm_minor >= 40;
    /* HTILE is broken with 1D tiling on old kernels and GFX7. */
    ws->info.htile_cmask_support_1d_tiling = ws->info.chip_class != GFX7 ||

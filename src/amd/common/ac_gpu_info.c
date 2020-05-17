@@ -648,16 +648,28 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 
 	unsigned ib_align = 0;
 	ib_align = MAX2(ib_align, gfx.ib_start_alignment);
+	ib_align = MAX2(ib_align, gfx.ib_size_alignment);
 	ib_align = MAX2(ib_align, compute.ib_start_alignment);
+	ib_align = MAX2(ib_align, compute.ib_size_alignment);
 	ib_align = MAX2(ib_align, dma.ib_start_alignment);
+	ib_align = MAX2(ib_align, dma.ib_size_alignment);
 	ib_align = MAX2(ib_align, uvd.ib_start_alignment);
+	ib_align = MAX2(ib_align, uvd.ib_size_alignment);
 	ib_align = MAX2(ib_align, uvd_enc.ib_start_alignment);
+	ib_align = MAX2(ib_align, uvd_enc.ib_size_alignment);
 	ib_align = MAX2(ib_align, vce.ib_start_alignment);
+	ib_align = MAX2(ib_align, vce.ib_size_alignment);
 	ib_align = MAX2(ib_align, vcn_dec.ib_start_alignment);
+	ib_align = MAX2(ib_align, vcn_dec.ib_size_alignment);
 	ib_align = MAX2(ib_align, vcn_enc.ib_start_alignment);
+	ib_align = MAX2(ib_align, vcn_enc.ib_size_alignment);
 	ib_align = MAX2(ib_align, vcn_jpeg.ib_start_alignment);
+	ib_align = MAX2(ib_align, vcn_jpeg.ib_size_alignment);
+	/* GFX10 and maybe GFX9 need this alignment for cache coherency. */
+	if (info->chip_class >= GFX9)
+		ib_align = MAX2(ib_align, info->tcc_cache_line_size);
 	assert(ib_align);
-	info->ib_start_alignment = ib_align;
+	info->ib_alignment = ib_align;
 
         if ((info->drm_minor >= 31 &&
              (info->family == CHIP_RAVEN ||
@@ -855,7 +867,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 
 	printf("CP info:\n");
 	printf("    gfx_ib_pad_with_type2 = %i\n", info->gfx_ib_pad_with_type2);
-	printf("    ib_start_alignment = %u\n", info->ib_start_alignment);
+	printf("    ib_alignment = %u\n", info->ib_alignment);
 	printf("    me_fw_version = %i\n", info->me_fw_version);
 	printf("    me_fw_feature = %i\n", info->me_fw_feature);
 	printf("    pfp_fw_version = %i\n", info->pfp_fw_version);
