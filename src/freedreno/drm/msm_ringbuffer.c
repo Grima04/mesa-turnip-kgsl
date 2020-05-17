@@ -153,7 +153,8 @@ append_bo(struct msm_submit *submit, struct fd_bo *bo)
 			idx = APPEND(submit, submit_bos);
 			idx = APPEND(submit, bos);
 
-			submit->submit_bos[idx].flags = bo->flags;
+			submit->submit_bos[idx].flags = bo->flags &
+					(MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
 			submit->submit_bos[idx].handle = bo->handle;
 			submit->submit_bos[idx].presumed = 0;
 
