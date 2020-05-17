@@ -155,7 +155,7 @@ ir3_emit_ubos(struct fd_screen *screen, const struct ir3_shader_variant *v,
 			}
 		}
 
-		assert(offset * 4 + params < v->constlen * 4);
+		assert(offset * 4 + params <= v->constlen * 4);
 
 		emit_const_bo(ring, v, offset * 4, params, prscs, offsets);
 	}
@@ -309,7 +309,7 @@ emit_tfbos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 			}
 		}
 
-		assert(offset * 4 + params < v->constlen * 4);
+		assert(offset * 4 + params <= v->constlen * 4);
 
 		emit_const_bo(ring, v, offset * 4, params, prscs, offsets);
 	}

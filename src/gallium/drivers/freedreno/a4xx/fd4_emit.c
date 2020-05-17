@@ -140,7 +140,7 @@ emit_const_bo(struct fd_ringbuffer *ring,
 		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
 {
 	/* TODO inline this */
-	assert(dst_offset + num < v->constlen * 4);
+	assert(dst_offset + num <= v->constlen * 4);
 	fd4_emit_const_bo(ring, v->type, dst_offset, num, prscs, offsets);
 }
 
