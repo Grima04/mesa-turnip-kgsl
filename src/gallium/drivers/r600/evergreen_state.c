@@ -574,6 +574,8 @@ static void *evergreen_create_sampler_state(struct pipe_context *ctx,
 	unsigned max_aniso = rscreen->force_aniso >= 0 ? rscreen->force_aniso
 						       : state->max_anisotropy;
 	unsigned max_aniso_ratio = r600_tex_aniso_filter(max_aniso);
+	bool trunc_coord = state->min_img_filter == PIPE_TEX_FILTER_NEAREST &&
+			   state->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
 	float max_lod = state->max_lod;
 
 	if (!ss) {
@@ -608,6 +610,7 @@ static void *evergreen_create_sampler_state(struct pipe_context *ctx,
 	ss->tex_sampler_words[2] =
 		S_03C008_LOD_BIAS(S_FIXED(CLAMP(state->lod_bias, -16, 16), 8)) |
 		(state->seamless_cube_map ? 0 : S_03C008_DISABLE_CUBE_WRAP(1)) |
+		S_03C008_TRUNCATE_COORD(trunc_coord) |
 		S_03C008_TYPE(1);
 
 	if (ss->border_color_use) {
