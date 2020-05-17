@@ -141,6 +141,7 @@ EXTENSIONS = [
     Extension('VK_EXT_memory_budget',                     1, True),
     Extension('VK_EXT_memory_priority',                   1, True),
     Extension('VK_EXT_pci_bus_info',                      2, True),
+    Extension('VK_EXT_pipeline_creation_cache_control',   3, True),
     Extension('VK_EXT_pipeline_creation_feedback',        1, True),
     Extension('VK_EXT_post_depth_coverage',               1, 'device->rad_info.chip_class >= GFX10'),
     Extension('VK_EXT_private_data',                      1, True),

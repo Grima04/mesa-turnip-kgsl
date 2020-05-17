@@ -1308,6 +1308,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->privateData = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
+			VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *features =
+				(VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *)ext;
+			features-> pipelineCreationCacheControl = true;
+			break;
+		}
 		default:
 			break;
 		}
