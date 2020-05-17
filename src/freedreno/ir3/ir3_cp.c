@@ -696,7 +696,8 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			(instr->regs[0]->num == regid(REG_P0, 0)) &&
 			ssa(instr->regs[1]) &&
 			(instr->regs[2]->flags & IR3_REG_IMMED) &&
-			(instr->regs[2]->iim_val == 0)) {
+			(instr->regs[2]->iim_val == 0) &&
+			(instr->cat2.condition == IR3_COND_NE)) {
 		struct ir3_instruction *cond = ssa(instr->regs[1]);
 		switch (cond->opc) {
 		case OPC_CMPS_S:
