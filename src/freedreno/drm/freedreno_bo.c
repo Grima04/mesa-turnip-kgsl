@@ -236,6 +236,8 @@ fd_bo_mark_for_dump(struct fd_bo *bo)
 
 uint64_t fd_bo_get_iova(struct fd_bo *bo)
 {
+	/* ancient kernels did not support this */
+	assert(bo->iova != 0);
 	return bo->iova;
 }
 
