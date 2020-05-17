@@ -67,6 +67,16 @@ struct ir3_compiler {
 	/* on a6xx, rewrite samgp to sequence of samgq0-3 in vertex shaders:
 	 */
 	bool samgq_workaround;
+
+	/* on a3xx, the limit on const access is lower than later gens (in vec4
+	 * units):
+	 */
+	uint32_t max_const;
+
+	/* on a3xx, the unit of indirect const load is higher than later gens (in
+	 * vec4 units):
+	 */
+	uint32_t const_upload_unit;
 };
 
 struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id);

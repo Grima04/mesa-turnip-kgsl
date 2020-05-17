@@ -28,15 +28,15 @@
 #include "util/u_math.h"
 
 static inline struct ir3_ubo_range
-get_ubo_load_range(nir_intrinsic_instr *instr)
+get_ubo_load_range(nir_intrinsic_instr *instr, uint32_t alignment)
 {
 	struct ir3_ubo_range r;
 
 	int offset = nir_src_as_uint(instr->src[1]);
 	const int bytes = nir_intrinsic_dest_components(instr) * 4;
 
-	r.start = ROUND_DOWN_TO(offset, 16 * 4);
-	r.end = ALIGN(offset + bytes, 16 * 4);
+	r.start = ROUND_DOWN_TO(offset, alignment * 16);
+	r.end = ALIGN(offset + bytes, alignment * 16);
 
 	return r;
 }
@@ -85,7 +85,7 @@ get_existing_range(nir_intrinsic_instr *instr,
 
 static void
 gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
-				  struct ir3_ubo_analysis_state *state)
+				  struct ir3_ubo_analysis_state *state, uint32_t alignment)
 {
 	struct ir3_ubo_range *old_r = get_existing_range(instr, state, true);
 	if (!old_r)
@@ -97,13 +97,13 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 			 * load_uniform.  Set the range to cover all of UBO 0.
 			 */
 			old_r->start = 0;
-			old_r->end = ALIGN(nir->num_uniforms * 16, 16 * 4);
+			old_r->end = ALIGN(nir->num_uniforms * 16, alignment * 16);
 		}
 
 		return;
 	}
 
-	const struct ir3_ubo_range r = get_ubo_load_range(instr);
+	const struct ir3_ubo_range r = get_ubo_load_range(instr, alignment);
 
 	/* if UBO lowering is disabled, we still want to lower block 0
 	 * (which is normal uniforms):
@@ -207,7 +207,7 @@ lower_ubo_block_decrement(nir_intrinsic_instr *instr, nir_builder *b, int *num_u
 
 static void
 lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
-		struct ir3_ubo_analysis_state *state, int *num_ubos)
+		struct ir3_ubo_analysis_state *state, int *num_ubos, uint32_t alignment)
 {
 	b->cursor = nir_before_instr(&instr->instr);
 
@@ -234,7 +234,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 		/* After gathering the UBO access ranges, we limit the total
 		 * upload. Reject if we're now outside the range.
 		 */
-		const struct ir3_ubo_range r = get_ubo_load_range(instr);
+		const struct ir3_ubo_range r = get_ubo_load_range(instr, alignment);
 		if (!(range->start <= r.start && r.end <= range->end)) {
 			lower_ubo_block_decrement(instr, b, num_ubos);
 			return;
@@ -325,7 +325,8 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 			nir_foreach_block (block, function->impl) {
 				nir_foreach_instr (instr, block) {
 					if (instr_is_load_ubo(instr))
-						gather_ubo_ranges(nir, nir_instr_as_intrinsic(instr), state);
+						gather_ubo_ranges(nir, nir_instr_as_intrinsic(instr),
+								state, shader->compiler->const_upload_unit);
 				}
 			}
 		}
@@ -339,7 +340,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 	 * dynamically accessed ranges separately and upload static rangtes
 	 * first.
 	 */
-	const uint32_t max_upload = 16 * 1024;
+	const uint32_t max_upload = shader->compiler->max_const * 16;
 	uint32_t offset = shader->const_state.num_reserved_user_consts * 16;
 	state->num_enabled = ARRAY_SIZE(state->range);
 	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
@@ -370,7 +371,8 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 				nir_foreach_instr_safe (instr, block) {
 					if (instr_is_load_ubo(instr))
 						lower_ubo_load_to_uniform(nir_instr_as_intrinsic(instr),
-								&builder, state, &num_ubos);
+								&builder, state, &num_ubos,
+								shader->compiler->const_upload_unit);
 				}
 			}
 

@@ -73,6 +73,8 @@ struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id
 		compiler->unminify_coords = false;
 		compiler->txf_ms_with_isaml = false;
 		compiler->array_index_add_half = true;
+		compiler->max_const = 1024;
+		compiler->const_upload_unit = 4;
 	} else {
 		/* no special handling for "flat" */
 		compiler->flat_bypass = false;
@@ -80,6 +82,8 @@ struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id
 		compiler->unminify_coords = true;
 		compiler->txf_ms_with_isaml = true;
 		compiler->array_index_add_half = false;
+		compiler->max_const = 512;
+		compiler->const_upload_unit = 8;
 	}
 
 	return compiler;
