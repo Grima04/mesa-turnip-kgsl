@@ -235,9 +235,6 @@ dEQP-GLES3.functional.rasterizer_discard.scissor.write_stencil_points
 dEQP-GLES3.functional.rasterizer_discard.scissor.write_stencil_triangle_fan
 dEQP-GLES3.functional.rasterizer_discard.scissor.write_stencil_triangles
 dEQP-GLES3.functional.rasterizer_discard.scissor.write_stencil_triangle_strip
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packunorm2x16_highp_fragment
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packunorm2x16_lowp_fragment
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packunorm2x16_mediump_fragment
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.float_highp
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.float_mediump
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.vec2_highp
