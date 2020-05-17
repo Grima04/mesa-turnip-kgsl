@@ -152,6 +152,7 @@ typedef struct {
 
 typedef struct ppir_node {
    struct list_head list;
+   struct list_head sched_list;
    ppir_op op;
    ppir_node_type type;
    int index;

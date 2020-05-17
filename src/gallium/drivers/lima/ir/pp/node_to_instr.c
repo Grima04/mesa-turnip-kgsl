@@ -214,40 +214,88 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node)
    return true;
 }
 
-static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
+static unsigned int ppir_node_score(ppir_node *node)
 {
-   /* first try pipeline sched, if that didn't succeed try normal scheduling */
-   if (!ppir_do_node_to_instr_try_insert(block, node))
-      if (!ppir_do_one_node_to_instr(block, node))
-         return false;
+   /* preferentially expand nodes in later instruction slots first, so
+    * nodes for earlier slots (which are more likely pipelineable) get
+    * added to the ready list. */
+   unsigned int late_slot = 0;
+   int *slots = ppir_op_infos[node->op].slots;
+   if (slots)
+      for (int i = 0; slots[i] != PPIR_INSTR_SLOT_END; i++)
+         late_slot = MAX2(late_slot, slots[i]);
 
-   if (node->is_end)
-      node->instr->is_end = true;
+   /* to untie, favour nodes with pipelines for earlier expansion.
+    * increase that for nodes with chained pipelines */
+   unsigned int pipeline = 0;
+   ppir_node *n = node;
+   ppir_dest *dest = ppir_node_get_dest(n);
+   while (dest && dest->type == ppir_target_pipeline) {
+      pipeline++;
+      assert(ppir_node_has_single_src_succ(n));
+      n = ppir_node_first_succ(n);
+      dest = ppir_node_get_dest(n);
+   }
+   assert(pipeline < 4);
 
-   /* we have to make sure the dep not be destroyed (due to
-    * succ change) in ppir_do_node_to_instr, otherwise we can't
-    * do recursion like this */
-   ppir_node_foreach_pred(node, dep) {
-      ppir_node *pred = dep->pred;
-      bool ready = true;
+   return (late_slot << 2 | pipeline);
+}
 
-      /* pred may already be processed by the previous pred
-       * (this pred may be both node and previous pred's child) */
-      if (pred->instr)
-         continue;
+static ppir_node *ppir_ready_list_pick_best(ppir_block *block,
+                                            struct list_head *ready_list)
+{
+   unsigned int best_score = 0;
+   ppir_node *best = NULL;
 
-      /* insert pred only when all its successors have been inserted */
-      ppir_node_foreach_succ(pred, dep) {
-         ppir_node *succ = dep->succ;
-         if (!succ->instr) {
-            ready = false;
-            break;
-         }
+   list_for_each_entry(ppir_node, node, ready_list, sched_list) {
+      unsigned int score = ppir_node_score(node);
+      if (!best || score > best_score) {
+         best = node;
+         best_score = score;
       }
+   }
 
-      if (ready) {
-         if (!ppir_do_node_to_instr(block, pred))
+   assert(best);
+   return best;
+}
+
+static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *root)
+{
+   struct list_head ready_list;
+   list_inithead(&ready_list);
+   list_addtail(&root->sched_list, &ready_list);
+
+   while (!list_is_empty(&ready_list)) {
+      ppir_node *node = ppir_ready_list_pick_best(block, &ready_list);
+      list_del(&node->sched_list);
+
+      /* first try pipeline sched, if that didn't succeed try normal sched */
+      if (!ppir_do_node_to_instr_try_insert(block, node))
+         if (!ppir_do_one_node_to_instr(block, node))
             return false;
+
+      if (node->is_end)
+         node->instr->is_end = true;
+
+      ppir_node_foreach_pred(node, dep) {
+         ppir_node *pred = dep->pred;
+         bool ready = true;
+
+         /* pred may already have been processed by a previous node */
+         if (pred->instr)
+            continue;
+
+         /* insert pred only when all its successors have been inserted */
+         ppir_node_foreach_succ(pred, dep) {
+            ppir_node *succ = dep->succ;
+            if (!succ->instr) {
+               ready = false;
+               break;
+            }
+         }
+
+         if (ready)
+            list_addtail(&pred->sched_list, &ready_list);
       }
    }
 
