@@ -29,6 +29,23 @@
 using namespace clover;
 
 namespace {
+   class build_notifier {
+   public:
+      build_notifier(cl_program prog,
+                     void (*notifer)(cl_program, void *), void *data) :
+                     prog_(prog), notifer(notifer), data_(data) { }
+
+      ~build_notifier() {
+         if (notifer)
+            notifer(prog_, data_);
+      }
+
+   private:
+      cl_program prog_;
+      void (*notifer)(cl_program, void *);
+      void *data_;
+   };
+
    void
    validate_build_common(const program &prog, cl_uint num_devs,
                          const cl_device_id *d_devs,
@@ -183,6 +200,8 @@ clBuildProgram(cl_program d_prog, cl_uint num_devs,
 
    validate_build_common(prog, num_devs, d_devs, pfn_notify, user_data);
 
+   auto notifier = build_notifier(d_prog, pfn_notify, user_data);
+
    if (prog.has_source) {
       prog.compile(devs, opts);
       prog.link(devs, opts, { prog });
@@ -216,6 +235,8 @@ clCompileProgram(cl_program d_prog, cl_uint num_devs,
    header_map headers;
 
    validate_build_common(prog, num_devs, d_devs, pfn_notify, user_data);
+
+   auto notifier = build_notifier(d_prog, pfn_notify, user_data);
 
    if (bool(num_headers) != bool(header_names))
       throw error(CL_INVALID_VALUE);
@@ -339,6 +360,10 @@ clLinkProgram(cl_context d_ctx, cl_uint num_devs, const cl_device_id *d_devs,
    auto all_devs =
       (d_devs ? objs(d_devs, num_devs) : ref_vector<device>(ctx.devices()));
    auto prog = create<program>(ctx, all_devs);
+   auto r_prog = ret_object(prog);
+
+   auto notifier = build_notifier(r_prog, pfn_notify, user_data);
+
    auto devs = validate_link_devices(progs, all_devs, opts);
 
    validate_build_common(prog, num_devs, d_devs, pfn_notify, user_data);
@@ -351,7 +376,7 @@ clLinkProgram(cl_context d_ctx, cl_uint num_devs, const cl_device_id *d_devs,
       ret_error(r_errcode, CL_LINK_PROGRAM_FAILURE);
    }
 
-   return ret_object(prog);
+   return r_prog;
 
 } catch (invalid_build_options_error &e) {
    ret_error(r_errcode, CL_INVALID_LINKER_OPTIONS);
