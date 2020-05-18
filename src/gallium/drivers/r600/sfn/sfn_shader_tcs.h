@@ -8,7 +8,7 @@ namespace r600 {
 class TcsShaderFromNir : public ShaderFromNirProcessor
 {
 public:
-   TcsShaderFromNir(r600_pipe_shader *sh, r600_pipe_shader_selector& sel, const r600_shader_key& key);
+   TcsShaderFromNir(r600_pipe_shader *sh, r600_pipe_shader_selector& sel, const r600_shader_key& key, enum chip_class chip_class);
    bool scan_sysvalue_access(nir_instr *instr) override;
 
 private:

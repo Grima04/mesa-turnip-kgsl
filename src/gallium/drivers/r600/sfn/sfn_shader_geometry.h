@@ -35,7 +35,7 @@ namespace r600 {
 class GeometryShaderFromNir : public VertexStage
 {
 public:
-   GeometryShaderFromNir(r600_pipe_shader *sh, r600_pipe_shader_selector& sel, const r600_shader_key& key);
+   GeometryShaderFromNir(r600_pipe_shader *sh, r600_pipe_shader_selector& sel, const r600_shader_key& key, enum chip_class chip_class);
    bool do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr) override;
    bool do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr) override;
    bool scan_sysvalue_access(nir_instr *instr) override;

@@ -36,7 +36,8 @@ class VertexShaderFromNir : public VertexStage {
 public:
    VertexShaderFromNir(r600_pipe_shader *sh,
                        r600_pipe_shader_selector &sel,
-                       const r600_shader_key &key, r600_shader *gs_shader);
+                       const r600_shader_key &key, r600_shader *gs_shader,
+                       enum chip_class chip_class);
 
    bool do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr) override;
    bool scan_sysvalue_access(nir_instr *instr) override;

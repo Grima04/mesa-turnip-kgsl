@@ -28,6 +28,7 @@
 #define EMITINSTRUCTION_H
 
 #include "compiler/nir/nir.h"
+#include "sfn_defines.h"
 #include "sfn_value.h"
 #include "sfn_instruction_alu.h"
 
@@ -82,7 +83,7 @@ protected:
    void load_uniform(const nir_alu_src& src);
    const nir_variable *get_deref_location(const nir_src& v) const;
 
-
+   enum chip_class get_chip_class(void) const;
 
 private:
 

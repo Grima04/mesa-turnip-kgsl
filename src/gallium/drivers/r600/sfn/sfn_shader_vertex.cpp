@@ -40,9 +40,10 @@ using std::priority_queue;
 VertexShaderFromNir::VertexShaderFromNir(r600_pipe_shader *sh,
                                          r600_pipe_shader_selector& sel,
                                          const r600_shader_key& key,
-                                         struct r600_shader* gs_shader):
+                                         struct r600_shader* gs_shader,
+                                         enum chip_class chip_class):
    VertexStage(PIPE_SHADER_VERTEX, sel, sh->shader,
-               sh->scratch_space_needed),
+               sh->scratch_space_needed, chip_class),
    m_num_clip_dist(0),
    m_last_param_export(nullptr),
    m_last_pos_export(nullptr),

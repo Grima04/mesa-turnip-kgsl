@@ -34,8 +34,9 @@ namespace r600 {
 FragmentShaderFromNir::FragmentShaderFromNir(const nir_shader& nir,
                                              r600_shader& sh,
                                              r600_pipe_shader_selector &sel,
-                                             const r600_shader_key &key):
-   ShaderFromNirProcessor(PIPE_SHADER_FRAGMENT, sel, sh, nir.scratch_size),
+                                             const r600_shader_key &key,
+                                             enum chip_class chip_class):
+   ShaderFromNirProcessor(PIPE_SHADER_FRAGMENT, sel, sh, nir.scratch_size, chip_class),
    m_max_color_exports(MAX2(key.ps.nr_cbufs,1)),
    m_max_counted_color_exports(0),
    m_two_sided_color(key.ps.color_two_side),

@@ -148,6 +148,11 @@ PValue EmitInstruction::create_register_from_nir_src(const nir_src& src, unsigne
    return m_proc.create_register_from_nir_src(src, swizzle);
 }
 
+enum chip_class EmitInstruction::get_chip_class(void) const
+{
+   return m_proc.get_chip_class();
+}
+
 const std::set<AluModifiers> EmitInstruction::empty = {};
 const std::set<AluModifiers> EmitInstruction::write = {alu_write};
 const std::set<AluModifiers> EmitInstruction::last_write = {alu_write, alu_last_instr};

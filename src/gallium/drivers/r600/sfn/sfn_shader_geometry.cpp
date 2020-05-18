@@ -33,9 +33,10 @@ namespace r600 {
 
 GeometryShaderFromNir::GeometryShaderFromNir(r600_pipe_shader *sh,
                                              r600_pipe_shader_selector &sel,
-                                             const r600_shader_key &key):
+                                             const r600_shader_key &key,
+                                             enum chip_class chip_class):
    VertexStage(PIPE_SHADER_GEOMETRY, sel, sh->shader,
-               sh->scratch_space_needed),
+               sh->scratch_space_needed, chip_class),
    m_pipe_shader(sh),
    m_so_info(&sel.so),
    m_first_vertex_emitted(false),

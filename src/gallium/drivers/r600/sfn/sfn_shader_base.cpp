@@ -58,12 +58,14 @@ using namespace std;
 
 ShaderFromNirProcessor::ShaderFromNirProcessor(pipe_shader_type ptype,
                                                r600_pipe_shader_selector& sel,
-                                               r600_shader &sh_info, int scratch_size):
+                                               r600_shader &sh_info, int scratch_size,
+                                               enum chip_class chip_class):
    m_processor_type(ptype),
    m_nesting_depth(0),
    m_block_number(0),
    m_export_output(0, -1),
    m_sh_info(sh_info),
+   m_chip_class(chip_class),
    m_tex_instr(*this),
    m_alu_instr(*this),
    m_ssbo_instr(*this),
@@ -93,6 +95,11 @@ bool ShaderFromNirProcessor::scan_instruction(nir_instr *instr)
    }
 
    return scan_sysvalue_access(instr);
+}
+
+enum chip_class ShaderFromNirProcessor::get_chip_class(void) const
+{
+  return m_chip_class;
 }
 
 static void remap_shader_info(r600_shader& sh_info,

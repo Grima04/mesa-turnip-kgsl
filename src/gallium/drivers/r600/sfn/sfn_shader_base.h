@@ -56,7 +56,7 @@ extern SfnLog sfn_log;
 class ShaderFromNirProcessor : public ValuePool {
 public:
    ShaderFromNirProcessor(pipe_shader_type ptype, r600_pipe_shader_selector& sel,
-                          r600_shader& sh_info, int scratch_size);
+                          r600_shader& sh_info, int scratch_size, enum chip_class _chip_class);
    virtual ~ShaderFromNirProcessor();
 
    void emit_instruction(Instruction *ir);
@@ -83,6 +83,7 @@ public:
    const GPRVector *output_register(unsigned location) const;
    void evaluate_spi_sid(r600_shader_io &io);
 
+   enum chip_class get_chip_class() const;
 protected:
 
    void set_var_address(nir_deref_instr *instr);
@@ -191,7 +192,7 @@ private:
    unsigned m_block_number;
    InstructionBlock m_export_output;
    r600_shader& m_sh_info;
-
+   enum chip_class m_chip_class;
    EmitTexInstruction m_tex_instr;
    EmitAluInstruction m_alu_instr;
    EmitSSBOInstruction m_ssbo_instr;
