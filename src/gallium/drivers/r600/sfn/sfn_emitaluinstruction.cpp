@@ -710,15 +710,35 @@ bool EmitAluInstruction::emit_alu_trans_op2(const nir_alu_instr& instr, EAluOp o
    const nir_alu_src& src1 = instr.src[1];
 
    AluInstruction *ir = nullptr;
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
-         ir = new AluInstruction(opcode, from_nir(instr.dest, i), from_nir(src0, i), from_nir(src1, i), last_write);
-         if (src0.negate) ir->set_flag(alu_src0_neg);
-         if (src0.abs) ir->set_flag(alu_src0_abs);
-         if (src1.negate) ir->set_flag(alu_src1_neg);
-         if (src1.abs) ir->set_flag(alu_src1_abs);
-         if (instr.dest.saturate) ir->set_flag(alu_dst_clamp);
-         emit_instruction(ir);
+
+   if (get_chip_class() == CAYMAN) {
+      int lasti = util_last_bit(instr.dest.write_mask);
+      for (int k = 0; k < lasti ; ++k) {
+         if (instr.dest.write_mask & (1 << k)) {
+
+            for (int i = 0; i < 4; i++) {
+               ir = new AluInstruction(opcode, from_nir(instr.dest, i), from_nir(src0, k), from_nir(src1, k), (i == k) ? write : empty);
+               if (src0.negate) ir->set_flag(alu_src0_neg);
+            if (src0.abs) ir->set_flag(alu_src0_abs);
+            if (src1.negate) ir->set_flag(alu_src1_neg);
+            if (src1.abs) ir->set_flag(alu_src1_abs);
+            if (instr.dest.saturate) ir->set_flag(alu_dst_clamp);
+            if (i == 3) ir->set_flag(alu_last_instr);
+            emit_instruction(ir);
+            }
+         }
+      }
+   } else {
+      for (int i = 0; i < 4 ; ++i) {
+         if (instr.dest.write_mask & (1 << i)){
+            ir = new AluInstruction(opcode, from_nir(instr.dest, i), from_nir(src0, i), from_nir(src1, i), last_write);
+            if (src0.negate) ir->set_flag(alu_src0_neg);
+            if (src0.abs) ir->set_flag(alu_src0_abs);
+            if (src1.negate) ir->set_flag(alu_src1_neg);
+            if (src1.abs) ir->set_flag(alu_src1_abs);
+            if (instr.dest.saturate) ir->set_flag(alu_dst_clamp);
+            emit_instruction(ir);
+         }
       }
    }
    return true;
