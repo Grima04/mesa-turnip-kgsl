@@ -41,6 +41,7 @@
 
 #include "drm-uapi/v3d_drm.h"
 #include "format/u_format.h"
+#include "u_atomic.h"
 #include "vk_util.h"
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
@@ -1028,12 +1029,16 @@ queue_init(struct v3dv_device *device, struct v3dv_queue *queue)
    queue->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    queue->device = device;
    queue->flags = 0;
+   list_inithead(&queue->submit_wait_list);
+   pthread_mutex_init(&queue->mutex, NULL);
    return VK_SUCCESS;
 }
 
 static void
 queue_finish(struct v3dv_queue *queue)
 {
+   assert(list_is_empty(&queue->submit_wait_list));
+   pthread_mutex_destroy(&queue->mutex);
 }
 
 static void
@@ -1229,6 +1234,8 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
       device->display_fd = -1;
    }
 
+   pthread_mutex_init(&device->mutex, NULL);
+
    result = queue_init(device, &device->queue);
    if (result != VK_SUCCESS)
       goto fail;
@@ -1265,6 +1272,7 @@ v3dv_DestroyDevice(VkDevice _device,
 
    v3dv_DeviceWaitIdle(_device);
    queue_finish(&device->queue);
+   pthread_mutex_destroy(&device->mutex);
    drmSyncobjDestroy(device->render_fd, device->last_job_sync);
    destroy_device_meta(device);
 
@@ -1289,20 +1297,7 @@ VkResult
 v3dv_DeviceWaitIdle(VkDevice _device)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
-
-   int ret = drmSyncobjWait(device->render_fd,
-                            &device->last_job_sync, 1, INT64_MAX, 0, NULL);
-   if (ret)
-      return VK_ERROR_DEVICE_LOST;
-
-   return VK_SUCCESS;
-}
-
-VkResult
-v3dv_QueueWaitIdle(VkQueue _queue)
-{
-   V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
-   return v3dv_DeviceWaitIdle(v3dv_device_to_handle(queue->device));
+   return v3dv_QueueWaitIdle(v3dv_queue_to_handle(&device->queue));
 }
 
 VkResult
@@ -1909,25 +1904,11 @@ v3dv_CreateEvent(VkDevice _device,
    if (!event)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   event->bo = v3dv_bo_alloc(device, 4096, "Event BO");
-   if (!event->bo)
-      goto fail_alloc;
-
-   bool ok = v3dv_bo_map(device, event->bo, 4096);
-   if (!ok)
-      goto fail_map;
-
    /* Events are created in the unsignaled state */
-   *((uint32_t *) event->bo->map) = 0;
+   event->state = false;
    *pEvent = v3dv_event_to_handle(event);
 
    return VK_SUCCESS;
-
-fail_map:
-   v3dv_bo_free(device, event->bo);
-fail_alloc:
-   vk_free2(&device->alloc, pAllocator, event);
-   return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 }
 
 void
@@ -1941,7 +1922,6 @@ v3dv_DestroyEvent(VkDevice _device,
    if (!event)
       return;
 
-   v3dv_bo_free(device, event->bo);
    vk_free2(&device->alloc, pAllocator, event);
 }
 
@@ -1949,14 +1929,14 @@ VkResult
 v3dv_GetEventStatus(VkDevice _device, VkEvent _event)
 {
    V3DV_FROM_HANDLE(v3dv_event, event, _event);
-   return *((uint32_t *) event->bo->map) == 1 ? VK_EVENT_SET : VK_EVENT_RESET;
+   return p_atomic_read(&event->state) ? VK_EVENT_SET : VK_EVENT_RESET;
 }
 
 VkResult
 v3dv_SetEvent(VkDevice _device, VkEvent _event)
 {
    V3DV_FROM_HANDLE(v3dv_event, event, _event);
-   *((uint32_t *) event->bo->map) = 1;
+   p_atomic_set(&event->state, 1);
    return VK_SUCCESS;
 }
 
@@ -1964,7 +1944,7 @@ VkResult
 v3dv_ResetEvent(VkDevice _device, VkEvent _event)
 {
    V3DV_FROM_HANDLE(v3dv_event, event, _event);
-   *((uint32_t *) event->bo->map) = 0;
+   p_atomic_set(&event->state, 0);
    return VK_SUCCESS;
 }
 

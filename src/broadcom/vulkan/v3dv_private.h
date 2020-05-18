@@ -202,12 +202,46 @@ struct v3dv_instance {
    struct vk_debug_report_instance debug_report_callbacks;
 };
 
+/* Tracks wait threads spawned from a single vkQueueSubmit call */
+struct v3dv_queue_submit_wait_info {
+   struct list_head list_link;
+
+   struct v3dv_device *device;
+
+   /* List of wait threads spawned for any command buffers in a particular
+    * call to vkQueueSubmit.
+    */
+   uint32_t wait_thread_count;
+   struct {
+      pthread_t thread;
+      bool finished;
+   } wait_threads[16];
+
+   /* The master wait thread for the entire submit. This will wait for all
+    * other threads in this submit to complete  before processing signal
+    * semaphores and fences.
+    */
+   pthread_t master_wait_thread;
+
+   /* List of semaphores (and fence) to signal after all wait threads completed
+    * and all command buffer jobs in the submission have been sent to the GPU.
+    */
+   uint32_t signal_semaphore_count;
+   VkSemaphore *signal_semaphores;
+   VkFence fence;
+};
+
 struct v3dv_queue {
    VK_LOADER_DATA _loader_data;
 
    struct v3dv_device *device;
-
    VkDeviceQueueCreateFlags flags;
+
+   /* A list of active v3dv_queue_submit_wait_info */
+   struct list_head submit_wait_list;
+
+   /* A mutex to prevent concurrent access to the list of wait threads */
+   mtx_t mutex;
 };
 
 struct v3dv_meta_color_clear_pipeline {
@@ -237,10 +271,11 @@ struct v3dv_device {
    struct v3d_device_info devinfo;
    struct v3dv_queue queue;
 
-   /* Last command buffer submitted on this device. We use this to check if
-    * the GPU is idle.
-    */
+   /* A sync object to track the last job submitted to the GPU. */
    uint32_t last_job_sync;
+
+   /* A mutex to prevent concurrent access to last_job_sync from the queue */
+   mtx_t mutex;
 
    /* Resources used for meta operations */
    struct {
@@ -618,9 +653,12 @@ enum v3dv_ez_state {
 enum v3dv_job_type {
    V3DV_JOB_TYPE_GPU_CL = 0,
    V3DV_JOB_TYPE_GPU_TFU,
+   V3DV_JOB_TYPE_GPU_CSD,
    V3DV_JOB_TYPE_CPU_RESET_QUERIES,
    V3DV_JOB_TYPE_CPU_END_QUERY,
    V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS,
+   V3DV_JOB_TYPE_CPU_SET_EVENT,
+   V3DV_JOB_TYPE_CPU_WAIT_EVENTS,
 };
 
 struct v3dv_reset_query_cpu_job_info {
@@ -642,6 +680,20 @@ struct v3dv_copy_query_results_cpu_job_info {
    uint32_t offset;
    uint32_t stride;
    VkQueryResultFlags flags;
+};
+
+struct v3dv_event_set_cpu_job_info {
+   struct v3dv_event *event;
+   int state;
+};
+
+struct v3dv_event_wait_cpu_job_info {
+   /* List of events to wait on */
+   uint32_t event_count;
+   struct v3dv_event **events;
+
+   /* Whether any postponed jobs after the wait should wait on semaphores */
+   bool sem_wait;
 };
 
 struct v3dv_job {
@@ -703,6 +755,8 @@ struct v3dv_job {
       struct v3dv_reset_query_cpu_job_info        query_reset;
       struct v3dv_end_query_cpu_job_info          query_end;
       struct v3dv_copy_query_results_cpu_job_info query_copy_results;
+      struct v3dv_event_set_cpu_job_info          event_set;
+      struct v3dv_event_wait_cpu_job_info         event_wait;
    } cpu;
 
    /* Job spects for TFU jobs */
@@ -879,6 +933,12 @@ struct v3dv_cmd_buffer {
    struct v3dv_cmd_pool *pool;
    struct list_head pool_link;
 
+   /* Used at submit time to link command buffers in the submission that have
+    * spawned wait threads, so we can then wait on all of them to complete
+    * before we process any signal sempahores or fences.
+    */
+   struct list_head list_link;
+
    VkCommandBufferUsageFlags usage_flags;
    VkCommandBufferLevel level;
 
@@ -975,7 +1035,7 @@ struct v3dv_fence {
 };
 
 struct v3dv_event {
-   struct v3dv_bo *bo;
+   int state;
 };
 
 struct v3dv_shader_module {

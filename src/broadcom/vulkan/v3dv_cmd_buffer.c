@@ -130,6 +130,7 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
 
    list_inithead(&cmd_buffer->private_objs);
    list_inithead(&cmd_buffer->submit_jobs);
+   list_inithead(&cmd_buffer->list_link);
 
    assert(pool);
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
@@ -161,6 +162,42 @@ cmd_buffer_create(struct v3dv_device *device,
    return VK_SUCCESS;
 }
 
+static void
+job_destroy_gpu_cl_resources(struct v3dv_job *job)
+{
+   assert(job->type == V3DV_JOB_TYPE_GPU_CL);
+
+   v3dv_cl_destroy(&job->bcl);
+   v3dv_cl_destroy(&job->rcl);
+   v3dv_cl_destroy(&job->indirect);
+
+   /* Since we don't ref BOs when we add them to the command buffer, don't
+    * unref them here either. Bo's will be freed when their corresponding API
+    * objects are destroyed.
+    */
+   _mesa_set_destroy(job->bos, NULL);
+
+   /* Extra BOs need to be destroyed with the job, since they were created
+    * internally by the driver for it.
+    */
+   set_foreach(job->extra_bos, entry) {
+      struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
+      v3dv_bo_free(job->device, bo);
+   }
+   _mesa_set_destroy(job->extra_bos, NULL);
+
+   v3dv_bo_free(job->device, job->tile_alloc);
+   v3dv_bo_free(job->device, job->tile_state);
+}
+
+static void
+job_destroy_cpu_wait_events_resources(struct v3dv_job *job)
+{
+   assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
+   assert(job->cmd_buffer);
+   vk_free(&job->cmd_buffer->device->alloc, job->cpu.event_wait.events);
+}
+
 void
 v3dv_job_destroy(struct v3dv_job *job)
 {
@@ -168,30 +205,15 @@ v3dv_job_destroy(struct v3dv_job *job)
 
    list_del(&job->list_link);
 
-   if (job->type == V3DV_JOB_TYPE_GPU_CL) {
-      v3dv_cl_destroy(&job->bcl);
-      v3dv_cl_destroy(&job->rcl);
-      v3dv_cl_destroy(&job->indirect);
-
-      /* Since we don't ref BOs, when we add them to the command buffer, don't
-       * unref them here either.
-       */
-#if 0
-      set_foreach(job->bos, entry) {
-         struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
-         v3dv_bo_free(cmd_buffer->device, bo);
-      }
-#endif
-      _mesa_set_destroy(job->bos, NULL);
-
-      set_foreach(job->extra_bos, entry) {
-         struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
-         v3dv_bo_free(job->device, bo);
-      }
-      _mesa_set_destroy(job->extra_bos, NULL);
-
-      v3dv_bo_free(job->device, job->tile_alloc);
-      v3dv_bo_free(job->device, job->tile_state);
+   switch (job->type) {
+   case V3DV_JOB_TYPE_GPU_CL:
+      job_destroy_gpu_cl_resources(job);
+      break;
+   case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
+      job_destroy_cpu_wait_events_resources(job);
+      break;
+   default:
+      break;
    }
 
    vk_free(&job->device->alloc, job);
@@ -3747,18 +3769,50 @@ v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
 
 void
 v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
-                 VkEvent event,
+                 VkEvent _event,
                  VkPipelineStageFlags stageMask)
 {
-   assert(!"vkCmdSetEvent not implemented yet");
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_event, event, _event);
+
+   /* Event (re)sets can only happen outside a render pass instance so we
+    * should not be in the middle of job recording.
+    */
+   assert(cmd_buffer->state.pass == NULL);
+   assert(cmd_buffer->state.job == NULL);
+
+   struct v3dv_job *job =
+      cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                V3DV_JOB_TYPE_CPU_SET_EVENT,
+                                cmd_buffer, -1);
+   job->cpu.event_set.event = event;
+   job->cpu.event_set.state = 1;
+
+   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
 }
 
 void
 v3dv_CmdResetEvent(VkCommandBuffer commandBuffer,
-                   VkEvent event,
+                   VkEvent _event,
                    VkPipelineStageFlags stageMask)
 {
-   assert(!"vkCmdResetEvent not implemented yet");
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_event, event, _event);
+
+   /* Event (re)sets can only happen outside a render pass instance so we
+    * should not be in the middle of job recording.
+    */
+   assert(cmd_buffer->state.pass == NULL);
+   assert(cmd_buffer->state.job == NULL);
+
+   struct v3dv_job *job =
+      cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                V3DV_JOB_TYPE_CPU_SET_EVENT,
+                                cmd_buffer, -1);
+   job->cpu.event_set.event = event;
+   job->cpu.event_set.state = 0;
+
+   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
 }
 
 void
@@ -3774,5 +3828,32 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
                    uint32_t imageMemoryBarrierCount,
                    const VkImageMemoryBarrier *pImageMemoryBarriers)
 {
-   assert(!"vkCmdWaitEvents not implemented yet");
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   /* vkCmdWaitEvents can be recorded inside a render pass, so we might have
+    * an active job.
+    *
+    * FIXME: Since we can't signal/reset events inside a render pass, we could,
+    *        in theory, move this wait to an earlier point, such as before the
+    *        current job if it is inside a render pass, to avoid the split.
+    */
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+   assert(eventCount > 0);
+
+   struct v3dv_job *job =
+      cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                V3DV_JOB_TYPE_CPU_WAIT_EVENTS,
+                                cmd_buffer, -1);
+
+   const uint32_t event_list_size = sizeof(struct v3dv_event *) * eventCount;
+
+   job->cpu.event_wait.event_count = eventCount;
+   job->cpu.event_wait.events =
+      vk_alloc(&cmd_buffer->device->alloc, event_list_size, 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   for (uint32_t i = 0; i < eventCount; i++)
+      job->cpu.event_wait.events[i] = v3dv_event_from_handle(pEvents[i]);
+
+   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
 }

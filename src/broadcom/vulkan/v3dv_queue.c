@@ -26,6 +26,8 @@
 
 #include "broadcom/clif/clif_dump.h"
 
+#include "u_atomic.h"
+
 #include <errno.h>
 #include <time.h>
 
@@ -77,6 +79,80 @@ get_absolute_timeout(uint64_t timeout)
 }
 
 static VkResult
+queue_submit_job(struct v3dv_queue *queue,
+                 struct v3dv_job *job,
+                 bool do_wait,
+                 pthread_t *wait_thread);
+
+/* Waits for active CPU wait threads spawned before the current thread to
+ * complete and submit all their GPU jobs.
+ */
+static void
+cpu_queue_wait_idle(struct v3dv_queue *queue)
+{
+   const pthread_t this_thread = pthread_self();
+
+retry:
+   mtx_lock(&queue->mutex);
+   list_for_each_entry(struct v3dv_queue_submit_wait_info, info,
+                       &queue->submit_wait_list, list_link) {
+      for (uint32_t  i = 0; i < info->wait_thread_count; i++) {
+         if (info->wait_threads[i].finished)
+            continue;
+
+         /* Because we are testing this against the list of spawned threads
+          * it will never match for the main thread, so when we call this from
+          * the main thread we are effectively waiting for all active threads
+          * to complete, and otherwise we are only waiting for work submitted
+          * before the wait thread that called this (a wait thread should never
+          * be waiting for work submitted after it).
+          */
+         if (info->wait_threads[i].thread == this_thread)
+            goto done;
+
+         /* Wait and try again */
+         mtx_unlock(&queue->mutex);
+         usleep(500); /* 0.5 ms */
+         goto retry;
+      }
+   }
+
+done:
+   mtx_unlock(&queue->mutex);
+}
+
+static VkResult
+gpu_queue_wait_idle(struct v3dv_queue *queue)
+{
+   struct v3dv_device *device = queue->device;
+
+   mtx_lock(&device->mutex);
+   uint32_t last_job_sync = device->last_job_sync;
+   mtx_unlock(&device->mutex);
+
+   int ret = drmSyncobjWait(device->render_fd,
+                            &last_job_sync, 1, INT64_MAX, 0, NULL);
+   if (ret)
+      return VK_ERROR_DEVICE_LOST;
+
+   return VK_SUCCESS;
+}
+
+VkResult
+v3dv_QueueWaitIdle(VkQueue _queue)
+{
+   V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
+
+   /* Check that we don't have any wait threads running in the CPU first,
+    * as these can spawn new GPU jobs.
+    */
+   cpu_queue_wait_idle(queue);
+
+   /* Check we don't have any GPU jobs running */
+   return gpu_queue_wait_idle(queue);
+}
+
+static VkResult
 handle_reset_query_cpu_job(struct v3dv_job *job)
 {
    /* We are about to reset query counters so we need to make sure that
@@ -85,7 +161,9 @@ handle_reset_query_cpu_job(struct v3dv_job *job)
     * FIXME: we could avoid blocking the main thread for this if we use
     *        submission thread.
     */
-   v3dv_DeviceWaitIdle(v3dv_device_to_handle(job->device));
+   VkResult result = gpu_queue_wait_idle(&job->device->queue);
+   if (result != VK_SUCCESS)
+      return result;
 
    struct v3dv_reset_query_cpu_job_info *info = &job->cpu.query_reset;
    for (uint32_t i = info->first; i < info->first + info->count; i++) {
@@ -157,6 +235,161 @@ handle_copy_query_results_cpu_job(struct v3dv_job *job)
 }
 
 static VkResult
+handle_set_event_cpu_job(struct v3dv_job *job, bool is_wait_thread)
+{
+   /* From the Vulkan 1.0 spec:
+    *
+    *    "When vkCmdSetEvent is submitted to a queue, it defines an execution
+    *     dependency on commands that were submitted before it, and defines an
+    *     event signal operation which sets the event to the signaled state.
+    *     The first synchronization scope includes every command previously
+    *     submitted to the same queue, including those in the same command
+    *     buffer and batch".
+    *
+    * So we should wait for all prior work to be completed before signaling
+    * the event, this includes all active CPU wait threads spawned for any
+    * command buffer submitted *before* this.
+    *
+    * FIXME: we could avoid blocking the main thread for this if we use a
+    *        submission thread.
+    */
+
+   /* If we are calling this from a wait thread it will only wait
+    * wait threads sspawned before it, otherwise it will wait for
+    * all active threads to complete.
+    */
+   cpu_queue_wait_idle(&job->device->queue);
+
+   VkResult result = gpu_queue_wait_idle(&job->device->queue);
+   if (result != VK_SUCCESS)
+      return result;
+
+   struct v3dv_event_set_cpu_job_info *info = &job->cpu.event_set;
+   p_atomic_set(&info->event->state, info->state);
+
+   return VK_SUCCESS;
+}
+
+static bool
+check_wait_events_complete(struct v3dv_job *job)
+{
+   assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
+
+   struct v3dv_event_wait_cpu_job_info *info = &job->cpu.event_wait;
+   for (uint32_t i = 0; i < info->event_count; i++) {
+      if (!p_atomic_read(&info->events[i]->state))
+         return false;
+   }
+   return true;
+}
+
+static void
+wait_thread_finish(struct v3dv_queue *queue, pthread_t thread)
+{
+   mtx_lock(&queue->mutex);
+   list_for_each_entry(struct v3dv_queue_submit_wait_info, info,
+                       &queue->submit_wait_list, list_link) {
+      for (uint32_t  i = 0; i < info->wait_thread_count; i++) {
+         if (info->wait_threads[i].thread == thread) {
+            info->wait_threads[i].finished = true;
+            goto done;
+         }
+      }
+   }
+
+   unreachable(!"Failed to finish wait thread: not found");
+
+done:
+   mtx_unlock(&queue->mutex);
+}
+
+static void *
+event_wait_thread_func(void *_job)
+{
+   struct v3dv_job *job = (struct v3dv_job *) _job;
+   assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
+   struct v3dv_event_wait_cpu_job_info *info = &job->cpu.event_wait;
+
+   /* Wait for events to be signaled */
+   const useconds_t wait_interval_ms = 1;
+   while (!check_wait_events_complete(job))
+      usleep(wait_interval_ms * 1000);
+
+   /* Now continue submitting pending jobs for the same command buffer after
+    * the wait job.
+    */
+   struct v3dv_queue *queue = &job->device->queue;
+   list_for_each_entry_from(struct v3dv_job, pjob, job->list_link.next,
+                            &job->cmd_buffer->submit_jobs, list_link) {
+      /* We don't want to spawn more than one wait thread per command buffer.
+       * If this job also requires a wait for events, we will do the wait here.
+       */
+      VkResult result = queue_submit_job(queue, pjob, info->sem_wait, NULL);
+      if (result == VK_NOT_READY) {
+         while (!check_wait_events_complete(pjob)) {
+            usleep(wait_interval_ms * 1000);
+         }
+         result = VK_SUCCESS;
+      }
+
+      if (result != VK_SUCCESS) {
+         fprintf(stderr, "Wait thread job execution failed.\n");
+         goto done;
+      }
+   }
+
+done:
+   wait_thread_finish(queue, pthread_self());
+   return NULL;
+}
+
+static VkResult
+spawn_event_wait_thread(struct v3dv_job *job, pthread_t *wait_thread)
+
+{
+   assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
+   assert(job->cmd_buffer);
+   assert(wait_thread != NULL);
+
+   if (pthread_create(wait_thread, NULL, event_wait_thread_func, job))
+      return vk_error(job->device->instance, VK_ERROR_DEVICE_LOST);
+
+   return VK_NOT_READY;
+}
+
+static VkResult
+handle_wait_events_cpu_job(struct v3dv_job *job,
+                           bool sem_wait,
+                           pthread_t *wait_thread)
+{
+   assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
+   struct v3dv_event_wait_cpu_job_info *info = &job->cpu.event_wait;
+
+   /* If all events are signaled then we are done and can continue submitting
+    * the rest of the command buffer normally.
+    */
+   if (check_wait_events_complete(job))
+      return VK_SUCCESS;
+
+   /* Otherwise, we put the rest of the command buffer on a wait thread until
+    * all events are signaled. We only spawn a new thread on the first
+    * wait job we see for a command buffer, any additional wait jobs in the
+    * same command buffer will run in that same wait thread and will get here
+    * with a NULL wait_thread pointer.
+    *
+    * Also, whether we spawn a wait thread or not, we always return
+    * VK_NOT_READY (unless an error happened), so we stop trying to submit
+    * any jobs in the same command buffer after the wait job. The wait thread
+    * will attempt to submit them after the wait completes.
+    */
+   info->sem_wait = sem_wait;
+   if (wait_thread)
+      return spawn_event_wait_thread(job, wait_thread);
+   else
+      return VK_NOT_READY;
+}
+
+static VkResult
 process_semaphores_to_signal(struct v3dv_device *device,
                              uint32_t count, const VkSemaphore *sems)
 {
@@ -164,7 +397,9 @@ process_semaphores_to_signal(struct v3dv_device *device,
       return VK_SUCCESS;
 
    int fd;
+   mtx_lock(&device->mutex);
    drmSyncobjExportSyncFile(device->render_fd, device->last_job_sync, &fd);
+   mtx_unlock(&device->mutex);
    if (fd == -1)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -198,7 +433,9 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
    fence->fd = -1;
 
    int fd;
+   mtx_lock(&device->mutex);
    drmSyncobjExportSyncFile(device->render_fd, device->last_job_sync, &fd);
+   mtx_unlock(&device->mutex);
    if (fd == -1)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -220,38 +457,21 @@ handle_cl_job(struct v3dv_queue *queue,
 
    struct drm_v3d_submit_cl submit;
 
-   /* RCL jobs don't start until the previous RCL job has finished so we don't
-    * really need to add a fence for those, however, we might need to wait on a
-    * CSD or TFU job, which are not serialized.
-    *
-    * FIXME: for now, if we are asked to wait on any semaphores, we just wait
-    * on the last job we submitted. In the future we might want to pass the
-    * actual syncobj of the wait semaphores so we don't block on the last RCL
-    * if we only need to wait for a previous CSD or TFU, for example, but
-    * we would have to extend our kernel interface to support the case where
-    * we have more than one semaphore to wait on.
-    */
-   submit.in_sync_bcl = 0;
-   submit.in_sync_rcl = do_wait ? device->last_job_sync : 0;
-
-   /* Update the sync object for the last rendering by this device. */
-   submit.out_sync = device->last_job_sync;
-
    submit.bcl_start = job->bcl.bo->offset;
    submit.bcl_end = job->bcl.bo->offset + v3dv_cl_offset(&job->bcl);
    submit.rcl_start = job->rcl.bo->offset;
    submit.rcl_end = job->rcl.bo->offset + v3dv_cl_offset(&job->rcl);
 
-   submit.flags = 0;
-   /* FIXME: we already know that we support cache flush, as we only support
-    * hw that supports that, but would be better to just DRM-ask it
-    */
-   if (job->tmu_dirty_rcl)
-      submit.flags |= DRM_V3D_SUBMIT_CL_FLUSH_CACHE;
-
    submit.qma = job->tile_alloc->offset;
    submit.qms = job->tile_alloc->size;
    submit.qts = job->tile_state->offset;
+
+   /* FIXME: we already know that we support cache flush, as we only support
+    * hw that supports that, but would be better to just DRM-ask it
+    */
+   submit.flags = 0;
+   if (job->tmu_dirty_rcl)
+      submit.flags |= DRM_V3D_SUBMIT_CL_FLUSH_CACHE;
 
    submit.bo_handle_count = job->bo_count;
    uint32_t *bo_handles =
@@ -264,9 +484,25 @@ handle_cl_job(struct v3dv_queue *queue,
    assert(bo_idx == submit.bo_handle_count);
    submit.bo_handles = (uintptr_t)(void *)bo_handles;
 
+   /* RCL jobs don't start until the previous RCL job has finished so we don't
+    * really need to add a fence for those, however, we might need to wait on a
+    * CSD or TFU job, which are not serialized.
+    *
+    * FIXME: for now, if we are asked to wait on any semaphores, we just wait
+    * on the last job we submitted. In the future we might want to pass the
+    * actual syncobj of the wait semaphores so we don't block on the last RCL
+    * if we only need to wait for a previous CSD or TFU, for example, but
+    * we would have to extend our kernel interface to support the case where
+    * we have more than one semaphore to wait on.
+    */
+   mtx_lock(&queue->device->mutex);
+   submit.in_sync_bcl = 0;
+   submit.in_sync_rcl = do_wait ? device->last_job_sync : 0;
+   submit.out_sync = device->last_job_sync;
    v3dv_clif_dump(device, job, &submit);
-
    int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_CL, &submit);
+   mtx_unlock(&queue->device->mutex);
+
    static bool warned = false;
    if (ret && !warned) {
       fprintf(stderr, "Draw call returned %s. Expect corruption.\n",
@@ -287,12 +523,14 @@ handle_tfu_job(struct v3dv_queue *queue,
                struct v3dv_job *job,
                bool do_wait)
 {
-   const struct v3dv_device *device = queue->device;
+   struct v3dv_device *device = queue->device;
 
+   mtx_lock(&device->mutex);
    job->tfu.in_sync = do_wait ? device->last_job_sync : 0;
    job->tfu.out_sync = device->last_job_sync;
-
    int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_TFU, &job->tfu);
+   mtx_unlock(&device->mutex);
+
    if (ret != 0) {
       fprintf(stderr, "Failed to submit TFU job: %d\n", ret);
       return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
@@ -304,7 +542,8 @@ handle_tfu_job(struct v3dv_queue *queue,
 static VkResult
 queue_submit_job(struct v3dv_queue *queue,
                  struct v3dv_job *job,
-                 bool do_wait)
+                 bool do_wait,
+                 pthread_t *wait_thread)
 {
    assert(job);
 
@@ -319,6 +558,10 @@ queue_submit_job(struct v3dv_queue *queue,
       return handle_end_query_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS:
       return handle_copy_query_results_cpu_job(job);
+   case V3DV_JOB_TYPE_CPU_SET_EVENT:
+      return handle_set_event_cpu_job(job, wait_thread != NULL);
+   case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
+      return handle_wait_events_cpu_job(job, do_wait, wait_thread);
    default:
       unreachable("Unhandled job type");
    }
@@ -439,13 +682,15 @@ queue_submit_noop_job(struct v3dv_queue *queue, const VkSubmitInfo *pSubmit)
          return result;
    }
 
-   return queue_submit_job(queue, noop_job, pSubmit->waitSemaphoreCount > 0);
+   return queue_submit_job(queue, noop_job, pSubmit->waitSemaphoreCount > 0,
+                           NULL);
 }
 
 static VkResult
 queue_submit_cmd_buffer(struct v3dv_queue *queue,
                         struct v3dv_cmd_buffer *cmd_buffer,
-                        const VkSubmitInfo *pSubmit)
+                        const VkSubmitInfo *pSubmit,
+                        pthread_t *wait_thread)
 {
    assert(cmd_buffer);
 
@@ -455,7 +700,8 @@ queue_submit_cmd_buffer(struct v3dv_queue *queue,
    list_for_each_entry_safe(struct v3dv_job, job,
                             &cmd_buffer->submit_jobs, list_link) {
       VkResult result = queue_submit_job(queue, job,
-                                         pSubmit->waitSemaphoreCount > 0);
+                                         pSubmit->waitSemaphoreCount > 0,
+                                         wait_thread);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -463,12 +709,81 @@ queue_submit_cmd_buffer(struct v3dv_queue *queue,
    return VK_SUCCESS;
 }
 
+static void
+add_wait_thread_to_list(struct v3dv_device *device,
+                        pthread_t thread,
+                        struct v3dv_queue_submit_wait_info **wait_info)
+{
+   /* If this is the first time we spawn a wait thread for this queue
+    * submission create a v3dv_queue_submit_wait_info to track this and
+    * any other threads in the same submission and add it to the global list
+    * in the queue.
+    */
+   if (*wait_info == NULL) {
+      *wait_info =
+         vk_zalloc(&device->alloc, sizeof(struct v3dv_queue_submit_wait_info), 8,
+                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      (*wait_info)->device = device;
+   }
+
+   /* And add the thread to the list of wait threads for this submission */
+   const uint32_t thread_idx = (*wait_info)->wait_thread_count;
+   assert(thread_idx < 16);
+   (*wait_info)->wait_threads[thread_idx].thread = thread;
+   (*wait_info)->wait_threads[thread_idx].finished = false;
+   (*wait_info)->wait_thread_count++;
+}
+
+static void
+add_signal_semaphores_to_wait_list(struct v3dv_device *device,
+                                   const VkSubmitInfo *pSubmit,
+                                   struct v3dv_queue_submit_wait_info *wait_info)
+{
+   assert(wait_info);
+
+   if (pSubmit->signalSemaphoreCount == 0)
+      return;
+
+   /* FIXME: We put all the semaphores in a list and we signal all of them
+    * together from the submit master thread when the last wait thread in the
+    * submit completes. We could do better though: group the semaphores per
+    * submit and signal them as soon as all wait threads for a particular
+    * submit completes. Not sure if the extra work would be worth it though,
+    * since we only spawn waith threads for event waits and only when the
+    * event if set from the host after the queue submission.
+    */
+
+   /* Check the size of the current semaphore list */
+   const uint32_t prev_count = wait_info->signal_semaphore_count;
+   const uint32_t prev_alloc_size = prev_count * sizeof(VkSemaphore);
+   VkSemaphore *prev_list = wait_info->signal_semaphores;
+
+   /* Resize the list to hold the additional semaphores */
+   const uint32_t extra_alloc_size =
+      pSubmit->signalSemaphoreCount * sizeof(VkSemaphore);
+   wait_info->signal_semaphore_count += pSubmit->signalSemaphoreCount;
+   wait_info->signal_semaphores =
+      vk_alloc(&device->alloc, prev_alloc_size + extra_alloc_size, 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+
+   /* Copy the old list to the new allocation and free the old list */
+   if (prev_count > 0) {
+      memcpy(wait_info->signal_semaphores, prev_list, prev_alloc_size);
+      vk_free(&device->alloc, prev_list);
+   }
+
+   /* Add the new semaphores to the list */
+   memcpy(wait_info->signal_semaphores + prev_count,
+          pSubmit->pSignalSemaphores, extra_alloc_size);
+}
+
 static VkResult
 queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
                               const VkSubmitInfo *pSubmit,
-                              VkFence fence)
+                              struct v3dv_queue_submit_wait_info **wait_info)
 {
    VkResult result = VK_SUCCESS;
+   bool has_wait_threads = false;
 
    /* Even if we don't have any actual work to submit we still need to wait
     * on the wait semaphores and signal the signal semaphores and fence, so
@@ -479,9 +794,24 @@ queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
       result = queue_submit_noop_job(queue, pSubmit);
    } else {
       for (uint32_t i = 0; i < pSubmit->commandBufferCount; i++) {
+         pthread_t wait_thread;
          struct v3dv_cmd_buffer *cmd_buffer =
             v3dv_cmd_buffer_from_handle(pSubmit->pCommandBuffers[i]);
-         result = queue_submit_cmd_buffer(queue, cmd_buffer, pSubmit);
+         result = queue_submit_cmd_buffer(queue, cmd_buffer, pSubmit,
+                                          &wait_thread);
+
+         /* We get VK_NOT_READY if we had to spawn a wait thread for the
+          * command buffer. In that scenario, we want to continue submitting
+          * any pending command buffers in the batch, but we don't want to
+          * process any signal semaphores for the batch until we know we have
+          * submitted every job for every command buffer in the batch.
+          */
+         if (result == VK_NOT_READY) {
+            result = VK_SUCCESS;
+            add_wait_thread_to_list(queue->device, wait_thread, wait_info);
+            has_wait_threads = true;
+         }
+
          if (result != VK_SUCCESS)
             break;
       }
@@ -490,13 +820,78 @@ queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
    if (result != VK_SUCCESS)
       return result;
 
-   result = process_semaphores_to_signal(queue->device,
-                                         pSubmit->signalSemaphoreCount,
-                                         pSubmit->pSignalSemaphores);
-   if (result != VK_SUCCESS)
-      return result;
+   /* If had to emit any wait threads in this submit we need to wait for all
+    * of them to complete before we can signal any semaphores.
+    */
+   if (!has_wait_threads) {
+      return process_semaphores_to_signal(queue->device,
+                                          pSubmit->signalSemaphoreCount,
+                                          pSubmit->pSignalSemaphores);
+   } else {
+      assert(*wait_info);
+      add_signal_semaphores_to_wait_list(queue->device, pSubmit, *wait_info);
+      return VK_NOT_READY;
+   }
+}
 
-   return VK_SUCCESS;
+static void *
+master_wait_thread_func(void *_wait_info)
+{
+   struct v3dv_queue_submit_wait_info *wait_info =
+      (struct v3dv_queue_submit_wait_info *) _wait_info;
+
+   struct v3dv_queue *queue = &wait_info->device->queue;
+
+   /* Wait for all command buffer wait threads to complete */
+   for (uint32_t i = 0; i < wait_info->wait_thread_count; i++) {
+      int res = pthread_join(wait_info->wait_threads[i].thread, NULL);
+      if (res != 0)
+         fprintf(stderr, "Wait thread failed to join.\n");
+   }
+
+   /* Signal semaphores and fences */
+   VkResult result;
+   result = process_semaphores_to_signal(wait_info->device,
+                                         wait_info->signal_semaphore_count,
+                                         wait_info->signal_semaphores);
+   if (result != VK_SUCCESS)
+      fprintf(stderr, "Wait thread semaphore signaling failed.");
+
+   result = process_fence_to_signal(wait_info->device, wait_info->fence);
+   if (result != VK_SUCCESS)
+      fprintf(stderr, "Wait thread fence signaling failed.");
+
+   /* Release wait_info */
+   mtx_lock(&queue->mutex);
+   list_del(&wait_info->list_link);
+   mtx_unlock(&queue->mutex);
+
+   vk_free(&wait_info->device->alloc, wait_info->signal_semaphores);
+   vk_free(&wait_info->device->alloc, wait_info);
+
+   return NULL;
+}
+
+
+static VkResult
+spawn_master_wait_thread(struct v3dv_queue *queue,
+                         struct v3dv_queue_submit_wait_info *wait_info)
+
+{
+   VkResult result = VK_SUCCESS;
+
+   mtx_lock(&queue->mutex);
+   if (pthread_create(&wait_info->master_wait_thread, NULL,
+                      master_wait_thread_func, wait_info)) {
+      result = vk_error(queue->device->instance, VK_ERROR_DEVICE_LOST);
+      goto done;
+   }
+
+   list_addtail(&wait_info->list_link, &queue->submit_wait_list);
+
+done:
+   mtx_unlock(&queue->mutex);
+   return result;
 }
 
 VkResult
@@ -507,18 +902,31 @@ v3dv_QueueSubmit(VkQueue _queue,
 {
    V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
 
+   struct v3dv_queue_submit_wait_info *wait_info = NULL;
+
    VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < submitCount; i++) {
-      result = queue_submit_cmd_buffer_batch(queue, &pSubmits[i], fence);
-      if (result != VK_SUCCESS)
-         return result;
+      result = queue_submit_cmd_buffer_batch(queue, &pSubmits[i], &wait_info);
+      if (result != VK_SUCCESS && result != VK_NOT_READY)
+         goto done;
    }
 
-   result = process_fence_to_signal(queue->device, fence);
-   if (result != VK_SUCCESS)
-      return result;
+   if (!wait_info) {
+      assert(result != VK_NOT_READY);
+      result = process_fence_to_signal(queue->device, fence);
+      goto done;
+   }
 
-   return VK_SUCCESS;
+   /* We emitted wait threads, so we have to spwan a master thread for this
+    * queue submission that waits for all other threads to complete and then
+    * will signal any semaphores and fences.
+    */
+   assert(wait_info);
+   wait_info->fence = fence;
+   result = spawn_master_wait_thread(queue, wait_info);
+
+done:
+   return result;
 }
 
 VkResult
