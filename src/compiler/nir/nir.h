@@ -3554,6 +3554,9 @@ bool nir_foreach_ssa_def(nir_instr *instr, nir_foreach_ssa_def_cb cb,
                          void *state);
 bool nir_foreach_dest(nir_instr *instr, nir_foreach_dest_cb cb, void *state);
 bool nir_foreach_src(nir_instr *instr, nir_foreach_src_cb cb, void *state);
+bool nir_foreach_phi_src_leaving_block(nir_block *instr,
+                                       nir_foreach_src_cb cb,
+                                       void *state);
 
 nir_const_value *nir_src_as_const_value(nir_src src);
 

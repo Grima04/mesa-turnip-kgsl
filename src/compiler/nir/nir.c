@@ -1256,6 +1256,32 @@ nir_foreach_src(nir_instr *instr, nir_foreach_src_cb cb, void *state)
    return nir_foreach_dest(instr, visit_dest_indirect, &dest_state);
 }
 
+bool
+nir_foreach_phi_src_leaving_block(nir_block *block,
+                                  nir_foreach_src_cb cb,
+                                  void *state)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(block->successors); i++) {
+      if (block->successors[i] == NULL)
+         continue;
+
+      nir_foreach_instr(instr, block->successors[i]) {
+         if (instr->type != nir_instr_type_phi)
+            break;
+
+         nir_phi_instr *phi = nir_instr_as_phi(instr);
+         nir_foreach_phi_src(phi_src, phi) {
+            if (phi_src->pred == block) {
+               if (!cb(&phi_src->src, state))
+                  return false;
+            }
+         }
+      }
+   }
+
+   return true;
+}
+
 nir_const_value
 nir_const_value_for_float(double f, unsigned bit_size)
 {
