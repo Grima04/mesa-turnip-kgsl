@@ -1470,8 +1470,13 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
       flags |= RADEON_FLAG_NO_CPU_ACCESS;
    if (info.alloc_flags & AMDGPU_GEM_CREATE_CPU_GTT_USWC)
       flags |= RADEON_FLAG_GTT_WC;
-   if (info.alloc_flags & AMDGPU_GEM_CREATE_ENCRYPTED)
+   if (info.alloc_flags & AMDGPU_GEM_CREATE_ENCRYPTED) {
+      /* Imports are always possible even if the importer isn't using TMZ.
+       * For instance libweston needs to import the buffer to be able to determine
+       * if it can be used for scanout.
+       */
       flags |= RADEON_FLAG_ENCRYPTED;
+   }
 
    /* Initialize the structure. */
    simple_mtx_init(&bo->lock, mtx_plain);
