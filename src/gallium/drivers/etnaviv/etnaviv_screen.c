@@ -222,11 +222,9 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
       return screen->specs.seamless_cube_map;
 
-   /* Timer queries. */
+   /* Queries. */
    case PIPE_CAP_OCCLUSION_QUERY:
       return VIV_FEATURE(screen, chipMinorFeatures1, HALTI0);
-   case PIPE_CAP_QUERY_TIMESTAMP:
-      return 1;
 
    /* Preferences */
    case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
