@@ -517,6 +517,16 @@ clone_instr(clone_state *state, const nir_instr *instr)
    }
 }
 
+nir_instr *
+nir_instr_clone(nir_shader *shader, const nir_instr *orig)
+{
+   clone_state state = {
+      .allow_remap_fallback = true,
+      .ns = shader,
+   };
+   return clone_instr(&state, orig);
+}
+
 static nir_block *
 clone_block(clone_state *state, struct exec_list *cf_list, const nir_block *blk)
 {
