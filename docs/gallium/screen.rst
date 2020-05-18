@@ -592,6 +592,7 @@ The integer capabilities:
 * ``PIPE_CAP_NIR_ATOMICS_AS_DEREF``: Whether NIR atomics instructions should reference atomics as NIR derefs instead of by indices.
 * ``PIPE_CAP_NO_CLIP_ON_COPY_TEX``: Driver doesn't want x/y/width/height clipped based on src size when doing a copy texture operation (eg: may want out-of-bounds reads that produce 0 instead of leaving the texture content undefined)
 * ``PIPE_CAP_MAX_TEXTURE_MB``: Maximum texture size in MB (default is 1024)
+* ``PIPE_CAP_DEVICE_PROTECTED_CONTENT``: Whether the device support protected / encrypted content.
 
 .. _pipe_capf:
 
