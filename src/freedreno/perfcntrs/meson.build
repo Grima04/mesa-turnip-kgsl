@@ -42,7 +42,7 @@ dep_ncurses = dependency('ncurses', required : false)
 if dep_libconfig.found() and dep_ncurses.found()
   fdperf = executable(
     'fdperf',
-    'fdperf.c',
+    ['fdperf.c', freedreno_xml_header_files],
     include_directories : [
       inc_freedreno,
       inc_include,
