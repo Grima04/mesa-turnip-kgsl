@@ -66,22 +66,15 @@ bool FragmentShaderFromNir::do_process_inputs(nir_variable *input)
            << " interpolation:" << input->data.interpolation
            << "\n";
 
-   unsigned name, sid;
-
    if (input->data.location == VARYING_SLOT_FACE) {
       m_sv_values.set(es_face);
       return true;
    }
 
-   tgsi_get_gl_varying_semantic(static_cast<gl_varying_slot>(input->data.location),
-                                true, &name, &sid);
-
-   /* Work around the mixed tgsi/nir semantic problems, this fixes
-    * dEQP-GLES2.functional.shaders.builtin_variable.pointcoord */
-   if (input->data.location == VARYING_SLOT_PNTC) {
-      name = TGSI_SEMANTIC_GENERIC;
-      sid = 8;
-   }
+   unsigned name, sid;
+   auto semantic = r600_get_varying_semantic(input->data.location);
+   name = semantic.first;
+   sid = semantic.second;
 
    tgsi_semantic sname = static_cast<tgsi_semantic>(name);
 

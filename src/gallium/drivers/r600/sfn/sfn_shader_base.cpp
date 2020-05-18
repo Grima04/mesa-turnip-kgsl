@@ -256,6 +256,8 @@ void ShaderFromNirProcessor::evaluate_spi_sid(r600_shader_io& io)
       io.spi_sid = 0;
       break;
    case TGSI_SEMANTIC_GENERIC:
+   case TGSI_SEMANTIC_TEXCOORD:
+   case TGSI_SEMANTIC_PCOORD:
       io.spi_sid = io.sid + 1;
       break;
    default:

@@ -1,6 +1,6 @@
 #include "sfn_vertexstageexport.h"
 
-#include "tgsi/tgsi_from_mesa.h"
+#include "sfn_shaderio.h"
 
 namespace r600 {
 
@@ -70,8 +70,9 @@ bool VertexStageExportBase::do_process_outputs(nir_variable *output)
        ) {
 
       r600_shader_io& io = m_proc.sh_info().output[output->data.driver_location];
-      tgsi_get_gl_varying_semantic(static_cast<gl_varying_slot>( output->data.location),
-                                   true, &io.name, &io.sid);
+      auto semantic = r600_get_varying_semantic(output->data.location);
+      io.name = semantic.first;
+      io.sid = semantic.second;
 
       m_proc.evaluate_spi_sid(io);
       io.write_mask = ((1 << glsl_get_components(output->type)) - 1)

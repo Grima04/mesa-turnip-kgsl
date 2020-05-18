@@ -24,10 +24,10 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "tgsi/tgsi_from_mesa.h"
 #include "sfn_shader_geometry.h"
 #include "sfn_instruction_misc.h"
 #include "sfn_instruction_fetch.h"
+#include "sfn_shaderio.h"
 
 namespace r600 {
 
@@ -95,8 +95,10 @@ bool GeometryShaderFromNir::do_process_inputs(nir_variable *input)
        input->data.location <= VARYING_SLOT_TEX7)) {
 
       r600_shader_io& io = sh_info().input[input->data.driver_location];
-      tgsi_get_gl_varying_semantic(static_cast<gl_varying_slot>( input->data.location),
-                                   true, &io.name, &io.sid);
+      auto semantic = r600_get_varying_semantic(input->data.location);
+      io.name = semantic.first;
+      io.sid = semantic.second;
+
       io.ring_offset = 16 * input->data.driver_location;
       ++sh_info().ninput;
       m_next_input_ring_offset += 16;
@@ -127,8 +129,10 @@ bool GeometryShaderFromNir::do_process_outputs(nir_variable *output)
        output->data.location == VARYING_SLOT_FOGC) {
       r600_shader_io& io = sh_info().output[output->data.driver_location];
 
-      tgsi_get_gl_varying_semantic(static_cast<gl_varying_slot>( output->data.location),
-                                   true, &io.name, &io.sid);
+      auto semantic = r600_get_varying_semantic(output->data.location);
+      io.name = semantic.first;
+      io.sid = semantic.second;
+
       evaluate_spi_sid(io);
       ++sh_info().noutput;
 
