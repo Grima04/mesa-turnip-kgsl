@@ -689,6 +689,8 @@ static int r600_spi_sid(struct r600_shader_io * io)
 	else {
 		if (name == TGSI_SEMANTIC_GENERIC) {
 			/* For generic params simply use sid from tgsi */
+			index = 9 + io->sid;
+		} else if (name == TGSI_SEMANTIC_TEXCOORD) {
 			index = io->sid;
 		} else {
 			/* For non-generic params - pack name and sid into 8 bits */
@@ -705,7 +707,7 @@ static int r600_spi_sid(struct r600_shader_io * io)
 };
 
 /* we need this to get a common lds index for vs/tcs/tes input/outputs */
-int r600_get_lds_unique_index(unsigned semantic_name, unsigned index, bool texcoord_semantics)
+int r600_get_lds_unique_index(unsigned semantic_name, unsigned index)
 {
 	switch (semantic_name) {
 	case TGSI_SEMANTIC_POSITION:
@@ -715,9 +717,11 @@ int r600_get_lds_unique_index(unsigned semantic_name, unsigned index, bool texco
 	case TGSI_SEMANTIC_CLIPDIST:
 		assert(index <= 1);
 		return 2 + index;
+	case TGSI_SEMANTIC_TEXCOORD:
+		return 4 + index;
 	case TGSI_SEMANTIC_GENERIC:
 		if (index <= 63-4)
-			return 4 + index - (texcoord_semantics ? 0 : 9);
+			return 4 + index;
 		else
 			/* same explanation as in the default statement,
 			 * the only user hitting this is st/nine.
@@ -1185,7 +1189,7 @@ static int tgsi_declaration(struct r600_shader_ctx *ctx)
 			break;
 		else if (d->Semantic.Name == TGSI_SEMANTIC_TESSINNER ||
 			 d->Semantic.Name == TGSI_SEMANTIC_TESSOUTER) {
-			int param = r600_get_lds_unique_index(d->Semantic.Name, 0, false);
+			int param = r600_get_lds_unique_index(d->Semantic.Name, 0);
 			int dreg = d->Semantic.Name == TGSI_SEMANTIC_TESSINNER ? 3 : 2;
 			unsigned temp_reg = r600_get_temp(ctx);
 
@@ -2091,11 +2095,11 @@ static int r600_get_byte_address(struct r600_shader_ctx *ctx, int temp_reg,
 			return r;
 
 		param = r600_get_lds_unique_index(name[first],
-						  index[first], false);
+						  index[first]);
 
 	} else {
 		param = r600_get_lds_unique_index(name[reg.Register.Index],
-						  index[reg.Register.Index], false);
+						  index[reg.Register.Index]);
 	}
 
 	/* add to base_addr - passed in temp_reg.x */
@@ -3039,7 +3043,7 @@ static int emit_lds_vs_writes(struct r600_shader_ctx *ctx)
 	for (i = 0; i < ctx->shader->noutput; i++) {
 		struct r600_bytecode_alu alu;
 		int param = r600_get_lds_unique_index(ctx->shader->output[i].name,
-						      ctx->shader->output[i].sid, false);
+						      ctx->shader->output[i].sid);
 
 		if (param) {
 			r = single_alu_op2(ctx, ALU_OP2_ADD_INT,
@@ -3173,7 +3177,7 @@ static int r600_tess_factor_read(struct r600_shader_ctx *ctx,
 	int dreg = ctx->shader->output[output_idx].gpr;
 	int r;
 
-	param = r600_get_lds_unique_index(name, 0, false);
+	param = r600_get_lds_unique_index(name, 0);
 	r = get_lds_offset0(ctx, 1, temp_reg, true);
 	if (r)
 		return r;
