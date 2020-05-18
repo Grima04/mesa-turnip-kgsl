@@ -1159,6 +1159,20 @@ nir_load_reg(nir_builder *build, nir_register *reg)
    return nir_ssa_for_src(build, nir_src_for_reg(reg), reg->num_components);
 }
 
+static inline void
+nir_store_reg(nir_builder *build, nir_register *reg,
+              nir_ssa_def *def, nir_component_mask_t write_mask)
+{
+   assert(reg->num_components == def->num_components);
+   assert(reg->bit_size == def->bit_size);
+
+   nir_alu_instr *mov = nir_alu_instr_create(build->shader, nir_op_mov);
+   mov->src[0].src = nir_src_for_ssa(def);
+   mov->dest.dest = nir_dest_for_reg(reg);
+   mov->dest.write_mask = write_mask & BITFIELD_MASK(reg->num_components);
+   nir_builder_instr_insert(build, &mov->instr);
+}
+
 static inline nir_ssa_def *
 nir_load_deref_with_access(nir_builder *build, nir_deref_instr *deref,
                            enum gl_access_qualifier access)
