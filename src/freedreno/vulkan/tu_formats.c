@@ -379,7 +379,8 @@ tu_physical_device_get_format_properties(
       buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
 
    if (native_fmt.supported & FMT_TEXTURE) {
-      optimal |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+      optimal |= VK_FORMAT_FEATURE_BLIT_SRC_BIT |
+                 VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
@@ -393,7 +394,6 @@ tu_physical_device_get_format_properties(
    if (native_fmt.supported & FMT_COLOR) {
       assert(native_fmt.supported & FMT_TEXTURE);
       optimal |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-                 VK_FORMAT_FEATURE_BLIT_SRC_BIT |
                  VK_FORMAT_FEATURE_BLIT_DST_BIT;
 
       if (vk_format_is_float(format) ||
