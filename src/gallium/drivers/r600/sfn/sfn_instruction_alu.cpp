@@ -156,7 +156,8 @@ void AluInstruction::do_print(std::ostream& os) const
    os << "ALU " << alu_ops.at(m_opcode).name;
    if (m_flags.test(alu_dst_clamp))
       os << "_CLAMP";
-   os << ' ' << *m_dest << " : "  ;
+   if (m_dest)
+      os << ' ' << *m_dest << " : "  ;
 
    for (unsigned i = 0; i < m_src.size(); ++i) {
       int pflags = 0;
