@@ -2223,8 +2223,26 @@ typedef struct {
 } nir_load_const_instr;
 
 typedef enum {
+   /** Return from a function
+    *
+    * This instruction is a classic function return.  It jumps to
+    * nir_function_impl::end_block.  No return value is provided in this
+    * instruction.  Instead, the function is expected to write any return
+    * data to a deref passed in from the caller.
+    */
    nir_jump_return,
+
+   /** Break out of the inner-most loop
+    *
+    * This has the same semantics as C's "break" statement.
+    */
    nir_jump_break,
+
+   /** Jump back to the top of the inner-most loop
+    *
+    * This has the same semantics as C's "continue" statement assuming that a
+    * NIR loop is implemented as "while (1) { body }".
+    */
    nir_jump_continue,
 } nir_jump_type;
 
