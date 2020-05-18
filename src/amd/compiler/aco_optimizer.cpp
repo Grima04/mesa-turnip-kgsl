@@ -727,11 +727,16 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 
       /* SALU / PSEUDO: propagate inline constants */
       if (instr->isSALU() || instr->format == Format::PSEUDO) {
-         const bool is_subdword = std::any_of(instr->definitions.begin(), instr->definitions.end(),
-                                              [] (const Definition& def) { return def.regClass().is_subdword();});
+         bool is_subdword = false;
          // TODO: optimize SGPR and constant propagation for subdword pseudo instructions on gfx9+
-         if (is_subdword)
-            continue;
+         if (instr->format == Format::PSEUDO) {
+            is_subdword = std::any_of(instr->definitions.begin(), instr->definitions.end(),
+                                      [] (const Definition& def) { return def.regClass().is_subdword();});
+            is_subdword = is_subdword || std::any_of(instr->operands.begin(), instr->operands.end(),
+                                                     [] (const Operand& op) { return op.hasRegClass() && op.regClass().is_subdword();});
+            if (is_subdword)
+               continue;
+         }
 
          if (info.is_temp() && info.temp.type() == RegType::sgpr) {
             instr->operands[i].setTemp(info.temp);
