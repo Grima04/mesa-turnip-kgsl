@@ -145,7 +145,10 @@ bool AssemblyFromShaderLegacy::do_lower(const std::vector<InstructionBlock>& ir)
    else if (impl->m_bc->cf_last->op == CF_OP_CALL_FS)
       impl->m_bc->cf_last->op = CF_OP_NOP;
 
-   impl->m_bc->cf_last->end_of_program = 1;
+   if (impl->m_shader->bc.chip_class != CAYMAN)
+      impl->m_bc->cf_last->end_of_program = 1;
+   else
+      cm_bytecode_add_cf_end(impl->m_bc);
 
    return true;
 }

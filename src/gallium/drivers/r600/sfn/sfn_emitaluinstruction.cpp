@@ -318,14 +318,30 @@ bool EmitAluInstruction::emit_alu_trans_op1(const nir_alu_instr& instr, EAluOp o
 {
    AluInstruction *ir = nullptr;
    std::set<int> src_idx;
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)){
+
+   if (get_chip_class() == CAYMAN) {
+      int last_slot = (instr.dest.write_mask & 0x8) ? 4 : 3;
+      for (int i = 0; i < last_slot; ++i) {
          ir = new AluInstruction(opcode, from_nir(instr.dest, i),
-                                 from_nir(instr.src[0], i), last_write);
+                                 from_nir(instr.src[0], 0), instr.dest.write_mask & (1 << i) ? write : empty);
          if (absolute || instr.src[0].abs) ir->set_flag(alu_src0_abs);
          if (instr.src[0].negate) ir->set_flag(alu_src0_neg);
          if (instr.dest.saturate) ir->set_flag(alu_dst_clamp);
+
+         if (i == (last_slot - 1)) ir->set_flag(alu_last_instr);
+
          emit_instruction(ir);
+      }
+   } else {
+      for (int i = 0; i < 4 ; ++i) {
+         if (instr.dest.write_mask & (1 << i)){
+            ir = new AluInstruction(opcode, from_nir(instr.dest, i),
+                                    from_nir(instr.src[0], i), last_write);
+            if (absolute || instr.src[0].abs) ir->set_flag(alu_src0_abs);
+            if (instr.src[0].negate) ir->set_flag(alu_src0_neg);
+            if (instr.dest.saturate) ir->set_flag(alu_dst_clamp);
+            emit_instruction(ir);
+         }
       }
    }
    return true;
