@@ -42,21 +42,25 @@ struct lower_context {
 };
 
 aco_opcode get_reduce_opcode(chip_class chip, ReduceOp op) {
+   /* Because some 16-bit instructions are already VOP3 on GFX10, we use the
+    * 32-bit opcodes (VOP2) which allows to remove the tempory VGPR and to use
+    * DPP with the arithmetic instructions. This requires to sign-extend.
+    */
    switch (op) {
    case iadd8:
-   case iadd16: return aco_opcode::v_add_u16;
+   case iadd16: return chip >= GFX10 ? aco_opcode::v_add_u32 : aco_opcode::v_add_u16;
    case imul8:
-   case imul16: return aco_opcode::v_mul_lo_u16;
+   case imul16: return chip >= GFX10 ? aco_opcode::v_mul_lo_u16_e64 : aco_opcode::v_mul_lo_u16;
    case fadd16: return aco_opcode::v_add_f16;
    case fmul16: return aco_opcode::v_mul_f16;
    case imax8:
-   case imax16: return aco_opcode::v_max_i16;
+   case imax16: return chip >= GFX10 ? aco_opcode::v_max_i32 : aco_opcode::v_max_i16;
    case imin8:
-   case imin16: return aco_opcode::v_min_i16;
+   case imin16: return chip >= GFX10 ? aco_opcode::v_min_i32 : aco_opcode::v_min_i16;
    case umin8:
-   case umin16: return aco_opcode::v_min_u16;
+   case umin16: return chip >= GFX10 ? aco_opcode::v_min_u32 : aco_opcode::v_min_u16;
    case umax8:
-   case umax16: return aco_opcode::v_max_u16;
+   case umax16: return chip >= GFX10 ? aco_opcode::v_max_u32 : aco_opcode::v_max_u16;
    case fmin16: return aco_opcode::v_min_f16;
    case fmax16: return aco_opcode::v_max_f16;
    case iadd32: return chip >= GFX9 ? aco_opcode::v_add_u32 : aco_opcode::v_add_co_u32;
@@ -93,6 +97,15 @@ aco_opcode get_reduce_opcode(chip_class chip, ReduceOp op) {
    case ixor64: return aco_opcode::num_opcodes;
    default: return aco_opcode::num_opcodes;
    }
+}
+
+bool is_vop3_reduce_opcode(aco_opcode opcode)
+{
+   /* 64-bit reductions are VOP3. */
+   if (opcode == aco_opcode::num_opcodes)
+      return true;
+
+   return instr_info.format[(int)opcode] == Format::VOP3;
 }
 
 void emit_vadd32(Builder& bld, Definition def, Operand src0, Operand src1)
@@ -318,7 +331,7 @@ void emit_dpp_op(lower_context *ctx, PhysReg dst_reg, PhysReg src0_reg, PhysReg 
    Operand src1(src1_reg, rc);
 
    aco_opcode opcode = get_reduce_opcode(ctx->program->chip_class, op);
-   bool vop3 = op == imul32 || size == 2;
+   bool vop3 = is_vop3_reduce_opcode(opcode);
 
    if (!vop3) {
       if (opcode == aco_opcode::v_add_co_u32)
@@ -356,7 +369,7 @@ void emit_op(lower_context *ctx, PhysReg dst_reg, PhysReg src0_reg, PhysReg src1
    Operand src1(src1_reg, rc);
 
    aco_opcode opcode = get_reduce_opcode(ctx->program->chip_class, op);
-   bool vop3 = op == imul32 || size == 2;
+   bool vop3 = is_vop3_reduce_opcode(opcode);
 
    if (opcode == aco_opcode::num_opcodes) {
       emit_int64_op(ctx, dst_reg, src0_reg, src1_reg, vtmp, op);
