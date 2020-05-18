@@ -195,6 +195,22 @@ st_DeleteTextureObject(struct gl_context *ctx,
    _mesa_delete_texture_object(ctx, texObj);
 }
 
+/**
+ * Called via ctx->Driver.TextureRemovedFromShared()
+ * When texture is removed from ctx->Shared->TexObjects we lose
+ * the ability to clean up views on context destruction, which may
+ * lead to dangling pointers to destroyed contexts.
+ * Release the views to prevent this.
+ */
+static void
+st_TextureReleaseAllSamplerViews(struct gl_context *ctx,
+                                 struct gl_texture_object *texObj)
+{
+   struct st_context *st = st_context(ctx);
+   struct st_texture_object *stObj = st_texture_object(texObj);
+
+   st_texture_release_all_sampler_views(st, stObj);
+}
 
 /** called via ctx->Driver.FreeTextureImageBuffer() */
 static void
@@ -3355,6 +3371,7 @@ st_init_texture_functions(struct dd_function_table *functions)
    functions->NewTextureImage = st_NewTextureImage;
    functions->DeleteTextureImage = st_DeleteTextureImage;
    functions->DeleteTexture = st_DeleteTextureObject;
+   functions->TextureRemovedFromShared = st_TextureReleaseAllSamplerViews;
    functions->AllocTextureImageBuffer = st_AllocTextureImageBuffer;
    functions->FreeTextureImageBuffer = st_FreeTextureImageBuffer;
    functions->MapTextureImage = st_MapTextureImage;
