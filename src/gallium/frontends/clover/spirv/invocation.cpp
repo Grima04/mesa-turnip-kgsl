@@ -49,6 +49,12 @@ using namespace clover;
 #ifdef HAVE_CLOVER_SPIRV
 namespace {
 
+   uint32_t
+   make_spirv_version(uint8_t major, uint8_t minor) {
+      return (static_cast<uint32_t>(major) << 16u) |
+             (static_cast<uint32_t>(minor) << 8u);
+   }
+
    template<typename T>
    T get(const char *source, size_t index) {
       const uint32_t *word_ptr = reinterpret_cast<const uint32_t *>(source);
@@ -715,6 +721,11 @@ clover::spirv::supported_extensions() {
    };
 }
 
+std::vector<uint32_t>
+clover::spirv::supported_versions() {
+   return { make_spirv_version(1u, 0u) };
+}
+
 #else
 bool
 clover::spirv::is_valid_spirv(const std::vector<char> &/*binary*/,
@@ -746,6 +757,11 @@ clover::spirv::print_module(const std::vector<char> &binary,
 
 std::unordered_set<std::string>
 clover::spirv::supported_extensions() {
+   return {};
+}
+
+std::vector<uint32_t>
+clover::spirv::supported_versions() {
    return {};
 }
 #endif

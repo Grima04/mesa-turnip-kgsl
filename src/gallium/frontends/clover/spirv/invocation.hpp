@@ -55,6 +55,10 @@ namespace clover {
 
       // Returns a set of supported SPIR-V extensions.
       std::unordered_set<std::string> supported_extensions();
+
+      // Returns a vector (sorted in increasing order) of supported SPIR-V
+      // versions.
+      std::vector<uint32_t> supported_versions();
    }
 }
 
