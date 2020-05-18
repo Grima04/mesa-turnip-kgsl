@@ -1034,8 +1034,20 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       break;
    }
    case aco_opcode::p_split_vector: {
-      if (!ctx.info[instr->operands[0].tempId()].is_vec())
+      ssa_info& info = ctx.info[instr->operands[0].tempId()];
+
+      if (info.is_constant_or_literal(32)) {
+         uint32_t val = info.val;
+         for (Definition def : instr->definitions) {
+            uint32_t mask = u_bit_consecutive(0, def.bytes() * 8u);
+            ctx.info[def.tempId()].set_constant(ctx.program->chip_class, val & mask);
+            val >>= def.bytes() * 8u;
+         }
          break;
+      } else if (!info.is_vec()) {
+         break;
+      }
+
       Instruction* vec = ctx.info[instr->operands[0].tempId()].instr;
       unsigned split_offset = 0;
       unsigned vec_offset = 0;
@@ -1060,13 +1072,20 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       break;
    }
    case aco_opcode::p_extract_vector: { /* mov */
-      if (!ctx.info[instr->operands[0].tempId()].is_vec())
-         break;
-
-      /* check if we index directly into a vector element */
-      Instruction* vec = ctx.info[instr->operands[0].tempId()].instr;
+      ssa_info& info = ctx.info[instr->operands[0].tempId()];
       const unsigned index = instr->operands[1].constantValue();
       const unsigned dst_offset = index * instr->definitions[0].bytes();
+
+      if (info.is_constant_or_literal(32)) {
+         uint32_t mask = u_bit_consecutive(0, instr->definitions[0].bytes() * 8u);
+         ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, (info.val >> (dst_offset * 8u)) & mask);
+         break;
+      } else if (!info.is_vec()) {
+         break;
+      }
+
+      /* check if we index directly into a vector element */
+      Instruction* vec = info.instr;
       unsigned offset = 0;
 
       for (const Operand& op : vec->operands) {
