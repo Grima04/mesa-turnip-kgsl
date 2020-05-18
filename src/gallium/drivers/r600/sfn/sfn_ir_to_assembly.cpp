@@ -485,11 +485,11 @@ bool AssemblyFromShaderLegacyImpl::emit_export(const ExportInstruction & exi)
 
 bool AssemblyFromShaderLegacyImpl::emit_if_start(const IfInstruction & if_instr)
 {
-   assert(m_bc->chip_class == EVERGREEN);
-
 	bool needs_workaround = false;
    int elems = m_callstack.push(FC_PUSH_VPM);
 
+   if (m_bc->chip_class == CAYMAN && m_bc->stack.loop > 1)
+      needs_workaround = true;
    if (m_bc->family != CHIP_HEMLOCK &&
        m_bc->family != CHIP_CYPRESS &&
        m_bc->family != CHIP_JUNIPER) {
