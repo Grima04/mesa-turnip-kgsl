@@ -1522,7 +1522,7 @@ void lower_to_hw_instr(Program* program)
                assert(instr->operands[0].physReg() == vcc); /* Compare */
                assert(instr->operands[1].regClass() == v2.as_linear()); /* Temp VGPR pair */
                assert(instr->operands[2].regClass() == v1); /* Indices x4 */
-               assert(instr->operands[3].regClass() == v1); /* Input data */
+               assert(instr->operands[3].bytes() <= 4); /* Indices x4 */
 
                PhysReg shared_vgpr_reg_lo = PhysReg(align(program->config->num_vgprs, 4) + 256);
                PhysReg shared_vgpr_reg_hi = PhysReg(shared_vgpr_reg_lo + 1);
