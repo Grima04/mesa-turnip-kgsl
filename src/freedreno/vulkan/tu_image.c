@@ -351,7 +351,34 @@ tu_image_view_init(struct tu_image_view *iview,
          A6XX_TEX_CONST_3_MIN_LAYERSZ(image->layout.slices[image->level_count - 1].size0);
    }
 
-   /* only texture descriptor is valid for TEXTURE-only formats */
+   iview->SP_PS_2D_SRC_INFO = A6XX_SP_PS_2D_SRC_INFO(
+      .color_format = fmt.fmt,
+      .tile_mode = fmt.tile_mode,
+      .color_swap = fmt.swap,
+      .flags = ubwc_enabled,
+      .srgb = vk_format_is_srgb(format),
+      .samples = tu_msaa_samples(image->samples),
+      .samples_average = image->samples > 1 &&
+                           !vk_format_is_int(format) &&
+                           !vk_format_is_depth_or_stencil(format),
+      .unk20 = 1,
+      .unk22 = 1).value;
+   iview->SP_PS_2D_SRC_SIZE =
+      A6XX_SP_PS_2D_SRC_SIZE(.width = width, .height = height).value;
+
+   /* note: these have same encoding for MRT and 2D (except 2D PITCH src) */
+   iview->PITCH = A6XX_RB_DEPTH_BUFFER_PITCH(pitch).value;
+   iview->FLAG_BUFFER_PITCH = A6XX_RB_DEPTH_FLAG_BUFFER_PITCH(
+      .pitch = ubwc_pitch, .array_pitch = layout->ubwc_layer_size >> 2).value;
+
+   iview->base_addr = base_addr;
+   iview->ubwc_addr = ubwc_addr;
+   iview->layer_size = layer_size;
+   iview->ubwc_layer_size = layout->ubwc_layer_size;
+
+   /* Don't set fields that are only used for attachments/blit dest if COLOR
+    * is unsupported.
+    */
    if (!(fmt.supported & FMT_COLOR))
       return;
 
@@ -385,22 +412,12 @@ tu_image_view_init(struct tu_image_view *iview,
       }
    }
 
-   iview->base_addr = base_addr;
-   iview->ubwc_addr = ubwc_addr;
-   iview->layer_size = layer_size;
-   iview->ubwc_layer_size = layout->ubwc_layer_size;
-
    iview->extent.width = width;
    iview->extent.height = height;
    iview->need_y2_align =
       (fmt.tile_mode == TILE6_LINEAR && range->baseMipLevel != image->level_count - 1);
 
    iview->ubwc_enabled = ubwc_enabled;
-
-   /* note: these have same encoding for MRT and 2D (except 2D PITCH src) */
-   iview->PITCH = A6XX_RB_DEPTH_BUFFER_PITCH(pitch).value;
-   iview->FLAG_BUFFER_PITCH = A6XX_RB_DEPTH_FLAG_BUFFER_PITCH(
-      .pitch = ubwc_pitch, .array_pitch = layout->ubwc_layer_size >> 2).value;
 
    iview->RB_MRT_BUF_INFO = A6XX_RB_MRT_BUF_INFO(0,
                               .color_tile_mode = cfmt.tile_mode,
@@ -410,21 +427,6 @@ tu_image_view_init(struct tu_image_view *iview,
                               .color_format = cfmt.fmt,
                               .color_sint = vk_format_is_sint(format),
                               .color_uint = vk_format_is_uint(format)).value;
-
-   iview->SP_PS_2D_SRC_INFO = A6XX_SP_PS_2D_SRC_INFO(
-      .color_format = fmt.fmt,
-      .tile_mode = fmt.tile_mode,
-      .color_swap = fmt.swap,
-      .flags = ubwc_enabled,
-      .srgb = vk_format_is_srgb(format),
-      .samples = tu_msaa_samples(image->samples),
-      .samples_average = image->samples > 1 &&
-                           !vk_format_is_int(format) &&
-                           !vk_format_is_depth_or_stencil(format),
-      .unk20 = 1,
-      .unk22 = 1).value;
-   iview->SP_PS_2D_SRC_SIZE =
-      A6XX_SP_PS_2D_SRC_SIZE(.width = width, .height = height).value;
 
    iview->RB_2D_DST_INFO = A6XX_RB_2D_DST_INFO(
       .color_format = cfmt.fmt,
