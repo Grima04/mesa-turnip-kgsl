@@ -1,4 +1,5 @@
 GL_ARB_compute_variable_group_size on Iris.
+VK_AMD_texture_gather_bias_lod on RADV.
 VK_EXT_private_data on ANV and RADV.
 VK_EXT_custom_border_color on RADV.
 VK_EXT_pipeline_creation_cache_control on RADV.

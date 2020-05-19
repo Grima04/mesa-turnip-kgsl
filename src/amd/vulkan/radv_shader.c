@@ -357,6 +357,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.caps = {
 				.amd_fragment_mask = true,
 				.amd_gcn_shader = true,
+				.amd_image_gather_bias_lod = true,
 				.amd_image_read_write_lod = true,
 				.amd_shader_ballot = device->physical_device->use_shader_ballot,
 				.amd_shader_explicit_vertex_parameter = true,
