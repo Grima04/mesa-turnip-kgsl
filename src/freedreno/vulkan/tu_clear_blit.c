@@ -1141,7 +1141,17 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
          mask = 0x8;
    }
 
-   if (dst_image->samples > 1)
+   /* BC1_RGB_* formats need to have their last components overriden with 1
+    * when sampling, which is normally handled with the texture descriptor
+    * swizzle. The 2d path can't handle that, so use the 3d path.
+    *
+    * TODO: we could use RB_2D_BLIT_CNTL::MASK to make these formats work with
+    * the 2d path.
+    */
+
+   if (dst_image->samples > 1 ||
+       src_image->vk_format == VK_FORMAT_BC1_RGB_UNORM_BLOCK ||
+       src_image->vk_format == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
       ops = &r3d_ops;
 
    /* TODO: shader path fails some of blit_image.all_formats.generate_mipmaps.* tests,
