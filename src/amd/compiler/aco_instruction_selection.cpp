@@ -10505,7 +10505,8 @@ void setup_fp_mode(isel_context *ctx, nir_shader *shader)
       float_controls & (FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP16 | FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP64 |
                         FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP16 | FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP64);
 
-   /* default to preserving fp16 and fp64 denorms, since it's free */
+   /* default to preserving fp16 and fp64 denorms, since it's free for fp64 and
+    * the precision seems needed for Wolfenstein: Youngblood to render correctly */
    if (program->next_fp_mode.must_flush_denorms16_64)
       program->next_fp_mode.denorm16_64 = 0;
    else
