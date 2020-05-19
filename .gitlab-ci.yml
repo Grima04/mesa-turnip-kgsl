@@ -874,7 +874,9 @@ arm64_a530_gles2:
   variables:
     BM_KERNEL: /lava-files/db820c-kernel
     BM_DTB: /lava-files/db820c.dtb
-    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
+    # Disable SMP because only CPU 0 is at a freq higher than 19mhz on
+    # current upstream kernel.
+    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 nosmp"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a530-fails.txt
     DEQP_SKIPS: deqp-freedreno-a530-skips.txt
     DEQP_EXPECTED_RENDERER: FD530
