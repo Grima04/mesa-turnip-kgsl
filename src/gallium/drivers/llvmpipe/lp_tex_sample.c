@@ -360,10 +360,27 @@ lp_llvm_sampler_soa_emit_fetch_texel(const struct lp_build_sampler_soa *base,
       return;
    }
 
-   lp_build_sample_soa(&sampler->dynamic_state.static_state[texture_index].texture_state,
-                       &sampler->dynamic_state.static_state[sampler_index].sampler_state,
-                       &sampler->dynamic_state.base,
-                       gallivm, params);
+   if (params->texture_index_offset) {
+      struct lp_build_sample_array_switch switch_info;
+      memset(&switch_info, 0, sizeof(switch_info));
+      LLVMValueRef unit = LLVMBuildAdd(gallivm->builder, params->texture_index_offset,
+                                       lp_build_const_int32(gallivm, texture_index), "");
+      lp_build_sample_array_init_soa(&switch_info, gallivm, params, unit,
+                                     0, sampler->nr_samplers);
+
+      for (unsigned i = 0; i < sampler->nr_samplers; i++) {
+         lp_build_sample_array_case_soa(&switch_info, i,
+                                        &sampler->dynamic_state.static_state[i].texture_state,
+                                        &sampler->dynamic_state.static_state[i].sampler_state,
+                                        &sampler->dynamic_state.base);
+      }
+      lp_build_sample_array_fini_soa(&switch_info);
+   } else {
+      lp_build_sample_soa(&sampler->dynamic_state.static_state[texture_index].texture_state,
+                          &sampler->dynamic_state.static_state[sampler_index].sampler_state,
+                          &sampler->dynamic_state.base,
+                          gallivm, params);
+   }
 }
 
 /**
