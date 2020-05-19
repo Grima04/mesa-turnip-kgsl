@@ -1944,6 +1944,7 @@ void radv_GetPhysicalDeviceProperties2(
 				(VkPhysicalDeviceRobustness2PropertiesEXT *)ext;
 			properties->robustStorageBufferAccessSizeAlignment = 4;
 			properties->robustUniformBufferAccessSizeAlignment = 4;
+			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
 			VkPhysicalDeviceCustomBorderColorPropertiesEXT *props =
