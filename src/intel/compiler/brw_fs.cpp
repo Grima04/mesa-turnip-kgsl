@@ -9127,9 +9127,6 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       }
    }
 
-   /* We should always be able to do SIMD32 for compute shaders */
-   assert(!v16 || v16->max_dispatch_width >= 32);
-
    if (!fail_msg && (min_dispatch_width > 16 || (INTEL_DEBUG & DEBUG_DO32)) &&
        max_dispatch_width >= 32) {
       /* Try a SIMD32 compile */
