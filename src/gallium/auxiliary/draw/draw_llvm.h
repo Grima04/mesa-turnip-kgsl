@@ -890,7 +890,8 @@ void
 draw_tes_llvm_dump_variant_key(struct draw_tes_llvm_variant_key *key);
 
 struct lp_build_sampler_soa *
-draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_state);
+draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_state,
+                             unsigned nr_samplers);
 
 struct lp_build_image_soa *
 draw_llvm_image_soa_create(const struct draw_image_static_state *static_state);

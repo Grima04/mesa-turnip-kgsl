@@ -70,6 +70,8 @@ struct draw_llvm_sampler_soa
    struct lp_build_sampler_soa base;
 
    struct draw_llvm_sampler_dynamic_state dynamic_state;
+
+   unsigned nr_samplers;
 };
 
 struct draw_llvm_image_dynamic_state
@@ -342,7 +344,8 @@ draw_llvm_sampler_soa_emit_size_query(const struct lp_build_sampler_soa *base,
 }
 
 struct lp_build_sampler_soa *
-draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_state)
+draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_state,
+                             unsigned nr_samplers)
 {
    struct draw_llvm_sampler_soa *sampler;
 
@@ -370,6 +373,7 @@ draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_stat
    sampler->dynamic_state.base.border_color = draw_llvm_sampler_border_color;
    sampler->dynamic_state.static_state = static_state;
 
+   sampler->nr_samplers = nr_samplers;
    return &sampler->base;
 }
 

@@ -2032,7 +2032,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    fake_buf_ptr = LLVMBuildGEP(builder, fake_buf, &bld.zero, 1, "");
 
    /* code generated texture sampling */
-   sampler = draw_llvm_sampler_soa_create(draw_llvm_variant_key_samplers(key));
+   sampler = draw_llvm_sampler_soa_create(draw_llvm_variant_key_samplers(key), key->nr_samplers);
 
    image = draw_llvm_image_soa_create(draw_llvm_variant_key_images(key));
 
@@ -2821,7 +2821,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
       draw_gs_jit_context_num_ssbos(variant->gallivm, context_ptr);
 
    /* code generated texture sampling */
-   sampler = draw_llvm_sampler_soa_create(variant->key.samplers);
+   sampler = draw_llvm_sampler_soa_create(variant->key.samplers, variant->key.nr_samplers);
    image = draw_llvm_image_soa_create(draw_gs_llvm_variant_key_images(&variant->key));
    mask_val = generate_mask_value(variant, gs_type);
    lp_build_mask_begin(&mask, gallivm, gs_type, mask_val);
@@ -3429,7 +3429,7 @@ draw_tcs_llvm_generate(struct draw_llvm *llvm,
    ssbos_ptr = draw_tcs_jit_context_ssbos(variant->gallivm, context_ptr);
    num_ssbos_ptr =
       draw_tcs_jit_context_num_ssbos(variant->gallivm, context_ptr);
-   sampler = draw_llvm_sampler_soa_create(variant->key.samplers);
+   sampler = draw_llvm_sampler_soa_create(variant->key.samplers, variant->key.nr_samplers);
    image = draw_llvm_image_soa_create(draw_tcs_llvm_variant_key_images(&variant->key));
 
    LLVMValueRef counter = LLVMGetParam(variant_coro, 5);
@@ -3926,7 +3926,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    ssbos_ptr = draw_tes_jit_context_ssbos(variant->gallivm, context_ptr);
    num_ssbos_ptr =
       draw_tes_jit_context_num_ssbos(variant->gallivm, context_ptr);
-   sampler = draw_llvm_sampler_soa_create(variant->key.samplers);
+   sampler = draw_llvm_sampler_soa_create(variant->key.samplers, variant->key.nr_samplers);
    image = draw_llvm_image_soa_create(draw_tes_llvm_variant_key_images(&variant->key));
    step = lp_build_const_int32(gallivm, vector_length);
 
