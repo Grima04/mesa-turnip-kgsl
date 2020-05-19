@@ -3583,7 +3583,9 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
                          const struct lp_static_texture_state *static_texture_state,
                          const struct lp_static_sampler_state *static_sampler_state,
                          struct lp_sampler_dynamic_state *dynamic_state,
-                         const struct lp_sampler_params *params)
+                         const struct lp_sampler_params *params,
+                         int texture_index, int sampler_index,
+                         LLVMValueRef *tex_ret)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMModuleRef module = LLVMGetGlobalParent(LLVMGetBasicBlockParent(
@@ -3591,12 +3593,9 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
    LLVMValueRef function, inst;
    LLVMValueRef args[LP_MAX_TEX_FUNC_ARGS];
    LLVMBasicBlockRef bb;
-   LLVMValueRef tex_ret;
    unsigned num_args = 0;
    char func_name[64];
    unsigned i, num_coords, num_derivs, num_offsets, layer;
-   unsigned texture_index = params->texture_index;
-   unsigned sampler_index = params->sampler_index;
    unsigned sample_key = params->sample_key;
    const LLVMValueRef *coords = params->coords;
    const LLVMValueRef *offsets = params->offsets;
@@ -3741,14 +3740,11 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
 
    assert(num_args <= LP_MAX_TEX_FUNC_ARGS);
 
-   tex_ret = LLVMBuildCall(builder, function, args, num_args, "");
+   *tex_ret = LLVMBuildCall(builder, function, args, num_args, "");
    bb = LLVMGetInsertBlock(builder);
    inst = LLVMGetLastInstruction(bb);
    LLVMSetInstructionCallConv(inst, LLVMFastCallConv);
 
-   for (i = 0; i < 4; i++) {
-      params->texel[i] = LLVMBuildExtractValue(gallivm->builder, tex_ret, i, "");
-   }
 }
 
 
@@ -3802,11 +3798,16 @@ lp_build_sample_soa(const struct lp_static_texture_state *static_texture_state,
    }
 
    if (use_tex_func) {
+      LLVMValueRef tex_ret;
       lp_build_sample_soa_func(gallivm,
                                static_texture_state,
                                static_sampler_state,
                                dynamic_state,
-                               params);
+                               params, params->texture_index, params->sampler_index, &tex_ret);
+
+      for (unsigned i = 0; i < 4; i++) {
+         params->texel[i] = LLVMBuildExtractValue(gallivm->builder, tex_ret, i, "");
+      }
    }
    else {
       lp_build_sample_soa_code(gallivm,
