@@ -2327,33 +2327,31 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_f2i8:
    case nir_op_f2i16: {
       Temp src = get_alu_src(ctx, instr->src[0]);
+      Temp tmp = dst.type() == RegType::vgpr ? dst : bld.tmp(v1);
       if (instr->src[0].src.ssa->bit_size == 16)
-         src = bld.vop1(aco_opcode::v_cvt_i16_f16, bld.def(v1), src);
+         src = bld.vop1(aco_opcode::v_cvt_i16_f16, Definition(tmp), src);
       else if (instr->src[0].src.ssa->bit_size == 32)
-         src = bld.vop1(aco_opcode::v_cvt_i32_f32, bld.def(v1), src);
+         src = bld.vop1(aco_opcode::v_cvt_i32_f32, Definition(tmp), src);
       else
-         src = bld.vop1(aco_opcode::v_cvt_i32_f64, bld.def(v1), src);
+         src = bld.vop1(aco_opcode::v_cvt_i32_f64, Definition(tmp), src);
 
-      if (dst.type() == RegType::vgpr)
-         bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), src, Operand(0u));
-      else
+      if (dst.type() != RegType::vgpr)
          bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), src);
       break;
    }
    case nir_op_f2u8:
    case nir_op_f2u16: {
       Temp src = get_alu_src(ctx, instr->src[0]);
+      Temp tmp = dst.type() == RegType::vgpr ? dst : bld.tmp(v1);
       if (instr->src[0].src.ssa->bit_size == 16)
-         src = bld.vop1(aco_opcode::v_cvt_u16_f16, bld.def(v1), src);
+         bld.vop1(aco_opcode::v_cvt_u16_f16, Definition(tmp), src);
       else if (instr->src[0].src.ssa->bit_size == 32)
-         src = bld.vop1(aco_opcode::v_cvt_u32_f32, bld.def(v1), src);
+         bld.vop1(aco_opcode::v_cvt_u32_f32, Definition(tmp), src);
       else
-         src = bld.vop1(aco_opcode::v_cvt_u32_f64, bld.def(v1), src);
+         bld.vop1(aco_opcode::v_cvt_u32_f64, Definition(tmp), src);
 
-      if (dst.type() == RegType::vgpr)
-         bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), src, Operand(0u));
-      else
-         bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), src);
+      if (dst.type() != RegType::vgpr)
+         bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), tmp);
       break;
    }
    case nir_op_f2i32: {
