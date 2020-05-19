@@ -58,9 +58,9 @@ static inline void
 util_format_rgb_float_to_yuv(float r, float g, float b,
                              uint8_t *y, uint8_t *u, uint8_t *v)
 {
-   const float _r = CLAMP(r, 0.0f, 1.0f);
-   const float _g = CLAMP(g, 0.0f, 1.0f);
-   const float _b = CLAMP(b, 0.0f, 1.0f);
+   const float _r = SATURATE(r);
+   const float _g = SATURATE(g);
+   const float _b = SATURATE(b);
 
    const float scale = 255.0f;
 
