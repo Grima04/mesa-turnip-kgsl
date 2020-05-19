@@ -9053,10 +9053,6 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    assert(min_dispatch_width <= 32);
    unsigned max_dispatch_width = 32;
 
-   fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
-   fs_visitor *v = NULL;
-   const char *fail_msg = NULL;
-
    if ((int)key->base.subgroup_size_type >= (int)BRW_SUBGROUP_SIZE_REQUIRE_8) {
       /* These enum values are expressly chosen to be equal to the subgroup
        * size that they require.
@@ -9068,15 +9064,22 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
              required_dispatch_width == 32);
       if (required_dispatch_width < min_dispatch_width ||
           required_dispatch_width > max_dispatch_width) {
-         fail_msg = "Cannot satisfy explicit subgroup size";
-      } else {
-         min_dispatch_width = max_dispatch_width = required_dispatch_width;
+         if (error_str) {
+            *error_str = ralloc_strdup(mem_ctx,
+                                       "Cannot satisfy explicit subgroup size");
+         }
+         return NULL;
       }
+      min_dispatch_width = max_dispatch_width = required_dispatch_width;
    }
+
+   fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
+   fs_visitor *v = NULL;
+   const char *fail_msg = NULL;
 
    /* Now the main event: Visit the shader IR and generate our CS IR for it.
     */
-   if (!fail_msg && min_dispatch_width <= 8 && max_dispatch_width >= 8) {
+   if (min_dispatch_width <= 8 && max_dispatch_width >= 8) {
       nir_shader *nir8 = compile_cs_to_nir(compiler, mem_ctx, key,
                                            src_shader, 8);
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
