@@ -1323,19 +1323,19 @@ ALWAYS_INLINE bool get_cmp_info(aco_opcode op, aco_opcode *ordered, aco_opcode *
 aco_opcode get_ordered(aco_opcode op)
 {
    aco_opcode ordered, unordered, inverse;
-   return get_cmp_info(op, &ordered, &unordered, &inverse) ? ordered : aco_opcode::last_opcode;
+   return get_cmp_info(op, &ordered, &unordered, &inverse) ? ordered : aco_opcode::num_opcodes;
 }
 
 aco_opcode get_unordered(aco_opcode op)
 {
    aco_opcode ordered, unordered, inverse;
-   return get_cmp_info(op, &ordered, &unordered, &inverse) ? unordered : aco_opcode::last_opcode;
+   return get_cmp_info(op, &ordered, &unordered, &inverse) ? unordered : aco_opcode::num_opcodes;
 }
 
 aco_opcode get_inverse(aco_opcode op)
 {
    aco_opcode ordered, unordered, inverse;
-   return get_cmp_info(op, &ordered, &unordered, &inverse) ? inverse : aco_opcode::last_opcode;
+   return get_cmp_info(op, &ordered, &unordered, &inverse) ? inverse : aco_opcode::num_opcodes;
 }
 
 bool is_cmp(aco_opcode op)
@@ -1650,7 +1650,7 @@ bool combine_inverse_comparison(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       return false;
 
    aco_opcode new_opcode = get_inverse(cmp->opcode);
-   if (new_opcode == aco_opcode::last_opcode)
+   if (new_opcode == aco_opcode::num_opcodes)
       return false;
 
    if (cmp->operands[0].isTemp())
