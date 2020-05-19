@@ -837,6 +837,16 @@ struct tu_cache_state {
    enum tu_cmd_flush_bits flush_bits;
 };
 
+struct tu_lrz_pipeline
+{
+   bool write : 1;
+   bool invalidate : 1;
+
+   bool enable : 1;
+   bool greater : 1;
+   bool z_test_enable : 1;
+};
+
 struct tu_cmd_state
 {
    uint32_t dirty;
@@ -1116,6 +1126,8 @@ struct tu_pipeline
    {
       uint32_t local_size[3];
    } compute;
+
+   struct tu_lrz_pipeline lrz;
 };
 
 void
