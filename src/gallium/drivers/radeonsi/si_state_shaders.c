@@ -3396,7 +3396,6 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
 
    if (!sctx->init_config_has_vgt_flush) {
       si_init_config_add_vgt_flush(sctx);
-      si_pm4_upload_indirect_buffer(sctx, sctx->init_config);
    }
 
    /* Flush the context to re-emit both init_config states. */
@@ -3663,7 +3662,6 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
    /* Flush the context to re-emit the init_config state.
     * This is done only once in a lifetime of a context.
     */
-   si_pm4_upload_indirect_buffer(sctx, sctx->init_config);
    sctx->initial_gfx_cs_size = 0; /* force flush */
    si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 }

@@ -147,34 +147,3 @@ void si_pm4_reset_emitted(struct si_context *sctx)
    memset(&sctx->emitted, 0, sizeof(sctx->emitted));
    sctx->dirty_states |= u_bit_consecutive(0, SI_NUM_STATES);
 }
-
-void si_pm4_upload_indirect_buffer(struct si_context *sctx, struct si_pm4_state *state)
-{
-   struct pipe_screen *screen = sctx->b.screen;
-   unsigned aligned_ndw = align(state->ndw, 8);
-
-   /* only supported on GFX7 and later */
-   if (sctx->chip_class < GFX7)
-      return;
-
-   assert(state->ndw);
-   assert(aligned_ndw <= SI_PM4_MAX_DW);
-
-   si_resource_reference(&state->indirect_buffer, NULL);
-   /* TODO: this hangs with 1024 or higher alignment on GFX9. */
-   state->indirect_buffer =
-      si_aligned_buffer_create(screen, 0, PIPE_USAGE_DEFAULT, aligned_ndw * 4, 256);
-   if (!state->indirect_buffer)
-      return;
-
-   /* Pad the IB to 8 DWs to meet CP fetch alignment requirements. */
-   if (sctx->screen->info.gfx_ib_pad_with_type2) {
-      for (int i = state->ndw; i < aligned_ndw; i++)
-         state->pm4[i] = 0x80000000; /* type2 nop packet */
-   } else {
-      for (int i = state->ndw; i < aligned_ndw; i++)
-         state->pm4[i] = 0xffff1000; /* type3 nop packet */
-   }
-
-   pipe_buffer_write(&sctx->b, &state->indirect_buffer->b.b, 0, aligned_ndw * 4, state->pm4);
-}

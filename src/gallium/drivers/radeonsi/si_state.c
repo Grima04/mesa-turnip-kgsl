@@ -5415,6 +5415,5 @@ static void si_init_config(struct si_context *sctx)
       si_pm4_set_reg(pm4, R_030968_VGT_INSTANCE_BASE_ID, 0);
    }
 
-   si_pm4_upload_indirect_buffer(sctx, pm4);
    sctx->init_config = pm4;
 }
