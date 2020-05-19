@@ -5338,7 +5338,7 @@ sample_locations(struct gl_context *ctx, struct gl_framebuffer *fb,
       if (isnan(v[i]))
          fb->SampleLocationTable[start * 2 + i] = 0.5f;
       else
-         fb->SampleLocationTable[start * 2 + i] = CLAMP(v[i], 0.0f, 1.0f);
+         fb->SampleLocationTable[start * 2 + i] = SATURATE(v[i]);
    }
 
    if (fb == ctx->DrawBuffer)
