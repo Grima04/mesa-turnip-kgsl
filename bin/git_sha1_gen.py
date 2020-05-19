@@ -2,7 +2,6 @@
 Generate the contents of the git_sha1.h file.
 """
 
-
 import argparse
 import os
 import os.path
@@ -25,6 +24,7 @@ def get_git_sha1():
         git_sha1 = ''
     return git_sha1
 
+
 def write_if_different(contents):
     """
     Avoid touching the output file if it doesn't need modifications
@@ -36,6 +36,7 @@ def write_if_different(contents):
                 return
     with open(args.output, 'w') as file:
         file.write(contents)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output', help='File to write the #define in',
