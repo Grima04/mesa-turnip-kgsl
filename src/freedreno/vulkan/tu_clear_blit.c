@@ -1232,8 +1232,8 @@ static void
 copy_compressed(VkFormat format,
                 VkOffset3D *offset,
                 VkExtent3D *extent,
-                uint32_t *pitch,
-                uint32_t *layer_size)
+                uint32_t *width,
+                uint32_t *height)
 {
    if (!vk_format_is_compressed(format))
       return;
@@ -1248,10 +1248,10 @@ copy_compressed(VkFormat format,
       extent->width = DIV_ROUND_UP(extent->width, block_width);
       extent->height = DIV_ROUND_UP(extent->height, block_height);
    }
-   if (pitch)
-      *pitch /= block_width;
-   if (layer_size)
-      *layer_size /= (block_width * block_height);
+   if (width)
+      *width = DIV_ROUND_UP(*width, block_width);
+   if (height)
+      *height = DIV_ROUND_UP(*height, block_height);
 }
 
 static void
@@ -1283,15 +1283,17 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
 
    VkOffset3D offset = info->imageOffset;
    VkExtent3D extent = info->imageExtent;
-   uint32_t pitch =
-      (info->bufferRowLength ?: extent.width) * vk_format_get_blocksize(src_format);
-   uint32_t layer_size = (info->bufferImageHeight ?: extent.height) * pitch;
+   uint32_t src_width = info->bufferRowLength ?: extent.width;
+   uint32_t src_height = info->bufferImageHeight ?: extent.height;
 
    if (dst_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 || vk_format_is_compressed(src_format)) {
       assert(src_format == dst_format);
-      copy_compressed(dst_format, &offset, &extent, &pitch, &layer_size);
+      copy_compressed(dst_format, &offset, &extent, &src_width, &src_height);
       src_format = dst_format = copy_format(dst_format);
    }
+
+   uint32_t pitch = src_width * vk_format_get_blocksize(src_format);
+   uint32_t layer_size = src_height * pitch;
 
    /* note: the src_va/pitch alignment of 64 is for 2D engine,
     * it is also valid for 1cpp format with shader path (stencil aspect path)
@@ -1364,14 +1366,17 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
    const struct blit_ops *ops = stencil_read ? &r3d_ops : &r2d_ops;
    VkOffset3D offset = info->imageOffset;
    VkExtent3D extent = info->imageExtent;
-   uint32_t pitch = (info->bufferRowLength ?: extent.width) * vk_format_get_blocksize(dst_format);
-   uint32_t layer_size = (info->bufferImageHeight ?: extent.height) * pitch;
+   uint32_t dst_width = info->bufferRowLength ?: extent.width;
+   uint32_t dst_height = info->bufferImageHeight ?: extent.height;
 
    if (dst_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 || vk_format_is_compressed(dst_format)) {
       assert(src_format == dst_format);
-      copy_compressed(dst_format, &offset, &extent, &pitch, &layer_size);
+      copy_compressed(dst_format, &offset, &extent, &dst_width, &dst_height);
       src_format = dst_format = copy_format(dst_format);
    }
+
+   uint32_t pitch = dst_width * vk_format_get_blocksize(dst_format);
+   uint32_t layer_size = pitch * dst_height;
 
    /* note: the dst_va/pitch alignment of 64 is for 2D engine,
     * it is also valid for 1cpp format with shader path (stencil aspect)
