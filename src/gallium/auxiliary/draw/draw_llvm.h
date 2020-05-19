@@ -894,7 +894,8 @@ draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_stat
                              unsigned nr_samplers);
 
 struct lp_build_image_soa *
-draw_llvm_image_soa_create(const struct draw_image_static_state *static_state);
+draw_llvm_image_soa_create(const struct draw_image_static_state *static_state,
+                           unsigned nr_images);
 
 void
 draw_llvm_set_sampler_state(struct draw_context *draw,

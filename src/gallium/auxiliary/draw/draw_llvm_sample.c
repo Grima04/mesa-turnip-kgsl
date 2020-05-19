@@ -86,6 +86,8 @@ struct draw_llvm_image_soa
    struct lp_build_image_soa base;
 
    struct draw_llvm_image_dynamic_state dynamic_state;
+
+   unsigned nr_images;
 };
 
 /**
@@ -446,7 +448,8 @@ draw_llvm_image_soa_destroy(struct lp_build_image_soa *image)
 }
 
 struct lp_build_image_soa *
-draw_llvm_image_soa_create(const struct draw_image_static_state *static_state)
+draw_llvm_image_soa_create(const struct draw_image_static_state *static_state,
+                           unsigned nr_images)
 {
    struct draw_llvm_image_soa *image;
 
@@ -470,5 +473,6 @@ draw_llvm_image_soa_create(const struct draw_image_static_state *static_state)
 
    image->dynamic_state.static_state = static_state;
 
+   image->nr_images = nr_images;
    return &image->base;
 }
