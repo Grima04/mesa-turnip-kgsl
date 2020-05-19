@@ -4228,3 +4228,91 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                              params->img_op, params->op, params->indata, params->indata2, params->outdata);
    }
 }
+
+/*
+ * These functions are for indirect texture access suppoort.
+ *
+ * Indirect textures are implemented using a switch statement, that
+ * takes the texture index and jumps to the sampler functions for
+ * that texture unit.
+ */
+
+/*
+ * Initialise an indexed sampler switch block.
+ *
+ * This sets up the switch_info state and adds the LLVM flow control pieces.
+ */
+void
+lp_build_sample_array_init_soa(struct lp_build_sample_array_switch *switch_info,
+                           struct gallivm_state *gallivm,
+                           const struct lp_sampler_params *params,
+                           LLVMValueRef idx,
+                           unsigned base, unsigned range)
+{
+   switch_info->gallivm = gallivm;
+   switch_info->params = *params;
+   switch_info->base = base;
+   switch_info->range = range;
+
+   /* for generating the switch functions we don't want the texture index offset */
+   switch_info->params.texture_index_offset = 0;
+
+   LLVMBasicBlockRef initial_block = LLVMGetInsertBlock(gallivm->builder);
+   switch_info->merge_ref = lp_build_insert_new_block(gallivm, "texmerge");
+
+   switch_info->switch_ref = LLVMBuildSwitch(gallivm->builder, idx,
+                                             switch_info->merge_ref, range - base);
+
+   LLVMTypeRef val_type[4];
+   val_type[0] = val_type[1] = val_type[2] = val_type[3] =
+      lp_build_vec_type(gallivm, params->type);
+   LLVMTypeRef ret_type = LLVMStructTypeInContext(gallivm->context, val_type, 4, 0);
+
+   LLVMValueRef undef_val = LLVMGetUndef(ret_type);
+
+   LLVMPositionBuilderAtEnd(gallivm->builder, switch_info->merge_ref);
+
+   switch_info->phi = LLVMBuildPhi(gallivm->builder, ret_type, "");
+   LLVMAddIncoming(switch_info->phi, &undef_val, &initial_block, 1);
+}
+
+/*
+ * Add an individual entry to the indirect texture switch.
+ *
+ * This builds the sample function and links a case for it into the switch statement.
+ */
+void
+lp_build_sample_array_case_soa(struct lp_build_sample_array_switch *switch_info,
+                           int idx,
+                           const struct lp_static_texture_state *static_texture_state,
+                           const struct lp_static_sampler_state *static_sampler_state,
+                           struct lp_sampler_dynamic_state *dynamic_texture_state)
+{
+   struct gallivm_state *gallivm = switch_info->gallivm;
+   LLVMBasicBlockRef this_block = lp_build_insert_new_block(gallivm, "texblock");
+   LLVMValueRef tex_ret;
+
+   LLVMAddCase(switch_info->switch_ref, LLVMConstInt(LLVMInt32TypeInContext(gallivm->context), idx, 0), this_block);
+   LLVMPositionBuilderAtEnd(gallivm->builder, this_block);
+
+   lp_build_sample_soa_func(gallivm, static_texture_state,
+                            static_sampler_state, dynamic_texture_state, &switch_info->params, idx, idx,
+                            &tex_ret);
+
+   LLVMAddIncoming(switch_info->phi, &tex_ret, &this_block, 1);
+   LLVMBuildBr(gallivm->builder, switch_info->merge_ref);
+}
+
+/*
+ * Finish a switch statement.
+ *
+ * This handles extract the results from the switch.
+ */
+void lp_build_sample_array_fini_soa(struct lp_build_sample_array_switch *switch_info)
+{
+   struct gallivm_state *gallivm = switch_info->gallivm;
+
+   LLVMPositionBuilderAtEnd(gallivm->builder, switch_info->merge_ref);
+   for (unsigned i = 0; i < 4; i++)
+      switch_info->params.texel[i] = LLVMBuildExtractValue(gallivm->builder, switch_info->phi, i, "");
+}

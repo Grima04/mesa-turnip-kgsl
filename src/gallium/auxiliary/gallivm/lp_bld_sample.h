@@ -105,6 +105,7 @@ struct lp_sampler_params
    struct lp_type type;
    unsigned texture_index;
    unsigned sampler_index;
+   LLVMValueRef texture_index_offset;
    unsigned sample_key;
    LLVMValueRef context_ptr;
    LLVMValueRef thread_data_ptr;
@@ -120,6 +121,7 @@ struct lp_sampler_size_query_params
 {
    struct lp_type int_type;
    unsigned texture_unit;
+   LLVMValueRef texture_unit_offset;
    unsigned target;
    LLVMValueRef context_ptr;
    boolean is_sviewinfo;
@@ -442,6 +444,20 @@ struct lp_build_sample_context
    LLVMValueRef context_ptr;
 };
 
+/*
+ * Indirect texture access context
+ *
+ * This is used to store info across building
+ * and indirect texture switch statement.
+ */
+struct lp_build_sample_array_switch {
+   struct gallivm_state *gallivm;
+   struct lp_sampler_params params;
+   unsigned base, range;
+   LLVMValueRef switch_ref;
+   LLVMBasicBlockRef merge_ref;
+   LLVMValueRef phi;
+};
 
 
 /**
@@ -693,6 +709,21 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                       struct gallivm_state *gallivm,
                       const struct lp_img_params *params);
 
+void
+lp_build_sample_array_init_soa(struct lp_build_sample_array_switch *switch_info,
+                           struct gallivm_state *gallivm,
+                           const struct lp_sampler_params *params,
+                           LLVMValueRef idx,
+                           unsigned base, unsigned range);
+
+void
+lp_build_sample_array_case_soa(struct lp_build_sample_array_switch *switch_info,
+                           int idx,
+                           const struct lp_static_texture_state *static_texture_state,
+                           const struct lp_static_sampler_state *static_sampler_state,
+                           struct lp_sampler_dynamic_state *dynamic_texture_state);
+
+void lp_build_sample_array_fini_soa(struct lp_build_sample_array_switch *switch_info);
 #ifdef __cplusplus
 }
 #endif
