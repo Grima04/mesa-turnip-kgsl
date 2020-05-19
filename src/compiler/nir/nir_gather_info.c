@@ -394,6 +394,28 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
 
       break;
 
+   case nir_intrinsic_atomic_counter_inc:
+   case nir_intrinsic_atomic_counter_inc_deref:
+   case nir_intrinsic_atomic_counter_add:
+   case nir_intrinsic_atomic_counter_add_deref:
+   case nir_intrinsic_atomic_counter_pre_dec:
+   case nir_intrinsic_atomic_counter_pre_dec_deref:
+   case nir_intrinsic_atomic_counter_post_dec:
+   case nir_intrinsic_atomic_counter_post_dec_deref:
+   case nir_intrinsic_atomic_counter_min:
+   case nir_intrinsic_atomic_counter_min_deref:
+   case nir_intrinsic_atomic_counter_max:
+   case nir_intrinsic_atomic_counter_max_deref:
+   case nir_intrinsic_atomic_counter_and:
+   case nir_intrinsic_atomic_counter_and_deref:
+   case nir_intrinsic_atomic_counter_or:
+   case nir_intrinsic_atomic_counter_or_deref:
+   case nir_intrinsic_atomic_counter_xor:
+   case nir_intrinsic_atomic_counter_xor_deref:
+   case nir_intrinsic_atomic_counter_exchange:
+   case nir_intrinsic_atomic_counter_exchange_deref:
+   case nir_intrinsic_atomic_counter_comp_swap:
+   case nir_intrinsic_atomic_counter_comp_swap_deref:
    case nir_intrinsic_bindless_image_atomic_add:
    case nir_intrinsic_bindless_image_atomic_and:
    case nir_intrinsic_bindless_image_atomic_comp_swap:
