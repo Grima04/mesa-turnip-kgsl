@@ -2686,6 +2686,7 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicAnd:
    case SpvOpAtomicOr:
    case SpvOpAtomicXor:
+   case SpvOpAtomicFAddEXT:
       src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[6])->def);
       break;
 
@@ -2757,6 +2758,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicAnd:
    case SpvOpAtomicOr:
    case SpvOpAtomicXor:
+   case SpvOpAtomicFAddEXT:
       image = *vtn_value(b, w[3], vtn_value_type_image_pointer)->image;
       scope = vtn_constant_uint(b, w[4]);
       semantics = vtn_constant_uint(b, w[5]);
@@ -2877,6 +2879,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    OP(AtomicAnd,                 atomic_and)
    OP(AtomicOr,                  atomic_or)
    OP(AtomicXor,                 atomic_xor)
+   OP(AtomicFAddEXT,             atomic_fadd)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid image opcode", opcode);
@@ -2942,6 +2945,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicAnd:
    case SpvOpAtomicOr:
    case SpvOpAtomicXor:
+   case SpvOpAtomicFAddEXT:
       fill_common_atomic_sources(b, opcode, w, &intrin->src[3]);
       break;
 
@@ -3007,6 +3011,7 @@ get_ssbo_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
    OP(AtomicAnd,                 atomic_and)
    OP(AtomicOr,                  atomic_or)
    OP(AtomicXor,                 atomic_xor)
+   OP(AtomicFAddEXT,             atomic_fadd)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid SSBO atomic", opcode);
@@ -3064,6 +3069,7 @@ get_deref_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
    OP(AtomicAnd,                 atomic_and)
    OP(AtomicOr,                  atomic_or)
    OP(AtomicXor,                 atomic_xor)
+   OP(AtomicFAddEXT,             atomic_fadd)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid shared atomic", opcode);
@@ -3099,6 +3105,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicAnd:
    case SpvOpAtomicOr:
    case SpvOpAtomicXor:
+   case SpvOpAtomicFAddEXT:
       ptr = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
       scope = vtn_constant_uint(b, w[4]);
       semantics = vtn_constant_uint(b, w[5]);
@@ -3194,6 +3201,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       case SpvOpAtomicAnd:
       case SpvOpAtomicOr:
       case SpvOpAtomicXor:
+      case SpvOpAtomicFAddEXT:
          if (ptr->mode == vtn_variable_mode_ssbo)
             atomic->src[src++] = nir_src_for_ssa(index);
          atomic->src[src++] = nir_src_for_ssa(offset);
@@ -3235,6 +3243,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       case SpvOpAtomicAnd:
       case SpvOpAtomicOr:
       case SpvOpAtomicXor:
+      case SpvOpAtomicFAddEXT:
          fill_common_atomic_sources(b, opcode, w, &atomic->src[1]);
          break;
 
@@ -4128,6 +4137,14 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(amd_image_gather_bias_lod, cap);
          break;
 
+      case SpvCapabilityAtomicFloat32AddEXT:
+         spv_check_supported(float32_atomic_add, cap);
+         break;
+
+      case SpvCapabilityAtomicFloat64AddEXT:
+         spv_check_supported(float64_atomic_add, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
@@ -4818,7 +4835,8 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicUMax:
    case SpvOpAtomicAnd:
    case SpvOpAtomicOr:
-   case SpvOpAtomicXor: {
+   case SpvOpAtomicXor:
+   case SpvOpAtomicFAddEXT: {
       struct vtn_value *pointer = vtn_untyped_value(b, w[3]);
       if (pointer->value_type == vtn_value_type_image_pointer) {
          vtn_handle_image(b, opcode, w, count);
