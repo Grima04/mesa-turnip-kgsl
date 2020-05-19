@@ -4061,6 +4061,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(amd_fragment_mask, cap);
          break;
 
+      case SpvCapabilityImageGatherBiasLodAMD:
+         spv_check_supported(amd_image_gather_bias_lod, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
