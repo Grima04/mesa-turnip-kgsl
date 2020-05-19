@@ -138,7 +138,7 @@ convert_fast_clear_color(struct iris_context *ice,
 
    if (util_format_is_unorm(format)) {
       for (int i = 0; i < 4; i++)
-         override_color.f32[i] = CLAMP(override_color.f32[i], 0.0f, 1.0f);
+         override_color.f32[i] = SATURATE(override_color.f32[i]);
    } else if (util_format_is_snorm(format)) {
       for (int i = 0; i < 4; i++)
          override_color.f32[i] = CLAMP(override_color.f32[i], -1.0f, 1.0f);
