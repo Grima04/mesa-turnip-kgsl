@@ -713,7 +713,9 @@ draw_layers(struct vl_compositor       *c,
          drawn.scale_x = layer->viewport.scale[0] /
                   (float)layer->sampler_views[0]->texture->width0;
          drawn.scale_y = layer->viewport.scale[1] /
-                  (float)layer->sampler_views[0]->texture->height0;
+                  ((float)layer->sampler_views[0]->texture->height0 * 
+                   (s->interlaced ? 2.0 : 1.0));
+
          drawn.translate_x = (int)layer->viewport.translate[0];
          drawn.translate_y = (int)layer->viewport.translate[1];
          drawn.sampler0_w = (float)layer->sampler_views[0]->texture->width0;
