@@ -78,19 +78,6 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    if (ctx->gfx_flush_in_progress)
       return;
 
-   /* The amdgpu kernel driver always synchronizes execution for shared DMABUFs
-    * between processes, so we don't have to wait at the end of IBs to make sure
-    * everything is idle.
-    *
-    * The amdgpu winsys synchronizes execution for buffers shared by different
-    * contexts within the same process.
-    *
-    * Interop with AMDVLK, RADV, or OpenCL within the same process requires
-    * explicit fences or glFinish.
-    */
-   if (ctx->screen->info.is_amdgpu)
-      flags |= RADEON_FLUSH_START_NEXT_GFX_IB_NOW;
-
    if (!ctx->screen->info.kernel_flushes_tc_l2_after_ib) {
       wait_flags |= wait_ps_cs | SI_CONTEXT_INV_L2;
    } else if (ctx->chip_class == GFX6) {
