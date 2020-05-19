@@ -1234,27 +1234,27 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
                                   ((uint32_t) float_to_ubyte(color->f[0]) <<  0));
         } else if (format == PIPE_FORMAT_B5G6R5_UNORM) {
                 /* First, we convert the components to R5, G6, B5 separately */
-                unsigned r5 = _mesa_roundevenf(CLAMP(color->f[0], 0.0, 1.0) * 31.0);
-                unsigned g6 = _mesa_roundevenf(CLAMP(color->f[1], 0.0, 1.0) * 63.0);
-                unsigned b5 = _mesa_roundevenf(CLAMP(color->f[2], 0.0, 1.0) * 31.0);
+                unsigned r5 = _mesa_roundevenf(SATURATE(color->f[0]) * 31.0);
+                unsigned g6 = _mesa_roundevenf(SATURATE(color->f[1]) * 63.0);
+                unsigned b5 = _mesa_roundevenf(SATURATE(color->f[2]) * 31.0);
 
                 /* Then we pack into a sparse u32. TODO: Why these shifts? */
                 pan_pack_color_32(packed, (b5 << 25) | (g6 << 14) | (r5 << 5));
         } else if (format == PIPE_FORMAT_B4G4R4A4_UNORM) {
                 /* Convert to 4-bits */
-                unsigned r4 = _mesa_roundevenf(CLAMP(color->f[0], 0.0, 1.0) * 15.0);
-                unsigned g4 = _mesa_roundevenf(CLAMP(color->f[1], 0.0, 1.0) * 15.0);
-                unsigned b4 = _mesa_roundevenf(CLAMP(color->f[2], 0.0, 1.0) * 15.0);
-                unsigned a4 = _mesa_roundevenf(CLAMP(clear_alpha, 0.0, 1.0) * 15.0);
+                unsigned r4 = _mesa_roundevenf(SATURATE(color->f[0]) * 15.0);
+                unsigned g4 = _mesa_roundevenf(SATURATE(color->f[1]) * 15.0);
+                unsigned b4 = _mesa_roundevenf(SATURATE(color->f[2]) * 15.0);
+                unsigned a4 = _mesa_roundevenf(SATURATE(clear_alpha) * 15.0);
 
                 /* Pack on *byte* intervals */
                 pan_pack_color_32(packed, (a4 << 28) | (b4 << 20) | (g4 << 12) | (r4 << 4));
         } else if (format == PIPE_FORMAT_B5G5R5A1_UNORM) {
                 /* Scale as expected but shift oddly */
-                unsigned r5 = _mesa_roundevenf(CLAMP(color->f[0], 0.0, 1.0) * 31.0);
-                unsigned g5 = _mesa_roundevenf(CLAMP(color->f[1], 0.0, 1.0) * 31.0);
-                unsigned b5 = _mesa_roundevenf(CLAMP(color->f[2], 0.0, 1.0) * 31.0);
-                unsigned a1 = _mesa_roundevenf(CLAMP(clear_alpha, 0.0, 1.0) * 1.0);
+                unsigned r5 = _mesa_roundevenf(SATURATE(color->f[0]) * 31.0);
+                unsigned g5 = _mesa_roundevenf(SATURATE(color->f[1]) * 31.0);
+                unsigned b5 = _mesa_roundevenf(SATURATE(color->f[2]) * 31.0);
+                unsigned a1 = _mesa_roundevenf(SATURATE(clear_alpha) * 1.0);
 
                 pan_pack_color_32(packed, (a1 << 31) | (b5 << 25) | (g5 << 15) | (r5 << 5));
         } else {

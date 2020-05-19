@@ -215,7 +215,7 @@ bit_outmod(float raw, enum bifrost_outmod mod)
         case BIFROST_SAT_SIGNED:
                 return CLAMP(raw, -1.0, 1.0);
         case BIFROST_SAT:
-                return CLAMP(raw, 0.0, 1.0);
+                return SATURATE(raw);
         default:
                 return raw;
         }
