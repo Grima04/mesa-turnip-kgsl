@@ -157,8 +157,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
                 return 16;
 
-                return is_deqp;
-
         case PIPE_CAP_TEXTURE_MULTISAMPLE:
                 return is_gles3;
 
