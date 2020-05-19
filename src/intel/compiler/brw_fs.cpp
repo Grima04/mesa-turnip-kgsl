@@ -9063,13 +9063,16 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       min_dispatch_width = max_dispatch_width = required_dispatch_width;
    }
 
+   assert(min_dispatch_width <= max_dispatch_width);
+
    fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
    fs_visitor *v = NULL;
    const char *fail_msg = NULL;
 
    /* Now the main event: Visit the shader IR and generate our CS IR for it.
     */
-   if (min_dispatch_width <= 8 && max_dispatch_width >= 8) {
+   if (likely(!(INTEL_DEBUG & DEBUG_NO8)) &&
+       min_dispatch_width <= 8 && max_dispatch_width >= 8) {
       nir_shader *nir8 = compile_cs_to_nir(compiler, mem_ctx, key,
                                            src_shader, 8);
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
@@ -9118,7 +9121,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       }
    }
 
-   if ((!v || !v->spilled_any_registers) &&
+   if (likely(!(INTEL_DEBUG & DEBUG_NO32)) &&
+       (!v || !v->spilled_any_registers) &&
        !fail_msg && (min_dispatch_width > 16 || (INTEL_DEBUG & DEBUG_DO32)) &&
        max_dispatch_width >= 32) {
       /* Try a SIMD32 compile */
@@ -9147,6 +9151,17 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          cs_fill_push_const_info(compiler->devinfo, prog_data);
       }
    }
+
+   if (unlikely(!v && (INTEL_DEBUG & (DEBUG_NO8 | DEBUG_NO16 | DEBUG_NO32)))) {
+      if (error_str) {
+         *error_str =
+            ralloc_strdup(mem_ctx,
+                          "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
+      }
+      return NULL;
+   }
+
+   assert(v);
 
    const unsigned *ret = NULL;
    if (unlikely(v == NULL)) {
