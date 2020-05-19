@@ -20,7 +20,7 @@ def get_git_sha1():
             'rev-parse',
             'HEAD',
         ], stderr=open(os.devnull, 'w')).decode("ascii")
-    except:
+    except Exception:
         # don't print anything if it fails
         git_sha1 = ''
     return git_sha1
