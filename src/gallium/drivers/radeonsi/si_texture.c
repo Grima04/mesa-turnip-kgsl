@@ -995,7 +995,15 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    /* don't include stencil-only formats which we don't support for rendering */
    tex->is_depth = util_format_has_depth(util_format_description(tex->buffer.b.b.format));
    tex->surface = *surface;
-   tex->tc_compatible_htile = false; /* This will be enabled on demand. */
+
+   /* On GFX8, HTILE uses different tiling depending on the TC_COMPATIBLE_HTILE
+    * setting, so we have to enable it if we enabled it at allocation.
+    *
+    * GFX9 and later use the same tiling for both, so TC-compatible HTILE can be
+    * enabled on demand.
+    */
+   tex->tc_compatible_htile = sscreen->info.chip_class == GFX8 &&
+                              tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
 
    /* TC-compatible HTILE:
     * - GFX8 only supports Z32_FLOAT.
