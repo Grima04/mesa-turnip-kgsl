@@ -1,4 +1,5 @@
 # Copyright © 2019 Broadcom
+# Copyright © 2020 Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +20,7 @@
 # SOFTWARE.
 
 drm_shim = static_library(
-  ['drm_shim'],
+  'drm_shim',
   [
     'device.c',
     'drm_shim.c',
