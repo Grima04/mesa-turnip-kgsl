@@ -411,7 +411,7 @@ panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resourc
 
         unsigned bpp = util_format_get_blocksizebits(res->format);
         bool is_2d = (res->target == PIPE_TEXTURE_2D);
-        bool is_sane_bpp = bpp == 8 || bpp == 16 || bpp == 32 || bpp == 64 || bpp == 128;
+        bool is_sane_bpp = bpp == 8 || bpp == 16 || bpp == 24 || bpp == 32 || bpp == 64 || bpp == 128;
         bool should_tile = (res->usage != PIPE_USAGE_STREAM);
         bool must_tile = (res->bind & PIPE_BIND_DEPTH_STENCIL) && (dev->quirks & MIDGARD_SFBD);
         bool can_tile = is_2d && is_sane_bpp && ((res->bind & ~valid_binding) == 0);
