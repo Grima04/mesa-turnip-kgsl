@@ -43,16 +43,28 @@ bool fdl_test_layout(const struct testcase *testcase, int gpu_id)
 		max_size = u_minify(max_size, 1);
 	}
 
-	assert(gpu_id >= 600);
-	fdl6_layout(&layout,
-			testcase->format,
-			MAX2(testcase->layout.nr_samples, 1),
-			testcase->layout.width0,
-			MAX2(testcase->layout.height0, 1),
-			MAX2(testcase->layout.depth0, 1),
-			mip_levels,
-			MAX2(testcase->array_size, 1),
-			testcase->is_3d);
+	if (gpu_id >= 600) {
+		fdl6_layout(&layout,
+				testcase->format,
+				MAX2(testcase->layout.nr_samples, 1),
+				testcase->layout.width0,
+				MAX2(testcase->layout.height0, 1),
+				MAX2(testcase->layout.depth0, 1),
+				mip_levels,
+				MAX2(testcase->array_size, 1),
+				testcase->is_3d);
+	} else {
+		assert(gpu_id >= 500);
+		fdl5_layout(&layout,
+				testcase->format,
+				MAX2(testcase->layout.nr_samples, 1),
+				testcase->layout.width0,
+				MAX2(testcase->layout.height0, 1),
+				MAX2(testcase->layout.depth0, 1),
+				mip_levels,
+				MAX2(testcase->array_size, 1),
+				testcase->is_3d);
+	}
 
 	/* fdl lays out UBWC data before the color data, while all we have
 	 * recorded in this testcase are the color offsets (other than the UBWC
