@@ -652,7 +652,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
                 transfer->base.stride = box->width * bytes_per_pixel;
                 transfer->base.layer_stride = transfer->base.stride * box->height;
-                transfer->map = rzalloc_size(transfer, transfer->base.layer_stride * box->depth);
+                transfer->map = ralloc_size(transfer, transfer->base.layer_stride * box->depth);
                 assert(box->depth == 1);
 
                 if ((usage & PIPE_TRANSFER_READ) && rsrc->slices[level].initialized) {
