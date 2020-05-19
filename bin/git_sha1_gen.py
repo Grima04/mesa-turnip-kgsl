@@ -1,6 +1,5 @@
 """
 Generate the contents of the git_sha1.h file.
-The output of this script goes to stdout.
 """
 
 
