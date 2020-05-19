@@ -218,7 +218,7 @@ arm_test:
     - arm_test
 
 # Native Windows docker builds
-# 
+#
 # Unlike the above Linux-based builds - including MinGW/SCons builds which
 # cross-compile for Windows - which use the freedesktop ci-templates, we
 # cannot use the same scheme here. As Windows lacks support for
@@ -250,7 +250,7 @@ windows_build_vs2019:
     - mesa
   script:
     - .\.gitlab-ci\windows\mesa_container.ps1 $CI_REGISTRY $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $WINDOWS_IMAGE $WINDOWS_UPSTREAM_IMAGE
-  
+
 .use-windows_build_vs2019:
   extends: .windows-docker-vs2019
   image: "$WINDOWS_IMAGE"
@@ -323,14 +323,14 @@ meson-testing:
     - .meson-build
     - .ci-deqp-artifacts
   variables:
-    UNWIND: "true"
+    UNWIND: "enabled"
     DRI_LOADERS: >
       -D glx=dri
-      -D gbm=true
-      -D egl=true
+      -D gbm=enabled
+      -D egl=enabled
       -D platforms=x11,drm,surfaceless
     GALLIUM_ST: >
-      -D dri3=true
+      -D dri3=enabled
     GALLIUM_DRIVERS: "swrast,virgl"
     VULKAN_DRIVERS: amd
     BUILDTYPE: "debugoptimized"
@@ -343,20 +343,20 @@ meson-testing:
 meson-gallium:
   extends: .meson-build
   variables:
-    UNWIND: "true"
+    UNWIND: "enabled"
     DRI_LOADERS: >
       -D glx=dri
-      -D gbm=true
-      -D egl=true
+      -D gbm=enabled
+      -D egl=enabled
       -D platforms=x11,wayland,drm,surfaceless
     GALLIUM_ST: >
-      -D dri3=true
+      -D dri3=enabled
       -D gallium-extra-hud=true
-      -D gallium-vdpau=true
-      -D gallium-xvmc=true
+      -D gallium-vdpau=enabled
+      -D gallium-xvmc=enabled
       -D gallium-omx=bellagio
-      -D gallium-va=true
-      -D gallium-xa=true
+      -D gallium-va=enabled
+      -D gallium-xa=enabled
       -D gallium-nine=true
       -D gallium-opencl=disabled
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink"
@@ -370,11 +370,11 @@ meson-gallium:
 meson-classic:
   extends: .meson-build
   variables:
-    UNWIND: "true"
+    UNWIND: "enabled"
     DRI_LOADERS: >
       -D glx=dri
-      -D gbm=true
-      -D egl=true
+      -D gbm=enabled
+      -D egl=enabled
       -D platforms=x11,wayland,drm,surfaceless
     DRI_DRIVERS: "auto"
     EXTRA_OPTION: >
@@ -386,20 +386,20 @@ meson-classic:
     - .meson-build
   stage: meson-misc
   variables:
-    UNWIND: "false"
+    UNWIND: "disabled"
     DRI_LOADERS: >
       -D glx=disabled
-      -D gbm=false
-      -D egl=true
+      -D gbm=disabled
+      -D egl=enabled
       -D platforms=surfaceless
       -D osmesa=none
     GALLIUM_ST: >
-      -D dri3=false
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
+      -D dri3=disabled
+      -D gallium-vdpau=disabled
+      -D gallium-xvmc=disabled
       -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
+      -D gallium-va=disabled
+      -D gallium-xa=disabled
       -D gallium-nine=false
     LLVM_VERSION: "8"
 
@@ -422,7 +422,7 @@ meson-armhf:
     CROSS: armhf
     LLVM_VERSION: "7"
     EXTRA_OPTION: >
-      -D llvm=false
+      -D llvm=disabled
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -434,7 +434,7 @@ meson-arm64:
   variables:
     VULKAN_DRIVERS: "freedreno"
     EXTRA_OPTION: >
-      -D llvm=false
+      -D llvm=disabled
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -451,7 +451,7 @@ meson-arm64-build-test:
 meson-clang:
   extends: .meson-build
   variables:
-    UNWIND: "true"
+    UNWIND: "enabled"
     DRI_LOADERS: >
       -D glvnd=true
     DRI_DRIVERS: "auto"
@@ -478,18 +478,18 @@ scons-win64:
 meson-clover:
   extends: .meson-build
   variables:
-    UNWIND: "true"
+    UNWIND: "enabled"
     DRI_LOADERS: >
       -D glx=disabled
-      -D egl=false
-      -D gbm=false
+      -D egl=disabled
+      -D gbm=disabled
     GALLIUM_ST: >
-      -D dri3=false
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
+      -D dri3=disabled
+      -D gallium-vdpau=disabled
+      -D gallium-xvmc=disabled
       -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
+      -D gallium-va=disabled
+      -D gallium-xa=disabled
       -D gallium-nine=false
       -D gallium-opencl=icd
   script:
@@ -505,11 +505,11 @@ meson-clover-old-llvm:
     - meson-clover
     - .use-x86_build_old
   variables:
-    UNWIND: "false"
+    UNWIND: "disabled"
     DRI_LOADERS: >
       -D glx=disabled
-      -D egl=false
-      -D gbm=false
+      -D egl=disabled
+      -D gbm=disabled
       -D platforms=drm,surfaceless
     GALLIUM_DRIVERS: "i915,r600"
   script:
@@ -520,20 +520,20 @@ meson-clover-old-llvm:
 meson-vulkan:
   extends: .meson-build
   variables:
-    UNWIND: "false"
+    UNWIND: "disabled"
     DRI_LOADERS: >
       -D glx=disabled
-      -D gbm=false
-      -D egl=false
+      -D gbm=disabled
+      -D egl=disabled
       -D platforms=x11,wayland,drm
       -D osmesa=none
     GALLIUM_ST: >
-      -D dri3=true
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
+      -D dri3=enabled
+      -D gallium-vdpau=disabled
+      -D gallium-xvmc=disabled
       -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
+      -D gallium-va=disabled
+      -D gallium-xa=disabled
       -D gallium-nine=false
       -D gallium-opencl=disabled
       -D b_sanitize=undefined
@@ -589,11 +589,11 @@ meson-mingw32-x86_64:
   extends: .meson-build
   stage: meson-misc
   variables:
-    UNWIND: "false"
+    UNWIND: "disabled"
     DRI_DRIVERS: ""
     GALLIUM_DRIVERS: "swrast"
     EXTRA_OPTION: >
-      -Dllvm=false
+      -Dllvm=disabled
       -Dosmesa=gallium
       --cross-file=.gitlab-ci/x86_64-w64-mingw32
 
