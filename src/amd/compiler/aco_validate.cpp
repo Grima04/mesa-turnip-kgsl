@@ -272,6 +272,24 @@ void validate(Program* program, FILE * output)
 
          switch (instr->format) {
          case Format::PSEUDO: {
+            bool is_subdword = false;
+            bool has_const_sgpr = false;
+            bool has_literal = false;
+            for (Definition def : instr->definitions)
+               is_subdword |= def.regClass().is_subdword();
+            for (unsigned i = 0; i < instr->operands.size(); i++) {
+               if (instr->opcode == aco_opcode::p_extract_vector && i == 1)
+                  continue;
+               Operand op = instr->operands[i];
+               is_subdword |= op.hasRegClass() && op.regClass().is_subdword();
+               has_const_sgpr |= op.isConstant() || (op.hasRegClass() && op.regClass().type() == RegType::sgpr);
+               has_literal |= op.isLiteral();
+            }
+
+            check(!is_subdword || !has_const_sgpr || program->chip_class >= GFX9,
+                  "Sub-dword pseudo instructions can only take constants or SGPRs on GFX9+", instr.get());
+            check(!is_subdword || !has_literal, "Sub-dword pseudo instructions cannot take literals", instr.get());
+
             if (instr->opcode == aco_opcode::p_create_vector) {
                unsigned size = 0;
                for (const Operand& op : instr->operands) {
