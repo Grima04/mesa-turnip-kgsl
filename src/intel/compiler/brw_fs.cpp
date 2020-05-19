@@ -7856,7 +7856,7 @@ fs_visitor::fixup_nomask_control_flow()
 }
 
 void
-fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
+fs_visitor::allocate_registers(bool allow_spilling)
 {
    bool allocated;
 
@@ -7905,13 +7905,8 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
             fixup_3src_null_dest();
       }
 
-
-      /* We only allow spilling for the last schedule mode and only if the
-       * allow_spilling parameter and dispatch width work out ok.
-       */
       bool can_spill = allow_spilling &&
-                       (i == ARRAY_SIZE(pre_modes) - 1) &&
-                       dispatch_width == min_dispatch_width;
+                       (i == ARRAY_SIZE(pre_modes) - 1);
 
       /* We should only spill registers on the last scheduling. */
       assert(!spilled_any_registers);
@@ -7922,20 +7917,8 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
    }
 
    if (!allocated) {
-      if (!allow_spilling)
-         fail("Failure to register allocate and spilling is not allowed.");
-
-      /* We assume that any spilling is worse than just dropping back to
-       * SIMD8.  There's probably actually some intermediate point where
-       * SIMD16 with a couple of spills is still better.
-       */
-      if (dispatch_width > min_dispatch_width) {
-         fail("Failure to register allocate.  Reduce number of "
-              "live scalar values to avoid this.");
-      }
-
-      /* If we failed to allocate, we must have a reason */
-      assert(failed);
+      fail("Failure to register allocate.  Reduce number of "
+           "live scalar values to avoid this.");
    } else if (spilled_any_registers) {
       compiler->shader_perf_log(log_data,
                                 "%s shader triggered register spilling.  "
@@ -8024,7 +8007,7 @@ fs_visitor::run_vs()
    assign_vs_urb_setup();
 
    fixup_3src_null_dest();
-   allocate_registers(8, true);
+   allocate_registers(true /* allow_spilling */);
 
    return !failed;
 }
@@ -8145,7 +8128,7 @@ fs_visitor::run_tcs()
    assign_tcs_urb_setup();
 
    fixup_3src_null_dest();
-   allocate_registers(8, true);
+   allocate_registers(true /* allow_spilling */);
 
    return !failed;
 }
@@ -8179,7 +8162,7 @@ fs_visitor::run_tes()
    assign_tes_urb_setup();
 
    fixup_3src_null_dest();
-   allocate_registers(8, true);
+   allocate_registers(true /* allow_spilling */);
 
    return !failed;
 }
@@ -8228,7 +8211,7 @@ fs_visitor::run_gs()
    assign_gs_urb_setup();
 
    fixup_3src_null_dest();
-   allocate_registers(8, true);
+   allocate_registers(true /* allow_spilling */);
 
    return !failed;
 }
@@ -8337,7 +8320,8 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
       assign_urb_setup();
 
       fixup_3src_null_dest();
-      allocate_registers(8, allow_spilling);
+
+      allocate_registers(allow_spilling);
 
       if (failed)
          return false;
@@ -8347,10 +8331,9 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
 }
 
 bool
-fs_visitor::run_cs(unsigned min_dispatch_width)
+fs_visitor::run_cs(bool allow_spilling)
 {
    assert(stage == MESA_SHADER_COMPUTE);
-   assert(dispatch_width >= min_dispatch_width);
 
    setup_cs_payload();
 
@@ -8381,7 +8364,7 @@ fs_visitor::run_cs(unsigned min_dispatch_width)
    assign_curb_setup();
 
    fixup_3src_null_dest();
-   allocate_registers(min_dispatch_width, true);
+   allocate_registers(allow_spilling);
 
    if (failed)
       return false;
@@ -8710,6 +8693,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;
    float throughput = 0;
+   bool has_spilled = false;
 
    v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                        &prog_data->base, shader, 8, shader_time_index8);
@@ -8725,6 +8709,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
       prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
       const performance &perf = v8->performance_analysis.require();
       throughput = MAX2(throughput, perf.throughput);
+      has_spilled = v8->spilled_any_registers;
+      allow_spilling = false;
    }
 
    /* Limit dispatch width to simd8 with dual source blending on gen8.
@@ -8737,7 +8723,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                                "using SIMD8 when dual src blending.\n");
    }
 
-   if (v8->max_dispatch_width >= 16 &&
+   if (!has_spilled &&
+       v8->max_dispatch_width >= 16 &&
        likely(!(INTEL_DEBUG & DEBUG_NO16) || use_rep_send)) {
       /* Try a SIMD16 compile */
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
@@ -8753,11 +8740,14 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
          prog_data->reg_blocks_16 = brw_register_blocks(v16->grf_used);
          const performance &perf = v16->performance_analysis.require();
          throughput = MAX2(throughput, perf.throughput);
+         has_spilled = v16->spilled_any_registers;
+         allow_spilling = false;
       }
    }
 
    /* Currently, the compiler only supports SIMD32 on SNB+ */
-   if (v8->max_dispatch_width >= 32 && !use_rep_send &&
+   if (!has_spilled &&
+       v8->max_dispatch_width >= 32 && !use_rep_send &&
        devinfo->gen >= 6 && simd16_cfg &&
        !(INTEL_DEBUG & DEBUG_NO32)) {
       /* Try a SIMD32 compile */
@@ -9085,7 +9075,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base,
                           nir8, 8, shader_time_index);
-      if (!v8->run_cs(min_dispatch_width)) {
+      if (!v8->run_cs(true /* allow_spilling */)) {
          fail_msg = v8->fail_msg;
       } else {
          /* We should always be able to do SIMD32 for compute shaders */
@@ -9097,7 +9087,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       }
    }
 
-   if (likely(!(INTEL_DEBUG & DEBUG_NO16)) &&
+   if ((!v || !v->spilled_any_registers) &&
+       likely(!(INTEL_DEBUG & DEBUG_NO16)) &&
        !fail_msg && min_dispatch_width <= 16 && max_dispatch_width >= 16) {
       /* Try a SIMD16 compile */
       nir_shader *nir16 = compile_cs_to_nir(compiler, mem_ctx, key,
@@ -9108,7 +9099,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       if (v8)
          v16->import_uniforms(v8);
 
-      if (!v16->run_cs(min_dispatch_width)) {
+      if (!v16->run_cs(v == NULL /* allow_spilling */)) {
          compiler->shader_perf_log(log_data,
                                    "SIMD16 shader failed to compile: %s",
                                    v16->fail_msg);
@@ -9127,7 +9118,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       }
    }
 
-   if (!fail_msg && (min_dispatch_width > 16 || (INTEL_DEBUG & DEBUG_DO32)) &&
+   if ((!v || !v->spilled_any_registers) &&
+       !fail_msg && (min_dispatch_width > 16 || (INTEL_DEBUG & DEBUG_DO32)) &&
        max_dispatch_width >= 32) {
       /* Try a SIMD32 compile */
       nir_shader *nir32 = compile_cs_to_nir(compiler, mem_ctx, key,
@@ -9140,7 +9132,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       else if (v16)
          v32->import_uniforms(v16);
 
-      if (!v32->run_cs(min_dispatch_width)) {
+      if (!v32->run_cs(v == NULL /* allow_spilling */)) {
          compiler->shader_perf_log(log_data,
                                    "SIMD32 shader failed to compile: %s",
                                    v32->fail_msg);

@@ -125,9 +125,9 @@ public:
    bool run_tcs();
    bool run_tes();
    bool run_gs();
-   bool run_cs(unsigned min_dispatch_width);
+   bool run_cs(bool allow_spilling);
    void optimize();
-   void allocate_registers(unsigned min_dispatch_width, bool allow_spilling);
+   void allocate_registers(bool allow_spilling);
    void setup_fs_payload_gen4();
    void setup_fs_payload_gen6();
    void setup_vs_payload();
