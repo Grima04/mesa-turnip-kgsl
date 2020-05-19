@@ -318,6 +318,7 @@ int fd_bo_get_name(struct fd_bo *bo, uint32_t *name)
 
 uint32_t fd_bo_handle(struct fd_bo *bo)
 {
+	bo->bo_reuse = NO_CACHE;
 	return bo->handle;
 }
 
