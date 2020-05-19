@@ -76,6 +76,7 @@ struct lp_llvm_sampler_soa
    struct lp_build_sampler_soa base;
 
    struct llvmpipe_sampler_dynamic_state dynamic_state;
+   unsigned nr_samplers;
 };
 
 struct llvmpipe_image_dynamic_state
@@ -385,7 +386,8 @@ lp_llvm_sampler_soa_emit_size_query(const struct lp_build_sampler_soa *base,
 
 
 struct lp_build_sampler_soa *
-lp_llvm_sampler_soa_create(const struct lp_sampler_static_state *static_state)
+lp_llvm_sampler_soa_create(const struct lp_sampler_static_state *static_state,
+                           unsigned nr_samplers)
 {
    struct lp_llvm_sampler_soa *sampler;
 
@@ -418,6 +420,7 @@ lp_llvm_sampler_soa_create(const struct lp_sampler_static_state *static_state)
 
    sampler->dynamic_state.static_state = static_state;
 
+   sampler->nr_samplers = nr_samplers;
    return &sampler->base;
 }
 
