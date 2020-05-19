@@ -848,7 +848,7 @@ ConstantFolding::unary(Instruction *i, const ImmediateValue &imm)
    switch (i->op) {
    case OP_NEG: res.data.f32 = -imm.reg.data.f32; break;
    case OP_ABS: res.data.f32 = fabsf(imm.reg.data.f32); break;
-   case OP_SAT: res.data.f32 = CLAMP(imm.reg.data.f32, 0.0f, 1.0f); break;
+   case OP_SAT: res.data.f32 = SATURATE(imm.reg.data.f32); break;
    case OP_RCP: res.data.f32 = 1.0f / imm.reg.data.f32; break;
    case OP_RSQ: res.data.f32 = 1.0f / sqrtf(imm.reg.data.f32); break;
    case OP_LG2: res.data.f32 = log2f(imm.reg.data.f32); break;
@@ -1596,12 +1596,12 @@ ConstantFolding::opnd(Instruction *i, ImmediateValue &imm0, int s)
          switch (i->sType) {
          case TYPE_F64:
             res.data.f32 = i->saturate ?
-               CLAMP(imm0.reg.data.f64, 0.0f, 1.0f) :
+               SATURATE(imm0.reg.data.f64) :
                imm0.reg.data.f64;
             break;
          case TYPE_F32:
             res.data.f32 = i->saturate ?
-               CLAMP(imm0.reg.data.f32, 0.0f, 1.0f) :
+               SATURATE(imm0.reg.data.f32) :
                imm0.reg.data.f32;
             break;
          case TYPE_U16: res.data.f32 = (float) imm0.reg.data.u16; break;
@@ -1617,12 +1617,12 @@ ConstantFolding::opnd(Instruction *i, ImmediateValue &imm0, int s)
          switch (i->sType) {
          case TYPE_F64:
             res.data.f64 = i->saturate ?
-               CLAMP(imm0.reg.data.f64, 0.0f, 1.0f) :
+               SATURATE(imm0.reg.data.f64) :
                imm0.reg.data.f64;
             break;
          case TYPE_F32:
             res.data.f64 = i->saturate ?
-               CLAMP(imm0.reg.data.f32, 0.0f, 1.0f) :
+               SATURATE(imm0.reg.data.f32) :
                imm0.reg.data.f32;
             break;
          case TYPE_U16: res.data.f64 = (double) imm0.reg.data.u16; break;
