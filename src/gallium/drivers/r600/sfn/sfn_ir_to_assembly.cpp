@@ -261,6 +261,7 @@ bool AssemblyFromShaderLegacyImpl::emit_alu(const AluInstruction& ai, ECFAluOpCo
       sfn_log << SfnLog::assembly << "  Have " << m_nliterals_in_group << " inject a last op (nop)\n";
       alu.op = ALU_OP0_NOP;
       alu.last = 1;
+      alu.dst.chan = 3;
       int retval = r600_bytecode_add_alu(m_bc, &alu);
       if (retval)
          return false;
