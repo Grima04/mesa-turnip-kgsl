@@ -1250,6 +1250,10 @@ struct tu_image
    /* Set when bound */
    struct tu_bo *bo;
    VkDeviceSize bo_offset;
+
+   uint32_t lrz_height;
+   uint32_t lrz_pitch;
+   uint32_t lrz_offset;
 };
 
 static inline uint32_t
