@@ -340,7 +340,7 @@ pack_unorm_1x8(float x)
      *
      *       packUnorm4x8: round(clamp(c, 0, +1) * 255.0)
      */
-   return (uint8_t) (int) _mesa_roundevenf(CLAMP(x, 0.0f, 1.0f) * 255.0f);
+   return (uint8_t) (int) _mesa_roundevenf(SATURATE(x) * 255.0f);
 }
 
 /**
@@ -359,7 +359,7 @@ pack_unorm_1x16(float x)
      *       packUnorm2x16: round(clamp(c, 0, +1) * 65535.0)
      */
    return (uint16_t) (int)
-          _mesa_roundevenf(CLAMP(x, 0.0f, 1.0f) * 65535.0f);
+          _mesa_roundevenf(SATURATE(x) * 65535.0f);
 }
 
 /**
