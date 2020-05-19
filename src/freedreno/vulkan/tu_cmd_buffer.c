@@ -1205,8 +1205,6 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
 
-   /* lrz clear? */
-
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
@@ -2922,6 +2920,9 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
           (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT))) {
          cmd->state.lrz.image = image;
          cmd->state.lrz.valid = true;
+
+         tu6_clear_lrz(cmd, &cmd->cs, image, &pRenderPassBegin->pClearValues[a]);
+         tu6_emit_event_write(cmd, &cmd->cs, PC_CCU_FLUSH_COLOR_TS);
       } else {
          cmd->state.lrz.valid = false;
       }

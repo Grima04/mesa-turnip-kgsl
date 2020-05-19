@@ -1146,6 +1146,9 @@ void
 tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scs, uint32_t scissor_count);
 
 void
+tu6_clear_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs, struct tu_image* image, const VkClearValue *value);
+
+void
 tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp_loc);
 
 void

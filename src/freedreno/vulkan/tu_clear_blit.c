@@ -914,6 +914,24 @@ copy_format(VkFormat format, VkImageAspectFlags aspect_mask, bool copy_buffer)
    }
 }
 
+void
+tu6_clear_lrz(struct tu_cmd_buffer *cmd,
+              struct tu_cs *cs,
+              struct tu_image *image,
+              const VkClearValue *value)
+{
+   const struct blit_ops *ops = &r2d_ops;
+
+   ops->setup(cmd, cs, VK_FORMAT_D16_UNORM, VK_IMAGE_ASPECT_DEPTH_BIT, ROTATE_0, true, false);
+   ops->clear_value(cs, VK_FORMAT_D16_UNORM, value);
+   ops->dst_buffer(cs, VK_FORMAT_D16_UNORM,
+                   image->bo->iova + image->bo_offset + image->lrz_offset,
+                   image->lrz_pitch * 2);
+   ops->coords(cs, &(VkOffset2D) {}, NULL, &(VkExtent2D) {image->lrz_pitch, image->lrz_height});
+   ops->run(cmd, cs);
+   ops->teardown(cmd, cs);
+}
+
 static void
 tu_image_view_copy_blit(struct tu_image_view *iview,
                         struct tu_image *image,
