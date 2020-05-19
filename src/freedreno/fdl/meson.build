@@ -38,6 +38,7 @@ test(
   executable(
     'fd6_layout',
     [
+      'fd_layout_test.c',
       'fd6_layout_test.c',
       freedreno_xml_header_files,
     ],
