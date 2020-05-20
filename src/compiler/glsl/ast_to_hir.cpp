@@ -5315,8 +5315,6 @@ ast_declarator_list::hir(exec_list *instructions,
          var->data.read_only = true;
 
          if (state->stage == MESA_SHADER_VERTEX) {
-            bool error_emitted = false;
-
             /* From page 31 (page 37 of the PDF) of the GLSL 1.50 spec:
              *
              *    "Vertex shader inputs can only be float, floating-point
@@ -5353,40 +5351,38 @@ ast_declarator_list::hir(exec_list *instructions,
              */
             const glsl_type *check_type = var->type->without_array();
 
+            bool error = false;
             switch (check_type->base_type) {
             case GLSL_TYPE_FLOAT:
-            break;
+               break;
             case GLSL_TYPE_UINT64:
             case GLSL_TYPE_INT64:
                break;
             case GLSL_TYPE_UINT:
             case GLSL_TYPE_INT:
-               if (state->is_version(120, 300) || state->EXT_gpu_shader4_enable)
-                  break;
+               error = !state->is_version(120, 300) && !state->EXT_gpu_shader4_enable;
+               break;
             case GLSL_TYPE_DOUBLE:
-               if (check_type->is_double() && (state->is_version(410, 0) || state->ARB_vertex_attrib_64bit_enable))
-                  break;
+               error = !state->is_version(410, 0) && !state->ARB_vertex_attrib_64bit_enable;
+               break;
             case GLSL_TYPE_SAMPLER:
-               if (check_type->is_sampler() && state->has_bindless())
-                  break;
             case GLSL_TYPE_IMAGE:
-               if (check_type->is_image() && state->has_bindless())
-                  break;
-            /* FALLTHROUGH */
+               error = !state->has_bindless();
+               break;
             default:
+               error = true;
+            }
+
+            if (error) {
                _mesa_glsl_error(& loc, state,
                                 "vertex shader input / attribute cannot have "
                                 "type %s`%s'",
                                 var->type->is_array() ? "array of " : "",
                                 check_type->name);
-               error_emitted = true;
-            }
-
-            if (!error_emitted && var->type->is_array() &&
+            } else if (var->type->is_array() &&
                 !state->check_version(150, 0, &loc,
                                       "vertex shader input / attribute "
                                       "cannot have array type")) {
-               error_emitted = true;
             }
          } else if (state->stage == MESA_SHADER_GEOMETRY) {
             /* From section 4.3.4 (Inputs) of the GLSL 1.50 spec:
