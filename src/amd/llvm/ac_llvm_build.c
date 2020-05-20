@@ -459,9 +459,7 @@ ac_build_optimization_barrier(struct ac_llvm_context *ctx,
 LLVMValueRef
 ac_build_shader_clock(struct ac_llvm_context *ctx)
 {
-	const char *intr = LLVM_VERSION_MAJOR >= 9 && ctx->chip_class >= GFX8 ?
-				"llvm.amdgcn.s.memrealtime" : "llvm.readcyclecounter";
-	LLVMValueRef tmp = ac_build_intrinsic(ctx, intr, ctx->i64, NULL, 0, 0);
+	LLVMValueRef tmp = ac_build_intrinsic(ctx, "llvm.amdgcn.s.memtime", ctx->i64, NULL, 0, 0);
 	return LLVMBuildBitCast(ctx->builder, tmp, ctx->v2i32, "");
 }
 
