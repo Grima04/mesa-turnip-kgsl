@@ -8821,14 +8821,34 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    }
 
    if (instr->op == nir_texop_tg4) {
-      if (has_offset) {
-         opcode = aco_opcode::image_gather4_lz_o;
-         if (has_compare)
+      if (has_offset) { /* image_gather4_*_o */
+         if (has_compare) {
             opcode = aco_opcode::image_gather4_c_lz_o;
+            if (has_lod)
+               opcode = aco_opcode::image_gather4_c_l_o;
+            if (has_bias)
+               opcode = aco_opcode::image_gather4_c_b_o;
+         } else {
+            opcode = aco_opcode::image_gather4_lz_o;
+            if (has_lod)
+               opcode = aco_opcode::image_gather4_l_o;
+            if (has_bias)
+               opcode = aco_opcode::image_gather4_b_o;
+         }
       } else {
-         opcode = aco_opcode::image_gather4_lz;
-         if (has_compare)
+         if (has_compare) {
             opcode = aco_opcode::image_gather4_c_lz;
+            if (has_lod)
+               opcode = aco_opcode::image_gather4_c_l;
+            if (has_bias)
+               opcode = aco_opcode::image_gather4_c_b;
+         } else {
+            opcode = aco_opcode::image_gather4_lz;
+            if (has_lod)
+               opcode = aco_opcode::image_gather4_l;
+            if (has_bias)
+               opcode = aco_opcode::image_gather4_b;
+         }
       }
    } else if (instr->op == nir_texop_lod) {
       opcode = aco_opcode::image_get_lod;
