@@ -37,17 +37,6 @@
  * encoding compared to a4xx/a5xx.
  */
 
-static void
-handle_bindless_cat6(struct ir3_instruction *instr, nir_src rsrc)
-{
-	nir_intrinsic_instr *intrin = ir3_bindless_resource(rsrc);
-	if (!intrin)
-		return;
-
-	instr->flags |= IR3_INSTR_B;
-	instr->cat6.base = nir_intrinsic_desc_set(intrin);
-}
-
 /* src[] = { buffer_index, offset }. No const_index */
 static void
 emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
@@ -66,7 +55,7 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	ldib->cat6.type = intr->dest.ssa.bit_size == 16 ? TYPE_U16 : TYPE_U32;
 	ldib->barrier_class = IR3_BARRIER_BUFFER_R;
 	ldib->barrier_conflict = IR3_BARRIER_BUFFER_W;
-	handle_bindless_cat6(ldib, intr->src[0]);
+	ir3_handle_bindless_cat6(ldib, intr->src[0]);
 
 	ir3_split_dest(b, dst, ldib, 0, intr->num_components);
 }
@@ -93,7 +82,7 @@ emit_intrinsic_store_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	stib->cat6.type = intr->src[0].ssa->bit_size == 16 ? TYPE_U16 : TYPE_U32;
 	stib->barrier_class = IR3_BARRIER_BUFFER_W;
 	stib->barrier_conflict = IR3_BARRIER_BUFFER_R | IR3_BARRIER_BUFFER_W;
-	handle_bindless_cat6(stib, intr->src[1]);
+	ir3_handle_bindless_cat6(stib, intr->src[1]);
 
 	array_insert(b, b->keeps, stib);
 }
@@ -197,7 +186,7 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	atomic->cat6.type = type;
 	atomic->barrier_class = IR3_BARRIER_BUFFER_W;
 	atomic->barrier_conflict = IR3_BARRIER_BUFFER_R | IR3_BARRIER_BUFFER_W;
-	handle_bindless_cat6(atomic, intr->src[0]);
+	ir3_handle_bindless_cat6(atomic, intr->src[0]);
 
 	/* even if nothing consume the result, we can't DCE the instruction: */
 	array_insert(b, b->keeps, atomic);
@@ -224,7 +213,7 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	ldib->cat6.typed = true;
 	ldib->barrier_class = IR3_BARRIER_IMAGE_R;
 	ldib->barrier_conflict = IR3_BARRIER_IMAGE_W;
-	handle_bindless_cat6(ldib, intr->src[0]);
+	ir3_handle_bindless_cat6(ldib, intr->src[0]);
 
 	ir3_split_dest(b, dst, ldib, 0, intr->num_components);
 }
@@ -252,7 +241,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	stib->cat6.typed = true;
 	stib->barrier_class = IR3_BARRIER_IMAGE_W;
 	stib->barrier_conflict = IR3_BARRIER_IMAGE_R | IR3_BARRIER_IMAGE_W;
-	handle_bindless_cat6(stib, intr->src[0]);
+	ir3_handle_bindless_cat6(stib, intr->src[0]);
 
 	array_insert(b, b->keeps, stib);
 }
@@ -343,7 +332,7 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	atomic->cat6.typed = true;
 	atomic->barrier_class = IR3_BARRIER_IMAGE_W;
 	atomic->barrier_conflict = IR3_BARRIER_IMAGE_R | IR3_BARRIER_IMAGE_W;
-	handle_bindless_cat6(atomic, intr->src[0]);
+	ir3_handle_bindless_cat6(atomic, intr->src[0]);
 
 	/* even if nothing consume the result, we can't DCE the instruction: */
 	array_insert(b, b->keeps, atomic);

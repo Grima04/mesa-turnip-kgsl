@@ -180,6 +180,7 @@ struct ir3_instruction * ir3_create_collect(struct ir3_context *ctx,
 		struct ir3_instruction *const *arr, unsigned arrsz);
 void ir3_split_dest(struct ir3_block *block, struct ir3_instruction **dst,
 		struct ir3_instruction *src, unsigned base, unsigned n);
+void ir3_handle_bindless_cat6(struct ir3_instruction *instr, nir_src rsrc);
 
 NORETURN void ir3_context_error(struct ir3_context *ctx, const char *format, ...);
 

@@ -39,6 +39,16 @@
 #include "ir3.h"
 #include "ir3_context.h"
 
+void
+ir3_handle_bindless_cat6(struct ir3_instruction *instr, nir_src rsrc)
+{
+	nir_intrinsic_instr *intrin = ir3_bindless_resource(rsrc);
+	if (!intrin)
+		return;
+
+	instr->flags |= IR3_INSTR_B;
+	instr->cat6.base = nir_intrinsic_desc_set(intrin);
+}
 
 static struct ir3_instruction *
 create_indirect_load(struct ir3_context *ctx, unsigned arrsz, int n,
@@ -747,12 +757,9 @@ emit_intrinsic_load_ubo_ldc(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	ldc->cat6.d = nir_intrinsic_base(intr);
 	ldc->cat6.type = TYPE_U32;
 
-	nir_intrinsic_instr *bindless = ir3_bindless_resource(intr->src[0]);
-	if (bindless) {
-		ldc->flags |= IR3_INSTR_B;
-		ldc->cat6.base = nir_intrinsic_desc_set(bindless);
+	ir3_handle_bindless_cat6(ldc, intr->src[0]);
+	if (ldc->flags & IR3_INSTR_B)
 		ctx->so->bindless_ubo = true;
-	}
 
 	ir3_split_dest(b, dst, ldc, 0, ncomp);
 }
