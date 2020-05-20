@@ -229,7 +229,8 @@ intrinsic("scoped_memory_barrier",
 # GLSL intrinsic.
 # The latter can be used as code motion barrier, which is currently not
 # feasible with NIR.
-intrinsic("shader_clock", dest_comp=2, flags=[CAN_ELIMINATE])
+intrinsic("shader_clock", dest_comp=2, flags=[CAN_ELIMINATE],
+          indices=[MEMORY_SCOPE])
 
 # Shader ballot intrinsics with semantics analogous to the
 #

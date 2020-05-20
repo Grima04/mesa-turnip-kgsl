@@ -5012,7 +5012,19 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpReadClockKHR: {
-      assert(vtn_constant_uint(b, w[3]) == SpvScopeSubgroup);
+      SpvScope scope = vtn_constant_uint(b, w[3]);
+      nir_scope nir_scope;
+
+      switch (scope) {
+      case SpvScopeDevice:
+         nir_scope = NIR_SCOPE_DEVICE;
+         break;
+      case SpvScopeSubgroup:
+         nir_scope = NIR_SCOPE_SUBGROUP;
+         break;
+      default:
+         vtn_fail("invalid read clock scope");
+      }
 
       /* Operation supports two result types: uvec2 and uint64_t.  The NIR
        * intrinsic gives uvec2, so pack the result for the other case.
@@ -5020,6 +5032,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_instr *intrin =
          nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_shader_clock);
       nir_ssa_dest_init(&intrin->instr, &intrin->dest, 2, 32, NULL);
+      nir_intrinsic_set_memory_scope(intrin, nir_scope);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
       struct vtn_type *type = vtn_value(b, w[1], vtn_value_type_type)->type;
