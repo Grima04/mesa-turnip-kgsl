@@ -2750,6 +2750,12 @@ typedef struct {
    nir_metadata valid_metadata;
 } nir_function_impl;
 
+#define nir_foreach_function_temp_variable(var, impl) \
+   foreach_list_typed(nir_variable, var, node, &(impl)->locals)
+
+#define nir_foreach_function_temp_variable_safe(var, impl) \
+   foreach_list_typed_safe(nir_variable, var, node, &(impl)->locals)
+
 ATTRIBUTE_RETURNS_NONNULL static inline nir_block *
 nir_start_block(nir_function_impl *impl)
 {

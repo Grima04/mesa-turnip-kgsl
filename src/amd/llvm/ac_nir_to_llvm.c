@@ -5254,7 +5254,7 @@ setup_locals(struct ac_nir_context *ctx,
 {
 	int i, j;
 	ctx->num_locals = 0;
-	nir_foreach_variable(variable, &func->impl->locals) {
+	nir_foreach_function_temp_variable(variable, func->impl) {
 		unsigned attrib_count = glsl_count_attribute_slots(variable->type, false);
 		variable->data.driver_location = ctx->num_locals * 4;
 		variable->data.location_frac = 0;
