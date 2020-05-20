@@ -89,10 +89,21 @@ tu_image_create(VkDevice _device,
    bool ubwc_enabled =
       !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
 
-   /* disable tiling when linear is requested and for YUYV/UYVY */
+   /* disable tiling when linear is requested, for YUYV/UYVY, and for mutable
+    * images. Mutable images can be reinterpreted as any other compatible
+    * format, including swapped formats which aren't supported with tiling.
+    * This means that we have to fall back to linear almost always. However
+    * depth and stencil formats cannot be reintepreted as another format, and
+    * cannot be linear with sysmem rendering, so don't fall back for those.
+    *
+    * TODO: Be smarter and use usage bits and VK_KHR_image_format_list to
+    * enable tiling and/or UBWC when possible.
+    */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
        modifier == DRM_FORMAT_MOD_LINEAR ||
-       vk_format_description(image->vk_format)->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED) {
+       vk_format_description(image->vk_format)->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED ||
+       (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT &&
+        !vk_format_is_depth_or_stencil(image->vk_format))) {
       image->layout.tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
    }
