@@ -2445,8 +2445,10 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       uint32_t operands = w[idx];
 
       if (operands & SpvImageOperandsBiasMask) {
-         vtn_assert(texop == nir_texop_tex);
-         texop = nir_texop_txb;
+         vtn_assert(texop == nir_texop_tex ||
+                    texop == nir_texop_tg4);
+         if (texop == nir_texop_tex)
+            texop = nir_texop_txb;
          uint32_t arg = image_operand_arg(b, w, count, idx,
                                           SpvImageOperandsBiasMask);
          (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_bias);
@@ -2454,7 +2456,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
       if (operands & SpvImageOperandsLodMask) {
          vtn_assert(texop == nir_texop_txl || texop == nir_texop_txf ||
-                    texop == nir_texop_txs);
+                    texop == nir_texop_txs || texop == nir_texop_tg4);
          uint32_t arg = image_operand_arg(b, w, count, idx,
                                           SpvImageOperandsLodMask);
          (*p++) = vtn_tex_src(b, w[arg], nir_tex_src_lod);
