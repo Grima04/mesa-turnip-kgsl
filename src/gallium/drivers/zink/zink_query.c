@@ -76,6 +76,20 @@ zink_create_query(struct pipe_context *pctx,
    return (struct pipe_query *)query;
 }
 
+/* TODO: rework this to be less hammer-ish using deferred destroy */
+static void
+wait_query(struct pipe_context *pctx, struct zink_query *query)
+{
+   struct pipe_fence_handle *fence = NULL;
+
+   pctx->flush(pctx, &fence, PIPE_FLUSH_HINT_FINISH);
+   if (fence) {
+      pctx->screen->fence_finish(pctx->screen, NULL, fence,
+                                 PIPE_TIMEOUT_INFINITE);
+      pctx->screen->fence_reference(pctx->screen, &fence, NULL);
+   }
+}
+
 static void
 zink_destroy_query(struct pipe_context *pctx,
                    struct pipe_query *q)
@@ -83,7 +97,12 @@ zink_destroy_query(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_query *query = (struct zink_query *)q;
 
+   if (!list_is_empty(&query->active_list)) {
+      wait_query(pctx, query);
+   }
+
    vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
+   FREE(query);
 }
 
 static void
@@ -165,13 +184,7 @@ zink_get_query_result(struct pipe_context *pctx,
    VkQueryResultFlagBits flags = 0;
 
    if (wait) {
-      struct pipe_fence_handle *fence = NULL;
-      pctx->flush(pctx, &fence, PIPE_FLUSH_HINT_FINISH);
-      if (fence) {
-         pctx->screen->fence_finish(pctx->screen, NULL, fence,
-                                    PIPE_TIMEOUT_INFINITE);
-         pctx->screen->fence_reference(pctx->screen, &fence, NULL);
-      }
+      wait_query(pctx, query);
       flags |= VK_QUERY_RESULT_WAIT_BIT;
    } else
       pctx->flush(pctx, NULL, 0);
