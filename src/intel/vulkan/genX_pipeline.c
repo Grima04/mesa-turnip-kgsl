@@ -2172,6 +2172,8 @@ genX(graphics_pipeline_create)(
                                        pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
+      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         *pPipeline = VK_NULL_HANDLE;
       return result;
    }
 
@@ -2306,6 +2308,8 @@ compute_pipeline_create(
    if (result != VK_SUCCESS) {
       anv_pipeline_finish(&pipeline->base, device, pAllocator);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
+      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         *pPipeline = VK_NULL_HANDLE;
       return result;
    }
 
@@ -2429,14 +2433,22 @@ VkResult genX(CreateGraphicsPipelines)(
 
    unsigned i;
    for (i = 0; i < count; i++) {
-      result = genX(graphics_pipeline_create)(_device,
-                                              pipeline_cache,
-                                              &pCreateInfos[i],
-                                              pAllocator, &pPipelines[i]);
+      VkResult res = genX(graphics_pipeline_create)(_device,
+                                                    pipeline_cache,
+                                                    &pCreateInfos[i],
+                                                    pAllocator, &pPipelines[i]);
 
-      /* Bail out on the first error as it is not obvious what error should be
-       * report upon 2 different failures. */
-      if (result != VK_SUCCESS)
+      if (res == VK_SUCCESS)
+         continue;
+
+      /* Bail out on the first error != VK_PIPELINE_COMPILE_REQUIRED_EX as it
+       * is not obvious what error should be report upon 2 different failures.
+       * */
+      result = res;
+      if (res != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         break;
+
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
          break;
    }
 
@@ -2460,13 +2472,21 @@ VkResult genX(CreateComputePipelines)(
 
    unsigned i;
    for (i = 0; i < count; i++) {
-      result = compute_pipeline_create(_device, pipeline_cache,
-                                       &pCreateInfos[i],
-                                       pAllocator, &pPipelines[i]);
+      VkResult res = compute_pipeline_create(_device, pipeline_cache,
+                                             &pCreateInfos[i],
+                                             pAllocator, &pPipelines[i]);
 
-      /* Bail out on the first error as it is not obvious what error should be
-       * report upon 2 different failures. */
-      if (result != VK_SUCCESS)
+      if (res == VK_SUCCESS)
+         continue;
+
+      /* Bail out on the first error != VK_PIPELINE_COMPILE_REQUIRED_EX as it
+       * is not obvious what error should be report upon 2 different failures.
+       * */
+      result = res;
+      if (res != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         break;
+
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
          break;
    }
 

@@ -1417,6 +1417,9 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       }
    }
 
+   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
+      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+
    void *pipeline_ctx = ralloc_context(NULL);
 
    for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
@@ -1678,6 +1681,10 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                                          sizeof(stage.cache_key),
                                          &cache_hit);
    }
+
+   if (bin == NULL &&
+       (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT))
+      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
 
    void *mem_ctx = ralloc_context(NULL);
    if (bin == NULL) {
