@@ -725,16 +725,18 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 } else {
                         struct midgard_blend_rt *mrts = rts;
 
-                        mrts[i].flags = 0x200;
+                        if (!blend[i].no_colour) {
+                                mrts[i].flags = 0x200;
 
-                        bool is_srgb = (ctx->pipe_framebuffer.nr_cbufs > i) &&
-                                       (ctx->pipe_framebuffer.cbufs[i]) &&
-                                       util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
+                                bool is_srgb = (ctx->pipe_framebuffer.nr_cbufs > i) &&
+                                               (ctx->pipe_framebuffer.cbufs[i]) &&
+                                               util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
 
-                        SET_BIT(mrts[i].flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
-                        SET_BIT(mrts[i].flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
-                        SET_BIT(mrts[i].flags, MALI_BLEND_SRGB, is_srgb);
-                        SET_BIT(mrts[i].flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
+                                SET_BIT(mrts[i].flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
+                                SET_BIT(mrts[i].flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
+                                SET_BIT(mrts[i].flags, MALI_BLEND_SRGB, is_srgb);
+                                SET_BIT(mrts[i].flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
+                        }
 
                         if (blend[i].is_shader) {
                                 mrts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;

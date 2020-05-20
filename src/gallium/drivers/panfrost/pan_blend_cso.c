@@ -255,6 +255,8 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                                 (rt->equation.alpha_mode == 0x122) &&
                                 (rt->equation.color_mask == 0xf);
 
+                        final.no_colour = (rt->equation.color_mask == 0x0);
+
                         return final;
                 }
         }

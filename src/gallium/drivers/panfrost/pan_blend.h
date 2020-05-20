@@ -99,9 +99,11 @@ struct panfrost_blend_final {
         /* Set for a shader, clear for an equation */
         bool is_shader;
 
-        /* Set if the destination needs to be loaded from the tilebuffer,
-         * basically (for an equation) or if a shader is present */
+        /* Clear if the destination needs to be loaded from the tilebuffer */
         bool no_blending;
+
+        /* Set if the colour mask is 0x0 (nothing is written) */
+        bool no_colour;
 
         union {
                 struct panfrost_blend_shader_final shader;
