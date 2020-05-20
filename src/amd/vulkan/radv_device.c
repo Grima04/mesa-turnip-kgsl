@@ -1294,6 +1294,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->robustBufferAccess2 = true;
 			features->robustImageAccess2 = true;
 			features->nullDescriptor = true;
+			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
 			VkPhysicalDeviceCustomBorderColorFeaturesEXT *features =
