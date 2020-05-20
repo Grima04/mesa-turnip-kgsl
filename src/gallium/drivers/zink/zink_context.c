@@ -487,10 +487,10 @@ get_render_pass(struct zink_context *ctx)
    struct zink_render_pass_state state = { 0 };
 
    for (int i = 0; i < fb->nr_cbufs; i++) {
-      struct pipe_resource *res = fb->cbufs[i]->texture;
-      state.rts[i].format = zink_get_format(screen, fb->cbufs[i]->format);
-      state.rts[i].samples = res->nr_samples > 0 ? res->nr_samples :
-                                                   VK_SAMPLE_COUNT_1_BIT;
+      struct pipe_surface *surf = fb->cbufs[i];
+      state.rts[i].format = zink_get_format(screen, surf->format);
+      state.rts[i].samples = surf->nr_samples > 0 ? surf->nr_samples :
+                                                    VK_SAMPLE_COUNT_1_BIT;
    }
    state.num_cbufs = fb->nr_cbufs;
 
