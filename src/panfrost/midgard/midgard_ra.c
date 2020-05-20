@@ -35,24 +35,24 @@ struct phys_reg {
         /* Byte offset into the physical register: 0-15 */
         unsigned offset;
 
-        /* Number of bytes in a component of this register */
-        unsigned size;
+        /* log2(bytes per component) for fast mul/div */
+        unsigned shift;
 };
 
 /* Shift up by reg_offset and horizontally by dst_offset. */
 
 static void
-offset_swizzle(unsigned *swizzle, unsigned reg_offset, unsigned srcsize, unsigned dstsize, unsigned dst_offset)
+offset_swizzle(unsigned *swizzle, unsigned reg_offset, unsigned srcshift, unsigned dstshift, unsigned dst_offset)
 {
         unsigned out[MIR_VEC_COMPONENTS];
 
-        signed reg_comp = reg_offset / srcsize;
-        signed dst_comp = dst_offset / dstsize;
+        signed reg_comp = reg_offset >> srcshift;
+        signed dst_comp = dst_offset >> dstshift;
 
-        unsigned max_component = (16 / srcsize) - 1;
+        unsigned max_component = (16 >> srcshift) - 1;
 
-        assert(reg_comp * srcsize == reg_offset);
-        assert(dst_comp * dstsize == dst_offset);
+        assert(reg_comp << srcshift == reg_offset);
+        assert(dst_comp << dstshift == dst_offset);
 
         for (signed c = 0; c < MIR_VEC_COMPONENTS; ++c) {
                 signed comp = MAX2(c - dst_comp, 0);
@@ -65,12 +65,12 @@ offset_swizzle(unsigned *swizzle, unsigned reg_offset, unsigned srcsize, unsigne
 /* Helper to return the default phys_reg for a given register */
 
 static struct phys_reg
-default_phys_reg(int reg, unsigned size)
+default_phys_reg(int reg, unsigned shift)
 {
         struct phys_reg r = {
                 .reg = reg,
                 .offset = 0,
-                .size = size
+                .shift = shift
         };
 
         return r;
@@ -80,20 +80,20 @@ default_phys_reg(int reg, unsigned size)
  * register corresponds to */
 
 static struct phys_reg
-index_to_reg(compiler_context *ctx, struct lcra_state *l, unsigned reg, unsigned size)
+index_to_reg(compiler_context *ctx, struct lcra_state *l, unsigned reg, unsigned shift)
 {
         /* Check for special cases */
         if (reg == ~0)
-                return default_phys_reg(REGISTER_UNUSED, size);
+                return default_phys_reg(REGISTER_UNUSED, shift);
         else if (reg >= SSA_FIXED_MINIMUM)
-                return default_phys_reg(SSA_REG_FROM_FIXED(reg), size);
+                return default_phys_reg(SSA_REG_FROM_FIXED(reg), shift);
         else if (!l)
-                return default_phys_reg(REGISTER_UNUSED, size);
+                return default_phys_reg(REGISTER_UNUSED, shift);
 
         struct phys_reg r = {
                 .reg = l->solutions[reg] / 16,
                 .offset = l->solutions[reg] & 0xF,
-                .size = size
+                .shift = shift
         };
 
         /* Report that we actually use this register, and return it */
@@ -632,12 +632,15 @@ install_registers_instr(
         struct lcra_state *l,
         midgard_instruction *ins)
 {
-        unsigned src_size[MIR_SRC_COUNT];
+        unsigned src_shift[MIR_SRC_COUNT];
 
-        for (unsigned i = 0; i < MIR_SRC_COUNT; ++i)
-                src_size[i] = MAX2(nir_alu_type_get_type_size(ins->src_types[i]) / 8, 1);
+        for (unsigned i = 0; i < MIR_SRC_COUNT; ++i) {
+                src_shift[i] =
+                        util_logbase2(nir_alu_type_get_type_size(ins->src_types[i]) / 8);
+        }
 
-        unsigned dest_size = MAX2(nir_alu_type_get_type_size(ins->dest_type) / 8, 1);
+        unsigned dest_shift =
+                util_logbase2(nir_alu_type_get_type_size(ins->dest_type) / 8);
 
         switch (ins->type) {
         case TAG_ALU_4:
@@ -647,9 +650,9 @@ install_registers_instr(
                  if (ins->compact_branch)
                          return;
 
-                struct phys_reg src1 = index_to_reg(ctx, l, ins->src[0], src_size[0]);
-                struct phys_reg src2 = index_to_reg(ctx, l, ins->src[1], src_size[1]);
-                struct phys_reg dest = index_to_reg(ctx, l, ins->dest, dest_size);
+                struct phys_reg src1 = index_to_reg(ctx, l, ins->src[0], src_shift[0]);
+                struct phys_reg src2 = index_to_reg(ctx, l, ins->src[1], src_shift[1]);
+                struct phys_reg dest = index_to_reg(ctx, l, ins->dest, dest_shift);
 
                 mir_set_bytemask(ins, mir_bytemask(ins) << dest.offset);
 
@@ -657,7 +660,7 @@ install_registers_instr(
                         GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props) ? 0 :
                         dest.offset;
 
-                offset_swizzle(ins->swizzle[0], src1.offset, src1.size, dest.size, dest_offset);
+                offset_swizzle(ins->swizzle[0], src1.offset, src1.shift, dest.shift, dest_offset);
 
                 ins->registers.src1_reg = src1.reg;
 
@@ -675,7 +678,7 @@ install_registers_instr(
 
                         ins->alu.src2 = imm << 2;
                 } else {
-                        offset_swizzle(ins->swizzle[1], src2.offset, src2.size, dest.size, dest_offset);
+                        offset_swizzle(ins->swizzle[1], src2.offset, src2.shift, dest.shift, dest_offset);
 
                         ins->registers.src2_reg = src2.reg;
                 }
@@ -692,16 +695,16 @@ install_registers_instr(
                 bool encodes_src = OP_IS_STORE(ins->load_store.op);
 
                 if (encodes_src) {
-                        struct phys_reg src = index_to_reg(ctx, l, ins->src[0], src_size[0]);
+                        struct phys_reg src = index_to_reg(ctx, l, ins->src[0], src_shift[0]);
                         assert(src.reg == 26 || src.reg == 27);
 
                         ins->load_store.reg = src.reg - 26;
-                        offset_swizzle(ins->swizzle[0], src.offset, src.size, 1, 0);
+                        offset_swizzle(ins->swizzle[0], src.offset, src.shift, 0, 0);
                } else {
-                        struct phys_reg dst = index_to_reg(ctx, l, ins->dest, dest_size);
+                        struct phys_reg dst = index_to_reg(ctx, l, ins->dest, dest_shift);
 
                         ins->load_store.reg = dst.reg;
-                        offset_swizzle(ins->swizzle[0], 0, 4, 4, dst.offset);
+                        offset_swizzle(ins->swizzle[0], 0, 2, 2, dst.offset);
                         mir_set_bytemask(ins, mir_bytemask(ins) << dst.offset);
                 }
 
@@ -711,16 +714,16 @@ install_registers_instr(
                 unsigned src3 = ins->src[2];
 
                 if (src2 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, l, src2, 4);
-                        unsigned component = src.offset / src.size;
-                        assert(component * src.size == src.offset);
+                        struct phys_reg src = index_to_reg(ctx, l, src2, 2);
+                        unsigned component = src.offset >> src.shift;
+                        assert(component << src.shift == src.offset);
                         ins->load_store.arg_1 |= midgard_ldst_reg(src.reg, component);
                 }
 
                 if (src3 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, l, src3, 4);
-                        unsigned component = src.offset / src.size;
-                        assert(component * src.size == src.offset);
+                        struct phys_reg src = index_to_reg(ctx, l, src3, 2);
+                        unsigned component = src.offset >> src.shift;
+                        assert(component << src.shift == src.offset);
                         ins->load_store.arg_2 |= midgard_ldst_reg(src.reg, component);
                 }
  
@@ -732,19 +735,19 @@ install_registers_instr(
                         break;
 
                 /* Grab RA results */
-                struct phys_reg dest = index_to_reg(ctx, l, ins->dest, dest_size);
-                struct phys_reg coord = index_to_reg(ctx, l, ins->src[1], src_size[1]);
-                struct phys_reg lod = index_to_reg(ctx, l, ins->src[2], src_size[2]);
-                struct phys_reg offset = index_to_reg(ctx, l, ins->src[3], src_size[3]);
+                struct phys_reg dest = index_to_reg(ctx, l, ins->dest, dest_shift);
+                struct phys_reg coord = index_to_reg(ctx, l, ins->src[1], src_shift[1]);
+                struct phys_reg lod = index_to_reg(ctx, l, ins->src[2], src_shift[2]);
+                struct phys_reg offset = index_to_reg(ctx, l, ins->src[3], src_shift[3]);
 
                 /* First, install the texture coordinate */
                 ins->texture.in_reg_select = coord.reg & 1;
-                offset_swizzle(ins->swizzle[1], coord.offset, coord.size, dest.size, 0);
+                offset_swizzle(ins->swizzle[1], coord.offset, coord.shift, dest.shift, 0);
 
                 /* Next, install the destination */
                 ins->texture.out_reg_select = dest.reg & 1;
-                offset_swizzle(ins->swizzle[0], 0, 4, dest.size,
-                                dest_size == 2 ? dest.offset % 8 :
+                offset_swizzle(ins->swizzle[0], 0, 2, dest.shift,
+                                dest_shift == 1 ? dest.offset % 8 :
                                 dest.offset);
                 mir_set_bytemask(ins, mir_bytemask(ins) << dest.offset);
 
