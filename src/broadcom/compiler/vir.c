@@ -809,7 +809,7 @@ v3d_nir_lower_vs_early(struct v3d_compile *c)
                 used_outputs[comp] |= 1ull << slot;
         }
         NIR_PASS_V(c->s, nir_remove_unused_io_vars,
-                   &c->s->outputs, used_outputs, NULL); /* demotes to globals */
+                   nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
         NIR_PASS_V(c->s, nir_lower_global_vars_to_local);
         v3d_optimize_nir(c->s);
         NIR_PASS_V(c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
@@ -840,7 +840,7 @@ v3d_nir_lower_gs_early(struct v3d_compile *c)
                 used_outputs[comp] |= 1ull << slot;
         }
         NIR_PASS_V(c->s, nir_remove_unused_io_vars,
-                   &c->s->outputs, used_outputs, NULL); /* demotes to globals */
+                   nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
         NIR_PASS_V(c->s, nir_lower_global_vars_to_local);
         v3d_optimize_nir(c->s);
         NIR_PASS_V(c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);

@@ -109,8 +109,7 @@ tcs_add_output_reads(nir_shader *shader, uint64_t *read, uint64_t *patches_read)
  *
  * Example usage is:
  *
- * progress = nir_remove_unused_io_vars(producer,
- *                                      &producer->outputs,
+ * progress = nir_remove_unused_io_vars(producer, nir_var_shader_out,
  *                                      read, patches_read) ||
  *                                      progress;
  *
@@ -120,12 +119,17 @@ tcs_add_output_reads(nir_shader *shader, uint64_t *read, uint64_t *patches_read)
  * variable is used!
  */
 bool
-nir_remove_unused_io_vars(nir_shader *shader, struct exec_list *var_list,
+nir_remove_unused_io_vars(nir_shader *shader,
+                          nir_variable_mode mode,
                           uint64_t *used_by_other_stage,
                           uint64_t *used_by_other_stage_patches)
 {
    bool progress = false;
    uint64_t *used;
+
+   assert(mode == nir_var_shader_in || mode == nir_var_shader_out);
+   struct exec_list *var_list =
+      mode == nir_var_shader_in ? &shader->inputs : &shader->outputs;
 
    nir_foreach_variable_safe(var, var_list) {
       if (var->data.patch)
@@ -203,10 +207,10 @@ nir_remove_unused_varyings(nir_shader *producer, nir_shader *consumer)
       tcs_add_output_reads(producer, read, patches_read);
 
    bool progress = false;
-   progress = nir_remove_unused_io_vars(producer, &producer->outputs, read,
+   progress = nir_remove_unused_io_vars(producer, nir_var_shader_out, read,
                                         patches_read);
 
-   progress = nir_remove_unused_io_vars(consumer, &consumer->inputs, written,
+   progress = nir_remove_unused_io_vars(consumer, nir_var_shader_in, written,
                                         patches_written) || progress;
 
    return progress;
