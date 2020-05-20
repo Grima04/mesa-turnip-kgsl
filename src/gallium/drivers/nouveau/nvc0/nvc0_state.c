@@ -1379,6 +1379,9 @@ nvc0_set_global_bindings(struct pipe_context *pipe,
    unsigned i;
    const unsigned end = start + nr;
 
+   if (!nr)
+      return;
+
    if (nvc0->global_residents.size <= (end * sizeof(struct pipe_resource *))) {
       const unsigned old_size = nvc0->global_residents.size;
       if (util_dynarray_resize(&nvc0->global_residents, struct pipe_resource *, end)) {
