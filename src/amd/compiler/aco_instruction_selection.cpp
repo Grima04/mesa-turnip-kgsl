@@ -7958,10 +7958,14 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
                get_ssa_temp(ctx, &instr->dest.ssa));
       break;
    }
-   case nir_intrinsic_shader_clock:
-      bld.smem(aco_opcode::s_memtime, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), false);
+   case nir_intrinsic_shader_clock: {
+      aco_opcode opcode =
+         nir_intrinsic_memory_scope(instr) == NIR_SCOPE_DEVICE ?
+            aco_opcode::s_memrealtime : aco_opcode::s_memtime;
+      bld.smem(opcode, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), false);
       emit_split_vector(ctx, get_ssa_temp(ctx, &instr->dest.ssa), 2);
       break;
+   }
    case nir_intrinsic_load_vertex_id_zero_base: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.vertex_id));
