@@ -731,10 +731,8 @@ static int radv_amdgpu_create_bo_list(struct radv_amdgpu_winsys *ws,
 			return 0;
 		}
 		struct drm_amdgpu_bo_list_entry *handles = malloc(sizeof(struct drm_amdgpu_bo_list_entry) * total_buffer_count);
-		if (!handles) {
-			free(handles);
+		if (!handles)
 			return -ENOMEM;
-		}
 
 		for (unsigned i = 0; i < num_extra_bo; i++) {
 			handles[i].bo_handle = extra_bo_array[i]->bo_handle;
