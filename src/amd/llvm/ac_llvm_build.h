@@ -181,7 +181,8 @@ void ac_build_s_barrier(struct ac_llvm_context *ctx);
 void ac_build_optimization_barrier(struct ac_llvm_context *ctx,
 				   LLVMValueRef *pvgpr);
 
-LLVMValueRef ac_build_shader_clock(struct ac_llvm_context *ctx);
+LLVMValueRef ac_build_shader_clock(struct ac_llvm_context *ctx,
+				   nir_scope scope);
 
 LLVMValueRef ac_build_ballot(struct ac_llvm_context *ctx, LLVMValueRef value);
 LLVMValueRef ac_get_i1_sgpr_mask(struct ac_llvm_context *ctx,

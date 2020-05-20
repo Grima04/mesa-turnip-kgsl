@@ -457,9 +457,10 @@ ac_build_optimization_barrier(struct ac_llvm_context *ctx,
 }
 
 LLVMValueRef
-ac_build_shader_clock(struct ac_llvm_context *ctx)
+ac_build_shader_clock(struct ac_llvm_context *ctx, nir_scope scope)
 {
-	LLVMValueRef tmp = ac_build_intrinsic(ctx, "llvm.amdgcn.s.memtime", ctx->i64, NULL, 0, 0);
+	const char *name = scope == NIR_SCOPE_DEVICE ? "llvm.amdgcn.s.memrealtime" : "llvm.amdgcn.s.memtime";
+	LLVMValueRef tmp = ac_build_intrinsic(ctx, name, ctx->i64, NULL, 0, 0);
 	return LLVMBuildBitCast(ctx->builder, tmp, ctx->v2i32, "");
 }
 

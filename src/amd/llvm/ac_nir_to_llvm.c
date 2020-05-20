@@ -3864,7 +3864,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		result = visit_image_size(ctx, instr, false);
 		break;
 	case nir_intrinsic_shader_clock:
-		result = ac_build_shader_clock(&ctx->ac);
+		result = ac_build_shader_clock(&ctx->ac,
+					       nir_intrinsic_memory_scope(instr));
 		break;
 	case nir_intrinsic_discard:
 	case nir_intrinsic_discard_if:
