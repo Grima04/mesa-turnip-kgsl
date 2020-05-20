@@ -555,7 +555,7 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx)
             ctx.wait_and_remove_from_entry(it->first, it->second, counter_vm);
          if (imm.lgkm != wait_imm::unset_counter && imm.lgkm <= it->second.imm.lgkm)
             ctx.wait_and_remove_from_entry(it->first, it->second, counter_lgkm);
-         if (imm.lgkm != wait_imm::unset_counter && imm.vs <= it->second.imm.vs)
+         if (imm.vs != wait_imm::unset_counter && imm.vs <= it->second.imm.vs)
             ctx.wait_and_remove_from_entry(it->first, it->second, counter_vs);
          if (!it->second.counters)
             it = ctx.gpr_map.erase(it);
