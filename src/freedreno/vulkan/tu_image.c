@@ -237,7 +237,7 @@ tu6_texswiz(const VkComponentMapping *comps,
 }
 
 static enum a6xx_tex_type
-tu6_tex_type(VkImageViewType type)
+tu6_tex_type(VkImageViewType type, bool storage)
 {
    switch (type) {
    default:
@@ -251,7 +251,7 @@ tu6_tex_type(VkImageViewType type)
       return A6XX_TEX_3D;
    case VK_IMAGE_VIEW_TYPE_CUBE:
    case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
-      return A6XX_TEX_CUBE;
+      return storage ? A6XX_TEX_2D : A6XX_TEX_CUBE;
    }
 }
 
@@ -314,18 +314,19 @@ tu_image_view_init(struct tu_image_view *iview,
 
    uint32_t width = u_minify(image->extent.width, range->baseMipLevel);
    uint32_t height = u_minify(image->extent.height, range->baseMipLevel);
-   uint32_t depth = tu_get_layerCount(image, range);
-   switch (pCreateInfo->viewType) {
-   case VK_IMAGE_VIEW_TYPE_3D:
-      depth = u_minify(image->extent.depth, range->baseMipLevel);
-      break;
-   case VK_IMAGE_VIEW_TYPE_CUBE:
-   case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
+   uint32_t storage_depth = tu_get_layerCount(image, range);
+   if (pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_3D) {
+      storage_depth = u_minify(image->extent.depth, range->baseMipLevel);
+   }
+
+   uint32_t depth = storage_depth;
+   if (pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_CUBE ||
+       pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+      /* Cubes are treated as 2D arrays for storage images, so only divide the
+       * depth by 6 for the texture descriptor.
+       */
       depth /= 6;
-      break;
-   default:
-      break;
-  }
+   }
 
    uint64_t base_addr = image->bo->iova + image->bo_offset +
       fdl_surface_offset(layout, range->baseMipLevel, range->baseArrayLayer);
@@ -365,7 +366,7 @@ tu_image_view_init(struct tu_image_view *iview,
    iview->descriptor[2] =
       A6XX_TEX_CONST_2_FETCHSIZE(tu6_fetchsize(format)) |
       A6XX_TEX_CONST_2_PITCH(pitch) |
-      A6XX_TEX_CONST_2_TYPE(tu6_tex_type(pCreateInfo->viewType));
+      A6XX_TEX_CONST_2_TYPE(tu6_tex_type(pCreateInfo->viewType, false));
    iview->descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(layer_size);
    iview->descriptor[4] = base_addr;
    iview->descriptor[5] = (base_addr >> 32) | A6XX_TEX_CONST_5_DEPTH(depth);
@@ -435,11 +436,11 @@ tu_image_view_init(struct tu_image_view *iview,
          A6XX_IBO_1_HEIGHT(height);
       iview->storage_descriptor[2] =
          A6XX_IBO_2_PITCH(pitch) |
-         A6XX_IBO_2_TYPE(tu6_tex_type(pCreateInfo->viewType));
+         A6XX_IBO_2_TYPE(tu6_tex_type(pCreateInfo->viewType, true));
       iview->storage_descriptor[3] = A6XX_IBO_3_ARRAY_PITCH(layer_size);
 
       iview->storage_descriptor[4] = base_addr;
-      iview->storage_descriptor[5] = (base_addr >> 32) | A6XX_IBO_5_DEPTH(depth);
+      iview->storage_descriptor[5] = (base_addr >> 32) | A6XX_IBO_5_DEPTH(storage_depth);
 
       if (ubwc_enabled) {
          iview->storage_descriptor[3] |= A6XX_IBO_3_FLAG | A6XX_IBO_3_UNK27;
