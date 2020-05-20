@@ -69,7 +69,6 @@ can_fast_clear_color(struct iris_context *ice,
                      struct pipe_resource *p_res,
                      unsigned level,
                      const struct pipe_box *box,
-                     enum isl_format format,
                      enum isl_format render_format,
                      union isl_color_value color)
 {
@@ -94,7 +93,7 @@ can_fast_clear_color(struct iris_context *ice,
     * resource and not the renderbuffer.
     */
    if (isl_format_srgb_to_linear(render_format) !=
-       isl_format_srgb_to_linear(format)) {
+       isl_format_srgb_to_linear(res->surf.format)) {
       return false;
    }
 
@@ -102,7 +101,7 @@ can_fast_clear_color(struct iris_context *ice,
     * see intel_miptree_create_for_dri_image()
     */
 
-   if (!iris_is_color_fast_clear_compatible(ice, format, color))
+   if (!iris_is_color_fast_clear_compatible(ice, res->surf.format, color))
       return false;
 
    return true;
@@ -364,7 +363,7 @@ clear_color(struct iris_context *ice,
    iris_batch_maybe_flush(batch, 1500);
 
    bool can_fast_clear = can_fast_clear_color(ice, p_res, level, box,
-                                              res->surf.format, format, color);
+                                              format, color);
    if (can_fast_clear) {
       fast_clear_color(ice, res, level, box, format, color,
                        blorp_flags);
