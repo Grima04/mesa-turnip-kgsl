@@ -29,7 +29,6 @@ struct lower_intrinsics_state {
    nir_function_impl *impl;
    bool progress;
    nir_builder builder;
-   unsigned local_workgroup_size;
 };
 
 static bool
@@ -203,22 +202,18 @@ brw_nir_lower_cs_intrinsics(nir_shader *nir)
       .nir = nir,
    };
 
-   if (!nir->info.cs.local_size_variable) {
-      state.local_workgroup_size = nir->info.cs.local_size[0] *
-                                   nir->info.cs.local_size[1] *
-                                   nir->info.cs.local_size[2];
-   } else {
-      state.local_workgroup_size = nir->info.cs.max_variable_local_size;
-   }
-
    /* Constraints from NV_compute_shader_derivatives. */
-   if (nir->info.cs.derivative_group == DERIVATIVE_GROUP_QUADS &&
-       !nir->info.cs.local_size_variable) {
-      assert(nir->info.cs.local_size[0] % 2 == 0);
-      assert(nir->info.cs.local_size[1] % 2 == 0);
-   } else if (nir->info.cs.derivative_group == DERIVATIVE_GROUP_LINEAR &&
-              !nir->info.cs.local_size_variable) {
-      assert(state.local_workgroup_size % 4 == 0);
+   if (!nir->info.cs.local_size_variable) {
+      if (nir->info.cs.derivative_group == DERIVATIVE_GROUP_QUADS) {
+         assert(nir->info.cs.local_size[0] % 2 == 0);
+         assert(nir->info.cs.local_size[1] % 2 == 0);
+      } else if (nir->info.cs.derivative_group == DERIVATIVE_GROUP_LINEAR) {
+         ASSERTED unsigned local_workgroup_size =
+            nir->info.cs.local_size[0] *
+            nir->info.cs.local_size[1] *
+            nir->info.cs.local_size[2];
+         assert(local_workgroup_size % 4 == 0);
+      }
    }
 
    nir_foreach_function(function, nir) {
