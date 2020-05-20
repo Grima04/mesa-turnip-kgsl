@@ -535,21 +535,10 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 		struct ir3_info *info)
 {
-	struct ir3_register *src1, *src2, *ssbo;
+	struct ir3_register *ssbo;
 	instr_cat6_a6xx_t *cat6 = ptr;
-	bool has_dest = (instr->opc == OPC_LDIB || instr->opc == OPC_LDC);
 
 	ssbo = instr->regs[1];
-	src1 = instr->regs[2];
-
-	if (has_dest) {
-		/* the src2 field in the instruction is actually the destination
-		 * register for load instructions:
-		 */
-		src2 = instr->regs[0];
-	} else {
-		src2 = instr->regs[3];
-	}
 
 	cat6->type      = instr->cat6.type;
 	cat6->d         = instr->cat6.d - (instr->opc == OPC_LDC ? 0 : 1);
@@ -560,9 +549,26 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 	cat6->sync      = !!(instr->flags & IR3_INSTR_SY);
 	cat6->opc_cat   = 6;
 
-	cat6->src1 = reg(src1, info, instr->repeat, 0);
-	cat6->src2 = reg(src2, info, instr->repeat, 0);
 	cat6->ssbo = reg(ssbo, info, instr->repeat, IR3_REG_IMMED);
+
+	/* For unused sources in an opcode, initialize contents with the ir3 dest
+	 * reg
+	 */
+	switch (instr->opc) {
+	case OPC_RESINFO:
+		cat6->src1 = reg(instr->regs[0], info, instr->repeat, 0);
+		cat6->src2 = reg(instr->regs[0], info, instr->repeat, 0);
+		break;
+	case OPC_LDC:
+	case OPC_LDIB:
+		cat6->src1 = reg(instr->regs[2], info, instr->repeat, 0);
+		cat6->src2 = reg(instr->regs[0], info, instr->repeat, 0);
+		break;
+	default:
+		cat6->src1 = reg(instr->regs[2], info, instr->repeat, 0);
+		cat6->src2 = reg(instr->regs[3], info, instr->repeat, 0);
+		break;
+	}
 
 	if (instr->flags & IR3_INSTR_B) {
 		if (ssbo->flags & IR3_REG_IMMED) {
