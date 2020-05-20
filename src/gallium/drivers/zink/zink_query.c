@@ -132,7 +132,7 @@ zink_begin_query(struct pipe_context *pctx,
     * the pool in the batch instead?
     */
    struct zink_batch *batch = zink_batch_no_rp(zink_context(pctx));
-   vkCmdResetQueryPool(batch->cmdbuf, query->query_pool, 0, query->curr_query);
+   vkCmdResetQueryPool(batch->cmdbuf, query->query_pool, 0, MIN2(query->curr_query + 1, query->num_queries));
    query->curr_query = 0;
 
    begin_query(ctx, query);
