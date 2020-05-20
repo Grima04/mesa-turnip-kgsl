@@ -28,6 +28,7 @@
 #include "util/macros.h"
 #include "instr-a3xx.h"
 
+#define INSTR_5XX(i, d) { .gpu_id = 540, .instr = #i, .expected = d }
 #define INSTR_6XX(i, d) { .gpu_id = 630, .instr = #i, .expected = d }
 
 static const struct test {
@@ -76,8 +77,30 @@ static const struct test {
 	/* cat6 */
 	INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x"),
 	INSTR_6XX(c1100000_c1000000, "stl.f16 l[0], hr0.x, hr48.y"),
+
+	/* resinfo */
 	INSTR_6XX(c0260000_0063c200, "resinfo.untyped.2d.u32.1.imm r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
+	/* dEQP-GLES31.functional.image_load_store.buffer.image_size.writeonly_7.txt */
 	INSTR_6XX(c0260000_0063c000, "resinfo.untyped.1d.u32.1.imm r0.x, 0"), /* resinfo.u32.1d.mode0.base0 r0.x, 0 */
+	/* dEQP-VK.image.image_size.2d.readonly_12x34.txt */
+	INSTR_6XX(c0260000_0063c300, "resinfo.untyped.2d.u32.1.imm.base0 r0.x, 0"), /* resinfo.u32.2d.mode4.base0 r0.x, 0 */
+	/* dEQP-GLES31.functional.image_load_store.buffer.image_size.readonly_writeonly_7 */
+	INSTR_5XX(c3e60000_00000e00, "resinfo.4d r0.x, g[0]"), /* resinfo.u32.1dtype r0.x, 0 */
+	/* dEQP-GLES31.functional.image_load_store.2d.image_size.readonly_writeonly_32x32.txt */
+	INSTR_5XX(c3e60000_00000200, "resinfo.2d r0.x, g[0]"), /* resinfo.u32.2d r0.x, 0 */
+	/* dEQP-GLES31.functional.image_load_store.3d.image_size.readonly_writeonly_12x34x56 */
+	INSTR_5XX(c3e60000_00000c00, "resinfo.3d r0.x, g[0]"), /* resinfo.u32.3d r0.x, 0 */
+
+	/* ldgb */
+	/* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_vec4 */
+	INSTR_5XX(c6e20000_06003600, "ldgb.untyped.4d.f32.4 r0.x, g[0], r0.x, r1.z"), /* ldgb.a.untyped.1dtype.f32.4 r0.x, g[r0.x], r1.z, 0 */
+	/* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_ivec4 */
+	INSTR_5XX(c6ea0000_06003600, "ldgb.untyped.4d.s32.4 r0.x, g[0], r0.x, r1.z"), /* ldgb.a.untyped.1dtype.s32.4 r0.x, g[r0.x], r1.z, 0 */
+	/* dEQP-GLES31.functional.ssbo.layout.single_basic_type.packed.mediump_float */
+	INSTR_5XX(c6e20000_02000600, "ldgb.untyped.4d.f32.1 r0.x, g[0], r0.x, r0.z"), /* ldgb.a.untyped.1dtype.f32.1 r0.x, g[r0.x], r0.z, 0 */
+	/* dEQP-GLES31.functional.ssbo.layout.random.vector_types.0 */
+	INSTR_5XX(c6ea0008_14002600, "ldgb.untyped.4d.s32.3 r2.x, g[0], r0.x, r5.x"), /* ldgb.a.untyped.1dtype.s32.3 r2.x, g[r0.x], r5.x, 0 */
+	INSTR_5XX(c6ea0204_1401a600, "ldgb.untyped.4d.s32.3 r1.x, g[1], r1.z, r5.x"), /* ldgb.a.untyped.1dtype.s32.3 r1.x, g[r1.z], r5.x, 1 */
 
 	/* discard stuff */
 	INSTR_6XX(42b400f8_20010004, "cmps.s.eq p0.x, r1.x, 1"),
