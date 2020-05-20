@@ -614,7 +614,7 @@ get_alu_src_raw(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
                                                      raw_type,
                                                      used_channels);
 
-      SpvId constituents[NIR_MAX_VEC_COMPONENTS];
+      SpvId constituents[NIR_MAX_VEC_COMPONENTS] = {0};
       for (unsigned i = 0; i < used_channels; ++i)
         constituents[i] = def;
 
@@ -627,7 +627,7 @@ get_alu_src_raw(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
                                                      raw_type,
                                                      used_channels);
 
-      uint32_t components[NIR_MAX_VEC_COMPONENTS];
+      uint32_t components[NIR_MAX_VEC_COMPONENTS] = {0};
       size_t num_components = 0;
       for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
          if (!nir_alu_instr_channel_used(alu, src, i))
