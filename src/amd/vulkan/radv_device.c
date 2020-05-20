@@ -1250,7 +1250,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			VkPhysicalDeviceShaderClockFeaturesKHR *features =
 				(VkPhysicalDeviceShaderClockFeaturesKHR *)ext;
 			features->shaderSubgroupClock = true;
-			features->shaderDeviceClock = false;
+			features->shaderDeviceClock = pdevice->rad_info.chip_class >= GFX8;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
