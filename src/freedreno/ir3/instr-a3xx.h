@@ -774,7 +774,7 @@ typedef struct PACKED {
 	uint32_t src_ssbo : 8;
 	uint32_t pad2     : 3;  // type
 	uint32_t g        : 1;
-	uint32_t pad3     : 1;
+	uint32_t src_ssbo_im : 1;
 	uint32_t pad4     : 10; // opc/jmp_tgt/sync/opc_cat
 } instr_cat6ldgb_t;
 

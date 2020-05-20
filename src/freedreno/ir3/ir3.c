@@ -740,6 +740,7 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 			/* first src is src_ssbo: */
 			iassert(src1->flags & IR3_REG_IMMED);
 			ldgb->src_ssbo = src1->uim_val;
+			ldgb->src_ssbo_im = 0x1;
 
 			ldgb->src1 = reg(src2, info, instr->repeat, IR3_REG_IMMED);
 			ldgb->src1_im = !!(src2->flags & IR3_REG_IMMED);
@@ -748,14 +749,13 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 
 			ldgb->src3 = reg(src4, info, instr->repeat, 0);
 			ldgb->pad0 = 0x1;
-			ldgb->pad3 = 0x1;
 		} else {
 			ldgb->src1 = reg(src1, info, instr->repeat, IR3_REG_IMMED);
 			ldgb->src1_im = !!(src1->flags & IR3_REG_IMMED);
 			ldgb->src2 = reg(src2, info, instr->repeat, IR3_REG_IMMED);
 			ldgb->src2_im = !!(src2->flags & IR3_REG_IMMED);
 			ldgb->pad0 = 0x1;
-			ldgb->pad3 = 0x0;
+			ldgb->src_ssbo_im = 0x0;
 		}
 
 		return 0;
@@ -783,7 +783,7 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 		ldgb->src2_im = !!(src3->flags & IR3_REG_IMMED);
 
 		ldgb->pad0 = 0x0;
-		ldgb->pad3 = 0x1;
+		ldgb->src_ssbo_im = true;
 
 		return 0;
 	} else if (instr->opc == OPC_RESINFO) {
@@ -794,8 +794,8 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 		ldgb->dst = reg(dst, info, instr->repeat, IR3_REG_R | IR3_REG_HALF);
 
 		/* first src is src_ssbo: */
-		iassert(src1->flags & IR3_REG_IMMED);
-		ldgb->src_ssbo = src1->uim_val;
+		ldgb->src_ssbo = reg(src1, info, instr->repeat, IR3_REG_IMMED);
+		ldgb->src_ssbo_im = !!(src1->flags & IR3_REG_IMMED);
 
 		return 0;
 	} else if ((instr->opc == OPC_STGB) || (instr->opc == OPC_STIB)) {

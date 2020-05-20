@@ -673,12 +673,13 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 	instr_cat6_t *cat6 = &instr->cat6;
 	char sd = 0, ss = 0;  /* dst/src address space */
 	bool nodst = false;
-	struct reginfo dst, src1, src2;
+	struct reginfo dst, src1, src2, ssbo;
 	int src1off = 0, dstoff = 0;
 
 	memset(&dst, 0, sizeof(dst));
 	memset(&src1, 0, sizeof(src1));
 	memset(&src2, 0, sizeof(src2));
+	memset(&ssbo, 0, sizeof(ssbo));
 
 	switch (_OPC(6, cat6->opc)) {
 	case OPC_RESINFO:
@@ -852,8 +853,8 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 			print_src(ctx, &src3);  /* 64b byte offset.. */
 
 			if (debug & PRINT_VERBOSE) {
-				fprintf(ctx->out, " (pad0=%x, pad3=%x, mustbe0=%x)", cat6->ldgb.pad0,
-						cat6->ldgb.pad3, cat6->ldgb.mustbe0);
+				fprintf(ctx->out, " (pad0=%x, mustbe0=%x)", cat6->ldgb.pad0,
+						cat6->ldgb.mustbe0);
 			}
 		} else { /* ss == 'l' */
 			fprintf(ctx->out, "l[");
@@ -862,19 +863,24 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 			print_src(ctx, &src2);  /* value */
 
 			if (debug & PRINT_VERBOSE) {
-				fprintf(ctx->out, " (src3=%x, pad0=%x, pad3=%x, mustbe0=%x)",
+				fprintf(ctx->out, " (src3=%x, pad0=%x, src_ssbo_im=%x, mustbe0=%x)",
 						cat6->ldgb.src3, cat6->ldgb.pad0,
-						cat6->ldgb.pad3, cat6->ldgb.mustbe0);
+						cat6->ldgb.src_ssbo_im, cat6->ldgb.mustbe0);
 			}
 		}
 
 		return;
 	} else if (_OPC(6, cat6->opc) == OPC_RESINFO) {
 		dst.reg  = (reg_t)(cat6->ldgb.dst);
+		ssbo.reg = (reg_t)(cat6->ldgb.src_ssbo);
+		ssbo.im  = cat6->ldgb.src_ssbo_im;
 
 		print_src(ctx, &dst);
 		fprintf(ctx->out, ", ");
-		fprintf(ctx->out, "g[%u]", cat6->ldgb.src_ssbo);
+
+		fprintf(ctx->out, "g[");
+		print_src(ctx, &ssbo);
+		fprintf(ctx->out, "]");
 
 		return;
 	} else if (_OPC(6, cat6->opc) == OPC_LDGB) {
@@ -883,17 +889,23 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		src1.im  = cat6->ldgb.src1_im;
 		src2.reg = (reg_t)(cat6->ldgb.src2);
 		src2.im  = cat6->ldgb.src2_im;
+		ssbo.reg = (reg_t)(cat6->ldgb.src_ssbo);
+		ssbo.im  = cat6->ldgb.src_ssbo_im;
 		dst.reg  = (reg_t)(cat6->ldgb.dst);
 
 		print_src(ctx, &dst);
 		fprintf(ctx->out, ", ");
-		fprintf(ctx->out, "g[%u], ", cat6->ldgb.src_ssbo);
+
+		fprintf(ctx->out, "g[");
+		print_src(ctx, &ssbo);
+		fprintf(ctx->out, "], ");
+
 		print_src(ctx, &src1);
 		fprintf(ctx->out, ", ");
 		print_src(ctx, &src2);
 
 		if (debug & PRINT_VERBOSE)
-			fprintf(ctx->out, " (pad0=%x, pad3=%x, mustbe0=%x)", cat6->ldgb.pad0, cat6->ldgb.pad3, cat6->ldgb.mustbe0);
+			fprintf(ctx->out, " (pad0=%x, ssbo_im=%x, mustbe0=%x)", cat6->ldgb.pad0, cat6->ldgb.src_ssbo_im, cat6->ldgb.mustbe0);
 
 		return;
 	} else if (_OPC(6, cat6->opc) == OPC_LDG && cat6->a.src1_im && cat6->a.src2_im) {
