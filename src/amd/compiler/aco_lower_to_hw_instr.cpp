@@ -506,6 +506,18 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
                    Operand(stmp, bld.lm));
    }
 
+   if (src.regClass() == v1b) {
+      aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
+      sdwa->operands[0] = Operand(PhysReg{tmp}, v1);
+      sdwa->definitions[0] = Definition(PhysReg{tmp}, v1);
+      if (reduce_op == imin8 || reduce_op == imax8)
+         sdwa->sel[0] = sdwa_sbyte;
+      else
+         sdwa->sel[0] = sdwa_ubyte;
+      sdwa->dst_sel = sdwa_udword;
+      bld.insert(std::move(sdwa));
+   }
+
    bool reduction_needs_last_op = false;
    switch (op) {
    case aco_opcode::p_reduce:
