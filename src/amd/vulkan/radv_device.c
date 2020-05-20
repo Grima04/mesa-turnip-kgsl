@@ -1319,7 +1319,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			break;
 		}
 	}
-	return radv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
+	radv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 }
 
 static size_t
