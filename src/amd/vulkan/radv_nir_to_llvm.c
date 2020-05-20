@@ -3712,7 +3712,7 @@ ac_setup_rings(struct radv_shader_context *ctx)
 {
 	if (ctx->args->options->chip_class <= GFX8 &&
 	    (ctx->stage == MESA_SHADER_GEOMETRY ||
-	     ctx->args->options->key.vs_common_out.as_es || ctx->args->options->key.vs_common_out.as_es)) {
+	     ctx->args->options->key.vs_common_out.as_es)) {
 		unsigned ring = ctx->stage == MESA_SHADER_GEOMETRY ? RING_ESGS_GS
 								   : RING_ESGS_VS;
 		LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, ring, false);
