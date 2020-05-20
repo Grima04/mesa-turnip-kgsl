@@ -1073,6 +1073,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          else
             ctx.info[instr->definitions[0].tempId()].set_literal(v);
       }
+      break;
    }
    case aco_opcode::v_mul_f32: { /* omod */
       /* TODO: try to move the negate/abs modifier to the consumer instead */
