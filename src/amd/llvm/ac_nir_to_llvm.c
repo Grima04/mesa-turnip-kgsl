@@ -1470,7 +1470,8 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx,
 		break;
 	case nir_texop_tg4:
 		args->opcode = ac_image_gather4;
-		args->level_zero = true;
+                if (!args->lod && !args->bias)
+			args->level_zero = true;
 		break;
 	case nir_texop_lod:
 		args->opcode = ac_image_get_lod;
@@ -4448,8 +4449,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 			offset_src = i;
 			break;
 		case nir_tex_src_bias:
-			if (instr->op == nir_texop_txb)
-				args.bias = get_src(ctx, instr->src[i].src);
+			args.bias = get_src(ctx, instr->src[i].src);
 			break;
 		case nir_tex_src_lod: {
 			if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0)
