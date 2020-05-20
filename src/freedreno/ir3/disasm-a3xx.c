@@ -987,7 +987,8 @@ static void print_instr_cat6_a6xx(struct disasm_ctx *ctx, instr_t *instr)
 {
 	instr_cat6_a6xx_t *cat6 = &instr->cat6_a6xx;
 	struct reginfo src1, src2, ssbo;
-	bool uses_type = _OPC(6, cat6->opc) != OPC_LDC;
+	uint32_t opc = _OPC(6, cat6->opc);
+	bool uses_type = opc != OPC_LDC;
 
 	static const struct {
 		bool indirect;
@@ -1049,10 +1050,13 @@ static void print_instr_cat6_a6xx(struct disasm_ctx *ctx, instr_t *instr)
 	print_src(ctx, &src2);
 	fprintf(ctx->out, ", ");
 
-	src1.reg = (reg_t)(cat6->src1);
-	src1.full = true; // XXX
-	print_src(ctx, &src1);
-	fprintf(ctx->out, ", ");
+	if (opc != OPC_RESINFO) {
+		src1.reg = (reg_t)(cat6->src1);
+		src1.full = true; // XXX
+		print_src(ctx, &src1);
+		fprintf(ctx->out, ", ");
+	}
+
 	ssbo.reg = (reg_t)(cat6->ssbo);
 	ssbo.im = !indirect_ssbo;
 	ssbo.full = true;

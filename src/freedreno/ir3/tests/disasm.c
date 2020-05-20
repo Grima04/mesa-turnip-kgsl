@@ -76,8 +76,8 @@ static const struct test {
 	/* cat6 */
 	INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x"),
 	INSTR_6XX(c1100000_c1000000, "stl.f16 l[0], hr0.x, hr48.y"),
-	INSTR_6XX(c0260000_0063c200, "resinfo.untyped.2d.u32.1.imm r0.x, r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
-	INSTR_6XX(c0260000_0063c000, "resinfo.untyped.1d.u32.1.imm r0.x, r0.x, 0"), /* resinfo.u32.1d.mode0.base0 r0.x, 0 */
+	INSTR_6XX(c0260000_0063c200, "resinfo.untyped.2d.u32.1.imm r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
+	INSTR_6XX(c0260000_0063c000, "resinfo.untyped.1d.u32.1.imm r0.x, 0"), /* resinfo.u32.1d.mode0.base0 r0.x, 0 */
 
 	/* discard stuff */
 	INSTR_6XX(42b400f8_20010004, "cmps.s.eq p0.x, r1.x, 1"),
