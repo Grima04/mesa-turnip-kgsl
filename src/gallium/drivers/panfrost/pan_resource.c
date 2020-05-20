@@ -790,7 +790,6 @@ panfrost_generate_mipmap(
         unsigned first_layer,
         unsigned last_layer)
 {
-        struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_resource *rsrc = pan_resource(prsrc);
 
         /* Generating a mipmap invalidates the written levels, so make that
@@ -801,30 +800,13 @@ panfrost_generate_mipmap(
         for (unsigned l = base_level + 1; l <= last_level; ++l)
                 rsrc->slices[l].initialized = false;
 
-        /* Beyond that, we just delegate the hard stuff. We're careful to
-         * include flushes on both ends to make sure the data is really valid.
-         * We could be doing a lot better perf-wise, especially once we have
-         * reorder-type optimizations in place. But for now prioritize
-         * correctness. */
-
-        panfrost_flush_batches_accessing_bo(ctx, rsrc->bo, PAN_BO_ACCESS_RW);
-        panfrost_bo_wait(rsrc->bo, INT64_MAX, PAN_BO_ACCESS_RW);
-
-        /* We've flushed the original buffer if needed, now trigger a blit */
+        /* Beyond that, we just delegate the hard stuff. */
 
         bool blit_res = util_gen_mipmap(
                                 pctx, prsrc, format,
                                 base_level, last_level,
                                 first_layer, last_layer,
                                 PIPE_TEX_FILTER_LINEAR);
-
-        /* If the blit was successful, flush once more. If it wasn't, well, let
-         * the gallium frontend deal with it. */
-
-        if (blit_res) {
-                panfrost_flush_batches_accessing_bo(ctx, rsrc->bo, PAN_BO_ACCESS_WRITE);
-                panfrost_bo_wait(rsrc->bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
-        }
 
         return blit_res;
 }
