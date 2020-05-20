@@ -1241,6 +1241,8 @@ struct anv_pipeline_cache {
    struct hash_table *                          nir_cache;
 
    struct hash_table *                          cache;
+
+   bool                                         external_sync;
 };
 
 struct nir_xfb_info;
