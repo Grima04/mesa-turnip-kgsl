@@ -244,6 +244,7 @@ zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_query *query;
    LIST_FOR_EACH_ENTRY(query, &ctx->active_queries, active_list) {
+      vkCmdResetQueryPool(batch->cmdbuf, query->query_pool, query->curr_query, 1);
       begin_query(ctx, query);
    }
 }
