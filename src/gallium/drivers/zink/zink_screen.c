@@ -743,6 +743,7 @@ static struct pipe_screen *
 zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
+   bool have_cond_render_ext = false;
    if (!screen)
       return NULL;
 
@@ -752,8 +753,6 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    screen->pdev = choose_pdev(screen->instance);
    screen->gfx_queue = find_gfx_queue(screen->pdev);
 
-   vkGetPhysicalDeviceProperties(screen->pdev, &screen->props);
-   vkGetPhysicalDeviceFeatures(screen->pdev, &screen->feats);
    vkGetPhysicalDeviceMemoryProperties(screen->pdev, &screen->mem_props);
 
    screen->have_X8_D24_UNORM_PACK32 = zink_is_depth_format_supported(screen,
@@ -779,11 +778,30 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
                screen->have_KHR_external_memory_fd = true;
             if (!strcmp(extensions[i].extensionName,
                         VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME))
-               screen->have_EXT_conditional_rendering = true;
+               have_cond_render_ext = true;
+
          }
          FREE(extensions);
       }
    }
+   VkPhysicalDeviceFeatures2 feats = {};
+   VkPhysicalDeviceConditionalRenderingFeaturesEXT cond_render_feats = {};
+
+   feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+   if (have_cond_render_ext) {
+      cond_render_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
+      cond_render_feats.pNext = feats.pNext;
+      feats.pNext = &cond_render_feats;
+   }
+   vkGetPhysicalDeviceFeatures2(screen->pdev, &feats);
+   memcpy(&screen->feats, &feats.features, sizeof(screen->feats));
+   if (have_cond_render_ext && cond_render_feats.conditionalRendering)
+      screen->have_EXT_conditional_rendering = true;
+
+   VkPhysicalDeviceProperties2 props = {};
+   props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+   vkGetPhysicalDeviceProperties2(screen->pdev, &props);
+   memcpy(&screen->props, &props.properties, sizeof(screen->props));
 
    if (!screen->have_KHR_maintenance1) {
       debug_printf("ZINK: VK_KHR_maintenance1 required!\n");
