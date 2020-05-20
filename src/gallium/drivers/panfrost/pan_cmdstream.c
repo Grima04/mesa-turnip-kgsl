@@ -647,6 +647,8 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 void *rts)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
+        struct panfrost_shader_state *fs;
+        fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
         SET_BIT(fragmeta->unknown2_4, MALI_NO_DITHER,
                 (dev->quirks & MIDGARD_SFBD) && ctx->blend &&
@@ -721,7 +723,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 }
 
                 SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD,
-                        !blend[0].no_blending);
+                        !blend[0].no_blending || fs->can_discard); 
                 return;
         }
 
@@ -730,8 +732,6 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
         for (unsigned i = 0; i < rt_count; ++i) {
                 if (dev->quirks & IS_BIFROST) {
                         struct bifrost_blend_rt *brts = rts;
-                        struct panfrost_shader_state *fs;
-                        fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
                         brts[i].flags = 0x200;
                         if (blend[i].is_shader) {
@@ -825,17 +825,11 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_HELPER_INVOCATIONS,
                         fs->helper_invocations);
 
-                /* CAN_DISCARD should be set if the fragment shader possibly contains a
-                 * 'discard' instruction. It is likely this is related to optimizations
-                 * related to forward-pixel kill, as per "Mali Performance 3: Is
-                 * EGL_BUFFER_PRESERVED a good thing?" by Peter Harris */
-
                 const struct pipe_depth_stencil_alpha_state *zsa = ctx->depth_stencil;
 
                 bool depth_enabled = fs->writes_depth ||
                    (zsa && zsa->depth.enabled && zsa->depth.func != PIPE_FUNC_ALWAYS);
 
-                SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD, fs->can_discard);
                 SET_BIT(fragmeta->midgard1.flags_lo, 0x400, !depth_enabled && fs->can_discard);
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_READS_ZS, depth_enabled && fs->can_discard);
         }
