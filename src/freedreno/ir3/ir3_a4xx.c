@@ -42,8 +42,7 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *ldgb, *src0, *src1, *byte_offset, *offset;
 
-	/* can this be non-const buffer_index?  how do we handle that? */
-	int ibo_idx = ir3_ssbo_to_ibo(ctx->so->shader, nir_src_as_uint(intr->src[0]));
+	struct ir3_instruction *ssbo = ir3_ssbo_to_ibo(ctx, intr->src[0]);
 
 	byte_offset = ir3_get_src(ctx, &intr->src[1])[0];
 	offset = ir3_get_src(ctx, &intr->src[2])[0];
@@ -55,7 +54,7 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	}, 2);
 	src1 = offset;
 
-	ldgb = ir3_LDGB(b, create_immed(b, ibo_idx), 0,
+	ldgb = ir3_LDGB(b, ssbo, 0,
 			src0, 0, src1, 0);
 	ldgb->regs[0]->wrmask = MASK(intr->num_components);
 	ldgb->cat6.iim_val = intr->num_components;
@@ -78,8 +77,7 @@ emit_intrinsic_store_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	assert(wrmask == BITFIELD_MASK(intr->num_components));
 
-	/* can this be non-const buffer_index?  how do we handle that? */
-	int ibo_idx = ir3_ssbo_to_ibo(ctx->so->shader, nir_src_as_uint(intr->src[1]));
+	struct ir3_instruction *ssbo = ir3_ssbo_to_ibo(ctx, intr->src[1]);
 
 	byte_offset = ir3_get_src(ctx, &intr->src[2])[0];
 	offset = ir3_get_src(ctx, &intr->src[3])[0];
@@ -94,7 +92,7 @@ emit_intrinsic_store_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		create_immed(b, 0),
 	}, 2);
 
-	stgb = ir3_STGB(b, create_immed(b, ibo_idx), 0, src0, 0, src1, 0, src2, 0);
+	stgb = ir3_STGB(b, ssbo, 0, src0, 0, src1, 0, src2, 0);
 	stgb->cat6.iim_val = ncomp;
 	stgb->cat6.d = 4;
 	stgb->cat6.type = TYPE_U32;
@@ -129,9 +127,7 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		*offset;
 	type_t type = TYPE_U32;
 
-	/* can this be non-const buffer_index?  how do we handle that? */
-	int ibo_idx = ir3_ssbo_to_ibo(ctx->so->shader, nir_src_as_uint(intr->src[0]));
-	ssbo = create_immed(b, ibo_idx);
+	ssbo = ir3_ssbo_to_ibo(ctx, intr->src[0]);
 
 	byte_offset = ir3_get_src(ctx, &intr->src[1])[0];
 	offset = ir3_get_src(ctx, &intr->src[3])[0];
@@ -257,9 +253,8 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction *stib, *offset;
 	struct ir3_instruction * const *value = ir3_get_src(ctx, &intr->src[3]);
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
+	struct ir3_instruction * ibo = ir3_image_to_ibo(ctx, intr->src[0]);
 	unsigned ncoords = ir3_get_image_coords(intr, NULL);
-	unsigned slot = nir_src_as_uint(intr->src[0]);
-	unsigned ibo_idx = ir3_image_to_ibo(ctx->so->shader, slot);
 	unsigned ncomp = ir3_get_num_components_for_image_format(nir_intrinsic_format(intr));
 
 	/* src0 is value
@@ -274,7 +269,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	 * one over the other in various cases.
 	 */
 
-	stib = ir3_STIB(b, create_immed(b, ibo_idx), 0,
+	stib = ir3_STIB(b, ibo, 0,
 			ir3_create_collect(ctx, value, ncomp), 0,
 			ir3_create_collect(ctx, coords, ncoords), 0,
 			offset, 0);
@@ -293,13 +288,10 @@ static struct ir3_instruction *
 emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
 	struct ir3_block *b = ctx->block;
-	struct ir3_instruction *atomic, *image, *src0, *src1, *src2;
+	struct ir3_instruction *atomic, *src0, *src1, *src2;
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
+	struct ir3_instruction * image = ir3_image_to_ibo(ctx, intr->src[0]);
 	unsigned ncoords = ir3_get_image_coords(intr, NULL);
-	unsigned slot = nir_src_as_uint(intr->src[0]);
-	unsigned ibo_idx = ir3_image_to_ibo(ctx->so->shader, slot);
-
-	image = create_immed(b, ibo_idx);
 
 	/* src0 is value (or uvec2(value, compare))
 	 * src1 is coords

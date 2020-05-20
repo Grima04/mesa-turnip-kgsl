@@ -48,32 +48,6 @@ handle_bindless_cat6(struct ir3_instruction *instr, nir_src rsrc)
 	instr->cat6.base = nir_intrinsic_desc_set(intrin);
 }
 
-static struct ir3_instruction *
-ssbo_idx(struct ir3_context *ctx, nir_src src)
-{
-	if (ir3_bindless_resource(src)) {
-		ctx->so->bindless_ibo = true;
-		return ir3_get_src(ctx, &src)[0];
-	} else {
-		/* can this be non-const buffer_index?  how do we handle that? */
-		int ibo_idx = ir3_ssbo_to_ibo(ctx->so->shader, nir_src_as_uint(src));
-		return create_immed(ctx->block, ibo_idx);
-	}
-}
-
-static struct ir3_instruction *
-image_idx(struct ir3_context *ctx, nir_src src)
-{
-	if (ir3_bindless_resource(src)) {
-		ctx->so->bindless_ibo = true;
-		return ir3_get_src(ctx, &src)[0];
-	} else {
-		/* can this be non-const buffer_index?  how do we handle that? */
-		int ibo_idx = ir3_image_to_ibo(ctx->so->shader, nir_src_as_uint(src));
-		return create_immed(ctx->block, ibo_idx);
-	}
-}
-
 /* src[] = { buffer_index, offset }. No const_index */
 static void
 emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
@@ -85,7 +59,7 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 
 	offset = ir3_get_src(ctx, &intr->src[2])[0];
 
-	ldib = ir3_LDIB(b, ssbo_idx(ctx, intr->src[0]), 0, offset, 0);
+	ldib = ir3_LDIB(b, ir3_ssbo_to_ibo(ctx, intr->src[0]), 0, offset, 0);
 	ldib->regs[0]->wrmask = MASK(intr->num_components);
 	ldib->cat6.iim_val = intr->num_components;
 	ldib->cat6.d = 1;
@@ -113,7 +87,7 @@ emit_intrinsic_store_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	val = ir3_create_collect(ctx, ir3_get_src(ctx, &intr->src[0]), ncomp);
 	offset = ir3_get_src(ctx, &intr->src[3])[0];
 
-	stib = ir3_STIB(b, ssbo_idx(ctx, intr->src[1]), 0, offset, 0, val, 0);
+	stib = ir3_STIB(b, ir3_ssbo_to_ibo(ctx, intr->src[1]), 0, offset, 0, val, 0);
 	stib->cat6.iim_val = ncomp;
 	stib->cat6.d = 1;
 	stib->cat6.type = intr->src[0].ssa->bit_size == 16 ? TYPE_U16 : TYPE_U32;
@@ -148,7 +122,7 @@ emit_intrinsic_atomic_ssbo(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction *atomic, *ibo, *src0, *src1, *data, *dummy;
 	type_t type = TYPE_U32;
 
-	ibo = ssbo_idx(ctx, intr->src[0]);
+	ibo = ir3_ssbo_to_ibo(ctx, intr->src[0]);
 
 	data   = ir3_get_src(ctx, &intr->src[2])[0];
 
@@ -241,7 +215,7 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	struct ir3_instruction * const *coords = ir3_get_src(ctx, &intr->src[1]);
 	unsigned ncoords = ir3_get_image_coords(intr, NULL);
 
-	ldib = ir3_LDIB(b, image_idx(ctx, intr->src[0]), 0,
+	ldib = ir3_LDIB(b, ir3_image_to_ibo(ctx, intr->src[0]), 0,
 					ir3_create_collect(ctx, coords, ncoords), 0);
 	ldib->regs[0]->wrmask = MASK(intr->num_components);
 	ldib->cat6.iim_val = intr->num_components;
@@ -269,7 +243,7 @@ emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	/* src0 is offset, src1 is value:
 	 */
-	stib = ir3_STIB(b, image_idx(ctx, intr->src[0]), 0,
+	stib = ir3_STIB(b, ir3_image_to_ibo(ctx, intr->src[0]), 0,
 			ir3_create_collect(ctx, coords, ncoords), 0,
 			ir3_create_collect(ctx, value, ncomp), 0);
 	stib->cat6.iim_val = ncomp;
@@ -293,7 +267,7 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction *value = ir3_get_src(ctx, &intr->src[3])[0];
 	unsigned ncoords = ir3_get_image_coords(intr, NULL);
 
-	ibo = image_idx(ctx, intr->src[0]);
+	ibo = ir3_image_to_ibo(ctx, intr->src[0]);
 
 	/* So this gets a bit creative:
 	 *
