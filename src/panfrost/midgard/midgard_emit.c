@@ -200,7 +200,8 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
         unsigned sz = nir_alu_type_get_type_size(T);
 
         if (reg_mode == midgard_reg_mode_64) {
-                unsigned components = 64 / sz;
+                assert(sz == 64 || sz == 32);
+                unsigned components = (sz == 32) ? 4 : 2;
 
                 packed = mir_pack_swizzle_64(swizzle, components);
 
