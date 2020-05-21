@@ -357,6 +357,48 @@ preprocess_nir(nir_shader *nir,
    nir_optimize(nir, stage, false);
 }
 
+/* FIXME: This is basically the same code at anv, tu and radv. Move to common
+ * place?
+ */
+static struct nir_spirv_specialization*
+vk_spec_info_to_nir_spirv(const VkSpecializationInfo *spec_info,
+                          uint32_t *out_num_spec_entries)
+{
+   if (spec_info == NULL || spec_info->mapEntryCount == 0)
+      return NULL;
+
+   uint32_t num_spec_entries = spec_info->mapEntryCount;
+   struct nir_spirv_specialization *spec_entries = calloc(num_spec_entries, sizeof(*spec_entries));
+
+   for (uint32_t i = 0; i < num_spec_entries; i++) {
+      VkSpecializationMapEntry entry = spec_info->pMapEntries[i];
+      const void *data = spec_info->pData + entry.offset;
+      assert(data + entry.size <= spec_info->pData + spec_info->dataSize);
+
+      spec_entries[i].id = spec_info->pMapEntries[i].constantID;
+      switch (entry.size) {
+      case 8:
+         spec_entries[i].value.u64 = *(const uint64_t *)data;
+         break;
+      case 4:
+         spec_entries[i].value.u32 = *(const uint32_t *)data;
+         break;
+      case 2:
+         spec_entries[i].value.u16 = *(const uint16_t *)data;
+         break;
+      case 1:
+         spec_entries[i].value.u8 = *(const uint8_t *)data;
+         break;
+      default:
+         assert(!"Invalid spec constant size");
+         break;
+      }
+   }
+
+   *out_num_spec_entries = num_spec_entries;
+   return spec_entries;
+}
+
 static nir_shader *
 shader_module_compile_to_nir(struct v3dv_device *device,
                              struct v3dv_pipeline_stage *stage)
@@ -372,8 +414,8 @@ shader_module_compile_to_nir(struct v3dv_device *device,
          v3dv_print_spirv(stage->module->data, stage->module->size, stderr);
 
       uint32_t num_spec_entries = 0;
-      struct nir_spirv_specialization *spec_entries = NULL;
-
+      struct nir_spirv_specialization *spec_entries =
+         vk_spec_info_to_nir_spirv(stage->spec_info, &num_spec_entries);
       const struct spirv_to_nir_options spirv_options = default_spirv_options;
       nir = spirv_to_nir(spirv, stage->module->size / 4,
                          spec_entries, num_spec_entries,
@@ -1070,6 +1112,7 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
    p_stage->entrypoint = src->entrypoint;
    p_stage->module = src->module;
    p_stage->nir = nir_shader_clone(NULL, src->nir);
+   p_stage->spec_info = src->spec_info;
 
    /* Technically we could share the hash_table, but having their own makes
     * destroy p_stage more straightforward
@@ -1366,6 +1409,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          p_stage->is_coord = false;
       p_stage->entrypoint = sinfo->pName;
       p_stage->module = v3dv_shader_module_from_handle(sinfo->module);
+      p_stage->spec_info = sinfo->pSpecializationInfo;
 
       pipeline->active_stages |= sinfo->stage;
 
