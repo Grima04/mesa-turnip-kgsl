@@ -1484,8 +1484,8 @@ NineDevice9_UpdateTexture( struct NineDevice9 *This,
      * That should satisfy the constraints (and instead of crashing for some cases we return D3D_OK)
      */
 
-    last_src_level = (srcb->base.usage & D3DUSAGE_AUTOGENMIPMAP) ? 0 : srcb->base.info.last_level;
-    last_dst_level = (dstb->base.usage & D3DUSAGE_AUTOGENMIPMAP) ? 0 : dstb->base.info.last_level;
+    last_src_level = srcb->level_count-1;
+    last_dst_level = dstb->level_count-1;
 
     for (m = 0; m <= last_src_level; ++m) {
         unsigned w = u_minify(srcb->base.info.width0, m);

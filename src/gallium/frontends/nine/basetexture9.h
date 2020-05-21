@@ -47,6 +47,8 @@ struct NineBaseTexture9
     boolean dirty_mip;
     D3DTEXTUREFILTERTYPE mipfilter;
 
+    unsigned level_count;
+
     /* Specific to managed textures */
     struct {
         boolean dirty;
