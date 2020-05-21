@@ -101,6 +101,21 @@ typedef struct midgard_instruction {
         nir_alu_type src_types[MIR_SRC_COUNT];
         nir_alu_type dest_type;
 
+        /* Modifiers, depending on type */
+        union {
+                struct {
+                        bool src_abs[MIR_SRC_COUNT];
+                        bool src_neg[MIR_SRC_COUNT];
+                };
+
+                struct {
+                        bool src_shift[MIR_SRC_COUNT];
+                };
+        };
+
+        /* Out of the union for csel (could maybe be fixed..) */
+        bool src_invert[MIR_SRC_COUNT];
+
         /* Special fields for an ALU instruction */
         midgard_reg_info registers;
 
@@ -129,9 +144,6 @@ typedef struct midgard_instruction {
          * time */
 
         uint16_t mask;
-
-        /* For accepting ALU ops - invert the nth source */
-        bool src_invert[MIR_SRC_COUNT];
 
         /* Hint for the register allocator not to spill the destination written
          * from this instruction (because it is a spill/unspill node itself).
