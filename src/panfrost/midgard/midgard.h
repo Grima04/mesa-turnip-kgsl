@@ -724,7 +724,7 @@ __attribute__((__packed__))
 
         /* In immediate mode, each offset field is an immediate range [0, 7].
          *
-         * In register mode, offset_x becomes a register full / select / upper
+         * In register mode, offset_x becomes a register (full, select, upper)
          * triplet followed by a vec3 swizzle is splattered across
          * offset_y/offset_z in a genuinely bizarre way.
          *
