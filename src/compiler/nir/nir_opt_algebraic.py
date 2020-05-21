@@ -1604,6 +1604,16 @@ for t in ['int', 'uint', 'float']:
                           ('ior', (xge, a, xN_max), (xge, (x2xN, a), b))), cond),
             ]
 
+# Convert masking followed by signed downcast to just unsigned downcast
+optimizations += [
+    (('i2i32', ('iand', 'a@64', 0xffffffff)), ('u2u32', a)),
+    (('i2i16', ('iand', 'a@32', 0xffff)), ('u2u16', a)),
+    (('i2i16', ('iand', 'a@64', 0xffff)), ('u2u16', a)),
+    (('i2i8', ('iand', 'a@16', 0xff)), ('u2u8', a)),
+    (('i2i8', ('iand', 'a@32', 0xff)), ('u2u8', a)),
+    (('i2i8', ('iand', 'a@64', 0xff)), ('u2u8', a)),
+]
+
 def fexp2i(exp, bits):
    # Generate an expression which constructs value 2.0^exp or 0.0.
    #
