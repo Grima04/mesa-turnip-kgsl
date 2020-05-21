@@ -568,37 +568,29 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 	}
 
 	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(emit->ctx->batch->submit,
-			4 * (5 + cnt * 7), FD_RINGBUFFER_STREAMING);
+			4 * (5 + cnt * 3 + vtx->vertexbuf.count * 4), FD_RINGBUFFER_STREAMING);
 
 	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_0, 1);
-	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(cnt) |
+	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(vtx->vertexbuf.count) |
 			A6XX_VFD_CONTROL_0_DECODE_CNT(cnt));
 
-	OUT_PKT4(ring, REG_A6XX_VFD_FETCH(0), 4 * cnt);
-	for (int32_t j = 0; j < cnt; j++) {
-		int32_t i = map[j];
-		struct pipe_vertex_element *elem = &vtx->vtx->pipe[i];
-		const struct pipe_vertex_buffer *vb =
-			&vtx->vertexbuf.vb[elem->vertex_buffer_index];
+	OUT_PKT4(ring, REG_A6XX_VFD_FETCH(0), 4 * vtx->vertexbuf.count);
+	for (int32_t j = 0; j < vtx->vertexbuf.count; j++) {
+		const struct pipe_vertex_buffer *vb = &vtx->vertexbuf.vb[j];
 		struct fd_resource *rsc = fd_resource(vb->buffer.resource);
-		uint32_t off = vb->buffer_offset;
-		uint32_t size = fd_bo_size(rsc->bo) - off;
+		if (rsc == NULL) {
+			OUT_RING(ring, 0);
+			OUT_RING(ring, 0);
+			OUT_RING(ring, 0);
+			OUT_RING(ring, 0);
+		} else {
+			uint32_t off = vb->buffer_offset;
+			uint32_t size = fd_bo_size(rsc->bo) - off;
 
-#ifdef DEBUG
-		/* see dEQP-GLES31.stress.vertex_attribute_binding.buffer_bounds.bind_vertex_buffer_offset_near_wrap_10
-		 */
-		if (off > fd_bo_size(rsc->bo)) {
-			OUT_RING(ring, 0);
-			OUT_RING(ring, 0);
-			OUT_RING(ring, 0);
-			OUT_RING(ring, 0);
-			continue;
+			OUT_RELOC(ring, rsc->bo, off, 0, 0);
+			OUT_RING(ring, size);           /* VFD_FETCH[j].SIZE */
+			OUT_RING(ring, vb->stride);     /* VFD_FETCH[j].STRIDE */
 		}
-#endif
-
-		OUT_RELOC(ring, rsc->bo, off, 0, 0);
-		OUT_RING(ring, size);           /* VFD_FETCH[j].SIZE */
-		OUT_RING(ring, vb->stride);     /* VFD_FETCH[j].STRIDE */
 	}
 
 	OUT_PKT4(ring, REG_A6XX_VFD_DECODE(0), 2 * cnt);
@@ -610,7 +602,7 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 		bool isint = util_format_is_pure_integer(pfmt);
 		debug_assert(fmt != FMT6_NONE);
 
-		OUT_RING(ring, A6XX_VFD_DECODE_INSTR_IDX(j) |
+		OUT_RING(ring, A6XX_VFD_DECODE_INSTR_IDX(elem->vertex_buffer_index) |
 				A6XX_VFD_DECODE_INSTR_OFFSET(elem->src_offset) |
 				A6XX_VFD_DECODE_INSTR_FORMAT(fmt) |
 				COND(elem->instance_divisor, A6XX_VFD_DECODE_INSTR_INSTANCED) |
