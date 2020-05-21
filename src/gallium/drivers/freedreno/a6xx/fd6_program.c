@@ -806,6 +806,18 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_PKT4(ring, REG_A6XX_PC_PRIMID_CNTL, 1);
 	OUT_RING(ring, COND(primid_passthru, A6XX_PC_PRIMID_CNTL_PRIMID_PASSTHRU));
 
+	uint32_t non_sysval_input_count = 0;
+	for (uint32_t i = 0; i < vs->inputs_count; i++)
+		if (!vs->inputs[i].sysval)
+			non_sysval_input_count++;
+
+	OUT_PKT4(ring, REG_A6XX_VFD_DEST_CNTL(0), non_sysval_input_count);
+	for (uint32_t i = 0; i < non_sysval_input_count; i++) {
+		assert(vs->inputs[i].compmask);
+		OUT_RING(ring, A6XX_VFD_DEST_CNTL_INSTR_WRITEMASK(vs->inputs[i].compmask) |
+				A6XX_VFD_DEST_CNTL_INSTR_REGID(vs->inputs[i].regid));
+	}
+
 	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_1, 6);
 	OUT_RING(ring, A6XX_VFD_CONTROL_1_REGID4VTX(vertex_regid) |
 			A6XX_VFD_CONTROL_1_REGID4INST(instance_regid) |
