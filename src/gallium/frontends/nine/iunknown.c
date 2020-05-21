@@ -205,7 +205,7 @@ NineUnknown_SetPrivateData( struct NineUnknown *This,
 
     /* data consists of a header and the actual data. avoiding 2 mallocs */
     header = CALLOC_VARIANT_LENGTH_STRUCT(pheader, SizeOfData);
-    if (!header) { return E_OUTOFMEMORY; }
+    if (!header) { DBG("Returning E_OUTOFMEMORY\n"); return E_OUTOFMEMORY; }
     header->unknown = (Flags & D3DSPD_IUNKNOWN) ? TRUE : FALSE;
 
     /* if the refguid already exists, delete it */
@@ -223,6 +223,7 @@ NineUnknown_SetPrivateData( struct NineUnknown *This,
     memcpy(header_data, user_data, header->size);
     memcpy(&header->guid, refguid, sizeof(header->guid));
 
+    DBG("New header %p, size %d\n", header, (int)header->size);
     _mesa_hash_table_insert(This->pdata, &header->guid, header);
     if (header->unknown) { IUnknown_AddRef(*(IUnknown **)header_data); }
     return D3D_OK;
@@ -245,22 +246,26 @@ NineUnknown_GetPrivateData( struct NineUnknown *This,
     (void)guid_str;
 
     header = util_hash_table_get(This->pdata, refguid);
-    if (!header) { return D3DERR_NOTFOUND; }
+    if (!header) { DBG("Returning D3DERR_NOTFOUND\n"); return D3DERR_NOTFOUND; }
 
     user_assert(pSizeOfData, E_POINTER);
     sizeofdata = *pSizeOfData;
     *pSizeOfData = header->size;
+    DBG("Found header %p, size %d. Requested max %d\n", header, (int)header->size, (int)sizeofdata);
 
     if (!pData) {
+        DBG("Returning early D3D_OK\n");
         return D3D_OK;
     }
     if (sizeofdata < header->size) {
+        DBG("Returning D3DERR_MOREDATA\n");
         return D3DERR_MOREDATA;
     }
 
     header_data = (void *)header + sizeof(*header);
     if (header->unknown) { IUnknown_AddRef(*(IUnknown **)header_data); }
     memcpy(pData, header_data, header->size);
+    DBG("Returning D3D_OK\n");
 
     return D3D_OK;
 }
@@ -277,9 +282,12 @@ NineUnknown_FreePrivateData( struct NineUnknown *This,
     (void)guid_str;
 
     header = util_hash_table_get(This->pdata, refguid);
-    if (!header)
+    if (!header) {
+        DBG("Nothing to free\n");
         return D3DERR_NOTFOUND;
+    }
 
+    DBG("Freeing %p\n", header);
     ht_guid_delete(NULL, header, NULL);
     _mesa_hash_table_remove_key(This->pdata, refguid);
 

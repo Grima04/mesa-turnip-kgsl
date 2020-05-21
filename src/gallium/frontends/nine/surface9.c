@@ -359,6 +359,7 @@ NineSurface9_GetDesc( struct NineSurface9 *This,
                       D3DSURFACE_DESC *pDesc )
 {
     user_assert(pDesc != NULL, E_POINTER);
+    DBG("This=%p pDesc=%p\n", This, pDesc);
     *pDesc = This->desc;
     return D3D_OK;
 }
@@ -494,7 +495,6 @@ NineSurface9_LockRect( struct NineSurface9 *This,
             stride = This->stride_internal;
             data = This->data_internal;
         }
-        DBG("returning system memory\n");
         /* ATI1 and ATI2 need special handling, because of d3d9 bug.
          * We must advertise to the application as if it is uncompressed
          * and bpp 8, and the app has a workaround to work with the fact
@@ -510,6 +510,7 @@ NineSurface9_LockRect( struct NineSurface9 *This,
                                                 box.x,
                                                 box.y);
         }
+        DBG("returning system memory %p\n", pLockedRect->pBits);
     } else {
         bool no_refs = !p_atomic_read(&This->base.base.bind) &&
             !(This->base.base.container && p_atomic_read(&This->base.base.container->bind));

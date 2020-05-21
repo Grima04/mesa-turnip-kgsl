@@ -243,6 +243,7 @@ NineTexture9_GetLevelDesc( struct NineTexture9 *This,
     DBG("This=%p Level=%d pDesc=%p\n", This, Level, pDesc);
 
     user_assert(Level < This->base.level_count, D3DERR_INVALIDCALL);
+    user_assert(pDesc, D3DERR_INVALIDCALL);
 
     *pDesc = This->surfaces[Level]->desc;
 
@@ -257,6 +258,7 @@ NineTexture9_GetSurfaceLevel( struct NineTexture9 *This,
     DBG("This=%p Level=%d ppSurfaceLevel=%p\n", This, Level, ppSurfaceLevel);
 
     user_assert(Level < This->base.level_count, D3DERR_INVALIDCALL);
+    user_assert(ppSurfaceLevel, D3DERR_INVALIDCALL);
 
     NineUnknown_AddRef(NineUnknown(This->surfaces[Level]));
     *ppSurfaceLevel = (IDirect3DSurface9 *)This->surfaces[Level];

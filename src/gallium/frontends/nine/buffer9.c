@@ -358,6 +358,7 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
             This->maps[This->nmaps].buf = This->buf;
             This->nmaps++;
             This->nlocks++;
+            DBG("Returning %p\n", nine_upload_buffer_get_map(This->buf) + OffsetToLock);
             *ppbData = nine_upload_buffer_get_map(This->buf) + OffsetToLock;
             return D3D_OK;
         } else {

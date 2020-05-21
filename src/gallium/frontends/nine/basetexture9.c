@@ -588,6 +588,8 @@ NineBaseTexture9_PreLoad( struct NineBaseTexture9 *This )
 void
 NineBaseTexture9_UnLoad( struct NineBaseTexture9 *This )
 {
+    DBG("This=%p\n", This);
+
     if (This->base.pool != D3DPOOL_MANAGED ||
         This->managed.lod_resident == -1)
         return;
