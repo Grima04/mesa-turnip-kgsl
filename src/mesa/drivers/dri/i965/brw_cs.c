@@ -32,25 +32,34 @@
 #include "brw_program.h"
 #include "compiler/glsl/ir_uniform.h"
 
-uint32_t
-brw_cs_group_size(const struct brw_context *brw)
+struct brw_cs_parameters
+brw_cs_get_parameters(const struct brw_context *brw)
 {
    assert(brw->cs.base.prog_data);
    struct brw_cs_prog_data *cs_prog_data =
       brw_cs_prog_data(brw->cs.base.prog_data);
 
+   struct brw_cs_parameters params = {};
+
    if (brw->compute.group_size) {
       /* With ARB_compute_variable_group_size the group size is set at
        * dispatch time, so we can't use the one provided by the compiler.
        */
-      return brw->compute.group_size[0] *
-             brw->compute.group_size[1] *
-             brw->compute.group_size[2];
+      params.group_size = brw->compute.group_size[0] *
+                          brw->compute.group_size[1] *
+                          brw->compute.group_size[2];
    } else {
-      return cs_prog_data->local_size[0] *
-             cs_prog_data->local_size[1] *
-             cs_prog_data->local_size[2];
+      params.group_size = cs_prog_data->local_size[0] *
+                          cs_prog_data->local_size[1] *
+                          cs_prog_data->local_size[2];
    }
+
+   params.simd_size =
+      brw_cs_simd_size_for_group_size(&brw->screen->devinfo,
+                                      cs_prog_data, params.group_size);
+   params.threads = DIV_ROUND_UP(params.group_size, params.simd_size);
+
+   return params;
 }
 
 static void
