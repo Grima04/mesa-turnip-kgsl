@@ -92,6 +92,10 @@ panfrost_format_supports_afbc(enum pipe_format format)
         if (util_format_is_rgba8_variant(desc))
                 return true;
 
+        /* Gross, but probably good enough */
+        if (format == PIPE_FORMAT_R8G8B8_UNORM)
+                return true;
+
         /* Only Z24S8 variants are compressible as Z/S */
 
         if (panfrost_is_z24s8_variant(format))
