@@ -597,6 +597,7 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
 {
    shader->info.num_textures = 0;
    shader->info.num_images = 0;
+   shader->info.image_buffers = 0;
    shader->info.last_msaa_image = -1;
 
    nir_foreach_variable(var, &shader->uniforms) {
@@ -608,7 +609,17 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
          continue;
 
       shader->info.num_textures += glsl_type_get_sampler_count(var->type);
-      shader->info.num_images += glsl_type_get_image_count(var->type);
+
+      unsigned num_image_slots = glsl_type_get_image_count(var->type);
+      if (num_image_slots) {
+         const struct glsl_type *image_type = glsl_without_array(var->type);
+
+         if (glsl_get_sampler_dim(image_type) == GLSL_SAMPLER_DIM_BUF) {
+            shader->info.image_buffers |=
+               BITFIELD_RANGE(shader->info.num_images, num_image_slots);
+         }
+         shader->info.num_images += num_image_slots;
+      }
 
       /* Assuming image slots don't have holes (e.g. OpenGL) */
       if (glsl_type_is_image(var->type) &&
