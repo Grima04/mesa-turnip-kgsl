@@ -821,7 +821,8 @@ mir_schedule_condition(compiler_context *ctx,
 static midgard_bundle
 mir_schedule_texture(
                 midgard_instruction **instructions,
-                BITSET_WORD *worklist, unsigned len)
+                BITSET_WORD *worklist, unsigned len,
+                bool is_vertex)
 {
         struct midgard_predicate predicate = {
                 .tag = TAG_TEXTURE_4,
@@ -836,7 +837,8 @@ mir_schedule_texture(
 
         struct midgard_bundle out = {
                 .tag = ins->texture.op == TEXTURE_OP_BARRIER ?
-                        TAG_TEXTURE_4_BARRIER : TAG_TEXTURE_4,
+                        TAG_TEXTURE_4_BARRIER :  is_vertex ?
+                        TAG_TEXTURE_4_VTX : TAG_TEXTURE_4,
                 .instruction_count = 1,
                 .instructions = { ins }
         };
@@ -1151,7 +1153,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
                 midgard_bundle bundle;
 
                 if (tag == TAG_TEXTURE_4)
-                        bundle = mir_schedule_texture(instructions, worklist, len);
+                        bundle = mir_schedule_texture(instructions, worklist, len, ctx->stage != MESA_SHADER_FRAGMENT);
                 else if (tag == TAG_LOAD_STORE_4)
                         bundle = mir_schedule_ldst(instructions, worklist, len);
                 else if (tag == TAG_ALU_4)
