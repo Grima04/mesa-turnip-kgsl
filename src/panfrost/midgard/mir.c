@@ -106,51 +106,28 @@ mir_single_use(compiler_context *ctx, unsigned value)
         return mir_use_count(ctx, value) <= 1;
 }
 
-static bool
-mir_nontrivial_raw_mod(midgard_vector_alu_src src, bool is_int)
+bool
+mir_nontrivial_mod(midgard_instruction *ins, unsigned i, bool check_swizzle)
 {
-        if (is_int)
-                return src.mod == midgard_int_shift;
-        else
-                return src.mod;
-}
+        bool is_int = midgard_is_integer_op(ins->alu.op);
 
-static bool
-mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask, unsigned *swizzle)
-{
-        if (mir_nontrivial_raw_mod(src, is_int)) return true;
+        if (is_int) {
+                if (ins->src_shift[i]) return true;
+        } else {
+                if (ins->src_neg[i]) return true;
+                if (ins->src_abs[i]) return true;
+        }
 
-        /* size-conversion */
-        if (src.half) return true;
+        if (ins->dest_type != ins->src_types[i]) return true;
 
-        for (unsigned c = 0; c < 16; ++c) {
-                if (!(mask & (1 << c))) continue;
-                if (swizzle[c] != c) return true;
+        if (check_swizzle) {
+                for (unsigned c = 0; c < 16; ++c) {
+                        if (!(ins->mask & (1 << c))) continue;
+                        if (ins->swizzle[i][c] != c) return true;
+                }
         }
 
         return false;
-}
-
-bool
-mir_nontrivial_source2_mod(midgard_instruction *ins)
-{
-        bool is_int = midgard_is_integer_op(ins->alu.op);
-
-        midgard_vector_alu_src src2 =
-                vector_alu_from_unsigned(ins->alu.src2);
-
-        return mir_nontrivial_mod(src2, is_int, ins->mask, ins->swizzle[1]);
-}
-
-bool
-mir_nontrivial_source2_mod_simple(midgard_instruction *ins)
-{
-        bool is_int = midgard_is_integer_op(ins->alu.op);
-
-        midgard_vector_alu_src src2 =
-                vector_alu_from_unsigned(ins->alu.src2);
-
-        return mir_nontrivial_raw_mod(src2, is_int) || src2.half;
 }
 
 bool

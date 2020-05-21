@@ -128,44 +128,6 @@ schedule_barrier(compiler_context *ctx)
 #define M_LOAD(name, T) M_LOAD_STORE(name, false, T)
 #define M_STORE(name, T) M_LOAD_STORE(name, true, T)
 
-/* Inputs a NIR ALU source, with modifiers attached if necessary, and outputs
- * the corresponding Midgard source */
-
-static midgard_vector_alu_src
-vector_alu_modifiers(bool abs, bool neg, bool is_int,
-                     bool half, bool sext)
-{
-        /* Figure out how many components there are so we can adjust.
-         * Specifically we want to broadcast the last channel so things like
-         * ball2/3 work.
-         */
-
-        midgard_vector_alu_src alu_src = {
-                .rep_low = 0,
-                .rep_high = 0,
-                .half = half
-        };
-
-        if (is_int) {
-                alu_src.mod = midgard_int_normal;
-
-                /* Sign/zero-extend if needed */
-
-                if (half) {
-                        alu_src.mod = sext ?
-                                      midgard_int_sign_extend
-                                      : midgard_int_zero_extend;
-                }
-
-                /* These should have been lowered away */
-                assert(!(abs || neg));
-        } else {
-                alu_src.mod = (abs << 0) | (neg << 1);
-        }
-
-        return alu_src;
-}
-
 M_LOAD(ld_attr_32, nir_type_uint32);
 M_LOAD(ld_vary_32, nir_type_uint32);
 M_LOAD(ld_ubo_int4, nir_type_uint32);
@@ -582,10 +544,7 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
 
 #define ALU_CHECK_CMP(sext) \
                if (src_bitsize == 16 && dst_bitsize == 32) { \
-                        half_1 = true; \
-                        half_2 = true; \
-                        sext_1 = sext; \
-                        sext_2 = sext; \
+                       /* inferred */ \
                 } else { \
                         assert(src_bitsize == dst_bitsize); \
                 } \
@@ -766,11 +725,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         midgard_dest_override dest_override =
                 midgard_dest_override_none;
 
-        /* Should we use a smaller respective source and sign-extend?  */
-
-        bool half_1 = false, sext_1 = false;
-        bool half_2 = false, sext_2 = false;
-
         /* Should we swap arguments? */
         bool flip_src12 = false;
 
@@ -897,11 +851,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         case nir_op_i2i16:
         case nir_op_i2i32:
         case nir_op_i2i64:
-                /* If we end up upscale, we'll need a sign-extend on the
-                 * operand (the second argument) */
-
-                sext_2 = true;
-                /* fallthrough */
         case nir_op_u2u8:
         case nir_op_u2u16:
         case nir_op_u2u32:
@@ -916,8 +865,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         op = midgard_alu_op_imov;
 
                 if (dst_bitsize == (src_bitsize * 2)) {
-                        /* Converting up */
-                        half_2 = true;
+                        /* inferred */
                 } else if (src_bitsize == (dst_bitsize * 2)) {
                         /* Converting down */
                         dest_override = midgard_dest_override_lower;
@@ -972,9 +920,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         /* Midgard can perform certain modifiers on output of an ALU op */
 
         unsigned outmod = 0;
-
-        bool abs[4] = { false };
-        bool neg[4] = { false };
         bool is_int = midgard_is_integer_op(op);
 
         if (midgard_is_integer_out_op(op)) {
@@ -1030,7 +975,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         if (quirk_flipped_r24) {
                 ins.src[0] = ~0;
-                mir_copy_src(&ins, instr, 0, 1, &abs[1], &neg[1], &ins.src_invert[1], is_int, broadcast_swizzle);
+                mir_copy_src(&ins, instr, 0, 1, &ins.src_abs[1], &ins.src_neg[1], &ins.src_invert[1], is_int, broadcast_swizzle);
         } else {
                 for (unsigned i = 0; i < nr_inputs; ++i) {
                         unsigned to = i;
@@ -1051,7 +996,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                                 to = 1 - to;
                         }
 
-                        mir_copy_src(&ins, instr, i, to, &abs[to], &neg[to], &ins.src_invert[to], is_int, broadcast_swizzle);
+                        mir_copy_src(&ins, instr, i, to, &ins.src_abs[to], &ins.src_neg[to], &ins.src_invert[to], is_int, broadcast_swizzle);
 
                         /* (!c) ? a : b = c ? b : a */
                         if (instr->op == nir_op_b32csel && ins.src_invert[2]) {
@@ -1064,10 +1009,10 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         if (instr->op == nir_op_fneg || instr->op == nir_op_fabs) {
                 /* Lowered to move */
                 if (instr->op == nir_op_fneg)
-                        neg[1] = !neg[1];
+                        ins.src_neg[1] ^= true;
 
                 if (instr->op == nir_op_fabs)
-                        abs[1] = true;
+                        ins.src_abs[1] = true;
         }
 
         ins.mask = mask_of(nr_components);
@@ -1077,9 +1022,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 .reg_mode = reg_mode,
                 .dest_override = dest_override,
                 .outmod = outmod,
-
-                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(abs[0], neg[0], is_int, half_1, sext_1)),
-                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(abs[1], neg[1], is_int, half_2, sext_2)),
         };
 
         /* Apply writemask if non-SSA, keeping in mind that we can't write to
@@ -2242,12 +2184,9 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                                         continue;
                         }
 
-                        /* We don't know how to handle these with a constant */
-
-                        if (mir_nontrivial_source2_mod_simple(ins) || src->rep_low || src->rep_high) {
-                                DBG("Bailing inline constant...\n");
+                        /* Should've been const folded */
+                        if (ins->src_abs[1] || ins->src_neg[1])
                                 continue;
-                        }
 
                         /* Make sure that the constant is not itself a vector
                          * by checking if all accessed values are the same. */

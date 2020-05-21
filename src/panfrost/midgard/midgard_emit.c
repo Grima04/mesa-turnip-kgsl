@@ -24,6 +24,38 @@
 #include "compiler.h"
 #include "midgard_ops.h"
 
+static midgard_int_mod
+mir_get_imod(bool shift, nir_alu_type T, bool half, bool scalar)
+{
+        if (!half) {
+                assert(!shift);
+                /* Sign-extension, really... */
+                return scalar ? 0 : midgard_int_normal;
+        }
+
+        if (shift)
+                return midgard_int_shift;
+
+        if (nir_alu_type_get_base_type(T) == nir_type_int)
+                return midgard_int_sign_extend;
+        else
+                return midgard_int_zero_extend;
+}
+
+static unsigned
+mir_pack_mod(midgard_instruction *ins, unsigned i, bool scalar)
+{
+        bool integer = midgard_is_integer_op(ins->alu.op);
+        unsigned base_size = (8 << ins->alu.reg_mode);
+        unsigned sz = nir_alu_type_get_type_size(ins->src_types[i]);
+        bool half = (sz == (base_size >> 1));
+
+        return integer ?
+                mir_get_imod(ins->src_shift[i], ins->src_types[i], half, scalar) :
+                ((ins->src_abs[i] << 0) |
+                 ((ins->src_neg[i] << 1)));
+}
+
 /* Midgard IR only knows vector ALU types, but we sometimes need to actually
  * use scalar ALU instructions, for functional or performance reasons. To do
  * this, we just demote vector ALU payloads to scalar. */
@@ -41,39 +73,13 @@ component_from_mask(unsigned mask)
 }
 
 static unsigned
-vector_to_scalar_source(unsigned u, bool is_int, bool is_full,
-                unsigned component)
+mir_pack_scalar_source(unsigned mod, bool is_full, unsigned component)
 {
-        midgard_vector_alu_src v;
-        memcpy(&v, &u, sizeof(v));
-
-        /* TODO: Integers */
-
-        midgard_scalar_alu_src s = { 0 };
-
-        if (is_full) {
-                /* For a 32-bit op, just check the source half flag */
-                s.full = !v.half;
-        } else if (!v.half) {
-                /* For a 16-bit op that's not subdivided, never full */
-                s.full = false;
-        } else {
-                /* We can't do 8-bit scalar, abort! */
-                assert(0);
-        }
-
-        /* Component indexing takes size into account */
-
-        if (s.full)
-                s.component = component << 1;
-        else
-                s.component = component;
-
-        if (is_int) {
-                /* TODO */
-        } else {
-                s.mod = v.mod;
-        }
+        midgard_scalar_alu_src s = {
+                .mod = mod,
+                .full = is_full,
+                .component = component << (is_full ? 1 : 0)
+        };
 
         unsigned o;
         memcpy(&o, &s, sizeof(s));
@@ -84,17 +90,22 @@ vector_to_scalar_source(unsigned u, bool is_int, bool is_full,
 static midgard_scalar_alu
 vector_to_scalar_alu(midgard_vector_alu v, midgard_instruction *ins)
 {
-        bool is_int = midgard_is_integer_op(v.op);
-        bool is_full = v.reg_mode == midgard_reg_mode_32;
-        bool is_inline_constant = ins->has_inline_constant;
+        bool is_full = nir_alu_type_get_type_size(ins->dest_type) == 32;
 
+        bool half_0 = nir_alu_type_get_type_size(ins->src_types[0]) == 16;
+        bool half_1 = nir_alu_type_get_type_size(ins->src_types[1]) == 16;
         unsigned comp = component_from_mask(ins->mask);
+
+        unsigned packed_src[2] = {
+                mir_pack_scalar_source(mir_pack_mod(ins, 0, true), !half_0, ins->swizzle[0][comp]),
+                mir_pack_scalar_source(mir_pack_mod(ins, 1, true), !half_1, ins->swizzle[1][comp])
+        };
 
         /* The output component is from the mask */
         midgard_scalar_alu s = {
                 .op = v.op,
-                .src1 = vector_to_scalar_source(v.src1, is_int, is_full, ins->swizzle[0][comp]),
-                .src2 = !is_inline_constant ? vector_to_scalar_source(v.src2, is_int, is_full, ins->swizzle[1][comp]) : 0,
+                .src1 = packed_src[0],
+                .src2 = packed_src[1],
                 .unknown = 0,
                 .outmod = v.outmod,
                 .output_full = is_full,
@@ -175,96 +186,125 @@ mir_pack_mask_alu(midgard_instruction *ins)
                 ins->alu.mask = effective;
 }
 
-static void
-mir_pack_swizzle_alu(midgard_instruction *ins)
+static unsigned
+mir_pack_swizzle(unsigned mask, unsigned *swizzle,
+                nir_alu_type T, midgard_reg_mode reg_mode,
+                bool op_channeled, bool *rep_low, bool *rep_high)
 {
-        midgard_vector_alu_src src[] = {
-                vector_alu_from_unsigned(ins->alu.src1),
-                vector_alu_from_unsigned(ins->alu.src2)
-        };
+        unsigned packed = 0;
+        unsigned sz = nir_alu_type_get_type_size(T);
 
-        for (unsigned i = 0; i < 2; ++i) {
-                unsigned packed = 0;
+        if (reg_mode == midgard_reg_mode_64) {
+                unsigned components = 64 / sz;
 
-                if (ins->alu.reg_mode == midgard_reg_mode_64) {
-                        unsigned sz = nir_alu_type_get_type_size(ins->src_types[i]);
-                        unsigned components = 64 / sz;
+                packed = mir_pack_swizzle_64(swizzle, components);
 
-                        packed = mir_pack_swizzle_64(ins->swizzle[i], components);
+                if (sz == 32) {
+                        bool lo = swizzle[0] >= COMPONENT_Z;
+                        bool hi = swizzle[1] >= COMPONENT_Z;
 
-                        if (sz == 32) {
-                                bool lo = ins->swizzle[i][0] >= COMPONENT_Z;
-                                bool hi = ins->swizzle[i][1] >= COMPONENT_Z;
-                                unsigned mask = mir_bytemask(ins);
+                        if (mask & 0x1) {
+                                /* We can't mix halves... */
+                                if (mask & 2)
+                                        assert(lo == hi);
 
-                                if (mask & 0xFF) {
-                                        /* We can't mix halves... */
-                                        if (mask & 0xFF00)
-                                                assert(lo == hi);
-
-                                        src[i].rep_low |= lo;
-                                } else {
-                                        src[i].rep_low |= hi;
-                                }
-                        } else if (sz < 32) {
-                                unreachable("Cannot encode 8/16 swizzle in 64-bit");
-                        }
-                } else {
-                        /* For 32-bit, swizzle packing is stupid-simple. For 16-bit,
-                         * the strategy is to check whether the nibble we're on is
-                         * upper or lower. We need all components to be on the same
-                         * "side"; that much is enforced by the ISA and should have
-                         * been lowered. TODO: 8-bit packing. TODO: vec8 */
-
-                        unsigned first = ins->mask ? ffs(ins->mask) - 1 : 0;
-                        bool upper = ins->swizzle[i][first] > 3;
-
-                        if (upper && ins->mask)
-                                assert(nir_alu_type_get_type_size(ins->src_types[i]) <= 16);
-
-                        bool dest_up =
-                                GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props) ? false :
-                                (first >= 4);
-
-                        for (unsigned c = (dest_up ? 4 : 0); c < (dest_up ? 8 : 4); ++c) {
-                                unsigned v = ins->swizzle[i][c];
-
-                                bool t_upper = v > 3;
-
-                                /* Ensure we're doing something sane */
-
-                                if (ins->mask & (1 << c)) {
-                                        assert(t_upper == upper);
-                                        assert(v <= 7);
-                                }
-
-                                /* Use the non upper part */
-                                v &= 0x3;
-
-                                packed |= v << (2 * (c % 4));
-                        }
-
-
-                        /* Replicate for now.. should really pick a side for
-                         * dot products */
-
-                        if (ins->alu.reg_mode == midgard_reg_mode_16) {
-                                src[i].rep_low = !upper;
-                                src[i].rep_high = upper;
-                        } else if (ins->alu.reg_mode == midgard_reg_mode_32) {
-                                src[i].rep_low = upper;
+                                *rep_low = lo;
                         } else {
-                                unreachable("Unhandled reg mode");
+                                *rep_low = hi;
                         }
+                } else if (sz < 32) {
+                        unreachable("Cannot encode 8/16 swizzle in 64-bit");
+                }
+        } else {
+                /* For 32-bit, swizzle packing is stupid-simple. For 16-bit,
+                 * the strategy is to check whether the nibble we're on is
+                 * upper or lower. We need all components to be on the same
+                 * "side"; that much is enforced by the ISA and should have
+                 * been lowered. TODO: 8-bit packing. TODO: vec8 */
+
+                unsigned first = mask ? ffs(mask) - 1 : 0;
+                bool upper = swizzle[first] > 3;
+
+                if (upper && mask)
+                        assert(sz <= 16);
+
+                bool dest_up = !op_channeled && (first >= 4);
+
+                for (unsigned c = (dest_up ? 4 : 0); c < (dest_up ? 8 : 4); ++c) {
+                        unsigned v = swizzle[c];
+
+                        bool t_upper = v > 3;
+
+                        /* Ensure we're doing something sane */
+
+                        if (mask & (1 << c)) {
+                                assert(t_upper == upper);
+                                assert(v <= 7);
+                        }
+
+                        /* Use the non upper part */
+                        v &= 0x3;
+
+                        packed |= v << (2 * (c % 4));
                 }
 
-                src[i].swizzle = packed;
+
+                /* Replicate for now.. should really pick a side for
+                 * dot products */
+
+                if (reg_mode == midgard_reg_mode_16) {
+                        *rep_low = !upper;
+                        *rep_high = upper;
+                } else if (reg_mode == midgard_reg_mode_32) {
+                        *rep_low = upper;
+                } else {
+                        unreachable("Unhandled reg mode");
+                }
         }
 
-        ins->alu.src1 = vector_alu_srco_unsigned(src[0]);
+        return packed;
+}
 
-        if (!ins->has_inline_constant)
-                ins->alu.src2 = vector_alu_srco_unsigned(src[1]);
+static void
+mir_pack_vector_srcs(midgard_instruction *ins)
+{
+        bool channeled = GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props);
+
+        midgard_reg_mode mode = ins->alu.reg_mode;
+        unsigned base_size = (8 << mode);
+
+        for (unsigned i = 0; i < 2; ++i) {
+                if (ins->has_inline_constant && (i == 1))
+                        continue;
+
+                if (ins->src[i] == ~0)
+                        continue;
+
+                bool rep_lo = false, rep_hi = false;
+                unsigned sz = nir_alu_type_get_type_size(ins->src_types[i]);
+                bool half = (sz == (base_size >> 1));
+
+                assert((sz == base_size) || half);
+
+                unsigned swizzle = mir_pack_swizzle(ins->mask, ins->swizzle[i],
+                                ins->src_types[i], ins->alu.reg_mode,
+                                channeled, &rep_lo, &rep_hi);
+
+                midgard_vector_alu_src pack = {
+                        .mod = mir_pack_mod(ins, i, false),
+                        .rep_low = rep_lo,
+                        .rep_high = rep_hi,
+                        .half = half,
+                        .swizzle = swizzle
+                };
+ 
+                unsigned p = vector_alu_srco_unsigned(pack);
+                
+                if (i == 0)
+                        ins->alu.src1 = p;
+                else
+                        ins->alu.src2 = p;
+        }
 }
 
 static void
@@ -421,7 +461,7 @@ emit_alu_bundle(compiler_context *ctx,
 
                 if (ins->unit & UNITS_ANY_VECTOR) {
                         mir_pack_mask_alu(ins);
-                        mir_pack_swizzle_alu(ins);
+                        mir_pack_vector_srcs(ins);
                         size = sizeof(midgard_vector_alu);
                         source = &ins->alu;
                 } else if (ins->unit == ALU_ENAB_BR_COMPACT) {
