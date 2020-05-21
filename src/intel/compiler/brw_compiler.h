@@ -942,6 +942,15 @@ struct brw_cs_prog_data {
    } binding_table;
 };
 
+static inline uint32_t
+brw_cs_prog_data_prog_offset(const struct brw_cs_prog_data *prog_data,
+                             unsigned dispatch_width)
+{
+   /* For now, we generate code for one program, so offset is always 0. */
+   assert(dispatch_width == prog_data->simd_size);
+   return 0;
+}
+
 /**
  * Enum representing the i965-specific vertex results that don't correspond
  * exactly to any element of gl_varying_slot.  The values of this enum are
@@ -1499,6 +1508,11 @@ encode_slm_size(unsigned gen, uint32_t bytes)
 unsigned
 brw_cs_push_const_total_size(const struct brw_cs_prog_data *cs_prog_data,
                              unsigned threads);
+
+unsigned
+brw_cs_simd_size_for_group_size(const struct gen_device_info *devinfo,
+                                const struct brw_cs_prog_data *cs_prog_data,
+                                unsigned group_size);
 
 /**
  * Return true if the given shader stage is dispatched contiguously by the

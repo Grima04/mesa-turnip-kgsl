@@ -9192,6 +9192,14 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    return ret;
 }
 
+unsigned
+brw_cs_simd_size_for_group_size(const struct gen_device_info *devinfo,
+                                const struct brw_cs_prog_data *cs_prog_data,
+                                unsigned group_size)
+{
+   return cs_prog_data->simd_size;
+}
+
 /**
  * Test the dispatch mask packing assumptions of
  * brw_stage_has_packed_dispatch().  Call this from e.g. the top of
