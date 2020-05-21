@@ -1963,11 +1963,6 @@ iris_compile_cs(struct iris_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
-   if (nir->info.cs.local_size_variable) {
-      nir->info.cs.max_variable_local_size =
-         iris_get_max_var_invocations(screen);
-   }
-
    NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
 
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,

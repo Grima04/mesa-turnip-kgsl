@@ -88,7 +88,6 @@ brw_codegen_cs_prog(struct brw_context *brw,
    struct brw_cs_prog_data prog_data;
    bool start_busy = false;
    double start_time = 0;
-   struct gl_context *gl_ctx = &brw->ctx;
    nir_shader *nir = nir_shader_clone(mem_ctx, cp->program.nir);
 
    memset(&prog_data, 0, sizeof(prog_data));
@@ -118,14 +117,6 @@ brw_codegen_cs_prog(struct brw_context *brw,
    int st_index = -1;
    if (INTEL_DEBUG & DEBUG_SHADER_TIME)
       st_index = brw_get_shader_time_index(brw, &cp->program, ST_CS, true);
-
-   /* If the work group size is variable we set it to the maximum here since
-    * the actual size is not known until the dispatch command is issued.
-    */
-   if (nir->info.cs.local_size_variable) {
-      nir->info.cs.max_variable_local_size =
-         gl_ctx->Const.MaxComputeVariableGroupInvocations;
-   }
 
    brw_nir_lower_cs_intrinsics(nir);
 
