@@ -72,11 +72,11 @@ $BM/write-serial.py $BM_SERIAL_EC reboot
 # This is emitted right when the bootloader pauses to check for input.  Emit a
 # ^N character to request network boot, because we don't have a
 # direct-to-netboot firmware on cheza.
-$BM/expect-output.sh serial-output.txt "load_archive: loading locale_en.bin"
+$BM/expect-output.sh serial-output.txt -f "load_archive: loading locale_en.bin"
 $BM/write-serial.py $BM_SERIAL `printf '\016'`
 
 # Wait for the device to complete the deqp run
-$BM/expect-output.sh serial-output.txt "DEQP RESULT"
+$BM/expect-output.sh serial-output.txt -f "DEQP RESULT"
 
 # power down the CPU on the device
 $BM/write-serial.py $BM_SERIAL_EC 'power off'

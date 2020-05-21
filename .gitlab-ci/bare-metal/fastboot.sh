@@ -78,11 +78,11 @@ done
 PATH=$BM:$PATH $BM_POWERUP
 
 # Once fastboot is ready, boot our image.
-$BM/expect-output.sh artifacts/serial-output.txt "fastboot: processing commands"
+$BM/expect-output.sh artifacts/serial-output.txt -f "fastboot: processing commands"
 fastboot boot -s $BM_FASTBOOT_SERIAL artifacts/fastboot.img
 
 # Wait for the device to complete the deqp run
-$BM/expect-output.sh artifacts/serial-output.txt "DEQP RESULT"
+$BM/expect-output.sh artifacts/serial-output.txt -f "DEQP RESULT"
 
 # power down the device
 PATH=$BM:$PATH $BM_POWERDOWN
