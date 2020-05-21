@@ -50,6 +50,11 @@
 /* What it says on the tin */
 #define HAS_SWIZZLES (1 << 4)
 
+/* Support for setting shader to NULL for masking out colour (while allowing
+ * Z/S updates to proceed) */
+
+#define MIDGARD_SHADERLESS (1 << 5)
+
 /* Quirk collections common to particular uarchs */
 
 #define MIDGARD_QUIRKS (MIDGARD_BROKEN_FP16 | HAS_SWIZZLES)
@@ -74,7 +79,7 @@ panfrost_get_quirks(unsigned gpu_id)
         case 0x750:
         case 0x860:
         case 0x880:
-                return MIDGARD_QUIRKS;
+                return MIDGARD_QUIRKS | MIDGARD_SHADERLESS;
 
         case 0x6000: /* G71 */
                 return BIFROST_QUIRKS | HAS_SWIZZLES;

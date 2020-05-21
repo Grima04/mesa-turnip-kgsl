@@ -196,6 +196,14 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                         state->writes_depth = true;
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
                         state->writes_stencil = true;
+
+                /* List of reasons we need to execute frag shaders when things
+                 * are masked off */
+
+                state->fs_sidefx =
+                        s->info.writes_memory ||
+                        s->info.fs.uses_discard ||
+                        s->info.fs.uses_demote;
                 break;
         case MESA_SHADER_COMPUTE:
                 /* TODO: images */

@@ -620,6 +620,27 @@ panfrost_frag_meta_zsa_update(struct panfrost_context *ctx,
         fragmeta->unknown2_3 |= MALI_DEPTH_FUNC(panfrost_translate_compare_func(zfunc));
 }
 
+static bool
+panfrost_fs_required(
+                struct panfrost_shader_state *fs,
+                struct panfrost_blend_final *blend,
+                unsigned rt_count)
+{
+        /* If we generally have side effects */
+        if (fs->fs_sidefx)
+                return true;
+
+        /* If colour is written we need to execute */
+        for (unsigned i = 0; i < rt_count; ++i) {
+                if (!blend[i].no_colour)
+                        return true;
+        }
+
+        /* If depth is written and not implied we need to execute.
+         * TODO: Predicate on Z/S writes being enabled */
+        return (fs->writes_depth || fs->writes_stencil);
+}
+
 static void
 panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 struct mali_shader_meta *fragmeta,
@@ -641,6 +662,21 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
         for (unsigned c = 0; c < rt_count; ++c)
                 blend[c] = panfrost_get_blend_for_context(ctx, c, &shader_bo,
                                                           &shader_offset);
+
+        /* Disable shader execution if we can */
+        if (dev->quirks & MIDGARD_SHADERLESS
+                        && !panfrost_fs_required(fs, blend, rt_count)) {
+                fragmeta->shader = 0;
+                fragmeta->attribute_count = 0;
+                fragmeta->varying_count = 0;
+                fragmeta->texture_count = 0;
+                fragmeta->sampler_count = 0;
+
+                /* This feature is not known to work on Bifrost */
+                fragmeta->midgard1.work_count = 1;
+                fragmeta->midgard1.uniform_count = 0;
+                fragmeta->midgard1.uniform_buffer_count = 0;
+        }
 
          /* If there is a blend shader, work registers are shared. We impose 8
           * work registers as a limit for blend shaders. Should be lower XXX */
