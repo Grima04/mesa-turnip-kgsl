@@ -198,28 +198,19 @@ mir_is_scalar(midgard_instruction *ains)
 
         /* Otherwise, check mode hazards */
         bool could_scalar = true;
+        unsigned sz0 = nir_alu_type_get_type_size(ains->src_types[0]);
+        unsigned sz1 = nir_alu_type_get_type_size(ains->src_types[1]);
 
         /* Only 16/32-bit can run on a scalar unit */
         could_scalar &= ains->alu.reg_mode != midgard_reg_mode_8;
         could_scalar &= ains->alu.reg_mode != midgard_reg_mode_64;
         could_scalar &= ains->alu.dest_override == midgard_dest_override_none;
 
-        if (ains->alu.reg_mode == midgard_reg_mode_16) {
-                /* If we're running in 16-bit mode, we
-                 * can't have any 8-bit sources on the
-                 * scalar unit (since the scalar unit
-                 * doesn't understand 8-bit) */
+        if (ains->src[0] != ~0)
+                could_scalar &= (sz0 == 16) || (sz0 == 32);
 
-                midgard_vector_alu_src s1 =
-                        vector_alu_from_unsigned(ains->alu.src1);
-
-                could_scalar &= !s1.half;
-
-                midgard_vector_alu_src s2 =
-                        vector_alu_from_unsigned(ains->alu.src2);
-
-                could_scalar &= !s2.half;
-        }
+        if (ains->src[1] != ~0)
+                could_scalar &= (sz1 == 16) || (sz1 == 32);
 
         return could_scalar;
 }
