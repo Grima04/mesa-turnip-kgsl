@@ -63,6 +63,17 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
 {
    struct spirv_to_nir_options spirv_options = {};
    spirv_options.environment = NIR_SPIRV_OPENCL;
+   if (dev.address_bits() == 32u) {
+      spirv_options.shared_addr_format = nir_address_format_32bit_global;
+      spirv_options.global_addr_format = nir_address_format_32bit_global;
+      spirv_options.temp_addr_format = nir_address_format_32bit_global;
+      spirv_options.ubo_addr_format = nir_address_format_32bit_global;
+   } else {
+      spirv_options.shared_addr_format = nir_address_format_64bit_global;
+      spirv_options.global_addr_format = nir_address_format_64bit_global;
+      spirv_options.temp_addr_format = nir_address_format_64bit_global;
+      spirv_options.ubo_addr_format = nir_address_format_32bit_index_offset;
+   }
    spirv_options.caps.address = true;
    spirv_options.caps.float64 = true;
    spirv_options.caps.int8 = true;
