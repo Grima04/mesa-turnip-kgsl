@@ -595,10 +595,9 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_DESCRIPTOR_SETS           = 1 << 7,
    V3DV_CMD_DIRTY_PUSH_CONSTANTS            = 1 << 8,
    V3DV_CMD_DIRTY_BLEND_CONSTANTS           = 1 << 9,
-   V3DV_CMD_DIRTY_SHADER_VARIANTS           = 1 << 10,
-   V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 11,
-   V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 12,
-   V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 13,
+   V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 10,
+   V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 11,
+   V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 12,
 };
 
 struct v3dv_dynamic_state {

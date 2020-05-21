@@ -41,12 +41,6 @@ descriptor_type_is_dynamic(VkDescriptorType type)
 /*
  * Tries to get a real descriptor using a descriptor map index from the
  * descriptor_state + pipeline_layout.
- *
- * Note that it is possible to get a NULL. This could happens if not all the
- * needed descriptors are bound yet (this can happens while checking for
- * variants). Caller should decide if getting a NULL descriptor is a valid
- * outcome at the context or not.
- *
  */
 struct v3dv_descriptor *
 v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_state,
@@ -58,16 +52,11 @@ v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_stat
    assert(index >= 0 && index < map->num_desc);
 
    uint32_t set_number = map->set[index];
-   if (!(descriptor_state->valid & 1 << set_number)) {
-      return NULL;
-   }
+   assert((descriptor_state->valid & 1 << set_number));
 
    struct v3dv_descriptor_set *set =
       descriptor_state->descriptor_sets[set_number];
-
-   if (set == NULL)
-      return NULL;
-
+   assert(set);
 
    uint32_t binding_number = map->binding[index];
    assert(binding_number < set->layout->binding_count);
@@ -104,15 +93,11 @@ v3dv_descriptor_map_get_sampler(struct v3dv_descriptor_state *descriptor_state,
    assert(index >= 0 && index < map->num_desc);
 
    uint32_t set_number = map->set[index];
-   if (!(descriptor_state->valid & 1 << set_number)) {
-      return NULL;
-   }
+   assert(descriptor_state->valid & 1 << set_number);
 
    struct v3dv_descriptor_set *set =
       descriptor_state->descriptor_sets[set_number];
-
-   if (set == NULL)
-      return NULL;
+   assert(set);
 
    uint32_t binding_number = map->binding[index];
    assert(binding_number < set->layout->binding_count);
@@ -160,9 +145,7 @@ v3dv_descriptor_map_get_image_view(struct v3dv_descriptor_state *descriptor_stat
                                          pipeline_layout,
                                          index, NULL);
 
-   if (image_descriptor == NULL)
-      return NULL;
-
+   assert(image_descriptor);
    assert(image_descriptor->type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
           image_descriptor->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
    assert(image_descriptor->image_view);

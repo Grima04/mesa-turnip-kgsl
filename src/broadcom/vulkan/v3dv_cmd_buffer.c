@@ -2110,15 +2110,8 @@ job_update_ez_state(struct v3dv_job *job, struct v3dv_pipeline *pipeline)
  * the v3d_fs_key. Here we just fill-up cmd_buffer specific info. All info
  * coming from the pipeline create info was alredy filled up when the pipeline
  * was created
- *
- * It also returns if it was able to populate the info based on the descriptor
- * info. Note that returning false is a possible valid outcome, that could
- * happens if the descriptors are being bound with more than one
- * CmdBindDescriptorSet call (and this is needed in some cases, like if you
- * are skipping descriptor sets). If that is the case we just stop trying
- * getting the variant.
  */
-static bool
+static void
 cmd_buffer_populate_v3d_key(struct v3d_key *key,
                             struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -2144,9 +2137,7 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
                                                cmd_buffer->state.pipeline->layout,
                                                texture_idx);
 
-         if (image_view == NULL)
-            return false;
-
+         assert(image_view);
 
          const struct v3dv_sampler *sampler = NULL;
          if (sampler_idx != V3DV_NO_SAMPLER_IDX) {
@@ -2155,8 +2146,7 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
                                                sampler_map,
                                                cmd_buffer->state.pipeline->layout,
                                                sampler_idx);
-            if (sampler == NULL)
-               return false;
+            assert(sampler);
          }
 
          key->tex[combined_idx].return_size =
@@ -2176,11 +2166,9 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
        */
       }
    }
-
-   return true;
 }
 
-static bool
+static void
 update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_shader_variant *variant;
@@ -2190,78 +2178,65 @@ update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    /* We start with a copy of the original pipeline key */
    memcpy(&local_key, &p_stage->key.fs, sizeof(struct v3d_fs_key));
 
-   if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
-      VkResult vk_result;
-      variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                        sizeof(struct v3d_fs_key),
-                                        &cmd_buffer->device->alloc,
-                                        &vk_result);
-      /* At this point we are not creating a vulkan object to return to the
-       * API user, so we can't really return back a OOM error
-       */
-      assert(variant);
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
 
-      if (p_stage->current_variant != variant) {
-         p_stage->current_variant = variant;
-      }
-   } else {
-      return false;
-   }
+   VkResult vk_result;
+   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                     sizeof(struct v3d_fs_key),
+                                     &cmd_buffer->device->alloc,
+                                     &vk_result);
+   /* At this point we are not creating a vulkan object to return to the
+    * API user, so we can't really return back a OOM error
+    */
+   assert(variant);
+   assert(vk_result == VK_SUCCESS);
 
-   return true;
+   p_stage->current_variant = variant;
 }
 
-static bool
+static void
 update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_shader_variant *variant;
-   struct v3dv_pipeline_stage *p_stage = cmd_buffer->state.pipeline->vs;
+   struct v3dv_pipeline_stage *p_stage;
    struct v3d_vs_key local_key;
+   VkResult vk_result;
 
    /* We start with a copy of the original pipeline key */
+   p_stage = cmd_buffer->state.pipeline->vs;
    memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
 
-   if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
-      VkResult vk_result;
-      variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                        sizeof(struct v3d_vs_key),
-                                        &cmd_buffer->device->alloc,
-                                        &vk_result);
-      /* At this point we are not creating a vulkan object to return to the
-       * API user, so we can't really return back a OOM error
-       */
-      assert(variant);
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
 
-      if (p_stage->current_variant != variant) {
-         p_stage->current_variant = variant;
-      }
-   } else {
-      return false;
-   }
+   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                     sizeof(struct v3d_vs_key),
+                                     &cmd_buffer->device->alloc,
+                                     &vk_result);
+   /* At this point we are not creating a vulkan object to return to the
+    * API user, so we can't really return back a OOM error
+    */
+   assert(variant);
+   assert(vk_result == VK_SUCCESS);
 
+   p_stage->current_variant = variant;
+
+   /* Now the vs_bin */
    p_stage = cmd_buffer->state.pipeline->vs_bin;
    memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
 
-   if (cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer)) {
-      VkResult vk_result;
-      variant = v3dv_get_shader_variant(p_stage, &local_key.base,
-                                        sizeof(struct v3d_vs_key),
-                                        &cmd_buffer->device->alloc,
-                                        &vk_result);
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+                                     sizeof(struct v3d_vs_key),
+                                     &cmd_buffer->device->alloc,
+                                     &vk_result);
 
-      /* At this point we are not creating a vulkan object to return to the
-       * API user, so we can't really return back a OOM error
-       */
-      assert(variant);
+   /* At this point we are not creating a vulkan object to return to the
+    * API user, so we can't really return back a OOM error
+    */
+   assert(variant);
+   assert(vk_result == VK_SUCCESS);
 
-      if (p_stage->current_variant != variant) {
-         p_stage->current_variant = variant;
-      }
-   } else {
-      return false;
-   }
-
-   return true;
+   p_stage->current_variant = variant;
 }
 
 /*
@@ -2271,18 +2246,14 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
  * re-create the v3d_keys and update the variant. Note that internally the
  * pipeline has a variant cache (hash table) to avoid unneeded compilations
  *
- * Returns if it was able to go to the end of the update variants
- * process. Note that this is not the same that getting a new variant or
- * not. If at this moment we don't have all the descriptors bound, we can't
- * check for a new variant, and the SHADER_VARIANTS flag needs to keep dirty.
  */
-static bool
+static void
 update_pipeline_variants(struct v3dv_cmd_buffer *cmd_buffer)
 {
    assert(cmd_buffer->state.pipeline);
 
-   return (update_fs_variant(cmd_buffer) ||
-           update_vs_variant(cmd_buffer));
+   update_fs_variant(cmd_buffer);
+   update_vs_variant(cmd_buffer);
 }
 
 static void
@@ -2315,11 +2286,6 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.pipeline = pipeline;
 
    cmd_buffer_bind_pipeline_static_state(cmd_buffer, &pipeline->dynamic_state);
-
-   if (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_SHADER_VARIANTS) {
-      if (update_pipeline_variants(cmd_buffer))
-         cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_SHADER_VARIANTS;
-   }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
 }
@@ -3211,6 +3177,7 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
                  V3DV_CMD_DIRTY_VERTEX_BUFFER |
                  V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                  V3DV_CMD_DIRTY_PUSH_CONSTANTS)) {
+      update_pipeline_variants(cmd_buffer);
       emit_gl_shader_state(cmd_buffer);
    }
 
@@ -3569,12 +3536,6 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
          descriptor_state->dynamic_offsets[idx] = pDynamicOffsets[dyn_index];
       }
-   }
-
-   if (cmd_buffer->state.pipeline) {
-      update_pipeline_variants(cmd_buffer);
-   } else {
-      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_SHADER_VARIANTS;
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
