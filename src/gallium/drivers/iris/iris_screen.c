@@ -435,32 +435,6 @@ iris_get_shader_param(struct pipe_screen *pscreen,
    }
 }
 
-static unsigned
-get_max_threads(const struct gen_device_info *devinfo)
-{
-   /* Limit max_threads to 64 for the GPGPU_WALKER command. */
-   return MIN2(64, devinfo->max_cs_threads);
-}
-
-uint32_t
-iris_get_max_var_invocations(const struct iris_screen *screen)
-{
-   const unsigned max_threads = get_max_threads(&screen->devinfo);
-
-   /* Constants used for ARB_compute_variable_group_size.  The compiler will
-    * use the maximum to decide which SIMDs can be used.  If we top this like
-    * max_invocations, that would prevent SIMD8 / SIMD16 to be considered.
-    *
-    * TODO: To avoid the trade off above between having the lower maximum
-    * vs. always using SIMD32, keep all three shader variants (for each SIMD)
-    * and select a suitable one at dispatch time.
-    */
-   const uint32_t max_var_invocations =
-      (max_threads >= 64 ? 8 : (max_threads >= 32 ? 16 : 32)) * max_threads;
-   assert(max_var_invocations >= 512);
-   return max_var_invocations;
-}
-
 static int
 iris_get_compute_param(struct pipe_screen *pscreen,
                        enum pipe_shader_ir ir_type,
@@ -468,8 +442,10 @@ iris_get_compute_param(struct pipe_screen *pscreen,
                        void *ret)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
-   const unsigned max_threads = get_max_threads(&screen->devinfo);
+   /* Limit max_threads to 64 for the GPGPU_WALKER command. */
+   const unsigned max_threads = MIN2(64, devinfo->max_cs_threads);
    const uint32_t max_invocations = 32 * max_threads;
 
 #define RET(x) do {                  \
@@ -499,6 +475,8 @@ iris_get_compute_param(struct pipe_screen *pscreen,
 
    case PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK:
       /* MaxComputeWorkGroupInvocations */
+   case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
+      /* MaxComputeVariableGroupInvocations */
       RET((uint64_t []) { max_invocations });
 
    case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE:
@@ -510,10 +488,6 @@ iris_get_compute_param(struct pipe_screen *pscreen,
 
    case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
       RET((uint32_t []) { BRW_SUBGROUP_SIZE });
-
-   case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
-      /* MaxComputeVariableGroupInvocations */
-      RET((uint64_t []) { iris_get_max_var_invocations(screen) });
 
    case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
    case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
