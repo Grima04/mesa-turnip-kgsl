@@ -581,7 +581,7 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 		const struct pipe_vertex_buffer *vb =
 			&vtx->vertexbuf.vb[elem->vertex_buffer_index];
 		struct fd_resource *rsc = fd_resource(vb->buffer.resource);
-		uint32_t off = vb->buffer_offset + elem->src_offset;
+		uint32_t off = vb->buffer_offset;
 		uint32_t size = fd_bo_size(rsc->bo) - off;
 
 #ifdef DEBUG
@@ -611,6 +611,7 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 		debug_assert(fmt != FMT6_NONE);
 
 		OUT_RING(ring, A6XX_VFD_DECODE_INSTR_IDX(j) |
+				A6XX_VFD_DECODE_INSTR_OFFSET(elem->src_offset) |
 				A6XX_VFD_DECODE_INSTR_FORMAT(fmt) |
 				COND(elem->instance_divisor, A6XX_VFD_DECODE_INSTR_INSTANCED) |
 				A6XX_VFD_DECODE_INSTR_SWAP(fd6_pipe2swap(pfmt)) |
