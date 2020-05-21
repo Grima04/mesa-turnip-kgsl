@@ -145,6 +145,19 @@ mir_nontrivial_outmod(midgard_instruction *ins)
                 return mod != midgard_outmod_none;
 }
 
+/* 128 / sz = exp2(log2(128 / sz))
+ *          = exp2(log2(128) - log2(sz))
+ *          = exp2(7 - log2(sz))
+ *          = 1 << (7 - log2(sz))
+ */
+
+unsigned
+mir_components_for_type(nir_alu_type T)
+{
+        unsigned sz = nir_alu_type_get_type_size(T);
+        return 1 << (7 - util_logbase2(sz));
+}
+
 uint16_t
 mir_from_bytemask(uint16_t bytemask, unsigned bits)
 {
