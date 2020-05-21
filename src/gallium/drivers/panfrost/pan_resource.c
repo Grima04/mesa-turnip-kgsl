@@ -270,7 +270,7 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
         unsigned width = res->width0;
         unsigned height = res->height0;
         unsigned depth = res->depth0;
-        unsigned bytes_per_pixel = util_format_get_blocksize(res->format);
+        unsigned bytes_per_pixel = util_format_get_blocksize(pres->internal_format);
 
         assert(depth > 0);
 
@@ -319,7 +319,7 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                 /* Compute the would-be stride */
                 unsigned stride = bytes_per_pixel * effective_width;
 
-                if (util_format_is_compressed(res->format))
+                if (util_format_is_compressed(pres->internal_format))
                         stride /= 4;
 
                 /* ..but cache-line align it for performance */
@@ -409,7 +409,7 @@ panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resourc
                 PIPE_BIND_SAMPLER_VIEW |
                 PIPE_BIND_DISPLAY_TARGET;
 
-        unsigned bpp = util_format_get_blocksizebits(res->format);
+        unsigned bpp = util_format_get_blocksizebits(pres->internal_format);
         bool is_2d = (res->target == PIPE_TEXTURE_2D) || (res->target == PIPE_TEXTURE_RECT);
         bool is_sane_bpp = bpp == 8 || bpp == 16 || bpp == 24 || bpp == 32 || bpp == 64 || bpp == 128;
         bool should_tile = (res->usage != PIPE_USAGE_STREAM);
@@ -576,8 +576,8 @@ panfrost_transfer_map(struct pipe_context *pctx,
                       struct pipe_transfer **out_transfer)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-        int bytes_per_pixel = util_format_get_blocksize(resource->format);
         struct panfrost_resource *rsrc = pan_resource(resource);
+        int bytes_per_pixel = util_format_get_blocksize(rsrc->internal_format);
         struct panfrost_bo *bo = rsrc->bo;
 
         struct panfrost_gtransfer *transfer = rzalloc(pctx, struct panfrost_gtransfer);
@@ -666,7 +666,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                                         box->x, box->y, box->width, box->height,
                                         transfer->base.stride,
                                         rsrc->slices[level].stride,
-                                        resource->format);
+                                        rsrc->internal_format);
                         }
                 }
 
@@ -731,7 +731,7 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                                         transfer->box.width, transfer->box.height,
                                         prsrc->slices[transfer->level].stride,
                                         transfer->stride,
-                                        prsrc->base.format);
+                                        prsrc->internal_format);
                         }
                 }
         }
@@ -774,7 +774,8 @@ panfrost_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *pr
 }
 
 static enum pipe_format
-panfrost_resource_get_internal_format(struct pipe_resource *rsrc) {
+panfrost_resource_get_internal_format(struct pipe_resource *rsrc)
+{
         struct panfrost_resource *prsrc = (struct panfrost_resource *) rsrc;
         return prsrc->internal_format;
 }
@@ -865,7 +866,7 @@ panfrost_resource_hint_layout(
         /* Check if the preferred layout is legal for this buffer */
 
         if (layout == MALI_TEXTURE_AFBC) {
-                bool can_afbc = panfrost_format_supports_afbc(rsrc->base.format);
+                bool can_afbc = panfrost_format_supports_afbc(rsrc->internal_format);
                 bool is_scanout = rsrc->base.bind &
                         (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
 
