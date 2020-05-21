@@ -2811,7 +2811,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                         if (!bundle->last_writeout && (current_bundle + 1 < bundle_count))
                                 lookahead = source_order_bundles[current_bundle + 1]->tag;
 
-                        emit_binary_bundle(ctx, bundle, compiled, lookahead);
+                        emit_binary_bundle(ctx, block, bundle, compiled, lookahead);
                         ++current_bundle;
                 }
 

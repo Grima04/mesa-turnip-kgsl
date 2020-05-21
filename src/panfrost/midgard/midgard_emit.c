@@ -23,6 +23,7 @@
 
 #include "compiler.h"
 #include "midgard_ops.h"
+#include "midgard_quirks.h"
 
 static midgard_int_mod
 mir_get_imod(bool shift, nir_alu_type T, bool half, bool scalar)
@@ -356,6 +357,50 @@ mir_pack_swizzle_tex(midgard_instruction *ins)
         /* TODO: bias component */
 }
 
+/* Up to 3 { ALU, LDST } bundles can execute in parallel with a texture op.
+ * Given a texture op, lookahead to see how many such bundles we can flag for
+ * OoO execution */
+
+static bool
+mir_can_run_ooo(midgard_block *block, midgard_bundle *bundle,
+                unsigned dependency)
+{
+        /* Don't read out of bounds */
+        if (bundle >= (midgard_bundle *) ((char *) block->bundles.data + block->bundles.size))
+                return false;
+
+        /* Texture ops can't execute with other texture ops */
+        if (!IS_ALU(bundle->tag) && bundle->tag != TAG_LOAD_STORE_4)
+                return false;
+
+        /* Ensure there is no read-after-write dependency */
+
+        for (unsigned i = 0; i < bundle->instruction_count; ++i) {
+                midgard_instruction *ins = bundle->instructions[i];
+
+                mir_foreach_src(ins, s) {
+                        if (ins->src[s] == dependency)
+                                return false;
+                }
+        }
+
+        /* Otherwise, we're okay */
+        return true;
+}
+
+static void
+mir_pack_tex_ooo(midgard_block *block, midgard_bundle *bundle, midgard_instruction *ins)
+{
+        unsigned count = 0;
+
+        for (count = 0; count < 3; ++count) {
+                if (!mir_can_run_ooo(block, bundle + count + 1, ins->dest))
+                        break;
+        }
+
+        ins->texture.out_of_order = count;
+}
+
 /* Load store masks are 4-bits. Load/store ops pack for that. vec4 is the
  * natural mask width; vec8 is constrained to be in pairs, vec2 is duplicated. TODO: 8-bit?
  */
@@ -529,6 +574,7 @@ midgard_sampler_type(nir_alu_type t) {
 
 void
 emit_binary_bundle(compiler_context *ctx,
+                   midgard_block *block,
                    midgard_bundle *bundle,
                    struct util_dynarray *emission,
                    int next_tag)
@@ -614,6 +660,9 @@ emit_binary_bundle(compiler_context *ctx,
                         ins->mask;
 
                 mir_pack_swizzle_tex(ins);
+
+                if (!(ctx->quirks & MIDGARD_NO_OOO))
+                        mir_pack_tex_ooo(block, bundle, ins);
 
                 unsigned osz = nir_alu_type_get_type_size(ins->dest_type);
                 unsigned isz = nir_alu_type_get_type_size(ins->src_types[1]);

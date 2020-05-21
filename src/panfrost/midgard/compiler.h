@@ -646,6 +646,7 @@ void mir_analyze_helper_requirements(compiler_context *ctx);
 
 void emit_binary_bundle(
         compiler_context *ctx,
+        midgard_block *block,
         midgard_bundle *bundle,
         struct util_dynarray *emission,
         int next_tag);
