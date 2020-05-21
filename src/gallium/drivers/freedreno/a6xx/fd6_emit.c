@@ -572,7 +572,7 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 
 	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_0, 1);
 	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(vtx->vertexbuf.count) |
-			A6XX_VFD_CONTROL_0_DECODE_CNT(cnt));
+			A6XX_VFD_CONTROL_0_DECODE_CNT(vtx->vtx->num_elements));
 
 	OUT_PKT4(ring, REG_A6XX_VFD_FETCH(0), 4 * vtx->vertexbuf.count);
 	for (int32_t j = 0; j < vtx->vertexbuf.count; j++) {
@@ -593,25 +593,6 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 		}
 	}
 
-	OUT_PKT4(ring, REG_A6XX_VFD_DECODE(0), 2 * cnt);
-	for (int32_t j = 0; j < cnt; j++) {
-		int32_t i = map[j];
-		struct pipe_vertex_element *elem = &vtx->vtx->pipe[i];
-		enum pipe_format pfmt = elem->src_format;
-		enum a6xx_format fmt = fd6_pipe2vtx(pfmt);
-		bool isint = util_format_is_pure_integer(pfmt);
-		debug_assert(fmt != FMT6_NONE);
-
-		OUT_RING(ring, A6XX_VFD_DECODE_INSTR_IDX(elem->vertex_buffer_index) |
-				A6XX_VFD_DECODE_INSTR_OFFSET(elem->src_offset) |
-				A6XX_VFD_DECODE_INSTR_FORMAT(fmt) |
-				COND(elem->instance_divisor, A6XX_VFD_DECODE_INSTR_INSTANCED) |
-				A6XX_VFD_DECODE_INSTR_SWAP(fd6_pipe2swap(pfmt)) |
-				A6XX_VFD_DECODE_INSTR_UNK30 |
-				COND(!isint, A6XX_VFD_DECODE_INSTR_FLOAT));
-		OUT_RING(ring, MAX2(1, elem->instance_divisor)); /* VFD_DECODE[j].STEP_RATE */
-	}
-
 	OUT_PKT4(ring, REG_A6XX_VFD_DEST_CNTL(0), cnt);
 	for (int32_t j = 0; j < cnt; j++) {
 		int32_t i = map[j];
@@ -619,8 +600,6 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 		OUT_RING(ring, A6XX_VFD_DEST_CNTL_INSTR_WRITEMASK(vp->inputs[i].compmask) |
 				A6XX_VFD_DEST_CNTL_INSTR_REGID(vp->inputs[i].regid));
 	}
-
-	return ring;
 }
 
 static struct fd_ringbuffer *
@@ -752,6 +731,15 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	if (fs->fb_read)
 		ctx->batch->gmem_reason |= FD_GMEM_FB_READ;
 
+	if (emit->dirty & FD_DIRTY_VTXSTATE) {
+		struct fd6_vertex_stateobj *vtx = fd6_vertex_stateobj(ctx->vtx.vtx);
+
+		fd6_emit_add_group(emit, vtx->stateobj, FD6_GROUP_VTXSTATE, ENABLE_ALL);
+	}
+
+	/* VFD_CONTROL packs both vfd fetch count and vfd decode count, so we have
+	 * to emit this if either change.
+	 */
 	if (emit->dirty & (FD_DIRTY_VTXBUF | FD_DIRTY_VTXSTATE)) {
 		struct fd_ringbuffer *state;
 

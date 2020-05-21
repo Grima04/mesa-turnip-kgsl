@@ -623,7 +623,8 @@ fd_state_init(struct pipe_context *pctx)
 	pctx->bind_depth_stencil_alpha_state = fd_zsa_state_bind;
 	pctx->delete_depth_stencil_alpha_state = fd_zsa_state_delete;
 
-	pctx->create_vertex_elements_state = fd_vertex_state_create;
+	if (!pctx->create_vertex_elements_state)
+		pctx->create_vertex_elements_state = fd_vertex_state_create;
 	pctx->delete_vertex_elements_state = fd_vertex_state_delete;
 	pctx->bind_vertex_elements_state = fd_vertex_state_bind;
 

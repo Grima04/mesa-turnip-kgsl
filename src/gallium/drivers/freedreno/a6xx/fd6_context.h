@@ -168,4 +168,16 @@ emit_marker6(struct fd_ringbuffer *ring, int scratch_idx)
 	}
 }
 
+struct fd6_vertex_stateobj {
+	struct fd_vertex_stateobj base;
+	struct fd_ringbuffer *stateobj;
+};
+
+static inline struct fd6_vertex_stateobj *
+fd6_vertex_stateobj(void *p)
+{
+	return (struct fd6_vertex_stateobj *) p;
+}
+
+
 #endif /* FD6_CONTEXT_H_ */
