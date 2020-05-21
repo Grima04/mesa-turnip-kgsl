@@ -106,13 +106,12 @@ zink_destroy_query(struct pipe_context *pctx,
 }
 
 static void
-begin_query(struct zink_context *ctx, struct zink_query *q)
+begin_query(struct zink_batch *batch, struct zink_query *q)
 {
    VkQueryControlFlags flags = 0;
    if (q->precise)
       flags |= VK_QUERY_CONTROL_PRECISE_BIT;
 
-   struct zink_batch *batch = zink_curr_batch(ctx);
    vkCmdBeginQuery(batch->cmdbuf, q->query_pool, q->curr_query, flags);
 }
 
@@ -135,16 +134,15 @@ zink_begin_query(struct pipe_context *pctx,
    vkCmdResetQueryPool(batch->cmdbuf, query->query_pool, 0, MIN2(query->curr_query + 1, query->num_queries));
    query->curr_query = 0;
 
-   begin_query(ctx, query);
+   begin_query(batch, query);
    list_addtail(&query->active_list, &ctx->active_queries);
 
    return true;
 }
 
 static void
-end_query(struct zink_context *ctx, struct zink_query *q)
+end_query(struct zink_batch *batch, struct zink_query *q)
 {
-   struct zink_batch *batch = zink_curr_batch(ctx);
    assert(q->type != PIPE_QUERY_TIMESTAMP);
    vkCmdEndQuery(batch->cmdbuf, q->query_pool, q->curr_query);
    if (++q->curr_query == q->num_queries) {
@@ -158,15 +156,15 @@ zink_end_query(struct pipe_context *pctx,
                struct pipe_query *q)
 {
    struct zink_context *ctx = zink_context(pctx);
+   struct zink_batch *batch = zink_curr_batch(ctx);
    struct zink_query *query = (struct zink_query *)q;
 
    if (query->type == PIPE_QUERY_TIMESTAMP) {
       assert(query->curr_query == 0);
-      struct zink_batch *batch = zink_curr_batch(ctx);
       vkCmdWriteTimestamp(batch->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           query->query_pool, 0);
    } else {
-      end_query(ctx, query);
+      end_query(batch, query);
       list_delinit(&query->active_list);
    }
 
@@ -235,7 +233,7 @@ zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_query *query;
    LIST_FOR_EACH_ENTRY(query, &ctx->active_queries, active_list) {
-      end_query(ctx, query);
+      end_query(batch, query);
    }
 }
 
@@ -245,7 +243,7 @@ zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch)
    struct zink_query *query;
    LIST_FOR_EACH_ENTRY(query, &ctx->active_queries, active_list) {
       vkCmdResetQueryPool(batch->cmdbuf, query->query_pool, query->curr_query, 1);
-      begin_query(ctx, query);
+      begin_query(batch, query);
    }
 }
 
