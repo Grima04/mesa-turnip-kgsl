@@ -642,12 +642,15 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 blend[c] = panfrost_get_blend_for_context(ctx, c, &shader_bo,
                                                           &shader_offset);
 
-         /* If there is a blend shader, work registers are shared. XXX: opt */
+         /* If there is a blend shader, work registers are shared. We impose 8
+          * work registers as a limit for blend shaders. Should be lower XXX */
 
         if (!(dev->quirks & IS_BIFROST)) {
                 for (unsigned c = 0; c < rt_count; ++c) {
-                        if (blend[c].is_shader)
-                                fragmeta->midgard1.work_count = 16;
+                        if (blend[c].is_shader) {
+                                fragmeta->midgard1.work_count =
+                                        MAX2(fragmeta->midgard1.work_count, 8);
+                        }
                 }
         }
 

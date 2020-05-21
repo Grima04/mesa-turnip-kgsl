@@ -442,8 +442,10 @@ static struct lcra_state *
 allocate_registers(compiler_context *ctx, bool *spilled)
 {
         /* The number of vec4 work registers available depends on when the
-         * uniforms start, so compute that first */
-        int work_count = 16 - MAX2((ctx->uniform_cutoff - 8), 0);
+         * uniforms start and the shader stage. By ABI we limit blend shaders
+         * to 8 registers, should be lower XXX */
+        int work_count = ctx->is_blend ? 8 :
+                16 - MAX2((ctx->uniform_cutoff - 8), 0);
 
        /* No register allocation to do with no SSA */
 
@@ -831,6 +833,9 @@ mir_spill_register(
                 unsigned spill_class,
                 unsigned *spill_count)
 {
+        if (spill_class == REG_CLASS_WORK && ctx->is_blend)
+                unreachable("Blend shader spilling is currently unimplemented");
+
         unsigned spill_index = ctx->temp_count;
 
         /* We have a spill node, so check the class. Work registers
