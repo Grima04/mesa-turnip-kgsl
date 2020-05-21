@@ -1436,8 +1436,8 @@ emit_control_barrier(compiler_context *ctx)
                         .op = TEXTURE_OP_BARRIER,
 
                         /* TODO: optimize */
-                        .barrier_buffer = 1,
-                        .barrier_shared = 1
+                        .out_of_order = MIDGARD_BARRIER_BUFFER |
+                                MIDGARD_BARRIER_SHARED ,
                 }
         };
 

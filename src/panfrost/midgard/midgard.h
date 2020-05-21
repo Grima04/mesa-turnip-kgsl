@@ -655,6 +655,9 @@ enum mali_sampler_type {
         MALI_SAMPLER_SIGNED     = 0x3, /* isampler */
 };
 
+#define MIDGARD_BARRIER_BUFFER (1 << 0)
+#define MIDGARD_BARRIER_SHARED (1 << 1)
+
 typedef struct
 __attribute__((__packed__))
 {
@@ -719,12 +722,14 @@ __attribute__((__packed__))
 
         /* For barriers, control barriers are implied regardless, but these
          * bits also enable memory barriers of various types. For regular
-         * textures, these bits are not yet understood. */
-        unsigned barrier_buffer : 1;
-        unsigned barrier_shared : 1;
-        unsigned barrier_stack  : 1;
+         * textures, these indicate how many bundles after this texture op may
+         * be executed in parallel with this op. We may execute only ALU and
+         * ld/st in parallel (not other textures), and obviously there cannot
+         * be any dependency (the blob appears to forbid even accessing other
+         * channels of a given texture register). */
 
-        unsigned unknown4  : 9;
+        unsigned out_of_order   : 2;
+        unsigned unknown4  : 10;
 
         /* In immediate mode, each offset field is an immediate range [0, 7].
          *

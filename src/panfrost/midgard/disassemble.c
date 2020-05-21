@@ -1441,11 +1441,8 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         if (texture->last)
                 fprintf(fp, ".last");
 
-        if (texture->barrier_buffer)
-                fprintf(fp, ".barrier_buffer /* XXX */");
-
-        if (texture->barrier_shared)
-                fprintf(fp, ".barrier_shared /* XXX */");
+        if (texture->out_of_order)
+                fprintf(fp, ".ooo%u", texture->out_of_order);
 
         /* Output modifiers are always interpreted floatly */
         print_outmod(fp, texture->outmod, false);
