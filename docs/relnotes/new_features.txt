@@ -5,3 +5,4 @@ VK_EXT_custom_border_color on RADV.
 VK_EXT_pipeline_creation_cache_control on RADV.
 VK_EXT_subgroup_size_control on RADV/ACO.
 VK_GOOGLE_user_type on ANV and RADV.
+VK_KHR_subgroup_extended_types on RADV/ACO.

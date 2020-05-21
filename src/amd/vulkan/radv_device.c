@@ -1011,7 +1011,7 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
 	f->scalarBlockLayout = pdevice->rad_info.chip_class >= GFX7;
 	f->imagelessFramebuffer = true;
 	f->uniformBufferStandardLayout = true;
-	f->shaderSubgroupExtendedTypes = !pdevice->use_aco;
+	f->shaderSubgroupExtendedTypes = !pdevice->use_aco || pdevice->rad_info.chip_class >= GFX8;
 	f->separateDepthStencilLayouts = true;
 	f->hostQueryReset = true;
 	f->timelineSemaphore = pdevice->rad_info.has_syncobj_wait_for_submit;
