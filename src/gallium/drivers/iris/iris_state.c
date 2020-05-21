@@ -4375,7 +4375,6 @@ iris_store_cs_state(struct iris_context *ice,
    void *map = shader->derived_data;
 
    iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), map, desc) {
-      desc.KernelStartPointer = KSP(shader);
       desc.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
       desc.SharedLocalMemorySize =
          encode_slm_size(GEN_GEN, prog_data->total_shared);
@@ -6604,6 +6603,7 @@ iris_upload_compute_state(struct iris_context *ice,
       uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
 
       iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
+         idd.KernelStartPointer = KSP(shader);
          idd.SamplerStatePointer = shs->sampler_table.offset;
          idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
          idd.NumberofThreadsinGPGPUThreadGroup = threads;
