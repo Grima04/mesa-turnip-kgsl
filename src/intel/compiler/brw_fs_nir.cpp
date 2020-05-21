@@ -3879,11 +3879,6 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       break;
    }
 
-   case nir_intrinsic_load_simd_width_intel: {
-      bld.MOV(dest, brw_imm_ud(cs_prog_data->simd_size));
-      break;
-   };
-
    default:
       nir_emit_intrinsic(bld, instr);
       break;
