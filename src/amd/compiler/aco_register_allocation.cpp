@@ -517,7 +517,7 @@ void adjust_max_used_regs(ra_ctx& ctx, RegClass rc, unsigned reg)
 
 void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
                     std::vector<std::pair<Operand, Definition>>& parallelcopies,
-                    aco_ptr<Instruction>& instr)
+                    aco_ptr<Instruction>& instr, bool rename_not_killed_ops)
 {
    /* allocate id's and rename operands: this is done transparently here */
    for (std::pair<Operand, Definition>& copy : parallelcopies) {
@@ -541,19 +541,27 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
       reg_file.fill(copy.second);
 
       /* check if we moved an operand */
-      for (Operand& op : instr->operands) {
+      bool first = true;
+      for (unsigned i = 0; i < instr->operands.size(); i++) {
+         Operand& op = instr->operands[i];
          if (!op.isTemp())
             continue;
          if (op.tempId() == copy.first.tempId()) {
-            bool omit_renaming = instr->opcode == aco_opcode::p_create_vector && !op.isKillBeforeDef();
+            bool omit_renaming = !rename_not_killed_ops && !op.isKillBeforeDef();
             for (std::pair<Operand, Definition>& pc : parallelcopies) {
                PhysReg def_reg = pc.second.physReg();
                omit_renaming &= def_reg > copy.first.physReg() ?
                                 (copy.first.physReg() + copy.first.size() <= def_reg.reg()) :
                                 (def_reg + pc.second.size() <= copy.first.physReg().reg());
             }
-            if (omit_renaming)
+            if (omit_renaming) {
+               if (first)
+                  op.setFirstKill(true);
+               else
+                  op.setKill(true);
+               first = false;
                continue;
+            }
             op.setTemp(copy.second.getTemp());
             op.setFixed(copy.second.physReg());
          }
@@ -771,9 +779,9 @@ bool get_regs_for_copies(ra_ctx& ctx,
          }
       } else {
          info.lb = lb;
-         info.ub = def_reg_lo;
+         info.ub = MIN2(def_reg_lo, ub);
          res = get_reg_simple(ctx, reg_file, info);
-         if (!res.second) {
+         if (!res.second && def_reg_hi < ub) {
             info.lb = (def_reg_hi + info.stride) & ~(info.stride - 1);
             info.ub = ub;
             res = get_reg_simple(ctx, reg_file, info);
@@ -1065,7 +1073,7 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    /* we set the definition regs == 0. the actual caller is responsible for correct setting */
    reg_file.clear(PhysReg{best_pos}, rc);
 
-   update_renames(ctx, reg_file, parallelcopies, instr);
+   update_renames(ctx, reg_file, parallelcopies, instr, instr->opcode != aco_opcode::p_create_vector);
 
    /* remove killed operands from reg_file once again */
    for (unsigned i = 0; !is_phi(instr) && i < instr->operands.size(); i++) {
@@ -1371,7 +1379,7 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    success = get_regs_for_copies(ctx, reg_file, parallelcopies, vars, lb, ub, instr, best_pos, best_pos + size - 1);
    assert(success);
 
-   update_renames(ctx, reg_file, parallelcopies, instr);
+   update_renames(ctx, reg_file, parallelcopies, instr, false);
    adjust_max_used_regs(ctx, rc, best_pos);
 
    /* remove killed operands from reg_file once again */
@@ -1510,7 +1518,7 @@ void get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
    Definition pc_def = Definition(dst, pc_op.regClass());
    register_file.clear(pc_op);
    parallelcopy.emplace_back(pc_op, pc_def);
-   update_renames(ctx, register_file, parallelcopy, instr);
+   update_renames(ctx, register_file, parallelcopy, instr, true);
 }
 
 Temp read_variable(ra_ctx& ctx, Temp val, unsigned block_idx)
@@ -2048,22 +2056,25 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
             adjust_max_used_regs(ctx, definition.regClass(), definition.physReg());
             /* check if the target register is blocked */
             if (register_file[definition.physReg().reg()] != 0) {
-               /* create parallelcopy pair to move blocking var */
-               Temp tmp = {register_file[definition.physReg()], ctx.assignments[register_file[definition.physReg()]].rc};
-               Operand pc_op = Operand(tmp);
-               pc_op.setFixed(ctx.assignments[register_file[definition.physReg().reg()]].reg);
-               RegClass rc = pc_op.regClass();
-               tmp = Temp{program->allocateId(), rc};
-               Definition pc_def = Definition(tmp);
+               /* create parallelcopy pair to move blocking vars */
+               std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, register_file, definition.physReg(), definition.size());
 
-               /* re-enable the killed operands, so that we don't move the blocking var there */
+               /* re-enable the killed operands, so that we don't move the blocking vars there */
                for (const Operand& op : instr->operands) {
                   if (op.isTemp() && op.isFirstKillBeforeDef())
                      register_file.fill(op);
                }
 
-               /* find a new register for the blocking variable */
-               PhysReg reg = get_reg(ctx, register_file, pc_op.getTemp(), parallelcopy, instr);
+               ASSERTED bool success = false;
+               DefInfo info(ctx, instr, definition.regClass(), -1);
+               success = get_regs_for_copies(ctx, register_file, parallelcopy,
+                                             vars, info.lb, info.ub, instr,
+                                             definition.physReg(),
+                                             definition.physReg() + definition.size() - 1);
+               assert(success);
+
+               update_renames(ctx, register_file, parallelcopy, instr, false);
+
                /* once again, disable killed operands */
                for (const Operand& op : instr->operands) {
                   if (op.isTemp() && op.isFirstKillBeforeDef())
@@ -2073,16 +2084,6 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                   if (instr->definitions[k].isTemp() && ctx.defs_done.test(k) && !instr->definitions[k].isKill())
                      register_file.fill(instr->definitions[k]);
                }
-               pc_def.setFixed(reg);
-
-               /* finish assignment of parallelcopy */
-               ctx.assignments.emplace_back(reg, pc_def.regClass());
-               assert(ctx.assignments.size() == ctx.program->peekAllocationId());
-               parallelcopy.emplace_back(pc_op, pc_def);
-
-               /* add changes to reg_file */
-               register_file.clear(pc_op);
-               register_file.fill(pc_def);
             }
             ctx.defs_done.set(i);
 
