@@ -685,6 +685,9 @@ struct vtn_builder {
 
    /* when a physical memory model is choosen */
    bool physical_ptrs;
+
+   /* memory model specified by OpMemoryModel */
+   unsigned mem_model;
 };
 
 nir_ssa_def *

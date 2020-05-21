@@ -4171,6 +4171,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
       }
 
+      b->mem_model = w[2];
       switch (w[2]) {
       case SpvMemoryModelSimple:
       case SpvMemoryModelGLSL450:

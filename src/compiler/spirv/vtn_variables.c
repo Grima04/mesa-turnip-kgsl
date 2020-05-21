@@ -1595,6 +1595,9 @@ apply_var_decoration(struct vtn_builder *b,
    case SpvDecorationRestrict:
       var_data->access |= ACCESS_RESTRICT;
       break;
+   case SpvDecorationAliased:
+      var_data->access &= ~ACCESS_RESTRICT;
+      break;
    case SpvDecorationVolatile:
       var_data->access |= ACCESS_VOLATILE;
       break;
@@ -1635,7 +1638,6 @@ apply_var_decoration(struct vtn_builder *b,
    case SpvDecorationRowMajor:
    case SpvDecorationColMajor:
    case SpvDecorationMatrixStride:
-   case SpvDecorationAliased:
    case SpvDecorationUniform:
    case SpvDecorationUniformId:
    case SpvDecorationLinkageAttributes:
@@ -2424,6 +2426,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    }
    if (var_initializer)
       var->var->pointer_initializer = var_initializer;
+
+   if (var->mode == vtn_variable_mode_uniform ||
+       var->mode == vtn_variable_mode_ssbo) {
+      /* SSBOs and images are assumed to not alias in the Simple, GLSL and Vulkan memory models */
+      var->var->data.access |= b->mem_model != SpvMemoryModelOpenCL ? ACCESS_RESTRICT : 0;
+   }
 
    vtn_foreach_decoration(b, val, var_decoration_cb, var);
    vtn_foreach_decoration(b, val, ptr_decoration_cb, val->pointer);
