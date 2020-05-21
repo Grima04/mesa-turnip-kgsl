@@ -171,6 +171,8 @@ struct si_shader_context {
    /* CS */
    struct ac_arg block_size;
    struct ac_arg cs_user_data;
+   struct ac_arg cs_shaderbuf[3];
+   struct ac_arg cs_image[3];
 
    struct ac_llvm_compiler *compiler;
 

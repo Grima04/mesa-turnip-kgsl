@@ -1030,6 +1030,8 @@ struct si_context {
    unsigned cs_max_waves_per_sh;
    bool flatshade;
    bool do_update_shaders;
+   bool compute_shaderbuf_sgprs_dirty;
+   bool compute_image_sgprs_dirty;
 
    /* shader descriptors */
    struct si_descriptors descriptors[SI_NUM_DESCS];

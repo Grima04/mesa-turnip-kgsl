@@ -698,6 +698,24 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, cs_user_data_dwords, AC_ARG_INT, &ctx->cs_user_data);
       }
 
+      /* Some descriptors can be in user SGPRs. */
+      /* Shader buffers in user SGPRs. */
+      for (unsigned i = 0; i < shader->selector->cs_num_shaderbufs_in_user_sgprs; i++) {
+         while (ctx->args.num_sgprs_used % 4 != 0)
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
+
+         ac_add_arg(&ctx->args, AC_ARG_SGPR, 4, AC_ARG_INT, &ctx->cs_shaderbuf[i]);
+      }
+      /* Images in user SGPRs. */
+      for (unsigned i = 0; i < shader->selector->cs_num_images_in_user_sgprs; i++) {
+         unsigned num_sgprs = shader->selector->info.image_buffers & (1 << i) ? 4 : 8;
+
+         while (ctx->args.num_sgprs_used % num_sgprs != 0)
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
+
+         ac_add_arg(&ctx->args, AC_ARG_SGPR, num_sgprs, AC_ARG_INT, &ctx->cs_image[i]);
+      }
+
       /* Hardware SGPRs. */
       for (i = 0; i < 3; i++) {
          if (shader->selector->info.uses_block_id[i]) {

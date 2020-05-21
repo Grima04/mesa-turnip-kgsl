@@ -141,6 +141,38 @@ static void si_create_compute_state_async(void *job, int thread_index)
    program->num_cs_user_data_dwords =
       sel->info.properties[TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD];
 
+   unsigned user_sgprs = SI_NUM_RESOURCE_SGPRS + (sel->info.uses_grid_size ? 3 : 0) +
+                         (program->reads_variable_block_size ? 3 : 0) +
+                         program->num_cs_user_data_dwords;
+
+   /* Fast path for compute shaders - some descriptors passed via user SGPRs. */
+   /* Shader buffers in user SGPRs. */
+   for (unsigned i = 0; i < 3 && user_sgprs <= 12 && sel->info.shader_buffers_declared & (1 << i); i++) {
+      user_sgprs = align(user_sgprs, 4);
+      if (i == 0)
+         sel->cs_shaderbufs_sgpr_index = user_sgprs;
+      user_sgprs += 4;
+      sel->cs_num_shaderbufs_in_user_sgprs++;
+   }
+
+   /* Images in user SGPRs. */
+   unsigned non_msaa_images = sel->info.images_declared & ~sel->info.msaa_images_declared;
+
+   for (unsigned i = 0; i < 3 && non_msaa_images & (1 << i); i++) {
+      unsigned num_sgprs = sel->info.image_buffers & (1 << i) ? 4 : 8;
+
+      if (align(user_sgprs, num_sgprs) + num_sgprs > 16)
+         break;
+
+      user_sgprs = align(user_sgprs, num_sgprs);
+      if (i == 0)
+         sel->cs_images_sgpr_index = user_sgprs;
+      user_sgprs += num_sgprs;
+      sel->cs_num_images_in_user_sgprs++;
+   }
+   sel->cs_images_num_sgprs = user_sgprs - sel->cs_images_sgpr_index;
+   assert(user_sgprs <= 16);
+
    unsigned char ir_sha1_cache_key[20];
    si_get_ir_cache_key(sel, false, false, ir_sha1_cache_key);
 
@@ -164,9 +196,6 @@ static void si_create_compute_state_async(void *job, int thread_index)
       }
 
       bool scratch_enabled = shader->config.scratch_bytes_per_wave > 0;
-      unsigned user_sgprs = SI_NUM_RESOURCE_SGPRS + (sel->info.uses_grid_size ? 3 : 0) +
-                            (program->reads_variable_block_size ? 3 : 0) +
-                            program->num_cs_user_data_dwords;
 
       shader->config.rsrc1 = S_00B848_VGPRS((shader->config.num_vgprs - 1) /
                                             (sscreen->compute_wave_size == 32 ? 8 : 4)) |
@@ -275,6 +304,9 @@ static void si_bind_compute_state(struct pipe_context *ctx, void *state)
                              sel->active_const_and_shader_buffers);
    si_set_active_descriptors(sctx, SI_DESCS_FIRST_COMPUTE + SI_SHADER_DESCS_SAMPLERS_AND_IMAGES,
                              sel->active_samplers_and_images);
+
+   sctx->compute_shaderbuf_sgprs_dirty = true;
+   sctx->compute_image_sgprs_dirty = true;
 }
 
 static void si_set_global_binding(struct pipe_context *ctx, unsigned first, unsigned n,
