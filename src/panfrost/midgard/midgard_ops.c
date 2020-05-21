@@ -207,8 +207,9 @@ struct mir_ldst_op_props load_store_opcode_props[256] = {
         [midgard_op_atomic_umax64] = {"atomic_umax64", M64 | LDST_SIDE_FX},
         [midgard_op_atomic_xchg64] = {"atomic_xchg64", M64 | LDST_SIDE_FX},
 
+        [midgard_op_ld_uchar]  = {"ld_uchar", M32 | LDST_ADDRESS},
         [midgard_op_ld_char]   = {"ld_char",   M32 | LDST_ADDRESS},
-        [midgard_op_ld_char2]  = {"ld_char2",  M16 | LDST_ADDRESS},
+        [midgard_op_ld_ushort] = {"ld_ushort", M32 | LDST_ADDRESS},
         [midgard_op_ld_short]  = {"ld_short",  M32 | LDST_ADDRESS},
         [midgard_op_ld_char4]  = {"ld_char4",  M32 | LDST_ADDRESS},
         [midgard_op_ld_short4] = {"ld_short4", M32 | LDST_ADDRESS},

@@ -458,9 +458,10 @@ typedef enum {
         /* Used for compute shader's __global arguments, __local variables (or
          * for register spilling) */
 
-        midgard_op_ld_char = 0x81,
-        midgard_op_ld_char2 = 0x84,
-        midgard_op_ld_short = 0x85,
+        midgard_op_ld_uchar = 0x80, /* zero extends */
+        midgard_op_ld_char = 0x81, /* sign extends */
+        midgard_op_ld_ushort = 0x84, /* zero extends */
+        midgard_op_ld_short = 0x85, /* sign extends */
         midgard_op_ld_char4 = 0x88, /* short2, int, float */
         midgard_op_ld_short4 = 0x8C, /* int2, float2, long */
         midgard_op_ld_int4 = 0x90, /* float4, long2 */
