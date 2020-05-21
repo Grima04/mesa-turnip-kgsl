@@ -678,9 +678,9 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
          if (paranoid == 0 || geteuid() == 0)
             i915_perf_oa_available = true;
       }
-   }
 
-   perf->platform_supported = oa_register != NULL;
+      perf->platform_supported = oa_register != NULL;
+   }
 
    if (!i915_perf_oa_available ||
        !oa_register ||
