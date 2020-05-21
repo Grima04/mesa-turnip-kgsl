@@ -961,6 +961,14 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 return;
         }
 
+        /* Promote imov to fmov if it might help inline a constant */
+        if (op == midgard_alu_op_imov && nir_src_is_const(instr->src[0].src)
+                        && nir_src_bit_size(instr->src[0].src) == 32
+                        && nir_is_same_comp_swizzle(instr->src[0].swizzle,
+                                nir_src_num_components(instr->src[0].src))) {
+                op = midgard_alu_op_fmov;
+        }
+
         /* Midgard can perform certain modifiers on output of an ALU op */
 
         unsigned outmod = 0;
@@ -2632,7 +2640,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         mir_foreach_block(ctx, _block) {
                 midgard_block *block = (midgard_block *) _block;
                 inline_alu_constants(ctx, block);
-                midgard_opt_promote_fmov(ctx, block);
                 embedded_to_inline_constant(ctx, block);
         }
         /* MIR-level optimizations */
