@@ -29,6 +29,7 @@
 #include "adapter9.h"
 
 #include "nine_helpers.h"
+#include "nine_memory_helper.h"
 #include "nine_state.h"
 
 struct gen_mipmap_state;
@@ -147,6 +148,8 @@ struct NineDevice9
     struct nine_range_pool range_pool;
 
     struct hud_context *hud; /* NULL if hud is disabled */
+
+    struct nine_allocator *allocator;
 
     /* dummy vbo (containing 0 0 0 0) to bind if vertex shader input
      * is not bound to anything by the vertex declaration */

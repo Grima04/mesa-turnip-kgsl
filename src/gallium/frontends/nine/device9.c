@@ -36,6 +36,7 @@
 #include "volumetexture9.h"
 #include "nine_buffer_upload.h"
 #include "nine_helpers.h"
+#include "nine_memory_helper.h"
 #include "nine_pipe.h"
 #include "nine_ff.h"
 #include "nine_dump.h"
@@ -234,6 +235,8 @@ NineDevice9_ctor( struct NineDevice9 *This,
 
     /* Create first, it messes up our state. */
     This->hud = hud_create(This->context.cso, NULL, NULL); /* NULL result is fine */
+
+    This->allocator = nine_allocator_create(This);
 
     /* Available memory counter. Updated only for allocations with this device
      * instance. This is the Win 7 behavior.
@@ -598,6 +601,9 @@ NineDevice9_dtor( struct NineDevice9 *This )
 
     if (This->buffer_upload)
         nine_upload_destroy(This->buffer_upload);
+
+    if (This->allocator)
+        nine_allocator_destroy(This->allocator);
 
     /* Destroy cso first */
     if (This->context.cso) { cso_destroy_context(This->context.cso); }

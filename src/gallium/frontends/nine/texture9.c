@@ -26,6 +26,7 @@
 #include "surface9.h"
 #include "texture9.h"
 #include "nine_helpers.h"
+#include "nine_memory_helper.h"
 #include "nine_pipe.h"
 #include "nine_dump.h"
 
@@ -53,7 +54,7 @@ NineTexture9_ctor( struct NineTexture9 *This,
     unsigned l;
     D3DSURFACE_DESC sfdesc;
     HRESULT hr;
-    void *user_buffer = NULL, *user_buffer_for_level;
+    struct nine_allocation *user_buffer = NULL, *user_buffer_for_level;
 
     DBG("(%p) Width=%u Height=%u Levels=%u Usage=%s Format=%s Pool=%s "
         "pSharedHandle=%p\n", This, Width, Height, Levels,
@@ -155,17 +156,17 @@ NineTexture9_ctor( struct NineTexture9 *This,
     This->base.pstype = (Height == 1) ? 1 : 0;
 
     if (pSharedHandle && *pSharedHandle) { /* Pool == D3DPOOL_SYSTEMMEM */
-        user_buffer = (void *)*pSharedHandle;
+        user_buffer = nine_wrap_external_pointer(pParams->device->allocator, (void *)*pSharedHandle);
         level_offsets = alloca(sizeof(unsigned) * This->base.level_count);
         (void) nine_format_get_size_and_offsets(pf, level_offsets,
                                                 Width, Height,
                                                 This->base.level_count-1);
     } else if (Pool != D3DPOOL_DEFAULT) {
         level_offsets = alloca(sizeof(unsigned) * This->base.level_count);
-        user_buffer = align_calloc(
+        user_buffer = nine_allocate(pParams->device->allocator,
             nine_format_get_size_and_offsets(pf, level_offsets,
                                              Width, Height,
-                                             This->base.level_count-1), 32);
+                                             This->base.level_count-1));
         This->managed_buffer = user_buffer;
         if (!This->managed_buffer)
             return E_OUTOFMEMORY;
@@ -191,8 +192,8 @@ NineTexture9_ctor( struct NineTexture9 *This,
         sfdesc.Height = u_minify(Height, l);
         /* Some apps expect the memory to be allocated in
          * continous blocks */
-        user_buffer_for_level = user_buffer ? user_buffer +
-            level_offsets[l] : NULL;
+        user_buffer_for_level = user_buffer ?
+            nine_suballocate(pParams->device->allocator, user_buffer, level_offsets[l]) : NULL;
 
         hr = NineSurface9_new(This->base.base.base.device, NineUnknown(This),
                               This->base.base.resource, user_buffer_for_level,
@@ -217,6 +218,7 @@ NineTexture9_ctor( struct NineTexture9 *This,
 static void
 NineTexture9_dtor( struct NineTexture9 *This )
 {
+    bool is_worker = nine_context_is_worker(This->base.base.base.device);
     unsigned l;
 
     DBG("This=%p\n", This);
@@ -229,8 +231,12 @@ NineTexture9_dtor( struct NineTexture9 *This )
         FREE(This->surfaces);
     }
 
-    if (This->managed_buffer)
-        align_free(This->managed_buffer);
+    if (This->managed_buffer) {
+        if (is_worker)
+            nine_free_worker(This->base.base.base.device->allocator, This->managed_buffer);
+        else
+            nine_free(This->base.base.base.device->allocator, This->managed_buffer);
+    }
 
     NineBaseTexture9_dtor(&This->base);
 }

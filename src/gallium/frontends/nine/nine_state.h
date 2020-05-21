@@ -24,6 +24,7 @@
 #define _NINE_STATE_H_
 
 #include "d3d9.h"
+#include "iunknown.h"
 #include "nine_defines.h"
 #include "pipe/p_state.h"
 #include "util/list.h"

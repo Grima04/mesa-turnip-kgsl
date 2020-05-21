@@ -32,6 +32,7 @@
 #include "nine_helpers.h"
 #include "nine_pipe.h"
 #include "nine_dump.h"
+#include "nine_memory_helper.h"
 #include "nine_state.h"
 
 #include "pipe/p_context.h"
@@ -52,7 +53,7 @@ NineSurface9_ctor( struct NineSurface9 *This,
                    struct NineUnknownParams *pParams,
                    struct NineUnknown *pContainer,
                    struct pipe_resource *pResource,
-                   void *user_buffer,
+                   struct nine_allocation *user_buffer,
                    uint8_t TextureType,
                    unsigned Level,
                    unsigned Layer,
@@ -79,7 +80,7 @@ NineSurface9_ctor( struct NineSurface9 *This,
     /* Allocation only from create_zs_or_rt_surface with params 0 0 0 */
     assert(!allocate || (Level == 0 && Layer == 0 && TextureType == 0));
 
-    This->data = (uint8_t *)user_buffer;
+    This->data = user_buffer;
 
     multisample_type = pDesc->MultiSampleType;
 
@@ -151,11 +152,11 @@ NineSurface9_ctor( struct NineSurface9 *This,
          * Do not use workaround by default as it eats more virtual space */
         (pParams->device->workarounds.dynamic_texture_workaround &&
          pDesc->Pool == D3DPOOL_DEFAULT && pDesc->Usage & D3DUSAGE_DYNAMIC)) {
-        This->data_internal = align_calloc(
+        This->data_internal = nine_allocate(pParams->device->allocator,
             nine_format_get_level_alloc_size(This->format_internal,
                                              pDesc->Width,
                                              pDesc->Height,
-                                             0), 32);
+                                             0));
         if (!This->data_internal)
             return E_OUTOFMEMORY;
         This->stride_internal = nine_format_get_stride(This->format_internal,
@@ -165,11 +166,11 @@ NineSurface9_ctor( struct NineSurface9 *This,
     if ((allocate && pDesc->Pool != D3DPOOL_DEFAULT) || pDesc->Format == D3DFMT_NULL) {
         /* Ram buffer with no parent. Has to allocate the resource itself */
         assert(!user_buffer);
-        This->data = align_calloc(
+        This->data = nine_allocate(pParams->device->allocator,
             nine_format_get_level_alloc_size(This->base.info.format,
                                              pDesc->Width,
                                              pDesc->Height,
-                                             0), 32);
+                                             0));
         if (!This->data)
             return E_OUTOFMEMORY;
     }
@@ -209,6 +210,7 @@ NineSurface9_ctor( struct NineSurface9 *This,
 void
 NineSurface9_dtor( struct NineSurface9 *This )
 {
+    bool is_worker = nine_context_is_worker(This->base.base.device);
     DBG("This=%p\n", This);
 
     if (This->transfer) {
@@ -226,11 +228,25 @@ NineSurface9_dtor( struct NineSurface9 *This )
     pipe_surface_reference(&This->surface[0], NULL);
     pipe_surface_reference(&This->surface[1], NULL);
 
+    if (!is_worker && This->lock_count && (This->data_internal || This->data)) {
+        /* For is_worker nine_free_worker will handle it */
+        nine_pointer_strongrelease(This->base.base.device->allocator,
+                                   This->data_internal ? This->data_internal : This->data);
+    }
+
     /* Release system memory when we have to manage it (no parent) */
-    if (!This->base.base.container && This->data)
-        align_free(This->data);
-    if (This->data_internal)
-        align_free(This->data_internal);
+    if (This->data) {
+        if (is_worker)
+            nine_free_worker(This->base.base.device->allocator, This->data);
+        else
+            nine_free(This->base.base.device->allocator, This->data);
+    }
+    if (This->data_internal) {
+        if (is_worker)
+            nine_free_worker(This->base.base.device->allocator, This->data_internal);
+        else
+            nine_free(This->base.base.device->allocator, This->data_internal);
+    }
     NineResource9_dtor(&This->base);
 }
 
@@ -489,11 +505,10 @@ NineSurface9_LockRect( struct NineSurface9 *This,
     if (This->data_internal || This->data) {
         enum pipe_format format = This->base.info.format;
         unsigned stride = This->stride;
-        uint8_t *data = This->data;
+        uint8_t *data = nine_get_pointer(This->base.base.device->allocator, This->data_internal ? This->data_internal : This->data);
         if (This->data_internal) {
             format = This->format_internal;
             stride = This->stride_internal;
-            data = This->data_internal;
         }
         /* ATI1 and ATI2 need special handling, because of d3d9 bug.
          * We must advertise to the application as if it is uncompressed
@@ -562,15 +577,19 @@ NineSurface9_UnlockRect( struct NineSurface9 *This )
     --This->lock_count;
 
     if (This->data_internal) {
+        nine_pointer_weakrelease(This->base.base.device->allocator, This->data_internal);
         if (This->data) {
             (void) util_format_translate(This->base.info.format,
-                                         This->data, This->stride,
+                                         nine_get_pointer(This->base.base.device->allocator, This->data),
+                                         This->stride,
                                          0, 0,
                                          This->format_internal,
-                                         This->data_internal,
+                                         nine_get_pointer(This->base.base.device->allocator, This->data_internal),
                                          This->stride_internal,
                                          0, 0,
                                          This->desc.Width, This->desc.Height);
+            nine_pointer_weakrelease(This->base.base.device->allocator, This->data);
+            nine_pointer_strongrelease(This->base.base.device->allocator, This->data_internal);
         } else {
             u_box_2d_zslice(0, 0, This->layer,
                             This->desc.Width, This->desc.Height, &dst_box);
@@ -584,12 +603,16 @@ NineSurface9_UnlockRect( struct NineSurface9 *This )
                                     This->level,
                                     &dst_box,
                                     This->format_internal,
-                                    This->data_internal,
+                                    nine_get_pointer(This->base.base.device->allocator, This->data_internal),
                                     This->stride_internal,
                                     0, /* depth = 1 */
                                     &src_box);
+            nine_pointer_delayedstrongrelease(This->base.base.device->allocator, This->data_internal, &This->pending_uploads_counter);
         }
+    } else if (This->data) {
+        nine_pointer_weakrelease(This->base.base.device->allocator, This->data);
     }
+
     return D3D_OK;
 }
 
@@ -667,6 +690,20 @@ NineSurface9_CopyMemToDefault( struct NineSurface9 *This,
     u_box_2d_zslice(src_x, src_y, 0,
                     copy_width, copy_height, &src_box);
 
+    if (This->data_internal) {
+        (void) util_format_translate(This->format_internal,
+                                     nine_get_pointer(This->base.base.device->allocator, This->data_internal),
+                                     This->stride_internal,
+                                     dst_x, dst_y,
+                                     From->base.info.format,
+                                     nine_get_pointer(This->base.base.device->allocator, From->data),
+                                     From->stride,
+                                     src_x, src_y,
+                                     copy_width, copy_height);
+        nine_pointer_weakrelease(This->base.base.device->allocator, From->data);
+        nine_pointer_strongrelease(This->base.base.device->allocator, This->data_internal);
+    }
+
     nine_context_box_upload(This->base.base.device,
                             &From->pending_uploads_counter,
                             (struct NineUnknown *)From,
@@ -674,9 +711,12 @@ NineSurface9_CopyMemToDefault( struct NineSurface9 *This,
                             This->level,
                             &dst_box,
                             From->base.info.format,
-                            From->data, From->stride,
+                            nine_get_pointer(This->base.base.device->allocator, From->data),
+                            From->stride,
                             0, /* depth = 1 */
                             &src_box);
+    nine_pointer_delayedstrongrelease(This->base.base.device->allocator, From->data, &From->pending_uploads_counter);
+
     if (From->texture == D3DRTYPE_TEXTURE) {
         struct NineTexture9 *tex =
             NineTexture9(From->base.base.container);
@@ -690,16 +730,6 @@ NineSurface9_CopyMemToDefault( struct NineSurface9 *This,
         if (!tex->managed_buffer)
             nine_csmt_process(This->base.base.device);
     }
-
-    if (This->data_internal)
-        (void) util_format_translate(This->format_internal,
-                                     This->data_internal,
-                                     This->stride_internal,
-                                     dst_x, dst_y,
-                                     From->base.info.format,
-                                     From->data, From->stride,
-                                     src_x, src_y,
-                                     copy_width, copy_height);
 
     NineSurface9_MarkContainerDirty(This);
 }
@@ -731,7 +761,7 @@ NineSurface9_CopyDefaultToMem( struct NineSurface9 *This,
     p_src = pipe->transfer_map(pipe, r_src, From->level,
                                PIPE_MAP_READ,
                                &src_box, &transfer);
-    p_dst = This->data;
+    p_dst = nine_get_pointer(This->base.base.device->allocator, This->data);
 
     assert (p_src && p_dst);
 
@@ -742,6 +772,8 @@ NineSurface9_CopyDefaultToMem( struct NineSurface9 *This,
                    transfer->stride, 0, 0);
 
     pipe->transfer_unmap(pipe, transfer);
+
+    nine_pointer_weakrelease(This->base.base.device->allocator, This->data);
 }
 
 
@@ -779,9 +811,11 @@ NineSurface9_UploadSelf( struct NineSurface9 *This,
                             This->level,
                             &box,
                             res->format,
-                            This->data, This->stride,
+                            nine_get_pointer(This->base.base.device->allocator, This->data),
+                            This->stride,
                             0, /* depth = 1 */
                             &box);
+    nine_pointer_delayedstrongrelease(This->base.base.device->allocator, This->data, &This->pending_uploads_counter);
 
     return D3D_OK;
 }
@@ -850,7 +884,7 @@ HRESULT
 NineSurface9_new( struct NineDevice9 *pDevice,
                   struct NineUnknown *pContainer,
                   struct pipe_resource *pResource,
-                  void *user_buffer,
+                  struct nine_allocation *user_buffer,
                   uint8_t TextureType,
                   unsigned Level,
                   unsigned Layer,

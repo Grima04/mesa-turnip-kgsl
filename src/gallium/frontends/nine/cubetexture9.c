@@ -24,6 +24,7 @@
 
 #include "device9.h"
 #include "cubetexture9.h"
+#include "nine_memory_helper.h"
 #include "nine_helpers.h"
 #include "nine_pipe.h"
 
@@ -45,7 +46,7 @@ NineCubeTexture9_ctor( struct NineCubeTexture9 *This,
     unsigned i, l, f, offset, face_size = 0;
     unsigned *level_offsets = NULL;
     D3DSURFACE_DESC sfdesc;
-    void *p;
+    struct nine_allocation *p;
     HRESULT hr;
 
     DBG("This=%p pParams=%p EdgeLength=%u Levels=%u Usage=%d "
@@ -118,7 +119,7 @@ NineCubeTexture9_ctor( struct NineCubeTexture9 *This,
         face_size = nine_format_get_size_and_offsets(pf, level_offsets,
                                                      EdgeLength, EdgeLength,
                                                      This->base.level_count-1);
-        This->managed_buffer = align_calloc(6 * face_size, 32);
+        This->managed_buffer = nine_allocate(pParams->device->allocator, 6 * face_size);
         if (!This->managed_buffer)
             return E_OUTOFMEMORY;
     }
@@ -145,8 +146,8 @@ NineCubeTexture9_ctor( struct NineCubeTexture9 *This,
         offset = f * face_size;
         for (l = 0; l < This->base.level_count; l++) {
             sfdesc.Width = sfdesc.Height = u_minify(EdgeLength, l);
-            p = This->managed_buffer ? This->managed_buffer + offset +
-                    level_offsets[l] : NULL;
+            p = This->managed_buffer ?
+                nine_suballocate(pParams->device->allocator, This->managed_buffer, offset + level_offsets[l]) : NULL;
 
             hr = NineSurface9_new(This->base.base.base.device, NineUnknown(This),
                                   This->base.base.resource, p, D3DRTYPE_CUBETEXTURE,
@@ -170,6 +171,7 @@ static void
 NineCubeTexture9_dtor( struct NineCubeTexture9 *This )
 {
     unsigned i;
+    bool is_worker = nine_context_is_worker(This->base.base.base.device);
 
     DBG("This=%p\n", This);
 
@@ -179,8 +181,12 @@ NineCubeTexture9_dtor( struct NineCubeTexture9 *This )
         FREE(This->surfaces);
     }
 
-    if (This->managed_buffer)
-        align_free(This->managed_buffer);
+    if (This->managed_buffer) {
+        if (is_worker)
+            nine_free_worker(This->base.base.base.device->allocator, This->managed_buffer);
+        else
+            nine_free(This->base.base.base.device->allocator, This->managed_buffer);
+    }
 
     NineBaseTexture9_dtor(&This->base);
 }
