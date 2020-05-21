@@ -4360,12 +4360,14 @@ void genX(CmdDispatchBase)(
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
+   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
+
    anv_batch_emit(&cmd_buffer->batch, GENX(GPGPU_WALKER), ggw) {
       ggw.PredicateEnable              = cmd_buffer->state.conditional_render_enabled;
-      ggw.SIMDSize                     = prog_data->simd_size / 16;
+      ggw.SIMDSize                     = cs_params.simd_size / 16;
       ggw.ThreadDepthCounterMaximum    = 0;
       ggw.ThreadHeightCounterMaximum   = 0;
-      ggw.ThreadWidthCounterMaximum    = anv_cs_threads(pipeline) - 1;
+      ggw.ThreadWidthCounterMaximum    = cs_params.threads - 1;
       ggw.ThreadGroupIDXDimension      = groupCountX;
       ggw.ThreadGroupIDYDimension      = groupCountY;
       ggw.ThreadGroupIDZDimension      = groupCountZ;
@@ -4474,14 +4476,16 @@ void genX(CmdDispatchIndirect)(
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 #endif
 
+   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
+
    anv_batch_emit(batch, GENX(GPGPU_WALKER), ggw) {
       ggw.IndirectParameterEnable      = true;
       ggw.PredicateEnable              = GEN_GEN <= 7 ||
                                          cmd_buffer->state.conditional_render_enabled;
-      ggw.SIMDSize                     = prog_data->simd_size / 16;
+      ggw.SIMDSize                     = cs_params.simd_size / 16;
       ggw.ThreadDepthCounterMaximum    = 0;
       ggw.ThreadHeightCounterMaximum   = 0;
-      ggw.ThreadWidthCounterMaximum    = anv_cs_threads(pipeline) - 1;
+      ggw.ThreadWidthCounterMaximum    = cs_params.threads - 1;
       ggw.RightExecutionMask           = pipeline->cs_right_mask;
       ggw.BottomExecutionMask          = 0xffffffff;
    }

@@ -2325,19 +2325,16 @@ compute_pipeline_create(
 
    anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);
 
-   uint32_t group_size = cs_prog_data->local_size[0] *
-      cs_prog_data->local_size[1] * cs_prog_data->local_size[2];
-   uint32_t remainder = group_size & (cs_prog_data->simd_size - 1);
+   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
+   uint32_t remainder = cs_params.group_size & (cs_params.simd_size - 1);
 
    if (remainder > 0)
       pipeline->cs_right_mask = ~0u >> (32 - remainder);
    else
-      pipeline->cs_right_mask = ~0u >> (32 - cs_prog_data->simd_size);
-
-   const uint32_t threads = anv_cs_threads(pipeline);
+      pipeline->cs_right_mask = ~0u >> (32 - cs_params.simd_size);
 
    const uint32_t vfe_curbe_allocation =
-      ALIGN(cs_prog_data->push.per_thread.regs * threads +
+      ALIGN(cs_prog_data->push.per_thread.regs * cs_params.threads +
             cs_prog_data->push.cross_thread.regs, 2);
 
    const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
@@ -2388,7 +2385,10 @@ compute_pipeline_create(
    }
 
    struct GENX(INTERFACE_DESCRIPTOR_DATA) desc = {
-      .KernelStartPointer     = cs_bin->kernel.offset,
+      .KernelStartPointer     =
+         cs_bin->kernel.offset +
+         brw_cs_prog_data_prog_offset(cs_prog_data, cs_params.simd_size),
+
       /* WA_1606682166 */
       .SamplerCount           = GEN_GEN == 11 ? 0 : get_sampler_count(cs_bin),
       /* We add 1 because the CS indirect parameters buffer isn't accounted
@@ -2420,7 +2420,7 @@ compute_pipeline_create(
       .ThreadPreemptionDisable = true,
 #endif
 
-      .NumberofThreadsinGPGPUThreadGroup = threads,
+      .NumberofThreadsinGPGPUThreadGroup = cs_params.threads,
    };
    GENX(INTERFACE_DESCRIPTOR_DATA_pack)(NULL,
                                         pipeline->interface_descriptor_data,
