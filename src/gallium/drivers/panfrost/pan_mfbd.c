@@ -557,7 +557,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                         struct panfrost_slice *slice = &rsrc->slices[level];
 
                         fb.mfbd_flags |= MALI_MFBD_EXTRA;
-                        fbx.flags_lo |= MALI_EXTRA_PRESENT;
+                        fbx.flags_hi |= MALI_EXTRA_PRESENT;
                         fbx.checksum_stride = slice->checksum_stride;
                         if (slice->checksum_bo)
                                 fbx.checksum = slice->checksum_bo->gpu;
