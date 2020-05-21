@@ -6505,7 +6505,9 @@ iris_upload_compute_state(struct iris_context *ice,
    struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
 
    const uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
-   const unsigned threads = DIV_ROUND_UP(group_size, cs_prog_data->simd_size);
+   const unsigned simd_size =
+      brw_cs_simd_size_for_group_size(devinfo, cs_prog_data, group_size);
+   const unsigned threads = DIV_ROUND_UP(group_size, simd_size);
 
    /* Always pin the binder.  If we're emitting new binding table pointers,
     * we need it.  If not, we're probably inheriting old tables via the
@@ -6603,7 +6605,8 @@ iris_upload_compute_state(struct iris_context *ice,
       uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
 
       iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
-         idd.KernelStartPointer = KSP(shader);
+         idd.KernelStartPointer =
+            KSP(shader) + brw_cs_prog_data_prog_offset(cs_prog_data, simd_size);
          idd.SamplerStatePointer = shs->sampler_table.offset;
          idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
          idd.NumberofThreadsinGPGPUThreadGroup = threads;
@@ -6621,13 +6624,13 @@ iris_upload_compute_state(struct iris_context *ice,
       }
    }
 
-   uint32_t remainder = group_size & (cs_prog_data->simd_size - 1);
+   uint32_t remainder = group_size & (simd_size - 1);
    uint32_t right_mask;
 
    if (remainder > 0)
       right_mask = ~0u >> (32 - remainder);
    else
-      right_mask = ~0u >> (32 - cs_prog_data->simd_size);
+      right_mask = ~0u >> (32 - simd_size);
 
 #define GPGPU_DISPATCHDIMX 0x2500
 #define GPGPU_DISPATCHDIMY 0x2504
@@ -6652,7 +6655,7 @@ iris_upload_compute_state(struct iris_context *ice,
 
    iris_emit_cmd(batch, GENX(GPGPU_WALKER), ggw) {
       ggw.IndirectParameterEnable    = grid->indirect != NULL;
-      ggw.SIMDSize                   = cs_prog_data->simd_size / 16;
+      ggw.SIMDSize                   = simd_size / 16;
       ggw.ThreadDepthCounterMaximum  = 0;
       ggw.ThreadHeightCounterMaximum = 0;
       ggw.ThreadWidthCounterMaximum  = threads - 1;
