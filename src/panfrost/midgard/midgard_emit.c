@@ -72,8 +72,7 @@ vector_to_scalar_source(unsigned u, bool is_int, bool is_full,
         if (is_int) {
                 /* TODO */
         } else {
-                s.abs = v.mod & MIDGARD_FLOAT_MOD_ABS;
-                s.negate = v.mod & MIDGARD_FLOAT_MOD_NEG;
+                s.mod = v.mod;
         }
 
         unsigned o;

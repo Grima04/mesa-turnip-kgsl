@@ -275,8 +275,7 @@ midgard_vector_alu;
 typedef struct
 __attribute__((__packed__))
 {
-        bool abs           : 1;
-        bool negate        : 1;
+        unsigned mod       : 2;
         bool full          : 1; /* 0 = half, 1 = full */
         unsigned component : 3;
 }
