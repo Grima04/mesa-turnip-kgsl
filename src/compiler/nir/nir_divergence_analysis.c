@@ -241,6 +241,20 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
       break;
    }
 
+   case nir_intrinsic_load_ubo:
+   case nir_intrinsic_load_ssbo:
+      is_divergent = (instr->src[0].ssa->divergent && (nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM)) ||
+                     instr->src[1].ssa->divergent;
+      break;
+
+   case nir_intrinsic_image_load:
+   case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_bindless_image_load:
+      is_divergent = (instr->src[0].ssa->divergent && (nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM)) ||
+                     instr->src[1].ssa->divergent || instr->src[2].ssa->divergent || instr->src[3].ssa->divergent;
+      break;
+
+
    /* Intrinsics with divergence depending on sources */
    case nir_intrinsic_ballot_bitfield_extract:
    case nir_intrinsic_ballot_find_lsb:
@@ -254,8 +268,6 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_quad_swap_vertical:
    case nir_intrinsic_quad_swap_diagonal:
    case nir_intrinsic_load_deref:
-   case nir_intrinsic_load_ubo:
-   case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_shared:
    case nir_intrinsic_load_global:
    case nir_intrinsic_load_global_constant:
@@ -264,9 +276,6 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_sample_pos_from_id:
    case nir_intrinsic_load_kernel_input:
-   case nir_intrinsic_image_load:
-   case nir_intrinsic_image_deref_load:
-   case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_image_samples:
    case nir_intrinsic_image_deref_samples:
    case nir_intrinsic_bindless_image_samples:
