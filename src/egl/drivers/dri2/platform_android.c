@@ -156,26 +156,6 @@ static int get_fourcc(int native)
    return -1;
 }
 
-static int get_format(int format)
-{
-   switch (format) {
-   case HAL_PIXEL_FORMAT_BGRA_8888: return __DRI_IMAGE_FORMAT_ARGB8888;
-   case HAL_PIXEL_FORMAT_RGB_565:   return __DRI_IMAGE_FORMAT_RGB565;
-   case HAL_PIXEL_FORMAT_RGBA_8888: return __DRI_IMAGE_FORMAT_ABGR8888;
-   case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-      /*
-       * HACK: Hardcode this to RGBX_8888 as per cros_gralloc hack.
-       * TODO: Revert this once https://issuetracker.google.com/32077885 is fixed.
-       */
-   case HAL_PIXEL_FORMAT_RGBX_8888: return __DRI_IMAGE_FORMAT_XBGR8888;
-   case HAL_PIXEL_FORMAT_RGBA_FP16: return __DRI_IMAGE_FORMAT_ABGR16161616F;
-   case HAL_PIXEL_FORMAT_RGBA_1010102: return __DRI_IMAGE_FORMAT_ABGR2101010;
-   default:
-      _eglLog(_EGL_WARNING, "unsupported native buffer format 0x%x", format);
-   }
-   return -1;
-}
-
 /* returns # of fds, and by reference the actual fds */
 static unsigned
 get_native_buffer_fds(struct ANativeWindowBuffer *buf, int fds[3])
@@ -960,6 +940,26 @@ droid_create_image_from_prime_fds(_EGLDisplay *disp, _EGLContext *ctx,
 }
 
 #ifdef HAVE_DRM_GRALLOC
+static int get_format(int format)
+{
+   switch (format) {
+   case HAL_PIXEL_FORMAT_BGRA_8888: return __DRI_IMAGE_FORMAT_ARGB8888;
+   case HAL_PIXEL_FORMAT_RGB_565:   return __DRI_IMAGE_FORMAT_RGB565;
+   case HAL_PIXEL_FORMAT_RGBA_8888: return __DRI_IMAGE_FORMAT_ABGR8888;
+   case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
+      /*
+       * HACK: Hardcode this to RGBX_8888 as per cros_gralloc hack.
+       * TODO: Revert this once https://issuetracker.google.com/32077885 is fixed.
+       */
+   case HAL_PIXEL_FORMAT_RGBX_8888: return __DRI_IMAGE_FORMAT_XBGR8888;
+   case HAL_PIXEL_FORMAT_RGBA_FP16: return __DRI_IMAGE_FORMAT_ABGR16161616F;
+   case HAL_PIXEL_FORMAT_RGBA_1010102: return __DRI_IMAGE_FORMAT_ABGR2101010;
+   default:
+      _eglLog(_EGL_WARNING, "unsupported native buffer format 0x%x", format);
+   }
+   return -1;
+}
+
 static _EGLImage *
 droid_create_image_from_name(_EGLDisplay *disp, _EGLContext *ctx,
                              struct ANativeWindowBuffer *buf)
