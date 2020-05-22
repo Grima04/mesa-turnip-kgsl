@@ -47,10 +47,10 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		uint32_t blocks;
 
 		if (layout == UTIL_FORMAT_LAYOUT_ASTC)
-			slice->pitch = width =
-				util_align_npot(width, pitchalign * util_format_get_blockwidth(format));
+			width = util_align_npot(width, pitchalign * util_format_get_blockwidth(format));
 		else
-			slice->pitch = width = align(width, pitchalign);
+			width = align(width, pitchalign);
+		slice->pitch = util_format_get_nblocksx(format, width) * rsc->layout.cpp;
 		slice->offset = size;
 		blocks = util_format_get_nblocks(format, width, height);
 		/* 1d array and 2d array textures must all have the same layer size
