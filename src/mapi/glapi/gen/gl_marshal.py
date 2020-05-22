@@ -37,7 +37,7 @@ header = """
 
 #define COMPAT (ctx->API != API_OPENGL_CORE)
 
-static inline int safe_mul(int a, int b)
+UNUSED static inline int safe_mul(int a, int b)
 {
     if (a < 0 || b < 0) return -1;
     if (a == 0 || b == 0) return 0;
@@ -336,7 +336,7 @@ class PrintCode(gl_XML.gl_print_base):
 
     def print_create_marshal_table(self, api):
         out('/* _mesa_create_marshal_table takes a long time to compile with -O2 */')
-        out('#ifdef __GNUC__')
+        out('#if defined(__GNUC__) && !defined(__clang__)')
         out('__attribute__((optimize("O1")))')
         out('#endif')
         out('struct _glapi_table *')
