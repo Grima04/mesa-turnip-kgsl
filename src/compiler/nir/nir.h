@@ -3294,6 +3294,8 @@ nir_function_impl *nir_cf_node_get_function(nir_cf_node *node);
 void nir_metadata_require(nir_function_impl *impl, nir_metadata required, ...);
 /** dirties all but the preserved metadata */
 void nir_metadata_preserve(nir_function_impl *impl, nir_metadata preserved);
+/** Preserves all metadata for the given shader */
+void nir_shader_preserve_all_metadata(nir_shader *shader);
 
 /** creates an instruction with default swizzle/writemask/etc. with NULL registers */
 nir_alu_instr *nir_alu_instr_create(nir_shader *shader, nir_op op);
