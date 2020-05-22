@@ -253,8 +253,6 @@ cmd_buffer_destroy_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
 static void
 cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   list_del(&cmd_buffer->pool_link);
-
    list_for_each_entry_safe(struct v3dv_job, job,
                             &cmd_buffer->submit_jobs, list_link) {
       v3dv_job_destroy(job);
@@ -289,6 +287,7 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 static void
 cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   list_del(&cmd_buffer->pool_link);
    cmd_buffer_free_resources(cmd_buffer);
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
@@ -731,6 +730,11 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer,
       struct v3dv_cmd_pool *pool = cmd_buffer->pool;
       VkCommandBufferLevel level = cmd_buffer->level;
 
+      /* cmd_buffer_init below will re-add the command buffer to the pool
+       * so remove it here so we don't end up adding it again.
+       */
+      list_del(&cmd_buffer->pool_link);
+
       /* FIXME: For now we always free all resources as if
        * VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT was set.
        */
@@ -851,8 +855,8 @@ v3dv_ResetCommandPool(VkDevice device,
    VkCommandBufferResetFlags reset_flags = 0;
    if (flags & VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT)
       reset_flags = VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT;
-   list_for_each_entry(struct v3dv_cmd_buffer, cmd_buffer,
-                       &pool->cmd_buffers, pool_link) {
+   list_for_each_entry_safe(struct v3dv_cmd_buffer, cmd_buffer,
+                            &pool->cmd_buffers, pool_link) {
       cmd_buffer_reset(cmd_buffer, reset_flags);
    }
 
