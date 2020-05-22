@@ -2675,6 +2675,8 @@ pandecode_vertex_tiler_postfix_pre(
                         mali_ptr shader = pandecode_midgard_blend(&blend, s->unknown2_3 & MALI_HAS_BLEND_SHADER);
                         if (shader & ~0xF)
                                 pandecode_blend_shader_disassemble(shader, job_no, job_type, false, gpu_id);
+                } else {
+                        pandecode_msg("mdg_blend = %" PRIx64 "\n", s->blend.shader);
                 }
 
                 pandecode_indent--;
