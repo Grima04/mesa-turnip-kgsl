@@ -27,6 +27,8 @@
 struct v3dv_device;
 
 struct v3dv_bo {
+   struct list_head list_link;
+
    uint32_t handle;
    uint32_t size;
    uint32_t offset;

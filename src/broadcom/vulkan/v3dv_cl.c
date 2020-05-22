@@ -32,6 +32,7 @@ v3dv_cl_init(struct v3dv_job *job, struct v3dv_cl *cl)
    cl->bo = NULL;
    cl->size = 0;
    cl->job = job;
+   list_inithead(&cl->bo_list);
 }
 
 void
@@ -52,13 +53,50 @@ v3dv_cl_reset(struct v3dv_cl *cl)
 void
 v3dv_cl_destroy(struct v3dv_cl *cl)
 {
-   if (cl->bo) {
+   list_for_each_entry_safe(struct v3dv_bo, bo, &cl->bo_list, list_link) {
       assert(cl->job);
-      v3dv_bo_free(cl->job->device, cl->bo);
+      list_del(&bo->list_link);
+      v3dv_bo_free(cl->job->device, bo);
    }
 
    /* Leave the CL in a reset state to catch use after destroy instances */
    v3dv_cl_init(NULL, cl);
+}
+
+static bool
+cl_alloc_bo(struct v3dv_cl *cl, uint32_t space, bool use_branch)
+{
+   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->device, space, "CL");
+   if (!bo) {
+      fprintf(stderr, "failed to allocate memory for command list\n");
+      v3dv_flag_oom(NULL, cl->job);
+      return false;
+   }
+
+   list_addtail(&bo->list_link, &cl->bo_list);
+
+   bool ok = v3dv_bo_map(cl->job->device, bo, bo->size);
+   if (!ok) {
+      fprintf(stderr, "failed to map command list buffer\n");
+      v3dv_flag_oom(NULL, cl->job);
+      return false;
+   }
+
+   /* Chain to the new BO from the old one if requested */
+   if (use_branch && cl->bo) {
+      cl_emit(cl, BRANCH, branch) {
+         branch.address = v3dv_cl_address(bo, 0);
+      }
+   }
+
+   v3dv_job_add_bo(cl->job, bo);
+
+   cl->bo = bo;
+   cl->base = cl->bo->map;
+   cl->size = cl->bo->size;
+   cl->next = cl->base;
+
+   return true;
 }
 
 uint32_t
@@ -71,27 +109,7 @@ v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment)
       return offset;
    }
 
-   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->device, space, "CL");
-   if (!bo) {
-      fprintf(stderr, "failed to allocate memory for command list\n");
-      v3dv_flag_oom(NULL, cl->job);
-      return 0;
-   }
-
-   v3dv_job_add_bo(cl->job, bo);
-
-   bool ok = v3dv_bo_map(cl->job->device, bo, bo->size);
-   if (!ok) {
-      fprintf(stderr, "failed to map command list buffer\n");
-      v3dv_flag_oom(NULL, cl->job);
-      return 0;
-   }
-
-   cl->bo = bo;
-   cl->base = cl->bo->map;
-   cl->size = cl->bo->size;
-   cl->next = cl->base;
-
+   cl_alloc_bo(cl, space, false);
    return 0;
 }
 
@@ -101,31 +119,5 @@ v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space)
    if (v3dv_cl_offset(cl) + space + cl_packet_length(BRANCH) <= cl->size)
       return;
 
-   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->device, space, "CL");
-   if (!bo) {
-      fprintf(stderr, "failed to allocate memory for command list\n");
-      v3dv_flag_oom(NULL, cl->job);
-      return;
-   }
-
-   /* Chain to the new BO from the old one if needed */
-   if (cl->bo) {
-      cl_emit(cl, BRANCH, branch) {
-         branch.address = v3dv_cl_address(bo, 0);
-      }
-   }
-
-   v3dv_job_add_bo(cl->job, bo);
-
-   bool ok = v3dv_bo_map(cl->job->device, bo, bo->size);
-   if (!ok) {
-      fprintf(stderr, "failed to map command list buffer\n");
-      v3dv_flag_oom(NULL, cl->job);
-      return;
-   }
-
-   cl->bo = bo;
-   cl->base = cl->bo->map;
-   cl->size = cl->bo->size;
-   cl->next = cl->base;
+   cl_alloc_bo(cl, space, true);
 }

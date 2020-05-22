@@ -26,6 +26,8 @@
 
 #include "broadcom/cle/v3d_packet_helpers.h"
 
+#include "list.h"
+
 struct v3dv_bo;
 struct v3dv_job;
 struct v3dv_cl;
@@ -50,6 +52,7 @@ struct v3dv_cl {
    struct v3dv_cl_out *next;
    struct v3dv_bo *bo;
    uint32_t size;
+   struct list_head bo_list;
 };
 
 static inline struct v3dv_cl_reloc

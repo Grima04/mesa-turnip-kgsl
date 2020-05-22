@@ -60,6 +60,7 @@ v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name)
    bo->map = NULL;
    bo->map_size = 0;
    bo->name = name;
+   list_inithead(&bo->list_link);
 
    return bo;
 }
