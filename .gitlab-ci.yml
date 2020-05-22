@@ -877,6 +877,8 @@ arm64_a306_gles2:
     DEQP_VER: gles2
     DEQP_PARALLEL: 4
     DEQP_EXPECTED_RENDERER: FD307
+    # Since we can't get artifacts back yet, skip making them.
+    DEQP_NO_SAVE_RESULTS: 1
     # NIR_VALIDATE=0 left intentionally unset as a3xx is fast enough at its small testsuite.
   script:
     - .gitlab-ci/bare-metal/fastboot.sh

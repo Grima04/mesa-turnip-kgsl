@@ -8,7 +8,6 @@ mount -t devtmpfs none /dev || echo possibly already mounted
 mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
 
-export DEQP_NO_SAVE_RESULTS=1
 . /set-job-env-vars.sh
 
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
