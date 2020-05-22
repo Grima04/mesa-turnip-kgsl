@@ -2165,6 +2165,14 @@ tu6_compare_func(VkCompareOp op)
    return (enum adreno_compare_func) op;
 }
 
+static inline enum a6xx_reduction_mode
+tu6_reduction_mode(VkSamplerReductionMode reduction_mode)
+{
+   /* note: vulkan enum matches hw */
+
+   return (enum a6xx_reduction_mode) reduction_mode;
+}
+
 static void
 tu_init_sampler(struct tu_device *device,
                 struct tu_sampler *sampler,
@@ -2205,8 +2213,8 @@ tu_init_sampler(struct tu_device *device,
    sampler->descriptor[3] = 0;
 
    if (reduction) {
-      /* note: vulkan enum matches hw */
-      sampler->descriptor[2] |= A6XX_TEX_SAMP_2_REDUCTION_MODE(reduction->reductionMode);
+      sampler->descriptor[2] |= A6XX_TEX_SAMP_2_REDUCTION_MODE(
+         tu6_reduction_mode(reduction->reductionMode));
    }
 
    sampler->ycbcr_sampler = ycbcr_conversion ?
