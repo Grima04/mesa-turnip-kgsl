@@ -107,9 +107,19 @@ gl_nir_lower_images(nir_shader *shader, bool bindless_only)
          nir_builder b;
          nir_builder_init(&b, function->impl);
 
+         bool impl_progress = false;
          nir_foreach_block(block, function->impl)
             nir_foreach_instr(instr, block)
-               progress |= lower_impl(&b, instr, bindless_only);
+               impl_progress |= lower_impl(&b, instr, bindless_only);
+
+         if (impl_progress) {
+            nir_metadata_preserve(function->impl,
+                                  nir_metadata_block_index |
+                                  nir_metadata_dominance);
+            progress = true;
+         } else {
+            nir_metadata_preserve(function->impl, nir_metadata_all);
+         }
       }
    }
 
