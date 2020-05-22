@@ -1143,7 +1143,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                      S_00B22C_LDS_SIZE(shader->config.lds_size));
 
    /* Determine LATE_ALLOC_GS. */
-   unsigned num_cu_per_sh = sscreen->info.num_good_cu_per_sh;
+   unsigned num_cu_per_sh = sscreen->info.min_good_cu_per_sa;
    unsigned late_alloc_wave64; /* The limit is per SH. */
 
    /* For Wave32, the hw will launch twice the number of late

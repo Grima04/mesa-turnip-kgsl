@@ -293,7 +293,7 @@ si_emit_graphics(struct radv_device *device,
 		}
 
 		/* Compute LATE_ALLOC_VS.LIMIT. */
-		unsigned num_cu_per_sh = physical_device->rad_info.num_good_cu_per_sh;
+		unsigned num_cu_per_sh = physical_device->rad_info.min_good_cu_per_sa;
 		unsigned late_alloc_wave64 = 0; /* The limit is per SH. */
 		unsigned late_alloc_wave64_gs = 0;
 		unsigned cu_mask_vs = 0xffff;

@@ -1256,7 +1256,7 @@ void si_init_perfcounters(struct si_screen *screen)
       else if (!strcmp(block->b->b->name, "TA") ||
                !strcmp(block->b->b->name, "TCP") ||
                !strcmp(block->b->b->name, "TD")) {
-         block->num_instances = MAX2(1, screen->info.num_good_cu_per_sh);
+         block->num_instances = MAX2(1, screen->info.max_good_cu_per_sa);
       }
 
       if (si_pc_block_has_per_instance_groups(pc, block)) {

@@ -1753,7 +1753,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->shaderArraysPerEngineCount =
 				pdevice->rad_info.max_sh_per_se;
 			properties->computeUnitsPerShaderArray =
-				pdevice->rad_info.num_good_cu_per_sh;
+				pdevice->rad_info.min_good_cu_per_sa;
 			properties->simdPerComputeUnit =
 				pdevice->rad_info.num_simd_per_compute_unit;
 			properties->wavefrontsPerSimd =

@@ -5269,7 +5269,7 @@ static void si_init_config(struct si_context *sctx)
       }
 
       /* Compute LATE_ALLOC_VS.LIMIT. */
-      unsigned num_cu_per_sh = sscreen->info.num_good_cu_per_sh;
+      unsigned num_cu_per_sh = sscreen->info.min_good_cu_per_sa;
       unsigned late_alloc_wave64 = 0; /* The limit is per SH. */
       unsigned cu_mask_vs = 0xffff;
       unsigned cu_mask_gs = 0xffff;

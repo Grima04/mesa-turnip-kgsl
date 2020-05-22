@@ -624,14 +624,15 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 				util_bitcount(info->cu_mask[i][j]);
 		}
 	}
-	info->num_good_cu_per_sh = info->num_good_compute_units /
-				   (info->max_se * info->max_sh_per_se);
 
-	/* Round down to the nearest multiple of 2, because the hw can't
-	 * disable CUs. It can only disable whole WGPs (dual-CUs).
+	/* On GFX10, only whole WGPs (in units of 2 CUs) can be disabled,
+	 * and max - min <= 2.
 	 */
-	if (info->chip_class >= GFX10)
-		info->num_good_cu_per_sh -= info->num_good_cu_per_sh % 2;
+	unsigned cu_group = info->chip_class >= GFX10 ? 2 : 1;
+	info->max_good_cu_per_sa = DIV_ROUND_UP(info->num_good_compute_units,
+						(info->max_se * info->max_sh_per_se * cu_group)) * cu_group;
+	info->min_good_cu_per_sa = (info->num_good_compute_units /
+				    (info->max_se * info->max_sh_per_se * cu_group)) * cu_group;
 
 	memcpy(info->si_tile_mode_array, amdinfo->gb_tile_mode,
 		sizeof(amdinfo->gb_tile_mode));
@@ -910,7 +911,8 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("Shader core info:\n");
 	printf("    max_shader_clock = %i\n", info->max_shader_clock);
 	printf("    num_good_compute_units = %i\n", info->num_good_compute_units);
-	printf("    num_good_cu_per_sh = %i\n", info->num_good_cu_per_sh);
+	printf("    max_good_cu_per_sa = %i\n", info->max_good_cu_per_sa);
+	printf("    min_good_cu_per_sa = %i\n", info->min_good_cu_per_sa);
 	printf("    max_se = %i\n", info->max_se);
 	printf("    max_sh_per_se = %i\n", info->max_sh_per_se);
 	printf("    max_wave64_per_simd = %i\n", info->max_wave64_per_simd);
