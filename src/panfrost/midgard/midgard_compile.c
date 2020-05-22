@@ -352,7 +352,7 @@ midgard_nir_lower_zs_store(nir_shader *nir)
 /* Flushes undefined values to zero */
 
 static void
-optimise_nir(nir_shader *nir, unsigned quirks)
+optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 {
         bool progress;
         unsigned lower_flrp =
@@ -384,6 +384,9 @@ optimise_nir(nir_shader *nir, unsigned quirks)
                 NIR_PASS_V(nir, midgard_nir_lod_errata);
 
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
+
+        if (!is_blend)
+                NIR_PASS(progress, nir, nir_fuse_io_16);
 
         do {
                 progress = false;
@@ -2593,7 +2596,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         /* Optimisation passes */
 
-        optimise_nir(nir, ctx->quirks);
+        optimise_nir(nir, ctx->quirks, is_blend);
 
         if (midgard_debug & MIDGARD_DBG_SHADERS) {
                 nir_print_shader(nir, stdout);

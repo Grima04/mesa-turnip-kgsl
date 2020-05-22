@@ -652,6 +652,7 @@ void emit_binary_bundle(
 
 bool
 nir_undef_to_zero(nir_shader *shader);
+bool nir_fuse_io_16(nir_shader *shader);
 
 void midgard_nir_lod_errata(nir_shader *shader);
 
