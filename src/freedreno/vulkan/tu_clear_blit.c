@@ -2088,7 +2088,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_RB_STENCIL_CONTROL(
          .stencil_enable = s_clear,
          .func = FUNC_ALWAYS,
-         .zpass = VK_STENCIL_OP_REPLACE));
+         .zpass = STENCIL_REPLACE));
    tu_cs_emit_regs(cs, A6XX_RB_STENCILMASK(.mask = 0xff));
    tu_cs_emit_regs(cs, A6XX_RB_STENCILWRMASK(.wrmask = 0xff));
    tu_cs_emit_regs(cs, A6XX_RB_STENCILREF(.ref = s_clear_val));
