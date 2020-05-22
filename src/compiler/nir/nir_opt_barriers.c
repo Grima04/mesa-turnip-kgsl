@@ -58,6 +58,8 @@ nir_opt_combine_memory_barriers_impl(
       nir_metadata_preserve(impl, nir_metadata_block_index |
                                   nir_metadata_dominance |
                                   nir_metadata_live_ssa_defs);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
    }
 
    return progress;

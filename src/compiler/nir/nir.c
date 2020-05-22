@@ -1975,9 +1975,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
    if (progress) {
       nir_metadata_preserve(impl, preserved);
    } else {
-#ifndef NDEBUG
-      impl->valid_metadata &= ~nir_metadata_not_properly_reset;
-#endif
+      nir_metadata_preserve(impl, nir_metadata_all);
    }
 
    return progress;

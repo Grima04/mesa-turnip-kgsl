@@ -331,6 +331,8 @@ nir_split_struct_vars(nir_shader *shader, nir_variable_mode modes)
          nir_metadata_preserve(function->impl, nir_metadata_block_index |
                                                nir_metadata_dominance);
          progress = true;
+      } else {
+         nir_metadata_preserve(function->impl, nir_metadata_all);
       }
    }
 
@@ -914,6 +916,8 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
          nir_metadata_preserve(function->impl, nir_metadata_block_index |
                                                nir_metadata_dominance);
          progress = true;
+      } else {
+         nir_metadata_preserve(function->impl, nir_metadata_all);
       }
    }
 
@@ -1654,6 +1658,8 @@ nir_shrink_vec_array_vars(nir_shader *shader, nir_variable_mode modes)
          nir_metadata_preserve(function->impl, nir_metadata_block_index |
                                                nir_metadata_dominance);
          progress = true;
+      } else {
+         nir_metadata_preserve(function->impl, nir_metadata_all);
       }
    }
 

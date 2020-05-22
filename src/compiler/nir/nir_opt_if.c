@@ -1451,9 +1451,7 @@ nir_opt_if(nir_shader *shader, bool aggressive_last_continue)
       if (preserve) {
          nir_metadata_preserve(function->impl, nir_metadata_none);
       } else {
-   #ifndef NDEBUG
-         function->impl->valid_metadata &= ~nir_metadata_not_properly_reset;
-   #endif
+         nir_metadata_preserve(function->impl, nir_metadata_all);
       }
    }
 
