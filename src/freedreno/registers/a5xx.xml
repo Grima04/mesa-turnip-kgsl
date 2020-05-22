@@ -51,6 +51,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0x82" name="RB5_R32G32B32A32_FLOAT"/>
 	<value value="0x83" name="RB5_R32G32B32A32_UINT"/>
 	<value value="0x84" name="RB5_R32G32B32A32_SINT"/>
+
+	<value value="0xff" name="RB5_NONE"/>
 </enum>
 
 <enum name="a5xx_tile_mode">
@@ -138,6 +140,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0x83" name="VFMT5_32_32_32_32_UINT"/>
 	<value value="0x84" name="VFMT5_32_32_32_32_SINT"/>
 	<value value="0x85" name="VFMT5_32_32_32_32_FIXED"/>
+
+	<value value="0xff" name="VFMT5_NONE"/>
 </enum>
 
 <enum name="a5xx_tex_fmt">
@@ -224,6 +228,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0xcc" name="TFMT5_ASTC_10x10"/>
 	<value value="0xcd" name="TFMT5_ASTC_12x10"/>
 	<value value="0xce" name="TFMT5_ASTC_12x12"/>
+
+	<value value="0xff" name="TFMT5_NONE"/>
 </enum>
 
 <enum name="a5xx_tex_fetchsize">

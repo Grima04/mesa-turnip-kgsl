@@ -441,7 +441,7 @@ fd3_emit_vertex_bufs(struct fd_ringbuffer *ring, struct fd3_emit *emit)
 				continue;
 #endif
 
-			debug_assert(fmt != ~0);
+			debug_assert(fmt != VFMT_NONE);
 
 			OUT_PKT0(ring, REG_A3XX_VFD_FETCH(j), 2);
 			OUT_RING(ring, A3XX_VFD_FETCH_INSTR_0_FETCHSIZE(fs - 1) |

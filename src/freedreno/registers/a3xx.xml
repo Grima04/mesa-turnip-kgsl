@@ -91,6 +91,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="VFMT_2_10_10_10_UNORM" value="0x3d"/>
 	<value name="VFMT_2_10_10_10_SINT" value="0x3e"/>
 	<value name="VFMT_2_10_10_10_SNORM" value="0x3f"/>
+
+	<value name="VFMT_NONE" value="0xff"/>
 </enum>
 
 <enum name="a3xx_tex_fmt">
@@ -210,6 +212,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="TFMT_ETC2_RGBA8" value="0x74"/>
 	<value name="TFMT_ETC2_RGB8A1" value="0x75"/>
 	<value name="TFMT_ETC2_RGB8" value="0x76"/>
+
+	<value name="TFMT_NONE" value="0xff"/>
 </enum>
 
 <enum name="a3xx_tex_fetchsize">
@@ -278,6 +282,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="RB_R32_UINT"	    value="0x38"/>
 	<value name="RB_R32G32_UINT"	    value="0x39"/>
 	<value name="RB_R32G32B32A32_UINT"  value="0x3b"/>
+
+	<value name="RB_NONE"               value="0xff"/>
 </enum>
 
 <enum name="a3xx_cp_perfcounter_select">

@@ -152,6 +152,10 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 	<!-- same as X8Z24_UNORM but for sampling stencil (integer, 2nd channel) -->
 	<value value="0xea" name="FMT6_S8Z24_UINT"/>
+
+	<!-- Not a hw enum, used internally in driver -->
+	<value value="0xff" name="FMT6_NONE"/>
+
 </enum>
 
 <enum name="a6xx_tex_fetchsize">

@@ -116,7 +116,7 @@ ok_format(enum pipe_format pfmt)
 {
 	enum a3xx_color_fmt fmt = fd3_pipe2color(pfmt);
 
-	if (fmt == ~0)
+	if (fmt == RB_NONE)
 		return false;
 
 	switch (pfmt) {

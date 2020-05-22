@@ -39,8 +39,6 @@ struct fd3_format {
 	boolean present;
 };
 
-#define RB_NONE ~0
-
 /* vertex + texture */
 #define VT(pipe, fmt, rbfmt, swapfmt) \
 	[PIPE_FORMAT_ ## pipe] = { \
@@ -55,7 +53,7 @@ struct fd3_format {
 #define _T(pipe, fmt, rbfmt, swapfmt) \
 	[PIPE_FORMAT_ ## pipe] = { \
 		.present = 1, \
-		.vtx = ~0, \
+		.vtx = VFMT_NONE, \
 		.tex = TFMT_ ## fmt, \
 		.rb = RB_ ## rbfmt, \
 		.swap = swapfmt \
@@ -66,7 +64,7 @@ struct fd3_format {
 	[PIPE_FORMAT_ ## pipe] = { \
 		.present = 1, \
 		.vtx = VFMT_ ## fmt, \
-		.tex = ~0, \
+		.tex = TFMT_NONE, \
 		.rb = RB_ ## rbfmt, \
 		.swap = swapfmt \
 	}
@@ -295,7 +293,7 @@ enum a3xx_vtx_fmt
 fd3_pipe2vtx(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return VFMT_NONE;
 	return formats[format].vtx;
 }
 
@@ -303,7 +301,7 @@ enum a3xx_tex_fmt
 fd3_pipe2tex(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return TFMT_NONE;
 	return formats[format].tex;
 }
 
@@ -311,7 +309,7 @@ enum a3xx_color_fmt
 fd3_pipe2color(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return RB_NONE;
 	return formats[format].rb;
 }
 

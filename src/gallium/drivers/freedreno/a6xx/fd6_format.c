@@ -44,8 +44,6 @@ struct fd6_format {
 	boolean present;
 };
 
-#define FMT6_NONE ~0
-
 #define FMT(pipe, vtxfmt, texfmt, rbfmt, swapfmt) \
 	[PIPE_FORMAT_ ## pipe] = { \
 		.present = 1, \
@@ -341,7 +339,7 @@ enum a6xx_format
 fd6_pipe2vtx(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return FMT6_NONE;
 	return formats[format].vtx;
 }
 
@@ -350,7 +348,7 @@ enum a6xx_format
 fd6_pipe2tex(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return FMT6_NONE;
 	return formats[format].tex;
 }
 
@@ -359,7 +357,7 @@ enum a6xx_format
 fd6_pipe2color(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return FMT6_NONE;
 	return formats[format].rb;
 }
 

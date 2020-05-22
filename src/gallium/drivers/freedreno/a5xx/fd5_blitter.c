@@ -72,7 +72,7 @@ ok_format(enum pipe_format fmt)
 		break;
 	}
 
-	if (fd5_pipe2color(fmt) == ~0)
+	if (fd5_pipe2color(fmt) == RB5_NONE)
 		return false;
 
 	return true;

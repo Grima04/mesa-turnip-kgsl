@@ -32,8 +32,6 @@
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
 
-#define FMT6_x -1
-
 #define TU6_FMT(vkfmt, hwfmt, swapfmt, valid) \
    [VK_FORMAT_##vkfmt] = {                   \
       .fmt = FMT6_##hwfmt,                     \
@@ -45,7 +43,7 @@
 #define TU6_xTC(vk, fmt, swap) TU6_FMT(vk, fmt, swap, FMT_TEXTURE | FMT_COLOR)
 #define TU6_Vxx(vk, fmt, swap) TU6_FMT(vk, fmt, swap, FMT_VERTEX)
 #define TU6_xTx(vk, fmt, swap) TU6_FMT(vk, fmt, swap, FMT_TEXTURE)
-#define TU6_xxx(vk, fmt, swap) TU6_FMT(vk, x, WZYX, false)
+#define TU6_xxx(vk, fmt, swap) TU6_FMT(vk, NONE, WZYX, 0)
 
 static const struct tu_native_format tu6_format_table[] = {
    TU6_xxx(UNDEFINED,                  x,                 x),    /* 0 */

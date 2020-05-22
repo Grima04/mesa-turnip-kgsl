@@ -608,7 +608,7 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 		enum pipe_format pfmt = elem->src_format;
 		enum a6xx_format fmt = fd6_pipe2vtx(pfmt);
 		bool isint = util_format_is_pure_integer(pfmt);
-		debug_assert(fmt != ~0);
+		debug_assert(fmt != FMT6_NONE);
 
 		OUT_RING(ring, A6XX_VFD_DECODE_INSTR_IDX(j) |
 				A6XX_VFD_DECODE_INSTR_FORMAT(fmt) |

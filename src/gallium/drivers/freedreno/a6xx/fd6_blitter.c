@@ -77,7 +77,7 @@ ok_format(enum pipe_format pfmt)
 		break;
 	}
 
-	if (fmt == ~0)
+	if (fmt == FMT6_NONE)
 		return false;
 
 	if (fd6_ifmt(fmt) == 0)
