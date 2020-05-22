@@ -5270,7 +5270,7 @@ static void si_init_config(struct si_context *sctx)
 
       /* Compute LATE_ALLOC_VS.LIMIT. */
       unsigned num_cu_per_sh = sscreen->info.min_good_cu_per_sa;
-      unsigned late_alloc_wave64 = 0; /* The limit is per SH. */
+      unsigned late_alloc_wave64 = 0; /* The limit is per SA. */
       unsigned cu_mask_vs = 0xffff;
       unsigned cu_mask_gs = 0xffff;
 
@@ -5294,7 +5294,7 @@ static void si_init_config(struct si_context *sctx)
          if (!sscreen->info.use_late_alloc) {
             late_alloc_wave64 = 0;
          } else if (num_cu_per_sh <= 4) {
-            /* Too few available compute units per SH. Disallowing
+            /* Too few available compute units per SA. Disallowing
              * VS to run on one CU could hurt us more than late VS
              * allocation would help.
              *
