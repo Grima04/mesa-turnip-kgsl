@@ -1271,15 +1271,18 @@ emit_varying_read(
 
         /* Use the type appropriate load */
         switch (type) {
-        case nir_type_uint:
-        case nir_type_bool:
+        case nir_type_uint32:
+        case nir_type_bool32:
                 ins.load_store.op = midgard_op_ld_vary_32u;
                 break;
-        case nir_type_int:
+        case nir_type_int32:
                 ins.load_store.op = midgard_op_ld_vary_32i;
                 break;
-        case nir_type_float:
+        case nir_type_float32:
                 ins.load_store.op = midgard_op_ld_vary_32;
+                break;
+        case nir_type_float16:
+                ins.load_store.op = midgard_op_ld_vary_16;
                 break;
         default:
                 unreachable("Attempted to load unknown type");
@@ -1540,7 +1543,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 } else if (is_global || is_shared) {
                         emit_global(ctx, &instr->instr, true, reg, src_offset, is_shared);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
-                        emit_varying_read(ctx, reg, offset, nr_comp, component, indirect_offset, t, is_flat);
+                        emit_varying_read(ctx, reg, offset, nr_comp, component, indirect_offset, t | nir_dest_bit_size(instr->dest), is_flat);
                 } else if (ctx->is_blend) {
                         /* For blend shaders, load the input color, which is
                          * preloaded to r0 */
