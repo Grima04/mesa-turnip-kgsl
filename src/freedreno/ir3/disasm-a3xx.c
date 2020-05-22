@@ -955,9 +955,10 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		/* note: dst might actually be a src (ie. address to store to) */
 		print_src(ctx, &dst);
 		if (cat6->dst_off && cat6->g) {
-			struct reginfo dstoff_reg = {0};
-			dstoff_reg.reg = (reg_t) cat6->c.off;
-			dstoff_reg.full  = true;
+			struct reginfo dstoff_reg = {
+				.reg = (reg_t) cat6->c.off,
+				.full  = true
+			};
 			fprintf(ctx->out, "+");
 			print_src(ctx, &dstoff_reg);
 		} else if (dstoff)
