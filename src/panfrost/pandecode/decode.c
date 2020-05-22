@@ -2613,6 +2613,9 @@ pandecode_vertex_tiler_postfix_pre(
                                        MALI_GET_ALPHA_COVERAGE(inverted_coverage));
                 }
 
+                if (s->unknown2_2)
+                        pandecode_prop(".unknown2_2 = %X", s->unknown2_2);
+
                 if (s->unknown2_3 || s->unknown2_4) {
                         pandecode_log(".unknown2_3 = ");
 
