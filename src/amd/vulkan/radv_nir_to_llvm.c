@@ -2292,8 +2292,7 @@ static void build_streamout_vertex(struct radv_shader_context *ctx,
 		for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
 			unsigned output_usage_mask =
 				ctx->args->shader_info->gs.output_usage_mask[i];
-			uint8_t output_stream =
-				output_stream = ctx->args->shader_info->gs.output_streams[i];
+			uint8_t output_stream = ctx->args->shader_info->gs.output_streams[i];
 
 			if (!(ctx->output_mask & (1ull << i)) ||
 			    output_stream != stream)
