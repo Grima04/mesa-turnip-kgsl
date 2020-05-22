@@ -410,7 +410,7 @@ static struct si_pc_block_base cik_SRBM = {
 static struct si_pc_block_gfxdescr groups_CIK[] = {
    {&cik_CB, 226},     {&cik_CPF, 17},    {&cik_DB, 257},  {&cik_GRBM, 34},   {&cik_GRBMSE, 15},
    {&cik_PA_SU, 153},  {&cik_PA_SC, 395}, {&cik_SPI, 186}, {&cik_SQ, 252},    {&cik_SX, 32},
-   {&cik_TA, 111, 11}, {&cik_TCA, 39, 2}, {&cik_TCC, 160}, {&cik_TD, 55, 11}, {&cik_TCP, 154, 11},
+   {&cik_TA, 111},     {&cik_TCA, 39, 2}, {&cik_TCC, 160}, {&cik_TD, 55},     {&cik_TCP, 154},
    {&cik_GDS, 121},    {&cik_VGT, 140},   {&cik_IA, 22},   {&cik_MC, 22},     {&cik_SRBM, 19},
    {&cik_WD, 22},      {&cik_CPG, 46},    {&cik_CPC, 22},
 
@@ -419,7 +419,7 @@ static struct si_pc_block_gfxdescr groups_CIK[] = {
 static struct si_pc_block_gfxdescr groups_VI[] = {
    {&cik_CB, 405},     {&cik_CPF, 19},    {&cik_DB, 257},  {&cik_GRBM, 34},   {&cik_GRBMSE, 15},
    {&cik_PA_SU, 154},  {&cik_PA_SC, 397}, {&cik_SPI, 197}, {&cik_SQ, 273},    {&cik_SX, 34},
-   {&cik_TA, 119, 16}, {&cik_TCA, 35, 2}, {&cik_TCC, 192}, {&cik_TD, 55, 16}, {&cik_TCP, 180, 16},
+   {&cik_TA, 119},     {&cik_TCA, 35, 2}, {&cik_TCC, 192}, {&cik_TD, 55},     {&cik_TCP, 180},
    {&cik_GDS, 121},    {&cik_VGT, 147},   {&cik_IA, 24},   {&cik_MC, 22},     {&cik_SRBM, 27},
    {&cik_WD, 37},      {&cik_CPG, 48},    {&cik_CPC, 24},
 
@@ -428,7 +428,7 @@ static struct si_pc_block_gfxdescr groups_VI[] = {
 static struct si_pc_block_gfxdescr groups_gfx9[] = {
    {&cik_CB, 438},     {&cik_CPF, 32},    {&cik_DB, 328},  {&cik_GRBM, 38},   {&cik_GRBMSE, 16},
    {&cik_PA_SU, 292},  {&cik_PA_SC, 491}, {&cik_SPI, 196}, {&cik_SQ, 374},    {&cik_SX, 208},
-   {&cik_TA, 119, 16}, {&cik_TCA, 35, 2}, {&cik_TCC, 256}, {&cik_TD, 57, 16}, {&cik_TCP, 85, 16},
+   {&cik_TA, 119},     {&cik_TCA, 35, 2}, {&cik_TCC, 256}, {&cik_TD, 57},     {&cik_TCP, 85},
    {&cik_GDS, 121},    {&cik_VGT, 148},   {&cik_IA, 32},   {&cik_WD, 58},     {&cik_CPG, 59},
    {&cik_CPC, 35},
 };
@@ -1253,6 +1253,11 @@ void si_init_perfcounters(struct si_screen *screen)
          block->num_instances = screen->info.num_tcc_blocks;
       else if (!strcmp(block->b->b->name, "IA"))
          block->num_instances = MAX2(1, screen->info.max_se / 2);
+      else if (!strcmp(block->b->b->name, "TA") ||
+               !strcmp(block->b->b->name, "TCP") ||
+               !strcmp(block->b->b->name, "TD")) {
+         block->num_instances = MAX2(1, screen->info.num_good_cu_per_sh);
+      }
 
       if (si_pc_block_has_per_instance_groups(pc, block)) {
          block->num_groups = block->num_instances;
