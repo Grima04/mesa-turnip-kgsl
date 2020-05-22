@@ -1049,6 +1049,7 @@ try_damage_buffer(struct dri2_egl_surface *dri2_surf,
    }
    return EGL_TRUE;
 }
+
 /**
  * Called via eglSwapBuffers(), drv->API.SwapBuffers().
  */
