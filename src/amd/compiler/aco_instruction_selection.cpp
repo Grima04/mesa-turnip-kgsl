@@ -5141,11 +5141,11 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_size,
                  Temp dst, Temp rsrc, Temp offset, unsigned align_mul, unsigned align_offset,
-                 bool glc=false, bool readonly=true)
+                 bool glc=false, bool readonly=true, bool allow_smem=true)
 {
    Builder bld(ctx->program, ctx->block);
 
-   bool use_smem = dst.type() != RegType::vgpr && ((ctx->options->chip_class >= GFX8 && component_size >= 4) || readonly);
+   bool use_smem = dst.type() != RegType::vgpr && ((ctx->options->chip_class >= GFX8 && component_size >= 4) || readonly) && allow_smem;
    if (use_smem)
       offset = bld.as_uniform(offset);
 
@@ -6140,10 +6140,19 @@ void visit_load_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
 
-   bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT);
+   unsigned access = nir_intrinsic_access(instr);
+   bool glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT);
    unsigned size = instr->dest.ssa.bit_size / 8;
+
+   uint32_t flags = get_all_buffer_resource_flags(ctx, instr->src[0].ssa, access);
+   /* GLC bypasses VMEM/SMEM caches, so GLC SMEM loads/stores are coherent with GLC VMEM loads/stores
+    * TODO: this optimization is disabled for now because we still need to ensure correct ordering
+    */
+   bool allow_smem = !(flags & (0 && glc ? has_nonglc_vmem_store : has_vmem_store));
+   allow_smem |= ((access & ACCESS_RESTRICT) && (access & ACCESS_NON_WRITEABLE)) || (access & ACCESS_CAN_REORDER);
+
    load_buffer(ctx, num_components, size, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa),
-               nir_intrinsic_align_mul(instr), nir_intrinsic_align_offset(instr), glc, false);
+               nir_intrinsic_align_mul(instr), nir_intrinsic_align_offset(instr), glc, false, allow_smem);
 }
 
 void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -6157,9 +6166,17 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
 
+   bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
+   uint32_t flags = get_all_buffer_resource_flags(ctx, instr->src[1].ssa, nir_intrinsic_access(instr));
+   /* GLC bypasses VMEM/SMEM caches, so GLC SMEM loads/stores are coherent with GLC VMEM loads/stores
+    * TODO: this optimization is disabled for now because we still need to ensure correct ordering
+    */
+   bool allow_smem = !(flags & (0 && glc ? has_nonglc_vmem_loadstore : has_vmem_loadstore));
+
    bool smem = !nir_src_is_divergent(instr->src[2]) &&
                ctx->options->chip_class >= GFX8 &&
-               elem_size_bytes >= 4;
+               elem_size_bytes >= 4 &&
+               allow_smem;
    if (smem)
       offset = bld.as_uniform(offset);
    bool smem_nonfs = smem && ctx->stage != fragment_fs;
@@ -6188,7 +6205,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          if (op != aco_opcode::p_fs_buffer_store_smem)
             store->operands[1].setFixed(m0);
          store->operands[2] = Operand(write_datas[i]);
-         store->glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
+         store->glc = glc;
          store->dlc = false;
          store->disable_wqm = true;
          store->barrier = barrier_buffer;
@@ -6206,7 +6223,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          store->operands[3] = Operand(write_datas[i]);
          store->offset = offsets[i];
          store->offen = (offset.type() == RegType::vgpr);
-         store->glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
+         store->glc = glc;
          store->dlc = false;
          store->disable_wqm = true;
          store->barrier = barrier_buffer;
