@@ -177,6 +177,10 @@ main(int argc, char **argv)
 		key.gmem_page_align = gpu_info->gmem_page_align;
 		struct fd_gmem_stateobj *gmem = gmem_stateobj_init(&screen, &key);
 		dump_gmem_state(gmem);
+
+		assert((gmem->bin_w * gmem->nbins_x) >= key.width);
+		assert((gmem->bin_h * gmem->nbins_y) >= key.height);
+
 		ralloc_free(gmem);
 	}
 

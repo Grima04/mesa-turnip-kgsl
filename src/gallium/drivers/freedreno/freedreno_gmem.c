@@ -364,12 +364,13 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	yoff = key->miny;
 	memset(tile_n, 0, sizeof(tile_n));
 	for (i = 0; i < nbins_y; i++) {
-		uint32_t bw, bh;
+		int bw, bh;
 
 		xoff = key->minx;
 
 		/* clip bin height: */
 		bh = MIN2(gmem->bin_h, key->miny + key->height - yoff);
+		assert(bh > 0);
 
 		for (j = 0; j < nbins_x; j++) {
 			struct fd_tile *tile = &gmem->tile[t];
@@ -383,6 +384,8 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 
 			/* clip bin width: */
 			bw = MIN2(gmem->bin_w, key->minx + key->width - xoff);
+			assert(bw > 0);
+
 			tile->n = !is_a20x(screen) ? tile_n[p]++ :
 				((i % tpp_y + 1) << 3 | (j % tpp_x + 1));
 			tile->p = p;
