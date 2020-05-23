@@ -89,6 +89,7 @@ struct gpu_info {
 /* keep sorted by gpu name: */
 static const struct gpu_info gpu_infos[] = {
 	{ "a306", 307, 32, 32,  8, 4, SZ_128K },
+	{ "a405", 405, 32, 32,  8, 4, SZ_256K },
 	{ "a530", 530, 64, 32, 16, 4, SZ_1M   },
 	{ "a618", 618, 32, 32, 32, 1, SZ_512K },
 	{ "a630", 630, 32, 32, 32, 1, SZ_1M   },
