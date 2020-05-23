@@ -69,7 +69,9 @@
  * resolve.
  */
 
-#define BIN_DEBUG 0
+#ifndef BIN_DEBUG
+#  define BIN_DEBUG 0
+#endif
 
 /*
  * GMEM Cache:

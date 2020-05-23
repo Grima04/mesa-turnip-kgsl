@@ -21,6 +21,12 @@
  * SOFTWARE.
  */
 
+#include <getopt.h>
+#include <stdbool.h>
+
+static bool bin_debug = false;
+#define BIN_DEBUG bin_debug
+
 #include "freedreno_gmem.c"
 
 /* NOTE, non-interesting gmem keys (ie. things that are small enough to fit
@@ -95,15 +101,51 @@ static const struct gpu_info gpu_infos[] = {
 	{ "a630", 630, 32, 32, 32, 1, SZ_1M   },
 };
 
+
+static const struct option opts[] = {
+	{ .name = "gpu",     .has_arg = 1, NULL, 'g' },
+	{ .name = "help",    .has_arg = 0, NULL, 'h' },
+	{ .name = "verbose", .has_arg = 0, NULL, 'v' },
+	{}
+};
+
+static void
+usage(void)
+{
+	fprintf(stderr, "Usage:\n\n"
+			"\tgmemtool [-hv] [-g GPU]\n\n"
+			"Options:\n"
+			"\t-g, --gpu=GPU   - use GMEM size/alignment/etc settings for the specified GPU\n"
+			"\t-h, --help      - this usage message\n"
+			"\t-v, --verbose   - dump more verbose output\n"
+			"\n"
+		);
+	fprintf(stderr, "Where GPU is one of:\n");
+	for (int i = 0; i < ARRAY_SIZE(gpu_infos); i++)
+		fprintf(stderr, "\t%s\n", gpu_infos[i].name);
+	exit(2);
+}
+
 int
 main(int argc, char **argv)
 {
-	if (argc < 2) {
-		printf("usage: gmemtest GPU_NAME\n");
-		return -1;
+	const char *gpu_name = "a630";
+	int c;
+
+	while ((c = getopt_long(argc, argv, "g:hv", opts, NULL)) != -1) {
+		switch (c) {
+		case 'g':
+			gpu_name = optarg;
+			break;
+		case 'v':
+			bin_debug = true;
+			break;
+		case 'h':
+		default:
+			usage();
+		}
 	}
 
-	const char *gpu_name = argv[1];
 	const struct gpu_info *gpu_info = NULL;
 
 	for (int i = 0; i < ARRAY_SIZE(gpu_infos); i++) {
@@ -115,10 +157,7 @@ main(int argc, char **argv)
 
 	if (!gpu_info) {
 		printf("unrecognized gpu name: %s\n", gpu_name);
-		printf("supported gpus:\n");
-		for (int i = 0; i < ARRAY_SIZE(gpu_infos); i++)
-			printf("\t%s\n", gpu_infos[i].name);
-		return -1;
+		usage();
 	}
 
 	/* Setup a fake screen with enough GMEM related configuration
