@@ -247,6 +247,7 @@ bool AssemblyFromShaderLegacyImpl::emit_alu(const AluInstruction& ai, ECFAluOpCo
       return false;
    }
 
+   unsigned old_nliterals_in_group = m_nliterals_in_group;
    for (unsigned i = 0; i < ai.n_sources(); ++i) {
       auto& s = ai.src(i);
       if (s.type() == Value::literal)
@@ -266,7 +267,7 @@ bool AssemblyFromShaderLegacyImpl::emit_alu(const AluInstruction& ai, ECFAluOpCo
       if (retval)
          return false;
       memset(&alu, 0, sizeof(alu));
-      m_nliterals_in_group = 0;
+      m_nliterals_in_group -= old_nliterals_in_group;
    }
 
    alu.op = opcode_map.at(ai.opcode());
