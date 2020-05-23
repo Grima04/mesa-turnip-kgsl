@@ -33,6 +33,12 @@
 
 #include "freedreno_util.h"
 
+#ifdef DEBUG
+#  define BATCH_DEBUG (fd_mesa_debug & FD_DBG_MSGS)
+#else
+#  define BATCH_DEBUG 0
+#endif
+
 struct fd_context;
 struct fd_resource;
 enum fd_resource_status;

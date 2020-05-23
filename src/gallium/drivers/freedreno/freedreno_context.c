@@ -59,7 +59,6 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 	/* In some sequence of events, we can end up with a last_fence that is
 	 * not an "fd" fence, which results in eglDupNativeFenceFDANDROID()
 	 * errors.
-	 *
 	 */
 	if (flags & PIPE_FLUSH_FENCE_FD)
 		fd_fence_ref(&ctx->last_fence, NULL);
@@ -69,17 +68,23 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 	 */
 	if (ctx->last_fence) {
 		fd_fence_ref(&fence, ctx->last_fence);
+		fd_bc_dump(ctx->screen, "%p: reuse last_fence, remaining:\n", ctx);
 		goto out;
 	}
 
-	if (!batch)
+	if (!batch) {
+		fd_bc_dump(ctx->screen, "%p: NULL batch, remaining:\n", ctx);
 		return;
+	}
 
 	/* Take a ref to the batch's fence (batch can be unref'd when flushed: */
 	fd_fence_ref(&fence, batch->fence);
 
 	if (flags & PIPE_FLUSH_FENCE_FD)
 		batch->needs_out_fence_fd = true;
+
+	fd_bc_dump(ctx->screen, "%p: flushing %p<%u>, flags=0x%x, pending:\n",
+			ctx, batch, batch->seqno, flags);
 
 	if (!ctx->screen->reorder) {
 		fd_batch_flush(batch);
@@ -88,6 +93,8 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 	} else {
 		fd_bc_flush(&ctx->screen->batch_cache, ctx);
 	}
+
+	fd_bc_dump(ctx->screen, "%p: remaining:\n", ctx);
 
 out:
 	if (fencep)

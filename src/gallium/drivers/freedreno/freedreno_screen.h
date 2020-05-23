@@ -119,6 +119,11 @@ struct fd_screen {
 	const uint64_t *supported_modifiers;
 
 	struct renderonly *ro;
+
+	/* when BATCH_DEBUG is enabled, tracking for fd_batch's which are not yet
+	 * freed:
+	 */
+	struct set *live_batches;
 };
 
 static inline struct fd_screen *

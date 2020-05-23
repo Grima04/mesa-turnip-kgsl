@@ -160,6 +160,7 @@ fd_screen_destroy(struct pipe_screen *pscreen)
 	simple_mtx_destroy(&screen->lock);
 
 	ralloc_free(screen->compiler);
+	ralloc_free(screen->live_batches);
 
 	free(screen->perfcntr_queries);
 	free(screen);
@@ -971,6 +972,9 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 	 */
 	if (fd_device_version(dev) >= FD_VERSION_UNLIMITED_CMDS)
 		screen->reorder = !(fd_mesa_debug & FD_DBG_INORDER);
+
+	if (BATCH_DEBUG)
+		screen->live_batches = _mesa_pointer_set_create(NULL);
 
 	fd_bc_init(&screen->batch_cache);
 
