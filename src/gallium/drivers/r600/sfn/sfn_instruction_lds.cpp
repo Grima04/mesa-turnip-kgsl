@@ -5,11 +5,11 @@ namespace r600 {
 void LDSReadInstruction::do_print(std::ostream& os) const
 {
    os << "LDS Read  [";
-   for (unsigned i = 0; i < m_address.size(); ++i)
-      os << *m_dest_value[i] << " ";
+   for (auto& v : m_dest_value)
+      os << *v << " ";
    os << "], ";
-   for (unsigned i = 0; i < m_address.size(); ++i)
-      os << *m_address[i] << " ";
+   for (auto& a : m_address)
+      os << *a << " ";
 }
 
 LDSReadInstruction::LDSReadInstruction(std::vector<PValue>& address, std::vector<PValue>& value):
