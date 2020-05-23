@@ -710,10 +710,8 @@ bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_i
       swizzle = {7,7,0,7};
       break;
    default:
-      std::cerr << "Swizzle = ";
       for (int i = 0; i < 4; ++i) {
          swizzle[i] = (i < instr->num_components) ? i : 7;
-         std::cerr << swizzle[i] << ", ";
       }
    }
 
