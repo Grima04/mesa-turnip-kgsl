@@ -562,6 +562,8 @@ meson-s390x:
     - kvm
   variables:
     CROSS: s390x
+    EXTRA_OPTION: >
+      -D werror=true
     GALLIUM_DRIVERS: "swrast"
   script:
     # For unknown reasons "too many" installed i386 libraries cause qemu to
@@ -576,6 +578,7 @@ meson-ppc64el:
     - meson-s390x
   variables:
     CROSS: ppc64el
+    EXTRA_OPTION: ""
     GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl"
     VULKAN_DRIVERS: "amd"
 
