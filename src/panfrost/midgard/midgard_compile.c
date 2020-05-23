@@ -1245,6 +1245,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 unsigned swizzle_back[MIR_VEC_COMPONENTS];
                 memcpy(&swizzle_back, ins.swizzle[0], sizeof(swizzle_back));
 
+                midgard_instruction ins_split[MIR_VEC_COMPONENTS];
+                unsigned ins_count = 0;
+
                 for (int i = 0; i < nr_components; ++i) {
                         /* Mask the associated component, dropping the
                          * instruction if needed */
@@ -1252,13 +1255,27 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         ins.mask = 1 << i;
                         ins.mask &= orig_mask;
 
+                        for (unsigned j = 0; j < ins_count; ++j) {
+                                if (swizzle_back[i] == ins_split[j].swizzle[0][0]) {
+                                        ins_split[j].mask |= ins.mask;
+                                        ins.mask = 0;
+                                        break;
+                                }
+                        }
+
                         if (!ins.mask)
                                 continue;
 
                         for (unsigned j = 0; j < MIR_VEC_COMPONENTS; ++j)
                                 ins.swizzle[0][j] = swizzle_back[i]; /* Pull from the correct component */
 
-                        emit_mir_instruction(ctx, ins);
+                        ins_split[ins_count] = ins;
+
+                        ++ins_count;
+                }
+
+                for (unsigned i = 0; i < ins_count; ++i) {
+                        emit_mir_instruction(ctx, ins_split[i]);
                 }
         } else {
                 emit_mir_instruction(ctx, ins);
