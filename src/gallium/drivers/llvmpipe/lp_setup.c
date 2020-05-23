@@ -1014,7 +1014,7 @@ lp_setup_set_fragment_sampler_views(struct lp_setup_context *setup,
             jit_tex->height = res->height0;
             jit_tex->depth = res->depth0;
             jit_tex->first_level = jit_tex->last_level = 0;
-            jit_tex->sample_stride = res->nr_samples;
+            jit_tex->num_samples = res->nr_samples;
             jit_tex->sample_stride = 0;
             assert(jit_tex->base);
          }
