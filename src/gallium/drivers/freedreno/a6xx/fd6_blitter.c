@@ -634,8 +634,6 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	if (!can_do_blit(info))
 		return false;
 
-	fd_fence_ref(&ctx->last_fence, NULL);
-
 	batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
 
 	fd6_emit_restore(batch, batch->draw);
@@ -647,6 +645,12 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	fd_batch_resource_write(batch, fd_resource(info->dst.resource));
 
 	fd_screen_unlock(ctx->screen);
+
+	/* Clearing last_fence must come after the batch dependency tracking
+	 * (resource_read()/resource_write()), as that can trigger a flush,
+	 * re-populating last_fence
+	 */
+	fd_fence_ref(&ctx->last_fence, NULL);
 
 	fd_batch_set_stage(batch, FD_STAGE_BLIT);
 
