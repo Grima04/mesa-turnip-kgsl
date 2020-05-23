@@ -77,6 +77,7 @@ struct gpu_info {
 	uint32_t gmem_alignw;
 	uint32_t gmem_alignh;
 	uint32_t num_vsc_pipes;
+	uint8_t  gmem_page_align;
 	uint32_t gmemsize_bytes;
 };
 
@@ -87,10 +88,10 @@ struct gpu_info {
 
 /* keep sorted by gpu name: */
 static const struct gpu_info gpu_infos[] = {
-	{ "a306", 307, 32, 32,  8, SZ_128K },
-	{ "a530", 530, 64, 32, 16, SZ_1M   },
-	{ "a618", 618, 32, 32, 32, SZ_512K },
-	{ "a630", 630, 32, 32, 32, SZ_1M   },
+	{ "a306", 307, 32, 32,  8, 4, SZ_128K },
+	{ "a530", 530, 64, 32, 16, 4, SZ_1M   },
+	{ "a618", 618, 32, 32, 32, 1, SZ_512K },
+	{ "a630", 630, 32, 32, 32, 1, SZ_1M   },
 };
 
 int
@@ -132,8 +133,9 @@ main(int argc, char **argv)
 
 	/* And finally run thru all the GMEM keys: */
 	for (int i = 0; i < ARRAY_SIZE(keys); i++) {
-		struct fd_gmem_stateobj *gmem =
-				gmem_stateobj_init(&screen, (void *)&keys[i]);
+		struct gmem_key key = keys[i];
+		key.gmem_page_align = gpu_info->gmem_page_align;
+		struct fd_gmem_stateobj *gmem = gmem_stateobj_init(&screen, &key);
 		dump_gmem_state(gmem);
 		ralloc_free(gmem);
 	}
