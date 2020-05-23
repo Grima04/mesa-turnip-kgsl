@@ -310,10 +310,10 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 		tpp_y = 6;
 	} else {
 		tpp_x = tpp_y = 1;
-		while (div_round_up(nbins_y, tpp_y) > npipes)
+		while (div_round_up(gmem->nbins_y, tpp_y) > npipes)
 			tpp_y += 2;
-		while ((div_round_up(nbins_y, tpp_y) *
-				div_round_up(nbins_x, tpp_x)) > npipes)
+		while ((div_round_up(gmem->nbins_y, tpp_y) *
+				div_round_up(gmem->nbins_x, tpp_x)) > npipes)
 			tpp_x += 1;
 	}
 
@@ -325,19 +325,19 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	for (i = 0; i < npipes; i++) {
 		struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 
-		if (xoff >= nbins_x) {
+		if (xoff >= gmem->nbins_x) {
 			xoff = 0;
 			yoff += tpp_y;
 		}
 
-		if (yoff >= nbins_y) {
+		if (yoff >= gmem->nbins_y) {
 			break;
 		}
 
 		pipe->x = xoff;
 		pipe->y = yoff;
-		pipe->w = MIN2(tpp_x, nbins_x - xoff);
-		pipe->h = MIN2(tpp_y, nbins_y - yoff);
+		pipe->w = MIN2(tpp_x, gmem->nbins_x - xoff);
+		pipe->h = MIN2(tpp_y, gmem->nbins_y - yoff);
 
 		xoff += tpp_x;
 	}
@@ -351,7 +351,7 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	}
 
 	if (BIN_DEBUG) {
-		printf("%dx%d ... tpp=%dx%d\n", nbins_x, nbins_y, tpp_x, tpp_y);
+		printf("%dx%d ... tpp=%dx%d\n", gmem->nbins_x, gmem->nbins_y, tpp_x, tpp_y);
 		for (i = 0; i < ARRAY_SIZE(gmem->vsc_pipe); i++) {
 			struct fd_vsc_pipe *pipe = &gmem->vsc_pipe[i];
 			printf("pipe[%d]: %ux%u @ %u,%u\n", i,
@@ -363,7 +363,7 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	t = 0;
 	yoff = key->miny;
 	memset(tile_n, 0, sizeof(tile_n));
-	for (i = 0; i < nbins_y; i++) {
+	for (i = 0; i < gmem->nbins_y; i++) {
 		int bw, bh;
 
 		xoff = key->minx;
@@ -372,14 +372,14 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 		bh = MIN2(gmem->bin_h, key->miny + key->height - yoff);
 		assert(bh > 0);
 
-		for (j = 0; j < nbins_x; j++) {
+		for (j = 0; j < gmem->nbins_x; j++) {
 			struct fd_tile *tile = &gmem->tile[t];
 			uint32_t p;
 
 			assert(t < ARRAY_SIZE(gmem->tile));
 
 			/* pipe number: */
-			p = ((i / tpp_y) * div_round_up(nbins_x, tpp_x)) + (j / tpp_x);
+			p = ((i / tpp_y) * div_round_up(gmem->nbins_x, tpp_x)) + (j / tpp_x);
 			assert(p < gmem->num_vsc_pipes);
 
 			/* clip bin width: */
@@ -409,8 +409,8 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 
 	if (BIN_DEBUG) {
 		t = 0;
-		for (i = 0; i < nbins_y; i++) {
-			for (j = 0; j < nbins_x; j++) {
+		for (i = 0; i < gmem->nbins_y; i++) {
+			for (j = 0; j < gmem->nbins_x; j++) {
 				struct fd_tile *tile = &gmem->tile[t++];
 				printf("|p:%u n:%u|", tile->p, tile->n);
 			}
