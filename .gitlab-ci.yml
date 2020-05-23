@@ -217,22 +217,6 @@ x86_cross_arm_test:
   needs:
     - x86_cross_arm_test
 
-
-# Debian 10 based ARM test image
-arm_test:
-  extends: arm_build
-  variables:
-    FDO_DISTRIBUTION_TAG: &arm_test "2020-03-18-jflags"
-
-.use-arm_test:
-  variables:
-    TAG: *arm_test
-  image: "$CI_REGISTRY_IMAGE/debian/arm_test:$TAG"
-  needs:
-    - arm_build
-    - meson-arm64
-    - arm_test
-
 # Native Windows docker builds
 # 
 # Unlike the above Linux-based builds - including MinGW/SCons builds which
