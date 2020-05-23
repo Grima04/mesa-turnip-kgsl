@@ -146,7 +146,7 @@ panfrost_freeze_batch(struct panfrost_batch *batch)
         }
 }
 
-#ifndef NDEBUG
+#ifdef PAN_BATCH_DEBUG
 static bool panfrost_batch_is_frozen(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
@@ -169,7 +169,9 @@ panfrost_free_batch(struct panfrost_batch *batch)
         if (!batch)
                 return;
 
+#ifdef PAN_BATCH_DEBUG
         assert(panfrost_batch_is_frozen(batch));
+#endif
 
         hash_table_foreach(batch->bos, entry)
                 panfrost_bo_unreference((struct panfrost_bo *)entry->key);
@@ -192,7 +194,7 @@ panfrost_free_batch(struct panfrost_batch *batch)
         ralloc_free(batch);
 }
 
-#ifndef NDEBUG
+#ifdef PAN_BATCH_DEBUG
 static bool
 panfrost_dep_graph_contains_batch(struct panfrost_batch *root,
                                   struct panfrost_batch *batch)
@@ -228,8 +230,10 @@ panfrost_batch_add_dep(struct panfrost_batch *batch,
                         return;
         }
 
+#ifdef PAN_BATCH_DEBUG
         /* Make sure the dependency graph is acyclic. */
         assert(!panfrost_dep_graph_contains_batch(newdep->batch, batch));
+#endif
 
         panfrost_batch_fence_reference(newdep);
         util_dynarray_append(&batch->dependencies,
@@ -390,7 +394,7 @@ panfrost_gc_fences(struct panfrost_context *ctx)
         }
 }
 
-#ifndef NDEBUG
+#ifdef PAN_BATCH_DEBUG
 static bool
 panfrost_batch_in_readers(struct panfrost_batch *batch,
                           struct panfrost_bo_access *access)
@@ -511,10 +515,12 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
                 /* We already accessed this BO before, so we should already be
                  * in the reader array.
                  */
+#ifdef PAN_BATCH_DEBUG
                 if (already_accessed) {
                         assert(panfrost_batch_in_readers(batch, access));
                         return;
                 }
+#endif
 
                 /* Previous access was a read and we want to read this BO.
                  * Add ourselves to the readers array and add a dependency on
