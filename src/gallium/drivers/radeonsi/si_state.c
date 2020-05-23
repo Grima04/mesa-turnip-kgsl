@@ -5348,7 +5348,6 @@ static void si_init_config(struct si_context *sctx)
    if (sctx->chip_class >= GFX7) {
       si_pm4_set_reg(pm4, R_028084_TA_BC_BASE_ADDR_HI, S_028084_ADDRESS(border_color_va >> 40));
    }
-   si_pm4_add_bo(pm4, sctx->border_color_buffer, RADEON_USAGE_READ, RADEON_PRIO_BORDER_COLORS);
 
    if (sctx->chip_class >= GFX9) {
       si_pm4_set_reg(pm4, R_028C48_PA_SC_BINNER_CNTL_1,

@@ -403,6 +403,9 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
    ctx->flags |= SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE |
                  SI_CONTEXT_INV_L2 | SI_CONTEXT_START_PIPELINE_STATS;
 
+   radeon_add_to_buffer_list(ctx, ctx->gfx_cs, ctx->border_color_buffer,
+                             RADEON_USAGE_READ, RADEON_PRIO_BORDER_COLORS);
+
    ctx->cs_shader_state.initialized = false;
    si_add_all_descriptors_to_bo_list(ctx);
    si_shader_pointers_mark_dirty(ctx);
