@@ -218,26 +218,16 @@ layout_gmem(struct gmem_key *key, uint32_t nbins_x, uint32_t nbins_y,
 	return total <= screen->gmemsize_bytes;
 }
 
-static struct fd_gmem_stateobj *
-gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
+static void
+calc_nbins(struct gmem_key *key, struct fd_gmem_stateobj *gmem)
 {
-	struct fd_gmem_stateobj *gmem =
-			rzalloc(screen->gmem_cache.ht, struct fd_gmem_stateobj);
-	pipe_reference_init(&gmem->reference, 1);
-	gmem->screen = screen;
-	gmem->key = key;
-	list_inithead(&gmem->node);
-
-	const unsigned npipes = screen->num_vsc_pipes;
+	struct fd_screen *screen = gmem->screen;
 	uint32_t nbins_x = 1, nbins_y = 1;
 	uint32_t max_width = bin_width(screen);
-	uint32_t i, j, t, xoff, yoff;
-	uint32_t tpp_x, tpp_y;
-	int tile_n[npipes];
 
 	if (fd_mesa_debug & FD_DBG_MSGS) {
 		debug_printf("binning input: cbuf cpp:");
-		for (i = 0; i < key->nr_cbufs; i++)
+		for (unsigned i = 0; i < key->nr_cbufs; i++)
 			debug_printf(" %d", key->cbuf_cpp[i]);
 		debug_printf(", zsbuf cpp: %d; %dx%d\n",
 				key->zsbuf_cpp[0], key->width, key->height);
@@ -275,6 +265,25 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 	}
 
 	layout_gmem(key, nbins_x, nbins_y, gmem);
+
+}
+
+static struct fd_gmem_stateobj *
+gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
+{
+	struct fd_gmem_stateobj *gmem =
+			rzalloc(screen->gmem_cache.ht, struct fd_gmem_stateobj);
+	pipe_reference_init(&gmem->reference, 1);
+	gmem->screen = screen;
+	gmem->key = key;
+	list_inithead(&gmem->node);
+
+	const unsigned npipes = screen->num_vsc_pipes;
+	uint32_t i, j, t, xoff, yoff;
+	uint32_t tpp_x, tpp_y;
+	int tile_n[npipes];
+
+	calc_nbins(key, gmem);
 
 	DBG("using %d bins of size %dx%d", gmem->nbins_x * gmem->nbins_y,
 			gmem->bin_w, gmem->bin_h);
