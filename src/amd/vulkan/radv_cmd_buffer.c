@@ -284,17 +284,8 @@ static VkResult radv_create_cmd_buffer(
 	cmd_buffer->pool = pool;
 	cmd_buffer->level = level;
 
-	if (pool) {
-		list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-		cmd_buffer->queue_family_index = pool->queue_family_index;
-
-	} else {
-		/* Init the pool_link so we can safely call list_del when we destroy
-		 * the command buffer
-		 */
-		list_inithead(&cmd_buffer->pool_link);
-		cmd_buffer->queue_family_index = RADV_QUEUE_GENERAL;
-	}
+	list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
+	cmd_buffer->queue_family_index = pool->queue_family_index;
 
 	ring = radv_queue_family_to_ring(cmd_buffer->queue_family_index);
 
