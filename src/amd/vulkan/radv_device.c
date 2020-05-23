@@ -443,7 +443,8 @@ fail_wsi:
 fail_alloc:
 	vk_free(&instance->alloc, device);
 fail_fd:
-	close(fd);
+	if (fd != -1)
+		close(fd);
 	if (master_fd != -1)
 		close(master_fd);
 	return result;
