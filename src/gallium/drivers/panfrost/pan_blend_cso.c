@@ -265,6 +265,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
         struct panfrost_blend_shader *shader = panfrost_get_blend_shader(ctx, blend, fmt, rti);
         final.is_shader = true;
         final.no_blending = false;
+        final.no_colour = false;
         final.shader.work_count = shader->work_count;
         final.shader.first_tag = shader->first_tag;
 
