@@ -6622,7 +6622,7 @@ radv_initialise_color_surface(struct radv_device *device,
 				.pipe_aligned = 1,
 			};
 
-			if (iview->image->dcc_offset)
+			if (surf->dcc_offset)
 				meta = surf->u.gfx9.dcc;
 
 			cb->cb_color_attrib |= S_028C74_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
@@ -6668,11 +6668,11 @@ radv_initialise_color_surface(struct radv_device *device,
 
 	/* CMASK variables */
 	va = radv_buffer_get_va(iview->bo) + iview->image->offset;
-	va += iview->image->cmask_offset;
+	va += surf->cmask_offset;
 	cb->cb_color_cmask = va >> 8;
 
 	va = radv_buffer_get_va(iview->bo) + iview->image->offset;
-	va += iview->image->dcc_offset;
+	va += surf->dcc_offset;
 
 	if (radv_dcc_enabled(iview->image, iview->base_mip) &&
 	    device->physical_device->rad_info.chip_class <= GFX8)
@@ -6697,7 +6697,7 @@ radv_initialise_color_surface(struct radv_device *device,
 	}
 
 	if (radv_image_has_fmask(iview->image)) {
-		va = radv_buffer_get_va(iview->bo) + iview->image->offset + iview->image->fmask_offset;
+		va = radv_buffer_get_va(iview->bo) + iview->image->offset + surf->fmask_offset;
 		cb->cb_color_fmask = va >> 8;
 		cb->cb_color_fmask |= surf->fmask_tile_swizzle;
 	} else {
@@ -6949,7 +6949,7 @@ radv_initialise_ds_surface(struct radv_device *device,
 				/* Use all of the htile_buffer for depth if there's no stencil. */
 				ds->db_stencil_info |= S_02803C_TILE_STENCIL_DISABLE(1);
 			va = radv_buffer_get_va(iview->bo) + iview->image->offset +
-				iview->image->htile_offset;
+				surf->htile_offset;
 			ds->db_htile_data_base = va >> 8;
 			ds->db_htile_surface = S_028ABC_FULL_CACHE(1) |
 				S_028ABC_PIPE_ALIGNED(1);
@@ -7017,7 +7017,7 @@ radv_initialise_ds_surface(struct radv_device *device,
 				ds->db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
 
 			va = radv_buffer_get_va(iview->bo) + iview->image->offset +
-				iview->image->htile_offset;
+				surf->htile_offset;
 			ds->db_htile_data_base = va >> 8;
 			ds->db_htile_surface = S_028ABC_FULL_CACHE(1);
 

@@ -5465,7 +5465,7 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 		if (size != image->planes[0].surface.dcc_size) {
 			state->flush_bits |=
 				radv_fill_buffer(cmd_buffer, image->bo,
-						 image->offset + image->dcc_offset + size,
+						 image->offset + image->planes[0].surface.dcc_offset + size,
 						 image->planes[0].surface.dcc_size - size,
 						 0xffffffff);
 		}

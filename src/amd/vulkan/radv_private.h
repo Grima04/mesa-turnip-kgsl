@@ -1804,13 +1804,9 @@ struct radv_image {
 	/* Set when bound */
 	struct radeon_winsys_bo *bo;
 	VkDeviceSize offset;
-	uint64_t dcc_offset;
-	uint64_t htile_offset;
 	bool tc_compatible_htile;
 	bool tc_compatible_cmask;
 
-	uint64_t cmask_offset;
-	uint64_t fmask_offset;
 	uint64_t clear_value_offset;
 	uint64_t fce_pred_offset;
 	uint64_t dcc_pred_offset;
@@ -1858,7 +1854,7 @@ bool radv_layout_dcc_compressed(const struct radv_device *device,
 static inline bool
 radv_image_has_cmask(const struct radv_image *image)
 {
-	return image->cmask_offset;
+	return image->planes[0].surface.cmask_offset;
 }
 
 /**
@@ -1867,7 +1863,7 @@ radv_image_has_cmask(const struct radv_image *image)
 static inline bool
 radv_image_has_fmask(const struct radv_image *image)
 {
-	return image->fmask_offset;
+	return image->planes[0].surface.fmask_offset;
 }
 
 /**

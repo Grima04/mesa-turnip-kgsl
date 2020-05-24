@@ -593,7 +593,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 		state[6] &= C_008F28_COMPRESSION_EN;
 		state[7] = 0;
 		if (!disable_compression && radv_dcc_enabled(image, first_level)) {
-			meta_va = gpu_address + image->dcc_offset;
+			meta_va = gpu_address + plane->surface.dcc_offset;
 			if (chip_class <= GFX8)
 				meta_va += base_level_info->dcc_offset;
 
@@ -602,7 +602,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			meta_va |= dcc_tile_swizzle;
 		} else if (!disable_compression &&
 			   radv_image_is_tc_compat_htile(image)) {
-			meta_va = gpu_address + image->htile_offset;
+			meta_va = gpu_address +  plane->surface.htile_offset;
 		}
 
 		if (meta_va) {
@@ -630,7 +630,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 				.pipe_aligned = 1,
 			};
 
-			if (image->dcc_offset)
+			if (plane->surface.dcc_offset)
 				meta = plane->surface.u.gfx9.dcc;
 
 			state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
@@ -659,7 +659,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 				.pipe_aligned = 1,
 			};
 
-			if (image->dcc_offset)
+			if (plane->surface.dcc_offset)
 				meta = plane->surface.u.gfx9.dcc;
 
 			state[5] |= S_008F24_META_DATA_ADDRESS(meta_va >> 40) |
@@ -830,7 +830,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 
 		assert(image->plane_count == 1);
 
-		va = gpu_address + image->offset + image->fmask_offset;
+		va = gpu_address + image->offset + image->planes[0].surface.fmask_offset;
 
 		switch (image->info.samples) {
 		case 2:
@@ -972,7 +972,7 @@ si_make_texture_descriptor(struct radv_device *device,
 		state[4] |= S_008F20_DEPTH(depth - 1);
 		state[5] |= S_008F24_LAST_ARRAY(last_layer);
 	}
-	if (image->dcc_offset) {
+	if (image->planes[0].surface.dcc_offset) {
 		state[6] = S_008F28_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
 	} else {
 		/* The last dword is unused by hw. The shader uses it to clear
@@ -994,7 +994,7 @@ si_make_texture_descriptor(struct radv_device *device,
 
 		assert(image->plane_count == 1);
 
-		va = gpu_address + image->offset + image->fmask_offset;
+		va = gpu_address + image->offset + image->planes[0].surface.fmask_offset;
 
 		if (device->physical_device->rad_info.chip_class == GFX9) {
 			fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK;
@@ -1054,7 +1054,7 @@ si_make_texture_descriptor(struct radv_device *device,
 					  S_008F24_META_RB_ALIGNED(1);
 
 			if (radv_image_is_tc_compat_cmask(image)) {
-				va = gpu_address + image->offset + image->cmask_offset;
+				va = gpu_address + image->offset + image->planes[0].surface.cmask_offset;
 
 				fmask_state[5] |= S_008F24_META_DATA_ADDRESS(va >> 40);
 				fmask_state[6] |= S_008F28_COMPRESSION_EN(1);
@@ -1067,7 +1067,7 @@ si_make_texture_descriptor(struct radv_device *device,
 			fmask_state[5] |= S_008F24_LAST_ARRAY(last_layer);
 
 			if (radv_image_is_tc_compat_cmask(image)) {
-				va = gpu_address + image->offset + image->cmask_offset;
+				va = gpu_address + image->offset + image->planes[0].surface.cmask_offset;
 
 				fmask_state[6] |= S_008F28_COMPRESSION_EN(1);
 				fmask_state[7] |= va >> 8;
@@ -1146,7 +1146,7 @@ radv_query_opaque_metadata(struct radv_device *device,
 	/* Clear the base address and set the relative DCC offset. */
 	desc[0] = 0;
 	desc[1] &= C_008F14_BASE_ADDRESS_HI;
-	desc[7] = image->dcc_offset >> 8;
+	desc[7] = image->planes[0].surface.dcc_offset >> 8;
 
 	/* Dwords [2:9] contain the image descriptor. */
 	memcpy(&md->metadata[2], desc, sizeof(desc));
@@ -1205,8 +1205,8 @@ radv_image_alloc_fmask(struct radv_device *device,
 {
 	unsigned fmask_alignment = image->planes[0].surface.fmask_alignment;
 
-	image->fmask_offset = align64(image->size, fmask_alignment);
-	image->size = image->fmask_offset + image->planes[0].surface.fmask_size;
+	image->planes[0].surface.fmask_offset = align64(image->size, fmask_alignment);
+	image->size = image->planes[0].surface.fmask_offset + image->planes[0].surface.fmask_size;
 	image->alignment = MAX2(image->alignment, fmask_alignment);
 }
 
@@ -1223,13 +1223,13 @@ radv_image_alloc_cmask(struct radv_device *device,
 
 	assert(cmask_alignment);
 
-	image->cmask_offset = align64(image->size, cmask_alignment);
+	image->planes[0].surface.cmask_offset = align64(image->size, cmask_alignment);
 	/* + 8 for storing the clear values */
 	if (!image->clear_value_offset) {
-		image->clear_value_offset = image->cmask_offset + cmask_size;
+		image->clear_value_offset = image->planes[0].surface.cmask_offset + cmask_size;
 		clear_value_size = 8;
 	}
-	image->size = image->cmask_offset + cmask_size + clear_value_size;
+	image->size = image->planes[0].surface.cmask_offset + cmask_size + clear_value_size;
 	image->alignment = MAX2(image->alignment, cmask_alignment);
 }
 
@@ -1238,22 +1238,22 @@ radv_image_alloc_dcc(struct radv_image *image)
 {
 	assert(image->plane_count == 1);
 
-	image->dcc_offset = align64(image->size, image->planes[0].surface.dcc_alignment);
+	image->planes[0].surface.dcc_offset = align64(image->size, image->planes[0].surface.dcc_alignment);
 	/* + 24 for storing the clear values + fce pred + dcc pred for each mip */
-	image->clear_value_offset = image->dcc_offset + image->planes[0].surface.dcc_size;
+	image->clear_value_offset = image->planes[0].surface.dcc_offset + image->planes[0].surface.dcc_size;
 	image->fce_pred_offset = image->clear_value_offset + 8 * image->info.levels;
 	image->dcc_pred_offset = image->clear_value_offset + 16 * image->info.levels;
-	image->size = image->dcc_offset + image->planes[0].surface.dcc_size + 24 * image->info.levels;
+	image->size = image->planes[0].surface.dcc_offset + image->planes[0].surface.dcc_size + 24 * image->info.levels;
 	image->alignment = MAX2(image->alignment, image->planes[0].surface.dcc_alignment);
 }
 
 static void
 radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
 {
-	image->htile_offset = align64(image->size, image->planes[0].surface.htile_alignment);
+	image->planes[0].surface.htile_offset = align64(image->size, image->planes[0].surface.htile_alignment);
 
 	/* + 8 for storing the clear values */
-	image->clear_value_offset = image->htile_offset + image->planes[0].surface.htile_size;
+	image->clear_value_offset = image->planes[0].surface.htile_offset + image->planes[0].surface.htile_size;
 	image->size = image->clear_value_offset + image->info.levels * 8;
 	if (radv_image_is_tc_compat_htile(image) &&
 	    device->physical_device->rad_info.has_tc_compat_zrange_bug) {
