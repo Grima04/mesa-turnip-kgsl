@@ -1871,22 +1871,26 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 
 	/* Determine the memory layout of multiple allocations in one buffer. */
 	surf->total_size = surf->surf_size;
+	surf->alignment = surf->surf_alignment;
 
 	if (surf->htile_size) {
 		surf->htile_offset = align64(surf->total_size, surf->htile_alignment);
 		surf->total_size = surf->htile_offset + surf->htile_size;
+		surf->alignment = MAX2(surf->alignment, surf->htile_alignment);
 	}
 
 	if (surf->fmask_size) {
 		assert(config->info.samples >= 2);
 		surf->fmask_offset = align64(surf->total_size, surf->fmask_alignment);
 		surf->total_size = surf->fmask_offset + surf->fmask_size;
+		surf->alignment = MAX2(surf->alignment, surf->fmask_alignment);
 	}
 
 	/* Single-sample CMASK is in a separate buffer. */
 	if (surf->cmask_size && config->info.samples >= 2) {
 		surf->cmask_offset = align64(surf->total_size, surf->cmask_alignment);
 		surf->total_size = surf->cmask_offset + surf->cmask_size;
+		surf->alignment = MAX2(surf->alignment, surf->cmask_alignment);
 	}
 
 	if (surf->dcc_size &&
@@ -1918,6 +1922,7 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 
 		surf->dcc_offset = align64(surf->total_size, surf->dcc_alignment);
 		surf->total_size = surf->dcc_offset + surf->dcc_size;
+		surf->alignment = MAX2(surf->alignment, surf->dcc_alignment);
 	}
 
 	return 0;
