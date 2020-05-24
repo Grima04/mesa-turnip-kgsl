@@ -1374,6 +1374,12 @@ radv_image_create_layout(struct radv_device *device,
 			info.height /= desc->height_divisor;
 		}
 
+		if (create_info.no_metadata_planes || image->plane_count > 1) {
+			image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC |
+			                                      RADEON_SURF_NO_FMASK |
+			                                      RADEON_SURF_NO_HTILE;
+		}
+
 		device->ws->surface_init(device->ws, &info, &image->planes[plane].surface);
 
 		image->planes[plane].offset = align(image->size, image->planes[plane].surface.surf_alignment);
@@ -1383,44 +1389,39 @@ radv_image_create_layout(struct radv_device *device,
 		image->planes[plane].format = vk_format_get_plane_format(image->vk_format, plane);
 	}
 
-	if (!create_info.no_metadata_planes) {
-		/* Try to enable DCC first. */
-		if (radv_image_can_enable_dcc(device, image)) {
-			radv_image_alloc_dcc(image);
-			if (image->info.samples > 1) {
-				/* CMASK should be enabled because DCC fast
-				 * clear with MSAA needs it.
-				 */
-				assert(radv_image_can_enable_cmask(image));
-				radv_image_alloc_cmask(device, image);
-			}
-		} else {
-			/* When DCC cannot be enabled, try CMASK. */
-			radv_image_disable_dcc(image);
-			if (radv_image_can_enable_cmask(image)) {
-				radv_image_alloc_cmask(device, image);
-			}
-		}
-
-		/* Try to enable FMASK for multisampled images. */
-		if (image->planes[0].surface.fmask_size) {
-			radv_image_alloc_fmask(device, image);
-
-			if (radv_use_tc_compat_cmask_for_image(device, image))
-				image->tc_compatible_cmask = true;
-		} else {
-			/* Otherwise, try to enable HTILE for depth surfaces. */
-			if (radv_image_can_enable_htile(image) &&
-			    !(device->instance->debug_flags & RADV_DEBUG_NO_HIZ)) {
-				image->tc_compatible_htile = image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
-				radv_image_alloc_htile(device, image);
-			} else {
-				radv_image_disable_htile(image);
-			}
+	/* Try to enable DCC first. */
+	if (radv_image_can_enable_dcc(device, image)) {
+		radv_image_alloc_dcc(image);
+		if (image->info.samples > 1) {
+			/* CMASK should be enabled because DCC fast
+			 * clear with MSAA needs it.
+			 */
+			assert(radv_image_can_enable_cmask(image));
+			radv_image_alloc_cmask(device, image);
 		}
 	} else {
+		/* When DCC cannot be enabled, try CMASK. */
 		radv_image_disable_dcc(image);
-		radv_image_disable_htile(image);
+		if (radv_image_can_enable_cmask(image)) {
+			radv_image_alloc_cmask(device, image);
+		}
+	}
+
+	/* Try to enable FMASK for multisampled images. */
+	if (image->planes[0].surface.fmask_size) {
+		radv_image_alloc_fmask(device, image);
+
+		if (radv_use_tc_compat_cmask_for_image(device, image))
+			image->tc_compatible_cmask = true;
+	} else {
+		/* Otherwise, try to enable HTILE for depth surfaces. */
+		if (radv_image_can_enable_htile(image) &&
+		    !(device->instance->debug_flags & RADV_DEBUG_NO_HIZ)) {
+			image->tc_compatible_htile = image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
+			radv_image_alloc_htile(device, image);
+		} else {
+			radv_image_disable_htile(image);
+		}
 	}
 
 	assert(image->planes[0].surface.surf_size);
