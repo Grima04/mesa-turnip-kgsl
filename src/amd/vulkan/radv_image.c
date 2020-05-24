@@ -230,6 +230,13 @@ radv_use_dcc_for_image(struct radv_device *device,
 	return true;
 }
 
+static inline bool
+radv_use_fmask_for_image(const struct radv_image *image)
+{
+	return image->info.samples > 1 &&
+	       image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+}
+
 static bool
 radv_use_tc_compat_cmask_for_image(struct radv_device *device,
 				   struct radv_image *image)
@@ -457,6 +464,9 @@ radv_init_surface(struct radv_device *device,
 
 	if (!radv_use_dcc_for_image(device, image, pCreateInfo, image_format))
 		surface->flags |= RADEON_SURF_DISABLE_DCC;
+
+	if (!radv_use_fmask_for_image(image))
+		surface->flags |= RADEON_SURF_NO_FMASK;
 
 	return 0;
 }
@@ -1314,13 +1324,6 @@ radv_image_can_enable_cmask(struct radv_image *image)
 }
 
 static inline bool
-radv_image_can_enable_fmask(struct radv_image *image)
-{
-	return image->info.samples > 1 &&
-	       image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-}
-
-static inline bool
 radv_image_can_enable_htile(struct radv_image *image)
 {
 	return radv_image_has_htile(image) &&
@@ -1400,7 +1403,7 @@ radv_image_create_layout(struct radv_device *device,
 		}
 
 		/* Try to enable FMASK for multisampled images. */
-		if (radv_image_can_enable_fmask(image)) {
+		if (image->planes[0].surface.fmask_size) {
 			radv_image_alloc_fmask(device, image);
 
 			if (radv_use_tc_compat_cmask_for_image(device, image))
