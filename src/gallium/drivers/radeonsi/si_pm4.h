@@ -41,9 +41,6 @@ struct si_atom {
 };
 
 struct si_pm4_state {
-   /* optional indirect buffer */
-   struct si_resource *indirect_buffer;
-
    /* PKT3_SET_*_REG handling */
    unsigned last_opcode;
    unsigned last_reg;

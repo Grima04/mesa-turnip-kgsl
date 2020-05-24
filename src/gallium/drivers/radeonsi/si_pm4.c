@@ -98,7 +98,6 @@ void si_pm4_clear_state(struct si_pm4_state *state)
 {
    for (int i = 0; i < state->nbo; ++i)
       si_resource_reference(&state->bo[i], NULL);
-   si_resource_reference(&state->indirect_buffer, NULL);
    state->nbo = 0;
    state->ndw = 0;
 }
@@ -125,18 +124,7 @@ void si_pm4_emit(struct si_context *sctx, struct si_pm4_state *state)
                                 state->bo_priority[i]);
    }
 
-   if (!state->indirect_buffer) {
-      radeon_emit_array(cs, state->pm4, state->ndw);
-   } else {
-      struct si_resource *ib = state->indirect_buffer;
-
-      radeon_add_to_buffer_list(sctx, sctx->gfx_cs, ib, RADEON_USAGE_READ, RADEON_PRIO_IB2);
-
-      radeon_emit(cs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
-      radeon_emit(cs, ib->gpu_address);
-      radeon_emit(cs, ib->gpu_address >> 32);
-      radeon_emit(cs, (ib->b.b.width0 >> 2) & 0xfffff);
-   }
+   radeon_emit_array(cs, state->pm4, state->ndw);
 
    if (state->atom.emit)
       state->atom.emit(sctx);
