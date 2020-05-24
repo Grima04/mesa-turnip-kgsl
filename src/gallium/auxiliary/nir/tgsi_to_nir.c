@@ -2579,7 +2579,6 @@ ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
 
    nir->info.num_images = c->num_images;
    nir->info.num_textures = c->num_samplers;
-   nir->info.last_msaa_image = c->num_msaa_images - 1;
 
    nir_validate_shader(nir, "TTN: after all optimizations");
 }

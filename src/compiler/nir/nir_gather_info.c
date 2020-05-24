@@ -598,7 +598,7 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    shader->info.num_textures = 0;
    shader->info.num_images = 0;
    shader->info.image_buffers = 0;
-   shader->info.last_msaa_image = -1;
+   shader->info.msaa_images = 0;
 
    nir_foreach_variable(var, &shader->uniforms) {
       /* Bindless textures and images don't use non-bindless slots.
@@ -618,13 +618,12 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
             shader->info.image_buffers |=
                BITFIELD_RANGE(shader->info.num_images, num_image_slots);
          }
+         if (glsl_get_sampler_dim(image_type) == GLSL_SAMPLER_DIM_MS) {
+            shader->info.msaa_images |=
+               BITFIELD_RANGE(shader->info.num_images, num_image_slots);
+         }
          shader->info.num_images += num_image_slots;
       }
-
-      /* Assuming image slots don't have holes (e.g. OpenGL) */
-      if (glsl_type_is_image(var->type) &&
-          glsl_get_sampler_dim(var->type) == GLSL_SAMPLER_DIM_MS)
-         shader->info.last_msaa_image = shader->info.num_images - 1;
    }
 
    shader->info.inputs_read = 0;

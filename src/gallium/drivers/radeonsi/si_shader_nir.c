@@ -718,7 +718,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    if (nir->num_uniforms > 0)
       info->const_buffers_declared |= 1;
    info->images_declared = u_bit_consecutive(0, nir->info.num_images);
-   info->msaa_images_declared = u_bit_consecutive(0, nir->info.last_msaa_image + 1);
+   info->msaa_images_declared = nir->info.msaa_images;
    info->samplers_declared = nir->info.textures_used;
 
    info->num_written_clipdistance = nir->info.clip_distance_array_size;

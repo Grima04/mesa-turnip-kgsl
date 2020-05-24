@@ -116,8 +116,6 @@ typedef struct shader_info {
    uint8_t num_ssbos;
    /* Number of images used by this shader */
    uint8_t num_images;
-   /* Index of the last MSAA image. */
-   int8_t last_msaa_image;
 
    /* Which inputs are actually read */
    uint64_t inputs_read;
@@ -154,6 +152,8 @@ typedef struct shader_info {
    uint32_t images_used;
    /** Bitfield of which images are buffers. */
    uint32_t image_buffers;
+   /** Bitfield of which images are MSAA. */
+   uint32_t msaa_images;
 
    /* SPV_KHR_float_controls: execution mode for floating point ops */
    uint16_t float_controls_execution_mode;
