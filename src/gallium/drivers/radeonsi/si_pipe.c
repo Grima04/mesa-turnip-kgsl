@@ -33,6 +33,7 @@
 #include "si_public.h"
 #include "si_shader_internal.h"
 #include "sid.h"
+#include "ac_shadowed_regs.h"
 #include "util/disk_cache.h"
 #include "util/u_log.h"
 #include "util/u_memory.h"
@@ -1280,6 +1281,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       si_test_gds_memory_management((struct si_context *)sscreen->aux_context, 4, 1,
                                     RADEON_DOMAIN_OA);
    }
+
+   ac_print_shadowed_regs(&sscreen->info);
 
    STATIC_ASSERT(sizeof(union si_vgt_stages_key) == 4);
    return &sscreen->b;

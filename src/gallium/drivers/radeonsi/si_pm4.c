@@ -23,6 +23,7 @@
  */
 
 #include "si_pipe.h"
+#include "si_build_pm4.h"
 #include "sid.h"
 #include "util/u_memory.h"
 
@@ -49,6 +50,8 @@ static void si_pm4_cmd_end(struct si_pm4_state *state, bool predicate)
 void si_pm4_set_reg(struct si_pm4_state *state, unsigned reg, uint32_t val)
 {
    unsigned opcode;
+
+   SI_CHECK_SHADOWED_REGS(reg, 1);
 
    if (reg >= SI_CONFIG_REG_OFFSET && reg < SI_CONFIG_REG_END) {
       opcode = PKT3_SET_CONFIG_REG;

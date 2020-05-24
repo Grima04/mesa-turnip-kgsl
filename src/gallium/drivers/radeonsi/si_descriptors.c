@@ -55,6 +55,7 @@
 
 #include "si_pipe.h"
 #include "si_compute.h"
+#include "si_build_pm4.h"
 #include "sid.h"
 #include "util/format/u_format.h"
 #include "util/hash_table.h"
@@ -2033,6 +2034,7 @@ void si_shader_change_notify(struct si_context *sctx)
 static void si_emit_shader_pointer_head(struct radeon_cmdbuf *cs, unsigned sh_offset,
                                         unsigned pointer_count)
 {
+   SI_CHECK_SHADOWED_REGS(sh_offset, pointer_count);
    radeon_emit(cs, PKT3(PKT3_SET_SH_REG, pointer_count, 0));
    radeon_emit(cs, (sh_offset - SI_SH_REG_OFFSET) >> 2);
 }

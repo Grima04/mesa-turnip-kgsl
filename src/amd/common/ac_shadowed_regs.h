@@ -55,5 +55,8 @@ void ac_get_reg_ranges(enum chip_class chip_class, enum radeon_family family,
 void ac_emulate_clear_state(const struct radeon_info *info,
                             struct radeon_cmdbuf *cs,
                             set_context_reg_seq_array_fn set_context_reg_seq_array);
+void ac_check_shadowed_regs(enum chip_class chip_class, enum radeon_family family,
+                            unsigned reg_offset, unsigned count);
+void ac_print_shadowed_regs(const struct radeon_info *info);
 
 #endif

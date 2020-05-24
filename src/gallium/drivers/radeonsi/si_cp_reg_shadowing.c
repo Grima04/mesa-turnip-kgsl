@@ -23,6 +23,7 @@
  */
 
 #include "si_build_pm4.h"
+#include "ac_debug.h"
 #include "ac_shadowed_regs.h"
 #include "util/u_memory.h"
 
