@@ -1230,50 +1230,17 @@ radv_image_override_offset_stride(struct radv_device *device,
 }
 
 static void
-radv_image_alloc_fmask(struct radv_device *device,
-		       struct radv_image *image)
+radv_image_alloc_single_sample_cmask(const struct radv_image *image,
+                                     struct radeon_surf *surf)
 {
-	unsigned fmask_alignment = image->planes[0].surface.fmask_alignment;
-
-	image->planes[0].surface.fmask_offset = align64(image->size, fmask_alignment);
-	image->size = image->planes[0].surface.fmask_offset + image->planes[0].surface.fmask_size;
-	image->alignment = MAX2(image->alignment, fmask_alignment);
-}
-
-static void
-radv_image_alloc_cmask(struct radv_device *device,
-		       struct radv_image *image)
-{
-	unsigned cmask_alignment = image->planes[0].surface.cmask_alignment;
-	unsigned cmask_size = image->planes[0].surface.cmask_size;
-
-	if (!cmask_size)
+	if (!surf->cmask_size || surf->cmask_offset || surf->bpe > 8 ||
+	    image->info.levels > 1 || image->info.depth > 1 ||
+	    !radv_image_use_fast_clear_for_image(image))
 		return;
 
-	assert(cmask_alignment);
-
-	image->planes[0].surface.cmask_offset = align64(image->size, cmask_alignment);
-	image->size = image->planes[0].surface.cmask_offset + cmask_size;
-	image->alignment = MAX2(image->alignment, cmask_alignment);
-}
-
-static void
-radv_image_alloc_dcc(struct radv_image *image)
-{
-	assert(image->plane_count == 1);
-
-	image->planes[0].surface.dcc_offset = align64(image->size, image->planes[0].surface.dcc_alignment);
-	image->size = image->planes[0].surface.dcc_offset + image->planes[0].surface.dcc_size;
-	image->alignment = MAX2(image->alignment, image->planes[0].surface.dcc_alignment);
-}
-
-static void
-radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
-{
-	image->planes[0].surface.htile_offset = align64(image->size, image->planes[0].surface.htile_alignment);
-
-	image->size = image->clear_value_offset;
-	image->alignment = align64(image->alignment, image->planes[0].surface.htile_alignment);
+	surf->cmask_offset = align64(surf->total_size, surf->cmask_alignment);
+	surf->total_size = surf->cmask_offset + surf->cmask_size;
+	surf->alignment = MAX2(surf->alignment, surf->cmask_alignment);
 }
 
 static void
@@ -1302,34 +1269,6 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
 		image->tc_compat_zrange_offset = image->size;
 		image->size += image->info.levels * 4;
 	}
-}
-
-static inline bool
-radv_image_can_enable_cmask(struct radv_image *image)
-{
-	if (image->planes[0].surface.bpe > 8 && image->info.samples == 1) {
-		/* Do not enable CMASK for non-MSAA images (fast color clear)
-		 * because 128 bit formats are not supported, but FMASK might
-		 * still be used.
-		 */
-		return false;
-	}
-
-	return radv_image_use_fast_clear_for_image(image) &&
-	       image->info.levels == 1 &&
-	       image->info.depth == 1;
-}
-
-static void radv_image_disable_dcc(struct radv_image *image)
-{
-	for (unsigned i = 0; i < image->plane_count; ++i)
-		image->planes[i].surface.dcc_size = 0;
-}
-
-static void radv_image_disable_htile(struct radv_image *image)
-{
-	for (unsigned i = 0; i < image->plane_count; ++i)
-		image->planes[i].surface.htile_size = 0;
 }
 
 VkResult
@@ -1371,46 +1310,21 @@ radv_image_create_layout(struct radv_device *device,
 
 		device->ws->surface_init(device->ws, &info, &image->planes[plane].surface);
 
-		image->planes[plane].offset = align(image->size, image->planes[plane].surface.surf_alignment);
-		image->size = image->planes[plane].offset + image->planes[plane].surface.surf_size;
-		image->alignment = image->planes[plane].surface.surf_alignment;
+		if (!create_info.no_metadata_planes && image->plane_count == 1)
+			radv_image_alloc_single_sample_cmask(image, &image->planes[plane].surface);
+
+		image->planes[plane].offset = align(image->size, image->planes[plane].surface.alignment);
+		image->size = image->planes[plane].offset + image->planes[plane].surface.total_size;
+		image->alignment = MAX2(image->alignment, image->planes[plane].surface.alignment);
 
 		image->planes[plane].format = vk_format_get_plane_format(image->vk_format, plane);
 	}
 
-	/* Try to enable DCC first. */
-	if (radv_image_has_dcc(image)) {
-		radv_image_alloc_dcc(image);
-		if (image->info.samples > 1) {
-			/* CMASK should be enabled because DCC fast
-			 * clear with MSAA needs it.
-			 */
-			assert(radv_image_can_enable_cmask(image));
-			radv_image_alloc_cmask(device, image);
-		}
-	} else {
-		/* When DCC cannot be enabled, try CMASK. */
-		radv_image_disable_dcc(image);
-		if (radv_image_can_enable_cmask(image)) {
-			radv_image_alloc_cmask(device, image);
-		}
-	}
+	image->tc_compatible_cmask = radv_image_has_cmask(image) &&
+	                             radv_use_tc_compat_cmask_for_image(device, image);
 
-	/* Try to enable FMASK for multisampled images. */
-	if (image->planes[0].surface.fmask_size) {
-		radv_image_alloc_fmask(device, image);
-
-		if (radv_use_tc_compat_cmask_for_image(device, image))
-			image->tc_compatible_cmask = true;
-	} else {
-		/* Otherwise, try to enable HTILE for depth surfaces. */
-		if (radv_image_has_htile(image)) {
-			image->tc_compatible_htile = image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
-			radv_image_alloc_htile(device, image);
-		} else {
-			radv_image_disable_htile(image);
-		}
-	}
+	image->tc_compatible_htile = radv_image_has_htile(image) &&
+	                             image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
 
 	radv_image_alloc_values(device, image);
 
