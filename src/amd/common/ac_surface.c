@@ -505,7 +505,7 @@ static void ac_compute_cmask(const struct radeon_info *info,
 	unsigned num_pipes = info->num_tile_pipes;
 	unsigned cl_width, cl_height;
 
-	if (surf->flags & RADEON_SURF_Z_OR_SBUFFER ||
+	if (surf->flags & RADEON_SURF_Z_OR_SBUFFER || surf->is_linear ||
 	    (config->info.samples >= 2 && !surf->fmask_size))
 		return;
 

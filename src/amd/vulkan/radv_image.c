@@ -1307,8 +1307,7 @@ radv_image_can_enable_cmask(struct radv_image *image)
 
 	return radv_image_can_enable_dcc_or_cmask(image) &&
 	       image->info.levels == 1 &&
-	       image->info.depth == 1 &&
-	       !image->planes[0].surface.is_linear;
+	       image->info.depth == 1;
 }
 
 static inline bool
