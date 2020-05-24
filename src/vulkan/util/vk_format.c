@@ -254,6 +254,22 @@ vk_format_to_pipe_format(enum VkFormat vkformat)
          return PIPE_FORMAT_IYUV;
       case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
          return PIPE_FORMAT_NV12;
+      case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
+         return PIPE_FORMAT_Y8_U8_V8_422_UNORM;
+      case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
+         return PIPE_FORMAT_Y8_U8V8_422_UNORM;
+      case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+         return PIPE_FORMAT_Y8_U8_V8_444_UNORM;
+      case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
+         return PIPE_FORMAT_Y16_U16_V16_420_UNORM;
+      case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
+         return PIPE_FORMAT_P016;
+      case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
+         return PIPE_FORMAT_Y16_U16_V16_422_UNORM;
+      case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
+         return PIPE_FORMAT_Y16_U16V16_422_UNORM;
+      case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+         return PIPE_FORMAT_Y16_U16_V16_444_UNORM;
       default:
          return PIPE_FORMAT_NONE;
       }
