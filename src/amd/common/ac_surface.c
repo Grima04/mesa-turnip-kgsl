@@ -343,6 +343,13 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib,
 					else
 						surf_level->dcc_slice_fast_clear_size = 0;
 				}
+
+				if (surf->flags & RADEON_SURF_CONTIGUOUS_DCC_LAYERS &&
+				    surf->dcc_slice_size != surf_level->dcc_slice_fast_clear_size) {
+					surf->dcc_size = 0;
+					surf->num_dcc_levels = 0;
+					AddrDccOut->subLvlCompressible = false;
+				}
 			} else {
 				surf_level->dcc_slice_fast_clear_size = surf_level->dcc_fast_clear_size;
 			}

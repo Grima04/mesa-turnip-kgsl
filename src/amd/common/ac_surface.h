@@ -69,7 +69,7 @@ enum radeon_micro_mode {
 #define RADEON_SURF_DISABLE_DCC                 (1 << 22)
 #define RADEON_SURF_TC_COMPATIBLE_HTILE         (1 << 23)
 #define RADEON_SURF_IMPORTED                    (1 << 24)
-/* gap */
+#define RADEON_SURF_CONTIGUOUS_DCC_LAYERS       (1 << 25)
 #define RADEON_SURF_SHAREABLE                   (1 << 26)
 #define RADEON_SURF_NO_RENDER_TARGET            (1 << 27)
 /* Force a swizzle mode (gfx9+) or tile mode (gfx6-8).

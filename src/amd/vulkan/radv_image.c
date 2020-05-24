@@ -447,6 +447,9 @@ radv_init_surface(struct radv_device *device,
 		unreachable("unhandled image type");
 	}
 
+	/* Required for clearing/initializing a specific layer on GFX8. */
+	surface->flags |= RADEON_SURF_CONTIGUOUS_DCC_LAYERS;
+
 	if (is_depth) {
 		surface->flags |= RADEON_SURF_ZBUFFER;
 		if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
@@ -1287,21 +1290,6 @@ radv_image_can_enable_dcc(struct radv_device *device, struct radv_image *image)
 	if (!radv_image_can_enable_dcc_or_cmask(image) ||
 	    !radv_image_has_dcc(image))
 		return false;
-
-	/* On GFX8, DCC layers can be interleaved and it's currently only
-	 * enabled if slice size is equal to the per slice fast clear size
-	 * because the driver assumes that portions of multiple layers are
-	 * contiguous during fast clears.
-	 */
-	if (image->info.array_size > 1) {
-		const struct legacy_surf_level *surf_level =
-			&image->planes[0].surface.u.legacy.level[0];
-
-		assert(device->physical_device->rad_info.chip_class == GFX8);
-
-		if (image->planes[0].surface.dcc_slice_size != surf_level->dcc_fast_clear_size)
-			return false;
-	}
 
 	return true;
 }
