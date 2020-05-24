@@ -1246,7 +1246,6 @@ radv_image_alloc_cmask(struct radv_device *device,
 {
 	unsigned cmask_alignment = image->planes[0].surface.cmask_alignment;
 	unsigned cmask_size = image->planes[0].surface.cmask_size;
-	uint32_t clear_value_size = 0;
 
 	if (!cmask_size)
 		return;
@@ -1254,12 +1253,7 @@ radv_image_alloc_cmask(struct radv_device *device,
 	assert(cmask_alignment);
 
 	image->planes[0].surface.cmask_offset = align64(image->size, cmask_alignment);
-	/* + 8 for storing the clear values */
-	if (!image->clear_value_offset) {
-		image->clear_value_offset = image->planes[0].surface.cmask_offset + cmask_size;
-		clear_value_size = 8;
-	}
-	image->size = image->planes[0].surface.cmask_offset + cmask_size + clear_value_size;
+	image->size = image->planes[0].surface.cmask_offset + cmask_size;
 	image->alignment = MAX2(image->alignment, cmask_alignment);
 }
 
@@ -1269,11 +1263,7 @@ radv_image_alloc_dcc(struct radv_image *image)
 	assert(image->plane_count == 1);
 
 	image->planes[0].surface.dcc_offset = align64(image->size, image->planes[0].surface.dcc_alignment);
-	/* + 24 for storing the clear values + fce pred + dcc pred for each mip */
-	image->clear_value_offset = image->planes[0].surface.dcc_offset + image->planes[0].surface.dcc_size;
-	image->fce_pred_offset = image->clear_value_offset + 8 * image->info.levels;
-	image->dcc_pred_offset = image->clear_value_offset + 16 * image->info.levels;
-	image->size = image->planes[0].surface.dcc_offset + image->planes[0].surface.dcc_size + 24 * image->info.levels;
+	image->size = image->planes[0].surface.dcc_offset + image->planes[0].surface.dcc_size;
 	image->alignment = MAX2(image->alignment, image->planes[0].surface.dcc_alignment);
 }
 
@@ -1282,9 +1272,27 @@ radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
 {
 	image->planes[0].surface.htile_offset = align64(image->size, image->planes[0].surface.htile_alignment);
 
-	/* + 8 for storing the clear values */
-	image->clear_value_offset = image->planes[0].surface.htile_offset + image->planes[0].surface.htile_size;
-	image->size = image->clear_value_offset + image->info.levels * 8;
+	image->size = image->clear_value_offset;
+	image->alignment = align64(image->alignment, image->planes[0].surface.htile_alignment);
+}
+
+static void
+radv_image_alloc_values(const struct radv_device *device, struct radv_image *image)
+{
+	if (radv_image_has_dcc(image)) {
+		image->fce_pred_offset = image->size;
+		image->size += 8 * image->info.levels;
+
+		image->dcc_pred_offset = image->size;
+		image->size += 8 * image->info.levels;
+	}
+
+	if (radv_image_has_dcc(image) || radv_image_has_cmask(image) ||
+	    radv_image_has_htile(image)) {
+		image->clear_value_offset = image->size;
+		image->size += 8 * image->info.levels;
+	}
+
 	if (radv_image_is_tc_compat_htile(image) &&
 	    device->physical_device->rad_info.has_tc_compat_zrange_bug) {
 		/* Metadata for the TC-compatible HTILE hardware bug which
@@ -1292,9 +1300,8 @@ radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
 		 * fast depth clears to 0.0f.
 		 */
 		image->tc_compat_zrange_offset = image->size;
-		image->size = image->tc_compat_zrange_offset + image->info.levels * 4;
+		image->size += image->info.levels * 4;
 	}
-	image->alignment = align64(image->alignment, image->planes[0].surface.htile_alignment);
 }
 
 static inline bool
@@ -1404,6 +1411,8 @@ radv_image_create_layout(struct radv_device *device,
 			radv_image_disable_htile(image);
 		}
 	}
+
+	radv_image_alloc_values(device, image);
 
 	assert(image->planes[0].surface.surf_size);
 	return VK_SUCCESS;
