@@ -150,6 +150,23 @@ radv_surface_has_scanout(struct radv_device *device, const struct radv_image_cre
 }
 
 static bool
+radv_image_use_fast_clear_for_image(const struct radv_image *image)
+{
+	if (image->info.samples <= 1 &&
+	    image->info.width * image->info.height <= 512 * 512) {
+		/* Do not enable CMASK or DCC for small surfaces where the cost
+		 * of the eliminate pass can be higher than the benefit of fast
+		 * clear. RadeonSI does this, but the image threshold is
+		 * different.
+		 */
+		return false;
+	}
+
+	return image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT &&
+	       (image->exclusive || image->queue_family_mask == 1);
+}
+
+static bool
 radv_use_dcc_for_image(struct radv_device *device,
 		       const struct radv_image *image,
 		       const VkImageCreateInfo *pCreateInfo,
@@ -177,6 +194,9 @@ radv_use_dcc_for_image(struct radv_device *device,
 
 	if (vk_format_is_subsampled(format) ||
 	    vk_format_get_plane_count(format) > 1)
+		return false;
+
+	if (!radv_image_use_fast_clear_for_image(image))
 		return false;
 
 	/* TODO: Enable DCC for mipmaps on GFX9+. */
@@ -1268,33 +1288,6 @@ radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
 }
 
 static inline bool
-radv_image_can_enable_dcc_or_cmask(struct radv_image *image)
-{
-	if (image->info.samples <= 1 &&
-	    image->info.width * image->info.height <= 512 * 512) {
-		/* Do not enable CMASK or DCC for small surfaces where the cost
-		 * of the eliminate pass can be higher than the benefit of fast
-		 * clear. RadeonSI does this, but the image threshold is
-		 * different.
-		 */
-		return false;
-	}
-
-	return image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT &&
-	       (image->exclusive || image->queue_family_mask == 1);
-}
-
-static inline bool
-radv_image_can_enable_dcc(struct radv_device *device, struct radv_image *image)
-{
-	if (!radv_image_can_enable_dcc_or_cmask(image) ||
-	    !radv_image_has_dcc(image))
-		return false;
-
-	return true;
-}
-
-static inline bool
 radv_image_can_enable_cmask(struct radv_image *image)
 {
 	if (image->planes[0].surface.bpe > 8 && image->info.samples == 1) {
@@ -1305,7 +1298,7 @@ radv_image_can_enable_cmask(struct radv_image *image)
 		return false;
 	}
 
-	return radv_image_can_enable_dcc_or_cmask(image) &&
+	return radv_image_use_fast_clear_for_image(image) &&
 	       image->info.levels == 1 &&
 	       image->info.depth == 1;
 }
@@ -1377,7 +1370,7 @@ radv_image_create_layout(struct radv_device *device,
 	}
 
 	/* Try to enable DCC first. */
-	if (radv_image_can_enable_dcc(device, image)) {
+	if (radv_image_has_dcc(image)) {
 		radv_image_alloc_dcc(image);
 		if (image->info.samples > 1) {
 			/* CMASK should be enabled because DCC fast
