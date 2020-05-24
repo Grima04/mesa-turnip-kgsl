@@ -257,6 +257,13 @@ radv_use_fmask_for_image(const struct radv_image *image)
 	       image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 }
 
+static inline bool
+radv_use_htile_for_image(const struct radv_image *image)
+{
+	return image->info.levels == 1 &&
+	       image->info.width * image->info.height >= 8 * 8;
+}
+
 static bool
 radv_use_tc_compat_cmask_for_image(struct radv_device *device,
 				   struct radv_image *image)
@@ -472,6 +479,9 @@ radv_init_surface(struct radv_device *device,
 
 	if (is_depth) {
 		surface->flags |= RADEON_SURF_ZBUFFER;
+		if (!radv_use_htile_for_image(image) ||
+		    (device->instance->debug_flags & RADV_DEBUG_NO_HIZ))
+			surface->flags |= RADEON_SURF_NO_HTILE;
 		if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
 			surface->flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
 	}
@@ -1303,14 +1313,6 @@ radv_image_can_enable_cmask(struct radv_image *image)
 	       image->info.depth == 1;
 }
 
-static inline bool
-radv_image_can_enable_htile(struct radv_image *image)
-{
-	return radv_image_has_htile(image) &&
-	       image->info.levels == 1 &&
-	       image->info.width * image->info.height >= 8 * 8;
-}
-
 static void radv_image_disable_dcc(struct radv_image *image)
 {
 	for (unsigned i = 0; i < image->plane_count; ++i)
@@ -1395,8 +1397,7 @@ radv_image_create_layout(struct radv_device *device,
 			image->tc_compatible_cmask = true;
 	} else {
 		/* Otherwise, try to enable HTILE for depth surfaces. */
-		if (radv_image_can_enable_htile(image) &&
-		    !(device->instance->debug_flags & RADV_DEBUG_NO_HIZ)) {
+		if (radv_image_has_htile(image)) {
 			image->tc_compatible_htile = image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
 			radv_image_alloc_htile(device, image);
 		} else {
