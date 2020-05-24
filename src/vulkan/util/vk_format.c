@@ -251,7 +251,7 @@ vk_format_to_pipe_format(enum VkFormat vkformat)
       case VK_FORMAT_B8G8R8G8_422_UNORM:
          return PIPE_FORMAT_UYVY;
       case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
-         return PIPE_FORMAT_YV12;
+         return PIPE_FORMAT_IYUV;
       case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
          return PIPE_FORMAT_NV12;
       default:
