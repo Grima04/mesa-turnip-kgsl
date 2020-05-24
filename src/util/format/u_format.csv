@@ -144,6 +144,7 @@ PIPE_FORMAT_R5SG5SB6U_NORM          , plain, 1, 1, 1, sn5 , sn5 , un6 ,     , xy
 # Depth-stencil formats
 PIPE_FORMAT_S8_UINT                 , plain, 1, 1, 1, up8 ,     ,     ,     , _x__, zs
 PIPE_FORMAT_Z16_UNORM               , plain, 1, 1, 1, un16,     ,     ,     , x___, zs
+PIPE_FORMAT_Z16_UNORM_S8_UINT       , plain, 1, 1, 1, un16, up8 ,     ,     , xy__, zs
 PIPE_FORMAT_Z32_UNORM               , plain, 1, 1, 1, un32,     ,     ,     , x___, zs
 PIPE_FORMAT_Z32_FLOAT               , plain, 1, 1, 1, f32 ,     ,     ,     , x___, zs
 PIPE_FORMAT_Z24_UNORM_S8_UINT       , plain, 1, 1, 1, un24, up8 ,     ,     , xy__, zs,    up8 , un24,     ,     , yx__
