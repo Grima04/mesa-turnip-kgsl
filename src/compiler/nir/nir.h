@@ -4111,6 +4111,11 @@ typedef enum {
    nir_address_format_32bit_offset,
 
    /**
+    * An address format which is a simple 32-bit offset cast to 64-bit.
+    */
+    nir_address_format_32bit_offset_as_64bit,
+
+   /**
     * An address format representing a purely logical addressing model.  In
     * this model, all deref chains must be complete from the dereference
     * operation to the variable.  Cast derefs are not allowed.  These
@@ -4130,6 +4135,7 @@ nir_address_format_bit_size(nir_address_format addr_format)
    case nir_address_format_32bit_index_offset:        return 32;
    case nir_address_format_vec2_index_32bit_offset:   return 32;
    case nir_address_format_32bit_offset:              return 32;
+   case nir_address_format_32bit_offset_as_64bit:     return 64;
    case nir_address_format_logical:                   return 32;
    }
    unreachable("Invalid address format");
@@ -4145,6 +4151,7 @@ nir_address_format_num_components(nir_address_format addr_format)
    case nir_address_format_32bit_index_offset:        return 2;
    case nir_address_format_vec2_index_32bit_offset:   return 3;
    case nir_address_format_32bit_offset:              return 1;
+   case nir_address_format_32bit_offset_as_64bit:     return 1;
    case nir_address_format_logical:                   return 1;
    }
    unreachable("Invalid address format");
