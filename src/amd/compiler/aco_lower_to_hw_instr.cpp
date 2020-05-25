@@ -48,19 +48,67 @@ aco_opcode get_reduce_opcode(chip_class chip, ReduceOp op) {
     */
    switch (op) {
    case iadd8:
-   case iadd16: return chip >= GFX10 ? aco_opcode::v_add_u32 : aco_opcode::v_add_u16;
+   case iadd16:
+      if (chip >= GFX10) {
+         return aco_opcode::v_add_u32;
+      } else if (chip >= GFX8) {
+         return aco_opcode::v_add_u16;
+      } else {
+         return aco_opcode::v_add_co_u32;
+      }
+      break;
    case imul8:
-   case imul16: return chip >= GFX10 ? aco_opcode::v_mul_lo_u16_e64 : aco_opcode::v_mul_lo_u16;
+   case imul16:
+      if (chip >= GFX10) {
+         return aco_opcode::v_mul_lo_u16_e64;
+      } else if (chip >= GFX8) {
+         return aco_opcode::v_mul_lo_u16;
+      } else {
+         return aco_opcode::v_mul_u32_u24;
+      }
+      break;
    case fadd16: return aco_opcode::v_add_f16;
    case fmul16: return aco_opcode::v_mul_f16;
    case imax8:
-   case imax16: return chip >= GFX10 ? aco_opcode::v_max_i32 : aco_opcode::v_max_i16;
+   case imax16:
+      if (chip >= GFX10) {
+         return aco_opcode::v_max_i32;
+      } else if (chip >= GFX8) {
+         return aco_opcode::v_max_i16;
+      } else {
+         return aco_opcode::v_max_i32;
+      }
+      break;
    case imin8:
-   case imin16: return chip >= GFX10 ? aco_opcode::v_min_i32 : aco_opcode::v_min_i16;
+   case imin16:
+      if (chip >= GFX10) {
+         return aco_opcode::v_min_i32;
+      } else if (chip >= GFX8) {
+         return aco_opcode::v_min_i16;
+      } else {
+         return aco_opcode::v_min_i32;
+      }
+      break;
    case umin8:
-   case umin16: return chip >= GFX10 ? aco_opcode::v_min_u32 : aco_opcode::v_min_u16;
+   case umin16:
+      if (chip >= GFX10) {
+         return aco_opcode::v_min_u32;
+      } else if (chip >= GFX8) {
+         return aco_opcode::v_min_u16;
+      } else {
+         return aco_opcode::v_min_u32;
+      }
+      break;
    case umax8:
-   case umax16: return chip >= GFX10 ? aco_opcode::v_max_u32 : aco_opcode::v_max_u16;
+   case umax16:
+      if (chip >= GFX10) {
+         return aco_opcode::v_max_u32;
+      } else if (chip >= GFX8) {
+         return aco_opcode::v_max_u16;
+      } else {
+         return aco_opcode::v_max_u32;
+      }
+      break;
    case fmin16: return aco_opcode::v_min_f16;
    case fmax16: return aco_opcode::v_max_f16;
    case iadd32: return chip >= GFX9 ? aco_opcode::v_add_u32 : aco_opcode::v_add_co_u32;
