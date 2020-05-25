@@ -801,6 +801,7 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    img->layer = 0;
    img->use = 0;
    img->loader_private = loaderPrivate;
+   img->lowered_yuv = use_lowered;
 
    return img;
 }
@@ -1010,6 +1011,7 @@ dri2_create_image_common(__DRIscreen *_screen,
    img->dri_fourcc = map->dri_fourcc;
    img->dri_components = 0;
    img->use = use;
+   img->lowered_yuv = false;
 
    img->loader_private = loaderPrivate;
    return img;
@@ -1260,6 +1262,7 @@ dri2_dup_image(__DRIimage *image, void *loaderPrivate)
    /* This should be 0 for sub images, but dup is also used for base images. */
    img->dri_components = image->dri_components;
    img->loader_private = loaderPrivate;
+   img->lowered_yuv = image->lowered_yuv;
 
    return img;
 }
@@ -1542,10 +1545,21 @@ dri2_map_image(__DRIcontext *context, __DRIimage *image,
    struct dri_context *ctx = dri_context(context);
    struct pipe_context *pipe = ctx->st->pipe;
    enum pipe_transfer_usage pipe_access = 0;
+   struct pipe_resource *resource = image->texture;
    struct pipe_transfer *trans;
    void *map;
 
    if (!image || !data || *data)
+      return NULL;
+
+   if (image->lowered_yuv) {
+      unsigned plane = image->plane;
+      if (plane >= dri2_get_mapping_by_format(image->dri_format)->nplanes)
+         return NULL;
+
+      while (plane--)
+         resource = resource->next;
+   } else if (dri2_get_mapping_by_format(image->dri_format)->nplanes > 1)
       return NULL;
 
    if (flags & __DRI_IMAGE_TRANSFER_READ)
@@ -1553,9 +1567,8 @@ dri2_map_image(__DRIcontext *context, __DRIimage *image,
    if (flags & __DRI_IMAGE_TRANSFER_WRITE)
          pipe_access |= PIPE_TRANSFER_WRITE;
 
-   map = pipe_transfer_map(pipe, image->texture,
-                           0, 0, pipe_access, x0, y0, width, height,
-                           &trans);
+   map = pipe_transfer_map(pipe, resource, 0, 0, pipe_access, x0, y0,
+                           width, height, &trans);
    if (map) {
       *data = trans;
       *stride = trans->stride;

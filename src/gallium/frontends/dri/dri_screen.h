@@ -106,6 +106,7 @@ struct __DRIimageRec {
    uint32_t dri_components;
    unsigned use;
    unsigned plane;
+   bool lowered_yuv;
 
    void *loader_private;
 
