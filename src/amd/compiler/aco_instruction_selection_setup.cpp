@@ -348,7 +348,7 @@ void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
          bool glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_ssbo: {
-            if (nir_dest_is_divergent(intrin->dest) || ctx->program->chip_class < GFX8)
+            if (nir_dest_is_divergent(intrin->dest) && (!glc || ctx->program->chip_class >= GFX8))
                flags |= glc ? has_glc_vmem_load : has_nonglc_vmem_load;
             res = intrin->src[0].ssa;
             break;

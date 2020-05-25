@@ -5145,7 +5145,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_
 {
    Builder bld(ctx->program, ctx->block);
 
-   bool use_smem = dst.type() != RegType::vgpr && (ctx->options->chip_class >= GFX8 || readonly) && allow_smem;
+   bool use_smem = dst.type() != RegType::vgpr && (!glc || ctx->options->chip_class >= GFX8) && allow_smem;
    if (use_smem)
       offset = bld.as_uniform(offset);
 
