@@ -477,6 +477,17 @@ mir_lower_inverts(midgard_instruction *ins)
         }
 }
 
+/* Opcodes with ROUNDS are the base (rte/0) type so we can just add */
+
+static void
+mir_lower_roundmode(midgard_instruction *ins)
+{
+        if (alu_opcode_props[ins->alu.op].props & MIDGARD_ROUNDS) {
+                assert(ins->roundmode <= 0x3);
+                ins->alu.op += ins->roundmode;
+        }
+}
+
 static void
 emit_alu_bundle(compiler_context *ctx,
                 midgard_bundle *bundle,
@@ -510,8 +521,10 @@ emit_alu_bundle(compiler_context *ctx,
                 /* In case we demote to a scalar */
                 midgard_scalar_alu scalarized;
 
-                if (!ins->compact_branch)
+                if (!ins->compact_branch) {
                         mir_lower_inverts(ins);
+                        mir_lower_roundmode(ins);
+                }
 
                 if (ins->unit & UNITS_ANY_VECTOR) {
                         mir_pack_mask_alu(ins);
