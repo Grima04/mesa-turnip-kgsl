@@ -301,6 +301,20 @@ uint8_t get_all_buffer_resource_flags(isel_context *ctx, nir_ssa_def *def, unsig
    return res;
 }
 
+bool can_subdword_ssbo_store_use_smem(nir_intrinsic_instr *intrin)
+{
+   unsigned wrmask = nir_intrinsic_write_mask(intrin);
+   if (util_last_bit(wrmask) != util_bitcount(wrmask) ||
+       util_bitcount(wrmask) * intrin->src[0].ssa->bit_size % 32 ||
+       util_bitcount(wrmask) != intrin->src[0].ssa->num_components)
+      return false;
+
+   if (nir_intrinsic_align_mul(intrin) % 4 || nir_intrinsic_align_offset(intrin) % 4)
+      return false;
+
+   return true;
+}
+
 void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
 {
    radv_pipeline_layout *pipeline_layout = ctx->options->layout;
@@ -334,8 +348,7 @@ void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
          bool glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_ssbo: {
-            unsigned elem_size = intrin->dest.ssa.bit_size;
-            if (nir_dest_is_divergent(intrin->dest) || ctx->program->chip_class < GFX8 || elem_size < 32)
+            if (nir_dest_is_divergent(intrin->dest) || ctx->program->chip_class < GFX8)
                flags |= glc ? has_glc_vmem_load : has_nonglc_vmem_load;
             res = intrin->src[0].ssa;
             break;
@@ -353,13 +366,12 @@ void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
             flags |= has_glc_vmem_load | has_glc_vmem_store;
             res = intrin->src[0].ssa;
             break;
-         case nir_intrinsic_store_ssbo: {
-            unsigned elem_size = intrin->src[0].ssa->bit_size;
-            if (nir_src_is_divergent(intrin->src[2]) || ctx->program->chip_class < GFX8 || elem_size < 32)
+         case nir_intrinsic_store_ssbo:
+            if (nir_src_is_divergent(intrin->src[2]) || ctx->program->chip_class < GFX8 ||
+                (intrin->src[0].ssa->bit_size < 32 && !can_subdword_ssbo_store_use_smem(intrin)))
                flags |= glc ? has_glc_vmem_store : has_nonglc_vmem_store;
             res = intrin->src[1].ssa;
             break;
-         }
          case nir_intrinsic_load_global:
             if (!(access & ACCESS_NON_WRITEABLE))
                flags |= glc ? has_glc_vmem_load : has_nonglc_vmem_load;

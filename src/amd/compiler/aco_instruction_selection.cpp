@@ -5145,7 +5145,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_
 {
    Builder bld(ctx->program, ctx->block);
 
-   bool use_smem = dst.type() != RegType::vgpr && ((ctx->options->chip_class >= GFX8 && component_size >= 4) || readonly) && allow_smem;
+   bool use_smem = dst.type() != RegType::vgpr && (ctx->options->chip_class >= GFX8 || readonly) && allow_smem;
    if (use_smem)
       offset = bld.as_uniform(offset);
 
@@ -6175,7 +6175,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 
    bool smem = !nir_src_is_divergent(instr->src[2]) &&
                ctx->options->chip_class >= GFX8 &&
-               elem_size_bytes >= 4 &&
+               (elem_size_bytes >= 4 || can_subdword_ssbo_store_use_smem(instr)) &&
                allow_smem;
    if (smem)
       offset = bld.as_uniform(offset);
