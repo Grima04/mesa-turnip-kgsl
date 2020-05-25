@@ -23,8 +23,10 @@ struct zink_query {
    unsigned index;
    bool use_64bit;
    bool precise;
+   bool xfb_running;
 
    bool active; /* query is considered active by vk */
+   bool dead; /* query should be destroyed when its fence finishes */
 
    unsigned fences;
    struct list_head active_list;
@@ -109,17 +111,28 @@ wait_query(struct pipe_context *pctx, struct zink_query *query)
 }
 
 static void
+destroy_query(struct zink_screen *screen, struct zink_query *query)
+{
+   assert(!p_atomic_read(&query->fences));
+   vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
+   FREE(query);
+}
+
+static void
 zink_destroy_query(struct pipe_context *pctx,
                    struct pipe_query *q)
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_query *query = (struct zink_query *)q;
 
-   if (p_atomic_read(&query->fences))
-      wait_query(pctx, query);
+   p_atomic_set(&query->dead, true);
+   if (p_atomic_read(&query->fences)) {
+      if (query->xfb_running)
+        wait_query(pctx, query);
+      return;
+   }
 
-   vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
-   FREE(query);
+   destroy_query(screen, query);
 }
 
 void
@@ -127,7 +140,10 @@ zink_prune_queries(struct zink_screen *screen, struct zink_fence *fence)
 {
    set_foreach(fence->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
-      p_atomic_dec(&query->fences);
+      if (!p_atomic_dec_return(&query->fences)) {
+         if (p_atomic_read(&query->dead))
+            destroy_query(screen, query);
+      }
    }
    _mesa_set_destroy(fence->active_queries, NULL);
    fence->active_queries = NULL;
@@ -140,13 +156,14 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
 
    if (q->precise)
       flags |= VK_QUERY_CONTROL_PRECISE_BIT;
-   if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
+   if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) {
       zink_screen(ctx->base.screen)->vk_CmdBeginQueryIndexedEXT(batch->cmdbuf,
                                                                 q->query_pool,
                                                                 q->curr_query,
                                                                 flags,
                                                                 q->index);
-   else
+      q->xfb_running = true;
+   } else
       vkCmdBeginQuery(batch->cmdbuf, q->query_pool, q->curr_query, flags);
    q->active = true;
    if (!batch->active_queries)
