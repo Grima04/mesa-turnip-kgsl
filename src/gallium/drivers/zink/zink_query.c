@@ -30,6 +30,8 @@ struct zink_query {
 
    unsigned fences;
    struct list_head active_list;
+
+   union pipe_query_result accumulated_result;
 };
 
 static VkQueryType
@@ -183,6 +185,7 @@ zink_begin_query(struct pipe_context *pctx,
    /* ignore begin_query for timestamps */
    if (query->type == PIPE_QUERY_TIMESTAMP)
       return true;
+   util_query_clear_result(&query->accumulated_result, query->type);
 
    begin_query(zink_context(pctx), batch, query);
 
@@ -205,13 +208,20 @@ get_query_result(struct pipe_context *pctx,
    if (query->use_64bit)
       flags |= VK_QUERY_RESULT_64_BIT;
 
+   if (result != &query->accumulated_result) {
+      memcpy(result, &query->accumulated_result, sizeof(query->accumulated_result));
+      util_query_clear_result(&query->accumulated_result, query->type);
+   } else {
+      assert(query->vkqtype != VK_QUERY_TYPE_TIMESTAMP);
+      flags |= VK_QUERY_RESULT_PARTIAL_BIT;
+   }
+
    // union pipe_query_result results[NUM_QUERIES * 2];
    /* xfb queries return 2 results */
    uint64_t results[NUM_QUERIES * 2];
    memset(results, 0, sizeof(results));
    int num_results = query->curr_query - query->last_checked_query;
    if (query->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) {
-      char tf_result[16] = {};
       /* this query emits 2 values */
       assert(query->curr_query <= ARRAY_SIZE(results) / 2);
       VkResult status = vkGetQueryPoolResults(screen->dev, query->query_pool,
@@ -222,7 +232,6 @@ get_query_result(struct pipe_context *pctx,
                                               flags);
       if (status != VK_SUCCESS)
          return false;
-      memcpy(result, tf_result + (query->type == PIPE_QUERY_PRIMITIVES_GENERATED ? 8 : 0), 8);
       /* multiply for correct looping behavior below */
       num_results *= 2;
    } else {
@@ -237,7 +246,6 @@ get_query_result(struct pipe_context *pctx,
          return false;
    }
 
-   util_query_clear_result(result, query->type);
    for (int i = 0; i < num_results; ++i) {
       switch (query->type) {
       case PIPE_QUERY_OCCLUSION_PREDICATE:
@@ -286,6 +294,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    else
       vkCmdEndQuery(batch->cmdbuf, q->query_pool, q->curr_query);
    if (++q->curr_query == q->num_queries) {
+      get_query_result(&ctx->base, (struct pipe_query*)q, false, &q->accumulated_result);
       vkCmdResetQueryPool(batch->cmdbuf, q->query_pool, 0, q->num_queries);
       q->last_checked_query = q->curr_query = 0;
    }
