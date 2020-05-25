@@ -3027,9 +3027,12 @@ void byte_align_vector(isel_context *ctx, Temp vec, Operand offset, Temp dst)
 {
    Builder bld(ctx->program, ctx->block);
    if (offset.isTemp()) {
-      Temp tmp[3] = {vec, vec, vec};
+      Temp tmp[4] = {vec, vec, vec, vec};
 
-      if (vec.size() == 3) {
+      if (vec.size() == 4) {
+         tmp[0] = bld.tmp(v1), tmp[1] = bld.tmp(v1), tmp[2] = bld.tmp(v1), tmp[3] = bld.tmp(v1);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(tmp[0]), Definition(tmp[1]), Definition(tmp[2]), Definition(tmp[3]), vec);
+      } else if (vec.size() == 3) {
          tmp[0] = bld.tmp(v1), tmp[1] = bld.tmp(v1), tmp[2] = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(tmp[0]), Definition(tmp[1]), Definition(tmp[2]), vec);
       } else if (vec.size() == 2) {
