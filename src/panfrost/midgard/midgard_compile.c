@@ -544,7 +544,6 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
 	case nir_op_##nir: \
 		op = midgard_alu_op_##_op; \
                 roundmode = MIDGARD_RTZ; \
-                assert(src_bitsize == dst_bitsize); \
 		break;
 
 #define ALU_CHECK_CMP(sext) \
@@ -849,6 +848,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE_RTZ(f2u32, f2u_rte);
                 ALU_CASE_RTZ(i2f32, i2f_rte);
                 ALU_CASE_RTZ(u2f32, u2f_rte);
+
+                ALU_CASE_RTZ(f2i8, f2i_rte);
+                ALU_CASE_RTZ(f2u8, f2u_rte);
 
                 ALU_CASE_RTZ(f2i16, f2i_rte);
                 ALU_CASE_RTZ(f2u16, f2u_rte);
