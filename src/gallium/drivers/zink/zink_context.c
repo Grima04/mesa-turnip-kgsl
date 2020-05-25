@@ -29,6 +29,7 @@
 #include "zink_framebuffer.h"
 #include "zink_helpers.h"
 #include "zink_pipeline.h"
+#include "zink_query.h"
 #include "zink_render_pass.h"
 #include "zink_resource.h"
 #include "zink_screen.h"

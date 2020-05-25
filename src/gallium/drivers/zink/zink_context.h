@@ -121,7 +121,7 @@ struct zink_context {
 
    struct pipe_stencil_ref stencil_ref;
 
-   struct list_head active_queries;
+   struct list_head suspended_queries;
    bool queries_disabled;
 
    struct pipe_resource *dummy_buffer;
