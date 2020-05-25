@@ -648,7 +648,7 @@ mir_accept_dest_mod(compiler_context *ctx, nir_dest **dest, nir_op op)
 }
 
 static void
-mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigned to, bool *abs, bool *neg, bool *not, bool is_int, unsigned bcast_count)
+mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigned to, bool *abs, bool *neg, bool *not, enum midgard_roundmode *roundmode, bool is_int, unsigned bcast_count)
 {
         nir_alu_src src = instr->src[i];
 
@@ -662,6 +662,20 @@ mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigne
 
         if (nir_accepts_inot(instr->op, i) && pan_has_source_mod(&src, nir_op_inot))
                 *not = true;
+
+        if (roundmode) {
+                if (pan_has_source_mod(&src, nir_op_fround_even))
+                        *roundmode = MIDGARD_RTE;
+
+                if (pan_has_source_mod(&src, nir_op_ftrunc))
+                        *roundmode = MIDGARD_RTZ;
+
+                if (pan_has_source_mod(&src, nir_op_ffloor))
+                        *roundmode = MIDGARD_RTN;
+
+                if (pan_has_source_mod(&src, nir_op_fceil))
+                        *roundmode = MIDGARD_RTP;
+        }
 
         unsigned bits = nir_src_bit_size(src.src);
 
@@ -1009,12 +1023,15 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 .roundmode = roundmode,
         };
 
+        enum midgard_roundmode *roundptr = (opcode_props & MIDGARD_ROUNDS) ?
+                &ins.roundmode : NULL;
+
         for (unsigned i = nr_inputs; i < ARRAY_SIZE(ins.src); ++i)
                 ins.src[i] = ~0;
 
         if (quirk_flipped_r24) {
                 ins.src[0] = ~0;
-                mir_copy_src(&ins, instr, 0, 1, &ins.src_abs[1], &ins.src_neg[1], &ins.src_invert[1], is_int, broadcast_swizzle);
+                mir_copy_src(&ins, instr, 0, 1, &ins.src_abs[1], &ins.src_neg[1], &ins.src_invert[1], roundptr, is_int, broadcast_swizzle);
         } else {
                 for (unsigned i = 0; i < nr_inputs; ++i) {
                         unsigned to = i;
@@ -1035,7 +1052,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                                 to = 1 - to;
                         }
 
-                        mir_copy_src(&ins, instr, i, to, &ins.src_abs[to], &ins.src_neg[to], &ins.src_invert[to], is_int, broadcast_swizzle);
+                        mir_copy_src(&ins, instr, i, to, &ins.src_abs[to], &ins.src_neg[to], &ins.src_invert[to], roundptr, is_int, broadcast_swizzle);
 
                         /* (!c) ? a : b = c ? b : a */
                         if (instr->op == nir_op_b32csel && ins.src_invert[2]) {
