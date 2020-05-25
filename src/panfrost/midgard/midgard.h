@@ -822,4 +822,11 @@ typedef union midgard_constants {
 }
 midgard_constants;
 
+enum midgard_roundmode {
+        MIDGARD_RTE = 0x0, /* round to even */
+        MIDGARD_RTZ = 0x1, /* round to zero */
+        MIDGARD_RTN = 0x2, /* round to negative */
+        MIDGARD_RTP = 0x3, /* round to positive */
+};
+
 #endif

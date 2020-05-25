@@ -121,6 +121,9 @@ typedef struct midgard_instruction {
         /* Out of the union for csel (could maybe be fixed..) */
         bool src_invert[MIR_SRC_COUNT];
 
+        /* If the op supports it */
+        enum midgard_roundmode roundmode;
+
         /* Special fields for an ALU instruction */
         midgard_reg_info registers;
 
