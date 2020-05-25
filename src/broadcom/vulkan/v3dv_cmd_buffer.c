@@ -634,13 +634,8 @@ v3dv_job_init(struct v3dv_job *job,
       job->bo_count = 0;
 
       v3dv_cl_init(job, &job->bcl);
-      v3dv_cl_begin(&job->bcl);
-
       v3dv_cl_init(job, &job->rcl);
-      v3dv_cl_begin(&job->rcl);
-
       v3dv_cl_init(job, &job->indirect);
-      v3dv_cl_begin(&job->indirect);
 
       if (V3D_DEBUG & V3D_DEBUG_ALWAYS_FLUSH)
          job->always_flush = true;

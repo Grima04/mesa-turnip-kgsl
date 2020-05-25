@@ -36,21 +36,6 @@ v3dv_cl_init(struct v3dv_job *job, struct v3dv_cl *cl)
 }
 
 void
-v3dv_cl_begin(struct v3dv_cl *cl)
-{
-   assert(v3dv_cl_offset(cl) == 0);
-}
-
-void
-v3dv_cl_reset(struct v3dv_cl *cl)
-{
-   /* FIXME: consider keeping the BO when the command buffer is reset with
-    * flag VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT.
-    */
-   v3dv_cl_init(cl->job, cl);
-}
-
-void
 v3dv_cl_destroy(struct v3dv_cl *cl)
 {
    list_for_each_entry_safe(struct v3dv_bo, bo, &cl->bo_list, list_link) {

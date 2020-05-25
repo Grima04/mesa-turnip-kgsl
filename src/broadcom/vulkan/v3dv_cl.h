@@ -86,8 +86,6 @@ v3dv_cl_get_address(struct v3dv_cl *cl)
 }
 
 void v3dv_cl_init(struct v3dv_job *job, struct v3dv_cl *cl);
-void v3dv_cl_begin(struct v3dv_cl *cl);
-void v3dv_cl_reset(struct v3dv_cl *cl);
 void v3dv_cl_destroy(struct v3dv_cl *cl);
 
 static inline struct v3dv_cl_out *
