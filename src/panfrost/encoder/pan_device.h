@@ -2,6 +2,7 @@
  *
  * Copyright 2018-2019 Alyssa Rosenzweig
  * Copyright 2018-2019 Collabora, Ltd.
+ * Copyright © 2015 Intel Corporation
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -35,6 +36,7 @@
 #include "util/bitset.h"
 #include "util/set.h"
 #include "util/list.h"
+#include "util/sparse_array.h"
 
 #include <panfrost-misc.h>
 
@@ -89,6 +91,9 @@ struct panfrost_device {
         pthread_mutex_t active_bos_lock;
         struct set *active_bos;
 
+        pthread_mutex_t bo_map_lock;
+        struct util_sparse_array bo_map;
+
         struct {
                 pthread_mutex_t lock;
 
@@ -112,5 +117,11 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev);
 
 void
 panfrost_close_device(struct panfrost_device *dev);
+
+static inline struct panfrost_bo *
+pan_lookup_bo(struct panfrost_device *dev, uint32_t gem_handle)
+{
+        return util_sparse_array_get(&dev->bo_map, gem_handle);
+}
 
 #endif

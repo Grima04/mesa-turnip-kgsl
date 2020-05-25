@@ -145,6 +145,8 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         dev->active_bos = _mesa_set_create(memctx,
                         panfrost_active_bos_hash, panfrost_active_bos_cmp);
 
+        util_sparse_array_init(&dev->bo_map, sizeof(struct panfrost_bo), 512);
+
         pthread_mutex_init(&dev->bo_cache.lock, NULL);
         list_inithead(&dev->bo_cache.lru);
 
@@ -159,5 +161,6 @@ panfrost_close_device(struct panfrost_device *dev)
         pthread_mutex_destroy(&dev->bo_cache.lock);
         pthread_mutex_destroy(&dev->active_bos_lock);
         drmFreeVersion(dev->kernel_version);
+        util_sparse_array_finish(&dev->bo_map);
 
 }
