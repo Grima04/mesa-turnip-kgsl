@@ -59,8 +59,4 @@ typedef struct {
 
 void nir_lower_blend(nir_shader *shader, nir_lower_blend_options options);
 
-void
-nir_lower_framebuffer(nir_shader *shader, enum pipe_format format,
-                      unsigned gpu_id);
-
 #endif

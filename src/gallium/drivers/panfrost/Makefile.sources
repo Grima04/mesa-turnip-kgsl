@@ -1,7 +1,6 @@
 C_SOURCES := \
 	nir/nir_lower_blend.c \
 	nir/nir_lower_blend.h \
-	nir/nir_lower_framebuffer.c \
     \
 	pan_allocate.c \
 	pan_allocate.h \

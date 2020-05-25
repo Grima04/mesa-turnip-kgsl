@@ -27,7 +27,6 @@ files_panfrost = files(
   'pan_resource.h',
 
   'nir/nir_lower_blend.c',
-  'nir/nir_lower_framebuffer.c',
 
   'pan_context.c',
   'pan_blit.c',
