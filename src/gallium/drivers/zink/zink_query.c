@@ -11,6 +11,8 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 
+#define NUM_QUERIES 50
+
 struct zink_query {
    enum pipe_query_type type;
 
@@ -74,7 +76,7 @@ zink_create_query(struct pipe_context *pctx,
    if (query->vkqtype == -1)
       return NULL;
 
-   query->num_queries = query_type == PIPE_QUERY_TIMESTAMP ? 1 : 100;
+   query->num_queries = query_type == PIPE_QUERY_TIMESTAMP ? 1 : NUM_QUERIES;
    query->curr_query = 0;
 
    pool_create.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -186,9 +188,9 @@ get_query_result(struct pipe_context *pctx,
    if (query->use_64bit)
       flags |= VK_QUERY_RESULT_64_BIT;
 
-   // TODO: handle curr_query > 100
-   // union pipe_query_result results[100];
-   uint64_t results[100];
+   // union pipe_query_result results[NUM_QUERIES * 2];
+   /* xfb queries return 2 results */
+   uint64_t results[NUM_QUERIES * 2];
    memset(results, 0, sizeof(results));
    int num_results = query->curr_query - query->last_checked_query;
    if (query->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) {
