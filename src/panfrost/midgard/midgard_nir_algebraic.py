@@ -68,7 +68,8 @@ algebraic_late = [
 
 
 # Midgard is able to type convert down by only one "step" per instruction; if
-# NIR wants more than one step, we need to break up into multiple instructions
+# NIR wants more than one step, we need to break up into multiple instructions.
+# Nevertheless, we can do both a size step and a floating/int step at once.
 
 converts = []
 
@@ -85,8 +86,7 @@ for op in ('u2u', 'i2i', 'f2f', 'i2f', 'u2f', 'f2i', 'f2u'):
         while srcsz <= srcsz_max:
             # Size converter lowering is only needed if src and dst sizes are
             # spaced by a factor > 2.
-            # Type converter lowering is needed as soon as src_size != dst_size
-            if srcsz != dstsz and ((srcsz * 2 != dstsz and srcsz != dstsz * 2) or op[0] != op[2]):
+            if srcsz != dstsz and (srcsz * 2 != dstsz and srcsz != dstsz * 2):
                 cursz = srcsz
                 rule = a
                 # When converting down we first do the type conversion followed
