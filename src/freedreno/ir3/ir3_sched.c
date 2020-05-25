@@ -979,6 +979,8 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	ctx->addr0 = NULL;
 	ctx->addr1 = NULL;
 	ctx->pred = NULL;
+	ctx->tex_delay = 0;
+	ctx->sfu_delay = 0;
 
 	/* move all instructions to the unscheduled list, and
 	 * empty the block's instruction list (to which we will
