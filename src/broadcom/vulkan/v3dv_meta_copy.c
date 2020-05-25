@@ -1433,13 +1433,20 @@ get_hw_clear_color(const VkClearColorValue *color,
    }
 }
 
-static void
+/* Returns true if the implementation is able to handle the case, false
+ * otherwise.
+*/
+static bool
 clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_image *image,
-                VkFormat fb_format,
                 const VkClearValue *clear_value,
                 const VkImageSubresourceRange *range)
 {
+   const VkOffset3D origin = { 0, 0, 0 };
+   VkFormat fb_format;
+   if (!can_use_tlb(image, &origin, &fb_format))
+      return false;
+
    uint32_t internal_type, internal_bpp;
    get_internal_type_bpp_for_image_aspects(fb_format, range->aspectMask,
                                            &internal_type, &internal_bpp);
@@ -1486,7 +1493,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 
          struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
          if (!job)
-            return;
+            return true;
 
          /* We start a a new job for each layer so the frame "depth" is 1 */
          v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
@@ -1508,6 +1515,8 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          v3dv_cmd_buffer_finish_job(cmd_buffer);
       }
    }
+
+   return true;
 }
 
 void
@@ -1525,15 +1534,10 @@ v3dv_CmdClearColorImage(VkCommandBuffer commandBuffer,
       .color = *pColor,
    };
 
-   VkFormat compat_format;
-   const VkOffset3D origin = { 0, 0, 0 };
    for (uint32_t i = 0; i < rangeCount; i++) {
-      if (can_use_tlb(image, &origin, &compat_format)) {
-         clear_image_tlb(cmd_buffer, image, compat_format,
-                         &clear_value, &pRanges[i]);
-      } else {
-         assert(!"Fallback path for vkCmdClearColorImage not implemented");
-      }
+      if (clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]))
+         continue;
+      unreachable("Unsupported color clear.");
    }
 }
 
@@ -1552,14 +1556,10 @@ v3dv_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
       .depthStencil = *pDepthStencil,
    };
 
-   const VkOffset3D origin = { 0, 0, 0 };
    for (uint32_t i = 0; i < rangeCount; i++) {
-      if (can_use_tlb(image, &origin, NULL)) {
-         clear_image_tlb(cmd_buffer, image, image->vk_format,
-                         &clear_value, &pRanges[i]);
-      } else {
-         assert(!"Fallback path for vkCmdClearDepthStencilImage not implemented");
-      }
+      if (clear_image_tlb(cmd_buffer, image, &clear_value, &pRanges[i]))
+         continue;
+      unreachable("Unsupported depth/stencil clear.");
    }
 }
 
