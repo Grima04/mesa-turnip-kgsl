@@ -126,6 +126,17 @@ pan_format_class_store(const struct util_format_description *desc, unsigned quir
         return PAN_FORMAT_NATIVE;
 }
 
+/* Convenience method */
+
+static enum pan_format_class
+pan_format_class(const struct util_format_description *desc, unsigned quirks, bool is_store)
+{
+        if (is_store)
+                return pan_format_class_store(desc, quirks);
+        else
+                return pan_format_class_load(desc, quirks);
+}
+
 /* Software packs/unpacks, by format class. Packs take in the pixel value typed
  * as `pan_unpacked_type_for_format` of the format and return an i32vec4
  * suitable for storing (with components replicated to fill). Unpacks do the
@@ -666,6 +677,13 @@ pan_lower_framebuffer(nir_shader *shader,
                                 bool is_store = intr->intrinsic == nir_intrinsic_store_deref;
 
                                 if (!(is_load || is_store))
+                                        continue;
+
+                                enum pan_format_class fmt_class =
+                                        pan_format_class(desc, quirks, is_store);
+
+                                /* Don't lower */
+                                if (fmt_class == PAN_FORMAT_NATIVE)
                                         continue;
 
                                 /* Don't worry about MRT */
