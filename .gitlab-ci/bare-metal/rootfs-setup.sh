@@ -34,6 +34,8 @@ for var in \
     FLAKES_CHANNEL \
     IR3_SHADER_DEBUG \
     NIR_VALIDATE \
+    TU_DEBUG \
+    VK_DRIVER \
     ; do
   val=`echo ${!var} | sed 's|"||g'`
   echo "export $var=\"${val}\"" >> $rootfs_dst/set-job-env-vars.sh

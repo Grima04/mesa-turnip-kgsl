@@ -931,6 +931,32 @@ arm64_a630_gmem:
     FD_MESA_DEBUG: nobypass
     NIR_VALIDATE: 1
 
+arm64_a630_vk:
+  extends: arm64_a630_gles2
+  variables:
+    DEQP_VER: vk
+    CI_NODE_INDEX: 1
+    CI_NODE_TOTAL: 50
+    VK_DRIVER: freedreno
+    # Force binning in the main run, which makes sure we render at
+    # least 2 bins.  This is the path that impacts the most different
+    # features.  However, we end up with flaky results in
+    # dEQP-VK.binding_model.*.geometry and dEQP-VK.glsl.*_vertex.
+    TU_DEBUG: forcebin
+
+# Do a separate sysmem pass over the testcases that really affect sysmem
+# rendering.  This is currently very flaky, leave it as an option for devs
+# to click play on in their branches.
+arm64_a630_vk_sysmem:
+  extends:
+    - arm64_a630_vk
+  variables:
+    CI_NODE_INDEX: 1
+    CI_NODE_TOTAL: 10
+    DEQP_CASELIST_FILTER: "dEQP-VK.renderpass.*"
+    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-bypass-fails.txt
+    TU_DEBUG: sysmem
+
 .baremetal-test:
   extends:
     - .ci-run-policy
