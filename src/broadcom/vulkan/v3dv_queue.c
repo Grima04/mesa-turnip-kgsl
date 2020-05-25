@@ -693,6 +693,7 @@ queue_submit_cmd_buffer(struct v3dv_queue *queue,
                         pthread_t *wait_thread)
 {
    assert(cmd_buffer);
+   assert(cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE);
 
    if (list_is_empty(&cmd_buffer->submit_jobs))
       return queue_submit_noop_job(queue, pSubmit);
