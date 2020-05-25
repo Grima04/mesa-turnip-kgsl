@@ -540,6 +540,13 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
                 assert(src_bitsize == dst_bitsize); \
 		break;
 
+#define ALU_CASE_RTZ(nir, _op) \
+	case nir_op_##nir: \
+		op = midgard_alu_op_##_op; \
+                roundmode = MIDGARD_RTZ; \
+                assert(src_bitsize == dst_bitsize); \
+		break;
+
 #define ALU_CHECK_CMP(sext) \
                 assert(src_bitsize == 16 || src_bitsize == 32); \
                 assert(dst_bitsize == 16 || dst_bitsize == 32); \
@@ -758,6 +765,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
         unsigned dst_bitsize = nir_dest_bit_size(*dest);
 
+        enum midgard_roundmode roundmode = MIDGARD_RTE;
+
         switch (instr->op) {
                 ALU_CASE(fadd, fadd);
                 ALU_CASE(fmul, fmul);
@@ -817,20 +826,20 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fexp2, fexp2);
                 ALU_CASE(flog2, flog2);
 
-                ALU_CASE(f2i64, f2i_rtz);
-                ALU_CASE(f2u64, f2u_rtz);
-                ALU_CASE(i2f64, i2f_rtz);
-                ALU_CASE(u2f64, u2f_rtz);
+                ALU_CASE_RTZ(f2i64, f2i_rte);
+                ALU_CASE_RTZ(f2u64, f2u_rte);
+                ALU_CASE_RTZ(i2f64, i2f_rte);
+                ALU_CASE_RTZ(u2f64, u2f_rte);
 
-                ALU_CASE(f2i32, f2i_rtz);
-                ALU_CASE(f2u32, f2u_rtz);
-                ALU_CASE(i2f32, i2f_rtz);
-                ALU_CASE(u2f32, u2f_rtz);
+                ALU_CASE_RTZ(f2i32, f2i_rte);
+                ALU_CASE_RTZ(f2u32, f2u_rte);
+                ALU_CASE_RTZ(i2f32, i2f_rte);
+                ALU_CASE_RTZ(u2f32, u2f_rte);
 
-                ALU_CASE(f2i16, f2i_rtz);
-                ALU_CASE(f2u16, f2u_rtz);
-                ALU_CASE(i2f16, i2f_rtz);
-                ALU_CASE(u2f16, u2f_rtz);
+                ALU_CASE_RTZ(f2i16, f2i_rte);
+                ALU_CASE_RTZ(f2u16, f2u_rte);
+                ALU_CASE_RTZ(i2f16, i2f_rte);
+                ALU_CASE_RTZ(u2f16, u2f_rte);
 
                 ALU_CASE(fsin, fsin);
                 ALU_CASE(fcos, fcos);
@@ -997,6 +1006,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 .dest = nir_dest_index(dest),
                 .dest_type = nir_op_infos[instr->op].output_type
                         | nir_dest_bit_size(*dest),
+                .roundmode = roundmode,
         };
 
         for (unsigned i = nr_inputs; i < ARRAY_SIZE(ins.src); ++i)
