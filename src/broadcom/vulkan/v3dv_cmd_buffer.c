@@ -70,14 +70,6 @@ v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo)
    job->bo_count++;
 }
 
-void
-v3dv_job_add_extra_bo(struct v3dv_job *job, struct v3dv_bo *bo)
-{
-   assert(bo);
-   assert(!_mesa_set_search(job->extra_bos, bo));
-   _mesa_set_add(job->extra_bos, bo);
-}
-
 static void
 cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer);
 
@@ -176,15 +168,6 @@ job_destroy_gpu_cl_resources(struct v3dv_job *job)
     * objects are destroyed.
     */
    _mesa_set_destroy(job->bos, NULL);
-
-   /* Extra BOs need to be destroyed with the job, since they were created
-    * internally by the driver for it.
-    */
-   set_foreach(job->extra_bos, entry) {
-      struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
-      v3dv_bo_free(job->device, bo);
-   }
-   _mesa_set_destroy(job->extra_bos, NULL);
 
    v3dv_bo_free(job->device, job->tile_alloc);
    v3dv_bo_free(job->device, job->tile_state);
@@ -649,9 +632,6 @@ v3dv_job_init(struct v3dv_job *job,
       job->bos =
          _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
       job->bo_count = 0;
-
-      job->extra_bos =
-         _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
       v3dv_cl_init(job, &job->bcl);
       v3dv_cl_begin(&job->bcl);

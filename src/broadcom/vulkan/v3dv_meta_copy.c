@@ -1757,6 +1757,16 @@ v3dv_CmdCopyBuffer(VkCommandBuffer commandBuffer,
    }
 }
 
+static void
+destroy_update_buffer_cb(VkDevice _device,
+                         uint64_t pobj,
+                         VkAllocationCallbacks *alloc)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   struct v3dv_bo *bo = (struct v3dv_bo *) pobj;
+   v3dv_bo_free(device, bo);
+}
+
 void
 v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
                      VkBuffer dstBuffer,
@@ -1794,11 +1804,8 @@ v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    if (!copy_job)
       return;
 
-   /* Make sure we add the BO to the list of extra BOs so it is not leaked.
-    * If the copy job was split into multiple jobs, we just bind it to the last
-    * one.
-    */
-   v3dv_job_add_extra_bo(copy_job, src_bo);
+   v3dv_cmd_buffer_add_private_obj(
+      cmd_buffer, (uint64_t)(uintptr_t)src_bo, destroy_update_buffer_cb);
 }
 
 static void

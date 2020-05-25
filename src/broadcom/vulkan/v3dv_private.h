@@ -715,11 +715,6 @@ struct v3dv_job {
    struct set *bos;
    uint32_t bo_count;
 
-   /* A subset of the BOs set above that are allocated internally by
-    * the job and that should be explicitly freed with it.
-    */
-   struct set *extra_bos;
-
    struct v3dv_bo *tile_alloc;
    struct v3dv_bo *tile_state;
 
@@ -769,7 +764,6 @@ void v3dv_job_init(struct v3dv_job *job,
                    int32_t subpass_idx);
 void v3dv_job_destroy(struct v3dv_job *job);
 void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);
-void v3dv_job_add_extra_bo(struct v3dv_job *job, struct v3dv_bo *bo);
 void v3dv_job_emit_binning_flush(struct v3dv_job *job);
 void v3dv_job_start_frame(struct v3dv_job *job,
                           uint32_t width,
