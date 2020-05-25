@@ -2845,6 +2845,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                         "%u registers, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
                         SHADER_DB_COUNT++,
+                        ctx->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_bundles, ctx->quadword_count,
                         nr_registers, nr_threads,
