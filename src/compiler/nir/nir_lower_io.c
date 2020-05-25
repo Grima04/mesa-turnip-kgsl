@@ -719,11 +719,20 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
       assert(addr->bit_size == offset->bit_size);
       return nir_vec2(b, nir_channel(b, addr, 0),
                          nir_iadd(b, nir_channel(b, addr, 1), offset));
+
+   case nir_address_format_32bit_index_offset_pack64:
+      assert(addr->num_components == 1);
+      assert(offset->bit_size == 32);
+      return nir_pack_64_2x32_split(b,
+                                    nir_iadd(b, nir_unpack_64_2x32_split_x(b, addr), offset),
+                                    nir_unpack_64_2x32_split_y(b, addr));
+
    case nir_address_format_vec2_index_32bit_offset:
       assert(addr->num_components == 3);
       assert(offset->bit_size == 32);
       return nir_vec3(b, nir_channel(b, addr, 0), nir_channel(b, addr, 1),
                          nir_iadd(b, nir_channel(b, addr, 2), offset));
+
    case nir_address_format_logical:
       unreachable("Unsupported address format");
    }
@@ -733,7 +742,8 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
 static unsigned
 addr_get_offset_bit_size(nir_ssa_def *addr, nir_address_format addr_format)
 {
-   if (addr_format == nir_address_format_32bit_offset_as_64bit)
+   if (addr_format == nir_address_format_32bit_offset_as_64bit ||
+       addr_format == nir_address_format_32bit_index_offset_pack64)
       return 32;
    return addr->bit_size;
 }
@@ -751,14 +761,16 @@ static nir_ssa_def *
 addr_to_index(nir_builder *b, nir_ssa_def *addr,
               nir_address_format addr_format)
 {
-   if (addr_format == nir_address_format_32bit_index_offset) {
+   switch (addr_format) {
+   case nir_address_format_32bit_index_offset:
       assert(addr->num_components == 2);
       return nir_channel(b, addr, 0);
-   } else if (addr_format == nir_address_format_vec2_index_32bit_offset) {
+   case nir_address_format_32bit_index_offset_pack64:
+      return nir_unpack_64_2x32_split_y(b, addr);
+   case nir_address_format_vec2_index_32bit_offset:
       assert(addr->num_components == 3);
       return nir_channels(b, addr, 0x3);
-   } else {
-      unreachable("bad address format for index");
+   default: unreachable("Invalid address format");
    }
 }
 
@@ -770,6 +782,8 @@ addr_to_offset(nir_builder *b, nir_ssa_def *addr,
    case nir_address_format_32bit_index_offset:
       assert(addr->num_components == 2);
       return nir_channel(b, addr, 1);
+   case nir_address_format_32bit_index_offset_pack64:
+      return nir_unpack_64_2x32_split_x(b, addr);
    case nir_address_format_vec2_index_32bit_offset:
       assert(addr->num_components == 3);
       return nir_channel(b, addr, 2);
@@ -814,6 +828,7 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
                          nir_u2u64(b, nir_channel(b, addr, 3)));
 
    case nir_address_format_32bit_index_offset:
+   case nir_address_format_32bit_index_offset_pack64:
    case nir_address_format_vec2_index_32bit_offset:
    case nir_address_format_32bit_offset:
    case nir_address_format_32bit_offset_as_64bit:
@@ -1293,8 +1308,6 @@ lower_explicit_io_array_length(nir_builder *b, nir_intrinsic_instr *intrin,
    unsigned stride = glsl_get_explicit_stride(deref->type);
    assert(stride > 0);
 
-   assert(addr_format == nir_address_format_32bit_index_offset ||
-          addr_format == nir_address_format_vec2_index_32bit_offset);
    nir_ssa_def *addr = &deref->dest.ssa;
    nir_ssa_def *index = addr_to_index(b, addr, addr_format);
    nir_ssa_def *offset = addr_to_offset(b, addr, addr_format);
@@ -1638,6 +1651,7 @@ nir_address_format_null_value(nir_address_format addr_format)
       [nir_address_format_64bit_global] = {{0}},
       [nir_address_format_64bit_bounded_global] = {{0}},
       [nir_address_format_32bit_index_offset] = {{.u32 = ~0}, {.u32 = ~0}},
+      [nir_address_format_32bit_index_offset_pack64] = {{.u64 = ~0ull}},
       [nir_address_format_vec2_index_32bit_offset] = {{.u32 = ~0}, {.u32 = ~0}, {.u32 = ~0}},
       [nir_address_format_32bit_offset] = {{.u32 = ~0}},
       [nir_address_format_32bit_offset_as_64bit] = {{.u64 = ~0ull}},
@@ -1665,6 +1679,10 @@ nir_build_addr_ieq(nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
       assert(addr0->num_components == 1 && addr1->num_components == 1);
       return nir_ieq(b, nir_u2u32(b, addr0), nir_u2u32(b, addr1));
 
+   case nir_address_format_32bit_index_offset_pack64:
+      assert(addr0->num_components == 1 && addr1->num_components == 1);
+      return nir_ball_iequal(b, nir_unpack_64_2x32(b, addr0), nir_unpack_64_2x32(b, addr1));
+
    case nir_address_format_logical:
       unreachable("Unsupported address format");
    }
@@ -1680,6 +1698,7 @@ nir_build_addr_isub(nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
    case nir_address_format_32bit_global:
    case nir_address_format_64bit_global:
    case nir_address_format_32bit_offset:
+   case nir_address_format_32bit_index_offset_pack64:
       assert(addr0->num_components == 1);
       assert(addr1->num_components == 1);
       return nir_isub(b, addr0, addr1);

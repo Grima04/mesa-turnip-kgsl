@@ -4100,6 +4100,12 @@ typedef enum {
    nir_address_format_32bit_index_offset,
 
    /**
+    * An address format which is a 64-bit value, where the high 32 bits
+    * are a buffer index, and the low 32 bits are an offset.
+    */
+    nir_address_format_32bit_index_offset_pack64,
+
+   /**
     * An address format which is comprised of a vec3 where the first two
     * components specify the buffer and the third is an offset.
     */
@@ -4133,6 +4139,7 @@ nir_address_format_bit_size(nir_address_format addr_format)
    case nir_address_format_64bit_global:              return 64;
    case nir_address_format_64bit_bounded_global:      return 32;
    case nir_address_format_32bit_index_offset:        return 32;
+   case nir_address_format_32bit_index_offset_pack64: return 64;
    case nir_address_format_vec2_index_32bit_offset:   return 32;
    case nir_address_format_32bit_offset:              return 32;
    case nir_address_format_32bit_offset_as_64bit:     return 64;
@@ -4149,6 +4156,7 @@ nir_address_format_num_components(nir_address_format addr_format)
    case nir_address_format_64bit_global:              return 1;
    case nir_address_format_64bit_bounded_global:      return 4;
    case nir_address_format_32bit_index_offset:        return 2;
+   case nir_address_format_32bit_index_offset_pack64: return 1;
    case nir_address_format_vec2_index_32bit_offset:   return 3;
    case nir_address_format_32bit_offset:              return 1;
    case nir_address_format_32bit_offset_as_64bit:     return 1;
