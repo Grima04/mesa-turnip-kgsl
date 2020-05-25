@@ -896,7 +896,7 @@ mem_vectorize_callback(unsigned align, unsigned bit_size,
                        unsigned num_components, unsigned high_offset,
                        nir_intrinsic_instr *low, nir_intrinsic_instr *high)
 {
-   if ((bit_size != 32 && bit_size != 64) || num_components > 4)
+   if (num_components > 4)
       return false;
 
    /* >128 bit loads are split except with SMEM */
@@ -906,17 +906,11 @@ mem_vectorize_callback(unsigned align, unsigned bit_size,
    switch (low->intrinsic) {
    case nir_intrinsic_load_global:
    case nir_intrinsic_store_global:
-      return align % 4 == 0;
    case nir_intrinsic_store_ssbo:
-      if (low->src[0].ssa->bit_size < 32 || high->src[0].ssa->bit_size < 32)
-         return false;
-      return align % 4 == 0;
    case nir_intrinsic_load_ssbo:
-      if (low->dest.ssa.bit_size < 32 || high->dest.ssa.bit_size < 32)
-         return false;
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_push_constant:
-      return align % 4 == 0;
+      return align % (bit_size == 8 ? 2 : 4) == 0;
    case nir_intrinsic_load_deref:
    case nir_intrinsic_store_deref:
       assert(nir_src_as_deref(low->src[0])->mode == nir_var_mem_shared);
@@ -926,7 +920,7 @@ mem_vectorize_callback(unsigned align, unsigned bit_size,
       if (bit_size * num_components > 64) /* 96 and 128 bit loads require 128 bit alignment and are split otherwise */
          return align % 16 == 0;
       else
-         return align % 4 == 0;
+         return align % (bit_size == 8 ? 2 : 4) == 0;
    default:
       return false;
    }
