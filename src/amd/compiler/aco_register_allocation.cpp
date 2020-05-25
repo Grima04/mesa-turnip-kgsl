@@ -548,14 +548,14 @@ bool get_regs_for_copies(ra_ctx& ctx,
       std::pair<PhysReg, bool> res;
       if (is_dead_operand) {
          if (instr->opcode == aco_opcode::p_create_vector) {
-            for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
+            PhysReg reg(def_reg_lo);
+            for (unsigned i = 0; i < instr->operands.size(); i++) {
                if (instr->operands[i].isTemp() && instr->operands[i].tempId() == id) {
-                  PhysReg reg(def_reg_lo);
-                  reg.reg_b += offset;
                   assert(!reg_file.test(reg, var.rc.bytes()));
                   res = {reg, reg.byte() == 0 || instr_can_access_subdword(ctx, instr)};
                   break;
                }
+               reg.reg_b += instr->operands[i].bytes();
             }
          } else {
             info.lb = def_reg_lo;
@@ -808,25 +808,30 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    /* now, we figured the placement for our definition */
    std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
-   if (instr->opcode == aco_opcode::p_create_vector && ctx.program->chip_class >= GFX9) {
-      /* move killed operands which aren't yet at the correct position */
-      for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].size(), i++) {
-         if (instr->operands[i].isTemp() && instr->operands[i].isFirstKillBeforeDef() &&
-             instr->operands[i].getTemp().type() == rc.type()) {
-
-            if (instr->operands[i].physReg() != best_pos + offset) {
-               vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
-               reg_file.clear(instr->operands[i]);
+   if (instr->opcode == aco_opcode::p_create_vector) {
+      /* move killed operands which aren't yet at the correct position (GFX9+)
+       * or which are in the definition space */
+      PhysReg reg = PhysReg{best_pos};
+      for (Operand& op : instr->operands) {
+         if (op.isTemp() && op.isFirstKillBeforeDef() &&
+             op.getTemp().type() == rc.type()) {
+            if (op.physReg() != reg &&
+                (ctx.program->chip_class >= GFX9 ||
+                 (op.physReg().advance(op.bytes()) > PhysReg{best_pos} &&
+                  op.physReg() < PhysReg{best_pos + size}))) {
+               vars.emplace(op.bytes(), op.tempId());
+               reg_file.clear(op);
             } else {
-               reg_file.fill(instr->operands[i]);
+               reg_file.fill(op);
             }
          }
+         reg.reg_b += op.bytes();
       }
-   } else {
-      /* re-enable the killed operands */
-      for (unsigned j = 0; !is_phi(instr) && j < instr->operands.size(); j++) {
-         if (instr->operands[j].isTemp() && instr->operands[j].isFirstKill())
-            reg_file.fill(instr->operands[j]);
+   } else if (!is_phi(instr)) {
+      /* re-enable killed operands */
+      for (Operand& op : instr->operands) {
+         if (op.isTemp() && op.isFirstKillBeforeDef())
+            reg_file.fill(op);
       }
    }
 
@@ -1117,6 +1122,14 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    if (num_moves >= bytes)
       return get_reg(ctx, reg_file, temp, parallelcopies, instr);
 
+   /* re-enable killed operands which are in the wrong position */
+   for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
+      if (instr->operands[i].isTemp() &&
+          instr->operands[i].isFirstKillBeforeDef() &&
+          instr->operands[i].physReg().reg_b != best_pos * 4 + offset)
+         reg_file.fill(instr->operands[i]);
+   }
+
    /* collect variables to be moved */
    std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
@@ -1131,13 +1144,8 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
              instr->operands[i].getTemp().type() == rc.type() &&
              instr->operands[i].physReg().reg_b != best_pos * 4 + offset) {
             vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
+            reg_file.clear(instr->operands[i]);
          }
-      }
-   } else {
-      /* re-enable the killed operands */
-      for (unsigned j = 0; j < instr->operands.size(); j++) {
-         if (instr->operands[j].isTemp() && instr->operands[j].isFirstKill())
-            reg_file.fill(instr->operands[j]);
       }
    }
    ASSERTED bool success = false;
