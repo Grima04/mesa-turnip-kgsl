@@ -872,17 +872,11 @@ intrinsic("bindless_resource_ir3", [1], dest_comp=1, indices=[DESC_SET], flags=[
 # One notable divergence is sRGB, which is asymmetric: raw_input_pan requires
 # an sRGB->linear conversion, but linear values should be written to
 # raw_output_pan and the hardware handles linear->sRGB.
-#
-# We also have format-specific Midgard intrinsics. There are rather
-# here-be-dragons. load_output_u8_as_fp16_pan does the equivalent of
-# load_raw_out_pan on an RGBA8 UNORM framebuffer followed by u2u16 -> fp16 ->
-# division by 255.
 
 # src[] = { value }
 store("raw_output_pan", 1, [])
 store("zs_output_pan", 1, [COMPONENT])
 load("raw_output_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
-load("output_u8_as_fp16_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
 
 # Loads the sampler paramaters <min_lod, max_lod, lod_bias>
 # src[] = { sampler_index }
