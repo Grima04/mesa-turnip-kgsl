@@ -600,8 +600,11 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    shader->info.last_msaa_image = -1;
 
    nir_foreach_variable(var, &shader->uniforms) {
-      /* Bindless textures and images don't use non-bindless slots. */
-      if (var->data.bindless)
+      /* Bindless textures and images don't use non-bindless slots.
+       * Interface blocks imply inputs, outputs, UBO, or SSBO, which can only
+       * mean bindless.
+       */
+      if (var->data.bindless || var->interface_type)
          continue;
 
       shader->info.num_textures += glsl_type_get_sampler_count(var->type);
