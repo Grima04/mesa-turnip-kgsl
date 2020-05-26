@@ -3857,10 +3857,10 @@ void split_buffer_store(isel_context *ctx, nir_intrinsic_instr *instr, bool smem
 
       /* dword or larger stores have to be dword-aligned */
       unsigned align_mul = instr ? nir_intrinsic_align_mul(instr) : 4;
-      unsigned align_offset = instr ? nir_intrinsic_align_offset(instr) : 0;
-      bool dword_aligned = (align_offset + offset) % 4 == 0 && align_mul % 4 == 0;
-      if (bytes >= 4 && !dword_aligned)
-         bytes = MIN2(bytes, 2);
+      unsigned align_offset = (instr ? nir_intrinsic_align_offset(instr) : 0) + offset;
+      bool dword_aligned = align_offset % 4 == 0 && align_mul % 4 == 0;
+      if (!dword_aligned)
+         bytes = MIN2(bytes, (align_offset % 2 == 0 && align_mul % 2 == 0) ? 2 : 1);
 
       advance_write_mask(&todo, offset, bytes);
       write_count_with_skips++;
