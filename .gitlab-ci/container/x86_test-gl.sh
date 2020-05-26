@@ -11,8 +11,6 @@ STABLE_EPHEMERAL=" \
       automake \
       ccache \
       cmake \
-      g++ \
-      gcc \
       libgbm-dev \
       libgles2-mesa-dev \
       libpcre3-dev \
@@ -33,6 +31,7 @@ STABLE_EPHEMERAL=" \
       "
 
 TESTING_EPHEMERAL=" \
+      g++ \
       libc6-dev \
       "
 

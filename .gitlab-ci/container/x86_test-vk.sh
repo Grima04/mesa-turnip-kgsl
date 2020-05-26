@@ -9,8 +9,6 @@ export DEBIAN_FRONTEND=noninteractive
 STABLE_EPHEMERAL=" \
       ccache \
       cmake \
-      g++ \
-      gcc \
       libgbm-dev \
       libgles2-mesa-dev \
       liblz4-dev \
@@ -29,6 +27,7 @@ STABLE_EPHEMERAL=" \
       "
 
 TESTING_EPHEMERAL=" \
+      g++ \
       libc6-dev \
       "
 

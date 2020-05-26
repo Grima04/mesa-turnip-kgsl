@@ -150,7 +150,7 @@ x86_build:
 x86_test-base:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-05-23"
+    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-05-26"
 
 .use-x86_test-base:
   extends:
@@ -167,13 +167,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-05-23"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-05-26"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-05-23"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-05-26"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
