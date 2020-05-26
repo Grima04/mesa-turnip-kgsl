@@ -533,12 +533,6 @@ pandecode_midgard_tiler_descriptor(
         /* It needs to fit inside the reported size */
         //assert(t->polygon_list_size >= body_offset);
 
-        /* Check that we fit */
-        struct pandecode_mapped_memory *plist =
-                pandecode_find_mapped_gpu_mem_containing(t->polygon_list);
-
-        //assert(t->polygon_list_size <= plist->length);
-
         /* Now that we've sanity checked, we'll try to calculate the sizes
          * ourselves for comparison */
 
