@@ -169,33 +169,34 @@ static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data
    if (index.regClass() == s1)
       return bld.readlane(bld.def(s1), data, index);
 
-   Temp index_x4 = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), index);
+   if (ctx->options->chip_class <= GFX7) {
+      /* GFX6-7: there is no bpermute instruction */
+      unreachable("Not implemented yet on GFX6-7"); /* TODO */
+   } else if (ctx->options->chip_class >= GFX10 && ctx->program->wave_size == 64) {
+      /* GFX10 wave64 mode: emulate full-wave bpermute */
+      if (!ctx->has_gfx10_wave64_bpermute) {
+         ctx->has_gfx10_wave64_bpermute = true;
+         ctx->program->config->num_shared_vgprs = 8; /* Shared VGPRs are allocated in groups of 8 */
+         ctx->program->vgpr_limit -= 4; /* We allocate 8 shared VGPRs, so we'll have 4 fewer normal VGPRs */
+      }
 
-   /* Currently not implemented on GFX6-7 */
-   assert(ctx->options->chip_class >= GFX8);
+      Temp index_is_lo = bld.vopc(aco_opcode::v_cmp_ge_u32, bld.def(bld.lm), Operand(31u), index);
+      Builder::Result index_is_lo_split = bld.pseudo(aco_opcode::p_split_vector, bld.def(s1), bld.def(s1), index_is_lo);
+      Temp index_is_lo_n1 = bld.sop1(aco_opcode::s_not_b32, bld.def(s1), bld.def(s1, scc), index_is_lo_split.def(1).getTemp());
+      Operand same_half = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), index_is_lo_split.def(0).getTemp(), index_is_lo_n1);
+      Operand index_x4 = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), index);
+      Operand input_data(data);
 
-   if (ctx->options->chip_class <= GFX9 || ctx->program->wave_size == 32) {
+      index_x4.setLateKill(true);
+      input_data.setLateKill(true);
+      same_half.setLateKill(true);
+
+      return bld.pseudo(aco_opcode::p_bpermute, bld.def(v1), bld.def(s2), bld.def(s1, scc), index_x4, input_data, same_half);
+   } else {
+      /* GFX8-9 or GFX10 wave32: bpermute works normally */
+      Temp index_x4 = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), index);
       return bld.ds(aco_opcode::ds_bpermute_b32, bld.def(v1), index_x4, data);
    }
-
-   /* GFX10, wave64 mode:
-    * The bpermute instruction is limited to half-wave operation, which means that it can't
-    * properly support subgroup shuffle like older generations (or wave32 mode), so we
-    * emulate it here.
-    */
-   if (!ctx->has_gfx10_wave64_bpermute) {
-      ctx->has_gfx10_wave64_bpermute = true;
-      ctx->program->config->num_shared_vgprs = 8; /* Shared VGPRs are allocated in groups of 8 */
-      ctx->program->vgpr_limit -= 4; /* We allocate 8 shared VGPRs, so we'll have 4 fewer normal VGPRs */
-   }
-
-   Temp lane_id = emit_mbcnt(ctx, bld.def(v1));
-   Temp lane_is_hi = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0x20u), lane_id);
-   Temp index_is_hi = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0x20u), index);
-   Temp cmp = bld.vopc(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm, vcc), lane_is_hi, index_is_hi);
-
-   return bld.reduction(aco_opcode::p_wave64_bpermute, bld.def(v1), bld.def(s2), bld.def(s1, scc),
-                        bld.vcc(cmp), Operand(v2.as_linear()), index_x4, data, gfx10_wave64_bpermute);
 }
 
 Temp as_vgpr(isel_context *ctx, Temp val)

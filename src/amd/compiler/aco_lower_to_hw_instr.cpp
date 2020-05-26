@@ -784,6 +784,75 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
    }
 }
 
+void emit_gfx10_wave64_bpermute(Program *program, aco_ptr<Instruction> &instr, Builder &bld)
+{
+   /* Emulates proper bpermute on GFX10 in wave64 mode.
+    *
+    * This is necessary because on GFX10 the bpermute instruction only works
+    * on half waves (you can think of it as having a cluster size of 32), so we
+    * manually swap the data between the two halves using two shared VGPRs.
+    */
+
+   assert(program->chip_class >= GFX10);
+   assert(program->info->wave_size == 64);
+
+   unsigned shared_vgpr_reg_0 = align(program->config->num_vgprs, 4) + 256;
+   Definition dst = instr->definitions[0];
+   Definition tmp_exec = instr->definitions[1];
+   Definition clobber_scc = instr->definitions[2];
+   Operand index_x4 = instr->operands[0];
+   Operand input_data = instr->operands[1];
+   Operand same_half = instr->operands[2];
+
+   assert(dst.regClass() == v1);
+   assert(tmp_exec.regClass() == bld.lm);
+   assert(clobber_scc.isFixed() && clobber_scc.physReg() == scc);
+   assert(same_half.regClass() == bld.lm);
+   assert(index_x4.regClass() == v1);
+   assert(input_data.regClass().type() == RegType::vgpr);
+   assert(input_data.bytes() <= 4);
+   assert(dst.physReg() != index_x4.physReg());
+   assert(dst.physReg() != input_data.physReg());
+   assert(tmp_exec.physReg() != same_half.physReg());
+
+   PhysReg shared_vgpr_lo(shared_vgpr_reg_0);
+   PhysReg shared_vgpr_hi(shared_vgpr_reg_0 + 1);
+
+   /* Permute the input within the same half-wave */
+   bld.ds(aco_opcode::ds_bpermute_b32, dst, index_x4, input_data);
+
+   /* HI: Copy data from high lanes 32-63 to shared vgpr */
+   bld.vop1_dpp(aco_opcode::v_mov_b32, Definition(shared_vgpr_hi, v1), input_data, dpp_quad_perm(0, 1, 2, 3), 0xc, 0xf, false);
+   /* Save EXEC */
+   bld.sop1(aco_opcode::s_mov_b64, tmp_exec, Operand(exec, s2));
+   /* Set EXEC to enable LO lanes only */
+   bld.sop2(aco_opcode::s_bfm_b64, Definition(exec, s2), Operand(32u), Operand(0u));
+   /* LO: Copy data from low lanes 0-31 to shared vgpr */
+   bld.vop1(aco_opcode::v_mov_b32, Definition(shared_vgpr_lo, v1), input_data);
+   /* LO: bpermute shared vgpr (high lanes' data) */
+   bld.ds(aco_opcode::ds_bpermute_b32, Definition(shared_vgpr_hi, v1), index_x4, Operand(shared_vgpr_hi, v1));
+   /* Set EXEC to enable HI lanes only */
+   bld.sop2(aco_opcode::s_bfm_b64, Definition(exec, s2), Operand(32u), Operand(32u));
+   /* HI: bpermute shared vgpr (low lanes' data) */
+   bld.ds(aco_opcode::ds_bpermute_b32, Definition(shared_vgpr_lo, v1), index_x4, Operand(shared_vgpr_lo, v1));
+
+   /* Only enable lanes which use the other half's data */
+   bld.sop2(aco_opcode::s_andn2_b64, Definition(exec, s2), clobber_scc, Operand(tmp_exec.physReg(), s2), same_half);
+   /* LO: Copy shared vgpr (high lanes' bpermuted data) to output vgpr */
+   bld.vop1_dpp(aco_opcode::v_mov_b32, dst, Operand(shared_vgpr_hi, v1), dpp_quad_perm(0, 1, 2, 3), 0x3, 0xf, false);
+   /* HI: Copy shared vgpr (low lanes' bpermuted data) to output vgpr */
+   bld.vop1_dpp(aco_opcode::v_mov_b32, dst, Operand(shared_vgpr_lo, v1), dpp_quad_perm(0, 1, 2, 3), 0xc, 0xf, false);
+
+   /* Restore saved EXEC */
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand(tmp_exec.physReg(), s2));
+
+   /* RA assumes that the result is always in the low part of the register, so we have to shift, if it's not there already */
+   if (input_data.physReg().byte()) {
+      unsigned right_shift = input_data.physReg().byte() * 8;
+      bld.vop2(aco_opcode::v_lshrrev_b32, dst, Operand(right_shift), Operand(dst.physReg(), v1));
+   }
+}
+
 struct copy_operation {
    Operand op;
    Definition def;
@@ -1478,6 +1547,15 @@ void lower_to_hw_instr(Program* program)
                }
                break;
             }
+            case aco_opcode::p_bpermute:
+            {
+               if (ctx.program->chip_class <= GFX7)
+                  unreachable("Not implemented yet on GFX6-7"); /* TODO */
+               else if (ctx.program->chip_class == GFX10 && ctx.program->wave_size == 64)
+                  emit_gfx10_wave64_bpermute(program, instr, bld);
+               else
+                  unreachable("Current hardware supports ds_bpermute, don't emit p_bpermute.");
+            }
             default:
                break;
             }
@@ -1525,63 +1603,12 @@ void lower_to_hw_instr(Program* program)
 
          } else if (instr->format == Format::PSEUDO_REDUCTION) {
             Pseudo_reduction_instruction* reduce = static_cast<Pseudo_reduction_instruction*>(instr.get());
-            if (reduce->reduce_op == gfx10_wave64_bpermute) {
-               /* Only makes sense on GFX10 wave64 */
-               assert(program->chip_class >= GFX10);
-               assert(program->info->wave_size == 64);
-               assert(instr->definitions[0].regClass() == v1); /* Destination */
-               assert(instr->definitions[1].regClass() == s2); /* Temp EXEC */
-               assert(instr->definitions[1].physReg() != vcc);
-               assert(instr->definitions[2].physReg() == scc); /* SCC clobber */
-               assert(instr->operands[0].physReg() == vcc); /* Compare */
-               assert(instr->operands[1].regClass() == v2.as_linear()); /* Temp VGPR pair */
-               assert(instr->operands[2].regClass() == v1); /* Indices x4 */
-               assert(instr->operands[3].bytes() <= 4); /* Indices x4 */
-
-               PhysReg shared_vgpr_reg_lo = PhysReg(align(program->config->num_vgprs, 4) + 256);
-               PhysReg shared_vgpr_reg_hi = PhysReg(shared_vgpr_reg_lo + 1);
-               Operand compare = instr->operands[0];
-               Operand tmp1(instr->operands[1].physReg(), v1);
-               Operand tmp2(PhysReg(instr->operands[1].physReg() + 1), v1);
-               Operand index_x4 = instr->operands[2];
-               Operand input_data = instr->operands[3];
-               Definition shared_vgpr_lo(shared_vgpr_reg_lo, v1);
-               Definition shared_vgpr_hi(shared_vgpr_reg_hi, v1);
-               Definition def_temp1(tmp1.physReg(), v1);
-               Definition def_temp2(tmp2.physReg(), v1);
-
-               /* Save EXEC and set it for all lanes */
-               bld.sop1(aco_opcode::s_or_saveexec_b64, instr->definitions[1], instr->definitions[2],
-                        Definition(exec, s2), Operand((uint64_t)-1), Operand(exec, s2));
-
-               /* HI: Copy data from high lanes 32-63 to shared vgpr */
-               bld.vop1_dpp(aco_opcode::v_mov_b32, shared_vgpr_hi, input_data, dpp_quad_perm(0, 1, 2, 3), 0xc, 0xf, false);
-
-               /* LO: Copy data from low lanes 0-31 to shared vgpr */
-               bld.vop1_dpp(aco_opcode::v_mov_b32, shared_vgpr_lo, input_data, dpp_quad_perm(0, 1, 2, 3), 0x3, 0xf, false);
-               /* LO: Copy shared vgpr (high lanes' data) to output vgpr */
-               bld.vop1_dpp(aco_opcode::v_mov_b32, def_temp1, Operand(shared_vgpr_reg_hi, v1), dpp_quad_perm(0, 1, 2, 3), 0x3, 0xf, false);
-
-               /* HI: Copy shared vgpr (low lanes' data) to output vgpr */
-               bld.vop1_dpp(aco_opcode::v_mov_b32, def_temp1, Operand(shared_vgpr_reg_lo, v1), dpp_quad_perm(0, 1, 2, 3), 0xc, 0xf, false);
-
-               /* Permute the original input */
-               bld.ds(aco_opcode::ds_bpermute_b32, def_temp2, index_x4, input_data);
-               /* Permute the swapped input */
-               bld.ds(aco_opcode::ds_bpermute_b32, def_temp1, index_x4, tmp1);
-
-               /* Restore saved EXEC */
-               bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand(instr->definitions[1].physReg(), s2));
-               /* Choose whether to use the original or swapped */
-               bld.vop2(aco_opcode::v_cndmask_b32, instr->definitions[0], tmp1, tmp2, compare);
-            } else {
-               emit_reduction(&ctx, reduce->opcode, reduce->reduce_op, reduce->cluster_size,
-                              reduce->operands[1].physReg(), // tmp
-                              reduce->definitions[1].physReg(), // stmp
-                              reduce->operands[2].physReg(), // vtmp
-                              reduce->definitions[2].physReg(), // sitmp
-                              reduce->operands[0], reduce->definitions[0]);
-            }
+            emit_reduction(&ctx, reduce->opcode, reduce->reduce_op, reduce->cluster_size,
+                           reduce->operands[1].physReg(), // tmp
+                           reduce->definitions[1].physReg(), // stmp
+                           reduce->operands[2].physReg(), // vtmp
+                           reduce->definitions[2].physReg(), // sitmp
+                           reduce->operands[0], reduce->definitions[0]);
          } else {
             ctx.instructions.emplace_back(std::move(instr));
          }

@@ -114,11 +114,6 @@ void setup_reduce_temp(Program* program)
             }
          }
 
-         if (op == gfx10_wave64_bpermute) {
-            instr->operands[1] = Operand(reduceTmp);
-            continue;
-         }
-
          /* same as before, except for the vector temporary instead of the reduce temporary */
          unsigned cluster_size = static_cast<Pseudo_reduction_instruction *>(instr)->cluster_size;
          bool need_vtmp = op == imul32 || op == fadd64 || op == fmul64 ||
