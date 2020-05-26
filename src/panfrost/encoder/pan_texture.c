@@ -333,7 +333,6 @@ panfrost_new_texture_bifrost(
 
         descriptor->format_unk = 0x2;
         descriptor->type = type;
-        descriptor->format_unk2 = 0x100;
         descriptor->format = mali_format;
         descriptor->srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
         descriptor->format_unk3 = 0x0;

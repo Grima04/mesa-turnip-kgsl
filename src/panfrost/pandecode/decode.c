@@ -2210,7 +2210,13 @@ pandecode_bifrost_texture(
 
         pandecode_prop("format_unk = 0x%" PRIx32, t->format_unk);
         pandecode_prop("type = %" PRId32, t->type);
-        pandecode_prop("format_unk2 = 0x%" PRIx32, t->format_unk2);
+
+        if (t->zero) {
+                pandecode_msg("XXX: zero tripped\n");
+                pandecode_prop("zero = 0x%" PRIx32, t->zero);
+        }
+
+        pandecode_prop("format_swizzle = 0x%" PRIx32, t->format_swizzle);
         pandecode_prop("format = 0x%" PRIx32, t->format);
         pandecode_prop("srgb = 0x%" PRIx32, t->srgb);
         pandecode_prop("format_unk3 = 0x%" PRIx32, t->format_unk3);

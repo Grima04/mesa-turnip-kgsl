@@ -1253,7 +1253,8 @@ struct mali_texture_descriptor {
 struct bifrost_texture_descriptor {
         unsigned format_unk : 4; /* 2 */
         enum mali_texture_type type : 2;
-        unsigned format_unk2 : 16; /* 0 */
+        unsigned zero : 4;
+        unsigned format_swizzle : 12;
         enum mali_format format : 8;
         unsigned srgb : 1;
         unsigned format_unk3 : 1; /* 0 */
