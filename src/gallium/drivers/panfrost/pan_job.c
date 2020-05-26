@@ -43,8 +43,7 @@
  * better GPU utilization.
  *
  * Each accessed BO has a corresponding entry in the ->accessed_bos hash table.
- * A BO is either being written or read at any time, that's what the type field
- * encodes.
+ * A BO is either being written or read at any time (see if writer != NULL).
  * When the last access is a write, the batch writing the BO might have read
  * dependencies (readers that have not been executed yet and want to read the
  * previous BO content), and when the last access is a read, all readers might
@@ -56,7 +55,6 @@
  * updated to point to the new writer.
  */
 struct panfrost_bo_access {
-        uint32_t type;
         struct util_dynarray readers;
         struct panfrost_batch_fence *writer;
 };
@@ -415,36 +413,31 @@ panfrost_batch_in_readers(struct panfrost_batch *batch,
 
 static void
 panfrost_batch_update_bo_access(struct panfrost_batch *batch,
-                                struct panfrost_bo *bo, uint32_t access_type,
+                                struct panfrost_bo *bo, bool writes,
                                 bool already_accessed)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_bo_access *access;
-        uint32_t old_access_type;
+        bool old_writes = false;
         struct hash_entry *entry;
-
-        assert(access_type == PAN_BO_ACCESS_WRITE ||
-               access_type == PAN_BO_ACCESS_READ);
 
         entry = _mesa_hash_table_search(ctx->accessed_bos, bo);
         access = entry ? entry->data : NULL;
         if (access) {
-                old_access_type = access->type;
+                old_writes = access->writer != NULL;
         } else {
                 access = rzalloc(ctx, struct panfrost_bo_access);
                 util_dynarray_init(&access->readers, access);
                 _mesa_hash_table_insert(ctx->accessed_bos, bo, access);
                 /* We are the first to access this BO, let's initialize
-                 * old_access_type to our own access type in that case.
+                 * old_writes to our own access type in that case.
                  */
-                old_access_type = access_type;
-                access->type = access_type;
+                old_writes = writes;
         }
 
         assert(access);
 
-        if (access_type == PAN_BO_ACCESS_WRITE &&
-            old_access_type == PAN_BO_ACCESS_READ) {
+        if (writes && !old_writes) {
                 /* Previous access was a read and we want to write this BO.
                  * We first need to add explicit deps between our batch and
                  * the previous readers.
@@ -467,7 +460,6 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
 
                 /* We now are the new writer. */
                 access->writer = batch->out_sync;
-                access->type = access_type;
 
                 /* Release the previous readers and reset the readers array. */
                 util_dynarray_foreach(&access->readers,
@@ -479,10 +471,8 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
                 }
 
                 util_dynarray_clear(&access->readers);
-        } else if (access_type == PAN_BO_ACCESS_WRITE &&
-                   old_access_type == PAN_BO_ACCESS_WRITE) {
-                /* Previous access was a write and we want to write this BO.
-                 * First check if we were the previous writer, in that case
+        } else if (writes && old_writes) {
+                /* First check if we were the previous writer, in that case
                  * there's nothing to do. Otherwise we need to add a
                  * dependency between the new writer and the old one.
                  */
@@ -494,10 +484,8 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
                         panfrost_batch_fence_reference(batch->out_sync);
                         access->writer = batch->out_sync;
                 }
-        } else if (access_type == PAN_BO_ACCESS_READ &&
-                   old_access_type == PAN_BO_ACCESS_WRITE) {
-                /* Previous access was a write and we want to read this BO.
-                 * First check if we were the previous writer, in that case
+        } else if (!writes && old_writes) {
+                /* First check if we were the previous writer, in that case
                  * we want to keep the access type unchanged, as a write is
                  * more constraining than a read.
                  */
@@ -516,7 +504,7 @@ panfrost_batch_update_bo_access(struct panfrost_batch *batch,
                         util_dynarray_append(&access->readers,
                                              struct panfrost_batch_fence *,
                                              batch->out_sync);
-                        access->type = PAN_BO_ACCESS_READ;
+                        access->writer = NULL;
                 }
         } else {
                 /* We already accessed this BO before, so we should already be
@@ -587,11 +575,9 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
         if (batch == batch->ctx->wallpaper_batch)
                 return;
 
-        /* Only pass R/W flags to the dep tracking logic. */
         assert(flags & PAN_BO_ACCESS_RW);
-        flags = (flags & PAN_BO_ACCESS_WRITE) ?
-                PAN_BO_ACCESS_WRITE : PAN_BO_ACCESS_READ;
-        panfrost_batch_update_bo_access(batch, bo, flags, old_flags != 0);
+        panfrost_batch_update_bo_access(batch, bo, flags & PAN_BO_ACCESS_WRITE,
+                        old_flags != 0);
 }
 
 static void
@@ -1160,28 +1146,25 @@ panfrost_pending_batches_access_bo(struct panfrost_context *ctx,
         return false;
 }
 
+/* We always flush writers. We might also need to flush readers */
+
 void
 panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
                                     struct panfrost_bo *bo,
-                                    uint32_t access_type)
+                                    bool flush_readers)
 {
         struct panfrost_bo_access *access;
         struct hash_entry *hentry;
-
-        /* It doesn't make any to flush only the readers. */
-        assert(access_type == PAN_BO_ACCESS_WRITE ||
-               access_type == PAN_BO_ACCESS_RW);
 
         hentry = _mesa_hash_table_search(ctx->accessed_bos, bo);
         access = hentry ? hentry->data : NULL;
         if (!access)
                 return;
 
-        if (access_type & PAN_BO_ACCESS_WRITE && access->writer &&
-            access->writer->batch)
+        if (access->writer && access->writer->batch)
                 panfrost_batch_submit(access->writer->batch);
 
-        if (!(access_type & PAN_BO_ACCESS_READ))
+        if (!flush_readers)
                 return;
 
         util_dynarray_foreach(&access->readers, struct panfrost_batch_fence *,

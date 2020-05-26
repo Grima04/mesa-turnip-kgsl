@@ -173,7 +173,7 @@ panfrost_pending_batches_access_bo(struct panfrost_context *ctx,
 
 void
 panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
-                                    struct panfrost_bo *bo, uint32_t flags);
+                                    struct panfrost_bo *bo, bool flush_readers);
 
 void
 panfrost_batch_set_requirements(struct panfrost_batch *batch);

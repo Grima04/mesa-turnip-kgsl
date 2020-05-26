@@ -644,14 +644,11 @@ panfrost_transfer_map(struct pipe_context *pctx,
                                 rsrc->bo = newbo;
                                 bo = newbo;
                         } else {
-                                uint32_t access = PAN_BO_ACCESS_RW;
-
                                 /* Allocation failed or was impossible, let's
                                  * fall back on a flush+wait.
                                  */
-                                panfrost_flush_batches_accessing_bo(ctx, bo,
-                                                                    access);
-                                panfrost_bo_wait(bo, INT64_MAX, access);
+                                panfrost_flush_batches_accessing_bo(ctx, bo, true);
+                                panfrost_bo_wait(bo, INT64_MAX, true);
                         }
                 }
         } else if ((usage & PIPE_TRANSFER_WRITE)
@@ -660,10 +657,10 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 /* No flush for writes to uninitialized */
         } else if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
                 if (usage & PIPE_TRANSFER_WRITE) {
-                        panfrost_flush_batches_accessing_bo(ctx, bo, PAN_BO_ACCESS_RW);
+                        panfrost_flush_batches_accessing_bo(ctx, bo, true);
                         panfrost_bo_wait(bo, INT64_MAX, PAN_BO_ACCESS_RW);
                 } else if (usage & PIPE_TRANSFER_READ) {
-                        panfrost_flush_batches_accessing_bo(ctx, bo, PAN_BO_ACCESS_WRITE);
+                        panfrost_flush_batches_accessing_bo(ctx, bo, false);
                         panfrost_bo_wait(bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
                 }
         }
