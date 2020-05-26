@@ -257,20 +257,20 @@ DEQP_EXITCODE=$?
 if [ $DEQP_EXITCODE -ne 0 ]; then
     # preserve caselist files in case of failures:
     cp /tmp/deqp_runner.*.txt $RESULTS/
-    egrep -v ",Pass|,Skip|,ExpectedFail" $RESULTSFILE > $UNEXPECTED_RESULTSFILE.txt
+    egrep -v ",Pass|,Skip|,ExpectedFail" $RESULTSFILE > $UNEXPECTED_RESULTSFILE
 
     if [ -z "$DEQP_NO_SAVE_RESULTS" ]; then
         echo "Some unexpected results found (see cts-runner-results.txt in artifacts for full results):"
-        head -n 50 $UNEXPECTED_RESULTSFILE.txt
+        head -n 50 $UNEXPECTED_RESULTSFILE
 
         # Save the logs for up to the first 50 unexpected results:
-        head -n 50 $UNEXPECTED_RESULTSFILE.txt | quiet extract_xml_results /tmp/*.qpa
+        head -n 50 $UNEXPECTED_RESULTSFILE | quiet extract_xml_results /tmp/*.qpa
     else
         echo "Unexpected results found:"
-        cat $UNEXPECTED_RESULTSFILE.txt
+        cat $UNEXPECTED_RESULTSFILE
     fi
 
-    count=`cat $UNEXPECTED_RESULTSFILE.txt | wc -l`
+    count=`cat $UNEXPECTED_RESULTSFILE | wc -l`
 
     # Re-run fails to detect flakes.  But use a small threshold, if
     # something was fundamentally broken, we don't want to re-run
