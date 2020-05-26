@@ -428,6 +428,9 @@ panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 mali_ptr
 panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 {
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+        bool is_bifrost = dev->quirks & IS_BIFROST;
+
         struct mali_framebuffer fb = panfrost_emit_mfbd(batch, has_draws);
         struct mali_framebuffer_extra fbx = {0};
         struct mali_render_target rts[4] = {0};
@@ -463,6 +466,11 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                                 .unk1 = 0x4000000,
                                 .no_preload = true
                         };
+
+                        if (is_bifrost) {
+                                null_rt.flags = 0x8;
+                                null_rt.unk3 = 0x8;
+                        }
 
                         rts[cb].format = null_rt;
                         rts[cb].framebuffer = 0;
