@@ -332,7 +332,7 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
                 else {
                         /* First clause ATEST |= 0x4000000.
                          * Less than 32 regs |= 0x200 */
-                        meta->bifrost1.unk1 = 0x958020;
+                        meta->bifrost1.unk1 = 0x950020;
                 }
 
                 meta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
@@ -728,6 +728,16 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD,
                         !blend[0].no_blending || fs->can_discard); 
                 return;
+        }
+
+        if (dev->quirks & IS_BIFROST) {
+                bool no_blend = true;
+
+                for (unsigned i = 0; i < rt_count; ++i)
+                        no_blend &= (blend[i].no_blending | blend[i].no_colour);
+
+                SET_BIT(fragmeta->bifrost1.unk1, MALI_BIFROST_EARLY_Z,
+                        !fs->can_discard && !fs->writes_depth && no_blend);
         }
 
         /* Additional blend descriptor tacked on for jobs using MFBD */
