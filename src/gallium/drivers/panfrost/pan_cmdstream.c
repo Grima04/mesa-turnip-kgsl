@@ -730,8 +730,25 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
         /* Additional blend descriptor tacked on for jobs using MFBD */
 
         for (unsigned i = 0; i < rt_count; ++i) {
+                unsigned flags = 0;
+
+                if (ctx->pipe_framebuffer.nr_cbufs > i && !blend[i].no_colour) {
+                        flags = 0x200;
+
+                        bool is_srgb = (ctx->pipe_framebuffer.nr_cbufs > i) &&
+                                       (ctx->pipe_framebuffer.cbufs[i]) &&
+                                       util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
+
+                        SET_BIT(flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
+                        SET_BIT(flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
+                        SET_BIT(flags, MALI_BLEND_SRGB, is_srgb);
+                        SET_BIT(flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
+                }
+
                 if (dev->quirks & IS_BIFROST) {
                         struct bifrost_blend_rt *brts = rts;
+
+                        brts[i].flags = flags;
 
                         if (blend[i].is_shader) {
                                 /* The blend shader's address needs to be at
@@ -742,7 +759,6 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                        (fs->bo->gpu & (0xffffffffull << 32)));
                                 brts[i].shader = blend[i].shader.gpu;
                                 brts[i].unk2 = 0x0;
-                                brts[i].flags = 0x200;
                         } else if (ctx->pipe_framebuffer.nr_cbufs > i) {
                                 enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
                                 const struct util_format_description *format_desc;
@@ -757,7 +773,6 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 brts[i].unk2 = 0x19;
 
                                 brts[i].shader_type = fs->blend_types[i];
-                                brts[i].flags = 0x200;
                         } else {
                                 /* Dummy attachment for depth-only */
                                 brts[i].unk2 = 0x3;
@@ -765,19 +780,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                         }
                 } else {
                         struct midgard_blend_rt *mrts = rts;
-
-                        if (!blend[i].no_colour) {
-                                mrts[i].flags = 0x200;
-
-                                bool is_srgb = (ctx->pipe_framebuffer.nr_cbufs > i) &&
-                                               (ctx->pipe_framebuffer.cbufs[i]) &&
-                                               util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
-
-                                SET_BIT(mrts[i].flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
-                                SET_BIT(mrts[i].flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
-                                SET_BIT(mrts[i].flags, MALI_BLEND_SRGB, is_srgb);
-                                SET_BIT(mrts[i].flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
-                        }
+                        mrts[i].flags = flags;
 
                         if (blend[i].is_shader) {
                                 mrts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
