@@ -767,6 +767,9 @@ struct svga_winsys_screen
    /** Have SM4_1 hardware? */
    boolean have_sm4_1;
 
+   /** Have SM5 hardware? */
+   boolean have_sm5;
+
    /** To rebind resources at the beginnning of a new command buffer */
    boolean need_to_rebind_resources;
 
