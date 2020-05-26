@@ -1172,8 +1172,10 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
         if (!is_compute)
                 if (is_bifrost)
                         pandecode_bifrost_tiler_descriptor(fb);
-                else
-                        pandecode_midgard_tiler_descriptor(&fb->tiler, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
+                else {
+                        const struct midgard_tiler_descriptor t = fb->tiler;
+                        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
+                }
         else
                 pandecode_msg("XXX: skipping compute MFBD, fixme\n");
 
