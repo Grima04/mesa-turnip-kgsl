@@ -49,11 +49,10 @@
  * (semantically distinct from INVISIBLE, which cannot never be mmaped) */
 #define PAN_BO_DELAY_MMAP         (1 << 4)
 
-/* Some BOs shouldn't be returned back to the reuse BO cache, use this flag to
- * let the BO logic know about this contraint. */
-#define PAN_BO_DONT_REUSE         (1 << 5)
+/* bit 5 unused */
 
-/* BO is shared across processes (imported or exported) */
+/* BO is shared across processes (imported or exported) and therefore cannot be
+ * cached locally */
 #define PAN_BO_SHARED             (1 << 6)
 
 /* GPU access flags */

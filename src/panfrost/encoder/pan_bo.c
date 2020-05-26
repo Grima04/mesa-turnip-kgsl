@@ -270,7 +270,7 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
 {
         struct panfrost_device *dev = bo->dev;
 
-        if (bo->flags & PAN_BO_DONT_REUSE)
+        if (bo->flags & PAN_BO_SHARED)
                 return false;
 
         pthread_mutex_lock(&dev->bo_cache.lock);
@@ -477,7 +477,7 @@ panfrost_bo_import(struct panfrost_device *dev, int fd)
                 bo->dev = dev;
                 bo->gpu = (mali_ptr) get_bo_offset.offset;
                 bo->size = lseek(fd, 0, SEEK_END);
-                bo->flags = PAN_BO_DONT_REUSE | PAN_BO_SHARED;
+                bo->flags = PAN_BO_SHARED;
                 bo->gem_handle = gem_handle;
                 assert(bo->size > 0);
                 p_atomic_set(&bo->refcnt, 1);
@@ -517,7 +517,7 @@ panfrost_bo_export(struct panfrost_bo *bo)
         if (ret == -1)
                 return -1;
 
-        bo->flags |= PAN_BO_DONT_REUSE | PAN_BO_SHARED;
+        bo->flags |= PAN_BO_SHARED;
         return args.fd;
 }
 
