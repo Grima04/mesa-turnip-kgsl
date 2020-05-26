@@ -852,6 +852,11 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(addr_format_is_offset(addr_format));
       op = nir_intrinsic_load_shared;
       break;
+   case nir_var_shader_temp:
+   case nir_var_function_temp:
+      assert(addr_format_is_offset(addr_format));
+      op = nir_intrinsic_load_scratch;
+      break;
    default:
       unreachable("Unsupported explicit IO variable mode");
    }
@@ -868,7 +873,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       load->src[1] = nir_src_for_ssa(addr_to_offset(b, addr, addr_format));
    }
 
-   if (mode != nir_var_shader_in && mode != nir_var_mem_shared)
+   if (mode == nir_var_mem_ssbo || mode == nir_var_mem_global || mode == nir_var_mem_ubo)
       nir_intrinsic_set_access(load, nir_intrinsic_access(intrin));
 
    unsigned bit_size = intrin->dest.ssa.bit_size;
@@ -947,6 +952,11 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(addr_format_is_offset(addr_format));
       op = nir_intrinsic_store_shared;
       break;
+   case nir_var_shader_temp:
+   case nir_var_function_temp:
+      assert(addr_format_is_offset(addr_format));
+      op = nir_intrinsic_store_scratch;
+      break;
    default:
       unreachable("Unsupported explicit IO variable mode");
    }
@@ -979,7 +989,7 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_intrinsic_set_write_mask(store, write_mask);
 
-   if (mode != nir_var_mem_shared)
+   if (mode == nir_var_mem_ssbo || mode == nir_var_mem_global)
       nir_intrinsic_set_access(store, nir_intrinsic_access(intrin));
 
    /* TODO: We should try and provide a better alignment.  For OpenCL, we need
@@ -1084,7 +1094,8 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
    assert(deref->dest.is_ssa);
    switch (deref->deref_type) {
    case nir_deref_type_var:
-      assert(deref->mode & (nir_var_shader_in | nir_var_mem_shared));
+      assert(deref->mode & (nir_var_shader_in | nir_var_mem_shared |
+                            nir_var_shader_temp | nir_var_function_temp));
       return nir_imm_intN_t(b, deref->var->data.driver_location,
                             deref->dest.ssa.bit_size);
 
