@@ -7,13 +7,6 @@ DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=pbuffer"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=rgba8888d24s8ms0"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
 
-# It would be nice to be able to enable the watchdog, so that hangs in a test
-# don't need to wait the full hour for the run to time out.  However, some
-# shaders end up taking long enough to compile
-# (dEQP-GLES31.functional.ubo.random.all_per_block_buffers.20 for example)
-# that they'll sporadically trigger the watchdog.
-#DEQP_OPTIONS="$DEQP_OPTIONS --deqp-watchdog=enable"
-
 if [ -z "$DEQP_VER" ]; then
    echo 'DEQP_VER must be set to something like "gles2", "gles31" or "vk" for the test run'
    exit 1
