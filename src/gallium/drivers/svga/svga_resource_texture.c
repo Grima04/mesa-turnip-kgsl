@@ -133,26 +133,25 @@ svga_transfer_dma(struct svga_context *svga,
       }
    }
    else {
-      int y, h, y_max;
+      int y, h, srcy;
       unsigned blockheight =
          util_format_get_blockheight(st->base.resource->format);
 
       h = st->hw_nblocksy * blockheight;
-      y_max = st->box.y + st->box.h;
+      srcy = 0;
 
-      for (y = st->box.y; y < y_max; y += h) {
+      for (y = 0; y < st->box.h; y += h) {
          unsigned offset, length;
          void *hw, *sw;
 
-         if (y + h > y_max)
-            h = y_max - y;
+         if (y + h > st->box.h)
+            h = st->box.h - y;
 
          /* Transfer band must be aligned to pixel block boundaries */
          assert(y % blockheight == 0);
          assert(h % blockheight == 0);
 
-         /* First band starts at the top of the SW buffer. */
-         offset = (y - st->box.y) * st->base.stride / blockheight;
+         offset = y * st->base.stride / blockheight;
          length = h * st->base.stride / blockheight;
 
          sw = (uint8_t *) st->swbuf + offset;
@@ -160,9 +159,9 @@ svga_transfer_dma(struct svga_context *svga,
          if (transfer == SVGA3D_WRITE_HOST_VRAM) {
             unsigned usage = PIPE_TRANSFER_WRITE;
 
-            /* Don't write to an in-flight DMA buffer. Synchronize or
-             * discard in-flight storage. */
-            if (y != st->box.y) {
+            /* Wait for the previous DMAs to complete */
+            /* TODO: keep one DMA (at half the size) in the background */
+            if (y) {
                svga_context_flush(svga, NULL);
                usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
             }
@@ -178,7 +177,7 @@ svga_transfer_dma(struct svga_context *svga,
          svga_transfer_dma_band(svga, st, transfer,
                                 st->box.x, y, st->box.z,
                                 st->box.w, h, st->box.d,
-                                0, 0, 0, flags);
+                                0, srcy, 0, flags);
 
          /*
           * Prevent the texture contents to be discarded on the next band
@@ -476,6 +475,18 @@ svga_texture_transfer_map_direct(struct svga_context *svga,
          svga_context_flush(svga, NULL);
          map = swc->surface_map(swc, surf, usage, &retry, &rebind);
       }
+      if (map && rebind) {
+         enum pipe_error ret;
+
+         ret = SVGA3D_BindGBSurface(swc, surf);
+         if (ret != PIPE_OK) {
+            svga_context_flush(svga, NULL);
+            ret = SVGA3D_BindGBSurface(swc, surf);
+            assert(ret == PIPE_OK);
+         }
+         svga_context_flush(svga, NULL);
+      }
+
       if (map && rebind) {
          enum pipe_error ret;
 

@@ -53,7 +53,8 @@ svga_buffer_needs_hw_storage(const struct svga_screen *ss,
                              const struct pipe_resource *template)
 {
    unsigned bind_mask = (PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_INDEX_BUFFER |
-                         PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_STREAM_OUTPUT);
+                         PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_STREAM_OUTPUT |
+                         PIPE_BIND_SHADER_BUFFER | PIPE_BIND_COMMAND_ARGS_BUFFER);
 
    if (ss->sws->have_vgpu10) {
       /*
@@ -478,6 +479,9 @@ svga_buffer_create(struct pipe_screen *screen,
           */
          bind_flags |= (PIPE_BIND_VERTEX_BUFFER |
                         PIPE_BIND_INDEX_BUFFER);
+
+         /* It may be used for shader resource as well. */
+         bind_flags |= PIPE_BIND_SAMPLER_VIEW;
       }
 
       if (svga_buffer_create_host_surface(ss, sbuf, bind_flags) != PIPE_OK)

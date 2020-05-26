@@ -133,12 +133,13 @@ svga_get_extra_fs_constants(const struct svga_context *svga, float *dest)
  * will be returned in 'dest'.
  */
 static unsigned
-svga_get_prescale_constants(const struct svga_context *svga, float **dest)
+svga_get_prescale_constants(const struct svga_context *svga, float **dest,
+		            const struct svga_prescale *prescale)
 {
-   memcpy(*dest, svga->state.hw_clear.prescale.scale, 4 * sizeof(float));
+   memcpy(*dest, prescale->scale, 4 * sizeof(float));
    *dest += 4;
 
-   memcpy(*dest, svga->state.hw_clear.prescale.translate, 4 * sizeof(float));
+   memcpy(*dest, prescale->translate, 4 * sizeof(float));
    *dest += 4;
 
    return 2;
@@ -153,8 +154,8 @@ svga_get_pt_sprite_constants(const struct svga_context *svga, float **dest)
    const struct svga_screen *screen = svga_screen(svga->pipe.screen);
    float *dst = *dest;
 
-   dst[0] = 1.0 / (svga->curr.viewport.scale[0] * 2);
-   dst[1] = 1.0 / (svga->curr.viewport.scale[1] * 2);
+   dst[0] = 1.0 / (svga->curr.viewport[0].scale[0] * 2);
+   dst[1] = 1.0 / (svga->curr.viewport[0].scale[1] * 2);
    dst[2] = svga->curr.rast->pointsize;
    dst[3] = screen->maxPointSize;
    *dest = *dest + 4;
@@ -186,6 +187,7 @@ svga_get_clip_plane_constants(const struct svga_context *svga,
    return count;
 }
 
+
 /**
  * Emit any extra vertex shader constants into the buffer pointed
  * to by 'dest'.
@@ -203,15 +205,16 @@ svga_get_extra_vs_constants(const struct svga_context *svga, float *dest)
    /* SVGA_NEW_VS_VARIANT
     */
    if (variant->key.vs.need_prescale) {
-      count += svga_get_prescale_constants(svga, &dest);
+      count += svga_get_prescale_constants(svga, &dest,
+		                           &svga->state.hw_clear.prescale[0]);
    }
 
    if (variant->key.vs.undo_viewport) {
       /* Used to convert window coords back to NDC coords */
-      dest[0] = 1.0f / svga->curr.viewport.scale[0];
-      dest[1] = 1.0f / svga->curr.viewport.scale[1];
-      dest[2] = -svga->curr.viewport.translate[0];
-      dest[3] = -svga->curr.viewport.translate[1];
+      dest[0] = 1.0f / svga->curr.viewport[0].scale[0];
+      dest[1] = 1.0f / svga->curr.viewport[0].scale[1];
+      dest[2] = -svga->curr.viewport[0].translate[0];
+      dest[3] = -svga->curr.viewport[0].translate[1];
       dest += 4;
       count += 1;
    }
@@ -250,7 +253,20 @@ svga_get_extra_gs_constants(const struct svga_context *svga, float *dest)
    }
 
    if (variant->key.gs.need_prescale) {
-      count += svga_get_prescale_constants(svga, &dest);
+      unsigned i, num_prescale = 1;
+
+      /* If prescale is needed and the geometry shader writes to viewport
+       * index, then prescale for all viewports will be added to the
+       * constant buffer.
+       */
+      if (variant->key.gs.writes_viewport_index)
+         num_prescale = svga->state.hw_clear.num_prescale;
+
+      for (i = 0; i < num_prescale; i++) {
+         count +=
+            svga_get_prescale_constants(svga, &dest,
+			                &svga->state.hw_clear.prescale[i]);
+      }
    }
 
    /* SVGA_NEW_CLIP */
@@ -259,6 +275,77 @@ svga_get_extra_gs_constants(const struct svga_context *svga, float *dest)
    /* common constants */
    count += svga_get_extra_constants_common(svga, variant,
                                             PIPE_SHADER_GEOMETRY, dest);
+
+   assert(count <= MAX_EXTRA_CONSTS);
+   return count;
+}
+
+
+/**
+ * Emit any extra tessellation control shader constants into the
+ * buffer pointed to by 'dest'.
+ */
+static unsigned
+svga_get_extra_tcs_constants(struct svga_context *svga, float *dest)
+{
+   const struct svga_shader_variant *variant = svga->state.hw_draw.tcs;
+   unsigned count = 0;
+
+   /* SVGA_NEW_CLIP */
+   count += svga_get_clip_plane_constants(svga, variant, &dest);
+
+   /* common constants */
+   count += svga_get_extra_constants_common(svga, variant,
+                                            PIPE_SHADER_TESS_CTRL,
+                                            dest);
+
+   assert(count <= MAX_EXTRA_CONSTS);
+   return count;
+}
+
+
+/**
+ * Emit any extra tessellation evaluation shader constants into
+ * the buffer pointed to by 'dest'.
+ */
+static unsigned
+svga_get_extra_tes_constants(struct svga_context *svga, float *dest)
+{
+   const struct svga_shader_variant *variant = svga->state.hw_draw.tes;
+   unsigned count = 0;
+
+   if (variant->key.tes.need_prescale) {
+      count += svga_get_prescale_constants(svga, &dest,
+		                           &svga->state.hw_clear.prescale[0]);
+   }
+
+   /* SVGA_NEW_CLIP */
+   count += svga_get_clip_plane_constants(svga, variant, &dest);
+
+   /* common constants */
+   count += svga_get_extra_constants_common(svga, variant,
+                                            PIPE_SHADER_TESS_EVAL,
+                                            dest);
+
+   assert(count <= MAX_EXTRA_CONSTS);
+   return count;
+}
+
+
+/**
+ * Emit any extra compute shader constants into
+ * the buffer pointed to by 'dest'.
+ */
+static unsigned
+svga_get_extra_cs_constants(struct svga_context *svga, float *dest)
+{
+   const struct svga_shader_variant *variant = svga->state.hw_draw.cs;
+   unsigned count = 0;
+
+   /* common constants */
+   count += svga_get_extra_constants_common(svga, variant,
+                                            PIPE_SHADER_COMPUTE,
+                                            dest);
 
    assert(count <= MAX_EXTRA_CONSTS);
    return count;
@@ -490,6 +577,15 @@ emit_constbuf_vgpu10(struct svga_context *svga, enum pipe_shader_type shader)
    const struct svga_shader_variant *variant;
    unsigned alloc_buf_size;
 
+   assert(shader == PIPE_SHADER_VERTEX ||
+          shader == PIPE_SHADER_GEOMETRY ||
+          shader == PIPE_SHADER_FRAGMENT ||
+          shader == PIPE_SHADER_TESS_CTRL ||
+          shader == PIPE_SHADER_TESS_EVAL ||
+          shader == PIPE_SHADER_COMPUTE);
+
+   cbuf = &svga->curr.constbufs[shader][0];
+
    switch (shader) {
    case PIPE_SHADER_VERTEX:
       variant = svga->state.hw_draw.vs;
@@ -502,6 +598,18 @@ emit_constbuf_vgpu10(struct svga_context *svga, enum pipe_shader_type shader)
    case PIPE_SHADER_GEOMETRY:
       variant = svga->state.hw_draw.gs;
       extra_count = svga_get_extra_gs_constants(svga, (float *) extras);
+      break;
+   case PIPE_SHADER_TESS_CTRL:
+      variant = svga->state.hw_draw.tcs;
+      extra_count = svga_get_extra_tcs_constants(svga, (float *) extras);
+      break;
+   case PIPE_SHADER_TESS_EVAL:
+      variant = svga->state.hw_draw.tes;
+      extra_count = svga_get_extra_tes_constants(svga, (float *) extras);
+      break;
+   case PIPE_SHADER_COMPUTE:
+      variant = svga->state.hw_draw.cs;
+      extra_count = svga_get_extra_cs_constants(svga, (float *) extras);
       break;
    default:
       assert(!"Unexpected shader type");
@@ -706,7 +814,7 @@ emit_consts_vgpu10(struct svga_context *svga, enum pipe_shader_type shader)
 }
 
 static enum pipe_error
-emit_fs_consts(struct svga_context *svga, unsigned dirty)
+emit_fs_consts(struct svga_context *svga, uint64_t dirty)
 {
    const struct svga_shader_variant *variant = svga->state.hw_draw.fs;
    enum pipe_error ret = PIPE_OK;
@@ -741,7 +849,7 @@ struct svga_tracked_state svga_hw_fs_constants =
 
 
 static enum pipe_error
-emit_vs_consts(struct svga_context *svga, unsigned dirty)
+emit_vs_consts(struct svga_context *svga, uint64_t dirty)
 {
    const struct svga_shader_variant *variant = svga->state.hw_draw.vs;
    enum pipe_error ret = PIPE_OK;
@@ -776,7 +884,7 @@ struct svga_tracked_state svga_hw_vs_constants =
 
 
 static enum pipe_error
-emit_gs_consts(struct svga_context *svga, unsigned dirty)
+emit_gs_consts(struct svga_context *svga, uint64_t dirty)
 {
    const struct svga_shader_variant *variant = svga->state.hw_draw.gs;
    enum pipe_error ret = PIPE_OK;
@@ -788,17 +896,17 @@ emit_gs_consts(struct svga_context *svga, unsigned dirty)
 
    /* SVGA_NEW_GS_CONST_BUFFER
     */
-   if (svga_have_vgpu10(svga)) {
-      /**
-       * If only the rasterizer state has changed and the current geometry
-       * shader does not emit wide points, then there is no reason to
-       * re-emit the GS constants, so skip it.
-       */
-      if (dirty == SVGA_NEW_RAST && !variant->key.gs.wide_point)
-         return PIPE_OK;
+   assert(svga_have_vgpu10(svga));
 
-      ret = emit_consts_vgpu10(svga, PIPE_SHADER_GEOMETRY);
-   }
+   /**
+    * If only the rasterizer state has changed and the current geometry
+    * shader does not emit wide points, then there is no reason to
+    * re-emit the GS constants, so skip it.
+    */
+   if (dirty == SVGA_NEW_RAST && !variant->key.gs.wide_point)
+      return PIPE_OK;
+
+   ret = emit_consts_vgpu10(svga, PIPE_SHADER_GEOMETRY);
 
    return ret;
 }
@@ -813,4 +921,67 @@ struct svga_tracked_state svga_hw_gs_constants =
     SVGA_NEW_GS_VARIANT |
     SVGA_NEW_TEXTURE_CONSTS),
    emit_gs_consts
+};
+
+
+/**
+ * Emit constant buffer for tessellation control shader
+ */
+static enum pipe_error
+emit_tcs_consts(struct svga_context *svga, uint64_t dirty)
+{
+   const struct svga_shader_variant *variant = svga->state.hw_draw.tcs;
+   enum pipe_error ret = PIPE_OK;
+
+   assert(svga_have_sm5(svga));
+
+   /* SVGA_NEW_TCS_VARIANT */
+   if (!variant)
+      return PIPE_OK;
+
+   /* SVGA_NEW_TCS_CONST_BUFFER */
+
+   ret = emit_consts_vgpu10(svga, PIPE_SHADER_TESS_CTRL);
+
+   return ret;
+}
+
+
+struct svga_tracked_state svga_hw_tcs_constants =
+{
+   "hw tcs params",
+   (SVGA_NEW_TCS_CONST_BUFFER |
+    SVGA_NEW_TCS_VARIANT),
+   emit_tcs_consts
+};
+
+
+/**
+ * Emit constant buffer for tessellation evaluation shader
+ */
+static enum pipe_error
+emit_tes_consts(struct svga_context *svga, uint64_t dirty)
+{
+   const struct svga_shader_variant *variant = svga->state.hw_draw.tes;
+   enum pipe_error ret = PIPE_OK;
+
+   assert(svga_have_sm5(svga));
+
+   /* SVGA_NEW_TES_VARIANT */
+   if (!variant)
+      return PIPE_OK;
+
+   ret = emit_consts_vgpu10(svga, PIPE_SHADER_TESS_EVAL);
+
+   return ret;
+}
+
+
+struct svga_tracked_state svga_hw_tes_constants =
+{
+   "hw tes params",
+   (SVGA_NEW_PRESCALE |
+    SVGA_NEW_TES_CONST_BUFFER |
+    SVGA_NEW_TES_VARIANT),
+   emit_tes_consts
 };

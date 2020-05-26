@@ -50,6 +50,7 @@ struct svga_query {
    SVGA3dQueryType svga_type;      /**< SVGA3D_QUERYTYPE_x or unused */
 
    unsigned id;                    /** Per-context query identifier */
+   boolean active;                 /** TRUE if query is active */
 
    struct pipe_fence_handle *fence;
 
@@ -214,10 +215,10 @@ get_query_result_vgpu9(struct svga_context *svga, struct svga_query *sq,
  * will hold queries of the same type. Multiple memory blocks can be allocated
  * for a particular query type.
  *
- * Currently each memory block is of 184 bytes. We support up to 128
+ * Currently each memory block is of 184 bytes. We support up to 512
  * memory blocks. The query memory size is arbitrary right now.
  * Each occlusion query takes about 8 bytes. One memory block can accomodate
- * 23 occlusion queries. 128 of those blocks can support up to 2944 occlusion
+ * 23 occlusion queries. 512 of those blocks can support up to 11K occlusion
  * queries. That seems reasonable for now. If we think this limit is
  * not enough, we can increase the limit or try to grow the mob in runtime.
  * Note, SVGA device does not impose one mob per context for queries,
@@ -228,7 +229,7 @@ get_query_result_vgpu9(struct svga_context *svga, struct svga_query *sq,
  * following commands: DXMoveQuery, DXBindAllQuery & DXReadbackAllQuery.
  */
 #define SVGA_QUERY_MEM_BLOCK_SIZE    (sizeof(SVGADXQueryResultUnion) * 2)
-#define SVGA_QUERY_MEM_SIZE          (128 * SVGA_QUERY_MEM_BLOCK_SIZE)
+#define SVGA_QUERY_MEM_SIZE          (512 * SVGA_QUERY_MEM_BLOCK_SIZE)
 
 struct svga_qmem_alloc_entry
 {
@@ -243,31 +244,34 @@ struct svga_qmem_alloc_entry
 
 /**
  * Allocate a memory block from the query object memory
- * \return -1 if out of memory, else index of the query memory block
+ * \return NULL if out of memory, else pointer to the query memory block
  */
-static int
+static struct svga_qmem_alloc_entry *
 allocate_query_block(struct svga_context *svga)
 {
    int index;
    unsigned offset;
+   struct svga_qmem_alloc_entry *alloc_entry = NULL;
 
    /* Find the next available query block */
    index = util_bitmask_add(svga->gb_query_alloc_mask);
 
    if (index == UTIL_BITMASK_INVALID_INDEX)
-      return -1;
+      return NULL;
 
    offset = index * SVGA_QUERY_MEM_BLOCK_SIZE;
    if (offset >= svga->gb_query_len) {
       unsigned i;
 
+      /* Deallocate the out-of-range index */
+      util_bitmask_clear(svga->gb_query_alloc_mask, index);
+      index = -1;
+
       /**
        * All the memory blocks are allocated, lets see if there is
        * any empty memory block around that can be freed up.
        */
-      index = -1;
       for (i = 0; i < SVGA3D_QUERYTYPE_MAX && index == -1; i++) {
-         struct svga_qmem_alloc_entry *alloc_entry;
          struct svga_qmem_alloc_entry *prev_alloc_entry = NULL;
 
          alloc_entry = svga->gb_query_map[i];
@@ -286,9 +290,20 @@ allocate_query_block(struct svga_context *svga)
             }
          }
       }
+
+      if (index == -1) {
+         debug_printf("Query memory object is full\n");
+         return NULL;
+      }
    }
 
-   return index;
+   if (!alloc_entry) {
+      assert(index != -1);
+      alloc_entry = CALLOC_STRUCT(svga_qmem_alloc_entry);
+      alloc_entry->block_index = index;
+   }
+
+   return alloc_entry;
 }
 
 /**
@@ -346,17 +361,14 @@ allocate_query_block_entry(struct svga_context *svga,
                            unsigned len)
 {
    struct svga_qmem_alloc_entry *alloc_entry;
-   int block_index = -1;
 
-   block_index = allocate_query_block(svga);
-   if (block_index == -1)
-      return NULL;
-   alloc_entry = CALLOC_STRUCT(svga_qmem_alloc_entry);
+   alloc_entry = allocate_query_block(svga);
    if (!alloc_entry)
       return NULL;
 
-   alloc_entry->block_index = block_index;
-   alloc_entry->start_offset = block_index * SVGA_QUERY_MEM_BLOCK_SIZE;
+   assert(alloc_entry->block_index != -1);
+   alloc_entry->start_offset =
+      alloc_entry->block_index * SVGA_QUERY_MEM_BLOCK_SIZE;
    alloc_entry->nquery = 0;
    alloc_entry->alloc_mask = util_bitmask_create();
    alloc_entry->next = NULL;
@@ -508,16 +520,15 @@ define_query_vgpu10(struct svga_context *svga,
 
    sq->gb_query = svga->gb_query;
 
-   /* Allocate an integer ID for this query */
-   sq->id = util_bitmask_add(svga->query_id_bm);
-   if (sq->id == UTIL_BITMASK_INVALID_INDEX)
-      return PIPE_ERROR_OUT_OF_MEMORY;
+   /* Make sure query length is in multiples of 8 bytes */
+   qlen = align(resultLen + sizeof(SVGA3dQueryState), 8);
 
    /* Find a slot for this query in the gb object */
-   qlen = resultLen + sizeof(SVGA3dQueryState);
    sq->offset = allocate_query(svga, sq->svga_type, qlen);
    if (sq->offset == -1)
       return PIPE_ERROR_OUT_OF_MEMORY;
+
+   assert((sq->offset & 7) == 0);
 
    SVGA_DBG(DEBUG_QUERY, "   query type=%d qid=0x%x offset=%d\n",
             sq->svga_type, sq->id, sq->offset);
@@ -731,7 +742,19 @@ svga_create_query(struct pipe_context *pipe,
    case PIPE_QUERY_PRIMITIVES_EMITTED:
    case PIPE_QUERY_SO_STATISTICS:
       assert(svga_have_vgpu10(svga));
-      sq->svga_type = SVGA3D_QUERYTYPE_STREAMOUTPUTSTATS;
+
+      /* Until the device supports the new query type for multiple streams,
+       * we will use the single stream query type for stream 0.
+       */
+      if (svga_have_sm5(svga) && index > 0) {
+         assert(index < 4);
+
+         sq->svga_type = SVGA3D_QUERYTYPE_SOSTATS_STREAM0 + index;
+      }
+      else {
+         assert(index == 0);
+         sq->svga_type = SVGA3D_QUERYTYPE_STREAMOUTPUTSTATS;
+      }
       ret = define_query_vgpu10(svga, sq,
                                 sizeof(SVGADXStreamOutStatisticsQueryResult));
       if (ret != PIPE_OK)
@@ -969,7 +992,10 @@ svga_begin_query(struct pipe_context *pipe, struct pipe_query *q)
       assert(!"unexpected query type in svga_begin_query()");
    }
 
-   svga->sq[sq->type] = sq;
+   SVGA_DBG(DEBUG_QUERY, "%s sq=0x%x id=%d type=%d svga_type=%d\n",
+            __FUNCTION__, sq, sq->id, sq->type, sq->svga_type);
+
+   sq->active = TRUE;
 
    return true;
 }
@@ -988,12 +1014,12 @@ svga_end_query(struct pipe_context *pipe, struct pipe_query *q)
    SVGA_DBG(DEBUG_QUERY, "%s sq=0x%x id=%d\n", __FUNCTION__,
             sq, sq->id);
 
-   if (sq->type == PIPE_QUERY_TIMESTAMP && svga->sq[sq->type] != sq)
+   if (sq->type == PIPE_QUERY_TIMESTAMP && !sq->active)
       svga_begin_query(pipe, q);
 
    svga_hwtnl_flush_retry(svga);
 
-   assert(svga->sq[sq->type] == sq);
+   assert(sq->active);
 
    switch (sq->type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -1083,7 +1109,7 @@ svga_end_query(struct pipe_context *pipe, struct pipe_query *q)
    default:
       assert(!"unexpected query type in svga_end_query()");
    }
-   svga->sq[sq->type] = NULL;
+   sq->active = FALSE;
    return true;
 }
 

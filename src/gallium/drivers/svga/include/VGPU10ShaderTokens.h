@@ -201,7 +201,7 @@ typedef enum {
    VGPU10_OPCODE_DCL_GLOBAL_FLAGS                  = 106,
 
    /* GL guest */
-   VGPU10_OPCODE_IDIV                              = 107,
+   VGPU10_OPCODE_VMWARE                            = 107,
 
    /* DX10.1 */
    VGPU10_OPCODE_LOD                               = 108,

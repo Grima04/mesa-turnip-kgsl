@@ -578,6 +578,16 @@ svga_validate_surface_view(struct svga_context *svga, struct svga_surface *s)
       }
    }
 
+   /**
+    * Create an alternate surface view for the specified context if the
+    * view was created for another context.
+    */
+   if (s && s->base.context != &svga->pipe) {
+      struct pipe_surface *surf;
+      surf = svga_create_surface_view(&svga->pipe, s->base.texture, &s->base, FALSE);
+      s = svga_surface(surf);
+   }
+
    if (s && s->view_id == SVGA3D_INVALID_ID) {
       SVGA3dResourceType resType;
       SVGA3dRenderTargetViewDesc desc;

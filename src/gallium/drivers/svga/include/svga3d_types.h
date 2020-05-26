@@ -436,8 +436,9 @@ typedef uint32 SVGA3dSurfaceFlags;
  * mob-backing to store all the samples.
  */
 #define SVGA3D_SURFACE_MULTISAMPLE            (CONST64U(1) << 32)
+#define SVGA3D_SURFACE_DRAWINDIRECT_ARGS      (CONST64U(1) << 38)
 
-#define SVGA3D_SURFACE_FLAG_MAX               (CONST64U(1) << 33)
+#define SVGA3D_SURFACE_FLAG_MAX               (CONST64U(1) << 42)
 
 /*
  * Surface flags types:
@@ -464,7 +465,8 @@ typedef uint64 SVGA3dSurfaceAllFlags;
            SVGA3D_SURFACE_HINT_INDIRECT_UPDATE | \
            SVGA3D_SURFACE_TRANSFER_FROM_BUFFER | \
            SVGA3D_SURFACE_VADECODE |             \
-           SVGA3D_SURFACE_MULTISAMPLE            \
+           SVGA3D_SURFACE_MULTISAMPLE |          \
+           SVGA3D_SURFACE_DRAWINDIRECT_ARGS      \
         )
 
 #define SVGA3D_SURFACE_2D_DISALLOWED_MASK           \
@@ -480,7 +482,8 @@ typedef uint64 SVGA3dSurfaceAllFlags;
            SVGA3D_SURFACE_BIND_STREAM_OUTPUT |      \
            SVGA3D_SURFACE_TRANSFER_FROM_BUFFER |    \
            SVGA3D_SURFACE_VADECODE |                \
-           SVGA3D_SURFACE_MULTISAMPLE               \
+           SVGA3D_SURFACE_MULTISAMPLE |             \
+           SVGA3D_SURFACE_DRAWINDIRECT_ARGS         \
         )
 
 #define SVGA3D_SURFACE_BASICOPS_DISALLOWED_MASK     \
@@ -508,7 +511,8 @@ typedef uint64 SVGA3dSurfaceAllFlags;
            SVGA3D_SURFACE_HINT_INDIRECT_UPDATE |    \
            SVGA3D_SURFACE_TRANSFER_FROM_BUFFER |    \
            SVGA3D_SURFACE_VADECODE |                \
-           SVGA3D_SURFACE_MULTISAMPLE               \
+           SVGA3D_SURFACE_MULTISAMPLE |             \
+           SVGA3D_SURFACE_DRAWINDIRECT_ARGS         \
         )
 
 #define SVGA3D_SURFACE_BUFFER_DISALLOWED_MASK       \
@@ -527,7 +531,8 @@ typedef uint64 SVGA3dSurfaceAllFlags;
            SVGA3D_SURFACE_VOLUME |                  \
            SVGA3D_SURFACE_1D |                      \
            SVGA3D_SURFACE_SCREENTARGET |            \
-           SVGA3D_SURFACE_MOB_PITCH                 \
+           SVGA3D_SURFACE_MOB_PITCH |               \
+           SVGA3D_SURFACE_DRAWINDIRECT_ARGS         \
         )
 
 #define SVGA3D_SURFACE_DX_ONLY_MASK             \
@@ -636,7 +641,8 @@ typedef uint64 SVGA3dSurfaceAllFlags;
            SVGA3D_SURFACE_BIND_STREAM_OUTPUT |      \
            SVGA3D_SURFACE_TRANSFER_FROM_BUFFER |    \
            SVGA3D_SURFACE_VADECODE |                \
-           SVGA3D_SURFACE_MULTISAMPLE               \
+           SVGA3D_SURFACE_MULTISAMPLE |             \
+           SVGA3D_SURFACE_DRAWINDIRECT_ARGS         \
         )
 
 

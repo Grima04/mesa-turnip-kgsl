@@ -196,8 +196,10 @@ make_fs_key(const struct svga_context *svga,
     */
    if (svga->curr.gs) {
       key->fs.gs_generic_outputs = svga->curr.gs->generic_outputs;
+      key->fs.layer_to_zero = !svga->curr.gs->base.info.writes_layer;
    } else {
       key->fs.vs_generic_outputs = svga->curr.vs->generic_outputs;
+      key->fs.layer_to_zero = 1;
    }
 
    /* Only need fragment shader fixup for twoside lighting if doing
@@ -276,7 +278,7 @@ make_fs_key(const struct svga_context *svga,
     *
     * SVGA_NEW_TEXTURE_BINDING | SVGA_NEW_SAMPLER
     */
-   svga_init_shader_key_common(svga, shader, key);
+   svga_init_shader_key_common(svga, shader, &fs->base, key);
 
    for (i = 0; i < svga->curr.num_samplers[shader]; ++i) {
       struct pipe_sampler_view *view = svga->curr.sampler_views[shader][i];
@@ -316,15 +318,6 @@ make_fs_key(const struct svga_context *svga,
                else if (sampler->compare_func != PIPE_FUNC_LEQUAL) {
                   debug_warn_once("Unsupported shadow compare function");
                }
-            }
-            else {
-               /* For other texture formats, just use the compare func/mode
-                * as-is.  Should be no-ops for color textures.  For depth
-                * textures, we do not get automatic depth compare.  We have
-                * to do it ourselves in the shader.  And we don't get PCF.
-                */
-               key->tex[i].compare_mode = sampler->compare_mode;
-               key->tex[i].compare_func = sampler->compare_func;
             }
          }
       }
@@ -401,22 +394,26 @@ svga_reemit_fs_bindings(struct svga_context *svga)
 
 
 static enum pipe_error
-emit_hw_fs(struct svga_context *svga, unsigned dirty)
+emit_hw_fs(struct svga_context *svga, uint64_t dirty)
 {
    struct svga_shader_variant *variant = NULL;
    enum pipe_error ret = PIPE_OK;
    struct svga_fragment_shader *fs = svga->curr.fs;
    struct svga_compile_key key;
+   struct svga_shader *prevShader = NULL;   /* shader in the previous stage */
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_EMITFS);
+
+   prevShader = svga->curr.gs ?
+      &svga->curr.gs->base : (svga->curr.tes ?
+      &svga->curr.tes->base : &svga->curr.vs->base);
 
    /* Disable rasterization if rasterizer_discard flag is set or
     * vs/gs does not output position.
     */
    svga->disable_rasterizer =
       svga->curr.rast->templ.rasterizer_discard ||
-      (svga->curr.gs && !svga->curr.gs->base.info.writes_position) ||
-      (!svga->curr.gs && !svga->curr.vs->base.info.writes_position);
+      !prevShader->info.writes_position;
 
    /* Set FS to NULL when rasterization is to be disabled */
    if (svga->disable_rasterizer) {

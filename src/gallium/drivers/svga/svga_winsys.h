@@ -427,7 +427,9 @@ struct svga_winsys_context
                     uint32 shaderId,
                     SVGA3dShaderType shaderType,
                     const uint32 *bytecode,
-                    uint32 bytecodeLen);
+                    uint32 bytecodeLen,
+                    const SVGA3dDXShaderSignatureHeader *sgnInfo,
+                    uint32 sgnLen);
 
    /**
     * Destroy a DX GB shader.
@@ -457,7 +459,13 @@ struct svga_winsys_context
 
    /** For HUD queries */
    uint64_t num_commands;
+   uint64_t num_command_buffers;
    uint64_t num_draw_commands;
+   uint64_t num_shader_reloc;
+   uint64_t num_surf_reloc;
+
+   /* Whether we are in retry processing */
+   unsigned int in_retry;
 };
 
 

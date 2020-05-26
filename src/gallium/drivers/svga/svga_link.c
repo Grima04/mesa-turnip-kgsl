@@ -87,6 +87,15 @@ svga_link_shaders(const struct tgsi_shader_info *outshader_info,
       }
    }
 
+   /* Find the index for position */
+   linkage->position_index = 0;
+   for (i = 0; i < outshader_info->num_outputs; i++) {
+      if (outshader_info->output_semantic_name[i] == TGSI_SEMANTIC_POSITION) {
+         linkage->position_index = i;
+         break;
+      }
+   }
+
    linkage->num_inputs = inshader_info->num_inputs;
 
    /* Things like the front-face register are handled here */
@@ -100,7 +109,8 @@ svga_link_shaders(const struct tgsi_shader_info *outshader_info,
 
    /* Debug */
    if (SVGA_DEBUG & DEBUG_TGSI) {
-      unsigned reg = 0;
+      uint64_t reg = 0;
+      uint64_t one = 1;
       debug_printf("### linkage info: num_inputs=%d input_map_max=%d\n",
                    linkage->num_inputs, linkage->input_map_max);
 
@@ -116,10 +126,8 @@ svga_link_shaders(const struct tgsi_shader_info *outshader_info,
                       tgsi_interpolate_names[inshader_info->input_interpolate[i]]);
 
          /* make sure no repeating register index */
-         if (reg & 1 << linkage->input_map[i]) {
-            assert(0);
-         }
-         reg |= 1 << linkage->input_map[i];
+         assert((reg & (one << linkage->input_map[i])) == 0);
+         reg |= one << linkage->input_map[i];
       }
    }
 }

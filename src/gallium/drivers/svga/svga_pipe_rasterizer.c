@@ -118,6 +118,9 @@ define_rasterizer_object(struct svga_context *svga,
       rast->templ.line_stipple_factor : 0;
    const uint16 line_pattern = rast->templ.line_stipple_enable ?
       rast->templ.line_stipple_pattern : 0;
+   const uint8 pv_last = !rast->templ.flatshade_first &&
+      svgascreen->haveProvokingVertex;
+
    unsigned try;
 
    rast->id = util_bitmask_add(svga->rast_object_id_bm);
@@ -194,7 +197,18 @@ svga_create_rasterizer_state(struct pipe_context *pipe,
       rast->templ.point_smooth = TRUE;
    }
 
-   if (templ->point_smooth) {
+   if (rast->templ.point_smooth &&
+       rast->templ.point_size_per_vertex == 0 &&
+       rast->templ.point_size <= screen->pointSmoothThreshold) {
+      /* If the point size is less than the threshold, disable smoothing.
+       * Note that this only effects point rendering when we use the
+       * pipe_rasterizer_state::point_size value, not when the point size
+       * is set in the VS.
+       */
+      rast->templ.point_smooth = FALSE;
+   }
+
+   if (rast->templ.point_smooth) {
       /* For smooth points we need to generate fragments for at least
        * a 2x2 region.  Otherwise the quad we draw may be too small and
        * we may generate no fragments at all.
@@ -237,7 +251,7 @@ svga_create_rasterizer_state(struct pipe_context *pipe,
       }
    }
 
-   if (!svga_have_vgpu10(svga) && templ->point_smooth) {
+   if (!svga_have_vgpu10(svga) && rast->templ.point_smooth) {
       rast->need_pipeline |= SVGA_PIPELINE_FLAG_POINTS;
       rast->need_pipeline_points_str = "smooth points";
    }

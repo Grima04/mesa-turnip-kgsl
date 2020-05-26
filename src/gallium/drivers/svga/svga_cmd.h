@@ -697,4 +697,33 @@ SVGA3D_vgpu10_ResolveCopy(struct svga_winsys_context *swc,
                           struct svga_winsys_surface *src,
                           const SVGA3dSurfaceFormat copyFormat);
 
+enum pipe_error
+SVGA3D_sm5_DrawIndexedInstancedIndirect(struct svga_winsys_context *swc,
+                                        struct svga_winsys_surface *argBuffer,
+                                        unsigned argOffset);
+
+enum pipe_error
+SVGA3D_sm5_DrawInstancedIndirect(struct svga_winsys_context *swc,
+                                 struct svga_winsys_surface *argBuffer,
+                                 unsigned argOffset);
+
+enum pipe_error
+SVGA3D_sm5_Dispatch(struct svga_winsys_context *swc,
+                    const uint32 threadGroupCount[3]);
+
+enum pipe_error
+SVGA3D_sm5_DispatchIndirect(struct svga_winsys_context *swc,
+                            struct svga_winsys_surface *argBuffer,
+                            uint32 argOffset);
+
+enum pipe_error
+SVGA3D_sm5_DefineAndBindStreamOutput(struct svga_winsys_context *swc,
+       SVGA3dStreamOutputId soid,
+       uint32 numOutputStreamEntries,
+       uint32 numOutputStreamStrides,
+       uint32 streamOutputStrideInBytes[SVGA3D_DX_MAX_SOTARGETS],
+       struct svga_winsys_buffer *declBuf,
+       uint32 rasterizedStream,
+       uint32 sizeInBytes);
+
 #endif /* __SVGA3D_H__ */

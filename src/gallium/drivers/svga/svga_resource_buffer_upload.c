@@ -175,6 +175,11 @@ svga_buffer_create_host_surface(struct svga_screen *ss,
       if (bind_flags & PIPE_BIND_SAMPLER_VIEW)
          sbuf->key.flags |= SVGA3D_SURFACE_BIND_SHADER_RESOURCE;
 
+      if (bind_flags & PIPE_BIND_COMMAND_ARGS_BUFFER) {
+         assert(ss->sws->have_sm5);
+         sbuf->key.flags |= SVGA3D_SURFACE_DRAWINDIRECT_ARGS;
+      }
+
       if (!bind_flags && sbuf->b.b.usage == PIPE_USAGE_STAGING) {
          /* This surface is to be used with the
           * SVGA3D_CMD_DX_TRANSFER_FROM_BUFFER command, and no other

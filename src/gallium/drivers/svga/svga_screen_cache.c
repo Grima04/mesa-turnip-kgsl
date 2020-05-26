@@ -311,6 +311,9 @@ svga_screen_cache_add(struct svga_screen *svgascreen,
 }
 
 
+/* Maximum number of invalidate surface commands in a command buffer */
+# define SVGA_MAX_SURFACE_TO_INVALIDATE 1000
+
 /**
  * Called during the screen flush to move all buffers not in a validate list
  * into the unused list.
@@ -354,6 +357,7 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
       next = curr->next;
    }
 
+   unsigned nsurf = 0;
    curr = cache->validated.next;
    next = curr->next;
    while (curr != &cache->validated) {
@@ -381,12 +385,14 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
              * this function itself is called inside svga_context_flush().
              */
             svga->swc->flush(svga->swc, NULL);
+            nsurf = 0;
             ret = SVGA3D_InvalidateGBSurface(svga->swc, entry->handle);
             assert(ret == PIPE_OK);
          }
 
          /* add the entry to the invalidated list */
          list_add(&entry->head, &cache->invalidated);
+         nsurf++;
       }
 
       curr = next;
@@ -394,6 +400,16 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
    }
 
    mtx_unlock(&cache->mutex);
+
+   /**
+    * In some rare cases (when running ARK survival), we hit the max number
+    * of surface relocations with invalidated surfaces during context flush.
+    * So if the number of invalidated surface exceeds a certain limit (1000),
+    * we'll do another winsys flush.
+    */
+   if (nsurf > SVGA_MAX_SURFACE_TO_INVALIDATE) {
+      svga->swc->flush(svga->swc, NULL);
+   }
 }
 
 
