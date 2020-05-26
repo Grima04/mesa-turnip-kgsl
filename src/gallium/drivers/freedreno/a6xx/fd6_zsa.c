@@ -34,6 +34,34 @@
 #include "fd6_context.h"
 #include "fd6_format.h"
 
+/* update lza state based on stencil/alpha-test func: */
+static void
+update_lrz_sa(struct fd6_zsa_stateobj *so, enum pipe_compare_func func)
+{
+	switch (func) {
+	case PIPE_FUNC_ALWAYS:
+		/* nothing to do for LRZ: */
+		break;
+	case PIPE_FUNC_NEVER:
+		/* fragment never passes, disable lrz_write for this draw: */
+		so->lrz_write = false;
+		break;
+	default:
+		/* whether the fragment passes or not depends on result
+		 * of stencil test, which we cannot know when doing binning
+		 * pass:
+		 *
+		 * TODO we maybe don't have to invalidate_lrz, depending on
+		 * the depth/stencil func?  Ie. if there is an opaque surface
+		 * behind what is currently being drawn, we could just disable
+		 * lrz_write for a conservative but correct result?
+		 */
+		so->invalidate_lrz = true;
+		so->lrz_write = false;
+		break;
+	}
+}
+
 void *
 fd6_zsa_state_create(struct pipe_context *pctx,
 		const struct pipe_depth_stencil_alpha_state *cso)
@@ -99,8 +127,7 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 		 * stencil test we don't really know what the updates to the
 		 * depth buffer will be.
 		 */
-		so->lrz_write = false;
-		so->invalidate_lrz = true;
+		update_lrz_sa(so, s->func);
 
 		so->rb_stencil_control |=
 			A6XX_RB_STENCIL_CONTROL_STENCIL_READ |
@@ -116,6 +143,8 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 		if (cso->stencil[1].enabled) {
 			const struct pipe_stencil_state *bs = &cso->stencil[1];
 
+			update_lrz_sa(so, bs->func);
+
 			so->rb_stencil_control |=
 				A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
 				A6XX_RB_STENCIL_CONTROL_FUNC_BF(bs->func) | /* maps 1:1 */
@@ -129,6 +158,12 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 	}
 
 	if (cso->alpha.enabled) {
+		/* stencil test happens before depth test, so without performing
+		 * stencil test we don't really know what the updates to the
+		 * depth buffer will be.
+		 */
+		update_lrz_sa(so, cso->alpha.func);
+
 		uint32_t ref = cso->alpha.ref_value * 255.0;
 		so->rb_alpha_control =
 			A6XX_RB_ALPHA_CONTROL_ALPHA_TEST |
