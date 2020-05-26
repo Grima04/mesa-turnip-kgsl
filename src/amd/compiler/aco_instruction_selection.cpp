@@ -402,7 +402,7 @@ void byte_align_scalar(isel_context *ctx, Temp vec, Operand offset, Temp dst)
       bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), vec);
       hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(s1), hi, Operand(0u));
       if (select != Temp())
-         hi = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), hi, Operand(0u), select);
+         hi = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), hi, Operand(0u), bld.scc(select));
       lo = bld.sop2(aco_opcode::s_lshr_b64, bld.def(s2), bld.def(s1, scc), lo, shift);
       Temp mid = bld.tmp(s1);
       lo = bld.pseudo(aco_opcode::p_split_vector, bld.def(s1), Definition(mid), lo);
