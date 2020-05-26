@@ -7765,7 +7765,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
             bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v3b), tmp);
          } else if (instr->dest.ssa.bit_size == 16) {
             Temp tmp = bld.tmp(v1);
-            emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), tmp);
+            if (ctx->program->chip_class >= GFX8)
+               emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), tmp);
+            else
+               emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, (1 << 15) | dpp_ctrl), tmp);
             bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
          } else if (instr->dest.ssa.bit_size == 32) {
             if (ctx->program->chip_class >= GFX8)
@@ -7837,7 +7840,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v3b), tmp);
       } else if (instr->dest.ssa.bit_size == 16) {
          Temp tmp = bld.tmp(v1);
-         emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), tmp);
+         if (ctx->program->chip_class >= GFX8)
+            emit_wqm(ctx, bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl), tmp);
+         else
+            emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, dpp_ctrl), tmp);
          bld.pseudo(aco_opcode::p_split_vector, Definition(dst), bld.def(v2b), tmp);
       } else if (instr->dest.ssa.bit_size == 32) {
          Temp tmp;
