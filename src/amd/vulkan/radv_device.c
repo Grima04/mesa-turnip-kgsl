@@ -1525,14 +1525,9 @@ radv_get_physical_device_properties_1_1(struct radv_physical_device *pdevice,
 					 VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
 					 VK_SUBGROUP_FEATURE_BALLOT_BIT |
 					 VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
-					 VK_SUBGROUP_FEATURE_QUAD_BIT;
-
-	if (((pdevice->rad_info.chip_class == GFX6 ||
-	      pdevice->rad_info.chip_class == GFX7) && !pdevice->use_aco) ||
-	    pdevice->rad_info.chip_class >= GFX8) {
-		p->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
-						  VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
-	}
+					 VK_SUBGROUP_FEATURE_QUAD_BIT |
+					 VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
+					 VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
 	p->subgroupQuadOperationsInAllStages = true;
 
 	p->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
