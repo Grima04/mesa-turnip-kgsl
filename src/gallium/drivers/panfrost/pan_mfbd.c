@@ -31,9 +31,6 @@
 static struct mali_rt_format
 panfrost_mfbd_format(struct pipe_surface *surf)
 {
-        struct panfrost_device *dev = pan_device(surf->context->screen);
-        bool is_bifrost = dev->quirks & IS_BIFROST;
-
         /* Explode details on the format */
 
         const struct util_format_description *desc =
@@ -51,7 +48,6 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 .unk2 = 0x1,
                 .nr_channels = MALI_POSITIVE(desc->nr_channels),
                 .unk3 = 0x4,
-                .unk4 = is_bifrost,
                 .flags = 0x8,
                 .swizzle = panfrost_translate_swizzle_4(swizzle),
                 .no_preload = true
@@ -205,6 +201,8 @@ panfrost_mfbd_set_cbuf(
         struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
+        struct panfrost_device *dev = pan_device(surf->context->screen);
+        bool is_bifrost = dev->quirks & IS_BIFROST;
 
         unsigned level = surf->u.tex.level;
         unsigned first_layer = surf->u.tex.first_layer;
@@ -218,11 +216,21 @@ panfrost_mfbd_set_cbuf(
         /* Now, we set the layout specific pieces */
 
         if (rsrc->layout == MALI_TEXTURE_LINEAR) {
-                rt->format.block = MALI_BLOCK_LINEAR;
+                if (is_bifrost) {
+                        rt->format.unk4 = 0x1;
+                } else {
+                        rt->format.block = MALI_BLOCK_LINEAR;
+                }
+
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride / 16;
         } else if (rsrc->layout == MALI_TEXTURE_TILED) {
-                rt->format.block = MALI_BLOCK_TILED;
+                if (is_bifrost) {
+                        rt->format.unk3 |= 0x8;
+                } else {
+                        rt->format.block = MALI_BLOCK_TILED;
+                }
+
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride;
         } else if (rsrc->layout == MALI_TEXTURE_AFBC) {
