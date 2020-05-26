@@ -76,6 +76,11 @@ extern struct svga_tracked_state svga_hw_gs_constants;
 extern struct svga_tracked_state svga_hw_vs_constants;
 extern struct svga_tracked_state svga_hw_tes_constants;
 extern struct svga_tracked_state svga_hw_tcs_constants;
+extern struct svga_tracked_state svga_hw_fs_constbufs;
+extern struct svga_tracked_state svga_hw_vs_constbufs;
+extern struct svga_tracked_state svga_hw_gs_constbufs;
+extern struct svga_tracked_state svga_hw_tcs_constbufs;
+extern struct svga_tracked_state svga_hw_tes_constbufs;
 
 /* SWTNL_DRAW
  */

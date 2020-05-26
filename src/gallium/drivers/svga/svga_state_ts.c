@@ -89,6 +89,14 @@ make_tcs_key(struct svga_context *svga, struct svga_compile_key *key)
    key->tcs.vertices_order_cw = tes->vertices_order_cw;
    key->tcs.point_mode = tes->point_mode;
 
+   /* The number of control point output from tcs is determined by the
+    * number of control point input expected in tes. If tes does not expect
+    * any control point input, then vertices_per_patch in the tes key will
+    * be 0, otherwise it will contain the number of vertices out as specified
+    * in the tcs property.
+    */
+   key->tcs.vertices_out = tes->base.key.tes.vertices_per_patch;
+
    if (svga->tcs.passthrough)
       key->tcs.passthrough = 1;
 
@@ -208,6 +216,7 @@ static void
 make_tes_key(struct svga_context *svga, struct svga_compile_key *key)
 {
    struct svga_tes_shader *tes = svga->curr.tes;
+   boolean has_control_point_inputs = FALSE;
 
    memset(key, 0, sizeof *key);
 
@@ -217,8 +226,23 @@ make_tes_key(struct svga_context *svga, struct svga_compile_key *key)
    svga_init_shader_key_common(svga, PIPE_SHADER_TESS_EVAL, &tes->base, key);
 
    assert(svga->curr.tcs);
-   key->tes.vertices_per_patch =
-      svga->curr.tcs->base.info.properties[TGSI_PROPERTY_TCS_VERTICES_OUT];
+
+   /*
+    * Check if this tes expects any output control points from tcs.
+    */
+   for (unsigned i = 0; i < tes->base.info.num_inputs; i++) {
+      switch (tes->base.info.input_semantic_name[i]) {
+      case TGSI_SEMANTIC_PATCH:
+      case TGSI_SEMANTIC_TESSOUTER:
+      case TGSI_SEMANTIC_TESSINNER:
+         break;
+      default:
+         has_control_point_inputs = TRUE;
+      }
+   }
+
+   key->tes.vertices_per_patch = has_control_point_inputs ?
+      svga->curr.tcs->base.info.properties[TGSI_PROPERTY_TCS_VERTICES_OUT] : 0;
 
    key->tes.need_prescale = svga->state.hw_clear.prescale[0].enabled &&
                             (svga->curr.gs == NULL);
@@ -239,7 +263,7 @@ make_tes_key(struct svga_context *svga, struct svga_compile_key *key)
    key->tes.need_tessinner = 0;
    key->tes.need_tessouter = 0;
 
-   for (int i = 0; i < svga->curr.tcs->base.info.num_outputs; i++) {
+   for (unsigned i = 0; i < svga->curr.tcs->base.info.num_outputs; i++) {
       switch (svga->curr.tcs->base.info.output_semantic_name[i]) {
       case TGSI_SEMANTIC_TESSOUTER:
          key->tes.need_tessouter = 1;

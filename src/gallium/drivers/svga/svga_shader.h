@@ -50,6 +50,8 @@ struct svga_compile_key
       unsigned need_prescale:1;
       unsigned undo_viewport:1;
       unsigned allow_psiz:1;
+      unsigned need_vertex_id_bias:1;
+
       /** The following are all 32-bit bitmasks (per VS input) */
       unsigned adjust_attrib_range;
       unsigned attrib_is_pure_int;
@@ -93,6 +95,7 @@ struct svga_compile_key
    /* tessellation control shader */
    struct {
       unsigned vertices_per_patch:8;
+      unsigned vertices_out:8;
       enum pipe_prim_type prim_mode:8;
       enum pipe_tess_spacing spacing:3;
       unsigned vertices_order_cw:1;

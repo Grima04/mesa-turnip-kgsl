@@ -168,7 +168,6 @@ svga_delete_vs_state(struct pipe_context *pipe, void *shader)
    struct svga_vertex_shader *vs = (struct svga_vertex_shader *)shader;
    struct svga_vertex_shader *next_vs;
    struct svga_shader_variant *variant, *tmp;
-   enum pipe_error ret;
 
    svga_hwtnl_flush_retry(svga);
 
@@ -194,12 +193,7 @@ svga_delete_vs_state(struct pipe_context *pipe, void *shader)
 
          /* Check if deleting currently bound shader */
          if (variant == svga->state.hw_draw.vs) {
-            ret = svga_set_shader(svga, SVGA3D_SHADERTYPE_VS, NULL);
-            if (ret != PIPE_OK) {
-               svga_context_flush(svga, NULL);
-               ret = svga_set_shader(svga, SVGA3D_SHADERTYPE_VS, NULL);
-               assert(ret == PIPE_OK);
-            }
+            SVGA_RETRY(svga, svga_set_shader(svga, SVGA3D_SHADERTYPE_VS, NULL));
             svga->state.hw_draw.vs = NULL;
          }
 

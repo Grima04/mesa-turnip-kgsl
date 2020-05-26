@@ -175,6 +175,10 @@ make_vs_key(struct svga_context *svga, struct svga_compile_key *key)
       return;
    }
 
+   if (svga_have_vgpu10(svga)) {
+      key->vs.need_vertex_id_bias = 1;
+   }
+
    /* SVGA_NEW_PRESCALE */
    key->vs.need_prescale = svga->state.hw_clear.prescale[0].enabled &&
                            (svga->curr.tes == NULL) &&

@@ -87,7 +87,6 @@ svga_delete_fs_state(struct pipe_context *pipe, void *shader)
    struct svga_fragment_shader *fs = (struct svga_fragment_shader *) shader;
    struct svga_fragment_shader *next_fs;
    struct svga_shader_variant *variant, *tmp;
-   enum pipe_error ret;
 
    svga_hwtnl_flush_retry(svga);
 
@@ -103,12 +102,7 @@ svga_delete_fs_state(struct pipe_context *pipe, void *shader)
 
          /* Check if deleting currently bound shader */
          if (variant == svga->state.hw_draw.fs) {
-            ret = svga_set_shader(svga, SVGA3D_SHADERTYPE_PS, NULL);
-            if (ret != PIPE_OK) {
-               svga_context_flush(svga, NULL);
-               ret = svga_set_shader(svga, SVGA3D_SHADERTYPE_PS, NULL);
-               assert(ret == PIPE_OK);
-            }
+            SVGA_RETRY(svga, svga_set_shader(svga, SVGA3D_SHADERTYPE_PS, NULL));
             svga->state.hw_draw.fs = NULL;
          }
 

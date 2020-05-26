@@ -419,12 +419,10 @@ validate_constant_buffers(struct svga_context *svga)
    for (shader = PIPE_SHADER_VERTEX; shader <= PIPE_SHADER_COMPUTE; shader++) {
       enum pipe_error ret;
       struct svga_buffer *buffer;
-      struct svga_winsys_surface *handle;
-      unsigned enabled_constbufs;
 
       /* Rebind the default constant buffer if needed */
       if (svga->rebind.flags.constbufs) {
-         buffer = svga_buffer(svga->state.hw_draw.constbuf[shader]);
+         buffer = svga_buffer(svga->state.hw_draw.constbuf[shader][0]);
          if (buffer) {
             ret = svga->swc->resource_rebind(svga->swc,
                                              buffer->handle,
@@ -435,6 +433,9 @@ validate_constant_buffers(struct svga_context *svga)
          }
       }
 
+      struct svga_winsys_surface *handle;
+      unsigned enabled_constbufs;
+
       /*
        * Reference other bound constant buffers to ensure pending updates are
        * noticed by the device.
@@ -443,18 +444,23 @@ validate_constant_buffers(struct svga_context *svga)
       while (enabled_constbufs) {
          unsigned i = u_bit_scan(&enabled_constbufs);
          buffer = svga_buffer(svga->curr.constbufs[shader][i].buffer);
-         if (buffer) {
+
+         /* If the constant buffer has hw storage, get the buffer winsys handle.
+          * Rebind the resource if needed.
+          */
+         if (buffer && !buffer->use_swbuf)
             handle = svga_buffer_handle(svga, &buffer->b.b,
                                         PIPE_BIND_CONSTANT_BUFFER);
+         else
+            handle = svga->state.hw_draw.constbufoffsets[shader][i].handle;
 
-            if (svga->rebind.flags.constbufs) {
-               ret = svga->swc->resource_rebind(svga->swc,
-                                                handle,
-                                                NULL,
-                                                SVGA_RELOC_READ);
-               if (ret != PIPE_OK)
-                  return ret;
-            }
+         if (svga->rebind.flags.constbufs && handle) {
+            ret = svga->swc->resource_rebind(svga->swc,
+                                             handle,
+                                             NULL,
+                                             SVGA_RELOC_READ);
+            if (ret != PIPE_OK)
+               return ret;
          }
       }
    }
@@ -1188,4 +1194,14 @@ svga_hwtnl_prim(struct svga_hwtnl *hwtnl,
 done:
    SVGA_STATS_TIME_POP(svga_screen(hwtnl->svga->pipe.screen)->sws);
    return ret;
+}
+
+
+/**
+ * Return TRUE if there are pending primitives.
+ */
+boolean
+svga_hwtnl_has_pending_prim(struct svga_hwtnl *hwtnl)
+{
+   return hwtnl->cmd.prim_count > 0;
 }

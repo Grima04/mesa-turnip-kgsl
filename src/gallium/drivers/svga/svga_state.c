@@ -97,8 +97,11 @@ static const struct svga_tracked_state *hw_draw_state_vgpu10[] =
    &svga_hw_clip_planes,
    &svga_hw_vdecl,
    &svga_hw_fs_constants,
+   &svga_hw_fs_constbufs,
    &svga_hw_gs_constants,
+   &svga_hw_gs_constbufs,
    &svga_hw_vs_constants,
+   &svga_hw_vs_constbufs,
    NULL
 };
 
@@ -122,10 +125,15 @@ static const struct svga_tracked_state *hw_draw_state_sm5[] =
    &svga_hw_clip_planes,
    &svga_hw_vdecl,
    &svga_hw_fs_constants,
+   &svga_hw_fs_constbufs,
    &svga_hw_gs_constants,
+   &svga_hw_gs_constbufs,
    &svga_hw_tes_constants,
+   &svga_hw_tes_constbufs,
    &svga_hw_tcs_constants,
+   &svga_hw_tcs_constbufs,
    &svga_hw_vs_constants,
+   &svga_hw_vs_constbufs,
    NULL
 };
 

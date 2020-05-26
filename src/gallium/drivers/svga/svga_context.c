@@ -75,7 +75,9 @@ svga_destroy(struct pipe_context *pipe)
 
    /* free HW constant buffers */
    for (shader = 0; shader < ARRAY_SIZE(svga->state.hw_draw.constbuf); shader++) {
-      pipe_resource_reference(&svga->state.hw_draw.constbuf[shader], NULL);
+      for (i = 0; i < ARRAY_SIZE(svga->state.hw_draw.constbuf[0]); i++) {
+         pipe_resource_reference(&svga->state.hw_draw.constbuf[shader][i], NULL);
+      }
    }
 
    pipe->delete_blend_state(pipe, svga->noop_blend);

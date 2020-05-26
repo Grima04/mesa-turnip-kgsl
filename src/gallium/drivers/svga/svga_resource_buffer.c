@@ -62,14 +62,13 @@ svga_buffer_needs_hw_storage(const struct svga_screen *ss,
        * tagged with PIPE_BIND_CUSTOM
        */
       bind_mask |= PIPE_BIND_CUSTOM;
-      /* Uniform buffer objects.
-       * Make sure we don't create hardware storage for gallium frontend
-       * const0 buffers, because we frequently map them for reading.
-       * They are distinguished by having PIPE_USAGE_STREAM, but not
-       * PIPE_BIND_CUSTOM.
+      /**
+       * Uniform buffer objects.
+       * Don't create hardware storage for state-tracker constant buffers,
+       * because we frequently map them for reading and writing, and
+       * the length of those buffers are always small, so it is better
+       * to just use system memory.
        */
-      if (template->usage != PIPE_USAGE_STREAM)
-         bind_mask |= PIPE_BIND_CONSTANT_BUFFER;
    }
 
    if (template->flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT)
@@ -132,7 +131,6 @@ svga_buffer_transfer_map(struct pipe_context *pipe,
 
    if ((usage & PIPE_TRANSFER_READ) && sbuf->dirty &&
        !sbuf->key.coherent && !svga->swc->force_coherent) {
-      enum pipe_error ret;
 
       /* Host-side buffers can only be dirtied with vgpu10 features
        * (streamout and buffer copy).
@@ -150,13 +148,8 @@ svga_buffer_transfer_map(struct pipe_context *pipe,
 
       assert(sbuf->handle);
 
-      ret = SVGA3D_vgpu10_ReadbackSubResource(svga->swc, sbuf->handle, 0);
-      if (ret != PIPE_OK) {
-         svga_context_flush(svga, NULL);
-         ret = SVGA3D_vgpu10_ReadbackSubResource(svga->swc, sbuf->handle, 0);
-         assert(ret == PIPE_OK);
-      }
-
+      SVGA_RETRY(svga, SVGA3D_vgpu10_ReadbackSubResource(svga->swc,
+                                                         sbuf->handle, 0));
       svga->hud.num_readbacks++;
 
       svga_context_finish(svga);
@@ -278,15 +271,18 @@ svga_buffer_transfer_map(struct pipe_context *pipe,
    else if (svga_buffer_has_hw_storage(sbuf)) {
       boolean retry;
 
-      map = svga_buffer_hw_storage_map(svga, sbuf, transfer->usage, &retry);
+      map = SVGA_TRY_MAP(svga_buffer_hw_storage_map
+                         (svga, sbuf, transfer->usage, &retry), retry);
       if (map == NULL && retry) {
          /*
           * At this point, svga_buffer_get_transfer() has already
           * hit the DISCARD_WHOLE_RESOURCE path and flushed HWTNL
           * for this buffer.
           */
+         svga_retry_enter(svga);
          svga_context_flush(svga, NULL);
          map = svga_buffer_hw_storage_map(svga, sbuf, transfer->usage, &retry);
+         svga_retry_exit(svga);
       }
    }
    else {
@@ -349,6 +345,7 @@ svga_buffer_transfer_unmap(struct pipe_context *pipe,
    }
 
    if (svga_buffer_has_hw_storage(sbuf)) {
+
       /* Note: we may wind up flushing here and unmapping other buffers
        * which leads to recursively locking ss->swc_mutex.
        */
@@ -369,6 +366,19 @@ svga_buffer_transfer_unmap(struct pipe_context *pipe,
 
          if (!(svga->swc->force_coherent || sbuf->key.coherent) || sbuf->swbuf)
             svga_buffer_add_range(sbuf, 0, sbuf->b.b.width0);
+      }
+
+      if (sbuf->swbuf &&
+          (!sbuf->bind_flags || (sbuf->bind_flags & PIPE_BIND_CONSTANT_BUFFER))) {
+         /*
+          * Since the constant buffer is in system buffer, we need
+          * to set the constant buffer dirty bits, so that the context
+          * can update the changes in the device.
+          * According to the GL spec, buffer bound to other contexts will
+          * have to be explicitly rebound by the user to have the changes take
+          * into effect.
+          */
+         svga->dirty |= SVGA_NEW_CONST_BUFFER;
       }
    }
 
@@ -491,6 +501,13 @@ svga_buffer_create(struct pipe_screen *screen,
       sbuf->swbuf = align_malloc(sbuf->b.b.width0, 64);
       if (!sbuf->swbuf)
          goto error2;
+
+      /* Since constant buffer is usually small, it is much cheaper to
+       * use system memory for the data just as it is being done for
+       * the default constant buffer.
+       */
+      if ((bind_flags & PIPE_BIND_CONSTANT_BUFFER) || !bind_flags)
+         sbuf->use_swbuf = TRUE;
    }
 
    debug_reference(&sbuf->b.b.reference,

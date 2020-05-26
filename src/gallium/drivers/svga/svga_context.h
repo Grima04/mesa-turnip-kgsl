@@ -258,6 +258,10 @@ struct svga_velems_state {
    SVGA3dElementLayoutId id; /**< VGPU10 */
 };
 
+struct svga_constant_buffer {
+   struct svga_winsys_surface *handle;
+   unsigned size;
+};
 
 /* Use to calculate differences between state emitted to hardware and
  * current driver-calculated state.
@@ -307,6 +311,8 @@ struct svga_state
    unsigned num_sampler_views[PIPE_SHADER_TYPES];
    unsigned num_vertex_buffers;
    enum pipe_prim_type reduced_prim;
+
+   unsigned vertex_id_bias;
 
    struct {
       unsigned flag_1d;
@@ -391,7 +397,8 @@ struct svga_hw_draw_state
    struct svga_shader_variant *cs;
 
    /** Currently bound constant buffer, per shader stage */
-   struct pipe_resource *constbuf[PIPE_SHADER_TYPES];
+   struct pipe_resource *constbuf[PIPE_SHADER_TYPES][SVGA_MAX_CONST_BUFS];
+   struct svga_constant_buffer constbufoffsets[PIPE_SHADER_TYPES][SVGA_MAX_CONST_BUFS];
 
    /** Bitmask of enabled constant buffers */
    unsigned enabled_constbufs[PIPE_SHADER_TYPES];
@@ -699,7 +706,17 @@ struct svga_context
 #define SVGA_NEW_TCS_CONST_BUFFER    ((uint64_t) 0x1000000000)
 #define SVGA_NEW_TES_CONST_BUFFER    ((uint64_t) 0x2000000000)
 #define SVGA_NEW_TCS_PARAM           ((uint64_t) 0x4000000000)
+#define SVGA_NEW_FS_CONSTS           ((uint64_t) 0x8000000000)
+#define SVGA_NEW_VS_CONSTS           ((uint64_t) 0x10000000000)
+#define SVGA_NEW_GS_CONSTS           ((uint64_t) 0x20000000000)
+#define SVGA_NEW_TCS_CONSTS          ((uint64_t) 0x40000000000)
+#define SVGA_NEW_TES_CONSTS          ((uint64_t) 0x800000000000)
 #define SVGA_NEW_ALL                 ((uint64_t) 0xFFFFFFFFFFFFFFFF)
+
+#define SVGA_NEW_CONST_BUFFER \
+   (SVGA_NEW_FS_CONST_BUFFER | SVGA_NEW_VS_CONST_BUFFER | \
+    SVGA_NEW_GS_CONST_BUFFER | \
+    SVGA_NEW_TCS_CONST_BUFFER | SVGA_NEW_TES_CONST_BUFFER)
 
 
 void svga_init_state_functions( struct svga_context *svga );
@@ -739,6 +756,7 @@ void svga_context_finish(struct svga_context *svga);
 void svga_hwtnl_flush_retry( struct svga_context *svga );
 void svga_hwtnl_flush_buffer( struct svga_context *svga,
                               struct pipe_resource *buffer );
+boolean svga_hwtnl_has_pending_prim(struct svga_hwtnl *);
 
 void svga_surfaces_flush(struct svga_context *svga);
 

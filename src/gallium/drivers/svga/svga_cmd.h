@@ -657,6 +657,12 @@ SVGA3D_vgpu10_SetSingleConstantBuffer(struct svga_winsys_context *swc,
                                       uint32 sizeInBytes);
 
 enum pipe_error
+SVGA3D_vgpu10_SetConstantBufferOffset(struct svga_winsys_context *swc,
+                                      unsigned command,
+                                      unsigned slot,
+                                      uint32 offsetInBytes);
+
+enum pipe_error
 SVGA3D_vgpu10_UpdateSubResource(struct svga_winsys_context *swc,
                                 struct svga_winsys_surface *surface,
                                 const SVGA3dBox *box,

@@ -1265,6 +1265,31 @@ SVGA3D_vgpu10_SetSingleConstantBuffer(struct svga_winsys_context *swc,
 
 
 enum pipe_error
+SVGA3D_vgpu10_SetConstantBufferOffset(struct svga_winsys_context *swc,
+                                      unsigned command,
+                                      unsigned slot,
+                                      uint32 offsetInBytes)
+{
+   SVGA3dCmdDXSetConstantBufferOffset *cmd;
+
+   assert(offsetInBytes % 256 == 0);
+
+   cmd = SVGA3D_FIFOReserve(swc, command,
+                            sizeof(SVGA3dCmdDXSetConstantBufferOffset),
+                            0);  /* one relocation */
+   if (!cmd)
+      return PIPE_ERROR_OUT_OF_MEMORY;
+
+   cmd->slot = slot;
+   cmd->offsetInBytes = offsetInBytes;
+
+   swc->commit(swc);
+
+   return PIPE_OK;
+}
+
+
+enum pipe_error
 SVGA3D_vgpu10_ReadbackSubResource(struct svga_winsys_context *swc,
                                   struct svga_winsys_surface *surface,
                                   unsigned subResource)

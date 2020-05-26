@@ -132,6 +132,8 @@ enum svga_stats_time {
    SVGA_STATS_TIME_CREATEGS,
    SVGA_STATS_TIME_CREATESURFACE,
    SVGA_STATS_TIME_CREATESURFACEVIEW,
+   SVGA_STATS_TIME_CREATETCS,
+   SVGA_STATS_TIME_CREATETES,
    SVGA_STATS_TIME_CREATETEXTURE,
    SVGA_STATS_TIME_CREATEVS,
    SVGA_STATS_TIME_DEFINESHADER,
@@ -141,6 +143,8 @@ enum svga_stats_time {
    SVGA_STATS_TIME_DRAWELEMENTS,
    SVGA_STATS_TIME_EMITFS,
    SVGA_STATS_TIME_EMITGS,
+   SVGA_STATS_TIME_EMITTCS,
+   SVGA_STATS_TIME_EMITTES,
    SVGA_STATS_TIME_EMITVS,
    SVGA_STATS_TIME_EMULATESURFACEVIEW,
    SVGA_STATS_TIME_FENCEFINISH,
@@ -201,6 +205,8 @@ enum svga_stats_time {
    SVGA_STATS_PREFIX "CreateGS",                    \
    SVGA_STATS_PREFIX "CreateSurface",               \
    SVGA_STATS_PREFIX "CreateSurfaceView",           \
+   SVGA_STATS_PREFIX "CreateTCS",                   \
+   SVGA_STATS_PREFIX "CreateTES",                   \
    SVGA_STATS_PREFIX "CreateTexture",               \
    SVGA_STATS_PREFIX "CreateVS",                    \
    SVGA_STATS_PREFIX "DefineShader",                \
@@ -210,6 +216,8 @@ enum svga_stats_time {
    SVGA_STATS_PREFIX "DrawElements",                \
    SVGA_STATS_PREFIX "EmitFS",                      \
    SVGA_STATS_PREFIX "EmitGS",                      \
+   SVGA_STATS_PREFIX "EmitTCS",                     \
+   SVGA_STATS_PREFIX "EmitTES",                     \
    SVGA_STATS_PREFIX "EmitVS",                      \
    SVGA_STATS_PREFIX "EmulateSurfaceView",          \
    SVGA_STATS_PREFIX "FenceFinish",                 \
@@ -594,6 +602,11 @@ struct svga_winsys_screen
                          uint32 numMipLevels,
                          uint32 numSamples);
 
+   void
+   (*surface_init)(struct svga_winsys_screen *sws,
+                   struct svga_winsys_surface *surface,
+                   unsigned surf_size, SVGA3dSurfaceAllFlags flags);
+
    /**
     * Buffer management. Buffer attributes are mostly fixed over its lifetime.
     *
@@ -786,6 +799,7 @@ struct svga_winsys_screen
    boolean have_transfer_from_buffer_cmd;
    boolean have_fence_fd;
    boolean have_intra_surface_copy;
+   boolean have_constant_buffer_offset_cmd;
 };
 
 

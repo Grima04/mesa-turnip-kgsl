@@ -244,6 +244,15 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info)
       svga->dirty |= SVGA_NEW_REDUCED_PRIMITIVE;
    }
 
+   /* We need to adjust the vertexID in the vertex shader since SV_VertexID
+    * always start from 0 for DrawArrays and does not include baseVertex for
+    * DrawIndexed.
+    */
+   if (svga->curr.vertex_id_bias != (info->start + info->index_bias)) {
+      svga->curr.vertex_id_bias = info->start + info->index_bias;
+      svga->dirty |= SVGA_NEW_VS_CONSTS;
+   }
+
    if (svga->curr.vertices_per_patch != info->vertices_per_patch) {
       svga->curr.vertices_per_patch = info->vertices_per_patch;
 

@@ -723,7 +723,7 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
       else if (shader == PIPE_SHADER_GEOMETRY)
          return VGPU10_MAX_GS_INPUTS;
       else if (shader == PIPE_SHADER_TESS_CTRL)
-         return VGPU11_MAX_HS_INPUTS;
+         return VGPU11_MAX_HS_INPUT_CONTROL_POINTS;
       else if (shader == PIPE_SHADER_TESS_EVAL)
          return VGPU11_MAX_DS_INPUT_CONTROL_POINTS;
       else

@@ -216,9 +216,9 @@ svga_vbuf_submit_state(struct svga_vbuf_render *svga_render)
 {
    struct svga_context *svga = svga_render->svga;
    SVGA3dVertexDecl vdecl[PIPE_MAX_ATTRIBS];
-   enum pipe_error ret;
    unsigned i;
    static const unsigned zero[PIPE_MAX_ATTRIBS] = {0};
+   boolean retried;
 
    /* if the vdecl or vbuf hasn't changed do nothing */
    if (!svga->swtnl.new_vdecl)
@@ -230,13 +230,10 @@ svga_vbuf_submit_state(struct svga_vbuf_render *svga_render)
    memcpy(vdecl, svga_render->vdecl, sizeof(vdecl));
 
    /* flush the hw state */
-   ret = svga_hwtnl_flush(svga->hwtnl);
-   if (ret != PIPE_OK) {
-      svga_context_flush(svga, NULL);
-      ret = svga_hwtnl_flush(svga->hwtnl);
+   SVGA_RETRY_CHECK(svga, svga_hwtnl_flush(svga->hwtnl), retried);
+   if (retried) {
       /* if we hit this path we might become synced with hw */
       svga->swtnl.new_vbuf = TRUE;
-      assert(ret == PIPE_OK);
    }
 
    for (i = 0; i < svga_render->vdecl_count; i++) {

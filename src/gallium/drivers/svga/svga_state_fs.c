@@ -210,16 +210,34 @@ make_fs_key(const struct svga_context *svga,
    if (!svga->state.sw.need_swtnl) {
       /* SVGA_NEW_RAST, SVGA_NEW_REDUCED_PRIMITIVE
        */
+      enum pipe_prim_type prim_mode;
+      struct svga_shader *shader;
+
+      /* Find the last shader in the vertex pipeline and the output primitive mode
+       * from that shader.
+       */
+      if (svga->curr.tes) {
+         shader = &svga->curr.tes->base;
+         prim_mode = shader->info.properties[TGSI_PROPERTY_TES_PRIM_MODE];
+      } else if (svga->curr.gs) {
+         shader = &svga->curr.gs->base;
+         prim_mode = shader->info.properties[TGSI_PROPERTY_GS_OUTPUT_PRIM];
+      } else {
+         shader = &svga->curr.vs->base;
+         prim_mode = svga->curr.reduced_prim;
+      }
+
       key->fs.light_twoside = svga->curr.rast->templ.light_twoside;
       key->fs.front_ccw = svga->curr.rast->templ.front_ccw;
       key->fs.pstipple = (svga->curr.rast->templ.poly_stipple_enable &&
-                          svga->curr.reduced_prim == PIPE_PRIM_TRIANGLES);
+                          prim_mode == PIPE_PRIM_TRIANGLES);
+
       key->fs.aa_point = (svga->curr.rast->templ.point_smooth &&
-                          svga->curr.reduced_prim == PIPE_PRIM_POINTS &&
+                          prim_mode == PIPE_PRIM_POINTS &&
                           (svga->curr.rast->pointsize > 1.0 ||
-                           svga->curr.vs->base.info.writes_psize));
-      if (key->fs.aa_point) {
-         assert(svga->curr.gs != NULL);
+                           shader->info.writes_psize));
+
+      if (key->fs.aa_point && svga->curr.gs) {
          assert(svga->curr.gs->aa_point_coord_index != -1);
          key->fs.aa_point_coord_index = svga->curr.gs->aa_point_coord_index;
       }

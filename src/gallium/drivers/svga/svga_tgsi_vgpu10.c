@@ -279,6 +279,10 @@ struct svga_shader_emitter_v10
       /* viewport constant */
       unsigned viewport_index;
 
+      unsigned vertex_id_bias_index;
+      unsigned vertex_id_sys_index;
+      unsigned vertex_id_tmp_index;
+
       /* temp index of adjusted vertex attributes */
       unsigned adjusted_input[PIPE_MAX_SHADER_INPUTS];
    } vs;
@@ -333,7 +337,6 @@ struct svga_shader_emitter_v10
    struct {
       unsigned vertices_per_patch_index;     /**< vertices_per_patch system value index */
       unsigned imm_index;                    /**< immediate for tcs */
-      unsigned vertices_out;
       unsigned invocation_id_sys_index;      /**< invocation id */
       unsigned invocation_id_tmp_index;
       unsigned instruction_token_pos;        /* token pos for the first instruction */
@@ -343,6 +346,7 @@ struct svga_shader_emitter_v10
       unsigned control_point_tmp_index;      /* control point temporary register */
       unsigned control_point_out_count;      /* control point output count */
       boolean  control_point_phase;          /* true if in control point phase */
+      boolean  fork_phase_add_signature;     /* true if needs to add signature in fork phase */
       unsigned patch_generic_out_count;      /* per-patch generic output count */
       unsigned patch_generic_out_index;      /* per-patch generic output register index*/
       unsigned patch_generic_tmp_index;      /* per-patch generic temporary register index*/
@@ -408,6 +412,7 @@ struct svga_shader_emitter_v10
 
    /* VS/TCS/TES/GS/FS Linkage info */
    struct shader_linkage linkage;
+   struct tgsi_shader_info *prevShaderInfo;
 
    /* Shader signature */
    struct svga_shader_signature signature;
@@ -603,7 +608,7 @@ check_register_index(struct svga_shader_emitter_v10 *emit,
           (emit->unit == PIPE_SHADER_FRAGMENT &&
            index >= VGPU10_MAX_FS_INPUTS) ||
           (emit->unit == PIPE_SHADER_TESS_CTRL &&
-           index >= VGPU11_MAX_HS_INPUTS) ||
+           index >= VGPU11_MAX_HS_INPUT_CONTROL_POINTS) ||
           (emit->unit == PIPE_SHADER_TESS_EVAL &&
            index >= VGPU11_MAX_DS_INPUT_CONTROL_POINTS)) {
          emit->register_overflow = TRUE;
@@ -1445,7 +1450,7 @@ static boolean
 need_temp_reg_initialization(struct svga_shader_emitter_v10 *emit,
                              unsigned index)
 {
-   if (!(emit->info.indirect_files & (1u << TGSI_FILE_TEMPORARY))
+   if (!(emit->info.indirect_files && (1u << TGSI_FILE_TEMPORARY))
        && emit->current_loop_depth == 0) {
       if (!emit->temp_map[index].initialized &&
           emit->temp_map[index].index < emit->num_shader_temps) {
@@ -1575,10 +1580,18 @@ emit_src_register(struct svga_shader_emitter_v10 *emit,
          }
       }
       else if (file == TGSI_FILE_SYSTEM_VALUE) {
-         /* Map the TGSI system value to a VGPU10 input register */
-         assert(index < ARRAY_SIZE(emit->system_value_indexes));
-         file = TGSI_FILE_INPUT;
-         index = emit->system_value_indexes[index];
+         if (index == emit->vs.vertex_id_sys_index &&
+             emit->vs.vertex_id_tmp_index != INVALID_INDEX) {
+            file = TGSI_FILE_TEMPORARY;
+            index = emit->vs.vertex_id_tmp_index;
+            swizzleX = swizzleY = swizzleZ = swizzleW = TGSI_SWIZZLE_X;
+         }
+         else {
+            /* Map the TGSI system value to a VGPU10 input register */
+            assert(index < ARRAY_SIZE(emit->system_value_indexes));
+            file = TGSI_FILE_INPUT;
+            index = emit->system_value_indexes[index];
+         }
       }
    }
    else if (emit->unit == PIPE_SHADER_TESS_CTRL) {
@@ -1600,7 +1613,10 @@ emit_src_register(struct svga_shader_emitter_v10 *emit,
                 */
                operand0.numComponents = VGPU10_OPERAND_1_COMPONENT;
                operand0.operandType = VGPU10_OPERAND_TYPE_OUTPUT_CONTROL_POINT_ID;
-               index = 0;
+               operand0.selectionMode = VGPU10_OPERAND_4_COMPONENT_MASK_MODE;
+               operand0.mask = 0;
+               emit_dword(emit, operand0.value);
+               return;
             }
             else {
                /* There is no control point ID input declaration in
@@ -1718,6 +1734,8 @@ emit_src_register(struct svga_shader_emitter_v10 *emit,
              * to align with the tcs output index.
              */
             index = emit->linkage.input_map[index];
+
+            assert(index2 < emit->key.tes.vertices_per_patch);
          }
          else {
             if (index < emit->key.tes.tessfactor_index)
@@ -2824,7 +2842,7 @@ emit_vgpu10_property(struct svga_shader_emitter_v10 *emit,
       break;
 
    case TGSI_PROPERTY_TCS_VERTICES_OUT:
-      emit->tcs.vertices_out = prop->u[0].Data;
+      /* This info is already captured in the shader key */
       break;
 
    case TGSI_PROPERTY_TES_PRIM_MODE:
@@ -2935,7 +2953,7 @@ emit_domain_shader_declarations(struct svga_shader_emitter_v10 *emit)
    assert(emit->unit == PIPE_SHADER_TESS_EVAL);
 
    /* Emit the input control point count */
-   assert(emit->key.tes.vertices_per_patch > 0 &&
+   assert(emit->key.tes.vertices_per_patch >= 0 &&
           emit->key.tes.vertices_per_patch <= 32);
 
    opcode0.value = 0;
@@ -3066,11 +3084,11 @@ emit_hull_shader_declarations(struct svga_shader_emitter_v10 *emit)
    end_emit_instruction(emit);
 
    /* Emit the output control point count */
-   assert(emit->tcs.vertices_out >= 0 && emit->tcs.vertices_out <= 32);
+   assert(emit->key.tcs.vertices_out >= 0 && emit->key.tcs.vertices_out <= 32);
 
    opcode0.value = 0;
    opcode0.opcodeType = VGPU10_OPCODE_DCL_OUTPUT_CONTROL_POINT_COUNT;
-   opcode0.controlPointCount = emit->tcs.vertices_out;
+   opcode0.controlPointCount = emit->key.tcs.vertices_out;
    begin_emit_instruction(emit);
    emit_dword(emit, opcode0.value);
    end_emit_instruction(emit);
@@ -3157,7 +3175,8 @@ needs_control_point_phase(struct svga_shader_emitter_v10 *emit)
     * we need a control point phase to explicitly set the output control
     * points.
     */
-   if (emit->key.tcs.vertices_per_patch != emit->tcs.vertices_out)
+   if ((emit->key.tcs.vertices_per_patch != emit->key.tcs.vertices_out) &&
+       emit->key.tcs.vertices_out)
       return TRUE;
 
    for (i = 0; i < emit->info.num_outputs; i++) {
@@ -3175,23 +3194,93 @@ needs_control_point_phase(struct svga_shader_emitter_v10 *emit)
 
 
 /**
- * Start the hull shader control point phase
+ * A helper function to add shader signature for passthrough control point
+ * phase. This signature is also generated for passthrough control point
+ * phase from HLSL compiler and is needed by Metal Renderer.
  */
-static boolean
-emit_hull_shader_control_point_phase(struct svga_shader_emitter_v10 *emit)
+static void
+emit_passthrough_control_point_signature(struct svga_shader_emitter_v10 *emit)
+{
+   struct svga_shader_signature *sgn = &emit->signature;
+   SVGA3dDXShaderSignatureEntry *sgnEntry;
+   unsigned i;
+
+   for (i = 0; i < emit->info.num_inputs; i++) {
+      unsigned index = emit->linkage.input_map[i];
+      enum tgsi_semantic sem_name = emit->info.input_semantic_name[i];
+
+      sgnEntry = &sgn->inputs[sgn->header.numInputSignatures++];
+
+      set_shader_signature_entry(sgnEntry, index,
+                                 tgsi_semantic_to_sgn_name[sem_name],
+                                 VGPU10_OPERAND_4_COMPONENT_MASK_ALL,
+                                 SVGADX_SIGNATURE_REGISTER_COMPONENT_UNKNOWN,
+                                 SVGADX_SIGNATURE_MIN_PRECISION_DEFAULT);
+
+      sgnEntry = &sgn->outputs[sgn->header.numOutputSignatures++];
+
+      set_shader_signature_entry(sgnEntry, i,
+                                 tgsi_semantic_to_sgn_name[sem_name],
+                                 VGPU10_OPERAND_4_COMPONENT_MASK_ALL,
+                                 SVGADX_SIGNATURE_REGISTER_COMPONENT_UNKNOWN,
+                                 SVGADX_SIGNATURE_MIN_PRECISION_DEFAULT);
+   }
+}
+
+
+/**
+ * A helper function to emit an instruction to start the control point phase
+ * in the hull shader.
+ */
+static void
+emit_control_point_phase_instruction(struct svga_shader_emitter_v10 *emit)
 {
    VGPU10OpcodeToken0 opcode0;
 
-   /* If there is no control point output, skip the control point phase. */
-   if (!needs_control_point_phase(emit))
-      return FALSE;
-
-   /* Start the control point phase in the hull shader */
    opcode0.value = 0;
    opcode0.opcodeType = VGPU10_OPCODE_HS_CONTROL_POINT_PHASE;
    begin_emit_instruction(emit);
    emit_dword(emit, opcode0.value);
    end_emit_instruction(emit);
+}
+
+
+/**
+ * Start the hull shader control point phase
+ */
+static boolean
+emit_hull_shader_control_point_phase(struct svga_shader_emitter_v10 *emit)
+{
+   /* If there is no control point output, skip the control point phase. */
+   if (!needs_control_point_phase(emit)) {
+      if (!emit->key.tcs.vertices_out) {
+         /**
+          * If the tcs does not explicitly generate any control point output
+          * and the tes does not use any input control point, then
+          * emit an empty control point phase with zero output control
+          * point count.
+          */
+         emit_control_point_phase_instruction(emit);
+
+         /**
+          * Since this is an empty control point phase, we will need to
+          * add input signatures when we parse the tcs again in the
+          * patch constant phase.
+          */
+         emit->tcs.fork_phase_add_signature = TRUE;
+      }
+      else {
+         /**
+          * Before skipping the control point phase, add the signature for
+          * the passthrough control point.
+          */
+         emit_passthrough_control_point_signature(emit);
+      }
+      return FALSE;
+   }
+
+   /* Start the control point phase in the hull shader */
+   emit_control_point_phase_instruction(emit);
 
    /* Declare the output control point ID */
    if (emit->tcs.invocation_id_sys_index == INVALID_INDEX) {
@@ -3799,9 +3888,6 @@ emit_fs_output_declarations(struct svga_shader_emitter_v10 *emit)
                      emit->key.fs.write_color0_to_n_cbufs;
             }
          }
-         else {
-            assert(!emit->key.fs.write_color0_to_n_cbufs);
-         }
       }
       else if (semantic_name == TGSI_SEMANTIC_POSITION) {
          /* Fragment depth output */
@@ -4064,7 +4150,7 @@ emit_tesslevel_declaration(struct svga_shader_emitter_v10 *emit,
    SVGA3dDXShaderSignatureEntry *sgnEntry =
       &sgn->patchConstants[sgn->header.numPatchConstantSignatures++];
    set_shader_signature_entry(sgnEntry, index,
-                              sgnName, SVGA3DWRITEMASK_0,
+                              sgnName, VGPU10_OPERAND_4_COMPONENT_MASK_X,
                               SVGADX_SIGNATURE_REGISTER_COMPONENT_UNKNOWN,
                               SVGADX_SIGNATURE_MIN_PRECISION_DEFAULT);
 }
@@ -4324,6 +4410,7 @@ emit_system_value_declaration(struct svga_shader_emitter_v10 *emit,
                              map_tgsi_semantic_to_sgn_name(semantic_name));
       break;
    case TGSI_SEMANTIC_VERTEXID:
+      emit->vs.vertex_id_sys_index = index;
       index = alloc_system_value_index(emit, index);
       emit_input_declaration(emit, VGPU10_OPCODE_DCL_INPUT_SIV,
                              VGPU10_OPERAND_TYPE_INPUT,
@@ -4786,6 +4873,10 @@ emit_tcs_input_declarations(struct svga_shader_emitter_v10 *emit)
    unsigned i;
    unsigned size = emit->key.tcs.vertices_per_patch;
    unsigned indicesMask = 0;
+   boolean addSignature = TRUE;
+
+   if (!emit->tcs.control_point_phase)
+      addSignature = emit->tcs.fork_phase_add_signature;
 
    for (i = 0; i < emit->info.num_inputs; i++) {
       unsigned usage_mask = emit->info.input_usage_mask[i];
@@ -4793,7 +4884,8 @@ emit_tcs_input_declarations(struct svga_shader_emitter_v10 *emit)
       enum tgsi_semantic semantic_name = emit->info.input_semantic_name[i];
       VGPU10_SYSTEM_NAME name = VGPU10_NAME_UNDEFINED;
       VGPU10_OPERAND_TYPE operandType = VGPU10_OPERAND_TYPE_INPUT;
-      boolean addSignature = TRUE;
+      SVGA3dDXSignatureSemanticName sgn_name =
+         map_tgsi_semantic_to_sgn_name(semantic_name);
 
       /* indices that are declared */
       indicesMask |= 1 << index;
@@ -4806,13 +4898,18 @@ emit_tcs_input_declarations(struct svga_shader_emitter_v10 *emit)
       else if (usage_mask == 0) {
          continue;  /* register is not actually used */
       }
+      else if (semantic_name == TGSI_SEMANTIC_CLIPDIST) {
+         /* The shadow copy is being used here. So set the signature name
+          * to UNDEFINED.
+          */
+         sgn_name = SVGADX_SIGNATURE_SEMANTIC_NAME_UNDEFINED;
+      }
 
       /* input control points in the patch constant phase are emitted in the
        * vicp register rather than the v register.
        */
       if (!emit->tcs.control_point_phase) {
          operandType = VGPU10_OPERAND_TYPE_INPUT_CONTROL_POINT;
-         addSignature = emit->tcs.control_point_out_count == 0;
       }
 
       /* Tessellation control shader inputs are two dimensional.
@@ -4826,9 +4923,7 @@ emit_tcs_input_declarations(struct svga_shader_emitter_v10 *emit)
                              VGPU10_OPERAND_4_COMPONENT_MASK_MODE,
                              VGPU10_OPERAND_4_COMPONENT_MASK_ALL,
                              VGPU10_INTERPOLATION_UNDEFINED,
-                             addSignature,
-                             map_tgsi_semantic_to_sgn_name(semantic_name));
-
+                             addSignature, sgn_name);
    }
 
    if (emit->tcs.control_point_phase) {
@@ -4983,6 +5078,54 @@ emit_tes_input_declarations(struct svga_shader_emitter_v10 *emit)
    }
 
    emit_tessfactor_input_declarations(emit);
+
+   /* DX spec requires DS input controlpoint/patch-constant signatures to match
+    * the HS output controlpoint/patch-constant signatures exactly.
+    * Add missing input declarations even if they are not used in the shader.
+    */
+   if (emit->linkage.num_inputs < emit->linkage.prevShader.num_outputs) {
+      struct tgsi_shader_info *prevInfo = emit->prevShaderInfo;
+      for (i = 0; i < emit->linkage.prevShader.num_outputs; i++) {
+
+          /* If a tcs output does not have a corresponding input register in
+           * tes, add one.
+           */
+          if (emit->linkage.prevShader.output_map[i] >
+              emit->linkage.input_map_max) {
+             const enum tgsi_semantic sem_name = prevInfo->output_semantic_name[i];
+
+             if (sem_name == TGSI_SEMANTIC_PATCH) {
+                emit_input_declaration(emit, VGPU10_OPCODE_DCL_INPUT,
+                                       VGPU10_OPERAND_TYPE_INPUT_PATCH_CONSTANT,
+                                       VGPU10_OPERAND_INDEX_1D,
+                                       i, 1, VGPU10_NAME_UNDEFINED,
+                                       VGPU10_OPERAND_4_COMPONENT,
+                                       VGPU10_OPERAND_4_COMPONENT_MASK_MODE,
+                                       VGPU10_OPERAND_4_COMPONENT_MASK_ALL,
+                                       VGPU10_INTERPOLATION_UNDEFINED,
+                                       TRUE,
+                                       map_tgsi_semantic_to_sgn_name(sem_name));
+
+             } else if (sem_name != TGSI_SEMANTIC_TESSINNER &&
+                        sem_name != TGSI_SEMANTIC_TESSOUTER) {
+                emit_input_declaration(emit, VGPU10_OPCODE_DCL_INPUT,
+                                       VGPU10_OPERAND_TYPE_INPUT_CONTROL_POINT,
+                                       VGPU10_OPERAND_INDEX_2D,
+                                       i, emit->key.tes.vertices_per_patch,
+                                       VGPU10_NAME_UNDEFINED,
+                                       VGPU10_OPERAND_4_COMPONENT,
+                                       VGPU10_OPERAND_4_COMPONENT_MASK_MODE,
+                                       VGPU10_OPERAND_4_COMPONENT_MASK_ALL,
+                                       VGPU10_INTERPOLATION_UNDEFINED,
+                                       TRUE,
+                                       map_tgsi_semantic_to_sgn_name(sem_name));
+             }
+             /* tessellation factors are taken care of in
+              * emit_tessfactor_input_declarations().
+              */
+         }
+      }
+   }
 }
 
 
@@ -5088,7 +5231,7 @@ emit_output_declarations(struct svga_shader_emitter_v10 *emit)
                               VGPU10_NAME_UNDEFINED,
                               emit->output_usage_mask[emit->clip_dist_out_index],
                               TRUE,
-                              SVGADX_SIGNATURE_SEMANTIC_NAME_CLIP_DISTANCE);
+                              SVGADX_SIGNATURE_SEMANTIC_NAME_UNDEFINED);
 
       if (emit->info.num_written_clipdistance > 4) {
          /* for the second clip distance register, each handles 4 planes */
@@ -5097,7 +5240,7 @@ emit_output_declarations(struct svga_shader_emitter_v10 *emit)
                                  VGPU10_NAME_UNDEFINED,
                                  emit->output_usage_mask[emit->clip_dist_out_index+1],
                                  TRUE,
-                                 SVGADX_SIGNATURE_SEMANTIC_NAME_CLIP_DISTANCE);
+                                 SVGADX_SIGNATURE_SEMANTIC_NAME_UNDEFINED);
       }
    }
 
@@ -5182,6 +5325,11 @@ emit_temporaries_declaration(struct svga_shader_emitter_v10 *emit)
       assert(emit->info.writes_clipvertex > 0);
       emit->clip_vertex_tmp_index = total_temps;
       total_temps++;
+   }
+
+   if (emit->info.uses_vertexid) {
+      assert(emit->unit == PIPE_SHADER_VERTEX);
+      emit->vs.vertex_id_tmp_index = total_temps++;
    }
 
    if (emit->unit == PIPE_SHADER_VERTEX || emit->unit == PIPE_SHADER_GEOMETRY) {
@@ -5439,6 +5587,9 @@ emit_constant_declaration(struct svga_shader_emitter_v10 *emit)
    if (emit->unit == PIPE_SHADER_VERTEX) {
       if (emit->key.vs.undo_viewport) {
          emit->vs.viewport_index = total_consts++;
+      }
+      if (emit->key.vs.need_vertex_id_bias) {
+         emit->vs.vertex_id_bias_index = total_consts++;
       }
    }
 
@@ -9986,6 +10137,33 @@ emit_temp_prescale_instructions(struct svga_shader_emitter_v10 *emit)
 
 
 /**
+ * A helper function to emit an instruction in a vertex shader to add a bias
+ * to the VertexID system value. This patches the VertexID in the SVGA vertex
+ * shader to include the base vertex of an indexed primitive or the start index
+ * of a non-indexed primitive.
+ */
+static void
+emit_vertex_id_nobase_instruction(struct svga_shader_emitter_v10 *emit)
+{
+   struct tgsi_full_src_register vertex_id_bias_index =
+      make_src_const_reg(emit->vs.vertex_id_bias_index);
+   struct tgsi_full_src_register vertex_id_sys_src =
+      make_src_reg(TGSI_FILE_SYSTEM_VALUE, emit->vs.vertex_id_sys_index);
+   struct tgsi_full_src_register vertex_id_sys_src_x =
+      scalar_src(&vertex_id_sys_src, TGSI_SWIZZLE_X);
+   struct tgsi_full_dst_register vertex_id_tmp_dst =
+      make_dst_temp_reg(emit->vs.vertex_id_tmp_index);
+
+   /* IADD vertex_id_tmp, vertex_id_sys, vertex_id_bias */
+   unsigned vertex_id_tmp_index = emit->vs.vertex_id_tmp_index;
+   emit->vs.vertex_id_tmp_index = INVALID_INDEX;
+   emit_instruction_opn(emit, VGPU10_OPCODE_IADD, &vertex_id_tmp_dst,
+                        &vertex_id_sys_src_x, &vertex_id_bias_index, NULL, FALSE,
+                        FALSE);
+   emit->vs.vertex_id_tmp_index = vertex_id_tmp_index;
+}
+
+/**
  * Hull Shader must have control point outputs. But tessellation
  * control shader can return without writing to control point output.
  * In this case, the control point output is assumed to be passthrough
@@ -10155,6 +10333,7 @@ emit_pre_helpers(struct svga_shader_emitter_v10 *emit)
        * do a second pass of the instructions for the patch constant phase.
        */
       emit->tcs.instruction_token_pos = emit->cur_tgsi_token;
+      emit->tcs.fork_phase_add_signature = FALSE;
 
       if (!emit_hull_shader_control_point_phase(emit)) {
          emit->skip_instruction = TRUE;
@@ -10230,6 +10409,9 @@ emit_pre_helpers(struct svga_shader_emitter_v10 *emit)
    }
    else if (emit->unit == PIPE_SHADER_VERTEX) {
       emit_vertex_attrib_instructions(emit);
+
+      if (emit->info.uses_vertexid)
+         emit_vertex_id_nobase_instruction(emit);
    }
    else if (emit->unit == PIPE_SHADER_TESS_EVAL) {
       emit_temp_tessfactor_instructions(emit);
@@ -10707,6 +10889,7 @@ compute_input_mapping(struct svga_context *svga,
 
    if (prevShader != NULL) {
       svga_link_shaders(&prevShader->info, &emit->info, &emit->linkage);
+      emit->prevShaderInfo = &prevShader->info;
    } 
    else {
       /**
@@ -10829,6 +11012,10 @@ svga_tgsi_vgpu10_translate(struct svga_context *svga,
    emit->vposition.tmp_index = INVALID_INDEX;
    emit->vposition.so_index = INVALID_INDEX;
    emit->vposition.out_index = INVALID_INDEX;
+
+   emit->vs.vertex_id_sys_index = INVALID_INDEX;
+   emit->vs.vertex_id_tmp_index = INVALID_INDEX;
+   emit->vs.vertex_id_bias_index = INVALID_INDEX;
 
    emit->fs.color_tmp_index = INVALID_INDEX;
    emit->fs.face_input_index = INVALID_INDEX;

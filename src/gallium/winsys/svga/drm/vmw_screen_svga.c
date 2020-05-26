@@ -495,6 +495,7 @@ vmw_winsys_screen_init_svga(struct vmw_winsys_screen *vws)
    vws->base.buffer_map = vmw_svga_winsys_buffer_map;
    vws->base.buffer_unmap = vmw_svga_winsys_buffer_unmap;
    vws->base.buffer_destroy = vmw_svga_winsys_buffer_destroy;
+   vws->base.surface_init = vmw_svga_winsys_surface_init;
    vws->base.fence_reference = vmw_svga_winsys_fence_reference;
    vws->base.fence_signalled = vmw_svga_winsys_fence_signalled;
    vws->base.shader_create = vmw_svga_winsys_shader_create;

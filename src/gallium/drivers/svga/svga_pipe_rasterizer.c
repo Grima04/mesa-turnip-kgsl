@@ -121,8 +121,6 @@ define_rasterizer_object(struct svga_context *svga,
    const uint8 pv_last = !rast->templ.flatshade_first &&
       svgascreen->haveProvokingVertex;
 
-   unsigned try;
-
    rast->id = util_bitmask_add(svga->rast_object_id_bm);
 
    if (rast->templ.fill_front != rast->templ.fill_back) {
@@ -133,31 +131,24 @@ define_rasterizer_object(struct svga_context *svga,
       fill_mode = SVGA3D_FILLMODE_FILL;
    }
 
-   for (try = 0; try < 2; try++) {
-      const uint8 pv_last = !rast->templ.flatshade_first &&
-         svgascreen->haveProvokingVertex;
-      enum pipe_error ret =
-         SVGA3D_vgpu10_DefineRasterizerState(svga->swc,
-                                             rast->id,
-                                             fill_mode,
-                                             cull_mode,
-                                             rast->templ.front_ccw,
-                                             depth_bias,
-                                             depth_bias_clamp,
-                                             slope_scaled_depth_bias,
-                                             rast->templ.depth_clip_near,
-                                             rast->templ.scissor,
-                                             rast->templ.multisample,
-                                             rast->templ.line_smooth,
-                                             line_width,
-                                             rast->templ.line_stipple_enable,
-                                             line_factor,
-                                             line_pattern,
-                                             pv_last);
-      if (ret == PIPE_OK)
-         return;
-      svga_context_flush(svga, NULL);
-   }
+   SVGA_RETRY(svga, SVGA3D_vgpu10_DefineRasterizerState
+              (svga->swc,
+               rast->id,
+               fill_mode,
+               cull_mode,
+               rast->templ.front_ccw,
+               depth_bias,
+               depth_bias_clamp,
+               slope_scaled_depth_bias,
+               rast->templ.depth_clip_near,
+               rast->templ.scissor,
+               rast->templ.multisample,
+               rast->templ.line_smooth,
+               line_width,
+               rast->templ.line_stipple_enable,
+               line_factor,
+               line_pattern,
+               pv_last));
 }
 
 
@@ -418,12 +409,8 @@ svga_delete_rasterizer_state(struct pipe_context *pipe, void *state)
       (struct svga_rasterizer_state *) state;
 
    if (svga_have_vgpu10(svga)) {
-      enum pipe_error ret =
-         SVGA3D_vgpu10_DestroyRasterizerState(svga->swc, raster->id);
-      if (ret != PIPE_OK) {
-         svga_context_flush(svga, NULL);
-         ret = SVGA3D_vgpu10_DestroyRasterizerState(svga->swc, raster->id);
-      }
+      SVGA_RETRY(svga, SVGA3D_vgpu10_DestroyRasterizerState(svga->swc,
+                                                            raster->id));
 
       if (raster->id == svga->state.hw_draw.rasterizer_id)
          svga->state.hw_draw.rasterizer_id = SVGA3D_INVALID_ID;

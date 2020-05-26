@@ -354,6 +354,15 @@ svga_delete_stream_output(struct svga_context *svga,
       sws->buffer_destroy(sws, streamout->declBuf);
    }
 
+   /* Before deleting the current streamout, make sure to stop any pending
+    * SO queries.
+    */
+   if (svga->current_so == streamout) {
+      if (svga->in_streamout)
+         svga_end_stream_output_queries(svga, svga->current_so->streammask);
+      svga->current_so = NULL;
+   }
+
    /* Release the ID */
    util_bitmask_clear(svga->stream_output_id_bm, streamout->id);
 

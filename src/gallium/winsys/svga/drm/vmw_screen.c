@@ -98,6 +98,7 @@ vmw_winsys_create( int fd )
    vws->base.have_gb_dma = !vws->force_coherent;
    vws->base.need_to_rebind_resources = FALSE;
    vws->base.have_transfer_from_buffer_cmd = vws->base.have_vgpu10;
+   vws->base.have_constant_buffer_offset_cmd = FALSE;
    getenv_val = getenv("SVGA_FORCE_KERNEL_UNMAPS");
    vws->cache_maps = !getenv_val || strcmp(getenv_val, "0") == 0;
    vws->fence_ops = vmw_fence_ops_create(vws);
