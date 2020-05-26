@@ -34,7 +34,6 @@
 #include "renderonly/renderonly.h"
 #include "util/u_dynarray.h"
 #include "util/bitset.h"
-#include "util/set.h"
 #include "util/list.h"
 #include "util/sparse_array.h"
 
@@ -87,9 +86,6 @@ struct panfrost_device {
         drmVersionPtr kernel_version;
 
         struct renderonly *ro;
-
-        pthread_mutex_t active_bos_lock;
-        struct set *active_bos;
 
         pthread_mutex_t bo_map_lock;
         struct util_sparse_array bo_map;

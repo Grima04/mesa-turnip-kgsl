@@ -114,22 +114,6 @@ panfrost_model_name(unsigned gpu_id)
         }
 }
 
-static uint32_t
-panfrost_active_bos_hash(const void *key)
-{
-        const struct panfrost_bo *bo = key;
-
-        return _mesa_hash_data(&bo->gem_handle, sizeof(bo->gem_handle));
-}
-
-static bool
-panfrost_active_bos_cmp(const void *keya, const void *keyb)
-{
-        const struct panfrost_bo *a = keya, *b = keyb;
-
-        return a->gem_handle == b->gem_handle;
-}
-
 void
 panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
 {
@@ -140,10 +124,6 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         dev->thread_tls_alloc = panfrost_query_thread_tls_alloc(fd);
         dev->kernel_version = drmGetVersion(fd);
         dev->quirks = panfrost_get_quirks(dev->gpu_id);
-
-        pthread_mutex_init(&dev->active_bos_lock, NULL);
-        dev->active_bos = _mesa_set_create(memctx,
-                        panfrost_active_bos_hash, panfrost_active_bos_cmp);
 
         util_sparse_array_init(&dev->bo_map, sizeof(struct panfrost_bo), 512);
 
@@ -159,7 +139,6 @@ panfrost_close_device(struct panfrost_device *dev)
 {
         panfrost_bo_cache_evict_all(dev);
         pthread_mutex_destroy(&dev->bo_cache.lock);
-        pthread_mutex_destroy(&dev->active_bos_lock);
         drmFreeVersion(dev->kernel_version);
         util_sparse_array_finish(&dev->bo_map);
 
