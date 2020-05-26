@@ -133,7 +133,13 @@ extract_xml_result() {
     shift 1
     qpas=$*
     start="#beginTestCaseResult $testcase"
-    for qpa in $qpas; do
+
+    # Pick the first QPA mentioning our testcase
+    qpa=`grep -l "$start" $qpas | head -n 1`
+
+    # If we found one, go extract just that testcase's contents from the QPA
+    # to a new QPA, then do testlog-to-xml on that.
+    if [ -n "$qpa" ]; then
         while IFS= read -r line; do
             if [ "$line" = "$start" ]; then
                 dst="$testcase.qpa"
@@ -155,7 +161,7 @@ extract_xml_result() {
                 return 1
             fi
         done < $qpa
-    done
+    fi
 }
 
 extract_xml_results() {
