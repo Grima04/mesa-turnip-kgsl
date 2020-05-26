@@ -770,7 +770,12 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 brts[i].constant = blend[i].equation.constant;
 
                                 brts[i].format = panfrost_format_to_bifrost_blend(format_desc);
-                                brts[i].unk2 = 0x19;
+
+                                /* 0x19 disables blending and forces REPLACE
+                                 * mode (equivalent to rgb_mode = alpha_mode =
+                                 * x122, colour mask = 0xF). 0x1a allows
+                                 * blending. */
+                                brts[i].unk2 = blend[i].no_blending ? 0x19 : 0x1a;
 
                                 brts[i].shader_type = fs->blend_types[i];
                         } else {
