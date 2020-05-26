@@ -1431,7 +1431,18 @@ lower_vars_to_explicit(nir_shader *shader,
                        glsl_type_size_align_func type_info)
 {
    bool progress = false;
-   unsigned offset = 0;
+   unsigned offset;
+   switch (mode) {
+   case nir_var_function_temp:
+   case nir_var_shader_temp:
+      offset = shader->scratch_size;
+      break;
+   case nir_var_mem_shared:
+      offset = 0;
+      break;
+   default:
+      unreachable("Unsupported mode");
+   }
    nir_foreach_variable(var, vars) {
       unsigned size, align;
       const struct glsl_type *explicit_type =
@@ -1446,9 +1457,17 @@ lower_vars_to_explicit(nir_shader *shader,
       offset = var->data.driver_location + size;
    }
 
-   if (mode == nir_var_mem_shared) {
+   switch (mode) {
+   case nir_var_shader_temp:
+   case nir_var_function_temp:
+      shader->scratch_size = offset;
+      break;
+   case nir_var_mem_shared:
       shader->info.cs.shared_size = offset;
       shader->num_shared = offset;
+      break;
+   default:
+      unreachable("Unsupported mode");
    }
 
    return progress;
