@@ -320,7 +320,7 @@ event_wait_thread_func(void *_job)
     */
    struct v3dv_queue *queue = &job->device->queue;
    list_for_each_entry_from(struct v3dv_job, pjob, job->list_link.next,
-                            &job->cmd_buffer->submit_jobs, list_link) {
+                            &job->cmd_buffer->jobs, list_link) {
       /* We don't want to spawn more than one wait thread per command buffer.
        * If this job also requires a wait for events, we will do the wait here.
        */
@@ -695,11 +695,11 @@ queue_submit_cmd_buffer(struct v3dv_queue *queue,
    assert(cmd_buffer);
    assert(cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE);
 
-   if (list_is_empty(&cmd_buffer->submit_jobs))
+   if (list_is_empty(&cmd_buffer->jobs))
       return queue_submit_noop_job(queue, pSubmit);
 
    list_for_each_entry_safe(struct v3dv_job, job,
-                            &cmd_buffer->submit_jobs, list_link) {
+                            &cmd_buffer->jobs, list_link) {
       VkResult result = queue_submit_job(queue, job,
                                          pSubmit->waitSemaphoreCount > 0,
                                          wait_thread);

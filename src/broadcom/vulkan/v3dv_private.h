@@ -698,6 +698,12 @@ struct v3dv_event_wait_cpu_job_info {
 struct v3dv_job {
    struct list_head list_link;
 
+   /* We only create job clones when executing secondary command buffers into
+    * primaries. These clones don't make deep copies of the original object
+    * so we want to flag them to avoid freeing resources they don't own.
+    */
+   bool is_clone;
+
    enum v3dv_job_type type;
 
    struct v3dv_device *device;
@@ -955,8 +961,12 @@ struct v3dv_cmd_buffer {
       } blit;
    } meta;
 
-   /* List of jobs to submit to the kernel */
-   struct list_head submit_jobs;
+   /* List of jobs in the command buffer. For primary command buffers it
+    * represents the jobs we want to submit to the GPU. For secondary command
+    * buffers it represents jobs that will be merged into a primary command
+    * buffer via vkCmdExecuteCommands.
+    */
+   struct list_head jobs;
 };
 
 struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,

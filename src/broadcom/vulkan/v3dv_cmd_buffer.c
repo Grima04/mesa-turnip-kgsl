@@ -121,7 +121,7 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->level = level;
 
    list_inithead(&cmd_buffer->private_objs);
-   list_inithead(&cmd_buffer->submit_jobs);
+   list_inithead(&cmd_buffer->jobs);
    list_inithead(&cmd_buffer->list_link);
 
    assert(pool);
@@ -188,15 +188,20 @@ v3dv_job_destroy(struct v3dv_job *job)
 
    list_del(&job->list_link);
 
-   switch (job->type) {
-   case V3DV_JOB_TYPE_GPU_CL:
-      job_destroy_gpu_cl_resources(job);
-      break;
-   case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
-      job_destroy_cpu_wait_events_resources(job);
-      break;
-   default:
-      break;
+   /* Cloned jobs don't make deep copies of the original jobs, so they don't
+    * own any of their resources.
+    */
+   if (!job->is_clone) {
+      switch (job->type) {
+      case V3DV_JOB_TYPE_GPU_CL:
+         job_destroy_gpu_cl_resources(job);
+         break;
+      case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
+         job_destroy_cpu_wait_events_resources(job);
+         break;
+      default:
+         break;
+      }
    }
 
    vk_free(&job->device->alloc, job);
@@ -237,7 +242,7 @@ static void
 cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 {
    list_for_each_entry_safe(struct v3dv_job, job,
-                            &cmd_buffer->submit_jobs, list_link) {
+                            &cmd_buffer->jobs, list_link) {
       v3dv_job_destroy(job);
    }
 
@@ -316,6 +321,9 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
 
    const struct v3dv_physical_device *physical_device =
       &cmd_buffer->device->instance->physicalDevice;
+
+   if (cmd_buffer->level != VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+      return false;
 
    if (!cmd_buffer->state.job)
       return false;
@@ -547,6 +555,16 @@ cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_job_emit_binning_flush(cmd_buffer->state.job);
 }
 
+static void
+cmd_buffer_end_render_pass_secondary(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   assert(cmd_buffer->state.job);
+   v3dv_cl_ensure_space_with_branch(&cmd_buffer->state.job->bcl,
+                                    cl_packet_length(RETURN_FROM_SUB_LIST));
+   v3dv_return_if_oom(cmd_buffer, NULL);
+   cl_emit(&cmd_buffer->state.job->bcl, RETURN_FROM_SUB_LIST, ret);
+}
+
 static struct v3dv_job *
 cmd_buffer_create_cpu_job(struct v3dv_device *device,
                           enum v3dv_job_type type,
@@ -581,7 +599,7 @@ cmd_buffer_add_cpu_jobs_for_pending_state(struct v3dv_cmd_buffer *cmd_buffer)
          v3dv_return_if_oom(cmd_buffer, NULL);
 
          job->cpu.query_end = state->query.end.states[i];
-         list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+         list_addtail(&job->list_link, &cmd_buffer->jobs);
       }
    }
 }
@@ -599,24 +617,46 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
       return;
    }
 
-   assert(v3dv_cl_offset(&job->bcl) != 0);
+   /* If we have created a job for a command buffer then we should have
+    * recorded something into it: if the job was started in a render pass, it
+    * should at least have the start frame commands, otherwise, it should have
+    * a transfer command. The only exception are secondary command buffers
+    * inside a render pass.
+    */
+   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY ||
+          v3dv_cl_offset(&job->bcl) > 0);
 
    /* When we merge multiple subpasses into the same job we must only emit one
     * RCL, so we do that here, when we decided that we need to finish the job.
     * Any rendering that happens outside a render pass is never merged, so
     * the RCL should have been emitted by the time we got here.
+    *
+    * Secondaries that execute inside a render pass don't emit their own RCL,
+    * they will instead be branched to from the primary command buffer under the
+    * primary's RCL.
     */
    assert(v3dv_cl_offset(&job->rcl) != 0 || cmd_buffer->state.pass);
-   if (cmd_buffer->state.pass)
-      cmd_buffer_end_render_pass_frame(cmd_buffer);
+   if (cmd_buffer->state.pass) {
+      if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+         cmd_buffer_end_render_pass_frame(cmd_buffer);
+      } else {
+         cmd_buffer_end_render_pass_secondary(cmd_buffer);
+      }
+   }
 
-   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
    cmd_buffer->state.job = NULL;
 
    /* If we have recorded any state with this last GPU job that requires to
-    * emit CPU jobs after the job is completed, add them now.
+    * emit CPU jobs after the job is completed, add them now. The only
+    * exception is secondary command buffers inside a render pass, because in
+    * that case we want to defer this until we finish recording the primary
+    * job into which we execute the secondary.
     */
-   cmd_buffer_add_cpu_jobs_for_pending_state(cmd_buffer);
+   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY ||
+       !cmd_buffer->state.pass) {
+      cmd_buffer_add_cpu_jobs_for_pending_state(cmd_buffer);
+   }
 }
 
 void
@@ -738,9 +778,6 @@ v3dv_AllocateCommandBuffers(VkDevice _device,
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    V3DV_FROM_HANDLE(v3dv_cmd_pool, pool, pAllocateInfo->commandPool);
 
-   /* FIXME: implement secondary command buffers */
-   assert(pAllocateInfo->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
    VkResult result = VK_SUCCESS;
    uint32_t i;
 
@@ -796,6 +833,55 @@ v3dv_DestroyCommandPool(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
+static VkResult
+cmd_buffer_begin_render_pass_secondary(
+   struct v3dv_cmd_buffer *cmd_buffer,
+   const VkCommandBufferInheritanceInfo *inheritance_info)
+{
+   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+   assert(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+   assert(inheritance_info);
+
+   cmd_buffer->state.pass =
+      v3dv_render_pass_from_handle(inheritance_info->renderPass);
+   assert(cmd_buffer->state.pass);
+
+   cmd_buffer->state.framebuffer =
+      v3dv_framebuffer_from_handle(inheritance_info->framebuffer);
+
+   /* Secondaries that execute inside a render pass won't start subpasses
+    * so we want to create a job for them here.
+    */
+   assert(inheritance_info->subpass < cmd_buffer->state.pass->subpass_count);
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_start_job(cmd_buffer, inheritance_info->subpass);
+   if (!job) {
+      v3dv_flag_oom(cmd_buffer, NULL);
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   /* Secondary command buffers don't know about the render area, but our
+    * scissor setup accounts for it, so let's make sure we make it large
+    * enough that it doesn't actually constrain any rendering. This should
+    * be fine, since the Vulkan spec states:
+    *
+    *    "The application must ensure (using scissor if necessary) that all
+    *     rendering is contained within the render area."
+    *
+    * FIXME: setup constants for the max framebuffer dimensions and use them
+    * here and when filling in VkPhysicalDeviceLimits.
+    */
+   const struct v3dv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
+   cmd_buffer->state.render_area.offset.x = 0;
+   cmd_buffer->state.render_area.offset.y = 0;
+   cmd_buffer->state.render_area.extent.width =
+      framebuffer ? framebuffer->width : 4096;
+   cmd_buffer->state.render_area.extent.height =
+      framebuffer ? framebuffer->height : 4096;
+
+   return VK_SUCCESS;
+}
+
 VkResult
 v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                         const VkCommandBufferBeginInfo *pBeginInfo)
@@ -813,6 +899,22 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_INITIALIZED);
 
    cmd_buffer->usage_flags = pBeginInfo->flags;
+
+   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+      if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
+         result =
+            cmd_buffer_begin_render_pass_secondary(cmd_buffer,
+                                                   pBeginInfo->pInheritanceInfo);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
+      /* If the primary may have an active occlusion query we need to honor
+       * that in the secondary.
+       */
+      if (pBeginInfo->pInheritanceInfo->occlusionQueryEnable)
+         cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+   }
 
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_RECORDING;
 
@@ -860,24 +962,32 @@ emit_clip_window(struct v3dv_job *job, const VkRect2D *rect)
    }
 }
 
-/* Checks whether the clip rectangle covers a region that is aligned to
- * tile boundaries, which means that for all tiles covered by the clip
+/* Checks whether the render area rectangle covers a region that is aligned to
+ * tile boundaries, which means that for all tiles covered by the render area
  * region, there are no uncovered pixels (unless they are also outside the
  * framebuffer).
  */
 static void
-cmd_buffer_update_tile_alignment(struct v3dv_cmd_buffer *cmd_buffer,
-                                 const VkRect2D *clip_rect,
-                                 const VkExtent2D *fb_extent)
+cmd_buffer_update_tile_alignment(struct v3dv_cmd_buffer *cmd_buffer)
 {
    /* Render areas and scissor/viewport are only relevant inside render passes,
     * otherwise we are dealing with transfer operations where these elements
     * don't apply.
     */
-   if (!cmd_buffer->state.pass) {
-      cmd_buffer->state.tile_aligned_render_area = true;
-      return;
-   }
+   assert(cmd_buffer->state.pass);
+   const VkRect2D *rect = &cmd_buffer->state.render_area;
+
+   /* We should only call this at the beginning of a subpass, which should
+    * always be started from a primary command buffer, so we should always
+    * have framebuffer information available.
+    */
+   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   assert(cmd_buffer->state.framebuffer);
+
+   const VkExtent2D fb_extent = {
+      .width = cmd_buffer->state.framebuffer->width,
+      .height = cmd_buffer->state.framebuffer->height
+   };
 
    VkExtent2D granularity;
    v3dv_subpass_get_granularity(cmd_buffer->state.pass,
@@ -885,12 +995,18 @@ cmd_buffer_update_tile_alignment(struct v3dv_cmd_buffer *cmd_buffer,
                                 &granularity);
 
    cmd_buffer->state.tile_aligned_render_area =
-      clip_rect->offset.x % granularity.width == 0 &&
-      clip_rect->offset.y % granularity.height == 0 &&
-      (clip_rect->extent.width % granularity.width == 0 ||
-       clip_rect->offset.x + clip_rect->extent.width >= fb_extent->width) &&
-      (clip_rect->extent.height % granularity.height == 0 ||
-       clip_rect->offset.y + clip_rect->extent.height >= fb_extent->height);
+      rect->offset.x % granularity.width == 0 &&
+      rect->offset.y % granularity.height == 0 &&
+      (rect->extent.width % granularity.width == 0 ||
+       rect->offset.x + rect->extent.width >= fb_extent.width) &&
+      (rect->extent.height % granularity.height == 0 ||
+       rect->offset.y + rect->extent.height >= fb_extent.height);
+
+   if (!cmd_buffer->state.tile_aligned_render_area) {
+      perf_debug("Render area for subpass %d of render pass %p doesn't "
+                 "match render pass granularity.\n",
+                 cmd_buffer->state.subpass_idx, cmd_buffer->state.pass);
+   }
 }
 
 void
@@ -1601,12 +1717,22 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
-
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_framebuffer *framebuffer = state->framebuffer;
-   const uint32_t fb_layers = framebuffer->layers;
 
+   /* We can't emit the RCL until we have a framebuffer, which we may not have
+    * if we are recording a secondary command buffer. In that case, we will
+    * have to wait until vkCmdExecuteCommands is called from a primary command
+    * buffer.
+    */
+   if (!framebuffer) {
+      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+      return;
+   }
+
+   const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
+
+   const uint32_t fb_layers = framebuffer->layers;
    v3dv_cl_ensure_space_with_branch(&job->rcl, 200 +
                                     MAX2(fb_layers, 1) * 256 *
                                     cl_packet_length(SUPERTILE_COORDINATES));
@@ -1748,6 +1874,8 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
 static void
 cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
    assert(cmd_buffer->state.pass);
    assert(cmd_buffer->state.subpass_idx < cmd_buffer->state.pass->subpass_count);
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
@@ -1795,8 +1923,8 @@ cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
    if (att_count == 0)
       return;
 
-   perf_debug("Render area doesn't match render pass granularity, falling "
-              "back to vkCmdClearAttachments for VK_ATTACHMENT_LOAD_OP_CLEAR");
+   perf_debug("Render area doesn't match render pass granularity, falling back "
+              "to vkCmdClearAttachments for VK_ATTACHMENT_LOAD_OP_CLEAR.\n");
 
    /* From the Vulkan 1.0 spec:
     *
@@ -1863,6 +1991,8 @@ struct v3dv_job *
 v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
                               uint32_t subpass_idx)
 {
+   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(subpass_idx < state->pass->subpass_count);
 
@@ -1875,13 +2005,7 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
     * this in each subpass because the subset of attachments used can change
     * and with that the tile size selected by the hardware can change too.
     */
-   assert(state->framebuffer);
-   VkExtent2D fb_extent = {
-      .width = state->framebuffer->width,
-      .height = state->framebuffer->height
-   };
-   cmd_buffer_update_tile_alignment(cmd_buffer, &state->render_area, &fb_extent);
-
+   cmd_buffer_update_tile_alignment(cmd_buffer);
 
    /* If we can't use TLB clears then we need to emit draw clears for any
     * LOAD_OP_CLEAR attachments in this subpass now.
@@ -1896,6 +2020,8 @@ struct v3dv_job *
 v3dv_cmd_buffer_subpass_resume(struct v3dv_cmd_buffer *cmd_buffer,
                                uint32_t subpass_idx)
 {
+   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(subpass_idx < state->pass->subpass_count);
 
@@ -1927,17 +2053,13 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   /* Emit last subpass */
+   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+   /* Finalize last subpass */
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    assert(state->subpass_idx == state->pass->subpass_count - 1);
-
-   /* See v3dv_cmd_buffer_subpass_finish for why we can get here without an
-    * active job.
-    */
-   if (cmd_buffer->state.job) {
-      v3dv_cmd_buffer_subpass_finish(cmd_buffer);
-      v3dv_cmd_buffer_finish_job(cmd_buffer);
-   }
+   v3dv_cmd_buffer_subpass_finish(cmd_buffer);
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
 
    /* We are no longer inside a render pass */
    state->framebuffer = NULL;
@@ -1953,20 +2075,192 @@ v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
    if (cmd_buffer->state.oom)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE;
-
-   struct v3dv_job *job = cmd_buffer->state.job;
-   if (job) {
-      /* We get here if we recorded commands after the last render pass in the
-       * command buffer. Make sure we finish this last job.
-       *
-       * FIXME: is this even possible?
-       */
-      assert(v3dv_cl_offset(&job->bcl) != 0);
+   /* Primaries should have ended any recording jobs by the time they hit
+    * vkEndRenderPass (if we are inside a render pass). Commands outside
+    * a render pass instance (for both primaries and secondaries) spawn
+    * complete jobs too. So the only case where we can get here without
+    * finishing a recording job is when we are recording a secondary
+    * inside a render pass.
+    */
+   if (cmd_buffer->state.job) {
+      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+             cmd_buffer->state.pass);
       v3dv_cmd_buffer_finish_job(cmd_buffer);
    }
 
+   cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_EXECUTABLE;
+
    return VK_SUCCESS;
+}
+
+static void
+emit_occlusion_query(struct v3dv_cmd_buffer *cmd_buffer);
+
+static void
+ensure_array_state(struct v3dv_cmd_buffer *cmd_buffer,
+                   uint32_t slot_size,
+                   uint32_t used_count,
+                   uint32_t *alloc_count,
+                   void **ptr);
+
+static void
+cmd_buffer_copy_secondary_end_query_state(struct v3dv_cmd_buffer *primary,
+                                          struct v3dv_cmd_buffer *secondary)
+{
+   struct v3dv_cmd_buffer_state *p_state = &primary->state;
+   struct v3dv_cmd_buffer_state *s_state = &secondary->state;
+
+   const uint32_t total_state_count =
+      p_state->query.end.used_count + s_state->query.end.used_count;
+   ensure_array_state(primary,
+                      sizeof(struct v3dv_end_query_cpu_job_info),
+                      total_state_count,
+                      &p_state->query.end.alloc_count,
+                      (void **) &p_state->query.end.states);
+   v3dv_return_if_oom(primary, NULL);
+
+   for (uint32_t i = 0; i < s_state->query.end.used_count; i++) {
+      const struct v3dv_end_query_cpu_job_info *s_qstate =
+         &secondary->state.query.end.states[i];
+
+      struct v3dv_end_query_cpu_job_info *p_qstate =
+         &p_state->query.end.states[p_state->query.end.used_count++];
+
+      p_qstate->pool = s_qstate->pool;
+      p_qstate->query = s_qstate->query;
+   }
+}
+
+static void
+cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
+                               uint32_t cmd_buffer_count,
+                               const VkCommandBuffer *cmd_buffers)
+{
+   struct v3dv_job *primary_job = primary->state.job;
+   assert(primary_job);
+
+   if (primary->state.dirty & V3DV_CMD_DIRTY_OCCLUSION_QUERY)
+      emit_occlusion_query(primary);
+
+   for (uint32_t i = 0; i < cmd_buffer_count; i++) {
+      V3DV_FROM_HANDLE(v3dv_cmd_buffer, secondary, cmd_buffers[i]);
+
+      assert(secondary->usage_flags &
+             VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+
+      /* Secondaries that run inside a render pass only record commands inside
+       * a subpass, so they don't crate complete jobs (they don't have an RCL
+       * and their BCL doesn't include tiling setup). These are provided by
+       * the primary command buffer instead, so we just want to branch to the
+       * BCL commands recorded in the secondary from the primary's BCL.
+       *
+       * Because of this, these secondary command buffers should have exactly
+       * one job (the default), with no RCL commands.
+       */
+      assert(list_length(&secondary->jobs) == 1);
+      list_for_each_entry(struct v3dv_job, secondary_job,
+                          &secondary->jobs, list_link) {
+         assert(v3dv_cl_offset(&secondary_job->rcl) == 0);
+         assert(secondary_job->bcl.bo);
+
+         set_foreach(secondary_job->bos, entry) {
+            struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
+            v3dv_job_add_bo(primary_job, bo);
+         }
+
+         /* Skip branch if command buffer is empty */
+         if (v3dv_cl_offset(&secondary_job->bcl) == 0)
+            continue;
+
+         v3dv_cl_ensure_space_with_branch(&primary_job->bcl,
+                                          cl_packet_length(BRANCH_TO_SUB_LIST));
+         v3dv_return_if_oom(primary, NULL);
+
+         cl_emit(&primary_job->bcl, BRANCH_TO_SUB_LIST, branch) {
+            branch.address = v3dv_cl_address(secondary_job->bcl.bo, 0);
+         }
+      }
+
+      /* If the secondary has recorded any vkCmdEndQuery commands, we need to
+       * copy this state to the primary so it is processed properly when the
+       * current primary job is finished.
+       */
+      cmd_buffer_copy_secondary_end_query_state(primary, secondary);
+   }
+}
+
+/* Clones a job for inclusion in the given command buffer. Note that this
+ * doesn't make a deep copy so the cloned job it doesn't own any resources.
+ * Useful when we need to have a job in more than one list, which happens
+ * for jobs recorded in secondary command buffers when we want to execute
+ * them in primaries.
+ */
+static struct v3dv_job *
+job_clone(struct v3dv_job *job, struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *clone_job = vk_alloc(&job->device->alloc,
+                                         sizeof(struct v3dv_job), 8,
+                                         VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!clone_job)
+      return NULL;
+
+   *clone_job = *job;
+   clone_job->is_clone = true;
+   clone_job->cmd_buffer = cmd_buffer;
+   return clone_job;
+}
+
+static void
+cmd_buffer_execute_outside_pass(struct v3dv_cmd_buffer *primary,
+                                uint32_t cmd_buffer_count,
+                                const VkCommandBuffer *cmd_buffers)
+{
+   for (uint32_t i = 0; i < cmd_buffer_count; i++) {
+      V3DV_FROM_HANDLE(v3dv_cmd_buffer, secondary, cmd_buffers[i]);
+
+      assert(!(secondary->usage_flags &
+               VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
+
+      /* Secondary command buffers that execute outside a render pass create
+       * complete jobs with an RCL and tile setup, so we simply want to merge
+       * their job list into the primary's. However, because they may be
+       * executed into multiple primaries at the same time and we only have a
+       * single list_link in each job, we can't just add then to the primary's
+       * job list and we instead have to clone them first.
+       *
+       * Alternatively, we could create a "execute secondary" CPU job that
+       * when executed in a queue, would submit all the jobs in the referenced
+       * secondary command buffer. However, this would raise some challenges
+       * to make it work with the implementation of wait threads in the queue
+       * which we use for event waits, for example.
+       */
+      list_for_each_entry(struct v3dv_job, secondary_job,
+                          &secondary->jobs, list_link) {
+         struct v3dv_job *clone_job = job_clone(secondary_job, primary);
+         if (!clone_job) {
+            v3dv_flag_oom(primary, NULL);
+            return;
+         }
+
+         list_addtail(&clone_job->list_link, &primary->jobs);
+      }
+   }
+}
+
+void
+v3dv_CmdExecuteCommands(VkCommandBuffer commandBuffer,
+                        uint32_t commandBufferCount,
+                        const VkCommandBuffer *pCommandBuffers)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, primary, commandBuffer);
+
+   if (primary->state.pass != NULL) {
+      cmd_buffer_execute_inside_pass(primary,
+                                     commandBufferCount, pCommandBuffers);
+   } else {
+      cmd_buffer_execute_outside_pass(primary,
+                                      commandBufferCount, pCommandBuffers);
+   }
 }
 
 /* This goes though the list of possible dynamic states in the pipeline and,
@@ -2450,6 +2744,11 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
                         cmd_buffer->state.render_area.extent.width);
    maxy = MIN2(vp_maxy, cmd_buffer->state.render_area.offset.y +
                         cmd_buffer->state.render_area.extent.height);
+
+   minx = vp_minx;
+   miny = vp_miny;
+   maxx = vp_maxx;
+   maxy = vp_maxy;
 
    /* Clip against user provided scissor if needed.
     *
@@ -3683,7 +3982,7 @@ v3dv_cmd_buffer_reset_queries(struct v3dv_cmd_buffer *cmd_buffer,
    job->cpu.query_reset.first = first;
    job->cpu.query_reset.count = count;
 
-   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
 static void
@@ -3763,7 +4062,7 @@ v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
 
       job->cpu.query_end.pool = pool;
       job->cpu.query_end.query = query;
-      list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+      list_addtail(&job->list_link, &cmd_buffer->jobs);
    }
 
    cmd_buffer->state.query.active_query = NULL;
@@ -3803,7 +4102,7 @@ v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
    job->cpu.query_copy_results.stride = stride;
    job->cpu.query_copy_results.flags = flags;
 
-   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
 void
@@ -3821,7 +4120,7 @@ v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
 
    v3dv_job_init(job, V3DV_JOB_TYPE_GPU_TFU, device, cmd_buffer, -1);
    job->tfu = *tfu;
-   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
 void
@@ -3847,7 +4146,7 @@ v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
    job->cpu.event_set.event = event;
    job->cpu.event_set.state = 1;
 
-   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
 void
@@ -3873,7 +4172,7 @@ v3dv_CmdResetEvent(VkCommandBuffer commandBuffer,
    job->cpu.event_set.event = event;
    job->cpu.event_set.state = 0;
 
-   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
 void
@@ -3922,5 +4221,5 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < eventCount; i++)
       job->cpu.event_wait.events[i] = v3dv_event_from_handle(pEvents[i]);
 
-   list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
 }

@@ -622,7 +622,7 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .sparseResidency16Samples = false,
       .sparseResidencyAliased = false,
       .variableMultisampleRate = false,
-      .inheritedQueries = false,
+      .inheritedQueries = true,
    };
 }
 
