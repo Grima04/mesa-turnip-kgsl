@@ -853,6 +853,45 @@ void emit_gfx10_wave64_bpermute(Program *program, aco_ptr<Instruction> &instr, B
    }
 }
 
+void emit_gfx6_bpermute(Program *program, aco_ptr<Instruction> &instr, Builder &bld)
+{
+   /* Emulates bpermute using readlane instructions */
+
+   Operand index = instr->operands[0];
+   Operand input = instr->operands[1];
+   Definition dst = instr->definitions[0];
+   Definition temp_exec = instr->definitions[1];
+   Definition clobber_vcc = instr->definitions[2];
+
+   assert(dst.regClass() == v1);
+   assert(temp_exec.regClass() == bld.lm);
+   assert(clobber_vcc.regClass() == bld.lm);
+   assert(clobber_vcc.physReg() == vcc);
+   assert(index.regClass() == v1);
+   assert(index.physReg() != dst.physReg());
+   assert(input.regClass().type() == RegType::vgpr);
+   assert(input.bytes() <= 4);
+   assert(input.physReg() != dst.physReg());
+
+   /* Save original EXEC */
+   bld.sop1(aco_opcode::s_mov_b64, temp_exec, Operand(exec, s2));
+
+   /* An "unrolled loop" that is executed per each lane.
+    * This takes only a few instructions per lane, as opposed to a "real" loop
+    * with branching, where the branch instruction alone would take 16+ cycles.
+    */
+   for (unsigned n = 0; n < program->wave_size; ++n) {
+      /* Activate the lane which has N for its source index */
+      bld.vopc(aco_opcode::v_cmpx_eq_u32, Definition(exec, bld.lm), clobber_vcc, Operand(n), index);
+      /* Read the data from lane N */
+      bld.readlane(Definition(vcc, s1), input, Operand(n));
+      /* On the active lane, move the data we read from lane N to the destination VGPR */
+      bld.vop1(aco_opcode::v_mov_b32, dst, Operand(vcc, s1));
+      /* Restore original EXEC */
+      bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand(temp_exec.physReg(), s2));
+   }
+}
+
 struct copy_operation {
    Operand op;
    Definition def;
@@ -1550,7 +1589,7 @@ void lower_to_hw_instr(Program* program)
             case aco_opcode::p_bpermute:
             {
                if (ctx.program->chip_class <= GFX7)
-                  unreachable("Not implemented yet on GFX6-7"); /* TODO */
+                  emit_gfx6_bpermute(program, instr, bld);
                else if (ctx.program->chip_class == GFX10 && ctx.program->wave_size == 64)
                   emit_gfx10_wave64_bpermute(program, instr, bld);
                else

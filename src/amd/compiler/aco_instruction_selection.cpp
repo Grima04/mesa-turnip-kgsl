@@ -171,7 +171,12 @@ static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data
 
    if (ctx->options->chip_class <= GFX7) {
       /* GFX6-7: there is no bpermute instruction */
-      unreachable("Not implemented yet on GFX6-7"); /* TODO */
+      Operand index_op(index);
+      Operand input_data(data);
+      index_op.setLateKill(true);
+      input_data.setLateKill(true);
+
+      return bld.pseudo(aco_opcode::p_bpermute, bld.def(v1), bld.def(bld.lm), bld.def(bld.lm, vcc), index_op, input_data);
    } else if (ctx->options->chip_class >= GFX10 && ctx->program->wave_size == 64) {
       /* GFX10 wave64 mode: emulate full-wave bpermute */
       if (!ctx->has_gfx10_wave64_bpermute) {
