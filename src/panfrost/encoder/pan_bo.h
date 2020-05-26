@@ -55,11 +55,8 @@
  * let the BO logic know about this contraint. */
 #define PAN_BO_DONT_REUSE         (1 << 5)
 
-/* BO has been imported */
-#define PAN_BO_IMPORTED           (1 << 6)
-
-/* BO has been exported */
-#define PAN_BO_EXPORTED           (1 << 7)
+/* BO is shared across processes (imported or exported) */
+#define PAN_BO_SHARED             (1 << 6)
 
 /* GPU access flags */
 

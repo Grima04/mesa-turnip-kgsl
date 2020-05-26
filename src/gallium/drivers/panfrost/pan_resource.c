@@ -632,7 +632,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                          * importer/exporter wouldn't see the change we're
                          * doing to it.
                          */
-                        if (!(bo->flags & (PAN_BO_IMPORTED | PAN_BO_EXPORTED)))
+                        if (!(bo->flags & PAN_BO_SHARED))
                                 newbo = panfrost_bo_create(dev, bo->size,
                                                            flags);
 

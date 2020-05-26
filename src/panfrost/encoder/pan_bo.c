@@ -128,7 +128,7 @@ panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
         /* If the BO has been exported or imported we can't rely on the cached
          * state, we need to call the WAIT_BO ioctl.
          */
-        if (!(bo->flags & (PAN_BO_IMPORTED | PAN_BO_EXPORTED))) {
+        if (!(bo->flags & PAN_BO_SHARED)) {
                 /* If ->gpu_access is 0, the BO is idle, no need to wait. */
                 if (!bo->gpu_access)
                         return true;
@@ -477,7 +477,7 @@ panfrost_bo_import(struct panfrost_device *dev, int fd)
                 bo->dev = dev;
                 bo->gpu = (mali_ptr) get_bo_offset.offset;
                 bo->size = lseek(fd, 0, SEEK_END);
-                bo->flags = PAN_BO_DONT_REUSE | PAN_BO_IMPORTED;
+                bo->flags = PAN_BO_DONT_REUSE | PAN_BO_SHARED;
                 bo->gem_handle = gem_handle;
                 assert(bo->size > 0);
                 p_atomic_set(&bo->refcnt, 1);
@@ -517,7 +517,7 @@ panfrost_bo_export(struct panfrost_bo *bo)
         if (ret == -1)
                 return -1;
 
-        bo->flags |= PAN_BO_DONT_REUSE | PAN_BO_EXPORTED;
+        bo->flags |= PAN_BO_DONT_REUSE | PAN_BO_SHARED;
         return args.fd;
 }
 
