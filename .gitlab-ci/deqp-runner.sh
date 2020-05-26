@@ -204,13 +204,24 @@ parse_renderer() {
 }
 
 check_renderer() {
-    echo "Capturing renderer info for driver sanity checks"
+    echo "Capturing renderer info for GLES driver sanity checks"
     # If you're having trouble loading your driver, uncommenting this may help
     # debug.
     # export EGL_LOG_LEVEL=debug
     VERSION=`echo $DEQP_VER | tr '[a-z]' '[A-Z]'`
     $DEQP $DEQP_OPTIONS --deqp-case=dEQP-$VERSION.info.\* --deqp-log-filename=$RESULTS/deqp-info.qpa
     parse_renderer
+}
+
+check_vk_device_name() {
+    echo "Capturing device info for VK driver sanity checks"
+    $DEQP $DEQP_OPTIONS --deqp-case=dEQP-VK.info.device --deqp-log-filename=$RESULTS/deqp-info.qpa
+    DEVICENAME=`grep deviceName $RESULTS/deqp-info.qpa | sed 's|deviceName: ||g'`
+    echo "deviceName: $DEVICENAME"
+    if [ -n "$DEQP_EXPECTED_RENDERER" -a $DEVICENAME != "$DEQP_EXPECTED_RENDERER" ]; then
+        echo "Expected deviceName $DEQP_EXPECTED_RENDERER"
+        exit 1
+    fi
 }
 
 # wrapper to supress +x to avoid spamming the log
@@ -233,7 +244,9 @@ if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     sleep 1
 fi
 
-if [ $DEQP_VER != vk ]; then
+if [ $DEQP_VER = vk ]; then
+    quiet check_vk_device_name
+else
     quiet check_renderer
 fi
 
