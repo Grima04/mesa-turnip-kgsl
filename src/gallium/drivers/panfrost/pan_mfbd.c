@@ -250,6 +250,8 @@ panfrost_mfbd_set_zsbuf(
         struct mali_framebuffer_extra *fbx,
         struct pipe_surface *surf)
 {
+        struct panfrost_device *dev = pan_device(surf->context->screen);
+        bool is_bifrost = dev->quirks & IS_BIFROST;
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
         unsigned level = surf->u.tex.level;
@@ -292,7 +294,14 @@ panfrost_mfbd_set_zsbuf(
                         fbx->zs_block = MALI_BLOCK_LINEAR;
                         fbx->ds_linear.depth_stride = stride / 16;
                 } else {
-                        fbx->zs_block = MALI_BLOCK_TILED;
+                        if (is_bifrost) {
+                                fbx->zs_block = MALI_BLOCK_UNKNOWN;
+                                fbx->flags_hi |= 0x4400;
+                                fbx->flags_lo |= 0x1;
+                        } else {
+                                fbx->zs_block = MALI_BLOCK_TILED;
+                        }
+
                         fbx->ds_linear.depth_stride = stride;
                 }
 
