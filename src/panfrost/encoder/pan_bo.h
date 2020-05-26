@@ -43,9 +43,7 @@
 /* This memory region should not be mapped to the CPU */
 #define PAN_BO_INVISIBLE          (1 << 2)
 
-/* This memory region will be used for varyings and needs to have the cache
- * bits twiddled accordingly */
-#define PAN_BO_COHERENT_LOCAL     (1 << 3)
+/* bit 3 unused */
 
 /* This region may not be used immediately and will not mmap on allocate
  * (semantically distinct from INVISIBLE, which cannot never be mmaped) */
