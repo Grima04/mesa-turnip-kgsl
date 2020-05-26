@@ -323,6 +323,25 @@ create_display_fd_xcb()
 #endif
 #endif
 
+static bool
+v3d_has_feature(struct v3dv_physical_device *device, enum drm_v3d_param feature)
+{
+   struct drm_v3d_get_param p = {
+      .param = feature,
+   };
+   if (v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_GET_PARAM, &p) != 0)
+      return false;
+   return p.value;
+}
+
+static bool
+device_has_expected_features(struct v3dv_physical_device *device)
+{
+   return v3d_has_feature(device, DRM_V3D_PARAM_SUPPORTS_TFU) &&
+          v3d_has_feature(device, DRM_V3D_PARAM_SUPPORTS_CSD) &&
+          v3d_has_feature(device, DRM_V3D_PARAM_SUPPORTS_CACHE_FLUSH);
+}
+
 static VkResult
 physical_device_init(struct v3dv_physical_device *device,
                      struct v3dv_instance *instance,
@@ -364,6 +383,16 @@ physical_device_init(struct v3dv_physical_device *device,
 #endif
 
    if (!v3d_get_device_info(device->render_fd, &device->devinfo, &v3dv_ioctl)) {
+      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      goto fail;
+   }
+
+   if (device->devinfo.ver < 42) {
+      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      goto fail;
+   }
+
+   if (!device_has_expected_features(device)) {
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
       goto fail;
    }
