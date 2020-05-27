@@ -1127,6 +1127,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x193c0, "ST_VAR.v4", ADD_THREE_SRC, true },
         { 0x1952c, "BLEND", ADD_BLENDING, true },
         { 0x1a000, "LD_VAR.16", ADD_VARYING_INTERP, true },
+        { 0x1ae20, "TEX.vtx", ADD_TEX, true },
         { 0x1ae60, "TEX", ADD_TEX, true },
         { 0x1b000, "TEX.f16", ADD_TEX_COMPACT, true },
         { 0x1c000, "RSHIFT_NAND.i32", ADD_SHIFT },
