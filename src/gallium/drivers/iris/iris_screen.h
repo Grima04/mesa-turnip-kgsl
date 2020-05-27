@@ -182,6 +182,15 @@ struct iris_screen {
 
    uint64_t aperture_bytes;
 
+   /**
+    * Last sequence number allocated by the cache tracking mechanism.
+    *
+    * These are used for synchronization and are expected to identify a single
+    * section of a batch, so they should be monotonically increasing and
+    * unique across a single pipe_screen.
+    */
+   uint64_t last_seqno;
+
    struct gen_device_info devinfo;
    struct isl_device isl_dev;
    struct iris_bufmgr *bufmgr;

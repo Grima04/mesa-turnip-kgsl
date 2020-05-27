@@ -144,8 +144,20 @@ struct iris_batch {
    struct gen_batch_decode_ctx decoder;
    struct hash_table_u64 *state_sizes;
 
+   /**
+    * Sequence number used to track the completion of any subsequent memory
+    * operations in the batch until the next sync boundary.
+    */
+   uint64_t next_seqno;
+
    /** Have we emitted any draw calls to this batch? */
    bool contains_draw;
+
+   /**
+    * Number of times iris_batch_sync_region_start() has been called without a
+    * matching iris_batch_sync_region_end() on this batch.
+    */
+   uint32_t sync_region_depth;
 
    uint32_t last_aux_map_state;
 };
@@ -257,6 +269,43 @@ iris_record_state_size(struct hash_table_u64 *ht,
    if (ht) {
       _mesa_hash_table_u64_insert(ht, offset_from_base,
                                   (void *)(uintptr_t) size);
+   }
+}
+
+/**
+ * Mark the start of a region in the batch with stable synchronization
+ * sequence number.  Any buffer object accessed by the batch buffer only needs
+ * to be marked once (e.g. via iris_bo_bump_seqno()) within a region delimited
+ * by iris_batch_sync_region_start() and iris_batch_sync_region_end().
+ */
+static inline void
+iris_batch_sync_region_start(struct iris_batch *batch)
+{
+   batch->sync_region_depth++;
+}
+
+/**
+ * Mark the end of a region in the batch with stable synchronization sequence
+ * number.  Should be called once after each call to
+ * iris_batch_sync_region_start().
+ */
+static inline void
+iris_batch_sync_region_end(struct iris_batch *batch)
+{
+   assert(batch->sync_region_depth);
+   batch->sync_region_depth--;
+}
+
+/**
+ * Start a new synchronization section at the current point of the batch,
+ * unless disallowed by a previous iris_batch_sync_region_start().
+ */
+static inline void
+iris_batch_sync_boundary(struct iris_batch *batch)
+{
+   if (!batch->sync_region_depth) {
+      batch->next_seqno = p_atomic_inc_return(&batch->screen->last_seqno);
+      assert(batch->next_seqno > 0);
    }
 }
 
