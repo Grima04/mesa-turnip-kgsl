@@ -426,6 +426,16 @@ enum mali_format {
  */
 #define MALI_SUPPRESS_INF_NAN (1 << 3)
 
+/* Flags for bifrost1.unk1 */
+
+/* Shader uses less than 32 registers, partitioned as [R0, R15] U [R48, R63],
+ * allowing for full thread count. If clear, the full [R0, R63] register set is
+ * available at half thread count */
+#define MALI_BIFROST_FULL_THREAD (1 << 9)
+
+/* First clause type is ATEST */
+#define MALI_BIFROST_FIRST_ATEST (1 << 26)
+
 /* The raw Midgard blend payload can either be an equation or a shader
  * address, depending on the context */
 
