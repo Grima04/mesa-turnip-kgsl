@@ -653,6 +653,9 @@ radv_shader_compile_to_nir(struct radv_device *device,
 	 */
 	nir_lower_var_copies(nir);
 
+	NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_push_const,
+		   nir_address_format_32bit_offset);
+
 	NIR_PASS_V(nir, nir_lower_explicit_io,
 		   nir_var_mem_ubo | nir_var_mem_ssbo,
 		   nir_address_format_32bit_index_offset);

@@ -573,6 +573,9 @@ val_shader_compile_to_ir(struct val_pipeline *pipeline,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_push_const,
+              nir_address_format_32bit_offset);
+
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared, shared_var_info);
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared, nir_address_format_32bit_offset);
