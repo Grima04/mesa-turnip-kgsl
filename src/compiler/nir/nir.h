@@ -1897,7 +1897,7 @@ nir_intrinsic_set_##name(nir_intrinsic_instr *instr, type val)                \
    instr->const_index[info->index_map[NIR_INTRINSIC_##flag] - 1] = val;       \
 }                                                                             \
 static inline bool                                                            \
-nir_intrinsic_has_##name(nir_intrinsic_instr *instr)                          \
+nir_intrinsic_has_##name(const nir_intrinsic_instr *instr)                    \
 {                                                                             \
    const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];   \
    return info->index_map[NIR_INTRINSIC_##flag] > 0;                          \
@@ -1957,6 +1957,13 @@ nir_intrinsic_align(const nir_intrinsic_instr *intrin)
    const unsigned align_offset = nir_intrinsic_align_offset(intrin);
    assert(align_offset < align_mul);
    return align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
+}
+
+static inline bool
+nir_intrinsic_has_align(const nir_intrinsic_instr *intrin)
+{
+   return nir_intrinsic_has_align_mul(intrin) &&
+          nir_intrinsic_has_align_offset(intrin);
 }
 
 static inline void

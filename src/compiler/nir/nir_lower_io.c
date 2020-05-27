@@ -849,7 +849,7 @@ build_addr_for_var(nir_builder *b, nir_variable *var,
 {
    assert(var->data.mode & (nir_var_uniform | nir_var_mem_shared |
                             nir_var_shader_temp | nir_var_function_temp |
-                            nir_var_mem_constant));
+                            nir_var_mem_push_const | nir_var_mem_constant));
 
    const unsigned num_comps = nir_address_format_num_components(addr_format);
    const unsigned bit_size = nir_address_format_bit_size(addr_format);
@@ -1134,6 +1134,10 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
          op = nir_intrinsic_load_global;
       }
       break;
+   case nir_var_mem_push_const:
+      assert(addr_format == nir_address_format_32bit_offset);
+      op = nir_intrinsic_load_push_constant;
+      break;
    case nir_var_mem_constant:
       if (addr_format_is_offset(addr_format)) {
          op = nir_intrinsic_load_constant;
@@ -1164,6 +1168,13 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    if (op == nir_intrinsic_load_constant) {
       nir_intrinsic_set_base(load, 0);
       nir_intrinsic_set_range(load, b->shader->constant_data_size);
+   } else if (mode == nir_var_mem_push_const) {
+      /* Push constants are required to be able to be chased back to the
+       * variable so we can provide a base/range.
+       */
+      nir_variable *var = nir_deref_instr_get_variable(deref);
+      nir_intrinsic_set_base(load, 0);
+      nir_intrinsic_set_range(load, glsl_get_explicit_size(var->type, false));
    }
 
    unsigned bit_size = intrin->dest.ssa.bit_size;
@@ -1172,7 +1183,8 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       bit_size = 32;
    }
 
-   nir_intrinsic_set_align(load, align_mul, align_offset);
+   if (nir_intrinsic_has_align(load))
+      nir_intrinsic_set_align(load, align_mul, align_offset);
 
    if (nir_intrinsic_has_range_base(load)) {
       unsigned base, range;
