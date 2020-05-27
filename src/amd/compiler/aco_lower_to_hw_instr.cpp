@@ -1255,39 +1255,43 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
 
       /* on GFX6/7, we need some small workarounds as there is no
        * SDWA instruction to do partial register writes */
-      if (ctx->program->chip_class < GFX8 && it->second.bytes == 2) {
+      if (ctx->program->chip_class < GFX8 && it->second.bytes < 4) {
          if (it->first.byte() == 0 && it->second.op.physReg().byte() == 0 &&
              !it->second.is_used && pi->opcode == aco_opcode::p_split_vector) {
             /* Other operations might overwrite the high bits, so change all users
              * of the high bits to the new target where they are still available.
              * This mechanism depends on also emitting dead definitions. */
-            PhysReg reg_hi = it->second.op.physReg().advance(2);
-            std::map<PhysReg, copy_operation>::iterator other = copy_map.begin();
-            for (other = copy_map.begin(); other != copy_map.end(); other++) {
-               /* on GFX6/7, if the high bits are used as operand, they cannot be a target */
-               if (other->second.op.physReg() == reg_hi) {
-                  other->second.op.setFixed(it->first.advance(2));
-                  break; /* break because an operand can only be used once */
+            PhysReg reg_hi = it->second.op.physReg().advance(it->second.bytes);
+            while (reg_hi != PhysReg(it->second.op.physReg().reg() + 1)) {
+               std::map<PhysReg, copy_operation>::iterator other = copy_map.begin();
+               for (other = copy_map.begin(); other != copy_map.end(); other++) {
+                  /* on GFX6/7, if the high bits are used as operand, they cannot be a target */
+                  if (other->second.op.physReg() == reg_hi) {
+                     other->second.op.setFixed(it->first.advance(reg_hi.byte()));
+                     break; /* break because an operand can only be used once */
+                  }
                }
+               reg_hi = reg_hi.advance(it->second.bytes);
             }
-         } else if (it->first.byte() == 2) {
+         } else if (it->first.byte()) {
+            assert(pi->opcode == aco_opcode::p_create_vector);
             /* on GFX6/7, if we target an upper half where the lower half hasn't yet been handled,
              * move to the target operand's high bits. This is save to do as it cannot be an operand */
             PhysReg lo = PhysReg(it->first.reg());
             std::map<PhysReg, copy_operation>::iterator other = copy_map.find(lo);
             if (other != copy_map.end()) {
-               PhysReg new_reg_hi = other->second.op.physReg().advance(2);
-               assert(other->second.bytes == 2 && new_reg_hi.byte() == 2);
-               it->second.def = Definition(new_reg_hi, v2b);
+               assert(other->second.bytes == it->first.byte());
+               PhysReg new_reg_hi = other->second.op.physReg().advance(it->first.byte());
+               it->second.def = Definition(new_reg_hi, it->second.def.regClass());
                it->second.is_used = 0;
-               other->second.bytes = 4;
-               other->second.def.setTemp(Temp(other->second.def.tempId(), v1));
-               other->second.op.setTemp(Temp(other->second.op.tempId(), v1));
+               other->second.bytes += it->second.bytes;
+               other->second.def.setTemp(Temp(other->second.def.tempId(), RegClass::get(RegType::vgpr, other->second.bytes)));
+               other->second.op.setTemp(Temp(other->second.op.tempId(), RegClass::get(RegType::vgpr, other->second.bytes)));
                /* if the new target's high bits are also a target, change uses */
                std::map<PhysReg, copy_operation>::iterator target = copy_map.find(new_reg_hi);
                if (target != copy_map.end()) {
-                  target->second.uses[0]++;
-                  target->second.uses[1]++;
+                  for (unsigned i = 0; i < it->second.bytes; i++)
+                     target->second.uses[i]++;
                }
             }
          }
