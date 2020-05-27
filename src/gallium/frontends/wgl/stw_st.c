@@ -205,6 +205,9 @@ stw_pipe_blit(struct pipe_context *pipe,
 {
    struct pipe_blit_info blit;
 
+   if (!dst || !src)
+      return;
+
    /* From the GL spec, version 4.2, section 4.1.11 (Additional Multisample
     *  Fragment Operations):
     *
@@ -243,6 +246,48 @@ stw_pipe_blit(struct pipe_context *pipe,
    pipe->blit(pipe, &blit);
 }
 
+struct notify_before_flush_cb_args {
+   struct st_context_iface *stctx;
+   struct stw_st_framebuffer *stwfb;
+   unsigned flags;
+};
+
+static void
+notify_before_flush_cb(void* _args)
+{
+   struct notify_before_flush_cb_args *args = (struct notify_before_flush_cb_args *) _args;
+   struct st_context_iface *st = args->stctx;
+   struct pipe_context *pipe = st->pipe;
+
+   if (args->stwfb->stvis.samples > 1) {
+      /* Resolve the MSAA back buffer. */
+      stw_pipe_blit(pipe,
+                    args->stwfb->textures[ST_ATTACHMENT_BACK_LEFT],
+                    args->stwfb->msaa_textures[ST_ATTACHMENT_BACK_LEFT]);
+
+      /* FRONT_LEFT is resolved in flush_frontbuffer. */
+   }
+}
+
+void
+stw_st_flush(struct st_context_iface *stctx,
+             struct st_framebuffer_iface *stfb,
+             unsigned flags)
+{
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct notify_before_flush_cb_args args;
+   struct pipe_fence_handle **pfence = NULL;
+   struct pipe_fence_handle *fence = NULL;
+
+   args.stctx = stctx;
+   args.stwfb = stwfb;
+   args.flags = flags;
+
+   if (flags & ST_FLUSH_WAIT)
+      pfence = &fence;
+   stctx->flush(stctx, flags, pfence, notify_before_flush_cb, &args);
+}
+
 /**
  * Present an attachment of the framebuffer.
  */
@@ -256,12 +301,6 @@ stw_st_framebuffer_present_locked(HDC hdc,
    struct pipe_resource *resource;
 
    assert(stw_own_mutex(&stwfb->fb->mutex));
-
-   if (stwfb->stvis.samples > 1) {
-      stw_pipe_blit(stctx->pipe,
-                    stwfb->textures[statt],
-                    stwfb->msaa_textures[statt]);
-   }
 
    resource = stwfb->textures[statt];
    if (resource) {
@@ -282,10 +321,21 @@ stw_st_framebuffer_flush_front(struct st_context_iface *stctx,
                                enum st_attachment_type statt)
 {
    struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct pipe_context *pipe = stctx->pipe;
    bool ret;
    HDC hDC;
 
+   if (statt != ST_ATTACHMENT_FRONT_LEFT)
+      return false;
+
    stw_framebuffer_lock(stwfb->fb);
+
+   if (stwfb->stvis.samples > 1) {
+      /* Resolve the front buffer. */
+      stw_pipe_blit(pipe, stwfb->textures[statt], stwfb->msaa_textures[statt]);
+   }
+
+   pipe->flush(pipe, NULL, 0);
 
    /* We must not cache HDCs anywhere, as they can be invalidated by the
     * application, or screen resolution changes. */
