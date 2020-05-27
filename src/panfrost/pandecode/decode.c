@@ -278,6 +278,16 @@ static const struct pandecode_flag_info shader_midgard1_flag_hi_info [] = {
 };
 #undef FLAG_INFO
 
+#define FLAG_INFO(flag) { MALI_BIFROST_##flag, "MALI_BIFROST_" #flag }
+static const struct pandecode_flag_info shader_bifrost_info [] = {
+        FLAG_INFO(FULL_THREAD),
+        FLAG_INFO(EARLY_Z),
+        FLAG_INFO(FIRST_ATEST),
+        {}
+};
+
+#undef FLAG_INFO
+
 #define FLAG_INFO(flag) { MALI_MFBD_##flag, "MALI_MFBD_" #flag }
 static const struct pandecode_flag_info mfbd_flag_info [] = {
         FLAG_INFO(DEPTH_WRITE),
@@ -2587,7 +2597,9 @@ pandecode_vertex_tiler_postfix_pre(
                 }
 
                 if (is_bifrost) {
-                        pandecode_prop("bifrost1.unk1 = 0x%" PRIx32, s->bifrost1.unk1);
+                        pandecode_log("bifrost1.unk1 = ");
+                        pandecode_log_decoded_flags(shader_bifrost_info, s->bifrost1.unk1);
+                        pandecode_log_cont(",\n");
                 } else {
                         bool helpers = s->midgard1.flags_lo & MALI_HELPER_INVOCATIONS;
                         s->midgard1.flags_lo &= ~MALI_HELPER_INVOCATIONS;
