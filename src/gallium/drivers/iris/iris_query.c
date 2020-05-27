@@ -101,7 +101,6 @@ query_mem64(struct iris_query *q, uint32_t offset)
    struct iris_address addr = {
       .bo = iris_resource_bo(q->query_state_ref.res),
       .offset = q->query_state_ref.offset + offset,
-      .write = true,
       .access = IRIS_DOMAIN_OTHER_WRITE
    };
    return gen_mi_mem64(addr);

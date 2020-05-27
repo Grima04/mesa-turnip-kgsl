@@ -52,7 +52,8 @@ __gen_combine_address(struct iris_batch *batch, void *location,
    uint64_t result = addr.offset + delta;
 
    if (addr.bo) {
-      iris_use_pinned_bo(batch, addr.bo, addr.write, addr.access);
+      iris_use_pinned_bo(batch, addr.bo,
+                         !iris_domain_is_read_only(addr.access), addr.access);
       /* Assume this is a general address, not relative to a base. */
       result += addr.bo->gtt_offset;
    }
@@ -129,5 +130,5 @@ UNUSED static struct iris_address
 rw_bo(struct iris_bo *bo, uint64_t offset, enum iris_domain access)
 {
    return (struct iris_address) { .bo = bo, .offset = offset,
-                                  .write = true, .access = access };
+                                  .access = access };
 }

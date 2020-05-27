@@ -137,10 +137,9 @@ struct iris_vtable {
 };
 
 struct iris_address {
-   enum iris_domain access;
    struct iris_bo *bo;
    uint64_t offset;
-   bool write;
+   enum iris_domain access;
 };
 
 struct iris_screen {
