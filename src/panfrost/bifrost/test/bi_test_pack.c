@@ -585,7 +585,7 @@ bit_packing(struct panfrost_device *dev, enum bit_debug debug)
                 bit_icmp_helper(dev, input, sz, nir_type_int, debug);
         }
 
-        for (unsigned sz = 32; sz <= 32; sz *= 2)
+        for (unsigned sz = 16; sz <= 32; sz *= 2)
                 bit_csel_helper(dev, sz, (uint32_t *) input32, debug);
 
         float special[4] = { 0.9 };
