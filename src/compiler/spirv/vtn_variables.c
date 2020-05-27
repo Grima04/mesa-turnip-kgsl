@@ -179,10 +179,9 @@ bool
 vtn_mode_uses_ssa_offset(struct vtn_builder *b,
                          enum vtn_variable_mode mode)
 {
-   return ((mode == vtn_variable_mode_ubo ||
-            mode == vtn_variable_mode_ssbo) &&
-           b->options->lower_ubo_ssbo_access_to_offsets) ||
-          mode == vtn_variable_mode_push_constant;
+   return (mode == vtn_variable_mode_ubo ||
+           mode == vtn_variable_mode_ssbo) &&
+          b->options->lower_ubo_ssbo_access_to_offsets;
 }
 
 static bool
@@ -203,8 +202,7 @@ vtn_pointer_is_external_block(struct vtn_builder *b,
 {
    return ptr->mode == vtn_variable_mode_ssbo ||
           ptr->mode == vtn_variable_mode_ubo ||
-          ptr->mode == vtn_variable_mode_phys_ssbo ||
-          ptr->mode == vtn_variable_mode_push_constant;
+          ptr->mode == vtn_variable_mode_phys_ssbo;
 }
 
 static nir_ssa_def *
@@ -771,60 +769,6 @@ vtn_pointer_to_offset(struct vtn_builder *b, struct vtn_pointer *ptr,
    }
    *index_out = ptr->block_index;
    return ptr->offset;
-}
-
-/* Tries to compute the size of an interface block based on the strides and
- * offsets that are provided to us in the SPIR-V source.
- */
-static unsigned
-vtn_type_block_size(struct vtn_builder *b, struct vtn_type *type)
-{
-   enum glsl_base_type base_type = glsl_get_base_type(type->type);
-   switch (base_type) {
-   case GLSL_TYPE_UINT:
-   case GLSL_TYPE_INT:
-   case GLSL_TYPE_UINT16:
-   case GLSL_TYPE_INT16:
-   case GLSL_TYPE_UINT8:
-   case GLSL_TYPE_INT8:
-   case GLSL_TYPE_UINT64:
-   case GLSL_TYPE_INT64:
-   case GLSL_TYPE_FLOAT:
-   case GLSL_TYPE_FLOAT16:
-   case GLSL_TYPE_BOOL:
-   case GLSL_TYPE_DOUBLE: {
-      unsigned cols = type->row_major ? glsl_get_vector_elements(type->type) :
-                                        glsl_get_matrix_columns(type->type);
-      if (cols > 1) {
-         vtn_assert(type->stride > 0);
-         return type->stride * cols;
-      } else {
-         unsigned type_size = glsl_get_bit_size(type->type) / 8;
-         return glsl_get_vector_elements(type->type) * type_size;
-      }
-   }
-
-   case GLSL_TYPE_STRUCT:
-   case GLSL_TYPE_INTERFACE: {
-      unsigned size = 0;
-      unsigned num_fields = glsl_get_length(type->type);
-      for (unsigned f = 0; f < num_fields; f++) {
-         unsigned field_end = type->offsets[f] +
-                              vtn_type_block_size(b, type->members[f]);
-         size = MAX2(size, field_end);
-      }
-      return size;
-   }
-
-   case GLSL_TYPE_ARRAY:
-      vtn_assert(type->stride > 0);
-      vtn_assert(glsl_get_length(type->type) > 0);
-      return type->stride * glsl_get_length(type->type);
-
-   default:
-      vtn_fail("Invalid block type");
-      return 0;
-   }
 }
 
 static void
@@ -1876,7 +1820,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       break;
    case SpvStorageClassPushConstant:
       mode = vtn_variable_mode_push_constant;
-      nir_mode = nir_var_uniform;
+      nir_mode = nir_var_mem_push_const;
       break;
    case SpvStorageClassInput:
       mode = vtn_variable_mode_input;
@@ -2203,7 +2147,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       }
       break;
    case vtn_variable_mode_push_constant:
-      b->shader->num_uniforms = vtn_type_block_size(b, type);
+      b->shader->num_uniforms =
+         glsl_get_explicit_size(without_array->type, false);
       break;
 
    case vtn_variable_mode_image:
@@ -2249,6 +2194,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
 
    case vtn_variable_mode_ubo:
    case vtn_variable_mode_ssbo:
+   case vtn_variable_mode_push_constant:
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
 
@@ -2257,7 +2203,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
 
       var->var->data.mode = nir_mode;
       var->var->data.location = -1;
-
+      var->var->data.driver_location = 0;
       break;
 
    case vtn_variable_mode_workgroup:
@@ -2360,7 +2306,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       break;
    }
 
-   case vtn_variable_mode_push_constant:
    case vtn_variable_mode_cross_workgroup:
       /* These don't need actual variables. */
       break;

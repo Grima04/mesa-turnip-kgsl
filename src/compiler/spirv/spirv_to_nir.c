@@ -844,6 +844,7 @@ vtn_type_needs_explicit_layout(struct vtn_builder *b, enum vtn_variable_mode mod
    case vtn_variable_mode_ssbo:
    case vtn_variable_mode_phys_ssbo:
    case vtn_variable_mode_ubo:
+   case vtn_variable_mode_push_constant:
       return true;
 
    default:
