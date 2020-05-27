@@ -54,7 +54,6 @@ int bifrost_debug = 0;
 
 static bi_block *emit_cf_list(bi_context *ctx, struct exec_list *list);
 static bi_instruction *bi_emit_branch(bi_context *ctx);
-static void bi_schedule_barrier(bi_context *ctx);
 
 static void
 emit_jump(bi_context *ctx, nir_jump_instr *instr)
@@ -147,7 +146,6 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 };
 
                 bi_emit(ctx, ins);
-                bi_schedule_barrier(ctx);
                 ctx->emitted_atest = true;
         }
 
@@ -177,7 +175,6 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
         ctx->blend_types[blend.blend_location] = blend.src_types[0];
 
         bi_emit(ctx, blend);
-        bi_schedule_barrier(ctx);
 }
 
 static bi_instruction
@@ -1001,18 +998,6 @@ create_empty_block(bi_context *ctx)
         blk->base.name = ctx->block_name_count++;
 
         return blk;
-}
-
-static void
-bi_schedule_barrier(bi_context *ctx)
-{
-        bi_block *temp = ctx->after_block;
-        ctx->after_block = create_empty_block(ctx);
-        list_addtail(&ctx->after_block->base.link, &ctx->blocks);
-        list_inithead(&ctx->after_block->base.instructions);
-        pan_block_add_successor(&ctx->current_block->base, &ctx->after_block->base);
-        ctx->current_block = ctx->after_block;
-        ctx->after_block = temp;
 }
 
 static bi_block *
