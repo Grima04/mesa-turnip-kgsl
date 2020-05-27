@@ -178,7 +178,7 @@ panfrost_nonlinear_stride(enum mali_texture_layout layout,
                 unsigned width)
 {
         if (layout == MALI_TEXTURE_TILED) {
-                return (width < 16) ? 0 : (16 * bytes_per_pixel * width);
+                return (width < 16) ? 0 : (16 * bytes_per_pixel * ALIGN_POT(width, 16));
         } else {
                 unreachable("TODO: AFBC on Bifrost");
         }
