@@ -4489,11 +4489,8 @@ genX(emit_gpgpu_walker)(struct brw_context *brw)
 
    const struct brw_cs_parameters cs_params = brw_cs_get_parameters(brw);
 
-   uint32_t right_mask = 0xffffffffu >> (32 - cs_params.simd_size);
-   const unsigned right_non_aligned =
-      cs_params.group_size & (cs_params.simd_size - 1);
-   if (right_non_aligned != 0)
-      right_mask >>= (cs_params.simd_size - right_non_aligned);
+   const uint32_t right_mask =
+      brw_cs_right_mask(cs_params.group_size, cs_params.simd_size);
 
    brw_batch_emit(brw, GENX(GPGPU_WALKER), ggw) {
       ggw.IndirectParameterEnable      = indirect;

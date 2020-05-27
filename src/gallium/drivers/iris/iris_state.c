@@ -6624,14 +6624,6 @@ iris_upload_compute_state(struct iris_context *ice,
       }
    }
 
-   uint32_t remainder = group_size & (simd_size - 1);
-   uint32_t right_mask;
-
-   if (remainder > 0)
-      right_mask = ~0u >> (32 - remainder);
-   else
-      right_mask = ~0u >> (32 - simd_size);
-
 #define GPGPU_DISPATCHDIMX 0x2500
 #define GPGPU_DISPATCHDIMY 0x2504
 #define GPGPU_DISPATCHDIMZ 0x2508
@@ -6652,6 +6644,8 @@ iris_upload_compute_state(struct iris_context *ice,
          lrm.MemoryAddress = ro_bo(bo, grid_size->offset + 8);
       }
    }
+
+   const uint32_t right_mask = brw_cs_right_mask(group_size, simd_size);
 
    iris_emit_cmd(batch, GENX(GPGPU_WALKER), ggw) {
       ggw.IndirectParameterEnable    = grid->indirect != NULL;

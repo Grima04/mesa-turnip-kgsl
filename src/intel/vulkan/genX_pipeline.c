@@ -2326,12 +2326,8 @@ compute_pipeline_create(
    anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);
 
    const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
-   uint32_t remainder = cs_params.group_size & (cs_params.simd_size - 1);
 
-   if (remainder > 0)
-      pipeline->cs_right_mask = ~0u >> (32 - remainder);
-   else
-      pipeline->cs_right_mask = ~0u >> (32 - cs_params.simd_size);
+   pipeline->cs_right_mask = brw_cs_right_mask(cs_params.group_size, cs_params.simd_size);
 
    const uint32_t vfe_curbe_allocation =
       ALIGN(cs_prog_data->push.per_thread.regs * cs_params.threads +
