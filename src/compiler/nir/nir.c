@@ -115,15 +115,12 @@ nir_shader_add_variable(nir_shader *shader, nir_variable *var)
    case nir_var_mem_ssbo:
    case nir_var_mem_shared:
    case nir_var_system_value:
+   case nir_var_mem_push_const:
    case nir_var_mem_constant:
       break;
 
    case nir_var_mem_global:
       assert(!"nir_shader_add_variable cannot be used for global memory");
-      return;
-
-   case nir_var_mem_push_const:
-      assert(!"nir_var_push_constant is not supposed to be used for variables");
       return;
 
    default:

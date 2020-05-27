@@ -457,7 +457,8 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
          if (instr->mode == nir_var_mem_ubo ||
              instr->mode == nir_var_mem_ssbo ||
              instr->mode == nir_var_mem_shared ||
-             instr->mode == nir_var_mem_global) {
+             instr->mode == nir_var_mem_global ||
+             instr->mode == nir_var_mem_push_const) {
             /* Shared variables and UBO/SSBOs have a bit more relaxed rules
              * because we need to be able to handle array derefs on vectors.
              * Fortunately, nir_lower_io handles these just fine.
@@ -1410,6 +1411,7 @@ nir_validate_shader(nir_shader *shader, const char *when)
       nir_var_system_value |
       nir_var_mem_ssbo |
       nir_var_mem_shared |
+      nir_var_mem_push_const |
       nir_var_mem_constant;
 
    exec_list_validate(&shader->variables);

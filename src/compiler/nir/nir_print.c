@@ -465,6 +465,8 @@ get_variable_mode_str(nir_variable_mode mode, bool want_local_global_mode)
       return "shared";
    case nir_var_mem_global:
       return "global";
+   case nir_var_mem_push_const:
+      return "push_const";
    case nir_var_mem_constant:
       return "constant";
    case nir_var_shader_temp:
