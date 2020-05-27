@@ -105,7 +105,16 @@ bi_get_component_count(bi_instruction *ins, signed src)
                 assert(ins->vector_channels);
                 return (src <= 0) ? ins->vector_channels : 1;
         } else {
-                unsigned bytes = nir_alu_type_get_type_size(src < 0 ? ins->dest_type : ins->src_types[src]);
+                unsigned dest_bytes = nir_alu_type_get_type_size(ins->dest_type);
+                unsigned src_bytes = nir_alu_type_get_type_size(ins->src_types[src]);
+
+                /* If there's either f32 on either end, it's only a single
+                 * component, etc. */
+
+                unsigned bytes = src < 0 ? dest_bytes : src_bytes;
+
+                if (ins->type == BI_CONVERT)
+                        bytes = MAX2(dest_bytes, src_bytes);
                 
                 if (ins->type == BI_ATEST || ins->type == BI_SELECT)
                         return 1;
