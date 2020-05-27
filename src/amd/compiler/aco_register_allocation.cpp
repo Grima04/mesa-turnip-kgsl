@@ -1196,13 +1196,18 @@ void handle_pseudo(ra_ctx& ctx,
    }
    /* if all operands are constant, no need to care either */
    bool reads_sgpr = false;
+   bool reads_subdword = false;
    for (Operand& op : instr->operands) {
       if (op.isTemp() && op.getTemp().type() == RegType::sgpr) {
          reads_sgpr = true;
          break;
       }
+      if (op.isTemp() && op.regClass().is_subdword())
+         reads_subdword = true;
    }
-   if (!(writes_sgpr && reads_sgpr))
+   bool needs_scratch_reg = (writes_sgpr && reads_sgpr) ||
+                            (ctx.program->chip_class <= GFX7 && reads_subdword);
+   if (!needs_scratch_reg)
       return;
 
    Pseudo_instruction *pi = (Pseudo_instruction *)instr;
@@ -1216,7 +1221,10 @@ void handle_pseudo(ra_ctx& ctx,
          reg = ctx.max_used_sgpr + 1;
          for (; reg < ctx.program->max_reg_demand.sgpr && reg_file[reg]; reg++)
             ;
-         assert(reg < ctx.program->max_reg_demand.sgpr);
+         if (reg == ctx.program->max_reg_demand.sgpr) {
+            assert(reads_subdword && reg_file[m0] == 0);
+            reg = m0;
+         }
       }
 
       adjust_max_used_regs(ctx, s1, reg);

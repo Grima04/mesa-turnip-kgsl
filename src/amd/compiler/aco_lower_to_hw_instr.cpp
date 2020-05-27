@@ -1024,7 +1024,7 @@ uint32_t get_intersection_mask(int a_start, int a_size,
    return u_bit_consecutive(intersection_start, intersection_end - intersection_start) & mask;
 }
 
-bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool *preserve_scc)
+bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool *preserve_scc, PhysReg scratch_sgpr)
 {
    bool did_copy = false;
    for (unsigned offset = 0; offset < copy.bytes;) {
@@ -1059,9 +1059,18 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
             assert(op.physReg().byte() == 0);
             def = Definition(def.physReg().advance(-def.physReg().byte()), v1);
             bld.vop2(aco_opcode::v_and_b32, def, Operand((1 << bits) - 1u), Operand(def.physReg(), op.regClass()));
-            bld.vop2(aco_opcode::v_lshlrev_b32, Definition(op.physReg(), def.regClass()), Operand(bits), op);
-            bld.vop2(aco_opcode::v_or_b32, def, Operand(def.physReg(), op.regClass()), op);
-            bld.vop2(aco_opcode::v_lshrrev_b32, Definition(op.physReg(), def.regClass()), Operand(bits), op);
+            if (def.physReg().reg() == op.physReg().reg()) {
+               if (bits < 24) {
+                  bld.vop2(aco_opcode::v_mul_u32_u24, def, Operand((1 << bits) + 1u), op);
+               } else {
+                  bld.sop1(aco_opcode::s_mov_b32, Definition(scratch_sgpr, s1), Operand((1 << bits) + 1u));
+                  bld.vop3(aco_opcode::v_mul_lo_u32, def, Operand(scratch_sgpr, s1), op);
+               }
+            } else {
+               bld.vop2(aco_opcode::v_lshlrev_b32, Definition(op.physReg(), def.regClass()), Operand(bits), op);
+               bld.vop2(aco_opcode::v_or_b32, def, Operand(def.physReg(), op.regClass()), op);
+               bld.vop2(aco_opcode::v_lshrrev_b32, Definition(op.physReg(), def.regClass()), Operand(bits), op);
+            }
          } else {
             bld.vop1(aco_opcode::v_mov_b32, def, op);
          }
@@ -1172,7 +1181,7 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
    copy_operation tmp_copy = copy;
    tmp_copy.op.setFixed(copy.def.physReg());
    tmp_copy.def.setFixed(copy.op.physReg());
-   do_copy(ctx, bld, tmp_copy, &preserve_scc);
+   do_copy(ctx, bld, tmp_copy, &preserve_scc, pi->scratch_sgpr);
 }
 
 void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx, chip_class chip_class, Pseudo_instruction *pi)
@@ -1337,7 +1346,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          }
       }
 
-      bool did_copy = do_copy(ctx, bld, it->second, &preserve_scc);
+      bool did_copy = do_copy(ctx, bld, it->second, &preserve_scc, pi->scratch_sgpr);
 
       std::pair<PhysReg, copy_operation> copy = *it;
 
