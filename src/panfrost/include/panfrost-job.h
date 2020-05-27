@@ -415,6 +415,17 @@ enum mali_format {
 /* Should be set when the fragment shader updates the stencil value. */
 #define MALI_WRITES_S (1 << 2)
 
+/* Mode to suppress generation of Infinity and NaN values by clamping inf
+ * (-inf) to MAX_FLOAT (-MIN_FLOAT) and flushing NaN to 0.0
+ *
+ * Compare suppress_inf/suppress_nan flags on the Bifrost clause header for the
+ * same functionality.
+ *
+ * This is not conformant on GLES3 or OpenCL, but is optional on GLES2, where
+ * it works around app bugs (e.g. in glmark2-es2 -bterrain with FP16).
+ */
+#define MALI_SUPPRESS_INF_NAN (1 << 3)
+
 /* The raw Midgard blend payload can either be an equation or a shader
  * address, depending on the context */
 

@@ -346,7 +346,10 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
                 meta->midgard1.uniform_count = MIN2(ss->uniform_count,
                                                     ss->uniform_cutoff);
                 meta->midgard1.work_count = ss->work_reg_count;
-                meta->midgard1.flags_hi = 0x8; /* XXX */
+
+                /* TODO: This is not conformant on ES3 */
+                meta->midgard1.flags_hi = MALI_SUPPRESS_INF_NAN;
+
                 meta->midgard1.flags_lo = 0x220;
                 meta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
         }

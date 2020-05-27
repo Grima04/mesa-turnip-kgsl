@@ -273,6 +273,7 @@ static const struct pandecode_flag_info shader_midgard1_flag_lo_info [] = {
 
 static const struct pandecode_flag_info shader_midgard1_flag_hi_info [] = {
         FLAG_INFO(WRITES_S),
+        FLAG_INFO(SUPPRESS_INF_NAN),
         {}
 };
 #undef FLAG_INFO
