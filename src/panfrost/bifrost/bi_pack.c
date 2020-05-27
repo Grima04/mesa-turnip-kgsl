@@ -1465,16 +1465,17 @@ bi_pack_add_table(bi_instruction *ins, struct bi_registers *regs)
         return bi_pack_add_1src(ins, regs, op);
 }
 static unsigned
-bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs)
+bi_pack_add_tex_compact(bi_clause *clause, bi_instruction *ins, struct bi_registers *regs, gl_shader_stage stage)
 {
         bool f16 = ins->dest_type == nir_type_float16;
+        bool vtx = stage != MESA_SHADER_FRAGMENT;
 
         struct bifrost_tex_compact pack = {
                 .src0 = bi_get_src(ins, regs, 0, false),
                 .src1 = bi_get_src(ins, regs, 1, false),
-                .op = f16 ? BIFROST_ADD_OP_TEX_COMPACT_F16 :
-                        BIFROST_ADD_OP_TEX_COMPACT_F32,
-                .unknown = 1,
+                .op = f16 ? BIFROST_ADD_OP_TEX_COMPACT_F16(vtx) :
+                        BIFROST_ADD_OP_TEX_COMPACT_F32(vtx),
+                .compute_lod = !vtx,
                 .tex_index = ins->texture.texture_index,
                 .sampler_index = ins->texture.sampler_index
         };
@@ -1652,7 +1653,7 @@ bi_pack_add_imath(bi_instruction *ins, struct bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
+bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs, gl_shader_stage stage)
 {
         if (!bundle.add)
                 return BIFROST_ADD_NOP;
@@ -1704,7 +1705,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, struct bi_registers *regs)
                 return bi_pack_add_select(bundle.add, regs);
         case BI_TEX:
                 if (bundle.add->op.texture == BI_TEX_COMPACT)
-                        return bi_pack_add_tex_compact(clause, bundle.add, regs);
+                        return bi_pack_add_tex_compact(clause, bundle.add, regs, stage);
                 else
                         unreachable("Unknown tex type");
         case BI_ROUND:
@@ -1720,7 +1721,7 @@ struct bi_packed_bundle {
 };
 
 static struct bi_packed_bundle
-bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle)
+bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle, gl_shader_stage stage)
 {
         struct bi_registers regs = bi_assign_ports(bundle, prev);
         bi_assign_uniform_constant(clause, &regs, bundle);
@@ -1728,7 +1729,7 @@ bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_b
 
         uint64_t reg = bi_pack_registers(regs);
         uint64_t fma = bi_pack_fma(clause, bundle, &regs);
-        uint64_t add = bi_pack_add(clause, bundle, &regs);
+        uint64_t add = bi_pack_add(clause, bundle, &regs, stage);
 
         struct bi_packed_bundle packed = {
                 .lo = reg | (fma << 35) | ((add & 0b111111) << 58),
@@ -1777,9 +1778,9 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
 
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
-                struct util_dynarray *emission)
+                struct util_dynarray *emission, gl_shader_stage stage)
 {
-        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true);
+        struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true, stage);
         assert(clause->bundle_count == 1);
 
         /* Used to decide if we elide writes */
@@ -1836,7 +1837,7 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
 
                 bi_foreach_clause_in_block(block, clause) {
                         bi_clause *next = bi_next_clause(ctx, _block, clause);
-                        bi_pack_clause(ctx, clause, next, emission);
+                        bi_pack_clause(ctx, clause, next, emission, ctx->stage);
                 }
         }
 }
