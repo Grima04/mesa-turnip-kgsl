@@ -769,6 +769,20 @@ vtn_constant_int(struct vtn_builder *b, uint32_t value_id)
    }
 }
 
+static inline struct vtn_type *
+vtn_get_value_type(struct vtn_builder *b, uint32_t value_id)
+{
+   struct vtn_value *val = vtn_untyped_value(b, value_id);
+   vtn_fail_if(val->type == NULL, "Value %u does not have a type", value_id);
+   return val->type;
+}
+
+static inline struct vtn_type *
+vtn_get_type(struct vtn_builder *b, uint32_t value_id)
+{
+   return vtn_value(b, value_id, vtn_value_type_type)->type;
+}
+
 struct vtn_ssa_value *vtn_ssa_value(struct vtn_builder *b, uint32_t value_id);
 
 struct vtn_value *vtn_push_value_pointer(struct vtn_builder *b,

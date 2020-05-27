@@ -415,8 +415,7 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
                const uint32_t *w, unsigned count)
 {
    struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
-   const struct glsl_type *type =
-      vtn_value(b, w[1], vtn_value_type_type)->type->type;
+   const struct glsl_type *type = vtn_get_type(b, w[1])->type;
 
    vtn_foreach_decoration(b, val, handle_no_contraction, NULL);
 
@@ -697,7 +696,7 @@ vtn_handle_bitcast(struct vtn_builder *b, const uint32_t *w, unsigned count)
     *    L) maps its lower-ordered bits to the lower-numbered components of L."
     */
 
-   struct vtn_type *type = vtn_value(b, w[1], vtn_value_type_type)->type;
+   struct vtn_type *type = vtn_get_type(b, w[1]);
    struct vtn_ssa_value *vtn_src = vtn_ssa_value(b, w[3]);
    struct nir_ssa_def *src = vtn_src->def;
    struct vtn_ssa_value *val = vtn_create_ssa_value(b, type->type);

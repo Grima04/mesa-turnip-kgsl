@@ -2491,12 +2491,12 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
    switch (opcode) {
    case SpvOpUndef: {
       struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_undef);
-      val->type = vtn_value(b, w[1], vtn_value_type_type)->type;
+      val->type = vtn_get_type(b, w[1]);
       break;
    }
 
    case SpvOpVariable: {
-      struct vtn_type *ptr_type = vtn_value(b, w[1], vtn_value_type_type)->type;
+      struct vtn_type *ptr_type = vtn_get_type(b, w[1]);
 
       struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_pointer);
 
@@ -2544,7 +2544,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          idx++;
       }
 
-      struct vtn_type *ptr_type = vtn_value(b, w[1], vtn_value_type_type)->type;
+      struct vtn_type *ptr_type = vtn_get_type(b, w[1]);
       struct vtn_value *base_val = vtn_untyped_value(b, w[3]);
       if (base_val->value_type == vtn_value_type_sampled_image) {
          /* This is rather insane.  SPIR-V allows you to use OpSampledImage
@@ -2586,8 +2586,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpLoad: {
-      struct vtn_type *res_type =
-         vtn_value(b, w[1], vtn_value_type_type)->type;
+      struct vtn_type *res_type = vtn_get_type(b, w[1]);
       struct vtn_value *src_val = vtn_value(b, w[3], vtn_value_type_pointer);
       struct vtn_pointer *src = src_val->pointer;
 

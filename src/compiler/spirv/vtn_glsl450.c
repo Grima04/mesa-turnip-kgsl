@@ -310,9 +310,7 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
                    const uint32_t *w, unsigned count)
 {
    struct nir_builder *nb = &b->nb;
-   const struct glsl_type *dest_type =
-      vtn_value(b, w[1], vtn_value_type_type)->type->type;
-
+   const struct glsl_type *dest_type = vtn_get_type(b, w[1])->type;
    struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
    val->ssa = vtn_create_ssa_value(b, dest_type);
 
@@ -559,9 +557,7 @@ static void
 handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
                              const uint32_t *w, unsigned count)
 {
-   const struct glsl_type *dest_type =
-      vtn_value(b, w[1], vtn_value_type_type)->type->type;
-
+   const struct glsl_type *dest_type = vtn_get_type(b, w[1])->type;
    struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
    val->ssa = vtn_create_ssa_value(b, dest_type);
 
@@ -636,7 +632,7 @@ vtn_handle_glsl450_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case GLSLstd450Determinant: {
       struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
       val->ssa = rzalloc(b, struct vtn_ssa_value);
-      val->ssa->type = vtn_value(b, w[1], vtn_value_type_type)->type->type;
+      val->ssa->type = vtn_get_type(b, w[1])->type;
       val->ssa->def = build_mat_det(b, vtn_ssa_value(b, w[5]));
       break;
    }
