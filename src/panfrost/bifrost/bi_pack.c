@@ -48,6 +48,8 @@ bi_pack_header(bi_clause *clause, bi_clause *next, bool is_fragment)
                 .scoreboard_index = clause->scoreboard_id,
                 .clause_type = clause->clause_type,
                 .next_clause_type = next ? next->clause_type : 0,
+                .suppress_inf = true,
+                .suppress_nan = true,
         };
 
         header.branch_cond |= header.back_to_back;
