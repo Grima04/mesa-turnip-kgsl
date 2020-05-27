@@ -33,10 +33,10 @@ vtn_handle_amd_gcn_shader_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    nir_ssa_def *def;
    switch ((enum GcnShaderAMD)ext_opcode) {
    case CubeFaceIndexAMD:
-      def = nir_cube_face_index(&b->nb, vtn_ssa_value(b, w[5])->def);
+      def = nir_cube_face_index(&b->nb, vtn_get_nir_ssa(b, w[5]));
       break;
    case CubeFaceCoordAMD:
-      def = nir_cube_face_coord(&b->nb, vtn_ssa_value(b, w[5])->def);
+      def = nir_cube_face_coord(&b->nb, vtn_get_nir_ssa(b, w[5]));
       break;
    case TimeAMD: {
       nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->nb.shader,
@@ -90,7 +90,7 @@ vtn_handle_amd_shader_ballot_instruction(struct vtn_builder *b, SpvOp ext_opcode
       intrin->num_components = intrin->dest.ssa.num_components;
 
    for (unsigned i = 0; i < num_args; i++)
-      intrin->src[i] = nir_src_for_ssa(vtn_ssa_value(b, w[i + 5])->def);
+      intrin->src[i] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[i + 5]));
 
    if (intrin->intrinsic == nir_intrinsic_quad_swizzle_amd) {
       struct vtn_value *val = vtn_value(b, w[6], vtn_value_type_constant);
@@ -124,7 +124,7 @@ vtn_handle_amd_shader_trinary_minmax_instruction(struct vtn_builder *b, SpvOp ex
    assert(num_inputs == 3);
    nir_ssa_def *src[3] = { NULL, };
    for (unsigned i = 0; i < num_inputs; i++)
-      src[i] = vtn_ssa_value(b, w[i + 5])->def;
+      src[i] = vtn_get_nir_ssa(b, w[i + 5]);
 
    nir_ssa_def *def;
    switch ((enum ShaderTrinaryMinMaxAMD)ext_opcode) {
@@ -198,7 +198,7 @@ vtn_handle_amd_shader_explicit_vertex_parameter_instruction(struct vtn_builder *
       deref = nir_deref_instr_parent(deref);
    }
    intrin->src[0] = nir_src_for_ssa(&deref->dest.ssa);
-   intrin->src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[6])->def);
+   intrin->src[1] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[6]));
 
    intrin->num_components = glsl_get_vector_elements(deref->type);
    nir_ssa_dest_init(&intrin->instr, &intrin->dest,

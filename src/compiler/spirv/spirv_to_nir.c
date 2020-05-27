@@ -302,6 +302,15 @@ vtn_ssa_value(struct vtn_builder *b, uint32_t value_id)
    }
 }
 
+nir_ssa_def *
+vtn_get_nir_ssa(struct vtn_builder *b, uint32_t value_id)
+{
+   struct vtn_ssa_value *ssa = vtn_ssa_value(b, value_id);
+   vtn_fail_if(!glsl_type_is_vector_or_scalar(ssa->type),
+               "Expected a vector or scalar type");
+   return ssa->def;
+}
+
 struct vtn_value *
 vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id, nir_ssa_def *def)
 {
@@ -2219,7 +2228,7 @@ static nir_tex_src
 vtn_tex_src(struct vtn_builder *b, unsigned index, nir_tex_src_type type)
 {
    nir_tex_src src;
-   src.src = nir_src_for_ssa(vtn_ssa_value(b, index)->def);
+   src.src = nir_src_for_ssa(vtn_get_nir_ssa(b, index));
    src.src_type = type;
    return src;
 }
@@ -2468,7 +2477,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       if (is_array && texop != nir_texop_lod)
          coord_components++;
 
-      coord = vtn_ssa_value(b, w[idx++])->def;
+      coord = vtn_get_nir_ssa(b, w[idx++]);
       p->src = nir_src_for_ssa(nir_channels(&b->nb, coord,
                                             (1 << coord_components) - 1));
       p->src_type = nir_tex_src_coord;
@@ -2707,13 +2716,13 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpAtomicISub:
       src[0] =
-         nir_src_for_ssa(nir_ineg(&b->nb, vtn_ssa_value(b, w[6])->def));
+         nir_src_for_ssa(nir_ineg(&b->nb, vtn_get_nir_ssa(b, w[6])));
       break;
 
    case SpvOpAtomicCompareExchange:
    case SpvOpAtomicCompareExchangeWeak:
-      src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[8])->def);
-      src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[7])->def);
+      src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[8]));
+      src[1] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[7]));
       break;
 
    case SpvOpAtomicExchange:
@@ -2726,7 +2735,7 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicOr:
    case SpvOpAtomicXor:
    case SpvOpAtomicFAddEXT:
-      src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[6])->def);
+      src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[6]));
       break;
 
    default:
@@ -2737,15 +2746,14 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
 static nir_ssa_def *
 get_image_coord(struct vtn_builder *b, uint32_t value)
 {
-   struct vtn_ssa_value *coord = vtn_ssa_value(b, value);
+   nir_ssa_def *coord = vtn_get_nir_ssa(b, value);
 
    /* The image_load_store intrinsics assume a 4-dim coordinate */
-   unsigned dim = glsl_get_vector_elements(coord->type);
    unsigned swizzle[4];
    for (unsigned i = 0; i < 4; i++)
-      swizzle[i] = MIN2(i, dim - 1);
+      swizzle[i] = MIN2(i, coord->num_components - 1);
 
-   return nir_swizzle(&b->nb, coord->def, swizzle, 4);
+   return nir_swizzle(&b->nb, coord, swizzle, 4);
 }
 
 static nir_ssa_def *
@@ -2772,7 +2780,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
       val->image->image = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
       val->image->coord = get_image_coord(b, w[4]);
-      val->image->sample = vtn_ssa_value(b, w[5])->def;
+      val->image->sample = vtn_get_nir_ssa(b, w[5]);
       val->image->lod = nir_imm_int(&b->nb, 0);
       return;
    }
@@ -2831,7 +2839,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (operands & SpvImageOperandsSampleMask) {
          uint32_t arg = image_operand_arg(b, w, count, 5,
                                           SpvImageOperandsSampleMask);
-         image.sample = vtn_ssa_value(b, w[arg])->def;
+         image.sample = vtn_get_nir_ssa(b, w[arg]);
       } else {
          image.sample = nir_ssa_undef(&b->nb, 1, 32);
       }
@@ -2848,7 +2856,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (operands & SpvImageOperandsLodMask) {
          uint32_t arg = image_operand_arg(b, w, count, 5,
                                           SpvImageOperandsLodMask);
-         image.lod = vtn_ssa_value(b, w[arg])->def;
+         image.lod = vtn_get_nir_ssa(b, w[arg]);
       } else {
          image.lod = nir_imm_int(&b->nb, 0);
       }
@@ -2871,7 +2879,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (operands & SpvImageOperandsSampleMask) {
          uint32_t arg = image_operand_arg(b, w, count, 4,
                                           SpvImageOperandsSampleMask);
-         image.sample = vtn_ssa_value(b, w[arg])->def;
+         image.sample = vtn_get_nir_ssa(b, w[arg]);
       } else {
          image.sample = nir_ssa_undef(&b->nb, 1, 32);
       }
@@ -2888,7 +2896,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (operands & SpvImageOperandsLodMask) {
          uint32_t arg = image_operand_arg(b, w, count, 4,
                                           SpvImageOperandsLodMask);
-         image.lod = vtn_ssa_value(b, w[arg])->def;
+         image.lod = vtn_get_nir_ssa(b, w[arg]);
       } else {
          image.lod = nir_imm_int(&b->nb, 0);
       }
@@ -2977,7 +2985,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicStore:
    case SpvOpImageWrite: {
       const uint32_t value_id = opcode == SpvOpAtomicStore ? w[4] : w[3];
-      nir_ssa_def *value = vtn_ssa_value(b, value_id)->def;
+      nir_ssa_def *value = vtn_get_nir_ssa(b, value_id);
       /* nir_intrinsic_image_deref_store always takes a vec4 value */
       assert(op == nir_intrinsic_image_deref_store);
       intrin->num_components = 4;
@@ -3239,7 +3247,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
          atomic->num_components = glsl_get_vector_elements(ptr->type->type);
          nir_intrinsic_set_write_mask(atomic, (1 << atomic->num_components) - 1);
          nir_intrinsic_set_align(atomic, 4, 0);
-         atomic->src[src++] = nir_src_for_ssa(vtn_ssa_value(b, w[4])->def);
+         atomic->src[src++] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[4]));
          if (ptr->mode == vtn_variable_mode_ssbo)
             atomic->src[src++] = nir_src_for_ssa(index);
          atomic->src[src++] = nir_src_for_ssa(offset);
@@ -3284,7 +3292,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       case SpvOpAtomicStore:
          atomic->num_components = glsl_get_vector_elements(deref_type);
          nir_intrinsic_set_write_mask(atomic, (1 << atomic->num_components) - 1);
-         atomic->src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[4])->def);
+         atomic->src[1] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[4]));
          break;
 
       case SpvOpAtomicExchange:
@@ -3542,20 +3550,20 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
 
    switch (opcode) {
    case SpvOpVectorExtractDynamic:
-      ssa->def = nir_vector_extract(&b->nb, vtn_ssa_value(b, w[3])->def,
-                                    vtn_ssa_value(b, w[4])->def);
+      ssa->def = nir_vector_extract(&b->nb, vtn_get_nir_ssa(b, w[3]),
+                                    vtn_get_nir_ssa(b, w[4]));
       break;
 
    case SpvOpVectorInsertDynamic:
-      ssa->def = nir_vector_insert(&b->nb, vtn_ssa_value(b, w[3])->def,
-                                   vtn_ssa_value(b, w[4])->def,
-                                   vtn_ssa_value(b, w[5])->def);
+      ssa->def = nir_vector_insert(&b->nb, vtn_get_nir_ssa(b, w[3]),
+                                   vtn_get_nir_ssa(b, w[4]),
+                                   vtn_get_nir_ssa(b, w[5]));
       break;
 
    case SpvOpVectorShuffle:
       ssa->def = vtn_vector_shuffle(b, glsl_get_vector_elements(type->type),
-                                    vtn_ssa_value(b, w[3])->def,
-                                    vtn_ssa_value(b, w[4])->def,
+                                    vtn_get_nir_ssa(b, w[3]),
+                                    vtn_get_nir_ssa(b, w[4]),
                                     w + 5);
       break;
 
@@ -3565,7 +3573,7 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
       if (glsl_type_is_vector_or_scalar(type->type)) {
          nir_ssa_def *srcs[NIR_MAX_VEC_COMPONENTS];
          for (unsigned i = 0; i < elems; i++)
-            srcs[i] = vtn_ssa_value(b, w[3 + i])->def;
+            srcs[i] = vtn_get_nir_ssa(b, w[3 + i]);
          ssa->def =
             vtn_vector_construct(b, glsl_get_vector_elements(type->type),
                                  elems, srcs);
@@ -4762,8 +4770,8 @@ vtn_handle_ptr(struct vtn_builder *b, SpvOp opcode,
                                         &elem_size, &elem_align);
 
       def = nir_build_addr_isub(&b->nb,
-                                vtn_ssa_value(b, w[3])->def,
-                                vtn_ssa_value(b, w[4])->def,
+                                vtn_get_nir_ssa(b, w[3]),
+                                vtn_get_nir_ssa(b, w[4]),
                                 addr_format);
       def = nir_idiv(&b->nb, def, nir_imm_intN_t(&b->nb, elem_size, def->bit_size));
       def = nir_i2i(&b->nb, def, glsl_get_bit_size(type));
@@ -4773,8 +4781,8 @@ vtn_handle_ptr(struct vtn_builder *b, SpvOp opcode,
    case SpvOpPtrEqual:
    case SpvOpPtrNotEqual: {
       def = nir_build_addr_ieq(&b->nb,
-                               vtn_ssa_value(b, w[3])->def,
-                               vtn_ssa_value(b, w[4])->def,
+                               vtn_get_nir_ssa(b, w[3]),
+                               vtn_get_nir_ssa(b, w[4]),
                                addr_format);
       if (opcode == SpvOpPtrNotEqual)
          def = nir_inot(&b->nb, def);

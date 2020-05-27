@@ -1176,7 +1176,7 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
          bool sw_break = false;
 
          nir_if *nif =
-            nir_push_if(&b->nb, vtn_ssa_value(b, vtn_if->condition)->def);
+            nir_push_if(&b->nb, vtn_get_nir_ssa(b, vtn_if->condition));
 
          nif->control = vtn_selection_control(b, vtn_if);
 
@@ -1263,7 +1263,7 @@ vtn_emit_cf_list(struct vtn_builder *b, struct list_head *cf_list,
             nir_local_variable_create(b->nb.impl, glsl_bool_type(), "fall");
          nir_store_var(&b->nb, fall_var, nir_imm_false(&b->nb), 1);
 
-         nir_ssa_def *sel = vtn_ssa_value(b, vtn_switch->selector)->def;
+         nir_ssa_def *sel = vtn_get_nir_ssa(b, vtn_switch->selector);
 
          /* Now we can walk the list of cases and actually emit code */
          vtn_foreach_cf_node(case_node, &vtn_switch->cases) {

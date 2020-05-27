@@ -322,7 +322,7 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       if (vtn_untyped_value(b, w[i + 5])->value_type == vtn_value_type_pointer)
          continue;
 
-      src[i] = vtn_ssa_value(b, w[i + 5])->def;
+      src[i] = vtn_get_nir_ssa(b, w[i + 5]);
    }
 
    switch (entrypoint) {
@@ -598,7 +598,7 @@ handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
       break;
    case GLSLstd450InterpolateAtSample:
    case GLSLstd450InterpolateAtOffset:
-      intrin->src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[6])->def);
+      intrin->src[1] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[6]));
       break;
    default:
       vtn_fail("Invalid opcode");

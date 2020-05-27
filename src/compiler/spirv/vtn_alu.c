@@ -697,10 +697,7 @@ vtn_handle_bitcast(struct vtn_builder *b, const uint32_t *w, unsigned count)
     */
 
    struct vtn_type *type = vtn_get_type(b, w[1]);
-   struct vtn_ssa_value *vtn_src = vtn_ssa_value(b, w[3]);
-   struct nir_ssa_def *src = vtn_src->def;
-
-   vtn_assert(glsl_type_is_vector_or_scalar(vtn_src->type));
+   struct nir_ssa_def *src = vtn_get_nir_ssa(b, w[3]);
 
    vtn_fail_if(src->num_components * src->bit_size !=
                glsl_get_vector_elements(type->type) * glsl_get_bit_size(type->type),

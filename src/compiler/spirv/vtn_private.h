@@ -785,6 +785,7 @@ vtn_get_type(struct vtn_builder *b, uint32_t value_id)
 
 struct vtn_ssa_value *vtn_ssa_value(struct vtn_builder *b, uint32_t value_id);
 
+nir_ssa_def *vtn_get_nir_ssa(struct vtn_builder *b, uint32_t value_id);
 struct vtn_value *vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id,
                                    nir_ssa_def *def);
 

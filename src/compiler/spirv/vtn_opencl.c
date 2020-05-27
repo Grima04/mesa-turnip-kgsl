@@ -45,7 +45,7 @@ handle_instr(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
    nir_ssa_def *srcs[3] = { NULL };
    vtn_assert(num_srcs <= ARRAY_SIZE(srcs));
    for (unsigned i = 0; i < num_srcs; i++) {
-      srcs[i] = vtn_ssa_value(b, w[i + 5])->def;
+      srcs[i] = vtn_get_nir_ssa(b, w[i + 5]);
    }
 
    nir_ssa_def *result = handler(b, opcode, num_srcs, srcs, dest_type);
@@ -230,7 +230,7 @@ _handle_v_load_store(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
    const struct glsl_type *dest_type = type->type;
    unsigned components = glsl_get_vector_elements(dest_type);
 
-   nir_ssa_def *offset = vtn_ssa_value(b, w[5 + a])->def;
+   nir_ssa_def *offset = vtn_get_nir_ssa(b, w[5 + a]);
    struct vtn_value *p = vtn_value(b, w[6 + a], vtn_value_type_pointer);
 
    struct vtn_ssa_value *comps[NIR_MAX_VEC_COMPONENTS];
