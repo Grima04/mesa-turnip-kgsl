@@ -2735,9 +2735,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                            nir_imm_int(&b->nb, 0u)),
                   nir_imm_int(&b->nb, stride));
 
-      struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
-      val->ssa = vtn_create_ssa_value(b, glsl_uint_type());
-      val->ssa->def = array_length;
+      vtn_push_nir_ssa(b, w[2], array_length);
       break;
    }
 

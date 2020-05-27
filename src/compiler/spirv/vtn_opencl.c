@@ -50,9 +50,7 @@ handle_instr(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
 
    nir_ssa_def *result = handler(b, opcode, num_srcs, srcs, dest_type);
    if (result) {
-      struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
-      val->ssa = vtn_create_ssa_value(b, dest_type);
-      val->ssa->def = result;
+      vtn_push_nir_ssa(b, w[2], result);
    } else {
       vtn_assert(dest_type == glsl_void_type());
    }
@@ -256,9 +254,7 @@ _handle_v_load_store(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
       }
    }
    if (load) {
-      struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, dest_type);
-      ssa->def = nir_vec(&b->nb, ncomps, components);
-      vtn_push_ssa(b, w[2], type, ssa);
+      vtn_push_nir_ssa(b, w[2], nir_vec(&b->nb, ncomps, components));
    }
 }
 

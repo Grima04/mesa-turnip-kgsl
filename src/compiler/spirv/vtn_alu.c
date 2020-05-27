@@ -699,7 +699,6 @@ vtn_handle_bitcast(struct vtn_builder *b, const uint32_t *w, unsigned count)
    struct vtn_type *type = vtn_get_type(b, w[1]);
    struct vtn_ssa_value *vtn_src = vtn_ssa_value(b, w[3]);
    struct nir_ssa_def *src = vtn_src->def;
-   struct vtn_ssa_value *val = vtn_create_ssa_value(b, type->type);
 
    vtn_assert(glsl_type_is_vector_or_scalar(vtn_src->type));
 
@@ -707,6 +706,7 @@ vtn_handle_bitcast(struct vtn_builder *b, const uint32_t *w, unsigned count)
                glsl_get_vector_elements(type->type) * glsl_get_bit_size(type->type),
                "Source and destination of OpBitcast must have the same "
                "total number of bits");
-   val->def = nir_bitcast_vector(&b->nb, src, glsl_get_bit_size(type->type));
-   vtn_push_ssa(b, w[2], type, val);
+   nir_ssa_def *val =
+      nir_bitcast_vector(&b->nb, src, glsl_get_bit_size(type->type));
+   vtn_push_nir_ssa(b, w[2], val);
 }

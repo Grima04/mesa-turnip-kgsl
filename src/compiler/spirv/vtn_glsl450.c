@@ -557,10 +557,6 @@ static void
 handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
                              const uint32_t *w, unsigned count)
 {
-   const struct glsl_type *dest_type = vtn_get_type(b, w[1])->type;
-   struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
-   val->ssa = vtn_create_ssa_value(b, dest_type);
-
    nir_intrinsic_op op;
    switch (opcode) {
    case GLSLstd450InterpolateAtCentroid:
@@ -615,13 +611,11 @@ handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-   if (vec_array_deref) {
-      assert(vec_deref);
-      val->ssa->def = nir_vector_extract(&b->nb, &intrin->dest.ssa,
-                                         vec_deref->arr.index.ssa);
-   } else {
-      val->ssa->def = &intrin->dest.ssa;
-   }
+   nir_ssa_def *def = &intrin->dest.ssa;
+   if (vec_array_deref)
+      def = nir_vector_extract(&b->nb, def, vec_deref->arr.index.ssa);
+
+   vtn_push_nir_ssa(b, w[2], def);
 }
 
 bool
@@ -630,10 +624,7 @@ vtn_handle_glsl450_instruction(struct vtn_builder *b, SpvOp ext_opcode,
 {
    switch ((enum GLSLstd450)ext_opcode) {
    case GLSLstd450Determinant: {
-      struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
-      val->ssa = rzalloc(b, struct vtn_ssa_value);
-      val->ssa->type = vtn_get_type(b, w[1])->type;
-      val->ssa->def = build_mat_det(b, vtn_ssa_value(b, w[5]));
+      vtn_push_nir_ssa(b, w[2], build_mat_det(b, vtn_ssa_value(b, w[5])));
       break;
    }
 

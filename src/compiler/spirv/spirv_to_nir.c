@@ -302,6 +302,21 @@ vtn_ssa_value(struct vtn_builder *b, uint32_t value_id)
    }
 }
 
+struct vtn_value *
+vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id, nir_ssa_def *def)
+{
+   /* Types for all SPIR-V SSA values are set as part of a pre-pass so the
+    * type will be valid by the time we get here.
+    */
+   struct vtn_type *type = vtn_get_value_type(b, value_id);
+   vtn_fail_if(def->num_components != glsl_get_vector_elements(type->type) ||
+               def->bit_size != glsl_get_bit_size(type->type),
+               "Mismatch between NIR and SPIR-V type.");
+   struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, type->type);
+   ssa->def = def;
+   return vtn_push_ssa(b, value_id, type, ssa);
+}
+
 static char *
 vtn_string_literal(struct vtn_builder *b, const uint32_t *words,
                    unsigned word_count, unsigned *words_used)
@@ -2672,11 +2687,9 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       }
    }
 
-   struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, ret_type->type);
-   ssa->def = &instr->dest.ssa;
-   vtn_push_ssa(b, w[2], ret_type, ssa);
-
    nir_builder_instr_insert(&b->nb, &instr->instr);
+
+   vtn_push_nir_ssa(b, w[2], &instr->dest.ssa);
 }
 
 static void
@@ -3026,9 +3039,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (nir_intrinsic_dest_components(intrin) != dest_components)
          result = nir_channels(&b->nb, result, (1 << dest_components) - 1);
 
-      struct vtn_value *val =
-         vtn_push_ssa(b, w[2], type, vtn_create_ssa_value(b, type->type));
-      val->ssa->def = result;
+      vtn_push_nir_ssa(b, w[2], result);
    } else {
       nir_builder_instr_insert(&b->nb, &intrin->instr);
    }
@@ -3318,10 +3329,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
                         glsl_get_vector_elements(type->type),
                         glsl_get_bit_size(type->type), NULL);
 
-      struct vtn_ssa_value *ssa = rzalloc(b, struct vtn_ssa_value);
-      ssa->def = &atomic->dest.ssa;
-      ssa->type = type->type;
-      vtn_push_ssa(b, w[2], type, ssa);
+      vtn_push_nir_ssa(b, w[2], &atomic->dest.ssa);
    }
 
    nir_builder_instr_insert(&b->nb, &atomic->instr);
@@ -4777,9 +4785,7 @@ vtn_handle_ptr(struct vtn_builder *b, SpvOp opcode,
       unreachable("Invalid ptr operation");
    }
 
-   struct vtn_ssa_value *ssa_value = vtn_create_ssa_value(b, type);
-   ssa_value->def = def;
-   vtn_push_ssa(b, w[2], vtn_type, ssa_value);
+   vtn_push_nir_ssa(b, w[2], def);
 }
 
 static bool
@@ -5134,11 +5140,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       nir_ssa_dest_init(&intrin->instr, &intrin->dest, 1, 1, NULL);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-      struct vtn_type *res_type = vtn_get_type(b, w[1]);
-      struct vtn_ssa_value *val = vtn_create_ssa_value(b, res_type->type);
-      val->def = &intrin->dest.ssa;
-
-      vtn_push_ssa(b, w[2], res_type, val);
+      vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
       break;
    }
 
@@ -5179,10 +5181,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
          result = nir_pack_64_2x32(&b->nb, &intrin->dest.ssa);
       }
 
-      struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
-      val->type = type;
-      val->ssa = vtn_create_ssa_value(b, dest_type);
-      val->ssa->def = result;
+      vtn_push_nir_ssa(b, w[2], result);
       break;
    }
 
