@@ -402,8 +402,11 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         }
 
         if (ins->type == BI_BRANCH) {
-                assert(ins->branch_target);
-                fprintf(fp, "-> block%u", ins->branch_target->base.name);
+                if (ins->branch_target) {
+                        fprintf(fp, "-> block%u", ins->branch_target->base.name);
+                } else {
+                        fprintf(fp, "-> void");
+                }
         } else if (ins->type == BI_TEX) {
                 bi_print_texture(&ins->texture, fp);
         }
