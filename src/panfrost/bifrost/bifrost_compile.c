@@ -900,6 +900,34 @@ emit_tex_full(bi_context *ctx, nir_tex_instr *instr)
         unreachable("stub");
 }
 
+/* Normal textures ops are tex for frag shaders and txl for vertex shaders with
+ * lod a constant 0. Anything else needs a full texture op. */
+
+static bool
+bi_is_normal_tex(gl_shader_stage stage, nir_tex_instr *instr)
+{
+        if (stage == MESA_SHADER_FRAGMENT)
+                return instr->op == nir_texop_tex;
+
+        if (instr->op != nir_texop_txl)
+                return false;
+
+        for (unsigned i = 0; i < instr->num_srcs; ++i) {
+                if (instr->src[i].src_type != nir_tex_src_lod)
+                        continue;
+
+                nir_src src = instr->src[i].src;
+
+                if (!nir_src_is_const(src))
+                        continue;
+
+                if (nir_src_as_uint(src) != 0)
+                        continue;
+        }
+
+        return true;
+}
+
 static void
 emit_tex(bi_context *ctx, nir_tex_instr *instr)
 {
@@ -907,7 +935,7 @@ emit_tex(bi_context *ctx, nir_tex_instr *instr)
         unsigned sz =  nir_dest_bit_size(instr->dest);
         instr->dest_type = base | sz;
 
-        bool is_normal = instr->op == nir_texop_tex;
+        bool is_normal = bi_is_normal_tex(ctx->stage, instr);
         bool is_2d = instr->sampler_dim == GLSL_SAMPLER_DIM_2D ||
                 instr->sampler_dim == GLSL_SAMPLER_DIM_EXTERNAL;
         bool is_f = base == nir_type_float && (sz == 16 || sz == 32);
