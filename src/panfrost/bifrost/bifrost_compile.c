@@ -883,6 +883,11 @@ emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 int index = pan_src_index(&instr->src[i].src);
+
+                /* We were checked ahead-of-time */
+                if (instr->src[i].src_type == nir_tex_src_lod)
+                        continue;
+
                 assert (instr->src[i].src_type == nir_tex_src_coord);
 
                 tex.src[0] = index;
