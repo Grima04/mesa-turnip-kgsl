@@ -1430,10 +1430,9 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                 if (info.src_type == ADD_TEX_COMPACT) {
                         tex_index = (ADD.op >> 3) & 0x7;
                         sampler_index = (ADD.op >> 7) & 0x7;
-                        bool unknown = (ADD.op & 0x40);
-                        // TODO: figure out if the unknown bit is ever 0
-                        if (!unknown)
-                                fprintf(fp, "unknown ");
+                        bool compute_lod = (ADD.op & 0x40);
+                        if (!compute_lod)
+                                fprintf(fp, "vtx lod 0 ");
                 } else {
                         uint64_t constVal = get_const(consts, regs);
                         uint32_t controlBits = (ADD.op & 0x8) ? (constVal >> 32) : constVal;
