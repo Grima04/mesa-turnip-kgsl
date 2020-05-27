@@ -582,7 +582,6 @@ struct vtn_value {
    struct vtn_decoration *decoration;
    struct vtn_type *type;
    union {
-      void *ptr;
       char *str;
       nir_constant *constant;
       struct vtn_pointer *pointer;
