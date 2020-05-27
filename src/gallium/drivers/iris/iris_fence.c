@@ -118,7 +118,7 @@ struct pipe_fence_handle {
 
    struct pipe_context *unflushed_ctx;
 
-   struct iris_seqno *seqno[IRIS_BATCH_COUNT];
+   struct iris_fine_fence *fine[IRIS_BATCH_COUNT];
 };
 
 static void
@@ -127,8 +127,8 @@ iris_fence_destroy(struct pipe_screen *p_screen,
 {
    struct iris_screen *screen = (struct iris_screen *)p_screen;
 
-   for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++)
-      iris_seqno_reference(screen, &fence->seqno[i], NULL);
+   for (unsigned i = 0; i < ARRAY_SIZE(fence->fine); i++)
+      iris_fine_fence_reference(screen, &fence->fine[i], NULL);
 
    free(fence);
 }
@@ -214,19 +214,19 @@ iris_fence_flush(struct pipe_context *ctx,
       struct iris_batch *batch = &ice->batches[b];
 
       if (deferred && iris_batch_bytes_used(batch) > 0) {
-         struct iris_seqno *seqno =
-            iris_seqno_new(batch, IRIS_SEQNO_BOTTOM_OF_PIPE);
-         iris_seqno_reference(screen, &fence->seqno[b], seqno);
-         iris_seqno_reference(screen, &seqno, NULL);
+         struct iris_fine_fence *fine =
+            iris_fine_fence_new(batch, IRIS_FENCE_BOTTOM_OF_PIPE);
+         iris_fine_fence_reference(screen, &fence->fine[b], fine);
+         iris_fine_fence_reference(screen, &fine, NULL);
       } else {
          /* This batch has no commands queued up (perhaps we just flushed,
           * or all the commands are on the other batch).  Wait for the last
           * syncobj on this engine - unless it's already finished by now.
           */
-         if (iris_seqno_signaled(batch->last_seqno))
+         if (iris_fine_fence_signaled(batch->last_fence))
             continue;
 
-         iris_seqno_reference(screen, &fence->seqno[b], batch->last_seqno);
+         iris_fine_fence_reference(screen, &fence->fine[b], batch->last_fence);
       }
    }
 
@@ -263,14 +263,14 @@ iris_fence_await(struct pipe_context *ctx,
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
       struct iris_batch *batch = &ice->batches[b];
 
-      for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++) {
-         struct iris_seqno *seqno = fence->seqno[i];
+      for (unsigned i = 0; i < ARRAY_SIZE(fence->fine); i++) {
+         struct iris_fine_fence *fine = fence->fine[i];
 
-         if (iris_seqno_signaled(seqno))
+         if (iris_fine_fence_signaled(fine))
             continue;
 
          iris_batch_flush(batch);
-         iris_batch_add_syncobj(batch, seqno->syncobj, I915_EXEC_FENCE_WAIT);
+         iris_batch_add_syncobj(batch, fine->syncobj, I915_EXEC_FENCE_WAIT);
       }
    }
 }
@@ -320,12 +320,12 @@ iris_fence_finish(struct pipe_screen *p_screen,
     */
    if (ctx && ctx == fence->unflushed_ctx) {
       for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++) {
-         struct iris_seqno *seqno = fence->seqno[i];
+         struct iris_fine_fence *fine = fence->fine[i];
 
-         if (iris_seqno_signaled(seqno))
+         if (iris_fine_fence_signaled(fine))
             continue;
 
-         if (seqno->syncobj == iris_batch_get_signal_syncobj(&ice->batches[i]))
+         if (fine->syncobj == iris_batch_get_signal_syncobj(&ice->batches[i]))
             iris_batch_flush(&ice->batches[i]);
       }
 
@@ -334,14 +334,14 @@ iris_fence_finish(struct pipe_screen *p_screen,
    }
 
    unsigned int handle_count = 0;
-   uint32_t handles[ARRAY_SIZE(fence->seqno)];
-   for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++) {
-      struct iris_seqno *seqno = fence->seqno[i];
+   uint32_t handles[ARRAY_SIZE(fence->fine)];
+   for (unsigned i = 0; i < ARRAY_SIZE(fence->fine); i++) {
+      struct iris_fine_fence *fine = fence->fine[i];
 
-      if (iris_seqno_signaled(seqno))
+      if (iris_fine_fence_signaled(fine))
          continue;
 
-      handles[handle_count++] = seqno->syncobj->handle;
+      handles[handle_count++] = fine->syncobj->handle;
    }
 
    if (handle_count == 0)
@@ -401,14 +401,14 @@ iris_fence_get_fd(struct pipe_screen *p_screen,
    if (fence->unflushed_ctx)
       return -1;
 
-   for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++) {
-      struct iris_seqno *seqno = fence->seqno[i];
+   for (unsigned i = 0; i < ARRAY_SIZE(fence->fine); i++) {
+      struct iris_fine_fence *fine = fence->fine[i];
 
-      if (iris_seqno_signaled(seqno))
+      if (iris_fine_fence_signaled(fine))
          continue;
 
       struct drm_syncobj_handle args = {
-         .handle = seqno->syncobj->handle,
+         .handle = fine->syncobj->handle,
          .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE,
          .fd = -1,
       };
@@ -466,8 +466,8 @@ iris_fence_create_fd(struct pipe_context *ctx,
    syncobj->handle = args.handle;
    pipe_reference_init(&syncobj->ref, 1);
 
-   struct iris_seqno *seqno = calloc(1, sizeof(*seqno));
-   if (!seqno) {
+   struct iris_fine_fence *fine = calloc(1, sizeof(*fine));
+   if (!fine) {
       free(syncobj);
       *out = NULL;
       return;
@@ -475,25 +475,25 @@ iris_fence_create_fd(struct pipe_context *ctx,
 
    static const uint32_t zero = 0;
 
-   /* Fences work in terms of iris_seqno, but we don't actually have a
+   /* Fences work in terms of iris_fine_fence, but we don't actually have a
     * seqno for an imported fence.  So, create a fake one which always
     * returns as 'not signaled' so we fall back to using the sync object.
     */
-   seqno->seqno = UINT32_MAX;
-   seqno->map = &zero;
-   seqno->syncobj = syncobj;
-   seqno->flags = IRIS_SEQNO_END;
-   pipe_reference_init(&seqno->reference, 1);
+   fine->seqno = UINT32_MAX;
+   fine->map = &zero;
+   fine->syncobj = syncobj;
+   fine->flags = IRIS_FENCE_END;
+   pipe_reference_init(&fine->reference, 1);
 
    struct pipe_fence_handle *fence = calloc(1, sizeof(*fence));
    if (!fence) {
-      free(seqno);
+      free(fine);
       free(syncobj);
       *out = NULL;
       return;
    }
    pipe_reference_init(&fence->ref, 1);
-   fence->seqno[0] = seqno;
+   fence->fine[0] = fine;
 
    *out = fence;
 }

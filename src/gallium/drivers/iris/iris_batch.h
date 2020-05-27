@@ -34,7 +34,7 @@
 #include "common/gen_decoder.h"
 
 #include "iris_fence.h"
-#include "iris_seqno.h"
+#include "iris_fine_fence.h"
 
 struct iris_context;
 
@@ -117,10 +117,10 @@ struct iris_batch {
 
       /** The sequence number to write the next time we add a fence. */
       uint32_t next;
-   } seqno;
+   } fine_fences;
 
    /** A seqno (and syncobj) for the last batch that was submitted. */
-   struct iris_seqno *last_seqno;
+   struct iris_fine_fence *last_fence;
 
    /** List of other batches which we might need to flush to use a BO */
    struct iris_batch *other_batches[IRIS_BATCH_COUNT - 1];

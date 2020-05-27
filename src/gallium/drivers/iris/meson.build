@@ -34,6 +34,8 @@ files_libiris = files(
   'iris_draw.c',
   'iris_fence.c',
   'iris_fence.h',
+  'iris_fine_fence.c',
+  'iris_fine_fence.h',
   'iris_formats.c',
   'iris_genx_macros.h',
   'iris_genx_protos.h',
@@ -50,8 +52,6 @@ files_libiris = files(
   'iris_resource.h',
   'iris_screen.c',
   'iris_screen.h',
-  'iris_seqno.c',
-  'iris_seqno.h',
   'iris_disk_cache.c',
 )
 

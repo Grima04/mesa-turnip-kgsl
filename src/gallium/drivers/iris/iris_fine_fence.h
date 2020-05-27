@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef IRIS_SEQNO_DOT_H
-#define IRIS_SEQNO_DOT_H
+#ifndef IRIS_FINE_FENCE_DOT_H
+#define IRIS_FINE_FENCE_DOT_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -43,7 +43,7 @@
  *    (relying on mid-batch preemption to switch GPU execution to the
  *    batch that writes it).
  */
-struct iris_seqno {
+struct iris_fine_fence {
    struct pipe_reference reference;
 
    /** Buffer where the seqno lives */
@@ -59,34 +59,34 @@ struct iris_seqno {
     */
    struct iris_syncobj *syncobj;
 
-#define IRIS_SEQNO_BOTTOM_OF_PIPE 0x0 /**< Written by bottom-of-pipe flush */
-#define IRIS_SEQNO_TOP_OF_PIPE    0x1 /**< Written by top-of-pipe flush */
-#define IRIS_SEQNO_END            0x2 /**< Written at the end of a batch */
+#define IRIS_FENCE_BOTTOM_OF_PIPE 0x0 /**< Written by bottom-of-pipe flush */
+#define IRIS_FENCE_TOP_OF_PIPE    0x1 /**< Written by top-of-pipe flush */
+#define IRIS_FENCE_END            0x2 /**< Written at the end of a batch */
 
-   /** Information about the type of flush involved (see IRIS_SEQNO_*) */
+   /** Information about the type of flush involved (see IRIS_FENCE_*) */
    uint32_t flags;
 
    /**
     * Sequence number expected to be written by the flush we inserted
-    * when creating this fence.  The iris_seqno is 'signaled' when *@map
+    * when creating this fence.  The iris_fine_fence is 'signaled' when *@map
     * (written by the flush on the GPU) is greater-than-or-equal to @seqno.
     */
    uint32_t seqno;
 };
 
-void iris_seqno_init(struct iris_batch *batch);
+void iris_fine_fence_init(struct iris_batch *batch);
 
-struct iris_seqno *iris_seqno_new(struct iris_batch *batch, unsigned flags);
+struct iris_fine_fence *iris_fine_fence_new(struct iris_batch *batch, unsigned flags);
 
-void iris_seqno_destroy(struct iris_screen *screen, struct iris_seqno *sq);
+void iris_fine_fence_destroy(struct iris_screen *screen, struct iris_fine_fence *sq);
 
 static inline void
-iris_seqno_reference(struct iris_screen *screen,
-                     struct iris_seqno **dst,
-                     struct iris_seqno *src)
+iris_fine_fence_reference(struct iris_screen *screen,
+                          struct iris_fine_fence **dst,
+                          struct iris_fine_fence *src)
 {
    if (pipe_reference(&(*dst)->reference, &src->reference))
-      iris_seqno_destroy(screen, *dst);
+      iris_fine_fence_destroy(screen, *dst);
 
    *dst = src;
 }
@@ -97,7 +97,7 @@ iris_seqno_reference(struct iris_screen *screen,
  * NULL is considered signaled.
  */
 static inline bool
-iris_seqno_signaled(const struct iris_seqno *sq)
+iris_fine_fence_signaled(const struct iris_fine_fence *sq)
 {
    return !sq || (READ_ONCE(*sq->map) >= sq->seqno);
 }

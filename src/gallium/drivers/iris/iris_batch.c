@@ -181,10 +181,10 @@ iris_init_batch(struct iris_context *ice,
    batch->state_sizes = ice->state.sizes;
    batch->name = name;
 
-   batch->seqno.uploader =
+   batch->fine_fences.uploader =
       u_upload_create(&ice->ctx, 4096, PIPE_BIND_CUSTOM,
                       PIPE_USAGE_STAGING, 0);
-   iris_seqno_init(batch);
+   iris_fine_fence_init(batch);
 
    batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
    assert(batch->hw_ctx_id);
@@ -320,7 +320,7 @@ iris_use_pinned_bo(struct iris_batch *batch,
              ((other_entry->flags & EXEC_OBJECT_WRITE) || writable)) {
             iris_batch_flush(batch->other_batches[b]);
             iris_batch_add_syncobj(batch,
-                                   batch->other_batches[b]->last_seqno->syncobj,
+                                   batch->other_batches[b]->last_fence->syncobj,
                                    I915_EXEC_FENCE_WAIT);
          }
       }
@@ -420,14 +420,14 @@ iris_batch_free(struct iris_batch *batch)
 
    ralloc_free(batch->exec_fences.mem_ctx);
 
-   pipe_resource_reference(&batch->seqno.ref.res, NULL);
+   pipe_resource_reference(&batch->fine_fences.ref.res, NULL);
 
    util_dynarray_foreach(&batch->syncobjs, struct iris_syncobj *, s)
       iris_syncobj_reference(screen, s, NULL);
    ralloc_free(batch->syncobjs.mem_ctx);
 
-   iris_seqno_reference(batch->screen, &batch->last_seqno, NULL);
-   u_upload_destroy(batch->seqno.uploader);
+   iris_fine_fence_reference(batch->screen, &batch->last_fence, NULL);
+   u_upload_destroy(batch->fine_fences.uploader);
 
    iris_bo_unreference(batch->bo);
    batch->bo = NULL;
@@ -515,12 +515,12 @@ add_aux_map_bos_to_batch(struct iris_batch *batch)
 static void
 finish_seqno(struct iris_batch *batch)
 {
-   struct iris_seqno *sq = iris_seqno_new(batch, IRIS_SEQNO_END);
+   struct iris_fine_fence *sq = iris_fine_fence_new(batch, IRIS_FENCE_END);
    if (!sq)
       return;
 
-   iris_seqno_reference(batch->screen, &batch->last_seqno, sq);
-   iris_seqno_reference(batch->screen, &sq, NULL);
+   iris_fine_fence_reference(batch->screen, &batch->last_fence, sq);
+   iris_fine_fence_reference(batch->screen, &sq, NULL);
 }
 
 /**
