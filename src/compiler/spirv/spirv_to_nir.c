@@ -2291,10 +2291,10 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    } else if (opcode == SpvOpImage) {
       struct vtn_value *src_val = vtn_untyped_value(b, w[3]);
       if (src_val->value_type == vtn_value_type_sampled_image) {
-         vtn_push_value_pointer(b, w[2], src_val->sampled_image->image);
+         vtn_push_pointer(b, w[2], src_val->sampled_image->image);
       } else {
          vtn_assert(src_val->value_type == vtn_value_type_pointer);
-         vtn_push_value_pointer(b, w[2], src_val->pointer);
+         vtn_push_pointer(b, w[2], src_val->pointer);
       }
       return;
    }

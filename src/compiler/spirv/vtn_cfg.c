@@ -342,11 +342,11 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
                  type->type != NULL) {
          /* This is a pointer with an actual storage type */
          nir_ssa_def *ssa_ptr = nir_load_param(&b->nb, b->func_param_idx++);
-         vtn_push_value_pointer(b, w[2], vtn_pointer_from_ssa(b, ssa_ptr, type));
+         vtn_push_pointer(b, w[2], vtn_pointer_from_ssa(b, ssa_ptr, type));
       } else if (type->base_type == vtn_base_type_pointer ||
                  type->base_type == vtn_base_type_image ||
                  type->base_type == vtn_base_type_sampler) {
-         vtn_push_value_pointer(b, w[2], vtn_load_param_pointer(b, type, b->func_param_idx++));
+         vtn_push_pointer(b, w[2], vtn_load_param_pointer(b, type, b->func_param_idx++));
       } else {
          /* We're a regular SSA value. */
          struct vtn_ssa_value *value = vtn_create_ssa_value(b, type->type);

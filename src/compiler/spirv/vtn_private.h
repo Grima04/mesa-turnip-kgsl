@@ -701,7 +701,7 @@ vtn_untyped_value(struct vtn_builder *b, uint32_t value_id)
 }
 
 /* Consider not using this function directly and instead use
- * vtn_push_ssa/vtn_push_value_pointer so that appropriate applying of
+ * vtn_push_ssa/vtn_push_pointer so that appropriate applying of
  * decorations is handled by common code.
  */
 static inline struct vtn_value *
@@ -785,9 +785,9 @@ vtn_get_type(struct vtn_builder *b, uint32_t value_id)
 
 struct vtn_ssa_value *vtn_ssa_value(struct vtn_builder *b, uint32_t value_id);
 
-struct vtn_value *vtn_push_value_pointer(struct vtn_builder *b,
-                                         uint32_t value_id,
-                                         struct vtn_pointer *ptr);
+struct vtn_value *vtn_push_pointer(struct vtn_builder *b,
+                                   uint32_t value_id,
+                                   struct vtn_pointer *ptr);
 
 struct vtn_value *vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
                                struct vtn_type *type, struct vtn_ssa_value *ssa);

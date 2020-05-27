@@ -68,8 +68,8 @@ vtn_decorate_pointer(struct vtn_builder *b, struct vtn_value *val,
 }
 
 struct vtn_value *
-vtn_push_value_pointer(struct vtn_builder *b, uint32_t value_id,
-                       struct vtn_pointer *ptr)
+vtn_push_pointer(struct vtn_builder *b, uint32_t value_id,
+                 struct vtn_pointer *ptr)
 {
    struct vtn_value *val = vtn_push_value(b, value_id, vtn_value_type_pointer);
    val->pointer = vtn_decorate_pointer(b, val, ptr);
@@ -82,7 +82,7 @@ vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
 {
    struct vtn_value *val;
    if (type->base_type == vtn_base_type_pointer) {
-      val = vtn_push_value_pointer(b, value_id, vtn_pointer_from_ssa(b, ssa->def, type));
+      val = vtn_push_pointer(b, value_id, vtn_pointer_from_ssa(b, ssa->def, type));
    } else {
       val = vtn_push_value(b, value_id, vtn_value_type_ssa);
       val->ssa = ssa;
@@ -2570,7 +2570,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
             vtn_pointer_dereference(b, base_val->pointer, chain);
          ptr->ptr_type = ptr_type;
          ptr->access |= access;
-         vtn_push_value_pointer(b, w[2], ptr);
+         vtn_push_pointer(b, w[2], ptr);
       }
       break;
    }
@@ -2594,7 +2594,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
       if (res_type->base_type == vtn_base_type_image ||
           res_type->base_type == vtn_base_type_sampler) {
-         vtn_push_value_pointer(b, w[2], src);
+         vtn_push_pointer(b, w[2], src);
          return;
       } else if (res_type->base_type == vtn_base_type_sampled_image) {
          struct vtn_value *val =
