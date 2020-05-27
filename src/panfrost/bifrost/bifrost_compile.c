@@ -1084,18 +1084,16 @@ emit_if(bi_context *ctx, nir_if *nif)
                 /* The else block is empty, so don't emit an exit jump */
                 bi_remove_instruction(then_exit);
                 then_branch->branch_target = ctx->after_block;
+                pan_block_add_successor(&end_then_block->base, &ctx->after_block->base); /* fallthrough */
         } else {
                 then_branch->branch_target = else_block;
                 then_exit->branch_target = ctx->after_block;
                 pan_block_add_successor(&end_then_block->base, &then_exit->branch_target->base);
+                pan_block_add_successor(&end_else_block->base, &ctx->after_block->base); /* fallthrough */
         }
 
-        /* Wire up the successors */
-
         pan_block_add_successor(&before_block->base, &then_branch->branch_target->base); /* then_branch */
-
         pan_block_add_successor(&before_block->base, &then_block->base); /* fallthrough */
-        pan_block_add_successor(&end_else_block->base, &ctx->after_block->base); /* fallthrough */
 }
 
 static void
