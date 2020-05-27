@@ -433,6 +433,17 @@ enum mali_format {
  * available at half thread count */
 #define MALI_BIFROST_FULL_THREAD (1 << 9)
 
+/* Enable early-z testing (presumably). This flag may not be set if the shader:
+ *
+ *  - Uses blending
+ *  - Uses discard
+ *  - Writes gl_FragDepth
+ *
+ * This differs from Midgard which sets the MALI_EARLY_Z flag even with
+ * blending, although I've begun to suspect that flag does not in fact enable
+ * EARLY_Z alone. */
+#define MALI_BIFROST_EARLY_Z (1 << 15)
+
 /* First clause type is ATEST */
 #define MALI_BIFROST_FIRST_ATEST (1 << 26)
 
