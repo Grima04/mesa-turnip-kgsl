@@ -1381,7 +1381,7 @@ fd6_emit_tile_fini(struct fd_batch *batch)
 		fd6_emit_ib(batch->gmem, batch->epilogue);
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_CNTL, 1);
-	OUT_RING(ring, A6XX_GRAS_LRZ_CNTL_ENABLE | A6XX_GRAS_LRZ_CNTL_UNK3);
+	OUT_RING(ring, A6XX_GRAS_LRZ_CNTL_ENABLE | A6XX_GRAS_LRZ_CNTL_FC_ENABLE);
 
 	fd6_emit_lrz_flush(ring);
 

@@ -1973,7 +1973,7 @@ to upconvert to 32b float internally?
 		<bitfield name="LRZ_WRITE" pos="1" type="boolean"/>
 		<doc>update MAX instead of MIN value, ie. GL_GREATER/GL_GEQUAL</doc>
 		<bitfield name="GREATER" pos="2" type="boolean"/>
-		<bitfield name="UNK3" pos="3" type="boolean"/>
+		<bitfield name="FC_ENABLE" pos="3" type="boolean"/>
 		<!-- set when depth-test + depth-write enabled -->
 		<bitfield name="Z_TEST_ENABLE" pos="4" type="boolean"/>
 	</reg32>
@@ -1988,6 +1988,37 @@ to upconvert to 32b float internally?
 		<bitfield name="PITCH" low="0" high="10" shr="5" type="uint"/>
 		<bitfield name="ARRAY_PITCH" low="11" high="21" shr="5" type="uint"/> <!-- ??? -->
 	</reg32>
+
+	<!--
+	The LRZ "fast clear" buffer is initialized to zero's by blob, and
+	read/written when GRAS_LRZ_CNTL.FC_ENABLE (b3) is set.  It appears
+	to store 1b/block.  It appears that '0' means block has original
+	depth clear value, and '1' means that the corresponding block in
+	LRZ has been modified.  Ignoring alignment/padding, the size is
+	given by the formula:
+
+		// calculate LRZ size from depth size:
+		if (nr_samples == 4) {
+			width *= 2;
+			height *= 2;
+		} else if (nr_samples == 2) {
+			height *= 2;
+		}
+
+		lrz_width = div_round_up(width, 8);
+		lrz_heigh = div_round_up(height, 8);
+
+		// calculate # of blocks:
+		nblocksx = div_round_up(lrz_width, 16);
+		nblocksy = div_round_up(lrz_height, 4);
+
+		// fast-clear buffer is 1bit/block:
+		fc_sz = div_round_up(nblocksx * nblocksy, 8);
+
+	In practice the blob seems to switch off FC_ENABLE once the size
+	increases beyond 1 page.  Not sure if that is an actual limit or
+	not.
+	 -->
 	<reg32 offset="0x8106" name="GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO"/>
 	<reg32 offset="0x8107" name="GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_HI"/>
 	<reg32 offset="0x8106" name="GRAS_LRZ_FAST_CLEAR_BUFFER_BASE" type="waddress"/>
