@@ -335,8 +335,13 @@ typedef struct {
         bi_instruction *add;
 } bi_bundle;
 
+struct bi_block;
+
 typedef struct {
         struct list_head link;
+
+        /* Link back up for branch calculations */
+        struct bi_block *block;
 
         /* A clause can have 8 instructions in bundled FMA/ADD sense, so there
          * can be 8 bundles. */

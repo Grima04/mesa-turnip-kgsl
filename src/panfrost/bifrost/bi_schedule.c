@@ -204,6 +204,7 @@ bi_schedule(bi_context *ctx)
                                 u->branch_constant = true;
 
                         u->clause_type = bi_clause_type_for_ins(ins);
+                        u->block = (struct bi_block *) block;
 
                         list_addtail(&u->link, &bblock->clauses);
                 }
