@@ -5324,7 +5324,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
     */
    nir_lower_variable_initializers(b->shader, nir_var_shader_out);
    nir_remove_dead_variables(b->shader,
-                             nir_var_shader_in | nir_var_shader_out);
+                             nir_var_shader_in | nir_var_shader_out, NULL);
 
    /* We sometimes generate bogus derefs that, while never used, give the
     * validator a bit of heartburn.  Run dead code to get rid of them.

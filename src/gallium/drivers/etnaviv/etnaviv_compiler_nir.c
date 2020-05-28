@@ -839,7 +839,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    while( OPT(s, nir_opt_vectorize) );
    OPT_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
 
-   NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function_temp);
+   NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(s, nir_opt_algebraic_late);
 
    NIR_PASS_V(s, nir_move_vec_src_uses_to_dest);

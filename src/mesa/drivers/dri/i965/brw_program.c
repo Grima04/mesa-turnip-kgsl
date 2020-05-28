@@ -106,7 +106,8 @@ brw_create_nir(struct brw_context *brw,
       }
       assert (nir);
 
-      nir_remove_dead_variables(nir, nir_var_shader_in | nir_var_shader_out);
+      nir_remove_dead_variables(nir, nir_var_shader_in | nir_var_shader_out,
+                                NULL);
       nir_validate_shader(nir, "after glsl_to_nir or spirv_to_nir");
       NIR_PASS_V(nir, nir_lower_io_to_temporaries,
                  nir_shader_get_entrypoint(nir), true, false);

@@ -140,7 +140,7 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_clip_halfz);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    optimize_nir(nir);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, lower_discard_if);
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 

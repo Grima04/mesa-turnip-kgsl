@@ -191,7 +191,7 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
    wm_prog_data->base.binding_table.texture_start = BLORP_TEXTURE_BT_INDEX;
 
    brw_preprocess_nir(compiler, nir, NULL);
-   nir_remove_dead_variables(nir, nir_var_shader_in);
+   nir_remove_dead_variables(nir, nir_var_shader_in, NULL);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    if (blorp->compiler->devinfo->gen < 6) {

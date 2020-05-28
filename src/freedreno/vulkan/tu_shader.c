@@ -590,7 +590,8 @@ tu_shader_create(struct tu_device *dev,
    NIR_PASS_V(nir, nir_split_per_member_structs);
 
    NIR_PASS_V(nir, nir_remove_dead_variables,
-              nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared);
+              nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
+              NULL);
 
    /* Gather information for transform feedback.
     * This should be called after nir_split_per_member_structs.

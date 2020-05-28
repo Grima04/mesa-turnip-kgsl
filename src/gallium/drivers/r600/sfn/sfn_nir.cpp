@@ -635,8 +635,8 @@ int r600_shader_from_nir(struct r600_context *rctx,
    if (optimize)
       while(optimize_once(sel->nir));
 
-   NIR_PASS_V(sel->nir, nir_remove_dead_variables, nir_var_shader_in);
-   NIR_PASS_V(sel->nir, nir_remove_dead_variables,  nir_var_shader_out);
+   NIR_PASS_V(sel->nir, nir_remove_dead_variables, nir_var_shader_in, NULL);
+   NIR_PASS_V(sel->nir, nir_remove_dead_variables,  nir_var_shader_out, NULL);
 
 
    NIR_PASS_V(sel->nir, nir_lower_vars_to_scratch,

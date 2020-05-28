@@ -4083,7 +4083,8 @@ bool nir_lower_vars_to_ssa(nir_shader *shader);
 
 bool nir_remove_dead_derefs(nir_shader *shader);
 bool nir_remove_dead_derefs_impl(nir_function_impl *impl);
-bool nir_remove_dead_variables(nir_shader *shader, nir_variable_mode modes);
+bool nir_remove_dead_variables(nir_shader *shader, nir_variable_mode modes,
+                               bool (*can_remove_var)(nir_variable *var));
 bool nir_lower_variable_initializers(nir_shader *shader,
                                      nir_variable_mode modes);
 

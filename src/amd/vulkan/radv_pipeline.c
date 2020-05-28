@@ -2230,9 +2230,9 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders)
 			radv_optimize_nir(ordered_shaders[i - 1], false, false);
 
 		nir_remove_dead_variables(ordered_shaders[i],
-					  nir_var_shader_out);
+					  nir_var_shader_out, NULL);
 		nir_remove_dead_variables(ordered_shaders[i - 1],
-					  nir_var_shader_in);
+					  nir_var_shader_in, NULL);
 
 		bool progress = nir_remove_unused_varyings(ordered_shaders[i],
 							   ordered_shaders[i - 1]);

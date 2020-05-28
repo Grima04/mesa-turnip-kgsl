@@ -352,7 +352,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 		OPT_V(s, nir_opt_cse);
 	}
 
-	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp);
+	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
 	OPT_V(s, nir_opt_sink, nir_move_const_undef);
 

@@ -122,7 +122,7 @@ ir2_optimize_nir(nir_shader *s, bool lower)
 
 	ir2_optimize_loop(s);
 
-	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp);
+	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
 	OPT_V(s, nir_opt_sink, nir_move_const_undef);
 
 	/* TODO we dont want to get shaders writing to depth for depth textures */
