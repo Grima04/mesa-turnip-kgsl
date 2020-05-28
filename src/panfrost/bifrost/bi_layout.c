@@ -89,3 +89,49 @@ bi_clause_quadwords(bi_clause *clause)
 
         return Y + DIV_ROUND_UP(constants, 2);
 }
+
+/* Measures the number of quadwords a branch jumps. Bifrost relative offsets
+ * are from the beginning of a clause so to jump forward we count the current
+ * clause length, but to jump backwards we do not. */
+
+signed
+bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target)
+{
+        /* Signed since we might jump backwards */
+        signed ret = 0;
+
+        /* Determine if the block we're branching to is strictly greater in
+         * source order */
+        bool forwards = target->base.name > start->block->base.name;
+
+        if (forwards) {
+                /* We have to jump through this block from the start of this
+                 * clause to the end */
+                bi_foreach_clause_in_block_from(start->block, clause, start) {
+                        ret += bi_clause_quadwords(clause);
+                }
+
+                /* We then need to jump through every clause of every following
+                 * block until the target */
+                bi_foreach_block_from(ctx, start->block, _blk) {
+                        bi_block *blk = (bi_block *) _blk;
+
+                        /* Don't double-count the first block */
+                        if (blk == start->block)
+                                continue;
+
+                        /* End just before the target */
+                        if (blk == target)
+                                break;
+
+                        /* Count every clause in the block */
+                        bi_foreach_clause_in_block(blk, clause) {
+                                ret += bi_clause_quadwords(clause);
+                        }
+                }
+        } else {
+                unreachable("Backwards branching is to-do");
+        }
+
+        return ret;
+}
