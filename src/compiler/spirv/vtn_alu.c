@@ -646,18 +646,10 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpSignBitSet: {
-      unsigned src_bit_size = glsl_get_bit_size(vtn_src[0]->type);
-      if (src[0]->num_components == 1)
-         val->ssa->def =
-            nir_ushr(&b->nb, src[0], nir_imm_int(&b->nb, src_bit_size - 1));
-      else
-         val->ssa->def =
-            nir_ishr(&b->nb, src[0], nir_imm_int(&b->nb, src_bit_size - 1));
-
-      val->ssa->def = nir_i2b(&b->nb, val->ssa->def);
+   case SpvOpSignBitSet:
+      val->ssa->def = nir_i2b(&b->nb,
+         nir_ushr(&b->nb, src[0], nir_imm_int(&b->nb, src[0]->bit_size - 1)));
       break;
-   }
 
    case SpvOpUCountTrailingZerosINTEL:
       val->ssa->def = nir_umin(&b->nb,
