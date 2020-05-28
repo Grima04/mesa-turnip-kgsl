@@ -520,6 +520,12 @@ bi_make_temp_reg(bi_context *ctx)
 #define bi_foreach_clause_in_block(block, v) \
         list_for_each_entry(bi_clause, v, &(block)->clauses, link)
 
+#define bi_foreach_clause_in_block_from(block, v, from) \
+        list_for_each_entry_from(bi_clause, v, from, &(block)->clauses, link)
+
+#define bi_foreach_clause_in_block_from_rev(block, v, from) \
+        list_for_each_entry_from_rev(bi_clause, v, from, &(block)->clauses, link)
+
 #define bi_foreach_instr_global(ctx, v) \
         bi_foreach_block(ctx, v_block) \
                 bi_foreach_instr_in_block((bi_block *) v_block, v)
