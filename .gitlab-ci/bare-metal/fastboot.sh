@@ -51,9 +51,13 @@ set -ex
 mkdir rootfs
 . .gitlab-ci/bare-metal/rootfs-setup.sh rootfs
 
-# Finally, pack it up into a cpio rootfs.
+# Finally, pack it up into a cpio rootfs.  Skip the vulkan CTS since none of
+# these devices use it and it would take up space in the initrd.
 pushd rootfs
-  find -H | cpio -H newc -o | xz --check=crc32 -T4 - > $CI_PROJECT_DIR/rootfs.cpio.gz
+find -H | \
+  egrep -v "external/(openglcts|vulkancts|amber|glslang|spirv-tools)" | \
+  cpio -H newc -o | \
+  xz --check=crc32 -T4 - > $CI_PROJECT_DIR/rootfs.cpio.gz
 popd
 
 cat $BM_KERNEL $BM_DTB > Image.gz-dtb

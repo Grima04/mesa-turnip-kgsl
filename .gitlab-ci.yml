@@ -237,7 +237,7 @@ x86_test-gl:
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-06-02-new-vk-cts"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-06-02-gles"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
@@ -292,7 +292,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-08"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-09-cheza-vk"
 
 .use-arm64_test:
   variables:

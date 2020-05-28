@@ -32,7 +32,7 @@ mkdir /var/cache/apt/archives/$arch
 
 ############### Create rootfs
 
-DEBIAN_ARCH=$arch . .gitlab-ci/container/lava_arm.sh
+DEBIAN_ARCH=$arch INCLUDE_VK_CTS=1 . .gitlab-ci/container/lava_arm.sh
 
 ccache --show-stats
 

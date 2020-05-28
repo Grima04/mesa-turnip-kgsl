@@ -15,6 +15,11 @@ apt-get -y install --no-install-recommends \
     netcat-openbsd \
     wget \
     xz-utils
+
+if [ -n "$INCLUDE_VK_CTS" ]; then
+    apt-get install -y libvulkan1
+fi
+
 passwd root -d
 chsh -s /bin/sh
 
