@@ -34,6 +34,38 @@
  * the counter-part glsl/linker.cpp
  */
 
+static bool
+can_remove_uniform(nir_variable *var)
+{
+   /* Section 2.11.6 (Uniform Variables) of the OpenGL ES 3.0.3 spec
+    * says:
+    *
+    *     "All members of a named uniform block declared with a shared or
+    *     std140 layout qualifier are considered active, even if they are not
+    *     referenced in any shader in the program. The uniform block itself is
+    *     also considered active, even if no member of the block is
+    *     referenced."
+    *
+    * Although the spec doesn't state it std430 layouts are expect to behave
+    * the same way. If the variable is in a uniform block with one of those
+    * layouts, do not eliminate it.
+    */
+   if (nir_variable_is_in_block(var) &&
+       (glsl_get_ifc_packing(var->interface_type) !=
+        GLSL_INTERFACE_PACKING_PACKED))
+      return false;
+
+   if (glsl_get_base_type(glsl_without_array(var->type)) ==
+       GLSL_TYPE_SUBROUTINE)
+      return false;
+
+   /* Uniform initializers could get used by another stage */
+   if (var->constant_initializer)
+      return false;
+
+   return true;
+}
+
 /**
  * Built-in / reserved GL variables names start with "gl_"
  */
