@@ -3,3 +3,4 @@ VK_AMD_texture_gather_bias_lod on RADV.
 VK_EXT_private_data on ANV and RADV.
 VK_EXT_custom_border_color on RADV.
 VK_EXT_pipeline_creation_cache_control on RADV.
+VK_GOOGLE_user_type on ANV and RADV.
