@@ -130,7 +130,32 @@ bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target)
                         }
                 }
         } else {
-                unreachable("Backwards branching is to-do");
+                /* We start at the beginning of the clause but have to jump
+                 * through the clauses before us in the block */
+                bi_foreach_clause_in_block_from_rev(start->block, clause, start) {
+                        if (clause == start)
+                                continue;
+
+                        ret -= bi_clause_quadwords(clause);
+                }
+
+                /* And jump back every clause of preceding blocks up through
+                 * and including the target to get to the beginning of the
+                 * target */
+                bi_foreach_block_from_rev(ctx, start->block, _blk) {
+                        bi_block *blk = (bi_block *) _blk;
+
+                        if (blk == start->block)
+                                continue;
+
+                        bi_foreach_clause_in_block(blk, clause) {
+                                ret -= bi_clause_quadwords(clause);
+                        }
+
+                        /* End just after the target */
+                        if (blk == target)
+                                break;
+                }
         }
 
         return ret;
