@@ -734,6 +734,8 @@ enum bifrost_branch_code {
         BR_ALWAYS = 63,
 };
 
+#define BIFROST_ADD_OP_BRANCH (0x0d000 >> 12)
+
 struct bifrost_branch {
         unsigned src0 : 3;
 

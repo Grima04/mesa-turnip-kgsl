@@ -1620,6 +1620,40 @@ bi_pack_add_imath(bi_instruction *ins, bi_registers *regs)
 }
 
 static unsigned
+bi_pack_add_branch(bi_instruction *ins, bi_registers *regs)
+{
+        assert(ins->cond == BI_COND_EQ);
+        assert(ins->src[1] == BIR_INDEX_ZERO);
+
+        unsigned zero_ctrl = 0;
+        unsigned size = nir_alu_type_get_type_size(ins->src_types[0]);
+
+        if (size == 16) {
+                /* See BR_SIZE_ZERO swizzle disassembly */
+                zero_ctrl = ins->swizzle[0][0] ? 1 : 2;
+        } else {
+                assert(size == 32);
+        }
+
+        /* EQ swap to NE */
+        bool port_swapped = false;
+
+        /* We assigned the constant port to fetch the branch offset so we can
+         * just passthrough here. We put in the HI slot to match the blob since
+         * that's where the magic flags end up */
+        struct bifrost_branch pack = {
+                .src0 = bi_get_src(ins, regs, 0),
+                .src1 = (zero_ctrl << 1) | !port_swapped,
+                .src2 = BIFROST_SRC_CONST_HI,
+                .cond = BR_COND_EQ,
+                .size = BR_SIZE_ZERO,
+                .op = BIFROST_ADD_OP_BRANCH
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
 bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_stage stage)
 {
         if (!bundle.add)
@@ -1631,7 +1665,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
         case BI_ATEST:
                 return bi_pack_add_atest(clause, bundle.add, regs);
         case BI_BRANCH:
-                unreachable("Packing todo");
+                return bi_pack_add_branch(bundle.add, regs);
         case BI_CMP:
                 return bi_pack_add_cmp(bundle.add, regs);
         case BI_BLEND:
