@@ -35,19 +35,25 @@
  * bits on the wire (as well as fixup branches) */
 
 static uint64_t
-bi_pack_header(bi_clause *clause, bi_clause *next, bool is_fragment)
+bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_fragment)
 {
+        /* next_dependencies are the union of the dependencies of successors'
+         * dependencies */
+
+        unsigned scoreboard_deps = next_1 ? next_1->dependencies : 0;
+        scoreboard_deps |= next_2 ? next_2->dependencies : 0;
+
         struct bifrost_header header = {
                 .back_to_back = clause->back_to_back,
-                .no_end_of_shader = (next != NULL),
+                .no_end_of_shader = (next_1 != NULL),
                 .elide_writes = is_fragment,
                 .branch_cond = clause->branch_conditional || clause->back_to_back,
                 .datareg_writebarrier = clause->data_register_write_barrier,
                 .datareg = clause->data_register,
-                .scoreboard_deps = next ? next->dependencies : 0,
+                .scoreboard_deps = scoreboard_deps,
                 .scoreboard_index = clause->scoreboard_id,
                 .clause_type = clause->clause_type,
-                .next_clause_type = next ? next->clause_type : 0,
+                .next_clause_type = next_1 ? next_1->clause_type : 0,
                 .suppress_inf = true,
                 .suppress_nan = true,
         };
@@ -1864,7 +1870,8 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
 }
 
 static void
-bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
+bi_pack_clause(bi_context *ctx, bi_clause *clause,
+                bi_clause *next_1, bi_clause *next_2,
                 struct util_dynarray *emission, gl_shader_stage stage)
 {
         struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true, stage);
@@ -1878,7 +1885,7 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause, bi_clause *next,
 
         struct bifrost_fmt1 quad_1 = {
                 .tag = clause->constant_count ? BIFROST_FMT1_CONSTANTS : BIFROST_FMT1_FINAL,
-                .header = bi_pack_header(clause, next, is_fragment),
+                .header = bi_pack_header(clause, next_1, next_2, is_fragment),
                 .ins_1 = ins_1.lo,
                 .ins_2 = ins_1.hi & ((1 << 11) - 1),
                 .ins_0 = (ins_1.hi >> 11) & 0b111,
@@ -1924,7 +1931,7 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
 
                 bi_foreach_clause_in_block(block, clause) {
                         bi_clause *next = bi_next_clause(ctx, _block, clause);
-                        bi_pack_clause(ctx, clause, next, emission, ctx->stage);
+                        bi_pack_clause(ctx, clause, next, NULL, emission, ctx->stage);
                 }
         }
 }
