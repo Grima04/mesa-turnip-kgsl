@@ -1048,7 +1048,8 @@ bi_set_branch_cond(bi_instruction *branch, nir_src *cond, bool invert)
         /* TODO: Try to unwrap instead of always bailing */
         branch->src[0] = pan_src_index(cond);
         branch->src[1] = BIR_INDEX_ZERO;
-        branch->src_types[0] = branch->src_types[1] = nir_type_uint16;
+        branch->src_types[0] = branch->src_types[1] = nir_type_uint |
+                nir_src_bit_size(*cond);
         branch->cond = invert ? BI_COND_EQ : BI_COND_NE;
 }
 
