@@ -1620,7 +1620,7 @@ bi_pack_add_imath(bi_instruction *ins, bi_registers *regs)
 }
 
 static unsigned
-bi_pack_add_branch(bi_instruction *ins, bi_registers *regs)
+bi_pack_add_branch_cond(bi_instruction *ins, bi_registers *regs)
 {
         assert(ins->cond == BI_COND_EQ);
         assert(ins->src[1] == BIR_INDEX_ZERO);
@@ -1651,6 +1651,35 @@ bi_pack_add_branch(bi_instruction *ins, bi_registers *regs)
         };
 
         RETURN_PACKED(pack);
+}
+
+static unsigned
+bi_pack_add_branch_uncond(bi_instruction *ins, bi_registers *regs)
+{
+        struct bifrost_branch pack = {
+                /* It's unclear what these bits actually mean */
+                .src0 = BIFROST_SRC_CONST_LO,
+                .src1 = BIFROST_SRC_PASS_FMA,
+
+                /* Offset, see above */
+                .src2 = BIFROST_SRC_CONST_HI,
+
+                /* All ones in fact */
+                .cond = (BR_ALWAYS & 0x7),
+                .size = (BR_ALWAYS >> 3),
+                .op = BIFROST_ADD_OP_BRANCH
+        };
+
+        RETURN_PACKED(pack);
+}
+
+static unsigned
+bi_pack_add_branch(bi_instruction *ins, bi_registers *regs)
+{
+        if (ins->cond == BI_COND_ALWAYS)
+                return bi_pack_add_branch_uncond(ins, regs);
+        else
+                return bi_pack_add_branch_cond(ins, regs);
 }
 
 static unsigned
