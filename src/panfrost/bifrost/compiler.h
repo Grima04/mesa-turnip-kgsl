@@ -409,7 +409,6 @@ typedef struct {
        /* During NIR->BIR */
        nir_function_impl *impl;
        bi_block *current_block;
-       unsigned block_name_count;
        bi_block *after_block;
        bi_block *break_block;
        bi_block *continue_block;

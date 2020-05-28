@@ -995,8 +995,6 @@ create_empty_block(bi_context *ctx)
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
-        blk->base.name = ctx->block_name_count++;
-
         return blk;
 }
 
@@ -1289,8 +1287,15 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned 
                 break; /* TODO: Multi-function shaders */
         }
 
+        unsigned block_source_count = 0;
+
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
+
+                /* Name blocks now that we're done emitting so the order is
+                 * consistent */
+                block->base.name = block_source_count++;
+
                 bi_lower_combine(ctx, block);
         }
 
