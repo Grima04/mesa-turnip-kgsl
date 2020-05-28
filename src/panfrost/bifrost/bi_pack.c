@@ -125,6 +125,7 @@ bi_assign_uniform_constant_single(
 
         bi_foreach_src(ins, s) {
                 if (s == 0 && (ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_ATTR)) continue;
+                if (s == 1 && (ins->type == BI_BRANCH)) continue;
 
                 if (ins->src[s] & BIR_INDEX_CONSTANT) {
                         /* Let direct addresses through */
