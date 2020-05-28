@@ -41,7 +41,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next, bool is_fragment)
                 .back_to_back = clause->back_to_back,
                 .no_end_of_shader = (next != NULL),
                 .elide_writes = is_fragment,
-                .branch_cond = clause->branch_conditional,
+                .branch_cond = clause->branch_conditional || clause->back_to_back,
                 .datareg_writebarrier = clause->data_register_write_barrier,
                 .datareg = clause->data_register,
                 .scoreboard_deps = next ? next->dependencies : 0,
