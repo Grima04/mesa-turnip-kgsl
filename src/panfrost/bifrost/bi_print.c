@@ -479,6 +479,9 @@ bi_print_clause(bi_clause *clause, FILE *fp)
                 for (unsigned i = 0; i < clause->constant_count; ++i)
                         fprintf(fp, "%" PRIx64 " ", clause->constants[i]);
 
+                if (clause->branch_constant)
+                        fprintf(fp, "*");
+
                 fprintf(fp, "\n");
         }
 }

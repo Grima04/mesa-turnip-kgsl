@@ -376,6 +376,12 @@ typedef struct {
         uint64_t constants[8];
         unsigned constant_count;
 
+        /* Branches encode a constant offset relative to the program counter
+         * with some magic flags. By convention, if there is a branch, its
+         * constant will be last. Set this flag to indicate this is required.
+         */
+        bool branch_constant;
+
         /* What type of high latency instruction is here, basically */
         unsigned clause_type;
 } bi_clause;
