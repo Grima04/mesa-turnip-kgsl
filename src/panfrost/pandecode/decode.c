@@ -2456,7 +2456,7 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
 
                         if (s->zero1 || s->zero2 || s->zero3 || s->zero4) {
                                 pandecode_msg("XXX: sampler zero tripped\n");
-                                pandecode_prop("zero = 0x%" PRIx64 ", 0x%" PRIx64 ", 0x%" PRIx64 ", 0x%" PRIx64 "\n", s->zero1, s->zero2, s->zero3, s->zero4);
+                                pandecode_prop("zero = 0x%" PRIx8 ", 0x%" PRIx64 ", 0x%" PRIx64 ", 0x%" PRIx64 "\n", s->zero1, s->zero2, s->zero3, s->zero4);
                         }
 
                         pandecode_indent--;
