@@ -1904,8 +1904,12 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
 static bi_clause *
 bi_next_clause(bi_context *ctx, pan_block *block, bi_clause *clause)
 {
+        /* Try the first clause in this block if we're starting from scratch */
+        if (!clause && !list_is_empty(&((bi_block *) block)->clauses))
+                return list_first_entry(&((bi_block *) block)->clauses, bi_clause, link);
+
         /* Try the next clause in this block */
-        if (clause->link.next != &((bi_block *) block)->clauses)
+        if (clause && clause->link.next != &((bi_block *) block)->clauses)
                 return list_first_entry(&(clause->link), bi_clause, link);
 
         /* Try the next block, or the one after that if it's empty, etc .*/
@@ -1929,9 +1933,19 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
 
+                /* Passthrough the first clause of where we're branching to for
+                 * the last clause of the block (the clause with the branch) */
+
+                bi_clause *succ_clause = block->base.successors[1] ?
+                        bi_next_clause(ctx, block->base.successors[0], NULL) : NULL;
+
                 bi_foreach_clause_in_block(block, clause) {
+                        bool is_last = clause->link.next == &block->clauses;
+
                         bi_clause *next = bi_next_clause(ctx, _block, clause);
-                        bi_pack_clause(ctx, clause, next, NULL, emission, ctx->stage);
+                        bi_clause *next_2 = is_last ? succ_clause : NULL;
+
+                        bi_pack_clause(ctx, clause, next, next_2, emission, ctx->stage);
                 }
         }
 }
