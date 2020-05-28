@@ -529,6 +529,20 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          sdwa->sel[0] = sdwa_ubyte;
       sdwa->dst_sel = sdwa_udword;
       bld.insert(std::move(sdwa));
+   } else if (src.regClass() == v2b) {
+      if (ctx->program->chip_class >= GFX10 &&
+          (reduce_op == iadd16 || reduce_op == imax16 ||
+           reduce_op == imin16 || reduce_op == umin16 || reduce_op == umax16)) {
+         aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
+         sdwa->operands[0] = Operand(PhysReg{tmp}, v1);
+         sdwa->definitions[0] = Definition(PhysReg{tmp}, v1);
+         if (reduce_op == imin16 || reduce_op == imax16 || reduce_op == iadd16)
+            sdwa->sel[0] = sdwa_sword;
+         else
+            sdwa->sel[0] = sdwa_uword;
+         sdwa->dst_sel = sdwa_udword;
+         bld.insert(std::move(sdwa));
+      }
    }
 
    bool reduction_needs_last_op = false;
