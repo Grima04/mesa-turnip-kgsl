@@ -498,6 +498,9 @@ bi_make_temp_reg(bi_context *ctx)
 #define bi_foreach_block_from(ctx, from, v) \
         list_for_each_entry_from(pan_block, v, from, &ctx->blocks, link)
 
+#define bi_foreach_block_from_rev(ctx, from, v) \
+        list_for_each_entry_from_rev(pan_block, v, from, &ctx->blocks, link)
+
 #define bi_foreach_instr_in_block(block, v) \
         list_for_each_entry(bi_instruction, v, &(block)->base.instructions, link)
 
