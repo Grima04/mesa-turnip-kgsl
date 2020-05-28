@@ -2,12 +2,17 @@
 
 set -ex
 
+git config --global user.email "mesa@example.com"
+git config --global user.name "Mesa CI"
 git clone \
-    --depth 1 \
     https://github.com/KhronosGroup/VK-GL-CTS.git \
-    -b vulkan-cts-1.2.1.0 \
+    -b vulkan-cts-1.2.2.1 \
     /VK-GL-CTS
 pushd /VK-GL-CTS
+
+# Cherry pick a fix that's not in 1.2.2.1 yet.  Re-add --depth 1 to the clone
+# when an uprev removes this.
+git cherry-pick -x ea6f1ffae14de94bbd9c354ad5a6c3f452f65ac4
 
 # --insecure is due to SSL cert failures hitting sourceforge for zlib and
 # libpng (sigh).  The archives get their checksums checked anyway, and git
