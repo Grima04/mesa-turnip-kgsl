@@ -841,6 +841,10 @@ static void
 emit_clip_window(struct v3dv_job *job, const VkRect2D *rect)
 {
    assert(job);
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(CLIP_WINDOW));
+   v3dv_return_if_oom(NULL, job);
+
    cl_emit(&job->bcl, CLIP_WINDOW, clip) {
       clip.clip_window_left_pixel_coordinate = rect->offset.x;
       clip.clip_window_bottom_pixel_coordinate = rect->offset.y;
@@ -2478,6 +2482,14 @@ emit_viewport(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
+   const uint32_t required_cl_size =
+      cl_packet_length(CLIPPER_XY_SCALING) +
+      cl_packet_length(CLIPPER_Z_SCALE_AND_OFFSET) +
+      cl_packet_length(CLIPPER_Z_MIN_MAX_CLIPPING_PLANES) +
+      cl_packet_length(VIEWPORT_OFFSET);
+   v3dv_cl_ensure_space_with_branch(&job->bcl, required_cl_size);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    cl_emit(&job->bcl, CLIPPER_XY_SCALING, clip) {
       clip.viewport_half_width_in_1_256th_of_pixel = vpscale[0] * 256.0f;
       clip.viewport_half_height_in_1_256th_of_pixel = vpscale[1] * 256.0f;
@@ -2515,6 +2527,10 @@ emit_stencil(struct v3dv_cmd_buffer *cmd_buffer)
    const uint32_t dynamic_stencil_states = V3DV_DYNAMIC_STENCIL_COMPARE_MASK |
                                            V3DV_DYNAMIC_STENCIL_WRITE_MASK |
                                            V3DV_DYNAMIC_STENCIL_REFERENCE;
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl,
+                                    2 * cl_packet_length(STENCIL_CFG));
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    bool emitted_stencil = false;
    for (uint32_t i = 0; i < 2; i++) {
@@ -2652,6 +2668,10 @@ emit_flat_shade_flags(struct v3dv_job *job,
                       enum V3DX(Varying_Flags_Action) lower,
                       enum V3DX(Varying_Flags_Action) higher)
 {
+   v3dv_cl_ensure_space_with_branch(&job->bcl,
+                                    cl_packet_length(FLAT_SHADE_FLAGS));
+   v3dv_return_if_oom(NULL, job);
+
    cl_emit(&job->bcl, FLAT_SHADE_FLAGS, flags) {
       flags.varying_offset_v0 = varying_offset;
       flags.flat_shade_flags_for_varyings_v024 = varyings;
@@ -2667,6 +2687,10 @@ emit_noperspective_flags(struct v3dv_job *job,
                          enum V3DX(Varying_Flags_Action) lower,
                          enum V3DX(Varying_Flags_Action) higher)
 {
+   v3dv_cl_ensure_space_with_branch(&job->bcl,
+                                    cl_packet_length(NON_PERSPECTIVE_FLAGS));
+   v3dv_return_if_oom(NULL, job);
+
    cl_emit(&job->bcl, NON_PERSPECTIVE_FLAGS, flags) {
       flags.varying_offset_v0 = varying_offset;
       flags.non_perspective_flags_for_varyings_v024 = varyings;
@@ -2682,6 +2706,10 @@ emit_centroid_flags(struct v3dv_job *job,
                     enum V3DX(Varying_Flags_Action) lower,
                     enum V3DX(Varying_Flags_Action) higher)
 {
+   v3dv_cl_ensure_space_with_branch(&job->bcl,
+                                    cl_packet_length(CENTROID_FLAGS));
+   v3dv_return_if_oom(NULL, job);
+
    cl_emit(&job->bcl, CENTROID_FLAGS, flags) {
       flags.varying_offset_v0 = varying_offset;
       flags.centroid_flags_for_varyings_v024 = varyings;
@@ -2742,16 +2770,28 @@ emit_varyings_state(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (!emit_varying_flags(job, num_flags, flat_shade_flags,
                            emit_flat_shade_flags)) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(ZERO_ALL_FLAT_SHADE_FLAGS));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, ZERO_ALL_FLAT_SHADE_FLAGS, flags);
    }
 
    if (!emit_varying_flags(job, num_flags, noperspective_flags,
                            emit_noperspective_flags)) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(ZERO_ALL_NON_PERSPECTIVE_FLAGS));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, ZERO_ALL_NON_PERSPECTIVE_FLAGS, flags);
    }
 
    if (!emit_varying_flags(job, num_flags, centroid_flags,
                            emit_centroid_flags)) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(ZERO_ALL_CENTROID_FLAGS));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, ZERO_ALL_CENTROID_FLAGS, flags);
    }
 }
@@ -2766,6 +2806,9 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
    assert(pipeline);
 
    job_update_ez_state(job, pipeline);
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(CFG_BITS));
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
       config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
@@ -2902,6 +2945,11 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
       }
    }
 
+   v3dv_cl_ensure_space_with_branch(&job->bcl,
+                                    sizeof(pipeline->vcm_cache_size) +
+                                    cl_packet_length(GL_SHADER_STATE));
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    cl_emit_prepacked(&job->bcl, &pipeline->vcm_cache_size);
 
    cl_emit(&job->bcl, GL_SHADER_STATE, state) {
@@ -2920,6 +2968,10 @@ emit_occlusion_query(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl,
+                                    cl_packet_length(OCCLUSION_QUERY_COUNTER));
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter) {
       if (cmd_buffer->state.query.active_query) {
@@ -3086,6 +3138,10 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
 
    if (info->first_instance > 0) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(BASE_VERTEX_BASE_INSTANCE));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, BASE_VERTEX_BASE_INSTANCE, base) {
          base.base_instance = info->first_instance;
          base.base_vertex = 0;
@@ -3093,6 +3149,10 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    if (info->instance_count > 1) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(VERTEX_ARRAY_INSTANCED_PRIMS));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, VERTEX_ARRAY_INSTANCED_PRIMS, prim) {
          prim.mode = hw_prim_type;
          prim.index_of_first_vertex = info->first_vertex;
@@ -3100,6 +3160,10 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
          prim.instance_length = info->vertex_count;
       }
    } else {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(VERTEX_ARRAY_PRIMS));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, VERTEX_ARRAY_PRIMS, prim) {
          prim.mode = hw_prim_type;
          prim.length = info->vertex_count;
@@ -3242,6 +3306,10 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    uint32_t index_offset = firstIndex * cmd_buffer->state.index_size;
 
    if (vertexOffset != 0 || firstInstance != 0) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(BASE_VERTEX_BASE_INSTANCE));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, BASE_VERTEX_BASE_INSTANCE, base) {
          base.base_instance = firstInstance;
          base.base_vertex = vertexOffset;
@@ -3249,6 +3317,10 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    }
 
    if (instanceCount == 1) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(INDEXED_PRIM_LIST));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, INDEXED_PRIM_LIST, prim) {
          prim.index_type = index_type;
          prim.length = indexCount;
@@ -3257,6 +3329,10 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
          prim.enable_primitive_restarts = pipeline->primitive_restart;
       }
    } else if (instanceCount > 1) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(INDEXED_INSTANCED_PRIM_LIST));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       cl_emit(&job->bcl, INDEXED_INSTANCED_PRIM_LIST, prim) {
          prim.index_type = index_type;
          prim.index_offset = index_offset;
@@ -3290,6 +3366,10 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
 
+   v3dv_cl_ensure_space_with_branch(
+      &job->bcl, cl_packet_length(INDIRECT_VERTEX_ARRAY_INSTANCED_PRIMS));
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    cl_emit(&job->bcl, INDIRECT_VERTEX_ARRAY_INSTANCED_PRIMS, prim) {
       prim.mode = hw_prim_type;
       prim.number_of_draw_indirect_array_records = drawCount;
@@ -3320,6 +3400,10 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
    uint8_t index_type = ffs(cmd_buffer->state.index_size) - 1;
+
+   v3dv_cl_ensure_space_with_branch(
+      &job->bcl, cl_packet_length(INDIRECT_INDEXED_INSTANCED_PRIM_LIST));
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit(&job->bcl, INDIRECT_INDEXED_INSTANCED_PRIM_LIST, prim) {
       prim.index_type = index_type;
@@ -3386,6 +3470,10 @@ v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
 
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
+
+   v3dv_cl_ensure_space_with_branch(
+      &job->bcl, cl_packet_length(INDEX_BUFFER_SETUP));
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit(&job->bcl, INDEX_BUFFER_SETUP, ib) {
       ib.address = v3dv_cl_address(ibuffer->mem->bo, offset);
