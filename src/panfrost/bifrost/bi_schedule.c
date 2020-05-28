@@ -133,6 +133,31 @@ bi_lower_fmov(bi_instruction *ins)
         ins->src_types[1] = ins->src_types[0];
 }
 
+/* To work out the back-to-back flag, we need to detect branches and
+ * "fallthrough" branches, implied in the last clause of a block that falls
+ * through to another block with *multiple predecessors*. */
+
+static bool
+bi_back_to_back(bi_block *block)
+{
+        /* Last block of a program */
+        if (!block->base.successors[0]) {
+                assert(!block->base.successors[1]);
+                return false;
+        }
+
+        /* Multiple successors? We're branching */
+        if (block->base.successors[1])
+                return false;
+
+        struct pan_block *succ = block->base.successors[0];
+        assert(succ->predecessors);
+        unsigned count = succ->predecessors->entries;
+
+        /* Back to back only if the successor has only a single predecessor */
+        return (count == 1);
+}
+
 /* Eventually, we'll need a proper scheduling, grouping instructions
  * into clauses and ordering/assigning grouped instructions to the
  * appropriate FMA/ADD slots. Right now we do the dumbest possible
@@ -194,7 +219,9 @@ bi_schedule(bi_context *ctx)
 
                         ids = ids & 1;
                         last_id = u->scoreboard_id;
-                        u->back_to_back = false;
+
+                        /* Let's be optimistic, we'll fix up later */
+                        u->back_to_back = true;
 
                         u->constant_count = 1;
                         u->constants[0] = ins->constant.u64;
@@ -208,6 +235,13 @@ bi_schedule(bi_context *ctx)
 
                         list_addtail(&u->link, &bblock->clauses);
                 }
+
+                /* Back-to-back bit affects only the last clause of a block,
+                 * the rest are implicitly true */
+                bi_clause *last_clause = list_last_entry(&bblock->clauses, bi_clause, link);
+
+                if (last_clause)
+                        last_clause->back_to_back = bi_back_to_back(bblock);
 
                 bblock->scheduled = true;
         }
