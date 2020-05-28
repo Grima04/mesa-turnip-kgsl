@@ -1705,7 +1705,18 @@ bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_b
 }
 
 /* Packs the next two constants as a dedicated constant quadword at the end of
- * the clause, returning the number packed. */
+ * the clause, returning the number packed. There are two cases to consider:
+ *
+ * Case #1: Branching is not used. For a single constant copy the upper nibble
+ * over, easy.
+ *
+ * Case #2: Branching is used. For a single constant, it suffices to set the
+ * upper nibble to 4 and leave the latter constant 0, which matches what the
+ * blob does.
+ *
+ * Extending to multiple constants is considerably more tricky and left for
+ * future work.
+ */
 
 static unsigned
 bi_pack_constants(bi_context *ctx, bi_clause *clause,
@@ -1715,6 +1726,9 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
         /* After these two, are we done? Determines tag */
         bool done = clause->constant_count <= (index + 2);
         bool only = clause->constant_count <= (index + 1);
+
+        /* Is the constant we're packing for a branch? */
+        bool branches = clause->branch_constant && done;
 
         /* TODO: Pos */
         assert(index == 0 && clause->bundle_count == 1);
@@ -1728,6 +1742,13 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
                 .imm_1 = clause->constants[index + 0] >> 4,
                 .imm_2 = ((hi < 8) ? (hi << 60ull) : 0) >> 4,
         };
+
+        if (branches) {
+                /* Branch offsets are less than 60-bits so this should work at
+                 * least for now */
+                quad.imm_1 |= (4ull << 60ull) >> 4;
+                assert (hi == 0);
+        }
 
         /* XXX: On G71, Connor observed that the difference of the top 4 bits
          * of the second constant with the first must be less than 8, otherwise
