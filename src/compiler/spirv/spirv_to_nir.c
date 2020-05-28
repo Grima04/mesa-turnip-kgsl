@@ -2253,6 +2253,23 @@ image_operand_arg(struct vtn_builder *b, const uint32_t *w, uint32_t count,
 }
 
 static void
+non_uniform_decoration_cb(struct vtn_builder *b,
+                          struct vtn_value *val, int member,
+                          const struct vtn_decoration *dec, void *void_ctx)
+{
+   enum gl_access_qualifier *access = void_ctx;
+   switch (dec->decoration) {
+   case SpvDecorationNonUniformEXT:
+      *access |= ACCESS_NON_UNIFORM;
+      break;
+
+   default:
+      break;
+   }
+}
+
+
+static void
 vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
                    const uint32_t *w, unsigned count)
 {
@@ -2590,10 +2607,26 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       is_shadow && glsl_get_components(ret_type->type) == 1;
    instr->component = gather_component;
 
-   if (image && (image->access & ACCESS_NON_UNIFORM))
+   /* The Vulkan spec says:
+    *
+    *    "If an instruction loads from or stores to a resource (including
+    *    atomics and image instructions) and the resource descriptor being
+    *    accessed is not dynamically uniform, then the operand corresponding
+    *    to that resource (e.g. the pointer or sampled image operand) must be
+    *    decorated with NonUniform."
+    *
+    * It's very careful to specify that the exact operand must be decorated
+    * NonUniform.  The SPIR-V parser is not expected to chase through long
+    * chains to find the NonUniform decoration.  It's either right there or we
+    * can assume it doesn't exist.
+    */
+   enum gl_access_qualifier access = 0;
+   vtn_foreach_decoration(b, sampled_val, non_uniform_decoration_cb, &access);
+
+   if (image && (access & ACCESS_NON_UNIFORM))
       instr->texture_non_uniform = true;
 
-   if (sampler && (sampler->access & ACCESS_NON_UNIFORM))
+   if (sampler && (access & ACCESS_NON_UNIFORM))
       instr->sampler_non_uniform = true;
 
    /* for non-query ops, get dest_type from sampler type */
@@ -2742,6 +2775,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    SpvScope scope = SpvScopeInvocation;
    SpvMemorySemanticsMask semantics = 0;
 
+   struct vtn_value *res_val;
    switch (opcode) {
    case SpvOpAtomicExchange:
    case SpvOpAtomicCompareExchange:
@@ -2759,26 +2793,30 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicOr:
    case SpvOpAtomicXor:
    case SpvOpAtomicFAddEXT:
-      image = *vtn_value(b, w[3], vtn_value_type_image_pointer)->image;
+      res_val = vtn_value(b, w[3], vtn_value_type_image_pointer);
+      image = *res_val->image;
       scope = vtn_constant_uint(b, w[4]);
       semantics = vtn_constant_uint(b, w[5]);
       break;
 
    case SpvOpAtomicStore:
-      image = *vtn_value(b, w[1], vtn_value_type_image_pointer)->image;
+      res_val = vtn_value(b, w[1], vtn_value_type_image_pointer);
+      image = *res_val->image;
       scope = vtn_constant_uint(b, w[2]);
       semantics = vtn_constant_uint(b, w[3]);
       break;
 
    case SpvOpImageQuerySize:
-      image.image = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
+      res_val = vtn_value(b, w[3], vtn_value_type_pointer);
+      image.image = res_val->pointer;
       image.coord = NULL;
       image.sample = NULL;
       image.lod = NULL;
       break;
 
    case SpvOpImageRead: {
-      image.image = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
+      res_val = vtn_value(b, w[3], vtn_value_type_pointer);
+      image.image = res_val->pointer;
       image.coord = get_image_coord(b, w[4]);
 
       const SpvImageOperandsMask operands =
@@ -2815,7 +2853,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpImageWrite: {
-      image.image = vtn_value(b, w[1], vtn_value_type_pointer)->pointer;
+      res_val = vtn_value(b, w[1], vtn_value_type_pointer);
+      image.image = res_val->pointer;
       image.coord = get_image_coord(b, w[2]);
 
       /* texel = w[3] */
@@ -2899,7 +2938,22 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       intrin->src[2] = nir_src_for_ssa(image.sample);
    }
 
-   nir_intrinsic_set_access(intrin, image.image->access);
+   /* The Vulkan spec says:
+    *
+    *    "If an instruction loads from or stores to a resource (including
+    *    atomics and image instructions) and the resource descriptor being
+    *    accessed is not dynamically uniform, then the operand corresponding
+    *    to that resource (e.g. the pointer or sampled image operand) must be
+    *    decorated with NonUniform."
+    *
+    * It's very careful to specify that the exact operand must be decorated
+    * NonUniform.  The SPIR-V parser is not expected to chase through long
+    * chains to find the NonUniform decoration.  It's either right there or we
+    * can assume it doesn't exist.
+    */
+   enum gl_access_qualifier access = 0;
+   vtn_foreach_decoration(b, res_val, non_uniform_decoration_cb, &access);
+   nir_intrinsic_set_access(intrin, access);
 
    switch (opcode) {
    case SpvOpAtomicLoad:

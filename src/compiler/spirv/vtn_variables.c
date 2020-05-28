@@ -76,28 +76,6 @@ vtn_push_value_pointer(struct vtn_builder *b, uint32_t value_id,
    return val;
 }
 
-static void
-ssa_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
-                  const struct vtn_decoration *dec, void *void_ctx)
-{
-   switch (dec->decoration) {
-   case SpvDecorationNonUniformEXT:
-      if (val->value_type == vtn_value_type_ssa) {
-         val->ssa->access |= ACCESS_NON_UNIFORM;
-      } else if (val->value_type == vtn_value_type_pointer) {
-         val->pointer->access |= ACCESS_NON_UNIFORM;
-      } else if (val->value_type == vtn_value_type_sampled_image) {
-         val->sampled_image->image->access |= ACCESS_NON_UNIFORM;
-      } else if (val->value_type == vtn_value_type_image_pointer) {
-         val->image->image->access |= ACCESS_NON_UNIFORM;
-      }
-      break;
-
-   default:
-      break;
-   }
-}
-
 struct vtn_value *
 vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
              struct vtn_type *type, struct vtn_ssa_value *ssa)
@@ -108,7 +86,6 @@ vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
    } else {
       val = vtn_push_value(b, value_id, vtn_value_type_ssa);
       val->ssa = ssa;
-      vtn_foreach_decoration(b, val, ssa_decoration_cb, NULL);
    }
    return val;
 }
@@ -129,7 +106,8 @@ vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,
    src_copy.type = dst->type;
    *dst = src_copy;
 
-   vtn_foreach_decoration(b, dst, ssa_decoration_cb, NULL);
+   if (dst->value_type == vtn_value_type_pointer)
+      dst->pointer = vtn_decorate_pointer(b, dst, dst->pointer);
 }
 
 static struct vtn_access_chain *
@@ -2563,7 +2541,6 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
             chain->link[idx].mode = vtn_access_mode_id;
             chain->link[idx].id = w[i];
          }
-         access |= vtn_value_access(link_val);
          idx++;
       }
 
@@ -2778,7 +2755,6 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
       u_val->ssa = vtn_create_ssa_value(b, u_val->type->type);
       u_val->ssa->def = nir_sloppy_bitcast(&b->nb, ptr_ssa->def, u_val->type->type);
-      u_val->ssa->access |= ptr_ssa->access;
       break;
    }
 
@@ -2800,7 +2776,6 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                                                 ptr_val->type->type);
       ptr_val->pointer = vtn_pointer_from_ssa(b, ptr_ssa, ptr_val->type);
       vtn_foreach_decoration(b, ptr_val, ptr_decoration_cb, ptr_val->pointer);
-      ptr_val->pointer->access |= u_val->ssa->access;
       break;
    }
 
