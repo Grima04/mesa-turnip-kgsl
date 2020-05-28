@@ -1109,13 +1109,15 @@
     <type name="DEBUGPROCARB" size="4" pointer="true"/>
     <type name="DEBUGPROC" size="4" pointer="true"/>
 
-    <function name="NewList" deprecated="3.1">
+    <function name="NewList" deprecated="3.1"
+              marshal_call_after="if (COMPAT) ctx->GLThread.inside_dlist = true;">
         <param name="list" type="GLuint"/>
         <param name="mode" type="GLenum"/>
         <glx sop="101"/>
     </function>
 
-    <function name="EndList" deprecated="3.1">
+    <function name="EndList" deprecated="3.1"
+              marshal_call_after="if (COMPAT) ctx->GLThread.inside_dlist = false;">
         <glx sop="102"/>
     </function>
 

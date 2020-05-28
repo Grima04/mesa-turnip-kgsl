@@ -123,6 +123,9 @@ struct glthread_state
    /** Whether GLThread is enabled. */
    bool enabled;
 
+   /** Whether GLThread is inside a display list generation. */
+   bool inside_dlist;
+
    /** The ring of batches in memory. */
    struct glthread_batch batches[MARSHAL_MAX_BATCHES];
 
