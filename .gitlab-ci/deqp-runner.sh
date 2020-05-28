@@ -7,6 +7,11 @@ DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=pbuffer"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=rgba8888d24s8ms0"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
 
+# deqp's shader cache (for vulkan) is not multiprocess safe for a common
+# filename, see:
+# https://gitlab.freedesktop.org/mesa/parallel-deqp-runner/-/merge_requests/13
+DEQP_OPTIONS="$DEQP_OPTIONS --deqp-shadercache=disable"
+
 if [ -z "$DEQP_VER" ]; then
    echo 'DEQP_VER must be set to something like "gles2", "gles31" or "vk" for the test run'
    exit 1
