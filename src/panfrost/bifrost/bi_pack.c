@@ -1786,6 +1786,26 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
         assert(index == 0 && clause->bundle_count == 1);
         assert(only);
 
+        /* Compute branch offset instead of a dummy 0 */
+        if (branches) {
+                bi_instruction *br = clause->bundles[clause->bundle_count - 1].add;
+                assert(br && br->type == BI_BRANCH && br->branch_target);
+
+                /* Put it in the high place */
+                int32_t qwords = bi_block_offset(ctx, clause, br->branch_target);
+                int32_t bytes = qwords * 16;
+
+                /* Copy so we get proper sign behaviour */
+                uint32_t raw = 0;
+                memcpy(&raw, &bytes, sizeof(raw));
+
+                /* Clear off top bits for the magic bits */
+                raw &= ~0xF0000000;
+
+                /* Put in top 32-bits */
+                clause->constants[index + 0] = ((uint64_t) raw) << 32ull;
+        }
+
         uint64_t hi = clause->constants[index + 0] >> 60ull;
 
         struct bifrost_fmt_constant quad = {
