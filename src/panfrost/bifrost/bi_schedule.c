@@ -227,8 +227,11 @@ bi_schedule(bi_context *ctx)
                         u->constants[0] = ins->constant.u64;
 
                         /* No indirect jumps yet */
-                        if (ins->type == BI_BRANCH)
+                        if (ins->type == BI_BRANCH) {
                                 u->branch_constant = true;
+                                u->branch_conditional =
+                                        (ins->cond != BI_COND_ALWAYS);
+                        }
 
                         u->clause_type = bi_clause_type_for_ins(ins);
                         u->block = (struct bi_block *) block;
