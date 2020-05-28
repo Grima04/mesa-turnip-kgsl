@@ -123,6 +123,24 @@ bi_assign_uniform_constant_single(
                 return true;
         }
 
+        if (ins->type == BI_BRANCH && clause->branch_constant) {
+                /* By convention branch constant is last */
+                unsigned idx = clause->constant_count - 1;
+
+                /* We can only jump to clauses which are qword aligned so the
+                 * bottom 4-bits of the offset are necessarily 0 */
+                unsigned lo = 0;
+
+                /* Build the constant */
+                unsigned C = bi_constant_field(idx) | lo;
+
+                if (assigned && regs->uniform_constant != C)
+                        unreachable("Mismatched uniform/const field: branch");
+
+                regs->uniform_constant = C;
+                return true;
+        }
+
         bi_foreach_src(ins, s) {
                 if (s == 0 && (ins->type == BI_LOAD_VAR_ADDRESS || ins->type == BI_LOAD_ATTR)) continue;
                 if (s == 1 && (ins->type == BI_BRANCH)) continue;
