@@ -761,6 +761,14 @@ glsl_get_cl_alignment(const struct glsl_type *type)
    return type->cl_alignment();
 }
 
+void
+glsl_get_cl_type_size_align(const struct glsl_type *type,
+                            unsigned *size, unsigned *align)
+{
+   *size = glsl_get_cl_size(type);
+   *align = glsl_get_cl_alignment(type);
+}
+
 unsigned
 glsl_type_get_sampler_count(const struct glsl_type *type)
 {
