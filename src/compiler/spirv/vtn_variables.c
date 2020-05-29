@@ -606,12 +606,6 @@ vtn_pointer_dereference(struct vtn_builder *b,
 nir_deref_instr *
 vtn_pointer_to_deref(struct vtn_builder *b, struct vtn_pointer *ptr)
 {
-   if (b->wa_glslang_179) {
-      /* Do on-the-fly copy propagation for samplers. */
-      if (ptr->var && ptr->var->copy_prop_sampler)
-         return vtn_pointer_to_deref(b, ptr->var->copy_prop_sampler);
-   }
-
    vtn_assert(!vtn_pointer_uses_ssa_offset(b, ptr));
    if (!ptr->deref) {
       struct vtn_access_chain chain = {
@@ -1044,6 +1038,25 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
                          enum gl_access_qualifier access,
                          struct vtn_ssa_value **inout)
 {
+   if (ptr->mode == vtn_variable_mode_uniform) {
+      if (ptr->type->base_type == vtn_base_type_image ||
+          ptr->type->base_type == vtn_base_type_sampler) {
+         /* See also our handling of OpTypeSampler and OpTypeImage */
+         vtn_assert(load);
+         (*inout)->def = vtn_pointer_to_ssa(b, ptr);
+         return;
+      } else if (ptr->type->base_type == vtn_base_type_sampled_image) {
+         /* See also our handling of OpTypeSampledImage */
+         vtn_assert(load);
+         struct vtn_sampled_image si = {
+            .image = vtn_pointer_to_deref(b, ptr),
+            .sampler = vtn_pointer_to_deref(b, ptr),
+         };
+         (*inout)->def = vtn_sampled_image_to_nir_ssa(b, si);
+         return;
+      }
+   }
+
    enum glsl_base_type base_type = glsl_get_base_type(ptr->type->type);
    switch (base_type) {
    case GLSL_TYPE_UINT:
@@ -1965,20 +1978,6 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
    ptr->type = ptr_type->deref;
    ptr->ptr_type = ptr_type;
 
-   if (b->wa_glslang_179) {
-      /* To work around https://github.com/KhronosGroup/glslang/issues/179 we
-       * need to whack the mode because it creates a function parameter with
-       * the Function storage class even though it's a pointer to a sampler.
-       * If we don't do this, then NIR won't get rid of the deref_cast for us.
-       */
-      if (ptr->mode == vtn_variable_mode_function &&
-          (ptr->type->base_type == vtn_base_type_sampler ||
-           ptr->type->base_type == vtn_base_type_sampled_image)) {
-         ptr->mode = vtn_variable_mode_uniform;
-         nir_mode = nir_var_uniform;
-      }
-   }
-
    if (vtn_pointer_uses_ssa_offset(b, ptr)) {
       /* This pointer type needs to have actual storage */
       vtn_assert(ptr_type->type);
@@ -2130,10 +2129,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       b->shader->info.num_ssbos++;
       break;
    case vtn_variable_mode_uniform:
-      if (glsl_type_is_image(without_array->type))
-         b->shader->info.num_images++;
-      else if (glsl_type_is_sampler(without_array->type))
-         b->shader->info.num_textures++;
+      if (without_array->base_type == vtn_base_type_image) {
+         if (glsl_type_is_image(without_array->glsl_image))
+            b->shader->info.num_images++;
+         else if (glsl_type_is_sampler(without_array->glsl_image))
+            b->shader->info.num_textures++;
+      }
       break;
    case vtn_variable_mode_push_constant:
       b->shader->num_uniforms = vtn_type_block_size(b, type);
@@ -2350,7 +2351,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       var->var->data.index = var->input_attachment_index;
       var->var->data.offset = var->offset;
 
-      if (glsl_type_is_image(without_array->type))
+      if (glsl_type_is_image(glsl_without_array(var->var->type)))
          var->var->data.image.format = without_array->image_format;
    }
 
@@ -2493,33 +2494,12 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       }
 
       struct vtn_type *ptr_type = vtn_get_type(b, w[1]);
-      struct vtn_value *base_val = vtn_untyped_value(b, w[3]);
-      if (base_val->value_type == vtn_value_type_sampled_image) {
-         /* This is rather insane.  SPIR-V allows you to use OpSampledImage
-          * to combine an array of images with a single sampler to get an
-          * array of sampled images that all share the same sampler.
-          * Fortunately, this means that we can more-or-less ignore the
-          * sampler when crawling the access chain, but it does leave us
-          * with this rather awkward little special-case.
-          */
-         struct vtn_value *val =
-            vtn_push_value(b, w[2], vtn_value_type_sampled_image);
-         val->sampled_image = ralloc(b, struct vtn_sampled_image);
-         val->sampled_image->image =
-            vtn_pointer_dereference(b, base_val->sampled_image->image, chain);
-         val->sampled_image->sampler = base_val->sampled_image->sampler;
-         val->sampled_image->image =
-            vtn_decorate_pointer(b, val, val->sampled_image->image);
-         val->sampled_image->sampler =
-            vtn_decorate_pointer(b, val, val->sampled_image->sampler);
-      } else {
-         vtn_assert(base_val->value_type == vtn_value_type_pointer);
-         struct vtn_pointer *ptr =
-            vtn_pointer_dereference(b, base_val->pointer, chain);
-         ptr->ptr_type = ptr_type;
-         ptr->access |= access;
-         vtn_push_pointer(b, w[2], ptr);
-      }
+      struct vtn_pointer *base =
+         vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
+      struct vtn_pointer *ptr = vtn_pointer_dereference(b, base, chain);
+      ptr->ptr_type = ptr_type;
+      ptr->access |= access;
+      vtn_push_pointer(b, w[2], ptr);
       break;
    }
 
@@ -2539,19 +2519,6 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       struct vtn_pointer *src = src_val->pointer;
 
       vtn_assert_types_equal(b, opcode, res_type, src_val->type->deref);
-
-      if (res_type->base_type == vtn_base_type_image ||
-          res_type->base_type == vtn_base_type_sampler) {
-         vtn_push_pointer(b, w[2], src);
-         return;
-      } else if (res_type->base_type == vtn_base_type_sampled_image) {
-         struct vtn_value *val =
-            vtn_push_value(b, w[2], vtn_value_type_sampled_image);
-         val->sampled_image = ralloc(b, struct vtn_sampled_image);
-         val->sampled_image->image = val->sampled_image->sampler =
-            vtn_decorate_pointer(b, val, src);
-         return;
-      }
 
       if (count > 4) {
          unsigned idx = 5;
@@ -2602,24 +2569,6 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       }
 
       vtn_assert_types_equal(b, opcode, dest_val->type->deref, src_val->type);
-
-      if (glsl_type_is_sampler(dest->type->type)) {
-         if (b->wa_glslang_179) {
-            vtn_warn("OpStore of a sampler detected.  Doing on-the-fly copy "
-                     "propagation to workaround the problem.");
-            vtn_assert(dest->var->copy_prop_sampler == NULL);
-            struct vtn_value *v = vtn_untyped_value(b, w[2]);
-            if (v->value_type == vtn_value_type_sampled_image) {
-               dest->var->copy_prop_sampler = v->sampled_image->sampler;
-            } else {
-               vtn_assert(v->value_type == vtn_value_type_pointer);
-               dest->var->copy_prop_sampler = v->pointer;
-            }
-         } else {
-            vtn_fail("Vulkan does not allow OpStore of a sampler or image.");
-         }
-         break;
-      }
 
       struct vtn_ssa_value *src = vtn_ssa_value(b, w[2]);
       vtn_variable_store(b, src, dest);

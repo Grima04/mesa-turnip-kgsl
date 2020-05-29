@@ -310,6 +310,66 @@ vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id, nir_ssa_def *def)
    return vtn_push_ssa_value(b, value_id, ssa);
 }
 
+static nir_deref_instr *
+vtn_get_image(struct vtn_builder *b, uint32_t value_id)
+{
+   struct vtn_type *type = vtn_get_value_type(b, value_id);
+   vtn_assert(type->base_type == vtn_base_type_image);
+   return nir_build_deref_cast(&b->nb, vtn_get_nir_ssa(b, value_id),
+                               nir_var_uniform, type->glsl_image, 0);
+}
+
+static void
+vtn_push_image(struct vtn_builder *b, uint32_t value_id,
+               nir_deref_instr *deref)
+{
+   struct vtn_type *type = vtn_get_value_type(b, value_id);
+   vtn_assert(type->base_type == vtn_base_type_image);
+   vtn_push_nir_ssa(b, value_id, &deref->dest.ssa);
+}
+
+static nir_deref_instr *
+vtn_get_sampler(struct vtn_builder *b, uint32_t value_id)
+{
+   struct vtn_type *type = vtn_get_value_type(b, value_id);
+   vtn_assert(type->base_type == vtn_base_type_sampler);
+   return nir_build_deref_cast(&b->nb, vtn_get_nir_ssa(b, value_id),
+                               nir_var_uniform, glsl_bare_sampler_type(), 0);
+}
+
+nir_ssa_def *
+vtn_sampled_image_to_nir_ssa(struct vtn_builder *b,
+                             struct vtn_sampled_image si)
+{
+   return nir_vec2(&b->nb, &si.image->dest.ssa, &si.sampler->dest.ssa);
+}
+
+static void
+vtn_push_sampled_image(struct vtn_builder *b, uint32_t value_id,
+                       struct vtn_sampled_image si)
+{
+   struct vtn_type *type = vtn_get_value_type(b, value_id);
+   vtn_assert(type->base_type == vtn_base_type_sampled_image);
+   vtn_push_nir_ssa(b, value_id, vtn_sampled_image_to_nir_ssa(b, si));
+}
+
+static struct vtn_sampled_image
+vtn_get_sampled_image(struct vtn_builder *b, uint32_t value_id)
+{
+   struct vtn_type *type = vtn_get_value_type(b, value_id);
+   vtn_assert(type->base_type == vtn_base_type_sampled_image);
+   nir_ssa_def *si_vec2 = vtn_get_nir_ssa(b, value_id);
+
+   struct vtn_sampled_image si = { NULL, };
+   si.image = nir_build_deref_cast(&b->nb, nir_channel(&b->nb, si_vec2, 0),
+                                   nir_var_uniform,
+                                   type->image->glsl_image, 0);
+   si.sampler = nir_build_deref_cast(&b->nb, nir_channel(&b->nb, si_vec2, 1),
+                                     nir_var_uniform,
+                                     glsl_bare_sampler_type(), 0);
+   return si;
+}
+
 static char *
 vtn_string_literal(struct vtn_builder *b, const uint32_t *words,
                    unsigned word_count, unsigned *words_used)
@@ -724,6 +784,17 @@ vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
                   "Variables in the AtomicCounter storage class should be "
                   "(possibly arrays of arrays of) uint.");
       return wrap_type_in_array(glsl_atomic_uint_type(), type->type);
+   }
+
+   if (mode == vtn_variable_mode_uniform) {
+      struct vtn_type *tail = vtn_type_without_array(type);
+      if (tail->base_type == vtn_base_type_image) {
+         return wrap_type_in_array(tail->glsl_image, type->type);
+      } else if (tail->base_type == vtn_base_type_sampler) {
+         return wrap_type_in_array(glsl_bare_sampler_type(), type->type);
+      } else if (tail->base_type == vtn_base_type_sampled_image) {
+         return wrap_type_in_array(tail->image->glsl_image, type->type);
+      }
    }
 
    return type->type;
@@ -1413,6 +1484,14 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    case SpvOpTypeImage: {
       val->type->base_type = vtn_base_type_image;
 
+      /* Images are represented in NIR as a scalar SSA value that is the
+       * result of a deref instruction.  An OpLoad on an OpTypeImage pointer
+       * from UniformConstant memory just takes the NIR deref from the pointer
+       * and turns it into an SSA value.
+       */
+      val->type->type = nir_address_format_to_glsl_type(
+         vtn_mode_to_address_format(b, vtn_variable_mode_function));
+
       const struct vtn_type *sampled_type = vtn_get_type(b, w[2]);
       vtn_fail_if(sampled_type->base_type != vtn_base_type_scalar ||
                   glsl_get_bit_size(sampled_type->type) != 32,
@@ -1459,30 +1538,50 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       enum glsl_base_type sampled_base_type =
          glsl_get_base_type(sampled_type->type);
       if (sampled == 1) {
-         val->type->type = glsl_sampler_type(dim, false, is_array,
-                                             sampled_base_type);
+         val->type->glsl_image = glsl_sampler_type(dim, false, is_array,
+                                                   sampled_base_type);
       } else if (sampled == 2) {
-         val->type->type = glsl_image_type(dim, is_array, sampled_base_type);
+         val->type->glsl_image = glsl_image_type(dim, is_array,
+                                                 sampled_base_type);
       } else {
          vtn_fail("We need to know if the image will be sampled");
       }
       break;
    }
 
-   case SpvOpTypeSampledImage:
+   case SpvOpTypeSampledImage: {
       val->type->base_type = vtn_base_type_sampled_image;
       val->type->image = vtn_get_type(b, w[2]);
-      val->type->type = val->type->image->type;
+
+      /* Sampled images are represented NIR as a vec2 SSA value where each
+       * component is the result of a deref instruction.  The first component
+       * is the image and the second is the sampler.  An OpLoad on an
+       * OpTypeSampledImage pointer from UniformConstant memory just takes
+       * the NIR deref from the pointer and duplicates it to both vector
+       * components.
+       */
+      nir_address_format addr_format =
+         vtn_mode_to_address_format(b, vtn_variable_mode_function);
+      assert(nir_address_format_num_components(addr_format) == 1);
+      unsigned bit_size = nir_address_format_bit_size(addr_format);
+      assert(bit_size == 32 || bit_size == 64);
+
+      enum glsl_base_type base_type =
+         bit_size == 32 ? GLSL_TYPE_UINT : GLSL_TYPE_UINT64;
+      val->type->type = glsl_vector_type(base_type, 2);
       break;
+   }
 
    case SpvOpTypeSampler:
-      /* The actual sampler type here doesn't really matter.  It gets
-       * thrown away the moment you combine it with an image.  What really
-       * matters is that it's a sampler type as opposed to an integer type
-       * so the backend knows what to do.
-       */
       val->type->base_type = vtn_base_type_sampler;
-      val->type->type = glsl_bare_sampler_type();
+
+      /* Samplers are represented in NIR as a scalar SSA value that is the
+       * result of a deref instruction.  An OpLoad on an OpTypeSampler pointer
+       * from UniformConstant memory just takes the NIR deref from the pointer
+       * and turns it into an SSA value.
+       */
+      val->type->type = nir_address_format_to_glsl_type(
+         vtn_mode_to_address_format(b, vtn_variable_mode_function));
       break;
 
    case SpvOpTypeOpaque:
@@ -2285,68 +2384,37 @@ non_uniform_decoration_cb(struct vtn_builder *b,
    }
 }
 
-
 static void
 vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
                    const uint32_t *w, unsigned count)
 {
-   if (opcode == SpvOpSampledImage) {
-      struct vtn_value *val =
-         vtn_push_value(b, w[2], vtn_value_type_sampled_image);
-      val->sampled_image = ralloc(b, struct vtn_sampled_image);
-
-      /* It seems valid to use OpSampledImage with OpUndef instead of
-       * OpTypeImage or OpTypeSampler.
-       */
-      if (vtn_untyped_value(b, w[3])->value_type == vtn_value_type_undef) {
-         val->sampled_image->image = NULL;
-      } else {
-         val->sampled_image->image =
-            vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
-      }
-
-      if (vtn_untyped_value(b, w[4])->value_type == vtn_value_type_undef) {
-         val->sampled_image->sampler = NULL;
-      } else {
-         val->sampled_image->sampler =
-            vtn_value(b, w[4], vtn_value_type_pointer)->pointer;
-      }
-      return;
-   } else if (opcode == SpvOpImage) {
-      struct vtn_value *src_val = vtn_untyped_value(b, w[3]);
-      if (src_val->value_type == vtn_value_type_sampled_image) {
-         vtn_push_pointer(b, w[2], src_val->sampled_image->image);
-      } else {
-         vtn_assert(src_val->value_type == vtn_value_type_pointer);
-         vtn_push_pointer(b, w[2], src_val->pointer);
-      }
-      return;
-   }
-
    struct vtn_type *ret_type = vtn_get_type(b, w[1]);
 
-   struct vtn_pointer *image = NULL, *sampler = NULL;
-   struct vtn_value *sampled_val = vtn_untyped_value(b, w[3]);
-   if (sampled_val->value_type == vtn_value_type_sampled_image) {
-      image = sampled_val->sampled_image->image;
-      sampler = sampled_val->sampled_image->sampler;
-   } else {
-      vtn_assert(sampled_val->value_type == vtn_value_type_pointer);
-      image = sampled_val->pointer;
-   }
-
-   if (!image) {
-      vtn_push_value(b, w[2], vtn_value_type_undef);
+   if (opcode == SpvOpSampledImage) {
+      struct vtn_sampled_image si = {
+         .image = vtn_get_image(b, w[3]),
+         .sampler = vtn_get_sampler(b, w[4]),
+      };
+      vtn_push_sampled_image(b, w[2], si);
+      return;
+   } else if (opcode == SpvOpImage) {
+      struct vtn_sampled_image si = vtn_get_sampled_image(b, w[3]);
+      vtn_push_image(b, w[2], si.image);
       return;
    }
 
-   nir_deref_instr *image_deref = vtn_pointer_to_deref(b, image);
-   nir_deref_instr *sampler_deref =
-      sampler ? vtn_pointer_to_deref(b, sampler) : NULL;
+   nir_deref_instr *image = NULL, *sampler = NULL;
+   struct vtn_value *sampled_val = vtn_untyped_value(b, w[3]);
+   if (sampled_val->type->base_type == vtn_base_type_sampled_image) {
+      struct vtn_sampled_image si = vtn_get_sampled_image(b, w[3]);
+      image = si.image;
+      sampler = si.sampler;
+   } else {
+      image = vtn_get_image(b, w[3]);
+   }
 
-   const struct glsl_type *image_type = sampled_val->type->type;
-   const enum glsl_sampler_dim sampler_dim = glsl_get_sampler_dim(image_type);
-   const bool is_array = glsl_sampler_type_is_array(image_type);
+   const enum glsl_sampler_dim sampler_dim = glsl_get_sampler_dim(image->type);
+   const bool is_array = glsl_sampler_type_is_array(image->type);
    nir_alu_type dest_type = nir_type_invalid;
 
    /* Figure out the base texture operation */
@@ -2415,7 +2483,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    nir_tex_src srcs[10]; /* 10 should be enough */
    nir_tex_src *p = srcs;
 
-   p->src = nir_src_for_ssa(&image_deref->dest.ssa);
+   p->src = nir_src_for_ssa(&image->dest.ssa);
    p->src_type = nir_tex_src_texture_deref;
    p++;
 
@@ -2429,7 +2497,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       vtn_fail_if(sampler == NULL,
                   "%s requires an image of type OpTypeSampledImage",
                   spirv_op_to_string(opcode));
-      p->src = nir_src_for_ssa(&sampler_deref->dest.ssa);
+      p->src = nir_src_for_ssa(&sampler->dest.ssa);
       p->src_type = nir_tex_src_sampler_deref;
       p++;
       break;
@@ -2648,7 +2716,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
    /* for non-query ops, get dest_type from sampler type */
    if (dest_type == nir_type_invalid) {
-      switch (glsl_get_sampler_result_type(image_type)) {
+      switch (glsl_get_sampler_result_type(image->type)) {
       case GLSL_TYPE_FLOAT:   dest_type = nir_type_float;   break;
       case GLSL_TYPE_INT:     dest_type = nir_type_int;     break;
       case GLSL_TYPE_UINT:    dest_type = nir_type_uint;    break;
@@ -2778,7 +2846,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
          vtn_push_value(b, w[2], vtn_value_type_image_pointer);
       val->image = ralloc(b, struct vtn_image_pointer);
 
-      val->image->image = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
+      val->image->image = vtn_nir_deref(b, w[3]);
       val->image->coord = get_image_coord(b, w[4]);
       val->image->sample = vtn_get_nir_ssa(b, w[5]);
       val->image->lod = nir_imm_int(&b->nb, 0);
@@ -2821,16 +2889,16 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpImageQuerySize:
-      res_val = vtn_value(b, w[3], vtn_value_type_pointer);
-      image.image = res_val->pointer;
+      res_val = vtn_untyped_value(b, w[3]);
+      image.image = vtn_get_image(b, w[3]);
       image.coord = NULL;
       image.sample = NULL;
       image.lod = NULL;
       break;
 
    case SpvOpImageRead: {
-      res_val = vtn_value(b, w[3], vtn_value_type_pointer);
-      image.image = res_val->pointer;
+      res_val = vtn_untyped_value(b, w[3]);
+      image.image = vtn_get_image(b, w[3]);
       image.coord = get_image_coord(b, w[4]);
 
       const SpvImageOperandsMask operands =
@@ -2867,8 +2935,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpImageWrite: {
-      res_val = vtn_value(b, w[1], vtn_value_type_pointer);
-      image.image = res_val->pointer;
+      res_val = vtn_untyped_value(b, w[1]);
+      image.image = vtn_get_image(b, w[1]);
       image.coord = get_image_coord(b, w[2]);
 
       /* texel = w[3] */
@@ -2940,8 +3008,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->shader, op);
 
-   nir_deref_instr *image_deref = vtn_pointer_to_deref(b, image.image);
-   intrin->src[0] = nir_src_for_ssa(&image_deref->dest.ssa);
+   intrin->src[0] = nir_src_for_ssa(&image.image->dest.ssa);
 
    /* ImageQuerySize doesn't take any extra parameters */
    if (opcode != SpvOpImageQuerySize) {
@@ -4865,12 +4932,12 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpImageQuerySize: {
-      struct vtn_pointer *image =
-         vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
-      if (glsl_type_is_image(image->type->type)) {
+      struct vtn_type *image_type = vtn_get_value_type(b, w[3]);
+      vtn_assert(image_type->base_type == vtn_base_type_image);
+      if (glsl_type_is_image(image_type->glsl_image)) {
          vtn_handle_image(b, opcode, w, count);
       } else {
-         vtn_assert(glsl_type_is_sampler(image->type->type));
+         vtn_assert(glsl_type_is_sampler(image_type->glsl_image));
          vtn_handle_texture(b, opcode, w, count);
       }
       break;
@@ -5243,12 +5310,6 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
 
    uint16_t generator_id = words[2] >> 16;
    uint16_t generator_version = words[2];
-
-   /* The first GLSLang version bump actually 1.5 years after #179 was fixed
-    * but this should at least let us shut the workaround off for modern
-    * versions of GLSLang.
-    */
-   b->wa_glslang_179 = (generator_id == 8 && generator_version == 1);
 
    /* In GLSLang commit 8297936dd6eb3, their handling of barrier() was fixed
     * to provide correct memory semantics on compute shader barrier()

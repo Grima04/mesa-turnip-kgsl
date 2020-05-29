@@ -118,7 +118,6 @@ enum vtn_value_type {
    vtn_value_type_ssa,
    vtn_value_type_extension,
    vtn_value_type_image_pointer,
-   vtn_value_type_sampled_image,
 };
 
 enum vtn_branch_type {
@@ -401,6 +400,12 @@ struct vtn_type {
 
       /* Members for image types */
       struct {
+         /* GLSL image type for this type.  This is not to be confused with
+          * vtn_type::type which is actually going to be the GLSL type for a
+          * pointer to an image, likely a uint32_t.
+          */
+         const struct glsl_type *glsl_image;
+
          /* Image format for image_load_store type images */
          unsigned image_format;
 
@@ -567,15 +572,10 @@ vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
                       enum vtn_variable_mode mode);
 
 struct vtn_image_pointer {
-   struct vtn_pointer *image;
+   nir_deref_instr *image;
    nir_ssa_def *coord;
    nir_ssa_def *sample;
    nir_ssa_def *lod;
-};
-
-struct vtn_sampled_image {
-   struct vtn_pointer *image; /* Image or array of images */
-   struct vtn_pointer *sampler; /* Sampler */
 };
 
 struct vtn_value {
@@ -588,7 +588,6 @@ struct vtn_value {
       nir_constant *constant;
       struct vtn_pointer *pointer;
       struct vtn_image_pointer *image;
-      struct vtn_sampled_image *sampled_image;
       struct vtn_function *func;
       struct vtn_block *block;
       struct vtn_ssa_value *ssa;
@@ -657,9 +656,6 @@ struct vtn_builder {
 
    unsigned value_id_bound;
    struct vtn_value *values;
-
-   /* True if we should watch out for GLSLang issue #179 */
-   bool wa_glslang_179;
 
    /* True if we need to fix up CS OpControlBarrier */
    bool wa_glslang_cs_barrier;
@@ -800,6 +796,14 @@ struct vtn_value *vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id,
 struct vtn_value *vtn_push_pointer(struct vtn_builder *b,
                                    uint32_t value_id,
                                    struct vtn_pointer *ptr);
+
+struct vtn_sampled_image {
+   nir_deref_instr *image;
+   nir_deref_instr *sampler;
+};
+
+nir_ssa_def *vtn_sampled_image_to_nir_ssa(struct vtn_builder *b,
+                                          struct vtn_sampled_image si);
 
 void
 vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,
