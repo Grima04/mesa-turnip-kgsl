@@ -588,6 +588,9 @@ radv_handle_per_app_options(struct radv_instance *instance,
 	} else if (!strcmp(name, "No Man's Sky")) {
 		/* Work around a NMS game bug */
 		instance->debug_flags |= RADV_DEBUG_DISCARD_TO_DEMOTE;
+	} else if (!strcmp(name, "DOOMEternal")) {
+		/* Zero VRAM for Doom Eternal to fix rendering issues. */
+		instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
 	}
 }
 
