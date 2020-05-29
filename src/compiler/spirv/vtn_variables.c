@@ -81,8 +81,12 @@ vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,
                uint32_t dst_value_id)
 {
    struct vtn_value *src = vtn_untyped_value(b, src_value_id);
-   struct vtn_value *dst = vtn_push_value(b, dst_value_id, src->value_type);
+   struct vtn_value *dst = vtn_untyped_value(b, dst_value_id);
    struct vtn_value src_copy = *src;
+
+   vtn_fail_if(dst->value_type != vtn_value_type_invalid,
+               "SPIR-V id %u has already been written by another instruction",
+               dst_value_id);
 
    vtn_fail_if(dst->type->id != src->type->id,
                "Result Type must equal Operand type");

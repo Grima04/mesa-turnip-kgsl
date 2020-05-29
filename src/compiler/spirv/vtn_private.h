@@ -710,6 +710,10 @@ vtn_push_value(struct vtn_builder *b, uint32_t value_id,
 {
    struct vtn_value *val = vtn_untyped_value(b, value_id);
 
+   vtn_fail_if(value_type == vtn_value_type_ssa,
+               "Do not call vtn_push_value for value_type_ssa.  Use "
+               "vtn_push_ssa_value instead.");
+
    vtn_fail_if(val->value_type != vtn_value_type_invalid,
                "SPIR-V id %u has already been written by another instruction",
                value_id);

@@ -167,7 +167,7 @@ static struct vtn_ssa_value *
 vtn_undef_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
 {
    struct vtn_ssa_value *val = rzalloc(b, struct vtn_ssa_value);
-   val->type = type;
+   val->type = glsl_get_bare_type(type);
 
    if (glsl_type_is_vector_or_scalar(type)) {
       unsigned num_components = glsl_get_vector_elements(val->type);
@@ -202,7 +202,7 @@ vtn_const_ssa_value(struct vtn_builder *b, nir_constant *constant,
       return entry->data;
 
    struct vtn_ssa_value *val = rzalloc(b, struct vtn_ssa_value);
-   val->type = type;
+   val->type = glsl_get_bare_type(type);
 
    if (glsl_type_is_vector_or_scalar(type)) {
       unsigned num_components = glsl_get_vector_elements(val->type);
@@ -269,11 +269,17 @@ vtn_push_ssa_value(struct vtn_builder *b, uint32_t value_id,
 {
    struct vtn_type *type = vtn_get_value_type(b, value_id);
 
+   /* See vtn_create_ssa_value */
+   vtn_fail_if(ssa->type != glsl_get_bare_type(type->type),
+               "Type mismatch for SPIR-V SSA value");
+
    struct vtn_value *val;
    if (type->base_type == vtn_base_type_pointer) {
       val = vtn_push_pointer(b, value_id, vtn_pointer_from_ssa(b, ssa->def, type));
    } else {
-      val = vtn_push_value(b, value_id, vtn_value_type_ssa);
+      /* Don't trip the value_type_ssa check in vtn_push_value */
+      val = vtn_push_value(b, value_id, vtn_value_type_invalid);
+      val->value_type = vtn_value_type_ssa;
       val->ssa = ssa;
    }
 
@@ -2160,8 +2166,19 @@ vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
 struct vtn_ssa_value *
 vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
 {
+   /* Always use bare types for SSA values for a couple of reasons:
+    *
+    *  1. Code which emits deref chains should never listen to the explicit
+    *     layout information on the SSA value if any exists.  If we've
+    *     accidentally been relying on this, we want to find those bugs.
+    *
+    *  2. We want to be able to quickly check that an SSA value being assigned
+    *     to a SPIR-V value has the right type.  Using bare types everywhere
+    *     ensures that we can pointer-compare.
+    */
    struct vtn_ssa_value *val = rzalloc(b, struct vtn_ssa_value);
-   val->type = type;
+   val->type = glsl_get_bare_type(type);
+
 
    if (!glsl_type_is_vector_or_scalar(type)) {
       unsigned elems = glsl_get_length(val->type);

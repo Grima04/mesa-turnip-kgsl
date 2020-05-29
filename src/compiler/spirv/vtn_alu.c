@@ -43,7 +43,7 @@ wrap_matrix(struct vtn_builder *b, struct vtn_ssa_value *val)
       return val;
 
    struct vtn_ssa_value *dest = rzalloc(b, struct vtn_ssa_value);
-   dest->type = val->type;
+   dest->type = glsl_get_bare_type(val->type);
    dest->elems = ralloc_array(b, struct vtn_ssa_value *, 1);
    dest->elems[0] = val;
 
