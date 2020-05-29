@@ -209,7 +209,7 @@ v3dv_cmd_buffer_add_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
 {
    struct v3dv_cmd_buffer_private_obj *pobj =
       vk_alloc(&cmd_buffer->device->alloc, sizeof(*pobj), 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!pobj) {
       v3dv_flag_oom(cmd_buffer, NULL);
       return;
@@ -555,7 +555,7 @@ cmd_buffer_create_cpu_job(struct v3dv_device *device,
 {
    struct v3dv_job *job = vk_zalloc(&device->alloc,
                                     sizeof(struct v3dv_job), 8,
-                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!job) {
       v3dv_flag_oom(cmd_buffer, NULL);
       return NULL;
@@ -687,7 +687,7 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
    assert(cmd_buffer->state.job == NULL);
    struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->alloc,
                                     sizeof(struct v3dv_job), 8,
-                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
 
    cmd_buffer->state.job = job;
 
@@ -3700,7 +3700,7 @@ ensure_array_state(struct v3dv_cmd_buffer *cmd_buffer,
       const uint32_t new_slot_count = MAX2(*alloc_count * 2, 4);
       const uint32_t bytes = new_slot_count * slot_size;
       *ptr = vk_alloc(&cmd_buffer->device->alloc, bytes, 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+                      VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
       if (*ptr == NULL) {
          fprintf(stderr, "Error: failed to allocate CPU buffer for query.\n");
          v3dv_flag_oom(cmd_buffer, NULL);
@@ -3813,7 +3813,7 @@ v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_device *device = cmd_buffer->device;
    struct v3dv_job *job = vk_zalloc(&device->alloc,
                                     sizeof(struct v3dv_job), 8,
-                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!job) {
       v3dv_flag_oom(cmd_buffer, NULL);
       return;
@@ -3912,7 +3912,7 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
 
    job->cpu.event_wait.events =
       vk_alloc(&cmd_buffer->device->alloc, event_list_size, 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!job->cpu.event_wait.events) {
       v3dv_flag_oom(cmd_buffer, NULL);
       return;
