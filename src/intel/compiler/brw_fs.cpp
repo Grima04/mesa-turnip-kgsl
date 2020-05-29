@@ -2711,6 +2711,14 @@ fs_visitor::opt_algebraic()
          if (inst->src[1].file != IMM)
             continue;
 
+         if (brw_reg_type_is_integer(inst->src[1].type) &&
+             inst->src[1].is_zero()) {
+            inst->opcode = BRW_OPCODE_MOV;
+            inst->src[1] = reg_undef;
+            progress = true;
+            break;
+         }
+
          if (inst->src[0].file == IMM) {
             assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
             inst->opcode = BRW_OPCODE_MOV;
