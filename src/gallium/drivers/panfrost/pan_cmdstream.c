@@ -338,8 +338,11 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
                 meta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
                 if (st == PIPE_SHADER_VERTEX)
                         meta->bifrost2.preload_regs = 0xC0;
-                else
+                else {
                         meta->bifrost2.preload_regs = 0x1;
+                        SET_BIT(meta->bifrost2.preload_regs, 0x10, ss->reads_frag_coord);
+                }
+
                 meta->bifrost2.uniform_count = MIN2(ss->uniform_count,
                                                     ss->uniform_cutoff);
         } else {
