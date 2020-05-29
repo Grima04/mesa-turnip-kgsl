@@ -439,14 +439,29 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gen8.sf);
    }
 
+   static const uint32_t vk_to_gen_cullmode[] = {
+      [VK_CULL_MODE_NONE]                       = CULLMODE_NONE,
+      [VK_CULL_MODE_FRONT_BIT]                  = CULLMODE_FRONT,
+      [VK_CULL_MODE_BACK_BIT]                   = CULLMODE_BACK,
+      [VK_CULL_MODE_FRONT_AND_BACK]             = CULLMODE_BOTH
+   };
+   static const uint32_t vk_to_gen_front_face[] = {
+      [VK_FRONT_FACE_COUNTER_CLOCKWISE]         = 1,
+      [VK_FRONT_FACE_CLOCKWISE]                 = 0
+   };
+
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS)){
+                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
+                                      ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
+                                      ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE)) {
       uint32_t raster_dw[GENX(3DSTATE_RASTER_length)];
       struct GENX(3DSTATE_RASTER) raster = {
          GENX(3DSTATE_RASTER_header),
          .GlobalDepthOffsetConstant = d->depth_bias.bias,
          .GlobalDepthOffsetScale = d->depth_bias.slope,
-         .GlobalDepthOffsetClamp = d->depth_bias.clamp
+         .GlobalDepthOffsetClamp = d->depth_bias.clamp,
+         .CullMode = vk_to_gen_cullmode[d->cull_mode],
+         .FrontWinding = vk_to_gen_front_face[d->front_face],
       };
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,

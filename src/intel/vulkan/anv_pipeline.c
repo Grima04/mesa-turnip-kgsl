@@ -1871,6 +1871,18 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
          pCreateInfo->pRasterizationState->depthBiasSlopeFactor;
    }
 
+   if (states & ANV_CMD_DIRTY_DYNAMIC_CULL_MODE) {
+      assert(pCreateInfo->pRasterizationState);
+      dynamic->cull_mode =
+         pCreateInfo->pRasterizationState->cullMode;
+   }
+
+   if (states & ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE) {
+      assert(pCreateInfo->pRasterizationState);
+      dynamic->front_face =
+         pCreateInfo->pRasterizationState->frontFace;
+   }
+
    /* Section 9.2 of the Vulkan 1.0.15 spec says:
     *
     *    pColorBlendState is [...] NULL if the pipeline has rasterization

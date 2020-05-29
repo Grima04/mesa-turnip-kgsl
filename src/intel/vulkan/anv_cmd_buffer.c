@@ -76,6 +76,8 @@ const struct anv_dynamic_state default_dynamic_state = {
       .factor = 0u,
       .pattern = 0u,
    },
+   .cull_mode = 0,
+   .front_face = 0,
 };
 
 /**
@@ -140,6 +142,9 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
 
    ANV_CMP_COPY(line_stipple.factor, ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE);
    ANV_CMP_COPY(line_stipple.pattern, ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE);
+
+   ANV_CMP_COPY(cull_mode, ANV_CMD_DIRTY_DYNAMIC_CULL_MODE);
+   ANV_CMP_COPY(front_face, ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE);
 
 #undef ANV_CMP_COPY
 
@@ -608,6 +613,28 @@ void anv_CmdSetLineStippleEXT(
    cmd_buffer->state.gfx.dynamic.line_stipple.pattern = lineStipplePattern;
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
+}
+
+void anv_CmdSetCullModeEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkCullModeFlags                              cullMode)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.cull_mode = cullMode;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_CULL_MODE;
+}
+
+void anv_CmdSetFrontFaceEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkFrontFace                                  frontFace)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.front_face = frontFace;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
 }
 
 static void

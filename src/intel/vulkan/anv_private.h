@@ -2688,6 +2688,9 @@ struct anv_dynamic_state {
       uint32_t                                  factor;
       uint16_t                                  pattern;
    } line_stipple;
+
+   VkCullModeFlags                              cull_mode;
+   VkFrontFace                                  front_face;
 };
 
 extern const struct anv_dynamic_state default_dynamic_state;
