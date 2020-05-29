@@ -2016,13 +2016,14 @@ void
 iris_dirty_for_history(struct iris_context *ice,
                        struct iris_resource *res)
 {
-   uint64_t dirty = 0ull;
+   uint64_t stage_dirty = 0ull;
 
    if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
-      dirty |= ((uint64_t)res->bind_stages) << IRIS_SHIFT_FOR_DIRTY_CONSTANTS;
+      stage_dirty |= ((uint64_t)res->bind_stages)
+                        << IRIS_SHIFT_FOR_STAGE_DIRTY_CONSTANTS;
    }
 
-   ice->state.dirty |= dirty;
+   ice->state.stage_dirty |= stage_dirty;
 }
 
 /**

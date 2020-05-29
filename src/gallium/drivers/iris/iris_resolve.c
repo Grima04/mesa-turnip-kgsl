@@ -167,10 +167,10 @@ iris_predraw_resolve_inputs(struct iris_context *ice,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    const struct shader_info *info = iris_get_shader_info(ice, stage);
 
-   uint64_t dirty = (IRIS_DIRTY_BINDINGS_VS << stage) |
-                    (consider_framebuffer ? IRIS_DIRTY_BINDINGS_FS : 0);
+   uint64_t stage_dirty = (IRIS_STAGE_DIRTY_BINDINGS_VS << stage) |
+      (consider_framebuffer ? IRIS_STAGE_DIRTY_BINDINGS_FS : 0);
 
-   if (ice->state.dirty & dirty) {
+   if (ice->state.stage_dirty & stage_dirty) {
       resolve_sampler_views(ice, batch, shs, info, draw_aux_buffer_disabled,
                             consider_framebuffer);
       resolve_image_views(ice, batch, shs, info, draw_aux_buffer_disabled,
@@ -227,7 +227,8 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
       }
    }
 
-   if (ice->state.dirty & (IRIS_DIRTY_BINDINGS_FS | IRIS_DIRTY_BLEND_STATE)) {
+   if ((ice->state.dirty & IRIS_DIRTY_BLEND_STATE) ||
+       (ice->state.stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_FS)) {
       for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
          struct iris_surface *surf = (void *) cso_fb->cbufs[i];
          if (!surf)
@@ -243,7 +244,8 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
          if (ice->state.draw_aux_usage[i] != aux_usage) {
             ice->state.draw_aux_usage[i] = aux_usage;
             /* XXX: Need to track which bindings to make dirty */
-            ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+            ice->state.dirty |= IRIS_DIRTY_RENDER_BUFFER;
+            ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
          }
 
          iris_resource_prepare_render(ice, batch, res, surf->view.base_level,
@@ -312,7 +314,8 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
    }
 
    bool may_have_resolved_color =
-      ice->state.dirty & (IRIS_DIRTY_BINDINGS_FS | IRIS_DIRTY_BLEND_STATE);
+      (ice->state.dirty & IRIS_DIRTY_BLEND_STATE) ||
+      (ice->state.stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_FS);
 
    for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
       struct iris_surface *surf = (void *) cso_fb->cbufs[i];
@@ -899,7 +902,8 @@ iris_resource_set_aux_state(struct iris_context *ice,
       if (res->aux.state[level][start_layer + a] != aux_state) {
          res->aux.state[level][start_layer + a] = aux_state;
          /* XXX: Need to track which bindings to make dirty */
-         ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+         ice->state.dirty |= IRIS_DIRTY_RENDER_BUFFER;
+         ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
       }
    }
 }

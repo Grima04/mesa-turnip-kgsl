@@ -1265,7 +1265,7 @@ iris_bind_blend_state(struct pipe_context *ctx, void *state)
    ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
    ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
    ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
-   ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_BLEND];
+   ice->state.stage_dirty |= ice->state.stage_dirty_for_nos[IRIS_NOS_BLEND];
 
    if (GEN_GEN == 8)
       ice->state.dirty |= IRIS_DIRTY_PMA_FIX;
@@ -1416,7 +1416,8 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
    ice->state.cso_zsa = new_cso;
    ice->state.dirty |= IRIS_DIRTY_CC_VIEWPORT;
    ice->state.dirty |= IRIS_DIRTY_WM_DEPTH_STENCIL;
-   ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_DEPTH_STENCIL_ALPHA];
+   ice->state.stage_dirty |=
+      ice->state.stage_dirty_for_nos[IRIS_NOS_DEPTH_STENCIL_ALPHA];
 
    if (GEN_GEN == 8)
       ice->state.dirty |= IRIS_DIRTY_PMA_FIX;
@@ -1827,13 +1828,14 @@ iris_bind_rasterizer_state(struct pipe_context *ctx, void *state)
          ice->state.dirty |= IRIS_DIRTY_SBE;
 
       if (cso_changed(conservative_rasterization))
-         ice->state.dirty |= IRIS_DIRTY_FS;
+         ice->state.stage_dirty |= IRIS_STAGE_DIRTY_FS;
    }
 
    ice->state.cso_rast = new_cso;
    ice->state.dirty |= IRIS_DIRTY_RASTER;
    ice->state.dirty |= IRIS_DIRTY_CLIP;
-   ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_RASTERIZER];
+   ice->state.stage_dirty |=
+      ice->state.stage_dirty_for_nos[IRIS_NOS_RASTERIZER];
 }
 
 /**
@@ -1975,7 +1977,7 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    }
 
    if (dirty)
-      ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
+      ice->state.stage_dirty |= IRIS_STAGE_DIRTY_SAMPLER_STATES_VS << stage;
 }
 
 /**
@@ -2768,14 +2770,14 @@ iris_set_shader_images(struct pipe_context *ctx,
       }
    }
 
-   ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
+   ice->state.stage_dirty |= IRIS_STAGE_DIRTY_BINDINGS_VS << stage;
    ice->state.dirty |=
       stage == MESA_SHADER_COMPUTE ? IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES
                                    : IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 
    /* Broadwell also needs brw_image_params re-uploaded */
    if (GEN_GEN < 9) {
-      ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
+      ice->state.stage_dirty |= IRIS_STAGE_DIRTY_CONSTANTS_VS << stage;
       shs->sysvals_need_upload = true;
    }
 }
@@ -2812,7 +2814,7 @@ iris_set_sampler_views(struct pipe_context *ctx,
       }
    }
 
-   ice->state.dirty |= (IRIS_DIRTY_BINDINGS_VS << stage);
+   ice->state.stage_dirty |= (IRIS_STAGE_DIRTY_BINDINGS_VS << stage);
    ice->state.dirty |=
       stage == MESA_SHADER_COMPUTE ? IRIS_DIRTY_COMPUTE_RESOLVES_AND_FLUSHES
                                    : IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
@@ -2832,7 +2834,7 @@ iris_set_tess_state(struct pipe_context *ctx,
    memcpy(&ice->state.default_outer_level[0], &default_outer_level[0], 4 * sizeof(float));
    memcpy(&ice->state.default_inner_level[0], &default_inner_level[0], 2 * sizeof(float));
 
-   ice->state.dirty |= IRIS_DIRTY_CONSTANTS_TCS;
+   ice->state.stage_dirty |= IRIS_STAGE_DIRTY_CONSTANTS_TCS;
    shs->sysvals_need_upload = true;
 }
 
@@ -2858,8 +2860,9 @@ iris_set_clip_state(struct pipe_context *ctx,
 
    memcpy(&ice->state.clip_planes, state, sizeof(*state));
 
-   ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS | IRIS_DIRTY_CONSTANTS_GS |
-                       IRIS_DIRTY_CONSTANTS_TES;
+   ice->state.stage_dirty |= IRIS_STAGE_DIRTY_CONSTANTS_VS |
+                             IRIS_STAGE_DIRTY_CONSTANTS_GS |
+                             IRIS_STAGE_DIRTY_CONSTANTS_TES;
    shs->sysvals_need_upload = true;
    gshs->sysvals_need_upload = true;
    tshs->sysvals_need_upload = true;
@@ -3002,7 +3005,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
       /* We need to toggle 3DSTATE_PS::32 Pixel Dispatch Enable */
       if (GEN_GEN >= 9 && (cso->samples == 16 || samples == 16))
-         ice->state.dirty |= IRIS_DIRTY_FS;
+         ice->state.stage_dirty |= IRIS_STAGE_DIRTY_FS;
    }
 
    if (cso->nr_cbufs != state->nr_cbufs) {
@@ -3088,13 +3091,14 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       iris_bo_offset_from_base_address(iris_resource_bo(ice->state.null_fb.res));
 
    /* Render target change */
-   ice->state.dirty |= IRIS_DIRTY_BINDINGS_FS;
+   ice->state.stage_dirty |= IRIS_STAGE_DIRTY_BINDINGS_FS;
 
    ice->state.dirty |= IRIS_DIRTY_RENDER_BUFFER;
 
    ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 
-   ice->state.dirty |= ice->state.dirty_for_nos[IRIS_NOS_FRAMEBUFFER];
+   ice->state.stage_dirty |=
+      ice->state.stage_dirty_for_nos[IRIS_NOS_FRAMEBUFFER];
 
    if (GEN_GEN == 8)
       ice->state.dirty |= IRIS_DIRTY_PMA_FIX;
@@ -3154,7 +3158,7 @@ iris_set_constant_buffer(struct pipe_context *ctx,
       pipe_resource_reference(&cbuf->buffer, NULL);
    }
 
-   ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
+   ice->state.stage_dirty |= IRIS_STAGE_DIRTY_CONSTANTS_VS << stage;
 }
 
 static void
@@ -3287,7 +3291,7 @@ iris_set_shader_buffers(struct pipe_context *ctx,
       }
    }
 
-   ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
+   ice->state.stage_dirty |= IRIS_STAGE_DIRTY_BINDINGS_VS << stage;
 }
 
 static void
@@ -4896,6 +4900,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    struct iris_genx_state *genx = ice->state.genx;
 
    const uint64_t clean = ~ice->state.dirty;
+   const uint64_t stage_clean = ~ice->state.stage_dirty;
 
    if (clean & IRIS_DIRTY_CC_VIEWPORT) {
       iris_use_optional_res(batch, ice->state.last_res.cc_vp, false);
@@ -4931,7 +4936,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(clean & (IRIS_DIRTY_CONSTANTS_VS << stage)))
+      if (!(stage_clean & (IRIS_STAGE_DIRTY_CONSTANTS_VS << stage)))
          continue;
 
       struct iris_shader_state *shs = &ice->state.shaders[stage];
@@ -4964,7 +4969,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (clean & (IRIS_DIRTY_BINDINGS_VS << stage)) {
+      if (stage_clean & (IRIS_STAGE_DIRTY_BINDINGS_VS << stage)) {
          /* Re-pin any buffers referred to by the binding table. */
          iris_populate_binding_table(ice, batch, stage, true);
       }
@@ -4978,7 +4983,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (clean & (IRIS_DIRTY_VS << stage)) {
+      if (stage_clean & (IRIS_STAGE_DIRTY_VS << stage)) {
          struct iris_compiled_shader *shader = ice->shaders.prog[stage];
 
          if (shader) {
@@ -5019,12 +5024,12 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
                                struct iris_batch *batch,
                                const struct pipe_grid_info *grid)
 {
-   const uint64_t clean = ~ice->state.dirty;
+   const uint64_t stage_clean = ~ice->state.stage_dirty;
 
    const int stage = MESA_SHADER_COMPUTE;
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
-   if (clean & IRIS_DIRTY_BINDINGS_CS) {
+   if (stage_clean & IRIS_STAGE_DIRTY_BINDINGS_CS) {
       /* Re-pin any buffers referred to by the binding table. */
       iris_populate_binding_table(ice, batch, stage, true);
    }
@@ -5033,14 +5038,14 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
    if (sampler_res)
       iris_use_pinned_bo(batch, iris_resource_bo(sampler_res), false);
 
-   if ((clean & IRIS_DIRTY_SAMPLER_STATES_CS) &&
-       (clean & IRIS_DIRTY_BINDINGS_CS) &&
-       (clean & IRIS_DIRTY_CONSTANTS_CS) &&
-       (clean & IRIS_DIRTY_CS)) {
+   if ((stage_clean & IRIS_STAGE_DIRTY_SAMPLER_STATES_CS) &&
+       (stage_clean & IRIS_STAGE_DIRTY_BINDINGS_CS) &&
+       (stage_clean & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
+       (stage_clean & IRIS_STAGE_DIRTY_CS)) {
       iris_use_optional_res(batch, ice->state.last_res.cs_desc, false);
    }
 
-   if (clean & IRIS_DIRTY_CS) {
+   if (stage_clean & IRIS_STAGE_DIRTY_CS) {
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
 
       if (shader) {
@@ -5324,8 +5329,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                                const struct pipe_draw_info *draw)
 {
    const uint64_t dirty = ice->state.dirty;
+   const uint64_t stage_dirty = ice->state.stage_dirty;
 
-   if (!(dirty & IRIS_ALL_DIRTY_FOR_RENDER))
+   if (!(dirty & IRIS_ALL_DIRTY_FOR_RENDER) &&
+       !(stage_dirty & IRIS_ALL_STAGE_DIRTY_FOR_RENDER))
       return;
 
    struct iris_genx_state *genx = ice->state.genx;
@@ -5517,14 +5524,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
     * any stage has a dirty binding table.
     */
    const bool emit_const_wa = GEN_GEN >= 11 &&
-      (dirty & IRIS_ALL_DIRTY_BINDINGS) != 0;
+      ((dirty & IRIS_DIRTY_RENDER_BUFFER) ||
+       (stage_dirty & IRIS_ALL_STAGE_DIRTY_BINDINGS));
 
 #if GEN_GEN >= 12
    uint32_t nobuffer_stages = 0;
 #endif
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)) &&
+      if (!(stage_dirty & (IRIS_STAGE_DIRTY_CONSTANTS_VS << stage)) &&
           !emit_const_wa)
          continue;
 
@@ -5571,8 +5579,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
        * in order to commit constants.  TODO: Investigate "Disable Gather
        * at Set Shader" to go back to legacy mode...
        */
-      if (dirty & ((IRIS_DIRTY_BINDINGS_VS |
-                    (GEN_GEN == 9 ? IRIS_DIRTY_CONSTANTS_VS : 0)) << stage)) {
+      if (stage_dirty & ((IRIS_STAGE_DIRTY_BINDINGS_VS |
+                          (GEN_GEN == 9 ? IRIS_STAGE_DIRTY_CONSTANTS_VS : 0))
+                            << stage)) {
          iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), ptr) {
             ptr._3DCommandSubOpcode = 38 + stage;
             ptr.PointertoVSBindingTable = binder->bt_offset[stage];
@@ -5599,13 +5608,13 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (dirty & (IRIS_DIRTY_BINDINGS_VS << stage)) {
+      if (stage_dirty & (IRIS_STAGE_DIRTY_BINDINGS_VS << stage)) {
          iris_populate_binding_table(ice, batch, stage, false);
       }
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(dirty & (IRIS_DIRTY_SAMPLER_STATES_VS << stage)) ||
+      if (!(stage_dirty & (IRIS_STAGE_DIRTY_SAMPLER_STATES_VS << stage)) ||
           !ice->shaders.prog[stage])
          continue;
 
@@ -5641,7 +5650,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      if (!(dirty & (IRIS_DIRTY_VS << stage)))
+      if (!(stage_dirty & (IRIS_STAGE_DIRTY_VS << stage)))
          continue;
 
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
@@ -6494,7 +6503,7 @@ iris_upload_compute_state(struct iris_context *ice,
                           struct iris_batch *batch,
                           const struct pipe_grid_info *grid)
 {
-   const uint64_t dirty = ice->state.dirty;
+   const uint64_t stage_dirty = ice->state.stage_dirty;
    struct iris_screen *screen = batch->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_binder *binder = &ice->state.binder;
@@ -6516,13 +6525,14 @@ iris_upload_compute_state(struct iris_context *ice,
     */
    iris_use_pinned_bo(batch, ice->state.binder.bo, false);
 
-   if ((dirty & IRIS_DIRTY_CONSTANTS_CS) && shs->sysvals_need_upload)
+   if ((stage_dirty & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
+       shs->sysvals_need_upload)
       upload_sysvals(ice, MESA_SHADER_COMPUTE);
 
-   if (dirty & IRIS_DIRTY_BINDINGS_CS)
+   if (stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_CS)
       iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);
 
-   if (dirty & IRIS_DIRTY_SAMPLER_STATES_CS)
+   if (stage_dirty & IRIS_STAGE_DIRTY_SAMPLER_STATES_CS)
       iris_upload_sampler_states(ice, MESA_SHADER_COMPUTE);
 
    iris_use_optional_res(batch, shs->sampler_table.res, false);
@@ -6535,7 +6545,7 @@ iris_upload_compute_state(struct iris_context *ice,
    genX(invalidate_aux_map_state)(batch);
 #endif
 
-   if (dirty & IRIS_DIRTY_CS) {
+   if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       /* The MEDIA_VFE_STATE documentation for Gen8+ says:
        *
        *   "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
@@ -6576,7 +6586,7 @@ iris_upload_compute_state(struct iris_context *ice,
    }
 
    /* TODO: Combine subgroup-id with cbuf0 so we can push regular uniforms */
-   if (dirty & IRIS_DIRTY_CS) {
+   if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       uint32_t curbe_data_offset = 0;
       assert(cs_prog_data->push.cross_thread.dwords == 0 &&
              cs_prog_data->push.per_thread.dwords == 1 &&
@@ -6598,10 +6608,10 @@ iris_upload_compute_state(struct iris_context *ice,
       }
    }
 
-   if (dirty & (IRIS_DIRTY_SAMPLER_STATES_CS |
-                IRIS_DIRTY_BINDINGS_CS |
-                IRIS_DIRTY_CONSTANTS_CS |
-                IRIS_DIRTY_CS)) {
+   if (stage_dirty & (IRIS_STAGE_DIRTY_SAMPLER_STATES_CS |
+                      IRIS_STAGE_DIRTY_BINDINGS_CS |
+                      IRIS_STAGE_DIRTY_CONSTANTS_CS |
+                      IRIS_STAGE_DIRTY_CS)) {
       uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
 
       iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
@@ -6804,7 +6814,7 @@ iris_rebind_buffer(struct iris_context *ice,
 
             if (res->bo == iris_resource_bo(cbuf->buffer)) {
                pipe_resource_reference(&surf_state->res, NULL);
-               ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << s;
+               ice->state.stage_dirty |= IRIS_STAGE_DIRTY_CONSTANTS_VS << s;
             }
          }
       }
@@ -6836,7 +6846,7 @@ iris_rebind_buffer(struct iris_context *ice,
 
             if (update_surface_state_addrs(ice->state.surface_uploader,
                                            &isv->surface_state, bo)) {
-               ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << s;
+               ice->state.stage_dirty |= IRIS_STAGE_DIRTY_BINDINGS_VS << s;
             }
          }
       }
@@ -6850,7 +6860,7 @@ iris_rebind_buffer(struct iris_context *ice,
 
             if (update_surface_state_addrs(ice->state.surface_uploader,
                                            &iv->surface_state, bo)) {
-               ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << s;
+               ice->state.stage_dirty |= IRIS_STAGE_DIRTY_BINDINGS_VS << s;
             }
          }
       }
@@ -7512,11 +7522,15 @@ iris_set_frontend_noop(struct pipe_context *ctx, bool enable)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
-   if (iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_RENDER], enable))
+   if (iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_RENDER], enable)) {
       ice->state.dirty |= IRIS_ALL_DIRTY_FOR_RENDER;
+      ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_FOR_RENDER;
+   }
 
-   if (iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_COMPUTE], enable))
+   if (iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_COMPUTE], enable)) {
       ice->state.dirty |= IRIS_ALL_DIRTY_FOR_COMPUTE;
+      ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_FOR_COMPUTE;
+   }
 }
 
 void
@@ -7597,6 +7611,7 @@ genX(init_state)(struct iris_context *ice)
    screen->vtbl.lost_genx_state = iris_lost_genx_state;
 
    ice->state.dirty = ~0ull;
+   ice->state.stage_dirty = ~0ull;
 
    ice->state.statistics_counters_enabled = true;
 

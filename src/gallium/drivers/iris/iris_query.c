@@ -737,13 +737,13 @@ iris_set_active_query_state(struct pipe_context *ctx, bool enable)
    // have to be done dynamically at draw time, which is a pain
    ice->state.statistics_counters_enabled = enable;
    ice->state.dirty |= IRIS_DIRTY_CLIP |
-                       IRIS_DIRTY_GS |
                        IRIS_DIRTY_RASTER |
                        IRIS_DIRTY_STREAMOUT |
-                       IRIS_DIRTY_TCS |
-                       IRIS_DIRTY_TES |
-                       IRIS_DIRTY_VS |
                        IRIS_DIRTY_WM;
+   ice->state.stage_dirty |= IRIS_STAGE_DIRTY_GS |
+                             IRIS_STAGE_DIRTY_TCS |
+                             IRIS_STAGE_DIRTY_TES |
+                             IRIS_STAGE_DIRTY_VS;
 }
 
 static void

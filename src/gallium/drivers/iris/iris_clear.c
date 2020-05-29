@@ -326,7 +326,8 @@ fast_clear_color(struct iris_context *ice,
 
    iris_resource_set_aux_state(ice, res, level, box->z,
                                box->depth, ISL_AUX_STATE_CLEAR);
-   ice->state.dirty |= IRIS_ALL_DIRTY_BINDINGS;
+   ice->state.dirty |= IRIS_DIRTY_RENDER_BUFFER;
+   ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
    return;
 }
 

@@ -324,33 +324,34 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
                          IRIS_DIRTY_LINE_STIPPLE |
                          IRIS_ALL_DIRTY_FOR_COMPUTE |
                          IRIS_DIRTY_SCISSOR_RECT |
-                         IRIS_DIRTY_UNCOMPILED_VS |
-                         IRIS_DIRTY_UNCOMPILED_TCS |
-                         IRIS_DIRTY_UNCOMPILED_TES |
-                         IRIS_DIRTY_UNCOMPILED_GS |
-                         IRIS_DIRTY_UNCOMPILED_FS |
                          IRIS_DIRTY_VF |
-                         IRIS_DIRTY_SF_CL_VIEWPORT |
-                         IRIS_DIRTY_SAMPLER_STATES_VS |
-                         IRIS_DIRTY_SAMPLER_STATES_TCS |
-                         IRIS_DIRTY_SAMPLER_STATES_TES |
-                         IRIS_DIRTY_SAMPLER_STATES_GS);
+                         IRIS_DIRTY_SF_CL_VIEWPORT);
+   uint64_t skip_stage_bits = (IRIS_ALL_STAGE_DIRTY_FOR_COMPUTE |
+                               IRIS_STAGE_DIRTY_UNCOMPILED_VS |
+                               IRIS_STAGE_DIRTY_UNCOMPILED_TCS |
+                               IRIS_STAGE_DIRTY_UNCOMPILED_TES |
+                               IRIS_STAGE_DIRTY_UNCOMPILED_GS |
+                               IRIS_STAGE_DIRTY_UNCOMPILED_FS |
+                               IRIS_STAGE_DIRTY_SAMPLER_STATES_VS |
+                               IRIS_STAGE_DIRTY_SAMPLER_STATES_TCS |
+                               IRIS_STAGE_DIRTY_SAMPLER_STATES_TES |
+                               IRIS_STAGE_DIRTY_SAMPLER_STATES_GS);
 
    if (!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL]) {
       /* BLORP disabled tessellation, that's fine for the next draw */
-      skip_bits |= IRIS_DIRTY_TCS |
-                   IRIS_DIRTY_TES |
-                   IRIS_DIRTY_CONSTANTS_TCS |
-                   IRIS_DIRTY_CONSTANTS_TES |
-                   IRIS_DIRTY_BINDINGS_TCS |
-                   IRIS_DIRTY_BINDINGS_TES;
+      skip_stage_bits |= IRIS_STAGE_DIRTY_TCS |
+                         IRIS_STAGE_DIRTY_TES |
+                         IRIS_STAGE_DIRTY_CONSTANTS_TCS |
+                         IRIS_STAGE_DIRTY_CONSTANTS_TES |
+                         IRIS_STAGE_DIRTY_BINDINGS_TCS |
+                         IRIS_STAGE_DIRTY_BINDINGS_TES;
    }
 
    if (!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY]) {
       /* BLORP disabled geometry shaders, that's fine for the next draw */
-      skip_bits |= IRIS_DIRTY_GS |
-                   IRIS_DIRTY_CONSTANTS_GS |
-                   IRIS_DIRTY_BINDINGS_GS;
+      skip_stage_bits |= IRIS_STAGE_DIRTY_GS |
+                         IRIS_STAGE_DIRTY_CONSTANTS_GS |
+                         IRIS_STAGE_DIRTY_BINDINGS_GS;
    }
 
    /* we can skip flagging IRIS_DIRTY_DEPTH_BUFFER, if
@@ -363,6 +364,7 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
       skip_bits |= IRIS_DIRTY_BLEND_STATE | IRIS_DIRTY_PS_BLEND;
 
    ice->state.dirty |= ~skip_bits;
+   ice->state.stage_dirty |= ~skip_stage_bits;
 
    if (params->dst.enabled) {
       iris_render_cache_add_bo(batch, params->dst.addr.buffer,
