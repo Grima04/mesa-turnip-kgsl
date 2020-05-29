@@ -554,43 +554,52 @@ radv_handle_per_app_options(struct radv_instance *instance,
 			    const VkApplicationInfo *info)
 {
 	const char *name = info ? info->pApplicationName : NULL;
+	const char *engine_name = info ? info->pEngineName : NULL;
 
-	if (!name)
-		return;
-
-	if (!strcmp(name, "DOOM_VFR")) {
-		/* Work around a Doom VFR game bug */
-		instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
-	} else if (!strcmp(name, "MonsterHunterWorld.exe")) {
-		/* Workaround for a WaW hazard when LLVM moves/merges
-		 * load/store memory operations.
-		 * See https://reviews.llvm.org/D61313
-		 */
-		if (LLVM_VERSION_MAJOR < 9)
-			instance->debug_flags |= RADV_DEBUG_NO_LOAD_STORE_OPT;
-	} else if (!strcmp(name, "Wolfenstein: Youngblood")) {
-		if (!(instance->debug_flags & RADV_DEBUG_NO_SHADER_BALLOT) &&
-		    !(instance->perftest_flags & RADV_PERFTEST_ACO)) {
-			/* Force enable VK_AMD_shader_ballot because it looks
-			 * safe and it gives a nice boost (+20% on Vega 56 at
-			 * this time). It also prevents corruption on LLVM.
+	if (name) {
+		if (!strcmp(name, "DOOM_VFR")) {
+			/* Work around a Doom VFR game bug */
+			instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
+		} else if (!strcmp(name, "MonsterHunterWorld.exe")) {
+			/* Workaround for a WaW hazard when LLVM moves/merges
+			 * load/store memory operations.
+			 * See https://reviews.llvm.org/D61313
 			 */
-			instance->perftest_flags |= RADV_PERFTEST_SHADER_BALLOT;
+			if (LLVM_VERSION_MAJOR < 9)
+				instance->debug_flags |= RADV_DEBUG_NO_LOAD_STORE_OPT;
+		} else if (!strcmp(name, "Wolfenstein: Youngblood")) {
+			if (!(instance->debug_flags & RADV_DEBUG_NO_SHADER_BALLOT) &&
+			    !(instance->perftest_flags & RADV_PERFTEST_ACO)) {
+				/* Force enable VK_AMD_shader_ballot because it looks
+				 * safe and it gives a nice boost (+20% on Vega 56 at
+				 * this time). It also prevents corruption on LLVM.
+				 */
+				instance->perftest_flags |= RADV_PERFTEST_SHADER_BALLOT;
+			}
+		} else if (!strcmp(name, "Fledge")) {
+			/*
+			 * Zero VRAM for "The Surge 2"
+			 *
+			 * This avoid a hang when when rendering any level. Likely
+			 * uninitialized data in an indirect draw.
+			 */
+			instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
+		} else if (!strcmp(name, "No Man's Sky")) {
+			/* Work around a NMS game bug */
+			instance->debug_flags |= RADV_DEBUG_DISCARD_TO_DEMOTE;
+		} else if (!strcmp(name, "DOOMEternal")) {
+			/* Zero VRAM for Doom Eternal to fix rendering issues. */
+			instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
 		}
-	} else if (!strcmp(name, "Fledge")) {
-		/*
-		 * Zero VRAM for "The Surge 2"
-		 *
-		 * This avoid a hang when when rendering any level. Likely
-		 * uninitialized data in an indirect draw.
-		 */
-		instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
-	} else if (!strcmp(name, "No Man's Sky")) {
-		/* Work around a NMS game bug */
-		instance->debug_flags |= RADV_DEBUG_DISCARD_TO_DEMOTE;
-	} else if (!strcmp(name, "DOOMEternal")) {
-		/* Zero VRAM for Doom Eternal to fix rendering issues. */
-		instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
+	}
+
+	if (engine_name) {
+		if (!strcmp(engine_name, "vkd3d")) {
+			/* Zero VRAM for all VKD3D (DX12->VK) games to fix
+			 * rendering issues.
+			 */
+			instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
+		}
 	}
 }
 
