@@ -27,16 +27,29 @@
 #include "compiler/nir/nir_builder.h"
 #include "util/u_math.h"
 
+static bool
+range_is_gl_uniforms(struct ir3_ubo_range *r)
+{
+	return !r->bindless && r->block == 0;
+}
+
 static inline struct ir3_ubo_range
-get_ubo_load_range(nir_intrinsic_instr *instr, uint32_t alignment)
+get_ubo_load_range(nir_shader *nir, nir_intrinsic_instr *instr, uint32_t alignment)
 {
 	struct ir3_ubo_range r;
 
-	int offset = nir_src_as_uint(instr->src[1]);
-	const int bytes = nir_intrinsic_dest_components(instr) * 4;
+	if (nir_src_is_const(instr->src[1])) {
+		int offset = nir_src_as_uint(instr->src[1]);
+		const int bytes = nir_intrinsic_dest_components(instr) * 4;
 
-	r.start = ROUND_DOWN_TO(offset, alignment * 16);
-	r.end = ALIGN(offset + bytes, alignment * 16);
+		r.start = ROUND_DOWN_TO(offset, alignment * 16);
+		r.end = ALIGN(offset + bytes, alignment * 16);
+	} else {
+		/* The other valid place to call this is on the GL default uniform block */
+		assert(nir_src_as_uint(instr->src[0]) == 0);
+		r.start = 0;
+		r.end = ALIGN(nir->num_uniforms * 16, alignment * 16);
+	}
 
 	return r;
 }
@@ -87,29 +100,20 @@ static void
 gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 				  struct ir3_ubo_analysis_state *state, uint32_t alignment)
 {
+	if (ir3_shader_debug & IR3_DBG_NOUBOOPT)
+		return;
+
 	struct ir3_ubo_range *old_r = get_existing_range(instr, state, true);
 	if (!old_r)
 		return;
 
-	if (!nir_src_is_const(instr->src[1])) {
-		if (!old_r->bindless && old_r->block == 0) {
-			/* If this is an indirect on UBO 0, we'll still lower it back to
-			 * load_uniform.  Set the range to cover all of UBO 0.
-			 */
-			old_r->start = 0;
-			old_r->end = ALIGN(nir->num_uniforms * 16, alignment * 16);
-		}
-
-		return;
-	}
-
-	const struct ir3_ubo_range r = get_ubo_load_range(instr, alignment);
-
-	/* if UBO lowering is disabled, we still want to lower block 0
-	 * (which is normal uniforms):
+	/* We don't know how to get the size of UBOs being indirected on, other
+	 * than on the GL uniforms where we have some other shader_info data.
 	 */
-	if ((old_r->bindless || old_r->block != 0) && (ir3_shader_debug & IR3_DBG_NOUBOOPT))
+	if (!nir_src_is_const(instr->src[1]) && !range_is_gl_uniforms(old_r))
 		return;
+
+	const struct ir3_ubo_range r = get_ubo_load_range(nir, instr, alignment);
 
 	if (r.start < old_r->start)
 		old_r->start = r.start;
@@ -212,24 +216,20 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 		return;
 	}
 
-	if (range->bindless || range->block > 0) {
-		/* We don't lower dynamic array indexing either, but we definitely should.
-		 * We don't have a good way of determining the range of the dynamic
-		 * access, so for now just fall back to pulling.
-		 */
-		if (!nir_src_is_const(instr->src[1])) {
-			track_ubo_use(instr, b, num_ubos);
-			return;
-		}
+	/* We don't have a good way of determining the range of the dynamic
+	 * access in general, so for now just fall back to pulling.
+	 */
+	if (!nir_src_is_const(instr->src[1]) && !range_is_gl_uniforms(range))
+		return;
 
-		/* After gathering the UBO access ranges, we limit the total
-		 * upload. Reject if we're now outside the range.
-		 */
-		const struct ir3_ubo_range r = get_ubo_load_range(instr, alignment);
-		if (!(range->start <= r.start && r.end <= range->end)) {
-			track_ubo_use(instr, b, num_ubos);
-			return;
-		}
+	/* After gathering the UBO access ranges, we limit the total
+	 * upload. Don't lower if this load is outside the range.
+	 */
+	const struct ir3_ubo_range r = get_ubo_load_range(b->shader,
+			instr, alignment);
+	if (!(range->start <= r.start && r.end <= range->end)) {
+		track_ubo_use(instr, b, num_ubos);
+		return;
 	}
 
 	nir_ssa_def *ubo_offset = nir_ssa_for_src(b, instr->src[1], 1);
