@@ -1845,7 +1845,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       nir_mode = nir_var_mem_shared;
       break;
    case SpvStorageClassAtomicCounter:
-      mode = vtn_variable_mode_uniform;
+      mode = vtn_variable_mode_atomic_counter;
       nir_mode = nir_var_uniform;
       break;
    case SpvStorageClassCrossWorkgroup:
@@ -1897,6 +1897,7 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
 
    case vtn_variable_mode_private:
    case vtn_variable_mode_uniform:
+   case vtn_variable_mode_atomic_counter:
    case vtn_variable_mode_input:
    case vtn_variable_mode_output:
    case vtn_variable_mode_image:
@@ -2190,11 +2191,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_function:
    case vtn_variable_mode_private:
    case vtn_variable_mode_uniform:
+   case vtn_variable_mode_atomic_counter:
       /* For these, we create the variable normally */
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
 
-      if (storage_class == SpvStorageClassAtomicCounter) {
+      if (var->mode == vtn_variable_mode_atomic_counter) {
          /* Need to tweak the nir type here as at vtn_handle_type we don't
           * have the access to storage_class, that is the one that points us
           * that is an atomic uint.

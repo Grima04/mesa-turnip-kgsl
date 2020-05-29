@@ -467,6 +467,7 @@ enum vtn_variable_mode {
    vtn_variable_mode_function,
    vtn_variable_mode_private,
    vtn_variable_mode_uniform,
+   vtn_variable_mode_atomic_counter,
    vtn_variable_mode_ubo,
    vtn_variable_mode_ssbo,
    vtn_variable_mode_phys_ssbo,
