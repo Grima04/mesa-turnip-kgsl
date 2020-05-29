@@ -177,7 +177,7 @@ resource_create(struct pipe_screen *pscreen,
       ici.extent.height = templ->height0;
       ici.extent.depth = templ->depth0;
       ici.mipLevels = templ->last_level + 1;
-      ici.arrayLayers = templ->array_size;
+      ici.arrayLayers = MAX2(templ->array_size, 1);
       ici.samples = templ->nr_samples ? templ->nr_samples : VK_SAMPLE_COUNT_1_BIT;
       ici.tiling = templ->bind & PIPE_BIND_LINEAR ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
 
