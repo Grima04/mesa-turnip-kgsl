@@ -1432,11 +1432,9 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       enum glsl_base_type sampled_base_type =
          glsl_get_base_type(sampled_type->type);
       if (sampled == 1) {
-         val->type->sampled = true;
          val->type->type = glsl_sampler_type(dim, false, is_array,
                                              sampled_base_type);
       } else if (sampled == 2) {
-         val->type->sampled = false;
          val->type->type = glsl_image_type(dim, is_array, sampled_base_type);
       } else {
          vtn_fail("We need to know if the image will be sampled");
