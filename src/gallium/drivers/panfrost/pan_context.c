@@ -1401,6 +1401,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 {
         struct panfrost_context *ctx = rzalloc(screen, struct panfrost_context);
         struct pipe_context *gallium = (struct pipe_context *) ctx;
+        struct panfrost_device *dev = pan_device(screen);
 
         gallium->screen = screen;
 
@@ -1472,8 +1473,15 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->const_uploader = gallium->stream_uploader;
         assert(gallium->stream_uploader);
 
-        /* Midgard supports ES modes, plus QUADS/QUAD_STRIPS/POLYGON */
-        ctx->draw_modes = (1 << (PIPE_PRIM_POLYGON + 1)) - 1;
+        /* All of our GPUs support ES mode. Midgard supports additionally
+         * QUADS/QUAD_STRIPS/POLYGON. Bifrost supports just QUADS. */
+
+        ctx->draw_modes = (1 << (PIPE_PRIM_QUADS + 1)) - 1;
+
+        if (!(dev->quirks & IS_BIFROST)) {
+                ctx->draw_modes |= (1 << PIPE_PRIM_QUAD_STRIP);
+                ctx->draw_modes |= (1 << PIPE_PRIM_POLYGON);
+        }
 
         ctx->primconvert = util_primconvert_create(gallium, ctx->draw_modes);
 
