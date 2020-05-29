@@ -361,7 +361,8 @@ vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
       nir_variable_mode nir_mode =
          base->mode == vtn_variable_mode_ssbo ? nir_var_mem_ssbo : nir_var_mem_ubo;
 
-      tail = nir_build_deref_cast(&b->nb, desc, nir_mode, type->type,
+      tail = nir_build_deref_cast(&b->nb, desc, nir_mode,
+                                  vtn_type_get_nir_type(b, type, base->mode),
                                   base->ptr_type->stride);
    } else {
       assert(base->var && base->var->var);
@@ -599,29 +600,6 @@ vtn_pointer_dereference(struct vtn_builder *b,
       return vtn_ssa_offset_pointer_dereference(b, base, deref_chain);
    } else {
       return vtn_nir_deref_pointer_dereference(b, base, deref_chain);
-   }
-}
-
-/* Returns an atomic_uint type based on the original uint type. The returned
- * type will be equivalent to the original one but will have an atomic_uint
- * type as leaf instead of an uint.
- *
- * Manages uint scalars, arrays, and arrays of arrays of any nested depth.
- */
-static const struct glsl_type *
-repair_atomic_type(const struct glsl_type *type)
-{
-   assert(glsl_get_base_type(glsl_without_array(type)) == GLSL_TYPE_UINT);
-   assert(glsl_type_is_scalar(glsl_without_array(type)));
-
-   if (glsl_type_is_array(type)) {
-      const struct glsl_type *atomic =
-         repair_atomic_type(glsl_get_array_element(type));
-
-      return glsl_array_type(atomic, glsl_get_length(type),
-                             glsl_get_explicit_stride(type));
-   } else {
-      return glsl_atomic_uint_type();
    }
 }
 
@@ -2015,7 +1993,8 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
          ptr->offset = ssa;
       }
    } else {
-      const struct glsl_type *deref_type = ptr_type->deref->type;
+      const struct glsl_type *deref_type =
+         vtn_type_get_nir_type(b, ptr_type->deref, ptr->mode);
       if (!vtn_pointer_is_external_block(b, ptr)) {
          ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
                                            deref_type, ptr_type->stride);
@@ -2040,8 +2019,7 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
           * storage class with Block can be used.
           */
          ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
-                                           ptr_type->deref->type,
-                                           ptr_type->stride);
+                                           deref_type, ptr_type->stride);
          ptr->deref->dest.ssa.num_components =
             glsl_get_vector_elements(ptr_type->type);
          ptr->deref->dest.ssa.bit_size = glsl_get_bit_size(ptr_type->type);
@@ -2195,19 +2173,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       /* For these, we create the variable normally */
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
-
-      if (var->mode == vtn_variable_mode_atomic_counter) {
-         /* Need to tweak the nir type here as at vtn_handle_type we don't
-          * have the access to storage_class, that is the one that points us
-          * that is an atomic uint.
-          */
-         var->var->type = repair_atomic_type(var->type->type);
-      } else {
-         /* Private variables don't have any explicit layout but some layouts
-          * may have leaked through due to type deduplication in the SPIR-V.
-          */
-         var->var->type = var->type->type;
-      }
+      var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
       var->var->data.mode = nir_mode;
       var->var->data.location = -1;
       var->var->interface_type = NULL;
@@ -2218,8 +2184,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
 
-      var->var->type = var->type->type;
-      var->var->interface_type = var->type->type;
+      var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
+      var->var->interface_type = var->var->type;
 
       var->var->data.mode = nir_mode;
       var->var->data.location = -1;
@@ -2234,7 +2200,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        * layouts may have leaked through due to type deduplication in the
        * SPIR-V.
        */
-      var->var->type = var->type->type;
+      var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
       var->var->data.mode = nir_var_mem_shared;
       break;
 
@@ -2291,7 +2257,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        * the SPIR-V.  We do, however, keep the layouts in the variable's
        * interface_type because we need offsets for XFB arrays of blocks.
        */
-      var->var->type = var->type->type;
+      var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
       var->var->data.mode = nir_mode;
       var->var->data.patch = var->patch;
 
@@ -2309,7 +2275,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
             iface_type = iface_type->array_element;
       }
       if (iface_type->base_type == vtn_base_type_struct && iface_type->block)
-         var->var->interface_type = iface_type->type;
+         var->var->interface_type = vtn_type_get_nir_type(b, iface_type,
+                                                          var->mode);
 
       if (per_vertex_type->base_type == vtn_base_type_struct &&
           per_vertex_type->block) {

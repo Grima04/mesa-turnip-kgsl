@@ -702,6 +702,33 @@ vtn_type_copy(struct vtn_builder *b, struct vtn_type *src)
    return dest;
 }
 
+static const struct glsl_type *
+wrap_type_in_array(const struct glsl_type *type,
+                   const struct glsl_type *array_type)
+{
+   if (!glsl_type_is_array(array_type))
+      return type;
+
+   const struct glsl_type *elem_type =
+      wrap_type_in_array(type, glsl_get_array_element(array_type));
+   return glsl_array_type(elem_type, glsl_get_length(array_type),
+                          glsl_get_explicit_stride(array_type));
+}
+
+const struct glsl_type *
+vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
+                      enum vtn_variable_mode mode)
+{
+   if (mode == vtn_variable_mode_atomic_counter) {
+      vtn_fail_if(glsl_without_array(type->type) != glsl_uint_type(),
+                  "Variables in the AtomicCounter storage class should be "
+                  "(possibly arrays of arrays of) uint.");
+      return wrap_type_in_array(glsl_atomic_uint_type(), type->type);
+   }
+
+   return type->type;
+}
+
 static struct vtn_type *
 mutable_matrix_member(struct vtn_builder *b, struct vtn_type *type, int member)
 {

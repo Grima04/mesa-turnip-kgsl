@@ -562,6 +562,10 @@ struct vtn_variable {
    enum gl_access_qualifier access;
 };
 
+const struct glsl_type *
+vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
+                      enum vtn_variable_mode mode);
+
 struct vtn_image_pointer {
    struct vtn_pointer *image;
    nir_ssa_def *coord;
