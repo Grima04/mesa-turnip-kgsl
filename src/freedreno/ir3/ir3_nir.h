@@ -56,6 +56,9 @@ bool ir3_key_lowers_nir(const struct ir3_shader_key *key);
 void ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 		const struct ir3_shader_key *key);
 
+void ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir,
+		struct ir3_const_state *const_state);
+
 bool ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader);
 
 nir_ssa_def *

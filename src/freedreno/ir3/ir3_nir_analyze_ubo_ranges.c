@@ -331,7 +331,18 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 	 * dynamically accessed ranges separately and upload static rangtes
 	 * first.
 	 */
-	const uint32_t max_upload = shader->compiler->max_const * 16;
+
+	/* Limit our uploads to the amount of constant buffer space available in
+	 * the hardware, minus what the shader compiler may need for various
+	 * driver params.  We do this UBO-to-push-constant before the real
+	 * allocation of the driver params' const space, because UBO pointers can
+	 * be driver params but this pass usually eliminatings them.
+	 */
+	struct ir3_const_state worst_case_const_state = { };
+	ir3_setup_const_state(shader, nir, &worst_case_const_state);
+	const uint32_t max_upload = (shader->compiler->max_const -
+			worst_case_const_state.offsets.immediate) * 16;
+
 	uint32_t offset = shader->const_state.num_reserved_user_consts * 16;
 	state->num_enabled = ARRAY_SIZE(state->range);
 	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
