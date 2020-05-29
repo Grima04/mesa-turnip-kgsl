@@ -162,9 +162,7 @@ void _iris_batch_flush(struct iris_batch *batch, const char *file, int line);
 
 bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
 
-uint64_t iris_batch_prepare_noop(struct iris_batch *batch,
-                                 bool noop_enable,
-                                 uint64_t dirty_flags);
+bool iris_batch_prepare_noop(struct iris_batch *batch, bool noop_enable);
 
 #define RELOC_WRITE EXEC_OBJECT_WRITE
 

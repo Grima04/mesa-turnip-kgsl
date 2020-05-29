@@ -7512,12 +7512,11 @@ iris_set_frontend_noop(struct pipe_context *ctx, bool enable)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
 
-   ice->state.dirty |= iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_RENDER],
-                                               enable,
-                                               IRIS_ALL_DIRTY_FOR_RENDER);
-   ice->state.dirty |= iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_COMPUTE],
-                                               enable,
-                                               IRIS_ALL_DIRTY_FOR_COMPUTE);
+   if (iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_RENDER], enable))
+      ice->state.dirty |= IRIS_ALL_DIRTY_FOR_RENDER;
+
+   if (iris_batch_prepare_noop(&ice->batches[IRIS_BATCH_COMPUTE], enable))
+      ice->state.dirty |= IRIS_ALL_DIRTY_FOR_COMPUTE;
 }
 
 void

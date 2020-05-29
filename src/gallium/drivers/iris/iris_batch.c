@@ -765,10 +765,11 @@ iris_batch_references(struct iris_batch *batch, struct iris_bo *bo)
 }
 
 /**
- * Updates the state of the noop feature.
+ * Updates the state of the noop feature.  Returns true if there was a noop
+ * transition that led to state invalidation.
  */
-uint64_t
-iris_batch_prepare_noop(struct iris_batch *batch, bool noop_enable, uint64_t dirty_flags)
+bool
+iris_batch_prepare_noop(struct iris_batch *batch, bool noop_enable)
 {
    if (batch->noop_enabled == noop_enable)
       return 0;
@@ -784,5 +785,5 @@ iris_batch_prepare_noop(struct iris_batch *batch, bool noop_enable, uint64_t dir
    /* We only need to update the entire state if we transition from noop ->
     * not-noop.
     */
-   return !batch->noop_enabled ? dirty_flags : 0;
+   return !batch->noop_enabled;
 }
