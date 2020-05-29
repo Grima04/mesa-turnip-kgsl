@@ -556,6 +556,11 @@ cmd_buffer_create_cpu_job(struct v3dv_device *device,
    struct v3dv_job *job = vk_zalloc(&device->alloc,
                                     sizeof(struct v3dv_job), 8,
                                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!job) {
+      v3dv_flag_oom(cmd_buffer, NULL);
+      return NULL;
+   }
+
    v3dv_job_init(job, type, device, cmd_buffer, subpass_idx);
    return job;
 }
@@ -573,6 +578,8 @@ cmd_buffer_add_cpu_jobs_for_pending_state(struct v3dv_cmd_buffer *cmd_buffer)
             cmd_buffer_create_cpu_job(cmd_buffer->device,
                                       V3DV_JOB_TYPE_CPU_END_QUERY,
                                       cmd_buffer, -1);
+         v3dv_return_if_oom(cmd_buffer, NULL);
+
          job->cpu.query_end = state->query.end.states[i];
          list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
       }
@@ -1026,6 +1033,10 @@ cmd_buffer_ensure_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffe
                       pass->attachment_count;
       state->attachments = vk_zalloc(&cmd_buffer->device->alloc, size, 8,
                                      VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      if (!state->attachments) {
+         v3dv_flag_oom(cmd_buffer, NULL);
+         return;
+      }
       state->attachment_count = pass->attachment_count;
    }
 
@@ -1046,6 +1057,8 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    state->framebuffer = framebuffer;
 
    cmd_buffer_ensure_render_pass_attachment_state(cmd_buffer);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    cmd_buffer_init_render_pass_attachment_state(cmd_buffer, pRenderPassBegin);
 
    state->render_area = pRenderPassBegin->renderArea;
@@ -3008,6 +3021,10 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
          state->meta.attachments = vk_zalloc(&cmd_buffer->device->alloc,
                                              attachment_state_total_size, 8,
                                              VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+         if (!state->meta.attachments) {
+            v3dv_flag_oom(cmd_buffer, NULL);
+            return;
+         }
          state->meta.attachment_alloc_count = state->attachment_count;
       }
       state->meta.attachment_count = state->attachment_count;
@@ -3660,6 +3677,8 @@ v3dv_cmd_buffer_reset_queries(struct v3dv_cmd_buffer *cmd_buffer,
       cmd_buffer_create_cpu_job(cmd_buffer->device,
                                 V3DV_JOB_TYPE_CPU_RESET_QUERIES,
                                 cmd_buffer, -1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    job->cpu.query_reset.pool = pool;
    job->cpu.query_reset.first = first;
    job->cpu.query_reset.count = count;
@@ -3667,8 +3686,8 @@ v3dv_cmd_buffer_reset_queries(struct v3dv_cmd_buffer *cmd_buffer,
    list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
 }
 
-static bool
-ensure_query_state(const struct v3dv_device *device,
+static void
+ensure_array_state(struct v3dv_cmd_buffer *cmd_buffer,
                    uint32_t slot_size,
                    uint32_t used_count,
                    uint32_t *alloc_count,
@@ -3680,18 +3699,18 @@ ensure_query_state(const struct v3dv_device *device,
 
       const uint32_t new_slot_count = MAX2(*alloc_count * 2, 4);
       const uint32_t bytes = new_slot_count * slot_size;
-      *ptr = vk_alloc(&device->alloc, bytes, 8,
+      *ptr = vk_alloc(&cmd_buffer->device->alloc, bytes, 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (*ptr == NULL) {
          fprintf(stderr, "Error: failed to allocate CPU buffer for query.\n");
-         return false;
+         v3dv_flag_oom(cmd_buffer, NULL);
+         return;
       }
 
       memcpy(*ptr, old_buffer, prev_slot_count * slot_size);
       *alloc_count = new_slot_count;
    }
    assert(used_count < *alloc_count);
-   return true;
 }
 
 void
@@ -3722,11 +3741,12 @@ v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
        * render pass job in which they have been recorded.
        */
       struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-      ensure_query_state(cmd_buffer->device,
+      ensure_array_state(cmd_buffer,
                          sizeof(struct v3dv_end_query_cpu_job_info),
                          state->query.end.used_count,
                          &state->query.end.alloc_count,
                          (void **) &state->query.end.states);
+      v3dv_return_if_oom(cmd_buffer, NULL);
 
       struct v3dv_end_query_cpu_job_info *info =
          &state->query.end.states[state->query.end.used_count++];
@@ -3739,6 +3759,8 @@ v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
          cmd_buffer_create_cpu_job(cmd_buffer->device,
                                    V3DV_JOB_TYPE_CPU_END_QUERY,
                                    cmd_buffer, -1);
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
       job->cpu.query_end.pool = pool;
       job->cpu.query_end.query = query;
       list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
@@ -3771,6 +3793,8 @@ v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
       cmd_buffer_create_cpu_job(cmd_buffer->device,
                                 V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS,
                                 cmd_buffer, -1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    job->cpu.query_copy_results.pool = pool;
    job->cpu.query_copy_results.first = first;
    job->cpu.query_copy_results.count = count;
@@ -3790,6 +3814,11 @@ v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_job *job = vk_zalloc(&device->alloc,
                                     sizeof(struct v3dv_job), 8,
                                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!job) {
+      v3dv_flag_oom(cmd_buffer, NULL);
+      return;
+   }
+
    v3dv_job_init(job, V3DV_JOB_TYPE_GPU_TFU, device, cmd_buffer, -1);
    job->tfu = *tfu;
    list_addtail(&job->list_link, &cmd_buffer->submit_jobs);
@@ -3813,6 +3842,8 @@ v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
       cmd_buffer_create_cpu_job(cmd_buffer->device,
                                 V3DV_JOB_TYPE_CPU_SET_EVENT,
                                 cmd_buffer, -1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    job->cpu.event_set.event = event;
    job->cpu.event_set.state = 1;
 
@@ -3837,6 +3868,8 @@ v3dv_CmdResetEvent(VkCommandBuffer commandBuffer,
       cmd_buffer_create_cpu_job(cmd_buffer->device,
                                 V3DV_JOB_TYPE_CPU_SET_EVENT,
                                 cmd_buffer, -1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
    job->cpu.event_set.event = event;
    job->cpu.event_set.state = 0;
 
@@ -3873,13 +3906,19 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
       cmd_buffer_create_cpu_job(cmd_buffer->device,
                                 V3DV_JOB_TYPE_CPU_WAIT_EVENTS,
                                 cmd_buffer, -1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
 
    const uint32_t event_list_size = sizeof(struct v3dv_event *) * eventCount;
 
-   job->cpu.event_wait.event_count = eventCount;
    job->cpu.event_wait.events =
       vk_alloc(&cmd_buffer->device->alloc, event_list_size, 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!job->cpu.event_wait.events) {
+      v3dv_flag_oom(cmd_buffer, NULL);
+      return;
+   }
+   job->cpu.event_wait.event_count = eventCount;
+
    for (uint32_t i = 0; i < eventCount; i++)
       job->cpu.event_wait.events[i] = v3dv_event_from_handle(pEvents[i]);
 

@@ -406,8 +406,10 @@ get_color_clear_pipeline(struct v3dv_device *device,
    *pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(**pipeline), 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
-   if (*pipeline == NULL)
+   if (*pipeline == NULL) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;
+   }
 
    result = create_color_clear_render_pass(device,
                                            format,
@@ -493,8 +495,11 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
    VkResult result =
       get_color_clear_pipeline(device, rt_format, rt_samples, rt_components,
                                &pipeline);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      if (result == VK_ERROR_OUT_OF_HOST_MEMORY)
+         v3dv_flag_oom(cmd_buffer, NULL);
       return;
+   }
    assert(pipeline && pipeline->pipeline && pipeline->pass);
 
    /* Store command buffer state for the current subpass before we interrupt
