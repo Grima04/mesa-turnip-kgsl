@@ -64,6 +64,7 @@ static const struct debug_named_value debug_options[] = {
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
         {"gles3",     PAN_DBG_GLES3,    "Enable experimental GLES3 implementation"},
         {"fp16",     PAN_DBG_FP16,     "Enable buggy experimental (don't use!) fp16"},
+        {"bifrost",   PAN_DBG_BIFROST, "Enable experimental Mali G31 and G52 support"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -705,6 +706,12 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         case 0x820: /* T820 */
         case 0x860: /* T860 */
                 break;
+        case 0x7093: /* G31 */
+        case 0x7212: /* G52 */
+                if (pan_debug & PAN_DBG_BIFROST)
+                        break;
+
+                /* fallthrough */
         default:
                 /* Fail to load against untested models */
                 debug_printf("panfrost: Unsupported model %X", dev->gpu_id);
