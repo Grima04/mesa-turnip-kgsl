@@ -1724,6 +1724,7 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 {
         /* Load the shaders */
         struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *device = pan_device(ctx->base.screen);
         struct panfrost_shader_state *vs, *fs;
         unsigned int num_gen_varyings = 0;
         size_t vs_size, fs_size;
@@ -1816,7 +1817,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         signed gl_PointSize = vs->writes_point_size ? (idx++) : -1;
         signed gl_PointCoord = reads_point_coord ? (idx++) : -1;
         signed gl_FrontFacing = fs->reads_face ? (idx++) : -1;
-        signed gl_FragCoord = fs->reads_frag_coord ? (idx++) : -1;
+        signed gl_FragCoord = (fs->reads_frag_coord &&
+                        !(device->quirks & IS_BIFROST))
+                        ? (idx++) : -1;
 
         /* Emit the stream out buffers */
 
@@ -1860,16 +1863,15 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                 primitive_size->pointer = varyings_p;
         }
 
-        if (reads_point_coord)
+        if (gl_PointCoord >= 0)
                 varyings[gl_PointCoord].elements = MALI_VARYING_POINT_COORD;
 
-        if (fs->reads_face)
+        if (gl_FrontFacing >= 0)
                 varyings[gl_FrontFacing].elements = MALI_VARYING_FRONT_FACING;
 
-        if (fs->reads_frag_coord)
+        if (gl_FragCoord >= 0)
                 varyings[gl_FragCoord].elements = MALI_VARYING_FRAG_COORD;
 
-        struct panfrost_device *device = pan_device(ctx->base.screen);
         assert(!(device->quirks & IS_BIFROST) || !(reads_point_coord));
 
         /* Let's go ahead and link varying meta to the buffer in question, now
