@@ -101,7 +101,8 @@ query_mem64(struct iris_query *q, uint32_t offset)
    struct iris_address addr = {
       .bo = iris_resource_bo(q->query_state_ref.res),
       .offset = q->query_state_ref.offset + offset,
-      .write = true
+      .write = true,
+      .access = IRIS_DOMAIN_OTHER_WRITE
    };
    return gen_mi_mem64(addr);
 }
@@ -715,8 +716,9 @@ iris_get_query_result_resource(struct pipe_context *ctx,
 
    struct gen_mi_value result = calculate_result_on_gpu(devinfo, &b, q);
    struct gen_mi_value dst =
-      result_type <= PIPE_QUERY_TYPE_U32 ? gen_mi_mem32(rw_bo(dst_bo, offset))
-                                         : gen_mi_mem64(rw_bo(dst_bo, offset));
+      result_type <= PIPE_QUERY_TYPE_U32 ?
+      gen_mi_mem32(rw_bo(dst_bo, offset, IRIS_DOMAIN_OTHER_WRITE)) :
+      gen_mi_mem64(rw_bo(dst_bo, offset, IRIS_DOMAIN_OTHER_WRITE));
 
    if (predicated) {
       gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_RESULT),

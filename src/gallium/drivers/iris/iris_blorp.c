@@ -60,7 +60,7 @@ stream_state(struct iris_batch *batch,
    u_upload_alloc(uploader, 0, size, alignment, out_offset, &res, &ptr);
 
    struct iris_bo *bo = iris_resource_bo(res);
-   iris_use_pinned_bo(batch, bo, false);
+   iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_NONE);
 
    iris_record_state_size(batch->state_sizes,
                           bo->gtt_offset + *out_offset, size);
@@ -93,7 +93,8 @@ combine_and_pin_address(struct blorp_batch *blorp_batch,
    struct iris_batch *batch = blorp_batch->driver_batch;
    struct iris_bo *bo = addr.buffer;
 
-   iris_use_pinned_bo(batch, bo, addr.reloc_flags & RELOC_WRITE);
+   iris_use_pinned_bo(batch, bo, addr.reloc_flags & RELOC_WRITE,
+                      IRIS_DOMAIN_NONE);
 
    /* Assume this is a general address, not relative to a base. */
    return bo->gtt_offset + addr.offset;
@@ -162,7 +163,7 @@ blorp_alloc_binding_table(struct blorp_batch *blorp_batch,
       bt_map[i] = surface_offsets[i] - (uint32_t) binder->bo->gtt_offset;
    }
 
-   iris_use_pinned_bo(batch, binder->bo, false);
+   iris_use_pinned_bo(batch, binder->bo, false, IRIS_DOMAIN_NONE);
 
    batch->screen->vtbl.update_surface_base_address(batch, binder);
 }
@@ -375,6 +376,19 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
       iris_depth_cache_add_bo(batch, params->depth.addr.buffer);
    if (params->stencil.enabled)
       iris_depth_cache_add_bo(batch, params->stencil.addr.buffer);
+
+   if (params->src.enabled)
+      iris_bo_bump_seqno(params->src.addr.buffer, batch->next_seqno,
+                         IRIS_DOMAIN_OTHER_READ);
+   if (params->dst.enabled)
+      iris_bo_bump_seqno(params->dst.addr.buffer, batch->next_seqno,
+                         IRIS_DOMAIN_RENDER_WRITE);
+   if (params->depth.enabled)
+      iris_bo_bump_seqno(params->depth.addr.buffer, batch->next_seqno,
+                         IRIS_DOMAIN_DEPTH_WRITE);
+   if (params->stencil.enabled)
+      iris_bo_bump_seqno(params->stencil.addr.buffer, batch->next_seqno,
+                         IRIS_DOMAIN_DEPTH_WRITE);
 }
 
 void

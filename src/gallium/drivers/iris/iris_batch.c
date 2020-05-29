@@ -271,7 +271,7 @@ ensure_exec_obj_space(struct iris_batch *batch, uint32_t count)
 void
 iris_use_pinned_bo(struct iris_batch *batch,
                    struct iris_bo *bo,
-                   bool writable)
+                   bool writable, enum iris_domain access)
 {
    assert(bo->kflags & EXEC_OBJECT_PINNED);
 
@@ -282,6 +282,11 @@ iris_use_pinned_bo(struct iris_batch *batch,
     */
    if (bo == batch->screen->workaround_bo)
       writable = false;
+
+   if (access < NUM_IRIS_DOMAINS) {
+      assert(batch->sync_region_depth);
+      iris_bo_bump_seqno(bo, batch->next_seqno, access);
+   }
 
    struct drm_i915_gem_exec_object2 *existing_entry =
       find_validation_entry(batch, bo);
@@ -357,7 +362,7 @@ create_batch(struct iris_batch *batch)
    batch->map = iris_bo_map(NULL, batch->bo, MAP_READ | MAP_WRITE);
    batch->map_next = batch->map;
 
-   iris_use_pinned_bo(batch, batch->bo, false);
+   iris_use_pinned_bo(batch, batch->bo, false, IRIS_DOMAIN_NONE);
 }
 
 static void
@@ -404,7 +409,7 @@ iris_batch_reset(struct iris_batch *batch)
    /* Always add the workaround BO, it contains a driver identifier at the
     * beginning quite helpful to debug error states.
     */
-   iris_use_pinned_bo(batch, screen->workaround_bo, false);
+   iris_use_pinned_bo(batch, screen->workaround_bo, false, IRIS_DOMAIN_NONE);
 
    iris_batch_maybe_noop(batch);
 }

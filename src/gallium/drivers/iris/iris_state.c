@@ -339,7 +339,7 @@ stream_state(struct iris_batch *batch,
    u_upload_alloc(uploader, 0, size, alignment, out_offset, out_res, &ptr);
 
    struct iris_bo *bo = iris_resource_bo(*out_res);
-   iris_use_pinned_bo(batch, bo, false);
+   iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_NONE);
 
    iris_record_state_size(batch->state_sizes,
                           bo->gtt_offset + *out_offset, size);
@@ -554,7 +554,7 @@ iris_store_register_mem32(struct iris_batch *batch, uint32_t reg,
    iris_batch_sync_region_start(batch);
    iris_emit_cmd(batch, GENX(MI_STORE_REGISTER_MEM), srm) {
       srm.RegisterAddress = reg;
-      srm.MemoryAddress = rw_bo(bo, offset);
+      srm.MemoryAddress = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
       srm.PredicateEnable = predicated;
    }
    iris_batch_sync_region_end(batch);
@@ -576,7 +576,7 @@ iris_store_data_imm32(struct iris_batch *batch,
 {
    iris_batch_sync_region_start(batch);
    iris_emit_cmd(batch, GENX(MI_STORE_DATA_IMM), sdi) {
-      sdi.Address = rw_bo(bo, offset);
+      sdi.Address = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
       sdi.ImmediateData = imm;
    }
    iris_batch_sync_region_end(batch);
@@ -594,7 +594,7 @@ iris_store_data_imm64(struct iris_batch *batch,
    iris_batch_sync_region_start(batch);
    _iris_pack_command(batch, GENX(MI_STORE_DATA_IMM), map, sdi) {
       sdi.DWordLength = 5 - 2;
-      sdi.Address = rw_bo(bo, offset);
+      sdi.Address = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
       sdi.ImmediateData = imm;
    }
    iris_batch_sync_region_end(batch);
@@ -614,7 +614,8 @@ iris_copy_mem_mem(struct iris_batch *batch,
 
    for (unsigned i = 0; i < bytes; i += 4) {
       iris_emit_cmd(batch, GENX(MI_COPY_MEM_MEM), cp) {
-         cp.DestinationMemoryAddress = rw_bo(dst_bo, dst_offset + i);
+         cp.DestinationMemoryAddress = rw_bo(dst_bo, dst_offset + i,
+                                             IRIS_DOMAIN_OTHER_WRITE);
          cp.SourceMemoryAddress = ro_bo(src_bo, src_offset + i);
       }
    }
@@ -3664,7 +3665,8 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          sob._3DCommandSubOpcode = SO_BUFFER_INDEX_0_CMD + i;
 #endif
          sob.SurfaceBaseAddress =
-            rw_bo(NULL, res->bo->gtt_offset + tgt->base.buffer_offset);
+            rw_bo(NULL, res->bo->gtt_offset + tgt->base.buffer_offset,
+                  IRIS_DOMAIN_OTHER_WRITE);
          sob.SOBufferEnable = true;
          sob.StreamOffsetWriteEnable = true;
          sob.StreamOutputBufferOffsetAddressEnable = true;
@@ -3674,7 +3676,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          sob.StreamOffset = offset;
          sob.StreamOutputBufferOffsetAddress =
             rw_bo(NULL, iris_resource_bo(tgt->offset.res)->gtt_offset +
-                        tgt->offset.offset);
+                        tgt->offset.offset, IRIS_DOMAIN_OTHER_WRITE);
       }
    }
 
@@ -4164,7 +4166,8 @@ KSP(const struct iris_compiled_shader *shader)
          iris_get_scratch_space(ice, prog_data->total_scratch, stage);    \
       uint32_t scratch_addr = bo->gtt_offset;                             \
       pkt.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;     \
-      pkt.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);            \
+      pkt.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr,             \
+                                          IRIS_DOMAIN_NONE);              \
    }
 
 /**
@@ -4362,7 +4365,8 @@ iris_store_fs_state(struct iris_context *ice,
                                    MESA_SHADER_FRAGMENT);
          uint32_t scratch_addr = bo->gtt_offset;
          ps.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
-         ps.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr);
+         ps.ScratchSpaceBasePointer = rw_bo(NULL, scratch_addr,
+                                            IRIS_DOMAIN_NONE);
       }
    }
 
@@ -4493,7 +4497,7 @@ use_null_surface(struct iris_batch *batch, struct iris_context *ice)
 {
    struct iris_bo *state_bo = iris_resource_bo(ice->state.unbound_tex.res);
 
-   iris_use_pinned_bo(batch, state_bo, false);
+   iris_use_pinned_bo(batch, state_bo, false, IRIS_DOMAIN_NONE);
 
    return ice->state.unbound_tex.offset;
 }
@@ -4507,7 +4511,7 @@ use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
 
    struct iris_bo *state_bo = iris_resource_bo(ice->state.null_fb.res);
 
-   iris_use_pinned_bo(batch, state_bo, false);
+   iris_use_pinned_bo(batch, state_bo, false, IRIS_DOMAIN_NONE);
 
    return ice->state.null_fb.offset;
 }
@@ -4617,23 +4621,28 @@ use_surface(struct iris_context *ice,
             struct pipe_surface *p_surf,
             bool writeable,
             enum isl_aux_usage aux_usage,
-            bool is_read_surface)
+            bool is_read_surface,
+            enum iris_domain access)
 {
    struct iris_surface *surf = (void *) p_surf;
    struct iris_resource *res = (void *) p_surf->texture;
    uint32_t offset = 0;
 
-   iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture), writeable);
+   iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture),
+                      writeable, access);
    if (GEN_GEN == 8 && is_read_surface) {
-      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state_read.ref.res), false);
+      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state_read.ref.res), false,
+                         IRIS_DOMAIN_NONE);
    } else {
-      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.ref.res), false);
+      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.ref.res), false,
+                         IRIS_DOMAIN_NONE);
    }
 
    if (res->aux.bo) {
-      iris_use_pinned_bo(batch, res->aux.bo, writeable);
+      iris_use_pinned_bo(batch, res->aux.bo, writeable, access);
       if (res->aux.clear_color_bo)
-         iris_use_pinned_bo(batch, res->aux.clear_color_bo, false);
+         iris_use_pinned_bo(batch, res->aux.clear_color_bo,
+                            false, IRIS_DOMAIN_OTHER_READ);
 
       if (memcmp(&res->aux.clear_color, &surf->clear_color,
                  sizeof(surf->clear_color)) != 0) {
@@ -4663,13 +4672,16 @@ use_sampler_view(struct iris_context *ice,
    enum isl_aux_usage aux_usage =
       iris_resource_texture_aux_usage(ice, isv->res, isv->view.format);
 
-   iris_use_pinned_bo(batch, isv->res->bo, false);
-   iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.ref.res), false);
+   iris_use_pinned_bo(batch, isv->res->bo, false, IRIS_DOMAIN_OTHER_READ);
+   iris_use_pinned_bo(batch, iris_resource_bo(isv->surface_state.ref.res), false,
+                      IRIS_DOMAIN_NONE);
 
    if (isv->res->aux.bo) {
-      iris_use_pinned_bo(batch, isv->res->aux.bo, false);
+      iris_use_pinned_bo(batch, isv->res->aux.bo,
+                         false, IRIS_DOMAIN_OTHER_READ);
       if (isv->res->aux.clear_color_bo)
-         iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo, false);
+         iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo,
+                            false, IRIS_DOMAIN_OTHER_READ);
       if (memcmp(&isv->res->aux.clear_color, &isv->clear_color,
                  sizeof(isv->clear_color)) != 0) {
          update_clear_value(ice, batch, isv->res, &isv->surface_state,
@@ -4688,13 +4700,14 @@ use_ubo_ssbo(struct iris_batch *batch,
              struct iris_context *ice,
              struct pipe_shader_buffer *buf,
              struct iris_state_ref *surf_state,
-             bool writable)
+             bool writable, enum iris_domain access)
 {
    if (!buf->buffer || !surf_state->res)
       return use_null_surface(batch, ice);
 
-   iris_use_pinned_bo(batch, iris_resource_bo(buf->buffer), writable);
-   iris_use_pinned_bo(batch, iris_resource_bo(surf_state->res), false);
+   iris_use_pinned_bo(batch, iris_resource_bo(buf->buffer), writable, access);
+   iris_use_pinned_bo(batch, iris_resource_bo(surf_state->res), false,
+                      IRIS_DOMAIN_NONE);
 
    return surf_state->offset;
 }
@@ -4712,11 +4725,12 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
 
    bool write = iv->base.shader_access & PIPE_IMAGE_ACCESS_WRITE;
 
-   iris_use_pinned_bo(batch, res->bo, write);
-   iris_use_pinned_bo(batch, iris_resource_bo(iv->surface_state.ref.res), false);
+   iris_use_pinned_bo(batch, res->bo, write, IRIS_DOMAIN_NONE);
+   iris_use_pinned_bo(batch, iris_resource_bo(iv->surface_state.ref.res),
+                      false, IRIS_DOMAIN_NONE);
 
    if (res->aux.bo)
-      iris_use_pinned_bo(batch, res->aux.bo, write);
+      iris_use_pinned_bo(batch, res->aux.bo, write, IRIS_DOMAIN_NONE);
 
    enum isl_aux_usage aux_usage =
       iris_image_view_aux_usage(ice, &iv->base, info);
@@ -4773,8 +4787,10 @@ iris_populate_binding_table(struct iris_context *ice,
       /* surface for gl_NumWorkGroups */
       struct iris_state_ref *grid_data = &ice->state.grid_size;
       struct iris_state_ref *grid_state = &ice->state.grid_surf_state;
-      iris_use_pinned_bo(batch, iris_resource_bo(grid_data->res),  false);
-      iris_use_pinned_bo(batch, iris_resource_bo(grid_state->res), false);
+      iris_use_pinned_bo(batch, iris_resource_bo(grid_data->res), false,
+                         IRIS_DOMAIN_OTHER_READ);
+      iris_use_pinned_bo(batch, iris_resource_bo(grid_state->res), false,
+                         IRIS_DOMAIN_NONE);
       push_bt_entry(grid_state->offset);
    }
 
@@ -4786,7 +4802,8 @@ iris_populate_binding_table(struct iris_context *ice,
             uint32_t addr;
             if (cso_fb->cbufs[i]) {
                addr = use_surface(ice, batch, cso_fb->cbufs[i], true,
-                                  ice->state.draw_aux_usage[i], false);
+                                  ice->state.draw_aux_usage[i], false,
+                                  IRIS_DOMAIN_RENDER_WRITE);
             } else {
                addr = use_null_fb_surface(batch, ice);
             }
@@ -4809,7 +4826,8 @@ iris_populate_binding_table(struct iris_context *ice,
       uint32_t addr;
       if (cso_fb->cbufs[i]) {
          addr = use_surface(ice, batch, cso_fb->cbufs[i],
-                            true, ice->state.draw_aux_usage[i], true);
+                            false, ice->state.draw_aux_usage[i], true,
+                            IRIS_DOMAIN_OTHER_READ);
          push_bt_entry(addr);
       }
    }
@@ -4831,9 +4849,10 @@ iris_populate_binding_table(struct iris_context *ice,
 
       if (i == bt->sizes[IRIS_SURFACE_GROUP_UBO] - 1) {
          if (ish->const_data) {
-            iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data), false);
+            iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data), false,
+                               IRIS_DOMAIN_OTHER_READ);
             iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data_state.res),
-                               false);
+                               false, IRIS_DOMAIN_NONE);
             addr = ish->const_data_state.offset;
          } else {
             /* This can only happen with INTEL_DISABLE_COMPACT_BINDING_TABLE=1. */
@@ -4841,7 +4860,8 @@ iris_populate_binding_table(struct iris_context *ice,
          }
       } else {
          addr = use_ubo_ssbo(batch, ice, &shs->constbuf[i],
-                             &shs->constbuf_surf_state[i], false);
+                             &shs->constbuf_surf_state[i], false,
+                             IRIS_DOMAIN_OTHER_READ);
       }
 
       push_bt_entry(addr);
@@ -4850,7 +4870,7 @@ iris_populate_binding_table(struct iris_context *ice,
    foreach_surface_used(i, IRIS_SURFACE_GROUP_SSBO) {
       uint32_t addr =
          use_ubo_ssbo(batch, ice, &shs->ssbo[i], &shs->ssbo_surf_state[i],
-                      shs->writable_ssbos & (1u << i));
+                      shs->writable_ssbos & (1u << i), IRIS_DOMAIN_NONE);
       push_bt_entry(addr);
    }
 
@@ -4864,11 +4884,12 @@ iris_populate_binding_table(struct iris_context *ice,
 static void
 iris_use_optional_res(struct iris_batch *batch,
                       struct pipe_resource *res,
-                      bool writeable)
+                      bool writeable,
+                      enum iris_domain access)
 {
    if (res) {
       struct iris_bo *bo = iris_resource_bo(res);
-      iris_use_pinned_bo(batch, bo, writeable);
+      iris_use_pinned_bo(batch, bo, writeable, access);
    }
 }
 
@@ -4884,15 +4905,21 @@ pin_depth_and_stencil_buffers(struct iris_batch *batch,
    iris_get_depth_stencil_resources(zsbuf->texture, &zres, &sres);
 
    if (zres) {
-      iris_use_pinned_bo(batch, zres->bo, cso_zsa->depth_writes_enabled);
+      const enum iris_domain access = cso_zsa->depth_writes_enabled ?
+         IRIS_DOMAIN_DEPTH_WRITE : IRIS_DOMAIN_OTHER_READ;
+      iris_use_pinned_bo(batch, zres->bo, cso_zsa->depth_writes_enabled,
+                         access);
       if (zres->aux.bo) {
          iris_use_pinned_bo(batch, zres->aux.bo,
-                            cso_zsa->depth_writes_enabled);
+                            cso_zsa->depth_writes_enabled, access);
       }
    }
 
    if (sres) {
-      iris_use_pinned_bo(batch, sres->bo, cso_zsa->stencil_writes_enabled);
+      const enum iris_domain access = cso_zsa->stencil_writes_enabled ?
+         IRIS_DOMAIN_DEPTH_WRITE : IRIS_DOMAIN_OTHER_READ;
+      iris_use_pinned_bo(batch, sres->bo, cso_zsa->stencil_writes_enabled,
+                         access);
    }
 }
 
@@ -4922,23 +4949,28 @@ iris_restore_render_saved_bos(struct iris_context *ice,
    const uint64_t stage_clean = ~ice->state.stage_dirty;
 
    if (clean & IRIS_DIRTY_CC_VIEWPORT) {
-      iris_use_optional_res(batch, ice->state.last_res.cc_vp, false);
+      iris_use_optional_res(batch, ice->state.last_res.cc_vp, false,
+                            IRIS_DOMAIN_NONE);
    }
 
    if (clean & IRIS_DIRTY_SF_CL_VIEWPORT) {
-      iris_use_optional_res(batch, ice->state.last_res.sf_cl_vp, false);
+      iris_use_optional_res(batch, ice->state.last_res.sf_cl_vp, false,
+                            IRIS_DOMAIN_NONE);
    }
 
    if (clean & IRIS_DIRTY_BLEND_STATE) {
-      iris_use_optional_res(batch, ice->state.last_res.blend, false);
+      iris_use_optional_res(batch, ice->state.last_res.blend, false,
+                            IRIS_DOMAIN_NONE);
    }
 
    if (clean & IRIS_DIRTY_COLOR_CALC_STATE) {
-      iris_use_optional_res(batch, ice->state.last_res.color_calc, false);
+      iris_use_optional_res(batch, ice->state.last_res.color_calc, false,
+                            IRIS_DOMAIN_NONE);
    }
 
    if (clean & IRIS_DIRTY_SCISSOR_RECT) {
-      iris_use_optional_res(batch, ice->state.last_res.scissor, false);
+      iris_use_optional_res(batch, ice->state.last_res.scissor, false,
+                            IRIS_DOMAIN_NONE);
    }
 
    if (ice->state.streamout_active && (clean & IRIS_DIRTY_SO_BUFFERS)) {
@@ -4947,9 +4979,9 @@ iris_restore_render_saved_bos(struct iris_context *ice,
             (void *) ice->state.so_target[i];
          if (tgt) {
             iris_use_pinned_bo(batch, iris_resource_bo(tgt->base.buffer),
-                               true);
+                               true, IRIS_DOMAIN_OTHER_WRITE);
             iris_use_pinned_bo(batch, iris_resource_bo(tgt->offset.res),
-                               true);
+                               true, IRIS_DOMAIN_OTHER_WRITE);
          }
       }
    }
@@ -4981,9 +5013,10 @@ iris_restore_render_saved_bos(struct iris_context *ice,
          struct iris_resource *res = (void *) cbuf->buffer;
 
          if (res)
-            iris_use_pinned_bo(batch, res->bo, false);
+            iris_use_pinned_bo(batch, res->bo, false, IRIS_DOMAIN_OTHER_READ);
          else
-            iris_use_pinned_bo(batch, batch->screen->workaround_bo, false);
+            iris_use_pinned_bo(batch, batch->screen->workaround_bo, false,
+                               IRIS_DOMAIN_OTHER_READ);
       }
    }
 
@@ -4998,7 +5031,8 @@ iris_restore_render_saved_bos(struct iris_context *ice,
       struct iris_shader_state *shs = &ice->state.shaders[stage];
       struct pipe_resource *res = shs->sampler_table.res;
       if (res)
-         iris_use_pinned_bo(batch, iris_resource_bo(res), false);
+         iris_use_pinned_bo(batch, iris_resource_bo(res), false,
+                            IRIS_DOMAIN_NONE);
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
@@ -5007,14 +5041,14 @@ iris_restore_render_saved_bos(struct iris_context *ice,
 
          if (shader) {
             struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
-            iris_use_pinned_bo(batch, bo, false);
+            iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_NONE);
 
             struct brw_stage_prog_data *prog_data = shader->prog_data;
 
             if (prog_data->total_scratch > 0) {
                struct iris_bo *bo =
                   iris_get_scratch_space(ice, prog_data->total_scratch, stage);
-               iris_use_pinned_bo(batch, bo, true);
+               iris_use_pinned_bo(batch, bo, true, IRIS_DOMAIN_NONE);
             }
          }
       }
@@ -5026,14 +5060,16 @@ iris_restore_render_saved_bos(struct iris_context *ice,
       pin_depth_and_stencil_buffers(batch, cso_fb->zsbuf, ice->state.cso_zsa);
    }
 
-   iris_use_optional_res(batch, ice->state.last_res.index_buffer, false);
+   iris_use_optional_res(batch, ice->state.last_res.index_buffer, false,
+                         IRIS_DOMAIN_OTHER_READ);
 
    if (clean & IRIS_DIRTY_VERTEX_BUFFERS) {
       uint64_t bound = ice->state.bound_vertex_buffers;
       while (bound) {
          const int i = u_bit_scan64(&bound);
          struct pipe_resource *res = genx->vertex_buffers[i].resource;
-         iris_use_pinned_bo(batch, iris_resource_bo(res), false);
+         iris_use_pinned_bo(batch, iris_resource_bo(res), false,
+                            IRIS_DOMAIN_OTHER_READ);
       }
    }
 }
@@ -5055,13 +5091,15 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
 
    struct pipe_resource *sampler_res = shs->sampler_table.res;
    if (sampler_res)
-      iris_use_pinned_bo(batch, iris_resource_bo(sampler_res), false);
+      iris_use_pinned_bo(batch, iris_resource_bo(sampler_res), false,
+                         IRIS_DOMAIN_NONE);
 
    if ((stage_clean & IRIS_STAGE_DIRTY_SAMPLER_STATES_CS) &&
        (stage_clean & IRIS_STAGE_DIRTY_BINDINGS_CS) &&
        (stage_clean & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
        (stage_clean & IRIS_STAGE_DIRTY_CS)) {
-      iris_use_optional_res(batch, ice->state.last_res.cs_desc, false);
+      iris_use_optional_res(batch, ice->state.last_res.cs_desc, false,
+                            IRIS_DOMAIN_NONE);
    }
 
    if (stage_clean & IRIS_STAGE_DIRTY_CS) {
@@ -5069,18 +5107,18 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
 
       if (shader) {
          struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
-         iris_use_pinned_bo(batch, bo, false);
+         iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_NONE);
 
          struct iris_bo *curbe_bo =
             iris_resource_bo(ice->state.last_res.cs_thread_ids);
-         iris_use_pinned_bo(batch, curbe_bo, false);
+         iris_use_pinned_bo(batch, curbe_bo, false, IRIS_DOMAIN_NONE);
 
          struct brw_stage_prog_data *prog_data = shader->prog_data;
 
          if (prog_data->total_scratch > 0) {
             struct iris_bo *bo =
                iris_get_scratch_space(ice, prog_data->total_scratch, stage);
-            iris_use_pinned_bo(batch, bo, true);
+            iris_use_pinned_bo(batch, bo, true, IRIS_DOMAIN_NONE);
          }
       }
    }
@@ -5645,7 +5683,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       struct iris_shader_state *shs = &ice->state.shaders[stage];
       struct pipe_resource *res = shs->sampler_table.res;
       if (res)
-         iris_use_pinned_bo(batch, iris_resource_bo(res), false);
+         iris_use_pinned_bo(batch, iris_resource_bo(res), false,
+                            IRIS_DOMAIN_NONE);
 
       iris_emit_cmd(batch, GENX(3DSTATE_SAMPLER_STATE_POINTERS_VS), ptr) {
          ptr._3DCommandSubOpcode = 43 + stage;
@@ -5654,7 +5693,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    if (ice->state.need_border_colors)
-      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
+      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false,
+                         IRIS_DOMAIN_NONE);
 
    if (dirty & IRIS_DIRTY_MULTISAMPLE) {
       iris_emit_cmd(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
@@ -5680,12 +5720,12 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       if (shader) {
          struct brw_stage_prog_data *prog_data = shader->prog_data;
          struct iris_resource *cache = (void *) shader->assembly.res;
-         iris_use_pinned_bo(batch, cache->bo, false);
+         iris_use_pinned_bo(batch, cache->bo, false, IRIS_DOMAIN_NONE);
 
          if (prog_data->total_scratch > 0) {
             struct iris_bo *bo =
                iris_get_scratch_space(ice, prog_data->total_scratch, stage);
-            iris_use_pinned_bo(batch, bo, true);
+            iris_use_pinned_bo(batch, bo, true, IRIS_DOMAIN_NONE);
          }
 
          if (stage == MESA_SHADER_FRAGMENT) {
@@ -5776,9 +5816,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             if (tgt) {
                tgt->zeroed = true;
                iris_use_pinned_bo(batch, iris_resource_bo(tgt->base.buffer),
-                                  true);
+                                  true, IRIS_DOMAIN_OTHER_WRITE);
                iris_use_pinned_bo(batch, iris_resource_bo(tgt->offset.res),
-                                  true);
+                                  true, IRIS_DOMAIN_OTHER_WRITE);
             }
          }
       }
@@ -6105,7 +6145,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          while (bound) {
             const int i = u_bit_scan64(&bound);
             iris_use_optional_res(batch, genx->vertex_buffers[i].resource,
-                                  false);
+                                  false, IRIS_DOMAIN_OTHER_READ);
          }
 #else
          /* The VF cache designers cut corners, and made the cache key's
@@ -6127,7 +6167,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             struct iris_resource *res =
                (void *) genx->vertex_buffers[i].resource;
             if (res) {
-               iris_use_pinned_bo(batch, res->bo, false);
+               iris_use_pinned_bo(batch, res->bo, false, IRIS_DOMAIN_OTHER_READ);
 
                high_bits = res->bo->gtt_offset >> 32ull;
                if (high_bits != ice->state.last_vbo_high_bits[i]) {
@@ -6319,7 +6359,8 @@ iris_upload_render_state(struct iris_context *ice,
     * context, and need it anyway.  Since true zero-bindings cases are
     * practically non-existent, just pin it and avoid last_res tracking.
     */
-   iris_use_pinned_bo(batch, ice->state.binder.bo, false);
+   iris_use_pinned_bo(batch, ice->state.binder.bo, false,
+                      IRIS_DOMAIN_NONE);
 
    if (!batch->contains_draw) {
       iris_restore_render_saved_bos(ice, batch, draw);
@@ -6358,7 +6399,7 @@ iris_upload_render_state(struct iris_context *ice,
       if (memcmp(genx->last_index_buffer, ib_packet, sizeof(ib_packet)) != 0) {
          memcpy(genx->last_index_buffer, ib_packet, sizeof(ib_packet));
          iris_batch_emit(batch, ib_packet, sizeof(ib_packet));
-         iris_use_pinned_bo(batch, bo, false);
+         iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_OTHER_READ);
       }
 
 #if GEN_GEN < 11
@@ -6551,7 +6592,7 @@ iris_upload_compute_state(struct iris_context *ice,
     * context, and need it anyway.  Since true zero-bindings cases are
     * practically non-existent, just pin it and avoid last_res tracking.
     */
-   iris_use_pinned_bo(batch, ice->state.binder.bo, false);
+   iris_use_pinned_bo(batch, ice->state.binder.bo, false, IRIS_DOMAIN_NONE);
 
    if ((stage_dirty & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
        shs->sysvals_need_upload)
@@ -6563,11 +6604,14 @@ iris_upload_compute_state(struct iris_context *ice,
    if (stage_dirty & IRIS_STAGE_DIRTY_SAMPLER_STATES_CS)
       iris_upload_sampler_states(ice, MESA_SHADER_COMPUTE);
 
-   iris_use_optional_res(batch, shs->sampler_table.res, false);
-   iris_use_pinned_bo(batch, iris_resource_bo(shader->assembly.res), false);
+   iris_use_optional_res(batch, shs->sampler_table.res, false,
+                         IRIS_DOMAIN_NONE);
+   iris_use_pinned_bo(batch, iris_resource_bo(shader->assembly.res), false,
+                      IRIS_DOMAIN_NONE);
 
    if (ice->state.need_border_colors)
-      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false);
+      iris_use_pinned_bo(batch, ice->state.border_color_pool.bo, false,
+                         IRIS_DOMAIN_NONE);
 
 #if GEN_GEN >= 12
    genX(invalidate_aux_map_state)(batch);
@@ -6592,7 +6636,7 @@ iris_upload_compute_state(struct iris_context *ice,
                iris_get_scratch_space(ice, prog_data->total_scratch,
                                       MESA_SHADER_COMPUTE);
             vfe.PerThreadScratchSpace = ffs(prog_data->total_scratch) - 11;
-            vfe.ScratchSpaceBasePointer = rw_bo(bo, 0);
+            vfe.ScratchSpaceBasePointer = rw_bo(bo, 0, IRIS_DOMAIN_NONE);
          }
 
          vfe.MaximumNumberofThreads =
@@ -7363,7 +7407,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
          flags & PIPE_CONTROL_INDIRECT_STATE_POINTERS_DISABLE;
       pc.TextureCacheInvalidationEnable =
          flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
-      pc.Address = rw_bo(bo, offset);
+      pc.Address = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
       pc.ImmediateData = imm;
    }
 
@@ -7454,7 +7498,8 @@ iris_emit_mi_report_perf_count(struct iris_batch *batch,
 {
    iris_batch_sync_region_start(batch);
    iris_emit_cmd(batch, GENX(MI_REPORT_PERF_COUNT), mi_rpc) {
-      mi_rpc.MemoryAddress = rw_bo(bo, offset_in_bytes);
+      mi_rpc.MemoryAddress = rw_bo(bo, offset_in_bytes,
+                                   IRIS_DOMAIN_OTHER_WRITE);
       mi_rpc.ReportID = report_id;
    }
    iris_batch_sync_region_end(batch);

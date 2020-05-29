@@ -179,7 +179,7 @@ bool iris_batch_prepare_noop(struct iris_batch *batch, bool noop_enable);
 #define RELOC_WRITE EXEC_OBJECT_WRITE
 
 void iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo,
-                        bool writable);
+                        bool writable, enum iris_domain access);
 
 enum pipe_reset_status iris_batch_check_for_reset(struct iris_batch *batch);
 
