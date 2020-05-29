@@ -2542,7 +2542,7 @@ void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
 }
 
 /* Return descriptor slot usage masks from the given shader info. */
-void si_get_active_slot_masks(const struct si_shader_info *info, uint32_t *const_and_shader_buffers,
+void si_get_active_slot_masks(const struct si_shader_info *info, uint64_t *const_and_shader_buffers,
                               uint64_t *samplers_and_images)
 {
    unsigned start, num_shaderbufs, num_constbufs, num_images, num_msaa_images, num_samplers;
@@ -2556,7 +2556,7 @@ void si_get_active_slot_masks(const struct si_shader_info *info, uint32_t *const
 
    /* The layout is: sb[last] ... sb[0], cb[0] ... cb[last] */
    start = si_get_shaderbuf_slot(num_shaderbufs - 1);
-   *const_and_shader_buffers = u_bit_consecutive(start, num_shaderbufs + num_constbufs);
+   *const_and_shader_buffers = u_bit_consecutive64(start, num_shaderbufs + num_constbufs);
 
    /* The layout is:
     *   - fmask[last] ... fmask[0]     go to [15-last .. 15]

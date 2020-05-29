@@ -796,8 +796,13 @@ static void si_dump_descriptors(struct si_context *sctx, enum pipe_shader_type p
       enabled_constbuf =
          sctx->const_and_shader_buffers[processor].enabled_mask >> SI_NUM_SHADER_BUFFERS;
       enabled_shaderbuf = sctx->const_and_shader_buffers[processor].enabled_mask &
-                          u_bit_consecutive(0, SI_NUM_SHADER_BUFFERS);
-      enabled_shaderbuf = util_bitreverse(enabled_shaderbuf) >> (32 - SI_NUM_SHADER_BUFFERS);
+                          u_bit_consecutive64(0, SI_NUM_SHADER_BUFFERS);
+      enabled_shaderbuf = 0;
+      for (int i = 0; i < SI_NUM_SHADER_BUFFERS; i++) {
+         enabled_shaderbuf |=
+            (sctx->const_and_shader_buffers[processor].enabled_mask &
+             1llu << (SI_NUM_SHADER_BUFFERS - i - 1)) << i;
+      }
       enabled_samplers = sctx->samplers[processor].enabled_mask;
       enabled_images = sctx->images[processor].enabled_mask;
    }
