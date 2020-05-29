@@ -538,6 +538,12 @@ nir_ball_iequal(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
 }
 
 static inline nir_ssa_def *
+nir_ball(nir_builder *b, nir_ssa_def *src)
+{
+   return nir_ball_iequal(b, src, nir_imm_true(b));
+}
+
+static inline nir_ssa_def *
 nir_bany_inequal(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
 {
    switch (src0->num_components) {

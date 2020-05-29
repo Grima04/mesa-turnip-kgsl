@@ -442,41 +442,11 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
 
    switch (opcode) {
    case SpvOpAny:
-      if (src[0]->num_components == 1) {
-         val->ssa->def = nir_mov(&b->nb, src[0]);
-      } else {
-         nir_op op;
-         switch (src[0]->num_components) {
-         case 2:  op = nir_op_bany_inequal2; break;
-         case 3:  op = nir_op_bany_inequal3; break;
-         case 4:  op = nir_op_bany_inequal4; break;
-         case 8:  op = nir_op_bany_inequal8; break;
-         case 16:  op = nir_op_bany_inequal16; break;
-         default: vtn_fail("invalid number of components");
-         }
-         val->ssa->def = nir_build_alu(&b->nb, op, src[0],
-                                       nir_imm_false(&b->nb),
-                                       NULL, NULL);
-      }
+      val->ssa->def = nir_bany(&b->nb, src[0]);
       break;
 
    case SpvOpAll:
-      if (src[0]->num_components == 1) {
-         val->ssa->def = nir_mov(&b->nb, src[0]);
-      } else {
-         nir_op op;
-         switch (src[0]->num_components) {
-         case 2:  op = nir_op_ball_iequal2;  break;
-         case 3:  op = nir_op_ball_iequal3;  break;
-         case 4:  op = nir_op_ball_iequal4;  break;
-         case 8:  op = nir_op_ball_iequal8;  break;
-         case 16:  op = nir_op_ball_iequal16;  break;
-         default: vtn_fail("invalid number of components");
-         }
-         val->ssa->def = nir_build_alu(&b->nb, op, src[0],
-                                       nir_imm_true(&b->nb),
-                                       NULL, NULL);
-      }
+      val->ssa->def = nir_ball(&b->nb, src[0]);
       break;
 
    case SpvOpOuterProduct: {
