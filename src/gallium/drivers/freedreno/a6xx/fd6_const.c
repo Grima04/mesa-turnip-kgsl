@@ -246,10 +246,7 @@ fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 	OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
 	for (int i = 0; i < num_ubos; i++) {
-		/* Note: gallium constbuf 0 was always lowered to hardware constbuf,
-		 * and UBO load indices decremented by one.
-		 */
-		struct pipe_constant_buffer *cb = &constbuf->cb[i + 1];
+		struct pipe_constant_buffer *cb = &constbuf->cb[i];
 
 		/* If we have user pointers (constbuf 0, aka GL uniforms), upload them
 		 * to a buffer now, and save it in the constbuf so that we don't have

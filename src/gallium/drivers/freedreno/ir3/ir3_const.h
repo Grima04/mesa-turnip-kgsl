@@ -142,8 +142,7 @@ ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct pipe_resource *prscs[params];
 
 		for (uint32_t i = 0; i < params; i++) {
-			const uint32_t index = i + 1;   /* UBOs start at index 1 */
-			struct pipe_constant_buffer *cb = &constbuf->cb[index];
+			struct pipe_constant_buffer *cb = &constbuf->cb[i];
 
 			/* If we have user pointers (constbuf 0, aka GL uniforms), upload
 			 * them to a buffer now, and save it in the constbuf so that we
@@ -159,7 +158,7 @@ ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 				cb->user_buffer = NULL;
 			}
 
-			if ((constbuf->enabled_mask & (1 << index)) && cb->buffer) {
+			if ((constbuf->enabled_mask & (1 << i)) && cb->buffer) {
 				offsets[i] = cb->buffer_offset;
 				prscs[i] = cb->buffer;
 			} else {

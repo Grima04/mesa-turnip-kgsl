@@ -177,32 +177,23 @@ handle_partial_const(nir_builder *b, nir_ssa_def **srcp, int *offp)
 	}
 }
 
+/* Tracks the maximum bindful UBO accessed so that we reduce the UBO
+ * descriptors emitted in the fast path for GL.
+ */
 static void
-lower_ubo_block_decrement(nir_intrinsic_instr *instr, nir_builder *b, int *num_ubos)
+track_ubo_use(nir_intrinsic_instr *instr, nir_builder *b, int *num_ubos)
 {
-	/* Skip shifting things for turnip's bindless resources. */
 	if (ir3_bindless_resource(instr->src[0])) {
 		assert(!b->shader->info.first_ubo_is_default_ubo); /* only set for GL */
 		return;
 	}
 
-	/* Shift all GL nir_intrinsic_load_ubo UBO indices down by 1, because we
-	 * have lowered block 0 off of load_ubo to constbuf and ir3_const only
-	 * uploads pointers for block 1-N.  This is also where we update the NIR
-	 * num_ubos to reflect the UBOs that remain in use after others got
-	 * lowered to constbuf access.
-	 */
 	if (nir_src_is_const(instr->src[0])) {
-		int block = nir_src_as_uint(instr->src[0]) - 1;
+		int block = nir_src_as_uint(instr->src[0]);
 		*num_ubos = MAX2(*num_ubos, block + 1);
 	} else {
-		*num_ubos = b->shader->info.num_ubos - 1;
+		*num_ubos = b->shader->info.num_ubos;
 	}
-
-	nir_ssa_def *old_idx = nir_ssa_for_src(b, instr->src[0], 1);
-	nir_ssa_def *new_idx = nir_iadd_imm(b, old_idx, -1);
-	nir_instr_rewrite_src(&instr->instr, &instr->src[0],
-			nir_src_for_ssa(new_idx));
 }
 
 static void
@@ -217,7 +208,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 	 */
 	struct ir3_ubo_range *range = get_existing_range(instr, state, false);
 	if (!range) {
-		lower_ubo_block_decrement(instr, b, num_ubos);
+		track_ubo_use(instr, b, num_ubos);
 		return;
 	}
 
@@ -227,7 +218,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 		 * access, so for now just fall back to pulling.
 		 */
 		if (!nir_src_is_const(instr->src[1])) {
-			lower_ubo_block_decrement(instr, b, num_ubos);
+			track_ubo_use(instr, b, num_ubos);
 			return;
 		}
 
@@ -236,7 +227,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 		 */
 		const struct ir3_ubo_range r = get_ubo_load_range(instr, alignment);
 		if (!(range->start <= r.start && r.end <= range->end)) {
-			lower_ubo_block_decrement(instr, b, num_ubos);
+			track_ubo_use(instr, b, num_ubos);
 			return;
 		}
 	}
