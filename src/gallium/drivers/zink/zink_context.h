@@ -125,6 +125,7 @@ struct zink_context {
    bool queries_disabled;
 
    struct pipe_resource *dummy_buffer;
+   struct pipe_resource *null_buffer; /* used to create zink_framebuffer->null_surface */
 
    uint32_t num_so_targets;
    struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_OUTPUTS];
