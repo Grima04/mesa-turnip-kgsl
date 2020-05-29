@@ -784,6 +784,8 @@ vtn_get_type(struct vtn_builder *b, uint32_t value_id)
 }
 
 struct vtn_ssa_value *vtn_ssa_value(struct vtn_builder *b, uint32_t value_id);
+struct vtn_value *vtn_push_ssa_value(struct vtn_builder *b, uint32_t value_id,
+                                     struct vtn_ssa_value *ssa);
 
 nir_ssa_def *vtn_get_nir_ssa(struct vtn_builder *b, uint32_t value_id);
 struct vtn_value *vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id,
@@ -792,9 +794,6 @@ struct vtn_value *vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id,
 struct vtn_value *vtn_push_pointer(struct vtn_builder *b,
                                    uint32_t value_id,
                                    struct vtn_pointer *ptr);
-
-struct vtn_value *vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
-                               struct vtn_type *type, struct vtn_ssa_value *ssa);
 
 void
 vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,

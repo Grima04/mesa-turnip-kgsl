@@ -302,6 +302,23 @@ vtn_ssa_value(struct vtn_builder *b, uint32_t value_id)
    }
 }
 
+struct vtn_value *
+vtn_push_ssa_value(struct vtn_builder *b, uint32_t value_id,
+                   struct vtn_ssa_value *ssa)
+{
+   struct vtn_type *type = vtn_get_value_type(b, value_id);
+
+   struct vtn_value *val;
+   if (type->base_type == vtn_base_type_pointer) {
+      val = vtn_push_pointer(b, value_id, vtn_pointer_from_ssa(b, ssa->def, type));
+   } else {
+      val = vtn_push_value(b, value_id, vtn_value_type_ssa);
+      val->ssa = ssa;
+   }
+
+   return val;
+}
+
 nir_ssa_def *
 vtn_get_nir_ssa(struct vtn_builder *b, uint32_t value_id)
 {
@@ -323,7 +340,7 @@ vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id, nir_ssa_def *def)
                "Mismatch between NIR and SPIR-V type.");
    struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, type->type);
    ssa->def = def;
-   return vtn_push_ssa(b, value_id, type, ssa);
+   return vtn_push_ssa_value(b, value_id, ssa);
 }
 
 static char *
@@ -3606,7 +3623,7 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
       vtn_fail_with_opcode("unknown composite operation", opcode);
    }
 
-   vtn_push_ssa(b, w[2], type, ssa);
+   vtn_push_ssa_value(b, w[2], ssa);
 }
 
 static void
@@ -4733,11 +4750,10 @@ vtn_handle_select(struct vtn_builder *b, SpvOp opcode,
       vtn_fail("Result type of OpSelect must be a scalar, composite, or pointer");
    }
 
-   struct vtn_type *res_type = vtn_get_type(b, w[1]);
-   struct vtn_ssa_value *ssa = vtn_nir_select(b,
-      vtn_ssa_value(b, w[3]), vtn_ssa_value(b, w[4]), vtn_ssa_value(b, w[5]));
-
-   vtn_push_ssa(b, w[2], res_type, ssa);
+   vtn_push_ssa_value(b, w[2],
+      vtn_nir_select(b, vtn_ssa_value(b, w[3]),
+                        vtn_ssa_value(b, w[4]),
+                        vtn_ssa_value(b, w[5])));
 }
 
 static void

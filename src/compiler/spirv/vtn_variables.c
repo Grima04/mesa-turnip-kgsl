@@ -76,20 +76,6 @@ vtn_push_pointer(struct vtn_builder *b, uint32_t value_id,
    return val;
 }
 
-struct vtn_value *
-vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
-             struct vtn_type *type, struct vtn_ssa_value *ssa)
-{
-   struct vtn_value *val;
-   if (type->base_type == vtn_base_type_pointer) {
-      val = vtn_push_pointer(b, value_id, vtn_pointer_from_ssa(b, ssa->def, type));
-   } else {
-      val = vtn_push_value(b, value_id, vtn_value_type_ssa);
-      val->ssa = ssa;
-   }
-   return val;
-}
-
 void
 vtn_copy_value(struct vtn_builder *b, uint32_t src_value_id,
                uint32_t dst_value_id)
@@ -2621,7 +2607,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          }
       }
 
-      vtn_push_ssa(b, w[2], res_type, vtn_variable_load(b, src));
+      vtn_push_ssa_value(b, w[2], vtn_variable_load(b, src));
       break;
    }
 

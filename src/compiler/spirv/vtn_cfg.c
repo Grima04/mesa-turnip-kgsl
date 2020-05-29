@@ -185,7 +185,6 @@ void
 vtn_handle_function_call(struct vtn_builder *b, SpvOp opcode,
                          const uint32_t *w, unsigned count)
 {
-   struct vtn_type *res_type = vtn_get_type(b, w[1]);
    struct vtn_function *vtn_callee =
       vtn_value(b, w[3], vtn_value_type_function)->func;
    struct nir_function *callee = vtn_callee->impl->function;
@@ -238,7 +237,7 @@ vtn_handle_function_call(struct vtn_builder *b, SpvOp opcode,
    if (ret_type->base_type == vtn_base_type_void) {
       vtn_push_value(b, w[2], vtn_value_type_undef);
    } else {
-      vtn_push_ssa(b, w[2], res_type, vtn_local_load(b, ret_deref, 0));
+      vtn_push_ssa_value(b, w[2], vtn_local_load(b, ret_deref, 0));
    }
 }
 
@@ -351,7 +350,7 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
          /* We're a regular SSA value. */
          struct vtn_ssa_value *value = vtn_create_ssa_value(b, type->type);
          vtn_ssa_value_load_function_param(b, value, type, &b->func_param_idx);
-         vtn_push_ssa(b, w[2], type, value);
+         vtn_push_ssa_value(b, w[2], value);
       }
       break;
    }
@@ -988,8 +987,8 @@ vtn_handle_phis_first_pass(struct vtn_builder *b, SpvOp opcode,
       nir_local_variable_create(b->nb.impl, type->type, "phi");
    _mesa_hash_table_insert(b->phi_table, w, phi_var);
 
-   vtn_push_ssa(b, w[2], type,
-                vtn_local_load(b, nir_build_deref_var(&b->nb, phi_var), 0));
+   vtn_push_ssa_value(b, w[2],
+      vtn_local_load(b, nir_build_deref_var(&b->nb, phi_var), 0));
 
    return true;
 }
