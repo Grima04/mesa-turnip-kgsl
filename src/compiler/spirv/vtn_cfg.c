@@ -36,14 +36,12 @@ vtn_load_param_pointer(struct vtn_builder *b,
                        uint32_t param_idx)
 {
    struct vtn_type *ptr_type = param_type;
-   if (param_type->base_type != vtn_base_type_pointer) {
-      assert(param_type->base_type == vtn_base_type_image ||
-             param_type->base_type == vtn_base_type_sampler);
-      ptr_type = rzalloc(b, struct vtn_type);
-      ptr_type->base_type = vtn_base_type_pointer;
-      ptr_type->deref = param_type;
-      ptr_type->storage_class = SpvStorageClassUniformConstant;
-   }
+   assert(param_type->base_type == vtn_base_type_image ||
+          param_type->base_type == vtn_base_type_sampler);
+   ptr_type = rzalloc(b, struct vtn_type);
+   ptr_type->base_type = vtn_base_type_pointer;
+   ptr_type->deref = param_type;
+   ptr_type->storage_class = SpvStorageClassUniformConstant;
 
    return vtn_pointer_from_ssa(b, nir_load_param(&b->nb, param_idx), ptr_type);
 }
@@ -104,14 +102,10 @@ vtn_type_add_to_function_params(struct vtn_type *type,
       break;
 
    case vtn_base_type_pointer:
-      if (type->type) {
-         func->params[(*param_idx)++] = (nir_parameter) {
-            .num_components = glsl_get_vector_elements(type->type),
-            .bit_size = glsl_get_bit_size(type->type),
-         };
-      } else {
-         func->params[(*param_idx)++] = nir_deref_param;
-      }
+      func->params[(*param_idx)++] = (nir_parameter) {
+         .num_components = glsl_get_vector_elements(type->type),
+         .bit_size = glsl_get_bit_size(type->type),
+      };
       break;
 
    default:
@@ -337,13 +331,11 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
             vtn_load_param_pointer(b, image_type, b->func_param_idx++);
          val->sampled_image->sampler =
             vtn_load_param_pointer(b, sampler_type, b->func_param_idx++);
-      } else if (type->base_type == vtn_base_type_pointer &&
-                 type->type != NULL) {
+      } else if (type->base_type == vtn_base_type_pointer) {
          /* This is a pointer with an actual storage type */
          nir_ssa_def *ssa_ptr = nir_load_param(&b->nb, b->func_param_idx++);
          vtn_push_pointer(b, w[2], vtn_pointer_from_ssa(b, ssa_ptr, type));
-      } else if (type->base_type == vtn_base_type_pointer ||
-                 type->base_type == vtn_base_type_image ||
+      } else if (type->base_type == vtn_base_type_image ||
                  type->base_type == vtn_base_type_sampler) {
          vtn_push_pointer(b, w[2], vtn_load_param_pointer(b, type, b->func_param_idx++));
       } else {
