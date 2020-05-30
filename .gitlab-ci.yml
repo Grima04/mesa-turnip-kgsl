@@ -137,7 +137,7 @@ x86_build:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-05-29"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-05-31"
 
 .use-x86_build:
   variables:
@@ -570,7 +570,7 @@ meson-s390x:
   script:
     # For unknown reasons "too many" installed i386 libraries cause qemu to
     # crash while executing llvm-config for s390x.
-    - apt-get purge -y wine32
+    - apt-get purge -y wine32-development
     - apt-get autoremove -y --purge
     - dpkg -i /var/cache/apt/archives/$CROSS/*.deb
     - .gitlab-ci/meson-build.sh

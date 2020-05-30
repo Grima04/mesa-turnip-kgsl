@@ -83,6 +83,9 @@ apt-get install -y --no-remove \
       python3-requests \
       qemu-user \
       scons \
+      wine-development \
+      wine32-development \
+      wine64-development \
       x11proto-dri2-dev \
       x11proto-gl-dev \
       x11proto-randr-dev \
@@ -128,10 +131,7 @@ apt-get install -y -t testing \
 
 apt-get install -y --no-remove -t testing \
       g++-mingw-w64-x86-64-win32 \
-      libz-mingw-w64-dev \
-      wine \
-      wine32 \
-      wine64
+      libz-mingw-w64-dev
 
 
 . .gitlab-ci/container/container_pre_build.sh
