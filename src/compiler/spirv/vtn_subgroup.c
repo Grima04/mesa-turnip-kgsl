@@ -88,13 +88,14 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpGroupNonUniformBallot: ++w; /* fallthrough */
+   case SpvOpGroupNonUniformBallot:
    case SpvOpSubgroupBallotKHR: {
+      bool has_scope = (opcode != SpvOpSubgroupBallotKHR);
       vtn_fail_if(val->type->type != glsl_vector_type(GLSL_TYPE_UINT, 4),
                   "OpGroupNonUniformBallot must return a uvec4");
       nir_intrinsic_instr *ballot =
          nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_ballot);
-      ballot->src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[3]));
+      ballot->src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[3 + has_scope]));
       nir_ssa_dest_init(&ballot->instr, &ballot->dest, 4, 32, NULL);
       ballot->num_components = 4;
       nir_builder_instr_insert(&b->nb, &ballot->instr);
@@ -177,19 +178,24 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpGroupNonUniformBroadcastFirst: ++w; /* fallthrough */
-   case SpvOpSubgroupFirstInvocationKHR:
+   case SpvOpGroupNonUniformBroadcastFirst:
+   case SpvOpSubgroupFirstInvocationKHR: {
+      bool has_scope = (opcode != SpvOpSubgroupFirstInvocationKHR);
       vtn_build_subgroup_instr(b, nir_intrinsic_read_first_invocation,
-                               val->ssa, vtn_ssa_value(b, w[3]), NULL, 0, 0);
+                               val->ssa, vtn_ssa_value(b, w[3 + has_scope]),
+                               NULL, 0, 0);
       break;
+   }
 
    case SpvOpGroupNonUniformBroadcast:
-   case SpvOpGroupBroadcast: ++w; /* fallthrough */
-   case SpvOpSubgroupReadInvocationKHR:
+   case SpvOpGroupBroadcast:
+   case SpvOpSubgroupReadInvocationKHR: {
+      bool has_scope = (opcode != SpvOpSubgroupReadInvocationKHR);
       vtn_build_subgroup_instr(b, nir_intrinsic_read_invocation,
-                               val->ssa, vtn_ssa_value(b, w[3]),
-                               vtn_get_nir_ssa(b, w[4]), 0, 0);
+                               val->ssa, vtn_ssa_value(b, w[3 + has_scope]),
+                               vtn_get_nir_ssa(b, w[4 + has_scope]), 0, 0);
       break;
+   }
 
    case SpvOpGroupNonUniformAll:
    case SpvOpGroupNonUniformAny:
