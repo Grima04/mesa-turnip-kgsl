@@ -1035,9 +1035,10 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
     */
    tex->ps_draw_ratio = 0;
 
-   ac_surface_override_offset_stride(&sscreen->info, &tex->surface,
+   if (!ac_surface_override_offset_stride(&sscreen->info, &tex->surface,
                                      tex->buffer.b.b.last_level + 1,
-                                     offset, pitch_in_bytes / tex->surface.bpe);
+                                          offset, pitch_in_bytes / tex->surface.bpe))
+      goto error;
 
    if (tex->is_depth) {
       if (sscreen->info.chip_class >= GFX9) {
@@ -1459,6 +1460,13 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
                                     tex->buffer.b.b.last_level + 1,
                                     metadata.size_metadata,
                                     metadata.metadata)) {
+      si_texture_reference(&tex, NULL);
+      return NULL;
+   }
+
+   if (ac_surface_get_plane_offset(sscreen->info.chip_class, &tex->surface, 0, 0) +
+        tex->surface.total_size > buf->size ||
+       buf->alignment < tex->surface.alignment) {
       si_texture_reference(&tex, NULL);
       return NULL;
    }

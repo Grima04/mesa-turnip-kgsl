@@ -2446,6 +2446,10 @@ void ac_surface_zero_dcc_fields(struct radeon_surf *surf)
 {
    surf->dcc_offset = 0;
    surf->display_dcc_offset = 0;
+   if (!surf->htile_offset && !surf->fmask_offset && !surf->cmask_offset) {
+      surf->total_size = surf->surf_size;
+      surf->alignment = surf->surf_alignment;
+   }
 }
 
 static unsigned eg_tile_split(unsigned tile_split)
@@ -2744,21 +2748,69 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info, struct radeon_s
    }
 }
 
-void ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
+static uint32_t ac_surface_get_gfx9_pitch_align(struct radeon_surf *surf)
+{
+   if (surf->u.gfx9.surf.swizzle_mode == ADDR_SW_LINEAR)
+      return 256 / surf->bpe;
+
+   if (surf->u.gfx9.resource_type == RADEON_RESOURCE_3D)
+      return 1; /* TODO */
+
+   unsigned bpe_shift = util_logbase2(surf->bpe) / 2;
+   switch(surf->u.gfx9.surf.swizzle_mode & ~3) {
+   case ADDR_SW_LINEAR: /* 256B block. */
+      return 16 >> bpe_shift;
+   case ADDR_SW_4KB_Z:
+   case ADDR_SW_4KB_Z_X:
+      return 64 >> bpe_shift;
+   case ADDR_SW_64KB_Z:
+   case ADDR_SW_64KB_Z_T:
+   case ADDR_SW_64KB_Z_X:
+      return 256 >> bpe_shift;
+   case ADDR_SW_VAR_Z_X:
+   default:
+      return 1; /* TODO */
+   }
+}
+
+bool ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
                                        unsigned num_mipmap_levels, uint64_t offset, unsigned pitch)
 {
+   /*
+    * GFX10 and newer don't support custom strides. Furthermore, for
+    * multiple miplevels or compression data we'd really need to rerun
+    * addrlib to update all the fields in the surface. That, however, is a
+    * software limitation and could be relaxed later.
+    */
+   bool require_equal_pitch = surf->surf_size != surf->total_size ||
+                              num_mipmap_levels != 1 ||
+                              info->chip_class >= GFX10;
+
    if (info->chip_class >= GFX9) {
       if (pitch) {
-         surf->u.gfx9.surf_pitch = pitch;
-         if (num_mipmap_levels == 1)
+         if (surf->u.gfx9.surf_pitch != pitch && require_equal_pitch)
+            return false;
+
+         if ((ac_surface_get_gfx9_pitch_align(surf) - 1) & pitch)
+            return false;
+
+         if (pitch != surf->u.gfx9.surf_pitch) {
+            unsigned slices = surf->surf_size / surf->u.gfx9.surf_slice_size;
+
+            surf->u.gfx9.surf_pitch = pitch;
             surf->u.gfx9.surf.epitch = pitch - 1;
-         surf->u.gfx9.surf_slice_size = (uint64_t)pitch * surf->u.gfx9.surf_height * surf->bpe;
+            surf->u.gfx9.surf_slice_size = (uint64_t)pitch * surf->u.gfx9.surf_height * surf->bpe;
+            surf->total_size = surf->surf_size = surf->u.gfx9.surf_slice_size * slices;
+         }
       }
       surf->u.gfx9.surf_offset = offset;
       if (surf->u.gfx9.stencil_offset)
          surf->u.gfx9.stencil_offset += offset;
    } else {
       if (pitch) {
+         if (surf->u.legacy.level[0].nblk_x != pitch && require_equal_pitch)
+            return false;
+
          surf->u.legacy.level[0].nblk_x = pitch;
          surf->u.legacy.level[0].slice_size_dw =
             ((uint64_t)pitch * surf->u.legacy.level[0].nblk_y * surf->bpe) / 4;
@@ -2770,6 +2822,10 @@ void ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
       }
    }
 
+   if (offset & (surf->alignment - 1) ||
+       offset >= UINT64_MAX - surf->total_size)
+      return false;
+
    if (surf->htile_offset)
       surf->htile_offset += offset;
    if (surf->fmask_offset)
@@ -2780,6 +2836,7 @@ void ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
       surf->dcc_offset += offset;
    if (surf->display_dcc_offset)
       surf->display_dcc_offset += offset;
+   return true;
 }
 
 unsigned ac_surface_get_nplanes(const struct radeon_surf *surf)
