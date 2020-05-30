@@ -26,8 +26,7 @@
  * Fences for driver and IPC serialisation, scheduling and synchronisation.
  */
 
-#include <linux/sync_file.h>
-
+#include "drm-uapi/sync_file.h"
 #include "util/u_debug.h"
 #include "util/u_inlines.h"
 #include "intel/common/gen_gem.h"

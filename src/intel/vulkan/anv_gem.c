@@ -28,11 +28,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <linux/sync_file.h>
 
 #include "anv_private.h"
 #include "common/gen_defines.h"
 #include "common/gen_gem.h"
+#include "drm-uapi/sync_file.h"
 
 /**
  * Wrapper around DRM_IOCTL_I915_GEM_CREATE.
