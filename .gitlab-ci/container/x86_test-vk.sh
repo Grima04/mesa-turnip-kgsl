@@ -9,6 +9,7 @@ export DEBIAN_FRONTEND=noninteractive
 STABLE_EPHEMERAL=" \
       ccache \
       cmake \
+      g++ \
       libgbm-dev \
       libgles2-mesa-dev \
       liblz4-dev \
@@ -25,17 +26,10 @@ STABLE_EPHEMERAL=" \
       wget \
       "
 
-TESTING_EPHEMERAL=" \
-      g++ \
-      libc6-dev \
-      "
-
-apt-get update
-
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL
 
-        # We need multiarch for Wine
+# We need multiarch for Wine
 dpkg --add-architecture i386
 
 apt-get update
@@ -44,10 +38,6 @@ apt-get install -y --no-remove \
       wine \
       wine32 \
       wine64
-
-# Install packages we need from Debian testing last, to avoid pulling in more
-apt-get install -y -t testing \
-      $TESTING_EPHEMERAL
 
 
 ############### Set up Wine env variables
@@ -135,7 +125,6 @@ wine \
 ccache --show-stats
 
 apt-get purge -y \
-      $STABLE_EPHEMERAL \
-      $TESTING_EPHEMERAL
+      $STABLE_EPHEMERAL
 
 apt-get autoremove -y --purge

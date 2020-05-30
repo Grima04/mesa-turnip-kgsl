@@ -11,6 +11,7 @@ STABLE_EPHEMERAL=" \
       automake \
       ccache \
       cmake \
+      g++ \
       libgbm-dev \
       libgles2-mesa-dev \
       libpcre3-dev \
@@ -28,19 +29,9 @@ STABLE_EPHEMERAL=" \
       xz-utils \
       "
 
-TESTING_EPHEMERAL=" \
-      g++ \
-      libc6-dev \
-      "
-
-apt-get update
-
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL
 
-# Install packages we need from Debian testing last, to avoid pulling in more
-apt-get install -y -t testing \
-      $TESTING_EPHEMERAL
 
 . .gitlab-ci/container/container_pre_build.sh
 
@@ -73,7 +64,6 @@ apt-get install -y -t testing \
 ccache --show-stats
 
 apt-get purge -y \
-      $STABLE_EPHEMERAL \
-      $TESTING_EPHEMERAL
+      $STABLE_EPHEMERAL
 
 apt-get autoremove -y --purge

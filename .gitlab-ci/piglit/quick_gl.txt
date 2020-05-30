@@ -1573,8 +1573,10 @@ spec/intel_conservative_rasterization/intel_conservative_rasterization-invalid: 
 spec/intel_conservative_rasterization/intel_conservative_rasterization-invalid_gles3: skip
 spec/intel_conservative_rasterization/intel_conservative_rasterization-tri: skip
 spec/intel_conservative_rasterization/intel_conservative_rasterization-tri_gles3: skip
-spec/khr_texture_compression_astc/array-gl: skip
-spec/khr_texture_compression_astc/array-gles: skip
+spec/khr_texture_compression_astc/array-gl/12x12 block dim: fail
+spec/khr_texture_compression_astc/array-gl/5x5 block dim: fail
+spec/khr_texture_compression_astc/array-gles/12x12 block dim: fail
+spec/khr_texture_compression_astc/array-gles/5x5 block dim: fail
 spec/khr_texture_compression_astc/miptree-gl hdr/hdr: notrun
 spec/khr_texture_compression_astc/miptree-gl ldr/ldr: notrun
 spec/khr_texture_compression_astc/miptree-gl ldr/ldr profile: fail
@@ -1711,9 +1713,9 @@ summary:
        name:  results
        ----  --------
        pass:    20703
-       fail:      218
+       fail:      222
       crash:        0
-       skip:     1467
+       skip:     1465
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1722,4 +1724,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    22412
+      total:    22414

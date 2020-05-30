@@ -22,18 +22,8 @@ echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-9 main" >/etc/apt/s
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources.list.d/backports.list
-echo 'deb https://deb.debian.org/debian testing main' >/etc/apt/sources.list.d/testing.list
 
 apt-get update
-
-# Don't use newer packages from testing by default
-cat >/etc/apt/preferences <<EOF
-Package: *
-Pin: release a=testing
-Pin-Priority: 100
-EOF
-
-apt-get dist-upgrade -y
 
 apt-get install -y --no-remove \
       autoconf \
@@ -45,6 +35,7 @@ apt-get install -y --no-remove \
       cmake \
       flex \
       g++ \
+      g++-mingw-w64-x86-64 \
       gcc \
       gettext \
       git \
@@ -75,6 +66,7 @@ apt-get install -y --no-remove \
       libxshmfence-dev \
       libxvmc-dev \
       libxxf86vm-dev \
+      libz-mingw-w64-dev \
       llvm-9-dev \
       pkg-config \
       python-mako \
@@ -119,19 +111,6 @@ done
 
 apt-get install -y --no-remove -t buster-backports \
       llvm-8-dev \
-
-
-# Install packages we need from Debian testing last, to avoid pulling in more
-
-# Need to allow removing libgcc1 for these
-apt-get install -y -t testing \
-      libstdc++6:i386 \
-      libstdc++6:ppc64el \
-      libstdc++6:s390x
-
-apt-get install -y --no-remove -t testing \
-      g++-mingw-w64-x86-64-win32 \
-      libz-mingw-w64-dev
 
 
 . .gitlab-ci/container/container_pre_build.sh
