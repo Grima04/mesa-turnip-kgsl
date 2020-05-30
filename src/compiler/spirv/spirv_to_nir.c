@@ -176,18 +176,12 @@ vtn_undef_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
    } else {
       unsigned elems = glsl_get_length(val->type);
       val->elems = ralloc_array(b, struct vtn_ssa_value *, elems);
-      if (glsl_type_is_matrix(type)) {
-         const struct glsl_type *elem_type =
-            glsl_vector_type(glsl_get_base_type(type),
-                             glsl_get_vector_elements(type));
-
-         for (unsigned i = 0; i < elems; i++)
-            val->elems[i] = vtn_undef_ssa_value(b, elem_type);
-      } else if (glsl_type_is_array(type)) {
+      if (glsl_type_is_array_or_matrix(type)) {
          const struct glsl_type *elem_type = glsl_get_array_element(type);
          for (unsigned i = 0; i < elems; i++)
             val->elems[i] = vtn_undef_ssa_value(b, elem_type);
       } else {
+         vtn_assert(glsl_type_is_struct_or_ifc(type));
          for (unsigned i = 0; i < elems; i++) {
             const struct glsl_type *elem_type = glsl_get_struct_field(type, i);
             val->elems[i] = vtn_undef_ssa_value(b, elem_type);
@@ -210,67 +204,34 @@ vtn_const_ssa_value(struct vtn_builder *b, nir_constant *constant,
    struct vtn_ssa_value *val = rzalloc(b, struct vtn_ssa_value);
    val->type = type;
 
-   switch (glsl_get_base_type(type)) {
-   case GLSL_TYPE_INT:
-   case GLSL_TYPE_UINT:
-   case GLSL_TYPE_INT16:
-   case GLSL_TYPE_UINT16:
-   case GLSL_TYPE_UINT8:
-   case GLSL_TYPE_INT8:
-   case GLSL_TYPE_INT64:
-   case GLSL_TYPE_UINT64:
-   case GLSL_TYPE_BOOL:
-   case GLSL_TYPE_FLOAT:
-   case GLSL_TYPE_FLOAT16:
-   case GLSL_TYPE_DOUBLE: {
-      int bit_size = glsl_get_bit_size(type);
-      if (glsl_type_is_vector_or_scalar(type)) {
-         unsigned num_components = glsl_get_vector_elements(val->type);
-         nir_load_const_instr *load =
-            nir_load_const_instr_create(b->shader, num_components, bit_size);
+   if (glsl_type_is_vector_or_scalar(type)) {
+      unsigned num_components = glsl_get_vector_elements(val->type);
+      unsigned bit_size = glsl_get_bit_size(type);
+      nir_load_const_instr *load =
+         nir_load_const_instr_create(b->shader, num_components, bit_size);
 
-         memcpy(load->value, constant->values,
-                sizeof(nir_const_value) * load->def.num_components);
+      memcpy(load->value, constant->values,
+             sizeof(nir_const_value) * num_components);
 
-         nir_instr_insert_before_cf_list(&b->nb.impl->body, &load->instr);
-         val->def = &load->def;
-      } else {
-         assert(glsl_type_is_matrix(type));
-         unsigned columns = glsl_get_matrix_columns(val->type);
-         val->elems = ralloc_array(b, struct vtn_ssa_value *, columns);
-         const struct glsl_type *column_type = glsl_get_column_type(val->type);
-         for (unsigned i = 0; i < columns; i++)
+      nir_instr_insert_before_cf_list(&b->nb.impl->body, &load->instr);
+      val->def = &load->def;
+   } else {
+      unsigned elems = glsl_get_length(val->type);
+      val->elems = ralloc_array(b, struct vtn_ssa_value *, elems);
+      if (glsl_type_is_array_or_matrix(type)) {
+         const struct glsl_type *elem_type = glsl_get_array_element(type);
+         for (unsigned i = 0; i < elems; i++) {
             val->elems[i] = vtn_const_ssa_value(b, constant->elements[i],
-                                                column_type);
+                                                elem_type);
+         }
+      } else {
+         vtn_assert(glsl_type_is_struct_or_ifc(type));
+         for (unsigned i = 0; i < elems; i++) {
+            const struct glsl_type *elem_type = glsl_get_struct_field(type, i);
+            val->elems[i] = vtn_const_ssa_value(b, constant->elements[i],
+                                                elem_type);
+         }
       }
-      break;
-   }
-
-   case GLSL_TYPE_ARRAY: {
-      unsigned elems = glsl_get_length(val->type);
-      val->elems = ralloc_array(b, struct vtn_ssa_value *, elems);
-      const struct glsl_type *elem_type = glsl_get_array_element(val->type);
-      for (unsigned i = 0; i < elems; i++)
-         val->elems[i] = vtn_const_ssa_value(b, constant->elements[i],
-                                             elem_type);
-      break;
-   }
-
-   case GLSL_TYPE_STRUCT:
-   case GLSL_TYPE_INTERFACE: {
-      unsigned elems = glsl_get_length(val->type);
-      val->elems = ralloc_array(b, struct vtn_ssa_value *, elems);
-      for (unsigned i = 0; i < elems; i++) {
-         const struct glsl_type *elem_type =
-            glsl_get_struct_field(val->type, i);
-         val->elems[i] = vtn_const_ssa_value(b, constant->elements[i],
-                                             elem_type);
-      }
-      break;
-   }
-
-   default:
-      vtn_fail("bad constant type");
    }
 
    return val;
@@ -2203,38 +2164,18 @@ vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
    val->type = type;
 
    if (!glsl_type_is_vector_or_scalar(type)) {
-      unsigned elems = glsl_get_length(type);
+      unsigned elems = glsl_get_length(val->type);
       val->elems = ralloc_array(b, struct vtn_ssa_value *, elems);
-      for (unsigned i = 0; i < elems; i++) {
-         const struct glsl_type *child_type;
-
-         switch (glsl_get_base_type(type)) {
-         case GLSL_TYPE_INT:
-         case GLSL_TYPE_UINT:
-         case GLSL_TYPE_INT16:
-         case GLSL_TYPE_UINT16:
-         case GLSL_TYPE_UINT8:
-         case GLSL_TYPE_INT8:
-         case GLSL_TYPE_INT64:
-         case GLSL_TYPE_UINT64:
-         case GLSL_TYPE_BOOL:
-         case GLSL_TYPE_FLOAT:
-         case GLSL_TYPE_FLOAT16:
-         case GLSL_TYPE_DOUBLE:
-            child_type = glsl_get_column_type(type);
-            break;
-         case GLSL_TYPE_ARRAY:
-            child_type = glsl_get_array_element(type);
-            break;
-         case GLSL_TYPE_STRUCT:
-         case GLSL_TYPE_INTERFACE:
-            child_type = glsl_get_struct_field(type, i);
-            break;
-         default:
-            vtn_fail("unkown base type");
+      if (glsl_type_is_array_or_matrix(type)) {
+         const struct glsl_type *elem_type = glsl_get_array_element(type);
+         for (unsigned i = 0; i < elems; i++)
+            val->elems[i] = vtn_create_ssa_value(b, elem_type);
+      } else {
+         vtn_assert(glsl_type_is_struct_or_ifc(type));
+         for (unsigned i = 0; i < elems; i++) {
+            const struct glsl_type *elem_type = glsl_get_struct_field(type, i);
+            val->elems[i] = vtn_create_ssa_value(b, elem_type);
          }
-
-         val->elems[i] = vtn_create_ssa_value(b, child_type);
       }
    }
 
