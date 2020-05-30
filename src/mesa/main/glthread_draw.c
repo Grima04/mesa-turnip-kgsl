@@ -113,20 +113,111 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
                 struct glthread_attrib_binding *buffers)
 {
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned attrib_mask_iter = user_buffer_mask;
+   unsigned attrib_mask_iter = vao->Enabled;
    unsigned num_buffers = 0;
 
    assert((num_vertices || !(user_buffer_mask & ~vao->NonZeroDivisorMask)) &&
           (num_instances || !(user_buffer_mask & vao->NonZeroDivisorMask)));
 
+   if (unlikely(vao->BufferInterleaved & user_buffer_mask)) {
+      /* Slower upload path where some buffers reference multiple attribs,
+       * so we have to use 2 while loops instead of 1.
+       */
+      unsigned start_offset[VERT_ATTRIB_MAX];
+      unsigned end_offset[VERT_ATTRIB_MAX];
+      uint32_t buffer_mask = 0;
+
+      while (attrib_mask_iter) {
+         unsigned i = u_bit_scan(&attrib_mask_iter);
+         unsigned binding_index = vao->Attrib[i].BufferIndex;
+
+         if (!(user_buffer_mask & (1 << binding_index)))
+            continue;
+
+         unsigned stride = vao->Attrib[binding_index].Stride;
+         unsigned instance_div = vao->Attrib[binding_index].Divisor;
+         unsigned element_size = vao->Attrib[i].ElementSize;
+         unsigned offset = vao->Attrib[i].RelativeOffset;
+         unsigned size;
+
+         if (instance_div) {
+            /* Per-instance attrib. */
+
+            /* Figure out how many instances we'll render given instance_div.  We
+             * can't use the typical div_round_up() pattern because the CTS uses
+             * instance_div = ~0 for a test, which overflows div_round_up()'s
+             * addition.
+             */
+            unsigned count = num_instances / instance_div;
+            if (count * instance_div != num_instances)
+               count++;
+
+            offset += stride * start_instance;
+            size = stride * (count - 1) + element_size;
+         } else {
+            /* Per-vertex attrib. */
+            offset += stride * start_vertex;
+            size = stride * (num_vertices - 1) + element_size;
+         }
+
+         unsigned binding_index_bit = 1u << binding_index;
+
+         /* Update upload offsets. */
+         if (!(buffer_mask & binding_index_bit)) {
+            start_offset[binding_index] = offset;
+            end_offset[binding_index] = offset + size;
+         } else {
+            if (offset < start_offset[binding_index])
+               start_offset[binding_index] = offset;
+            if (offset + size > end_offset[binding_index])
+               end_offset[binding_index] = offset + size;
+         }
+
+         buffer_mask |= binding_index_bit;
+      }
+
+      /* Upload buffers. */
+      while (buffer_mask) {
+         struct gl_buffer_object *upload_buffer = NULL;
+         unsigned upload_offset = 0;
+         unsigned start, end;
+
+         unsigned binding_index = u_bit_scan(&buffer_mask);
+
+         start = start_offset[binding_index];
+         end = end_offset[binding_index];
+         assert(start < end);
+
+         const void *ptr = vao->Attrib[binding_index].Pointer;
+         _mesa_glthread_upload(ctx, (uint8_t*)ptr + start,
+                               end - start, &upload_offset,
+                               &upload_buffer, NULL);
+         assert(upload_buffer);
+
+         buffers[num_buffers].buffer = upload_buffer;
+         buffers[num_buffers].offset = upload_offset - start;
+         buffers[num_buffers].original_pointer = ptr;
+         num_buffers++;
+      }
+
+      return true;
+   }
+
+   /* Faster path where all attribs are separate. */
    while (attrib_mask_iter) {
       unsigned i = u_bit_scan(&attrib_mask_iter);
+      unsigned binding_index = vao->Attrib[i].BufferIndex;
+
+      if (!(user_buffer_mask & (1 << binding_index)))
+         continue;
+
       struct gl_buffer_object *upload_buffer = NULL;
       unsigned upload_offset = 0;
-      unsigned stride = vao->Attrib[i].Stride;
-      unsigned instance_div = vao->Attrib[i].Divisor;
+      unsigned stride = vao->Attrib[binding_index].Stride;
+      unsigned instance_div = vao->Attrib[binding_index].Divisor;
       unsigned element_size = vao->Attrib[i].ElementSize;
-      unsigned offset, size;
+      unsigned offset = vao->Attrib[i].RelativeOffset;
+      unsigned size;
 
       if (instance_div) {
          /* Per-instance attrib. */
@@ -140,15 +231,15 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
          if (count * instance_div != num_instances)
             count++;
 
-         offset = stride * start_instance;
+         offset += stride * start_instance;
          size = stride * (count - 1) + element_size;
       } else {
          /* Per-vertex attrib. */
-         offset = stride * start_vertex;
+         offset += stride * start_vertex;
          size = stride * (num_vertices - 1) + element_size;
       }
 
-      const void *ptr = vao->Attrib[i].Pointer;
+      const void *ptr = vao->Attrib[binding_index].Pointer;
       _mesa_glthread_upload(ctx, (uint8_t*)ptr + offset,
                             size, &upload_offset, &upload_buffer, NULL);
       assert(upload_buffer);
@@ -158,6 +249,7 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
       buffers[num_buffers].original_pointer = ptr;
       num_buffers++;
    }
+
    return true;
 }
 
@@ -233,7 +325,7 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
    GET_CURRENT_CONTEXT(ctx);
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask = vao->UserPointerMask & vao->Enabled;
+   unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
 
    if (compiled_into_dlist && ctx->GLThread.inside_dlist) {
       _mesa_glthread_finish_before(ctx, "DrawArrays");
@@ -347,7 +439,7 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
    GET_CURRENT_CONTEXT(ctx);
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask = vao->UserPointerMask & vao->Enabled;
+   unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
 
    if (ctx->GLThread.inside_dlist)
       goto sync;
@@ -511,7 +603,7 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
    GET_CURRENT_CONTEXT(ctx);
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask = vao->UserPointerMask & vao->Enabled;
+   unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
    bool has_user_indices = vao->CurrentElementBufferName == 0;
 
    if (compiled_into_dlist && ctx->GLThread.inside_dlist)
@@ -724,7 +816,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    GET_CURRENT_CONTEXT(ctx);
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask = vao->UserPointerMask & vao->Enabled;
+   unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
    bool has_user_indices = vao->CurrentElementBufferName == 0;
 
    if (ctx->GLThread.inside_dlist)
