@@ -945,6 +945,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0830" name="CP_SQE_INSTR_BASE_LO"/>
 	<reg32 offset="0x0831" name="CP_SQE_INSTR_BASE_HI"/>
 	<reg32 offset="0x0840" name="CP_MISC_CNTL"/>
+	<reg32 offset="0x0844" name="CP_APRIV_CNTL"/>
 	<!-- all the threshold values seem to be in units of quad-dwords: -->
 	<reg32 offset="0x08C1" name="CP_ROQ_THRESHOLDS_1">
 		<doc>
@@ -1390,6 +1391,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xF803" name="RBBM_SECVID_TSB_CNTL"/>
 	<reg32 offset="0xF810" name="RBBM_SECVID_TSB_ADDR_MODE_CNTL"/>
 	<reg32 offset="0x00010" name="RBBM_VBIF_CLIENT_QOS_CNTL"/>
+	<reg32 offset="0x00011" name="RBBM_GBIF_CLIENT_QOS_CNTL"/>
 	<reg32 offset="0x0001f" name="RBBM_INTERFACE_HANG_INT_CNTL"/>
 	<reg32 offset="0x00037" name="RBBM_INT_CLEAR_CMD"/>
 	<reg32 offset="0x00038" name="RBBM_INT_0_MASK"/>
@@ -1677,6 +1679,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xAE27" name="SP_PERFCTR_SP_SEL_23"/>
 	<reg32 offset="0xB601" name="TPL1_ADDR_MODE_CNTL"/>
 	<reg32 offset="0xB604" name="TPL1_NC_MODE_CNTL"/>
+	<reg32 offset="0xB608" name="TPL1_BICUBIC_WEIGHTS_TABLE_0"/>
+	<reg32 offset="0xB609" name="TPL1_BICUBIC_WEIGHTS_TABLE_1"/>
+	<reg32 offset="0xB60A" name="TPL1_BICUBIC_WEIGHTS_TABLE_2"/>
+	<reg32 offset="0xB60B" name="TPL1_BICUBIC_WEIGHTS_TABLE_3"/>
+	<reg32 offset="0xB60C" name="TPL1_BICUBIC_WEIGHTS_TABLE_4"/>
 	<reg32 offset="0xB610" name="TPL1_PERFCTR_TP_SEL_0"/>
 	<reg32 offset="0xB611" name="TPL1_PERFCTR_TP_SEL_1"/>
 	<reg32 offset="0xB612" name="TPL1_PERFCTR_TP_SEL_2"/>
@@ -2468,7 +2475,7 @@ to upconvert to 32b float internally?
 			SYSMEM path values:
 			a618: 0x10000 a630/a640: 0x20000 a650: 0x30000
 		-->
-		<bitfield name="OFFSET" low="23" high="31" shr="12" type="uint"/>
+		<bitfield name="OFFSET" low="23" high="31" shr="12" type="hex"/>
 		<bitfield name="GMEM" pos="22" type="boolean"/> <!-- set for GMEM path -->
 		<bitfield name="UNK2" pos="2" type="boolean"/> <!-- sometimes set with GMEM? -->
 	</reg32>
