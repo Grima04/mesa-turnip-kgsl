@@ -479,6 +479,7 @@ typedef enum {
 
         /* Old version of midgard_op_ld_color_buffer_as_fp16, for T720 */
         midgard_op_ld_color_buffer_as_fp16_old = 0x9D,
+        midgard_op_ld_color_buffer_32u_old = 0x9E,
 
         /* The distinction between these ops is the alignment requirement /
          * accompanying shift. Thus, the offset to ld_ubo_int4 is in 16-byte

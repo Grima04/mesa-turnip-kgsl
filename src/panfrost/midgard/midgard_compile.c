@@ -1581,15 +1581,19 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 midgard_op_ld_color_buffer_as_fp16_old :
                                 midgard_op_ld_color_buffer_as_fp16;
 
-                        if (old_blend) {
-                                ld.load_store.address = 1;
-                                ld.load_store.arg_2 = 0x1E;
-                        }
-
                         for (unsigned c = 4; c < 16; ++c)
                                 ld.swizzle[0][c] = 0;
 
                         ld.dest_type = nir_type_float16;
+
+                        if (old_blend) {
+                                ld.load_store.address = 1;
+                                ld.load_store.arg_2 = 0x1E;
+                        }
+                } else if (old_blend) {
+                        ld.load_store.op = midgard_op_ld_color_buffer_32u_old;
+                        ld.load_store.address = 16;
+                        ld.load_store.arg_2 = 0x1E;
                 }
 
                 emit_mir_instruction(ctx, ld);
