@@ -1578,8 +1578,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 if (instr->intrinsic == nir_intrinsic_load_output_u8_as_fp16_pan) {
                         ld.load_store.op = old_blend ?
-                                midgard_op_ld_color_buffer_u8_as_fp16_old :
-                                midgard_op_ld_color_buffer_u8_as_fp16;
+                                midgard_op_ld_color_buffer_as_fp16_old :
+                                midgard_op_ld_color_buffer_as_fp16;
 
                         if (old_blend) {
                                 ld.load_store.address = 1;
