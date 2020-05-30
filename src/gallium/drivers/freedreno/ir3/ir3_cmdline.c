@@ -243,7 +243,6 @@ load_spirv(const char *filename, const char *entry, gl_shader_stage stage)
 			.int64 = true,
 			.variable_pointers = true,
 		},
-		.lower_ubo_ssbo_access_to_offsets = true,
 		.debug = {
 			.func = debug_func,
 		}

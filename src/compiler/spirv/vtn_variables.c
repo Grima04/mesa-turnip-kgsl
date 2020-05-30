@@ -175,15 +175,6 @@ vtn_access_chain_create(struct vtn_builder *b, unsigned length)
    return chain;
 }
 
-bool
-vtn_mode_uses_ssa_offset(struct vtn_builder *b,
-                         enum vtn_variable_mode mode)
-{
-   return (mode == vtn_variable_mode_ubo ||
-           mode == vtn_variable_mode_ssbo) &&
-          b->options->lower_ubo_ssbo_access_to_offsets;
-}
-
 static bool
 vtn_mode_is_cross_invocation(struct vtn_builder *b,
                              enum vtn_variable_mode mode)
@@ -257,13 +248,10 @@ vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
                "Invalid mode for vulkan_resource_index");
 
    nir_address_format addr_format = vtn_mode_to_address_format(b, var->mode);
-   const struct glsl_type *index_type =
-      b->options->lower_ubo_ssbo_access_to_offsets ?
-      glsl_uint_type() : nir_address_format_to_glsl_type(addr_format);
-
-   instr->num_components = glsl_get_vector_elements(index_type);
-   nir_ssa_dest_init(&instr->instr, &instr->dest, instr->num_components,
-                     glsl_get_bit_size(index_type), NULL);
+   nir_ssa_dest_init(&instr->instr, &instr->dest,
+                     nir_address_format_num_components(addr_format),
+                     nir_address_format_bit_size(addr_format), NULL);
+   instr->num_components = instr->dest.ssa.num_components;
    nir_builder_instr_insert(&b->nb, &instr->instr);
 
    return &instr->dest.ssa;
@@ -286,13 +274,10 @@ vtn_resource_reindex(struct vtn_builder *b, enum vtn_variable_mode mode,
                "Invalid mode for vulkan_resource_reindex");
 
    nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
-   const struct glsl_type *index_type =
-      b->options->lower_ubo_ssbo_access_to_offsets ?
-      glsl_uint_type() : nir_address_format_to_glsl_type(addr_format);
-
-   instr->num_components = glsl_get_vector_elements(index_type);
-   nir_ssa_dest_init(&instr->instr, &instr->dest, instr->num_components,
-                     glsl_get_bit_size(index_type), NULL);
+   nir_ssa_dest_init(&instr->instr, &instr->dest,
+                     nir_address_format_num_components(addr_format),
+                     nir_address_format_bit_size(addr_format), NULL);
+   instr->num_components = instr->dest.ssa.num_components;
    nir_builder_instr_insert(&b->nb, &instr->instr);
 
    return &instr->dest.ssa;
@@ -314,23 +299,19 @@ vtn_descriptor_load(struct vtn_builder *b, enum vtn_variable_mode mode,
                "Invalid mode for load_vulkan_descriptor");
 
    nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
-   const struct glsl_type *ptr_type =
-      nir_address_format_to_glsl_type(addr_format);
-
-   desc_load->num_components = glsl_get_vector_elements(ptr_type);
    nir_ssa_dest_init(&desc_load->instr, &desc_load->dest,
-                     desc_load->num_components,
-                     glsl_get_bit_size(ptr_type), NULL);
+                     nir_address_format_num_components(addr_format),
+                     nir_address_format_bit_size(addr_format), NULL);
+   desc_load->num_components = desc_load->dest.ssa.num_components;
    nir_builder_instr_insert(&b->nb, &desc_load->instr);
 
    return &desc_load->dest.ssa;
 }
 
-/* Dereference the given base pointer by the access chain */
 static struct vtn_pointer *
-vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
-                                  struct vtn_pointer *base,
-                                  struct vtn_access_chain *deref_chain)
+vtn_pointer_dereference(struct vtn_builder *b,
+                        struct vtn_pointer *base,
+                        struct vtn_access_chain *deref_chain)
 {
    struct vtn_type *type = base->type;
    enum gl_access_qualifier access = base->access | deref_chain->access;
@@ -485,182 +466,14 @@ vtn_nir_deref_pointer_dereference(struct vtn_builder *b,
    return ptr;
 }
 
-static struct vtn_pointer *
-vtn_ssa_offset_pointer_dereference(struct vtn_builder *b,
-                                   struct vtn_pointer *base,
-                                   struct vtn_access_chain *deref_chain)
-{
-   nir_ssa_def *block_index = base->block_index;
-   nir_ssa_def *offset = base->offset;
-   struct vtn_type *type = base->type;
-   enum gl_access_qualifier access = base->access;
-
-   unsigned idx = 0;
-   if (base->mode == vtn_variable_mode_ubo ||
-       base->mode == vtn_variable_mode_ssbo) {
-      if (!block_index) {
-         vtn_assert(base->var && base->type);
-         nir_ssa_def *desc_arr_idx;
-         if (glsl_type_is_array(type->type)) {
-            if (deref_chain->length >= 1) {
-               desc_arr_idx =
-                  vtn_access_link_as_ssa(b, deref_chain->link[0], 1, 32);
-               idx++;
-               /* This consumes a level of type */
-               type = type->array_element;
-               access |= type->access;
-            } else {
-               /* This is annoying.  We've been asked for a pointer to the
-                * array of UBOs/SSBOs and not a specifc buffer.  Return a
-                * pointer with a descriptor index of 0 and we'll have to do
-                * a reindex later to adjust it to the right thing.
-                */
-               desc_arr_idx = nir_imm_int(&b->nb, 0);
-            }
-         } else if (deref_chain->ptr_as_array) {
-            /* You can't have a zero-length OpPtrAccessChain */
-            vtn_assert(deref_chain->length >= 1);
-            desc_arr_idx = vtn_access_link_as_ssa(b, deref_chain->link[0], 1, 32);
-         } else {
-            /* We have a regular non-array SSBO. */
-            desc_arr_idx = NULL;
-         }
-         block_index = vtn_variable_resource_index(b, base->var, desc_arr_idx);
-      } else if (deref_chain->ptr_as_array &&
-                 type->base_type == vtn_base_type_struct && type->block) {
-         /* We are doing an OpPtrAccessChain on a pointer to a struct that is
-          * decorated block.  This is an interesting corner in the SPIR-V
-          * spec.  One interpretation would be that they client is clearly
-          * trying to treat that block as if it's an implicit array of blocks
-          * repeated in the buffer.  However, the SPIR-V spec for the
-          * OpPtrAccessChain says:
-          *
-          *    "Base is treated as the address of the first element of an
-          *    array, and the Element element’s address is computed to be the
-          *    base for the Indexes, as per OpAccessChain."
-          *
-          * Taken literally, that would mean that your struct type is supposed
-          * to be treated as an array of such a struct and, since it's
-          * decorated block, that means an array of blocks which corresponds
-          * to an array descriptor.  Therefore, we need to do a reindex
-          * operation to add the index from the first link in the access chain
-          * to the index we recieved.
-          *
-          * The downside to this interpretation (there always is one) is that
-          * this might be somewhat surprising behavior to apps if they expect
-          * the implicit array behavior described above.
-          */
-         vtn_assert(deref_chain->length >= 1);
-         nir_ssa_def *offset_index =
-            vtn_access_link_as_ssa(b, deref_chain->link[0], 1, 32);
-         idx++;
-
-         block_index = vtn_resource_reindex(b, base->mode,
-                                            block_index, offset_index);
-      }
-   }
-
-   if (!offset) {
-      if (base->mode == vtn_variable_mode_push_constant) {
-         /* Push constants neither need nor have a block index */
-         vtn_assert(!block_index);
-
-         /* Start off with at the start of the push constant block. */
-         offset = nir_imm_int(&b->nb, 0);
-      } else {
-         /* The code above should have ensured a block_index when needed. */
-         vtn_assert(block_index);
-
-         /* Start off with at the start of the buffer. */
-         offset = nir_imm_int(&b->nb, 0);
-      }
-   }
-
-   if (deref_chain->ptr_as_array && idx == 0) {
-      /* We need ptr_type for the stride */
-      vtn_assert(base->ptr_type);
-
-      /* We need at least one element in the chain */
-      vtn_assert(deref_chain->length >= 1);
-
-      nir_ssa_def *elem_offset =
-         vtn_access_link_as_ssa(b, deref_chain->link[idx],
-                                base->ptr_type->stride, offset->bit_size);
-      offset = nir_iadd(&b->nb, offset, elem_offset);
-      idx++;
-   }
-
-   for (; idx < deref_chain->length; idx++) {
-      switch (glsl_get_base_type(type->type)) {
-      case GLSL_TYPE_UINT:
-      case GLSL_TYPE_INT:
-      case GLSL_TYPE_UINT16:
-      case GLSL_TYPE_INT16:
-      case GLSL_TYPE_UINT8:
-      case GLSL_TYPE_INT8:
-      case GLSL_TYPE_UINT64:
-      case GLSL_TYPE_INT64:
-      case GLSL_TYPE_FLOAT:
-      case GLSL_TYPE_FLOAT16:
-      case GLSL_TYPE_DOUBLE:
-      case GLSL_TYPE_BOOL:
-      case GLSL_TYPE_ARRAY: {
-         nir_ssa_def *elem_offset =
-            vtn_access_link_as_ssa(b, deref_chain->link[idx],
-                                   type->stride, offset->bit_size);
-         offset = nir_iadd(&b->nb, offset, elem_offset);
-         type = type->array_element;
-         access |= type->access;
-         break;
-      }
-
-      case GLSL_TYPE_INTERFACE:
-      case GLSL_TYPE_STRUCT: {
-         vtn_assert(deref_chain->link[idx].mode == vtn_access_mode_literal);
-         unsigned member = deref_chain->link[idx].id;
-         offset = nir_iadd_imm(&b->nb, offset, type->offsets[member]);
-         type = type->members[member];
-         access |= type->access;
-         break;
-      }
-
-      default:
-         vtn_fail("Invalid type for deref");
-      }
-   }
-
-   struct vtn_pointer *ptr = rzalloc(b, struct vtn_pointer);
-   ptr->mode = base->mode;
-   ptr->type = type;
-   ptr->block_index = block_index;
-   ptr->offset = offset;
-   ptr->access = access;
-
-   return ptr;
-}
-
-/* Dereference the given base pointer by the access chain */
-static struct vtn_pointer *
-vtn_pointer_dereference(struct vtn_builder *b,
-                        struct vtn_pointer *base,
-                        struct vtn_access_chain *deref_chain)
-{
-   if (vtn_pointer_uses_ssa_offset(b, base)) {
-      return vtn_ssa_offset_pointer_dereference(b, base, deref_chain);
-   } else {
-      return vtn_nir_deref_pointer_dereference(b, base, deref_chain);
-   }
-}
-
 nir_deref_instr *
 vtn_pointer_to_deref(struct vtn_builder *b, struct vtn_pointer *ptr)
 {
-   vtn_assert(!vtn_pointer_uses_ssa_offset(b, ptr));
    if (!ptr->deref) {
       struct vtn_access_chain chain = {
          .length = 0,
       };
-      ptr = vtn_nir_deref_pointer_dereference(b, ptr, &chain);
+      ptr = vtn_pointer_dereference(b, ptr, &chain);
    }
 
    return ptr->deref;
@@ -754,281 +567,6 @@ vtn_local_store(struct vtn_builder *b, struct vtn_ssa_value *src,
    } else {
       _vtn_local_load_store(b, false, dest_tail, src, access);
    }
-}
-
-nir_ssa_def *
-vtn_pointer_to_offset(struct vtn_builder *b, struct vtn_pointer *ptr,
-                      nir_ssa_def **index_out)
-{
-   assert(vtn_pointer_uses_ssa_offset(b, ptr));
-   if (!ptr->offset) {
-      struct vtn_access_chain chain = {
-         .length = 0,
-      };
-      ptr = vtn_ssa_offset_pointer_dereference(b, ptr, &chain);
-   }
-   *index_out = ptr->block_index;
-   return ptr->offset;
-}
-
-static void
-_vtn_load_store_tail(struct vtn_builder *b, nir_intrinsic_op op, bool load,
-                     nir_ssa_def *index, nir_ssa_def *offset,
-                     unsigned access_offset, unsigned access_size,
-                     struct vtn_ssa_value **inout, const struct glsl_type *type,
-                     enum gl_access_qualifier access)
-{
-   nir_intrinsic_instr *instr = nir_intrinsic_instr_create(b->nb.shader, op);
-   instr->num_components = glsl_get_vector_elements(type);
-
-   /* Booleans usually shouldn't show up in external memory in SPIR-V.
-    * However, they do for certain older GLSLang versions and can for shared
-    * memory when we lower access chains internally.
-    */
-   const unsigned data_bit_size = glsl_type_is_boolean(type) ? 32 :
-                                  glsl_get_bit_size(type);
-
-   int src = 0;
-   if (!load) {
-      nir_intrinsic_set_write_mask(instr, (1 << instr->num_components) - 1);
-      instr->src[src++] = nir_src_for_ssa((*inout)->def);
-   }
-
-   if (op == nir_intrinsic_load_push_constant) {
-      nir_intrinsic_set_base(instr, access_offset);
-      nir_intrinsic_set_range(instr, access_size);
-   } else if (op == nir_intrinsic_load_ubo) {
-      nir_intrinsic_set_range_base(instr, 0);
-      nir_intrinsic_set_range(instr, ~0);
-   }
-
-   if (op == nir_intrinsic_load_ubo ||
-       op == nir_intrinsic_load_ssbo ||
-       op == nir_intrinsic_store_ssbo) {
-      nir_intrinsic_set_access(instr, access);
-   }
-
-   /* With extensions like relaxed_block_layout, we really can't guarantee
-    * much more than scalar alignment.
-    */
-   if (op != nir_intrinsic_load_push_constant)
-      nir_intrinsic_set_align(instr, data_bit_size / 8, 0);
-
-   if (index)
-      instr->src[src++] = nir_src_for_ssa(index);
-
-   if (op == nir_intrinsic_load_push_constant) {
-      /* We need to subtract the offset from where the intrinsic will load the
-       * data. */
-      instr->src[src++] =
-         nir_src_for_ssa(nir_isub(&b->nb, offset,
-                                  nir_imm_int(&b->nb, access_offset)));
-   } else {
-      instr->src[src++] = nir_src_for_ssa(offset);
-   }
-
-   if (load) {
-      nir_ssa_dest_init(&instr->instr, &instr->dest,
-                        instr->num_components, data_bit_size, NULL);
-      (*inout)->def = &instr->dest.ssa;
-   }
-
-   nir_builder_instr_insert(&b->nb, &instr->instr);
-
-   if (load && glsl_get_base_type(type) == GLSL_TYPE_BOOL)
-      (*inout)->def = nir_ine(&b->nb, (*inout)->def, nir_imm_int(&b->nb, 0));
-}
-
-static void
-_vtn_block_load_store(struct vtn_builder *b, nir_intrinsic_op op, bool load,
-                      nir_ssa_def *index, nir_ssa_def *offset,
-                      unsigned access_offset, unsigned access_size,
-                      struct vtn_type *type, enum gl_access_qualifier access,
-                      struct vtn_ssa_value **inout)
-{
-   enum glsl_base_type base_type = glsl_get_base_type(type->type);
-   switch (base_type) {
-   case GLSL_TYPE_UINT:
-   case GLSL_TYPE_INT:
-   case GLSL_TYPE_UINT16:
-   case GLSL_TYPE_INT16:
-   case GLSL_TYPE_UINT8:
-   case GLSL_TYPE_INT8:
-   case GLSL_TYPE_UINT64:
-   case GLSL_TYPE_INT64:
-   case GLSL_TYPE_FLOAT:
-   case GLSL_TYPE_FLOAT16:
-   case GLSL_TYPE_DOUBLE:
-   case GLSL_TYPE_BOOL:
-      /* This is where things get interesting.  At this point, we've hit
-       * a vector, a scalar, or a matrix.
-       */
-      if (glsl_type_is_matrix(type->type)) {
-         /* Loading the whole matrix */
-         struct vtn_ssa_value *transpose;
-         unsigned num_ops, vec_width, col_stride;
-         if (type->row_major) {
-            num_ops = glsl_get_vector_elements(type->type);
-            vec_width = glsl_get_matrix_columns(type->type);
-            col_stride = type->array_element->stride;
-            if (load) {
-               const struct glsl_type *transpose_type =
-                  glsl_matrix_type(base_type, vec_width, num_ops);
-               *inout = vtn_create_ssa_value(b, transpose_type);
-            } else {
-               transpose = vtn_ssa_transpose(b, *inout);
-               inout = &transpose;
-            }
-         } else {
-            num_ops = glsl_get_matrix_columns(type->type);
-            vec_width = glsl_get_vector_elements(type->type);
-            col_stride = type->stride;
-         }
-
-         for (unsigned i = 0; i < num_ops; i++) {
-            nir_ssa_def *elem_offset =
-               nir_iadd_imm(&b->nb, offset, i * col_stride);
-            _vtn_load_store_tail(b, op, load, index, elem_offset,
-                                 access_offset, access_size,
-                                 &(*inout)->elems[i],
-                                 glsl_vector_type(base_type, vec_width),
-                                 type->access | access);
-         }
-
-         if (load && type->row_major)
-            *inout = vtn_ssa_transpose(b, *inout);
-      } else {
-         unsigned elems = glsl_get_vector_elements(type->type);
-         unsigned type_size = glsl_get_bit_size(type->type) / 8;
-         if (elems == 1 || type->stride == type_size) {
-            /* This is a tightly-packed normal scalar or vector load */
-            vtn_assert(glsl_type_is_vector_or_scalar(type->type));
-            _vtn_load_store_tail(b, op, load, index, offset,
-                                 access_offset, access_size,
-                                 inout, type->type,
-                                 type->access | access);
-         } else {
-            /* This is a strided load.  We have to load N things separately.
-             * This is the single column of a row-major matrix case.
-             */
-            vtn_assert(type->stride > type_size);
-            vtn_assert(type->stride % type_size == 0);
-
-            nir_ssa_def *per_comp[4];
-            for (unsigned i = 0; i < elems; i++) {
-               nir_ssa_def *elem_offset =
-                  nir_iadd_imm(&b->nb, offset, i * type->stride);
-               struct vtn_ssa_value *comp, temp_val;
-               if (!load) {
-                  temp_val.def = nir_channel(&b->nb, (*inout)->def, i);
-                  temp_val.type = glsl_scalar_type(base_type);
-               }
-               comp = &temp_val;
-               _vtn_load_store_tail(b, op, load, index, elem_offset,
-                                    access_offset, access_size,
-                                    &comp, glsl_scalar_type(base_type),
-                                    type->access | access);
-               per_comp[i] = comp->def;
-            }
-
-            if (load) {
-               if (*inout == NULL)
-                  *inout = vtn_create_ssa_value(b, type->type);
-               (*inout)->def = nir_vec(&b->nb, per_comp, elems);
-            }
-         }
-      }
-      return;
-
-   case GLSL_TYPE_ARRAY: {
-      unsigned elems = glsl_get_length(type->type);
-      for (unsigned i = 0; i < elems; i++) {
-         nir_ssa_def *elem_off =
-            nir_iadd_imm(&b->nb, offset, i * type->stride);
-         _vtn_block_load_store(b, op, load, index, elem_off,
-                               access_offset, access_size,
-                               type->array_element,
-                               type->array_element->access | access,
-                               &(*inout)->elems[i]);
-      }
-      return;
-   }
-
-   case GLSL_TYPE_INTERFACE:
-   case GLSL_TYPE_STRUCT: {
-      unsigned elems = glsl_get_length(type->type);
-      for (unsigned i = 0; i < elems; i++) {
-         nir_ssa_def *elem_off =
-            nir_iadd_imm(&b->nb, offset, type->offsets[i]);
-         _vtn_block_load_store(b, op, load, index, elem_off,
-                               access_offset, access_size,
-                               type->members[i],
-                               type->members[i]->access | access,
-                               &(*inout)->elems[i]);
-      }
-      return;
-   }
-
-   default:
-      vtn_fail("Invalid block member type");
-   }
-}
-
-static struct vtn_ssa_value *
-vtn_block_load(struct vtn_builder *b, struct vtn_pointer *src,
-               enum gl_access_qualifier access)
-{
-   nir_intrinsic_op op;
-   unsigned access_offset = 0, access_size = 0;
-   switch (src->mode) {
-   case vtn_variable_mode_ubo:
-      op = nir_intrinsic_load_ubo;
-      break;
-   case vtn_variable_mode_ssbo:
-      op = nir_intrinsic_load_ssbo;
-      break;
-   case vtn_variable_mode_push_constant:
-      op = nir_intrinsic_load_push_constant;
-      access_size = b->shader->num_uniforms;
-      break;
-   case vtn_variable_mode_workgroup:
-      op = nir_intrinsic_load_shared;
-      break;
-   default:
-      vtn_fail("Invalid block variable mode");
-   }
-
-   nir_ssa_def *offset, *index = NULL;
-   offset = vtn_pointer_to_offset(b, src, &index);
-
-   struct vtn_ssa_value *value = vtn_create_ssa_value(b, src->type->type);
-   _vtn_block_load_store(b, op, true, index, offset,
-                         access_offset, access_size,
-                         src->type, src->access | access, &value);
-   return value;
-}
-
-static void
-vtn_block_store(struct vtn_builder *b, struct vtn_ssa_value *src,
-                struct vtn_pointer *dst, enum gl_access_qualifier access)
-{
-   nir_intrinsic_op op;
-   switch (dst->mode) {
-   case vtn_variable_mode_ssbo:
-      op = nir_intrinsic_store_ssbo;
-      break;
-   case vtn_variable_mode_workgroup:
-      op = nir_intrinsic_store_shared;
-      break;
-   default:
-      vtn_fail("Invalid block variable mode");
-   }
-
-   nir_ssa_def *offset, *index = NULL;
-   offset = vtn_pointer_to_offset(b, dst, &index);
-
-   _vtn_block_load_store(b, op, false, index, offset,
-                         0, 0, dst->type, dst->access | access, &src);
 }
 
 static void
@@ -1129,26 +667,16 @@ struct vtn_ssa_value *
 vtn_variable_load(struct vtn_builder *b, struct vtn_pointer *src,
                   enum gl_access_qualifier access)
 {
-   if (vtn_pointer_uses_ssa_offset(b, src)) {
-      return vtn_block_load(b, src, access);
-   } else {
-      struct vtn_ssa_value *val = vtn_create_ssa_value(b, src->type->type);
-      _vtn_variable_load_store(b, true, src, src->access | access, &val);
-      return val;
-   }
+   struct vtn_ssa_value *val = vtn_create_ssa_value(b, src->type->type);
+   _vtn_variable_load_store(b, true, src, src->access | access, &val);
+   return val;
 }
 
 void
 vtn_variable_store(struct vtn_builder *b, struct vtn_ssa_value *src,
                    struct vtn_pointer *dest, enum gl_access_qualifier access)
 {
-   if (vtn_pointer_uses_ssa_offset(b, dest)) {
-      vtn_assert(dest->mode == vtn_variable_mode_ssbo ||
-                 dest->mode == vtn_variable_mode_workgroup);
-      vtn_block_store(b, src, dest, access);
-   } else {
-      _vtn_variable_load_store(b, false, dest, dest->access | access, &src);
-   }
+   _vtn_variable_load_store(b, false, dest, dest->access | access, &src);
 }
 
 static void
@@ -1911,64 +1439,36 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
 nir_ssa_def *
 vtn_pointer_to_ssa(struct vtn_builder *b, struct vtn_pointer *ptr)
 {
-   if (vtn_pointer_uses_ssa_offset(b, ptr)) {
-      /* This pointer needs to have a pointer type with actual storage */
-      vtn_assert(ptr->ptr_type);
-      vtn_assert(ptr->ptr_type->type);
-
-      if (!ptr->offset) {
-         /* If we don't have an offset then we must be a pointer to the variable
-          * itself.
+   if (vtn_pointer_is_external_block(b, ptr) &&
+       vtn_type_contains_block(b, ptr->type) &&
+       ptr->mode != vtn_variable_mode_phys_ssbo) {
+      /* In this case, we're looking for a block index and not an actual
+       * deref.
+       *
+       * For PhysicalStorageBuffer pointers, we don't have a block index
+       * at all because we get the pointer directly from the client.  This
+       * assumes that there will never be a SSBO binding variable using the
+       * PhysicalStorageBuffer storage class.  This assumption appears
+       * to be correct according to the Vulkan spec because the table,
+       * "Shader Resource and Storage Class Correspondence," the only the
+       * Uniform storage class with BufferBlock or the StorageBuffer
+       * storage class with Block can be used.
+       */
+      if (!ptr->block_index) {
+         /* If we don't have a block_index then we must be a pointer to the
+          * variable itself.
           */
-         vtn_assert(!ptr->offset && !ptr->block_index);
+         vtn_assert(!ptr->deref);
 
          struct vtn_access_chain chain = {
             .length = 0,
          };
-         ptr = vtn_ssa_offset_pointer_dereference(b, ptr, &chain);
+         ptr = vtn_pointer_dereference(b, ptr, &chain);
       }
 
-      vtn_assert(ptr->offset);
-      if (ptr->block_index) {
-         vtn_assert(ptr->mode == vtn_variable_mode_ubo ||
-                    ptr->mode == vtn_variable_mode_ssbo);
-         return nir_vec2(&b->nb, ptr->block_index, ptr->offset);
-      } else {
-         vtn_assert(ptr->mode == vtn_variable_mode_workgroup);
-         return ptr->offset;
-      }
+      return ptr->block_index;
    } else {
-      if (vtn_pointer_is_external_block(b, ptr) &&
-          vtn_type_contains_block(b, ptr->type) &&
-          ptr->mode != vtn_variable_mode_phys_ssbo) {
-         /* In this case, we're looking for a block index and not an actual
-          * deref.
-          *
-          * For PhysicalStorageBuffer pointers, we don't have a block index
-          * at all because we get the pointer directly from the client.  This
-          * assumes that there will never be a SSBO binding variable using the
-          * PhysicalStorageBuffer storage class.  This assumption appears
-          * to be correct according to the Vulkan spec because the table,
-          * "Shader Resource and Storage Class Correspondence," the only the
-          * Uniform storage class with BufferBlock or the StorageBuffer
-          * storage class with Block can be used.
-          */
-         if (!ptr->block_index) {
-            /* If we don't have a block_index then we must be a pointer to the
-             * variable itself.
-             */
-            vtn_assert(!ptr->deref);
-
-            struct vtn_access_chain chain = {
-               .length = 0,
-            };
-            ptr = vtn_nir_deref_pointer_dereference(b, ptr, &chain);
-         }
-
-         return ptr->block_index;
-      } else {
-         return &vtn_pointer_to_deref(b, ptr)->dest.ssa;
-      }
+      return &vtn_pointer_to_deref(b, ptr)->dest.ssa;
    }
 }
 
@@ -1988,51 +1488,36 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
    ptr->type = ptr_type->deref;
    ptr->ptr_type = ptr_type;
 
-   if (vtn_pointer_uses_ssa_offset(b, ptr)) {
-      /* This pointer type needs to have actual storage */
-      vtn_assert(ptr_type->type);
-      if (ptr->mode == vtn_variable_mode_ubo ||
-          ptr->mode == vtn_variable_mode_ssbo) {
-         vtn_assert(ssa->num_components == 2);
-         ptr->block_index = nir_channel(&b->nb, ssa, 0);
-         ptr->offset = nir_channel(&b->nb, ssa, 1);
-      } else {
-         vtn_assert(ssa->num_components == 1);
-         ptr->block_index = NULL;
-         ptr->offset = ssa;
-      }
+   const struct glsl_type *deref_type =
+      vtn_type_get_nir_type(b, ptr_type->deref, ptr->mode);
+   if (!vtn_pointer_is_external_block(b, ptr)) {
+      ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
+                                        deref_type, ptr_type->stride);
+   } else if (vtn_type_contains_block(b, ptr->type) &&
+              ptr->mode != vtn_variable_mode_phys_ssbo) {
+      /* This is a pointer to somewhere in an array of blocks, not a
+       * pointer to somewhere inside the block.  Set the block index
+       * instead of making a cast.
+       */
+      ptr->block_index = ssa;
    } else {
-      const struct glsl_type *deref_type =
-         vtn_type_get_nir_type(b, ptr_type->deref, ptr->mode);
-      if (!vtn_pointer_is_external_block(b, ptr)) {
-         ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
-                                           deref_type, ptr_type->stride);
-      } else if (vtn_type_contains_block(b, ptr->type) &&
-                 ptr->mode != vtn_variable_mode_phys_ssbo) {
-         /* This is a pointer to somewhere in an array of blocks, not a
-          * pointer to somewhere inside the block.  Set the block index
-          * instead of making a cast.
-          */
-         ptr->block_index = ssa;
-      } else {
-         /* This is a pointer to something internal or a pointer inside a
-          * block.  It's just a regular cast.
-          *
-          * For PhysicalStorageBuffer pointers, we don't have a block index
-          * at all because we get the pointer directly from the client.  This
-          * assumes that there will never be a SSBO binding variable using the
-          * PhysicalStorageBuffer storage class.  This assumption appears
-          * to be correct according to the Vulkan spec because the table,
-          * "Shader Resource and Storage Class Correspondence," the only the
-          * Uniform storage class with BufferBlock or the StorageBuffer
-          * storage class with Block can be used.
-          */
-         ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
-                                           deref_type, ptr_type->stride);
-         ptr->deref->dest.ssa.num_components =
-            glsl_get_vector_elements(ptr_type->type);
-         ptr->deref->dest.ssa.bit_size = glsl_get_bit_size(ptr_type->type);
-      }
+      /* This is a pointer to something internal or a pointer inside a
+       * block.  It's just a regular cast.
+       *
+       * For PhysicalStorageBuffer pointers, we don't have a block index
+       * at all because we get the pointer directly from the client.  This
+       * assumes that there will never be a SSBO binding variable using the
+       * PhysicalStorageBuffer storage class.  This assumption appears
+       * to be correct according to the Vulkan spec because the table,
+       * "Shader Resource and Storage Class Correspondence," the only the
+       * Uniform storage class with BufferBlock or the StorageBuffer
+       * storage class with Block can be used.
+       */
+      ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
+                                        deref_type, ptr_type->stride);
+      ptr->deref->dest.ssa.num_components =
+         glsl_get_vector_elements(ptr_type->type);
+      ptr->deref->dest.ssa.bit_size = glsl_get_bit_size(ptr_type->type);
    }
 
    return ptr;

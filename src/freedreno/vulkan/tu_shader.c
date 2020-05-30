@@ -39,7 +39,6 @@ tu_spirv_to_nir(struct tu_device *dev,
    /* TODO these are made-up */
    const struct spirv_to_nir_options spirv_options = {
       .frag_coord_is_sysval = true,
-      .lower_ubo_ssbo_access_to_offsets = false,
 
       .ubo_addr_format = nir_address_format_vec2_index_32bit_offset,
       .ssbo_addr_format = nir_address_format_vec2_index_32bit_offset,

@@ -56,9 +56,6 @@ enum nir_spirv_execution_environment {
 struct spirv_to_nir_options {
    enum nir_spirv_execution_environment environment;
 
-   /* Whether or not to lower all UBO/SSBO access to offsets up-front. */
-   bool lower_ubo_ssbo_access_to_offsets;
-
    /* Whether to make FragCoord to a system value, the same as
     * GLSLFragCoordIsSysVal in GLSL.
     */

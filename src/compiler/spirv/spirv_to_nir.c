@@ -3302,34 +3302,6 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 }
 
 static nir_intrinsic_op
-get_ssbo_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
-{
-   switch (opcode) {
-   case SpvOpAtomicLoad:         return nir_intrinsic_load_ssbo;
-   case SpvOpAtomicStore:        return nir_intrinsic_store_ssbo;
-#define OP(S, N) case SpvOp##S: return nir_intrinsic_ssbo_##N;
-   OP(AtomicExchange,            atomic_exchange)
-   OP(AtomicCompareExchange,     atomic_comp_swap)
-   OP(AtomicCompareExchangeWeak, atomic_comp_swap)
-   OP(AtomicIIncrement,          atomic_add)
-   OP(AtomicIDecrement,          atomic_add)
-   OP(AtomicIAdd,                atomic_add)
-   OP(AtomicISub,                atomic_add)
-   OP(AtomicSMin,                atomic_imin)
-   OP(AtomicUMin,                atomic_umin)
-   OP(AtomicSMax,                atomic_imax)
-   OP(AtomicUMax,                atomic_umax)
-   OP(AtomicAnd,                 atomic_and)
-   OP(AtomicOr,                  atomic_or)
-   OP(AtomicXor,                 atomic_xor)
-   OP(AtomicFAddEXT,             atomic_fadd)
-#undef OP
-   default:
-      vtn_fail_with_opcode("Invalid SSBO atomic", opcode);
-   }
-}
-
-static nir_intrinsic_op
 get_uniform_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
 {
    switch (opcode) {
@@ -3472,61 +3444,6 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       default:
          unreachable("Invalid SPIR-V atomic");
 
-      }
-   } else if (vtn_pointer_uses_ssa_offset(b, ptr)) {
-      nir_ssa_def *offset, *index;
-      offset = vtn_pointer_to_offset(b, ptr, &index);
-
-      assert(ptr->mode == vtn_variable_mode_ssbo);
-
-      nir_intrinsic_op op  = get_ssbo_nir_atomic_op(b, opcode);
-      atomic = nir_intrinsic_instr_create(b->nb.shader, op);
-
-      nir_intrinsic_set_access(atomic, access | ACCESS_COHERENT);
-
-      int src = 0;
-      switch (opcode) {
-      case SpvOpAtomicLoad:
-         atomic->num_components = glsl_get_vector_elements(ptr->type->type);
-         nir_intrinsic_set_align(atomic, 4, 0);
-         if (ptr->mode == vtn_variable_mode_ssbo)
-            atomic->src[src++] = nir_src_for_ssa(index);
-         atomic->src[src++] = nir_src_for_ssa(offset);
-         break;
-
-      case SpvOpAtomicStore:
-         atomic->num_components = glsl_get_vector_elements(ptr->type->type);
-         nir_intrinsic_set_write_mask(atomic, (1 << atomic->num_components) - 1);
-         nir_intrinsic_set_align(atomic, 4, 0);
-         atomic->src[src++] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[4]));
-         if (ptr->mode == vtn_variable_mode_ssbo)
-            atomic->src[src++] = nir_src_for_ssa(index);
-         atomic->src[src++] = nir_src_for_ssa(offset);
-         break;
-
-      case SpvOpAtomicExchange:
-      case SpvOpAtomicCompareExchange:
-      case SpvOpAtomicCompareExchangeWeak:
-      case SpvOpAtomicIIncrement:
-      case SpvOpAtomicIDecrement:
-      case SpvOpAtomicIAdd:
-      case SpvOpAtomicISub:
-      case SpvOpAtomicSMin:
-      case SpvOpAtomicUMin:
-      case SpvOpAtomicSMax:
-      case SpvOpAtomicUMax:
-      case SpvOpAtomicAnd:
-      case SpvOpAtomicOr:
-      case SpvOpAtomicXor:
-      case SpvOpAtomicFAddEXT:
-         if (ptr->mode == vtn_variable_mode_ssbo)
-            atomic->src[src++] = nir_src_for_ssa(index);
-         atomic->src[src++] = nir_src_for_ssa(offset);
-         fill_common_atomic_sources(b, opcode, w, &atomic->src[src]);
-         break;
-
-      default:
-         vtn_fail_with_opcode("Invalid SPIR-V atomic", opcode);
       }
    } else {
       nir_deref_instr *deref = vtn_pointer_to_deref(b, ptr);
