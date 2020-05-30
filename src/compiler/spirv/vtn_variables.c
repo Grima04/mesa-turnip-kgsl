@@ -872,9 +872,6 @@ _vtn_block_load_store(struct vtn_builder *b, nir_intrinsic_op op, bool load,
                       struct vtn_type *type, enum gl_access_qualifier access,
                       struct vtn_ssa_value **inout)
 {
-   if (load && *inout == NULL)
-      *inout = vtn_create_ssa_value(b, type->type);
-
    enum glsl_base_type base_type = glsl_get_base_type(type->type);
    switch (base_type) {
    case GLSL_TYPE_UINT:
@@ -1029,7 +1026,7 @@ vtn_block_load(struct vtn_builder *b, struct vtn_pointer *src)
    nir_ssa_def *offset, *index = NULL;
    offset = vtn_pointer_to_offset(b, src, &index);
 
-   struct vtn_ssa_value *value = NULL;
+   struct vtn_ssa_value *value = vtn_create_ssa_value(b, src->type->type);
    _vtn_block_load_store(b, op, true, index, offset,
                          access_offset, access_size,
                          src->type, src->access, &value);
@@ -1093,7 +1090,6 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
              * deref.
              */
             if (load) {
-               *inout = vtn_create_ssa_value(b, ptr->type->type);
                (*inout)->def = nir_load_deref_with_access(&b->nb, deref,
                                                           ptr->type->access | access);
             } else {
@@ -1115,13 +1111,6 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
    case GLSL_TYPE_ARRAY:
    case GLSL_TYPE_STRUCT: {
       unsigned elems = glsl_get_length(ptr->type->type);
-      if (load) {
-         vtn_assert(*inout == NULL);
-         *inout = rzalloc(b, struct vtn_ssa_value);
-         (*inout)->type = ptr->type->type;
-         (*inout)->elems = rzalloc_array(b, struct vtn_ssa_value *, elems);
-      }
-
       struct vtn_access_chain chain = {
          .length = 1,
          .link = {
@@ -1148,7 +1137,7 @@ vtn_variable_load(struct vtn_builder *b, struct vtn_pointer *src)
    if (vtn_pointer_uses_ssa_offset(b, src)) {
       return vtn_block_load(b, src);
    } else {
-      struct vtn_ssa_value *val = NULL;
+      struct vtn_ssa_value *val = vtn_create_ssa_value(b, src->type->type);
       _vtn_variable_load_store(b, true, src, src->access, &val);
       return val;
    }

@@ -3485,8 +3485,9 @@ vtn_composite_extract(struct vtn_builder *b, struct vtn_ssa_value *src,
           * vector to extract.
           */
 
-         struct vtn_ssa_value *ret = rzalloc(b, struct vtn_ssa_value);
-         ret->type = glsl_scalar_type(glsl_get_base_type(cur->type));
+         const struct glsl_type *scalar_type =
+            glsl_scalar_type(glsl_get_base_type(cur->type));
+         struct vtn_ssa_value *ret = vtn_create_ssa_value(b, scalar_type);
          ret->def = nir_channel(&b->nb, cur->def, indices[i]);
          return ret;
       } else {
