@@ -47,25 +47,67 @@ vtn_load_param_pointer(struct vtn_builder *b,
 }
 
 static unsigned
+glsl_type_count_function_params(const struct glsl_type *type)
+{
+   if (glsl_type_is_vector_or_scalar(type)) {
+      return 1;
+   } else if (glsl_type_is_array_or_matrix(type)) {
+      return glsl_get_length(type) *
+             glsl_type_count_function_params(glsl_get_array_element(type));
+   } else {
+      assert(glsl_type_is_struct_or_ifc(type));
+      unsigned count = 0;
+      unsigned elems = glsl_get_length(type);
+      for (unsigned i = 0; i < elems; i++) {
+         const struct glsl_type *elem_type = glsl_get_struct_field(type, i);
+         count += glsl_type_count_function_params(elem_type);
+      }
+      return count;
+   }
+}
+
+static unsigned
 vtn_type_count_function_params(struct vtn_type *type)
 {
    switch (type->base_type) {
+   case vtn_base_type_scalar:
+   case vtn_base_type_vector:
    case vtn_base_type_array:
    case vtn_base_type_matrix:
-      return type->length * vtn_type_count_function_params(type->array_element);
-
-   case vtn_base_type_struct: {
-      unsigned count = 0;
-      for (unsigned i = 0; i < type->length; i++)
-         count += vtn_type_count_function_params(type->members[i]);
-      return count;
-   }
+   case vtn_base_type_struct:
+   case vtn_base_type_pointer:
+      return glsl_type_count_function_params(type->type);
 
    case vtn_base_type_sampled_image:
       return 2;
 
    default:
       return 1;
+   }
+}
+
+static void
+glsl_type_add_to_function_params(const struct glsl_type *type,
+                                 nir_function *func,
+                                 unsigned *param_idx)
+{
+   if (glsl_type_is_vector_or_scalar(type)) {
+      func->params[(*param_idx)++] = (nir_parameter) {
+         .num_components = glsl_get_vector_elements(type),
+         .bit_size = glsl_get_bit_size(type),
+      };
+   } else if (glsl_type_is_array_or_matrix(type)) {
+      unsigned elems = glsl_get_length(type);
+      const struct glsl_type *elem_type = glsl_get_array_element(type);
+      for (unsigned i = 0; i < elems; i++)
+         glsl_type_add_to_function_params(elem_type,func, param_idx);
+   } else {
+      assert(glsl_type_is_struct_or_ifc(type));
+      unsigned elems = glsl_get_length(type);
+      for (unsigned i = 0; i < elems; i++) {
+         const struct glsl_type *elem_type = glsl_get_struct_field(type, i);
+         glsl_type_add_to_function_params(elem_type, func, param_idx);
+      }
    }
 }
 
@@ -80,15 +122,13 @@ vtn_type_add_to_function_params(struct vtn_type *type,
    };
 
    switch (type->base_type) {
+   case vtn_base_type_scalar:
+   case vtn_base_type_vector:
    case vtn_base_type_array:
    case vtn_base_type_matrix:
-      for (unsigned i = 0; i < type->length; i++)
-         vtn_type_add_to_function_params(type->array_element, func, param_idx);
-      break;
-
    case vtn_base_type_struct:
-      for (unsigned i = 0; i < type->length; i++)
-         vtn_type_add_to_function_params(type->members[i], func, param_idx);
+   case vtn_base_type_pointer:
+      glsl_type_add_to_function_params(type->type, func, param_idx);
       break;
 
    case vtn_base_type_sampled_image:
@@ -101,77 +141,39 @@ vtn_type_add_to_function_params(struct vtn_type *type,
       func->params[(*param_idx)++] = nir_deref_param;
       break;
 
-   case vtn_base_type_pointer:
-      func->params[(*param_idx)++] = (nir_parameter) {
-         .num_components = glsl_get_vector_elements(type->type),
-         .bit_size = glsl_get_bit_size(type->type),
-      };
-      break;
-
    default:
-      func->params[(*param_idx)++] = (nir_parameter) {
-         .num_components = glsl_get_vector_elements(type->type),
-         .bit_size = glsl_get_bit_size(type->type),
-      };
+      unreachable("Unsupported type");
    }
 }
 
 static void
 vtn_ssa_value_add_to_call_params(struct vtn_builder *b,
                                  struct vtn_ssa_value *value,
-                                 struct vtn_type *type,
                                  nir_call_instr *call,
                                  unsigned *param_idx)
 {
-   switch (type->base_type) {
-   case vtn_base_type_array:
-   case vtn_base_type_matrix:
-      for (unsigned i = 0; i < type->length; i++) {
-         vtn_ssa_value_add_to_call_params(b, value->elems[i],
-                                          type->array_element,
-                                          call, param_idx);
-      }
-      break;
-
-   case vtn_base_type_struct:
-      for (unsigned i = 0; i < type->length; i++) {
-         vtn_ssa_value_add_to_call_params(b, value->elems[i],
-                                          type->members[i],
-                                          call, param_idx);
-      }
-      break;
-
-   default:
+   if (glsl_type_is_vector_or_scalar(value->type)) {
       call->params[(*param_idx)++] = nir_src_for_ssa(value->def);
-      break;
+   } else {
+      unsigned elems = glsl_get_length(value->type);
+      for (unsigned i = 0; i < elems; i++) {
+         vtn_ssa_value_add_to_call_params(b, value->elems[i],
+                                          call, param_idx);
+      }
    }
 }
 
 static void
 vtn_ssa_value_load_function_param(struct vtn_builder *b,
                                   struct vtn_ssa_value *value,
-                                  struct vtn_type *type,
                                   unsigned *param_idx)
 {
-   switch (type->base_type) {
-   case vtn_base_type_array:
-   case vtn_base_type_matrix:
-      for (unsigned i = 0; i < type->length; i++) {
-         vtn_ssa_value_load_function_param(b, value->elems[i],
-                                           type->array_element, param_idx);
-      }
-      break;
-
-   case vtn_base_type_struct:
-      for (unsigned i = 0; i < type->length; i++) {
-         vtn_ssa_value_load_function_param(b, value->elems[i],
-                                           type->members[i], param_idx);
-      }
-      break;
-
-   default:
+   if (glsl_type_is_vector_or_scalar(value->type)) {
       value->def = nir_load_param(&b->nb, (*param_idx)++);
-      break;
+   } else {
+      unsigned elems = glsl_get_length(value->type);
+      for (unsigned i = 0; i < elems; i++)
+         vtn_ssa_value_load_function_param(b, value->elems[i], param_idx);
    }
 }
 
@@ -212,16 +214,16 @@ vtn_handle_function_call(struct vtn_builder *b, SpvOp opcode,
             nir_src_for_ssa(vtn_pointer_to_ssa(b, sampled_image->image));
          call->params[param_idx++] =
             nir_src_for_ssa(vtn_pointer_to_ssa(b, sampled_image->sampler));
-      } else if (arg_type->base_type == vtn_base_type_pointer ||
-                 arg_type->base_type == vtn_base_type_image ||
+      } else if (arg_type->base_type == vtn_base_type_image ||
                  arg_type->base_type == vtn_base_type_sampler) {
          struct vtn_pointer *pointer =
             vtn_value(b, arg_id, vtn_value_type_pointer)->pointer;
          call->params[param_idx++] =
             nir_src_for_ssa(vtn_pointer_to_ssa(b, pointer));
       } else {
-         vtn_ssa_value_add_to_call_params(b, vtn_ssa_value(b, arg_id),
-                                          arg_type, call, &param_idx);
+         struct vtn_ssa_value *arg = vtn_ssa_value(b, arg_id);
+         vtn_assert(arg->type == glsl_get_bare_type(arg_type->type));
+         vtn_ssa_value_add_to_call_params(b, arg, call, &param_idx);
       }
    }
    assert(param_idx == call->num_params);
@@ -331,17 +333,13 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
             vtn_load_param_pointer(b, image_type, b->func_param_idx++);
          val->sampled_image->sampler =
             vtn_load_param_pointer(b, sampler_type, b->func_param_idx++);
-      } else if (type->base_type == vtn_base_type_pointer) {
-         /* This is a pointer with an actual storage type */
-         nir_ssa_def *ssa_ptr = nir_load_param(&b->nb, b->func_param_idx++);
-         vtn_push_pointer(b, w[2], vtn_pointer_from_ssa(b, ssa_ptr, type));
       } else if (type->base_type == vtn_base_type_image ||
                  type->base_type == vtn_base_type_sampler) {
          vtn_push_pointer(b, w[2], vtn_load_param_pointer(b, type, b->func_param_idx++));
       } else {
          /* We're a regular SSA value. */
          struct vtn_ssa_value *value = vtn_create_ssa_value(b, type->type);
-         vtn_ssa_value_load_function_param(b, value, type, &b->func_param_idx);
+         vtn_ssa_value_load_function_param(b, value, &b->func_param_idx);
          vtn_push_ssa_value(b, w[2], value);
       }
       break;
