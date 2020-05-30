@@ -131,30 +131,49 @@ success:
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
 
-# Debian 10 based x86 build image
-x86_build:
+# Debian 10 based x86 build image base
+x86_build-base:
   extends:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-05-31"
+    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-06-01"
+
+.use-x86_build-base:
+  extends:
+    - x86_build-base
+    - .ci-run-policy
+  stage: container-2
+  variables:
+    BASE_TAG: *x86_build-base
+    FDO_BASE_IMAGE: "$CI_REGISTRY_IMAGE/debian/x86_build-base:$BASE_TAG"
+  needs:
+    - x86_build-base
+
+# Debian 10 based x86 main build image
+x86_build:
+  extends:
+    - .use-x86_build-base
+  variables:
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-06-01"
 
 .use-x86_build:
   variables:
     TAG: *x86_build
   image: "$CI_REGISTRY_IMAGE/debian/x86_build:$TAG"
   needs:
+    - x86_build-base
     - x86_build
 
 # Debian 10 based x86 test image base
 x86_test-base:
-  extends: x86_build
+  extends: x86_build-base
   variables:
     FDO_DISTRIBUTION_TAG: &x86_test-base "2020-06-02"
 
 .use-x86_test-base:
   extends:
-    - x86_build
+    - x86_build-base
     - .ci-run-policy
   stage: container-2
   variables:
@@ -177,7 +196,7 @@ x86_test-vk:
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
-  extends: x86_build
+  extends: x86_build-base
   variables:
     FDO_DISTRIBUTION_TAG: &x86_build_old "2020-06-02"
     FDO_DISTRIBUTION_VERSION: stretch-slim
@@ -206,7 +225,7 @@ arm_build:
 
 # x86 image with ARM rootfses for baremetal testing.
 arm_test:
-  extends: x86_build
+  extends: x86_build-base
   variables:
     FDO_DISTRIBUTION_TAG: &arm_test "2020-06-01"
 
@@ -621,6 +640,7 @@ meson-mingw32-x86_64:
     TAG: *x86_test-gl
   image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:$TAG"
   needs:
+    - x86_build-base
     - x86_build
     - meson-testing
     - x86_test-base
@@ -633,6 +653,7 @@ meson-mingw32-x86_64:
     TAG: *x86_test-vk
   image: "$CI_REGISTRY_IMAGE/debian/x86_test-vk:$TAG"
   needs:
+    - x86_build-base
     - x86_build
     - meson-testing
     - x86_test-base
