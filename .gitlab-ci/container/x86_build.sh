@@ -48,8 +48,6 @@ apt-get install -y --no-remove \
       gcc \
       gettext \
       git \
-      libclang-6.0-dev \
-      libclang-7-dev \
       libclang-9-dev \
       libclc-dev \
       libdrm-dev:s390x \
@@ -77,8 +75,6 @@ apt-get install -y --no-remove \
       libxshmfence-dev \
       libxvmc-dev \
       libxxf86vm-dev \
-      llvm-6.0-dev \
-      llvm-7-dev \
       llvm-9-dev \
       pkg-config \
       python-mako \

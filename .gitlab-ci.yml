@@ -137,7 +137,7 @@ x86_build:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-05-19"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-05-29"
 
 .use-x86_build:
   variables:
@@ -179,7 +179,7 @@ x86_test-vk:
 x86_build_old:
   extends: x86_build
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-04-27"
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-06-02"
     FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:
@@ -483,6 +483,7 @@ meson-clover:
       -D glx=disabled
       -D egl=disabled
       -D gbm=disabled
+    GALLIUM_DRIVERS: "r600,radeonsi"
     GALLIUM_ST: >
       -D dri3=disabled
       -D gallium-vdpau=disabled
@@ -493,12 +494,8 @@ meson-clover:
       -D gallium-nine=false
       -D gallium-opencl=icd
   script:
-    - export GALLIUM_DRIVERS="r600,radeonsi"
     - .gitlab-ci/meson-build.sh
     - LLVM_VERSION=8 .gitlab-ci/meson-build.sh
-    - export GALLIUM_DRIVERS="i915,r600"
-    - LLVM_VERSION=6.0 .gitlab-ci/meson-build.sh
-    - LLVM_VERSION=7 .gitlab-ci/meson-build.sh
 
 meson-clover-old-llvm:
   extends:
@@ -516,6 +513,8 @@ meson-clover-old-llvm:
     - LLVM_VERSION=3.9 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=4.0 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=5.0 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=6.0 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=7 .gitlab-ci/meson-build.sh
 
 meson-vulkan:
   extends: .meson-build
