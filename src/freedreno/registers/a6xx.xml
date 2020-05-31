@@ -891,6 +891,44 @@ to upconvert to 32b float internally?
 	<value value="0x0"  name="R2D_RAW"/>
 </enum>
 
+<enum name="a6xx_ztest_mode">
+	<doc>Allow early z-test and early-lrz (if applicable)</doc>
+	<value value="0x0" name="A6XX_EARLY_Z"/>
+	<doc>Disable early z-test and early-lrz test (if applicable)</doc>
+	<value value="0x1" name="A6XX_LATE_Z"/>
+	<doc>
+		A special mode that allows early-lrz test but disables
+		early-z test.  Which might sound a bit funny, since
+		lrz-test happens before z-test.  But as long as a couple
+		conditions are maintained this allows using lrz-test in
+		cases where fragment shader has kill/discard:
+
+		1) Disable lrz-write in cases where it is uncertain during
+		   binning pass that a fragment will pass.  Ie.  if frag
+		   shader has-kill, writes-z, or alpha/stencil test is
+		   enabled.  (For correctness, lrz-write must be disabled
+		   when blend is enabled.)  This is analogous to how a
+		   z-prepass works.
+
+		2) Disable lrz-write and test if a depth-test direction
+		   reversal is detected.  Due to condition (1), the contents
+		   of the lrz buffer are a conservative estimation of the
+		   depth buffer during the draw pass.  Meaning that geometry
+		   that we know for certain will not be visible will not pass
+		   lrz-test.  But geometry which may be (or contributes to
+		   blend) will pass the lrz-test.
+
+		This allows us to keep early-lrz-test in cases where the frag
+		shader does not write-z (ie. we know the z-value before FS)
+		and does not have side-effects (image/ssbo writes, etc), but
+		does have kill/discard.  Which turns out to be a common
+		enough case that it is useful to keep early-lrz test against
+		the conservative lrz buffer to discard fragments that we
+		know will definitely not be visible.
+	</doc>
+	<value value="0x2" name="A6XX_EARLY_LRZ_LATE_Z"/>
+</enum>
+
 <domain name="A6XX" width="32">
 	<bitset name="A6XX_RBBM_INT_0_MASK" inline="yes">
 		<bitfield name="RBBM_GPU_IDLE" pos="0"/>
@@ -1909,7 +1947,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8092" name="GRAS_SU_POINT_SIZE" type="fixed" radix="4"/>
 
 	<reg32 offset="0x8094" name="GRAS_SU_DEPTH_PLANE_CNTL">
-		<bitfield name="FRAG_WRITES_Z" pos="0" type="boolean"/>
+		<bitfield name="Z_MODE" low="0" high="1" type="a6xx_ztest_mode"/>
 	</reg32>
 	<reg32 offset="0x8095" name="GRAS_SU_POLY_OFFSET_SCALE" type="float"/>
 	<reg32 offset="0x8096" name="GRAS_SU_POLY_OFFSET_OFFSET" type="float"/>
@@ -2259,7 +2297,7 @@ to upconvert to 32b float internally?
 		<bitfield name="SAMPLE_MASK" low="16" high="31"/>
 	</reg32>
 	<reg32 offset="0x8870" name="RB_DEPTH_PLANE_CNTL">
-		<bitfield name="FRAG_WRITES_Z" pos="0" type="boolean"/>
+		<bitfield name="Z_MODE" low="0" high="1" type="a6xx_ztest_mode"/>
 	</reg32>
 
 	<reg32 offset="0x8871" name="RB_DEPTH_CNTL">

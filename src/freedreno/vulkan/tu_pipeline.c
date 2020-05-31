@@ -1383,18 +1383,19 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    tu_cs_emit_regs(cs,
                    A6XX_RB_RENDER_COMPONENTS(.dword = render_components));
 
-   uint32_t gras_su_depth_plane_cntl = 0;
-   uint32_t rb_depth_plane_cntl = 0;
+   enum a6xx_ztest_mode zmode;
+
    if (fs->no_earlyz || fs->has_kill || fs->writes_pos) {
-      gras_su_depth_plane_cntl |= A6XX_GRAS_SU_DEPTH_PLANE_CNTL_FRAG_WRITES_Z;
-      rb_depth_plane_cntl |= A6XX_RB_DEPTH_PLANE_CNTL_FRAG_WRITES_Z;
+      zmode = A6XX_LATE_Z;
+   } else {
+      zmode = A6XX_EARLY_Z;
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_DEPTH_PLANE_CNTL, 1);
-   tu_cs_emit(cs, gras_su_depth_plane_cntl);
+   tu_cs_emit(cs, A6XX_GRAS_SU_DEPTH_PLANE_CNTL_Z_MODE(zmode));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_PLANE_CNTL, 1);
-   tu_cs_emit(cs, rb_depth_plane_cntl);
+   tu_cs_emit(cs, A6XX_RB_DEPTH_PLANE_CNTL_Z_MODE(zmode));
 }
 
 static void
