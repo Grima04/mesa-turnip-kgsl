@@ -489,6 +489,21 @@ void anv_CmdSetViewport(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_VIEWPORT;
 }
 
+void anv_CmdSetViewportWithCountEXT(
+   VkCommandBuffer                              commandBuffer,
+   uint32_t                                     viewportCount,
+   const VkViewport*                            pViewports)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.viewport.count = viewportCount;
+
+   memcpy(cmd_buffer->state.gfx.dynamic.viewport.viewports,
+          pViewports, viewportCount * sizeof(*pViewports));
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_VIEWPORT;
+}
+
 void anv_CmdSetScissor(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    firstScissor,
@@ -502,6 +517,21 @@ void anv_CmdSetScissor(
       cmd_buffer->state.gfx.dynamic.scissor.count = total_count;
 
    memcpy(cmd_buffer->state.gfx.dynamic.scissor.scissors + firstScissor,
+          pScissors, scissorCount * sizeof(*pScissors));
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SCISSOR;
+}
+
+void anv_CmdSetScissorWithCountEXT(
+   VkCommandBuffer                              commandBuffer,
+   uint32_t                                     scissorCount,
+   const VkRect2D*                              pScissors)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.scissor.count = scissorCount;
+
+   memcpy(cmd_buffer->state.gfx.dynamic.scissor.scissors,
           pScissors, scissorCount * sizeof(*pScissors));
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SCISSOR;
