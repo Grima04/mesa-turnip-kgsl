@@ -967,6 +967,12 @@ struct v3dv_cmd_buffer {
     * buffer via vkCmdExecuteCommands.
     */
    struct list_head jobs;
+
+   /* For secondary command buffers inside a render pass, a list of jobs
+    * that should be executed right before the secondary job is executed
+    * inside a primary.
+    */
+   struct list_head pre_jobs;
 };
 
 struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,

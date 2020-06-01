@@ -122,6 +122,7 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
 
    list_inithead(&cmd_buffer->private_objs);
    list_inithead(&cmd_buffer->jobs);
+   list_inithead(&cmd_buffer->pre_jobs);
    list_inithead(&cmd_buffer->list_link);
 
    assert(pool);
@@ -248,6 +249,13 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->state.job)
       v3dv_job_destroy(cmd_buffer->state.job);
+
+
+   list_for_each_entry_safe(struct v3dv_job, job,
+                            &cmd_buffer->pre_jobs, list_link) {
+      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+      v3dv_job_destroy(job);
+   }
 
    if (cmd_buffer->state.attachments) {
       assert(cmd_buffer->state.attachment_count > 0);
@@ -2131,6 +2139,27 @@ cmd_buffer_copy_secondary_end_query_state(struct v3dv_cmd_buffer *primary,
    }
 }
 
+/* Clones a job for inclusion in the given command buffer. Note that this
+ * doesn't make a deep copy so the cloned job it doesn't own any resources.
+ * Useful when we need to have a job in more than one list, which happens
+ * for jobs recorded in secondary command buffers when we want to execute
+ * them in primaries.
+ */
+static struct v3dv_job *
+job_clone(struct v3dv_job *job, struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *clone_job = vk_alloc(&job->device->alloc,
+                                         sizeof(struct v3dv_job), 8,
+                                         VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!clone_job)
+      return NULL;
+
+   *clone_job = *job;
+   clone_job->is_clone = true;
+   clone_job->cmd_buffer = cmd_buffer;
+   return clone_job;
+}
+
 static void
 cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
                                uint32_t cmd_buffer_count,
@@ -2147,6 +2176,18 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
 
       assert(secondary->usage_flags &
              VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+
+      /* Insert any jobs that should run before the secondary's commands  */
+      list_for_each_entry(struct v3dv_job, pre_job,
+                          &secondary->pre_jobs, list_link) {
+         struct v3dv_job *clone_job = job_clone(pre_job, primary);
+         if (!clone_job) {
+            v3dv_flag_oom(primary, NULL);
+            return;
+         }
+
+         list_addtail(&clone_job->list_link, &primary->jobs);
+      }
 
       /* Secondaries that run inside a render pass only record commands inside
        * a subpass, so they don't crate complete jobs (they don't have an RCL
@@ -2187,27 +2228,6 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
        */
       cmd_buffer_copy_secondary_end_query_state(primary, secondary);
    }
-}
-
-/* Clones a job for inclusion in the given command buffer. Note that this
- * doesn't make a deep copy so the cloned job it doesn't own any resources.
- * Useful when we need to have a job in more than one list, which happens
- * for jobs recorded in secondary command buffers when we want to execute
- * them in primaries.
- */
-static struct v3dv_job *
-job_clone(struct v3dv_job *job, struct v3dv_cmd_buffer *cmd_buffer)
-{
-   struct v3dv_job *clone_job = vk_alloc(&job->device->alloc,
-                                         sizeof(struct v3dv_job), 8,
-                                         VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (!clone_job)
-      return NULL;
-
-   *clone_job = *job;
-   clone_job->is_clone = true;
-   clone_job->cmd_buffer = cmd_buffer;
-   return clone_job;
 }
 
 static void
@@ -4190,15 +4210,6 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   /* vkCmdWaitEvents can be recorded inside a render pass, so we might have
-    * an active job.
-    *
-    * FIXME: Since we can't signal/reset events inside a render pass, we could,
-    *        in theory, move this wait to an earlier point, such as before the
-    *        current job if it is inside a render pass, to avoid the split.
-    */
-   v3dv_cmd_buffer_finish_job(cmd_buffer);
-
    assert(eventCount > 0);
 
    struct v3dv_job *job =
@@ -4221,5 +4232,27 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < eventCount; i++)
       job->cpu.event_wait.events[i] = v3dv_event_from_handle(pEvents[i]);
 
-   list_addtail(&job->list_link, &cmd_buffer->jobs);
+   /* vkCmdWaitEvents can be recorded inside a render pass, so we might have
+    * an active job.
+    *
+    * If we are inside a render pass, because we vkCmd(Re)SetEvent can't happen
+    * inside a render pass, it is safe to move the wait job so it happens right
+    * before the current job we are currently recording for the subpass, if any
+    * (it would actually be safe to move it all the way back to right before
+    * the start of the render pass). If we are a secondary command buffer
+    * inside a render pass though, we only have access to the currently
+    * recording job, so we put it in a "execute first" list that we will execute
+    * right before the secondary in vkCmdExecuteCommands.
+    *
+    * If we are outside a render pass then we should not have any on-going job
+    * and we are free to just add the wait job without restrictions.
+    */
+   assert(cmd_buffer->state.pass || !cmd_buffer->state.job);
+   if (!cmd_buffer->state.pass ||
+        cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+      list_addtail(&job->list_link, &cmd_buffer->jobs);
+   } else {
+      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+      list_addtail(&job->list_link, &cmd_buffer->pre_jobs);
+   }
 }
