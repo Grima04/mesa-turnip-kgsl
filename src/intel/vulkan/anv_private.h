@@ -2685,6 +2685,21 @@ struct anv_dynamic_state {
    } stencil_reference;
 
    struct {
+      struct {
+         VkStencilOp fail_op;
+         VkStencilOp pass_op;
+         VkStencilOp depth_fail_op;
+         VkCompareOp compare_op;
+      } front;
+      struct {
+         VkStencilOp fail_op;
+         VkStencilOp pass_op;
+         VkStencilOp depth_fail_op;
+         VkCompareOp compare_op;
+      } back;
+   } stencil_op;
+
+   struct {
       uint32_t                                  factor;
       uint16_t                                  pattern;
    } line_stipple;
@@ -2692,6 +2707,11 @@ struct anv_dynamic_state {
    VkCullModeFlags                              cull_mode;
    VkFrontFace                                  front_face;
    VkPrimitiveTopology                          primitive_topology;
+   bool                                         depth_test_enable;
+   bool                                         depth_write_enable;
+   VkCompareOp                                  depth_compare_op;
+   bool                                         depth_bounds_test_enable;
+   bool                                         stencil_test_enable;
 };
 
 extern const struct anv_dynamic_state default_dynamic_state;

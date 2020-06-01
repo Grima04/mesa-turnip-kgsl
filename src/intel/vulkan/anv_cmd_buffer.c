@@ -72,6 +72,20 @@ const struct anv_dynamic_state default_dynamic_state = {
       .front = 0u,
       .back = 0u,
    },
+   .stencil_op = {
+      .front = {
+         .fail_op = 0,
+         .pass_op = 0,
+         .depth_fail_op = 0,
+         .compare_op = 0,
+      },
+      .back = {
+         .fail_op = 0,
+         .pass_op = 0,
+         .depth_fail_op = 0,
+         .compare_op = 0,
+      },
+   },
    .line_stipple = {
       .factor = 0u,
       .pattern = 0u,
@@ -79,6 +93,11 @@ const struct anv_dynamic_state default_dynamic_state = {
    .cull_mode = 0,
    .front_face = 0,
    .primitive_topology = 0,
+   .depth_test_enable = 0,
+   .depth_write_enable = 0,
+   .depth_compare_op = 0,
+   .depth_bounds_test_enable = 0,
+   .stencil_test_enable = 0,
 };
 
 /**
@@ -147,6 +166,22 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
    ANV_CMP_COPY(cull_mode, ANV_CMD_DIRTY_DYNAMIC_CULL_MODE);
    ANV_CMP_COPY(front_face, ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE);
    ANV_CMP_COPY(primitive_topology, ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
+   ANV_CMP_COPY(depth_test_enable, ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE);
+   ANV_CMP_COPY(depth_write_enable, ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE);
+   ANV_CMP_COPY(depth_compare_op, ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP);
+   ANV_CMP_COPY(depth_bounds_test_enable, ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE);
+   ANV_CMP_COPY(stencil_test_enable, ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE);
+
+   if (copy_mask & VK_DYNAMIC_STATE_STENCIL_OP_EXT) {
+      ANV_CMP_COPY(stencil_op.front.fail_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
+      ANV_CMP_COPY(stencil_op.front.pass_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
+      ANV_CMP_COPY(stencil_op.front.depth_fail_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
+      ANV_CMP_COPY(stencil_op.front.compare_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
+      ANV_CMP_COPY(stencil_op.back.fail_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
+      ANV_CMP_COPY(stencil_op.back.pass_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
+      ANV_CMP_COPY(stencil_op.back.depth_fail_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
+      ANV_CMP_COPY(stencil_op.back.compare_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
+   }
 
 #undef ANV_CMP_COPY
 
@@ -678,6 +713,89 @@ void anv_CmdSetFrontFaceEXT(
    cmd_buffer->state.gfx.dynamic.front_face = frontFace;
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
+}
+
+void anv_CmdSetDepthTestEnableEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkBool32                                     depthTestEnable)
+
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.depth_test_enable = depthTestEnable;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE;
+}
+
+void anv_CmdSetDepthWriteEnableEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkBool32                                     depthWriteEnable)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.depth_write_enable = depthWriteEnable;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE;
+}
+
+void anv_CmdSetDepthCompareOpEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkCompareOp                                  depthCompareOp)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.depth_compare_op = depthCompareOp;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP;
+}
+
+void anv_CmdSetDepthBoundsTestEnableEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkBool32                                     depthBoundsTestEnable)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.depth_bounds_test_enable = depthBoundsTestEnable;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE;
+}
+
+void anv_CmdSetStencilTestEnableEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkBool32                                     stencilTestEnable)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.stencil_test_enable = stencilTestEnable;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE;
+}
+
+void anv_CmdSetStencilOpEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkStencilFaceFlags                           faceMask,
+   VkStencilOp                                  failOp,
+   VkStencilOp                                  passOp,
+   VkStencilOp                                  depthFailOp,
+   VkCompareOp                                  compareOp)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT) {
+      cmd_buffer->state.gfx.dynamic.stencil_op.front.fail_op = failOp;
+      cmd_buffer->state.gfx.dynamic.stencil_op.front.pass_op = passOp;
+      cmd_buffer->state.gfx.dynamic.stencil_op.front.depth_fail_op = depthFailOp;
+      cmd_buffer->state.gfx.dynamic.stencil_op.front.compare_op = compareOp;
+    }
+
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT) {
+      cmd_buffer->state.gfx.dynamic.stencil_op.back.fail_op = failOp;
+      cmd_buffer->state.gfx.dynamic.stencil_op.back.pass_op = passOp;
+      cmd_buffer->state.gfx.dynamic.stencil_op.back.depth_fail_op = depthFailOp;
+      cmd_buffer->state.gfx.dynamic.stencil_op.back.compare_op = compareOp;
+   }
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
 }
 
 static void

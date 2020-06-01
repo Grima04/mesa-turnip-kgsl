@@ -209,6 +209,28 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       [VK_FRONT_FACE_CLOCKWISE]                 = 0
    };
 
+   static const uint32_t vk_to_gen_compare_op[] = {
+      [VK_COMPARE_OP_NEVER]                        = PREFILTEROPNEVER,
+      [VK_COMPARE_OP_LESS]                         = PREFILTEROPLESS,
+      [VK_COMPARE_OP_EQUAL]                        = PREFILTEROPEQUAL,
+      [VK_COMPARE_OP_LESS_OR_EQUAL]                = PREFILTEROPLEQUAL,
+      [VK_COMPARE_OP_GREATER]                      = PREFILTEROPGREATER,
+      [VK_COMPARE_OP_NOT_EQUAL]                    = PREFILTEROPNOTEQUAL,
+      [VK_COMPARE_OP_GREATER_OR_EQUAL]             = PREFILTEROPGEQUAL,
+      [VK_COMPARE_OP_ALWAYS]                       = PREFILTEROPALWAYS,
+   };
+
+   static const uint32_t vk_to_gen_stencil_op[] = {
+      [VK_STENCIL_OP_KEEP]                         = STENCILOP_KEEP,
+      [VK_STENCIL_OP_ZERO]                         = STENCILOP_ZERO,
+      [VK_STENCIL_OP_REPLACE]                      = STENCILOP_REPLACE,
+      [VK_STENCIL_OP_INCREMENT_AND_CLAMP]          = STENCILOP_INCRSAT,
+      [VK_STENCIL_OP_DECREMENT_AND_CLAMP]          = STENCILOP_DECRSAT,
+      [VK_STENCIL_OP_INVERT]                       = STENCILOP_INVERT,
+      [VK_STENCIL_OP_INCREMENT_AND_WRAP]           = STENCILOP_INCR,
+      [VK_STENCIL_OP_DECREMENT_AND_WRAP]           = STENCILOP_DECR,
+   };
+
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_RENDER_TARGETS |
                                       ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |
@@ -264,7 +286,12 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_RENDER_TARGETS |
                                       ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK)) {
+                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |
+                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE |
+                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
+                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
+                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
+                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP)) {
       uint32_t depth_stencil_dw[GENX(DEPTH_STENCIL_STATE_length)];
 
       struct GENX(DEPTH_STENCIL_STATE) depth_stencil = {
@@ -276,7 +303,20 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
          .StencilBufferWriteEnable =
             (d->stencil_write_mask.front || d->stencil_write_mask.back) &&
-            pipeline->writes_stencil,
+            d->stencil_test_enable,
+
+         .DepthTestEnable = d->depth_test_enable,
+         .DepthBufferWriteEnable = d->depth_test_enable && d->depth_write_enable,
+         .DepthTestFunction = vk_to_gen_compare_op[d->depth_compare_op],
+         .StencilTestEnable = d->stencil_test_enable,
+         .StencilFailOp = vk_to_gen_stencil_op[d->stencil_op.front.fail_op],
+         .StencilPassDepthPassOp = vk_to_gen_stencil_op[d->stencil_op.front.pass_op],
+         .StencilPassDepthFailOp = vk_to_gen_stencil_op[d->stencil_op.front.depth_fail_op],
+         .StencilTestFunction = vk_to_gen_compare_op[d->stencil_op.front.compare_op],
+         .BackfaceStencilFailOp = vk_to_gen_stencil_op[d->stencil_op.back.fail_op],
+         .BackfaceStencilPassDepthPassOp = vk_to_gen_stencil_op[d->stencil_op.back.pass_op],
+         .BackfaceStencilPassDepthFailOp = vk_to_gen_stencil_op[d->stencil_op.back.depth_fail_op],
+         .BackfaceStencilTestFunction = vk_to_gen_compare_op[d->stencil_op.back.compare_op],
       };
       GENX(DEPTH_STENCIL_STATE_pack)(NULL, depth_stencil_dw, &depth_stencil);
 
