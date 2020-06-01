@@ -95,18 +95,6 @@ typedef uint32_t xcb_window_t;
 #define RADV_SUPPORT_ANDROID_HARDWARE_BUFFER 0
 #endif
 
-
-struct gfx10_format {
-    unsigned img_format:9;
-
-    /* Various formats are only supported with workarounds for vertex fetch,
-     * and some 32_32_32 formats are supported natively, but only for buffers
-     * (possibly with some image support, actually, but no filtering). */
-    bool buffers_only:1;
-};
-
-#include "gfx10_format_table.h"
-
 enum radv_secure_compile_type {
 	RADV_SC_TYPE_INIT_SUCCESS,
 	RADV_SC_TYPE_INIT_FAILURE,
