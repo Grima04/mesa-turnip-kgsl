@@ -683,6 +683,7 @@ struct vtn_builder {
    unsigned func_param_idx;
 
    bool has_loop_continue;
+   bool has_kill;
 
    /* false by default, set to true by the ContractionOff execution mode */
    bool exact;

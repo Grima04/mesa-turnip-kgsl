@@ -686,6 +686,7 @@ vtn_process_block(struct vtn_builder *b,
       return NULL;
 
    case SpvOpKill:
+      b->has_kill = true;
       block->branch_type = vtn_branch_type_discard;
       return NULL;
 
@@ -1367,7 +1368,7 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
     * but instructions in the continue may use SSA defs in the loop body.
     * Therefore, we need to repair SSA to insert the needed phi nodes.
     */
-   if (b->has_loop_continue)
+   if (b->has_loop_continue || b->has_kill)
       nir_repair_ssa_impl(func->impl);
 
    func->emitted = true;
