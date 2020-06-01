@@ -52,7 +52,7 @@ namespace aco {
 struct mad_info {
    aco_ptr<Instruction> add_instr;
    uint32_t mul_temp_id;
-   uint32_t literal_idx;
+   uint16_t literal_idx;
    bool check_literal;
 
    mad_info(aco_ptr<Instruction> instr, uint32_t id)
