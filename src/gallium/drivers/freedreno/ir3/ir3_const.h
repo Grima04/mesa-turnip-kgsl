@@ -131,7 +131,7 @@ ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *
 }
 
 static inline void
-ir3_emit_ubos(struct fd_screen *screen, const struct ir3_shader_variant *v,
+ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
 {
 	const struct ir3_const_state *const_state = &v->shader->const_state;
@@ -144,7 +144,20 @@ ir3_emit_ubos(struct fd_screen *screen, const struct ir3_shader_variant *v,
 		for (uint32_t i = 0; i < params; i++) {
 			const uint32_t index = i + 1;   /* UBOs start at index 1 */
 			struct pipe_constant_buffer *cb = &constbuf->cb[index];
-			assert(!cb->user_buffer);
+
+			/* If we have user pointers (constbuf 0, aka GL uniforms), upload
+			 * them to a buffer now, and save it in the constbuf so that we
+			 * don't have to reupload until they get changed.
+			 */
+			if (cb->user_buffer) {
+				struct pipe_context *pctx = &ctx->base;
+				u_upload_data(pctx->stream_uploader, 0,
+						cb->buffer_size,
+						64,
+						cb->user_buffer,
+						&cb->buffer_offset, &cb->buffer);
+				cb->user_buffer = NULL;
+			}
 
 			if ((constbuf->enabled_mask & (1 << index)) && cb->buffer) {
 				offsets[i] = cb->buffer_offset;
@@ -391,7 +404,7 @@ emit_common_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 		ring_wfi(ctx->batch, ring);
 
 		ir3_emit_user_consts(ctx->screen, v, ring, constbuf);
-		ir3_emit_ubos(ctx->screen, v, ring, constbuf);
+		ir3_emit_ubos(ctx, v, ring, constbuf);
 		if (shader_dirty)
 			ir3_emit_immediates(ctx->screen, v, ring);
 	}
