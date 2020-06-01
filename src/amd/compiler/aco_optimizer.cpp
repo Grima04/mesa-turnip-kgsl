@@ -102,11 +102,11 @@ static constexpr uint32_t val_labels = label_constant_32bit | label_constant_64b
 
 struct ssa_info {
    uint32_t val;
+   uint32_t label;
    union {
       Temp temp;
       Instruction* instr;
    };
-   uint32_t label;
 
    ssa_info() : label(0) {}
 
