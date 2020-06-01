@@ -33,8 +33,8 @@ import os
 import re
 import sys
 
-AMD_REGISTERS = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../../../amd/registers"))
-UTIL_FORMAT = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../../../util/format"))
+AMD_REGISTERS = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../registers"))
+UTIL_FORMAT = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), "../../util/format"))
 sys.path.extend([AMD_REGISTERS, UTIL_FORMAT])
 
 from regdb import Object, RegisterDatabase

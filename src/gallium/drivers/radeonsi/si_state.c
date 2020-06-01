@@ -42,7 +42,7 @@ struct gfx10_format {
    bool buffers_only : 1;
 };
 
-#include "gfx10_format_table.h"
+#include "amd/common/gfx10_format_table.h"
 
 static unsigned si_map_swizzle(unsigned swizzle)
 {

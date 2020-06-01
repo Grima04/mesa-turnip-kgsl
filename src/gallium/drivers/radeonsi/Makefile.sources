@@ -1,5 +1,4 @@
 GENERATED_SOURCES := \
-	gfx10_format_table.h \
 	si_driinfo.h
 
 C_SOURCES := \
