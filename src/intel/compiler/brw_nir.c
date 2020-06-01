@@ -685,6 +685,8 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    const bool is_scalar = compiler->scalar_stage[nir->info.stage];
 
+   nir_validate_ssa_dominance(nir, "before brw_preprocess_nir");
+
    if (is_scalar) {
       OPT(nir_lower_alu_to_scalar, NULL, NULL);
    }
@@ -1052,6 +1054,8 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
               _mesa_shader_stage_to_string(nir->info.stage));
       nir_print_shader(nir, stderr);
    }
+
+   nir_validate_ssa_dominance(nir, "before nir_convert_from_ssa");
 
    OPT(nir_convert_from_ssa, true);
 
