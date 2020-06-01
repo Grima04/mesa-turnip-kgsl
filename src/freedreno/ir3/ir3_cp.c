@@ -310,9 +310,23 @@ static void combine_flags(unsigned *dstflags, struct ir3_instruction *src)
 		*dstflags &= ~IR3_REG_SABS;
 }
 
-static struct ir3_register *
-lower_immed(struct ir3_cp_ctx *ctx, struct ir3_register *reg, unsigned new_flags, bool f_opcode)
+/* Tries lowering an immediate register argument to a const buffer access by
+ * adding to the list of immediates to be pushed to the const buffer when
+ * switching to this shader.
+ */
+static bool
+lower_immed(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr, unsigned n,
+		struct ir3_register *reg, unsigned new_flags)
 {
+	if (!(new_flags & IR3_REG_IMMED))
+		return false;
+
+	new_flags &= ~IR3_REG_IMMED;
+	new_flags |= IR3_REG_CONST;
+
+	if (!valid_flags(instr, n, new_flags))
+		return false;
+
 	unsigned swiz, idx, i;
 
 	reg = ir3_reg_clone(ctx->shader, reg);
@@ -320,6 +334,8 @@ lower_immed(struct ir3_cp_ctx *ctx, struct ir3_register *reg, unsigned new_flags
 	/* Half constant registers seems to handle only 32-bit values
 	 * within floating-point opcodes. So convert back to 32-bit values.
 	 */
+	bool f_opcode = (is_cat2_float(instr->opc) ||
+			is_cat3_float(instr->opc)) ? true : false;
 	if (f_opcode && (new_flags & IR3_REG_HALF))
 		reg->uim_val = fui(_mesa_half_to_float(reg->uim_val));
 
@@ -376,12 +392,12 @@ lower_immed(struct ir3_cp_ctx *ctx, struct ir3_register *reg, unsigned new_flags
 		const_state->immediate_idx++;
 	}
 
-	new_flags &= ~IR3_REG_IMMED;
-	new_flags |= IR3_REG_CONST;
 	reg->flags = new_flags;
 	reg->num = i + (4 * const_state->offsets.immediate);
 
-	return reg;
+	instr->regs[n + 1] = reg;
+
+	return true;
 }
 
 static void
@@ -489,15 +505,8 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 
 		if (!valid_flags(instr, n, new_flags)) {
 			/* See if lowering an immediate to const would help. */
-			if (valid_flags(instr, n, (new_flags & ~IR3_REG_IMMED) | IR3_REG_CONST)) {
-				bool f_opcode = (is_cat2_float(instr->opc) ||
-						is_cat3_float(instr->opc)) ? true : false;
-
-				debug_assert(new_flags & IR3_REG_IMMED);
-
-				instr->regs[n + 1] = lower_immed(ctx, src_reg, new_flags, f_opcode);
+			if (lower_immed(ctx, instr, n, src_reg, new_flags))
 				return true;
-			}
 
 			/* special case for "normal" mad instructions, we can
 			 * try swapping the first two args if that fits better.
@@ -605,13 +614,8 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 				instr->regs[n+1] = src_reg;
 
 				return true;
-			} else if (valid_flags(instr, n, (new_flags & ~IR3_REG_IMMED) | IR3_REG_CONST)) {
-				bool f_opcode = (is_cat2_float(instr->opc) ||
-						is_cat3_float(instr->opc)) ? true : false;
-
-				/* See if lowering an immediate to const would help. */
-				instr->regs[n+1] = lower_immed(ctx, src_reg, new_flags, f_opcode);
-
+			} else if (lower_immed(ctx, instr, n, src_reg, new_flags)) {
+				/* Fell back to loading the immediate as a const */
 				return true;
 			}
 		}
