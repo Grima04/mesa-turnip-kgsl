@@ -1558,7 +1558,9 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
                         // direct addr
                         fprintf(fp, "%d", addr);
                 } else if (addr < 0b11000) {
-                        if (addr == 22)
+                        if (addr == 20)
+                                fprintf(fp, "pointcoord");
+                        else if (addr == 22)
                                 fprintf(fp, "fragw");
                         else if (addr == 23)
                                 fprintf(fp, "fragz");
