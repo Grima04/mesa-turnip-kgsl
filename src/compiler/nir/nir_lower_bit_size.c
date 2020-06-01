@@ -39,7 +39,7 @@ lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
    bld->cursor = nir_before_instr(&alu->instr);
 
    /* Convert each source to the requested bit-size */
-   nir_ssa_def *srcs[4] = { NULL, NULL, NULL, NULL };
+   nir_ssa_def *srcs[NIR_MAX_VEC_COMPONENTS] = { NULL };
    for (unsigned i = 0; i < nir_op_infos[op].num_inputs; i++) {
       nir_ssa_def *src = nir_ssa_for_alu_src(bld, alu, i);
 
@@ -65,7 +65,7 @@ lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
       else
          lowered_dst = nir_ishr(bld, lowered_dst, nir_imm_int(bld, dst_bit_size));
    } else {
-      lowered_dst = nir_build_alu(bld, op, srcs[0], srcs[1], srcs[2], srcs[3]);
+      lowered_dst = nir_build_alu_src_arr(bld, op, srcs);
    }
 
 
