@@ -94,16 +94,16 @@ enum Label {
    label_constant_16bit = 1 << 29,
 };
 
-static constexpr uint32_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success |
+static constexpr uint64_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success |
                                          label_add_sub | label_bitwise | label_uniform_bitwise | label_minmax | label_fcmp;
-static constexpr uint32_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool |
+static constexpr uint64_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool |
                                         label_omod2 | label_omod4 | label_omod5 | label_clamp | label_scc_invert | label_b2i;
-static constexpr uint32_t val_labels = label_constant_32bit | label_constant_64bit | label_constant_16bit | label_literal | label_mad;
+static constexpr uint32_t val_labels = label_constant_32bit | label_constant_64bit | label_constant_16bit | label_literal;
 
 struct ssa_info {
-   uint32_t val;
-   uint32_t label;
+   uint64_t label;
    union {
+      uint32_t val;
       Temp temp;
       Instruction* instr;
    };
@@ -116,18 +116,21 @@ struct ssa_info {
        * (indicating the defining instruction), there is no need to clear
        * any other instr labels. */
       if (new_label & instr_labels)
-         label &= ~temp_labels; /* instr and temp alias */
+         label &= ~(temp_labels | val_labels); /* instr, temp and val alias */
 
       if (new_label & temp_labels) {
          label &= ~temp_labels;
-         label &= ~instr_labels; /* instr and temp alias */
+         label &= ~(instr_labels | val_labels); /* instr, temp and val alias */
       }
 
       uint32_t const_labels = label_literal | label_constant_32bit | label_constant_64bit | label_constant_16bit;
-      if (new_label & const_labels)
+      if (new_label & const_labels) {
          label &= ~val_labels | const_labels;
-      else if (new_label & val_labels)
+         label &= ~(instr_labels | temp_labels); /* instr, temp and val alias */
+      } else if (new_label & val_labels) {
          label &= ~val_labels;
+         label &= ~(instr_labels | temp_labels); /* instr, temp and val alias */
+      }
 
       label |= new_label;
    }
@@ -277,7 +280,7 @@ struct ssa_info {
    void set_mad(Instruction* mad, uint32_t mad_info_idx)
    {
       add_label(label_mad);
-      val = mad_info_idx;
+      mad->pass_flags = mad_info_idx;
       instr = mad;
    }
 
@@ -1959,7 +1962,7 @@ void create_vop3_for_op3(opt_ctx& ctx, aco_opcode opcode, aco_ptr<Instruction>& 
 
 bool combine_three_valu_op(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode op2, aco_opcode new_op, const char *shuffle, uint8_t ops)
 {
-   uint32_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
+   uint64_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
                          (label_omod_success | label_clamp_success);
 
    for (unsigned swap = 0; swap < 2; swap++) {
@@ -1990,7 +1993,7 @@ bool combine_minmax(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode opposi
    if (combine_three_valu_op(ctx, instr, instr->opcode, minmax3, "012", 1 | 2))
       return true;
 
-   uint32_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
+   uint64_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
                          (label_omod_success | label_clamp_success);
 
    /* min(-max(a, b), c) -> min3(-a, -b, c) *
@@ -2244,7 +2247,7 @@ bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
    else
       return false;
 
-   uint32_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
+   uint64_t omod_clamp = ctx.info[instr->definitions[0].tempId()].label &
                          (label_omod_success | label_clamp_success);
 
    for (unsigned swap = 0; swap < 2; swap++) {
@@ -2439,7 +2442,7 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          /* omod was successfully applied */
          /* if the omod instruction is v_mad, we also have to change the original add */
          if (ctx.info[instr->operands[idx].tempId()].is_mad()) {
-            Instruction* add_instr = ctx.mad_infos[ctx.info[instr->operands[idx].tempId()].val].add_instr.get();
+            Instruction* add_instr = ctx.mad_infos[ctx.info[instr->operands[idx].tempId()].instr->pass_flags].add_instr.get();
             if (ctx.info[instr->definitions[0].tempId()].is_clamp())
                static_cast<VOP3A_instruction*>(add_instr)->clamp = true;
             add_instr->definitions[0] = instr->definitions[0];
@@ -2485,7 +2488,7 @@ bool apply_omod_clamp(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          /* clamp was successfully applied */
          /* if the clamp instruction is v_mad, we also have to change the original add */
          if (ctx.info[instr->operands[idx].tempId()].is_mad()) {
-            Instruction* add_instr = ctx.mad_infos[ctx.info[instr->operands[idx].tempId()].val].add_instr.get();
+            Instruction* add_instr = ctx.mad_infos[ctx.info[instr->operands[idx].tempId()].instr->pass_flags].add_instr.get();
             add_instr->definitions[0] = instr->definitions[0];
          }
          Instruction* clamp_instr = ctx.info[instr->operands[idx].tempId()].instr;
@@ -2907,7 +2910,7 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 
    mad_info* mad_info = NULL;
    if (!instr->definitions.empty() && ctx.info[instr->definitions[0].tempId()].is_mad()) {
-      mad_info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].val];
+      mad_info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].instr->pass_flags];
       /* re-check mad instructions */
       if (ctx.uses[mad_info->mul_temp_id]) {
          ctx.uses[mad_info->mul_temp_id]++;
@@ -3089,7 +3092,7 @@ void apply_literals(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 
    /* apply literals on MAD */
    if (!instr->definitions.empty() && ctx.info[instr->definitions[0].tempId()].is_mad()) {
-      mad_info* info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].val];
+      mad_info* info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].instr->pass_flags];
       if (info->check_literal &&
           (ctx.uses[instr->operands[info->literal_idx].tempId()] == 0 || info->literal_idx == 2)) {
          aco_ptr<Instruction> new_mad;
