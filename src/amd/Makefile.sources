@@ -69,7 +69,7 @@ AMD_DEBUG_FILES = \
 
 AMD_GENERATED_FILES = \
 	common/amdgfxregs.h \
-	common/gfx10_format_table.h \
+	common/gfx10_format_table.c \
 	common/sid_tables.h
 
 ACO_FILES = \

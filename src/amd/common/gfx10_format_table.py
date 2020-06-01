@@ -105,11 +105,14 @@ HARDCODED = {
 header_template = mako.template.Template("""\
 // DO NOT EDIT -- AUTOMATICALLY GENERATED
 
+#include "gfx10_format_table.h"
+#include "amdgfxregs.h"
+
 #define FMT(_img_format, ...) \
    { .img_format = V_008F0C_IMG_FORMAT_##_img_format, \
      ##__VA_ARGS__ }
 
-static const struct gfx10_format gfx10_format_table[PIPE_FORMAT_COUNT] = {
+const struct gfx10_format gfx10_format_table[PIPE_FORMAT_COUNT] = {
 % for pipe_format, args in formats:
  % if args is not None:
   [${pipe_format}] = FMT(${args}),

@@ -36,13 +36,13 @@ amdgfxregs_h = custom_target(
   capture : true,
 )
 
-gfx10_format_table_h = custom_target(
-  'gfx10_format_table.h',
+gfx10_format_table_c = custom_target(
+  'gfx10_format_table.c',
   input : files(
     'gfx10_format_table.py',
     '../../util/format/u_format.csv', '../registers/gfx10-rsrc.json'
   ),
-  output : 'gfx10_format_table.h',
+  output : 'gfx10_format_table.c',
   command : [prog_python, '@INPUT@'],
   capture : true,
   depend_files : ['../registers/regdb.py']
@@ -68,7 +68,7 @@ amd_common_files = files(
 
 libamd_common = static_library(
   'amd_common',
-  [amd_common_files, sid_tables_h, amdgfxregs_h, gfx10_format_table_h],
+  [amd_common_files, sid_tables_h, amdgfxregs_h, gfx10_format_table_c],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_compiler, inc_mapi, inc_amd,
   ],

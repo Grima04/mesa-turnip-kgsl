@@ -78,7 +78,7 @@ GEN10_FORMAT_TABLE_DEP := \
 
 GEN10_FORMAT_TABLE := $(LOCAL_PATH)/common/gfx10_format_table.py
 
-$(intermediates)/common/gfx10_format_table.h: $(GEN10_FORMAT_TABLE) $(GEN10_FORMAT_TABLE_INPUTS) $(GEN10_FORMAT_TABLE_DEP)
+$(intermediates)/common/gfx10_format_table.c: $(GEN10_FORMAT_TABLE) $(GEN10_FORMAT_TABLE_INPUTS) $(GEN10_FORMAT_TABLE_DEP)
 	@mkdir -p $(dir $@)
 	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
 	$(hide) $(MESA_PYTHON2) $(GEN10_FORMAT_TABLE) $(GEN10_FORMAT_TABLE_INPUTS) > $@ || ($(RM) $@; false)
