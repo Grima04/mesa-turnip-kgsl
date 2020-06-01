@@ -65,7 +65,8 @@ struct zink_shader {
 };
 
 struct zink_shader *
-zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir);
+zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
+                 const struct pipe_stream_output_info *so_info);
 
 void
 zink_shader_free(struct zink_screen *screen, struct zink_shader *shader);

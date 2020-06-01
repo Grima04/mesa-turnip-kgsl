@@ -132,15 +132,55 @@ optimize_nir(struct nir_shader *s)
    } while (progress);
 }
 
+/* check for a genuine gl_PointSize output vs one from nir_lower_point_size_mov */
+static bool
+check_psiz(struct nir_shader *s)
+{
+   nir_foreach_variable(var, &s->outputs) {
+      if (var->data.location == VARYING_SLOT_PSIZ) {
+         /* genuine PSIZ outputs will have this set */
+         return !!var->data.explicit_location;
+      }
+   }
+   return false;
+}
+
+/* semi-copied from iris */
+static void
+update_so_info(struct pipe_stream_output_info *so_info,
+               uint64_t outputs_written, bool have_psiz)
+{
+   uint8_t reverse_map[64] = {};
+   unsigned slot = 0;
+   while (outputs_written) {
+      int bit = u_bit_scan64(&outputs_written);
+      /* PSIZ from nir_lower_point_size_mov breaks stream output, so always skip it */
+      if (bit == VARYING_SLOT_PSIZ && !have_psiz)
+         continue;
+      reverse_map[slot++] = bit;
+   }
+
+   for (unsigned i = 0; i < so_info->num_outputs; i++) {
+      struct pipe_stream_output *output = &so_info->output[i];
+
+      /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
+      output->register_index = reverse_map[output->register_index];
+   }
+}
+
 struct zink_shader *
-zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
+zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
+                 const struct pipe_stream_output_info *so_info)
 {
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
+   bool have_psiz = false;
 
    ret->programs = _mesa_pointer_set_create(NULL);
 
    NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 1);
    NIR_PASS_V(nir, nir_lower_clip_halfz);
+   if (nir->info.stage == MESA_SHADER_VERTEX)
+      have_psiz = check_psiz(nir);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    optimize_nir(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
@@ -189,8 +229,12 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
    }
 
    ret->info = nir->info;
+   if (so_info) {
+      memcpy(&ret->stream_output, so_info, sizeof(ret->stream_output));
+      update_so_info(&ret->stream_output, nir->info.outputs_written, have_psiz);
+   }
 
-   struct spirv_shader *spirv = nir_to_spirv(nir);
+   struct spirv_shader *spirv = nir_to_spirv(nir, so_info, so_info ? &ret->stream_output : NULL);
    assert(spirv);
 
    if (zink_debug & ZINK_DEBUG_SPIRV) {

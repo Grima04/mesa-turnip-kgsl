@@ -296,7 +296,7 @@ zink_create_vs_state(struct pipe_context *pctx,
    else
       nir = (struct nir_shader *)shader->ir.nir;
 
-   return zink_compile_nir(zink_screen(pctx->screen), nir);
+   return zink_compile_nir(zink_screen(pctx->screen), nir, &shader->stream_output);
 }
 
 static void
@@ -332,7 +332,7 @@ zink_create_fs_state(struct pipe_context *pctx,
    else
       nir = (struct nir_shader *)shader->ir.nir;
 
-   return zink_compile_nir(zink_screen(pctx->screen), nir);
+   return zink_compile_nir(zink_screen(pctx->screen), nir, NULL);
 }
 
 static void

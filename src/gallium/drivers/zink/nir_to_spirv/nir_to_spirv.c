@@ -111,6 +111,10 @@ struct ntv_context {
    size_t num_regs;
 
    struct hash_table *vars; /* nir_variable -> SpvId */
+   struct hash_table *so_outputs; /* pipe_stream_output -> SpvId */
+   unsigned outputs[VARYING_SLOT_MAX];
+   const struct glsl_type *so_output_gl_types[VARYING_SLOT_MAX];
+   SpvId so_output_types[VARYING_SLOT_MAX];
 
    const SpvId *block_ids;
    size_t num_blocks;
@@ -353,7 +357,6 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
 
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
-
       unsigned slot = var->data.location;
       switch (slot) {
       HANDLE_EMIT_BUILTIN(POS, Position);
@@ -368,6 +371,10 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       case VARYING_SLOT_CLIP_DIST0:
          assert(glsl_type_is_array(var->type));
          spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInClipDistance);
+         /* this can be as large as 2x vec4, which requires 2 slots */
+         ctx->outputs[VARYING_SLOT_CLIP_DIST1] = var_id;
+         ctx->so_output_gl_types[VARYING_SLOT_CLIP_DIST1] = var->type;
+         ctx->so_output_types[VARYING_SLOT_CLIP_DIST1] = var_type;
          break;
 
       default:
@@ -383,6 +390,9 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
           * use driver_location for non-builtins with defined slots to avoid overlap
           */
       }
+      ctx->outputs[var->data.location] = var_id;
+      ctx->so_output_gl_types[var->data.location] = var->type;
+      ctx->so_output_types[var->data.location] = var_type;
    } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
       if (var->data.location >= FRAG_RESULT_DATA0)
          spirv_builder_emit_location(&ctx->builder, var_id,
@@ -821,6 +831,167 @@ static SpvId
 emit_unop(struct ntv_context *ctx, SpvOp op, SpvId type, SpvId src)
 {
    return spirv_builder_emit_unop(&ctx->builder, op, type, src);
+}
+
+/* return the intended xfb output vec type based on base type and vector size */
+static SpvId
+get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_components)
+{
+   const struct glsl_type *out_type = ctx->so_output_gl_types[register_index];
+   enum glsl_base_type base_type = glsl_get_base_type(out_type);
+   if (base_type == GLSL_TYPE_ARRAY)
+      base_type = glsl_get_base_type(glsl_without_array(out_type));
+
+   switch (base_type) {
+   case GLSL_TYPE_BOOL:
+      return get_bvec_type(ctx, num_components);
+
+   case GLSL_TYPE_FLOAT:
+      return get_fvec_type(ctx, 32, num_components);
+
+   case GLSL_TYPE_INT:
+      return get_ivec_type(ctx, 32, num_components);
+
+   case GLSL_TYPE_UINT:
+      return get_uvec_type(ctx, 32, num_components);
+
+   default:
+      break;
+   }
+   unreachable("unknown type");
+   return 0;
+}
+
+/* for streamout create new outputs, as streamout can be done on individual components,
+   from complete outputs, so we just can't use the created packed outputs */
+static void
+emit_so_info(struct ntv_context *ctx, unsigned max_output_location,
+             const struct pipe_stream_output_info *so_info, struct pipe_stream_output_info *local_so_info)
+{
+   for (unsigned i = 0; i < local_so_info->num_outputs; i++) {
+      struct pipe_stream_output so_output = local_so_info->output[i];
+      SpvId out_type = get_output_type(ctx, so_output.register_index, so_output.num_components);
+      SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                      SpvStorageClassOutput,
+                                                      out_type);
+      SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                            SpvStorageClassOutput);
+      char name[10];
+
+      snprintf(name, 10, "xfb%d", i);
+      spirv_builder_emit_name(&ctx->builder, var_id, name);
+      spirv_builder_emit_offset(&ctx->builder, var_id, (so_output.dst_offset * 4));
+      spirv_builder_emit_xfb_buffer(&ctx->builder, var_id, so_output.output_buffer);
+      spirv_builder_emit_xfb_stride(&ctx->builder, var_id, so_info->stride[so_output.output_buffer] * 4);
+
+      /* output location is incremented by VARYING_SLOT_VAR0 for non-builtins in vtn,
+       * so we need to ensure that the new xfb location slot doesn't conflict with any previously-emitted
+       * outputs.
+       *
+       * if there's no previous outputs that take up user slots (VAR0+) then we can start right after the
+       * glsl builtin reserved slots, otherwise we start just after the adjusted user output slot
+       */
+      uint32_t location = NTV_MIN_RESERVED_SLOTS + i;
+      if (max_output_location >= VARYING_SLOT_VAR0)
+         location = max_output_location - VARYING_SLOT_VAR0 + 1 + i;
+      assert(location < VARYING_SLOT_VAR0);
+      spirv_builder_emit_location(&ctx->builder, var_id, location);
+
+      /* note: gl_ClipDistance[4] can the 0-indexed member of VARYING_SLOT_CLIP_DIST1 here,
+       * so this is still the 0 component
+       */
+      if (so_output.start_component)
+         spirv_builder_emit_component(&ctx->builder, var_id, so_output.start_component);
+
+      uint32_t *key = ralloc_size(NULL, sizeof(uint32_t));
+      *key = (uint32_t)so_output.register_index << 2 | so_output.start_component;
+      _mesa_hash_table_insert(ctx->so_outputs, key, (void *)(intptr_t)var_id);
+
+      assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+      ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
+   }
+}
+
+static void
+emit_so_outputs(struct ntv_context *ctx,
+                const struct pipe_stream_output_info *so_info, struct pipe_stream_output_info *local_so_info)
+{
+   SpvId loaded_outputs[VARYING_SLOT_MAX] = {};
+   for (unsigned i = 0; i < local_so_info->num_outputs; i++) {
+      uint32_t components[NIR_MAX_VEC_COMPONENTS];
+      struct pipe_stream_output so_output = local_so_info->output[i];
+      uint32_t so_key = (uint32_t) so_output.register_index << 2 | so_output.start_component;
+      struct hash_entry *he = _mesa_hash_table_search(ctx->so_outputs, &so_key);
+      assert(he);
+      SpvId so_output_var_id = (SpvId)(intptr_t)he->data;
+
+      SpvId type = get_output_type(ctx, so_output.register_index, so_output.num_components);
+      SpvId output = ctx->outputs[so_output.register_index];
+      SpvId output_type = ctx->so_output_types[so_output.register_index];
+      const struct glsl_type *out_type = ctx->so_output_gl_types[so_output.register_index];
+
+      if (!loaded_outputs[so_output.register_index])
+         loaded_outputs[so_output.register_index] = spirv_builder_emit_load(&ctx->builder, output_type, output);
+      SpvId src = loaded_outputs[so_output.register_index];
+
+      SpvId result;
+
+      for (unsigned c = 0; c < so_output.num_components; c++) {
+         components[c] = so_output.start_component + c;
+         /* this is the second half of a 2 * vec4 array */
+         if (ctx->stage == MESA_SHADER_VERTEX && so_output.register_index == VARYING_SLOT_CLIP_DIST1)
+            components[c] += 4;
+      }
+
+      /* if we're emitting a scalar or the type we're emitting matches the output's original type and we're
+       * emitting the same number of components, then we can skip any sort of conversion here
+       */
+      if (glsl_type_is_scalar(out_type) || (type == output_type && glsl_get_length(out_type) == so_output.num_components))
+         result = src;
+      else {
+         if (ctx->stage == MESA_SHADER_VERTEX && so_output.register_index == VARYING_SLOT_POS) {
+            /* gl_Position was modified by nir_lower_clip_halfz, so we need to reverse that for streamout here:
+             * 
+             * opengl gl_Position.z = (vulkan gl_Position.z * 2.0) - vulkan gl_Position.w
+             *
+             * to do this, we extract the z and w components, perform the multiply and subtract ops, then reinsert
+             */
+            uint32_t z_component[] = {2};
+            uint32_t w_component[] = {3};
+            SpvId ftype = spirv_builder_type_float(&ctx->builder, 32);
+            SpvId z = spirv_builder_emit_composite_extract(&ctx->builder, ftype, src, z_component, 1);
+            SpvId w = spirv_builder_emit_composite_extract(&ctx->builder, ftype, src, w_component, 1);
+            SpvId new_z = emit_binop(ctx, SpvOpFMul, ftype, z, spirv_builder_const_float(&ctx->builder, 32, 2.0));
+            new_z = emit_binop(ctx, SpvOpFSub, ftype, new_z, w);
+            src = spirv_builder_emit_vector_insert(&ctx->builder, type, src, new_z, 2);
+         }
+         /* OpCompositeExtract can only extract scalars for our use here */
+         if (so_output.num_components == 1) {
+            result = spirv_builder_emit_composite_extract(&ctx->builder, type, src, components, so_output.num_components);
+         } else if (glsl_type_is_vector(out_type)) {
+            /* OpVectorShuffle can select vector members into a differently-sized vector */
+            result = spirv_builder_emit_vector_shuffle(&ctx->builder, type,
+                                                             src, src,
+                                                             components, so_output.num_components);
+            result = emit_unop(ctx, SpvOpBitcast, type, result);
+         } else {
+             /* for arrays, we need to manually extract each desired member
+              * and re-pack them into the desired output type
+              */
+             for (unsigned c = 0; c < so_output.num_components; c++) {
+                uint32_t member[] = { so_output.start_component + c };
+                SpvId base_type = get_glsl_type(ctx, glsl_without_array(out_type));
+
+                if (ctx->stage == MESA_SHADER_VERTEX && so_output.register_index == VARYING_SLOT_CLIP_DIST1)
+                   member[0] += 4;
+                components[c] = spirv_builder_emit_composite_extract(&ctx->builder, base_type, src, member, 1);
+             }
+             result = spirv_builder_emit_composite_construct(&ctx->builder, type, components, so_output.num_components);
+         }
+      }
+
+      spirv_builder_emit_store(&ctx->builder, so_output_var_id, result);
+   }
 }
 
 static SpvId
@@ -1988,7 +2159,7 @@ emit_cf_list(struct ntv_context *ctx, struct exec_list *list)
 }
 
 struct spirv_shader *
-nir_to_spirv(struct nir_shader *s)
+nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info, struct pipe_stream_output_info *local_so_info)
 {
    struct spirv_shader *ret = NULL;
 
@@ -2061,12 +2232,17 @@ nir_to_spirv(struct nir_shader *s)
    ctx.vars = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                                       _mesa_key_pointer_equal);
 
+   ctx.so_outputs = _mesa_hash_table_create(NULL, _mesa_hash_u32,
+                                            _mesa_key_u32_equal);
+
    nir_foreach_variable(var, &s->inputs)
       emit_input(&ctx, var);
 
    nir_foreach_variable(var, &s->outputs)
       emit_output(&ctx, var);
 
+   if (so_info)
+      emit_so_info(&ctx, util_last_bit64(s->info.outputs_written), so_info, local_so_info);
    nir_foreach_variable(var, &s->uniforms)
       emit_uniform(&ctx, var);
 
@@ -2078,6 +2254,11 @@ nir_to_spirv(struct nir_shader *s)
                                       SpvExecutionModeDepthReplacing);
    }
 
+   if (so_info && so_info->num_outputs) {
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityTransformFeedback);
+      spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
+                                   SpvExecutionModeXfb);
+   }
 
    spirv_builder_function(&ctx.builder, entry_point, type_void,
                                             SpvFunctionControlMaskNone,
@@ -2124,6 +2305,9 @@ nir_to_spirv(struct nir_shader *s)
 
    free(ctx.defs);
 
+   if (so_info)
+      emit_so_outputs(&ctx, so_info, local_so_info);
+
    spirv_builder_return(&ctx.builder); // doesn't belong here, but whatevz
    spirv_builder_function_end(&ctx.builder);
 
@@ -2153,6 +2337,9 @@ fail:
 
    if (ctx.vars)
       _mesa_hash_table_destroy(ctx.vars, NULL);
+
+   if (ctx.so_outputs)
+      _mesa_hash_table_destroy(ctx.so_outputs, NULL);
 
    return NULL;
 }
