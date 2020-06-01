@@ -34,6 +34,8 @@ struct sw_displaytarget;
 struct zink_resource {
    struct pipe_resource base;
 
+   enum pipe_format internal_format:16;
+
    union {
       VkBuffer buffer;
       struct {
@@ -69,5 +71,10 @@ zink_screen_resource_init(struct pipe_screen *pscreen);
 
 void
 zink_context_resource_init(struct pipe_context *pctx);
+
+void
+zink_get_depth_stencil_resources(struct pipe_resource *res,
+                                 struct zink_resource **out_z,
+                                 struct zink_resource **out_s);
 
 #endif

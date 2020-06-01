@@ -111,6 +111,15 @@ zink_batch_reference_resoure(struct zink_batch *batch,
    if (!entry) {
       entry = _mesa_set_add(batch->resources, res);
       pipe_reference(NULL, &res->base.reference);
+
+      /* u_transfer_helper unrefs the stencil buffer when the depth buffer is unrefed,
+       * so we add an extra ref here to the stencil buffer to compensate
+       */
+      struct zink_resource *stencil;
+
+      zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
+      if (stencil)
+         pipe_reference(NULL, &stencil->base.reference);
    }
 }
 
