@@ -134,6 +134,7 @@ M_LOAD(ld_ubo_int4, nir_type_uint32);
 M_LOAD(ld_int4, nir_type_uint32);
 M_STORE(st_int4, nir_type_uint32);
 M_LOAD(ld_color_buffer_32u, nir_type_uint32);
+M_LOAD(ld_color_buffer_as_fp16, nir_type_float16);
 M_STORE(st_vary_32, nir_type_uint32);
 M_LOAD(ld_cubemap_coords, nir_type_uint32);
 M_LOAD(ld_compute_id, nir_type_uint32);
@@ -1600,8 +1601,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         /* Reads 128-bit value raw off the tilebuffer during blending, tasty */
 
-        case nir_intrinsic_load_raw_output_pan:
-        case nir_intrinsic_load_output_u8_as_fp16_pan:
+        case nir_intrinsic_load_raw_output_pan: {
                 reg = nir_dest_index(&instr->dest);
                 assert(ctx->is_blend);
 
@@ -1609,23 +1609,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                  * different semantics than T760 and up */
 
                 midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
-                bool old_blend = ctx->quirks & MIDGARD_OLD_BLEND;
 
-                if (instr->intrinsic == nir_intrinsic_load_output_u8_as_fp16_pan) {
-                        ld.load_store.op = old_blend ?
-                                midgard_op_ld_color_buffer_as_fp16_old :
-                                midgard_op_ld_color_buffer_as_fp16;
-
-                        for (unsigned c = 4; c < 16; ++c)
-                                ld.swizzle[0][c] = 0;
-
-                        ld.dest_type = nir_type_float16;
-
-                        if (old_blend) {
-                                ld.load_store.address = 1;
-                                ld.load_store.arg_2 = 0x1E;
-                        }
-                } else if (old_blend) {
+                if (ctx->quirks & MIDGARD_OLD_BLEND) {
                         ld.load_store.op = midgard_op_ld_color_buffer_32u_old;
                         ld.load_store.address = 16;
                         ld.load_store.arg_2 = 0x1E;
@@ -1633,6 +1618,26 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 emit_mir_instruction(ctx, ld);
                 break;
+        }
+
+        case nir_intrinsic_load_output: {
+                reg = nir_dest_index(&instr->dest);
+                assert(ctx->is_blend);
+
+                midgard_instruction ld = m_ld_color_buffer_as_fp16(reg, 0);
+
+                for (unsigned c = 4; c < 16; ++c)
+                        ld.swizzle[0][c] = 0;
+
+                if (ctx->quirks & MIDGARD_OLD_BLEND) {
+                        ld.load_store.op = midgard_op_ld_color_buffer_as_fp16_old;
+                        ld.load_store.address = 1;
+                        ld.load_store.arg_2 = 0x1E;
+                }
+
+                emit_mir_instruction(ctx, ld);
+                break;
+        }
 
         case nir_intrinsic_load_blend_const_color_rgba: {
                 assert(ctx->is_blend);
