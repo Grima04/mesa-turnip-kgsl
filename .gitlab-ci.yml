@@ -137,7 +137,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-06-01"
+    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-06-02"
 
 .use-x86_build-base:
   extends:
@@ -155,7 +155,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-06-01"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-06-02"
 
 .use-x86_build:
   variables:
@@ -164,6 +164,51 @@ x86_build:
   needs:
     - x86_build-base
     - x86_build
+
+# Debian 10 based i386 cross-build image
+i386_build:
+  extends:
+    - .use-x86_build-base
+  variables:
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-06-02"
+
+.use-i386_build:
+  variables:
+    TAG: *i386_build
+  image: "$CI_REGISTRY_IMAGE/debian/i386_build:$TAG"
+  needs:
+    - x86_build-base
+    - i386_build
+
+# Debian 10 based ppc64el cross-build image
+ppc64el_build:
+  extends:
+    - .use-x86_build-base
+  variables:
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-06-02"
+
+.use-ppc64el_build:
+  variables:
+    TAG: *ppc64el_build
+  image: "$CI_REGISTRY_IMAGE/debian/ppc64el_build:$TAG"
+  needs:
+    - x86_build-base
+    - ppc64el_build
+
+# Debian 10 based s390x cross-build image
+s390x_build:
+  extends:
+    - .use-x86_build-base
+  variables:
+    FDO_DISTRIBUTION_TAG: &s390x_build "2020-06-02"
+
+.use-s390x_build:
+  variables:
+    TAG: *s390x_build
+  image: "$CI_REGISTRY_IMAGE/debian/s390x_build:$TAG"
+  needs:
+    - x86_build-base
+    - s390x_build
 
 # Debian 10 based x86 test image base
 x86_test-base:
@@ -564,7 +609,9 @@ meson-vulkan:
       -D werror=true
 
 meson-i386:
-  extends: .meson-cross
+  extends:
+    - .meson-cross
+    - .use-i386_build
   variables:
     CROSS: i386
     VULKAN_DRIVERS: intel,amd
@@ -572,13 +619,11 @@ meson-i386:
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
       -D werror=true
-  script:
-    - dpkg -i /var/cache/apt/archives/$CROSS/*.deb
-    - .gitlab-ci/meson-build.sh
 
 meson-s390x:
   extends:
     - .meson-cross
+    - .use-s390x_build
   tags:
     - kvm
   variables:
@@ -586,17 +631,11 @@ meson-s390x:
     EXTRA_OPTION: >
       -D werror=true
     GALLIUM_DRIVERS: "swrast"
-  script:
-    # For unknown reasons "too many" installed i386 libraries cause qemu to
-    # crash while executing llvm-config for s390x.
-    - apt-get purge -y wine32-development
-    - apt-get autoremove -y --purge
-    - dpkg -i /var/cache/apt/archives/$CROSS/*.deb
-    - .gitlab-ci/meson-build.sh
 
 meson-ppc64el:
   extends:
     - meson-s390x
+    - .use-ppc64el_build
   variables:
     CROSS: ppc64el
     EXTRA_OPTION: ""

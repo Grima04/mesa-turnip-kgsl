@@ -5,11 +5,6 @@ set -o xtrace
 
 export DEBIAN_FRONTEND=noninteractive
 
-CROSS_ARCHITECTURES="i386 ppc64el s390x"
-for arch in $CROSS_ARCHITECTURES; do
-    dpkg --add-architecture $arch
-done
-
 apt-get install -y \
         ca-certificates \
         gnupg \
@@ -30,6 +25,7 @@ apt-get install -y --no-remove \
         bison \
         ccache \
         clang-9 \
+        dpkg-cross \
         flex \
         g++ \
         g++-mingw-w64-x86-64 \
@@ -37,19 +33,16 @@ apt-get install -y --no-remove \
         gettext \
         libclang-9-dev \
         libclc-dev \
-        libdrm-dev:s390x \
         libelf-dev \
         libepoxy-dev \
         libexpat1-dev \
         libgtk-3-dev \
         libomxil-bellagio-dev \
         libpciaccess-dev \
-        libpciaccess-dev:i386 \
         libunwind-dev \
         libva-dev \
         libvdpau-dev \
         libvulkan-dev \
-        libvulkan-dev:ppc64el \
         libx11-dev \
         libx11-xcb-dev \
         libxdamage-dev \
@@ -69,8 +62,6 @@ apt-get install -y --no-remove \
         python3-requests \
         qemu-user \
         scons \
-        wine-development \
-        wine32-development \
         wine64-development \
         x11proto-dri2-dev \
         x11proto-gl-dev \
@@ -82,36 +73,6 @@ apt-get install -y --no-remove -t buster-backports \
         libclang-8-dev \
         libllvm8 \
         meson
-
-# Cross-build Mesa deps
-for arch in $CROSS_ARCHITECTURES; do
-    apt-get install -y --no-remove \
-            crossbuild-essential-${arch} \
-            libelf-dev:${arch} \
-            libexpat1-dev:${arch} \
-            libffi-dev:${arch} \
-            libstdc++6:${arch} \
-            libtinfo-dev:${arch}
-
-    apt-get install -y --no-remove -t buster-backports \
-            libllvm8:${arch}
-
-    mkdir /var/cache/apt/archives/${arch}
-    # Download llvm-* packages, but don't install them yet, since they can
-    # only be installed for one architecture at a time
-    apt-get install -o Dir::Cache::archives=/var/cache/apt/archives/$arch --download-only \
-            -y --no-remove -t buster-backports \
-            llvm-8-dev:${arch}
-done
-
-apt-get install -y --no-remove -t buster-backports \
-        llvm-8-dev
-
-
-# Generate cross build files for Meson
-for arch in $CROSS_ARCHITECTURES; do
-    . .gitlab-ci/create-cross-file.sh $arch
-done
 
 
 # for the vulkan overlay layer

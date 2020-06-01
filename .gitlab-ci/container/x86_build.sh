@@ -21,8 +21,17 @@ STABLE_EPHEMERAL=" \
       wget \
       "
 
+# We need multiarch for Wine
+dpkg --add-architecture i386
+apt-get update
+
 apt-get install -y --no-remove \
-      $STABLE_EPHEMERAL
+      $STABLE_EPHEMERAL \
+      wine-development \
+      wine32-development
+
+apt-get install -y --no-remove -t buster-backports \
+      llvm-8-dev
 
 
 . .gitlab-ci/container/container_pre_build.sh
@@ -70,8 +79,6 @@ wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
 tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
 cd $LIBDRM_VERSION
 meson build -D vc4=true -D freedreno=true -D etnaviv=true -D libdir=lib/x86_64-linux-gnu; ninja -C build install
-rm -rf build; meson --cross-file=/cross_file-ppc64el.txt build -D libdir=lib/powerpc64le-linux-gnu; ninja -C build install
-rm -rf build; meson --cross-file=/cross_file-i386.txt build -D libdir=lib/i386-linux-gnu; ninja -C build install
 cd ..
 rm -rf $LIBDRM_VERSION
 
