@@ -48,10 +48,12 @@ struct zink_screen {
    VkPhysicalDeviceProperties props;
    VkPhysicalDeviceFeatures feats;
    VkPhysicalDeviceMemoryProperties mem_props;
+   VkPhysicalDeviceTransformFeedbackPropertiesEXT tf_props;
 
    bool have_KHR_maintenance1;
    bool have_KHR_external_memory_fd;
    bool have_EXT_conditional_rendering;
+   bool have_EXT_transform_feedback;
 
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;
@@ -62,6 +64,13 @@ struct zink_screen {
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;
    PFN_vkCmdBeginConditionalRenderingEXT vk_CmdBeginConditionalRenderingEXT;
    PFN_vkCmdEndConditionalRenderingEXT vk_CmdEndConditionalRenderingEXT;
+
+   PFN_vkCmdBindTransformFeedbackBuffersEXT vk_CmdBindTransformFeedbackBuffersEXT;
+   PFN_vkCmdBeginTransformFeedbackEXT vk_CmdBeginTransformFeedbackEXT;
+   PFN_vkCmdEndTransformFeedbackEXT vk_CmdEndTransformFeedbackEXT;
+   PFN_vkCmdBeginQueryIndexedEXT vk_CmdBeginQueryIndexedEXT;
+   PFN_vkCmdEndQueryIndexedEXT vk_CmdEndQueryIndexedEXT;
+   PFN_vkCmdDrawIndirectByteCountEXT vk_CmdDrawIndirectByteCountEXT;
 };
 
 static inline struct zink_screen *

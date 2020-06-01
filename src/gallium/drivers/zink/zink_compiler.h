@@ -55,6 +55,8 @@ struct zink_shader {
 
    shader_info info;
 
+   struct pipe_stream_output_info stream_output;
+
    struct {
       int index;
       int binding;

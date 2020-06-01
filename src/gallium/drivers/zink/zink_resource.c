@@ -122,6 +122,12 @@ resource_create(struct pipe_screen *pscreen,
       if (templ->bind & PIPE_BIND_COMMAND_ARGS_BUFFER)
          bci.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 
+      if (templ->bind == (PIPE_BIND_STREAM_OUTPUT | PIPE_BIND_CUSTOM)) {
+         bci.usage |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
+      } else if (templ->bind & PIPE_BIND_STREAM_OUTPUT) {
+         bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+      }
+
       if (vkCreateBuffer(screen->dev, &bci, NULL, &res->buffer) !=
           VK_SUCCESS) {
          FREE(res);

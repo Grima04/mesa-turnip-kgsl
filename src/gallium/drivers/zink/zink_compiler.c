@@ -21,6 +21,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "zink_context.h"
 #include "zink_compiler.h"
 #include "zink_program.h"
 #include "zink_screen.h"

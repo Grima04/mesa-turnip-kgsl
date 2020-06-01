@@ -725,7 +725,14 @@ load_device_extensions(struct zink_screen *screen)
       if (!screen->vk_##x)                                                  \
          return false;                                                      \
    } while (0)
-
+   if (screen->have_EXT_transform_feedback) {
+      GET_PROC_ADDR(CmdBindTransformFeedbackBuffersEXT);
+      GET_PROC_ADDR(CmdBeginTransformFeedbackEXT);
+      GET_PROC_ADDR(CmdEndTransformFeedbackEXT);
+      GET_PROC_ADDR(CmdBeginQueryIndexedEXT);
+      GET_PROC_ADDR(CmdEndQueryIndexedEXT);
+      GET_PROC_ADDR(CmdDrawIndirectByteCountEXT);
+   }
    if (screen->have_KHR_external_memory_fd)
       GET_PROC_ADDR(GetMemoryFdKHR);
 

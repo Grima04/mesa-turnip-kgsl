@@ -366,7 +366,16 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
    if (buffers) {
       for (int i = 0; i < num_buffers; ++i) {
          const struct pipe_vertex_buffer *vb = buffers + i;
+         struct zink_resource *res = zink_resource(vb->buffer.resource);
+
          ctx->gfx_pipeline_state.bindings[start_slot + i].stride = vb->stride;
+         if (res && res->needs_xfb_barrier) {
+            /* if we're binding a previously-used xfb buffer, we need cmd buffer synchronization to ensure
+             * that we use the right buffer data
+             */
+            pctx->flush(pctx, NULL, 0);
+            res->needs_xfb_barrier = false;
+         }
       }
    }
 
@@ -912,6 +921,9 @@ zink_flush(struct pipe_context *pctx,
    struct zink_batch *batch = zink_curr_batch(ctx);
    flush_batch(ctx);
 
+   if (zink_screen(pctx->screen)->have_EXT_transform_feedback && ctx->num_so_targets)
+      ctx->dirty_so_targets = true;
+
    if (pfence)
       zink_fence_reference(zink_screen(pctx->screen),
                            (struct zink_fence **)pfence,
@@ -1014,6 +1026,73 @@ zink_resource_copy_region(struct pipe_context *pctx,
       debug_printf("zink: TODO resource copy\n");
 }
 
+static struct pipe_stream_output_target *
+zink_create_stream_output_target(struct pipe_context *pctx,
+                                 struct pipe_resource *pres,
+                                 unsigned buffer_offset,
+                                 unsigned buffer_size)
+{
+   struct zink_so_target *t;
+   t = CALLOC_STRUCT(zink_so_target);
+   if (!t)
+      return NULL;
+
+   t->base.reference.count = 1;
+   t->base.context = pctx;
+   pipe_resource_reference(&t->base.buffer, pres);
+   t->base.buffer_offset = buffer_offset;
+   t->base.buffer_size = buffer_size;
+
+   /* using PIPE_BIND_CUSTOM here lets us create a custom pipe buffer resource,
+    * which allows us to differentiate and use VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT
+    * as we must for this case
+    */
+   t->counter_buffer = pipe_buffer_create(pctx->screen, PIPE_BIND_STREAM_OUTPUT | PIPE_BIND_CUSTOM, PIPE_USAGE_DEFAULT, 4);
+   if (!t->counter_buffer) {
+      FREE(t);
+      return NULL;
+   }
+
+   return &t->base;
+}
+
+static void
+zink_stream_output_target_destroy(struct pipe_context *pctx,
+                                  struct pipe_stream_output_target *psot)
+{
+   struct zink_so_target *t = (struct zink_so_target *)psot;
+   pipe_resource_reference(&t->counter_buffer, NULL);
+   pipe_resource_reference(&t->base.buffer, NULL);
+   FREE(t);
+}
+
+static void
+zink_set_stream_output_targets(struct pipe_context *pctx,
+                               unsigned num_targets,
+                               struct pipe_stream_output_target **targets,
+                               const unsigned *offsets)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   if (num_targets == 0) {
+      for (unsigned i = 0; i < ctx->num_so_targets; i++)
+         pipe_so_target_reference(&ctx->so_targets[i], NULL);
+      ctx->num_so_targets = 0;
+   } else {
+      for (unsigned i = 0; i < num_targets; i++)
+         pipe_so_target_reference(&ctx->so_targets[i], targets[i]);
+      for (unsigned i = num_targets; i < ctx->num_so_targets; i++)
+         pipe_so_target_reference(&ctx->so_targets[i], NULL);
+      ctx->num_so_targets = num_targets;
+
+      /* emit memory barrier on next draw for synchronization */
+      if (offsets[0] == (unsigned)-1)
+         ctx->xfb_barrier = true;
+      /* TODO: possibly avoid rebinding on resume if resuming from same buffers? */
+      ctx->dirty_so_targets = true;
+   }
+}
+
 struct pipe_context *
 zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -1063,7 +1142,10 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.resource_copy_region = zink_resource_copy_region;
    ctx->base.blit = zink_blit;
+   ctx->base.create_stream_output_target = zink_create_stream_output_target;
+   ctx->base.stream_output_target_destroy = zink_stream_output_target_destroy;
 
+   ctx->base.set_stream_output_targets = zink_set_stream_output_targets;
    ctx->base.flush_resource = zink_flush_resource;
    zink_context_surface_init(&ctx->base);
    zink_context_resource_init(&ctx->base);

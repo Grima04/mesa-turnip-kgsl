@@ -57,6 +57,20 @@ zink_sampler_view(struct pipe_sampler_view *pview)
    return (struct zink_sampler_view *)pview;
 }
 
+struct zink_so_target {
+   struct pipe_stream_output_target base;
+   struct pipe_resource *counter_buffer;
+   VkDeviceSize counter_buffer_offset;
+   uint32_t stride;
+   bool counter_buffer_valid;
+};
+
+static inline struct zink_so_target *
+zink_so_target(struct pipe_stream_output_target *so_target)
+{
+   return (struct zink_so_target *)so_target;
+}
+
 struct zink_context {
    struct pipe_context base;
    struct slab_child_pool transfer_pool;
@@ -111,6 +125,11 @@ struct zink_context {
    bool queries_disabled;
 
    struct pipe_resource *dummy_buffer;
+
+   uint32_t num_so_targets;
+   struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_OUTPUTS];
+   bool dirty_so_targets;
+   bool xfb_barrier;
 };
 
 static inline struct zink_context *
