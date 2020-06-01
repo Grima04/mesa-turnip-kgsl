@@ -4521,6 +4521,7 @@ surf_state_offset_for_aux(struct iris_resource *res,
                           unsigned aux_modes,
                           enum isl_aux_usage aux_usage)
 {
+   assert(aux_modes & (1 << aux_usage));
    return SURFACE_STATE_ALIGNMENT *
           util_bitcount(aux_modes & ((1 << aux_usage) - 1));
 }

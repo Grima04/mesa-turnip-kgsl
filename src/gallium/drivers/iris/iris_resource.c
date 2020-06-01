@@ -525,8 +525,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
    } else if (has_ccs) {
       if (want_ccs_e_for_format(devinfo, res->surf.format))
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
-
-      if (isl_format_supports_ccs_d(devinfo, res->surf.format))
+      else if (isl_format_supports_ccs_d(devinfo, res->surf.format))
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;
    }
 
