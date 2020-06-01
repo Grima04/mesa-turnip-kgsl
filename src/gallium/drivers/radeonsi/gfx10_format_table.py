@@ -51,6 +51,7 @@ HARDCODED = {
     'PIPE_FORMAT_Z24_UNORM_S8_UINT': hardcoded_format('8_24_UNORM'),
     'PIPE_FORMAT_S8_UINT_Z24_UNORM': hardcoded_format('24_8_UNORM'),
     'PIPE_FORMAT_Z32_UNORM': None,
+    'PIPE_FORMAT_Z16_UNORM_S8_UINT': None,
 
     'PIPE_FORMAT_R9G9B9E5_FLOAT': hardcoded_format('5_9_9_9_FLOAT'),
     'PIPE_FORMAT_R11G11B10_FLOAT': hardcoded_format('10_11_11_FLOAT'), # NOTE: full set of int/unorm/etc. exists
