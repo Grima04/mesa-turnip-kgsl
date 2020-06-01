@@ -798,13 +798,14 @@ u_vbuf_create_vertex_elements(struct u_vbuf *mgr, unsigned count,
     * supported. */
    for (i = 0; i < count; i++) {
       enum pipe_format format = ve->ve[i].src_format;
+      unsigned vb_index_bit = 1 << ve->ve[i].vertex_buffer_index;
 
       ve->src_format_size[i] = util_format_get_blocksize(format);
 
-      used_buffers |= 1 << ve->ve[i].vertex_buffer_index;
+      used_buffers |= vb_index_bit;
 
       if (!ve->ve[i].instance_divisor) {
-         ve->noninstance_vb_mask_any |= 1 << ve->ve[i].vertex_buffer_index;
+         ve->noninstance_vb_mask_any |= vb_index_bit;
       }
 
       format = mgr->caps.format_translation[format];
@@ -818,9 +819,9 @@ u_vbuf_create_vertex_elements(struct u_vbuf *mgr, unsigned count,
           (!mgr->caps.velem_src_offset_unaligned &&
            ve->ve[i].src_offset % 4 != 0)) {
          ve->incompatible_elem_mask |= 1 << i;
-         ve->incompatible_vb_mask_any |= 1 << ve->ve[i].vertex_buffer_index;
+         ve->incompatible_vb_mask_any |= vb_index_bit;
       } else {
-         ve->compatible_vb_mask_any |= 1 << ve->ve[i].vertex_buffer_index;
+         ve->compatible_vb_mask_any |= vb_index_bit;
       }
    }
 
@@ -960,9 +961,10 @@ u_vbuf_upload_buffers(struct u_vbuf *mgr,
                       int start_instance, unsigned num_instances)
 {
    unsigned i;
-   unsigned nr_velems = mgr->ve->count;
+   struct u_vbuf_elements *ve = mgr->ve;
+   unsigned nr_velems = ve->count;
    const struct pipe_vertex_element *velems =
-         mgr->using_translate ? mgr->fallback_velems.velems : mgr->ve->ve;
+         mgr->using_translate ? mgr->fallback_velems.velems : ve->ve;
    unsigned start_offset[PIPE_MAX_ATTRIBS];
    unsigned end_offset[PIPE_MAX_ATTRIBS];
    uint32_t buffer_mask = 0;
@@ -988,7 +990,7 @@ u_vbuf_upload_buffers(struct u_vbuf *mgr,
 
       if (!vb->stride) {
          /* Constant attrib. */
-         size = mgr->ve->src_format_size[i];
+         size = ve->src_format_size[i];
       } else if (instance_div) {
          /* Per-instance attrib. */
 
@@ -1002,11 +1004,11 @@ u_vbuf_upload_buffers(struct u_vbuf *mgr,
             count++;
 
          first += vb->stride * start_instance;
-         size = vb->stride * (count - 1) + mgr->ve->src_format_size[i];
+         size = vb->stride * (count - 1) + ve->src_format_size[i];
       } else {
          /* Per-vertex attrib. */
          first += vb->stride * start_vertex;
-         size = vb->stride * (num_vertices - 1) + mgr->ve->src_format_size[i];
+         size = vb->stride * (num_vertices - 1) + ve->src_format_size[i];
       }
 
       index_bit = 1 << index;
