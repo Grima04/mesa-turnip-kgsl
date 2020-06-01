@@ -33,15 +33,7 @@
 #include "sid.h"
 #include "util/debug.h"
 #include "util/u_atomic.h"
-
-struct gfx10_format {
-    unsigned img_format:9;
-
-    /* Various formats are only supported with workarounds for vertex fetch,
-     * and some 32_32_32 formats are supported natively, but only for buffers
-     * (possibly with some image support, actually, but no filtering). */
-    bool buffers_only:1;
-};
+#include "vulkan/util/vk_format.h"
 
 #include "gfx10_format_table.h"
 
@@ -530,7 +522,7 @@ radv_make_buffer_descriptor(struct radv_device *device,
 		   S_008F0C_DST_SEL_W(radv_map_swizzle(desc->swizzle[3]));
 
 	if (device->physical_device->rad_info.chip_class >= GFX10) {
-		const struct gfx10_format *fmt = gfx10_format_description(vk_format);
+		const struct gfx10_format *fmt = &gfx10_format_table[vk_format_to_pipe_format(vk_format)];
 
 		/* OOB_SELECT chooses the out-of-bounds check:
 		 *  - 0: (index >= NUM_RECORDS) || (offset >= STRIDE)
@@ -760,7 +752,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 	unsigned type;
 
 	desc = vk_format_description(vk_format);
-	img_format = gfx10_format_description(vk_format)->img_format;
+	img_format = gfx10_format_table[vk_format_to_pipe_format(vk_format)].img_format;
 
 	if (desc->colorspace == VK_FORMAT_COLORSPACE_ZS) {
 		const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
