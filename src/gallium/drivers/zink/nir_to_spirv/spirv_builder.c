@@ -225,6 +225,30 @@ spirv_builder_emit_array_stride(struct spirv_builder *b, SpvId target,
 }
 
 void
+spirv_builder_emit_offset(struct spirv_builder *b, SpvId target,
+                          uint32_t offset)
+{
+   uint32_t args[] = { offset };
+   emit_decoration(b, target, SpvDecorationOffset, args, ARRAY_SIZE(args));
+}
+
+void
+spirv_builder_emit_xfb_buffer(struct spirv_builder *b, SpvId target,
+                              uint32_t buffer)
+{
+   uint32_t args[] = { buffer };
+   emit_decoration(b, target, SpvDecorationXfbBuffer, args, ARRAY_SIZE(args));
+}
+
+void
+spirv_builder_emit_xfb_stride(struct spirv_builder *b, SpvId target,
+                              uint32_t stride)
+{
+   uint32_t args[] = { stride };
+   emit_decoration(b, target, SpvDecorationXfbStride, args, ARRAY_SIZE(args));
+}
+
+void
 spirv_builder_emit_index(struct spirv_builder *b, SpvId target, int index)
 {
    uint32_t args[] = { index };

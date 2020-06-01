@@ -109,6 +109,18 @@ spirv_builder_emit_array_stride(struct spirv_builder *b, SpvId target,
                                 uint32_t stride);
 
 void
+spirv_builder_emit_offset(struct spirv_builder *b, SpvId target,
+                          uint32_t offset);
+
+void
+spirv_builder_emit_xfb_buffer(struct spirv_builder *b, SpvId target,
+                              uint32_t buffer);
+
+void
+spirv_builder_emit_xfb_stride(struct spirv_builder *b, SpvId target,
+                              uint32_t stride);
+
+void
 spirv_builder_emit_member_offset(struct spirv_builder *b, SpvId target,
                                  uint32_t member, uint32_t offset);
 
