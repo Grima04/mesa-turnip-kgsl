@@ -139,6 +139,12 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_INDEP_BLEND_FUNC:
       return 1;
 
+   case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
+      return screen->have_EXT_transform_feedback ? screen->tf_props.maxTransformFeedbackBuffers : 0;
+   case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
+   case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
+      return 1;
+
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
       return screen->props.limits.maxImageArrayLayers;
 
@@ -753,7 +759,7 @@ static struct pipe_screen *
 zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
-   bool have_cond_render_ext = false;
+   bool have_tf_ext = false, have_cond_render_ext = false;
    if (!screen)
       return NULL;
 
@@ -789,15 +795,24 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
             if (!strcmp(extensions[i].extensionName,
                         VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME))
                have_cond_render_ext = true;
+            if (!strcmp(extensions[i].extensionName,
+                        VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME))
+               have_tf_ext = true;
 
          }
          FREE(extensions);
       }
    }
    VkPhysicalDeviceFeatures2 feats = {};
+   VkPhysicalDeviceTransformFeedbackFeaturesEXT tf_feats = {};
    VkPhysicalDeviceConditionalRenderingFeaturesEXT cond_render_feats = {};
 
    feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+   if (have_tf_ext) {
+      tf_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
+      tf_feats.pNext = feats.pNext;
+      feats.pNext = &tf_feats;
+   }
    if (have_cond_render_ext) {
       cond_render_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
       cond_render_feats.pNext = feats.pNext;
@@ -805,11 +820,18 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    }
    vkGetPhysicalDeviceFeatures2(screen->pdev, &feats);
    memcpy(&screen->feats, &feats.features, sizeof(screen->feats));
+   if (have_tf_ext && tf_feats.transformFeedback)
+      screen->have_EXT_transform_feedback = true;
    if (have_cond_render_ext && cond_render_feats.conditionalRendering)
       screen->have_EXT_conditional_rendering = true;
 
    VkPhysicalDeviceProperties2 props = {};
    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+   if (screen->have_EXT_transform_feedback) {
+      screen->tf_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
+      screen->tf_props.pNext = NULL;
+      props.pNext = &screen->tf_props;
+   }
    vkGetPhysicalDeviceProperties2(screen->pdev, &props);
    memcpy(&screen->props, &props.properties, sizeof(screen->props));
 
@@ -833,7 +855,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
     * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
     */
    dci.pNext = &feats;
-   const char *extensions[4] = {
+   const char *extensions[5] = {
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
    };
    num_extensions = 1;
@@ -851,6 +873,8 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    if (screen->have_EXT_conditional_rendering)
       extensions[num_extensions++] = VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME;
 
+   if (screen->have_EXT_transform_feedback)
+      extensions[num_extensions++] = VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME;
    assert(num_extensions <= ARRAY_SIZE(extensions));
 
    dci.ppEnabledExtensionNames = extensions;

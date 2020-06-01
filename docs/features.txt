@@ -54,7 +54,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   GL_EXT_draw_buffers2 (Per-buffer blend and masks)     DONE (v3d, zink)
   GL_EXT_texture_compression_rgtc                       DONE (zink)
   GL_ARB_texture_rg                                     DONE (v3d, zink)
-  GL_EXT_transform_feedback (Transform feedback)        DONE (v3d)
+  GL_EXT_transform_feedback (Transform feedback)        DONE (v3d, zink)
   GL_ARB_vertex_array_object (Vertex array objects)     DONE (v3d, zink)
   GL_EXT_framebuffer_sRGB (sRGB framebuffer format)     DONE (v3d, zink)
   glClearBuffer commands                                DONE
