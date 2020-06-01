@@ -87,7 +87,7 @@ graw_create_window_and_screen(int x,
    wc.cbSize = sizeof wc;
    wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
    wc.lpfnWndProc = window_proc;
-   wc.lpszClassName = "graw-gdi";
+   wc.lpszClassName = TEXT("graw-gdi");
    wc.hInstance = GetModuleHandle(NULL);
    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
