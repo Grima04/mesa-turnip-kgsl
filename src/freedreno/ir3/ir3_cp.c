@@ -383,7 +383,14 @@ lower_immed(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr, unsigned n,
 	}
 
 	if (i == const_state->immediate_idx) {
-		/* need to generate a new immediate: */
+		struct ir3_compiler *compiler = instr->block->shader->compiler;
+		/* Add on a new immediate to be pushed, if we have space left in the
+		 * constbuf.
+		 */
+		if (const_state->offsets.immediate + const_state->immediate_idx / 4 >=
+				compiler->max_const)
+			return false;
+
 		swiz = i % 4;
 		idx  = i / 4;
 
