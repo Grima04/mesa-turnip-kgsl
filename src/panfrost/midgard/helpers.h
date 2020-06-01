@@ -120,6 +120,13 @@
 /* Does the op convert types between int- and float- space (i2f/f2u/etc) */
 #define OP_TYPE_CONVERT (1 << 4)
 
+/* Is this opcode the first in a f2x (rte, rtz, rtn, rtp) sequence? If so,
+ * takes a roundmode argument in the IR. This has the semantic of rounding the
+ * source (it's all fused in), which is why it doesn't necessarily make sense
+ * for i2f (though folding there might be necessary for OpenCL reasons). Comes
+ * up in format conversion, i.e. f2u_rte */
+#define MIDGARD_ROUNDS (1 << 5)
+
 /* Vector-independant shorthands for the above; these numbers are arbitrary and
  * not from the ISA. Convert to the above with unit_enum_to_midgard */
 
