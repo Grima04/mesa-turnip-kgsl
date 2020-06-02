@@ -581,7 +581,7 @@ tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
    memset(pFeatures, 0, sizeof(*pFeatures));
 
    *pFeatures = (VkPhysicalDeviceFeatures) {
-      .robustBufferAccess = false,
+      .robustBufferAccess = true,
       .fullDrawIndexUint32 = true,
       .imageCubeArray = true,
       .independentBlend = true,
