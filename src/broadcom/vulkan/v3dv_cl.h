@@ -133,8 +133,15 @@ cl_aligned_reloc(struct v3dv_cl *cl,
 uint32_t v3dv_cl_ensure_space(struct v3dv_cl *cl, uint32_t space, uint32_t alignment);
 void v3dv_cl_ensure_space_with_branch(struct v3dv_cl *cl, uint32_t space);
 
+/* We redefine ALIGN as a macro as we want to use cl_aligned_packet_length for
+ * struct fields
+ */
+#define ALIGN(value, alignment)                           \
+        (((value) + (alignment) - 1) & ~((alignment) - 1))
+
 #define cl_packet_header(packet) V3DX(packet ## _header)
 #define cl_packet_length(packet) V3DX(packet ## _length)
+#define cl_aligned_packet_length(packet, alignment) ALIGN(cl_packet_length(packet), alignment)
 #define cl_packet_pack(packet)   V3DX(packet ## _pack)
 #define cl_packet_struct(packet) V3DX(packet)
 

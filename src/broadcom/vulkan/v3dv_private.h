@@ -416,19 +416,15 @@ struct v3dv_image_view {
    /* Precomputed (composed from createinfo->components and formar swizzle)
     * swizzles to pass in to the shader key.
     *
-    * FIXME: this is also a candidate to be included on the descriptor info.
+    * This could be also included on the descriptor bo, but the shader state
+    * packet doesn't need it on a bo, so we can just avoid a memory copy
     */
    uint8_t swizzle[4];
 
-   /* FIXME: here we store the packet TEXTURE_SHADER_STATE, that is referenced
-    * as part of the tmu configuration, and the content is set per sampler. A
-    * possible perf improvement, to avoid bo fragmentation, would be to save
-    * the state as static, have the bo as part of the descriptor (booked from
-    * the descriptor pools), and then copy this content to the descriptor bo
-    * on UpdateDescriptor. This also makes sense because not all the images
-    * are used as textures.
+   /* Prepacked TEXTURE_SHADER_STATE. It will be copied to the descriptor info
+    * during UpdateDescriptorSets
     */
-   struct v3dv_bo *texture_shader_state;
+   uint8_t texture_shader_state[cl_packet_length(TEXTURE_SHADER_STATE)];
 };
 
 uint32_t v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer);
@@ -909,6 +905,33 @@ struct v3dv_descriptor {
    };
 };
 
+/* The following v3dv_xxx_descriptor structs represent descriptor info that we
+ * upload to a bo, specifically a subregion of the descriptor pool bo.
+ *
+ * The general rule that we apply right now to decide which info goes to such
+ * bo is that we upload those that are referenced by an address when emitting
+ * a packet, so needed to be uploaded to an bo in any case.
+ *
+ * Note that these structs are mostly helpers that improve the semantics when
+ * doing all that, but we could do as other mesa vulkan drivers and just
+ * upload the info we know it is expected based on the context.
+ *
+ * Also note that the sizes are aligned, as there is an alignment requirement
+ * for addresses.
+ */
+struct v3dv_sampled_image_descriptor {
+   uint8_t texture_state[cl_aligned_packet_length(TEXTURE_SHADER_STATE, 32)];
+};
+
+struct v3dv_sampler_descriptor {
+   uint8_t sampler_state[cl_aligned_packet_length(SAMPLER_STATE, 32)];
+};
+
+struct v3dv_combined_image_sampler_descriptor {
+   uint8_t texture_state[cl_aligned_packet_length(TEXTURE_SHADER_STATE, 32)];
+   uint8_t sampler_state[cl_aligned_packet_length(SAMPLER_STATE, 32)];
+};
+
 /* Aux struct as it is really common to have a pair bo/address. Called
  * resource because it is really likely that we would need something like that
  * if we work on reuse the same bo at different points (like the shader
@@ -1289,14 +1312,11 @@ struct v3dv_descriptor_map {
 struct v3dv_sampler {
    bool compare_enable;
 
-   /* FIXME: here we store the packet SAMPLER_STATE, that is referenced as part
-    * of the tmu configuration, and the content is set per sampler. A possible
-    * perf improvement, to avoid bo fragmentation, would be to save the state
-    * as static, have the bo as part of the descriptor (booked from the
-    * descriptor pools), and then copy this content to the descriptor bo on
-    * UpdateDescriptor
+   /* Prepacked SAMPLER_STATE, that is referenced as part of the tmu
+    * configuration. If needed it will be copied to the descriptor info during
+    * UpdateDescriptorSets
     */
-   struct v3dv_bo *state;
+   uint8_t sampler_state[cl_packet_length(SAMPLER_STATE)];
 };
 
 #define V3DV_NO_SAMPLER_IDX 666
@@ -1566,11 +1586,23 @@ v3dv_descriptor_map_get_sampler(struct v3dv_descriptor_state *descriptor_state,
                                 struct v3dv_pipeline_layout *pipeline_layout,
                                 uint32_t index);
 
+struct v3dv_cl_reloc
+v3dv_descriptor_map_get_sampler_state(struct v3dv_descriptor_state *descriptor_state,
+                                      struct v3dv_descriptor_map *map,
+                                      struct v3dv_pipeline_layout *pipeline_layout,
+                                      uint32_t index);
+
 struct v3dv_image_view *
 v3dv_descriptor_map_get_image_view(struct v3dv_descriptor_state *descriptor_state,
                                    struct v3dv_descriptor_map *map,
                                    struct v3dv_pipeline_layout *pipeline_layout,
                                    uint32_t index);
+
+struct v3dv_cl_reloc
+v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descriptor_state,
+                                             struct v3dv_descriptor_map *map,
+                                             struct v3dv_pipeline_layout *pipeline_layout,
+                                             uint32_t index);
 
 static inline const struct v3dv_sampler *
 v3dv_immutable_samplers(const struct v3dv_descriptor_set_layout *set,

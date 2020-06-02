@@ -33,6 +33,12 @@ static uint32_t
 descriptor_bo_size(VkDescriptorType type)
 {
    switch(type) {
+   case VK_DESCRIPTOR_TYPE_SAMPLER:
+      return sizeof(struct v3dv_sampler_descriptor);
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      return sizeof(struct v3dv_combined_image_sampler_descriptor);
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      return sizeof(struct v3dv_sampled_image_descriptor);
    default:
       return 0;
    }
@@ -107,6 +113,49 @@ v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_stat
    return &set->descriptors[binding_layout->descriptor_index + array_index];
 }
 
+/* Equivalent to map_get_descriptor but it returns a reloc with the bo
+ * associated with that descriptor (suballocation of the descriptor pool bo)
+ *
+ * It also returns the descriptor type, so the caller could do extra
+ * validation or adding extra offsets if the bo contains more that one field.
+ */
+static struct v3dv_cl_reloc
+v3dv_descriptor_map_get_descriptor_bo(struct v3dv_descriptor_state *descriptor_state,
+                                      struct v3dv_descriptor_map *map,
+                                      struct v3dv_pipeline_layout *pipeline_layout,
+                                      uint32_t index,
+                                      VkDescriptorType *out_type)
+{
+   assert(index >= 0 && index < map->num_desc);
+
+   uint32_t set_number = map->set[index];
+   assert(descriptor_state->valid & 1 << set_number);
+
+   struct v3dv_descriptor_set *set =
+      descriptor_state->descriptor_sets[set_number];
+   assert(set);
+
+   uint32_t binding_number = map->binding[index];
+   assert(binding_number < set->layout->binding_count);
+
+   const struct v3dv_descriptor_set_binding_layout *binding_layout =
+      &set->layout->binding[binding_number];
+
+   assert(descriptor_bo_size(binding_layout->type) > 0);
+   *out_type = binding_layout->type;
+
+   uint32_t array_index = map->array_index[index];
+   assert(array_index < binding_layout->array_size);
+
+   struct v3dv_cl_reloc reloc = {
+      .bo = set->pool->bo,
+      .offset = set->base_offset + binding_layout->descriptor_offset +
+      array_index * descriptor_bo_size(binding_layout->type),
+   };
+
+   return reloc;
+}
+
 /*
  * The difference between this method and v3dv_descriptor_map_get_descriptor,
  * is that if the sampler are added as immutable when creating the set layout,
@@ -160,6 +209,53 @@ v3dv_descriptor_map_get_sampler(struct v3dv_descriptor_state *descriptor_state,
    assert(descriptor->sampler);
 
    return descriptor->sampler;
+}
+
+
+struct v3dv_cl_reloc
+v3dv_descriptor_map_get_sampler_state(struct v3dv_descriptor_state *descriptor_state,
+                                      struct v3dv_descriptor_map *map,
+                                      struct v3dv_pipeline_layout *pipeline_layout,
+                                      uint32_t index)
+{
+   VkDescriptorType type;
+   struct v3dv_cl_reloc reloc =
+      v3dv_descriptor_map_get_descriptor_bo(descriptor_state, map,
+                                            pipeline_layout,
+                                            index, &type);
+
+   assert(type == VK_DESCRIPTOR_TYPE_SAMPLER ||
+          type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+   if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+      reloc.offset += offsetof(struct v3dv_combined_image_sampler_descriptor,
+                               sampler_state);
+   }
+
+   return reloc;
+}
+
+struct v3dv_cl_reloc
+v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descriptor_state,
+                                             struct v3dv_descriptor_map *map,
+                                             struct v3dv_pipeline_layout *pipeline_layout,
+                                             uint32_t index)
+{
+   VkDescriptorType type;
+   struct v3dv_cl_reloc reloc =
+      v3dv_descriptor_map_get_descriptor_bo(descriptor_state, map,
+                                            pipeline_layout,
+                                            index, &type);
+
+   assert(type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+          type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+   if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+      reloc.offset += offsetof(struct v3dv_combined_image_sampler_descriptor,
+                               texture_state);
+   }
+
+   return reloc;
 }
 
 struct v3dv_image_view *
@@ -674,6 +770,30 @@ descriptor_set_create(struct v3dv_device *device,
       pool->entry_count++;
    }
 
+   /* Go through and fill out immutable samplers if we have any */
+   for (uint32_t b = 0; b < layout->binding_count; b++) {
+      if (layout->binding[b].immutable_samplers_offset == 0)
+         continue;
+
+      const struct v3dv_sampler *samplers =
+         (const struct v3dv_sampler *)((const char *)layout +
+                                       layout->binding[b].immutable_samplers_offset);
+
+      for (uint32_t i = 0; i < layout->binding[b].array_size; i++) {
+         uint32_t combined_offset =
+            layout->binding[b].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ?
+            offsetof(struct v3dv_combined_image_sampler_descriptor, sampler_state) :
+            0;
+
+         void *desc_map = descriptor_bo_map(set, &layout->binding[b], i);
+         desc_map += combined_offset;
+
+         memcpy(desc_map,
+                samplers[i].sampler_state,
+                cl_packet_length(SAMPLER_STATE));
+      }
+   }
+
    *out_set = set;
 
    return VK_SUCCESS;
@@ -747,6 +867,33 @@ descriptor_bo_copy(struct v3dv_descriptor_set *dst_set,
    memcpy(dst_map, src_map, descriptor_bo_size(src_binding_layout->type));
 }
 
+static void
+write_image_descriptor(struct v3dv_descriptor_set *set,
+                       const struct v3dv_descriptor_set_binding_layout *binding_layout,
+                       struct v3dv_image_view *iview,
+                       struct v3dv_sampler *sampler,
+                       uint32_t array_index)
+{
+   void *desc_map = descriptor_bo_map(set, binding_layout, array_index);
+
+   if (iview) {
+      memcpy(desc_map,
+             iview->texture_shader_state,
+             sizeof(iview->texture_shader_state));
+      desc_map += offsetof(struct v3dv_combined_image_sampler_descriptor,
+                           sampler_state);
+   }
+
+   if (sampler && !binding_layout->immutable_samplers_offset) {
+      /* For immutable samplers this was already done as part of the
+       * descriptor set create, as that info can't change later
+       */
+      memcpy(desc_map,
+             sampler->sampler_state,
+             sizeof(sampler->sampler_state));
+   }
+}
+
 void
 v3dv_UpdateDescriptorSets(VkDevice  _device,
                           uint32_t descriptorWriteCount,
@@ -783,10 +930,18 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
             break;
          }
          case VK_DESCRIPTOR_TYPE_SAMPLER: {
+            /* If we are here we shouldn't be modifying a immutable sampler,
+             * so we don't ensure that would work or not crash. But let the
+             * validation layers check that
+             */
             const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
             V3DV_FROM_HANDLE(v3dv_sampler, sampler, image_info->sampler);
 
             descriptor->sampler = sampler;
+
+            write_image_descriptor(set, binding_layout, NULL, sampler,
+                                   writeset->dstArrayElement + j);
+
             break;
          }
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
@@ -794,6 +949,10 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
             V3DV_FROM_HANDLE(v3dv_image_view, iview, image_info->imageView);
 
             descriptor->image_view = iview;
+
+            write_image_descriptor(set, binding_layout, iview, NULL,
+                                   writeset->dstArrayElement + j);
+
             break;
          }
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
@@ -803,6 +962,9 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
 
             descriptor->image_view = iview;
             descriptor->sampler = sampler;
+
+            write_image_descriptor(set, binding_layout, iview, sampler,
+                                   writeset->dstArrayElement + j);
 
             break;
          }

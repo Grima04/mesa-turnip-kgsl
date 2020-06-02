@@ -2026,7 +2026,7 @@ pack_sampler_state(struct v3dv_sampler *sampler,
       break;
    }
 
-   v3dv_pack(sampler->state->map, SAMPLER_STATE, s) {
+   v3dv_pack(sampler->sampler_state, SAMPLER_STATE, s) {
       if (pCreateInfo->anisotropyEnable) {
          s.anisotropy_enable = true;
          if (pCreateInfo->maxAnisotropy > 8)
@@ -2072,31 +2072,12 @@ v3dv_CreateSampler(VkDevice _device,
    if (!sampler)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   if (sampler->state == NULL) {
-      sampler->state = v3dv_bo_alloc(device, cl_packet_length(SAMPLER_STATE),
-                                     "sampler_state");
-
-      if (!sampler->state)
-         goto fail_alloc;
-
-      bool ok = v3dv_bo_map(device, sampler->state,
-                            cl_packet_length(SAMPLER_STATE));
-      if (!ok)
-         goto fail_map;
-   }
-
    sampler->compare_enable = pCreateInfo->compareEnable;
    pack_sampler_state(sampler, pCreateInfo);
 
    *pSampler = v3dv_sampler_to_handle(sampler);
 
    return VK_SUCCESS;
-
-fail_map:
-   v3dv_bo_free(device, sampler->state);
-fail_alloc:
-   vk_free2(&device->alloc, pAllocator, sampler);
-   return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 }
 
 void
@@ -2109,9 +2090,6 @@ v3dv_DestroySampler(VkDevice _device,
 
    if (!sampler)
       return;
-
-   if (sampler->state)
-      v3dv_bo_free(device, sampler->state);
 
    vk_free2(&device->alloc, pAllocator, sampler);
 }

@@ -433,32 +433,16 @@ translate_swizzle(unsigned char pipe_swizzle)
 
 /*
  * Packs and ensure bo for the shader state (the latter can be temporal).
- *
- * Return false if it was not able to allocate the bo.
  */
-static bool
+static void
 pack_texture_shader_state(struct v3dv_device *device,
                           struct v3dv_image_view *image_view)
 {
    assert(image_view->image);
    const struct v3dv_image *image = image_view->image;
 
-   if (image_view->texture_shader_state == NULL) {
-      image_view->texture_shader_state =
-         v3dv_bo_alloc(device, cl_packet_length(TEXTURE_SHADER_STATE),
-                       "texture_shader_state");
-
-      if (!image_view->texture_shader_state)
-         return false;
-
-      bool ok = v3dv_bo_map(device, image_view->texture_shader_state,
-                            cl_packet_length(TEXTURE_SHADER_STATE));
-      if (!ok)
-         return false;
-   }
-
    int msaa_scale = 1; /* FIXME: hardcoded. Revisit when msaa get supported */
-   v3dv_pack(image_view->texture_shader_state->map, TEXTURE_SHADER_STATE, tex) {
+   v3dv_pack(image_view->texture_shader_state, TEXTURE_SHADER_STATE, tex) {
 
       tex.level_0_is_strictly_uif =
          (image->slices[0].tiling == VC5_TILING_UIF_XOR ||
@@ -519,8 +503,6 @@ pack_texture_shader_state(struct v3dv_device *device,
          v3dv_layer_offset(image, 0, image_view->first_layer);
       tex.texture_base_pointer = v3dv_cl_address(NULL, base_offset);
    }
-
-   return true;
 }
 
 static enum pipe_swizzle
@@ -650,18 +632,11 @@ v3dv_CreateImageView(VkDevice _device,
 
    util_format_compose_swizzles(format_swizzle, image_view_swizzle, iview->swizzle);
 
-   if (!pack_texture_shader_state(device, iview))
-      goto fail_texture_shader_state_alloc;
+   pack_texture_shader_state(device, iview);
 
    *pView = v3dv_image_view_to_handle(iview);
 
    return VK_SUCCESS;
-
- fail_texture_shader_state_alloc:
-   if (iview->texture_shader_state)
-      v3dv_bo_free(device, iview->texture_shader_state);
-   vk_free2(&device->alloc, pAllocator, iview);
-   return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 }
 
 void
@@ -671,9 +646,6 @@ v3dv_DestroyImageView(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    V3DV_FROM_HANDLE(v3dv_image_view, image_view, imageView);
-
-   if (image_view->texture_shader_state)
-      v3dv_bo_free(device, image_view->texture_shader_state);
 
    vk_free2(&device->alloc, pAllocator, image_view);
 }

@@ -98,18 +98,24 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
                                            &texture_idx,
                                            NULL);
 
+   /* We need to ensure that the texture bo is added to the job */
    struct v3dv_image_view *image_view =
       v3dv_descriptor_map_get_image_view(descriptor_state, &pipeline->texture_map,
                                          pipeline->layout, texture_idx);
 
    assert(image_view);
+   v3dv_job_add_bo(job, image_view->image->mem->bo);
+
+   struct v3dv_cl_reloc state_reloc =
+      v3dv_descriptor_map_get_texture_shader_state(descriptor_state,
+                                                   &pipeline->texture_map,
+                                                   pipeline->layout,
+                                                   texture_idx);
 
    cl_aligned_reloc(&job->indirect, uniforms,
-                    image_view->texture_shader_state,
+                    state_reloc.bo,
+                    state_reloc.offset +
                     v3d_unit_data_get_offset(data));
-
-   /* We need to ensure that the texture bo is added to the job */
-   v3dv_job_add_bo(job, image_view->image->mem->bo);
 }
 
 /** V3D 4.x TMU configuration parameter 1 (sampler) */
@@ -129,14 +135,13 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
                                            NULL, &sampler_idx);
    assert(sampler_idx != V3DV_NO_SAMPLER_IDX);
 
-   const struct v3dv_sampler *sampler =
-      v3dv_descriptor_map_get_sampler(descriptor_state, &pipeline->sampler_map,
-                                      pipeline->layout, sampler_idx);
-
-   assert(sampler);
+   struct v3dv_cl_reloc sampler_state_reloc =
+      v3dv_descriptor_map_get_sampler_state(descriptor_state, &pipeline->sampler_map,
+                                            pipeline->layout, sampler_idx);
 
    cl_aligned_reloc(&job->indirect, uniforms,
-                    sampler->state,
+                    sampler_state_reloc.bo,
+                    sampler_state_reloc.offset +
                     v3d_unit_data_get_offset(data));
 }
 
