@@ -1034,6 +1034,60 @@ glsl_type::get_image_instance(enum glsl_sampler_dim dim,
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return error_type;
       }
+   case GLSL_TYPE_INT64:
+      switch (dim) {
+      case GLSL_SAMPLER_DIM_1D:
+         return (array ? i64image1DArray_type : i64image1D_type);
+      case GLSL_SAMPLER_DIM_2D:
+         return (array ? i64image2DArray_type : i64image2D_type);
+      case GLSL_SAMPLER_DIM_3D:
+         if (array)
+            return error_type;
+         return i64image3D_type;
+      case GLSL_SAMPLER_DIM_CUBE:
+         return (array ? i64imageCubeArray_type : i64imageCube_type);
+      case GLSL_SAMPLER_DIM_RECT:
+         if (array)
+            return error_type;
+         return i64image2DRect_type;
+      case GLSL_SAMPLER_DIM_BUF:
+         if (array)
+            return error_type;
+         return i64imageBuffer_type;
+      case GLSL_SAMPLER_DIM_MS:
+         return (array ? i64image2DMSArray_type : i64image2DMS_type);
+      case GLSL_SAMPLER_DIM_SUBPASS:
+      case GLSL_SAMPLER_DIM_SUBPASS_MS:
+      case GLSL_SAMPLER_DIM_EXTERNAL:
+         return error_type;
+      }
+   case GLSL_TYPE_UINT64:
+      switch (dim) {
+      case GLSL_SAMPLER_DIM_1D:
+         return (array ? u64image1DArray_type : u64image1D_type);
+      case GLSL_SAMPLER_DIM_2D:
+         return (array ? u64image2DArray_type : u64image2D_type);
+      case GLSL_SAMPLER_DIM_3D:
+         if (array)
+            return error_type;
+         return u64image3D_type;
+      case GLSL_SAMPLER_DIM_CUBE:
+         return (array ? u64imageCubeArray_type : u64imageCube_type);
+      case GLSL_SAMPLER_DIM_RECT:
+         if (array)
+            return error_type;
+         return u64image2DRect_type;
+      case GLSL_SAMPLER_DIM_BUF:
+         if (array)
+            return error_type;
+         return u64imageBuffer_type;
+      case GLSL_SAMPLER_DIM_MS:
+         return (array ? u64image2DMSArray_type : u64image2DMS_type);
+      case GLSL_SAMPLER_DIM_SUBPASS:
+      case GLSL_SAMPLER_DIM_SUBPASS_MS:
+      case GLSL_SAMPLER_DIM_EXTERNAL:
+         return error_type;
+      }
    case GLSL_TYPE_VOID:
       switch (dim) {
       case GLSL_SAMPLER_DIM_1D:
