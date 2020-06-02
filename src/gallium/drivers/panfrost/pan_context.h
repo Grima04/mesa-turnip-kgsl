@@ -192,6 +192,7 @@ struct panfrost_shader_state {
         bool reads_point_coord;
         bool reads_face;
         bool reads_frag_coord;
+        bool writes_global;
         unsigned stack_size;
         unsigned shared_size;
 

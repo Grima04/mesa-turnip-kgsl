@@ -353,8 +353,10 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
                 /* TODO: This is not conformant on ES3 */
                 meta->midgard1.flags_hi = MALI_SUPPRESS_INF_NAN;
 
-                meta->midgard1.flags_lo = MALI_WRITES_GLOBAL | 0x20;
+                meta->midgard1.flags_lo = 0x20;
                 meta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
+
+                SET_BIT(meta->midgard1.flags_hi, MALI_WRITES_GLOBAL, ss->writes_global);
         }
 }
 
@@ -839,10 +841,10 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                 /* TODO */
         } else {
                 /* Depending on whether it's legal to in the given shader, we try to
-                 * enable early-z testing (or forward-pixel kill?) */
+                 * enable early-z testing. TODO: respect e-z force */
 
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_EARLY_Z,
-                        !fs->can_discard && !fs->writes_depth);
+                        !fs->can_discard && !fs->writes_depth && !fs->writes_global);
 
                 /* Add the writes Z/S flags if needed. */
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_WRITES_Z, fs->writes_depth);

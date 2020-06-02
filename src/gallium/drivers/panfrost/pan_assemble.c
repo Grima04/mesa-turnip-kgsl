@@ -180,6 +180,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         /* On Bifrost it's a sysval, on Midgard it's a varying */
         state->reads_frag_coord = s->info.system_values_read & (1 << SYSTEM_VALUE_FRAG_COORD);
 
+        state->writes_global = s->info.writes_memory;
+
         switch (stage) {
         case MESA_SHADER_VERTEX:
                 state->attribute_count = util_bitcount64(s->info.inputs_read);
