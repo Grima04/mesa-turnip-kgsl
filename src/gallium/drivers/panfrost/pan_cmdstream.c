@@ -1900,6 +1900,15 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         for (unsigned i = 0; i < vs->varying_count; i++) {
                 gl_varying_slot loc = vs->varyings_loc[i];
 
+                /* If we write gl_PointSize from the vertex shader but don't
+                 * consume it, no memory will be allocated for it, so if we
+                 * attempted to write anyway we would dereference a NULL
+                 * pointer on the GPU. Midgard seems fine with this; Bifrost
+                 * faults. */
+
+                if (loc == VARYING_SLOT_PSIZ && !panfrost_writes_point_size(ctx))
+                        ovs[i].format = MALI_VARYING_DISCARD;
+
                 bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
                 if (!captured)
                         continue;
