@@ -215,6 +215,11 @@ nir_blend_logicop(
    const struct util_format_description *format_desc =
       util_format_description(options.format);
 
+   if (options.half) {
+      src = nir_f2f32(b, src);
+      dst = nir_f2f32(b, dst);
+   }
+
    assert(src->num_components <= 4);
    assert(dst->num_components <= 4);
 
@@ -235,7 +240,12 @@ nir_blend_logicop(
        out = nir_iand(b, out, nir_build_imm(b, 4, 32, mask));
    }
 
-   return nir_format_unorm_to_float(b, out, bits);
+   out = nir_format_unorm_to_float(b, out, bits);
+
+   if (options.half)
+      out = nir_f2f16(b, out);
+
+   return out;
 }
 
 /* Given a blend state, the source color, and the destination color,
