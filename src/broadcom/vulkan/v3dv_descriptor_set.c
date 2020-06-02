@@ -25,6 +25,35 @@
 
 #include "v3dv_private.h"
 
+/*
+ * Returns how much space a given descriptor type needs on a bo (GPU
+ * memory).
+ */
+static uint32_t
+descriptor_bo_size(VkDescriptorType type)
+{
+   switch(type) {
+   default:
+      return 0;
+   }
+}
+
+/*
+ * For a given descriptor defined by the descriptor_set it belongs, its
+ * binding layout, and array_index, it returns the map region assigned to it
+ * from the descriptor pool bo.
+ */
+static void*
+descriptor_bo_map(struct v3dv_descriptor_set *set,
+                  const struct v3dv_descriptor_set_binding_layout *binding_layout,
+                  uint32_t array_index)
+{
+   assert(descriptor_bo_size(binding_layout->type) > 0);
+   return set->pool->bo->map +
+      set->base_offset + binding_layout->descriptor_offset +
+      array_index * descriptor_bo_size(binding_layout->type);
+}
+
 static bool
 descriptor_type_is_dynamic(VkDescriptorType type)
 {
@@ -230,13 +259,18 @@ v3dv_CreateDescriptorPool(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    struct v3dv_descriptor_pool *pool;
+   /* size is for the vulkan object descriptor pool. The final size would
+    * depend on some of FREE_DESCRIPTOR flags used
+    */
    uint64_t size = sizeof(struct v3dv_descriptor_pool);
+   /* bo_size is for the descriptor related info that we need to have on a GPU
+    * address (so on v3dv_bo_alloc allocated memory), like for example the
+    * texture sampler state. Note that not all the descriptors use it
+    */
+   uint32_t bo_size = 0;
    uint32_t descriptor_count = 0;
 
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
-      if (pCreateInfo->pPoolSizes[i].type != VK_DESCRIPTOR_TYPE_SAMPLER)
-         descriptor_count += pCreateInfo->pPoolSizes[i].descriptorCount;
-
       /* Verify supported descriptor type */
       switch(pCreateInfo->pPoolSizes[i].type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -251,6 +285,10 @@ v3dv_CreateDescriptorPool(VkDevice _device,
          unreachable("Unimplemented descriptor type");
          break;
       }
+
+      descriptor_count += pCreateInfo->pPoolSizes[i].descriptorCount;
+      bo_size += descriptor_bo_size(pCreateInfo->pPoolSizes[i].type) *
+         pCreateInfo->pPoolSizes[i].descriptorCount;
    }
 
    if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)) {
@@ -278,24 +316,45 @@ v3dv_CreateDescriptorPool(VkDevice _device,
 
    pool->max_entry_count = pCreateInfo->maxSets;
 
+   if (bo_size > 0) {
+      pool->bo = v3dv_bo_alloc(device, bo_size, "descriptor pool bo");
+      if (!pool->bo)
+         goto out_of_device_memory;
+
+      bool ok = v3dv_bo_map(device, pool->bo, pool->bo->size);
+      if (!ok)
+         goto out_of_device_memory;
+
+      pool->current_offset = 0;
+   } else {
+      pool->bo = NULL;
+   }
+
    *pDescriptorPool = v3dv_descriptor_pool_to_handle(pool);
 
    return VK_SUCCESS;
+
+ out_of_device_memory:
+   vk_free2(&device->alloc, pAllocator, pool);
+   return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 }
 
 static void
 descriptor_set_destroy(struct v3dv_device *device,
                        struct v3dv_descriptor_pool *pool,
-                       struct v3dv_descriptor_set *set)
+                       struct v3dv_descriptor_set *set,
+                       bool free_bo)
 {
    assert(!pool->host_memory_base);
 
-   for (uint32_t i = 0; i < pool->entry_count; i++) {
-      if (pool->entries[i].set == set) {
-         memmove(&pool->entries[i], &pool->entries[i+1],
-                 sizeof(pool->entries[i]) * (pool->entry_count - i - 1));
-         --pool->entry_count;
-         break;
+   if (free_bo && !pool->host_memory_base) {
+      for (uint32_t i = 0; i < pool->entry_count; i++) {
+         if (pool->entries[i].set == set) {
+            memmove(&pool->entries[i], &pool->entries[i+1],
+                    sizeof(pool->entries[i]) * (pool->entry_count - i - 1));
+            --pool->entry_count;
+            break;
+         }
       }
    }
    vk_free2(&device->alloc, NULL, set);
@@ -314,8 +373,13 @@ v3dv_DestroyDescriptorPool(VkDevice _device,
 
    if (!pool->host_memory_base) {
       for(int i = 0; i < pool->entry_count; ++i) {
-         descriptor_set_destroy(device, pool, pool->entries[i].set);
+         descriptor_set_destroy(device, pool, pool->entries[i].set, false);
       }
+   }
+
+   if (pool->bo) {
+      v3dv_bo_free(device, pool->bo);
+      pool->bo = NULL;
    }
 
    vk_free2(&device->alloc, pAllocator, pool);
@@ -331,12 +395,13 @@ v3dv_ResetDescriptorPool(VkDevice _device,
 
    if (!pool->host_memory_base) {
       for(int i = 0; i < pool->entry_count; ++i) {
-         descriptor_set_destroy(device, pool, pool->entries[i].set);
+         descriptor_set_destroy(device, pool, pool->entries[i].set, false);
       }
    }
 
    pool->entry_count = 0;
    pool->host_memory_ptr = pool->host_memory_base;
+   pool->current_offset = 0;
 
    return VK_SUCCESS;
 }
@@ -439,6 +504,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->binding_count = max_binding + 1;
    set_layout->flags = pCreateInfo->flags;
    set_layout->shader_stages = 0;
+   set_layout->bo_size = 0;
 
    uint32_t descriptor_count = 0;
    uint32_t dynamic_offset_count = 0;
@@ -492,6 +558,11 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
        * descriptor data.
        */
       set_layout->shader_stages |= binding->stageFlags;
+
+      set_layout->binding[binding_number].descriptor_offset = set_layout->bo_size;
+      set_layout->bo_size +=
+         descriptor_bo_size(set_layout->binding[binding_number].type) *
+         binding->descriptorCount;
    }
 
    vk_free2(&device->alloc, pAllocator, bindings);
@@ -526,9 +597,8 @@ descriptor_set_create(struct v3dv_device *device,
 {
    struct v3dv_descriptor_set *set;
    uint32_t descriptor_count = layout->descriptor_count;
-   unsigned range_offset = sizeof(struct v3dv_descriptor_set) +
+   unsigned mem_size = sizeof(struct v3dv_descriptor_set) +
       sizeof(struct v3dv_descriptor) * descriptor_count;
-   unsigned mem_size = range_offset;
 
    if (pool->host_memory_base) {
       if (pool->host_memory_end - pool->host_memory_ptr < mem_size)
@@ -549,13 +619,58 @@ descriptor_set_create(struct v3dv_device *device,
 
    set->layout = layout;
 
-   if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
-      vk_free2(&device->alloc, NULL, set);
-      return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+   /* FIXME: VK_EXT_descriptor_indexing introduces
+    * VARIABLE_DESCRIPTOR_LAYOUT_COUNT. That would affect the layout_size used
+    * below for bo allocation
+    */
+
+   uint32_t offset = 0;
+   uint32_t index = pool->entry_count;
+
+   if (layout->bo_size) {
+      if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
+         vk_free2(&device->alloc, NULL, set);
+         return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+      }
+
+      /* We first try to allocate linearly fist, so that we don't spend time
+       * looking for gaps if the app only allocates & resets via the pool.
+       *
+       * If that fails, we try to find a gap from previously freed subregions
+       * iterating through the descriptor pool entries. Note that we are not
+       * doing that if we have a pool->host_memory_base. We only have that if
+       * VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT is not set, so in
+       * that case the user can't free subregions, so it doesn't make sense to
+       * even try (or track those subregions).
+       */
+      if (pool->current_offset + layout->bo_size <= pool->bo->size) {
+         offset = pool->current_offset;
+         pool->current_offset += layout->bo_size;
+      } else if (!pool->host_memory_base) {
+         for (index = 0; index < pool->entry_count; index++) {
+            if (pool->entries[index].offset - offset >= layout->bo_size)
+               break;
+            offset = pool->entries[index].offset + pool->entries[index].size;
+         }
+         if (pool->bo->size - offset < layout->bo_size) {
+            vk_free2(&device->alloc, NULL, set);
+            return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+         }
+         memmove(&pool->entries[index + 1], &pool->entries[index],
+                 sizeof(pool->entries[0]) * (pool->entry_count - index));
+      } else {
+         assert(pool->host_memory_base);
+         vk_free2(&device->alloc, NULL, set);
+         return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+      }
+
+      set->base_offset = offset;
    }
 
    if (!pool->host_memory_base) {
-      pool->entries[pool->entry_count].set = set;
+      pool->entries[index].set = set;
+      pool->entries[index].offset = offset;
+      pool->entries[index].size = layout->bo_size;
       pool->entry_count++;
    }
 
@@ -609,12 +724,27 @@ v3dv_FreeDescriptorSets(VkDevice _device,
 
    for (uint32_t i = 0; i < count; i++) {
       V3DV_FROM_HANDLE(v3dv_descriptor_set, set, pDescriptorSets[i]);
-
       if (set && !pool->host_memory_base)
-         descriptor_set_destroy(device, pool, set);
+         descriptor_set_destroy(device, pool, set, true);
    }
 
    return VK_SUCCESS;
+}
+
+static void
+descriptor_bo_copy(struct v3dv_descriptor_set *dst_set,
+                   const struct v3dv_descriptor_set_binding_layout *dst_binding_layout,
+                   uint32_t dst_array_index,
+                   struct v3dv_descriptor_set *src_set,
+                   const struct v3dv_descriptor_set_binding_layout *src_binding_layout,
+                   uint32_t src_array_index)
+{
+   assert(dst_binding_layout->type == src_binding_layout->type);
+
+   void *dst_map = descriptor_bo_map(dst_set, dst_binding_layout, dst_array_index);
+   void *src_map = descriptor_bo_map(src_set, src_binding_layout, src_array_index);
+
+   memcpy(dst_map, src_map, descriptor_bo_size(src_binding_layout->type));
 }
 
 void
@@ -711,6 +841,14 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
          *dst_descriptor = *src_descriptor;
          dst_descriptor++;
          src_descriptor++;
+
+         if (descriptor_bo_size(src_binding_layout->type) > 0) {
+            descriptor_bo_copy(dst_set, dst_binding_layout,
+                               j + copyset->dstArrayElement,
+                               src_set, src_binding_layout,
+                               j + copyset->srcArrayElement);
+         }
+
       }
    }
 }

@@ -885,6 +885,14 @@ struct v3dv_cmd_buffer_state {
    } query;
 };
 
+/* The following struct represents the info from a descriptor that we store on
+ * the host memory. They are mostly links to other existing vulkan objects,
+ * like the image_view in order to access to swizzle info, or the buffer used
+ * for a UBO/SSBO, for example.
+ *
+ * FIXME: revisit if makes sense to just move everything that would be needed
+ * from a descriptor to the bo.
+ */
 struct v3dv_descriptor {
    VkDescriptorType type;
 
@@ -1158,12 +1166,37 @@ struct vpm_config {
    uint32_t gs_width;
 };
 
+/* We are using the descriptor pool entry for two things:
+ * * Track the allocated sets, so we can properly free it if needed
+ * * Track the suballocated pool bo regions, so if some descriptor set is
+ *   freed, the gap could be reallocated later.
+ *
+ * Those only make sense if the pool was not created with the flag
+ * VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
+ */
 struct v3dv_descriptor_pool_entry
 {
    struct v3dv_descriptor_set *set;
+   /* Offset and size of the subregion allocated for this entry from the
+    * pool->bo
+    */
+   uint32_t offset;
+   uint32_t size;
 };
 
 struct v3dv_descriptor_pool {
+   struct v3dv_bo *bo;
+   /* Current offset at the descriptor bo. 0 means that we didn't use it for
+    * any descriptor. If the descriptor bo is NULL, current offset is
+    * meaningless
+    */
+   uint32_t current_offset;
+
+   /* If VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT is not set the
+    * descriptor sets are handled as a whole as pool memory and handled by the
+    * following pointers. If set, they are not used, and individually
+    * descriptor sets are allocated/freed.
+    */
    uint8_t *host_memory_base;
    uint8_t *host_memory_ptr;
    uint8_t *host_memory_end;
@@ -1178,6 +1211,9 @@ struct v3dv_descriptor_set {
 
    const struct v3dv_descriptor_set_layout *layout;
 
+   /* Offset relative to the descriptor pool bo for this set */
+   uint32_t base_offset;
+
    /* The descriptors below can be indexed (set/binding) using the set_layout
     */
    struct v3dv_descriptor descriptors[0];
@@ -1189,10 +1225,16 @@ struct v3dv_descriptor_set_binding_layout {
    /* Number of array elements in this binding */
    uint32_t array_size;
 
+   /* Index into the flattend descriptor set */
    uint32_t descriptor_index;
 
    uint32_t dynamic_offset_count;
    uint32_t dynamic_offset_index;
+
+   /* Offset into the descriptor set where this descriptor lives (final offset
+    * on the descriptor bo need to take into account set->base_offset)
+    */
+   uint32_t descriptor_offset;
 
    /* Offset in the v3dv_descriptor_set_layout of the immutable samplers, or 0
     * if there are no immutable samplers.
@@ -1206,8 +1248,9 @@ struct v3dv_descriptor_set_layout {
    /* Number of bindings in this descriptor set */
    uint32_t binding_count;
 
-   /* Total size of the descriptor set with room for all array entries */
-   uint32_t size;
+   /* Total bo size needed for this descriptor set
+    */
+   uint32_t bo_size;
 
    /* Shader stages affected by this descriptor set */
    uint16_t shader_stages;
