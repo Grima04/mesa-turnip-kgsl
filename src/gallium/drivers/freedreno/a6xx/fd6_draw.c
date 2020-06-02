@@ -220,7 +220,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	/* figure out whether we need to disable LRZ write for binning
 	 * pass using draw pass's fs:
 	 */
-	emit.no_lrz_write = emit.fs->writes_pos || emit.fs->no_earlyz;
+	emit.no_lrz_write = emit.fs->writes_pos || emit.fs->no_earlyz || emit.fs->has_kill;
 
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 

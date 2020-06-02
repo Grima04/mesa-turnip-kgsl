@@ -835,7 +835,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_RING(ring,
 			 COND(primid_passthru, A6XX_VFD_CONTROL_6_PRIMID_PASSTHRU));   /* VFD_CONTROL_6 */
 
-	bool fragz = fs->no_earlyz | fs->writes_pos;
+	bool fragz = fs->no_earlyz || fs->has_kill || fs->writes_pos;
 
 	OUT_PKT4(ring, REG_A6XX_RB_DEPTH_PLANE_CNTL, 1);
 	OUT_RING(ring, COND(fragz, A6XX_RB_DEPTH_PLANE_CNTL_FRAG_WRITES_Z));

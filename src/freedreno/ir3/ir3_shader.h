@@ -534,8 +534,15 @@ struct ir3_shader_variant {
 
 	bool need_fine_derivatives;
 
-	/* do we have kill, image write, etc (which prevents early-z): */
+	/* do we have image write, etc (which prevents early-z): */
 	bool no_earlyz;
+
+	/* do we have kill, which also prevents early-z, but not necessarily
+	 * early-lrz (as long as lrz-write is disabled, which must be handled
+	 * outside of ir3.  Unlike other no_earlyz cases, kill doesn't have
+	 * side effects that prevent early-lrz discard.
+	 */
+	bool has_kill;
 
 	bool per_samp;
 
