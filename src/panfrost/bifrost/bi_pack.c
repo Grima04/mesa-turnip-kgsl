@@ -829,17 +829,19 @@ bi_pack_convert(bi_instruction *ins, bi_registers *regs, bool FMA)
         assert((MAX2(from_size, to_size) / MIN2(from_size, to_size)) <= 2);
 
         /* f32 to f16 is special */
-        if (from_size == 32 && to_size == 16 && from_base == nir_type_float && to_base == from_base) {
-                /* TODO: second vectorized source? */
+        if (from_size == 32 && to_size == 16 && from_base == to_base) {
+                /* TODO uint/int */
+                assert(from_base == nir_type_float);
+
                 struct bifrost_fma_2src pfma = {
                         .src0 = bi_get_src(ins, regs, 0),
-                        .src1 = BIFROST_SRC_STAGE, /* 0 */
+                        .src1 = bi_get_src(ins, regs, 1),
                         .op = BIFROST_FMA_FLOAT32_TO_16
                 };
 
                 struct bifrost_add_2src padd = {
                         .src0 = bi_get_src(ins, regs, 0),
-                        .src1 = BIFROST_SRC_STAGE, /* 0 */
+                        .src1 = bi_get_src(ins, regs, 1),
                         .op = BIFROST_ADD_FLOAT32_TO_16
                 };
 
