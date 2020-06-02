@@ -641,6 +641,7 @@ panfrost_variant_matches(
         struct panfrost_shader_state *variant,
         enum pipe_shader_type type)
 {
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct pipe_rasterizer_state *rasterizer = &ctx->rasterizer->base;
         struct pipe_alpha_state *alpha = &ctx->depth_stencil->alpha;
 
@@ -661,8 +662,10 @@ panfrost_variant_matches(
                 }
         }
 
+        /* Point sprites TODO on bifrost, always pass */
         if (is_fragment && rasterizer && (rasterizer->sprite_coord_enable |
-                                          variant->point_sprite_mask)) {
+                                          variant->point_sprite_mask)
+                        && !(dev->quirks & IS_BIFROST)) {
                 /* Ensure the same varyings are turned to point sprites */
                 if (rasterizer->sprite_coord_enable != variant->point_sprite_mask)
                         return false;
@@ -726,6 +729,7 @@ panfrost_bind_shader_state(
         enum pipe_shader_type type)
 {
         struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         ctx->shader[type] = hwcso;
 
         if (!hwcso) return;
@@ -771,7 +775,8 @@ panfrost_bind_shader_state(
                 if (type == PIPE_SHADER_FRAGMENT) {
                         v->alpha_state = ctx->depth_stencil->alpha;
 
-                        if (ctx->rasterizer) {
+                        /* Point sprites are TODO on Bifrost */
+                        if (ctx->rasterizer && !(dev->quirks & IS_BIFROST)) {
                                 v->point_sprite_mask = ctx->rasterizer->base.sprite_coord_enable;
                                 v->point_sprite_upper_left =
                                         ctx->rasterizer->base.sprite_coord_mode ==
