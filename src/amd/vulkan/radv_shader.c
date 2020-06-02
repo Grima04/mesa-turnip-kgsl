@@ -348,6 +348,40 @@ static void radv_compiler_debug(void *private_data,
 			0, 0, "radv", message);
 }
 
+static bool
+lower_load_vulkan_descriptor(nir_shader *nir)
+{
+	nir_function_impl *entry = nir_shader_get_entrypoint(nir);
+	bool progress = false;
+	nir_builder b;
+
+	nir_builder_init(&b, entry);
+
+	nir_foreach_block(block, entry) {
+		nir_foreach_instr_safe(instr, block) {
+			if (instr->type != nir_instr_type_intrinsic)
+				continue;
+
+			nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+			if (intrin->intrinsic != nir_intrinsic_load_vulkan_descriptor)
+				continue;
+
+			b.cursor = nir_before_instr(&intrin->instr);
+
+			nir_ssa_def *def = nir_vec2(&b,
+						    nir_channel(&b, intrin->src[0].ssa, 0),
+						    nir_imm_int(&b, 0));
+			nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+						 nir_src_for_ssa(def));
+
+			nir_instr_remove(instr);
+			progress = true;
+		}
+	}
+
+	return progress;
+}
+
 nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device,
 			   struct radv_shader_module *module,
@@ -414,7 +448,6 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.module = module,
 		};
 		const struct spirv_to_nir_options spirv_options = {
-			.lower_ubo_ssbo_access_to_offsets = true,
 			.caps = {
 				.amd_fragment_mask = true,
 				.amd_gcn_shader = true,
@@ -616,6 +649,12 @@ radv_shader_compile_to_nir(struct radv_device *device,
 	 * to remove any copies introduced by nir_opt_find_array_copies().
 	 */
 	nir_lower_var_copies(nir);
+
+	NIR_PASS_V(nir, nir_lower_explicit_io,
+		   nir_var_mem_ubo | nir_var_mem_ssbo,
+		   nir_address_format_32bit_index_offset);
+
+	NIR_PASS_V(nir, lower_load_vulkan_descriptor);
 
 	/* Lower deref operations for compute shared memory. */
 	if (nir->info.stage == MESA_SHADER_COMPUTE) {

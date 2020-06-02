@@ -5031,7 +5031,12 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
                        Operand(desc_ptr));
    }
 
-   bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), index);
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+   std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
+   elems[0] = index;
+   ctx->allocated_vec.emplace(dst.id(), elems);
+   bld.pseudo(aco_opcode::p_create_vector, Definition(dst), index,
+              Operand((unsigned)ctx->options->address32_hi));
 }
 
 void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_size,
@@ -5062,7 +5067,8 @@ void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Builder bld(ctx->program, ctx->block);
 
-   nir_intrinsic_instr* idx_instr = nir_instr_as_intrinsic(instr->src[0].ssa->parent_instr);
+   nir_alu_instr* mov_instr = nir_instr_as_alu(instr->src[0].ssa->parent_instr);
+   nir_intrinsic_instr* idx_instr = nir_instr_as_intrinsic(mov_instr->src[0].src.ssa->parent_instr);
    unsigned desc_set = nir_intrinsic_desc_set(idx_instr);
    unsigned binding = nir_intrinsic_binding(idx_instr);
    radv_descriptor_set_layout *layout = ctx->options->layout->set[desc_set].layout;

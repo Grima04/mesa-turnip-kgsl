@@ -666,11 +666,11 @@ radv_meta_load_descriptor(nir_builder *b, unsigned desc_set, unsigned binding)
 					   nir_intrinsic_vulkan_resource_index);
 
 	rsrc->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
-	rsrc->num_components = 1;
+	rsrc->num_components = 2;
 	nir_intrinsic_set_desc_set(rsrc, desc_set);
 	nir_intrinsic_set_binding(rsrc, binding);
 	nir_ssa_dest_init(&rsrc->instr, &rsrc->dest, rsrc->num_components, 32, NULL);
 	nir_builder_instr_insert(b, &rsrc->instr);
 
-	return &rsrc->dest.ssa;
+	return nir_channel(b, &rsrc->dest.ssa, 0);
 }
