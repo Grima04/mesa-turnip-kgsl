@@ -241,7 +241,13 @@ panfrost_mfbd_set_cbuf(
                 rt->framebuffer = base + header_size;
                 rt->afbc.metadata = base;
                 rt->afbc.stride = 0;
-                rt->afbc.flags = MALI_AFBC_FLAGS | MALI_AFBC_YTR;
+                rt->afbc.flags = MALI_AFBC_FLAGS;
+
+                unsigned components = util_format_get_nr_components(surf->format);
+
+                /* The "lossless colorspace transform" is lossy for R and RG formats */
+                if (components >= 3)
+                   rt->afbc.flags |= MALI_AFBC_YTR;
 
                 /* TODO: The blob sets this to something nonzero, but it's not
                  * clear what/how to calculate/if it matters */

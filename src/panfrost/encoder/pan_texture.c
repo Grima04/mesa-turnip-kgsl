@@ -82,8 +82,10 @@ panfrost_astc_stretch(unsigned dim)
         return MIN2(dim, 11) - 4;
 }
 
-/* Texture addresses are tagged with information about AFBC (colour AFBC?) xor
- * ASTC (stretch factor) if in use. */
+/* Texture addresses are tagged with information about compressed formats.
+ * AFBC uses a bit for whether the colorspace transform is enabled (RGB and
+ * RGBA only).
+ * For ASTC, this is a "stretch factor" encoding the block size. */
 
 static unsigned
 panfrost_compression_tag(
@@ -91,7 +93,7 @@ panfrost_compression_tag(
                 enum mali_format format, enum mali_texture_layout layout)
 {
         if (layout == MALI_TEXTURE_AFBC)
-                return util_format_has_depth(desc) ? 0x0 : 0x1;
+                return desc->nr_channels >= 3;
         else if (format == MALI_ASTC_HDR_SUPP || format == MALI_ASTC_SRGB_SUPP)
                 return (panfrost_astc_stretch(desc->block.height) << 3) |
                         panfrost_astc_stretch(desc->block.width);
