@@ -158,7 +158,8 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
             break;
          case VAConfigAttribEncPackedHeaders:
             value = VA_ENC_PACKED_HEADER_NONE;
-            if (u_reduce_video_profile(ProfileToPipe(profile)) == PIPE_VIDEO_FORMAT_HEVC)
+            if (u_reduce_video_profile(ProfileToPipe(profile)) == PIPE_VIDEO_FORMAT_MPEG4_AVC ||
+                u_reduce_video_profile(ProfileToPipe(profile)) == PIPE_VIDEO_FORMAT_HEVC)
                value |= VA_ENC_PACKED_HEADER_SEQUENCE;
             break;
          case VAConfigAttribEncMaxRefFrames:
