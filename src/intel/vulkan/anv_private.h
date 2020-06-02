@@ -2607,6 +2607,8 @@ anv_pipe_invalidate_bits_for_access_flags(VkAccessFlags flags)
 struct anv_vertex_binding {
    struct anv_buffer *                          buffer;
    VkDeviceSize                                 offset;
+   VkDeviceSize                                 stride;
+   VkDeviceSize                                 size;
 };
 
 struct anv_xfb_binding {
@@ -2712,6 +2714,8 @@ struct anv_dynamic_state {
    VkCompareOp                                  depth_compare_op;
    bool                                         depth_bounds_test_enable;
    bool                                         stencil_test_enable;
+   bool                                         dyn_vbo_stride;
+   bool                                         dyn_vbo_size;
 };
 
 extern const struct anv_dynamic_state default_dynamic_state;

@@ -3320,6 +3320,17 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          struct anv_buffer *buffer = cmd_buffer->state.vertex_bindings[vb].buffer;
          uint32_t offset = cmd_buffer->state.vertex_bindings[vb].offset;
 
+         /* If dynamic, use stride/size from vertex binding, otherwise use
+          * stride/size that was setup in the pipeline object.
+          */
+         bool dynamic_stride = cmd_buffer->state.gfx.dynamic.dyn_vbo_stride;
+         bool dynamic_size = cmd_buffer->state.gfx.dynamic.dyn_vbo_size;
+
+         uint32_t stride = dynamic_stride ?
+            cmd_buffer->state.vertex_bindings[vb].stride : pipeline->vb[vb].stride;
+         uint32_t size = dynamic_size ?
+            cmd_buffer->state.vertex_bindings[vb].size : buffer->size;
+
          struct GENX(VERTEX_BUFFER_STATE) state;
          if (buffer) {
             state = (struct GENX(VERTEX_BUFFER_STATE)) {
@@ -3330,16 +3341,15 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                .BufferAccessType = pipeline->vb[vb].instanced ? INSTANCEDATA : VERTEXDATA,
                .InstanceDataStepRate = pipeline->vb[vb].instance_divisor,
 #endif
-
                .AddressModifyEnable = true,
-               .BufferPitch = pipeline->vb[vb].stride,
+               .BufferPitch = stride,
                .BufferStartingAddress = anv_address_add(buffer->address, offset),
                .NullVertexBuffer = offset >= buffer->size,
 
 #if GEN_GEN >= 8
-               .BufferSize = buffer->size - offset
+               .BufferSize = size - offset
 #else
-               .EndAddress = anv_address_add(buffer->address, buffer->size - 1),
+               .EndAddress = anv_address_add(buffer->address, size - 1),
 #endif
             };
          } else {

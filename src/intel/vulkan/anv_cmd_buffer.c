@@ -98,6 +98,8 @@ const struct anv_dynamic_state default_dynamic_state = {
    .depth_compare_op = 0,
    .depth_bounds_test_enable = 0,
    .stencil_test_enable = 0,
+   .dyn_vbo_stride = 0,
+   .dyn_vbo_size = 0,
 };
 
 /**
@@ -182,6 +184,9 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
       ANV_CMP_COPY(stencil_op.back.depth_fail_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
       ANV_CMP_COPY(stencil_op.back.compare_op, ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP);
    }
+
+   ANV_CMP_COPY(dyn_vbo_stride, ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE);
+   ANV_CMP_COPY(dyn_vbo_size, ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE);
 
 #undef ANV_CMP_COPY
 
@@ -901,12 +906,14 @@ void anv_CmdBindDescriptorSets(
    }
 }
 
-void anv_CmdBindVertexBuffers(
-    VkCommandBuffer                             commandBuffer,
-    uint32_t                                    firstBinding,
-    uint32_t                                    bindingCount,
-    const VkBuffer*                             pBuffers,
-    const VkDeviceSize*                         pOffsets)
+void anv_CmdBindVertexBuffers2EXT(
+   VkCommandBuffer                              commandBuffer,
+   uint32_t                                     firstBinding,
+   uint32_t                                     bindingCount,
+   const VkBuffer*                              pBuffers,
+   const VkDeviceSize*                          pOffsets,
+   const VkDeviceSize*                          pSizes,
+   const VkDeviceSize*                          pStrides)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    struct anv_vertex_binding *vb = cmd_buffer->state.vertex_bindings;
@@ -914,12 +921,31 @@ void anv_CmdBindVertexBuffers(
    /* We have to defer setting up vertex buffer since we need the buffer
     * stride from the pipeline. */
 
+   if (pSizes)
+      cmd_buffer->state.gfx.dynamic.dyn_vbo_size = true;
+   if (pStrides)
+      cmd_buffer->state.gfx.dynamic.dyn_vbo_stride = true;
+
    assert(firstBinding + bindingCount <= MAX_VBS);
    for (uint32_t i = 0; i < bindingCount; i++) {
       vb[firstBinding + i].buffer = anv_buffer_from_handle(pBuffers[i]);
       vb[firstBinding + i].offset = pOffsets[i];
+      vb[firstBinding + i].size = pSizes ? pSizes[i] : 0;
+      vb[firstBinding + i].stride = pStrides ? pStrides[i] : 0;
       cmd_buffer->state.gfx.vb_dirty |= 1 << (firstBinding + i);
    }
+}
+
+void anv_CmdBindVertexBuffers(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstBinding,
+    uint32_t                                    bindingCount,
+    const VkBuffer*                             pBuffers,
+    const VkDeviceSize*                         pOffsets)
+{
+   return anv_CmdBindVertexBuffers2EXT(commandBuffer, firstBinding,
+                                       bindingCount, pBuffers, pOffsets,
+                                       NULL, NULL);
 }
 
 void anv_CmdBindTransformFeedbackBuffersEXT(
