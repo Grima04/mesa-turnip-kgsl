@@ -353,7 +353,7 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
                 /* TODO: This is not conformant on ES3 */
                 meta->midgard1.flags_hi = MALI_SUPPRESS_INF_NAN;
 
-                meta->midgard1.flags_lo = 0x220;
+                meta->midgard1.flags_lo = MALI_WRITES_GLOBAL | 0x20;
                 meta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
         }
 }

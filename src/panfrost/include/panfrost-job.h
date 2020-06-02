@@ -408,6 +408,13 @@ enum mali_format {
  * it might read depth/stencil in particular, also set MALI_READS_ZS */
 
 #define MALI_READS_ZS (1 << 8)
+
+/* The shader might write to global memory (via OpenCL, SSBOs, or images).
+ * Reading is okay, as are ordinary writes to the tilebuffer/varyings. Setting
+ * incurs a performance penalty. On a fragment shader, this bit implies there
+ * are side effects, hence it interacts with early-z. */
+#define MALI_WRITES_GLOBAL (1 << 9)
+
 #define MALI_READS_TILEBUFFER (1 << 12)
 
 /* Applies to midgard1.flags_hi */

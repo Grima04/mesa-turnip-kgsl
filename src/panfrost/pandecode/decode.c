@@ -274,6 +274,7 @@ static const struct pandecode_flag_info shader_midgard1_flag_lo_info [] = {
         FLAG_INFO(WRITES_Z),
         FLAG_INFO(EARLY_Z),
         FLAG_INFO(READS_TILEBUFFER),
+        FLAG_INFO(WRITES_GLOBAL),
         FLAG_INFO(READS_ZS),
         {}
 };
