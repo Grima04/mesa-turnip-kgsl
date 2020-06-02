@@ -241,7 +241,7 @@ panfrost_mfbd_set_cbuf(
                 rt->framebuffer = base + header_size;
                 rt->afbc.metadata = base;
                 rt->afbc.stride = 0;
-                rt->afbc.unk = 0x30009;
+                rt->afbc.flags = MALI_AFBC_FLAGS | MALI_AFBC_YTR;
 
                 /* TODO: The blob sets this to something nonzero, but it's not
                  * clear what/how to calculate/if it matters */
@@ -285,7 +285,7 @@ panfrost_mfbd_set_zsbuf(
                 fbx->ds_afbc.depth_stencil_afbc_metadata = base;
                 fbx->ds_afbc.depth_stencil_afbc_stride = 0;
 
-                fbx->ds_afbc.zero1 = 0x10009;
+                fbx->ds_afbc.flags = MALI_AFBC_FLAGS;
                 fbx->ds_afbc.padding = 0x1000;
         } else if (rsrc->layout == MALI_TEXTURE_LINEAR || rsrc->layout == MALI_TEXTURE_TILED) {
                 /* TODO: Z32F(S8) support, which is always linear */

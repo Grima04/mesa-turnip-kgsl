@@ -1690,6 +1690,13 @@ struct mali_rt_format {
         unsigned no_preload : 1;
 } __attribute__((packed));
 
+/* Flags for afbc.flags and ds_afbc.flags */
+
+#define MALI_AFBC_FLAGS 0x10009
+
+/* Lossless RGB and RGBA colorspace transform */
+#define MALI_AFBC_YTR (1 << 17)
+
 struct mali_render_target {
         struct mali_rt_format format;
 
@@ -1708,7 +1715,7 @@ struct mali_render_target {
 
                 mali_ptr metadata;
                 u32 stride; // stride in units of tiles
-                u32 unk; // = 0x20000
+                u32 flags; // = 0x20000
         } afbc;
 
         mali_ptr framebuffer;
@@ -1752,7 +1759,7 @@ struct mali_framebuffer_extra  {
                 struct {
                         mali_ptr depth_stencil_afbc_metadata;
                         u32 depth_stencil_afbc_stride; // in units of tiles
-                        u32 zero1;
+                        u32 flags;
 
                         mali_ptr depth_stencil;
 

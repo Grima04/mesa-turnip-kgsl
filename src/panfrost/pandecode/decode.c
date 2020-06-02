@@ -248,6 +248,13 @@ static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
 };
 #undef FLAG_INFO
 
+#define FLAG_INFO(flag) { MALI_AFBC_##flag, "MALI_AFBC_" #flag }
+static const struct pandecode_flag_info afbc_fmt_flag_info[] = {
+        FLAG_INFO(YTR),
+        {}
+};
+#undef FLAG_INFO
+
 #define FLAG_INFO(flag) { MALI_EXTRA_##flag, "MALI_EXTRA_" #flag }
 static const struct pandecode_flag_info mfbd_extra_flag_hi_info[] = {
         FLAG_INFO(PRESENT),
@@ -1056,15 +1063,18 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct mali_fram
                         free(a);
 
                         pandecode_prop("stride = %d", rt->afbc.stride);
-                        pandecode_prop("unk = 0x%" PRIx32, rt->afbc.unk);
+
+                        pandecode_log(".flags = ");
+                        pandecode_log_decoded_flags(afbc_fmt_flag_info, rt->afbc.flags);
+                        pandecode_log_cont(",\n");
 
                         pandecode_indent--;
                         pandecode_log("},\n");
-                } else if (rt->afbc.metadata || rt->afbc.stride || rt->afbc.unk) {
+                } else if (rt->afbc.metadata || rt->afbc.stride || rt->afbc.flags) {
                         pandecode_msg("XXX: AFBC disabled but AFBC field set (0x%lX, 0x%x, 0x%x)\n",
                                         rt->afbc.metadata,
                                         rt->afbc.stride,
-                                        rt->afbc.unk);
+                                        rt->afbc.flags);
                 }
 
                 MEMORY_PROP(rt, framebuffer);
@@ -1234,12 +1244,13 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                                        fbx->ds_afbc.depth_stencil_afbc_stride);
                         MEMORY_PROP_DIR(fbx->ds_afbc, depth_stencil);
 
-                        if (fbx->ds_afbc.zero1 || fbx->ds_afbc.padding) {
+                        pandecode_log(".flags = ");
+                        pandecode_log_decoded_flags(afbc_fmt_flag_info, fbx->ds_afbc.flags);
+                        pandecode_log_cont(",\n");
+
+                        if (fbx->ds_afbc.padding) {
                                 pandecode_msg("XXX: Depth/stencil AFBC zeros tripped\n");
-                                pandecode_prop("zero1 = 0x%" PRIx32,
-                                               fbx->ds_afbc.zero1);
-                                pandecode_prop("padding = 0x%" PRIx64,
-                                               fbx->ds_afbc.padding);
+                                pandecode_prop("padding = 0x%" PRIx64, fbx->ds_afbc.padding);
                         }
 
                         pandecode_indent--;
