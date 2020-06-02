@@ -466,20 +466,29 @@ static void
 emit_load_const(bi_context *ctx, nir_load_const_instr *instr)
 {
         /* Make sure we've been lowered */
-        assert(instr->def.num_components == 1);
+        assert(instr->def.num_components <= (32 / instr->def.bit_size));
+
+        /* Accumulate all the channels of the constant, as if we did an
+         * implicit SEL over them */
+        uint32_t acc = 0;
+
+        for (unsigned i = 0; i < instr->def.num_components; ++i) {
+                unsigned v = nir_const_value_as_uint(instr->value[i], instr->def.bit_size);
+                acc |= (v << (i * instr->def.bit_size));
+        }
 
         bi_instruction move = {
                 .type = BI_MOV,
                 .dest = pan_ssa_index(&instr->def),
-                .dest_type = instr->def.bit_size | nir_type_uint,
+                .dest_type = nir_type_uint32,
                 .src = {
                         BIR_INDEX_CONSTANT
                 },
                 .src_types = {
-                        instr->def.bit_size | nir_type_uint,
+                        nir_type_uint32,
                 },
                 .constant = {
-                        .u64 = nir_const_value_as_uint(instr->value[0], instr->def.bit_size)
+                        .u32 = acc
                 }
         };
 
