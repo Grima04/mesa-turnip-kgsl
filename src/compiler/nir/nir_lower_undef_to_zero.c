@@ -38,13 +38,10 @@
  * able to kick in to reduce stuff consuming the zero.
  */
 
-#include "compiler/nir/nir.h"
-#include "compiler/nir/nir_builder.h"
-
-bool nir_undef_to_zero(nir_shader *shader);
+#include "nir_builder.h"
 
 bool
-nir_undef_to_zero(nir_shader *shader)
+nir_lower_undef_to_zero(nir_shader *shader)
 {
    bool progress = false;
 
