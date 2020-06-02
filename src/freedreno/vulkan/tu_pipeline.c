@@ -302,6 +302,7 @@ struct tu_pipeline_builder
    uint32_t color_attachment_count;
    VkFormat color_attachment_formats[MAX_RTS];
    VkFormat depth_attachment_format;
+   uint32_t render_components;
 };
 
 static enum tu_dynamic_state_bits
@@ -1337,7 +1338,8 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 static void
 tu6_emit_fs_outputs(struct tu_cs *cs,
                     const struct ir3_shader_variant *fs,
-                    uint32_t mrt_count, bool dual_src_blend)
+                    uint32_t mrt_count, bool dual_src_blend,
+                    uint32_t render_components)
 {
    uint32_t smask_regid, posz_regid;
 
@@ -1353,8 +1355,6 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
       for (uint32_t i = 0; i < ARRAY_SIZE(fragdata_regid); i++)
          fragdata_regid[i] = ir3_find_output_regid(fs, FRAG_RESULT_DATA0 + i);
    }
-
-   uint32_t render_components = (1 << (4 * mrt_count)) - 1;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
@@ -1596,7 +1596,8 @@ tu6_emit_program(struct tu_cs *cs,
    tu6_emit_vpc_varying_modes(cs, fs, binning_pass);
    tu6_emit_fs_inputs(cs, fs);
    tu6_emit_fs_outputs(cs, fs, builder->color_attachment_count,
-                       builder->use_dual_src_blend);
+                       builder->use_dual_src_blend,
+                       builder->render_components);
 
    tu6_emit_shader_object(cs, MESA_SHADER_VERTEX, vs, binary_bo,
       binning_pass ? builder->binning_vs_offset : builder->shader_offsets[MESA_SHADER_VERTEX]);
@@ -2632,11 +2633,15 @@ tu_pipeline_builder_init_graphics(
 
          builder->color_attachment_formats[i] = pass->attachments[a].format;
          builder->use_color_attachments = true;
+         builder->render_components |= 0xf << (i * 4);
       }
 
       if (tu_blend_state_is_dual_src(create_info->pColorBlendState)) {
          builder->color_attachment_count++;
          builder->use_dual_src_blend = true;
+         /* dual source blending has an extra fs output in the 2nd slot */
+         if (subpass->color_attachments[0].attachment != VK_ATTACHMENT_UNUSED)
+            builder->render_components |= 0xf << 4;
       }
    }
 }

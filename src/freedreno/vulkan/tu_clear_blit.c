@@ -2008,7 +2008,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    uint32_t clear_value[MAX_RTS][4];
    float z_clear_val = 0.0f;
    uint8_t s_clear_val = 0;
-   uint32_t clear_rts = 0, num_rts = 0, b;
+   uint32_t clear_rts = 0, clear_components = 0, num_rts = 0, b;
    bool z_clear = false;
    bool s_clear = false;
    uint32_t max_samples = 1;
@@ -2022,6 +2022,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
             continue;
 
          clear_rts |= 1 << c;
+         clear_components |= 0xf << (c * 4);
          memcpy(clear_value[c], &attachments[i].clearValue, 4 * sizeof(uint32_t));
       } else {
          a = subpass->depth_stencil_attachment.attachment;
@@ -2067,6 +2068,11 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    }
 
    r3d_pipeline(cmd, cs, false, num_rts);
+
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_FS_RENDER_COMPONENTS(.dword = clear_components));
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_RENDER_COMPONENTS(.dword = clear_components));
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_FS_OUTPUT_CNTL0(),
