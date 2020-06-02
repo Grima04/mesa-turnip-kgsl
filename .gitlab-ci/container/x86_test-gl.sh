@@ -22,8 +22,10 @@ STABLE_EPHEMERAL=" \
       libxkbcommon-dev \
       libxrender-dev \
       make \
+      meson \
       patch \
       pkg-config \
+      python3-distutils \
       python3.7-dev \
       wget \
       xz-utils \

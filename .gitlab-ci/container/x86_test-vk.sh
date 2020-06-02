@@ -20,6 +20,7 @@ STABLE_EPHEMERAL=" \
       libxkbcommon-dev \
       libxrandr-dev \
       libxrender-dev \
+      meson \
       p7zip \
       pkg-config \
       python3-distutils \

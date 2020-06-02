@@ -39,7 +39,6 @@ apt-get install -y --no-remove \
       libxrandr2 \
       libxrender1 \
       python \
-      python3-distutils \
       python3-mako \
       python3-numpy \
       python3-pil \
@@ -58,8 +57,5 @@ apt-get install -y --no-remove \
 
 apt-get purge -y \
       gnupg
-
-apt-get install -t buster-backports -y --no-remove \
-    meson
 
 apt-get autoremove -y --purge
