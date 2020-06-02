@@ -77,6 +77,10 @@ bi_combine_sel16(bi_context *ctx, bi_instruction *parent, unsigned comp, unsigne
                 } }
         };
 
+        /* In case we have a combine from a vec3 */
+        if (!sel.src[1])
+                sel.src[1] = BIR_INDEX_ZERO;
+
         bi_emit_before(ctx, parent, sel);
 }
 
