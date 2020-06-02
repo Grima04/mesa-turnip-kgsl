@@ -1041,17 +1041,9 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
                uint32_t base_layer,
                uint32_t layer_count)
 {
-   struct v3dv_job *job = cmd_buffer->state.job;
-   assert(job);
-
-   /* Save a copy of the current subpass tiling spec, since we are about to
-    * split the job for the clear and we will need to then resume it with the
-    * same specs.
-    */
-   struct v3dv_frame_tiling subpass_tiling;
-   memcpy(&subpass_tiling, &job->frame_tiling, sizeof(subpass_tiling));
-
-   job = v3dv_cmd_buffer_start_job(cmd_buffer, cmd_buffer->state.subpass_idx);
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_start_job(cmd_buffer, cmd_buffer->state.subpass_idx,
+                                V3DV_JOB_TYPE_GPU_CL);
 
    /* vkCmdClearAttachments runs inside a render pass */
    job->is_subpass_continue = true;
@@ -1061,26 +1053,7 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
                       attachments,
                       base_layer, layer_count);
 
-   /* Since vkCmdClearAttachments executes inside a render pass command, this
-    * will emit the binner FLUSH packet. Notice that this won't emit the
-    * subpass RCL for this job though because it will see that the job has
-    * recorded its own RCL.
-    */
-   v3dv_cmd_buffer_finish_job(cmd_buffer);
-
-   /* Make sure we have an active job to continue the render pass recording
-    * after the clear.
-    */
-   job = v3dv_cmd_buffer_start_job(cmd_buffer, cmd_buffer->state.subpass_idx);
-
-   v3dv_job_start_frame(job,
-                        subpass_tiling.width,
-                        subpass_tiling.height,
-                        subpass_tiling.layers,
-                        subpass_tiling.render_target_count,
-                        subpass_tiling.internal_bpp);
-
-   job->is_subpass_continue = true;
+   v3dv_cmd_buffer_subpass_resume(cmd_buffer, cmd_buffer->state.subpass_idx);
 }
 
 static bool
@@ -1121,6 +1094,50 @@ can_use_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
           is_subrect(render_area, &fb_rect);
 }
 
+static void
+handle_deferred_clear_attachments(struct v3dv_cmd_buffer *cmd_buffer,
+                                  uint32_t attachmentCount,
+                                  const VkClearAttachment *pAttachments,
+                                  uint32_t rectCount,
+                                  const VkClearRect *pRects)
+{
+   /* Finish the current job */
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+   /* Add a deferred clear attachments job right after that we will process
+    * when we execute this secondary command buffer into a primary.
+    */
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                     V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS,
+                                     cmd_buffer,
+                                     cmd_buffer->state.subpass_idx);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
+   job->cpu.clear_attachments.rects =
+      vk_alloc(&cmd_buffer->device->alloc,
+               sizeof(VkClearRect) * rectCount, 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!job->cpu.clear_attachments.rects) {
+      v3dv_flag_oom(cmd_buffer, NULL);
+      return;
+   }
+
+   job->cpu.clear_attachments.attachment_count = attachmentCount;
+   memcpy(job->cpu.clear_attachments.attachments, pAttachments,
+          sizeof(VkClearAttachment) * attachmentCount);
+
+   job->cpu.clear_attachments.rect_count = rectCount;
+   memcpy(job->cpu.clear_attachments.rects, pRects,
+          sizeof(VkClearRect) * rectCount);
+
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
+
+   /* Resume the subpass so we can continue recording commands */
+   v3dv_cmd_buffer_subpass_resume(cmd_buffer,
+                                  cmd_buffer->state.subpass_idx);
+}
+
 void
 v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
                          uint32_t attachmentCount,
@@ -1132,6 +1149,33 @@ v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
 
    /* We can only clear attachments in the current subpass */
    assert(attachmentCount <= 5); /* 4 color + D/S */
+
+   /* Clear attachments may clear multiple layers of the framebuffer, which
+    * currently requires that we emit multiple jobs (one per layer) and
+    * therefore requires that we have the framebuffer information available
+    * to select the destination layers.
+    *
+    * For secondary command buffers the framebuffer state may not be available
+    * until they are executed inside a primary command buffer, so in that case
+    * we need to defer recording of the command until that moment.
+    *
+    * FIXME: once we add support for geometry shaders in the driver we could
+    * avoid emitting a job per layer to implement this by always using the clear
+    * rect path below with a passthrough geometry shader to select the layer to
+    * clear. If we did that we would not need to special case secondary command
+    * buffers here and we could ensure that any secondary command buffer in a
+    * render pass only has on job with a partial CL, which would simplify things
+    * quite a bit.
+    */
+   if (!cmd_buffer->state.framebuffer) {
+      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+      handle_deferred_clear_attachments(cmd_buffer,
+                                        attachmentCount, pAttachments,
+                                        rectCount, pRects);
+      return;
+   }
+
+   assert(cmd_buffer->state.framebuffer);
 
    /* Check if we can use the fast path via the TLB */
    if (can_use_tlb_clear(cmd_buffer, rectCount, pRects)) {

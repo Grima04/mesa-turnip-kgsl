@@ -651,6 +651,7 @@ enum v3dv_ez_state {
 
 enum v3dv_job_type {
    V3DV_JOB_TYPE_GPU_CL = 0,
+   V3DV_JOB_TYPE_GPU_CL_SECONDARY,
    V3DV_JOB_TYPE_GPU_TFU,
    V3DV_JOB_TYPE_GPU_CSD,
    V3DV_JOB_TYPE_CPU_RESET_QUERIES,
@@ -658,6 +659,7 @@ enum v3dv_job_type {
    V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS,
    V3DV_JOB_TYPE_CPU_SET_EVENT,
    V3DV_JOB_TYPE_CPU_WAIT_EVENTS,
+   V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS,
 };
 
 struct v3dv_reset_query_cpu_job_info {
@@ -693,6 +695,13 @@ struct v3dv_event_wait_cpu_job_info {
 
    /* Whether any postponed jobs after the wait should wait on semaphores */
    bool sem_wait;
+};
+
+struct v3dv_clear_attachments_cpu_job_info {
+   uint32_t attachment_count;
+   VkClearAttachment attachments[V3D_MAX_DRAW_BUFFERS + 1]; /* 4 color + D/S */
+   uint32_t rect_count;
+   VkClearRect *rects;
 };
 
 struct v3dv_job {
@@ -757,6 +766,7 @@ struct v3dv_job {
       struct v3dv_copy_query_results_cpu_job_info query_copy_results;
       struct v3dv_event_set_cpu_job_info          event_set;
       struct v3dv_event_wait_cpu_job_info         event_wait;
+      struct v3dv_clear_attachments_cpu_job_info  clear_attachments;
    } cpu;
 
    /* Job spects for TFU jobs */
@@ -777,6 +787,10 @@ void v3dv_job_start_frame(struct v3dv_job *job,
                           uint32_t layers,
                           uint32_t render_target_count,
                           uint8_t max_internal_bpp);
+struct v3dv_job *v3dv_cmd_buffer_create_cpu_job(struct v3dv_device *device,
+                                                enum v3dv_job_type type,
+                                                struct v3dv_cmd_buffer *cmd_buffer,
+                                                uint32_t subpass_idx);
 
 struct v3dv_vertex_binding {
    struct v3dv_buffer *buffer;
@@ -967,16 +981,11 @@ struct v3dv_cmd_buffer {
     * buffer via vkCmdExecuteCommands.
     */
    struct list_head jobs;
-
-   /* For secondary command buffers inside a render pass, a list of jobs
-    * that should be executed right before the secondary job is executed
-    * inside a primary.
-    */
-   struct list_head pre_jobs;
 };
 
 struct v3dv_job *v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
-                                           int32_t subpass_idx);
+                                           int32_t subpass_idx,
+                                           enum v3dv_job_type type);
 void v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer);
 
 struct v3dv_job *v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,

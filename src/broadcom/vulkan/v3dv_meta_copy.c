@@ -680,7 +680,8 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       num_layers = region->imageExtent.depth;
    assert(num_layers > 0);
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
    if (!job)
       return true;
 
@@ -1173,7 +1174,8 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       num_layers = region->extent.depth;
    assert(num_layers > 0);
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
    if (!job)
       return true;
 
@@ -1491,7 +1493,9 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
          uint32_t width = u_minify(image->extent.width, level);
          uint32_t height = u_minify(image->extent.height, level);
 
-         struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+         struct v3dv_job *job =
+            v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
+
          if (!job)
             return true;
 
@@ -1710,7 +1714,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t src_offset = region->srcOffset;
    uint32_t dst_offset = region->dstOffset;
    while (num_items > 0) {
-      job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+      job = v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
       if (!job)
          return NULL;
 
@@ -1893,7 +1897,8 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t num_items = size / 4;
 
    while (num_items > 0) {
-      struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+      struct v3dv_job *job =
+         v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
       if (!job)
          return;
 
@@ -2105,7 +2110,8 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       num_layers = region->imageExtent.depth;
    assert(num_layers > 0);
 
-   struct v3dv_job *job = v3dv_cmd_buffer_start_job(cmd_buffer, -1);
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
    if (!job)
       return true;
 
