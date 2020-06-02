@@ -657,3 +657,20 @@ void radv_meta_build_resolve_shader_core(nir_builder *b,
 	if (outer_if)
 		b->cursor = nir_after_cf_node(&outer_if->cf_node);
 }
+
+nir_ssa_def *
+radv_meta_load_descriptor(nir_builder *b, unsigned desc_set, unsigned binding)
+{
+	nir_intrinsic_instr *rsrc =
+		nir_intrinsic_instr_create(b->shader,
+					   nir_intrinsic_vulkan_resource_index);
+
+	rsrc->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+	rsrc->num_components = 1;
+	nir_intrinsic_set_desc_set(rsrc, desc_set);
+	nir_intrinsic_set_binding(rsrc, binding);
+	nir_ssa_dest_init(&rsrc->instr, &rsrc->dest, rsrc->num_components, 32, NULL);
+	nir_builder_instr_insert(b, &rsrc->instr);
+
+	return &rsrc->dest.ssa;
+}

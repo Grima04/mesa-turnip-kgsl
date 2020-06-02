@@ -310,6 +310,10 @@ void radv_meta_build_resolve_shader_core(nir_builder *b,
 					 nir_variable *input_img,
 					 nir_variable *color,
 					 nir_ssa_def *img_coord);
+
+nir_ssa_def *radv_meta_load_descriptor(nir_builder *b, unsigned desc_set,
+				       unsigned binding);
+
 #ifdef __cplusplus
 }
 #endif
