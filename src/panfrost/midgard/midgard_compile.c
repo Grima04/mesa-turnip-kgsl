@@ -1147,13 +1147,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.is_pack = true;
         }
 
-        /* Arrange for creation of iandnot/iornot */
-        if (ins.src_invert[0] && !ins.src_invert[1]) {
-                mir_flip(&ins);
-                ins.src_invert[0] = false;
-                ins.src_invert[1] = true;
-        }
-
         if ((opcode_props & UNITS_ALL) == UNIT_VLUT) {
                 /* To avoid duplicating the lookup tables (probably), true LUT
                  * instructions can only operate as if they were scalars. Lower
@@ -2307,6 +2300,38 @@ midgard_cull_dead_branch(compiler_context *ctx, midgard_block *block)
         }
 }
 
+/* We want to force the invert on AND/OR to the second slot to legalize into
+ * iandnot/iornot. The relevant patterns are for AND (and OR respectively)
+ *
+ *   ~a & #b = ~a & ~(#~b)
+ *   ~a & b = b & ~a
+ */
+
+static void
+midgard_legalize_invert(compiler_context *ctx, midgard_block *block)
+{
+        mir_foreach_instr_in_block(block, ins) {
+                if (ins->type != TAG_ALU_4) continue;
+
+                if (ins->alu.op != midgard_alu_op_iand &&
+                    ins->alu.op != midgard_alu_op_ior) continue;
+
+                if (ins->src_invert[1] || !ins->src_invert[0]) continue;
+
+                if (ins->has_inline_constant) {
+                        /* ~(#~a) = ~(~#a) = a, so valid, and forces both
+                         * inverts on */
+                        ins->inline_constant = ~ins->inline_constant;
+                        ins->src_invert[1] = true;
+                } else {
+                        /* Flip to the right invert order. Note
+                         * has_inline_constant false by assumption on the
+                         * branch, so flipping makes sense. */
+                        mir_flip(ins);
+                }
+        }
+}
+
 static unsigned
 emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
 {
@@ -2665,6 +2690,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         mir_foreach_block(ctx, _block) {
                 midgard_block *block = (midgard_block *) _block;
                 midgard_lower_derivatives(ctx, block);
+                midgard_legalize_invert(ctx, block);
                 midgard_cull_dead_branch(ctx, block);
         }
 

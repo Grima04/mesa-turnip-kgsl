@@ -445,6 +445,10 @@ mir_flip(midgard_instruction *ins)
         ins->src_neg[0] = ins->src_neg[1];
         ins->src_neg[1] = temp;
 
+        temp = ins->src_invert[0];
+        ins->src_invert[0] = ins->src_invert[1];
+        ins->src_invert[1] = temp;
+
         unsigned temp_swizzle[16];
         memcpy(temp_swizzle, ins->swizzle[0], sizeof(ins->swizzle[0]));
         memcpy(ins->swizzle[0], ins->swizzle[1], sizeof(ins->swizzle[0]));
