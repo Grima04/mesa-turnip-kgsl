@@ -980,6 +980,7 @@ intel_dup_image(__DRIimage *orig_image, void *loaderPrivate)
       return NULL;
 
    brw_bo_reference(orig_image->bo);
+   image->screen          = orig_image->screen;
    image->bo              = orig_image->bo;
    image->internal_format = orig_image->internal_format;
    image->planar_format   = orig_image->planar_format;
