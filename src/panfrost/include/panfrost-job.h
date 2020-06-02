@@ -390,11 +390,11 @@ enum mali_format {
 /* Should be set when the fragment shader updates the depth value. */
 #define MALI_WRITES_Z (1 << 4)
 
-/* Should the hardware perform early-Z testing? Normally should be set
- * for performance reasons. Clear if you use: discard,
- * alpha-to-coverage... * It's also possible this disables
- * forward-pixel kill; we're not quite sure which bit is which yet.
- * TODO: How does this interact with blending?*/
+/* Should the hardware perform early-Z testing? Set if the shader does not use
+ * discard, alpha-to-coverage, shader depth writes, and if the shader has no
+ * side effects (writes to global memory or images) unless early-z testing is
+ * forced in the shader.
+ */
 
 #define MALI_EARLY_Z (1 << 6)
 
