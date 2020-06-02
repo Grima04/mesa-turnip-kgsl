@@ -834,6 +834,26 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         case nir_op_ixor:
                 alu.op.bitwise = BI_BITWISE_XOR;
                 break;
+
+        case nir_op_f2f16:
+        case nir_op_i2i16:
+        case nir_op_u2u16: {
+                if (nir_src_bit_size(instr->src[0].src) != 32)
+                        break;
+
+                /* Should have been const folded */
+                assert(!nir_src_is_const(instr->src[0].src));
+
+                alu.src_types[1] = alu.src_types[0];
+                alu.src[1] = alu.src[0];
+
+                unsigned last = nir_dest_num_components(instr->dest.dest) - 1;
+                assert(last <= 1);
+
+                alu.swizzle[1][0] = instr->src[0].swizzle[last];
+                break;
+        }
+
         default:
                 break;
         }
