@@ -834,7 +834,7 @@ struct v3dv_cmd_buffer_state {
     */
    bool tile_aligned_render_area;
 
-   uint32_t attachment_count;
+   uint32_t attachment_alloc_count;
    struct v3dv_cmd_buffer_attachment_state *attachments;
 
    struct v3dv_vertex_binding vertex_bindings[MAX_VBS];

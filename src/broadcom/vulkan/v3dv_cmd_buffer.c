@@ -251,10 +251,8 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.job)
       v3dv_job_destroy(cmd_buffer->state.job);
 
-   if (cmd_buffer->state.attachments) {
-      assert(cmd_buffer->state.attachment_count > 0);
+   if (cmd_buffer->state.attachments)
       vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
-   }
 
    if (cmd_buffer->state.query.end.alloc_count > 0)
       vk_free(&cmd_buffer->device->alloc, cmd_buffer->state.query.end.states);
@@ -271,6 +269,11 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
       v3dv_DestroyDescriptorPool(v3dv_device_to_handle(cmd_buffer->device),
                                  cmd_buffer->meta.blit.dspool,
                                  &cmd_buffer->device->alloc);
+   }
+
+   if (cmd_buffer->state.meta.attachments) {
+         assert(cmd_buffer->state.meta.attachment_alloc_count > 0);
+         vk_free(&cmd_buffer->device->alloc, cmd_buffer->state.meta.attachments);
    }
 }
 
@@ -1154,9 +1157,11 @@ cmd_buffer_ensure_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffe
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
    const struct v3dv_render_pass *pass = state->pass;
 
-   if (state->attachment_count < pass->attachment_count) {
-      if (state->attachment_count > 0)
+   if (state->attachment_alloc_count < pass->attachment_count) {
+      if (state->attachments > 0) {
+         assert(state->attachment_alloc_count > 0);
          vk_free(&cmd_buffer->device->alloc, state->attachments);
+      }
 
       uint32_t size = sizeof(struct v3dv_cmd_buffer_attachment_state) *
                       pass->attachment_count;
@@ -1166,10 +1171,10 @@ cmd_buffer_ensure_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffe
          v3dv_flag_oom(cmd_buffer, NULL);
          return;
       }
-      state->attachment_count = pass->attachment_count;
+      state->attachment_alloc_count = pass->attachment_count;
    }
 
-   assert(state->attachment_count >= pass->attachment_count);
+   assert(state->attachment_alloc_count >= pass->attachment_count);
 }
 
 void
@@ -3377,8 +3382,8 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
       const uint32_t attachment_state_item_size =
          sizeof(struct v3dv_cmd_buffer_attachment_state);
       const uint32_t attachment_state_total_size =
-         attachment_state_item_size * state->attachment_count;
-      if (state->meta.attachment_alloc_count < state->attachment_count) {
+         attachment_state_item_size * state->attachment_alloc_count;
+      if (state->meta.attachment_alloc_count < state->attachment_alloc_count) {
          if (state->meta.attachment_alloc_count > 0)
             vk_free(&cmd_buffer->device->alloc, state->meta.attachments);
 
@@ -3389,9 +3394,9 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
             v3dv_flag_oom(cmd_buffer, NULL);
             return;
          }
-         state->meta.attachment_alloc_count = state->attachment_count;
+         state->meta.attachment_alloc_count = state->attachment_alloc_count;
       }
-      state->meta.attachment_count = state->attachment_count;
+      state->meta.attachment_count = state->attachment_alloc_count;
       memcpy(state->meta.attachments, state->attachments,
              attachment_state_total_size);
 
@@ -3428,12 +3433,11 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
       state->pass = v3dv_render_pass_from_handle(state->meta.pass);
       state->framebuffer = v3dv_framebuffer_from_handle(state->meta.framebuffer);
 
-      assert(state->meta.attachment_count <= state->attachment_count);
+      assert(state->meta.attachment_count <= state->attachment_alloc_count);
       const uint32_t attachment_state_item_size =
          sizeof(struct v3dv_cmd_buffer_attachment_state);
       const uint32_t attachment_state_total_size =
          attachment_state_item_size * state->meta.attachment_count;
-      state->attachment_count = state->meta.attachment_count;
       memcpy(state->attachments, state->meta.attachments,
              attachment_state_total_size);
 
