@@ -1719,27 +1719,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_store_raw_output_pan:
                 assert (ctx->stage == MESA_SHADER_FRAGMENT);
                 reg = nir_src_index(ctx, &instr->src[0]);
-
-                if (ctx->quirks & MIDGARD_OLD_BLEND) {
-                        /* Suppose reg = qr0.xyzw. That means 4 8-bit ---> 1 32-bit. So
-                         * reg = r0.x. We want to splatter. So we can do a 32-bit move
-                         * of:
-                         *
-                         * imov r0.xyzw, r0.xxxx
-                         */
-
-                        unsigned expanded = make_compiler_temp(ctx);
-
-                        midgard_instruction splatter = v_mov(reg, expanded);
-
-                        for (unsigned c = 0; c < 16; ++c)
-                                splatter.swizzle[1][c] = 0;
-
-                        emit_mir_instruction(ctx, splatter);
-                        emit_fragment_store(ctx, expanded, ctx->blend_rt);
-                } else
-                        emit_fragment_store(ctx, reg, ctx->blend_rt);
-
+                emit_fragment_store(ctx, reg, ctx->blend_rt);
                 break;
 
         case nir_intrinsic_store_global:
