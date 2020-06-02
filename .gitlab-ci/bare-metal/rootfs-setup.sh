@@ -2,9 +2,7 @@
 
 rootfs_dst=$1
 
-# Copy the rootfs to a temporary for our setup, as I believe changes to the
-# container can end up impacting future runs.
-cp -Rp $BM_ROOTFS/. $rootfs_dst
+mkdir -p $rootfs_dst/results
 
 # Set up the init script that brings up the system.
 cp $BM/init.sh $rootfs_dst/init

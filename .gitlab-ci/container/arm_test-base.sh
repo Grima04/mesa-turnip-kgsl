@@ -30,6 +30,7 @@ apt-get install -y --no-remove \
         python3.7 \
         pkg-config \
         procps \
+        rsync \
         u-boot-tools \
         unzip
 

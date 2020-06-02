@@ -49,7 +49,7 @@ set -ex
 
 # Create the rootfs in the NFS directory.  rm to make sure it's in a pristine
 # state, since it's volume-mounted on the host.
-rm -rf /nfs/*
+rsync -a --delete $BM_ROOTFS/ /nfs/
 mkdir -p /nfs/results
 . $BM/rootfs-setup.sh /nfs
 

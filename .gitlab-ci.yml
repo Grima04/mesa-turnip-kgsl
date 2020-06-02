@@ -274,7 +274,7 @@ arm_test-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-06-08"
+    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-06-09-rsync"
 
 .use-arm_test-base:
   extends:
@@ -292,7 +292,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-09-cheza-vk"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-09-rsync"
 
 .use-arm64_test:
   variables:

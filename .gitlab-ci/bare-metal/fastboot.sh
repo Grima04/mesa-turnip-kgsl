@@ -47,8 +47,10 @@ fi
 
 set -ex
 
-# Create the rootfs in a temp dir
-mkdir rootfs
+# Copy the rootfs to a temporary for our setup, as I believe changes to the
+# container can end up impacting future runs.
+cp -Rp $BM_ROOTFS/ rootfs
+
 . .gitlab-ci/bare-metal/rootfs-setup.sh rootfs
 
 # Finally, pack it up into a cpio rootfs.  Skip the vulkan CTS since none of
