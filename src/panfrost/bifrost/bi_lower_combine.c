@@ -71,10 +71,10 @@ bi_combine_sel16(bi_context *ctx, bi_instruction *parent, unsigned comp, unsigne
                 .dest_offset = comp >> 1,
                 .src = { parent->src[comp], parent->src[comp + 1] },
                 .src_types = { nir_type_uint16, nir_type_uint16 },
-                .swizzle = { {
-                        parent->swizzle[comp][0],
-                        parent->swizzle[comp + 1][0],
-                } }
+                .swizzle = {
+                        { parent->swizzle[comp][0] },
+                        { parent->swizzle[comp + 1][0] },
+                }
         };
 
         /* In case we have a combine from a vec3 */
