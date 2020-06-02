@@ -339,6 +339,9 @@ enum virgl_formats {
 #define VIRGL_CAP_CLEAR_TEXTURE        (1 << 30)
 /* Reserved for VIRGL_CAP_ARB_BUFFER_STORAGE */
 
+/* These are used by the capability_bits_v2 field in virgl_caps_v2. */
+#define VIRGL_CAP_V2_BLEND_EQUATION       (1 << 0)
+
 /* virgl bind flags - these are compatible with mesa 10.5 gallium.
  * but are fixed, no other should be passed to virgl either.
  */
@@ -476,6 +479,7 @@ struct virgl_caps_v2 {
         uint32_t host_feature_check_version;
         struct virgl_supported_format_mask supported_readback_formats;
         struct virgl_supported_format_mask scanout;
+        uint32_t capability_bits_v2;
 };
 
 union virgl_caps {

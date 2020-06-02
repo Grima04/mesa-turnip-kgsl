@@ -281,6 +281,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
 
    case PIPE_CAP_FBFETCH:
    case PIPE_CAP_FBFETCH_COHERENT:
+   case PIPE_CAP_BLEND_EQUATION_ADVANCED:
    case PIPE_CAP_TGSI_MUL_ZERO_WINS:
    case PIPE_CAP_DOUBLES:
    case PIPE_CAP_INT64:
