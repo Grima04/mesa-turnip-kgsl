@@ -36,6 +36,14 @@
 #include "freedreno_util.h"
 #include "freedreno/fdl/freedreno_layout.h"
 
+enum fd_lrz_direction {
+	FD_LRZ_UNKNOWN,
+	/* Depth func less/less-than: */
+	FD_LRZ_LESS,
+	/* Depth func greater/greater-than: */
+	FD_LRZ_GREATER,
+};
+
 struct fd_resource {
 	struct pipe_resource base;
 	struct fd_bo *bo;
@@ -86,6 +94,7 @@ struct fd_resource {
 	 * fdl_layout
 	 */
 	bool lrz_valid : 1;
+	enum fd_lrz_direction lrz_direction : 2;
 	uint16_t lrz_width;  // for lrz clear, does this differ from lrz_pitch?
 	uint16_t lrz_height;
 	uint16_t lrz_pitch;

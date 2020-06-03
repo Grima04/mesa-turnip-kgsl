@@ -585,45 +585,95 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 	return ring;
 }
 
+/**
+ * Calculate normalized LRZ state based on zsa/prog/blend state, updating
+ * the zsbuf's lrz state as necessary to detect the cases where we need
+ * to invalidate lrz.
+ */
+static struct fd6_lrz_state
+compute_lrz_state(struct fd6_emit *emit)
+{
+	struct fd_context *ctx = emit->ctx;
+	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
+	const struct ir3_shader_variant *fs = emit->fs;
+	struct fd6_lrz_state lrz;
+
+	struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
+	struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(ctx->zsa);
+	struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
+
+	lrz = zsa->lrz;
+
+	/* normalize lrz state: */
+	if (blend->reads_dest || fs->writes_pos || fs->no_earlyz || fs->has_kill) {
+		lrz.write = false;
+	}
+
+	/* if we change depthfunc direction, bail out on using LRZ.  The
+	 * LRZ buffer encodes a min/max depth value per block, but if
+	 * we switch from GT/GE <-> LT/LE, those values cannot be
+	 * interpreted properly.
+	 */
+	if (zsa->base.depth.enabled &&
+			(rsc->lrz_direction != FD_LRZ_UNKNOWN) &&
+			(rsc->lrz_direction != lrz.direction)) {
+		rsc->lrz_valid = false;
+	}
+
+	if (zsa->invalidate_lrz || !rsc->lrz_valid) {
+		rsc->lrz_valid = false;
+		memset(&lrz, 0, sizeof(lrz));
+	}
+
+	if (fs->no_earlyz || fs->writes_pos) {
+		lrz.enable = false;
+		lrz.write = false;
+		lrz.test = false;
+	}
+
+	/* Once we start writing to the real depth buffer, we lock in the
+	 * direction for LRZ.. if we have to skip a LRZ write for any
+	 * reason, it is still safe to have LRZ until there is a direction
+	 * reversal.  Prior to the reversal, since we disabled LRZ writes
+	 * in the "unsafe" cases, this just means that the LRZ test may
+	 * not early-discard some things that end up not passing a later
+	 * test (ie. be overly concervative).  But once you have a reversal
+	 * of direction, it is possible to increase/decrease the z value
+	 * to the point where the overly-conservative test is incorrect.
+	 */
+	if (zsa->base.depth.writemask) {
+		rsc->lrz_direction = lrz.direction;
+	}
+
+	return lrz;
+}
+
 static struct fd_ringbuffer *
 build_lrz(struct fd6_emit *emit, bool binning_pass)
 {
 	struct fd_context *ctx = emit->ctx;
-	struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
-	struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(ctx->zsa);
-	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
-	struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
-	uint32_t gras_lrz_cntl = zsa->gras_lrz_cntl;
-	uint32_t rb_lrz_cntl = zsa->rb_lrz_cntl;
-
-	if (zsa->invalidate_lrz) {
-		rsc->lrz_valid = false;
-		gras_lrz_cntl = 0;
-		rb_lrz_cntl = 0;
-	} else if (emit->no_lrz_write || !rsc->lrz || !rsc->lrz_valid) {
-		gras_lrz_cntl = 0;
-		rb_lrz_cntl = 0;
-	} else if (binning_pass && blend->lrz_write && zsa->lrz_write) {
-		gras_lrz_cntl |= A6XX_GRAS_LRZ_CNTL_LRZ_WRITE;
-	}
-
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
-	if ((fd6_ctx->last.lrz[binning_pass].gras_lrz_cntl == gras_lrz_cntl) &&
-			(fd6_ctx->last.lrz[binning_pass].rb_lrz_cntl == rb_lrz_cntl) &&
-			!ctx->last.dirty)
+	struct fd6_lrz_state lrz = compute_lrz_state(emit);
+
+	/* If the LRZ state has not changed, we can skip the emit: */
+	if (!ctx->last.dirty &&
+			!memcmp(&fd6_ctx->last.lrz[binning_pass], &lrz, sizeof(lrz)))
 		return NULL;
 
-	fd6_ctx->last.lrz[binning_pass].gras_lrz_cntl = gras_lrz_cntl;
-	fd6_ctx->last.lrz[binning_pass].rb_lrz_cntl = rb_lrz_cntl;
+	fd6_ctx->last.lrz[binning_pass] = lrz;
 
 	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(ctx->batch->submit,
-			16, FD_RINGBUFFER_STREAMING);
+			4*4, FD_RINGBUFFER_STREAMING);
 
-	OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_CNTL, 1);
-	OUT_RING(ring, gras_lrz_cntl);
-
-	OUT_PKT4(ring, REG_A6XX_RB_LRZ_CNTL, 1);
-	OUT_RING(ring, rb_lrz_cntl);
+	OUT_REG(ring, A6XX_GRAS_LRZ_CNTL(
+			.enable        = lrz.enable,
+			.lrz_write     = lrz.write,
+			.greater       = lrz.direction == FD_LRZ_GREATER,
+			.z_test_enable = lrz.test,
+		));
+	OUT_REG(ring, A6XX_RB_LRZ_CNTL(
+			.enable = lrz.enable,
+		));
 
 	return ring;
 }

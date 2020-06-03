@@ -31,10 +31,18 @@
 #include "util/u_upload_mgr.h"
 
 #include "freedreno_context.h"
+#include "freedreno_resource.h"
 
 #include "ir3/ir3_shader.h"
 
 #include "a6xx.xml.h"
+
+struct fd6_lrz_state {
+	bool enable : 1;
+	bool write  : 1;
+	bool test   : 1;
+	enum fd_lrz_direction direction : 2;
+};
 
 struct fd6_context {
 	struct fd_context base;
@@ -106,15 +114,11 @@ struct fd6_context {
 		uint32_t SP_UNKNOWN_A0F8;
 	} magic;
 
-
 	struct {
 		/* previous binning/draw lrz state, which is a function of multiple
 		 * gallium stateobjs, but doesn't necessarily change as frequently:
 		 */
-		struct {
-			uint32_t gras_lrz_cntl;
-			uint32_t rb_lrz_cntl;
-		} lrz[2];
+		struct fd6_lrz_state lrz[2];
 	} last;
 };
 

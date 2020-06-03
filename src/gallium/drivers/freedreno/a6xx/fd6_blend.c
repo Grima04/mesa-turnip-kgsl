@@ -148,11 +148,6 @@ fd6_blend_state_create(struct pipe_context *pctx,
 		const struct pipe_blend_state *cso)
 {
 	struct fd6_blend_stateobj *so;
-	bool reads_dest = false;
-
-	if (cso->logicop_enable) {
-		reads_dest = util_logicop_reads_dest(cso->logicop_func);
-	}
 
 	so = rzalloc_size(NULL, sizeof(*so));
 	if (!so)
@@ -160,19 +155,19 @@ fd6_blend_state_create(struct pipe_context *pctx,
 
 	so->base = *cso;
 	so->ctx = fd_context(pctx);
-	so->lrz_write = true;  /* unless blend enabled for any MRT */
+
+	if (cso->logicop_enable) {
+		so->reads_dest |= util_logicop_reads_dest(cso->logicop_func);
+	}
 
 	unsigned nr = cso->independent_blend_enable ? cso->max_rt : 0;
 	for (unsigned i = 0; i <= nr; i++) {
 		const struct pipe_rt_blend_state *rt = &cso->rt[i];
 
+		so->reads_dest |= rt->blend_enable;
 		if (rt->blend_enable) {
-			so->lrz_write = false;
+			so->reads_dest = true;
 		}
-	}
-
-	if (reads_dest) {
-		so->lrz_write = false;
 	}
 
 	util_dynarray_init(&so->variants, so);

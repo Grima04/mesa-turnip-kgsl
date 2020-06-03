@@ -48,7 +48,7 @@ struct fd6_blend_stateobj {
 	struct pipe_blend_state base;
 
 	struct fd_context *ctx;
-	bool lrz_write;
+	bool reads_dest;
 	struct util_dynarray variants;
 };
 

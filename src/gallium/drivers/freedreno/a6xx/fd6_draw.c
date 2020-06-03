@@ -217,11 +217,6 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	ctx->stats.gs_regs += COND(emit.gs, ir3_shader_halfregs(emit.gs));
 	ctx->stats.fs_regs += ir3_shader_halfregs(emit.fs);
 
-	/* figure out whether we need to disable LRZ write for binning
-	 * pass using draw pass's fs:
-	 */
-	emit.no_lrz_write = emit.fs->writes_pos || emit.fs->no_earlyz || emit.fs->has_kill;
-
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 
 	struct CP_DRAW_INDX_OFFSET_0 draw0 = {
@@ -493,6 +488,7 @@ fd6_clear(struct fd_context *ctx, unsigned buffers,
 		struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
 		if (zsbuf->lrz && !is_z32(pfb->zsbuf->format)) {
 			zsbuf->lrz_valid = true;
+			zsbuf->lrz_direction = FD_LRZ_UNKNOWN;
 			fd6_clear_lrz(ctx->batch, zsbuf, depth);
 		}
 	}
