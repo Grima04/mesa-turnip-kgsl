@@ -61,8 +61,10 @@ zink_context_destroy(struct pipe_context *pctx)
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->null_buffers); i++)
       pipe_resource_reference(&ctx->null_buffers[i], NULL);
 
-   for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
+   for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
+      vkDestroyDescriptorPool(screen->dev, ctx->batches[i].descpool, NULL);
       vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->batches[i].cmdbuf);
+   }
    vkDestroyCommandPool(screen->dev, ctx->cmdpool, NULL);
 
    util_primconvert_destroy(ctx->primconvert);
