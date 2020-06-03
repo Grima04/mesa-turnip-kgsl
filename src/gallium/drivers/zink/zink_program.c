@@ -34,6 +34,11 @@
 #include "util/u_memory.h"
 #include "tgsi/tgsi_from_mesa.h"
 
+struct pipeline_cache_entry {
+   struct zink_gfx_pipeline_state state;
+   VkPipeline pipeline;
+};
+
 static VkDescriptorSetLayout
 create_desc_set_layout(VkDevice dev,
                        struct zink_shader *stages[PIPE_SHADER_TYPES - 1],
@@ -187,13 +192,18 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       _mesa_set_destroy(prog->render_passes, NULL);
    }
 
+   for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
+      hash_table_foreach(prog->pipelines[i], entry) {
+         struct pipeline_cache_entry *pc_entry = entry->data;
+
+         vkDestroyPipeline(screen->dev, pc_entry->pipeline, NULL);
+         free(pc_entry);
+      }
+      _mesa_hash_table_destroy(prog->pipelines[i], NULL);
+   }
+
    FREE(prog);
 }
-
-struct pipeline_cache_entry {
-   struct zink_gfx_pipeline_state state;
-   VkPipeline pipeline;
-};
 
 static VkPrimitiveTopology
 primitive_topology(enum pipe_prim_type mode)
