@@ -585,18 +585,40 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 	return ring;
 }
 
+static enum a6xx_ztest_mode
+compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid)
+{
+	const struct ir3_shader_variant *fs = emit->fs;
+
+	if (fs->no_earlyz || fs->writes_pos) {
+		return A6XX_LATE_Z;
+	} else if (fs->has_kill) {
+		return lrz_valid ? A6XX_EARLY_LRZ_LATE_Z : A6XX_LATE_Z;
+	} else {
+		return A6XX_EARLY_Z;
+	}
+}
+
 /**
  * Calculate normalized LRZ state based on zsa/prog/blend state, updating
  * the zsbuf's lrz state as necessary to detect the cases where we need
  * to invalidate lrz.
  */
 static struct fd6_lrz_state
-compute_lrz_state(struct fd6_emit *emit)
+compute_lrz_state(struct fd6_emit *emit, bool binning_pass)
 {
 	struct fd_context *ctx = emit->ctx;
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
 	const struct ir3_shader_variant *fs = emit->fs;
 	struct fd6_lrz_state lrz;
+
+	if (!pfb->zsbuf) {
+		memset(&lrz, 0, sizeof(lrz));
+		if (!binning_pass) {
+			lrz.z_mode = compute_ztest_mode(emit, false);
+		}
+		return lrz;
+	}
 
 	struct fd6_blend_stateobj *blend = fd6_blend_stateobj(ctx->blend);
 	struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(ctx->zsa);
@@ -607,6 +629,8 @@ compute_lrz_state(struct fd6_emit *emit)
 	/* normalize lrz state: */
 	if (blend->reads_dest || fs->writes_pos || fs->no_earlyz || fs->has_kill) {
 		lrz.write = false;
+		if (binning_pass)
+			lrz.enable = false;
 	}
 
 	/* if we change depthfunc direction, bail out on using LRZ.  The
@@ -631,6 +655,10 @@ compute_lrz_state(struct fd6_emit *emit)
 		lrz.test = false;
 	}
 
+	if (!binning_pass) {
+		lrz.z_mode = compute_ztest_mode(emit, rsc->lrz_valid);
+	}
+
 	/* Once we start writing to the real depth buffer, we lock in the
 	 * direction for LRZ.. if we have to skip a LRZ write for any
 	 * reason, it is still safe to have LRZ until there is a direction
@@ -653,7 +681,8 @@ build_lrz(struct fd6_emit *emit, bool binning_pass)
 {
 	struct fd_context *ctx = emit->ctx;
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
-	struct fd6_lrz_state lrz = compute_lrz_state(emit);
+	struct fd6_lrz_state lrz =
+			compute_lrz_state(emit, binning_pass);
 
 	/* If the LRZ state has not changed, we can skip the emit: */
 	if (!ctx->last.dirty &&
@@ -663,7 +692,7 @@ build_lrz(struct fd6_emit *emit, bool binning_pass)
 	fd6_ctx->last.lrz[binning_pass] = lrz;
 
 	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(ctx->batch->submit,
-			4*4, FD_RINGBUFFER_STREAMING);
+			8*4, FD_RINGBUFFER_STREAMING);
 
 	OUT_REG(ring, A6XX_GRAS_LRZ_CNTL(
 			.enable        = lrz.enable,
@@ -673,6 +702,14 @@ build_lrz(struct fd6_emit *emit, bool binning_pass)
 		));
 	OUT_REG(ring, A6XX_RB_LRZ_CNTL(
 			.enable = lrz.enable,
+		));
+
+	OUT_REG(ring, A6XX_RB_DEPTH_PLANE_CNTL(
+			.z_mode = lrz.z_mode,
+		));
+
+	OUT_REG(ring, A6XX_GRAS_SU_DEPTH_PLANE_CNTL(
+			.z_mode = lrz.z_mode,
 		));
 
 	return ring;
@@ -789,7 +826,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 			fd6_emit_add_group(emit, zsa->stateobj, FD6_GROUP_ZSA, ENABLE_ALL);
 	}
 
-	if ((dirty & (FD_DIRTY_ZSA | FD_DIRTY_BLEND | FD_DIRTY_PROG)) && pfb->zsbuf) {
+	if (dirty & (FD_DIRTY_ZSA | FD_DIRTY_BLEND | FD_DIRTY_PROG)) {
 		struct fd_ringbuffer *state;
 
 		state = build_lrz(emit, false);
