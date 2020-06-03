@@ -47,6 +47,7 @@ struct fd6_zsa_stateobj {
 
 	struct fd6_lrz_state lrz;
 	bool invalidate_lrz;
+	bool alpha_test;
 
 	struct fd_ringbuffer *stateobj;
 	struct fd_ringbuffer *stateobj_no_alpha;

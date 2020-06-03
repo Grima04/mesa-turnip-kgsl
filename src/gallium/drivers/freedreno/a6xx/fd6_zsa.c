@@ -190,6 +190,7 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 		 */
 		if (cso->alpha.func != PIPE_FUNC_ALWAYS) {
 			so->lrz.write = false;
+			so->alpha_test = true;
 		}
 
 		uint32_t ref = cso->alpha.ref_value * 255.0;

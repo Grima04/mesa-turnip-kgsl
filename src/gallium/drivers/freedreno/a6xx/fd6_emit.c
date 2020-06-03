@@ -588,11 +588,12 @@ build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
 static enum a6xx_ztest_mode
 compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid)
 {
+	struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(emit->ctx->zsa);
 	const struct ir3_shader_variant *fs = emit->fs;
 
 	if (fs->no_earlyz || fs->writes_pos) {
 		return A6XX_LATE_Z;
-	} else if (fs->has_kill) {
+	} else if (fs->has_kill || zsa->alpha_test) {
 		return lrz_valid ? A6XX_EARLY_LRZ_LATE_Z : A6XX_LATE_Z;
 	} else {
 		return A6XX_EARLY_Z;
