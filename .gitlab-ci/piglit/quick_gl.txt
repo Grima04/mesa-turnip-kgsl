@@ -1,3 +1,4 @@
+fast_color_clear/fcc-write-after-clear: skip
 glx/extension string sanity: fail
 glx/glx-buffer-age: skip
 glx/glx-buffer-age vblank_mode=0: skip
@@ -93,6 +94,13 @@ shaders/useshaderprogram-bad-type: skip
 shaders/useshaderprogram-flushverts-1: skip
 shaders/zero-tex-coord texturegather: skip
 spec/!opengl 1.0/gl-1.0-swapbuffers-behavior: fail
+spec/!opengl 1.0/rasterpos/glsl_vs_gs_linked: skip
+spec/!opengl 1.0/rasterpos/glsl_vs_gs_sso: skip
+spec/!opengl 1.0/rasterpos/glsl_vs_image1d: skip
+spec/!opengl 1.0/rasterpos/glsl_vs_image_bo: skip
+spec/!opengl 1.0/rasterpos/glsl_vs_ssbo: skip
+spec/!opengl 1.0/rasterpos/glsl_vs_tes_linked: skip
+spec/!opengl 1.0/rasterpos/glsl_vs_tes_sso: skip
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=16: skip
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=32: skip
@@ -979,6 +987,12 @@ spec/ext_direct_state_access/named-buffers 15/flushmappednamedbufferrangeext: sk
 spec/ext_direct_state_access/named-buffers 15/mapnamedbufferext: skip
 spec/ext_direct_state_access/named-buffers 15/mapnamedbufferrangeext: skip
 spec/ext_direct_state_access/named-buffers 15/namedcopybuffersubdataext: skip
+spec/ext_external_objects/memory-object-api-errors: skip
+spec/ext_external_objects/semaphore-api-errors: skip
+spec/ext_external_objects/vk-image-display: skip
+spec/ext_external_objects/vk-image-override: skip
+spec/ext_external_objects_fd/memory-object-api-errors: skip
+spec/ext_external_objects_fd/semaphore-api-errors: skip
 spec/ext_framebuffer_blit/fbo-blit-check-limits: fail
 spec/ext_framebuffer_multisample/accuracy 16 color: skip
 spec/ext_framebuffer_multisample/accuracy 16 color depthstencil: skip
@@ -1476,8 +1490,6 @@ spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yuyv: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yvu420: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-transcode-nv12-as-r8-gr88: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-unsupported_format: skip
-spec/ext_memory_object/api-errors: skip
-spec/ext_memory_object_fd/api-errors: skip
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 1024 d=z24_s8_s=z24_s8: skip
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 1024 d=z24_s=z24_s8: skip
 spec/ext_packed_depth_stencil/depthstencil-render-miplevels 1024 s=z24_s8_d=z24: skip
@@ -1502,8 +1514,6 @@ spec/ext_packed_float/multisample-formats 16 gl_ext_packed_float: skip
 spec/ext_packed_float/multisample-formats 32 gl_ext_packed_float: skip
 spec/ext_packed_float/multisample-formats 6 gl_ext_packed_float: skip
 spec/ext_packed_float/multisample-formats 8 gl_ext_packed_float: skip
-spec/ext_semaphore/api-errors: skip
-spec/ext_semaphore_fd/api-errors: skip
 spec/ext_shader_image_load_store/bind_image_error: skip
 spec/ext_shader_image_load_store/image_functions: skip
 spec/ext_shader_samples_identical/ext_shader_samples_identical-simple-fs 16: skip
@@ -1561,6 +1571,9 @@ spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubeshadow: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
 spec/glsl-1.50/built-in constants compatibility: skip
 spec/glsl-1.50/gs-max-output: fail
+spec/intel_blackhole_render/intel_blackhole-blit: skip
+spec/intel_blackhole_render/intel_blackhole-blit_gles2: skip
+spec/intel_blackhole_render/intel_blackhole-blit_gles3: skip
 spec/intel_blackhole_render/intel_blackhole-dispatch: skip
 spec/intel_blackhole_render/intel_blackhole-draw: skip
 spec/intel_blackhole_render/intel_blackhole-draw_gles2: skip
@@ -1573,6 +1586,7 @@ spec/intel_conservative_rasterization/intel_conservative_rasterization-invalid: 
 spec/intel_conservative_rasterization/intel_conservative_rasterization-invalid_gles3: skip
 spec/intel_conservative_rasterization/intel_conservative_rasterization-tri: skip
 spec/intel_conservative_rasterization/intel_conservative_rasterization-tri_gles3: skip
+spec/intel_performance_query/intel_performance_query-issue_2235: fail
 spec/khr_texture_compression_astc/array-gl/12x12 block dim: fail
 spec/khr_texture_compression_astc/array-gl/5x5 block dim: fail
 spec/khr_texture_compression_astc/array-gles/12x12 block dim: fail
@@ -1609,6 +1623,37 @@ spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb-fp/srgb decode ful
 spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb-fp/srgb-fp: notrun
 spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb/srgb: notrun
 spec/khr_texture_compression_astc/sliced-3d-miptree-gles srgb/srgb decode: fail
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control -1: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 0: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 1: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 2: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 3: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 4: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 5: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 6: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 7: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8 0 0: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8 0 1: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8 1 0: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8 1 1: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 9: skip
+spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control-error: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component/destination: gl_depth_component: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component16/destination: gl_depth_component16: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component24/destination: gl_depth_component24: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component32/destination: gl_depth_component32: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_stencil/destination: gl_depth_stencil: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_stencil_index8/destination: gl_stencil_index8: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_component/destination: gl_depth_component: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_component16/destination: gl_depth_component16: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_component24/destination: gl_depth_component24: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_component32/destination: gl_depth_component32: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_depth_stencil/destination: gl_depth_stencil: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=4/source: gl_stencil_index8/destination: gl_stencil_index8: skip
+spec/nv_copy_image/nv_copy_image-formats --samples=8: skip
 spec/nv_fill_rectangle/invalid-draw-mode: skip
 spec/nv_fragment_program_option/fp-abs-02: skip
 spec/nv_fragment_program_option/fp-condition_codes-01: skip
@@ -1622,6 +1667,11 @@ spec/nv_vertex_program2_option/vp-clipdistance-01: skip
 spec/nv_vertex_program2_option/vp-clipdistance-02: skip
 spec/nv_vertex_program2_option/vp-clipdistance-03: skip
 spec/nv_vertex_program2_option/vp-clipdistance-04: skip
+spec/nv_viewport_swizzle/nv_viewport_swizzle-errors: skip
+spec/nv_viewport_swizzle/nv_viewport_swizzle-errors_gles3: skip
+spec/oes_egl_image_external_essl3/oes_egl_image_external_essl3/oes_egl_image_external_essl3_imageload: fail
+spec/oes_egl_image_external_essl3/oes_egl_image_external_essl3/oes_egl_image_external_essl3_imagestore: fail
+spec/oes_egl_image_external_essl3/oes_egl_image_external_essl3/oes_egl_image_external_essl3_texturesize: fail
 spec/oes_geometry_shader/built-in constants/gl_maxgeometryatomiccounterbuffers: fail
 spec/oes_geometry_shader/built-in constants/gl_maxgeometryatomiccounters: fail
 spec/oes_geometry_shader/built-in constants/gl_maxgeometryimageuniforms: fail
@@ -1712,10 +1762,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    20703
-       fail:      222
+       pass:    21749
+       fail:      226
       crash:        0
-       skip:     1465
+       skip:     1511
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1724,4 +1774,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    22414
+      total:    23510
