@@ -32,6 +32,7 @@
 #include <vulkan/vulkan.h>
 
 struct pipe_screen;
+struct zink_context;
 struct zink_screen;
 struct zink_gfx_program;
 
@@ -71,6 +72,6 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
                  const struct pipe_stream_output_info *so_info);
 
 void
-zink_shader_free(struct zink_screen *screen, struct zink_shader *shader);
+zink_shader_free(struct zink_context *ctx, struct zink_shader *shader);
 
 #endif

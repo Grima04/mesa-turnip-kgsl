@@ -323,7 +323,7 @@ static void
 zink_delete_vs_state(struct pipe_context *pctx,
                      void *cso)
 {
-   zink_shader_free(zink_screen(pctx->screen), cso);
+   zink_shader_free(zink_context(pctx), cso);
 }
 
 static void *
@@ -350,7 +350,7 @@ static void
 zink_delete_fs_state(struct pipe_context *pctx,
                      void *cso)
 {
-   zink_shader_free(zink_screen(pctx->screen), cso);
+   zink_shader_free(zink_context(pctx), cso);
 }
 
 static void

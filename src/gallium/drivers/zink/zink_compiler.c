@@ -309,11 +309,14 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
 }
 
 void
-zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
+zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    vkDestroyShaderModule(screen->dev, shader->shader_module, NULL);
    set_foreach(shader->programs, entry) {
-      zink_gfx_program_remove_shader((void*)entry->key, shader);
+      struct zink_gfx_program *prog = (void*)entry->key;
+      _mesa_hash_table_remove_key(ctx->program_cache, prog->stages);
+      zink_destroy_gfx_program(screen, prog);
    }
    _mesa_set_destroy(shader->programs, NULL);
    FREE(shader);

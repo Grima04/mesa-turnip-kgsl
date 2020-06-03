@@ -164,8 +164,7 @@ get_gfx_program(struct zink_context *ctx)
                                                          ctx->gfx_stages);
       if (!entry) {
          struct zink_gfx_program *prog;
-         prog = zink_create_gfx_program(zink_screen(ctx->base.screen),
-                                                     ctx->gfx_stages);
+         prog = zink_create_gfx_program(ctx, ctx->gfx_stages);
          entry = _mesa_hash_table_insert(ctx->program_cache, prog->stages, prog);
          if (!entry)
             return NULL;

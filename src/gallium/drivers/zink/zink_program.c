@@ -109,9 +109,10 @@ equals_gfx_pipeline_state(const void *a, const void *b)
 }
 
 struct zink_gfx_program *
-zink_create_gfx_program(struct zink_screen *screen,
+zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader *stages[PIPE_SHADER_TYPES - 1])
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_gfx_program *prog = CALLOC_STRUCT(zink_gfx_program);
    if (!prog)
       goto fail;
@@ -152,8 +153,8 @@ fail:
    return NULL;
 }
 
-void
-zink_gfx_program_remove_shader(struct zink_gfx_program *prog, struct zink_shader *shader)
+static void
+gfx_program_remove_shader(struct zink_gfx_program *prog, struct zink_shader *shader)
 {
    enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(shader->info.stage);
 
@@ -174,7 +175,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
 
    for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
       if (prog->stages[i])
-         zink_gfx_program_remove_shader(prog, prog->stages[i]);
+         gfx_program_remove_shader(prog, prog->stages[i]);
    }
 
    /* unref all used render-passes */
