@@ -162,24 +162,13 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 
 	unsigned type_count = 0;
 
-	if (device->rad_info.has_dedicated_vram) {
-		if (vram_index >= 0) {
-			device->memory_domains[type_count] = RADEON_DOMAIN_VRAM;
-			device->memory_flags[type_count] = RADEON_FLAG_NO_CPU_ACCESS;
-			device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
-				.propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				.heapIndex = vram_index,
-			};
-		}
-	} else {
-		if (visible_vram_index >= 0) {
-			device->memory_domains[type_count] = RADEON_DOMAIN_VRAM;
-			device->memory_flags[type_count] = RADEON_FLAG_NO_CPU_ACCESS;
-			device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
-				.propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				.heapIndex = visible_vram_index,
-			};
-		}
+	if (vram_index >= 0 || visible_vram_index >= 0) {
+		device->memory_domains[type_count] = RADEON_DOMAIN_VRAM;
+		device->memory_flags[type_count] = RADEON_FLAG_NO_CPU_ACCESS;
+		device->memory_properties.memoryTypes[type_count++] = (VkMemoryType) {
+			.propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			.heapIndex = vram_index >= 0 ? vram_index : visible_vram_index,
+		};
 	}
 
 	if (gart_index >= 0) {
