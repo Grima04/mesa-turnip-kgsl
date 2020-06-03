@@ -425,7 +425,7 @@ arm64_test:
 
 .windows-docker-vs2019:
   variables:
-    WINDOWS_TAG: "2020-11-26-libclc"
+    WINDOWS_TAG: "2020-12-01-piglit"
     WINDOWS_IMAGE: "$CI_REGISTRY_IMAGE/windows/x64_build:$WINDOWS_TAG"
     WINDOWS_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/windows/x64_build:$WINDOWS_TAG"
 
@@ -436,6 +436,7 @@ windows_build_vs2019:
   stage: container
   variables:
     GIT_STRATEGY: fetch # we do actually need the full repository though
+  timeout: 2h # LLVM + piglit takes ages
   tags:
     - windows
     - shell
