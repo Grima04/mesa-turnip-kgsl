@@ -1470,6 +1470,9 @@ void st_init_extensions(struct pipe_screen *screen,
    bool coherent_fb_fetch =
       screen->get_param(screen, PIPE_CAP_FBFETCH_COHERENT);
 
+   if (screen->get_param(screen, PIPE_CAP_BLEND_EQUATION_ADVANCED))
+      extensions->KHR_blend_equation_advanced = true;
+
    if (max_fb_fetch_rts > 0) {
       extensions->KHR_blend_equation_advanced = true;
       extensions->KHR_blend_equation_advanced_coherent = coherent_fb_fetch;
