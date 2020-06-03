@@ -33,9 +33,12 @@
 
 struct pipe_screen;
 struct zink_screen;
+struct zink_gfx_program;
 
 struct nir_shader_compiler_options;
 struct nir_shader;
+
+struct set;
 
 struct tgsi_token;
 
@@ -58,6 +61,7 @@ struct zink_shader {
       VkDescriptorType type;
    } bindings[PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_SAMPLER_VIEWS];
    size_t num_bindings;
+   struct set *programs;
 };
 
 struct zink_shader *

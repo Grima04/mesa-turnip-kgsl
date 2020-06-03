@@ -32,6 +32,7 @@
 #include "util/set.h"
 #include "util/u_debug.h"
 #include "util/u_memory.h"
+#include "tgsi/tgsi_from_mesa.h"
 
 static VkDescriptorSetLayout
 create_desc_set_layout(VkDevice dev,
@@ -123,8 +124,11 @@ zink_create_gfx_program(struct zink_screen *screen,
          goto fail;
    }
 
-   for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i)
+   for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
       prog->stages[i] = stages[i];
+      if (stages[i])
+         _mesa_set_add(stages[i]->programs, prog);
+   }
 
    prog->dsl = create_desc_set_layout(screen->dev, stages,
                                       &prog->num_descriptors);
@@ -149,6 +153,16 @@ fail:
 }
 
 void
+zink_gfx_program_remove_shader(struct zink_gfx_program *prog, struct zink_shader *shader)
+{
+   enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(shader->info.stage);
+
+   assert(prog->stages[p_stage] == shader);
+   prog->stages[p_stage] = NULL;
+   _mesa_set_remove_key(shader->programs, prog);
+}
+
+void
 zink_destroy_gfx_program(struct zink_screen *screen,
                          struct zink_gfx_program *prog)
 {
@@ -157,6 +171,11 @@ zink_destroy_gfx_program(struct zink_screen *screen,
 
    if (prog->dsl)
       vkDestroyDescriptorSetLayout(screen->dev, prog->dsl, NULL);
+
+   for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
+      if (prog->stages[i])
+         zink_gfx_program_remove_shader(prog, prog->stages[i]);
+   }
 
    /* unref all used render-passes */
    if (prog->render_passes) {

@@ -22,6 +22,7 @@
  */
 
 #include "zink_compiler.h"
+#include "zink_program.h"
 #include "zink_screen.h"
 #include "nir_to_spirv/nir_to_spirv.h"
 
@@ -136,6 +137,8 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
 {
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
 
+   ret->programs = _mesa_pointer_set_create(NULL);
+
    NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 1);
    NIR_PASS_V(nir, nir_lower_clip_halfz);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
@@ -217,5 +220,9 @@ void
 zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 {
    vkDestroyShaderModule(screen->dev, shader->shader_module, NULL);
+   set_foreach(shader->programs, entry) {
+      zink_gfx_program_remove_shader((void*)entry->key, shader);
+   }
+   _mesa_set_destroy(shader->programs, NULL);
    FREE(shader);
 }

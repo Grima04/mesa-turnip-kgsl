@@ -58,4 +58,7 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
                       struct zink_gfx_pipeline_state *state,
                       enum pipe_prim_type mode);
 
+void
+zink_gfx_program_remove_shader(struct zink_gfx_program *prog, struct zink_shader *shader);
+
 #endif
