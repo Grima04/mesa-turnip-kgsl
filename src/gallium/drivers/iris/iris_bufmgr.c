@@ -456,7 +456,6 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
    bo->size = bo_size;
    bo->idle = true;
    bo->tiling_mode = I915_TILING_NONE;
-   bo->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
    bo->stride = 0;
 
    /* Calling set_domain() will allocate pages for the BO outside of the
@@ -704,7 +703,6 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
       goto err_unref;
 
    bo->tiling_mode = get_tiling.tiling_mode;
-   bo->swizzle_mode = get_tiling.swizzle_mode;
    /* XXX stride is unknown */
    DBG("bo_create_from_handle: %d (%s)\n", handle, bo->name);
 
@@ -1325,17 +1323,7 @@ bo_set_tiling_internal(struct iris_bo *bo, uint32_t tiling_mode,
       return -errno;
 
    bo->tiling_mode = set_tiling.tiling_mode;
-   bo->swizzle_mode = set_tiling.swizzle_mode;
    bo->stride = set_tiling.stride;
-   return 0;
-}
-
-int
-iris_bo_get_tiling(struct iris_bo *bo, uint32_t *tiling_mode,
-                  uint32_t *swizzle_mode)
-{
-   *tiling_mode = bo->tiling_mode;
-   *swizzle_mode = bo->swizzle_mode;
    return 0;
 }
 
@@ -1394,7 +1382,6 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
 
    if (get_tiling.tiling_mode == tiling || tiling > I915_TILING_LAST) {
       bo->tiling_mode = get_tiling.tiling_mode;
-      bo->swizzle_mode = get_tiling.swizzle_mode;
        /* XXX stride is unknown */
    } else {
       if (bo_set_tiling_internal(bo, tiling, stride)) {

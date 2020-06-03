@@ -151,7 +151,6 @@ struct iris_bo {
     * Current tiling mode
     */
    uint32_t tiling_mode;
-   uint32_t swizzle_mode;
    uint32_t stride;
 
    time_t free_time;
@@ -290,16 +289,6 @@ void iris_bo_wait_rendering(struct iris_bo *bo);
  * Unref a buffer manager instance.
  */
 void iris_bufmgr_unref(struct iris_bufmgr *bufmgr);
-
-/**
- * Get the current tiling (and resulting swizzling) mode for the bo.
- *
- * \param buf Buffer to get tiling mode for
- * \param tiling_mode returned tiling mode
- * \param swizzle_mode returned swizzling mode
- */
-int iris_bo_get_tiling(struct iris_bo *bo, uint32_t *tiling_mode,
-                      uint32_t *swizzle_mode);
 
 /**
  * Create a visible name for a buffer which can be used by other apps
