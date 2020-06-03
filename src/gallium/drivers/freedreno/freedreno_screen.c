@@ -888,10 +888,8 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 		screen->priority_mask = (1 << val) - 1;
 	}
 
-	if ((fd_device_version(dev) >= FD_VERSION_ROBUSTNESS) &&
-			(fd_pipe_get_param(screen->pipe, FD_PP_PGTABLE, &val) == 0)) {
-		screen->has_robustness = val;
-	}
+	if (fd_device_version(dev) >= FD_VERSION_ROBUSTNESS)
+		screen->has_robustness = true;
 
 	struct sysinfo si;
 	sysinfo(&si);
