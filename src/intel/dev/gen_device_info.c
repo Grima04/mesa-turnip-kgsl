@@ -1408,6 +1408,33 @@ gen_get_aperture_size(int fd, uint64_t *size)
    return ret;
 }
 
+static bool
+gen_has_get_tiling(int fd)
+{
+   int ret;
+
+   struct drm_i915_gem_create gem_create = {
+      .size = 4096,
+   };
+
+   if (gen_ioctl(fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create)) {
+      unreachable("Failed to create GEM BO");
+      return false;
+   }
+
+   struct drm_i915_gem_get_tiling get_tiling = {
+      .handle = gem_create.handle,
+   };
+   ret = gen_ioctl(fd, DRM_IOCTL_I915_GEM_SET_TILING, &get_tiling);
+
+   struct drm_gem_close close = {
+      .handle = gem_create.handle,
+   };
+   gen_ioctl(fd, DRM_IOCTL_GEM_CLOSE, &close);
+
+   return ret == 0;
+}
+
 bool
 gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
 {
@@ -1476,6 +1503,7 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
    }
 
    gen_get_aperture_size(fd, &devinfo->aperture_bytes);
+   devinfo->has_tiling_uapi = gen_has_get_tiling(fd);
 
    return true;
 }

@@ -80,6 +80,7 @@ struct gen_device_info
    bool has_resource_streamer;
    bool disable_ccs_repack;
    bool has_aux_map;
+   bool has_tiling_uapi;
 
    /**
     * \name Intel hardware quirks
