@@ -739,6 +739,7 @@ meson-vulkan:
     VULKAN_DRIVERS: intel,amd,freedreno
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
+      -D build-aco-tests=true
       -D werror=true
 
 meson-i386:
