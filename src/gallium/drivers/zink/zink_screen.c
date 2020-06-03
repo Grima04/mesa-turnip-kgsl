@@ -829,7 +829,10 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
    dci.queueCreateInfoCount = 1;
    dci.pQueueCreateInfos = &qci;
-   dci.pEnabledFeatures = &screen->feats;
+   /* extensions don't have bool members in pEnabledFeatures.
+    * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
+    */
+   dci.pNext = &feats;
    const char *extensions[4] = {
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
    };
