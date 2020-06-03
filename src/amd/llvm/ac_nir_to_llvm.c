@@ -1958,6 +1958,55 @@ static LLVMValueRef enter_waterfall_ubo(struct ac_nir_context *ctx, struct water
                           nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM);
 }
 
+static LLVMValueRef visit_load_global(struct ac_nir_context *ctx,
+                                      nir_intrinsic_instr *instr)
+{
+   LLVMValueRef addr = get_src(ctx, instr->src[0]);
+   LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
+   LLVMValueRef val;
+
+   LLVMTypeRef ptr_type = LLVMPointerType(result_type, AC_ADDR_SPACE_GLOBAL);
+
+   addr = LLVMBuildIntToPtr(ctx->ac.builder, addr, ptr_type, "");
+
+   val = LLVMBuildLoad(ctx->ac.builder, addr, "");
+
+   if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE)) {
+      LLVMSetOrdering(val, LLVMAtomicOrderingMonotonic);
+      LLVMSetAlignment(val, ac_get_type_size(result_type));
+   }
+
+   return val;
+}
+
+static void visit_store_global(struct ac_nir_context *ctx,
+				     nir_intrinsic_instr *instr)
+{
+   if (ctx->ac.postponed_kill) {
+      LLVMValueRef cond = LLVMBuildLoad(ctx->ac.builder, ctx->ac.postponed_kill, "");
+      ac_build_ifcc(&ctx->ac, cond, 7002);
+   }
+
+   LLVMValueRef data = get_src(ctx, instr->src[0]);
+   LLVMValueRef addr = get_src(ctx, instr->src[1]);
+   LLVMTypeRef type = LLVMTypeOf(data);
+   LLVMValueRef val;
+
+   LLVMTypeRef ptr_type = LLVMPointerType(type, AC_ADDR_SPACE_GLOBAL);
+
+   addr = LLVMBuildIntToPtr(ctx->ac.builder, addr, ptr_type, "");
+
+   val = LLVMBuildStore(ctx->ac.builder, data, addr);
+
+   if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE)) {
+      LLVMSetOrdering(val, LLVMAtomicOrderingMonotonic);
+      LLVMSetAlignment(val, ac_get_type_size(type));
+   }
+
+   if (ctx->ac.postponed_kill)
+      ac_build_endif(&ctx->ac, 7002);
+}
+
 static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
    struct waterfall_context wctx;
@@ -3700,6 +3749,12 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_load_ssbo:
       result = visit_load_buffer(ctx, instr);
+      break;
+   case nir_intrinsic_load_global:
+      result = visit_load_global(ctx, instr);
+      break;
+   case nir_intrinsic_store_global:
+      visit_store_global(ctx, instr);
       break;
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
