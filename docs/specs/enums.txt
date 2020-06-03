@@ -10,8 +10,10 @@ GL blocks allocated to Mesa:
        0x8750-0x875F
        0x8BB0-0x8BBF
 
-EGL blocks allocated to Mesa:
-       0x31D0-0x31DF
+Unused EGL blocks allocated to Mesa:
+       0x31DC
+       0x31DE
+       0x31DF
        0x3290-0x329F
 
 GL_MESA_packed_depth_stencil
