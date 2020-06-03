@@ -146,6 +146,13 @@ void validate(Program* program, FILE * output)
                      instr->opcode != aco_opcode::v_fmac_f16,
                      "SDWA can't be used with this opcode", instr.get());
             }
+
+            for (unsigned i = 0; i < MIN2(instr->operands.size(), 2); i++) {
+               if (instr->operands[i].regClass().is_subdword())
+                  check((sdwa->sel[i] & sdwa_asuint) == (sdwa_isra | instr->operands[i].bytes()), "Unexpected SDWA sel for sub-dword operand", instr.get());
+            }
+            if (instr->definitions[0].regClass().is_subdword())
+               check((sdwa->dst_sel & sdwa_asuint) == (sdwa_isra | instr->definitions[0].bytes()), "Unexpected SDWA sel for sub-dword definition", instr.get());
          }
 
          /* check opsel */
@@ -153,6 +160,13 @@ void validate(Program* program, FILE * output)
             VOP3A_instruction *vop3 = static_cast<VOP3A_instruction*>(instr.get());
             check(vop3->opsel == 0 || program->chip_class >= GFX9, "Opsel is only supported on GFX9+", instr.get());
             check((vop3->opsel & ~(0x10 | ((1 << instr->operands.size()) - 1))) == 0, "Unused bits in opsel must be zeroed out", instr.get());
+
+            for (unsigned i = 0; i < instr->operands.size(); i++) {
+               if (instr->operands[i].regClass().is_subdword())
+                  check((vop3->opsel & (1 << i)) == 0, "Unexpected opsel for sub-dword operand", instr.get());
+            }
+            if (instr->definitions[0].regClass().is_subdword())
+               check((vop3->opsel & (1 << 3)) == 0, "Unexpected opsel for sub-dword definition", instr.get());
          }
 
          /* check for undefs */
@@ -429,11 +443,132 @@ bool ra_fail(FILE *output, Location loc, Location loc2, const char *fmt, ...) {
    return true;
 }
 
-bool instr_can_access_subdword(Program* program, aco_ptr<Instruction>& instr)
+bool validate_subdword_operand(chip_class chip, const aco_ptr<Instruction>& instr, unsigned index)
 {
-   if (program->chip_class < GFX8)
-      return false;
-   return instr->isSDWA() || instr->format == Format::PSEUDO;
+   Operand op = instr->operands[index];
+   unsigned byte = op.physReg().byte();
+
+   if (instr->format == Format::PSEUDO && chip >= GFX8)
+      return true;
+   if (instr->isSDWA() && (static_cast<SDWA_instruction *>(instr.get())->sel[index] & sdwa_asuint) == (sdwa_isra | op.bytes()))
+      return true;
+   if (byte == 2 && can_use_opsel(chip, instr->opcode, index, 1))
+      return true;
+
+   switch (instr->opcode) {
+   case aco_opcode::v_cvt_f32_ubyte1:
+      if (byte == 1)
+         return true;
+      break;
+   case aco_opcode::v_cvt_f32_ubyte2:
+      if (byte == 2)
+         return true;
+      break;
+   case aco_opcode::v_cvt_f32_ubyte3:
+      if (byte == 3)
+         return true;
+      break;
+   case aco_opcode::ds_write_b8_d16_hi:
+   case aco_opcode::ds_write_b16_d16_hi:
+      if (byte == 2 && index == 1)
+         return true;
+      break;
+   case aco_opcode::buffer_store_byte_d16_hi:
+   case aco_opcode::buffer_store_short_d16_hi:
+      if (byte == 2 && index == 3)
+         return true;
+      break;
+   case aco_opcode::flat_store_byte_d16_hi:
+   case aco_opcode::flat_store_short_d16_hi:
+   case aco_opcode::scratch_store_byte_d16_hi:
+   case aco_opcode::scratch_store_short_d16_hi:
+   case aco_opcode::global_store_byte_d16_hi:
+   case aco_opcode::global_store_short_d16_hi:
+      if (byte == 2 && index == 2)
+         return true;
+   default:
+      break;
+   }
+
+   return byte == 0;
+}
+
+bool validate_subdword_definition(chip_class chip, const aco_ptr<Instruction>& instr)
+{
+   Definition def = instr->definitions[0];
+   unsigned byte = def.physReg().byte();
+
+   if (instr->format == Format::PSEUDO && chip >= GFX8)
+      return true;
+   if (instr->isSDWA() && static_cast<SDWA_instruction *>(instr.get())->dst_sel == (sdwa_isra | def.bytes()))
+      return true;
+   if (byte == 2 && can_use_opsel(chip, instr->opcode, -1, 1))
+      return true;
+
+   switch (instr->opcode) {
+   case aco_opcode::buffer_load_ubyte_d16_hi:
+   case aco_opcode::buffer_load_short_d16_hi:
+   case aco_opcode::flat_load_ubyte_d16_hi:
+   case aco_opcode::flat_load_short_d16_hi:
+   case aco_opcode::scratch_load_ubyte_d16_hi:
+   case aco_opcode::scratch_load_short_d16_hi:
+   case aco_opcode::global_load_ubyte_d16_hi:
+   case aco_opcode::global_load_short_d16_hi:
+   case aco_opcode::ds_read_u8_d16_hi:
+   case aco_opcode::ds_read_u16_d16_hi:
+      return byte == 2;
+   default:
+      break;
+   }
+
+   return byte == 0;
+}
+
+unsigned get_subdword_bytes_written(Program *program, const aco_ptr<Instruction>& instr, unsigned index)
+{
+   chip_class chip = program->chip_class;
+   Definition def = instr->definitions[index];
+
+   if (instr->format == Format::PSEUDO)
+      return chip >= GFX8 ? def.bytes() : def.size() * 4u;
+   if (instr->isSDWA() && static_cast<SDWA_instruction *>(instr.get())->dst_sel == (sdwa_isra | def.bytes()))
+      return def.bytes();
+
+   switch (instr->opcode) {
+   case aco_opcode::buffer_load_ubyte_d16:
+   case aco_opcode::buffer_load_short_d16:
+   case aco_opcode::flat_load_ubyte_d16:
+   case aco_opcode::flat_load_short_d16:
+   case aco_opcode::scratch_load_ubyte_d16:
+   case aco_opcode::scratch_load_short_d16:
+   case aco_opcode::global_load_ubyte_d16:
+   case aco_opcode::global_load_short_d16:
+   case aco_opcode::ds_read_u8_d16:
+   case aco_opcode::ds_read_u16_d16:
+   case aco_opcode::buffer_load_ubyte_d16_hi:
+   case aco_opcode::buffer_load_short_d16_hi:
+   case aco_opcode::flat_load_ubyte_d16_hi:
+   case aco_opcode::flat_load_short_d16_hi:
+   case aco_opcode::scratch_load_ubyte_d16_hi:
+   case aco_opcode::scratch_load_short_d16_hi:
+   case aco_opcode::global_load_ubyte_d16_hi:
+   case aco_opcode::global_load_short_d16_hi:
+   case aco_opcode::ds_read_u8_d16_hi:
+   case aco_opcode::ds_read_u16_d16_hi:
+      return program->sram_ecc_enabled ? 4 : 2;
+   case aco_opcode::v_mad_f16:
+   case aco_opcode::v_mad_u16:
+   case aco_opcode::v_mad_i16:
+   case aco_opcode::v_fma_f16:
+   case aco_opcode::v_div_fixup_f16:
+   case aco_opcode::v_interp_p2_f16:
+      if (chip >= GFX9)
+         return 2;
+   default:
+      break;
+   }
+
+   return chip >= GFX10 ? def.bytes() : 4;
 }
 
 } /* end namespace */
@@ -474,8 +609,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d has an out-of-bounds register assignment", i);
             if (op.physReg() == vcc && !program->needs_vcc)
                err |= ra_fail(output, loc, Location(), "Operand %d fixed to vcc but needs_vcc=false", i);
-            if (!instr_can_access_subdword(program, instr) && op.regClass().is_subdword() && op.physReg().byte())
-               err |= ra_fail(output, loc, assignments.at(op.tempId()).firstloc, "Operand %d must be aligned to a full register", i);
+            if (op.regClass().is_subdword() && !validate_subdword_operand(program->chip_class, instr, i))
+               err |= ra_fail(output, loc, Location(), "Operand %d not aligned correctly", i);
             if (!assignments[op.tempId()].firstloc.block)
                assignments[op.tempId()].firstloc = loc;
             if (!assignments[op.tempId()].defloc.block)
@@ -495,8 +630,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                err |= ra_fail(output, loc, assignments.at(def.tempId()).firstloc, "Definition %d has an out-of-bounds register assignment", i);
             if (def.physReg() == vcc && !program->needs_vcc)
                err |= ra_fail(output, loc, Location(), "Definition %d fixed to vcc but needs_vcc=false", i);
-            if (!instr_can_access_subdword(program, instr) && def.regClass().is_subdword() && def.physReg().byte())
-               err |= ra_fail(output, loc, assignments.at(def.tempId()).firstloc, "Definition %d must be aligned to a full register", i);
+            if (def.regClass().is_subdword() && !validate_subdword_definition(program->chip_class, instr))
+               err |= ra_fail(output, loc, Location(), "Definition %d not aligned correctly", i);
             if (!assignments[def.tempId()].firstloc.block)
                assignments[def.tempId()].firstloc = loc;
             assignments[def.tempId()].defloc = loc;
@@ -602,10 +737,14 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
                   err |= ra_fail(output, loc, assignments.at(regs[reg.reg_b + j]).defloc, "Assignment of element %d of %%%d already taken by %%%d from instruction", i, tmp.id(), regs[reg.reg_b + j]);
                regs[reg.reg_b + j] = tmp.id();
             }
-            if (def.regClass().is_subdword() && !instr_can_access_subdword(program, instr)) {
-               for (unsigned j = tmp.bytes(); j < 4; j++)
-                  if (regs[reg.reg_b + j])
-                     err |= ra_fail(output, loc, assignments.at(regs[reg.reg_b + j]).defloc, "Assignment of element %d of %%%d overwrites the full register taken by %%%d from instruction", i, tmp.id(), regs[reg.reg_b + j]);
+            if (def.regClass().is_subdword() && def.bytes() < 4) {
+               unsigned written = get_subdword_bytes_written(program, instr, i);
+               /* If written=4, the instruction still might write the upper half. In that case, it's the lower half that isn't preserved */
+               for (unsigned j = reg.byte() & ~(written - 1); j < written; j++) {
+                  unsigned written_reg = reg.reg() * 4u + j;
+                  if (regs[written_reg] && regs[written_reg] != def.tempId())
+                     err |= ra_fail(output, loc, assignments.at(regs[written_reg]).defloc, "Assignment of element %d of %%%d overwrites the full register taken by %%%d from instruction", i, tmp.id(), regs[written_reg]);
+               }
             }
          }
 

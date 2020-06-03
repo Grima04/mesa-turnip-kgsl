@@ -60,6 +60,7 @@ libaco_files = files(
   'aco_instruction_selection_setup.cpp',
   'aco_interface.cpp',
   'aco_interface.h',
+  'aco_ir.cpp',
   'aco_ir.h',
   'aco_assembler.cpp',
   'aco_insert_exec_mask.cpp',

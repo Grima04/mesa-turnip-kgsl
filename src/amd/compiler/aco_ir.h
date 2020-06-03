@@ -1223,6 +1223,8 @@ barrier_interaction get_barrier_interaction(const Instruction* instr);
 
 bool is_dead(const std::vector<uint16_t>& uses, Instruction *instr);
 
+bool can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high);
+
 enum block_kind {
    /* uniform indicates that leaving this block,
     * all actives lanes stay active */
@@ -1430,6 +1432,7 @@ public:
    unsigned workgroup_size; /* if known; otherwise UINT_MAX */
 
    bool xnack_enabled = false;
+   bool sram_ecc_enabled = false;
 
    bool needs_vcc = false;
    bool needs_flat_scr = false;
