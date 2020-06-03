@@ -1023,10 +1023,10 @@ nir_alu_type_get_type_size(nir_alu_type type)
    return type & NIR_ALU_TYPE_SIZE_MASK;
 }
 
-static inline unsigned
+static inline nir_alu_type
 nir_alu_type_get_base_type(nir_alu_type type)
 {
-   return type & NIR_ALU_TYPE_BASE_TYPE_MASK;
+   return (nir_alu_type)(type & NIR_ALU_TYPE_BASE_TYPE_MASK);
 }
 
 static inline nir_alu_type
