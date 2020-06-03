@@ -31,6 +31,7 @@ stages:
   - lima
   - virgl
   - radeonsi
+  - d3d12
   - success
 
 # Generic rule to not run the job during scheduled pipelines
@@ -809,6 +810,26 @@ meson-windows-vs2019:
   artifacts:
     paths:
       - _install/
+
+test-d3d12-windows:
+  extends:
+    - .build-windows
+    - .use-windows_build_vs2019
+  stage: d3d12
+  dependencies:
+    - meson-windows-vs2019
+  needs:
+    - meson-windows-vs2019
+  variables:
+    GALLIUM_DRIVER: d3d12
+    PIGLIT_PROFILE: quick_gl
+  script:
+    - . .\.gitlab-ci\windows\piglit_run.ps1
+  artifacts:
+    when: on_failure
+    name: "mesa_${CI_JOB_NAME}"
+    paths:
+      - summary/
 
 scons-win64:
   extends: .scons-build
