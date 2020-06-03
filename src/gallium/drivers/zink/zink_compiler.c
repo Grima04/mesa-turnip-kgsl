@@ -305,6 +305,9 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
    if (vkCreateShaderModule(screen->dev, &smci, NULL, &ret->shader_module) != VK_SUCCESS)
       return NULL;
 
+   free(spirv->words);
+   free(spirv);
+
    return ret;
 }
 
