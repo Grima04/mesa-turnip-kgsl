@@ -1163,10 +1163,14 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 
 	surf->u.gfx9.surf_slice_size = out.sliceSize;
 	surf->u.gfx9.surf_pitch = out.pitch;
-	if (!compressed && surf->blk_w > 1 && out.pitch == out.pixelPitch) {
+	if (!compressed && surf->blk_w > 1 && out.pitch == out.pixelPitch &&
+	    surf->u.gfx9.surf.swizzle_mode == ADDR_SW_LINEAR) {
 		/* Adjust surf_pitch to be in elements units,
 		 * not in pixels */
-		surf->u.gfx9.surf_pitch /= surf->blk_w;
+		surf->u.gfx9.surf_pitch =
+			align(surf->u.gfx9.surf_pitch / surf->blk_w, 256 / surf->bpe);
+		surf->u.gfx9.surf.epitch = MAX2(surf->u.gfx9.surf.epitch,
+						surf->u.gfx9.surf_pitch * surf->blk_w - 1);
 	}
 	surf->u.gfx9.surf_height = out.height;
 	surf->surf_size = out.surfSize;
