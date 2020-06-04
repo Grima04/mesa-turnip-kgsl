@@ -434,6 +434,10 @@ physical_device_init(struct v3dv_physical_device *device,
 
    v3dv_physical_device_get_supported_extensions(device,
                                                  &device->supported_extensions);
+
+   fprintf(stderr, "WARNING: v3dv is neither a complete nor a conformant "
+                   "Vulkan implementation. Testing use only.\n");
+
    return VK_SUCCESS;
 
 fail:
