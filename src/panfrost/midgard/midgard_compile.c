@@ -1273,6 +1273,12 @@ emit_varying_read(
 
         midgard_instruction ins = m_ld_vary_32(dest, offset);
         ins.mask = mask_of(nr_comp);
+        ins.dest_type = type;
+
+        if (type == nir_type_float16) {
+                /* Ensure we are aligned so we can pack it later */
+                ins.mask = mask_of(ALIGN_POT(nr_comp, 2));
+        }
 
         for (unsigned i = 0; i < ARRAY_SIZE(ins.swizzle[0]); ++i)
                 ins.swizzle[0][i] = MIN2(i + component, COMPONENT_W);
