@@ -568,15 +568,27 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
    }
 
    if (src.regClass() == v1b) {
-      aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
-      sdwa->operands[0] = Operand(PhysReg{tmp}, v1);
-      sdwa->definitions[0] = Definition(PhysReg{tmp}, v1);
-      if (reduce_op == imin8 || reduce_op == imax8)
-         sdwa->sel[0] = sdwa_sbyte;
-      else
-         sdwa->sel[0] = sdwa_ubyte;
-      sdwa->dst_sel = sdwa_udword;
-      bld.insert(std::move(sdwa));
+      if (ctx->program->chip_class >= GFX8) {
+         aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
+         sdwa->operands[0] = Operand(PhysReg{tmp}, v1);
+         sdwa->definitions[0] = Definition(PhysReg{tmp}, v1);
+         if (reduce_op == imin8 || reduce_op == imax8)
+            sdwa->sel[0] = sdwa_sbyte;
+         else
+            sdwa->sel[0] = sdwa_ubyte;
+         sdwa->dst_sel = sdwa_udword;
+         bld.insert(std::move(sdwa));
+      } else {
+         aco_opcode opcode;
+
+         if (reduce_op == imin8 || reduce_op == imax8)
+            opcode = aco_opcode::v_bfe_i32;
+         else
+            opcode = aco_opcode::v_bfe_u32;
+
+         bld.vop3(opcode, Definition(PhysReg{tmp}, v1),
+                  Operand(PhysReg{tmp}, v1), Operand(0u), Operand(8u));
+      }
    } else if (src.regClass() == v2b) {
       if (ctx->program->chip_class >= GFX10 &&
           (reduce_op == iadd16 || reduce_op == imax16 ||
