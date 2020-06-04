@@ -54,7 +54,8 @@ disable_rb_aux_buffer(struct iris_context *ice,
 
    /* We only need to worry about color compression and fast clears. */
    if (tex_res->aux.usage != ISL_AUX_USAGE_CCS_D &&
-       tex_res->aux.usage != ISL_AUX_USAGE_CCS_E)
+       tex_res->aux.usage != ISL_AUX_USAGE_CCS_E &&
+       tex_res->aux.usage != ISL_AUX_USAGE_GEN12_CCS_E)
       return false;
 
    for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
@@ -838,6 +839,7 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
       return res->aux.usage;
 
    case ISL_AUX_USAGE_CCS_E:
+   case ISL_AUX_USAGE_GEN12_CCS_E:
       /* If we don't have any unresolved color, report an aux usage of
        * ISL_AUX_USAGE_NONE.  This way, texturing won't even look at the
        * aux surface and we can save some bandwidth.
@@ -859,7 +861,7 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
        */
       if (isl_formats_are_ccs_e_compatible(devinfo, res->surf.format,
                                            view_format))
-         return ISL_AUX_USAGE_CCS_E;
+         return res->aux.usage;
       break;
 
    default:
@@ -877,8 +879,6 @@ iris_image_view_aux_usage(struct iris_context *ice,
    if (!info)
       return ISL_AUX_USAGE_NONE;
 
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_resource *res = (void *) pview->resource;
 
    enum isl_format view_format = iris_image_view_get_format(ice, pview);
@@ -888,9 +888,8 @@ iris_image_view_aux_usage(struct iris_context *ice,
    bool uses_atomic_load_store =
       ice->shaders.uncompiled[info->stage]->uses_atomic_load_store;
 
-   if ((devinfo->gen == 12 && aux_usage == ISL_AUX_USAGE_CCS_E) &&
-       !uses_atomic_load_store)
-      return ISL_AUX_USAGE_CCS_E;
+   if (aux_usage == ISL_AUX_USAGE_GEN12_CCS_E && !uses_atomic_load_store)
+      return ISL_AUX_USAGE_GEN12_CCS_E;
 
    return ISL_AUX_USAGE_NONE;
 }
@@ -974,6 +973,7 @@ iris_resource_render_aux_usage(struct iris_context *ice,
 
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
+   case ISL_AUX_USAGE_GEN12_CCS_E:
       /* Disable CCS for some cases of texture-view rendering. On gen12, HW
        * may convert some subregions of shader output to fast-cleared blocks
        * if CCS is enabled and the shader output matches the clear color.
@@ -990,14 +990,13 @@ iris_resource_render_aux_usage(struct iris_context *ice,
          return ISL_AUX_USAGE_NONE;
       }
 
-      if (res->aux.usage == ISL_AUX_USAGE_CCS_E &&
-          isl_formats_are_ccs_e_compatible(devinfo, res->surf.format,
-                                           render_format)) {
-         return ISL_AUX_USAGE_CCS_E;
-      }
-
       if (res->aux.usage == ISL_AUX_USAGE_CCS_D)
          return ISL_AUX_USAGE_CCS_D;
+
+      if (isl_formats_are_ccs_e_compatible(devinfo, res->surf.format,
+                                           render_format)) {
+         return res->aux.usage;
+      }
 
    default:
       return ISL_AUX_USAGE_NONE;

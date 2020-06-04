@@ -472,8 +472,10 @@ iris_resource_configure_aux(struct iris_screen *screen,
    /* Try to create the auxiliary surfaces allowed by the modifier or by
     * the user if no modifier is specified.
     */
-   assert(!res->mod_info || res->mod_info->aux_usage == ISL_AUX_USAGE_NONE ||
-                            res->mod_info->aux_usage == ISL_AUX_USAGE_CCS_E);
+   assert(!res->mod_info ||
+          res->mod_info->aux_usage == ISL_AUX_USAGE_NONE ||
+          res->mod_info->aux_usage == ISL_AUX_USAGE_CCS_E ||
+          res->mod_info->aux_usage == ISL_AUX_USAGE_GEN12_CCS_E);
 
    const bool has_mcs = !res->mod_info &&
       isl_surf_get_mcs_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
@@ -521,10 +523,12 @@ iris_resource_configure_aux(struct iris_screen *screen,
    } else if (has_ccs && isl_surf_usage_is_stencil(res->surf.usage)) {
       res->aux.possible_usages |= 1 << ISL_AUX_USAGE_STC_CCS;
    } else if (has_ccs) {
-      if (want_ccs_e_for_format(devinfo, res->surf.format))
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
-      else if (isl_format_supports_ccs_d(devinfo, res->surf.format))
+      if (want_ccs_e_for_format(devinfo, res->surf.format)) {
+         res->aux.possible_usages |= devinfo->gen < 12 ?
+            1 << ISL_AUX_USAGE_CCS_E : 1 << ISL_AUX_USAGE_GEN12_CCS_E;
+      } else if (isl_format_supports_ccs_d(devinfo, res->surf.format)) {
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;
+      }
    }
 
    res->aux.usage = util_last_bit(res->aux.possible_usages) - 1;
@@ -567,10 +571,9 @@ iris_resource_configure_aux(struct iris_screen *screen,
        */
       initial_state = ISL_AUX_STATE_CLEAR;
       break;
-   case ISL_AUX_USAGE_GEN12_CCS_E:
-      unreachable("Driver unprepared to handle this aux_usage.");
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
+   case ISL_AUX_USAGE_GEN12_CCS_E:
    case ISL_AUX_USAGE_STC_CCS:
       /* When CCS_E is used, we need to ensure that the CCS starts off in
        * a valid state.  From the Sky Lake PRM, "MCS Buffer for Render
@@ -1856,7 +1859,8 @@ iris_transfer_map(struct pipe_context *ctx,
 
       need_color_resolve =
          (res->aux.usage == ISL_AUX_USAGE_CCS_D ||
-          res->aux.usage == ISL_AUX_USAGE_CCS_E) &&
+          res->aux.usage == ISL_AUX_USAGE_CCS_E ||
+          res->aux.usage == ISL_AUX_USAGE_GEN12_CCS_E) &&
          iris_has_color_unresolved(res, level, 1, box->z, box->depth);
 
       need_resolve = need_color_resolve ||
@@ -1926,7 +1930,9 @@ iris_transfer_map(struct pipe_context *ctx,
    if (fmtl->txc == ISL_TXC_ASTC)
       no_gpu = true;
 
-   if ((map_would_stall || res->aux.usage == ISL_AUX_USAGE_CCS_E) && !no_gpu) {
+   if ((map_would_stall ||
+        res->aux.usage == ISL_AUX_USAGE_CCS_E ||
+        res->aux.usage == ISL_AUX_USAGE_GEN12_CCS_E) && !no_gpu) {
       /* If we need a synchronous mapping and the resource is busy, or needs
        * resolving, we copy to/from a linear temporary buffer using the GPU.
        */
