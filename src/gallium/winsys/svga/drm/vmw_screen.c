@@ -28,6 +28,7 @@
 #include "vmw_fence.h"
 #include "vmw_context.h"
 
+#include "util/os_file.h"
 #include "util/u_memory.h"
 #include "pipe/p_compiler.h"
 #include "util/u_hash_table.h"
@@ -90,7 +91,7 @@ vmw_winsys_create( int fd )
 
    vws->device = stat_buf.st_rdev;
    vws->open_count = 1;
-   vws->ioctl.drm_fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+   vws->ioctl.drm_fd = os_dupfd_cloexec(fd);
    vws->force_coherent = FALSE;
    if (!vmw_ioctl_init(vws))
       goto out_no_ioctl;

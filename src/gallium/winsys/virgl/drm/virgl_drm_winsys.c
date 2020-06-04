@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 
 #include "os/os_mman.h"
+#include "util/os_file.h"
 #include "util/os_time.h"
 #include "util/u_memory.h"
 #include "util/format/u_format.h"
@@ -1046,7 +1047,7 @@ virgl_drm_screen_create(int fd, const struct pipe_screen_config *config)
       virgl_screen(pscreen)->refcnt++;
    } else {
       struct virgl_winsys *vws;
-      int dup_fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+      int dup_fd = os_dupfd_cloexec(fd);
 
       vws = virgl_drm_winsys_create(dup_fd);
       if (!vws) {

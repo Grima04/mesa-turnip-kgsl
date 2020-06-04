@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include "c11/threads.h"
 #include "util/macros.h"
+#include "util/os_file.h"
 #include "util/u_atomic.h"
 
 #include "eglcontext.h"
@@ -618,7 +619,7 @@ _eglGetDeviceDisplay(void *native_display,
     * The new fd is guaranteed to be 3 or greater.
     */
    if (fd != -1 && display->Options.fd == 0) {
-      display->Options.fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+      display->Options.fd = os_dupfd_cloexec(fd);
       if (display->Options.fd == -1) {
          /* Do not (really) need to teardown the display */
          _eglError(EGL_BAD_ALLOC, "eglGetPlatformDisplay");

@@ -29,6 +29,7 @@
 #include "radeon_drm_cs.h"
 #include "radeon_drm_public.h"
 
+#include "util/os_file.h"
 #include "util/u_cpu_detect.h"
 #include "util/u_memory.h"
 #include "util/u_hash_table.h"
@@ -840,7 +841,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
       return NULL;
    }
 
-   ws->fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+   ws->fd = os_dupfd_cloexec(fd);
 
    if (!do_winsys_init(ws))
       goto fail1;

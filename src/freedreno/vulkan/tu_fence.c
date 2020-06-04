@@ -27,6 +27,7 @@
 #include <libsync.h>
 #include <unistd.h>
 
+#include "util/os_file.h"
 #include "util/os_time.h"
 
 /**
@@ -126,7 +127,7 @@ tu_fence_copy(struct tu_fence *fence, const struct tu_fence *src)
    /* dup src->fd */
    int fd = -1;
    if (src->fd >= 0) {
-      fd = fcntl(src->fd, F_DUPFD_CLOEXEC, 0);
+      fd = os_dupfd_cloexec(src->fd);
       if (fd < 0) {
          tu_loge("failed to dup fd %d for fence", src->fd);
          sync_wait(src->fd, -1);

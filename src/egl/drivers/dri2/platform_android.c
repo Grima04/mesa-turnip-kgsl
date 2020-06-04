@@ -39,6 +39,8 @@
 #include <sys/types.h>
 #include <drm-uapi/drm_fourcc.h>
 
+#include "util/os_file.h"
+
 #include "loader.h"
 #include "egl_dri2.h"
 #include "egl_dri2_fallbacks.h"
@@ -1505,7 +1507,7 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
       return EGL_FALSE;
    }
 
-   dri2_dpy->fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+   dri2_dpy->fd = os_dupfd_cloexec(fd);
    if (dri2_dpy->fd < 0)
       return EGL_FALSE;
 

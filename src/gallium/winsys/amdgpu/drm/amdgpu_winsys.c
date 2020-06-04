@@ -365,7 +365,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       return NULL;
 
    pipe_reference_init(&ws->reference, 1);
-   ws->fd = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+   ws->fd = os_dupfd_cloexec(fd);
 
    /* Look up the winsys from the dev table. */
    simple_mtx_lock(&dev_tab_mutex);
