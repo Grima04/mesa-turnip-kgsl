@@ -59,6 +59,7 @@
 
 
 #include "ir3/ir3_nir.h"
+#include "ir3/ir3_compiler.h"
 #include "a2xx/ir2.h"
 
 static const struct debug_named_value debug_options[] = {
@@ -159,7 +160,9 @@ fd_screen_destroy(struct pipe_screen *pscreen)
 
 	simple_mtx_destroy(&screen->lock);
 
-	ralloc_free(screen->compiler);
+	if (screen->compiler)
+		ir3_compiler_destroy(screen->compiler);
+
 	ralloc_free(screen->live_batches);
 
 	free(screen->perfcntr_queries);

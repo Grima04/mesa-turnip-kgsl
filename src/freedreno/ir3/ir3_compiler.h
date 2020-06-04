@@ -95,6 +95,7 @@ struct ir3_compiler {
 	uint32_t const_upload_unit;
 };
 
+void ir3_compiler_destroy(struct ir3_compiler *compiler);
 struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id);
 
 int ir3_compile_shader_nir(struct ir3_compiler *compiler,

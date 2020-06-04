@@ -52,7 +52,14 @@ DEBUG_GET_ONCE_FLAGS_OPTION(ir3_shader_debug, "IR3_SHADER_DEBUG", shader_debug_o
 
 enum ir3_shader_debug ir3_shader_debug = 0;
 
-struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id)
+void
+ir3_compiler_destroy(struct ir3_compiler *compiler)
+{
+	ralloc_free(compiler);
+}
+
+struct ir3_compiler *
+ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id)
 {
 	struct ir3_compiler *compiler = rzalloc(NULL, struct ir3_compiler);
 

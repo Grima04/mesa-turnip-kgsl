@@ -1346,8 +1346,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
          tu_bo_finish(device, &device->scratch_bos[i].bo);
    }
 
-   /* the compiler does not use pAllocator */
-   ralloc_free(device->compiler);
+   ir3_compiler_destroy(device->compiler);
 
    VkPipelineCache pc = tu_pipeline_cache_to_handle(device->mem_cache);
    tu_DestroyPipelineCache(tu_device_to_handle(device), pc, NULL);
