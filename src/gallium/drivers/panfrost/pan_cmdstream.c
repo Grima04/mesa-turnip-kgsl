@@ -1634,8 +1634,6 @@ panfrost_emit_streamout(struct panfrost_batch *batch, union mali_attr *slot,
         unsigned max_size = target->buffer_size;
         unsigned expected_size = slot->stride * count;
 
-        slot->size = MIN2(max_size, expected_size);
-
         /* Grab the BO and bind it to the batch */
         struct panfrost_bo *bo = pan_resource(target->buffer)->bo;
 
@@ -1648,8 +1646,10 @@ panfrost_emit_streamout(struct panfrost_batch *batch, union mali_attr *slot,
                               PAN_BO_ACCESS_VERTEX_TILER |
                               PAN_BO_ACCESS_FRAGMENT);
 
+        /* We will have an offset applied to get alignment */
         mali_ptr addr = bo->gpu + target->buffer_offset + (offset * slot->stride);
-        slot->elements = addr;
+        slot->elements = (addr & ~63) | MALI_ATTR_LINEAR;
+        slot->size = MIN2(max_size, expected_size) + (addr & 63);
 }
 
 /* Given a shader and buffer indices, link varying metadata together */
@@ -2047,9 +2047,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 {
         /* Load the shaders */
         struct panfrost_context *ctx = batch->ctx;
-        struct panfrost_device *device = pan_device(ctx->base.screen);
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *vs, *fs;
-        unsigned int num_gen_varyings = 0;
         size_t vs_size, fs_size;
 
         /* Allocate the varying descriptor */
@@ -2064,257 +2063,85 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                                                      fs_size);
 
         struct pipe_stream_output_info *so = &vs->stream_output;
+        unsigned present = pan_varying_present(vs, fs, dev->quirks);
 
         /* Check if this varying is linked by us. This is the case for
          * general-purpose, non-captured varyings. If it is, link it. If it's
          * not, use the provided stream out information to determine the
          * offset, since it was already linked for us. */
 
-        for (unsigned i = 0; i < vs->varying_count; i++) {
-                gl_varying_slot loc = vs->varyings_loc[i];
+        unsigned gen_offsets[32];
+        memset(gen_offsets, 0, sizeof(gen_offsets));
 
-                bool special = is_special_varying(loc);
-                bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
+        unsigned gen_stride = 0;
+        assert(vs->varying_count < ARRAY_SIZE(gen_offsets));
+        assert(fs->varying_count < ARRAY_SIZE(gen_offsets));
 
-                if (captured) {
-                        struct pipe_stream_output *o = pan_get_so(so, loc);
+        unsigned streamout_offsets[32];
 
-                        unsigned dst_offset = o->dst_offset * 4; /* dwords */
-                        vs->varyings[i].src_offset = dst_offset;
-                } else if (!special) {
-                        vs->varyings[i].src_offset = 16 * (num_gen_varyings++);
-                }
+        for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
+                streamout_offsets[i] = panfrost_streamout_offset(
+                                        so->stride[i],
+                                        ctx->streamout.offsets[i],
+                                        ctx->streamout.targets[i]);
         }
 
-        /* Conversely, we need to set src_offset for the captured varyings.
-         * Here, the layout is defined by the stream out info, not us */
+        struct mali_attr_meta *ovs = (struct mali_attr_meta *)trans.cpu;
+        struct mali_attr_meta *ofs = ovs + vs->varying_count;
 
-        /* Link up with fragment varyings */
-        bool reads_point_coord = fs->reads_point_coord;
+        for (unsigned i = 0; i < vs->varying_count; i++) {
+                ovs[i] = panfrost_emit_varying(vs, fs, vs, present,
+                                ctx->streamout.num_targets, streamout_offsets,
+                                dev->quirks,
+                                gen_offsets, &gen_stride, i, true, false);
+        }
 
         for (unsigned i = 0; i < fs->varying_count; i++) {
-                gl_varying_slot loc = fs->varyings_loc[i];
-                unsigned src_offset;
-                signed vs_idx = -1;
-
-                /* Link up */
-                for (unsigned j = 0; j < vs->varying_count; ++j) {
-                        if (vs->varyings_loc[j] == loc) {
-                                vs_idx = j;
-                                break;
-                        }
-                }
-
-                /* Either assign or reuse */
-                if (vs_idx >= 0)
-                        src_offset = vs->varyings[vs_idx].src_offset;
-                else
-                        src_offset = 16 * (num_gen_varyings++);
-
-                fs->varyings[i].src_offset = src_offset;
-
-                if (has_point_coord(fs->point_sprite_mask, loc))
-                        reads_point_coord = true;
+                ofs[i] = panfrost_emit_varying(fs, vs, vs, present,
+                                ctx->streamout.num_targets, streamout_offsets,
+                                dev->quirks,
+                                gen_offsets, &gen_stride, i, false, true);
         }
 
-        memcpy(trans.cpu, vs->varyings, vs_size);
-        memcpy(trans.cpu + vs_size, fs->varyings, fs_size);
-
-        union mali_attr varyings[PIPE_MAX_ATTRIBS] = {0};
-
-        /* Figure out how many streamout buffers could be bound */
-        unsigned so_count = ctx->streamout.num_targets;
-        for (unsigned i = 0; i < vs->varying_count; i++) {
-                gl_varying_slot loc = vs->varyings_loc[i];
-
-                bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
-                if (!captured) continue;
-
-                struct pipe_stream_output *o = pan_get_so(so, loc);
-                so_count = MAX2(so_count, o->output_buffer + 1);
-        }
-
-        signed idx = so_count;
-        signed general = idx++;
-        signed gl_Position = idx++;
-        signed gl_PointSize = vs->writes_point_size ? (idx++) : -1;
-        signed gl_PointCoord = reads_point_coord ? (idx++) : -1;
-        signed gl_FrontFacing = fs->reads_face ? (idx++) : -1;
-        signed gl_FragCoord = (fs->reads_frag_coord &&
-                        !(device->quirks & IS_BIFROST))
-                        ? (idx++) : -1;
+        unsigned xfb_base = pan_xfb_base(present);
+        struct panfrost_transfer T = panfrost_allocate_transient(batch,
+                        sizeof(union mali_attr) * (xfb_base + ctx->streamout.num_targets));
+        union mali_attr *varyings = (union mali_attr *) T.cpu;
 
         /* Emit the stream out buffers */
 
         unsigned out_count = u_stream_outputs_for_vertices(ctx->active_prim,
                                                            ctx->vertex_count);
 
-        for (unsigned i = 0; i < so_count; ++i) {
-                if (i < ctx->streamout.num_targets) {
-                        panfrost_emit_streamout(batch, &varyings[i],
-                                                so->stride[i],
-                                                ctx->streamout.offsets[i],
-                                                out_count,
-                                                ctx->streamout.targets[i]);
-                } else {
-                        /* Emit a dummy buffer */
-                        panfrost_emit_varyings(batch, &varyings[i],
-                                               so->stride[i] * 4,
-                                               out_count);
-
-                        /* Clear the attribute type */
-                        varyings[i].elements &= ~0xF;
-                }
+        for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
+                panfrost_emit_streamout(batch, &varyings[xfb_base + i],
+                                        so->stride[i],
+                                        ctx->streamout.offsets[i],
+                                        out_count,
+                                        ctx->streamout.targets[i]);
         }
 
-        panfrost_emit_varyings(batch, &varyings[general],
-                               num_gen_varyings * 16,
-                               vertex_count);
-
-        mali_ptr varyings_p;
+        panfrost_emit_varyings(batch,
+                        &varyings[pan_varying_index(present, PAN_VARY_GENERAL)],
+                        gen_stride, vertex_count);
 
         /* fp32 vec4 gl_Position */
-        varyings_p = panfrost_emit_varyings(batch, &varyings[gl_Position],
-                                            sizeof(float) * 4, vertex_count);
-        tiler_postfix->position_varying = varyings_p;
+        tiler_postfix->position_varying = panfrost_emit_varyings(batch,
+                        &varyings[pan_varying_index(present, PAN_VARY_POSITION)],
+                        sizeof(float) * 4, vertex_count);
 
-
-        if (panfrost_writes_point_size(ctx)) {
-                varyings_p = panfrost_emit_varyings(batch,
-                                                    &varyings[gl_PointSize],
-                                                    2, vertex_count);
-                primitive_size->pointer = varyings_p;
+        if (present & (1 << PAN_VARY_PSIZ)) {
+                primitive_size->pointer = panfrost_emit_varyings(batch,
+                                &varyings[pan_varying_index(present, PAN_VARY_PSIZ)],
+                                2, vertex_count);
         }
 
-        if (gl_PointCoord >= 0)
-                varyings[gl_PointCoord].elements = MALI_VARYING_POINT_COORD;
+        pan_emit_special_input(varyings, present, PAN_VARY_PNTCOORD, MALI_VARYING_POINT_COORD);
+        pan_emit_special_input(varyings, present, PAN_VARY_FACE, MALI_VARYING_FRONT_FACING);
+        pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD, MALI_VARYING_FRAG_COORD);
 
-        if (gl_FrontFacing >= 0)
-                varyings[gl_FrontFacing].elements = MALI_VARYING_FRONT_FACING;
-
-        if (gl_FragCoord >= 0)
-                varyings[gl_FragCoord].elements = MALI_VARYING_FRAG_COORD;
-
-        assert(!(device->quirks & IS_BIFROST) || !(reads_point_coord));
-
-        /* Let's go ahead and link varying meta to the buffer in question, now
-         * that that information is available. VARYING_SLOT_POS is mapped to
-         * gl_FragCoord for fragment shaders but gl_Positionf or vertex shaders
-         * */
-
-        panfrost_emit_varying_meta(trans.cpu, vs, general, gl_Position,
-                                   gl_PointSize, gl_PointCoord,
-                                   gl_FrontFacing);
-
-        panfrost_emit_varying_meta(trans.cpu + vs_size, fs, general,
-                                   gl_FragCoord, gl_PointSize,
-                                   gl_PointCoord, gl_FrontFacing);
-
-        /* Replace streamout */
-
-        struct mali_attr_meta *ovs = (struct mali_attr_meta *)trans.cpu;
-        struct mali_attr_meta *ofs = ovs + vs->varying_count;
-
-        for (unsigned i = 0; i < vs->varying_count; i++) {
-                gl_varying_slot loc = vs->varyings_loc[i];
-
-                /* If we write gl_PointSize from the vertex shader but don't
-                 * consume it, no memory will be allocated for it, so if we
-                 * attempted to write anyway we would dereference a NULL
-                 * pointer on the GPU. Midgard seems fine with this; Bifrost
-                 * faults. */
-
-                if (loc == VARYING_SLOT_PSIZ && !panfrost_writes_point_size(ctx))
-                        ovs[i].format = MALI_VARYING_DISCARD;
-
-                bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
-                if (!captured)
-                        continue;
-
-                struct pipe_stream_output *o = pan_get_so(so, loc);
-                ovs[i].index = o->output_buffer;
-
-                assert(o->stream == 0);
-                ovs[i].format = (vs->varyings[i].format & ~MALI_NR_CHANNELS(4))
-                        | MALI_NR_CHANNELS(o->num_components);
-
-                if (device->quirks & HAS_SWIZZLES)
-                        ovs[i].swizzle = panfrost_get_default_swizzle(o->num_components);
-                else
-                        ovs[i].swizzle = panfrost_bifrost_swizzle(o->num_components);
-
-                /* Link to the fragment */
-                signed fs_idx = -1;
-
-                /* Link up */
-                for (unsigned j = 0; j < fs->varying_count; ++j) {
-                        if (fs->varyings_loc[j] == loc) {
-                                fs_idx = j;
-                                break;
-                        }
-                }
-
-                if (fs_idx >= 0) {
-                        ofs[fs_idx].index = ovs[i].index;
-                        ofs[fs_idx].format = ovs[i].format;
-                        ofs[fs_idx].swizzle = ovs[i].swizzle;
-                }
-        }
-
-        /* Replace point sprite */
-        for (unsigned i = 0; i < fs->varying_count; i++) {
-                /* If we have a point sprite replacement, handle that here. We
-                 * have to translate location first.  TODO: Flip y in shader.
-                 * We're already keying ... just time crunch .. */
-
-                if (has_point_coord(fs->point_sprite_mask,
-                                    fs->varyings_loc[i])) {
-                        ofs[i].index = gl_PointCoord;
-
-                        /* Swizzle out the z/w to 0/1 */
-                        ofs[i].format = MALI_RG16F;
-                        ofs[i].swizzle = panfrost_get_default_swizzle(2);
-                }
-        }
-
-        /* Fix up unaligned addresses */
-        for (unsigned i = 0; i < so_count; ++i) {
-                if (varyings[i].elements < MALI_RECORD_SPECIAL)
-                        continue;
-
-                unsigned align = (varyings[i].elements & 63);
-
-                /* While we're at it, the SO buffers are linear */
-
-                if (!align) {
-                        varyings[i].elements |= MALI_ATTR_LINEAR;
-                        continue;
-                }
-
-                /* We need to adjust alignment */
-                varyings[i].elements &= ~63;
-                varyings[i].elements |= MALI_ATTR_LINEAR;
-                varyings[i].size += align;
-
-                for (unsigned v = 0; v < vs->varying_count; ++v) {
-                        if (ovs[v].index != i)
-                                continue;
-
-                        ovs[v].src_offset = vs->varyings[v].src_offset + align;
-                }
-
-                for (unsigned f = 0; f < fs->varying_count; ++f) {
-                        if (ofs[f].index != i)
-                                continue;
-
-                        ofs[f].src_offset = fs->varyings[f].src_offset + align;
-                }
-        }
-
-        varyings_p = panfrost_upload_transient(batch, varyings,
-                                               idx * sizeof(*varyings));
-        vertex_postfix->varyings = varyings_p;
-        tiler_postfix->varyings = varyings_p;
+        vertex_postfix->varyings = T.gpu;
+        tiler_postfix->varyings = T.gpu;
 
         vertex_postfix->varying_meta = trans.gpu;
         tiler_postfix->varying_meta = trans.gpu + vs_size;
