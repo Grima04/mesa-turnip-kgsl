@@ -2675,12 +2675,10 @@ tu6_emit_vertex_buffers(struct tu_cmd_buffer *cmd,
       const struct tu_buffer *buf = cmd->state.vb.buffers[binding];
       const VkDeviceSize offset = buf->bo_offset +
          cmd->state.vb.offsets[binding];
-      const VkDeviceSize size =
-         offset < buf->size ? buf->size - offset : 0;
 
       tu_cs_emit_regs(&cs,
                       A6XX_VFD_FETCH_BASE(i, .bo = buf->bo, .bo_offset = offset),
-                      A6XX_VFD_FETCH_SIZE(i, size));
+                      A6XX_VFD_FETCH_SIZE(i, buf->size - offset));
 
    }
 
