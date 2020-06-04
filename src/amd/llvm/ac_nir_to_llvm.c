@@ -2007,6 +2007,72 @@ static void visit_store_global(struct ac_nir_context *ctx,
       ac_build_endif(&ctx->ac, 7002);
 }
 
+static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
+					nir_intrinsic_instr *instr)
+{
+   if (ctx->ac.postponed_kill) {
+      LLVMValueRef cond = LLVMBuildLoad(ctx->ac.builder, ctx->ac.postponed_kill, "");
+      ac_build_ifcc(&ctx->ac, cond, 7002);
+   }
+
+   LLVMValueRef addr = get_src(ctx, instr->src[0]);
+   LLVMValueRef data = get_src(ctx, instr->src[1]);
+   LLVMAtomicRMWBinOp op;
+   LLVMValueRef result;
+
+   /* use "singlethread" sync scope to implement relaxed ordering */
+   const char *sync_scope = LLVM_VERSION_MAJOR >= 9 ? "singlethread-one-as" : "singlethread";
+
+   LLVMTypeRef ptr_type = LLVMPointerType(LLVMTypeOf(data), AC_ADDR_SPACE_GLOBAL);
+
+   addr = LLVMBuildIntToPtr(ctx->ac.builder, addr, ptr_type, "");
+
+   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap) {
+      LLVMValueRef data1 = get_src(ctx, instr->src[2]);
+      result = ac_build_atomic_cmp_xchg(&ctx->ac, addr, data, data1, sync_scope);
+      result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
+   } else {
+      switch (instr->intrinsic) {
+      case nir_intrinsic_global_atomic_add:
+         op = LLVMAtomicRMWBinOpAdd;
+         break;
+      case nir_intrinsic_global_atomic_umin:
+         op = LLVMAtomicRMWBinOpUMin;
+         break;
+      case nir_intrinsic_global_atomic_umax:
+         op = LLVMAtomicRMWBinOpUMax;
+         break;
+      case nir_intrinsic_global_atomic_imin:
+         op = LLVMAtomicRMWBinOpMin;
+         break;
+      case nir_intrinsic_global_atomic_imax:
+         op = LLVMAtomicRMWBinOpMax;
+         break;
+      case nir_intrinsic_global_atomic_and:
+         op = LLVMAtomicRMWBinOpAnd;
+         break;
+      case nir_intrinsic_global_atomic_or:
+         op = LLVMAtomicRMWBinOpOr;
+         break;
+      case nir_intrinsic_global_atomic_xor:
+         op = LLVMAtomicRMWBinOpXor;
+         break;
+      case nir_intrinsic_global_atomic_exchange:
+         op = LLVMAtomicRMWBinOpXchg;
+         break;
+      default:
+         unreachable("Invalid global atomic operation");
+      }
+
+      result = ac_build_atomic_rmw(&ctx->ac, op, addr, ac_to_integer(&ctx->ac, data), sync_scope);
+   }
+
+   if (ctx->ac.postponed_kill)
+      ac_build_endif(&ctx->ac, 7002);
+
+   return result;
+}
+
 static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
    struct waterfall_context wctx;
@@ -3755,6 +3821,18 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_store_global:
       visit_store_global(ctx, instr);
+      break;
+   case nir_intrinsic_global_atomic_add:
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_global_atomic_umin:
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_global_atomic_umax:
+   case nir_intrinsic_global_atomic_and:
+   case nir_intrinsic_global_atomic_or:
+   case nir_intrinsic_global_atomic_xor:
+   case nir_intrinsic_global_atomic_exchange:
+   case nir_intrinsic_global_atomic_comp_swap:
+      result = visit_global_atomic(ctx, instr);
       break;
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
