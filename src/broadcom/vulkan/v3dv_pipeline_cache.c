@@ -40,3 +40,22 @@ v3dv_DestroyPipelineCache(VkDevice _device,
 {
    /* FIXME: stub */
 }
+
+VkResult
+v3dv_MergePipelineCaches(VkDevice device,
+                         VkPipelineCache dstCache,
+                         uint32_t srcCacheCount,
+                         const VkPipelineCache *pSrcCaches)
+{
+   unreachable("vkMergePipelineCaches not implemented.");
+   return VK_ERROR_UNKNOWN;
+}
+
+VkResult
+v3dv_GetPipelineCacheData(VkDevice device,
+                          VkPipelineCache pipelineCache,
+                          size_t *pDataSize, void *pData)
+{
+   unreachable("vkGetPipelineCacheData not implemented.");
+   return VK_ERROR_UNKNOWN;
+}

@@ -2094,4 +2094,30 @@ v3dv_DestroySampler(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, sampler);
 }
 
+void
+v3dv_GetDeviceMemoryCommitment(VkDevice device,
+                               VkDeviceMemory memory,
+                               VkDeviceSize *pCommittedMemoryInBytes)
+{
+   *pCommittedMemoryInBytes = 0;
+}
 
+void
+v3dv_GetImageSparseMemoryRequirements(
+   VkDevice device,
+   VkImage image,
+   uint32_t *pSparseMemoryRequirementCount,
+   VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
+{
+   *pSparseMemoryRequirementCount = 0;
+}
+
+void
+v3dv_GetImageSparseMemoryRequirements2(
+   VkDevice device,
+   const VkImageSparseMemoryRequirementsInfo2 *pInfo,
+   uint32_t *pSparseMemoryRequirementCount,
+   VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
+{
+   *pSparseMemoryRequirementCount = 0;
+}

@@ -4296,3 +4296,41 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
    assert(cmd_buffer->state.pass || !cmd_buffer->state.job);
    list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
+
+void
+v3dv_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
+                       VkPipelineStageFlagBits pipelineStage,
+                       VkQueryPool queryPool,
+                       uint32_t query)
+{
+   unreachable("Timestamp queries are not supported.");
+}
+
+void
+v3dv_CmdDispatch(VkCommandBuffer commandBuffer,
+                 uint32_t groupCountX,
+                 uint32_t groupCountY,
+                 uint32_t groupCountZ)
+{
+   unreachable("vkCmdDispatch not implemented.");
+}
+
+void
+v3dv_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
+                         VkBuffer buffer,
+                         VkDeviceSize offset)
+{
+   unreachable("vkCmdDispatchIndirect not implemented.");
+}
+
+void
+v3dv_CmdResolveImage(VkCommandBuffer commandBuffer,
+                     VkImage srcImage,
+                     VkImageLayout srcImageLayout,
+                     VkImage dstImage,
+                     VkImageLayout dstImageLayout,
+                     uint32_t regionCount,
+                     const VkImageResolve *pRegions)
+{
+   unreachable("vkCmdResolveImage not implemented");
+}

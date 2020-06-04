@@ -1109,3 +1109,13 @@ v3dv_WaitForFences(VkDevice _device,
       return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
    return VK_SUCCESS;
 }
+
+VkResult
+v3dv_QueueBindSparse(VkQueue _queue,
+                     uint32_t bindInfoCount,
+                     const VkBindSparseInfo *pBindInfo,
+                     VkFence fence)
+{
+   V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
+   return vk_error(queue->device->instance, VK_ERROR_FEATURE_NOT_PRESENT);
+}
