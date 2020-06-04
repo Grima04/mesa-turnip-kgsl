@@ -878,6 +878,7 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_PIPELINE = 1 << 0,
    TU_CMD_DIRTY_COMPUTE_PIPELINE = 1 << 1,
    TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 2,
+
    TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 3,
    TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS = 1 << 4,
    TU_CMD_DIRTY_PUSH_CONSTANTS = 1 << 5,
@@ -1027,6 +1028,7 @@ struct tu_cmd_buffer
 
    struct tu_cmd_state state;
    struct tu_vertex_binding vertex_bindings[MAX_VBS];
+   uint32_t vertex_bindings_set;
    uint32_t queue_family_index;
 
    uint32_t push_constants[MAX_PUSH_CONSTANTS_SIZE / 4];
@@ -1242,14 +1244,9 @@ struct tu_pipeline
 
    struct
    {
-      uint8_t bindings[MAX_VERTEX_ATTRIBS];
-      uint32_t count;
-
-      uint8_t binning_bindings[MAX_VERTEX_ATTRIBS];
-      uint32_t binning_count;
-
       struct tu_cs_entry state_ib;
       struct tu_cs_entry binning_state_ib;
+      uint32_t bindings_used;
    } vi;
 
    struct

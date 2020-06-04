@@ -2009,6 +2009,13 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       break;
    }
 
+   /* If the new pipeline requires more VBs than we had previously set up, we
+    * need to re-emit them in SDS.  If it requires the same set or fewer, we
+    * can just re-use the old SDS.
+    */
+   if (pipeline->vi.bindings_used & ~cmd->vertex_bindings_set)
+      cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
+
    tu_bo_list_add(&cmd->bo_list, &pipeline->program.binary_bo,
                   MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
    for (uint32_t i = 0; i < pipeline->cs.bo_count; i++) {
@@ -2670,17 +2677,19 @@ tu6_emit_vertex_buffers(struct tu_cmd_buffer *cmd,
    struct tu_cs cs;
    tu_cs_begin_sub_stream(&cmd->sub_cs, 4 * MAX_VBS, &cs);
 
-   for (uint32_t i = 0; i < pipeline->vi.count; i++) {
-      const uint32_t binding = pipeline->vi.bindings[i];
+   int binding;
+   for_each_bit(binding, pipeline->vi.bindings_used) {
       const struct tu_buffer *buf = cmd->state.vb.buffers[binding];
       const VkDeviceSize offset = buf->bo_offset +
          cmd->state.vb.offsets[binding];
 
       tu_cs_emit_regs(&cs,
-                      A6XX_VFD_FETCH_BASE(i, .bo = buf->bo, .bo_offset = offset),
-                      A6XX_VFD_FETCH_SIZE(i, buf->size - offset));
+                      A6XX_VFD_FETCH_BASE(binding, .bo = buf->bo, .bo_offset = offset),
+                      A6XX_VFD_FETCH_SIZE(binding, buf->size - offset));
 
    }
+
+   cmd->vertex_bindings_set = pipeline->vi.bindings_used;
 
    return tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
 }
@@ -3011,8 +3020,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          };
    }
 
-   if (cmd->state.dirty &
-       (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_VERTEX_BUFFERS)) {
+   if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) {
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VB,

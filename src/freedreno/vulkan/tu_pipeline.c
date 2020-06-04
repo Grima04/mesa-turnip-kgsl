@@ -1621,10 +1621,8 @@ static void
 tu6_emit_vertex_input(struct tu_cs *cs,
                       const struct ir3_shader_variant *vs,
                       const VkPipelineVertexInputStateCreateInfo *info,
-                      uint8_t bindings[MAX_VERTEX_ATTRIBS],
-                      uint32_t *count)
+                      uint32_t *bindings_used)
 {
-   uint32_t vfd_fetch_idx = 0;
    uint32_t vfd_decode_idx = 0;
    uint32_t binding_instanced = 0; /* bitmask of instanced bindings */
 
@@ -1633,13 +1631,12 @@ tu6_emit_vertex_input(struct tu_cs *cs,
          &info->pVertexBindingDescriptions[i];
 
       tu_cs_emit_regs(cs,
-                      A6XX_VFD_FETCH_STRIDE(vfd_fetch_idx, binding->stride));
+                      A6XX_VFD_FETCH_STRIDE(binding->binding, binding->stride));
 
       if (binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE)
          binding_instanced |= 1 << binding->binding;
 
-      bindings[vfd_fetch_idx] = binding->binding;
-      vfd_fetch_idx++;
+      *bindings_used |= 1 << binding->binding;
    }
 
    /* TODO: emit all VFD_DECODE/VFD_DEST_CNTL in same (two) pkt4 */
@@ -1647,13 +1644,7 @@ tu6_emit_vertex_input(struct tu_cs *cs,
    for (uint32_t i = 0; i < info->vertexAttributeDescriptionCount; i++) {
       const VkVertexInputAttributeDescription *attr =
          &info->pVertexAttributeDescriptions[i];
-      uint32_t binding_idx, input_idx;
-
-      for (binding_idx = 0; binding_idx < vfd_fetch_idx; binding_idx++) {
-         if (bindings[binding_idx] == attr->binding)
-            break;
-      }
-      assert(binding_idx < vfd_fetch_idx);
+      uint32_t input_idx;
 
       for (input_idx = 0; input_idx < vs->inputs_count; input_idx++) {
          if ((vs->inputs[input_idx].slot - VERT_ATTRIB_GENERIC0) == attr->location)
@@ -1667,7 +1658,7 @@ tu6_emit_vertex_input(struct tu_cs *cs,
       const struct tu_native_format format = tu6_format_vtx(attr->format);
       tu_cs_emit_regs(cs,
                       A6XX_VFD_DECODE_INSTR(vfd_decode_idx,
-                        .idx = binding_idx,
+                        .idx = attr->binding,
                         .offset = attr->offset,
                         .instanced = binding_instanced & (1 << attr->binding),
                         .format = format.fmt,
@@ -1686,10 +1677,8 @@ tu6_emit_vertex_input(struct tu_cs *cs,
 
    tu_cs_emit_regs(cs,
                    A6XX_VFD_CONTROL_0(
-                     .fetch_cnt = vfd_fetch_idx,
+                     .fetch_cnt = info->vertexBindingDescriptionCount,
                      .decode_cnt = vfd_decode_idx));
-
-   *count = vfd_fetch_idx;
 }
 
 static uint32_t
@@ -2317,15 +2306,14 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
    tu_cs_begin_sub_stream(&pipeline->cs,
                           MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
    tu6_emit_vertex_input(&vi_cs, &vs->variants[0], vi_info,
-                         pipeline->vi.bindings, &pipeline->vi.count);
+                         &pipeline->vi.bindings_used);
    pipeline->vi.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
 
    if (vs->has_binning_pass) {
       tu_cs_begin_sub_stream(&pipeline->cs,
                              MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
       tu6_emit_vertex_input(
-         &vi_cs, &vs->variants[1], vi_info, pipeline->vi.binning_bindings,
-         &pipeline->vi.binning_count);
+         &vi_cs, &vs->variants[1], vi_info, &pipeline->vi.bindings_used);
       pipeline->vi.binning_state_ib =
          tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
    }
