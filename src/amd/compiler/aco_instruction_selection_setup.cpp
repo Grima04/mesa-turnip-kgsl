@@ -651,12 +651,6 @@ setup_nir(isel_context *ctx, nir_shader *nir)
    /* the variable setup has to be done before lower_io / CSE */
    setup_variables(ctx, nir);
 
-   /* optimize and lower memory operations */
-   if (nir_lower_explicit_io(nir, nir_var_mem_global, nir_address_format_64bit_global)) {
-      nir_opt_constant_folding(nir);
-      nir_opt_cse(nir);
-   }
-
    bool lower_to_scalar = false;
    bool lower_pack = false;
    nir_variable_mode robust_modes = (nir_variable_mode)0;

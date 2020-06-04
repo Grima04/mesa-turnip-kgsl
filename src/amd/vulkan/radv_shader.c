@@ -668,6 +668,9 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   nir_var_mem_shared, nir_address_format_32bit_offset);
 	}
 
+	nir_lower_explicit_io(nir, nir_var_mem_global,
+			      nir_address_format_64bit_global);
+
 	/* Lower large variables that are always constant with load_constant
 	 * intrinsics, which get turned into PC-relative loads from a data
 	 * section next to the shader.
