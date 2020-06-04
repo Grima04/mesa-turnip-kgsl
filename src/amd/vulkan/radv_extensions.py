@@ -98,7 +98,7 @@ EXTENSIONS = [
     Extension('VK_KHR_shader_clock',                      1, True),
     Extension('VK_KHR_shader_draw_parameters',            1, True),
     Extension('VK_KHR_shader_float_controls',             1, True),
-    Extension('VK_KHR_shader_float16_int8',               1, '!device->use_aco || device->rad_info.chip_class >= GFX8'),
+    Extension('VK_KHR_shader_float16_int8',               1, True),
     Extension('VK_KHR_shader_non_semantic_info',          1, True),
     Extension('VK_KHR_shader_subgroup_extended_types',    1, True),
     Extension('VK_KHR_spirv_1_4',                         1, True),
