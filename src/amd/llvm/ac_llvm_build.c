@@ -1315,7 +1315,8 @@ ac_build_buffer_load_common(struct ac_llvm_context *ctx,
 	char name[256], type_name[8];
 
 	/* D16 is only supported on gfx8+ */
-	assert((channel_type != ctx->f16 && channel_type != ctx->i16) ||
+	assert(!use_format ||
+	       (channel_type != ctx->f16 && channel_type != ctx->i16) ||
 	       ctx->chip_class >= GFX8);
 
 	LLVMTypeRef type = func > 1 ? LLVMVectorType(channel_type, func) : channel_type;
