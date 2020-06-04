@@ -192,7 +192,15 @@ spirv_builder_emit_vector_shuffle(struct spirv_builder *b, SpvId result_type,
                                   SpvId vector_1, SpvId vector_2,
                                   const uint32_t components[],
                                   size_t num_components);
-
+SpvId
+spirv_builder_emit_vector_extract(struct spirv_builder *b, SpvId result_type,
+                                  SpvId vector_1,
+                                  uint32_t component);
+SpvId
+spirv_builder_emit_vector_insert(struct spirv_builder *b, SpvId result_type,
+                                  SpvId vector_1,
+                                  SpvId component,
+                                  uint32_t index);
 void
 spirv_builder_emit_branch(struct spirv_builder *b, SpvId label);
 

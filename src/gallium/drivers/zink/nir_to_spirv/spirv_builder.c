@@ -465,6 +465,42 @@ spirv_builder_emit_vector_shuffle(struct spirv_builder *b, SpvId result_type,
    return result;
 }
 
+SpvId
+spirv_builder_emit_vector_extract(struct spirv_builder *b, SpvId result_type,
+                                  SpvId vector_1,
+                                  uint32_t component)
+{
+   SpvId result = spirv_builder_new_id(b);
+
+   int words = 5;
+   spirv_buffer_prepare(&b->instructions, words);
+   spirv_buffer_emit_word(&b->instructions, SpvOpVectorExtractDynamic | (words << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   spirv_buffer_emit_word(&b->instructions, vector_1);
+   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, component));
+   return result;
+}
+
+SpvId
+spirv_builder_emit_vector_insert(struct spirv_builder *b, SpvId result_type,
+                                  SpvId vector_1,
+                                  SpvId component,
+                                  uint32_t index)
+{
+   SpvId result = spirv_builder_new_id(b);
+
+   int words = 6;
+   spirv_buffer_prepare(&b->instructions, words);
+   spirv_buffer_emit_word(&b->instructions, SpvOpVectorInsertDynamic | (words << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   spirv_buffer_emit_word(&b->instructions, vector_1);
+   spirv_buffer_emit_word(&b->instructions, component);
+   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, index));
+   return result;
+}
+
 void
 spirv_builder_emit_branch(struct spirv_builder *b, SpvId label)
 {
