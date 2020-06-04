@@ -2060,33 +2060,23 @@ tu6_emit_blend_control(struct tu_cs *cs,
 {
    assert(!msaa_info->alphaToOneEnable);
 
-   uint32_t sp_blend_cntl = A6XX_SP_BLEND_CNTL_UNK8;
-   if (blend_enable_mask)
-      sp_blend_cntl |= A6XX_SP_BLEND_CNTL_ENABLED;
-   if (dual_src_blend)
-      sp_blend_cntl |= A6XX_SP_BLEND_CNTL_DUAL_COLOR_IN_ENABLE;
-   if (msaa_info->alphaToCoverageEnable)
-      sp_blend_cntl |= A6XX_SP_BLEND_CNTL_ALPHA_TO_COVERAGE;
-
    const uint32_t sample_mask =
-      msaa_info->pSampleMask ? *msaa_info->pSampleMask
+      msaa_info->pSampleMask ? (*msaa_info->pSampleMask & 0xffff)
                              : ((1 << msaa_info->rasterizationSamples) - 1);
 
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_BLEND_CNTL(.enabled = blend_enable_mask,
+                                      .dual_color_in_enable = dual_src_blend,
+                                      .alpha_to_coverage = msaa_info->alphaToCoverageEnable,
+                                      .unk8 = true));
+
    /* set A6XX_RB_BLEND_CNTL_INDEPENDENT_BLEND only when enabled? */
-   uint32_t rb_blend_cntl =
-      A6XX_RB_BLEND_CNTL_ENABLE_BLEND(blend_enable_mask) |
-      A6XX_RB_BLEND_CNTL_INDEPENDENT_BLEND |
-      A6XX_RB_BLEND_CNTL_SAMPLE_MASK(sample_mask);
-   if (dual_src_blend)
-      rb_blend_cntl |= A6XX_RB_BLEND_CNTL_DUAL_COLOR_IN_ENABLE;
-   if (msaa_info->alphaToCoverageEnable)
-      rb_blend_cntl |= A6XX_RB_BLEND_CNTL_ALPHA_TO_COVERAGE;
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_BLEND_CNTL, 1);
-   tu_cs_emit(cs, sp_blend_cntl);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLEND_CNTL, 1);
-   tu_cs_emit(cs, rb_blend_cntl);
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_BLEND_CNTL(.enable_blend = blend_enable_mask,
+                                      .independent_blend = true,
+                                      .sample_mask = sample_mask,
+                                      .dual_color_in_enable = dual_src_blend,
+                                      .alpha_to_coverage = msaa_info->alphaToCoverageEnable));
 }
 
 void
