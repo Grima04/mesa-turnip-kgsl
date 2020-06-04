@@ -739,8 +739,12 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	if (info->chip_class >= GFX10)
 		info->num_sdp_interfaces = device_info.num_tcc_blocks;
 
-	info->max_wave64_per_simd = info->family >= CHIP_POLARIS10 &&
-				    info->family <= CHIP_VEGAM ? 8 : 10;
+	if (info->chip_class >= GFX10)
+		info->max_wave64_per_simd = 20;
+	else if (info->family >= CHIP_POLARIS10 && info->family <= CHIP_VEGAM)
+		info->max_wave64_per_simd = 8;
+	else
+		info->max_wave64_per_simd = 10;
 
 	/* The number is per SIMD. There is enough SGPRs for the maximum number
 	 * of Wave32, which is double the number for Wave64.
