@@ -92,7 +92,12 @@ panfrost_format_supports_afbc(enum pipe_format format)
         if (util_format_is_rgba8_variant(desc))
                 return true;
 
-        /* List some special formats */
+        /* Only Z24S8 variants are compressible as Z/S */
+
+        if (panfrost_is_z24s8_variant(format))
+                return true;
+
+        /* Lookup special formats */
         switch (format) {
         case PIPE_FORMAT_R8G8B8_UNORM:
         case PIPE_FORMAT_B8G8R8_UNORM:
@@ -100,17 +105,8 @@ panfrost_format_supports_afbc(enum pipe_format format)
         case PIPE_FORMAT_B5G6R5_UNORM:
                 return true;
         default:
-                break;
+                return false;
         }
-
-        /* Only Z24S8 variants are compressible as Z/S */
-
-        if (panfrost_is_z24s8_variant(format))
-                return true;
-
-        /* TODO: AFBC of other formats */
-
-        return false;
 }
 
 unsigned
