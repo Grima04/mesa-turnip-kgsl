@@ -18,6 +18,11 @@
 #define O_CREAT _O_CREAT
 #define O_EXCL _O_EXCL
 #define O_WRONLY _O_WRONLY
+#else
+#include <unistd.h>
+#ifndef F_DUPFD_CLOEXEC
+#define F_DUPFD_CLOEXEC 1030
+#endif
 #endif
 
 
@@ -29,6 +34,50 @@ os_file_create_unique(const char *filename, int filemode)
       return NULL;
    return fdopen(fd, "w");
 }
+
+
+#if DETECT_OS_WINDOWS
+int
+os_dupfd_cloexec(int fd)
+{
+   /*
+    * On Windows child processes don't inherit handles by default:
+    * https://devblogs.microsoft.com/oldnewthing/20111216-00/?p=8873
+    */
+   return dup(fd);
+}
+#else
+int
+os_dupfd_cloexec(int fd)
+{
+   int minfd = 3;
+   int newfd = fcntl(fd, F_DUPFD_CLOEXEC, minfd);
+
+   if (newfd >= 0)
+      return newfd;
+
+   if (errno != EINVAL)
+      return -1;
+
+   newfd = fcntl(fd, F_DUPFD, minfd);
+
+   if (newfd < 0)
+      return -1;
+
+   long flags = fcntl(newfd, F_GETFD);
+   if (flags == -1) {
+      close(newfd);
+      return -1;
+   }
+
+   if (fcntl(newfd, F_SETFD, flags | FD_CLOEXEC) == -1) {
+      close(newfd);
+      return -1;
+   }
+
+   return newfd;
+}
+#endif
 
 
 #if DETECT_OS_LINUX
