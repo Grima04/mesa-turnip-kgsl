@@ -552,16 +552,12 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 }
 
 static struct fd_ringbuffer *
-build_vbo_state(struct fd6_emit *emit, const struct ir3_shader_variant *vp)
+build_vbo_state(struct fd6_emit *emit)
 {
 	const struct fd_vertex_state *vtx = emit->vtx;
 
 	struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(emit->ctx->batch->submit,
-			4 * (3 + vtx->vertexbuf.count * 4), FD_RINGBUFFER_STREAMING);
-
-	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_0, 1);
-	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(vtx->vertexbuf.count) |
-			A6XX_VFD_CONTROL_0_DECODE_CNT(vtx->vtx->num_elements));
+			4 * (1 + vtx->vertexbuf.count * 4), FD_RINGBUFFER_STREAMING);
 
 	OUT_PKT4(ring, REG_A6XX_VFD_FETCH(0), 4 * vtx->vertexbuf.count);
 	for (int32_t j = 0; j < vtx->vertexbuf.count; j++) {
@@ -808,13 +804,10 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		fd6_emit_add_group(emit, vtx->stateobj, FD6_GROUP_VTXSTATE, ENABLE_ALL);
 	}
 
-	/* VFD_CONTROL packs both vfd fetch count and vfd decode count, so we have
-	 * to emit this if either change.
-	 */
-	if (emit->dirty & (FD_DIRTY_VTXBUF | FD_DIRTY_VTXSTATE)) {
+	if (emit->dirty & FD_DIRTY_VTXBUF) {
 		struct fd_ringbuffer *state;
 
-		state = build_vbo_state(emit, emit->vs);
+		state = build_vbo_state(emit);
 		fd6_emit_take_group(emit, state, FD6_GROUP_VBO, ENABLE_ALL);
 	}
 

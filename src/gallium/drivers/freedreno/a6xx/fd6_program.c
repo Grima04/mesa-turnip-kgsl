@@ -811,6 +811,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		if (!vs->inputs[i].sysval)
 			non_sysval_input_count++;
 
+	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_0, 1);
+	OUT_RING(ring, A6XX_VFD_CONTROL_0_FETCH_CNT(non_sysval_input_count) |
+			A6XX_VFD_CONTROL_0_DECODE_CNT(non_sysval_input_count));
+
 	OUT_PKT4(ring, REG_A6XX_VFD_DEST_CNTL(0), non_sysval_input_count);
 	for (uint32_t i = 0; i < non_sysval_input_count; i++) {
 		assert(vs->inputs[i].compmask);
