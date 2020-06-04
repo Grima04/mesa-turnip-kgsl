@@ -805,6 +805,9 @@ meson-windows-vs2019:
   stage: meson-misc
   script:
     - . .\.gitlab-ci\windows\mesa_build.ps1
+  artifacts:
+    paths:
+      - _install/
 
 scons-win64:
   extends: .scons-build
