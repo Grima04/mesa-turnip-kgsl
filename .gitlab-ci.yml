@@ -838,6 +838,7 @@ virgl-gles31:
     DEQP_RUNNER_OPTIONS: "--timeout 120"
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"
+    MESA_EXTENSION_OVERRIDE: "-GL_OES_tessellation_shader"
   extends: virgl-gles2
 
 # Rules for tests that should not be present in MRs or the main
