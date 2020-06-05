@@ -163,7 +163,7 @@ def process(filename):
     for r in registers:
         r[:] = sorted(r.getchildren(), key=get_start)
 
-    genxml[:] = enums + sorted_structs.values() + instructions + registers
+    genxml[:] = enums + list(sorted_structs.values()) + instructions + registers
 
     with open(filename, 'w') as f:
         f.write('<?xml version="1.0" ?>\n')
