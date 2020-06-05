@@ -4611,6 +4611,7 @@ typedef unsigned (*nir_lower_bit_size_callback)(const nir_alu_instr *, void *);
 bool nir_lower_bit_size(nir_shader *shader,
                         nir_lower_bit_size_callback callback,
                         void *callback_data);
+bool nir_lower_64bit_phis(nir_shader *shader);
 
 nir_lower_int64_options nir_lower_int64_op_to_options_mask(nir_op opcode);
 bool nir_lower_int64(nir_shader *shader);
