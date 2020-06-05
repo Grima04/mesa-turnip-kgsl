@@ -70,6 +70,27 @@ dump_shader_info(struct ir3_shader_variant *v, bool binning_pass,
 			v->max_sun, v->loops);
 }
 
+static void
+upload_shader_variant(struct ir3_shader_variant *v)
+{
+	struct shader_info *info = &v->shader->nir->info;
+	struct ir3_compiler *compiler = v->shader->compiler;
+
+	assert(!v->bo);
+
+	unsigned sz = v->info.sizedwords * 4;
+
+	v->bo = fd_bo_new(compiler->dev, sz,
+			DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
+			DRM_FREEDRENO_GEM_TYPE_KMEM,
+			"%s:%s", ir3_shader_stage(v), info->name);
+
+	/* Always include shaders in kernel crash dumps. */
+	fd_bo_mark_for_dump(v->bo);
+
+	memcpy(fd_bo_map(v->bo), v->bin, sz);
+}
+
 struct ir3_shader_variant *
 ir3_shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 		bool binning_pass, struct pipe_debug_callback *debug)
@@ -98,6 +119,8 @@ ir3_shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 
 		}
 		dump_shader_info(v, binning_pass, debug);
+
+		upload_shader_variant(v);
 	}
 
 	return v;
@@ -237,6 +260,20 @@ void
 ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso)
 {
 	struct ir3_shader *so = hwcso;
+
+	/* free the uploaded shaders, since this is handled outside of the
+	 * shared ir3 code (ie. not used by turnip):
+	 */
+	for (struct ir3_shader_variant *v = so->variants; v; v = v->next) {
+		fd_bo_del(v->bo);
+		v->bo = NULL;
+
+		if (v->binning) {
+			fd_bo_del(v->binning->bo);
+			v->binning->bo = NULL;
+		}
+	}
+
 	ir3_shader_destroy(so);
 }
 

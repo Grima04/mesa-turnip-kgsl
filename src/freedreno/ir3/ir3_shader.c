@@ -46,10 +46,10 @@ delete_variant(struct ir3_shader_variant *v)
 {
 	if (v->ir)
 		ir3_destroy(v->ir);
-	if (v->bo)
-		fd_bo_del(v->bo);
+	assert(!v->bo);
 	if (v->binning)
 		delete_variant(v->binning);
+	free(v->bin);
 	free(v);
 }
 
@@ -160,31 +160,17 @@ static void
 assemble_variant(struct ir3_shader_variant *v)
 {
 	struct ir3_compiler *compiler = v->shader->compiler;
-	struct shader_info *info = &v->shader->nir->info;
 	uint32_t gpu_id = compiler->gpu_id;
-	uint32_t sz, *bin;
 
-	bin = ir3_shader_assemble(v, gpu_id);
-	sz = v->info.sizedwords * 4;
-
-	v->bo = fd_bo_new(compiler->dev, sz,
-			DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
-			DRM_FREEDRENO_GEM_TYPE_KMEM,
-			"%s:%s", ir3_shader_stage(v), info->name);
-	/* Always include shaders in kernel crash dumps. */
-	fd_bo_mark_for_dump(v->bo);
-
-	memcpy(fd_bo_map(v->bo), bin, sz);
+	v->bin = ir3_shader_assemble(v, gpu_id);
 
 	if (shader_debug_enabled(v->shader->type)) {
 		fprintf(stdout, "Native code for unnamed %s shader %s:\n",
 			ir3_shader_stage(v), v->shader->nir->info.name);
 		if (v->shader->type == MESA_SHADER_FRAGMENT)
 			fprintf(stdout, "SIMD0\n");
-		ir3_shader_disasm(v, bin, stdout);
+		ir3_shader_disasm(v, v->bin, stdout);
 	}
-
-	free(bin);
 
 	/* no need to keep the ir around beyond this point: */
 	ir3_destroy(v->ir);
@@ -220,7 +206,7 @@ create_variant(struct ir3_shader *shader, struct ir3_shader_key *key,
 	}
 
 	assemble_variant(v);
-	if (!v->bo) {
+	if (!v->bin) {
 		debug_error("assemble failed!");
 		goto fail;
 	}

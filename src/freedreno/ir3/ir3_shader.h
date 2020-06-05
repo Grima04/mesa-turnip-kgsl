@@ -429,6 +429,9 @@ struct ir3_shader_variant {
 	struct ir3_info info;
 	struct ir3 *ir;
 
+	/* The actual binary shader instructions, size given by info.sizedwords: */
+	uint32_t *bin;
+
 	/* Levels of nesting of flow control:
 	 */
 	unsigned branchstack;
