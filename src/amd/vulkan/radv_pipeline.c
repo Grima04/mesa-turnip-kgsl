@@ -2831,7 +2831,9 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 	struct radv_shader_info infos[MESA_SHADER_STAGES] = {0};
 	unsigned char hash[20], gs_copy_hash[20];
 	bool keep_executable_info = (flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) || device->keep_shader_info;
-	bool keep_statistic_info = (flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) || device->keep_shader_info;
+	bool keep_statistic_info = (flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
+	                           (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) ||
+	                           device->keep_shader_info;
 
 	radv_start_feedback(pipeline_feedback);
 
