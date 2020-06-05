@@ -22,6 +22,7 @@
  */
 
 #include <fcntl.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -532,20 +533,55 @@ dri3_wait_for_event_locked(struct loader_dri3_drawable *draw,
    xcb_generic_event_t *ev;
    xcb_present_generic_event_t *ge;
 
+   if (draw->window_destroyed)
+      return false;
+
    xcb_flush(draw->conn);
 
    /* Only have one thread waiting for events at a time */
    if (draw->has_event_waiter) {
       cnd_wait(&draw->event_cnd, &draw->mtx);
+      if (draw->window_destroyed)
+         return false;
       if (full_sequence)
          *full_sequence = draw->last_special_event_sequence;
       /* Another thread has updated the protected info, so retest. */
       return true;
    } else {
+      struct pollfd pfds;
+
       draw->has_event_waiter = true;
       /* Allow other threads access to the drawable while we're waiting. */
       mtx_unlock(&draw->mtx);
-      ev = xcb_wait_for_special_event(draw->conn, draw->special_event);
+
+      pfds.fd = xcb_get_file_descriptor(draw->conn);
+      pfds.events = POLLIN;
+
+      ev = xcb_poll_for_special_event(draw->conn, draw->special_event);
+      while (!ev) {
+         /* Wait up to ~1s for the XCB FD to become readable */
+         if (poll(&pfds, 1, 1000) < 1) {
+            xcb_get_window_attributes_cookie_t cookie;
+            xcb_get_window_attributes_reply_t *attrib;
+            xcb_generic_error_t *error;
+
+            /* Check if the window still exists */
+            cookie = xcb_get_window_attributes(draw->conn, draw->drawable);
+            attrib = xcb_get_window_attributes_reply(draw->conn, cookie, &error);
+            free(attrib);
+
+            if (error) {
+               if (error->error_code == BadWindow)
+                  draw->window_destroyed = true;
+
+               free(error);
+               break;
+            }
+         }
+
+         ev = xcb_poll_for_special_event(draw->conn, draw->special_event);
+      }
+
       mtx_lock(&draw->mtx);
       draw->has_event_waiter = false;
       cnd_broadcast(&draw->event_cnd);

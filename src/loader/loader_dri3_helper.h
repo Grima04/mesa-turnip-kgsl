@@ -122,6 +122,7 @@ struct loader_dri3_drawable {
    uint8_t have_back;
    uint8_t have_fake_front;
    uint8_t is_pixmap;
+   bool window_destroyed;
 
    /* Information about the GPU owning the buffer */
    __DRIscreen *dri_screen;
