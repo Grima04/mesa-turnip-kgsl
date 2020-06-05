@@ -599,9 +599,6 @@ get_copy_region_aux_settings(struct iris_context *ice,
                              bool *out_clear_supported,
                              bool is_render_target)
 {
-   struct iris_screen *screen = (void *) ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
-
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
    case ISL_AUX_USAGE_HIZ_CCS:
@@ -618,14 +615,6 @@ get_copy_region_aux_settings(struct iris_context *ice,
    case ISL_AUX_USAGE_MCS_CCS:
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_GEN12_CCS_E:
-      *out_aux_usage = res->aux.usage;
-      /* Prior to Gen9, fast-clear only supported 0/1 clear colors.  Since
-       * we're going to re-interpret the format as an integer format possibly
-       * with a different number of components, we can't handle clear colors
-       * until Gen9.
-       */
-      *out_clear_supported = devinfo->gen >= 9;
-      break;
    case ISL_AUX_USAGE_STC_CCS:
       *out_aux_usage = res->aux.usage;
       *out_clear_supported = false;
