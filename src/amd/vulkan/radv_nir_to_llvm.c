@@ -1553,6 +1553,30 @@ si_llvm_init_export_args(struct radv_shader_context *ctx,
 			break;
 		}
 
+		/* Replace NaN by zero (only 32-bit) to fix game bugs if
+		 * requested.
+		 */
+		if (ctx->args->options->enable_mrt_output_nan_fixup &&
+		    !is_16bit &&
+		    (col_format == V_028714_SPI_SHADER_32_R ||
+		     col_format == V_028714_SPI_SHADER_32_GR ||
+		     col_format == V_028714_SPI_SHADER_32_AR ||
+		     col_format == V_028714_SPI_SHADER_32_ABGR ||
+		     col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
+			for (unsigned i = 0; i < 4; i++) {
+				LLVMValueRef args[2] = {
+					values[i],
+					LLVMConstInt(ctx->ac.i32, S_NAN | Q_NAN, false)
+				};
+				LLVMValueRef isnan =
+					ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.class.f32", ctx->ac.i1,
+		                                           args, 2, AC_FUNC_ATTR_READNONE);
+				values[i] = LLVMBuildSelect(ctx->ac.builder, isnan,
+							    ctx->ac.f32_0,
+							    values[i], "");
+			}
+		}
+
 		/* Pack f16 or norm_i16/u16. */
 		if (packf) {
 			for (chan = 0; chan < 2; chan++) {
