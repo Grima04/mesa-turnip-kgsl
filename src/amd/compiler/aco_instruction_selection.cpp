@@ -10099,6 +10099,26 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot)
    if (target == V_008DFC_SQ_EXP_NULL)
       return false;
 
+   /* Replace NaN by zero (only 32-bit) to fix game bugs if requested. */
+   if (ctx->options->enable_mrt_output_nan_fixup &&
+       !is_16bit &&
+       (col_format == V_028714_SPI_SHADER_32_R ||
+        col_format == V_028714_SPI_SHADER_32_GR ||
+        col_format == V_028714_SPI_SHADER_32_AR ||
+        col_format == V_028714_SPI_SHADER_32_ABGR ||
+        col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
+      for (int i = 0; i < 4; i++) {
+         if (!(write_mask & (1 << i)))
+            continue;
+
+         Temp isnan = bld.vopc(aco_opcode::v_cmp_class_f32,
+                               bld.hint_vcc(bld.def(bld.lm)), values[i],
+                               bld.copy(bld.def(v1), Operand(3u)));
+         values[i] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), values[i],
+                              bld.copy(bld.def(v1), Operand(0u)), isnan);
+      }
+   }
+
    if ((bool) compr_op) {
       for (int i = 0; i < 2; i++) {
          /* check if at least one of the values to be compressed is enabled */
