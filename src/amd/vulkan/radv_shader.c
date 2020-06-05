@@ -1116,6 +1116,7 @@ shader_variant_compile(struct radv_device *device,
 	options->address32_hi = device->physical_device->rad_info.address32_hi;
 	options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
 	options->use_ngg_streamout = device->physical_device->use_ngg_streamout;
+	options->enable_mrt_output_nan_fixup = device->instance->enable_mrt_output_nan_fixup;
 
 	struct radv_shader_args args = {};
 	args.options = options;

@@ -590,6 +590,10 @@ radv_handle_per_app_options(struct radv_instance *instance,
 			instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
 		}
 	}
+
+	instance->enable_mrt_output_nan_fixup =
+		driQueryOptionb(&instance->dri_options,
+				"radv_enable_mrt_output_nan_fixup");
 }
 
 static const char radv_dri_options_xml[] =
@@ -599,6 +603,7 @@ DRI_CONF_BEGIN
 		DRI_CONF_VK_X11_OVERRIDE_MIN_IMAGE_COUNT(0)
 		DRI_CONF_VK_X11_STRICT_IMAGE_COUNT("false")
 		DRI_CONF_RADV_REPORT_LLVM9_VERSION_STRING("false")
+		DRI_CONF_RADV_ENABLE_MRT_OUTPUT_NAN_FIXUP("false")
 	DRI_CONF_SECTION_END
 
 	DRI_CONF_SECTION_DEBUG

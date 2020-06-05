@@ -354,6 +354,11 @@ struct radv_instance {
 
 	struct driOptionCache dri_options;
 	struct driOptionCache available_dri_options;
+
+	/**
+	 * Workarounds for game bugs.
+	 */
+	bool enable_mrt_output_nan_fixup;
 };
 
 static inline

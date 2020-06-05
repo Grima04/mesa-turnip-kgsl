@@ -430,3 +430,8 @@ DRI_CONF_OPT_END
 DRI_CONF_OPT_BEGIN_B(radv_report_llvm9_version_string, def) \
         DRI_CONF_DESC(en,gettext("Report LLVM 9.0.1 for games that apply shader workarounds if missing (for ACO only)")) \
 DRI_CONF_OPT_END
+
+#define DRI_CONF_RADV_ENABLE_MRT_OUTPUT_NAN_FIXUP(def) \
+DRI_CONF_OPT_BEGIN_B(radv_enable_mrt_output_nan_fixup, def) \
+        DRI_CONF_DESC(en,gettext("Replace NaN outputs from fragment shaders with zeroes for floating point render target")) \
+DRI_CONF_OPT_END

@@ -139,6 +139,7 @@ struct radv_nir_compiler_options {
 	bool check_ir;
 	bool has_ls_vgpr_init_bug;
 	bool use_ngg_streamout;
+	bool enable_mrt_output_nan_fixup;
 	enum radeon_family family;
 	enum chip_class chip_class;
 	uint32_t tess_offchip_block_dw_size;
