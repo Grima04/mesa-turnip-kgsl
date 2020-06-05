@@ -2707,42 +2707,6 @@ blorp_copy(struct blorp_batch *batch,
       params.src.view.format = get_copy_format_for_bpb(isl_dev, src_fmtl->bpb);
    }
 
-   if (params.src.aux_usage == ISL_AUX_USAGE_CCS_E) {
-      /* It's safe to do a blorp_copy between things which are sRGB with CCS_E
-       * enabled even though CCS_E doesn't technically do sRGB on SKL because
-       * we stomp everything to UINT anyway.  The one thing we have to be
-       * careful of is clear colors.  Because fast clear colors for sRGB on
-       * gen9 are encoded as the float values between format conversion and
-       * sRGB curve application, a given clear color float will convert to the
-       * same bits regardless of whether the format is UNORM or sRGB.
-       * Therefore, we can handle sRGB without any special cases.
-       */
-      UNUSED enum isl_format linear_src_format =
-         isl_format_srgb_to_linear(src_surf->surf->format);
-      assert(isl_formats_are_ccs_e_compatible(batch->blorp->isl_dev->info,
-                                              linear_src_format,
-                                              params.src.view.format));
-      uint32_t packed[4];
-      isl_color_value_pack(&params.src.clear_color,
-                           linear_src_format, packed);
-      isl_color_value_unpack(&params.src.clear_color,
-                             params.src.view.format, packed);
-   }
-
-   if (params.dst.aux_usage == ISL_AUX_USAGE_CCS_E) {
-      /* See above where we handle linear_src_format */
-      UNUSED enum isl_format linear_dst_format =
-         isl_format_srgb_to_linear(dst_surf->surf->format);
-      assert(isl_formats_are_ccs_e_compatible(batch->blorp->isl_dev->info,
-                                              linear_dst_format,
-                                              params.dst.view.format));
-      uint32_t packed[4];
-      isl_color_value_pack(&params.dst.clear_color,
-                           linear_dst_format, packed);
-      isl_color_value_unpack(&params.dst.clear_color,
-                             params.dst.view.format, packed);
-   }
-
    if (params.src.view.format != params.dst.view.format) {
       enum isl_format src_cast_format = params.src.view.format;
       enum isl_format dst_cast_format = params.dst.view.format;
