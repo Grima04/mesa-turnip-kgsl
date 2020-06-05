@@ -132,6 +132,7 @@ __fd6_setup_blend_variant(struct fd6_blend_stateobj *blend, unsigned sample_mask
 	OUT_REG(ring, A6XX_RB_BLEND_CNTL(
 			.enable_blend      = mrt_blend,
 			.alpha_to_coverage = cso->alpha_to_coverage,
+			.alpha_to_one = cso->alpha_to_one,
 			.independent_blend = cso->independent_blend_enable,
 			.sample_mask       = sample_mask
 		));
