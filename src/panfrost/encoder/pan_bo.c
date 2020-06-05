@@ -90,11 +90,6 @@ panfrost_bo_free(struct panfrost_bo *bo)
         struct drm_gem_close gem_close = { .handle = bo->gem_handle };
         int ret;
 
-        if (bo->cpu && os_munmap((void *) (uintptr_t)bo->cpu, bo->size)) {
-                perror("munmap");
-                abort();
-        }
-
         ret = drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
         if (ret) {
                 fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %m\n");
@@ -349,6 +344,20 @@ panfrost_bo_mmap(struct panfrost_bo *bo)
         }
 }
 
+static void
+panfrost_bo_munmap(struct panfrost_bo *bo)
+{
+        if (!bo->cpu)
+                return;
+
+        if (os_munmap((void *) (uintptr_t)bo->cpu, bo->size)) {
+                perror("munmap");
+                abort();
+        }
+
+        bo->cpu = NULL;
+}
+
 struct panfrost_bo *
 panfrost_bo_create(struct panfrost_device *dev, size_t size,
                    uint32_t flags)
@@ -426,6 +435,9 @@ panfrost_bo_unreference(struct panfrost_bo *bo)
          */
         if (p_atomic_read(&bo->refcnt) == 0) {
                 _mesa_set_remove_key(bo->dev->active_bos, bo);
+
+                /* When the reference count goes to zero, we need to cleanup */
+                panfrost_bo_munmap(bo);
 
                 /* Rather than freeing the BO now, we'll cache the BO for later
                  * allocations if we're allowed to.
