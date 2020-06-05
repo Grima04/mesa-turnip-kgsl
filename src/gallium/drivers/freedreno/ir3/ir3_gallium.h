@@ -44,6 +44,9 @@ struct ir3_shader_variant * ir3_shader_variant(struct ir3_shader *shader,
 		struct ir3_shader_key key, bool binning_pass,
 		struct pipe_debug_callback *debug);
 
+void * ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_state *cso);
+void ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso);
+
 void ir3_prog_init(struct pipe_context *pctx);
 
 #endif /* IR3_GALLIUM_H_ */

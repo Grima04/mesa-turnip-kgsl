@@ -64,7 +64,7 @@ static void
 fd5_delete_compute_state(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd5_compute_stateobj *so = hwcso;
-	ir3_shader_destroy(so->shader);
+	ir3_shader_state_delete(pctx, so->shader);
 	free(so);
 }
 

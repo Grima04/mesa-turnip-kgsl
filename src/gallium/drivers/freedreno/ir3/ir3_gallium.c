@@ -225,7 +225,7 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 	return shader;
 }
 
-static void *
+void *
 ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_state *cso)
 {
 	struct fd_context *ctx = fd_context(pctx);
@@ -233,7 +233,7 @@ ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_stat
 	return ir3_shader_create(compiler, cso, &ctx->debug, pctx->screen);
 }
 
-static void
+void
 ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso)
 {
 	struct ir3_shader *so = hwcso;
