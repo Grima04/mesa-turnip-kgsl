@@ -526,7 +526,8 @@ dri3_handle_present_event(struct loader_dri3_drawable *draw,
 }
 
 static bool
-dri3_wait_for_event_locked(struct loader_dri3_drawable *draw)
+dri3_wait_for_event_locked(struct loader_dri3_drawable *draw,
+                           unsigned *full_sequence)
 {
    xcb_generic_event_t *ev;
    xcb_present_generic_event_t *ge;
@@ -536,6 +537,8 @@ dri3_wait_for_event_locked(struct loader_dri3_drawable *draw)
    /* Only have one thread waiting for events at a time */
    if (draw->has_event_waiter) {
       cnd_wait(&draw->event_cnd, &draw->mtx);
+      if (full_sequence)
+         *full_sequence = draw->last_special_event_sequence;
       /* Another thread has updated the protected info, so retest. */
       return true;
    } else {
@@ -549,6 +552,9 @@ dri3_wait_for_event_locked(struct loader_dri3_drawable *draw)
    }
    if (!ev)
       return false;
+   draw->last_special_event_sequence = ev->full_sequence;
+   if (full_sequence)
+      *full_sequence = ev->full_sequence;
    ge = (void *) ev;
    dri3_handle_present_event(draw, ge);
    return true;
@@ -619,7 +625,7 @@ loader_dri3_wait_for_sbc(struct loader_dri3_drawable *draw,
       target_sbc = draw->send_sbc;
 
    while (draw->recv_sbc < target_sbc) {
-      if (!dri3_wait_for_event_locked(draw)) {
+      if (!dri3_wait_for_event_locked(draw, NULL)) {
          mtx_unlock(&draw->mtx);
          return 0;
       }
@@ -667,7 +673,7 @@ dri3_find_back(struct loader_dri3_drawable *draw)
             return id;
          }
       }
-      if (!dri3_wait_for_event_locked(draw)) {
+      if (!dri3_wait_for_event_locked(draw, NULL)) {
          mtx_unlock(&draw->mtx);
          return -1;
       }
