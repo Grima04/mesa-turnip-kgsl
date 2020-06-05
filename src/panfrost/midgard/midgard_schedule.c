@@ -972,8 +972,8 @@ mir_schedule_alu(
 
                 vadd->unit = UNIT_VADD;
                 vadd->mask = 0x1;
-                branch->src[2] = vadd->dest;
-                branch->src_types[2] = vadd->dest_type;
+                branch->dest = vadd->dest;
+                branch->dest_type = vadd->dest_type;
         }
 
         mir_choose_alu(&vadd, instructions, worklist, len, &predicate, UNIT_VADD);
