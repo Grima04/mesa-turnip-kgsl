@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #encoding=utf-8
 #
 # Copyright © 2019 Intel Corporation
@@ -25,8 +26,8 @@
 from __future__ import print_function
 from collections import OrderedDict
 import os
+import pathlib
 import re
-import sys
 import xml.etree.cElementTree as et
 
 def get_filename(element):
@@ -125,12 +126,7 @@ def print_node(f, offset, node):
         f.write('/>\n')
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("No input xml file specified")
-        sys.exit(1)
-
-    filename = sys.argv[1]
+def process(filename):
     xml = et.parse(filename)
     genxml = xml.getroot()
 
@@ -169,9 +165,14 @@ def main():
 
     genxml[:] = enums + sorted_structs.values() + instructions + registers
 
-    print('<?xml version="1.0" ?>')
-    print_node(sys.stdout, 0, genxml)
+    with open(filename, 'w') as f:
+        f.write('<?xml version="1.0" ?>\n')
+        print_node(f, 0, genxml)
 
 
 if __name__ == '__main__':
-    main()
+    folder = pathlib.Path('.')
+    for f in folder.glob('*.xml'):
+        print('Processing {}... '.format(f), end='', flush=True)
+        process(f)
+        print('done.')
