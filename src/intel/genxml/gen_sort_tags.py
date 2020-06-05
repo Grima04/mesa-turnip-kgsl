@@ -28,7 +28,7 @@ from collections import OrderedDict
 import os
 import pathlib
 import re
-import xml.etree.cElementTree as et
+import xml.etree.ElementTree as et
 
 def get_filename(element):
     return element.attrib['filename']

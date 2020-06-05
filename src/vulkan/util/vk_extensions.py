@@ -1,7 +1,7 @@
 import argparse
 import copy
 import re
-import xml.etree.cElementTree as et
+import xml.etree.ElementTree as et
 
 def _bool_to_c_expr(b):
     if b is True:
