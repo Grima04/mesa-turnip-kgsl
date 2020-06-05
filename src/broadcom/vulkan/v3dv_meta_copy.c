@@ -1767,7 +1767,7 @@ destroy_update_buffer_cb(VkDevice _device,
                          VkAllocationCallbacks *alloc)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   struct v3dv_bo *bo = (struct v3dv_bo *) pobj;
+   struct v3dv_bo *bo = (struct v3dv_bo *)((uintptr_t) pobj);
    v3dv_bo_free(device, bo);
 }
 
