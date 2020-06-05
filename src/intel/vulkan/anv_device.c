@@ -1452,6 +1452,16 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR: {
+         VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR *features =
+            (VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR *)ext;
+         features->workgroupMemoryExplicitLayout = true;
+         features->workgroupMemoryExplicitLayoutScalarBlockLayout = true;
+         features->workgroupMemoryExplicitLayout8BitAccess = true;
+         features->workgroupMemoryExplicitLayout16BitAccess = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT: {
          VkPhysicalDeviceYcbcrImageArraysFeaturesEXT *features =
             (VkPhysicalDeviceYcbcrImageArraysFeaturesEXT *)ext;

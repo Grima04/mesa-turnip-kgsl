@@ -217,6 +217,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .variable_pointers = true,
          .vk_memory_model = true,
          .vk_memory_model_device_scope = true,
+         .workgroup_memory_explicit_layout = true,
       },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format =
@@ -1743,8 +1744,11 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
       anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout);
 
-      NIR_PASS_V(stage.nir, nir_lower_vars_to_explicit_types,
-                 nir_var_mem_shared, shared_type_info);
+      if (!stage.nir->info.cs.shared_memory_explicit_layout) {
+         NIR_PASS_V(stage.nir, nir_lower_vars_to_explicit_types,
+                    nir_var_mem_shared, shared_type_info);
+      }
+
       NIR_PASS_V(stage.nir, nir_lower_explicit_io,
                  nir_var_mem_shared, nir_address_format_32bit_offset);
       NIR_PASS_V(stage.nir, brw_nir_lower_cs_intrinsics);
