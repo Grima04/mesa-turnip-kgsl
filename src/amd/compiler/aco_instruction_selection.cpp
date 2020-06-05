@@ -1752,6 +1752,12 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
             bld.vop3(aco_opcode::v_mad_u32_u16, Definition(dst), bld.set16bit(op0), bld.set16bit(op1), Operand(0u));
          } else if (src0_ub <= 0xffffff && src1_ub <= 0xffffff) {
             emit_vop2_instruction(ctx, instr, aco_opcode::v_mul_u32_u24, dst, true);
+         } else if (nir_src_is_const(instr->src[0].src)) {
+            bld.v_mul_imm(Definition(dst), get_alu_src(ctx, instr->src[1]),
+                          nir_src_as_uint(instr->src[0].src), false);
+         } else if (nir_src_is_const(instr->src[1].src)) {
+            bld.v_mul_imm(Definition(dst), get_alu_src(ctx, instr->src[0]),
+                          nir_src_as_uint(instr->src[1].src), false);
          } else {
             emit_vop3a_instruction(ctx, instr, aco_opcode::v_mul_lo_u32, dst);
          }
