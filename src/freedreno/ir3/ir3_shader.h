@@ -451,6 +451,10 @@ struct ir3_ibo_mapping {
 /* Represents half register in regid */
 #define HALF_REG_ID    0x100
 
+/**
+ * Shader variant which contains the actual hw shader instructions,
+ * and necessary info for shader state setup.
+ */
 struct ir3_shader_variant {
 	struct fd_bo *bo;
 
@@ -468,11 +472,21 @@ struct ir3_shader_variant {
 		struct ir3_shader_variant *nonbinning;
 //	};
 
-	struct ir3_info info;
-	struct ir3 *ir;
+	struct ir3 *ir;     /* freed after assembling machine instructions */
+
+	/* shader variants form a linked list: */
+	struct ir3_shader_variant *next;
+
+	/* replicated here to avoid passing extra ptrs everywhere: */
+	gl_shader_stage type;
+	struct ir3_shader *shader;
 
 	/* The actual binary shader instructions, size given by info.sizedwords: */
 	uint32_t *bin;
+
+	struct ir3_const_state *const_state;
+
+	struct ir3_info info;
 
 	/* Levels of nesting of flow control:
 	 */
@@ -491,8 +505,6 @@ struct ir3_shader_variant {
 	 * the uniforms and the built-in compiler constants
 	 */
 	unsigned constlen;
-
-	struct ir3_const_state *const_state;
 
 	/* About Linkage:
 	 *   + Let the frag shader determine the position/compmask for the
@@ -610,13 +622,6 @@ struct ir3_shader_variant {
 		unsigned orig_idx[16];
 	} astc_srgb;
 
-	/* shader variants form a linked list: */
-	struct ir3_shader_variant *next;
-
-	/* replicated here to avoid passing extra ptrs everywhere: */
-	gl_shader_stage type;
-	struct ir3_shader *shader;
-
 	/* texture sampler pre-dispatches */
 	uint32_t num_sampler_prefetch;
 	struct ir3_sampler_prefetch sampler_prefetch[IR3_MAX_SAMPLER_PREFETCH];
@@ -639,6 +644,10 @@ ir3_shader_stage(struct ir3_shader_variant *v)
 }
 
 
+/**
+ * Represents a shader at the API level, before state-specific variants are
+ * generated.
+ */
 struct ir3_shader {
 	gl_shader_stage type;
 
