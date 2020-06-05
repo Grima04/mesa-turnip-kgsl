@@ -988,7 +988,7 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
 	f->storagePushConstant8 = true;
 	f->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco;
 	f->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco;
-	f->shaderFloat16 = pdevice->rad_info.has_packed_math_16bit && !pdevice->use_aco;
+	f->shaderFloat16 = pdevice->rad_info.has_packed_math_16bit;
 	f->shaderInt8 = true;
 
 	f->descriptorIndexing = true;
