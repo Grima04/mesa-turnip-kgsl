@@ -664,7 +664,7 @@ virgl_drm_fence_create(struct virgl_winsys *vws, int fd, bool external)
    assert(vws->supports_fences);
 
    if (external) {
-      fd = dup(fd);
+      fd = os_dupfd_cloexec(fd);
       if (fd < 0)
          return NULL;
    }
@@ -891,7 +891,7 @@ static int virgl_fence_get_fd(struct virgl_winsys *vws,
    if (!vws->supports_fences)
       return -1;
 
-   return dup(fence->fd);
+   return os_dupfd_cloexec(fence->fd);
 }
 
 static int virgl_drm_get_version(int fd)
