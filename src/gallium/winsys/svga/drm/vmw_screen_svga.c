@@ -37,6 +37,7 @@
 #include "svga_cmd.h"
 #include "svga3d_caps.h"
 
+#include "util/os_file.h"
 #include "util/u_inlines.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
@@ -143,7 +144,7 @@ vmw_svga_winsys_fence_get_fd(struct svga_winsys_screen *sws,
                              boolean duplicate)
 {
    if (duplicate)
-      return dup(vmw_fence_get_fd(fence));
+      return os_dupfd_cloexec(vmw_fence_get_fd(fence));
    else
       return vmw_fence_get_fd(fence);
 }
@@ -154,7 +155,7 @@ vmw_svga_winsys_fence_create_fd(struct svga_winsys_screen *sws,
                                 struct pipe_fence_handle **fence,
                                 int32_t fd)
 {
-   *fence = vmw_fence_create(NULL, 0, 0, 0, dup(fd));
+   *fence = vmw_fence_create(NULL, 0, 0, 0, os_dupfd_cloexec(fd));
 }
 
 static int
