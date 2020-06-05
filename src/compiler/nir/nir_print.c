@@ -906,6 +906,12 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          break;
       }
 
+      case NIR_INTRINSIC_FORMAT: {
+         enum pipe_format format = nir_intrinsic_format(instr);
+         fprintf(fp, " format=%s ", util_format_short_name(format));
+         break;
+      }
+
       case NIR_INTRINSIC_DESC_TYPE: {
          VkDescriptorType desc_type = nir_intrinsic_desc_type(instr);
          fprintf(fp, " desc_type=%s", vulkan_descriptor_type_name(desc_type));
