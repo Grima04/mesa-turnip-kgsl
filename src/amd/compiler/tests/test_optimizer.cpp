@@ -723,3 +723,24 @@ BEGIN_TEST(optimize.minmax)
       finish_opt_test();
    }
 END_TEST
+
+BEGIN_TEST(optimize.mad_32_24)
+   for (unsigned i = GFX8; i <= GFX9; i++) {
+      //>> v1: %a, v1: %b, v1: %c, s2: %_:exec = p_startpgm
+      if (!setup_cs("v1 v1 v1", (chip_class)i))
+         continue;
+
+      //! v1: %res0 = v_mad_u32_u24 %b, %c, %a
+      //! p_unit_test 0, %res0
+      Temp mul = bld.vop2(aco_opcode::v_mul_u32_u24, bld.def(v1), inputs[1], inputs[2]);
+      writeout(0, bld.vadd32(bld.def(v1), inputs[0], mul));
+
+      //! v1: %res1_tmp = v_mul_u32_u24 %b, %c
+      //! v1: %_, s2: %res1 = v_add_co_u32 %a, %res1_tmp
+      //! p_unit_test 1, %res1
+      mul = bld.vop2(aco_opcode::v_mul_u32_u24, bld.def(v1), inputs[1], inputs[2]);
+      writeout(1, bld.vadd32(bld.def(v1), inputs[0], mul, true).def(1).getTemp());
+
+      finish_opt_test();
+   }
+END_TEST
