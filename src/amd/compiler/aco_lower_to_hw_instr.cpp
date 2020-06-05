@@ -1046,8 +1046,6 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
          bld.copy(def, op);
       }
 
-      ctx->program->statistics[statistic_copies]++;
-
       did_copy = true;
       offset += def.bytes();
    }
@@ -1094,12 +1092,10 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
       Definition op_as_def = Definition(op.physReg(), op.regClass());
       if (ctx->program->chip_class >= GFX9 && def.regClass() == v1) {
          bld.vop1(aco_opcode::v_swap_b32, def, op_as_def, op, def_as_op);
-         ctx->program->statistics[statistic_copies]++;
       } else if (def.regClass() == v1) {
          bld.vop2(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
          bld.vop2(aco_opcode::v_xor_b32, def, op, def_as_op);
          bld.vop2(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
-         ctx->program->statistics[statistic_copies] += 3;
       } else if (op.physReg() == scc || def.physReg() == scc) {
          /* we need to swap scc and another sgpr */
          assert(!preserve_scc);
@@ -1109,7 +1105,6 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
          bld.sop1(aco_opcode::s_mov_b32, Definition(pi->scratch_sgpr, s1), Operand(scc, s1));
          bld.sopc(aco_opcode::s_cmp_lg_i32, Definition(scc, s1), Operand(other, s1), Operand(0u));
          bld.sop1(aco_opcode::s_mov_b32, Definition(other, s1), Operand(pi->scratch_sgpr, s1));
-         ctx->program->statistics[statistic_copies] += 3;
       } else if (def.regClass() == s1) {
          if (preserve_scc) {
             bld.sop1(aco_opcode::s_mov_b32, Definition(pi->scratch_sgpr, s1), op);
@@ -1120,7 +1115,6 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
             bld.sop2(aco_opcode::s_xor_b32, def, Definition(scc, s1), op, def_as_op);
             bld.sop2(aco_opcode::s_xor_b32, op_as_def, Definition(scc, s1), op, def_as_op);
          }
-         ctx->program->statistics[statistic_copies] += 3;
       } else if (def.regClass() == s2) {
          if (preserve_scc)
             bld.sop1(aco_opcode::s_mov_b32, Definition(pi->scratch_sgpr, s1), Operand(scc, s1));
@@ -1129,7 +1123,6 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
          bld.sop2(aco_opcode::s_xor_b64, op_as_def, Definition(scc, s1), op, def_as_op);
          if (preserve_scc)
             bld.sopc(aco_opcode::s_cmp_lg_i32, Definition(scc, s1), Operand(pi->scratch_sgpr, s1), Operand(0u));
-         ctx->program->statistics[statistic_copies] += 3;
       } else if (ctx->program->chip_class >= GFX9 && def.bytes() == 2 && def.physReg().reg() == op.physReg().reg()) {
          aco_ptr<VOP3P_instruction> vop3p{create_instruction<VOP3P_instruction>(aco_opcode::v_pk_add_u16, Format::VOP3P, 2, 1)};
          vop3p->operands[0] = Operand(PhysReg{op.physReg().reg()}, v1);
@@ -1143,7 +1136,6 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
          bld.vop2_sdwa(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
          bld.vop2_sdwa(aco_opcode::v_xor_b32, def, op, def_as_op);
          bld.vop2_sdwa(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
-         ctx->program->statistics[statistic_copies] += 3;
       }
 
       offset += def.bytes();
@@ -1159,6 +1151,7 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
 void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx, chip_class chip_class, Pseudo_instruction *pi)
 {
    Builder bld(ctx->program, &ctx->instructions);
+   unsigned num_instructions_before = ctx->instructions.size();
    aco_ptr<Instruction> mov;
    std::map<PhysReg, copy_operation>::iterator it = copy_map.begin();
    std::map<PhysReg, copy_operation>::iterator target;
@@ -1322,8 +1315,10 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
       }
    }
 
-   if (copy_map.empty())
+   if (copy_map.empty()) {
+      ctx->program->statistics[statistic_copies] += ctx->instructions.size() - num_instructions_before;
       return;
+   }
 
    /* all target regs are needed as operand somewhere which means, all entries are part of a cycle */
    unsigned largest = 0;
@@ -1462,6 +1457,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
             break;
       }
    }
+   ctx->program->statistics[statistic_copies] += ctx->instructions.size() - num_instructions_before;
 }
 
 void lower_to_hw_instr(Program* program)
