@@ -4,14 +4,14 @@
  */
 
 #include "os_file.h"
+#include "detect_os.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 
-
-#if defined(WIN32)
+#if DETECT_OS_WINDOWS
 #include <io.h>
 #define open _open
 #define fdopen _fdopen
@@ -31,7 +31,7 @@ os_file_create_unique(const char *filename, int filemode)
 }
 
 
-#if defined(__linux__)
+#if DETECT_OS_LINUX
 
 #include <fcntl.h>
 #include <sys/stat.h>
