@@ -984,16 +984,19 @@ void copy_constant(lower_context *ctx, Builder& bld, Definition dst, Operand op)
 {
    assert(op.bytes() == dst.bytes());
 
-   if (dst.regClass() == s1 && op.isLiteral()) {
+   if (dst.bytes() == 4 && op.isLiteral()) {
       uint32_t imm = op.constantValue();
-      if (imm >= 0xffff8000 || imm <= 0x7fff) {
+      if (dst.regClass() == s1 && (imm >= 0xffff8000 || imm <= 0x7fff)) {
          bld.sopk(aco_opcode::s_movk_i32, dst, imm & 0xFFFFu);
          return;
       } else if (util_bitreverse(imm) <= 64 || util_bitreverse(imm) >= 0xFFFFFFF0) {
          uint32_t rev = util_bitreverse(imm);
-         bld.sop1(aco_opcode::s_brev_b32, dst, Operand(rev));
+         if (dst.regClass() == s1)
+            bld.sop1(aco_opcode::s_brev_b32, dst, Operand(rev));
+         else
+            bld.vop1(aco_opcode::v_bfrev_b32, dst, Operand(rev));
          return;
-      } else if (imm != 0) {
+      } else if (dst.regClass() == s1 && imm != 0) {
          unsigned start = (ffs(imm) - 1) & 0x1f;
          unsigned size = util_bitcount(imm) & 0x1f;
          if ((((1u << size) - 1u) << start) == imm) {
