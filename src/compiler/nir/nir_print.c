@@ -900,7 +900,10 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       case NIR_INTRINSIC_EXECUTION_SCOPE:
       case NIR_INTRINSIC_MEMORY_SCOPE: {
          fprintf(fp, " %s=", index_name[idx]);
-         switch (nir_intrinsic_memory_scope(instr)) {
+         nir_scope scope =
+            idx == NIR_INTRINSIC_MEMORY_SCOPE ? nir_intrinsic_memory_scope(instr)
+                                              : nir_intrinsic_execution_scope(instr);
+         switch (scope) {
          case NIR_SCOPE_NONE:         fprintf(fp, "NONE");         break;
          case NIR_SCOPE_DEVICE:       fprintf(fp, "DEVICE");       break;
          case NIR_SCOPE_QUEUE_FAMILY: fprintf(fp, "QUEUE_FAMILY"); break;
