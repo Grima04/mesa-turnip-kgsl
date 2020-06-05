@@ -29,44 +29,49 @@
 #include "drm-uapi/v3d_drm.h"
 #include "util/u_memory.h"
 
-struct v3dv_bo *
-v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name)
+static void
+bo_remove_from_cache(struct v3dv_bo_cache *cache, struct v3dv_bo *bo)
 {
-   struct v3dv_bo *bo = vk_alloc(&device->alloc, sizeof(struct v3dv_bo), 8,
-                                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (!bo) {
-      fprintf(stderr, "Failed to allocate host memory for BO\n");
+   list_del(&bo->time_list);
+   list_del(&bo->size_list);
+}
+
+static struct v3dv_bo *
+bo_from_cache(struct v3dv_device *device, uint32_t size, const char *name)
+{
+   struct v3dv_bo_cache *cache = &device->bo_cache;
+   uint32_t page_index = size / 4096 - 1;
+
+   if (cache->size_list_size <= page_index)
       return NULL;
+
+   struct v3dv_bo *bo = NULL;
+
+   mtx_lock(&cache->lock);
+   if (!list_is_empty(&cache->size_list[page_index])) {
+      bo = list_first_entry(&cache->size_list[page_index],
+                            struct v3dv_bo, size_list);
+
+      /* Check that the BO has gone idle.  If not, then we want to
+       * allocate something new instead, since we assume that the
+       * user will proceed to CPU map it and fill it with stuff.
+       */
+      if (!v3dv_bo_wait(device, bo, 0)) {
+         mtx_unlock(&cache->lock);
+         return NULL;
+      }
+
+      bo_remove_from_cache(cache, bo);
+
+      bo->name = name;
    }
-
-   const uint32_t page_align = 4096; /* Always allocate full pages */
-   size = align(size, page_align);
-   struct drm_v3d_create_bo create = {
-      .size = size
-   };
-
-   int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_CREATE_BO, &create);
-   if (ret != 0) {
-      fprintf(stderr, "Failed to allocate device memory for BO\n");
-      return NULL;
-   }
-
-   assert(create.offset % page_align == 0);
-   assert((create.offset & 0xffffffff) == create.offset);
-
-   bo->handle = create.handle;
-   bo->size = size;
-   bo->offset = create.offset;
-   bo->map = NULL;
-   bo->map_size = 0;
-   bo->name = name;
-   list_inithead(&bo->list_link);
-
+   mtx_unlock(&cache->lock);
    return bo;
 }
 
-bool
-v3dv_bo_free(struct v3dv_device *device, struct v3dv_bo *bo)
+static bool
+bo_free(struct v3dv_device *device,
+        struct v3dv_bo *bo)
 {
    if (!bo)
       return true;
@@ -81,9 +86,94 @@ v3dv_bo_free(struct v3dv_device *device, struct v3dv_bo *bo)
    if (ret != 0)
       fprintf(stderr, "close object %d: %s\n", bo->handle, strerror(errno));
 
+   device->bo_count--;
+   device->bo_size -= bo->size;
    vk_free(&device->alloc, bo);
 
    return ret == 0;
+}
+
+static void
+bo_cache_free_all(struct v3dv_device *device,
+                       bool with_lock)
+{
+   struct v3dv_bo_cache *cache = &device->bo_cache;
+
+   if (with_lock)
+      mtx_lock(&cache->lock);
+   list_for_each_entry_safe(struct v3dv_bo, bo, &cache->time_list,
+                            time_list) {
+      bo_remove_from_cache(cache, bo);
+      bo_free(device, bo);
+   }
+   if (with_lock)
+      mtx_unlock(&cache->lock);
+
+}
+
+struct v3dv_bo *
+v3dv_bo_alloc(struct v3dv_device *device,
+              uint32_t size,
+              const char *name,
+              bool private)
+{
+   struct v3dv_bo *bo;
+
+   const uint32_t page_align = 4096; /* Always allocate full pages */
+   size = align(size, page_align);
+
+   if (private) {
+      bo = bo_from_cache(device, size, name);
+      if (bo)
+         return bo;
+   }
+
+   bo = vk_alloc(&device->alloc, sizeof(struct v3dv_bo), 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (!bo) {
+      fprintf(stderr, "Failed to allocate host memory for BO\n");
+      return NULL;
+   }
+
+ retry:
+   ;
+
+   bool cleared_and_retried = false;
+   struct drm_v3d_create_bo create = {
+      .size = size
+   };
+
+   int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_CREATE_BO, &create);
+   if (ret != 0) {
+      if (!list_is_empty(&device->bo_cache.time_list) &&
+          !cleared_and_retried) {
+         cleared_and_retried = true;
+         bo_cache_free_all(device, true);
+         goto retry;
+      }
+
+      vk_free(&device->alloc, bo);
+      fprintf(stderr, "Failed to allocate device memory for BO\n");
+      return NULL;
+   }
+
+   assert(create.offset % page_align == 0);
+   assert((create.offset & 0xffffffff) == create.offset);
+
+   bo->handle = create.handle;
+   bo->size = size;
+   bo->offset = create.offset;
+   bo->map = NULL;
+   bo->map_size = 0;
+   bo->name = name;
+   bo->private = private;
+   list_inithead(&bo->list_link);
+
+   device->bo_count++;
+   device->bo_size += bo->size;
+
+   return bo;
 }
 
 bool
@@ -92,6 +182,9 @@ v3dv_bo_map_unsynchronized(struct v3dv_device *device,
                            uint32_t size)
 {
    assert(bo != NULL && size <= bo->size);
+
+   if (bo->map)
+      return bo->map;
 
    struct drm_v3d_mmap_bo map;
    memset(&map, 0, sizeof(map));
@@ -158,3 +251,121 @@ v3dv_bo_unmap(struct v3dv_device *device, struct v3dv_bo *bo)
    bo->map_size = 0;
 }
 
+static boolean
+reallocate_size_list(struct v3dv_bo_cache *cache,
+                     struct v3dv_device *device,
+                     uint32_t size)
+{
+   struct list_head *new_list =
+      vk_alloc(&device->alloc, sizeof(struct list_head) * size, 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (!new_list) {
+      fprintf(stderr, "Failed to allocate host memory for cache bo list\n");
+      return false;
+   }
+   struct list_head *old_list = cache->size_list;
+
+   /* Move old list contents over (since the array has moved, and
+    * therefore the pointers to the list heads have to change).
+    */
+   for (int i = 0; i < cache->size_list_size; i++) {
+      struct list_head *old_head = &cache->size_list[i];
+      if (list_is_empty(old_head)) {
+         list_inithead(&new_list[i]);
+      } else {
+         new_list[i].next = old_head->next;
+         new_list[i].prev = old_head->prev;
+         new_list[i].next->prev = &new_list[i];
+         new_list[i].prev->next = &new_list[i];
+      }
+   }
+   for (int i = cache->size_list_size; i < size; i++)
+      list_inithead(&new_list[i]);
+
+   cache->size_list = new_list;
+   cache->size_list_size = size;
+   vk_free(&device->alloc, old_list);
+
+   return true;
+}
+
+void
+v3dv_bo_cache_init(struct v3dv_device *device)
+{
+   device->bo_size = 0;
+   device->bo_count = 0;
+   list_inithead(&device->bo_cache.time_list);
+   /* FIXME: perhaps set a initial size for the size-list, to avoid run-time
+    * reallocations
+    */
+   device->bo_cache.size_list_size = 0;
+}
+
+void
+v3dv_bo_cache_destroy(struct v3dv_device *device)
+{
+   bo_cache_free_all(device, true);
+   vk_free(&device->alloc, device->bo_cache.size_list);
+}
+
+
+static void
+free_stale_bos(struct v3dv_device *device,
+               time_t time)
+{
+   struct v3dv_bo_cache *cache = &device->bo_cache;
+
+   list_for_each_entry_safe(struct v3dv_bo, bo, &cache->time_list,
+                            time_list) {
+      /* If it's more than a second old, free it. */
+      if (time - bo->free_time > 2) {
+         bo_remove_from_cache(cache, bo);
+         bo_free(device, bo);
+      } else {
+         break;
+      }
+   }
+}
+
+bool
+v3dv_bo_free(struct v3dv_device *device,
+             struct v3dv_bo *bo)
+{
+   if (!bo)
+      return true;
+
+   struct timespec time;
+   struct v3dv_bo_cache *cache = &device->bo_cache;
+   uint32_t page_index = bo->size / 4096 - 1;
+
+   if (!bo->private)
+      return bo_free(device, bo);
+
+   clock_gettime(CLOCK_MONOTONIC, &time);
+   mtx_lock(&cache->lock);
+
+   if (cache->size_list_size <= page_index) {
+      if (!reallocate_size_list(cache, device, page_index + 1)) {
+         bool outcome = bo_free(device, bo);
+         /* If the reallocation failed, it usually means that we are out of
+          * memory, so we also free all the bo cache. We need to call it to
+          * not use the cache lock, as we are already under it.
+          */
+         bo_cache_free_all(device, false);
+         mtx_unlock(&cache->lock);
+         return outcome;
+      }
+   }
+
+   bo->free_time = time.tv_sec;
+   list_addtail(&bo->size_list, &cache->size_list[page_index]);
+   list_addtail(&bo->time_list, &cache->time_list);
+   bo->name = NULL;
+
+   free_stale_bos(device, time.tv_sec);
+
+   mtx_unlock(&cache->lock);
+
+   return true;
+}

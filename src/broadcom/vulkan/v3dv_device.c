@@ -1286,6 +1286,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
 
    init_device_dispatch(device);
    init_device_meta(device);
+   v3dv_bo_cache_init(device);
 
    *pDevice = v3dv_device_to_handle(device);
 
@@ -1308,6 +1309,7 @@ v3dv_DestroyDevice(VkDevice _device,
    pthread_mutex_destroy(&device->mutex);
    drmSyncobjDestroy(device->render_fd, device->last_job_sync);
    destroy_device_meta(device);
+   v3dv_bo_cache_destroy(device);
 
    vk_free2(&default_alloc, pAllocator, device);
 }
@@ -1362,7 +1364,7 @@ device_alloc(struct v3dv_device *device,
 {
    /* Our kernel interface is 32-bit */
    assert((size & 0xffffffff) == size);
-   mem->bo = v3dv_bo_alloc(device, size, "device_alloc");
+   mem->bo = v3dv_bo_alloc(device, size, "device_alloc", false);
    if (!mem->bo)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
    return VK_SUCCESS;

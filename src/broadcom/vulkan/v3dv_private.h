@@ -290,6 +290,19 @@ struct v3dv_device {
          struct hash_table *cache[3]; /* v3dv_meta_blit_pipeline for 1d, 2d, 3d */
       } blit;
    } meta;
+
+   struct v3dv_bo_cache {
+      /** List of struct v3d_bo freed, by age. */
+      struct list_head time_list;
+      /** List of struct v3d_bo freed, per size, by age. */
+      struct list_head *size_list;
+      uint32_t size_list_size;
+
+      mtx_t lock;
+   } bo_cache;
+
+   uint32_t bo_size;
+   uint32_t bo_count;
 };
 
 struct v3dv_device_memory {

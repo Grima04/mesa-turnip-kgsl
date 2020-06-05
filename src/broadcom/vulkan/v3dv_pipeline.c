@@ -1160,7 +1160,7 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
       break;
    };
 
-   struct v3dv_bo *bo = v3dv_bo_alloc(device, size, name);
+   struct v3dv_bo *bo = v3dv_bo_alloc(device, size, name, true);
    if (!bo) {
       fprintf(stderr, "failed to allocate memory for shader\n");
       return false;
@@ -2262,7 +2262,8 @@ create_default_attribute_values(struct v3dv_pipeline *pipeline,
 
    if (pipeline->default_attribute_values == NULL) {
       pipeline->default_attribute_values = v3dv_bo_alloc(pipeline->device, size,
-                                                         "default_vi_attributes");
+                                                         "default_vi_attributes",
+                                                         true);
 
       if (!pipeline->default_attribute_values) {
          fprintf(stderr, "failed to allocate memory for the default "

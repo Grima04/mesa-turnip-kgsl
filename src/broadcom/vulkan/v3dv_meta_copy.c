@@ -1787,7 +1787,7 @@ v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, dstBuffer);
 
    struct v3dv_bo *src_bo =
-      v3dv_bo_alloc(cmd_buffer->device, dataSize, "vkCmdUpdateBuffer");
+      v3dv_bo_alloc(cmd_buffer->device, dataSize, "vkCmdUpdateBuffer", true);
    if (!src_bo) {
       fprintf(stderr, "Failed to allocate BO for vkCmdUpdateBuffer.\n");
       return;

@@ -413,7 +413,7 @@ v3dv_CreateDescriptorPool(VkDevice _device,
    pool->max_entry_count = pCreateInfo->maxSets;
 
    if (bo_size > 0) {
-      pool->bo = v3dv_bo_alloc(device, bo_size, "descriptor pool bo");
+      pool->bo = v3dv_bo_alloc(device, bo_size, "descriptor pool bo", true);
       if (!pool->bo)
          goto out_of_device_memory;
 

@@ -59,7 +59,7 @@ v3dv_CreateQueryPool(VkDevice _device,
    uint32_t i;
    for (i = 0; i < pool->query_count; i++) {
       pool->queries[i].maybe_available = false;
-      pool->queries[i].bo = v3dv_bo_alloc(device, 4096, "query");
+      pool->queries[i].bo = v3dv_bo_alloc(device, 4096, "query", true);
       if (!pool->queries[i].bo) {
          result = vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          goto fail_alloc_bo;

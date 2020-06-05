@@ -37,9 +37,22 @@ struct v3dv_bo {
    void *map;
 
    const char *name;
+
+   /** Entry in the linked list of buffers freed, by age. */
+   struct list_head time_list;
+   /** Entry in the per-page-count linked list of buffers freed (by age). */
+   struct list_head size_list;
+   /** Approximate second when the bo was freed. */
+   time_t free_time;
+
+   /**
+    * Whether only our process has a reference to the BO (meaning that
+    * it's safe to reuse it in the BO cache).
+    */
+   bool private;
 };
 
-struct v3dv_bo *v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name);
+struct v3dv_bo *v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name, bool private);
 
 bool v3dv_bo_free(struct v3dv_device *device, struct v3dv_bo *bo);
 
@@ -50,5 +63,8 @@ bool v3dv_bo_map_unsynchronized(struct v3dv_device *device, struct v3dv_bo *bo, 
 bool v3dv_bo_map(struct v3dv_device *device, struct v3dv_bo *bo, uint32_t size);
 
 void v3dv_bo_unmap(struct v3dv_device *device, struct v3dv_bo *bo);
+
+void v3dv_bo_cache_init(struct v3dv_device *device);
+void v3dv_bo_cache_destroy(struct v3dv_device *device);
 
 #endif /* V3DV_BO_H */

@@ -51,7 +51,7 @@ v3dv_cl_destroy(struct v3dv_cl *cl)
 static bool
 cl_alloc_bo(struct v3dv_cl *cl, uint32_t space, bool use_branch)
 {
-   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->device, space, "CL");
+   struct v3dv_bo *bo = v3dv_bo_alloc(cl->job->device, space, "CL", true);
    if (!bo) {
       fprintf(stderr, "failed to allocate memory for command list\n");
       v3dv_flag_oom(NULL, cl->job);

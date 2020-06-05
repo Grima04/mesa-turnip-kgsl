@@ -48,7 +48,8 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->push_constants_resource.bo == NULL) {
       cmd_buffer->push_constants_resource.bo =
-         v3dv_bo_alloc(cmd_buffer->device, MAX_PUSH_CONSTANTS_SIZE, "push constants");
+         v3dv_bo_alloc(cmd_buffer->device, MAX_PUSH_CONSTANTS_SIZE,
+                       "push constants", true);
 
       if (!cmd_buffer->push_constants_resource.bo) {
          fprintf(stderr, "Failed to allocate memory for push constants\n");

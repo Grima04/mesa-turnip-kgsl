@@ -519,7 +519,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
    tile_alloc_size += 512 * 1024;
 
    job->tile_alloc = v3dv_bo_alloc(job->device, tile_alloc_size,
-                                   "tile_alloc");
+                                   "tile_alloc", true);
    if (!job->tile_alloc) {
       v3dv_flag_oom(NULL, job);
       return;
@@ -532,7 +532,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
                                     tiling->draw_tiles_x *
                                     tiling->draw_tiles_y *
                                     tsda_per_tile_size;
-   job->tile_state = v3dv_bo_alloc(job->device, tile_state_size, "TSDA");
+   job->tile_state = v3dv_bo_alloc(job->device, tile_state_size, "TSDA", true);
    if (!job->tile_state) {
       v3dv_flag_oom(NULL, job);
       return;
