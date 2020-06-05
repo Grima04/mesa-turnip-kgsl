@@ -29,6 +29,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "util/os_file.h"
+
 #include "anv_private.h"
 #include "vk_util.h"
 
@@ -295,7 +297,7 @@ anv_queue_submit_timeline_locked(struct anv_queue *queue,
          struct anv_semaphore_impl *impl = &semaphore->permanent;
 
          assert(impl->type == ANV_SEMAPHORE_TYPE_SYNC_FILE);
-         impl->fd = dup(submit->out_fence);
+         impl->fd = os_dupfd_cloexec(submit->out_fence);
       }
    } else {
       /* Unblock any waiter by signaling the points, the application will get
