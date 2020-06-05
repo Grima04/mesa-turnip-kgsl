@@ -2221,7 +2221,7 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                         unsigned component = ins->swizzle[1][first_comp];
 
                         /* Scale constant appropriately, if we can legally */
-                        uint16_t scaled_constant = 0;
+                        int16_t scaled_constant = 0;
 
                         if (is_16) {
                                 scaled_constant = ins->constants.u16[component];

@@ -335,14 +335,6 @@ dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.primitives.lines
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.primitives.lines_wide
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.primitives.points
 dEQP-GLES3.functional.rasterization.fbo.rbo_multisample_max.primitives.triangles
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packsnorm2x16_highp_fragment
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packsnorm2x16_highp_vertex
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packsnorm2x16_lowp_fragment
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packsnorm2x16_lowp_vertex
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packsnorm2x16_mediump_fragment
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.packsnorm2x16_mediump_vertex
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.unpackunorm2x16_fragment
-dEQP-GLES3.functional.shaders.builtin_functions.pack_unpack.unpackunorm2x16_vertex
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.float_highp
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.float_mediump
 dEQP-GLES3.functional.shaders.derivate.dfdx.fastest.fbo_msaa4.vec2_highp
