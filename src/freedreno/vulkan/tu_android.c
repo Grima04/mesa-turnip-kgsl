@@ -33,6 +33,8 @@
 
 #include "drm-uapi/drm_fourcc.h"
 
+#include "util/os_file.h"
+
 static int
 tu_hal_open(const struct hw_module_t *mod,
             const char *id,
@@ -154,7 +156,7 @@ tu_image_from_gralloc(VkDevice device_h,
       .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
       .pNext = &ded_alloc,
       .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
-      .fd = dup(dma_buf),
+      .fd = os_dupfd_cloexec(dma_buf),
    };
 
    result =
@@ -293,7 +295,7 @@ tu_AcquireImageANDROID(VkDevice device,
 
    if (semaphore != VK_NULL_HANDLE) {
       int semaphore_fd =
-         nativeFenceFd >= 0 ? dup(nativeFenceFd) : nativeFenceFd;
+         nativeFenceFd >= 0 ? os_dupfd_cloexec(nativeFenceFd) : nativeFenceFd;
       semaphore_result = tu_ImportSemaphoreFdKHR(
          device, &(VkImportSemaphoreFdInfoKHR) {
                     .sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR,
@@ -304,7 +306,7 @@ tu_AcquireImageANDROID(VkDevice device,
    }
 
    if (fence != VK_NULL_HANDLE) {
-      int fence_fd = nativeFenceFd >= 0 ? dup(nativeFenceFd) : nativeFenceFd;
+      int fence_fd = nativeFenceFd >= 0 ? os_dupfd_cloexec(nativeFenceFd) : nativeFenceFd;
       fence_result = tu_ImportFenceFdKHR(
          device, &(VkImportFenceFdInfoKHR) {
                     .sType = VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR,
