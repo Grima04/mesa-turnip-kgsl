@@ -78,6 +78,7 @@ libfreedreno_ir3_files = files(
   'ir3_cp_postsched.c',
   'ir3_dce.c',
   'ir3_delay.c',
+  'ir3_disk_cache.c',
   'ir3_group.c',
   'ir3_image.c',
   'ir3_image.h',
@@ -110,7 +111,7 @@ libfreedreno_ir3 = static_library(
   include_directories : [inc_freedreno, inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
-  dependencies : idep_nir_headers,
+  dependencies : [idep_nir_headers, dep_dl],
   build_by_default : false,
 )
 

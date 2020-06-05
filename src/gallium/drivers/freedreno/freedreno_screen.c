@@ -716,6 +716,19 @@ fd_get_compiler_options(struct pipe_screen *pscreen,
 	return ir2_get_compiler_options();
 }
 
+static struct disk_cache *
+fd_get_disk_shader_cache(struct pipe_screen *pscreen)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+
+	if (is_ir3(screen)) {
+		struct ir3_compiler *compiler = screen->compiler;
+		return compiler->disk_cache;
+	}
+
+	return NULL;
+}
+
 bool
 fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 		struct fd_bo *bo,
@@ -993,6 +1006,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 	pscreen->get_shader_param = fd_screen_get_shader_param;
 	pscreen->get_compute_param = fd_get_compute_param;
 	pscreen->get_compiler_options = fd_get_compiler_options;
+	pscreen->get_disk_shader_cache = fd_get_disk_shader_cache;
 
 	fd_resource_screen_init(pscreen);
 	fd_query_screen_init(pscreen);

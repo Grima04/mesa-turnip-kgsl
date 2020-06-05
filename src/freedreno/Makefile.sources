@@ -35,6 +35,7 @@ ir3_SOURCES := \
 	ir3/ir3_cf.c \
 	ir3/ir3_dce.c \
 	ir3/ir3_delay.c \
+	ir3/ir3_disk_cache.c \
 	ir3/ir3_group.c \
 	ir3/ir3_image.c \
 	ir3/ir3_image.h \

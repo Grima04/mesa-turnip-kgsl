@@ -245,11 +245,16 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key)
 			goto fail;
 	}
 
+	if (ir3_disk_cache_retrieve(shader->compiler, v))
+		return v;
+
 	if (!compile_variant(v))
 		goto fail;
 
 	if (needs_binning_variant(v) && !compile_variant(v->binning))
 		goto fail;
+
+	ir3_disk_cache_store(shader->compiler, v);
 
 	return v;
 
@@ -445,10 +450,11 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 	if (stream_output)
 		memcpy(&shader->stream_output, stream_output, sizeof(shader->stream_output));
 	shader->num_reserved_user_consts = reserved_user_consts;
+	shader->nir = nir;
+
+	ir3_disk_cache_init_shader_key(compiler, shader);
 
 	ir3_nir_post_finalize(compiler, nir);
-
-	shader->nir = nir;
 
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		printf("dump nir%d: type=%d", shader->id, shader->type);

@@ -27,6 +27,8 @@
 #ifndef IR3_COMPILER_H_
 #define IR3_COMPILER_H_
 
+#include "util/disk_cache.h"
+
 #include "ir3.h"
 
 struct ir3_ra_reg_set;
@@ -38,6 +40,8 @@ struct ir3_compiler {
 	struct ir3_ra_reg_set *set;
 	struct ir3_ra_reg_set *mergedregs_set;
 	uint32_t shader_count;
+
+	struct disk_cache *disk_cache;
 
 	/*
 	 * Configuration options for things that are handled differently on
@@ -98,6 +102,14 @@ struct ir3_compiler {
 void ir3_compiler_destroy(struct ir3_compiler *compiler);
 struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id);
 
+void ir3_disk_cache_init(struct ir3_compiler *compiler);
+void ir3_disk_cache_init_shader_key(struct ir3_compiler *compiler,
+		struct ir3_shader *shader);
+bool ir3_disk_cache_retrieve(struct ir3_compiler *compiler,
+		struct ir3_shader_variant *v);
+void ir3_disk_cache_store(struct ir3_compiler *compiler,
+		struct ir3_shader_variant *v);
+
 int ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		struct ir3_shader_variant *so);
 
@@ -120,6 +132,7 @@ enum ir3_shader_debug {
 	IR3_DBG_FORCES2EN  = BITFIELD_BIT(8),
 	IR3_DBG_NOUBOOPT   = BITFIELD_BIT(9),
 	IR3_DBG_NOFP16     = BITFIELD_BIT(10),
+	IR3_DBG_NOCACHE    = BITFIELD_BIT(11),
 
 	/* DEBUG-only options: */
 	IR3_DBG_SCHEDMSGS  = BITFIELD_BIT(20),

@@ -40,6 +40,7 @@ static const struct debug_named_value shader_debug_options[] = {
 	{"forces2en",  IR3_DBG_FORCES2EN,  "Force s2en mode for tex sampler instructions"},
 	{"nouboopt",   IR3_DBG_NOUBOOPT,   "Disable lowering UBO to uniform"},
 	{"nofp16",     IR3_DBG_NOFP16,     "Don't lower mediump to fp16"},
+	{"nocache",    IR3_DBG_NOCACHE,    "Disable shader cache"},
 #ifdef DEBUG
 	/* DEBUG-only options: */
 	{"schedmsgs",  IR3_DBG_SCHEDMSGS,  "Enable scheduler debug messages"},
@@ -121,6 +122,8 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id)
 		compiler->array_index_add_half = false;
 		compiler->const_upload_unit = 8;
 	}
+
+	ir3_disk_cache_init(compiler);
 
 	return compiler;
 }

@@ -33,6 +33,7 @@
 #include "compiler/shader_enums.h"
 #include "compiler/nir/nir.h"
 #include "util/bitscan.h"
+#include "util/disk_cache.h"
 
 #include "ir3_compiler.h"
 
@@ -481,10 +482,24 @@ struct ir3_shader_variant {
 	gl_shader_stage type;
 	struct ir3_shader *shader;
 
+	/*
+	 * Below here is serialized when written to disk cache:
+	 */
+
 	/* The actual binary shader instructions, size given by info.sizedwords: */
 	uint32_t *bin;
 
 	struct ir3_const_state *const_state;
+
+	/*
+	 * The following macros are used by the shader disk cache save/
+	 * restore paths to serialize/deserialize the variant.  Any
+	 * pointers that require special handling in store_variant()
+	 * and retrieve_variant() should go above here.
+	 */
+#define VARIANT_CACHE_START    offsetof(struct ir3_shader_variant, info)
+#define VARIANT_CACHE_PTR(v)   (((char *)v) + VARIANT_CACHE_START)
+#define VARIANT_CACHE_SIZE     (sizeof(struct ir3_shader_variant) - VARIANT_CACHE_START)
 
 	struct ir3_info info;
 
@@ -680,6 +695,8 @@ struct ir3_shader {
 
 	struct ir3_shader_variant *variants;
 	mtx_t variants_lock;
+
+	cache_key cache_key;     /* shader disk-cache key */
 
 	/* Bitmask of bits of the shader key used by this shader.  Used to avoid
 	 * recompiles for GL NOS that doesn't actually apply to the shader.
