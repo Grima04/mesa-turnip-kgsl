@@ -2058,8 +2058,6 @@ tu6_emit_blend_control(struct tu_cs *cs,
                        bool dual_src_blend,
                        const VkPipelineMultisampleStateCreateInfo *msaa_info)
 {
-   assert(!msaa_info->alphaToOneEnable);
-
    const uint32_t sample_mask =
       msaa_info->pSampleMask ? (*msaa_info->pSampleMask & 0xffff)
                              : ((1 << msaa_info->rasterizationSamples) - 1);
@@ -2076,7 +2074,8 @@ tu6_emit_blend_control(struct tu_cs *cs,
                                       .independent_blend = true,
                                       .sample_mask = sample_mask,
                                       .dual_color_in_enable = dual_src_blend,
-                                      .alpha_to_coverage = msaa_info->alphaToCoverageEnable));
+                                      .alpha_to_coverage = msaa_info->alphaToCoverageEnable,
+                                      .alpha_to_one = msaa_info->alphaToOneEnable));
 }
 
 void

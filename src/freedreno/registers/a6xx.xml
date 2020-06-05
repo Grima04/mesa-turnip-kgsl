@@ -2294,6 +2294,7 @@ to upconvert to 32b float internally?
 		<bitfield name="INDEPENDENT_BLEND" pos="8" type="boolean"/>
 		<bitfield name="DUAL_COLOR_IN_ENABLE" pos="9" type="boolean"/>
 		<bitfield name="ALPHA_TO_COVERAGE" pos="10" type="boolean"/>
+		<bitfield name="ALPHA_TO_ONE" pos="11" type="boolean"/>
 		<bitfield name="SAMPLE_MASK" low="16" high="31"/>
 	</reg32>
 	<reg32 offset="0x8870" name="RB_DEPTH_PLANE_CNTL">
