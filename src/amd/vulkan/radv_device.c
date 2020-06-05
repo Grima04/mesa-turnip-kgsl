@@ -1200,7 +1200,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
 			VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *features =
 				(VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *)ext;
-			features->shaderDemoteToHelperInvocation = pdevice->use_aco;
+			features->shaderDemoteToHelperInvocation = LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
