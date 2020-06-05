@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-#encoding=utf-8
-#
+#!/usr/bin/env python3
 # Copyright © 2019 Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,7 +21,6 @@
 # IN THE SOFTWARE.
 #
 
-from __future__ import print_function
 from collections import OrderedDict
 import os
 import pathlib
