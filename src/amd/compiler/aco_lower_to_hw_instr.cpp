@@ -1260,27 +1260,19 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
 
    /* first, handle paths in the location transfer graph */
    bool preserve_scc = pi->tmp_in_scc && !writes_scc;
+   bool skip_partial_copies = true;
    it = copy_map.begin();
-   while (it != copy_map.end()) {
-
-      /* try to coalesce 32-bit sgpr copies to 64-bit copies */
-      if (it->second.is_used == 0 &&
-          it->second.def.getTemp().type() == RegType::sgpr && it->second.bytes == 4 &&
-          !it->second.op.isConstant() && it->first % 2 == it->second.op.physReg() % 2) {
-
-         PhysReg other_def_reg = PhysReg{it->first % 2 ? it->first - 1 : it->first + 1};
-         PhysReg other_op_reg = PhysReg{it->first % 2 ? it->second.op.physReg() - 1 : it->second.op.physReg() + 1};
-         std::map<PhysReg, copy_operation>::iterator other = copy_map.find(other_def_reg);
-
-         if (other != copy_map.end() && !other->second.is_used && other->second.bytes == 4 &&
-             other->second.op.physReg() == other_op_reg && !other->second.op.isConstant()) {
-            std::map<PhysReg, copy_operation>::iterator to_erase = it->first % 2 ? it : other;
-            it = it->first % 2 ? other : it;
-            copy_map.erase(to_erase);
-            it->second.bytes = 8;
-         }
+   while (true) {
+      if (copy_map.empty()) {
+         ctx->program->statistics[statistic_copies] += ctx->instructions.size() - num_instructions_before;
+         return;
       }
-      // TODO: try to coalesce subdword copies
+      if (it == copy_map.end()) {
+         if (!skip_partial_copies)
+            break;
+         skip_partial_copies = false;
+         it = copy_map.begin();
+      }
 
       /* on GFX6/7, we need some small workarounds as there is no
        * SDWA instruction to do partial register writes */
@@ -1328,8 +1320,9 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
 
       /* find portions where the target reg is not used as operand for any other copy */
       if (it->second.is_used) {
-         if (it->second.op.isConstant()) {
-            /* we have to skip constants until is_used=0 */
+         if (it->second.op.isConstant() || skip_partial_copies) {
+            /* we have to skip constants until is_used=0.
+             * we also skip partial copies at the beginning to help coalescing */
             ++it;
             continue;
          }
@@ -1367,7 +1360,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
       }
 
       bool did_copy = do_copy(ctx, bld, it->second, &preserve_scc, pi->scratch_sgpr);
-
+      skip_partial_copies = did_copy;
       std::pair<PhysReg, copy_operation> copy = *it;
 
       if (it->second.is_used == 0) {
@@ -1413,11 +1406,6 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
             }
          }
       }
-   }
-
-   if (copy_map.empty()) {
-      ctx->program->statistics[statistic_copies] += ctx->instructions.size() - num_instructions_before;
-      return;
    }
 
    /* all target regs are needed as operand somewhere which means, all entries are part of a cycle */
