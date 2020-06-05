@@ -2130,18 +2130,18 @@ vtn_emit_scoped_control_barrier(struct vtn_builder *b, SpvScope exec_scope,
                                 SpvScope mem_scope,
                                 SpvMemorySemanticsMask semantics)
 {
-   nir_memory_semantics nir_semantics;
-   nir_variable_mode modes;
-
-   nir_semantics = vtn_mem_semantics_to_nir_mem_semantics(b, semantics);
-   modes = vtn_mem_sematics_to_nir_var_modes(b, semantics);
-
-   /* No barrier to add. */
-   if (nir_semantics == 0 || modes == 0)
-      return;
-
+   nir_memory_semantics nir_semantics =
+      vtn_mem_semantics_to_nir_mem_semantics(b, semantics);
+   nir_variable_mode modes = vtn_mem_sematics_to_nir_var_modes(b, semantics);
    nir_scope nir_exec_scope = vtn_scope_to_nir_scope(b, exec_scope);
-   nir_scope nir_mem_scope = vtn_scope_to_nir_scope(b, mem_scope);
+
+   /* Memory semantics is optional for OpControlBarrier. */
+   nir_scope nir_mem_scope;
+   if (nir_semantics == 0 || modes == 0)
+      nir_mem_scope = NIR_SCOPE_NONE;
+   else
+      nir_mem_scope = vtn_scope_to_nir_scope(b, mem_scope);
+
    nir_scoped_barrier(&b->nb, nir_exec_scope, nir_mem_scope, nir_semantics, modes);
 }
 
