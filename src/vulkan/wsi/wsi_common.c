@@ -24,6 +24,7 @@
 #include "wsi_common_private.h"
 #include "drm-uapi/drm_fourcc.h"
 #include "util/macros.h"
+#include "util/os_file.h"
 #include "util/xmlconfig.h"
 #include "vk_util.h"
 
@@ -621,7 +622,7 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
          if (p == 0) {
             image->fds[p] = fd;
          } else {
-            image->fds[p] = dup(fd);
+            image->fds[p] = os_dupfd_cloexec(fd);
             if (image->fds[p] == -1) {
                for (uint32_t i = 0; i < p; i++)
                   close(image->fds[i]);
