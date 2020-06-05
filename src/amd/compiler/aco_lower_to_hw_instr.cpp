@@ -591,7 +591,14 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          sdwa->dst_sel = sdwa_udword;
          bld.insert(std::move(sdwa));
       } else if (ctx->program->chip_class == GFX6 || ctx->program->chip_class == GFX7) {
-         bld.vop3(aco_opcode::v_bfe_i32, Definition(PhysReg{tmp}, v1),
+         aco_opcode opcode;
+
+         if (reduce_op == imin16 || reduce_op == imax16 || reduce_op == iadd16)
+            opcode = aco_opcode::v_bfe_i32;
+         else
+            opcode = aco_opcode::v_bfe_u32;
+
+         bld.vop3(opcode, Definition(PhysReg{tmp}, v1),
                   Operand(PhysReg{tmp}, v1), Operand(0u), Operand(16u));
       }
    }
