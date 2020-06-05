@@ -577,22 +577,16 @@ loader_dri3_wait_for_msc(struct loader_dri3_drawable *draw,
                                                      target_msc,
                                                      divisor,
                                                      remainder);
-   xcb_generic_event_t *ev;
    unsigned full_sequence;
 
    mtx_lock(&draw->mtx);
-   xcb_flush(draw->conn);
 
    /* Wait for the event */
    do {
-      ev = xcb_wait_for_special_event(draw->conn, draw->special_event);
-      if (!ev) {
+      if (!dri3_wait_for_event_locked(draw, &full_sequence)) {
          mtx_unlock(&draw->mtx);
          return false;
       }
-
-      full_sequence = ev->full_sequence;
-      dri3_handle_present_event(draw, (void *) ev);
    } while (full_sequence != cookie.sequence || draw->notify_msc < target_msc);
 
    *ust = draw->notify_ust;
