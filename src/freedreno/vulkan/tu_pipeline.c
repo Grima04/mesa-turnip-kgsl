@@ -1572,6 +1572,7 @@ tu6_emit_program(struct tu_cs *cs,
       builder->shaders[MESA_SHADER_FRAGMENT]
          ? &builder->shaders[MESA_SHADER_FRAGMENT]->variants[0]
          : &dummy_variant;
+   uint32_t vs_offset = builder->shader_offsets[MESA_SHADER_VERTEX];
    bool has_gs = gs->type != MESA_SHADER_NONE;
 
    if (binning_pass) {
@@ -1579,8 +1580,10 @@ tu6_emit_program(struct tu_cs *cs,
        * binning pass VS will have outputs on other than position/psize
        * stripped out:
        */
-      if (vs->shader->stream_output.num_outputs == 0)
+      if (vs->shader->stream_output.num_outputs == 0) {
          vs = &builder->shaders[MESA_SHADER_VERTEX]->variants[1];
+         vs_offset = builder->binning_vs_offset;
+      }
       fs = &dummy_variant;
    }
 
@@ -1600,8 +1603,7 @@ tu6_emit_program(struct tu_cs *cs,
                        builder->use_dual_src_blend,
                        builder->render_components);
 
-   tu6_emit_shader_object(cs, MESA_SHADER_VERTEX, vs, binary_bo,
-      binning_pass ? builder->binning_vs_offset : builder->shader_offsets[MESA_SHADER_VERTEX]);
+   tu6_emit_shader_object(cs, MESA_SHADER_VERTEX, vs, binary_bo, vs_offset);
    if (has_gs)
       tu6_emit_shader_object(cs, MESA_SHADER_GEOMETRY, gs, binary_bo,
                              builder->shader_offsets[MESA_SHADER_GEOMETRY]);
