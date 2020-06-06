@@ -444,8 +444,8 @@ nvc0_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_PREFERRED_IR:
       return screen->prefer_nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
    case PIPE_SHADER_CAP_SUPPORTED_IRS: {
-      uint32_t irs = 1 << PIPE_SHADER_IR_TGSI |
-                     1 << PIPE_SHADER_IR_NIR;
+      uint32_t irs = 1 << PIPE_SHADER_IR_NIR |
+         ((class_3d >= GV100_3D_CLASS) ? 0 : 1 << PIPE_SHADER_IR_TGSI);
       if (screen->force_enable_cl)
          irs |= 1 << PIPE_SHADER_IR_NIR_SERIALIZED;
       return irs;
@@ -468,6 +468,14 @@ nvc0_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
       return shader != PIPE_SHADER_FRAGMENT;
    case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
+      /* HW doesn't support indirect addressing of fragment program inputs
+       * on Volta.  The binary driver generates a function to handle every
+       * possible indirection, and indirectly calls the function to handle
+       * this instead.
+       */
+      if (class_3d >= GV100_3D_CLASS)
+         return shader != PIPE_SHADER_FRAGMENT;
+      return 1;
    case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
    case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
       return 1;
@@ -731,8 +739,10 @@ nvc0_magic_3d_init(struct nouveau_pushbuf *push, uint16_t obj_class)
    BEGIN_NVC0(push, SUBC_3D(0x10ec), 2);
    PUSH_DATA (push, 0xff);
    PUSH_DATA (push, 0xff);
-   BEGIN_NVC0(push, SUBC_3D(0x074c), 1);
-   PUSH_DATA (push, 0x3f);
+   if (obj_class < GV100_3D_CLASS) {
+      BEGIN_NVC0(push, SUBC_3D(0x074c), 1);
+      PUSH_DATA (push, 0x3f);
+   }
 
    BEGIN_NVC0(push, SUBC_3D(0x16a8), 1);
    PUSH_DATA (push, (3 << 16) | 3);
@@ -764,8 +774,10 @@ nvc0_magic_3d_init(struct nouveau_pushbuf *push, uint16_t obj_class)
    BEGIN_NVC0(push, SUBC_3D(0x0300), 1);
    PUSH_DATA (push, 3);
 
-   BEGIN_NVC0(push, SUBC_3D(0x02d0), 1);
-   PUSH_DATA (push, 0x3fffff);
+   if (obj_class < GV100_3D_CLASS) {
+      BEGIN_NVC0(push, SUBC_3D(0x02d0), 1);
+      PUSH_DATA (push, 0x3fffff);
+   }
    BEGIN_NVC0(push, SUBC_3D(0x0fdc), 1);
    PUSH_DATA (push, 1);
    BEGIN_NVC0(push, SUBC_3D(0x19c0), 1);
@@ -825,6 +837,7 @@ nvc0_screen_init_compute(struct nvc0_screen *screen)
    case 0x110:
    case 0x120:
    case 0x130:
+   case 0x140:
       return nve4_screen_compute_setup(screen, screen->base.pushbuf);
    default:
       return -1;
@@ -896,13 +909,15 @@ nvc0_screen_resize_text_area(struct nvc0_screen *screen, uint64_t size)
    nouveau_heap_init(&screen->text_heap, 0, size - 0x100);
 
    /* update the code segment setup */
-   BEGIN_NVC0(push, NVC0_3D(CODE_ADDRESS_HIGH), 2);
-   PUSH_DATAh(push, screen->text->offset);
-   PUSH_DATA (push, screen->text->offset);
-   if (screen->compute) {
-      BEGIN_NVC0(push, NVC0_CP(CODE_ADDRESS_HIGH), 2);
+   if (screen->eng3d->oclass < GV100_3D_CLASS) {
+      BEGIN_NVC0(push, NVC0_3D(CODE_ADDRESS_HIGH), 2);
       PUSH_DATAh(push, screen->text->offset);
       PUSH_DATA (push, screen->text->offset);
+      if (screen->compute) {
+         BEGIN_NVC0(push, NVC0_CP(CODE_ADDRESS_HIGH), 2);
+         PUSH_DATAh(push, screen->text->offset);
+         PUSH_DATA (push, screen->text->offset);
+      }
    }
 
    return 0;
@@ -981,6 +996,7 @@ nvc0_screen_create(struct nouveau_device *dev)
    case 0x110:
    case 0x120:
    case 0x130:
+   case 0x140:
       break;
    default:
       return NULL;
@@ -1047,16 +1063,18 @@ nvc0_screen_create(struct nouveau_device *dev)
    screen->base.fence.emit = nvc0_screen_fence_emit;
    screen->base.fence.update = nvc0_screen_fence_update;
 
+   if (dev->chipset < 0x140) {
+      ret = nouveau_object_new(chan, (dev->chipset < 0xe0) ? 0x1f906e : 0x906e,
+                               NVIF_CLASS_SW_GF100, NULL, 0, &screen->nvsw);
+      if (ret)
+         FAIL_SCREEN_INIT("Error creating SW object: %d\n", ret);
 
-   ret = nouveau_object_new(chan, (dev->chipset < 0xe0) ? 0x1f906e : 0x906e,
-                            NVIF_CLASS_SW_GF100, NULL, 0, &screen->nvsw);
-   if (ret)
-      FAIL_SCREEN_INIT("Error creating SW object: %d\n", ret);
-
-   BEGIN_NVC0(push, SUBC_SW(NV01_SUBCHAN_OBJECT), 1);
-   PUSH_DATA (push, screen->nvsw->handle);
+      BEGIN_NVC0(push, SUBC_SW(NV01_SUBCHAN_OBJECT), 1);
+      PUSH_DATA (push, screen->nvsw->handle);
+   }
 
    switch (dev->chipset & ~0xf) {
+   case 0x140:
    case 0x130:
    case 0x120:
    case 0x110:
@@ -1110,6 +1128,9 @@ nvc0_screen_create(struct nouveau_device *dev)
    PUSH_DATA (push, screen->fence.bo->offset + 16);
 
    switch (dev->chipset & ~0xf) {
+   case 0x140:
+      obj_class = GV100_3D_CLASS;
+      break;
    case 0x130:
       switch (dev->chipset) {
       case 0x130:

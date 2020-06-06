@@ -64,4 +64,5 @@
 
 void NVA0C0QmdDump_V00_06(uint32_t *);
 void NVC0C0QmdDump_V02_01(uint32_t *);
+void NVC3C0QmdDump_V02_02(uint32_t *);
 #endif

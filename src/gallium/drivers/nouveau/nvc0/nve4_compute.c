@@ -31,11 +31,14 @@
 #include "qmd.h"
 #include "cla0c0qmd.h"
 #include "clc0c0qmd.h"
+#include "clc3c0qmd.h"
 
 #define NVA0C0_QMDV00_06_VAL_SET(p,a...) NVVAL_MW_SET((p), NVA0C0, QMDV00_06, ##a)
 #define NVA0C0_QMDV00_06_DEF_SET(p,a...) NVDEF_MW_SET((p), NVA0C0, QMDV00_06, ##a)
 #define NVC0C0_QMDV02_01_VAL_SET(p,a...) NVVAL_MW_SET((p), NVC0C0, QMDV02_01, ##a)
 #define NVC0C0_QMDV02_01_DEF_SET(p,a...) NVDEF_MW_SET((p), NVC0C0, QMDV02_01, ##a)
+#define NVC3C0_QMDV02_02_VAL_SET(p,a...) NVVAL_MW_SET((p), NVC3C0, QMDV02_02, ##a)
+#define NVC3C0_QMDV02_02_DEF_SET(p,a...) NVDEF_MW_SET((p), NVC3C0, QMDV02_02, ##a)
 
 int
 nve4_screen_compute_setup(struct nvc0_screen *screen,
@@ -49,6 +52,9 @@ nve4_screen_compute_setup(struct nvc0_screen *screen,
    uint64_t address;
 
    switch (dev->chipset & ~0xf) {
+   case 0x140:
+      obj_class = GV100_COMPUTE_CLASS;
+      break;
    case 0x100:
    case 0xf0:
       obj_class = NVF0_COMPUTE_CLASS; /* GK110 */
@@ -92,24 +98,35 @@ nve4_screen_compute_setup(struct nvc0_screen *screen,
    PUSH_DATAh(push, screen->tls->size / screen->mp_count);
    PUSH_DATA (push, (screen->tls->size / screen->mp_count) & ~0x7fff);
    PUSH_DATA (push, 0xff);
-   BEGIN_NVC0(push, NVE4_CP(MP_TEMP_SIZE_HIGH(1)), 3);
-   PUSH_DATAh(push, screen->tls->size / screen->mp_count);
-   PUSH_DATA (push, (screen->tls->size / screen->mp_count) & ~0x7fff);
-   PUSH_DATA (push, 0xff);
+   if (obj_class < GV100_COMPUTE_CLASS) {
+      BEGIN_NVC0(push, NVE4_CP(MP_TEMP_SIZE_HIGH(1)), 3);
+      PUSH_DATAh(push, screen->tls->size / screen->mp_count);
+      PUSH_DATA (push, (screen->tls->size / screen->mp_count) & ~0x7fff);
+      PUSH_DATA (push, 0xff);
+   }
 
    /* Unified address space ? Who needs that ? Certainly not OpenCL.
     *
     * FATAL: Buffers with addresses inside [0x1000000, 0x3000000] will NOT be
     *  accessible. We cannot prevent that at the moment, so expect failure.
     */
-   BEGIN_NVC0(push, NVE4_CP(LOCAL_BASE), 1);
-   PUSH_DATA (push, 0xff << 24);
-   BEGIN_NVC0(push, NVE4_CP(SHARED_BASE), 1);
-   PUSH_DATA (push, 0xfe << 24);
+   if (obj_class < GV100_COMPUTE_CLASS) {
+      BEGIN_NVC0(push, NVE4_CP(LOCAL_BASE), 1);
+      PUSH_DATA (push, 0xff << 24);
+      BEGIN_NVC0(push, NVE4_CP(SHARED_BASE), 1);
+      PUSH_DATA (push, 0xfe << 24);
 
-   BEGIN_NVC0(push, NVE4_CP(CODE_ADDRESS_HIGH), 2);
-   PUSH_DATAh(push, screen->text->offset);
-   PUSH_DATA (push, screen->text->offset);
+      BEGIN_NVC0(push, NVE4_CP(CODE_ADDRESS_HIGH), 2);
+      PUSH_DATAh(push, screen->text->offset);
+      PUSH_DATA (push, screen->text->offset);
+   } else {
+      BEGIN_NVC0(push, SUBC_CP(0x2a0), 2);
+      PUSH_DATAh(push, 0xfeULL << 24);
+      PUSH_DATA (push, 0xfeULL << 24);
+      BEGIN_NVC0(push, SUBC_CP(0x7b0), 2);
+      PUSH_DATAh(push, 0xffULL << 24);
+      PUSH_DATA (push, 0xffULL << 24);
+   }
 
    BEGIN_NVC0(push, SUBC_CP(0x0310), 1);
    PUSH_DATA (push, (obj_class >= NVF0_COMPUTE_CLASS) ? 0x400 : 0x300);
@@ -717,6 +734,69 @@ gp100_compute_setup_launch_desc(struct nvc0_context *nvc0, uint32_t *qmd,
    nve4_compute_setup_buf_cb(nvc0, true, qmd);
 }
 
+static int
+gv100_sm_config_smem_size(u32 size)
+{
+   if      (size > 64 * 1024) size = 96 * 1024;
+   else if (size > 32 * 1024) size = 64 * 1024;
+   else if (size > 16 * 1024) size = 32 * 1024;
+   else if (size >  8 * 1024) size = 16 * 1024;
+   else                       size =  8 * 1024;
+   return (size / 4096) + 1;
+}
+
+static void
+gv100_compute_setup_launch_desc(struct nvc0_context *nvc0, u32 *qmd,
+                                const struct pipe_grid_info *info)
+{
+   struct nvc0_program *cp = nvc0->compprog;
+   struct nvc0_screen *screen = nvc0->screen;
+   uint64_t entry =
+      screen->text->offset + nvc0_program_symbol_offset(cp, info->pc);
+
+   NVC3C0_QMDV02_02_VAL_SET(qmd, SM_GLOBAL_CACHING_ENABLE, 1);
+   NVC3C0_QMDV02_02_DEF_SET(qmd, API_VISIBLE_CALL_LIMIT, NO_CHECK);
+   NVC3C0_QMDV02_02_DEF_SET(qmd, SAMPLER_INDEX, VIA_HEADER_INDEX);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, SHARED_MEMORY_SIZE,
+                                  align(cp->cp.smem_size, 0x100));
+   NVC3C0_QMDV02_02_VAL_SET(qmd, MIN_SM_CONFIG_SHARED_MEM_SIZE,
+                                  gv100_sm_config_smem_size(8 * 1024));
+   NVC3C0_QMDV02_02_VAL_SET(qmd, MAX_SM_CONFIG_SHARED_MEM_SIZE,
+                                  gv100_sm_config_smem_size(96 * 1024));
+   NVC3C0_QMDV02_02_VAL_SET(qmd, QMD_VERSION, 2);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, QMD_MAJOR_VERSION, 2);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, TARGET_SM_CONFIG_SHARED_MEM_SIZE,
+                                  gv100_sm_config_smem_size(cp->cp.smem_size));
+
+   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_RASTER_WIDTH, info->grid[0]);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_RASTER_HEIGHT, info->grid[1]);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_RASTER_DEPTH, info->grid[2]);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_THREAD_DIMENSION0, info->block[0]);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_THREAD_DIMENSION1, info->block[1]);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_THREAD_DIMENSION2, info->block[2]);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, REGISTER_COUNT_V, cp->num_gprs);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, BARRIER_COUNT, cp->num_barriers);
+
+   // Only bind user uniforms and the driver constant buffer through the
+   // launch descriptor because UBOs are sticked to the driver cb to avoid the
+   // limitation of 8 CBs.
+   if (nvc0->constbuf[5][0].user || cp->parm_size) {
+      gp100_cp_launch_desc_set_cb(qmd, 0, screen->uniform_bo,
+                                  NVC0_CB_USR_INFO(5), 1 << 16);
+
+      // Later logic will attempt to bind a real buffer at position 0. That
+      // should not happen if we've bound a user buffer.
+      assert(nvc0->constbuf[5][0].user || !nvc0->constbuf[5][0].u.buf);
+   }
+   gp100_cp_launch_desc_set_cb(qmd, 7, screen->uniform_bo,
+                               NVC0_CB_AUX_INFO(5), 1 << 11);
+
+   nve4_compute_setup_buf_cb(nvc0, true, qmd);
+
+   NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_LOWER, entry & 0xffffffff);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_UPPER, entry >> 32);
+}
+
 static inline void *
 nve4_compute_alloc_launch_desc(struct nouveau_context *nv,
                                struct nouveau_bo **pbo, uint64_t *pgpuaddr)
@@ -787,6 +867,9 @@ nve4_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    if (ret)
       goto out;
 
+   if (nvc0->screen->compute->oclass >= GV100_COMPUTE_CLASS)
+      gv100_compute_setup_launch_desc(nvc0, desc, info);
+   else
    if (nvc0->screen->compute->oclass >= GP100_COMPUTE_CLASS)
       gp100_compute_setup_launch_desc(nvc0, desc, info);
    else
@@ -797,6 +880,9 @@ nve4_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 #ifndef NDEBUG
    if (debug_get_num_option("NV50_PROG_DEBUG", 0)) {
       debug_printf("Queue Meta Data:\n");
+      if (nvc0->screen->compute->oclass >= GV100_COMPUTE_CLASS)
+         NVC3C0QmdDump_V02_02(desc);
+      else
       if (nvc0->screen->compute->oclass >= GP100_COMPUTE_CLASS)
          NVC0C0QmdDump_V02_01(desc);
       else
@@ -930,7 +1016,6 @@ nve4_compute_validate_textures(struct nvc0_context *nvc0)
    }
    nvc0->dirty_3d |= NVC0_NEW_3D_TEXTURES;
 }
-
 
 #ifdef NOUVEAU_NVE4_MP_TRAP_HANDLER
 static void

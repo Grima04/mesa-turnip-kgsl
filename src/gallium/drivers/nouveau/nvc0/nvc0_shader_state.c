@@ -70,8 +70,14 @@ nvc0_program_sp_start_id(struct nvc0_context *nvc0, int stage,
 {
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
 
-   BEGIN_NVC0(push, NVC0_3D(SP_START_ID(stage)), 1);
-   PUSH_DATA (push, prog->code_base);
+   if (nvc0->screen->eng3d->oclass < GV100_3D_CLASS) {
+      BEGIN_NVC0(push, NVC0_3D(SP_START_ID(stage)), 1);
+      PUSH_DATA (push, prog->code_base);
+   } else {
+      BEGIN_NVC0(push, SUBC_3D(GV100_3D_SP_ADDRESS_HIGH(stage)), 2);
+      PUSH_DATAh(push, nvc0->screen->text->offset + prog->code_base);
+      PUSH_DATA (push, nvc0->screen->text->offset + prog->code_base);
+   }
 }
 
 void
