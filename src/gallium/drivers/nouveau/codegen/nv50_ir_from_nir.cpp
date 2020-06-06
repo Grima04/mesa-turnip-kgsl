@@ -2810,6 +2810,14 @@ Converter::visit(nir_alu_instr *insn)
       mkOp1(OP_BFIND, TYPE_U32, newDefs[0], tmp)->subOp = NV50_IR_SUBOP_BFIND_SAMT;
       break;
    }
+   case nir_op_extract_u8: {
+      DEFAULT_CHECKS;
+      LValues &newDefs = convert(&insn->dest);
+      Value *prmt = getSSA();
+      mkOp2(OP_OR, TYPE_U32, prmt, getSrc(&insn->src[1]), loadImm(NULL, 0x4440));
+      mkOp3(OP_PERMT, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), prmt, loadImm(NULL, 0));
+      break;
+   }
    // boolean conversions
    case nir_op_b2f32: {
       DEFAULT_CHECKS;
