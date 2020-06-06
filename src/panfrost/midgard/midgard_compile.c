@@ -253,103 +253,6 @@ midgard_nir_lower_fdot2(nir_shader *shader)
         return progress;
 }
 
-/* Midgard can't write depth and stencil separately. It has to happen in a
- * single store operation containing both. Let's add a panfrost specific
- * intrinsic and turn all depth/stencil stores into a packed depth+stencil
- * one.
- */
-static bool
-midgard_nir_lower_zs_store(nir_shader *nir)
-{
-        if (nir->info.stage != MESA_SHADER_FRAGMENT)
-                return false;
-
-        nir_variable *z_var = NULL, *s_var = NULL;
-
-        nir_foreach_variable(var, &nir->outputs) {
-                if (var->data.location == FRAG_RESULT_DEPTH)
-                        z_var = var;
-                else if (var->data.location == FRAG_RESULT_STENCIL)
-                        s_var = var;
-        }
-
-        if (!z_var && !s_var)
-                return false;
-
-        bool progress = false;
-
-        nir_foreach_function(function, nir) {
-                if (!function->impl) continue;
-
-                nir_intrinsic_instr *z_store = NULL, *s_store = NULL, *last_store = NULL;
-
-                nir_foreach_block(block, function->impl) {
-                        nir_foreach_instr_safe(instr, block) {
-                                if (instr->type != nir_instr_type_intrinsic)
-                                        continue;
-
-                                nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-                                if (intr->intrinsic != nir_intrinsic_store_output)
-                                        continue;
-
-                                if (z_var && nir_intrinsic_base(intr) == z_var->data.driver_location) {
-                                        assert(!z_store);
-                                        z_store = intr;
-                                        last_store = intr;
-                                }
-
-                                if (s_var && nir_intrinsic_base(intr) == s_var->data.driver_location) {
-                                        assert(!s_store);
-                                        s_store = intr;
-                                        last_store = intr;
-                                }
-                        }
-                }
-
-                if (!z_store && !s_store) continue;
-
-                nir_builder b;
-                nir_builder_init(&b, function->impl);
-
-                b.cursor = nir_before_instr(&last_store->instr);
-
-		nir_ssa_def *zs_store_src;
-
-                if (z_store && s_store) {
-                        nir_ssa_def *srcs[2] = {
-                                nir_ssa_for_src(&b, z_store->src[0], 1),
-                                nir_ssa_for_src(&b, s_store->src[0], 1),
-                        };
-
-                        zs_store_src = nir_vec(&b, srcs, 2);
-                } else {
-                        zs_store_src = nir_ssa_for_src(&b, last_store->src[0], 1);
-                }
-
-                nir_intrinsic_instr *zs_store;
-
-                zs_store = nir_intrinsic_instr_create(b.shader,
-                                                      nir_intrinsic_store_zs_output_pan);
-                zs_store->src[0] = nir_src_for_ssa(zs_store_src);
-                zs_store->num_components = z_store && s_store ? 2 : 1;
-                nir_intrinsic_set_component(zs_store, z_store ? 0 : 1);
-
-                /* Replace the Z and S store by a ZS store */
-                nir_builder_instr_insert(&b, &zs_store->instr);
-
-                if (z_store)
-                        nir_instr_remove(&z_store->instr);
-
-                if (s_store)
-                        nir_instr_remove(&s_store->instr);
-
-                nir_metadata_preserve(function->impl, nir_metadata_block_index | nir_metadata_dominance);
-                progress = true;
-        }
-
-        return progress;
-}
-
 /* Flushes undefined values to zero */
 
 static void
@@ -1652,22 +1555,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
         }
 
-        case nir_intrinsic_store_zs_output_pan: {
-                assert(ctx->stage == MESA_SHADER_FRAGMENT);
-                emit_fragment_store(ctx, nir_src_index(ctx, &instr->src[0]),
-                                    MIDGARD_ZS_RT);
-
-                midgard_instruction *br = ctx->writeout_branch[MIDGARD_ZS_RT];
-
-                if (!nir_intrinsic_component(instr))
-                        br->writeout_depth = true;
-                if (nir_intrinsic_component(instr) ||
-                    instr->num_components)
-                        br->writeout_stencil = true;
-                assert(br->writeout_depth | br->writeout_stencil);
-                break;
-        }
-
         case nir_intrinsic_store_output:
                 assert(nir_src_is_const(instr->src[1]) && "no indirect outputs");
 
@@ -2637,7 +2524,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         NIR_PASS_V(nir, nir_lower_io, nir_var_all, glsl_type_size, 0);
         NIR_PASS_V(nir, nir_lower_ssbo);
-        NIR_PASS_V(nir, midgard_nir_lower_zs_store);
 
         /* Optimisation passes */
 
