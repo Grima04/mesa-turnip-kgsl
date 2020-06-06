@@ -1307,13 +1307,14 @@ emit_fragment_store(compiler_context *ctx, unsigned src, enum midgard_rt_id rt)
         struct midgard_instruction ins =
                 v_branch(false, false);
 
-        ins.writeout = true;
+        bool depth_only = (rt == MIDGARD_ZS_RT);
+
+        ins.writeout = depth_only ? PAN_WRITEOUT_Z : PAN_WRITEOUT_C;
 
         /* Add dependencies */
         ins.src[0] = src;
         ins.src_types[0] = nir_type_uint32;
-        ins.constants.u32[0] = rt == MIDGARD_ZS_RT ?
-                               0xFF : (rt - MIDGARD_COLOR_RT0) * 0x100;
+        ins.constants.u32[0] = depth_only ? 0xFF : (rt - MIDGARD_COLOR_RT0) * 0x100;
         for (int i = 0; i < 4; ++i)
                 ins.swizzle[0][i] = i;
 
@@ -2233,9 +2234,7 @@ emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
         /* Loop to ourselves */
         midgard_instruction *br = ctx->writeout_branch[rt];
         struct midgard_instruction ins = v_branch(false, false);
-        ins.writeout = true;
-        ins.writeout_depth = br->writeout_depth;
-        ins.writeout_stencil = br->writeout_stencil;
+        ins.writeout = br->writeout;
         ins.branch.target_block = ctx->block_count - 1;
         ins.constants.u32[0] = br->constants.u32[0];
         memcpy(&ins.src_types, &br->src_types, sizeof(ins.src_types));

@@ -70,6 +70,10 @@ typedef struct midgard_branch {
         };
 } midgard_branch;
 
+#define PAN_WRITEOUT_C 1
+#define PAN_WRITEOUT_Z 2
+#define PAN_WRITEOUT_S 4
+
 /* Generic in-memory data type repesenting a single logical instruction, rather
  * than a single instruction group. This is the preferred form for code gen.
  * Multiple midgard_insturctions will later be combined during scheduling,
@@ -142,9 +146,7 @@ typedef struct midgard_instruction {
         bool has_inline_constant;
 
         bool compact_branch;
-        bool writeout;
-        bool writeout_depth;
-        bool writeout_stencil;
+        uint8_t writeout;
         bool last_writeout;
 
         /* Masks in a saneish format. One bit per channel, not packed fancy.
