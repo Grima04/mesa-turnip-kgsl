@@ -67,6 +67,7 @@ enum operation
    OP_AND,
    OP_OR,
    OP_XOR,
+   OP_LOP3_LUT,
    OP_SHL,
    OP_SHR,
    OP_MAX,
@@ -254,6 +255,15 @@ enum operation
 #define NV50_IR_SUBOP_VOTE_ALL 0
 #define NV50_IR_SUBOP_VOTE_ANY 1
 #define NV50_IR_SUBOP_VOTE_UNI 2
+#define NV50_IR_SUBOP_LOP3_LUT_SRC0 0xf0
+#define NV50_IR_SUBOP_LOP3_LUT_SRC1 0xcc
+#define NV50_IR_SUBOP_LOP3_LUT_SRC2 0xaa
+#define NV50_IR_SUBOP_LOP3_LUT(exp) ({         \
+      uint8_t a = NV50_IR_SUBOP_LOP3_LUT_SRC0; \
+      uint8_t b = NV50_IR_SUBOP_LOP3_LUT_SRC1; \
+      uint8_t c = NV50_IR_SUBOP_LOP3_LUT_SRC2; \
+      (uint8_t)(exp);                          \
+})
 
 #define NV50_IR_SUBOP_MINMAX_LOW  1
 #define NV50_IR_SUBOP_MINMAX_MED  2

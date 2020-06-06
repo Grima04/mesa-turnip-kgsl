@@ -780,6 +780,14 @@ ConstantFolding::expr(Instruction *i,
    memset(&res.data, 0, sizeof(res.data));
 
    switch (i->op) {
+   case OP_LOP3_LUT:
+      for (int n = 0; n < 32; n++) {
+         uint8_t lut = ((a->data.u32 >> n) & 1) << 2 |
+                       ((b->data.u32 >> n) & 1) << 1 |
+                       ((c->data.u32 >> n) & 1);
+         res.data.u32 |= !!(i->subOp & (1 << lut)) << n;
+      }
+      break;
    case OP_INSBF: {
       int offset = b->data.u32 & 0xff;
       int width = (b->data.u32 >> 8) & 0xff;

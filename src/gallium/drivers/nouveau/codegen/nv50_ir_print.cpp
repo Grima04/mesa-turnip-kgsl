@@ -93,6 +93,7 @@ const char *operationStr[OP_LAST + 1] =
    "and",
    "or",
    "xor",
+   "lop3 lut",
    "shl",
    "shr",
    "max",
