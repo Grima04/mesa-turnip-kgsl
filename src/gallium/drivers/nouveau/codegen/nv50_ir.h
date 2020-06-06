@@ -168,6 +168,7 @@ enum operation
    OP_SHFL, // warp shuffle
    OP_VOTE,
    OP_BUFQ, // buffer query
+   OP_WARPSYNC,
    OP_LAST
 };
 

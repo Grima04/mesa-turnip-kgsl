@@ -58,6 +58,7 @@ const uint8_t Target::operationSrcNr[] =
    3,                      // SHFL
    1,                      // VOTE
    1,                      // BUFQ
+   1,                      // WARPSYNC
    0
 };
 
@@ -135,6 +136,8 @@ const OpClass Target::operationClass[] =
    // VOTE
    OPCLASS_OTHER,
    // BUFQ
+   OPCLASS_OTHER,
+   // WARPSYNC
    OPCLASS_OTHER,
    OPCLASS_PSEUDO // LAST
 };
