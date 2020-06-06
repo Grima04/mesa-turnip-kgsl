@@ -3431,6 +3431,7 @@ nvir_nir_shader_compiler_options(int chipset)
       .max_unroll_iterations = 32,
       .lower_int64_options = (nir_lower_int64_options) ( // TODO
             nir_lower_divmod64 |
+            ((chipset >= NVISA_GM107_CHIPSET) ? nir_lower_extract64 : 0) |
             nir_lower_ufind_msb64
       ),
       .lower_doubles_options = (nir_lower_doubles_options) ( // TODO
