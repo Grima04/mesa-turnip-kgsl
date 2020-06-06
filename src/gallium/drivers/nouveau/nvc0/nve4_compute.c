@@ -27,8 +27,14 @@
 
 #include "codegen/nv50_ir_driver.h"
 
+#include "drf.h"
+#include "qmd.h"
+#include "cla0c0qmd.h"
+
+#define NVA0C0_QMDV00_06_VAL_SET(p,a...) NVVAL_MW_SET((p), NVA0C0, QMDV00_06, ##a)
+#define NVA0C0_QMDV00_06_DEF_SET(p,a...) NVDEF_MW_SET((p), NVA0C0, QMDV00_06, ##a)
+
 #ifndef NDEBUG
-static void nve4_compute_dump_launch_desc(const struct nve4_cp_launch_desc *);
 static void gp100_compute_dump_launch_desc(const struct gp100_cp_launch_desc *);
 #endif
 
@@ -542,14 +548,19 @@ nve4_compute_upload_input(struct nvc0_context *nvc0,
    PUSH_DATA (push, NVE4_COMPUTE_FLUSH_CB);
 }
 
-static inline uint8_t
-nve4_compute_derive_cache_split(struct nvc0_context *nvc0, uint32_t shared_size)
+static inline void
+nve4_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index, struct nouveau_bo *bo,
+                           uint32_t base, uint32_t size)
 {
-   if (shared_size > (32 << 10))
-      return NVC0_3D_CACHE_SPLIT_48K_SHARED_16K_L1;
-   if (shared_size > (16 << 10))
-      return NVE4_3D_CACHE_SPLIT_32K_SHARED_32K_L1;
-   return NVC1_3D_CACHE_SPLIT_16K_SHARED_48K_L1;
+   uint64_t address = bo->offset + base;
+
+   assert(index < 8);
+   assert(!(base & 0xff));
+
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_LOWER, index, address);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_UPPER, index, address >> 32);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CONSTANT_BUFFER_SIZE, index, size);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, CONSTANT_BUFFER_VALID, index, TRUE);
 }
 
 static void
@@ -577,48 +588,69 @@ nve4_compute_setup_buf_cb(struct nvc0_context *nvc0, bool gp100, void *desc)
 }
 
 static void
-nve4_compute_setup_launch_desc(struct nvc0_context *nvc0,
-                               struct nve4_cp_launch_desc *desc,
+nve4_compute_setup_launch_desc(struct nvc0_context *nvc0, uint32_t *qmd,
                                const struct pipe_grid_info *info)
 {
    const struct nvc0_screen *screen = nvc0->screen;
    const struct nvc0_program *cp = nvc0->compprog;
 
-   nve4_cp_launch_desc_init_default(desc);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, INVALIDATE_TEXTURE_HEADER_CACHE, TRUE);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, INVALIDATE_TEXTURE_SAMPLER_CACHE, TRUE);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, INVALIDATE_TEXTURE_DATA_CACHE, TRUE);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, INVALIDATE_SHADER_DATA_CACHE, TRUE);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, INVALIDATE_SHADER_CONSTANT_CACHE, TRUE);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, RELEASE_MEMBAR_TYPE, FE_SYSMEMBAR);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, CWD_MEMBAR_TYPE, L1_SYSMEMBAR);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, API_VISIBLE_CALL_LIMIT, NO_CHECK);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, SASS_VERSION, 0x30);
 
-   desc->entry = nvc0_program_symbol_offset(cp, info->pc);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, PROGRAM_OFFSET,
+                                 nvc0_program_symbol_offset(cp, info->pc));
 
-   desc->griddim_x = info->grid[0];
-   desc->griddim_y = info->grid[1];
-   desc->griddim_z = info->grid[2];
-   desc->blockdim_x = info->block[0];
-   desc->blockdim_y = info->block[1];
-   desc->blockdim_z = info->block[2];
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_RASTER_WIDTH, info->grid[0]);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_RASTER_HEIGHT, info->grid[1]);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_RASTER_DEPTH, info->grid[2]);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_THREAD_DIMENSION0, info->block[0]);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_THREAD_DIMENSION1, info->block[1]);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_THREAD_DIMENSION2, info->block[2]);
 
-   desc->shared_size = align(cp->cp.smem_size, 0x100);
-   desc->local_size_p = (cp->hdr[1] & 0xfffff0) + align(cp->cp.lmem_size, 0x10);
-   desc->local_size_n = 0;
-   desc->cstack_size = 0x800;
-   desc->cache_split = nve4_compute_derive_cache_split(nvc0, cp->cp.smem_size);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, SHARED_MEMORY_SIZE,
+                                 align(cp->cp.smem_size, 0x100));
+   NVA0C0_QMDV00_06_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE,
+                                 (cp->hdr[1] & 0xfffff0) +
+                                 align(cp->cp.lmem_size, 0x10));
+   NVA0C0_QMDV00_06_VAL_SET(qmd, SHADER_LOCAL_MEMORY_HIGH_SIZE, 0);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, SHADER_LOCAL_MEMORY_CRS_SIZE, 0x800);
 
-   desc->gpr_alloc = cp->num_gprs;
-   desc->bar_alloc = cp->num_barriers;
+   if (cp->cp.smem_size > (32 << 10))
+      NVA0C0_QMDV00_06_DEF_SET(qmd, L1_CONFIGURATION,
+                                    DIRECTLY_ADDRESSABLE_MEMORY_SIZE_48KB);
+   else
+   if (cp->cp.smem_size > (16 << 10))
+      NVA0C0_QMDV00_06_DEF_SET(qmd, L1_CONFIGURATION,
+                                    DIRECTLY_ADDRESSABLE_MEMORY_SIZE_32KB);
+   else
+      NVA0C0_QMDV00_06_DEF_SET(qmd, L1_CONFIGURATION,
+                                    DIRECTLY_ADDRESSABLE_MEMORY_SIZE_16KB);
+
+   NVA0C0_QMDV00_06_VAL_SET(qmd, REGISTER_COUNT, cp->num_gprs);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, BARRIER_COUNT, cp->num_barriers);
 
    // Only bind user uniforms and the driver constant buffer through the
    // launch descriptor because UBOs are sticked to the driver cb to avoid the
    // limitation of 8 CBs.
    if (nvc0->constbuf[5][0].user || cp->parm_size) {
-      nve4_cp_launch_desc_set_cb(desc, 0, screen->uniform_bo,
+      nve4_cp_launch_desc_set_cb(qmd, 0, screen->uniform_bo,
                                  NVC0_CB_USR_INFO(5), 1 << 16);
 
       // Later logic will attempt to bind a real buffer at position 0. That
       // should not happen if we've bound a user buffer.
       assert(nvc0->constbuf[5][0].user || !nvc0->constbuf[5][0].u.buf);
    }
-   nve4_cp_launch_desc_set_cb(desc, 7, screen->uniform_bo,
+   nve4_cp_launch_desc_set_cb(qmd, 7, screen->uniform_bo,
                               NVC0_CB_AUX_INFO(5), 1 << 11);
 
-   nve4_compute_setup_buf_cb(nvc0, false, desc);
+   nve4_compute_setup_buf_cb(nvc0, false, qmd);
 }
 
 static void
@@ -677,6 +709,7 @@ nve4_compute_alloc_launch_desc(struct nouveau_context *nv,
       ptr += adj;
       *pgpuaddr += adj;
    }
+   memset(ptr, 0x00, 256);
    return ptr;
 }
 
@@ -743,10 +776,11 @@ nve4_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
 #ifndef NDEBUG
    if (debug_get_num_option("NV50_PROG_DEBUG", 0)) {
+      debug_printf("Queue Meta Data:\n");
       if (nvc0->screen->compute->oclass >= GP100_COMPUTE_CLASS)
          gp100_compute_dump_launch_desc(desc);
       else
-         nve4_compute_dump_launch_desc(desc);
+         NVA0C0QmdDump_V00_06(desc);
    }
 #endif
 
@@ -879,65 +913,6 @@ nve4_compute_validate_textures(struct nvc0_context *nvc0)
 
 
 #ifndef NDEBUG
-static const char *nve4_cache_split_name(unsigned value)
-{
-   switch (value) {
-   case NVC1_3D_CACHE_SPLIT_16K_SHARED_48K_L1: return "16K_SHARED_48K_L1";
-   case NVE4_3D_CACHE_SPLIT_32K_SHARED_32K_L1: return "32K_SHARED_32K_L1";
-   case NVC0_3D_CACHE_SPLIT_48K_SHARED_16K_L1: return "48K_SHARED_16K_L1";
-   default:
-      return "(invalid)";
-   }
-}
-
-static void
-nve4_compute_dump_launch_desc(const struct nve4_cp_launch_desc *desc)
-{
-   const uint32_t *data = (const uint32_t *)desc;
-   unsigned i;
-   bool zero = false;
-
-   debug_printf("COMPUTE LAUNCH DESCRIPTOR:\n");
-
-   for (i = 0; i < sizeof(*desc); i += 4) {
-      if (data[i / 4]) {
-         debug_printf("[%x]: 0x%08x\n", i, data[i / 4]);
-         zero = false;
-      } else
-      if (!zero) {
-         debug_printf("...\n");
-         zero = true;
-      }
-   }
-
-   debug_printf("entry = 0x%x\n", desc->entry);
-   debug_printf("grid dimensions = %ux%ux%u\n",
-                desc->griddim_x, desc->griddim_y, desc->griddim_z);
-   debug_printf("block dimensions = %ux%ux%u\n",
-                desc->blockdim_x, desc->blockdim_y, desc->blockdim_z);
-   debug_printf("s[] size: 0x%x\n", desc->shared_size);
-   debug_printf("l[] size: -0x%x / +0x%x\n",
-                desc->local_size_n, desc->local_size_p);
-   debug_printf("stack size: 0x%x\n", desc->cstack_size);
-   debug_printf("barrier count: %u\n", desc->bar_alloc);
-   debug_printf("$r count: %u\n", desc->gpr_alloc);
-   debug_printf("cache split: %s\n", nve4_cache_split_name(desc->cache_split));
-   debug_printf("linked tsc: %d\n", desc->linked_tsc);
-
-   for (i = 0; i < 8; ++i) {
-      uint64_t address;
-      uint32_t size = desc->cb[i].size;
-      bool valid = !!(desc->cb_mask & (1 << i));
-
-      address = ((uint64_t)desc->cb[i].address_h << 32) | desc->cb[i].address_l;
-
-      if (!valid && !address && !size)
-         continue;
-      debug_printf("CB[%u]: address = 0x%"PRIx64", size 0x%x%s\n",
-                   i, address, size, valid ? "" : "  (invalid)");
-   }
-}
-
 static void
 gp100_compute_dump_launch_desc(const struct gp100_cp_launch_desc *desc)
 {

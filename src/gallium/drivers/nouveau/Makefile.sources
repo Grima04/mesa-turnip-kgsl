@@ -151,6 +151,10 @@ NVC0_CODEGEN_SOURCES := \
 	codegen/nv50_ir_target_nvc0.h
 
 NVC0_C_SOURCES := \
+	nvc0/cla0c0qmd.h \
+	nvc0/drf.h \
+	nvc0/qmd.h \
+	nvc0/qmda0c0.c \
 	nvc0/gm107_texture.xml.h \
 	nvc0/nvc0_3d.xml.h \
 	nvc0/nvc0_compute.c \
