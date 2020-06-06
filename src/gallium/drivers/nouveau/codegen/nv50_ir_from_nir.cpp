@@ -2842,6 +2842,16 @@ Converter::visit(nir_alu_instr *insn)
       mkOp3(OP_PERMT, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), prmt, loadImm(NULL, 0));
       break;
    }
+   case nir_op_urol: {
+      DEFAULT_CHECKS;
+      LValues &newDefs = convert(&insn->dest);
+      mkOp3(OP_SHF, TYPE_U32, newDefs[0], getSrc(&insn->src[0]),
+            getSrc(&insn->src[1]), getSrc(&insn->src[0]))
+         ->subOp = NV50_IR_SUBOP_SHF_L |
+                   NV50_IR_SUBOP_SHF_W |
+                   NV50_IR_SUBOP_SHF_HI;
+      break;
+   }
    // boolean conversions
    case nir_op_b2f32: {
       DEFAULT_CHECKS;
