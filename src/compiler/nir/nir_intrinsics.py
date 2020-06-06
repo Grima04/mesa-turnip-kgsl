@@ -875,7 +875,7 @@ intrinsic("bindless_resource_ir3", [1], dest_comp=1, indices=[DESC_SET], flags=[
 
 # src[] = { value }
 store("raw_output_pan", 1, [])
-store("zs_output_pan", 1, [COMPONENT])
+store("combined_output_pan", 4, [BASE, COMPONENT])
 load("raw_output_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
 
 # Loads the sampler paramaters <min_lod, max_lod, lod_bias>
