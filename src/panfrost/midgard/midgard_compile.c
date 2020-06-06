@@ -253,6 +253,17 @@ midgard_nir_lower_fdot2(nir_shader *shader)
         return progress;
 }
 
+static const nir_variable *
+search_var(struct exec_list *vars, unsigned driver_loc)
+{
+        nir_foreach_variable(var, vars) {
+                if (var->data.driver_location == driver_loc)
+                        return var;
+        }
+
+        return NULL;
+}
+
 /* Flushes undefined values to zero */
 
 static void
@@ -1377,17 +1388,6 @@ emit_control_barrier(compiler_context *ctx)
         };
 
         emit_mir_instruction(ctx, ins);
-}
-
-static const nir_variable *
-search_var(struct exec_list *vars, unsigned driver_loc)
-{
-        nir_foreach_variable(var, vars) {
-                if (var->data.driver_location == driver_loc)
-                        return var;
-        }
-
-        return NULL;
 }
 
 static unsigned
