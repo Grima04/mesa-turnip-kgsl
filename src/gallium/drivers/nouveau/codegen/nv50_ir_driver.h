@@ -77,6 +77,7 @@ struct nv50_ir_prog_symbol
 #define NVISA_GK20A_CHIPSET    0xea
 #define NVISA_GM107_CHIPSET    0x110
 #define NVISA_GM200_CHIPSET    0x120
+#define NVISA_GV100_CHIPSET    0x140
 
 struct nv50_ir_prog_info
 {

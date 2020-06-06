@@ -898,6 +898,8 @@ NVC0LoweringPass::visit(Function *fn)
       gpEmitAddress = bld.loadImm(NULL, 0)->asLValue();
       if (fn->cfgExit) {
          bld.setPosition(BasicBlock::get(fn->cfgExit)->getExit(), false);
+         if (prog->getTarget()->getChipset() >= NVISA_GV100_CHIPSET)
+            bld.mkOp1(OP_FINAL, TYPE_NONE, NULL, gpEmitAddress)->fixed = 1;
          bld.mkMovToReg(0, gpEmitAddress);
       }
    }

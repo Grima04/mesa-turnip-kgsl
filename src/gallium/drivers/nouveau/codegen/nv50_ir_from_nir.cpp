@@ -3356,21 +3356,21 @@ static nir_shader_compiler_options
 nvir_nir_shader_compiler_options(int chipset)
 {
    return {
-      .lower_fdiv = false,
+      .lower_fdiv = (chipset >= NVISA_GV100_CHIPSET),
       .lower_ffma = false,
       .fuse_ffma = false, /* nir doesn't track mad vs fma */
-      .lower_flrp16 = false,
+      .lower_flrp16 = (chipset >= NVISA_GV100_CHIPSET),
       .lower_flrp32 = true,
       .lower_flrp64 = true,
-      .lower_fpow = false,
+      .lower_fpow = false, // TODO: nir's lowering is broken, or we could use it
       .lower_fsat = false,
       .lower_fsqrt = false, // TODO: only before gm200
       .lower_sincos = false,
       .lower_fmod = true,
       .lower_bitfield_extract = false,
-      .lower_bitfield_extract_to_shifts = false,
+      .lower_bitfield_extract_to_shifts = (chipset >= NVISA_GV100_CHIPSET),
       .lower_bitfield_insert = false,
-      .lower_bitfield_insert_to_shifts = false,
+      .lower_bitfield_insert_to_shifts = (chipset >= NVISA_GV100_CHIPSET),
       .lower_bitfield_insert_to_bitfield_select = false,
       .lower_bitfield_reverse = false,
       .lower_bit_count = false,
@@ -3385,8 +3385,8 @@ nvir_nir_shader_compiler_options(int chipset)
       .lower_vector_cmp = false,
       .lower_idiv = true,
       .lower_bitops = false,
-      .lower_isign = false, // TODO
-      .lower_fsign = false,
+      .lower_isign = (chipset >= NVISA_GV100_CHIPSET),
+      .lower_fsign = (chipset >= NVISA_GV100_CHIPSET),
       .lower_fdph = false,
       .lower_fdot = false,
       .fdot_replicates = false, // TODO
@@ -3425,18 +3425,35 @@ nvir_nir_shader_compiler_options(int chipset)
       .unify_interfaces = false,
       .use_interpolated_input_intrinsics = true,
       .lower_mul_2x32_64 = true, // TODO
-      .lower_rotate = true,
+      .lower_rotate = (chipset < NVISA_GV100_CHIPSET),
       .has_imul24 = false,
       .intel_vec4 = false,
       .max_unroll_iterations = 32,
-      .lower_int64_options = (nir_lower_int64_options) ( // TODO
+      .lower_int64_options = (nir_lower_int64_options) (
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_isign64 : 0) |
             nir_lower_divmod64 |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul_high64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_mov64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_icmp64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_iabs64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_ineg64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_logic64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_minmax64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_shift64 : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul_2x32_64 : 0) |
             ((chipset >= NVISA_GM107_CHIPSET) ? nir_lower_extract64 : 0) |
             nir_lower_ufind_msb64
       ),
-      .lower_doubles_options = (nir_lower_doubles_options) ( // TODO
-            nir_lower_dmod
-      ),
+      .lower_doubles_options = (nir_lower_doubles_options) (
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_drcp : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dsqrt : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_drsq : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dfract : 0) |
+            nir_lower_dmod |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dsub : 0) |
+            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_ddiv : 0)
+      )
    };
 }
 
@@ -3444,10 +3461,14 @@ static const nir_shader_compiler_options gf100_nir_shader_compiler_options =
 nvir_nir_shader_compiler_options(NVISA_GF100_CHIPSET);
 static const nir_shader_compiler_options gm107_nir_shader_compiler_options =
 nvir_nir_shader_compiler_options(NVISA_GM107_CHIPSET);
+static const nir_shader_compiler_options gv100_nir_shader_compiler_options =
+nvir_nir_shader_compiler_options(NVISA_GV100_CHIPSET);
 
 const nir_shader_compiler_options *
 nv50_ir_nir_shader_compiler_options(int chipset)
 {
+   if (chipset >= NVISA_GV100_CHIPSET)
+      return &gv100_nir_shader_compiler_options;
    if (chipset >= NVISA_GM107_CHIPSET)
       return &gm107_nir_shader_compiler_options;
    return &gf100_nir_shader_compiler_options;

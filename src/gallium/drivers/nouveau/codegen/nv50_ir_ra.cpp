@@ -988,6 +988,7 @@ GCRA::coalesce(ArrayList& insns)
    case 0x110:
    case 0x120:
    case 0x130:
+   case 0x140:
       ret = doCoalesce(insns, JOIN_MASK_UNION);
       break;
    default:
@@ -2297,13 +2298,25 @@ RegAlloc::InsertConstraintsPass::texConstraintGM107(TexInstruction *tex)
    if (isTextureOp(tex->op))
       textureMask(tex);
 
-   if (isScalarTexGM107(tex)) {
-      handleScalarTexGM107(tex);
-      return;
-   }
+   if (targ->getChipset() < NVISA_GV100_CHIPSET) {
+      if (isScalarTexGM107(tex)) {
+         handleScalarTexGM107(tex);
+         return;
+      }
 
-   assert(!tex->tex.scalar);
-   condenseDefs(tex);
+      assert(!tex->tex.scalar);
+      condenseDefs(tex);
+   } else {
+      if (isTextureOp(tex->op)) {
+         int defCount = tex->defCount(0xff);
+         if (defCount > 3)
+            condenseDefs(tex, 2, 3);
+         if (defCount > 1)
+            condenseDefs(tex, 0, 1);
+      } else {
+         condenseDefs(tex);
+      }
+   }
 
    if (isSurfaceOp(tex->op)) {
       int s = tex->tex.target.getDim() +
@@ -2485,6 +2498,7 @@ RegAlloc::InsertConstraintsPass::visit(BasicBlock *bb)
          case 0x110:
          case 0x120:
          case 0x130:
+         case 0x140:
             texConstraintGM107(tex);
             break;
          default:

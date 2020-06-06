@@ -144,6 +144,7 @@ const OpClass Target::operationClass[] =
 };
 
 
+extern Target *getTargetGV100(unsigned int chipset);
 extern Target *getTargetGM107(unsigned int chipset);
 extern Target *getTargetNVC0(unsigned int chipset);
 extern Target *getTargetNV50(unsigned int chipset);
@@ -153,6 +154,8 @@ Target *Target::create(unsigned int chipset)
    STATIC_ASSERT(ARRAY_SIZE(operationSrcNr) == OP_LAST + 1);
    STATIC_ASSERT(ARRAY_SIZE(operationClass) == OP_LAST + 1);
    switch (chipset & ~0xf) {
+   case 0x140:
+      return getTargetGV100(chipset);
    case 0x110:
    case 0x120:
    case 0x130:
