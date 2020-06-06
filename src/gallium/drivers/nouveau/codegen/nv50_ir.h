@@ -900,7 +900,7 @@ public:
 
    uint16_t subOp; // quadop, 1 for mul-high, etc.
 
-   unsigned encSize    : 4; // encoding size in bytes
+   unsigned encSize    : 5; // encoding size in bytes
    unsigned saturate   : 1; // to [0.0f, 1.0f]
    unsigned join       : 1; // converge control flow (use OP_JOIN until end)
    unsigned fixed      : 1; // prevent dead code elimination
