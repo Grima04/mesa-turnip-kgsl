@@ -906,7 +906,7 @@ mir_schedule_alu(
 
         mir_choose_alu(&branch, instructions, worklist, len, &predicate, ALU_ENAB_BR_COMPACT);
         mir_update_worklist(worklist, len, instructions, branch);
-        bool writeout = branch && branch->writeout;
+        unsigned writeout = branch ? branch->writeout : 0;
 
         if (branch && branch->branch.conditional) {
                 midgard_instruction *cond = mir_schedule_condition(ctx, &predicate, worklist, len, instructions, branch);
@@ -938,7 +938,8 @@ mir_schedule_alu(
                 predicate.no_cond = true;
         }
 
-        mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
+        if (writeout < PAN_WRITEOUT_Z)
+                mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
 
         if (!writeout) {
                 mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
@@ -975,8 +976,67 @@ mir_schedule_alu(
                 branch->dest_type = vadd->dest_type;
         }
 
+        if (writeout & PAN_WRITEOUT_Z) {
+                /* Depth writeout */
+
+                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(1) : branch->src[2];
+
+                predicate.unit = UNIT_SMUL;
+                predicate.dest = src;
+                predicate.mask = 0x1;
+
+                midgard_instruction *z_store;
+
+                z_store = mir_choose_instruction(instructions, worklist, len, &predicate);
+
+                predicate.dest = predicate.mask = 0;
+
+                if (!z_store) {
+                        z_store = ralloc(ctx, midgard_instruction);
+                        *z_store = v_mov(src, make_compiler_temp(ctx));
+
+                        branch->src[2] = z_store->dest;
+                }
+
+                smul = z_store;
+                smul->unit = UNIT_SMUL;
+        }
+
+        if (writeout & PAN_WRITEOUT_S) {
+                /* Stencil writeout */
+
+                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(1) : branch->src[3];
+
+                predicate.unit = UNIT_VLUT;
+                predicate.dest = src;
+                predicate.mask = 0x1;
+
+                midgard_instruction *z_store;
+
+                z_store = mir_choose_instruction(instructions, worklist, len, &predicate);
+
+                predicate.dest = predicate.mask = 0;
+
+                if (!z_store) {
+                        z_store = ralloc(ctx, midgard_instruction);
+                        *z_store = v_mov(src, make_compiler_temp(ctx));
+
+                        branch->src[3] = z_store->dest;
+
+                        z_store->mask = 0x1;
+
+                        unsigned swizzle = (branch->src[0] == ~0) ? COMPONENT_Y : COMPONENT_X;
+
+                        for (unsigned c = 0; c < 16; ++c)
+                                z_store->swizzle[1][c] = swizzle;
+                }
+
+                vlut = z_store;
+                vlut->unit = UNIT_VLUT;
+        }
+
         mir_choose_alu(&vadd, instructions, worklist, len, &predicate, UNIT_VADD);
-        
+
         mir_update_worklist(worklist, len, instructions, vlut);
         mir_update_worklist(worklist, len, instructions, vadd);
         mir_update_worklist(worklist, len, instructions, smul);
