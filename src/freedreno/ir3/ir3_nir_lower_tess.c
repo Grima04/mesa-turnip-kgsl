@@ -707,6 +707,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 
 		case nir_intrinsic_load_tess_level_inner:
 		case nir_intrinsic_load_tess_level_outer: {
+				unsigned dest_comp = nir_intrinsic_dest_components(intr);
 				b->cursor = nir_before_instr(&intr->instr);
 
 				gl_varying_slot slot;
@@ -725,7 +726,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 				 * component individually.
 				 */
 				nir_ssa_def *levels[4];
-				for (unsigned i = 0; i < intr->num_components; i++) {
+				for (unsigned i = 0; i < dest_comp; i++) {
 					nir_intrinsic_instr *new_intr =
 						nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_global_ir3);
 
@@ -737,7 +738,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 					levels[i] = &new_intr->dest.ssa;
 				}
 
-				nir_ssa_def *v = nir_vec(b, levels, intr->num_components);
+				nir_ssa_def *v = nir_vec(b, levels, dest_comp);
 
 				nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(v));
 

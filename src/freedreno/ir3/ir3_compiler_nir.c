@@ -1426,11 +1426,11 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_instruction **dst;
 	struct ir3_instruction * const *src;
 	struct ir3_block *b = ctx->block;
+	unsigned dest_components = nir_intrinsic_dest_components(intr);
 	int idx, comp;
 
 	if (info->has_dest) {
-		unsigned n = nir_intrinsic_dest_components(intr);
-		dst = ir3_get_dst(ctx, &intr->dest, n);
+		dst = ir3_get_dst(ctx, &intr->dest, dest_components);
 	} else {
 		dst = NULL;
 	}
@@ -1443,13 +1443,13 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		idx = nir_intrinsic_base(intr);
 		if (nir_src_is_const(intr->src[0])) {
 			idx += nir_src_as_uint(intr->src[0]);
-			for (int i = 0; i < intr->num_components; i++) {
+			for (int i = 0; i < dest_components; i++) {
 				dst[i] = create_uniform_typed(b, idx + i,
 					nir_dest_bit_size(intr->dest) == 16 ? TYPE_F16 : TYPE_F32);
 			}
 		} else {
 			src = ir3_get_src(ctx, &intr->src[0]);
-			for (int i = 0; i < intr->num_components; i++) {
+			for (int i = 0; i < dest_components; i++) {
 				dst[i] = create_uniform_indirect(b, idx + i,
 						ir3_get_addr0(ctx, src[0], 1));
 			}
@@ -1522,6 +1522,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 	case nir_intrinsic_store_global_ir3: {
 		struct ir3_instruction *value, *addr, *offset;
+		unsigned ncomp = nir_intrinsic_src_components(intr, 0);
 
 		addr = ir3_create_collect(ctx, (struct ir3_instruction*[]){
 				ir3_get_src(ctx, &intr->src[1])[0],
@@ -1530,12 +1531,11 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
 		offset = ir3_get_src(ctx, &intr->src[2])[0];
 
-		value = ir3_create_collect(ctx, ir3_get_src(ctx, &intr->src[0]),
-								   intr->num_components);
+		value = ir3_create_collect(ctx, ir3_get_src(ctx, &intr->src[0]), ncomp);
 
 		struct ir3_instruction *stg =
 			ir3_STG_G(ctx->block, addr, 0, value, 0,
-					  create_immed(ctx->block, intr->num_components), 0, offset, 0);
+					  create_immed(ctx->block, ncomp), 0, offset, 0);
 		stg->cat6.type = TYPE_U32;
 		stg->cat6.iim_val = 1;
 
@@ -1557,15 +1557,15 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		offset = ir3_get_src(ctx, &intr->src[1])[0];
 
 		struct ir3_instruction *load =
-			ir3_LDG(b, addr, 0, create_immed(ctx->block, intr->num_components),
+			ir3_LDG(b, addr, 0, create_immed(ctx->block, dest_components),
 					0, offset, 0);
 		load->cat6.type = TYPE_U32;
-		load->regs[0]->wrmask = MASK(intr->num_components);
+		load->regs[0]->wrmask = MASK(dest_components);
 
 		load->barrier_class = IR3_BARRIER_BUFFER_R;
 		load->barrier_conflict = IR3_BARRIER_BUFFER_W;
 
-		ir3_split_dest(b, dst, load, 0, intr->num_components);
+		ir3_split_dest(b, dst, load, 0, dest_components);
 		break;
 	}
 
@@ -1618,7 +1618,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		if (nir_src_is_const(intr->src[1])) {
 			struct ir3_instruction *coord = ir3_create_collect(ctx, src, 2);
 			idx += nir_src_as_uint(intr->src[1]);
-			for (int i = 0; i < intr->num_components; i++) {
+			for (int i = 0; i < dest_components; i++) {
 				unsigned inloc = idx * 4 + i + comp;
 				if (ctx->so->inputs[idx].bary &&
 						!ctx->so->inputs[idx].use_ldlv) {
@@ -1641,7 +1641,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		comp = nir_intrinsic_component(intr);
 		if (nir_src_is_const(intr->src[0])) {
 			idx += nir_src_as_uint(intr->src[0]);
-			for (int i = 0; i < intr->num_components; i++) {
+			for (int i = 0; i < dest_components; i++) {
 				unsigned n = idx * 4 + i + comp;
 				dst[i] = ctx->inputs[n];
 				compile_assert(ctx, ctx->inputs[n]);
@@ -1651,7 +1651,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			struct ir3_instruction *collect =
 					ir3_create_collect(ctx, ctx->ir->inputs, ctx->ninputs);
 			struct ir3_instruction *addr = ir3_get_addr0(ctx, src[0], 4);
-			for (int i = 0; i < intr->num_components; i++) {
+			for (int i = 0; i < dest_components; i++) {
 				unsigned n = idx * 4 + i + comp;
 				dst[i] = create_indirect_load(ctx, ctx->ninputs,
 						n, addr, collect);
@@ -1771,7 +1771,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		idx += nir_src_as_uint(intr->src[1]);
 
 		src = ir3_get_src(ctx, &intr->src[0]);
-		for (int i = 0; i < intr->num_components; i++) {
+		for (int i = 0; i < nir_intrinsic_src_components(intr, 0); i++) {
 			unsigned n = idx * 4 + i + comp;
 			ctx->outputs[n] = src[i];
 		}
@@ -1822,7 +1822,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	case nir_intrinsic_load_user_clip_plane:
 		idx = nir_intrinsic_ucp_id(intr);
-		for (int i = 0; i < intr->num_components; i++) {
+		for (int i = 0; i < dest_components; i++) {
 			unsigned n = idx * 4 + i;
 			dst[i] = create_driver_param(ctx, IR3_DP_UCP0_X + n);
 		}
@@ -1857,12 +1857,12 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		ir3_split_dest(b, dst, ctx->work_group_id, 0, 3);
 		break;
 	case nir_intrinsic_load_num_work_groups:
-		for (int i = 0; i < intr->num_components; i++) {
+		for (int i = 0; i < dest_components; i++) {
 			dst[i] = create_driver_param(ctx, IR3_DP_NUM_WORK_GROUPS_X + i);
 		}
 		break;
 	case nir_intrinsic_load_local_group_size:
-		for (int i = 0; i < intr->num_components; i++) {
+		for (int i = 0; i < dest_components; i++) {
 			dst[i] = create_driver_param(ctx, IR3_DP_LOCAL_GROUP_SIZE_X + i);
 		}
 		break;
