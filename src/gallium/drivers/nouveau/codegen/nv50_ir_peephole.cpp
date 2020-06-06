@@ -558,6 +558,9 @@ ConstantFolding::expr(Instruction *i,
    memset(&res.data, 0, sizeof(res.data));
 
    switch (i->op) {
+   case OP_BMSK:
+      res.data.u32 = ((1 << b->data.u32) - 1) << a->data.u32;
+      break;
    case OP_MAD:
    case OP_FMA:
    case OP_MUL:

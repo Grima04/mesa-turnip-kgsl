@@ -180,6 +180,7 @@ const char *operationStr[OP_LAST + 1] =
    "extbf",
    "bfind",
    "brev",
+   "bmsk",
    "permt",
    "atom",
    "bar",

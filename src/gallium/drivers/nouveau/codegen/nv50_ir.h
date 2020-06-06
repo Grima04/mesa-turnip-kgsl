@@ -154,6 +154,7 @@ enum operation
    OP_EXTBF,  // place bits [K,K+N) of src0 into dst, src1 = 0xNNKK
    OP_BFIND,  // find highest/lowest set bit
    OP_BREV,   // bitfield reverse
+   OP_BMSK,   // bitfield mask
    OP_PERMT,  // dst = bytes from src2,src0 selected by src1 (nvc0's src order)
    OP_ATOM,
    OP_BAR,    // execution barrier, sources = { id, thread count, predicate }
@@ -267,6 +268,8 @@ enum operation
       uint8_t c = NV50_IR_SUBOP_LOP3_LUT_SRC2; \
       (uint8_t)(exp);                          \
 })
+#define NV50_IR_SUBOP_BMSK_C (0 << 0)
+#define NV50_IR_SUBOP_BMSK_W (1 << 0)
 
 #define NV50_IR_SUBOP_MINMAX_LOW  1
 #define NV50_IR_SUBOP_MINMAX_MED  2
