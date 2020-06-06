@@ -72,4 +72,6 @@ struct nvc0_program {
    struct nouveau_heap *mem;
 };
 
+void
+nvc0_program_sp_start_id(struct nvc0_context *, int, struct nvc0_program *);
 #endif

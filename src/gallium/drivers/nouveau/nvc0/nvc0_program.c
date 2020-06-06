@@ -874,8 +874,7 @@ nvc0_program_upload(struct nvc0_context *nvc0, struct nvc0_program *prog)
             BEGIN_NVC0(nvc0->base.pushbuf, NVC0_CP(FLUSH), 1);
             PUSH_DATA (nvc0->base.pushbuf, NVC0_COMPUTE_FLUSH_CODE);
          } else {
-            BEGIN_NVC0(nvc0->base.pushbuf, NVC0_3D(SP_START_ID(i)), 1);
-            PUSH_DATA (nvc0->base.pushbuf, progs[i]->code_base);
+            nvc0_program_sp_start_id(nvc0, i, progs[i]);
          }
       }
    }
