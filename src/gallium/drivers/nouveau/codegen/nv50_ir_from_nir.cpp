@@ -1910,7 +1910,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       if (op == nir_intrinsic_read_first_invocation) {
          mkOp1(OP_VOTE, TYPE_U32, tmp, mkImm(1))->subOp = NV50_IR_SUBOP_VOTE_ANY;
-         mkOp2(OP_EXTBF, TYPE_U32, tmp, tmp, mkImm(0x2000))->subOp = NV50_IR_SUBOP_EXTBF_REV;
+         mkOp1(OP_BREV, TYPE_U32, tmp, tmp);
          mkOp1(OP_BFIND, TYPE_U32, tmp, tmp)->subOp = NV50_IR_SUBOP_BFIND_SAMT;
       } else
          tmp = getSrc(&insn->src[1], 0);
@@ -2794,14 +2794,14 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_bitfield_reverse: {
       DEFAULT_CHECKS;
       LValues &newDefs = convert(&insn->dest);
-      mkOp2(OP_EXTBF, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), mkImm(0x2000))->subOp = NV50_IR_SUBOP_EXTBF_REV;
+      mkOp1(OP_BREV, TYPE_U32, newDefs[0], getSrc(&insn->src[0]));
       break;
    }
    case nir_op_find_lsb: {
       DEFAULT_CHECKS;
       LValues &newDefs = convert(&insn->dest);
       Value *tmp = getSSA();
-      mkOp2(OP_EXTBF, TYPE_U32, tmp, getSrc(&insn->src[0]), mkImm(0x2000))->subOp = NV50_IR_SUBOP_EXTBF_REV;
+      mkOp1(OP_BREV, TYPE_U32, tmp, getSrc(&insn->src[0]));
       mkOp1(OP_BFIND, TYPE_U32, newDefs[0], tmp)->subOp = NV50_IR_SUBOP_BFIND_SAMT;
       break;
    }

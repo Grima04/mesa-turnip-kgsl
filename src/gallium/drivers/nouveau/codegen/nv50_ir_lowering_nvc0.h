@@ -68,6 +68,7 @@ private:
    void handleSET(CmpInstruction *);
    void handleTEXLOD(TexInstruction *);
    void handleShift(Instruction *);
+   void handleBREV(Instruction *);
 
 protected:
    BuildUtil bld;

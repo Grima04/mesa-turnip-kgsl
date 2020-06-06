@@ -1534,6 +1534,12 @@ ConstantFolding::opnd(Instruction *i, ImmediateValue &imm0, int s)
       i->subOp = 0;
       break;
    }
+   case OP_BREV: {
+      uint32_t res = util_bitreverse(imm0.reg.data.u32);
+      i->setSrc(0, new_ImmediateValue(i->bb->getProgram(), res));
+      i->op = OP_MOV;
+      break;
+   }
    case OP_POPCNT: {
       // Only deal with 1-arg POPCNT here
       if (i->srcExists(1))

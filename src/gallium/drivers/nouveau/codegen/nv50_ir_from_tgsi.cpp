@@ -3401,8 +3401,7 @@ Converter::handleInstruction(const struct tgsi_full_instruction *insn)
       // ReadInvocationARB(src, findLSB(ballot(true)))
       val0 = getScratch();
       mkOp1(OP_VOTE, TYPE_U32, val0, mkImm(1))->subOp = NV50_IR_SUBOP_VOTE_ANY;
-      mkOp2(OP_EXTBF, TYPE_U32, val0, val0, mkImm(0x2000))
-         ->subOp = NV50_IR_SUBOP_EXTBF_REV;
+      mkOp1(OP_BREV, TYPE_U32, val0, val0);
       mkOp1(OP_BFIND, TYPE_U32, val0, val0)->subOp = NV50_IR_SUBOP_BFIND_SAMT;
       src1 = val0;
       /* fallthrough */
@@ -3820,8 +3819,7 @@ Converter::handleInstruction(const struct tgsi_full_instruction *insn)
       FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
          src0 = fetchSrc(0, c);
          val0 = getScratch();
-         geni = mkOp2(OP_EXTBF, TYPE_U32, val0, src0, mkImm(0x2000));
-         geni->subOp = NV50_IR_SUBOP_EXTBF_REV;
+         mkOp1(OP_BREV, TYPE_U32, val0, src0);
          geni = mkOp1(OP_BFIND, TYPE_U32, dst0[c], val0);
          geni->subOp = NV50_IR_SUBOP_BFIND_SAMT;
       }
@@ -3836,8 +3834,7 @@ Converter::handleInstruction(const struct tgsi_full_instruction *insn)
    case TGSI_OPCODE_BREV:
       FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
          src0 = fetchSrc(0, c);
-         geni = mkOp2(OP_EXTBF, TYPE_U32, dst0[c], src0, mkImm(0x2000));
-         geni->subOp = NV50_IR_SUBOP_EXTBF_REV;
+         mkOp1(OP_BREV, TYPE_U32, dst0[c], src0);
       }
       break;
    case TGSI_OPCODE_POPC:

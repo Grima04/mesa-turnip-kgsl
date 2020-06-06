@@ -310,6 +310,14 @@ NVC0LegalizeSSA::handleSET(CmpInstruction *cmp)
    cmp->sType = hTy;
 }
 
+void
+NVC0LegalizeSSA::handleBREV(Instruction *i)
+{
+   i->op = OP_EXTBF;
+   i->subOp = NV50_IR_SUBOP_EXTBF_REV;
+   i->setSrc(1, bld.mkImm(0x2000));
+}
+
 bool
 NVC0LegalizeSSA::visit(Function *fn)
 {
@@ -353,6 +361,9 @@ NVC0LegalizeSSA::visit(BasicBlock *bb)
       case OP_SET_XOR:
          if (typeSizeof(i->sType) == 8 && i->sType != TYPE_F64)
             handleSET(i->asCmp());
+         break;
+      case OP_BREV:
+         handleBREV(i);
          break;
       default:
          break;

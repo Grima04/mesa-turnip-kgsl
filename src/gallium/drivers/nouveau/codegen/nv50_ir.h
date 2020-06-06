@@ -152,6 +152,7 @@ enum operation
    OP_INSBF,  // insert first src1[8:15] bits of src0 into src2 at src1[0:7]
    OP_EXTBF,  // place bits [K,K+N) of src0 into dst, src1 = 0xNNKK
    OP_BFIND,  // find highest/lowest set bit
+   OP_BREV,   // bitfield reverse
    OP_PERMT,  // dst = bytes from src2,src0 selected by src1 (nvc0's src order)
    OP_ATOM,
    OP_BAR,    // execution barrier, sources = { id, thread count, predicate }
