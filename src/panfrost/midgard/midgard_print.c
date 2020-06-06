@@ -307,6 +307,16 @@ mir_print_instruction(midgard_instruction *ins)
                 else
                         printf("true");
 
+                if (ins->writeout) {
+                        printf(" (c: ");
+                        PRINT_SRC(ins, 0);
+                        printf(", z: ");
+                        PRINT_SRC(ins, 2);
+                        printf(", s: ");
+                        PRINT_SRC(ins, 3);
+                        printf(")");
+                }
+
                 if (ins->branch.target_type != TARGET_DISCARD)
                         printf(" %s -> block(%d)\n",
                                ins->branch.target_type < 4 ?
