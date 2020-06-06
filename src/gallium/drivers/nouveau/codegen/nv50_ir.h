@@ -70,6 +70,7 @@ enum operation
    OP_LOP3_LUT,
    OP_SHL,
    OP_SHR,
+   OP_SHF,
    OP_MAX,
    OP_MIN,
    OP_SAT, // CLAMP(f32, 0.0, 1.0)
@@ -270,6 +271,13 @@ enum operation
 #define NV50_IR_SUBOP_MINMAX_LOW  1
 #define NV50_IR_SUBOP_MINMAX_MED  2
 #define NV50_IR_SUBOP_MINMAX_HIGH 3
+
+#define NV50_IR_SUBOP_SHF_L  (0 << 0)
+#define NV50_IR_SUBOP_SHF_R  (1 << 0)
+#define NV50_IR_SUBOP_SHF_LO (0 << 1)
+#define NV50_IR_SUBOP_SHF_HI (1 << 1)
+#define NV50_IR_SUBOP_SHF_C  (0 << 2)
+#define NV50_IR_SUBOP_SHF_W  (1 << 2)
 
 // xmad(src0, src1, 0) << 16 + src2
 #define NV50_IR_SUBOP_XMAD_PSL (1 << 0)

@@ -96,6 +96,7 @@ const char *operationStr[OP_LAST + 1] =
    "lop3 lut",
    "shl",
    "shr",
+   "shf",
    "max",
    "min",
    "sat",
