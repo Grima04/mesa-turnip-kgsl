@@ -1683,7 +1683,7 @@ tu6_emit_vertex_input(struct tu_cs *cs,
 
    tu_cs_emit_regs(cs,
                    A6XX_VFD_CONTROL_0(
-                     .fetch_cnt = info->vertexBindingDescriptionCount,
+                     .fetch_cnt = vfd_decode_idx, /* decode_cnt for binning pass ? */
                      .decode_cnt = vfd_decode_idx));
 }
 
