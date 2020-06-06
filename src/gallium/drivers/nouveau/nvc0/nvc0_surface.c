@@ -140,6 +140,11 @@ nvc0_2d_texture_set(struct nouveau_pushbuf *push, bool dst,
       PUSH_DATA (push, bo->offset + offset);
    }
 
+   if (dst) {
+      IMMED_NVC0(push, SUBC_2D(NVC0_2D_SET_DST_COLOR_RENDER_TO_ZETA_SURFACE),
+                 util_format_is_depth_or_stencil(pformat));
+   }
+
 #if 0
    if (dst) {
       BEGIN_NVC0(push, SUBC_2D(NVC0_2D_CLIP_X), 4);
@@ -1233,6 +1238,11 @@ nvc0_blit_3d(struct nvc0_context *nvc0, const struct pipe_blit_info *info)
       }
    }
 
+   if (screen->eng3d->oclass >= TU102_3D_CLASS) {
+      IMMED_NVC0(push, SUBC_3D(TU102_3D_SET_COLOR_RENDER_TO_ZETA_SURFACE),
+                 util_format_is_depth_or_stencil(info->dst.format));
+   }
+
    IMMED_NVC0(push, NVC0_3D(VIEWPORT_TRANSFORM_EN), 0);
    IMMED_NVC0(push, NVC0_3D(VIEW_VOLUME_CLIP_CTRL), 0x2 |
               NVC0_3D_VIEW_VOLUME_CLIP_CTRL_DEPTH_RANGE_0_1);
@@ -1293,7 +1303,10 @@ nvc0_blit_3d(struct nvc0_context *nvc0, const struct pipe_blit_info *info)
    PUSH_DATAh(push, vtxbuf);
    PUSH_DATA (push, vtxbuf);
    PUSH_DATA (push, 0);
-   BEGIN_NVC0(push, NVC0_3D(VERTEX_ARRAY_LIMIT_HIGH(0)), 2);
+   if (screen->eng3d->oclass < TU102_3D_CLASS)
+      BEGIN_NVC0(push, NVC0_3D(VERTEX_ARRAY_LIMIT_HIGH(0)), 2);
+   else
+      BEGIN_NVC0(push, SUBC_3D(TU102_3D_VERTEX_ARRAY_LIMIT_HIGH(0)), 2);
    PUSH_DATAh(push, vtxbuf + length - 1);
    PUSH_DATA (push, vtxbuf + length - 1);
 
@@ -1370,6 +1383,8 @@ nvc0_blit_3d(struct nvc0_context *nvc0, const struct pipe_blit_info *info)
 
    /* restore viewport transform */
    IMMED_NVC0(push, NVC0_3D(VIEWPORT_TRANSFORM_EN), 1);
+   if (screen->eng3d->oclass >= TU102_3D_CLASS)
+      IMMED_NVC0(push, SUBC_3D(TU102_3D_SET_COLOR_RENDER_TO_ZETA_SURFACE), 0);
 }
 
 static void

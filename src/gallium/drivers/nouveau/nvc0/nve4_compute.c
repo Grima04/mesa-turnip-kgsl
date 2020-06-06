@@ -52,6 +52,9 @@ nve4_screen_compute_setup(struct nvc0_screen *screen,
    uint64_t address;
 
    switch (dev->chipset & ~0xf) {
+   case 0x160:
+      obj_class = TU102_COMPUTE_CLASS;
+      break;
    case 0x140:
       obj_class = GV100_COMPUTE_CLASS;
       break;

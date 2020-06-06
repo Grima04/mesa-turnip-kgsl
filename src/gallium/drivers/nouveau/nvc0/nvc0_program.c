@@ -737,7 +737,14 @@ nvc0_program_alloc_code(struct nvc0_context *nvc0, struct nvc0_program *prog)
    struct nvc0_screen *screen = nvc0->screen;
    const bool is_cp = prog->type == PIPE_SHADER_COMPUTE;
    int ret;
-   uint32_t size = prog->code_size + (is_cp ? 0 : NVC0_SHADER_HEADER_SIZE);
+   uint32_t size = prog->code_size;
+
+   if (!is_cp) {
+      if (screen->eng3d->oclass < TU102_3D_CLASS)
+         size += GF100_SHADER_HEADER_SIZE;
+      else
+         size += TU102_SHADER_HEADER_SIZE;
+   }
 
    /* On Fermi, SP_START_ID must be aligned to 0x40.
     * On Kepler, the first instruction must be aligned to 0x80 because
@@ -753,7 +760,8 @@ nvc0_program_alloc_code(struct nvc0_context *nvc0, struct nvc0_program *prog)
    prog->code_base = prog->mem->start;
 
    if (!is_cp) {
-      if (screen->base.class_3d >= NVE4_3D_CLASS) {
+      if (screen->base.class_3d >= NVE4_3D_CLASS &&
+          screen->base.class_3d < TU102_3D_CLASS) {
          switch (prog->mem->start & 0xff) {
          case 0x40: prog->code_base += 0x70; break;
          case 0x80: prog->code_base += 0x30; break;
@@ -780,7 +788,16 @@ nvc0_program_upload_code(struct nvc0_context *nvc0, struct nvc0_program *prog)
 {
    struct nvc0_screen *screen = nvc0->screen;
    const bool is_cp = prog->type == PIPE_SHADER_COMPUTE;
-   uint32_t code_pos = prog->code_base + (is_cp ? 0 : NVC0_SHADER_HEADER_SIZE);
+   uint32_t code_pos = prog->code_base;
+   uint32_t size_sph = 0;
+
+   if (!is_cp) {
+      if (screen->eng3d->oclass < TU102_3D_CLASS)
+         size_sph = GF100_SHADER_HEADER_SIZE;
+      else
+         size_sph = TU102_SHADER_HEADER_SIZE;
+   }
+   code_pos += size_sph;
 
    if (prog->relocs)
       nv50_ir_relocate_code(prog->relocs, prog->code, code_pos,
@@ -806,8 +823,7 @@ nvc0_program_upload_code(struct nvc0_context *nvc0, struct nvc0_program *prog)
 
    if (!is_cp)
       nvc0->base.push_data(&nvc0->base, screen->text, prog->code_base,
-                           NV_VRAM_DOMAIN(&screen->base),
-                           NVC0_SHADER_HEADER_SIZE, prog->hdr);
+                           NV_VRAM_DOMAIN(&screen->base), size_sph, prog->hdr);
 
    nvc0->base.push_data(&nvc0->base, screen->text, code_pos,
                         NV_VRAM_DOMAIN(&screen->base), prog->code_size,
@@ -820,7 +836,14 @@ nvc0_program_upload(struct nvc0_context *nvc0, struct nvc0_program *prog)
    struct nvc0_screen *screen = nvc0->screen;
    const bool is_cp = prog->type == PIPE_SHADER_COMPUTE;
    int ret;
-   uint32_t size = prog->code_size + (is_cp ? 0 : NVC0_SHADER_HEADER_SIZE);
+   uint32_t size = prog->code_size;
+
+   if (!is_cp) {
+      if (screen->eng3d->oclass < TU102_3D_CLASS)
+         size += GF100_SHADER_HEADER_SIZE;
+      else
+         size += TU102_SHADER_HEADER_SIZE;
+   }
 
    ret = nvc0_program_alloc_code(nvc0, prog);
    if (ret) {
@@ -955,7 +978,7 @@ nvc0_program_symbol_offset(const struct nvc0_program *prog, uint32_t label)
    unsigned base = 0;
    unsigned i;
    if (prog->type != PIPE_SHADER_COMPUTE)
-      base = NVC0_SHADER_HEADER_SIZE;
+      base = GF100_SHADER_HEADER_SIZE;
    for (i = 0; i < prog->cp.num_syms; ++i)
       if (syms[i].label == label)
          return prog->code_base + base + syms[i].offset;

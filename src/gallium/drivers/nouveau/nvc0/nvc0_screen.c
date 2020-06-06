@@ -37,6 +37,7 @@
 
 #include "nvc0/mme/com9097.mme.h"
 #include "nvc0/mme/com90c0.mme.h"
+#include "nvc0/mme/comc597.mme.h"
 
 #include "nv50/g80_texture.xml.h"
 
@@ -728,6 +729,26 @@ nvc0_graph_set_macro(struct nvc0_screen *screen, uint32_t m, unsigned pos,
    return pos + size;
 }
 
+static int
+tu102_graph_set_macro(struct nvc0_screen *screen, uint32_t m, unsigned pos,
+                     unsigned size, const uint32_t *data)
+{
+   struct nouveau_pushbuf *push = screen->base.pushbuf;
+
+   size /= 4;
+
+   assert((pos + size) <= 0x800);
+
+   BEGIN_NVC0(push, SUBC_3D(NVC0_GRAPH_MACRO_ID), 2);
+   PUSH_DATA (push, (m - 0x3800) / 8);
+   PUSH_DATA (push, pos);
+   BEGIN_1IC0(push, SUBC_3D(NVC0_GRAPH_MACRO_UPLOAD_POS), size + 1);
+   PUSH_DATA (push, pos);
+   PUSH_DATAp(push, data, size);
+
+   return pos + (size / 3);
+}
+
 static void
 nvc0_magic_3d_init(struct nouveau_pushbuf *push, uint16_t obj_class)
 {
@@ -838,6 +859,7 @@ nvc0_screen_init_compute(struct nvc0_screen *screen)
    case 0x120:
    case 0x130:
    case 0x140:
+   case 0x160:
       return nve4_screen_compute_setup(screen, screen->base.pushbuf);
    default:
       return -1;
@@ -997,6 +1019,7 @@ nvc0_screen_create(struct nouveau_device *dev)
    case 0x120:
    case 0x130:
    case 0x140:
+   case 0x160:
       break;
    default:
       return NULL;
@@ -1074,6 +1097,7 @@ nvc0_screen_create(struct nouveau_device *dev)
    }
 
    switch (dev->chipset & ~0xf) {
+   case 0x160:
    case 0x140:
    case 0x130:
    case 0x120:
@@ -1128,6 +1152,9 @@ nvc0_screen_create(struct nouveau_device *dev)
    PUSH_DATA (push, screen->fence.bo->offset + 16);
 
    switch (dev->chipset & ~0xf) {
+   case 0x160:
+      obj_class = TU102_3D_CLASS;
+      break;
    case 0x140:
       obj_class = GV100_3D_CLASS;
       break;
@@ -1378,25 +1405,47 @@ nvc0_screen_create(struct nouveau_device *dev)
       PUSH_DATA (push, 16384 << 16);
    }
 
+   if (screen->eng3d->oclass < TU102_3D_CLASS) {
 #define MK_MACRO(m, n) i = nvc0_graph_set_macro(screen, m, i, sizeof(n), n);
 
-   i = 0;
-   MK_MACRO(NVC0_3D_MACRO_VERTEX_ARRAY_PER_INSTANCE, mme9097_per_instance_bf);
-   MK_MACRO(NVC0_3D_MACRO_BLEND_ENABLES, mme9097_blend_enables);
-   MK_MACRO(NVC0_3D_MACRO_VERTEX_ARRAY_SELECT, mme9097_vertex_array_select);
-   MK_MACRO(NVC0_3D_MACRO_TEP_SELECT, mme9097_tep_select);
-   MK_MACRO(NVC0_3D_MACRO_GP_SELECT, mme9097_gp_select);
-   MK_MACRO(NVC0_3D_MACRO_POLYGON_MODE_FRONT, mme9097_poly_mode_front);
-   MK_MACRO(NVC0_3D_MACRO_POLYGON_MODE_BACK, mme9097_poly_mode_back);
-   MK_MACRO(NVC0_3D_MACRO_DRAW_ARRAYS_INDIRECT, mme9097_draw_arrays_indirect);
-   MK_MACRO(NVC0_3D_MACRO_DRAW_ELEMENTS_INDIRECT, mme9097_draw_elts_indirect);
-   MK_MACRO(NVC0_3D_MACRO_DRAW_ARRAYS_INDIRECT_COUNT, mme9097_draw_arrays_indirect_count);
-   MK_MACRO(NVC0_3D_MACRO_DRAW_ELEMENTS_INDIRECT_COUNT, mme9097_draw_elts_indirect_count);
-   MK_MACRO(NVC0_3D_MACRO_QUERY_BUFFER_WRITE, mme9097_query_buffer_write);
-   MK_MACRO(NVC0_3D_MACRO_CONSERVATIVE_RASTER_STATE, mme9097_conservative_raster_state);
-   MK_MACRO(NVC0_3D_MACRO_COMPUTE_COUNTER, mme9097_compute_counter);
-   MK_MACRO(NVC0_3D_MACRO_COMPUTE_COUNTER_TO_QUERY, mme9097_compute_counter_to_query);
-   MK_MACRO(NVC0_CP_MACRO_LAUNCH_GRID_INDIRECT, mme90c0_launch_grid_indirect);
+      i = 0;
+      MK_MACRO(NVC0_3D_MACRO_VERTEX_ARRAY_PER_INSTANCE, mme9097_per_instance_bf);
+      MK_MACRO(NVC0_3D_MACRO_BLEND_ENABLES, mme9097_blend_enables);
+      MK_MACRO(NVC0_3D_MACRO_VERTEX_ARRAY_SELECT, mme9097_vertex_array_select);
+      MK_MACRO(NVC0_3D_MACRO_TEP_SELECT, mme9097_tep_select);
+      MK_MACRO(NVC0_3D_MACRO_GP_SELECT, mme9097_gp_select);
+      MK_MACRO(NVC0_3D_MACRO_POLYGON_MODE_FRONT, mme9097_poly_mode_front);
+      MK_MACRO(NVC0_3D_MACRO_POLYGON_MODE_BACK, mme9097_poly_mode_back);
+      MK_MACRO(NVC0_3D_MACRO_DRAW_ARRAYS_INDIRECT, mme9097_draw_arrays_indirect);
+      MK_MACRO(NVC0_3D_MACRO_DRAW_ELEMENTS_INDIRECT, mme9097_draw_elts_indirect);
+      MK_MACRO(NVC0_3D_MACRO_DRAW_ARRAYS_INDIRECT_COUNT, mme9097_draw_arrays_indirect_count);
+      MK_MACRO(NVC0_3D_MACRO_DRAW_ELEMENTS_INDIRECT_COUNT, mme9097_draw_elts_indirect_count);
+      MK_MACRO(NVC0_3D_MACRO_QUERY_BUFFER_WRITE, mme9097_query_buffer_write);
+      MK_MACRO(NVC0_3D_MACRO_CONSERVATIVE_RASTER_STATE, mme9097_conservative_raster_state);
+      MK_MACRO(NVC0_3D_MACRO_COMPUTE_COUNTER, mme9097_compute_counter);
+      MK_MACRO(NVC0_3D_MACRO_COMPUTE_COUNTER_TO_QUERY, mme9097_compute_counter_to_query);
+      MK_MACRO(NVC0_CP_MACRO_LAUNCH_GRID_INDIRECT, mme90c0_launch_grid_indirect);
+   } else {
+#undef MK_MACRO
+#define MK_MACRO(m, n) i = tu102_graph_set_macro(screen, m, i, sizeof(n), n);
+
+      i = 0;
+      MK_MACRO(NVC0_3D_MACRO_VERTEX_ARRAY_PER_INSTANCE, mmec597_per_instance_bf);
+      MK_MACRO(NVC0_3D_MACRO_BLEND_ENABLES, mmec597_blend_enables);
+      MK_MACRO(NVC0_3D_MACRO_VERTEX_ARRAY_SELECT, mmec597_vertex_array_select);
+      MK_MACRO(NVC0_3D_MACRO_TEP_SELECT, mmec597_tep_select);
+      MK_MACRO(NVC0_3D_MACRO_GP_SELECT, mmec597_gp_select);
+      MK_MACRO(NVC0_3D_MACRO_POLYGON_MODE_FRONT, mmec597_poly_mode_front);
+      MK_MACRO(NVC0_3D_MACRO_POLYGON_MODE_BACK, mmec597_poly_mode_back);
+      MK_MACRO(NVC0_3D_MACRO_DRAW_ARRAYS_INDIRECT, mmec597_draw_arrays_indirect);
+      MK_MACRO(NVC0_3D_MACRO_DRAW_ELEMENTS_INDIRECT, mmec597_draw_elts_indirect);
+      MK_MACRO(NVC0_3D_MACRO_DRAW_ARRAYS_INDIRECT_COUNT, mmec597_draw_arrays_indirect_count);
+      MK_MACRO(NVC0_3D_MACRO_DRAW_ELEMENTS_INDIRECT_COUNT, mmec597_draw_elts_indirect_count);
+      MK_MACRO(NVC0_3D_MACRO_QUERY_BUFFER_WRITE, mmec597_query_buffer_write);
+      MK_MACRO(NVC0_3D_MACRO_CONSERVATIVE_RASTER_STATE, mmec597_conservative_raster_state);
+      MK_MACRO(NVC0_3D_MACRO_COMPUTE_COUNTER, mmec597_compute_counter);
+      MK_MACRO(NVC0_3D_MACRO_COMPUTE_COUNTER_TO_QUERY, mmec597_compute_counter_to_query);
+   }
 
    BEGIN_NVC0(push, NVC0_3D(RASTERIZE_ENABLE), 1);
    PUSH_DATA (push, 1);
