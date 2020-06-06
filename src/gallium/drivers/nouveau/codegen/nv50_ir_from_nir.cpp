@@ -3364,7 +3364,7 @@ nvir_nir_shader_compiler_options(int chipset)
       .unify_interfaces = false,
       .use_interpolated_input_intrinsics = true,
       .lower_mul_2x32_64 = true, // TODO
-      .lower_rotate = false,
+      .lower_rotate = true,
       .has_imul24 = false,
       .intel_vec4 = false,
       .max_unroll_iterations = 32,
