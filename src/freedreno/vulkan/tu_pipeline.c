@@ -1578,9 +1578,13 @@ tu6_emit_program(struct tu_cs *cs,
    if (binning_pass) {
       /* if we have streamout, use full VS in binning pass, as the
        * binning pass VS will have outputs on other than position/psize
-       * stripped out:
+       * stripped out
+       *
+       * GS also can have streamout, but we completely disable the
+       * the binning pass variant when GS is present because we don't
+       * support compiling correct binning pass variants with GS
        */
-      if (vs->shader->stream_output.num_outputs == 0) {
+      if (vs->shader->stream_output.num_outputs == 0 && !has_gs) {
          vs = &builder->shaders[MESA_SHADER_VERTEX]->variants[1];
          vs_offset = builder->binning_vs_offset;
       }
