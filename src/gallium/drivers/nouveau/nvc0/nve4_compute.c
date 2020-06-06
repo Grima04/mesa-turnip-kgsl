@@ -30,14 +30,12 @@
 #include "drf.h"
 #include "qmd.h"
 #include "cla0c0qmd.h"
+#include "clc0c0qmd.h"
 
 #define NVA0C0_QMDV00_06_VAL_SET(p,a...) NVVAL_MW_SET((p), NVA0C0, QMDV00_06, ##a)
 #define NVA0C0_QMDV00_06_DEF_SET(p,a...) NVDEF_MW_SET((p), NVA0C0, QMDV00_06, ##a)
-
-#ifndef NDEBUG
-static void gp100_compute_dump_launch_desc(const struct gp100_cp_launch_desc *);
-#endif
-
+#define NVC0C0_QMDV02_01_VAL_SET(p,a...) NVVAL_MW_SET((p), NVC0C0, QMDV02_01, ##a)
+#define NVC0C0_QMDV02_01_DEF_SET(p,a...) NVDEF_MW_SET((p), NVC0C0, QMDV02_01, ##a)
 
 int
 nve4_screen_compute_setup(struct nvc0_screen *screen,
@@ -549,6 +547,22 @@ nve4_compute_upload_input(struct nvc0_context *nvc0,
 }
 
 static inline void
+gp100_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index,
+                            struct nouveau_bo *bo, uint32_t base, uint32_t size)
+{
+   uint64_t address = bo->offset + base;
+
+   assert(index < 8);
+   assert(!(base & 0xff));
+
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_LOWER, index, address);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_UPPER, index, address >> 32);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CONSTANT_BUFFER_SIZE_SHIFTED4, index,
+                                 DIV_ROUND_UP(size, 16));
+   NVC0C0_QMDV02_01_DEF_SET(qmd, CONSTANT_BUFFER_VALID, index, TRUE);
+}
+
+static inline void
 nve4_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index, struct nouveau_bo *bo,
                            uint32_t base, uint32_t size)
 {
@@ -654,47 +668,53 @@ nve4_compute_setup_launch_desc(struct nvc0_context *nvc0, uint32_t *qmd,
 }
 
 static void
-gp100_compute_setup_launch_desc(struct nvc0_context *nvc0,
-                                struct gp100_cp_launch_desc *desc,
+gp100_compute_setup_launch_desc(struct nvc0_context *nvc0, uint32_t *qmd,
                                 const struct pipe_grid_info *info)
 {
    const struct nvc0_screen *screen = nvc0->screen;
    const struct nvc0_program *cp = nvc0->compprog;
 
-   gp100_cp_launch_desc_init_default(desc);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, SM_GLOBAL_CACHING_ENABLE, 1);
+   NVC0C0_QMDV02_01_DEF_SET(qmd, RELEASE_MEMBAR_TYPE, FE_SYSMEMBAR);
+   NVC0C0_QMDV02_01_DEF_SET(qmd, CWD_MEMBAR_TYPE, L1_SYSMEMBAR);
+   NVC0C0_QMDV02_01_DEF_SET(qmd, API_VISIBLE_CALL_LIMIT, NO_CHECK);
 
-   desc->entry = nvc0_program_symbol_offset(cp, info->pc);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, PROGRAM_OFFSET,
+                                 nvc0_program_symbol_offset(cp, info->pc));
 
-   desc->griddim_x = info->grid[0];
-   desc->griddim_y = info->grid[1];
-   desc->griddim_z = info->grid[2];
-   desc->blockdim_x = info->block[0];
-   desc->blockdim_y = info->block[1];
-   desc->blockdim_z = info->block[2];
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_RASTER_WIDTH, info->grid[0]);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_RASTER_HEIGHT, info->grid[1]);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_RASTER_DEPTH, info->grid[2]);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_THREAD_DIMENSION0, info->block[0]);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_THREAD_DIMENSION1, info->block[1]);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_THREAD_DIMENSION2, info->block[2]);
 
-   desc->shared_size = align(cp->cp.smem_size, 0x100);
-   desc->local_size_p = (cp->hdr[1] & 0xfffff0) + align(cp->cp.lmem_size, 0x10);
-   desc->local_size_n = 0;
-   desc->cstack_size = 0x800;
+   NVC0C0_QMDV02_01_VAL_SET(qmd, SHARED_MEMORY_SIZE,
+                                 align(cp->cp.smem_size, 0x100));
+   NVC0C0_QMDV02_01_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE,
+                                 (cp->hdr[1] & 0xfffff0) +
+                                 align(cp->cp.lmem_size, 0x10));
+   NVC0C0_QMDV02_01_VAL_SET(qmd, SHADER_LOCAL_MEMORY_HIGH_SIZE, 0);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, SHADER_LOCAL_MEMORY_CRS_SIZE, 0x800);
 
-   desc->gpr_alloc = cp->num_gprs;
-   desc->bar_alloc = cp->num_barriers;
+   NVC0C0_QMDV02_01_VAL_SET(qmd, REGISTER_COUNT, cp->num_gprs);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, BARRIER_COUNT, cp->num_barriers);
 
    // Only bind user uniforms and the driver constant buffer through the
    // launch descriptor because UBOs are sticked to the driver cb to avoid the
    // limitation of 8 CBs.
    if (nvc0->constbuf[5][0].user || cp->parm_size) {
-      gp100_cp_launch_desc_set_cb(desc, 0, screen->uniform_bo,
+      gp100_cp_launch_desc_set_cb(qmd, 0, screen->uniform_bo,
                                   NVC0_CB_USR_INFO(5), 1 << 16);
 
       // Later logic will attempt to bind a real buffer at position 0. That
       // should not happen if we've bound a user buffer.
       assert(nvc0->constbuf[5][0].user || !nvc0->constbuf[5][0].u.buf);
    }
-   gp100_cp_launch_desc_set_cb(desc, 7, screen->uniform_bo,
+   gp100_cp_launch_desc_set_cb(qmd, 7, screen->uniform_bo,
                                NVC0_CB_AUX_INFO(5), 1 << 11);
 
-   nve4_compute_setup_buf_cb(nvc0, true, desc);
+   nve4_compute_setup_buf_cb(nvc0, true, qmd);
 }
 
 static inline void *
@@ -778,7 +798,7 @@ nve4_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    if (debug_get_num_option("NV50_PROG_DEBUG", 0)) {
       debug_printf("Queue Meta Data:\n");
       if (nvc0->screen->compute->oclass >= GP100_COMPUTE_CLASS)
-         gp100_compute_dump_launch_desc(desc);
+         NVC0C0QmdDump_V02_01(desc);
       else
          NVA0C0QmdDump_V00_06(desc);
    }
@@ -911,55 +931,6 @@ nve4_compute_validate_textures(struct nvc0_context *nvc0)
    nvc0->dirty_3d |= NVC0_NEW_3D_TEXTURES;
 }
 
-
-#ifndef NDEBUG
-static void
-gp100_compute_dump_launch_desc(const struct gp100_cp_launch_desc *desc)
-{
-   const uint32_t *data = (const uint32_t *)desc;
-   unsigned i;
-   bool zero = false;
-
-   debug_printf("COMPUTE LAUNCH DESCRIPTOR:\n");
-
-   for (i = 0; i < sizeof(*desc); i += 4) {
-      if (data[i / 4]) {
-         debug_printf("[%x]: 0x%08x\n", i, data[i / 4]);
-         zero = false;
-      } else
-      if (!zero) {
-         debug_printf("...\n");
-         zero = true;
-      }
-   }
-
-   debug_printf("entry = 0x%x\n", desc->entry);
-   debug_printf("grid dimensions = %ux%ux%u\n",
-                desc->griddim_x, desc->griddim_y, desc->griddim_z);
-   debug_printf("block dimensions = %ux%ux%u\n",
-                desc->blockdim_x, desc->blockdim_y, desc->blockdim_z);
-   debug_printf("s[] size: 0x%x\n", desc->shared_size);
-   debug_printf("l[] size: -0x%x / +0x%x\n",
-                desc->local_size_n, desc->local_size_p);
-   debug_printf("stack size: 0x%x\n", desc->cstack_size);
-   debug_printf("barrier count: %u\n", desc->bar_alloc);
-   debug_printf("$r count: %u\n", desc->gpr_alloc);
-   debug_printf("linked tsc: %d\n", desc->linked_tsc);
-
-   for (i = 0; i < 8; ++i) {
-      uint64_t address;
-      uint32_t size = desc->cb[i].size_sh4 << 4;
-      bool valid = !!(desc->cb_mask & (1 << i));
-
-      address = ((uint64_t)desc->cb[i].address_h << 32) | desc->cb[i].address_l;
-
-      if (!valid && !address && !size)
-         continue;
-      debug_printf("CB[%u]: address = 0x%"PRIx64", size 0x%x%s\n",
-                   i, address, size, valid ? "" : "  (invalid)");
-   }
-}
-#endif
 
 #ifdef NOUVEAU_NVE4_MP_TRAP_HANDLER
 static void
