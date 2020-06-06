@@ -1314,6 +1314,8 @@ emit_fragment_store(compiler_context *ctx, unsigned src, enum midgard_rt_id rt)
         ins.src_types[0] = nir_type_uint32;
         ins.constants.u32[0] = rt == MIDGARD_ZS_RT ?
                                0xFF : (rt - MIDGARD_COLOR_RT0) * 0x100;
+        for (int i = 0; i < 4; ++i)
+                ins.swizzle[0][i] = i;
 
         /* Emit the branch */
         br = emit_mir_instruction(ctx, ins);
@@ -2236,6 +2238,7 @@ emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
         ins.writeout_stencil = br->writeout_stencil;
         ins.branch.target_block = ctx->block_count - 1;
         ins.constants.u32[0] = br->constants.u32[0];
+        memcpy(&ins.src_types, &br->src_types, sizeof(ins.src_types));
         emit_mir_instruction(ctx, ins);
 
         ctx->current_block->epilogue = true;

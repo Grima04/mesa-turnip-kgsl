@@ -268,20 +268,6 @@ mir_bytemask_of_read_components_single(unsigned *swizzle, unsigned inmask, unsig
 uint16_t
 mir_bytemask_of_read_components_index(midgard_instruction *ins, unsigned i)
 {
-        if (ins->compact_branch && ins->writeout && (i == 0)) {
-                /* Non-ZS writeout uses all components */
-                if (!ins->writeout_depth && !ins->writeout_stencil)
-                        return 0xFFFF;
-
-                /* For ZS-writeout, if both Z and S are written we need two
-                 * components, otherwise we only need one.
-                 */
-                if (ins->writeout_depth && ins->writeout_stencil)
-                        return 0xFF;
-                else
-                        return 0xF;
-        }
-
         /* Conditional branches read one 32-bit component = 4 bytes (TODO: multi branch??) */
         if (ins->compact_branch && ins->branch.conditional && (i == 0))
                 return 0xF;
@@ -289,7 +275,7 @@ mir_bytemask_of_read_components_index(midgard_instruction *ins, unsigned i)
         /* ALU ops act componentwise so we need to pay attention to
          * their mask. Texture/ldst does not so we don't clamp source
          * readmasks based on the writemask */
-        unsigned qmask = (ins->type == TAG_ALU_4) ? ins->mask : ~0;
+        unsigned qmask = ~0;
 
         /* Handle dot products and things */
         if (ins->type == TAG_ALU_4 && !ins->compact_branch) {
@@ -299,6 +285,8 @@ mir_bytemask_of_read_components_index(midgard_instruction *ins, unsigned i)
 
                 if (channel_override)
                         qmask = mask_of(channel_override);
+                else
+                        qmask = ins->mask;
         }
 
         return mir_bytemask_of_read_components_single(ins->swizzle[i], qmask,
