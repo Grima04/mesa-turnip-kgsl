@@ -3407,7 +3407,7 @@ nvir_nir_shader_compiler_options(int chipset)
       .lower_unpack_snorm_4x8 = true,
       .lower_pack_split = false,
       .lower_extract_byte = (chipset < NVISA_GM107_CHIPSET),
-      .lower_extract_word = true,
+      .lower_extract_word = (chipset < NVISA_GM107_CHIPSET),
       .lower_all_io_to_temps = false,
       .lower_all_io_to_elements = false,
       .vertex_id_zero_based = false,
