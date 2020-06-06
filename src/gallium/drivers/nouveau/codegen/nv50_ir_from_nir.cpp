@@ -3441,9 +3441,13 @@ nvir_nir_shader_compiler_options(int chipset)
 
 static const nir_shader_compiler_options gf100_nir_shader_compiler_options =
 nvir_nir_shader_compiler_options(NVISA_GF100_CHIPSET);
+static const nir_shader_compiler_options gm107_nir_shader_compiler_options =
+nvir_nir_shader_compiler_options(NVISA_GM107_CHIPSET);
 
 const nir_shader_compiler_options *
 nv50_ir_nir_shader_compiler_options(int chipset)
 {
+   if (chipset >= NVISA_GM107_CHIPSET)
+      return &gm107_nir_shader_compiler_options;
    return &gf100_nir_shader_compiler_options;
 }
