@@ -558,6 +558,16 @@ ConstantFolding::expr(Instruction *i,
    memset(&res.data, 0, sizeof(res.data));
 
    switch (i->op) {
+   case OP_SGXT: {
+      int bits = b->data.u32;
+      if (bits) {
+         uint32_t data = a->data.u32 & (0xffffffff >> (32 - bits));
+         if (bits < 32 && (data & (1 << (bits - 1))))
+            data = data - (1 << bits);
+         res.data.u32 = data;
+      }
+      break;
+   }
    case OP_BMSK:
       res.data.u32 = ((1 << b->data.u32) - 1) << a->data.u32;
       break;

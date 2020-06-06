@@ -156,6 +156,7 @@ enum operation
    OP_BREV,   // bitfield reverse
    OP_BMSK,   // bitfield mask
    OP_PERMT,  // dst = bytes from src2,src0 selected by src1 (nvc0's src order)
+   OP_SGXT,
    OP_ATOM,
    OP_BAR,    // execution barrier, sources = { id, thread count, predicate }
    OP_VADD,   // byte/word vector operations

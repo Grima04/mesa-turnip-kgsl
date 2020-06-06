@@ -182,6 +182,7 @@ const char *operationStr[OP_LAST + 1] =
    "brev",
    "bmsk",
    "permt",
+   "sgxt",
    "atom",
    "bar",
    "vadd",
