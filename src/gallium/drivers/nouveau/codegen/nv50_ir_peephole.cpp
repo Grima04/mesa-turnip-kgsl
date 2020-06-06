@@ -801,6 +801,15 @@ ConstantFolding::expr(Instruction *i,
          res.data.u32 |= !!(i->subOp & (1 << lut)) << n;
       }
       break;
+   case OP_PERMT:
+      if (!i->subOp) {
+         uint64_t input = (uint64_t)c->data.u32 << 32 | a->data.u32;
+         uint16_t permt = b->data.u32;
+         for (int n = 0 ; n < 4; n++, permt >>= 4)
+            res.data.u32 |= ((input >> ((permt & 0xf) * 8)) & 0xff) << n * 8;
+      } else
+         return;
+      break;
    case OP_INSBF: {
       int offset = b->data.u32 & 0xff;
       int width = (b->data.u32 >> 8) & 0xff;
