@@ -27,9 +27,10 @@
 #include "util/format/u_format_s3tc.h"
 #include "util/u_screen.h"
 #include "pipe/p_screen.h"
-#include "compiler/nir/nir.h"
 
 #include "nouveau_vp3_video.h"
+
+#include "codegen/nv50_ir_driver.h"
 
 #include "nvc0/nvc0_context.h"
 #include "nvc0/nvc0_screen.h"
@@ -941,74 +942,14 @@ nvc0_screen_bind_cb_3d(struct nvc0_screen *screen, bool *can_serialize,
    IMMED_NVC0(push, NVC0_3D(CB_BIND(stage)), (index << 4) | (size >= 0));
 }
 
-static const nir_shader_compiler_options nir_options = {
-   .lower_fdiv = false,
-   .lower_ffma = false,
-   .fuse_ffma = false, /* nir doesn't track mad vs fma */
-   .lower_flrp32 = true,
-   .lower_flrp64 = true,
-   .lower_fpow = false,
-   .lower_fsat = false,
-   .lower_fsqrt = false, // TODO: only before gm200
-   .lower_fmod = true,
-   .lower_bitfield_extract = false,
-   .lower_bitfield_extract_to_shifts = false,
-   .lower_bitfield_insert = false,
-   .lower_bitfield_insert_to_shifts = false,
-   .lower_bitfield_reverse = false,
-   .lower_bit_count = false,
-   .lower_ifind_msb = false,
-   .lower_find_lsb = false,
-   .lower_uadd_carry = true, // TODO
-   .lower_usub_borrow = true, // TODO
-   .lower_mul_high = false,
-   .lower_negate = false,
-   .lower_sub = true,
-   .lower_scmp = true, // TODO: not implemented yet
-   .lower_idiv = true,
-   .lower_isign = false, // TODO
-   .fdot_replicates = false, // TODO
-   .lower_ffloor = false, // TODO
-   .lower_ffract = true,
-   .lower_fceil = false, // TODO
-   .lower_ldexp = true,
-   .lower_pack_half_2x16 = true,
-   .lower_pack_unorm_2x16 = true,
-   .lower_pack_snorm_2x16 = true,
-   .lower_pack_unorm_4x8 = true,
-   .lower_pack_snorm_4x8 = true,
-   .lower_unpack_half_2x16 = true,
-   .lower_unpack_unorm_2x16 = true,
-   .lower_unpack_snorm_2x16 = true,
-   .lower_unpack_unorm_4x8 = true,
-   .lower_unpack_snorm_4x8 = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_all_io_to_temps = false,
-   .vertex_id_zero_based = false,
-   .lower_base_vertex = false,
-   .lower_helper_invocation = false,
-   .lower_cs_local_index_from_id = true,
-   .lower_cs_local_id_from_index = false,
-   .lower_device_index_to_zero = false, // TODO
-   .lower_wpos_pntc = false, // TODO
-   .lower_hadd = true, // TODO
-   .lower_add_sat = true, // TODO
-   .use_interpolated_input_intrinsics = true,
-   .lower_mul_2x32_64 = true, // TODO
-   .max_unroll_iterations = 32,
-   .lower_int64_options = nir_lower_ufind_msb64|nir_lower_divmod64, // TODO
-   .lower_doubles_options = nir_lower_dmod, // TODO
-   .lower_to_scalar = true,
-};
-
 static const void *
 nvc0_screen_get_compiler_options(struct pipe_screen *pscreen,
                                  enum pipe_shader_ir ir,
                                  enum pipe_shader_type shader)
 {
+   struct nvc0_screen *screen = nvc0_screen(pscreen);
    if (ir == PIPE_SHADER_IR_NIR)
-      return &nir_options;
+      return nv50_ir_nir_shader_compiler_options(screen->base.device->chipset);
    return NULL;
 }
 

@@ -29,6 +29,8 @@
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_scan.h"
 
+struct nir_shader_compiler_options;
+
 /*
  * This struct constitutes linkage information in TGSI terminology.
  *
@@ -70,6 +72,7 @@ struct nv50_ir_prog_symbol
    uint32_t offset;
 };
 
+#define NVISA_GF100_CHIPSET    0xc0
 #define NVISA_GK104_CHIPSET    0xe0
 #define NVISA_GK20A_CHIPSET    0xea
 #define NVISA_GM107_CHIPSET    0x110
@@ -199,6 +202,9 @@ struct nv50_ir_prog_info
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+const struct nir_shader_compiler_options *
+nv50_ir_nir_shader_compiler_options(int chipset);
 
 extern int nv50_ir_generate_code(struct nv50_ir_prog_info *);
 
