@@ -844,7 +844,8 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                  * enable early-z testing. TODO: respect e-z force */
 
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_EARLY_Z,
-                        !fs->can_discard && !fs->writes_depth && !fs->writes_global);
+                        !fs->can_discard && !fs->writes_global &&
+                        !fs->writes_depth && !fs->writes_stencil);
 
                 /* Add the writes Z/S flags if needed. */
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_WRITES_Z, fs->writes_depth);
