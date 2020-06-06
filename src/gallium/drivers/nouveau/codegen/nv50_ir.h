@@ -118,6 +118,7 @@ enum operation
    OP_PINTERP,
    OP_EMIT,    // emit vertex
    OP_RESTART, // restart primitive
+   OP_FINAL, // finish emitting primitives
    OP_TEX,
    OP_TXB, // texture bias
    OP_TXL, // texure lod

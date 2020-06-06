@@ -144,6 +144,7 @@ const char *operationStr[OP_LAST + 1] =
    "pinterp",
    "emit",
    "restart",
+   "final",
    "tex",
    "texbias",
    "texlod",
