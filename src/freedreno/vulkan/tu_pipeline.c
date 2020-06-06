@@ -610,6 +610,31 @@ tu6_blend_op(VkBlendOp op)
 }
 
 static uint32_t
+emit_xs_cntl(const struct ir3_shader_variant *xs)
+{
+   bool is_fs = xs->type == MESA_SHADER_FRAGMENT;
+   enum a3xx_threadsize threadsize = FOUR_QUADS;
+
+   /* TODO:
+    * the "threadsize" field may have nothing to do with threadsize,
+    * use a value that matches the blob until it is figured out
+    */
+   if (xs->type == MESA_SHADER_GEOMETRY)
+      threadsize = TWO_QUADS;
+
+   return A6XX_SP_VS_CTRL_REG0_THREADSIZE(threadsize) |
+      A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(xs->info.max_reg + 1) |
+      A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
+      A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(xs->branchstack) |
+      COND(xs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE) |
+      COND(xs->need_fine_derivatives, A6XX_SP_VS_CTRL_REG0_DIFF_FINE) |
+      /* only fragment shader sets VARYING bit */
+      COND(xs->total_in && is_fs, A6XX_SP_FS_CTRL_REG0_VARYING) |
+      /* unknown bit, seems unnecessary */
+      COND(is_fs, 0x1000000);
+}
+
+static uint32_t
 emit_xs_config(const struct ir3_shader_variant *sh)
 {
    if (sh->instrlen) {
@@ -627,18 +652,8 @@ static void
 tu6_emit_vs_config(struct tu_cs *cs, struct tu_shader *shader,
                    const struct ir3_shader_variant *vs)
 {
-   uint32_t sp_vs_ctrl =
-      A6XX_SP_VS_CTRL_REG0_THREADSIZE(FOUR_QUADS) |
-      A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(vs->info.max_reg + 1) |
-      A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
-      A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(vs->branchstack);
-   if (vs->need_pixlod)
-      sp_vs_ctrl |= A6XX_SP_VS_CTRL_REG0_PIXLODENABLE;
-   if (vs->need_fine_derivatives)
-      sp_vs_ctrl |= A6XX_SP_VS_CTRL_REG0_DIFF_FINE;
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_CTRL_REG0, 1);
-   tu_cs_emit(cs, sp_vs_ctrl);
+   tu_cs_emit(cs, emit_xs_cntl(vs));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_CONFIG, 2);
    tu_cs_emit(cs, emit_xs_config(vs));
@@ -697,20 +712,8 @@ static void
 tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
                    const struct ir3_shader_variant *fs)
 {
-   uint32_t sp_fs_ctrl =
-      A6XX_SP_FS_CTRL_REG0_THREADSIZE(FOUR_QUADS) | 0x1000000 |
-      A6XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(fs->info.max_reg + 1) |
-      A6XX_SP_FS_CTRL_REG0_MERGEDREGS |
-      A6XX_SP_FS_CTRL_REG0_BRANCHSTACK(fs->branchstack);
-   if (fs->total_in > 0)
-      sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_VARYING;
-   if (fs->need_pixlod)
-      sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_PIXLODENABLE;
-   if (fs->need_fine_derivatives)
-      sp_fs_ctrl |= A6XX_SP_FS_CTRL_REG0_DIFF_FINE;
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CTRL_REG0, 1);
-   tu_cs_emit(cs, sp_fs_ctrl);
+   tu_cs_emit(cs, emit_xs_cntl(fs));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CONFIG, 2);
    tu_cs_emit(cs, emit_xs_config(fs));
@@ -1047,10 +1050,7 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    if (has_gs) {
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CTRL_REG0, 1);
-      tu_cs_emit(cs, A6XX_SP_GS_CTRL_REG0_THREADSIZE(TWO_QUADS) |
-            A6XX_SP_GS_CTRL_REG0_FULLREGFOOTPRINT(gs->info.max_reg + 1) |
-            A6XX_SP_GS_CTRL_REG0_BRANCHSTACK(gs->branchstack) |
-            COND(gs->need_pixlod, A6XX_SP_GS_CTRL_REG0_PIXLODENABLE));
+      tu_cs_emit(cs, emit_xs_cntl(gs));
 
       tu6_emit_link_map(cs, vs, gs);
 
