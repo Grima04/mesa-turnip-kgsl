@@ -571,6 +571,10 @@ Converter::getSubOp(nir_op op)
    case nir_op_imul_high:
    case nir_op_umul_high:
       return NV50_IR_SUBOP_MUL_HIGH;
+   case nir_op_ishl:
+   case nir_op_ishr:
+   case nir_op_ushr:
+      return NV50_IR_SUBOP_SHIFT_WRAP;
    default:
       return 0;
    }
