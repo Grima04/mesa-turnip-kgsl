@@ -170,6 +170,7 @@ private:
    void emitBFI();
    void emitBFE();
    void emitFLO();
+   void emitPRMT();
 
    void emitLDSTs(int, DataType);
    void emitLDSTc(int);
@@ -2371,6 +2372,33 @@ CodeEmitterGM107::emitFLO()
    emitGPR  (0x00, insn->def(0));
 }
 
+void
+CodeEmitterGM107::emitPRMT()
+{
+   switch (insn->src(1).getFile()) {
+   case FILE_GPR:
+      emitInsn(0x5bc00000);
+      emitGPR (0x14, insn->src(1));
+      break;
+   case FILE_MEMORY_CONST:
+      emitInsn(0x4bc00000);
+      emitCBUF(0x22, -1, 0x14, 16, 2, insn->src(1));
+      break;
+   case FILE_IMMEDIATE:
+      emitInsn(0x36c00000);
+      emitIMMD(0x14, 19, insn->src(1));
+      break;
+   default:
+      assert(!"bad src1 file");
+      break;
+   }
+
+   emitField(0x30, 3, insn->subOp);
+   emitGPR  (0x27, insn->src(2));
+   emitGPR  (0x08, insn->src(0));
+   emitGPR  (0x00, insn->def(0));
+}
+
 /*******************************************************************************
  * memory
  ******************************************************************************/
@@ -3536,6 +3564,9 @@ CodeEmitterGM107::emitInstruction(Instruction *i)
       break;
    case OP_BFIND:
       emitFLO();
+      break;
+   case OP_PERMT:
+      emitPRMT();
       break;
    case OP_SLCT:
       if (isFloatType(insn->dType))
