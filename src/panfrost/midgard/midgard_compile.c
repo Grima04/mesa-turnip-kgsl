@@ -1305,7 +1305,7 @@ compute_builtin_arg(nir_op op)
 }
 
 static void
-emit_fragment_store(compiler_context *ctx, unsigned src, enum midgard_rt_id rt)
+emit_fragment_store(compiler_context *ctx, unsigned src, unsigned src_z, unsigned src_s, enum midgard_rt_id rt)
 {
         assert(rt < ARRAY_SIZE(ctx->writeout_branch));
 
@@ -1320,7 +1320,7 @@ emit_fragment_store(compiler_context *ctx, unsigned src, enum midgard_rt_id rt)
 
         bool depth_only = (rt == MIDGARD_ZS_RT);
 
-        ins.writeout = depth_only ? PAN_WRITEOUT_Z : PAN_WRITEOUT_C;
+        ins.writeout = depth_only ? 0 : PAN_WRITEOUT_C;
 
         /* Add dependencies */
         ins.src[0] = src;
@@ -1328,6 +1328,19 @@ emit_fragment_store(compiler_context *ctx, unsigned src, enum midgard_rt_id rt)
         ins.constants.u32[0] = depth_only ? 0xFF : (rt - MIDGARD_COLOR_RT0) * 0x100;
         for (int i = 0; i < 4; ++i)
                 ins.swizzle[0][i] = i;
+
+        if (~src_z) {
+                emit_explicit_constant(ctx, src_z, src_z);
+                ins.src[2] = src_z;
+                ins.src_types[2] = nir_type_uint32;
+                ins.writeout |= PAN_WRITEOUT_Z;
+        }
+        if (~src_s) {
+                emit_explicit_constant(ctx, src_s, src_s);
+                ins.src[3] = src_s;
+                ins.src_types[3] = nir_type_uint32;
+                ins.writeout |= PAN_WRITEOUT_S;
+        }
 
         /* Emit the branch */
         br = emit_mir_instruction(ctx, ins);
@@ -1580,7 +1593,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         else
                                 assert(0);
 
-                        emit_fragment_store(ctx, reg, rt);
+                        emit_fragment_store(ctx, reg, ~0, ~0, rt);
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
                         /* We should have been vectorized, though we don't
                          * currently check that st_vary is emitted only once
@@ -1642,7 +1655,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_store_raw_output_pan:
                 assert (ctx->stage == MESA_SHADER_FRAGMENT);
                 reg = nir_src_index(ctx, &instr->src[0]);
-                emit_fragment_store(ctx, reg, ctx->blend_rt);
+                emit_fragment_store(ctx, reg, ~0, ~0, ctx->blend_rt);
                 break;
 
         case nir_intrinsic_store_global:
