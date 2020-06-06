@@ -907,7 +907,6 @@ mir_schedule_alu(
         mir_choose_alu(&branch, instructions, worklist, len, &predicate, ALU_ENAB_BR_COMPACT);
         mir_update_worklist(worklist, len, instructions, branch);
         bool writeout = branch && branch->writeout;
-        bool zs_writeout = writeout && (branch->writeout_depth | branch->writeout_stencil);
 
         if (branch && branch->branch.conditional) {
                 midgard_instruction *cond = mir_schedule_condition(ctx, &predicate, worklist, len, instructions, branch);
@@ -948,7 +947,7 @@ mir_schedule_alu(
                 bundle.last_writeout = branch->last_writeout;
         }
 
-        if (writeout && !zs_writeout) {
+        if (writeout) {
                 vadd = ralloc(ctx, midgard_instruction);
                 *vadd = v_mov(~0, make_compiler_temp(ctx));
 
@@ -1004,7 +1003,7 @@ mir_schedule_alu(
 
         if (writeout) {
                 midgard_instruction *stages[] = { sadd, vadd, smul };
-                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(zs_writeout ? 1 : 0) : branch->src[0];
+                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : branch->src[0];
                 unsigned writeout_mask = 0x0;
                 bool bad_writeout = false;
 
@@ -1020,12 +1019,10 @@ mir_schedule_alu(
                 }
 
                 /* It's possible we'll be able to schedule something into vmul
-                 * to fill r0/r1. Let's peak into the future, trying to schedule
+                 * to fill r0. Let's peak into the future, trying to schedule
                  * vmul specially that way. */
 
-                unsigned full_mask = zs_writeout ?
-                        (1 << (branch->writeout_depth + branch->writeout_stencil)) - 1 :
-                        0xF;
+                unsigned full_mask = 0xF;
 
                 if (!bad_writeout && writeout_mask != full_mask) {
                         predicate.unit = UNIT_VMUL;
@@ -1048,7 +1045,7 @@ mir_schedule_alu(
 
                 /* Finally, add a move if necessary */
                 if (bad_writeout || writeout_mask != full_mask) {
-                        unsigned temp = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(zs_writeout ? 1 : 0) : make_compiler_temp(ctx);
+                        unsigned temp = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : make_compiler_temp(ctx);
 
                         vmul = ralloc(ctx, midgard_instruction);
                         *vmul = v_mov(src, temp);
