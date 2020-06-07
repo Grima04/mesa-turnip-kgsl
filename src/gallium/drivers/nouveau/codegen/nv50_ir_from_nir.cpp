@@ -3285,6 +3285,11 @@ Converter::run()
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_lower_phis_to_scalar);
 
+   /*TODO: improve this lowering/optimisation loop so that we can use
+    *      nir_opt_idiv_const effectively before this.
+    */
+   NIR_PASS(progress, nir, nir_lower_idiv, nir_lower_idiv_precise);
+
    do {
       progress = false;
       NIR_PASS(progress, nir, nir_copy_prop);
