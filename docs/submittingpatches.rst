@@ -60,27 +60,9 @@ Patch formatting
    Prefer the full url to just ``Closes: #1``, since the url makes it
    easier to get to the bug page from ``git log``
 
-   **Do not use the Fixes: tag for this!** Mesa already uses Fixes for
-   something else.
-
--  If a patch addresses a issue introduced with earlier commit, that
-   should be noted in the commit message. For example:
-
-   ::
-
-      Fixes: d7b3707c612 "util/disk_cache: use stat() to check if entry is a directory"
-
--  You can produce those fixes lines by running
-
-   ::
-
-      git config --global alias.fixes "show -s --pretty='format:Fixes: %h (\"%s\")'"
-
-   once and then using
-
-   ::
-
-      git fixes <sha1>
+   **Do not use the ``Fixes:`` tag for this!** Mesa already uses
+   ``Fixes:`` for something else.
+   See `below <#fixes>`__.
 
 -  If there have been several revisions to a patch during the review
    process, they should be noted such as in this example:
@@ -119,6 +101,22 @@ Patch formatting
    ``Fixes:``, ``Cc: mesa-stable`` and/or other) to the commit messages.
    This provides reviewers with quick feedback if the patch has already
    been reviewed.
+
+.. _fixes:
+
+The ``Fixes:`` tag
+------------------
+
+If a patch addresses a issue introduced with earlier commit, that
+should be noted in the commit message. For example::
+
+    Fixes: d7b3707c612 "util/disk_cache: use stat() to check if entry is a directory"
+
+You can produce those fixes lines by running this command once::
+
+    git config --global alias.fixes "show -s --pretty='format:Fixes: %h (\"%s\")'"
+
+After that, using ``git fixes <sha1>`` will print the full line for you.
 
 .. _testing:
 
