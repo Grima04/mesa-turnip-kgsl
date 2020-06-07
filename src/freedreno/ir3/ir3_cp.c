@@ -143,9 +143,11 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 		 * called on a src that has already had an indirect load folded
 		 * in, in which case ssa() returns NULL
 		 */
-		struct ir3_instruction *src = ssa(instr->regs[n+1]);
-		if (src && src->address->block != instr->block)
-			return false;
+		if (instr->regs[n+1]->flags & IR3_REG_SSA) {
+			struct ir3_instruction *src = ssa(instr->regs[n+1]);
+			if (src->address->block != instr->block)
+				return false;
+		}
 	}
 
 	switch (opc_cat(instr->opc)) {
