@@ -64,7 +64,7 @@ Patch formatting
    something else.
 
 -  If a patch addresses a issue introduced with earlier commit, that
-   should be noted in the patch comment. For example:
+   should be noted in the commit message. For example:
 
    ::
 
@@ -254,9 +254,9 @@ Nominating a commit for a stable branch
 There are several ways to nominate a patch for inclusion in the stable
 branch and release. In order or preference:
 
-- By adding the ``Fixes:`` tag as described above, if you are fixing
+- By adding the ``Fixes:`` tag in the commit message as described above, if you are fixing
   a specific commit.
-- By adding the ``Cc: mesa-stable`` tag as described below.
+- By adding the ``Cc: mesa-stable`` tag in the commit message as described below.
 - By submitting a merge request against the ``staging/year.quarter``
   branch on gitlab.
 
