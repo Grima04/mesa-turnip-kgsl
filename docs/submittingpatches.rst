@@ -275,11 +275,10 @@ The stable tag
 If you want a commit to be applied to a stable branch, you should add an
 appropriate note to the commit message.
 
-Using a "fixes tag" as described in `Patch formatting <#formatting>`__
-is the preferred way to nominate a commit that you know ahead of time
-should be backported. There are scripts that will figure out which
-releases to apply the patch to automatically, so you don't need to
-figure it out.
+Using a ``Fixes:`` tag as described in `Patch formatting <#formatting>`__
+is the preferred way to nominate a commit that should be backported.
+There are scripts that will figure out which releases to apply the patch
+to automatically, so you don't need to figure it out.
 
 Alternatively, you may use a "CC:" tag. Here are some examples of such a
 note:
