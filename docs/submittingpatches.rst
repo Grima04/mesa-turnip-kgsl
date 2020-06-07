@@ -377,17 +377,3 @@ Git tips
    .. code-block:: console
 
       git rebase -i --exec="ninja -C build/" HEAD~8
-
--  Sets the default mailing address for your repo.
-
-   .. code-block:: console
-
-      git config --local sendemail.to mesa-dev@lists.freedesktop.org
-
--  Add version to subject line of patch series in this case for the last
-   8 commits before sending.
-
-   .. code-block:: console
-
-      git send-email --subject-prefix="PATCH v4" HEAD~8
-      git send-email -v4 @~8 # shorter version, inherited from git format-patch
