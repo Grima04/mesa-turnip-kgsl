@@ -268,11 +268,31 @@ arm_build:
   needs:
     - arm_build
 
+# Debian 10 based x86 baremetal image base
+arm_test-base:
+  extends:
+    - .fdo.container-build@debian
+    - .container
+  variables:
+    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-06-07"
+
+.use-arm_test-base:
+  extends:
+    - arm_test-base
+    - .ci-run-policy
+  stage: container-2
+  variables:
+    BASE_TAG: *arm_test-base
+    FDO_BASE_IMAGE: "$CI_REGISTRY_IMAGE/debian/arm_test-base:$BASE_TAG"
+  needs:
+    - arm_test-base
+
 # x86 image with ARM rootfses for baremetal testing.
 arm_test:
-  extends: x86_build-base
+  extends:
+    - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test "2020-06-01"
+    FDO_DISTRIBUTION_TAG: &arm_test "2020-06-07"
 
 .use-arm_test:
   variables:
