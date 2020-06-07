@@ -257,8 +257,8 @@ branch and release. In order or preference:
 - By adding the ``Fixes:`` tag as described above, if you are fixing
   a specific commit.
 - By adding the ``Cc: mesa-stable`` tag as described below.
--  By submitting a merge request against the "staging/year.quarter"
-   branch on gitlab.
+- By submitting a merge request against the ``staging/year.quarter``
+  branch on gitlab.
 
 Please **DO NOT** send patches to mesa-stable@lists.freedesktop.org, it
 is not monitored actively and is a historical artifact.
