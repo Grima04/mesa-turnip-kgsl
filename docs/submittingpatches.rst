@@ -251,11 +251,12 @@ the code before merging their patches.
 Nominating a commit for a stable branch
 ---------------------------------------
 
-There are three ways to nominate a patch for inclusion in the stable
-branch and release.
+There are several ways to nominate a patch for inclusion in the stable
+branch and release. In order or preference:
 
+- By adding the ``Fixes:`` tag as described above, if you are fixing
+  a specific commit.
 - By adding the ``Cc: mesa-stable`` tag as described below.
--  By adding the fixes: tag as described below.
 -  By submitting a merge request against the "staging/year.quarter"
    branch on gitlab.
 
