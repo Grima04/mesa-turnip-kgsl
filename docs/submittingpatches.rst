@@ -118,6 +118,26 @@ You can produce those fixes lines by running this command once::
 
 After that, using ``git fixes <sha1>`` will print the full line for you.
 
+The stable tag
+~~~~~~~~~~~~~~
+
+If you want a commit to be applied to a stable branch, you should add an
+appropriate note to the commit message.
+
+Using a ``Fixes:`` tag as described in `Patch formatting <#formatting>`__
+is the preferred way to nominate a commit that should be backported.
+There are scripts that will figure out which releases to apply the patch
+to automatically, so you don't need to figure it out.
+
+Alternatively, you may use a "CC:" tag. Here are some examples of such a
+note::
+
+    CC: 20.0 19.3 <mesa-stable>
+
+Using the CC tag **should** include the stable branches you want to
+nominate the patch to. If you do not provide any version it is nominated
+to all active stable branches.
+
 .. _testing:
 
 Testing Patches
@@ -254,7 +274,7 @@ branch and release. In order or preference:
 
 - By adding the ``Fixes:`` tag in the commit message as described above, if you are fixing
   a specific commit.
-- By adding the ``Cc: mesa-stable`` tag in the commit message as described below.
+- By adding the ``Cc: mesa-stable`` tag in the commit message as described above.
 - By submitting a merge request against the ``staging/year.quarter``
   branch on gitlab.
 
@@ -266,28 +286,6 @@ nomination request.
 
 The current patch status can be observed in the `staging
 branch <releasing.rst#stagingbranch>`__.
-
-The stable tag
-~~~~~~~~~~~~~~
-
-If you want a commit to be applied to a stable branch, you should add an
-appropriate note to the commit message.
-
-Using a ``Fixes:`` tag as described in `Patch formatting <#formatting>`__
-is the preferred way to nominate a commit that should be backported.
-There are scripts that will figure out which releases to apply the patch
-to automatically, so you don't need to figure it out.
-
-Alternatively, you may use a "CC:" tag. Here are some examples of such a
-note:
-
-::
-
-   CC: 20.0 19.3 <mesa-stable>
-
-Using the CC tag **should** include the stable branches you want to
-nominate the patch to. If you do not provide any version it is nominated
-to all active stable branches.
 
 .. _criteria:
 
