@@ -1294,9 +1294,6 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
    tu_cs_emit(cs, enable_varyings ? 3 : 1);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
-   tu_cs_emit(cs, 0xff); /* XXX */
-
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CNTL, 1);
    tu_cs_emit(cs,
          CONDREG(ij_pix_regid, A6XX_GRAS_CNTL_VARYING) |
@@ -1586,6 +1583,9 @@ tu6_emit_program(struct tu_cs *cs,
          vs = &builder->shaders[MESA_SHADER_VERTEX]->variants[1];
       fs = &dummy_variant;
    }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
+   tu_cs_emit(cs, 0xff); /* XXX */
 
    tu6_emit_vs_config(cs, builder->shaders[MESA_SHADER_VERTEX], vs);
    tu6_emit_hs_config(cs, builder->shaders[MESA_SHADER_TESS_CTRL], hs);
