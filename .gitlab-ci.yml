@@ -274,7 +274,7 @@ arm_test-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-06-07"
+    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-06-08"
 
 .use-arm_test-base:
   extends:
@@ -287,19 +287,19 @@ arm_test-base:
   needs:
     - arm_test-base
 
-# x86 image with ARM rootfses for baremetal testing.
-arm_test:
+# x86 image with ARM64 rootfs for baremetal testing.
+arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test "2020-06-07"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-08"
 
-.use-arm_test:
+.use-arm64_test:
   variables:
-    TAG: *arm_test
-  image: "$CI_REGISTRY_IMAGE/debian/arm_test:$TAG"
+    TAG: *arm64_test
+  image: "$CI_REGISTRY_IMAGE/debian/arm64_test:$TAG"
   needs:
-    - arm_test
+    - arm64_test
 
 # Native Windows docker builds
 #
@@ -945,7 +945,7 @@ arm64_a630_gmem:
 arm64_a306_gles2:
   extends:
     - .baremetal-test
-    - .use-arm_test
+    - .use-arm64_test
     - .freedreno-rules
   variables:
     BM_KERNEL: /lava-files/Image.gz
@@ -964,7 +964,7 @@ arm64_a306_gles2:
   script:
     - .gitlab-ci/bare-metal/fastboot.sh
   needs:
-    - arm_test
+    - arm64_test
     - arm_build
     - meson-arm64
   tags:
