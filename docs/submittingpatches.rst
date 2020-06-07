@@ -116,7 +116,7 @@ Patch formatting
       Acked-by: Joe Hacker <jhacker@foo.com>
 
 -  If sending later revision of a patch, add all the tags - ack, r-b,
-   Cc: mesa-stable and/or other. This provides reviewers with quick
+   ``Cc: mesa-stable`` and/or other. This provides reviewers with quick
    feedback if the patch has already been reviewed.
 
 .. _testing:
@@ -253,7 +253,7 @@ Nominating a commit for a stable branch
 There are three ways to nominate a patch for inclusion in the stable
 branch and release.
 
--  By adding the Cc: mesa-stable@ tag as described below.
+- By adding the ``Cc: mesa-stable`` tag as described below.
 -  By adding the fixes: tag as described below.
 -  By submitting a merge request against the "staging/year.quarter"
    branch on gitlab.
@@ -284,7 +284,7 @@ note:
 
 ::
 
-   CC: 20.0 19.3 <mesa-stable@lists.freedesktop.org>
+   CC: 20.0 19.3 <mesa-stable>
 
 Using the CC tag **should** include the stable branches you want to
 nominate the patch to. If you do not provide any version it is nominated
