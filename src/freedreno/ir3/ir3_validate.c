@@ -77,7 +77,16 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
 {
 	struct ir3_register *last_reg = NULL;
 
+	if (writes_gpr(instr)) {
+		if (instr->regs[0]->flags & IR3_REG_RELATIV) {
+			validate_assert(ctx, instr->address);
+		}
+	}
+
 	foreach_src_n (reg, n, instr) {
+		if (reg->flags & IR3_REG_RELATIV)
+			validate_assert(ctx, instr->address);
+
 		validate_src(ctx, reg);
 
 		/* Validate that all src's are either half of full.
