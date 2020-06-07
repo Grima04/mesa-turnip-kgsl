@@ -115,9 +115,10 @@ Patch formatting
       Reviewed-by: Joe Hacker <jhacker@foo.com>
       Acked-by: Joe Hacker <jhacker@foo.com>
 
--  If sending later revision of a patch, add all the tags - ack, r-b,
-   ``Cc: mesa-stable`` and/or other. This provides reviewers with quick
-   feedback if the patch has already been reviewed.
+-  When updating a merge request add all the tags (``Acked-by:``, ``Reviewed-by:``,
+   ``Fixes:``, ``Cc: mesa-stable`` and/or other) to the commit messages.
+   This provides reviewers with quick feedback if the patch has already
+   been reviewed.
 
 .. _testing:
 
