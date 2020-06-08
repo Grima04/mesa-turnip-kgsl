@@ -331,6 +331,9 @@ VdpStatus vlVdpVideoMixerRender(VdpVideoMixer mixer,
       }
    }
 
+   if (!destination_video_rect)
+      destination_video_rect = video_source_rect;
+
    prect = RectToPipe(video_source_rect, &rect);
    if (!prect) {
       rect.x0 = 0;
