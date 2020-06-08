@@ -1317,6 +1317,10 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 
    BUILTIN_BINOP(nir_op_fmin, GLSLstd450FMin)
    BUILTIN_BINOP(nir_op_fmax, GLSLstd450FMax)
+   BUILTIN_BINOP(nir_op_imin, GLSLstd450SMin)
+   BUILTIN_BINOP(nir_op_imax, GLSLstd450SMax)
+   BUILTIN_BINOP(nir_op_umin, GLSLstd450UMin)
+   BUILTIN_BINOP(nir_op_umax, GLSLstd450UMax)
 #undef BUILTIN_BINOP
 
    case nir_op_fdot2:
