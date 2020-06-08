@@ -12,6 +12,7 @@ set +x
 touch $rootfs_dst/set-job-env-vars.sh
 chmod +x $rootfs_dst/set-job-env-vars.sh
 for var in \
+    BARE_METAL_TEST_SCRIPT \
     CI_COMMIT_BRANCH \
     CI_COMMIT_TITLE \
     CI_JOB_ID \

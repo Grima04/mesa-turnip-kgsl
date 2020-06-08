@@ -980,6 +980,7 @@ arm64_a306_gles2:
     BM_ROOTFS: /lava-files/rootfs-arm64
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8"
     FLAKES_CHANNEL: "#freedreno-ci"
+    BARE_METAL_TEST_SCRIPT: "/deqp/deqp-runner.sh"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
     DEQP_SKIPS: deqp-freedreno-a307-skips.txt
     DEQP_VER: gles2

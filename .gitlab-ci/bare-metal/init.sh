@@ -17,7 +17,7 @@ if [ -e /install/deqp-expected-fails.txt ]; then
   export DEQP_EXPECTED_FAILS=deqp-expected-fails.txt
 fi
 
-if sh /deqp/deqp-runner.sh; then
+if sh $BARE_METAL_TEST_SCRIPT; then
     echo "bare-metal result: pass"
 else
     echo "bare-metal result: fail"
