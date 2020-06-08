@@ -1944,6 +1944,100 @@ panfrost_xfb_captured(struct panfrost_shader_state *xfb,
         return o->output_buffer < max_xfb;
 }
 
+/* Higher-level wrapper around all of the above, classifying a varying into one
+ * of the above types */
+
+static struct mali_attr_meta
+panfrost_emit_varying(
+                struct panfrost_shader_state *stage,
+                struct panfrost_shader_state *other,
+                struct panfrost_shader_state *xfb,
+                unsigned present,
+                unsigned max_xfb,
+                unsigned *streamout_offsets,
+                unsigned quirks,
+                unsigned *gen_offsets,
+                unsigned *gen_stride,
+                unsigned idx,
+                bool should_alloc,
+                bool is_fragment)
+{
+        gl_varying_slot loc = stage->varyings_loc[idx];
+        enum mali_format format = stage->varyings[idx].format;
+
+        if (has_point_coord(stage->point_sprite_mask, loc)) {
+                return pan_emit_vary_special(present, PAN_VARY_PNTCOORD, quirks);
+        } else if (panfrost_xfb_captured(xfb, loc, max_xfb)) {
+                struct pipe_stream_output *o = pan_get_so(&xfb->stream_output, loc);
+                return pan_emit_vary_xfb(present, max_xfb, streamout_offsets, quirks, format, *o);
+        } else if (loc == VARYING_SLOT_POS) {
+                if (is_fragment)
+                        return pan_emit_vary_special(present, PAN_VARY_FRAGCOORD, quirks);
+                else
+                        return pan_emit_vary_special(present, PAN_VARY_POSITION, quirks);
+        } else if (loc == VARYING_SLOT_PSIZ) {
+                return pan_emit_vary_special(present, PAN_VARY_PSIZ, quirks);
+        } else if (loc == VARYING_SLOT_PNTC) {
+                return pan_emit_vary_special(present, PAN_VARY_PNTCOORD, quirks);
+        } else if (loc == VARYING_SLOT_FACE) {
+                return pan_emit_vary_special(present, PAN_VARY_FACE, quirks);
+        }
+
+        /* We've exhausted special cases, so it's otherwise a general varying. Check if we're linked */
+        signed other_idx = -1;
+
+        for (unsigned j = 0; j < other->varying_count; ++j) {
+                if (other->varyings_loc[j] == loc) {
+                        other_idx = j;
+                        break;
+                }
+        }
+
+        if (other_idx < 0)
+                return pan_emit_vary_only(present, quirks);
+
+        unsigned offset = gen_offsets[other_idx];
+
+        if (should_alloc) {
+                /* We're linked, so allocate a space via a watermark allocation */
+                gen_offsets[idx] = *gen_stride;
+                offset = *gen_stride;
+
+                /* If a varying is marked for XFB but not actually captured, we
+                 * should match the format to the format that would otherwise
+                 * be used for XFB, since dEQP checks for invariance here. It's
+                 * unclear if this is required by the spec. */
+
+                if (xfb->so_mask & (1ull << loc)) {
+                        struct pipe_stream_output *o = pan_get_so(&xfb->stream_output, loc);
+                        format = pan_xfb_format(format, o->num_components);
+                }
+
+                *gen_stride += pan_varying_size(format);
+        }
+
+        return pan_emit_vary(present, PAN_VARY_GENERAL,
+                        quirks, format, offset);
+}
+
+static void
+pan_emit_special_input(union mali_attr *varyings,
+                unsigned present,
+                enum pan_special_varying v,
+                mali_ptr addr)
+{
+        if (present & (1 << v)) {
+                /* Ensure we write exactly once for performance and with fields
+                 * zeroed appropriately to avoid flakes */
+
+                union mali_attr s = {
+                        .elements = addr
+                };
+
+                varyings[pan_varying_index(present, v)] = s;
+        }
+}
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
