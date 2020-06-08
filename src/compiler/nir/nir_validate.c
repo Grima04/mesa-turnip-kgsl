@@ -514,6 +514,21 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
    }
 }
 
+static bool
+vectorized_intrinsic(nir_intrinsic_instr *intr)
+{
+   const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
+
+   if (info->dest_components == 0)
+      return true;
+
+   for (unsigned i = 0; i < info->num_srcs; i++)
+      if (info->src_components[i] == 0)
+         return true;
+
+   return false;
+}
+
 static void
 validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 {
@@ -640,6 +655,9 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 
       validate_dest(&instr->dest, state, dest_bit_size, components_written);
    }
+
+   if (!vectorized_intrinsic(instr))
+      validate_assert(state, instr->num_components == 0);
 }
 
 static void
