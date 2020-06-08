@@ -3679,7 +3679,10 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 	}
 
 	*max_offchip_buffers_p = max_offchip_buffers;
-	if (device->physical_device->rad_info.chip_class >= GFX7) {
+	if (device->physical_device->rad_info.chip_class >= GFX10_3) {
+		hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers - 1) |
+				   S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
+	} else if (device->physical_device->rad_info.chip_class >= GFX7) {
 		if (device->physical_device->rad_info.chip_class >= GFX8)
 			--max_offchip_buffers;
 		hs_offchip_param =

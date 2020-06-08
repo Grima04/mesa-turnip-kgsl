@@ -1170,7 +1170,8 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 			S_028804_ALPHA_TO_MASK_NUM_SAMPLES(log_samples);
 		ms->pa_sc_aa_config |= S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
 			S_028BE0_MAX_SAMPLE_DIST(radv_get_default_max_sample_dist(log_samples)) |
-			S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples); /* CM_R_028BE0_PA_SC_AA_CONFIG */
+			S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) | /* CM_R_028BE0_PA_SC_AA_CONFIG */
+			S_028BE0_COVERED_CENTROID_IS_CENTER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3);
 		ms->pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(ps_iter_samples > 1);
 		if (ps_iter_samples > 1)
 			pipeline->graphics.spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
@@ -3589,6 +3590,9 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 
 		/* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */
 		db_render_override2 |= S_028010_DECOMPRESS_Z_ON_FLUSH(attachment->samples > 2);
+
+		if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
+			db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE_GFX103(2);
 	}
 
 	if (has_stencil_attachment && vkds && vkds->stencilTestEnable) {
@@ -3884,6 +3888,7 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
 	                       S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
+			       S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
@@ -4003,6 +4008,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
 	                       S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
+			       S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
@@ -4041,7 +4047,9 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	 */
 	radeon_set_context_reg(ctx_cs, R_028838_PA_CL_NGG_CNTL,
 			       S_028838_INDEX_BUF_EDGE_FLAG_ENA(!radv_pipeline_has_tess(pipeline) &&
-			                                        !radv_pipeline_has_gs(pipeline)));
+			                                        !radv_pipeline_has_gs(pipeline)) |
+			       /* Reuse for NGG. */
+			       S_028838_VERTEX_REUSE_DEPTH_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3 ? 30 : 0));
 
 	ge_cntl = S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
 		  S_03096C_VERT_GRP_SIZE(256) | /* 256 = disable vertex grouping */
