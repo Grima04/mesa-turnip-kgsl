@@ -1555,7 +1555,7 @@ end_primitive_masked(struct lp_build_nir_context * bld_base,
    if (stream_id == 0)
       bld->gs_iface->end_primitive(bld->gs_iface, &bld->bld_base.base,
                                    total_emitted_vertices_vec,
-                                   emitted_vertices_vec, emitted_prims_vec, mask_vec(bld_base));
+                                   emitted_vertices_vec, emitted_prims_vec, mask);
    increment_vec_ptr_by_mask(bld_base, bld->emitted_prims_vec_ptr[stream_id],
                              mask);
    clear_uint_vec_ptr_from_mask(bld_base, bld->emitted_vertices_vec_ptr[stream_id],

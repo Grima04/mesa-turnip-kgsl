@@ -1838,6 +1838,7 @@ draw_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
       draw_gs_jit_prim_lengths(variant->gallivm, variant->context_ptr);
    unsigned i;
 
+   LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntNE, mask_vec, lp_build_const_int_vec(gallivm, bld->type, 0), "");
    for (i = 0; i < bld->type.length; ++i) {
       LLVMValueRef ind = lp_build_const_int32(gallivm, i);
       LLVMValueRef prims_emitted =
@@ -1846,10 +1847,14 @@ draw_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
       LLVMValueRef num_vertices =
          LLVMBuildExtractElement(builder, verts_per_prim_vec, ind, "");
 
+      LLVMValueRef this_cond = LLVMBuildExtractElement(gallivm->builder, cond, ind, "");
+      struct lp_build_if_state ifthen;
+      lp_build_if(&ifthen, gallivm, this_cond);
       store_ptr = LLVMBuildGEP(builder, prim_lengts_ptr, &prims_emitted, 1, "");
       store_ptr = LLVMBuildLoad(builder, store_ptr, "");
       store_ptr = LLVMBuildGEP(builder, store_ptr, &ind, 1, "");
       LLVMBuildStore(builder, num_vertices, store_ptr);
+      lp_build_endif(&ifthen);
    }
 }
 
