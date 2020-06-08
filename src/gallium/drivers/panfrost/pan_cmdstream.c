@@ -1754,6 +1754,49 @@ pan_varying_size(enum mali_format fmt)
         return bpc * chan;
 }
 
+/* Indices for named (non-XFB) varyings that are present. These are packed
+ * tightly so they correspond to a bitfield present (P) indexed by (1 <<
+ * PAN_VARY_*). This has the nice property that you can lookup the buffer index
+ * of a given special field given a shift S by:
+ *
+ *      idx = popcount(P & ((1 << S) - 1))
+ *
+ * That is... look at all of the varyings that come earlier and count them, the
+ * count is the new index since plus one. Likewise, the total number of special
+ * buffers required is simply popcount(P)
+ */
+
+enum pan_special_varying {
+        PAN_VARY_GENERAL = 0,
+        PAN_VARY_POSITION = 1,
+        PAN_VARY_PSIZ = 2,
+        PAN_VARY_PNTCOORD = 3,
+        PAN_VARY_FACE = 4,
+        PAN_VARY_FRAGCOORD = 5,
+
+        /* Keep last */
+        PAN_VARY_MAX,
+};
+
+/* Given a varying, figure out which index it correpsonds to */
+
+static inline unsigned
+pan_varying_index(unsigned present, enum pan_special_varying v)
+{
+        unsigned mask = (1 << v) - 1;
+        return util_bitcount(present & mask);
+}
+
+/* Get the base offset for XFB buffers, which by convention come after
+ * everything else. Wrapper function for semantic reasons; by construction this
+ * is just popcount. */
+
+static inline unsigned
+pan_xfb_base(unsigned present)
+{
+        return util_bitcount(present);
+}
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
