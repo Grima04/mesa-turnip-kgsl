@@ -26,6 +26,7 @@ struct zink_query {
    bool xfb_running;
 
    bool active; /* query is considered active by vk */
+   bool needs_reset; /* query is considered active by vk and cannot be destroyed */
    bool dead; /* query should be destroyed when its fence finishes */
 
    unsigned fences;
@@ -151,47 +152,6 @@ zink_prune_queries(struct zink_screen *screen, struct zink_fence *fence)
    fence->active_queries = NULL;
 }
 
-static void
-begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
-{
-   VkQueryControlFlags flags = 0;
-
-   if (q->precise)
-      flags |= VK_QUERY_CONTROL_PRECISE_BIT;
-   if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) {
-      zink_screen(ctx->base.screen)->vk_CmdBeginQueryIndexedEXT(batch->cmdbuf,
-                                                                q->query_pool,
-                                                                q->curr_query,
-                                                                flags,
-                                                                q->index);
-      q->xfb_running = true;
-   } else
-      vkCmdBeginQuery(batch->cmdbuf, q->query_pool, q->curr_query, flags);
-   q->active = true;
-   if (!batch->active_queries)
-      batch->active_queries = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   assert(batch->active_queries);
-   p_atomic_inc(&q->fences);
-   _mesa_set_add(batch->active_queries, q);
-}
-
-static bool
-zink_begin_query(struct pipe_context *pctx,
-                 struct pipe_query *q)
-{
-   struct zink_query *query = (struct zink_query *)q;
-   struct zink_batch *batch = zink_curr_batch(zink_context(pctx));
-
-   /* ignore begin_query for timestamps */
-   if (query->type == PIPE_QUERY_TIMESTAMP)
-      return true;
-   util_query_clear_result(&query->accumulated_result, query->type);
-
-   begin_query(zink_context(pctx), batch, query);
-
-   return true;
-}
-
 static bool
 get_query_result(struct pipe_context *pctx,
                       struct pipe_query *q,
@@ -284,6 +244,65 @@ get_query_result(struct pipe_context *pctx,
 }
 
 static void
+reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
+{
+   /* This command must only be called outside of a render pass instance
+    *
+    * - vkCmdResetQueryPool spec
+    */
+   batch = zink_batch_no_rp(ctx);
+
+   get_query_result(&ctx->base, (struct pipe_query*)q, false, &q->accumulated_result);
+   vkCmdResetQueryPool(batch->cmdbuf, q->query_pool, 0, q->num_queries);
+   q->last_checked_query = q->curr_query = 0;
+   q->needs_reset = false;
+}
+
+static void
+begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
+{
+   VkQueryControlFlags flags = 0;
+
+   if (q->needs_reset)
+      reset_pool(ctx, batch, q);
+   assert(q->curr_query < q->num_queries);
+   if (q->precise)
+      flags |= VK_QUERY_CONTROL_PRECISE_BIT;
+   if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) {
+      zink_screen(ctx->base.screen)->vk_CmdBeginQueryIndexedEXT(batch->cmdbuf,
+                                                                q->query_pool,
+                                                                q->curr_query,
+                                                                flags,
+                                                                q->index);
+      q->xfb_running = true;
+   } else
+      vkCmdBeginQuery(batch->cmdbuf, q->query_pool, q->curr_query, flags);
+   q->active = true;
+   if (!batch->active_queries)
+      batch->active_queries = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   assert(batch->active_queries);
+   p_atomic_inc(&q->fences);
+   _mesa_set_add(batch->active_queries, q);
+}
+
+static bool
+zink_begin_query(struct pipe_context *pctx,
+                 struct pipe_query *q)
+{
+   struct zink_query *query = (struct zink_query *)q;
+   struct zink_batch *batch = zink_curr_batch(zink_context(pctx));
+
+   /* ignore begin_query for timestamps */
+   if (query->type == PIPE_QUERY_TIMESTAMP)
+      return true;
+   util_query_clear_result(&query->accumulated_result, query->type);
+
+   begin_query(zink_context(pctx), batch, query);
+
+   return true;
+}
+
+static void
 end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -294,9 +313,11 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    else
       vkCmdEndQuery(batch->cmdbuf, q->query_pool, q->curr_query);
    if (++q->curr_query == q->num_queries) {
-      get_query_result(&ctx->base, (struct pipe_query*)q, false, &q->accumulated_result);
-      vkCmdResetQueryPool(batch->cmdbuf, q->query_pool, 0, q->num_queries);
-      q->last_checked_query = q->curr_query = 0;
+      /* can't do zink_batch_no_rp here because we might already be inside a zink_batch_no_rp */
+      if (batch->rp)
+         q->needs_reset = true;
+      else
+        reset_pool(ctx, batch, q);
    }
 }
 
