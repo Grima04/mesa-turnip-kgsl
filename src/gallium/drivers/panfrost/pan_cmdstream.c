@@ -1797,6 +1797,45 @@ pan_xfb_base(unsigned present)
         return util_bitcount(present);
 }
 
+/* Computes the present mask for varyings so we can start emitting varying records */
+
+static inline unsigned
+pan_varying_present(
+        struct panfrost_shader_state *vs,
+        struct panfrost_shader_state *fs,
+        unsigned quirks)
+{
+        /* At the moment we always emit general and position buffers. Not
+         * strictly necessary but usually harmless */
+
+        unsigned present = (1 << PAN_VARY_GENERAL) | (1 << PAN_VARY_POSITION);
+
+        /* Enable special buffers by the shader info */
+
+        if (vs->writes_point_size)
+                present |= (1 << PAN_VARY_PSIZ);
+
+        if (fs->reads_point_coord)
+                present |= (1 << PAN_VARY_PNTCOORD);
+
+        if (fs->reads_face)
+                present |= (1 << PAN_VARY_FACE);
+
+        if (fs->reads_frag_coord && !(quirks & IS_BIFROST))
+                present |= (1 << PAN_VARY_FRAGCOORD);
+
+        /* Also, if we have a point sprite, we need a point coord buffer */
+
+        for (unsigned i = 0; i < fs->varying_count; i++)  {
+                gl_varying_slot loc = fs->varyings_loc[i];
+
+                if (has_point_coord(fs->point_sprite_mask, loc))
+                        present |= (1 << PAN_VARY_PNTCOORD);
+        }
+
+        return present;
+}
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
