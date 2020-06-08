@@ -1866,6 +1866,24 @@ pan_emit_vary_only(unsigned present, unsigned quirks)
         return pan_emit_vary(present, 0, quirks, MALI_VARYING_DISCARD, 0);
 }
 
+/* Special records */
+
+static const enum mali_format pan_varying_formats[PAN_VARY_MAX] = {
+        [PAN_VARY_POSITION]     = MALI_VARYING_POS,
+        [PAN_VARY_PSIZ]         = MALI_R16F,
+        [PAN_VARY_PNTCOORD]     = MALI_R16F,
+        [PAN_VARY_FACE]         = MALI_R32I,
+        [PAN_VARY_FRAGCOORD]    = MALI_RGBA32F
+};
+
+static struct mali_attr_meta
+pan_emit_vary_special(unsigned present, enum pan_special_varying buf,
+                unsigned quirks)
+{
+        assert(buf < PAN_VARY_MAX);
+        return pan_emit_vary(present, buf, quirks, pan_varying_formats[buf], 0);
+}
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
