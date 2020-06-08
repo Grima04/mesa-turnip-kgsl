@@ -1652,57 +1652,6 @@ panfrost_emit_streamout(struct panfrost_batch *batch, union mali_attr *slot,
         slot->size = MIN2(max_size, expected_size) + (addr & 63);
 }
 
-/* Given a shader and buffer indices, link varying metadata together */
-
-static bool
-is_special_varying(gl_varying_slot loc)
-{
-        switch (loc) {
-        case VARYING_SLOT_POS:
-        case VARYING_SLOT_PSIZ:
-        case VARYING_SLOT_PNTC:
-        case VARYING_SLOT_FACE:
-                return true;
-        default:
-                return false;
-        }
-}
-
-static void
-panfrost_emit_varying_meta(void *outptr, struct panfrost_shader_state *ss,
-                           signed general, signed gl_Position,
-                           signed gl_PointSize, signed gl_PointCoord,
-                           signed gl_FrontFacing)
-{
-        struct mali_attr_meta *out = (struct mali_attr_meta *) outptr;
-
-        for (unsigned i = 0; i < ss->varying_count; ++i) {
-                gl_varying_slot location = ss->varyings_loc[i];
-                int index = -1;
-
-                switch (location) {
-                case VARYING_SLOT_POS:
-                        index = gl_Position;
-                        break;
-                case VARYING_SLOT_PSIZ:
-                        index = gl_PointSize;
-                        break;
-                case VARYING_SLOT_PNTC:
-                        index = gl_PointCoord;
-                        break;
-                case VARYING_SLOT_FACE:
-                        index = gl_FrontFacing;
-                        break;
-                default:
-                        index = general;
-                        break;
-                }
-
-                assert(index >= 0);
-                out[i].index = index;
-        }
-}
-
 static bool
 has_point_coord(unsigned mask, gl_varying_slot loc)
 {
