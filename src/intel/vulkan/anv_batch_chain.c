@@ -928,7 +928,7 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
       const uint32_t length = cmd_buffer->batch.next - cmd_buffer->batch.start;
       if (!cmd_buffer->device->can_chain_batches) {
          cmd_buffer->exec_mode = ANV_CMD_BUFFER_EXEC_MODE_GROW_AND_EMIT;
-      } else if (cmd_buffer->device->physical->use_softpin) {
+      } else if (cmd_buffer->device->physical->use_call_secondary) {
          cmd_buffer->exec_mode = ANV_CMD_BUFFER_EXEC_MODE_CALL_AND_RETURN;
          /* If the secondary command buffer begins & ends in the same BO and
           * its length is less than the length of CS prefetch, add some NOOPs

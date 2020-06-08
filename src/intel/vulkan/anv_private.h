@@ -1084,6 +1084,7 @@ struct anv_physical_device {
 
     bool                                        use_softpin;
     bool                                        always_use_bindless;
+    bool                                        use_call_secondary;
 
     /** True if we can access buffers using A64 messages */
     bool                                        has_a64_buffer_access;

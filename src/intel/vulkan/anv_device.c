@@ -454,6 +454,10 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->always_use_bindless =
       env_var_as_boolean("ANV_ALWAYS_BINDLESS", false);
 
+   device->use_call_secondary =
+      device->use_softpin &&
+      !env_var_as_boolean("ANV_DISABLE_SECONDARY_CMD_BUFFER_CALLS", false);
+
    /* We first got the A64 messages on broadwell and we can only use them if
     * we can pass addresses directly into the shader which requires softpin.
     */
