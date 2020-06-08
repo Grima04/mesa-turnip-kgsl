@@ -352,7 +352,8 @@ intrinsic("end_primitive", indices=[STREAM_ID])
 # unsigned integer source.
 intrinsic("emit_vertex_with_counter", src_comp=[1], indices=[STREAM_ID])
 intrinsic("end_primitive_with_counter", src_comp=[1], indices=[STREAM_ID])
-intrinsic("set_vertex_count", src_comp=[1])
+# Contains the final total vertex and primitive counts
+intrinsic("set_vertex_and_primitive_count", src_comp=[1, 1], indices=[STREAM_ID])
 
 # Atomic counters
 #

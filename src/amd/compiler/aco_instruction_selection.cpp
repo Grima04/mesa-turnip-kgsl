@@ -8022,7 +8022,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(true, false, stream));
       break;
    }
-   case nir_intrinsic_set_vertex_count: {
+   case nir_intrinsic_set_vertex_and_primitive_count: {
       /* unused, the HW keeps track of this for us */
       break;
    }

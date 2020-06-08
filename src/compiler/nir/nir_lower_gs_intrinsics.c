@@ -57,6 +57,9 @@
 struct state {
    nir_builder *builder;
    nir_variable *vertex_count_vars[NIR_MAX_XFB_STREAMS];
+   nir_variable *primitive_count_vars[NIR_MAX_XFB_STREAMS];
+   bool per_stream;
+   bool count_prims;
    bool progress;
 };
 
@@ -98,7 +101,7 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
 
    /* Increment the vertex count by 1 */
    nir_store_var(b, state->vertex_count_vars[stream],
-                 nir_iadd(b, count, nir_imm_int(b, 1)),
+                 nir_iadd_imm(b, count, 1),
                  0x1); /* .x */
 
    nir_pop_if(b, NULL);
@@ -127,6 +130,14 @@ rewrite_end_primitive(nir_intrinsic_instr *intrin, struct state *state)
    nir_intrinsic_set_stream_id(lowered, stream);
    lowered->src[0] = nir_src_for_ssa(count);
    nir_builder_instr_insert(b, &lowered->instr);
+
+   if (state->count_prims) {
+      /* Increment the primitive count by 1 */
+      nir_ssa_def *prim_cnt = nir_load_var(b, state->primitive_count_vars[stream]);
+      nir_store_var(b, state->primitive_count_vars[stream],
+                    nir_iadd_imm(b, prim_cnt, 1),
+                    0x1); /* .x */
+   }
 
    nir_instr_remove(&intrin->instr);
 
@@ -158,11 +169,11 @@ rewrite_intrinsics(nir_block *block, struct state *state)
 }
 
 /**
- * Add a set_vertex_count intrinsic at the end of the program
- * (representing the final vertex count).
+ * Add a set_vertex_and_primitive_count intrinsic at the end of the program
+ * (representing the final total vertex and primitive count).
  */
 static void
-append_set_vertex_count(nir_block *end_block, struct state *state)
+append_set_vertex_and_primitive_count(nir_block *end_block, struct state *state)
 {
    nir_builder *b = state->builder;
    nir_shader *shader = state->builder->shader;
@@ -174,21 +185,44 @@ append_set_vertex_count(nir_block *end_block, struct state *state)
       nir_block *pred = (nir_block *) entry->key;
       b->cursor = nir_after_block_before_jump(pred);
 
-      nir_ssa_def *count = nir_load_var(b, state->vertex_count_vars[0]);
+      for (unsigned stream = 0; stream < NIR_MAX_XFB_STREAMS; ++stream) {
+         /* When it's not per-stream, we only need to write one variable. */
+         if (!state->per_stream && stream != 0)
+            continue;
+         /* When it's per-stream, make sure not to use inactive streams. */
+         if (state->per_stream && !(shader->info.gs.active_stream_mask & (1 << stream)))
+            continue;
 
-      nir_intrinsic_instr *set_vertex_count =
-         nir_intrinsic_instr_create(shader, nir_intrinsic_set_vertex_count);
-      set_vertex_count->src[0] = nir_src_for_ssa(count);
+         nir_ssa_def *vtx_cnt = nir_load_var(b, state->vertex_count_vars[stream]);
+         nir_ssa_def *prim_cnt;
 
-      nir_builder_instr_insert(b, &set_vertex_count->instr);
+         if (state->count_prims)
+            prim_cnt = nir_load_var(b, state->primitive_count_vars[stream]);
+         else
+            prim_cnt = nir_ssa_undef(b, 1, 32);
+
+         nir_intrinsic_instr *set_cnt_intrin =
+            nir_intrinsic_instr_create(shader,
+               nir_intrinsic_set_vertex_and_primitive_count);
+
+         nir_intrinsic_set_stream_id(set_cnt_intrin, stream);
+         set_cnt_intrin->src[0] = nir_src_for_ssa(vtx_cnt);
+         set_cnt_intrin->src[1] = nir_src_for_ssa(prim_cnt);
+         nir_builder_instr_insert(b, &set_cnt_intrin->instr);
+      }
    }
 }
 
 bool
-nir_lower_gs_intrinsics(nir_shader *shader, bool per_stream)
+nir_lower_gs_intrinsics(nir_shader *shader, nir_lower_gs_intrinsics_flags options)
 {
+   bool per_stream = options & nir_lower_gs_intrinsics_per_stream;
+   bool count_primitives = options & nir_lower_gs_intrinsics_count_primitives;
+
    struct state state;
    state.progress = false;
+   state.count_prims = count_primitives;
+   state.per_stream = per_stream;
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
@@ -197,8 +231,8 @@ nir_lower_gs_intrinsics(nir_shader *shader, bool per_stream)
    nir_builder_init(&b, impl);
    state.builder = &b;
 
-   /* Create the counter variables */
    b.cursor = nir_before_cf_list(&impl->body);
+
    for (unsigned i = 0; i < NIR_MAX_XFB_STREAMS; i++) {
       if (per_stream && !(shader->info.gs.active_stream_mask & (1 << i)))
          continue;
@@ -208,12 +242,22 @@ nir_lower_gs_intrinsics(nir_shader *shader, bool per_stream)
             nir_local_variable_create(impl, glsl_uint_type(), "vertex_count");
          /* initialize to 0 */
          nir_store_var(&b, state.vertex_count_vars[i], nir_imm_int(&b, 0), 0x1);
+
+         if (count_primitives) {
+            state.primitive_count_vars[i] =
+               nir_local_variable_create(impl, glsl_uint_type(), "primitive_count");
+            /* initialize to 1 */
+            nir_store_var(&b, state.primitive_count_vars[i], nir_imm_int(&b, 1), 0x1);
+         }
       } else {
-         /* If per_stream is false, we only have one counter which we want to use
-          * for all streams.  Duplicate the counter pointer so all streams use the
-          * same counter.
+         /* If per_stream is false, we only have one counter of each kind which we
+          * want to use for all streams. Duplicate the counter pointers so all
+          * streams use the same counters.
           */
          state.vertex_count_vars[i] = state.vertex_count_vars[0];
+
+         if (count_primitives)
+            state.primitive_count_vars[i] = state.primitive_count_vars[0];
       }
    }
 
@@ -221,8 +265,7 @@ nir_lower_gs_intrinsics(nir_shader *shader, bool per_stream)
       rewrite_intrinsics(block, &state);
 
    /* This only works because we have a single main() function. */
-   if (!per_stream)
-      append_set_vertex_count(impl->end_block, &state);
+   append_set_vertex_and_primitive_count(impl->end_block, &state);
 
    nir_metadata_preserve(impl, 0);
 
