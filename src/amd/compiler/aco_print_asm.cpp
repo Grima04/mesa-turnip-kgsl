@@ -134,7 +134,7 @@ void print_asm(Program *program, std::vector<uint32_t>& binary,
 
       /* mask out src2 on v_writelane_b32 */
       if (((program->chip_class == GFX8 || program->chip_class == GFX9) && (binary[pos] & 0xffff8000) == 0xd28a0000) ||
-          (program->chip_class == GFX10 && (binary[pos] & 0xffff8000) == 0xd7610000)) {
+          (program->chip_class >= GFX10 && (binary[pos] & 0xffff8000) == 0xd7610000)) {
          binary[pos+1] = binary[pos+1] & 0xF803FFFF;
       }
 
@@ -152,7 +152,7 @@ void print_asm(Program *program, std::vector<uint32_t>& binary,
          bool has_literal = program->chip_class >= GFX10 &&
                             (((binary[pos+1] & 0x1ff) == 0xff) || (((binary[pos+1] >> 9) & 0x1ff) == 0xff));
          new_pos = pos + 2 + has_literal;
-      } else if (program->chip_class == GFX10 && l == 4 && ((binary[pos] & 0xfe0001ff) == 0x020000f9)) {
+      } else if (program->chip_class >= GFX10 && l == 4 && ((binary[pos] & 0xfe0001ff) == 0x020000f9)) {
          out << std::left << std::setw(align_width) << std::setfill(' ') << "\tv_cndmask_b32 + sdwa";
          new_pos = pos + 2;
       } else if (!l) {

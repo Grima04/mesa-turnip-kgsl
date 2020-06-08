@@ -1832,7 +1832,7 @@ void lower_to_hw_instr(Program* program)
             {
                if (ctx.program->chip_class <= GFX7)
                   emit_gfx6_bpermute(program, instr, bld);
-               else if (ctx.program->chip_class == GFX10 && ctx.program->wave_size == 64)
+               else if (ctx.program->chip_class >= GFX10 && ctx.program->wave_size == 64)
                   emit_gfx10_wave64_bpermute(program, instr, bld);
                else
                   unreachable("Current hardware supports ds_bpermute, don't emit p_bpermute.");

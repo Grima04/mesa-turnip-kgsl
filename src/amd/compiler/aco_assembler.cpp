@@ -21,7 +21,7 @@ struct asm_context {
          opcode = &instr_info.opcode_gfx7[0];
       else if (chip_class <= GFX9)
          opcode = &instr_info.opcode_gfx9[0];
-      else if (chip_class == GFX10)
+      else if (chip_class >= GFX10)
          opcode = &instr_info.opcode_gfx10[0];
    }
 
@@ -278,7 +278,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
           instr->opcode == aco_opcode::v_interp_p2_f16) {
          if (ctx.chip_class == GFX8 || ctx.chip_class == GFX9) {
             encoding = (0b110100 << 26);
-         } else if (ctx.chip_class == GFX10) {
+         } else if (ctx.chip_class >= GFX10) {
             encoding = (0b110101 << 26);
          } else {
             unreachable("Unknown chip_class.");
@@ -548,7 +548,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          uint32_t encoding;
          if (ctx.chip_class <= GFX9) {
             encoding = (0b110100 << 26);
-         } else if (ctx.chip_class == GFX10) {
+         } else if (ctx.chip_class >= GFX10) {
             encoding = (0b110101 << 26);
          } else {
             unreachable("Unknown chip_class.");
@@ -586,7 +586,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          uint32_t encoding;
          if (ctx.chip_class == GFX9) {
             encoding = (0b110100111 << 23);
-         } else if (ctx.chip_class == GFX10) {
+         } else if (ctx.chip_class >= GFX10) {
             encoding = (0b110011 << 26);
          } else {
             unreachable("Unknown chip_class.");
