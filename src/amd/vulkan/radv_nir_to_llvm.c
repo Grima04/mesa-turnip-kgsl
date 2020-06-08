@@ -1271,7 +1271,7 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 		 * access are detected. Only GFX6 and GFX10 are affected.
 		 */
 		bool unaligned_vertex_fetches = false;
-		if ((ctx->ac.chip_class == GFX6 || ctx->ac.chip_class == GFX10) &&
+		if ((ctx->ac.chip_class == GFX6 || ctx->ac.chip_class >= GFX10) &&
 		    vtx_info->chan_format != data_format &&
 		    ((attrib_offset % vtx_info->element_size) ||
 		     (attrib_stride % vtx_info->element_size)))
@@ -1282,7 +1282,7 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 			LLVMValueRef values[4];
 
 			assert(ctx->ac.chip_class == GFX6 ||
-			       ctx->ac.chip_class == GFX10);
+			       ctx->ac.chip_class >= GFX10);
 
 			for (unsigned chan  = 0; chan < num_channels; chan++) {
 				unsigned chan_offset = attrib_offset + chan * vtx_info->chan_byte_size;
