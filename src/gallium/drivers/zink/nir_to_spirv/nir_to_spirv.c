@@ -349,6 +349,23 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       spirv_builder_emit_component(&ctx->builder, var_id,
                                    var->data.location_frac);
 
+   switch (var->data.interpolation) {
+   case INTERP_MODE_NONE:
+   case INTERP_MODE_SMOOTH: /* XXX spirv doesn't seem to have anything for this */
+      break;
+   case INTERP_MODE_FLAT:
+      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationFlat);
+      break;
+   case INTERP_MODE_EXPLICIT:
+      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationExplicitInterpAMD);
+      break;
+   case INTERP_MODE_NOPERSPECTIVE:
+      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationNoPerspective);
+      break;
+   default:
+      unreachable("unknown interpolation value");
+   }
+
    _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
 
    assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
