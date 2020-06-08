@@ -1906,6 +1906,7 @@ panfrost_emit_varying(
                 unsigned *streamout_offsets,
                 unsigned quirks,
                 unsigned *gen_offsets,
+                enum mali_format *gen_formats,
                 unsigned *gen_stride,
                 unsigned idx,
                 bool should_alloc,
@@ -1913,6 +1914,10 @@ panfrost_emit_varying(
 {
         gl_varying_slot loc = stage->varyings_loc[idx];
         enum mali_format format = stage->varyings[idx];
+
+        /* Override format to match linkage */
+        if (!should_alloc && gen_formats[idx])
+                format = gen_formats[idx];
 
         if (has_point_coord(stage->point_sprite_mask, loc)) {
                 return pan_emit_vary_special(present, PAN_VARY_PNTCOORD, quirks);
@@ -1949,8 +1954,12 @@ panfrost_emit_varying(
 
         if (should_alloc) {
                 /* We're linked, so allocate a space via a watermark allocation */
-                gen_offsets[idx] = *gen_stride;
-                offset = *gen_stride;
+                enum mali_format alt = other->varyings[other_idx];
+
+                /* Do interpolation at minimum precision */
+                unsigned size_main = pan_varying_size(format);
+                unsigned size_alt = pan_varying_size(alt);
+                unsigned size = MIN2(size_main, size_alt);
 
                 /* If a varying is marked for XFB but not actually captured, we
                  * should match the format to the format that would otherwise
@@ -1960,9 +1969,15 @@ panfrost_emit_varying(
                 if (xfb->so_mask & (1ull << loc)) {
                         struct pipe_stream_output *o = pan_get_so(&xfb->stream_output, loc);
                         format = pan_xfb_format(format, o->num_components);
+                        size = pan_varying_size(format);
+                } else if (size == size_alt) {
+                        format = alt;
                 }
 
-                *gen_stride += pan_varying_size(format);
+                gen_offsets[idx] = *gen_stride;
+                gen_formats[other_idx] = format;
+                offset = *gen_stride;
+                *gen_stride += size;
         }
 
         return pan_emit_vary(present, PAN_VARY_GENERAL,
@@ -2020,7 +2035,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
          * offset, since it was already linked for us. */
 
         unsigned gen_offsets[32];
+        enum mali_format gen_formats[32];
         memset(gen_offsets, 0, sizeof(gen_offsets));
+        memset(gen_formats, 0, sizeof(gen_formats));
 
         unsigned gen_stride = 0;
         assert(vs->varying_count < ARRAY_SIZE(gen_offsets));
@@ -2042,14 +2059,14 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                 ovs[i] = panfrost_emit_varying(vs, fs, vs, present,
                                 ctx->streamout.num_targets, streamout_offsets,
                                 dev->quirks,
-                                gen_offsets, &gen_stride, i, true, false);
+                                gen_offsets, gen_formats, &gen_stride, i, true, false);
         }
 
         for (unsigned i = 0; i < fs->varying_count; i++) {
                 ofs[i] = panfrost_emit_varying(fs, vs, vs, present,
                                 ctx->streamout.num_targets, streamout_offsets,
                                 dev->quirks,
-                                gen_offsets, &gen_stride, i, false, true);
+                                gen_offsets, gen_formats, &gen_stride, i, false, true);
         }
 
         unsigned xfb_base = pan_xfb_base(present);
