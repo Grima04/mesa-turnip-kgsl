@@ -24,10 +24,12 @@ for var in \
     CI_PIPELINE_ID \
     CI_RUNNER_DESCRIPTION \
     DEQP_CASELIST_FILTER \
+    DEQP_EXPECTED_FAILS \
     DEQP_EXPECTED_RENDERER \
     DEQP_NO_SAVE_RESULTS \
     DEQP_PARALLEL \
     DEQP_RUN_SUFFIX \
+    DEQP_SKIPS \
     DEQP_VER \
     FD_MESA_DEBUG \
     FLAKES_CHANNEL \
@@ -47,10 +49,3 @@ set -x
 mkdir -p $rootfs_dst/$CI_PROJECT_DIR
 tar -C $rootfs_dst/$CI_PROJECT_DIR/ -xf $CI_PROJECT_DIR/artifacts/install.tar
 ln -sf $CI_PROJECT_DIR/install $rootfs_dst/install
-
-# Copy the deqp runner script and metadata.
-cp .gitlab-ci/deqp-runner.sh $rootfs_dst/deqp/
-cp .gitlab-ci/$DEQP_SKIPS $rootfs_dst/$CI_PROJECT_DIR/install/deqp-skips.txt
-if [ -n "$DEQP_EXPECTED_FAILS" ]; then
-  cp .gitlab-ci/$DEQP_EXPECTED_FAILS $rootfs_dst/$CI_PROJECT_DIR/install/deqp-expected-fails.txt
-fi
