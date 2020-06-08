@@ -231,10 +231,13 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         }
 
         state->can_discard = s->info.fs.uses_discard;
-        state->writes_point_size = program.writes_point_size;
-        state->reads_point_coord = false;
         state->helper_invocations = s->info.fs.needs_helper_invocations;
         state->stack_size = program.tls_size;
+
+        state->reads_frag_coord = s->info.inputs_read & (1 << VARYING_SLOT_POS);
+        state->reads_point_coord = s->info.inputs_read & (1 << VARYING_SLOT_PNTC);
+        state->reads_face = s->info.inputs_read & (1 << VARYING_SLOT_FACE);
+        state->writes_point_size = s->info.outputs_written & (1 << VARYING_SLOT_PSIZ);
 
         if (outputs_written)
                 *outputs_written = s->info.outputs_written;
@@ -262,18 +265,5 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                         state->varyings_loc[loc + c] = var->data.location + c;
                         state->varyings[loc + c] = pan_format_from_glsl(var->type, var->data.location_frac);
                 }
-        }
-
-        for (unsigned i = 0; i < state->varying_count; ++i) {
-                unsigned location = state->varyings_loc[i];
-
-                if (location == VARYING_SLOT_POS && stage == MESA_SHADER_FRAGMENT)
-                        state->reads_frag_coord = true;
-                else if (location == VARYING_SLOT_PSIZ)
-                        state->writes_point_size = true;
-                else if (location == VARYING_SLOT_PNTC)
-                        state->reads_point_coord = true;
-                else if (location == VARYING_SLOT_FACE)
-                        state->reads_face = true;
         }
 }

@@ -95,9 +95,6 @@ typedef struct {
         unsigned sysval_count;
         unsigned sysvals[MAX_SYSVAL_COUNT];
 
-        /* Boolean properties of the program */
-        bool writes_point_size;
-
         int first_tag;
 
         struct util_dynarray compiled;
