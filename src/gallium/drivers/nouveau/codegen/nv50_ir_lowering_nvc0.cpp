@@ -867,11 +867,11 @@ NVC0LegalizePostRA::visit(BasicBlock *bb)
                next = hi;
          }
 
-         if (i->op == OP_SAT || i->op == OP_NEG || i->op == OP_ABS)
-            replaceCvt(i);
-
          if (i->op != OP_MOV && i->op != OP_PFETCH)
             replaceZero(i);
+
+         if (i->op == OP_SAT || i->op == OP_NEG || i->op == OP_ABS)
+            replaceCvt(i);
       }
    }
    if (!bb->getEntry())
