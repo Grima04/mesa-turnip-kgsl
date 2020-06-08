@@ -457,7 +457,14 @@ handle_cl_job(struct v3dv_queue *queue,
 
    struct drm_v3d_submit_cl submit;
 
-   submit.bcl_start = job->bcl.bo->offset;
+   /* We expect to have just one RCL per job which should fit in just one BO.
+    * Our BCL, could chain multiple BOS together though.
+    */
+   assert(list_length(&job->rcl.bo_list) == 1);
+   assert(list_length(&job->bcl.bo_list) >= 1);
+   struct v3dv_bo *bcl_fist_bo =
+      list_first_entry(&job->bcl.bo_list, struct v3dv_bo, list_link);
+   submit.bcl_start = bcl_fist_bo->offset;
    submit.bcl_end = job->bcl.bo->offset + v3dv_cl_offset(&job->bcl);
    submit.rcl_start = job->rcl.bo->offset;
    submit.rcl_end = job->rcl.bo->offset + v3dv_cl_offset(&job->rcl);
