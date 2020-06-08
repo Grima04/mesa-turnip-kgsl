@@ -1836,6 +1836,36 @@ pan_varying_present(
         return present;
 }
 
+/* Emitters for varying records */
+
+static struct mali_attr_meta
+pan_emit_vary(unsigned present, enum pan_special_varying buf,
+                unsigned quirks, enum mali_format format,
+                unsigned offset)
+{
+        unsigned nr_channels = MALI_EXTRACT_CHANNELS(format);
+
+        struct mali_attr_meta meta = {
+                .index = pan_varying_index(present, buf),
+                .unknown1 = quirks & IS_BIFROST ? 0x0 : 0x2,
+                .swizzle = quirks & HAS_SWIZZLES ?
+                        panfrost_get_default_swizzle(nr_channels) :
+                        panfrost_bifrost_swizzle(nr_channels),
+                .format = format,
+                .src_offset = offset
+        };
+
+        return meta;
+}
+
+/* General varying that is unused */
+
+static struct mali_attr_meta
+pan_emit_vary_only(unsigned present, unsigned quirks)
+{
+        return pan_emit_vary(present, 0, quirks, MALI_VARYING_DISCARD, 0);
+}
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
