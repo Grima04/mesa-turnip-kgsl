@@ -197,6 +197,7 @@ brw_isl_format_for_mesa_format(mesa_format mesa_format)
       [MESA_FORMAT_RGBX_UNORM16] = ISL_FORMAT_R16G16B16X16_UNORM,
       [MESA_FORMAT_RGBX_FLOAT16] = ISL_FORMAT_R16G16B16X16_FLOAT,
       [MESA_FORMAT_RGBX_FLOAT32] = ISL_FORMAT_R32G32B32X32_FLOAT,
+      [MESA_FORMAT_Z_UNORM16] = ISL_FORMAT_R16_UNORM,
    };
 
    assert(mesa_format < MESA_FORMAT_COUNT);
@@ -223,6 +224,12 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
       bool is_integer = _mesa_is_format_integer_color(format);
 
       render = texture = brw_isl_format_for_mesa_format(format);
+
+      /* Only exposed with EXT_memory_object_* support which
+       * is not for older gens.
+       */
+      if (gen < 70 && format == MESA_FORMAT_Z_UNORM16)
+         continue;
 
       if (texture == ISL_FORMAT_UNSUPPORTED)
          continue;

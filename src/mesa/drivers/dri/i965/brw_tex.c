@@ -10,6 +10,7 @@
 #include "brw_mipmap_tree.h"
 #include "brw_tex.h"
 #include "brw_fbo.h"
+#include "brw_state.h"
 #include "util/u_memory.h"
 
 #define FILE_DEBUG_FLAG DEBUG_TEXTURE
@@ -321,6 +322,77 @@ brw_texture_barrier(struct gl_context *ctx)
    }
 }
 
+/* Return the usual surface usage flags for the given format. */
+static isl_surf_usage_flags_t
+isl_surf_usage(mesa_format format)
+{
+   switch(_mesa_get_format_base_format(format)) {
+   case GL_DEPTH_COMPONENT:
+      return ISL_SURF_USAGE_DEPTH_BIT | ISL_SURF_USAGE_TEXTURE_BIT;
+   case GL_DEPTH_STENCIL:
+      return ISL_SURF_USAGE_DEPTH_BIT | ISL_SURF_USAGE_STENCIL_BIT |
+             ISL_SURF_USAGE_TEXTURE_BIT;
+   case GL_STENCIL_INDEX:
+      return ISL_SURF_USAGE_STENCIL_BIT | ISL_SURF_USAGE_TEXTURE_BIT;
+   default:
+      return ISL_SURF_USAGE_RENDER_TARGET_BIT | ISL_SURF_USAGE_TEXTURE_BIT;
+   }
+}
+
+static GLboolean
+intel_texture_for_memory_object(struct gl_context *ctx,
+                                          struct gl_texture_object *tex_obj,
+                                          struct gl_memory_object *mem_obj,
+                                          GLsizei levels, GLsizei width,
+                                          GLsizei height, GLsizei depth,
+                                          GLuint64 offset)
+{
+   struct brw_context *brw = brw_context(ctx);
+   struct brw_memory_object *intel_memobj = brw_memory_object(mem_obj);
+   struct brw_texture_object *intel_texobj = brw_texture_object(tex_obj);
+   struct gl_texture_image *image = tex_obj->Image[0][0];
+   struct isl_surf surf;
+
+   isl_tiling_flags_t tiling_flags = ISL_TILING_ANY_MASK;
+   if (tex_obj->TextureTiling == GL_LINEAR_TILING_EXT)
+      tiling_flags = ISL_TILING_LINEAR_BIT;
+
+   UNUSED const bool isl_surf_created_successfully =
+      isl_surf_init(&brw->screen->isl_dev, &surf,
+                    .dim = get_isl_surf_dim(tex_obj->Target),
+                    .format = brw_isl_format_for_mesa_format(image->TexFormat),
+                    .width = width,
+                    .height = height,
+                    .depth = depth,
+                    .levels = levels,
+                    .array_len = tex_obj->Target == GL_TEXTURE_3D ? 1 : depth,
+                    .samples = MAX2(image->NumSamples, 1),
+                    .usage = isl_surf_usage(image->TexFormat),
+                    .tiling_flags = tiling_flags);
+
+   assert(isl_surf_created_successfully);
+
+   intel_texobj->mt = brw_miptree_create_for_bo(brw,
+                                                intel_memobj->bo,
+                                                image->TexFormat,
+                                                offset,
+                                                width,
+                                                height,
+                                                depth,
+                                                surf.row_pitch_B,
+                                                surf.tiling,
+                                                MIPTREE_CREATE_NO_AUX);
+   assert(intel_texobj->mt);
+   brw_alloc_texture_image_buffer(ctx, image);
+
+   intel_texobj->needs_validate = false;
+   intel_texobj->validated_first_level = 0;
+   intel_texobj->validated_last_level = levels - 1;
+   intel_texobj->_Format = image->TexFormat;
+
+   return GL_TRUE;
+}
+
 void
 brw_init_texture_functions(struct dd_function_table *functions)
 {
@@ -335,4 +407,5 @@ brw_init_texture_functions(struct dd_function_table *functions)
    functions->UnmapTextureImage = brw_unmap_texture_image;
    functions->TextureView = brw_texture_view;
    functions->TextureBarrier = brw_texture_barrier;
+   functions->SetTextureStorageForMemoryObject = intel_texture_for_memory_object;
 }
