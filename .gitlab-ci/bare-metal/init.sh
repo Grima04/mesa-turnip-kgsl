@@ -18,9 +18,9 @@ if [ -e /install/deqp-expected-fails.txt ]; then
 fi
 
 if sh /deqp/deqp-runner.sh; then
-    echo "DEQP RESULT: pass"
+    echo "bare-metal result: pass"
 else
-    echo "DEQP RESULT: fail"
+    echo "bare-metal result: fail"
 fi
 
 # Wait until the job would have timed out anyway, so we don't spew a "init

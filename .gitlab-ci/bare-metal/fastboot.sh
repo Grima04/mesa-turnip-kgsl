@@ -92,13 +92,13 @@ $BM/expect-output.sh artifacts/serial-output.txt \
 fastboot boot -s $BM_FASTBOOT_SERIAL artifacts/fastboot.img
 
 # Wait for the device to complete the deqp run
-$BM/expect-output.sh artifacts/serial-output.txt -f "DEQP RESULT"
+$BM/expect-output.sh artifacts/serial-output.txt -f "bare-metal result"
 
 # power down the device
 PATH=$BM:$PATH $BM_POWERDOWN
 
 set +e
-if grep -q "DEQP RESULT: pass" artifacts/serial-output.txt; then
+if grep -q "bare-metal result: pass" artifacts/serial-output.txt; then
    exit 0
 else
    exit 1

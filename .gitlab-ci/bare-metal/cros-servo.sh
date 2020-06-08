@@ -76,7 +76,7 @@ $BM/expect-output.sh serial-output.txt -f "load_archive: loading locale_en.bin"
 $BM/write-serial.py $BM_SERIAL `printf '\016'`
 
 # Wait for the device to complete the deqp run
-$BM/expect-output.sh serial-output.txt -f "DEQP RESULT"
+$BM/expect-output.sh serial-output.txt -f "bare-metal result"
 
 # power down the CPU on the device
 $BM/write-serial.py $BM_SERIAL_EC 'power off'
@@ -90,7 +90,7 @@ mkdir -p results
 cp -Rp /nfs/results/. results/
 
 set +e
-if grep -q "DEQP RESULT: pass" serial-output.txt; then
+if grep -q "bare-metal result: pass" serial-output.txt; then
    exit 0
 else
    exit 1
