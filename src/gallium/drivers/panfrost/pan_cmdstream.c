@@ -1884,6 +1884,51 @@ pan_emit_vary_special(unsigned present, enum pan_special_varying buf,
         return pan_emit_vary(present, buf, quirks, pan_varying_formats[buf], 0);
 }
 
+static enum mali_format
+pan_xfb_format(enum mali_format format, unsigned nr)
+{
+        if (MALI_EXTRACT_BITS(format) == MALI_CHANNEL_FLOAT)
+                return MALI_R32F | MALI_NR_CHANNELS(nr);
+        else
+                return MALI_EXTRACT_TYPE(format) | MALI_NR_CHANNELS(nr) | MALI_CHANNEL_32;
+}
+
+/* Transform feedback records. Note struct pipe_stream_output is (if packed as
+ * a bitfield) 32-bit, smaller than a 64-bit pointer, so may as well pass by
+ * value. */
+
+static struct mali_attr_meta
+pan_emit_vary_xfb(unsigned present,
+                unsigned max_xfb,
+                unsigned *streamout_offsets,
+                unsigned quirks,
+                enum mali_format format,
+                struct pipe_stream_output o)
+{
+        /* Otherwise construct a record for it */
+        struct mali_attr_meta meta = {
+                /* XFB buffers come after everything else */
+                .index = pan_xfb_base(present) + o.output_buffer,
+
+                /* As usual unknown bit */
+                .unknown1 = quirks & IS_BIFROST ? 0x0 : 0x2,
+
+                /* Override swizzle with number of channels */
+                .swizzle = quirks & HAS_SWIZZLES ?
+                        panfrost_get_default_swizzle(o.num_components) :
+                        panfrost_bifrost_swizzle(o.num_components),
+
+                /* Override number of channels and precision to highp */
+                .format = pan_xfb_format(format, o.num_components),
+
+                /* Apply given offsets together */
+                .src_offset = (o.dst_offset * 4) /* dwords */
+                        + streamout_offsets[o.output_buffer]
+        };
+
+        return meta;
+}
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
