@@ -292,8 +292,7 @@ static bool
 alu_instr_is_type_conversion(const nir_alu_instr *alu)
 {
    return nir_op_infos[alu->op].num_inputs == 1 &&
-          nir_alu_type_get_base_type(nir_op_infos[alu->op].output_type) !=
-          nir_alu_type_get_base_type(nir_op_infos[alu->op].input_types[0]);
+          nir_op_infos[alu->op].output_type != nir_op_infos[alu->op].input_types[0];
 }
 
 /**
