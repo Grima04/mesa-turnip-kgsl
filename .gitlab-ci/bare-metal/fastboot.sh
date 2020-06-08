@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BM=$CI_PROJECT_DIR/.gitlab-ci/bare-metal
+BM=$CI_PROJECT_DIR/install/bare-metal
 
 if [ -z "$BM_SERIAL" -a -z "$BM_SERIAL_SCRIPT" ]; then
   echo "Must set BM_SERIAL OR BM_SERIAL_SCRIPT in your gitlab-runner config.toml [[runners]] environment"
@@ -47,11 +47,14 @@ fi
 
 set -ex
 
-# Copy the rootfs to a temporary for our setup, as I believe changes to the
-# container can end up impacting future runs.
-cp -Rp $BM_ROOTFS/ rootfs
+# Clear out any previous run's artifacts.
+rm -rf results/
+mkdir -p results
+find artifacts/ -name serial\*.txt  | xargs rm -f
 
-. .gitlab-ci/bare-metal/rootfs-setup.sh rootfs
+# Create the rootfs in a temp dir
+rsync -a --delete $BM_ROOTFS/ rootfs/
+. $BM/rootfs-setup.sh rootfs
 
 # Finally, pack it up into a cpio rootfs.  Skip the vulkan CTS since none of
 # these devices use it and it would take up space in the initrd.

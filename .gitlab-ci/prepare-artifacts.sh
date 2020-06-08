@@ -23,6 +23,7 @@ find install -name \*.so -exec $STRIP {} \;
 # Test runs don't pull down the git tree, so put the dEQP helper
 # script and associated bits there.
 cp VERSION install/
+cp -Rp .gitlab-ci/bare-metal install/
 cp -Rp .gitlab-ci/deqp* install/
 cp -Rp .gitlab-ci/piglit install/
 cp -Rp .gitlab-ci/traces.yml install/

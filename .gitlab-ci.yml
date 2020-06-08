@@ -885,13 +885,14 @@ arm64_a630_gles2:
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
     DEQP_SKIPS: deqp-freedreno-a630-skips.txt
+    GIT_STRATEGY: none
     NIR_VALIDATE: 0
     DEQP_EXPECTED_RENDERER: FD630
     DEQP_NO_SAVE_RESULTS: ""
   tags:
     - google-freedreno-cheza
   script:
-    - .gitlab-ci/bare-metal/cros-servo.sh
+    - ./install/bare-metal/cros-servo.sh
 
 arm64_a630_gles31:
   extends: arm64_a630_gles2
@@ -993,7 +994,7 @@ arm64_a306_gles2:
     DEQP_NO_SAVE_RESULTS: 1
     # NIR_VALIDATE=0 left intentionally unset as a3xx is fast enough at its small testsuite.
   script:
-    - .gitlab-ci/bare-metal/fastboot.sh
+    - ./install/bare-metal/fastboot.sh
   needs:
     - arm_test-base
     - arm64_test
@@ -1021,7 +1022,7 @@ arm64_a306_gles3_options:
     DEQP_VER: gles3
   script:
     # Check that the non-constbuf UBO case works.
-    - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" .gitlab-ci/bare-metal/fastboot.sh
+    - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" ./install/bare-metal/fastboot.sh
 
 arm64_a530_gles2:
   extends:

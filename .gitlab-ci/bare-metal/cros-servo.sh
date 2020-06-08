@@ -4,7 +4,7 @@
 # NFS and TFTP to boot.
 
 # We're run from the root of the repo, make a helper var for our paths
-BM=$CI_PROJECT_DIR/.gitlab-ci/bare-metal
+BM=$CI_PROJECT_DIR/install/bare-metal
 
 # Runner config checks
 if [ -z "$BM_SERIAL" ]; then
@@ -46,6 +46,11 @@ if [ -z "$BM_CMDLINE" ]; then
 fi
 
 set -ex
+
+# Clear out any previous run's artifacts.
+rm -rf results/
+mkdir -p results
+find artifacts/ -name serial\*.txt  | xargs rm -f
 
 # Create the rootfs in the NFS directory.  rm to make sure it's in a pristine
 # state, since it's volume-mounted on the host.
