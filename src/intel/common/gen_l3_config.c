@@ -294,10 +294,15 @@ gen_get_default_l3_config(const struct gen_device_info *devinfo)
     * default configuration.
     */
    const struct gen_l3_list *const list = get_l3_list(devinfo);
-   const struct gen_l3_config *const cfg = &list->configs[0];
-   assert(cfg == gen_get_l3_config(devinfo,
-                    gen_get_default_l3_weights(devinfo, false, false)));
-   return cfg;
+   assert(list->length > 0 || devinfo->gen >= 12);
+   if (list->length > 0) {
+      const struct gen_l3_config *const cfg = &list->configs[0];
+      assert(cfg == gen_get_l3_config(devinfo,
+                       gen_get_default_l3_weights(devinfo, false, false)));
+      return cfg;
+   } else {
+      return NULL;
+   }
 }
 
 /**
@@ -323,6 +328,7 @@ gen_get_l3_config(const struct gen_device_info *devinfo,
       }
    }
 
+   assert(cfg_best || devinfo->gen >= 12);
    return cfg_best;
 }
 
