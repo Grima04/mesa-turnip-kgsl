@@ -79,6 +79,7 @@
 #include "isl/isl.h"
 
 #include "common/intel_defines.h"
+#include "common/intel_uuid.h"
 
 #include "compiler/spirv/nir_spirv.h"
 /***************************************
@@ -324,6 +325,29 @@ brw_finish(struct gl_context * ctx)
 }
 
 static void
+brw_get_device_uuid(struct gl_context *ctx, char *uuid)
+{
+   struct brw_context *brw = brw_context(ctx);
+   struct brw_screen *screen = brw->screen;
+
+   assert(GL_UUID_SIZE_EXT >= PIPE_UUID_SIZE);
+   memset(uuid, 0, GL_UUID_SIZE_EXT);
+   intel_uuid_compute_device_id((uint8_t *)uuid, &screen->isl_dev, PIPE_UUID_SIZE);
+}
+
+
+static void
+brw_get_driver_uuid(struct gl_context *ctx, char *uuid)
+{
+   struct brw_context *brw = brw_context(ctx);
+   struct brw_screen *screen = brw->screen;
+
+   assert(GL_UUID_SIZE_EXT >= PIPE_UUID_SIZE);
+   memset(uuid, 0, GL_UUID_SIZE_EXT);
+   intel_uuid_compute_driver_id((uint8_t *)uuid, &screen->devinfo, PIPE_UUID_SIZE);
+}
+
+static void
 brw_init_driver_functions(struct brw_context *brw,
                           struct dd_function_table *functions)
 {
@@ -412,6 +436,9 @@ brw_init_driver_functions(struct brw_context *brw,
    }
 
    functions->SetBackgroundContext = brw_set_background_context;
+
+   functions->GetDeviceUuid = brw_get_device_uuid;
+   functions->GetDriverUuid = brw_get_driver_uuid;
 }
 
 static void
