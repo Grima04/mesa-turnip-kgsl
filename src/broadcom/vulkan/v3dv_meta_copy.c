@@ -599,7 +599,7 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
                   1 : image->cpp;
    uint32_t buffer_stride = width * cpp;
    uint32_t buffer_offset =
-      region->bufferOffset + height * buffer_stride * layer;
+      buffer->mem_offset + region->bufferOffset + height * buffer_stride * layer;
 
    uint32_t format = choose_tlb_format(framebuffer, imgrsc->aspectMask,
                                        true, true, false);
@@ -1675,7 +1675,9 @@ framebuffer_size_for_pixel_count(uint32_t num_pixels,
 static struct v3dv_job *
 copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
             struct v3dv_bo *dst,
+            uint32_t dst_offset,
             struct v3dv_bo *src,
+            uint32_t src_offset,
             const VkBufferCopy *region)
 {
    const uint32_t internal_bpp = V3D_INTERNAL_BPP_32;
@@ -1711,8 +1713,8 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    assert(num_items > 0);
 
    struct v3dv_job *job;
-   uint32_t src_offset = region->srcOffset;
-   uint32_t dst_offset = region->dstOffset;
+   src_offset += region->srcOffset;
+   dst_offset += region->dstOffset;
    while (num_items > 0) {
       job = v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
       if (!job)
@@ -1756,7 +1758,9 @@ v3dv_CmdCopyBuffer(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, dstBuffer);
 
    for (uint32_t i = 0; i < regionCount; i++) {
-     copy_buffer(cmd_buffer, dst_buffer->mem->bo, src_buffer->mem->bo,
+     copy_buffer(cmd_buffer,
+                 dst_buffer->mem->bo, dst_buffer->mem_offset,
+                 src_buffer->mem->bo, src_buffer->mem_offset,
                  &pRegions[i]);
    }
 }
@@ -1804,7 +1808,10 @@ v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
       .size = dataSize,
    };
    struct v3dv_job *copy_job =
-      copy_buffer(cmd_buffer, dst_buffer->mem->bo, src_bo, &region);
+      copy_buffer(cmd_buffer,
+                  dst_buffer->mem->bo, dst_buffer->mem_offset,
+                  src_bo, 0,
+                  &region);
    if (!copy_job)
       return;
 
@@ -1989,7 +1996,7 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
                   1 : image->cpp;
    uint32_t buffer_stride = width * cpp;
    uint32_t buffer_offset =
-      region->bufferOffset + height * buffer_stride * layer;
+      buffer->mem_offset + region->bufferOffset + height * buffer_stride * layer;
 
    uint32_t format = choose_tlb_format(framebuffer, imgrsc->aspectMask,
                                        false, false, true);

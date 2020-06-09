@@ -3818,7 +3818,8 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
       prim.mode = hw_prim_type;
       prim.number_of_draw_indirect_array_records = drawCount;
       prim.stride_in_multiples_of_4_bytes = stride >> 2;
-      prim.address = v3dv_cl_address(buffer->mem->bo, offset);
+      prim.address = v3dv_cl_address(buffer->mem->bo,
+                                     buffer->mem_offset + offset);
    }
 }
 
@@ -3855,7 +3856,8 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
       prim.enable_primitive_restarts = pipeline->primitive_restart;
       prim.number_of_draw_indirect_indexed_records = drawCount;
       prim.stride_in_multiples_of_4_bytes = stride >> 2;
-      prim.address = v3dv_cl_address(buffer->mem->bo, offset);
+      prim.address = v3dv_cl_address(buffer->mem->bo,
+                                     buffer->mem_offset + offset);
    }
 }
 
@@ -3920,7 +3922,8 @@ v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit(&job->bcl, INDEX_BUFFER_SETUP, ib) {
-      ib.address = v3dv_cl_address(ibuffer->mem->bo, offset);
+      ib.address = v3dv_cl_address(ibuffer->mem->bo,
+                                   ibuffer->mem_offset + offset);
       ib.size = ibuffer->mem->bo->size;
    }
 
