@@ -80,8 +80,11 @@ static int
 get_video_mem(struct zink_screen *screen)
 {
    VkDeviceSize size = 0;
-   for (uint32_t i = 0; i < screen->mem_props.memoryHeapCount; ++i)
-      size += screen->mem_props.memoryHeaps[i].size;
+   for (uint32_t i = 0; i < screen->mem_props.memoryHeapCount; ++i) {
+      if (screen->mem_props.memoryHeaps[i].flags &
+          VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+         size += screen->mem_props.memoryHeaps[i].size;
+   }
    return (int)(size >> 20);
 }
 
