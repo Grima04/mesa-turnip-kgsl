@@ -884,29 +884,6 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
-tu6_cache_flush(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
-{
-   unsigned seqno;
-
-   seqno = tu6_emit_event_write(cmd, cs, RB_DONE_TS, true);
-
-   tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
-   tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
-                  CP_WAIT_REG_MEM_0_POLL_MEMORY);
-   tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
-   tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(seqno));
-   tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0));
-   tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(16));
-
-   seqno = tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
-
-   tu_cs_emit_pkt7(cs, CP_WAIT_MEM_GTE, 4);
-   tu_cs_emit(cs, CP_WAIT_MEM_GTE_0_RESERVED(0));
-   tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
-   tu_cs_emit(cs, CP_WAIT_MEM_GTE_3_REF(seqno));
-}
-
-static void
 update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
@@ -1079,8 +1056,15 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
    tu_cs_emit(cs, UNK_2D);
 
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
-   tu6_cache_flush(cmd, cs);
+   /* This flush is probably required because the VSC, which produces the
+    * visibility stream, is a client of UCHE, whereas the CP needs to read the
+    * visibility stream (without caching) to do draw skipping. The
+    * WFI+WAIT_FOR_ME combination guarantees that the binning commands
+    * submitted are finished before reading the VSC regs (in
+    * emit_vsc_overflow_test) or the VSC_DATA buffer directly (implicitly as
+    * part of draws).
+    */
+   tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
 
    tu_cs_emit_wfi(cs);
 
