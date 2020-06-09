@@ -508,6 +508,8 @@ static struct pipe_resource *
 panfrost_resource_create(struct pipe_screen *screen,
                          const struct pipe_resource *template)
 {
+        struct panfrost_device *dev = pan_device(screen);
+
         /* Make sure we're familiar */
         switch (template->target) {
         case PIPE_BUFFER:
@@ -523,13 +525,11 @@ panfrost_resource_create(struct pipe_screen *screen,
                 assert(0);
         }
 
-        if (template->bind &
-            (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED))
+        if (dev->ro && (template->bind &
+            (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)))
                 return panfrost_create_scanout_res(screen, template);
 
         struct panfrost_resource *so = rzalloc(screen, struct panfrost_resource);
-        struct panfrost_device *dev = pan_device(screen);
-
         so->base = *template;
         so->base.screen = screen;
         so->internal_format = template->format;
