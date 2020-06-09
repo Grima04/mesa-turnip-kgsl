@@ -73,7 +73,22 @@ static bool
 modifier_is_supported(const struct gen_device_info *devinfo,
                       enum pipe_format pfmt, uint64_t modifier)
 {
-   /* XXX: do something real */
+   /* Check for basic device support. */
+   switch (modifier) {
+   case DRM_FORMAT_MOD_LINEAR:
+   case I915_FORMAT_MOD_X_TILED:
+   case I915_FORMAT_MOD_Y_TILED:
+      break;
+   case I915_FORMAT_MOD_Y_TILED_CCS:
+      if (devinfo->gen <= 8 || devinfo->gen >= 12)
+         return false;
+      break;
+   case DRM_FORMAT_MOD_INVALID:
+   default:
+      return false;
+   }
+
+   /* Check remaining requirements. */
    switch (modifier) {
    case I915_FORMAT_MOD_Y_TILED_CCS: {
       if (unlikely(INTEL_DEBUG & DEBUG_NO_RBC))
@@ -86,17 +101,12 @@ modifier_is_supported(const struct gen_device_info *devinfo,
       if (rt_format == ISL_FORMAT_UNSUPPORTED ||
           !isl_format_supports_ccs_e(devinfo, rt_format))
          return false;
-
-      return devinfo->gen >= 9 && devinfo->gen <= 11;
    }
-   case I915_FORMAT_MOD_Y_TILED:
-   case I915_FORMAT_MOD_X_TILED:
-   case DRM_FORMAT_MOD_LINEAR:
-      return true;
-   case DRM_FORMAT_MOD_INVALID:
    default:
-      return false;
+      break;
    }
+
+   return true;
 }
 
 static uint64_t
