@@ -175,6 +175,27 @@ job_destroy_gpu_cl_resources(struct v3dv_job *job)
 }
 
 static void
+job_destroy_cloned_gpu_cl_resources(struct v3dv_job *job)
+{
+   assert(job->type == V3DV_JOB_TYPE_GPU_CL);
+
+   list_for_each_entry_safe(struct v3dv_bo, bo, &job->bcl.bo_list, list_link) {
+      list_del(&bo->list_link);
+      vk_free(&job->device->alloc, bo);
+   }
+
+   list_for_each_entry_safe(struct v3dv_bo, bo, &job->rcl.bo_list, list_link) {
+      list_del(&bo->list_link);
+      vk_free(&job->device->alloc, bo);
+   }
+
+   list_for_each_entry_safe(struct v3dv_bo, bo, &job->indirect.bo_list, list_link) {
+      list_del(&bo->list_link);
+      vk_free(&job->device->alloc, bo);
+   }
+}
+
+static void
 job_destroy_cpu_wait_events_resources(struct v3dv_job *job)
 {
    assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
@@ -190,7 +211,8 @@ v3dv_job_destroy(struct v3dv_job *job)
    list_del(&job->list_link);
 
    /* Cloned jobs don't make deep copies of the original jobs, so they don't
-    * own any of their resources.
+    * own any of their resources. However, they do allocate clones of BO
+    * structs, so make sure we free those.
     */
    if (!job->is_clone) {
       switch (job->type) {
@@ -204,6 +226,10 @@ v3dv_job_destroy(struct v3dv_job *job)
       default:
          break;
       }
+   } else {
+      /* Cloned jobs */
+      if (job->type == V3DV_JOB_TYPE_GPU_CL)
+         job_destroy_cloned_gpu_cl_resources(job);
    }
 
    vk_free(&job->device->alloc, job);
@@ -2171,6 +2197,28 @@ cmd_buffer_copy_secondary_end_query_state(struct v3dv_cmd_buffer *primary,
    }
 }
 
+static void
+clone_bo_list(struct v3dv_cmd_buffer *cmd_buffer,
+              struct list_head *dst,
+              struct list_head *src)
+{
+   assert(cmd_buffer);
+
+   list_inithead(dst);
+   list_for_each_entry(struct v3dv_bo, bo, src, list_link) {
+      struct v3dv_bo *clone_bo =
+         vk_alloc(&cmd_buffer->device->alloc, sizeof(struct v3dv_bo), 8,
+                  VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      if (!clone_bo) {
+         v3dv_flag_oom(cmd_buffer, NULL);
+         return;
+      }
+
+      *clone_bo = *bo;
+      list_addtail(&clone_bo->list_link, dst);
+   }
+}
+
 /* Clones a job for inclusion in the given command buffer. Note that this
  * doesn't make a deep copy so the cloned job it doesn't own any resources.
  * Useful when we need to have a job in more than one list, which happens
@@ -2189,10 +2237,21 @@ job_clone_in_cmd_buffer(struct v3dv_job *job,
       return;
    }
 
+   /* Cloned jobs don't duplicate resources! */
    *clone_job = *job;
    clone_job->is_clone = true;
    clone_job->cmd_buffer = cmd_buffer;
    list_addtail(&clone_job->list_link, &cmd_buffer->jobs);
+
+   /* We need to regen the BO lists so that they point to the BO list in the
+    * cloned job. Otherwise functions like list_length() will loop forever.
+    */
+   if (job->type == V3DV_JOB_TYPE_GPU_CL) {
+      clone_bo_list(cmd_buffer, &clone_job->bcl.bo_list, &job->bcl.bo_list);
+      clone_bo_list(cmd_buffer, &clone_job->rcl.bo_list, &job->rcl.bo_list);
+      clone_bo_list(cmd_buffer, &clone_job->indirect.bo_list,
+                    &job->indirect.bo_list);
+   }
 }
 
 static void
