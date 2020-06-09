@@ -523,7 +523,7 @@ hud_draw_results(struct hud_context *hud, struct pipe_resource *tex)
 
    viewport.scale[0] = 0.5f * hud->fb_width;
    viewport.scale[1] = 0.5f * hud->fb_height;
-   viewport.scale[2] = 1.0f;
+   viewport.scale[2] = 0.0f;
    viewport.translate[0] = 0.5f * hud->fb_width;
    viewport.translate[1] = 0.5f * hud->fb_height;
    viewport.translate[2] = 0.0f;
