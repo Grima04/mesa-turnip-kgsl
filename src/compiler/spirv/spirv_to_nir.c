@@ -2962,17 +2962,16 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       struct vtn_type *type = vtn_value(b, w[1], vtn_value_type_type)->type;
 
       unsigned dest_components = glsl_get_vector_elements(type->type);
-      intrin->num_components = nir_intrinsic_infos[op].dest_components;
-      if (intrin->num_components == 0)
+      if (nir_intrinsic_infos[op].dest_components == 0)
          intrin->num_components = dest_components;
 
       nir_ssa_dest_init(&intrin->instr, &intrin->dest,
-                        intrin->num_components, 32, NULL);
+                        nir_intrinsic_dest_components(intrin), 32, NULL);
 
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
       nir_ssa_def *result = &intrin->dest.ssa;
-      if (intrin->num_components != dest_components)
+      if (nir_intrinsic_dest_components(intrin) != dest_components)
          result = nir_channels(&b->nb, result, (1 << dest_components) - 1);
 
       struct vtn_value *val =
