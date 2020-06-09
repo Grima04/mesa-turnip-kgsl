@@ -3906,8 +3906,10 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    if (ib.size)
       tu_cs_emit_ib(cs, &ib);
 
-   if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS)
+   if ((cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS) &&
+       pipeline->load_state.state_ib.size > 0) {
       tu_cs_emit_ib(cs, &pipeline->load_state.state_ib);
+   }
 
    cmd->state.dirty &=
       ~(TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS | TU_CMD_DIRTY_COMPUTE_PIPELINE);
