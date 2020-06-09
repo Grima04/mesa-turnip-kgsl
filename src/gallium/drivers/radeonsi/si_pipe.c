@@ -925,6 +925,12 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->ws = ws;
    ws->query_info(ws, &sscreen->info);
 
+   if (sscreen->info.chip_class == GFX10_3 && LLVM_VERSION_MAJOR < 11) {
+      fprintf(stderr, "radeonsi: GFX 10.3 requires LLVM 11 or higher\n");
+      FREE(sscreen);
+      return NULL;
+   }
+
    if (sscreen->info.chip_class == GFX10 && LLVM_VERSION_MAJOR < 9) {
       fprintf(stderr, "radeonsi: Navi family support requires LLVM 9 or higher\n");
       FREE(sscreen);
