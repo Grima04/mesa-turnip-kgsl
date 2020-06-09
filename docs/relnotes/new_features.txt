@@ -19,3 +19,4 @@ GL_ARB_gl_spirv on nvc0/nir.
 GL_ARB_spirv_extensions on nvc0/nir.
 RADV now uses ACO per default as backend
 RADV_DEBUG=llvm option to enable LLVM backend for RADV
+VK_EXT_image_robustness for ANV
