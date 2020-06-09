@@ -45,6 +45,12 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
 	if (!ac_query_gpu_info(fd, ws->dev, &ws->info, &ws->amdinfo))
 		return false;
 
+	/* LLVM 11 is required for GFX10.3. */
+	if (ws->info.chip_class == GFX10_3 && !ws->use_aco && LLVM_VERSION_MAJOR < 11) {
+		fprintf(stderr, "radv: GFX 10.3 requires LLVM 11 or higher\n");
+		return false;
+	}
+
 	/* LLVM 9.0 is required for GFX10. */
 	if (ws->info.chip_class == GFX10 && !ws->use_aco && LLVM_VERSION_MAJOR < 9) {
 		fprintf(stderr, "radv: Navi family support requires LLVM 9 or higher\n");
