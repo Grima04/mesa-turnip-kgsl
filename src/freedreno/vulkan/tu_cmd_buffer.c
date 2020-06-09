@@ -316,35 +316,43 @@ tu6_index_size(VkIndexType type)
    }
 }
 
-unsigned
+void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
-                     enum vgt_event_type event,
-                     bool need_seqno)
+                     enum vgt_event_type event)
 {
-   unsigned seqno = 0;
+   bool need_seqno = false;
+   switch (event) {
+   case CACHE_FLUSH_TS:
+   case WT_DONE_TS:
+   case RB_DONE_TS:
+   case PC_CCU_FLUSH_DEPTH_TS:
+   case PC_CCU_FLUSH_COLOR_TS:
+   case PC_CCU_RESOLVE_TS:
+      need_seqno = true;
+      break;
+   default:
+      break;
+   }
 
    tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, need_seqno ? 4 : 1);
    tu_cs_emit(cs, CP_EVENT_WRITE_0_EVENT(event));
    if (need_seqno) {
       tu_cs_emit_qw(cs, cmd->scratch_bo.iova);
-      seqno = ++cmd->scratch_seqno;
-      tu_cs_emit(cs, seqno);
+      tu_cs_emit(cs, 0);
    }
-
-   return seqno;
 }
 
 static void
 tu6_emit_cache_flush(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   tu6_emit_event_write(cmd, cs, 0x31, false);
+   tu6_emit_event_write(cmd, cs, 0x31);
 }
 
 static void
 tu6_emit_lrz_flush(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   tu6_emit_event_write(cmd, cs, LRZ_FLUSH, false);
+   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
 }
 
 static void
@@ -1064,7 +1072,7 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
     * emit_vsc_overflow_test) or the VSC_DATA buffer directly (implicitly as
     * part of draws).
     */
-   tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS, true);
+   tu6_emit_event_write(cmd, cs, CACHE_FLUSH_TS);
 
    tu_cs_emit_wfi(cs);
 
@@ -1130,9 +1138,9 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR, false);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH, false);
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
+   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
    tu6_emit_wfi(cmd, cs);
    tu_cs_emit_regs(cs,
@@ -1174,8 +1182,8 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_lrz_flush(cmd, cs);
 
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
 
    tu_cs_sanity_check(cs);
 }
@@ -1196,10 +1204,10 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, 0x0);
 
    /* TODO: flushing with barriers instead of blindly always flushing */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR, false);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH, false);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
+   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
+   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
 
    tu_cs_emit_wfi(cs);
    tu_cs_emit_regs(cs,
@@ -1291,7 +1299,7 @@ tu6_tile_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_lrz_flush(cmd, cs);
 
-   tu6_emit_event_write(cmd, cs, PC_CCU_RESOLVE_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_RESOLVE_TS);
 
    tu_cs_sanity_check(cs);
 }
@@ -1704,8 +1712,6 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    tu_cs_begin(&cmd_buffer->draw_cs);
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
-   cmd_buffer->scratch_seqno = 0;
-
    /* setup initial configuration into command buffer */
    if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
       switch (cmd_buffer->queue_family_index) {
@@ -1932,10 +1938,8 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
-   if (cmd_buffer->scratch_seqno) {
-      tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->scratch_bo,
-                     MSM_SUBMIT_BO_WRITE);
-   }
+   tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->scratch_bo,
+                  MSM_SUBMIT_BO_WRITE);
 
    if (cmd_buffer->use_vsc_data) {
       tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->vsc_draw_strm,
@@ -2364,11 +2368,11 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    /* Emit flushes so that input attachments will read the correct value.
     * TODO: use subpass dependencies to flush or not
     */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
 
    if (subpass->resolve_attachments) {
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
       for (unsigned i = 0; i < subpass->color_count; i++) {
          uint32_t a = subpass->resolve_attachments[i].attachment;
@@ -2379,14 +2383,14 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
                                  subpass->color_attachments[i].attachment);
       }
 
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
    }
 
    tu_cond_exec_end(cs);
 
    /* subpass->input_count > 0 then texture cache invalidate is likely to be needed */
    if (cmd->state.subpass->input_count)
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
    /* emit mrt/zs/msaa/ubwc state for the subpass that is starting */
    tu6_emit_zs(cmd, cmd->state.subpass, cs);
@@ -3298,7 +3302,7 @@ tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
    if (cmd->state.streamout_enabled) {
       for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
          if (cmd->state.streamout_enabled & (1 << i))
-            tu6_emit_event_write(cmd, cs, FLUSH_SO_0 + i, false);
+            tu6_emit_event_write(cmd, cs, FLUSH_SO_0 + i);
       }
    }
 
@@ -3684,9 +3688,9 @@ tu_barrier(struct tu_cmd_buffer *cmd,
     * and in sysmem mode we might not need either color/depth flush
     */
    if (cmd->state.pass) {
-      tu6_emit_event_write(cmd, &cmd->draw_cs, PC_CCU_FLUSH_COLOR_TS, true);
-      tu6_emit_event_write(cmd, &cmd->draw_cs, PC_CCU_FLUSH_DEPTH_TS, true);
-      tu6_emit_event_write(cmd, &cmd->draw_cs, CACHE_INVALIDATE, false);
+      tu6_emit_event_write(cmd, &cmd->draw_cs, PC_CCU_FLUSH_COLOR_TS);
+      tu6_emit_event_write(cmd, &cmd->draw_cs, PC_CCU_FLUSH_DEPTH_TS);
+      tu6_emit_event_write(cmd, &cmd->draw_cs, CACHE_INVALIDATE);
       return;
    }
 }

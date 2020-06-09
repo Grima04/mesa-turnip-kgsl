@@ -471,11 +471,11 @@ r2d_setup(struct tu_cmd_buffer *cmd,
    const struct tu_physical_device *phys_dev = cmd->device->physical_device;
 
    /* TODO: flushing with barriers instead of blindly always flushing */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR, false);
-   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH, false);
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
+   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
+   tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
    tu_cs_emit_wfi(cs);
    tu_cs_emit_regs(cs,
@@ -491,9 +491,9 @@ r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
 
    /* TODO: flushing with barriers instead of blindly always flushing */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 }
 
 /* r3d_ = shader path operations */
@@ -916,11 +916,11 @@ r3d_setup(struct tu_cmd_buffer *cmd,
 
    if (!cmd->state.pass) {
       /* TODO: flushing with barriers instead of blindly always flushing */
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
-      tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR, false);
-      tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH, false);
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
+      tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
+      tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
       tu_cs_emit_regs(cs,
                      A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
@@ -982,9 +982,9 @@ r3d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    if (!cmd->state.pass) {
       /* TODO: flushing with barriers instead of blindly always flushing */
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
    }
 }
 
@@ -1610,8 +1610,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       /* When executed by the user there has to be a pipeline barrier here,
        * but since we're doing it manually we'll have to flush ourselves.
        */
-      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+      tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+      tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
       tu_image_view_blit2(&staging, &staging_image, dst_format,
                           &staging_subresource, 0, false);
@@ -1948,10 +1948,10 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
             a = subpass->depth_stencil_attachment.attachment;
 
             /* sync depth into color */
-            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
+            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
             /* also flush color to avoid losing contents from invalidate */
-            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-            tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR, false);
+            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+            tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
          }
 
          if (a == VK_ATTACHMENT_UNUSED)
@@ -1984,11 +1984,11 @@ tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
              * note: cache invalidate might be needed to, and just not covered by test cases
              */
             if (attachments[j].colorAttachment > 0)
-               tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
+               tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
          } else {
             /* sync color into depth */
-            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-            tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH, false);
+            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+            tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
          }
    }
 }
@@ -2216,7 +2216,7 @@ tu_emit_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 4);
    tu_cs_emit_array(cs, clear_vals, 4);
 
-   tu6_emit_event_write(cmd, cs, BLIT, false);
+   tu6_emit_event_write(cmd, cs, BLIT);
 }
 
 static void
@@ -2371,7 +2371,7 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs,
                    A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset));
 
-   tu6_emit_event_write(cmd, cs, BLIT, false);
+   tu6_emit_event_write(cmd, cs, BLIT);
 }
 
 static bool
@@ -2489,13 +2489,13 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                    A6XX_SP_PS_2D_SRC_PITCH(.pitch = tiling->tile0.extent.width * src->cpp));
 
    /* sync GMEM writes with CACHE */
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
    tu_cs_emit_pkt7(cs, CP_BLIT, 1);
    tu_cs_emit(cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
 
    /* TODO: flushing with barriers instead of blindly always flushing */
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS, true);
-   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS, true);
-   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE, false);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 }

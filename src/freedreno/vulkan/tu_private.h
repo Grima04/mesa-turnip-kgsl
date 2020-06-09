@@ -994,7 +994,7 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other);
 /* This struct defines the layout of the scratch_bo */
 struct tu6_control
 {
-   uint32_t seqno;          /* seqno for async CP_EVENT_WRITE, etc */
+   uint32_t seqno_dummy;          /* dummy seqno for CP_EVENT_WRITE */
    uint32_t _pad0;
    volatile uint32_t vsc_overflow;
    uint32_t _pad1;
@@ -1048,7 +1048,6 @@ struct tu_cmd_buffer
    struct tu_cs sub_cs;
 
    struct tu_bo scratch_bo;
-   uint32_t scratch_seqno;
 
    struct tu_bo vsc_draw_strm;
    struct tu_bo vsc_prim_strm;
@@ -1072,11 +1071,10 @@ struct tu_reg_value {
    uint32_t bo_shift;
 };
 
-unsigned
+void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
-                     enum vgt_event_type event,
-                     bool need_seqno);
+                     enum vgt_event_type event);
 
 bool
 tu_get_memory_fd(struct tu_device *device,
