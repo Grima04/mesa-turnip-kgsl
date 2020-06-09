@@ -36,7 +36,6 @@
 
 struct gen_l3_config;
 struct brw_vue_map;
-struct iris_monitor_config;
 struct iris_vs_prog_key;
 struct iris_tcs_prog_key;
 struct iris_tes_prog_key;
@@ -201,7 +200,7 @@ struct iris_screen {
    struct isl_device isl_dev;
    struct iris_bufmgr *bufmgr;
    struct brw_compiler *compiler;
-   struct iris_monitor_config *monitor_cfg;
+   struct gen_perf_config *perf_cfg;
 
    const struct gen_l3_config *l3_config_3d;
    const struct gen_l3_config *l3_config_cs;

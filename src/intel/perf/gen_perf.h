@@ -173,6 +173,15 @@ struct gen_perf_query_counter {
    size_t offset;
    uint64_t query_mask;
 
+   /**
+    * Each counter can be a part of many groups, each time at different index.
+    * This struct stores one of those locations.
+    */
+   struct {
+      int group_idx; /* query/group number */
+      int counter_idx; /* index inside of query/group */
+   } location;
+
    union {
       uint64_t (*oa_counter_read_uint64)(struct gen_perf_config *perf,
                                          const struct gen_perf_query_info *query,

@@ -626,6 +626,8 @@ build_unique_counter_list(struct gen_perf_config *perf)
          unique_counter = counter;
          unique_counter->query_mask = BITFIELD64_BIT(q);
 
+         unique_counter->location.group_idx = q;
+         unique_counter->location.counter_idx = c;
          _mesa_hash_table_insert(counters_table, unique_counter->symbol_name, unique_counter);
       }
    }
