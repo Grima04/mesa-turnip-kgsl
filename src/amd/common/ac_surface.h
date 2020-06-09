@@ -179,7 +179,7 @@ struct gfx9_surf_layout {
     uint16_t                    display_dcc_pitch_max;  /* (mip chain pitch - 1) */
     bool                        dcc_retile_use_uint16; /* if all values fit into uint16_t */
     uint32_t                    dcc_retile_num_elements;
-    uint32_t                    *dcc_retile_map;
+    void                        *dcc_retile_map;
 };
 
 struct radeon_surf {

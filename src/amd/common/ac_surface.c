@@ -29,9 +29,12 @@
 #include "amd_family.h"
 #include "addrlib/src/amdgpu_asic_addr.h"
 #include "ac_gpu_info.h"
+#include "util/hash_table.h"
 #include "util/macros.h"
+#include "util/simple_mtx.h"
 #include "util/u_atomic.h"
 #include "util/u_math.h"
+#include "util/u_memory.h"
 #include "sid.h"
 
 #include <errno.h>
@@ -52,7 +55,142 @@
 
 struct ac_addrlib {
 	ADDR_HANDLE handle;
+
+	/* The cache of DCC retile maps for reuse when allocating images of
+	 * similar sizes.
+	 */
+	simple_mtx_t dcc_retile_map_lock;
+	struct hash_table *dcc_retile_maps;
 };
+
+struct dcc_retile_map_key {
+	enum radeon_family family;
+	unsigned retile_width;
+	unsigned retile_height;
+	bool rb_aligned;
+	bool pipe_aligned;
+	unsigned dcc_retile_num_elements;
+	ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT input;
+};
+
+static uint32_t dcc_retile_map_hash_key(const void *key)
+{
+	return _mesa_hash_data(key, sizeof(struct dcc_retile_map_key));
+}
+
+static bool dcc_retile_map_keys_equal(const void *a, const void *b)
+{
+	return memcmp(a, b, sizeof(struct dcc_retile_map_key)) == 0;
+}
+
+static void dcc_retile_map_free(struct hash_entry *entry)
+{
+	free((void*)entry->key);
+	free(entry->data);
+}
+
+static uint32_t *ac_compute_dcc_retile_map(struct ac_addrlib *addrlib,
+					   const struct radeon_info *info,
+					   unsigned retile_width, unsigned retile_height,
+					   bool rb_aligned, bool pipe_aligned, bool use_uint16,
+					   unsigned dcc_retile_num_elements,
+					   const ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT *in)
+{
+	unsigned dcc_retile_map_size = dcc_retile_num_elements * (use_uint16 ? 2 : 4);
+	struct dcc_retile_map_key key;
+
+	assert(in->numFrags == 1 && in->numSlices == 1 && in->numMipLevels == 1);
+
+	memset(&key, 0, sizeof(key));
+	key.family = info->family;
+	key.retile_width = retile_width;
+	key.retile_height = retile_height;
+	key.rb_aligned = rb_aligned;
+	key.pipe_aligned = pipe_aligned;
+	key.dcc_retile_num_elements = dcc_retile_num_elements;
+	memcpy(&key.input, in, sizeof(*in));
+
+	simple_mtx_lock(&addrlib->dcc_retile_map_lock);
+
+	/* If we have already computed this retile map, get it from the hash table. */
+	struct hash_entry *entry = _mesa_hash_table_search(addrlib->dcc_retile_maps, &key);
+	if (entry) {
+		uint32_t *map = entry->data;
+		simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
+		return map;
+	}
+
+	ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin;
+	memcpy(&addrin, in, sizeof(*in));
+
+	ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT addrout = {};
+	addrout.size = sizeof(addrout);
+
+	void *dcc_retile_map = malloc(dcc_retile_map_size);
+	if (!dcc_retile_map) {
+		simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
+		return NULL;
+	}
+
+	unsigned index = 0;
+
+	for (unsigned y = 0; y < retile_height; y += in->compressBlkHeight) {
+		addrin.y = y;
+
+		for (unsigned x = 0; x < retile_width; x += in->compressBlkWidth) {
+			addrin.x = x;
+
+			/* Compute src DCC address */
+			addrin.dccKeyFlags.pipeAligned = pipe_aligned;
+			addrin.dccKeyFlags.rbAligned = rb_aligned;
+			addrout.addr = 0;
+
+			if (Addr2ComputeDccAddrFromCoord(addrlib->handle, &addrin, &addrout) != ADDR_OK) {
+				simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
+				return NULL;
+			}
+
+			if (use_uint16)
+				((uint16_t*)dcc_retile_map)[index * 2] = addrout.addr;
+			else
+				((uint32_t*)dcc_retile_map)[index * 2] = addrout.addr;
+
+			/* Compute dst DCC address */
+			addrin.dccKeyFlags.pipeAligned = 0;
+			addrin.dccKeyFlags.rbAligned = 0;
+			addrout.addr = 0;
+
+			if (Addr2ComputeDccAddrFromCoord(addrlib->handle, &addrin, &addrout) != ADDR_OK) {
+				simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
+				return NULL;
+			}
+
+			if (use_uint16)
+				((uint16_t*)dcc_retile_map)[index * 2 + 1] = addrout.addr;
+			else
+				((uint32_t*)dcc_retile_map)[index * 2 + 1] = addrout.addr;
+
+			assert(index * 2 + 1 < dcc_retile_num_elements);
+			index++;
+		}
+	}
+	/* Fill the remaining pairs with the last one (for the compute shader). */
+	for (unsigned i = index * 2; i < dcc_retile_num_elements; i++) {
+		if (use_uint16)
+			((uint16_t*)dcc_retile_map)[i] = ((uint16_t*)dcc_retile_map)[i - 2];
+		else
+			((uint32_t*)dcc_retile_map)[i] = ((uint32_t*)dcc_retile_map)[i - 2];
+	}
+
+	/* Insert the retile map into the hash table, so that it can be reused and
+	 * the computation can be skipped for similar image sizes.
+	 */
+	_mesa_hash_table_insert(addrlib->dcc_retile_maps,
+				mem_dup(&key, sizeof(key)), dcc_retile_map);
+
+	simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
+	return dcc_retile_map;
+}
 
 static void *ADDR_API allocSysMem(const ADDR_ALLOCSYSMEM_INPUT * pInput)
 {
@@ -135,12 +273,17 @@ struct ac_addrlib *ac_addrlib_create(const struct radeon_info *info,
 	}
 
 	addrlib->handle = addrCreateOutput.hLib;
+	simple_mtx_init(&addrlib->dcc_retile_map_lock, mtx_plain);
+	addrlib->dcc_retile_maps = _mesa_hash_table_create(NULL, dcc_retile_map_hash_key,
+							   dcc_retile_map_keys_equal);
 	return addrlib;
 }
 
 void ac_addrlib_destroy(struct ac_addrlib *addrlib)
 {
 	AddrDestroy(addrlib->handle);
+	simple_mtx_destroy(&addrlib->dcc_retile_map_lock);
+	_mesa_hash_table_destroy(addrlib->dcc_retile_maps, dcc_retile_map_free);
 	free(addrlib);
 }
 
@@ -1376,16 +1519,60 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib,
 				surf->u.gfx9.dcc_retile_use_uint16 =
 					surf->u.gfx9.display_dcc_size <= UINT16_MAX + 1 &&
 					surf->dcc_size <= UINT16_MAX + 1;
+
+				/* Align the retile map size to get more hash table hits and
+				 * decrease the maximum memory footprint when all retile maps
+				 * are cached in the hash table.
+				 */
+				unsigned retile_dim[2] = {in->width, in->height};
+
+				for (unsigned i = 0; i < 2; i++) {
+					/* Increase the alignment as the size increases.
+					 * Greater alignment increases retile compute work,
+					 * but decreases maximum memory footprint for the cache.
+					 *
+					 * With this alignment, the worst case memory footprint of
+					 * the cache is:
+					 *   1920x1080: 55 MB
+					 *   2560x1440: 99 MB
+					 *   3840x2160: 305 MB
+					 *
+					 * The worst case size in MB can be computed in Haskell as follows:
+					 *   (sum (map get_retile_size (map get_dcc_size (deduplicate (map align_pair
+					 *       [(i*16,j*16) | i <- [1..maxwidth`div`16], j <- [1..maxheight`div`16]]))))) `div` 1024^2
+					 *     where
+					 *       alignment x = if x <= 512 then 16 else if x <= 1024 then 32 else if x <= 2048 then 64 else 128
+					 *       align x = (x + (alignment x) - 1) `div` (alignment x) * (alignment x)
+					 *       align_pair e = (align (fst e), align (snd e))
+					 *       deduplicate = map head . groupBy (\ a b -> ((fst a) == (fst b)) && ((snd a) == (snd b))) . sortBy compare
+					 *       get_dcc_size e = ((fst e) * (snd e) * bpp) `div` 256
+					 *       get_retile_size dcc_size = dcc_size * 2 * (if dcc_size <= 2^16 then 2 else 4)
+					 *       bpp = 4; maxwidth = 3840; maxheight = 2160
+					 */
+					if (retile_dim[i] <= 512)
+						retile_dim[i] = align(retile_dim[i], 16);
+					else if (retile_dim[i] <= 1024)
+						retile_dim[i] = align(retile_dim[i], 32);
+					else if (retile_dim[i] <= 2048)
+						retile_dim[i] = align(retile_dim[i], 64);
+					else
+						retile_dim[i] = align(retile_dim[i], 128);
+
+					/* Don't align more than the DCC pixel alignment. */
+					assert(dout.metaBlkWidth >= 128 && dout.metaBlkHeight >= 128);
+				}
+
 				surf->u.gfx9.dcc_retile_num_elements =
-					DIV_ROUND_UP(in->width, dout.compressBlkWidth) *
-					DIV_ROUND_UP(in->height, dout.compressBlkHeight) * 2;
+					DIV_ROUND_UP(retile_dim[0], dout.compressBlkWidth) *
+					DIV_ROUND_UP(retile_dim[1], dout.compressBlkHeight) * 2;
 				/* Align the size to 4 (for the compute shader). */
 				surf->u.gfx9.dcc_retile_num_elements =
 					align(surf->u.gfx9.dcc_retile_num_elements, 4);
 
 				if (!(surf->flags & RADEON_SURF_IMPORTED)) {
 					/* Compute address mapping from non-displayable to displayable DCC. */
-					ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin = {};
+					ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin;
+					memset(&addrin, 0, sizeof(addrin));
 					addrin.size             = sizeof(addrin);
 					addrin.swizzleMode      = din.swizzleMode;
 					addrin.resourceType     = din.resourceType;
@@ -1401,53 +1588,18 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib,
 					addrin.metaBlkWidth     = dout.metaBlkWidth;
 					addrin.metaBlkHeight    = dout.metaBlkHeight;
 					addrin.metaBlkDepth     = dout.metaBlkDepth;
-					addrin.dccRamSliceSize  = dout.dccRamSliceSize;
-
-					ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT addrout = {};
-					addrout.size = sizeof(addrout);
+					addrin.dccRamSliceSize  = 0; /* Don't care for non-layered images. */
 
 					surf->u.gfx9.dcc_retile_map =
-						malloc(surf->u.gfx9.dcc_retile_num_elements * 4);
+						ac_compute_dcc_retile_map(addrlib, info,
+									  retile_dim[0], retile_dim[1],
+									  surf->u.gfx9.dcc.rb_aligned,
+									  surf->u.gfx9.dcc.pipe_aligned,
+									  surf->u.gfx9.dcc_retile_use_uint16,
+									  surf->u.gfx9.dcc_retile_num_elements,
+									  &addrin);
 					if (!surf->u.gfx9.dcc_retile_map)
 						return ADDR_OUTOFMEMORY;
-
-					unsigned index = 0;
-
-					for (unsigned y = 0; y < in->height; y += dout.compressBlkHeight) {
-						addrin.y = y;
-
-						for (unsigned x = 0; x < in->width; x += dout.compressBlkWidth) {
-							addrin.x = x;
-
-							/* Compute src DCC address */
-							addrin.dccKeyFlags.pipeAligned = surf->u.gfx9.dcc.pipe_aligned;
-							addrin.dccKeyFlags.rbAligned = surf->u.gfx9.dcc.rb_aligned;
-							addrout.addr = 0;
-
-							ret = Addr2ComputeDccAddrFromCoord(addrlib->handle, &addrin, &addrout);
-							if (ret != ADDR_OK)
-								return ret;
-
-							surf->u.gfx9.dcc_retile_map[index * 2] = addrout.addr;
-
-							/* Compute dst DCC address */
-							addrin.dccKeyFlags.pipeAligned = 0;
-							addrin.dccKeyFlags.rbAligned = 0;
-							addrout.addr = 0;
-
-							ret = Addr2ComputeDccAddrFromCoord(addrlib->handle, &addrin, &addrout);
-							if (ret != ADDR_OK)
-								return ret;
-
-							surf->u.gfx9.dcc_retile_map[index * 2 + 1] = addrout.addr;
-
-							assert(index * 2 + 1 < surf->u.gfx9.dcc_retile_num_elements);
-							index++;
-						}
-					}
-					/* Fill the remaining pairs with the last one (for the compute shader). */
-					for (unsigned i = index * 2; i < surf->u.gfx9.dcc_retile_num_elements; i++)
-						surf->u.gfx9.dcc_retile_map[i] = surf->u.gfx9.dcc_retile_map[i - 2];
 				}
 			}
 		}
