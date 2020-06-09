@@ -170,6 +170,17 @@ static LLVMValueRef emit_int_cmp(struct ac_llvm_context *ctx,
                                  LLVMIntPredicate pred, LLVMValueRef src0,
                                  LLVMValueRef src1)
 {
+	LLVMTypeRef src0_type = LLVMTypeOf(src0);
+	LLVMTypeRef src1_type = LLVMTypeOf(src1);
+
+	if (LLVMGetTypeKind(src0_type) == LLVMPointerTypeKind &&
+	    LLVMGetTypeKind(src1_type) != LLVMPointerTypeKind) {
+		src1 = LLVMBuildIntToPtr(ctx->builder, src1, src0_type, "");
+	} else if (LLVMGetTypeKind(src1_type) == LLVMPointerTypeKind &&
+		   LLVMGetTypeKind(src0_type) != LLVMPointerTypeKind) {
+		src0 = LLVMBuildIntToPtr(ctx->builder, src0, src1_type, "");
+	}
+
 	LLVMValueRef result = LLVMBuildICmp(ctx->builder, pred, src0, src1, "");
 	return LLVMBuildSelect(ctx->builder, result,
 	                       LLVMConstInt(ctx->i32, 0xFFFFFFFF, false),
