@@ -2502,7 +2502,10 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
 
    if (shader->key.as_ngg) {
       assert(!shader->key.as_es && !shader->key.as_ls);
-      gfx10_ngg_calculate_subgroup_info(shader);
+      if (!gfx10_ngg_calculate_subgroup_info(shader)) {
+         fprintf(stderr, "Failed to compute subgroup info\n");
+         return false;
+      }
    } else if (sscreen->info.chip_class >= GFX9 && sel->type == PIPE_SHADER_GEOMETRY) {
       gfx9_get_gs_info(shader->previous_stage_sel, sel, &shader->gs_info);
    }

@@ -1884,7 +1884,7 @@ static void clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts
  * This happens before the shader is uploaded, since LDS relocations during
  * upload depend on the subgroup size.
  */
-void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
+bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 {
    const struct si_shader_selector *gs_sel = shader->selector;
    const struct si_shader_selector *es_sel =
@@ -2047,4 +2047,9 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    shader->ngg.ngg_emit_size = max_gsprims * gsprim_lds_size;
 
    assert(shader->ngg.hw_max_esverts >= 24); /* HW limitation */
+
+   /* If asserts are disabled, we use the same conditions to return false */
+   return max_esverts >= max_verts_per_prim && max_gsprims >= 1 &&
+          max_out_vertices <= 256 &&
+          shader->ngg.hw_max_esverts >= 24;
 }
