@@ -1355,22 +1355,9 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 				surf->u.gfx9.display_dcc_pitch_max = dout.pitch - 1;
 				assert(surf->u.gfx9.display_dcc_size <= surf->dcc_size);
 
-				/* Compute address mapping from non-displayable to displayable DCC. */
-				ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin = {};
-				addrin.size             = sizeof(addrin);
-				addrin.colorFlags.color = 1;
-				addrin.swizzleMode      = din.swizzleMode;
-				addrin.resourceType     = din.resourceType;
-				addrin.bpp              = din.bpp;
-				addrin.unalignedWidth   = din.unalignedWidth;
-				addrin.unalignedHeight  = din.unalignedHeight;
-				addrin.numSlices        = 1;
-				addrin.numMipLevels     = 1;
-				addrin.numFrags         = 1;
-
-				ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT addrout = {};
-				addrout.size = sizeof(addrout);
-
+				surf->u.gfx9.dcc_retile_use_uint16 =
+					surf->u.gfx9.display_dcc_size <= UINT16_MAX + 1 &&
+					surf->dcc_size <= UINT16_MAX + 1;
 				surf->u.gfx9.dcc_retile_num_elements =
 					DIV_ROUND_UP(in->width, dout.compressBlkWidth) *
 					DIV_ROUND_UP(in->height, dout.compressBlkHeight) * 2;
@@ -1378,53 +1365,66 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 				surf->u.gfx9.dcc_retile_num_elements =
 					align(surf->u.gfx9.dcc_retile_num_elements, 4);
 
-				surf->u.gfx9.dcc_retile_map =
-					malloc(surf->u.gfx9.dcc_retile_num_elements * 4);
-				if (!surf->u.gfx9.dcc_retile_map)
-					return ADDR_OUTOFMEMORY;
+				if (!(surf->flags & RADEON_SURF_IMPORTED)) {
+					/* Compute address mapping from non-displayable to displayable DCC. */
+					ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin = {};
+					addrin.size             = sizeof(addrin);
+					addrin.colorFlags.color = 1;
+					addrin.swizzleMode      = din.swizzleMode;
+					addrin.resourceType     = din.resourceType;
+					addrin.bpp              = din.bpp;
+					addrin.unalignedWidth   = din.unalignedWidth;
+					addrin.unalignedHeight  = din.unalignedHeight;
+					addrin.numSlices        = 1;
+					addrin.numMipLevels     = 1;
+					addrin.numFrags         = 1;
 
-				unsigned index = 0;
-				surf->u.gfx9.dcc_retile_use_uint16 = true;
+					ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT addrout = {};
+					addrout.size = sizeof(addrout);
 
-				for (unsigned y = 0; y < in->height; y += dout.compressBlkHeight) {
-					addrin.y = y;
+					surf->u.gfx9.dcc_retile_map =
+						malloc(surf->u.gfx9.dcc_retile_num_elements * 4);
+					if (!surf->u.gfx9.dcc_retile_map)
+						return ADDR_OUTOFMEMORY;
 
-					for (unsigned x = 0; x < in->width; x += dout.compressBlkWidth) {
-						addrin.x = x;
+					unsigned index = 0;
 
-						/* Compute src DCC address */
-						addrin.dccKeyFlags.pipeAligned = surf->u.gfx9.dcc.pipe_aligned;
-						addrin.dccKeyFlags.rbAligned = surf->u.gfx9.dcc.rb_aligned;
-						addrout.addr = 0;
+					for (unsigned y = 0; y < in->height; y += dout.compressBlkHeight) {
+						addrin.y = y;
 
-						ret = Addr2ComputeDccAddrFromCoord(addrlib, &addrin, &addrout);
-						if (ret != ADDR_OK)
-							return ret;
+						for (unsigned x = 0; x < in->width; x += dout.compressBlkWidth) {
+							addrin.x = x;
 
-						surf->u.gfx9.dcc_retile_map[index * 2] = addrout.addr;
-						if (addrout.addr > UINT16_MAX)
-							surf->u.gfx9.dcc_retile_use_uint16 = false;
+							/* Compute src DCC address */
+							addrin.dccKeyFlags.pipeAligned = surf->u.gfx9.dcc.pipe_aligned;
+							addrin.dccKeyFlags.rbAligned = surf->u.gfx9.dcc.rb_aligned;
+							addrout.addr = 0;
 
-						/* Compute dst DCC address */
-						addrin.dccKeyFlags.pipeAligned = 0;
-						addrin.dccKeyFlags.rbAligned = 0;
-						addrout.addr = 0;
+							ret = Addr2ComputeDccAddrFromCoord(addrlib, &addrin, &addrout);
+							if (ret != ADDR_OK)
+								return ret;
 
-						ret = Addr2ComputeDccAddrFromCoord(addrlib, &addrin, &addrout);
-						if (ret != ADDR_OK)
-							return ret;
+							surf->u.gfx9.dcc_retile_map[index * 2] = addrout.addr;
 
-						surf->u.gfx9.dcc_retile_map[index * 2 + 1] = addrout.addr;
-						if (addrout.addr > UINT16_MAX)
-							surf->u.gfx9.dcc_retile_use_uint16 = false;
+							/* Compute dst DCC address */
+							addrin.dccKeyFlags.pipeAligned = 0;
+							addrin.dccKeyFlags.rbAligned = 0;
+							addrout.addr = 0;
 
-						assert(index * 2 + 1 < surf->u.gfx9.dcc_retile_num_elements);
-						index++;
+							ret = Addr2ComputeDccAddrFromCoord(addrlib, &addrin, &addrout);
+							if (ret != ADDR_OK)
+								return ret;
+
+							surf->u.gfx9.dcc_retile_map[index * 2 + 1] = addrout.addr;
+
+							assert(index * 2 + 1 < surf->u.gfx9.dcc_retile_num_elements);
+							index++;
+						}
 					}
+					/* Fill the remaining pairs with the last one (for the compute shader). */
+					for (unsigned i = index * 2; i < surf->u.gfx9.dcc_retile_num_elements; i++)
+						surf->u.gfx9.dcc_retile_map[i] = surf->u.gfx9.dcc_retile_map[i - 2];
 				}
-				/* Fill the remaining pairs with the last one (for the compute shader). */
-				for (unsigned i = index * 2; i < surf->u.gfx9.dcc_retile_num_elements; i++)
-					surf->u.gfx9.dcc_retile_map[i] = surf->u.gfx9.dcc_retile_map[i - 2];
 			}
 		}
 
