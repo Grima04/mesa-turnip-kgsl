@@ -77,7 +77,7 @@ pan_format_from_nir_size(nir_alu_type base, unsigned size)
 }
 
 static enum mali_format
-pan_format_from_glsl(const struct glsl_type *type, unsigned frac)
+pan_format_from_glsl(const struct glsl_type *type, unsigned precision, unsigned frac)
 {
         const struct glsl_type *column = glsl_without_array_or_matrix(type);
         enum glsl_base_type glsl_base = glsl_get_base_type(column);
@@ -94,6 +94,19 @@ pan_format_from_glsl(const struct glsl_type *type, unsigned frac)
 
         unsigned base = nir_alu_type_get_base_type(t);
         unsigned size = nir_alu_type_get_type_size(t);
+
+        /* Demote to fp16 where possible. int16 varyings are TODO as the hw
+         * will saturate instead of wrap which is not conformant, so we need to
+         * insert i2i16/u2u16 instructions before the st_vary_32i/32u to get
+         * the intended behaviour */
+
+        bool is_16 = (precision == GLSL_PRECISION_MEDIUM)
+                || (precision == GLSL_PRECISION_LOW);
+
+        if (is_16 && base == nir_type_float)
+                size = 16;
+        else
+                size = 32;
 
         return pan_format_from_nir_base(base) |
                 pan_format_from_nir_size(base, size) |
@@ -263,7 +276,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
                 for (int c = 0; c < sz; ++c) {
                         state->varyings_loc[loc + c] = var->data.location + c;
-                        state->varyings[loc + c] = pan_format_from_glsl(var->type, var->data.location_frac);
+                        state->varyings[loc + c] = pan_format_from_glsl(var->type,
+                                        var->data.precision, var->data.location_frac);
                 }
         }
 }
