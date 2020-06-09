@@ -1135,4 +1135,5 @@ brw_fbo_init(struct brw_context *brw)
                                                _mesa_key_pointer_equal);
    brw->depth_cache = _mesa_set_create(brw->mem_ctx, _mesa_hash_pointer,
                                        _mesa_key_pointer_equal);
+   util_dynarray_init(&brw->batch.exec_fences, NULL);
 }

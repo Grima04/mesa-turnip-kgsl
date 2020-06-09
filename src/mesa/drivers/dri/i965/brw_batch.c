@@ -58,6 +58,14 @@ brw_batch_reset(struct brw_context *brw);
 static void
 brw_new_batch(struct brw_context *brw);
 
+static unsigned
+num_fences(struct brw_batch *batch)
+{
+   return util_dynarray_num_elements(&batch->exec_fences,
+                                     struct drm_i915_gem_exec_fence);
+}
+
+
 static void
 dump_validation_list(struct brw_batch *batch)
 {
@@ -727,6 +735,14 @@ execbuffer(int fd,
       *out_fence = -1;
       execbuf.flags |= I915_EXEC_FENCE_OUT;
    }
+
+   if (num_fences(batch)) {
+      execbuf.flags |= I915_EXEC_FENCE_ARRAY;
+      execbuf.num_cliprects = num_fences(batch);
+      execbuf.cliprects_ptr =
+         (uintptr_t)util_dynarray_begin(&batch->exec_fences);
+   }
+
 
    int ret = drmIoctl(fd, cmd, &execbuf);
    if (ret != 0)
