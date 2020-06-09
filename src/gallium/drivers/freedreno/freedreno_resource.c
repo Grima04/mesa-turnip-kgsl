@@ -1032,9 +1032,11 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 
 	uint32_t pitchalign = fd_screen(pscreen)->gmem_alignw * rsc->layout.cpp;
 
-	/* use 64 pitchalign on a6xx where gmem_alignw is not right */
+	/* pitchalign is 64-bytes for linear formats on a6xx
+	 * layout_resource_for_modifier will validate tiled pitch
+	 */
 	if (is_a6xx(screen))
-		pitchalign = 64 * rsc->layout.cpp;
+		pitchalign = 64;
 
 	if ((slice->pitch < align(prsc->width0 * rsc->layout.cpp, pitchalign)) ||
 			(slice->pitch & (pitchalign - 1)))

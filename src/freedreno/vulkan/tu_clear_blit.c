@@ -1129,10 +1129,6 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
    uint32_t pitch = src_width * vk_format_get_blocksize(src_format);
    uint32_t layer_size = src_height * pitch;
 
-   /* note: the src_va/pitch alignment of 64 is for 2D engine,
-    * it is also valid for 1cpp format with shader path (stencil aspect path)
-    */
-
    ops->setup(cmd, cs, dst_format, ROTATE_0, false, mask);
 
    struct tu_image_view dst;
@@ -1211,10 +1207,6 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
 
    uint32_t pitch = dst_width * vk_format_get_blocksize(dst_format);
    uint32_t layer_size = pitch * dst_height;
-
-   /* note: the dst_va/pitch alignment of 64 is for 2D engine,
-    * it is also valid for 1cpp format with shader path (stencil aspect)
-    */
 
    ops->setup(cmd, cs, dst_format, ROTATE_0, false, 0xf);
 

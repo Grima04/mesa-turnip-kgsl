@@ -29,62 +29,70 @@
 
 #include "freedreno_layout.h"
 
-/* indexed by cpp, including msaa 2x and 4x:
- * TODO:
- * cpp=1 UBWC needs testing at larger texture sizes
- * missing UBWC blockwidth/blockheight for npot+64 cpp
- * missing 96/128 CPP for 8x MSAA with 32_32_32/32_32_32_32
- */
-static const struct tile_alignment {
-	unsigned basealign;
-	unsigned pitchalign;
-	unsigned heightalign;
-	/* UBWC block width/height.  Used in size alignment, and calculating a
-	 * descriptor's FLAG_BUFFER_LOG2W/H for mipmapping.
-	 */
-	uint8_t ubwc_blockwidth;
-	uint8_t ubwc_blockheight;
-} tile_alignment[] = {
-	[1]  = {  64, 128, 32, 16, 4 },
-	[2]  = { 128, 128, 16, 16, 4 },
-	[3]  = { 256,  64, 32 },
-	[4]  = { 256,  64, 16, 16, 4 },
-	[6]  = { 256,  64, 16 },
-	[8]  = { 256,  64, 16, 8, 4, },
-	[12] = { 256,  64, 16 },
-	[16] = { 256,  64, 16, 4, 4, },
-	[24] = { 256,  64, 16 },
-	[32] = { 256,  64, 16, 4, 2 },
-	[48] = { 256,  64, 16 },
-	[64] = { 256,  64, 16 },
-
-	/* special cases for r8g8: */
-	[0]  = { 256, 64, 32, 16, 8 },
-};
-
 #define RGB_TILE_WIDTH_ALIGNMENT 64
 #define RGB_TILE_HEIGHT_ALIGNMENT 16
 #define UBWC_PLANE_SIZE_ALIGNMENT 4096
 
-static const struct tile_alignment *
-fdl6_tile_alignment(struct fdl_layout *layout)
+static bool
+is_r8g8(struct fdl_layout *layout)
 {
-	debug_assert(layout->cpp < ARRAY_SIZE(tile_alignment));
-
-	if ((layout->cpp == 2) && (util_format_get_nr_components(layout->format) == 2))
-		return &tile_alignment[0];
-	else
-		return &tile_alignment[layout->cpp];
+	return layout->cpp == 2 &&
+		   util_format_get_nr_components(layout->format) == 2;
 }
 
-static int
-fdl6_pitchalign(struct fdl_layout *layout, int level)
+void
+fdl6_get_ubwc_blockwidth(struct fdl_layout *layout,
+		uint32_t *blockwidth, uint32_t *blockheight)
 {
-	uint32_t pitchalign = 64;
-	if (fdl_tile_mode(layout, level))
-		pitchalign = fdl6_tile_alignment(layout)->pitchalign;
+	static const struct {
+		uint8_t width;
+		uint8_t height;
+	} blocksize[] = {
+		{ 16, 4 }, /* cpp = 1 */
+		{ 16, 4 }, /* cpp = 2 */
+		{ 16, 4 }, /* cpp = 4 */
+		{ 8, 4, }, /* cpp = 8 */
+		{ 4, 4, }, /* cpp = 16 */
+		{ 4, 2 },  /* cpp = 32 */
+		{ 0, 0 },  /* cpp = 64 (TODO) */
+	};
 
-	return pitchalign;
+	/* special case for r8g8: */
+	if (is_r8g8(layout)) {
+		*blockwidth = 16;
+		*blockheight = 8;
+		return;
+	}
+
+	uint32_t cpp = fdl_cpp_shift(layout);
+	assert(cpp < ARRAY_SIZE(blocksize));
+	*blockwidth = blocksize[cpp].width;
+	*blockheight = blocksize[cpp].height;
+}
+
+static void
+fdl6_tile_alignment(struct fdl_layout *layout, uint32_t *heightalign)
+{
+	layout->pitchalign = fdl_cpp_shift(layout);
+	*heightalign = 16;
+
+	if (is_r8g8(layout) || layout->cpp == 1) {
+		layout->pitchalign = 1;
+		*heightalign = 32;
+	} else if (layout->cpp == 2) {
+		layout->pitchalign = 2;
+	}
+
+	/* note: this base_align is *probably* not always right,
+	 * it doesn't really get tested. for example with UBWC we might
+	 * want 4k alignment, since we align UBWC levels to 4k
+	 */
+	if (layout->cpp == 1)
+		layout->base_align = 64;
+	else if (layout->cpp == 2)
+		layout->base_align = 128;
+	else
+		layout->base_align = 256;
 }
 
 /* NOTE: good way to test this is:  (for example)
@@ -97,8 +105,9 @@ fdl6_layout(struct fdl_layout *layout,
 		uint32_t mip_levels, uint32_t array_size, bool is_3d,
 		struct fdl_slice *plane_layout)
 {
-	uint32_t offset;
-	uint32_t pitch0;
+	uint32_t offset, pitch0;
+	uint32_t pitchalign, heightalign;
+	uint32_t ubwc_blockwidth, ubwc_blockheight;
 
 	assert(nr_samples > 0);
 	layout->width0 = width0;
@@ -113,37 +122,54 @@ fdl6_layout(struct fdl_layout *layout,
 	layout->nr_samples = nr_samples;
 	layout->layer_first = !is_3d;
 
-	if (depth0 > 1)
-		layout->ubwc = false;
-	if (tile_alignment[layout->cpp].ubwc_blockwidth == 0)
-		layout->ubwc = false;
+	fdl6_get_ubwc_blockwidth(layout, &ubwc_blockwidth, &ubwc_blockheight);
 
-	const struct tile_alignment *ta = fdl6_tile_alignment(layout);
+	if (depth0 > 1 || ubwc_blockwidth == 0)
+		layout->ubwc = false;
 
 	/* in layer_first layout, the level (slice) contains just one
 	 * layer (since in fact the layer contains the slices)
 	 */
 	uint32_t layers_in_level = layout->layer_first ? 1 : array_size;
 
-	debug_assert(ta->pitchalign);
-
+	/* note: for tiled+noubwc layouts, we can use a lower pitchalign
+	 * which will affect the linear levels only, (the hardware will still
+	 * expect the tiled alignment on the tiled levels)
+	 */
 	if (layout->tile_mode) {
-		layout->base_align = ta->basealign;
+		fdl6_tile_alignment(layout, &heightalign);
 	} else {
 		layout->base_align = 64;
+		layout->pitchalign = 0;
+		/* align pitch to at least 16 pixels:
+		 * both turnip and galium assume there is enough alignment for 16x4
+		 * aligned gmem store. turnip can use CP_BLIT to work without this
+		 * extra alignment, but gallium driver doesn't implement it yet
+		 */
+		if (layout->cpp > 4)
+			layout->pitchalign = fdl_cpp_shift(layout) - 2;
+
+		/* when possible, use a bit more alignment than necessary
+		 * presumably this is better for performance?
+		 */
+		if (!plane_layout)
+			layout->pitchalign = fdl_cpp_shift(layout);
+
+		/* not used, avoid "may be used uninitialized" warning */
+		heightalign = 1;
 	}
+
+	pitchalign = 64 << layout->pitchalign;
 
 	if (plane_layout) {
 		offset = plane_layout->offset;
 		pitch0 = plane_layout->pitch;
-		if (align(pitch0, fdl6_pitchalign(layout, 0) * layout->cpp) != pitch0)
-			return false;
-		pitch0 /= layout->cpp; /* explicit pitch is in bytes */
-		if (pitch0 < width0 && height0 > 1)
+		if (align(pitch0, pitchalign) != pitch0)
 			return false;
 	} else {
+		uint32_t nblocksx = util_format_get_nblocksx(format, width0);
 		offset = 0;
-		pitch0 = util_align_npot(width0, fdl6_pitchalign(layout, 0));
+		pitch0 = util_align_npot(nblocksx * layout->cpp, pitchalign);
 	}
 
 	uint32_t ubwc_width0 = width0;
@@ -159,14 +185,10 @@ fdl6_layout(struct fdl_layout *layout,
 		ubwc_height0 = util_next_power_of_two(height0);
 		ubwc_tile_height_alignment = 64;
 	}
-	ubwc_width0 = align(DIV_ROUND_UP(ubwc_width0, ta->ubwc_blockwidth),
+	ubwc_width0 = align(DIV_ROUND_UP(ubwc_width0, ubwc_blockwidth),
 			RGB_TILE_WIDTH_ALIGNMENT);
-	ubwc_height0 = align(DIV_ROUND_UP(ubwc_height0,
-					ta->ubwc_blockheight),
+	ubwc_height0 = align(DIV_ROUND_UP(ubwc_height0, ubwc_blockheight),
 			ubwc_tile_height_alignment);
-
-	layout->pitchalign =
-		util_logbase2_ceil(fdl6_pitchalign(layout, mip_levels - 1) * layout->cpp >> 6);
 
 	for (uint32_t level = 0; level < mip_levels; level++) {
 		uint32_t depth = u_minify(depth0, level);
@@ -184,7 +206,7 @@ fdl6_layout(struct fdl_layout *layout,
 
 		uint32_t nblocksy = util_format_get_nblocksy(format, height);
 		if (tile_mode)
-			nblocksy = align(nblocksy, ta->heightalign);
+			nblocksy = align(nblocksy, heightalign);
 
 		/* The blits used for mem<->gmem work at a granularity of
 		 * 16x4, which can cause faults due to over-fetch on the
@@ -196,14 +218,8 @@ fdl6_layout(struct fdl_layout *layout,
 		if (level == mip_levels - 1)
 			height = align(nblocksy, 4);
 
-		uint32_t nblocksx =
-			util_align_npot(util_format_get_nblocksx(format, u_minify(pitch0, level)),
-					fdl6_pitchalign(layout, level));
-
-		slice->offset = offset + layout->size;
-		uint32_t blocks = nblocksx * nblocksy;
-
-		slice->pitch = nblocksx * layout->cpp;
+		slice->offset = layout->size;
+		slice->pitch = align(u_minify(pitch0, level), pitchalign);
 
 		/* 1d array and 2d array textures must all have the same layer size
 		 * for each miplevel on a6xx. 3d textures can have different layer
@@ -213,12 +229,12 @@ fdl6_layout(struct fdl_layout *layout,
 		 */
 		if (is_3d) {
 			if (level < 1 || layout->slices[level - 1].size0 > 0xf000) {
-				slice->size0 = align(blocks * layout->cpp, 4096);
+				slice->size0 = align(nblocksy * slice->pitch, 4096);
 			} else {
 				slice->size0 = layout->slices[level - 1].size0;
 			}
 		} else {
-			slice->size0 = blocks * layout->cpp;
+			slice->size0 = nblocksy * slice->pitch;
 		}
 
 		layout->size += slice->size0 * depth * layers_in_level;
@@ -259,13 +275,4 @@ fdl6_layout(struct fdl_layout *layout,
 	layout->size += offset;
 
 	return true;
-}
-
-void
-fdl6_get_ubwc_blockwidth(struct fdl_layout *layout,
-		uint32_t *blockwidth, uint32_t *blockheight)
-{
-	const struct tile_alignment *ta = fdl6_tile_alignment(layout);
-	*blockwidth = ta->ubwc_blockwidth;
-	*blockheight = ta->ubwc_blockheight;
 }
