@@ -83,10 +83,8 @@ modifier_is_supported(const struct gen_device_info *devinfo,
          iris_format_for_usage(devinfo, pfmt,
                                ISL_SURF_USAGE_RENDER_TARGET_BIT).fmt;
 
-      enum isl_format linear_format = isl_format_srgb_to_linear(rt_format);
-
-      if (linear_format == ISL_FORMAT_UNSUPPORTED ||
-          !isl_format_supports_ccs_e(devinfo, linear_format))
+      if (rt_format == ISL_FORMAT_UNSUPPORTED ||
+          !isl_format_supports_ccs_e(devinfo, rt_format))
          return false;
 
       return devinfo->gen >= 9 && devinfo->gen <= 11;

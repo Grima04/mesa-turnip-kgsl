@@ -310,13 +310,7 @@ fast_clear_color(struct iris_context *ice,
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
                                 p_res, res->aux.usage, level, true);
 
-   /* Use the linear version of the format to avoid using an invalid surface
-    * state on gen9. ISL_AUX_USAGE_CCS_E is not supported for sRGB formats on
-    * gen9 but iris may still assign that aux usage to resources with that
-    * format through the modifier interface.
-    */
-   blorp_fast_clear(&blorp_batch, &surf, isl_format_srgb_to_linear(format),
-                    ISL_SWIZZLE_IDENTITY,
+   blorp_fast_clear(&blorp_batch, &surf, format, ISL_SWIZZLE_IDENTITY,
                     level, box->z, box->depth,
                     box->x, box->y, box->x + box->width,
                     box->y + box->height);

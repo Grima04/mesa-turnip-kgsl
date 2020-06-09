@@ -421,8 +421,7 @@ iris_resolve_color(struct iris_context *ice,
                            1, resolve_op);
    } else {
       blorp_ccs_resolve(&blorp_batch, &surf, level, layer, 1,
-                        isl_format_srgb_to_linear(res->surf.format),
-                        resolve_op);
+                        res->surf.format, resolve_op);
    }
    blorp_batch_finish(&blorp_batch);
 
@@ -452,32 +451,10 @@ iris_mcs_partial_resolve(struct iris_context *ice,
    struct blorp_batch blorp_batch;
    iris_batch_sync_region_start(batch);
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-   blorp_mcs_partial_resolve(&blorp_batch, &surf,
-                             isl_format_srgb_to_linear(res->surf.format),
+   blorp_mcs_partial_resolve(&blorp_batch, &surf, res->surf.format,
                              start_layer, num_layers);
    blorp_batch_finish(&blorp_batch);
    iris_batch_sync_region_end(batch);
-}
-
-
-/**
- * Return true if the format that will be used to access the resource is
- * CCS_E-compatible with the resource's linear/non-sRGB format.
- *
- * Why use the linear format?  Well, although the resourcemay be specified
- * with an sRGB format, the usage of that color space/format can be toggled.
- * Since our HW tends to support more linear formats than sRGB ones, we use
- * this format variant for check for CCS_E compatibility.
- */
-static bool
-format_ccs_e_compat_with_resource(const struct gen_device_info *devinfo,
-                                  const struct iris_resource *res,
-                                  enum isl_format access_format)
-{
-   assert(res->aux.usage == ISL_AUX_USAGE_CCS_E);
-
-   enum isl_format isl_format = isl_format_srgb_to_linear(res->surf.format);
-   return isl_formats_are_ccs_e_compatible(devinfo, isl_format, access_format);
 }
 
 bool
@@ -832,41 +809,6 @@ iris_resource_set_aux_state(struct iris_context *ice,
    }
 }
 
-/* On Gen9 color buffers may be compressed by the hardware (lossless
- * compression). There are, however, format restrictions and care needs to be
- * taken that the sampler engine is capable for re-interpreting a buffer with
- * format different the buffer was originally written with.
- *
- * For example, SRGB formats are not compressible and the sampler engine isn't
- * capable of treating RGBA_UNORM as SRGB_ALPHA. In such a case the underlying
- * color buffer needs to be resolved so that the sampling surface can be
- * sampled as non-compressed (i.e., without the auxiliary MCS buffer being
- * set).
- */
-static bool
-can_texture_with_ccs(const struct gen_device_info *devinfo,
-                     struct pipe_debug_callback *dbg,
-                     const struct iris_resource *res,
-                     enum isl_format view_format)
-{
-   if (res->aux.usage != ISL_AUX_USAGE_CCS_E)
-      return false;
-
-   if (!format_ccs_e_compat_with_resource(devinfo, res, view_format)) {
-      const struct isl_format_layout *res_fmtl =
-         isl_format_get_layout(res->surf.format);
-      const struct isl_format_layout *view_fmtl =
-         isl_format_get_layout(view_format);
-
-      perf_debug(dbg, "Incompatible sampling format (%s) for CCS (%s)\n",
-                 view_fmtl->name, res_fmtl->name);
-
-      return false;
-   }
-
-   return true;
-}
-
 enum isl_aux_usage
 iris_resource_texture_aux_usage(struct iris_context *ice,
                                 const struct iris_resource *res,
@@ -895,7 +837,6 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
    case ISL_AUX_USAGE_STC_CCS:
       return res->aux.usage;
 
-   case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
       /* If we don't have any unresolved color, report an aux usage of
        * ISL_AUX_USAGE_NONE.  This way, texturing won't even look at the
@@ -905,7 +846,19 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
                                      0, INTEL_REMAINING_LAYERS))
          return ISL_AUX_USAGE_NONE;
 
-      if (can_texture_with_ccs(devinfo, &ice->dbg, res, view_format))
+      /* On Gen9 color buffers may be compressed by the hardware (lossless
+       * compression). There are, however, format restrictions and care needs
+       * to be taken that the sampler engine is capable for re-interpreting a
+       * buffer with format different the buffer was originally written with.
+       *
+       * For example, SRGB formats are not compressible and the sampler engine
+       * isn't capable of treating RGBA_UNORM as SRGB_ALPHA. In such a case
+       * the underlying color buffer needs to be resolved so that the sampling
+       * surface can be sampled as non-compressed (i.e., without the auxiliary
+       * MCS buffer being set).
+       */
+      if (isl_formats_are_ccs_e_compatible(devinfo, res->surf.format,
+                                           view_format))
          return ISL_AUX_USAGE_CCS_E;
       break;
 
@@ -1038,8 +991,10 @@ iris_resource_render_aux_usage(struct iris_context *ice,
       }
 
       if (res->aux.usage == ISL_AUX_USAGE_CCS_E &&
-          format_ccs_e_compat_with_resource(devinfo, res, render_format))
+          isl_formats_are_ccs_e_compatible(devinfo, res->surf.format,
+                                           render_format)) {
          return ISL_AUX_USAGE_CCS_E;
+      }
 
       if (res->aux.usage == ISL_AUX_USAGE_CCS_D)
          return ISL_AUX_USAGE_CCS_D;
