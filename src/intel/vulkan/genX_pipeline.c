@@ -580,6 +580,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineRasterizationStateCreateInfo *rs_info,
               const VkPipelineMultisampleStateCreateInfo *ms_info,
               const VkPipelineRasterizationLineStateCreateInfoEXT *line_info,
+              const uint32_t dynamic_states,
               const struct anv_render_pass *pass,
               const struct anv_subpass *subpass,
               enum gen_urb_deref_block_size urb_deref_block_size)
@@ -678,8 +679,13 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
        line_mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT)
       raster.AntialiasingEnable = true;
 
-   raster.FrontWinding = vk_to_gen_front_face[rs_info->frontFace];
-   raster.CullMode = vk_to_gen_cullmode[rs_info->cullMode];
+   raster.FrontWinding =
+      dynamic_states & ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE ?
+         0 : vk_to_gen_front_face[rs_info->frontFace];
+   raster.CullMode =
+      dynamic_states & ANV_CMD_DIRTY_DYNAMIC_CULL_MODE ?
+         0 : vk_to_gen_cullmode[rs_info->cullMode];
+
    raster.FrontFaceFillMode = vk_to_gen_fillmode[rs_info->polygonMode];
    raster.BackFaceFillMode = vk_to_gen_fillmode[rs_info->polygonMode];
    raster.ScissorRectangleEnable = true;
@@ -993,6 +999,7 @@ sanitize_ds_state(VkPipelineDepthStencilStateCreateInfo *state,
 static void
 emit_ds_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineDepthStencilStateCreateInfo *pCreateInfo,
+              const uint32_t dynamic_states,
               const struct anv_render_pass *pass,
               const struct anv_subpass *subpass)
 {
@@ -1031,17 +1038,32 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
    pipeline->depth_test_enable = info.depthTestEnable;
    pipeline->depth_bounds_test_enable = info.depthBoundsTestEnable;
 
+   bool dynamic_stencil_op =
+      dynamic_states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
+
 #if GEN_GEN <= 7
    struct GENX(DEPTH_STENCIL_STATE) depth_stencil = {
 #else
    struct GENX(3DSTATE_WM_DEPTH_STENCIL) depth_stencil = {
 #endif
-      .DepthTestEnable = info.depthTestEnable,
-      .DepthBufferWriteEnable = info.depthWriteEnable,
-      .DepthTestFunction = vk_to_gen_compare_op[info.depthCompareOp],
+      .DepthTestEnable =
+         dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE ?
+            0 : info.depthTestEnable,
+
+      .DepthBufferWriteEnable =
+         dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE ?
+            0 : info.depthWriteEnable,
+
+      .DepthTestFunction =
+         dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP ?
+            0 : vk_to_gen_compare_op[info.depthCompareOp],
+
       .DoubleSidedStencilEnable = true,
 
-      .StencilTestEnable = info.stencilTestEnable,
+      .StencilTestEnable =
+         dynamic_states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE ?
+            0 : info.stencilTestEnable,
+
       .StencilFailOp = vk_to_gen_stencil_op[info.front.failOp],
       .StencilPassDepthPassOp = vk_to_gen_stencil_op[info.front.passOp],
       .StencilPassDepthFailOp = vk_to_gen_stencil_op[info.front.depthFailOp],
@@ -1051,6 +1073,17 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
       .BackfaceStencilPassDepthFailOp =vk_to_gen_stencil_op[info.back.depthFailOp],
       .BackfaceStencilTestFunction = vk_to_gen_compare_op[info.back.compareOp],
    };
+
+   if (dynamic_stencil_op) {
+      depth_stencil.StencilFailOp = 0;
+      depth_stencil.StencilPassDepthPassOp = 0;
+      depth_stencil.StencilPassDepthFailOp = 0;
+      depth_stencil.StencilTestFunction = 0;
+      depth_stencil.BackfaceStencilFailOp = 0;
+      depth_stencil.BackfaceStencilPassDepthPassOp = 0;
+      depth_stencil.BackfaceStencilPassDepthFailOp = 0;
+      depth_stencil.BackfaceStencilTestFunction = 0;
+   }
 
 #if GEN_GEN <= 7
    GENX(DEPTH_STENCIL_STATE_pack)(NULL, depth_stencil_dw, &depth_stencil);
@@ -2199,6 +2232,16 @@ genX(graphics_pipeline_create)(
       vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
                            PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
 
+   /* Information on which states are considered dynamic. */
+   const VkPipelineDynamicStateCreateInfo *dyn_info =
+      pCreateInfo->pDynamicState;
+   uint32_t dynamic_states = 0;
+   if (dyn_info) {
+      for (unsigned i = 0; i < dyn_info->dynamicStateCount; i++)
+         dynamic_states |=
+            anv_cmd_dirty_bit_for_vk_dynamic_state(dyn_info->pDynamicStates[i]);
+   }
+
    enum gen_urb_deref_block_size urb_deref_block_size;
    emit_urb_setup(pipeline, &urb_deref_block_size);
 
@@ -2207,10 +2250,10 @@ genX(graphics_pipeline_create)(
    assert(pCreateInfo->pRasterizationState);
    emit_rs_state(pipeline, pCreateInfo->pInputAssemblyState,
                            pCreateInfo->pRasterizationState,
-                           ms_info, line_info, pass, subpass,
+                           ms_info, line_info, dynamic_states, pass, subpass,
                            urb_deref_block_size);
    emit_ms_state(pipeline, ms_info);
-   emit_ds_state(pipeline, ds_info, pass, subpass);
+   emit_ds_state(pipeline, ds_info, dynamic_states, pass, subpass);
    emit_cb_state(pipeline, cb_info, ms_info);
    compute_kill_pixel(pipeline, ms_info, subpass);
 
@@ -2254,7 +2297,9 @@ genX(graphics_pipeline_create)(
    emit_3dstate_ps(pipeline, cb_info, ms_info);
 #if GEN_GEN >= 8
    emit_3dstate_ps_extra(pipeline, subpass);
-   emit_3dstate_vf_topology(pipeline);
+
+   if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY))
+      emit_3dstate_vf_topology(pipeline);
 #endif
    emit_3dstate_vf_statistics(pipeline);
 
