@@ -135,6 +135,8 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
       &set_layout->binding[binding];
    uint32_t base;
 
+   shader->active_desc_sets |= 1u << set;
+
    switch (binding_layout->type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
@@ -174,6 +176,8 @@ build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
    unsigned binding = var->data.binding;
    const struct tu_descriptor_set_binding_layout *bind_layout =
       &layout->set[set].layout->binding[binding];
+
+   shader->active_desc_sets |= 1u << set;
 
    nir_ssa_def *desc_offset;
    unsigned descriptor_stride;

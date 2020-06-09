@@ -1289,6 +1289,7 @@ struct tu_shader
 
    struct tu_push_constant_range push_consts;
    unsigned attachment_idx[MAX_RTS];
+   uint8_t active_desc_sets;
 
    /* This may be true for vertex shaders.  When true, variants[1] is the
     * binning variant and binning_binary is non-NULL.
@@ -1345,6 +1346,7 @@ struct tu_pipeline
 
    bool need_indirect_descriptor_sets;
    VkShaderStageFlags active_stages;
+   uint32_t active_desc_sets;
 
    struct tu_streamout_state streamout;
 

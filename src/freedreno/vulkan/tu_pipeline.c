@@ -185,6 +185,25 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
 
    struct tu_pipeline_layout *layout = pipeline->layout;
    for (unsigned i = 0; i < layout->num_sets; i++) {
+      /* From 13.2.7. Descriptor Set Binding:
+       *
+       *    A compatible descriptor set must be bound for all set numbers that
+       *    any shaders in a pipeline access, at the time that a draw or
+       *    dispatch command is recorded to execute using that pipeline.
+       *    However, if none of the shaders in a pipeline statically use any
+       *    bindings with a particular set number, then no descriptor set need
+       *    be bound for that set number, even if the pipeline layout includes
+       *    a non-trivial descriptor set layout for that set number.
+       *
+       * This means that descriptor sets unused by the pipeline may have a
+       * garbage or 0 BINDLESS_BASE register, which will cause context faults
+       * when prefetching descriptors from these sets. Skip prefetching for
+       * descriptors from them to avoid this. This is also an optimization,
+       * since these prefetches would be useless.
+       */
+      if (!(pipeline->active_desc_sets & (1u << i)))
+         continue;
+
       struct tu_descriptor_set_layout *set_layout = layout->set[i].layout;
       for (unsigned j = 0; j < set_layout->binding_count; j++) {
          struct tu_descriptor_set_binding_layout *binding = &set_layout->binding[j];
@@ -2273,6 +2292,7 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    }
    pipeline->active_stages = stages;
 
+   uint32_t desc_sets = 0;
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (!builder->shaders[i])
          continue;
@@ -2280,7 +2300,9 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       tu_pipeline_set_linkage(&pipeline->program.link[i],
                               builder->shaders[i],
                               &builder->shaders[i]->variants[0]);
+      desc_sets |= builder->shaders[i]->active_desc_sets;
    }
+   pipeline->active_desc_sets = desc_sets;
 
    if (builder->shaders[MESA_SHADER_FRAGMENT]) {
       memcpy(pipeline->program.input_attachment_idx,
