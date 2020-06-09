@@ -4641,8 +4641,7 @@ use_surface(struct iris_context *ice,
    if (res->aux.bo) {
       iris_use_pinned_bo(batch, res->aux.bo, writeable, access);
       if (res->aux.clear_color_bo)
-         iris_use_pinned_bo(batch, res->aux.clear_color_bo,
-                            false, IRIS_DOMAIN_OTHER_READ);
+         iris_use_pinned_bo(batch, res->aux.clear_color_bo, false, access);
 
       if (memcmp(&res->aux.clear_color, &surf->clear_color,
                  sizeof(surf->clear_color)) != 0) {
