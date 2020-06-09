@@ -2942,102 +2942,6 @@ fs_visitor::opt_zero_samples()
    return progress;
 }
 
-/**
- * Optimize sample messages which are followed by the final RT write.
- *
- * CHV, and GEN9+ can mark a texturing SEND instruction with EOT to have its
- * results sent directly to the framebuffer, bypassing the EU.  Recognize the
- * final texturing results copied to the framebuffer write payload and modify
- * them to write to the framebuffer directly.
- */
-bool
-fs_visitor::opt_sampler_eot()
-{
-   brw_wm_prog_key *key = (brw_wm_prog_key*) this->key;
-
-   if (stage != MESA_SHADER_FRAGMENT || dispatch_width > 16)
-      return false;
-
-   if (devinfo->gen != 9 && !devinfo->is_cherryview)
-      return false;
-
-   /* FINISHME: It should be possible to implement this optimization when there
-    * are multiple drawbuffers.
-    */
-   if (key->nr_color_regions != 1)
-      return false;
-
-   /* Requires emitting a bunch of saturating MOV instructions during logical
-    * send lowering to clamp the color payload, which the sampler unit isn't
-    * going to do for us.
-    */
-   if (key->clamp_fragment_color)
-      return false;
-
-   /* Look for a texturing instruction immediately before the final FB_WRITE. */
-   bblock_t *block = cfg->blocks[cfg->num_blocks - 1];
-   fs_inst *fb_write = (fs_inst *)block->end();
-   assert(fb_write->eot);
-   assert(fb_write->opcode == FS_OPCODE_FB_WRITE_LOGICAL);
-
-   /* There wasn't one; nothing to do. */
-   if (unlikely(fb_write->prev->is_head_sentinel()))
-      return false;
-
-   fs_inst *tex_inst = (fs_inst *) fb_write->prev;
-
-   /* 3D Sampler » Messages » Message Format
-    *
-    * “Response Length of zero is allowed on all SIMD8* and SIMD16* sampler
-    *  messages except sample+killpix, resinfo, sampleinfo, LOD, and gather4*”
-    */
-   if (tex_inst->opcode != SHADER_OPCODE_TEX_LOGICAL &&
-       tex_inst->opcode != SHADER_OPCODE_TXD_LOGICAL &&
-       tex_inst->opcode != SHADER_OPCODE_TXF_LOGICAL &&
-       tex_inst->opcode != SHADER_OPCODE_TXL_LOGICAL &&
-       tex_inst->opcode != FS_OPCODE_TXB_LOGICAL &&
-       tex_inst->opcode != SHADER_OPCODE_TXF_CMS_LOGICAL &&
-       tex_inst->opcode != SHADER_OPCODE_TXF_CMS_W_LOGICAL &&
-       tex_inst->opcode != SHADER_OPCODE_TXF_UMS_LOGICAL)
-      return false;
-
-   /* XXX - This shouldn't be necessary. */
-   if (tex_inst->prev->is_head_sentinel())
-      return false;
-
-   /* Check that the FB write sources are fully initialized by the single
-    * texturing instruction.
-    */
-   for (unsigned i = 0; i < FB_WRITE_LOGICAL_NUM_SRCS; i++) {
-      if (i == FB_WRITE_LOGICAL_SRC_COLOR0) {
-         if (!fb_write->src[i].equals(tex_inst->dst) ||
-             fb_write->size_read(i) != tex_inst->size_written)
-         return false;
-      } else if (i != FB_WRITE_LOGICAL_SRC_COMPONENTS) {
-         if (fb_write->src[i].file != BAD_FILE)
-            return false;
-      }
-   }
-
-   assert(!tex_inst->eot); /* We can't get here twice */
-   assert((tex_inst->offset & (0xff << 24)) == 0);
-
-   const fs_builder ibld(this, block, tex_inst);
-
-   tex_inst->offset |= fb_write->target << 24;
-   tex_inst->eot = true;
-   tex_inst->dst = ibld.null_reg_ud();
-   tex_inst->size_written = 0;
-   fb_write->remove(cfg->blocks[cfg->num_blocks - 1]);
-
-   /* Marking EOT is sufficient, lower_logical_sends() will notice the EOT
-    * flag and submit a header together with the sampler message as required
-    * by the hardware.
-    */
-   invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
-   return true;
-}
-
 bool
 fs_visitor::opt_register_renaming()
 {
@@ -7573,10 +7477,6 @@ fs_visitor::optimize()
 
    OPT(lower_simd_width);
    OPT(lower_barycentrics);
-
-   /* After SIMD lowering just in case we had to unroll the EOT send. */
-   OPT(opt_sampler_eot);
-
    OPT(lower_logical_sends);
 
    /* After logical SEND lowering. */
