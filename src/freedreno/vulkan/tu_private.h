@@ -967,6 +967,8 @@ struct tu_cmd_buffer
 
    struct tu_bo scratch_bo;
 
+   bool has_tess;
+
    struct tu_bo vsc_draw_strm;
    struct tu_bo vsc_prim_strm;
    uint32_t vsc_draw_strm_pitch;

@@ -730,6 +730,9 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd)
    if (cmd->state.framebuffer->layers > 1)
       return true;
 
+   if (cmd->has_tess)
+      return true;
+
    return cmd->state.tiling_config.force_sysmem;
 }
 
@@ -2514,6 +2517,9 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
             cmd->record_result = result;
             break;
          }
+
+         if (secondary->has_tess)
+            cmd->has_tess = true;
       } else {
          assert(tu_cs_is_empty(&secondary->draw_cs));
          assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
@@ -3217,6 +3223,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
    struct tu_cs_entry tess_consts = {};
    if (has_tess) {
+      cmd->has_tess = true;
       result = tu6_emit_tess_consts(cmd, draw, pipeline, &tess_consts);
       if (result != VK_SUCCESS)
          return result;
