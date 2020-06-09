@@ -1025,7 +1025,7 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
    state = anv_free_list_pop(&pool->buckets[bucket].free_list,
                              &pool->table);
    if (state) {
-      assert(state->offset >= 0);
+      assert(state->offset >= pool->start_offset);
       goto done;
    }
 
@@ -1120,9 +1120,12 @@ anv_state_pool_alloc_back(struct anv_state_pool *pool)
    struct anv_state *state;
    uint32_t alloc_size = pool->block_size;
 
+   /* This function is only used with pools where start_offset == 0 */
+   assert(pool->start_offset == 0);
+
    state = anv_free_list_pop(&pool->back_alloc_free_list, &pool->table);
    if (state) {
-      assert(state->offset < 0);
+      assert(state->offset < pool->start_offset);
       goto done;
    }
 
@@ -1149,7 +1152,7 @@ anv_state_pool_free_no_vg(struct anv_state_pool *pool, struct anv_state state)
    assert(util_is_power_of_two_or_zero(state.alloc_size));
    unsigned bucket = anv_state_pool_get_bucket(state.alloc_size);
 
-   if (state.offset < 0) {
+   if (state.offset < pool->start_offset) {
       assert(state.alloc_size == pool->block_size);
       anv_free_list_push(&pool->back_alloc_free_list,
                          &pool->table, state.idx, 1);
