@@ -2244,6 +2244,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (instr->src[0].src.ssa->bit_size == 8)
          src = convert_int(ctx, bld, src, 8, 16, true);
+      else if (instr->src[0].src.ssa->bit_size == 64)
+         src = convert_int(ctx, bld, src, 64, 32, false);
       bld.vop1(aco_opcode::v_cvt_f16_i16, Definition(dst), src);
       break;
    }
@@ -2283,6 +2285,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (instr->src[0].src.ssa->bit_size == 8)
          src = convert_int(ctx, bld, src, 8, 16, false);
+      else if (instr->src[0].src.ssa->bit_size == 64)
+         src = convert_int(ctx, bld, src, 64, 32, false);
       bld.vop1(aco_opcode::v_cvt_f16_u16, Definition(dst), src);
       break;
    }
