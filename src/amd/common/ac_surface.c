@@ -1378,6 +1378,15 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 					addrin.numSlices        = 1;
 					addrin.numMipLevels     = 1;
 					addrin.numFrags         = 1;
+					addrin.pitch            = dout.pitch;
+					addrin.height           = dout.height;
+					addrin.compressBlkWidth = dout.compressBlkWidth;
+					addrin.compressBlkHeight = dout.compressBlkHeight;
+					addrin.compressBlkDepth = dout.compressBlkDepth;
+					addrin.metaBlkWidth     = dout.metaBlkWidth;
+					addrin.metaBlkHeight    = dout.metaBlkHeight;
+					addrin.metaBlkDepth     = dout.metaBlkDepth;
+					addrin.dccRamSliceSize  = dout.dccRamSliceSize;
 
 					ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT addrout = {};
 					addrout.size = sizeof(addrout);
