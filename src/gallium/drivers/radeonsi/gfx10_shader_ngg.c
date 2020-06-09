@@ -1934,9 +1934,11 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    max_esverts_base = MIN2(max_esverts_base, 251 + max_verts_per_prim - 1);
 
    if (gs_type == PIPE_SHADER_GEOMETRY) {
+      bool force_multi_cycling = false;
       unsigned max_out_verts_per_gsprim = gs_sel->gs_max_out_vertices * gs_num_invocations;
 
-      if (max_out_verts_per_gsprim <= 256) {
+retry_select_mode:
+      if (max_out_verts_per_gsprim <= 256 && !force_multi_cycling) {
          if (max_out_verts_per_gsprim) {
             max_gsprims_base = MIN2(max_gsprims_base, 256 / max_out_verts_per_gsprim);
          }
@@ -1951,6 +1953,13 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 
       esvert_lds_size = es_sel->esgs_itemsize / 4;
       gsprim_lds_size = (gs_sel->gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
+
+      if (gsprim_lds_size > target_lds_size && !force_multi_cycling) {
+         if (gs_sel->tess_turns_off_ngg || es_sel->type != PIPE_SHADER_TESS_EVAL) {
+            force_multi_cycling = true;
+            goto retry_select_mode;
+         }
+      }
    } else {
       /* VS and TES. */
       /* LDS size for passing data from ES to GS. */
