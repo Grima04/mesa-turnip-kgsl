@@ -50,10 +50,6 @@ dEQP-GLES3.functional.rasterization.fbo.texture_2d.interpolation.lines_wide
 dEQP-GLES3.functional.rasterization.interpolation.basic.line_loop_wide
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide
 dEQP-GLES3.functional.vertex_arrays.single_attribute.normalize.int2_10_10_10.components4_quads1
-dEQP-GLES31.functional.fbo.no_attachments.interaction.127x127ms0_default_129x129ms0
-dEQP-GLES31.functional.fbo.no_attachments.npot_size.15x511
-dEQP-GLES31.functional.fbo.no_attachments.npot_size.65x65
-dEQP-GLES31.functional.fbo.no_attachments.random.0
 dEQP-GLES31.functional.shaders.builtin_constants.tessellation_shader.max_tess_control_total_output_components
 dEQP-GLES31.functional.shaders.builtin_constants.tessellation_shader.max_tess_evaluation_uniform_components
 dEQP-GLES31.functional.shaders.builtin_functions.common.abs.int_highp_tess_eval

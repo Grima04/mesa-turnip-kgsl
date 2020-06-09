@@ -364,6 +364,10 @@ do_triangle_ccw(struct lp_setup_context *setup,
       scissor = &setup->scissors[viewport_index];
       scissor_planes_needed(s_planes, &bboxpos, scissor);
       nr_planes += s_planes[0] + s_planes[1] + s_planes[2] + s_planes[3];
+   } else {
+      scissor = &setup->draw_regions[viewport_index];
+      scissor_planes_needed(s_planes, &bboxpos, scissor);
+      nr_planes += s_planes[0] + s_planes[1] + s_planes[2] + s_planes[3];
    }
 
    tri = lp_setup_alloc_triangle(scene,
