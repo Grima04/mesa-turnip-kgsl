@@ -95,7 +95,9 @@ $BM/expect-output.sh artifacts/serial-output.txt \
 fastboot boot -s $BM_FASTBOOT_SERIAL artifacts/fastboot.img
 
 # Wait for the device to complete the deqp run
-$BM/expect-output.sh artifacts/serial-output.txt -f "bare-metal result"
+$BM/expect-output.sh artifacts/serial-output.txt \
+    -f "bare-metal result" \
+    -e "---. end Kernel panic"
 
 # power down the device
 PATH=$BM:$PATH $BM_POWERDOWN

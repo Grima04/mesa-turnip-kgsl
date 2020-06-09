@@ -81,7 +81,9 @@ $BM/expect-output.sh serial-output.txt -f "load_archive: loading locale_en.bin"
 $BM/write-serial.py $BM_SERIAL `printf '\016'`
 
 # Wait for the device to complete the deqp run
-$BM/expect-output.sh serial-output.txt -f "bare-metal result"
+$BM/expect-output.sh serial-output.txt \
+    -f "bare-metal result" \
+    -e "---. end Kernel panic"
 
 # power down the CPU on the device
 $BM/write-serial.py $BM_SERIAL_EC 'power off'
