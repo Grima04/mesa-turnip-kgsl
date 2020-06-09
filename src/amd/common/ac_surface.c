@@ -1369,12 +1369,9 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 					/* Compute address mapping from non-displayable to displayable DCC. */
 					ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin = {};
 					addrin.size             = sizeof(addrin);
-					addrin.colorFlags.color = 1;
 					addrin.swizzleMode      = din.swizzleMode;
 					addrin.resourceType     = din.resourceType;
 					addrin.bpp              = din.bpp;
-					addrin.unalignedWidth   = din.unalignedWidth;
-					addrin.unalignedHeight  = din.unalignedHeight;
 					addrin.numSlices        = 1;
 					addrin.numMipLevels     = 1;
 					addrin.numFrags         = 1;
