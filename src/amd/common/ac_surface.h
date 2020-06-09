@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /* Forward declarations. */
-typedef void* ADDR_HANDLE;
+struct ac_addrlib;
 
 struct amdgpu_gpu_info;
 struct radeon_info;
@@ -282,11 +282,12 @@ struct ac_surf_config {
 	unsigned is_cube : 1;
 };
 
-ADDR_HANDLE amdgpu_addr_create(const struct radeon_info *info,
-			       const struct amdgpu_gpu_info *amdinfo,
-			       uint64_t *max_alignment);
+struct ac_addrlib *ac_addrlib_create(const struct radeon_info *info,
+				     const struct amdgpu_gpu_info *amdinfo,
+				     uint64_t *max_alignment);
+void ac_addrlib_destroy(struct ac_addrlib *addrlib);
 
-int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
+int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *info,
 		       const struct ac_surf_config * config,
 		       enum radeon_surf_mode mode,
 		       struct radeon_surf *surf);
