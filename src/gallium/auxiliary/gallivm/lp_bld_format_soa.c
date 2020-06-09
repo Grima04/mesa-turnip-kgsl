@@ -169,7 +169,7 @@ lp_build_extract_soa_chan(struct lp_build_context *bld,
             if(chan_desc.normalized)
                input = lp_build_unsigned_norm_to_float(gallivm, width, type, input);
             else
-               input = LLVMBuildSIToFP(builder, input, bld->vec_type, "");
+               input = LLVMBuildUIToFP(builder, input, bld->vec_type, "");
          }
       }
       else if (chan_desc.pure_integer) {
