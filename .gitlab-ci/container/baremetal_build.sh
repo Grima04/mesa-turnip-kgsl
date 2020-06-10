@@ -7,7 +7,7 @@ dpkg --add-architecture $arch
 apt-get update
 
 # Cross-build test deps
-apt-get install -y --no-remove \
+BAREMETAL_EPHEMERAL=" \
         crossbuild-essential-$arch \
         libdrm-dev:$arch \
         libegl1-mesa-dev:$arch \
@@ -21,6 +21,9 @@ apt-get install -y --no-remove \
         libtinfo-dev:$arch \
         libegl1-mesa-dev:$arch \
         libvulkan-dev:$arch
+        "
+
+apt-get install -y --no-remove $BAREMETAL_EPHEMERAL
 
 mkdir /var/cache/apt/archives/$arch
 
@@ -37,3 +40,5 @@ DEBIAN_ARCH=$arch INCLUDE_VK_CTS=1 . .gitlab-ci/container/lava_arm.sh
 ccache --show-stats
 
 . .gitlab-ci/container/container_post_build.sh
+
+apt-get purge -y $BAREMETAL_EPHEMERAL

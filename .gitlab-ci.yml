@@ -305,7 +305,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-22-stable"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-22-ephemeral"
 
 .use-arm64_test:
   variables:
