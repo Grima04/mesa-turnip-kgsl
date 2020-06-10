@@ -2470,8 +2470,8 @@ vc4_shader_state_create(struct pipe_context *pctx,
         if (s->info.stage == MESA_SHADER_VERTEX)
                 NIR_PASS_V(s, nir_lower_point_size, 1.0f, 0.0f);
 
-        NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size,
-                   (nir_lower_io_options)0);
+        NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
+                   type_size, (nir_lower_io_options)0);
 
         NIR_PASS_V(s, nir_lower_regs_to_ssa);
         NIR_PASS_V(s, nir_normalize_cubemap_coords);
