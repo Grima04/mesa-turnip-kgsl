@@ -4,6 +4,7 @@ set -ex
 
 apt-get -y install --no-install-recommends \
     ca-certificates \
+    curl \
     initramfs-tools \
     libpng16-16 \
     strace \

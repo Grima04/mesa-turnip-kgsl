@@ -13,6 +13,18 @@ mount -t devpts devpts /dev/pts
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
 if sh $BARE_METAL_TEST_SCRIPT; then
+  OK=1
+else
+  OK=0
+fi
+
+# upload artifacts via webdav
+WEBDAV=$(cat /proc/cmdline | tr " " "\n" | grep webdav | cut -d '=' -f 2 || true)
+if [ -n "$WEBDAV" ]; then
+  find /results -type f -exec curl -T {} $WEBDAV/{} \;
+fi
+
+if [ $OK -eq 1 ]; then
     echo "bare-metal result: pass"
 else
     echo "bare-metal result: fail"

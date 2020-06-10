@@ -28,9 +28,8 @@ The boards need to be able to have a kernel/initramfs supplied by the
 gitlab-runner system, since the initramfs is what contains the Mesa
 testing payload.
 
-The boards should have networking, so that (in a future iteration of
-this code) we can extract the dEQP .xml results to artifacts on
-gitlab.
+The boards should have networking, so that we can extract the dEQP .xml
+results to artifacts on gitlab.
 
 Requirements (servo)
 --------------------
@@ -104,8 +103,8 @@ We need privileged mode and the /dev bind mount in order to get at the
 serial console and fastboot USB devices (--device arguments don't
 apply to devices that show up after container start, which is the case
 with fastboot, and the servo serial devices are actually links to
-/dev/pts).  We use host network mode so that we can (in the future)
-spin up a server to collect XML results for fastboot.
+/dev/pts).  We use host network mode so that we can spin up a nginx
+server to collect XML results for fastboot.
 
 Once you've added your boards, you're going to need to add a little
 more customization in ``/etc/gitlab-runner/config.toml``.  First, add
@@ -118,6 +117,11 @@ required by your bare-metal script, something like::
   [[runners]]
     name = "google-freedreno-db410c-1"
     environment = ["BM_SERIAL=/dev/ttyDB410c8", "BM_POWERUP=google-power-up.sh 8", "BM_FASTBOOT_SERIAL=15e9e390"]
+
+If you want to collect the results for fastboot you need to add the following
+two board-specific environment variables ``BM_WEBDAV_IP`` and ``BM_WEBDAV_PORT``.
+These represent the IP address of the docker host and the board specific port number
+that gets used to start a nginx server.
 
 Once you've updated your runners' configs, restart with ``sudo service
 gitlab-runner restart``
