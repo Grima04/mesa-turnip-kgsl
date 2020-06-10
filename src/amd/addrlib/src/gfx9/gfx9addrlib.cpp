@@ -1046,7 +1046,7 @@ BOOL_32 Gfx9Lib::HwlInitGlobalParams(
 
     if (m_settings.isArcticIsland)
     {
-        GB_ADDR_CONFIG gbAddrConfig;
+        GB_ADDR_CONFIG_gfx9 gbAddrConfig;
 
         gbAddrConfig.u32All = pCreateIn->regValue.gbAddrConfig;
 
