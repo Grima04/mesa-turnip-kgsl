@@ -2119,7 +2119,9 @@ emit_loop(struct ntv_context *ctx, nir_loop *loop)
    ctx->loop_break = save_break;
    ctx->loop_cont = save_cont;
 
-   branch(ctx, cont_id);
+   /* loop->body may have already ended our block */
+   if (ctx->block_started)
+      branch(ctx, cont_id);
    start_block(ctx, cont_id);
    branch(ctx, header_id);
 
