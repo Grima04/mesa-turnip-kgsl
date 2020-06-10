@@ -3264,6 +3264,28 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
 }
 
 void
+genX(cmd_buffer_emit_clip)(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+
+   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                      ANV_CMD_DIRTY_DYNAMIC_VIEWPORT)) {
+      uint32_t dwords[GENX(3DSTATE_CLIP_length)];
+      int32_t count =
+         cmd_buffer->state.gfx.dynamic.viewport.count > 0 ?
+            cmd_buffer->state.gfx.dynamic.viewport.count - 1 : 0;
+
+      struct GENX(3DSTATE_CLIP) clip = {
+         GENX(3DSTATE_CLIP_header),
+         .MaximumVPIndex = count,
+      };
+      GENX(3DSTATE_CLIP_pack)(NULL, dwords, &clip);
+      anv_batch_emit_merge(&cmd_buffer->batch, dwords,
+                           pipeline->gen7.clip);
+   }
+}
+
+void
 genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
@@ -3434,8 +3456,10 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    if (dirty)
       cmd_buffer_emit_descriptor_pointers(cmd_buffer, dirty);
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_VIEWPORT)
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_VIEWPORT) {
+      genX(cmd_buffer_emit_clip)(cmd_buffer);
       gen8_cmd_buffer_emit_viewport(cmd_buffer);
+   }
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |
                                   ANV_CMD_DIRTY_PIPELINE)) {
