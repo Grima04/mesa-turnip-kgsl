@@ -306,14 +306,12 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
                 s = tgsi_to_nir(ir, pctx->screen, false);
         }
 
-        nir_variable_mode lower_mode = nir_var_all & ~nir_var_uniform;
-        if (s->info.stage == MESA_SHADER_VERTEX ||
-            s->info.stage == MESA_SHADER_GEOMETRY) {
-                lower_mode &= ~(nir_var_shader_in | nir_var_shader_out);
+        if (s->info.stage != MESA_SHADER_VERTEX &&
+            s->info.stage != MESA_SHADER_GEOMETRY) {
+                NIR_PASS_V(s, nir_lower_io,
+                           nir_var_shader_in | nir_var_shader_out,
+                           type_size, (nir_lower_io_options)0);
         }
-        NIR_PASS_V(s, nir_lower_io, lower_mode,
-                   type_size,
-                   (nir_lower_io_options)0);
 
         NIR_PASS_V(s, nir_lower_regs_to_ssa);
         NIR_PASS_V(s, nir_normalize_cubemap_coords);
