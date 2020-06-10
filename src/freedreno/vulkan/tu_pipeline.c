@@ -2536,6 +2536,17 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
       pipeline->lrz.write = false;
       pipeline->lrz.invalidate = true;
    }
+
+   if (builder->shaders[MESA_SHADER_FRAGMENT]) {
+      const struct ir3_shader_variant *fs = &builder->shaders[MESA_SHADER_FRAGMENT]->ir3_shader->variants[0];
+      if (fs->has_kill || fs->no_earlyz || fs->writes_pos) {
+         pipeline->lrz.write = false;
+      }
+      if (fs->no_earlyz || fs->writes_pos) {
+         pipeline->lrz.enable = false;
+         pipeline->lrz.z_test_enable = false;
+      }
+   }
 }
 
 static void
