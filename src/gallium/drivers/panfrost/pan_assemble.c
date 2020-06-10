@@ -77,17 +77,27 @@ pan_format_from_nir_size(nir_alu_type base, unsigned size)
 }
 
 static enum mali_format
-pan_format_from_glsl(const struct glsl_type *type)
+pan_format_from_glsl(const struct glsl_type *type, unsigned frac)
 {
-        enum glsl_base_type glsl_base = glsl_get_base_type(glsl_without_array(type));
+        const struct glsl_type *column = glsl_without_array_or_matrix(type);
+        enum glsl_base_type glsl_base = glsl_get_base_type(column);
         nir_alu_type t = nir_get_nir_type_for_glsl_base_type(glsl_base);
+        unsigned chan = glsl_get_components(column);
+
+        /* If we have a fractional location added, we need to increase the size
+         * so it will fit, i.e. a vec3 in YZW requires us to allocate a vec4.
+         * We could do better but this is an edge case as it is, normally
+         * packed varyings will be aligned. */
+        chan += frac;
+
+        assert(chan >= 1 && chan <= 4);
 
         unsigned base = nir_alu_type_get_base_type(t);
         unsigned size = nir_alu_type_get_type_size(t);
 
         return pan_format_from_nir_base(base) |
                 pan_format_from_nir_size(base, size) |
-                MALI_NR_CHANNELS(4);
+                MALI_NR_CHANNELS(chan);
 }
 
 static enum bifrost_shader_type
@@ -267,7 +277,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
                 for (int c = 0; c < sz; ++c) {
                         p_varyings[loc + c] = var->data.location + c;
-                        p_varying_type[loc + c] = pan_format_from_glsl(var->type);
+                        p_varying_type[loc + c] = pan_format_from_glsl(var->type, var->data.location_frac);
                 }
         }
 

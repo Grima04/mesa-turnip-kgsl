@@ -257,6 +257,7 @@ struct mali_channel_swizzle {
  * there are.
  */
 #define MALI_NR_CHANNELS(n) ((n - 1) << 3)
+#define MALI_EXTRACT_CHANNELS(fmt) ((((fmt) >> 3) & 3) + 1)
 
 /* If the high 3 bits are 3 to 6, then the low 3 bits say how big each
  * component is, except the special MALI_CHANNEL_FLOAT which overrides what the
