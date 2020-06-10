@@ -234,4 +234,19 @@ tu6_pipe2depth(VkFormat format)
    }
 }
 
+static inline enum a6xx_polygon_mode
+tu6_polygon_mode(VkPolygonMode mode)
+{
+   switch (mode) {
+   case VK_POLYGON_MODE_POINT:
+      return POLYMODE6_POINTS;
+   case VK_POLYGON_MODE_LINE:
+      return POLYMODE6_LINES;
+   case VK_POLYGON_MODE_FILL:
+      return POLYMODE6_TRIANGLES;
+   default:
+      unreachable("bad polygon mode");
+   }
+}
+
 #endif /* TU_UTIL_H */

@@ -2194,10 +2194,10 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    const VkPipelineRasterizationStateCreateInfo *rast_info =
       builder->create_info->pRasterizationState;
 
-   assert(rast_info->polygonMode == VK_POLYGON_MODE_FILL);
+   enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
 
    struct tu_cs cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, 7, &cs);
+   tu_cs_begin_sub_stream(&pipeline->cs, 11, &cs);
 
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_CL_CNTL(
@@ -2206,6 +2206,13 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                      .unk5 = rast_info->depthClampEnable,
                      .zero_gb_scale_z = 1,
                      .vp_clip_code_ignore = 1));
+
+   tu_cs_emit_regs(&cs,
+                   A6XX_VPC_POLYGON_MODE(.mode = mode));
+
+   tu_cs_emit_regs(&cs,
+                   A6XX_PC_POLYGON_MODE(.mode = mode));
+
    /* move to hw ctx init? */
    tu_cs_emit_regs(&cs, A6XX_GRAS_UNKNOWN_8001());
    tu_cs_emit_regs(&cs,
