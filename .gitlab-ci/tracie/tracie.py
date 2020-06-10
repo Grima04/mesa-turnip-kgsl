@@ -85,7 +85,9 @@ def gitlab_ensure_trace(project_url, repo_commit, trace):
     trace_path = TRACES_DB_PATH + trace['path']
     if project_url is None:
         assert(repo_commit is None)
-        assert(os.path.exists(trace_path))
+        if not os.path.exists(trace_path):
+            print("{} missing".format(trace_path))
+            sys.exit(1)
         return
 
     os.makedirs(os.path.dirname(trace_path), exist_ok=True)
