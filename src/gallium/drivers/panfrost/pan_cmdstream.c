@@ -1721,6 +1721,32 @@ pan_get_so(struct pipe_stream_output_info *info, gl_varying_slot loc)
         unreachable("Varying not captured");
 }
 
+static unsigned
+pan_varying_size(enum mali_format fmt)
+{
+        unsigned type = MALI_EXTRACT_TYPE(fmt);
+        unsigned chan = MALI_EXTRACT_CHANNELS(fmt);
+        unsigned bits = MALI_EXTRACT_BITS(fmt);
+        unsigned bpc = 0;
+
+        if (bits == MALI_CHANNEL_FLOAT) {
+                /* No doubles */
+                bool fp16 = (type == MALI_FORMAT_SINT);
+                assert(fp16 || (type == MALI_FORMAT_UNORM));
+
+                bpc = fp16 ? 2 : 4;
+        } else {
+                assert(type >= MALI_FORMAT_SNORM && type <= MALI_FORMAT_SINT);
+
+                /* See the enums */
+                bits = 1 << bits;
+                assert(bits >= 8);
+                bpc = bits / 8;
+        }
+
+        return bpc * chan;
+}
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,

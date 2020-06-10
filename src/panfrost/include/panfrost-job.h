@@ -251,6 +251,7 @@ struct mali_channel_swizzle {
  * for Bifrost framebuffer output.
  */
 #define MALI_FORMAT_SPECIAL2 (7 << 5)
+#define MALI_EXTRACT_TYPE(fmt) ((fmt) & 0xe0)
 
 /* If the high 3 bits are 3 to 6 these two bits say how many components
  * there are.
@@ -274,6 +275,7 @@ struct mali_channel_swizzle {
  * MALI_FORMAT_UNORM, it means a 32-bit float.
  */
 #define MALI_CHANNEL_FLOAT 7
+#define MALI_EXTRACT_BITS(fmt) (fmt & 0x7)
 
 enum mali_format {
 	MALI_ETC2_RGB8       = MALI_FORMAT_COMPRESSED | 0x1,
