@@ -82,7 +82,6 @@ shaders/createshaderprogram-attached-shaders: skip
 shaders/createshaderprogram-bad-type: skip
 shaders/glsl-bug-110796: fail
 shaders/glsl-fs-fogscale/gs-out and fs: skip
-shaders/glsl-fs-fogscale/vs and fs: fail
 shaders/glsl-fs-fogscale/vs, gs and fs: skip
 shaders/sso-simple: skip
 shaders/sso-uniforms-01: skip
@@ -1758,8 +1757,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    21753
-       fail:      225
+       pass:    21754
+       fail:      224
       crash:        0
        skip:     1508
     timeout:        0

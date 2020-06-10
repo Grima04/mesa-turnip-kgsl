@@ -637,13 +637,15 @@ lp_build_conv(struct gallivm_state *gallivm,
                 * conversion path (meaning too large values are fine, but
                 * NaNs get converted to -128 (purely by luck, as we don't
                 * specify nan behavior for the max there) instead of 0).
+                *
+                * dEQP has GLES31 tests that expect +inf -> 255.0.
                 */
                if (dst_type.sign) {
                   tmp[j] = lp_build_min(&bld, bld.one, src[j]);
 
                }
                else {
-                  if (0) {
+                  if (1) {
                      tmp[j] = lp_build_min_ext(&bld, bld.one, src[j],
                                                GALLIVM_NAN_RETURN_NAN_FIRST_NONNAN);
                   }
@@ -743,7 +745,7 @@ lp_build_conv(struct gallivm_state *gallivm,
 
                }
                else {
-                  if (0) {
+                  if (1) {
                      a = lp_build_min_ext(&bld, bld.one, a,
                                           GALLIVM_NAN_RETURN_NAN_FIRST_NONNAN);
                   }
