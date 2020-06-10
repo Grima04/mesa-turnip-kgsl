@@ -2910,7 +2910,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
    else if (util_format_has_stencil(bld.format_desc) &&
        !util_format_has_depth(bld.format_desc)) {
       /* for stencil only formats, sample stencil (uint) */
-      bld.texel_type = lp_type_int_vec(type.width, type.width * type.length);
+      bld.texel_type = lp_type_uint_vec(type.width, type.width * type.length);
    }
 
    if (!static_texture_state->level_zero_only ||
