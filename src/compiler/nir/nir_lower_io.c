@@ -626,14 +626,8 @@ nir_lower_io_block(nir_block *block,
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
 
       nir_variable_mode mode = deref->mode;
-
+      assert(util_is_power_of_two_nonzero(mode));
       if ((state->modes & mode) == 0)
-         continue;
-
-      if (mode != nir_var_shader_in &&
-          mode != nir_var_shader_out &&
-          mode != nir_var_mem_shared &&
-          mode != nir_var_uniform)
          continue;
 
       nir_variable *var = nir_deref_instr_get_variable(deref);
@@ -722,6 +716,11 @@ nir_lower_io_impl(nir_function_impl *impl,
    state.modes = modes;
    state.type_size = type_size;
    state.options = options;
+
+   ASSERTED nir_variable_mode supported_modes =
+      nir_var_shader_in | nir_var_shader_out |
+      nir_var_mem_shared | nir_var_uniform;
+   assert(!(modes & ~supported_modes));
 
    nir_foreach_block(block, impl) {
       progress |= nir_lower_io_block(block, &state);
