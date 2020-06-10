@@ -276,9 +276,6 @@ emit_load(struct lower_io_state *state,
    case nir_var_uniform:
       op = nir_intrinsic_load_uniform;
       break;
-   case nir_var_mem_shared:
-      op = nir_intrinsic_load_shared;
-      break;
    default:
       unreachable("Unknown variable mode");
    }
@@ -376,14 +373,10 @@ emit_store(struct lower_io_state *state, nir_ssa_def *data,
    nir_builder *b = &state->builder;
    nir_variable_mode mode = var->data.mode;
 
+   assert(mode == nir_var_shader_out);
    nir_intrinsic_op op;
-   if (mode == nir_var_mem_shared) {
-      op = nir_intrinsic_store_shared;
-   } else {
-      assert(mode == nir_var_shader_out);
-      op = vertex_index ? nir_intrinsic_store_per_vertex_output :
-                          nir_intrinsic_store_output;
-   }
+   op = vertex_index ? nir_intrinsic_store_per_vertex_output :
+                       nir_intrinsic_store_output;
 
    nir_intrinsic_instr *store =
       nir_intrinsic_instr_create(state->builder.shader, op);
@@ -466,40 +459,6 @@ lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
                  nir_intrinsic_write_mask(intrin),
                  nir_get_nir_type_for_glsl_type(type));
    }
-}
-
-static nir_ssa_def *
-lower_atomic(nir_intrinsic_instr *intrin, struct lower_io_state *state,
-             nir_variable *var, nir_ssa_def *offset)
-{
-   nir_builder *b = &state->builder;
-   assert(var->data.mode == nir_var_mem_shared);
-
-   nir_intrinsic_op op = shared_atomic_for_deref(intrin->intrinsic);
-
-   nir_intrinsic_instr *atomic =
-      nir_intrinsic_instr_create(state->builder.shader, op);
-
-   nir_intrinsic_set_base(atomic, var->data.driver_location);
-
-   atomic->src[0] = nir_src_for_ssa(offset);
-   assert(nir_intrinsic_infos[intrin->intrinsic].num_srcs ==
-          nir_intrinsic_infos[op].num_srcs);
-   for (unsigned i = 1; i < nir_intrinsic_infos[op].num_srcs; i++) {
-      nir_src_copy(&atomic->src[i], &intrin->src[i], atomic);
-   }
-
-   if (nir_intrinsic_infos[op].has_dest) {
-      assert(intrin->dest.is_ssa);
-      assert(nir_intrinsic_infos[intrin->intrinsic].has_dest);
-      nir_ssa_dest_init(&atomic->instr, &atomic->dest,
-                        intrin->dest.ssa.num_components,
-                        intrin->dest.ssa.bit_size, NULL);
-   }
-
-   nir_builder_instr_insert(b, &atomic->instr);
-
-   return nir_intrinsic_infos[op].has_dest ? &atomic->dest.ssa : NULL;
 }
 
 static nir_ssa_def *
@@ -595,20 +554,6 @@ nir_lower_io_block(nir_block *block,
       switch (intrin->intrinsic) {
       case nir_intrinsic_load_deref:
       case nir_intrinsic_store_deref:
-      case nir_intrinsic_deref_atomic_add:
-      case nir_intrinsic_deref_atomic_imin:
-      case nir_intrinsic_deref_atomic_umin:
-      case nir_intrinsic_deref_atomic_imax:
-      case nir_intrinsic_deref_atomic_umax:
-      case nir_intrinsic_deref_atomic_and:
-      case nir_intrinsic_deref_atomic_or:
-      case nir_intrinsic_deref_atomic_xor:
-      case nir_intrinsic_deref_atomic_exchange:
-      case nir_intrinsic_deref_atomic_comp_swap:
-      case nir_intrinsic_deref_atomic_fadd:
-      case nir_intrinsic_deref_atomic_fmin:
-      case nir_intrinsic_deref_atomic_fmax:
-      case nir_intrinsic_deref_atomic_fcomp_swap:
          /* We can lower the io for this nir instrinsic */
          break;
       case nir_intrinsic_interp_deref_at_centroid:
@@ -660,24 +605,6 @@ nir_lower_io_block(nir_block *block,
                      component_offset, deref->type);
          break;
 
-      case nir_intrinsic_deref_atomic_add:
-      case nir_intrinsic_deref_atomic_imin:
-      case nir_intrinsic_deref_atomic_umin:
-      case nir_intrinsic_deref_atomic_imax:
-      case nir_intrinsic_deref_atomic_umax:
-      case nir_intrinsic_deref_atomic_and:
-      case nir_intrinsic_deref_atomic_or:
-      case nir_intrinsic_deref_atomic_xor:
-      case nir_intrinsic_deref_atomic_exchange:
-      case nir_intrinsic_deref_atomic_comp_swap:
-      case nir_intrinsic_deref_atomic_fadd:
-      case nir_intrinsic_deref_atomic_fmin:
-      case nir_intrinsic_deref_atomic_fmax:
-      case nir_intrinsic_deref_atomic_fcomp_swap:
-         assert(vertex_index == NULL);
-         replacement = lower_atomic(intrin, state, var, offset);
-         break;
-
       case nir_intrinsic_interp_deref_at_centroid:
       case nir_intrinsic_interp_deref_at_sample:
       case nir_intrinsic_interp_deref_at_offset:
@@ -718,8 +645,7 @@ nir_lower_io_impl(nir_function_impl *impl,
    state.options = options;
 
    ASSERTED nir_variable_mode supported_modes =
-      nir_var_shader_in | nir_var_shader_out |
-      nir_var_mem_shared | nir_var_uniform;
+      nir_var_shader_in | nir_var_shader_out | nir_var_uniform;
    assert(!(modes & ~supported_modes));
 
    nir_foreach_block(block, impl) {
