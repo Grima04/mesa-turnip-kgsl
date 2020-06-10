@@ -211,6 +211,7 @@ def get_features(is_point_release: bool) -> typing.Generator[str, None, None]:
                 yield line
             else:
                 yield "None"
+        p.unlink()
     else:
         yield "None"
 
