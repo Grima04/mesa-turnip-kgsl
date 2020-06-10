@@ -1932,9 +1932,12 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib,
 
 		/* Display needs unaligned DCC. */
 		if (surf->num_dcc_levels &&
-		    !is_dcc_supported_by_DCN(info, config, surf,
-					     surf->u.gfx9.dcc.rb_aligned,
-					     surf->u.gfx9.dcc.pipe_aligned))
+		    (!is_dcc_supported_by_DCN(info, config, surf,
+					      surf->u.gfx9.dcc.rb_aligned,
+					      surf->u.gfx9.dcc.pipe_aligned) ||
+		     /* Don't set is_displayable if displayable DCC is missing. */
+		     (info->use_display_dcc_with_retile_blit &&
+		      !surf->u.gfx9.dcc_retile_num_elements)))
 			displayable = false;
 	}
 	surf->is_displayable = displayable;
