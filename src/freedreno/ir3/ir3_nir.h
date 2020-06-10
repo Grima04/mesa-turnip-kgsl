@@ -52,9 +52,8 @@ void ir3_nir_lower_tess_eval(nir_shader *shader, unsigned topology);
 void ir3_nir_lower_gs(nir_shader *shader);
 
 const nir_shader_compiler_options * ir3_get_compiler_options(struct ir3_compiler *compiler);
-bool ir3_key_lowers_nir(const struct ir3_shader_key *key);
-void ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
-		const struct ir3_shader_key *key);
+void ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s);
+void ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s);
 
 void ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir,
 		struct ir3_const_state *const_state);

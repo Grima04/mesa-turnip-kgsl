@@ -123,17 +123,6 @@ ir3_get_compiler_options(struct ir3_compiler *compiler)
 	return &options;
 }
 
-/* for given shader key, are any steps handled in nir? */
-bool
-ir3_key_lowers_nir(const struct ir3_shader_key *key)
-{
-	return key->fsaturate_s | key->fsaturate_t | key->fsaturate_r |
-			key->vsaturate_s | key->vsaturate_t | key->vsaturate_r |
-			key->ucp_enables | key->color_two_side |
-			key->fclamp_color | key->vclamp_color |
-			key->tessellation | key->has_gs;
-}
-
 #define OPT(nir, pass, ...) ({                             \
    bool this_progress = false;                             \
    NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);      \
@@ -224,53 +213,12 @@ should_split_wrmask(const nir_instr *instr, const void *data)
 }
 
 void
-ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
-		const struct ir3_shader_key *key)
+ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s)
 {
 	struct nir_lower_tex_options tex_options = {
 			.lower_rect = 0,
 			.lower_tg4_offsets = true,
 	};
-
-	if (key && (key->has_gs || key->tessellation)) {
-		switch (shader->type) {
-		case MESA_SHADER_VERTEX:
-			NIR_PASS_V(s, ir3_nir_lower_to_explicit_output, shader, key->tessellation);
-			break;
-		case MESA_SHADER_TESS_CTRL:
-			NIR_PASS_V(s, ir3_nir_lower_tess_ctrl, shader, key->tessellation);
-			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input);
-			break;
-		case MESA_SHADER_TESS_EVAL:
-			NIR_PASS_V(s, ir3_nir_lower_tess_eval, key->tessellation);
-			if (key->has_gs)
-				NIR_PASS_V(s, ir3_nir_lower_to_explicit_output, shader, key->tessellation);
-			break;
-		case MESA_SHADER_GEOMETRY:
-			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input);
-			break;
-		default:
-			break;
-		}
-	}
-
-	if (key) {
-		switch (shader->type) {
-		case MESA_SHADER_FRAGMENT:
-			tex_options.saturate_s = key->fsaturate_s;
-			tex_options.saturate_t = key->fsaturate_t;
-			tex_options.saturate_r = key->fsaturate_r;
-			break;
-		case MESA_SHADER_VERTEX:
-			tex_options.saturate_s = key->vsaturate_s;
-			tex_options.saturate_t = key->vsaturate_t;
-			tex_options.saturate_r = key->vsaturate_r;
-			break;
-		default:
-			/* TODO */
-			break;
-		}
-	}
 
 	if (shader->compiler->gpu_id >= 400) {
 		/* a4xx seems to have *no* sam.p */
@@ -289,31 +237,10 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	OPT_V(s, nir_lower_regs_to_ssa);
 	OPT_V(s, nir_lower_wrmasks, should_split_wrmask, s);
 
-	if (key) {
-		if (s->info.stage == MESA_SHADER_VERTEX) {
-			OPT_V(s, nir_lower_clip_vs, key->ucp_enables, false, false, NULL);
-			if (key->vclamp_color)
-				OPT_V(s, nir_lower_clamp_color_outputs);
-		} else if (s->info.stage == MESA_SHADER_FRAGMENT) {
-			OPT_V(s, nir_lower_clip_fs, key->ucp_enables, false);
-			if (key->fclamp_color)
-				OPT_V(s, nir_lower_clamp_color_outputs);
-		}
-		if (key->color_two_side) {
-			OPT_V(s, nir_lower_two_sided_color);
-		}
-	} else {
-		/* only want to do this the first time (when key is null)
-		 * and not again on any potential 2nd variant lowering pass:
-		 */
-		OPT_V(s, ir3_nir_apply_trig_workarounds);
+	OPT_V(s, ir3_nir_apply_trig_workarounds);
 
-		/* This wouldn't hurt to run multiple times, but there is
-		 * no need to:
-		 */
-		if (shader->type == MESA_SHADER_FRAGMENT)
-			OPT_V(s, nir_lower_fb_read);
-	}
+	if (shader->type == MESA_SHADER_FRAGMENT)
+		OPT_V(s, nir_lower_fb_read);
 
 	OPT_V(s, nir_lower_tex, &tex_options);
 	OPT_V(s, nir_lower_load_const_to_scalar);
@@ -328,12 +255,108 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	 *
 	 * NOTE that UBO analysis pass should only be done once, before variants
 	 */
-	const bool ubo_progress = !key && OPT(s, ir3_nir_analyze_ubo_ranges, shader);
+	const bool ubo_progress = OPT(s, ir3_nir_analyze_ubo_ranges, shader);
 	const bool idiv_progress = OPT(s, nir_lower_idiv, nir_lower_idiv_fast);
 	/* UBO offset lowering has to come after we've decided what will be left as load_ubo */
 	OPT_V(s, ir3_nir_lower_io_offsets, shader->compiler->gpu_id);
 
 	if (ubo_progress || idiv_progress)
+		ir3_optimize_loop(s);
+
+	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
+
+	if (ir3_shader_debug & IR3_DBG_DISASM) {
+		debug_printf("----------------------\n");
+		nir_print_shader(s, stdout);
+		debug_printf("----------------------\n");
+	}
+
+	nir_sweep(s);
+
+	/* The first time thru, when not creating variant, do the one-time
+	 * const_state layout setup.  This should be done after ubo range
+	 * analysis.
+	 */
+	ir3_setup_const_state(shader, s, &shader->const_state);
+}
+
+void
+ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
+{
+	if (ir3_shader_debug & IR3_DBG_DISASM) {
+		debug_printf("----------------------\n");
+		nir_print_shader(s, stdout);
+		debug_printf("----------------------\n");
+	}
+
+	bool progress = false;
+
+	if (so->key.has_gs || so->key.tessellation) {
+		switch (so->shader->type) {
+		case MESA_SHADER_VERTEX:
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_output, so->shader, so->key.tessellation);
+			progress = true;
+			break;
+		case MESA_SHADER_TESS_CTRL:
+			NIR_PASS_V(s, ir3_nir_lower_tess_ctrl, so->shader, so->key.tessellation);
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input);
+			progress = true;
+			break;
+		case MESA_SHADER_TESS_EVAL:
+			NIR_PASS_V(s, ir3_nir_lower_tess_eval, so->key.tessellation);
+			if (so->key.has_gs)
+				NIR_PASS_V(s, ir3_nir_lower_to_explicit_output, so->shader, so->key.tessellation);
+			progress = true;
+			break;
+		case MESA_SHADER_GEOMETRY:
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input);
+			progress = true;
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (s->info.stage == MESA_SHADER_VERTEX) {
+		if (so->key.ucp_enables)
+			progress |= OPT(s, nir_lower_clip_vs, so->key.ucp_enables, false, false, NULL);
+		if (so->key.vclamp_color)
+			progress |= OPT(s, nir_lower_clamp_color_outputs);
+	} else if (s->info.stage == MESA_SHADER_FRAGMENT) {
+		if (so->key.ucp_enables)
+			progress |= OPT(s, nir_lower_clip_fs, so->key.ucp_enables, false);
+		if (so->key.fclamp_color)
+			progress |= OPT(s, nir_lower_clamp_color_outputs);
+	}
+	if (so->key.color_two_side) {
+		OPT_V(s, nir_lower_two_sided_color);
+		progress = true;
+	}
+
+	struct nir_lower_tex_options tex_options = { };
+
+	switch (so->shader->type) {
+	case MESA_SHADER_FRAGMENT:
+		tex_options.saturate_s = so->key.fsaturate_s;
+		tex_options.saturate_t = so->key.fsaturate_t;
+		tex_options.saturate_r = so->key.fsaturate_r;
+		break;
+	case MESA_SHADER_VERTEX:
+		tex_options.saturate_s = so->key.vsaturate_s;
+		tex_options.saturate_t = so->key.vsaturate_t;
+		tex_options.saturate_r = so->key.vsaturate_r;
+		break;
+	default:
+		/* TODO */
+		break;
+	}
+
+	if (tex_options.saturate_s || tex_options.saturate_t ||
+		tex_options.saturate_r) {
+		progress |= OPT(s, nir_lower_tex, &tex_options);
+	}
+
+	if (progress)
 		ir3_optimize_loop(s);
 
 	/* Do late algebraic optimization to turn add(a, neg(b)) back into
@@ -350,8 +373,6 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 		OPT_V(s, nir_opt_cse);
 	}
 
-	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
-
 	OPT_V(s, nir_opt_sink, nir_move_const_undef);
 
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
@@ -361,14 +382,6 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	}
 
 	nir_sweep(s);
-
-	/* The first time thru, when not creating variant, do the one-time
-	 * const_state layout setup.  This should be done after ubo range
-	 * analysis.
-	 */
-	if (!key) {
-		ir3_setup_const_state(shader, s, &shader->const_state);
-	}
 }
 
 static void

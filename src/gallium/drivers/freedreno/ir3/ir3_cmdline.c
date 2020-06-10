@@ -491,11 +491,13 @@ int main(int argc, char **argv)
 	s.compiler = compiler;
 	s.nir = nir;
 
-	ir3_optimize_nir(&s, nir, NULL);
+	ir3_optimize_nir(&s, nir);
 
 	v.key = key;
 	v.shader = &s;
 	s.type = v.type = nir->info.stage;
+
+	ir3_nir_lower_variant(&v, nir);
 
 	info = "NIR compiler";
 	ret = ir3_compile_shader_nir(s.compiler, &v);

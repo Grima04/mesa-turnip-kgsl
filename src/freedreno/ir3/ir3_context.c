@@ -74,8 +74,7 @@ ir3_context_init(struct ir3_compiler *compiler,
 	 */
 
 	ctx->s = nir_shader_clone(ctx, so->shader->nir);
-	if (ir3_key_lowers_nir(&so->key))
-		ir3_optimize_nir(so->shader, ctx->s, &so->key);
+	ir3_nir_lower_variant(so, ctx->s);
 
 	/* this needs to be the last pass run, so do this here instead of
 	 * in ir3_optimize_nir():
