@@ -278,8 +278,8 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 void
 ir3_nir_post_finalize(struct ir3_compiler *compiler, nir_shader *s)
 {
-	NIR_PASS_V(s, nir_lower_io, nir_var_all, ir3_glsl_type_size,
-			   (nir_lower_io_options)0);
+	NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
+			   ir3_glsl_type_size, (nir_lower_io_options)0);
 
 	if (s->info.stage == MESA_SHADER_FRAGMENT) {
 		/* NOTE: lower load_barycentric_at_sample first, since it

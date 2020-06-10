@@ -183,7 +183,9 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 
 	NIR_PASS_V(nir, nir_lower_system_values);
 	NIR_PASS_V(nir, nir_lower_frexp);
-	NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size, 0);
+	NIR_PASS_V(nir, nir_lower_io,
+	           nir_var_shader_in | nir_var_shader_out,
+	           ir3_glsl_type_size, (nir_lower_io_options)0);
 	NIR_PASS_V(nir, gl_nir_lower_samplers, prog);
 
 	return nir;
@@ -475,8 +477,9 @@ int main(int argc, char **argv)
 	} else if (from_spirv) {
 		nir = load_spirv(filenames[0], entry, stage);
 
-		NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size,
-				(nir_lower_io_options)0);
+		NIR_PASS_V(nir, nir_lower_io,
+		           nir_var_shader_in | nir_var_shader_out,
+		           ir3_glsl_type_size, (nir_lower_io_options)0);
 
 		/* TODO do this somewhere else */
 		nir_lower_int64(nir, ~0);
