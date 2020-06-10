@@ -8,7 +8,7 @@ GL_EXT_texture_shadow_lod on llvmpipe
 VK_AMD_texture_gather_bias_lod on RADV.
 VK_AMD_gpu_shader_half_float on RADV/ACO.
 VK_AMD_gpu_shader_int16 on RADV/ACO.
-VK_EXT_extended_dynamic_state on RADV.
+VK_EXT_extended_dynamic_state on ANV and RADV.
 VK_EXT_image_robustness on RADV.
 VK_EXT_private_data on ANV and RADV.
 VK_EXT_custom_border_color on ANV and RADV.

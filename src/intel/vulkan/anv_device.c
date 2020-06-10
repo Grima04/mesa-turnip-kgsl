@@ -1447,6 +1447,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
+         VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *features =
+            (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *)ext;
+         features->extendedDynamicState = true;
+         break;
+      }
+
       default:
          anv_debug_ignored_stype(ext->sType);
          break;
