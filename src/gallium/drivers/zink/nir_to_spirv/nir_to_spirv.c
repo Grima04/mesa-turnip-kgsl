@@ -29,6 +29,66 @@
 #include "util/u_memory.h"
 #include "util/hash_table.h"
 
+/* this consistently maps slots to a zero-indexed value to avoid wasting slots */
+static unsigned slot_pack_map[] = {
+   /* Position is builtin */
+   [VARYING_SLOT_POS] = UINT_MAX,
+   [VARYING_SLOT_COL0] = 0, /* input/output */
+   [VARYING_SLOT_COL1] = 1, /* input/output */
+   [VARYING_SLOT_FOGC] = 2, /* input/output */
+   /* TEX0-7 are translated to VAR0-7 by nir, so we don't need to reserve */
+   [VARYING_SLOT_TEX0] = UINT_MAX, /* input/output */
+   [VARYING_SLOT_TEX1] = UINT_MAX,
+   [VARYING_SLOT_TEX2] = UINT_MAX,
+   [VARYING_SLOT_TEX3] = UINT_MAX,
+   [VARYING_SLOT_TEX4] = UINT_MAX,
+   [VARYING_SLOT_TEX5] = UINT_MAX,
+   [VARYING_SLOT_TEX6] = UINT_MAX,
+   [VARYING_SLOT_TEX7] = UINT_MAX,
+
+   /* PointSize is builtin */
+   [VARYING_SLOT_PSIZ] = UINT_MAX,
+
+   [VARYING_SLOT_BFC0] = 3, /* output only */
+   [VARYING_SLOT_BFC1] = 4, /* output only */
+   [VARYING_SLOT_EDGE] = 5, /* output only */
+   [VARYING_SLOT_CLIP_VERTEX] = 6, /* output only */
+
+   /* ClipDistance is builtin */
+   [VARYING_SLOT_CLIP_DIST0] = UINT_MAX,
+   [VARYING_SLOT_CLIP_DIST1] = UINT_MAX,
+
+   /* CullDistance is builtin */
+   [VARYING_SLOT_CULL_DIST0] = UINT_MAX, /* input/output */
+   [VARYING_SLOT_CULL_DIST1] = UINT_MAX, /* never actually used */
+
+   /* PrimitiveId is builtin */
+   [VARYING_SLOT_PRIMITIVE_ID] = UINT_MAX,
+
+   /* Layer is builtin */
+   [VARYING_SLOT_LAYER] = UINT_MAX, /* input/output */
+
+   /* ViewportIndex is builtin */
+   [VARYING_SLOT_VIEWPORT] =  UINT_MAX, /* input/output */
+
+   /* FrontFacing is builtin */
+   [VARYING_SLOT_FACE] = UINT_MAX,
+
+   /* PointCoord is builtin */
+   [VARYING_SLOT_PNTC] = UINT_MAX, /* input only */
+
+   /* TessLevelOuter is builtin */
+   [VARYING_SLOT_TESS_LEVEL_OUTER] = UINT_MAX,
+   /* TessLevelInner is builtin */
+   [VARYING_SLOT_TESS_LEVEL_INNER] = UINT_MAX,
+
+   [VARYING_SLOT_BOUNDING_BOX0] = 7, /* Only appears as TCS output. */
+   [VARYING_SLOT_BOUNDING_BOX1] = 8, /* Only appears as TCS output. */
+   [VARYING_SLOT_VIEW_INDEX] = 9, /* input/output */
+   [VARYING_SLOT_VIEWPORT_MASK] = 10, /* output only */
+};
+#define NTV_MIN_RESERVED_SLOTS 10
+
 struct ntv_context {
    struct spirv_builder builder;
 
@@ -240,32 +300,26 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
    if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      if (var->data.location >= VARYING_SLOT_VAR0)
-         spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.location -
-                                     VARYING_SLOT_VAR0 +
-                                     VARYING_SLOT_TEX0);
-      else if ((var->data.location >= VARYING_SLOT_COL0 &&
-                var->data.location <= VARYING_SLOT_TEX7) ||
-               var->data.location == VARYING_SLOT_BFC0 ||
-               var->data.location == VARYING_SLOT_BFC1) {
-         spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.location);
-      } else {
-         switch (var->data.location) {
-         HANDLE_EMIT_BUILTIN(POS, FragCoord);
-         HANDLE_EMIT_BUILTIN(PNTC, PointCoord);
-         HANDLE_EMIT_BUILTIN(LAYER, Layer);
-         HANDLE_EMIT_BUILTIN(PRIMITIVE_ID, PrimitiveId);
-         HANDLE_EMIT_BUILTIN(CLIP_DIST0, ClipDistance);
-         HANDLE_EMIT_BUILTIN(CULL_DIST0, CullDistance);
-         HANDLE_EMIT_BUILTIN(VIEWPORT, ViewportIndex);
-         HANDLE_EMIT_BUILTIN(FACE, FrontFacing);
+      unsigned slot = var->data.location;
+      switch (slot) {
+      HANDLE_EMIT_BUILTIN(POS, FragCoord);
+      HANDLE_EMIT_BUILTIN(PNTC, PointCoord);
+      HANDLE_EMIT_BUILTIN(LAYER, Layer);
+      HANDLE_EMIT_BUILTIN(PRIMITIVE_ID, PrimitiveId);
+      HANDLE_EMIT_BUILTIN(CLIP_DIST0, ClipDistance);
+      HANDLE_EMIT_BUILTIN(CULL_DIST0, CullDistance);
+      HANDLE_EMIT_BUILTIN(VIEWPORT, ViewportIndex);
+      HANDLE_EMIT_BUILTIN(FACE, FrontFacing);
 
-         default:
-            debug_printf("unknown varying slot: %s\n", gl_varying_slot_name(var->data.location));
-            unreachable("unexpected varying slot");
-         }
+      default:
+         if (slot < VARYING_SLOT_VAR0) {
+            slot = slot_pack_map[slot];
+            if (slot == UINT_MAX)
+               debug_printf("unhandled varying slot: %s\n", gl_varying_slot_name(var->data.location));
+         } else
+            slot -= VARYING_SLOT_VAR0 - NTV_MIN_RESERVED_SLOTS;
+         assert(slot < VARYING_SLOT_VAR0);
+         spirv_builder_emit_location(&ctx->builder, var_id, slot);
       }
    } else {
       spirv_builder_emit_location(&ctx->builder, var_id,
@@ -299,37 +353,35 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
 
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
-      if (var->data.location >= VARYING_SLOT_VAR0)
-         spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.location -
-                                     VARYING_SLOT_VAR0 +
-                                     VARYING_SLOT_TEX0);
-      else if ((var->data.location >= VARYING_SLOT_COL0 &&
-                var->data.location <= VARYING_SLOT_TEX7) ||
-               var->data.location == VARYING_SLOT_BFC0 ||
-               var->data.location == VARYING_SLOT_BFC1) {
-         spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.location);
-      } else {
-         switch (var->data.location) {
-         HANDLE_EMIT_BUILTIN(POS, Position);
-         HANDLE_EMIT_BUILTIN(PSIZ, PointSize);
-         HANDLE_EMIT_BUILTIN(LAYER, Layer);
-         HANDLE_EMIT_BUILTIN(PRIMITIVE_ID, PrimitiveId);
-         HANDLE_EMIT_BUILTIN(CULL_DIST0, CullDistance);
-         HANDLE_EMIT_BUILTIN(VIEWPORT, ViewportIndex);
-         HANDLE_EMIT_BUILTIN(TESS_LEVEL_OUTER, TessLevelOuter);
-         HANDLE_EMIT_BUILTIN(TESS_LEVEL_INNER, TessLevelInner);
 
-         case VARYING_SLOT_CLIP_DIST0:
-            assert(glsl_type_is_array(var->type));
-            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInClipDistance);
-            break;
+      unsigned slot = var->data.location;
+      switch (slot) {
+      HANDLE_EMIT_BUILTIN(POS, Position);
+      HANDLE_EMIT_BUILTIN(PSIZ, PointSize);
+      HANDLE_EMIT_BUILTIN(LAYER, Layer);
+      HANDLE_EMIT_BUILTIN(PRIMITIVE_ID, PrimitiveId);
+      HANDLE_EMIT_BUILTIN(CULL_DIST0, CullDistance);
+      HANDLE_EMIT_BUILTIN(VIEWPORT, ViewportIndex);
+      HANDLE_EMIT_BUILTIN(TESS_LEVEL_OUTER, TessLevelOuter);
+      HANDLE_EMIT_BUILTIN(TESS_LEVEL_INNER, TessLevelInner);
 
-         default:
-            debug_printf("unknown varying slot: %s\n", gl_varying_slot_name(var->data.location));
-            unreachable("unexpected varying slot");
-         }
+      case VARYING_SLOT_CLIP_DIST0:
+         assert(glsl_type_is_array(var->type));
+         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInClipDistance);
+         break;
+
+      default:
+         if (slot < VARYING_SLOT_VAR0) {
+            slot = slot_pack_map[slot];
+            if (slot == UINT_MAX)
+               debug_printf("unhandled varying slot: %s\n", gl_varying_slot_name(var->data.location));
+         } else
+            slot -= VARYING_SLOT_VAR0 - NTV_MIN_RESERVED_SLOTS;
+         assert(slot < VARYING_SLOT_VAR0);
+         spirv_builder_emit_location(&ctx->builder, var_id, slot);
+         /* non-builtins get location incremented by VARYING_SLOT_VAR0 in vtn, so
+          * use driver_location for non-builtins with defined slots to avoid overlap
+          */
       }
    } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
       if (var->data.location >= FRAG_RESULT_DATA0)
