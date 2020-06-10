@@ -67,6 +67,11 @@ nir_fuse_io_16(nir_shader *shader)
             if (nir_dest_bit_size(intr->dest) != 32)
                     continue;
 
+            /* We swizzle at a 32-bit level so need a multiple of 2. We could
+             * do a bit better and handle even components though */
+            if (nir_intrinsic_component(intr))
+               continue;
+
             if (!intr->dest.is_ssa)
                continue;
 
