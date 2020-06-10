@@ -1929,6 +1929,21 @@ pan_emit_vary_xfb(unsigned present,
         return meta;
 }
 
+/* Determine if we should capture a varying for XFB. This requires actually
+ * having a buffer for it. If we don't capture it, we'll fallback to a general
+ * varying path (linked or unlinked, possibly discarding the write) */
+
+static bool
+panfrost_xfb_captured(struct panfrost_shader_state *xfb,
+                unsigned loc, unsigned max_xfb)
+{
+        if (!(xfb->so_mask & (1ll << loc)))
+                return false;
+
+        struct pipe_stream_output *o = pan_get_so(&xfb->stream_output, loc);
+        return o->output_buffer < max_xfb;
+}
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
