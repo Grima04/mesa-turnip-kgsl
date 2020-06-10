@@ -1469,7 +1469,9 @@ get_oa_counter_data(struct gen_perf_context *perf_ctx,
             /* So far we aren't using uint32, double or bool32... */
             unreachable("unexpected counter data type");
          }
-         written = counter->offset + counter_size;
+
+         if (counter->offset + counter_size > written)
+            written = counter->offset + counter_size;
       }
    }
 
