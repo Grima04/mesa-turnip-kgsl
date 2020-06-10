@@ -1615,6 +1615,13 @@ panfrost_emit_varyings(struct panfrost_batch *batch, union mali_attr *slot,
         return transfer.gpu;
 }
 
+static unsigned
+panfrost_streamout_offset(unsigned stride, unsigned offset,
+                        struct pipe_stream_output_target *target)
+{
+        return (target->buffer_offset + (offset * stride * 4)) & 63;
+}
+
 static void
 panfrost_emit_streamout(struct panfrost_batch *batch, union mali_attr *slot,
                         unsigned stride, unsigned offset, unsigned count,
