@@ -2045,8 +2045,8 @@ struct v3dv_job *
 v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
                               uint32_t subpass_idx)
 {
-   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   assert(subpass_idx < state->pass->subpass_count);
+   assert(cmd_buffer->state.pass);
+   assert(subpass_idx < cmd_buffer->state.pass->subpass_count);
 
    struct v3dv_job *job =
       cmd_buffer_subpass_create_job(cmd_buffer, subpass_idx,
@@ -2082,8 +2082,8 @@ struct v3dv_job *
 v3dv_cmd_buffer_subpass_resume(struct v3dv_cmd_buffer *cmd_buffer,
                                uint32_t subpass_idx)
 {
-   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   assert(subpass_idx < state->pass->subpass_count);
+   assert(cmd_buffer->state.pass);
+   assert(subpass_idx < cmd_buffer->state.pass->subpass_count);
 
    struct v3dv_job *job;
    if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
@@ -2795,7 +2795,7 @@ v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
    memcpy(state->dynamic.viewport.viewports + firstViewport, pViewports,
           viewportCount * sizeof(*pViewports));
 
-   for (uint32_t i = firstViewport; i < firstViewport + viewportCount; i++) {
+   for (uint32_t i = firstViewport; i < total_count; i++) {
       v3dv_viewport_compute_xform(&state->dynamic.viewport.viewports[i],
                                   state->dynamic.viewport.scale[i],
                                   state->dynamic.viewport.translate[i]);
@@ -2812,10 +2812,10 @@ v3dv_CmdSetScissor(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   const uint32_t total_count = firstScissor + scissorCount;
 
    assert(firstScissor < MAX_SCISSORS);
-   assert(total_count >= 1 && total_count <= MAX_SCISSORS);
+   assert(firstScissor + scissorCount >= 1 &&
+          firstScissor + scissorCount <= MAX_SCISSORS);
 
    /* See note on CmdSetViewport related to anv/radv differences about setting
     * total viewports used. Also applies to scissor.
@@ -3658,8 +3658,6 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 
    /* FIXME: likely to be filtered by really needed states */
    uint32_t *dirty = &cmd_buffer->state.dirty;
-   struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
-
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE |
                  V3DV_CMD_DIRTY_VERTEX_BUFFER |
                  V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
@@ -3674,7 +3672,8 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    if (*dirty & (V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR)) {
-      assert(dynamic->scissor.count > 0 || dynamic->viewport.count > 0);
+      assert(cmd_buffer->state.dynamic.scissor.count > 0 ||
+             cmd_buffer->state.dynamic.viewport.count > 0);
       emit_scissor(cmd_buffer);
    }
 

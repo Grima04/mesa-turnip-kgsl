@@ -640,8 +640,7 @@ emit_ds_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
 
    VkFormat format =
       cmd_buffer->state.pass->attachments[attachment_idx].desc.format;
-   VkImageAspectFlags format_aspects = vk_format_aspects(format);
-   assert ((aspects & ~format_aspects) == 0);
+   assert ((aspects & ~vk_format_aspects(format)) == 0);
 
    enum pipe_format pformat = vk_format_to_pipe_format(format);
    VkClearColorValue clear_color;

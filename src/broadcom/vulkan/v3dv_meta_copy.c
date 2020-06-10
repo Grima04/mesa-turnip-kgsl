@@ -1484,6 +1484,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       max_layer = range->baseArrayLayer + layer_count;
    } else {
       min_layer = 0;
+      max_layer = 0;
    }
 
    for (uint32_t level = min_level; level < max_level; level++) {
@@ -1712,7 +1713,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t num_items = region->size / item_size;
    assert(num_items > 0);
 
-   struct v3dv_job *job;
+   struct v3dv_job *job = NULL;
    src_offset += region->srcOffset;
    dst_offset += region->dstOffset;
    while (num_items > 0) {
