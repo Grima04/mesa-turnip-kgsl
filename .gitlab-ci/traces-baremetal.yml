@@ -40,10 +40,8 @@ traces:
         checksum: 86d678c70b8adf27095ace1a6bbfe2d2
   - path: gputest/plot3d.trace
     expectations:
-      # Actually incorrect rendering, it's supposed to be a mesh but
-      # we're not doing polygon modes apparently.
       - device: freedreno-a630
-        checksum: 8ec42780bfd9df16c49d876aa2f4cb8a
+        checksum: 67a9eb692e694b11107860bbcd47d493
 # Note: Requires GL4 for tess.
   - path: gputest/tessmark.trace
     expectations:

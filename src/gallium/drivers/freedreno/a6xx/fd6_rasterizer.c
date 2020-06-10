@@ -39,7 +39,7 @@ struct fd_ringbuffer *
 __fd6_setup_rasterizer_stateobj(struct fd_context *ctx,
 		const struct pipe_rasterizer_state *cso, bool primitive_restart)
 {
-	struct fd_ringbuffer *ring = fd_ringbuffer_new_object(ctx->pipe, 14 * 4);
+	struct fd_ringbuffer *ring = fd_ringbuffer_new_object(ctx->pipe, 18 * 4);
 	float psize_min, psize_max;
 
 	if (cso->point_size_per_vertex) {
@@ -93,6 +93,22 @@ __fd6_setup_rasterizer_stateobj(struct fd_context *ctx,
 			.provoking_vtx_last = !cso->flatshade_first,
 			.primitive_restart = primitive_restart,
 		));
+
+	enum a6xx_polygon_mode mode = POLYMODE6_TRIANGLES;
+	switch (cso->fill_front) {
+	case PIPE_POLYGON_MODE_POINT:
+		mode = POLYMODE6_POINTS;
+		break;
+	case PIPE_POLYGON_MODE_LINE:
+		mode = POLYMODE6_LINES;
+		break;
+	default:
+		assert(cso->fill_front == PIPE_POLYGON_MODE_FILL);
+		break;
+	}
+
+	OUT_REG(ring, A6XX_VPC_POLYGON_MODE(.mode = mode));
+	OUT_REG(ring, A6XX_PC_POLYGON_MODE(.mode = mode));
 
 	return ring;
 }
