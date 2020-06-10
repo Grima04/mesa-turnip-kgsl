@@ -101,7 +101,8 @@ lima_program_optimize_vs_nir(struct nir_shader *s)
 
    NIR_PASS_V(s, nir_lower_viewport_transform);
    NIR_PASS_V(s, nir_lower_point_size, 1.0f, 100.0f);
-   NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size, 0);
+   NIR_PASS_V(s, nir_lower_io,
+	      nir_var_shader_in | nir_var_shader_out, type_size, 0);
    NIR_PASS_V(s, nir_lower_load_const_to_scalar);
    NIR_PASS_V(s, lima_nir_lower_uniform_to_scalar);
    NIR_PASS_V(s, nir_lower_io_to_scalar,
@@ -193,7 +194,8 @@ lima_program_optimize_fs_nir(struct nir_shader *s,
    bool progress;
 
    NIR_PASS_V(s, nir_lower_fragcoord_wtrans);
-   NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size, 0);
+   NIR_PASS_V(s, nir_lower_io,
+	      nir_var_shader_in | nir_var_shader_out, type_size, 0);
    NIR_PASS_V(s, nir_lower_regs_to_ssa);
    NIR_PASS_V(s, nir_lower_tex, tex_options);
 
