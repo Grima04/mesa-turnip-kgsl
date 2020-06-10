@@ -249,24 +249,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 for (unsigned i = 0; i < BIFROST_MAX_RENDER_TARGET_COUNT; i++)
                         state->blend_types[i] = bifrost_blend_type_from_nir(program.blend_types[i]);
 
-        unsigned default_vec1_swizzle;
-        unsigned default_vec2_swizzle;
-        unsigned default_vec4_swizzle;
-
-        if (dev->quirks & HAS_SWIZZLES) {
-                default_vec1_swizzle = panfrost_get_default_swizzle(1);
-                default_vec2_swizzle = panfrost_get_default_swizzle(2);
-                default_vec4_swizzle = panfrost_get_default_swizzle(4);
-        } else {
-                default_vec1_swizzle = panfrost_bifrost_swizzle(1);
-                default_vec2_swizzle = panfrost_bifrost_swizzle(2);
-                default_vec4_swizzle = panfrost_bifrost_swizzle(4);
-        }
-
         /* Record the varying mapping for the command stream's bookkeeping */
-
-        unsigned p_varyings[32];
-        enum mali_format p_varying_type[32];
 
         struct exec_list *l_varyings =
                         stage == MESA_SHADER_VERTEX ? &s->outputs : &s->inputs;
@@ -276,47 +259,21 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 unsigned sz = glsl_count_attribute_slots(var->type, FALSE);
 
                 for (int c = 0; c < sz; ++c) {
-                        p_varyings[loc + c] = var->data.location + c;
-                        p_varying_type[loc + c] = pan_format_from_glsl(var->type, var->data.location_frac);
+                        state->varyings_loc[loc + c] = var->data.location + c;
+                        state->varyings[loc + c] = pan_format_from_glsl(var->type, var->data.location_frac);
                 }
         }
 
-        /* Iterate the varyings and emit the corresponding descriptor */
         for (unsigned i = 0; i < state->varying_count; ++i) {
-                unsigned location = p_varyings[i];
+                unsigned location = state->varyings_loc[i];
 
-                /* Default to a vec4 varying */
-                struct mali_attr_meta v = {
-                        .format = p_varying_type[i],
-                        .swizzle = default_vec4_swizzle,
-                        .unknown1 = dev->quirks & IS_BIFROST ? 0x0 : 0x2,
-                };
-
-                /* Check for special cases, otherwise assume general varying */
-
-                if (location == VARYING_SLOT_POS) {
-                        if (stage == MESA_SHADER_FRAGMENT)
-                                state->reads_frag_coord = true;
-                        else
-                                v.format = MALI_VARYING_POS;
-                } else if (location == VARYING_SLOT_PSIZ) {
-                        v.format = MALI_R16F;
-                        v.swizzle = default_vec1_swizzle;
-
+                if (location == VARYING_SLOT_POS && stage == MESA_SHADER_FRAGMENT)
+                        state->reads_frag_coord = true;
+                else if (location == VARYING_SLOT_PSIZ)
                         state->writes_point_size = true;
-                } else if (location == VARYING_SLOT_PNTC) {
-                        v.format = MALI_RG16F;
-                        v.swizzle = default_vec2_swizzle;
-
+                else if (location == VARYING_SLOT_PNTC)
                         state->reads_point_coord = true;
-                } else if (location == VARYING_SLOT_FACE) {
-                        v.format = MALI_R32I;
-                        v.swizzle = default_vec1_swizzle;
-
+                else if (location == VARYING_SLOT_FACE)
                         state->reads_face = true;
-                }
-
-                state->varyings[i] = v;
-                state->varyings_loc[i] = location;
         }
 }

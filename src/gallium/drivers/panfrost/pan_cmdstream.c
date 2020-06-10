@@ -1912,7 +1912,7 @@ panfrost_emit_varying(
                 bool is_fragment)
 {
         gl_varying_slot loc = stage->varyings_loc[idx];
-        enum mali_format format = stage->varyings[idx].format;
+        enum mali_format format = stage->varyings[idx];
 
         if (has_point_coord(stage->point_sprite_mask, loc)) {
                 return pan_emit_vary_special(present, PAN_VARY_PNTCOORD, quirks);
