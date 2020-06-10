@@ -159,6 +159,12 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 </enum>
 
 <!-- probably same as a5xx -->
+<enum name="a6xx_polygon_mode">
+	<value name="POLYMODE6_POINTS" value="1"/>
+	<value name="POLYMODE6_LINES" value="2"/>
+	<value name="POLYMODE6_TRIANGLES" value="3"/>
+</enum>
+
 <enum name="a6xx_depth_format">
 	<value name="DEPTH6_NONE" value="0"/>
 	<value name="DEPTH6_16" value="1"/>
@@ -2530,7 +2536,9 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9106" name="VPC_UNKNOWN_9106"/>
 	<reg32 offset="0x9107" name="VPC_UNKNOWN_9107"/>
-	<reg32 offset="0x9108" name="VPC_UNKNOWN_9108"/>
+	<reg32 offset="0x9108" name="VPC_POLYGON_MODE">
+		<bitfield name="MODE" low="0" high="1" type="a6xx_polygon_mode"/>
+	</reg32>
 
 	<array offset="0x9200" name="VPC_VARYING_INTERP" stride="1" length="8">
 		<reg32 offset="0x0" name="MODE"/>
@@ -2690,7 +2698,10 @@ to upconvert to 32b float internally?
 	</reg32>
 
 	<reg32 offset="0x9980" name="PC_UNKNOWN_9980"/>
-	<reg32 offset="0x9981" name="PC_UNKNOWN_9981"/>
+
+	<reg32 offset="0x9981" name="PC_POLYGON_MODE">
+		<bitfield name="MODE" low="0" high="1" type="a6xx_polygon_mode"/>
+	</reg32>
 
 	<reg32 offset="0x9990" name="PC_UNKNOWN_9990"/>
 
