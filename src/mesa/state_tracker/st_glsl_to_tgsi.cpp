@@ -6813,6 +6813,12 @@ st_translate_program(
             goto out;
          }
       }
+
+      if (program->shader->Program->sh.fs.BlendSupport)
+         ureg_property(ureg,
+                       TGSI_PROPERTY_FS_BLEND_EQUATION_ADVANCED,
+                       program->shader->Program->sh.fs.BlendSupport);
+
    }
    else if (procType == PIPE_SHADER_VERTEX) {
       for (i = 0; i < numOutputs; i++) {
