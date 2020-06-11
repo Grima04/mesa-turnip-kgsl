@@ -70,6 +70,21 @@ setup_conflicts(struct ir3_ra_reg_set *set)
 			reg++;
 		}
 	}
+
+	/*
+	 * Setup conflicts with registers over 0x3f for the special vreg
+	 * that exists to use as interference for tex-prefetch:
+	 */
+
+	for (unsigned i = 0x40; i < CLASS_REGS(0); i++) {
+		ra_add_transitive_reg_conflict(set->regs, i,
+				set->prefetch_exclude_reg);
+	}
+
+	for (unsigned i = 0x40; i < HALF_CLASS_REGS(0); i++) {
+		ra_add_transitive_reg_conflict(set->regs, i + set->first_half_reg,
+				set->prefetch_exclude_reg);
+	}
 }
 
 /* One-time setup of RA register-set, which describes all the possible
@@ -103,6 +118,8 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 		ra_reg_count += HALF_CLASS_REGS(i);
 	for (unsigned i = 0; i < high_class_count; i++)
 		ra_reg_count += HIGH_CLASS_REGS(i);
+
+	ra_reg_count += 1;   /* for tex-prefetch excludes */
 
 	/* allocate the reg-set.. */
 	set->regs = ra_alloc_reg_set(set, ra_reg_count, true);
@@ -164,7 +181,20 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 		}
 	}
 
-	/* starting a6xx, half precision regs conflict w/ full precision regs: */
+	/*
+	 * Setup an additional class, with one vreg, to simply conflict
+	 * with registers that are too high to encode tex-prefetch.  This
+	 * vreg is only used to setup additional conflicts so that RA
+	 * knows to allocate prefetch dst regs below the limit:
+	 */
+	set->prefetch_exclude_class = ra_alloc_reg_class(set->regs);
+	ra_class_add_reg(set->regs, set->prefetch_exclude_class, reg);
+	set->prefetch_exclude_reg = reg++;
+
+	/*
+	 * And finally setup conflicts.  Starting a6xx, half precision regs
+	 * conflict w/ full precision regs (when using MERGEDREGS):
+	 */
 	if (compiler->gpu_id >= 600) {
 		for (unsigned i = 0; i < CLASS_REGS(0) / 2; i++) {
 			unsigned freg  = set->gpr_to_ra_reg[0][i];

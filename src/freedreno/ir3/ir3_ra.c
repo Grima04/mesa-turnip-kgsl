@@ -563,6 +563,9 @@ ra_init(struct ir3_ra_ctx *ctx)
 	ctx->hr0_xyz_nodes = ctx->alloc_count;
 	ctx->alloc_count += 3;
 
+	/* Add vreg name for prefetch-exclusion range: */
+	ctx->prefetch_exclude_node = ctx->alloc_count++;
+
 	ctx->g = ra_alloc_interference_graph(ctx->set->regs, ctx->alloc_count);
 	ralloc_steal(ctx->g, ctx->instrd);
 	ctx->def = rzalloc_array(ctx->g, unsigned, ctx->alloc_count);
@@ -711,10 +714,19 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 			 */
 			if (is_tex_or_prefetch(instr)) {
 				int writemask_skipped_regs = ffs(instr->regs[0]->wrmask) - 1;
-				int r0_xyz = (instr->regs[0]->flags & IR3_REG_HALF) ?
+				int r0_xyz = is_half(instr) ?
 					ctx->hr0_xyz_nodes : ctx->r0_xyz_nodes;
 				for (int i = 0; i < writemask_skipped_regs; i++)
 					ra_add_node_interference(ctx->g, name, r0_xyz + i);
+			}
+
+			/* Pre-fetched textures have a lower limit for bits to encode dst
+			 * register, so add additional interference with registers above
+			 * that limit.
+			 */
+			if (instr->opc == OPC_META_TEX_PREFETCH) {
+				ra_add_node_interference(ctx->g, name,
+						ctx->prefetch_exclude_node);
 			}
 		}
 
@@ -1011,13 +1023,18 @@ ra_add_interference(struct ir3_ra_ctx *ctx)
 		arr->end_ip = 0;
 	}
 
-
 	/* set up the r0.xyz precolor regs. */
 	for (int i = 0; i < 3; i++) {
 		ra_set_node_reg(ctx->g, ctx->r0_xyz_nodes + i, i);
 		ra_set_node_reg(ctx->g, ctx->hr0_xyz_nodes + i,
 				ctx->set->first_half_reg + i);
 	}
+
+	/* pre-color node that conflict with half/full regs higher than what
+	 * can be encoded for tex-prefetch:
+	 */
+	ra_set_node_reg(ctx->g, ctx->prefetch_exclude_node,
+			ctx->set->prefetch_exclude_reg);
 
 	/* compute live ranges (use/def) on a block level, also updating
 	 * block's def/use bitmasks (used below to calculate per-block
