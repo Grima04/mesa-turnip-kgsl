@@ -149,10 +149,10 @@ extract_xml_result() {
             if [ "$line" = "$start" ]; then
                 dst="$testcase.qpa"
                 echo "#beginSession" > $dst
-                echo $line >> $dst
+                echo "$line" >> $dst
                 while IFS= read -r line; do
                     if [ "$line" = "#endTestCaseResult" ]; then
-                        echo $line >> $dst
+                        echo "$line" >> $dst
                         echo "#endSession" >> $dst
                         /deqp/executor/testlog-to-xml $dst "$RESULTS/$testcase$DEQP_RUN_SUFFIX.xml"
                         # copy the stylesheets here so they only end up in artifacts
@@ -161,7 +161,7 @@ extract_xml_result() {
                         cp /deqp/testlog.xsl "$RESULTS/"
                         return 0
                     fi
-                    echo $line >> $dst
+                    echo "$line" >> $dst
                 done
                 return 1
             fi
