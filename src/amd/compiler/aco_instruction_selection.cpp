@@ -3111,7 +3111,9 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
       int byte_align = align_mul % 4 == 0 ? align_offset % 4 : -1;
 
       if (byte_align) {
-         if ((bytes_needed > 2 || !supports_8bit_16bit_loads) && byte_align_loads) {
+         if ((bytes_needed > 2 ||
+              (bytes_needed == 2 && (align_mul % 2 || align_offset % 2)) ||
+              !supports_8bit_16bit_loads) && byte_align_loads) {
             if (info->component_stride) {
                assert(supports_8bit_16bit_loads && "unimplemented");
                bytes_needed = 2;
