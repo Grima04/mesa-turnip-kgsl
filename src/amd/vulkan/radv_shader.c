@@ -309,8 +309,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 {
 	nir_shader *nir;
 	const nir_shader_compiler_options *nir_options =
-		device->physical_device->use_aco ? &nir_options_aco :
-						   &nir_options_llvm;
+		device->physical_device->use_llvm ? &nir_options_llvm :
+						    &nir_options_aco;
 
 	if (module->nir) {
 		/* Some things such as our meta clear/blit code will give us a NIR
@@ -458,7 +458,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		NIR_PASS_V(nir, nir_split_per_member_structs);
 
 		if (nir->info.stage == MESA_SHADER_FRAGMENT &&
-		    device->physical_device->use_aco)
+		    !device->physical_device->use_llvm)
                         NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
 		if (nir->info.stage == MESA_SHADER_FRAGMENT)
 			NIR_PASS_V(nir, nir_lower_input_attachments, true);
@@ -1166,14 +1166,14 @@ shader_variant_compile(struct radv_device *device,
 				 shader_count >= 2 ? shaders[shader_count - 2]->info.stage
 						   : MESA_SHADER_VERTEX);
 
-	if (!device->physical_device->use_aco ||
+	if (device->physical_device->use_llvm ||
 	    options->dump_shader || options->record_ir)
 		ac_init_llvm_once();
 
-	if (device->physical_device->use_aco) {
-		aco_compile_shader(shader_count, shaders, &binary, &args);
-	} else {
+	if (device->physical_device->use_llvm) {
 		llvm_compile_shader(device, shader_count, shaders, &binary, &args);
+	} else {
+		aco_compile_shader(shader_count, shaders, &binary, &args);
 	}
 
 	binary->info = *info;
@@ -1234,7 +1234,7 @@ radv_shader_variant_compile(struct radv_device *device,
 	if (key)
 		options.key = *key;
 
-	options.explicit_scratch_args = device->physical_device->use_aco;
+	options.explicit_scratch_args = !device->physical_device->use_llvm;
 	options.robust_buffer_access = device->robust_buffer_access;
 
 	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage, info,
@@ -1251,7 +1251,7 @@ radv_create_gs_copy_shader(struct radv_device *device,
 {
 	struct radv_nir_compiler_options options = {0};
 
-	options.explicit_scratch_args = device->physical_device->use_aco;
+	options.explicit_scratch_args = !device->physical_device->use_llvm;
 	options.key.has_multiview_view_index = multiview;
 
 	return shader_variant_compile(device, NULL, &shader, 1, MESA_SHADER_VERTEX,

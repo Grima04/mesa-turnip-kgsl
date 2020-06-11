@@ -222,8 +222,8 @@ static uint32_t get_hash_flags(struct radv_device *device)
 		hash_flags |= RADV_HASH_SHADER_PS_WAVE32;
 	if (device->physical_device->ge_wave_size == 32)
 		hash_flags |= RADV_HASH_SHADER_GE_WAVE32;
-	if (device->physical_device->use_aco)
-		hash_flags |= RADV_HASH_SHADER_ACO;
+	if (device->physical_device->use_llvm)
+		hash_flags |= RADV_HASH_SHADER_LLVM;
 	return hash_flags;
 }
 
@@ -2521,7 +2521,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 					  pipeline->layout,
 					  &keys[MESA_SHADER_FRAGMENT],
 					  &infos[MESA_SHADER_FRAGMENT],
-					  pipeline->device->physical_device->use_aco);
+					  pipeline->device->physical_device->use_llvm);
 
 		/* TODO: These are no longer used as keys we should refactor this */
 		keys[MESA_SHADER_VERTEX].vs_common_out.export_prim_id =
@@ -2573,7 +2573,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 			radv_nir_shader_info_pass(combined_nir[i],
 						  pipeline->layout, &key,
 						  &infos[MESA_SHADER_TESS_CTRL],
-						  pipeline->device->physical_device->use_aco);
+						  pipeline->device->physical_device->use_llvm);
 		}
 
 		keys[MESA_SHADER_TESS_EVAL].tes.num_patches =
@@ -2597,7 +2597,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 						  pipeline->layout,
 						  &keys[pre_stage],
 						  &infos[MESA_SHADER_GEOMETRY],
-						  pipeline->device->physical_device->use_aco);
+						  pipeline->device->physical_device->use_llvm);
 		}
 
 		filled_stages |= (1 << pre_stage);
@@ -2622,7 +2622,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
 		radv_nir_shader_info_init(&infos[i]);
 		radv_nir_shader_info_pass(nir[i], pipeline->layout,
-					  &keys[i], &infos[i], pipeline->device->physical_device->use_aco);
+					  &keys[i], &infos[i], pipeline->device->physical_device->use_llvm);
 	}
 
 	for (int i = 0; i < MESA_SHADER_STAGES; i++) {
@@ -2832,14 +2832,15 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			/* do this again since information such as outputs_read can be out-of-date */
 			nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
 
-			if (device->physical_device->use_aco) {
+			if (device->physical_device->use_llvm) {
+				NIR_PASS_V(nir[i], nir_lower_bool_to_int32);
+			} else {
 				NIR_PASS_V(nir[i], nir_lower_non_uniform_access,
 				           nir_lower_non_uniform_ubo_access |
 				           nir_lower_non_uniform_ssbo_access |
 				           nir_lower_non_uniform_texture_access |
 				           nir_lower_non_uniform_image_access);
-			} else
-				NIR_PASS_V(nir[i], nir_lower_bool_to_int32);
+			}
 		}
 	}
 
@@ -2888,7 +2889,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 			radv_nir_shader_info_pass(nir[MESA_SHADER_GEOMETRY],
 						  pipeline->layout, &key,
-						  &info, pipeline->device->physical_device->use_aco);
+						  &info, pipeline->device->physical_device->use_llvm);
 			info.wave_size = 64; /* Wave32 not supported. */
 			info.ballot_bit_size = 64;
 
@@ -5744,12 +5745,12 @@ VkResult radv_GetPipelineExecutableInternalRepresentationsKHR(
 	/* backend IR */
 	if (p < end) {
 		p->isText = true;
-		if (pipeline->device->physical_device->use_aco) {
-			desc_copy(p->name, "ACO IR");
-			desc_copy(p->description, "The ACO IR after some optimizations");
-		} else {
+		if (pipeline->device->physical_device->use_llvm) {
 			desc_copy(p->name, "LLVM IR");
 			desc_copy(p->description, "The LLVM IR after some optimizations");
+		} else {
+			desc_copy(p->name, "ACO IR");
+			desc_copy(p->description, "The ACO IR after some optimizations");
 		}
 		if (radv_copy_representation(p->pData, &p->dataSize, shader->ir_string) != VK_SUCCESS)
 			result = VK_INCOMPLETE;

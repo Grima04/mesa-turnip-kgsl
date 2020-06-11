@@ -230,7 +230,7 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 static const char *
 radv_get_compiler_string(struct radv_physical_device *pdevice)
 {
-	if (pdevice->use_aco) {
+	if (!pdevice->use_llvm) {
 		/* Some games like SotTR apply shader workarounds if the LLVM
 		 * version is too old or if the LLVM version string is
 		 * missing. This gives 2-5% performance with SotTR and ACO.
@@ -338,7 +338,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	device->local_fd = fd;
 	device->ws->query_info(device->ws, &device->rad_info);
 
-	device->use_aco = instance->perftest_flags & RADV_PERFTEST_ACO;
+	device->use_llvm = !(instance->perftest_flags & RADV_PERFTEST_ACO);
 
 	snprintf(device->name, sizeof(device->name),
 		 "AMD RADV %s (%s)",
@@ -351,7 +351,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	}
 
 	/* These flags affect shader compilation. */
-	uint64_t shader_env_flags = (device->use_aco ? 0x2 : 0);
+	uint64_t shader_env_flags = (device->use_llvm ? 0 : 0x2);
 
 	/* The gpu id is already embedded in the uuid so we just pass "radv"
 	 * when creating the cache.
@@ -372,7 +372,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	device->dcc_msaa_allowed =
 		(device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
-	device->use_shader_ballot = (device->use_aco && device->rad_info.chip_class >= GFX8) ||
+	device->use_shader_ballot = (!device->use_llvm && device->rad_info.chip_class >= GFX8) ||
 				    (device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
 
 	device->use_ngg = device->rad_info.chip_class >= GFX10 &&
@@ -380,7 +380,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 			  !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
 
 	/* TODO: Implement NGG GS with ACO. */
-	device->use_ngg_gs = device->use_ngg && !device->use_aco;
+	device->use_ngg_gs = device->use_ngg && device->use_llvm;
 	device->use_ngg_streamout = false;
 
 	/* Determine the number of threads per wave for all stages. */
@@ -976,7 +976,7 @@ radv_get_physical_device_features_1_1(struct radv_physical_device *pdevice,
 	f->storageBuffer16BitAccess            = true;
 	f->uniformAndStorageBuffer16BitAccess  = true;
 	f->storagePushConstant16               = true;
-	f->storageInputOutput16                = pdevice->rad_info.has_packed_math_16bit && (LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco);
+	f->storageInputOutput16                = pdevice->rad_info.has_packed_math_16bit && (LLVM_VERSION_MAJOR >= 9 || !pdevice->use_llvm);
 	f->multiview                           = true;
 	f->multiviewGeometryShader             = true;
 	f->multiviewTessellationShader         = true;
@@ -998,8 +998,8 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
 	f->storageBuffer8BitAccess = true;
 	f->uniformAndStorageBuffer8BitAccess = true;
 	f->storagePushConstant8 = true;
-	f->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco;
-	f->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco;
+	f->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9 || !pdevice->use_llvm;
+	f->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9 || !pdevice->use_llvm;
 	f->shaderFloat16 = pdevice->rad_info.has_packed_math_16bit;
 	f->shaderInt8 = true;
 
@@ -1217,7 +1217,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
 			VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *features =
 				(VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *)ext;
-			features->shaderDemoteToHelperInvocation = LLVM_VERSION_MAJOR >= 9 || pdevice->use_aco;
+			features->shaderDemoteToHelperInvocation = LLVM_VERSION_MAJOR >= 9 || !pdevice->use_llvm;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {

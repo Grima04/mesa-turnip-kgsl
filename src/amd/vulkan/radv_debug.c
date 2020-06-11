@@ -433,7 +433,7 @@ radv_dump_shader(struct radv_pipeline *pipeline,
 	}
 
 	fprintf(f, "%s IR:\n%s\n",
-		pipeline->device->physical_device->use_aco ? "ACO" : "LLVM",
+		pipeline->device->physical_device->use_llvm ? "LLVM" : "ACO",
 		shader->ir_string);
 	fprintf(f, "DISASM:\n%s\n", shader->disasm_string);
 
