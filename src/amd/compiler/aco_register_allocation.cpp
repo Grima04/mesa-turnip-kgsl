@@ -429,7 +429,7 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
    if (can_use_SDWA(chip, instr)) {
       return std::make_pair(rc.bytes(), rc.bytes());
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, -1, 1)) {
-      return std::make_pair(2u, chip >= GFX10 ? 2u : 4u);
+      return std::make_pair(2u, bytes_written);
    }
 
    switch (instr->opcode) {
