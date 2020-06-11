@@ -2085,7 +2085,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
 
             adjust_max_used_regs(ctx, definition.regClass(), definition.physReg());
             /* check if the target register is blocked */
-            if (register_file[definition.physReg().reg()] != 0) {
+            if (register_file.test(definition.physReg(), definition.bytes())) {
                /* create parallelcopy pair to move blocking vars */
                std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, register_file, definition.physReg(), definition.size());
 
