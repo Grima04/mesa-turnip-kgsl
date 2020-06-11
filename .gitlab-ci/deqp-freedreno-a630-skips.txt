@@ -61,3 +61,21 @@ dEQP-GLES3.functional.fragment_out.random.96
 dEQP-GLES3.functional.transform_feedback.array_element.interleaved.triangles.highp_mat2x3
 dEQP-GLES3.functional.transform_feedback.array_element.interleaved.triangles.lowp_mat2x4
 dEQP-GLES3.functional.transform_feedback.array_element.separate.triangles.lowp_mat2x4
+
+# Non-sysmem flakes
+dEQP-VK.pipeline.stencil.format.d24_unorm_s8_uint.states.fail_incc.pass_repl.dfail_decw.comp_not_equal
+dEQP-VK.pipeline.stencil.nocolor.format.d24_unorm_s8_uint.states.fail_repl.pass_decc.dfail_repl.comp_always
+dEQP-VK.pipeline.spec_constant.compute.composite.matrix.mat3x2
+
+# Sysmem flake: this one is fairly frequent, but if you enable it then
+# it moves to dEQP-VK.renderpass.dedicated_allocation.attachment.3.393
+#
+#dEQP-VK.renderpass.suballocation.attachment_allocation.grow_shrink.89
+
+# At least some of the separate_channels tests fail on sysmem due to an
+# interaction of use of a UBWC buffer as both a render target and a
+# texture.  Stores are done through both paths in separate channels,
+# and the UBWC updates don't get synced.  The current a650 blob also
+# fails these tests and qcom apparently noted the failure at one point
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2017
+dEQP-VK.renderpass.*separate_channels.*
