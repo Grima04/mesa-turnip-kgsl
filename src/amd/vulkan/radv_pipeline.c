@@ -5119,6 +5119,17 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 			blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
 	}
 
+	if (extra &&
+	    (extra->custom_blend_mode == V_028808_CB_ELIMINATE_FAST_CLEAR ||
+	     extra->custom_blend_mode == V_028808_CB_FMASK_DECOMPRESS ||
+	     extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS ||
+	     extra->custom_blend_mode == V_028808_CB_RESOLVE)) {
+		/* According to the CB spec states, CB_SHADER_MASK should be
+		 * set to enable writes to all four channels of MRT0.
+		 */
+		blend.cb_shader_mask = 0xf;
+	}
+
 	for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
 		if (pipeline->shaders[i]) {
 			pipeline->need_indirect_descriptor_sets |= pipeline->shaders[i]->info.need_indirect_descriptor_sets;
