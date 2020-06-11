@@ -3355,106 +3355,106 @@ Program::makeFromNIR(struct nv50_ir_prog_info *info)
 static nir_shader_compiler_options
 nvir_nir_shader_compiler_options(int chipset)
 {
-   return {
-      .lower_fdiv = (chipset >= NVISA_GV100_CHIPSET),
-      .lower_ffma = false,
-      .fuse_ffma = false, /* nir doesn't track mad vs fma */
-      .lower_flrp16 = (chipset >= NVISA_GV100_CHIPSET),
-      .lower_flrp32 = true,
-      .lower_flrp64 = true,
-      .lower_fpow = false, // TODO: nir's lowering is broken, or we could use it
-      .lower_fsat = false,
-      .lower_fsqrt = false, // TODO: only before gm200
-      .lower_sincos = false,
-      .lower_fmod = true,
-      .lower_bitfield_extract = false,
-      .lower_bitfield_extract_to_shifts = (chipset >= NVISA_GV100_CHIPSET),
-      .lower_bitfield_insert = false,
-      .lower_bitfield_insert_to_shifts = (chipset >= NVISA_GV100_CHIPSET),
-      .lower_bitfield_insert_to_bitfield_select = false,
-      .lower_bitfield_reverse = false,
-      .lower_bit_count = false,
-      .lower_ifind_msb = false,
-      .lower_find_lsb = false,
-      .lower_uadd_carry = true, // TODO
-      .lower_usub_borrow = true, // TODO
-      .lower_mul_high = false,
-      .lower_negate = false,
-      .lower_sub = true,
-      .lower_scmp = true, // TODO: not implemented yet
-      .lower_vector_cmp = false,
-      .lower_idiv = true,
-      .lower_bitops = false,
-      .lower_isign = (chipset >= NVISA_GV100_CHIPSET),
-      .lower_fsign = (chipset >= NVISA_GV100_CHIPSET),
-      .lower_fdph = false,
-      .lower_fdot = false,
-      .fdot_replicates = false, // TODO
-      .lower_ffloor = false, // TODO
-      .lower_ffract = true,
-      .lower_fceil = false, // TODO
-      .lower_ftrunc = false,
-      .lower_ldexp = true,
-      .lower_pack_half_2x16 = true,
-      .lower_pack_unorm_2x16 = true,
-      .lower_pack_snorm_2x16 = true,
-      .lower_pack_unorm_4x8 = true,
-      .lower_pack_snorm_4x8 = true,
-      .lower_unpack_half_2x16 = true,
-      .lower_unpack_unorm_2x16 = true,
-      .lower_unpack_snorm_2x16 = true,
-      .lower_unpack_unorm_4x8 = true,
-      .lower_unpack_snorm_4x8 = true,
-      .lower_pack_split = false,
-      .lower_extract_byte = (chipset < NVISA_GM107_CHIPSET),
-      .lower_extract_word = (chipset < NVISA_GM107_CHIPSET),
-      .lower_all_io_to_temps = false,
-      .lower_all_io_to_elements = false,
-      .vertex_id_zero_based = false,
-      .lower_base_vertex = false,
-      .lower_helper_invocation = false,
-      .optimize_sample_mask_in = false,
-      .lower_cs_local_index_from_id = true,
-      .lower_cs_local_id_from_index = false,
-      .lower_device_index_to_zero = false, // TODO
-      .lower_wpos_pntc = false, // TODO
-      .lower_hadd = true, // TODO
-      .lower_add_sat = true, // TODO
-      .vectorize_io = false,
-      .lower_to_scalar = true,
-      .unify_interfaces = false,
-      .use_interpolated_input_intrinsics = true,
-      .lower_mul_2x32_64 = true, // TODO
-      .lower_rotate = (chipset < NVISA_GV100_CHIPSET),
-      .has_imul24 = false,
-      .intel_vec4 = false,
-      .max_unroll_iterations = 32,
-      .lower_int64_options = (nir_lower_int64_options) (
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_isign64 : 0) |
-            nir_lower_divmod64 |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul_high64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_mov64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_icmp64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_iabs64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_ineg64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_logic64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_minmax64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_shift64 : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul_2x32_64 : 0) |
-            ((chipset >= NVISA_GM107_CHIPSET) ? nir_lower_extract64 : 0) |
-            nir_lower_ufind_msb64
-      ),
-      .lower_doubles_options = (nir_lower_doubles_options) (
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_drcp : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dsqrt : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_drsq : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dfract : 0) |
-            nir_lower_dmod |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dsub : 0) |
-            ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_ddiv : 0)
-      )
-   };
+   nir_shader_compiler_options op = {};
+   op.lower_fdiv = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_ffma = false;
+   op.fuse_ffma = false; /* nir doesn't track mad vs fma */
+   op.lower_flrp16 = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_flrp32 = true;
+   op.lower_flrp64 = true;
+   op.lower_fpow = false; // TODO: nir's lowering is broken, or we could use it
+   op.lower_fsat = false;
+   op.lower_fsqrt = false; // TODO: only before gm200
+   op.lower_sincos = false;
+   op.lower_fmod = true;
+   op.lower_bitfield_extract = false;
+   op.lower_bitfield_extract_to_shifts = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_bitfield_insert = false;
+   op.lower_bitfield_insert_to_shifts = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_bitfield_insert_to_bitfield_select = false;
+   op.lower_bitfield_reverse = false;
+   op.lower_bit_count = false;
+   op.lower_ifind_msb = false;
+   op.lower_find_lsb = false;
+   op.lower_uadd_carry = true; // TODO
+   op.lower_usub_borrow = true; // TODO
+   op.lower_mul_high = false;
+   op.lower_negate = false;
+   op.lower_sub = true;
+   op.lower_scmp = true; // TODO: not implemented yet
+   op.lower_vector_cmp = false;
+   op.lower_idiv = true;
+   op.lower_bitops = false;
+   op.lower_isign = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_fsign = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_fdph = false;
+   op.lower_fdot = false;
+   op.fdot_replicates = false; // TODO
+   op.lower_ffloor = false; // TODO
+   op.lower_ffract = true;
+   op.lower_fceil = false; // TODO
+   op.lower_ftrunc = false;
+   op.lower_ldexp = true;
+   op.lower_pack_half_2x16 = true;
+   op.lower_pack_unorm_2x16 = true;
+   op.lower_pack_snorm_2x16 = true;
+   op.lower_pack_unorm_4x8 = true;
+   op.lower_pack_snorm_4x8 = true;
+   op.lower_unpack_half_2x16 = true;
+   op.lower_unpack_unorm_2x16 = true;
+   op.lower_unpack_snorm_2x16 = true;
+   op.lower_unpack_unorm_4x8 = true;
+   op.lower_unpack_snorm_4x8 = true;
+   op.lower_pack_split = false;
+   op.lower_extract_byte = (chipset < NVISA_GM107_CHIPSET);
+   op.lower_extract_word = (chipset < NVISA_GM107_CHIPSET);
+   op.lower_all_io_to_temps = false;
+   op.lower_all_io_to_elements = false;
+   op.vertex_id_zero_based = false;
+   op.lower_base_vertex = false;
+   op.lower_helper_invocation = false;
+   op.optimize_sample_mask_in = false;
+   op.lower_cs_local_index_from_id = true;
+   op.lower_cs_local_id_from_index = false;
+   op.lower_device_index_to_zero = false; // TODO
+   op.lower_wpos_pntc = false; // TODO
+   op.lower_hadd = true; // TODO
+   op.lower_add_sat = true; // TODO
+   op.vectorize_io = false;
+   op.lower_to_scalar = true;
+   op.unify_interfaces = false;
+   op.use_interpolated_input_intrinsics = true;
+   op.lower_mul_2x32_64 = true; // TODO
+   op.lower_rotate = (chipset < NVISA_GV100_CHIPSET);
+   op.has_imul24 = false;
+   op.intel_vec4 = false;
+   op.max_unroll_iterations = 32;
+   op.lower_int64_options = (nir_lower_int64_options) (
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_isign64 : 0) |
+      nir_lower_divmod64 |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul_high64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_mov64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_icmp64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_iabs64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_ineg64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_logic64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_minmax64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_shift64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul_2x32_64 : 0) |
+      ((chipset >= NVISA_GM107_CHIPSET) ? nir_lower_extract64 : 0) |
+      nir_lower_ufind_msb64
+   );
+   op.lower_doubles_options = (nir_lower_doubles_options) (
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_drcp : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dsqrt : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_drsq : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dfract : 0) |
+      nir_lower_dmod |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_dsub : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_ddiv : 0)
+   );
+   return op;
 }
 
 static const nir_shader_compiler_options gf100_nir_shader_compiler_options =
