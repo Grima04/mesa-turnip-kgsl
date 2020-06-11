@@ -659,6 +659,15 @@ nir_lower_io_impl(nir_function_impl *impl,
    return progress;
 }
 
+/** Lower load/store_deref intrinsics on I/O variables to offset-based intrinsics
+ *
+ * This pass is intended to be used for cross-stage shader I/O and driver-
+ * managed uniforms to turn deref-based access into a simpler model using
+ * locations or offsets.  For fragment shader inputs, it can optionally turn
+ * load_deref into an explicit interpolation using barycentrics coming from
+ * one of the load_barycentric_* intrinsics.  This pass requires that all
+ * deref chains are complete and contain no casts.
+ */
 bool
 nir_lower_io(nir_shader *shader, nir_variable_mode modes,
              int (*type_size)(const struct glsl_type *, bool),
@@ -1328,6 +1337,29 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
    return progress;
 }
 
+/** Lower explicitly laid out I/O access to byte offset/address intrinsics
+ *
+ * This pass is intended to be used for any I/O which touches memory external
+ * to the shader or which is directly visible to the client.  It requires that
+ * all data types in the given modes have a explicit stride/offset decorations
+ * to tell it exactly how to calculate the offset/address for the given load,
+ * store, or atomic operation.  If the offset/stride information does not come
+ * from the client explicitly (as with shared variables in GL or Vulkan),
+ * nir_lower_vars_to_explicit_types() can be used to add them.
+ *
+ * Unlike nir_lower_io, this pass is fully capable of handling incomplete
+ * pointer chains which may contain cast derefs.  It does so by walking the
+ * deref chain backwards and simply replacing each deref, one at a time, with
+ * the appropriate address calculation.  The pass takes a nir_address_format
+ * parameter which describes how the offset or address is to be represented
+ * during calculations.  By ensuring that the address is always in a
+ * consistent format, pointers can safely be conjured from thin air by the
+ * driver, stored to variables, passed through phis, etc.
+ *
+ * The one exception to the simple algorithm described above is for handling
+ * row-major matrices in which case we may look down one additional level of
+ * the deref chain.
+ */
 bool
 nir_lower_explicit_io(nir_shader *shader, nir_variable_mode modes,
                       nir_address_format addr_format)
