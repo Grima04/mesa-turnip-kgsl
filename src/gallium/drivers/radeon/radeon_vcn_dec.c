@@ -824,6 +824,10 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
                        dec->base.width > 32 && dec->stream_type == RDECODE_CODEC_VP9)
                          ? align(dec->base.width, 64)
                          : align(dec->base.width, 32);
+   if (((struct si_screen*)dec->screen)->info.family >= CHIP_SIENNA &&
+       dec->stream_type == RDECODE_CODEC_VP9)
+      decode->db_aligned_height = align(dec->base.height, 64);
+
    decode->db_surf_tile_config = 0;
 
    decode->dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
