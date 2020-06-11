@@ -530,7 +530,6 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 	if (blend->mrt0_is_dual_src)
 		col_format |= (col_format & 0xf) << 4;
 
-	blend->cb_shader_mask = ac_get_cb_shader_mask(col_format);
 	blend->spi_shader_col_format = col_format;
 }
 
@@ -5117,6 +5116,11 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		    !ps->info.ps.writes_stencil &&
 		    !ps->info.ps.writes_sample_mask)
 			blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+	}
+
+	blend.cb_shader_mask = ps->info.ps.cb_shader_mask;
+	if (blend.mrt0_is_dual_src) {
+		blend.cb_shader_mask |= (blend.cb_shader_mask & 0xf) << 4;
 	}
 
 	if (extra &&

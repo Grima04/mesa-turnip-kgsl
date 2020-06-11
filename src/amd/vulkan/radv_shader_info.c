@@ -537,6 +537,17 @@ gather_info_output_decl_ps(const nir_shader *nir, const nir_variable *var,
 	default:
 		break;
 	}
+
+	if (idx >= FRAG_RESULT_DATA0 && idx <= FRAG_RESULT_DATA7) {
+		unsigned num_components = glsl_get_component_slots(glsl_without_array(var->type));
+		unsigned num_slots = glsl_count_attribute_slots(var->type, false);
+		unsigned write_mask = (1 << num_components) - 1;
+		unsigned slot = idx - FRAG_RESULT_DATA0;
+
+		for (unsigned i = 0; i < num_slots; i++) {
+			info->ps.cb_shader_mask |= write_mask << ((slot + i) * 4);
+		}
+	}
 }
 
 static void
@@ -834,4 +845,18 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
 	}
 
 	info->float_controls_mode = nir->info.float_controls_execution_mode;
+
+	if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+		/* If the i-th output is used, all previous outputs must be
+		 * non-zero to match the target format.
+		 * TODO: compact MRT to avoid holes and to remove this
+		 * workaround.
+		 */
+		unsigned num_targets = (util_last_bit(info->ps.cb_shader_mask) + 3) / 4;
+		for (unsigned i = 0; i < num_targets; i++) {
+			if (!(info->ps.cb_shader_mask & (0xf << (i * 4)))) {
+				info->ps.cb_shader_mask |= 0xf << (i * 4);
+			}
+		}
+	}
 }
