@@ -628,7 +628,7 @@ tu6_blend_op(VkBlendOp op)
    }
 }
 
-static void
+void
 tu6_emit_xs_config(struct tu_cs *cs,
                    gl_shader_stage stage, /* xs->type, but xs may be NULL */
                    const struct ir3_shader_variant *xs,
@@ -731,7 +731,9 @@ tu6_emit_xs_config(struct tu_cs *cs,
                   COND(xs->bindless_tex, A6XX_SP_VS_CONFIG_BINDLESS_TEX) |
                   COND(xs->bindless_samp, A6XX_SP_VS_CONFIG_BINDLESS_SAMP) |
                   COND(xs->bindless_ibo, A6XX_SP_VS_CONFIG_BINDLESS_IBO) |
-                  COND(xs->bindless_ubo, A6XX_SP_VS_CONFIG_BINDLESS_UBO));
+                  COND(xs->bindless_ubo, A6XX_SP_VS_CONFIG_BINDLESS_UBO) |
+                  A6XX_SP_VS_CONFIG_NTEX(xs->num_samp) |
+                  A6XX_SP_VS_CONFIG_NSAMP(xs->num_samp));
    tu_cs_emit(cs, xs->instrlen);
 
    tu_cs_emit_pkt4(cs, cfg->reg_hlsq_xs_ctrl, 1);
@@ -1003,7 +1005,7 @@ gl_primitive_to_tess(uint16_t primitive) {
    }
 }
 
-static void
+void
 tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
              const struct ir3_shader_variant *gs,
@@ -1268,7 +1270,7 @@ tu6_emit_vpc_varying_modes(struct tu_cs *cs,
    tu_cs_emit_array(cs, ps_repl_modes, 8);
 }
 
-static void
+void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 {
    uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;

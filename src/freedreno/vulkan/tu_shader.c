@@ -741,6 +741,9 @@ tu_compile_shader_variant(struct ir3_shader *shader,
    if (ret)
       return NULL;
 
+   /* num_samp should be 0 for bindless, but we use it with blit shader */
+   variant->num_samp = 0;
+
    /* when assemble fails, we rely on tu_shader_destroy to clean up the
     * variant
     */

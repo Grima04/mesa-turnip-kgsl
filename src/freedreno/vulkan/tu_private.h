@@ -1445,6 +1445,22 @@ void tu6_emit_window_scissor(struct tu_cs *cs, uint32_t x1, uint32_t y1, uint32_
 
 void tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1);
 
+void
+tu6_emit_xs_config(struct tu_cs *cs,
+                   gl_shader_stage stage,
+                   const struct ir3_shader_variant *xs,
+                   uint64_t binary_iova);
+
+void
+tu6_emit_vpc(struct tu_cs *cs,
+             const struct ir3_shader_variant *vs,
+             const struct ir3_shader_variant *gs,
+             const struct ir3_shader_variant *fs,
+             struct tu_streamout_state *tf);
+
+void
+tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs);
+
 struct tu_image_view;
 
 void

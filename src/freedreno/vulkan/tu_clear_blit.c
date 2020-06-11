@@ -485,6 +485,59 @@ r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_rts)
 {
+   struct ir3_shader dummy_shader = {};
+
+   struct ir3_shader_variant vs = {
+      .type = MESA_SHADER_VERTEX,
+      .instrlen = 1,
+      .constlen = 2,
+      .info.max_reg = 1,
+      .inputs_count = 1,
+      .inputs[0] = {
+         .slot = SYSTEM_VALUE_VERTEX_ID,
+         .regid = regid(0, 3),
+         .sysval = true,
+      },
+      .outputs_count = blit ? 2 : 1,
+      .outputs[0] = {
+         .slot = VARYING_SLOT_POS,
+         .regid = regid(0, 0),
+      },
+      .outputs[1] = {
+         .slot = VARYING_SLOT_VAR0,
+         .regid = regid(1, 0),
+      },
+      .shader = &dummy_shader,
+   };
+
+   struct ir3_shader_variant fs = {
+      .type = MESA_SHADER_FRAGMENT,
+      .instrlen = 1, /* max of 9 instructions with num_rts = 8 */
+      .constlen = num_rts,
+      .info.max_reg = MAX2(num_rts, 1) - 1,
+      .total_in = blit ? 2 : 0,
+      .num_samp = blit ? 1 : 0,
+      .inputs_count = blit ? 2 : 0,
+      .inputs[0] = {
+         .slot = VARYING_SLOT_VAR0,
+         .inloc = 0,
+         .compmask = 3,
+         .bary = true,
+      },
+      .inputs[1] = {
+         .slot = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL,
+         .regid = regid(0, 0),
+         .sysval = 1,
+      },
+      .num_sampler_prefetch = blit ? 1 : 0,
+      .sampler_prefetch[0] = {
+         .src = 0,
+         .wrmask = 0xf,
+         .cmd = 4,
+      },
+      .shader = &dummy_shader,
+   };
+
    static const instr_t vs_code[] = {
       /* r0.xyz = r0.w ? c1.xyz : c0.xyz
        * r1.xy = r0.w ? c1.zw : c0.zw
@@ -509,85 +562,6 @@ r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t nu
 #define FS_OFFSET (16 * sizeof(instr_t))
    STATIC_ASSERT(sizeof(vs_code) <= FS_OFFSET);
 
-   /* vs inputs: only vtx id in r0.w */
-   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_0, 7);
-   tu_cs_emit(cs, 0x00000000);
-   tu_cs_emit(cs, 0xfcfcfc00 | A6XX_VFD_CONTROL_1_REGID4VTX(3));
-   tu_cs_emit(cs, 0x0000fcfc);
-   tu_cs_emit(cs, 0xfcfcfcfc);
-   tu_cs_emit(cs, 0x000000fc);
-   tu_cs_emit(cs, 0x0000fcfc);
-   tu_cs_emit(cs, 0x00000000);
-
-   /* vs outputs: position in r0.xyzw, blit coords in r1.xy */
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VAR_DISABLE(0), 4);
-   tu_cs_emit(cs, blit ? 0xffffffcf : 0xffffffff);
-   tu_cs_emit(cs, 0xffffffff);
-   tu_cs_emit(cs, 0xffffffff);
-   tu_cs_emit(cs, 0xffffffff);
-
-   tu_cs_emit_regs(cs, A6XX_SP_VS_OUT_REG(0,
-         .a_regid = 0, .a_compmask = 0xf,
-         .b_regid = 4, .b_compmask = 0x3));
-   tu_cs_emit_regs(cs, A6XX_SP_VS_VPC_DST_REG(0, .outloc0 = 0, .outloc1 = 4));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_CNTL_0, 1);
-   tu_cs_emit(cs, 0xff00ff00 |
-                  COND(blit, A6XX_VPC_CNTL_0_VARYING) |
-                  A6XX_VPC_CNTL_0_NUMNONPOSVAR(blit ? 8 : 0));
-
-   tu_cs_emit_regs(cs, A6XX_VPC_PACK(
-         .positionloc = 0,
-         .psizeloc = 0xff,
-         .stride_in_vpc = blit ? 6 : 4));
-   tu_cs_emit_regs(cs, A6XX_SP_PRIMITIVE_CNTL(.vsout = blit ? 2 : 1));
-   tu_cs_emit_regs(cs,
-                   A6XX_PC_PRIMITIVE_CNTL_0(),
-                   A6XX_PC_PRIMITIVE_CNTL_1(.stride_in_vpc = blit ? 6 : 4));
-
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_INTERP_MODE(0), 8);
-   tu_cs_emit(cs, blit ? 0xe000 : 0); // I think this can just be 0
-   for (uint32_t i = 1; i < 8; i++)
-      tu_cs_emit(cs, 0);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
-   for (uint32_t i = 0; i < 8; i++)
-      tu_cs_emit(cs, 0x99999999);
-
-   /* fs inputs: none, prefetch in blit case */
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_PREFETCH_CNTL, 1 + blit);
-   tu_cs_emit(cs, A6XX_SP_FS_PREFETCH_CNTL_COUNT(blit) |
-                  A6XX_SP_FS_PREFETCH_CNTL_UNK4(0xfc) |
-                  0x7000);
-   if (blit) {
-         tu_cs_emit(cs, A6XX_SP_FS_PREFETCH_CMD_SRC(4) |
-                        A6XX_SP_FS_PREFETCH_CMD_SAMP_ID(0) |
-                        A6XX_SP_FS_PREFETCH_CMD_TEX_ID(0) |
-                        A6XX_SP_FS_PREFETCH_CMD_DST(0) |
-                        A6XX_SP_FS_PREFETCH_CMD_WRMASK(0xf) |
-                        A6XX_SP_FS_PREFETCH_CMD_CMD(0x4));
-   }
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
-   tu_cs_emit(cs, 0x3); // XXX blob uses 3 in blit path
-   tu_cs_emit(cs, 0xfcfcfcfc);
-   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_PIXEL(blit ? 0 : 0xfc) |
-                  A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_CENTROID(0xfc) |
-                  0xfc00fc00);
-   tu_cs_emit(cs, 0xfcfcfcfc);
-   tu_cs_emit(cs, 0xfcfc);
-
-   tu_cs_emit_regs(cs, A6XX_HLSQ_UNKNOWN_B980(blit ? 3 : 1));
-   tu_cs_emit_regs(cs, A6XX_GRAS_CNTL(.varying = blit));
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_RENDER_CONTROL0(.varying = blit, .unk10 = blit),
-                   A6XX_RB_RENDER_CONTROL1());
-
-   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_CNTL());
-   tu_cs_emit_regs(cs, A6XX_GRAS_UNKNOWN_8101());
-   tu_cs_emit_regs(cs, A6XX_GRAS_SAMPLE_CNTL());
-
    /* shaders */
    struct ts_cs_memory shaders = { };
    VkResult result = tu_cs_alloc(&cmd->sub_cs, 2, 16 * sizeof(instr_t), &shaders);
@@ -595,67 +569,45 @@ r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t nu
 
    memcpy(shaders.map, vs_code, sizeof(vs_code));
 
-   instr_t *fs = (instr_t*) ((uint8_t*) shaders.map + FS_OFFSET);
+   instr_t *fs_code = (instr_t*) ((uint8_t*) shaders.map + FS_OFFSET);
    for (uint32_t i = 0; i < num_rts; i++) {
       /* (rpt3)mov.s32s32 r0.x, (r)c[i].x */
-      fs[i] =  (instr_t) { .cat1 = { .opc_cat = 1, .src_type = TYPE_S32, .dst_type = TYPE_S32,
-                              .repeat = 3, .dst = i * 4, .src_c = 1, .src_r = 1, .src = i * 4 } };
+      *fs_code++ = (instr_t) { .cat1 = {
+         .opc_cat = 1, .src_type = TYPE_S32, .dst_type = TYPE_S32,
+         .repeat = 3, .dst = i * 4, .src_c = 1, .src_r = 1, .src = i * 4
+      } };
    }
-   fs[num_rts] = (instr_t) { .cat0 = { .opc = OPC_END } };
+
+   /* " bary.f (ei)r63.x, 0, r0.x" note the blob doesn't have this in its
+    * blit path (its not clear what allows it to not have it)
+    */
+   if (blit) {
+      *fs_code++ = (instr_t) { .cat2 = {
+         .opc_cat = 2, .opc = OPC_BARY_F & 63, .ei = 1, .full = 1,
+         .dst = regid(63, 0), .src1_im = 1
+      } };
+   }
+   *fs_code++ = (instr_t) { .cat0 = { .opc = OPC_END } };
    /* note: assumed <= 16 instructions (MAX_RTS is 8) */
 
    tu_cs_emit_regs(cs, A6XX_HLSQ_UPDATE_CNTL(0x7ffff));
-   tu_cs_emit_regs(cs,
-                   A6XX_HLSQ_VS_CNTL(.constlen = 8, .enabled = true),
-                   A6XX_HLSQ_HS_CNTL(),
-                   A6XX_HLSQ_DS_CNTL(),
-                   A6XX_HLSQ_GS_CNTL());
-   tu_cs_emit_regs(cs, A6XX_HLSQ_FS_CNTL(.constlen = 4 * num_rts, .enabled = true));
 
-   tu_cs_emit_regs(cs,
-                   A6XX_SP_VS_CONFIG(.enabled = true),
-                   A6XX_SP_VS_INSTRLEN(1));
-   tu_cs_emit_regs(cs, A6XX_SP_HS_CONFIG());
-   tu_cs_emit_regs(cs, A6XX_SP_DS_CONFIG());
-   tu_cs_emit_regs(cs, A6XX_SP_GS_CONFIG());
-   tu_cs_emit_regs(cs,
-                   A6XX_SP_FS_CONFIG(.enabled = true, .ntex = blit, .nsamp = blit),
-                   A6XX_SP_FS_INSTRLEN(1));
+   tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, &vs, shaders.iova);
+   tu6_emit_xs_config(cs, MESA_SHADER_TESS_CTRL, NULL, 0);
+   tu6_emit_xs_config(cs, MESA_SHADER_TESS_EVAL, NULL, 0);
+   tu6_emit_xs_config(cs, MESA_SHADER_GEOMETRY, NULL, 0);
+   tu6_emit_xs_config(cs, MESA_SHADER_FRAGMENT, &fs, shaders.iova + FS_OFFSET);
 
-   tu_cs_emit_regs(cs, A6XX_SP_VS_CTRL_REG0(
-                        .threadsize = FOUR_QUADS,
-                        .fullregfootprint = 2,
-                        .mergedregs = true));
-   tu_cs_emit_regs(cs, A6XX_SP_FS_CTRL_REG0(
-                        .varying = blit,
-                        .threadsize = FOUR_QUADS,
-                        /* could this be 0 in !blit && !num_rts case ? */
-                        .fullregfootprint = MAX2(1, num_rts),
-                        .mergedregs = true)); /* note: tu_pipeline also sets 0x1000000 bit */
+   tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());
+   tu_cs_emit_regs(cs, A6XX_VFD_CONTROL_0());
 
-   tu_cs_emit_regs(cs, A6XX_SP_IBO_COUNT(0));
+   tu6_emit_vpc(cs, &vs, NULL, &fs, NULL);
 
-   tu_cs_emit_pkt7(cs, CP_LOAD_STATE6_GEOM, 3);
-   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-                     CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-                     CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-                     CP_LOAD_STATE6_0_STATE_BLOCK(SB6_VS_SHADER) |
-                     CP_LOAD_STATE6_0_NUM_UNIT(1));
-   tu_cs_emit_qw(cs, shaders.iova);
+   /* REPL_MODE for varying with RECTLIST (2 vertices only) */
+   tu_cs_emit_regs(cs, A6XX_VPC_VARYING_INTERP_MODE(0, 0));
+   tu_cs_emit_regs(cs, A6XX_VPC_VARYING_PS_REPL_MODE(0, 2 << 2 | 1 << 0));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_OBJ_START_LO, 2);
-   tu_cs_emit_qw(cs, shaders.iova);
-
-   tu_cs_emit_pkt7(cs, CP_LOAD_STATE6_FRAG, 3);
-   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-                     CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-                     CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-                     CP_LOAD_STATE6_0_STATE_BLOCK(SB6_FS_SHADER) |
-                     CP_LOAD_STATE6_0_NUM_UNIT(1));
-   tu_cs_emit_qw(cs, shaders.iova + FS_OFFSET);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OBJ_START_LO, 2);
-   tu_cs_emit_qw(cs, shaders.iova + FS_OFFSET);
+   tu6_emit_fs_inputs(cs, &fs);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_CL_CNTL(
