@@ -150,8 +150,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0xcd" name="FMT6_ASTC_12x10"/>
 	<value value="0xce" name="FMT6_ASTC_12x12"/>
 
-	<!-- same as X8Z24_UNORM but for sampling stencil (integer, 2nd channel) -->
-	<value value="0xea" name="FMT6_S8Z24_UINT"/>
+	<!-- for sampling stencil (integer, 2nd channel), not available on a630 -->
+	<value value="0xea" name="FMT6_Z24_UINT_S8_UINT"/>
 
 	<!-- Not a hw enum, used internally in driver -->
 	<value value="0xff" name="FMT6_NONE"/>

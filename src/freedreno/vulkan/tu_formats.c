@@ -215,13 +215,17 @@ static const struct tu_native_format tu6_format_table[] = {
    TU6_VTC(B10G11R11_UFLOAT_PACK32,    11_11_10_FLOAT,    WZYX), /* 122 */
    TU6_xTx(E5B9G9R9_UFLOAT_PACK32,     9_9_9_E5_FLOAT,    WZYX), /* 123 */
 
-   /* depth/stencil */
+   /* depth/stencil
+    * X8_D24_UNORM/D24_UNORM_S8_UINT should be Z24_UNORM_S8_UINT_AS_R8G8B8A8
+    * but the format doesn't work on A630 when UBWC is disabled, so use
+    * 8_8_8_8_UNORM as the default and override it when UBWC is enabled
+    */
    TU6_xTC(D16_UNORM,                  16_UNORM,                      WZYX), /* 124 */
-   TU6_xTC(X8_D24_UNORM_PACK32,        Z24_UNORM_S8_UINT_AS_R8G8B8A8, WZYX), /* 125 */
+   TU6_xTC(X8_D24_UNORM_PACK32,        8_8_8_8_UNORM,                 WZYX), /* 125 */
    TU6_xTC(D32_SFLOAT,                 32_FLOAT,                      WZYX), /* 126 */
    TU6_xTC(S8_UINT,                    8_UINT,                        WZYX), /* 127 */
    TU6_xxx(D16_UNORM_S8_UINT,          X8Z16_UNORM,                   WZYX), /* 128 */
-   TU6_xTC(D24_UNORM_S8_UINT,          Z24_UNORM_S8_UINT_AS_R8G8B8A8, WZYX), /* 129 */
+   TU6_xTC(D24_UNORM_S8_UINT,          8_8_8_8_UNORM,                 WZYX), /* 129 */
    TU6_xxx(D32_SFLOAT_S8_UINT,         x,                             WZYX), /* 130 */
 
    /* compressed */
