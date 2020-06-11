@@ -2340,6 +2340,7 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 	}
 
 	key.col_format = blend->spi_shader_col_format;
+	key.is_dual_src = blend->mrt0_is_dual_src;
 	if (pipeline->device->physical_device->rad_info.chip_class < GFX8)
 		radv_pipeline_compute_get_int_clamp(pCreateInfo, &key.is_int8, &key.is_int10);
 
@@ -2462,6 +2463,7 @@ radv_fill_shader_keys(struct radv_device *device,
 	keys[MESA_SHADER_FRAGMENT].fs.is_int10 = key->is_int10;
 	keys[MESA_SHADER_FRAGMENT].fs.log2_ps_iter_samples = key->log2_ps_iter_samples;
 	keys[MESA_SHADER_FRAGMENT].fs.num_samples = key->num_samples;
+	keys[MESA_SHADER_FRAGMENT].fs.is_dual_src = key->is_dual_src;
 
 	if (nir[MESA_SHADER_COMPUTE]) {
 		keys[MESA_SHADER_COMPUTE].cs.subgroup_size = key->compute_subgroup_size;
@@ -5128,9 +5130,6 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	}
 
 	blend.cb_shader_mask = ps->info.ps.cb_shader_mask;
-	if (blend.mrt0_is_dual_src) {
-		blend.cb_shader_mask |= (blend.cb_shader_mask & 0xf) << 4;
-	}
 
 	if (extra &&
 	    (extra->custom_blend_mode == V_028808_CB_ELIMINATE_FAST_CLEAR ||

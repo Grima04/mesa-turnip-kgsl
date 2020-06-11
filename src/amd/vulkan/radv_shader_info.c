@@ -857,5 +857,9 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
 				info->ps.cb_shader_mask |= 0xf << (i * 4);
 			}
 		}
+
+		if (key->fs.is_dual_src) {
+			info->ps.cb_shader_mask |= (info->ps.cb_shader_mask & 0xf) << 4;
+		}
 	}
 }

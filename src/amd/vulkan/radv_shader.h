@@ -106,6 +106,7 @@ struct radv_fs_variant_key {
 	uint8_t num_samples;
 	uint32_t is_int8;
 	uint32_t is_int10;
+	bool is_dual_src;
 };
 
 struct radv_cs_variant_key {
