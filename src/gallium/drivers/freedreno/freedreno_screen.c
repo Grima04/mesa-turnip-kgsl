@@ -57,6 +57,8 @@
 #include "a5xx/fd5_screen.h"
 #include "a6xx/fd6_screen.h"
 
+/* for fd_get_driver/device_uuid() */
+#include "common/freedreno_uuid.h"
 
 #include "ir3/ir3_nir.h"
 #include "ir3/ir3_compiler.h"
@@ -820,6 +822,20 @@ static void _fd_fence_ref(struct pipe_screen *pscreen,
 	fd_fence_ref(ptr, pfence);
 }
 
+static void
+fd_screen_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+
+	fd_get_device_uuid(uuid, screen->gpu_id);
+}
+
+static void
+fd_screen_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+	fd_get_driver_uuid(uuid);
+}
+
 struct pipe_screen *
 fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 {
@@ -1026,6 +1042,9 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 	pscreen->fence_get_fd = fd_fence_get_fd;
 
 	pscreen->query_dmabuf_modifiers = fd_screen_query_dmabuf_modifiers;
+
+	pscreen->get_device_uuid = fd_screen_get_device_uuid;
+	pscreen->get_driver_uuid = fd_screen_get_driver_uuid;
 
 	slab_create_parent(&screen->transfer_pool, sizeof(struct fd_transfer), 16);
 
