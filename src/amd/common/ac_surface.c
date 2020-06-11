@@ -1481,7 +1481,16 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib,
 			 */
 			for (unsigned i = 0; i < in->numMipLevels; i++) {
 				if (meta_mip_info[i].inMiptail) {
-					surf->num_dcc_levels = i;
+					/* GFX10 can only compress the first level
+					 * in the mip tail.
+					 *
+					 * TODO: Try to do the same thing for gfx9
+					 *       if there are no regressions.
+					 */
+					if (info->chip_class >= GFX10)
+						surf->num_dcc_levels = i + 1;
+					else
+						surf->num_dcc_levels = i;
 					break;
 				}
 			}
