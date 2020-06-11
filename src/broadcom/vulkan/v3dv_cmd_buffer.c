@@ -1805,12 +1805,11 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
          const struct v3dv_image_view *iview =
             framebuffer->attachments[ds_attachment_idx];
          config.internal_depth_type = iview->internal_type;
-         set_rcl_early_z_config(job,
-                                &config.early_z_disable,
-                                &config.early_z_test_and_update_direction);
-      } else {
-         config.early_z_disable = true;
       }
+
+      set_rcl_early_z_config(job,
+                             &config.early_z_disable,
+                             &config.early_z_test_and_update_direction);
    }
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
@@ -2486,8 +2485,24 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
-job_update_ez_state(struct v3dv_job *job, struct v3dv_pipeline *pipeline)
+job_update_ez_state(struct v3dv_job *job,
+                    struct v3dv_pipeline *pipeline,
+                    struct v3dv_cmd_buffer_state *state)
 {
+   /* If we don't have a depth attachment at all, disable */
+   if (!state->pass) {
+      job->ez_state = VC5_EZ_DISABLED;
+      return;
+   }
+
+   assert(state->subpass_idx < state->pass->subpass_count);
+   struct v3dv_subpass *subpass = &state->pass->subpasses[state->subpass_idx];
+   if (subpass->ds_attachment.attachment == VK_ATTACHMENT_UNUSED) {
+      job->ez_state = VC5_EZ_DISABLED;
+      return;
+   }
+
+   /* Otherwise, look at the curently bound pipeline state */
    switch (pipeline->ez_state) {
    case VC5_EZ_UNDECIDED:
       /* If the pipeline didn't pick a direction but didn't disable, then go
@@ -3246,13 +3261,14 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    assert(pipeline);
 
-   job_update_ez_state(job, pipeline);
+   job_update_ez_state(job, pipeline, &cmd_buffer->state);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(CFG_BITS));
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
       config.early_z_updates_enable = job->ez_state != VC5_EZ_DISABLED;
+      config.early_z_enable = config.early_z_updates_enable;
    }
 }
 

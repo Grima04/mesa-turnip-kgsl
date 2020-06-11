@@ -1854,15 +1854,16 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
       bool has_ds_attachment =
          pipeline->subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED;
 
-      /* Note: ez state may update based on the compiled FS, along with zsa */
-      config.early_z_updates_enable = false;
       if (ds_info && ds_info->depthTestEnable && has_ds_attachment) {
          config.z_updates_enable = true;
-         config.early_z_enable = false;
          config.depth_test_function = ds_info->depthCompareOp;
       } else {
          config.depth_test_function = VK_COMPARE_OP_ALWAYS;
       }
+
+      /* EZ state will be updated at draw time based on bound pipeline state */
+      config.early_z_updates_enable = false;
+      config.early_z_enable = false;
 
       config.stencil_enable =
          ds_info ? ds_info->stencilTestEnable && has_ds_attachment: false;
