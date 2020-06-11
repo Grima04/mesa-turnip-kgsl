@@ -1120,9 +1120,10 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 	}
 
 	surf->is_linear = surf->u.legacy.level[0].mode == RADEON_SURF_MODE_LINEAR_ALIGNED;
-	surf->is_displayable = surf->is_linear ||
-			       surf->micro_tile_mode == RADEON_MICRO_MODE_DISPLAY ||
-			       surf->micro_tile_mode == RADEON_MICRO_MODE_RENDER;
+	surf->is_displayable = (surf->is_linear ||
+				surf->micro_tile_mode == RADEON_MICRO_MODE_DISPLAY ||
+				surf->micro_tile_mode == RADEON_MICRO_MODE_RENDER /* rotated */) &&
+			       !surf->dcc_size;
 
 	/* The rotated micro tile mode doesn't work if both CMASK and RB+ are
 	 * used at the same time. This case is not currently expected to occur
