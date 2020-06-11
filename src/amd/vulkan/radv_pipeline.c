@@ -517,7 +517,8 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 	for (unsigned i = 0; i < (blend->single_cb_enable ? 1 : subpass->color_count); ++i) {
 		unsigned cf;
 
-		if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED) {
+		if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED ||
+		    !(blend->cb_target_mask & (0xfu << (i * 4)))) {
 			cf = V_028714_SPI_SHADER_ZERO;
 		} else {
 			struct radv_render_pass_attachment *attachment = pass->attachments + subpass->color_attachments[i].attachment;
