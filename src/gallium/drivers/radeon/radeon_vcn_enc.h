@@ -201,6 +201,8 @@ typedef struct rvcn_enc_h264_spec_misc_s {
    uint32_t quarter_pel_enabled;
    uint32_t profile_idc;
    uint32_t level_idc;
+   uint32_t b_picture_enabled;
+   uint32_t weighted_bipred_idc;
 } rvcn_enc_h264_spec_misc_t;
 
 typedef struct rvcn_enc_hevc_spec_misc_s {
@@ -260,6 +262,13 @@ typedef struct rvcn_enc_slice_header_s {
    } instructions[RENCODE_SLICE_HEADER_TEMPLATE_MAX_NUM_INSTRUCTIONS];
 } rvcn_enc_slice_header_t;
 
+typedef struct rvcn_enc_h264_reference_picture_info_s {
+   unsigned int pic_type;
+   unsigned int is_long_term;
+   unsigned int picture_structure;
+   unsigned int pic_order_cnt;
+} rvcn_enc_h264_reference_picture_info_t;
+
 typedef struct rvcn_enc_encode_params_s {
    uint32_t pic_type;
    uint32_t allowed_max_bitstream_size;
@@ -276,9 +285,15 @@ typedef struct rvcn_enc_encode_params_s {
 
 typedef struct rvcn_enc_h264_encode_params_s {
    uint32_t input_picture_structure;
+   uint32_t input_pic_order_cnt;
    uint32_t interlaced_mode;
    uint32_t reference_picture_structure;
    uint32_t reference_picture1_index;
+   rvcn_enc_h264_reference_picture_info_t picture_info_l0_reference_picture0;
+   uint32_t l0_reference_picture1_index;
+   rvcn_enc_h264_reference_picture_info_t picture_info_l0_reference_picture1;
+   uint32_t l1_reference_picture0_index;
+   rvcn_enc_h264_reference_picture_info_t picture_info_l1_reference_picture0;
 } rvcn_enc_h264_encode_params_t;
 
 typedef struct rvcn_enc_h264_deblocking_filter_s {
@@ -308,6 +323,20 @@ typedef struct rvcn_enc_reconstructed_picture_s {
    uint32_t luma_offset;
    uint32_t chroma_offset;
 } rvcn_enc_reconstructed_picture_t;
+
+typedef struct rvcn_enc_pre_encode_input_picture_s {
+   union {
+      struct {
+         uint32_t luma_offset;
+         uint32_t chroma_offset;
+      } yuv;
+      struct {
+         uint32_t red_offset;
+         uint32_t green_offset;
+         uint32_t blue_offset;
+      } rgb;
+   };
+} rvcn_enc_pre_encode_input_picture_t;
 
 typedef struct rvcn_enc_encode_context_buffer_s {
    uint32_t encode_context_address_hi;
@@ -538,5 +567,7 @@ void radeon_enc_code_se(struct radeon_encoder *enc, int value);
 void radeon_enc_1_2_init(struct radeon_encoder *enc);
 
 void radeon_enc_2_0_init(struct radeon_encoder *enc);
+
+void radeon_enc_3_0_init(struct radeon_encoder *enc);
 
 #endif // _RADEON_VCN_ENC_H
