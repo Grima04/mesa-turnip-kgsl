@@ -3402,12 +3402,17 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
       }
    }
 
+   if (cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PIPELINE) {
+      v3dv_cl_ensure_space_with_branch(&job->bcl,
+                                       sizeof(pipeline->vcm_cache_size));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
+      cl_emit_prepacked(&job->bcl, &pipeline->vcm_cache_size);
+   }
+
    v3dv_cl_ensure_space_with_branch(&job->bcl,
-                                    sizeof(pipeline->vcm_cache_size) +
                                     cl_packet_length(GL_SHADER_STATE));
    v3dv_return_if_oom(cmd_buffer, NULL);
-
-   cl_emit_prepacked(&job->bcl, &pipeline->vcm_cache_size);
 
    cl_emit(&job->bcl, GL_SHADER_STATE, state) {
       state.address = v3dv_cl_address(job->indirect.bo,
@@ -3672,13 +3677,21 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer_pre_draw_split_job(cmd_buffer);
    job->draw_count++;
 
-   /* FIXME: likely to be filtered by really needed states */
+   /* We may need to compile shader variants based on bound textures */
    uint32_t *dirty = &cmd_buffer->state.dirty;
+   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE |
+                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS)) {
+      update_pipeline_variants(cmd_buffer);
+   }
+
+   /* GL shader state binds shaders, uniform and vertex attribute state. The
+    * compiler injects uniforms to handle some descriptor types (such as
+    * textures), so we need to regen that when descriptor state changes.
+    */
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE |
                  V3DV_CMD_DIRTY_VERTEX_BUFFER |
                  V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                  V3DV_CMD_DIRTY_PUSH_CONSTANTS)) {
-      update_pipeline_variants(cmd_buffer);
       emit_gl_shader_state(cmd_buffer);
    }
 
@@ -3761,8 +3774,8 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 
    const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
-   uint8_t index_type = ffs(cmd_buffer->state.index_size) - 1;
-   uint32_t index_offset = firstIndex * cmd_buffer->state.index_size;
+   uint8_t index_type = ffs(cmd_buffer->state.index_buffer.index_size) - 1;
+   uint32_t index_offset = firstIndex * cmd_buffer->state.index_buffer.index_size;
 
    if (vertexOffset != 0 || firstInstance != 0) {
       v3dv_cl_ensure_space_with_branch(
@@ -3859,7 +3872,7 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
 
    const struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t hw_prim_type = v3d_hw_prim_type(pipeline->vs->topology);
-   uint8_t index_type = ffs(cmd_buffer->state.index_size) - 1;
+   uint8_t index_type = ffs(cmd_buffer->state.index_buffer.index_size) - 1;
 
    v3dv_cl_ensure_space_with_branch(
       &job->bcl, cl_packet_length(INDIRECT_INDEXED_INSTANCED_PRIM_LIST));
@@ -3912,12 +3925,35 @@ v3dv_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
     */
 
    assert(firstBinding + bindingCount <= MAX_VBS);
+   bool vb_state_changed = false;
    for (uint32_t i = 0; i < bindingCount; i++) {
-      vb[firstBinding + i].buffer = v3dv_buffer_from_handle(pBuffers[i]);
-      vb[firstBinding + i].offset = pOffsets[i];
+      if (vb[firstBinding + i].buffer != v3dv_buffer_from_handle(pBuffers[i])) {
+         vb[firstBinding + i].buffer = v3dv_buffer_from_handle(pBuffers[i]);
+         vb_state_changed = true;
+      }
+      if (vb[firstBinding + i].offset != pOffsets[i]) {
+         vb[firstBinding + i].offset = pOffsets[i];
+         vb_state_changed = true;
+      }
    }
 
-   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_VERTEX_BUFFER;
+   if (vb_state_changed)
+      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_VERTEX_BUFFER;
+}
+
+static uint32_t
+get_index_size(VkIndexType index_type)
+{
+   switch (index_type) {
+   case VK_INDEX_TYPE_UINT16:
+      return 2;
+      break;
+   case VK_INDEX_TYPE_UINT32:
+      return 4;
+      break;
+   default:
+      unreachable("Unsupported index type");
+   }
 }
 
 void
@@ -3936,22 +3972,22 @@ v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
       &job->bcl, cl_packet_length(INDEX_BUFFER_SETUP));
    v3dv_return_if_oom(cmd_buffer, NULL);
 
+   const uint32_t index_size = get_index_size(indexType);
+   if (buffer == cmd_buffer->state.index_buffer.buffer &&
+       offset == cmd_buffer->state.index_buffer.offset &&
+       index_size == cmd_buffer->state.index_buffer.index_size) {
+      return;
+   }
+
    cl_emit(&job->bcl, INDEX_BUFFER_SETUP, ib) {
       ib.address = v3dv_cl_address(ibuffer->mem->bo,
                                    ibuffer->mem_offset + offset);
       ib.size = ibuffer->mem->bo->size;
    }
 
-   switch (indexType) {
-   case VK_INDEX_TYPE_UINT16:
-      cmd_buffer->state.index_size = 2;
-      break;
-   case VK_INDEX_TYPE_UINT32:
-      cmd_buffer->state.index_size = 4;
-      break;
-   default:
-      unreachable("Unsupported index type");
-   }
+   cmd_buffer->state.index_buffer.buffer = buffer;
+   cmd_buffer->state.index_buffer.offset = offset;
+   cmd_buffer->state.index_buffer.index_size = index_size;
 }
 
 void
@@ -4053,21 +4089,33 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    struct v3dv_descriptor_state *descriptor_state =
       &cmd_buffer->state.descriptor_state;
 
+   bool descriptor_state_changed = false;
    for (uint32_t i = 0; i < descriptorSetCount; i++) {
       V3DV_FROM_HANDLE(v3dv_descriptor_set, set, pDescriptorSets[i]);
       uint32_t index = firstSet + i;
 
-      descriptor_state->descriptor_sets[index] = set;
-      descriptor_state->valid |= (1u << index);
+      if (descriptor_state->descriptor_sets[index] != set) {
+         descriptor_state->descriptor_sets[index] = set;
+         descriptor_state_changed = true;
+      }
+
+      if (!(descriptor_state->valid & (1u << index))) {
+         descriptor_state->valid |= (1u << index);
+         descriptor_state_changed = true;
+      }
 
       for (uint32_t j = 0; j < set->layout->dynamic_offset_count; j++, dyn_index++) {
          uint32_t idx = j + layout->set[i + firstSet].dynamic_offset_start;
 
-         descriptor_state->dynamic_offsets[idx] = pDynamicOffsets[dyn_index];
+         if (descriptor_state->dynamic_offsets[idx] != pDynamicOffsets[dyn_index]) {
+            descriptor_state->dynamic_offsets[idx] = pDynamicOffsets[dyn_index];
+            descriptor_state_changed = true;
+         }
       }
    }
 
-   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
+   if (descriptor_state_changed)
+      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
 }
 
 void
@@ -4079,6 +4127,9 @@ v3dv_CmdPushConstants(VkCommandBuffer commandBuffer,
                       const void *pValues)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (!memcmp(cmd_buffer->push_constants_data + offset, pValues, size))
+      return;
 
    memcpy((void*) cmd_buffer->push_constants_data + offset, pValues, size);
 

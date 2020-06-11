@@ -835,7 +835,11 @@ struct v3dv_cmd_buffer_state {
 
    struct v3dv_vertex_binding vertex_bindings[MAX_VBS];
 
-   uint8_t index_size;
+   struct {
+      VkBuffer buffer;
+      VkDeviceSize offset;
+      uint8_t index_size;
+   } index_buffer;
 
    /* Used to flag OOM conditions during command buffer recording */
    bool oom;
