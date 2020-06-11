@@ -2070,6 +2070,9 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
       return;
    }
 
+   /* This clear path behaves like a draw, needs the same flush as tu_draw */
+   tu_emit_cache_flush_renderpass(cmd, cs);
+
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
                   A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(0xfc) |

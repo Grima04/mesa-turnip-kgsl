@@ -383,7 +383,7 @@ tu_emit_cache_flush(struct tu_cmd_buffer *cmd_buffer,
 
 /* Renderpass cache flushes */
 
-static void
+void
 tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer,
                                struct tu_cs *cs)
 {

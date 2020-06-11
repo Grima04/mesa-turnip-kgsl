@@ -1190,6 +1190,10 @@ struct tu_reg_value {
    uint32_t bo_shift;
 };
 
+
+void tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer,
+                                    struct tu_cs *cs);
+
 void tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
                              struct tu_cs *cs,
                              enum tu_cmd_ccu_state ccu_state);
