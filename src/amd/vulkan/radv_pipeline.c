@@ -511,8 +511,10 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 {
 	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
-	unsigned col_format = 0, is_int8 = 0, is_int10 = 0;
-	unsigned num_targets;
+	unsigned exp_fmt[MAX_RTS] = {0};
+	unsigned is_int8[MAX_RTS] = {0}, is_int10[MAX_RTS] = {0};
+	unsigned col_format = 0;
+	unsigned col_format_is_int8 = 0, col_format_is_int10 = 0;
 
 	for (unsigned i = 0; i < (blend->single_cb_enable ? 1 : subpass->color_count); ++i) {
 		unsigned cf;
@@ -529,42 +531,45 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 			                                  blend_enable,
 							  blend->need_src_alpha & (1 << i));
 
-			if (format_is_int8(attachment->format))
-				is_int8 |= 1 << i;
-			if (format_is_int10(attachment->format))
-				is_int10 |= 1 << i;
+			is_int8[i] = format_is_int8(attachment->format);
+			is_int10[i] = format_is_int10(attachment->format);
 		}
 
-		col_format |= cf << (4 * i);
+		exp_fmt[i] = cf;
 	}
 
-	if (!(col_format & 0xf) && blend->need_src_alpha & (1 << 0)) {
+	if (!exp_fmt[0] && blend->need_src_alpha & (1 << 0)) {
 		/* When a subpass doesn't have any color attachments, write the
 		 * alpha channel of MRT0 when alpha coverage is enabled because
 		 * the depth attachment needs it.
 		 */
-		col_format |= V_028714_SPI_SHADER_32_AR;
-	}
-
-	/* If the i-th target format is set, all previous target formats must
-	 * be non-zero to avoid hangs.
-	 */
-	num_targets = (util_last_bit(col_format) + 3) / 4;
-	for (unsigned i = 0; i < num_targets; i++) {
-		if (!(col_format & (0xf << (i * 4)))) {
-			col_format |= V_028714_SPI_SHADER_32_R << (i * 4);
-		}
+		exp_fmt[0] = V_028714_SPI_SHADER_32_AR;
 	}
 
 	/* The output for dual source blending should have the same format as
 	 * the first output.
 	 */
-	if (blend->mrt0_is_dual_src)
-		col_format |= (col_format & 0xf) << 4;
+	if (blend->mrt0_is_dual_src) {
+		col_format |= (exp_fmt[0] << 4) | exp_fmt[0];
+		col_format_is_int8 |= (is_int8[0] << 1) | is_int8[0];
+		col_format_is_int10 |= (is_int10[0] << 1) | is_int10[0];
+	} else {
+		/* Remove holes in SPI_SHADER_COL_FORMAT. */
+		unsigned num_color_targets = 0;
+		for (unsigned i = 0; i < MAX_RTS; i++) {
+			if (!exp_fmt[i])
+				continue;
+
+			col_format |= exp_fmt[i] << (4 * num_color_targets);
+			col_format_is_int8 |= is_int8[i] << num_color_targets;
+			col_format_is_int10 |= is_int10[i] << num_color_targets;
+			num_color_targets++;
+		}
+	}
 
 	blend->spi_shader_col_format = col_format;
-	blend->col_format_is_int8 = is_int8;
-	blend->col_format_is_int10 = is_int10;
+	blend->col_format_is_int8 = col_format_is_int8;
+	blend->col_format_is_int10 = col_format_is_int10;
 }
 
 /*
