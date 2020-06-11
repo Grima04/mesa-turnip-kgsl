@@ -713,6 +713,7 @@ tu_shader_create(struct tu_device *dev,
    NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
    NIR_PASS_V(nir, nir_lower_returns);
    NIR_PASS_V(nir, nir_inline_functions);
+   NIR_PASS_V(nir, nir_copy_prop);
    NIR_PASS_V(nir, nir_opt_deref);
    foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
       if (!func->is_entrypoint)
