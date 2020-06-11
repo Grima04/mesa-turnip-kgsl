@@ -35,7 +35,7 @@
 #include "radeon_video.h"
 #include "radeon_vcn_enc.h"
 
-#define RENCODE_FW_INTERFACE_MAJOR_VERSION   0
+#define RENCODE_FW_INTERFACE_MAJOR_VERSION   1
 #define RENCODE_FW_INTERFACE_MINOR_VERSION   0
 
 static void radeon_enc_spec_misc(struct radeon_encoder *enc)
@@ -60,6 +60,22 @@ static void radeon_enc_spec_misc(struct radeon_encoder *enc)
    RADEON_ENC_CS(enc->enc_pic.spec_misc.level_idc);
    RADEON_ENC_CS(enc->enc_pic.spec_misc.b_picture_enabled);
    RADEON_ENC_CS(enc->enc_pic.spec_misc.weighted_bipred_idc);
+   RADEON_ENC_END();
+}
+
+static void radeon_enc_quality_params(struct radeon_encoder *enc)
+{
+   enc->enc_pic.quality_params.vbaq_mode = 0;
+   enc->enc_pic.quality_params.scene_change_sensitivity = 0;
+   enc->enc_pic.quality_params.scene_change_min_idr_interval = 0;
+   enc->enc_pic.quality_params.two_pass_search_center_map_mode = 0;
+
+   RADEON_ENC_BEGIN(enc->cmd.quality_params);
+   RADEON_ENC_CS(enc->enc_pic.quality_params.vbaq_mode);
+   RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_sensitivity);
+   RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_min_idr_interval);
+   RADEON_ENC_CS(enc->enc_pic.quality_params.two_pass_search_center_map_mode);
+   RADEON_ENC_CS(0);
    RADEON_ENC_END();
 }
 
@@ -161,6 +177,7 @@ void radeon_enc_3_0_init(struct radeon_encoder *enc)
    if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC) {
       enc->spec_misc = radeon_enc_spec_misc;
       enc->encode_params_codec_spec = radeon_enc_encode_params_h264;
+      enc->quality_params = radeon_enc_quality_params;
    }
 
    if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC)
