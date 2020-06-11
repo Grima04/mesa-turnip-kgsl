@@ -85,11 +85,14 @@ hud_draw_colored_prims(struct hud_context *hud, unsigned prim,
    hud->constants.scale[1] = yscale * hud_scale;
    cso_set_constant_buffer(cso, PIPE_SHADER_VERTEX, 0, &hud->constbuf);
 
-   vbuffer.is_user_buffer = true;
-   vbuffer.buffer.user = buffer;
+   u_upload_data(hud->pipe->stream_uploader, 0,
+                 num_vertices * 2 * sizeof(float), 16, buffer,
+                 &vbuffer.buffer_offset, &vbuffer.buffer.resource);
+   u_upload_unmap(hud->pipe->stream_uploader);
    vbuffer.stride = 2 * sizeof(float);
 
    cso_set_vertex_buffers(cso, 0, 1, &vbuffer);
+   pipe_resource_reference(&vbuffer.buffer.resource, NULL);
    cso_set_fragment_shader_handle(hud->cso, hud->fs_color);
    cso_draw_arrays(cso, prim, 0, num_vertices);
 }
