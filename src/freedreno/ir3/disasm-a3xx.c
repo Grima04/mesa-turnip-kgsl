@@ -147,6 +147,13 @@ static void print_reg(struct disasm_ctx *ctx, reg_t reg, bool full,
 		fprintf(ctx->out, "p0.%c", component[reg.comp]);
 	} else {
 		fprintf(ctx->out, "%s%c%d.%c", full ? "" : "h", type, reg.num, component[reg.comp]);
+		if (0 && full && !c) {
+			reg_t hr0 = reg;
+			hr0.iim_val *= 2;
+			reg_t hr1 = hr0;
+			hr1.iim_val += 1;
+			fprintf(ctx->out, " (hr%d.%c,hr%d.%c)", hr0.num, component[hr0.comp], hr1.num, component[hr1.comp]);
+		}
 	}
 }
 
