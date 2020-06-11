@@ -85,7 +85,8 @@ struct virgl_winsys {
                                                        uint32_t *plane,
                                                        uint32_t *stride,
                                                        uint32_t *plane_offset,
-                                                       uint64_t *modifier);
+                                                       uint64_t *modifier,
+                                                       uint32_t *blob_mem);
    boolean (*resource_get_handle)(struct virgl_winsys *vws,
                                   struct virgl_hw_res *res,
                                   uint32_t stride,

@@ -52,6 +52,7 @@ struct virgl_hw_res {
 
    /* false when the resource is known to be idle */
    int maybe_busy;
+   uint32_t blob_mem;
 };
 
 

@@ -572,7 +572,8 @@ static struct pipe_resource *virgl_resource_from_handle(struct pipe_screen *scre
                                                       &plane,
                                                       &winsys_stride,
                                                       &plane_offset,
-                                                      &modifier);
+                                                      &modifier,
+                                                      &res->blob_mem);
 
    virgl_resource_layout(&res->u.b, &res->metadata, plane, winsys_stride,
                          plane_offset, modifier);

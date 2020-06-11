@@ -389,7 +389,8 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
                                         uint32_t *plane,
                                         uint32_t *stride,
                                         uint32_t *plane_offset,
-                                        uint64_t *modifier)
+                                        uint64_t *modifier,
+                                        uint32_t *blob_mem)
 {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
    struct drm_gem_open open_arg = {};
@@ -464,6 +465,8 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    }
 
    res->res_handle = info_arg.res_handle;
+   res->blob_mem = info_arg.blob_mem;
+   *blob_mem = info_arg.blob_mem;
 
    res->size = info_arg.size;
    pipe_reference_init(&res->reference, 1);

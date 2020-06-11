@@ -33,6 +33,10 @@
 #include "virgl_screen.h"
 #define VR_MAX_TEXTURE_2D_LEVELS 15
 
+#define VIRGL_BLOB_MEM_GUEST 1
+#define VIRGL_BLOB_MEM_HOST3D 2
+#define VIRGL_BLOB_MEM_HOST3D_GUEST 3
+
 struct winsys_handle;
 struct virgl_screen;
 struct virgl_context;
@@ -63,6 +67,7 @@ struct virgl_resource {
     * usable.
     */
    unsigned bind_history;
+   uint32_t blob_mem;
 };
 
 struct virgl_transfer {
