@@ -220,6 +220,12 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
    unreachable("we shouldn't get here, I think...");
 }
 
+#define HANDLE_EMIT_BUILTIN(SLOT, BUILTIN) \
+      case VARYING_SLOT_##SLOT: \
+         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltIn##BUILTIN); \
+         break
+
+
 static void
 emit_input(struct ntv_context *ctx, struct nir_variable *var)
 {
@@ -247,13 +253,14 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
                                      var->data.location);
       } else {
          switch (var->data.location) {
-         case VARYING_SLOT_POS:
-            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragCoord);
-            break;
-
-         case VARYING_SLOT_PNTC:
-            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPointCoord);
-            break;
+         HANDLE_EMIT_BUILTIN(POS, FragCoord);
+         HANDLE_EMIT_BUILTIN(PNTC, PointCoord);
+         HANDLE_EMIT_BUILTIN(LAYER, Layer);
+         HANDLE_EMIT_BUILTIN(PRIMITIVE_ID, PrimitiveId);
+         HANDLE_EMIT_BUILTIN(CLIP_DIST0, ClipDistance);
+         HANDLE_EMIT_BUILTIN(CULL_DIST0, CullDistance);
+         HANDLE_EMIT_BUILTIN(VIEWPORT, ViewportIndex);
+         HANDLE_EMIT_BUILTIN(FACE, FrontFacing);
 
          default:
             debug_printf("unknown varying slot: %s\n", gl_varying_slot_name(var->data.location));
@@ -305,13 +312,14 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
                                      var->data.location);
       } else {
          switch (var->data.location) {
-         case VARYING_SLOT_POS:
-            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPosition);
-            break;
-
-         case VARYING_SLOT_PSIZ:
-            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPointSize);
-            break;
+         HANDLE_EMIT_BUILTIN(POS, Position);
+         HANDLE_EMIT_BUILTIN(PSIZ, PointSize);
+         HANDLE_EMIT_BUILTIN(LAYER, Layer);
+         HANDLE_EMIT_BUILTIN(PRIMITIVE_ID, PrimitiveId);
+         HANDLE_EMIT_BUILTIN(CULL_DIST0, CullDistance);
+         HANDLE_EMIT_BUILTIN(VIEWPORT, ViewportIndex);
+         HANDLE_EMIT_BUILTIN(TESS_LEVEL_OUTER, TessLevelOuter);
+         HANDLE_EMIT_BUILTIN(TESS_LEVEL_INNER, TessLevelInner);
 
          case VARYING_SLOT_CLIP_DIST0:
             assert(glsl_type_is_array(var->type));
