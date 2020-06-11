@@ -764,6 +764,20 @@ nir_fmul_imm(nir_builder *build, nir_ssa_def *x, double y)
 }
 
 static inline nir_ssa_def *
+nir_iand_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
+{
+   y &= BITFIELD64_MASK(x->bit_size);
+
+   if (y == 0) {
+      return nir_imm_intN_t(build, 0, x->bit_size);
+   } else if (y == BITFIELD64_MASK(x->bit_size)) {
+      return x;
+   } else {
+      return nir_iand(build, x, nir_imm_intN_t(build, y, x->bit_size));
+   }
+}
+
+static inline nir_ssa_def *
 nir_pack_bits(nir_builder *b, nir_ssa_def *src, unsigned dest_bit_size)
 {
    assert(src->num_components * src->bit_size == dest_bit_size);
