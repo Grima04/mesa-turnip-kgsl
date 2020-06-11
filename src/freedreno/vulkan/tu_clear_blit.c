@@ -483,7 +483,8 @@ r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 /* r3d_ = shader path operations */
 
 static void
-r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_rts)
+r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_rts,
+             bool layered_clear)
 {
    struct ir3_shader dummy_shader = {};
 
@@ -509,6 +510,14 @@ r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t nu
       },
       .shader = &dummy_shader,
    };
+   if (layered_clear) {
+      vs = (struct ir3_shader_variant) {
+         .type = MESA_SHADER_VERTEX,
+         .instrlen = 1,
+         .info.max_reg = 0,
+         .shader = &dummy_shader,
+      };
+   }
 
    struct ir3_shader_variant fs = {
       .type = MESA_SHADER_FRAGMENT,
@@ -538,36 +547,103 @@ r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t nu
       .shader = &dummy_shader,
    };
 
+   struct ir3_shader_variant gs_shader = {
+      .type = MESA_SHADER_GEOMETRY,
+      .instrlen = 1,
+      .constlen = 2,
+      .info.max_reg = 1,
+      .inputs_count = 1,
+      .inputs[0] = {
+         .slot = SYSTEM_VALUE_GS_HEADER_IR3,
+         .regid = regid(0, 0),
+         .sysval = true,
+      },
+      .outputs_count = 3,
+      .outputs[0] = {
+         .slot = VARYING_SLOT_POS,
+         .regid = regid(0, 0),
+      },
+      .outputs[1] = {
+         .slot = VARYING_SLOT_LAYER,
+         .regid = regid(1, 1),
+      },
+      .outputs[2] = {
+         .slot = VARYING_SLOT_GS_VERTEX_FLAGS_IR3,
+         .regid = regid(1, 0),
+      },
+      .shader = &dummy_shader,
+   }, *gs = layered_clear ? &gs_shader : NULL;
+
+
+#define MOV(args...) { .cat1 = { .opc_cat = 1, .src_type = TYPE_F32, .dst_type = TYPE_F32, args } }
+#define CAT2(op, args...) { .cat2 = { .opc_cat = 2, .opc = (op) & 63, .full = 1, args } }
+#define CAT3(op, args...) { .cat3 = { .opc_cat = 3, .opc = (op) & 63, args } }
+
    static const instr_t vs_code[] = {
       /* r0.xyz = r0.w ? c1.xyz : c0.xyz
        * r1.xy = r0.w ? c1.zw : c0.zw
        * r0.w = 1.0f
        */
-      { .cat3 = {
-         .opc_cat = 3, .opc = OPC_SEL_B32 & 63, .repeat = 2, .dst = 0,
+      CAT3(OPC_SEL_B32, .repeat = 2, .dst = 0,
          .c1 = {.src1_c = 1, .src1 = 4}, .src1_r = 1,
          .src2 = 3,
-         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 0},
-      } },
-      { .cat3 = {
-         .opc_cat = 3, .opc = OPC_SEL_B32 & 63, .repeat = 1, .dst = 4,
+         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 0}),
+      CAT3(OPC_SEL_B32, .repeat = 1, .dst = 4,
          .c1 = {.src1_c = 1, .src1 = 6}, .src1_r = 1,
          .src2 = 3,
-         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 2},
-      } },
-      { .cat1 = { .opc_cat = 1, .src_type = TYPE_F32, .dst_type = TYPE_F32, .dst = 3,
-                  .src_im = 1, .fim_val = 1.0f } },
+         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 2}),
+      MOV(.dst = 3, .src_im = 1, .fim_val = 1.0f ),
       { .cat0 = { .opc = OPC_END } },
    };
+
+   static const instr_t vs_layered[] = {
+      { .cat0 = { .opc = OPC_CHMASK } },
+      { .cat0 = { .opc = OPC_CHSH } },
+   };
+
+   static const instr_t gs_code[16] = {
+      /* (sy)(ss)(nop3)shr.b r0.w, r0.x, 16 (extract local_id) */
+      CAT2(OPC_SHR_B, .dst = 3, .src1 = 0, .src2_im = 1, .src2 = 16,
+           .src1_r = 1, .src2_r = 1, .ss = 1, .sync = 1),
+      /* x = (local_id & 1) ? c1.x : c0.x */
+      CAT2(OPC_AND_B, .dst = 0, .src1 = 3, .src2_im = 1, .src2 = 1),
+      /* y = (local_id & 2) ? c1.y : c0.y */
+      CAT2(OPC_AND_B, .dst = 1, .src1 = 3, .src2_im = 1, .src2 = 2),
+      /* pred = (local_id >= 4), used by OPC_KILL */
+      CAT2(OPC_CMPS_S, .dst = REG_P0 * 4, .cond = IR3_COND_GE, .src1 = 3, .src2_im = 1, .src2 = 4),
+      /* vertex_flags_out = (local_id == 0) ? 4 : 0 - first vertex flag */
+      CAT2(OPC_CMPS_S, .dst = 4, .cond = IR3_COND_EQ, .src1 = 3, .src2_im = 1, .src2 = 0),
+
+      MOV(.dst = 2, .src_c = 1, .src = 2), /* depth clear value from c0.z */
+      MOV(.dst = 3, .src_im = 1, .fim_val = 1.0f),
+      MOV(.dst = 5, .src_c = 1, .src = 3), /* layer id from c0.w */
+
+      /* (rpt1)sel.b32 r0.x, (r)c1.x, (r)r0.x, (r)c0.x */
+      CAT3(OPC_SEL_B32, .repeat = 1, .dst = 0,
+         .c1 = {.src1_c = 1, .src1 = 4, .dummy = 4}, .src1_r = 1,
+         .src2 = 0,
+         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 0}),
+
+      CAT2(OPC_SHL_B, .dst = 4, .src1 = 4, .src2_im = 1, .src2 = 2),
+
+      { .cat0 = { .opc = OPC_KILL } },
+      { .cat0 = { .opc = OPC_END, .ss = 1, .sync = 1 } },
+   };
 #define FS_OFFSET (16 * sizeof(instr_t))
-   STATIC_ASSERT(sizeof(vs_code) <= FS_OFFSET);
+#define GS_OFFSET (32 * sizeof(instr_t))
 
    /* shaders */
    struct ts_cs_memory shaders = { };
-   VkResult result = tu_cs_alloc(&cmd->sub_cs, 2, 16 * sizeof(instr_t), &shaders);
+   VkResult result = tu_cs_alloc(&cmd->sub_cs, 2 + layered_clear,
+                                 16 * sizeof(instr_t), &shaders);
    assert(result == VK_SUCCESS);
 
-   memcpy(shaders.map, vs_code, sizeof(vs_code));
+   if (layered_clear) {
+      memcpy(shaders.map, vs_layered, sizeof(vs_layered));
+      memcpy((uint8_t*) shaders.map + GS_OFFSET, gs_code, sizeof(gs_code));
+   } else {
+      memcpy(shaders.map, vs_code, sizeof(vs_code));
+   }
 
    instr_t *fs_code = (instr_t*) ((uint8_t*) shaders.map + FS_OFFSET);
    for (uint32_t i = 0; i < num_rts; i++) {
@@ -595,13 +671,13 @@ r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t nu
    tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, &vs, shaders.iova);
    tu6_emit_xs_config(cs, MESA_SHADER_TESS_CTRL, NULL, 0);
    tu6_emit_xs_config(cs, MESA_SHADER_TESS_EVAL, NULL, 0);
-   tu6_emit_xs_config(cs, MESA_SHADER_GEOMETRY, NULL, 0);
+   tu6_emit_xs_config(cs, MESA_SHADER_GEOMETRY, gs, shaders.iova + GS_OFFSET);
    tu6_emit_xs_config(cs, MESA_SHADER_FRAGMENT, &fs, shaders.iova + FS_OFFSET);
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());
    tu_cs_emit_regs(cs, A6XX_VFD_CONTROL_0());
 
-   tu6_emit_vpc(cs, &vs, NULL, &fs, NULL);
+   tu6_emit_vpc(cs, &vs, gs, &fs, NULL);
 
    /* REPL_MODE for varying with RECTLIST (2 vertices only) */
    tu_cs_emit_regs(cs, A6XX_VPC_VARYING_INTERP_MODE(0, 0));
@@ -627,13 +703,13 @@ r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t nu
 }
 
 static void
-r3d_coords_raw(struct tu_cs *cs, const float *coords)
+r3d_coords_raw(struct tu_cs *cs, bool gs, const float *coords)
 {
    tu_cs_emit_pkt7(cs, CP_LOAD_STATE6_GEOM, 3 + 8);
    tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
                   CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                   CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-                  CP_LOAD_STATE6_0_STATE_BLOCK(SB6_VS_SHADER) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(gs ? SB6_GS_SHADER : SB6_VS_SHADER) |
                   CP_LOAD_STATE6_0_NUM_UNIT(2));
    tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
    tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
@@ -648,7 +724,7 @@ r3d_coords(struct tu_cs *cs,
 {
    int32_t src_x1 = src ? src->x : 0;
    int32_t src_y1 = src ? src->y : 0;
-   r3d_coords_raw(cs, (float[]) {
+   r3d_coords_raw(cs, false, (float[]) {
       dst->x,                 dst->y,
       src_x1,                 src_y1,
       dst->x + extent->width, dst->y + extent->height,
@@ -856,7 +932,7 @@ r3d_setup(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.dword = 0xc00000));
    tu_cs_emit_regs(cs, A6XX_RB_BIN_CONTROL(.dword = 0xc00000));
 
-   r3d_pipeline(cmd, cs, !clear, clear ? 1 : 0);
+   r3d_pipeline(cmd, cs, !clear, clear ? 1 : 0, false);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
@@ -1017,7 +1093,7 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
                const VkImageBlit *info,
                VkFilter filter)
 {
-   const struct blit_ops *ops = &r2d_ops;
+   const struct blit_ops *ops = &r3d_ops;
    struct tu_cs *cs = &cmd->cs;
    uint32_t layers;
 
@@ -1080,7 +1156,7 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
    ops->setup(cmd, cs, dst_image->vk_format, rotate[mirror_y][mirror_x], false, mask);
 
    if (ops == &r3d_ops) {
-      r3d_coords_raw(cs, (float[]) {
+      r3d_coords_raw(cs, false, (float[]) {
          info->dstOffsets[0].x, info->dstOffsets[0].y,
          info->srcOffsets[0].x, info->srcOffsets[0].y,
          info->dstOffsets[1].x, info->dstOffsets[1].y,
@@ -1953,6 +2029,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    uint32_t clear_rts = 0, clear_components = 0, num_rts = 0, b;
    bool z_clear = false;
    bool s_clear = false;
+   bool layered_clear = false;
    uint32_t max_samples = 1;
 
    for (uint32_t i = 0; i < attachment_count; i++) {
@@ -1993,8 +2070,6 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
       return;
    }
 
-   /* TODO: this path doesn't take into account multilayer rendering */
-
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
                   A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(0xfc) |
@@ -2009,7 +2084,12 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
          tu_cs_emit(cs, 0);
    }
 
-   r3d_pipeline(cmd, cs, false, num_rts);
+   for (uint32_t i = 0; i < rect_count; i++) {
+      if (rects[i].baseArrayLayer || rects[i].layerCount > 1)
+         layered_clear = true;
+   }
+
+   r3d_pipeline(cmd, cs, false, num_rts, layered_clear);
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_FS_RENDER_COMPONENTS(.dword = clear_components));
@@ -2054,14 +2134,27 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
       tu_cs_emit_array(cs, clear_value[b], 4);
 
    for (uint32_t i = 0; i < rect_count; i++) {
-      r3d_coords_raw(cs, (float[]) {
-         rects[i].rect.offset.x, rects[i].rect.offset.y,
-         z_clear_val, 1.0f,
-         rects[i].rect.offset.x + rects[i].rect.extent.width,
-         rects[i].rect.offset.y + rects[i].rect.extent.height,
-         z_clear_val, 1.0f
-      });
-      r3d_run(cmd, cs);
+      for (uint32_t layer = 0; layer < rects[i].layerCount; layer++) {
+         r3d_coords_raw(cs, layered_clear, (float[]) {
+            rects[i].rect.offset.x, rects[i].rect.offset.y,
+            z_clear_val, uif(rects[i].baseArrayLayer + layer),
+            rects[i].rect.offset.x + rects[i].rect.extent.width,
+            rects[i].rect.offset.y + rects[i].rect.extent.height,
+            z_clear_val, 1.0f,
+         });
+
+         if (layered_clear) {
+            tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
+            tu_cs_emit(cs, CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(DI_PT_POINTLIST) |
+                           CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
+                           CP_DRAW_INDX_OFFSET_0_VIS_CULL(IGNORE_VISIBILITY) |
+                           CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
+            tu_cs_emit(cs, 1); /* instance count */
+            tu_cs_emit(cs, 1); /* vertex count */
+         } else {
+            r3d_run(cmd, cs);
+         }
+      }
    }
 
    cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE |
