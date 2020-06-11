@@ -1658,7 +1658,9 @@ void lower_to_hw_instr(Program* program)
          assert(block->kind & block_kind_top_level);
          uint32_t mode = block->fp_mode.val;
          /* "((size - 1) << 11) | register" (MODE is encoded as register 1) */
-         bld.sopk(aco_opcode::s_setreg_imm32_b32, Operand(mode), (7 << 11) | 1);
+         Instruction *instr = bld.sopk(aco_opcode::s_setreg_imm32_b32, Operand(mode), (7 << 11) | 1).instr;
+         /* has to be a literal */
+         instr->operands[0].setFixed(PhysReg{255});
       }
 
       for (size_t j = 0; j < block->instructions.size(); j++) {
