@@ -1907,7 +1907,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib,
 	r = gfx9_compute_miptree(addrlib, info, config, surf, compressed,
 				 &AddrSurfInfoIn);
 	if (r)
-		goto error;
+		return r;
 
 	/* Calculate texture layout information for stencil. */
 	if (surf->flags & RADEON_SURF_SBUFFER) {
@@ -1919,14 +1919,14 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib,
 			r = gfx9_get_preferred_swizzle_mode(addrlib->handle, surf, &AddrSurfInfoIn,
 							    false, &AddrSurfInfoIn.swizzleMode);
 			if (r)
-				goto error;
+				return r;
 		} else
 			AddrSurfInfoIn.flags.depth = 0;
 
 		r = gfx9_compute_miptree(addrlib, info, config, surf, compressed,
 					 &AddrSurfInfoIn);
 		if (r)
-			goto error;
+			return r;
 	}
 
 	surf->is_linear = surf->u.gfx9.surf.swizzle_mode == ADDR_SW_LINEAR;
@@ -1938,7 +1938,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib,
 		r = Addr2IsValidDisplaySwizzleMode(addrlib->handle, surf->u.gfx9.surf.swizzle_mode,
 						   surf->bpe * 8, &displayable);
 		if (r)
-			goto error;
+			return r;
 
 		/* Display needs unaligned DCC. */
 		if (surf->num_dcc_levels &&
@@ -2049,11 +2049,6 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib,
 	}
 
 	return 0;
-
-error:
-	free(surf->u.gfx9.dcc_retile_map);
-	surf->u.gfx9.dcc_retile_map = NULL;
-	return r;
 }
 
 int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *info,
