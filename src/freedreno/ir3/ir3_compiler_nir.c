@@ -3446,10 +3446,16 @@ collect_tex_prefetches(struct ir3_context *ctx, struct ir3 *ir)
 				fetch->dst = instr->regs[0]->num;
 				fetch->src = instr->prefetch.input_offset;
 
+				/* These are the limits on a5xx/a6xx, we might need to
+				 * revisit if SP_FS_PREFETCH[n] changes on later gens:
+				 */
+				assert(fetch->dst <= 0x3f);
+				assert(fetch->tex_id <= 0x1f);
+				assert(fetch->samp_id < 0xf);
+
 				ctx->so->total_in =
 					MAX2(ctx->so->total_in, instr->prefetch.input_offset + 2);
 
-				/* Disable half precision until supported. */
 				fetch->half_precision = !!(instr->regs[0]->flags & IR3_REG_HALF);
 
 				/* Remove the prefetch placeholder instruction: */
