@@ -807,7 +807,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    index->filled = 0;
 
    decode->stream_type = dec->stream_type;
-   decode->decode_flags = 0x1;
+   decode->decode_flags = 0;
    decode->width_in_samples = dec->base.width;
    decode->height_in_samples = dec->base.height;
 
