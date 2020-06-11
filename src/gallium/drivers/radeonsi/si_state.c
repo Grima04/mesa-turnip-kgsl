@@ -2200,117 +2200,14 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
 static void si_choose_spi_color_formats(struct si_surface *surf, unsigned format, unsigned swap,
                                         unsigned ntype, bool is_depth)
 {
-   /* Alpha is needed for alpha-to-coverage.
-    * Blending may be with or without alpha.
-    */
-   unsigned normal = 0;      /* most optimal, may not support blending or export alpha */
-   unsigned alpha = 0;       /* exports alpha, but may not support blending */
-   unsigned blend = 0;       /* supports blending, but may not export alpha */
-   unsigned blend_alpha = 0; /* least optimal, supports blending and exports alpha */
+   struct ac_spi_color_formats formats = {};
 
-   /* Choose the SPI color formats. These are required values for RB+.
-    * Other chips have multiple choices, though they are not necessarily better.
-    */
-   switch (format) {
-   case V_028C70_COLOR_5_6_5:
-   case V_028C70_COLOR_1_5_5_5:
-   case V_028C70_COLOR_5_5_5_1:
-   case V_028C70_COLOR_4_4_4_4:
-   case V_028C70_COLOR_10_11_11:
-   case V_028C70_COLOR_11_11_10:
-   case V_028C70_COLOR_5_9_9_9:
-   case V_028C70_COLOR_8:
-   case V_028C70_COLOR_8_8:
-   case V_028C70_COLOR_8_8_8_8:
-   case V_028C70_COLOR_10_10_10_2:
-   case V_028C70_COLOR_2_10_10_10:
-      if (ntype == V_028C70_NUMBER_UINT)
-         alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_UINT16_ABGR;
-      else if (ntype == V_028C70_NUMBER_SINT)
-         alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_SINT16_ABGR;
-      else
-         alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_FP16_ABGR;
-      break;
+   ac_choose_spi_color_formats(format, swap, ntype, is_depth, &formats);
 
-   case V_028C70_COLOR_16:
-   case V_028C70_COLOR_16_16:
-   case V_028C70_COLOR_16_16_16_16:
-      if (ntype == V_028C70_NUMBER_UNORM || ntype == V_028C70_NUMBER_SNORM) {
-         /* UNORM16 and SNORM16 don't support blending */
-         if (ntype == V_028C70_NUMBER_UNORM)
-            normal = alpha = V_028714_SPI_SHADER_UNORM16_ABGR;
-         else
-            normal = alpha = V_028714_SPI_SHADER_SNORM16_ABGR;
-
-         /* Use 32 bits per channel for blending. */
-         if (format == V_028C70_COLOR_16) {
-            if (swap == V_028C70_SWAP_STD) { /* R */
-               blend = V_028714_SPI_SHADER_32_R;
-               blend_alpha = V_028714_SPI_SHADER_32_AR;
-            } else if (swap == V_028C70_SWAP_ALT_REV) /* A */
-               blend = blend_alpha = V_028714_SPI_SHADER_32_AR;
-            else
-               assert(0);
-         } else if (format == V_028C70_COLOR_16_16) {
-            if (swap == V_028C70_SWAP_STD) { /* RG */
-               blend = V_028714_SPI_SHADER_32_GR;
-               blend_alpha = V_028714_SPI_SHADER_32_ABGR;
-            } else if (swap == V_028C70_SWAP_ALT) /* RA */
-               blend = blend_alpha = V_028714_SPI_SHADER_32_AR;
-            else
-               assert(0);
-         } else /* 16_16_16_16 */
-            blend = blend_alpha = V_028714_SPI_SHADER_32_ABGR;
-      } else if (ntype == V_028C70_NUMBER_UINT)
-         alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_UINT16_ABGR;
-      else if (ntype == V_028C70_NUMBER_SINT)
-         alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_SINT16_ABGR;
-      else if (ntype == V_028C70_NUMBER_FLOAT)
-         alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_FP16_ABGR;
-      else
-         assert(0);
-      break;
-
-   case V_028C70_COLOR_32:
-      if (swap == V_028C70_SWAP_STD) { /* R */
-         blend = normal = V_028714_SPI_SHADER_32_R;
-         alpha = blend_alpha = V_028714_SPI_SHADER_32_AR;
-      } else if (swap == V_028C70_SWAP_ALT_REV) /* A */
-         alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_32_AR;
-      else
-         assert(0);
-      break;
-
-   case V_028C70_COLOR_32_32:
-      if (swap == V_028C70_SWAP_STD) { /* RG */
-         blend = normal = V_028714_SPI_SHADER_32_GR;
-         alpha = blend_alpha = V_028714_SPI_SHADER_32_ABGR;
-      } else if (swap == V_028C70_SWAP_ALT) /* RA */
-         alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_32_AR;
-      else
-         assert(0);
-      break;
-
-   case V_028C70_COLOR_32_32_32_32:
-   case V_028C70_COLOR_8_24:
-   case V_028C70_COLOR_24_8:
-   case V_028C70_COLOR_X24_8_32_FLOAT:
-      alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_32_ABGR;
-      break;
-
-   default:
-      assert(0);
-      return;
-   }
-
-   /* The DB->CB copy needs 32_ABGR. */
-   if (is_depth)
-      alpha = blend = blend_alpha = normal = V_028714_SPI_SHADER_32_ABGR;
-
-   surf->spi_shader_col_format = normal;
-   surf->spi_shader_col_format_alpha = alpha;
-   surf->spi_shader_col_format_blend = blend;
-   surf->spi_shader_col_format_blend_alpha = blend_alpha;
+   surf->spi_shader_col_format = formats.normal;
+   surf->spi_shader_col_format_alpha = formats.alpha;
+   surf->spi_shader_col_format_blend = formats.blend;
+   surf->spi_shader_col_format_blend_alpha = formats.blend_alpha;
 }
 
 static void si_initialize_color_surface(struct si_context *sctx, struct si_surface *surf)
