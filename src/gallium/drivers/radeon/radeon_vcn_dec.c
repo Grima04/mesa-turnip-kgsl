@@ -1563,24 +1563,36 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    }
    si_vid_clear_buffer(context, &dec->sessionctx);
 
-   if (sctx->family == CHIP_ARCTURUS) {
-      dec->reg.data0 = RDECODE_VCN2_5_GPCOM_VCPU_DATA0;
-      dec->reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
-      dec->reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;
-      dec->reg.cntl = RDECODE_VCN2_5_ENGINE_CNTL;
-      dec->jpg.direct_reg = true;
-   } else if (sctx->family >= CHIP_NAVI10 || sctx->family == CHIP_RENOIR) {
-      dec->reg.data0 = RDECODE_VCN2_GPCOM_VCPU_DATA0;
-      dec->reg.data1 = RDECODE_VCN2_GPCOM_VCPU_DATA1;
-      dec->reg.cmd = RDECODE_VCN2_GPCOM_VCPU_CMD;
-      dec->reg.cntl = RDECODE_VCN2_ENGINE_CNTL;
-      dec->jpg.direct_reg = true;
-   } else {
+   switch (sctx->family) {
+   case CHIP_RAVEN:
+   case CHIP_RAVEN2:
       dec->reg.data0 = RDECODE_VCN1_GPCOM_VCPU_DATA0;
       dec->reg.data1 = RDECODE_VCN1_GPCOM_VCPU_DATA1;
       dec->reg.cmd = RDECODE_VCN1_GPCOM_VCPU_CMD;
       dec->reg.cntl = RDECODE_VCN1_ENGINE_CNTL;
       dec->jpg.direct_reg = false;
+      break;
+   case CHIP_NAVI10:
+   case CHIP_NAVI12:
+   case CHIP_NAVI14:
+   case CHIP_RENOIR:
+      dec->reg.data0 = RDECODE_VCN2_GPCOM_VCPU_DATA0;
+      dec->reg.data1 = RDECODE_VCN2_GPCOM_VCPU_DATA1;
+      dec->reg.cmd = RDECODE_VCN2_GPCOM_VCPU_CMD;
+      dec->reg.cntl = RDECODE_VCN2_ENGINE_CNTL;
+      dec->jpg.direct_reg = true;
+      break;
+   case CHIP_ARCTURUS:
+   case CHIP_SIENNA:
+      dec->reg.data0 = RDECODE_VCN2_5_GPCOM_VCPU_DATA0;
+      dec->reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
+      dec->reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;
+      dec->reg.cntl = RDECODE_VCN2_5_ENGINE_CNTL;
+      dec->jpg.direct_reg = true;
+      break;
+   default:
+      RVID_ERR("VCN is not supported.\n");
+      goto error;
    }
 
    map_msg_fb_it_probs_buf(dec);
