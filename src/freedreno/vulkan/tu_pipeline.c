@@ -628,9 +628,81 @@ tu6_blend_op(VkBlendOp op)
    }
 }
 
-static uint32_t
-emit_xs_cntl(const struct ir3_shader_variant *xs)
+static void
+tu6_emit_xs_config(struct tu_cs *cs,
+                   gl_shader_stage stage, /* xs->type, but xs may be NULL */
+                   const struct ir3_shader_variant *xs,
+                   uint64_t binary_iova)
 {
+   static const struct xs_config {
+      uint16_t reg_sp_xs_ctrl;
+      uint16_t reg_sp_xs_config;
+      uint16_t reg_hlsq_xs_ctrl;
+      uint16_t reg_sp_vs_obj_start;
+      uint8_t opcode;
+      enum a6xx_state_block sb : 8;
+   } xs_config[] = {
+      [MESA_SHADER_VERTEX] = {
+         REG_A6XX_SP_VS_CTRL_REG0,
+         REG_A6XX_SP_VS_CONFIG,
+         REG_A6XX_HLSQ_VS_CNTL,
+         REG_A6XX_SP_VS_OBJ_START_LO,
+         CP_LOAD_STATE6_GEOM,
+         SB6_VS_SHADER,
+      },
+      [MESA_SHADER_TESS_CTRL] = {
+         REG_A6XX_SP_HS_CTRL_REG0,
+         REG_A6XX_SP_HS_CONFIG,
+         REG_A6XX_HLSQ_HS_CNTL,
+         REG_A6XX_SP_HS_OBJ_START_LO,
+         CP_LOAD_STATE6_GEOM,
+         SB6_HS_SHADER,
+      },
+      [MESA_SHADER_TESS_EVAL] = {
+         REG_A6XX_SP_DS_CTRL_REG0,
+         REG_A6XX_SP_DS_CONFIG,
+         REG_A6XX_HLSQ_DS_CNTL,
+         REG_A6XX_SP_DS_OBJ_START_LO,
+         CP_LOAD_STATE6_GEOM,
+         SB6_DS_SHADER,
+      },
+      [MESA_SHADER_GEOMETRY] = {
+         REG_A6XX_SP_GS_CTRL_REG0,
+         REG_A6XX_SP_GS_CONFIG,
+         REG_A6XX_HLSQ_GS_CNTL,
+         REG_A6XX_SP_GS_OBJ_START_LO,
+         CP_LOAD_STATE6_GEOM,
+         SB6_GS_SHADER,
+      },
+      [MESA_SHADER_FRAGMENT] = {
+         REG_A6XX_SP_FS_CTRL_REG0,
+         REG_A6XX_SP_FS_CONFIG,
+         REG_A6XX_HLSQ_FS_CNTL,
+         REG_A6XX_SP_FS_OBJ_START_LO,
+         CP_LOAD_STATE6_FRAG,
+         SB6_FS_SHADER,
+      },
+      [MESA_SHADER_COMPUTE] = {
+         REG_A6XX_SP_CS_CTRL_REG0,
+         REG_A6XX_SP_CS_CONFIG,
+         REG_A6XX_HLSQ_CS_CNTL,
+         REG_A6XX_SP_CS_OBJ_START_LO,
+         CP_LOAD_STATE6_FRAG,
+         SB6_CS_SHADER,
+      },
+   };
+   const struct xs_config *cfg = &xs_config[stage];
+
+   if (!xs) {
+      /* shader stage disabled */
+      tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_config, 1);
+      tu_cs_emit(cs, 0);
+
+      tu_cs_emit_pkt4(cs, cfg->reg_hlsq_xs_ctrl, 1);
+      tu_cs_emit(cs, 0);
+      return;
+   }
+
    bool is_fs = xs->type == MESA_SHADER_FRAGMENT;
    enum a3xx_threadsize threadsize = FOUR_QUADS;
 
@@ -641,131 +713,88 @@ emit_xs_cntl(const struct ir3_shader_variant *xs)
    if (xs->type == MESA_SHADER_GEOMETRY)
       threadsize = TWO_QUADS;
 
-   return A6XX_SP_VS_CTRL_REG0_THREADSIZE(threadsize) |
-      A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(xs->info.max_reg + 1) |
-      A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
-      A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(xs->branchstack) |
-      COND(xs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE) |
-      COND(xs->need_fine_derivatives, A6XX_SP_VS_CTRL_REG0_DIFF_FINE) |
-      /* only fragment shader sets VARYING bit */
-      COND(xs->total_in && is_fs, A6XX_SP_FS_CTRL_REG0_VARYING) |
-      /* unknown bit, seems unnecessary */
-      COND(is_fs, 0x1000000);
-}
+   tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_ctrl, 1);
+   tu_cs_emit(cs,
+              A6XX_SP_VS_CTRL_REG0_THREADSIZE(threadsize) |
+              A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(xs->info.max_reg + 1) |
+              A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
+              A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(xs->branchstack) |
+              COND(xs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE) |
+              COND(xs->need_fine_derivatives, A6XX_SP_VS_CTRL_REG0_DIFF_FINE) |
+              /* only fragment shader sets VARYING bit */
+              COND(xs->total_in && is_fs, A6XX_SP_FS_CTRL_REG0_VARYING) |
+              /* unknown bit, seems unnecessary */
+              COND(is_fs, 0x1000000));
 
-static uint32_t
-emit_xs_config(const struct ir3_shader_variant *sh)
-{
-   if (sh->instrlen) {
-      return A6XX_SP_VS_CONFIG_ENABLED |
-         COND(sh->bindless_tex, A6XX_SP_VS_CONFIG_BINDLESS_TEX) |
-         COND(sh->bindless_samp, A6XX_SP_VS_CONFIG_BINDLESS_SAMP) |
-         COND(sh->bindless_ibo, A6XX_SP_VS_CONFIG_BINDLESS_IBO) |
-         COND(sh->bindless_ubo, A6XX_SP_VS_CONFIG_BINDLESS_UBO);
-   } else {
-      return 0;
+   tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_config, 2);
+   tu_cs_emit(cs, A6XX_SP_VS_CONFIG_ENABLED |
+                  COND(xs->bindless_tex, A6XX_SP_VS_CONFIG_BINDLESS_TEX) |
+                  COND(xs->bindless_samp, A6XX_SP_VS_CONFIG_BINDLESS_SAMP) |
+                  COND(xs->bindless_ibo, A6XX_SP_VS_CONFIG_BINDLESS_IBO) |
+                  COND(xs->bindless_ubo, A6XX_SP_VS_CONFIG_BINDLESS_UBO));
+   tu_cs_emit(cs, xs->instrlen);
+
+   tu_cs_emit_pkt4(cs, cfg->reg_hlsq_xs_ctrl, 1);
+   tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(xs->constlen, 4)) |
+                  A6XX_HLSQ_VS_CNTL_ENABLED);
+
+   /* emit program binary
+    * binary_iova should be aligned to 1 instrlen unit (128 bytes)
+    */
+
+   assert((binary_iova & 0x7f) == 0);
+
+   tu_cs_emit_pkt4(cs, cfg->reg_sp_vs_obj_start, 2);
+   tu_cs_emit_qw(cs, binary_iova);
+
+   tu_cs_emit_pkt7(cs, cfg->opcode, 3);
+   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
+                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
+                  CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(cfg->sb) |
+                  CP_LOAD_STATE6_0_NUM_UNIT(xs->instrlen));
+   tu_cs_emit_qw(cs, binary_iova);
+
+   /* emit immediates */
+
+   const struct ir3_const_state *const_state = &xs->shader->const_state;
+   uint32_t base = const_state->offsets.immediate;
+   int size = const_state->immediates_count;
+
+   /* truncate size to avoid writing constants that shader
+    * does not use:
+    */
+   size = MIN2(size + base, xs->constlen) - base;
+
+   if (size <= 0)
+      return;
+
+   tu_cs_emit_pkt7(cs, cfg->opcode, 3 + size * 4);
+   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
+                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(cfg->sb) |
+                  CP_LOAD_STATE6_0_NUM_UNIT(size));
+   tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+   tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+
+   for (unsigned i = 0; i < size; i++) {
+      tu_cs_emit(cs, const_state->immediates[i].val[0]);
+      tu_cs_emit(cs, const_state->immediates[i].val[1]);
+      tu_cs_emit(cs, const_state->immediates[i].val[2]);
+      tu_cs_emit(cs, const_state->immediates[i].val[3]);
    }
 }
 
 static void
-tu6_emit_vs_config(struct tu_cs *cs, struct tu_shader *shader,
-                   const struct ir3_shader_variant *vs)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_CTRL_REG0, 1);
-   tu_cs_emit(cs, emit_xs_cntl(vs));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_CONFIG, 2);
-   tu_cs_emit(cs, emit_xs_config(vs));
-   tu_cs_emit(cs, vs->instrlen);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_VS_CNTL, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(vs->constlen, 4)) |
-                  A6XX_HLSQ_VS_CNTL_ENABLED);
-}
-
-static void
-tu6_emit_hs_config(struct tu_cs *cs, struct tu_shader *shader,
-                   const struct ir3_shader_variant *hs)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
-   tu_cs_emit(cs, 0);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_CONFIG, 2);
-   tu_cs_emit(cs, emit_xs_config(hs));
-   tu_cs_emit(cs, hs->instrlen);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_HS_CNTL, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_HS_CNTL_CONSTLEN(align(hs->constlen, 4)));
-}
-
-static void
-tu6_emit_ds_config(struct tu_cs *cs, struct tu_shader *shader,
-                   const struct ir3_shader_variant *ds)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_DS_CONFIG, 2);
-   tu_cs_emit(cs, emit_xs_config(ds));
-   tu_cs_emit(cs, ds->instrlen);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_DS_CNTL, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_DS_CNTL_CONSTLEN(align(ds->constlen, 4)));
-}
-
-static void
-tu6_emit_gs_config(struct tu_cs *cs, struct tu_shader *shader,
-                   const struct ir3_shader_variant *gs)
-{
-   bool has_gs = gs->type != MESA_SHADER_NONE;
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);
-   tu_cs_emit(cs, 0);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CONFIG, 2);
-   tu_cs_emit(cs, emit_xs_config(gs));
-   tu_cs_emit(cs, gs->instrlen);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_GS_CNTL, 1);
-   tu_cs_emit(cs, COND(has_gs, A6XX_HLSQ_GS_CNTL_ENABLED) |
-                  A6XX_HLSQ_GS_CNTL_CONSTLEN(align(gs->constlen, 4)));
-}
-
-static void
-tu6_emit_fs_config(struct tu_cs *cs, struct tu_shader *shader,
-                   const struct ir3_shader_variant *fs)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CTRL_REG0, 1);
-   tu_cs_emit(cs, emit_xs_cntl(fs));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_CONFIG, 2);
-   tu_cs_emit(cs, emit_xs_config(fs));
-   tu_cs_emit(cs, fs->instrlen);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(fs->constlen, 4)) |
-                  A6XX_HLSQ_FS_CNTL_ENABLED);
-}
-
-static void
 tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
-                   const struct ir3_shader_variant *v)
+                   const struct ir3_shader_variant *v,
+                   uint32_t binary_iova)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
    tu_cs_emit(cs, 0xff);
 
-   unsigned constlen = align(v->constlen, 4);
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_CNTL, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_CS_CNTL_CONSTLEN(constlen) |
-              A6XX_HLSQ_CS_CNTL_ENABLED);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CONFIG, 2);
-   tu_cs_emit(cs, emit_xs_config(v));
-   tu_cs_emit(cs, v->instrlen);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CTRL_REG0, 1);
-   tu_cs_emit(cs, A6XX_SP_CS_CTRL_REG0_THREADSIZE(FOUR_QUADS) |
-              A6XX_SP_CS_CTRL_REG0_FULLREGFOOTPRINT(v->info.max_reg + 1) |
-              A6XX_SP_CS_CTRL_REG0_MERGEDREGS |
-              A6XX_SP_CS_CTRL_REG0_BRANCHSTACK(v->branchstack) |
-              COND(v->need_pixlod, A6XX_SP_CS_CTRL_REG0_PIXLODENABLE) |
-              COND(v->need_fine_derivatives, A6XX_SP_CS_CTRL_REG0_DIFF_FINE));
+   tu6_emit_xs_config(cs, MESA_SHADER_COMPUTE, v, binary_iova);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
    tu_cs_emit(cs, 0x41);
@@ -794,10 +823,10 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
          ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
    const uint32_t instanceid_regid =
          ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
-   const uint32_t primitiveid_regid = gs->type != MESA_SHADER_NONE ?
+   const uint32_t primitiveid_regid = gs ?
          ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) :
          regid(63, 0);
-   const uint32_t gsheader_regid = gs->type != MESA_SHADER_NONE ?
+   const uint32_t gsheader_regid = gs ?
          ir3_find_sysval_regid(gs, SYSTEM_VALUE_GS_HEADER_IR3) :
          regid(63, 0);
 
@@ -979,13 +1008,12 @@ tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
              const struct ir3_shader_variant *gs,
              const struct ir3_shader_variant *fs,
-             bool binning_pass,
              struct tu_streamout_state *tf)
 {
-   bool has_gs = gs->type != MESA_SHADER_NONE;
-   const struct ir3_shader_variant *last_shader = has_gs ? gs : vs;
-   struct ir3_shader_linkage linkage = { 0 };
-   ir3_link_shaders(&linkage, last_shader, fs, true);
+   const struct ir3_shader_variant *last_shader = gs ?: vs;
+   struct ir3_shader_linkage linkage = { .primid_loc = 0xff };
+   if (fs)
+      ir3_link_shaders(&linkage, last_shader, fs, true);
 
    if (last_shader->shader->stream_output.num_outputs)
       tu6_link_streamout(&linkage, last_shader);
@@ -1007,7 +1035,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       ir3_find_output_regid(last_shader, VARYING_SLOT_POS);
    const uint32_t pointsize_regid =
       ir3_find_output_regid(last_shader, VARYING_SLOT_PSIZ);
-   const uint32_t layer_regid = has_gs ?
+   const uint32_t layer_regid = gs ?
       ir3_find_output_regid(gs, VARYING_SLOT_LAYER) : regid(63, 0);
 
    uint32_t pointsize_loc = 0xff, position_loc = 0xff, layer_loc = 0xff;
@@ -1041,13 +1069,13 @@ tu6_emit_vpc(struct tu_cs *cs,
          A6XX_SP_VS_VPC_DST_REG_OUTLOC0(linkage.var[i].loc);
    }
 
-   if (has_gs)
+   if (gs)
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_OUT_REG(0), sp_out_count);
    else
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_OUT_REG(0), sp_out_count);
    tu_cs_emit_array(cs, sp_out, sp_out_count);
 
-   if (has_gs)
+   if (gs)
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_VPC_DST_REG(0), sp_vpc_dst_count);
    else
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_VPC_DST_REG(0), sp_vpc_dst_count);
@@ -1057,20 +1085,17 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu_cs_emit(cs, COND(primid_passthru, A6XX_PC_PRIMID_CNTL_PRIMID_PASSTHRU));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_CNTL_0, 1);
-   tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs->total_in) |
-                     (fs->total_in > 0 ? A6XX_VPC_CNTL_0_VARYING : 0) |
-                     A6XX_VPC_CNTL_0_PRIMIDLOC(linkage.primid_loc) |
-                     A6XX_VPC_CNTL_0_UNKLOC(0xff));
+   tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs ? fs->total_in : 0) |
+                  COND(fs && fs->total_in, A6XX_VPC_CNTL_0_VARYING) |
+                  A6XX_VPC_CNTL_0_PRIMIDLOC(linkage.primid_loc) |
+                  A6XX_VPC_CNTL_0_UNKLOC(0xff));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK, 1);
    tu_cs_emit(cs, A6XX_VPC_PACK_POSITIONLOC(position_loc) |
                      A6XX_VPC_PACK_PSIZELOC(pointsize_loc) |
                      A6XX_VPC_PACK_STRIDE_IN_VPC(linkage.max_loc));
 
-   if (has_gs) {
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_CTRL_REG0, 1);
-      tu_cs_emit(cs, emit_xs_cntl(gs));
-
+   if (gs) {
       tu6_emit_link_map(cs, vs, gs);
 
       uint32_t primitive_regid =
@@ -1205,13 +1230,12 @@ tu6_vpc_varying_mode(const struct ir3_shader_variant *fs,
 
 static void
 tu6_emit_vpc_varying_modes(struct tu_cs *cs,
-                           const struct ir3_shader_variant *fs,
-                           bool binning_pass)
+                           const struct ir3_shader_variant *fs)
 {
    uint32_t interp_modes[8] = { 0 };
    uint32_t ps_repl_modes[8] = { 0 };
 
-   if (!binning_pass) {
+   if (fs) {
       for (int i = -1;
            (i = ir3_next_varying(fs, i)) < (int) fs->inputs_count;) {
 
@@ -1415,133 +1439,6 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 }
 
 static void
-tu6_emit_shader_object(struct tu_cs *cs,
-                       gl_shader_stage stage,
-                       const struct ir3_shader_variant *variant,
-                       const struct tu_bo *binary_bo,
-                       uint32_t binary_offset)
-{
-   uint16_t reg;
-   uint8_t opcode;
-   enum a6xx_state_block sb;
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-      reg = REG_A6XX_SP_VS_OBJ_START_LO;
-      opcode = CP_LOAD_STATE6_GEOM;
-      sb = SB6_VS_SHADER;
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      reg = REG_A6XX_SP_HS_OBJ_START_LO;
-      opcode = CP_LOAD_STATE6_GEOM;
-      sb = SB6_HS_SHADER;
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      reg = REG_A6XX_SP_DS_OBJ_START_LO;
-      opcode = CP_LOAD_STATE6_GEOM;
-      sb = SB6_DS_SHADER;
-      break;
-   case MESA_SHADER_GEOMETRY:
-      reg = REG_A6XX_SP_GS_OBJ_START_LO;
-      opcode = CP_LOAD_STATE6_GEOM;
-      sb = SB6_GS_SHADER;
-      break;
-   case MESA_SHADER_FRAGMENT:
-      reg = REG_A6XX_SP_FS_OBJ_START_LO;
-      opcode = CP_LOAD_STATE6_FRAG;
-      sb = SB6_FS_SHADER;
-      break;
-   case MESA_SHADER_COMPUTE:
-      reg = REG_A6XX_SP_CS_OBJ_START_LO;
-      opcode = CP_LOAD_STATE6_FRAG;
-      sb = SB6_CS_SHADER;
-      break;
-   default:
-      unreachable("invalid gl_shader_stage");
-      opcode = CP_LOAD_STATE6_GEOM;
-      sb = SB6_VS_SHADER;
-      break;
-   }
-
-   if (!variant->instrlen) {
-      tu_cs_emit_pkt4(cs, reg, 2);
-      tu_cs_emit_qw(cs, 0);
-      return;
-   }
-
-   assert(variant->type == stage);
-
-   const uint64_t binary_iova = binary_bo->iova + binary_offset;
-   assert((binary_iova & 0xf) == 0);
-   /* note: it looks like HW might try to read a few instructions beyond the instrlen size
-    * of the shader. this could be a potential source of problems at some point
-    * possibly this doesn't happen if shader iova is aligned enough (to 4k for example)
-    */
-
-   tu_cs_emit_pkt4(cs, reg, 2);
-   tu_cs_emit_qw(cs, binary_iova);
-
-   /* always indirect */
-   const bool indirect = true;
-   if (indirect) {
-      tu_cs_emit_pkt7(cs, opcode, 3);
-      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-                        CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-                        CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-                        CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-                        CP_LOAD_STATE6_0_NUM_UNIT(variant->instrlen));
-      tu_cs_emit_qw(cs, binary_iova);
-   } else {
-      const void *binary = binary_bo->map + binary_offset;
-
-      tu_cs_emit_pkt7(cs, opcode, 3 + variant->info.sizedwords);
-      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-                        CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-                        CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-                        CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-                        CP_LOAD_STATE6_0_NUM_UNIT(variant->instrlen));
-      tu_cs_emit_qw(cs, 0);
-      tu_cs_emit_array(cs, binary, variant->info.sizedwords);
-   }
-}
-
-static void
-tu6_emit_immediates(struct tu_cs *cs, const struct ir3_shader_variant *v,
-                    uint32_t opcode, enum a6xx_state_block block)
-{
-   /* dummy variant */
-   if (!v->shader)
-      return;
-
-   const struct ir3_const_state *const_state = &v->shader->const_state;
-   uint32_t base = const_state->offsets.immediate;
-   int size = const_state->immediates_count;
-
-   /* truncate size to avoid writing constants that shader
-    * does not use:
-    */
-   size = MIN2(size + base, v->constlen) - base;
-
-   if (size <= 0)
-      return;
-
-   tu_cs_emit_pkt7(cs, opcode, 3 + size * 4);
-   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
-                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-                  CP_LOAD_STATE6_0_STATE_BLOCK(block) |
-                  CP_LOAD_STATE6_0_NUM_UNIT(size));
-   tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-   tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-
-   for (unsigned i = 0; i < size; i++) {
-      tu_cs_emit(cs, const_state->immediates[i].val[0]);
-      tu_cs_emit(cs, const_state->immediates[i].val[1]);
-      tu_cs_emit(cs, const_state->immediates[i].val[2]);
-      tu_cs_emit(cs, const_state->immediates[i].val[3]);
-   }
-}
-
-static void
 tu6_emit_geometry_consts(struct tu_cs *cs,
                          const struct ir3_shader_variant *vs,
                          const struct ir3_shader_variant *gs) {
@@ -1562,84 +1459,81 @@ tu6_emit_geometry_consts(struct tu_cs *cs,
                   ARRAY_SIZE(params), params);
 }
 
+/* get pointer to first variant, return NULL if shader is NULL */
+static const struct ir3_shader_variant *
+tu_shader_get_variant(const struct tu_shader *shader)
+{
+   return shader ? &shader->variants[0] : NULL;
+}
+
 static void
 tu6_emit_program(struct tu_cs *cs,
-                 const struct tu_pipeline_builder *builder,
+                 struct tu_pipeline_builder *builder,
                  const struct tu_bo *binary_bo,
                  bool binning_pass,
                  struct tu_streamout_state *tf)
 {
-   static const struct ir3_shader_variant dummy_variant = {
-      .type = MESA_SHADER_NONE
-   };
-   assert(builder->shaders[MESA_SHADER_VERTEX]);
    const struct ir3_shader_variant *vs =
-      &builder->shaders[MESA_SHADER_VERTEX]->variants[0];
-   const struct ir3_shader_variant *hs =
-      builder->shaders[MESA_SHADER_TESS_CTRL]
-         ? &builder->shaders[MESA_SHADER_TESS_CTRL]->variants[0]
-         : &dummy_variant;
-   const struct ir3_shader_variant *ds =
-      builder->shaders[MESA_SHADER_TESS_EVAL]
-         ? &builder->shaders[MESA_SHADER_TESS_EVAL]->variants[0]
-         : &dummy_variant;
+      tu_shader_get_variant(builder->shaders[MESA_SHADER_VERTEX]);
    const struct ir3_shader_variant *gs =
-      builder->shaders[MESA_SHADER_GEOMETRY]
-         ? &builder->shaders[MESA_SHADER_GEOMETRY]->variants[0]
-         : &dummy_variant;
+      tu_shader_get_variant(builder->shaders[MESA_SHADER_GEOMETRY]);
    const struct ir3_shader_variant *fs =
-      builder->shaders[MESA_SHADER_FRAGMENT]
-         ? &builder->shaders[MESA_SHADER_FRAGMENT]->variants[0]
-         : &dummy_variant;
-   uint32_t vs_offset = builder->shader_offsets[MESA_SHADER_VERTEX];
-   bool has_gs = gs->type != MESA_SHADER_NONE;
+      tu_shader_get_variant(builder->shaders[MESA_SHADER_FRAGMENT]);
+   gl_shader_stage stage = MESA_SHADER_VERTEX;
 
-   if (binning_pass) {
-      /* if we have streamout, use full VS in binning pass, as the
-       * binning pass VS will have outputs on other than position/psize
-       * stripped out
-       *
-       * GS also can have streamout, but we completely disable the
-       * the binning pass variant when GS is present because we don't
-       * support compiling correct binning pass variants with GS
-       */
-      if (vs->shader->stream_output.num_outputs == 0 && !has_gs) {
-         vs = &builder->shaders[MESA_SHADER_VERTEX]->variants[1];
-         vs_offset = builder->binning_vs_offset;
-      }
-      fs = &dummy_variant;
-   }
+   STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
    tu_cs_emit(cs, 0xff); /* XXX */
 
-   tu6_emit_vs_config(cs, builder->shaders[MESA_SHADER_VERTEX], vs);
-   tu6_emit_hs_config(cs, builder->shaders[MESA_SHADER_TESS_CTRL], hs);
-   tu6_emit_ds_config(cs, builder->shaders[MESA_SHADER_TESS_EVAL], ds);
-   tu6_emit_gs_config(cs, builder->shaders[MESA_SHADER_GEOMETRY], gs);
-   tu6_emit_fs_config(cs, builder->shaders[MESA_SHADER_FRAGMENT], fs);
-
-   tu6_emit_vpc(cs, vs, gs, fs, binning_pass, tf);
-   tu6_emit_vpc_varying_modes(cs, fs, binning_pass);
-   tu6_emit_fs_inputs(cs, fs);
-   tu6_emit_fs_outputs(cs, fs, builder->color_attachment_count,
-                       builder->use_dual_src_blend,
-                       builder->render_components);
-
-   tu6_emit_shader_object(cs, MESA_SHADER_VERTEX, vs, binary_bo, vs_offset);
-   if (has_gs)
-      tu6_emit_shader_object(cs, MESA_SHADER_GEOMETRY, gs, binary_bo,
-                             builder->shader_offsets[MESA_SHADER_GEOMETRY]);
-   tu6_emit_shader_object(cs, MESA_SHADER_FRAGMENT, fs, binary_bo,
-                          builder->shader_offsets[MESA_SHADER_FRAGMENT]);
-
-   tu6_emit_immediates(cs, vs, CP_LOAD_STATE6_GEOM, SB6_VS_SHADER);
-   if (has_gs) {
-      tu6_emit_immediates(cs, gs, CP_LOAD_STATE6_GEOM, SB6_GS_SHADER);
-      tu6_emit_geometry_consts(cs, vs, gs);
+   /* if we have streamout, use full VS in binning pass, as the
+   * binning pass VS will have outputs on other than position/psize
+   * stripped out
+   *
+   * GS also can have streamout, but we completely disable the
+   * the binning pass variant when GS is present because we don't
+   * support compiling correct binning pass variants with GS
+   */
+   if (binning_pass && vs->shader->stream_output.num_outputs == 0 && !gs) {
+      vs = &builder->shaders[MESA_SHADER_VERTEX]->variants[1];
+      tu6_emit_xs_config(cs, stage, vs,
+                         binary_bo->iova + builder->binning_vs_offset);
+      stage++;
    }
-   if (!binning_pass)
-      tu6_emit_immediates(cs, fs, CP_LOAD_STATE6_FRAG, SB6_FS_SHADER);
+
+   for (; stage < ARRAY_SIZE(builder->shaders); stage++) {
+      const struct ir3_shader_variant *xs =
+         tu_shader_get_variant(builder->shaders[stage]);
+
+      if (stage == MESA_SHADER_FRAGMENT && binning_pass)
+         fs = xs = NULL;
+
+      tu6_emit_xs_config(cs, stage, xs,
+                         binary_bo->iova + builder->shader_offsets[stage]);
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
+   tu_cs_emit(cs, 0);
+
+   tu6_emit_vpc(cs, vs, gs, fs, tf);
+   tu6_emit_vpc_varying_modes(cs, fs);
+
+   if (fs) {
+      tu6_emit_fs_inputs(cs, fs);
+      tu6_emit_fs_outputs(cs, fs, builder->color_attachment_count,
+                          builder->use_dual_src_blend,
+                          builder->render_components);
+   } else {
+      /* TODO: check if these can be skipped if fs is disabled */
+      struct ir3_shader_variant dummy_variant = {};
+      tu6_emit_fs_inputs(cs, &dummy_variant);
+      tu6_emit_fs_outputs(cs, &dummy_variant, builder->color_attachment_count,
+                          builder->use_dual_src_blend,
+                          builder->render_components);
+   }
+
+   if (gs)
+      tu6_emit_geometry_consts(cs, vs, gs);
 }
 
 static void
@@ -2283,8 +2177,7 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
 
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, true, &pipeline->streamout);
-   pipeline->program.binning_state_ib =
-      tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+   pipeline->program.binning_state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
    VkShaderStageFlags stages = 0;
    for (unsigned i = 0; i < builder->create_info->stageCount; i++) {
@@ -2700,21 +2593,6 @@ tu_CreateGraphicsPipelines(VkDevice device,
    return final_result;
 }
 
-static void
-tu6_emit_compute_program(struct tu_cs *cs,
-                         struct tu_shader *shader,
-                         const struct tu_bo *binary_bo)
-{
-   const struct ir3_shader_variant *v = &shader->variants[0];
-
-   tu6_emit_cs_config(cs, shader, v);
-
-   /* The compute program is the only one in the pipeline, so 0 offset. */
-   tu6_emit_shader_object(cs, MESA_SHADER_COMPUTE, v, binary_bo, 0);
-
-   tu6_emit_immediates(cs, v, CP_LOAD_STATE6_FRAG, SB6_CS_SHADER);
-}
-
 static VkResult
 tu_compute_upload_shader(VkDevice device,
                          struct tu_pipeline *pipeline,
@@ -2790,7 +2668,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    struct tu_cs prog_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_compute_program(&prog_cs, shader, &pipeline->program.binary_bo);
+   tu6_emit_cs_config(&prog_cs, shader, v, pipeline->program.binary_bo.iova);
    pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
    tu6_emit_load_state(pipeline, true);
