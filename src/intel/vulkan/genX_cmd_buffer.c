@@ -1804,7 +1804,7 @@ void
 genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
                            const struct gen_l3_config *cfg)
 {
-   assert(cfg);
+   assert(cfg || GEN_GEN >= 12);
    if (cfg == cmd_buffer->state.current_l3_config)
       return;
 
