@@ -329,7 +329,7 @@ class Group(object):
 
             if field.type == "address":
                 # assert dwords[index].address == None
-                dwords[index].address = field
+                dwords[index].address = clone
 
             # Coalesce all the dwords covered by this field. The two cases we
             # handle are where multiple fields are in a 64 bit word (typically
