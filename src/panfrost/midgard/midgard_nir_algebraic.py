@@ -31,7 +31,10 @@ b = 'b'
 c = 'c'
 
 algebraic = [
-   (('pack_unorm_4x8', a), ('pack_32_4x8', ('f2u8', ('fround_even', ('fmul', ('fsat', a), 255.0)))))
+   (('pack_unorm_4x8', a), ('pack_32_4x8', ('f2u8', ('fround_even', ('fmul', ('fsat', a), 255.0))))),
+
+   # Allows us to schedule as a multiply by 2
+   (('~fadd', ('fadd', a, b), a), ('fadd', ('fadd', a, a), b)),
 ]
 
 algebraic_late = [
