@@ -198,12 +198,12 @@ mir_is_scalar(midgard_instruction *ains)
 
         /* Otherwise, check mode hazards */
         bool could_scalar = true;
+        unsigned szd = nir_alu_type_get_type_size(ains->dest_type);
         unsigned sz0 = nir_alu_type_get_type_size(ains->src_types[0]);
         unsigned sz1 = nir_alu_type_get_type_size(ains->src_types[1]);
 
         /* Only 16/32-bit can run on a scalar unit */
-        could_scalar &= ains->alu.reg_mode != midgard_reg_mode_8;
-        could_scalar &= ains->alu.reg_mode != midgard_reg_mode_64;
+        could_scalar &= (szd == 16) || (szd == 32);
 
         if (ains->src[0] != ~0)
                 could_scalar &= (sz0 == 16) || (sz0 == 32);
