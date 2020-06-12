@@ -918,6 +918,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
         assert(prsrc->bo);
 
+        so->layout = prsrc->layout;
+
         unsigned char user_swizzle[4] = {
                 so->base.swizzle_r,
                 so->base.swizzle_g,

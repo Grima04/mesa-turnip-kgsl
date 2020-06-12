@@ -1382,6 +1382,17 @@ panfrost_get_tex_desc(struct panfrost_batch *batch,
         return view->midgard_bo->gpu;
 }
 
+static void
+panfrost_update_sampler_view(struct panfrost_sampler_view *view,
+                             struct pipe_context *pctx)
+{
+        struct panfrost_resource *rsrc = pan_resource(view->base.texture);
+        if (view->layout != rsrc->layout) {
+                panfrost_bo_unreference(view->midgard_bo);
+                panfrost_create_sampler_view_bo(view, pctx, &rsrc->base);
+        }
+}
+
 void
 panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage,
@@ -1426,9 +1437,13 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
         } else {
                 uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
-                for (int i = 0; i < ctx->sampler_view_count[stage]; ++i)
-                        trampolines[i] = panfrost_get_tex_desc(batch, stage,
-                                                               ctx->sampler_views[stage][i]);
+                for (int i = 0; i < ctx->sampler_view_count[stage]; ++i) {
+                        struct panfrost_sampler_view *view = ctx->sampler_views[stage][i];
+
+                        panfrost_update_sampler_view(view, &ctx->base);
+
+                        trampolines[i] = panfrost_get_tex_desc(batch, stage, view);
+                }
 
                 postfix->textures = panfrost_upload_transient(batch,
                                                               trampolines,
