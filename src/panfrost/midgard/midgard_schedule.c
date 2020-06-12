@@ -508,6 +508,15 @@ mir_pipeline_count(midgard_instruction *ins)
         return DIV_ROUND_UP(bytecount, 16);
 }
 
+static unsigned
+mir_has_unit(midgard_instruction *ins, unsigned unit)
+{
+        if (alu_opcode_props[ins->alu.op].props & unit)
+                return true;
+
+        return false;
+}
+
 static midgard_instruction *
 mir_choose_instruction(
                 midgard_instruction **instructions,
@@ -554,7 +563,7 @@ mir_choose_instruction(
                 if (predicate->exclude != ~0 && instructions[i]->dest == predicate->exclude)
                         continue;
 
-                if (alu && !branch && !(alu_opcode_props[instructions[i]->alu.op].props & unit))
+                if (alu && !branch && !(mir_has_unit(instructions[i], unit)))
                         continue;
 
                 if (branch && !instructions[i]->compact_branch)
