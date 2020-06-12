@@ -431,19 +431,6 @@ optimizations.extend([
    (('ieq', ('iadd', a, b), a), ('ieq', b, 0)),
    (('ine', ('iadd', a, b), a), ('ine', b, 0)),
 
-   # fmin(-b2f(a), b) >= 0.0
-   # -b2f(a) >= 0.0 && b >= 0.0
-   # -b2f(a) == 0.0 && b >= 0.0    -b2f can only be 0 or -1, never >0
-   # b2f(a) == 0.0 && b >= 0.0
-   # a == False && b >= 0.0
-   # !a && b >= 0.0
-   #
-   # The fge in the second replacement is not a typo.  I leave the proof that
-   # "fmin(-b2f(a), b) >= 0 <=> fmin(-b2f(a), b) == 0" as an exercise for the
-   # reader.
-   (('fge', ('fmin', ('fneg', ('b2f', 'a@1')), 'b@1'), 0.0), ('iand', ('inot', a), ('fge', b, 0.0))),
-   (('feq', ('fmin', ('fneg', ('b2f', 'a@1')), 'b@1'), 0.0), ('iand', ('inot', a), ('fge', b, 0.0))),
-
    (('feq', ('b2f', 'a@1'), 0.0), ('inot', a)),
    (('~fneu', ('b2f', 'a@1'), 0.0), a),
    (('ieq', ('b2i', 'a@1'), 0),   ('inot', a)),
