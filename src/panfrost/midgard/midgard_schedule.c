@@ -26,6 +26,7 @@
 #include "midgard_quirks.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
+#include "util/half_float.h"
 
 /* Scheduling for Midgard is complicated, to say the least. ALU instructions
  * must be grouped into VLIW bundles according to following model:
@@ -508,10 +509,59 @@ mir_pipeline_count(midgard_instruction *ins)
         return DIV_ROUND_UP(bytecount, 16);
 }
 
+/* Matches FADD x, x with modifiers compatible. Since x + x = x * 2, for
+ * any x including of the form f(y) for some swizzle/abs/neg function f */
+
+static bool
+mir_is_add_2(midgard_instruction *ins)
+{
+        if (ins->alu.op != midgard_alu_op_fadd)
+                return false;
+
+        if (ins->src[0] != ins->src[1])
+                return false;
+
+        if (ins->src_types[0] != ins->src_types[1])
+                return false;
+
+        for (unsigned i = 0; i < MIR_VEC_COMPONENTS; ++i) {
+                if (ins->swizzle[0][i] != ins->swizzle[1][i])
+                        return false;
+        }
+
+        if (ins->src_abs[0] != ins->src_abs[1])
+                return false;
+
+        if (ins->src_neg[0] != ins->src_neg[1])
+                return false;
+
+        return true;
+}
+
+static void
+mir_adjust_unit(midgard_instruction *ins, unsigned unit)
+{
+        /* FADD x, x = FMUL x, #2 */
+        if (mir_is_add_2(ins) && (unit & (UNITS_MUL | UNIT_VLUT))) {
+                ins->alu.op = midgard_alu_op_fmul;
+
+                ins->src[1] = ~0;
+                ins->src_abs[1] = false;
+                ins->src_neg[1] = false;
+
+                ins->has_inline_constant = true;
+                ins->inline_constant = _mesa_float_to_half(2.0);
+        }
+}
+
 static unsigned
 mir_has_unit(midgard_instruction *ins, unsigned unit)
 {
         if (alu_opcode_props[ins->alu.op].props & unit)
+                return true;
+
+        /* FADD x, x can run on any adder or any multiplier */
+        if (mir_is_add_2(ins))
                 return true;
 
         return false;
@@ -615,6 +665,9 @@ mir_choose_instruction(
 
                 if (ldst)
                         predicate->pipeline_count += mir_pipeline_count(instructions[best_index]);
+
+                if (alu)
+                        mir_adjust_unit(instructions[best_index], unit);
 
                 /* Once we schedule a conditional, we can't again */
                 predicate->no_cond |= best_conditional;
