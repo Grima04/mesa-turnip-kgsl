@@ -21,7 +21,6 @@
 inc_util = include_directories('.')
 
 subdir('format')
-subdir('xmlpool')
 
 files_mesa_util = files(
   'anon_file.h',
@@ -201,7 +200,7 @@ _libxmlconfig = static_library(
 )
 
 idep_xmlconfig = declare_dependency(
-  dependencies : [idep_xmlconfig_headers, dep_expat],
+  dependencies : dep_expat,
   link_with : _libxmlconfig,
 )
 

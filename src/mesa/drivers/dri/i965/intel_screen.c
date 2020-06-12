@@ -58,7 +58,7 @@ DRI_CONF_BEGIN
        * DRI_CONF_BO_REUSE_ALL
        */
       DRI_CONF_OPT_BEGIN_V(bo_reuse, enum, 1, "0:1")
-	 DRI_CONF_DESC_BEGIN(en, "Buffer object reuse")
+	 DRI_CONF_DESC_BEGIN("Buffer object reuse")
 	    DRI_CONF_ENUM(0, "Disable buffer object reuse")
 	    DRI_CONF_ENUM(1, "Enable reuse of all sizes of buffer objects")
 	 DRI_CONF_DESC_END
@@ -71,7 +71,7 @@ DRI_CONF_BEGIN
       DRI_CONF_PRECISE_TRIG("false")
 
       DRI_CONF_OPT_BEGIN(clamp_max_samples, int, -1)
-              DRI_CONF_DESC(en, "Clamp the value of GL_MAX_SAMPLES to the "
+              DRI_CONF_DESC("Clamp the value of GL_MAX_SAMPLES to the "
                             "given integer. If negative, then do not clamp.")
       DRI_CONF_OPT_END
    DRI_CONF_SECTION_END
@@ -93,7 +93,7 @@ DRI_CONF_BEGIN
       DRI_CONF_FORCE_GLSL_ABS_SQRT("false")
 
       DRI_CONF_OPT_BEGIN_B(shader_precompile, "true")
-	 DRI_CONF_DESC(en, "Perform code generation at shader link time.")
+	 DRI_CONF_DESC("Perform code generation at shader link time.")
       DRI_CONF_OPT_END
    DRI_CONF_SECTION_END
 

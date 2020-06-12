@@ -134,7 +134,6 @@ anv_deps = [
   dep_valgrind,
   idep_nir_headers,
   idep_vulkan_util_headers,
-  idep_xmlconfig_headers,
 ]
 anv_flags = [
   no_override_init_args,

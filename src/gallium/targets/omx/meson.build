@@ -44,7 +44,7 @@ libomx_gallium = shared_library(
     libpipe_loader_static, libws_null, libwsw, libswdri, libswkmsdri,
   ],
   link_depends : omx_link_depends,
-  dependencies : [idep_mesautil, idep_xmlconfig_headers, driver_r600, driver_radeonsi, driver_nouveau],
+  dependencies : [idep_mesautil, driver_r600, driver_radeonsi, driver_nouveau],
   install : true,
   install_dir : omx_drivers_path,
 )

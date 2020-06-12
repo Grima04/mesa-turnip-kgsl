@@ -61,8 +61,8 @@ main function as is.
 ---------------------------
 
 First time outside of auxiliary/postprocess. First, add a suitable description to
-drivers/dri/common/xmlpool/t_options.h, and regenerate options.h by running make in that
-directory. Use the name you put into filters.h as the config option name.
+src/util/xmlpool.h.
+Use the name you put into filters.h as the config option name.
 
 With driconf aware of the option, make Gallium aware of it too. Add it to
 frontends/dri/common/dri_screen.c in a proper section, specifying its default value and

@@ -12,7 +12,6 @@ env.Append(CPPPATH = [
     '#/src/mapi',
     '#/src/mesa',
     '#/src/mesa/drivers/dri/common',
-    xmlpool_options.dir.dir, # Dir to generated xmlpool/options.h
 ])
 
 sources = env.ParseSourceList('Makefile.sources', 'common_SOURCES')
