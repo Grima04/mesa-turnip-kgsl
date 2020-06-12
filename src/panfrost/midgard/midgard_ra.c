@@ -435,6 +435,20 @@ mir_compute_interference(
         }
 }
 
+static bool
+mir_is_64(midgard_instruction *ins)
+{
+        if (nir_alu_type_get_type_size(ins->dest_type) == 64)
+                return true;
+
+        mir_foreach_src(ins, v) {
+                if (nir_alu_type_get_type_size(ins->src_types[v]) == 64)
+                        return true;
+        }
+
+        return false;
+}
+
 /* This routine performs the actual register allocation. It should be succeeded
  * by install_registers */
 
@@ -488,7 +502,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                  * but once we get RA we shouldn't disrupt this further. Align
                  * sources of 64-bit instructions. */
 
-                if (ins->type == TAG_ALU_4 && ins->alu.reg_mode == midgard_reg_mode_64) {
+                if (ins->type == TAG_ALU_4 && mir_is_64(ins)) {
                         mir_foreach_src(ins, v) {
                                 unsigned s = ins->src[v];
 
