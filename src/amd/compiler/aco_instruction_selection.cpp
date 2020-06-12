@@ -3192,7 +3192,7 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
       }
 
       /* shift result right if needed */
-      if (info->component_size < 4) {
+      if (info->component_size < 4 && byte_align_loads) {
          Operand align((uint32_t)byte_align);
          if (byte_align == -1) {
             if (offset.isConstant())
