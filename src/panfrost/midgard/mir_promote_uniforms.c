@@ -194,6 +194,8 @@ midgard_promote_uniforms(compiler_context *ctx)
                 if (needs_move) {
                         unsigned type_size = nir_alu_type_get_type_size(ins->dest_type);
                         midgard_instruction mov = v_mov(promoted, ins->dest);
+                        mov.dest_type = nir_type_uint | type_size;
+                        mov.src_types[0] = mov.dest_type;
 
                         if (type_size == 64)
                                 mov.alu.reg_mode = midgard_reg_mode_64;
