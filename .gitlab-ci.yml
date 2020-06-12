@@ -150,7 +150,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-06-02"
+    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-06-12"
 
 .use-x86_build-base:
   extends:
@@ -256,7 +256,7 @@ x86_test-vk:
 x86_build_old:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-06-02"
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-06-12"
     FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:
@@ -272,7 +272,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-06-01"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-06-12"
 
 .use-arm_build:
   variables:

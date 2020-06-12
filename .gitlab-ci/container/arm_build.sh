@@ -22,7 +22,6 @@ apt-get -y install \
 	fastboot \
 	flex \
 	g++ \
-	gettext \
 	git \
 	lavacli \
 	libdrm-dev:armhf \

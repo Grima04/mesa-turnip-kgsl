@@ -30,7 +30,6 @@ apt-get install -y --no-remove \
         g++ \
         g++-mingw-w64-x86-64 \
         gcc \
-        gettext \
         libclang-9-dev \
         libclc-dev \
         libelf-dev \

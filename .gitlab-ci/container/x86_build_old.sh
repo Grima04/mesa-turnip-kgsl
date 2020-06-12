@@ -30,7 +30,6 @@ apt-get install -y --no-remove \
       flex \
       g++ \
       gcc \
-      gettext \
       git \
       libclang-3.9-dev \
       libclang-4.0-dev \
