@@ -1669,12 +1669,13 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
                         emit_varying_read(ctx, reg, offset, nr_comp, component, indirect_offset, t | nir_dest_bit_size(instr->dest), is_flat);
                 } else if (ctx->is_blend) {
-                        /* For blend shaders, load the input color, which is
-                         * preloaded to r0 */
+                        /* ctx->blend_input will be precoloured to r0, where
+                         * the input is preloaded */
 
-                        midgard_instruction move = v_mov(SSA_FIXED_REGISTER(0), reg);
-                        emit_mir_instruction(ctx, move);
-                        schedule_barrier(ctx);
+                        if (ctx->blend_input == ~0)
+                                ctx->blend_input = reg;
+                        else
+                                emit_mir_instruction(ctx, v_mov(ctx->blend_input, reg));
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
                         emit_attr_read(ctx, reg, offset, nr_comp, t);
                 } else {
@@ -2696,6 +2697,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         ctx->is_blend = is_blend;
         ctx->alpha_ref = program->alpha_ref;
         ctx->blend_rt = MIDGARD_COLOR_RT0 + blend_rt;
+        ctx->blend_input = ~0;
         ctx->quirks = midgard_get_quirks(gpu_id);
 
         /* Start off with a safe cutoff, allowing usage of all 16 work

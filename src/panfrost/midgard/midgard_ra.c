@@ -635,6 +635,16 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         l->solutions[ins->dest] = (16 * 1) + COMPONENT_W * 4;
         }
 
+        /* Precolour blend input to r0. Note writeout is necessarily at the end
+         * and blend shaders are single-RT only so there is only a single
+         * writeout block, so this cannot conflict with the writeout r0 (there
+         * is no need to have an intermediate move) */
+
+        if (ctx->blend_input != ~0) {
+                assert(ctx->blend_input < ctx->temp_count);
+                l->solutions[ctx->blend_input] = 0;
+        }
+
         mir_compute_interference(ctx, l);
 
         *spilled = !lcra_solve(l);

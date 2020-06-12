@@ -71,6 +71,10 @@ mir_rewrite_index_dst(compiler_context *ctx, unsigned old, unsigned new)
         mir_foreach_instr_global(ctx, ins) {
                 mir_rewrite_index_dst_single(ins, old, new);
         }
+
+        /* Implicitly written before the shader */
+        if (ctx->blend_input == old)
+                ctx->blend_input = new;
 }
 
 void
