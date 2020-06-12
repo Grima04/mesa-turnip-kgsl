@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-_langs = ['nl', 'sv']
+_langs = ['sv']
 
 _langs_po_files = []
 foreach lang : _langs
