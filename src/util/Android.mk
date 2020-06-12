@@ -74,7 +74,7 @@ LOCAL_GENERATED_SOURCES += $(MESA_DRI_OPTIONS_H)
 # Generate options.h from gettext translations.
 #
 
-MESA_DRI_OPTIONS_LANGS := es nl fr sv
+MESA_DRI_OPTIONS_LANGS := nl fr sv
 POT := $(intermediates)/xmlpool.pot
 
 $(POT): $(LOCAL_PATH)/xmlpool/t_options.h
