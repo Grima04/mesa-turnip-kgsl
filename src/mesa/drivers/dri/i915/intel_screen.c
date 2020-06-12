@@ -40,7 +40,7 @@
 #include "swrast/s_renderbuffer.h"
 
 #include "utils.h"
-#include "util/xmlpool.h"
+#include "util/driconf.h"
 #include "util/u_memory.h"
 
 static const __DRIconfigOptionsExtension i915_config_options = {

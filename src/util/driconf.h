@@ -22,7 +22,7 @@
  * 
  */
 /**
- * \file xmlpool.h
+ * \file driconf.h
  * \brief Pool of common options
  * \author Felix Kuehling
  *
@@ -30,8 +30,8 @@
  * driConfigOptions in the drivers.
  */
 
-#ifndef __XMLPOOL_H
-#define __XMLPOOL_H
+#ifndef __DRICONF_H
+#define __DRICONF_H
 
 /*
  * generic macros

@@ -5,7 +5,7 @@
 #include "target-helpers/inline_debug_helper.h"
 #include "target-helpers/drm_helper_public.h"
 #include "frontend/drm_driver.h"
-#include "util/xmlpool.h"
+#include "util/driconf.h"
 
 #ifdef GALLIUM_I915
 #include "i915/drm/i915_drm_public.h"

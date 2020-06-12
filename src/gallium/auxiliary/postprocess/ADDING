@@ -61,7 +61,7 @@ main function as is.
 ---------------------------
 
 First time outside of auxiliary/postprocess. First, add a suitable description to
-src/util/xmlpool.h.
+src/util/driconf.h.
 Use the name you put into filters.h as the config option name.
 
 With driconf aware of the option, make Gallium aware of it too. Add it to

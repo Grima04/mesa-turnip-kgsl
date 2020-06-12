@@ -39,7 +39,7 @@
 #include "util/os_file.h"
 #include "util/u_atomic.h"
 #include "util/u_string.h"
-#include "util/xmlpool.h"
+#include "util/driconf.h"
 #include "git_sha1.h"
 #include "vk_util.h"
 #include "common/gen_aux_map.h"

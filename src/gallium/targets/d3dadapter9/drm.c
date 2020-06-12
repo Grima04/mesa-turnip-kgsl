@@ -38,7 +38,7 @@
 #include "d3dadapter/drm.h"
 
 #include "util/xmlconfig.h"
-#include "util/xmlpool.h"
+#include "util/driconf.h"
 
 #include "drm-uapi/drm.h"
 #include <sys/ioctl.h>

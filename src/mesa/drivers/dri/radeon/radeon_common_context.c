@@ -33,7 +33,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **************************************************************************/
 
 #include "radeon_common.h"
-#include "util/xmlpool.h"		/* for symbolic values of enum-type options */
+#include "util/driconf.h"		/* for symbolic values of enum-type options */
 #include "utils.h"
 #include "drivers/common/meta.h"
 #include "main/context.h"

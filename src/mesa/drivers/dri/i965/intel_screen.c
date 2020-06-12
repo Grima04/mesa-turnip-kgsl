@@ -44,7 +44,7 @@
 
 #include "utils.h"
 #include "util/disk_cache.h"
-#include "util/xmlpool.h"
+#include "util/driconf.h"
 #include "util/u_memory.h"
 
 #include "common/gen_defines.h"

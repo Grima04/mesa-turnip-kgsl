@@ -63,7 +63,7 @@
 #include "util/timespec.h"
 #include "util/u_atomic.h"
 #include "compiler/glsl_types.h"
-#include "util/xmlpool.h"
+#include "util/driconf.h"
 
 static struct radv_timeline_point *
 radv_timeline_find_point_at_least_locked(struct radv_device *device,

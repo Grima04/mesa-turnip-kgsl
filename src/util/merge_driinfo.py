@@ -230,7 +230,7 @@ def main(input_filenames):
 /*
 Use as:
 
-#include "xmlpool.h"
+#include "driconf.h"
 
 static const char driinfo_xml[] =
 #include "this_file"
