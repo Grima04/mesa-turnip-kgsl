@@ -1,0 +1,96 @@
+Mesa 20.0.1 Release Notes / 2020-03-05
+======================================
+
+Mesa 20.0.1 is a bug fix release which fixes bugs found since the 20.0.0
+release.
+
+Mesa 20.0.1 implements the OpenGL 4.6 API, but the version reported by
+glGetString(GL_VERSION) or glGetIntegerv(GL_MAJOR_VERSION) /
+glGetIntegerv(GL_MINOR_VERSION) depends on the particular driver being
+used. Some drivers don't support all the features required in OpenGL
+4.6. OpenGL 4.6 is **only** available if requested at context creation.
+Compatibility contexts may report a lower version depending on each
+driver.
+
+Mesa 20.0.1 implements the Vulkan 1.2 API, but the version reported by
+the apiVersion property of the VkPhysicalDeviceProperties struct depends
+on the particular driver being used.
+
+SHA256 checksum
+---------------
+
+::
+
+     6153ba3f8cb0524bbfc08e4db76b408126b2d1be8f789dffe28d1a0461eedde4  mesa-20.0.1.tar.xz
+
+New features
+------------
+
+Bug fixes
+---------
+
+-  V3D/Broadcom (Raspberry Pi 4) - GLES 3.1 - GL_EXT_texture_norm16
+   advertised, but not usable
+-  i965 assertion failure in fallback_rgbx_to_rgba
+-  Compute copies do not handle SUBSAMPLED formats
+
+Changes
+-------
+
+-  gitlab-ci: lima: Add flaky tests to the skips list
+-  Revert "glx: convert glx_config_create_list to one big calloc"
+-  spirv: Remove outdated SPIR-V decoration warnings
+-  radeonsi: Fix compute copies for subsampled formats.
+-  intel/gen12: Take into account opcode when decoding SWSB
+-  iris: Fix import sync-file into syncobj
+-  i965: Do not generate D16 B5G6R5_UNORM configs on gen < 8
+-  dri: add another get shm variant.
+-  glx/drisw: add getImageShm2 path
+-  glx/drisw: return false if shmid == -1
+-  glx/drisw: fix shm put image fallback
+-  gallivm/tgsi: fix stream id regression
+-  gallivm/nir: fix integer divide SIGFPE
+-  gallivm/nir: handle mod 0 better.
+-  docs: Add release notes for 20.0.0
+-  .pick_status.json: Update to 8291d728dc997e87b4d2e4e451692643a1dba881
+-  .pick_status.json: Update to e4baff90812d799d586296fcad992ddcc553c359
+-  .pick_status.json: Update to 01496e3d1ea0370af03e6645dbd2b864c2ace94c
+-  .pick_status.json: Update to 09323634898ab3efc0150dc7d756bf36b1b89b76
+-  .pick_status.json: Update to 3503cb4c28e01b34f3a25546c058150709c22348
+-  .pick_status.json: Update to 0ac731b1ff96de46998948aa06081efa5140d50e
+-  llvmpipe: Fix real uninitialized use of "atype" for SEMANTIC_FACE
+-  turnip: Fix compiler warning about casting a nondispatchable handle.
+-  aco: Fix signed-vs-unsigned warning.
+-  util: promote u_debug_memory.c to src/util
+-  nir/search: Use larger type to hold linearized index
+-  intel/fs: Correctly handle multiply of fsign with a source modifier
+-  iris: handle the failure of converting unsupported yuv formats to isl
+-  anv: Always enable the data cache
+-  turnip: fix srgb MRT
+-  intel/compiler: Restrict cs_threads to 64
+-  v3d: Sync on last CS when non-compute stage uses resource written by
+   CS
+-  iris: Make mocs an inline helper in iris_resource.h
+-  iris: Fix BLORP vertex buffers to respect ISL MOCS settings
+-  mesa: fix immediate mode with tessellation and varying patch vertices
+-  util: remove the dependency on kcmp.h
+-  tgsi_to_nir: set num_images and num_samplers with holes correctly
+-  mesa: call FLUSH_VERTICES before updating CoordReplace
+-  mesa: fix incorrect prim.begin/end for glMultiDrawElements
+-  egl: Fix A2RGB10 platform_{device,surfaceless} PBuffer configs.
+-  mesa: Flush vertices before changing the OpenGL state.
+-  st/vdpau: Only call is_video_format_supported hook if needed
+-  intel: fix the gen 11 compute shader scratch IDs
+-  intel: fix the gen 12 compute shader scratch IDs
+-  intel/device: bdw_gt1 actually has 6 eus per subslice
+-  iris: Apply the flushes when switching pipelines.
+-  intel/gen12+: Disable mid thread preemption.
+-  aco: keep track of which events are used in a barrier
+-  aco: fix carry-out size for wave32 v_add_co_u32_e64
+-  ac/llvm: fix 64-bit fmed3
+-  ac/llvm: fix 16-bit fmed3 on GFX8 and older gens
+-  ac/llvm: flush denorms for nir_op_fmed3 on GFX8 and older gens
+-  mesa: introduce boolean toggle for EXT_texture_norm16
+-  i965: toggle on EXT_texture_norm16
+-  mesa/st: toggle EXT_texture_norm16 based on format support
+-  mesa/st: fix formats required for EXT_texture_norm16
