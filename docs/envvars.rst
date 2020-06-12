@@ -510,6 +510,8 @@ RADV driver environment variables
 ``RADV_DEBUG``
    a comma-separated list of named flags, which do various things:
 
+   ``llvm``
+      enable LLVM compiler backend
    ``allbos``
       force all allocated buffers to be referenced in submissions
    ``allentrypoints``

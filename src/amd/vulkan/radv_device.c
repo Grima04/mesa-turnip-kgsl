@@ -507,6 +507,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"allentrypoints", RADV_DEBUG_ALL_ENTRYPOINTS},
 	{"metashaders", RADV_DEBUG_DUMP_META_SHADERS},
 	{"nomemorycache", RADV_DEBUG_NO_MEMORY_CACHE},
+	{"llvm", RADV_DEBUG_LLVM},
 	{NULL, 0}
 };
 
@@ -676,6 +677,10 @@ VkResult radv_CreateInstance(
 
 	instance->perftest_flags = parse_debug_string(getenv("RADV_PERFTEST"),
 						   radv_perftest_options);
+
+	if (instance->debug_flags & RADV_DEBUG_LLVM) {
+		instance->perftest_flags &= ~RADV_PERFTEST_ACO;
+	}
 
 	if (instance->perftest_flags & RADV_PERFTEST_ACO)
 		fprintf(stderr, "WARNING: Experimental compiler backend enabled. Here be dragons! Incorrect rendering, GPU hangs and/or resets are likely\n");
