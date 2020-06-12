@@ -64,6 +64,9 @@ algebraic_late = [
     (('ishl', 'a@8', b), ('u2u8', ('u2u16', ('ishl', ('u2u32', ('u2u16', a)), b)))),
     (('ishr', 'a@8', b), ('i2i8', ('i2i16', ('ishr', ('i2i32', ('i2i16', a)), b)))),
     (('ushr', 'a@8', b), ('u2u8', ('u2u16', ('ushr', ('u2u32', ('u2u16', a)), b)))),
+
+    # Canonical form. The scheduler will convert back if it makes sense.
+    (('fmul', a, 2.0), ('fadd', a, a))
 ]
 
 
