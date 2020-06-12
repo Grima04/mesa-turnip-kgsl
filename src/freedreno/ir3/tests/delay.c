@@ -57,6 +57,32 @@ static const struct test {
 		mov.f32f32 r0.z, c0.z
 		mad.f32 r0.x, r0.x, r0.y, r0.z
 	),
+	TEST(2,
+		mov.f32f32 r0.x, c0.x
+		mov.f32f32 r0.y, c0.y
+		(rpt1)add.f r0.x, (r)r0.x, (r)c0.x
+	),
+	TEST(2,
+		(rpt1)mov.f32f32 r0.x, c0.x
+		(rpt1)add.f r0.x, (r)r0.x, (r)c0.x
+	),
+	TEST(3,
+		mov.f32f32 r0.y, c0.y
+		mov.f32f32 r0.x, c0.x
+		(rpt1)add.f r0.x, (r)r0.x, (r)c0.x
+	),
+	TEST(1,
+		(rpt2)mov.f32f32 r0.x, (r)c0.x
+		add.f r0.x, r0.x, c0.x
+	),
+	TEST(2,
+		(rpt2)mov.f32f32 r0.x, (r)c0.x
+		add.f r0.x, r0.x, r0.y
+	),
+	TEST(1,
+		(rpt2)mov.f32f32 r0.x, (r)c0.x
+		(rpt2)add.f r0.x, (r)r0.x, c0.x
+	),
 };
 
 static struct ir3 *
@@ -104,7 +130,7 @@ regs_to_ssa(struct ir3 *ir)
 	struct ir3_block *block =
 		list_first_entry(&ir->block_list, struct ir3_block, node);
 
-	foreach_instr (instr, &block->instr_list) {
+	foreach_instr_safe (instr, &block->instr_list) {
 		foreach_src (reg, instr) {
 			if (reg->flags & (IR3_REG_CONST | IR3_REG_IMMED))
 				continue;
@@ -114,11 +140,42 @@ regs_to_ssa(struct ir3 *ir)
 			if (!src)
 				continue;
 
+			if (reg->flags & IR3_REG_R) {
+				unsigned nsrc = 1 + instr->repeat;
+				unsigned flags = src->regs[0]->flags & IR3_REG_HALF;
+				struct ir3_instruction *collect =
+					ir3_instr_create2(block, OPC_META_COLLECT, 1 + nsrc);
+				__ssa_dst(collect)->flags |= flags;
+				for (unsigned i = 0; i < nsrc; i++)
+					__ssa_src(collect, regfile[regn(reg) + i], flags);
+
+				ir3_instr_move_before(collect, instr);
+
+				src = collect;
+			}
+
 			reg->instr = src;
 			reg->flags |= IR3_REG_SSA;
 		}
 
-		regfile[regn(instr->regs[0])] = instr;
+		if (instr->repeat) {
+			unsigned ndst = 1 + instr->repeat;
+			unsigned flags = instr->regs[0]->flags & IR3_REG_HALF;
+
+			for (unsigned i = 0; i < ndst; i++) {
+				struct ir3_instruction *split =
+					ir3_instr_create(block, OPC_META_SPLIT);
+				__ssa_dst(split)->flags |= flags;
+				__ssa_src(split, instr, flags);
+				split->split.off = i;
+
+				ir3_instr_move_after(split, instr);
+
+				regfile[regn(instr->regs[0]) + i] = split;
+			}
+		} else {
+			regfile[regn(instr->regs[0])] = instr;
+		}
 	}
 }
 
@@ -143,8 +200,14 @@ main(int argc, char **argv)
 
 		struct ir3_block *block =
 			list_first_entry(&ir->block_list, struct ir3_block, node);
-		struct ir3_instruction *last =
-			list_last_entry(&block->instr_list, struct ir3_instruction, node);
+		struct ir3_instruction *last = NULL;
+
+		foreach_instr_rev (instr, &block->instr_list) {
+			if (is_meta(instr))
+				continue;
+			last = instr;
+			break;
+		}
 
 		/* The delay calc is expecting the instr to not yet be added to the
 		 * block, so remove it from the block so that it doesn't get counted

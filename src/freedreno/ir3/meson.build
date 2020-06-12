@@ -125,7 +125,7 @@ test('ir3_disasm',
 test('ir3_delay_test',
   executable(
     'ir3_delay_test',
-    'tests/delay.c',
+    ['tests/delay.c', ir3_parser],
     link_with: libfreedreno_ir3,
     dependencies: [idep_mesautil, idep_nir_headers],
     include_directories: [inc_freedreno, inc_include, inc_src, inc_mesa, inc_gallium],
