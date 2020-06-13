@@ -295,7 +295,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       if (i == MESA_SHADER_VERTEX && ctx->num_so_targets) {
          for (unsigned i = 0; i < ctx->num_so_targets; i++) {
             struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
-            t->stride = shader->stream_output.stride[i] * sizeof(uint32_t);
+            t->stride = shader->streamout.so_info.stride[i] * sizeof(uint32_t);
          }
       }
 

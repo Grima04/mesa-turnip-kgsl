@@ -194,7 +194,7 @@ check_psiz(struct nir_shader *s)
 
 /* semi-copied from iris */
 static void
-update_so_info(struct pipe_stream_output_info *so_info,
+update_so_info(struct zink_shader *sh,
                uint64_t outputs_written, bool have_psiz)
 {
    uint8_t reverse_map[64] = {};
@@ -207,11 +207,10 @@ update_so_info(struct pipe_stream_output_info *so_info,
       reverse_map[slot++] = bit;
    }
 
-   for (unsigned i = 0; i < so_info->num_outputs; i++) {
-      struct pipe_stream_output *output = &so_info->output[i];
-
+   for (unsigned i = 0; i < sh->streamout.so_info.num_outputs; i++) {
+      struct pipe_stream_output *output = &sh->streamout.so_info.output[i];
       /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
-      output->register_index = reverse_map[output->register_index];
+      sh->streamout.so_info_slots[i] = reverse_map[output->register_index];
    }
 }
 
@@ -279,11 +278,13 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
 
    ret->info = nir->info;
    if (so_info) {
-      memcpy(&ret->stream_output, so_info, sizeof(ret->stream_output));
-      update_so_info(&ret->stream_output, nir->info.outputs_written, have_psiz);
+      memcpy(&ret->streamout.so_info, so_info, sizeof(struct pipe_stream_output_info));
+      ret->streamout.so_info_slots = malloc(so_info->num_outputs * sizeof(unsigned int));
+      assert(ret->streamout.so_info_slots);
+      update_so_info(ret, nir->info.outputs_written, have_psiz);
    }
 
-   struct spirv_shader *spirv = nir_to_spirv(nir, so_info, so_info ? &ret->stream_output : NULL);
+   struct spirv_shader *spirv = nir_to_spirv(nir, so_info ? &ret->streamout : NULL);
    assert(spirv);
 
    if (zink_debug & ZINK_DEBUG_SPIRV) {
@@ -322,6 +323,7 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
       _mesa_hash_table_remove_key(ctx->program_cache, prog->stages);
       zink_destroy_gfx_program(screen, prog);
    }
-   _mesa_set_destroy(shader->programs, NULL);
+   _mesa_set_destroy(shader->programs, NULL
+   free(shader->streamout.so_info_slots);
    FREE(shader);
 }

@@ -42,6 +42,11 @@ struct nir_shader;
 struct set;
 
 struct tgsi_token;
+struct zink_so_info {
+   struct pipe_stream_output_info so_info;
+   unsigned *so_info_slots;
+};
+
 
 const void *
 zink_get_compiler_options(struct pipe_screen *screen,
@@ -55,8 +60,7 @@ struct zink_shader {
    VkShaderModule shader_module;
 
    shader_info info;
-
-   struct pipe_stream_output_info stream_output;
+   struct zink_so_info streamout;
 
    struct {
       int index;

@@ -29,6 +29,9 @@
 #include <vulkan/vulkan.h>
 
 #include "compiler/shader_enums.h"
+#include "pipe/p_state.h"
+
+#include "zink_compiler.h"
 
 struct spirv_shader {
    uint32_t *words;
@@ -39,7 +42,7 @@ struct nir_shader;
 struct pipe_stream_output_info;
 
 struct spirv_shader *
-nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info, struct pipe_stream_output_info *local_so_info);
+nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info);
 
 void
 spirv_shader_delete(struct spirv_shader *s);
