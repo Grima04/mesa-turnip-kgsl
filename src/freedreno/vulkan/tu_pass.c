@@ -561,12 +561,11 @@ tu_CreateRenderPass2(VkDevice _device,
    attachments_offset = size;
    size += pCreateInfo->attachmentCount * sizeof(pass->attachments[0]);
 
-   pass = vk_alloc2(&device->alloc, pAllocator, size, 8,
+   pass = vk_zalloc2(&device->alloc, pAllocator, size, 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pass == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   memset(pass, 0, size);
    pass->attachment_count = pCreateInfo->attachmentCount;
    pass->subpass_count = pCreateInfo->subpassCount;
    pass->attachments = (void *) pass + attachments_offset;
