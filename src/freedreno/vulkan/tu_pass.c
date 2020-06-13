@@ -286,8 +286,8 @@ static void update_samples(struct tu_subpass *subpass,
 }
 
 static void
-create_render_pass_common(struct tu_render_pass *pass,
-                          const struct tu_physical_device *phys_dev)
+tu_render_pass_gmem_config(struct tu_render_pass *pass,
+                           const struct tu_physical_device *phys_dev)
 {
    uint32_t block_align_shift = 4; /* log2(gmem_align/(tile_align_w*tile_align_h)) */
    uint32_t tile_align_w = phys_dev->tile_align_w;
@@ -349,30 +349,6 @@ create_render_pass_common(struct tu_render_pass *pass,
    }
 
    pass->gmem_pixels = pixels;
-
-   for (uint32_t i = 0; i < pass->subpass_count; i++) {
-      struct tu_subpass *subpass = &pass->subpasses[i];
-
-      subpass->srgb_cntl = 0;
-
-      for (uint32_t i = 0; i < subpass->color_count; ++i) {
-         uint32_t a = subpass->color_attachments[i].attachment;
-         if (a == VK_ATTACHMENT_UNUSED)
-            continue;
-
-         if (vk_format_is_srgb(pass->attachments[a].format))
-            subpass->srgb_cntl |= 1 << i;
-      }
-   }
-
-   /* disable unused attachments */
-   for (uint32_t i = 0; i < pass->attachment_count; i++) {
-      struct tu_render_pass_attachment *att = &pass->attachments[i];
-      if (att->gmem_offset < 0) {
-         att->clear_mask = 0;
-         att->load = false;
-      }
-   }
 }
 
 static void
@@ -610,6 +586,7 @@ tu_CreateRenderPass2(VkDevice _device,
       subpass->input_count = desc->inputAttachmentCount;
       subpass->color_count = desc->colorAttachmentCount;
       subpass->samples = 0;
+      subpass->srgb_cntl = 0;
 
       if (desc->inputAttachmentCount > 0) {
          subpass->input_attachments = p;
@@ -634,6 +611,9 @@ tu_CreateRenderPass2(VkDevice _device,
             if (a != VK_ATTACHMENT_UNUSED) {
                pass->attachments[a].gmem_offset = 0;
                update_samples(subpass, pCreateInfo->pAttachments[a].samples);
+
+               if (vk_format_is_srgb(pass->attachments[a].format))
+                  subpass->srgb_cntl |= 1 << j;
             }
          }
       }
@@ -659,15 +639,24 @@ tu_CreateRenderPass2(VkDevice _device,
       subpass->samples = subpass->samples ?: 1;
    }
 
+   /* disable unused attachments */
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      struct tu_render_pass_attachment *att = &pass->attachments[i];
+      if (att->gmem_offset < 0) {
+         att->clear_mask = 0;
+         att->load = false;
+      }
+   }
+
+   tu_render_pass_gmem_config(pass, device->physical_device);
+
    for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
       tu_render_pass_add_subpass_dep(pass, &pCreateInfo->pDependencies[i]);
    }
- 
-   *pRenderPass = tu_render_pass_to_handle(pass);
-
-   create_render_pass_common(pass, device->physical_device);
 
    tu_render_pass_add_implicit_deps(pass, pCreateInfo);
+ 
+   *pRenderPass = tu_render_pass_to_handle(pass);
 
    return VK_SUCCESS;
 }
