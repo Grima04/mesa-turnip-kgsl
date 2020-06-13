@@ -411,15 +411,6 @@ image("samples", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
 image("atomic_inc_wrap",  src_comp=[4, 1, 1], dest_comp=1)
 image("atomic_dec_wrap",  src_comp=[4, 1, 1], dest_comp=1)
 
-# Intel-specific query for loading from the brw_image_param struct passed
-# into the shader as a uniform.  The variable is a deref to the image
-# variable. The const index specifies which of the six parameters to load.
-intrinsic("image_deref_load_param_intel", src_comp=[1], dest_comp=0,
-          indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
-image("load_raw_intel", src_comp=[1], dest_comp=0,
-      flags=[CAN_ELIMINATE])
-image("store_raw_intel", src_comp=[1, 0])
-
 # Vulkan descriptor set intrinsics
 #
 # The Vulkan API uses a different binding model from GL.  In the Vulkan
@@ -648,9 +639,6 @@ system_value("color1", 4)
 
 # System value for internal compute shaders in radeonsi.
 system_value("user_data_amd", 4)
-
-# Number of data items being operated on for a SIMD program.
-system_value("simd_width_intel", 1)
 
 # Barycentric coordinate intrinsics.
 #
@@ -923,3 +911,15 @@ store("tlb_sample_color_v3d", 2, [BASE, COMPONENT, TYPE], [])
 # V3D-specific intrinsic to load the number of layers attached to
 # the target framebuffer
 intrinsic("load_fb_layers_v3d", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
+
+# Intel-specific query for loading from the brw_image_param struct passed
+# into the shader as a uniform.  The variable is a deref to the image
+# variable. The const index specifies which of the six parameters to load.
+intrinsic("image_deref_load_param_intel", src_comp=[1], dest_comp=0,
+          indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
+image("load_raw_intel", src_comp=[1], dest_comp=0,
+      flags=[CAN_ELIMINATE])
+image("store_raw_intel", src_comp=[1, 0])
+
+# Number of data items being operated on for a SIMD program.
+system_value("simd_width_intel", 1)
