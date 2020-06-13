@@ -162,6 +162,11 @@ DRI_CONF_OPT_BEGIN_B(allow_glsl_extension_directive_midshader, def) \
         DRI_CONF_DESC("Allow GLSL #extension directives in the middle of shaders") \
 DRI_CONF_OPT_END
 
+#define DRI_CONF_ALLOW_GLSL_120_SUBSET_IN_110(def) \
+DRI_CONF_OPT_BEGIN_B(allow_glsl_120_subset_in_110, def) \
+        DRI_CONF_DESC("Allow a subset of GLSL 1.20 in GLSL 1.10 as needed by SPECviewperf13") \
+DRI_CONF_OPT_END
+
 #define DRI_CONF_ALLOW_GLSL_BUILTIN_CONST_EXPRESSION(def) \
 DRI_CONF_OPT_BEGIN_B(allow_glsl_builtin_const_expression, def) \
         DRI_CONF_DESC("Allow builtins as part of constant expressions") \

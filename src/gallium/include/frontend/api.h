@@ -221,6 +221,7 @@ struct st_config_options
    bool force_glsl_extensions_warn;
    unsigned force_glsl_version;
    bool allow_glsl_extension_directive_midshader;
+   bool allow_glsl_120_subset_in_110;
    bool allow_glsl_builtin_const_expression;
    bool allow_glsl_relaxed_es;
    bool allow_glsl_builtin_variable_redeclaration;

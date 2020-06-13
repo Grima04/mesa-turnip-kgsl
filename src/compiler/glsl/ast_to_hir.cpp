@@ -962,7 +962,8 @@ do_assignment(exec_list *instructions, struct _mesa_glsl_parse_state *state,
                           lhs_var->name);
          error_emitted = true;
       } else if (lhs->type->is_array() &&
-                 !state->check_version(120, 300, &lhs_loc,
+                 !state->check_version(state->allow_glsl_120_subset_in_110 ? 110 : 120,
+                                       300, &lhs_loc,
                                        "whole array assignment forbidden")) {
          /* From page 32 (page 38 of the PDF) of the GLSL 1.10 spec:
           *

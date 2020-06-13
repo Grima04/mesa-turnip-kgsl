@@ -2110,8 +2110,8 @@ ast_function_expression::hir(exec_list *instructions,
       }
 
       if (constructor_type->is_array()) {
-         if (!state->check_version(120, 300, &loc,
-                                   "array constructors forbidden")) {
+         if (!state->check_version(state->allow_glsl_120_subset_in_110 ? 110 : 120,
+                                   300, &loc, "array constructors forbidden")) {
             return ir_rvalue::error_value(ctx);
          }
 
