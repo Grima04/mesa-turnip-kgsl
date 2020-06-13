@@ -2168,8 +2168,8 @@ genX(graphics_pipeline_create)(
    if (pipeline == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = anv_pipeline_init(pipeline, device, cache,
-                              pCreateInfo, pAllocator);
+   result = anv_graphics_pipeline_init(pipeline, device, cache,
+                                       pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
@@ -2285,30 +2285,18 @@ compute_pipeline_create(
    if (pipeline == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &pipeline->base.base,
-                       VK_OBJECT_TYPE_PIPELINE);
-   pipeline->base.device = device;
-   pipeline->base.type = ANV_PIPELINE_COMPUTE;
-
-   const VkAllocationCallbacks *alloc =
-      pAllocator ? pAllocator : &device->vk.alloc;
-
-   result = anv_reloc_list_init(&pipeline->base.batch_relocs, alloc);
+   result = anv_pipeline_init(&pipeline->base, device,
+                              ANV_PIPELINE_COMPUTE, pCreateInfo->flags,
+                              pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
    }
-   pipeline->base.batch.alloc = alloc;
-   pipeline->base.batch.relocs = &pipeline->base.batch_relocs;
-   pipeline->base.batch.status = VK_SUCCESS;
+
    anv_batch_set_storage(&pipeline->base.batch, ANV_NULL_ADDRESS,
                          pipeline->batch_data, sizeof(pipeline->batch_data));
 
-   pipeline->base.mem_ctx = ralloc_context(NULL);
-   pipeline->base.flags = pCreateInfo->flags;
    pipeline->cs = NULL;
-
-   util_dynarray_init(&pipeline->base.executables, pipeline->base.mem_ctx);
 
    assert(pCreateInfo->stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
    ANV_FROM_HANDLE(anv_shader_module, module,  pCreateInfo->stage.module);
@@ -2316,7 +2304,7 @@ compute_pipeline_create(
                                     pCreateInfo->stage.pName,
                                     pCreateInfo->stage.pSpecializationInfo);
    if (result != VK_SUCCESS) {
-      ralloc_free(pipeline->base.mem_ctx);
+      anv_pipeline_finish(&pipeline->base, device, pAllocator);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
    }

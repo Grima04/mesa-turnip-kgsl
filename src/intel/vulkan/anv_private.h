@@ -3409,10 +3409,22 @@ anv_pipeline_get_last_vue_prog_data(const struct anv_graphics_pipeline *pipeline
 }
 
 VkResult
-anv_pipeline_init(struct anv_graphics_pipeline *pipeline, struct anv_device *device,
-                  struct anv_pipeline_cache *cache,
-                  const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                  const VkAllocationCallbacks *alloc);
+anv_pipeline_init(struct anv_pipeline *pipeline,
+                  struct anv_device *device,
+                  enum anv_pipeline_type type,
+                  VkPipelineCreateFlags flags,
+                  const VkAllocationCallbacks *pAllocator);
+
+void
+anv_pipeline_finish(struct anv_pipeline *pipeline,
+                    struct anv_device *device,
+                    const VkAllocationCallbacks *pAllocator);
+
+VkResult
+anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline, struct anv_device *device,
+                           struct anv_pipeline_cache *cache,
+                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                           const VkAllocationCallbacks *alloc);
 
 VkResult
 anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
