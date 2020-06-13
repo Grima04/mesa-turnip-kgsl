@@ -105,7 +105,7 @@ setup_conflicts(struct ir3_ra_reg_set *set)
  * really just four scalar registers.  Don't let that confuse you.)
  */
 struct ir3_ra_reg_set *
-ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
+ir3_ra_alloc_reg_set(struct ir3_compiler *compiler, bool mergedregs)
 {
 	struct ir3_ra_reg_set *set = rzalloc(compiler, struct ir3_ra_reg_set);
 	unsigned ra_reg_count, reg, base;
@@ -195,7 +195,7 @@ ir3_ra_alloc_reg_set(struct ir3_compiler *compiler)
 	 * And finally setup conflicts.  Starting a6xx, half precision regs
 	 * conflict w/ full precision regs (when using MERGEDREGS):
 	 */
-	if (compiler->gpu_id >= 600) {
+	if (mergedregs) {
 		for (unsigned i = 0; i < CLASS_REGS(0) / 2; i++) {
 			unsigned freg  = set->gpr_to_ra_reg[0][i];
 			unsigned hreg0 = set->gpr_to_ra_reg[0 + HALF_OFFSET][(i * 2) + 0];

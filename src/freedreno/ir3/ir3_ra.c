@@ -1488,7 +1488,8 @@ ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	struct ir3_ra_ctx ctx = {
 			.v = v,
 			.ir = v->ir,
-			.set = v->ir->compiler->set,
+			.set = (v->ir->compiler->gpu_id >= 600) ?
+				v->ir->compiler->mergedregs_set : v->ir->compiler->set,
 			.scalar_pass = scalar_pass,
 	};
 	int ret;

@@ -60,9 +60,10 @@ struct ir3_compiler * ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id
 
 	compiler->dev = dev;
 	compiler->gpu_id = gpu_id;
-	compiler->set = ir3_ra_alloc_reg_set(compiler);
+	compiler->set = ir3_ra_alloc_reg_set(compiler, false);
 
 	if (compiler->gpu_id >= 600) {
+		compiler->mergedregs_set = ir3_ra_alloc_reg_set(compiler, true);
 		compiler->samgq_workaround = true;
 	}
 

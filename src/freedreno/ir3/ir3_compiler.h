@@ -35,6 +35,7 @@ struct ir3_compiler {
 	struct fd_device *dev;
 	uint32_t gpu_id;
 	struct ir3_ra_reg_set *set;
+	struct ir3_ra_reg_set *mergedregs_set;
 	uint32_t shader_count;
 
 	/*
