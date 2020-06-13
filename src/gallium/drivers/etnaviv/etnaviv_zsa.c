@@ -110,7 +110,8 @@ etna_zsa_state_create(struct pipe_context *pctx,
       COND(so->depth.writemask, VIVS_PE_DEPTH_CONFIG_WRITE_ENABLE) |
       COND(early_z, VIVS_PE_DEPTH_CONFIG_EARLY_Z) |
       /* this bit changed meaning with HALTI5: */
-      COND(disable_zs && screen->specs.halti < 5, VIVS_PE_DEPTH_CONFIG_DISABLE_ZS);
+      COND((disable_zs && screen->specs.halti < 5) || ((early_z || disable_zs) && VIV_FEATURE(screen, chipMinorFeatures5, RA_WRITE_DEPTH)), VIVS_PE_DEPTH_CONFIG_DISABLE_ZS);
+
    cs->PE_ALPHA_OP =
       COND(so->alpha.enabled, VIVS_PE_ALPHA_OP_ALPHA_TEST) |
       VIVS_PE_ALPHA_OP_ALPHA_FUNC(so->alpha.func) |
@@ -136,6 +137,12 @@ etna_zsa_state_create(struct pipe_context *pctx,
          VIVS_PE_STENCIL_CONFIG_EXT2_MASK_BACK(stencil_back->valuemask) |
          VIVS_PE_STENCIL_CONFIG_EXT2_WRITE_MASK_BACK(stencil_back->writemask);
    }
+
+   /* blob sets this to 0x40000031 on GC7000, seems to make no difference,
+    * but keep it in mind if depth behaves strangely. */
+   cs->RA_DEPTH_CONFIG = 0x00000031;
+   if (VIV_FEATURE(screen, chipMinorFeatures5, RA_WRITE_DEPTH) && !disable_zs && !early_z)
+      cs->RA_DEPTH_CONFIG |= 0x11000000;
 
    /* XXX does alpha/stencil test affect PE_COLOR_FORMAT_OVERWRITE? */
    return cs;
