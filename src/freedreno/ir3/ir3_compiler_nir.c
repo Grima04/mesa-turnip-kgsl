@@ -3710,7 +3710,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		goto out;
 	}
 
-	IR3_PASS(ir, ir3_postsched);
+	IR3_PASS(ir, ir3_postsched, so);
 
 	if (compiler->gpu_id >= 600) {
 		IR3_PASS(ir, ir3_a6xx_fixup_atomic_dests, so);

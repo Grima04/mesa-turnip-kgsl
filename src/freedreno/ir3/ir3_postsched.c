@@ -53,6 +53,8 @@
 struct ir3_postsched_ctx {
 	struct ir3 *ir;
 
+	struct ir3_shader_variant *v;
+
 	void *mem_ctx;
 	struct ir3_block *block;           /* the current block */
 	struct dag *dag;
@@ -701,10 +703,11 @@ cleanup_self_movs(struct ir3 *ir)
 }
 
 bool
-ir3_postsched(struct ir3 *ir)
+ir3_postsched(struct ir3 *ir, struct ir3_shader_variant *v)
 {
 	struct ir3_postsched_ctx ctx = {
 			.ir = ir,
+			.v  = v,
 	};
 
 	ir3_remove_nops(ir);
