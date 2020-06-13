@@ -278,3 +278,80 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
 
    return ((struct pipeline_cache_entry *)(entry->data))->pipeline;
 }
+
+
+static void *
+zink_create_vs_state(struct pipe_context *pctx,
+                     const struct pipe_shader_state *shader)
+{
+   struct nir_shader *nir;
+   if (shader->type != PIPE_SHADER_IR_NIR)
+      nir = zink_tgsi_to_nir(pctx->screen, shader->tokens);
+   else
+      nir = (struct nir_shader *)shader->ir.nir;
+
+   return zink_compile_nir(zink_screen(pctx->screen), nir, &shader->stream_output);
+}
+
+static void
+bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
+           struct zink_shader *shader)
+{
+   assert(stage < PIPE_SHADER_COMPUTE);
+   ctx->gfx_stages[stage] = shader;
+   ctx->dirty_program = true;
+}
+
+static void
+zink_bind_vs_state(struct pipe_context *pctx,
+                   void *cso)
+{
+   bind_stage(zink_context(pctx), PIPE_SHADER_VERTEX, cso);
+}
+
+static void
+zink_delete_vs_state(struct pipe_context *pctx,
+                     void *cso)
+{
+   zink_shader_free(zink_context(pctx), cso);
+}
+
+static void *
+zink_create_fs_state(struct pipe_context *pctx,
+                     const struct pipe_shader_state *shader)
+{
+   struct nir_shader *nir;
+   if (shader->type != PIPE_SHADER_IR_NIR)
+      nir = zink_tgsi_to_nir(pctx->screen, shader->tokens);
+   else
+      nir = (struct nir_shader *)shader->ir.nir;
+
+   return zink_compile_nir(zink_screen(pctx->screen), nir, NULL);
+}
+
+static void
+zink_bind_fs_state(struct pipe_context *pctx,
+                   void *cso)
+{
+   bind_stage(zink_context(pctx), PIPE_SHADER_FRAGMENT, cso);
+}
+
+static void
+zink_delete_fs_state(struct pipe_context *pctx,
+                     void *cso)
+{
+   zink_shader_free(zink_context(pctx), cso);
+}
+
+
+void
+zink_program_init(struct zink_context *ctx)
+{
+   ctx->base.create_vs_state = zink_create_vs_state;
+   ctx->base.bind_vs_state = zink_bind_vs_state;
+   ctx->base.delete_vs_state = zink_delete_vs_state;
+
+   ctx->base.create_fs_state = zink_create_fs_state;
+   ctx->base.bind_fs_state = zink_bind_fs_state;
+   ctx->base.delete_fs_state = zink_delete_fs_state;
+}

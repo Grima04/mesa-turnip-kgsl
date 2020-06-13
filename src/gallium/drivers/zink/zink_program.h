@@ -59,4 +59,6 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
                       struct zink_gfx_pipeline_state *state,
                       enum pipe_prim_type mode);
 
+void
+zink_program_init(struct zink_context *ctx);
 #endif

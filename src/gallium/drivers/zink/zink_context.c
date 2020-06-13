@@ -28,6 +28,7 @@
 #include "zink_fence.h"
 #include "zink_framebuffer.h"
 #include "zink_helpers.h"
+#include "zink_program.h"
 #include "zink_pipeline.h"
 #include "zink_query.h"
 #include "zink_render_pass.h"
@@ -290,69 +291,6 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
    struct zink_sampler_view *view = zink_sampler_view(pview);
    vkDestroyImageView(zink_screen(pctx->screen)->dev, view->image_view, NULL);
    FREE(view);
-}
-
-static void *
-zink_create_vs_state(struct pipe_context *pctx,
-                     const struct pipe_shader_state *shader)
-{
-   struct nir_shader *nir;
-   if (shader->type != PIPE_SHADER_IR_NIR)
-      nir = zink_tgsi_to_nir(pctx->screen, shader->tokens);
-   else
-      nir = (struct nir_shader *)shader->ir.nir;
-
-   return zink_compile_nir(zink_screen(pctx->screen), nir, &shader->stream_output);
-}
-
-static void
-bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
-           struct zink_shader *shader)
-{
-   assert(stage < PIPE_SHADER_COMPUTE);
-   ctx->gfx_stages[stage] = shader;
-   ctx->dirty_program = true;
-}
-
-static void
-zink_bind_vs_state(struct pipe_context *pctx,
-                   void *cso)
-{
-   bind_stage(zink_context(pctx), PIPE_SHADER_VERTEX, cso);
-}
-
-static void
-zink_delete_vs_state(struct pipe_context *pctx,
-                     void *cso)
-{
-   zink_shader_free(zink_context(pctx), cso);
-}
-
-static void *
-zink_create_fs_state(struct pipe_context *pctx,
-                     const struct pipe_shader_state *shader)
-{
-   struct nir_shader *nir;
-   if (shader->type != PIPE_SHADER_IR_NIR)
-      nir = zink_tgsi_to_nir(pctx->screen, shader->tokens);
-   else
-      nir = (struct nir_shader *)shader->ir.nir;
-
-   return zink_compile_nir(zink_screen(pctx->screen), nir, NULL);
-}
-
-static void
-zink_bind_fs_state(struct pipe_context *pctx,
-                   void *cso)
-{
-   bind_stage(zink_context(pctx), PIPE_SHADER_FRAGMENT, cso);
-}
-
-static void
-zink_delete_fs_state(struct pipe_context *pctx,
-                     void *cso)
-{
-   zink_shader_free(zink_context(pctx), cso);
 }
 
 static void
@@ -1127,13 +1065,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_sampler_views = zink_set_sampler_views;
    ctx->base.sampler_view_destroy = zink_sampler_view_destroy;
 
-   ctx->base.create_vs_state = zink_create_vs_state;
-   ctx->base.bind_vs_state = zink_bind_vs_state;
-   ctx->base.delete_vs_state = zink_delete_vs_state;
-
-   ctx->base.create_fs_state = zink_create_fs_state;
-   ctx->base.bind_fs_state = zink_bind_fs_state;
-   ctx->base.delete_fs_state = zink_delete_fs_state;
+   zink_program_init(ctx);
 
    ctx->base.set_polygon_stipple = zink_set_polygon_stipple;
    ctx->base.set_vertex_buffers = zink_set_vertex_buffers;
