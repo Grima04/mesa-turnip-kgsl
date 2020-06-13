@@ -605,7 +605,8 @@ tu6_emit_xs_config(struct tu_cs *cs,
    tu_cs_emit(cs,
               A6XX_SP_VS_CTRL_REG0_THREADSIZE(threadsize) |
               A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(xs->info.max_reg + 1) |
-              A6XX_SP_VS_CTRL_REG0_MERGEDREGS |
+              A6XX_SP_VS_CTRL_REG0_HALFREGFOOTPRINT(xs->info.max_half_reg + 1) |
+              COND(xs->mergedregs, A6XX_SP_VS_CTRL_REG0_MERGEDREGS) |
               A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(xs->branchstack) |
               COND(xs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE) |
               COND(xs->need_fine_derivatives, A6XX_SP_VS_CTRL_REG0_DIFF_FINE) |
