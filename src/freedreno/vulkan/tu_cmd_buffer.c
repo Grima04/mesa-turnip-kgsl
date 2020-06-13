@@ -2868,43 +2868,6 @@ struct tu_draw_state_group
    struct tu_cs_entry ib;
 };
 
-static inline uint32_t
-tu6_stage2opcode(gl_shader_stage type)
-{
-   switch (type) {
-   case MESA_SHADER_VERTEX:
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-      return CP_LOAD_STATE6_GEOM;
-   case MESA_SHADER_FRAGMENT:
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_KERNEL:
-      return CP_LOAD_STATE6_FRAG;
-   default:
-      unreachable("bad shader type");
-   }
-}
-
-static inline enum a6xx_state_block
-tu6_stage2shadersb(gl_shader_stage type)
-{
-   switch (type) {
-   case MESA_SHADER_VERTEX:
-      return SB6_VS_SHADER;
-   case MESA_SHADER_GEOMETRY:
-      return SB6_GS_SHADER;
-   case MESA_SHADER_FRAGMENT:
-      return SB6_FS_SHADER;
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_KERNEL:
-      return SB6_CS_SHADER;
-   default:
-      unreachable("bad shader type");
-      return ~0;
-   }
-}
-
 static void
 tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
                      struct tu_descriptor_state *descriptors_state,

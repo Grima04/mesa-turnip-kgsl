@@ -40,66 +40,66 @@
 
 #include "tu_cs.h"
 
-/* Emit IB that preloads the descriptors that the shader uses */
-
-static inline uint32_t
-tu6_vkstage2opcode(VkShaderStageFlags stage)
+uint32_t
+tu6_stage2opcode(gl_shader_stage stage)
 {
    switch (stage) {
-   case VK_SHADER_STAGE_VERTEX_BIT:
-   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-   case VK_SHADER_STAGE_GEOMETRY_BIT:
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_GEOMETRY:
       return CP_LOAD_STATE6_GEOM;
-   case VK_SHADER_STAGE_FRAGMENT_BIT:
-   case VK_SHADER_STAGE_COMPUTE_BIT:
+   case MESA_SHADER_FRAGMENT:
+   case MESA_SHADER_COMPUTE:
       return CP_LOAD_STATE6_FRAG;
    default:
-      unreachable("bad shader type");
+      unreachable("bad shader stage");
    }
 }
 
 static enum a6xx_state_block
-tu6_tex_stage2sb(VkShaderStageFlags stage)
+tu6_stage2texsb(gl_shader_stage stage)
 {
    switch (stage) {
-   case VK_SHADER_STAGE_VERTEX_BIT:
+   case MESA_SHADER_VERTEX:
       return SB6_VS_TEX;
-   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+   case MESA_SHADER_TESS_CTRL:
       return SB6_HS_TEX;
-   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+   case MESA_SHADER_TESS_EVAL:
       return SB6_DS_TEX;
-   case VK_SHADER_STAGE_GEOMETRY_BIT:
+   case MESA_SHADER_GEOMETRY:
       return SB6_GS_TEX;
-   case VK_SHADER_STAGE_FRAGMENT_BIT:
+   case MESA_SHADER_FRAGMENT:
       return SB6_FS_TEX;
-   case VK_SHADER_STAGE_COMPUTE_BIT:
+   case MESA_SHADER_COMPUTE:
       return SB6_CS_TEX;
    default:
       unreachable("bad shader stage");
    }
 }
 
-static enum a6xx_state_block
-tu6_ubo_stage2sb(VkShaderStageFlags stage)
+enum a6xx_state_block
+tu6_stage2shadersb(gl_shader_stage stage)
 {
    switch (stage) {
-   case VK_SHADER_STAGE_VERTEX_BIT:
+   case MESA_SHADER_VERTEX:
       return SB6_VS_SHADER;
-   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+   case MESA_SHADER_TESS_CTRL:
       return SB6_HS_SHADER;
-   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+   case MESA_SHADER_TESS_EVAL:
       return SB6_DS_SHADER;
-   case VK_SHADER_STAGE_GEOMETRY_BIT:
+   case MESA_SHADER_GEOMETRY:
       return SB6_GS_SHADER;
-   case VK_SHADER_STAGE_FRAGMENT_BIT:
+   case MESA_SHADER_FRAGMENT:
       return SB6_FS_SHADER;
-   case VK_SHADER_STAGE_COMPUTE_BIT:
+   case MESA_SHADER_COMPUTE:
       return SB6_CS_SHADER;
    default:
       unreachable("bad shader stage");
    }
 }
+
+/* Emit IB that preloads the descriptors that the shader uses */
 
 static void
 emit_load_state(struct tu_cs *cs, unsigned opcode, enum a6xx_state_type st,
@@ -246,13 +246,11 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
          case VK_DESCRIPTOR_TYPE_SAMPLER:
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
-            unsigned stage_log2;
-            for_each_bit(stage_log2, stages) {
-               VkShaderStageFlags stage = 1 << stage_log2;
-               emit_load_state(&cs, tu6_vkstage2opcode(stage),
+            tu_foreach_stage(stage, stages) {
+               emit_load_state(&cs, tu6_stage2opcode(stage),
                                binding->type == VK_DESCRIPTOR_TYPE_SAMPLER ?
                                ST6_SHADER : ST6_CONSTANTS,
-                               tu6_tex_stage2sb(stage), base, offset, count);
+                               tu6_stage2texsb(stage), base, offset, count);
             }
             break;
          }
@@ -263,29 +261,25 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
                       binding->dynamic_offset_offset) * A6XX_TEX_CONST_DWORDS;
             /* fallthrough */
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
-            unsigned stage_log2;
-            for_each_bit(stage_log2, stages) {
-               VkShaderStageFlags stage = 1 << stage_log2;
-               emit_load_state(&cs, tu6_vkstage2opcode(stage), ST6_UBO,
-                               tu6_ubo_stage2sb(stage), base, offset, count);
+            tu_foreach_stage(stage, stages) {
+               emit_load_state(&cs, tu6_stage2opcode(stage), ST6_UBO,
+                               tu6_stage2shadersb(stage), base, offset, count);
             }
             break;
          }
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-            unsigned stage_log2;
-            for_each_bit(stage_log2, stages) {
-               VkShaderStageFlags stage = 1 << stage_log2;
+            tu_foreach_stage(stage, stages) {
                /* TODO: We could emit less CP_LOAD_STATE6 if we used
                 * struct-of-arrays instead of array-of-structs.
                 */
                for (unsigned i = 0; i < count; i++) {
                   unsigned tex_offset = offset + 2 * i * A6XX_TEX_CONST_DWORDS;
                   unsigned sam_offset = offset + (2 * i + 1) * A6XX_TEX_CONST_DWORDS;
-                  emit_load_state(&cs, tu6_vkstage2opcode(stage),
-                                  ST6_CONSTANTS, tu6_tex_stage2sb(stage),
+                  emit_load_state(&cs, tu6_stage2opcode(stage),
+                                  ST6_CONSTANTS, tu6_stage2texsb(stage),
                                   base, tex_offset, 1);
-                  emit_load_state(&cs, tu6_vkstage2opcode(stage),
-                                  ST6_SHADER, tu6_tex_stage2sb(stage),
+                  emit_load_state(&cs, tu6_stage2opcode(stage),
+                                  ST6_SHADER, tu6_stage2texsb(stage),
                                   base, sam_offset, 1);
                }
             }
@@ -617,56 +611,42 @@ tu6_emit_xs_config(struct tu_cs *cs,
       uint16_t reg_sp_xs_config;
       uint16_t reg_hlsq_xs_ctrl;
       uint16_t reg_sp_vs_obj_start;
-      uint8_t opcode;
-      enum a6xx_state_block sb : 8;
    } xs_config[] = {
       [MESA_SHADER_VERTEX] = {
          REG_A6XX_SP_VS_CTRL_REG0,
          REG_A6XX_SP_VS_CONFIG,
          REG_A6XX_HLSQ_VS_CNTL,
          REG_A6XX_SP_VS_OBJ_START_LO,
-         CP_LOAD_STATE6_GEOM,
-         SB6_VS_SHADER,
       },
       [MESA_SHADER_TESS_CTRL] = {
          REG_A6XX_SP_HS_CTRL_REG0,
          REG_A6XX_SP_HS_CONFIG,
          REG_A6XX_HLSQ_HS_CNTL,
          REG_A6XX_SP_HS_OBJ_START_LO,
-         CP_LOAD_STATE6_GEOM,
-         SB6_HS_SHADER,
       },
       [MESA_SHADER_TESS_EVAL] = {
          REG_A6XX_SP_DS_CTRL_REG0,
          REG_A6XX_SP_DS_CONFIG,
          REG_A6XX_HLSQ_DS_CNTL,
          REG_A6XX_SP_DS_OBJ_START_LO,
-         CP_LOAD_STATE6_GEOM,
-         SB6_DS_SHADER,
       },
       [MESA_SHADER_GEOMETRY] = {
          REG_A6XX_SP_GS_CTRL_REG0,
          REG_A6XX_SP_GS_CONFIG,
          REG_A6XX_HLSQ_GS_CNTL,
          REG_A6XX_SP_GS_OBJ_START_LO,
-         CP_LOAD_STATE6_GEOM,
-         SB6_GS_SHADER,
       },
       [MESA_SHADER_FRAGMENT] = {
          REG_A6XX_SP_FS_CTRL_REG0,
          REG_A6XX_SP_FS_CONFIG,
          REG_A6XX_HLSQ_FS_CNTL,
          REG_A6XX_SP_FS_OBJ_START_LO,
-         CP_LOAD_STATE6_FRAG,
-         SB6_FS_SHADER,
       },
       [MESA_SHADER_COMPUTE] = {
          REG_A6XX_SP_CS_CTRL_REG0,
          REG_A6XX_SP_CS_CONFIG,
          REG_A6XX_HLSQ_CS_CNTL,
          REG_A6XX_SP_CS_OBJ_START_LO,
-         CP_LOAD_STATE6_FRAG,
-         SB6_CS_SHADER,
       },
    };
    const struct xs_config *cfg = &xs_config[stage];
@@ -727,11 +707,11 @@ tu6_emit_xs_config(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, cfg->reg_sp_vs_obj_start, 2);
    tu_cs_emit_qw(cs, binary_iova);
 
-   tu_cs_emit_pkt7(cs, cfg->opcode, 3);
+   tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3);
    tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
                   CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
                   CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-                  CP_LOAD_STATE6_0_STATE_BLOCK(cfg->sb) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
                   CP_LOAD_STATE6_0_NUM_UNIT(xs->instrlen));
    tu_cs_emit_qw(cs, binary_iova);
 
@@ -749,11 +729,11 @@ tu6_emit_xs_config(struct tu_cs *cs,
    if (size <= 0)
       return;
 
-   tu_cs_emit_pkt7(cs, cfg->opcode, 3 + size * 4);
+   tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3 + size * 4);
    tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
                   CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                   CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-                  CP_LOAD_STATE6_0_STATE_BLOCK(cfg->sb) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
                   CP_LOAD_STATE6_0_NUM_UNIT(size));
    tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
    tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));

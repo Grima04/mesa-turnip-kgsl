@@ -1085,6 +1085,11 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
         __tmp = (gl_shader_stage)((stage_bits) &TU_STAGE_MASK);              \
         stage = __builtin_ffs(__tmp) - 1, __tmp; __tmp &= ~(1 << (stage)))
 
+uint32_t
+tu6_stage2opcode(gl_shader_stage type);
+enum a6xx_state_block
+tu6_stage2shadersb(gl_shader_stage type);
+
 struct tu_shader_module
 {
    unsigned char sha1[20];
