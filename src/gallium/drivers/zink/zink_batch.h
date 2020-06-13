@@ -32,6 +32,7 @@
 struct zink_context;
 struct zink_fence;
 struct zink_framebuffer;
+struct zink_gfx_program;
 struct zink_render_pass;
 struct zink_resource;
 struct zink_sampler_view;
@@ -46,6 +47,7 @@ struct zink_batch {
 
    struct zink_render_pass *rp;
    struct zink_framebuffer *fb;
+   struct set *programs;
 
    struct set *resources;
    struct set *sampler_views;
@@ -69,4 +71,7 @@ void
 zink_batch_reference_sampler_view(struct zink_batch *batch,
                                   struct zink_sampler_view *sv);
 
+void
+zink_batch_reference_program(struct zink_batch *batch,
+                             struct zink_gfx_program *prog);
 #endif

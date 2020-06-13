@@ -321,7 +321,8 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
    set_foreach(shader->programs, entry) {
       struct zink_gfx_program *prog = (void*)entry->key;
       _mesa_hash_table_remove_key(ctx->program_cache, prog->stages);
-      zink_destroy_gfx_program(screen, prog);
+      prog->stages[pipe_shader_type_from_mesa(shader->info.stage)] = NULL;
+      zink_gfx_program_reference(screen, &prog, NULL);
    }
    _mesa_set_destroy(shader->programs, NULL
    free(shader->streamout.so_info_slots);

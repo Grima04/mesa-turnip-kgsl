@@ -1147,6 +1147,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       ctx->batches[i].sampler_views = _mesa_set_create(NULL,
                                                        _mesa_hash_pointer,
                                                        _mesa_key_pointer_equal);
+      ctx->batches[i].programs = _mesa_set_create(NULL,
+                                                  _mesa_hash_pointer,
+                                                  _mesa_key_pointer_equal);
 
       if (!ctx->batches[i].resources || !ctx->batches[i].sampler_views)
          goto fail;

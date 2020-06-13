@@ -39,6 +39,12 @@ struct pipeline_cache_entry {
    VkPipeline pipeline;
 };
 
+void
+debug_describe_zink_gfx_program(char *buf, const struct zink_gfx_program *ptr)
+{
+   sprintf(buf, "zink_gfx_program");
+}
+
 static VkDescriptorSetLayout
 create_desc_set_layout(VkDevice dev,
                        struct zink_shader *stages[PIPE_SHADER_TYPES - 1],
@@ -122,6 +128,8 @@ zink_create_gfx_program(struct zink_context *ctx,
    if (!prog)
       goto fail;
 
+   pipe_reference_init(&prog->reference, 1);
+
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
       prog->pipelines[i] = _mesa_hash_table_create(NULL,
                                                    hash_gfx_pipeline_state,
@@ -132,8 +140,10 @@ zink_create_gfx_program(struct zink_context *ctx,
 
    for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
       prog->stages[i] = stages[i];
-      if (stages[i])
+      if (stages[i]) {
          _mesa_set_add(stages[i]->programs, prog);
+         zink_gfx_program_reference(screen, NULL, prog);
+      }
    }
 
    prog->dsl = create_desc_set_layout(screen->dev, stages,

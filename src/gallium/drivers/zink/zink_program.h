@@ -27,6 +27,7 @@
 #include <vulkan/vulkan.h>
 
 #include "pipe/p_state.h"
+#include "util/u_inlines.h"
 
 struct zink_context;
 struct zink_screen;
@@ -37,6 +38,8 @@ struct hash_table;
 struct set;
 
 struct zink_gfx_program {
+   struct pipe_reference reference;
+
    struct zink_shader *stages[PIPE_SHADER_TYPES - 1]; // compute stage doesn't belong here
    VkDescriptorSetLayout dsl;
    VkPipelineLayout layout;
@@ -61,4 +64,20 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
 
 void
 zink_program_init(struct zink_context *ctx);
+
+void
+debug_describe_zink_gfx_program(char* buf, const struct zink_gfx_program *ptr);
+
+static inline void
+zink_gfx_program_reference(struct zink_screen *screen,
+                           struct zink_gfx_program **dst,
+                           struct zink_gfx_program *src)
+{
+   struct zink_gfx_program *old_dst = dst ? *dst : NULL;
+
+   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
+                                (debug_reference_descriptor)debug_describe_zink_gfx_program))
+      zink_destroy_gfx_program(screen, old_dst);
+   if (dst) *dst = src;
+}
 #endif
