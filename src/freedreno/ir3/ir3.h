@@ -1760,7 +1760,11 @@ INSTR0(META_TEX_PREFETCH);
 
 #define MAX_REG 256
 
-typedef BITSET_DECLARE(regmask_t, 2 * MAX_REG);
+typedef BITSET_DECLARE(regmaskstate_t, 2 * MAX_REG);
+
+typedef struct {
+	regmaskstate_t mask;
+} regmask_t;
 
 static inline bool
 __regmask_get(regmask_t *regmask, struct ir3_register *reg, unsigned n)
@@ -1771,10 +1775,11 @@ __regmask_get(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 		 * using two half-precision slots:
 		 */
 		if (reg->flags & IR3_REG_HALF) {
-			return BITSET_TEST(*regmask, n);
+			return BITSET_TEST(regmask->mask, n);
 		} else {
 			n *= 2;
-			return BITSET_TEST(*regmask, n) || BITSET_TEST(*regmask, n+1);
+			return BITSET_TEST(regmask->mask, n) ||
+				BITSET_TEST(regmask->mask, n+1);
 		}
 	} else {
 		/* pre a6xx case, with separate register file for half and full
@@ -1782,7 +1787,7 @@ __regmask_get(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 		 */
 		if (reg->flags & IR3_REG_HALF)
 			n += MAX_REG;
-		return BITSET_TEST(*regmask, n);
+		return BITSET_TEST(regmask->mask, n);
 	}
 }
 
@@ -1795,11 +1800,11 @@ __regmask_set(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 		 * using two half-precision slots:
 		 */
 		if (reg->flags & IR3_REG_HALF) {
-			BITSET_SET(*regmask, n);
+			BITSET_SET(regmask->mask, n);
 		} else {
 			n *= 2;
-			BITSET_SET(*regmask, n);
-			BITSET_SET(*regmask, n+1);
+			BITSET_SET(regmask->mask, n);
+			BITSET_SET(regmask->mask, n+1);
 		}
 	} else {
 		/* pre a6xx case, with separate register file for half and full
@@ -1807,7 +1812,7 @@ __regmask_set(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 		 */
 		if (reg->flags & IR3_REG_HALF)
 			n += MAX_REG;
-		BITSET_SET(*regmask, n);
+		BITSET_SET(regmask->mask, n);
 	}
 }
 
@@ -1830,9 +1835,8 @@ static inline void regmask_set(regmask_t *regmask, struct ir3_register *reg)
 
 static inline void regmask_or(regmask_t *dst, regmask_t *a, regmask_t *b)
 {
-	unsigned i;
-	for (i = 0; i < ARRAY_SIZE(*dst); i++)
-		(*dst)[i] = (*a)[i] | (*b)[i];
+	for (unsigned i = 0; i < ARRAY_SIZE(dst->mask); i++)
+		dst->mask[i] = a->mask[i] | b->mask[i];
 }
 
 static inline bool regmask_get(regmask_t *regmask,
