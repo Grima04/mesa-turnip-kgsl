@@ -214,9 +214,43 @@ update_so_info(struct zink_shader *sh,
    }
 }
 
+VkShaderModule
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs)
+{
+   VkShaderModule mod = NULL;
+   void *streamout = zs->streamout.so_info_slots ? &zs->streamout : NULL;
+   struct spirv_shader *spirv = nir_to_spirv(zs->nir, streamout);
+   assert(spirv);
+
+   if (zink_debug & ZINK_DEBUG_SPIRV) {
+      char buf[256];
+      static int i;
+      snprintf(buf, sizeof(buf), "dump%02d.spv", i++);
+      FILE *fp = fopen(buf, "wb");
+      if (fp) {
+         fwrite(spirv->words, sizeof(uint32_t), spirv->num_words, fp);
+         fclose(fp);
+         fprintf(stderr, "wrote '%s'...\n", buf);
+      }
+   }
+
+   VkShaderModuleCreateInfo smci = {};
+   smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+   smci.codeSize = spirv->num_words * sizeof(uint32_t);
+   smci.pCode = spirv->words;
+
+   if (vkCreateShaderModule(screen->dev, &smci, NULL, &mod) != VK_SUCCESS)
+      mod = NULL;
+
+   /* TODO: determine if there's any reason to cache spirv output? */
+   free(spirv->words);
+   free(spirv);
+   return mod;
+}
+
 struct zink_shader *
-zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
-                 const struct pipe_stream_output_info *so_info)
+zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
+                   const struct pipe_stream_output_info *so_info)
 {
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
    bool have_psiz = false;
@@ -276,39 +310,13 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
       }
    }
 
-   ret->info = nir->info;
+   ret->nir = nir;
    if (so_info) {
       memcpy(&ret->streamout.so_info, so_info, sizeof(struct pipe_stream_output_info));
       ret->streamout.so_info_slots = malloc(so_info->num_outputs * sizeof(unsigned int));
       assert(ret->streamout.so_info_slots);
       update_so_info(ret, nir->info.outputs_written, have_psiz);
    }
-
-   struct spirv_shader *spirv = nir_to_spirv(nir, so_info ? &ret->streamout : NULL);
-   assert(spirv);
-
-   if (zink_debug & ZINK_DEBUG_SPIRV) {
-      char buf[256];
-      static int i;
-      snprintf(buf, sizeof(buf), "dump%02d.spv", i++);
-      FILE *fp = fopen(buf, "wb");
-      if (fp) {
-         fwrite(spirv->words, sizeof(uint32_t), spirv->num_words, fp);
-         fclose(fp);
-         fprintf(stderr, "wrote '%s'...\n", buf);
-      }
-   }
-
-   VkShaderModuleCreateInfo smci = {};
-   smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-   smci.codeSize = spirv->num_words * sizeof(uint32_t);
-   smci.pCode = spirv->words;
-
-   if (vkCreateShaderModule(screen->dev, &smci, NULL, &ret->shader_module) != VK_SUCCESS)
-      return NULL;
-
-   free(spirv->words);
-   free(spirv);
 
    return ret;
 }
@@ -317,14 +325,14 @@ void
 zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   vkDestroyShaderModule(screen->dev, shader->shader_module, NULL);
    set_foreach(shader->programs, entry) {
       struct zink_gfx_program *prog = (void*)entry->key;
-      _mesa_hash_table_remove_key(ctx->program_cache, prog->stages);
-      prog->stages[pipe_shader_type_from_mesa(shader->info.stage)] = NULL;
+      _mesa_hash_table_remove_key(ctx->program_cache, prog->shaders);
+      prog->shaders[pipe_shader_type_from_mesa(shader->nir->info.stage)] = NULL;
       zink_gfx_program_reference(screen, &prog, NULL);
    }
-   _mesa_set_destroy(shader->programs, NULL
+   _mesa_set_destroy(shader->programs, NULL);
    free(shader->streamout.so_info_slots);
+   ralloc_free(shader->nir);
    FREE(shader);
 }

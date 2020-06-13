@@ -27,6 +27,7 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 
+#include "compiler/nir/nir.h"
 #include "compiler/shader_info.h"
 
 #include <vulkan/vulkan.h>
@@ -57,9 +58,8 @@ struct nir_shader *
 zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens);
 
 struct zink_shader {
-   VkShaderModule shader_module;
+   struct nir_shader *nir;
 
-   shader_info info;
    struct zink_so_info streamout;
 
    struct {
@@ -71,8 +71,11 @@ struct zink_shader {
    struct set *programs;
 };
 
+VkShaderModule
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs);
+
 struct zink_shader *
-zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
+zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                  const struct pipe_stream_output_info *so_info);
 
 void

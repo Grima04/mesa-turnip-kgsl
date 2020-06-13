@@ -149,7 +149,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       VkPipelineShaderStageCreateInfo stage = {};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = zink_shader_stage(i);
-      stage.module = prog->stages[i]->shader_module;
+      stage.module = prog->stages[i];
       stage.pName = "main";
       shader_stages[num_stages++] = stage;
    }

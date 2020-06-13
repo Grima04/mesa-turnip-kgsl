@@ -40,7 +40,8 @@ struct set;
 struct zink_gfx_program {
    struct pipe_reference reference;
 
-   struct zink_shader *stages[PIPE_SHADER_TYPES - 1]; // compute stage doesn't belong here
+   VkShaderModule stages[PIPE_SHADER_TYPES - 1]; // compute stage doesn't belong here
+   struct zink_shader *shaders[PIPE_SHADER_TYPES - 1];
    VkDescriptorSetLayout dsl;
    VkPipelineLayout layout;
    unsigned num_descriptors;

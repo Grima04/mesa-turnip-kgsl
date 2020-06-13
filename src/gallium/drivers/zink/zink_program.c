@@ -107,6 +107,17 @@ create_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
    return layout;
 }
 
+static void
+update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[PIPE_SHADER_TYPES - 1], struct zink_gfx_program *prog)
+{
+   for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
+      if (stages[i]) {
+         prog->stages[i] = zink_shader_compile(zink_screen(ctx->base.screen), stages[i]);
+         prog->shaders[i] = stages[i];
+      }
+   }
+}
+
 static uint32_t
 hash_gfx_pipeline_state(const void *key)
 {
@@ -130,6 +141,8 @@ zink_create_gfx_program(struct zink_context *ctx,
 
    pipe_reference_init(&prog->reference, 1);
 
+   update_shader_modules(ctx, stages, prog);
+
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
       prog->pipelines[i] = _mesa_hash_table_create(NULL,
                                                    hash_gfx_pipeline_state,
@@ -139,8 +152,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    }
 
    for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
-      prog->stages[i] = stages[i];
-      if (stages[i]) {
+      if (prog->stages[i]) {
          _mesa_set_add(stages[i]->programs, prog);
          zink_gfx_program_reference(screen, NULL, prog);
       }
@@ -171,10 +183,10 @@ fail:
 static void
 gfx_program_remove_shader(struct zink_gfx_program *prog, struct zink_shader *shader)
 {
-   enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(shader->info.stage);
+   enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
 
-   assert(prog->stages[p_stage] == shader);
-   prog->stages[p_stage] = NULL;
+   assert(prog->shaders[p_stage] == shader);
+   prog->shaders[p_stage] = NULL;
    _mesa_set_remove_key(shader->programs, prog);
 }
 
@@ -189,8 +201,10 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       vkDestroyDescriptorSetLayout(screen->dev, prog->dsl, NULL);
 
    for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
+      if (prog->shaders[i])
+         gfx_program_remove_shader(prog, prog->shaders[i]);
       if (prog->stages[i])
-         gfx_program_remove_shader(prog, prog->stages[i]);
+         vkDestroyShaderModule(screen->dev, prog->stages[i], NULL);
    }
 
    /* unref all used render-passes */
@@ -300,7 +314,7 @@ zink_create_vs_state(struct pipe_context *pctx,
    else
       nir = (struct nir_shader *)shader->ir.nir;
 
-   return zink_compile_nir(zink_screen(pctx->screen), nir, &shader->stream_output);
+   return zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
 }
 
 static void
@@ -336,7 +350,7 @@ zink_create_fs_state(struct pipe_context *pctx,
    else
       nir = (struct nir_shader *)shader->ir.nir;
 
-   return zink_compile_nir(zink_screen(pctx->screen), nir, NULL);
+   return zink_shader_create(zink_screen(pctx->screen), nir, NULL);
 }
 
 static void
