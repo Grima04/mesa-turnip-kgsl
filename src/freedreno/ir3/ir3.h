@@ -44,7 +44,7 @@ struct ir3_instruction;
 struct ir3_block;
 
 struct ir3_info {
-	uint32_t gpu_id;
+	void *data;              /* used internally in ir3 assembler */
 	uint16_t sizedwords;
 	uint16_t instrs_count;   /* expanded to account for rpt's */
 	uint16_t nops_count;     /* # of nop instructions, including nopN */
@@ -556,8 +556,9 @@ block_id(struct ir3_block *block)
 
 struct ir3 * ir3_create(struct ir3_compiler *compiler, gl_shader_stage type);
 void ir3_destroy(struct ir3 *shader);
-void * ir3_assemble(struct ir3 *shader,
-		struct ir3_info *info, uint32_t gpu_id);
+
+struct ir3_shader_variant;
+void * ir3_assemble(struct ir3_shader_variant *v);
 void * ir3_alloc(struct ir3 *shader, int sz);
 
 struct ir3_block * ir3_block_create(struct ir3 *shader);

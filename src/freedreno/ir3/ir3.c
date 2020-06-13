@@ -79,6 +79,8 @@ void ir3_destroy(struct ir3 *shader)
 static uint32_t reg(struct ir3_register *reg, struct ir3_info *info,
 		uint32_t repeat, uint32_t valid_flags)
 {
+	struct ir3_shader_variant *v = info->data;
+	bool mergedregs = v->shader->compiler->gpu_id >= 600;
 	reg_t val = { .dummy32 = 0 };
 
 	if (reg->flags & ~valid_flags) {
@@ -112,7 +114,7 @@ static uint32_t reg(struct ir3_register *reg, struct ir3_info *info,
 			/* ignore writes to dummy register r63.x */
 		} else if (max < regid(48, 0)) {
 			if (reg->flags & IR3_REG_HALF) {
-				if (info->gpu_id >= 600) {
+				if (mergedregs) {
 					/* starting w/ a6xx, half regs conflict with full regs: */
 					info->max_reg = MAX2(info->max_reg, max >> 3);
 				} else {
@@ -130,11 +132,12 @@ static uint32_t reg(struct ir3_register *reg, struct ir3_info *info,
 static int emit_cat0(struct ir3_instruction *instr, void *ptr,
 		struct ir3_info *info)
 {
+	struct ir3_shader_variant *v = info->data;
 	instr_cat0_t *cat0 = ptr;
 
-	if (info->gpu_id >= 500) {
+	if (v->shader->compiler->gpu_id >= 500) {
 		cat0->a5xx.immed = instr->cat0.immed;
-	} else if (info->gpu_id >= 400) {
+	} else if (v->shader->compiler->gpu_id >= 400) {
 		cat0->a4xx.immed = instr->cat0.immed;
 	} else {
 		cat0->a3xx.immed = instr->cat0.immed;
@@ -628,13 +631,14 @@ static int emit_cat6_a6xx(struct ir3_instruction *instr, void *ptr,
 static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 		struct ir3_info *info)
 {
+	struct ir3_shader_variant *v = info->data;
 	struct ir3_register *dst, *src1, *src2;
 	instr_cat6_t *cat6 = ptr;
 
 	/* In a6xx we start using a new instruction encoding for some of
 	 * these instructions:
 	 */
-	if (info->gpu_id >= 600) {
+	if (v->shader->compiler->gpu_id >= 600) {
 		switch (instr->opc) {
 		case OPC_ATOMIC_ADD:
 		case OPC_ATOMIC_SUB:
@@ -912,13 +916,14 @@ static int (*emit[])(struct ir3_instruction *instr, void *ptr,
 	emit_cat7,
 };
 
-void * ir3_assemble(struct ir3 *shader, struct ir3_info *info,
-		uint32_t gpu_id)
+void * ir3_assemble(struct ir3_shader_variant *v)
 {
 	uint32_t *ptr, *dwords;
+	struct ir3_info *info = &v->info;
+	struct ir3 *shader = v->ir;
 
 	memset(info, 0, sizeof(*info));
-	info->gpu_id        = gpu_id;
+	info->data          = v;
 	info->max_reg       = -1;
 	info->max_half_reg  = -1;
 	info->max_const     = -1;
@@ -933,7 +938,7 @@ void * ir3_assemble(struct ir3 *shader, struct ir3_info *info,
 	 * instructions on a4xx or sets of 4 instructions on a3xx),
 	 * so pad out w/ NOPs if needed: (NOTE each instruction is 64bits)
 	 */
-	if (gpu_id >= 400) {
+	if (v->shader->compiler->gpu_id >= 400) {
 		info->sizedwords = align(info->sizedwords, 16 * 2);
 	} else {
 		info->sizedwords = align(info->sizedwords, 4 * 2);

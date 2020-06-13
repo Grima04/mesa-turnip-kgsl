@@ -642,7 +642,7 @@ struct ir3_shader {
 	struct ir3_shader_key key_mask;
 };
 
-void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id);
+void * ir3_shader_assemble(struct ir3_shader_variant *v);
 struct ir3_shader_variant * ir3_shader_get_variant(struct ir3_shader *shader,
 		struct ir3_shader_key *key, bool binning_pass, bool *created);
 struct ir3_shader * ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,

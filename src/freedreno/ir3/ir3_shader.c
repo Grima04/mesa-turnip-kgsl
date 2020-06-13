@@ -131,11 +131,12 @@ fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
 /* wrapper for ir3_assemble() which does some info fixup based on
  * shader state.  Non-static since used by ir3_cmdline too.
  */
-void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id)
+void * ir3_shader_assemble(struct ir3_shader_variant *v)
 {
+	unsigned gpu_id = v->shader->compiler->gpu_id;
 	void *bin;
 
-	bin = ir3_assemble(v->ir, &v->info, gpu_id);
+	bin = ir3_assemble(v);
 	if (!bin)
 		return NULL;
 
@@ -159,10 +160,7 @@ void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id)
 static void
 assemble_variant(struct ir3_shader_variant *v)
 {
-	struct ir3_compiler *compiler = v->shader->compiler;
-	uint32_t gpu_id = compiler->gpu_id;
-
-	v->bin = ir3_shader_assemble(v, gpu_id);
+	v->bin = ir3_shader_assemble(v);
 
 	if (shader_debug_enabled(v->shader->type)) {
 		fprintf(stdout, "Native code for unnamed %s shader %s:\n",

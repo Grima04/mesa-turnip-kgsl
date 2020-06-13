@@ -53,7 +53,7 @@ ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
 	kernel->base.num_bufs = kernel->info.num_bufs;
 	memcpy(kernel->base.buf_sizes, kernel->info.buf_sizes, sizeof(kernel->base.buf_sizes));
 
-	kernel->bin = ir3_shader_assemble(v, c->gpu_id);
+	kernel->bin = ir3_shader_assemble(v);
 
 	unsigned sz = v->info.sizedwords * 4;
 
