@@ -1384,7 +1384,6 @@ struct tu_subpass_barrier {
 struct tu_subpass_attachment
 {
    uint32_t attachment;
-   VkImageLayout layout;
 };
 
 struct tu_subpass
@@ -1397,7 +1396,6 @@ struct tu_subpass
    struct tu_subpass_attachment depth_stencil_attachment;
 
    VkSampleCountFlagBits samples;
-   bool has_external_src, has_external_dst;
 
    uint32_t srgb_cntl;
 
@@ -1412,7 +1410,6 @@ struct tu_render_pass_attachment
    VkImageAspectFlags clear_mask;
    bool load;
    bool store;
-   VkImageLayout initial_layout, final_layout;
    int32_t gmem_offset;
 };
 
