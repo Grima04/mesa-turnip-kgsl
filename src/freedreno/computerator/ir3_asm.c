@@ -38,6 +38,7 @@ ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
 	struct ir3_shader_variant *v = calloc(1, sizeof(*v));
 	v->type = MESA_SHADER_COMPUTE;
 	v->shader = shader;
+	v->mergedregs = true;
 
 	kernel->v = v;
 
