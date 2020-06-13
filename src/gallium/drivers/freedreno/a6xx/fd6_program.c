@@ -439,19 +439,17 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			 0xfc000000);
 
 	enum a3xx_threadsize vssz;
-	uint32_t vsregs;
 	if (ds || hs) {
 		vssz = TWO_QUADS;
-		vsregs = 0;
 	} else {
 		vssz = FOUR_QUADS;
-		vsregs = A6XX_SP_VS_CTRL_REG0_MERGEDREGS;
 	}
 
 	OUT_PKT4(ring, REG_A6XX_SP_VS_CTRL_REG0, 1);
 	OUT_RING(ring, A6XX_SP_VS_CTRL_REG0_THREADSIZE(vssz) |
 			A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(vs->info.max_reg + 1) |
-			vsregs |
+			A6XX_SP_VS_CTRL_REG0_HALFREGFOOTPRINT(vs->info.max_half_reg + 1) |
+			COND(vs->mergedregs, A6XX_SP_VS_CTRL_REG0_MERGEDREGS) |
 			A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(vs->branchstack) |
 			COND(vs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE));
 
@@ -537,6 +535,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_PKT4(ring, REG_A6XX_SP_HS_CTRL_REG0, 1);
 		OUT_RING(ring, A6XX_SP_HS_CTRL_REG0_THREADSIZE(TWO_QUADS) |
 			A6XX_SP_HS_CTRL_REG0_FULLREGFOOTPRINT(hs->info.max_reg + 1) |
+			A6XX_SP_HS_CTRL_REG0_HALFREGFOOTPRINT(hs->info.max_half_reg + 1) |
+			COND(hs->mergedregs, A6XX_SP_HS_CTRL_REG0_MERGEDREGS) |
 			A6XX_SP_HS_CTRL_REG0_BRANCHSTACK(hs->branchstack) |
 			COND(hs->need_pixlod, A6XX_SP_HS_CTRL_REG0_PIXLODENABLE));
 
@@ -547,6 +547,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_PKT4(ring, REG_A6XX_SP_DS_CTRL_REG0, 1);
 		OUT_RING(ring, A6XX_SP_DS_CTRL_REG0_THREADSIZE(TWO_QUADS) |
 			A6XX_SP_DS_CTRL_REG0_FULLREGFOOTPRINT(ds->info.max_reg + 1) |
+			A6XX_SP_DS_CTRL_REG0_HALFREGFOOTPRINT(ds->info.max_half_reg + 1) |
+			COND(ds->mergedregs, A6XX_SP_DS_CTRL_REG0_MERGEDREGS) |
 			A6XX_SP_DS_CTRL_REG0_BRANCHSTACK(ds->branchstack) |
 			COND(ds->need_pixlod, A6XX_SP_DS_CTRL_REG0_PIXLODENABLE));
 
@@ -656,7 +658,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 			COND(enable_varyings, A6XX_SP_FS_CTRL_REG0_VARYING) |
 			0x1000000 |
 			A6XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(fs->info.max_reg + 1) |
-			A6XX_SP_FS_CTRL_REG0_MERGEDREGS |
+			A6XX_SP_FS_CTRL_REG0_HALFREGFOOTPRINT(fs->info.max_half_reg + 1) |
+			COND(fs->mergedregs, A6XX_SP_FS_CTRL_REG0_MERGEDREGS) |
 			A6XX_SP_FS_CTRL_REG0_BRANCHSTACK(fs->branchstack) |
 			COND(fs->need_pixlod, A6XX_SP_FS_CTRL_REG0_PIXLODENABLE));
 
@@ -719,6 +722,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_PKT4(ring, REG_A6XX_SP_GS_CTRL_REG0, 1);
 		OUT_RING(ring, A6XX_SP_GS_CTRL_REG0_THREADSIZE(TWO_QUADS) |
 			A6XX_SP_GS_CTRL_REG0_FULLREGFOOTPRINT(gs->info.max_reg + 1) |
+			A6XX_SP_GS_CTRL_REG0_HALFREGFOOTPRINT(gs->info.max_half_reg + 1) |
+			COND(gs->mergedregs, A6XX_SP_GS_CTRL_REG0_MERGEDREGS) |
 			A6XX_SP_GS_CTRL_REG0_BRANCHSTACK(gs->branchstack) |
 			COND(gs->need_pixlod, A6XX_SP_GS_CTRL_REG0_PIXLODENABLE));
 
