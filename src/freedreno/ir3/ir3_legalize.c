@@ -88,7 +88,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 	struct ir3_legalize_state *state = &bd->state;
 	bool last_input_needs_ss = false;
 	bool has_tex_prefetch = false;
-	bool mergedregs = ctx->compiler->gpu_id >= 600;
+	bool mergedregs = ctx->so->mergedregs;
 
 	/* our input state is the OR of all predecessor blocks' state: */
 	set_foreach(block->predecessors, entry) {
@@ -711,7 +711,7 @@ bool
 ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 {
 	struct ir3_legalize_ctx *ctx = rzalloc(ir, struct ir3_legalize_ctx);
-	bool mergedregs = ctx->compiler->gpu_id >= 600;
+	bool mergedregs = so->mergedregs;
 	bool progress;
 
 	ctx->so = so;

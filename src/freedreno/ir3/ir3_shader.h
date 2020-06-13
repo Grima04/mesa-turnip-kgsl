@@ -549,6 +549,9 @@ struct ir3_shader_variant {
 
 	bool per_samp;
 
+	/* Are we using split or merged register file? */
+	bool mergedregs;
+
 	/* for astc srgb workaround, the number/base of additional
 	 * alpha tex states we need, and index of original tex states
 	 */

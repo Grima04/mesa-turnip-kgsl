@@ -462,7 +462,7 @@ calculate_forward_deps(struct ir3_postsched_ctx *ctx)
 	struct ir3_postsched_deps_state state = {
 			.ctx = ctx,
 			.direction = F,
-			.merged = ctx->ir->compiler->gpu_id >= 600,
+			.merged = ctx->v->mergedregs,
 	};
 
 	foreach_instr (instr, &ctx->unscheduled_list) {
@@ -476,7 +476,7 @@ calculate_reverse_deps(struct ir3_postsched_ctx *ctx)
 	struct ir3_postsched_deps_state state = {
 			.ctx = ctx,
 			.direction = R,
-			.merged = ctx->ir->compiler->gpu_id >= 600,
+			.merged = ctx->v->mergedregs,
 	};
 
 	foreach_instr_rev (instr, &ctx->unscheduled_list) {

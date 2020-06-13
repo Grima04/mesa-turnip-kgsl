@@ -572,7 +572,7 @@ ra_init(struct ir3_ra_ctx *ctx)
 	ctx->use = rzalloc_array(ctx->g, unsigned, ctx->alloc_count);
 
 	/* TODO add selector callback for split (pre-a6xx) register file: */
-	if (ctx->ir->compiler->gpu_id >= 600) {
+	if (ctx->v->mergedregs) {
 		ra_set_select_reg_callback(ctx->g, ra_select_reg_merged, ctx);
 
 		if (ctx->scalar_pass) {
@@ -1488,7 +1488,7 @@ ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	struct ir3_ra_ctx ctx = {
 			.v = v,
 			.ir = v->ir,
-			.set = (v->ir->compiler->gpu_id >= 600) ?
+			.set = v->mergedregs ?
 				v->ir->compiler->mergedregs_set : v->ir->compiler->set,
 			.scalar_pass = scalar_pass,
 	};

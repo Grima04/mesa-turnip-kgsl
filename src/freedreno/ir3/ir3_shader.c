@@ -64,7 +64,7 @@ delete_variant(struct ir3_shader_variant *v)
  * the reg off.
  */
 static void
-fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
+fixup_regfootprint(struct ir3_shader_variant *v)
 {
 	unsigned i;
 
@@ -86,7 +86,7 @@ fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
 			unsigned n = util_last_bit(v->inputs[i].compmask) - 1;
 			int32_t regid = v->inputs[i].regid + n;
 			if (v->inputs[i].half) {
-				if (gpu_id < 500) {
+				if (!v->mergedregs) {
 					v->info.max_half_reg = MAX2(v->info.max_half_reg, regid >> 2);
 				} else {
 					v->info.max_reg = MAX2(v->info.max_reg, regid >> 3);
@@ -103,7 +103,7 @@ fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
 			continue;
 		int32_t regid = v->outputs[i].regid + 3;
 		if (v->outputs[i].half) {
-			if (gpu_id < 500) {
+			if (!v->mergedregs) {
 				v->info.max_half_reg = MAX2(v->info.max_half_reg, regid >> 2);
 			} else {
 				v->info.max_reg = MAX2(v->info.max_reg, regid >> 3);
@@ -117,7 +117,7 @@ fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
 		unsigned n = util_last_bit(v->sampler_prefetch[i].wrmask) - 1;
 		int32_t regid = v->sampler_prefetch[i].dst + n;
 		if (v->sampler_prefetch[i].half_precision) {
-			if (gpu_id < 500) {
+			if (!v->mergedregs) {
 				v->info.max_half_reg = MAX2(v->info.max_half_reg, regid >> 2);
 			} else {
 				v->info.max_reg = MAX2(v->info.max_reg, regid >> 3);
@@ -152,7 +152,7 @@ void * ir3_shader_assemble(struct ir3_shader_variant *v)
 	 */
 	v->constlen = MAX2(v->constlen, v->info.max_const + 1);
 
-	fixup_regfootprint(v, gpu_id);
+	fixup_regfootprint(v);
 
 	return bin;
 }
@@ -196,6 +196,26 @@ create_variant(struct ir3_shader *shader, struct ir3_shader_key *key,
 	v->nonbinning = nonbinning;
 	v->key = *key;
 	v->type = shader->type;
+
+	if (shader->compiler->gpu_id >= 600) {
+		switch (v->type) {
+		case MESA_SHADER_TESS_CTRL:
+		case MESA_SHADER_TESS_EVAL:
+			v->mergedregs = false;
+			break;
+		case MESA_SHADER_VERTEX:
+		case MESA_SHADER_GEOMETRY:
+			/* For VS/GS, normally do mergedregs, but if there is tess
+			 * we need to not used MERGEDREGS
+			 */
+			v->mergedregs = !key->tessellation;
+			break;
+		default:
+			v->mergedregs = true;
+		}
+	} else {
+		v->mergedregs = false;
+	}
 
 	ret = ir3_compile_shader_nir(shader->compiler, v);
 	if (ret) {

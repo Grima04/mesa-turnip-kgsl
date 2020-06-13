@@ -80,7 +80,6 @@ static uint32_t reg(struct ir3_register *reg, struct ir3_info *info,
 		uint32_t repeat, uint32_t valid_flags)
 {
 	struct ir3_shader_variant *v = info->data;
-	bool mergedregs = v->shader->compiler->gpu_id >= 600;
 	reg_t val = { .dummy32 = 0 };
 
 	if (reg->flags & ~valid_flags) {
@@ -114,7 +113,7 @@ static uint32_t reg(struct ir3_register *reg, struct ir3_info *info,
 			/* ignore writes to dummy register r63.x */
 		} else if (max < regid(48, 0)) {
 			if (reg->flags & IR3_REG_HALF) {
-				if (mergedregs) {
+				if (v->mergedregs) {
 					/* starting w/ a6xx, half regs conflict with full regs: */
 					info->max_reg = MAX2(info->max_reg, max >> 3);
 				} else {
