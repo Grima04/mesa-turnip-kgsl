@@ -121,9 +121,7 @@ struct ir3_register {
 	 * Note the size field isn't important for relative const (since
 	 * we don't have to do register allocation for constants).
 	 */
-	unsigned size : 15;
-
-	bool merged : 1;    /* half-regs conflict with full regs (ie >= a6xx) */
+	unsigned size : 16;
 
 	/* normal registers:
 	 * the component is in the low two bits of the reg #, so
@@ -1763,13 +1761,14 @@ INSTR0(META_TEX_PREFETCH);
 typedef BITSET_DECLARE(regmaskstate_t, 2 * MAX_REG);
 
 typedef struct {
+	bool mergedregs;
 	regmaskstate_t mask;
 } regmask_t;
 
 static inline bool
 __regmask_get(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 {
-	if (reg->merged) {
+	if (regmask->mergedregs) {
 		/* a6xx+ case, with merged register file, we track things in terms
 		 * of half-precision registers, with a full precisions register
 		 * using two half-precision slots:
@@ -1794,7 +1793,7 @@ __regmask_get(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 static inline void
 __regmask_set(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 {
-	if (reg->merged) {
+	if (regmask->mergedregs) {
 		/* a6xx+ case, with merged register file, we track things in terms
 		 * of half-precision registers, with a full precisions register
 		 * using two half-precision slots:
@@ -1816,9 +1815,10 @@ __regmask_set(regmask_t *regmask, struct ir3_register *reg, unsigned n)
 	}
 }
 
-static inline void regmask_init(regmask_t *regmask)
+static inline void regmask_init(regmask_t *regmask, bool mergedregs)
 {
-	memset(regmask, 0, sizeof(*regmask));
+	memset(&regmask->mask, 0, sizeof(regmask->mask));
+	regmask->mergedregs = mergedregs;
 }
 
 static inline void regmask_set(regmask_t *regmask, struct ir3_register *reg)
@@ -1835,6 +1835,9 @@ static inline void regmask_set(regmask_t *regmask, struct ir3_register *reg)
 
 static inline void regmask_or(regmask_t *dst, regmask_t *a, regmask_t *b)
 {
+	assert(dst->mergedregs == a->mergedregs);
+	assert(dst->mergedregs == b->mergedregs);
+
 	for (unsigned i = 0; i < ARRAY_SIZE(dst->mask); i++)
 		dst->mask[i] = a->mask[i] | b->mask[i];
 }

@@ -88,6 +88,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 	struct ir3_legalize_state *state = &bd->state;
 	bool last_input_needs_ss = false;
 	bool has_tex_prefetch = false;
+	bool mergedregs = ctx->compiler->gpu_id >= 600;
 
 	/* our input state is the OR of all predecessor blocks' state: */
 	set_foreach(block->predecessors, entry) {
@@ -132,15 +133,15 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		if (last_n && is_barrier(last_n)) {
 			n->flags |= IR3_INSTR_SS | IR3_INSTR_SY;
 			last_input_needs_ss = false;
-			regmask_init(&state->needs_ss_war);
-			regmask_init(&state->needs_ss);
-			regmask_init(&state->needs_sy);
+			regmask_init(&state->needs_ss_war, mergedregs);
+			regmask_init(&state->needs_ss, mergedregs);
+			regmask_init(&state->needs_sy, mergedregs);
 		}
 
 		if (last_n && (last_n->opc == OPC_PREDT)) {
 			n->flags |= IR3_INSTR_SS;
-			regmask_init(&state->needs_ss_war);
-			regmask_init(&state->needs_ss);
+			regmask_init(&state->needs_ss_war, mergedregs);
+			regmask_init(&state->needs_ss, mergedregs);
 		}
 
 		/* NOTE: consider dst register too.. it could happen that
@@ -161,13 +162,13 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 				if (regmask_get(&state->needs_ss, reg)) {
 					n->flags |= IR3_INSTR_SS;
 					last_input_needs_ss = false;
-					regmask_init(&state->needs_ss_war);
-					regmask_init(&state->needs_ss);
+					regmask_init(&state->needs_ss_war, mergedregs);
+					regmask_init(&state->needs_ss, mergedregs);
 				}
 
 				if (regmask_get(&state->needs_sy, reg)) {
 					n->flags |= IR3_INSTR_SY;
-					regmask_init(&state->needs_sy);
+					regmask_init(&state->needs_sy, mergedregs);
 				}
 			}
 
@@ -184,8 +185,8 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			if (regmask_get(&state->needs_ss_war, reg)) {
 				n->flags |= IR3_INSTR_SS;
 				last_input_needs_ss = false;
-				regmask_init(&state->needs_ss_war);
-				regmask_init(&state->needs_ss);
+				regmask_init(&state->needs_ss_war, mergedregs);
+				regmask_init(&state->needs_ss, mergedregs);
 			}
 
 			if (last_rel && (reg->num == regid(REG_A0, 0))) {
@@ -710,6 +711,7 @@ bool
 ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 {
 	struct ir3_legalize_ctx *ctx = rzalloc(ir, struct ir3_legalize_ctx);
+	bool mergedregs = ctx->compiler->gpu_id >= 600;
 	bool progress;
 
 	ctx->so = so;
@@ -719,7 +721,14 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 
 	/* allocate per-block data: */
 	foreach_block (block, &ir->block_list) {
-		block->data = rzalloc(ctx, struct ir3_legalize_block_data);
+		struct ir3_legalize_block_data *bd =
+				rzalloc(ctx, struct ir3_legalize_block_data);
+
+		regmask_init(&bd->state.needs_ss_war, mergedregs);
+		regmask_init(&bd->state.needs_ss, mergedregs);
+		regmask_init(&bd->state.needs_sy, mergedregs);
+
+		block->data = bd;
 	}
 
 	ir3_remove_nops(ir);

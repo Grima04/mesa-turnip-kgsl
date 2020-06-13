@@ -996,8 +996,6 @@ static struct ir3_register * reg_create(struct ir3 *shader,
 	reg->wrmask = 1;
 	reg->flags = flags;
 	reg->num = num;
-	if (shader->compiler->gpu_id >= 600)
-		reg->merged = true;
 	return reg;
 }
 
