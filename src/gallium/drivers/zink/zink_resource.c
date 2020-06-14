@@ -408,6 +408,14 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
       int aspect = 1 << u_bit_scan(&aspects);
       copyRegion.imageSubresource.aspectMask = aspect;
 
+      /* this may or may not work with multisampled depth/stencil buffers depending on the driver implementation:
+       *
+       * srcImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
+       * - vkCmdCopyImageToBuffer spec
+       *
+       * dstImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
+       * - vkCmdCopyBufferToImage spec
+       */
       if (buf2img)
          vkCmdCopyBufferToImage(batch->cmdbuf, staging_res->buffer, res->image, res->layout, 1, &copyRegion);
       else
