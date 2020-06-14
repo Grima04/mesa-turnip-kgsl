@@ -129,6 +129,7 @@ tu_minify(uint32_t n, uint32_t levels)
    })
 
 #define COND(bool, val) ((bool) ? (val) : 0)
+#define BIT(bit) (1u << (bit))
 
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
@@ -409,6 +410,42 @@ struct ts_cs_memory {
    uint64_t iova;
 };
 
+struct tu_draw_state {
+   uint64_t iova : 48;
+   uint32_t size : 16;
+};
+
+enum tu_dynamic_state
+{
+   /* re-use VK_DYNAMIC_STATE_ enums for non-extended dynamic states */
+   TU_DYNAMIC_STATE_SAMPLE_LOCATIONS = VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1,
+   TU_DYNAMIC_STATE_COUNT,
+};
+
+enum tu_draw_state_group_id
+{
+   TU_DRAW_STATE_PROGRAM,
+   TU_DRAW_STATE_PROGRAM_BINNING,
+   TU_DRAW_STATE_VB,
+   TU_DRAW_STATE_VI,
+   TU_DRAW_STATE_VI_BINNING,
+   TU_DRAW_STATE_RAST,
+   TU_DRAW_STATE_DS,
+   TU_DRAW_STATE_BLEND,
+   TU_DRAW_STATE_VS_CONST,
+   TU_DRAW_STATE_GS_CONST,
+   TU_DRAW_STATE_FS_CONST,
+   TU_DRAW_STATE_DESC_SETS,
+   TU_DRAW_STATE_DESC_SETS_GMEM,
+   TU_DRAW_STATE_DESC_SETS_SYSMEM,
+   TU_DRAW_STATE_DESC_SETS_LOAD,
+   TU_DRAW_STATE_VS_PARAMS,
+
+   /* dynamic state related draw states */
+   TU_DRAW_STATE_DYNAMIC,
+   TU_DRAW_STATE_COUNT = TU_DRAW_STATE_DYNAMIC + TU_DYNAMIC_STATE_COUNT,
+};
+
 enum tu_cs_mode
 {
 
@@ -578,71 +615,10 @@ tu_buffer_iova(struct tu_buffer *buffer)
    return buffer->bo->iova + buffer->bo_offset;
 }
 
-enum tu_dynamic_state_bits
-{
-   TU_DYNAMIC_VIEWPORT = 1 << 0,
-   TU_DYNAMIC_SCISSOR = 1 << 1,
-   TU_DYNAMIC_LINE_WIDTH = 1 << 2,
-   TU_DYNAMIC_DEPTH_BIAS = 1 << 3,
-   TU_DYNAMIC_BLEND_CONSTANTS = 1 << 4,
-   TU_DYNAMIC_DEPTH_BOUNDS = 1 << 5,
-   TU_DYNAMIC_STENCIL_COMPARE_MASK = 1 << 6,
-   TU_DYNAMIC_STENCIL_WRITE_MASK = 1 << 7,
-   TU_DYNAMIC_STENCIL_REFERENCE = 1 << 8,
-   TU_DYNAMIC_DISCARD_RECTANGLE = 1 << 9,
-   TU_DYNAMIC_SAMPLE_LOCATIONS = 1 << 10,
-   TU_DYNAMIC_ALL = (1 << 11) - 1,
-};
-
 struct tu_vertex_binding
 {
    struct tu_buffer *buffer;
    VkDeviceSize offset;
-};
-
-struct tu_viewport_state
-{
-   uint32_t count;
-   VkViewport viewports[MAX_VIEWPORTS];
-};
-
-struct tu_scissor_state
-{
-   uint32_t count;
-   VkRect2D scissors[MAX_SCISSORS];
-};
-
-struct tu_dynamic_state
-{
-   /**
-    * Bitmask of (1 << VK_DYNAMIC_STATE_*).
-    * Defines the set of saved dynamic state.
-    */
-   uint32_t mask;
-
-   struct tu_viewport_state viewport;
-
-   struct tu_scissor_state scissor;
-
-   float line_width;
-
-   struct
-   {
-      uint32_t front;
-      uint32_t back;
-   } stencil_compare_mask;
-
-   struct
-   {
-      uint32_t front;
-      uint32_t back;
-   } stencil_write_mask;
-
-   struct
-   {
-      uint32_t front;
-      uint32_t back;
-   } stencil_reference;
 };
 
 const char *
@@ -693,21 +669,14 @@ struct tu_tiling_config
 
 enum tu_cmd_dirty_bits
 {
-   TU_CMD_DIRTY_PIPELINE = 1 << 0,
    TU_CMD_DIRTY_COMPUTE_PIPELINE = 1 << 1,
    TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 2,
-
    TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 3,
    TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS = 1 << 4,
    TU_CMD_DIRTY_SHADER_CONSTS = 1 << 5,
    TU_CMD_DIRTY_STREAMOUT_BUFFERS = 1 << 6,
-
-   TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH = 1 << 16,
-   TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK = 1 << 17,
-   TU_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK = 1 << 18,
-   TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE = 1 << 19,
-   TU_CMD_DIRTY_DYNAMIC_VIEWPORT = 1 << 20,
-   TU_CMD_DIRTY_DYNAMIC_SCISSOR = 1 << 21,
+   /* all draw states were disabled and need to be re-enabled: */
+   TU_CMD_DIRTY_DRAW_STATE = 1 << 7,
 };
 
 struct tu_streamout_state {
@@ -842,7 +811,17 @@ struct tu_cmd_state
       VkDeviceSize offsets[MAX_VBS];
    } vb;
 
-   struct tu_dynamic_state dynamic;
+   /* for dynamic states that can't be emitted directly */
+   uint32_t dynamic_stencil_mask;
+   uint32_t dynamic_stencil_wrmask;
+   uint32_t dynamic_stencil_ref;
+   uint32_t dynamic_gras_su_cntl;
+
+   /* saved states to re-emit in TU_CMD_DIRTY_DRAW_STATE case */
+   struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
+   struct tu_cs_entry vertex_buffers_ib;
+   struct tu_cs_entry shader_const_ib[MESA_SHADER_STAGES];
+   struct tu_cs_entry desc_sets_ib, desc_sets_gmem_ib, desc_sets_sysmem_ib, desc_sets_load_ib;
 
    /* Stream output buffers */
    struct
@@ -1106,8 +1085,6 @@ struct tu_pipeline
 {
    struct tu_cs cs;
 
-   struct tu_dynamic_state dynamic_state;
-
    struct tu_pipeline_layout *layout;
 
    bool need_indirect_descriptor_sets;
@@ -1115,6 +1092,15 @@ struct tu_pipeline
    uint32_t active_desc_sets;
 
    struct tu_streamout_state streamout;
+
+   /* mask of enabled dynamic states
+    * if BIT(i) is set, pipeline->dynamic_state[i] is *NOT* used
+    */
+   uint32_t dynamic_state_mask;
+   struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
+
+   /* gras_su_cntl without line width, used for dynamic line width state */
+   uint32_t gras_su_cntl;
 
    struct
    {
@@ -1147,12 +1133,6 @@ struct tu_pipeline
    struct
    {
       struct tu_cs_entry state_ib;
-   } vp;
-
-   struct
-   {
-      uint32_t gras_su_cntl;
-      struct tu_cs_entry state_ib;
    } rast;
 
    struct
@@ -1181,29 +1161,10 @@ void
 tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp_loc);
 
 void
-tu6_emit_gras_su_cntl(struct tu_cs *cs,
-                      uint32_t gras_su_cntl,
-                      float line_width);
-
-void
 tu6_emit_depth_bias(struct tu_cs *cs,
                     float constant_factor,
                     float clamp,
                     float slope_factor);
-
-void
-tu6_emit_stencil_compare_mask(struct tu_cs *cs,
-                              uint32_t front,
-                              uint32_t back);
-
-void
-tu6_emit_stencil_write_mask(struct tu_cs *cs, uint32_t front, uint32_t back);
-
-void
-tu6_emit_stencil_reference(struct tu_cs *cs, uint32_t front, uint32_t back);
-
-void
-tu6_emit_blend_constants(struct tu_cs *cs, const float constants[4]);
 
 void tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits samples);
 

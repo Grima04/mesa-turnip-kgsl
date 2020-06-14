@@ -686,6 +686,58 @@ tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1)
                    A6XX_SP_TP_WINDOW_OFFSET(.x = x1, .y = y1));
 }
 
+static void
+tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
+{
+   uint32_t enable_mask;
+   switch (id) {
+   case TU_DRAW_STATE_PROGRAM:
+   case TU_DRAW_STATE_VI:
+   case TU_DRAW_STATE_FS_CONST:
+   /* The blob seems to not enable this (DESC_SETS_LOAD) for binning, even
+    * when resources would actually be used in the binning shader.
+    * Presumably the overhead of prefetching the resources isn't
+    * worth it.
+    */
+   case TU_DRAW_STATE_DESC_SETS_LOAD:
+      enable_mask = CP_SET_DRAW_STATE__0_GMEM |
+                    CP_SET_DRAW_STATE__0_SYSMEM;
+      break;
+   case TU_DRAW_STATE_PROGRAM_BINNING:
+   case TU_DRAW_STATE_VI_BINNING:
+      enable_mask = CP_SET_DRAW_STATE__0_BINNING;
+      break;
+   case TU_DRAW_STATE_DESC_SETS_GMEM:
+      enable_mask = CP_SET_DRAW_STATE__0_GMEM;
+      break;
+   case TU_DRAW_STATE_DESC_SETS_SYSMEM:
+      enable_mask = CP_SET_DRAW_STATE__0_BINNING |
+                    CP_SET_DRAW_STATE__0_SYSMEM;
+      break;
+   default:
+      enable_mask = CP_SET_DRAW_STATE__0_GMEM |
+                    CP_SET_DRAW_STATE__0_SYSMEM |
+                    CP_SET_DRAW_STATE__0_BINNING;
+      break;
+   }
+
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(state.size) |
+                  enable_mask |
+                  CP_SET_DRAW_STATE__0_GROUP_ID(id) |
+                  COND(!state.size, CP_SET_DRAW_STATE__0_DISABLE));
+   tu_cs_emit_qw(cs, state.iova);
+}
+
+/* note: get rid of this eventually */
+static void
+tu_cs_emit_sds_ib(struct tu_cs *cs, uint32_t id, struct tu_cs_entry entry)
+{
+   tu_cs_emit_draw_state(cs, id, (struct tu_draw_state) {
+      .iova = entry.size ? entry.bo->iova + entry.offset : 0,
+      .size = entry.size / 4,
+   });
+}
+
 static bool
 use_hw_binning(struct tu_cmd_buffer *cmd)
 {
@@ -1987,6 +2039,28 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
    return cmd_buffer->record_result;
 }
 
+static struct tu_cs
+tu_cmd_dynamic_state(struct tu_cmd_buffer *cmd, uint32_t id, uint32_t size)
+{
+   struct ts_cs_memory memory;
+   struct tu_cs cs;
+
+   /* TODO: share this logic with tu_pipeline_static_state */
+   tu_cs_alloc(&cmd->sub_cs, size, 1, &memory);
+   tu_cs_init_external(&cs, memory.map, memory.map + size);
+   tu_cs_begin(&cs);
+   tu_cs_reserve_space(&cs, size);
+
+   assert(id < ARRAY_SIZE(cmd->state.dynamic_state));
+   cmd->state.dynamic_state[id].iova = memory.iova;
+   cmd->state.dynamic_state[id].size = size;
+
+   tu_cs_emit_pkt7(&cmd->draw_cs, CP_SET_DRAW_STATE, 3);
+   tu_cs_emit_draw_state(&cmd->draw_cs, TU_DRAW_STATE_DYNAMIC + id, cmd->state.dynamic_state[id]);
+
+   return cs;
+}
+
 void
 tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
                    VkPipelineBindPoint pipelineBindPoint,
@@ -2011,7 +2085,23 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    cmd->state.pipeline = pipeline;
-   cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_SHADER_CONSTS;
+   cmd->state.dirty |= TU_CMD_DIRTY_SHADER_CONSTS;
+
+   struct tu_cs *cs = &cmd->draw_cs;
+   uint32_t mask = ~pipeline->dynamic_state_mask & BITFIELD_MASK(TU_DYNAMIC_STATE_COUNT);
+   uint32_t i;
+
+   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (7 + util_bitcount(mask)));
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state_ib);
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state_ib);
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VI, pipeline->vi.state_ib);
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VI_BINNING, pipeline->vi.binning_state_ib);
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_RAST, pipeline->rast.state_ib);
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DS, pipeline->ds.state_ib);
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_BLEND, pipeline->blend.state_ib);
+
+   for_each_bit(i, mask)
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i, pipeline->dynamic_state[i]);
 
    /* If the new pipeline requires more VBs than we had previously set up, we
     * need to re-emit them in SDS.  If it requires the same set or fewer, we
@@ -2023,6 +2113,18 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    /* If the pipeline needs a dynamic descriptor, re-emit descriptor sets */
    if (pipeline->layout->dynamic_offset_count + pipeline->layout->input_attachment_count)
       cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
+
+   /* dynamic linewidth state depends pipeline state's gras_su_cntl
+    * so the dynamic state ib must be updated when pipeline changes
+    */
+   if (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_LINE_WIDTH)) {
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_LINE_WIDTH, 2);
+
+      cmd->state.dynamic_gras_su_cntl &= A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK;
+      cmd->state.dynamic_gras_su_cntl |= pipeline->gras_su_cntl;
+
+      tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = cmd->state.dynamic_gras_su_cntl));
+   }
 }
 
 void
@@ -2032,10 +2134,11 @@ tu_CmdSetViewport(VkCommandBuffer commandBuffer,
                   const VkViewport *pViewports)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 18);
 
    assert(firstViewport == 0 && viewportCount == 1);
-   cmd->state.dynamic.viewport.viewports[0] = pViewports[0];
-   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_VIEWPORT;
+
+   tu6_emit_viewport(&cs, pViewports);
 }
 
 void
@@ -2045,21 +2148,23 @@ tu_CmdSetScissor(VkCommandBuffer commandBuffer,
                  const VkRect2D *pScissors)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 3);
 
    assert(firstScissor == 0 && scissorCount == 1);
-   cmd->state.dynamic.scissor.scissors[0] = pScissors[0];
-   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_SCISSOR;
+
+   tu6_emit_scissor(&cs, pScissors);
 }
 
 void
 tu_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_LINE_WIDTH, 2);
 
-   cmd->state.dynamic.line_width = lineWidth;
+   cmd->state.dynamic_gras_su_cntl &= ~A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK;
+   cmd->state.dynamic_gras_su_cntl |= A6XX_GRAS_SU_CNTL_LINEHALFWIDTH(lineWidth / 2.0f);
 
-   /* line width depends on VkPipelineRasterizationStateCreateInfo */
-   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
+   tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = cmd->state.dynamic_gras_su_cntl));
 }
 
 void
@@ -2069,12 +2174,9 @@ tu_CmdSetDepthBias(VkCommandBuffer commandBuffer,
                    float depthBiasSlopeFactor)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs *draw_cs = &cmd->draw_cs;
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_DEPTH_BIAS, 4);
 
-   tu6_emit_depth_bias(draw_cs, depthBiasConstantFactor, depthBiasClamp,
-                       depthBiasSlopeFactor);
-
-   tu_cs_sanity_check(draw_cs);
+   tu6_emit_depth_bias(&cs, depthBiasConstantFactor, depthBiasClamp, depthBiasSlopeFactor);
 }
 
 void
@@ -2082,11 +2184,10 @@ tu_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
                         const float blendConstants[4])
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs *draw_cs = &cmd->draw_cs;
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_BLEND_CONSTANTS, 5);
 
-   tu6_emit_blend_constants(draw_cs, blendConstants);
-
-   tu_cs_sanity_check(draw_cs);
+   tu_cs_emit_pkt4(&cs, REG_A6XX_RB_BLEND_RED_F32, 4);
+   tu_cs_emit_array(&cs, (const uint32_t *) blendConstants, 4);
 }
 
 void
@@ -2096,20 +2197,26 @@ tu_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
 {
 }
 
+static void
+update_stencil_mask(uint32_t *value, VkStencilFaceFlags face, uint32_t mask)
+{
+   if (face & VK_STENCIL_FACE_FRONT_BIT)
+      *value |= A6XX_RB_STENCILMASK_MASK(mask);
+   if (face & VK_STENCIL_FACE_BACK_BIT)
+      *value |= A6XX_RB_STENCILMASK_BFMASK(mask);
+}
+
 void
 tu_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
                             VkStencilFaceFlags faceMask,
                             uint32_t compareMask)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK, 2);
 
-   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-      cmd->state.dynamic.stencil_compare_mask.front = compareMask;
-   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-      cmd->state.dynamic.stencil_compare_mask.back = compareMask;
+   update_stencil_mask(&cmd->state.dynamic_stencil_mask, faceMask, compareMask);
 
-   /* the front/back compare masks must be updated together */
-   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
+   tu_cs_emit_regs(&cs, A6XX_RB_STENCILMASK(.dword = cmd->state.dynamic_stencil_mask));
 }
 
 void
@@ -2118,14 +2225,11 @@ tu_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
                           uint32_t writeMask)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_STENCIL_WRITE_MASK, 2);
 
-   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-      cmd->state.dynamic.stencil_write_mask.front = writeMask;
-   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-      cmd->state.dynamic.stencil_write_mask.back = writeMask;
+   update_stencil_mask(&cmd->state.dynamic_stencil_wrmask, faceMask, writeMask);
 
-   /* the front/back write masks must be updated together */
-   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
+   tu_cs_emit_regs(&cs, A6XX_RB_STENCILWRMASK(.dword = cmd->state.dynamic_stencil_wrmask));
 }
 
 void
@@ -2134,14 +2238,11 @@ tu_CmdSetStencilReference(VkCommandBuffer commandBuffer,
                           uint32_t reference)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_STENCIL_REFERENCE, 2);
 
-   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-      cmd->state.dynamic.stencil_reference.front = reference;
-   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-      cmd->state.dynamic.stencil_reference.back = reference;
+   update_stencil_mask(&cmd->state.dynamic_stencil_ref, faceMask, reference);
 
-   /* the front/back references must be updated together */
-   cmd->state.dirty |= TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
+   tu_cs_emit_regs(&cs, A6XX_RB_STENCILREF(.dword = cmd->state.dynamic_stencil_ref));
 }
 
 void
@@ -2149,8 +2250,11 @@ tu_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
                             const VkSampleLocationsInfoEXT* pSampleLocationsInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_SAMPLE_LOCATIONS, 9);
 
-   tu6_emit_sample_locations(&cmd->draw_cs, pSampleLocationsInfo);
+   assert(pSampleLocationsInfo);
+
+   tu6_emit_sample_locations(&cs, pSampleLocationsInfo);
 }
 
 static void
@@ -2578,6 +2682,8 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
       tu_bo_list_add(&cmd->bo_list, iview->image->bo,
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
    }
+
+   cmd->state.dirty |= TU_CMD_DIRTY_DRAW_STATE;
 }
 
 void
@@ -2699,39 +2805,6 @@ struct tu_draw_info
     */
    struct tu_buffer *streamout_buffer;
    uint64_t streamout_buffer_offset;
-};
-
-#define ENABLE_ALL (CP_SET_DRAW_STATE__0_BINNING | CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
-#define ENABLE_DRAW (CP_SET_DRAW_STATE__0_GMEM | CP_SET_DRAW_STATE__0_SYSMEM)
-#define ENABLE_NON_GMEM (CP_SET_DRAW_STATE__0_BINNING | CP_SET_DRAW_STATE__0_SYSMEM)
-
-enum tu_draw_state_group_id
-{
-   TU_DRAW_STATE_PROGRAM,
-   TU_DRAW_STATE_PROGRAM_BINNING,
-   TU_DRAW_STATE_VB,
-   TU_DRAW_STATE_VI,
-   TU_DRAW_STATE_VI_BINNING,
-   TU_DRAW_STATE_VP,
-   TU_DRAW_STATE_RAST,
-   TU_DRAW_STATE_DS,
-   TU_DRAW_STATE_BLEND,
-   TU_DRAW_STATE_VS_CONST,
-   TU_DRAW_STATE_GS_CONST,
-   TU_DRAW_STATE_FS_CONST,
-   TU_DRAW_STATE_DESC_SETS,
-   TU_DRAW_STATE_DESC_SETS_GMEM,
-   TU_DRAW_STATE_DESC_SETS_LOAD,
-   TU_DRAW_STATE_VS_PARAMS,
-
-   TU_DRAW_STATE_COUNT,
-};
-
-struct tu_draw_state_group
-{
-   enum tu_draw_state_group_id id;
-   uint32_t enable_mask;
-   struct tu_cs_entry ib;
 };
 
 static void
@@ -3088,9 +3161,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
                      const struct tu_draw_info *draw)
 {
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
-   const struct tu_dynamic_state *dynamic = &cmd->state.dynamic;
-   struct tu_draw_state_group draw_state_groups[TU_DRAW_STATE_COUNT];
-   uint32_t draw_state_group_count = 0;
    VkResult result;
 
    struct tu_descriptor_state *descriptors_state =
@@ -3102,120 +3172,13 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
                    A6XX_PC_PRIMITIVE_CNTL_0(.primitive_restart =
                                             pipeline->ia.primitive_restart && draw->indexed));
 
-   if (cmd->state.dirty &
-          (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DYNAMIC_LINE_WIDTH) &&
-       (pipeline->dynamic_state.mask & TU_DYNAMIC_LINE_WIDTH)) {
-      tu6_emit_gras_su_cntl(cs, pipeline->rast.gras_su_cntl,
-                            dynamic->line_width);
-   }
-
-   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK) &&
-       (pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_COMPARE_MASK)) {
-      tu6_emit_stencil_compare_mask(cs, dynamic->stencil_compare_mask.front,
-                                    dynamic->stencil_compare_mask.back);
-   }
-
-   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK) &&
-       (pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_WRITE_MASK)) {
-      tu6_emit_stencil_write_mask(cs, dynamic->stencil_write_mask.front,
-                                  dynamic->stencil_write_mask.back);
-   }
-
-   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE) &&
-       (pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_REFERENCE)) {
-      tu6_emit_stencil_reference(cs, dynamic->stencil_reference.front,
-                                 dynamic->stencil_reference.back);
-   }
-
-   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_VIEWPORT) &&
-       (pipeline->dynamic_state.mask & TU_DYNAMIC_VIEWPORT)) {
-      tu6_emit_viewport(cs, &cmd->state.dynamic.viewport.viewports[0]);
-   }
-
-   if ((cmd->state.dirty & TU_CMD_DIRTY_DYNAMIC_SCISSOR) &&
-       (pipeline->dynamic_state.mask & TU_DYNAMIC_SCISSOR)) {
-      tu6_emit_scissor(cs, &cmd->state.dynamic.scissor.scissors[0]);
-   }
-
-   if (cmd->state.dirty & TU_CMD_DIRTY_PIPELINE) {
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_PROGRAM,
-            .enable_mask = ENABLE_DRAW,
-            .ib = pipeline->program.state_ib,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_PROGRAM_BINNING,
-            .enable_mask = CP_SET_DRAW_STATE__0_BINNING,
-            .ib = pipeline->program.binning_state_ib,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_VI,
-            .enable_mask = ENABLE_DRAW,
-            .ib = pipeline->vi.state_ib,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_VI_BINNING,
-            .enable_mask = CP_SET_DRAW_STATE__0_BINNING,
-            .ib = pipeline->vi.binning_state_ib,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_VP,
-            .enable_mask = ENABLE_ALL,
-            .ib = pipeline->vp.state_ib,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_RAST,
-            .enable_mask = ENABLE_ALL,
-            .ib = pipeline->rast.state_ib,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_DS,
-            .enable_mask = ENABLE_ALL,
-            .ib = pipeline->ds.state_ib,
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_BLEND,
-            .enable_mask = ENABLE_ALL,
-            .ib = pipeline->blend.state_ib,
-         };
-   }
-
    if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_VS_CONST,
-            .enable_mask = ENABLE_ALL,
-            .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_VERTEX)
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_GS_CONST,
-            .enable_mask = ENABLE_ALL,
-            .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_GEOMETRY)
-         };
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_FS_CONST,
-            .enable_mask = ENABLE_DRAW,
-            .ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT)
-         };
-   }
-
-   if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) {
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_VB,
-            .enable_mask = ENABLE_ALL,
-            .ib = tu6_emit_vertex_buffers(cmd, pipeline)
-         };
+      cmd->state.shader_const_ib[MESA_SHADER_VERTEX] =
+         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_VERTEX);
+      cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY] =
+         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_GEOMETRY);
+      cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT] =
+         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
    }
 
    if (cmd->state.dirty & TU_CMD_DIRTY_STREAMOUT_BUFFERS)
@@ -3234,35 +3197,26 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
     * could also only re-emit dynamic state.
     */
    if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
-      struct tu_cs_entry desc_sets, desc_sets_gmem;
       bool need_gmem_desc_set = pipeline->layout->input_attachment_count > 0;
 
       result = tu6_emit_descriptor_sets(cmd, pipeline,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                        &desc_sets, false);
+                                        &cmd->state.desc_sets_ib, false);
       if (result != VK_SUCCESS)
          return result;
 
-      draw_state_groups[draw_state_group_count++] =
-         (struct tu_draw_state_group) {
-            .id = TU_DRAW_STATE_DESC_SETS,
-            .enable_mask = need_gmem_desc_set ? ENABLE_NON_GMEM : ENABLE_ALL,
-            .ib = desc_sets,
-         };
-
       if (need_gmem_desc_set) {
+         cmd->state.desc_sets_sysmem_ib = cmd->state.desc_sets_ib;
+         cmd->state.desc_sets_ib.size = 0;
+
          result = tu6_emit_descriptor_sets(cmd, pipeline,
                                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           &desc_sets_gmem, true);
+                                            &cmd->state.desc_sets_gmem_ib, true);
          if (result != VK_SUCCESS)
             return result;
-
-         draw_state_groups[draw_state_group_count++] =
-            (struct tu_draw_state_group) {
-               .id = TU_DRAW_STATE_DESC_SETS_GMEM,
-               .enable_mask = CP_SET_DRAW_STATE__0_GMEM,
-               .ib = desc_sets_gmem,
-            };
+      } else {
+         cmd->state.desc_sets_gmem_ib.size = 0;
+         cmd->state.desc_sets_sysmem_ib.size = 0;
       }
 
       /* We need to reload the descriptors every time the descriptor sets
@@ -3286,52 +3240,79 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          tu_cs_emit_array(&load_cs,
                           (uint32_t *)((char  *)load_entry->bo->map + load_entry->offset),
                           load_entry->size / 4);
-         struct tu_cs_entry load_copy = tu_cs_end_sub_stream(&cmd->sub_cs, &load_cs);
-
-         draw_state_groups[draw_state_group_count++] =
-            (struct tu_draw_state_group) {
-               .id = TU_DRAW_STATE_DESC_SETS_LOAD,
-               /* The blob seems to not enable this for binning, even when
-                * resources would actually be used in the binning shader.
-                * Presumably the overhead of prefetching the resources isn't
-                * worth it.
-                */
-               .enable_mask = ENABLE_DRAW,
-               .ib = load_copy,
-            };
+         cmd->state.desc_sets_load_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &load_cs);
+      } else {
+         cmd->state.desc_sets_load_ib.size = 0;
       }
    }
+
+   if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
+      cmd->state.vertex_buffers_ib = tu6_emit_vertex_buffers(cmd, pipeline);
 
    struct tu_cs_entry vs_params;
    result = tu6_emit_vs_params(cmd, draw, &vs_params);
    if (result != VK_SUCCESS)
       return result;
 
-   draw_state_groups[draw_state_group_count++] =
-      (struct tu_draw_state_group) {
-         .id = TU_DRAW_STATE_VS_PARAMS,
-         .enable_mask = ENABLE_ALL,
-         .ib = vs_params,
-      };
+   /* for the first draw in a renderpass, re-emit all the draw states
+    *
+    * and if a draw-state disabling path (CmdClearAttachments 3D fallback) was
+    * used, then draw states must be re-emitted. note however this only happens
+    * in the sysmem path, so this can be skipped this for the gmem path (TODO)
+    */
+   if (cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE) {
+      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * TU_DRAW_STATE_COUNT);
 
-   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_group_count);
-   for (uint32_t i = 0; i < draw_state_group_count; i++) {
-      const struct tu_draw_state_group *group = &draw_state_groups[i];
-      debug_assert((group->enable_mask & ~ENABLE_ALL) == 0);
-      uint32_t cp_set_draw_state =
-         CP_SET_DRAW_STATE__0_COUNT(group->ib.size / 4) |
-         group->enable_mask |
-         CP_SET_DRAW_STATE__0_GROUP_ID(group->id);
-      uint64_t iova;
-      if (group->ib.size) {
-         iova = group->ib.bo->iova + group->ib.offset;
-      } else {
-         cp_set_draw_state |= CP_SET_DRAW_STATE__0_DISABLE;
-         iova = 0;
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VI, pipeline->vi.state_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VI_BINNING, pipeline->vi.binning_state_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_RAST, pipeline->rast.state_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DS, pipeline->ds.state_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_BLEND, pipeline->blend.state_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const_ib[MESA_SHADER_VERTEX]);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT]);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_GMEM, cmd->state.desc_sets_gmem_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_SYSMEM, cmd->state.desc_sets_sysmem_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.desc_sets_load_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_PARAMS, vs_params);
+
+      for (uint32_t i = 0; i < ARRAY_SIZE(cmd->state.dynamic_state); i++) {
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i,
+                               ((pipeline->dynamic_state_mask & BIT(i)) ?
+                                cmd->state.dynamic_state[i] :
+                                pipeline->dynamic_state[i]));
       }
+   } else {
 
-      tu_cs_emit(cs, cp_set_draw_state);
-      tu_cs_emit_qw(cs, iova);
+      /* emit draw states that were just updated
+       * note we eventually don't want to have to emit anything here
+       */
+      uint32_t draw_state_count =
+         ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 3 : 0) +
+         ((cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) ? 4 : 0) +
+         ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
+         1; /* vs_params */
+
+         tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_count);
+
+         if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const_ib[MESA_SHADER_VERTEX]);
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT]);
+         }
+         if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets_ib);
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_GMEM, cmd->state.desc_sets_gmem_ib);
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_SYSMEM, cmd->state.desc_sets_sysmem_ib);
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.desc_sets_load_ib);
+         }
+         if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers_ib);
+         tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_PARAMS, vs_params);
    }
 
    tu_cs_sanity_check(cs);

@@ -2081,6 +2081,17 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    /* This clear path behaves like a draw, needs the same flush as tu_draw */
    tu_emit_cache_flush_renderpass(cmd, cs);
 
+   /* disable all draw states so they don't interfere
+    * TODO: use and re-use draw states for this path
+    */
+   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
+                     CP_SET_DRAW_STATE__0_DISABLE_ALL_GROUPS |
+                     CP_SET_DRAW_STATE__0_GROUP_ID(0));
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
+   tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
+   cmd->state.dirty |= TU_CMD_DIRTY_DRAW_STATE;
+
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
                   A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(0xfc) |
@@ -2167,13 +2178,6 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
          }
       }
    }
-
-   cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE |
-      TU_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |
-      TU_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |
-      TU_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE |
-      TU_CMD_DIRTY_DYNAMIC_VIEWPORT |
-      TU_CMD_DIRTY_DYNAMIC_SCISSOR;
 }
 
 /**

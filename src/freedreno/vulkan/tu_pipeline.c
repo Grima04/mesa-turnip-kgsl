@@ -281,36 +281,6 @@ struct tu_pipeline_builder
    uint32_t render_components;
 };
 
-static enum tu_dynamic_state_bits
-tu_dynamic_state_bit(VkDynamicState state)
-{
-   switch (state) {
-   case VK_DYNAMIC_STATE_VIEWPORT:
-      return TU_DYNAMIC_VIEWPORT;
-   case VK_DYNAMIC_STATE_SCISSOR:
-      return TU_DYNAMIC_SCISSOR;
-   case VK_DYNAMIC_STATE_LINE_WIDTH:
-      return TU_DYNAMIC_LINE_WIDTH;
-   case VK_DYNAMIC_STATE_DEPTH_BIAS:
-      return TU_DYNAMIC_DEPTH_BIAS;
-   case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
-      return TU_DYNAMIC_BLEND_CONSTANTS;
-   case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
-      return TU_DYNAMIC_DEPTH_BOUNDS;
-   case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:
-      return TU_DYNAMIC_STENCIL_COMPARE_MASK;
-   case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
-      return TU_DYNAMIC_STENCIL_WRITE_MASK;
-   case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
-      return TU_DYNAMIC_STENCIL_REFERENCE;
-   case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
-      return TU_DYNAMIC_SAMPLE_LOCATIONS;
-   default:
-      unreachable("invalid dynamic state");
-      return 0;
-   }
-}
-
 static bool
 tu_logic_op_reads_dst(VkLogicOp op)
 {
@@ -1645,22 +1615,6 @@ tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp
    tu_cs_emit(cs, sample_locations);
 }
 
-static void
-tu6_emit_gras_unknowns(struct tu_cs *cs)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8001, 1);
-   tu_cs_emit(cs, 0x0);
-}
-
-static void
-tu6_emit_point_size(struct tu_cs *cs)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_POINT_MINMAX, 2);
-   tu_cs_emit(cs, A6XX_GRAS_SU_POINT_MINMAX_MIN(1.0f / 16.0f) |
-                     A6XX_GRAS_SU_POINT_MINMAX_MAX(4092.0f));
-   tu_cs_emit(cs, A6XX_GRAS_SU_POINT_SIZE(1.0f).value);
-}
-
 static uint32_t
 tu6_gras_su_cntl(const VkPipelineRasterizationStateCreateInfo *rast_info,
                  VkSampleCountFlagBits samples)
@@ -1687,18 +1641,6 @@ tu6_gras_su_cntl(const VkPipelineRasterizationStateCreateInfo *rast_info,
 }
 
 void
-tu6_emit_gras_su_cntl(struct tu_cs *cs,
-                      uint32_t gras_su_cntl,
-                      float line_width)
-{
-   assert((gras_su_cntl & A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK) == 0);
-   gras_su_cntl |= A6XX_GRAS_SU_CNTL_LINEHALFWIDTH(line_width / 2.0f);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_CNTL, 1);
-   tu_cs_emit(cs, gras_su_cntl);
-}
-
-void
 tu6_emit_depth_bias(struct tu_cs *cs,
                     float constant_factor,
                     float clamp,
@@ -1708,13 +1650,6 @@ tu6_emit_depth_bias(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_SCALE(slope_factor).value);
    tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_OFFSET(constant_factor).value);
    tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_OFFSET_CLAMP(clamp).value);
-}
-
-static void
-tu6_emit_alpha_control_disable(struct tu_cs *cs)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_ALPHA_CONTROL, 1);
-   tu_cs_emit(cs, 0);
 }
 
 static void
@@ -1766,30 +1701,6 @@ tu6_emit_stencil_control(struct tu_cs *cs,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCIL_CONTROL, 1);
    tu_cs_emit(cs, rb_stencil_control);
-}
-
-void
-tu6_emit_stencil_compare_mask(struct tu_cs *cs, uint32_t front, uint32_t back)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCILMASK, 1);
-   tu_cs_emit(
-      cs, A6XX_RB_STENCILMASK_MASK(front) | A6XX_RB_STENCILMASK_BFMASK(back));
-}
-
-void
-tu6_emit_stencil_write_mask(struct tu_cs *cs, uint32_t front, uint32_t back)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCILWRMASK, 1);
-   tu_cs_emit(cs, A6XX_RB_STENCILWRMASK_WRMASK(front) |
-                     A6XX_RB_STENCILWRMASK_BFWRMASK(back));
-}
-
-void
-tu6_emit_stencil_reference(struct tu_cs *cs, uint32_t front, uint32_t back)
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCILREF, 1);
-   tu_cs_emit(cs,
-              A6XX_RB_STENCILREF_REF(front) | A6XX_RB_STENCILREF_BFREF(back));
 }
 
 static uint32_t
@@ -1910,13 +1821,6 @@ tu6_emit_blend_control(struct tu_cs *cs,
                                       .dual_color_in_enable = dual_src_blend,
                                       .alpha_to_coverage = msaa_info->alphaToCoverageEnable,
                                       .alpha_to_one = msaa_info->alphaToOneEnable));
-}
-
-void
-tu6_emit_blend_constants(struct tu_cs *cs, const float constants[4])
-{
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLEND_RED_F32, 4);
-   tu_cs_emit_array(cs, (const uint32_t *) constants, 4);
 }
 
 static VkResult
@@ -2095,8 +1999,18 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       return;
 
    for (uint32_t i = 0; i < dynamic_info->dynamicStateCount; i++) {
-      pipeline->dynamic_state.mask |=
-         tu_dynamic_state_bit(dynamic_info->pDynamicStates[i]);
+      VkDynamicState state = dynamic_info->pDynamicStates[i];
+      switch (state) {
+      case VK_DYNAMIC_STATE_VIEWPORT ... VK_DYNAMIC_STATE_STENCIL_REFERENCE:
+         pipeline->dynamic_state_mask |= BIT(state);
+         break;
+      case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS);
+         break;
+      default:
+         assert(!"unsupported dynamic state");
+         break;
+      }
    }
 }
 
@@ -2186,6 +2100,27 @@ tu_pipeline_builder_parse_input_assembly(struct tu_pipeline_builder *builder,
    pipeline->ia.primitive_restart = ia_info->primitiveRestartEnable;
 }
 
+static bool
+tu_pipeline_static_state(struct tu_pipeline *pipeline, struct tu_cs *cs,
+                         uint32_t id, uint32_t size)
+{
+   struct ts_cs_memory memory;
+
+   if (pipeline->dynamic_state_mask & BIT(id))
+      return false;
+
+   /* TODO: share this logc with tu_cmd_dynamic_state */
+   tu_cs_alloc(&pipeline->cs, size, 1, &memory);
+   tu_cs_init_external(cs, memory.map, memory.map + size);
+   tu_cs_begin(cs);
+   tu_cs_reserve_space(cs, size);
+
+   assert(id < ARRAY_SIZE(pipeline->dynamic_state));
+   pipeline->dynamic_state[id].iova = memory.iova;
+   pipeline->dynamic_state[id].size = size;
+   return true;
+}
+
 static void
 tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
                                    struct tu_pipeline *pipeline)
@@ -2204,20 +2139,13 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
    const VkPipelineViewportStateCreateInfo *vp_info =
       builder->create_info->pViewportState;
 
-   struct tu_cs vp_cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, 21, &vp_cs);
+   struct tu_cs cs;
 
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_VIEWPORT)) {
-      assert(vp_info->viewportCount == 1);
-      tu6_emit_viewport(&vp_cs, vp_info->pViewports);
-   }
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_VIEWPORT, 18))
+      tu6_emit_viewport(&cs, vp_info->pViewports);
 
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_SCISSOR)) {
-      assert(vp_info->scissorCount == 1);
-      tu6_emit_scissor(&vp_cs, vp_info->pScissors);
-   }
-
-   pipeline->vp.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &vp_cs);
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_SCISSOR, 3))
+      tu6_emit_scissor(&cs, vp_info->pScissors);
 }
 
 static void
@@ -2229,11 +2157,10 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    assert(rast_info->polygonMode == VK_POLYGON_MODE_FILL);
 
-   struct tu_cs rast_cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, 20, &rast_cs);
+   struct tu_cs cs;
+   tu_cs_begin_sub_stream(&pipeline->cs, 7, &cs);
 
-
-   tu_cs_emit_regs(&rast_cs,
+   tu_cs_emit_regs(&cs,
                    A6XX_GRAS_CL_CNTL(
                      .znear_clip_disable = rast_info->depthClampEnable,
                      .zfar_clip_disable = rast_info->depthClampEnable,
@@ -2241,24 +2168,28 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                      .zero_gb_scale_z = 1,
                      .vp_clip_code_ignore = 1));
    /* move to hw ctx init? */
-   tu6_emit_gras_unknowns(&rast_cs);
-   tu6_emit_point_size(&rast_cs);
+   tu_cs_emit_regs(&cs, A6XX_GRAS_UNKNOWN_8001());
+   tu_cs_emit_regs(&cs,
+                   A6XX_GRAS_SU_POINT_MINMAX(.min = 1.0f / 16.0f, .max = 4092.0f),
+                   A6XX_GRAS_SU_POINT_SIZE(1.0f));
 
-   const uint32_t gras_su_cntl =
+   pipeline->rast.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
+
+   pipeline->gras_su_cntl =
       tu6_gras_su_cntl(rast_info, builder->samples);
 
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_LINE_WIDTH))
-      tu6_emit_gras_su_cntl(&rast_cs, gras_su_cntl, rast_info->lineWidth);
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_LINE_WIDTH, 2)) {
+      pipeline->gras_su_cntl |=
+         A6XX_GRAS_SU_CNTL_LINEHALFWIDTH(rast_info->lineWidth / 2.0f);
+      tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = pipeline->gras_su_cntl));
+   }
 
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_DEPTH_BIAS)) {
-      tu6_emit_depth_bias(&rast_cs, rast_info->depthBiasConstantFactor,
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_DEPTH_BIAS, 4)) {
+      tu6_emit_depth_bias(&cs, rast_info->depthBiasConstantFactor,
                           rast_info->depthBiasClamp,
                           rast_info->depthBiasSlopeFactor);
    }
 
-   pipeline->rast.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &rast_cs);
-
-   pipeline->rast.gras_su_cntl = gras_su_cntl;
 }
 
 static void
@@ -2286,30 +2217,31 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
       builder->depth_attachment_format != VK_FORMAT_S8_UINT
          ? ds_info : &dummy_ds_info;
 
-   struct tu_cs ds_cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, 12, &ds_cs);
+   struct tu_cs cs;
+   tu_cs_begin_sub_stream(&pipeline->cs, 6, &cs);
 
    /* move to hw ctx init? */
-   tu6_emit_alpha_control_disable(&ds_cs);
-
-   tu6_emit_depth_control(&ds_cs, ds_info_depth,
+   tu_cs_emit_regs(&cs, A6XX_RB_ALPHA_CONTROL());
+   tu6_emit_depth_control(&cs, ds_info_depth,
                           builder->create_info->pRasterizationState);
-   tu6_emit_stencil_control(&ds_cs, ds_info);
+   tu6_emit_stencil_control(&cs, ds_info);
 
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_COMPARE_MASK)) {
-      tu6_emit_stencil_compare_mask(&ds_cs, ds_info->front.compareMask,
-                                    ds_info->back.compareMask);
-   }
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_WRITE_MASK)) {
-      tu6_emit_stencil_write_mask(&ds_cs, ds_info->front.writeMask,
-                                  ds_info->back.writeMask);
-   }
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_STENCIL_REFERENCE)) {
-      tu6_emit_stencil_reference(&ds_cs, ds_info->front.reference,
-                                 ds_info->back.reference);
+   pipeline->ds.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
+
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK, 2)) {
+      tu_cs_emit_regs(&cs, A6XX_RB_STENCILMASK(.mask = ds_info->front.compareMask & 0xff,
+                                               .bfmask = ds_info->back.compareMask & 0xff));
    }
 
-   pipeline->ds.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &ds_cs);
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_STENCIL_WRITE_MASK, 2)) {
+      tu_cs_emit_regs(&cs, A6XX_RB_STENCILWRMASK(.wrmask = ds_info->front.writeMask & 0xff,
+                                                 .bfwrmask = ds_info->back.writeMask & 0xff));
+   }
+
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_STENCIL_REFERENCE, 2)) {
+      tu_cs_emit_regs(&cs, A6XX_RB_STENCILREF(.ref = ds_info->front.reference & 0xff,
+                                              .bfref = ds_info->back.reference & 0xff));
+   }
 }
 
 static void
@@ -2342,32 +2274,35 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       builder->use_color_attachments ? builder->create_info->pColorBlendState
                                      : &dummy_blend_info;
 
-   struct tu_cs blend_cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, MAX_RTS * 3 + 18, &blend_cs);
+   struct tu_cs cs;
+   tu_cs_begin_sub_stream(&pipeline->cs, MAX_RTS * 3 + 4, &cs);
 
    uint32_t blend_enable_mask;
-   tu6_emit_rb_mrt_controls(&blend_cs, blend_info,
+   tu6_emit_rb_mrt_controls(&cs, blend_info,
                             builder->color_attachment_formats,
                             &blend_enable_mask);
 
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_BLEND_CONSTANTS))
-      tu6_emit_blend_constants(&blend_cs, blend_info->blendConstants);
-
-   if (!(pipeline->dynamic_state.mask & TU_DYNAMIC_SAMPLE_LOCATIONS)) {
-      const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
-         vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
-      const VkSampleLocationsInfoEXT *samp_loc = NULL;
-
-      if (sample_locations && sample_locations->sampleLocationsEnable)
-         samp_loc = &sample_locations->sampleLocationsInfo;
-
-      tu6_emit_sample_locations(&blend_cs, samp_loc);
-   }
-
-   tu6_emit_blend_control(&blend_cs, blend_enable_mask,
+   tu6_emit_blend_control(&cs, blend_enable_mask,
                           builder->use_dual_src_blend, msaa_info);
 
-   pipeline->blend.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &blend_cs);
+   pipeline->blend.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
+
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_BLEND_CONSTANTS, 5)) {
+      tu_cs_emit_pkt4(&cs, REG_A6XX_RB_BLEND_RED_F32, 4);
+      tu_cs_emit_array(&cs, (const uint32_t *) blend_info->blendConstants, 4);
+   }
+
+   const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
+      vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
+   const VkSampleLocationsInfoEXT *samp_loc = NULL;
+
+   if (sample_locations && sample_locations->sampleLocationsEnable)
+      samp_loc = &sample_locations->sampleLocationsInfo;
+
+    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_SAMPLE_LOCATIONS,
+                                 samp_loc ? 9 : 6)) {
+      tu6_emit_sample_locations(&cs, samp_loc);
+    }
 }
 
 static void
