@@ -170,13 +170,6 @@ tu_logi(const char *format, ...) tu_printflike(1, 2);
       }                                                                      \
    } while (0)
 
-/* Suppress -Wunused in stub functions */
-#define tu_use_args(...) __tu_use_args(0, ##__VA_ARGS__)
-static inline void
-__tu_use_args(int ignore, ...)
-{
-}
-
 #define tu_stub()                                                            \
    do {                                                                      \
       tu_finishme("stub %s", __func__);                                      \
@@ -619,12 +612,6 @@ struct tu_scissor_state
    VkRect2D scissors[MAX_SCISSORS];
 };
 
-struct tu_discard_rectangle_state
-{
-   uint32_t count;
-   VkRect2D rectangles[MAX_DISCARD_RECTANGLES];
-};
-
 struct tu_dynamic_state
 {
    /**
@@ -638,21 +625,6 @@ struct tu_dynamic_state
    struct tu_scissor_state scissor;
 
    float line_width;
-
-   struct
-   {
-      float bias;
-      float clamp;
-      float slope;
-   } depth_bias;
-
-   float blend_constants[4];
-
-   struct
-   {
-      float min;
-      float max;
-   } depth_bounds;
 
    struct
    {
@@ -671,11 +643,7 @@ struct tu_dynamic_state
       uint32_t front;
       uint32_t back;
    } stencil_reference;
-
-   struct tu_discard_rectangle_state discard_rectangle;
 };
-
-extern const struct tu_dynamic_state default_dynamic_state;
 
 const char *
 tu_get_debug_option_name(int id);
