@@ -494,7 +494,7 @@ create_framebuffer(struct zink_context *ctx)
 
    state.width = ctx->fb_state.width;
    state.height = ctx->fb_state.height;
-   state.layers = MAX2(ctx->fb_state.layers, 1);
+   state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1);
    state.samples = ctx->fb_state.samples;
 
    return zink_create_framebuffer(ctx, screen, &state);
