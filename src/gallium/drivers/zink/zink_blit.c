@@ -4,6 +4,7 @@
 #include "zink_screen.h"
 
 #include "util/u_blitter.h"
+#include "util/u_surface.h"
 #include "util/format/u_format.h"
 
 static bool
@@ -181,6 +182,12 @@ zink_blit(struct pipe_context *pctx,
       if (blit_native(ctx, info))
          return;
    }
+
+   struct zink_resource *src = zink_resource(info->src.resource);
+   struct zink_resource *dst = zink_resource(info->dst.resource);
+   /* if we're copying between resources with matching aspects then we can probably just copy_region */
+   if (src->aspect == dst->aspect && util_try_blit_via_copy_region(pctx, info))
+      return;
 
    if (!util_blitter_is_blit_supported(ctx->blitter, info)) {
       debug_printf("blit unsupported %s -> %s\n",
