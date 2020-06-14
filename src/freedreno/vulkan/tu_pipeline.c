@@ -43,60 +43,21 @@
 uint32_t
 tu6_stage2opcode(gl_shader_stage stage)
 {
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-      return CP_LOAD_STATE6_GEOM;
-   case MESA_SHADER_FRAGMENT:
-   case MESA_SHADER_COMPUTE:
+   if (stage == MESA_SHADER_FRAGMENT || stage == MESA_SHADER_COMPUTE)
       return CP_LOAD_STATE6_FRAG;
-   default:
-      unreachable("bad shader stage");
-   }
+   return CP_LOAD_STATE6_GEOM;
 }
 
 static enum a6xx_state_block
 tu6_stage2texsb(gl_shader_stage stage)
 {
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-      return SB6_VS_TEX;
-   case MESA_SHADER_TESS_CTRL:
-      return SB6_HS_TEX;
-   case MESA_SHADER_TESS_EVAL:
-      return SB6_DS_TEX;
-   case MESA_SHADER_GEOMETRY:
-      return SB6_GS_TEX;
-   case MESA_SHADER_FRAGMENT:
-      return SB6_FS_TEX;
-   case MESA_SHADER_COMPUTE:
-      return SB6_CS_TEX;
-   default:
-      unreachable("bad shader stage");
-   }
+   return SB6_VS_TEX + stage;
 }
 
 enum a6xx_state_block
 tu6_stage2shadersb(gl_shader_stage stage)
 {
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-      return SB6_VS_SHADER;
-   case MESA_SHADER_TESS_CTRL:
-      return SB6_HS_SHADER;
-   case MESA_SHADER_TESS_EVAL:
-      return SB6_DS_SHADER;
-   case MESA_SHADER_GEOMETRY:
-      return SB6_GS_SHADER;
-   case MESA_SHADER_FRAGMENT:
-      return SB6_FS_SHADER;
-   case MESA_SHADER_COMPUTE:
-      return SB6_CS_SHADER;
-   default:
-      unreachable("bad shader stage");
-   }
+   return SB6_VS_SHADER + stage;
 }
 
 /* Emit IB that preloads the descriptors that the shader uses */
