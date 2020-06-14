@@ -26,6 +26,7 @@
 
 struct pipe_screen;
 struct sw_displaytarget;
+struct zink_batch;
 
 #include "util/u_transfer.h"
 
@@ -77,4 +78,6 @@ zink_get_depth_stencil_resources(struct pipe_resource *res,
                                  struct zink_resource **out_z,
                                  struct zink_resource **out_s);
 
+void
+zink_resource_setup_transfer_layouts(struct zink_batch *batch, struct zink_resource *src, struct zink_resource *dst);
 #endif

@@ -590,6 +590,40 @@ zink_resource_get_separate_stencil(struct pipe_resource *pres)
 }
 
 void
+zink_resource_setup_transfer_layouts(struct zink_batch *batch, struct zink_resource *src, struct zink_resource *dst)
+{
+   if (src == dst) {
+      /* The Vulkan 1.1 specification says the following about valid usage
+       * of vkCmdBlitImage:
+       *
+       * "srcImageLayout must be VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR,
+       *  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL"
+       *
+       * and:
+       *
+       * "dstImageLayout must be VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR,
+       *  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL"
+       *
+       * Since we cant have the same image in two states at the same time,
+       * we're effectively left with VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR or
+       * VK_IMAGE_LAYOUT_GENERAL. And since this isn't a present-related
+       * operation, VK_IMAGE_LAYOUT_GENERAL seems most appropriate.
+       */
+      if (src->layout != VK_IMAGE_LAYOUT_GENERAL)
+         zink_resource_barrier(batch->cmdbuf, src, src->aspect,
+                               VK_IMAGE_LAYOUT_GENERAL);
+   } else {
+      if (src->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+         zink_resource_barrier(batch->cmdbuf, src, src->aspect,
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+      if (dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+         zink_resource_barrier(batch->cmdbuf, dst, dst->aspect,
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+   }
+}
+
+void
 zink_get_depth_stencil_resources(struct pipe_resource *res,
                                  struct zink_resource **out_z,
                                  struct zink_resource **out_s)
