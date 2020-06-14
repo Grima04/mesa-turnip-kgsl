@@ -1906,12 +1906,12 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                          uint32_t dynamicOffsetCount,
                          const uint32_t *pDynamicOffsets)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_pipeline_layout, layout, _layout);
    unsigned dyn_idx = 0;
 
    struct tu_descriptor_state *descriptors_state =
-      tu_get_descriptors_state(cmd_buffer, pipelineBindPoint);
+      tu_get_descriptors_state(cmd, pipelineBindPoint);
 
    for (unsigned i = 0; i < descriptorSetCount; ++i) {
       unsigned idx = i + firstSet;
@@ -1970,12 +1970,24 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
             dst[5] = va >> 32;
          }
       }
+
+      for (unsigned j = 0; j < set->layout->buffer_count; ++j) {
+         if (set->buffers[j]) {
+            tu_bo_list_add(&cmd->bo_list, set->buffers[j],
+                           MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
+         }
+      }
+
+      if (set->size > 0) {
+         tu_bo_list_add(&cmd->bo_list, &set->pool->bo,
+                        MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+      }
    }
 
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE)
-      cmd_buffer->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
+      cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
    else
-      cmd_buffer->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
+      cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
 }
 
 void tu_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
@@ -3477,22 +3489,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    tu_cs_sanity_check(cs);
 
    /* track BOs */
-   if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
-      unsigned i;
-      for_each_bit(i, descriptors_state->valid) {
-         struct tu_descriptor_set *set = descriptors_state->sets[i];
-         for (unsigned j = 0; j < set->layout->buffer_count; ++j) {
-            if (set->buffers[j]) {
-               tu_bo_list_add(&cmd->bo_list, set->buffers[j],
-                              MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-            }
-         }
-         if (set->size > 0) {
-            tu_bo_list_add(&cmd->bo_list, &set->pool->bo,
-                           MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-         }
-      }
-   }
    if (cmd->state.dirty & TU_CMD_DIRTY_STREAMOUT_BUFFERS) {
       for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
          const struct tu_buffer *buf = cmd->state.streamout_buf.buffers[i];
@@ -3841,23 +3837,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
       if (result != VK_SUCCESS) {
          cmd->record_result = result;
          return;
-      }
-
-      /* track BOs */
-      unsigned i;
-      for_each_bit(i, descriptors_state->valid) {
-         struct tu_descriptor_set *set = descriptors_state->sets[i];
-         for (unsigned j = 0; j < set->layout->buffer_count; ++j) {
-            if (set->buffers[j]) {
-               tu_bo_list_add(&cmd->bo_list, set->buffers[j],
-                              MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-            }
-         }
-
-         if (set->size > 0) {
-            tu_bo_list_add(&cmd->bo_list, &set->pool->bo,
-                           MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-         }
       }
    }
 
