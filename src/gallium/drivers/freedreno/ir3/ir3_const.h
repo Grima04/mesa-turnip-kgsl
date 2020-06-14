@@ -136,6 +136,13 @@ ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 {
 	const struct ir3_const_state *const_state = ir3_const_state(v);
 	uint32_t offset = const_state->offsets.ubo;
+
+	/* a6xx+ uses UBO state and ldc instead of pointers emitted in
+	 * const state and ldg:
+	 */
+	if (ctx->screen->gpu_id >= 600)
+		return;
+
 	if (v->constlen > offset) {
 		uint32_t params = const_state->num_ubos;
 		uint32_t offsets[params];

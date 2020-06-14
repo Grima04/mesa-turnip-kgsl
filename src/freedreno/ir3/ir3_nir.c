@@ -468,13 +468,7 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir,
 			MAX2(const_state->num_driver_params, IR3_DP_VTXCNT_MAX + 1);
 	}
 
-	/* On a6xx, we use UBO descriptors and LDC instead of UBO pointers in the
-	 * constbuf.
-	 */
-	if (compiler->gpu_id >= 600)
-		shader->num_ubos = nir->info.num_ubos;
-	else
-		const_state->num_ubos = nir->info.num_ubos;
+	const_state->num_ubos = nir->info.num_ubos;
 
 	/* num_driver_params is scalar, align to vec4: */
 	const_state->num_driver_params = align(const_state->num_driver_params, 4);

@@ -622,11 +622,6 @@ struct ir3_shader {
 
 	struct ir3_compiler *compiler;
 
-	/* Number of UBOs loaded by LDC, as opposed to LDG through pointers in
-	 * ubo_state.
-	 */
-	unsigned num_ubos;
-
 	struct ir3_const_state const_state;
 
 	struct nir_shader *nir;

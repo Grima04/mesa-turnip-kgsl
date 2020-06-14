@@ -233,10 +233,11 @@ static void
 fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
 {
-	if (!v->shader->num_ubos)
-		return;
+	const struct ir3_const_state *const_state = ir3_const_state(v);
+	int num_ubos = const_state->num_ubos;
 
-	int num_ubos = v->shader->num_ubos;
+	if (!num_ubos)
+		return;
 
 	OUT_PKT7(ring, fd6_stage2opcode(v->type), 3 + (2 * num_ubos));
 	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
@@ -280,7 +281,8 @@ fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 static unsigned
 user_consts_cmdstream_size(struct ir3_shader_variant *v)
 {
-	struct ir3_ubo_analysis_state *ubo_state = &ir3_const_state(v)->ubo_state;
+	struct ir3_const_state *const_state = ir3_const_state(v);
+	struct ir3_ubo_analysis_state *ubo_state = &const_state->ubo_state;
 
 	if (unlikely(!ubo_state->cmdstream_size)) {
 		unsigned packets, size;
@@ -290,7 +292,7 @@ user_consts_cmdstream_size(struct ir3_shader_variant *v)
 
 		/* also account for UBO addresses: */
 		packets += 1;
-		size += 2 * v->shader->num_ubos;
+		size += 2 * const_state->num_ubos;
 
 		unsigned sizedwords = (4 * packets) + size;
 		ubo_state->cmdstream_size = sizedwords * 4;
