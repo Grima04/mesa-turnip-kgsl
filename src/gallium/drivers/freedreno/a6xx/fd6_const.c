@@ -134,7 +134,8 @@ static void
 emit_tess_bos(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3_shader_variant *s)
 {
 	struct fd_context *ctx = emit->ctx;
-	const unsigned regid = s->shader->const_state.offsets.primitive_param * 4 + 4;
+	const struct ir3_const_state *const_state = ir3_const_state(s);
+	const unsigned regid = const_state->offsets.primitive_param * 4 + 4;
 	uint32_t dwords = 16;
 
 	OUT_PKT7(ring, fd6_stage2opcode(s->type), 3);
@@ -150,7 +151,8 @@ static void
 emit_stage_tess_consts(struct fd_ringbuffer *ring, struct ir3_shader_variant *v,
 		uint32_t *params, int num_params)
 {
-	const unsigned regid = v->shader->const_state.offsets.primitive_param;
+	const struct ir3_const_state *const_state = ir3_const_state(v);
+	const unsigned regid = const_state->offsets.primitive_param;
 	int size = MIN2(1 + regid, v->constlen) - regid;
 	if (size > 0)
 		fd6_emit_const(ring, v->type, regid * 4, 0, num_params, params, NULL);

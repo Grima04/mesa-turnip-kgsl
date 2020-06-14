@@ -110,7 +110,7 @@ create_driver_param(struct ir3_context *ctx, enum ir3_driver_param dp)
 {
 	/* first four vec4 sysval's reserved for UBOs: */
 	/* NOTE: dp is in scalar, but there can be >4 dp components: */
-	struct ir3_const_state *const_state = &ctx->so->shader->const_state;
+	struct ir3_const_state *const_state = ir3_const_state(ctx->so);
 	unsigned n = const_state->offsets.driver_param;
 	unsigned r = regid(n + dp / 4, dp % 4);
 	return create_uniform(ctx->block, r);
@@ -772,7 +772,7 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *base_lo, *base_hi, *addr, *src0, *src1;
-	struct ir3_const_state *const_state = &ctx->so->shader->const_state;
+	const struct ir3_const_state *const_state = ir3_const_state(ctx->so);
 	unsigned ubo = regid(const_state->offsets.ubo, 0);
 	const unsigned ptrsz = ir3_pointer_size(ctx->compiler);
 
@@ -848,7 +848,7 @@ emit_intrinsic_ssbo_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		struct ir3_instruction **dst)
 {
 	/* SSBO size stored as a const starting at ssbo_sizes: */
-	struct ir3_const_state *const_state = &ctx->so->shader->const_state;
+	const struct ir3_const_state *const_state = ir3_const_state(ctx->so);
 	unsigned blk_idx = nir_src_as_uint(intr->src[0]);
 	unsigned idx = regid(const_state->offsets.ssbo_sizes, 0) +
 		const_state->ssbo_size.off[blk_idx];
@@ -1219,7 +1219,8 @@ emit_intrinsic_image_size_tex(struct ir3_context *ctx, nir_intrinsic_instr *intr
 		 * bytes-per-pixel should have been emitted in 2nd slot of
 		 * image_dims. See ir3_shader::emit_image_dims().
 		 */
-		struct ir3_const_state *const_state = &ctx->so->shader->const_state;
+		const struct ir3_const_state *const_state =
+				ir3_const_state(ctx->so);
 		unsigned cb = regid(const_state->offsets.image_dims, 0) +
 			const_state->image_dims.off[nir_src_as_uint(intr->src[0])];
 		struct ir3_instruction *aux = create_uniform(b, cb + 1);
@@ -1435,8 +1436,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		dst = NULL;
 	}
 
-	const unsigned primitive_param = ctx->so->shader->const_state.offsets.primitive_param * 4;
-	const unsigned primitive_map = ctx->so->shader->const_state.offsets.primitive_map * 4;
+	const struct ir3_const_state *const_state = ir3_const_state(ctx->so);
+	const unsigned primitive_param = const_state->offsets.primitive_param * 4;
+	const unsigned primitive_map = const_state->offsets.primitive_map * 4;
 
 	switch (intr->intrinsic) {
 	case nir_intrinsic_load_uniform:
@@ -2805,7 +2807,8 @@ emit_stream_out(struct ir3_context *ctx)
 	 * stripped out in the backend.
 	 */
 	for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
-		struct ir3_const_state *const_state = &ctx->so->shader->const_state;
+		const struct ir3_const_state *const_state =
+				ir3_const_state(ctx->so);
 		unsigned stride = strmout->stride[i];
 		struct ir3_instruction *base, *off;
 

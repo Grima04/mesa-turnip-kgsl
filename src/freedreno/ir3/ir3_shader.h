@@ -645,6 +645,12 @@ struct ir3_shader {
 	struct ir3_shader_key key_mask;
 };
 
+static inline struct ir3_const_state *
+ir3_const_state(const struct ir3_shader_variant *v)
+{
+	return &v->shader->const_state;
+}
+
 void * ir3_shader_assemble(struct ir3_shader_variant *v);
 struct ir3_shader_variant * ir3_shader_get_variant(struct ir3_shader *shader,
 		struct ir3_shader_key *key, bool binning_pass, bool *created);

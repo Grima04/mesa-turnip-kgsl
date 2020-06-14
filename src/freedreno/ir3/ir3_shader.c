@@ -494,7 +494,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 		fprintf(out, "\n");
 	}
 
-	struct ir3_const_state *const_state = &so->shader->const_state;
+	const struct ir3_const_state *const_state = ir3_const_state(so);
 	for (i = 0; i < const_state->immediates_count; i++) {
 		fprintf(out, "@const(c%d.x)\t", const_state->offsets.immediate + i);
 		fprintf(out, "0x%08x, 0x%08x, 0x%08x, 0x%08x\n",

@@ -435,7 +435,7 @@ tu6_emit_xs_config(struct tu_cs *cs,
 
    /* emit immediates */
 
-   const struct ir3_const_state *const_state = &xs->shader->const_state;
+   const struct ir3_const_state *const_state = ir3_const_state(xs);
    uint32_t base = const_state->offsets.immediate;
    int size = const_state->immediates_count;
 
@@ -653,7 +653,7 @@ static void
 tu6_emit_link_map(struct tu_cs *cs,
                   const struct ir3_shader_variant *producer,
                   const struct ir3_shader_variant *consumer) {
-   const struct ir3_const_state *const_state = &consumer->shader->const_state;
+   const struct ir3_const_state *const_state = ir3_const_state(consumer);
    uint32_t base = const_state->offsets.primitive_map;
    uint32_t patch_locs[MAX_VARYING] = { }, num_loc;
    num_loc = ir3_link_geometry_stages(producer, consumer, patch_locs);
@@ -1140,11 +1140,11 @@ tu6_emit_geometry_consts(struct tu_cs *cs,
       0,
       0,
    };
-   uint32_t vs_base = vs->shader->const_state.offsets.primitive_param;
+   uint32_t vs_base = ir3_const_state(vs)->offsets.primitive_param;
    tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, vs_base, SB6_VS_SHADER, 0,
                   ARRAY_SIZE(params), params);
 
-   uint32_t gs_base = gs->shader->const_state.offsets.primitive_param;
+   uint32_t gs_base = ir3_const_state(gs)->offsets.primitive_param;
    tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, gs_base, SB6_GS_SHADER, 0,
                   ARRAY_SIZE(params), params);
 }
@@ -1808,7 +1808,7 @@ tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
                         struct ir3_shader_variant *v)
 {
    link->ubo_state = v->shader->ubo_state;
-   link->const_state = v->shader->const_state;
+   link->const_state = *ir3_const_state(v);
    link->constlen = v->constlen;
    link->push_consts = shader->push_consts;
 }

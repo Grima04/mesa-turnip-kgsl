@@ -208,7 +208,7 @@ cs_const_emit(struct fd_ringbuffer *ring, struct kernel *kernel, uint32_t grid[3
 	struct ir3_kernel *ir3_kernel = to_ir3_kernel(kernel);
 	struct ir3_shader_variant *v = ir3_kernel->v;
 
-	const struct ir3_const_state *const_state = &v->shader->const_state;
+	const struct ir3_const_state *const_state = ir3_const_state(v);
 	uint32_t base = const_state->offsets.immediate;
 	int size = const_state->immediates_count;
 
