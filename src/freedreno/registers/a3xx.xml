@@ -792,7 +792,10 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 	<!-- GRAS registers -->
 	<reg32 offset="0x2040" name="GRAS_CL_CLIP_CNTL">
-		<bitfield name="IJ_PERSP_CENTER" pos="12" type="boolean"/> <!-- is it more bits? -->
+		<bitfield name="IJ_PERSP_CENTER" pos="12" type="boolean"/>
+		<bitfield name="IJ_NON_PERSP_CENTER" pos="13" type="boolean"/>
+		<bitfield name="IJ_PERSP_CENTROID" pos="14" type="boolean"/>
+		<bitfield name="IJ_NON_PERSP_CENTROID" pos="15" type="boolean"/>
 		<bitfield name="CLIP_DISABLE" pos="16" type="boolean"/>
 		<bitfield name="ZFAR_CLIP_DISABLE" pos="17" type="boolean"/>
 		<bitfield name="VP_CLIP_CODE_IGNORE" pos="19" type="boolean"/>
@@ -1135,8 +1138,10 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<bitfield name="PRIMALLOCTHRESHOLD" low="26" high="31" type="uint"/>
 	</reg32>
 	<reg32 offset="0x2203" name="HLSQ_CONTROL_3_REG">
-		<!-- register loaded with position (bary.f, gl_FragCoord, etc) -->
-		<bitfield name="REGID" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJPERSPCENTERREGID" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJNONPERSPCENTERREGID" low="8" high="15" type="a3xx_regid"/>
+		<bitfield name="IJPERSPCENTROIDREGID" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="IJNONPERSPCENTROIDREGID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0x2204" name="HLSQ_VS_CONTROL_REG" type="a3xx_hlsq_vs_fs_control_reg"/>
 	<reg32 offset="0x2205" name="HLSQ_FS_CONTROL_REG" type="a3xx_hlsq_vs_fs_control_reg"/>

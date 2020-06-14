@@ -1825,7 +1825,9 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0xe004" name="UNKNOWN_E004"/> <!-- always 00000000? -->
 	<reg32 offset="0xe005" name="GRAS_CNTL">
 		<!-- see also RB_RENDER_CONTROL0 -->
-		<bitfield name="VARYING" pos="0" type="boolean"/>
+		<bitfield name="IJ_PERSP_PIXEL" pos="0" type="boolean"/>
+		<bitfield name="IJ_PERSP_CENTROID" pos="1" type="boolean"/>
+		<bitfield name="IJ_PERSP_SAMPLE" pos="2" type="boolean"/>
 		<!--
 		bit 3 set when blob turns on WCOORD.. which also corresponds to
 		register being set in in HLSQ_CONTROL_3_REG bits 8..15 (which
@@ -1833,7 +1835,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		way??
 		Also, when that happens, VARYING bits are turned on as well.
 		 -->
-		<bitfield name="UNK3" pos="3" type="boolean"/>
+		<bitfield name="SIZE" pos="3" type="boolean"/>
 		<bitfield name="COORD_MASK" low="6" high="9" type="hex"/>
 	</reg32>
 	<reg32 offset="0xe006" name="GRAS_CL_GUARDBAND_CLIP_ADJ">
@@ -1976,7 +1978,9 @@ bit 7 for RECTLIST (clear) when z32s8 (used for clear of depth32?  not set
 	 -->
 	<reg32 offset="0xe144" name="RB_RENDER_CONTROL0">
 		<!-- see also GRAS_CNTL -->
-		<bitfield name="VARYING" pos="0" type="boolean"/>
+		<bitfield name="IJ_PERSP_PIXEL" pos="0" type="boolean"/>
+		<bitfield name="IJ_PERSP_CENTROID" pos="1" type="boolean"/>
+		<bitfield name="IJ_PERSP_SAMPLE" pos="2" type="boolean"/>
 		<!--
 		bit 3 set when blob turns on WCOORD.. which also corresponds to
 		register being set in in HLSQ_CONTROL_3_REG bits 8..15 (which
@@ -1984,7 +1988,7 @@ bit 7 for RECTLIST (clear) when z32s8 (used for clear of depth32?  not set
 		way??
 		Also, when that happens, VARYING bits are turned on as well.
 		 -->
-		<bitfield name="UNK3" pos="3" type="boolean"/>
+		<bitfield name="SIZE" pos="3" type="boolean"/>
 		<bitfield name="COORD_MASK" low="6" high="9" type="hex"/>
 	</reg32>
 	<reg32 offset="0xe145" name="RB_RENDER_CONTROL1">
@@ -2633,12 +2637,18 @@ bit 7 for RECTLIST (clear) when z32s8 (used for clear of depth32?  not set
 		<!-- SAMPLEID is loaded into a half-precision register: -->
 		<bitfield name="SAMPLEID" low="8" high="15" type="a3xx_regid"/>
 		<bitfield name="SAMPLEMASK" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="SIZE" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0xe787" name="HLSQ_CONTROL_3_REG">
 		<!-- register loaded with position (bary.f) -->
-		<bitfield name="FRAGCOORDXYREGID" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJ_PERSP_PIXEL" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_PIXEL" low="8" high="15" type="a3xx_regid"/>
+		<bitfield name="IJ_PERSP_CENTROID" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_CENTROID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0xe788" name="HLSQ_CONTROL_4_REG">
+		<bitfield name="IJ_PERSP_SAMPLE" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_SAMPLE" low="8" high="15" type="a3xx_regid"/>
 		<bitfield name="XYCOORDREGID" low="16" high="23" type="a3xx_regid"/>
 		<bitfield name="ZWCOORDREGID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>

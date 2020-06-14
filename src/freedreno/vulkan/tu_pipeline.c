@@ -1150,12 +1150,12 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
                   A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
                   A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
                   A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_size_regid));
-   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_PIXEL(ij_pix_regid) |
-                  A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_CENTROID(ij_cent_regid) |
+   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_pix_regid) |
+                  A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_cent_regid) |
                   0xfc00fc00);
    tu_cs_emit(cs, A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
                   A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
-                  A6XX_HLSQ_CONTROL_4_REG_BARY_IJ_PIXEL_PERSAMP(ij_samp_regid) |
+                  A6XX_HLSQ_CONTROL_4_REG_IJ_PERSP_SAMPLE(ij_samp_regid) |
                   0x0000fc00);
    tu_cs_emit(cs, 0xfc);
 
@@ -1164,9 +1164,9 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CNTL, 1);
    tu_cs_emit(cs,
-         CONDREG(ij_pix_regid, A6XX_GRAS_CNTL_VARYING) |
-         CONDREG(ij_cent_regid, A6XX_GRAS_CNTL_CENTROID) |
-         CONDREG(ij_samp_regid, A6XX_GRAS_CNTL_PERSAMP_VARYING) |
+         CONDREG(ij_pix_regid, A6XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
+         CONDREG(ij_cent_regid, A6XX_GRAS_CNTL_IJ_PERSP_CENTROID) |
+         CONDREG(ij_samp_regid, A6XX_GRAS_CNTL_IJ_PERSP_SAMPLE) |
          COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_GRAS_CNTL_SIZE) |
          COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
          COND(fs->fragcoord_compmask != 0, A6XX_GRAS_CNTL_SIZE |
@@ -1175,9 +1175,9 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_RENDER_CONTROL0, 2);
    tu_cs_emit(cs,
-         CONDREG(ij_pix_regid, A6XX_RB_RENDER_CONTROL0_VARYING) |
-         CONDREG(ij_cent_regid, A6XX_RB_RENDER_CONTROL0_CENTROID) |
-         CONDREG(ij_samp_regid, A6XX_RB_RENDER_CONTROL0_PERSAMP_VARYING) |
+         CONDREG(ij_pix_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
+         CONDREG(ij_cent_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_CENTROID) |
+         CONDREG(ij_samp_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_SAMPLE) |
          COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_UNK10) |
          COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE) |
          COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |

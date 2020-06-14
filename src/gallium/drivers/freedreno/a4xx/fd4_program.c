@@ -235,7 +235,7 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 	OUT_RING(ring, A4XX_HLSQ_CONTROL_2_REG_PRIMALLOCTHRESHOLD(63) |
 			0x3f3f000 |           /* XXX */
 			A4XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid));
-	OUT_RING(ring, A4XX_HLSQ_CONTROL_3_REG_REGID(vcoord_regid) |
+	OUT_RING(ring, A4XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(vcoord_regid) |
 			0xfcfcfc00);
 	OUT_RING(ring, 0x00fcfcfc);   /* XXX HLSQ_CONTROL_4 */
 

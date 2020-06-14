@@ -1902,11 +1902,11 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x8005" name="GRAS_CNTL">
 		<!-- see also RB_RENDER_CONTROL0 -->
-		<bitfield name="VARYING" pos="0" type="boolean"/>
+		<bitfield name="IJ_PERSP_PIXEL" pos="0" type="boolean"/>
 		<!-- b1 set for interpolateAtCentroid() -->
-		<bitfield name="CENTROID" pos="1" type="boolean"/>
+		<bitfield name="IJ_PERSP_CENTROID" pos="1" type="boolean"/>
 		<!-- b2 set instead of b0 when running in per-sample mode -->
-		<bitfield name="PERSAMP_VARYING" pos="2" type="boolean"/>
+		<bitfield name="IJ_PERSP_SAMPLE" pos="2" type="boolean"/>
 		<!--
 		b3 set for interpolateAt{Offset,Sample}() if not in per-sample
 		mode, and frag_face
@@ -2158,11 +2158,11 @@ to upconvert to 32b float internally?
 	 -->
 	<reg32 offset="0x8809" name="RB_RENDER_CONTROL0">
 		<!-- see also GRAS_CNTL -->
-		<bitfield name="VARYING" pos="0" type="boolean"/>
+		<bitfield name="IJ_PERSP_PIXEL" pos="0" type="boolean"/>
 		<!-- b1 set for interpolateAtCentroid() -->
-		<bitfield name="CENTROID" pos="1" type="boolean"/>
+		<bitfield name="IJ_PERSP_CENTROID" pos="1" type="boolean"/>
 		<!-- b2 set instead of b0 when running in per-sample mode -->
-		<bitfield name="PERSAMP_VARYING" pos="2" type="boolean"/>
+		<bitfield name="IJ_PERSP_SAMPLE" pos="2" type="boolean"/>
 		<!--
 		b3 set for interpolateAt{Offset,Sample}() if not in per-sample
 		mode, and frag_face
@@ -3320,11 +3320,14 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0xb984" name="HLSQ_CONTROL_3_REG">
 		<!-- register loaded with position (bary.f) -->
-		<bitfield name="BARY_IJ_PIXEL" low="0" high="7" type="a3xx_regid"/>
-		<bitfield name="BARY_IJ_CENTROID" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="IJ_PERSP_PIXEL" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_PIXEL" low="8" high="15" type="a3xx_regid"/>
+		<bitfield name="IJ_PERSP_CENTROID" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_CENTROID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0xb985" name="HLSQ_CONTROL_4_REG">
-		<bitfield name="BARY_IJ_PIXEL_PERSAMP" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJ_PERSP_SAMPLE" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_SAMPLE" low="8" high="15" type="a3xx_regid"/>
 		<bitfield name="XYCOORDREGID" low="16" high="23" type="a3xx_regid"/>
 		<bitfield name="ZWCOORDREGID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>

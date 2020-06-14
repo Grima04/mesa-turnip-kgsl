@@ -511,7 +511,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			A5XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
 			A5XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(samp_mask_regid) |
 			0xfc000000);               /* XXX */
-	OUT_RING(ring, A5XX_HLSQ_CONTROL_3_REG_FRAGCOORDXYREGID(vcoord_regid) |
+	OUT_RING(ring, A5XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(vcoord_regid) |
 			0xfcfcfc00);               /* XXX */
 	OUT_RING(ring, A5XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
 			A5XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
@@ -537,18 +537,18 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_RING(ring, 0x00000010);        /* XXX */
 
 	OUT_PKT4(ring, REG_A5XX_GRAS_CNTL, 1);
-	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_GRAS_CNTL_VARYING) |
+	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
 			COND(s[FS].v->fragcoord_compmask != 0,
 					A5XX_GRAS_CNTL_COORD_MASK(s[FS].v->fragcoord_compmask) |
-					A5XX_GRAS_CNTL_UNK3) |
-			COND(s[FS].v->frag_face, A5XX_GRAS_CNTL_UNK3));
+					A5XX_GRAS_CNTL_SIZE) |
+			COND(s[FS].v->frag_face, A5XX_GRAS_CNTL_SIZE));
 
 	OUT_PKT4(ring, REG_A5XX_RB_RENDER_CONTROL0, 2);
-	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_RB_RENDER_CONTROL0_VARYING) |
+	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
 			COND(s[FS].v->fragcoord_compmask != 0,
 					A5XX_RB_RENDER_CONTROL0_COORD_MASK(s[FS].v->fragcoord_compmask) |
-					A5XX_RB_RENDER_CONTROL0_UNK3) |
-			COND(s[FS].v->frag_face, A5XX_RB_RENDER_CONTROL0_UNK3));
+					A5XX_RB_RENDER_CONTROL0_SIZE) |
+			COND(s[FS].v->frag_face, A5XX_RB_RENDER_CONTROL0_SIZE));
 	OUT_RING(ring,
 			COND(samp_mask_regid != regid(63, 0),
 				A5XX_RB_RENDER_CONTROL1_SAMPLEMASK) |

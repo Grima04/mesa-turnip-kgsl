@@ -2058,11 +2058,17 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="SAMPLEMASK_REGID" low="18" high="25" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0x23c3" name="HLSQ_CONTROL_3_REG">
-		<!-- register loaded with position (bary.f, gl_FragCoord, etc) -->
-		<bitfield name="REGID" low="0" high="7" type="a3xx_regid"/>
+		<!-- register loaded with position (bary.f) -->
+		<bitfield name="IJ_PERSP_PIXEL" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_PIXEL" low="8" high="15" type="a3xx_regid"/>
+		<bitfield name="IJ_PERSP_CENTROID" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_CENTROID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<!-- 0x23c4 3 regids, lowest one goes to 0 when *not* per-sample shading -->
-	<reg32 offset="0x23c4" name="HLSQ_CONTROL_4_REG"/>
+	<reg32 offset="0xb985" name="HLSQ_CONTROL_4_REG">
+		<bitfield name="IJ_PERSP_SAMPLE" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="IJ_LINEAR_SAMPLE" low="8" high="15" type="a3xx_regid"/>
+	</reg32>
 
 	<bitset name="a4xx_xs_control_reg" inline="yes">
 		<bitfield name="CONSTLENGTH" low="0" high="7" type="uint"/>
