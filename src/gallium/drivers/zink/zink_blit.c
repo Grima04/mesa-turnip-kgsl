@@ -80,6 +80,10 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
        info->dst.format != info->src.format)
       return false;
 
+   /* vkCmdBlitImage must not be used for multisampled source or destination images. */
+   if (info->src.resource->nr_samples > 1 || info->dst.resource->nr_samples > 1)
+      return false;
+
    struct zink_resource *src = zink_resource(info->src.resource);
    struct zink_resource *dst = zink_resource(info->dst.resource);
 
