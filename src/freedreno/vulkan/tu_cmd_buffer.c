@@ -3507,12 +3507,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
     * bits to preserve instead. The only things not emitted here are
     * compute-related state.
     */
-   cmd->state.dirty &= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
-
-   /* Fragment shader state overwrites compute shader state, so flag the
-    * compute pipeline for re-emit.
-    */
-   cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_PIPELINE;
+   cmd->state.dirty &= (TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS | TU_CMD_DIRTY_COMPUTE_PIPELINE);
    return VK_SUCCESS;
 }
 
@@ -3876,11 +3871,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    cmd->state.dirty &=
       ~(TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS | TU_CMD_DIRTY_COMPUTE_PIPELINE);
-
-   /* Compute shader state overwrites fragment shader state, so we flag the
-    * graphics pipeline for re-emit.
-    */
-   cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE;
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_COMPUTE));
