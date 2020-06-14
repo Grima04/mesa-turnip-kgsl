@@ -1987,7 +1987,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE)
       cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
    else
-      cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
+      cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS | TU_CMD_DIRTY_SHADER_CONSTS;
 }
 
 void tu_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
@@ -2050,7 +2050,7 @@ tu_CmdPushConstants(VkCommandBuffer commandBuffer,
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    memcpy((void*) cmd->push_constants + offset, pValues, size);
-   cmd->state.dirty |= TU_CMD_DIRTY_PUSH_CONSTANTS;
+   cmd->state.dirty |= TU_CMD_DIRTY_SHADER_CONSTS;
 }
 
 /* Flush everything which has been made available but we haven't actually
@@ -2136,19 +2136,23 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_pipeline, pipeline, _pipeline);
 
-   switch (pipelineBindPoint) {
-   case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      cmd->state.pipeline = pipeline;
-      cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE;
-      break;
-   case VK_PIPELINE_BIND_POINT_COMPUTE:
+   tu_bo_list_add(&cmd->bo_list, &pipeline->program.binary_bo,
+                  MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+   for (uint32_t i = 0; i < pipeline->cs.bo_count; i++) {
+      tu_bo_list_add(&cmd->bo_list, pipeline->cs.bos[i],
+                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+   }
+
+   if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
       cmd->state.compute_pipeline = pipeline;
       cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_PIPELINE;
-      break;
-   default:
-      unreachable("unrecognized pipeline bind point");
-      break;
+      return;
    }
+
+   assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+   cmd->state.pipeline = pipeline;
+   cmd->state.dirty |= TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_SHADER_CONSTS;
 
    /* If the new pipeline requires more VBs than we had previously set up, we
     * need to re-emit them in SDS.  If it requires the same set or fewer, we
@@ -2157,12 +2161,9 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    if (pipeline->vi.bindings_used & ~cmd->vertex_bindings_set)
       cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
 
-   tu_bo_list_add(&cmd->bo_list, &pipeline->program.binary_bo,
-                  MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   for (uint32_t i = 0; i < pipeline->cs.bo_count; i++) {
-      tu_bo_list_add(&cmd->bo_list, pipeline->cs.bos[i],
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   }
+   /* If the pipeline needs a dynamic descriptor, re-emit descriptor sets */
+   if (pipeline->layout->dynamic_offset_count + pipeline->layout->input_attachment_count)
+      cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
 }
 
 void
@@ -2718,9 +2719,6 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
       tu_bo_list_add(&cmd->bo_list, iview->image->bo,
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
    }
-
-   /* Flag input attachment descriptors for re-emission if necessary */
-   cmd->state.dirty |= TU_CMD_DIRTY_INPUT_ATTACHMENTS;
 }
 
 void
@@ -2782,9 +2780,6 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    tu6_emit_mrt(cmd, cmd->state.subpass, cs);
    tu6_emit_msaa(cs, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, false);
-
-   /* Flag input attachment descriptors for re-emission if necessary */
-   cmd->state.dirty |= TU_CMD_DIRTY_INPUT_ATTACHMENTS;
 }
 
 void
@@ -3334,8 +3329,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          };
    }
 
-   if (cmd->state.dirty &
-         (TU_CMD_DIRTY_PIPELINE | TU_CMD_DIRTY_DESCRIPTOR_SETS | TU_CMD_DIRTY_PUSH_CONSTANTS)) {
+   if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
       draw_state_groups[draw_state_group_count++] =
          (struct tu_draw_state_group) {
             .id = TU_DRAW_STATE_VS_CONST,
@@ -3380,12 +3374,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
     * pipeline changes if the number of input attachments is always 0. We
     * could also only re-emit dynamic state.
     */
-   if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS ||
-       ((pipeline->layout->dynamic_offset_count +
-         pipeline->layout->input_attachment_count > 0) &&
-        cmd->state.dirty & TU_CMD_DIRTY_PIPELINE) ||
-       (pipeline->layout->input_attachment_count > 0 &&
-        cmd->state.dirty & TU_CMD_DIRTY_INPUT_ATTACHMENTS)) {
+   if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
       struct tu_cs_entry desc_sets, desc_sets_gmem;
       bool need_gmem_desc_set = pipeline->layout->input_attachment_count > 0;
 
