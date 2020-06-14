@@ -989,6 +989,8 @@ bool Converter::assignSlots() {
             info->numPatchConstants = MAX2(info->numPatchConstants, index + slots);
          break;
       case Program::TYPE_VERTEX:
+         if (slot >= VERT_ATTRIB_GENERIC0)
+            slot = VERT_ATTRIB_GENERIC0 + vary;
          vert_attrib_to_tgsi_semantic((gl_vert_attrib)slot, &name, &index);
          switch (name) {
          case TGSI_SEMANTIC_EDGEFLAG:
