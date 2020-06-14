@@ -93,8 +93,8 @@ static inline void
 ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
 {
-	struct ir3_ubo_analysis_state *state;
-	state = &v->shader->ubo_state;
+	const struct ir3_const_state *const_state = ir3_const_state(v);
+	const struct ir3_ubo_analysis_state *state = &const_state->ubo_state;
 
 	for (unsigned i = 0; i < state->num_enabled; i++) {
 		assert(!state->range[i].bindless);

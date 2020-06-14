@@ -1045,7 +1045,6 @@ tu_shader_destroy(struct tu_device *dev,
 
 struct tu_program_descriptor_linkage
 {
-   struct ir3_ubo_analysis_state ubo_state;
    struct ir3_const_state const_state;
 
    uint32_t constlen;

@@ -280,7 +280,7 @@ fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 static unsigned
 user_consts_cmdstream_size(struct ir3_shader_variant *v)
 {
-	struct ir3_ubo_analysis_state *ubo_state = &v->shader->ubo_state;
+	struct ir3_ubo_analysis_state *ubo_state = &ir3_const_state(v)->ubo_state;
 
 	if (unlikely(!ubo_state->cmdstream_size)) {
 		unsigned packets, size;

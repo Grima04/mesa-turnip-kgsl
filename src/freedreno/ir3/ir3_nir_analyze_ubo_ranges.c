@@ -304,7 +304,7 @@ instr_is_load_ubo(nir_instr *instr)
 bool
 ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 {
-	struct ir3_ubo_analysis_state *state = &shader->ubo_state;
+	struct ir3_ubo_analysis_state *state = &shader->const_state.ubo_state;
 
 	memset(state, 0, sizeof(*state));
 	for (int i = 0; i < IR3_MAX_UBO_PUSH_RANGES; i++) {

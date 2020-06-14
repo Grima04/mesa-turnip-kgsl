@@ -479,8 +479,8 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir,
 	/* num_driver_params is scalar, align to vec4: */
 	const_state->num_driver_params = align(const_state->num_driver_params, 4);
 
-	debug_assert((shader->ubo_state.size % 16) == 0);
-	unsigned constoff = shader->ubo_state.size / 16;
+	debug_assert((const_state->ubo_state.size % 16) == 0);
+	unsigned constoff = const_state->ubo_state.size / 16;
 	unsigned ptrsz = ir3_pointer_size(compiler);
 
 	if (const_state->num_ubos > 0) {

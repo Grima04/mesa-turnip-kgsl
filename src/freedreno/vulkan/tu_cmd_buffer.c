@@ -2912,7 +2912,7 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
 {
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
-   const struct ir3_ubo_analysis_state *state = &link->ubo_state;
+   const struct ir3_ubo_analysis_state *state = &link->const_state.ubo_state;
 
    if (link->push_consts.count > 0) {
       unsigned num_units = link->push_consts.count;

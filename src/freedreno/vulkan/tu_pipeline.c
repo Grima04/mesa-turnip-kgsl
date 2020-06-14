@@ -1807,7 +1807,6 @@ tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
                         struct tu_shader *shader,
                         struct ir3_shader_variant *v)
 {
-   link->ubo_state = v->shader->ubo_state;
    link->const_state = *ir3_const_state(v);
    link->constlen = v->constlen;
    link->push_consts = shader->push_consts;

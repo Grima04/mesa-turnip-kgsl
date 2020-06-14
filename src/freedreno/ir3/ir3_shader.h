@@ -73,6 +73,22 @@ enum ir3_driver_param {
 #define IR3_MAX_UBO_PUSH_RANGES  32
 
 
+struct ir3_ubo_range {
+	uint32_t offset; /* start offset to push in the const register file */
+	uint32_t block; /* Which constant block */
+	uint32_t start, end; /* range of block that's actually used */
+	uint16_t bindless_base; /* For bindless, which base register is used */
+	bool bindless;
+};
+
+struct ir3_ubo_analysis_state {
+	struct ir3_ubo_range range[IR3_MAX_UBO_PUSH_RANGES];
+	uint32_t num_enabled;
+	uint32_t size;
+	uint32_t lower_count;
+	uint32_t cmdstream_size; /* for per-gen backend to stash required cmdstream size */
+};
+
 /**
  * Describes the layout of shader consts.  This includes:
  *   + User consts + driver lowered UBO ranges
@@ -157,6 +173,9 @@ struct ir3_const_state {
 	struct {
 		uint32_t val[4];
 	} *immediates;
+
+	/* State of ubo access lowered to push consts: */
+	struct ir3_ubo_analysis_state ubo_state;
 };
 
 /**
@@ -588,22 +607,6 @@ ir3_shader_stage(struct ir3_shader_variant *v)
 	}
 }
 
-struct ir3_ubo_range {
-	uint32_t offset; /* start offset to push in the const register file */
-	uint32_t block; /* Which constant block */
-	uint32_t start, end; /* range of block that's actually used */
-	uint16_t bindless_base; /* For bindless, which base register is used */
-	bool bindless;
-};
-
-struct ir3_ubo_analysis_state {
-	struct ir3_ubo_range range[IR3_MAX_UBO_PUSH_RANGES];
-	uint32_t num_enabled;
-	uint32_t size;
-	uint32_t lower_count;
-	uint32_t cmdstream_size; /* for per-gen backend to stash required cmdstream size */
-};
-
 
 struct ir3_shader {
 	gl_shader_stage type;
@@ -618,8 +621,6 @@ struct ir3_shader {
 	bool initial_variants_done;
 
 	struct ir3_compiler *compiler;
-
-	struct ir3_ubo_analysis_state ubo_state;
 
 	/* Number of UBOs loaded by LDC, as opposed to LDG through pointers in
 	 * ubo_state.
