@@ -277,6 +277,28 @@ fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 	}
 }
 
+static unsigned
+user_consts_cmdstream_size(struct ir3_shader_variant *v)
+{
+	struct ir3_ubo_analysis_state *ubo_state = &v->shader->ubo_state;
+
+	if (unlikely(!ubo_state->cmdstream_size)) {
+		unsigned packets, size;
+
+		/* pre-calculate size required for userconst stateobj: */
+		ir3_user_consts_size(ubo_state, &packets, &size);
+
+		/* also account for UBO addresses: */
+		packets += 1;
+		size += 2 * v->shader->num_ubos;
+
+		unsigned sizedwords = (4 * packets) + size;
+		ubo_state->cmdstream_size = sizedwords * 4;
+	}
+
+	return ubo_state->cmdstream_size;
+}
+
 static void
 emit_user_consts(struct fd6_emit *emit)
 {
@@ -284,7 +306,7 @@ emit_user_consts(struct fd6_emit *emit)
 			PIPE_SHADER_VERTEX, PIPE_SHADER_TESS_CTRL, PIPE_SHADER_TESS_EVAL,
 			PIPE_SHADER_GEOMETRY, PIPE_SHADER_FRAGMENT,
 	};
-	const struct ir3_shader_variant *variants[] = {
+	struct ir3_shader_variant *variants[] = {
 			emit->vs, emit->hs, emit->ds, emit->gs, emit->fs,
 	};
 	struct fd_context *ctx = emit->ctx;
@@ -293,7 +315,7 @@ emit_user_consts(struct fd6_emit *emit)
 	for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
 		if (!variants[i])
 			continue;
-		sz += variants[i]->shader->ubo_state.cmdstream_size;
+		sz += user_consts_cmdstream_size(variants[i]);
 	}
 
 	struct fd_ringbuffer *constobj = fd_submit_new_ringbuffer(
@@ -358,13 +380,6 @@ fd6_emit_immediates(struct fd_screen *screen, const struct ir3_shader_variant *v
 		struct fd_ringbuffer *ring)
 {
 	ir3_emit_immediates(screen, v, ring);
-}
-
-void
-fd6_user_consts_size(struct ir3_ubo_analysis_state *state,
-		unsigned *packets, unsigned *size)
-{
-	ir3_user_consts_size(state, packets, size);
 }
 
 void

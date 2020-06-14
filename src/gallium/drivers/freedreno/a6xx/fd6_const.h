@@ -35,8 +35,6 @@ void fd6_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer
 		struct fd_context *ctx, const struct pipe_grid_info *info);
 void fd6_emit_immediates(struct fd_screen *screen, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring);
-void fd6_user_consts_size(struct ir3_ubo_analysis_state *state,
-		unsigned *packets, unsigned *size);
 void fd6_emit_link_map(struct fd_screen *screen,
 		const struct ir3_shader_variant *producer,
 		const struct ir3_shader_variant *v, struct fd_ringbuffer *ring);

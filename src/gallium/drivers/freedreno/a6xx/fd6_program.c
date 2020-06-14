@@ -1057,20 +1057,7 @@ static const struct ir3_cache_funcs cache_funcs = {
 static void *
 fd6_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_state *cso)
 {
-	struct ir3_shader *shader = ir3_shader_state_create(pctx, cso);
-	unsigned packets, size;
-
-	/* pre-calculate size required for userconst stateobj: */
-	fd6_user_consts_size(&shader->ubo_state, &packets, &size);
-
-	/* also account for UBO addresses: */
-	packets += 1;
-	size += 2 * shader->num_ubos;
-
-	unsigned sizedwords = (4 * packets) + size;
-	shader->ubo_state.cmdstream_size = sizedwords * 4;
-
-	return shader;
+	return ir3_shader_state_create(pctx, cso);
 }
 
 static void
