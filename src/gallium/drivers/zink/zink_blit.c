@@ -12,6 +12,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
 {
    if (util_format_get_mask(info->dst.format) != info->mask ||
        util_format_get_mask(info->src.format) != info->mask ||
+       util_format_is_depth_or_stencil(info->dst.format) ||
        info->scissor_enable ||
        info->alpha_blend ||
        info->render_condition_enable)
