@@ -444,7 +444,7 @@ get_render_pass(struct zink_context *ctx)
       struct pipe_surface *surf = fb->cbufs[i];
       if (surf) {
          state.rts[i].format = zink_get_format(screen, surf->format);
-         state.rts[i].samples = surf->nr_samples > 0 ? surf->nr_samples :
+         state.rts[i].samples = surf->texture->nr_samples > 0 ? surf->texture->nr_samples :
                                                        VK_SAMPLE_COUNT_1_BIT;
       } else {
          state.rts[i].format = VK_FORMAT_R8_UINT;
