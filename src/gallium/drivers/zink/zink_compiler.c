@@ -52,8 +52,49 @@ lower_discard_if_instr(nir_intrinsic_instr *instr, nir_builder *b)
       nir_instr_remove(&instr->instr);
       return true;
    }
-   assert(instr->intrinsic != nir_intrinsic_discard ||
-          nir_block_last_instr(instr->instr.block) == &instr->instr);
+   /* a shader like this (shaders@glsl-fs-discard-04):
+
+      uniform int j, k;
+
+      void main()
+      {
+       for (int i = 0; i < j; i++) {
+        if (i > k)
+         continue;
+        discard;
+       }
+       gl_FragColor = vec4(0.0, 1.0, 0.0, 0.0);
+      }
+
+
+
+      will generate nir like:
+
+      loop   {
+         //snip
+         if   ssa_11   {
+            block   block_5:
+            /   preds:   block_4   /
+            vec1   32   ssa_17   =   iadd   ssa_50,   ssa_31
+            /   succs:   block_7   /
+         }   else   {
+            block   block_6:
+            /   preds:   block_4   /
+            intrinsic   discard   ()   () <-- not last instruction
+            vec1   32   ssa_23   =   iadd   ssa_50,   ssa_31 <-- dead code loop itr increment
+            /   succs:   block_7   /
+         }
+         //snip
+      }
+
+      which means that we can't assert like this:
+
+      assert(instr->intrinsic != nir_intrinsic_discard ||
+             nir_block_last_instr(instr->instr.block) == &instr->instr);
+
+
+      and it's unnecessary anyway since post-vtn optimizing will dce the instructions following the discard
+    */
 
    return false;
 }
