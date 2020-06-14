@@ -611,7 +611,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
    zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, fb->rp);
 
-   ctx->gfx_pipeline_state.rast_samples = MAX2(state->samples, 1);
+   ctx->gfx_pipeline_state.rast_samples = util_framebuffer_get_num_samples(state);
    ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
    ctx->gfx_pipeline_state.hash = 0;
 
