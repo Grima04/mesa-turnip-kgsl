@@ -492,8 +492,8 @@ create_framebuffer(struct zink_context *ctx)
       state.attachments[state.num_attachments++] = zink_surface(psurf);
    }
 
-   state.width = ctx->fb_state.width;
-   state.height = ctx->fb_state.height;
+   state.width = MAX2(ctx->fb_state.width, 1);
+   state.height = MAX2(ctx->fb_state.height, 1);
    state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1);
    state.samples = ctx->fb_state.samples;
 
