@@ -33,10 +33,16 @@
 /*
  * Legalize:
  *
- * We currently require that scheduling ensures that we have enough nop's
- * in all the right places.  The legalize step mostly handles fixing up
- * instruction flags ((ss)/(sy)/(ei)), and collapses sequences of nop's
- * into fewer nop's w/ rpt flag.
+ * The legalize pass handles ensuring sufficient nop's and sync flags for
+ * correct execution.
+ *
+ * 1) Iteratively determine where sync ((sy)/(ss)) flags are needed,
+ *    based on state flowing out of predecessor blocks until there is
+ *    no further change.  In some cases this requires inserting nops.
+ * 2) Mark (ei) on last varying input, and (ul) on last use of a0.x
+ * 3) Final nop scheduling for instruction latency
+ * 4) Resolve jumps and schedule blocks, marking potential convergence
+ *    points with (jp)
  */
 
 struct ir3_legalize_ctx {
