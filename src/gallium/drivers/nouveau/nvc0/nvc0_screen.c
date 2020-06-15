@@ -327,6 +327,10 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_INT64_DIVMOD:
       return screen->prefer_nir ? 1 : 0;
 
+   /* nir related caps */
+   case PIPE_CAP_NIR_IMAGES_AS_DEREF:
+      return 0;
+
    /* unsupported caps */
    case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
    case PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT:
