@@ -707,13 +707,6 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
    case TU_DRAW_STATE_VI_BINNING:
       enable_mask = CP_SET_DRAW_STATE__0_BINNING;
       break;
-   case TU_DRAW_STATE_DESC_SETS_GMEM:
-      enable_mask = CP_SET_DRAW_STATE__0_GMEM;
-      break;
-   case TU_DRAW_STATE_DESC_SETS_SYSMEM:
-      enable_mask = CP_SET_DRAW_STATE__0_BINNING |
-                    CP_SET_DRAW_STATE__0_SYSMEM;
-      break;
    default:
       enable_mask = CP_SET_DRAW_STATE__0_GMEM |
                     CP_SET_DRAW_STATE__0_SYSMEM |
@@ -1263,8 +1256,91 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
-tu_emit_load_clear(struct tu_cmd_buffer *cmd,
-                   const VkRenderPassBeginInfo *info)
+tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
+                          const struct tu_subpass *subpass,
+                          bool gmem)
+{
+   /* note: we can probably emit input attachments just once for the whole
+    * renderpass, this would avoid emitting both sysmem/gmem versions
+    *
+    * emit two texture descriptors for each input, as a workaround for
+    * d24s8, which can be sampled as both float (depth) and integer (stencil)
+    * tu_shader lowers uint input attachment loads to use the 2nd descriptor
+    * in the pair
+    * TODO: a smarter workaround
+    */
+
+   if (!subpass->input_count)
+      return;
+
+   struct ts_cs_memory texture;
+   VkResult result = tu_cs_alloc(&cmd->sub_cs, subpass->input_count * 2,
+                                 A6XX_TEX_CONST_DWORDS, &texture);
+   assert(result == VK_SUCCESS);
+
+   for (unsigned i = 0; i < subpass->input_count * 2; i++) {
+      uint32_t a = subpass->input_attachments[i / 2].attachment;
+      if (a == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      struct tu_image_view *iview =
+         cmd->state.framebuffer->attachments[a].attachment;
+      const struct tu_render_pass_attachment *att =
+         &cmd->state.pass->attachments[a];
+      uint32_t *dst = &texture.map[A6XX_TEX_CONST_DWORDS * i];
+
+      memcpy(dst, iview->descriptor, A6XX_TEX_CONST_DWORDS * 4);
+
+      if (i % 2 == 1 && att->format == VK_FORMAT_D24_UNORM_S8_UINT) {
+         /* note this works because spec says fb and input attachments
+          * must use identity swizzle
+          */
+         dst[0] &= ~(A6XX_TEX_CONST_0_FMT__MASK |
+            A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
+            A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK);
+         dst[0] |= A6XX_TEX_CONST_0_FMT(FMT6_S8Z24_UINT) |
+            A6XX_TEX_CONST_0_SWIZ_X(A6XX_TEX_Y) |
+            A6XX_TEX_CONST_0_SWIZ_Y(A6XX_TEX_ZERO) |
+            A6XX_TEX_CONST_0_SWIZ_Z(A6XX_TEX_ZERO) |
+            A6XX_TEX_CONST_0_SWIZ_W(A6XX_TEX_ONE);
+      }
+
+      if (!gmem)
+         continue;
+
+      /* patched for gmem */
+      dst[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
+      dst[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
+      dst[2] &= ~(A6XX_TEX_CONST_2_TYPE__MASK | A6XX_TEX_CONST_2_PITCH__MASK);
+      dst[2] |=
+         A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
+         A6XX_TEX_CONST_2_PITCH(cmd->state.tiling_config.tile0.extent.width * att->cpp);
+      dst[3] = 0;
+      dst[4] = cmd->device->physical_device->gmem_base + att->gmem_offset;
+      dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
+      for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
+         dst[i] = 0;
+   }
+
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   tu_cs_emit_pkt7(cs, CP_LOAD_STATE6_FRAG, 3);
+   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
+                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                  CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                  CP_LOAD_STATE6_0_STATE_BLOCK(SB6_FS_TEX) |
+                  CP_LOAD_STATE6_0_NUM_UNIT(subpass->input_count * 2));
+   tu_cs_emit_qw(cs, texture.iova);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_TEX_CONST_LO, 2);
+   tu_cs_emit_qw(cs, texture.iova);
+
+   tu_cs_emit_regs(cs, A6XX_SP_FS_TEX_COUNT(subpass->input_count * 2));
+}
+
+static void
+tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
+                         const VkRenderPassBeginInfo *info)
 {
    struct tu_cs *cs = &cmd->draw_cs;
 
@@ -1280,12 +1356,16 @@ tu_emit_load_clear(struct tu_cmd_buffer *cmd,
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
       tu_clear_gmem_attachment(cmd, cs, i, info);
 
+   tu_emit_input_attachments(cmd, cmd->state.subpass, true);
+
    tu_cond_exec_end(cs);
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
       tu_clear_sysmem_attachment(cmd, cs, i, info);
+
+   tu_emit_input_attachments(cmd, cmd->state.subpass, false);
 
    tu_cond_exec_end(cs);
 }
@@ -1342,7 +1422,6 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_sanity_check(cs);
 }
-
 
 static void
 tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
@@ -1575,9 +1654,6 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
 
    list_del(&cmd_buffer->pool_link);
 
-   for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
-      free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
-
    tu_cs_finish(&cmd_buffer->cs);
    tu_cs_finish(&cmd_buffer->draw_cs);
    tu_cs_finish(&cmd_buffer->draw_epilogue_cs);
@@ -1598,10 +1674,8 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    tu_cs_reset(&cmd_buffer->draw_epilogue_cs);
    tu_cs_reset(&cmd_buffer->sub_cs);
 
-   for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
-      cmd_buffer->descriptors[i].valid = 0;
-      cmd_buffer->descriptors[i].push_dirty = false;
-   }
+   for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
+      memset(&cmd_buffer->descriptors[i].sets, 0, sizeof(cmd_buffer->descriptors[i].sets));
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_INITIAL;
 
@@ -1829,31 +1903,10 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       TU_FROM_HANDLE(tu_descriptor_set, set, pDescriptorSets[i]);
 
       descriptors_state->sets[idx] = set;
-      descriptors_state->valid |= (1u << idx);
-
-      /* Note: the actual input attachment indices come from the shader
-       * itself, so we can't generate the patched versions of these until
-       * draw time when both the pipeline and descriptors are bound and
-       * we're inside the render pass.
-       */
-      unsigned dst_idx = layout->set[idx].input_attachment_start;
-      memcpy(&descriptors_state->input_attachments[dst_idx * A6XX_TEX_CONST_DWORDS],
-             set->dynamic_descriptors,
-             set->layout->input_attachment_count * A6XX_TEX_CONST_DWORDS * 4);
 
       for(unsigned j = 0; j < set->layout->dynamic_offset_count; ++j, ++dyn_idx) {
-         /* Dynamic buffers come after input attachments in the descriptor set
-          * itself, but due to how the Vulkan descriptor set binding works, we
-          * have to put input attachments and dynamic buffers in separate
-          * buffers in the descriptor_state and then combine them at draw
-          * time. Binding a descriptor set only invalidates the descriptor
-          * sets after it, but if we try to tightly pack the descriptors after
-          * the input attachments then we could corrupt dynamic buffers in the
-          * descriptor set before it, or we'd have to move all the dynamic
-          * buffers over. We just put them into separate buffers to make
-          * binding as well as the later patching of input attachments easy.
-          */
-         unsigned src_idx = j + set->layout->input_attachment_count;
+         /* update the contents of the dynamic descriptor set */
+         unsigned src_idx = j;
          unsigned dst_idx = j + layout->set[idx].dynamic_offset_start;
          assert(dyn_idx < dynamicOffsetCount);
 
@@ -1894,11 +1947,65 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                         MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
       }
    }
+   assert(dyn_idx == dynamicOffsetCount);
 
-   if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE)
-      cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
-   else
+   uint32_t sp_bindless_base_reg, hlsq_bindless_base_reg, hlsq_update_value;
+   uint64_t addr[MAX_SETS + 1] = {};
+   struct tu_cs cs;
+
+   for (uint32_t i = 0; i < MAX_SETS; i++) {
+      struct tu_descriptor_set *set = descriptors_state->sets[i];
+      if (set)
+         addr[i] = set->va | 3;
+   }
+
+   if (layout->dynamic_offset_count) {
+      /* allocate and fill out dynamic descriptor set */
+      struct ts_cs_memory dynamic_desc_set;
+      VkResult result = tu_cs_alloc(&cmd->sub_cs, layout->dynamic_offset_count,
+                                    A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
+      assert(result == VK_SUCCESS);
+
+      memcpy(dynamic_desc_set.map, descriptors_state->dynamic_descriptors,
+             layout->dynamic_offset_count * A6XX_TEX_CONST_DWORDS * 4);
+      addr[MAX_SETS] = dynamic_desc_set.iova | 3;
+   }
+
+   if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      sp_bindless_base_reg = REG_A6XX_SP_BINDLESS_BASE(0);
+      hlsq_bindless_base_reg = REG_A6XX_HLSQ_BINDLESS_BASE(0);
+      hlsq_update_value = 0x7c000;
+
       cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS | TU_CMD_DIRTY_SHADER_CONSTS;
+   } else {
+      assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE);
+
+      sp_bindless_base_reg = REG_A6XX_SP_CS_BINDLESS_BASE(0);
+      hlsq_bindless_base_reg = REG_A6XX_HLSQ_CS_BINDLESS_BASE(0);
+      hlsq_update_value = 0x3e00;
+
+      cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
+   }
+
+   tu_cs_begin_sub_stream(&cmd->sub_cs, 24, &cs);
+
+   tu_cs_emit_pkt4(&cs, sp_bindless_base_reg, 10);
+   tu_cs_emit_array(&cs, (const uint32_t*) addr, 10);
+   tu_cs_emit_pkt4(&cs, hlsq_bindless_base_reg, 10);
+   tu_cs_emit_array(&cs, (const uint32_t*) addr, 10);
+   tu_cs_emit_regs(&cs, A6XX_HLSQ_UPDATE_CNTL(.dword = hlsq_update_value));
+
+   struct tu_cs_entry ib = tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
+   if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      tu_cs_emit_pkt7(&cmd->draw_cs, CP_SET_DRAW_STATE, 3);
+      tu_cs_emit_sds_ib(&cmd->draw_cs, TU_DRAW_STATE_DESC_SETS, ib);
+      cmd->state.desc_sets_ib = ib;
+   } else {
+      /* note: for compute we could emit directly, instead of a CP_INDIRECT
+       * however, the blob uses draw states for compute
+       */
+      tu_cs_emit_ib(&cmd->cs, &ib);
+   }
 }
 
 void tu_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
@@ -2111,7 +2218,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
 
    /* If the pipeline needs a dynamic descriptor, re-emit descriptor sets */
-   if (pipeline->layout->dynamic_offset_count + pipeline->layout->input_attachment_count)
+   if (pipeline->layout->dynamic_offset_count)
       cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
 
    /* dynamic linewidth state depends pipeline state's gras_su_cntl
@@ -2666,7 +2773,7 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
       cmd->state.cache.pending_flush_bits;
    cmd->state.renderpass_cache.flush_bits = 0;
 
-   tu_emit_load_clear(cmd, pRenderPassBegin);
+   tu_emit_renderpass_begin(cmd, pRenderPassBegin);
 
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
@@ -2729,11 +2836,15 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
       }
    }
 
+   tu_emit_input_attachments(cmd, cmd->state.subpass, true);
+
    tu_cond_exec_end(cs);
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    tu6_emit_sysmem_resolves(cmd, cs, subpass);
+
+   tu_emit_input_attachments(cmd, cmd->state.subpass, false);
 
    tu_cond_exec_end(cs);
 
@@ -2857,14 +2968,6 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
          descriptors_state->dynamic_descriptors :
          descriptors_state->sets[state->range[i].bindless_base]->mapped_ptr;
       unsigned block = state->range[i].block;
-      /* If the block in the shader here is in the dynamic descriptor set, it
-       * is an index into the dynamic descriptor set which is combined from
-       * dynamic descriptors and input attachments on-the-fly, and we don't
-       * have access to it here. Instead we work backwards to get the index
-       * into dynamic_descriptors.
-       */
-      if (state->range[i].bindless_base == MAX_SETS)
-         block -= pipeline->layout->input_attachment_count;
       uint32_t *desc = base + block * A6XX_TEX_CONST_DWORDS;
       uint64_t va = desc[0] | ((uint64_t)(desc[1] & A6XX_UBO_1_BASE_HI__MASK) << 32);
       assert(va);
@@ -2957,143 +3060,6 @@ tu6_emit_vertex_buffers(struct tu_cmd_buffer *cmd,
    return tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
 }
 
-static VkResult
-tu6_emit_descriptor_sets(struct tu_cmd_buffer *cmd,
-                         const struct tu_pipeline *pipeline,
-                         VkPipelineBindPoint bind_point,
-                         struct tu_cs_entry *entry,
-                         bool gmem)
-{
-   struct tu_cs *draw_state = &cmd->sub_cs;
-   struct tu_pipeline_layout *layout = pipeline->layout;
-   struct tu_descriptor_state *descriptors_state =
-      tu_get_descriptors_state(cmd, bind_point);
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-   const uint32_t *input_attachment_idx =
-      pipeline->program.input_attachment_idx;
-   uint32_t num_dynamic_descs = layout->dynamic_offset_count +
-      layout->input_attachment_count;
-   struct ts_cs_memory dynamic_desc_set;
-   VkResult result;
-
-   if (num_dynamic_descs > 0) {
-      /* allocate and fill out dynamic descriptor set */
-      result = tu_cs_alloc(draw_state, num_dynamic_descs,
-                           A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
-      if (result != VK_SUCCESS)
-         return result;
-
-      memcpy(dynamic_desc_set.map, descriptors_state->input_attachments,
-             layout->input_attachment_count * A6XX_TEX_CONST_DWORDS * 4);
-
-      if (gmem) {
-         /* Patch input attachments to refer to GMEM instead */
-         for (unsigned i = 0; i < layout->input_attachment_count; i++) {
-            uint32_t *dst =
-               &dynamic_desc_set.map[A6XX_TEX_CONST_DWORDS * i];
-
-            /* The compiler has already laid out input_attachment_idx in the
-             * final order of input attachments, so there's no need to go
-             * through the pipeline layout finding input attachments.
-             */
-            unsigned attachment_idx = input_attachment_idx[i];
-
-            /* It's possible for the pipeline layout to include an input
-             * attachment which doesn't actually exist for the current
-             * subpass. Of course, this is only valid so long as the pipeline
-             * doesn't try to actually load that attachment. Just skip
-             * patching in that scenario to avoid out-of-bounds accesses.
-             */
-            if (attachment_idx >= cmd->state.subpass->input_count)
-               continue;
-
-            uint32_t a = cmd->state.subpass->input_attachments[attachment_idx].attachment;
-            const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
-
-            assert(att->gmem_offset >= 0);
-
-            dst[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
-            dst[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
-            dst[2] &= ~(A6XX_TEX_CONST_2_TYPE__MASK | A6XX_TEX_CONST_2_PITCH__MASK);
-            dst[2] |=
-               A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
-               A6XX_TEX_CONST_2_PITCH(tiling->tile0.extent.width * att->cpp);
-            dst[3] = 0;
-            dst[4] = cmd->device->physical_device->gmem_base + att->gmem_offset;
-            dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
-            for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
-               dst[i] = 0;
-
-            if (cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
-               tu_finishme("patch input attachment pitch for secondary cmd buffer");
-         }
-      }
-
-      memcpy(dynamic_desc_set.map + layout->input_attachment_count * A6XX_TEX_CONST_DWORDS,
-             descriptors_state->dynamic_descriptors,
-             layout->dynamic_offset_count * A6XX_TEX_CONST_DWORDS * 4);
-   }
-
-   uint32_t sp_bindless_base_reg, hlsq_bindless_base_reg;
-   uint32_t hlsq_update_value;
-   switch (bind_point) {
-   case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      sp_bindless_base_reg = REG_A6XX_SP_BINDLESS_BASE(0);
-      hlsq_bindless_base_reg = REG_A6XX_HLSQ_BINDLESS_BASE(0);
-      hlsq_update_value = 0x7c000;
-      break;
-   case VK_PIPELINE_BIND_POINT_COMPUTE:
-      sp_bindless_base_reg = REG_A6XX_SP_CS_BINDLESS_BASE(0);
-      hlsq_bindless_base_reg = REG_A6XX_HLSQ_CS_BINDLESS_BASE(0);
-      hlsq_update_value = 0x3e00;
-      break;
-   default:
-      unreachable("bad bind point");
-   }
-
-   /* Be careful here to *not* refer to the pipeline, so that if only the
-    * pipeline changes we don't have to emit this again (except if there are
-    * dynamic descriptors in the pipeline layout). This means always emitting
-    * all the valid descriptors, which means that we always have to put the
-    * dynamic descriptor in the driver-only slot at the end
-    */
-   uint32_t num_user_sets = util_last_bit(descriptors_state->valid);
-   uint32_t num_sets = num_user_sets;
-   if (num_dynamic_descs > 0) {
-      num_user_sets = MAX_SETS;
-      num_sets = num_user_sets + 1;
-   }
-
-   unsigned regs[2] = { sp_bindless_base_reg, hlsq_bindless_base_reg };
-
-   struct tu_cs cs;
-   result = tu_cs_begin_sub_stream(draw_state, ARRAY_SIZE(regs) * (1 + num_sets * 2) + 2, &cs);
-   if (result != VK_SUCCESS)
-      return result;
-
-   if (num_sets > 0) {
-      for (unsigned i = 0; i < ARRAY_SIZE(regs); i++) {
-         tu_cs_emit_pkt4(&cs, regs[i], num_sets * 2);
-         for (unsigned j = 0; j < num_user_sets; j++) {
-            if (descriptors_state->valid & (1 << j)) {
-               /* magic | 3 copied from the blob */
-               tu_cs_emit_qw(&cs, descriptors_state->sets[j]->va | 3);
-            } else {
-               tu_cs_emit_qw(&cs, 0 | 3);
-            }
-         }
-         if (num_dynamic_descs > 0) {
-            tu_cs_emit_qw(&cs, dynamic_desc_set.iova | 3);
-         }
-      }
-
-      tu_cs_emit_regs(&cs, A6XX_HLSQ_UPDATE_CNTL(hlsq_update_value));
-   }
-
-   *entry = tu_cs_end_sub_stream(draw_state, &cs);
-   return VK_SUCCESS;
-}
-
 static void
 tu6_emit_streamout(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
@@ -3184,41 +3150,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    if (cmd->state.dirty & TU_CMD_DIRTY_STREAMOUT_BUFFERS)
       tu6_emit_streamout(cmd, cs);
 
-   /* If there are any any dynamic descriptors, then we may need to re-emit
-    * them after every pipeline change in case the number of input attachments
-    * changes. We also always need to re-emit after a pipeline change if there
-    * are any input attachments, because the input attachment index comes from
-    * the pipeline. Finally, it can also happen that the subpass changes
-    * without the pipeline changing, in which case the GMEM descriptors need
-    * to be patched differently.
-    *
-    * TODO: We could probably be clever and avoid re-emitting state on
-    * pipeline changes if the number of input attachments is always 0. We
-    * could also only re-emit dynamic state.
-    */
    if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
-      bool need_gmem_desc_set = pipeline->layout->input_attachment_count > 0;
-
-      result = tu6_emit_descriptor_sets(cmd, pipeline,
-                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                        &cmd->state.desc_sets_ib, false);
-      if (result != VK_SUCCESS)
-         return result;
-
-      if (need_gmem_desc_set) {
-         cmd->state.desc_sets_sysmem_ib = cmd->state.desc_sets_ib;
-         cmd->state.desc_sets_ib.size = 0;
-
-         result = tu6_emit_descriptor_sets(cmd, pipeline,
-                                           VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                            &cmd->state.desc_sets_gmem_ib, true);
-         if (result != VK_SUCCESS)
-            return result;
-      } else {
-         cmd->state.desc_sets_gmem_ib.size = 0;
-         cmd->state.desc_sets_sysmem_ib.size = 0;
-      }
-
       /* We need to reload the descriptors every time the descriptor sets
        * change. However, the commands we send only depend on the pipeline
        * because the whole point is to cache descriptors which are used by the
@@ -3274,8 +3206,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT]);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets_ib);
-      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_GMEM, cmd->state.desc_sets_gmem_ib);
-      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_SYSMEM, cmd->state.desc_sets_sysmem_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.desc_sets_load_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_PARAMS, vs_params);
@@ -3293,7 +3223,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
        */
       uint32_t draw_state_count =
          ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 3 : 0) +
-         ((cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) ? 4 : 0) +
+         ((cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
          1; /* vs_params */
 
@@ -3304,12 +3234,8 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT]);
          }
-         if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
-            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets_ib);
-            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_GMEM, cmd->state.desc_sets_gmem_ib);
-            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_SYSMEM, cmd->state.desc_sets_sysmem_ib);
+         if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS)
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.desc_sets_load_ib);
-         }
          if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers_ib);
          tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_PARAMS, vs_params);
@@ -3641,7 +3567,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    struct tu_pipeline *pipeline = cmd->state.compute_pipeline;
    struct tu_descriptor_state *descriptors_state =
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_COMPUTE];
-   VkResult result;
 
    /* TODO: We could probably flush less if we add a compute_flush_bits
     * bitfield.
@@ -3658,19 +3583,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
       tu_cs_emit_ib(cs, &ib);
 
    tu_emit_compute_driver_params(cs, pipeline, info);
-
-   if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS) {
-      result = tu6_emit_descriptor_sets(cmd, pipeline,
-                                        VK_PIPELINE_BIND_POINT_COMPUTE, &ib,
-                                        false);
-      if (result != VK_SUCCESS) {
-         cmd->record_result = result;
-         return;
-      }
-   }
-
-   if (ib.size)
-      tu_cs_emit_ib(cs, &ib);
 
    if ((cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS) &&
        pipeline->load_state.state_ib.size > 0) {

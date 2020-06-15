@@ -436,8 +436,6 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_GS_CONST,
    TU_DRAW_STATE_FS_CONST,
    TU_DRAW_STATE_DESC_SETS,
-   TU_DRAW_STATE_DESC_SETS_GMEM,
-   TU_DRAW_STATE_DESC_SETS_SYSMEM,
    TU_DRAW_STATE_DESC_SETS_LOAD,
    TU_DRAW_STATE_VS_PARAMS,
 
@@ -630,11 +628,7 @@ tu_get_perftest_option_name(int id);
 struct tu_descriptor_state
 {
    struct tu_descriptor_set *sets[MAX_SETS];
-   uint32_t valid;
-   struct tu_push_descriptor_set push_set;
-   bool push_dirty;
    uint32_t dynamic_descriptors[MAX_DYNAMIC_BUFFERS * A6XX_TEX_CONST_DWORDS];
-   uint32_t input_attachments[MAX_RTS * A6XX_TEX_CONST_DWORDS];
 };
 
 struct tu_tile
@@ -821,7 +815,7 @@ struct tu_cmd_state
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
    struct tu_cs_entry vertex_buffers_ib;
    struct tu_cs_entry shader_const_ib[MESA_SHADER_STAGES];
-   struct tu_cs_entry desc_sets_ib, desc_sets_gmem_ib, desc_sets_sysmem_ib, desc_sets_load_ib;
+   struct tu_cs_entry desc_sets_ib, desc_sets_load_ib;
 
    /* Stream output buffers */
    struct
@@ -1055,7 +1049,6 @@ struct tu_shader
    struct ir3_shader *ir3_shader;
 
    struct tu_push_constant_range push_consts;
-   unsigned attachment_idx[MAX_RTS];
    uint8_t active_desc_sets;
 };
 
@@ -1109,7 +1102,6 @@ struct tu_pipeline
       struct tu_cs_entry binning_state_ib;
 
       struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
-      unsigned input_attachment_idx[MAX_RTS];
    } program;
 
    struct

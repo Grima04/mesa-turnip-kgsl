@@ -141,8 +141,7 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
       base = layout->set[set].dynamic_offset_start +
-         binding_layout->dynamic_offset_offset +
-         layout->input_attachment_count;
+         binding_layout->dynamic_offset_offset;
       set = MAX_SETS;
       break;
    default:
@@ -177,31 +176,42 @@ build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
    const struct tu_descriptor_set_binding_layout *bind_layout =
       &layout->set[set].layout->binding[binding];
 
+   /* input attachments use non bindless workaround */
+   if (bind_layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
+      const struct glsl_type *glsl_type = glsl_without_array(var->type);
+      uint32_t idx = var->data.index * 2;
+
+      b->shader->info.textures_used |=
+         ((1ull << (bind_layout->array_size * 2)) - 1) << (idx * 2);
+
+      /* D24S8 workaround: stencil of D24S8 will be sampled as uint */
+      if (glsl_get_sampler_result_type(glsl_type) == GLSL_TYPE_UINT)
+         idx += 1;
+
+      if (deref->deref_type == nir_deref_type_var)
+         return nir_imm_int(b, idx);
+
+      nir_ssa_def *arr_index = nir_ssa_for_src(b, deref->arr.index, 1);
+      return nir_iadd(b, nir_imm_int(b, idx),
+                      nir_imul_imm(b, arr_index, 2));
+   }
+
    shader->active_desc_sets |= 1u << set;
 
    nir_ssa_def *desc_offset;
    unsigned descriptor_stride;
-   if (bind_layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
-      unsigned offset =
-         layout->set[set].input_attachment_start +
-         bind_layout->input_attachment_offset;
-      desc_offset = nir_imm_int(b, offset);
-      set = MAX_SETS;
-      descriptor_stride = 1;
-   } else {
-      unsigned offset = 0;
-      /* Samplers come second in combined image/sampler descriptors, see
-       * write_combined_image_sampler_descriptor().
-       */
-      if (is_sampler && bind_layout->type ==
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-         offset = 1;
-      }
-      desc_offset =
-         nir_imm_int(b, (bind_layout->offset / (4 * A6XX_TEX_CONST_DWORDS)) +
-                     offset);
-      descriptor_stride = bind_layout->size / (4 * A6XX_TEX_CONST_DWORDS);
+   unsigned offset = 0;
+   /* Samplers come second in combined image/sampler descriptors, see
+      * write_combined_image_sampler_descriptor().
+      */
+   if (is_sampler && bind_layout->type ==
+         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+      offset = 1;
    }
+   desc_offset =
+      nir_imm_int(b, (bind_layout->offset / (4 * A6XX_TEX_CONST_DWORDS)) +
+                  offset);
+   descriptor_stride = bind_layout->size / (4 * A6XX_TEX_CONST_DWORDS);
 
    if (deref->deref_type != nir_deref_type_var) {
       assert(deref->deref_type == nir_deref_type_array);
@@ -356,6 +366,10 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
       nir_instr_rewrite_src(&tex->instr, &tex->src[tex_src_idx].src,
                             nir_src_for_ssa(bindless));
       tex->src[tex_src_idx].src_type = nir_tex_src_texture_handle;
+
+      /* for the input attachment case: */
+      if (bindless->parent_instr->type != nir_instr_type_intrinsic)
+         tex->src[tex_src_idx].src_type = nir_tex_src_texture_offset;
    }
 
    return true;
@@ -435,38 +449,6 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
       align(max, 16) / 16 - tu_shader->push_consts.lo;
 }
 
-/* Gather the InputAttachmentIndex for each input attachment from the NIR
- * shader and organize the info in a way so that draw-time patching is easy.
- */
-static void
-gather_input_attachments(nir_shader *shader, struct tu_shader *tu_shader,
-                         const struct tu_pipeline_layout *layout)
-{
-   nir_foreach_variable(var, &shader->uniforms) {
-      const struct glsl_type *glsl_type = glsl_without_array(var->type);
-
-      if (!glsl_type_is_image(glsl_type))
-         continue;
-
-      enum glsl_sampler_dim dim = glsl_get_sampler_dim(glsl_type);
-
-      const uint32_t set = var->data.descriptor_set;
-      const uint32_t binding = var->data.binding;
-      const struct tu_descriptor_set_binding_layout *bind_layout =
-            &layout->set[set].layout->binding[binding];
-      const uint32_t array_size = bind_layout->array_size;
-
-      if (dim == GLSL_SAMPLER_DIM_SUBPASS ||
-          dim == GLSL_SAMPLER_DIM_SUBPASS_MS) {
-         unsigned offset =
-            layout->set[set].input_attachment_start +
-            bind_layout->input_attachment_offset;
-         for (unsigned i = 0; i < array_size; i++)
-            tu_shader->attachment_idx[offset + i] = var->data.index + i;
-      }
-   }
-}
-
 static bool
 tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
             const struct tu_pipeline_layout *layout)
@@ -474,7 +456,6 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
    bool progress = false;
 
    gather_push_constants(shader, tu_shader);
-   gather_input_attachments(shader, tu_shader, layout);
 
    nir_foreach_function(function, shader) {
       if (function->impl)

@@ -183,8 +183,7 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
          switch (binding->type) {
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             base = MAX_SETS;
-            offset = (layout->input_attachment_count +
-                      layout->set[i].dynamic_offset_start +
+            offset = (layout->set[i].dynamic_offset_start +
                       binding->dynamic_offset_offset) * A6XX_TEX_CONST_DWORDS;
             /* fallthrough */
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
@@ -201,9 +200,8 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
             }
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            base = MAX_SETS;
-            offset = (layout->set[i].input_attachment_start +
-                      binding->input_attachment_offset) * A6XX_TEX_CONST_DWORDS;
+            /* nothing - input attachment doesn't use bindless */
+            break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
@@ -217,8 +215,7 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
          }
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             base = MAX_SETS;
-            offset = (layout->input_attachment_count +
-                      layout->set[i].dynamic_offset_start +
+            offset = (layout->set[i].dynamic_offset_start +
                       binding->dynamic_offset_offset) * A6XX_TEX_CONST_DWORDS;
             /* fallthrough */
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
@@ -2055,12 +2052,6 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       desc_sets |= builder->shaders[i]->active_desc_sets;
    }
    pipeline->active_desc_sets = desc_sets;
-
-   if (builder->shaders[MESA_SHADER_FRAGMENT]) {
-      memcpy(pipeline->program.input_attachment_idx,
-             builder->shaders[MESA_SHADER_FRAGMENT]->attachment_idx,
-             sizeof(pipeline->program.input_attachment_idx));
-   }
 }
 
 static void
