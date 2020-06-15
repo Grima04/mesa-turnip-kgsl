@@ -514,6 +514,10 @@ Converter::getOperation(nir_intrinsic_op op)
    case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_bindless_image_atomic_xor:
    case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_inc_wrap:
+   case nir_intrinsic_image_atomic_inc_wrap:
+   case nir_intrinsic_bindless_image_atomic_dec_wrap:
+   case nir_intrinsic_image_atomic_dec_wrap:
       return OP_SUREDP;
    case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_image_load:
@@ -623,6 +627,12 @@ Converter::getSubOp(nir_intrinsic_op op)
    case nir_intrinsic_shared_atomic_xor:
    case nir_intrinsic_ssbo_atomic_xor:
       return  NV50_IR_SUBOP_ATOM_XOR;
+   case nir_intrinsic_bindless_image_atomic_inc_wrap:
+   case nir_intrinsic_image_atomic_inc_wrap:
+      return NV50_IR_SUBOP_ATOM_INC;
+   case nir_intrinsic_bindless_image_atomic_dec_wrap:
+   case nir_intrinsic_image_atomic_dec_wrap:
+      return NV50_IR_SUBOP_ATOM_DEC;
 
    case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier:
@@ -2090,6 +2100,8 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_bindless_image_atomic_umin:
    case nir_intrinsic_bindless_image_atomic_or:
    case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_inc_wrap:
+   case nir_intrinsic_bindless_image_atomic_dec_wrap:
    case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_bindless_image_samples:
    case nir_intrinsic_bindless_image_size:
@@ -2104,6 +2116,8 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_image_atomic_umin:
    case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_atomic_inc_wrap:
+   case nir_intrinsic_image_atomic_dec_wrap:
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_samples:
    case nir_intrinsic_image_size:
@@ -2139,6 +2153,8 @@ Converter::visit(nir_intrinsic_instr *insn)
       case nir_intrinsic_bindless_image_atomic_umin:
       case nir_intrinsic_bindless_image_atomic_or:
       case nir_intrinsic_bindless_image_atomic_xor:
+      case nir_intrinsic_bindless_image_atomic_inc_wrap:
+      case nir_intrinsic_bindless_image_atomic_dec_wrap:
          ty = getDType(insn);
          bindless = true;
          info->io.globalAccess |= 0x2;
@@ -2154,6 +2170,8 @@ Converter::visit(nir_intrinsic_instr *insn)
       case nir_intrinsic_image_atomic_umin:
       case nir_intrinsic_image_atomic_or:
       case nir_intrinsic_image_atomic_xor:
+      case nir_intrinsic_image_atomic_inc_wrap:
+      case nir_intrinsic_image_atomic_dec_wrap:
          ty = getDType(insn);
          bindless = false;
          info->io.globalAccess |= 0x2;
