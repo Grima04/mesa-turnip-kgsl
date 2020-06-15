@@ -6427,6 +6427,16 @@
   },
   {
    "chips": ["gfx10"],
+   "map": {"at": 36152, "to": "mm"},
+   "name": "SQ_THREAD_TRACE_HP3D_MARKER_CNTR"
+  },
+  {
+   "chips": ["gfx10"],
+   "map": {"at": 36156, "to": "mm"},
+   "name": "SQ_THREAD_TRACE_STATUS2_GFX103"
+  },
+  {
+   "chips": ["gfx10"],
    "map": {"at": 37804, "to": "mm"},
    "name": "BCI_DEBUG_READ",
    "type_ref": "BCI_DEBUG_READ"

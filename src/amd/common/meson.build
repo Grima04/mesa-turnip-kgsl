@@ -64,6 +64,8 @@ amd_common_files = files(
   'ac_surface.h',
   'ac_debug.c',
   'ac_debug.h',
+  'ac_shadowed_regs.c',
+  'ac_shadowed_regs.h',
 )
 
 libamd_common = static_library(
