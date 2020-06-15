@@ -1414,6 +1414,7 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                         struct panfrost_sampler_view *view = ctx->sampler_views[stage][i];
                         struct pipe_sampler_view *pview = &view->base;
                         struct panfrost_resource *rsrc = pan_resource(pview->texture);
+                        panfrost_update_sampler_view(view, &ctx->base);
 
                         /* Add the BOs to the job so they are retained until the job is done. */
 
