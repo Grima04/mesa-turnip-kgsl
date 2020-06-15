@@ -334,10 +334,11 @@ struct midgard_predicate {
          * scheduled one). Excludes conditional branches and csel */
         bool no_cond;
 
-        /* Require a minimal mask and (if nonzero) given destination. Used for
-         * writeout optimizations */
+        /* Require (or reject) a minimal mask and (if nonzero) given
+         * destination. Used for writeout optimizations */
 
         unsigned mask;
+        unsigned no_mask;
         unsigned dest;
 
         /* For load/store: how many pipeline registers are in use? The two
@@ -629,6 +630,9 @@ mir_choose_instruction(
                         continue;
 
                 if (mask && ((~instructions[i]->mask) & mask))
+                        continue;
+
+                if (instructions[i]->mask & predicate->no_mask)
                         continue;
 
                 if (ldst && mir_pipeline_count(instructions[i]) + predicate->pipeline_count > 2)
@@ -1003,9 +1007,11 @@ mir_schedule_alu(
         if (writeout < PAN_WRITEOUT_Z)
                 mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
 
-        if (!writeout) {
-                mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
-        } else {
+        predicate.no_mask = writeout ? (1 << 3) : 0;
+        mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
+        predicate.no_mask = 0;
+
+        if (writeout) {
                 /* Propagate up */
                 bundle.last_writeout = branch->last_writeout;
         }
@@ -1124,7 +1130,7 @@ mir_schedule_alu(
         /* Check if writeout reads its own register */
 
         if (writeout) {
-                midgard_instruction *stages[] = { sadd, vadd, smul };
+                midgard_instruction *stages[] = { sadd, vadd, smul, vlut };
                 unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : branch->src[0];
                 unsigned writeout_mask = 0x0;
                 bool bad_writeout = false;
