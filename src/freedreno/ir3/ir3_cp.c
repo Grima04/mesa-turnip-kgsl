@@ -199,9 +199,12 @@ lower_immed(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr, unsigned n,
 	/* Reallocate for 4 more elements whenever it's necessary */
 	struct ir3_const_state *const_state = ir3_const_state(ctx->so);
 	if (const_state->immediate_idx == const_state->immediates_size * 4) {
+		const_state->immediates = rerzalloc(const_state,
+				const_state->immediates,
+				__typeof__(const_state->immediates[0]),
+				const_state->immediates_size,
+				const_state->immediates_size + 4);
 		const_state->immediates_size += 4;
-		const_state->immediates = realloc (const_state->immediates,
-			const_state->immediates_size * sizeof(const_state->immediates[0]));
 
 		for (int i = const_state->immediate_idx; i < const_state->immediates_size * 4; i++)
 			const_state->immediates[i / 4].val[i % 4] = 0xd0d0d0d0;

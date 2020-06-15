@@ -271,7 +271,6 @@ ir3_shader_get_variant(struct ir3_shader *shader, const struct ir3_shader_key *k
 void
 ir3_shader_destroy(struct ir3_shader *shader)
 {
-	free(shader->const_state.immediates);
 	ralloc_free(shader->nir);
 	mtx_destroy(&shader->variants_lock);
 	ralloc_free(shader);
@@ -346,6 +345,7 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 	if (stream_output)
 		memcpy(&shader->stream_output, stream_output, sizeof(shader->stream_output));
 	shader->num_reserved_user_consts = reserved_user_consts;
+	shader->const_state = rzalloc_size(shader, sizeof(*shader->const_state));
 
 	if (nir->info.stage == MESA_SHADER_GEOMETRY)
 		NIR_PASS_V(nir, ir3_nir_lower_gs);

@@ -157,9 +157,12 @@ static void add_const(unsigned reg, unsigned c0, unsigned c1, unsigned c2, unsig
 	assert((reg & 0x7) == 0);
 	int idx = reg >> (1 + 2); /* low bit is half vs full, next two bits are swiz */
 	if (const_state->immediate_idx == const_state->immediates_size * 4) {
+		const_state->immediates = rerzalloc(const_state,
+				const_state->immediates,
+				__typeof__(const_state->immediates[0]),
+				const_state->immediates_size,
+				const_state->immediates_size + 4);
 		const_state->immediates_size += 4;
-		const_state->immediates = realloc (const_state->immediates,
-			const_state->immediates_size * sizeof(const_state->immediates[0]));
 	}
 	const_state->immediates[idx].val[0] = c0;
 	const_state->immediates[idx].val[1] = c1;

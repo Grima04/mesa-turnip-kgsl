@@ -321,7 +321,10 @@ static void
 r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_rts,
            bool layered_clear)
 {
-   struct ir3_shader dummy_shader = {};
+   struct ir3_const_state dummy_const_state = {};
+   struct ir3_shader dummy_shader = {
+      .const_state = &dummy_const_state,
+   };
 
    struct ir3_shader_variant vs = {
       .type = MESA_SHADER_VERTEX,

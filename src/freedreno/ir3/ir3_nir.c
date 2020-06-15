@@ -277,7 +277,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s)
 	 * const_state layout setup.  This should be done after ubo range
 	 * analysis.
 	 */
-	ir3_setup_const_state(shader, s, &shader->const_state);
+	ir3_setup_const_state(shader, s, shader->const_state);
 }
 
 void
