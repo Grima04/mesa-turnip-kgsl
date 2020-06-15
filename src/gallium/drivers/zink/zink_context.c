@@ -913,6 +913,17 @@ zink_resource_copy_region(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    if (dst->base.target != PIPE_BUFFER && src->base.target != PIPE_BUFFER) {
       VkImageCopy region = {};
+      if (util_format_get_num_planes(src->base.format) == 1 &&
+          util_format_get_num_planes(dst->base.format) == 1) {
+      /* If neither the calling command’s srcImage nor the calling command’s dstImage
+       * has a multi-planar image format then the aspectMask member of srcSubresource
+       * and dstSubresource must match
+       *
+       * -VkImageCopy spec
+       */
+         assert(src->aspect == dst->aspect);
+      } else
+         unreachable("planar formats not yet handled");
 
       region.srcSubresource.aspectMask = src->aspect;
       region.srcSubresource.mipLevel = src_level;
