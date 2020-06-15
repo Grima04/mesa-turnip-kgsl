@@ -282,7 +282,7 @@ lp_build_rho(struct lp_build_sample_context *bld,
     */
 
    first_level = bld->dynamic_state->first_level(bld->dynamic_state, bld->gallivm,
-                                                 bld->context_ptr, texture_unit);
+                                                 bld->context_ptr, texture_unit, NULL);
    first_level_vec = lp_build_broadcast_scalar(int_size_bld, first_level);
    int_size = lp_build_minify(int_size_bld, bld->int_size, first_level_vec, TRUE);
    float_size = lp_build_int_to_float(float_size_bld, int_size);
@@ -947,9 +947,9 @@ lp_build_nearest_mip_level(struct lp_build_sample_context *bld,
    LLVMValueRef first_level, last_level, level;
 
    first_level = dynamic_state->first_level(dynamic_state, bld->gallivm,
-                                            bld->context_ptr, texture_unit);
+                                            bld->context_ptr, texture_unit, NULL);
    last_level = dynamic_state->last_level(dynamic_state, bld->gallivm,
-                                          bld->context_ptr, texture_unit);
+                                          bld->context_ptr, texture_unit, NULL);
    first_level = lp_build_broadcast_scalar(leveli_bld, first_level);
    last_level = lp_build_broadcast_scalar(leveli_bld, last_level);
 
@@ -1009,9 +1009,9 @@ lp_build_linear_mip_levels(struct lp_build_sample_context *bld,
    assert(bld->num_lods == bld->num_mips);
 
    first_level = dynamic_state->first_level(dynamic_state, bld->gallivm,
-                                            bld->context_ptr, texture_unit);
+                                            bld->context_ptr, texture_unit, NULL);
    last_level = dynamic_state->last_level(dynamic_state, bld->gallivm,
-                                          bld->context_ptr, texture_unit);
+                                          bld->context_ptr, texture_unit, NULL);
    first_level = lp_build_broadcast_scalar(leveli_bld, first_level);
    last_level = lp_build_broadcast_scalar(leveli_bld, last_level);
 

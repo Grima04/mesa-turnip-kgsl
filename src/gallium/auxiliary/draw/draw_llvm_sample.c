@@ -101,6 +101,7 @@ draw_llvm_texture_member(const struct lp_sampler_dynamic_state *base,
                          struct gallivm_state *gallivm,
                          LLVMValueRef context_ptr,
                          unsigned texture_unit,
+                         LLVMValueRef texture_unit_offset,
                          unsigned member_index,
                          const char *member_name,
                          boolean emit_load)
@@ -192,6 +193,7 @@ draw_llvm_image_member(const struct lp_sampler_dynamic_state *base,
                        struct gallivm_state *gallivm,
                        LLVMValueRef context_ptr,
                        unsigned image_unit,
+                       LLVMValueRef image_unit_offset,
                        unsigned member_index,
                        const char *member_name,
                        boolean emit_load)
@@ -238,10 +240,12 @@ draw_llvm_image_member(const struct lp_sampler_dynamic_state *base,
    draw_llvm_texture_##_name( const struct lp_sampler_dynamic_state *base, \
                               struct gallivm_state *gallivm,               \
                               LLVMValueRef context_ptr,                    \
-                              unsigned texture_unit)                       \
+                              unsigned texture_unit,                       \
+                              LLVMValueRef texture_unit_offset)            \
    { \
       return draw_llvm_texture_member(base, gallivm, context_ptr, \
-                                      texture_unit, _index, #_name, _emit_load ); \
+                                      texture_unit, texture_unit_offset, \
+                                      _index, #_name, _emit_load );     \
    }
 
 
@@ -277,12 +281,13 @@ DRAW_LLVM_SAMPLER_MEMBER(border_color, DRAW_JIT_SAMPLER_BORDER_COLOR, FALSE)
 #define DRAW_LLVM_IMAGE_MEMBER(_name, _index, _emit_load)  \
    static LLVMValueRef \
    draw_llvm_image_##_name( const struct lp_sampler_dynamic_state *base, \
-                              struct gallivm_state *gallivm,               \
-                              LLVMValueRef context_ptr,                    \
-                              unsigned image_unit)                       \
+                            struct gallivm_state *gallivm,               \
+                            LLVMValueRef context_ptr,                    \
+                            unsigned image_unit, LLVMValueRef image_unit_offset) \
    { \
       return draw_llvm_image_member(base, gallivm, context_ptr, \
-                                      image_unit, _index, #_name, _emit_load ); \
+                                    image_unit, image_unit_offset, \
+                                    _index, #_name, _emit_load );  \
    }
 
 

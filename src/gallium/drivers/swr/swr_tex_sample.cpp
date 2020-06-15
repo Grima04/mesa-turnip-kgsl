@@ -169,7 +169,8 @@ swr_texture_member(const struct lp_sampler_dynamic_state *base,
       const struct lp_sampler_dynamic_state *base,                           \
       struct gallivm_state *gallivm,                                         \
       LLVMValueRef context_ptr,                                              \
-      unsigned texture_unit)                                                 \
+      unsigned texture_unit,                                                 \
+      LLVMValueRef texture_unit_offset)                                      \
    {                                                                         \
       return swr_texture_member(base,                                        \
                                 gallivm,                                     \

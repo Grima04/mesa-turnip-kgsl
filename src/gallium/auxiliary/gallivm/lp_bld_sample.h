@@ -226,77 +226,77 @@ struct lp_sampler_dynamic_state
    (*width)(const struct lp_sampler_dynamic_state *state,
             struct gallivm_state *gallivm,
             LLVMValueRef context_ptr,
-            unsigned texture_unit);
+            unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain the base texture height (returns int32) */
    LLVMValueRef
    (*height)(const struct lp_sampler_dynamic_state *state,
              struct gallivm_state *gallivm,
              LLVMValueRef context_ptr,
-             unsigned texture_unit);
+             unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain the base texture depth (or array size) (returns int32) */
    LLVMValueRef
    (*depth)(const struct lp_sampler_dynamic_state *state,
             struct gallivm_state *gallivm,
             LLVMValueRef context_ptr,
-            unsigned texture_unit);
+            unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain the first mipmap level (base level) (returns int32) */
    LLVMValueRef
    (*first_level)(const struct lp_sampler_dynamic_state *state,
                   struct gallivm_state *gallivm,
                   LLVMValueRef context_ptr,
-                  unsigned texture_unit);
+                  unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain the number of mipmap levels minus one (returns int32) */
    LLVMValueRef
    (*last_level)(const struct lp_sampler_dynamic_state *state,
                  struct gallivm_state *gallivm,
                  LLVMValueRef context_ptr,
-                 unsigned texture_unit);
+                 unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain stride in bytes between image rows/blocks (returns int32) */
    LLVMValueRef
    (*row_stride)(const struct lp_sampler_dynamic_state *state,
                  struct gallivm_state *gallivm,
                  LLVMValueRef context_ptr,
-                 unsigned texture_unit);
+                 unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain stride in bytes between image slices (returns int32) */
    LLVMValueRef
    (*img_stride)(const struct lp_sampler_dynamic_state *state,
                  struct gallivm_state *gallivm,
                  LLVMValueRef context_ptr,
-                 unsigned texture_unit);
+                 unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain pointer to base of texture */
    LLVMValueRef
    (*base_ptr)(const struct lp_sampler_dynamic_state *state,
                struct gallivm_state *gallivm,
                LLVMValueRef context_ptr,
-               unsigned texture_unit);
+               unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain pointer to array of mipmap offsets */
    LLVMValueRef
    (*mip_offsets)(const struct lp_sampler_dynamic_state *state,
                   struct gallivm_state *gallivm,
                   LLVMValueRef context_ptr,
-                  unsigned texture_unit);
+                  unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain number of samples (returns int32) */
    LLVMValueRef
    (*num_samples)(const struct lp_sampler_dynamic_state *state,
                   struct gallivm_state *gallivm,
                   LLVMValueRef context_ptr,
-                  unsigned texture_unit);
+                  unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain multisample stride (returns int32) */
    LLVMValueRef
    (*sample_stride)(const struct lp_sampler_dynamic_state *state,
                     struct gallivm_state *gallivm,
                     LLVMValueRef context_ptr,
-                    unsigned texture_unit);
+                    unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /* These are callbacks for sampler state */
 

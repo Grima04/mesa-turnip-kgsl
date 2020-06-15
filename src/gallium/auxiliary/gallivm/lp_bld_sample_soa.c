@@ -2035,7 +2035,7 @@ lp_build_layer_coord(struct lp_build_sample_context *bld,
    struct lp_build_context *int_coord_bld = &bld->int_coord_bld;
 
    num_layers = bld->dynamic_state->depth(bld->dynamic_state, bld->gallivm,
-                                          bld->context_ptr, texture_unit);
+                                          bld->context_ptr, texture_unit, NULL);
 
    if (out_of_bounds) {
       LLVMValueRef out1, out;
@@ -2157,11 +2157,11 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
          last_level = bld->dynamic_state->last_level(bld->dynamic_state,
                                                      bld->gallivm,
                                                      bld->context_ptr,
-                                                     texture_index);
+                                                     texture_index, NULL);
          first_level = bld->dynamic_state->first_level(bld->dynamic_state,
                                                        bld->gallivm,
                                                        bld->context_ptr,
-                                                       texture_index);
+                                                       texture_index, NULL);
          last_level = lp_build_sub(&bld->int_bld, last_level, first_level);
          last_level = lp_build_int_to_float(&bld->float_bld, last_level);
          last_level = lp_build_broadcast_scalar(&bld->lodf_bld, last_level);
@@ -2203,7 +2203,7 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
       /* always use mip level 0 */
       first_level = bld->dynamic_state->first_level(bld->dynamic_state,
                                                     bld->gallivm, bld->context_ptr,
-                                                    texture_index);
+                                                    texture_index, NULL);
       first_level = lp_build_broadcast_scalar(&bld->leveli_bld, first_level);
       *ilevel0 = first_level;
       break;
@@ -2650,7 +2650,7 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
       assert(bld->num_mips == 1);
       if (bld->static_texture_state->target != PIPE_BUFFER) {
          ilevel = bld->dynamic_state->first_level(bld->dynamic_state, bld->gallivm,
-                                                  bld->context_ptr, texture_unit);
+                                                  bld->context_ptr, texture_unit, NULL);
       }
       else {
          ilevel = lp_build_const_int32(bld->gallivm, 0);
@@ -2719,7 +2719,7 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
    if (bld->fetch_ms) {
       LLVMValueRef num_samples;
       num_samples = bld->dynamic_state->num_samples(bld->dynamic_state, bld->gallivm,
-                                                    bld->context_ptr, texture_unit);
+                                                    bld->context_ptr, texture_unit, NULL);
       out1 = lp_build_cmp(int_coord_bld, PIPE_FUNC_LESS, ms_index, int_coord_bld->zero);
       out_of_bounds = lp_build_or(int_coord_bld, out_of_bounds, out1);
       out1 = lp_build_cmp(int_coord_bld, PIPE_FUNC_GEQUAL, ms_index, lp_build_broadcast_scalar(int_coord_bld, num_samples));
@@ -3063,19 +3063,19 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
 
    /* Get the dynamic state */
    tex_width = dynamic_state->width(dynamic_state, gallivm,
-                                    context_ptr, texture_index);
+                                    context_ptr, texture_index, NULL);
    bld.row_stride_array = dynamic_state->row_stride(dynamic_state, gallivm,
-                                                    context_ptr, texture_index);
+                                                    context_ptr, texture_index, NULL);
    bld.img_stride_array = dynamic_state->img_stride(dynamic_state, gallivm,
-                                                    context_ptr, texture_index);
+                                                    context_ptr, texture_index, NULL);
    bld.base_ptr = dynamic_state->base_ptr(dynamic_state, gallivm,
-                                          context_ptr, texture_index);
+                                          context_ptr, texture_index, NULL);
    bld.mip_offsets = dynamic_state->mip_offsets(dynamic_state, gallivm,
-                                                context_ptr, texture_index);
+                                                context_ptr, texture_index, NULL);
 
    if (fetch_ms)
       bld.sample_stride = lp_build_broadcast_scalar(&bld.int_coord_bld, dynamic_state->sample_stride(dynamic_state, gallivm,
-                                                                                                     context_ptr, texture_index));
+                                                                                                     context_ptr, texture_index, NULL));
    /* Note that mip_offsets is an array[level] of offsets to texture images */
 
    if (dynamic_state->cache_ptr && thread_data_ptr) {
@@ -3094,14 +3094,14 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
       if (dims >= 2) {
          LLVMValueRef tex_height =
             dynamic_state->height(dynamic_state, gallivm,
-                                  context_ptr, texture_index);
+                                  context_ptr, texture_index, NULL);
          bld.int_size = LLVMBuildInsertElement(builder, bld.int_size,
                                                tex_height,
                                                LLVMConstInt(i32t, 1, 0), "");
          if (dims >= 3) {
             LLVMValueRef tex_depth =
                dynamic_state->depth(dynamic_state, gallivm, context_ptr,
-                                    texture_index);
+                                    texture_index, NULL);
             bld.int_size = LLVMBuildInsertElement(builder, bld.int_size,
                                                   tex_depth,
                                                   LLVMConstInt(i32t, 2, 0), "");
@@ -3906,7 +3906,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
    if (params->samples_only) {
       params->sizes_out[0] = lp_build_broadcast(gallivm, lp_build_vec_type(gallivm, params->int_type),
                                                 dynamic_state->num_samples(dynamic_state, gallivm,
-                                                                           context_ptr, texture_unit));
+                                                                           context_ptr, texture_unit, NULL));
       return;
    }
    if (params->explicit_lod) {
@@ -3914,7 +3914,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
       lod = LLVMBuildExtractElement(gallivm->builder, params->explicit_lod,
                                     lp_build_const_int32(gallivm, 0), "");
       first_level = dynamic_state->first_level(dynamic_state, gallivm,
-                                               context_ptr, texture_unit);
+                                               context_ptr, texture_unit, NULL);
       level = LLVMBuildAdd(gallivm->builder, lod, first_level, "level");
       lod = lp_build_broadcast_scalar(&bld_int_vec4, level);
    } else {
@@ -3925,20 +3925,20 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
 
    size = LLVMBuildInsertElement(gallivm->builder, size,
                                  dynamic_state->width(dynamic_state, gallivm,
-                                                      context_ptr, texture_unit),
+                                                      context_ptr, texture_unit, NULL),
                                  lp_build_const_int32(gallivm, 0), "");
 
    if (dims >= 2) {
       size = LLVMBuildInsertElement(gallivm->builder, size,
                                     dynamic_state->height(dynamic_state, gallivm,
-                                                          context_ptr, texture_unit),
+                                                          context_ptr, texture_unit, NULL),
                                     lp_build_const_int32(gallivm, 1), "");
    }
 
    if (dims >= 3) {
       size = LLVMBuildInsertElement(gallivm->builder, size,
                                     dynamic_state->depth(dynamic_state, gallivm,
-                                                         context_ptr, texture_unit),
+                                                         context_ptr, texture_unit, NULL),
                                     lp_build_const_int32(gallivm, 2), "");
    }
 
@@ -3946,7 +3946,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
 
    if (has_array) {
       LLVMValueRef layers = dynamic_state->depth(dynamic_state, gallivm,
-                                                 context_ptr, texture_unit);
+                                                 context_ptr, texture_unit, NULL);
       if (target == PIPE_TEXTURE_CUBE_ARRAY) {
          /*
           * It looks like GL wants number of cubes, d3d10.1 has it undefined?
@@ -3972,7 +3972,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
       /* everything is scalar for now */
       lp_build_context_init(&leveli_bld, gallivm, lp_type_int_vec(32, 32));
       last_level = dynamic_state->last_level(dynamic_state, gallivm,
-                                             context_ptr, texture_unit);
+                                             context_ptr, texture_unit, NULL);
 
       out = lp_build_cmp(&leveli_bld, PIPE_FUNC_LESS, level, first_level);
       out1 = lp_build_cmp(&leveli_bld, PIPE_FUNC_GREATER, level, last_level);
@@ -4013,7 +4013,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
          LLVMValueRef last_level;
 
          last_level = dynamic_state->last_level(dynamic_state, gallivm,
-                                                context_ptr, texture_unit);
+                                                context_ptr, texture_unit, NULL);
          num_levels = lp_build_sub(&bld_int_scalar, last_level, first_level);
          num_levels = lp_build_add(&bld_int_scalar, num_levels, bld_int_scalar.one);
       }
@@ -4114,23 +4114,23 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
    LLVMValueRef offset, i, j;
 
    LLVMValueRef row_stride = dynamic_state->row_stride(dynamic_state, gallivm,
-                                                       params->context_ptr, params->image_index);
+                                                       params->context_ptr, params->image_index, NULL);
    LLVMValueRef img_stride = dynamic_state->img_stride(dynamic_state, gallivm,
-                                                       params->context_ptr, params->image_index);
+                                                       params->context_ptr, params->image_index, NULL);
    LLVMValueRef base_ptr = dynamic_state->base_ptr(dynamic_state, gallivm,
-                                                   params->context_ptr, params->image_index);
+                                                   params->context_ptr, params->image_index, NULL);
    LLVMValueRef width = dynamic_state->width(dynamic_state, gallivm,
-                                                params->context_ptr, params->image_index);
+                                                params->context_ptr, params->image_index, NULL);
    LLVMValueRef height = dynamic_state->height(dynamic_state, gallivm,
-                                               params->context_ptr, params->image_index);
+                                               params->context_ptr, params->image_index, NULL);
    LLVMValueRef depth = dynamic_state->depth(dynamic_state, gallivm,
-                                              params->context_ptr, params->image_index);
+                                              params->context_ptr, params->image_index, NULL);
    LLVMValueRef num_samples = NULL, sample_stride = NULL;
    if (ms_index) {
       num_samples = dynamic_state->num_samples(dynamic_state, gallivm,
-                                               params->context_ptr, params->image_index);
+                                               params->context_ptr, params->image_index, NULL);
       sample_stride = dynamic_state->sample_stride(dynamic_state, gallivm,
-                                                   params->context_ptr, params->image_index);
+                                                   params->context_ptr, params->image_index, NULL);
    }
 
    boolean layer_coord = has_layer_coord(target);
