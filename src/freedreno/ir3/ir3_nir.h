@@ -55,10 +55,9 @@ const nir_shader_compiler_options * ir3_get_compiler_options(struct ir3_compiler
 void ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s);
 void ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s);
 
-void ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir,
+void ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 		struct ir3_const_state *const_state);
-
-bool ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader);
+bool ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v);
 
 nir_ssa_def *
 ir3_nir_try_propagate_bit_shift(nir_builder *b, nir_ssa_def *offset, int32_t shift);

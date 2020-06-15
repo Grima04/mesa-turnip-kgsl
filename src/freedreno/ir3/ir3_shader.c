@@ -205,6 +205,9 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 		v->mergedregs = false;
 	}
 
+	if (!v->binning_pass)
+		v->const_state = rzalloc_size(v, sizeof(*v->const_state));
+
 	ret = ir3_compile_shader_nir(shader->compiler, v);
 	if (ret) {
 		debug_error("compile failed!");
@@ -345,7 +348,6 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 	if (stream_output)
 		memcpy(&shader->stream_output, stream_output, sizeof(shader->stream_output));
 	shader->num_reserved_user_consts = reserved_user_consts;
-	shader->const_state = rzalloc_size(shader, sizeof(*shader->const_state));
 
 	if (nir->info.stage == MESA_SHADER_GEOMETRY)
 		NIR_PASS_V(nir, ir3_nir_lower_gs);

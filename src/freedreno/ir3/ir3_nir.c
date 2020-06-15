@@ -249,18 +249,12 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s)
 
 	ir3_optimize_loop(s);
 
-	/* do ubo load and idiv lowering after first opt loop to get a chance to
-	 * propagate constants for divide by immed power-of-two and constant ubo
-	 * block/offsets:
-	 *
-	 * NOTE that UBO analysis pass should only be done once, before variants
+	/* do idiv lowering after first opt loop to get a chance to propagate
+	 * constants for divide by immed power-of-two:
 	 */
-	const bool ubo_progress = OPT(s, ir3_nir_analyze_ubo_ranges, shader);
 	const bool idiv_progress = OPT(s, nir_lower_idiv, nir_lower_idiv_fast);
-	/* UBO offset lowering has to come after we've decided what will be left as load_ubo */
-	OPT_V(s, ir3_nir_lower_io_offsets, shader->compiler->gpu_id);
 
-	if (ubo_progress || idiv_progress)
+	if (idiv_progress)
 		ir3_optimize_loop(s);
 
 	OPT_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
@@ -272,12 +266,6 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s)
 	}
 
 	nir_sweep(s);
-
-	/* The first time thru, when not creating variant, do the one-time
-	 * const_state layout setup.  This should be done after ubo range
-	 * analysis.
-	 */
-	ir3_setup_const_state(shader, s, shader->const_state);
 }
 
 void
@@ -356,6 +344,13 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 		progress |= OPT(s, nir_lower_tex, &tex_options);
 	}
 
+	progress |= OPT(s, ir3_nir_analyze_ubo_ranges, so);
+
+	/* UBO offset lowering has to come after we've decided what will
+	 * be left as load_ubo
+	 */
+	OPT_V(s, ir3_nir_lower_io_offsets, so->shader->compiler->gpu_id);
+
 	if (progress)
 		ir3_optimize_loop(s);
 
@@ -382,6 +377,13 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 	}
 
 	nir_sweep(s);
+
+	/* Binning pass variants re-use  the const_state of the corresponding
+	 * draw pass shader, so that same const emit can be re-used for both
+	 * passes:
+	 */
+	if (!so->binning_pass)
+		ir3_setup_const_state(s, so, ir3_const_state(so));
 }
 
 static void
@@ -460,23 +462,23 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 	}
 }
 
-/* Sets up the non-variant-dependent constant state for the ir3_shader.  Note
+/* Sets up the variant-dependent constant state for the ir3_shader.  Note
  * that it is also used from ir3_nir_analyze_ubo_ranges() to figure out the
  * maximum number of driver params that would eventually be used, to leave
  * space for this function to allocate the driver params.
  */
 void
-ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir,
-	struct ir3_const_state *const_state)
+ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
+		struct ir3_const_state *const_state)
 {
-	struct ir3_compiler *compiler = shader->compiler;
+	struct ir3_compiler *compiler = v->shader->compiler;
 
 	memset(&const_state->offsets, ~0, sizeof(const_state->offsets));
 
 	ir3_nir_scan_driver_consts(nir, const_state);
 
 	if ((compiler->gpu_id < 500) &&
-			(shader->stream_output.num_outputs > 0)) {
+			(v->shader->stream_output.num_outputs > 0)) {
 		const_state->num_driver_params =
 			MAX2(const_state->num_driver_params, IR3_DP_VTXCNT_MAX + 1);
 	}
@@ -511,14 +513,14 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir,
 		const_state->offsets.driver_param = constoff;
 	constoff += const_state->num_driver_params / 4;
 
-	if ((shader->type == MESA_SHADER_VERTEX) &&
+	if ((v->type == MESA_SHADER_VERTEX) &&
 			(compiler->gpu_id < 500) &&
-			shader->stream_output.num_outputs > 0) {
+			v->shader->stream_output.num_outputs > 0) {
 		const_state->offsets.tfbo = constoff;
 		constoff += align(IR3_MAX_SO_BUFFERS * ptrsz, 4) / 4;
 	}
 
-	switch (shader->type) {
+	switch (v->type) {
 	case MESA_SHADER_VERTEX:
 		const_state->offsets.primitive_param = constoff;
 		constoff += 1;

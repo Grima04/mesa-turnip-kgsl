@@ -468,6 +468,8 @@ struct ir3_shader_variant {
 	 */
 	unsigned constlen;
 
+	struct ir3_const_state *const_state;
+
 	/* About Linkage:
 	 *   + Let the frag shader determine the position/compmask for the
 	 *     varyings, since it is the place where we know if the varying
@@ -621,7 +623,6 @@ struct ir3_shader {
 
 	struct ir3_compiler *compiler;
 
-	struct ir3_const_state *const_state;
 	unsigned num_reserved_user_consts;
 
 	struct nir_shader *nir;
@@ -641,10 +642,17 @@ struct ir3_shader {
 	struct ir3_shader_key key_mask;
 };
 
+/**
+ * In order to use the same cmdstream, in particular constlen setup and const
+ * emit, for both binning and draw pass (a6xx+), the binning pass re-uses it's
+ * corresponding draw pass shaders const_state.
+ */
 static inline struct ir3_const_state *
 ir3_const_state(const struct ir3_shader_variant *v)
 {
-	return v->shader->const_state;
+	if (v->binning_pass)
+		return v->nonbinning->const_state;
+	return v->const_state;
 }
 
 void * ir3_shader_assemble(struct ir3_shader_variant *v);
