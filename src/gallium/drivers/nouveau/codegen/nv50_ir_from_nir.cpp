@@ -1272,7 +1272,7 @@ Converter::parseNIR()
       info->prop.fp.postDepthCoverage = nir->info.fs.post_depth_coverage;
       info->prop.fp.readsSampleLocations =
          (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_POS);
-      info->prop.fp.usesDiscard = nir->info.fs.uses_discard;
+      info->prop.fp.usesDiscard = nir->info.fs.uses_discard || nir->info.fs.uses_demote;
       info->prop.fp.usesSampleMaskIn =
          !!(nir->info.system_values_read & SYSTEM_BIT_SAMPLE_MASK_IN);
       break;
@@ -1539,6 +1539,7 @@ Converter::convert(nir_intrinsic_op intr)
       return SV_DRAWID;
    case nir_intrinsic_load_front_face:
       return SV_FACE;
+   case nir_intrinsic_is_helper_invocation:
    case nir_intrinsic_load_helper_invocation:
       return SV_THREAD_KILL;
    case nir_intrinsic_load_instance_id:
@@ -1794,9 +1795,11 @@ Converter::visit(nir_intrinsic_instr *insn)
       loadImm(newDefs[1], mode);
       break;
    }
+   case nir_intrinsic_demote:
    case nir_intrinsic_discard:
       mkOp(OP_DISCARD, TYPE_NONE, NULL);
       break;
+   case nir_intrinsic_demote_if:
    case nir_intrinsic_discard_if: {
       Value *pred = getSSA(1, FILE_PREDICATE);
       if (insn->num_components > 1) {
@@ -1812,6 +1815,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_load_base_instance:
    case nir_intrinsic_load_draw_id:
    case nir_intrinsic_load_front_face:
+   case nir_intrinsic_is_helper_invocation:
    case nir_intrinsic_load_helper_invocation:
    case nir_intrinsic_load_instance_id:
    case nir_intrinsic_load_invocation_id:
