@@ -39,8 +39,15 @@
 static void
 type_size_align_1(const struct glsl_type *type, unsigned *size, unsigned *align)
 {
-   *size = 1;
-   *align = 1;
+   unsigned s;
+
+   if (glsl_type_is_array(type))
+      s = glsl_get_aoa_size(type);
+   else
+      s = 1;
+
+   *size = s;
+   *align = s;
 }
 
 static bool
