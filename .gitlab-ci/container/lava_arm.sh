@@ -78,7 +78,7 @@ debootstrap \
     --variant=minbase \
     --arch=${DEBIAN_ARCH} \
      --components main,contrib,non-free \
-    testing \
+    buster \
     /lava-files/rootfs-${DEBIAN_ARCH}/ \
     http://deb.debian.org/debian
 

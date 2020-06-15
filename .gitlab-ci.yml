@@ -272,7 +272,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-06-12"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-06-22-stable"
 
 .use-arm_build:
   variables:
@@ -287,7 +287,7 @@ arm_test-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-06-09-rsync"
+    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-06-22-stable"
 
 .use-arm_test-base:
   extends:
@@ -305,7 +305,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-18-vkcts"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-06-22-stable"
 
 .use-arm64_test:
   variables:
