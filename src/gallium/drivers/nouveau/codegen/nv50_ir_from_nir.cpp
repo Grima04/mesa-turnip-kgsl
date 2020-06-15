@@ -1256,6 +1256,7 @@ Converter::parseNIR()
    info->bin.tlsSpace = 0;
    info->io.clipDistances = nir->info.clip_distance_array_size;
    info->io.cullDistances = nir->info.cull_distance_array_size;
+   info->io.layer_viewport_relative = nir->info.layer_viewport_relative;
 
    switch(prog->getType()) {
    case Program::TYPE_COMPUTE:
