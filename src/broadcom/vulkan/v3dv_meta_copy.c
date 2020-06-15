@@ -2400,27 +2400,6 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
-void
-v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
-                          VkBuffer srcBuffer,
-                          VkImage dstImage,
-                          VkImageLayout dstImageLayout,
-                          uint32_t regionCount,
-                          const VkBufferImageCopy *pRegions)
-{
-   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   V3DV_FROM_HANDLE(v3dv_buffer, buffer, srcBuffer);
-   V3DV_FROM_HANDLE(v3dv_image, image, dstImage);
-
-   for (uint32_t i = 0; i < regionCount; i++) {
-      if (copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]))
-         continue;
-      if (copy_buffer_to_image_blit(cmd_buffer, image, buffer, &pRegions[i]))
-         continue;
-      unreachable("Unsupported buffer to image copy.");
-   }
-}
-
 /* Disable level 0 write, just write following mipmaps */
 #define V3D_TFU_IOA_DIMTW (1 << 0)
 #define V3D_TFU_IOA_FORMAT_SHIFT 3
@@ -2444,6 +2423,142 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
 #define V3D_TFU_ICFG_FORMAT_UBLINEAR_2_COLUMN 13
 #define V3D_TFU_ICFG_FORMAT_UIF_NO_XOR 14
 #define V3D_TFU_ICFG_FORMAT_UIF_XOR 15
+
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
+static bool
+copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
+                         struct v3dv_image *image,
+                         struct v3dv_buffer *buffer,
+                         const VkBufferImageCopy *region)
+{
+   VkFormat vk_format = image->vk_format;
+   const struct v3dv_format *format = image->format;
+
+   /* Format must be supported for texturing */
+   if (!v3dv_tfu_supports_tex_format(&cmd_buffer->device->devinfo,
+                                     format->tex_type)) {
+      return false;
+   }
+
+   /* Only color formats */
+   if (vk_format_is_depth_or_stencil(vk_format))
+      return false;
+
+   /* Destination can't be raster format */
+   const uint32_t mip_level = region->imageSubresource.mipLevel;
+   if (image->slices[mip_level].tiling == VC5_TILING_RASTER)
+      return false;
+
+   /* Region must include full slice */
+   const uint32_t offset_x = region->imageOffset.x;
+   const uint32_t offset_y = region->imageOffset.y;
+   if (offset_x != 0 || offset_y != 0)
+      return false;
+
+   uint32_t width, height;
+   if (region->bufferRowLength == 0)
+      width = region->imageExtent.width;
+   else
+      width = region->bufferRowLength;
+
+   if (region->bufferImageHeight == 0)
+      height = region->imageExtent.height;
+   else
+      height = region->bufferImageHeight;
+
+   if (width != image->extent.width || height != image->extent.height)
+      return false;
+
+   const struct v3d_resource_slice *slice = &image->slices[mip_level];
+
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->imageSubresource.layerCount;
+   else
+      num_layers = region->imageExtent.depth;
+   assert(num_layers > 0);
+
+   assert(image->mem && image->mem->bo);
+   const struct v3dv_bo *dst_bo = image->mem->bo;
+
+   assert(buffer->mem && buffer->mem->bo);
+   const struct v3dv_bo *src_bo = buffer->mem->bo;
+
+   /* Emit a TFU job per layer to copy */
+   const uint32_t buffer_stride = width * image->cpp;
+   for (int i = 0; i < num_layers; i++) {
+      uint32_t layer = region->imageSubresource.baseArrayLayer + i;
+
+      struct drm_v3d_submit_tfu tfu = {
+         .ios = (height << 16) | width,
+         .bo_handles = {
+            dst_bo->handle,
+            src_bo != dst_bo ? src_bo->handle : 0
+         },
+      };
+
+      const uint32_t buffer_offset =
+         buffer->mem_offset + region->bufferOffset +
+         height * buffer_stride * i;
+
+      const uint32_t src_offset = src_bo->offset + buffer_offset;
+      tfu.iia |= src_offset;
+      tfu.icfg |= V3D_TFU_ICFG_FORMAT_RASTER << V3D_TFU_ICFG_FORMAT_SHIFT;
+      tfu.iis |= width;
+
+      const uint32_t dst_offset =
+         dst_bo->offset + v3dv_layer_offset(image, mip_level, layer);
+      tfu.ioa |= dst_offset;
+
+      tfu.ioa |= (V3D_TFU_IOA_FORMAT_LINEARTILE +
+                  (slice->tiling - VC5_TILING_LINEARTILE)) <<
+                   V3D_TFU_IOA_FORMAT_SHIFT;
+      tfu.icfg |= format->tex_type << V3D_TFU_ICFG_TTYPE_SHIFT;
+
+      /* If we're writing level 0 (!IOA_DIMTW), then we need to supply the
+       * OPAD field for the destination (how many extra UIF blocks beyond
+       * those necessary to cover the height).
+       */
+      if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
+          slice->tiling == VC5_TILING_UIF_XOR) {
+         uint32_t uif_block_h = 2 * v3d_utile_height(image->cpp);
+         uint32_t implicit_padded_height = align(height, uif_block_h);
+         uint32_t icfg =
+            (slice->padded_height - implicit_padded_height) / uif_block_h;
+         tfu.icfg |= icfg << V3D_TFU_ICFG_OPAD_SHIFT;
+      }
+
+      v3dv_cmd_buffer_add_tfu_job(cmd_buffer, &tfu);
+   }
+
+   return true;
+}
+
+void
+v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
+                          VkBuffer srcBuffer,
+                          VkImage dstImage,
+                          VkImageLayout dstImageLayout,
+                          uint32_t regionCount,
+                          const VkBufferImageCopy *pRegions)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, srcBuffer);
+   V3DV_FROM_HANDLE(v3dv_image, image, dstImage);
+
+   for (uint32_t i = 0; i < regionCount; i++) {
+      if (copy_buffer_to_image_tfu(cmd_buffer, image, buffer, &pRegions[i]))
+         continue;
+      if (copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]))
+         continue;
+      if (copy_buffer_to_image_blit(cmd_buffer, image, buffer, &pRegions[i]))
+         continue;
+      unreachable("Unsupported buffer to image copy.");
+   }
+}
 
 static void
 emit_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
