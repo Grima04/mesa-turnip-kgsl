@@ -324,6 +324,37 @@ dump_samplers(struct gen_batch_decode_ctx *ctx, uint32_t offset, int count)
 }
 
 static void
+handle_interface_descriptor_data(struct gen_batch_decode_ctx *ctx,
+                                 struct gen_group *desc, const uint32_t *p)
+{
+   uint64_t ksp = 0;
+   uint32_t sampler_offset = 0, sampler_count = 0;
+   uint32_t binding_table_offset = 0, binding_entry_count = 0;
+
+   struct gen_field_iterator iter;
+   gen_field_iterator_init(&iter, desc, p, 0, false);
+   while (gen_field_iterator_next(&iter)) {
+      if (strcmp(iter.name, "Kernel Start Pointer") == 0) {
+         ksp = strtoll(iter.value, NULL, 16);
+      } else if (strcmp(iter.name, "Sampler State Pointer") == 0) {
+         sampler_offset = strtol(iter.value, NULL, 16);
+      } else if (strcmp(iter.name, "Sampler Count") == 0) {
+         sampler_count = strtol(iter.value, NULL, 10);
+      } else if (strcmp(iter.name, "Binding Table Pointer") == 0) {
+         binding_table_offset = strtol(iter.value, NULL, 16);
+      } else if (strcmp(iter.name, "Binding Table Entry Count") == 0) {
+         binding_entry_count = strtol(iter.value, NULL, 10);
+      }
+   }
+
+   ctx_disassemble_program(ctx, ksp, "compute shader");
+   fprintf(ctx->fp, "\n");
+
+   dump_samplers(ctx, sampler_offset, sampler_count);
+   dump_binding_table(ctx, binding_table_offset, binding_entry_count);
+}
+
+static void
 handle_media_interface_descriptor_load(struct gen_batch_decode_ctx *ctx,
                                        const uint32_t *p)
 {
@@ -358,32 +389,26 @@ handle_media_interface_descriptor_load(struct gen_batch_decode_ctx *ctx,
 
       ctx_print_group(ctx, desc, desc_addr, desc_map);
 
-      gen_field_iterator_init(&iter, desc, desc_map, 0, false);
-      uint64_t ksp = 0;
-      uint32_t sampler_offset = 0, sampler_count = 0;
-      uint32_t binding_table_offset = 0, binding_entry_count = 0;
-      while (gen_field_iterator_next(&iter)) {
-         if (strcmp(iter.name, "Kernel Start Pointer") == 0) {
-            ksp = strtoll(iter.value, NULL, 16);
-         } else if (strcmp(iter.name, "Sampler State Pointer") == 0) {
-            sampler_offset = strtol(iter.value, NULL, 16);
-         } else if (strcmp(iter.name, "Sampler Count") == 0) {
-            sampler_count = strtol(iter.value, NULL, 10);
-         } else if (strcmp(iter.name, "Binding Table Pointer") == 0) {
-            binding_table_offset = strtol(iter.value, NULL, 16);
-         } else if (strcmp(iter.name, "Binding Table Entry Count") == 0) {
-            binding_entry_count = strtol(iter.value, NULL, 10);
-         }
-      }
-
-      ctx_disassemble_program(ctx, ksp, "compute shader");
-      fprintf(ctx->fp, "\n");
-
-      dump_samplers(ctx, sampler_offset, sampler_count);
-      dump_binding_table(ctx, binding_table_offset, binding_entry_count);
+      handle_interface_descriptor_data(ctx, desc, desc_map);
 
       desc_map += desc->dw_length;
       desc_addr += desc->dw_length * 4;
+   }
+}
+
+static void
+handle_compute_walker(struct gen_batch_decode_ctx *ctx,
+                      const uint32_t *p)
+{
+   struct gen_group *inst = gen_ctx_find_instruction(ctx, p);
+
+   struct gen_field_iterator iter;
+   gen_field_iterator_init(&iter, inst, p, 0, false);
+   while (gen_field_iterator_next(&iter)) {
+      if (strcmp(iter.name, "Interface Descriptor") == 0) {
+         handle_interface_descriptor_data(ctx, iter.struct_desc,
+                                          &iter.p[iter.start_bit / 32]);
+      }
    }
 }
 
@@ -1011,6 +1036,7 @@ struct custom_decoder {
 } custom_decoders[] = {
    { "STATE_BASE_ADDRESS", handle_state_base_address },
    { "MEDIA_INTERFACE_DESCRIPTOR_LOAD", handle_media_interface_descriptor_load },
+   { "COMPUTE_WALKER", handle_compute_walker },
    { "3DSTATE_VERTEX_BUFFERS", handle_3dstate_vertex_buffers },
    { "3DSTATE_INDEX_BUFFER", handle_3dstate_index_buffer },
    { "3DSTATE_VS", decode_single_ksp },
