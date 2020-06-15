@@ -170,17 +170,18 @@ panfrost_estimate_texture_payload_size(
 
 /* Bifrost requires a tile stride for tiled textures. This stride is computed
  * as (16 * bpp * width) assuming there is at least one tile (width >= 16).
- * Otherwise if width < 16, the blob puts zero. Interactions with AFBC are
+ * Otherwise if height <= 16, the blob puts zero. Interactions with AFBC are
  * currently unknown.
  */
 
 static unsigned
 panfrost_nonlinear_stride(enum mali_texture_layout layout,
                 unsigned bytes_per_pixel,
-                unsigned width)
+                unsigned width,
+                unsigned height)
 {
         if (layout == MALI_TEXTURE_TILED) {
-                return (width < 16) ? 0 : (16 * bytes_per_pixel * ALIGN_POT(width, 16));
+                return (height <= 16) ? 0 : (16 * bytes_per_pixel * ALIGN_POT(width, 16));
         } else {
                 unreachable("TODO: AFBC on Bifrost");
         }
@@ -193,7 +194,7 @@ panfrost_emit_texture_payload(
         enum mali_format mali_format,
         enum mali_texture_type type,
         enum mali_texture_layout layout,
-        unsigned width,
+        unsigned width, unsigned height,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
         unsigned cube_stride,
@@ -227,7 +228,8 @@ panfrost_emit_texture_payload(
                                                 slices[l].stride :
                                                 panfrost_nonlinear_stride(layout,
                                                                 MAX2(desc->block.bits / 8, 1),
-                                                                u_minify(width, l));
+                                                                u_minify(width, l),
+                                                                u_minify(height, l));
                                 }
                         }
                 }
@@ -288,7 +290,7 @@ panfrost_new_texture(
                 mali_format,
                 type,
                 layout,
-                width,
+                width, height,
                 first_level, last_level,
                 first_layer, last_layer,
                 cube_stride,
@@ -325,7 +327,7 @@ panfrost_new_texture_bifrost(
                 mali_format,
                 type,
                 layout,
-                width,
+                width, height,
                 first_level, last_level,
                 first_layer, last_layer,
                 cube_stride,
