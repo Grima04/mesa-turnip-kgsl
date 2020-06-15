@@ -554,10 +554,11 @@ block_id(struct ir3_block *block)
 #endif
 }
 
-struct ir3 * ir3_create(struct ir3_compiler *compiler, gl_shader_stage type);
+struct ir3_shader_variant;
+
+struct ir3 * ir3_create(struct ir3_compiler *compiler, struct ir3_shader_variant *v);
 void ir3_destroy(struct ir3 *shader);
 
-struct ir3_shader_variant;
 void * ir3_assemble(struct ir3_shader_variant *v);
 void * ir3_alloc(struct ir3 *shader, int sz);
 

@@ -3248,7 +3248,7 @@ emit_instructions(struct ir3_context *ctx)
 	ctx->inputs  = rzalloc_array(ctx, struct ir3_instruction *, ctx->ninputs);
 	ctx->outputs = rzalloc_array(ctx, struct ir3_instruction *, ctx->noutputs);
 
-	ctx->ir = ir3_create(ctx->compiler, ctx->so->type);
+	ctx->ir = ir3_create(ctx->compiler, ctx->so);
 
 	/* Create inputs in first block: */
 	ctx->block = get_block(ctx, nir_start_block(fxn));

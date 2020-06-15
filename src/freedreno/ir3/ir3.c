@@ -45,12 +45,13 @@ void * ir3_alloc(struct ir3 *shader, int sz)
 	return rzalloc_size(shader, sz); /* TODO: don't use rzalloc */
 }
 
-struct ir3 * ir3_create(struct ir3_compiler *compiler, gl_shader_stage type)
+struct ir3 * ir3_create(struct ir3_compiler *compiler,
+		struct ir3_shader_variant *v)
 {
 	struct ir3 *shader = rzalloc(NULL, struct ir3);
 
 	shader->compiler = compiler;
-	shader->type = type;
+	shader->type = v->type;
 
 	list_inithead(&shader->block_list);
 	list_inithead(&shader->array_list);

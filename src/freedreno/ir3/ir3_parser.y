@@ -89,7 +89,7 @@ static struct ir3_instruction * new_instr(opc_t opc)
 
 static void new_shader(void)
 {
-	variant->ir = ir3_create(variant->shader->compiler, variant->shader->type);
+	variant->ir = ir3_create(variant->shader->compiler, variant);
 	block = ir3_block_create(variant->ir);
 	list_addtail(&block->node, &variant->ir->block_list);
 }
