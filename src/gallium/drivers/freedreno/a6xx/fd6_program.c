@@ -562,10 +562,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 		/* Total attribute slots in HS incoming patch. */
 		OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9801, 1);
-		OUT_RING(ring, hs_info->tess.tcs_vertices_out * vs->shader->output_size / 4);
+		OUT_RING(ring, hs_info->tess.tcs_vertices_out * vs->output_size / 4);
 
 		OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
-		OUT_RING(ring, vs->shader->output_size);
+		OUT_RING(ring, vs->output_size);
 
 		shader_info *ds_info = &ds->shader->nir->info;
 		OUT_PKT4(ring, REG_A6XX_PC_TESS_CNTL, 1);
@@ -791,7 +791,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		/* Size of per-primitive alloction in ldlw memory in vec4s. */
 		uint32_t vec4_size =
 			gs->shader->nir->info.gs.vertices_in *
-			DIV_ROUND_UP(prev->shader->output_size, 4);
+			DIV_ROUND_UP(prev->output_size, 4);
 		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
 		OUT_RING(ring, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
 
@@ -799,7 +799,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_RING(ring, 0);
 
 		OUT_PKT4(ring, REG_A6XX_SP_GS_PRIM_SIZE, 1);
-		OUT_RING(ring, prev->shader->output_size);
+		OUT_RING(ring, prev->output_size);
 	} else {
 		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
 		OUT_RING(ring, 0);

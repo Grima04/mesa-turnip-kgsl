@@ -175,8 +175,8 @@ emit_tess_consts(struct fd6_emit *emit)
 		emit->gs->shader->nir->info.gs.vertices_in;
 
 	uint32_t vs_params[4] = {
-		emit->vs->shader->output_size * num_vertices * 4,	/* vs primitive stride */
-		emit->vs->shader->output_size * 4,					/* vs vertex stride */
+		emit->vs->output_size * num_vertices * 4,	/* vs primitive stride */
+		emit->vs->output_size * 4,					/* vs vertex stride */
 		0,
 		0
 	};
@@ -185,9 +185,9 @@ emit_tess_consts(struct fd6_emit *emit)
 
 	if (emit->hs) {
 		uint32_t hs_params[4] = {
-			emit->vs->shader->output_size * num_vertices * 4,	/* vs primitive stride */
-			emit->vs->shader->output_size * 4,					/* vs vertex stride */
-			emit->hs->shader->output_size,
+			emit->vs->output_size * num_vertices * 4,	/* vs primitive stride */
+			emit->vs->output_size * 4,					/* vs vertex stride */
+			emit->hs->output_size,
 			emit->info->vertices_per_patch
 		};
 
@@ -198,9 +198,9 @@ emit_tess_consts(struct fd6_emit *emit)
 			num_vertices = emit->gs->shader->nir->info.gs.vertices_in;
 
 		uint32_t ds_params[4] = {
-			emit->ds->shader->output_size * num_vertices * 4,	/* ds primitive stride */
-			emit->ds->shader->output_size * 4,					/* ds vertex stride */
-			emit->hs->shader->output_size,                      /* hs vertex stride (dwords) */
+			emit->ds->output_size * num_vertices * 4,	/* ds primitive stride */
+			emit->ds->output_size * 4,					/* ds vertex stride */
+			emit->hs->output_size,                      /* hs vertex stride (dwords) */
 			emit->hs->shader->nir->info.tess.tcs_vertices_out
 		};
 
@@ -216,8 +216,8 @@ emit_tess_consts(struct fd6_emit *emit)
 			prev = emit->vs;
 
 		uint32_t gs_params[4] = {
-			prev->shader->output_size * num_vertices * 4,	/* ds primitive stride */
-			prev->shader->output_size * 4,					/* ds vertex stride */
+			prev->output_size * num_vertices * 4,	/* ds primitive stride */
+			prev->output_size * 4,					/* ds vertex stride */
 			0,
 			0,
 		};

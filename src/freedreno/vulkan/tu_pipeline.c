@@ -783,7 +783,7 @@ tu6_emit_vpc(struct tu_cs *cs,
          invocations = gs->shader->nir->info.gs.invocations - 1;
          /* Size of per-primitive alloction in ldlw memory in vec4s. */
          vec4_size = gs->shader->nir->info.gs.vertices_in *
-                     DIV_ROUND_UP(vs->shader->output_size, 4);
+                     DIV_ROUND_UP(vs->output_size, 4);
       } else {
          vertices_out = 3;
          output = TESS_CW_TRIS;
@@ -843,7 +843,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit(cs, 0);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);
-      tu_cs_emit(cs, vs->shader->output_size);
+      tu_cs_emit(cs, vs->output_size);
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_PRIMITIVE_CNTL, 1);
@@ -1135,8 +1135,8 @@ tu6_emit_geometry_consts(struct tu_cs *cs,
    unsigned num_vertices = gs->shader->nir->info.gs.vertices_in;
 
    uint32_t params[4] = {
-      vs->shader->output_size * num_vertices * 4,  /* primitive stride */
-      vs->shader->output_size * 4,                 /* vertex stride */
+      vs->output_size * num_vertices * 4,  /* primitive stride */
+      vs->output_size * 4,                 /* vertex stride */
       0,
       0,
    };

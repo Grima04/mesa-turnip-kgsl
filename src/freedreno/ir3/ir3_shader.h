@@ -497,6 +497,12 @@ struct ir3_shader_variant {
 	} outputs[32 + 2];  /* +POSITION +PSIZE */
 	bool writes_pos, writes_smask, writes_psize;
 
+	/* Size in dwords of all outputs for VS, size of entire patch for HS. */
+	uint32_t output_size;
+
+	/* Map from driver_location to byte offset in per-primitive storage */
+	unsigned output_loc[32];
+
 	/* attributes (VS) / varyings (FS):
 	 * Note that sysval's should come *after* normal inputs.
 	 */
@@ -630,11 +636,6 @@ struct ir3_shader {
 
 	struct ir3_shader_variant *variants;
 	mtx_t variants_lock;
-
-	uint32_t output_size; /* Size in dwords of all outputs for VS, size of entire patch for HS. */
-
-	/* Map from driver_location to byte offset in per-primitive storage */
-	unsigned output_loc[32];
 
 	/* Bitmask of bits of the shader key used by this shader.  Used to avoid
 	 * recompiles for GL NOS that doesn't actually apply to the shader.

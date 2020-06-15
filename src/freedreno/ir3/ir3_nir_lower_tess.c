@@ -227,12 +227,13 @@ local_thread_id(nir_builder *b)
 }
 
 void
-ir3_nir_lower_to_explicit_output(nir_shader *shader, struct ir3_shader *s, unsigned topology)
+ir3_nir_lower_to_explicit_output(nir_shader *shader, struct ir3_shader_variant *v,
+		unsigned topology)
 {
 	struct state state = { };
 
 	build_primitive_map(shader, &state.map, &shader->outputs);
-	memcpy(s->output_loc, state.map.loc, sizeof(s->output_loc));
+	memcpy(v->output_loc, state.map.loc, sizeof(v->output_loc));
 
 	nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 	assert(impl);
@@ -241,7 +242,7 @@ ir3_nir_lower_to_explicit_output(nir_shader *shader, struct ir3_shader *s, unsig
 	nir_builder_init(&b, impl);
 	b.cursor = nir_before_cf_list(&impl->body);
 
-	if (s->type == MESA_SHADER_VERTEX && topology != IR3_TESS_NONE)
+	if (v->type == MESA_SHADER_VERTEX && topology != IR3_TESS_NONE)
 		state.header = nir_load_tcs_header_ir3(&b);
 	else
 		state.header = nir_load_gs_header_ir3(&b);
@@ -252,7 +253,7 @@ ir3_nir_lower_to_explicit_output(nir_shader *shader, struct ir3_shader *s, unsig
 	nir_metadata_preserve(impl, nir_metadata_block_index |
 			nir_metadata_dominance);
 
-	s->output_size = state.map.stride;
+	v->output_size = state.map.stride;
 }
 
 
@@ -595,7 +596,8 @@ emit_tess_epilouge(nir_builder *b, struct state *state)
 }
 
 void
-ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader *s, unsigned topology)
+ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader_variant *v,
+		unsigned topology)
 {
 	struct state state = { .topology = topology };
 
@@ -606,8 +608,8 @@ ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader *s, unsigned topol
 	}
 
 	build_primitive_map(shader, &state.map, &shader->outputs);
-	memcpy(s->output_loc, state.map.loc, sizeof(s->output_loc));
-	s->output_size = state.map.stride;
+	memcpy(v->output_loc, state.map.loc, sizeof(v->output_loc));
+	v->output_size = state.map.stride;
 
 	nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 	assert(impl);
@@ -984,7 +986,7 @@ ir3_link_geometry_stages(const struct ir3_shader_variant *producer,
 		nir_foreach_variable(out_var, &producer->shader->nir->outputs) {
 			if (in_var->data.location == out_var->data.location) {
 				locs[in_var->data.driver_location] =
-					producer->shader->output_loc[out_var->data.driver_location] * factor;
+					producer->output_loc[out_var->data.driver_location] * factor;
 
 				debug_assert(num_loc <= in_var->data.driver_location + 1);
 				num_loc = in_var->data.driver_location + 1;
