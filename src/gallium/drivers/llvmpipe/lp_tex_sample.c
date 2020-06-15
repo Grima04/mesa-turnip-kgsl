@@ -128,6 +128,11 @@ lp_llvm_texture_member(const struct lp_sampler_dynamic_state *base,
    indices[1] = lp_build_const_int32(gallivm, LP_JIT_CTX_TEXTURES);
    /* context[0].textures[unit] */
    indices[2] = lp_build_const_int32(gallivm, texture_unit);
+   if (texture_unit_offset) {
+      indices[2] = LLVMBuildAdd(gallivm->builder, indices[2], texture_unit_offset, "");
+      LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntULT, indices[2], lp_build_const_int32(gallivm, PIPE_MAX_SHADER_SAMPLER_VIEWS), "");
+      indices[2] = LLVMBuildSelect(gallivm->builder, cond, indices[2], lp_build_const_int32(gallivm, texture_unit), "");
+   }
    /* context[0].textures[unit].member */
    indices[3] = lp_build_const_int32(gallivm, member_index);
 
@@ -275,6 +280,11 @@ lp_llvm_image_member(const struct lp_sampler_dynamic_state *base,
    indices[1] = lp_build_const_int32(gallivm, LP_JIT_CTX_IMAGES);
    /* context[0].images[unit] */
    indices[2] = lp_build_const_int32(gallivm, image_unit);
+   if (image_unit_offset) {
+      indices[2] = LLVMBuildAdd(gallivm->builder, indices[2], image_unit_offset, "");
+      LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntULT, indices[2], lp_build_const_int32(gallivm, PIPE_MAX_SHADER_IMAGES), "");
+      indices[2] = LLVMBuildSelect(gallivm->builder, cond, indices[2], lp_build_const_int32(gallivm, image_unit), "");
+   }
    /* context[0].images[unit].member */
    indices[3] = lp_build_const_int32(gallivm, member_index);
 
