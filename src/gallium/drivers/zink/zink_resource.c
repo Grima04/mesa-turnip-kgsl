@@ -388,8 +388,8 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    copyRegion.imageExtent.width = trans->base.box.width;
    copyRegion.imageExtent.height = trans->base.box.height;
 
-   zink_batch_reference_resoure(batch, res);
-   zink_batch_reference_resoure(batch, staging_res);
+   zink_batch_reference_resource_rw(batch, res, buf2img);
+   zink_batch_reference_resource_rw(batch, staging_res, !buf2img);
 
    /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
     * to indicate whether to copy either the depth or stencil aspects

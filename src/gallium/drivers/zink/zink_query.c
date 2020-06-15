@@ -472,7 +472,7 @@ zink_render_condition(struct pipe_context *pctx,
    begin_info.flags = begin_flags;
    screen->vk_CmdBeginConditionalRenderingEXT(batch->cmdbuf, &begin_info);
 
-   zink_batch_reference_resoure(batch, res);
+   zink_batch_reference_resource_rw(batch, res, true);
 
    pipe_resource_reference(&pres, NULL);
 }

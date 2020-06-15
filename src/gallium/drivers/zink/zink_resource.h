@@ -32,6 +32,9 @@ struct zink_batch;
 
 #include <vulkan/vulkan.h>
 
+#define ZINK_RESOURCE_ACCESS_READ 1
+#define ZINK_RESOURCE_ACCESS_WRITE 16
+
 struct zink_resource {
    struct pipe_resource base;
 
@@ -53,6 +56,8 @@ struct zink_resource {
    struct sw_displaytarget *dt;
    unsigned dt_stride;
 
+   /* this has to be atomic for fence access, so we can't use a bitmask and make everything neat */
+   uint8_t batch_uses[4];
    bool needs_xfb_barrier;
 };
 

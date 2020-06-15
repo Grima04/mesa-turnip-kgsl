@@ -971,8 +971,8 @@ zink_resource_copy_region(struct pipe_context *pctx,
       region.extent.height = src_box->height;
 
       struct zink_batch *batch = zink_batch_no_rp(ctx);
-      zink_batch_reference_resoure(batch, src);
-      zink_batch_reference_resoure(batch, dst);
+      zink_batch_reference_resource_rw(batch, src, false);
+      zink_batch_reference_resource_rw(batch, dst, true);
 
       zink_resource_setup_transfer_layouts(batch, src, dst);
       vkCmdCopyImage(batch->cmdbuf, src->image, src->layout,
@@ -986,8 +986,8 @@ zink_resource_copy_region(struct pipe_context *pctx,
       region.size = src_box->width;
 
       struct zink_batch *batch = zink_batch_no_rp(ctx);
-      zink_batch_reference_resoure(batch, src);
-      zink_batch_reference_resoure(batch, dst);
+      zink_batch_reference_resource_rw(batch, src, false);
+      zink_batch_reference_resource_rw(batch, dst, true);
 
       vkCmdCopyBuffer(batch->cmdbuf, src->buffer, dst->buffer, 1, &region);
    } else
@@ -1180,6 +1180,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       if (vkCreateDescriptorPool(screen->dev, &dpci, 0,
                                  &ctx->batches[i].descpool) != VK_SUCCESS)
          goto fail;
+
+      ctx->batches[i].batch_id = i;
    }
 
    vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->queue);

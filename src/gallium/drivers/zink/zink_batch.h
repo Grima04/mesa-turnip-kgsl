@@ -40,6 +40,7 @@ struct zink_sampler_view;
 #define ZINK_BATCH_DESC_SIZE 1000
 
 struct zink_batch {
+   unsigned batch_id : 2;
    VkCommandBuffer cmdbuf;
    VkDescriptorPool descpool;
    int descs_left;
@@ -64,8 +65,9 @@ void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch);
 
 void
-zink_batch_reference_resoure(struct zink_batch *batch,
-                             struct zink_resource *res);
+zink_batch_reference_resource_rw(struct zink_batch *batch,
+                                 struct zink_resource *res,
+                                 bool write);
 
 void
 zink_batch_reference_sampler_view(struct zink_batch *batch,

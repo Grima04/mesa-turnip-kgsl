@@ -28,8 +28,8 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
 
    struct zink_batch *batch = zink_batch_no_rp(ctx);
 
-   zink_batch_reference_resoure(batch, src);
-   zink_batch_reference_resoure(batch, dst);
+   zink_batch_reference_resource_rw(batch, src, false);
+   zink_batch_reference_resource_rw(batch, dst, true);
 
    zink_resource_setup_transfer_layouts(batch, src, dst);
 
@@ -88,8 +88,8 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
       return false;
 
    struct zink_batch *batch = zink_batch_no_rp(ctx);
-   zink_batch_reference_resoure(batch, src);
-   zink_batch_reference_resoure(batch, dst);
+   zink_batch_reference_resource_rw(batch, src, false);
+   zink_batch_reference_resource_rw(batch, dst, true);
 
    zink_resource_setup_transfer_layouts(batch, src, dst);
 

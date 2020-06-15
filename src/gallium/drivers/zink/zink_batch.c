@@ -9,6 +9,7 @@
 #include "zink_resource.h"
 #include "zink_screen.h"
 
+#include "util/hash_table.h"
 #include "util/u_debug.h"
 #include "util/set.h"
 
@@ -104,23 +105,32 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 }
 
 void
-zink_batch_reference_resoure(struct zink_batch *batch,
-                             struct zink_resource *res)
+zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource *res, bool write)
 {
+   unsigned mask = write ? ZINK_RESOURCE_ACCESS_WRITE : ZINK_RESOURCE_ACCESS_READ;
+
+   /* u_transfer_helper unrefs the stencil buffer when the depth buffer is unrefed,
+    * so we add an extra ref here to the stencil buffer to compensate
+    */
+   struct zink_resource *stencil;
+
+   zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
+
+
    struct set_entry *entry = _mesa_set_search(batch->resources, res);
    if (!entry) {
       entry = _mesa_set_add(batch->resources, res);
       pipe_reference(NULL, &res->base.reference);
-
-      /* u_transfer_helper unrefs the stencil buffer when the depth buffer is unrefed,
-       * so we add an extra ref here to the stencil buffer to compensate
-       */
-      struct zink_resource *stencil;
-
-      zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
       if (stencil)
          pipe_reference(NULL, &stencil->base.reference);
    }
+   /* the batch_uses value for this batch is guaranteed to not be in use now because
+    * reset_batch() waits on the fence and removes access before resetting
+    */
+   res->batch_uses[batch->batch_id] |= mask;
+
+   if (stencil)
+      stencil->batch_uses[batch->batch_id] |= mask;
 }
 
 void
