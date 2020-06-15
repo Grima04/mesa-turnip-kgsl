@@ -113,7 +113,6 @@ libvulkan_freedreno = shared_library(
   ],
   link_with : [
     libvulkan_wsi,
-    libfreedreno_drm, # required by ir3_shader_get_variant, which we don't use
     libfreedreno_ir3,
     libfreedreno_layout,
   ],
