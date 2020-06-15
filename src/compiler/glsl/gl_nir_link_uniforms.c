@@ -42,9 +42,6 @@ struct uniform_array_info {
 
    /** Set of bit-flags to note which array elements have been accessed. */
    BITSET_WORD *indices;
-
-   /** Have we rezized this array yet */
-   bool resized;
 };
 
 /**
@@ -133,12 +130,9 @@ update_array_sizes(struct gl_shader_program *prog, nir_variable *var,
          continue;
 
       struct hash_entry *entry =
-         _mesa_hash_table_search(referenced_uniforms[stage], var);
+         _mesa_hash_table_search(referenced_uniforms[stage], var->name);
       if (entry) {
          ainfo = (struct uniform_array_info *)  entry->data;
-         if (ainfo->resized)
-            return;
-
          max_array_size = MAX2(BITSET_LAST_BIT(ainfo->indices, words),
                                max_array_size);
       }
@@ -172,7 +166,7 @@ update_array_sizes(struct gl_shader_program *prog, nir_variable *var,
             continue;
 
          struct hash_entry *entry =
-            _mesa_hash_table_search(referenced_uniforms[stage], var);
+            _mesa_hash_table_search(referenced_uniforms[stage], var->name);
          if (entry) {
             struct uniform_array_info *ainfo =
                (struct uniform_array_info *) entry->data;
@@ -181,9 +175,6 @@ update_array_sizes(struct gl_shader_program *prog, nir_variable *var,
             }
          }
       }
-
-      if (ainfo)
-         ainfo->resized = true;
    }
 }
 
@@ -467,7 +458,7 @@ add_var_use_deref(nir_deref_instr *deref, struct hash_table *live,
    struct uniform_array_info *ainfo = NULL;
 
    struct hash_entry *entry =
-      _mesa_hash_table_search(live, deref->var);
+      _mesa_hash_table_search(live, deref->var->name);
    if (!entry && glsl_type_is_array(deref->var->type)) {
       ainfo = ralloc(live, struct uniform_array_info);
 
@@ -476,8 +467,6 @@ add_var_use_deref(nir_deref_instr *deref, struct hash_table *live,
 
       ainfo->deref_list = ralloc(live, struct util_dynarray);
       util_dynarray_init(ainfo->deref_list, live);
-
-      ainfo->resized = false;
    }
 
    if (entry)
@@ -499,7 +488,7 @@ add_var_use_deref(nir_deref_instr *deref, struct hash_table *live,
    }
 
    assert(deref->mode == deref->var->data.mode);
-   _mesa_hash_table_insert(live, deref->var, ainfo);
+   _mesa_hash_table_insert(live, deref->var->name, ainfo);
 }
 
 /* Iterate over the shader and collect infomation about uniform use */
@@ -946,11 +935,12 @@ find_and_update_named_uniform_storage(struct gl_context *ctx,
          update_uniforms_shader_info(prog, state, uniform, type, stage);
 
          const struct glsl_type *type_no_array = glsl_without_array(type);
-         struct hash_entry *entry =
+         struct hash_entry *entry = prog->data->spirv ? NULL :
             _mesa_hash_table_search(state->referenced_uniforms[stage],
-                                    state->current_var);
+                                    state->current_var->name);
          if (entry != NULL ||
-             glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE)
+             glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE ||
+             prog->data->spirv)
             uniform->active_shader_mask |= 1 << stage;
 
          if (!state->var_is_in_block)
@@ -1329,11 +1319,12 @@ nir_link_uniform(struct gl_context *ctx,
       uniform->top_level_array_size = state->top_level_array_size;
       uniform->top_level_array_stride = state->top_level_array_stride;
 
-      struct hash_entry *entry =
+      struct hash_entry *entry = prog->data->spirv ? NULL :
          _mesa_hash_table_search(state->referenced_uniforms[stage],
-                                 state->current_var);
+                                 state->current_var->name);
       if (entry != NULL ||
-          glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE)
+          glsl_get_base_type(type_no_array) == GLSL_TYPE_SUBROUTINE ||
+          prog->data->spirv)
          uniform->active_shader_mask |= 1 << stage;
 
       if (location >= 0) {
@@ -1508,29 +1499,31 @@ gl_nir_link_uniforms(struct gl_context *ctx,
    /* Iterate through all linked shaders */
    struct nir_link_uniforms_state state = {0,};
 
-   /* Gather information on uniform use */
-   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
-      if (!sh)
-         continue;
+   if (!prog->data->spirv) {
+      /* Gather information on uniform use */
+      for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+         struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+         if (!sh)
+            continue;
 
-      state.referenced_uniforms[stage] =
-         _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                 _mesa_key_pointer_equal);
+         state.referenced_uniforms[stage] =
+            _mesa_hash_table_create(NULL, _mesa_hash_string,
+                                    _mesa_key_string_equal);
 
-      nir_shader *nir = sh->Program->nir;
-      add_var_use_shader(nir, state.referenced_uniforms[stage]);
-   }
+         nir_shader *nir = sh->Program->nir;
+         add_var_use_shader(nir, state.referenced_uniforms[stage]);
+      }
 
-   /* Resize uniform arrays based on the maximum array index */
-   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-      struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
-      if (!sh)
-         continue;
+      /* Resize uniform arrays based on the maximum array index */
+      for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+         struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+         if (!sh)
+            continue;
 
-      nir_shader *nir = sh->Program->nir;
-      nir_foreach_variable(var, &nir->uniforms)
-         update_array_sizes(prog, var, state.referenced_uniforms);
+         nir_shader *nir = sh->Program->nir;
+         nir_foreach_variable(var, &nir->uniforms)
+            update_array_sizes(prog, var, state.referenced_uniforms);
+      }
    }
 
    /* Count total number of uniforms and allocate storage */
@@ -1689,7 +1682,8 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                         buffer_block_index = i;
 
                      struct hash_entry *entry =
-                        _mesa_hash_table_search(state.referenced_uniforms[shader_type], var);
+                        _mesa_hash_table_search(state.referenced_uniforms[shader_type],
+                                                var->name);
                      if (entry) {
                         struct uniform_array_info *ainfo =
                            (struct uniform_array_info *) entry->data;
@@ -1704,7 +1698,8 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                      buffer_block_index = i;
 
                      struct hash_entry *entry =
-                        _mesa_hash_table_search(state.referenced_uniforms[shader_type], var);
+                        _mesa_hash_table_search(state.referenced_uniforms[shader_type],
+                                                var->name);
                      if (entry)
                         blocks[i].stageref |= 1U << shader_type;
 
@@ -1767,7 +1762,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
                      location = j;
 
                      struct hash_entry *entry =
-                        _mesa_hash_table_search(state.referenced_uniforms[shader_type], var);
+                        _mesa_hash_table_search(state.referenced_uniforms[shader_type], var->name);
                      if (entry)
                         blocks[i].stageref |= 1U << shader_type;
 
@@ -1824,7 +1819,10 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             return false;
       }
 
-      _mesa_hash_table_destroy(state.referenced_uniforms[shader_type], NULL);
+      if (!prog->data->spirv) {
+         _mesa_hash_table_destroy(state.referenced_uniforms[shader_type],
+                                  NULL);
+      }
 
       if (state.num_shader_samplers >
           ctx->Const.Program[shader_type].MaxTextureImageUnits) {
