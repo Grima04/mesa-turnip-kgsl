@@ -97,7 +97,7 @@ static const struct debug_named_value lp_perf_flags[] = {
 static const char *
 llvmpipe_get_vendor(struct pipe_screen *screen)
 {
-   return "VMware, Inc.";
+   return "Mesa/X.org";
 }
 
 
