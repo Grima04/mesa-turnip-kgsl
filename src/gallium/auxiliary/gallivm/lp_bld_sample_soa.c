@@ -3845,6 +3845,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
    LLVMValueRef context_ptr = params->context_ptr;
    unsigned texture_unit = params->texture_unit;
    unsigned target = params->target;
+   LLVMValueRef texture_unit_offset = params->texture_unit_offset;
 
    if (static_state->format == PIPE_FORMAT_NONE) {
       /*
@@ -3906,7 +3907,8 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
    if (params->samples_only) {
       params->sizes_out[0] = lp_build_broadcast(gallivm, lp_build_vec_type(gallivm, params->int_type),
                                                 dynamic_state->num_samples(dynamic_state, gallivm,
-                                                                           context_ptr, texture_unit, NULL));
+                                                                           context_ptr, texture_unit,
+                                                                           texture_unit_offset));
       return;
    }
    if (params->explicit_lod) {
@@ -3914,7 +3916,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
       lod = LLVMBuildExtractElement(gallivm->builder, params->explicit_lod,
                                     lp_build_const_int32(gallivm, 0), "");
       first_level = dynamic_state->first_level(dynamic_state, gallivm,
-                                               context_ptr, texture_unit, NULL);
+                                               context_ptr, texture_unit, texture_unit_offset);
       level = LLVMBuildAdd(gallivm->builder, lod, first_level, "level");
       lod = lp_build_broadcast_scalar(&bld_int_vec4, level);
    } else {
@@ -3925,20 +3927,20 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
 
    size = LLVMBuildInsertElement(gallivm->builder, size,
                                  dynamic_state->width(dynamic_state, gallivm,
-                                                      context_ptr, texture_unit, NULL),
+                                                      context_ptr, texture_unit, texture_unit_offset),
                                  lp_build_const_int32(gallivm, 0), "");
 
    if (dims >= 2) {
       size = LLVMBuildInsertElement(gallivm->builder, size,
                                     dynamic_state->height(dynamic_state, gallivm,
-                                                          context_ptr, texture_unit, NULL),
+                                                          context_ptr, texture_unit, texture_unit_offset),
                                     lp_build_const_int32(gallivm, 1), "");
    }
 
    if (dims >= 3) {
       size = LLVMBuildInsertElement(gallivm->builder, size,
                                     dynamic_state->depth(dynamic_state, gallivm,
-                                                         context_ptr, texture_unit, NULL),
+                                                         context_ptr, texture_unit, texture_unit_offset),
                                     lp_build_const_int32(gallivm, 2), "");
    }
 
@@ -3946,7 +3948,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
 
    if (has_array) {
       LLVMValueRef layers = dynamic_state->depth(dynamic_state, gallivm,
-                                                 context_ptr, texture_unit, NULL);
+                                                 context_ptr, texture_unit, texture_unit_offset);
       if (target == PIPE_TEXTURE_CUBE_ARRAY) {
          /*
           * It looks like GL wants number of cubes, d3d10.1 has it undefined?
@@ -3972,7 +3974,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
       /* everything is scalar for now */
       lp_build_context_init(&leveli_bld, gallivm, lp_type_int_vec(32, 32));
       last_level = dynamic_state->last_level(dynamic_state, gallivm,
-                                             context_ptr, texture_unit, NULL);
+                                             context_ptr, texture_unit, texture_unit_offset);
 
       out = lp_build_cmp(&leveli_bld, PIPE_FUNC_LESS, level, first_level);
       out1 = lp_build_cmp(&leveli_bld, PIPE_FUNC_GREATER, level, last_level);
@@ -4013,7 +4015,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
          LLVMValueRef last_level;
 
          last_level = dynamic_state->last_level(dynamic_state, gallivm,
-                                                context_ptr, texture_unit, NULL);
+                                                context_ptr, texture_unit, texture_unit_offset);
          num_levels = lp_build_sub(&bld_int_scalar, last_level, first_level);
          num_levels = lp_build_add(&bld_int_scalar, num_levels, bld_int_scalar.one);
       }
