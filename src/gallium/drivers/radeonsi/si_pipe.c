@@ -194,9 +194,9 @@ static void si_destroy_context(struct pipe_context *context)
    si_resource_reference(&sctx->wait_mem_scratch, NULL);
    si_resource_reference(&sctx->small_prim_cull_info_buf, NULL);
 
-   si_pm4_free_state(sctx, sctx->init_config, ~0);
-   if (sctx->init_config_gs_rings)
-      si_pm4_free_state(sctx, sctx->init_config_gs_rings, ~0);
+   si_pm4_free_state(sctx, sctx->cs_preamble_state, ~0);
+   if (sctx->cs_preamble_gs_rings)
+      si_pm4_free_state(sctx, sctx->cs_preamble_gs_rings, ~0);
    for (i = 0; i < ARRAY_SIZE(sctx->vgt_shader_config); i++)
       si_pm4_delete_state(sctx, vgt_shader_config, sctx->vgt_shader_config[i]);
 
@@ -550,6 +550,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       si_init_msaa_functions(sctx);
       si_init_shader_functions(sctx);
       si_init_state_functions(sctx);
+      si_init_cs_preamble_state(sctx);
       si_init_streamout_functions(sctx);
       si_init_viewport_functions(sctx);
 

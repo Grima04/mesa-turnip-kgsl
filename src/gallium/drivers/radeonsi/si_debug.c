@@ -411,12 +411,12 @@ static void si_log_chunk_type_cs_print(void *data, FILE *f)
 
    if (chunk->gfx_end != chunk->gfx_begin) {
       if (chunk->gfx_begin == 0) {
-         if (ctx->init_config)
-            ac_parse_ib(f, ctx->init_config->pm4, ctx->init_config->ndw, NULL, 0,
+         if (ctx->cs_preamble_state)
+            ac_parse_ib(f, ctx->cs_preamble_state->pm4, ctx->cs_preamble_state->ndw, NULL, 0,
                         "IB2: Init config", ctx->chip_class, NULL, NULL);
 
-         if (ctx->init_config_gs_rings)
-            ac_parse_ib(f, ctx->init_config_gs_rings->pm4, ctx->init_config_gs_rings->ndw, NULL, 0,
+         if (ctx->cs_preamble_gs_rings)
+            ac_parse_ib(f, ctx->cs_preamble_gs_rings->pm4, ctx->cs_preamble_gs_rings->ndw, NULL, 0,
                         "IB2: Init GS rings", ctx->chip_class, NULL, NULL);
       }
 

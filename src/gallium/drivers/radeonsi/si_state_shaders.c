@@ -3295,21 +3295,21 @@ static void si_emit_spi_map(struct si_context *sctx)
 /**
  * Writing CONFIG or UCONFIG VGT registers requires VGT_FLUSH before that.
  */
-static void si_init_config_add_vgt_flush(struct si_context *sctx)
+static void si_cs_preamble_add_vgt_flush(struct si_context *sctx)
 {
-   if (sctx->init_config_has_vgt_flush)
+   if (sctx->cs_preamble_has_vgt_flush)
       return;
 
    /* Done by Vulkan before VGT_FLUSH. */
-   si_pm4_cmd_begin(sctx->init_config, PKT3_EVENT_WRITE);
-   si_pm4_cmd_add(sctx->init_config, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
-   si_pm4_cmd_end(sctx->init_config, false);
+   si_pm4_cmd_begin(sctx->cs_preamble_state, PKT3_EVENT_WRITE);
+   si_pm4_cmd_add(sctx->cs_preamble_state, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+   si_pm4_cmd_end(sctx->cs_preamble_state, false);
 
    /* VGT_FLUSH is required even if VGT is idle. It resets VGT pointers. */
-   si_pm4_cmd_begin(sctx->init_config, PKT3_EVENT_WRITE);
-   si_pm4_cmd_add(sctx->init_config, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
-   si_pm4_cmd_end(sctx->init_config, false);
-   sctx->init_config_has_vgt_flush = true;
+   si_pm4_cmd_begin(sctx->cs_preamble_state, PKT3_EVENT_WRITE);
+   si_pm4_cmd_add(sctx->cs_preamble_state, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+   si_pm4_cmd_end(sctx->cs_preamble_state, false);
+   sctx->cs_preamble_has_vgt_flush = true;
 }
 
 /* Initialize state related to ESGS / GSVS ring buffers */
@@ -3378,7 +3378,7 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
          return false;
    }
 
-   /* Create the "init_config_gs_rings" state. */
+   /* Create the "cs_preamble_gs_rings" state. */
    pm4 = CALLOC_STRUCT(si_pm4_state);
    if (!pm4)
       return false;
@@ -3398,15 +3398,15 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
    }
 
    /* Set the state. */
-   if (sctx->init_config_gs_rings)
-      si_pm4_free_state(sctx, sctx->init_config_gs_rings, ~0);
-   sctx->init_config_gs_rings = pm4;
+   if (sctx->cs_preamble_gs_rings)
+      si_pm4_free_state(sctx, sctx->cs_preamble_gs_rings, ~0);
+   sctx->cs_preamble_gs_rings = pm4;
 
-   if (!sctx->init_config_has_vgt_flush) {
-      si_init_config_add_vgt_flush(sctx);
+   if (!sctx->cs_preamble_has_vgt_flush) {
+      si_cs_preamble_add_vgt_flush(sctx);
    }
 
-   /* Flush the context to re-emit both init_config states. */
+   /* Flush the context to re-emit both cs_preamble states. */
    sctx->initial_gfx_cs_size = 0; /* force flush */
    si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 
@@ -3638,9 +3638,9 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
    if (!sctx->tess_rings)
       return;
 
-   si_init_config_add_vgt_flush(sctx);
+   si_cs_preamble_add_vgt_flush(sctx);
 
-   si_pm4_add_bo(sctx->init_config, si_resource(sctx->tess_rings), RADEON_USAGE_READWRITE,
+   si_pm4_add_bo(sctx->cs_preamble_state, si_resource(sctx->tess_rings), RADEON_USAGE_READWRITE,
                  RADEON_PRIO_SHADER_RINGS);
 
    uint64_t factor_va =
@@ -3648,26 +3648,26 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
 
    /* Append these registers to the init config state. */
    if (sctx->chip_class >= GFX7) {
-      si_pm4_set_reg(sctx->init_config, R_030938_VGT_TF_RING_SIZE,
+      si_pm4_set_reg(sctx->cs_preamble_state, R_030938_VGT_TF_RING_SIZE,
                      S_030938_SIZE(sctx->screen->tess_factor_ring_size / 4));
-      si_pm4_set_reg(sctx->init_config, R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
+      si_pm4_set_reg(sctx->cs_preamble_state, R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
       if (sctx->chip_class >= GFX10)
-         si_pm4_set_reg(sctx->init_config, R_030984_VGT_TF_MEMORY_BASE_HI_UMD,
+         si_pm4_set_reg(sctx->cs_preamble_state, R_030984_VGT_TF_MEMORY_BASE_HI_UMD,
                         S_030984_BASE_HI(factor_va >> 40));
       else if (sctx->chip_class == GFX9)
-         si_pm4_set_reg(sctx->init_config, R_030944_VGT_TF_MEMORY_BASE_HI,
+         si_pm4_set_reg(sctx->cs_preamble_state, R_030944_VGT_TF_MEMORY_BASE_HI,
                         S_030944_BASE_HI(factor_va >> 40));
-      si_pm4_set_reg(sctx->init_config, R_03093C_VGT_HS_OFFCHIP_PARAM,
+      si_pm4_set_reg(sctx->cs_preamble_state, R_03093C_VGT_HS_OFFCHIP_PARAM,
                      sctx->screen->vgt_hs_offchip_param);
    } else {
-      si_pm4_set_reg(sctx->init_config, R_008988_VGT_TF_RING_SIZE,
+      si_pm4_set_reg(sctx->cs_preamble_state, R_008988_VGT_TF_RING_SIZE,
                      S_008988_SIZE(sctx->screen->tess_factor_ring_size / 4));
-      si_pm4_set_reg(sctx->init_config, R_0089B8_VGT_TF_MEMORY_BASE, factor_va >> 8);
-      si_pm4_set_reg(sctx->init_config, R_0089B0_VGT_HS_OFFCHIP_PARAM,
+      si_pm4_set_reg(sctx->cs_preamble_state, R_0089B8_VGT_TF_MEMORY_BASE, factor_va >> 8);
+      si_pm4_set_reg(sctx->cs_preamble_state, R_0089B0_VGT_HS_OFFCHIP_PARAM,
                      sctx->screen->vgt_hs_offchip_param);
    }
 
-   /* Flush the context to re-emit the init_config state.
+   /* Flush the context to re-emit the cs_preamble state.
     * This is done only once in a lifetime of a context.
     */
    sctx->initial_gfx_cs_size = 0; /* force flush */

@@ -3248,7 +3248,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
    }
 
    /* Framebuffer dimensions. */
-   /* PA_SC_WINDOW_SCISSOR_TL is set in si_init_config() */
+   /* PA_SC_WINDOW_SCISSOR_TL is set in si_init_cs_preamble_state */
    radeon_set_context_reg(cs, R_028208_PA_SC_WINDOW_SCISSOR_BR,
                           S_028208_BR_X(state->width) | S_028208_BR_Y(state->height));
 
@@ -4980,8 +4980,6 @@ static void *si_create_blend_custom(struct si_context *sctx, unsigned mode)
    return si_create_blend_state_mode(&sctx->b, &blend, mode);
 }
 
-static void si_init_config(struct si_context *sctx);
-
 void si_init_state_compute_functions(struct si_context *sctx)
 {
    sctx->b.create_sampler_state = si_create_sampler_state;
@@ -5042,8 +5040,6 @@ void si_init_state_functions(struct si_context *sctx)
    sctx->b.set_tess_state = si_set_tess_state;
 
    sctx->b.set_active_query_state = si_set_active_query_state;
-
-   si_init_config(sctx);
 }
 
 void si_init_screen_state_functions(struct si_screen *sscreen)
@@ -5112,7 +5108,7 @@ static void si_set_raster_config(struct si_context *sctx, struct si_pm4_state *p
    }
 }
 
-static void si_init_config(struct si_context *sctx)
+void si_init_cs_preamble_state(struct si_context *sctx)
 {
    struct si_screen *sscreen = sctx->screen;
    uint64_t border_color_va = sctx->border_color_buffer->gpu_address;
@@ -5358,5 +5354,5 @@ static void si_init_config(struct si_context *sctx)
       si_pm4_set_reg(pm4, R_030968_VGT_INSTANCE_BASE_ID, 0);
    }
 
-   sctx->init_config = pm4;
+   sctx->cs_preamble_state = pm4;
 }

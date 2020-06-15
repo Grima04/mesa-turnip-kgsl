@@ -421,9 +421,9 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
    si_pm4_reset_emitted(ctx);
 
    /* The CS initialization should be emitted before everything else. */
-   si_pm4_emit(ctx, ctx->init_config);
-   if (ctx->init_config_gs_rings)
-      si_pm4_emit(ctx, ctx->init_config_gs_rings);
+   si_pm4_emit(ctx, ctx->cs_preamble_state);
+   if (ctx->cs_preamble_gs_rings)
+      si_pm4_emit(ctx, ctx->cs_preamble_gs_rings);
 
    if (ctx->queued.named.ls)
       ctx->prefetch_L2_mask |= SI_PREFETCH_LS;

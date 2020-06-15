@@ -1011,9 +1011,9 @@ struct si_context {
    struct pipe_scissor_state window_rectangles[4];
 
    /* Precomputed states. */
-   struct si_pm4_state *init_config;
-   struct si_pm4_state *init_config_gs_rings;
-   bool init_config_has_vgt_flush;
+   struct si_pm4_state *cs_preamble_state;
+   struct si_pm4_state *cs_preamble_gs_rings;
+   bool cs_preamble_has_vgt_flush;
    struct si_pm4_state *vgt_shader_config[SI_NUM_VGT_STAGES_STATES];
 
    /* shaders */
