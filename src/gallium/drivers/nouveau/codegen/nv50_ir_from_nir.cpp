@@ -921,18 +921,8 @@ bool Converter::assignSlots() {
    info->io.viewportId = -1;
    info->numInputs = 0;
    info->numOutputs = 0;
-
-   // we have to fixup the uniform locations for arrays
-   unsigned numImages = 0;
-   nir_foreach_variable(var, &nir->uniforms) {
-      const glsl_type *type = var->type;
-      if (!type->without_array()->is_image())
-         continue;
-      var->data.driver_location = numImages;
-      numImages += type->is_array() ? type->arrays_of_arrays_size() : 1;
-   }
-
    info->numSysVals = 0;
+
    for (uint8_t i = 0; i < SYSTEM_VALUE_MAX; ++i) {
       if (!(nir->info.system_values_read & 1ull << i))
          continue;
