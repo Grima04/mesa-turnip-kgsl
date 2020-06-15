@@ -16,178 +16,10 @@
 #include "util/format_srgb.h"
 #include "util/u_half.h"
 
-/* helper functions previously in tu_formats.c */
-
-static uint32_t
-tu_pack_mask(int bits)
-{
-   assert(bits <= 32);
-   return (1ull << bits) - 1;
-}
-
 static uint32_t
 tu_pack_float32_for_unorm(float val, int bits)
 {
-   const uint32_t max = tu_pack_mask(bits);
-   if (val < 0.0f)
-      return 0;
-   else if (val > 1.0f)
-      return max;
-   else
-      return _mesa_lroundevenf(val * (float) max);
-}
-
-static uint32_t
-tu_pack_float32_for_snorm(float val, int bits)
-{
-   const int32_t max = tu_pack_mask(bits - 1);
-   int32_t tmp;
-   if (val < -1.0f)
-      tmp = -max;
-   else if (val > 1.0f)
-      tmp = max;
-   else
-      tmp = _mesa_lroundevenf(val * (float) max);
-
-   return tmp & tu_pack_mask(bits);
-}
-
-static uint32_t
-tu_pack_float32_for_uscaled(float val, int bits)
-{
-   const uint32_t max = tu_pack_mask(bits);
-   if (val < 0.0f)
-      return 0;
-   else if (val > (float) max)
-      return max;
-   else
-      return (uint32_t) val;
-}
-
-static uint32_t
-tu_pack_float32_for_sscaled(float val, int bits)
-{
-   const int32_t max = tu_pack_mask(bits - 1);
-   const int32_t min = -max - 1;
-   int32_t tmp;
-   if (val < (float) min)
-      tmp = min;
-   else if (val > (float) max)
-      tmp = max;
-   else
-      tmp = (int32_t) val;
-
-   return tmp & tu_pack_mask(bits);
-}
-
-static uint32_t
-tu_pack_uint32_for_uint(uint32_t val, int bits)
-{
-   return val & tu_pack_mask(bits);
-}
-
-static uint32_t
-tu_pack_int32_for_sint(int32_t val, int bits)
-{
-   return val & tu_pack_mask(bits);
-}
-
-static uint32_t
-tu_pack_float32_for_sfloat(float val, int bits)
-{
-   assert(bits == 16 || bits == 32);
-   return bits == 16 ? util_float_to_half(val) : fui(val);
-}
-
-union tu_clear_component_value {
-   float float32;
-   int32_t int32;
-   uint32_t uint32;
-};
-
-static uint32_t
-tu_pack_clear_component_value(union tu_clear_component_value val,
-                              const struct util_format_channel_description *ch)
-{
-   uint32_t packed;
-
-   switch (ch->type) {
-   case UTIL_FORMAT_TYPE_UNSIGNED:
-      /* normalized, scaled, or pure integer */
-      if (ch->normalized)
-         packed = tu_pack_float32_for_unorm(val.float32, ch->size);
-      else if (ch->pure_integer)
-         packed = tu_pack_uint32_for_uint(val.uint32, ch->size);
-      else
-         packed = tu_pack_float32_for_uscaled(val.float32, ch->size);
-      break;
-   case UTIL_FORMAT_TYPE_SIGNED:
-      /* normalized, scaled, or pure integer */
-      if (ch->normalized)
-         packed = tu_pack_float32_for_snorm(val.float32, ch->size);
-      else if (ch->pure_integer)
-         packed = tu_pack_int32_for_sint(val.int32, ch->size);
-      else
-         packed = tu_pack_float32_for_sscaled(val.float32, ch->size);
-      break;
-   case UTIL_FORMAT_TYPE_FLOAT:
-      packed = tu_pack_float32_for_sfloat(val.float32, ch->size);
-      break;
-   default:
-      unreachable("unexpected channel type");
-      packed = 0;
-      break;
-   }
-
-   assert((packed & tu_pack_mask(ch->size)) == packed);
-   return packed;
-}
-
-static const struct util_format_channel_description *
-tu_get_format_channel_description(const struct util_format_description *desc,
-                                  int comp)
-{
-   switch (desc->swizzle[comp]) {
-   case PIPE_SWIZZLE_X:
-      return &desc->channel[0];
-   case PIPE_SWIZZLE_Y:
-      return &desc->channel[1];
-   case PIPE_SWIZZLE_Z:
-      return &desc->channel[2];
-   case PIPE_SWIZZLE_W:
-      return &desc->channel[3];
-   default:
-      return NULL;
-   }
-}
-
-static union tu_clear_component_value
-tu_get_clear_component_value(const VkClearValue *val, int comp,
-                             enum util_format_colorspace colorspace)
-{
-   assert(comp < 4);
-
-   union tu_clear_component_value tmp;
-   switch (colorspace) {
-   case UTIL_FORMAT_COLORSPACE_ZS:
-      assert(comp < 2);
-      if (comp == 0)
-         tmp.float32 = val->depthStencil.depth;
-      else
-         tmp.uint32 = val->depthStencil.stencil;
-      break;
-   case UTIL_FORMAT_COLORSPACE_SRGB:
-      if (comp < 3) {
-         tmp.float32 = util_format_linear_to_srgb_float(val->color.float32[comp]);
-         break;
-      }
-   default:
-      assert(comp < 4);
-      tmp.uint32 = val->color.uint32[comp];
-      break;
-   }
-
-   return tmp;
+   return _mesa_lroundevenf(CLAMP(val, 0.0f, 1.0f) * (float) ((1 << bits) - 1));
 }
 
 /* r2d_ = BLIT_OP_SCALE operations */
@@ -323,7 +155,7 @@ r2d_clear_value(struct tu_cs *cs, VkFormat format, const VkClearValue *val)
                linear = util_format_linear_to_srgb_float(val->color.float32[i]);
 
             if (ch->type == UTIL_FORMAT_TYPE_SIGNED)
-               clear_value[i] = tu_pack_float32_for_snorm(linear, 8);
+               clear_value[i] = _mesa_lroundevenf(CLAMP(linear, -1.0f, 1.0f) * 127.0f);
             else
                clear_value[i] = tu_pack_float32_for_unorm(linear, 8);
          } else if (ifmt == R2D_FLOAT16) {
@@ -2186,60 +2018,47 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    }
 }
 
-/**
- * Pack a VkClearValue into a 128-bit buffer. format is respected except
- * for the component order.  The components are always packed in WZYX order,
- * because gmem is tiled and tiled formats always have WZYX swap
- */
 static void
-pack_gmem_clear_value(const VkClearValue *val, VkFormat format, uint32_t buf[4])
+pack_gmem_clear_value(const VkClearValue *val, VkFormat format, uint32_t clear_value[4])
 {
-   const struct util_format_description *desc = vk_format_description(format);
+   enum pipe_format pformat = vk_format_to_pipe_format(format);
 
    switch (format) {
-   case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
-      buf[0] = float3_to_r11g11b10f(val->color.float32);
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      clear_value[0] = tu_pack_float32_for_unorm(val->depthStencil.depth, 24) |
+                       val->depthStencil.stencil << 24;
       return;
-   case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
-      buf[0] = float3_to_rgb9e5(val->color.float32);
+   case VK_FORMAT_D16_UNORM:
+      clear_value[0] = tu_pack_float32_for_unorm(val->depthStencil.depth, 16);
       return;
+   case VK_FORMAT_D32_SFLOAT:
+      clear_value[0] = fui(val->depthStencil.depth);
+      return;
+   case VK_FORMAT_S8_UINT:
+      clear_value[0] = val->depthStencil.stencil;
+      return;
+   /* these formats use a different base format when tiled
+    * the same format can be used for both because GMEM is always in WZYX order
+    */
+   case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
+   case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
+      pformat = PIPE_FORMAT_B5G5R5A1_UNORM;
    default:
       break;
    }
 
-   assert(desc && desc->layout == UTIL_FORMAT_LAYOUT_PLAIN);
+   VkClearColorValue color;
 
-   /* S8_UINT is special and has no depth */
-   const int max_components =
-      format == VK_FORMAT_S8_UINT ? 2 : desc->nr_channels;
+   /**
+    * GMEM is tiled and wants the components in WZYX order,
+    * apply swizzle to the color before packing, to counteract
+    * deswizzling applied by packing functions
+    */
+   pipe_swizzle_4f(color.float32, val->color.float32,
+                   util_format_description(pformat)->swizzle);
 
-   int buf_offset = 0;
-   int bit_shift = 0;
-   for (int comp = 0; comp < max_components; comp++) {
-      const struct util_format_channel_description *ch =
-         tu_get_format_channel_description(desc, comp);
-      if (!ch) {
-         assert((format == VK_FORMAT_S8_UINT && comp == 0) ||
-                (format == VK_FORMAT_X8_D24_UNORM_PACK32 && comp == 1));
-         continue;
-      }
-
-      union tu_clear_component_value v = tu_get_clear_component_value(
-         val, comp, desc->colorspace);
-
-      /* move to the next uint32_t when there is not enough space */
-      assert(ch->size <= 32);
-      if (bit_shift + ch->size > 32) {
-         buf_offset++;
-         bit_shift = 0;
-      }
-
-      if (bit_shift == 0)
-         buf[buf_offset] = 0;
-
-      buf[buf_offset] |= tu_pack_clear_component_value(v, ch) << bit_shift;
-      bit_shift += ch->size;
-   }
+   util_format_pack_rgba(pformat, clear_value, color.uint32, 1);
 }
 
 static void
