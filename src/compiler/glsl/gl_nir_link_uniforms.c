@@ -97,7 +97,8 @@ uniform_storage_size(const struct glsl_type *type)
  */
 static void
 update_array_sizes(struct gl_shader_program *prog, nir_variable *var,
-                   struct hash_table **referenced_uniforms)
+                   struct hash_table **referenced_uniforms,
+                   unsigned current_var_stage)
 {
    /* For now we only resize 1D arrays.
     * TODO: add support for resizing more complex array types ??
@@ -160,19 +161,13 @@ update_array_sizes(struct gl_shader_program *prog, nir_variable *var,
                                   max_array_size, 0);
 
       /* Update the types of dereferences in case we changed any. */
-      for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
-         struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
-         if (!sh)
-            continue;
-
-         struct hash_entry *entry =
-            _mesa_hash_table_search(referenced_uniforms[stage], var->name);
-         if (entry) {
-            struct uniform_array_info *ainfo =
-               (struct uniform_array_info *) entry->data;
-            util_dynarray_foreach(ainfo->deref_list, nir_deref_instr *, deref) {
-               (*deref)->type = var->type;
-            }
+      struct hash_entry *entry =
+         _mesa_hash_table_search(referenced_uniforms[current_var_stage], var->name);
+      if (entry) {
+         struct uniform_array_info *ainfo =
+            (struct uniform_array_info *) entry->data;
+         util_dynarray_foreach(ainfo->deref_list, nir_deref_instr *, deref) {
+            (*deref)->type = var->type;
          }
       }
    }
@@ -1522,7 +1517,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
 
          nir_shader *nir = sh->Program->nir;
          nir_foreach_variable(var, &nir->uniforms)
-            update_array_sizes(prog, var, state.referenced_uniforms);
+            update_array_sizes(prog, var, state.referenced_uniforms, stage);
       }
    }
 
