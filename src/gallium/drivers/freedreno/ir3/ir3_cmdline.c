@@ -491,7 +491,7 @@ int main(int argc, char **argv)
 	s.compiler = compiler;
 	s.nir = nir;
 
-	ir3_optimize_nir(&s, nir);
+	ir3_finalize_nir(compiler, nir);
 
 	v.key = key;
 	v.shader = &s;

@@ -215,14 +215,14 @@ should_split_wrmask(const nir_instr *instr, const void *data)
 }
 
 void
-ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s)
+ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 {
 	struct nir_lower_tex_options tex_options = {
 			.lower_rect = 0,
 			.lower_tg4_offsets = true,
 	};
 
-	if (shader->compiler->gpu_id >= 400) {
+	if (compiler->gpu_id >= 400) {
 		/* a4xx seems to have *no* sam.p */
 		tex_options.lower_txp = ~0;  /* lower all txp */
 	} else {
@@ -236,17 +236,19 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s)
 		debug_printf("----------------------\n");
 	}
 
+	if (s->info.stage == MESA_SHADER_GEOMETRY)
+		NIR_PASS_V(s, ir3_nir_lower_gs);
+
+	NIR_PASS_V(s, nir_lower_io_arrays_to_elements_no_indirects, false);
+
+	NIR_PASS_V(s, nir_lower_amul, ir3_glsl_type_size);
+
 	OPT_V(s, nir_lower_regs_to_ssa);
 	OPT_V(s, nir_lower_wrmasks, should_split_wrmask, s);
 
-	OPT_V(s, ir3_nir_apply_trig_workarounds);
-
-	if (shader->type == MESA_SHADER_FRAGMENT)
-		OPT_V(s, nir_lower_fb_read);
-
 	OPT_V(s, nir_lower_tex, &tex_options);
 	OPT_V(s, nir_lower_load_const_to_scalar);
-	if (shader->compiler->gpu_id < 500)
+	if (compiler->gpu_id < 500)
 		OPT_V(s, ir3_nir_lower_tg4_to_tex);
 
 	ir3_optimize_loop(s);
@@ -268,6 +270,39 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s)
 	}
 
 	nir_sweep(s);
+}
+
+/**
+ * Late passes that need to be done after pscreen->finalize_nir()
+ */
+void
+ir3_nir_post_finalize(struct ir3_compiler *compiler, nir_shader *s)
+{
+	NIR_PASS_V(s, nir_lower_io, nir_var_all, ir3_glsl_type_size,
+			   (nir_lower_io_options)0);
+
+	if (s->info.stage == MESA_SHADER_FRAGMENT) {
+		/* NOTE: lower load_barycentric_at_sample first, since it
+		 * produces load_barycentric_at_offset:
+		 */
+		NIR_PASS_V(s, ir3_nir_lower_load_barycentric_at_sample);
+		NIR_PASS_V(s, ir3_nir_lower_load_barycentric_at_offset);
+		NIR_PASS_V(s, ir3_nir_move_varying_inputs);
+		NIR_PASS_V(s, nir_lower_fb_read);
+	}
+
+	if (compiler->gpu_id >= 600 &&
+			s->info.stage == MESA_SHADER_FRAGMENT &&
+			!(ir3_shader_debug & IR3_DBG_NOFP16)) {
+		NIR_PASS_V(s, nir_lower_mediump_outputs);
+	}
+
+	/* we cannot ensure that ir3_finalize_nir() is only called once, so
+	 * we also need to do trig workarounds here:
+	 */
+	OPT_V(s, ir3_nir_apply_trig_workarounds);
+
+	ir3_optimize_loop(s);
 }
 
 void

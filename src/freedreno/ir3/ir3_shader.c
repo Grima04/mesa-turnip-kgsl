@@ -409,35 +409,12 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 		memcpy(&shader->stream_output, stream_output, sizeof(shader->stream_output));
 	shader->num_reserved_user_consts = reserved_user_consts;
 
-	if (nir->info.stage == MESA_SHADER_GEOMETRY)
-		NIR_PASS_V(nir, ir3_nir_lower_gs);
+	ir3_nir_post_finalize(compiler, nir);
 
-	NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size,
-			   (nir_lower_io_options)0);
-
-	if (compiler->gpu_id >= 600 &&
-			nir->info.stage == MESA_SHADER_FRAGMENT &&
-			!(ir3_shader_debug & IR3_DBG_NOFP16))
-		NIR_PASS_V(nir, nir_lower_mediump_outputs);
-
-	if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-		/* NOTE: lower load_barycentric_at_sample first, since it
-		 * produces load_barycentric_at_offset:
-		 */
-		NIR_PASS_V(nir, ir3_nir_lower_load_barycentric_at_sample);
-		NIR_PASS_V(nir, ir3_nir_lower_load_barycentric_at_offset);
-
-		NIR_PASS_V(nir, ir3_nir_move_varying_inputs);
-	}
-
-	NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
-
-	NIR_PASS_V(nir, nir_lower_amul, ir3_glsl_type_size);
-
-	/* do first pass optimization, ignoring the key: */
-	ir3_optimize_nir(shader, nir);
+	ir3_finalize_nir(compiler, nir);
 
 	shader->nir = nir;
+
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		printf("dump nir%d: type=%d", shader->id, shader->type);
 		nir_print_shader(shader->nir, stdout);
