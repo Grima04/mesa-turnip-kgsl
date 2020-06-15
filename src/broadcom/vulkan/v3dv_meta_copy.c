@@ -2537,6 +2537,72 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
+static bool
+copy_buffer_to_image_cpu(struct v3dv_cmd_buffer *cmd_buffer,
+                         struct v3dv_image *image,
+                         struct v3dv_buffer *buffer,
+                         const VkBufferImageCopy *region)
+{
+   /* FIXME */
+   if (vk_format_is_depth_or_stencil(image->vk_format))
+      return false;
+
+   if (vk_format_is_compressed(image->vk_format))
+      return false;
+
+   if (image->tiling == VK_IMAGE_TILING_LINEAR)
+      return false;
+
+   uint32_t buffer_width, buffer_height;
+   if (region->bufferRowLength == 0)
+      buffer_width = region->imageExtent.width;
+   else
+      buffer_width = region->bufferRowLength;
+
+   if (region->bufferImageHeight == 0)
+      buffer_height = region->imageExtent.height;
+   else
+      buffer_height = region->bufferImageHeight;
+
+   uint32_t buffer_stride = buffer_width * image->cpp;
+   uint32_t buffer_layer_stride = buffer_stride * buffer_height;
+
+   uint32_t num_layers;
+   if (image->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->imageSubresource.layerCount;
+   else
+      num_layers = region->imageExtent.depth;
+   assert(num_layers > 0);
+
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                     V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE,
+                                     cmd_buffer, -1);
+   if (!job)
+      return true;
+
+   job->cpu.copy_buffer_to_image.image = image;
+   job->cpu.copy_buffer_to_image.buffer = buffer;
+   job->cpu.copy_buffer_to_image.buffer_stride = buffer_stride;
+   job->cpu.copy_buffer_to_image.buffer_layer_stride = buffer_layer_stride;
+   job->cpu.copy_buffer_to_image.buffer_offset = region->bufferOffset;
+   job->cpu.copy_buffer_to_image.image_extent = region->imageExtent;
+   job->cpu.copy_buffer_to_image.image_offset = region->imageOffset;
+   job->cpu.copy_buffer_to_image.mip_level =
+      region->imageSubresource.mipLevel;
+   job->cpu.copy_buffer_to_image.base_layer =
+      region->imageSubresource.baseArrayLayer;
+   job->cpu.copy_buffer_to_image.layer_count = num_layers;
+
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
+
+   return true;
+}
+
 void
 v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
                           VkBuffer srcBuffer,
@@ -2553,6 +2619,8 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
       if (copy_buffer_to_image_tfu(cmd_buffer, image, buffer, &pRegions[i]))
          continue;
       if (copy_buffer_to_image_tlb(cmd_buffer, image, buffer, &pRegions[i]))
+         continue;
+      if (copy_buffer_to_image_cpu(cmd_buffer, image, buffer, &pRegions[i]))
          continue;
       if (copy_buffer_to_image_blit(cmd_buffer, image, buffer, &pRegions[i]))
          continue;

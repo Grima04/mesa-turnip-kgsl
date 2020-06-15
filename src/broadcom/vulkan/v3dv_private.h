@@ -656,6 +656,7 @@ enum v3dv_job_type {
    V3DV_JOB_TYPE_CPU_SET_EVENT,
    V3DV_JOB_TYPE_CPU_WAIT_EVENTS,
    V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS,
+   V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE,
 };
 
 struct v3dv_reset_query_cpu_job_info {
@@ -698,6 +699,19 @@ struct v3dv_clear_attachments_cpu_job_info {
    VkClearAttachment attachments[V3D_MAX_DRAW_BUFFERS + 1]; /* 4 color + D/S */
    uint32_t rect_count;
    VkClearRect *rects;
+};
+
+struct v3dv_copy_buffer_to_image_cpu_job_info {
+   struct v3dv_image *image;
+   struct v3dv_buffer *buffer;
+   uint32_t buffer_offset;
+   uint32_t buffer_stride;
+   uint32_t buffer_layer_stride;
+   VkOffset3D image_offset;
+   VkExtent3D image_extent;
+   uint32_t mip_level;
+   uint32_t base_layer;
+   uint32_t layer_count;
 };
 
 struct v3dv_job {
@@ -757,12 +771,13 @@ struct v3dv_job {
 
    /* Job specs for CPU jobs */
    union {
-      struct v3dv_reset_query_cpu_job_info        query_reset;
-      struct v3dv_end_query_cpu_job_info          query_end;
-      struct v3dv_copy_query_results_cpu_job_info query_copy_results;
-      struct v3dv_event_set_cpu_job_info          event_set;
-      struct v3dv_event_wait_cpu_job_info         event_wait;
-      struct v3dv_clear_attachments_cpu_job_info  clear_attachments;
+      struct v3dv_reset_query_cpu_job_info          query_reset;
+      struct v3dv_end_query_cpu_job_info            query_end;
+      struct v3dv_copy_query_results_cpu_job_info   query_copy_results;
+      struct v3dv_event_set_cpu_job_info            event_set;
+      struct v3dv_event_wait_cpu_job_info           event_wait;
+      struct v3dv_clear_attachments_cpu_job_info    clear_attachments;
+      struct v3dv_copy_buffer_to_image_cpu_job_info copy_buffer_to_image;
    } cpu;
 
    /* Job spects for TFU jobs */
