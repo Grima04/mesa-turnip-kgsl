@@ -313,7 +313,7 @@ public:
 
    virtual std::unique_ptr<llvm::MemoryBuffer> getObject(const llvm::Module *M) {
       if (cache_out->data_size) {
-         return llvm::MemoryBuffer::getMemBuffer(llvm::StringRef((const char *)cache_out->data, cache_out->data_size));
+         return llvm::MemoryBuffer::getMemBuffer(llvm::StringRef((const char *)cache_out->data, cache_out->data_size), "", false);
       }
       return NULL;
    }
