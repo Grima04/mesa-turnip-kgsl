@@ -673,12 +673,6 @@ batch_name_to_string(enum iris_batch_name name)
 /**
  * Flush the batch buffer, submitting it to the GPU and resetting it so
  * we're ready to emit the next batch.
- *
- * \param in_fence_fd is ignored if -1.  Otherwise, this function takes
- * ownership of the fd.
- *
- * \param out_fence_fd is ignored if NULL.  Otherwise, the caller must
- * take ownership of the returned fd.
  */
 void
 _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
