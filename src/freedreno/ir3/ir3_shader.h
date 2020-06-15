@@ -325,7 +325,7 @@ ir3_tess_mode(unsigned gl_tess_mode)
 }
 
 static inline bool
-ir3_shader_key_equal(struct ir3_shader_key *a, struct ir3_shader_key *b)
+ir3_shader_key_equal(const struct ir3_shader_key *a, const struct ir3_shader_key *b)
 {
 	/* slow-path if we need to check {v,f}saturate_{s,t,r} */
 	if (a->has_per_samp || b->has_per_samp)
@@ -649,7 +649,7 @@ ir3_const_state(const struct ir3_shader_variant *v)
 
 void * ir3_shader_assemble(struct ir3_shader_variant *v);
 struct ir3_shader_variant * ir3_shader_get_variant(struct ir3_shader *shader,
-		struct ir3_shader_key *key, bool binning_pass, bool *created);
+		const struct ir3_shader_key *key, bool binning_pass, bool *created);
 struct ir3_shader * ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 		unsigned reserved_user_consts, struct ir3_stream_output_info *stream_output);
 void ir3_shader_destroy(struct ir3_shader *shader);

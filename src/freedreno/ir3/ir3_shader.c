@@ -181,7 +181,7 @@ assemble_variant(struct ir3_shader_variant *v)
  * (non-binning) variant.
  */
 static struct ir3_shader_variant *
-create_variant(struct ir3_shader *shader, struct ir3_shader_key *key,
+create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 		struct ir3_shader_variant *nonbinning)
 {
 	struct ir3_shader_variant *v = CALLOC_STRUCT(ir3_shader_variant);
@@ -237,7 +237,7 @@ fail:
 }
 
 static inline struct ir3_shader_variant *
-shader_variant(struct ir3_shader *shader, struct ir3_shader_key *key,
+shader_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 		bool *created)
 {
 	struct ir3_shader_variant *v;
@@ -260,7 +260,7 @@ shader_variant(struct ir3_shader *shader, struct ir3_shader_key *key,
 }
 
 struct ir3_shader_variant *
-ir3_shader_get_variant(struct ir3_shader *shader, struct ir3_shader_key *key,
+ir3_shader_get_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 		bool binning_pass, bool *created)
 {
 	mtx_lock(&shader->variants_lock);
