@@ -2076,7 +2076,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    cmd->state.pipeline = pipeline;
-   cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD | TU_CMD_DIRTY_SHADER_CONSTS;
+   cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD | TU_CMD_DIRTY_SHADER_CONSTS | TU_CMD_DIRTY_LRZ;
 
    struct tu_cs *cs = &cmd->draw_cs;
    uint32_t mask = ~pipeline->dynamic_state_mask & BITFIELD_MASK(TU_DYNAMIC_STATE_COUNT);
@@ -2905,6 +2905,22 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
       cmd->state.cache.pending_flush_bits;
    cmd->state.renderpass_cache.flush_bits = 0;
 
+   /* Track LRZ valid state */
+   uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
+   if (a != VK_ATTACHMENT_UNUSED) {
+      const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
+      struct tu_image *image = fb->attachments[a].attachment->image;
+      /* if image as lrz and it isn't a stencil-only clear: */
+      if (image->lrz_height &&
+          (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT))) {
+         cmd->state.lrz.image = image;
+         cmd->state.lrz.valid = true;
+      } else {
+         cmd->state.lrz.valid = false;
+      }
+      cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
+   }
+
    tu_emit_renderpass_begin(cmd, pRenderPassBegin);
 
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
@@ -2927,6 +2943,14 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    struct tu_cs *cs = &cmd->draw_cs;
 
    const struct tu_subpass *subpass = cmd->state.subpass++;
+
+   /* Track LRZ valid state
+    *
+    * TODO: Improve this tracking for keeping the state of the past depth/stencil images,
+    * so if they become active again, we reuse its old state.
+    */
+   cmd->state.lrz.valid = false;
+   cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
@@ -3853,6 +3877,10 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.has_tess = false;
    cmd_buffer->state.has_subpass_predication = false;
+
+   /* LRZ is not valid next time we use it */
+   cmd_buffer->state.lrz.valid = false;
+   cmd_buffer->state.dirty |= TU_CMD_DIRTY_LRZ;
 }
 
 struct tu_barrier_info

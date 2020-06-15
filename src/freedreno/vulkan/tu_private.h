@@ -682,10 +682,9 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_DESC_SETS_LOAD = BIT(5),
    TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD = BIT(6),
    TU_CMD_DIRTY_SHADER_CONSTS = BIT(7),
+   TU_CMD_DIRTY_LRZ = BIT(8),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(8)
-
-
+   TU_CMD_DIRTY_DRAW_STATE = BIT(9)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -848,6 +847,13 @@ struct tu_lrz_pipeline
    bool blend_disable_write : 1;
 };
 
+struct tu_lrz_state
+{
+   /* Depth/Stencil image currently on use to do LRZ */
+   struct tu_image *image;
+   bool valid : 1;
+};
+
 struct tu_cmd_state
 {
    uint32_t dirty;
@@ -917,6 +923,8 @@ struct tu_cmd_state
    bool has_tess;
    bool has_subpass_predication;
    bool predication_active;
+
+   struct tu_lrz_state lrz;
 };
 
 struct tu_cmd_pool
