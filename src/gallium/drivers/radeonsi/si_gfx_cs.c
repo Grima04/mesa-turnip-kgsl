@@ -405,6 +405,11 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 
    radeon_add_to_buffer_list(ctx, ctx->gfx_cs, ctx->border_color_buffer,
                              RADEON_USAGE_READ, RADEON_PRIO_BORDER_COLORS);
+   if (ctx->shadowed_regs) {
+      radeon_add_to_buffer_list(ctx, ctx->gfx_cs, ctx->shadowed_regs,
+                                RADEON_USAGE_READWRITE,
+                                RADEON_PRIO_DESCRIPTORS);
+   }
 
    ctx->cs_shader_state.initialized = false;
    si_add_all_descriptors_to_bo_list(ctx);
@@ -536,12 +541,14 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 
    ctx->index_ring_offset = 0;
 
-   if (has_clear_state) {
-      si_set_tracked_regs_to_clear_state(ctx);
-   } else {
-      /* Set all register values to unknown. */
-      ctx->tracked_regs.reg_saved = 0;
-      ctx->last_gs_out_prim = -1; /* unknown */
+   if (!ctx->shadowed_regs) {
+      if (has_clear_state) {
+         si_set_tracked_regs_to_clear_state(ctx);
+      } else {
+         /* Set all register values to unknown. */
+         ctx->tracked_regs.reg_saved = 0;
+         ctx->last_gs_out_prim = -1; /* unknown */
+      }
    }
 
    /* 0xffffffff is a impossible value to register SPI_PS_INPUT_CNTL_n */

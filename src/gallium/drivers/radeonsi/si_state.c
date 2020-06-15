@@ -5108,7 +5108,7 @@ static void si_set_raster_config(struct si_context *sctx, struct si_pm4_state *p
    }
 }
 
-void si_init_cs_preamble_state(struct si_context *sctx)
+void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 {
    struct si_screen *sscreen = sctx->screen;
    uint64_t border_color_va = sctx->border_color_buffer->gpu_address;
@@ -5118,13 +5118,15 @@ void si_init_cs_preamble_state(struct si_context *sctx)
    if (!pm4)
       return;
 
-   si_pm4_cmd_add(pm4, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
-   si_pm4_cmd_add(pm4, CC0_UPDATE_LOAD_ENABLES(1));
-   si_pm4_cmd_add(pm4, CC1_UPDATE_SHADOW_ENABLES(1));
+   if (!uses_reg_shadowing) {
+      si_pm4_cmd_add(pm4, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
+      si_pm4_cmd_add(pm4, CC0_UPDATE_LOAD_ENABLES(1));
+      si_pm4_cmd_add(pm4, CC1_UPDATE_SHADOW_ENABLES(1));
 
-   if (has_clear_state) {
-      si_pm4_cmd_add(pm4, PKT3(PKT3_CLEAR_STATE, 0, 0));
-      si_pm4_cmd_add(pm4, 0);
+      if (has_clear_state) {
+         si_pm4_cmd_add(pm4, PKT3(PKT3_CLEAR_STATE, 0, 0));
+         si_pm4_cmd_add(pm4, 0);
+      }
    }
 
    /* CLEAR_STATE doesn't restore these correctly. */

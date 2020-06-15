@@ -2086,6 +2086,13 @@ static void si_emit_global_shader_pointers(struct si_context *sctx, struct si_de
       si_emit_shader_pointer(sctx, descs, R_00B230_SPI_SHADER_USER_DATA_GS_0);
       si_emit_shader_pointer(sctx, descs, R_00B430_SPI_SHADER_USER_DATA_HS_0);
       return;
+   } else if (sctx->chip_class == GFX9 && sctx->shadowed_regs) {
+      /* We can't use the COMMON registers with register shadowing. */
+      si_emit_shader_pointer(sctx, descs, R_00B030_SPI_SHADER_USER_DATA_PS_0);
+      si_emit_shader_pointer(sctx, descs, R_00B130_SPI_SHADER_USER_DATA_VS_0);
+      si_emit_shader_pointer(sctx, descs, R_00B330_SPI_SHADER_USER_DATA_ES_0);
+      si_emit_shader_pointer(sctx, descs, R_00B430_SPI_SHADER_USER_DATA_LS_0);
+      return;
    } else if (sctx->chip_class == GFX9) {
       /* Broadcast it to all shader stages. */
       si_emit_shader_pointer(sctx, descs, R_00B530_SPI_SHADER_USER_DATA_COMMON_0);

@@ -90,6 +90,7 @@ static const struct debug_named_value debug_options[] = {
    {"check_vm", DBG(CHECK_VM), "Check VM faults and dump debug info."},
    {"reserve_vmid", DBG(RESERVE_VMID), "Force VMID reservation per context."},
    {"zerovram", DBG(ZERO_VRAM), "Clear VRAM allocations."},
+   {"shadowregs", DBG(SHADOW_REGS), "Enable CP register shadowing."},
 
    /* 3D engine options: */
    {"nogfx", DBG(NO_GFX), "Disable graphics. Only multimedia compute paths can be used."},
@@ -297,6 +298,7 @@ static void si_destroy_context(struct pipe_context *context)
    si_resource_reference(&sctx->index_ring, NULL);
    si_resource_reference(&sctx->barrier_buf, NULL);
    si_resource_reference(&sctx->last_ib_barrier_buf, NULL);
+   si_resource_reference(&sctx->shadowed_regs, NULL);
    pb_reference(&sctx->gds, NULL);
    pb_reference(&sctx->gds_oa, NULL);
 
@@ -552,7 +554,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       si_init_msaa_functions(sctx);
       si_init_shader_functions(sctx);
       si_init_state_functions(sctx);
-      si_init_cs_preamble_state(sctx);
       si_init_streamout_functions(sctx);
       si_init_viewport_functions(sctx);
 
@@ -669,6 +670,11 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
 
    /* The remainder of this function initializes the gfx CS and must be last. */
    assert(sctx->gfx_cs->current.cdw == 0);
+
+   if (sctx->has_graphics) {
+      si_init_cp_reg_shadowing(sctx);
+   }
+
    si_begin_new_gfx_cs(sctx);
    assert(sctx->gfx_cs->current.cdw == sctx->initial_gfx_cs_size);
 

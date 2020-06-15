@@ -184,6 +184,7 @@ enum
    DBG_CHECK_VM,
    DBG_RESERVE_VMID,
    DBG_ZERO_VRAM,
+   DBG_SHADOW_REGS,
 
    /* 3D engine options: */
    DBG_NO_GFX,
@@ -912,6 +913,7 @@ struct si_context {
    struct u_log_context *log;
    void *query_result_shader;
    void *sh_query_result_shader;
+   struct si_resource *shadowed_regs;
 
    void (*emit_cache_flush)(struct si_context *ctx);
 
@@ -1367,6 +1369,9 @@ void si_cp_write_data(struct si_context *sctx, struct si_resource *buf, unsigned
 void si_cp_copy_data(struct si_context *sctx, struct radeon_cmdbuf *cs, unsigned dst_sel,
                      struct si_resource *dst, unsigned dst_offset, unsigned src_sel,
                      struct si_resource *src, unsigned src_offset);
+
+/* si_cp_reg_shadowing.c */
+void si_init_cp_reg_shadowing(struct si_context *sctx);
 
 /* si_debug.c */
 void si_save_cs(struct radeon_winsys *ws, struct radeon_cmdbuf *cs, struct radeon_saved_cs *saved,

@@ -60,6 +60,13 @@ static inline void radeon_set_context_reg(struct radeon_cmdbuf *cs, unsigned reg
    radeon_emit(cs, value);
 }
 
+static inline void radeon_set_context_reg_seq_array(struct radeon_cmdbuf *cs, unsigned reg,
+                                                    unsigned num, const uint32_t *values)
+{
+   radeon_set_context_reg_seq(cs, reg, num);
+   radeon_emit_array(cs, values, num);
+}
+
 static inline void radeon_set_context_reg_idx(struct radeon_cmdbuf *cs, unsigned reg, unsigned idx,
                                               unsigned value)
 {
