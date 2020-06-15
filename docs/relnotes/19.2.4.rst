@@ -36,4 +36,6 @@ Bug fixes
 Changes
 -------
 
+Lionel Landwerlin (1):
+
 -  mesa: check framebuffer completeness only after state update

@@ -120,6 +120,8 @@ Bug fixes
 Changes
 -------
 
+Adam Jackson (44):
+
 -  glx: Whitespace cleanups
 -  glx: Sync <GL/glxext.h> with Khronos
 -  glx: Make \__glXGetDrawableAttribute return true sometimes
@@ -164,6 +166,9 @@ Changes
 -  surfaceless: Support EGL_WL_bind_wayland_display
 -  egl: Make native display detection work more than once
 -  gallium/xlib: Fix xmesa drawable creation
+
+Alan Coopersmith (6):
+
 -  gallium: Fix a bunch of undefined left-shifts in u_format\_\*
 -  c99_compat.h: Don't try to use 'restrict' in C++ code
 -  util: Make Solaris implemention of p_atomic_add work with gcc
@@ -171,14 +176,26 @@ Changes
 -  util: Solaris has linux-style pthread_setname_np
 -  meson: recognize "sunos" as the system name for Solaris
 -  intel/common: include unistd.h for ioctl() prototype on Solaris
+
+Alejandro Piñeiro (5):
+
 -  i965: enable ARB_gl_spirv extension and ARB_spirv_extensions for
    gen7+
 -  mesa/version: uncomment SPIR-V extensions
 -  i965: Enable OpenGL 4.6 for Gen8+
 -  v3d: take into account prim_counts_offset
 -  v3d: adds an extra MOV for any sig.ld\*
+
+Alex Smith (1):
+
 -  radv: Change memory type order for GPUs without dedicated VRAM
+
+Alexandros Frantzis (1):
+
 -  gitlab-ci: Update required libdrm version
+
+Alyssa Rosenzweig (220):
+
 -  pan/decode: Eliminate DYN_MEMORY_PROP
 -  pan/decode: Don't print MALI_DRAW_NONE
 -  panfrost: Move pan_invocation to shared panfrost/
@@ -399,12 +416,21 @@ Changes
 -  panfrost: Remove unused definitions in mali-job.h
 -  pipe-loader: Build kmsro loader for with all kmsro targets
 -  gallium/util: Support POLYGON in u_stream_outputs_for_vertices
+
+Andreas Baierl (5):
+
 -  lima/ppir: Rename ppir_op_dummy to ppir_op_undef
 -  lima/ppir: Add undef handling
 -  lima/ppir: Add various varying fetch sources to disassembler
 -  lima: Fix compiler warning in standalone compiler
 -  lima: Fix crash when there are no vertex shader attributes
+
+Andreas Gottschling (1):
+
 -  drisw: Fix shared memory leak on drawable resize
+
+Andres Gomez (12):
+
 -  nir/algebraic: mark float optimizations returning one parameter as
    inexact
 -  docs: Update to OpenGL 4.6 in the release notes
@@ -422,15 +448,30 @@ Changes
 -  docs/relnotes: add support for GL_ARB_gl_spirv,
    GL_ARB_spirv_extensions and OpenGL 4.6 on i965 and iris
 -  egl: Remove the 565 pbuffer-only EGL config under X11.
+
+Andres Rodriguez (2):
+
 -  radv: add RADV_DEBUG=allentrypoints
 -  radv: additional query fixes
+
+Andrii Simiklit (1):
+
 -  glsl: disallow incompatible matrices multiplication
+
+Anuj Phogat (5):
+
 -  intel/gen12: Add L3 configurations
 -  intel: Add few Ice Lake brand strings
 -  genxml/gen11+: Add COMMON_SLICE_CHICKEN4 register
 -  intel/gen11+: Enable Hardware filtering of Semi-Pipelined State in WM
 -  intel/isl/icl: Use halign 8 instead of 4 hw workaround
+
+Arcady Goldmints-Orlov (1):
+
 -  anv: fix descriptor limits on gen8
+
+Bas Nieuwenhuizen (63):
+
 -  radv: Use correct vgpr_comp_cnt for VS if both prim_id and
    instance_id are needed.
 -  radv: Emit VGT_GS_ONCHIP_CNTL for tess on GFX10.
@@ -496,7 +537,13 @@ Changes
 -  radv: Unify max_descriptor_set_size.
 -  radv: Fix timeline semaphore refcounting.
 -  radv: Fix RGBX Android<->Vulkan format correspondence.
+
+Ben Crocker (1):
+
 -  llvmpipe: use ppc64le/ppc64 Large code model for JIT-compiled shaders
+
+Boris Brezillon (73):
+
 -  panfrost: Free the instruction object in mir_remove_instruction()
 -  panfrost: Free all block/instruction objects before leaving
    midgard_compile_shader_nir()
@@ -579,9 +626,15 @@ Changes
 -  panfrost: Fix the DISCARD_WHOLE_RES case in transfer_map()
 -  gallium: Fix the ->set_damage_region() implementation
 -  panfrost: Make sure we reset the damage region of RTs at flush time
+
+Brian Paul (3):
+
 -  st/nir: fix illegal designated initializer in st_glsl_to_nir.cpp
 -  REVIEWERS: add VMware reviewers
 -  Call shmget() with permission 0600 instead of 0777
+
+Caio Marcelo de Oliveira Filho (66):
+
 -  intel/compiler: Silence maybe-uninitialized warning in GCC 9.1.1
 -  anv: Drop unused local variable
 -  compiler/glsl: Fix warning about unused function
@@ -649,8 +702,14 @@ Changes
 -  spirv: Don't fail if multiple ordering semantics bits are set
 -  spirv: Don't leak GS initialization to other stages
 -  anv: Initialize depth_bounds_test_enable when not explicitly set
+
+Chris Wilson (2):
+
 -  iris: Allow packed RGB pbo uploads
 -  st/mesa: Map MESA_FORMAT_RGB_UNORM8 <-> PIPE_FORMAT_R8G8B8_UNORM
+
+Christian Gmeiner (13):
+
 -  gallium: util_set_vertex_buffers_mask(..): make use of
    u_bit_consecutive(..)
 -  etnaviv: a bit of micro-optimization
@@ -665,7 +724,13 @@ Changes
 -  etnaviv: store updated usage in pipe_transfer object
 -  etnaviv: keep track of buffer valid ranges for PIPE_BUFFER
 -  etnaviv: remove dead code
+
+Clément Guérin (1):
+
 -  radeonsi: enable zerovram for Rocket League
+
+Connor Abbott (40):
+
 -  st/nir: Fix num_inputs for VS inputs
 -  radeonsi/nir: Don't recompute num_inputs and num_outputs
 -  ac/nir: Handle const array offsets in get_deref_offset()
@@ -706,7 +771,13 @@ Changes
 -  nir: Fix overlapping vars in nir_assign_io_var_locations()
 -  nir/sink: Rewrite loop handling logic
 -  nir/sink: Don't sink load_ubo to outside of its defining loop
+
+Daniel Kolesa (1):
+
 -  util: add auxv based PowerPC AltiVec/VSX detection
+
+Daniel Schürmann (44):
+
 -  nir/algebraic: some subtraction optimizations
 -  aco: Initial commit of independent AMD compiler
 -  radv/aco: Setup alternate path in RADV to support the experimental
@@ -757,8 +828,17 @@ Changes
 -  aco: preserve kill flag on moved operands during RA
 -  aco: don't split live-ranges of linear VGPRs
 -  aco: fix a couple of value numbering issues
+
+Daniel Stone (1):
+
 -  panfrost: Respect offset for imported resources
+
+Danilo Spinella (1):
+
 -  egl: Include stddef.h in generated source
+
+Danylo Piliaiev (10):
+
 -  nir/loop_unroll: Update the comments for loop_prepare_for_unroll
 -  nir/loop_unroll: Prepare loop for unrolling in wrapper_unroll
 -  nir/loop_analyze: Treat do{}while(false) loops as 0 iterations
@@ -769,6 +849,9 @@ Changes
 -  intel/compiler: Fix C++ one definition rule violations
 -  glsl: Initialize all fields of ir_variable in constructor
 -  i965: Unify CC_STATE and BLEND_STATE atoms on Haswell as a workaround
+
+Dave Airlie (75):
+
 -  virgl: drop unused format field
 -  virgl: fix format conversion for recent gallium changes.
 -  gallivm: fix atomic compare-and-swap
@@ -845,8 +928,14 @@ Changes
 -  zink: add samples to rasterizer
 -  zink: attempt to get multisample resource creation right
 -  llvmpipe/ppc: fix if/ifdef confusion in backport.
+
+Dave Stevenson (1):
+
 -  broadcom/v3d: Allow importing linear BOs with arbitrary
    offset/stride.
+
+Duncan Hopkins (7):
+
 -  zink: clamped limits to INT_MAX when stored as uint32_t.
 -  zink: fix line-width calculation
 -  zink: respect ubo buffer alignment requirement
@@ -855,6 +944,9 @@ Changes
 -  zink: Use optimal layout instead of general. Reduces valid layer
    warnings. Fixes RADV image noise.
 -  zink: make sure src image is transfer-src-optimal
+
+Dylan Baker (120):
+
 -  docs: Mark 19.2.0-rc2 as done and push back rc3 and rc4/final
 -  glsl/tests: Handle windows \\r\n new lines
 -  meson: don't try to generate i18n translations on windows
@@ -983,14 +1075,23 @@ Changes
 -  Revert "egl: avoid local modifications for eglext.h Khronos standard
    header file"
 -  Revert "egl: move #include of local headers out of Khronos headers"
+
+Eduardo Lima Mitev (4):
+
 -  nir: Add new texop nir_texop_tex_prefetch
 -  freedreno/ir3: Add a NIR pass to select tex instructions eligible for
    pre-fetch
 -  nir: Add a new ALU nir_op_imad24_ir3
 -  freedreno/ir3: Handle newly added opcode nir_op_imad24_ir3
+
+Emil Velikov (3):
+
 -  mesa: bump version to 19.3.0-devel
 -  docs: add 19.3.0-devel release notes template
 -  docs: update calendar for 19.2.x
+
+Eric Anholt (57):
+
 -  gallium: Add a block depth field to the u_formats table.
 -  gallium: Add block depth to the format utils.
 -  gallium: Add the ASTC 3D formats.
@@ -1058,6 +1159,9 @@ Changes
 -  gallium: Drop the unused PIPE_FORMAT_A*L\* formats.
 -  mesa: Redefine the RG formats as array formats.
 -  ci: Disable lima until its farm can get fixed.
+
+Eric Engestrom (104):
+
 -  scons: define MESA_LLVM_VERSION_STRING like the other build systems
    do
 -  llvmpipe: use LLVM version string instead of re-computing it
@@ -1174,6 +1278,9 @@ Changes
 -  egl: fix \_EGL_NATIVE_PLATFORM fallback
 -  egl: move #include of local headers out of Khronos headers
 -  vulkan: delete typo'd header
+
+Erico Nunes (7):
+
 -  lima: fix ppir spill stack allocation
 -  lima/ppir: lower selects to scalars
 -  lima/ppir: enable vectorize optimization
@@ -1181,6 +1288,9 @@ Changes
 -  lima/ppir: optimizations in regalloc spilling code
 -  lima/ppir: improve regalloc spill cost calculation
 -  lima: remove partial clear support from pipe->clear()
+
+Erik Faye-Lund (210):
+
 -  gallium/auxiliary/indices: consistently apply start only to input
 -  mesa/main: remove unused include
 -  util: fix SSE-version needed for double opcodes
@@ -1393,6 +1503,9 @@ Changes
 -  zink: do not advertize coherent mapping
 -  zink: disable fragment-shader texture-lod
 -  zink: correct depth-stencil format
+
+Francisco Jerez (56):
+
 -  intel/fs: Teach fs_inst::is_send_from_grf() about some missing
    send-like instructions.
 -  intel/fs: Define is_payload() method of the IR instruction class.
@@ -1465,22 +1578,40 @@ Changes
    message.
 -  intel/fs/gen12: Fix barrier codegen.
 -  intel/fs/gen11+: Fix CS_OPCODE_CS_TERMINATE codegen.
+
+Fritz Koenig (5):
+
 -  include/GLES2: Sync GLES2 headers with Khronos
 -  mesa: GetFramebufferParameteriv spelling
 -  mesa: Allow MESA_framebuffer_flip_y for GLES 3
 -  gallium: Enable MESA_framebuffer_flip_y
 -  freedreno: reorder format check
+
+Gert Wollny (4):
+
 -  radeonsi: Release storage for smda_uploads when the context is
    destroyed
 -  etnaviv: enable triangle strips only when the hardware supports it
 -  r600: Fix interpolateAtCentroid
 -  r600: Disable eight bit three channel formats
+
+Greg V (1):
+
 -  clover: use iterator_range in get_kernel_nodes
+
+Gurchetan Singh (4):
+
 -  virgl: remove stride from virgl_hw_res
 -  virgl: modify resource_create_from_handle(..) callback
 -  virgl: modify internal structures to track winsys-supplied data
 -  virgl: honor winsys supplied metadata
+
+Haihao Xiang (1):
+
 -  i965: support AYUV/XYUV for external import only
+
+Hal Gentz (11):
+
 -  glx: Fix SEGV due to dereferencing a NULL ptr from XCB-GLX.
 -  clover: Fix build after clang r370122.
 -  gallium/osmesa: Fix the inability to set no context as current.
@@ -1493,6 +1624,9 @@ Changes
 -  Revert "egl: Puts RGBA visuals in the second config selection group."
 -  Revert "egl: Fixes transparency with EGL and X11."
 -  Revert "egl: Add EGL_CONFIG_SELECT_GROUP_MESA ext."
+
+Heinrich Fink (8):
+
 -  include: sync GL headers with registry
 -  specs: Sync framebuffer_flip_y text with GL registry
 -  headers: remove redundant GL token from GL wrapper
@@ -1501,10 +1635,19 @@ Changes
 -  headers: Add GL_MESA_EGL_sync token to GL
 -  egl: Add GL_MESA_EGL_sync support
 -  mesa/gl: Sync with Khronos registry
+
+Hyunjun Ko (3):
+
 -  freedreno/ir3: Add data structures to support texture pre-fetch
 -  freedreno/ir3: Add support for texture sampling pre-dispatch
 -  freedreno/ir3: fix printing output registers of FS.
+
+Iago Toral (1):
+
 -  v3d: drop unused shader_rec_count member from context
+
+Iago Toral Quiroga (13):
+
 -  prog_to_nir: VARYING_SLOT_PSIZ is a scalar
 -  gallium/ttn: VARYING_SLOT_PSIZ and VARYING_SLOT_FOGC are scalar
 -  nir/lower_point_size: assume scalar PSIZ
@@ -1520,6 +1663,9 @@ Changes
 -  broadcom: document known hardware issues for L2T flush command
 -  v3d: request the kernel to flush caches when TMU is dirty
 -  st/mesa: only require ESSL 3.1 for geometry shaders
+
+Ian Romanick (22):
+
 -  nir/algrbraic: Don't optimize open-coded bitfield reverse when
    lowering is enabled
 -  intel/compiler: Request bitfield_reverse lowering on pre-Gen7
@@ -1553,33 +1699,57 @@ Changes
 -  nir/algebraic: Mark other comparison exact when removing a == a
 -  intel/fs: Disable conditional discard optimization on Gen4 and Gen5
 -  intel/compiler: Fix 'comparison is always true' warning
+
+Icenowy Zheng (4):
+
 -  lima: reset scissor state if scissor test is disabled
 -  lima: fix PLBU viewport configuration
 -  lima: support rectangle texture
 -  lima: do not set the PP uniforms address lowest bits
+
+Ilia Mirkin (6):
+
 -  gallium/vl: use compute preference for all multimedia, not just blit
 -  teximage: ensure that Tex*SubImage\* checks format
 -  gallium/tgsi: add support for DEMOTE and READ_HELPER opcodes
 -  nvc0: add support for GL_EXT_demote_to_helper_invocation
 -  gm107/ir: fix loading z offset for layered 3d image bindings
 -  nv50/ir: mark STORE destination inputs as used
+
+Illia Iorin (2):
+
 -  Revert "mesa/main: Fix multisample texture initialize"
 -  mesa/main: Ignore filter state for MS texture completeness
+
+Indrajit Das (1):
+
 -  radeon/vcn: exclude raven2 from vcn 2.0 encode initialization
+
+James Xiong (5):
+
 -  gallium: simplify throttle implementation
 -  gallium: rename PIPE_CAP_MAX_FRAMES_IN_FLIGHT to PIPE_CAP_THROTTLE
 -  iris: finish aux import on get_param
 -  gallium: do not increase ref count of the new throttle fence
 -  iris: try to set the specified tiling when importing a dmabuf
+
+Jan Beich (6):
+
 -  gallium/hud: add CPU usage support for DragonFly/NetBSD/OpenBSD
 -  util: skip NEON detection if built with -mfpu=neon
 -  util: detect NEON at runtime on FreeBSD
 -  util: skip AltiVec detection if built with -maltivec
 -  util: detect AltiVec at runtime on BSDs
 -  util: simplify BSD includes
+
+Jan Zielinski (3):
+
 -  swr/rasterizer: Enable ARB_fragment_layer_viewport
 -  swr/rasterizer: Fix GS attributes processing
 -  gallium/swr: Fix depth values for blit scenario
+
+Jason Ekstrand (57):
+
 -  nir: Add explicit signs to image min/max intrinsics
 -  intel/nir: Add a helper for getting BRW_AOP from an intrinsic
 -  v3d: Use the correct opcodes for signed image min/max
@@ -1638,15 +1808,36 @@ Changes
 -  anv: Set up SBE_SWIZ properly for gl_Viewport
 -  anv: Re-emit all compute state on pipeline switch
 -  anv: Don't leak when set_tiling fails
+
+Jean Hertel (1):
+
 -  Fix missing dri2_load_driver on platform_drm
+
+Jiadong Zhu (1):
+
 -  mesa: fix texStore for FORMAT_Z32_FLOAT_S8X24_UINT
+
+Jiang, Sonny (1):
+
 -  loader: always map the "amdgpu" kernel driver name to radeonsi (v2)
+
+John Stultz (1):
+
 -  Android.mk: Fix missing \\ from recent llvm change
+
+Jon Turney (2):
+
 -  Fix timespec_from_nsec test for 32-bit time_t
 -  rbug: Fix use of alloca() without #include "c99_alloca.h"
+
+Jonathan Gray (3):
+
 -  mapi: Adapted libglvnd x86 tsd changes
 -  winsys/amdgpu: avoid double simple_mtx_unlock()
 -  i965: update Makefile.sources for perf changes
+
+Jonathan Marek (90):
+
 -  freedreno/a2xx: ir2: fix lowering of instructions after float
    lowering
 -  freedreno/a2xx: ir2: remove pointcoord y invert
@@ -1740,6 +1931,9 @@ Changes
 -  etnaviv: fix non-pointsprite points on GC7000L
 -  freedreno/ir3: disable texture prefetch for 1d array textures
 -  freedreno/registers: fix a6xx_2d_blit_cntl ROTATE
+
+Jordan Justen (42):
+
 -  intel/genxml: Handle field names with different spacing/hyphen
 -  intel/genxml/gen11: Add spaces in EnableUnormPathInColorPipe
 -  intel/genxml: Run sort_xml.sh to tidy gen9.xml and gen11.xml
@@ -1782,16 +1976,25 @@ Changes
 -  iris: Add IRIS_DIRTY_RENDER_BUFFER state flag
 -  iris/gen11+: Move flush for render target change
 -  iris: Allow max dynamic pool size of 2GB for gen12
+
+Jose Maria Casanova Crespo (5):
+
 -  mesa: recover target_check before get_current_tex_objects
 -  v3d: writes to magic registers aren't RF writes after THREND
 -  v3d: flag dirty state when binding compute states
 -  v3d: Explicitly expose OpenGL ES Shading Language 3.1
 -  v3d: Fix predication with atomic image operations
+
+José Fonseca (5):
+
 -  glx: Fix incompatible function pointer types.
 -  util: Prevent implicit declaration of function getenv.
 -  util: Prevent strcasecmp macro redefinion.
 -  scons: Make GCC builds stricter.
 -  scons: Fix force_scons parsing.
+
+Juan A. Suarez Romero (14):
+
 -  docs: add release notes for 19.1.5
 -  docs: add sha256 checksums for 19.1.5
 -  docs: update calendar, add news item and link release notes for
@@ -1810,6 +2013,9 @@ Changes
 -  docs: add release notes for 19.1.8
 -  docs: update calendar, add news item and link release notes for
    19.1.8
+
+Karol Herbst (15):
+
 -  gallium: add blob field to pipe_llvm_program_header
 -  rename pipe_llvm_program_header to pipe_binary_program_header
 -  clover/functional: add id_equals helper
@@ -1826,7 +2032,13 @@ Changes
 -  clover: eliminate "ignoring attributes on template argument" warning
 -  st/mesa: fix crash for drivers supporting nir defaulting to tgsi
 -  nv50/ir: remove DUMMY edge type
+
+Ken Mays (1):
+
 -  haiku: fix Mesa build
+
+Kenneth Graunke (86):
+
 -  gallium/ddebug: Wrap resource_get_param if available
 -  gallium/trace: Wrap resource_get_param if available
 -  gallium/rbug: Wrap resource_get_param if available
@@ -1919,6 +2131,9 @@ Changes
 -  iris: Fix "Force Zero RTA Index Enable" setting again
 -  driconf, glsl: Add a vs_position_always_invariant option
 -  drirc: Set vs_position_always_invariant for Shadow of Mordor on Intel
+
+Kevin Strasser (14):
+
 -  drm-uapi: Update headers for fp16 formats
 -  i965: Add helper function for allowed config formats
 -  gallium: Use consistent approach for config format filtering
@@ -1933,8 +2148,14 @@ Changes
 -  i965: Add handling for fp16 configs
 -  gallium: Add buffer and configs handling or fp16 formats
 -  egl: Fix implicit declaration of ffs
+
+Khaled Emara (2):
+
 -  freedreno/a3xx: fix texture tiling parameters
 -  freedreno/a3xx: fix sysmem <-> gmem tiles transfer
+
+Kristian Høgsberg (40):
+
 -  freedreno/a6xx: Let the GPU track streamout offsets
 -  freedreno/a6xx: Implement primitive count queries on GPU
 -  freedreno/a6xx: Track location of gl_Position out as we link it
@@ -1976,13 +2197,25 @@ Changes
 -  freedreno/a6xx: Turn on geometry shaders
 -  nir: Use BITSET for tracking varyings in lower_io_arrays
 -  freedreno/a6xx: Disable geometry shaders for release
+
+Krzysztof Raszkowski (2):
+
 -  util: Add unreachable() definition for clang compiler.
 -  gallium/swr: Enable GL_ARB_gpu_shader5: multiple streams
+
+Laurent Carlier (1):
+
 -  egl: avoid local modifications for eglext.h Khronos standard header
    file
+
+Leo Liu (3):
+
 -  radeon/vcn: add RENOIR VCN decode support
 -  radeon/vcn: Add VP9 8K decode support
 -  radeonsi: enable 8K video decode support for HEVC and VP9
+
+Lepton Wu (14):
+
 -  st/mesa: Allow zero as [level|layer]_override
 -  virgl: Fix pipe_resource leaks under multi-sample.
 -  egl/android: Only keep BGRA EGL configs as fallback
@@ -1997,6 +2230,9 @@ Changes
 -  mapi: Inline call x86_current_tls.
 -  mapi: Improve the x86 tsd stubs performance.
 -  gallium: dri2: Use index as plane number.
+
+Lionel Landwerlin (59):
+
 -  glsl/tests: take refs on glsl types
 -  nir/tests: take reference on glsl types
 -  compiler: ensure glsl types are not created without a reference
@@ -2057,6 +2293,9 @@ Changes
 -  intel/perf: fix improper pointer access
 -  anv: fix missing gen12 handling
 -  anv: fix incorrect VMA alignment for CCS main surfaces
+
+Lucas Stach (17):
+
 -  etnaviv: fix vertex buffer state emission for single stream GPUs
 -  gallium/util: don't depend on implementation defined behavior in
    listen()
@@ -2076,6 +2315,9 @@ Changes
 -  etnaviv: check for softpin availability on Halti5 devices
 -  etnaviv: add linear texture support on GC7000
 -  etnaviv: GC7000: flush TX descriptor and instruction cache
+
+Marek Olšák (161):
+
 -  radeonsi/gfx10: fix the legacy pipeline by storing as_ngg in the
    shader cache
 -  radeonsi: move some global shader cache flags to per-binary flags
@@ -2266,12 +2508,21 @@ Changes
 -  winsys/amdgpu: use the new GPU reset query
 -  st/mesa: fix Sanctuary and Tropics by disabling ARB_gpu_shader5 for
    them
+
+Marek Vasut (4):
+
 -  etnaviv: Make contexts track resources
 -  etnaviv: Rework resource status tracking
 -  etnaviv: Command buffer realloc
 -  etnaviv: Rework locking
+
+Marijn Suijten (2):
+
 -  freedreno/a5xx: enable a510
 -  freedreno/ir3: Add missing ir3_nir_lower_tex_prefetch.c to Android.mk
+
+Matt Turner (6):
+
 -  clover: Remove unused code
 -  intel/compiler: Remove unreachable() from brw_reg_type.c
 -  intel/compiler: Restructure instruction compaction in preparation for
@@ -2279,6 +2530,9 @@ Changes
 -  intel/compiler: Inline get_src_index()
 -  intel/compiler: Make separate src0/src1 index tables
 -  intel/compiler: Add instruction compaction support on Gen12
+
+Mauro Rossi (8):
+
 -  android: mesa: revert "Enable asm unconditionally"
 -  android: anv: libmesa_vulkan_common: add libmesa_util static
    dependency
@@ -2288,10 +2542,19 @@ Changes
 -  android: amd/common: export amd/llvm headers
 -  android: aco: fix Lower to CSSA
 -  android: radeonsi: fix build after vl refactoring (v2)
+
+Maya Rashish (3):
+
 -  intel/compiler: avoid truncating int64_t to int
 -  meson: Test for -Wl,--build-id=sha1
 -  llvmpipe: avoid left-shifting a negative number.
+
+Michael Schellenberger Costa (1):
+
 -  aco: Cleanup insert_before_logical_end
+
+Michel Dänzer (48):
+
 -  gitlab-ci: Move up meson-main job definition
 -  gitlab-ci: Use new needs: keyword
 -  gitlab-ci: Explicitly install linux-libc-dev for foreign
@@ -2345,7 +2608,13 @@ Changes
 -  gitlab-ci: Only run the pipeline if any files affecting it have
    changed
 -  gitlab-ci: Disable meson-windows job for the time being
+
+Michel Zou (1):
+
 -  scons: add py3 support
+
+Nanley Chery (47):
+
 -  anv/blorp: Use BLORP_BATCH_NO_UPDATE_CLEAR_COLOR
 -  anv: Properly allocate aux-tracking space for CCS_E
 -  anv/formats: Disable I915_FORMAT_MOD_Y_TILED_CCS on TGL+
@@ -2393,15 +2662,30 @@ Changes
 -  gallium/dri2: Fix creation of multi-planar modifier images
 -  gallium: Store the image format in winsys_handle
 -  iris: Fix import of multi-planar surfaces with modifiers
+
+Nataraj Deshpande (1):
+
 -  egl/android: Enable HAL_PIXEL_FORMAT_RGBA_FP16 format
+
+Neil Armstrong (1):
+
 -  Revert "ci: Disable lima until its farm can get fixed."
+
+Neil Roberts (6):
+
 -  glsl: Store the precision for a function return type
 -  nir/builder: Move nir_atan and nir_atan2 from SPIR-V translator
 -  nir/builtin: Add #include u_math.h to the header
 -  nir/builtin: Add extern "C" guards to nir_builtin_builder.h
 -  glsl: Add opcodes for atan and atan2
 -  glsl/builtin: Add alternate versions of atan using new ops
+
+OBATA Akio (1):
+
 -  util: fix to detect NetBSD properly
+
+Paulo Zanoni (8):
+
 -  intel/fs: grab fail_msg from v32 instead of v16 when v32->run_cs
    fails
 -  intel/fs: make scan/reduce work with SIMD32 when it fits 2 registers
@@ -2411,13 +2695,22 @@ Changes
 -  intel/fs: don't forget the stride at generate_shuffle
 -  intel/compiler: remove the operand restriction for src1 on GLK
 -  intel/compiler: fix nir_op_{i,u}*32 on ICL
+
+Pierre Moreau (5):
+
 -  meson: Check for SPIRV-Tools and llvm-spirv
 -  clover/spirv: Add functions for validating SPIR-V binaries
 -  clover/spirv: Add functions for parsing arguments, linking programs,
    etc.
 -  clover/llvm: Add options for dumping SPIR-V binaries
 -  clover/llvm: Add functions for compiling from source to SPIR-V
+
+Pierre-Eric Pelloux Prayer (1):
+
 -  mesa: implement glTextureStorageNDEXT functions
+
+Pierre-Eric Pelloux-Prayer (23):
+
 -  glsl: replace 'x + (-x)' with constant 0
 -  mesa: fix invalid target error handling for teximage
 -  mesa: add EXT_dsa glNamedRenderbufferStorageEXT and
@@ -2443,6 +2736,9 @@ Changes
 -  radeonsi: fix shader disk cache key
 -  radeonsi: fix multi plane buffers creation
 -  radeonsi: use gfx9.surf_offset to compute texture offset
+
+Plamena Manolova (8):
+
 -  genxml: Add 3DSTATE_DEPTH_BOUNDS instruction.
 -  iris: Add support for depth bounds testing.
 -  anv: Add support for depth bounds testing.
@@ -2451,6 +2747,9 @@ Changes
 -  genxml: Add 3DSTATE_SO_BUFFER_INDEX\_\* instructions
 -  iris: Implement new way for setting streamout buffers.
 -  anv: Implement new way for setting streamout buffers.
+
+Prodea Alexandru-Liviu (4):
+
 -  scons/windows: Fix build with LLVM>=8
 -  scons/MSYS2-MinGW-W64: Fix build options defaults Signed-off-by:
    Prodea Alexandru-Liviu <liviuprodea@yahoo.com> Reviewed-by: Jose
@@ -2461,10 +2760,16 @@ Changes
    <dylan@pnwbakers.com>
 -  Meson: Remove lib prefix from graw and osmesa when building with
    Mingw. Also remove version sufix from osmesa swrast on Windows.
+
+Qiang Yu (4):
+
 -  lima: move format handling to unified place
 -  lima: implement EGL_KHR_partial_update
 -  lima: don't use damage system when full damage
 -  lima: move damage bound build to resource
+
+Rafael Antognolli (13):
+
 -  anv: Only re-emit non-dynamic state that has changed.
 -  intel/tools: Fix aubinator usage of rb_tree.
 -  anv/block_pool: Align anv_block_pool state to 64 bits.
@@ -2478,6 +2783,9 @@ Changes
 -  iris: Add Tile Cache Flush for Unified Cache.
 -  blorp: Add Tile Cache Flush for Unified Cache.
 -  anv: Add Tile Cache Flush for Unified Cache.
+
+Rhys Perry (84):
+
 -  nir/lower_io_to_vector: allow FS outputs to be vectorized
 -  nir/lower_io_to_vector: add flat mode
 -  util: include u_endian.h in u_math.h
@@ -2565,6 +2873,9 @@ Changes
 -  aco: add v_nop inbetween exec write and VMEM/DS/FLAT
 -  radv: set writes_memory for global memory stores/atomics
 -  nir/lower_io_to_vector: don't create arrays when not needed
+
+Rob Clark (60):
+
 -  freedreno/ir3: convert block->predecessors to set
 -  freedreno/ir3: maintain predecessors/successors
 -  freedreno/ir3: do better job of marking convergence points
@@ -2626,15 +2937,30 @@ Changes
 -  freedreno/ir3: fix gpu hang with pre-fs-tex-fetch
 -  Revert "freedreno/ir3: enable pre-fs texture fetch for a6xx"
 -  nir/lower_clip: Fix incorrect driver loc for clipdist outputs
+
+Robin Murphy (1):
+
 -  egl/gbm: Fix config validation
+
+Rohan Garg (3):
+
 -  panfrost: Remove unused argument from panfrost_drm_submit_vs_fs_job()
 -  panfrost: Jobs must be per context, not per screen
 -  panfrost: protect access to shared bo cache and transient pool
+
+Roland Scheidegger (4):
+
 -  gallivm: use fallback code for mul_hi with llvm >= 7.0
 -  llvmpipe: fix CALLOC vs. free mismatches
 -  llvmpipe: increase max texture size to 2GB
 -  gallivm: Fix saturated signed psub/padd intrinsics on llvm 8
+
+Roman Stratiienko (1):
+
 -  lima: Return fence unconditionally
+
+Sagar Ghuge (26):
+
 -  intel/eu/gen12: Implement immediate 64 bit constant encoding.
 -  nir: Add alpha_to_coverage lowering pass
 -  intel/compiler: Remove emit_alpha_to_coverage workaround from backend
@@ -2663,6 +2989,9 @@ Changes
 -  iris: Prepare resources before stencil blit operation
 -  iris: Resolve stencil resource prior to copy or used by CPU
 -  intel/isl: Allow stencil buffer to support compression on Gen12+
+
+Samuel Iglesias Gonsálvez (26):
+
 -  spirv: check support for SPV_KHR_float_controls capabilities
 -  spirv/nir: keep track of SPV_KHR_float_controls execution modes
 -  nir: add auxiliary functions to detect if a mode is enabled
@@ -2699,6 +3028,9 @@ Changes
 -  anv: enable VK_KHR_shader_float_controls and SPV_KHR_float_controls
 -  docs/relnotes: add support for VK_KHR_shader_float_controls on Intel
 -  nir/algebraic: refactor inexact opcode restrictions
+
+Samuel Pitoiset (136):
+
 -  radv/gfx10: tidy up gfx10_format_table.py
 -  radv/gfx10: hardcode some depth+stencil formats in the format table
 -  radv: allow to enable VK_AMD_shader_ballot only on GFX8+
@@ -2841,11 +3173,20 @@ Changes
 -  radv: fix enabling sample shading with SampleID/SamplePosition
 -  radv/gfx10: fix implementation of exclusive scans
 -  ac/nir: fix out-of-bound access when loading constants from global
+
+Sergii Romantsov (4):
+
 -  intel/dri: finish proper glthread
 -  nir/large_constants: more careful data copying
 -  nir/large_constants: pass after lowering copy_deref
 -  meta: leak of shader program when decompressing tex-images
+
+Stephen Barber (1):
+
 -  nouveau: add idep_nir_headers as dep for libnouveau
+
+Tapani Pälli (23):
+
 -  util: fix os_create_anonymous_file on android
 -  iris/android: fix build and link with libmesa_intel_perf
 -  egl: reset blob cache set/get functions on terminate
@@ -2872,10 +3213,19 @@ Changes
    to the buffers"
 -  Revert "dri_interface: add interface for
    EGL_EXT_image_flush_external"
+
+Thomas Hellstrom (2):
+
 -  svga: Fix banded DMA upload unmap
 -  winsys/svga: Limit the maximum DMA hardware buffer size
+
+Thong Thai (2):
+
 -  Revert "radeonsi: don't emit PKT3_CONTEXT_CONTROL on amdgpu"
 -  radeonsi: add JPEG decode support for VCN 2.0 devices
+
+Timothy Arceri (35):
+
 -  radeonsi/nir: fix number of used samplers
 -  util/disk_cache: bump thread count assigned to disk cache queue
 -  util/u_queue: track job size and limit the size of queue growth
@@ -2913,6 +3263,9 @@ Changes
 -  radv: add a secure_compile_open_fifo_fds() helper
 -  radv: create a fresh fork for each pipeline compile
 -  glsl/nir: iterate the system values list when adding varyings
+
+Timur Kristóf (48):
+
 -  st/nine: Properly initialize GLSL types for NIR shaders.
 -  nir: Carve out nir_lower_samplers from GLSL code.
 -  tgsi_to_nir: Remove dependency on libglsl.
@@ -2961,6 +3314,9 @@ Changes
 -  aco: Introduce vgpr_limit to keep track of available VGPRs.
 -  radv: Enable ACO on Navi.
 -  ac: Handle invalid GFX10 format correctly in ac_get_tbuffer_format.
+
+Tomeu Vizoso (19):
+
 -  panfrost/ci: Use Volt-based runner for dEQP tests
 -  panfrost/ci: Print bootstrap log
 -  panfrost/ci: Build kernel with CONFIG_DETECT_HUNG_TASK
@@ -2980,7 +3336,13 @@ Changes
 -  gitlab-ci/lava: Test Lima driver with dEQP
 -  panfrost: Keep track of active BOs
 -  gitlab-ci: Update kernel for LAVA jobs to 5.4-rc4
+
+Urja Rannikko (1):
+
 -  panfrost: allocate bo for occlusion query results
+
+Vasily Khoruzhick (35):
+
 -  lima/ppir: refactor const lowering
 -  lima/ppir: clone ld_{uni,tex,var} into each block
 -  lima/ppir: add support for unconditional branches and condition
@@ -3019,6 +3381,9 @@ Changes
 -  lima: set uniforms_address lower bits properly
 -  lima/ppir: don't clone texture loads
 -  lima: fix PP stack size
+
+Vinson Lee (7):
+
 -  glx: Fix up glXQueryGLXPbufferSGIX on macOS.
 -  swr: Fix build with llvm-9.0 again.
 -  travis: Fail build if any command in if statement fails.
@@ -3026,14 +3391,38 @@ Changes
 -  swr: Fix make_unique build error.
 -  scons: Add coroutines component to build.
 -  meson: Add coroutines component to llvmpipe build.
+
+Wladimir J. van der Laan (1):
+
 -  etnaviv: GC7000: Texture descriptors
+
+Yevhenii Kolesnikov (2):
+
 -  glsl: Enable textureSize for samplerExternalOES
 -  meson: Fix linkage of libgallium_nine with libgalliumvl
+
+Zebediah Figura (1):
+
 -  Revert "draw: revert using correct order for prim decomposition."
+
+Zhaowei Yuan (1):
+
 -  broadcom/vc4: Expand width of dst surface
+
+Zhu, James (1):
+
 -  radeon: Fix mjpeg issue for ARCTURUS
+
+nia (1):
+
 -  loader: include limits.h for PATH_MAX
+
+pal1000 (3):
+
 -  scons/windows: Support build with LLVM 9.
 -  scons: Fix MSYS2 Mingw-w64 build.
 -  scons/windows: Enable compute shaders when possible.
+
+renchenglei (1):
+
 -  egl/android: Enable HAL_PIXEL_FORMAT_RGBA_1010102 format

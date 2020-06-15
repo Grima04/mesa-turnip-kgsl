@@ -46,13 +46,30 @@ Bug fixes
 Changes
 -------
 
+Bas Nieuwenhuizen (1):
+
 -  radv: Do not set SX DISABLE bits for RB+ with unused surfaces.
+
+Boris Brezillon (1):
+
 -  panfrost: Fix the damage box clamping logic
+
+Brian Ho (2):
+
 -  anv: Properly fetch partial results in vkGetQueryPoolResults
 -  anv: Handle unavailable queries in vkCmdCopyQueryPoolResults
+
+Danylo Piliaiev (2):
+
 -  i965: Do not set front_buffer_dirty if there is no front buffer
 -  st/mesa: Handle the rest renderbuffer formats from OSMesa
+
+Drew Davenport (1):
+
 -  radeonsi: Clear uninitialized variable
+
+Dylan Baker (15):
+
 -  docs: Add SHA 256 sums for 19.3.3
 -  .pick_status.json: Mark 58c929be0ddbbd9291d0dadbf11538170178e791 as
    backported
@@ -72,37 +89,85 @@ Changes
 -  .pick_status.json: Update to d8bae10bfe0f487dcaec721743cd51441bcc12f5
 -  .pick_status.json: Update to 689817c9dfde9a0852f2b2489cb0fa93ffbcb215
 -  .pick_status.json: Update to 23037627359e739c42b194dec54875aefbb9d00b
+
+Eric Anholt (1):
+
 -  Revert "gallium: Fix big-endian addressing of non-bitmask array
    formats."
+
+Florian Will (1):
+
 -  radv/winsys: set IB flags prior to submit in the sysmem path
+
+Georg Lehmann (3):
+
 -  Correctly wait in the fragment stage until all semaphores are
    signaled
 -  Vulkan Overlay: Don't try to change the image layout to present twice
 -  Vulkan overlay: use the corresponding image index for each swapchain
+
+Hyunjun Ko (1):
+
 -  freedreno/ir3: put the conversion back for half const to the right
    place.
+
+Ian Romanick (1):
+
 -  intel/fs: Don't count integer instructions as being possibly coissue
+
+Jan Vesely (1):
+
 -  clover: Use explicit conversion from llvm::StringRef to std::string
+
+Jason Ekstrand (6):
+
 -  anv: Insert holes for non-existant XFB varyings
 -  anv: Improve BTI change cache flushing
 -  anv,iris: Set 3DSTATE_SF::DerefBlockSize to per-poly on Gen12+
 -  genxml: Add a new 3DSTATE_SF field on gen12
 -  intel/fs: Write the address register with NoMask for MOV_INDIRECT
 -  anv/blorp: Use the correct size for vkCmdCopyBufferToImage
+
+Kenneth Graunke (1):
+
 -  i965: Use brw_batch_references in tex_busy check
+
+Lionel Landwerlin (1):
+
 -  isl: drop CCS row pitch requirement for linear surfaces
+
+Marek Olšák (1):
+
 -  radeonsi: fix the DCC MSAA bug workaround
+
+Marek Vasut (1):
+
 -  etnaviv: Destroy rsc->pending_ctx set in etna_resource_destroy()
+
+Michel Dänzer (6):
+
 -  winsys/amdgpu: Keep a list of amdgpu_screen_winsyses in amdgpu_winsys
 -  winsys/amdgpu: Keep track of retrieved KMS handles using hash tables
 -  winsys/amdgpu: Only re-export KMS handles for different DRM FDs
 -  util: Add os_same_file_description helper
 -  winsys/amdgpu: Re-use amdgpu_screen_winsys when possible
 -  winsys/amdgpu: Close KMS handles for other DRM file descriptions
+
+Neha Bhende (1):
+
 -  svga: fix size of format_conversion_table[]
+
+Pierre-Eric Pelloux-Prayer (2):
+
 -  radeonsi: disable display DCC
 -  radeonsi: stop using the VM_ALWAYS_VALID flag
+
+Rafael Antognolli (1):
+
 -  intel: Load the driver even if I915_PARAM_REVISION is not found.
+
+Rhys Perry (6):
+
 -  aco: fix operand to scc when selecting SGPR ufind_msb/ifind_msb
 -  aco: ensure predecessors' p_logical_end is in WQM when a p_phi is in
    WQM
@@ -113,11 +178,26 @@ Changes
    headers
 -  aco: fix target calculation when vgpr spilling introduces sgpr
    spilling
+
+Samuel Pitoiset (2):
+
 -  radv: do not allow sparse resources with multi-planar formats
 -  nir: do not use De Morgan's Law rules for flt and fge
+
+Tapani Pälli (2):
+
 -  mapi: add GetInteger64vEXT with EXT_disjoint_timer_query
 -  mesa: allow bit queries for EXT_disjoint_timer_query
+
+Thomas Hellstrom (1):
+
 -  svga: Fix banded DMA upload
+
+Vasily Khoruzhick (1):
+
 -  lima: ppir: don't delete root ld_tex nodes without successors in
    current block
+
+Vinson Lee (1):
+
 -  swr: Fix GCC 4.9 checks.

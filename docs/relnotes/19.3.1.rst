@@ -39,17 +39,40 @@ Bug fixes
 Changes
 -------
 
+Bas Nieuwenhuizen (2):
+
 -  amd/common: Fix tcCompatible degradation on Stoney.
 -  amd/common: Always use addrlib for HTILE tc-compat.
+
+Dylan Baker (3):
+
 -  docs/19.3.0: Add SHA256 sums
 -  cherry-ignore: update for the 19.3.1 cycle
 -  docs: remove new_features.txt from stable branch
+
+Gert Wollny (1):
+
 -  virgl: Increase the shader transfer buffer by doubling the size
+
+Iván Briano (1):
+
 -  anv: Export filter_minmax support only when it's really supported
+
+Kenneth Graunke (1):
+
 -  iris: Default to X-tiling for scanout buffers without modifiers
+
+Lionel Landwerlin (2):
+
 -  anv: fix fence underlying primitive checks
 -  mesa: avoid triggering assert in implementation
+
+Luis Mendes (1):
+
 -  radv: fix radv secure compile feature breaks compilation on armhf
    EABI and aarch64
+
+Tapani Pälli (2):
+
 -  dri: add \__DRI_IMAGE_FORMAT_SXRGB8
 -  i965: expose MESA_FORMAT_B8G8R8X8_SRGB visual

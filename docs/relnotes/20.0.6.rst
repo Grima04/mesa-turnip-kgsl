@@ -40,13 +40,24 @@ Bug fixes
 Changes
 -------
 
+Abhishek Kumar (1):
+
 -  anv/android: fix assert in anv_import_ahw_memory
+
+Bas Nieuwenhuizen (1):
+
 -  radv: Use actual memory type count for setting app-visible bitset.
+
+Danylo Piliaiev (3):
+
 -  st/mesa: Re-assign vs in locations after updating nir info for
    ffvp/ARB_vp
 -  spirv: Expand workaround for OpControlBarrier on old GLSLang
 -  st/mesa: Treat vertex inputs absent in inputMapping as zero in
    mesa_to_tgsi
+
+Dylan Baker (9):
+
 -  docs: Add sha256 sums for 20.0.5
 -  .pick_status.json: Update to c552b5fd1d106adc04f62fcbe71d650a9a17f7e0
 -  meson: update llvm dependency logic for meson 0.54.0
@@ -57,9 +68,18 @@ Changes
 -  .pick_status.json: Update to efdb7fa9a83b0a216b1837a5912b71669bf3f984
 -  .pick_status.json: Update to 42b1696ef627a5bfee29911a780fa0a4dbf04610
 -  .pick_status.json: Update to 6b551d9f360e45ba4e74867dbe79ae212e4766c5
+
+Eric Anholt (1):
+
 -  freedreno: Fix calculation of the const buffer cmdstream size.
+
+Erik Faye-Lund (2):
+
 -  mesa/gallium: do not use enum for bit-allocated member
 -  meson: correct windows-version define
+
+Jason Ekstrand (12):
+
 -  anv: Move vb_emit setup closer to where it's used in flush_state
 -  anv: Apply any needed PIPE_CONTROLs before emitting state
 -  spirv: Allow constants and NULLs in SpvOpConvertUToPtr
@@ -72,12 +92,27 @@ Changes
 -  nir/lower_subgroups: Mask off unused bits in ballot ops
 -  intel/devinfo: Compute the correct L3$ size for Gen12
 -  anv: Expose CS workgroup sizes based on a maximum of 64 threads
+
+Joshua Ashton (1):
+
 -  radv: Use TRUNC_COORD on samplers
+
+Lionel Landwerlin (5):
+
 -  iris: fail screen creation when kernel support is not there
 -  intel/perf: move register definition to special file
 -  intel/perf: break GL query stuff away
 -  intel/perf: move mdapi query definitions to their own file
 -  intel/perf: Enable MDAPI queries for Gen12
+
+Pierre-Eric Pelloux-Prayer (1):
+
 -  radeonsi: skip vs output optimizations for some outputs
+
+Quentin Glidic (1):
+
 -  meson: Use dependency.partial_dependency()
+
+Samuel Pitoiset (1):
+
 -  radv: make sure to export the viewport index if FS needs it

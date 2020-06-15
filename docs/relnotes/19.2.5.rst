@@ -38,26 +38,67 @@ Bug fixes
 Changes
 -------
 
+Ben Crocker (1):
+
 -  llvmpipe: use ppc64le/ppc64 Large code model for JIT-compiled shaders
+
+Brian Paul (1):
+
 -  Call shmget() with permission 0600 instead of 0777
+
+Caio Marcelo de Oliveira Filho (1):
+
 -  spirv: Don't leak GS initialization to other stages
+
+Danylo Piliaiev (1):
+
 -  i965: Unify CC_STATE and BLEND_STATE atoms on Haswell as a workaround
+
+Dylan Baker (2):
+
 -  docs: Add SHA256 sum for for 19.2.4
 -  cherry-ignore: Update for 19.2.4 cycle
+
+Eric Engestrom (1):
+
 -  egl: fix \_EGL_NATIVE_PLATFORM fallback
+
+Ian Romanick (2):
+
 -  nir/algebraic: Add the ability to mark a replacement as exact
 -  nir/algebraic: Mark other comparison exact when removing a == a
+
+Illia Iorin (1):
+
 -  mesa/main: Ignore filter state for MS texture completeness
+
+Jason Ekstrand (1):
+
 -  anv: Stop bounds-checking pushed UBOs
+
+Lepton Wu (1):
+
 -  gallium: dri2: Use index as plane number.
+
+Lionel Landwerlin (3):
+
 -  anv: invalidate file descriptor of semaphore sync fd at vkQueueSubmit
 -  anv: remove list items on batch fini
 -  anv/wsi: signal the semaphore in the acquireNextImage
+
+Marek Olšák (3):
+
 -  st/mesa: fix Sanctuary and Tropics by disabling ARB_gpu_shader5 for
    them
 -  tgsi_to_nir: fix masked out image loads
 -  tgsi_to_nir: handle PIPE_FORMAT_NONE in image opcodes
+
+Paulo Zanoni (1):
+
 -  intel/compiler: fix nir_op_{i,u}*32 on ICL
+
+Pierre-Eric Pelloux-Prayer (3):
+
 -  radeonsi: disable sdma for gfx10
 -  radeonsi: tell the shader disk cache what IR is used
 -  radeonsi: fix shader disk cache key

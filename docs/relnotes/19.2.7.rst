@@ -40,16 +40,42 @@ Bug fixes
 Changes
 -------
 
+Bas Nieuwenhuizen (2):
+
 -  radv: Allocate cmdbuffer space for buffer marker write.
 -  radv: Unify max_descriptor_set_size.
+
+Boris Brezillon (1):
+
 -  gallium: Fix the ->set_damage_region() implementation
+
+Ian Romanick (1):
+
 -  intel/fs: Disable conditional discard optimization on Gen4 and Gen5
+
+Jason Ekstrand (1):
+
 -  anv: Set up SBE_SWIZ properly for gl_Viewport
+
+Jonathan Gray (2):
+
 -  winsys/amdgpu: avoid double simple_mtx_unlock()
 -  i965: update Makefile.sources for perf changes
+
+Rhys Perry (1):
+
 -  radv: set writes_memory for global memory stores/atomics
+
+Samuel Pitoiset (3):
+
 -  radv: fix enabling sample shading with SampleID/SamplePosition
 -  radv/gfx10: fix implementation of exclusive scans
 -  radv: fix compute pipeline keys when optimizations are disabled
+
+Yevhenii Kolesnikov (1):
+
 -  meson: Fix linkage of libgallium_nine with libgalliumvl
+
+Zebediah Figura (1):
+
 -  Revert "draw: revert using correct order for prim decomposition."

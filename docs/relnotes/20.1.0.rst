@@ -249,14 +249,25 @@ Bug fixes
 Changes
 -------
 
+Abhishek Kumar (1):
+
 -  anv/android: fix assert in anv_import_ahw_memory
+
+Adam Jackson (1):
+
 -  gallium: enable EGL_EXT_image_dma_buf_import_modifiers
    unconditionally
+
+Albert Astals Cid (5):
+
 -  cube_face_coord: Use fabsf instead of fabs since we know it's floats
 -  cube_face_index: Use fabsf instead of fabs since we know it's floats
 -  aco: Minor optimization in spill_ctx constructor
 -  aco: pass vars by const &
 -  Fix promotion of floats to doubles
+
+Alejandro Piñeiro (7):
+
 -  docs/features: add v3d driver
 -  nir/linker: remove reference to just SPIR-V linking
 -  v3d/tex: don't configure tmu config 1 if not needed
@@ -265,9 +276,15 @@ Changes
 -  v3d/packet: fixing TMU_Config_Parameter_2 definition
 -  nir: add nir_tex_instr_need_sampler helper
 -  v3d: support for textureQueryLOD
+
+Alexandros Frantzis (3):
+
 -  gitlab-ci: Automated testing with OpenGL traces
 -  gitlab-ci: Fix traces caching in tracie
 -  gitlab-ci: Check the Mesa version used for tracie tests
+
+Alyssa Rosenzweig (505):
+
 -  pan/midgard: Break out one-src read_components
 -  pan/midgard: Implement mixed-type constant packing
 -  panfrost: Avoid overlapping copy
@@ -773,6 +790,9 @@ Changes
 -  pan/mdg: Move condense_writemask to disasm
 -  pan/mdg: Ensure fdot is scalar out in disasm
 -  pan/mdg: Replicate 16-bit swizzles
+
+Andreas Baierl (8):
+
 -  lima/parser: Fix RSW depth test parsing
 -  lima/parser: Extend AUX0 findings
 -  lima/parser: Change value name in RSW parser
@@ -781,6 +801,9 @@ Changes
 -  gitlab-ci: Enable the lima job again
 -  gitlab-ci: Add add a set of lima flakes
 -  lima: Add etc1 support
+
+Andres Gomez (27):
+
 -  tracie: correct typo
 -  gitlab-ci: add missing popd to the build-deqp-vk.sh script
 -  gitlab-ci: build gfxreconstruct into the Vulkan testing container
@@ -811,10 +834,19 @@ Changes
 -  gitlab-ci: update tracie README after changes in main script
 -  gitlab-ci: create always the "results" directory with tracie
 -  gitlab-ci: correct tracie behavior with replay errors
+
+Andrii Simiklit (2):
+
 -  Revert "glx: convert glx_config_create_list to one big calloc"
 -  i965/vec4: Ignore swizzle of VGRF for use by var_range_end()
+
+Anuj Phogat (2):
+
 -  intel/gen12+: Reserve 4KB of URB space per bank for Compute Engine
 -  intel/gen12+: Set way_size_per_bank to 4
+
+Arcady Goldmints-Orlov (7):
+
 -  compiler/nir: Add support for variable initialization from a pointer
 -  compiler/spirv: Add support for non-constant initializers
 -  Rename nir_lower_constant_initializers to
@@ -823,7 +855,13 @@ Changes
 -  nir: Lower returns correctly inside nested loops
 -  anv: increase minUniformBufferOffsetAlignment to 64
 -  intel/compiler: fix alignment assert in nir_emit_intrinsic
+
+Axel Davy (1):
+
 -  gallium/util: Fix leak in the live shader cache
+
+Bas Nieuwenhuizen (29):
+
 -  radv: Allow non-dedicated linear images and buffer.
 -  radv: Do not set SX DISABLE bits for RB+ with unused surfaces.
 -  radv: Optimize emitting index buffer changes.
@@ -853,8 +891,17 @@ Changes
 -  radv: Handle failing to create .cache dir.
 -  radv: Do not close fd -1 when NULL-winsys creation fails.
 -  radv: Implement vkGetSwapchainGrallocUsage2ANDROID.
+
+Bernd Kuhls (1):
+
 -  util/os_socket: Include unistd.h to fix build error
+
+Blaž Tomažič (1):
+
 -  radeonsi: Fix omitted flush when moving suballocated texture
+
+Boris Brezillon (45):
+
 -  pan/midgard: Add an enum to describe the render targets
 -  pan/midgard: Make sure we pass the right RT id to
    emit_fragment_store()
@@ -908,6 +955,9 @@ Changes
 -  panfrost: Use ctx->active_prim in panfrost_writes_point_size()
 -  panfrost: Get rid of ctx->payloads[]
 -  vtn/opencl: add rint-support
+
+Brian Ho (17):
+
 -  turnip: Promote tu_cs_get_size/is_empty to header
 -  turnip: Execute main cs for secondary command buffers
 -  turnip: Advertise 8 bit subpixel precision
@@ -925,6 +975,9 @@ Changes
 -  turnip: Correctly set layer stride for 3D images
 -  turnip: Emit geometry shader descriptor consts
 -  freedreno/turnip: Update GRAS_LAYER_CNTL to GRAS_MAX_LAYER_INDEX
+
+Caio Marcelo de Oliveira Filho (46):
+
 -  anv: Advertise VK_KHR_shader_non_semantic_info
 -  radv: Advertise VK_KHR_shader_non_semantic_info
 -  intel/gen12: Take into account opcode when decoding SWSB
@@ -971,6 +1024,9 @@ Changes
 -  intel/fs,vec4: Pull stall logic for memory fences up into the IR
 -  intel/fs: Only stall after sending all memory fence messages
 -  i965: Use correct constant for max_variable_local_size
+
+Chad Versace (12):
+
 -  anv: Drop unused anv_image_get_surface_for_aspect_mask()
 -  anv: Rename param make_surface::dev to device
 -  anv: Delete anv_image::ccs_e_compatible
@@ -983,11 +1039,23 @@ Changes
 -  anv: Refactor creation of aux surfaces (v2)
 -  anv: Flatten the logic add_aux_surface_if_supported (v3)
 -  anv: Use isl_drm_modifier_get_default_aux_state()
+
+Chia-I Wu (2):
+
 -  egl/android: require ANDROID_native_fence_sync for buffer age
 -  egl/android: enable/disable KHR_partial_update correctly
+
+Chris Lord (2):
+
 -  vc4: fix vc4_yuv_blit overwriting fragment constant buffer slot 0
 -  vc4: Fix query_dmabuf_modifiers mis-reporting external_only property
+
+Chris Wilson (1):
+
 -  iris: Fix import sync-file into syncobj
+
+Christian Gmeiner (44):
+
 -  etnaviv: enable texture upload memory throttling
 -  etnaviv: update headers from rnndb
 -  etnaviv: fix alpha test on GC3000
@@ -1034,8 +1102,17 @@ Changes
 -  ci: bare-metal: power down device after tests
 -  etnaviv: fix SAMP_ANISOTROPY register value
 -  etnaviv: do not use int filter when anisotropic filtering is used
+
+Christopher Egert (1):
+
 -  radv: use util_float_to_half_rtz
+
+Christopher James Halse Rogers (1):
+
 -  egl/wayland: Fix zwp_linux_dmabuf usage
+
+Connor Abbott (55):
+
 -  freedreno: Fix CP_COND_REG_EXEC bit positions
 -  freedreno: Add CP_REG_WRITE documentation
 -  freedreno: Fix CP_COND_EXEC
@@ -1091,6 +1168,9 @@ Changes
 -  st/nir: Fix assigning PointCoord location with !PIPE_CAP_TEXCOORD
 -  ir3: Remove VARYING_SLOT_PNTC remapping hack
 -  tu: Don't invert point coords
+
+D Scott Phillips (6):
+
 -  intel/tools/aubinator_error_decode: read HW Context before other
    batches
 -  intel/tools/aubinator_error_decode: Decode ring buffers from HEAD to
@@ -1099,6 +1179,9 @@ Changes
 -  intel/fs: Update location of Render Target Array Index for gen12
 -  anv,iris: Fix input vertex max for tcs on gen12
 -  anv/gen11+: Disable object level preemption
+
+Daniel Schürmann (73):
+
 -  aco: fix image_atomic_cmp_swap
 -  nir: gather info whether a shader uses demote_to_helper
 -  nir: add pass to lower discard() to demote()
@@ -1185,6 +1268,9 @@ Changes
    striding
 -  aco: coalesce v_mad's accumulator with definition's affinities
 -  aco: either copy-propagate or inline create_vector operands
+
+Daniel Stone (15):
+
 -  Revert "gitlab-ci: disable panfrost runners"
 -  egl/wayland: Don't invalidate buffers on no-op resize
 -  util/test: Use MAX_PATH on Windows
@@ -1200,6 +1286,9 @@ Changes
 -  Revert "CI: Disable Windows/VS2019 builds"
 -  ci/windows: Make Chocolatey installs more reliable
 -  CI: Disable Lima jobs due to lab unhealthiness
+
+Danylo Piliaiev (29):
+
 -  i965: Do not set front_buffer_dirty if there is no front buffer
 -  st/mesa: Handle the rest renderbuffer formats from OSMesa
 -  osmesa/tests: Cover OSMESA_RGB GL_UNSIGNED_BYTE case
@@ -1238,6 +1327,9 @@ Changes
    mutex
 -  intel/fs: Work around dual-source blending hangs in combination with
    SIMD16
+
+Dave Airlie (69):
+
 -  llvmpipe/query: add support for indexed queries
 -  gallivm/swr: add stream_id to geom epilogue emit
 -  gallivm/nir: add support for multiple vertex streams
@@ -1308,15 +1400,33 @@ Changes
 -  draw/tess: free tessellation control shader i/o memory.
 -  llvmpipo/nir: free compute shader NIR
 -  llvmpipe: compute shaders work better with all the threads.
+
+David Stevens (1):
+
 -  egl/android: set window usage flags
+
+Denys (1):
+
 -  gitlab: add bug report template
+
+Dominik Behr (1):
+
 -  meson: fix debug build on Android
+
+Drew Davenport (1):
+
 -  radv: Filter extensions not whitelisted for Android
+
+Duncan Hopkins (2):
+
 -  zink. Added storage CISto descriptor pool. Added storage in
    descriptor pool for combined image samplers as well as uniform
    buffers. Stops some shaders from running through a pools storage
    faster than zinks internal tracking.
 -  zink: zero out zink_render_pass_state
+
+Dylan Baker (48):
+
 -  docs/release-calendar: 20.0.0-rc1 has been released
 -  docs: Mark 20.0-rc2 as done
 -  docs: Add release notes for 19.3.4
@@ -1368,17 +1478,32 @@ Changes
 -  mesa: Follow OpenGL conversion rules for values that exceed storage
    size
 -  tests: Make tests aware of meson test wrapper
+
+Edmondo Tommasina (1):
+
 -  radv/sqtt: fix RADV_THREAD_TRACE_BUFFER_SIZE spelling
+
+Eduardo Lima Mitev (3):
+
 -  turnip/pipeline: Don't assume tu_shader is a valid object
 -  turnip: Instance can be NULL resolving 'GetInstanceProcAddr' entry
    point
 -  anv/radv: Resolving 'GetInstanceProcAddr' should not require a valid
    instance
+
+Eli Schwartz (1):
+
 -  docs: fix typo in v20 release notes
+
+Elie Tournier (3):
+
 -  spirv2nir: print nir shader if translation succed
 -  spirv2nir: Add kernel spirv support
 -  docs/features: Update virgl OpenGL 4.5 features GL_ARB_clip_control
    and GL_KHR_robustness are now expose in the guest.
+
+Emil Velikov (11):
+
 -  meson: glx: drop with_glx == dri check
 -  glx: set the loader_logger early and for everyone
 -  egl/drm: reinstate (kms\_)swrast support
@@ -1392,7 +1517,13 @@ Changes
 -  loader: fallback to kernel name, if PCI fails
 -  glx: omit loader_loader() for macOS
 -  egl: simplify client/platform extension handling
+
+Emmanuel Gil Peyrot (1):
+
 -  Expose EGL_KHR_platform\_\* when EXT is supported
+
+Eric Anholt (144):
+
 -  gallium/osmesa: Fix a typo in the unit test's test names.
 -  gallium/osmesa: Fix MakeCurrent of non-8888 contexts.
 -  gallium/osmesa: Fill out other format tests.
@@ -1557,6 +1688,9 @@ Changes
 -  util/ra: Use util_dynarray for the adjacency list.
 -  util/ra: Use util_dynarray for handling the conflict lists.
 -  util/ra: Improve ra_set_finalize() performance.
+
+Eric Engestrom (58):
+
 -  VERSION: bump after 20.0 branch point
 -  egl: put full path to libEGL_mesa.so in GLVND json
 -  gitlab-ci: disable a630 tests as mesa-cheza is down
@@ -1625,6 +1759,9 @@ Changes
 -  VERSION: bump to 20.1.0-rc4
 -  .pick_status.json: Update to a91306677c613ba7511b764b3decc9db42b24de1
 -  tree-wide: fix deprecated GitLab URLs
+
+Erik Faye-Lund (154):
+
 -  zink: enable texture-buffer objects
 -  zink: implement load_instance_id
 -  zink: implement support for derivative-control
@@ -1779,6 +1916,9 @@ Changes
 -  util/os_memory: never use os_memory_debug.h
 -  zink: implement i2b1
 -  zink: use general-layout when blitting to/from same resource
+
+Francisco Jerez (57):
+
 -  intel/fs/cse: Make HALT instruction act as CSE barrier.
 -  intel/fs/gen7: Fix fs_inst::flags_written() for
    SHADER_OPCODE_FIND_LIVE_CHANNEL.
@@ -1876,13 +2016,22 @@ Changes
 -  intel/ir: Remove scheduling-based cycle count estimates.
 -  intel/ir: Update performance analysis parameters for memory fence
    codegen changes.
+
+Fritz Koenig (3):
+
 -  Revert "gitlab-ci: disable a630 tests as mesa-cheza is down"
 -  Revert "gitlab-ci: disable a630 tests as mesa-cheza is down (again)"
 -  freedreno: allow FMT6_8_UNORM as a UBWC format
+
+Georg Lehmann (3):
+
 -  Correctly wait in the fragment stage until all semaphores are
    signaled
 -  Vulkan Overlay: Don't try to change the image layout to present twice
 -  Vulkan overlay: use the corresponding image index for each swapchain
+
+Gert Wollny (63):
+
 -  r600: force new CF with TEX only if any texture value is written
 -  r600: Increase space for IO values to agree with
    PIPE_MAX_SHADER_IN/OUTPUTS
@@ -1950,12 +2099,24 @@ Changes
 -  r600: Fix nir compiler options, i.e. don't lower IO to temps for TESS
 -  r600/sfn: Fix printing vertex fetch instruction flags
 -  r600: Fix duplicated subexpression in r600_asm.c
+
+Greg V (3):
+
 -  amd/addrlib: fix build on non-x86 platforms
 -  r600: add missing <array> include
 -  svga: fix build on FreeBSD
+
+H.J. Lu (2):
+
 -  x86_init_func_common: Add ENDBR at function entry
 -  x86: Add ENDBR at function entries
+
+Hanno Böck (1):
+
 -  Properly check mmap return value
+
+Hyunjun Ko (27):
+
 -  freedreno/ir3: fix printing half constant registers.
 -  freedreno/ir3: Add cat4 mediump opcodes
 -  freedreno/ir3: put the conversion back for half const to the right
@@ -1986,7 +2147,13 @@ Changes
 -  turnip : Fix wrong offset calculation for xfb buffer.
 -  turnip: Skip unused regs when setting up streamout buffers
 -  turnip: Fix crashes when geometry shader constants aren't used
+
+Iago Toral Quiroga (1):
+
 -  nir: add a bool bitsize lowering pass
+
+Ian Romanick (62):
+
 -  intel/fs: Don't count integer instructions as being possibly coissue
 -  nir: Mark fmin and fmax as commutative and associative
 -  mesa/draw: Make sure all the unused fields are initialized to zero
@@ -2062,6 +2229,9 @@ Changes
 -  nir/algebraic: Require operands to iand be 32-bit
 -  nir/algebraic: Optimize ushr of pack_half, not ishr
 -  anv/tests: Don't rely on assert or changing NDEBUG in tests
+
+Icecream95 (16):
+
 -  panfrost: Fix non-debug builds
 -  panfrost: Inline panfrost_get_default_swizzle
 -  panfrost: LogicOp support
@@ -2078,9 +2248,15 @@ Changes
 -  panfrost: Fix GL_EXT_vertex_array_bgra
 -  panfrost: Enable PIPE_CAP_VERTEX_COLOR_UNCLAMPED
 -  panfrost: Fix background showing when using discard
+
+Icenowy Zheng (3):
+
 -  lima: remove its hash table entry when invalidating a resource
 -  lima: expose fragment shader derivatives capability
 -  lima: implement zsbuf reload
+
+Ilia Mirkin (24):
+
 -  nv50: report max lod bias of 15.0
 -  gitlab-ci: disable panfrost runners
 -  mesa: fix \_mesa_draw_nonzero_divisor_bits to return nonzero divisors
@@ -2106,18 +2282,39 @@ Changes
 -  docs: update for recently-added nvc0 features
 -  mesa: add interaction between compute derivatives and variable local
    sizes
+
+Indrajit Kumar Das (4):
+
 -  glapi/copyimage: Implement CopyImageSubDataNV
 -  gallium: prepare framework for supporting
    AlphaToCoverageDitherControlNV
 -  mesa: add support for AlphaToCoverageDitherControlNV
 -  radeonsi: enable support for AlphaToCoverageDitherControlNV
+
+Ivan Molodetskikh (1):
+
 -  egl: allow INVALID format for linux_dmabuf
+
+James Xiong (2):
+
 -  iris: handle the failure of converting unsupported yuv formats to isl
 -  gallium: let the pipe drivers decide the supported modifiers
+
+James Zhu (1):
+
 -  radeonsi: fix Segmentation fault during vaapi enc test
+
+Jan Palus (1):
+
 -  targets/opencl: fix build against LLVM>=10 with Polly support
+
+Jan Vesely (2):
+
 -  clover: Use explicit conversion from llvm::StringRef to std::string
 -  clover: Check if the detected clang libraries are usable
+
+Jan Zielinski (8):
+
 -  gallium/swr: Fix various asserts and security issues
 -  gallium/swr: fix corruptions in Unigine Heaven
 -  gallium/swr: use ElementCount type arguments for getSplat()
@@ -2126,6 +2323,9 @@ Changes
 -  gallium/gallivm: remove unused header include for newer LLVM
 -  gallium/swr: Fix LLVM 11 compilation issues
 -  gallium/swr: Fix crashes and failures in vertex fetch
+
+Jason Ekstrand (202):
+
 -  genxml: Add a new 3DSTATE_SF field on gen12
 -  anv,iris: Set 3DSTATE_SF::DerefBlockSize to per-poly on Gen12+
 -  intel/genxml: Drop SLMEnable from L3CNTLREG on Gen11
@@ -2332,9 +2532,15 @@ Changes
 -  nir/lower_double_ops: Rework the if (progress) tree
 -  nir/opt_deref: Report progress if we remove a deref
 -  nir/copy_prop_vars: Record progress in more places
+
+Jesse Natalie (3):
+
 -  wgl: add official gldrv.h header-file
 -  wgl: use gldrv.h instead of stw_icd.h
 -  util/ralloc: fix ralloc alignment on Win64
+
+John Stultz (7):
+
 -  freedreno: Add ir3_cf.c and ir3_delay.c to Makefile.sources
 -  panfrost: Move pan_afbc.c file to the the right Makefile.source file
 -  gallium: hud_context: Fix scalar initializer warning.
@@ -2342,7 +2548,13 @@ Changes
 -  etnaviv: Avoid shift overflow
 -  vc4_bufmgr: Remove duplicative VC definition
 -  r600: Fix build error in sfn_nir_lower_fs_out_to_vector.cpp
+
+Jon Turney (1):
+
 -  Fix util/process test on Cygwin
+
+Jonathan Marek (79):
+
 -  freedreno/a6xx: use single format enum
 -  freedreno/a6xx: fix Z24_UNORM_S8_UINT_AS_R8G8B8A8
 -  freedreno: name sysmem color/depth flush events
@@ -2424,32 +2636,50 @@ Changes
 -  nir: add pack_32_2x16_split/unpack_32_2x16_split lowering
 -  freedreno/ir3: run nir_lower_pack
 -  turnip: fix wrong substream size in parse_multisample_and_color_blend
+
+Jordan Justen (6):
+
 -  intel/compiler: Restrict cs_threads to 64
 -  intel: Update TGL PCI strings
 -  intel: Add TGL PCI ID
 -  intel/dev: Split .num_subslices out of GEN12_FEATURES macro
 -  intel/dev: Add device info for RKL
 -  docs/relnotes/new_features.txt: Add RKL to 20.1 release notes
+
+Jose Maria Casanova Crespo (5):
+
 -  broadcom: Fix implicit declaration of ffs for Android build
 -  v3d: Sync on last CS when non-compute stage uses resource written by
    CS
 -  v3d: Primitive Counts Feedback needs an extra 32-bit padding.
 -  v3d: Fix swizzle in DXT3 and DXT5 formats
 -  v3d: Include supported DXT formats to enable s3tc/dxt extensions
+
+Joshua Ashton (3):
+
 -  radv: Use TRUNC_COORD on samplers
 -  radv: Pass logical device to si_emit_graphics
 -  radeonsi: Use TRUNC_COORD on samplers
+
+José Fonseca (4):
+
 -  meson: Avoid duplicate symbols.
 -  scons: Prune out unnecessary targets.
 -  gitlab-ci: Prune all SCons jobs except scons-win64, and allows
    failures.
 -  appveyor: Remove Meson job.
+
+Juan A. Suarez Romero (6):
+
 -  nir/lower_double_ops: add note for lowering mod
 -  nir/lower_double_ops: relax lower mod()
 -  nir/algebraic: coalesce fmod lowering
 -  anv: use urb_setup_attribs in SBE
 -  intel/compiler: store the FS inputs in WM prog data
 -  anv/pipeline: allow more than 16 FS inputs
+
+Karol Herbst (18):
+
 -  clover: add trivial clCreateCommandQueueWithProperties implementation
 -  nir/lower_ssbo: handle atomics
 -  gallium: make handles of set_global_binding 64 bit
@@ -2470,6 +2700,9 @@ Changes
 -  gallium: initialize viewport swizzle in cso_set_viewport_dims
 -  Revert "nvc0: fix line width on GM20x+"
 -  st/mesa: properly guard fallback_copy_texsubimage aginst failed maps
+
+Kenneth Graunke (14):
+
 -  intel/genxml: Drop "reserved" enum
 -  isl: Fix the android build.
 -  iris: Dump frame markers with INTEL_DEBUG=submit
@@ -2486,7 +2719,13 @@ Changes
    opt_peephole_sel
 -  nir: Actually do load/store vectorization beyond vec2
 -  iris: Fix downcast of bound_vertex_buffers from uint64_t to int
+
+Konrad Dybcio (1):
+
 -  freedreno/a4xx: enable A405
+
+Kristian Høgsberg (39):
+
 -  nir: Delete unused is_var_constant() helper
 -  nir: Make unroll pragma work on clang
 -  freedreno/fdperf: Cast away some ignored return values
@@ -2527,6 +2766,9 @@ Changes
 -  freedreno/ir3: Reset lex line number when we start parsing
 -  freedreno/ir3: Print @tex write mask using 0x%x
 -  freedreno: Use the right amount of &'s
+
+Krzysztof Raszkowski (10):
+
 -  gallium/swr: fix gcc warnings
 -  gallium/swr: Fix gcc 4.8.5 compile error
 -  gallium/swr: Fix llvm11 compilation issues
@@ -2537,9 +2779,21 @@ Changes
 -  gallium/swr: Fix vcvtph2ps llvm intrinsic compile error
 -  gallium/swr: Fix array stride problem.
 -  gallium/swr: Re-enable scratch space for client-memory buffers
+
+Leandro Ribeiro (1):
+
 -  i965: remove duplicated comment
+
+Leo Liu (1):
+
 -  radeon/jpeg: fix the jpeg dt_pitch with YUYV format
+
+Lepton Wu (1):
+
 -  virgl: Use ETC2 formats directly when possible.
+
+Lionel Landwerlin (49):
+
 -  iris: implement gen12 post sync pipe control workaround
 -  anv: implement gen9 post sync pipe control workaround
 -  anv: implement gen12 post sync pipe control workaround
@@ -2591,8 +2845,14 @@ Changes
 -  drm-shim: stub syncobj wait ioctl
 -  iris: don't assert on unfinished aux import in copy paths
 -  anv: don't expose VK_INTEL_performance_query without kernel support
+
+Liviu Prodea (2):
+
 -  scons/windows: Support build with LLVM 10.
 -  util: Make process_test path compatible with mingw native toolchains
+
+Louis-Francis Ratté-Boulianne (7):
+
 -  glsl/linker: add DisableTransformFeedbackPacking workaround
 -  glsl/linker: handle array/struct members for DisableXfbPacking
 -  glsl/linker: add xfb workaround for modified built-in variables
@@ -2600,7 +2860,13 @@ Changes
 -  gallium: add PIPE_CAP_VIEWPORT_TRANSFORM_LOWERED
 -  gallium: add PIPE_CAP_PSIZ_CLAMPED
 -  panfrost: fix transform feedback
+
+Lucas Stach (1):
+
 -  etnaviv: retarget transfer to render resource when necessary
+
+Marek Olšák (254):
+
 -  vbo: move GLvertexformat initialization into a template header file
    for reuse
 -  vbo: use the template for noop GLvertexformat initialization
@@ -2922,18 +3188,33 @@ Changes
 -  radeonsi: fix compilation of monolithic PS
 -  radeonsi: don't expose 16xAA on chips with 1 RB due to an occlusion
    query issue
+
+Marek Vasut (4):
+
 -  etnaviv: Destroy rsc->pending_ctx set in etna_resource_destroy()
 -  etnaviv: Emit PE.ALPHA_COLOR_EXT\* on GPUs with half-float support
 -  etnaviv: Fix depth stencil ops on GC880/GC2000
 -  etnaviv: Disable seamless cube map on GC880
+
+Mark Janes (2):
+
 -  nir: check shader type before writing to shaderinfo.tess union
 -  nir: place aligned members after bitfields in shader_info.tess
+
+Mark Menzynski (2):
+
 -  util/blob: Add overwrite function for uint8
 -  tgsi/util: Change boolean for bool
+
+Martin Fuzzey (3):
+
 -  freedreno: android: fix build failure on android due to python
    version
 -  freedreno: android: add a6xx-pack.xml.h generation to android build
 -  freedreno: android: fix build of perfcounters.
+
+Mathias Fröhlich (19):
+
 -  egl: Implement getImage/putImage on pbuffer swrast.
 -  mesa: Fix FLUSH_VERTICES in SubpixelPrecisionBiasNV.
 -  egl: Fix A2RGB10 platform_{device,surfaceless} PBuffer configs.
@@ -2954,6 +3235,9 @@ Changes
 -  mesa: Provide gl_vertex_format accessors.
 -  i965: Make use of the vertex format functions in i965.
 -  i965: Use gl_vertex_format in brw_vertex_element.
+
+Matt Turner (11):
+
 -  intel/tools: Do not print type/qualifiers/name for c_literal
 -  intel/vec4: Make implied_mrf_writes() a vec4_instruction method
 -  intel/compiler: Remove unnecessary local variables
@@ -2965,11 +3249,17 @@ Changes
 -  intel/compiler: Discount NOPs from instruction counts
 -  isl: Avoid EXPECT_DEATH in unit tests
 -  meson: Specify the maximum required libdrm in dri.pc
+
+Mauro Rossi (5):
+
 -  android: gallium/auxiliary: fix "Unused source files" in tesselator
 -  android: aco: fix PIPE_FORMAT related building errors
 -  android: r600/sfn: fix includes and libmesa_nir dependency
 -  android: r600/sfn: Add GDS instructions
 -  android: aco: add various compiler statistics
+
+Michel Dänzer (33):
+
 -  gitlab-ci: Update to latest ci-templates HEAD
 -  gitlab-ci: Pass -j4 to make
 -  gitlab-ci: Merge ccache and libxml2-utils into main apt-get install
@@ -3006,6 +3296,9 @@ Changes
 -  mesa: Skip 3-byte array formats in \_mesa_array_format_flip_channels
 -  Revert "ac,radeonsi: fix compilations issues with LLVM 11"
 -  Revert "gallium/gallivm: fix compilation issues with llvm 11"
+
+Mike Blumenkrantz (6):
+
 -  zink: set UBO alignments in nir_intrinsic_load_uniform lowering
 -  zink: remove framebuffer cache
 -  zink: explicitly unref old fb object when setting new one
@@ -3013,20 +3306,35 @@ Changes
 -  gallium: add pipe cap for scissored clears and pass scissor state to
    clear() hook
 -  iris: handle PIPE_CAP_CLEAR_SCISSORED
+
+Nanley Chery (6):
+
 -  isl: Add a module which manages aux resolves
 -  iris: Use isl_aux_usage_has_fast_clear()
 -  iris: Use ISL's access preparation functions
 -  iris: Use isl_aux_state_transition_write()
 -  i965: Use ISL's access preparation functions
 -  i965: Use isl_aux_state_transition_write()
+
+Nataraj Deshpande (1):
+
 -  dri_util: Update internal_format to GL_RGB8 for
    MESA_FORMAT_R8G8B8X8_UNORM
+
+Neha Bhende (2):
+
 -  svga: fix size of format_conversion_table[]
 -  svga: Use pipe_shader_state_from_tgsi to set shader state
+
+Neil Armstrong (4):
+
 -  gitlab-ci/lava: fix handling of lava tags
 -  Revert "ci: Remove T820 from CI temporarily"
 -  gitlab-ci: add FILES_HOST_URL and move FILES_HOST_NAME into jobs
 -  gitlab-ci: re-enable mali400/450 and t820 jobs
+
+Neil Roberts (17):
+
 -  nir/opcodes: Add nir_op_f2fmp
 -  glsl: Add support for float16 types in the IR tree
 -  glsl: Add IR conversion ops for 16-bit float types
@@ -3044,6 +3352,9 @@ Changes
 -  glsl: Inline builtins in a separate pass
 -  glsl/lower_precision: Lower builtins depending on arguments
 -  glsl/lower_precision: Use vector.back() instead of vector.end()[-1]
+
+Paulo Zanoni (8):
+
 -  intel: fix the gen 11 compute shader scratch IDs
 -  intel: fix the gen 12 compute shader scratch IDs
 -  intel/device: bdw_gt1 actually has 6 eus per subslice
@@ -3052,8 +3363,17 @@ Changes
 -  iris: remove unnecessary forward declaration
 -  iris: remove useless bo->gtt_offset assignment
 -  iris: make BATCH_SZ smaller by BATCH_RESERVED bytes
+
+Peng Huang (1):
+
 -  radeonsi: make si_fence_server_signal flush pipe without work
+
+Pierre Moreau (1):
+
 -  clover/nir: Check the result of spirv_to_nir
+
+Pierre-Eric Pelloux-Prayer (44):
+
 -  radeonsi/ngg: add VGT_FLUSH when enabling fast launch
 -  radeonsi: test subsampled format in testdma
 -  format: add format_to_chroma_format
@@ -3098,8 +3418,14 @@ Changes
 -  driconf: add force_integer_tex_nearest option
 -  radeonsi: don't print gs_copy_shader stats for shaderdb
 -  amd/addrlib: fix forgotten char -> enum conversions
+
+Plamena Manolova (2):
+
 -  intel/compiler: Add support for variable workgroup size
 -  i965: Implement ARB_compute_variable_group_size
+
+Qiang Yu (35):
+
 -  lima: remove definition of lima_is_scanout
 -  lima: use util_copy_framebuffer_state
 -  lima: always add texture bo to submit
@@ -3135,7 +3461,13 @@ Changes
 -  lima: also check tiled and depth case when import
 -  lima: set offset when export resource
 -  panfrost: don't always build bifrost_compiler
+
+Quentin Glidic (1):
+
 -  meson: Use dependency.partial_dependency()
+
+Rafael Antognolli (18):
+
 -  intel: Load the driver even if I915_PARAM_REVISION is not found.
 -  intel/tools: Update aubinator_error_decode.
 -  intel/blorp: Implement GEN:BUG:1605967699.
@@ -3154,6 +3486,9 @@ Changes
 -  anv: Add anv_device parameter to anv_gem_munmap.
 -  anv: Add support for new MMAP_OFFSET ioctl.
 -  anv: Enable HiZ on multi-layer depth buffers.
+
+Rhys Perry (118):
+
 -  aco: fix gfx10_wave64_bpermute
 -  aco: gfx10_wave64_bpermute reduce op to print_ir
 -  aco: disable some instruction combining if it could change an exec
@@ -3280,6 +3615,9 @@ Changes
 -  nir/opt_if: run opt_peel_loop_initial_if after all other
    optimizations
 -  nir: fix lowering to scratch with boolean access
+
+Rob Clark (147):
+
 -  freedreno/drm: readonly cmdstream
 -  freedreno/ir3: shuffle a few ir3_register fields
 -  freedreno/ir3: cleanup after lower_locals_to_regs
@@ -3427,11 +3765,17 @@ Changes
 -  freedreno: fix buffer import
 -  freedreno/ir3: fix indirect cb0 load_ubo lowering
 -  freedreno: clear last_fence after resource tracking
+
+Rohan Garg (5):
+
 -  ci: Split out radv build-testing on arm64
 -  ci: Drop the git dependency in tracie
 -  tracie: Switch to using shutil.move for cross filesystem moves
 -  tracie: Print results in a machine readable format
 -  tracie: Reformat code to fix indentation
+
+Roland Scheidegger (7):
+
 -  gallivm: fix crash with bptc border color sampling
 -  gallivm: fix crash in emit_get_buffer_size
 -  gallivm: disable rgtc/latc SNORM accellerated fetches
@@ -3439,9 +3783,15 @@ Changes
 -  gallivm: fix rgtc2 format
 -  gallivm: switch the mask6/mask7 cases for signed rgtc formats
 -  gallivm: fix stream id fetch
+
+Roman Stratiienko (3):
+
 -  panfrost: Align Android makefiles with recent changes
 -  lima: Add missing source file to Android.mk
 -  panfrost: Align Android makefiles with recent changes
+
+Sagar Ghuge (13):
+
 -  intel/isl: Move get_format_encoding function to isl
 -  intel/isl: Switch to R8_UNORM format for compatiblity
 -  intel/tools: Handle illegal instruction
@@ -3455,8 +3805,14 @@ Changes
 -  intel/compiler: Track patch count threshold
 -  anv: Set patch count threshold in 3DSTATE_HS
 -  iris: Set patch count threshold in 3DSTATE_HS
+
+Samuel Iglesias Gonsálvez (2):
+
 -  radv: check buffer size in vkCreateBuffer()
 -  radv: set sparseAddressSpaceSize to RADV_MAX_MEMORY_ALLOCATION_SIZE
+
+Samuel Pitoiset (197):
+
 -  aco: fix MUBUF VS input loads when expanding vec3 to vec4 on GFX6
 -  aco: do not use ds_{read,write}2 on GFX6
 -  gitlab-ci: disable a630 tests as mesa-cheza is down (again)
@@ -3669,11 +4025,29 @@ Changes
 -  radv: limit the Vulkan version to 1.1 for Android
 -  radv: handle different Vulkan API versions correctly
 -  radv: update the list of allowed Android extensions
+
+Satyajit Sahu (1):
+
 -  st/va: GetConfigAttributes: check profile and entrypoint combination
+
+Simon Ser (1):
+
 -  mesa: add support for NV_pixel_buffer_object
+
+Simon Zeni (1):
+
 -  mesa: enable GL_EXT_draw_instanced for gles2
+
+Sonny Jiang (1):
+
 -  radeonsi: enable EXT_texture_shadow_lod
+
+Szymon Andrzejuk (1):
+
 -  virgl: Use align_free for align_malloc allocated buffer
+
+Tapani Pälli (27):
+
 -  intel/vec4: fix valgrind errors with vf_values array
 -  glsl: fix a memory leak with resource_set
 -  iris: fix aux buf map failure in 32bits app on Android
@@ -3701,11 +4075,17 @@ Changes
 -  mesa/st: initialize all winsys_handle fields for memory objects
 -  anv: remove assert from GetImageMemoryRequirements[2]
 -  st/mesa: destroy only own program variants when program is released
+
+Thomas Hellstrom (5):
+
 -  svga: Fix banded DMA upload
 -  svga, winsys/svga: Fix persistent memory discard maps
 -  svga: Treat forced coherent maps as maps of persistent memory
 -  gallium/pipebuffer: Use persistent maps for slabs
 -  winsys/svga: Optionally avoid caching buffer maps
+
+Thong Thai (7):
+
 -  Revert "st/va: Convert interlaced NV12 to progressive"
 -  gallium/auxiliary/vl: fix bob compute shaders for deint yuv
 -  st/va: remove unneeded code
@@ -3713,6 +4093,9 @@ Changes
 -  radeonsi: add 10-bit HEVC encode support for VCN2.0 devices
 -  radeon: add support for 10-bit HEVC encoding to VCN 2.0
 -  st/va: add check for P010 and P016 encode/decode support
+
+Timothy Arceri (51):
+
 -  glsl: fix gl_nir_set_uniform_initializers() for image arrays
 -  glsl: fix possible memory leak in nir uniform linker
 -  glsl: set the correct number of samplers in a shader
@@ -3765,6 +4148,9 @@ Changes
 -  glsl: remove some duplicate code from the nir uniform linker
 -  glsl: stop cascading errors if process_parameters() fails
 -  glsl: fix slow linking of uniforms in the nir linker
+
+Timur Kristóf (90):
+
 -  aco/optimizer: Don't combine uniform bool s_and to s_andn2.
 -  radv: Move some helper functions to the radv_shader.h header file.
 -  aco: Extract setup_gs_variables into a separate function.
@@ -3861,8 +4247,17 @@ Changes
 -  radv: Use new linking helper to set default driver locations.
 -  aco: Use new default driver locations.
 -  radv: Use smaller esgs_itemsize for ACO.
+
+Tobias Jakobi (1):
+
 -  meson: Link Gallium Nine with ld_args_build_id
+
+Tomasz Pyra (1):
+
 -  gallium/swr: spin-lock performance improvement
+
+Tomeu Vizoso (34):
+
 -  panfrost: Print intended field when decoding
 -  panfrost: Add more info to some assertions
 -  pan/midgard: Handle nir_intrinsic_load_barycentric_centroid
@@ -3898,7 +4293,13 @@ Changes
 -  gitlab-ci: Test OpenGL ES 3.1 on virgl
 -  gitlab-ci: Test Virgl with traces
 -  panfrost: Add Bifrost texture trampoline BO to batch
+
+Uros Bizjak (1):
+
 -  doc: Update features.txt for r600 with misc supported features
+
+Vasily Khoruzhick (19):
+
 -  lima: handle early-z and pixel kill better
 -  lima: implement PLB PP stream cache
 -  lima: add RGBA5551 and RGBA4444 formats
@@ -3918,10 +4319,19 @@ Changes
 -  lima: add support for R and RG formats
 -  lima: Implement lima_texture_subdata
 -  lima: avoid situations when scissor minx > maxx or miny > maxy
+
+Veerabadhran (1):
+
 -  radeon/vce: Move global function pointer si_get_pic_param to local
    encoder structure Multi gpu use case broken when the function was
    global
+
+Vilya Harvey (1):
+
 -  zink. Don't set incorrect sType in VkImportMemoryFdInfoKHR struct
+
+Vinson Lee (16):
+
 -  swr: Fix build with GCC 10.
 -  lima: Fix build with GCC 10.
 -  swr: Fix GCC 4.9 checks.
@@ -3940,6 +4350,15 @@ Changes
    variable.
 -  r600/sfn: Use correct setter method.
 -  freedreno: Add missing va_end.
+
+Yevhenii Kolesnikov (1):
+
 -  intel/compiler: fix cmod propagation optimisations
+
+Zhang, Boyuan (1):
+
 -  radeonsi: Add support for midstream bitrate change in encoder
+
+luc (1):
+
 -  zink: confused compilation macro usage for zink in target helpers.

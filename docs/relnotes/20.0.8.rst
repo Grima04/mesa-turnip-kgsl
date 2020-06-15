@@ -64,10 +64,18 @@ Bug fixes
 Changes
 -------
 
+Bas Nieuwenhuizen (3):
+
 -  radv/winsys: Remove extra sizeof multiply.
 -  radv: Handle failing to create .cache dir.
 -  radv: Provide a better error for permission issues with priorities.
+
+D Scott Phillips (1):
+
 -  anv/gen11+: Disable object level preemption
+
+Danylo Piliaiev (6):
+
 -  anv: Translate relative timeout to absolute when calling
    anv_timelines_wait
 -  anv: Fix deadlock in anv_timelines_wait
@@ -79,7 +87,13 @@ Changes
    SIMD16
 -  glsl: inline functions with unsupported return type before converting
    to nir
+
+Dave Airlie (1):
+
 -  llvmpipe: compute shaders work better with all the threads.
+
+Dylan Baker (10):
+
 -  docs/relnotes Add sha256 sums to 20.0.7
 -  .pick_status.json: Update to ceae09da156309327d7ba6f4a59d3a2e9b8837d9
 -  .pick_status.json: Update to a887ad7c84e14fdad7907037a39e9fee9d504bf3
@@ -90,54 +104,123 @@ Changes
 -  radonsi/si_state.c: retab
 -  .pick_status.json: Update to 0795241dde1507e0c6a3f9ef07c281ad4f2acf7b
 -  vulkan-overlay/meson: use install_data instead of configure_file
+
+Eric Engestrom (3):
+
 -  tree-wide: fix deprecated GitLab URLs
 -  glapi: remove deprecated .getchildren() that has been replace with an
    iterator
 -  intel: fix gen_sort_tags.py
+
+Erik Faye-Lund (2):
+
 -  zink: use general-layout when blitting to/from same resource
 -  nir: reuse existing psiz-variable
+
+Gert Wollny (1):
+
 -  nir: lower_tex: Don't normalize coordinates for TXF with RECT
+
+Ian Romanick (1):
+
 -  anv/tests: Don't rely on assert or changing NDEBUG in tests
+
+Ilia Mirkin (1):
+
 -  nouveau: allow invalidating coherent/persistent buffer backings
+
+Jan Palus (1):
+
 -  targets/opencl: fix build against LLVM>=10 with Polly support
+
+Jason Ekstrand (6):
+
 -  anv:gpu_memcpy: Emit 3DSTATE_VF_INDEXING on Gen8+
 -  nir/lower_double_ops: Rework the if (progress) tree
 -  nir/opt_deref: Report progress if we remove a deref
 -  nir/copy_prop_vars: Record progress in more places
 -  intel/vec4: Stomp the return type of RESINFO to UINT32
 -  intel/fs: Fix unused texture coordinate zeroing on Gen4-5
+
+Jonathan Marek (1):
+
 -  freedreno/a6xx: use nonbinning VS when GS is used
+
+Joshua Ashton (1):
+
 -  radeonsi: Use TRUNC_COORD on samplers
+
+Lionel Landwerlin (4):
+
 -  iris: fix BO destruction in error path
 -  i965: don't forget to set screen on duped image
 -  i965: fix export of GEM handles
 -  iris: fix export of GEM handles
+
+Lucas Stach (1):
+
 -  etnaviv: retarget transfer to render resource when necessary
+
+Marek Olšák (2):
+
 -  radeonsi: don't expose 16xAA on chips with 1 RB due to an occlusion
    query issue
 -  radeonsi: add a hack to disable TRUNC_COORD for shadow samplers
+
+Marek Vasut (1):
+
 -  etnaviv: Disable seamless cube map on GC880
+
+Michel Dänzer (1):
+
 -  util: Change os_same_file_description return type from bool to int
+
+Nataraj Deshpande (1):
+
 -  dri_util: Update internal_format to GL_RGB8 for
    MESA_FORMAT_R8G8B8X8_UNORM
+
+Neha Bhende (1):
+
 -  util: Initialize pipe_shader_state for passthrough and transform
    shaders
+
+Pierre-Eric Pelloux-Prayer (1):
+
 -  omx: fix build with gcc 10
+
+Rhys Perry (4):
+
 -  nir: fix lowering to scratch with boolean access
 -  aco: fix interaction with 3f branch workaround and p_constaddr
 -  aco: check instruction format before waiting for a previous SMEM
    store
 -  aco: preserve more fields when combining additions into SMEM
+
+Rob Clark (1):
+
 -  freedreno: clear last_fence after resource tracking
+
+Samuel Pitoiset (4):
+
 -  spirv,radv,anv: implement no-op VK_GOOGLE_user_type
 -  nir/lower_explicit_io: fix NON_UNIFORM access for UBO loads
 -  radv: enable zero VRAM for Doom Eternal
 -  radv: enable zero VRAM for all VKD3D (DX12->VK) games
+
+Timothy Arceri (3):
+
 -  glsl: stop cascading errors if process_parameters() fails
 -  radv: fix regression with builtin cache
 -  glsl: fix potential slow compile times for GLSLOptimizeConservatively
+
+Vinson Lee (4):
+
 -  zink: Check fopen result.
 -  r300g: Remove extra printf format specifiers.
 -  vdpau: Fix wrong calloc sizeof argument.
 -  mesa: Fix NetBSD compiler macro.
+
+Yevhenii Kolesnikov (1):
+
 -  intel/compiler: fix cmod propagation optimisations

@@ -40,11 +40,28 @@ Bug fixes
 Changes
 -------
 
+Andrii Simiklit (1):
+
 -  Revert "glx: convert glx_config_create_list to one big calloc"
+
+Arcady Goldmints-Orlov (1):
+
 -  spirv: Remove outdated SPIR-V decoration warnings
+
+Caio Marcelo de Oliveira Filho (1):
+
 -  intel/gen12: Take into account opcode when decoding SWSB
+
+Danylo Piliaiev (1):
+
 -  i965: Do not generate D16 B5G6R5_UNORM configs on gen < 8
+
+Dave Airlie (1):
+
 -  gallivm/tgsi: fix stream id regression
+
+Dylan Baker (7):
+
 -  docs: Add SHA256 sum for 19.3.4
 -  .pick_status.json: Update to 2a98cf3b2ecea43cea148df7f77d2abadfd1c9db
 -  .pick_status.json: Update to 946eacbafb47c8b94d47e7c9d2a8b02fff5a22fa
@@ -52,6 +69,9 @@ Changes
 -  .pick_status.json: Update to 8291d728dc997e87b4d2e4e451692643a1dba881
 -  .pick_status.json: Update to e4baff90812d799d586296fcad992ddcc553c359
 -  .pick_status.json: Update to 01496e3d1ea0370af03e6645dbd2b864c2ace94c
+
+Eric Engestrom (10):
+
 -  .pick_status.json: Update to 74e4cda64b9d114321216eefe536f80644b0f0fd
 -  .pick_status.json: Mark dba71de5c63617677fe44558f995d35fad643413 as
    denominated
@@ -68,39 +88,93 @@ Changes
 -  bin/gen_release_notes.py: fix commit list command
 -  .pick_status.json: Update to 0103f02acb10dcdea23461ba214307a6827a7772
 -  gitlab-ci: update template to fix container build issues
+
+Erik Faye-Lund (2):
+
 -  util: promote u_debug_memory.c to src/util
 -  .pick_status.json: Update to 74e4cda64b9d114321216eefe536f80644b0f0fd
+
+Francisco Jerez (1):
+
 -  intel/fs/gen12: Fixup/simplify SWSB annotations of SIMD32 scratch
    writes.
+
+Ian Romanick (1):
+
 -  intel/fs: Correctly handle multiply of fsign with a source modifier
+
+Jason Ekstrand (3):
+
 -  isl: Set 3DSTATE_DEPTH_BUFFER::Depth correctly for 3D surfaces
 -  iris: Don't skip fast depth clears if the color changed
 -  anv: Parse VkPhysicalDeviceFeatures2 in CreateDevice
+
+Jordan Justen (1):
+
 -  intel/compiler: Restrict cs_threads to 64
+
+Jose Maria Casanova Crespo (1):
+
 -  v3d: Sync on last CS when non-compute stage uses resource written by
    CS
+
+Kristian Høgsberg (2):
+
 -  Revert "glsl: Use a simpler formula for tanh"
 -  Revert "spirv: Use a simpler and more correct implementaiton of
    tanh()"
+
+Krzysztof Raszkowski (1):
+
 -  gallium/swr: simplify environmental variabled expansion code
+
+Marek Olšák (3):
+
 -  radeonsi: don't wait for shader compilation to finish when destroying
    a context
 -  mesa: fix immediate mode with tessellation and varying patch vertices
 -  Revert "mesa: check for z=0 in \_mesa_Vertex3dv()"
+
+Mathias Fröhlich (3):
+
 -  egl: Implement getImage/putImage on pbuffer swrast.
 -  egl: Fix A2RGB10 platform_{device,surfaceless} PBuffer configs.
 -  mesa: Flush vertices before changing the OpenGL state.
+
+Michel Dänzer (1):
+
 -  st/vdpau: Only call is_video_format_supported hook if needed
+
+Paulo Zanoni (1):
+
 -  intel/device: bdw_gt1 actually has 6 eus per subslice
+
+Peng Huang (1):
+
 -  radeonsi: make si_fence_server_signal flush pipe without work
+
+Rafael Antognolli (1):
+
 -  intel/gen12+: Disable mid thread preemption.
+
+Samuel Pitoiset (3):
+
 -  ac/llvm: fix 64-bit fmed3
 -  ac/llvm: fix 16-bit fmed3 on GFX8 and older gens
 -  ac/llvm: flush denorms for nir_op_fmed3 on GFX8 and older gens
+
+Tapani Pälli (5):
+
 -  iris: fix aux buf map failure in 32bits app on Android
 -  mesa: introduce boolean toggle for EXT_texture_norm16
 -  i965: toggle on EXT_texture_norm16
 -  mesa/st: toggle EXT_texture_norm16 based on format support
 -  mesa/st: fix formats required for EXT_texture_norm16
+
+Timothy Arceri (1):
+
 -  glsl: fix gl_nir_set_uniform_initializers() for image arrays
+
+luc (1):
+
 -  zink: confused compilation macro usage for zink in target helpers.

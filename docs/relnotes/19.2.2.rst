@@ -48,20 +48,40 @@ Bug fixes
 Changes
 -------
 
+Alan Coopersmith (6):
+
 -  c99_compat.h: Don't try to use 'restrict' in C++ code
 -  util: Make Solaris implemention of p_atomic_add work with gcc
 -  util: Workaround lack of flock on Solaris
 -  util: Solaris has linux-style pthread_setname_np
 -  meson: recognize "sunos" as the system name for Solaris
 -  intel/common: include unistd.h for ioctl() prototype on Solaris
+
+Alejandro Piñeiro (1):
+
 -  v3d: take into account prim_counts_offset
+
+Bas Nieuwenhuizen (3):
+
 -  radv: Disallow sparse shared images.
 -  nir/dead_cf: Remove dead control flow after infinite loops.
 -  radv: Fix single stage constant flush with merged shaders.
+
+Clément Guérin (1):
+
 -  radeonsi: enable zerovram for Rocket League
+
+Connor Abbott (2):
+
 -  nir/sink: Rewrite loop handling logic
 -  nir/sink: Don't sink load_ubo to outside of its defining loop
+
+Dylan Baker (1):
+
 -  docs: Add SHA256 sum for 19.2.1
+
+Eric Engestrom (7):
+
 -  GL: drop symbols mangling support
 -  meson: rename \`glvnd_missing_pc_files\` to \`not
    glvnd_has_headers_and_pc_files\`
@@ -71,24 +91,54 @@ Changes
 -  meson: skip installation of GLVND-provided headers
 -  util/u_atomic: fix return type of p_atomic_{inc,dec}_return() and
    p_atomic_{cmp,}xchg()
+
+Ian Romanick (2):
+
 -  nir/search: Fix possible NULL dereference in is_fsign
 -  intel/vec4: Don't try both sources as immediates for DPH
+
+James Xiong (1):
+
 -  iris: finish aux import on get_param
+
+Kenneth Graunke (2):
+
 -  iris: Properly unreference extra VBOs for draw parameters
 -  iris: Implement the Gen < 9 tessellation quads workaround
+
+Lepton Wu (1):
+
 -  egl/android: Remove our own reference to buffers.
+
+Lionel Landwerlin (3):
+
 -  etnaviv: remove variable from global namespace
 -  anv: fix vkUpdateDescriptorSets with inline uniform blocks
 -  anv: fix memory leak on device destroy
+
+Lucas Stach (3):
+
 -  etnaviv: fix vertex buffer state emission for single stream GPUs
 -  rbug: fix transmitted texture sizes
 -  rbug: unwrap index buffer resource
+
+Pierre-Eric Pelloux-Prayer (1):
+
 -  mesa: fix invalid target error handling for teximage
+
+Roland Scheidegger (1):
+
 -  gallivm: Fix saturated signed psub/padd intrinsics on llvm 8
+
+Samuel Pitoiset (6):
+
 -  drirc: enable vk_x11_override_min_image_count for DOOM
 -  radv: bump minTexelBufferOffsetAlignment to 4
 -  radv: fix DCC fast clear code for intensity formats
 -  Revert "radv: do not emit PKT3_CONTEXT_CONTROL with AMDGPU 3.6.0+"
 -  radv: fix DCC fast clear code for intensity formats (correctly)
 -  radv: fix updating bound fast ds clear values with different aspects
+
+Timothy Arceri (1):
+
 -  glsl: fix crash compiling bindless samplers inside unnamed UBOs

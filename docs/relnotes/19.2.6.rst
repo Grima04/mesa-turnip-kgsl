@@ -39,11 +39,31 @@ Bug fixes
 Changes
 -------
 
+Alejandro Piñeiro (1):
+
 -  v3d: adds an extra MOV for any sig.ld\*
+
+Dave Airlie (1):
+
 -  llvmpipe/ppc: fix if/ifdef confusion in backport.
+
+Dylan Baker (2):
+
 -  docs/relnotes/19.2.5: Add SHA256 sum
 -  meson: generate .pc files for gles and gles2 with old glvnd
+
+Eric Engestrom (1):
+
 -  vulkan: delete typo'd header
+
+Hyunjun Ko (1):
+
 -  freedreno/ir3: fix printing output registers of FS.
+
+Jose Maria Casanova Crespo (1):
+
 -  v3d: Fix predication with atomic image operations
+
+Yevhenii Kolesnikov (1):
+
 -  glsl: Enable textureSize for samplerExternalOES
