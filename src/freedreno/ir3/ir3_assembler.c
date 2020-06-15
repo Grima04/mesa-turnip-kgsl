@@ -34,12 +34,12 @@
 struct ir3_shader *
 ir3_parse_asm(struct ir3_compiler *c, struct ir3_kernel_info *info, FILE *in)
 {
-	struct ir3_shader *shader = calloc(1, sizeof(*shader));
+	struct ir3_shader *shader = rzalloc_size(NULL, sizeof(*shader));
 	shader->compiler = c;
 	shader->type = MESA_SHADER_COMPUTE;
 	mtx_init(&shader->variants_lock, mtx_plain);
 
-	struct ir3_shader_variant *v = calloc(1, sizeof(*v));
+	struct ir3_shader_variant *v = rzalloc_size(shader, sizeof(*v));
 	v->type = MESA_SHADER_COMPUTE;
 	v->shader = shader;
 

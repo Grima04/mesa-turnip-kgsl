@@ -41,18 +41,6 @@ ir3_glsl_type_size(const struct glsl_type *type, bool bindless)
 	return glsl_count_attribute_slots(type, false);
 }
 
-static void
-delete_variant(struct ir3_shader_variant *v)
-{
-	if (v->ir)
-		ir3_destroy(v->ir);
-	assert(!v->bo);
-	if (v->binning)
-		delete_variant(v->binning);
-	free(v->bin);
-	free(v);
-}
-
 /* for vertex shader, the inputs are loaded into registers before the shader
  * is executed, so max_regs from the shader instructions might not properly
  * reflect the # of registers actually used, especially in case passthrough
@@ -184,7 +172,7 @@ static struct ir3_shader_variant *
 create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 		struct ir3_shader_variant *nonbinning)
 {
-	struct ir3_shader_variant *v = CALLOC_STRUCT(ir3_shader_variant);
+	struct ir3_shader_variant *v = rzalloc_size(shader, sizeof(*v));
 	int ret;
 
 	if (!v)
@@ -232,7 +220,7 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 	return v;
 
 fail:
-	delete_variant(v);
+	ralloc_free(v);
 	return NULL;
 }
 
@@ -283,16 +271,10 @@ ir3_shader_get_variant(struct ir3_shader *shader, const struct ir3_shader_key *k
 void
 ir3_shader_destroy(struct ir3_shader *shader)
 {
-	struct ir3_shader_variant *v, *t;
-	for (v = shader->variants; v; ) {
-		t = v;
-		v = v->next;
-		delete_variant(t);
-	}
 	free(shader->const_state.immediates);
 	ralloc_free(shader->nir);
 	mtx_destroy(&shader->variants_lock);
-	free(shader);
+	ralloc_free(shader);
 }
 
 /**
@@ -355,7 +337,7 @@ struct ir3_shader *
 ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 		unsigned reserved_user_consts, struct ir3_stream_output_info *stream_output)
 {
-	struct ir3_shader *shader = CALLOC_STRUCT(ir3_shader);
+	struct ir3_shader *shader = rzalloc_size(NULL, sizeof(*shader));
 
 	mtx_init(&shader->variants_lock, mtx_plain);
 	shader->compiler = compiler;

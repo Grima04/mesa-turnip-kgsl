@@ -48,7 +48,7 @@ void * ir3_alloc(struct ir3 *shader, int sz)
 struct ir3 * ir3_create(struct ir3_compiler *compiler,
 		struct ir3_shader_variant *v)
 {
-	struct ir3 *shader = rzalloc(NULL, struct ir3);
+	struct ir3 *shader = rzalloc(v, struct ir3);
 
 	shader->compiler = compiler;
 	shader->type = v->type;
@@ -944,7 +944,7 @@ void * ir3_assemble(struct ir3_shader_variant *v)
 		info->sizedwords = align(info->sizedwords, 4 * 2);
 	}
 
-	ptr = dwords = calloc(4, info->sizedwords);
+	ptr = dwords = rzalloc_size(v, 4 * info->sizedwords);
 
 	foreach_block (block, &shader->block_list) {
 		unsigned sfu_delay = 0;
