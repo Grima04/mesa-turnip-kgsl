@@ -194,12 +194,21 @@ class Opcode(object):
       parts = name.replace('_e64', '').rsplit('_', 2)
       op_dtype = parts[-1]
       def_dtype = parts[-2] if len(parts) > 1 else parts[-1]
-      dtype_sizes = {'{}{}'.format(prefix, size) : size for prefix in 'biuf' for size in [64, 32, 24, 16]}
-      self.operand_size = dtype_sizes.get(op_dtype, 0)
-      self.definition_size = dtype_sizes.get(def_dtype, self.operand_size)
+
+      def_dtype_sizes = {'{}{}'.format(prefix, size) : size for prefix in 'biuf' for size in [64, 32, 24, 16]}
+      op_dtype_sizes = {k:v for k, v in def_dtype_sizes.items()}
+      # inline constants are 32-bit for 16-bit integer/typeless instructions: https://reviews.llvm.org/D81841
+      op_dtype_sizes['b16'] = 32
+      op_dtype_sizes['i16'] = 32
+      op_dtype_sizes['u16'] = 32
+
+      self.operand_size = op_dtype_sizes.get(op_dtype, 0)
+      self.definition_size = def_dtype_sizes.get(def_dtype, self.operand_size)
 
       # exceptions
-      if self.operand_size == 24:
+      if self.operand_size == 16 and op_dtype != 'f16':
+         self.operand_size = 16
+      elif self.operand_size == 24:
         self.operand_size = 32
       elif name in ['s_sext_i32_i8', 's_sext_i32_i16', 'v_msad_u8', 'v_cvt_pk_u16_u32', 'v_cvt_pk_i16_i32']:
          self.operand_size = 32
@@ -208,9 +217,6 @@ class Opcode(object):
          self.operand_size = 0
       elif name in ['v_mad_u64_u32', 'v_mad_i64_i32']:
          self.operand_size = 0
-      elif name.replace('_e64', '') in ['v_lshrrev_b16', 'v_ashrrev_i16', 'v_lshlrev_b16']:
-         # v_lshlrev_b16 tested on GFX10 with 1/2 PI inline constant
-         self.operand_size = 32
       elif '_pk_' in name or name in ['v_lerp_u8', 'v_sad_u8', 'v_sad_u16',
                                       'v_cvt_f32_ubyte0', 'v_cvt_f32_ubyte1',
                                       'v_cvt_f32_ubyte2', 'v_cvt_f32_ubyte3']:
