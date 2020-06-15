@@ -38,8 +38,8 @@ or
 Contents
 --------
 
-Proceed to the `compilation and installation
-instructions <install.rst>`__.
+Proceed to the :doc:`compilation and installation
+instructions <install>`.
 
 Demos, GLUT, and GLU
 --------------------

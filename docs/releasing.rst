@@ -27,7 +27,7 @@ Release schedule
 Releases should happen on Wednesdays. Delays can occur although those
 should be kept to a minimum.
 
-See our `calendar <release-calendar.rst>`__ for information about how
+See our :doc:`calendar <release-calendar>` for information about how
 the release schedule is planned, and the date and other details for
 individual releases.
 
@@ -58,7 +58,7 @@ Stable releases
    This also involves that, as a final release may be delayed due to the
    need of additional candidates to solve some blocking regression(s), the
    release manager might have to update the
-   `calendar <release-calendar.rst>`__ with additional bug fix releases of
+   :doc:`calendar <release-calendar>` with additional bug fix releases of
    the current stable branch.
 
 .. _pickntest:
@@ -67,7 +67,7 @@ Cherry-picking and testing
 --------------------------
 
 Commits nominated for the active branch are picked as based on the
-`criteria <submittingpatches.rst#criteria>`__ as described in the same
+:ref:`criteria <criteria>` as described in the same
 section.
 
 Nominations happen via special tags in the commit messages, and via
@@ -214,7 +214,7 @@ Perform basic testing
 ~~~~~~~~~~~~~~~~~~~~~
 
 Most of the testing should already be done during the
-`cherry-pick <#pickntest>`__ So we do a quick 'touch test'
+:ref:`cherry-pick <pickntest>` So we do a quick 'touch test'
 
 -  meson dist
 -  scons (from release tarball)
