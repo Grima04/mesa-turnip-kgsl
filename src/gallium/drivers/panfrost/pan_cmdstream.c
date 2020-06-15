@@ -1375,11 +1375,11 @@ panfrost_get_tex_desc(struct panfrost_batch *batch,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               panfrost_bo_access_for_stage(st));
 
-        panfrost_batch_add_bo(batch, view->midgard_bo,
+        panfrost_batch_add_bo(batch, view->bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               panfrost_bo_access_for_stage(st));
 
-        return view->midgard_bo->gpu;
+        return view->bo->gpu;
 }
 
 static void
@@ -1388,7 +1388,7 @@ panfrost_update_sampler_view(struct panfrost_sampler_view *view,
 {
         struct panfrost_resource *rsrc = pan_resource(view->base.texture);
         if (view->layout != rsrc->layout) {
-                panfrost_bo_unreference(view->midgard_bo);
+                panfrost_bo_unreference(view->bo);
                 panfrost_create_sampler_view_bo(view, pctx, &rsrc->base);
         }
 }
@@ -1421,7 +1421,7 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                                               panfrost_bo_access_for_stage(stage));
 
-                        panfrost_batch_add_bo(batch, view->bifrost_bo,
+                        panfrost_batch_add_bo(batch, view->bo,
                                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                                               panfrost_bo_access_for_stage(stage));
 

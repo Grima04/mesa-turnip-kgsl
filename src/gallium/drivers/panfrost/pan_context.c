@@ -954,7 +954,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->base.u.tex.last_layer,
                                 type, prsrc->layout);
 
-                so->bifrost_bo = pan_bo_create(device, size, 0);
+                so->bo = pan_bo_create(device, size, 0);
 
                 so->bifrost_descriptor = rzalloc(pctx, struct bifrost_texture_descriptor);
                 panfrost_new_texture_bifrost(
@@ -971,7 +971,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 panfrost_translate_swizzle_4(composed_swizzle),
                                 prsrc->bo->gpu,
                                 prsrc->slices,
-                                so->bifrost_bo);
+                                so->bo);
         } else {
                 unsigned size = panfrost_estimate_texture_payload_size(
                                 so->base.u.tex.first_level,
@@ -981,10 +981,10 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 type, prsrc->layout);
                 size += sizeof(struct mali_texture_descriptor);
 
-                so->midgard_bo = pan_bo_create(device, size, 0);
+                so->bo = pan_bo_create(device, size, 0);
 
                 panfrost_new_texture(
-                                so->midgard_bo->cpu,
+                                so->bo->cpu,
                                 texture->width0, texture->height0,
                                 texture->depth0, array_size,
                                 so->base.format,
@@ -1055,8 +1055,7 @@ panfrost_sampler_view_destroy(
         struct panfrost_sampler_view *view = (struct panfrost_sampler_view *) pview;
 
         pipe_resource_reference(&pview->texture, NULL);
-        panfrost_bo_unreference(view->midgard_bo);
-        panfrost_bo_unreference(view->bifrost_bo);
+        panfrost_bo_unreference(view->bo);
         if (view->bifrost_descriptor)
                 ralloc_free(view->bifrost_descriptor);
         ralloc_free(view);
