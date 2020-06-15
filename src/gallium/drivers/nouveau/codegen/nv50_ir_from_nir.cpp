@@ -894,7 +894,7 @@ calcSlots(const glsl_type *type, Program::Type stage, const shader_info &info,
    uint16_t slots;
    switch (stage) {
    case Program::TYPE_GEOMETRY:
-      slots = type->uniform_locations();
+      slots = type->count_attribute_slots(false);
       if (input)
          slots /= info.gs.vertices_in;
       break;
@@ -902,9 +902,9 @@ calcSlots(const glsl_type *type, Program::Type stage, const shader_info &info,
    case Program::TYPE_TESSELLATION_EVAL:
       // remove first dimension
       if (var->data.patch || (!input && stage == Program::TYPE_TESSELLATION_EVAL))
-         slots = type->uniform_locations();
+         slots = type->count_attribute_slots(false);
       else
-         slots = type->fields.array->uniform_locations();
+         slots = type->fields.array->count_attribute_slots(false);
       break;
    default:
       slots = type->count_attribute_slots(false);
@@ -912,6 +912,24 @@ calcSlots(const glsl_type *type, Program::Type stage, const shader_info &info,
    }
 
    return slots;
+}
+
+static uint8_t
+getMaskForType(const glsl_type *type, uint8_t slot) {
+   uint16_t comp = type->without_array()->components();
+   comp = comp ? comp : 4;
+
+   if (glsl_base_type_is_64bit(type->without_array()->base_type)) {
+      comp *= 2;
+      if (comp > 4) {
+         if (slot % 2)
+            comp -= 4;
+         else
+            comp = 4;
+      }
+   }
+
+   return (1 << comp) - 1;
 }
 
 bool Converter::assignSlots() {
@@ -956,15 +974,7 @@ bool Converter::assignSlots() {
       const glsl_type *type = var->type;
       int slot = var->data.location;
       uint16_t slots = calcSlots(type, prog->getType(), nir->info, true, var);
-      uint32_t comp = type->is_array() ? type->without_array()->component_slots()
-                                       : type->component_slots();
-      uint32_t frac = var->data.location_frac;
       uint32_t vary = var->data.driver_location;
-
-      if (glsl_base_type_is_64bit(type->without_array()->base_type)) {
-         if (comp > 2)
-            slots *= 2;
-      }
 
       assert(vary + slots <= PIPE_MAX_SHADER_INPUTS);
 
@@ -1006,17 +1016,12 @@ bool Converter::assignSlots() {
       }
 
       for (uint16_t i = 0u; i < slots; ++i, ++vary) {
-         info->in[vary].id = vary;
-         info->in[vary].patch = var->data.patch;
-         info->in[vary].sn = name;
-         info->in[vary].si = index + i;
-         if (glsl_base_type_is_64bit(type->without_array()->base_type))
-            if (i & 0x1)
-               info->in[vary].mask |= (((1 << (comp * 2)) - 1) << (frac * 2) >> 0x4);
-            else
-               info->in[vary].mask |= (((1 << (comp * 2)) - 1) << (frac * 2) & 0xf);
-         else
-            info->in[vary].mask |= ((1 << comp) - 1) << frac;
+         nv50_ir_varying *v = &info->in[vary];
+
+         v->patch = var->data.patch;
+         v->sn = name;
+         v->si = index + i;
+         v->mask |= getMaskForType(type, i) << var->data.location_frac;
       }
       info->numInputs = std::max<uint8_t>(info->numInputs, vary);
    }
@@ -1025,15 +1030,7 @@ bool Converter::assignSlots() {
       const glsl_type *type = var->type;
       int slot = var->data.location;
       uint16_t slots = calcSlots(type, prog->getType(), nir->info, false, var);
-      uint32_t comp = type->is_array() ? type->without_array()->component_slots()
-                                       : type->component_slots();
-      uint32_t frac = var->data.location_frac;
       uint32_t vary = var->data.driver_location;
-
-      if (glsl_base_type_is_64bit(type->without_array()->base_type)) {
-         if (comp > 2)
-            slots *= 2;
-      }
 
       assert(vary < PIPE_MAX_SHADER_OUTPUTS);
 
@@ -1099,20 +1096,14 @@ bool Converter::assignSlots() {
       }
 
       for (uint16_t i = 0u; i < slots; ++i, ++vary) {
-         info->out[vary].id = vary;
-         info->out[vary].patch = var->data.patch;
-         info->out[vary].sn = name;
-         info->out[vary].si = index + i;
-         if (glsl_base_type_is_64bit(type->without_array()->base_type))
-            if (i & 0x1)
-               info->out[vary].mask |= (((1 << (comp * 2)) - 1) << (frac * 2) >> 0x4);
-            else
-               info->out[vary].mask |= (((1 << (comp * 2)) - 1) << (frac * 2) & 0xf);
-         else
-            info->out[vary].mask |= ((1 << comp) - 1) << frac;
+         nv50_ir_varying *v = &info->out[vary];
+         v->patch = var->data.patch;
+         v->sn = name;
+         v->si = index + i;
+         v->mask |= getMaskForType(type, i) << var->data.location_frac;
 
          if (nir->info.outputs_read & 1ull << slot)
-            info->out[vary].oread = 1;
+            v->oread = 1;
       }
       info->numOutputs = std::max<uint8_t>(info->numOutputs, vary);
    }
@@ -3280,7 +3271,7 @@ nvir_nir_shader_compiler_options(int chipset)
    op.lower_hadd = true; // TODO
    op.lower_add_sat = true; // TODO
    op.vectorize_io = false;
-   op.lower_to_scalar = true;
+   op.lower_to_scalar = false;
    op.unify_interfaces = false;
    op.use_interpolated_input_intrinsics = true;
    op.lower_mul_2x32_64 = true; // TODO
