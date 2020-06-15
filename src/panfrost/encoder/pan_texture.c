@@ -345,7 +345,7 @@ panfrost_new_texture_bifrost(
         descriptor->levels = last_level - first_level;
         descriptor->unk1 = 0x0;
         descriptor->levels_unk = 0;
-        descriptor->level_2 = 0;
+        descriptor->level_2 = last_level - first_level;
         descriptor->payload = payload->gpu;
         descriptor->array_size = MALI_POSITIVE(array_size);
         descriptor->unk4 = 0x0;
