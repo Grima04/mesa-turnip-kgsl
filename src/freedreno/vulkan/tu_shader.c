@@ -634,6 +634,8 @@ tu_shader_create(struct tu_device *dev,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
+   ir3_finalize_nir(dev->compiler, nir);
+
    shader->ir3_shader =
       ir3_shader_from_nir(dev->compiler, nir,
                           align(shader->push_consts.count, 4),

@@ -109,6 +109,7 @@ fd3_screen_init(struct pipe_screen *pscreen)
 	pscreen->context_create = fd3_context_create;
 	pscreen->is_format_supported = fd3_screen_is_format_supported;
 	fd3_emit_init_screen(pscreen);
+	ir3_screen_init(pscreen);
 
 	screen->setup_slices = fd3_setup_slices;
 	if (fd_mesa_debug & FD_DBG_TTILE)

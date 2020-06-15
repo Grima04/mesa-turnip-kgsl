@@ -48,6 +48,7 @@ void * ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shad
 void ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso);
 
 void ir3_prog_init(struct pipe_context *pctx);
+void ir3_screen_init(struct pipe_screen *pscreen);
 
 /**
  * A helper to determine if a fs input 'i' is point/sprite coord, given

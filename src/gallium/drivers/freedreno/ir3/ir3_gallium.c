@@ -294,6 +294,14 @@ ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso)
 	ir3_shader_destroy(so);
 }
 
+static void
+ir3_screen_finalize_nir(struct pipe_screen *pscreen, void *nir, bool optimize)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+
+	ir3_finalize_nir(screen->compiler, nir);
+}
+
 void
 ir3_prog_init(struct pipe_context *pctx)
 {
@@ -311,4 +319,10 @@ ir3_prog_init(struct pipe_context *pctx)
 
 	pctx->create_fs_state = ir3_shader_state_create;
 	pctx->delete_fs_state = ir3_shader_state_delete;
+}
+
+void
+ir3_screen_init(struct pipe_screen *pscreen)
+{
+	pscreen->finalize_nir = ir3_screen_finalize_nir;
 }

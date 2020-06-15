@@ -411,8 +411,6 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 
 	ir3_nir_post_finalize(compiler, nir);
 
-	ir3_finalize_nir(compiler, nir);
-
 	shader->nir = nir;
 
 	if (ir3_shader_debug & IR3_DBG_DISASM) {

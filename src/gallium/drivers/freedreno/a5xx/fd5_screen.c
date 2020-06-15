@@ -135,4 +135,5 @@ fd5_screen_init(struct pipe_screen *pscreen)
 		screen->tile_mode = fd5_tile_mode;
 
 	fd5_emit_init_screen(pscreen);
+	ir3_screen_init(pscreen);
 }

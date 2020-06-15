@@ -140,4 +140,5 @@ fd6_screen_init(struct pipe_screen *pscreen)
 
 	fd6_resource_screen_init(pscreen);
 	fd6_emit_init_screen(pscreen);
+	ir3_screen_init(pscreen);
 }
