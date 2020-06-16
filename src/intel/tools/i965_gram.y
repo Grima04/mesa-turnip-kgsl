@@ -1771,10 +1771,6 @@ indirectmsgreg:
 addrreg:
 	ADDRREG subregnum
 	{
-		if ($1 != 0)
-			error(&@1, "Address register number %d"
-				   "out of range\n", $1);
-
 		int subnr = (p->devinfo->gen >= 8) ? 16 : 8;
 
 		if ($2 > subnr)
@@ -1875,16 +1871,11 @@ statereg:
 controlreg:
 	CONTROLREG subregnum
 	{
-		if ($1 > 0)
-			error(&@1, "Control register number %d"
-				   " out of range\n", $1);
-
 		if ($2 > 4)
 			error(&@2, "control sub register number %d"
 				   " out of range\n", $2);
 
 		$$ = brw_cr0_reg($2);
-		$$.nr = $1;
 	}
 	;
 
