@@ -335,7 +335,7 @@ ir3_setup_used_key(struct ir3_shader *shader)
 
 struct ir3_shader *
 ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
-		struct ir3_stream_output_info *stream_output)
+		unsigned reserved_user_consts, struct ir3_stream_output_info *stream_output)
 {
 	struct ir3_shader *shader = CALLOC_STRUCT(ir3_shader);
 
@@ -345,6 +345,7 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 	shader->type = nir->info.stage;
 	if (stream_output)
 		memcpy(&shader->stream_output, stream_output, sizeof(shader->stream_output));
+	shader->const_state.num_reserved_user_consts = reserved_user_consts;
 
 	if (nir->info.stage == MESA_SHADER_GEOMETRY)
 		NIR_PASS_V(nir, ir3_nir_lower_gs);

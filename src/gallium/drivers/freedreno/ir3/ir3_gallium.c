@@ -168,7 +168,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 	struct ir3_stream_output_info stream_output;
 	copy_stream_out(&stream_output, &cso->stream_output);
 
-	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, &stream_output);
+	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, 0, &stream_output);
 
 	/* Compile standard variants immediately to try to avoid draw-time stalls
 	 * to run the compiler.
@@ -234,7 +234,7 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 		nir = tgsi_to_nir(cso->prog, screen, false);
 	}
 
-	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, NULL);
+	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, 0, NULL);
 
 	/* Immediately compile a standard variant.  We have so few variants in our
 	 * shaders, that doing so almost eliminates draw-time recompiles.  (This
