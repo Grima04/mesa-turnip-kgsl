@@ -1586,7 +1586,6 @@ nir_visitor::visit(ir_call *ir)
       }
       case nir_intrinsic_is_helper_invocation: {
          nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 1, NULL);
-         instr->num_components = 1;
          nir_builder_instr_insert(&b, &instr->instr);
          break;
       }
