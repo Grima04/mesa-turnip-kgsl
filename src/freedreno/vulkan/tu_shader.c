@@ -423,7 +423,6 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
    if (min >= max) {
       tu_shader->push_consts.lo = 0;
       tu_shader->push_consts.count = 0;
-      tu_shader->ir3_shader.const_state.num_reserved_user_consts = 0;
       return;
    }
 
@@ -434,8 +433,6 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
    tu_shader->push_consts.lo = (min / 16) / 4 * 4;
    tu_shader->push_consts.count =
       align(max, 16) / 16 - tu_shader->push_consts.lo;
-   tu_shader->ir3_shader.const_state.num_reserved_user_consts = 
-      align(tu_shader->push_consts.count, 4);
 }
 
 /* Gather the InputAttachmentIndex for each input attachment from the NIR
@@ -495,9 +492,8 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
 }
 
 static void
-tu_gather_xfb_info(nir_shader *nir, struct tu_shader *shader)
+tu_gather_xfb_info(nir_shader *nir, struct ir3_stream_output_info *info)
 {
-   struct ir3_stream_output_info *info = &shader->ir3_shader.stream_output;
    nir_xfb_info *xfb = nir_gather_xfb_info(nir, NULL);
 
    if (!xfb)
@@ -545,10 +541,9 @@ tu_shader_create(struct tu_device *dev,
 {
    struct tu_shader *shader;
 
-   const uint32_t max_variant_count = (stage == MESA_SHADER_VERTEX) ? 2 : 1;
    shader = vk_zalloc2(
       &dev->alloc, alloc,
-      sizeof(*shader) + sizeof(struct ir3_shader_variant) * max_variant_count,
+      sizeof(*shader),
       8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!shader)
       return NULL;
@@ -609,10 +604,11 @@ tu_shader_create(struct tu_device *dev,
     * Also needs to be called after nir_remove_dead_variables with varyings,
     * so that we could align stream outputs correctly.
     */
+   struct ir3_stream_output_info so_info = {};
    if (nir->info.stage == MESA_SHADER_VERTEX ||
          nir->info.stage == MESA_SHADER_TESS_EVAL ||
          nir->info.stage == MESA_SHADER_GEOMETRY)
-      tu_gather_xfb_info(nir, shader);
+      tu_gather_xfb_info(nir, &so_info);
 
    NIR_PASS_V(nir, nir_propagate_invariant);
 
@@ -639,31 +635,14 @@ tu_shader_create(struct tu_device *dev,
    if (stage == MESA_SHADER_FRAGMENT)
       NIR_PASS_V(nir, nir_lower_input_attachments, true);
 
-   if (stage == MESA_SHADER_GEOMETRY)
-      NIR_PASS_V(nir, ir3_nir_lower_gs);
-
    NIR_PASS_V(nir, tu_lower_io, shader, layout);
-
-   NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size, 0);
-
-   if (stage == MESA_SHADER_FRAGMENT) {
-      /* NOTE: lower load_barycentric_at_sample first, since it
-       * produces load_barycentric_at_offset:
-       */
-      NIR_PASS_V(nir, ir3_nir_lower_load_barycentric_at_sample);
-      NIR_PASS_V(nir, ir3_nir_lower_load_barycentric_at_offset);
-
-      NIR_PASS_V(nir, ir3_nir_move_varying_inputs);
-   }
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-   /* num_uniforms only used by ir3 for size of ubo 0 (push constants) */
-   nir->num_uniforms = MAX_PUSH_CONSTANTS_SIZE / 16;
-
-   shader->ir3_shader.compiler = dev->compiler;
-   shader->ir3_shader.type = stage;
-   shader->ir3_shader.nir = nir;
+   shader->ir3_shader =
+      ir3_shader_from_nir(dev->compiler, nir,
+                          align(shader->push_consts.count, 4),
+                          &so_info);
 
    return shader;
 }
@@ -673,20 +652,7 @@ tu_shader_destroy(struct tu_device *dev,
                   struct tu_shader *shader,
                   const VkAllocationCallbacks *alloc)
 {
-   if (shader->ir3_shader.nir)
-      ralloc_free(shader->ir3_shader.nir);
-
-   for (uint32_t i = 0; i < 1 + shader->has_binning_pass; i++) {
-      if (shader->variants[i].ir)
-         ir3_destroy(shader->variants[i].ir);
-   }
-
-   if (shader->ir3_shader.const_state.immediates)
-	   free(shader->ir3_shader.const_state.immediates);
-   if (shader->binary)
-      free(shader->binary);
-   if (shader->binning_binary)
-      free(shader->binning_binary);
+   ir3_shader_destroy(shader->ir3_shader);
 
    vk_free2(&dev->alloc, alloc, shader);
 }
@@ -730,95 +696,6 @@ tu_shader_compile_options_init(
       .optimize = true,
       .include_binning_pass = true,
    };
-}
-
-static uint32_t *
-tu_compile_shader_variant(struct ir3_shader *shader,
-                          const struct ir3_shader_key *key,
-                          struct ir3_shader_variant *nonbinning,
-                          struct ir3_shader_variant *variant)
-{
-   variant->shader = shader;
-   variant->type = shader->type;
-   variant->key = *key;
-   variant->binning_pass = !!nonbinning;
-   variant->nonbinning = nonbinning;
-
-   int ret = ir3_compile_shader_nir(shader->compiler, variant);
-   if (ret)
-      return NULL;
-
-   /* when assemble fails, we rely on tu_shader_destroy to clean up the
-    * variant
-    */
-   return ir3_shader_assemble(variant, shader->compiler->gpu_id);
-}
-
-VkResult
-tu_shader_compile(struct tu_device *dev,
-                  struct tu_shader *shader,
-                  const struct tu_shader *next_stage,
-                  const struct tu_shader_compile_options *options,
-                  const VkAllocationCallbacks *alloc)
-{
-   if (options->optimize) {
-      /* ignore the key for the first pass of optimization */
-      ir3_optimize_nir(&shader->ir3_shader, shader->ir3_shader.nir, NULL);
-
-      if (unlikely(dev->physical_device->instance->debug_flags &
-                   TU_DEBUG_NIR)) {
-         fprintf(stderr, "optimized nir:\n");
-         nir_print_shader(shader->ir3_shader.nir, stderr);
-      }
-   }
-
-   shader->binary = tu_compile_shader_variant(
-      &shader->ir3_shader, &options->key, NULL, &shader->variants[0]);
-   if (!shader->binary)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   if (shader_debug_enabled(shader->ir3_shader.type)) {
-      fprintf(stdout, "Native code for unnamed %s shader %s:\n",
-              ir3_shader_stage(&shader->variants[0]), shader->ir3_shader.nir->info.name);
-       if (shader->ir3_shader.type == MESA_SHADER_FRAGMENT)
-               fprintf(stdout, "SIMD0\n");
-       ir3_shader_disasm(&shader->variants[0], shader->binary, stdout);
-   }
-
-   /* compile another variant for the binning pass */
-   if (options->include_binning_pass &&
-       shader->ir3_shader.type == MESA_SHADER_VERTEX) {
-      shader->binning_binary = tu_compile_shader_variant(
-         &shader->ir3_shader, &options->key, &shader->variants[0],
-         &shader->variants[1]);
-      if (!shader->binning_binary)
-         return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-      shader->has_binning_pass = true;
-
-      if (shader_debug_enabled(MESA_SHADER_VERTEX)) {
-         fprintf(stdout, "Native code for unnamed binning shader %s:\n",
-                 shader->ir3_shader.nir->info.name);
-          ir3_shader_disasm(&shader->variants[1], shader->binary, stdout);
-      }
-   }
-
-   if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_IR3)) {
-      fprintf(stderr, "disassembled ir3:\n");
-      fprintf(stderr, "shader: %s\n",
-              gl_shader_stage_name(shader->ir3_shader.type));
-      ir3_shader_disasm(&shader->variants[0], shader->binary, stderr);
-
-      if (shader->has_binning_pass) {
-         fprintf(stderr, "disassembled ir3:\n");
-         fprintf(stderr, "shader: %s (binning)\n",
-                 gl_shader_stage_name(shader->ir3_shader.type));
-         ir3_shader_disasm(&shader->variants[1], shader->binning_binary,
-                           stderr);
-      }
-   }
-
-   return VK_SUCCESS;
 }
 
 VkResult

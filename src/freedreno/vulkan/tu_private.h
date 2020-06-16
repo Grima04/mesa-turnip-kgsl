@@ -1114,21 +1114,11 @@ struct tu_push_constant_range
 
 struct tu_shader
 {
-   struct ir3_shader ir3_shader;
+   struct ir3_shader *ir3_shader;
 
    struct tu_push_constant_range push_consts;
    unsigned attachment_idx[MAX_RTS];
    uint8_t active_desc_sets;
-
-   /* This may be true for vertex shaders.  When true, variants[1] is the
-    * binning variant and binning_binary is non-NULL.
-    */
-   bool has_binning_pass;
-
-   void *binary;
-   void *binning_binary;
-
-   struct ir3_shader_variant variants[0];
 };
 
 struct tu_shader *
@@ -1147,13 +1137,6 @@ void
 tu_shader_compile_options_init(
    struct tu_shader_compile_options *options,
    const VkGraphicsPipelineCreateInfo *pipeline_info);
-
-VkResult
-tu_shader_compile(struct tu_device *dev,
-                  struct tu_shader *shader,
-                  const struct tu_shader *next_stage,
-                  const struct tu_shader_compile_options *options,
-                  const VkAllocationCallbacks *alloc);
 
 struct tu_program_descriptor_linkage
 {

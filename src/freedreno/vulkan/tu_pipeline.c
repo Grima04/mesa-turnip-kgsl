@@ -264,6 +264,8 @@ struct tu_pipeline_builder
    const VkGraphicsPipelineCreateInfo *create_info;
 
    struct tu_shader *shaders[MESA_SHADER_STAGES];
+   struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
+   struct ir3_shader_variant *binning_variant;
    uint32_t shader_offsets[MESA_SHADER_STAGES];
    uint32_t binning_vs_offset;
    uint32_t shader_total_size;
@@ -1387,13 +1389,6 @@ tu6_emit_geometry_consts(struct tu_cs *cs,
                   ARRAY_SIZE(params), params);
 }
 
-/* get pointer to first variant, return NULL if shader is NULL */
-static const struct ir3_shader_variant *
-tu_shader_get_variant(const struct tu_shader *shader)
-{
-   return shader ? &shader->variants[0] : NULL;
-}
-
 static void
 tu6_emit_program(struct tu_cs *cs,
                  struct tu_pipeline_builder *builder,
@@ -1401,12 +1396,10 @@ tu6_emit_program(struct tu_cs *cs,
                  bool binning_pass,
                  struct tu_streamout_state *tf)
 {
-   const struct ir3_shader_variant *vs =
-      tu_shader_get_variant(builder->shaders[MESA_SHADER_VERTEX]);
-   const struct ir3_shader_variant *gs =
-      tu_shader_get_variant(builder->shaders[MESA_SHADER_GEOMETRY]);
-   const struct ir3_shader_variant *fs =
-      tu_shader_get_variant(builder->shaders[MESA_SHADER_FRAGMENT]);
+   const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
+   const struct ir3_shader_variant *bs = builder->binning_variant;
+   const struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
+   const struct ir3_shader_variant *fs = builder->variants[MESA_SHADER_FRAGMENT];
    gl_shader_stage stage = MESA_SHADER_VERTEX;
 
    STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
@@ -1414,24 +1407,18 @@ tu6_emit_program(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
    tu_cs_emit(cs, 0xff); /* XXX */
 
-   /* if we have streamout, use full VS in binning pass, as the
-   * binning pass VS will have outputs on other than position/psize
-   * stripped out
-   *
-   * GS also can have streamout, but we completely disable the
-   * the binning pass variant when GS is present because we don't
-   * support compiling correct binning pass variants with GS
+  /* Don't use the binning pass variant when GS is present because we don't
+   * support compiling correct binning pass variants with GS.
    */
-   if (binning_pass && vs->shader->stream_output.num_outputs == 0 && !gs) {
-      vs = &builder->shaders[MESA_SHADER_VERTEX]->variants[1];
-      tu6_emit_xs_config(cs, stage, vs,
+   if (binning_pass && !gs) {
+      vs = bs;
+      tu6_emit_xs_config(cs, stage, bs,
                          binary_bo->iova + builder->binning_vs_offset);
       stage++;
    }
 
    for (; stage < ARRAY_SIZE(builder->shaders); stage++) {
-      const struct ir3_shader_variant *xs =
-         tu_shader_get_variant(builder->shaders[stage]);
+      const struct ir3_shader_variant *xs = builder->variants[stage];
 
       if (stage == MESA_SHADER_FRAGMENT && binning_pass)
          fs = xs = NULL;
@@ -1978,10 +1965,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
    struct tu_shader_compile_options options;
    tu_shader_compile_options_init(&options, builder->create_info);
 
-   /* compile shaders in reverse order */
-   struct tu_shader *next_stage_shader = NULL;
-   for (gl_shader_stage stage = MESA_SHADER_STAGES - 1;
-        stage > MESA_SHADER_NONE; stage--) {
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
+        stage < MESA_SHADER_STAGES; stage++) {
       const VkPipelineShaderStageCreateInfo *stage_info = stage_infos[stage];
       if (!stage_info && stage != MESA_SHADER_FRAGMENT)
          continue;
@@ -1992,32 +1977,44 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
       if (!shader)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-      VkResult result =
-         tu_shader_compile(builder->device, shader, next_stage_shader,
-                           &options, builder->alloc);
-      if (result != VK_SUCCESS)
-         return result;
-
       builder->shaders[stage] = shader;
-      builder->shader_offsets[stage] = builder->shader_total_size;
-      builder->shader_total_size +=
-         sizeof(uint32_t) * shader->variants[0].info.sizedwords;
-
-      next_stage_shader = shader;
    }
 
-   if (builder->shaders[MESA_SHADER_VERTEX]->has_binning_pass) {
-      const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
-      const struct ir3_shader_variant *variant;
+   for (gl_shader_stage stage = MESA_SHADER_STAGES - 1;
+        stage > MESA_SHADER_NONE; stage--) {
+      if (!builder->shaders[stage])
+         continue;
+      
+      bool created;
+      builder->variants[stage] =
+         ir3_shader_get_variant(builder->shaders[stage]->ir3_shader,
+                                &options.key, false, &created);
+      if (!builder->variants[stage])
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-      if (vs->ir3_shader.stream_output.num_outputs)
-         variant = &vs->variants[0];
-      else
-         variant = &vs->variants[1];
+      builder->shader_offsets[stage] = builder->shader_total_size;
+      builder->shader_total_size +=
+         sizeof(uint32_t) * builder->variants[stage]->info.sizedwords;
+   }
+
+   if (options.include_binning_pass) {
+      const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
+      struct ir3_shader_variant *variant;
+
+      if (vs->ir3_shader->stream_output.num_outputs) {
+         variant = builder->variants[MESA_SHADER_VERTEX];
+      } else {
+         bool created;
+         variant = ir3_shader_get_variant(vs->ir3_shader, &options.key,
+                                          true, &created);
+         if (!variant)
+            return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
 
       builder->binning_vs_offset = builder->shader_total_size;
       builder->shader_total_size +=
          sizeof(uint32_t) * variant->info.sizedwords;
+      builder->binning_variant = variant;
    }
 
    return VK_SUCCESS;
@@ -2039,28 +2036,17 @@ tu_pipeline_builder_upload_shaders(struct tu_pipeline_builder *builder,
       return result;
 
    for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
-      const struct tu_shader *shader = builder->shaders[i];
-      if (!shader)
+      const struct ir3_shader_variant *variant = builder->variants[i];
+      if (!variant)
          continue;
 
-      memcpy(bo->map + builder->shader_offsets[i], shader->binary,
-             sizeof(uint32_t) * shader->variants[0].info.sizedwords);
+      memcpy(bo->map + builder->shader_offsets[i], variant->bin,
+             sizeof(uint32_t) * variant->info.sizedwords);
    }
 
-   if (builder->shaders[MESA_SHADER_VERTEX]->has_binning_pass) {
-      const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
-      const struct ir3_shader_variant *variant;
-      void *bin;
-
-      if (vs->ir3_shader.stream_output.num_outputs) {
-         variant = &vs->variants[0];
-         bin = vs->binary;
-      } else {
-         variant = &vs->variants[1];
-         bin = vs->binning_binary;
-      }
-
-      memcpy(bo->map + builder->binning_vs_offset, bin,
+   if (builder->binning_variant) {
+      const struct ir3_shader_variant *variant = builder->binning_variant;
+      memcpy(bo->map + builder->binning_vs_offset, variant->bin,
              sizeof(uint32_t) * variant->info.sizedwords);
    }
 
@@ -2120,7 +2106,7 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
 
       tu_pipeline_set_linkage(&pipeline->program.link[i],
                               builder->shaders[i],
-                              &builder->shaders[i]->variants[0]);
+                              builder->variants[i]);
       desc_sets |= builder->shaders[i]->active_desc_sets;
    }
    pipeline->active_desc_sets = desc_sets;
@@ -2138,20 +2124,21 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
 {
    const VkPipelineVertexInputStateCreateInfo *vi_info =
       builder->create_info->pVertexInputState;
-   const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
+   const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
+   const struct ir3_shader_variant *bs = builder->binning_variant;
 
    struct tu_cs vi_cs;
    tu_cs_begin_sub_stream(&pipeline->cs,
                           MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
-   tu6_emit_vertex_input(&vi_cs, &vs->variants[0], vi_info,
+   tu6_emit_vertex_input(&vi_cs, vs, vi_info,
                          &pipeline->vi.bindings_used);
    pipeline->vi.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
 
-   if (vs->has_binning_pass) {
+   if (bs) {
       tu_cs_begin_sub_stream(&pipeline->cs,
                              MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
       tu6_emit_vertex_input(
-         &vi_cs, &vs->variants[1], vi_info, &pipeline->vi.bindings_used);
+         &vi_cs, bs, vi_info, &pipeline->vi.bindings_used);
       pipeline->vi.binning_state_ib =
          tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
    }
@@ -2524,11 +2511,10 @@ tu_CreateGraphicsPipelines(VkDevice device,
 static VkResult
 tu_compute_upload_shader(VkDevice device,
                          struct tu_pipeline *pipeline,
-                         struct tu_shader *shader)
+                         struct ir3_shader_variant *v)
 {
    TU_FROM_HANDLE(tu_device, dev, device);
    struct tu_bo *bo = &pipeline->program.binary_bo;
-   struct ir3_shader_variant *v = &shader->variants[0];
 
    uint32_t shader_size = sizeof(uint32_t) * v->info.sizedwords;
    VkResult result =
@@ -2540,7 +2526,7 @@ tu_compute_upload_shader(VkDevice device,
    if (result != VK_SUCCESS)
       return result;
 
-   memcpy(bo->map, shader->binary, shader_size);
+   memcpy(bo->map, v->bin, shader_size);
 
    return VK_SUCCESS;
 }
@@ -2578,16 +2564,16 @@ tu_compute_pipeline_create(VkDevice device,
       goto fail;
    }
 
-   result = tu_shader_compile(dev, shader, NULL, &options, pAllocator);
-   if (result != VK_SUCCESS)
+   bool created;
+   struct ir3_shader_variant *v =
+      ir3_shader_get_variant(shader->ir3_shader, &options.key, false, &created);
+   if (!v)
       goto fail;
-
-   struct ir3_shader_variant *v = &shader->variants[0];
 
    tu_pipeline_set_linkage(&pipeline->program.link[MESA_SHADER_COMPUTE],
                            shader, v);
 
-   result = tu_compute_upload_shader(device, pipeline, shader);
+   result = tu_compute_upload_shader(device, pipeline, v);
    if (result != VK_SUCCESS)
       goto fail;
 
