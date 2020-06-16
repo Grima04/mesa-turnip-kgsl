@@ -1,7 +1,7 @@
 Mailing Lists
 =============
 
-There are four Mesa 3D / DRI mailing lists:
+These are the primary Mesa 3D / DRI mailing lists:
 
 -  `mesa-users <https://lists.freedesktop.org/mailman/listinfo/mesa-users>`__
    - intended for end-users of Mesa and DRI drivers. Newbie questions
@@ -19,6 +19,10 @@ There are four Mesa 3D / DRI mailing lists:
 -  `mesa-announce <https://lists.freedesktop.org/mailman/listinfo/mesa-announce>`__
    - announcements of new Mesa versions are sent to this list. Very low
    traffic.
+
+-  `dri-devel <http://lists.freedesktop.org/mailman/listinfo/dri-devel>`__
+   - for the Linux/BSD Direct Rendering Module (drm) kernel modules
+   supporting Mesa's userspace drivers
 
 -  `piglit <https://lists.freedesktop.org/mailman/listinfo/piglit>`__ -
    for Piglit (OpenGL driver testing framework) discussion.
@@ -38,10 +42,6 @@ archives are still available, however:
 `mesa3d-announce <https://sourceforge.net/mailarchive/forum.php?forum_name=mesa3d-announce>`__,
 `mesa3d-users <https://sourceforge.net/mailarchive/forum.php?forum_name=mesa3d-users>`__,
 `mesa3d-dev <https://sourceforge.net/mailarchive/forum.php?forum_name=mesa3d-dev>`__.
-
-For mailing lists about Direct Rendering Modules (drm) in Linux/BSD
-kernels, see the `DRI
-wiki <https://dri.freedesktop.org/wiki/MailingLists>`__.
 
 IRC
 ---
