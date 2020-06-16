@@ -594,12 +594,6 @@ spec/arb_separate_shader_objects/programuniform coverage/double matrices: skip
 spec/arb_separate_shader_objects/programuniform coverage/double scalar and vectors: skip
 spec/arb_shader_atomic_counters/max-counters/combined test above maximum number of atomic counter buffers: skip
 spec/arb_shader_image_load_store/early-z/occlusion query test/early-z pass: fail
-spec/arb_shader_image_load_store/indexing/compute shader/dynamically uniform indexing test: fail
-spec/arb_shader_image_load_store/indexing/fragment shader/dynamically uniform indexing test: fail
-spec/arb_shader_image_load_store/indexing/geometry shader/dynamically uniform indexing test: fail
-spec/arb_shader_image_load_store/indexing/tessellation control shader/dynamically uniform indexing test: fail
-spec/arb_shader_image_load_store/indexing/tessellation evaluation shader/dynamically uniform indexing test: fail
-spec/arb_shader_image_load_store/indexing/vertex shader/dynamically uniform indexing test: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r11f_g11f_b10f: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r16_snorm: fail
@@ -625,13 +619,6 @@ spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8_snorm: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8i: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8ui: fail
-spec/arb_shader_image_load_store/max-images/combined max image uniforms test: fail
-spec/arb_shader_image_load_store/max-images/compute shader max image uniforms test: fail
-spec/arb_shader_image_load_store/max-images/fragment shader max image uniforms test: fail
-spec/arb_shader_image_load_store/max-images/geometry shader max image uniforms test: fail
-spec/arb_shader_image_load_store/max-images/tessellation control shader max image uniforms test: fail
-spec/arb_shader_image_load_store/max-images/tessellation evaluation shader max image uniforms test: fail
-spec/arb_shader_image_load_store/max-images/vertex shader max image uniforms test: fail
 spec/arb_shader_image_load_store/max-size/imagecube max size test/8192x8192x6x1: skip
 spec/arb_shader_image_load_store/max-size/imagecubearray max size test/8192x8192x6x1: skip
 spec/arb_shader_texture_image_samples/builtin-image/r8/compute/image2dms samples test/2x8x96x1: skip
@@ -1701,8 +1688,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    21824
-       fail:      230
+       pass:    21837
+       fail:      217
       crash:        0
        skip:     1446
     timeout:        0

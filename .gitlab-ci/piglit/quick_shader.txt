@@ -36,9 +36,6 @@ spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-min3-uvec4-uvec4-
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-min3-vec2-vec2-vec2: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-min3-vec3-vec3-vec3: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-min3-vec4-vec4-vec4: skip
-spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-mixed-const-non-const-uniform-index: fail
-spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-mixed-const-non-const-uniform-index2: fail
-spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-non-const-uniform-index: fail
 spec/arb_bindless_texture/execution/images/basic-arithmetic-uvec2-imagestore: skip
 spec/arb_bindless_texture/execution/images/basic-imageatomicexchange: skip
 spec/arb_bindless_texture/execution/images/basic-imagestore: skip
@@ -2787,8 +2784,8 @@ spec/nv_viewport_swizzle/viewport_swizzle: skip
 summary:
        name:  results
        ----  --------
-       pass:    13582
-       fail:       93
+       pass:    13585
+       fail:       90
       crash:      178
        skip:     2515
     timeout:        0
