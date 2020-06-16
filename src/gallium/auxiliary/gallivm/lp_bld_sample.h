@@ -706,9 +706,10 @@ lp_build_minify(struct lp_build_context *bld,
 
 void
 lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
-                      struct lp_sampler_dynamic_state *dynamic_state,
-                      struct gallivm_state *gallivm,
-                      const struct lp_img_params *params);
+                    struct lp_sampler_dynamic_state *dynamic_state,
+                    struct gallivm_state *gallivm,
+                    const struct lp_img_params *params,
+                    LLVMValueRef outdata[4]);
 
 void
 lp_build_sample_array_init_soa(struct lp_build_sample_array_switch *switch_info,

@@ -474,7 +474,7 @@ lp_llvm_image_soa_emit_op(const struct lp_build_image_soa *base,
 
    lp_build_img_op_soa(&image->dynamic_state.static_state[image_index].image_state,
                        &image->dynamic_state.base,
-                       gallivm, params);
+                       gallivm, params, params->outdata);
 }
 
 /**

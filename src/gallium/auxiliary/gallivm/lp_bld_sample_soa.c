@@ -4093,11 +4093,29 @@ lp_build_do_atomic_soa(struct gallivm_state *gallivm,
    atomic_result[0] = LLVMBuildLoad(gallivm->builder, atom_res, "");
 }
 
+static void
+lp_build_img_op_no_format(struct gallivm_state *gallivm,
+                          const struct lp_img_params *params,
+                          LLVMValueRef outdata[4])
+{
+   /*
+    * If there's nothing bound, format is NONE, and we must return
+    * all zero as mandated by d3d10 in this case.
+       */
+   if (params->img_op != LP_IMG_STORE) {
+      LLVMValueRef zero = lp_build_zero(gallivm, params->type);
+      for (unsigned chan = 0; chan < (params->img_op == LP_IMG_LOAD ? 4 : 1); chan++) {
+         outdata[chan] = zero;
+      }
+   }
+}
+
 void
 lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                     struct lp_sampler_dynamic_state *dynamic_state,
                     struct gallivm_state *gallivm,
-                    const struct lp_img_params *params)
+                    const struct lp_img_params *params,
+                    LLVMValueRef outdata[4])
 {
    unsigned target = params->target;
    unsigned dims = texture_dims(target);
@@ -4113,6 +4131,10 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
    lp_build_context_init(&int_bld, gallivm, int_type);
    lp_build_context_init(&int_coord_bld, gallivm, int_coord_type);
 
+   if (static_texture_state->format == PIPE_FORMAT_NONE) {
+      lp_build_img_op_no_format(gallivm, params, outdata);
+      return;
+   }
    LLVMValueRef offset, i, j;
 
    LLVMValueRef row_stride = dynamic_state->row_stride(dynamic_state, gallivm,
@@ -4184,19 +4206,6 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
          }
       }
 
-      if (static_texture_state->format == PIPE_FORMAT_NONE) {
-         /*
-          * If there's nothing bound, format is NONE, and we must return
-          * all zero as mandated by d3d10 in this case.
-          */
-         unsigned chan;
-         LLVMValueRef zero = lp_build_zero(gallivm, params->type);
-         for (chan = 0; chan < 4; chan++) {
-            params->outdata[chan] = zero;
-         }
-         return;
-      }
-
       offset = lp_build_andnot(&int_coord_bld, offset, out_of_bounds);
       struct lp_build_context texel_bld;
       lp_build_context_init(&texel_bld, gallivm, texel_type);
@@ -4206,28 +4215,18 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                               base_ptr, offset,
                               i, j,
                               NULL,
-                              params->outdata);
+                              outdata);
 
       for (unsigned chan = 0; chan < 4; chan++) {
-         params->outdata[chan] = lp_build_select(&texel_bld, out_of_bounds,
-                                                 texel_bld.zero, params->outdata[chan]);
+         outdata[chan] = lp_build_select(&texel_bld, out_of_bounds,
+                                         texel_bld.zero, outdata[chan]);
       }
    } else if (params->img_op == LP_IMG_STORE) {
-      if (static_texture_state->format == PIPE_FORMAT_NONE)
-         return;
       lp_build_store_rgba_soa(gallivm, format_desc, params->type, params->exec_mask, base_ptr, offset, out_of_bounds,
                               params->indata);
    } else {
-      if (static_texture_state->format == PIPE_FORMAT_NONE) {
-         /*
-	  * For atomic operation just return 0 in the unbound case to avoid a crash.
-          */
-         LLVMValueRef zero = lp_build_zero(gallivm, params->type);
-         params->outdata[0] = zero;
-         return;
-      }
       lp_build_do_atomic_soa(gallivm, format_desc, params->type, params->exec_mask, base_ptr, offset, out_of_bounds,
-                             params->img_op, params->op, params->indata, params->indata2, params->outdata);
+                             params->img_op, params->op, params->indata, params->indata2, outdata);
    }
 }
 
