@@ -409,8 +409,7 @@ void cik_prefetch_TC_L2_async(struct si_context *sctx, struct pipe_resource *buf
 
 static void cik_prefetch_shader_async(struct si_context *sctx, struct si_pm4_state *state)
 {
-   struct pipe_resource *bo = &state->bo[0]->b.b;
-   assert(state->nbo == 1);
+   struct pipe_resource *bo = &state->shader->bo->b.b;
 
    cik_prefetch_TC_L2_async(sctx, bo, 0, bo->width0);
 }

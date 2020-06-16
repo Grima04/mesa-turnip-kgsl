@@ -479,8 +479,6 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
       return;
 
    va = shader->bo->gpu_address;
-   si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
-
    si_pm4_set_reg(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
    si_pm4_set_reg(pm4, R_00B524_SPI_SHADER_PGM_HI_LS, S_00B524_MEM_BASE(va >> 40));
 
@@ -503,7 +501,6 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
       return;
 
    va = shader->bo->gpu_address;
-   si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
    if (sscreen->info.chip_class >= GFX9) {
       if (sscreen->info.chip_class >= GFX10) {
@@ -589,7 +586,6 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
 
    pm4->atom.emit = si_emit_shader_es;
    va = shader->bo->gpu_address;
-   si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
    if (shader->selector->type == PIPE_SHADER_VERTEX) {
       vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
@@ -818,7 +814,6 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
       S_028B90_CNT(MIN2(gs_num_invocations, 127)) | S_028B90_ENABLE(gs_num_invocations > 0);
 
    va = shader->bo->gpu_address;
-   si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
    if (sscreen->info.chip_class >= GFX9) {
       unsigned input_prim = sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
@@ -1088,7 +1083,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    }
 
    va = shader->bo->gpu_address;
-   si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
    if (es_type == PIPE_SHADER_VERTEX) {
       es_vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
@@ -1388,7 +1382,6 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    }
 
    va = shader->bo->gpu_address;
-   si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
    if (gs) {
       vgpr_comp_cnt = 0; /* only VertexID is needed for GS-COPY. */
@@ -1641,7 +1634,6 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    shader->ctx_reg.ps.cb_shader_mask = cb_shader_mask;
 
    va = shader->bo->gpu_address;
-   si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
    si_pm4_set_reg(pm4, R_00B020_SPI_SHADER_PGM_LO_PS, va >> 8);
    si_pm4_set_reg(pm4, R_00B024_SPI_SHADER_PGM_HI_PS, S_00B024_MEM_BASE(va >> 40));
 

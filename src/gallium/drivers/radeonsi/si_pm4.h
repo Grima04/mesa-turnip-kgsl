@@ -28,7 +28,6 @@
 #include "radeon/radeon_winsys.h"
 
 #define SI_PM4_MAX_DW 176
-#define SI_PM4_MAX_BO 3
 
 // forward defines
 struct si_context;
@@ -50,12 +49,6 @@ struct si_pm4_state {
    unsigned ndw;
    uint32_t pm4[SI_PM4_MAX_DW];
 
-   /* BO's referenced by this state */
-   unsigned nbo;
-   struct si_resource *bo[SI_PM4_MAX_BO];
-   enum radeon_bo_usage bo_usage[SI_PM4_MAX_BO];
-   enum radeon_bo_priority bo_priority[SI_PM4_MAX_BO];
-
    /* For shader states only */
    struct si_shader *shader;
    struct si_atom atom;
@@ -66,8 +59,6 @@ void si_pm4_cmd_add(struct si_pm4_state *state, uint32_t dw);
 void si_pm4_cmd_end(struct si_pm4_state *state, bool predicate);
 
 void si_pm4_set_reg(struct si_pm4_state *state, unsigned reg, uint32_t val);
-void si_pm4_add_bo(struct si_pm4_state *state, struct si_resource *bo, enum radeon_bo_usage usage,
-                   enum radeon_bo_priority priority);
 
 void si_pm4_clear_state(struct si_pm4_state *state);
 void si_pm4_free_state(struct si_context *sctx, struct si_pm4_state *state, unsigned idx);
