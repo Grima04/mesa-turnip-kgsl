@@ -148,7 +148,7 @@ void validate(Program* program, FILE * output)
             }
 
             for (unsigned i = 0; i < MIN2(instr->operands.size(), 2); i++) {
-               if (instr->operands[i].regClass().is_subdword())
+               if (instr->operands[i].hasRegClass() && instr->operands[i].regClass().is_subdword())
                   check((sdwa->sel[i] & sdwa_asuint) == (sdwa_isra | instr->operands[i].bytes()), "Unexpected SDWA sel for sub-dword operand", instr.get());
             }
             if (instr->definitions[0].regClass().is_subdword())
@@ -162,10 +162,10 @@ void validate(Program* program, FILE * output)
             check((vop3->opsel & ~(0x10 | ((1 << instr->operands.size()) - 1))) == 0, "Unused bits in opsel must be zeroed out", instr.get());
 
             for (unsigned i = 0; i < instr->operands.size(); i++) {
-               if (instr->operands[i].regClass().is_subdword())
+               if (instr->operands[i].hasRegClass() && instr->operands[i].regClass().is_subdword() && !instr->operands[i].isFixed())
                   check((vop3->opsel & (1 << i)) == 0, "Unexpected opsel for sub-dword operand", instr.get());
             }
-            if (instr->definitions[0].regClass().is_subdword())
+            if (instr->definitions[0].regClass().is_subdword() && !instr->definitions[0].isFixed())
                check((vop3->opsel & (1 << 3)) == 0, "Unexpected opsel for sub-dword definition", instr.get());
          }
 
