@@ -29,11 +29,22 @@
 #include "drm-uapi/v3d_drm.h"
 #include "util/u_memory.h"
 
+/* Default max size of the bo cache, in MB.
+ *
+ * FIXME: we got this value when testing some apps using the rpi4 with 4GB,
+ * but it should depend on the total amount of RAM. But for that we would need
+ * to test on real hw with different amount of RAM. Using this value for now.
+ */
+#define DEFAULT_MAX_BO_CACHE_SIZE 512
+
 static void
 bo_remove_from_cache(struct v3dv_bo_cache *cache, struct v3dv_bo *bo)
 {
    list_del(&bo->time_list);
    list_del(&bo->size_list);
+
+   cache->cache_count--;
+   cache->cache_size -= bo->size;
 }
 
 static struct v3dv_bo *
@@ -300,6 +311,16 @@ v3dv_bo_cache_init(struct v3dv_device *device)
     * reallocations
     */
    device->bo_cache.size_list_size = 0;
+
+   const char *max_cache_size_str = getenv("V3DV_MAX_BO_CACHE_SIZE");
+   if (max_cache_size_str == NULL)
+      device->bo_cache.max_cache_size = DEFAULT_MAX_BO_CACHE_SIZE;
+   else
+      device->bo_cache.max_cache_size = atoll(max_cache_size_str);
+
+   device->bo_cache.max_cache_size *= 1024 * 1024;
+   device->bo_cache.cache_count = 0;
+   device->bo_cache.cache_size = 0;
 }
 
 void
@@ -339,8 +360,17 @@ v3dv_bo_free(struct v3dv_device *device,
    struct v3dv_bo_cache *cache = &device->bo_cache;
    uint32_t page_index = bo->size / 4096 - 1;
 
-   if (!bo->private)
+   if (bo->private &&
+       bo->size > cache->max_cache_size - cache->cache_size) {
+      mtx_lock(&cache->lock);
+      free_stale_bos(device, time.tv_sec);
+      mtx_unlock(&cache->lock);
+   }
+
+   if (!bo->private ||
+       bo->size > cache->max_cache_size - cache->cache_size) {
       return bo_free(device, bo);
+   }
 
    clock_gettime(CLOCK_MONOTONIC, &time);
    mtx_lock(&cache->lock);
@@ -361,6 +391,9 @@ v3dv_bo_free(struct v3dv_device *device,
    bo->free_time = time.tv_sec;
    list_addtail(&bo->size_list, &cache->size_list[page_index]);
    list_addtail(&bo->time_list, &cache->time_list);
+
+   cache->cache_count++;
+   cache->cache_size += bo->size;
    bo->name = NULL;
 
    free_stale_bos(device, time.tv_sec);

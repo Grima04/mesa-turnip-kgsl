@@ -299,6 +299,10 @@ struct v3dv_device {
       uint32_t size_list_size;
 
       mtx_t lock;
+
+      uint32_t cache_size;
+      uint32_t cache_count;
+      uint32_t max_cache_size;
    } bo_cache;
 
    uint32_t bo_size;
