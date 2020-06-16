@@ -92,7 +92,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    if (sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 39)
       flags |= RADEON_FLUSH_START_NEXT_GFX_IB_NOW;
 
-   if (!ctx->screen->info.kernel_flushes_tc_l2_after_ib) {
+   if (!sscreen->info.kernel_flushes_tc_l2_after_ib) {
       wait_flags |= wait_ps_cs | SI_CONTEXT_INV_L2;
    } else if (ctx->chip_class == GFX6) {
       /* The kernel flushes L2 before shaders are finished. */
@@ -108,7 +108,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    if (ctx->b.get_device_reset_status(&ctx->b) != PIPE_NO_RESET)
       return;
 
-   if (ctx->screen->debug_flags & DBG(CHECK_VM))
+   if (sscreen->debug_flags & DBG(CHECK_VM))
       flags &= ~PIPE_FLUSH_ASYNC;
 
    ctx->gfx_flush_in_progress = true;
@@ -169,7 +169,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
           * idle when we leave the IB, otherwise another process
           * might overwrite it while our shaders are busy.
           */
-         if (ctx->screen->use_ngg_streamout)
+         if (sscreen->use_ngg_streamout)
             wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
       }
    }
@@ -239,7 +239,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    }
 
    /* Check VM faults if needed. */
-   if (ctx->screen->debug_flags & DBG(CHECK_VM)) {
+   if (sscreen->debug_flags & DBG(CHECK_VM)) {
       /* Use conservative timeout 800ms, after which we won't wait any
        * longer and assume the GPU is hung.
        */
