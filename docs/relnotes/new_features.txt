@@ -1,4 +1,5 @@
 GL_ARB_compute_variable_group_size on Iris.
+GL_EXT_shader_group_vote on GLES3.
 VK_AMD_texture_gather_bias_lod on RADV.
 VK_EXT_private_data on ANV and RADV.
 VK_EXT_custom_border_color on RADV.

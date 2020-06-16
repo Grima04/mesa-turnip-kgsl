@@ -845,6 +845,8 @@ struct _mesa_glsl_parse_state {
    bool EXT_shader_framebuffer_fetch_warn;
    bool EXT_shader_framebuffer_fetch_non_coherent_enable;
    bool EXT_shader_framebuffer_fetch_non_coherent_warn;
+   bool EXT_shader_group_vote_enable;
+   bool EXT_shader_group_vote_warn;
    bool EXT_shader_image_load_formatted_enable;
    bool EXT_shader_image_load_formatted_warn;
    bool EXT_shader_image_load_store_enable;
