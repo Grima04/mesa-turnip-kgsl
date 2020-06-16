@@ -63,8 +63,6 @@ rm -rf /renderdoc
 
 
 ############### Cross-build kernel
-KERNEL_URL="https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-panfrost-fixes/linux-v5.5-panfrost-fixes.tar.gz"
-
 mkdir -p kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
 pushd kernel

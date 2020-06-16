@@ -88,6 +88,7 @@ rm -rf $LIBDRM_VERSION
 . .gitlab-ci/create-cross-file.sh armhf
 
 ############### Generate kernel, ramdisk, test suites, etc for LAVA jobs
+KERNEL_URL="https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-panfrost-fixes/linux-v5.5-panfrost-fixes.tar.gz"
 
 DEBIAN_ARCH=arm64 . .gitlab-ci/container/lava_arm.sh
 DEBIAN_ARCH=armhf . .gitlab-ci/container/lava_arm.sh
