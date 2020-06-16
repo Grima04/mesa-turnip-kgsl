@@ -99,9 +99,8 @@ unacceptable cost to the project.
 Additionally, the test farm needs to be able to provide a short enough
 turnaround time that we can get our MRs through marge-bot without the
 pipeline backing up.  As a result, we require that the test farm be
-able to handle a whole pipeline's worth of jobs in less than 5 minutes
-(to compare, the build stage is about 10 minutes, if you could get all
-your jobs scheduled on the shared runners in time.).
+able to handle a whole pipeline's worth of jobs in less than 15 minutes
+(to compare, the build stage is about 10 minutes).
 
 If a test farm is short the HW to provide these guarantees, consider
 dropping tests to reduce runtime.
