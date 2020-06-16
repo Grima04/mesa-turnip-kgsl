@@ -3377,6 +3377,19 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
          return false;
    }
 
+   /* Set ring bindings. */
+   if (sctx->esgs_ring) {
+      assert(sctx->chip_class <= GFX8);
+      si_set_ring_buffer(sctx, SI_ES_RING_ESGS, sctx->esgs_ring, 0, sctx->esgs_ring->width0, true,
+                         true, 4, 64, 0);
+      si_set_ring_buffer(sctx, SI_GS_RING_ESGS, sctx->esgs_ring, 0, sctx->esgs_ring->width0, false,
+                         false, 0, 0, 0);
+   }
+   if (sctx->gsvs_ring) {
+      si_set_ring_buffer(sctx, SI_RING_GSVS, sctx->gsvs_ring, 0, sctx->gsvs_ring->width0, false,
+                         false, 0, 0, 0);
+   }
+
    /* Create the "cs_preamble_gs_rings" state. */
    pm4 = CALLOC_STRUCT(si_pm4_state);
    if (!pm4)
@@ -3401,26 +3414,11 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
       si_pm4_free_state(sctx, sctx->cs_preamble_gs_rings, ~0);
    sctx->cs_preamble_gs_rings = pm4;
 
-   if (!sctx->cs_preamble_has_vgt_flush) {
-      si_cs_preamble_add_vgt_flush(sctx);
-   }
+   si_cs_preamble_add_vgt_flush(sctx);
 
    /* Flush the context to re-emit both cs_preamble states. */
    sctx->initial_gfx_cs_size = 0; /* force flush */
    si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
-
-   /* Set ring bindings. */
-   if (sctx->esgs_ring) {
-      assert(sctx->chip_class <= GFX8);
-      si_set_ring_buffer(sctx, SI_ES_RING_ESGS, sctx->esgs_ring, 0, sctx->esgs_ring->width0, true,
-                         true, 4, 64, 0);
-      si_set_ring_buffer(sctx, SI_GS_RING_ESGS, sctx->esgs_ring, 0, sctx->esgs_ring->width0, false,
-                         false, 0, 0, 0);
-   }
-   if (sctx->gsvs_ring) {
-      si_set_ring_buffer(sctx, SI_RING_GSVS, sctx->gsvs_ring, 0, sctx->gsvs_ring->width0, false,
-                         false, 0, 0, 0);
-   }
 
    return true;
 }
@@ -3637,10 +3635,10 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
    if (!sctx->tess_rings)
       return;
 
-   si_cs_preamble_add_vgt_flush(sctx);
-
    uint64_t factor_va =
       si_resource(sctx->tess_rings)->gpu_address + sctx->screen->tess_offchip_ring_size;
+
+   si_cs_preamble_add_vgt_flush(sctx);
 
    /* Append these registers to the init config state. */
    if (sctx->chip_class >= GFX7) {
