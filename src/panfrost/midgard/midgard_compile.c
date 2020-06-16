@@ -473,9 +473,6 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
 
-        if (!is_blend)
-                NIR_PASS(progress, nir, nir_fuse_io_16);
-
         do {
                 progress = false;
 
@@ -521,6 +518,10 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 
                 NIR_PASS(progress, nir, nir_opt_vectorize);
         } while (progress);
+
+        /* Run after opts so it can hit more */
+        if (!is_blend)
+                NIR_PASS(progress, nir, nir_fuse_io_16);
 
         /* Must be run at the end to prevent creation of fsin/fcos ops */
         NIR_PASS(progress, nir, midgard_nir_scale_trig);
