@@ -1013,7 +1013,7 @@ void si_llvm_init_vs_callbacks(struct si_shader_context *ctx, bool ngg_cull_shad
    else if (shader->key.opt.vs_as_prim_discard_cs)
       ctx->abi.emit_outputs = si_llvm_emit_prim_discard_cs_epilogue;
    else if (ngg_cull_shader)
-      ctx->abi.emit_outputs = gfx10_emit_ngg_culling_epilogue_4x_wave32;
+      ctx->abi.emit_outputs = gfx10_emit_ngg_culling_epilogue;
    else if (shader->key.as_ngg)
       ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
    else

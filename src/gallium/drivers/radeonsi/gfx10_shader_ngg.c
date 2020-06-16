@@ -713,14 +713,22 @@ static void update_thread_counts(struct si_shader_context *ctx, LLVMValueRef *ne
  * Also return the position, which is passed to the shader as an input,
  * so that we don't compute it twice.
  */
-void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi, unsigned max_outputs,
-                                               LLVMValueRef *addrs)
+void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_outputs,
+                                     LLVMValueRef *addrs)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader *shader = ctx->shader;
    struct si_shader_selector *sel = shader->selector;
    struct si_shader_info *info = &sel->info;
    LLVMBuilderRef builder = ctx->ac.builder;
+   unsigned max_waves = ctx->ac.wave_size == 64 ? 2 : 4;
+   LLVMValueRef ngg_scratch = ctx->gs_ngg_scratch;
+
+   if (ctx->ac.wave_size == 64) {
+      ngg_scratch =  LLVMBuildPointerCast(builder, ngg_scratch,
+                                          LLVMPointerType(LLVMArrayType(ctx->ac.i64, max_waves),
+                                                          AC_ADDR_SPACE_LDS), "");
+   }
 
    assert(shader->key.opt.ngg_culling);
    assert(shader->key.as_ngg);
@@ -799,19 +807,20 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi, unsign
 
    LLVMValueRef tid = ac_get_thread_id(&ctx->ac);
 
-   /* Initialize the last 3 gs_ngg_scratch dwords to 0, because we may have less
-    * than 4 waves, but we always read all 4 values. This is where the thread
-    * bitmasks of unculled threads will be stored.
+   /* Initialize all but the first element of ngg_scratch to 0, because we may have less
+    * than the maximum number of waves, but we always read all values. This is where
+    * the thread bitmasks of unculled threads will be stored.
     *
-    * gs_ngg_scratch layout: esmask[0..3]
+    * ngg_scratch layout: iN_wavemask esmask[0..n]
     */
    ac_build_ifcc(&ctx->ac,
                  LLVMBuildICmp(builder, LLVMIntULT, get_thread_id_in_tg(ctx),
-                               LLVMConstInt(ctx->ac.i32, 3, 0), ""),
+                               LLVMConstInt(ctx->ac.i32, max_waves - 1, 0), ""),
                  16101);
    {
       LLVMValueRef index = LLVMBuildAdd(builder, tid, ctx->ac.i32_1, "");
-      LLVMBuildStore(builder, ctx->ac.i32_0, ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, index));
+      LLVMBuildStore(builder, LLVMConstInt(ctx->ac.iN_wavemask, 0, 0),
+                     ac_build_gep0(&ctx->ac, ngg_scratch, index));
    }
    ac_build_endif(&ctx->ac, 16101);
    ac_build_s_barrier(&ctx->ac);
@@ -952,7 +961,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi, unsign
       ac_build_ifcc(&ctx->ac, LLVMBuildICmp(builder, LLVMIntEQ, tid, ctx->ac.i32_0, ""), 16008);
       {
          LLVMBuildStore(builder, es_mask,
-                        ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, get_wave_id_in_tg(ctx)));
+                        ac_build_gep0(&ctx->ac, ngg_scratch, get_wave_id_in_tg(ctx)));
       }
       ac_build_endif(&ctx->ac, 16008);
    }
@@ -961,7 +970,7 @@ void gfx10_emit_ngg_culling_epilogue_4x_wave32(struct ac_shader_abi *abi, unsign
 
    /* Load the vertex masks and compute the new ES thread count. */
    LLVMValueRef es_mask[2], new_num_es_threads, kill_wave;
-   load_bitmasks_2x64(ctx, ctx->gs_ngg_scratch, 0, es_mask, &new_num_es_threads);
+   load_bitmasks_2x64(ctx, ngg_scratch, 0, es_mask, &new_num_es_threads);
    new_num_es_threads = ac_build_readlane_no_opt_barrier(&ctx->ac, new_num_es_threads, NULL);
 
    /* ES threads compute their prefix sum, which is the new ES thread ID.
