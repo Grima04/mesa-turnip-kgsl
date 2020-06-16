@@ -1648,6 +1648,15 @@ uint64_t anv_batch_emit_reloc(struct anv_batch *batch,
                               void *location, struct anv_bo *bo, uint32_t offset);
 struct anv_address anv_batch_address(struct anv_batch *batch, void *batch_location);
 
+static inline void
+anv_batch_set_storage(struct anv_batch *batch, struct anv_address addr,
+                      void *map, size_t size)
+{
+   batch->start_addr = addr;
+   batch->next = batch->start = map;
+   batch->end = map + size;
+}
+
 static inline VkResult
 anv_batch_set_error(struct anv_batch *batch, VkResult error)
 {

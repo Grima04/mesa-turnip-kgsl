@@ -409,9 +409,8 @@ static void
 anv_batch_bo_start(struct anv_batch_bo *bbo, struct anv_batch *batch,
                    size_t batch_padding)
 {
-   batch->start_addr = (struct anv_address) { .bo = bbo->bo, };
-   batch->next = batch->start = bbo->bo->map;
-   batch->end = bbo->bo->map + bbo->bo->size - batch_padding;
+   anv_batch_set_storage(batch, (struct anv_address) { .bo = bbo->bo, },
+                         bbo->bo->map, bbo->bo->size - batch_padding);
    batch->relocs = &bbo->relocs;
    anv_reloc_list_clear(&bbo->relocs);
 }
