@@ -82,7 +82,7 @@ draw_emit(struct fd_ringbuffer *ring,
 		assert(!info->has_user_indices);
 
 		struct pipe_resource *idx_buffer = info->index.resource;
-		uint32_t idx_size = info->index_size * info->count;
+		uint32_t idx_size = idx_buffer->width0 - index_offset;
 		uint32_t idx_offset = index_offset + info->start * info->index_size;
 
 		OUT_PKT(ring, CP_DRAW_INDX_OFFSET,
