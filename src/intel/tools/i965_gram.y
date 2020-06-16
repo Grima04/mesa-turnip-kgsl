@@ -1880,7 +1880,7 @@ controlreg:
 	;
 
 ipreg:
-	IPREG srctype 	{ $$ = brw_ip_reg(); }
+	IPREG		{ $$ = brw_ip_reg(); }
 	;
 
 nullreg:
