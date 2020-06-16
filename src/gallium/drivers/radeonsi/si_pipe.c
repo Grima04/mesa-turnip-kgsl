@@ -1215,11 +1215,15 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->compute_wave_size = 64;
 
    if (sscreen->info.chip_class >= GFX10) {
-      /* Pixels shaders: Wave64 is recommended.
-       * Compute shaders: There are piglit failures with Wave32.
+      /* Pixel shaders: Wave64 is always fastest.
+       * Vertex shaders: Wave64 is probably better, because:
+       * - greater chance of L0 cache hits, because more threads are assigned
+       *   to the same CU
+       * - scalar instructions are only executed once for 64 threads instead of twice
+       * - VGPR allocation granularity is half of Wave32, so 1 Wave64 can
+       *   sometimes use fewer VGPRs than 2 Wave32
+       * - TessMark X64 with NGG culling is faster with Wave64
        */
-      sscreen->ge_wave_size = 32;
-
       if (sscreen->debug_flags & DBG(W32_GE))
          sscreen->ge_wave_size = 32;
       if (sscreen->debug_flags & DBG(W32_PS))
