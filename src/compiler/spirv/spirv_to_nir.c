@@ -3127,15 +3127,12 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
        */
 
       switch (opcode) {
-      case SpvOpAtomicLoad:
-         atomic->num_components = glsl_get_vector_elements(deref_type);
-         break;
-
       case SpvOpAtomicStore:
          atomic->num_components = glsl_get_vector_elements(deref_type);
          nir_intrinsic_set_write_mask(atomic, (1 << atomic->num_components) - 1);
          break;
 
+      case SpvOpAtomicLoad:
       case SpvOpAtomicExchange:
       case SpvOpAtomicCompareExchange:
       case SpvOpAtomicCompareExchangeWeak:
