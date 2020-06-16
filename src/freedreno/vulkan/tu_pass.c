@@ -339,6 +339,11 @@ create_render_pass_common(struct tu_render_pass *pass,
       uint32_t align = MAX2(1, att->cpp >> block_align_shift);
       uint32_t nblocks = MAX2((gmem_blocks * att->cpp / cpp_total) & ~(align - 1), align);
 
+      if (nblocks > gmem_blocks) {
+         pixels = 0;
+         break;
+      }
+
       gmem_blocks -= nblocks;
       cpp_total -= att->cpp;
       offset += nblocks * gmem_align;
