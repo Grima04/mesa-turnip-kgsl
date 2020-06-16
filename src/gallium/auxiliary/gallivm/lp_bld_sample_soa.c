@@ -4325,3 +4325,78 @@ void lp_build_sample_array_fini_soa(struct lp_build_sample_array_switch *switch_
    for (unsigned i = 0; i < 4; i++)
       switch_info->params.texel[i] = LLVMBuildExtractValue(gallivm->builder, switch_info->phi, i, "");
 }
+
+void
+lp_build_image_op_switch_soa(struct lp_build_img_op_array_switch *switch_info,
+                             struct gallivm_state *gallivm,
+                             const struct lp_img_params *params,
+                             LLVMValueRef idx,
+                             unsigned base, unsigned range)
+{
+   switch_info->gallivm = gallivm;
+   switch_info->params = *params;
+   switch_info->base = base;
+   switch_info->range = range;
+
+   /* for generating the switch functions we don't want the texture index offset */
+   switch_info->params.image_index_offset = 0;
+
+   LLVMBasicBlockRef initial_block = LLVMGetInsertBlock(gallivm->builder);
+   switch_info->merge_ref = lp_build_insert_new_block(gallivm, "imgmerge");
+
+   switch_info->switch_ref = LLVMBuildSwitch(gallivm->builder, idx,
+                                             switch_info->merge_ref, range - base);
+
+   if (params->img_op != LP_IMG_STORE) {
+      LLVMTypeRef ret_type = lp_build_vec_type(gallivm, params->type);
+      LLVMValueRef undef_val = LLVMGetUndef(ret_type);
+
+      LLVMPositionBuilderAtEnd(gallivm->builder, switch_info->merge_ref);
+
+      for (unsigned i = 0; i < ((params->img_op == LP_IMG_LOAD) ? 4 : 1); i++) {
+         switch_info->phi[i] = LLVMBuildPhi(gallivm->builder, ret_type, "");
+         LLVMAddIncoming(switch_info->phi[i], &undef_val, &initial_block, 1);
+      }
+   }
+}
+
+void
+lp_build_image_op_array_case(struct lp_build_img_op_array_switch *switch_info,
+                            int idx,
+                            const struct lp_static_texture_state *static_texture_state,
+                            struct lp_sampler_dynamic_state *dynamic_state)
+{
+   struct gallivm_state *gallivm = switch_info->gallivm;
+   LLVMBasicBlockRef this_block = lp_build_insert_new_block(gallivm, "img");
+   LLVMValueRef tex_ret[4];
+
+   LLVMAddCase(switch_info->switch_ref, lp_build_const_int32(gallivm, idx), this_block);
+   LLVMPositionBuilderAtEnd(gallivm->builder, this_block);
+
+   switch_info->params.image_index = idx;
+
+   lp_build_img_op_soa(static_texture_state, dynamic_state, switch_info->gallivm, &switch_info->params, tex_ret);
+   if (switch_info->params.img_op != LP_IMG_STORE) {
+      for (unsigned i = 0; i < ((switch_info->params.img_op == LP_IMG_LOAD) ? 4 : 1); i++)
+         tex_ret[i] = LLVMBuildBitCast(gallivm->builder, tex_ret[i], lp_build_vec_type(gallivm, switch_info->params.type), "");
+
+      this_block = LLVMGetInsertBlock(gallivm->builder);
+      for (unsigned i = 0; i < ((switch_info->params.img_op == LP_IMG_LOAD) ? 4 : 1); i++) {
+         LLVMAddIncoming(switch_info->phi[i], &tex_ret[i], &this_block, 1);
+      }
+   }
+   LLVMBuildBr(gallivm->builder, switch_info->merge_ref);
+}
+
+void lp_build_image_op_array_fini_soa(struct lp_build_img_op_array_switch *switch_info)
+{
+   struct gallivm_state *gallivm = switch_info->gallivm;
+
+   LLVMPositionBuilderAtEnd(gallivm->builder, switch_info->merge_ref);
+
+   if (switch_info->params.img_op != LP_IMG_STORE) {
+      for (unsigned i = 0; i < ((switch_info->params.img_op == LP_IMG_LOAD) ? 4 : 1); i++) {
+         switch_info->params.outdata[i] = switch_info->phi[i];
+      }
+   }
+}

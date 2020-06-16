@@ -460,6 +460,14 @@ struct lp_build_sample_array_switch {
    LLVMValueRef phi;
 };
 
+struct lp_build_img_op_array_switch {
+   struct gallivm_state *gallivm;
+   struct lp_img_params params;
+   unsigned base, range;
+   LLVMValueRef switch_ref;
+   LLVMBasicBlockRef merge_ref;
+   LLVMValueRef phi[4];
+};
 
 /**
  * We only support a few wrap modes in lp_build_sample_wrap_linear_int() at
@@ -726,6 +734,21 @@ lp_build_sample_array_case_soa(struct lp_build_sample_array_switch *switch_info,
                            struct lp_sampler_dynamic_state *dynamic_texture_state);
 
 void lp_build_sample_array_fini_soa(struct lp_build_sample_array_switch *switch_info);
+
+void
+lp_build_image_op_switch_soa(struct lp_build_img_op_array_switch *switch_info,
+                             struct gallivm_state *gallivm,
+                             const struct lp_img_params *params,
+                             LLVMValueRef idx,
+                             unsigned base, unsigned range);
+
+void
+lp_build_image_op_array_case(struct lp_build_img_op_array_switch *switch_info,
+			     int idx,
+			     const struct lp_static_texture_state *static_texture_state,
+			     struct lp_sampler_dynamic_state *dynamic_state);
+
+void lp_build_image_op_array_fini_soa(struct lp_build_img_op_array_switch *switch_info);
 #ifdef __cplusplus
 }
 #endif
