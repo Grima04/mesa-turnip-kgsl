@@ -1,7 +1,6 @@
 Continuous Integration
 ======================
 
-
 GitLab CI
 ---------
 
@@ -18,6 +17,7 @@ The CI runs a number of tests, from trivial build-testing to complex GPU renderi
 - Sanity checks (``meson test`` & ``scons check``)
 - Some drivers (softpipe, llvmpipe, freedreno and panfrost) are also tested
   using `VK-GL-CTS <https://github.com/KhronosGroup/VK-GL-CTS>`__
+- Replay of application traces
 
 A typical run takes between 20 and 30 minutes, although it can go up very quickly
 if the GitLab runners are overwhelmed, which happens sometimes. When it does happen,
@@ -42,6 +42,15 @@ about it on ``#freedesktop`` on Freenode and tag `Daniel Stone
 `Eric Anholt <https://gitlab.freedesktop.org/anholt>`__ (``anholt`` on
 IRC).
 
+The three gitlab CI systems currently integrated are:
+
+
+.. toctree::
+   :maxdepth: 1
+
+   bare-metal
+   LAVA
+   docker
 
 Intel CI
 --------
@@ -74,3 +83,46 @@ it on ``#dri-devel`` on Freenode and tag `Clayton Craft
 <https://gitlab.freedesktop.org/craftyguy>`__ (``craftyguy`` on IRC) or
 `Nico Cortes <https://gitlab.freedesktop.org/ngcortes>`__ (``ngcortes``
 on IRC).
+
+.. _CI-farm-expectations:
+
+CI farm expectations
+--------------------
+
+To make sure that testing of one vendor's drivers doesn't block
+unrelated work by other vendors, we require that a given driver's test
+farm produces a spurious failure no more than once a week.  If every
+driver had CI and failed once a week, we would be seeing someone's
+code getting blocked on a spurious failure daily, which is an
+unacceptable cost to the project.
+
+Additionally, the test farm needs to be able to provide a short enough
+turnaround time that we can get our MRs through marge-bot without the
+pipeline backing up.  As a result, we require that the test farm be
+able to handle a whole pipeline's worth of jobs in less than 5 minutes
+(to compare, the build stage is about 10 minutes, if you could get all
+your jobs scheduled on the shared runners in time.).
+
+If a test farm is short the HW to provide these guarantees, consider
+dropping tests to reduce runtime.
+``VK-GL-CTS/scripts/log/bottleneck_report.py`` can help you find what
+tests were slow in a ``results.qpa`` file.  Or, you can have a job with
+no ``parallel`` field set and:
+
+.. code-block:: yaml
+
+    variables:
+      CI_NODE_INDEX: 1
+      CI_NODE_TOTAL: 10
+
+to just run 1/10th of the test list.
+
+If a HW CI farm goes offline (network dies and all CI pipelines end up
+stalled) or its runners are consistenly spuriously failing (disk
+full?), and the maintainer is not immediately available to fix the
+issue, please push through an MR disabling that farm's jobs by adding
+'.' to the front of the jobs names until the maintainer can bring
+things back up.  If this happens, the farm maintainer should provide a
+report to mesa-dev@lists.freedesktop.org after the fact explaining
+what happened and what the mitigation plan is for that failure next
+time.
