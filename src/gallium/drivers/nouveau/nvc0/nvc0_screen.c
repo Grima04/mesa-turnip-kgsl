@@ -324,6 +324,8 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return class_3d >= GP100_3D_CLASS;
 
    /* caps has to be turned on with nir */
+   case PIPE_CAP_GL_SPIRV:
+   case PIPE_CAP_GL_SPIRV_VARIABLE_POINTERS:
    case PIPE_CAP_INT64_DIVMOD:
       return screen->prefer_nir ? 1 : 0;
 
@@ -391,7 +393,6 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_OPENCL_INTEGER_FUNCTIONS: /* could be done */
    case PIPE_CAP_INTEGER_MULTIPLY_32X16: /* could be done */
    case PIPE_CAP_FRONTEND_NOOP:
-   case PIPE_CAP_GL_SPIRV:
    case PIPE_CAP_SHADER_SAMPLES_IDENTICAL:
    case PIPE_CAP_VIEWPORT_TRANSFORM_LOWERED:
    case PIPE_CAP_PSIZ_CLAMPED:
