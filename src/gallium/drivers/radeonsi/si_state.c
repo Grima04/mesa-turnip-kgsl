@@ -5118,15 +5118,13 @@ void si_init_cs_preamble_state(struct si_context *sctx)
    if (!pm4)
       return;
 
-   si_pm4_cmd_begin(pm4, PKT3_CONTEXT_CONTROL);
+   si_pm4_cmd_add(pm4, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
    si_pm4_cmd_add(pm4, CC0_UPDATE_LOAD_ENABLES(1));
    si_pm4_cmd_add(pm4, CC1_UPDATE_SHADOW_ENABLES(1));
-   si_pm4_cmd_end(pm4, false);
 
    if (has_clear_state) {
-      si_pm4_cmd_begin(pm4, PKT3_CLEAR_STATE);
+      si_pm4_cmd_add(pm4, PKT3(PKT3_CLEAR_STATE, 0, 0));
       si_pm4_cmd_add(pm4, 0);
-      si_pm4_cmd_end(pm4, false);
    }
 
    if (sctx->chip_class <= GFX8)

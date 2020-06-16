@@ -3293,14 +3293,12 @@ static void si_cs_preamble_add_vgt_flush(struct si_context *sctx)
       return;
 
    /* Done by Vulkan before VGT_FLUSH. */
-   si_pm4_cmd_begin(sctx->cs_preamble_state, PKT3_EVENT_WRITE);
+   si_pm4_cmd_add(sctx->cs_preamble_state, PKT3(PKT3_EVENT_WRITE, 0, 0));
    si_pm4_cmd_add(sctx->cs_preamble_state, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
-   si_pm4_cmd_end(sctx->cs_preamble_state, false);
 
    /* VGT_FLUSH is required even if VGT is idle. It resets VGT pointers. */
-   si_pm4_cmd_begin(sctx->cs_preamble_state, PKT3_EVENT_WRITE);
+   si_pm4_cmd_add(sctx->cs_preamble_state, PKT3(PKT3_EVENT_WRITE, 0, 0));
    si_pm4_cmd_add(sctx->cs_preamble_state, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
-   si_pm4_cmd_end(sctx->cs_preamble_state, false);
    sctx->cs_preamble_has_vgt_flush = true;
 }
 
