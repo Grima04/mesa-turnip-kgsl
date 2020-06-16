@@ -470,7 +470,6 @@ i965_asm_set_dst_nr(struct brw_codegen *p,
 
 /* dst operand */
 %type <reg> dst dstoperand dstoperandex dstoperandex_typed dstreg dsttype
-%type <reg> dstoperandex_ud_typed
 %type <integer> dstregion
 
 %type <integer> saturate relativelocation rellocation
@@ -479,7 +478,7 @@ i965_asm_set_dst_nr(struct brw_codegen *p,
 /* src operand */
 %type <reg> directsrcoperand directsrcaccoperand indirectsrcoperand srcacc
 %type <reg> srcarcoperandex srcaccimm srcarcoperandex_typed srctype srcimm
-%type <reg> srcarcoperandex_ud_typed srcimmtype indirectgenreg indirectregion
+%type <reg> srcimmtype indirectgenreg indirectregion
 %type <reg> immreg src reg32 payload directgenreg_list addrparam region
 %type <reg> region_wh swizzle directgenreg directmsgreg indirectmsgreg
 
@@ -1447,12 +1446,6 @@ dstoperandex:
 		$$.writemask = $3.writemask;
 		$$.subnr = $$.subnr * brw_reg_type_to_size($4.type);
 	}
-	| dstoperandex_ud_typed
-	{
-		$$ = $1;
-		$$.hstride = 1;
-		$$.type = BRW_REGISTER_TYPE_UD;
-	}
 	/* BSpec says "When the conditional modifier is present, updates
 	 * to the selected flag register also occur. In this case, the
 	 * register region fields of the ‘null’ operand are valid."
@@ -1478,18 +1471,15 @@ dstoperandex:
 	}
 	;
 
-dstoperandex_ud_typed:
-	controlreg
-	| ipreg
-	| channelenablereg
-	| performancereg
-	;
-
 dstoperandex_typed:
 	accreg
-	| flagreg
 	| addrreg
+	| channelenablereg
+	| controlreg
+	| flagreg
+	| ipreg
 	| maskreg
+	| performancereg
 	| statereg
 	;
 
@@ -1631,10 +1621,6 @@ srcarcoperandex:
 			     BRW_SWIZZLE_NOOP,
 			     WRITEMASK_XYZW);
 	}
-	| srcarcoperandex_ud_typed
-	{
-		$$ = set_direct_src_operand(&$1, BRW_REGISTER_TYPE_UD);
-	}
 	| nullreg region srctype
 	{
 		$$ = set_direct_src_operand(&$1, $3.type);
@@ -1648,15 +1634,11 @@ srcarcoperandex:
 	}
 	;
 
-srcarcoperandex_ud_typed:
-	controlreg
-	| statereg
-	| ipreg
-	| channelenablereg
-	;
-
 srcarcoperandex_typed:
-	flagreg
+	channelenablereg
+	| controlreg
+	| flagreg
+	| ipreg
 	| maskreg
 	| statereg
 	;
