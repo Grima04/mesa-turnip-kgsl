@@ -4110,6 +4110,22 @@ lp_build_img_op_no_format(struct gallivm_state *gallivm,
    }
 }
 
+static struct lp_type
+lp_build_img_texel_type(struct gallivm_state *gallivm,
+                        struct lp_type texel_type,
+                        const struct util_format_description *format_desc)
+{
+   if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&
+       format_desc->channel[0].pure_integer) {
+      if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED) {
+         texel_type = lp_type_int_vec(texel_type.width, texel_type.width * texel_type.length);
+      } else if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_UNSIGNED) {
+         texel_type = lp_type_uint_vec(texel_type.width, texel_type.width * texel_type.length);
+      }
+   }
+   return texel_type;
+}
+
 void
 lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                     struct lp_sampler_dynamic_state *dynamic_state,
@@ -4196,15 +4212,7 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                                          ms_index));
    }
    if (params->img_op == LP_IMG_LOAD) {
-      struct lp_type texel_type = params->type;
-      if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&
-          format_desc->channel[0].pure_integer) {
-         if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED) {
-            texel_type = lp_type_int_vec(params->type.width, params->type.width * params->type.length);
-         } else if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_UNSIGNED) {
-            texel_type = lp_type_uint_vec(params->type.width, params->type.width * params->type.length);
-         }
-      }
+      struct lp_type texel_type = lp_build_img_texel_type(gallivm, params->type, format_desc);
 
       offset = lp_build_andnot(&int_coord_bld, offset, out_of_bounds);
       struct lp_build_context texel_bld;
