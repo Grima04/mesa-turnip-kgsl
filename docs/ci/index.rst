@@ -125,3 +125,35 @@ things back up.  If this happens, the farm maintainer should provide a
 report to mesa-dev@lists.freedesktop.org after the fact explaining
 what happened and what the mitigation plan is for that failure next
 time.
+
+Docker caching
+--------------
+
+The CI system uses docker images extensively to cache
+infrequently-updated build content like the CTS.  The `freedesktop.org
+CI templates
+<https://gitlab.freedesktop.org/freedesktop/ci-templates/>`_ help us
+manage the building of the images to reduce how frequently rebuilds
+happen, and trim down the images (stripping out manpages, cleaning the
+apt cache, and other such common pitfalls of building docker images).
+
+When running a container job, the templates will look for an existing
+build of that image in the container registry under
+``FDO_DISTRIBUTION_TAG``.  If it's found it will be reused, and if
+not, the associated `.gitlab-ci/containers/<jobname>.sh`` will be run
+to build it.  So, when developing any change to container build
+scripts, you need to update the associated ``FDO_DISTRIBUTION_TAG`` to
+a new unique string.  We recommend using the current date plus some
+string related to your branch (so that if you rebase on someone else's
+container update from the same day, you will get a git conflict
+instead of silently reusing their container)
+
+When developing a given change to your docker image, you would have to
+bump the tag on each ``git commit --amend`` to your development
+branch, which can get tedious.  Instad, you can navigate to the
+`container registry
+<https://gitlab.freedesktop.org/mesa/mesa/container_registry>`_ for
+your repository and delete the tag to force a rebuild.  When your code
+is eventually merged to master, a full image rebuild will occur again
+(forks inherit images from the main repo, but MRs don't propagate
+images from the fork into the main repo's registry).
