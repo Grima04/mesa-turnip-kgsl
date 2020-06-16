@@ -449,6 +449,18 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       [VK_FRONT_FACE_COUNTER_CLOCKWISE]         = 1,
       [VK_FRONT_FACE_CLOCKWISE]                 = 0
    };
+   static const uint32_t vk_to_gen_primitive_type[] = {
+      [VK_PRIMITIVE_TOPOLOGY_POINT_LIST]                    = _3DPRIM_POINTLIST,
+      [VK_PRIMITIVE_TOPOLOGY_LINE_LIST]                     = _3DPRIM_LINELIST,
+      [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP]                    = _3DPRIM_LINESTRIP,
+      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST]                 = _3DPRIM_TRILIST,
+      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP]                = _3DPRIM_TRISTRIP,
+      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN]                  = _3DPRIM_TRIFAN,
+      [VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY]      = _3DPRIM_LINELIST_ADJ,
+      [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY]     = _3DPRIM_LINESTRIP_ADJ,
+      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY]  = _3DPRIM_TRILIST_ADJ,
+      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
+   };
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
@@ -603,6 +615,21 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF), vf) {
          vf.IndexedDrawCutIndexEnable  = pipeline->primitive_restart;
          vf.CutIndex                   = cmd_buffer->state.restart_index;
+      }
+   }
+
+   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
+      uint32_t topology;
+      if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
+         topology = d->primitive_topology;
+      else
+         topology = vk_to_gen_primitive_type[d->primitive_topology];
+
+      cmd_buffer->state.gfx.primitive_topology = topology;
+
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF_TOPOLOGY), vft) {
+         vft.PrimitiveTopologyType = topology;
       }
    }
 

@@ -3404,6 +3404,9 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer_alloc_push_constants(cmd_buffer);
    }
 
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE)
+      cmd_buffer->state.gfx.primitive_topology = pipeline->topology;
+
 #if GEN_GEN <= 7
    if (cmd_buffer->state.descriptors_dirty & VK_SHADER_STAGE_VERTEX_BIT ||
        cmd_buffer->state.push_constants_dirty & VK_SHADER_STAGE_VERTEX_BIT) {
@@ -3605,7 +3608,7 @@ void genX(CmdDraw)(
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = SEQUENTIAL;
-      prim.PrimitiveTopologyType    = pipeline->topology;
+      prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       prim.VertexCountPerInstance   = vertexCount;
       prim.StartVertexLocation      = firstVertex;
       prim.InstanceCount            = instanceCount;
@@ -3656,7 +3659,7 @@ void genX(CmdDrawIndexed)(
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = RANDOM;
-      prim.PrimitiveTopologyType    = pipeline->topology;
+      prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       prim.VertexCountPerInstance   = indexCount;
       prim.StartVertexLocation      = firstIndex;
       prim.InstanceCount            = instanceCount;
@@ -3736,7 +3739,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.IndirectParameterEnable  = true;
       prim.VertexAccessType         = SEQUENTIAL;
-      prim.PrimitiveTopologyType    = pipeline->topology;
+      prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
    }
 
    update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
@@ -3821,7 +3824,7 @@ void genX(CmdDrawIndirect)(
          prim.IndirectParameterEnable  = true;
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = SEQUENTIAL;
-         prim.PrimitiveTopologyType    = pipeline->topology;
+         prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       }
 
       update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
@@ -3871,7 +3874,7 @@ void genX(CmdDrawIndexedIndirect)(
          prim.IndirectParameterEnable  = true;
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = RANDOM;
-         prim.PrimitiveTopologyType    = pipeline->topology;
+         prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       }
 
       update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, RANDOM);
@@ -4026,7 +4029,7 @@ void genX(CmdDrawIndirectCount)(
          prim.IndirectParameterEnable  = true;
          prim.PredicateEnable          = true;
          prim.VertexAccessType         = SEQUENTIAL;
-         prim.PrimitiveTopologyType    = pipeline->topology;
+         prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       }
 
       update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
@@ -4098,7 +4101,7 @@ void genX(CmdDrawIndexedIndirectCount)(
          prim.IndirectParameterEnable  = true;
          prim.PredicateEnable          = true;
          prim.VertexAccessType         = RANDOM;
-         prim.PrimitiveTopologyType    = pipeline->topology;
+         prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       }
 
       update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, RANDOM);

@@ -78,6 +78,7 @@ const struct anv_dynamic_state default_dynamic_state = {
    },
    .cull_mode = 0,
    .front_face = 0,
+   .primitive_topology = 0,
 };
 
 /**
@@ -145,6 +146,7 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
 
    ANV_CMP_COPY(cull_mode, ANV_CMD_DIRTY_DYNAMIC_CULL_MODE);
    ANV_CMP_COPY(front_face, ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE);
+   ANV_CMP_COPY(primitive_topology, ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
 
 #undef ANV_CMP_COPY
 
@@ -535,6 +537,17 @@ void anv_CmdSetScissorWithCountEXT(
           pScissors, scissorCount * sizeof(*pScissors));
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SCISSOR;
+}
+
+void anv_CmdSetPrimitiveTopologyEXT(
+   VkCommandBuffer                              commandBuffer,
+   VkPrimitiveTopology                          primitiveTopology)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.primitive_topology = primitiveTopology;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
 }
 
 void anv_CmdSetLineWidth(

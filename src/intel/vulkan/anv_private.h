@@ -2691,6 +2691,7 @@ struct anv_dynamic_state {
 
    VkCullModeFlags                              cull_mode;
    VkFrontFace                                  front_face;
+   VkPrimitiveTopology                          primitive_topology;
 };
 
 extern const struct anv_dynamic_state default_dynamic_state;
@@ -2803,6 +2804,8 @@ struct anv_cmd_graphics_state {
    struct anv_vb_cache_range vb_dirty_ranges[33];
 
    struct anv_dynamic_state dynamic;
+
+   uint32_t primitive_topology;
 
    struct {
       struct anv_buffer *index_buffer;
