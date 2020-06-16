@@ -420,6 +420,22 @@ draw_llvm_image_soa_emit_op(const struct lp_build_image_soa *base,
    unsigned image_index = params->image_index;
    assert(image_index < PIPE_MAX_SHADER_IMAGES);
 
+   if (params->image_index_offset) {
+      struct lp_build_img_op_array_switch switch_info;
+      memset(&switch_info, 0, sizeof(switch_info));
+      LLVMValueRef unit = LLVMBuildAdd(gallivm->builder, params->image_index_offset,
+                                       lp_build_const_int32(gallivm, image_index), "");
+      lp_build_image_op_switch_soa(&switch_info, gallivm, params,
+                                   unit, 0, image->nr_images);
+
+      for (unsigned i = 0; i < image->nr_images; i++) {
+         lp_build_image_op_array_case(&switch_info, i,
+                                      &image->dynamic_state.static_state[i].image_state,
+                                      &image->dynamic_state.base);
+      }
+      lp_build_image_op_array_fini_soa(&switch_info);
+      return;
+   }
    lp_build_img_op_soa(&image->dynamic_state.static_state[image_index].image_state,
                        &image->dynamic_state.base,
                        gallivm, params, params->outdata);
