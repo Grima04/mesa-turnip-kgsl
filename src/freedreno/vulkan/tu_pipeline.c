@@ -1950,6 +1950,39 @@ tu_pipeline_create(struct tu_device *dev,
    return VK_SUCCESS;
 }
 
+static void
+tu_pipeline_shader_key_init(struct ir3_shader_key *key,
+                            const VkGraphicsPipelineCreateInfo *pipeline_info)
+{
+   bool has_gs = false;
+   bool msaa = false;
+   if (pipeline_info) {
+      for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
+         if (pipeline_info->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
+            has_gs = true;
+            break;
+         }
+      }
+
+      const VkPipelineMultisampleStateCreateInfo *msaa_info = pipeline_info->pMultisampleState;
+      const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
+         vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
+      if (!pipeline_info->pRasterizationState->rasterizerDiscardEnable &&
+          (msaa_info->rasterizationSamples > 1 ||
+          /* also set msaa key when sample location is not the default
+           * since this affects varying interpolation */
+           (sample_locations && sample_locations->sampleLocationsEnable))) {
+         msaa = true;
+      }
+   }
+
+   /* TODO: Populate the remaining fields of ir3_shader_key. */
+   *key = (struct ir3_shader_key) {
+      .has_gs = has_gs,
+      .msaa = msaa,
+   };
+}
+
 static VkResult
 tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
 {
@@ -1962,8 +1995,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
       stage_infos[stage] = &builder->create_info->pStages[i];
    }
 
-   struct tu_shader_compile_options options;
-   tu_shader_compile_options_init(&options, builder->create_info);
+   struct ir3_shader_key key;
+   tu_pipeline_shader_key_init(&key, builder->create_info);
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
         stage < MESA_SHADER_STAGES; stage++) {
@@ -1988,7 +2021,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
       bool created;
       builder->variants[stage] =
          ir3_shader_get_variant(builder->shaders[stage]->ir3_shader,
-                                &options.key, false, &created);
+                                &key, false, &created);
       if (!builder->variants[stage])
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -1997,25 +2030,23 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
          sizeof(uint32_t) * builder->variants[stage]->info.sizedwords;
    }
 
-   if (options.include_binning_pass) {
-      const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
-      struct ir3_shader_variant *variant;
+   const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
+   struct ir3_shader_variant *variant;
 
-      if (vs->ir3_shader->stream_output.num_outputs) {
-         variant = builder->variants[MESA_SHADER_VERTEX];
-      } else {
-         bool created;
-         variant = ir3_shader_get_variant(vs->ir3_shader, &options.key,
-                                          true, &created);
-         if (!variant)
-            return VK_ERROR_OUT_OF_HOST_MEMORY;
-      }
-
-      builder->binning_vs_offset = builder->shader_total_size;
-      builder->shader_total_size +=
-         sizeof(uint32_t) * variant->info.sizedwords;
-      builder->binning_variant = variant;
+   if (vs->ir3_shader->stream_output.num_outputs) {
+      variant = builder->variants[MESA_SHADER_VERTEX];
+   } else {
+      bool created;
+      variant = ir3_shader_get_variant(vs->ir3_shader, &key,
+                                       true, &created);
+      if (!variant)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
+
+   builder->binning_vs_offset = builder->shader_total_size;
+   builder->shader_total_size +=
+      sizeof(uint32_t) * variant->info.sizedwords;
+   builder->binning_variant = variant;
 
    return VK_SUCCESS;
 }
@@ -2554,8 +2585,8 @@ tu_compute_pipeline_create(VkDevice device,
 
    pipeline->layout = layout;
 
-   struct tu_shader_compile_options options;
-   tu_shader_compile_options_init(&options, NULL);
+   struct ir3_shader_key key;
+   tu_pipeline_shader_key_init(&key, NULL);
 
    struct tu_shader *shader =
       tu_shader_create(dev, MESA_SHADER_COMPUTE, stage_info, layout, pAllocator);
@@ -2566,7 +2597,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    bool created;
    struct ir3_shader_variant *v =
-      ir3_shader_get_variant(shader->ir3_shader, &options.key, false, &created);
+      ir3_shader_get_variant(shader->ir3_shader, &key, false, &created);
    if (!v)
       goto fail;
 

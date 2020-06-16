@@ -657,47 +657,6 @@ tu_shader_destroy(struct tu_device *dev,
    vk_free2(&dev->alloc, alloc, shader);
 }
 
-void
-tu_shader_compile_options_init(
-   struct tu_shader_compile_options *options,
-   const VkGraphicsPipelineCreateInfo *pipeline_info)
-{
-   bool has_gs = false;
-   bool msaa = false;
-   if (pipeline_info) {
-      for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
-         if (pipeline_info->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
-            has_gs = true;
-            break;
-         }
-      }
-
-      const VkPipelineMultisampleStateCreateInfo *msaa_info = pipeline_info->pMultisampleState;
-      const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
-         vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
-      if (!pipeline_info->pRasterizationState->rasterizerDiscardEnable &&
-          (msaa_info->rasterizationSamples > 1 ||
-          /* also set msaa key when sample location is not the default
-           * since this affects varying interpolation */
-           (sample_locations && sample_locations->sampleLocationsEnable))) {
-         msaa = true;
-      }
-   }
-
-   *options = (struct tu_shader_compile_options) {
-      /* TODO: Populate the remaining fields of ir3_shader_key. */
-      .key = {
-         .has_gs = has_gs,
-         .msaa = msaa,
-      },
-      /* TODO: VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT
-       * some optimizations need to happen otherwise shader might not compile
-       */
-      .optimize = true,
-      .include_binning_pass = true,
-   };
-}
-
 VkResult
 tu_CreateShaderModule(VkDevice _device,
                       const VkShaderModuleCreateInfo *pCreateInfo,

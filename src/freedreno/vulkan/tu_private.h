@@ -1098,14 +1098,6 @@ struct tu_shader_module
    const uint32_t *code[0];
 };
 
-struct tu_shader_compile_options
-{
-   struct ir3_shader_key key;
-
-   bool optimize;
-   bool include_binning_pass;
-};
-
 struct tu_push_constant_range
 {
    uint32_t lo;
@@ -1132,11 +1124,6 @@ void
 tu_shader_destroy(struct tu_device *dev,
                   struct tu_shader *shader,
                   const VkAllocationCallbacks *alloc);
-
-void
-tu_shader_compile_options_init(
-   struct tu_shader_compile_options *options,
-   const VkGraphicsPipelineCreateInfo *pipeline_info);
 
 struct tu_program_descriptor_linkage
 {
