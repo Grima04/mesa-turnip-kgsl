@@ -2143,7 +2143,7 @@ tu6_tex_wrap(VkSamplerAddressMode address_mode)
    }
 }
 
-static enum a6xx_tex_filter
+enum a6xx_tex_filter
 tu6_tex_filter(VkFilter filter, unsigned aniso)
 {
    switch (filter) {

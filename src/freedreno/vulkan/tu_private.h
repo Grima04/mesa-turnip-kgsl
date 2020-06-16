@@ -1469,6 +1469,9 @@ tu_cs_image_ref_2d(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t
 void
 tu_cs_image_flag_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
 
+enum a6xx_tex_filter
+tu6_tex_filter(VkFilter filter, unsigned aniso);
+
 VkResult
 tu_image_create(VkDevice _device,
                 const VkImageCreateInfo *pCreateInfo,

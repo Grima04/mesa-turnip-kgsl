@@ -346,11 +346,14 @@ r2d_src(struct tu_cmd_buffer *cmd,
         struct tu_cs *cs,
         const struct tu_image_view *iview,
         uint32_t layer,
-        bool linear_filter)
+        VkFilter filter)
 {
+   uint32_t src_info = iview->SP_PS_2D_SRC_INFO;
+   if (filter != VK_FILTER_NEAREST)
+      src_info |= A6XX_SP_PS_2D_SRC_INFO_FILTER;
+
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_INFO, 5);
-   tu_cs_emit(cs, iview->SP_PS_2D_SRC_INFO |
-                  COND(linear_filter, A6XX_SP_PS_2D_SRC_INFO_FILTER));
+   tu_cs_emit(cs, src_info);
    tu_cs_emit(cs, iview->SP_PS_2D_SRC_SIZE);
    tu_cs_image_ref_2d(cs, iview, layer, true);
 
@@ -784,7 +787,7 @@ r3d_src_common(struct tu_cmd_buffer *cmd,
                const uint32_t *tex_const,
                uint32_t offset_base,
                uint32_t offset_ubwc,
-               bool linear_filter)
+               VkFilter filter)
 {
    struct ts_cs_memory texture = { };
    VkResult result = tu_cs_alloc(&cmd->sub_cs,
@@ -801,8 +804,8 @@ r3d_src_common(struct tu_cmd_buffer *cmd,
    texture.map[8] = ubwc_addr >> 32;
 
    texture.map[A6XX_TEX_CONST_DWORDS + 0] =
-      A6XX_TEX_SAMP_0_XY_MAG(linear_filter ? A6XX_TEX_LINEAR : A6XX_TEX_NEAREST) |
-      A6XX_TEX_SAMP_0_XY_MIN(linear_filter ? A6XX_TEX_LINEAR : A6XX_TEX_NEAREST) |
+      A6XX_TEX_SAMP_0_XY_MAG(tu6_tex_filter(filter, false)) |
+      A6XX_TEX_SAMP_0_XY_MIN(tu6_tex_filter(filter, false)) |
       A6XX_TEX_SAMP_0_WRAP_S(A6XX_TEX_CLAMP_TO_EDGE) |
       A6XX_TEX_SAMP_0_WRAP_T(A6XX_TEX_CLAMP_TO_EDGE) |
       A6XX_TEX_SAMP_0_WRAP_R(A6XX_TEX_CLAMP_TO_EDGE) |
@@ -844,12 +847,12 @@ r3d_src(struct tu_cmd_buffer *cmd,
         struct tu_cs *cs,
         const struct tu_image_view *iview,
         uint32_t layer,
-        bool linear_filter)
+        VkFilter filter)
 {
    r3d_src_common(cmd, cs, iview->descriptor,
                   iview->layer_size * layer,
                   iview->ubwc_layer_size * layer,
-                  linear_filter);
+                  filter);
 }
 
 static void
@@ -883,7 +886,7 @@ r3d_src_buffer(struct tu_cmd_buffer *cmd,
    for (uint32_t i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
       desc[i] = 0;
 
-   r3d_src_common(cmd, cs, desc, 0, 0, false);
+   r3d_src_common(cmd, cs, desc, 0, 0, VK_FILTER_NEAREST);
 }
 
 static void
@@ -1000,7 +1003,7 @@ struct blit_ops {
         struct tu_cs *cs,
         const struct tu_image_view *iview,
         uint32_t layer,
-        bool linear_filter);
+        VkFilter filter);
    void (*src_buffer)(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
                       VkFormat vk_format,
                       uint64_t va, uint32_t pitch,
@@ -1150,7 +1153,8 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
 
    if (dst_image->samples > 1 ||
        src_image->vk_format == VK_FORMAT_BC1_RGB_UNORM_BLOCK ||
-       src_image->vk_format == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
+       src_image->vk_format == VK_FORMAT_BC1_RGB_SRGB_BLOCK ||
+       filter == VK_FILTER_CUBIC_EXT)
       ops = &r3d_ops;
 
    /* TODO: shader path fails some of blit_image.all_formats.generate_mipmaps.* tests,
@@ -1185,7 +1189,7 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
 
    for (uint32_t i = 0; i < layers; i++) {
       ops->dst(cs, &dst, i);
-      ops->src(cmd, cs, &src, i, filter == VK_FILTER_LINEAR);
+      ops->src(cmd, cs, &src, i, filter);
       ops->run(cmd, cs);
    }
 }
@@ -1387,7 +1391,7 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
    tu_image_view_blit2(&src, src_image, src_format, &info->imageSubresource, offset.z, stencil_read);
 
    for (uint32_t i = 0; i < layers; i++) {
-      ops->src(cmd, cs, &src, i, false);
+      ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST);
 
       uint64_t dst_va = tu_buffer_iova(dst_buffer) + info->bufferOffset + layer_size * i;
       if ((dst_va & 63) || (pitch & 63)) {
@@ -1601,7 +1605,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       coords(ops, cs, &staging_offset, &src_offset, &extent);
 
       for (uint32_t i = 0; i < info->extent.depth; i++) {
-         ops->src(cmd, cs, &src, i, false);
+         ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST);
          ops->dst(cs, &staging, i);
          ops->run(cmd, cs);
       }
@@ -1619,7 +1623,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       coords(ops, cs, &dst_offset, &staging_offset, &extent);
 
       for (uint32_t i = 0; i < info->extent.depth; i++) {
-         ops->src(cmd, cs, &staging, i, false);
+         ops->src(cmd, cs, &staging, i, VK_FILTER_NEAREST);
          ops->dst(cs, &dst, i);
          ops->run(cmd, cs);
       }
@@ -1631,7 +1635,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       coords(ops, cs, &dst_offset, &src_offset, &extent);
 
       for (uint32_t i = 0; i < info->extent.depth; i++) {
-         ops->src(cmd, cs, &src, i, false);
+         ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST);
          ops->dst(cs, &dst, i);
          ops->run(cmd, cs);
       }
@@ -1803,7 +1807,7 @@ tu_CmdResolveImage(VkCommandBuffer commandBuffer,
       tu_image_view_blit(&src, src_image, &info->srcSubresource, info->srcOffset.z);
 
       for (uint32_t i = 0; i < layers; i++) {
-         ops->src(cmd, cs, &src, i, false);
+         ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST);
          ops->dst(cs, &dst, i);
          ops->run(cmd, cs);
       }
@@ -1829,7 +1833,7 @@ tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
    ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
 
    for (uint32_t i = 0; i < layers; i++) {
-      ops->src(cmd, cs, src, i, false);
+      ops->src(cmd, cs, src, i, VK_FILTER_NEAREST);
       ops->dst(cs, dst, i);
       ops->run(cmd, cs);
    }
