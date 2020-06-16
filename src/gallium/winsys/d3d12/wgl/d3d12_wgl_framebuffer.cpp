@@ -195,7 +195,8 @@ d3d12_wgl_create_framebuffer(struct pipe_screen *screen,
 {
    const struct stw_pixelformat_info *pfi =
       stw_pixelformat_get_info(iPixelFormat);
-   if (!(pfi->pfd.dwFlags & PFD_DOUBLEBUFFER))
+   if (!(pfi->pfd.dwFlags & PFD_DOUBLEBUFFER) ||
+       (pfi->pfd.dwFlags & PFD_SUPPORT_GDI))
       return NULL;
 
    struct d3d12_wgl_framebuffer *fb = CALLOC_STRUCT(d3d12_wgl_framebuffer);
