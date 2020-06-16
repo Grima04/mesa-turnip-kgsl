@@ -483,8 +483,8 @@ r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 /* r3d_ = shader path operations */
 
 static void
-r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_rts,
-             bool layered_clear)
+r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_rts,
+           bool layered_clear)
 {
    struct ir3_shader dummy_shader = {};
 
@@ -700,6 +700,10 @@ r3d_pipeline(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t nu
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0(.x = 0, .y = 0),
                    A6XX_GRAS_SC_SCREEN_SCISSOR_BR_0(.x = 0x7fff, .y = 0x7fff));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_VFD_INDEX_OFFSET(),
+                   A6XX_VFD_INSTANCE_START_OFFSET());
 }
 
 static void
@@ -932,7 +936,7 @@ r3d_setup(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.dword = 0xc00000));
    tu_cs_emit_regs(cs, A6XX_RB_BIN_CONTROL(.dword = 0xc00000));
 
-   r3d_pipeline(cmd, cs, !clear, clear ? 1 : 0, false);
+   r3d_common(cmd, cs, !clear, clear ? 1 : 0, false);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
@@ -2092,7 +2096,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
          layered_clear = true;
    }
 
-   r3d_pipeline(cmd, cs, false, num_rts, layered_clear);
+   r3d_common(cmd, cs, false, num_rts, layered_clear);
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_FS_RENDER_COMPONENTS(.dword = clear_components));
