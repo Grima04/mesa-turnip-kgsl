@@ -1294,6 +1294,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP(nir_op_ishl, SpvOpShiftLeftLogical)
    BINOP(nir_op_ishr, SpvOpShiftRightArithmetic)
    BINOP(nir_op_ushr, SpvOpShiftRightLogical)
+   BINOP(nir_op_ixor, SpvOpBitwiseXor)
 #undef BINOP
 
 #define BINOP_LOG(nir_op, spv_op, spv_log_op) \
