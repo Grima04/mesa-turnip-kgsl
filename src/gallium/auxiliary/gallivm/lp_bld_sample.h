@@ -140,6 +140,7 @@ struct lp_img_params
 {
    struct lp_type type;
    unsigned image_index;
+   LLVMValueRef image_index_offset;
    unsigned img_op;
    unsigned target;
    LLVMAtomicRMWBinOp op;

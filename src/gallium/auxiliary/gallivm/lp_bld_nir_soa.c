@@ -1225,10 +1225,17 @@ static void emit_image_op(struct lp_build_nir_context *bld_base,
                           struct lp_img_params *params)
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+
    params->type = bld_base->base.type;
    params->context_ptr = bld->context_ptr;
    params->thread_data_ptr = bld->thread_data_ptr;
    params->exec_mask = mask_vec(bld_base);
+
+   if (params->image_index_offset)
+      params->image_index_offset = LLVMBuildExtractElement(gallivm->builder, params->image_index_offset,
+                                                           lp_build_const_int32(gallivm, 0), "");
+
    bld->image->emit_op(bld->image,
                        bld->bld_base.base.gallivm,
                        params);
@@ -1239,10 +1246,14 @@ static void emit_image_size(struct lp_build_nir_context *bld_base,
                             struct lp_sampler_size_query_params *params)
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
 
    params->int_type = bld_base->int_bld.type;
    params->context_ptr = bld->context_ptr;
 
+   if (params->texture_unit_offset)
+      params->texture_unit_offset = LLVMBuildExtractElement(gallivm->builder, params->texture_unit_offset,
+                                                            lp_build_const_int32(gallivm, 0), "");
    bld->image->emit_size_query(bld->image,
                                bld->bld_base.base.gallivm,
                                params);

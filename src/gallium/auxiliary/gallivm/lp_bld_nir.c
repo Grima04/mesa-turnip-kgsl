@@ -1077,6 +1077,10 @@ static void visit_load_image(struct lp_build_nir_context *bld_base,
    LLVMValueRef coords[5];
    struct lp_img_params params;
    const struct glsl_type *type = glsl_without_array(var->type);
+   unsigned const_index;
+   LLVMValueRef indir_index;
+   get_deref_offset(bld_base, deref, false, NULL, NULL,
+                    &const_index, &indir_index);
 
    memset(&params, 0, sizeof(params));
    params.target = glsl_sampler_to_pipe(glsl_get_sampler_dim(type), glsl_sampler_type_is_array(type));
@@ -1090,7 +1094,8 @@ static void visit_load_image(struct lp_build_nir_context *bld_base,
    params.img_op = LP_IMG_LOAD;
    if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS)
       params.ms_index = get_src(bld_base, instr->src[2]);
-   params.image_index = var->data.binding;
+   params.image_index = var->data.binding + (indir_index ? 0 : const_index);
+   params.image_index_offset = indir_index;
    bld_base->image_op(bld_base, &params);
 }
 
@@ -1106,6 +1111,10 @@ static void visit_store_image(struct lp_build_nir_context *bld_base,
    LLVMValueRef coords[5];
    struct lp_img_params params;
    const struct glsl_type *type = glsl_without_array(var->type);
+   unsigned const_index;
+   LLVMValueRef indir_index;
+   get_deref_offset(bld_base, deref, false, NULL, NULL,
+                    &const_index, &indir_index);
 
    memset(&params, 0, sizeof(params));
    params.target = glsl_sampler_to_pipe(glsl_get_sampler_dim(type), glsl_sampler_type_is_array(type));
@@ -1122,7 +1131,8 @@ static void visit_store_image(struct lp_build_nir_context *bld_base,
    if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS)
       params.ms_index = get_src(bld_base, instr->src[2]);
    params.img_op = LP_IMG_STORE;
-   params.image_index = var->data.binding;
+   params.image_index = var->data.binding + (indir_index ? 0 : const_index);
+   params.image_index_offset = indir_index;
 
    if (params.target == PIPE_TEXTURE_1D_ARRAY)
       coords[2] = coords[1];
@@ -1142,6 +1152,10 @@ static void visit_atomic_image(struct lp_build_nir_context *bld_base,
    LLVMValueRef in_val = get_src(bld_base, instr->src[3]);
    LLVMValueRef coords[5];
    const struct glsl_type *type = glsl_without_array(var->type);
+   unsigned const_index;
+   LLVMValueRef indir_index;
+   get_deref_offset(bld_base, deref, false, NULL, NULL,
+                    &const_index, &indir_index);
 
    memset(&params, 0, sizeof(params));
 
@@ -1194,7 +1208,8 @@ static void visit_atomic_image(struct lp_build_nir_context *bld_base,
 
    params.outdata = result;
    params.img_op = (instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap) ? LP_IMG_ATOMIC_CAS : LP_IMG_ATOMIC;
-   params.image_index = var->data.binding;
+   params.image_index = var->data.binding + (indir_index ? 0 : const_index);
+   params.image_index_offset = indir_index;
 
    bld_base->image_op(bld_base, &params);
 }
@@ -1207,8 +1222,14 @@ static void visit_image_size(struct lp_build_nir_context *bld_base,
    nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
    nir_variable *var = nir_deref_instr_get_variable(deref);
    struct lp_sampler_size_query_params params = { 0 };
-   params.texture_unit = var->data.binding;
-   params.target = glsl_sampler_to_pipe(glsl_get_sampler_dim(var->type), glsl_sampler_type_is_array(var->type));
+   unsigned const_index;
+   LLVMValueRef indir_index;
+   const struct glsl_type *type = glsl_without_array(var->type);
+   get_deref_offset(bld_base, deref, false, NULL, NULL,
+                    &const_index, &indir_index);
+   params.texture_unit = var->data.binding + (indir_index ? 0 : const_index);
+   params.texture_unit_offset = indir_index;
+   params.target = glsl_sampler_to_pipe(glsl_get_sampler_dim(type), glsl_sampler_type_is_array(type));
    params.sizes_out = result;
 
    bld_base->image_size(bld_base, &params);
@@ -1221,8 +1242,15 @@ static void visit_image_samples(struct lp_build_nir_context *bld_base,
    nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
    nir_variable *var = nir_deref_instr_get_variable(deref);
    struct lp_sampler_size_query_params params = { 0 };
-   params.texture_unit = var->data.binding;
-   params.target = glsl_sampler_to_pipe(glsl_get_sampler_dim(var->type), glsl_sampler_type_is_array(var->type));
+   unsigned const_index;
+   LLVMValueRef indir_index;
+   const struct glsl_type *type = glsl_without_array(var->type);
+   get_deref_offset(bld_base, deref, false, NULL, NULL,
+                    &const_index, &indir_index);
+
+   params.texture_unit = var->data.binding + (indir_index ? 0 : const_index);
+   params.texture_unit_offset = indir_index;
+   params.target = glsl_sampler_to_pipe(glsl_get_sampler_dim(type), glsl_sampler_type_is_array(type));
    params.sizes_out = result;
    params.samples_only = true;
 
