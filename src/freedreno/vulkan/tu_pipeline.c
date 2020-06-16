@@ -1173,7 +1173,7 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    uint32_t ij_pix_regid, ij_samp_regid, ij_cent_regid, ij_size_regid;
    uint32_t smask_in_regid;
 
-   bool sample_shading = fs->per_samp; /* TODO | key->sample_shading; */
+   bool sample_shading = fs->per_samp | fs->key.sample_shading;
    bool enable_varyings = fs->total_in > 0;
 
    samp_id_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_SAMPLE_ID);
@@ -1258,6 +1258,11 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
                               A6XX_RB_RENDER_CONTROL0_COORD_MASK(fs->fragcoord_compmask)) |
          COND(fs->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
    tu_cs_emit(cs,
+         /* these two bits (UNK4/UNK5) relate to fragcoord
+          * without them, fragcoord is the same for all samples
+          */
+         COND(sample_shading, A6XX_RB_RENDER_CONTROL1_UNK4) |
+         COND(sample_shading, A6XX_RB_RENDER_CONTROL1_UNK5) |
          CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
          CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
          CONDREG(ij_size_regid, A6XX_RB_RENDER_CONTROL1_SIZE) |
@@ -1875,6 +1880,10 @@ tu_pipeline_shader_key_init(struct ir3_shader_key *key,
        (sample_locations && sample_locations->sampleLocationsEnable)) {
       key->msaa = true;
    }
+
+   /* note: not actually used by ir3, just checked in tu6_emit_fs_inputs */
+   if (msaa_info->sampleShadingEnable)
+      key->sample_shading = true;
 
    /* TODO: Populate the remaining fields of ir3_shader_key. */
 }
