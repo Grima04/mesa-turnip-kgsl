@@ -1585,8 +1585,6 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          if (!imask)
             continue;
 
-         assert(target->second.bytes < swap.bytes);
-
          int offset = (int)target->second.op.physReg().reg_b - (int)swap.def.physReg().reg_b;
 
          /* split and update the middle (the portion that reads the swap's
