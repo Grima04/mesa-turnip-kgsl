@@ -130,7 +130,6 @@ struct ir3_ubo_analysis_state {
  */
 struct ir3_const_state {
 	unsigned num_ubos;
-	unsigned num_reserved_user_consts;
 	unsigned num_driver_params;   /* scalar */
 
 	struct {
@@ -623,6 +622,7 @@ struct ir3_shader {
 	struct ir3_compiler *compiler;
 
 	struct ir3_const_state const_state;
+	unsigned num_reserved_user_consts;
 
 	struct nir_shader *nir;
 	struct ir3_stream_output_info stream_output;
