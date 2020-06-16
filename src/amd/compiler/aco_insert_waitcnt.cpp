@@ -155,6 +155,7 @@ struct wait_imm {
       assert(exp == unset_counter || exp <= 0x7);
       switch (chip) {
       case GFX10:
+      case GFX10_3:
          assert(lgkm == unset_counter || lgkm <= 0x3f);
          assert(vm == unset_counter || vm <= 0x3f);
          imm = ((vm & 0x30) << 10) | ((lgkm & 0x3f) << 8) | ((exp & 0x7) << 4) | (vm & 0xf);
