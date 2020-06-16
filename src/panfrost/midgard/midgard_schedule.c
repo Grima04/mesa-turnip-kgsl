@@ -572,9 +572,56 @@ mir_has_unit(midgard_instruction *ins, unsigned unit)
         return false;
 }
 
+/* Net change in liveness if an instruction were scheduled. Loosely based on
+ * ir3's scheduler. */
+
+static int
+mir_live_effect(uint16_t *liveness, midgard_instruction *ins, bool destructive)
+{
+        /* TODO: what if dest is used multiple times? */
+        int free_live = 0;
+
+        if (ins->dest < SSA_FIXED_MINIMUM) {
+                unsigned bytemask = mir_bytemask(ins);
+                bytemask = util_next_power_of_two(bytemask + 1) - 1;
+                free_live += util_bitcount(liveness[ins->dest] & bytemask);
+
+                if (destructive)
+                        liveness[ins->dest] &= ~bytemask;
+        }
+
+        int new_live = 0;
+
+        mir_foreach_src(ins, s) {
+                unsigned S = ins->src[s];
+
+                bool dupe = false;
+
+                for (unsigned q = 0; q < s; ++q)
+                        dupe |= (ins->src[q] == S);
+
+                if (dupe)
+                        continue;
+
+                if (S < SSA_FIXED_MINIMUM) {
+                        unsigned bytemask = mir_bytemask_of_read_components(ins, S);
+                        bytemask = util_next_power_of_two(bytemask + 1) - 1;
+
+                        /* Count only the new components */
+                        new_live += util_bitcount(bytemask & ~(liveness[S]));
+
+                        if (destructive)
+                                liveness[S] |= bytemask;
+                }
+        }
+
+        return new_live - free_live;
+}
+
 static midgard_instruction *
 mir_choose_instruction(
                 midgard_instruction **instructions,
+                uint16_t *liveness,
                 BITSET_WORD *worklist, unsigned count,
                 struct midgard_predicate *predicate)
 {
@@ -595,6 +642,7 @@ mir_choose_instruction(
         unsigned i;
 
         signed best_index = -1;
+        signed best_effect = INT_MAX;
         bool best_conditional = false;
 
         /* Enforce a simple metric limiting distance to keep down register
@@ -602,7 +650,7 @@ mir_choose_instruction(
          * results */
 
         unsigned max_active = 0;
-        unsigned max_distance = 6;
+        unsigned max_distance = 36;
 
         BITSET_FOREACH_SET(i, worklist, count) {
                 max_active = MAX2(max_active, i);
@@ -655,14 +703,18 @@ mir_choose_instruction(
                 if (conditional && no_cond)
                         continue;
 
-                /* Simulate in-order scheduling */
-                if ((signed) i < best_index)
+                int effect = mir_live_effect(liveness, instructions[i], false);
+
+                if (effect > best_effect)
                         continue;
 
+                if (effect == best_effect && (signed) i < best_index)
+                        continue;
+
+                best_effect = effect;
                 best_index = i;
                 best_conditional = conditional;
         }
-
 
         /* Did we find anything?  */
 
@@ -686,6 +738,7 @@ mir_choose_instruction(
 
                 /* Once we schedule a conditional, we can't again */
                 predicate->no_cond |= best_conditional;
+                mir_live_effect(liveness, instructions[best_index], true);
         }
 
         return instructions[best_index];
@@ -697,6 +750,7 @@ mir_choose_instruction(
 static unsigned
 mir_choose_bundle(
                 midgard_instruction **instructions,
+                uint16_t *liveness,
                 BITSET_WORD *worklist, unsigned count)
 {
         /* At the moment, our algorithm is very simple - use the bundle of the
@@ -709,7 +763,7 @@ mir_choose_bundle(
                 .exclude = ~0
         };
 
-        midgard_instruction *chosen = mir_choose_instruction(instructions, worklist, count, &predicate);
+        midgard_instruction *chosen = mir_choose_instruction(instructions, liveness, worklist, count, &predicate);
 
         if (chosen)
                 return chosen->type;
@@ -721,6 +775,7 @@ mir_choose_bundle(
 static void
 mir_choose_alu(midgard_instruction **slot,
                 midgard_instruction **instructions,
+                uint16_t *liveness,
                 BITSET_WORD *worklist, unsigned len,
                 struct midgard_predicate *predicate,
                 unsigned unit)
@@ -731,7 +786,7 @@ mir_choose_alu(midgard_instruction **slot,
 
         /* Try to schedule something, if not */
         predicate->unit = unit;
-        *slot = mir_choose_instruction(instructions, worklist, len, predicate);
+        *slot = mir_choose_instruction(instructions, liveness, worklist, len, predicate);
 
         /* Store unit upon scheduling */
         if (*slot && !((*slot)->compact_branch))
@@ -898,6 +953,7 @@ mir_schedule_condition(compiler_context *ctx,
 static midgard_bundle
 mir_schedule_texture(
                 midgard_instruction **instructions,
+                uint16_t *liveness,
                 BITSET_WORD *worklist, unsigned len,
                 bool is_vertex)
 {
@@ -908,7 +964,7 @@ mir_schedule_texture(
         };
 
         midgard_instruction *ins =
-                mir_choose_instruction(instructions, worklist, len, &predicate);
+                mir_choose_instruction(instructions, liveness, worklist, len, &predicate);
 
         mir_update_worklist(worklist, len, instructions, ins);
 
@@ -926,6 +982,7 @@ mir_schedule_texture(
 static midgard_bundle
 mir_schedule_ldst(
                 midgard_instruction **instructions,
+                uint16_t *liveness,
                 BITSET_WORD *worklist, unsigned len)
 {
         struct midgard_predicate predicate = {
@@ -937,10 +994,10 @@ mir_schedule_ldst(
         /* Try to pick two load/store ops. Second not gauranteed to exist */
 
         midgard_instruction *ins =
-                mir_choose_instruction(instructions, worklist, len, &predicate);
+                mir_choose_instruction(instructions, liveness, worklist, len, &predicate);
 
         midgard_instruction *pair =
-                mir_choose_instruction(instructions, worklist, len, &predicate);
+                mir_choose_instruction(instructions, liveness, worklist, len, &predicate);
 
         struct midgard_bundle out = {
                 .tag = TAG_LOAD_STORE_4,
@@ -962,6 +1019,7 @@ mir_schedule_zs_write(
                 compiler_context *ctx,
                 struct midgard_predicate *predicate,
                 midgard_instruction **instructions,
+                uint16_t *liveness,
                 BITSET_WORD *worklist, unsigned len,
                 midgard_instruction *branch,
                 midgard_instruction **smul,
@@ -985,7 +1043,7 @@ mir_schedule_zs_write(
 
                 predicate->unit = unit_names[i];
                 midgard_instruction *ins =
-                        mir_choose_instruction(instructions, worklist, len, predicate);
+                        mir_choose_instruction(instructions, liveness, worklist, len, predicate);
 
                 if (ins) {
                         ins->unit = unit_names[i];
@@ -1028,6 +1086,7 @@ static midgard_bundle
 mir_schedule_alu(
                 compiler_context *ctx,
                 midgard_instruction **instructions,
+                uint16_t *liveness,
                 BITSET_WORD *worklist, unsigned len)
 {
         struct midgard_bundle bundle = {};
@@ -1048,7 +1107,7 @@ mir_schedule_alu(
         midgard_instruction *sadd = NULL;
         midgard_instruction *branch = NULL;
 
-        mir_choose_alu(&branch, instructions, worklist, len, &predicate, ALU_ENAB_BR_COMPACT);
+        mir_choose_alu(&branch, instructions, liveness, worklist, len, &predicate, ALU_ENAB_BR_COMPACT);
         mir_update_worklist(worklist, len, instructions, branch);
         unsigned writeout = branch ? branch->writeout : 0;
 
@@ -1123,19 +1182,19 @@ mir_schedule_alu(
         }
 
         if (writeout & PAN_WRITEOUT_Z)
-                mir_schedule_zs_write(ctx, &predicate, instructions, worklist, len, branch, &smul, &vadd, &vlut, false);
+                mir_schedule_zs_write(ctx, &predicate, instructions, liveness, worklist, len, branch, &smul, &vadd, &vlut, false);
 
         if (writeout & PAN_WRITEOUT_S)
-                mir_schedule_zs_write(ctx, &predicate, instructions, worklist, len, branch, &smul, &vadd, &vlut, true);
+                mir_schedule_zs_write(ctx, &predicate, instructions, liveness, worklist, len, branch, &smul, &vadd, &vlut, true);
 
-        mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
+        mir_choose_alu(&smul, instructions, liveness, worklist, len, &predicate, UNIT_SMUL);
 
         for (unsigned moves = 0; moves < 2; ++moves) {
                 predicate.moves = moves;
                 predicate.no_mask = writeout ? (1 << 3) : 0;
-                mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
+                mir_choose_alu(&vlut, instructions, liveness, worklist, len, &predicate, UNIT_VLUT);
                 predicate.no_mask = 0;
-                mir_choose_alu(&vadd, instructions, worklist, len, &predicate, UNIT_VADD);
+                mir_choose_alu(&vadd, instructions, liveness, worklist, len, &predicate, UNIT_VADD);
         }
 
         mir_update_worklist(worklist, len, instructions, vlut);
@@ -1158,7 +1217,7 @@ mir_schedule_alu(
         }
 
         /* Stage 2, let's schedule sadd before vmul for writeout */
-        mir_choose_alu(&sadd, instructions, worklist, len, &predicate, UNIT_SADD);
+        mir_choose_alu(&sadd, instructions, liveness, worklist, len, &predicate, UNIT_SADD);
 
         /* Check if writeout reads its own register */
 
@@ -1191,7 +1250,7 @@ mir_schedule_alu(
                         predicate.mask = writeout_mask ^ full_mask;
 
                         struct midgard_instruction *peaked =
-                                mir_choose_instruction(instructions, worklist, len, &predicate);
+                                mir_choose_instruction(instructions, liveness, worklist, len, &predicate);
 
                         if (peaked) {
                                 vmul = peaked;
@@ -1224,7 +1283,7 @@ mir_schedule_alu(
                 }
         }
 
-        mir_choose_alu(&vmul, instructions, worklist, len, &predicate, UNIT_VMUL);
+        mir_choose_alu(&vmul, instructions, liveness, worklist, len, &predicate, UNIT_VMUL);
 
         mir_update_worklist(worklist, len, instructions, vmul);
         mir_update_worklist(worklist, len, instructions, sadd);
@@ -1298,6 +1357,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         /* Allocate the worklist */
         size_t sz = BITSET_WORDS(len) * sizeof(BITSET_WORD);
         BITSET_WORD *worklist = calloc(sz, 1);
+        uint16_t *liveness = calloc(node_count, 2);
         mir_initialize_worklist(worklist, instructions, len);
 
         struct util_dynarray bundles;
@@ -1307,15 +1367,15 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         unsigned blend_offset = 0;
 
         for (;;) {
-                unsigned tag = mir_choose_bundle(instructions, worklist, len);
+                unsigned tag = mir_choose_bundle(instructions, liveness, worklist, len);
                 midgard_bundle bundle;
 
                 if (tag == TAG_TEXTURE_4)
-                        bundle = mir_schedule_texture(instructions, worklist, len, ctx->stage != MESA_SHADER_FRAGMENT);
+                        bundle = mir_schedule_texture(instructions, liveness, worklist, len, ctx->stage != MESA_SHADER_FRAGMENT);
                 else if (tag == TAG_LOAD_STORE_4)
-                        bundle = mir_schedule_ldst(instructions, worklist, len);
+                        bundle = mir_schedule_ldst(instructions, liveness, worklist, len);
                 else if (tag == TAG_ALU_4)
-                        bundle = mir_schedule_alu(ctx, instructions, worklist, len);
+                        bundle = mir_schedule_alu(ctx, instructions, liveness, worklist, len);
                 else
                         break;
 
@@ -1360,6 +1420,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 
 	free(instructions); /* Allocated by flatten_mir() */
 	free(worklist);
+        free(liveness);
 }
 
 void
