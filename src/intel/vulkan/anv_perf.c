@@ -297,7 +297,7 @@ VkResult anv_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
    VK_OUTARRAY_MAKE(out_desc, pCounterDescriptions, &desc_count);
 
    for (int c = 0; c < (perf ? perf->n_counters : 0); c++) {
-      const struct gen_perf_query_counter *gen_counter = perf->counters[c];
+      const struct gen_perf_query_counter *gen_counter = perf->counter_infos[c].counter;
 
       vk_outarray_append(&out, counter) {
          counter->unit = gen_perf_counter_unit_to_vk_unit[gen_counter->units];

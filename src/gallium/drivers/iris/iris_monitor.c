@@ -53,9 +53,10 @@ iris_get_monitor_info(struct pipe_screen *pscreen, unsigned index,
       return perf_cfg->n_counters;
    }
 
-   struct gen_perf_query_counter *counter = perf_cfg->counters[index];
+   struct gen_perf_query_counter_info *counter_info = &perf_cfg->counter_infos[index];
+   struct gen_perf_query_counter *counter = counter_info->counter;
 
-   info->group_id = counter->location.group_idx;
+   info->group_id = counter_info->location.group_idx;
    info->name = counter->name;
    info->query_type = PIPE_QUERY_DRIVER_SPECIFIC + index;
 
@@ -179,7 +180,7 @@ iris_create_monitor_object(struct iris_context *ice,
    assert(num_queries > 0);
    int query_index = query_types[0] - PIPE_QUERY_DRIVER_SPECIFIC;
    assert(query_index <= perf_cfg->n_counters);
-   const int group = perf_cfg->counters[query_index]->location.group_idx;
+   const int group = perf_cfg->counter_infos[query_index].location.group_idx;
 
    struct iris_monitor_object *monitor =
       calloc(1, sizeof(struct iris_monitor_object));
@@ -197,9 +198,9 @@ iris_create_monitor_object(struct iris_context *ice,
 
       /* all queries must be in the same group */
       assert(current_query_index <= perf_cfg->n_counters);
-      assert(perf_cfg->counters[current_query_index]->location.group_idx == group);
+      assert(perf_cfg->counter_infos[current_query_index].location.group_idx == group);
       monitor->active_counters[i] =
-         perf_cfg->counters[current_query_index]->location.counter_idx;
+         perf_cfg->counter_infos[current_query_index].location.counter_idx;
    }
 
    /* create the gen_perf_query */
