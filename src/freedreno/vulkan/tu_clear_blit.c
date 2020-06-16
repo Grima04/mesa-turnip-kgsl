@@ -2083,13 +2083,19 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
 
    /* disable all draw states so they don't interfere
     * TODO: use and re-use draw states for this path
+    * we have to disable draw states individually to preserve
+    * input attachment states, because a secondary command buffer
+    * won't be able to restore them
     */
-   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
-   tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
-                     CP_SET_DRAW_STATE__0_DISABLE_ALL_GROUPS |
-                     CP_SET_DRAW_STATE__0_GROUP_ID(0));
-   tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
-   tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
+   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (TU_DRAW_STATE_COUNT - 2));
+   for (uint32_t i = 0; i < TU_DRAW_STATE_COUNT; i++) {
+      if (i == TU_DRAW_STATE_INPUT_ATTACHMENTS_GMEM ||
+          i == TU_DRAW_STATE_INPUT_ATTACHMENTS_SYSMEM)
+         continue;
+      tu_cs_emit(cs, CP_SET_DRAW_STATE__0_GROUP_ID(i) |
+                     CP_SET_DRAW_STATE__0_DISABLE);
+      tu_cs_emit_qw(cs, 0);
+   }
    cmd->state.dirty |= TU_CMD_DIRTY_DRAW_STATE;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);

@@ -438,6 +438,8 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_DESC_SETS,
    TU_DRAW_STATE_DESC_SETS_LOAD,
    TU_DRAW_STATE_VS_PARAMS,
+   TU_DRAW_STATE_INPUT_ATTACHMENTS_GMEM,
+   TU_DRAW_STATE_INPUT_ATTACHMENTS_SYSMEM,
 
    /* dynamic state related draw states */
    TU_DRAW_STATE_DYNAMIC,
@@ -816,6 +818,7 @@ struct tu_cmd_state
    struct tu_cs_entry vertex_buffers_ib;
    struct tu_cs_entry shader_const_ib[MESA_SHADER_STAGES];
    struct tu_cs_entry desc_sets_ib, desc_sets_load_ib;
+   struct tu_cs_entry ia_gmem_ib, ia_sysmem_ib;
 
    /* Stream output buffers */
    struct

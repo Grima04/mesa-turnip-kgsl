@@ -707,6 +707,12 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
    case TU_DRAW_STATE_VI_BINNING:
       enable_mask = CP_SET_DRAW_STATE__0_BINNING;
       break;
+   case TU_DRAW_STATE_INPUT_ATTACHMENTS_GMEM:
+      enable_mask = CP_SET_DRAW_STATE__0_GMEM;
+      break;
+   case TU_DRAW_STATE_INPUT_ATTACHMENTS_SYSMEM:
+      enable_mask = CP_SET_DRAW_STATE__0_SYSMEM;
+      break;
    default:
       enable_mask = CP_SET_DRAW_STATE__0_GMEM |
                     CP_SET_DRAW_STATE__0_SYSMEM |
@@ -1258,6 +1264,7 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
                           const struct tu_subpass *subpass,
+                          struct tu_cs_entry *ib,
                           bool gmem)
 {
    /* note: we can probably emit input attachments just once for the whole
@@ -1322,20 +1329,36 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
          dst[i] = 0;
    }
 
-   struct tu_cs *cs = &cmd->draw_cs;
+   struct tu_cs cs;
+   tu_cs_begin_sub_stream(&cmd->sub_cs, 9, &cs);
 
-   tu_cs_emit_pkt7(cs, CP_LOAD_STATE6_FRAG, 3);
-   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
+   tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_FRAG, 3);
+   tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(0) |
                   CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                   CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
                   CP_LOAD_STATE6_0_STATE_BLOCK(SB6_FS_TEX) |
                   CP_LOAD_STATE6_0_NUM_UNIT(subpass->input_count * 2));
-   tu_cs_emit_qw(cs, texture.iova);
+   tu_cs_emit_qw(&cs, texture.iova);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_TEX_CONST_LO, 2);
-   tu_cs_emit_qw(cs, texture.iova);
+   tu_cs_emit_pkt4(&cs, REG_A6XX_SP_FS_TEX_CONST_LO, 2);
+   tu_cs_emit_qw(&cs, texture.iova);
 
-   tu_cs_emit_regs(cs, A6XX_SP_FS_TEX_COUNT(subpass->input_count * 2));
+   tu_cs_emit_regs(&cs, A6XX_SP_FS_TEX_COUNT(subpass->input_count * 2));
+
+   *ib = tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
+}
+
+static void
+tu_set_input_attachments(struct tu_cmd_buffer *cmd, const struct tu_subpass *subpass)
+{
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   tu_emit_input_attachments(cmd, subpass, &cmd->state.ia_gmem_ib, true);
+   tu_emit_input_attachments(cmd, subpass, &cmd->state.ia_sysmem_ib, false);
+
+   tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 6);
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_INPUT_ATTACHMENTS_GMEM, cmd->state.ia_gmem_ib);
+   tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_INPUT_ATTACHMENTS_SYSMEM, cmd->state.ia_sysmem_ib);
 }
 
 static void
@@ -1356,16 +1379,12 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
       tu_clear_gmem_attachment(cmd, cs, i, info);
 
-   tu_emit_input_attachments(cmd, cmd->state.subpass, true);
-
    tu_cond_exec_end(cs);
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
       tu_clear_sysmem_attachment(cmd, cs, i, info);
-
-   tu_emit_input_attachments(cmd, cmd->state.subpass, false);
 
    tu_cond_exec_end(cs);
 }
@@ -2780,6 +2799,8 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tu6_emit_msaa(&cmd->draw_cs, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
 
+   tu_set_input_attachments(cmd, cmd->state.subpass);
+
    /* note: use_hw_binning only checks tiling config */
    if (use_hw_binning(cmd))
       cmd->use_vsc_data = true;
@@ -2836,15 +2857,11 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
       }
    }
 
-   tu_emit_input_attachments(cmd, cmd->state.subpass, true);
-
    tu_cond_exec_end(cs);
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    tu6_emit_sysmem_resolves(cmd, cs, subpass);
-
-   tu_emit_input_attachments(cmd, cmd->state.subpass, false);
 
    tu_cond_exec_end(cs);
 
@@ -2856,6 +2873,8 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    tu6_emit_mrt(cmd, cmd->state.subpass, cs);
    tu6_emit_msaa(cs, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, false);
+
+   tu_set_input_attachments(cmd, cmd->state.subpass);
 }
 
 void
@@ -3191,9 +3210,13 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
     * and if a draw-state disabling path (CmdClearAttachments 3D fallback) was
     * used, then draw states must be re-emitted. note however this only happens
     * in the sysmem path, so this can be skipped this for the gmem path (TODO)
+    *
+    * the two input attachment states are excluded because secondary command
+    * buffer doesn't have a state ib to restore it, and not re-emitting them
+    * is OK since CmdClearAttachments won't disable/overwrite them
     */
    if (cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE) {
-      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * TU_DRAW_STATE_COUNT);
+      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (TU_DRAW_STATE_COUNT - 2));
 
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state_ib);
