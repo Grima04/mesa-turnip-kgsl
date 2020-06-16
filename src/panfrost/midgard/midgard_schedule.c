@@ -1087,7 +1087,14 @@ mir_schedule_alu(
                 bundle.last_writeout = branch->last_writeout;
         }
 
-        if (writeout) {
+        /* When MRT is in use, writeout loops require r1.w to be filled (with a
+         * return address? by symmetry with Bifrost, etc), at least for blend
+         * shaders to work properly. When MRT is not in use (including on SFBD
+         * GPUs), this is not needed. Blend shaders themselves don't know if
+         * they are paired with MRT or not so they always need this, at least
+         * on MFBD GPUs. */
+
+        if (writeout && (ctx->is_blend || ctx->writeout_branch[1])) {
                 vadd = ralloc(ctx, midgard_instruction);
                 *vadd = v_mov(~0, make_compiler_temp(ctx));
 
