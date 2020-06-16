@@ -68,7 +68,7 @@ lower_reduction(nir_alu_instr *alu, nir_op chan_op, nir_op merge_op,
    unsigned num_components = nir_op_infos[alu->op].input_sizes[0];
 
    nir_ssa_def *last = NULL;
-   for (unsigned i = 0; i < num_components; i++) {
+   for (int i = num_components - 1; i >= 0; i--) {
       nir_alu_instr *chan = nir_alu_instr_create(builder->shader, chan_op);
       nir_alu_ssa_dest_init(chan, 1, alu->dest.dest.ssa.bit_size);
       nir_alu_src_copy(&chan->src[0], &alu->src[0], chan);
@@ -82,7 +82,7 @@ lower_reduction(nir_alu_instr *alu, nir_op chan_op, nir_op merge_op,
 
       nir_builder_instr_insert(builder, &chan->instr);
 
-      if (i == 0) {
+      if (i == num_components - 1) {
          last = &chan->dest.dest.ssa;
       } else {
          last = nir_build_alu(builder, merge_op,

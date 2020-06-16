@@ -552,14 +552,14 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
    def pairwise_reduce(start, size):
       if (size == 1):
          return srcs[start]
-      return reduce_(pairwise_reduce(start, size // 2), pairwise_reduce(start + size // 2, size // 2))
+      return reduce_(pairwise_reduce(start + size // 2, size // 2), pairwise_reduce(start, size // 2))
    for size in [2, 4, 8, 16]:
       opcode(name + str(size) + suffix, output_size, output_type,
              [size, size], [src_type, src_type], False, _2src_commutative,
              final(pairwise_reduce(0, size)))
    opcode(name + "3" + suffix, output_size, output_type,
           [3, 3], [src_type, src_type], False, _2src_commutative,
-          final(reduce_(reduce_(srcs[0], srcs[1]), srcs[2])))
+          final(reduce_(reduce_(srcs[2], srcs[1]), srcs[0])))
 
 def binop_reduce_all_sizes(name, output_size, src_type, prereduce_expr,
                            reduce_expr, final_expr):
