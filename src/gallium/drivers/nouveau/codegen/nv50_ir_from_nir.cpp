@@ -1946,12 +1946,17 @@ Converter::visit(nir_intrinsic_instr *insn)
       }
       break;
    }
-   case nir_intrinsic_emit_vertex:
+   case nir_intrinsic_emit_vertex: {
       if (info->io.genUserClip > 0)
          handleUserClipPlanes();
-      // fallthrough
+      uint32_t idx = nir_intrinsic_stream_id(insn);
+      mkOp1(getOperation(op), TYPE_U32, NULL, mkImm(idx))->fixed = 1;
+      break;
+   }
    case nir_intrinsic_end_primitive: {
       uint32_t idx = nir_intrinsic_stream_id(insn);
+      if (idx)
+         break;
       mkOp1(getOperation(op), TYPE_U32, NULL, mkImm(idx))->fixed = 1;
       break;
    }
