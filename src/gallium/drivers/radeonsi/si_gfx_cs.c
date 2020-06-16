@@ -415,6 +415,11 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
       return;
    }
 
+   if (ctx->tess_rings) {
+      radeon_add_to_buffer_list(ctx, ctx->gfx_cs, si_resource(ctx->tess_rings),
+                                RADEON_USAGE_READWRITE, RADEON_PRIO_SHADER_RINGS);
+   }
+
    /* set all valid group as dirty so they get reemited on
     * next draw command
     */

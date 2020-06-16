@@ -3640,9 +3640,6 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
 
    si_cs_preamble_add_vgt_flush(sctx);
 
-   si_pm4_add_bo(sctx->cs_preamble_state, si_resource(sctx->tess_rings), RADEON_USAGE_READWRITE,
-                 RADEON_PRIO_SHADER_RINGS);
-
    uint64_t factor_va =
       si_resource(sctx->tess_rings)->gpu_address + sctx->screen->tess_offchip_ring_size;
 
