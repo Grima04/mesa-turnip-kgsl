@@ -2614,7 +2614,7 @@ void combine_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr
                 instr->opcode == aco_opcode::v_sub_f16 ||
                 instr->opcode == aco_opcode::v_subrev_f16;
    if (mad16 || mad32) {
-      bool need_fma = mad32 ? block.fp_mode.denorm32 != 0 :
+      bool need_fma = mad32 ? (block.fp_mode.denorm32 != 0 || ctx.program->chip_class >= GFX10_3) :
                               (block.fp_mode.denorm16_64 != 0 || ctx.program->chip_class >= GFX10);
       if (need_fma && instr->definitions[0].isPrecise())
          return;
