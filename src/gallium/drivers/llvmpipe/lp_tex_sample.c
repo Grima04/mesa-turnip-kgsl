@@ -94,6 +94,7 @@ struct lp_llvm_image_soa
    struct lp_build_image_soa base;
 
    struct llvmpipe_image_dynamic_state dynamic_state;
+   unsigned nr_images;
 };
 
 
@@ -495,7 +496,8 @@ lp_llvm_image_soa_emit_size_query(const struct lp_build_image_soa *base,
 }
 
 struct lp_build_image_soa *
-lp_llvm_image_soa_create(const struct lp_image_static_state *static_state)
+lp_llvm_image_soa_create(const struct lp_image_static_state *static_state,
+                         unsigned nr_images)
 {
    struct lp_llvm_image_soa *image;
 
@@ -519,5 +521,6 @@ lp_llvm_image_soa_create(const struct lp_image_static_state *static_state)
 
    image->dynamic_state.static_state = static_state;
 
+   image->nr_images = nr_images;
    return &image->base;
 }

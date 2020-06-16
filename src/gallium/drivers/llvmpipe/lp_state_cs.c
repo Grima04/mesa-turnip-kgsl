@@ -175,7 +175,7 @@ generate_compute(struct llvmpipe_context *lp,
    assert(builder);
    LLVMPositionBuilderAtEnd(builder, block);
    sampler = lp_llvm_sampler_soa_create(key->samplers, key->nr_samplers);
-   image = lp_llvm_image_soa_create(lp_cs_variant_key_images(key));
+   image = lp_llvm_image_soa_create(lp_cs_variant_key_images(key), key->nr_images);
 
    struct lp_build_loop_state loop_state[4];
    LLVMValueRef num_x_loop;
