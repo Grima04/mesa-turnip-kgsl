@@ -165,6 +165,7 @@ private:
    NirArrayLMemOffsets regToLmemOffset;
    NirBlockMap blocks;
    unsigned int curLoopDepth;
+   unsigned int curIfDepth;
 
    BasicBlock *exit;
    Value *zero;
@@ -183,6 +184,7 @@ Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info)
    : ConverterCommon(prog, info),
      nir(nir),
      curLoopDepth(0),
+     curIfDepth(0),
      clipVertexOutput(-1)
 {
    zero = mkImm((uint32_t)0);
@@ -1399,64 +1401,69 @@ Converter::visit(nir_block *block)
 bool
 Converter::visit(nir_if *nif)
 {
+   curIfDepth++;
+
    DataType sType = getSType(nif->condition, false, false);
    Value *src = getSrc(&nif->condition, 0);
 
    nir_block *lastThen = nir_if_last_then_block(nif);
    nir_block *lastElse = nir_if_last_else_block(nif);
 
-   assert(!lastThen->successors[1]);
-   assert(!lastElse->successors[1]);
-
+   BasicBlock *headBB = bb;
    BasicBlock *ifBB = convert(nir_if_first_then_block(nif));
    BasicBlock *elseBB = convert(nir_if_first_else_block(nif));
 
    bb->cfg.attach(&ifBB->cfg, Graph::Edge::TREE);
    bb->cfg.attach(&elseBB->cfg, Graph::Edge::TREE);
 
-   // we only insert joinats, if both nodes end up at the end of the if again.
-   // the reason for this to not happens are breaks/continues/ret/... which
-   // have their own handling
-   if (lastThen->successors[0] == lastElse->successors[0])
-      bb->joinAt = mkFlow(OP_JOINAT, convert(lastThen->successors[0]),
-                          CC_ALWAYS, NULL);
-
+   bool insertJoins = lastThen->successors[0] == lastElse->successors[0];
    mkFlow(OP_BRA, elseBB, CC_EQ, src)->setType(sType);
 
    foreach_list_typed(nir_cf_node, node, node, &nif->then_list) {
       if (!visit(node))
          return false;
    }
+
    setPosition(convert(lastThen), true);
-   if (!bb->getExit() ||
-       !bb->getExit()->asFlow() ||
-        bb->getExit()->asFlow()->op == OP_JOIN) {
+   if (!bb->isTerminated()) {
       BasicBlock *tailBB = convert(lastThen->successors[0]);
       mkFlow(OP_BRA, tailBB, CC_ALWAYS, NULL);
       bb->cfg.attach(&tailBB->cfg, Graph::Edge::FORWARD);
+   } else {
+      insertJoins = insertJoins && bb->getExit()->op == OP_BRA;
    }
 
    foreach_list_typed(nir_cf_node, node, node, &nif->else_list) {
       if (!visit(node))
          return false;
    }
+
    setPosition(convert(lastElse), true);
-   if (!bb->getExit() ||
-       !bb->getExit()->asFlow() ||
-        bb->getExit()->asFlow()->op == OP_JOIN) {
+   if (!bb->isTerminated()) {
       BasicBlock *tailBB = convert(lastElse->successors[0]);
       mkFlow(OP_BRA, tailBB, CC_ALWAYS, NULL);
       bb->cfg.attach(&tailBB->cfg, Graph::Edge::FORWARD);
+   } else {
+      insertJoins = insertJoins && bb->getExit()->op == OP_BRA;
    }
 
-   if (lastThen->successors[0] == lastElse->successors[0]) {
-      setPosition(convert(lastThen->successors[0]), true);
+   /* only insert joins for the most outer if */
+   if (--curIfDepth)
+      insertJoins = false;
+
+   /* we made sure that all threads would converge at the same block */
+   if (insertJoins) {
+      BasicBlock *conv = convert(lastThen->successors[0]);
+      setPosition(headBB->getExit(), false);
+      headBB->joinAt = mkFlow(OP_JOINAT, conv, CC_ALWAYS, NULL);
+      setPosition(conv, false);
       mkFlow(OP_JOIN, NULL, CC_ALWAYS, NULL)->fixed = 1;
    }
 
    return true;
 }
 
+// TODO: add convergency
 bool
 Converter::visit(nir_loop *loop)
 {
@@ -1464,8 +1471,8 @@ Converter::visit(nir_loop *loop)
    func->loopNestingBound = std::max(func->loopNestingBound, curLoopDepth);
 
    BasicBlock *loopBB = convert(nir_loop_first_block(loop));
-   BasicBlock *tailBB =
-      convert(nir_cf_node_as_block(nir_cf_node_next(&loop->cf_node)));
+   BasicBlock *tailBB = convert(nir_cf_node_as_block(nir_cf_node_next(&loop->cf_node)));
+
    bb->cfg.attach(&loopBB->cfg, Graph::Edge::TREE);
 
    mkFlow(OP_PREBREAK, tailBB, CC_ALWAYS, NULL);
@@ -1476,18 +1483,14 @@ Converter::visit(nir_loop *loop)
       if (!visit(node))
          return false;
    }
-   Instruction *insn = bb->getExit();
-   if (bb->cfg.incidentCount() != 0) {
-      if (!insn || !insn->asFlow()) {
-         mkFlow(OP_CONT, loopBB, CC_ALWAYS, NULL);
-         bb->cfg.attach(&loopBB->cfg, Graph::Edge::BACK);
-      } else if (insn && insn->op == OP_BRA && !insn->getPredicate() &&
-                 tailBB->cfg.incidentCount() == 0) {
-         // RA doesn't like having blocks around with no incident edge,
-         // so we create a fake one to make it happy
-         bb->cfg.attach(&tailBB->cfg, Graph::Edge::TREE);
-      }
+
+   if (!bb->isTerminated()) {
+      mkFlow(OP_CONT, loopBB, CC_ALWAYS, NULL);
+      bb->cfg.attach(&loopBB->cfg, Graph::Edge::BACK);
    }
+
+   if (tailBB->cfg.incidentCount() == 0)
+      loopBB->cfg.attach(&tailBB->cfg, Graph::Edge::TREE);
 
    curLoopDepth -= 1;
 
@@ -2349,7 +2352,6 @@ Converter::visit(nir_jump_instr *insn)
    case nir_jump_continue: {
       bool isBreak = insn->type == nir_jump_break;
       nir_block *block = insn->instr.block;
-      assert(!block->successors[1]);
       BasicBlock *target = convert(block->successors[0]);
       mkFlow(isBreak ? OP_BREAK : OP_CONT, target, CC_ALWAYS, NULL);
       bb->cfg.attach(&target->cfg, isBreak ? Graph::Edge::CROSS : Graph::Edge::BACK);
