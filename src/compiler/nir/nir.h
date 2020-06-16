@@ -4729,6 +4729,7 @@ bool nir_lower_to_source_mods(nir_shader *shader, nir_lower_to_source_mods_flags
 typedef enum {
    nir_lower_gs_intrinsics_per_stream = 1 << 0,
    nir_lower_gs_intrinsics_count_primitives = 1 << 1,
+   nir_lower_gs_intrinsics_count_vertices_per_primitive = 1 << 2,
 } nir_lower_gs_intrinsics_flags;
 
 bool nir_lower_gs_intrinsics(nir_shader *shader, nir_lower_gs_intrinsics_flags options);
