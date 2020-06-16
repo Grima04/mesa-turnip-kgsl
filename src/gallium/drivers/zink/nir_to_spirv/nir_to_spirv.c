@@ -1239,6 +1239,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BUILTIN_UNOP(nir_op_ftrunc, GLSLstd450Trunc)
    BUILTIN_UNOP(nir_op_fround_even, GLSLstd450RoundEven)
    BUILTIN_UNOP(nir_op_fsign, GLSLstd450FSign)
+   BUILTIN_UNOP(nir_op_isign, GLSLstd450SSign)
    BUILTIN_UNOP(nir_op_fsin, GLSLstd450Sin)
    BUILTIN_UNOP(nir_op_fcos, GLSLstd450Cos)
 #undef BUILTIN_UNOP
