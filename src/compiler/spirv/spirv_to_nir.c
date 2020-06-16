@@ -3116,7 +3116,6 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    /* uniform as "atomic counter uniform" */
    if (ptr->mode == vtn_variable_mode_uniform) {
       nir_deref_instr *deref = vtn_pointer_to_deref(b, ptr);
-      const struct glsl_type *deref_type = deref->type;
       nir_intrinsic_op op = get_uniform_nir_atomic_op(b, opcode);
       atomic = nir_intrinsic_instr_create(b->nb.shader, op);
       atomic->src[0] = nir_src_for_ssa(&deref->dest.ssa);
@@ -3127,11 +3126,6 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
        */
 
       switch (opcode) {
-      case SpvOpAtomicStore:
-         atomic->num_components = glsl_get_vector_elements(deref_type);
-         nir_intrinsic_set_write_mask(atomic, (1 << atomic->num_components) - 1);
-         break;
-
       case SpvOpAtomicLoad:
       case SpvOpAtomicExchange:
       case SpvOpAtomicCompareExchange:
