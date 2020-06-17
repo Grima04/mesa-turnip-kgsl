@@ -143,6 +143,10 @@ optimizations = [
    (('umul_unorm_4x8', a, 0), 0),
    (('umul_unorm_4x8', a, ~0), a),
    (('~fmul', a, 1.0), a),
+   # The only effect a*1.0 can have is flushing denormals. If it's only used by
+   # a floating point instruction, they should flush any input denormals and
+   # this multiplication isn't needed.
+   (('fmul(is_only_used_as_float)', a, 1.0), a),
    (('imul', a, 1), a),
    (('fmul', a, -1.0), ('fneg', a)),
    (('imul', a, -1), ('ineg', a)),
