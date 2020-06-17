@@ -118,9 +118,9 @@ matrix_multiply(struct vtn_builder *b,
       for (unsigned i = 0; i < src1_columns; i++) {
          /* dest[i] = sum(src0[j] * src1[i][j] for all j) */
          dest->elems[i]->def =
-            nir_fmul(&b->nb, src0->elems[0]->def,
-                     nir_channel(&b->nb, src1->elems[i]->def, 0));
-         for (unsigned j = 1; j < src0_columns; j++) {
+            nir_fmul(&b->nb, src0->elems[src0_columns - 1]->def,
+                     nir_channel(&b->nb, src1->elems[i]->def, src0_columns - 1));
+         for (int j = src0_columns - 2; j >= 0; j--) {
             dest->elems[i]->def =
                nir_fadd(&b->nb, dest->elems[i]->def,
                         nir_fmul(&b->nb, src0->elems[j]->def,
