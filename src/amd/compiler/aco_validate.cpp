@@ -159,11 +159,11 @@ void validate(Program* program, FILE * output)
          if (instr->isVOP3()) {
             VOP3A_instruction *vop3 = static_cast<VOP3A_instruction*>(instr.get());
             check(vop3->opsel == 0 || program->chip_class >= GFX9, "Opsel is only supported on GFX9+", instr.get());
-            check((vop3->opsel & ~(0x10 | ((1 << instr->operands.size()) - 1))) == 0, "Unused bits in opsel must be zeroed out", instr.get());
 
-            for (unsigned i = 0; i < instr->operands.size(); i++) {
-               if (instr->operands[i].hasRegClass() && instr->operands[i].regClass().is_subdword() && !instr->operands[i].isFixed())
-                  check((vop3->opsel & (1 << i)) == 0, "Unexpected opsel for sub-dword operand", instr.get());
+            for (unsigned i = 0; i < 3; i++) {
+               if (i >= instr->operands.size() ||
+                   (instr->operands[i].hasRegClass() && instr->operands[i].regClass().is_subdword() && !instr->operands[i].isFixed()))
+                  check((vop3->opsel & (1 << i)) == 0, "Unexpected opsel for operand", instr.get());
             }
             if (instr->definitions[0].regClass().is_subdword() && !instr->definitions[0].isFixed())
                check((vop3->opsel & (1 << 3)) == 0, "Unexpected opsel for sub-dword definition", instr.get());
