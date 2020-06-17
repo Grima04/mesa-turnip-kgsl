@@ -95,6 +95,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    switch (param) {
    case PIPE_CAP_NPOT_TEXTURES:
+   case PIPE_CAP_TGSI_TEXCOORD:
       return 1;
 
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
