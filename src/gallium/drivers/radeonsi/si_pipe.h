@@ -1880,12 +1880,14 @@ static inline bool si_compute_prim_discard_enabled(struct si_context *sctx)
 
 static inline unsigned si_get_wave_size(struct si_screen *sscreen,
                                         enum pipe_shader_type shader_type, bool ngg, bool es,
-                                        bool prim_discard_cs)
+                                        bool gs_fast_launch, bool prim_discard_cs)
 {
    if (shader_type == PIPE_SHADER_COMPUTE)
       return sscreen->compute_wave_size;
    else if (shader_type == PIPE_SHADER_FRAGMENT)
       return sscreen->ps_wave_size;
+   else if (gs_fast_launch)
+      return 32; /* GS fast launch hangs with Wave64, so always use Wave32. */
    else if ((shader_type == PIPE_SHADER_VERTEX && prim_discard_cs) || /* only Wave64 implemented */
             (shader_type == PIPE_SHADER_VERTEX && es && !ngg) ||
             (shader_type == PIPE_SHADER_TESS_EVAL && es && !ngg) ||
@@ -1898,7 +1900,9 @@ static inline unsigned si_get_wave_size(struct si_screen *sscreen,
 static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
 {
    return si_get_wave_size(shader->selector->screen, shader->selector->type, shader->key.as_ngg,
-                           shader->key.as_es, shader->key.opt.vs_as_prim_discard_cs);
+                           shader->key.as_es,
+                           shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL,
+                           shader->key.opt.vs_as_prim_discard_cs);
 }
 
 #define PRINT_ERR(fmt, args...)                                                                    \

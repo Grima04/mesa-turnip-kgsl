@@ -1967,6 +1967,9 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
       shader.key.as_ls = key->vs_prolog.as_ls;
       shader.key.as_es = key->vs_prolog.as_es;
       shader.key.as_ngg = key->vs_prolog.as_ngg;
+      shader.key.opt.ngg_culling =
+         (key->vs_prolog.gs_fast_launch_tri_list ? SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST : 0) |
+         (key->vs_prolog.gs_fast_launch_tri_strip ? SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP : 0);
       shader.key.opt.vs_as_prim_discard_cs = key->vs_prolog.as_prim_discard_cs;
       break;
    case PIPE_SHADER_TESS_CTRL:
@@ -1990,6 +1993,7 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    struct si_shader_context ctx;
    si_llvm_context_init(&ctx, sscreen, compiler,
                         si_get_wave_size(sscreen, type, shader.key.as_ngg, shader.key.as_es,
+                                         shader.key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL,
                                          shader.key.opt.vs_as_prim_discard_cs));
    ctx.shader = &shader;
    ctx.type = type;
