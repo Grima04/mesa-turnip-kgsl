@@ -4695,6 +4695,32 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       nir_emit_global_atomic_float(bld, brw_aop_for_nir_intrinsic(instr), instr);
       break;
 
+   case nir_intrinsic_load_global_const_block_intel: {
+      assert(nir_dest_bit_size(instr->dest) == 32);
+      assert(instr->num_components == 8 || instr->num_components == 16);
+
+      const fs_builder ubld = bld.exec_all().group(instr->num_components, 0);
+      fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+      ubld.emit(SHADER_OPCODE_A64_OWORD_BLOCK_READ_LOGICAL,
+                tmp,
+                bld.emit_uniformize(get_nir_src(instr->src[0])), /* Address */
+                fs_reg(), /* No source data */
+                brw_imm_ud(instr->num_components));
+
+      /* From the HW perspective, we just did a single SIMD16 instruction
+       * which loaded a dword in each SIMD channel.  From NIR's perspective,
+       * this instruction returns a vec16.  Any users of this data in the
+       * back-end will expect a vec16 per SIMD channel so we have to emit a
+       * pile of MOVs to resolve this discrepancy.  Fortunately, copy-prop
+       * will generally clean them up for us.
+       */
+      for (unsigned i = 0; i < instr->num_components; i++) {
+         bld.MOV(retype(offset(dest, bld, i), BRW_REGISTER_TYPE_UD),
+                 component(tmp, i));
+      }
+      break;
+   }
+
    case nir_intrinsic_load_ssbo: {
       assert(devinfo->gen >= 7);
 
