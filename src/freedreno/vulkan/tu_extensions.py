@@ -82,7 +82,7 @@ EXTENSIONS = [
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)
-API_VERSIONS = []
+API_VERSIONS = [ ApiVersion(MAX_API_VERSION,  True) ]
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

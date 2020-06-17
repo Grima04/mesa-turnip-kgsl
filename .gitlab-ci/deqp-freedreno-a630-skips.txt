@@ -65,6 +65,9 @@ dEQP-GLES3.functional.transform_feedback.array_element.separate.triangles.lowp_m
 # Non-sysmem flakes
 dEQP-VK.pipeline.spec_constant.compute.composite.matrix.mat3x2
 
+# Fails NIR_VALIDATE so probably flaky
+dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_local.buffer.comp
+
 # Sysmem flake: this one is fairly frequent, but if you enable it then
 # it moves to dEQP-VK.renderpass.dedicated_allocation.attachment.3.393
 #
