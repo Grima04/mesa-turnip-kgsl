@@ -2122,57 +2122,6 @@ tu_DestroyFramebuffer(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, fb);
 }
 
-static enum a6xx_tex_clamp
-tu6_tex_wrap(VkSamplerAddressMode address_mode)
-{
-   switch (address_mode) {
-   case VK_SAMPLER_ADDRESS_MODE_REPEAT:
-      return A6XX_TEX_REPEAT;
-   case VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:
-      return A6XX_TEX_MIRROR_REPEAT;
-   case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:
-      return A6XX_TEX_CLAMP_TO_EDGE;
-   case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:
-      return A6XX_TEX_CLAMP_TO_BORDER;
-   case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
-      /* only works for PoT.. need to emulate otherwise! */
-      return A6XX_TEX_MIRROR_CLAMP;
-   default:
-      unreachable("illegal tex wrap mode");
-      break;
-   }
-}
-
-enum a6xx_tex_filter
-tu6_tex_filter(VkFilter filter, unsigned aniso)
-{
-   switch (filter) {
-   case VK_FILTER_NEAREST:
-      return A6XX_TEX_NEAREST;
-   case VK_FILTER_LINEAR:
-      return aniso ? A6XX_TEX_ANISO : A6XX_TEX_LINEAR;
-   case VK_FILTER_CUBIC_EXT:
-      return A6XX_TEX_CUBIC;
-   default:
-      unreachable("illegal texture filter");
-      break;
-   }
-}
-
-static inline enum adreno_compare_func
-tu6_compare_func(VkCompareOp op)
-{
-   return (enum adreno_compare_func) op;
-}
-
-static inline enum a6xx_reduction_mode
-tu6_reduction_mode(VkSamplerReductionMode reduction_mode)
-{
-   /* note: vulkan enum matches hw */
-
-   return (enum a6xx_reduction_mode) reduction_mode;
-}
-
 static void
 tu_init_sampler(struct tu_device *device,
                 struct tu_sampler *sampler,

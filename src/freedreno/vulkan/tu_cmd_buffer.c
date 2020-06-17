@@ -284,38 +284,6 @@ tu_tiling_config_get_tile(const struct tu_tiling_config *tiling,
          : tile->begin.y + tiling->tile0.extent.height;
 }
 
-enum a3xx_msaa_samples
-tu_msaa_samples(uint32_t samples)
-{
-   switch (samples) {
-   case 1:
-      return MSAA_ONE;
-   case 2:
-      return MSAA_TWO;
-   case 4:
-      return MSAA_FOUR;
-   case 8:
-      return MSAA_EIGHT;
-   default:
-      assert(!"invalid sample count");
-      return MSAA_ONE;
-   }
-}
-
-static enum a4xx_index_size
-tu6_index_size(VkIndexType type)
-{
-   switch (type) {
-   case VK_INDEX_TYPE_UINT16:
-      return INDEX4_SIZE_16_BIT;
-   case VK_INDEX_TYPE_UINT32:
-      return INDEX4_SIZE_32_BIT;
-   default:
-      unreachable("invalid VkIndexType");
-      return INDEX4_SIZE_8_BIT;
-   }
-}
-
 void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,

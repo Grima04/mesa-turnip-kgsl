@@ -256,25 +256,6 @@ tu6_texswiz(const VkComponentMapping *comps,
           A6XX_TEX_CONST_0_SWIZ_W(swiz[3]);
 }
 
-static enum a6xx_tex_type
-tu6_tex_type(VkImageViewType type, bool storage)
-{
-   switch (type) {
-   default:
-   case VK_IMAGE_VIEW_TYPE_1D:
-   case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
-      return A6XX_TEX_1D;
-   case VK_IMAGE_VIEW_TYPE_2D:
-   case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
-      return A6XX_TEX_2D;
-   case VK_IMAGE_VIEW_TYPE_3D:
-      return A6XX_TEX_3D;
-   case VK_IMAGE_VIEW_TYPE_CUBE:
-   case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
-      return storage ? A6XX_TEX_2D : A6XX_TEX_CUBE;
-   }
-}
-
 void
 tu_cs_image_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {

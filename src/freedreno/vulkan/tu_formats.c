@@ -358,23 +358,6 @@ tu6_format_texture(VkFormat format, enum a6xx_tile_mode tile_mode)
    return fmt;
 }
 
-enum a6xx_depth_format
-tu6_pipe2depth(VkFormat format)
-{
-   switch (format) {
-   case VK_FORMAT_D16_UNORM:
-      return DEPTH6_16;
-   case VK_FORMAT_X8_D24_UNORM_PACK32:
-   case VK_FORMAT_D24_UNORM_S8_UINT:
-      return DEPTH6_24_8;
-   case VK_FORMAT_D32_SFLOAT:
-   case VK_FORMAT_S8_UINT:
-      return DEPTH6_32;
-   default:
-      return ~0;
-   }
-}
-
 static void
 tu_physical_device_get_format_properties(
    struct tu_physical_device *physical_device,

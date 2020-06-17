@@ -62,6 +62,7 @@
 
 #include "tu_descriptor_set.h"
 #include "tu_extensions.h"
+#include "tu_util.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -1008,31 +1009,6 @@ struct tu_event
    struct tu_bo bo;
 };
 
-static inline gl_shader_stage
-vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
-{
-   assert(__builtin_popcount(vk_stage) == 1);
-   return ffs(vk_stage) - 1;
-}
-
-static inline VkShaderStageFlagBits
-mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
-{
-   return (1 << mesa_stage);
-}
-
-#define TU_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
-
-#define tu_foreach_stage(stage, stage_bits)                                  \
-   for (gl_shader_stage stage,                                               \
-        __tmp = (gl_shader_stage)((stage_bits) &TU_STAGE_MASK);              \
-        stage = __builtin_ffs(__tmp) - 1, __tmp; __tmp &= ~(1 << (stage)))
-
-uint32_t
-tu6_stage2opcode(gl_shader_stage type);
-enum a6xx_state_block
-tu6_stage2shadersb(gl_shader_stage type);
-
 struct tu_shader_module
 {
    unsigned char sha1[20];
@@ -1247,8 +1223,6 @@ tu6_base_format(VkFormat format)
    return tu6_format_color(format, TILE6_LINEAR).fmt;
 }
 
-enum a6xx_depth_format tu6_pipe2depth(VkFormat format);
-
 struct tu_image
 {
    VkImageType type;
@@ -1296,9 +1270,6 @@ tu_get_levelCount(const struct tu_image *image,
              ? image->level_count - range->baseMipLevel
              : range->levelCount;
 }
-
-enum a3xx_msaa_samples
-tu_msaa_samples(uint32_t samples);
 
 struct tu_image_view
 {
@@ -1359,9 +1330,6 @@ tu_cs_image_ref_2d(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t
 
 void
 tu_cs_image_flag_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
-
-enum a6xx_tex_filter
-tu6_tex_filter(VkFilter filter, unsigned aniso);
 
 VkResult
 tu_image_create(VkDevice _device,
