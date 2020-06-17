@@ -6723,7 +6723,7 @@ iris_upload_compute_walker(struct iris_context *ice,
       cw.ThreadGroupIDZDimension        = grid->grid[2];
       cw.ExecutionMask                  = last_mask;
 
-      cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA_HP)) {
+      cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
          .KernelStartPointer = KSP(shader),
          .NumberofThreadsinGPGPUThreadGroup = threads,
          .SharedLocalMemorySize =

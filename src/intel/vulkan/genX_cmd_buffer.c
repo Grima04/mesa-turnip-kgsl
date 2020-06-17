@@ -4548,7 +4548,7 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
       cw.ThreadGroupIDZDimension        = groupCountZ;
       cw.ExecutionMask                  = pipeline->cs_right_mask;
 
-      cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA_HP)) {
+      cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
          .KernelStartPointer = cs_bin->kernel.offset,
          .SamplerStatePointer =
             cmd_buffer->state.samplers[MESA_SHADER_COMPUTE].offset,
