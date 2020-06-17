@@ -122,10 +122,8 @@ typedef struct {
 enum direction { F, R };
 
 typedef struct {
-   nir_shader *shader;
+   nir_schedule_scoreboard *scoreboard;
 
-   /* Map from nir_instr to nir_schedule_node * */
-   struct hash_table *instr_map;
    /* Map from nir_register to nir_schedule_node * */
    struct hash_table *reg_map;
 
@@ -245,8 +243,9 @@ nir_schedule_reg_src_deps(nir_src *src, void *in_state)
       return true;
    nir_schedule_node *dst_n = entry->data;
 
-   nir_schedule_node *src_n = nir_schedule_get_node(state->instr_map,
-                                                    src->parent_instr);
+   nir_schedule_node *src_n =
+      nir_schedule_get_node(state->scoreboard->instr_map,
+                            src->parent_instr);
 
    add_dep(state, dst_n, src_n);
 
@@ -261,8 +260,9 @@ nir_schedule_reg_dest_deps(nir_dest *dest, void *in_state)
    if (dest->is_ssa)
       return true;
 
-   nir_schedule_node *dest_n = nir_schedule_get_node(state->instr_map,
-                                                     dest->reg.parent_instr);
+   nir_schedule_node *dest_n =
+      nir_schedule_get_node(state->scoreboard->instr_map,
+                            dest->reg.parent_instr);
 
    struct hash_entry *entry = _mesa_hash_table_search(state->reg_map,
                                                       dest->reg.reg);
@@ -281,10 +281,11 @@ static bool
 nir_schedule_ssa_deps(nir_ssa_def *def, void *in_state)
 {
    nir_deps_state *state = in_state;
-   nir_schedule_node *def_n = nir_schedule_get_node(state->instr_map, def->parent_instr);
+   struct hash_table *instr_map = state->scoreboard->instr_map;
+   nir_schedule_node *def_n = nir_schedule_get_node(instr_map, def->parent_instr);
 
    nir_foreach_use(src, def) {
-      nir_schedule_node *use_n = nir_schedule_get_node(state->instr_map,
+      nir_schedule_node *use_n = nir_schedule_get_node(instr_map,
                                                        src->parent_instr);
 
       add_read_dep(state, def_n, use_n);
@@ -297,7 +298,8 @@ static void
 nir_schedule_intrinsic_deps(nir_deps_state *state,
                             nir_intrinsic_instr *instr)
 {
-   nir_schedule_node *n = nir_schedule_get_node(state->instr_map, &instr->instr);
+   nir_schedule_node *n = nir_schedule_get_node(state->scoreboard->instr_map,
+                                                &instr->instr);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_uniform:
@@ -324,7 +326,7 @@ nir_schedule_intrinsic_deps(nir_deps_state *state,
       /* For some non-FS shader stages, or for some hardware, output stores
        * affect the same shared memory as input loads.
        */
-      if (state->shader->info.stage != MESA_SHADER_FRAGMENT)
+      if (state->scoreboard->shader->info.stage != MESA_SHADER_FRAGMENT)
          add_write_dep(state, &state->load_input, n);
 
       /* Make sure that preceding discards stay before the store_output */
@@ -438,9 +440,8 @@ static void
 calculate_forward_deps(nir_schedule_scoreboard *scoreboard, nir_block *block)
 {
    nir_deps_state state = {
-      .shader = scoreboard->shader,
+      .scoreboard = scoreboard,
       .dir = F,
-      .instr_map = scoreboard->instr_map,
       .reg_map = _mesa_pointer_hash_table_create(NULL),
    };
 
@@ -457,9 +458,8 @@ static void
 calculate_reverse_deps(nir_schedule_scoreboard *scoreboard, nir_block *block)
 {
    nir_deps_state state = {
-      .shader = scoreboard->shader,
+      .scoreboard = scoreboard,
       .dir = R,
-      .instr_map = scoreboard->instr_map,
       .reg_map = _mesa_pointer_hash_table_create(NULL),
    };
 
