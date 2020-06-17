@@ -94,7 +94,8 @@ static const struct debug_named_value debug_options[] = {
    /* 3D engine options: */
    {"nogfx", DBG(NO_GFX), "Disable graphics. Only multimedia compute paths can be used."},
    {"nongg", DBG(NO_NGG), "Disable NGG and use the legacy pipeline."},
-   {"nggc", DBG(ALWAYS_NGG_CULLING), "Always use NGG culling even when it can hurt."},
+   {"nggc", DBG(ALWAYS_NGG_CULLING_ALL), "Always use NGG culling even when it can hurt."},
+   {"nggctess", DBG(ALWAYS_NGG_CULLING_TESS), "Always use NGG culling for tessellation."},
    {"nonggc", DBG(NO_NGG_CULLING), "Disable NGG culling."},
    {"alwayspd", DBG(ALWAYS_PD), "Always enable the primitive discard compute shader."},
    {"pd", DBG(PD), "Enable the primitive discard compute shader for large draw calls."},
@@ -1138,8 +1139,10 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->use_ngg = sscreen->info.chip_class >= GFX10 && sscreen->info.family != CHIP_NAVI14 &&
                       !(sscreen->debug_flags & DBG(NO_NGG));
    sscreen->use_ngg_culling = sscreen->use_ngg && !(sscreen->debug_flags & DBG(NO_NGG_CULLING));
-   sscreen->always_use_ngg_culling =
-      sscreen->use_ngg_culling && sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING);
+   sscreen->always_use_ngg_culling_all =
+      sscreen->use_ngg_culling && sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL);
+   sscreen->always_use_ngg_culling_tess =
+      sscreen->use_ngg_culling && sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_TESS);
    sscreen->use_ngg_streamout = false;
 
    /* Only enable primitive binning on APUs by default. */

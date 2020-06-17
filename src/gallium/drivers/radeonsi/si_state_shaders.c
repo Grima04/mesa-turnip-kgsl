@@ -2752,9 +2752,10 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       sscreen->info.chip_class >= GFX10 &&
       sscreen->info.has_dedicated_vram &&
       sscreen->use_ngg_culling &&
-      /* Disallow TES by default, because TessMark results are mixed. */
       (sel->type == PIPE_SHADER_VERTEX ||
-       (sscreen->always_use_ngg_culling && sel->type == PIPE_SHADER_TESS_EVAL)) &&
+       (sel->type == PIPE_SHADER_TESS_EVAL &&
+        (sscreen->always_use_ngg_culling_all ||
+         sscreen->always_use_ngg_culling_tess))) &&
       sel->info.writes_position &&
       !sel->info.writes_viewport_index && /* cull only against viewport 0 */
       !sel->info.writes_memory && !sel->so.num_outputs &&

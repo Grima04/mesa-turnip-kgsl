@@ -188,7 +188,8 @@ enum
    /* 3D engine options: */
    DBG_NO_GFX,
    DBG_NO_NGG,
-   DBG_ALWAYS_NGG_CULLING,
+   DBG_ALWAYS_NGG_CULLING_ALL,
+   DBG_ALWAYS_NGG_CULLING_TESS,
    DBG_NO_NGG_CULLING,
    DBG_ALWAYS_PD,
    DBG_PD,
@@ -517,7 +518,8 @@ struct si_screen {
    bool llvm_has_working_vgpr_indexing;
    bool use_ngg;
    bool use_ngg_culling;
-   bool always_use_ngg_culling;
+   bool always_use_ngg_culling_all;
+   bool always_use_ngg_culling_tess;
    bool use_ngg_streamout;
 
    struct {
