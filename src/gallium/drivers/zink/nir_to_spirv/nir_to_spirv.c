@@ -1586,9 +1586,8 @@ emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId ptr = get_src(ctx, intr->src);
 
-   nir_variable *var = nir_intrinsic_get_var(intr, 0);
    SpvId result = spirv_builder_emit_load(&ctx->builder,
-                                          get_glsl_type(ctx, var->type),
+                                          get_glsl_type(ctx, nir_src_as_deref(intr->src[0])->type),
                                           ptr);
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned bit_size = nir_dest_bit_size(intr->dest);
@@ -1602,8 +1601,7 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId ptr = get_src(ctx, &intr->src[0]);
    SpvId src = get_src(ctx, &intr->src[1]);
 
-   nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   SpvId type = get_glsl_type(ctx, glsl_without_array(var->type));
+   SpvId type = get_glsl_type(ctx, nir_src_as_deref(intr->src[0])->type);
    SpvId result = emit_bitcast(ctx, type, src);
    spirv_builder_emit_store(&ctx->builder, ptr, result);
 }
