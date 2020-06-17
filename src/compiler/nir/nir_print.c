@@ -1610,6 +1610,27 @@ destroy_print_state(print_state *state)
    _mesa_set_destroy(state->syms, NULL);
 }
 
+static const char *
+primitive_name(unsigned primitive)
+{
+#define PRIM(X) case GL_ ## X : return #X
+   switch (primitive) {
+   PRIM(POINTS);
+   PRIM(LINES);
+   PRIM(LINE_LOOP);
+   PRIM(LINE_STRIP);
+   PRIM(TRIANGLES);
+   PRIM(TRIANGLE_STRIP);
+   PRIM(TRIANGLE_FAN);
+   PRIM(QUADS);
+   PRIM(QUAD_STRIP);
+   PRIM(POLYGON);
+   default:
+      return "UNKNOWN";
+   }
+}
+
+
 void
 nir_print_shader_annotated(nir_shader *shader, FILE *fp,
                            struct hash_table *annotations)
@@ -1646,6 +1667,16 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
       fprintf(fp, "scratch: %u\n", shader->scratch_size);
    if (shader->constant_data_size)
       fprintf(fp, "constants: %u\n", shader->constant_data_size);
+
+   if (shader->info.stage == MESA_SHADER_GEOMETRY) {
+      fprintf(fp, "invocations: %u\n", shader->info.gs.invocations);
+      fprintf(fp, "vertices in: %u\n", shader->info.gs.vertices_in);
+      fprintf(fp, "vertices out: %u\n", shader->info.gs.vertices_out);
+      fprintf(fp, "input primitive: %s\n", primitive_name(shader->info.gs.input_primitive));
+      fprintf(fp, "output primitive: %s\n", primitive_name(shader->info.gs.output_primitive));
+      fprintf(fp, "active_stream_mask: 0x%x\n", shader->info.gs.active_stream_mask);
+      fprintf(fp, "uses_end_primitive: %u\n", shader->info.gs.uses_end_primitive);
+   }
 
    nir_foreach_variable_in_shader(var, shader)
       print_var_decl(var, &state);
