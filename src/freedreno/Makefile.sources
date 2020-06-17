@@ -22,6 +22,8 @@ ir3_SOURCES := \
 	ir3/ir3.c \
 	ir3/ir3_a4xx.c \
 	ir3/ir3_a6xx.c \
+	ir3/ir3_assembler.c \
+	ir3/ir3_assembler.h \
 	ir3/ir3_compiler.c \
 	ir3/ir3_compiler.h \
 	ir3/ir3_compiler_nir.c \

@@ -22,17 +22,7 @@
  */
 
 %code requires {
-
-#define MAX_BUFS 4
-
-struct ir3_kernel_info {
-	uint32_t local_size[3];
-	uint32_t num_bufs;
-	uint32_t buf_sizes[MAX_BUFS]; /* size in dwords */
-
-	/* driver-param uniforms: */
-	unsigned numwg;
-};
+#include "ir3/ir3_assembler.h"
 
 struct ir3 * ir3_parse(struct ir3_shader_variant *v,
 		struct ir3_kernel_info *k, FILE *f);

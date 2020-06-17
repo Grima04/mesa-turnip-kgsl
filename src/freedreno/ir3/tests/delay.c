@@ -24,8 +24,8 @@
 #include <stdio.h>
 
 #include "ir3.h"
+#include "ir3_assembler.h"
 #include "ir3_compiler.h"
-#include "ir3_parser.h"
 
 /*
  * A test for delay-slot calculation.  Each test specifies ir3 assembly
@@ -85,25 +85,16 @@ static const struct test {
 	),
 };
 
-static struct ir3 *
+static struct ir3_shader *
 parse_asm(struct ir3_compiler *c, const char *asmstr)
 {
-	struct ir3_shader shader = {
-		.type = MESA_SHADER_COMPUTE,
-		.compiler = c,
-	};
-	struct ir3_shader_variant v = {
-		.type = shader.type,
-		.shader = &shader,
-	};
 	struct ir3_kernel_info info = {};
 	FILE *in = fmemopen((void *)asmstr, strlen(asmstr), "r");
-
-	struct ir3 *ir = ir3_parse(&v, &info, in);
+	struct ir3_shader *shader = ir3_parse_asm(c, &info, in);
 
 	fclose(in);
 
-	return ir;
+	return shader;
 }
 
 static unsigned
@@ -190,9 +181,8 @@ main(int argc, char **argv)
 
 	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
 		const struct test *test = &tests[i];
-		struct ir3 *ir = parse_asm(c, test->asmstr);
-
-		ir3_debug_print(ir, "AFTER PARSING");
+		struct ir3_shader *shader = parse_asm(c, test->asmstr);
+		struct ir3 *ir = shader->variants->ir;
 
 		regs_to_ssa(ir);
 
@@ -224,6 +214,8 @@ main(int argc, char **argv)
 		} else {
 			printf("%d: PASS\n", i);
 		}
+
+		ir3_shader_destroy(shader);
 	}
 
 	return result;

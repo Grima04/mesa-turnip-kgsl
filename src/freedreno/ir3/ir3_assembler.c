@@ -21,41 +21,42 @@
  * SOFTWARE.
  */
 
-#include "ir3/ir3_assembler.h"
-#include "ir3/ir3_compiler.h"
+#include <err.h>
 
-#include "ir3_asm.h"
+#include "ir3_assembler.h"
+#include "ir3_compiler.h"
+#include "ir3_parser.h"
 
-struct ir3_kernel *
-ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
+/**
+ * A helper to go from ir3 assembly to assembled shader.  The shader has a
+ * single variant.
+ */
+struct ir3_shader *
+ir3_parse_asm(struct ir3_compiler *c, struct ir3_kernel_info *info, FILE *in)
 {
-	struct ir3_kernel *kernel = calloc(1, sizeof(*kernel));
-	struct ir3_shader *shader = ir3_parse_asm(c, &kernel->info, in);
-	struct ir3_shader_variant *v = shader->variants;
+	struct ir3_shader *shader = calloc(1, sizeof(*shader));
+	shader->compiler = c;
+	shader->type = MESA_SHADER_COMPUTE;
+	mtx_init(&shader->variants_lock, mtx_plain);
 
-	v->mergedregs = true;
+	struct ir3_shader_variant *v = calloc(1, sizeof(*v));
+	v->type = MESA_SHADER_COMPUTE;
+	v->shader = shader;
 
-	kernel->v = v;
-	kernel->bin = v->bin;
+	shader->variants = v;
+	shader->variant_count = 1;
 
-	memcpy(kernel->base.local_size, kernel->info.local_size, sizeof(kernel->base.local_size));
-	kernel->base.num_bufs = kernel->info.num_bufs;
-	memcpy(kernel->base.buf_sizes, kernel->info.buf_sizes, sizeof(kernel->base.buf_sizes));
+	info->numwg = INVALID_REG;
 
-	unsigned sz = v->info.sizedwords * 4;
+	v->ir = ir3_parse(v, info, in);
+	if (!v->ir)
+		errx(-1, "parse failed");
 
-	v->bo = fd_bo_new(c->dev, sz,
-			DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
-			DRM_FREEDRENO_GEM_TYPE_KMEM,
-			"%s", ir3_shader_stage(v));
+	ir3_debug_print(v->ir, "AFTER PARSING");
 
-	memcpy(fd_bo_map(v->bo), kernel->bin, sz);
+	v->bin = ir3_shader_assemble(v);
+	if (!v->bin)
+		errx(-1, "assembler failed");
 
-	return kernel;
-}
-
-void
-ir3_asm_disassemble(struct ir3_kernel *k, FILE *out)
-{
-	ir3_shader_disasm(k->v, k->bin, out);
+	return shader;
 }

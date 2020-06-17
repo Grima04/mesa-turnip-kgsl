@@ -21,41 +21,26 @@
  * SOFTWARE.
  */
 
-#include "ir3/ir3_assembler.h"
-#include "ir3/ir3_compiler.h"
+#ifndef __IR3_ASSEMBLER_H__
+#define __IR3_ASSEMBLER_H__
 
-#include "ir3_asm.h"
+#include <stdint.h>
+#include <stdio.h>
 
-struct ir3_kernel *
-ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
-{
-	struct ir3_kernel *kernel = calloc(1, sizeof(*kernel));
-	struct ir3_shader *shader = ir3_parse_asm(c, &kernel->info, in);
-	struct ir3_shader_variant *v = shader->variants;
+#define MAX_BUFS 4
 
-	v->mergedregs = true;
+struct ir3_kernel_info {
+	uint32_t local_size[3];
+	uint32_t num_bufs;
+	uint32_t buf_sizes[MAX_BUFS]; /* size in dwords */
 
-	kernel->v = v;
-	kernel->bin = v->bin;
+	/* driver-param uniforms: */
+	unsigned numwg;
+};
 
-	memcpy(kernel->base.local_size, kernel->info.local_size, sizeof(kernel->base.local_size));
-	kernel->base.num_bufs = kernel->info.num_bufs;
-	memcpy(kernel->base.buf_sizes, kernel->info.buf_sizes, sizeof(kernel->base.buf_sizes));
+struct ir3_shader;
+struct ir3_compiler;
 
-	unsigned sz = v->info.sizedwords * 4;
+struct ir3_shader * ir3_parse_asm(struct ir3_compiler *c, struct ir3_kernel_info *info, FILE *in);
 
-	v->bo = fd_bo_new(c->dev, sz,
-			DRM_FREEDRENO_GEM_CACHE_WCOMBINE |
-			DRM_FREEDRENO_GEM_TYPE_KMEM,
-			"%s", ir3_shader_stage(v));
-
-	memcpy(fd_bo_map(v->bo), kernel->bin, sz);
-
-	return kernel;
-}
-
-void
-ir3_asm_disassemble(struct ir3_kernel *k, FILE *out)
-{
-	ir3_shader_disasm(k->v, k->bin, out);
-}
+#endif /* __IR3_ASSEMBLER_H__ */
