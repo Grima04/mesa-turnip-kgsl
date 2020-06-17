@@ -867,6 +867,7 @@ VkResult anv_CreateDescriptorPool(
 
    if (descriptor_bo_size > 0) {
       VkResult result = anv_device_alloc_bo(device,
+                                            "descriptors",
                                             descriptor_bo_size,
                                             ANV_BO_ALLOC_MAPPED |
                                             ANV_BO_ALLOC_SNOOPED,

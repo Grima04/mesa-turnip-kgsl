@@ -2672,7 +2672,7 @@ anv_device_init_border_colors(struct anv_device *device)
 static VkResult
 anv_device_init_trivial_batch(struct anv_device *device)
 {
-   VkResult result = anv_device_alloc_bo(device, 4096,
+   VkResult result = anv_device_alloc_bo(device, "trivial-batch", 4096,
                                          ANV_BO_ALLOC_MAPPED,
                                          0 /* explicit_address */,
                                          &device->trivial_batch_bo);
@@ -2714,7 +2714,7 @@ vk_priority_to_gen(int priority)
 static VkResult
 anv_device_init_hiz_clear_value_bo(struct anv_device *device)
 {
-   VkResult result = anv_device_alloc_bo(device, 4096,
+   VkResult result = anv_device_alloc_bo(device, "hiz-clear-value", 4096,
                                          ANV_BO_ALLOC_MAPPED,
                                          0 /* explicit_address */,
                                          &device->hiz_clear_bo);
@@ -3096,18 +3096,20 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_queue_cond;
 
-   anv_bo_pool_init(&device->batch_bo_pool, device);
+   anv_bo_pool_init(&device->batch_bo_pool, device, "batch");
 
    /* Because scratch is also relative to General State Base Address, we leave
     * the base address 0 and start the pool memory at an offset.  This way we
     * get the correct offsets in the anv_states that get allocated from it.
     */
    result = anv_state_pool_init(&device->general_state_pool, device,
+                                "general pool",
                                 0, GENERAL_STATE_POOL_MIN_ADDRESS, 16384);
    if (result != VK_SUCCESS)
       goto fail_batch_bo_pool;
 
    result = anv_state_pool_init(&device->dynamic_state_pool, device,
+                                "dynamic pool",
                                 DYNAMIC_STATE_POOL_MIN_ADDRESS, 0, 16384);
    if (result != VK_SUCCESS)
       goto fail_general_state_pool;
@@ -3126,11 +3128,13 @@ VkResult anv_CreateDevice(
    }
 
    result = anv_state_pool_init(&device->instruction_state_pool, device,
+                                "instruction pool",
                                 INSTRUCTION_STATE_POOL_MIN_ADDRESS, 0, 16384);
    if (result != VK_SUCCESS)
       goto fail_dynamic_state_pool;
 
    result = anv_state_pool_init(&device->surface_state_pool, device,
+                                "surface state pool",
                                 SURFACE_STATE_POOL_MIN_ADDRESS, 0, 4096);
    if (result != VK_SUCCESS)
       goto fail_instruction_state_pool;
@@ -3140,6 +3144,7 @@ VkResult anv_CreateDevice(
                                (int64_t)SURFACE_STATE_POOL_MIN_ADDRESS;
       assert(INT32_MIN < bt_pool_offset && bt_pool_offset < 0);
       result = anv_state_pool_init(&device->binding_table_pool, device,
+                                   "binding table pool",
                                    SURFACE_STATE_POOL_MIN_ADDRESS,
                                    bt_pool_offset, 4096);
       if (result != VK_SUCCESS)
@@ -3153,7 +3158,7 @@ VkResult anv_CreateDevice(
          goto fail_binding_table_pool;
    }
 
-   result = anv_device_alloc_bo(device, 4096,
+   result = anv_device_alloc_bo(device, "workaround", 4096,
                                 ANV_BO_ALLOC_CAPTURE | ANV_BO_ALLOC_MAPPED /* flags */,
                                 0 /* explicit_address */,
                                 &device->workaround_bo);
@@ -3822,7 +3827,7 @@ VkResult anv_AllocateMemory(
 
    /* Regular allocate (not importing memory). */
 
-   result = anv_device_alloc_bo(device, pAllocateInfo->allocationSize,
+   result = anv_device_alloc_bo(device, "user", pAllocateInfo->allocationSize,
                                 alloc_flags, client_address, &mem->bo);
    if (result != VK_SUCCESS)
       goto fail;

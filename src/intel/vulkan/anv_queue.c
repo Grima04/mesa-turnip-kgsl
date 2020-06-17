@@ -173,7 +173,7 @@ anv_timeline_add_point_locked(struct anv_device *device,
       if (!(*point))
          result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       if (result == VK_SUCCESS) {
-         result = anv_device_alloc_bo(device, 4096,
+         result = anv_device_alloc_bo(device, "timeline-semaphore", 4096,
                                       ANV_BO_ALLOC_EXTERNAL |
                                       ANV_BO_ALLOC_IMPLICIT_SYNC,
                                       0 /* explicit_address */,
@@ -809,7 +809,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
       result = anv_queue_submit_add_syncobj(submit, device, syncobj,
                                             I915_EXEC_FENCE_SIGNAL, 0);
    } else {
-      result = anv_device_alloc_bo(device, 4096,
+      result = anv_device_alloc_bo(device, "simple-batch-sync", 4096,
                                    ANV_BO_ALLOC_EXTERNAL |
                                    ANV_BO_ALLOC_IMPLICIT_SYNC,
                                    0 /* explicit_address */,
@@ -2175,7 +2175,7 @@ binary_semaphore_create(struct anv_device *device,
    } else {
       impl->type = ANV_SEMAPHORE_TYPE_BO;
       VkResult result =
-         anv_device_alloc_bo(device, 4096,
+         anv_device_alloc_bo(device, "binary-semaphore", 4096,
                              ANV_BO_ALLOC_EXTERNAL |
                              ANV_BO_ALLOC_IMPLICIT_SYNC,
                              0 /* explicit_address */,

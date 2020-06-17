@@ -364,11 +364,13 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 VkResult
 anv_block_pool_init(struct anv_block_pool *pool,
                     struct anv_device *device,
+                    const char *name,
                     uint64_t start_address,
                     uint32_t initial_size)
 {
    VkResult result;
 
+   pool->name = name;
    pool->device = device;
    pool->use_softpin = device->physical->use_softpin;
    pool->nbos = 0;
@@ -495,7 +497,9 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
       uint32_t new_bo_size = size - pool->size;
       struct anv_bo *new_bo;
       assert(center_bo_offset == 0);
-      VkResult result = anv_device_alloc_bo(pool->device, new_bo_size,
+      VkResult result = anv_device_alloc_bo(pool->device,
+                                            pool->name,
+                                            new_bo_size,
                                             bo_alloc_flags |
                                             ANV_BO_ALLOC_FIXED_ADDRESS |
                                             ANV_BO_ALLOC_MAPPED |
@@ -823,6 +827,7 @@ anv_block_pool_alloc_back(struct anv_block_pool *pool,
 VkResult
 anv_state_pool_init(struct anv_state_pool *pool,
                     struct anv_device *device,
+                    const char *name,
                     uint64_t base_address,
                     int32_t start_offset,
                     uint32_t block_size)
@@ -830,7 +835,7 @@ anv_state_pool_init(struct anv_state_pool *pool,
    /* We don't want to ever see signed overflow */
    assert(start_offset < INT32_MAX - (int32_t)BLOCK_POOL_MEMFD_SIZE);
 
-   VkResult result = anv_block_pool_init(&pool->block_pool, device,
+   VkResult result = anv_block_pool_init(&pool->block_pool, device, name,
                                          base_address + start_offset,
                                          block_size * 16);
    if (result != VK_SUCCESS)
@@ -1312,8 +1317,10 @@ anv_state_reserved_pool_free(struct anv_state_reserved_pool *pool,
 }
 
 void
-anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device)
+anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device,
+                 const char *name)
 {
+   pool->name = name;
    pool->device = device;
    for (unsigned i = 0; i < ARRAY_SIZE(pool->free_list); i++) {
       util_sparse_array_free_list_init(&pool->free_list[i],
@@ -1361,6 +1368,7 @@ anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
    }
 
    VkResult result = anv_device_alloc_bo(pool->device,
+                                         pool->name,
                                          pow2_size,
                                          ANV_BO_ALLOC_MAPPED |
                                          ANV_BO_ALLOC_SNOOPED |
@@ -1525,7 +1533,7 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     *
     * so nothing will ever touch the top page.
     */
-   VkResult result = anv_device_alloc_bo(device, size,
+   VkResult result = anv_device_alloc_bo(device, "scratch", size,
                                          ANV_BO_ALLOC_32BIT_ADDRESS,
                                          0 /* explicit_address */,
                                          &bo);
@@ -1611,6 +1619,7 @@ anv_device_get_bo_align(struct anv_device *device,
 
 VkResult
 anv_device_alloc_bo(struct anv_device *device,
+                    const char *name,
                     uint64_t size,
                     enum anv_bo_alloc_flags alloc_flags,
                     uint64_t explicit_address,
@@ -1644,6 +1653,7 @@ anv_device_alloc_bo(struct anv_device *device,
       return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    struct anv_bo new_bo = {
+      .name = name,
       .gem_handle = gem_handle,
       .refcount = 1,
       .offset = -1,
@@ -1779,6 +1789,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
       struct anv_bo new_bo = {
+         .name = "host-ptr",
          .gem_handle = gem_handle,
          .refcount = 1,
          .offset = -1,
@@ -1913,6 +1924,7 @@ anv_device_import_bo(struct anv_device *device,
       }
 
       struct anv_bo new_bo = {
+         .name = "imported",
          .gem_handle = gem_handle,
          .refcount = 1,
          .offset = -1,

@@ -553,6 +553,8 @@ anv_multialloc_alloc2(struct anv_multialloc *ma,
 }
 
 struct anv_bo {
+   const char *name;
+
    uint32_t gem_handle;
 
    uint32_t refcount;
@@ -688,6 +690,8 @@ struct anv_block_state {
 #define ANV_MAX_BLOCK_POOL_BOS 20
 
 struct anv_block_pool {
+   const char *name;
+
    struct anv_device *device;
    bool use_softpin;
 
@@ -835,6 +839,7 @@ struct anv_state_stream {
  */
 VkResult anv_block_pool_init(struct anv_block_pool *pool,
                              struct anv_device *device,
+                             const char *name,
                              uint64_t start_address,
                              uint32_t initial_size);
 void anv_block_pool_finish(struct anv_block_pool *pool);
@@ -847,6 +852,7 @@ size);
 
 VkResult anv_state_pool_init(struct anv_state_pool *pool,
                              struct anv_device *device,
+                             const char *name,
                              uint64_t base_address,
                              int32_t start_offset,
                              uint32_t block_size);
@@ -894,12 +900,15 @@ anv_state_table_get(struct anv_state_table *table, uint32_t idx)
  * of block_pool except that each block is its own BO.
  */
 struct anv_bo_pool {
+   const char *name;
+
    struct anv_device *device;
 
    struct util_sparse_array_free_list free_list[16];
 };
 
-void anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device);
+void anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device,
+                      const char *name);
 void anv_bo_pool_finish(struct anv_bo_pool *pool);
 VkResult anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
                            struct anv_bo **bo_out);
@@ -1450,7 +1459,8 @@ enum anv_bo_alloc_flags {
    ANV_BO_ALLOC_IMPLICIT_CCS = (1 << 9),
 };
 
-VkResult anv_device_alloc_bo(struct anv_device *device, uint64_t size,
+VkResult anv_device_alloc_bo(struct anv_device *device,
+                             const char *name, uint64_t size,
                              enum anv_bo_alloc_flags alloc_flags,
                              uint64_t explicit_address,
                              struct anv_bo **bo);
