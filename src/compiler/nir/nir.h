@@ -4579,7 +4579,20 @@ bool nir_opt_load_store_vectorize(nir_shader *shader, nir_variable_mode modes,
                                   nir_should_vectorize_mem_func callback,
                                   nir_variable_mode robust_modes);
 
-void nir_schedule(nir_shader *shader, int threshold);
+typedef struct nir_schedule_options {
+   /* On some hardware with some stages the inputs and outputs to the shader
+    * share the same memory. In that case scheduler needs to ensure that all
+    * output writes are scheduled after all of the input writes to avoid
+    * overwriting them. This is a bitmask of stages that need that.
+    */
+   unsigned stages_with_shared_io_memory;
+   /* The approximate amount of register pressure at which point the scheduler
+    * will try to reduce register usage.
+    */
+   int threshold;
+} nir_schedule_options;
+
+void nir_schedule(nir_shader *shader, const nir_schedule_options *options);
 
 void nir_strip(nir_shader *shader);
 

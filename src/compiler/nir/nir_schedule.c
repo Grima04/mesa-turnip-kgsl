@@ -114,6 +114,9 @@ typedef struct {
     * pressure-prioritizing scheduling heuristic.
     */
    int threshold;
+
+   /* Mask of stages that share memory for inputs and outputs */
+   unsigned stages_with_shared_io_memory;
 } nir_schedule_scoreboard;
 
 /* When walking the instructions in reverse, we use this flag to swap
@@ -323,10 +326,11 @@ nir_schedule_intrinsic_deps(nir_deps_state *state,
       break;
 
    case nir_intrinsic_store_output:
-      /* For some non-FS shader stages, or for some hardware, output stores
-       * affect the same shared memory as input loads.
+      /* For some hardware and stages, output stores affect the same shared
+       * memory as input loads.
        */
-      if (state->scoreboard->shader->info.stage != MESA_SHADER_FRAGMENT)
+      if ((state->scoreboard->stages_with_shared_io_memory &
+           (1 << state->scoreboard->shader->info.stage)))
          add_write_dep(state, &state->load_input, n);
 
       /* Make sure that preceding discards stay before the store_output */
@@ -979,14 +983,17 @@ nir_schedule_ssa_def_init_scoreboard(nir_ssa_def *def, void *state)
 }
 
 static nir_schedule_scoreboard *
-nir_schedule_get_scoreboard(nir_shader *shader, int threshold)
+nir_schedule_get_scoreboard(nir_shader *shader,
+                            const nir_schedule_options *options)
 {
    nir_schedule_scoreboard *scoreboard = rzalloc(NULL, nir_schedule_scoreboard);
 
    scoreboard->shader = shader;
    scoreboard->live_values = _mesa_pointer_set_create(scoreboard);
    scoreboard->remaining_uses = _mesa_pointer_hash_table_create(scoreboard);
-   scoreboard->threshold = threshold;
+   scoreboard->threshold = options->threshold;
+   scoreboard->stages_with_shared_io_memory =
+      options->stages_with_shared_io_memory;
    scoreboard->pressure = 0;
 
    nir_foreach_function(function, shader) {
@@ -1063,10 +1070,11 @@ nir_schedule_validate_uses(nir_schedule_scoreboard *scoreboard)
  * tune.
  */
 void
-nir_schedule(nir_shader *shader, int threshold)
+nir_schedule(nir_shader *shader,
+             const nir_schedule_options *options)
 {
    nir_schedule_scoreboard *scoreboard = nir_schedule_get_scoreboard(shader,
-                                                                     threshold);
+                                                                     options);
 
    if (debug) {
       fprintf(stderr, "NIR shader before scheduling:\n");

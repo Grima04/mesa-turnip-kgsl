@@ -1072,10 +1072,20 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         NIR_PASS_V(c->s, nir_lower_bool_to_int32);
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
-        /* Schedule for about half our register space, to enable more shaders
-         * to hit 4 threads.
-         */
-        NIR_PASS_V(c->s, nir_schedule, 24);
+        static const struct nir_schedule_options schedule_options = {
+                /* Schedule for about half our register space, to enable more
+                 * shaders to hit 4 threads.
+                 */
+                .threshold = 24,
+
+                /* Vertex shaders share the same memory for inputs and outputs,
+                 * fragement and geometry shaders do not.
+                 */
+                .stages_with_shared_io_memory =
+                (((1 << MESA_ALL_SHADER_STAGES) - 1) &
+                 ~(1 << MESA_SHADER_FRAGMENT)),
+        };
+        NIR_PASS_V(c->s, nir_schedule, &schedule_options);
 
         v3d_nir_to_vir(c);
 
