@@ -1216,6 +1216,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
+   device->_lost = false;
 
    if (pAllocator)
       device->alloc = *pAllocator;
@@ -1363,6 +1364,29 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    tu_DestroyPipelineCache(tu_device_to_handle(device), pc, NULL);
 
    vk_free(&device->alloc, device);
+}
+
+VkResult
+_tu_device_set_lost(struct tu_device *device,
+                    const char *file, int line,
+                    const char *msg, ...)
+{
+   /* Set the flag indicating that waits should return in finite time even
+    * after device loss.
+    */
+   p_atomic_inc(&device->_lost);
+
+   /* TODO: Report the log message through VkDebugReportCallbackEXT instead */
+   fprintf(stderr, "%s:%d: ", file, line);
+   va_list ap;
+   va_start(ap, msg);
+   vfprintf(stderr, msg, ap);
+   va_end(ap);
+
+   if (env_var_as_boolean("TU_ABORT_ON_DEVICE_LOSS", false))
+      abort();
+
+   return VK_ERROR_DEVICE_LOST;
 }
 
 VkResult
@@ -1547,18 +1571,17 @@ tu_QueueSubmit(VkQueue _queue,
                                          pSubmits[i].waitSemaphoreCount,
                                          false, &in_syncobjs, &nr_in_syncobjs);
       if (result != VK_SUCCESS) {
-         /* TODO: emit VK_ERROR_DEVICE_LOST */
-         fprintf(stderr, "failed to allocate space for semaphore submission\n");
-         abort();
+         return tu_device_set_lost(queue->device,
+                                   "failed to allocate space for semaphore submission\n");
       }
 
       result = tu_get_semaphore_syncobjs(pSubmits[i].pSignalSemaphores,
                                          pSubmits[i].signalSemaphoreCount,
                                          false, &out_syncobjs, &nr_out_syncobjs);
       if (result != VK_SUCCESS) {
-         /* TODO: emit VK_ERROR_DEVICE_LOST */
-         fprintf(stderr, "failed to allocate space for semaphore submission\n");
-         abort();
+         free(in_syncobjs);
+         return tu_device_set_lost(queue->device,
+                                   "failed to allocate space for semaphore submission\n");
       }
 
       uint32_t entry_count = 0;
@@ -1617,8 +1640,10 @@ tu_QueueSubmit(VkQueue _queue,
                                     DRM_MSM_GEM_SUBMIT,
                                     &req, sizeof(req));
       if (ret) {
-         fprintf(stderr, "submit failed: %s\n", strerror(errno));
-         abort();
+         free(in_syncobjs);
+         free(out_syncobjs);
+         return tu_device_set_lost(queue->device, "submit failed: %s\n",
+                                   strerror(errno));
       }
 
       tu_bo_list_destroy(&bo_list);
@@ -1648,6 +1673,9 @@ tu_QueueWaitIdle(VkQueue _queue)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
 
+   if (tu_device_is_lost(queue->device))
+      return VK_ERROR_DEVICE_LOST;
+
    tu_fence_wait_idle(&queue->submit_fence);
 
    return VK_SUCCESS;
@@ -1657,6 +1685,9 @@ VkResult
 tu_DeviceWaitIdle(VkDevice _device)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
+
+   if (tu_device_is_lost(device))
+      return VK_ERROR_DEVICE_LOST;
 
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++) {

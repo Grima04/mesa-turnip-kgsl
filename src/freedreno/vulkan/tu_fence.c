@@ -336,6 +336,9 @@ tu_WaitForFences(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
 
+   if (tu_device_is_lost(device))
+      return VK_ERROR_DEVICE_LOST;
+
    /* add a simpler path for when fenceCount == 1? */
 
    struct pollfd stack_fds[8];

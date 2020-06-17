@@ -47,6 +47,7 @@
 #include "main/macros.h"
 #include "util/list.h"
 #include "util/macros.h"
+#include "util/u_atomic.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
 #include "wsi_common.h"
@@ -350,6 +351,7 @@ struct tu_device
    int queue_count[TU_MAX_QUEUE_FAMILIES];
 
    struct tu_physical_device *physical_device;
+   int _lost;
 
    struct ir3_compiler *compiler;
 
@@ -376,6 +378,18 @@ struct tu_device
 
    struct tu_device_extension_table enabled_extensions;
 };
+
+VkResult _tu_device_set_lost(struct tu_device *device,
+                             const char *file, int line,
+                             const char *msg, ...) PRINTFLIKE(4, 5);
+#define tu_device_set_lost(dev, ...) \
+   _tu_device_set_lost(dev, __FILE__, __LINE__, __VA_ARGS__)
+
+static inline bool
+tu_device_is_lost(struct tu_device *device)
+{
+   return unlikely(p_atomic_read(&device->_lost));
+}
 
 VkResult
 tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size);
