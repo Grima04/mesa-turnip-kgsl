@@ -4327,6 +4327,8 @@ anv_device_entrypoint_is_enabled(int index, uint32_t core_version,
                                  const struct anv_instance_extension_table *instance,
                                  const struct anv_device_extension_table *device);
 
+void *anv_resolve_device_entrypoint(const struct gen_device_info *devinfo,
+                                    uint32_t index);
 void *anv_lookup_entrypoint(const struct gen_device_info *devinfo,
                             const char *name);
 

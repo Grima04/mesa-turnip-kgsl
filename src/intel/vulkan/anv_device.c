@@ -2491,55 +2491,6 @@ VkResult anv_EnumerateDeviceExtensionProperties(
    return vk_outarray_status(&out);
 }
 
-static void
-anv_device_init_dispatch(struct anv_device *device)
-{
-   const struct anv_instance *instance = device->physical->instance;
-
-   const struct anv_device_dispatch_table *genX_table;
-   switch (device->info.gen) {
-   case 12:
-      genX_table = &gen12_device_dispatch_table;
-      break;
-   case 11:
-      genX_table = &gen11_device_dispatch_table;
-      break;
-   case 10:
-      genX_table = &gen10_device_dispatch_table;
-      break;
-   case 9:
-      genX_table = &gen9_device_dispatch_table;
-      break;
-   case 8:
-      genX_table = &gen8_device_dispatch_table;
-      break;
-   case 7:
-      if (device->info.is_haswell)
-         genX_table = &gen75_device_dispatch_table;
-      else
-         genX_table = &gen7_device_dispatch_table;
-      break;
-   default:
-      unreachable("unsupported gen\n");
-   }
-
-   for (unsigned i = 0; i < ARRAY_SIZE(device->dispatch.entrypoints); i++) {
-      /* Vulkan requires that entrypoints for extensions which have not been
-       * enabled must not be advertised.
-       */
-      if (!anv_device_entrypoint_is_enabled(i, instance->app_info.api_version,
-                                            &instance->enabled_extensions,
-                                            &device->enabled_extensions)) {
-         device->dispatch.entrypoints[i] = NULL;
-      } else if (genX_table->entrypoints[i]) {
-         device->dispatch.entrypoints[i] = genX_table->entrypoints[i];
-      } else {
-         device->dispatch.entrypoints[i] =
-            anv_device_dispatch_table.entrypoints[i];
-      }
-   }
-}
-
 static int
 vk_priority_to_gen(int priority)
 {
@@ -2869,7 +2820,20 @@ VkResult anv_CreateDevice(
    device->robust_buffer_access = robust_buffer_access;
    device->enabled_extensions = enabled_extensions;
 
-   anv_device_init_dispatch(device);
+   const struct anv_instance *instance = physical_device->instance;
+   for (unsigned i = 0; i < ARRAY_SIZE(device->dispatch.entrypoints); i++) {
+      /* Vulkan requires that entrypoints for extensions which have not been
+       * enabled must not be advertised.
+       */
+      if (!anv_device_entrypoint_is_enabled(i, instance->app_info.api_version,
+                                            &instance->enabled_extensions,
+                                            &device->enabled_extensions)) {
+         device->dispatch.entrypoints[i] = NULL;
+      } else {
+         device->dispatch.entrypoints[i] =
+            anv_resolve_device_entrypoint(&device->info, i);
+      }
+   }
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
       result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
