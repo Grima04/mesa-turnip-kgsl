@@ -484,6 +484,13 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
          progress |= lower_impl(function->impl, tu_shader, layout);
    }
 
+   /* Remove now-unused variables so that when we gather the shader info later
+    * they won't be counted.
+    */
+   nir_remove_dead_variables(shader,
+                             nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo,
+                             NULL);
+
    return progress;
 }
 
@@ -740,9 +747,6 @@ tu_compile_shader_variant(struct ir3_shader *shader,
    int ret = ir3_compile_shader_nir(shader->compiler, variant);
    if (ret)
       return NULL;
-
-   /* num_samp should be 0 for bindless, but we use it with blit shader */
-   variant->num_samp = 0;
 
    /* when assemble fails, we rely on tu_shader_destroy to clean up the
     * variant
