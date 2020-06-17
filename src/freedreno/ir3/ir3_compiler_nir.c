@@ -3317,15 +3317,11 @@ emit_instructions(struct ir3_context *ctx)
 		setup_output(ctx, var);
 	}
 
-	/* Find # of samplers: */
-	nir_foreach_variable (var, &ctx->s->uniforms) {
-		ctx->so->num_samp += glsl_type_get_sampler_count(var->type);
-		/* just assume that we'll be reading from images.. if it
-		 * is write-only we don't have to count it, but not sure
-		 * if there is a good way to know?
-		 */
-		ctx->so->num_samp += glsl_type_get_image_count(var->type);
-	}
+	/* Find # of samplers. Just assume that we'll be reading from images.. if
+	 * it is write-only we don't have to count it, but after lowering derefs
+	 * is too late to compact indices for that.
+	 */
+	ctx->so->num_samp = util_last_bit(ctx->s->info.textures_used) + ctx->s->info.num_images;
 
 	/* NOTE: need to do something more clever when we support >1 fxn */
 	nir_foreach_register (reg, &fxn->registers) {
