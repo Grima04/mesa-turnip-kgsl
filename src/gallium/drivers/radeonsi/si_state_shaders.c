@@ -1487,15 +1487,19 @@ static unsigned si_get_ps_num_interp(struct si_shader *ps)
 
 static unsigned si_get_spi_shader_col_format(struct si_shader *shader)
 {
-   unsigned value = shader->key.part.ps.epilog.spi_shader_col_format;
-   unsigned i, num_targets = (util_last_bit(value) + 3) / 4;
+   unsigned spi_shader_col_format = shader->key.part.ps.epilog.spi_shader_col_format;
+   unsigned value = 0, num_mrts = 0;
+   unsigned i, num_targets = (util_last_bit(spi_shader_col_format) + 3) / 4;
 
-   /* If the i-th target format is set, all previous target formats must
-    * be non-zero to avoid hangs.
-    */
-   for (i = 0; i < num_targets; i++)
-      if (!(value & (0xf << (i * 4))))
-         value |= V_028714_SPI_SHADER_32_R << (i * 4);
+   /* Remove holes in spi_shader_col_format. */
+   for (i = 0; i < num_targets; i++) {
+      unsigned spi_format = (spi_shader_col_format >> (i * 4)) & 0xf;
+
+      if (spi_format) {
+         value |= spi_format << (num_mrts * 4);
+         num_mrts++;
+      }
+   }
 
    return value;
 }
@@ -1599,7 +1603,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
       spi_baryc_cntl |= S_0286E0_POS_FLOAT_ULC(1);
 
    spi_shader_col_format = si_get_spi_shader_col_format(shader);
-   cb_shader_mask = ac_get_cb_shader_mask(spi_shader_col_format);
+   cb_shader_mask = ac_get_cb_shader_mask(shader->key.part.ps.epilog.spi_shader_col_format);
 
    /* Ensure that some export memory is always allocated, for two reasons:
     *
