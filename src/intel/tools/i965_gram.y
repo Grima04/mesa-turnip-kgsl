@@ -1853,7 +1853,7 @@ statereg:
 controlreg:
 	CONTROLREG subregnum
 	{
-		if ($2 > 4)
+		if ($2 > 3)
 			error(&@2, "control sub register number %d"
 				   " out of range\n", $2);
 
