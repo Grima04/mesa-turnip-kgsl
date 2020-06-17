@@ -484,9 +484,14 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
    /* Remove now-unused variables so that when we gather the shader info later
     * they won't be counted.
     */
-   nir_remove_dead_variables(shader,
-                             nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo,
-                             NULL);
+
+   if (progress)
+      nir_opt_dce(shader);
+
+   progress |=
+      nir_remove_dead_variables(shader,
+                                nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo,
+                                NULL);
 
    return progress;
 }
