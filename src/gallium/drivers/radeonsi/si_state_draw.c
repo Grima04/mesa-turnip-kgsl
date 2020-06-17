@@ -1863,13 +1863,14 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
    /* Update NGG culling settings. */
    if (sctx->ngg && !dispatch_prim_discard_cs && rast_prim == PIPE_PRIM_TRIANGLES &&
+       !sctx->gs_shader.cso && /* GS doesn't support NGG culling. */
        (sctx->screen->always_use_ngg_culling ||
         /* At least 1024 non-indexed vertices (8 subgroups) are needed
          * per draw call (no TES/GS) to enable NGG culling.
          */
         (!index_size && direct_count >= 1024 &&
          (prim == PIPE_PRIM_TRIANGLES || prim == PIPE_PRIM_TRIANGLE_STRIP) &&
-         !sctx->tes_shader.cso && !sctx->gs_shader.cso)) &&
+         !sctx->tes_shader.cso)) &&
        si_get_vs(sctx)->cso->ngg_culling_allowed) {
       unsigned ngg_culling = 0;
 
