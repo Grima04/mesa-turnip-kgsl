@@ -1316,6 +1316,9 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                        !(fp16 ? block.fp_mode.must_flush_denorms16_64 : block.fp_mode.must_flush_denorms32) &&
                        !instr->definitions[0].isPrecise()) { /* 1.0 */
                ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[i].getTemp());
+            } else if (instr->operands[!i].constantValue() == 0u &&
+                       !(fp16 ? block.fp_mode.preserve_signed_zero_inf_nan16_64 : block.fp_mode.preserve_signed_zero_inf_nan32)) { /* 0.0 */
+               ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, 0u);
             } else {
                continue;
             }
