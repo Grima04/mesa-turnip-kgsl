@@ -1856,33 +1856,27 @@ static void
 tu_pipeline_shader_key_init(struct ir3_shader_key *key,
                             const VkGraphicsPipelineCreateInfo *pipeline_info)
 {
-   bool has_gs = false;
-   bool msaa = false;
-   if (pipeline_info) {
-      for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
-         if (pipeline_info->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
-            has_gs = true;
-            break;
-         }
-      }
-
-      const VkPipelineMultisampleStateCreateInfo *msaa_info = pipeline_info->pMultisampleState;
-      const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
-         vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
-      if (!pipeline_info->pRasterizationState->rasterizerDiscardEnable &&
-          (msaa_info->rasterizationSamples > 1 ||
-          /* also set msaa key when sample location is not the default
-           * since this affects varying interpolation */
-           (sample_locations && sample_locations->sampleLocationsEnable))) {
-         msaa = true;
+   for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
+      if (pipeline_info->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
+         key->has_gs = true;
+         break;
       }
    }
 
+   if (pipeline_info->pRasterizationState->rasterizerDiscardEnable)
+      return;
+
+   const VkPipelineMultisampleStateCreateInfo *msaa_info = pipeline_info->pMultisampleState;
+   const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
+      vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
+   if (msaa_info->rasterizationSamples > 1 ||
+       /* also set msaa key when sample location is not the default
+        * since this affects varying interpolation */
+       (sample_locations && sample_locations->sampleLocationsEnable)) {
+      key->msaa = true;
+   }
+
    /* TODO: Populate the remaining fields of ir3_shader_key. */
-   *key = (struct ir3_shader_key) {
-      .has_gs = has_gs,
-      .msaa = msaa,
-   };
 }
 
 static VkResult
@@ -1897,7 +1891,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder)
       stage_infos[stage] = &builder->create_info->pStages[i];
    }
 
-   struct ir3_shader_key key;
+   struct ir3_shader_key key = {};
    tu_pipeline_shader_key_init(&key, builder->create_info);
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
@@ -2512,8 +2506,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    pipeline->layout = layout;
 
-   struct ir3_shader_key key;
-   tu_pipeline_shader_key_init(&key, NULL);
+   struct ir3_shader_key key = {};
 
    struct tu_shader *shader =
       tu_shader_create(dev, MESA_SHADER_COMPUTE, stage_info, layout, pAllocator);
