@@ -120,7 +120,6 @@ static const struct nir_shader_compiler_options nir_options_aco = {
                                nir_lower_imul_high64 |
                                nir_lower_imul_2x32_64 |
                                nir_lower_divmod64 |
-                               nir_lower_logic64 |
                                nir_lower_minmax64 |
                                nir_lower_iabs64,
 };

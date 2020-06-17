@@ -613,6 +613,31 @@ void emit_vop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
    }
 }
 
+void emit_vop2_instruction_logic64(isel_context *ctx, nir_alu_instr *instr,
+                                   aco_opcode op, Temp dst)
+{
+   Builder bld(ctx->program, ctx->block);
+   bld.is_precise = instr->exact;
+
+   Temp src0 = get_alu_src(ctx, instr->src[0]);
+   Temp src1 = get_alu_src(ctx, instr->src[1]);
+
+   if (src1.type() == RegType::sgpr) {
+      assert(src0.type() == RegType::vgpr);
+      std::swap(src0, src1);
+   }
+
+   Temp src00 = bld.tmp(src0.type(), 1);
+   Temp src01 = bld.tmp(src0.type(), 1);
+   bld.pseudo(aco_opcode::p_split_vector, Definition(src00), Definition(src01), src0);
+   Temp src10 = bld.tmp(v1);
+   Temp src11 = bld.tmp(v1);
+   bld.pseudo(aco_opcode::p_split_vector, Definition(src10), Definition(src11), src1);
+   Temp lo = bld.vop2(op, bld.def(v1), src00, src10);
+   Temp hi = bld.vop2(op, bld.def(v1), src01, src11);
+   bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
+}
+
 void emit_vop3a_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode op, Temp dst,
                             bool flush_denorms = false)
 {
@@ -1125,6 +1150,12 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          bld.sop2(Builder::s_and, Definition(dst), bld.def(s1, scc), tmp, Operand(exec, bld.lm));
       } else if (dst.regClass() == v1) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_not_b32, dst);
+      } else if (dst.regClass() == v2) {
+         Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
+         lo = bld.vop1(aco_opcode::v_not_b32, bld.def(v1), lo);
+         hi = bld.vop1(aco_opcode::v_not_b32, bld.def(v1), hi);
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
       } else if (dst.type() == RegType::sgpr) {
          aco_opcode opcode = dst.size() == 1 ? aco_opcode::s_not_b32 : aco_opcode::s_not_b64;
          bld.sop1(opcode, Definition(dst), bld.def(s1, scc), src);
@@ -1260,6 +1291,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          emit_boolean_logic(ctx, instr, Builder::s_or, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_or_b32, dst, true);
+      } else if (dst.regClass() == v2) {
+         emit_vop2_instruction_logic64(ctx, instr, aco_opcode::v_or_b32, dst);
       } else if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_or_b32, dst, true);
       } else if (dst.regClass() == s2) {
@@ -1276,6 +1309,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          emit_boolean_logic(ctx, instr, Builder::s_and, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_and_b32, dst, true);
+      } else if (dst.regClass() == v2) {
+         emit_vop2_instruction_logic64(ctx, instr, aco_opcode::v_and_b32, dst);
       } else if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_and_b32, dst, true);
       } else if (dst.regClass() == s2) {
@@ -1292,6 +1327,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          emit_boolean_logic(ctx, instr, Builder::s_xor, dst);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_xor_b32, dst, true);
+      } else if (dst.regClass() == v2) {
+         emit_vop2_instruction_logic64(ctx, instr, aco_opcode::v_xor_b32, dst);
       } else if (dst.regClass() == s1) {
          emit_sop2_instruction(ctx, instr, aco_opcode::s_xor_b32, dst, true);
       } else if (dst.regClass() == s2) {

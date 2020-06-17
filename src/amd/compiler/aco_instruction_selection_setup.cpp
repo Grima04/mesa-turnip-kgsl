@@ -1020,7 +1020,6 @@ setup_nir(isel_context *ctx, nir_shader *nir)
       nir_lower_pack(nir);
 
    /* lower ALU operations */
-   // TODO: implement logic64 in aco, it's more effective for sgprs
    nir_lower_int64(nir, nir->options->lower_int64_options);
 
    if (nir_lower_bit_size(nir, lower_bit_size_callback, NULL))
