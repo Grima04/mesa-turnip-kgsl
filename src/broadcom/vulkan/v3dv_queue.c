@@ -196,19 +196,10 @@ handle_copy_query_results_cpu_job(struct v3dv_job *job)
 
    assert(info->dst && info->dst->mem && info->dst->mem->bo);
    struct v3dv_bo *bo = info->dst->mem->bo;
-   const uint32_t bo_size = info->dst->size;
 
-   /* Map the entire dst buffer for the CPU copy */
-   bool dst_was_mapped = bo->map != NULL;
-   uint32_t map_size = bo->map_size;
-   bool needs_map = false;
-   if (!dst_was_mapped) {
-      needs_map = true;
-   } else if (map_size < bo_size) {
-      v3dv_bo_unmap(job->device, bo);
-      needs_map = true;
-   }
-   if (needs_map && !v3dv_bo_map(job->device, bo, bo_size))
+   /* Map the entire dst buffer for the CPU copy if needed */
+   assert(!bo->map || bo->map_size == bo->size);
+   if (!bo->map && !v3dv_bo_map(job->device, bo, bo->size))
       return vk_error(job->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* FIXME: if flags includes VK_QUERY_RESULT_WAIT_BIT this could trigger a
@@ -222,14 +213,6 @@ handle_copy_query_results_cpu_job(struct v3dv_job *job)
                                    bo->map + info->dst->mem_offset,
                                    info->stride,
                                    info->flags);
-
-   if (needs_map) {
-      v3dv_bo_unmap(job->device, bo);
-      if (dst_was_mapped) {
-         if (!v3dv_bo_map(job->device, bo, map_size))
-            return vk_error(job->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
-   }
 
    return VK_SUCCESS;
 }
@@ -403,11 +386,13 @@ handle_copy_buffer_to_image_cpu_job(struct v3dv_job *job)
 
    /* Map BOs */
    struct v3dv_bo *dst_bo = info->image->mem->bo;
+   assert(!dst_bo->map || dst_bo->map_size == dst_bo->size);
    if (!dst_bo->map && !v3dv_bo_map(job->device, dst_bo, dst_bo->size))
       return vk_error(job->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    void *dst_ptr = dst_bo->map;
 
    struct v3dv_bo *src_bo = info->buffer->mem->bo;
+   assert(!src_bo->map || src_bo->map_size == src_bo->size);
    if (!src_bo->map && !v3dv_bo_map(job->device, src_bo, src_bo->size))
       return vk_error(job->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    void *src_ptr = src_bo->map;

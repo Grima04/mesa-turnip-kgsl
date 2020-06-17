@@ -1382,9 +1382,7 @@ device_unmap(struct v3dv_device *device, struct v3dv_device_memory *mem)
 }
 
 static VkResult
-device_map(struct v3dv_device *device,
-           struct v3dv_device_memory *mem,
-           uint32_t size)
+device_map(struct v3dv_device *device, struct v3dv_device_memory *mem)
 {
    assert(mem && mem->bo);
 
@@ -1396,14 +1394,16 @@ device_map(struct v3dv_device *device,
     *
     * We are not concerned with this ourselves (validation layers should
     * catch these errors and warn users), however, the driver may internally
-    * map things (for example for debug CLIF dumps) so by the time the user
-    * call here the buffer might already been mapped internally, so let's just
-    * make sure we unmap if needed.
+    * map things (for example for debug CLIF dumps or some CPU-side operations)
+    * so by the time the user calls here the buffer might already been mapped
+    * internally by the driver.
     */
-   if (mem->bo->map)
-      device_unmap(device, mem);
+   if (mem->bo->map) {
+      assert(mem->bo->map_size == mem->bo->size);
+      return VK_SUCCESS;
+   }
 
-   bool ok = v3dv_bo_map(device, mem->bo, size);
+   bool ok = v3dv_bo_map(device, mem->bo, mem->bo->size);
    if (!ok)
       return VK_ERROR_MEMORY_MAP_FAILED;
 
@@ -1621,16 +1621,12 @@ v3dv_MapMemory(VkDevice _device,
 
    assert(offset < mem->bo->size);
 
-   /* We always map from the beginning of the region, so if our offset
-    * is not 0 and we are not mapping the entire region, we need to
-    * add the offset to the map size.
+   /* Since the driver can map BOs internally as well and the mapped range
+    * required by the user or the driver might not be the same, we always map
+    * the entire BO and then add the requested offset to the start address
+    * of the mapped region.
     */
-   if (size == VK_WHOLE_SIZE)
-      size = mem->bo->size;
-   else if (offset > 0)
-      size += offset;
-
-   VkResult result = device_map(device, mem, size);
+   VkResult result = device_map(device, mem);
    if (result != VK_SUCCESS)
       return vk_error(device->instance, result);
 
