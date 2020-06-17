@@ -153,7 +153,7 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
    nir_intrinsic_instr *bindless =
       nir_intrinsic_instr_create(b->shader,
                                  nir_intrinsic_bindless_resource_ir3);
-   bindless->num_components = 1;
+   bindless->num_components = 0;
    nir_ssa_dest_init(&bindless->instr, &bindless->dest,
                      1, 32, NULL);
    nir_intrinsic_set_desc_set(bindless, set);
@@ -214,7 +214,7 @@ build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
    nir_intrinsic_instr *bindless =
       nir_intrinsic_instr_create(b->shader,
                                  nir_intrinsic_bindless_resource_ir3);
-   bindless->num_components = 1;
+   bindless->num_components = 0;
    nir_ssa_dest_init(&bindless->instr, &bindless->dest,
                      1, 32, NULL);
    nir_intrinsic_set_desc_set(bindless, set);
