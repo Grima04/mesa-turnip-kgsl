@@ -1400,7 +1400,6 @@ nir_visitor::visit(ir_call *ir)
          break;
       case nir_intrinsic_shader_clock:
          nir_ssa_dest_init(&instr->instr, &instr->dest, 2, 32, NULL);
-         instr->num_components = 2;
          nir_intrinsic_set_memory_scope(instr, NIR_SCOPE_SUBGROUP);
          nir_builder_instr_insert(&b, &instr->instr);
          break;
