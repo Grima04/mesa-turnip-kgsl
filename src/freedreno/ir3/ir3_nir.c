@@ -344,7 +344,10 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 		progress |= OPT(s, nir_lower_tex, &tex_options);
 	}
 
-	progress |= OPT(s, ir3_nir_analyze_ubo_ranges, so);
+	if (!so->binning_pass)
+		OPT_V(s, ir3_nir_analyze_ubo_ranges, so);
+
+	progress |= OPT(s, ir3_nir_lower_ubo_loads, so);
 
 	/* UBO offset lowering has to come after we've decided what will
 	 * be left as load_ubo

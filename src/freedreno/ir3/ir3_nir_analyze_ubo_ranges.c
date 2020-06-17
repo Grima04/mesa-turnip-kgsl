@@ -229,9 +229,10 @@ track_ubo_use(nir_intrinsic_instr *instr, nir_builder *b, int *num_ubos)
 	}
 }
 
-static void
+static bool
 lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
-		struct ir3_ubo_analysis_state *state, int *num_ubos, uint32_t alignment)
+		const struct ir3_ubo_analysis_state *state,
+		int *num_ubos, uint32_t alignment)
 {
 	b->cursor = nir_before_instr(&instr->instr);
 
@@ -242,14 +243,14 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 	const struct ir3_ubo_range *range = get_existing_range(instr, state);
 	if (!range) {
 		track_ubo_use(instr, b, num_ubos);
-		return;
+		return false;
 	}
 
 	/* We don't have a good way of determining the range of the dynamic
 	 * access in general, so for now just fall back to pulling.
 	 */
 	if (!nir_src_is_const(instr->src[1]) && !ubo_is_gl_uniforms(&range->ubo))
-		return;
+		return false;
 
 	/* After gathering the UBO access ranges, we limit the total
 	 * upload. Don't lower if this load is outside the range.
@@ -258,7 +259,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 			instr, alignment);
 	if (!(range->start <= r.start && r.end <= range->end)) {
 		track_ubo_use(instr, b, num_ubos);
-		return;
+		return false;
 	}
 
 	nir_ssa_def *ubo_offset = nir_ssa_for_src(b, instr->src[1], 1);
@@ -313,7 +314,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 
 	nir_instr_remove(&instr->instr);
 
-	state->lower_count++;
+	return true;
 }
 
 static bool
@@ -330,7 +331,7 @@ instr_is_load_ubo(nir_instr *instr)
 	return op == nir_intrinsic_load_ubo;
 }
 
-bool
+void
 ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 {
 	struct ir3_const_state *const_state = ir3_const_state(v);
@@ -394,15 +395,30 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 
 	}
 	state->size = offset;
+}
+
+bool
+ir3_nir_lower_ubo_loads(nir_shader *nir, struct ir3_shader_variant *v)
+{
+	struct ir3_compiler *compiler = v->shader->compiler;
+	/* For the binning pass variant, we re-use the corresponding draw-pass
+	 * variants const_state and ubo state.  To make these clear, in this
+	 * pass it is const (read-only)
+	 */
+	const struct ir3_const_state *const_state = ir3_const_state(v);
+	const struct ir3_ubo_analysis_state *state = &const_state->ubo_state;
 
 	int num_ubos = 0;
+	bool progress = false;
 	nir_foreach_function (function, nir) {
 		if (function->impl) {
 			nir_builder builder;
 			nir_builder_init(&builder, function->impl);
 			nir_foreach_block (block, function->impl) {
 				nir_foreach_instr_safe (instr, block) {
-					if (instr_is_load_ubo(instr))
+					if (!instr_is_load_ubo(instr))
+						continue;
+					progress |=
 						lower_ubo_load_to_uniform(nir_instr_as_intrinsic(instr),
 								&builder, state, &num_ubos,
 								compiler->const_upload_unit);
@@ -420,5 +436,5 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 	if (nir->info.first_ubo_is_default_ubo)
 	    nir->info.num_ubos = num_ubos;
 
-	return state->lower_count > 0;
+	return progress;
 }

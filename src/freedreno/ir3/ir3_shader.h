@@ -97,7 +97,6 @@ struct ir3_ubo_analysis_state {
 	struct ir3_ubo_range range[IR3_MAX_UBO_PUSH_RANGES];
 	uint32_t num_enabled;
 	uint32_t size;
-	uint32_t lower_count;
 	uint32_t cmdstream_size; /* for per-gen backend to stash required cmdstream size */
 };
 
