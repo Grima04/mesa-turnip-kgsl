@@ -1083,7 +1083,8 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                  */
                 .stages_with_shared_io_memory =
                 (((1 << MESA_ALL_SHADER_STAGES) - 1) &
-                 ~(1 << MESA_SHADER_FRAGMENT)),
+                 ~((1 << MESA_SHADER_FRAGMENT) |
+                   (1 << MESA_SHADER_GEOMETRY))),
         };
         NIR_PASS_V(c->s, nir_schedule, &schedule_options);
 
