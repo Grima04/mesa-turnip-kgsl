@@ -74,10 +74,36 @@ get_ubo_info(nir_intrinsic_instr *instr, struct ir3_ubo_info *ubo)
 	return false;
 }
 
-static struct ir3_ubo_range *
+/**
+ * Get an existing range, but don't create a new range associated with
+ * the ubo, but don't create a new one if one does not already exist.
+ */
+static const struct ir3_ubo_range *
 get_existing_range(nir_intrinsic_instr *instr,
-				   struct ir3_ubo_analysis_state *state,
-				   bool create_new)
+				   const struct ir3_ubo_analysis_state *state)
+{
+	struct ir3_ubo_info ubo = {};
+
+	if (!get_ubo_info(instr, &ubo))
+		return NULL;
+
+	for (int i = 0; i < IR3_MAX_UBO_PUSH_RANGES; i++) {
+		const struct ir3_ubo_range *range = &state->range[i];
+		if (range->end < range->start) {
+			break;
+		} else if (!memcmp(&range->ubo, &ubo, sizeof(ubo))) {
+			return range;
+		}
+	}
+
+	return NULL;
+}
+
+/**
+ * Get an existing range, or create a new one if necessary/possible.
+ */
+static struct ir3_ubo_range *
+get_range(nir_intrinsic_instr *instr, struct ir3_ubo_analysis_state *state)
 {
 	struct ir3_ubo_info ubo = {};
 
@@ -89,12 +115,8 @@ get_existing_range(nir_intrinsic_instr *instr,
 		if (range->end < range->start) {
 			/* We don't have a matching range, but there are more available.
 			 */
-			if (create_new) {
-				range->ubo = ubo;
-				return range;
-			} else {
-				return NULL;
-			}
+			range->ubo = ubo;
+			return range;
 		} else if (!memcmp(&range->ubo, &ubo, sizeof(ubo))) {
 			return range;
 		}
@@ -110,7 +132,7 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 	if (ir3_shader_debug & IR3_DBG_NOUBOOPT)
 		return;
 
-	struct ir3_ubo_range *old_r = get_existing_range(instr, state, true);
+	struct ir3_ubo_range *old_r = get_range(instr, state);
 	if (!old_r)
 		return;
 
@@ -217,7 +239,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 	 * could probably with some effort determine a block stride in number of
 	 * registers.
 	 */
-	struct ir3_ubo_range *range = get_existing_range(instr, state, false);
+	const struct ir3_ubo_range *range = get_existing_range(instr, state);
 	if (!range) {
 		track_ubo_use(instr, b, num_ubos);
 		return;
