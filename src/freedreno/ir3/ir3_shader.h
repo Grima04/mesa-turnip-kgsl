@@ -72,13 +72,25 @@ enum ir3_driver_param {
 #define IR3_MAX_SO_OUTPUTS       64
 #define IR3_MAX_UBO_PUSH_RANGES  32
 
-
-struct ir3_ubo_range {
-	uint32_t offset; /* start offset to push in the const register file */
+/**
+ * Description of a lowered UBO.
+ */
+struct ir3_ubo_info {
 	uint32_t block; /* Which constant block */
-	uint32_t start, end; /* range of block that's actually used */
 	uint16_t bindless_base; /* For bindless, which base register is used */
 	bool bindless;
+};
+
+/**
+ * Description of a range of a lowered UBO access.
+ *
+ * Drivers should not assume that there are not multiple disjoint
+ * lowered ranges of a single UBO.
+ */
+struct ir3_ubo_range {
+	struct ir3_ubo_info ubo;
+	uint32_t offset; /* start offset to push in the const register file */
+	uint32_t start, end; /* range of block that's actually used */
 };
 
 struct ir3_ubo_analysis_state {

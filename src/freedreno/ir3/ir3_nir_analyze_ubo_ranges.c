@@ -28,9 +28,9 @@
 #include "util/u_math.h"
 
 static bool
-range_is_gl_uniforms(struct ir3_ubo_range *r)
+ubo_is_gl_uniforms(const struct ir3_ubo_info *ubo)
 {
-	return !r->bindless && r->block == 0;
+	return !ubo->bindless && ubo->block == 0;
 }
 
 static inline struct ir3_ubo_range
@@ -54,41 +54,48 @@ get_ubo_load_range(nir_shader *nir, nir_intrinsic_instr *instr, uint32_t alignme
 	return r;
 }
 
+static bool
+get_ubo_info(nir_intrinsic_instr *instr, struct ir3_ubo_info *ubo)
+{
+	if (nir_src_is_const(instr->src[0])) {
+		ubo->block = nir_src_as_uint(instr->src[0]);
+		ubo->bindless_base = 0;
+		ubo->bindless = false;
+		return true;
+	} else {
+		nir_intrinsic_instr *rsrc = ir3_bindless_resource(instr->src[0]);
+		if (rsrc && nir_src_is_const(rsrc->src[0])) {
+			ubo->block = nir_src_as_uint(rsrc->src[0]);
+			ubo->bindless_base = nir_intrinsic_desc_set(rsrc);
+			ubo->bindless = true;
+			return true;
+		}
+	}
+	return false;
+}
+
 static struct ir3_ubo_range *
 get_existing_range(nir_intrinsic_instr *instr,
 				   struct ir3_ubo_analysis_state *state,
 				   bool create_new)
 {
-	unsigned block, base = 0;
-	bool bindless;
-	if (nir_src_is_const(instr->src[0])) {
-		block = nir_src_as_uint(instr->src[0]);
-		bindless = false;
-	} else {
-		nir_intrinsic_instr *rsrc = ir3_bindless_resource(instr->src[0]);
-		if (rsrc && nir_src_is_const(rsrc->src[0])) {
-			block = nir_src_as_uint(rsrc->src[0]);
-			base = nir_intrinsic_desc_set(rsrc);
-			bindless = true;
-		} else {
-			return NULL;
-		}
-	}
+	struct ir3_ubo_info ubo = {};
+
+	if (!get_ubo_info(instr, &ubo))
+		return NULL;
+
 	for (int i = 0; i < IR3_MAX_UBO_PUSH_RANGES; i++) {
 		struct ir3_ubo_range *range = &state->range[i];
 		if (range->end < range->start) {
 			/* We don't have a matching range, but there are more available.
 			 */
 			if (create_new) {
-				range->block = block;
-				range->bindless_base = base;
-				range->bindless = bindless;
+				range->ubo = ubo;
 				return range;
 			} else {
 				return NULL;
 			}
-		} else if (range->block == block && range->bindless_base == base &&
-				   range->bindless == bindless) {
+		} else if (!memcmp(&range->ubo, &ubo, sizeof(ubo))) {
 			return range;
 		}
 	}
@@ -110,7 +117,7 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 	/* We don't know how to get the size of UBOs being indirected on, other
 	 * than on the GL uniforms where we have some other shader_info data.
 	 */
-	if (!nir_src_is_const(instr->src[1]) && !range_is_gl_uniforms(old_r))
+	if (!nir_src_is_const(instr->src[1]) && !ubo_is_gl_uniforms(&old_r->ubo))
 		return;
 
 	const struct ir3_ubo_range r = get_ubo_load_range(nir, instr, alignment);
@@ -219,7 +226,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 	/* We don't have a good way of determining the range of the dynamic
 	 * access in general, so for now just fall back to pulling.
 	 */
-	if (!nir_src_is_const(instr->src[1]) && !range_is_gl_uniforms(range))
+	if (!nir_src_is_const(instr->src[1]) && !ubo_is_gl_uniforms(&range->ubo))
 		return;
 
 	/* After gathering the UBO access ranges, we limit the total

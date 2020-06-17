@@ -2869,11 +2869,11 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
       /* Dig out the descriptor from the descriptor state and read the VA from
        * it.
        */
-      assert(state->range[i].bindless);
-      uint32_t *base = state->range[i].bindless_base == MAX_SETS ?
+      assert(state->range[i].ubo.bindless);
+      uint32_t *base = state->range[i].ubo.bindless_base == MAX_SETS ?
          descriptors_state->dynamic_descriptors :
-         descriptors_state->sets[state->range[i].bindless_base]->mapped_ptr;
-      unsigned block = state->range[i].block;
+         descriptors_state->sets[state->range[i].ubo.bindless_base]->mapped_ptr;
+      unsigned block = state->range[i].ubo.block;
       uint32_t *desc = base + block * A6XX_TEX_CONST_DWORDS;
       uint64_t va = desc[0] | ((uint64_t)(desc[1] & A6XX_UBO_1_BASE_HI__MASK) << 32);
       assert(va);

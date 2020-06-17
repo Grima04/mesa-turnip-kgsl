@@ -97,8 +97,8 @@ ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *
 	const struct ir3_ubo_analysis_state *state = &const_state->ubo_state;
 
 	for (unsigned i = 0; i < state->num_enabled; i++) {
-		assert(!state->range[i].bindless);
-		unsigned ubo = state->range[i].block;
+		assert(!state->range[i].ubo.bindless);
+		unsigned ubo = state->range[i].ubo.block;
 		if (!(constbuf->enabled_mask & (1 << ubo)))
 			continue;
 		struct pipe_constant_buffer *cb = &constbuf->cb[ubo];
