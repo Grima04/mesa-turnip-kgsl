@@ -501,8 +501,12 @@ tu_enumerate_devices(struct tu_instance *instance)
 
    max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
 
-   if (instance->debug_flags & TU_DEBUG_STARTUP)
-      tu_logi("Found %d drm nodes", max_devices);
+   if (instance->debug_flags & TU_DEBUG_STARTUP) {
+      if (max_devices < 0)
+         tu_logi("drmGetDevices2 returned error: %s\n", strerror(max_devices));
+      else
+         tu_logi("Found %d drm nodes", max_devices);
+   }
 
    if (max_devices < 1)
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
