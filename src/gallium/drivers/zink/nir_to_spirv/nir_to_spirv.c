@@ -949,22 +949,6 @@ emit_so_outputs(struct ntv_context *ctx,
       if (glsl_type_is_scalar(out_type) || (type == output_type && glsl_get_length(out_type) == so_output.num_components))
          result = src;
       else {
-         if (ctx->stage == MESA_SHADER_VERTEX && so_output.register_index == VARYING_SLOT_POS) {
-            /* gl_Position was modified by nir_lower_clip_halfz, so we need to reverse that for streamout here:
-             * 
-             * opengl gl_Position.z = (vulkan gl_Position.z * 2.0) - vulkan gl_Position.w
-             *
-             * to do this, we extract the z and w components, perform the multiply and subtract ops, then reinsert
-             */
-            uint32_t z_component[] = {2};
-            uint32_t w_component[] = {3};
-            SpvId ftype = spirv_builder_type_float(&ctx->builder, 32);
-            SpvId z = spirv_builder_emit_composite_extract(&ctx->builder, ftype, src, z_component, 1);
-            SpvId w = spirv_builder_emit_composite_extract(&ctx->builder, ftype, src, w_component, 1);
-            SpvId new_z = emit_binop(ctx, SpvOpFMul, ftype, z, spirv_builder_const_float(&ctx->builder, 32, 2.0));
-            new_z = emit_binop(ctx, SpvOpFSub, ftype, new_z, w);
-            src = spirv_builder_emit_vector_insert(&ctx->builder, type, src, new_z, 2);
-         }
          /* OpCompositeExtract can only extract scalars for our use here */
          if (so_output.num_components == 1) {
             result = spirv_builder_emit_composite_extract(&ctx->builder, type, src, components, so_output.num_components);
