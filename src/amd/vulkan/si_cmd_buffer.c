@@ -520,9 +520,9 @@ cik_create_gfx_config(struct radv_device *device)
 
 	while (cs->cdw & 7) {
 		if (device->physical_device->rad_info.gfx_ib_pad_with_type2)
-			radeon_emit(cs, 0x80000000);
+			radeon_emit(cs, PKT2_NOP_PAD);
 		else
-			radeon_emit(cs, 0xffff1000);
+			radeon_emit(cs, PKT3_NOP_PAD);
 	}
 
 	device->gfx_init = device->ws->buffer_create(device->ws,

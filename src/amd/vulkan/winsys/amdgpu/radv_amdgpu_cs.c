@@ -424,7 +424,7 @@ static void radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 	ib_size = MIN2(ib_size, 0xfffff);
 
 	while (!cs->base.cdw || (cs->base.cdw & 7) != 4)
-		radeon_emit(&cs->base, 0xffff1000);
+		radeon_emit(&cs->base, PKT3_NOP_PAD);
 
 	*cs->ib_size_ptr |= cs->base.cdw + 4;
 
@@ -480,7 +480,7 @@ static VkResult radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
 
 	if (cs->ws->use_ib_bos) {
 		while (!cs->base.cdw || (cs->base.cdw & 7) != 0)
-			radeon_emit(&cs->base, 0xffff1000);
+			radeon_emit(&cs->base, PKT3_NOP_PAD);
 
 		*cs->ib_size_ptr |= cs->base.cdw;
 
@@ -1042,7 +1042,7 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 	struct radeon_winsys *ws = (struct radeon_winsys*)cs0->ws;
 	uint32_t bo_list;
 	struct radv_amdgpu_cs_request request;
-	uint32_t pad_word = 0xffff1000U;
+	uint32_t pad_word = PKT3_NOP_PAD;
 	bool emit_signal_sem = sem_info->cs_emit_signal;
 
 	if (radv_amdgpu_winsys(ws)->info.chip_class == GFX6)

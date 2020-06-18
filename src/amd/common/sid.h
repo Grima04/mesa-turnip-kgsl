@@ -231,6 +231,9 @@
 #define PKT0(index, count) (PKT_TYPE_S(0) | PKT0_BASE_INDEX_S(index) | PKT_COUNT_S(count))
 #define PKT3(op, count, predicate) (PKT_TYPE_S(3) | PKT_COUNT_S(count) | PKT3_IT_OPCODE_S(op) | PKT3_PREDICATE(predicate))
 
+#define PKT2_NOP_PAD                    PKT_TYPE_S(2)
+#define PKT3_NOP_PAD                    PKT3(PKT3_NOP, 0x3fff, 0) /* header-only version */
+
 #define PKT3_CP_DMA					0x41
 /* 1. header
  * 2. SRC_ADDR_LO [31:0] or DATA [31:0]

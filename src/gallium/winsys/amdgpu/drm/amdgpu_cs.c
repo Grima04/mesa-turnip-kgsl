@@ -1099,7 +1099,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
 
    /* Pad with NOPs and add INDIRECT_BUFFER packet */
    while ((rcs->current.cdw & 7) != 4)
-      radeon_emit(rcs, 0xffff1000); /* type3 nop packet */
+      radeon_emit(rcs, PKT3_NOP_PAD);
 
    radeon_emit(rcs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
    radeon_emit(rcs, va);
@@ -1680,10 +1680,10 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       /* pad GFX ring to 8 DWs to meet CP fetch alignment requirements */
       if (ws->info.gfx_ib_pad_with_type2) {
          while (rcs->current.cdw & 7)
-            radeon_emit(rcs, 0x80000000); /* type2 nop packet */
+            radeon_emit(rcs, PKT2_NOP_PAD);
       } else {
          while (rcs->current.cdw & 7)
-            radeon_emit(rcs, 0xffff1000); /* type3 nop packet */
+            radeon_emit(rcs, PKT3_NOP_PAD);
       }
       if (cs->ring_type == RING_GFX)
          ws->gfx_ib_size_counter += (rcs->prev_dw + rcs->current.cdw) * 4;
@@ -1691,7 +1691,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       /* Also pad secondary IBs. */
       if (cs->compute_ib.ib_mapped) {
          while (cs->compute_ib.base.current.cdw & 7)
-            radeon_emit(&cs->compute_ib.base, 0xffff1000); /* type3 nop packet */
+            radeon_emit(&cs->compute_ib.base, PKT3_NOP_PAD);
       }
       break;
    case RING_UVD:
