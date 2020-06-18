@@ -184,26 +184,7 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 	v->nonbinning = nonbinning;
 	v->key = *key;
 	v->type = shader->type;
-
-	if (shader->compiler->gpu_id >= 600) {
-		switch (v->type) {
-		case MESA_SHADER_TESS_CTRL:
-		case MESA_SHADER_TESS_EVAL:
-			v->mergedregs = false;
-			break;
-		case MESA_SHADER_VERTEX:
-		case MESA_SHADER_GEOMETRY:
-			/* For VS/GS, normally do mergedregs, but if there is tess
-			 * we need to not used MERGEDREGS
-			 */
-			v->mergedregs = !key->tessellation;
-			break;
-		default:
-			v->mergedregs = true;
-		}
-	} else {
-		v->mergedregs = false;
-	}
+	v->mergedregs = shader->compiler->gpu_id >= 600;
 
 	if (!v->binning_pass)
 		v->const_state = rzalloc_size(v, sizeof(*v->const_state));
