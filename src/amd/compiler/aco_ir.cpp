@@ -101,7 +101,10 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
       program->physical_sgprs = 2560; /* doesn't matter as long as it's at least 128 * 20 */
       program->sgpr_alloc_granule = 127;
       program->sgpr_limit = 106;
-      program->vgpr_alloc_granule = program->wave_size == 32 ? 7 : 3;
+      if (chip_class >= GFX10_3)
+         program->vgpr_alloc_granule = program->wave_size == 32 ? 15 : 7;
+      else
+         program->vgpr_alloc_granule = program->wave_size == 32 ? 7 : 3;
    } else if (program->chip_class >= GFX8) {
       program->physical_sgprs = 800;
       program->sgpr_alloc_granule = 15;
