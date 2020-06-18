@@ -134,6 +134,7 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf);
 void *amdgpu_bo_map(struct pb_buffer *buf,
                     struct radeon_cmdbuf *rcs,
                     enum pipe_transfer_usage usage);
+void amdgpu_bo_unmap(struct pb_buffer *buf);
 void amdgpu_bo_init_functions(struct amdgpu_screen_winsys *ws);
 
 bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry);

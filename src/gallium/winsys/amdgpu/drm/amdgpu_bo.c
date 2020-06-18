@@ -47,8 +47,6 @@ struct amdgpu_sparse_backing_chunk {
    uint32_t begin, end;
 };
 
-static void amdgpu_bo_unmap(struct pb_buffer *buf);
-
 static bool amdgpu_bo_wait(struct pb_buffer *_buf, uint64_t timeout,
                            enum radeon_bo_usage usage)
 {
@@ -400,7 +398,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
    return (uint8_t*)cpu + offset;
 }
 
-static void amdgpu_bo_unmap(struct pb_buffer *buf)
+void amdgpu_bo_unmap(struct pb_buffer *buf)
 {
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_winsys_bo *real;
