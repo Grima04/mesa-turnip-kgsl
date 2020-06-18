@@ -8155,11 +8155,18 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_shader_clock: {
-      aco_opcode opcode =
-         nir_intrinsic_memory_scope(instr) == NIR_SCOPE_DEVICE ?
-            aco_opcode::s_memrealtime : aco_opcode::s_memtime;
-      bld.smem(opcode, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), memory_sync_info(0, semantic_volatile));
-      emit_split_vector(ctx, get_ssa_temp(ctx, &instr->dest.ssa), 2);
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      if (nir_intrinsic_memory_scope(instr) == NIR_SCOPE_SUBGROUP && ctx->options->chip_class >= GFX10_3) {
+         /* "((size - 1) << 11) | register" (SHADER_CYCLES is encoded as register 29) */
+         Temp clock = bld.sopk(aco_opcode::s_getreg_b32, bld.def(s1), ((20 - 1) << 11) | 29);
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), clock, Operand(0u));
+      } else {
+         aco_opcode opcode =
+            nir_intrinsic_memory_scope(instr) == NIR_SCOPE_DEVICE ?
+               aco_opcode::s_memrealtime : aco_opcode::s_memtime;
+         bld.smem(opcode, Definition(dst), memory_sync_info(0, semantic_volatile));
+      }
+      emit_split_vector(ctx, dst, 2);
       break;
    }
    case nir_intrinsic_load_vertex_id_zero_base: {

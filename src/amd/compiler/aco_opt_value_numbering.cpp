@@ -219,6 +219,8 @@ struct InstrPred {
 
       switch (a->format) {
          case Format::SOPK: {
+            if (a->opcode == aco_opcode::s_getreg_b32)
+               return false;
             SOPK_instruction* aK = static_cast<SOPK_instruction*>(a);
             SOPK_instruction* bK = static_cast<SOPK_instruction*>(b);
             return aK->imm == bK->imm;

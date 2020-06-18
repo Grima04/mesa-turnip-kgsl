@@ -459,7 +459,8 @@ HazardResult perform_hazard_query(hazard_query *query, Instruction *instr, bool 
    /* don't move non-reorderable instructions */
    if (instr->opcode == aco_opcode::s_memtime ||
        instr->opcode == aco_opcode::s_memrealtime ||
-       instr->opcode == aco_opcode::s_setprio)
+       instr->opcode == aco_opcode::s_setprio ||
+       instr->opcode == aco_opcode::s_getreg_b32)
       return hazard_fail_unreorderable;
 
    memory_event_set instr_set;
