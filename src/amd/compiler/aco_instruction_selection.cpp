@@ -6303,6 +6303,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 
    bool smem = !nir_src_is_divergent(instr->src[2]) &&
                ctx->options->chip_class >= GFX8 &&
+               ctx->options->chip_class < GFX10_3 &&
                (elem_size_bytes >= 4 || can_subdword_ssbo_store_use_smem(instr)) &&
                allow_smem;
    if (smem)
