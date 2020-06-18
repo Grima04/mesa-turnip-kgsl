@@ -798,8 +798,15 @@ struct v3dv_job {
       struct v3dv_copy_buffer_to_image_cpu_job_info copy_buffer_to_image;
    } cpu;
 
-   /* Job spects for TFU jobs */
+   /* Job specs for TFU jobs */
    struct drm_v3d_submit_tfu tfu;
+
+   /* Job specs for CSD jobs */
+   struct {
+      struct v3dv_bo *shared_memory;
+      uint32_t workgroup_count[3];
+      struct drm_v3d_submit_csd submit;
+   } csd;
 };
 
 void v3dv_job_init(struct v3dv_job *job,

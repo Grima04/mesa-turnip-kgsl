@@ -196,6 +196,20 @@ job_destroy_cloned_gpu_cl_resources(struct v3dv_job *job)
 }
 
 static void
+job_destroy_gpu_csd_resources(struct v3dv_job *job)
+{
+   assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
+   assert(job->cmd_buffer);
+
+   v3dv_cl_destroy(&job->indirect);
+
+   _mesa_set_destroy(job->bos, NULL);
+
+   if (job->csd.shared_memory)
+      v3dv_bo_free(job->device, job->csd.shared_memory);
+}
+
+static void
 job_destroy_cpu_wait_events_resources(struct v3dv_job *job)
 {
    assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
@@ -219,6 +233,9 @@ v3dv_job_destroy(struct v3dv_job *job)
       case V3DV_JOB_TYPE_GPU_CL:
       case V3DV_JOB_TYPE_GPU_CL_SECONDARY:
          job_destroy_gpu_cl_resources(job);
+         break;
+      case V3DV_JOB_TYPE_GPU_CSD:
+         job_destroy_gpu_csd_resources(job);
          break;
       case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
          job_destroy_cpu_wait_events_resources(job);
@@ -716,17 +733,22 @@ v3dv_job_init(struct v3dv_job *job,
    list_inithead(&job->list_link);
 
    if (type == V3DV_JOB_TYPE_GPU_CL ||
-       type == V3DV_JOB_TYPE_GPU_CL_SECONDARY) {
+       type == V3DV_JOB_TYPE_GPU_CL_SECONDARY ||
+       type == V3DV_JOB_TYPE_GPU_CSD) {
       job->bos =
          _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
       job->bo_count = 0;
 
-      v3dv_cl_init(job, &job->bcl);
-      v3dv_cl_init(job, &job->rcl);
       v3dv_cl_init(job, &job->indirect);
 
       if (V3D_DEBUG & V3D_DEBUG_ALWAYS_FLUSH)
          job->always_flush = true;
+   }
+
+   if (type == V3DV_JOB_TYPE_GPU_CL ||
+       type == V3DV_JOB_TYPE_GPU_CL_SECONDARY) {
+      v3dv_cl_init(job, &job->bcl);
+      v3dv_cl_init(job, &job->rcl);
    }
 
    if (cmd_buffer) {
@@ -780,6 +802,28 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    v3dv_job_init(job, type, cmd_buffer->device, cmd_buffer, subpass_idx);
+
+   return job;
+}
+
+static struct v3dv_job *
+cmd_buffer_start_compute_job(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   /* Compute jobs can only happen outside a render pass */
+   assert(!cmd_buffer->state.job);
+   assert(!cmd_buffer->state.pass);
+
+   struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->alloc,
+                                    sizeof(struct v3dv_job), 8,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   cmd_buffer->state.job = job;
+
+   if (!job) {
+      v3dv_flag_oom(cmd_buffer, NULL);
+      return NULL;
+   }
+
+   v3dv_job_init(job, V3DV_JOB_TYPE_GPU_CSD, cmd_buffer->device, cmd_buffer, -1);
 
    return job;
 }
@@ -2677,6 +2721,33 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    p_stage->current_variant = variant;
 }
 
+static void
+update_cs_variant(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_shader_variant *variant;
+   struct v3dv_pipeline_stage *p_stage = cmd_buffer->state.pipeline->cs;
+   struct v3d_key local_key;
+
+   /* We start with a copy of the original pipeline key */
+   memcpy(&local_key, &p_stage->key.base, sizeof(struct v3d_key));
+
+   cmd_buffer_populate_v3d_key(&local_key, cmd_buffer,
+                               VK_PIPELINE_BIND_POINT_COMPUTE);
+
+   VkResult result;
+   variant = v3dv_get_shader_variant(p_stage, &local_key,
+                                     sizeof(struct v3d_key),
+                                     &cmd_buffer->device->alloc,
+                                     &result);
+   /* At this point we are not creating a vulkan object to return to the
+    * API user, so we can't really return back a OOM error
+    */
+   assert(variant);
+   assert(result == VK_SUCCESS);
+
+   p_stage->current_variant = variant;
+}
+
 /*
  * Some updates on the cmd buffer requires also updates on the shader being
  * compiled at the pipeline. The poster boy here are textures, as the compiler
@@ -2690,8 +2761,13 @@ update_pipeline_variants(struct v3dv_cmd_buffer *cmd_buffer)
 {
    assert(cmd_buffer->state.pipeline);
 
-   update_fs_variant(cmd_buffer);
-   update_vs_variant(cmd_buffer);
+   if (v3dv_pipeline_get_binding_point(cmd_buffer->state.pipeline) ==
+       VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      update_fs_variant(cmd_buffer);
+      update_vs_variant(cmd_buffer);
+   } else {
+      update_cs_variant(cmd_buffer);
+   }
 }
 
 static void
@@ -4471,13 +4547,120 @@ v3dv_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
    unreachable("Timestamp queries are not supported.");
 }
 
+static void
+cmd_buffer_emit_pre_dispatch(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   assert(cmd_buffer->state.pipeline);
+   assert(cmd_buffer->state.pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT);
+
+   /* We may need to compile shader variants based on bound textures */
+   uint32_t *dirty = &cmd_buffer->state.dirty;
+   if (*dirty & (V3DV_CMD_DIRTY_PIPELINE |
+                 V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS)) {
+      update_pipeline_variants(cmd_buffer);
+   }
+
+   *dirty &= ~(V3DV_CMD_DIRTY_PIPELINE |
+               V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS);
+}
+
+#define V3D_CSD_CFG012_WG_COUNT_SHIFT 16
+#define V3D_CSD_CFG012_WG_OFFSET_SHIFT 0
+/* Allow this dispatch to start while the last one is still running. */
+#define V3D_CSD_CFG3_OVERLAP_WITH_PREV (1 << 26)
+/* Maximum supergroup ID.  6 bits. */
+#define V3D_CSD_CFG3_MAX_SG_ID_SHIFT 20
+/* Batches per supergroup minus 1.  8 bits. */
+#define V3D_CSD_CFG3_BATCHES_PER_SG_M1_SHIFT 12
+/* Workgroups per supergroup, 0 means 16 */
+#define V3D_CSD_CFG3_WGS_PER_SG_SHIFT 8
+#define V3D_CSD_CFG3_WG_SIZE_SHIFT 0
+
+#define V3D_CSD_CFG5_PROPAGATE_NANS (1 << 2)
+#define V3D_CSD_CFG5_SINGLE_SEG (1 << 1)
+#define V3D_CSD_CFG5_THREADING (1 << 0)
+
+static void
+cmd_buffer_dispatch(struct v3dv_cmd_buffer *cmd_buffer,
+                    uint32_t group_count_x,
+                    uint32_t group_count_y,
+                    uint32_t group_count_z)
+{
+   if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0)
+      return;
+
+   struct v3dv_job *job = cmd_buffer_start_compute_job(cmd_buffer);
+   if (!job)
+      return;
+
+   struct drm_v3d_submit_csd *submit = &job->csd.submit;
+
+   job->csd.workgroup_count[0] = group_count_x;
+   job->csd.workgroup_count[1] = group_count_y;
+   job->csd.workgroup_count[2] = group_count_z;
+
+   submit->cfg[0] |= group_count_x << V3D_CSD_CFG012_WG_COUNT_SHIFT;
+   submit->cfg[1] |= group_count_y << V3D_CSD_CFG012_WG_COUNT_SHIFT;
+   submit->cfg[2] |= group_count_z << V3D_CSD_CFG012_WG_COUNT_SHIFT;
+
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(pipeline->cs && pipeline->cs->nir);
+
+   const struct nir_shader *cs =  pipeline->cs->nir;
+
+   const uint32_t wgs_per_sg = 1; /* FIXME */
+   const uint32_t wg_size = cs->info.cs.local_size[0] *
+                            cs->info.cs.local_size[1] *
+                            cs->info.cs.local_size[2];
+   submit->cfg[3] |= wgs_per_sg << V3D_CSD_CFG3_WGS_PER_SG_SHIFT;
+   submit->cfg[3] |= ((DIV_ROUND_UP(wgs_per_sg * wg_size, 16) - 1) <<
+                     V3D_CSD_CFG3_BATCHES_PER_SG_M1_SHIFT);
+   submit->cfg[3] |= (wg_size & 0xff) << V3D_CSD_CFG3_WG_SIZE_SHIFT;
+
+   uint32_t batches_per_wg = DIV_ROUND_UP(wg_size, 16);
+   submit->cfg[4] = batches_per_wg *
+                    (group_count_x * group_count_y * group_count_z) - 1;
+   assert(submit->cfg[4] != ~0);
+
+   assert(pipeline->cs->current_variant &&
+          pipeline->cs->current_variant->assembly_bo);
+   const struct v3dv_shader_variant *variant = pipeline->cs->current_variant;
+   submit->cfg[5] = variant->assembly_bo->offset;
+   submit->cfg[5] |= V3D_CSD_CFG5_PROPAGATE_NANS;
+   if (variant->prog_data.base->single_seg)
+      submit->cfg[5] |= V3D_CSD_CFG5_SINGLE_SEG;
+   if (variant->prog_data.base->threads == 4)
+      submit->cfg[5] |= V3D_CSD_CFG5_THREADING;
+
+   if (variant->prog_data.cs->shared_size > 0) {
+      job->csd.shared_memory =
+         v3dv_bo_alloc(cmd_buffer->device,
+                       variant->prog_data.cs->shared_size * wgs_per_sg,
+                       "shared_vars", true);
+   }
+
+   v3dv_job_add_bo(job, variant->assembly_bo);
+
+   struct v3dv_cl_reloc uniforms =
+      v3dv_write_uniforms(cmd_buffer, pipeline->cs);
+   submit->cfg[6] = uniforms.bo->offset + uniforms.offset;
+
+   v3dv_job_add_bo(job, uniforms.bo);
+
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
+   cmd_buffer->state.job = NULL;
+}
+
 void
 v3dv_CmdDispatch(VkCommandBuffer commandBuffer,
                  uint32_t groupCountX,
                  uint32_t groupCountY,
                  uint32_t groupCountZ)
 {
-   unreachable("vkCmdDispatch not implemented.");
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer_emit_pre_dispatch(cmd_buffer);
+   cmd_buffer_dispatch(cmd_buffer, groupCountX, groupCountY, groupCountZ);
 }
 
 void

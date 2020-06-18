@@ -327,6 +327,18 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                          data));
          break;
 
+      case QUNIFORM_NUM_WORK_GROUPS:
+         assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
+         assert(job->csd.workgroup_count[data] > 0);
+         cl_aligned_u32(&uniforms, job->csd.workgroup_count[data]);
+         break;
+
+      case QUNIFORM_SHARED_OFFSET:
+         assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
+         assert(job->csd.shared_memory);
+         cl_aligned_reloc(&job->indirect, &uniforms, job->csd.shared_memory, 0);
+         break;
+
       default:
          unreachable("unsupported quniform_contents uniform type\n");
       }

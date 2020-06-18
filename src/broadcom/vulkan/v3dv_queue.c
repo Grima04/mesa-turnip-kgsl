@@ -579,6 +579,47 @@ handle_tfu_job(struct v3dv_queue *queue,
 }
 
 static VkResult
+handle_csd_job(struct v3dv_queue *queue,
+               struct v3dv_job *job,
+               bool do_wait)
+{
+   struct v3dv_device *device = queue->device;
+
+   struct drm_v3d_submit_csd *submit = &job->csd.submit;
+
+   submit->bo_handle_count = job->bo_count;
+   uint32_t *bo_handles =
+      (uint32_t *) malloc(sizeof(uint32_t) * MAX2(4, submit->bo_handle_count * 2));
+   uint32_t bo_idx = 0;
+   set_foreach(job->bos, entry) {
+      struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
+      bo_handles[bo_idx++] = bo->handle;
+   }
+   assert(bo_idx == submit->bo_handle_count);
+   submit->bo_handles = (uintptr_t)(void *)bo_handles;
+
+   mtx_lock(&queue->device->mutex);
+   submit->in_sync = do_wait ? device->last_job_sync : 0;
+   submit->out_sync = device->last_job_sync;
+   int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_CSD, submit);
+   mtx_unlock(&queue->device->mutex);
+
+   static bool warned = false;
+   if (ret && !warned) {
+      fprintf(stderr, "Compute dispatch returned %s. Expect corruption.\n",
+              strerror(errno));
+      warned = true;
+   }
+
+   free(bo_handles);
+
+   if (ret)
+      return vk_error(device->instance, VK_ERROR_DEVICE_LOST);
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 queue_submit_job(struct v3dv_queue *queue,
                  struct v3dv_job *job,
                  bool do_wait,
@@ -591,6 +632,8 @@ queue_submit_job(struct v3dv_queue *queue,
       return handle_cl_job(queue, job, do_wait);
    case V3DV_JOB_TYPE_GPU_TFU:
       return handle_tfu_job(queue, job, do_wait);
+   case V3DV_JOB_TYPE_GPU_CSD:
+      return handle_csd_job(queue, job, do_wait);
    case V3DV_JOB_TYPE_CPU_RESET_QUERIES:
       return handle_reset_query_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_END_QUERY:
