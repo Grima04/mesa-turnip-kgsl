@@ -644,17 +644,25 @@ nir_channels(nir_builder *b, nir_ssa_def *def, nir_component_mask_t mask)
 }
 
 static inline nir_ssa_def *
-_nir_vector_extract_helper(nir_builder *b, nir_ssa_def *vec, nir_ssa_def *c,
-                           unsigned start, unsigned end)
+_nir_select_from_array_helper(nir_builder *b, nir_ssa_def **arr,
+                              nir_ssa_def *idx,
+                              unsigned start, unsigned end)
 {
    if (start == end - 1) {
-      return nir_channel(b, vec, start);
+      return arr[start];
    } else {
       unsigned mid = start + (end - start) / 2;
-      return nir_bcsel(b, nir_ilt(b, c, nir_imm_intN_t(b, mid, c->bit_size)),
-                       _nir_vector_extract_helper(b, vec, c, start, mid),
-                       _nir_vector_extract_helper(b, vec, c, mid, end));
+      return nir_bcsel(b, nir_ilt(b, idx, nir_imm_intN_t(b, mid, idx->bit_size)),
+                       _nir_select_from_array_helper(b, arr, idx, start, mid),
+                       _nir_select_from_array_helper(b, arr, idx, mid, end));
    }
+}
+
+static inline nir_ssa_def *
+nir_select_from_ssa_def_array(nir_builder *b, nir_ssa_def **arr,
+                              unsigned arr_len, nir_ssa_def *idx)
+{
+   return _nir_select_from_array_helper(b, arr, idx, 0, arr_len);
 }
 
 static inline nir_ssa_def *
@@ -668,7 +676,10 @@ nir_vector_extract(nir_builder *b, nir_ssa_def *vec, nir_ssa_def *c)
       else
          return nir_ssa_undef(b, 1, vec->bit_size);
    } else {
-      return _nir_vector_extract_helper(b, vec, c, 0, vec->num_components);
+      nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
+      for (unsigned i = 0; i < vec->num_components; i++)
+         comps[i] = nir_channel(b, vec, i);
+      return nir_select_from_ssa_def_array(b, comps, vec->num_components, c);
    }
 }
 
