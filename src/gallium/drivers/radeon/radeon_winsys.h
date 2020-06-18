@@ -499,6 +499,16 @@ struct radeon_winsys {
                                                        bool uses_gds_ordered_append);
 
    /**
+    * Set up and enable mid command buffer preemption for the command stream.
+    *
+    * \param cs               Command stream
+    * \param preamble_ib      Non-preemptible preamble IB for the context.
+    * \param preamble_num_dw  Number of dwords in the preamble IB.
+    */
+   bool (*cs_setup_preemption)(struct radeon_cmdbuf *cs, const uint32_t *preamble_ib,
+                               unsigned preamble_num_dw);
+
+   /**
     * Destroy a command stream.
     *
     * \param cs        A command stream to destroy.

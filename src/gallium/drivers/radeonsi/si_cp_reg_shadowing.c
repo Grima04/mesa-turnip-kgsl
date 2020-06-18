@@ -179,12 +179,15 @@ void si_init_cp_reg_shadowing(struct si_context *sctx)
 
       /* The register values are shadowed, so we won't need to set them again. */
       si_pm4_free_state(sctx, sctx->cs_preamble_state, ~0);
-
-      /* Execute the shadowing preamble as cs_preamble, which will
-       * load register values from memory.
-       */
-      sctx->cs_preamble_state = shadowing_preamble;
+      sctx->cs_preamble_state = NULL;
 
       si_set_tracked_regs_to_clear_state(sctx);
+
+      /* Setup preemption. The shadowing preamble will be executed as a preamble IB,
+       * which will load register values from memory on a context switch.
+       */
+      sctx->ws->cs_setup_preemption(sctx->gfx_cs, shadowing_preamble->pm4,
+                                    shadowing_preamble->ndw);
+      si_pm4_free_state(sctx, shadowing_preamble, ~0);
    }
 }
