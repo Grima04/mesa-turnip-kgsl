@@ -195,7 +195,8 @@ static void si_destroy_context(struct pipe_context *context)
    si_resource_reference(&sctx->wait_mem_scratch, NULL);
    si_resource_reference(&sctx->small_prim_cull_info_buf, NULL);
 
-   si_pm4_free_state(sctx, sctx->cs_preamble_state, ~0);
+   if (sctx->cs_preamble_state)
+      si_pm4_free_state(sctx, sctx->cs_preamble_state, ~0);
    if (sctx->cs_preamble_gs_rings)
       si_pm4_free_state(sctx, sctx->cs_preamble_gs_rings, ~0);
    for (i = 0; i < ARRAY_SIZE(sctx->vgt_shader_config); i++)
