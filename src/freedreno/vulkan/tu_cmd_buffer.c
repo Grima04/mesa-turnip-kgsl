@@ -2754,6 +2754,13 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
    }
    cmd->state.dirty = ~0u; /* TODO: set dirty only what needs to be */
 
+   if (cmd->state.pass) {
+      /* After a secondary command buffer is executed, LRZ is not valid
+       * until it is cleared again.
+       */
+      cmd->state.lrz.valid = false;
+   }
+
    /* After executing secondary command buffers, there may have been arbitrary
     * flushes executed, so when we encounter a pipeline barrier with a
     * srcMask, we have to assume that we need to invalidate. Therefore we need
