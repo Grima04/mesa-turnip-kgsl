@@ -146,7 +146,8 @@ si_create_shadowing_ib_preamble(struct si_context *sctx)
 
 void si_init_cp_reg_shadowing(struct si_context *sctx)
 {
-   if (sctx->screen->debug_flags & DBG(SHADOW_REGS)) {
+   if (sctx->screen->info.mid_command_buffer_preemption_enabled ||
+       sctx->screen->debug_flags & DBG(SHADOW_REGS)) {
       sctx->shadowed_regs =
             si_aligned_buffer_create(sctx->b.screen,
                                      SI_RESOURCE_FLAG_UNMAPPABLE,

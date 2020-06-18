@@ -502,6 +502,8 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->has_2d_tiling = true;
 	info->has_read_registers_query = true;
 	info->has_scheduled_fence_dependency = info->drm_minor >= 28;
+	info->mid_command_buffer_preemption_enabled =
+		amdinfo->ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
 
 	info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
 	info->num_render_backends = amdinfo->rb_pipes;
@@ -939,6 +941,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    has_read_registers_query = %u\n", info->has_read_registers_query);
 	printf("    has_gds_ordered_append = %u\n", info->has_gds_ordered_append);
 	printf("    has_scheduled_fence_dependency = %u\n", info->has_scheduled_fence_dependency);
+	printf("    mid_command_buffer_preemption_enabled = %u\n", info->mid_command_buffer_preemption_enabled);
 
 	printf("Shader core info:\n");
 	printf("    max_shader_clock = %i\n", info->max_shader_clock);
