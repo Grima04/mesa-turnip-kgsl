@@ -112,6 +112,7 @@ nv30_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
    case PIPE_CAP_PRIMITIVE_RESTART:
+   case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
       return (eng3d->oclass >= NV40_3D_CLASS) ? 1 : 0;
    /* unsupported */
    case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:

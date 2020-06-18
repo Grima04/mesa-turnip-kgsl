@@ -52,6 +52,9 @@ The integer capabilities:
   from color blend equations, in :ref:`Blend` state.
 * ``PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS``: The maximum number of stream buffers.
 * ``PIPE_CAP_PRIMITIVE_RESTART``: Whether primitive restart is supported.
+* ``PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX``: Subset of
+  PRIMITIVE_RESTART where the restart index is always the fixed maximum
+  value for the index type.
 * ``PIPE_CAP_INDEP_BLEND_ENABLE``: Whether per-rendertarget blend enabling and channel
   masks are supported. If 0, then the first rendertarget's blend mask is
   replicated across all MRTs.

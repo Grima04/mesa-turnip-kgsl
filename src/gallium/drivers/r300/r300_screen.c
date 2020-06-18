@@ -183,6 +183,7 @@ static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 
         /* SWTCL-only features. */
         case PIPE_CAP_PRIMITIVE_RESTART:
+        case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
         case PIPE_CAP_USER_VERTEX_BUFFERS:
         case PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION:
             return !r300screen->caps.has_tcl;

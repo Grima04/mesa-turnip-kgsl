@@ -724,6 +724,10 @@ enum pipe_cap
    PIPE_CAP_BLEND_EQUATION_SEPARATE,
    PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS,
    PIPE_CAP_PRIMITIVE_RESTART,
+   /** subset of PRIMITIVE_RESTART where the restart index is always the fixed
+    * maximum value for the index type
+    */
+   PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX,
    /** blend enables and write masks per rendertarget */
    PIPE_CAP_INDEP_BLEND_ENABLE,
    /** different blend funcs per rendertarget */

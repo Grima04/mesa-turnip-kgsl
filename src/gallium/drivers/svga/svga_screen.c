@@ -344,6 +344,7 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return sws->have_vgpu10 ? 1024 : 0;
 
    case PIPE_CAP_PRIMITIVE_RESTART:
+   case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
       return 1; /* may be a sw fallback, depending on restart index */
 
    case PIPE_CAP_GENERATE_MIPMAP:
