@@ -541,6 +541,7 @@ for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOPP:
 
 
 # SMEM instructions: sbase input (2 sgpr), potentially 2 offset inputs, 1 sdata input/output
+# Unlike GFX10, GFX10.3 does not have SMEM store, atomic or scratch instructions
 SMEM = {
   # GFX6, GFX7, GFX8, GFX9, GFX10, name
    (0x00, 0x00, 0x00, 0x00, 0x00, "s_load_dword"),
@@ -570,7 +571,7 @@ SMEM = {
    (  -1,   -1, 0x21, 0x21, 0x21, "s_dcache_wb"),
    (  -1, 0x1d, 0x22, 0x22,   -1, "s_dcache_inv_vol"),
    (  -1,   -1, 0x23, 0x23,   -1, "s_dcache_wb_vol"),
-   (0x1e, 0x1e, 0x24, 0x24, 0x24, "s_memtime"),
+   (0x1e, 0x1e, 0x24, 0x24, 0x24, "s_memtime"), #GFX6-GFX10
    (  -1,   -1, 0x25, 0x25, 0x25, "s_memrealtime"),
    (  -1,   -1, 0x26, 0x26, 0x26, "s_atc_probe"),
    (  -1,   -1, 0x27, 0x27, 0x27, "s_atc_probe_buffer"),
@@ -946,7 +947,7 @@ for (code, name) in VINTRP:
 # VOP3 instructions: 3 inputs, 1 output
 # VOP3b instructions: have a unique scalar output, e.g. VOP2 with vcc out
 VOP3 = {
-   (0x140, 0x140, 0x1c0, 0x1c0, 0x140, "v_mad_legacy_f32", True, True),
+   (0x140, 0x140, 0x1c0, 0x1c0, 0x140, "v_mad_legacy_f32", True, True), # GFX6-GFX10
    (0x141, 0x141, 0x1c1, 0x1c1, 0x141, "v_mad_f32", True, True),
    (0x142, 0x142, 0x1c2, 0x1c2, 0x142, "v_mad_i32_i24", False, False),
    (0x143, 0x143, 0x1c3, 0x1c3, 0x143, "v_mad_u32_u24", False, False),
@@ -1076,6 +1077,7 @@ VOP3 = {
    (   -1,    -1,    -1,    -1, 0x307, "v_lshrrev_b16_e64", False, False),
    (   -1,    -1,    -1,    -1, 0x308, "v_ashrrev_i16_e64", False, False),
    (   -1,    -1,    -1,    -1, 0x314, "v_lshlrev_b16_e64", False, False),
+   (   -1,    -1,    -1,    -1, 0x140, "v_fma_legacy_f32", True, True), #GFX10.3+
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name, in_mod, out_mod) in VOP3:
    opcode(name, gfx7, gfx9, gfx10, Format.VOP3A, in_mod, out_mod)
@@ -1323,6 +1325,7 @@ MUBUF = {
    (0x60, 0x60,   -1,   -1, 0x60, "buffer_atomic_fmax_x2"),
    (  -1,   -1,   -1,   -1, 0x71, "buffer_gl0_inv"),
    (  -1,   -1,   -1,   -1, 0x72, "buffer_gl1_inv"),
+   (  -1,   -1,   -1,   -1, 0x34, "buffer_atomic_csub"), #GFX10.3+. seems glc must be set
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in MUBUF:
     opcode(name, gfx7, gfx9, gfx10, Format.MUBUF, is_atomic = "atomic" in name)
@@ -1366,6 +1369,8 @@ IMAGE = {
 # (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (code, code, code, code, code, name)
 for (code, name) in IMAGE:
    opcode(name, code, code, code, Format.MIMG)
+
+opcode("image_msaa_load", -1, -1, 0x80, Format.MIMG) #GFX10.3+
 
 IMAGE_ATOMIC = {
    (0x0f, 0x0f, 0x10, "image_atomic_swap"),
@@ -1587,6 +1592,9 @@ GLOBAL = {
    (  -1, 0x5e, "global_atomic_fcmpswap_x2"),
    (  -1, 0x5f, "global_atomic_fmin_x2"),
    (  -1, 0x60, "global_atomic_fmax_x2"),
+   (  -1, 0x16, "global_load_dword_addtid"), #GFX10.3+
+   (  -1, 0x17, "global_store_dword_addtid"), #GFX10.3+
+   (  -1, 0x34, "global_atomic_csub"), #GFX10.3+. seems glc must be set
 }
 for (gfx8, gfx10, name) in GLOBAL:
     opcode(name, -1, gfx8, gfx10, Format.GLOBAL, is_atomic = "atomic" in name)
@@ -1636,6 +1644,9 @@ for ver in ['gfx9', 'gfx10']:
             # exceptions
             names = set([op_to_name[key], op.name])
             if ver in ['gfx8', 'gfx9'] and names == set(['v_mul_lo_i32', 'v_mul_lo_u32']):
+                continue
+            # v_mad_legacy_f32 is replaced with v_fma_legacy_f32 on GFX10.3
+            if ver == 'gfx10' and names == set(['v_mad_legacy_f32', 'v_fma_legacy_f32']):
                 continue
 
             print('%s and %s share the same opcode number (%s)' % (op_to_name[key], op.name, ver))
