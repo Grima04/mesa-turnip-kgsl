@@ -8890,11 +8890,11 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
 }
 
 
-Operand get_phi_operand(isel_context *ctx, nir_ssa_def *ssa)
+Operand get_phi_operand(isel_context *ctx, nir_ssa_def *ssa, RegClass rc)
 {
    Temp tmp = get_ssa_temp(ctx, ssa);
    if (ssa->parent_instr->type == nir_instr_type_ssa_undef)
-      return Operand(tmp.regClass());
+      return Operand(rc);
    else
       return Operand(tmp);
 }
@@ -8939,7 +8939,7 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
       if (!(ctx->block->kind & block_kind_loop_header) && cur_pred_idx >= preds.size())
          continue;
       cur_pred_idx++;
-      Operand op = get_phi_operand(ctx, src.second);
+      Operand op = get_phi_operand(ctx, src.second, dst.regClass());
       operands[num_operands++] = op;
       num_defined += !op.isUndefined();
    }
