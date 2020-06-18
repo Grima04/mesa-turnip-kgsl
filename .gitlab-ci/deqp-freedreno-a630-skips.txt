@@ -16,10 +16,6 @@ dEQP-GLES3.functional.transform_feedback.*lines.*
 dEQP-GLES31.functional.primitive_bounding_box.*
 #dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array.*
 
-# Intermittent timeout
-dEQP-GLES31.functional.ssbo.layout.random.all_shared_buffer.23
-dEQP-GLES31.functional.ssbo.layout.random.all_shared_buffer.48
-
 # Flakes reported more than once during Jan-Feb 2020
 dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 dEQP-GLES3.functional.fragment_out.random.0
