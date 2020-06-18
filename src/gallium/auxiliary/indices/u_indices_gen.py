@@ -208,6 +208,19 @@ def preamble(intype, outtype, inpv, outpv, pr, prim):
 def postamble():
     print('}')
 
+def prim_restart(in_verts, out_verts, out_prims):
+    print('restart:')
+    print('      if (i + ' + str(in_verts) + ' > in_nr) {')
+    for i in range(out_prims):
+        for j in range(out_verts):
+            print('         (out+j+' + str(out_verts * i) + ')[' + str(j) + '] = restart_index;')
+    print('         continue;')
+    print('      }')
+    for i in range(in_verts):
+        print('      if (in[i + ' + str(i) + '] == restart_index) {')
+        print('         i += ' + str(i + 1) + ';')
+        print('         goto restart;')
+        print('      }')
 
 def points(intype, outtype, inpv, outpv, pr):
     preamble(intype, outtype, inpv, outpv, pr, prim='points')
@@ -305,32 +318,7 @@ def quads(intype, outtype, inpv, outpv, pr):
     preamble(intype, outtype, inpv, outpv, pr, prim='quads')
     print('  for (i = start, j = 0; j < out_nr; j+=6, i+=4) { ')
     if pr == PRENABLE:
-        print('restart:')
-        print('      if (i + 4 > in_nr) {')
-        print('         (out+j+0)[0] = restart_index;')
-        print('         (out+j+0)[1] = restart_index;')
-        print('         (out+j+0)[2] = restart_index;')
-        print('         (out+j+3)[0] = restart_index;')
-        print('         (out+j+3)[1] = restart_index;')
-        print('         (out+j+3)[2] = restart_index;')
-        print('         continue;')
-        print('      }')
-        print('      if (in[i + 0] == restart_index) {')
-        print('         i += 1;')
-        print('         goto restart;')
-        print('      }')
-        print('      if (in[i + 1] == restart_index) {')
-        print('         i += 2;')
-        print('         goto restart;')
-        print('      }')
-        print('      if (in[i + 2] == restart_index) {')
-        print('         i += 3;')
-        print('         goto restart;')
-        print('      }')
-        print('      if (in[i + 3] == restart_index) {')
-        print('         i += 4;')
-        print('         goto restart;')
-        print('      }')
+        prim_restart(4, 3, 2)
 
     do_quad( intype, outtype, 'out+j', 'i+0', 'i+1', 'i+2', 'i+3', inpv, outpv );
     print('   }')
@@ -341,32 +329,8 @@ def quadstrip(intype, outtype, inpv, outpv, pr):
     preamble(intype, outtype, inpv, outpv, pr, prim='quadstrip')
     print('  for (i = start, j = 0; j < out_nr; j+=6, i+=2) { ')
     if pr == PRENABLE:
-        print('restart:')
-        print('      if (i + 4 > in_nr) {')
-        print('         (out+j+0)[0] = restart_index;')
-        print('         (out+j+0)[1] = restart_index;')
-        print('         (out+j+0)[2] = restart_index;')
-        print('         (out+j+3)[0] = restart_index;')
-        print('         (out+j+3)[1] = restart_index;')
-        print('         (out+j+3)[2] = restart_index;')
-        print('         continue;')
-        print('      }')
-        print('      if (in[i + 0] == restart_index) {')
-        print('         i += 1;')
-        print('         goto restart;')
-        print('      }')
-        print('      if (in[i + 1] == restart_index) {')
-        print('         i += 2;')
-        print('         goto restart;')
-        print('      }')
-        print('      if (in[i + 2] == restart_index) {')
-        print('         i += 3;')
-        print('         goto restart;')
-        print('      }')
-        print('      if (in[i + 3] == restart_index) {')
-        print('         i += 4;')
-        print('         goto restart;')
-        print('      }')
+        prim_restart(4, 3, 2)
+
     if inpv == LAST:
         do_quad( intype, outtype, 'out+j', 'i+2', 'i+0', 'i+1', 'i+3', inpv, outpv );
     else:
