@@ -265,7 +265,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    case 618:
       device->ccu_offset_gmem = 0x7c000; /* 0x7e000 in some cases? */
       device->ccu_offset_bypass = 0x10000;
-      device->tile_align_w = 64;
+      device->tile_align_w = 32;
       device->magic.PC_UNKNOWN_9805 = 0x0;
       device->magic.SP_UNKNOWN_A0F8 = 0x0;
       break;
@@ -273,7 +273,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    case 640:
       device->ccu_offset_gmem = 0xf8000;
       device->ccu_offset_bypass = 0x20000;
-      device->tile_align_w = 64;
+      device->tile_align_w = 32;
       device->magic.PC_UNKNOWN_9805 = 0x1;
       device->magic.SP_UNKNOWN_A0F8 = 0x1;
       break;

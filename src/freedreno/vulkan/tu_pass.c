@@ -289,7 +289,7 @@ static void
 tu_render_pass_gmem_config(struct tu_render_pass *pass,
                            const struct tu_physical_device *phys_dev)
 {
-   uint32_t block_align_shift = 4; /* log2(gmem_align/(tile_align_w*tile_align_h)) */
+   uint32_t block_align_shift = 3; /* log2(gmem_align/(tile_align_w*tile_align_h)) */
    uint32_t tile_align_w = phys_dev->tile_align_w;
    uint32_t gmem_align = (1 << block_align_shift) * tile_align_w * TILE_ALIGN_H;
 
