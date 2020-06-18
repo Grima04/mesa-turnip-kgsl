@@ -214,6 +214,10 @@ public:
       clear(def.physReg(), def.regClass());
    }
 
+   unsigned get_id(PhysReg reg) {
+      return regs[reg] == 0xF0000000 ? subdword_regs[reg][reg.byte()] : regs[reg];
+   }
+
 private:
    void fill(PhysReg start, unsigned size, uint32_t val) {
       for (unsigned i = 0; i < size; i++)
@@ -942,9 +946,9 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    unsigned reg_hi = lb + size - 1;
    for (reg_lo = lb, reg_hi = lb + size - 1; reg_hi < ub; reg_lo += stride, reg_hi += stride) {
       /* first check the edges: this is what we have to fix to allow for num_moves > size */
-      if (reg_lo > lb && reg_file[reg_lo] != 0 && reg_file[reg_lo] == reg_file[reg_lo - 1])
+      if (reg_lo > lb && reg_file[reg_lo] != 0 && reg_file.get_id(PhysReg(reg_lo)) == reg_file.get_id(PhysReg(reg_lo).advance(-1)))
          continue;
-      if (reg_hi < ub - 1 && reg_file[reg_hi] != 0 && reg_file[reg_hi] == reg_file[reg_hi + 1])
+      if (reg_hi < ub - 1 && reg_file[reg_hi] != 0 && reg_file.get_id(PhysReg(reg_hi).advance(3)) == reg_file.get_id(PhysReg(reg_hi).advance(4)))
          continue;
 
       /* second, check that we have at most k=num_moves elements in the window
@@ -1300,9 +1304,9 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
       // TODO: this can be improved */
       if (reg_lo < lb || reg_hi >= ub || reg_lo % stride != 0)
          continue;
-      if (reg_lo > lb && reg_file[reg_lo] != 0 && reg_file[reg_lo] == reg_file[reg_lo - 1])
+      if (reg_lo > lb && reg_file[reg_lo] != 0 && reg_file.get_id(PhysReg(reg_lo)) == reg_file.get_id(PhysReg(reg_lo).advance(-1)))
          continue;
-      if (reg_hi < ub - 1 && reg_file[reg_hi] != 0 && reg_file[reg_hi] == reg_file[reg_hi + 1])
+      if (reg_hi < ub - 1 && reg_file[reg_hi] != 0 && reg_file.get_id(PhysReg(reg_hi).advance(3)) == reg_file.get_id(PhysReg(reg_hi).advance(4)))
          continue;
 
       /* count variables to be moved and check war_hint */
