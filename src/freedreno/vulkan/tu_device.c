@@ -1182,7 +1182,6 @@ struct PACKED bcolor_entry {
    },
 };
 
-
 VkResult
 tu_CreateDevice(VkPhysicalDevice physicalDevice,
                 const VkDeviceCreateInfo *pCreateInfo,
@@ -1265,30 +1264,20 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (!device->compiler)
       goto fail_queues;
 
-#define VSC_DRAW_STRM_SIZE(pitch)  ((pitch) * 32 + 0x100)  /* extra size to store VSC_SIZE */
-#define VSC_PRIM_STRM_SIZE(pitch) ((pitch) * 32)
+   /* initial sizes, these will increase if there is overflow */
+   device->vsc_draw_strm_pitch = 0x1000 + VSC_PAD;
+   device->vsc_prim_strm_pitch = 0x4000 + VSC_PAD;
 
-   device->vsc_draw_strm_pitch = 0x440 * 4;
-   device->vsc_prim_strm_pitch = 0x1040 * 4;
-
-   result = tu_bo_init_new(device, &device->vsc_draw_strm, VSC_DRAW_STRM_SIZE(device->vsc_draw_strm_pitch));
+   STATIC_ASSERT(sizeof(border_color) == sizeof(((struct tu6_global*) 0)->border_color));
+   result = tu_bo_init_new(device, &device->global_bo, sizeof(struct tu6_global));
    if (result != VK_SUCCESS)
-      goto fail_vsc_data;
+      goto fail_global_bo;
 
-   result = tu_bo_init_new(device, &device->vsc_prim_strm, VSC_PRIM_STRM_SIZE(device->vsc_prim_strm_pitch));
+   result = tu_bo_map(device, &device->global_bo);
    if (result != VK_SUCCESS)
-      goto fail_vsc_data2;
+      goto fail_global_bo_map;
 
-   STATIC_ASSERT(sizeof(struct bcolor_entry) == 128);
-   result = tu_bo_init_new(device, &device->border_color, sizeof(border_color));
-   if (result != VK_SUCCESS)
-      goto fail_border_color;
-
-   result = tu_bo_map(device, &device->border_color);
-   if (result != VK_SUCCESS)
-      goto fail_border_color_map;
-
-   memcpy(device->border_color.map, border_color, sizeof(border_color));
+   memcpy(device->global_bo.map + gb_offset(border_color), border_color, sizeof(border_color));
 
    VkPipelineCacheCreateInfo ci;
    ci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -1307,20 +1296,16 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++)
       mtx_init(&device->scratch_bos[i].construct_mtx, mtx_plain);
 
+   mtx_init(&device->vsc_pitch_mtx, mtx_plain);
+
    *pDevice = tu_device_to_handle(device);
    return VK_SUCCESS;
 
 fail_pipeline_cache:
-fail_border_color_map:
-   tu_bo_finish(device, &device->border_color);
+fail_global_bo_map:
+   tu_bo_finish(device, &device->global_bo);
 
-fail_border_color:
-   tu_bo_finish(device, &device->vsc_prim_strm);
-
-fail_vsc_data2:
-   tu_bo_finish(device, &device->vsc_draw_strm);
-
-fail_vsc_data:
+fail_global_bo:
    ralloc_free(device->compiler);
 
 fail_queues:
@@ -1342,9 +1327,6 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (!device)
       return;
-
-   tu_bo_finish(device, &device->vsc_draw_strm);
-   tu_bo_finish(device, &device->vsc_prim_strm);
 
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++)

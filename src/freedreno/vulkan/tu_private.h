@@ -339,6 +339,31 @@ struct tu_bo
    void *map;
 };
 
+/* This struct defines the layout of the global_bo */
+struct tu6_global
+{
+   /* 6 bcolor_entry entries, one for each VK_BORDER_COLOR */
+   uint8_t border_color[128 * 6];
+
+   uint32_t seqno_dummy;          /* dummy seqno for CP_EVENT_WRITE */
+   uint32_t _pad0;
+   volatile uint32_t vsc_draw_overflow;
+   uint32_t _pad1;
+   volatile uint32_t vsc_prim_overflow;
+   uint32_t _pad2[3];
+
+   /* scratch space for VPC_SO[i].FLUSH_BASE_LO/HI, start on 32 byte boundary. */
+   struct {
+      uint32_t offset;
+      uint32_t pad[7];
+   } flush_base[4];
+};
+#define gb_offset(member) offsetof(struct tu6_global, member)
+#define global_iova(cmd, member) ((cmd)->device->global_bo.iova + gb_offset(member))
+
+/* extra space in vsc draw/prim streams */
+#define VSC_PAD 0x40
+
 struct tu_device
 {
    VK_LOADER_DATA _loader_data;
@@ -358,11 +383,6 @@ struct tu_device
    /* Backup in-memory cache to be used if the app doesn't provide one */
    struct tu_pipeline_cache *mem_cache;
 
-   struct tu_bo vsc_draw_strm;
-   struct tu_bo vsc_prim_strm;
-   uint32_t vsc_draw_strm_pitch;
-   uint32_t vsc_prim_strm_pitch;
-
 #define MIN_SCRATCH_BO_SIZE_LOG2 12 /* A page */
 
    /* Currently the kernel driver uses a 32-bit GPU address space, but it
@@ -374,9 +394,13 @@ struct tu_device
       bool initialized;
    } scratch_bos[48 - MIN_SCRATCH_BO_SIZE_LOG2];
 
-   struct tu_bo border_color;
+   struct tu_bo global_bo;
 
    struct tu_device_extension_table enabled_extensions;
+
+   uint32_t vsc_draw_strm_pitch;
+   uint32_t vsc_prim_strm_pitch;
+   mtx_t vsc_pitch_mtx;
 };
 
 VkResult _tu_device_set_lost(struct tu_device *device,
@@ -883,28 +907,6 @@ tu_bo_list_add(struct tu_bo_list *list,
 VkResult
 tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other);
 
-/* This struct defines the layout of the scratch_bo */
-struct tu6_control
-{
-   uint32_t seqno_dummy;          /* dummy seqno for CP_EVENT_WRITE */
-   uint32_t _pad0;
-   volatile uint32_t vsc_overflow;
-   uint32_t _pad1;
-   /* flag set from cmdstream when VSC overflow detected: */
-   uint32_t vsc_scratch;
-   uint32_t _pad2;
-   uint32_t _pad3;
-   uint32_t _pad4;
-
-   /* scratch space for VPC_SO[i].FLUSH_BASE_LO/HI, start on 32 byte boundary. */
-   struct {
-      uint32_t offset;
-      uint32_t pad[7];
-   } flush_base[4];
-};
-
-#define ctrl_offset(member) offsetof(struct tu6_control, member)
-
 struct tu_cmd_buffer
 {
    VK_LOADER_DATA _loader_data;
@@ -939,15 +941,10 @@ struct tu_cmd_buffer
    struct tu_cs draw_epilogue_cs;
    struct tu_cs sub_cs;
 
-   struct tu_bo scratch_bo;
-
    bool has_tess;
 
-   struct tu_bo vsc_draw_strm;
-   struct tu_bo vsc_prim_strm;
    uint32_t vsc_draw_strm_pitch;
    uint32_t vsc_prim_strm_pitch;
-   bool use_vsc_data;
 };
 
 /* Temporary struct for tracking a register state to be written, used by
