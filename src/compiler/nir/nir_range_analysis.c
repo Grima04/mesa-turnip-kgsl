@@ -1319,10 +1319,6 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
       case nir_op_udiv:
       case nir_op_bcsel:
       case nir_op_b32csel:
-      case nir_op_imax3:
-      case nir_op_imin3:
-      case nir_op_umax3:
-      case nir_op_umin3:
       case nir_op_ubfe:
       case nir_op_bfm:
       case nir_op_f2u32:
@@ -1404,16 +1400,6 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
       case nir_op_bcsel:
       case nir_op_b32csel:
          res = src1 > src2 ? src1 : src2;
-         break;
-      case nir_op_imax3:
-      case nir_op_imin3:
-      case nir_op_umax3:
-         src0 = src0 > src1 ? src0 : src1;
-         res = src0 > src2 ? src0 : src2;
-         break;
-      case nir_op_umin3:
-         src0 = src0 < src1 ? src0 : src1;
-         res = src0 < src2 ? src0 : src2;
          break;
       case nir_op_ubfe:
          res = bitmask(MIN2(src2, scalar.def->bit_size));
