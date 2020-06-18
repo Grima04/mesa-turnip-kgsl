@@ -71,7 +71,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
 
 GL 3.1, GLSL 1.40 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl
 
-  Forward compatible context support/deprecations       DONE ()
+  Forward compatible context support/deprecations       DONE
   GL_ARB_draw_instanced (Instanced drawing)             DONE (v3d, zink)
   GL_ARB_copy_buffer (Buffer copying)                   DONE (v3d, zink)
   GL_NV_primitive_restart (Primitive restart)           DONE (v3d)
