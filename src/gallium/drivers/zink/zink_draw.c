@@ -418,7 +418,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             counter_buffers[i] = res->buffer;
             counter_buffer_offsets[i] = t->counter_buffer_offset;
          } else
-            counter_buffers[i] = NULL;
+            counter_buffers[i] = VK_NULL_HANDLE;
       }
       screen->vk_CmdBeginTransformFeedbackEXT(batch->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
