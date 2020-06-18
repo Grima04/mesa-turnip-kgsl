@@ -845,10 +845,9 @@ struct tu_cmd_state
 
    /* saved states to re-emit in TU_CMD_DIRTY_DRAW_STATE case */
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
-   struct tu_cs_entry vertex_buffers_ib;
-   struct tu_cs_entry shader_const_ib[MESA_SHADER_STAGES];
-   struct tu_cs_entry desc_sets_ib;
-   struct tu_cs_entry ia_gmem_ib, ia_sysmem_ib;
+   struct tu_draw_state vertex_buffers;
+   struct tu_draw_state shader_const[MESA_SHADER_STAGES];
+   struct tu_draw_state desc_sets;
 
    struct tu_draw_state vs_params;
 
@@ -1078,23 +1077,21 @@ struct tu_pipeline
    /* gras_su_cntl without line width, used for dynamic line width state */
    uint32_t gras_su_cntl;
 
+   /* draw states for the pipeline */
+   struct tu_draw_state load_state, rast_state, ds_state, blend_state;
+
    struct
    {
-      struct tu_cs_entry state_ib;
-      struct tu_cs_entry binning_state_ib;
+      struct tu_draw_state state;
+      struct tu_draw_state binning_state;
 
       struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
    } program;
 
    struct
    {
-      struct tu_cs_entry state_ib;
-   } load_state;
-
-   struct
-   {
-      struct tu_cs_entry state_ib;
-      struct tu_cs_entry binning_state_ib;
+      struct tu_draw_state state;
+      struct tu_draw_state binning_state;
       uint32_t bindings_used;
    } vi;
 
@@ -1112,21 +1109,6 @@ struct tu_pipeline
       uint32_t ds_bo_regid;
       bool upper_left_domain_origin;
    } tess;
-
-   struct
-   {
-      struct tu_cs_entry state_ib;
-   } rast;
-
-   struct
-   {
-      struct tu_cs_entry state_ib;
-   } ds;
-
-   struct
-   {
-      struct tu_cs_entry state_ib;
-   } blend;
 
    struct
    {

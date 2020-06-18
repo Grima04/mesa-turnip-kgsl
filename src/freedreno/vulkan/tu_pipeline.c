@@ -237,7 +237,7 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
       }
    }
 
-   pipeline->load_state.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
+   pipeline->load_state = tu_cs_end_draw_state(&pipeline->cs, &cs);
 }
 
 struct tu_pipeline_builder
@@ -2088,11 +2088,11 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    struct tu_cs prog_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_program(&prog_cs, builder, false);
-   pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+   pipeline->program.state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_program(&prog_cs, builder, true);
-   pipeline->program.binning_state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+   pipeline->program.binning_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
    VkShaderStageFlags stages = 0;
    for (unsigned i = 0; i < builder->create_info->stageCount; i++) {
@@ -2127,15 +2127,15 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
                           MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
    tu6_emit_vertex_input(&vi_cs, vs, vi_info,
                          &pipeline->vi.bindings_used);
-   pipeline->vi.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
+   pipeline->vi.state = tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
 
    if (bs) {
       tu_cs_begin_sub_stream(&pipeline->cs,
                              MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
       tu6_emit_vertex_input(
          &vi_cs, bs, vi_info, &pipeline->vi.bindings_used);
-      pipeline->vi.binning_state_ib =
-         tu_cs_end_sub_stream(&pipeline->cs, &vi_cs);
+      pipeline->vi.binning_state =
+         tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
    }
 }
 
@@ -2154,20 +2154,12 @@ static bool
 tu_pipeline_static_state(struct tu_pipeline *pipeline, struct tu_cs *cs,
                          uint32_t id, uint32_t size)
 {
-   struct tu_cs_memory memory;
+   assert(id < ARRAY_SIZE(pipeline->dynamic_state));
 
    if (pipeline->dynamic_state_mask & BIT(id))
       return false;
 
-   /* TODO: share this logc with tu_cmd_dynamic_state */
-   tu_cs_alloc(&pipeline->cs, size, 1, &memory);
-   tu_cs_init_external(cs, memory.map, memory.map + size);
-   tu_cs_begin(cs);
-   tu_cs_reserve_space(cs, size);
-
-   assert(id < ARRAY_SIZE(pipeline->dynamic_state));
-   pipeline->dynamic_state[id].iova = memory.iova;
-   pipeline->dynamic_state[id].size = size;
+   pipeline->dynamic_state[id] = tu_cs_draw_state(&pipeline->cs, cs, size);
    return true;
 }
 
@@ -2232,7 +2224,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
 
    struct tu_cs cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, 9, &cs);
+   pipeline->rast_state = tu_cs_draw_state(&pipeline->cs, &cs, 9);
 
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_CL_CNTL(
@@ -2252,8 +2244,6 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_SU_POINT_MINMAX(.min = 1.0f / 16.0f, .max = 4092.0f),
                    A6XX_GRAS_SU_POINT_SIZE(1.0f));
-
-   pipeline->rast.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
 
    pipeline->gras_su_cntl =
       tu6_gras_su_cntl(rast_info, builder->samples);
@@ -2298,15 +2288,13 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
          ? ds_info : &dummy_ds_info;
 
    struct tu_cs cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, 6, &cs);
+   pipeline->ds_state = tu_cs_draw_state(&pipeline->cs, &cs, 6);
 
    /* move to hw ctx init? */
    tu_cs_emit_regs(&cs, A6XX_RB_ALPHA_CONTROL());
    tu6_emit_depth_control(&cs, ds_info_depth,
                           builder->create_info->pRasterizationState);
    tu6_emit_stencil_control(&cs, ds_info);
-
-   pipeline->ds.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_DEPTH_BOUNDS, 3)) {
       tu_cs_emit_regs(&cs,
@@ -2361,7 +2349,8 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
                                      : &dummy_blend_info;
 
    struct tu_cs cs;
-   tu_cs_begin_sub_stream(&pipeline->cs, MAX_RTS * 3 + 4, &cs);
+   pipeline->blend_state =
+      tu_cs_draw_state(&pipeline->cs, &cs, blend_info->attachmentCount * 3 + 4);
 
    uint32_t blend_enable_mask;
    tu6_emit_rb_mrt_controls(&cs, blend_info,
@@ -2371,7 +2360,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
    tu6_emit_blend_control(&cs, blend_enable_mask,
                           builder->use_dual_src_blend, msaa_info);
 
-   pipeline->blend.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
+   assert(cs.cur == cs.end); /* validate draw state size */
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_BLEND_CONSTANTS, 5)) {
       tu_cs_emit_pkt4(&cs, REG_A6XX_RB_BLEND_RED_F32, 4);
@@ -2624,7 +2613,7 @@ tu_compute_pipeline_create(VkDevice device,
    struct tu_cs prog_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
    tu6_emit_cs_config(&prog_cs, shader, v, shader_iova);
-   pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
+   pipeline->program.state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
    tu6_emit_load_state(pipeline, true);
 
