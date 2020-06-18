@@ -882,6 +882,11 @@ void schedule_block(sched_ctx& ctx, Program *program, Block* block, live& live_v
 
 void schedule_program(Program *program, live& live_vars)
 {
+   /* don't use program->max_reg_demand because that is affected by max_waves_per_simd */
+   RegisterDemand demand;
+   for (Block& block : program->blocks)
+      demand.update(block.register_demand);
+
    sched_ctx ctx;
    ctx.mv.depends_on.resize(program->peekAllocationId());
    ctx.mv.RAR_dependencies.resize(program->peekAllocationId());
@@ -891,15 +896,14 @@ void schedule_program(Program *program, live& live_vars)
     * seem to hurt anything else. */
    if (program->num_waves <= 5)
       ctx.num_waves = program->num_waves;
-   else if (program->max_reg_demand.vgpr >= 32)
+   else if (demand.vgpr >= 29)
       ctx.num_waves = 5;
-   else if (program->max_reg_demand.vgpr >= 28)
+   else if (demand.vgpr >= 25)
       ctx.num_waves = 6;
-   else if (program->max_reg_demand.vgpr >= 24)
-      ctx.num_waves = 7;
    else
-      ctx.num_waves = 8;
+      ctx.num_waves = 7;
    ctx.num_waves = std::max<uint16_t>(ctx.num_waves, program->min_waves);
+   ctx.num_waves = std::min<uint16_t>(ctx.num_waves, program->max_waves);
 
    assert(ctx.num_waves > 0 && ctx.num_waves <= program->num_waves);
    ctx.mv.max_registers = { int16_t(get_addr_vgpr_from_waves(program, ctx.num_waves) - 2),
