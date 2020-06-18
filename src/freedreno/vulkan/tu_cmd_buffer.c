@@ -512,6 +512,19 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
       break;
    }
 
+   /* We need to reload the descriptors every time the descriptor sets
+    * change. However, the commands we send only depend on the pipeline
+    * because the whole point is to cache descriptors which are used by the
+    * pipeline. There's a problem here, in that the firmware has an
+    * "optimization" which skips executing groups that are set to the same
+    * value as the last draw. This means that if the descriptor sets change
+    * but not the pipeline, we'd try to re-execute the same buffer which
+    * the firmware would ignore and we wouldn't pre-load the new
+    * descriptors. Set the DIRTY bit to avoid this optimization
+    */
+   if (id == TU_DRAW_STATE_DESC_SETS_LOAD)
+      enable_mask |= CP_SET_DRAW_STATE__0_DIRTY;
+
    tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(state.size) |
                   enable_mask |
                   CP_SET_DRAW_STATE__0_GROUP_ID(id) |
@@ -1723,7 +1736,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       hlsq_bindless_base_reg = REG_A6XX_HLSQ_BINDLESS_BASE(0);
       hlsq_invalidate_value = A6XX_HLSQ_INVALIDATE_CMD_GFX_BINDLESS(0x1f);
 
-      cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS | TU_CMD_DIRTY_SHADER_CONSTS;
+      cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD | TU_CMD_DIRTY_SHADER_CONSTS;
    } else {
       assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE);
 
@@ -2027,7 +2040,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    cmd->state.pipeline = pipeline;
-   cmd->state.dirty |= TU_CMD_DIRTY_SHADER_CONSTS;
+   cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD | TU_CMD_DIRTY_SHADER_CONSTS;
 
    struct tu_cs *cs = &cmd->draw_cs;
    uint32_t mask = ~pipeline->dynamic_state_mask & BITFIELD_MASK(TU_DYNAMIC_STATE_COUNT);
@@ -2041,7 +2054,6 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_RAST, pipeline->rast.state_ib);
    tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DS, pipeline->ds.state_ib);
    tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_BLEND, pipeline->blend.state_ib);
-
    for_each_bit(i, mask)
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i, pipeline->dynamic_state[i]);
 
@@ -2051,10 +2063,6 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
     */
    if (pipeline->vi.bindings_used & ~cmd->vertex_bindings_set)
       cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
-
-   /* If the pipeline needs a dynamic descriptor, re-emit descriptor sets */
-   if (pipeline->layout->dynamic_offset_count)
-      cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS;
 
    /* dynamic linewidth state depends pipeline state's gras_su_cntl
     * so the dynamic state ib must be updated when pipeline changes
@@ -2955,34 +2963,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
    }
 
-   if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
-      /* We need to reload the descriptors every time the descriptor sets
-       * change. However, the commands we send only depend on the pipeline
-       * because the whole point is to cache descriptors which are used by the
-       * pipeline. There's a problem here, in that the firmware has an
-       * "optimization" which skips executing groups that are set to the same
-       * value as the last draw. This means that if the descriptor sets change
-       * but not the pipeline, we'd try to re-execute the same buffer which
-       * the firmware would ignore and we wouldn't pre-load the new
-       * descriptors. The blob seems to re-emit the LOAD_STATE group whenever
-       * the descriptor sets change, which we emulate here by copying the
-       * pre-prepared buffer.
-       */
-      const struct tu_cs_entry *load_entry = &pipeline->load_state.state_ib;
-      if (load_entry->size > 0) {
-         struct tu_cs load_cs;
-         result = tu_cs_begin_sub_stream(&cmd->sub_cs, load_entry->size, &load_cs);
-         if (result != VK_SUCCESS)
-            return result;
-         tu_cs_emit_array(&load_cs,
-                          (uint32_t *)((char  *)load_entry->bo->map + load_entry->offset),
-                          load_entry->size / 4);
-         cmd->state.desc_sets_load_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &load_cs);
-      } else {
-         cmd->state.desc_sets_load_ib.size = 0;
-      }
-   }
-
    if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
       cmd->state.vertex_buffers_ib = tu6_emit_vertex_buffers(cmd, pipeline);
 
@@ -3023,7 +3003,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT]);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets_ib);
-      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.desc_sets_load_ib);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state.state_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers_ib);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
 
@@ -3041,7 +3021,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       uint32_t draw_state_count =
          has_tess +
          ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 5 : 0) +
-         ((cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) ? 1 : 0) +
+         ((cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
          1; /* vs_params */
 
@@ -3058,8 +3038,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT]);
          }
-         if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS)
-            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.desc_sets_load_ib);
+         if (cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD)
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state.state_ib);
          if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers_ib);
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);

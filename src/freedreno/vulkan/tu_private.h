@@ -707,7 +707,7 @@ enum tu_cmd_dirty_bits
 {
    TU_CMD_DIRTY_COMPUTE_PIPELINE = 1 << 1,
    TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 2,
-   TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 3,
+   TU_CMD_DIRTY_DESC_SETS_LOAD = 1 << 3,
    TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS = 1 << 4,
    TU_CMD_DIRTY_SHADER_CONSTS = 1 << 5,
    /* all draw states were disabled and need to be re-enabled: */
@@ -848,7 +848,7 @@ struct tu_cmd_state
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
    struct tu_cs_entry vertex_buffers_ib;
    struct tu_cs_entry shader_const_ib[MESA_SHADER_STAGES];
-   struct tu_cs_entry desc_sets_ib, desc_sets_load_ib;
+   struct tu_cs_entry desc_sets_ib;
    struct tu_cs_entry ia_gmem_ib, ia_sysmem_ib;
 
    struct tu_draw_state vs_params;
