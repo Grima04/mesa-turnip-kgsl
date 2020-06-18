@@ -1947,8 +1947,10 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       ma = bld.vop1(aco_opcode::v_rcp_f32, bld.def(v1), ma);
       Temp sc = bld.vop3(aco_opcode::v_cubesc_f32, bld.def(v1), src[0], src[1], src[2]);
       Temp tc = bld.vop3(aco_opcode::v_cubetc_f32, bld.def(v1), src[0], src[1], src[2]);
-      sc = bld.vop2(aco_opcode::v_madak_f32, bld.def(v1), sc, ma, Operand(0x3f000000u/*0.5*/));
-      tc = bld.vop2(aco_opcode::v_madak_f32, bld.def(v1), tc, ma, Operand(0x3f000000u/*0.5*/));
+      sc = bld.vop2(aco_opcode::v_add_f32, bld.def(v1),
+                    bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), sc, ma), Operand(0x3f000000u/*0.5*/));
+      tc = bld.vop2(aco_opcode::v_add_f32, bld.def(v1),
+                    bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), tc, ma), Operand(0x3f000000u/*0.5*/));
       bld.pseudo(aco_opcode::p_create_vector, Definition(dst), sc, tc);
       break;
    }
@@ -7301,10 +7303,11 @@ void emit_interp_center(isel_context *ctx, Temp dst, Temp pos1, Temp pos2)
    }
 
    /* res_k = p_k + ddx_k * pos1 + ddy_k * pos2 */
-   Temp tmp1 = bld.vop3(aco_opcode::v_mad_f32, bld.def(v1), ddx_1, pos1, p1);
-   Temp tmp2 = bld.vop3(aco_opcode::v_mad_f32, bld.def(v1), ddx_2, pos1, p2);
-   tmp1 = bld.vop3(aco_opcode::v_mad_f32, bld.def(v1), ddy_1, pos2, tmp1);
-   tmp2 = bld.vop3(aco_opcode::v_mad_f32, bld.def(v1), ddy_2, pos2, tmp2);
+   aco_opcode mad = ctx->program->chip_class >= GFX10_3 ? aco_opcode::v_fma_f32 : aco_opcode::v_mad_f32;
+   Temp tmp1 = bld.vop3(mad, bld.def(v1), ddx_1, pos1, p1);
+   Temp tmp2 = bld.vop3(mad, bld.def(v1), ddx_2, pos1, p2);
+   tmp1 = bld.vop3(mad, bld.def(v1), ddy_1, pos2, tmp1);
+   tmp2 = bld.vop3(mad, bld.def(v1), ddy_2, pos2, tmp2);
    Temp wqm1 = bld.tmp(v1);
    emit_wqm(ctx, tmp1, wqm1, true);
    Temp wqm2 = bld.tmp(v1);
@@ -8381,6 +8384,8 @@ void prepare_cube_coords(isel_context *ctx, std::vector<Temp>& coords, Temp* ddx
 {
    Builder bld(ctx->program, ctx->block);
    Temp ma, tc, sc, id;
+   aco_opcode madak = ctx->program->chip_class >= GFX10_3 ? aco_opcode::v_fmaak_f32 : aco_opcode::v_madak_f32;
+   aco_opcode madmk = ctx->program->chip_class >= GFX10_3 ? aco_opcode::v_fmamk_f32 : aco_opcode::v_madmk_f32;
 
    if (is_array) {
       coords[3] = bld.vop1(aco_opcode::v_rndne_f32, bld.def(v1), coords[3]);
@@ -8401,11 +8406,11 @@ void prepare_cube_coords(isel_context *ctx, std::vector<Temp>& coords, Temp* ddx
 
    sc = bld.vop3(aco_opcode::v_cubesc_f32, bld.def(v1), coords[0], coords[1], coords[2]);
    if (!is_deriv)
-      sc = bld.vop2(aco_opcode::v_madak_f32, bld.def(v1), sc, invma, Operand(0x3fc00000u/*1.5*/));
+      sc = bld.vop2(madak, bld.def(v1), sc, invma, Operand(0x3fc00000u/*1.5*/));
 
    tc = bld.vop3(aco_opcode::v_cubetc_f32, bld.def(v1), coords[0], coords[1], coords[2]);
    if (!is_deriv)
-      tc = bld.vop2(aco_opcode::v_madak_f32, bld.def(v1), tc, invma, Operand(0x3fc00000u/*1.5*/));
+      tc = bld.vop2(madak, bld.def(v1), tc, invma, Operand(0x3fc00000u/*1.5*/));
 
    id = bld.vop3(aco_opcode::v_cubeid_f32, bld.def(v1), coords[0], coords[1], coords[2]);
 
@@ -8436,7 +8441,7 @@ void prepare_cube_coords(isel_context *ctx, std::vector<Temp>& coords, Temp* ddx
    }
 
    if (is_array)
-      id = bld.vop2(aco_opcode::v_madmk_f32, bld.def(v1), coords[3], id, Operand(0x41000000u/*8.0*/));
+      id = bld.vop2(madmk, bld.def(v1), coords[3], id, Operand(0x41000000u/*8.0*/));
    coords.resize(3);
    coords[0] = sc;
    coords[1] = tc;
