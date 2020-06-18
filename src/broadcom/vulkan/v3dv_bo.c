@@ -37,6 +37,50 @@
  */
 #define DEFAULT_MAX_BO_CACHE_SIZE 512
 
+/* Discarded to use a V3D_DEBUG for this, as it would mean adding a run-time
+ * check for most of the calls
+ */
+static const bool dump_stats = false;
+
+static void
+bo_dump_stats(struct v3dv_device *device)
+{
+   struct v3dv_bo_cache *cache = &device->bo_cache;
+
+   fprintf(stderr, "  BOs allocated:   %d\n", device->bo_count);
+   fprintf(stderr, "  BOs size:        %dkb\n", device->bo_size / 1024);
+   fprintf(stderr, "  BOs cached:      %d\n", cache->cache_count);
+   fprintf(stderr, "  BOs cached size: %dkb\n", cache->cache_size / 1024);
+
+   if (!list_is_empty(&cache->time_list)) {
+      struct v3dv_bo *first = list_first_entry(&cache->time_list,
+                                              struct v3dv_bo,
+                                              time_list);
+      struct v3dv_bo *last = list_last_entry(&cache->time_list,
+                                            struct v3dv_bo,
+                                            time_list);
+
+      fprintf(stderr, "  oldest cache time: %ld\n",
+              (long)first->free_time);
+      fprintf(stderr, "  newest cache time: %ld\n",
+              (long)last->free_time);
+
+      struct timespec time;
+      clock_gettime(CLOCK_MONOTONIC, &time);
+      fprintf(stderr, "  now:               %ld\n",
+              time.tv_sec);
+   }
+
+   if (cache->size_list_size) {
+      uint32_t empty_size_list = 0;
+      for (uint32_t i = 0; i < cache->size_list_size; i++) {
+         if (list_is_empty(&cache->size_list[i]))
+            empty_size_list++;
+      }
+      fprintf(stderr, "  Empty size_list lists: %d\n", empty_size_list);
+   }
+}
+
 static void
 bo_remove_from_cache(struct v3dv_bo_cache *cache, struct v3dv_bo *bo)
 {
@@ -99,6 +143,15 @@ bo_free(struct v3dv_device *device,
 
    device->bo_count--;
    device->bo_size -= bo->size;
+
+   if (dump_stats) {
+      fprintf(stderr, "Freed %s%s%dkb:\n",
+              bo->name ? bo->name : "",
+              bo->name ? " " : "",
+              bo->size / 1024);
+      bo_dump_stats(device);
+   }
+
    vk_free(&device->alloc, bo);
 
    return ret == 0;
@@ -135,8 +188,14 @@ v3dv_bo_alloc(struct v3dv_device *device,
 
    if (private) {
       bo = bo_from_cache(device, size, name);
-      if (bo)
+      if (bo) {
+         if (dump_stats) {
+            fprintf(stderr, "Allocated %s %dkb from cache:\n",
+                    name, size / 1024);
+            bo_dump_stats(device);
+         }
          return bo;
+      }
    }
 
    bo = vk_alloc(&device->alloc, sizeof(struct v3dv_bo), 8,
@@ -183,6 +242,10 @@ v3dv_bo_alloc(struct v3dv_device *device,
 
    device->bo_count++;
    device->bo_size += bo->size;
+   if (dump_stats) {
+      fprintf(stderr, "Allocated %s %dkb:\n", name, size / 1024);
+      bo_dump_stats(device);
+   }
 
    return bo;
 }
@@ -318,6 +381,10 @@ v3dv_bo_cache_init(struct v3dv_device *device)
    else
       device->bo_cache.max_cache_size = atoll(max_cache_size_str);
 
+   if (dump_stats) {
+      fprintf(stderr, "MAX BO CACHE SIZE: %iMB\n", device->bo_cache.max_cache_size);
+   }
+
    device->bo_cache.max_cache_size *= 1024 * 1024;
    device->bo_cache.cache_count = 0;
    device->bo_cache.cache_size = 0;
@@ -328,6 +395,11 @@ v3dv_bo_cache_destroy(struct v3dv_device *device)
 {
    bo_cache_free_all(device, true);
    vk_free(&device->alloc, device->bo_cache.size_list);
+
+   if (dump_stats) {
+      fprintf(stderr, "BO stats after screen destroy:\n");
+      bo_dump_stats(device);
+   }
 }
 
 
@@ -336,16 +408,28 @@ free_stale_bos(struct v3dv_device *device,
                time_t time)
 {
    struct v3dv_bo_cache *cache = &device->bo_cache;
+   bool freed_any = false;
 
    list_for_each_entry_safe(struct v3dv_bo, bo, &cache->time_list,
                             time_list) {
       /* If it's more than a second old, free it. */
       if (time - bo->free_time > 2) {
+         if (dump_stats && !freed_any) {
+            fprintf(stderr, "Freeing stale BOs:\n");
+            bo_dump_stats(device);
+            freed_any = true;
+         }
+
          bo_remove_from_cache(cache, bo);
          bo_free(device, bo);
       } else {
          break;
       }
+   }
+
+   if (dump_stats && freed_any) {
+      fprintf(stderr, "Freed stale BOs:\n");
+      bo_dump_stats(device);
    }
 }
 
@@ -394,6 +478,12 @@ v3dv_bo_free(struct v3dv_device *device,
 
    cache->cache_count++;
    cache->cache_size += bo->size;
+
+   if (dump_stats) {
+      fprintf(stderr, "Freed %s %dkb to cache:\n",
+              bo->name, bo->size / 1024);
+      bo_dump_stats(device);
+   }
    bo->name = NULL;
 
    free_stale_bos(device, time.tv_sec);
