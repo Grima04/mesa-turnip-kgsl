@@ -899,7 +899,6 @@ arm64_a630_gles2:
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
     DEQP_SKIPS: deqp-freedreno-a630-skips.txt
     GIT_STRATEGY: none
-    NIR_VALIDATE: 0
     DEQP_EXPECTED_RENDERER: FD630
     DEQP_NO_SAVE_RESULTS: ""
   tags:
@@ -911,11 +910,15 @@ arm64_a630_gles31:
   extends: arm64_a630_gles2
   variables:
     DEQP_VER: gles31
+    # gles31 is about 12 minutes with validation enabled.
+    NIR_VALIDATE: 0
 
 arm64_a630_gles3:
   extends: arm64_a630_gles2
   variables:
     DEQP_VER: gles3
+    # gles3 is about 15 minutes with validation enabled.
+    NIR_VALIDATE: 0
 
 # We almost always manage to lower UBOs back to constant uploads in
 # the test suite, so get a little testing for it here.
