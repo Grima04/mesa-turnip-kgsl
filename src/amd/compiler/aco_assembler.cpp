@@ -787,7 +787,7 @@ static void fix_branches_gfx10(asm_context& ctx, std::vector<uint32_t>& out)
 
 void fix_branches(asm_context& ctx, std::vector<uint32_t>& out)
 {
-   if (ctx.chip_class >= GFX10)
+   if (ctx.chip_class == GFX10)
       fix_branches_gfx10(ctx, out);
 
    for (std::pair<int, SOPP_instruction*> &branch : ctx.branches) {

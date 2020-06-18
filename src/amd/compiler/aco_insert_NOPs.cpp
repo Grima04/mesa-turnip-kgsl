@@ -804,7 +804,9 @@ void mitigate_hazards(Program *program)
 
 void insert_NOPs(Program* program)
 {
-   if (program->chip_class >= GFX10)
+   if (program->chip_class >= GFX10_3)
+      ; /* no hazards/bugs to mitigate */
+   else if (program->chip_class >= GFX10)
       mitigate_hazards<NOP_ctx_gfx10, handle_instruction_gfx10>(program);
    else
       mitigate_hazards<NOP_ctx_gfx6, handle_instruction_gfx6>(program);
