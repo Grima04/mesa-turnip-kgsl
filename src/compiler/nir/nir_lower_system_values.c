@@ -113,14 +113,20 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       if (!nir_deref_mode_is(deref, nir_var_system_value))
          return NULL;
 
+      nir_ssa_def *column = NULL;
       if (deref->deref_type != nir_deref_type_var) {
-         /* The only one system value that is an array and that is
-          * gl_SampleMask which is always an array of one element.
+         /* The only one system values that aren't plane variables are
+          * gl_SampleMask which is always an array of one element and a
+          * couple of ray-tracing intrinsics which are matrices.
           */
          assert(deref->deref_type == nir_deref_type_array);
+         assert(deref->arr.index.is_ssa);
+         column = deref->arr.index.ssa;
          deref = nir_deref_instr_parent(deref);
          assert(deref->deref_type == nir_deref_type_var);
-         assert(deref->var->data.location == SYSTEM_VALUE_SAMPLE_MASK_IN);
+         assert(deref->var->data.location == SYSTEM_VALUE_SAMPLE_MASK_IN ||
+                deref->var->data.location == SYSTEM_VALUE_RAY_OBJECT_TO_WORLD ||
+                deref->var->data.location == SYSTEM_VALUE_RAY_WORLD_TO_OBJECT);
       }
       nir_variable *var = deref->var;
 
@@ -186,9 +192,25 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
 
       nir_intrinsic_op sysval_op =
          nir_intrinsic_from_system_value(var->data.location);
-      return nir_load_system_value(b, sysval_op, 0,
+      if (glsl_type_is_matrix(var->type)) {
+         assert(nir_intrinsic_infos[sysval_op].index_map[NIR_INTRINSIC_COLUMN] > 0);
+         unsigned num_cols = glsl_get_matrix_columns(var->type);
+         ASSERTED unsigned num_rows = glsl_get_vector_elements(var->type);
+         assert(num_rows == intrin->dest.ssa.num_components);
+
+         nir_ssa_def *cols[4];
+         for (unsigned i = 0; i < num_cols; i++) {
+            cols[i] = nir_load_system_value(b, sysval_op, i,
+                                            intrin->dest.ssa.num_components,
+                                            intrin->dest.ssa.bit_size);
+            assert(cols[i]->num_components == num_rows);
+         }
+         return nir_select_from_ssa_def_array(b, cols, num_cols, column);
+      } else {
+         return nir_load_system_value(b, sysval_op, 0,
                                       intrin->dest.ssa.num_components,
                                       intrin->dest.ssa.bit_size);
+      }
    }
 
    default:

@@ -101,6 +101,8 @@ DESC_SET = "NIR_INTRINSIC_DESC_SET"
 BINDING = "NIR_INTRINSIC_BINDING"
 # Component offset
 COMPONENT = "NIR_INTRINSIC_COMPONENT"
+# Column index for matrix system values
+COLUMN = "NIR_INTRINSIC_COLUMN"
 # Interpolation mode (only meaningful for FS inputs)
 INTERP_MODE = "NIR_INTRINSIC_INTERP_MODE"
 # A binary nir_op to use when performing a reduction or scan operation
@@ -667,6 +669,8 @@ system_value("ray_object_origin", 3)
 system_value("ray_object_direction", 3)
 system_value("ray_t_min", 1)
 system_value("ray_t_max", 1)
+system_value("ray_object_to_world", 3, indices=[COLUMN])
+system_value("ray_world_to_object", 3, indices=[COLUMN])
 system_value("ray_hit_kind", 1)
 system_value("ray_flags", 1)
 system_value("ray_geometry_index", 1)

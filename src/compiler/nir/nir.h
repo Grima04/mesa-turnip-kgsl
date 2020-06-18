@@ -1792,6 +1792,11 @@ typedef enum {
    NIR_INTRINSIC_COMPONENT,
 
    /**
+    * Column index for matrix intrinsics.
+    */
+   NIR_INTRINSIC_COLUMN,
+
+   /**
     * Interpolation mode (only meaningful for FS inputs).
     */
    NIR_INTRINSIC_INTERP_MODE,
@@ -2057,6 +2062,7 @@ INTRINSIC_IDX_ACCESSORS(range_base, RANGE_BASE, unsigned)
 INTRINSIC_IDX_ACCESSORS(desc_set, DESC_SET, unsigned)
 INTRINSIC_IDX_ACCESSORS(binding, BINDING, unsigned)
 INTRINSIC_IDX_ACCESSORS(component, COMPONENT, unsigned)
+INTRINSIC_IDX_ACCESSORS(column, COLUMN, unsigned)
 INTRINSIC_IDX_ACCESSORS(interp_mode, INTERP_MODE, unsigned)
 INTRINSIC_IDX_ACCESSORS(reduction_op, REDUCTION_OP, unsigned)
 INTRINSIC_IDX_ACCESSORS(cluster_size, CLUSTER_SIZE, unsigned)

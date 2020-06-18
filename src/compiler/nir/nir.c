@@ -2232,6 +2232,10 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_ray_t_min;
    case SYSTEM_VALUE_RAY_T_MAX:
       return nir_intrinsic_load_ray_t_max;
+   case SYSTEM_VALUE_RAY_OBJECT_TO_WORLD:
+      return nir_intrinsic_load_ray_object_to_world;
+   case SYSTEM_VALUE_RAY_WORLD_TO_OBJECT:
+      return nir_intrinsic_load_ray_world_to_object;
    case SYSTEM_VALUE_RAY_HIT_KIND:
       return nir_intrinsic_load_ray_hit_kind;
    case SYSTEM_VALUE_RAY_FLAGS:
@@ -2363,6 +2367,10 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_RAY_T_MIN;
    case nir_intrinsic_load_ray_t_max:
       return SYSTEM_VALUE_RAY_T_MAX;
+   case nir_intrinsic_load_ray_object_to_world:
+      return SYSTEM_VALUE_RAY_OBJECT_TO_WORLD;
+   case nir_intrinsic_load_ray_world_to_object:
+      return SYSTEM_VALUE_RAY_WORLD_TO_OBJECT;
    case nir_intrinsic_load_ray_hit_kind:
       return SYSTEM_VALUE_RAY_HIT_KIND;
    case nir_intrinsic_load_ray_flags:
