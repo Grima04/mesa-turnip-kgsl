@@ -606,11 +606,12 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_PIPELINE                  = 1 << 5,
    V3DV_CMD_DIRTY_VERTEX_BUFFER             = 1 << 6,
    V3DV_CMD_DIRTY_DESCRIPTOR_SETS           = 1 << 7,
-   V3DV_CMD_DIRTY_PUSH_CONSTANTS            = 1 << 8,
-   V3DV_CMD_DIRTY_BLEND_CONSTANTS           = 1 << 9,
-   V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 10,
-   V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 11,
-   V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 12,
+   V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS   = 1 << 8,
+   V3DV_CMD_DIRTY_PUSH_CONSTANTS            = 1 << 9,
+   V3DV_CMD_DIRTY_BLEND_CONSTANTS           = 1 << 10,
+   V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 11,
+   V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 12,
+   V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 13,
 };
 
 struct v3dv_dynamic_state {
@@ -842,7 +843,7 @@ struct v3dv_cmd_buffer_state {
    uint32_t subpass_idx;
 
    struct v3dv_pipeline *pipeline;
-   struct v3dv_descriptor_state descriptor_state;
+   struct v3dv_descriptor_state descriptor_state[2];
 
    struct v3dv_dynamic_state dynamic;
    uint32_t dirty;
@@ -1499,6 +1500,15 @@ struct v3dv_pipeline {
                         MAX_VERTEX_ATTRIBS];
    uint8_t stencil_cfg[2][cl_packet_length(STENCIL_CFG)];
 };
+
+static inline VkPipelineBindPoint
+v3dv_pipeline_get_binding_point(struct v3dv_pipeline *pipeline)
+{
+   assert(pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT ||
+          !(pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
+   return pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT ?
+      VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+}
 
 const nir_shader_compiler_options *v3dv_pipeline_get_nir_options(void);
 

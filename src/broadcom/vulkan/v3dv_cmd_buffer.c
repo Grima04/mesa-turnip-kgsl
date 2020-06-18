@@ -2547,13 +2547,14 @@ job_update_ez_state(struct v3dv_job *job,
  */
 static void
 cmd_buffer_populate_v3d_key(struct v3d_key *key,
-                            struct v3dv_cmd_buffer *cmd_buffer)
+                            struct v3dv_cmd_buffer *cmd_buffer,
+                            VkPipelineBindPoint pipeline_binding)
 {
    if (cmd_buffer->state.pipeline->combined_index_map != NULL) {
       struct v3dv_descriptor_map *texture_map = &cmd_buffer->state.pipeline->texture_map;
       struct v3dv_descriptor_map *sampler_map = &cmd_buffer->state.pipeline->sampler_map;
       struct v3dv_descriptor_state *descriptor_state =
-         &cmd_buffer->state.descriptor_state;
+         &cmd_buffer->state.descriptor_state[pipeline_binding];
 
       hash_table_foreach(cmd_buffer->state.pipeline->combined_index_map, entry) {
          uint32_t combined_idx = (uint32_t)(uintptr_t) (entry->data);
@@ -2612,7 +2613,8 @@ update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    /* We start with a copy of the original pipeline key */
    memcpy(&local_key, &p_stage->key.fs, sizeof(struct v3d_fs_key));
 
-   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer,
+                               VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    VkResult vk_result;
    variant = v3dv_get_shader_variant(p_stage, &local_key.base,
@@ -2640,7 +2642,8 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    p_stage = cmd_buffer->state.pipeline->vs;
    memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
 
-   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer,
+                               VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    variant = v3dv_get_shader_variant(p_stage, &local_key.base,
                                      sizeof(struct v3d_vs_key),
@@ -2658,7 +2661,8 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    p_stage = cmd_buffer->state.pipeline->vs_bin;
    memcpy(&local_key, &p_stage->key.vs, sizeof(struct v3d_vs_key));
 
-   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer);
+   cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer,
+                               VK_PIPELINE_BIND_POINT_GRAPHICS);
    variant = v3dv_get_shader_variant(p_stage, &local_key.base,
                                      sizeof(struct v3d_vs_key),
                                      &cmd_buffer->device->alloc,
@@ -3499,11 +3503,17 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    state->meta.pipeline = v3dv_pipeline_to_handle(state->pipeline);
-   if (state->meta.pipeline)
+   if (state->meta.pipeline) {
       memcpy(&state->meta.dynamic, &state->dynamic, sizeof(state->dynamic));
+   }
 
-   if (push_descriptor_state && state->descriptor_state.valid != 0) {
-      memcpy(&state->meta.descriptor_state, &state->descriptor_state,
+   /* We expect that meta operations are graphics-only and won't alter
+    * compute state.
+    */
+   struct v3dv_descriptor_state *gfx_descriptor_state =
+      &state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS];
+   if (push_descriptor_state && gfx_descriptor_state->valid != 0) {
+      memcpy(&state->meta.descriptor_state, gfx_descriptor_state,
              sizeof(state->descriptor_state));
    }
 
@@ -3544,20 +3554,27 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    if (state->meta.pipeline != VK_NULL_HANDLE) {
+      struct v3dv_pipeline *pipeline =
+            v3dv_pipeline_from_handle(state->meta.pipeline);
+      VkPipelineBindPoint pipeline_binding =
+         v3dv_pipeline_get_binding_point(pipeline);
       v3dv_CmdBindPipeline(v3dv_cmd_buffer_to_handle(cmd_buffer),
-                           VK_PIPELINE_BIND_POINT_GRAPHICS,
+                           pipeline_binding,
                            state->meta.pipeline);
-      memcpy(&state->dynamic, &state->meta.dynamic, sizeof(state->dynamic));
-      state->dirty |= dirty_dynamic_state;
+      if (pipeline_binding == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+         memcpy(&state->dynamic, &state->meta.dynamic, sizeof(state->dynamic));
+         state->dirty |= dirty_dynamic_state;
+      }
    } else {
       state->pipeline = VK_NULL_HANDLE;
    }
 
    if (state->meta.descriptor_state.valid != 0) {
-      memcpy(&state->descriptor_state, &state->meta.descriptor_state,
+      memcpy(&state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS],
+             &state->meta.descriptor_state,
              sizeof(state->descriptor_state));
    } else {
-      state->descriptor_state.valid = 0;
+      state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS].valid = 0;
    }
 
    memcpy(cmd_buffer->push_constants_data, state->meta.push_constants,
@@ -4100,11 +4117,10 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
    uint32_t dyn_index = 0;
 
-   assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
    assert(firstSet + descriptorSetCount <= MAX_SETS);
 
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state;
+      &cmd_buffer->state.descriptor_state[pipelineBindPoint];
 
    bool descriptor_state_changed = false;
    for (uint32_t i = 0; i < descriptorSetCount; i++) {
@@ -4131,8 +4147,12 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       }
    }
 
-   if (descriptor_state_changed)
-      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
+   if (descriptor_state_changed) {
+      if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+         cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
+      else
+         cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
+   }
 }
 
 void

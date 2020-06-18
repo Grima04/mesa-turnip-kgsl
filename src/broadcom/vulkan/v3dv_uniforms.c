@@ -93,7 +93,7 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t texture_idx;
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state;
+      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
 
    v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
                                            &texture_idx,
@@ -130,7 +130,7 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t sampler_idx;
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state;
+      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
 
    v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
                                            NULL, &sampler_idx);
@@ -155,7 +155,7 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 {
    struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state;
+      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
 
    struct v3dv_descriptor_map *map =
       content == QUNIFORM_UBO_ADDR ?
@@ -215,7 +215,7 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
    int unit = v3d_unit_data_get_unit(data);
    uint32_t texture_idx;
    struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state;
+      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
 
    v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
                                            &texture_idx,
