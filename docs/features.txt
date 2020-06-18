@@ -36,35 +36,35 @@ context as extensions.
 Feature                                                 Status
 ------------------------------------------------------- ------------------------
 
-GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl
+GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink
 
   glBindFragDataLocation, glGetFragDataLocation         DONE
-  GL_NV_conditional_render (Conditional rendering)      DONE (zink)
-  GL_ARB_map_buffer_range (Map buffer subranges)        DONE (v3d, zink)
-  GL_ARB_color_buffer_float (Clamping controls)         DONE (v3d, zink)
-  GL_ARB_texture_float (Float textures, renderbuffers)  DONE (v3d, zink)
-  GL_EXT_packed_float                                   DONE (v3d, zink)
-  GL_EXT_texture_shared_exponent                        DONE (v3d, zink)
-  GL_ARB_depth_buffer_float (Float depth buffers)       DONE (v3d, zink)
-  GL_ARB_framebuffer_object (Framebuffer objects)       DONE (v3d, zink)
+  GL_NV_conditional_render (Conditional rendering)      DONE ()
+  GL_ARB_map_buffer_range (Map buffer subranges)        DONE (v3d)
+  GL_ARB_color_buffer_float (Clamping controls)         DONE (v3d)
+  GL_ARB_texture_float (Float textures, renderbuffers)  DONE (v3d)
+  GL_EXT_packed_float                                   DONE (v3d)
+  GL_EXT_texture_shared_exponent                        DONE (v3d)
+  GL_ARB_depth_buffer_float (Float depth buffers)       DONE (v3d)
+  GL_ARB_framebuffer_object (Framebuffer objects)       DONE (v3d)
   GL_ARB_half_float_pixel                               DONE (all drivers)
-  GL_ARB_half_float_vertex                              DONE (v3d, zink)
-  GL_EXT_texture_integer                                DONE (v3d, zink)
-  GL_EXT_texture_array                                  DONE (v3d, zink)
-  GL_EXT_draw_buffers2 (Per-buffer blend and masks)     DONE (v3d, zink)
-  GL_EXT_texture_compression_rgtc                       DONE (zink)
-  GL_ARB_texture_rg                                     DONE (v3d, zink)
-  GL_EXT_transform_feedback (Transform feedback)        DONE (v3d, zink)
-  GL_ARB_vertex_array_object (Vertex array objects)     DONE (v3d, zink)
-  GL_EXT_framebuffer_sRGB (sRGB framebuffer format)     DONE (v3d, zink)
+  GL_ARB_half_float_vertex                              DONE (v3d)
+  GL_EXT_texture_integer                                DONE (v3d)
+  GL_EXT_texture_array                                  DONE (v3d)
+  GL_EXT_draw_buffers2 (Per-buffer blend and masks)     DONE (v3d)
+  GL_EXT_texture_compression_rgtc                       DONE ()
+  GL_ARB_texture_rg                                     DONE (v3d)
+  GL_EXT_transform_feedback (Transform feedback)        DONE (v3d)
+  GL_ARB_vertex_array_object (Vertex array objects)     DONE (v3d)
+  GL_EXT_framebuffer_sRGB (sRGB framebuffer format)     DONE (v3d)
   glClearBuffer commands                                DONE
   glGetStringi command                                  DONE
   glTexParameterI, glGetTexParameterI commands          DONE
   glVertexAttribI commands                              DONE
-  Depth format cube textures                            DONE (zink)
-  GLX_ARB_create_context (GLX 1.4 is required)          DONE (v3d, zink)
-  Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*), swr (*), zink)
-  8 draw buffers                                        DONE (zink)
+  Depth format cube textures                            DONE ()
+  GLX_ARB_create_context (GLX 1.4 is required)          DONE (v3d)
+  Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*), swr (*))
+  8 draw buffers                                        DONE ()
 
 (*) freedreno (a2xx-a4xx), llvmpipe, softpipe, and swr have fake Multisample anti-aliasing support
 
