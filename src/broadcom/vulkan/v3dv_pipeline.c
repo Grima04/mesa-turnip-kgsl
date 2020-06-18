@@ -94,6 +94,9 @@ destroy_pipeline_stage(struct v3dv_device *device,
                        struct v3dv_pipeline_stage *p_stage,
                        const VkAllocationCallbacks *pAllocator)
 {
+   if (!p_stage)
+      return;
+
    hash_table_foreach(p_stage->cache, entry) {
       struct v3dv_shader_variant *variant = entry->data;
 
@@ -125,6 +128,7 @@ v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
    destroy_pipeline_stage(device, pipeline->vs, pAllocator);
    destroy_pipeline_stage(device, pipeline->vs_bin, pAllocator);
    destroy_pipeline_stage(device, pipeline->fs, pAllocator);
+   destroy_pipeline_stage(device, pipeline->cs, pAllocator);
 
    if (pipeline->default_attribute_values) {
       v3dv_bo_free(device, pipeline->default_attribute_values);
@@ -821,7 +825,6 @@ shader_debug_output(const char *message, void *data)
 
 static void
 pipeline_populate_v3d_key(struct v3d_key *key,
-                          const VkGraphicsPipelineCreateInfo *pCreateInfo,
                           const struct v3dv_pipeline_stage *p_stage)
 {
    /* The following values are default values used at pipeline create, that
@@ -900,7 +903,7 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
 {
    memset(key, 0, sizeof(*key));
 
-   pipeline_populate_v3d_key(&key->base, pCreateInfo, p_stage);
+   pipeline_populate_v3d_key(&key->base, p_stage);
 
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
@@ -1019,7 +1022,7 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
 {
    memset(key, 0, sizeof(*key));
 
-   pipeline_populate_v3d_key(&key->base, pCreateInfo, p_stage);
+   pipeline_populate_v3d_key(&key->base, p_stage);
 
    /* Vulkan doesn't appear to specify (anv does the same) */
    key->clamp_color = false;
@@ -1067,6 +1070,12 @@ vs_cache_hash(const void *key)
    return _mesa_hash_data(key, sizeof(struct v3d_vs_key));
 }
 
+static uint32_t
+cs_cache_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct v3d_key));
+}
+
 static bool
 fs_cache_compare(const void *key1, const void *key2)
 {
@@ -1079,6 +1088,12 @@ vs_cache_compare(const void *key1, const void *key2)
    return memcmp(key1, key2, sizeof(struct v3d_vs_key)) == 0;
 }
 
+static bool
+cs_cache_compare(const void *key1, const void *key2)
+{
+   return memcmp(key1, key2, sizeof(struct v3d_key)) == 0;
+}
+
 static struct hash_table*
 create_variant_cache(gl_shader_stage stage)
 {
@@ -1087,6 +1102,8 @@ create_variant_cache(gl_shader_stage stage)
       return _mesa_hash_table_create(NULL, vs_cache_hash, vs_cache_compare);
    case MESA_SHADER_FRAGMENT:
       return _mesa_hash_table_create(NULL, fs_cache_hash, fs_cache_compare);
+   case MESA_SHADER_COMPUTE:
+      return _mesa_hash_table_create(NULL, cs_cache_hash, cs_cache_compare);
    default:
       unreachable("not supported shader stage");
    }
@@ -1154,6 +1171,9 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
       break;
    case MESA_SHADER_FRAGMENT:
       name = "fragment_shader_assembly";
+      break;
+   case MESA_SHADER_COMPUTE:
+      name = "compute_shader_assembly";
       break;
    default:
       unreachable("Stage not supported\n");
@@ -1399,7 +1419,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
        * both. For the case of v3dv, it is more natural to have an id this way,
        * as right now we are using it for debugging, not for shader-db.
        */
-      p_stage->program_id = physical_device->next_program_id++;
+      p_stage->program_id =
+         p_atomic_inc_return(&physical_device->next_program_id);
       p_stage->compiled_variant_count = 0;
       p_stage->cache = create_variant_cache(stage);
 
@@ -1438,7 +1459,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->module = 0;
       p_stage->nir = b.shader;
 
-      p_stage->program_id = physical_device->next_program_id++;
+      p_stage->program_id =
+         p_atomic_inc_return(&physical_device->next_program_id);
       p_stage->compiled_variant_count = 0;
       p_stage->cache = create_variant_cache(MESA_SHADER_FRAGMENT);
 
@@ -2489,13 +2511,139 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
    return result;
 }
 
+static void
+shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+
+   uint32_t comp_size = glsl_type_is_boolean(type)
+      ? 4 : glsl_get_bit_size(type) / 8;
+   unsigned length = glsl_get_vector_elements(type);
+   *size = comp_size * length,
+   *align = comp_size * (length == 3 ? 4 : length);
+}
+
+static void
+lower_cs_shared(struct nir_shader *nir)
+{
+   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+              nir_var_mem_shared, shared_type_info);
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_mem_shared, nir_address_format_32bit_offset);
+}
+
+static VkResult
+pipeline_compile_compute(struct v3dv_pipeline *pipeline,
+                         const VkComputePipelineCreateInfo *info,
+                         const VkAllocationCallbacks *alloc)
+{
+   struct v3dv_device *device = pipeline->device;
+   struct v3dv_physical_device *physical_device =
+      &device->instance->physicalDevice;
+
+   const VkPipelineShaderStageCreateInfo *sinfo = &info->stage;
+   gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
+
+   struct v3dv_pipeline_stage *p_stage =
+      vk_zalloc2(&device->alloc, alloc, sizeof(*p_stage), 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!p_stage)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   p_stage->program_id = p_atomic_inc_return(&physical_device->next_program_id);
+   p_stage->compiled_variant_count = 0;
+   p_stage->cache = create_variant_cache(MESA_SHADER_COMPUTE);
+   p_stage->pipeline = pipeline;
+   p_stage->stage = stage;
+   p_stage->entrypoint = sinfo->pName;
+   p_stage->module = v3dv_shader_module_from_handle(sinfo->module);
+   p_stage->spec_info = sinfo->pSpecializationInfo;
+   p_stage->nir = shader_module_compile_to_nir(pipeline->device, p_stage);
+
+   pipeline->active_stages |= sinfo->stage;
+   st_nir_opts(p_stage->nir);
+   pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
+   lower_cs_shared(p_stage->nir);
+
+   pipeline->cs = p_stage;
+
+   struct v3d_key *key = &p_stage->key.base;
+   memset(key, 0, sizeof(*key));
+   pipeline_populate_v3d_key(key, p_stage);
+
+    VkResult result;
+    p_stage->current_variant =
+      v3dv_get_shader_variant(p_stage, key, sizeof(*key), alloc, &result);
+   return result;
+}
+
+static VkResult
+compute_pipeline_init(struct v3dv_pipeline *pipeline,
+                      struct v3dv_device *device,
+                      const VkComputePipelineCreateInfo *info,
+                      const VkAllocationCallbacks *alloc)
+{
+   V3DV_FROM_HANDLE(v3dv_pipeline_layout, layout, info->layout);
+
+   pipeline->device = device;
+   pipeline->layout = layout;
+
+   VkResult result = pipeline_compile_compute(pipeline, info, alloc);
+
+   return result;
+}
+
+static VkResult
+compute_pipeline_create(VkDevice _device,
+                         VkPipelineCache _cache,
+                         const VkComputePipelineCreateInfo *pCreateInfo,
+                         const VkAllocationCallbacks *pAllocator,
+                         VkPipeline *pPipeline)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   struct v3dv_pipeline *pipeline;
+   VkResult result;
+
+   pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (pipeline == NULL)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   result = compute_pipeline_init(pipeline, device, pCreateInfo, pAllocator);
+   if (result != VK_SUCCESS) {
+      v3dv_destroy_pipeline(pipeline, device, pAllocator);
+      return result;
+   }
+
+   *pPipeline = v3dv_pipeline_to_handle(pipeline);
+
+   return VK_SUCCESS;
+}
+
 VkResult
-v3dv_CreateComputePipelines(VkDevice device,
+v3dv_CreateComputePipelines(VkDevice _device,
                             VkPipelineCache pipelineCache,
                             uint32_t createInfoCount,
                             const VkComputePipelineCreateInfo *pCreateInfos,
                             const VkAllocationCallbacks *pAllocator,
                             VkPipeline *pPipelines)
 {
-   unreachable("vkCreateComputePipelines not implemented");
+   VkResult result = VK_SUCCESS;
+
+   for (uint32_t i = 0; i < createInfoCount; i++) {
+      VkResult local_result;
+      local_result = compute_pipeline_create(_device,
+                                              pipelineCache,
+                                              &pCreateInfos[i],
+                                              pAllocator,
+                                              &pPipelines[i]);
+
+      if (local_result != VK_SUCCESS) {
+         result = local_result;
+         pPipelines[i] = VK_NULL_HANDLE;
+      }
+   }
+
+   return result;
 }

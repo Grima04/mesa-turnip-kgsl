@@ -1150,6 +1150,7 @@ struct v3dv_shader_variant {
       struct v3d_prog_data *base;
       struct v3d_vs_prog_data *vs;
       struct v3d_fs_prog_data *fs;
+      struct v3d_compute_prog_data *cs;
    } prog_data;
 
    /* FIXME: using one bo per shader. Eventually we would be interested on
@@ -1397,6 +1398,7 @@ struct v3dv_pipeline {
    struct v3dv_pipeline_stage *vs;
    struct v3dv_pipeline_stage *vs_bin;
    struct v3dv_pipeline_stage *fs;
+   struct v3dv_pipeline_stage *cs;
 
    struct v3dv_dynamic_state dynamic_state;
 

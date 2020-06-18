@@ -2694,6 +2694,7 @@ static void
 bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
                        struct v3dv_pipeline *pipeline)
 {
+   assert(pipeline && !(pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
    if (cmd_buffer->state.pipeline == pipeline)
       return;
 
@@ -2724,6 +2725,19 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
 }
 
+static void
+bind_compute_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
+                      struct v3dv_pipeline *pipeline)
+{
+   assert(pipeline && pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT);
+
+   if (cmd_buffer->state.pipeline == pipeline)
+      return;
+
+   cmd_buffer->state.pipeline = pipeline;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PIPELINE;
+}
+
 void
 v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
                      VkPipelineBindPoint pipelineBindPoint,
@@ -2734,7 +2748,7 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    switch (pipelineBindPoint) {
    case VK_PIPELINE_BIND_POINT_COMPUTE:
-      assert(!"VK_PIPELINE_BIND_POINT_COMPUTE not supported yet");
+      bind_compute_pipeline(cmd_buffer, pipeline);
       break;
 
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
@@ -3671,6 +3685,9 @@ cmd_buffer_pre_draw_split_job(struct v3dv_cmd_buffer *cmd_buffer)
 static void
 cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   assert(cmd_buffer->state.pipeline);
+   assert(!(cmd_buffer->state.pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
+
    /* If the job is configured to flush on every draw call we need to create
     * a new job now.
     */
