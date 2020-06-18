@@ -705,10 +705,9 @@ struct tu_descriptor_state
 
 enum tu_cmd_dirty_bits
 {
-   TU_CMD_DIRTY_COMPUTE_PIPELINE = 1 << 1,
    TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 2,
    TU_CMD_DIRTY_DESC_SETS_LOAD = 1 << 3,
-   TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS = 1 << 4,
+   TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD = 1 << 4,
    TU_CMD_DIRTY_SHADER_CONSTS = 1 << 5,
    /* all draw states were disabled and need to be re-enabled: */
    TU_CMD_DIRTY_DRAW_STATE = 1 << 7,

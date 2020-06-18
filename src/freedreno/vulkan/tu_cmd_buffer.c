@@ -1744,7 +1744,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       hlsq_bindless_base_reg = REG_A6XX_HLSQ_CS_BINDLESS_BASE(0);
       hlsq_invalidate_value = A6XX_HLSQ_INVALIDATE_CMD_CS_BINDLESS(0x1f);
 
-      cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
+      cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD;
    }
 
    tu_cs_begin_sub_stream(&cmd->sub_cs, 24, &cs);
@@ -2033,7 +2033,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
       cmd->state.compute_pipeline = pipeline;
-      cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_PIPELINE;
+      tu_cs_emit_ib(&cmd->cs, &pipeline->program.state_ib);
       return;
    }
 
@@ -3051,7 +3051,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
     * bits to preserve instead. The only things not emitted here are
     * compute-related state.
     */
-   cmd->state.dirty &= (TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS | TU_CMD_DIRTY_COMPUTE_PIPELINE);
+   cmd->state.dirty &= TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD;
    return VK_SUCCESS;
 }
 
@@ -3370,9 +3370,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
     */
    tu_emit_cache_flush(cmd, cs);
 
-   if (cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_PIPELINE)
-      tu_cs_emit_ib(cs, &pipeline->program.state_ib);
-
    struct tu_cs_entry ib;
 
    ib = tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_COMPUTE);
@@ -3381,13 +3378,12 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    tu_emit_compute_driver_params(cs, pipeline, info);
 
-   if ((cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS) &&
+   if ((cmd->state.dirty & TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD) &&
        pipeline->load_state.state_ib.size > 0) {
       tu_cs_emit_ib(cs, &pipeline->load_state.state_ib);
    }
 
-   cmd->state.dirty &=
-      ~(TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS | TU_CMD_DIRTY_COMPUTE_PIPELINE);
+   cmd->state.dirty &= ~TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD;
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_COMPUTE));
