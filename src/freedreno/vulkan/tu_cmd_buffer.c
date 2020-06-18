@@ -3162,6 +3162,10 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
       cmd->state.shader_const_ib[MESA_SHADER_VERTEX] =
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_VERTEX);
+      cmd->state.shader_const_ib[MESA_SHADER_TESS_CTRL] =
+         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_TESS_CTRL);
+      cmd->state.shader_const_ib[MESA_SHADER_TESS_EVAL] =
+         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_TESS_EVAL);
       cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY] =
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_GEOMETRY);
       cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT] =
@@ -3238,6 +3242,8 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DS, pipeline->ds.state_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_BLEND, pipeline->blend.state_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const_ib[MESA_SHADER_VERTEX]);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_HS_CONST, cmd->state.shader_const_ib[MESA_SHADER_TESS_CTRL]);
+      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DS_CONST, cmd->state.shader_const_ib[MESA_SHADER_TESS_EVAL]);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT]);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets_ib);
@@ -3258,7 +3264,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
        */
       uint32_t draw_state_count =
          has_tess +
-         ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 3 : 0) +
+         ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 5 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
          1; /* vs_params */
@@ -3271,6 +3277,8 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_TESS, tess_consts);
          if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const_ib[MESA_SHADER_VERTEX]);
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_HS_CONST, cmd->state.shader_const_ib[MESA_SHADER_TESS_CTRL]);
+            tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DS_CONST, cmd->state.shader_const_ib[MESA_SHADER_TESS_EVAL]);
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const_ib[MESA_SHADER_GEOMETRY]);
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const_ib[MESA_SHADER_FRAGMENT]);
          }
