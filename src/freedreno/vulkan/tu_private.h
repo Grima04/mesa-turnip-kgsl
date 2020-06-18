@@ -1349,6 +1349,11 @@ struct tu_image_view
    uint32_t RB_2D_DST_INFO;
 
    uint32_t RB_BLIT_DST_INFO;
+
+   /* for d32s8 separate stencil */
+   uint64_t stencil_base_addr;
+   uint32_t stencil_layer_size;
+   uint32_t stencil_PITCH;
 };
 
 struct tu_sampler_ycbcr_conversion {
@@ -1377,6 +1382,12 @@ tu_cs_image_ref_2d(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t
 
 void
 tu_cs_image_flag_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
+
+void
+tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
+
+#define tu_image_view_stencil(iview, x) \
+   ((iview->x & ~A6XX_##x##_COLOR_FORMAT__MASK) | A6XX_##x##_COLOR_FORMAT(FMT6_8_UINT))
 
 VkResult
 tu_image_create(VkDevice _device,
@@ -1484,6 +1495,10 @@ struct tu_render_pass_attachment
    bool load;
    bool store;
    int32_t gmem_offset;
+   /* for D32S8 separate stencil: */
+   bool load_stencil;
+   bool store_stencil;
+   int32_t gmem_offset_stencil;
 };
 
 struct tu_render_pass

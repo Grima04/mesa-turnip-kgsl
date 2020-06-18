@@ -43,6 +43,7 @@ tu6_plane_count(VkFormat format)
    default:
       return 1;
    case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+   case VK_FORMAT_D32_SFLOAT_S8_UINT:
       return 2;
    case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
       return 3;
@@ -58,13 +59,15 @@ tu6_plane_format(VkFormat format, uint32_t plane)
       return plane ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8_UNORM;
    case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
       return VK_FORMAT_R8_UNORM;
+   case VK_FORMAT_D32_SFLOAT_S8_UINT:
+      return plane ? VK_FORMAT_S8_UINT : VK_FORMAT_D32_SFLOAT;
    default:
       return format;
    }
 }
 
 static uint32_t
-tu6_plane_index(VkImageAspectFlags aspect_mask)
+tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask)
 {
    switch (aspect_mask) {
    default:
@@ -73,6 +76,8 @@ tu6_plane_index(VkImageAspectFlags aspect_mask)
       return 1;
    case VK_IMAGE_ASPECT_PLANE_2_BIT:
       return 2;
+   case VK_IMAGE_ASPECT_STENCIL_BIT:
+      return format == VK_FORMAT_D32_SFLOAT_S8_UINT;
    }
 }
 
@@ -228,6 +233,10 @@ tu_image_create(VkDevice _device,
             width0 = (width0 + 1) >> 1;
             height0 = (height0 + 1) >> 1;
             break;
+         case VK_FORMAT_D32_SFLOAT_S8_UINT:
+            /* no UBWC for separate stencil */
+            ubwc_enabled = false;
+            break;
          default:
             break;
          }
@@ -373,6 +382,14 @@ tu_cs_image_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t la
 }
 
 void
+tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
+{
+   tu_cs_emit(cs, iview->stencil_PITCH);
+   tu_cs_emit(cs, iview->stencil_layer_size >> 6);
+   tu_cs_emit_qw(cs, iview->stencil_base_addr + iview->stencil_layer_size * layer);
+}
+
+void
 tu_cs_image_ref_2d(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer, bool src)
 {
    tu_cs_emit_qw(cs, iview->base_addr + iview->layer_size * layer);
@@ -420,7 +437,8 @@ tu_image_view_init(struct tu_image_view *iview,
 
    memset(iview->descriptor, 0, sizeof(iview->descriptor));
 
-   struct fdl_layout *layout = &image->layout[tu6_plane_index(aspect_mask)];
+   struct fdl_layout *layout =
+      &image->layout[tu6_plane_index(image->vk_format, aspect_mask)];
 
    uint32_t width = u_minify(layout->width0, range->baseMipLevel);
    uint32_t height = u_minify(layout->height0, range->baseMipLevel);
@@ -446,6 +464,9 @@ tu_image_view_init(struct tu_image_view *iview,
    uint32_t pitch = fdl_pitch(layout, range->baseMipLevel);
    uint32_t ubwc_pitch = fdl_ubwc_pitch(layout, range->baseMipLevel);
    uint32_t layer_size = fdl_layer_stride(layout, range->baseMipLevel);
+
+   if (aspect_mask != VK_IMAGE_ASPECT_COLOR_BIT)
+      format = tu6_plane_format(format, tu6_plane_index(format, aspect_mask));
 
    struct tu_native_format fmt = tu6_format_texture(format, layout->tile_mode);
    /* note: freedreno layout assumes no TILE_ALL bit for non-UBWC
@@ -642,6 +663,14 @@ tu_image_view_init(struct tu_image_view *iview,
       .color_format = cfmt.fmt,
       .color_swap = cfmt.swap,
       .flags = ubwc_enabled).value;
+
+   if (image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+      layout = &image->layout[1];
+      iview->stencil_base_addr = image->bo->iova + image->bo_offset +
+         fdl_surface_offset(layout, range->baseMipLevel, range->baseArrayLayer);
+      iview->stencil_layer_size = fdl_layer_stride(layout, range->baseMipLevel);
+      iview->stencil_PITCH = A6XX_RB_STENCIL_BUFFER_PITCH(fdl_pitch(layout, range->baseMipLevel)).value;
+   }
 }
 
 VkResult
@@ -720,7 +749,7 @@ tu_GetImageSubresourceLayout(VkDevice _device,
    TU_FROM_HANDLE(tu_image, image, _image);
 
    struct fdl_layout *layout =
-      &image->layout[tu6_plane_index(pSubresource->aspectMask)];
+      &image->layout[tu6_plane_index(image->vk_format, pSubresource->aspectMask)];
    const struct fdl_slice *slice = layout->slices + pSubresource->mipLevel;
 
    pLayout->offset =

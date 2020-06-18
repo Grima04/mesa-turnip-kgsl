@@ -226,7 +226,7 @@ static const struct tu_native_format tu6_format_table[] = {
    TU6_xTC(S8_UINT,                    8_UINT,                        WZYX), /* 127 */
    TU6_xxx(D16_UNORM_S8_UINT,          X8Z16_UNORM,                   WZYX), /* 128 */
    TU6_xTC(D24_UNORM_S8_UINT,          8_8_8_8_UNORM,                 WZYX), /* 129 */
-   TU6_xxx(D32_SFLOAT_S8_UINT,         x,                             WZYX), /* 130 */
+   TU6_xTC(D32_SFLOAT_S8_UINT,         NONE,                          WZYX), /* 130 */
 
    /* compressed */
    TU6_xTx(BC1_RGB_UNORM_BLOCK,        DXT1,              WZYX), /* 131 */
@@ -448,6 +448,12 @@ tu_physical_device_get_format_properties(
    linear = optimal;
    if (tu6_pipe2depth(format) != (enum a6xx_depth_format)~0)
       optimal |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+   /* D32_SFLOAT_S8_UINT is tiled as two images, so no linear format
+    * blob enables some linear features, but its not useful, so don't bother.
+    */
+   if (format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+      linear = 0;
 
 end:
    out_properties->linearTilingFeatures = linear;

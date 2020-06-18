@@ -350,12 +350,20 @@ tu_render_pass_gmem_config(struct tu_render_pass *pass,
    uint32_t cpp_total = 0;
    for (uint32_t i = 0; i < pass->attachment_count; i++) {
       struct tu_render_pass_attachment *att = &pass->attachments[i];
+      bool cpp1 = (att->cpp == 1);
       if (att->gmem_offset >= 0) {
          cpp_total += att->cpp;
+
+         /* take into account the separate stencil: */
+         if (att->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+            cpp1 = (att->samples == 1);
+            cpp_total += att->samples;
+         }
+
          /* texture pitch must be aligned to 64, use a tile_align_w that is
           * a multiple of 64 for cpp==1 attachment to work as input attachment
           */
-         if (att->cpp == 1 && tile_align_w % 64 != 0) {
+         if (cpp1 && tile_align_w % 64 != 0) {
             tile_align_w *= 2;
             block_align_shift -= 1;
          }
@@ -379,8 +387,8 @@ tu_render_pass_gmem_config(struct tu_render_pass *pass,
     * optimal: nblocks = {13, 51}, pixels = 208896
     */
    uint32_t gmem_blocks = phys_dev->ccu_offset_gmem / gmem_align;
-   uint32_t offset = 0, pixels = ~0u;
-   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+   uint32_t offset = 0, pixels = ~0u, i;
+   for (i = 0; i < pass->attachment_count; i++) {
       struct tu_render_pass_attachment *att = &pass->attachments[i];
       if (att->gmem_offset < 0)
          continue;
@@ -390,18 +398,33 @@ tu_render_pass_gmem_config(struct tu_render_pass *pass,
       uint32_t align = MAX2(1, att->cpp >> block_align_shift);
       uint32_t nblocks = MAX2((gmem_blocks * att->cpp / cpp_total) & ~(align - 1), align);
 
-      if (nblocks > gmem_blocks) {
-         pixels = 0;
+      if (nblocks > gmem_blocks)
          break;
-      }
 
       gmem_blocks -= nblocks;
       cpp_total -= att->cpp;
       offset += nblocks * gmem_align;
       pixels = MIN2(pixels, nblocks * gmem_align / att->cpp);
+
+      /* repeat the same for separate stencil */
+      if (att->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+         att->gmem_offset_stencil = offset;
+
+         /* note: for s8_uint, block align is always 1 */
+         uint32_t nblocks = gmem_blocks * att->samples / cpp_total;
+         if (nblocks > gmem_blocks)
+            break;
+
+         gmem_blocks -= nblocks;
+         cpp_total -= att->samples;
+         offset += nblocks * gmem_align;
+         pixels = MIN2(pixels, nblocks * gmem_align / att->samples);
+      }
    }
 
-   pass->gmem_pixels = pixels;
+   /* if the loop didn't complete then the gmem config is impossible */
+   if (i == pass->attachment_count)
+      pass->gmem_pixels = pixels;
 }
 
 static void
@@ -436,6 +459,16 @@ attachment_set_ops(struct tu_render_pass_attachment *att,
       att->clear_mask = stencil_clear ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
       att->load = stencil_load;
       att->store = stencil_store;
+      break;
+   case VK_FORMAT_D32_SFLOAT_S8_UINT: /* separate stencil */
+      if (att->clear_mask)
+         att->clear_mask = VK_IMAGE_ASPECT_DEPTH_BIT;
+      if (stencil_clear)
+         att->clear_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+      if (stencil_load)
+         att->load_stencil = true;
+      if (stencil_store)
+         att->store_stencil = true;
       break;
    default:
       break;
@@ -600,7 +633,13 @@ tu_CreateRenderPass2(VkDevice _device,
 
       att->format = pCreateInfo->pAttachments[i].format;
       att->samples = pCreateInfo->pAttachments[i].samples;
-      att->cpp = vk_format_get_blocksize(att->format) * att->samples;
+      /* for d32s8, cpp is for the depth image, and
+       * att->samples will be used as the cpp for the stencil image
+       */
+      if (att->format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+         att->cpp = 4 * att->samples;
+      else
+         att->cpp = vk_format_get_blocksize(att->format) * att->samples;
       att->gmem_offset = -1;
 
       attachment_set_ops(att,

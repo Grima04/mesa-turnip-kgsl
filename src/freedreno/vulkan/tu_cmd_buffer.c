@@ -290,11 +290,18 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
                    A6XX_GRAS_LRZ_BUFFER_PITCH(0),
                    A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE(0));
 
-   if (attachment->format == VK_FORMAT_S8_UINT) {
+   if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+       attachment->format == VK_FORMAT_S8_UINT) {
+
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCIL_INFO, 6);
       tu_cs_emit(cs, A6XX_RB_STENCIL_INFO(.separate_stencil = true).value);
-      tu_cs_image_ref(cs, iview, 0);
-      tu_cs_emit(cs, attachment->gmem_offset);
+      if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+         tu_cs_image_stencil_ref(cs, iview, 0);
+         tu_cs_emit(cs, attachment->gmem_offset_stencil);
+      } else {
+         tu_cs_image_ref(cs, iview, 0);
+         tu_cs_emit(cs, attachment->gmem_offset);
+      }
    } else {
       tu_cs_emit_regs(cs,
                      A6XX_RB_STENCIL_INFO(0));
@@ -1053,7 +1060,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
     * renderpass, this would avoid emitting both sysmem/gmem versions
     *
     * emit two texture descriptors for each input, as a workaround for
-    * d24s8, which can be sampled as both float (depth) and integer (stencil)
+    * d24s8/d32s8, which can be sampled as both float (depth) and integer (stencil)
     * tu_shader lowers uint input attachment loads to use the 2nd descriptor
     * in the pair
     * TODO: a smarter workaround
@@ -1077,6 +1084,8 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       const struct tu_render_pass_attachment *att =
          &cmd->state.pass->attachments[a];
       uint32_t *dst = &texture.map[A6XX_TEX_CONST_DWORDS * i];
+      uint32_t gmem_offset = att->gmem_offset;
+      uint32_t cpp = att->cpp;
 
       memcpy(dst, iview->descriptor, A6XX_TEX_CONST_DWORDS * 4);
 
@@ -1102,6 +1111,19 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
          }
       }
 
+      if (i % 2 == 1 && att->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+         dst[0] &= ~A6XX_TEX_CONST_0_FMT__MASK;
+         dst[0] |= A6XX_TEX_CONST_0_FMT(FMT6_8_UINT);
+         dst[2] &= ~(A6XX_TEX_CONST_2_PITCHALIGN__MASK | A6XX_TEX_CONST_2_PITCH__MASK);
+         dst[2] |= A6XX_TEX_CONST_2_PITCH(iview->stencil_PITCH << 6);
+         dst[3] = 0;
+         dst[4] = iview->stencil_base_addr;
+         dst[5] = (dst[5] & 0xffff) | iview->stencil_base_addr >> 32;
+
+         cpp = att->samples;
+         gmem_offset = att->gmem_offset_stencil;
+      }
+
       if (!gmem)
          continue;
 
@@ -1110,9 +1132,9 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       dst[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
       dst[2] =
          A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
-         A6XX_TEX_CONST_2_PITCH(cmd->state.framebuffer->tile0.width * att->cpp);
+         A6XX_TEX_CONST_2_PITCH(cmd->state.framebuffer->tile0.width * cpp);
       dst[3] = 0;
-      dst[4] = cmd->device->physical_device->gmem_base + att->gmem_offset;
+      dst[4] = cmd->device->physical_device->gmem_base + gmem_offset;
       dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
       for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
          dst[i] = 0;
