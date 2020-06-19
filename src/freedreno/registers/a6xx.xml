@@ -928,7 +928,7 @@ to upconvert to 32b float internally?
 </enum>
 
 <domain name="A6XX" width="32">
-	<bitset name="A6XX_RBBM_INT_0_MASK" inline="yes">
+	<bitset name="A6XX_RBBM_INT_0_MASK" inline="no">
 		<bitfield name="RBBM_GPU_IDLE" pos="0"/>
 		<bitfield name="CP_AHB_ERROR" pos="1"/>
 		<bitfield name="RBBM_ATB_ASYNCFIFO_OVERFLOW" pos="6"/>
@@ -1096,7 +1096,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0A00" name="CP_APERTURE_CNTL_HOST"/>
 	<reg32 offset="0x0A03" name="CP_APERTURE_CNTL_CD"/>
 	<reg32 offset="0x0C01" name="VSC_ADDR_MODE_CNTL"/>
-	<reg32 offset="0x0201" name="RBBM_INT_0_STATUS"/>
+	<reg32 offset="0x0201" name="RBBM_INT_0_STATUS" type="A6XX_RBBM_INT_0_MASK"/>
 	<reg32 offset="0x0210" name="RBBM_STATUS">
 		<bitfield high="23" low="23" name="GPU_BUSY_IGN_AHB" />
 		<bitfield high="22" low="22" name="GPU_BUSY_IGN_AHB_CP" />
@@ -1428,8 +1428,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xF810" name="RBBM_SECVID_TSB_ADDR_MODE_CNTL"/>
 	<reg32 offset="0x00010" name="RBBM_VBIF_CLIENT_QOS_CNTL"/>
 	<reg32 offset="0x00011" name="RBBM_GBIF_CLIENT_QOS_CNTL"/>
+	<reg32 offset="0x0001c" name="RBBM_WAIT_FOR_GPU_IDLE_CMD">
+		<bitfield pos="0" name="WAIT_GPU_IDLE" type="boolean"/>
+	</reg32>
 	<reg32 offset="0x0001f" name="RBBM_INTERFACE_HANG_INT_CNTL"/>
-	<reg32 offset="0x00037" name="RBBM_INT_CLEAR_CMD"/>
+	<reg32 offset="0x00037" name="RBBM_INT_CLEAR_CMD" type="A6XX_RBBM_INT_0_MASK"/>
 	<reg32 offset="0x00038" name="RBBM_INT_0_MASK"/>
 	<reg32 offset="0x00042" name="RBBM_SP_HYST_CNT"/>
 	<reg32 offset="0x00043" name="RBBM_SW_RESET_CMD"/>
@@ -1770,6 +1773,31 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x3118" name="VBIF_PERF_PWR_CNT_HIGH0"/>
 	<reg32 offset="0x3119" name="VBIF_PERF_PWR_CNT_HIGH1"/>
 	<reg32 offset="0x311a" name="VBIF_PERF_PWR_CNT_HIGH2"/>
+
+	<reg32 offset="0x3c02" name="GBIF_SCACHE_CNTL1"/>
+	<reg32 offset="0x3c03" name="GBIF_QSB_SIDE0"/>
+	<reg32 offset="0x3c04" name="GBIF_QSB_SIDE1"/>
+	<reg32 offset="0x3c05" name="GBIF_QSB_SIDE2"/>
+	<reg32 offset="0x3c06" name="GBIF_QSB_SIDE3"/>
+	<reg32 offset="0x3c45" name="GBIF_HALT"/>
+	<reg32 offset="0x3c46" name="GBIF_HALT_ACK"/>
+	<reg32 offset="0x3cc0" name="GBIF_PERF_PWR_CNT_EN"/>
+	<reg32 offset="0x3cc2" name="GBIF_PERF_CNT_SEL"/>
+	<reg32 offset="0x3cc3" name="GBIF_PERF_PWR_CNT_SEL"/>
+	<reg32 offset="0x3cc4" name="GBIF_PERF_CNT_LOW0"/>
+	<reg32 offset="0x3cc5" name="GBIF_PERF_CNT_LOW1"/>
+	<reg32 offset="0x3cc6" name="GBIF_PERF_CNT_LOW2"/>
+	<reg32 offset="0x3cc7" name="GBIF_PERF_CNT_LOW3"/>
+	<reg32 offset="0x3cc8" name="GBIF_PERF_CNT_HIGH0"/>
+	<reg32 offset="0x3cc9" name="GBIF_PERF_CNT_HIGH1"/>
+	<reg32 offset="0x3cca" name="GBIF_PERF_CNT_HIGH2"/>
+	<reg32 offset="0x3ccb" name="GBIF_PERF_CNT_HIGH3"/>
+	<reg32 offset="0x3ccc" name="GBIF_PWR_CNT_LOW0"/>
+	<reg32 offset="0x3ccd" name="GBIF_PWR_CNT_LOW1"/>
+	<reg32 offset="0x3cce" name="GBIF_PWR_CNT_LOW2"/>
+	<reg32 offset="0x3ccf" name="GBIF_PWR_CNT_HIGH0"/>
+	<reg32 offset="0x3cd0" name="GBIF_PWR_CNT_HIGH1"/>
+	<reg32 offset="0x3cd1" name="GBIF_PWR_CNT_HIGH2"/>
 
 	<!-- move/rename these.. -->
 
@@ -2697,6 +2725,20 @@ to upconvert to 32b float internally?
 		<bitfield name="PRIMID_PASSTHRU" pos="0" type="boolean"/>
 	</reg32>
 
+	<reg32 offset="0x9840" name="PC_DRAW_CMD">
+		<bitfield name="STATE_ID" low="0" high="7"/>
+	</reg32>
+
+	<reg32 offset="0x9841" name="PC_DISPATCH_CMD">
+		<bitfield name="STATE_ID" low="0" high="7"/>
+	</reg32>
+
+	<reg32 offset="0x9842" name="PC_EVENT_CMD">
+		<!-- I think only the low bit is actually used? -->
+		<bitfield name="STATE_ID" low="16" high="23"/>
+		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
+	</reg32>
+
 	<reg32 offset="0x9980" name="PC_UNKNOWN_9980"/>
 
 	<reg32 offset="0x9981" name="PC_POLYGON_MODE">
@@ -2785,6 +2827,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x9e13" name="PC_BIN_DATA_ADDR2_HI"/>
 	<reg32 offset="0x9e14" name="PC_BIN_DATA_ADDR_LO"/>
 	<reg32 offset="0x9e15" name="PC_BIN_DATA_ADDR_HI"/>
+
+	<reg32 offset="0x9c00" name="PC_2D_EVENT_CMD">
+		<bitfield name="STATE_ID" low="8" high="15"/>
+		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
+	</reg32>
 
 	<!-- always 0x0 -->
 	<reg32 offset="0x9e72" name="PC_UNKNOWN_9E72"/>
@@ -3301,6 +3348,10 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb802" name="HLSQ_DS_CNTL" type="a6xx_hlsq_xs_cntl"/>
 	<reg32 offset="0xb803" name="HLSQ_GS_CNTL" type="a6xx_hlsq_xs_cntl"/>
 
+	<reg32 offset="0xb820" name="HLSQ_LOAD_STATE_GEOM_CMD"/>
+	<reg64 offset="0xb821" name="HLSQ_LOAD_STATE_GEOM_EXT_SRC_ADDR"/>
+	<reg32 offset="0xb823" name="HLSQ_LOAD_STATE_GEOM_DATA"/>
+
 	<reg32 offset="0xb980" name="HLSQ_UNKNOWN_B980"/>
 
 	<reg32 offset="0xb982" name="HLSQ_CONTROL_1_REG">
@@ -3372,10 +3423,28 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb99a" name="HLSQ_CS_KERNEL_GROUP_Y"/>
 	<reg32 offset="0xb99b" name="HLSQ_CS_KERNEL_GROUP_Z"/>
 
+	<reg32 offset="0xb9a0" name="HLSQ_LOAD_STATE_FRAG_CMD"/>
+	<reg64 offset="0xb9a1" name="HLSQ_LOAD_STATE_FRAG_EXT_SRC_ADDR"/>
+	<reg32 offset="0xb9a3" name="HLSQ_LOAD_STATE_FRAG_DATA"/>
+
 	<!-- mirror of SP_CS_BINDLESS_BASE -->
 	<array offset="0xb9c0" name="HLSQ_CS_BINDLESS_BASE" stride="2" length="5">
 		<reg64 offset="0" name="ADDR" type="waddress"/>
 	</array>
+
+	<reg32 offset="0xbb00" name="HLSQ_DRAW_CMD">
+		<bitfield name="STATE_ID" low="0" high="7"/>
+	</reg32>
+
+	<reg32 offset="0xbb01" name="HLSQ_DISPATCH_CMD">
+		<bitfield name="STATE_ID" low="0" high="7"/>
+	</reg32>
+
+	<reg32 offset="0xbb02" name="HLSQ_EVENT_CMD">
+		<!-- I think only the low bit is actually used? -->
+		<bitfield name="STATE_ID" low="16" high="23"/>
+		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
+	</reg32>
 
 	<!-- probably: -->
 	<reg32 offset="0xbb08" name="HLSQ_UPDATE_CNTL"/>
@@ -3390,6 +3459,11 @@ to upconvert to 32b float internally?
 		<reg64 offset="0" name="ADDR" type="waddress"/>
 	</array>
 
+	<reg32 offset="0xbd80" name="HLSQ_2D_EVENT_CMD">
+		<bitfield name="STATE_ID" low="8" high="15"/>
+		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
+	</reg32>
+
 	<!-- always 0x80 ? -->
 	<reg32 offset="0xbe00" name="HLSQ_UNKNOWN_BE00"/>
 	<!-- always 0x0 ? -->
@@ -3397,6 +3471,30 @@ to upconvert to 32b float internally?
 	<!-- always 0x0 ? -->
 	<reg32 offset="0xbe04" name="HLSQ_UNKNOWN_BE04"/>
 
+	<!--
+		These special registers signal the beginning/end of an event
+		sequence. The sequence used internally for an event looks like:
+		- write EVENT_CMD pipe register
+		- write CP_EVENT_START
+		- write HLSQ_EVENT_CMD with event or HLSQ_DRAW_CMD
+		- write PC_EVENT_CMD with event or PC_DRAW_CMD
+		- write HLSQ_EVENT_CMD(CONTEXT_DONE)
+		- write PC_EVENT_CMD(CONTEXT_DONE)
+		- write CP_EVENT_END
+		Writing to CP_EVENT_END seems to actually trigger the context roll
+	-->
+	<reg32 offset="0xd600" name="CP_EVENT_START">
+		<bitfield name="STATE_ID" low="0" high="7"/>
+	</reg32>
+	<reg32 offset="0xd601" name="CP_EVENT_END">
+		<bitfield name="STATE_ID" low="0" high="7"/>
+	</reg32>
+	<reg32 offset="0xd700" name="CP_2D_EVENT_START">
+		<bitfield name="STATE_ID" low="0" high="7"/>
+	</reg32>
+	<reg32 offset="0xd701" name="CP_2D_EVENT_END">
+		<bitfield name="STATE_ID" low="0" high="7"/>
+	</reg32>
 </domain>
 
 <!-- Seems basically the same as a5xx, maybe move to common.xml.. -->

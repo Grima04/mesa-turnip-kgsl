@@ -45,6 +45,10 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="BLIT" value="30" variants="A5XX,A6XX"/>
 	<value name="UNK_25" value="37" variants="A5XX"/>
 	<value name="LRZ_FLUSH" value="38" variants="A5XX,A6XX"/>
+	<value name="BLIT_OP_FILL_2D" value="39" variants="A5XX,A6XX"/>
+	<value name="BLIT_OP_COPY_2D" value="40" variants="A5XX,A6XX"/>
+	<value name="BLIT_OP_SCALE_2D" value="42" variants="A5XX,A6XX"/>
+	<value name="CONTEXT_DONE_2D" value="43" variants="A5XX,A6XX"/>
 	<value name="UNK_2C" value="44" variants="A5XX"/>
 	<value name="UNK_2D" value="45" variants="A5XX"/>
 
@@ -344,7 +348,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		for a5xx
 	</doc>
 	<value name="CP_PERFCOUNTER_ACTION" value="0x50" variants="A5XX"/>
-	<!-- switches SMMU pagetable, used on a5xx only -->
+	<!-- switches SMMU pagetable, used on a5xx+ only -->
 	<value name="CP_SMMU_TABLE_UPDATE" value="0x53" variants="A5XX,A6XX"/>
 	<!-- for a6xx -->
 	<doc>Tells CP the current mode of GPU operation</doc>
@@ -734,11 +738,11 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 
 <domain name="CP_DRAW_INDIRECT" width="32" varset="chip" prefix="chip" variants="A4XX-">
 	<reg32 offset="0" name="0" type="vgt_draw_initiator_a4xx"/>
-	<strip variants="A4XX">
+	<stripe variants="A4XX">
 		<reg32 offset="1" name="1">
 			<bitfield name="INDIRECT" low="0" high="31"/>
 		</reg32>
-	</strip>
+	</stripe>
 	<stripe variants="A5XX-">
 		<reg32 offset="1" name="1">
 			<bitfield name="INDIRECT_LO" low="0" high="31"/>
@@ -950,7 +954,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 
 <domain name="CP_REG_TO_MEM" width="32">
 	<reg32 offset="0" name="0">
-		<bitfield name="REG" low="0" high="15" type="hex"/>
+		<bitfield name="REG" low="0" high="17" type="hex"/>
 		<!-- number of registers/dwords copied is max(CNT, 1). -->
 		<bitfield name="CNT" low="18" high="29" type="uint"/>
 		<bitfield name="64B" pos="30" type="boolean"/>
@@ -971,7 +975,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
                 registers.
 	</doc>
 	<reg32 offset="0" name="0">
-		<bitfield name="REG" low="0" high="15" type="hex"/>
+		<bitfield name="REG" low="0" high="17" type="hex"/>
 		<!-- number of registers/dwords copied is max(CNT, 1). -->
 		<bitfield name="CNT" low="18" high="29" type="uint"/>
 		<bitfield name="64B" pos="30" type="boolean"/>
@@ -996,7 +1000,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
                 offsetted using a DWORD in memory.
 	</doc>
 	<reg32 offset="0" name="0">
-		<bitfield name="REG" low="0" high="15" type="hex"/>
+		<bitfield name="REG" low="0" high="17" type="hex"/>
 		<!-- number of registers/dwords copied is max(CNT, 1). -->
 		<bitfield name="CNT" low="18" high="29" type="uint"/>
 		<bitfield name="64B" pos="30" type="boolean"/>
@@ -1018,7 +1022,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 
 <domain name="CP_MEM_TO_REG" width="32">
 	<reg32 offset="0" name="0">
-		<bitfield name="REG" low="0" high="15" type="hex"/>
+		<bitfield name="REG" low="0" high="17" type="hex"/>
 		<!-- number of registers/dwords copied is max(CNT, 1). -->
 		<bitfield name="CNT" low="19" high="29" type="uint"/>
 		<!-- shift each DWORD left by 2 while copying -->
@@ -1511,7 +1515,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</doc>
 	<reg32 offset="0" name="0">
 		<!-- the register to test -->
-		<bitfield name="REG" low="0" high="11"/>
+		<bitfield name="REG" low="0" high="17"/>
 		<!-- the bit to test -->
 		<bitfield name="BIT" low="20" high="24" type="uint"/>
 		<!-- execute CP_WAIT_FOR_ME beforehand -->
@@ -1660,6 +1664,28 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</enum>
 	<reg32 offset="0" name="0">
 		<bitfield name="TRACKER" low="0" high="2" type="reg_tracker"/>
+	</reg32>
+</domain>
+
+<domain name="CP_SMMU_TABLE_UPDATE" width="32">
+	<doc>
+		Note that the SMMU's definition of TTBRn can take different forms
+		depending on the pgtable format.  But a5xx+ only uses aarch64
+		format.
+	</doc>
+	<reg32 offset="0" name="0">
+		<bitfield name="TTBR0_LO" low="0" high="31"/>
+	</reg32>
+	<reg32 offset="1" name="1">
+		<bitfield name="TTBR0_HI" low="0" high="15"/>
+		<bitfield name="ASID" low="16" high="31"/>
+	</reg32>
+	<reg32 offset="2" name="2">
+		<doc>Unused, does not apply to aarch64 pgtable format</doc>
+		<bitfield name="CONTEXTIDR" low="0" high="31"/>
+	</reg32>
+	<reg32 offset="3" name="3">
+		<bitfield name="CONTEXTBANK" low="0" high="31"/>
 	</reg32>
 </domain>
 

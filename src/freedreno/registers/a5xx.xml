@@ -2927,13 +2927,13 @@ different border-color states per texture..  Looks something like:
 		higher (smaller) mipmap levels
 		 -->
 		<bitfield name="ARRAY_PITCH" low="0" high="13" shr="12" type="uint"/>
+		<bitfield name="MIN_LAYERSZ" low="23" high="26" shr="12"/>
 		<!--
 		by default levels with w < 16 are linear
 		TILE_ALL makes all levels have tiling
 		seems required when using UBWC, since all levels have UBWC (can possibly be disabled?)
 		 -->
 		<bitfield name="TILE_ALL" pos="27" type="boolean"/>
-		<bitfield name="MIN_LAYERSZ" low="23" high="26" shr="12"/>
 		<bitfield name="FLAG" pos="28" type="boolean"/>
 	</reg32>
 	<reg32 offset="4" name="4">
