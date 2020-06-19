@@ -258,6 +258,9 @@ fs_visitor::emit_shader_float_controls_execution_mode()
    fs_builder abld = bld.annotate("shader floats control execution mode");
    unsigned mask, mode = brw_rnd_mode_from_nir(execution_mode, &mask);
 
+   if (mask == 0)
+      return;
+
    abld.emit(SHADER_OPCODE_FLOAT_CONTROL_MODE, bld.null_reg_ud(),
              brw_imm_d(mode), brw_imm_d(mask));
 }
