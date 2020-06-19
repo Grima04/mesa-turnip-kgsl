@@ -1828,7 +1828,7 @@ draw_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
                            LLVMValueRef total_emitted_vertices_vec_ptr,
                            LLVMValueRef verts_per_prim_vec,
                            LLVMValueRef emitted_prims_vec,
-                           LLVMValueRef mask_vec)
+                           LLVMValueRef mask_vec, unsigned stream)
 {
    const struct draw_gs_llvm_iface *gs_iface = draw_gs_llvm_iface(gs_base);
    struct draw_gs_llvm_variant *variant = gs_iface->variant;

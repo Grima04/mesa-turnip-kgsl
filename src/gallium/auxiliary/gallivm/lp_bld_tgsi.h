@@ -435,7 +435,7 @@ struct lp_build_gs_iface
                          LLVMValueRef total_emitted_vertices_vec,
                          LLVMValueRef verts_per_prim_vec,
                          LLVMValueRef emitted_prims_vec,
-                         LLVMValueRef mask_vec);
+                         LLVMValueRef mask_vec, unsigned stream);
    void (*gs_epilogue)(const struct lp_build_gs_iface *gs_iface,
                        LLVMValueRef total_emitted_vertices_vec,
                        LLVMValueRef emitted_prims_vec, unsigned stream);
