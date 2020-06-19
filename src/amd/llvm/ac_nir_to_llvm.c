@@ -3032,16 +3032,6 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 	case nir_intrinsic_image_deref_atomic_inc_wrap: {
 		atomic_name = "inc";
 		atomic_subop = ac_atomic_inc_wrap;
-		/* ATOMIC_INC instruction does:
-		 *      value = (value + 1) % (data + 1)
-		 * but we want:
-		 *      value = (value + 1) % data
-		 * So replace 'data' by 'data - 1'.
-		 */
-		ctx->ssa_defs[instr->src[3].ssa->index] =
-			LLVMBuildSub(ctx->ac.builder,
-				     ctx->ssa_defs[instr->src[3].ssa->index],
-				     ctx->ac.i32_1, "");
 		break;
 	}
 	case nir_intrinsic_bindless_image_atomic_dec_wrap:
