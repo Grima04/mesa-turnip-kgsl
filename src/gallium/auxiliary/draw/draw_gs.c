@@ -879,8 +879,8 @@ draw_create_geometry_shader(struct draw_context *draw,
       memset(gs->gs_input, 0, sizeof(struct draw_gs_inputs));
       gs->llvm_prim_lengths = 0;
 
-      gs->llvm_emitted_primitives = align_malloc(vector_size * PIPE_MAX_VERTEX_STREAMS, vector_size);
-      gs->llvm_emitted_vertices = align_malloc(vector_size * PIPE_MAX_VERTEX_STREAMS, vector_size);
+      gs->llvm_emitted_primitives = align_malloc(vector_size * gs->num_vertex_streams, vector_size);
+      gs->llvm_emitted_vertices = align_malloc(vector_size * gs->num_vertex_streams, vector_size);
       gs->llvm_prim_ids = align_calloc(vector_size, vector_size);
 
       gs->fetch_outputs = llvm_fetch_gs_outputs;
