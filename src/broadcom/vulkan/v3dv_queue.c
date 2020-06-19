@@ -422,6 +422,47 @@ handle_copy_buffer_to_image_cpu_job(struct v3dv_job *job)
 }
 
 static VkResult
+handle_csd_job(struct v3dv_queue *queue,
+               struct v3dv_job *job,
+               bool do_wait);
+
+static VkResult
+handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
+                            struct v3dv_job *job,
+                            bool do_wait)
+{
+   assert(job->type == V3DV_JOB_TYPE_CPU_CSD_INDIRECT);
+   struct v3dv_csd_indirect_cpu_job_info *info = &job->cpu.csd_indirect;
+   assert(info->csd_job);
+
+   /* Make sure the GPU is no longer using the indirect buffer*/
+   assert(info->buffer && info->buffer->mem && info->buffer->mem->bo);
+   const uint64_t infinite = 0xffffffffffffffffull;
+   v3dv_bo_wait(queue->device, info->buffer->mem->bo, infinite);
+
+   /* Map the indirect buffer and read the dispatch parameters */
+   assert(info->buffer && info->buffer->mem && info->buffer->mem->bo);
+   struct v3dv_bo *bo = info->buffer->mem->bo;
+   if (!bo->map && !v3dv_bo_map(job->device, bo, bo->size))
+      return vk_error(job->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   assert(bo->map);
+
+   const uint32_t offset = info->buffer->mem_offset + info->offset;
+   const uint32_t *group_counts = (uint32_t *) (bo->map + offset);
+   if (group_counts[0] == 0 || group_counts[1] == 0|| group_counts[2] == 0)
+      return VK_SUCCESS;
+
+   if (memcmp(group_counts, info->csd_job->csd.wg_count,
+              sizeof(info->csd_job->csd.wg_count)) != 0) {
+      v3dv_cmd_buffer_rewrite_indirect_csd_job(info, group_counts);
+   }
+
+   handle_csd_job(queue, info->csd_job, do_wait);
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 process_semaphores_to_signal(struct v3dv_device *device,
                              uint32_t count, const VkSemaphore *sems)
 {
@@ -646,6 +687,8 @@ queue_submit_job(struct v3dv_queue *queue,
       return handle_wait_events_cpu_job(job, do_wait, wait_thread);
    case V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE:
       return handle_copy_buffer_to_image_cpu_job(job);
+   case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
+      return handle_csd_indirect_cpu_job(queue, job, do_wait);
    default:
       unreachable("Unhandled job type");
    }

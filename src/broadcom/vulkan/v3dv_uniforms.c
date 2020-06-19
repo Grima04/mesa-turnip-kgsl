@@ -253,8 +253,9 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 struct v3dv_cl_reloc
-v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
-                    struct v3dv_pipeline_stage *p_stage)
+v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
+                               struct v3dv_pipeline_stage *p_stage,
+                               uint32_t **wg_count_offsets)
 {
    struct v3d_uniform_list *uinfo =
       &p_stage->current_variant->prog_data.base->uniforms;
@@ -336,8 +337,10 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 
       case QUNIFORM_NUM_WORK_GROUPS:
          assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
-         assert(job->csd.workgroup_count[data] > 0);
-         cl_aligned_u32(&uniforms, job->csd.workgroup_count[data]);
+         assert(job->csd.wg_count[data] > 0);
+         if (wg_count_offsets)
+            wg_count_offsets[data] = (uint32_t *) uniforms;
+         cl_aligned_u32(&uniforms, job->csd.wg_count[data]);
          break;
 
       case QUNIFORM_SHARED_OFFSET:
@@ -354,4 +357,11 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
    cl_end(&job->indirect, uniforms);
 
    return uniform_stream;
+}
+
+struct v3dv_cl_reloc
+v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
+                    struct v3dv_pipeline_stage *p_stage)
+{
+   return v3dv_write_uniforms_wg_offsets(cmd_buffer, p_stage, NULL);
 }

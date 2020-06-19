@@ -676,6 +676,7 @@ enum v3dv_job_type {
    V3DV_JOB_TYPE_CPU_WAIT_EVENTS,
    V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS,
    V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE,
+   V3DV_JOB_TYPE_CPU_CSD_INDIRECT,
 };
 
 struct v3dv_reset_query_cpu_job_info {
@@ -731,6 +732,15 @@ struct v3dv_copy_buffer_to_image_cpu_job_info {
    uint32_t mip_level;
    uint32_t base_layer;
    uint32_t layer_count;
+};
+
+struct v3dv_csd_indirect_cpu_job_info {
+   struct v3dv_buffer *buffer;
+   uint32_t offset;
+   struct v3dv_job *csd_job;
+   uint32_t wg_size;
+   uint32_t *wg_uniform_offsets[3];
+   bool needs_wg_uniform_rewrite;
 };
 
 struct v3dv_job {
@@ -797,6 +807,7 @@ struct v3dv_job {
       struct v3dv_event_wait_cpu_job_info           event_wait;
       struct v3dv_clear_attachments_cpu_job_info    clear_attachments;
       struct v3dv_copy_buffer_to_image_cpu_job_info copy_buffer_to_image;
+      struct v3dv_csd_indirect_cpu_job_info         csd_indirect;
    } cpu;
 
    /* Job specs for TFU jobs */
@@ -805,7 +816,7 @@ struct v3dv_job {
    /* Job specs for CSD jobs */
    struct {
       struct v3dv_bo *shared_memory;
-      uint32_t workgroup_count[3];
+      uint32_t wg_count[3];
       struct drm_v3d_submit_csd submit;
    } csd;
 };
@@ -1108,6 +1119,9 @@ void v3dv_cmd_buffer_copy_query_results(struct v3dv_cmd_buffer *cmd_buffer,
 
 void v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
                                  struct drm_v3d_submit_tfu *tfu);
+
+void v3dv_cmd_buffer_rewrite_indirect_csd_job(struct v3dv_csd_indirect_cpu_job_info *info,
+                                              const uint32_t *wg_counts);
 
 void v3dv_cmd_buffer_add_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
                                      uint64_t obj,
@@ -1622,6 +1636,9 @@ void v3d_store_tiled_image(void *dst, uint32_t dst_stride,
 
 struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                          struct v3dv_pipeline_stage *p_stage);
+struct v3dv_cl_reloc v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
+                                                    struct v3dv_pipeline_stage *p_stage,
+                                                    uint32_t **wg_count_offsets);
 
 struct v3dv_shader_variant *
 v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,

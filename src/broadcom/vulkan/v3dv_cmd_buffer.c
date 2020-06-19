@@ -217,6 +217,14 @@ job_destroy_cpu_wait_events_resources(struct v3dv_job *job)
    vk_free(&job->cmd_buffer->device->alloc, job->cpu.event_wait.events);
 }
 
+static void
+job_destroy_cpu_csd_indirect_resources(struct v3dv_job *job)
+{
+   assert(job->type == V3DV_JOB_TYPE_CPU_CSD_INDIRECT);
+   assert(job->cmd_buffer);
+   v3dv_job_destroy(job->cpu.csd_indirect.csd_job);
+}
+
 void
 v3dv_job_destroy(struct v3dv_job *job)
 {
@@ -239,6 +247,9 @@ v3dv_job_destroy(struct v3dv_job *job)
          break;
       case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
          job_destroy_cpu_wait_events_resources(job);
+         break;
+      case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
+         job_destroy_cpu_csd_indirect_resources(job);
          break;
       default:
          break;
@@ -802,28 +813,6 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    v3dv_job_init(job, type, cmd_buffer->device, cmd_buffer, subpass_idx);
-
-   return job;
-}
-
-static struct v3dv_job *
-cmd_buffer_start_compute_job(struct v3dv_cmd_buffer *cmd_buffer)
-{
-   /* Compute jobs can only happen outside a render pass */
-   assert(!cmd_buffer->state.job);
-   assert(!cmd_buffer->state.pass);
-
-   struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->alloc,
-                                    sizeof(struct v3dv_job), 8,
-                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   cmd_buffer->state.job = job;
-
-   if (!job) {
-      v3dv_flag_oom(cmd_buffer, NULL);
-      return NULL;
-   }
-
-   v3dv_job_init(job, V3DV_JOB_TYPE_GPU_CSD, cmd_buffer->device, cmd_buffer, -1);
 
    return job;
 }
@@ -4589,31 +4578,82 @@ cmd_buffer_emit_pre_dispatch(struct v3dv_cmd_buffer *cmd_buffer)
 #define V3D_CSD_CFG5_SINGLE_SEG (1 << 1)
 #define V3D_CSD_CFG5_THREADING (1 << 0)
 
-static void
-cmd_buffer_dispatch(struct v3dv_cmd_buffer *cmd_buffer,
-                    uint32_t group_count_x,
-                    uint32_t group_count_y,
-                    uint32_t group_count_z)
+void
+v3dv_cmd_buffer_rewrite_indirect_csd_job(
+   struct v3dv_csd_indirect_cpu_job_info *info,
+   const uint32_t *wg_counts)
 {
-   if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0)
-      return;
+   assert(info->csd_job);
+   struct v3dv_job *job = info->csd_job;
 
-   struct v3dv_job *job = cmd_buffer_start_compute_job(cmd_buffer);
-   if (!job)
-      return;
+   assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
+   assert(wg_counts[0] > 0 && wg_counts[1] > 0 && wg_counts[2] > 0);
 
    struct drm_v3d_submit_csd *submit = &job->csd.submit;
 
-   job->csd.workgroup_count[0] = group_count_x;
-   job->csd.workgroup_count[1] = group_count_y;
-   job->csd.workgroup_count[2] = group_count_z;
+   job->csd.wg_count[0] = wg_counts[0];
+   job->csd.wg_count[1] = wg_counts[1];
+   job->csd.wg_count[2] = wg_counts[2];
+
+   submit->cfg[0] = wg_counts[0] << V3D_CSD_CFG012_WG_COUNT_SHIFT;
+   submit->cfg[1] = wg_counts[1] << V3D_CSD_CFG012_WG_COUNT_SHIFT;
+   submit->cfg[2] = wg_counts[2] << V3D_CSD_CFG012_WG_COUNT_SHIFT;
+
+   submit->cfg[4] = DIV_ROUND_UP(info->wg_size, 16) *
+                    (wg_counts[0] * wg_counts[1] * wg_counts[2]) - 1;
+   assert(submit->cfg[4] != ~0);
+
+   if (info->needs_wg_uniform_rewrite) {
+      /* Make sure the GPU is not currently accessing the indirect CL for this
+       * job, since we are about to overwrite some of the uniform data.
+       */
+      const uint64_t infinite = 0xffffffffffffffffull;
+      v3dv_bo_wait(job->device, job->indirect.bo, infinite);
+
+      for (uint32_t i = 0; i < 3; i++) {
+         if (info->wg_uniform_offsets[i]) {
+            /* Sanity check that our uniform pointers are within the allocated
+             * BO space for our indirect CL.
+             */
+            assert(info->wg_uniform_offsets[i] >= (uint32_t *) job->indirect.base);
+            assert(info->wg_uniform_offsets[i] < (uint32_t *) job->indirect.next);
+            *(info->wg_uniform_offsets[i]) = wg_counts[i];
+         }
+      }
+   }
+}
+
+static struct v3dv_job *
+cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
+                          uint32_t group_count_x,
+                          uint32_t group_count_y,
+                          uint32_t group_count_z,
+                          uint32_t **wg_uniform_offsets_out,
+                          uint32_t *wg_size_out)
+{
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(pipeline && pipeline->cs && pipeline->cs->nir);
+
+   struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->alloc,
+                                    sizeof(struct v3dv_job), 8,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!job) {
+      v3dv_flag_oom(cmd_buffer, NULL);
+      return NULL;
+   }
+
+   v3dv_job_init(job, V3DV_JOB_TYPE_GPU_CSD, cmd_buffer->device, cmd_buffer, -1);
+   cmd_buffer->state.job = job;
+
+   struct drm_v3d_submit_csd *submit = &job->csd.submit;
+
+   job->csd.wg_count[0] = group_count_x;
+   job->csd.wg_count[1] = group_count_y;
+   job->csd.wg_count[2] = group_count_z;
 
    submit->cfg[0] |= group_count_x << V3D_CSD_CFG012_WG_COUNT_SHIFT;
    submit->cfg[1] |= group_count_y << V3D_CSD_CFG012_WG_COUNT_SHIFT;
    submit->cfg[2] |= group_count_z << V3D_CSD_CFG012_WG_COUNT_SHIFT;
-
-   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
-   assert(pipeline->cs && pipeline->cs->nir);
 
    const struct nir_shader *cs =  pipeline->cs->nir;
 
@@ -4625,6 +4665,8 @@ cmd_buffer_dispatch(struct v3dv_cmd_buffer *cmd_buffer,
    submit->cfg[3] |= ((DIV_ROUND_UP(wgs_per_sg * wg_size, 16) - 1) <<
                      V3D_CSD_CFG3_BATCHES_PER_SG_M1_SHIFT);
    submit->cfg[3] |= (wg_size & 0xff) << V3D_CSD_CFG3_WG_SIZE_SHIFT;
+   if (wg_size_out)
+      *wg_size_out = wg_size;
 
    uint32_t batches_per_wg = DIV_ROUND_UP(wg_size, 16);
    submit->cfg[4] = batches_per_wg *
@@ -4646,15 +4688,39 @@ cmd_buffer_dispatch(struct v3dv_cmd_buffer *cmd_buffer,
          v3dv_bo_alloc(cmd_buffer->device,
                        variant->prog_data.cs->shared_size * wgs_per_sg,
                        "shared_vars", true);
+      if (!job->csd.shared_memory) {
+         v3dv_flag_oom(cmd_buffer, NULL);
+         return job;
+      }
    }
 
    v3dv_job_add_bo(job, variant->assembly_bo);
 
    struct v3dv_cl_reloc uniforms =
-      v3dv_write_uniforms(cmd_buffer, pipeline->cs);
+      v3dv_write_uniforms_wg_offsets(cmd_buffer, pipeline->cs,
+                                     wg_uniform_offsets_out);
    submit->cfg[6] = uniforms.bo->offset + uniforms.offset;
 
    v3dv_job_add_bo(job, uniforms.bo);
+
+   return job;
+}
+
+static void
+cmd_buffer_dispatch(struct v3dv_cmd_buffer *cmd_buffer,
+                    uint32_t group_count_x,
+                    uint32_t group_count_y,
+                    uint32_t group_count_z)
+{
+   if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0)
+      return;
+
+   struct v3dv_job *job =
+      cmd_buffer_create_csd_job(cmd_buffer,
+                                group_count_x,
+                                group_count_y,
+                                group_count_z,
+                                NULL, NULL);
 
    list_addtail(&job->list_link, &cmd_buffer->jobs);
    cmd_buffer->state.job = NULL;
@@ -4672,12 +4738,64 @@ v3dv_CmdDispatch(VkCommandBuffer commandBuffer,
    cmd_buffer_dispatch(cmd_buffer, groupCountX, groupCountY, groupCountZ);
 }
 
+static void
+cmd_buffer_dispatch_indirect(struct v3dv_cmd_buffer *cmd_buffer,
+                             struct v3dv_buffer *buffer,
+                             uint32_t offset)
+{
+   /* We can't do indirect dispatches, so instead we record a CPU job that,
+    * when executed in the queue, will map the indirect buffer, read the
+    * dispatch parameters, and submit a regular dispatch.
+    */
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_create_cpu_job(cmd_buffer->device,
+                                     V3DV_JOB_TYPE_CPU_CSD_INDIRECT,
+                                     cmd_buffer, -1);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
+   /* We need to create a CSD job now, even if we still don't know the actual
+    * dispatch parameters, because the job setup needs to be done using the
+    * current command buffer state (i.e. pipeline, descriptor sets, push
+    * constants, etc.). So we create the job with default dispatch parameters
+    * and we will rewrite the parts we need at submit time if the indirect
+    * parameters don't match the ones we used to setup the job.
+    */
+   struct v3dv_job *csd_job =
+      cmd_buffer_create_csd_job(cmd_buffer,
+                                1, 1, 1,
+                                &job->cpu.csd_indirect.wg_uniform_offsets[0],
+                                &job->cpu.csd_indirect.wg_size);
+   v3dv_return_if_oom(cmd_buffer, NULL);
+   assert(csd_job);
+
+   job->cpu.csd_indirect.buffer = buffer;
+   job->cpu.csd_indirect.offset = offset;
+   job->cpu.csd_indirect.csd_job = csd_job;
+
+   /* If the compute shader reads the workgroup sizes we will also need to
+    * rewrite the corresponding uniforms.
+    */
+   job->cpu.csd_indirect.needs_wg_uniform_rewrite =
+      job->cpu.csd_indirect.wg_uniform_offsets[0] ||
+      job->cpu.csd_indirect.wg_uniform_offsets[1] ||
+      job->cpu.csd_indirect.wg_uniform_offsets[2];
+
+   list_addtail(&job->list_link, &cmd_buffer->jobs);
+   cmd_buffer->state.job = NULL;
+}
+
 void
 v3dv_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
-                         VkBuffer buffer,
+                         VkBuffer _buffer,
                          VkDeviceSize offset)
 {
-   unreachable("vkCmdDispatchIndirect not implemented.");
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
+
+   assert(offset <= UINT32_MAX);
+
+   cmd_buffer_emit_pre_dispatch(cmd_buffer);
+   cmd_buffer_dispatch_indirect(cmd_buffer, buffer, offset);
 }
 
 void
