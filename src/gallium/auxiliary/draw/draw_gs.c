@@ -380,7 +380,7 @@ llvm_fetch_gs_outputs(struct draw_geometry_shader *shader,
       int num_prims = shader->llvm_emitted_primitives[i + (stream * shader->vector_length)];
       for (j = 0; j < num_prims; ++j) {
          int prim_length =
-            shader->llvm_prim_lengths[j][i];
+            shader->llvm_prim_lengths[j * shader->num_vertex_streams + stream][i];
          shader->stream[stream].primitive_lengths[shader->stream[stream].emitted_primitives + prim_idx] =
             prim_length;
          ++prim_idx;
@@ -645,14 +645,14 @@ int draw_geometry_shader_run(struct draw_geometry_shader *shader,
       if (max_out_prims > shader->max_out_prims) {
          unsigned i;
          if (shader->llvm_prim_lengths) {
-            for (i = 0; i < shader->max_out_prims; ++i) {
+            for (i = 0; i < shader->num_vertex_streams * shader->max_out_prims; ++i) {
                align_free(shader->llvm_prim_lengths[i]);
             }
             FREE(shader->llvm_prim_lengths);
          }
 
-         shader->llvm_prim_lengths = MALLOC(max_out_prims * sizeof(unsigned*));
-         for (i = 0; i < max_out_prims; ++i) {
+         shader->llvm_prim_lengths = MALLOC(shader->num_vertex_streams * max_out_prims * sizeof(unsigned*));
+         for (i = 0; i < shader->num_vertex_streams * max_out_prims; ++i) {
             int vector_size = shader->vector_length * sizeof(unsigned);
             shader->llvm_prim_lengths[i] =
                align_malloc(vector_size, vector_size);
@@ -948,7 +948,7 @@ void draw_delete_geometry_shader(struct draw_context *draw,
 
       if (dgs->llvm_prim_lengths) {
          unsigned i;
-         for (i = 0; i < dgs->max_out_prims; ++i) {
+         for (i = 0; i < dgs->num_vertex_streams * dgs->max_out_prims; ++i) {
             align_free(dgs->llvm_prim_lengths[i]);
          }
          FREE(dgs->llvm_prim_lengths);
