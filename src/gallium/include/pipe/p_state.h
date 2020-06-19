@@ -574,6 +574,10 @@ struct pipe_resource
    struct pipe_screen *screen; /**< screen that this texture belongs to */
 };
 
+/**
+ * Opaque object used for separate resource/memory allocations.
+ */
+struct pipe_memory_allocation;
 
 /**
  * Transfer object.  For data transfer to/from a resource.
