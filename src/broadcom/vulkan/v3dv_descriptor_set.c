@@ -927,6 +927,12 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
 
             descriptor->buffer = buffer;
             descriptor->offset = buffer_info->offset;
+            if (buffer_info->range == VK_WHOLE_SIZE) {
+               descriptor->range = buffer->size - buffer_info->offset;
+            } else {
+               assert(descriptor->range <= UINT32_MAX);
+               descriptor->range = buffer_info->range;
+            }
             break;
          }
          case VK_DESCRIPTOR_TYPE_SAMPLER: {

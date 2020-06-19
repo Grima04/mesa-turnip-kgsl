@@ -198,11 +198,17 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                             index, &dynamic_offset);
       assert(descriptor);
       assert(descriptor->buffer);
+      assert(descriptor->buffer->mem);
+      assert(descriptor->buffer->mem->bo);
 
-      cl_aligned_reloc(&job->indirect, uniforms,
-                       descriptor->buffer->mem->bo,
-                       descriptor->buffer->mem_offset +
-                       descriptor->offset + offset + dynamic_offset);
+      if (content == QUNIFORM_GET_BUFFER_SIZE) {
+         cl_aligned_u32(uniforms, descriptor->range);
+      } else {
+         cl_aligned_reloc(&job->indirect, uniforms,
+                          descriptor->buffer->mem->bo,
+                          descriptor->buffer->mem_offset +
+                          descriptor->offset + offset + dynamic_offset);
+      }
    }
 }
 
@@ -303,6 +309,7 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 
       case QUNIFORM_SSBO_OFFSET:
       case QUNIFORM_UBO_ADDR:
+      case QUNIFORM_GET_BUFFER_SIZE:
          write_ubo_ssbo_uniforms(cmd_buffer, pipeline, &uniforms,
                                  uinfo->contents[i], data);
         break;

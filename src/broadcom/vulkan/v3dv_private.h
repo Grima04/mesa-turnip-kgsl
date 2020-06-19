@@ -945,6 +945,7 @@ struct v3dv_descriptor {
       struct {
          struct v3dv_buffer *buffer;
          uint32_t offset;
+         uint32_t range;
       };
    };
 };
