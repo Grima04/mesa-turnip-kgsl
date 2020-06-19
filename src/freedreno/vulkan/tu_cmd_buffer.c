@@ -109,177 +109,29 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
 }
 
 static void
-tu_tiling_config_update_tile_layout(struct tu_tiling_config *tiling,
-                                    const struct tu_device *dev,
-                                    const struct tu_render_pass *pass)
-{
-   const uint32_t tile_align_w = pass->tile_align_w;
-   const uint32_t max_tile_width = 1024;
-
-   /* note: don't offset the tiling config by render_area.offset,
-    * because binning pass can't deal with it
-    * this means we might end up with more tiles than necessary,
-    * but load/store/etc are still scissored to the render_area
-    */
-   tiling->tile0.offset = (VkOffset2D) {};
-
-   const uint32_t ra_width =
-      tiling->render_area.extent.width +
-      (tiling->render_area.offset.x - tiling->tile0.offset.x);
-   const uint32_t ra_height =
-      tiling->render_area.extent.height +
-      (tiling->render_area.offset.y - tiling->tile0.offset.y);
-
-   /* start from 1 tile */
-   tiling->tile_count = (VkExtent2D) {
-      .width = 1,
-      .height = 1,
-   };
-   tiling->tile0.extent = (VkExtent2D) {
-      .width = util_align_npot(ra_width, tile_align_w),
-      .height = align(ra_height, TILE_ALIGN_H),
-   };
-
-   if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_FORCEBIN)) {
-      /* start with 2x2 tiles */
-      tiling->tile_count.width = 2;
-      tiling->tile_count.height = 2;
-      tiling->tile0.extent.width = util_align_npot(DIV_ROUND_UP(ra_width, 2), tile_align_w);
-      tiling->tile0.extent.height = align(DIV_ROUND_UP(ra_height, 2), TILE_ALIGN_H);
-   }
-
-   /* do not exceed max tile width */
-   while (tiling->tile0.extent.width > max_tile_width) {
-      tiling->tile_count.width++;
-      tiling->tile0.extent.width =
-         util_align_npot(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
-   }
-
-   /* will force to sysmem, don't bother trying to have a valid tile config
-    * TODO: just skip all GMEM stuff when sysmem is forced?
-    */
-   if (!pass->gmem_pixels)
-      return;
-
-   /* do not exceed gmem size */
-   while (tiling->tile0.extent.width * tiling->tile0.extent.height > pass->gmem_pixels) {
-      if (tiling->tile0.extent.width > MAX2(tile_align_w, tiling->tile0.extent.height)) {
-         tiling->tile_count.width++;
-         tiling->tile0.extent.width =
-            util_align_npot(DIV_ROUND_UP(ra_width, tiling->tile_count.width), tile_align_w);
-      } else {
-         /* if this assert fails then layout is impossible.. */
-         assert(tiling->tile0.extent.height > TILE_ALIGN_H);
-         tiling->tile_count.height++;
-         tiling->tile0.extent.height =
-            align(DIV_ROUND_UP(ra_height, tiling->tile_count.height), TILE_ALIGN_H);
-      }
-   }
-}
-
-static void
-tu_tiling_config_update_pipe_layout(struct tu_tiling_config *tiling,
-                                    const struct tu_device *dev)
-{
-   const uint32_t max_pipe_count = 32; /* A6xx */
-
-   /* start from 1 tile per pipe */
-   tiling->pipe0 = (VkExtent2D) {
-      .width = 1,
-      .height = 1,
-   };
-   tiling->pipe_count = tiling->tile_count;
-
-   while (tiling->pipe_count.width * tiling->pipe_count.height > max_pipe_count) {
-      if (tiling->pipe0.width < tiling->pipe0.height) {
-         tiling->pipe0.width += 1;
-         tiling->pipe_count.width =
-            DIV_ROUND_UP(tiling->tile_count.width, tiling->pipe0.width);
-      } else {
-         tiling->pipe0.height += 1;
-         tiling->pipe_count.height =
-            DIV_ROUND_UP(tiling->tile_count.height, tiling->pipe0.height);
-      }
-   }
-}
-
-static void
-tu_tiling_config_update_pipes(struct tu_tiling_config *tiling,
-                              const struct tu_device *dev)
-{
-   const uint32_t max_pipe_count = 32; /* A6xx */
-   const uint32_t used_pipe_count =
-      tiling->pipe_count.width * tiling->pipe_count.height;
-   const VkExtent2D last_pipe = {
-      .width = (tiling->tile_count.width - 1) % tiling->pipe0.width + 1,
-      .height = (tiling->tile_count.height - 1) % tiling->pipe0.height + 1,
-   };
-
-   assert(used_pipe_count <= max_pipe_count);
-   assert(max_pipe_count <= ARRAY_SIZE(tiling->pipe_config));
-
-   for (uint32_t y = 0; y < tiling->pipe_count.height; y++) {
-      for (uint32_t x = 0; x < tiling->pipe_count.width; x++) {
-         const uint32_t pipe_x = tiling->pipe0.width * x;
-         const uint32_t pipe_y = tiling->pipe0.height * y;
-         const uint32_t pipe_w = (x == tiling->pipe_count.width - 1)
-                                    ? last_pipe.width
-                                    : tiling->pipe0.width;
-         const uint32_t pipe_h = (y == tiling->pipe_count.height - 1)
-                                    ? last_pipe.height
-                                    : tiling->pipe0.height;
-         const uint32_t n = tiling->pipe_count.width * y + x;
-
-         tiling->pipe_config[n] = A6XX_VSC_PIPE_CONFIG_REG_X(pipe_x) |
-                                  A6XX_VSC_PIPE_CONFIG_REG_Y(pipe_y) |
-                                  A6XX_VSC_PIPE_CONFIG_REG_W(pipe_w) |
-                                  A6XX_VSC_PIPE_CONFIG_REG_H(pipe_h);
-         tiling->pipe_sizes[n] = CP_SET_BIN_DATA5_0_VSC_SIZE(pipe_w * pipe_h);
-      }
-   }
-
-   memset(tiling->pipe_config + used_pipe_count, 0,
-          sizeof(uint32_t) * (max_pipe_count - used_pipe_count));
-}
-
-static void
-tu_tiling_config_get_tile(const struct tu_tiling_config *tiling,
-                          const struct tu_device *dev,
+tu_tiling_config_get_tile(const struct tu_framebuffer *fb,
                           uint32_t tx,
                           uint32_t ty,
-                          struct tu_tile *tile)
+                          uint32_t *pipe,
+                          uint32_t *slot)
 {
    /* find the pipe and the slot for tile (tx, ty) */
-   const uint32_t px = tx / tiling->pipe0.width;
-   const uint32_t py = ty / tiling->pipe0.height;
-   const uint32_t sx = tx - tiling->pipe0.width * px;
-   const uint32_t sy = ty - tiling->pipe0.height * py;
+   const uint32_t px = tx / fb->pipe0.width;
+   const uint32_t py = ty / fb->pipe0.height;
+   const uint32_t sx = tx - fb->pipe0.width * px;
+   const uint32_t sy = ty - fb->pipe0.height * py;
    /* last pipe has different width */
    const uint32_t pipe_width =
-      MIN2(tiling->pipe0.width,
-           tiling->tile_count.width - px * tiling->pipe0.width);
+      MIN2(fb->pipe0.width,
+           fb->tile_count.width - px * fb->pipe0.width);
 
-   assert(tx < tiling->tile_count.width && ty < tiling->tile_count.height);
-   assert(px < tiling->pipe_count.width && py < tiling->pipe_count.height);
-   assert(sx < tiling->pipe0.width && sy < tiling->pipe0.height);
+   assert(tx < fb->tile_count.width && ty < fb->tile_count.height);
+   assert(px < fb->pipe_count.width && py < fb->pipe_count.height);
+   assert(sx < fb->pipe0.width && sy < fb->pipe0.height);
 
    /* convert to 1D indices */
-   tile->pipe = tiling->pipe_count.width * py + px;
-   tile->slot = pipe_width * sy + sx;
-
-   /* get the blit area for the tile */
-   tile->begin = (VkOffset2D) {
-      .x = tiling->tile0.offset.x + tiling->tile0.extent.width * tx,
-      .y = tiling->tile0.offset.y + tiling->tile0.extent.height * ty,
-   };
-   tile->end.x =
-      (tx == tiling->tile_count.width - 1)
-         ? tiling->render_area.offset.x + tiling->render_area.extent.width
-         : tile->begin.x + tiling->tile0.extent.width;
-   tile->end.y =
-      (ty == tiling->tile_count.height - 1)
-         ? tiling->render_area.offset.y + tiling->render_area.extent.height
-         : tile->begin.y + tiling->tile0.extent.height;
+   *pipe = fb->pipe_count.width * py + px;
+   *slot = pipe_width * sy + sx;
 }
 
 void
@@ -602,7 +454,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
 static void
 tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool align)
 {
-   const VkRect2D *render_area = &cmd->state.tiling_config.render_area;
+   const VkRect2D *render_area = &cmd->state.render_area;
    uint32_t x1 = render_area->offset.x;
    uint32_t y1 = render_area->offset.y;
    uint32_t x2 = x1 + render_area->extent.width - 1;
@@ -706,7 +558,7 @@ tu_cs_emit_sds_ib(struct tu_cs *cs, uint32_t id, struct tu_cs_entry entry)
 static bool
 use_hw_binning(struct tu_cmd_buffer *cmd)
 {
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
    /* XFB commands are emitted for BINNING || SYSMEM, which makes it incompatible
     * with non-hw binning GMEM rendering. this is required because some of the
@@ -721,7 +573,7 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_FORCEBIN))
       return true;
 
-   return (tiling->tile_count.width * tiling->tile_count.height) > 2;
+   return (fb->tile_count.width * fb->tile_count.height) > 2;
 }
 
 static bool
@@ -740,24 +592,29 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd)
    if (cmd->has_tess)
       return true;
 
-   return cmd->state.tiling_config.force_sysmem;
+   return false;
 }
 
 static void
 tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
-                     const struct tu_tile *tile)
+                     uint32_t tx, uint32_t ty)
 {
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   uint32_t pipe, slot;
+
+   tu_tiling_config_get_tile(fb, tx, ty, &pipe, &slot);
+
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_YIELD));
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_GMEM));
 
-   const uint32_t x1 = tile->begin.x;
-   const uint32_t y1 = tile->begin.y;
-   const uint32_t x2 = tile->end.x - 1;
-   const uint32_t y2 = tile->end.y - 1;
+   const uint32_t x1 = fb->tile0.width * tx;
+   const uint32_t y1 = fb->tile0.height * ty;
+   const uint32_t x2 = x1 + fb->tile0.width - 1;
+   const uint32_t y2 = y1 + fb->tile0.height - 1;
    tu6_emit_window_scissor(cs, x1, y1, x2, y2);
    tu6_emit_window_offset(cs, x1, y1);
 
@@ -771,11 +628,11 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
       tu_cs_emit(cs, 0x0);
 
       tu_cs_emit_pkt7(cs, CP_SET_BIN_DATA5, 7);
-      tu_cs_emit(cs, cmd->state.tiling_config.pipe_sizes[tile->pipe] |
-                     CP_SET_BIN_DATA5_0_VSC_N(tile->slot));
-      tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + tile->pipe * cmd->vsc_draw_strm_pitch);
-      tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + (tile->pipe * 4) + (32 * cmd->vsc_draw_strm_pitch));
-      tu_cs_emit_qw(cs, cmd->vsc_prim_strm.iova + (tile->pipe * cmd->vsc_prim_strm_pitch));
+      tu_cs_emit(cs, fb->pipe_sizes[pipe] |
+                     CP_SET_BIN_DATA5_0_VSC_N(slot));
+      tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + pipe * cmd->vsc_draw_strm_pitch);
+      tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + pipe * 4 + 32 * cmd->vsc_draw_strm_pitch);
+      tu_cs_emit_qw(cs, cmd->vsc_prim_strm.iova + pipe * cmd->vsc_prim_strm_pitch);
 
       tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
       tu_cs_emit(cs, 0x0);
@@ -801,7 +658,7 @@ tu6_emit_sysmem_resolve(struct tu_cmd_buffer *cmd,
    struct tu_image_view *dst = fb->attachments[a].attachment;
    struct tu_image_view *src = fb->attachments[gmem_a].attachment;
 
-   tu_resolve_sysmem(cmd, cs, src, dst, fb->layers, &cmd->state.tiling_config.render_area);
+   tu_resolve_sysmem(cmd, cs, src, dst, fb->layers, &cmd->state.render_area);
 }
 
 static void
@@ -1009,21 +866,20 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
    tu_cs_emit_regs(cs,
-                   A6XX_VSC_BIN_SIZE(.width = tiling->tile0.extent.width,
-                                     .height = tiling->tile0.extent.height),
+                   A6XX_VSC_BIN_SIZE(.width = fb->tile0.width,
+                                     .height = fb->tile0.height),
                    A6XX_VSC_DRAW_STRM_SIZE_ADDRESS(.bo = &cmd->vsc_draw_strm,
                                                    .bo_offset = 32 * cmd->vsc_draw_strm_pitch));
 
    tu_cs_emit_regs(cs,
-                   A6XX_VSC_BIN_COUNT(.nx = tiling->tile_count.width,
-                                      .ny = tiling->tile_count.height));
+                   A6XX_VSC_BIN_COUNT(.nx = fb->tile_count.width,
+                                      .ny = fb->tile_count.height));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_CONFIG_REG(0), 32);
-   for (unsigned i = 0; i < 32; i++)
-      tu_cs_emit(cs, tiling->pipe_config[i]);
+   tu_cs_emit_array(cs, fb->pipe_config, 32);
 
    tu_cs_emit_regs(cs,
                    A6XX_VSC_PRIM_STRM_ADDRESS(.bo = &cmd->vsc_prim_strm),
@@ -1039,9 +895,9 @@ update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const uint32_t used_pipe_count =
-      tiling->pipe_count.width * tiling->pipe_count.height;
+      fb->pipe_count.width * fb->pipe_count.height;
 
    /* Clear vsc_scratch: */
    tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 3);
@@ -1078,14 +934,9 @@ static void
 tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    struct tu_physical_device *phys_dev = cmd->device->physical_device;
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
-   uint32_t x1 = tiling->tile0.offset.x;
-   uint32_t y1 = tiling->tile0.offset.y;
-   uint32_t x2 = tiling->render_area.offset.x + tiling->render_area.extent.width - 1;
-   uint32_t y2 = tiling->render_area.offset.y + tiling->render_area.extent.height - 1;
-
-   tu6_emit_window_scissor(cs, x1, y1, x2, y2);
+   tu6_emit_window_scissor(cs, 0, 0, fb->width - 1, fb->height - 1);
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BINNING));
@@ -1213,7 +1064,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       dst[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
       dst[2] =
          A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
-         A6XX_TEX_CONST_2_PITCH(cmd->state.tiling_config.tile0.extent.width * att->cpp);
+         A6XX_TEX_CONST_2_PITCH(cmd->state.framebuffer->tile0.width * att->cpp);
       dst[3] = 0;
       dst[4] = cmd->device->physical_device->gmem_base + att->gmem_offset;
       dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
@@ -1282,8 +1133,7 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
 }
 
 static void
-tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
-                        const struct VkRect2D *renderArea)
+tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
@@ -1348,14 +1198,12 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_GMEM);
 
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    if (use_hw_binning(cmd)) {
       /* enable stream-out during binning pass: */
       tu_cs_emit_regs(cs, A6XX_VPC_SO_OVERRIDE(.so_disable=false));
 
-      tu6_emit_bin_size(cs,
-                        tiling->tile0.extent.width,
-                        tiling->tile0.extent.height,
+      tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height,
                         A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
 
       tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, true);
@@ -1365,9 +1213,7 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       /* and disable stream-out for draw pass: */
       tu_cs_emit_regs(cs, A6XX_VPC_SO_OVERRIDE(.so_disable=true));
 
-      tu6_emit_bin_size(cs,
-                        tiling->tile0.extent.width,
-                        tiling->tile0.extent.height,
+      tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height,
                         A6XX_RB_BIN_CONTROL_USE_VIZ | 0x6000000);
 
       tu_cs_emit_regs(cs,
@@ -1383,10 +1229,7 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       /* no binning pass, so enable stream-out for draw pass:: */
       tu_cs_emit_regs(cs, A6XX_VPC_SO_OVERRIDE(.so_disable=false));
 
-      tu6_emit_bin_size(cs,
-                        tiling->tile0.extent.width,
-                        tiling->tile0.extent.height,
-                        0x6000000);
+      tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height, 0x6000000);
    }
 
    tu_cs_sanity_check(cs);
@@ -1395,9 +1238,9 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 tu6_render_tile(struct tu_cmd_buffer *cmd,
                 struct tu_cs *cs,
-                const struct tu_tile *tile)
+                uint32_t tx, uint32_t ty)
 {
-   tu6_emit_tile_select(cmd, cs, tile);
+   tu6_emit_tile_select(cmd, cs, tx, ty);
 
    tu_cs_emit_call(cs, &cmd->draw_cs);
 
@@ -1429,19 +1272,16 @@ tu6_tile_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
 {
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
    if (use_hw_binning(cmd))
       cmd->use_vsc_data = true;
 
    tu6_tile_render_begin(cmd, &cmd->cs);
 
-   for (uint32_t y = 0; y < tiling->tile_count.height; y++) {
-      for (uint32_t x = 0; x < tiling->tile_count.width; x++) {
-         struct tu_tile tile;
-         tu_tiling_config_get_tile(tiling, cmd->device, x, y, &tile);
-         tu6_render_tile(cmd, &cmd->cs, &tile);
-      }
+   for (uint32_t y = 0; y < fb->tile_count.height; y++) {
+      for (uint32_t x = 0; x < fb->tile_count.width; x++)
+         tu6_render_tile(cmd, &cmd->cs, x, y);
    }
 
    tu6_tile_render_end(cmd, &cmd->cs);
@@ -1450,9 +1290,7 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
 static void
 tu_cmd_render_sysmem(struct tu_cmd_buffer *cmd)
 {
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-
-   tu6_sysmem_render_begin(cmd, &cmd->cs, &tiling->render_area);
+   tu6_sysmem_render_begin(cmd, &cmd->cs);
 
    tu_cs_emit_call(&cmd->cs, &cmd->draw_cs);
 
@@ -1476,21 +1314,6 @@ tu_cmd_prepare_tile_store_ib(struct tu_cmd_buffer *cmd)
    tu6_emit_tile_store(cmd, &sub_cs);
 
    cmd->state.tile_store_ib = tu_cs_end_sub_stream(&cmd->sub_cs, &sub_cs);
-}
-
-static void
-tu_cmd_update_tiling_config(struct tu_cmd_buffer *cmd,
-                            const VkRect2D *render_area)
-{
-   const struct tu_device *dev = cmd->device;
-   struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-
-   tiling->render_area = *render_area;
-   tiling->force_sysmem = false;
-
-   tu_tiling_config_update_tile_layout(tiling, dev, cmd->state.pass);
-   tu_tiling_config_update_pipe_layout(tiling, dev);
-   tu_tiling_config_update_pipes(tiling, dev);
 }
 
 static VkResult
@@ -2791,8 +2614,8 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    cmd->state.pass = pass;
    cmd->state.subpass = pass->subpasses;
    cmd->state.framebuffer = fb;
+   cmd->state.render_area = pRenderPassBegin->renderArea;
 
-   tu_cmd_update_tiling_config(cmd, &pRenderPassBegin->renderArea);
    tu_cmd_prepare_tile_store_ib(cmd);
 
    /* Note: because this is external, any flushes will happen before draw_cs

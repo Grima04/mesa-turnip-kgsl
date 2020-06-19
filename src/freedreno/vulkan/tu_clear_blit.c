@@ -2321,10 +2321,10 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          uint32_t a,
                          uint32_t gmem_a)
 {
-   const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
-   const VkRect2D *render_area = &tiling->render_area;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   const VkRect2D *render_area = &cmd->state.render_area;
    struct tu_render_pass_attachment *dst = &cmd->state.pass->attachments[a];
-   struct tu_image_view *iview = cmd->state.framebuffer->attachments[a].attachment;
+   struct tu_image_view *iview = fb->attachments[a].attachment;
    struct tu_render_pass_attachment *src = &cmd->state.pass->attachments[gmem_a];
 
    if (!dst->store)
@@ -2377,7 +2377,7 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                    A6XX_SP_PS_2D_SRC_SIZE( .width = 0x3fff, .height = 0x3fff),
                    A6XX_SP_PS_2D_SRC_LO(cmd->device->physical_device->gmem_base + src->gmem_offset),
                    A6XX_SP_PS_2D_SRC_HI(),
-                   A6XX_SP_PS_2D_SRC_PITCH(.pitch = tiling->tile0.extent.width * src->cpp));
+                   A6XX_SP_PS_2D_SRC_PITCH(.pitch = fb->tile0.width * src->cpp));
 
    /* sync GMEM writes with CACHE. */
    tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);

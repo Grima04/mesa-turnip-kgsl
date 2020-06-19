@@ -654,36 +654,6 @@ struct tu_descriptor_state
    uint32_t dynamic_descriptors[MAX_DYNAMIC_BUFFERS * A6XX_TEX_CONST_DWORDS];
 };
 
-struct tu_tile
-{
-   uint8_t pipe;
-   uint8_t slot;
-   VkOffset2D begin;
-   VkOffset2D end;
-};
-
-struct tu_tiling_config
-{
-   VkRect2D render_area;
-
-   /* position and size of the first tile */
-   VkRect2D tile0;
-   /* number of tiles */
-   VkExtent2D tile_count;
-
-   /* size of the first VSC pipe */
-   VkExtent2D pipe0;
-   /* number of VSC pipes */
-   VkExtent2D pipe_count;
-
-   /* pipe register values */
-   uint32_t pipe_config[MAX_VSC_PIPES];
-   uint32_t pipe_sizes[MAX_VSC_PIPES];
-
-   /* Whether sysmem rendering must be used */
-   bool force_sysmem;
-};
-
 enum tu_cmd_dirty_bits
 {
    TU_CMD_DIRTY_COMPUTE_PIPELINE = 1 << 1,
@@ -859,8 +829,7 @@ struct tu_cmd_state
    const struct tu_render_pass *pass;
    const struct tu_subpass *subpass;
    const struct tu_framebuffer *framebuffer;
-
-   struct tu_tiling_config tiling_config;
+   VkRect2D render_area;
 
    struct tu_cs_entry tile_store_ib;
 
@@ -1389,9 +1358,28 @@ struct tu_framebuffer
    uint32_t height;
    uint32_t layers;
 
+   /* size of the first tile */
+   VkExtent2D tile0;
+   /* number of tiles */
+   VkExtent2D tile_count;
+
+   /* size of the first VSC pipe */
+   VkExtent2D pipe0;
+   /* number of VSC pipes */
+   VkExtent2D pipe_count;
+
+   /* pipe register values */
+   uint32_t pipe_config[MAX_VSC_PIPES];
+   uint32_t pipe_sizes[MAX_VSC_PIPES];
+
    uint32_t attachment_count;
    struct tu_attachment_info attachments[0];
 };
+
+void
+tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
+                             const struct tu_device *device,
+                             const struct tu_render_pass *pass);
 
 struct tu_subpass_barrier {
    VkPipelineStageFlags src_stage_mask;
