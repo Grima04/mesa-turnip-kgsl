@@ -108,32 +108,6 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
    return VK_SUCCESS;
 }
 
-static void
-tu_tiling_config_get_tile(const struct tu_framebuffer *fb,
-                          uint32_t tx,
-                          uint32_t ty,
-                          uint32_t *pipe,
-                          uint32_t *slot)
-{
-   /* find the pipe and the slot for tile (tx, ty) */
-   const uint32_t px = tx / fb->pipe0.width;
-   const uint32_t py = ty / fb->pipe0.height;
-   const uint32_t sx = tx - fb->pipe0.width * px;
-   const uint32_t sy = ty - fb->pipe0.height * py;
-   /* last pipe has different width */
-   const uint32_t pipe_width =
-      MIN2(fb->pipe0.width,
-           fb->tile_count.width - px * fb->pipe0.width);
-
-   assert(tx < fb->tile_count.width && ty < fb->tile_count.height);
-   assert(px < fb->pipe_count.width && py < fb->pipe_count.height);
-   assert(sx < fb->pipe0.width && sy < fb->pipe0.height);
-
-   /* convert to 1D indices */
-   *pipe = fb->pipe_count.width * py + px;
-   *slot = pipe_width * sy + sx;
-}
-
 void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
@@ -598,12 +572,9 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd)
 static void
 tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
-                     uint32_t tx, uint32_t ty)
+                     uint32_t tx, uint32_t ty, uint32_t pipe, uint32_t slot)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   uint32_t pipe, slot;
-
-   tu_tiling_config_get_tile(fb, tx, ty, &pipe, &slot);
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_YIELD));
@@ -1236,12 +1207,8 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
-tu6_render_tile(struct tu_cmd_buffer *cmd,
-                struct tu_cs *cs,
-                uint32_t tx, uint32_t ty)
+tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   tu6_emit_tile_select(cmd, cs, tx, ty);
-
    tu_cs_emit_call(cs, &cmd->draw_cs);
 
    if (use_hw_binning(cmd)) {
@@ -1279,9 +1246,21 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
 
    tu6_tile_render_begin(cmd, &cmd->cs);
 
-   for (uint32_t y = 0; y < fb->tile_count.height; y++) {
-      for (uint32_t x = 0; x < fb->tile_count.width; x++)
-         tu6_render_tile(cmd, &cmd->cs, x, y);
+   uint32_t pipe = 0;
+   for (uint32_t py = 0; py < fb->pipe_count.height; py++) {
+      for (uint32_t px = 0; px < fb->pipe_count.width; px++, pipe++) {
+         uint32_t tx1 = px * fb->pipe0.width;
+         uint32_t ty1 = py * fb->pipe0.height;
+         uint32_t tx2 = MIN2(tx1 + fb->pipe0.width, fb->tile_count.width);
+         uint32_t ty2 = MIN2(ty1 + fb->pipe0.height, fb->tile_count.height);
+         uint32_t slot = 0;
+         for (uint32_t ty = ty1; ty < ty2; ty++) {
+            for (uint32_t tx = tx1; tx < tx2; tx++, slot++) {
+               tu6_emit_tile_select(cmd, &cmd->cs, tx, ty, pipe, slot);
+               tu6_render_tile(cmd, &cmd->cs);
+            }
+         }
+      }
    }
 
    tu6_tile_render_end(cmd, &cmd->cs);
