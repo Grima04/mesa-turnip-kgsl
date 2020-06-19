@@ -389,12 +389,6 @@ update_vsc_pipe(struct fd_batch *batch)
 		A6XX_VSC_DRAW_STRM_LIMIT(.dword = fd6_ctx->vsc_draw_strm_pitch - 64));
 }
 
-/* TODO we probably have more than 8 scratch regs.. although the first
- * 8 is what kernel dumps, and it is kinda useful to be able to see
- * the value in kernel traces
- */
-#define OVERFLOW_FLAG_REG REG_A6XX_CP_SCRATCH_REG(0)
-
 /*
  * If overflow is detected, either 0x1 (VSC_DRAW_STRM overflow) or 0x3
  * (VSC_PRIM_STRM overflow) plus the size of the overflowed buffer is
@@ -403,11 +397,6 @@ update_vsc_pipe(struct fd_batch *batch)
  * encoded as well, this protects against already-submitted but
  * not executed batches from fooling the CPU into increasing the
  * size again unnecessarily).
- *
- * To conditionally use VSC data in draw pass only if there is no
- * overflow, we use a scratch reg (OVERFLOW_FLAG_REG) to hold 1
- * if no overflow, or 0 in case of overflow.  The value is inverted
- * to make the CP_COND_REG_EXEC stuff easier.
  */
 static void
 emit_vsc_overflow_test(struct fd_batch *batch)
@@ -419,11 +408,6 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 	debug_assert((fd6_ctx->vsc_draw_strm_pitch & 0x3) == 0);
 	debug_assert((fd6_ctx->vsc_prim_strm_pitch & 0x3) == 0);
 
-	/* Clear vsc_scratch: */
-	OUT_PKT7(ring, CP_MEM_WRITE, 3);
-	OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));
-	OUT_RING(ring, 0x0);
-
 	/* Check for overflow, write vsc_scratch if detected: */
 	for (int i = 0; i < gmem->num_vsc_pipes; i++) {
 		OUT_PKT7(ring, CP_COND_WRITE5, 8);
@@ -433,7 +417,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 		OUT_RING(ring, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
 		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_draw_strm_pitch - 64));
 		OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
-		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
+		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_overflow));  /* WRITE_ADDR_LO/HI */
 		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(1 + fd6_ctx->vsc_draw_strm_pitch));
 
 		OUT_PKT7(ring, CP_COND_WRITE5, 8);
@@ -443,60 +427,11 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 		OUT_RING(ring, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
 		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_prim_strm_pitch - 64));
 		OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
-		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
+		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_overflow));  /* WRITE_ADDR_LO/HI */
 		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(3 + fd6_ctx->vsc_prim_strm_pitch));
 	}
 
 	OUT_PKT7(ring, CP_WAIT_MEM_WRITES, 0);
-
-	OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
-
-	OUT_PKT7(ring, CP_MEM_TO_REG, 3);
-	OUT_RING(ring, CP_MEM_TO_REG_0_REG(OVERFLOW_FLAG_REG) |
-			CP_MEM_TO_REG_0_CNT(0));
-	OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));  /* SRC_LO/HI */
-
-	/*
-	 * This is a bit awkward, we really want a way to invert the
-	 * CP_REG_TEST/CP_COND_REG_EXEC logic, so that we can conditionally
-	 * execute cmds to use hwbinning when a bit is *not* set.  This
-	 * dance is to invert OVERFLOW_FLAG_REG
-	 *
-	 * A CP_NOP packet is used to skip executing the 'else' clause
-	 * if (b0 set)..
-	 */
-
-	BEGIN_RING(ring, 10);  /* ensure if/else doesn't get split */
-
-	/* b0 will be set if VSC_DRAW_STRM or VSC_PRIM_STRM overflow: */
-	OUT_PKT7(ring, CP_REG_TEST, 1);
-	OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
-			A6XX_CP_REG_TEST_0_BIT(0) |
-			A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
-
-	OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
-	OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
-	OUT_RING(ring, CP_COND_REG_EXEC_1_DWORDS(7));
-
-	/* if (b0 set) */ {
-		/*
-		 * On overflow, mirror the value to control->vsc_overflow
-		 * which CPU is checking to detect overflow (see
-		 * check_vsc_overflow())
-		 */
-		OUT_PKT7(ring, CP_REG_TO_MEM, 3);
-		OUT_RING(ring, CP_REG_TO_MEM_0_REG(OVERFLOW_FLAG_REG) |
-				CP_REG_TO_MEM_0_CNT(1 - 1));
-		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_overflow));
-
-		OUT_PKT4(ring, OVERFLOW_FLAG_REG, 1);
-		OUT_RING(ring, 0x0);
-
-		OUT_PKT7(ring, CP_NOP, 2);  /* skip 'else' when 'if' is taken */
-	} /* else */ {
-		OUT_PKT4(ring, OVERFLOW_FLAG_REG, 1);
-		OUT_RING(ring, 0x1);
-	}
 }
 
 static void
@@ -867,41 +802,18 @@ fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
 		OUT_PKT7(ring, CP_SET_MODE, 1);
 		OUT_RING(ring, 0x0);
 
-		/*
-		 * Conditionally execute if no VSC overflow:
-		 */
+		OUT_PKT7(ring, CP_SET_BIN_DATA5, 7);
+		OUT_RING(ring, CP_SET_BIN_DATA5_0_VSC_SIZE(pipe->w * pipe->h) |
+				CP_SET_BIN_DATA5_0_VSC_N(tile->n));
+		OUT_RELOC(ring, fd6_ctx->vsc_draw_strm,       /* per-pipe draw-stream address */
+				(tile->p * fd6_ctx->vsc_draw_strm_pitch), 0, 0);
+		OUT_RELOC(ring, fd6_ctx->vsc_draw_strm,       /* VSC_DRAW_STRM_ADDRESS + (p * 4) */
+				(tile->p * 4) + (32 * fd6_ctx->vsc_draw_strm_pitch), 0, 0);
+		OUT_RELOC(ring, fd6_ctx->vsc_prim_strm,
+				(tile->p * fd6_ctx->vsc_prim_strm_pitch), 0, 0);
 
-		BEGIN_RING(ring, 18);  /* ensure if/else doesn't get split */
-
-		OUT_PKT7(ring, CP_REG_TEST, 1);
-		OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
-				A6XX_CP_REG_TEST_0_BIT(0) |
-				A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
-
-		OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
-		OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
-		OUT_RING(ring, CP_COND_REG_EXEC_1_DWORDS(11));
-
-		/* if (no overflow) */ {
-			OUT_PKT7(ring, CP_SET_BIN_DATA5, 7);
-			OUT_RING(ring, CP_SET_BIN_DATA5_0_VSC_SIZE(pipe->w * pipe->h) |
-					CP_SET_BIN_DATA5_0_VSC_N(tile->n));
-			OUT_RELOC(ring, fd6_ctx->vsc_draw_strm,       /* per-pipe draw-stream address */
-					(tile->p * fd6_ctx->vsc_draw_strm_pitch), 0, 0);
-			OUT_RELOC(ring, fd6_ctx->vsc_draw_strm,       /* VSC_DRAW_STRM_ADDRESS + (p * 4) */
-					(tile->p * 4) + (32 * fd6_ctx->vsc_draw_strm_pitch), 0, 0);
-			OUT_RELOC(ring, fd6_ctx->vsc_prim_strm,
-					(tile->p * fd6_ctx->vsc_prim_strm_pitch), 0, 0);
-
-			OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
-			OUT_RING(ring, 0x0);
-
-			/* use a NOP packet to skip over the 'else' side: */
-			OUT_PKT7(ring, CP_NOP, 2);
-		} /* else */ {
-			OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
-			OUT_RING(ring, 0x1);
-		}
+		OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
+		OUT_RING(ring, 0x0);
 
 		set_window_offset(ring, x1, y1);
 
@@ -1329,23 +1241,8 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 	struct fd_ringbuffer *ring = batch->gmem;
 
 	if (use_hw_binning(batch)) {
-		/* Conditionally execute if no VSC overflow: */
-
-		BEGIN_RING(ring, 7);  /* ensure if/else doesn't get split */
-
-		OUT_PKT7(ring, CP_REG_TEST, 1);
-		OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
-				A6XX_CP_REG_TEST_0_BIT(0) |
-				A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
-
-		OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
-		OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
-		OUT_RING(ring, CP_COND_REG_EXEC_1_DWORDS(2));
-
-		/* if (no overflow) */ {
-			OUT_PKT7(ring, CP_SET_MARKER, 1);
-			OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_ENDVIS));
-		}
+		OUT_PKT7(ring, CP_SET_MARKER, 1);
+		OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_ENDVIS));
 	}
 
 	OUT_PKT7(ring, CP_SET_DRAW_STATE, 3);
