@@ -114,7 +114,7 @@ html_static_path = []
 
 html_extra_path = [
   '_extra/',
-  'release-maintainers-keys/',
+  'release-maintainers-keys.asc',
   'features.txt',
   'libGL.txt',
   'README.UVD',

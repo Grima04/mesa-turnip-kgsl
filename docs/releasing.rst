@@ -288,8 +288,8 @@ your GPG and SSH passphrase(s) to sign and upload the files,
 respectively.
 
 Ensure that you do sign the tarballs, that your key is mentioned in the
-release notes, and is published in `docs/release-maintainers-keys/
-</release-maintainers-keys/>`__.
+release notes, and is published in `release-maintainers-keys.asc
+<release-maintainers-keys.asc>`__.
 
 
 Add the sha256sums to the release notes
