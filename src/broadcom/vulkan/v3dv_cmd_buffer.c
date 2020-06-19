@@ -4083,10 +4083,17 @@ v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    const uint32_t index_size = get_index_size(indexType);
-   if (buffer == cmd_buffer->state.index_buffer.buffer &&
-       offset == cmd_buffer->state.index_buffer.offset &&
-       index_size == cmd_buffer->state.index_buffer.index_size) {
-      return;
+
+   /* If we have started a new job we always need to emit index buffer state.
+    * We know we are in that scenario because that is the only case where we
+    * set the dirty bit.
+    */
+   if (!(cmd_buffer->state.dirty & V3DV_CMD_DIRTY_INDEX_BUFFER)) {
+      if (buffer == cmd_buffer->state.index_buffer.buffer &&
+          offset == cmd_buffer->state.index_buffer.offset &&
+          index_size == cmd_buffer->state.index_buffer.index_size) {
+         return;
+      }
    }
 
    cl_emit(&job->bcl, INDEX_BUFFER_SETUP, ib) {
@@ -4098,6 +4105,8 @@ v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    cmd_buffer->state.index_buffer.buffer = buffer;
    cmd_buffer->state.index_buffer.offset = offset;
    cmd_buffer->state.index_buffer.index_size = index_size;
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_INDEX_BUFFER;
 }
 
 void
