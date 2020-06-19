@@ -1593,6 +1593,8 @@ static void emit_vertex(struct lp_build_nir_context *bld_base, uint32_t stream_i
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
 
+   if (stream_id >= bld->gs_vertex_streams)
+      return;
    assert(bld->gs_iface->emit_vertex);
    LLVMValueRef total_emitted_vertices_vec =
       LLVMBuildLoad(builder, bld->total_emitted_vertices_vec_ptr[stream_id], "");
@@ -1617,6 +1619,8 @@ end_primitive_masked(struct lp_build_nir_context * bld_base,
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
 
+   if (stream_id >= bld->gs_vertex_streams)
+      return;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    LLVMValueRef emitted_vertices_vec =
       LLVMBuildLoad(builder, bld->emitted_vertices_vec_ptr[stream_id], "");
