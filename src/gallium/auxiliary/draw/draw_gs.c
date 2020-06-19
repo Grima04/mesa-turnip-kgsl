@@ -336,7 +336,7 @@ llvm_fetch_gs_outputs(struct draw_geometry_shader *shader,
 
    output_ptr += shader->stream[stream].emitted_vertices * shader->vertex_size;
    for (i = 0; i < shader->vector_length - 1; ++i) {
-      int current_verts = shader->llvm_emitted_vertices[i];
+      int current_verts = shader->llvm_emitted_vertices[i + (stream * shader->vector_length)];
       int next_verts = shader->llvm_emitted_vertices[i + 1 + (stream * shader->vector_length)];
 #if 0
       int j; 
