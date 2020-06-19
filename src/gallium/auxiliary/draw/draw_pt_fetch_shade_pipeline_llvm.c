@@ -728,13 +728,7 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
 
    if (prim_info->count == 0) {
       debug_printf("GS/IA didn't emit any vertices!\n");
-
-      FREE(vert_info->verts);
-      if (free_prim_info) {
-         FREE(tes_elts_out);
-         FREE(prim_info->primitive_lengths);
-      }
-      return;
+      goto out;
    }
 
    draw_stats_clipper_primitives(draw, prim_info);
@@ -762,6 +756,7 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
          emit( fpme->emit, vert_info, prim_info );
       }
    }
+out:
    FREE(vert_info->verts);
    if (free_prim_info) {
       FREE(tes_elts_out);
