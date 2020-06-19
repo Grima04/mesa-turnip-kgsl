@@ -991,8 +991,13 @@ optimizations.extend([
    # Packing and then unpacking does nothing
    (('unpack_64_2x32_split_x', ('pack_64_2x32_split', a, b)), a),
    (('unpack_64_2x32_split_y', ('pack_64_2x32_split', a, b)), b),
+   (('unpack_64_2x32', ('pack_64_2x32_split', a, b)), ('vec2', a, b)),
+   (('unpack_64_2x32', ('pack_64_2x32', a)), a),
    (('pack_64_2x32_split', ('unpack_64_2x32_split_x', a),
                            ('unpack_64_2x32_split_y', a)), a),
+   (('pack_64_2x32', ('vec2', ('unpack_64_2x32_split_x', a),
+                              ('unpack_64_2x32_split_y', a))), a),
+   (('pack_64_2x32', ('unpack_64_2x32', a)), a),
 
    # Comparing two halves of an unpack separately.  While this optimization
    # should be correct for non-constant values, it's less obvious that it's

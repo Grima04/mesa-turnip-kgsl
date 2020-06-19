@@ -902,23 +902,19 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_32_32_64_64)
    ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
    ASSERT_EQ(loads[0x3]->swizzle[0], 2);
 
-   /* pack_64_2x32(unpack_64_2x32()) is created because the 32-bit and first
-    * 64-bit loads are combined before the second 64-bit load is even considered. */
    nir_ssa_def *val = loads[0x2]->src.ssa;
    ASSERT_EQ(val->bit_size, 64);
    ASSERT_EQ(val->num_components, 1);
-   ASSERT_TRUE(test_alu(val->parent_instr, nir_op_pack_64_2x32));
-   nir_alu_instr *pack = nir_instr_as_alu(val->parent_instr);
-   ASSERT_TRUE(test_alu(pack->src[0].src.ssa->parent_instr, nir_op_unpack_64_2x32));
-   nir_alu_instr *unpack = nir_instr_as_alu(pack->src[0].src.ssa->parent_instr);
-   ASSERT_EQ(unpack->src[0].src.ssa, &load->dest.ssa);
-   ASSERT_EQ(unpack->src[0].swizzle[0], 1);
+   ASSERT_TRUE(test_alu(val->parent_instr, nir_op_mov));
+   nir_alu_instr *mov = nir_instr_as_alu(val->parent_instr);
+   ASSERT_EQ(mov->src[0].src.ssa, &load->dest.ssa);
+   ASSERT_EQ(mov->src[0].swizzle[0], 1);
 
    val = loads[0x1]->src.ssa;
    ASSERT_EQ(val->bit_size, 32);
    ASSERT_EQ(val->num_components, 2);
    ASSERT_TRUE(test_alu(val->parent_instr, nir_op_unpack_64_2x32));
-   unpack = nir_instr_as_alu(val->parent_instr);
+   nir_alu_instr *unpack = nir_instr_as_alu(val->parent_instr);
    ASSERT_EQ(unpack->src[0].src.ssa, &load->dest.ssa);
    ASSERT_EQ(unpack->src[0].swizzle[0], 0);
 }
