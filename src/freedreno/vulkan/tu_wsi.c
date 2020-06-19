@@ -44,7 +44,8 @@ tu_wsi_init(struct tu_physical_device *physical_device)
                             tu_physical_device_to_handle(physical_device),
                             tu_wsi_proc_addr,
                             &physical_device->instance->alloc,
-                            physical_device->master_fd, NULL);
+                            physical_device->master_fd, NULL,
+                            false);
    if (result != VK_SUCCESS)
       return result;
 
