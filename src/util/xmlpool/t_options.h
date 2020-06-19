@@ -435,3 +435,8 @@ DRI_CONF_OPT_END
 DRI_CONF_OPT_BEGIN_B(radv_enable_mrt_output_nan_fixup, def) \
         DRI_CONF_DESC(en,gettext("Replace NaN outputs from fragment shaders with zeroes for floating point render target")) \
 DRI_CONF_OPT_END
+
+#define DRI_CONF_RADV_NO_DYNAMIC_BOUNDS(def) \
+DRI_CONF_OPT_BEGIN_B(radv_no_dynamic_bounds, def) \
+        DRI_CONF_DESC(en,gettext("Disabling bounds checking for dynamic buffer descriptors")) \
+DRI_CONF_OPT_END
