@@ -120,7 +120,6 @@ html_extra_path = [
   'README.UVD',
   'README.VCE',
   'README.WIN32',
-  'VERSIONS'
 ]
 
 
