@@ -21,7 +21,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-virgl
-        checksum: 43b2c4db0d6810cca945071b9a645561
+        checksum: 8293e59b818715ddf1c23e9f60b17851
   - path: gputest/triangle.trace
     expectations:
       - device: gl-virgl
