@@ -1775,11 +1775,17 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
          coords[4] = lp_build_mul(&bld_base->base, coords[4], projector);
    }
 
-   uint32_t base_index = 0;
-   if (!texture_deref_instr) {
+   uint32_t samp_base_index = 0, tex_base_index = 0;
+   if (!sampler_deref_instr) {
       int samp_src_index = nir_tex_instr_src_index(instr, nir_tex_src_sampler_handle);
       if (samp_src_index == -1) {
-         base_index = instr->sampler_index;
+         samp_base_index = instr->sampler_index;
+      }
+   }
+   if (!texture_deref_instr) {
+      int tex_src_index = nir_tex_instr_src_index(instr, nir_tex_src_texture_handle);
+      if (tex_src_index == -1) {
+         tex_base_index = instr->texture_index;
       }
    }
 
@@ -1798,9 +1804,9 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    sample_key |= lod_property << LP_SAMPLER_LOD_PROPERTY_SHIFT;
    params.sample_key = sample_key;
    params.offsets = offsets;
-   params.texture_index = base_index;
+   params.texture_index = tex_base_index;
    params.texture_index_offset = texture_unit_offset;
-   params.sampler_index = base_index;
+   params.sampler_index = samp_base_index;
    params.coords = coords;
    params.texel = texel;
    params.lod = explicit_lod;
