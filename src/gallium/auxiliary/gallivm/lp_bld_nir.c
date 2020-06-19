@@ -441,6 +441,18 @@ do_int_mod(struct lp_build_nir_context *bld_base,
    return LLVMBuildOr(builder, div_mask, result, "");
 }
 
+static LLVMValueRef
+do_quantize_to_f16(struct lp_build_nir_context *bld_base,
+                   LLVMValueRef src)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   LLVMValueRef result;
+   result = LLVMBuildFPTrunc(builder, src, LLVMVectorType(LLVMHalfTypeInContext(gallivm->context), bld_base->base.type.length), "");
+   result = LLVMBuildFPExt(builder, result, bld_base->base.vec_type, "");
+   return result;
+}
+
 static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
                                   nir_op op, unsigned src_bit_size[NIR_MAX_VEC_COMPONENTS], LLVMValueRef src[NIR_MAX_VEC_COMPONENTS])
 {
@@ -584,6 +596,9 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       break;
    case nir_op_fpow:
       result = lp_build_pow(&bld_base->base, src[0], src[1]);
+      break;
+   case nir_op_fquantize2f16:
+      result = do_quantize_to_f16(bld_base, src[0]);
       break;
    case nir_op_frcp:
       result = lp_build_rcp(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
