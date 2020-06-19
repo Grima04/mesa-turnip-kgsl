@@ -83,7 +83,7 @@ enum Label {
    label_add_sub = 1 << 17,
    label_bitwise = 1 << 18,
    label_minmax = 1 << 19,
-   label_fcmp = 1 << 20,
+   label_vopc = 1 << 20,
    label_uniform_bool = 1 << 21,
    label_constant_64bit = 1 << 22,
    label_uniform_bitwise = 1 << 23,
@@ -95,7 +95,7 @@ enum Label {
 };
 
 static constexpr uint64_t instr_labels = label_vec | label_mul | label_mad | label_omod_success | label_clamp_success |
-                                         label_add_sub | label_bitwise | label_uniform_bitwise | label_minmax | label_fcmp;
+                                         label_add_sub | label_bitwise | label_uniform_bitwise | label_minmax | label_vopc;
 static constexpr uint64_t temp_labels = label_abs | label_neg | label_temp | label_vcc | label_b2f | label_uniform_bool |
                                         label_omod2 | label_omod4 | label_omod5 | label_clamp | label_scc_invert | label_b2i;
 static constexpr uint32_t val_labels = label_constant_32bit | label_constant_64bit | label_constant_16bit | label_literal;
@@ -430,15 +430,15 @@ struct ssa_info {
       return label & label_minmax;
    }
 
-   void set_fcmp(Instruction *fcmp_instr)
+   void set_vopc(Instruction *vopc_instr)
    {
-      add_label(label_fcmp);
-      instr = fcmp_instr;
+      add_label(label_vopc);
+      instr = vopc_instr;
    }
 
-   bool is_fcmp()
+   bool is_vopc()
    {
-      return label & label_fcmp;
+      return label & label_vopc;
    }
 
    void set_scc_needed()
@@ -1034,6 +1034,11 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    if (instr->definitions.empty())
       return;
 
+   if ((uint16_t) instr->format & (uint16_t) Format::VOPC) {
+      ctx.info[instr->definitions[0].tempId()].set_vopc(instr.get());
+      return;
+   }
+
    switch (instr->opcode) {
    case aco_opcode::p_create_vector: {
       bool copy_prop = instr->operands.size() == 1 && instr->operands[0].isTemp() &&
@@ -1351,6 +1356,14 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             ctx.info[instr->definitions[1].tempId()].set_temp(ctx.info[instr->operands[0].tempId()].instr->definitions[1].getTemp());
             ctx.info[instr->definitions[0].tempId()].set_uniform_bool(ctx.info[instr->operands[0].tempId()].instr->definitions[1].getTemp());
             break;
+         } else if (ctx.info[instr->operands[0].tempId()].is_vopc()) {
+            Instruction* vopc_instr = ctx.info[instr->operands[0].tempId()].instr;
+            /* Remove superfluous s_and when the VOPC instruction uses the same exec and thus already produces the same result */
+            if (vopc_instr->pass_flags == instr->pass_flags) {
+               assert(instr->pass_flags > 0);
+               ctx.info[instr->definitions[0].tempId()].set_temp(vopc_instr->definitions[0].getTemp());
+               break;
+            }
          }
       }
       /* fallthrough */
@@ -1382,28 +1395,6 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    case aco_opcode::v_max_u16:
    case aco_opcode::v_max_i16:
       ctx.info[instr->definitions[0].tempId()].set_minmax(instr.get());
-      break;
-   #define CMP(cmp) \
-   case aco_opcode::v_cmp_##cmp##_f16:\
-   case aco_opcode::v_cmp_##cmp##_f32:\
-   case aco_opcode::v_cmp_##cmp##_f64:\
-   case aco_opcode::v_cmp_n##cmp##_f16:\
-   case aco_opcode::v_cmp_n##cmp##_f32:\
-   case aco_opcode::v_cmp_n##cmp##_f64:
-   CMP(lt)
-   CMP(eq)
-   CMP(le)
-   CMP(gt)
-   CMP(lg)
-   CMP(ge)
-   case aco_opcode::v_cmp_o_f16:
-   case aco_opcode::v_cmp_u_f16:
-   case aco_opcode::v_cmp_o_f32:
-   case aco_opcode::v_cmp_u_f32:
-   case aco_opcode::v_cmp_o_f64:
-   case aco_opcode::v_cmp_u_f64:
-   #undef CMP
-      ctx.info[instr->definitions[0].tempId()].set_fcmp(instr.get());
       break;
    case aco_opcode::s_cselect_b64:
    case aco_opcode::s_cselect_b32:
@@ -1642,7 +1633,7 @@ bool combine_ordering_test(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    new_instr->definitions[0] = instr->definitions[0];
 
    ctx.info[instr->definitions[0].tempId()].label = 0;
-   ctx.info[instr->definitions[0].tempId()].set_fcmp(new_instr);
+   ctx.info[instr->definitions[0].tempId()].set_vopc(new_instr);
 
    instr.reset(new_instr);
 
@@ -1712,7 +1703,7 @@ bool combine_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    new_instr->definitions[0] = instr->definitions[0];
 
    ctx.info[instr->definitions[0].tempId()].label = 0;
-   ctx.info[instr->definitions[0].tempId()].set_fcmp(new_instr);
+   ctx.info[instr->definitions[0].tempId()].set_vopc(new_instr);
 
    instr.reset(new_instr);
 
@@ -1815,7 +1806,7 @@ bool combine_constant_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& in
    new_instr->definitions[0] = instr->definitions[0];
 
    ctx.info[instr->definitions[0].tempId()].label = 0;
-   ctx.info[instr->definitions[0].tempId()].set_fcmp(new_instr);
+   ctx.info[instr->definitions[0].tempId()].set_vopc(new_instr);
 
    instr.reset(new_instr);
 
@@ -1864,7 +1855,7 @@ bool combine_inverse_comparison(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    new_instr->definitions[0] = instr->definitions[0];
 
    ctx.info[instr->definitions[0].tempId()].label = 0;
-   ctx.info[instr->definitions[0].tempId()].set_fcmp(new_instr);
+   ctx.info[instr->definitions[0].tempId()].set_vopc(new_instr);
 
    instr.reset(new_instr);
 
