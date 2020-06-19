@@ -34,8 +34,6 @@
 
 #include "tu_cs.h"
 
-#define OVERFLOW_FLAG_REG REG_A6XX_CP_SCRATCH_REG(0)
-
 void
 tu_bo_list_init(struct tu_bo_list *list)
 {
@@ -762,33 +760,15 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
       tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
       tu_cs_emit(cs, 0x0);
 
-      tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
-      tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
-                     A6XX_CP_REG_TEST_0_BIT(0) |
-                     A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
+      tu_cs_emit_pkt7(cs, CP_SET_BIN_DATA5, 7);
+      tu_cs_emit(cs, cmd->state.tiling_config.pipe_sizes[tile->pipe] |
+                     CP_SET_BIN_DATA5_0_VSC_N(tile->slot));
+      tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + tile->pipe * cmd->vsc_draw_strm_pitch);
+      tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + (tile->pipe * 4) + (32 * cmd->vsc_draw_strm_pitch));
+      tu_cs_emit_qw(cs, cmd->vsc_prim_strm.iova + (tile->pipe * cmd->vsc_prim_strm_pitch));
 
-      tu_cs_reserve(cs, 3 + 11);
-      tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
-      tu_cs_emit(cs, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
-      tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(11));
-
-      /* if (no overflow) */ {
-         tu_cs_emit_pkt7(cs, CP_SET_BIN_DATA5, 7);
-         tu_cs_emit(cs, cmd->state.tiling_config.pipe_sizes[tile->pipe] |
-                        CP_SET_BIN_DATA5_0_VSC_N(tile->slot));
-         tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + tile->pipe * cmd->vsc_draw_strm_pitch);
-         tu_cs_emit_qw(cs, cmd->vsc_draw_strm.iova + (tile->pipe * 4) + (32 * cmd->vsc_draw_strm_pitch));
-         tu_cs_emit_qw(cs, cmd->vsc_prim_strm.iova + (tile->pipe * cmd->vsc_prim_strm_pitch));
-
-         tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
-         tu_cs_emit(cs, 0x0);
-
-         /* use a NOP packet to skip over the 'else' side: */
-         tu_cs_emit_pkt7(cs, CP_NOP, 2);
-      } /* else */ {
-         tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
-         tu_cs_emit(cs, 0x1);
-      }
+      tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
+      tu_cs_emit(cs, 0x0);
 
       tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
       tu_cs_emit(cs, 0x0);
@@ -1099,54 +1079,6 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    }
 
    tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
-
-   tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
-
-   tu_cs_emit_pkt7(cs, CP_MEM_TO_REG, 3);
-   tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(OVERFLOW_FLAG_REG) |
-         CP_MEM_TO_REG_0_CNT(1 - 1));
-   tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
-
-   /*
-    * This is a bit awkward, we really want a way to invert the
-    * CP_REG_TEST/CP_COND_REG_EXEC logic, so that we can conditionally
-    * execute cmds to use hwbinning when a bit is *not* set.  This
-    * dance is to invert OVERFLOW_FLAG_REG
-    *
-    * A CP_NOP packet is used to skip executing the 'else' clause
-    * if (b0 set)..
-    */
-
-   /* b0 will be set if VSC_DRAW_STRM or VSC_PRIM_STRM overflow: */
-   tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
-   tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
-         A6XX_CP_REG_TEST_0_BIT(0) |
-         A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
-
-   tu_cs_reserve(cs, 3 + 7);
-   tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
-   tu_cs_emit(cs, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
-   tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(7));
-
-   /* if (b0 set) */ {
-      /*
-       * On overflow, mirror the value to control->vsc_overflow
-       * which CPU is checking to detect overflow (see
-       * check_vsc_overflow())
-       */
-      tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
-      tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(OVERFLOW_FLAG_REG) |
-            CP_REG_TO_MEM_0_CNT(0));
-      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_overflow));
-
-      tu_cs_emit_pkt4(cs, OVERFLOW_FLAG_REG, 1);
-      tu_cs_emit(cs, 0x0);
-
-      tu_cs_emit_pkt7(cs, CP_NOP, 2);  /* skip 'else' when 'if' is taken */
-   } /* else */ {
-      tu_cs_emit_pkt4(cs, OVERFLOW_FLAG_REG, 1);
-      tu_cs_emit(cs, 0x1);
-   }
 }
 
 static void
@@ -1477,20 +1409,8 @@ tu6_render_tile(struct tu_cmd_buffer *cmd,
    tu_cs_emit_call(cs, &cmd->draw_cs);
 
    if (use_hw_binning(cmd)) {
-      tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
-      tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(OVERFLOW_FLAG_REG) |
-                     A6XX_CP_REG_TEST_0_BIT(0) |
-                     A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
-
-      tu_cs_reserve(cs, 3 + 2);
-      tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
-      tu_cs_emit(cs, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
-      tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(2));
-
-      /* if (no overflow) */ {
-         tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
-         tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_ENDVIS));
-      }
+      tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
+      tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_ENDVIS));
    }
 
    tu_cs_emit_ib(cs, &cmd->state.tile_store_ib);
