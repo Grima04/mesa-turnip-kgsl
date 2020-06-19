@@ -550,6 +550,7 @@ meson-gallium:
       -D gallium-nine=true
       -D gallium-opencl=disabled
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink"
+    VULKAN_DRIVERS: swrast
     EXTRA_OPTION: >
       -D osmesa=gallium
       -D tools=all
