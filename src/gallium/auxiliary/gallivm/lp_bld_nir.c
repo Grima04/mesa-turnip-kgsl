@@ -1019,6 +1019,19 @@ static void visit_load_ubo(struct lp_build_nir_context *bld_base,
                       offset_is_uniform, idx, offset, result);
 }
 
+static void visit_load_push_constant(struct lp_build_nir_context *bld_base,
+                                     nir_intrinsic_instr *instr,
+                                     LLVMValueRef result[4])
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMValueRef offset = get_src(bld_base, instr->src[0]);
+   LLVMValueRef idx = lp_build_const_int32(gallivm, 0);
+   bool offset_is_uniform = nir_src_is_dynamically_uniform(instr->src[0]);
+
+   bld_base->load_ubo(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
+                      offset_is_uniform, idx, offset, result);
+}
+
 
 static void visit_load_ssbo(struct lp_build_nir_context *bld_base,
                            nir_intrinsic_instr *instr,
@@ -1395,6 +1408,9 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
       break;
    case nir_intrinsic_load_ubo:
       visit_load_ubo(bld_base, instr, result);
+      break;
+   case nir_intrinsic_load_push_constant:
+      visit_load_push_constant(bld_base, instr, result);
       break;
    case nir_intrinsic_load_ssbo:
       visit_load_ssbo(bld_base, instr, result);
