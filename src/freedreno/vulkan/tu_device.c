@@ -948,6 +948,16 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->filterMinmaxSingleComponentFormats = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+         VkPhysicalDeviceSubgroupProperties *properties =
+            (VkPhysicalDeviceSubgroupProperties *)ext;
+         properties->subgroupSize = 64;
+         properties->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
+         properties->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT |
+                                           VK_SUBGROUP_FEATURE_VOTE_BIT;
+         properties->quadOperationsInAllStages = false;
+         break;
+      }
 
       default:
          break;
