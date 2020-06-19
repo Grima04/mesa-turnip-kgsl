@@ -3987,9 +3987,7 @@ make_variant_key(struct llvmpipe_context *lp,
       key->occlusion_count = TRUE;
    }
 
-   if (lp->framebuffer.nr_cbufs) {
-      memcpy(&key->blend, lp->blend, sizeof key->blend);
-   }
+   memcpy(&key->blend, lp->blend, sizeof key->blend);
 
    key->coverage_samples = 1;
    key->min_samples = 1;
