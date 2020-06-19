@@ -2016,6 +2016,12 @@ bool lp_build_nir_llvm(
 void lp_build_opt_nir(struct nir_shader *nir)
 {
    bool progress;
+
+   static const struct nir_lower_tex_options lower_tex_options = {
+      .lower_tg4_offsets = true,
+   };
+   NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+
    do {
       progress = false;
       NIR_PASS_V(nir, nir_opt_constant_folding);
