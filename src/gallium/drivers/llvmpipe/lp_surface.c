@@ -313,6 +313,10 @@ llvmpipe_clear_render_target(struct pipe_context *pipe,
    if (dst->texture->nr_samples > 1) {
       struct pipe_box box;
       u_box_2d(dstx, dsty, width, height, &box);
+      if (dst->texture->target != PIPE_BUFFER) {
+         box.z = dst->u.tex.first_layer;
+         box.depth = dst->u.tex.last_layer - dst->u.tex.first_layer + 1;
+      }
       for (unsigned s = 0; s < util_res_sample_count(dst->texture); s++) {
          lp_clear_color_texture_msaa(pipe, dst->texture, dst->format,
                                      color, s, &box);
@@ -378,6 +382,10 @@ llvmpipe_clear_depth_stencil(struct pipe_context *pipe,
       uint64_t zstencil = util_pack64_z_stencil(dst->format, depth, stencil);
       struct pipe_box box;
       u_box_2d(dstx, dsty, width, height, &box);
+      if (dst->texture->target != PIPE_BUFFER) {
+         box.z = dst->u.tex.first_layer;
+         box.depth = dst->u.tex.last_layer - dst->u.tex.first_layer + 1;
+      }
       for (unsigned s = 0; s < util_res_sample_count(dst->texture); s++)
          lp_clear_depth_stencil_texture_msaa(pipe, dst->texture,
                                              dst->format, clear_flags,
