@@ -881,6 +881,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       if (key->min_samples == 1) {
          /* for multisample Z needs to be re interpolated at pixel center */
          lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter, NULL);
+         z = interp->pos[2];
          lp_build_mask_update(&mask, tmp_s_mask_or);
       }
    } else {
@@ -1119,6 +1120,11 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                           0);
       if (pos0 != -1 && outputs[pos0][2]) {
          z = LLVMBuildLoad(builder, outputs[pos0][2], "output.z");
+      } else {
+         if (key->multisample) {
+            lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter, key->multisample ? sample_loop_state.counter : NULL);
+            z = interp->pos[2];
+         }
       }
       /*
        * Clamp according to ARB_depth_clamp semantics.
