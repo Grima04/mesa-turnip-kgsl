@@ -689,6 +689,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = lp_build_or(get_int_bld(bld_base, false, src_bit_size[0]),
                            src[0], src[1]);
       break;
+   case nir_op_imod:
    case nir_op_irem:
       result = do_int_mod(bld_base, false, src_bit_size[0], src[0], src[1]);
       break;
