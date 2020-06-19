@@ -381,12 +381,12 @@ update_vsc_pipe(struct fd_batch *batch)
 	OUT_REG(ring,
 		A6XX_VSC_PRIM_STRM_ADDRESS(.bo = fd6_ctx->vsc_prim_strm),
 		A6XX_VSC_PRIM_STRM_PITCH(.dword = fd6_ctx->vsc_prim_strm_pitch),
-		A6XX_VSC_PRIM_STRM_ARRAY_PITCH(.dword = fd_bo_size(fd6_ctx->vsc_prim_strm)));
+		A6XX_VSC_PRIM_STRM_LIMIT(.dword = fd6_ctx->vsc_prim_strm_pitch - 64));
 
 	OUT_REG(ring,
 		A6XX_VSC_DRAW_STRM_ADDRESS(.bo = fd6_ctx->vsc_draw_strm),
 		A6XX_VSC_DRAW_STRM_PITCH(.dword = fd6_ctx->vsc_draw_strm_pitch),
-		A6XX_VSC_DRAW_STRM_ARRAY_PITCH(.dword = fd_bo_size(fd6_ctx->vsc_draw_strm)));
+		A6XX_VSC_DRAW_STRM_LIMIT(.dword = fd6_ctx->vsc_draw_strm_pitch - 64));
 }
 
 /* TODO we probably have more than 8 scratch regs.. although the first
@@ -431,7 +431,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 				CP_COND_WRITE5_0_WRITE_MEMORY);
 		OUT_RING(ring, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_DRAW_STRM_SIZE_REG(i)));
 		OUT_RING(ring, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
-		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_draw_strm_pitch));
+		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_draw_strm_pitch - 64));
 		OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
 		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
 		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(1 + fd6_ctx->vsc_draw_strm_pitch));
@@ -441,7 +441,7 @@ emit_vsc_overflow_test(struct fd_batch *batch)
 				CP_COND_WRITE5_0_WRITE_MEMORY);
 		OUT_RING(ring, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_PRIM_STRM_SIZE_REG(i)));
 		OUT_RING(ring, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
-		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_prim_strm_pitch));
+		OUT_RING(ring, CP_COND_WRITE5_3_REF(fd6_ctx->vsc_prim_strm_pitch - 64));
 		OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
 		OUT_RELOC(ring, control_ptr(fd6_ctx, vsc_scratch));  /* WRITE_ADDR_LO/HI */
 		OUT_RING(ring, CP_COND_WRITE5_7_WRITE_DATA(3 + fd6_ctx->vsc_prim_strm_pitch));

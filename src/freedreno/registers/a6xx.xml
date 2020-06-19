@@ -1822,17 +1822,19 @@ to upconvert to 32b float internally?
 
 	Compared to a5xx and earlier, we just program the address of the first
 	stream and hw adds (pipe_num * VSC_*_STRM_PITCH)
+
+	LIMIT is set to PITCH - 64, to make room for a bit of overflow
 	 -->
 	<reg32 offset="0x0c30" name="VSC_PRIM_STRM_ADDRESS_LO"/>
 	<reg32 offset="0x0c31" name="VSC_PRIM_STRM_ADDRESS_HI"/>
 	<reg64 offset="0x0c30" name="VSC_PRIM_STRM_ADDRESS" type="waddress"/>
 	<reg32 offset="0x0c32" name="VSC_PRIM_STRM_PITCH"/>
-	<reg32 offset="0x0c33" name="VSC_PRIM_STRM_ARRAY_PITCH" shr="4" type="uint"/>
+	<reg32 offset="0x0c33" name="VSC_PRIM_STRM_LIMIT"/>
 	<reg32 offset="0x0c34" name="VSC_DRAW_STRM_ADDRESS_LO"/>
 	<reg32 offset="0x0c35" name="VSC_DRAW_STRM_ADDRESS_HI"/>
 	<reg64 offset="0x0c34" name="VSC_DRAW_STRM_ADDRESS" type="waddress"/>
 	<reg32 offset="0x0c36" name="VSC_DRAW_STRM_PITCH"/>
-	<reg32 offset="0x0c37" name="VSC_DRAW_STRM_ARRAY_PITCH" shr="4" type="uint"/>
+	<reg32 offset="0x0c37" name="VSC_DRAW_STRM_LIMIT"/>
 
 	<array offset="0x0c38" name="VSC_STATE" stride="1" length="32">
 		<doc>

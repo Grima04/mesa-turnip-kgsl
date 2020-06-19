@@ -1055,12 +1055,12 @@ update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs,
                    A6XX_VSC_PRIM_STRM_ADDRESS(.bo = &cmd->vsc_prim_strm),
                    A6XX_VSC_PRIM_STRM_PITCH(cmd->vsc_prim_strm_pitch),
-                   A6XX_VSC_PRIM_STRM_ARRAY_PITCH(cmd->vsc_prim_strm.size));
+                   A6XX_VSC_PRIM_STRM_LIMIT(cmd->vsc_prim_strm_pitch - 64));
 
    tu_cs_emit_regs(cs,
                    A6XX_VSC_DRAW_STRM_ADDRESS(.bo = &cmd->vsc_draw_strm),
                    A6XX_VSC_DRAW_STRM_PITCH(cmd->vsc_draw_strm_pitch),
-                   A6XX_VSC_DRAW_STRM_ARRAY_PITCH(cmd->vsc_draw_strm.size));
+                   A6XX_VSC_DRAW_STRM_LIMIT(cmd->vsc_draw_strm_pitch - 64));
 }
 
 static void
@@ -1082,7 +1082,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
             CP_COND_WRITE5_0_WRITE_MEMORY);
       tu_cs_emit(cs, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_DRAW_STRM_SIZE_REG(i)));
       tu_cs_emit(cs, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
-      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_draw_strm_pitch));
+      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_draw_strm_pitch - 64));
       tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
       tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
       tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(1 + cmd->vsc_draw_strm_pitch));
@@ -1092,7 +1092,7 @@ emit_vsc_overflow_test(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
             CP_COND_WRITE5_0_WRITE_MEMORY);
       tu_cs_emit(cs, CP_COND_WRITE5_1_POLL_ADDR_LO(REG_A6XX_VSC_PRIM_STRM_SIZE_REG(i)));
       tu_cs_emit(cs, CP_COND_WRITE5_2_POLL_ADDR_HI(0));
-      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_prim_strm_pitch));
+      tu_cs_emit(cs, CP_COND_WRITE5_3_REF(cmd->vsc_prim_strm_pitch - 64));
       tu_cs_emit(cs, CP_COND_WRITE5_4_MASK(~0));
       tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(vsc_scratch));
       tu_cs_emit(cs, CP_COND_WRITE5_7_WRITE_DATA(3 + cmd->vsc_prim_strm_pitch));
