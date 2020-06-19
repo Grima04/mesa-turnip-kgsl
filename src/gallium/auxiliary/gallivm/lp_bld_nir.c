@@ -922,7 +922,7 @@ get_deref_offset(struct lp_build_nir_context *bld_base, nir_deref_instr *instr,
    uint32_t const_offset = 0;
    LLVMValueRef offset = NULL;
 
-   if (var->data.compact) {
+   if (var->data.compact && nir_src_is_const(instr->arr.index)) {
       assert(instr->deref_type == nir_deref_type_array);
       const_offset = nir_src_as_uint(instr->arr.index);
       goto out;
