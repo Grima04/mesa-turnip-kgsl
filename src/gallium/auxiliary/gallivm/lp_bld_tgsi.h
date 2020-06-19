@@ -279,6 +279,7 @@ struct lp_build_tgsi_params {
    const struct lp_build_coro_suspend_info *coro;
    LLVMValueRef kernel_args;
    const struct lp_build_fs_iface *fs_iface;
+   unsigned gs_vertex_streams;
 };
 
 void

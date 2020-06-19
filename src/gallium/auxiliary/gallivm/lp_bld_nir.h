@@ -235,6 +235,7 @@ struct lp_build_nir_soa_context
    LLVMValueRef inputs_array;
 
    LLVMValueRef kernel_args_ptr;
+   unsigned gs_vertex_streams;
 };
 
 bool

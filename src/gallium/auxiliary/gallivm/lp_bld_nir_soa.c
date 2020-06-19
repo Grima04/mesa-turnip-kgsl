@@ -1879,9 +1879,10 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    if (bld.gs_iface) {
       struct lp_build_context *uint_bld = &bld.bld_base.uint_bld;
 
+      bld.gs_vertex_streams = params->gs_vertex_streams;
       bld.max_output_vertices_vec = lp_build_const_int_vec(gallivm, bld.bld_base.int_bld.type,
                                                            shader->info.gs.vertices_out);
-      for (int i = 0; i < PIPE_MAX_VERTEX_STREAMS; i++) {
+      for (int i = 0; i < params->gs_vertex_streams; i++) {
          bld.emitted_prims_vec_ptr[i] =
             lp_build_alloca(gallivm, uint_bld->vec_type, "emitted_prims_ptr");
          bld.emitted_vertices_vec_ptr[i] =
@@ -1904,7 +1905,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
       LLVMValueRef total_emitted_vertices_vec;
       LLVMValueRef emitted_prims_vec;
 
-      for (int i = 0; i < PIPE_MAX_VERTEX_STREAMS; i++) {
+      for (int i = 0; i < params->gs_vertex_streams; i++) {
          end_primitive_masked(&bld.bld_base, lp_build_mask_value(bld.mask), i);
 
          total_emitted_vertices_vec =
