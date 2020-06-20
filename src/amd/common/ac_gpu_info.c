@@ -561,6 +561,17 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->num_rings[RING_VCN_ENC] = util_bitcount(vcn_enc.available_rings);
 	info->num_rings[RING_VCN_JPEG] = util_bitcount(vcn_jpeg.available_rings);
 
+	/* This is "align_mask" copied from the kernel, maximums of all IP versions. */
+	info->ib_pad_dw_mask[RING_GFX] = 0xff;
+	info->ib_pad_dw_mask[RING_COMPUTE] = 0xff;
+	info->ib_pad_dw_mask[RING_DMA] = 0xf;
+	info->ib_pad_dw_mask[RING_UVD] = 0xf;
+	info->ib_pad_dw_mask[RING_VCE] = 0x3f;
+	info->ib_pad_dw_mask[RING_UVD_ENC] = 0x3f;
+	info->ib_pad_dw_mask[RING_VCN_DEC] = 0xf;
+	info->ib_pad_dw_mask[RING_VCN_ENC] = 0x3f;
+	info->ib_pad_dw_mask[RING_VCN_JPEG] = 0xf;
+
 	/* The mere presence of CLEAR_STATE in the IB causes random GPU hangs
 	 * on GFX6. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
 	 * SPI_VS_OUT_CONFIG. So only enable GFX7 CLEAR_STATE on amdgpu kernel.
@@ -682,7 +693,11 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	/* GFX10 and maybe GFX9 need this alignment for cache coherency. */
 	if (info->chip_class >= GFX9)
 		ib_align = MAX2(ib_align, info->tcc_cache_line_size);
-	assert(ib_align);
+	/* The kernel pads gfx and compute IBs to 256 dwords since:
+	 *   66f3b2d527154bd258a57c8815004b5964aa1cf5
+	 * Do the same.
+	 */
+	ib_align = MAX2(ib_align, 1024);
 	info->ib_alignment = ib_align;
 
         if ((info->drm_minor >= 31 &&
