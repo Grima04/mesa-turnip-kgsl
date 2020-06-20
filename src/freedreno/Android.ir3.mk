@@ -54,10 +54,18 @@ LOCAL_GENERATED_SOURCES := \
 	$(MESA_GEN_NIR_H)
 
 LOCAL_GENERATED_SOURCES += $(addprefix $(intermediates)/, \
-	ir3/ir3_lexer.c ir3/ir3_parser.c ir3/ir3_parser.h)
+	$(ir3_GENERATED_FILES))
 
 ir3_lexer_deps := \
 	$(MESA_TOP)/src/freedreno/ir3/ir3_lexer.l
+
+ir3_nir_imul_deps := \
+	$(MESA_TOP)/src/freedreno/ir3/ir3_nir_imul.py \
+	$(MESA_TOP)/src/compiler/nir/nir_algebraic.py
+
+ir3_nir_trig_deps := \
+	$(MESA_TOP)/src/freedreno/ir3/ir3_nir_trig.py \
+	$(MESA_TOP)/src/compiler/nir/nir_algebraic.py
 
 ir3_parser_deps := \
 	$(MESA_TOP)/src/freedreno/ir3/ir3_parser.y
@@ -66,6 +74,14 @@ $(intermediates)/ir3/ir3_lexer.c: $(ir3_lexer_deps)
 	@mkdir -p $(dir $@)
 	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
 	$(hide) flex -o $@ $<
+
+$(intermediates)/ir3/ir3_nir_imul.c: $(ir3_nir_imul_deps)
+	@mkdir -p $(dir $@)
+	$(hide) $(MESA_PYTHON2) $< -p $(MESA_TOP)/src/compiler/nir > $@
+
+$(intermediates)/ir3/ir3_nir_trig.c: $(ir3_nir_trig_deps)
+	@mkdir -p $(dir $@)
+	$(hide) $(MESA_PYTHON2) $< -p $(MESA_TOP)/src/compiler/nir > $@
 
 $(intermediates)/ir3/ir3_parser.c: $(ir3_parser_deps)
 	@mkdir -p $(dir $@)
