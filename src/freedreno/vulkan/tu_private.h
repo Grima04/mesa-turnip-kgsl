@@ -674,17 +674,8 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_DESCRIPTOR_SETS = 1 << 3,
    TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS = 1 << 4,
    TU_CMD_DIRTY_SHADER_CONSTS = 1 << 5,
-   TU_CMD_DIRTY_STREAMOUT_BUFFERS = 1 << 6,
    /* all draw states were disabled and need to be re-enabled: */
    TU_CMD_DIRTY_DRAW_STATE = 1 << 7,
-};
-
-struct tu_streamout_state {
-   uint16_t stride[IR3_MAX_SO_BUFFERS];
-   uint32_t ncomp[IR3_MAX_SO_BUFFERS];
-   uint32_t prog[IR3_MAX_SO_OUTPUTS * 2];
-   uint32_t prog_count;
-   uint32_t vpc_so_buf_cntl;
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -824,23 +815,18 @@ struct tu_cmd_state
    struct tu_cs_entry desc_sets_ib, desc_sets_load_ib;
    struct tu_cs_entry ia_gmem_ib, ia_sysmem_ib;
 
-   /* Stream output buffers */
-   struct
-   {
-      struct tu_buffer *buffers[IR3_MAX_SO_BUFFERS];
-      VkDeviceSize offsets[IR3_MAX_SO_BUFFERS];
-      VkDeviceSize sizes[IR3_MAX_SO_BUFFERS];
-   } streamout_buf;
-
-   uint8_t streamout_reset;
-   uint8_t streamout_enabled;
-
    /* Index buffer */
    struct tu_buffer *index_buffer;
    uint64_t index_offset;
    uint32_t index_type;
    uint32_t max_index_count;
    uint64_t index_va;
+
+   /* because streamout base has to be 32-byte aligned
+    * there is an extra offset to deal with when it is
+    * unaligned
+    */
+   uint8_t streamout_offset[IR3_MAX_SO_BUFFERS];
 
    /* Renderpasses are tricky, because we may need to flush differently if
     * using sysmem vs. gmem and therefore we have to delay any flushing that
@@ -860,6 +846,8 @@ struct tu_cmd_state
    struct tu_tiling_config tiling_config;
 
    struct tu_cs_entry tile_store_ib;
+
+   bool xfb_used;
 };
 
 struct tu_cmd_pool
@@ -1067,8 +1055,6 @@ struct tu_pipeline
    VkShaderStageFlags active_stages;
    uint32_t active_desc_sets;
 
-   struct tu_streamout_state streamout;
-
    /* mask of enabled dynamic states
     * if BIT(i) is set, pipeline->dynamic_state[i] is *NOT* used
     */
@@ -1169,8 +1155,7 @@ tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *hs,
              const struct ir3_shader_variant *ds,
              const struct ir3_shader_variant *gs,
-             const struct ir3_shader_variant *fs,
-             struct tu_streamout_state *tf);
+             const struct ir3_shader_variant *fs);
 
 void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs);

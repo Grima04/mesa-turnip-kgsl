@@ -591,20 +591,28 @@ tu6_link_streamout(struct ir3_shader_linkage *l,
 }
 
 static void
-tu6_setup_streamout(const struct ir3_shader_variant *v,
-            struct ir3_shader_linkage *l, struct tu_streamout_state *tf)
+tu6_setup_streamout(struct tu_cs *cs,
+                    const struct ir3_shader_variant *v,
+                    struct ir3_shader_linkage *l)
 {
    const struct ir3_stream_output_info *info = &v->shader->stream_output;
+   uint32_t prog[IR3_MAX_SO_OUTPUTS * 2] = {};
+   uint32_t ncomp[IR3_MAX_SO_BUFFERS] = {};
+   uint32_t prog_count = align(l->max_loc, 2) / 2;
 
-   memset(tf, 0, sizeof(*tf));
+   /* TODO: streamout state should be in a non-GMEM draw state */
 
-   tf->prog_count = align(l->max_loc, 2) / 2;
+   /* no streamout: */
+   if (info->num_outputs == 0) {
+      tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 4);
+      tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
+      tu_cs_emit(cs, 0);
+      tu_cs_emit(cs, REG_A6XX_VPC_SO_BUF_CNTL);
+      tu_cs_emit(cs, 0);
+      return;
+   }
 
-   debug_assert(tf->prog_count < ARRAY_SIZE(tf->prog));
-
-   /* set stride info to the streamout state */
-   for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++)
-      tf->stride[i] = info->stride[i];
+   /* is there something to do with info->stride[i]? */
 
    for (unsigned i = 0; i < info->num_outputs; i++) {
       const struct ir3_stream_output *out = &info->output[i];
@@ -615,7 +623,7 @@ tu6_setup_streamout(const struct ir3_shader_variant *v,
       if (v->outputs[k].regid == INVALID_REG)
          continue;
 
-      tf->ncomp[out->output_buffer] += out->num_components;
+      ncomp[out->output_buffer] += out->num_components;
 
       /* linkage map sorted by order frag shader wants things, so
        * a bit less ideal here..
@@ -632,22 +640,35 @@ tu6_setup_streamout(const struct ir3_shader_variant *v,
          unsigned off = j + out->dst_offset;  /* in dwords */
 
          if (loc & 1) {
-            tf->prog[loc/2] |= A6XX_VPC_SO_PROG_B_EN |
-                        A6XX_VPC_SO_PROG_B_BUF(out->output_buffer) |
-                        A6XX_VPC_SO_PROG_B_OFF(off * 4);
+            prog[loc/2] |= A6XX_VPC_SO_PROG_B_EN |
+                           A6XX_VPC_SO_PROG_B_BUF(out->output_buffer) |
+                           A6XX_VPC_SO_PROG_B_OFF(off * 4);
          } else {
-            tf->prog[loc/2] |= A6XX_VPC_SO_PROG_A_EN |
-                        A6XX_VPC_SO_PROG_A_BUF(out->output_buffer) |
-                        A6XX_VPC_SO_PROG_A_OFF(off * 4);
+            prog[loc/2] |= A6XX_VPC_SO_PROG_A_EN |
+                           A6XX_VPC_SO_PROG_A_BUF(out->output_buffer) |
+                           A6XX_VPC_SO_PROG_A_OFF(off * 4);
          }
       }
    }
 
-   tf->vpc_so_buf_cntl = A6XX_VPC_SO_BUF_CNTL_ENABLE |
-               COND(tf->ncomp[0] > 0, A6XX_VPC_SO_BUF_CNTL_BUF0) |
-               COND(tf->ncomp[1] > 0, A6XX_VPC_SO_BUF_CNTL_BUF1) |
-               COND(tf->ncomp[2] > 0, A6XX_VPC_SO_BUF_CNTL_BUF2) |
-               COND(tf->ncomp[3] > 0, A6XX_VPC_SO_BUF_CNTL_BUF3);
+   tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 12 + 2 * prog_count);
+   tu_cs_emit(cs, REG_A6XX_VPC_SO_BUF_CNTL);
+   tu_cs_emit(cs, A6XX_VPC_SO_BUF_CNTL_ENABLE |
+                  COND(ncomp[0] > 0, A6XX_VPC_SO_BUF_CNTL_BUF0) |
+                  COND(ncomp[1] > 0, A6XX_VPC_SO_BUF_CNTL_BUF1) |
+                  COND(ncomp[2] > 0, A6XX_VPC_SO_BUF_CNTL_BUF2) |
+                  COND(ncomp[3] > 0, A6XX_VPC_SO_BUF_CNTL_BUF3));
+   for (uint32_t i = 0; i < 4; i++) {
+      tu_cs_emit(cs, REG_A6XX_VPC_SO_NCOMP(i));
+      tu_cs_emit(cs, ncomp[i]);
+   }
+   /* note: "VPC_SO_CNTL" write seems to be responsible for resetting the SO_PROG */
+   tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
+   tu_cs_emit(cs, A6XX_VPC_SO_CNTL_ENABLE);
+   for (uint32_t i = 0; i < prog_count; i++) {
+      tu_cs_emit(cs, REG_A6XX_VPC_SO_PROG);
+      tu_cs_emit(cs, prog[i]);
+   }
 }
 
 static void
@@ -710,8 +731,7 @@ tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *hs,
              const struct ir3_shader_variant *ds,
              const struct ir3_shader_variant *gs,
-             const struct ir3_shader_variant *fs,
-             struct tu_streamout_state *tf)
+             const struct ir3_shader_variant *fs)
 {
    const struct ir3_shader_variant *last_shader;
    if (gs) {
@@ -762,8 +782,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       ir3_link_add(&linkage, pointsize_regid, 0x1, linkage.max_loc);
    }
 
-   if (last_shader->shader->stream_output.num_outputs)
-      tu6_setup_streamout(last_shader, &linkage, tf);
+   tu6_setup_streamout(cs, last_shader, &linkage);
 
    /* map outputs of the last shader to VPC */
    assert(linkage.cnt <= 32);
@@ -1316,8 +1335,7 @@ static void
 tu6_emit_program(struct tu_cs *cs,
                  struct tu_pipeline_builder *builder,
                  const struct tu_bo *binary_bo,
-                 bool binning_pass,
-                 struct tu_streamout_state *tf)
+                 bool binning_pass)
 {
    const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
    const struct ir3_shader_variant *bs = builder->binning_variant;
@@ -1355,7 +1373,7 @@ tu6_emit_program(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
    tu_cs_emit(cs, 0);
 
-   tu6_emit_vpc(cs, vs, hs, ds, gs, fs, tf);
+   tu6_emit_vpc(cs, vs, hs, ds, gs, fs);
    tu6_emit_vpc_varying_modes(cs, fs);
 
    if (fs) {
@@ -2040,11 +2058,11 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
 {
    struct tu_cs prog_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, false, &pipeline->streamout);
+   tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, false);
    pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, true, &pipeline->streamout);
+   tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, true);
    pipeline->program.binning_state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
    VkShaderStageFlags stages = 0;

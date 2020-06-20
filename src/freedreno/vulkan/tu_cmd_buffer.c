@@ -708,6 +708,13 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
 {
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
 
+   /* XFB commands are emitted for BINNING || SYSMEM, which makes it incompatible
+    * with non-hw binning GMEM rendering. this is required because some of the
+    * XFB commands need to only be executed once
+    */
+   if (cmd->state.xfb_used)
+      return true;
+
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_NOBIN))
       return false;
 
@@ -988,13 +995,6 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                      CP_SET_DRAW_STATE__0_GROUP_ID(0));
    tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
    tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
-
-   /* Set not to use streamout by default, */
-   tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 4);
-   tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
-   tu_cs_emit(cs, 0);
-   tu_cs_emit(cs, REG_A6XX_VPC_SO_BUF_CNTL);
-   tu_cs_emit(cs, 0);
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_HS_CTRL_REG0(0));
@@ -1440,6 +1440,9 @@ static void
 tu_cmd_render_tiles(struct tu_cmd_buffer *cmd)
 {
    const struct tu_tiling_config *tiling = &cmd->state.tiling_config;
+
+   if (use_hw_binning(cmd))
+      cmd->use_vsc_data = true;
 
    tu6_tile_render_begin(cmd, &cmd->cs);
 
@@ -1925,33 +1928,86 @@ void tu_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
                                            const VkDeviceSize *pSizes)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   assert(firstBinding + bindingCount <= IR3_MAX_SO_BUFFERS);
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   /* using COND_REG_EXEC for xfb commands matches the blob behavior
+    * presumably there isn't any benefit using a draw state when the
+    * condition is (SYSMEM | BINNING)
+    */
+   tu_cond_exec_start(cs, CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
+                          CP_COND_REG_EXEC_0_SYSMEM |
+                          CP_COND_REG_EXEC_0_BINNING);
 
    for (uint32_t i = 0; i < bindingCount; i++) {
-      uint32_t idx = firstBinding + i;
       TU_FROM_HANDLE(tu_buffer, buf, pBuffers[i]);
+      uint64_t iova = buf->bo->iova + pOffsets[i];
+      uint32_t size = buf->bo->size - pOffsets[i];
+      uint32_t idx = i + firstBinding;
 
-      if (pOffsets[i] != 0)
-         cmd->state.streamout_reset |= 1 << idx;
+      if (pSizes && pSizes[i] != VK_WHOLE_SIZE)
+         size = pSizes[i];
 
-      cmd->state.streamout_buf.buffers[idx] = buf;
-      cmd->state.streamout_buf.offsets[idx] = pOffsets[i];
-      cmd->state.streamout_buf.sizes[idx] = pSizes[i];
+      /* BUFFER_BASE is 32-byte aligned, add remaining offset to BUFFER_OFFSET */
+      uint32_t offset = iova & 0x1f;
+      iova &= ~(uint64_t) 0x1f;
 
-      cmd->state.streamout_enabled |= 1 << idx;
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_BUFFER_BASE(idx), 3);
+      tu_cs_emit_qw(cs, iova);
+      tu_cs_emit(cs, size + offset);
+
+      cmd->state.streamout_offset[idx] = offset;
+
+      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_WRITE);
    }
 
-   cmd->state.dirty |= TU_CMD_DIRTY_STREAMOUT_BUFFERS;
+   tu_cond_exec_end(cs);
 }
 
-void tu_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
-                                       uint32_t firstCounterBuffer,
-                                       uint32_t counterBufferCount,
-                                       const VkBuffer *pCounterBuffers,
-                                       const VkDeviceSize *pCounterBufferOffsets)
+void
+tu_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
+                                uint32_t firstCounterBuffer,
+                                uint32_t counterBufferCount,
+                                const VkBuffer *pCounterBuffers,
+                                const VkDeviceSize *pCounterBufferOffsets)
 {
-   assert(firstCounterBuffer + counterBufferCount <= IR3_MAX_SO_BUFFERS);
-   /* TODO do something with counter buffer? */
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   tu_cond_exec_start(cs, CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
+                          CP_COND_REG_EXEC_0_SYSMEM |
+                          CP_COND_REG_EXEC_0_BINNING);
+
+   /* TODO: only update offset for active buffers */
+   for (uint32_t i = 0; i < IR3_MAX_SO_BUFFERS; i++)
+      tu_cs_emit_regs(cs, A6XX_VPC_SO_BUFFER_OFFSET(i, cmd->state.streamout_offset[i]));
+
+   for (uint32_t i = 0; i < counterBufferCount; i++) {
+      uint32_t idx = firstCounterBuffer + i;
+      uint32_t offset = cmd->state.streamout_offset[idx];
+
+      if (!pCounterBuffers[i])
+         continue;
+
+      TU_FROM_HANDLE(tu_buffer, buf, pCounterBuffers[i]);
+
+      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+
+      tu_cs_emit_pkt7(cs, CP_MEM_TO_REG, 3);
+      tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(idx)) |
+                     CP_MEM_TO_REG_0_UNK31 |
+                     CP_MEM_TO_REG_0_CNT(1));
+      tu_cs_emit_qw(cs, buf->bo->iova + pCounterBufferOffsets[i]);
+
+      if (offset) {
+         tu_cs_emit_pkt7(cs, CP_REG_RMW, 3);
+         tu_cs_emit(cs, CP_REG_RMW_0_DST_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(idx)) |
+                        CP_REG_RMW_0_SRC1_ADD);
+         tu_cs_emit_qw(cs, 0xffffffff);
+         tu_cs_emit_qw(cs, offset);
+      }
+   }
+
+   tu_cond_exec_end(cs);
 }
 
 void tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
@@ -1960,11 +2016,58 @@ void tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
                                        const VkBuffer *pCounterBuffers,
                                        const VkDeviceSize *pCounterBufferOffsets)
 {
-   assert(firstCounterBuffer + counterBufferCount <= IR3_MAX_SO_BUFFERS);
-   /* TODO do something with counter buffer? */
-
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   cmd->state.streamout_enabled = 0;
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   tu_cond_exec_start(cs, CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
+                          CP_COND_REG_EXEC_0_SYSMEM |
+                          CP_COND_REG_EXEC_0_BINNING);
+
+   /* TODO: only flush buffers that need to be flushed */
+   for (uint32_t i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
+      /* note: FLUSH_BASE is always the same, so it could go in init_hw()? */
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_FLUSH_BASE(i), 2);
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(flush_base[i]));
+      tu6_emit_event_write(cmd, cs, FLUSH_SO_0 + i);
+   }
+
+   for (uint32_t i = 0; i < counterBufferCount; i++) {
+      uint32_t idx = firstCounterBuffer + i;
+      uint32_t offset = cmd->state.streamout_offset[idx];
+
+      if (!pCounterBuffers[i])
+         continue;
+
+      TU_FROM_HANDLE(tu_buffer, buf, pCounterBuffers[i]);
+
+      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_WRITE);
+
+      /* VPC_SO_FLUSH_BASE has dwords counter, but counter should be in bytes */
+      tu_cs_emit_pkt7(cs, CP_MEM_TO_REG, 3);
+      tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(REG_A6XX_CP_SCRATCH_REG(0)) |
+                     CP_MEM_TO_REG_0_SHIFT_BY_2 |
+                     0x40000 | /* ??? */
+                     CP_MEM_TO_REG_0_UNK31 |
+                     CP_MEM_TO_REG_0_CNT(1));
+      tu_cs_emit_qw(cs, cmd->scratch_bo.iova + ctrl_offset(flush_base[idx]));
+
+      if (offset) {
+         tu_cs_emit_pkt7(cs, CP_REG_RMW, 3);
+         tu_cs_emit(cs, CP_REG_RMW_0_DST_REG(REG_A6XX_CP_SCRATCH_REG(0)) |
+                        CP_REG_RMW_0_SRC1_ADD);
+         tu_cs_emit_qw(cs, 0xffffffff);
+         tu_cs_emit_qw(cs, -offset);
+      }
+
+      tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
+      tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(REG_A6XX_CP_SCRATCH_REG(0)) |
+                     CP_REG_TO_MEM_0_CNT(1));
+      tu_cs_emit_qw(cs, buf->bo->iova + pCounterBufferOffsets[i]);
+   }
+
+   tu_cond_exec_end(cs);
+
+   cmd->state.xfb_used = true;
 }
 
 void
@@ -2694,10 +2797,6 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 
    tu_set_input_attachments(cmd, cmd->state.subpass);
 
-   /* note: use_hw_binning only checks tiling config */
-   if (use_hw_binning(cmd))
-      cmd->use_vsc_data = true;
-
    for (uint32_t i = 0; i < fb->attachment_count; ++i) {
       const struct tu_image_view *iview = fb->attachments[i].attachment;
       tu_bo_list_add(&cmd->bo_list, iview->image->bo,
@@ -2972,67 +3071,6 @@ tu6_emit_vertex_buffers(struct tu_cmd_buffer *cmd,
    return tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
 }
 
-static void
-tu6_emit_streamout(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
-{
-   struct tu_streamout_state *tf = &cmd->state.pipeline->streamout;
-
-   for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
-      struct tu_buffer *buf = cmd->state.streamout_buf.buffers[i];
-      if (!buf)
-         continue;
-
-      uint32_t offset;
-      offset = cmd->state.streamout_buf.offsets[i];
-
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_BUFFER_BASE(i, .bo = buf->bo,
-                                                     .bo_offset = buf->bo_offset));
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_BUFFER_SIZE(i, buf->size));
-
-      if (cmd->state.streamout_reset & (1 << i)) {
-         tu_cs_emit_regs(cs, A6XX_VPC_SO_BUFFER_OFFSET(i, offset));
-         cmd->state.streamout_reset &= ~(1  << i);
-      } else {
-         tu_cs_emit_pkt7(cs, CP_MEM_TO_REG, 3);
-         tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(i)) |
-                        CP_MEM_TO_REG_0_SHIFT_BY_2 | CP_MEM_TO_REG_0_UNK31 |
-                        CP_MEM_TO_REG_0_CNT(0));
-         tu_cs_emit_qw(cs, cmd->scratch_bo.iova +
-                           ctrl_offset(flush_base[i].offset));
-      }
-
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_FLUSH_BASE(i, .bo = &cmd->scratch_bo,
-                                                    .bo_offset =
-                                                       ctrl_offset(flush_base[i])));
-   }
-
-   if (cmd->state.streamout_enabled) {
-      tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 12 + (2 * tf->prog_count));
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_BUF_CNTL);
-      tu_cs_emit(cs, tf->vpc_so_buf_cntl);
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_NCOMP(0));
-      tu_cs_emit(cs, tf->ncomp[0]);
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_NCOMP(1));
-      tu_cs_emit(cs, tf->ncomp[1]);
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_NCOMP(2));
-      tu_cs_emit(cs, tf->ncomp[2]);
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_NCOMP(3));
-      tu_cs_emit(cs, tf->ncomp[3]);
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
-      tu_cs_emit(cs, A6XX_VPC_SO_CNTL_ENABLE);
-      for (unsigned i = 0; i < tf->prog_count; i++) {
-         tu_cs_emit(cs, REG_A6XX_VPC_SO_PROG);
-         tu_cs_emit(cs, tf->prog[i]);
-      }
-   } else {
-      tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 4);
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
-      tu_cs_emit(cs, 0);
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_BUF_CNTL);
-      tu_cs_emit(cs, 0);
-   }
-}
-
 static uint64_t
 get_tess_param_bo_size(const struct tu_pipeline *pipeline,
                        const struct tu_draw_info *draw_info)
@@ -3180,9 +3218,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
    }
 
-   if (cmd->state.dirty & TU_CMD_DIRTY_STREAMOUT_BUFFERS)
-      tu6_emit_streamout(cmd, cs);
-
    if (cmd->state.dirty & TU_CMD_DIRTY_DESCRIPTOR_SETS) {
       /* We need to reload the descriptors every time the descriptor sets
        * change. However, the commands we send only depend on the pipeline
@@ -3299,17 +3334,6 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    }
 
    tu_cs_sanity_check(cs);
-
-   /* track BOs */
-   if (cmd->state.dirty & TU_CMD_DIRTY_STREAMOUT_BUFFERS) {
-      for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
-         const struct tu_buffer *buf = cmd->state.streamout_buf.buffers[i];
-         if (buf) {
-            tu_bo_list_add(&cmd->bo_list, buf->bo,
-                              MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-         }
-      }
-   }
 
    /* There are too many graphics dirty bits to list here, so just list the
     * bits to preserve instead. The only things not emitted here are
@@ -3469,13 +3493,6 @@ tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
       tu6_emit_draw_indirect(cmd, cs, draw);
    else
       tu6_emit_draw_direct(cmd, cs, draw);
-
-   if (cmd->state.streamout_enabled) {
-      for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
-         if (cmd->state.streamout_enabled & (1 << i))
-            tu6_emit_event_write(cmd, cs, FLUSH_SO_0 + i);
-      }
-   }
 
    tu_cs_sanity_check(cs);
 }
