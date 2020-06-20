@@ -171,17 +171,40 @@ assemble_variant(struct ir3_shader_variant *v)
 	v->ir = NULL;
 }
 
+static bool
+compile_variant(struct ir3_shader_variant *v)
+{
+	int ret = ir3_compile_shader_nir(v->shader->compiler, v);
+	if (ret) {
+		debug_error("compile failed!");
+		return false;
+	}
+
+	assemble_variant(v);
+	if (!v->bin) {
+		debug_error("assemble failed!");
+		return false;
+	}
+
+	return true;
+}
+
 /*
  * For creating normal shader variants, 'nonbinning' is NULL.  For
  * creating binning pass shader, it is link to corresponding normal
  * (non-binning) variant.
  */
 static struct ir3_shader_variant *
-create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
+alloc_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 		struct ir3_shader_variant *nonbinning)
 {
-	struct ir3_shader_variant *v = rzalloc_size(shader, sizeof(*v));
-	int ret;
+	void *mem_ctx = shader;
+	/* hang the binning variant off it's non-binning counterpart instead
+	 * of the shader, to simplify the error cleanup paths
+	 */
+	if (nonbinning)
+		mem_ctx = nonbinning;
+	struct ir3_shader_variant *v = rzalloc_size(mem_ctx, sizeof(*v));
 
 	if (!v)
 		return NULL;
@@ -197,17 +220,36 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 	if (!v->binning_pass)
 		v->const_state = rzalloc_size(v, sizeof(*v->const_state));
 
-	ret = ir3_compile_shader_nir(shader->compiler, v);
-	if (ret) {
-		debug_error("compile failed!");
+	return v;
+}
+
+static bool
+needs_binning_variant(struct ir3_shader_variant *v)
+{
+	if ((v->type == MESA_SHADER_VERTEX) && ir3_has_binning_vs(&v->key))
+		return true;
+	return false;
+}
+
+static struct ir3_shader_variant *
+create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key)
+{
+	struct ir3_shader_variant *v = alloc_variant(shader, key, NULL);
+
+	if (!v)
 		goto fail;
+
+	if (needs_binning_variant(v)) {
+		v->binning = alloc_variant(shader, key, v);
+		if (!v->binning)
+			goto fail;
 	}
 
-	assemble_variant(v);
-	if (!v->bin) {
-		debug_error("assemble failed!");
+	if (!compile_variant(v))
 		goto fail;
-	}
+
+	if (needs_binning_variant(v) && !compile_variant(v->binning))
+		goto fail;
 
 	return v;
 
@@ -217,26 +259,15 @@ fail:
 }
 
 static inline struct ir3_shader_variant *
-shader_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
-		bool *created)
+shader_variant(struct ir3_shader *shader, const struct ir3_shader_key *key)
 {
 	struct ir3_shader_variant *v;
-
-	*created = false;
 
 	for (v = shader->variants; v; v = v->next)
 		if (ir3_shader_key_equal(key, &v->key))
 			return v;
 
-	/* compile new variant if it doesn't exist already: */
-	v = create_variant(shader, key, NULL);
-	if (v) {
-		v->next = shader->variants;
-		shader->variants = v;
-		*created = true;
-	}
-
-	return v;
+	return NULL;
 }
 
 struct ir3_shader_variant *
@@ -244,17 +275,23 @@ ir3_shader_get_variant(struct ir3_shader *shader, const struct ir3_shader_key *k
 		bool binning_pass, bool *created)
 {
 	mtx_lock(&shader->variants_lock);
-	struct ir3_shader_variant *v =
-			shader_variant(shader, key, created);
+	struct ir3_shader_variant *v = shader_variant(shader, key);
 
-	if (v && binning_pass) {
-		if (!v->binning) {
-			v->binning = create_variant(shader, key, v);
+	if (!v) {
+		/* compile new variant if it doesn't exist already: */
+		v = create_variant(shader, key);
+		if (v) {
+			v->next = shader->variants;
+			shader->variants = v;
 			*created = true;
 		}
-		mtx_unlock(&shader->variants_lock);
-		return v->binning;
 	}
+
+	if (v && binning_pass) {
+		v = v->binning;
+		assert(v);
+	}
+
 	mtx_unlock(&shader->variants_lock);
 
 	return v;

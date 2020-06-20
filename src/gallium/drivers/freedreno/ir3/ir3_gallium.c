@@ -44,8 +44,7 @@
 #include "ir3/ir3_nir.h"
 
 static void
-dump_shader_info(struct ir3_shader_variant *v, bool binning_pass,
-		struct pipe_debug_callback *debug)
+dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug)
 {
 	if (!unlikely(fd_mesa_debug & FD_DBG_SHADERDB))
 		return;
@@ -118,9 +117,14 @@ ir3_shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 					key.vastc_srgb, key.fastc_srgb);
 
 		}
-		dump_shader_info(v, binning_pass, debug);
 
+		dump_shader_info(v, debug);
 		upload_shader_variant(v);
+
+		if (v->binning) {
+			upload_shader_variant(v->binning);
+			dump_shader_info(v->binning, debug);
+		}
 	}
 
 	return v;
@@ -285,7 +289,7 @@ ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso)
 		fd_bo_del(v->bo);
 		v->bo = NULL;
 
-		if (v->binning) {
+		if (v->binning && v->binning->bo) {
 			fd_bo_del(v->binning->bo);
 			v->binning->bo = NULL;
 		}
