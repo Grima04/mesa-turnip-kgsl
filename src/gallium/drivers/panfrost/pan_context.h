@@ -265,6 +265,7 @@ struct panfrost_sampler_view {
         struct pipe_sampler_view base;
         struct panfrost_bo *bo;
         struct bifrost_texture_descriptor *bifrost_descriptor;
+        mali_ptr texture_bo;
         enum mali_texture_layout layout;
 };
 
