@@ -1190,6 +1190,14 @@ CodeEmitterGV100::emitTLD4()
 {
    const TexInstruction *insn = this->insn->asTex();
 
+   int offsets = 0;
+   switch (insn->tex.useOffsets) {
+   case 4: offsets = 2; break;
+   case 1: offsets = 1; break;
+   case 0: offsets = 0; break;
+   default: assert(!"invalid offsets count"); break;
+   }
+
    if (insn->tex.rIndirectSrc < 0) {
       emitInsn (0xb63);
       emitField(54, 5, prog->driver->io.auxCBSlot);
@@ -1203,8 +1211,7 @@ CodeEmitterGV100::emitTLD4()
    emitField(84, 1, 1); // !.EF
    emitPRED (81);
    emitField(78, 1, insn->tex.target.isShadow());
-   emitField(77, 2, insn->tex.useOffsets == 4);
-   emitField(76, 2, insn->tex.useOffsets == 1);
+   emitField(76, 2, offsets);
    emitField(72, 4, insn->tex.mask);
    emitGPR  (64, insn->def(1));
    emitField(63, 1, insn->tex.target.isArray());
