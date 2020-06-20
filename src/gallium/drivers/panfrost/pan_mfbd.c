@@ -74,6 +74,7 @@ panfrost_mfbd_format(struct pipe_surface *surf)
 
         case PIPE_FORMAT_A4B4G4R4_UNORM:
         case PIPE_FORMAT_B4G4R4A4_UNORM:
+        case PIPE_FORMAT_R4G4B4A4_UNORM:
                 fmt.unk1 = 0x10000000;
                 fmt.unk3 = 0x5;
                 fmt.nr_channels = MALI_POSITIVE(1);
@@ -89,6 +90,7 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 break;
 
         case PIPE_FORMAT_B5G5R5A1_UNORM:
+        case PIPE_FORMAT_R5G5B5A1_UNORM:
         case PIPE_FORMAT_B5G5R5X1_UNORM:
                 fmt.unk1 = 0x18000000;
                 fmt.unk3 = 0x7;

@@ -506,6 +506,7 @@ pan_is_unorm4(const struct util_format_description *desc)
         case PIPE_FORMAT_A4R4_UNORM:
         case PIPE_FORMAT_R4A4_UNORM:
         case PIPE_FORMAT_A4B4G4R4_UNORM:
+        case PIPE_FORMAT_R4G4B4A4_UNORM:
                 return true;
         default:
                 return false;
@@ -545,6 +546,7 @@ pan_unpack(nir_builder *b,
 
         switch (desc->format) {
         case PIPE_FORMAT_B5G5R5A1_UNORM:
+        case PIPE_FORMAT_R5G5B5A1_UNORM:
                 return pan_unpack_unorm_5551(b, packed);
         case PIPE_FORMAT_B5G6R5_UNORM:
                 return pan_unpack_unorm_565(b, packed);
@@ -597,6 +599,7 @@ pan_pack(nir_builder *b,
 
         switch (desc->format) {
         case PIPE_FORMAT_B5G5R5A1_UNORM:
+        case PIPE_FORMAT_R5G5B5A1_UNORM:
                 return pan_pack_unorm_5551(b, unpacked);
         case PIPE_FORMAT_B5G6R5_UNORM:
                 return pan_pack_unorm_565(b, unpacked);

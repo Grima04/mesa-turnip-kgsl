@@ -68,6 +68,7 @@ panfrost_sfbd_format(struct pipe_surface *surf)
 
         case PIPE_FORMAT_A4B4G4R4_UNORM:
         case PIPE_FORMAT_B4G4R4A4_UNORM:
+        case PIPE_FORMAT_R4G4B4A4_UNORM:
                 fmt.unk1 = 0x4;
                 fmt.nr_channels = MALI_POSITIVE(1);
                 fmt.unk2 = 0x5;
