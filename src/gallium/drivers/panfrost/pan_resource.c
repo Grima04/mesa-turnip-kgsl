@@ -597,7 +597,26 @@ panfrost_transfer_map(struct pipe_context *pctx,
         if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
                 pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
 
-        if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+        bool create_new_bo = usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+        bool copy_resource = false;
+
+        if (!create_new_bo &&
+            !(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+            (usage & PIPE_TRANSFER_WRITE) &&
+            !(resource->target == PIPE_BUFFER
+              && !util_ranges_intersect(&rsrc->valid_buffer_range, box->x, box->x + box->width))) {
+
+                /* It is often faster to copy the whole resource than to flush
+                 * readers */
+
+                panfrost_flush_batches_accessing_bo(ctx, bo, PAN_BO_ACCESS_WRITE);
+                panfrost_bo_wait(bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
+
+                create_new_bo = true;
+                copy_resource = true;
+        }
+
+        if (create_new_bo) {
                 /* If the BO is used by one of the pending batches or if it's
                  * not ready yet (still accessed by one of the already flushed
                  * batches), we try to allocate a new one to avoid waiting.
@@ -619,6 +638,9 @@ panfrost_transfer_map(struct pipe_context *pctx,
                                                            flags);
 
                         if (newbo) {
+                                if (copy_resource)
+                                        memcpy(newbo->cpu, rsrc->bo->cpu, bo->size);
+
                                 panfrost_bo_unreference(bo);
                                 rsrc->bo = newbo;
                                 bo = newbo;
