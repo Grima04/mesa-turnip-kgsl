@@ -3318,12 +3318,12 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 }
 
 static uint32_t
-tu_draw_initiator(struct tu_cmd_buffer *cmd, bool indexed)
+tu_draw_initiator(struct tu_cmd_buffer *cmd, enum pc_di_src_sel src_sel)
 {
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
    uint32_t initiator =
       CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(pipeline->ia.primtype) |
-      CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(indexed ? DI_SRC_SEL_DMA : DI_SRC_SEL_AUTO_INDEX) |
+      CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(src_sel) |
       CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(cmd->state.index_size) |
       CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY);
 
@@ -3363,7 +3363,7 @@ tu_CmdDraw(VkCommandBuffer commandBuffer,
    tu6_draw_common(cmd, cs, false, firstVertex, firstInstance, vertexCount);
 
    tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
-   tu_cs_emit(cs, tu_draw_initiator(cmd, false));
+   tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_INDEX));
    tu_cs_emit(cs, instanceCount);
    tu_cs_emit(cs, vertexCount);
 }
@@ -3382,7 +3382,7 @@ tu_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    tu6_draw_common(cmd, cs, true, vertexOffset, firstInstance, indexCount);
 
    tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 7);
-   tu_cs_emit(cs, tu_draw_initiator(cmd, true));
+   tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_DMA));
    tu_cs_emit(cs, instanceCount);
    tu_cs_emit(cs, indexCount);
    tu_cs_emit(cs, 0x0); /* XXX */
@@ -3405,7 +3405,7 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 
    for (uint32_t i = 0; i < drawCount; i++) {
       tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT, 3);
-      tu_cs_emit(cs, tu_draw_initiator(cmd, false));
+      tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_INDEX));
       tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset + stride * i);
    }
 
@@ -3427,7 +3427,7 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
 
    for (uint32_t i = 0; i < drawCount; i++) {
       tu_cs_emit_pkt7(cs, CP_DRAW_INDX_INDIRECT, 6);
-      tu_cs_emit(cs, tu_draw_initiator(cmd, true));
+      tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_DMA));
       tu_cs_emit_qw(cs, cmd->state.index_va);
       tu_cs_emit(cs, A5XX_CP_DRAW_INDX_INDIRECT_3_MAX_INDICES(cmd->state.max_index_count));
       tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset + stride * i);
@@ -3444,7 +3444,20 @@ void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
                                     uint32_t counterOffset,
                                     uint32_t vertexStride)
 {
-   tu_finishme("CmdDrawIndirectByteCountEXT");
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_buffer, buf, _counterBuffer);
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   tu6_draw_common(cmd, cs, false, 0, firstInstance, 0);
+
+   tu_cs_emit_pkt7(cs, CP_DRAW_AUTO, 6);
+   tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_XFB));
+   tu_cs_emit(cs, instanceCount);
+   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + counterBufferOffset);
+   tu_cs_emit(cs, counterOffset);
+   tu_cs_emit(cs, vertexStride);
+
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
 
 struct tu_dispatch_info

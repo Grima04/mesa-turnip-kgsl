@@ -107,7 +107,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="DI_SRC_SEL_DMA" value="0"/>
 	<value name="DI_SRC_SEL_IMMEDIATE" value="1"/>
 	<value name="DI_SRC_SEL_AUTO_INDEX" value="2"/>
-	<value name="DI_SRC_SEL_RESERVED" value="3"/>
+	<value name="DI_SRC_SEL_AUTO_XFB" value="3"/>
 </enum>
 
 <enum name="pc_di_face_cull_sel">
