@@ -1857,17 +1857,17 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->predicate = predicate;
       break;
 
-   case nir_op_fdot_replicated2:
+   case nir_op_fdot2_replicated:
       try_immediate_source(instr, op, true);
       inst = emit(BRW_OPCODE_DP2, dst, op[0], op[1]);
       break;
 
-   case nir_op_fdot_replicated3:
+   case nir_op_fdot3_replicated:
       try_immediate_source(instr, op, true);
       inst = emit(BRW_OPCODE_DP3, dst, op[0], op[1]);
       break;
 
-   case nir_op_fdot_replicated4:
+   case nir_op_fdot4_replicated:
       try_immediate_source(instr, op, true);
       inst = emit(BRW_OPCODE_DP4, dst, op[0], op[1]);
       break;

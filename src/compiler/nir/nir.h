@@ -3193,7 +3193,7 @@ typedef struct nir_shader_compiler_options {
 
    /* Does the native fdot instruction replicate its result for four
     * components?  If so, then opt_algebraic_late will turn all fdotN
-    * instructions into fdot_replicatedN instructions.
+    * instructions into fdotN_replicated instructions.
     */
    bool fdot_replicates;
 
