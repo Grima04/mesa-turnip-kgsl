@@ -2616,7 +2616,6 @@ pandecode_vertex_tiler_postfix_pre(
                         pandecode_log_cont(",\n");
                 } else {
                         bool helpers = s->midgard1.flags_lo & MALI_HELPER_INVOCATIONS;
-                        s->midgard1.flags_lo &= ~MALI_HELPER_INVOCATIONS;
 
                         if (helpers != info.helper_invocations) {
                                 pandecode_msg("XXX: expected helpers %u but got %u\n",
@@ -2624,7 +2623,8 @@ pandecode_vertex_tiler_postfix_pre(
                         }
 
                         pandecode_log(".midgard1.flags_lo = ");
-                        pandecode_log_decoded_flags(shader_midgard1_flag_lo_info, s->midgard1.flags_lo);
+                        pandecode_log_decoded_flags(shader_midgard1_flag_lo_info,
+                                                    s->midgard1.flags_lo & ~MALI_HELPER_INVOCATIONS);
                         pandecode_log_cont(",\n");
 
                         pandecode_log(".midgard1.flags_hi = ");
