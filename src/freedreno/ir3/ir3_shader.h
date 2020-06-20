@@ -643,6 +643,17 @@ ir3_shader_stage(struct ir3_shader_variant *v)
 	}
 }
 
+/* Currently we do not do binning for tess.  And for GS there is no
+ * cross-stage VS+GS optimization, so the full VS+GS is used in
+ * the binning pass.
+ */
+static inline bool
+ir3_has_binning_vs(const struct ir3_shader_key *key)
+{
+	if (key->tessellation || key->has_gs)
+		return false;
+	return true;
+}
 
 /**
  * Represents a shader at the API level, before state-specific variants are

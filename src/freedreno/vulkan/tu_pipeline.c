@@ -2001,7 +2001,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
    struct ir3_shader_variant *variant;
 
-   if (vs->ir3_shader->stream_output.num_outputs) {
+   if (vs->ir3_shader->stream_output.num_outputs ||
+       !ir3_has_binning_vs(&key)) {
       variant = builder->variants[MESA_SHADER_VERTEX];
    } else {
       bool created;

@@ -132,17 +132,16 @@ ir3_cache_lookup(struct ir3_cache *cache, const struct ir3_cache_key *key,
 		}
 	}
 
-	/* For tessellation, the binning shader is derived from the DS. */
 	struct ir3_shader_variant *bs;
-	if (key->ds) {
-		shader_key.safe_constlen = !!(safe_constlens & (1 << MESA_SHADER_TESS_EVAL));
-		bs = ir3_shader_variant(key->ds, shader_key, true, debug);
-	} else {
+
+	if (ir3_has_binning_vs(&key->key)) {
 		shader_key.safe_constlen = !!(safe_constlens & (1 << MESA_SHADER_VERTEX));
-		bs = ir3_shader_variant(key->vs, shader_key, true, debug);
+		bs = ir3_shader_variant(key->vs, key->key, true, debug);
+		if (!bs)
+			return NULL;
+	} else {
+		bs = variants[MESA_SHADER_VERTEX];
 	}
-	if (!bs)
-		return NULL;
 
 	struct ir3_program_state *state =
 		cache->funcs->create_state(cache->data, bs,

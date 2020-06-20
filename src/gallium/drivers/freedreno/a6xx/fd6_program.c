@@ -228,10 +228,7 @@ setup_config_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *stat
 	OUT_PKT4(ring, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
 	OUT_RING(ring, 0xff);        /* XXX */
 
-	if (state->ds)
-		debug_assert(state->ds->constlen >= state->bs->constlen);
-	else
-		debug_assert(state->vs->constlen >= state->bs->constlen);
+	debug_assert(state->vs->constlen >= state->bs->constlen);
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_VS_CNTL, 4);
 	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(state->vs->constlen) |
