@@ -246,7 +246,7 @@ mir_print_embedded_constant(midgard_instruction *ins, unsigned src_idx)
         unsigned *swizzle = ins->swizzle[src_idx];
         unsigned comp_mask = effective_writemask(&ins->alu, ins->mask);
         unsigned num_comp = util_bitcount(comp_mask);
-        unsigned max_comp = mir_components_for_type(ins->dest_type) >> 1;
+        unsigned max_comp = mir_components_for_type(ins->dest_type);
         bool first = true;
 
         printf("#");
