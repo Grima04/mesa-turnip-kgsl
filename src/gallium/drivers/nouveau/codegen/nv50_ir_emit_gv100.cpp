@@ -858,6 +858,7 @@ CodeEmitterGV100::emitATOM()
          break;
       }
       emitField(73, 3, dType);
+      emitGPR  (64, insn->src(2));
    }
 
    emitPRED (81);
