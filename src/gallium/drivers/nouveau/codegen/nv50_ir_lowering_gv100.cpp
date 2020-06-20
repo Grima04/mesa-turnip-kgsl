@@ -206,24 +206,25 @@ GV100LegalizeSSA::handleSHFL(Instruction *i)
 }
 
 bool
-GV100LegalizeSSA::handleSHL(Instruction *i)
+GV100LegalizeSSA::handleShift(Instruction *i)
 {
-   if (i->src(0).getFile() != FILE_GPR) {
-      bld.mkOp3(OP_SHF, i->dType, i->getDef(0), bld.mkImm(0), i->getSrc(1),
-                i->getSrc(0))->subOp = NV50_IR_SUBOP_SHF_L |
-                                       NV50_IR_SUBOP_SHF_HI;
-   } else {
-      bld.mkOp3(OP_SHF, i->dType, i->getDef(0), i->getSrc(0), i->getSrc(1),
-                bld.mkImm(0))->subOp = NV50_IR_SUBOP_SHF_L;
-   }
-   return true;
-}
+   Value *zero = bld.mkImm(0);
+   Value *src1 = i->getSrc(1);
+   Value *src0, *src2;
+   uint8_t subOp = i->op == OP_SHL ? NV50_IR_SUBOP_SHF_L : NV50_IR_SUBOP_SHF_R;
 
-bool
-GV100LegalizeSSA::handleSHR(Instruction *i)
-{
-   bld.mkOp3(OP_SHF, i->dType, i->getDef(0), bld.mkImm(0), i->getSrc(1),
-             i->getSrc(0))->subOp = NV50_IR_SUBOP_SHF_R | NV50_IR_SUBOP_SHF_HI;
+   if (i->op == OP_SHL && i->src(0).getFile() == FILE_GPR) {
+      src0 = i->getSrc(0);
+      src2 = zero;
+   } else {
+      src0 = zero;
+      src2 = i->getSrc(0);
+      subOp |= NV50_IR_SUBOP_SHF_HI;
+   }
+   if (i->subOp & NV50_IR_SUBOP_SHIFT_WRAP)
+      subOp |= NV50_IR_SUBOP_SHF_W;
+
+   bld.mkOp3(OP_SHF, i->dType, i->getDef(0), src0, src1, src2)->subOp = subOp;
    return true;
 }
 
@@ -255,10 +256,8 @@ GV100LegalizeSSA::visit(Instruction *i)
       lowered = handleNOT(i);
       break;
    case OP_SHL:
-      lowered = handleSHL(i);
-      break;
    case OP_SHR:
-      lowered = handleSHR(i);
+      lowered = handleShift(i);
       break;
    case OP_SET:
    case OP_SET_AND:

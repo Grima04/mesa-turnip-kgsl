@@ -71,8 +71,7 @@ private:
    bool handleQUADPOP(Instruction *);
    bool handleSET(Instruction *);
    bool handleSHFL(Instruction *);
-   bool handleSHL(Instruction *);
-   bool handleSHR(Instruction *);
+   bool handleShift(Instruction *);
    bool handleSUB(Instruction *);
 };
 }
