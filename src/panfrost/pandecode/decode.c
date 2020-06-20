@@ -479,8 +479,12 @@ pandecode_wrap_mode(enum mali_wrap_mode op)
         switch (op) {
                 DEFINE_CASE(REPEAT);
                 DEFINE_CASE(CLAMP_TO_EDGE);
+                DEFINE_CASE(CLAMP);
                 DEFINE_CASE(CLAMP_TO_BORDER);
                 DEFINE_CASE(MIRRORED_REPEAT);
+                DEFINE_CASE(MIRRORED_CLAMP_TO_EDGE);
+                DEFINE_CASE(MIRRORED_CLAMP);
+                DEFINE_CASE(MIRRORED_CLAMP_TO_BORDER);
 
         default:
                 pandecode_msg("XXX: invalid wrap mode %X\n", op);
