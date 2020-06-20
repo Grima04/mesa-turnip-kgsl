@@ -43,4 +43,4 @@ $(intermediates)/ir3/ir3_nir_imul.c: $(ir3_nir_imul_deps)
 	$(hide) $(MESA_PYTHON2) $< -p $(MESA_TOP)/src/compiler/nir > $@
 
 LOCAL_GENERATED_SOURCES += $(addprefix $(intermediates)/, \
-	$(ir3_GENERATED_FILES))
+	ir3/ir3_nir_trig.c ir3/ir3_nir_imul.c)

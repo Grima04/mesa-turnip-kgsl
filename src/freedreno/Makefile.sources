@@ -61,8 +61,11 @@ ir3_SOURCES := \
 	ir3/ir3_validate.c
 
 ir3_GENERATED_FILES := \
+	ir3/ir3_lexer.c \
 	ir3/ir3_nir_trig.c \
-	ir3/ir3_nir_imul.c
+	ir3/ir3_nir_imul.c \
+	ir3/ir3_parser.c \
+	ir3/ir3_parser.h
 
 perfcntrs_SOURCES := \
 	perfcntrs/fd2_perfcntr.c \
