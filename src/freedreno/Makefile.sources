@@ -15,6 +15,7 @@ drm_SOURCES := \
 	drm/msm_ringbuffer.c
 
 ir3_SOURCES := \
+	fdl/fd5_layout.c \
 	fdl/fd6_layout.c \
 	fdl/freedreno_layout.c \
 	ir3/disasm-a3xx.c \
