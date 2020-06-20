@@ -605,10 +605,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
                                     sscreen->info.tcc_cache_line_size);
       if (!sctx->wait_mem_scratch)
          goto fail;
-
-      /* Initialize the memory. */
-      si_cp_write_data(sctx, sctx->wait_mem_scratch, 0, 4, V_370_MEM, V_370_ME,
-                       &sctx->wait_mem_number);
    }
 
    /* GFX7 cannot unbind a constant buffer (S_BUFFER_LOAD doesn't skip loads
@@ -669,8 +665,16 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    pipe_buffer_write(&sctx->b, sctx->sample_pos_buffer, 0, sizeof(sctx->sample_positions),
                      &sctx->sample_positions);
 
-   /* this must be last */
+   /* The remainder of this function initializes the gfx CS and must be last. */
+   assert(sctx->gfx_cs->current.cdw == 0);
    si_begin_new_gfx_cs(sctx);
+   assert(sctx->gfx_cs->current.cdw == sctx->initial_gfx_cs_size);
+
+   /* Initialize per-context buffers. */
+   if (sctx->wait_mem_scratch) {
+      si_cp_write_data(sctx, sctx->wait_mem_scratch, 0, 4, V_370_MEM, V_370_ME,
+                       &sctx->wait_mem_number);
+   }
 
    if (sctx->chip_class == GFX7) {
       /* Clear the NULL constant buffer, because loads should return zeros.
@@ -681,6 +685,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       si_clear_buffer(sctx, sctx->null_const_buf.buffer, 0, sctx->null_const_buf.buffer->width0,
                       &clear_value, 4, SI_COHERENCY_SHADER, true);
    }
+
+   sctx->initial_gfx_cs_size = sctx->gfx_cs->current.cdw;
    return &sctx->b;
 fail:
    fprintf(stderr, "radeonsi: Failed to create a context.\n");
