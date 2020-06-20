@@ -599,7 +599,10 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    }
 
    if (sctx->chip_class >= GFX9 || si_compute_prim_discard_enabled(sctx)) {
-      sctx->wait_mem_scratch = si_resource(pipe_buffer_create(screen, 0, PIPE_USAGE_DEFAULT, 8));
+      sctx->wait_mem_scratch =
+           si_aligned_buffer_create(screen, SI_RESOURCE_FLAG_UNMAPPABLE,
+                                    PIPE_USAGE_DEFAULT, 8,
+                                    sscreen->info.tcc_cache_line_size);
       if (!sctx->wait_mem_scratch)
          goto fail;
 
