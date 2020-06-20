@@ -671,7 +671,7 @@ static void load_bitmasks_2x64(struct si_shader_context *ctx, LLVMValueRef lds_p
  * and return the per-wave thread count.
  *
  * \param new_num_threads    Total thread count on the input, per-wave thread count on the output.
- * \param tg_info	     tg_info SGPR value
+ * \param tg_info            tg_info SGPR value
  * \param tg_info_num_bits   the bit size of thread count field in tg_info
  * \param tg_info_shift      the bit offset of the thread count field in tg_info
  * \param wave_info          merged_wave_info SGPR value

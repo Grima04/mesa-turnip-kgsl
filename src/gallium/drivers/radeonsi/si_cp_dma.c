@@ -284,7 +284,7 @@ static void si_cp_dma_realign_engine(struct si_context *sctx, unsigned size, uns
  * Do memcpy between buffers using CP DMA.
  * If src or dst is NULL, it means read or write GDS, respectively.
  *
- * \param user_flags	bitmask of SI_CPDMA_*
+ * \param user_flags    bitmask of SI_CPDMA_*
  */
 void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
                            struct pipe_resource *src, uint64_t dst_offset, uint64_t src_offset,

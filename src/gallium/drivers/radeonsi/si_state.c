@@ -1777,8 +1777,8 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
    case 4:
       switch (desc->nr_channels) {
 #if 0 /* Not supported for render targets */
-		case 2:
-			return V_008F14_IMG_DATA_FORMAT_4_4;
+      case 2:
+         return V_008F14_IMG_DATA_FORMAT_4_4;
 #endif
       case 4:
          return V_008F14_IMG_DATA_FORMAT_4_4_4_4;
@@ -1811,8 +1811,8 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
       case 2:
          return V_008F14_IMG_DATA_FORMAT_32_32;
 #if 0 /* Not supported for render targets */
-		case 3:
-			return V_008F14_IMG_DATA_FORMAT_32_32_32;
+      case 3:
+         return V_008F14_IMG_DATA_FORMAT_32_32_32;
 #endif
       case 4:
          return V_008F14_IMG_DATA_FORMAT_32_32_32_32;
@@ -4524,7 +4524,7 @@ static void si_emit_sample_mask(struct si_context *sctx)
    unsigned mask = sctx->sample_mask;
 
    /* Needed for line and polygon smoothing as well as for the Polaris
-	 * small primitive filter. We expect the gallium frontend to take care of
+    * small primitive filter. We expect the gallium frontend to take care of
     * this for us.
     */
    assert(mask == 0xffff || sctx->framebuffer.nr_samples > 1 ||
