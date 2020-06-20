@@ -62,12 +62,15 @@ emit_load_state(struct tu_cs *cs, unsigned opcode, enum a6xx_state_type st,
 }
 
 static unsigned
-tu6_load_state_size(struct tu_pipeline_layout *layout, bool compute)
+tu6_load_state_size(struct tu_pipeline *pipeline, bool compute)
 {
    const unsigned load_state_size = 4;
    unsigned size = 0;
-   for (unsigned i = 0; i < layout->num_sets; i++) {
-      struct tu_descriptor_set_layout *set_layout = layout->set[i].layout;
+   for (unsigned i = 0; i < pipeline->layout->num_sets; i++) {
+      if (pipeline && !(pipeline->active_desc_sets & (1u << i)))
+         continue;
+
+      struct tu_descriptor_set_layout *set_layout = pipeline->layout->set[i].layout;
       for (unsigned j = 0; j < set_layout->binding_count; j++) {
          struct tu_descriptor_set_binding_layout *binding = &set_layout->binding[j];
          unsigned count = 0;
@@ -79,6 +82,10 @@ tu6_load_state_size(struct tu_pipeline_layout *layout, bool compute)
             binding->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT :
             binding->shader_stages & VK_SHADER_STAGE_ALL_GRAPHICS;
          unsigned stage_count = util_bitcount(stages);
+
+         if (!binding->array_size)
+            continue;
+
          switch (binding->type) {
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
@@ -93,7 +100,6 @@ tu6_load_state_size(struct tu_pipeline_layout *layout, bool compute)
          case VK_DESCRIPTOR_TYPE_SAMPLER:
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             /* Textures and UBO's needs a packet for each stage */
@@ -104,6 +110,8 @@ tu6_load_state_size(struct tu_pipeline_layout *layout, bool compute)
              * currently can't use one packet for the whole array.
              */
             count = stage_count * binding->array_size * 2;
+            break;
+         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             break;
          default:
             unreachable("bad descriptor type");
@@ -117,7 +125,7 @@ tu6_load_state_size(struct tu_pipeline_layout *layout, bool compute)
 static void
 tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
 {
-   unsigned size = tu6_load_state_size(pipeline->layout, compute);
+   unsigned size = tu6_load_state_size(pipeline, compute);
    if (size == 0)
       return;
 
@@ -1847,7 +1855,7 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
                         struct tu_pipeline_builder *builder,
                         struct ir3_shader_variant *compute)
 {
-   uint32_t size = 2048 + tu6_load_state_size(pipeline->layout, compute);
+   uint32_t size = 2048 + tu6_load_state_size(pipeline, compute);
 
    /* graphics case: */
    if (builder) {
