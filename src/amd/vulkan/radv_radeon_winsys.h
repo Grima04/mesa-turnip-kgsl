@@ -273,7 +273,7 @@ struct radeon_winsys {
 
 	void (*cs_reset)(struct radeon_cmdbuf *cs);
 
-	bool (*cs_finalize)(struct radeon_cmdbuf *cs);
+	VkResult (*cs_finalize)(struct radeon_cmdbuf *cs);
 
 	void (*cs_grow)(struct radeon_cmdbuf * cs, size_t min_size);
 

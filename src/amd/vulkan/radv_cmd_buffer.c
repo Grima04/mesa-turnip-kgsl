@@ -3786,8 +3786,9 @@ VkResult radv_EndCommandBuffer(
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.subpass_sample_locs);
 
-	if (!cmd_buffer->device->ws->cs_finalize(cmd_buffer->cs))
-		return vk_error(cmd_buffer->device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+	VkResult result = cmd_buffer->device->ws->cs_finalize(cmd_buffer->cs);
+	if (result != VK_SUCCESS)
+		return vk_error(cmd_buffer->device->instance, result);
 
 	cmd_buffer->status = RADV_CMD_BUFFER_STATUS_EXECUTABLE;
 
