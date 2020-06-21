@@ -1371,22 +1371,59 @@ get_barycentric(struct ir3_context *ctx, enum ir3_bary bary)
 	return ctx->ij[bary];
 }
 
-static struct ir3_instruction *
-get_barycentric_centroid(struct ir3_context *ctx)
+/* TODO: make this a common NIR helper?
+ * there is a nir_system_value_from_intrinsic but it takes nir_intrinsic_op so it
+ * can't be extended to work with this
+ */
+static gl_system_value
+nir_intrinsic_barycentric_sysval(nir_intrinsic_instr *intr)
 {
-	return get_barycentric(ctx, IJ_PERSP_CENTROID);
+	enum glsl_interp_mode interp_mode = nir_intrinsic_interp_mode(intr);
+	gl_system_value sysval;
+
+	switch (intr->intrinsic) {
+	case nir_intrinsic_load_barycentric_pixel:
+		if (interp_mode == INTERP_MODE_NOPERSPECTIVE)
+			sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL;
+		else
+			sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
+		break;
+	case nir_intrinsic_load_barycentric_centroid:
+		if (interp_mode == INTERP_MODE_NOPERSPECTIVE)
+			sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID;
+		else
+			sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID;
+		break;
+	case nir_intrinsic_load_barycentric_sample:
+		if (interp_mode == INTERP_MODE_NOPERSPECTIVE)
+			sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE;
+		else
+			sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE;
+		break;
+	default:
+		unreachable("invalid barycentric intrinsic");
+	}
+
+	return sysval;
 }
 
-static struct ir3_instruction *
-get_barycentric_sample(struct ir3_context *ctx)
+static void
+emit_intrinsic_barycentric(struct ir3_context *ctx, nir_intrinsic_instr *intr,
+		struct ir3_instruction **dst)
 {
-	return get_barycentric(ctx, IJ_PERSP_SAMPLE);
-}
+	gl_system_value sysval = nir_intrinsic_barycentric_sysval(intr);
 
-static struct ir3_instruction  *
-get_barycentric_pixel(struct ir3_context *ctx)
-{
-	return get_barycentric(ctx, IJ_PERSP_PIXEL);
+	if (!ctx->so->key.msaa) {
+		if (sysval == SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE)
+			sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
+		if (sysval == SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE)
+			sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL;
+	}
+
+	enum ir3_bary bary = sysval - SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
+
+	struct ir3_instruction *ij = get_barycentric(ctx, bary);
+	ir3_split_dest(ctx->block, dst, ij, 0, 2);
 }
 
 static struct ir3_instruction *
@@ -1604,17 +1641,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		dst[0] = ctx->ij[IJ_PERSP_SIZE];
 		break;
 	case nir_intrinsic_load_barycentric_centroid:
-		ir3_split_dest(b, dst, get_barycentric_centroid(ctx), 0, 2);
-		break;
 	case nir_intrinsic_load_barycentric_sample:
-		if (ctx->so->key.msaa) {
-			ir3_split_dest(b, dst, get_barycentric_sample(ctx), 0, 2);
-		} else {
-			ir3_split_dest(b, dst, get_barycentric_pixel(ctx), 0, 2);
-		}
-		break;
 	case nir_intrinsic_load_barycentric_pixel:
-		ir3_split_dest(b, dst, get_barycentric_pixel(ctx), 0, 2);
+		emit_intrinsic_barycentric(ctx, intr, dst);
 		break;
 	case nir_intrinsic_load_interpolated_input:
 		idx = nir_intrinsic_base(intr);
@@ -2426,7 +2455,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
 		sam = ir3_META_TEX_PREFETCH(b);
 		__ssa_dst(sam)->wrmask = MASK(ncomp);   /* dst */
-		__ssa_src(sam, get_barycentric_pixel(ctx), 0);
+		__ssa_src(sam, get_barycentric(ctx, IJ_PERSP_PIXEL), 0);
 		sam->prefetch.input_offset =
 				ir3_nir_coord_offset(tex->src[idx].src.ssa);
 		/* make sure not to add irrelevant flags like S2EN */
