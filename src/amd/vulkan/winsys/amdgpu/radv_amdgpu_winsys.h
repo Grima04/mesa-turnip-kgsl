@@ -55,6 +55,11 @@ struct radv_amdgpu_winsys {
 	uint64_t allocated_vram;
 	uint64_t allocated_vram_vis;
 	uint64_t allocated_gtt;
+
+	/* syncobj cache */
+	pthread_mutex_t syncobj_lock;
+	uint32_t *syncobj;
+	uint32_t syncobj_count, syncobj_capacity;
 };
 
 static inline struct radv_amdgpu_winsys *

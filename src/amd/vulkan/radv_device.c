@@ -3762,7 +3762,7 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 				      VkFence _fence,
 				      bool is_signal)
 {
-	int syncobj_idx = 0, sem_idx = 0;
+	int syncobj_idx = 0, non_reset_idx = 0, sem_idx = 0;
 
 	if (num_sems == 0 && _fence == VK_NULL_HANDLE)
 		return VK_SUCCESS;
@@ -3771,6 +3771,7 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 		switch(sems[i]->kind) {
 		case RADV_SEMAPHORE_SYNCOBJ:
 			counts->syncobj_count++;
+			counts->syncobj_reset_count++;
 			break;
 		case RADV_SEMAPHORE_WINSYS:
 			counts->sem_count++;
@@ -3807,6 +3808,8 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 		}
 	}
 
+	non_reset_idx = counts->syncobj_reset_count;
+
 	for (uint32_t i = 0; i < num_sems; i++) {
 		switch(sems[i]->kind) {
 		case RADV_SEMAPHORE_NONE:
@@ -3830,7 +3833,7 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 			pthread_mutex_unlock(&sems[i]->timeline.mutex);
 
 			if (point) {
-				counts->syncobj[syncobj_idx++] = point->syncobj;
+				counts->syncobj[non_reset_idx++] = point->syncobj;
 			} else {
 				/* Explicitly remove the semaphore so we might not find
 				 * a point later post-submit. */
@@ -3848,11 +3851,11 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 			fence->temporary.kind != RADV_FENCE_NONE ?
 			&fence->temporary : &fence->permanent;
 		if (part->kind == RADV_FENCE_SYNCOBJ)
-			counts->syncobj[syncobj_idx++] = part->syncobj;
+			counts->syncobj[non_reset_idx++] = part->syncobj;
 	}
 
-	assert(syncobj_idx <= counts->syncobj_count);
-	counts->syncobj_count = syncobj_idx;
+	assert(MAX2(syncobj_idx, non_reset_idx) <= counts->syncobj_count);
+	counts->syncobj_count = MAX2(syncobj_idx, non_reset_idx);
 
 	return VK_SUCCESS;
 }
