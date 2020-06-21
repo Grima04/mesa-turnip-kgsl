@@ -2336,9 +2336,9 @@ static void
 update_stencil_mask(uint32_t *value, VkStencilFaceFlags face, uint32_t mask)
 {
    if (face & VK_STENCIL_FACE_FRONT_BIT)
-      *value |= A6XX_RB_STENCILMASK_MASK(mask);
+      *value = (*value & 0xff00) | (mask & 0xff);
    if (face & VK_STENCIL_FACE_BACK_BIT)
-      *value |= A6XX_RB_STENCILMASK_BFMASK(mask);
+      *value = (*value & 0xff) | (mask & 0xff) << 8;
 }
 
 void
