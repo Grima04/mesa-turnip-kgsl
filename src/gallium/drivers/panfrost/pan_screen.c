@@ -65,6 +65,7 @@ static const struct debug_named_value debug_options[] = {
         {"gles3",     PAN_DBG_GLES3,    "Enable experimental GLES3 implementation"},
         {"fp16",     PAN_DBG_FP16,     "Enable buggy experimental (don't use!) fp16"},
         {"bifrost",   PAN_DBG_BIFROST, "Enable experimental Mali G31 and G52 support"},
+        {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -97,9 +98,13 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         bool is_deqp = pan_debug & PAN_DBG_DEQP;
         struct panfrost_device *dev = pan_device(screen);
 
-        /* Our GLES3 implementation is WIP */
+        /* Our GL 3.x implementation is WIP */
+        bool is_gl3 = pan_debug & PAN_DBG_GL3;
+        is_gl3 |= is_deqp;
+
+        /* Same with GLES 3 */
         bool is_gles3 = pan_debug & PAN_DBG_GLES3;
-        is_gles3 |= is_deqp;
+        is_gles3 |= is_gl3;
 
         switch (param) {
         case PIPE_CAP_NPOT_TEXTURES:
@@ -116,6 +121,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_RENDER_TARGETS:
                 return is_gles3 ? 4 : 1;
 
+        case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
+                return is_gl3 ? 1 : 0;
+
         /* Throttling frames breaks pipelining */
         case PIPE_CAP_THROTTLE:
                 return 0;
@@ -124,7 +132,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
         case PIPE_CAP_QUERY_TIME_ELAPSED:
         case PIPE_CAP_QUERY_PIPELINE_STATISTICS:
-        case PIPE_CAP_QUERY_TIMESTAMP:
         case PIPE_CAP_QUERY_SO_OVERFLOW:
                 return 0;
 
@@ -154,7 +161,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_GLSL_FEATURE_LEVEL:
         case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-                return is_gles3 ? 140 : 120;
+                return is_gl3 ? 330 : (is_gles3 ? 140 : 120);
         case PIPE_CAP_ESSL_FEATURE_LEVEL:
                 return is_gles3 ? 300 : 120;
 
@@ -174,6 +181,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         /* For faking compute shaders */
         case PIPE_CAP_COMPUTE:
                 return is_deqp;
+
+        case PIPE_CAP_QUERY_TIMESTAMP:
+        case PIPE_CAP_CONDITIONAL_RENDER:
+                return is_gl3;
 
         case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
                 return 4096;
@@ -457,7 +468,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         /* MSAA 4x supported, but no more. Technically some revisions of the
          * hardware can go up to 16x but we don't support higher modes yet. */
 
-        if (sample_count > 1 && !(pan_debug & PAN_DBG_DEQP))
+        if (sample_count > 1 && !(pan_debug & (PAN_DBG_GL3 | PAN_DBG_DEQP)))
                 return false;
 
         if (sample_count > 4)
@@ -474,6 +485,11 @@ panfrost_is_format_supported( struct pipe_screen *screen,
 
         if (scanout && renderable && !util_format_is_rgba8_variant(format_desc))
                 return false;
+
+        if (pan_debug & (PAN_DBG_GL3 | PAN_DBG_DEQP)) {
+                if (format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC)
+                        return true;
+        }
 
         /* Check we support the format with the given bind */
 
