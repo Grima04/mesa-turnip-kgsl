@@ -303,7 +303,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	uint32_t vertex_regid, instance_regid, layer_regid, primitive_regid;
 	uint32_t hs_invocation_regid;
 	uint32_t tess_coord_x_regid, tess_coord_y_regid, hs_patch_regid, ds_patch_regid;
-	uint32_t ij_pix_regid, ij_samp_regid, ij_cent_regid, ij_size_regid;
+	uint32_t ij_regid[IJ_COUNT];
 	uint32_t gs_header_regid;
 	enum a3xx_threadsize fssz;
 	uint8_t psize_loc = ~0, pos_loc = ~0, layer_loc = ~0;
@@ -380,20 +380,18 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	face_regid      = ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRONT_FACE);
 	coord_regid     = ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRAG_COORD);
 	zwcoord_regid   = next_regid(coord_regid, 2);
-	ij_pix_regid    = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
-	ij_samp_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE);
-	ij_cent_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID);
-	ij_size_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE);
 	posz_regid      = ir3_find_output_regid(fs, FRAG_RESULT_DEPTH);
 	smask_regid     = ir3_find_output_regid(fs, FRAG_RESULT_SAMPLE_MASK);
+	for (unsigned i = 0; i < ARRAY_SIZE(ij_regid); i++)
+		ij_regid[i] = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + i);
 
 	/* If we have pre-dispatch texture fetches, then ij_pix should not
 	 * be DCE'd, even if not actually used in the shader itself:
 	 */
 	if (fs->num_sampler_prefetch > 0) {
-		assert(VALIDREG(ij_pix_regid));
+		assert(VALIDREG(ij_regid[IJ_PERSP_PIXEL]));
 		/* also, it seems like ij_pix is *required* to be r0.x */
-		assert(ij_pix_regid == regid(0, 0));
+		assert(ij_regid[IJ_PERSP_PIXEL] == regid(0, 0));
 	}
 
 	/* we can't write gl_SampleMask for !msaa..  if b0 is zero then we
@@ -637,14 +635,16 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_RING(ring, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
 			 A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
 			 A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
-			 A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_size_regid));
-	OUT_RING(ring, A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_pix_regid) |
-			 A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_cent_regid) |
-			 0xfc00fc00);               /* XXX */
+			 A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_SIZE]));
+	OUT_RING(ring,
+			 A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |
+			 A6XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_PIXEL(ij_regid[IJ_LINEAR_PIXEL]) |
+			 A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_regid[IJ_PERSP_CENTROID]) |
+			 A6XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_CENTROID(ij_regid[IJ_LINEAR_CENTROID]));
 	OUT_RING(ring, A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
 			 A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
-			 A6XX_HLSQ_CONTROL_4_REG_IJ_PERSP_SAMPLE(ij_samp_regid) |
-			 0x0000fc00);               /* XXX */
+			 A6XX_HLSQ_CONTROL_4_REG_IJ_PERSP_SAMPLE(ij_regid[IJ_PERSP_SAMPLE]) |
+			 A6XX_HLSQ_CONTROL_4_REG_IJ_LINEAR_SAMPLE(ij_regid[IJ_LINEAR_SAMPLE]));
 	OUT_RING(ring, 0xfc);              /* XXX */
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
@@ -666,33 +666,43 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_PKT4(ring, REG_A6XX_VPC_GS_SIV_CNTL, 1);
 	OUT_RING(ring, 0x0000ffff);        /* XXX */
 
+	bool need_size = fs->frag_face || fs->fragcoord_compmask != 0;
+	bool need_size_persamp = false;
+	if (VALIDREG(ij_regid[IJ_PERSP_SIZE])) {
+		if (sample_shading)
+			need_size_persamp = true;
+		else
+			need_size = true;
+	}
+	if (VALIDREG(ij_regid[IJ_LINEAR_PIXEL]))
+		need_size = true;
+
+	/* XXX: enable bits for linear centroid and linear sample bary */
+
 	OUT_PKT4(ring, REG_A6XX_GRAS_CNTL, 1);
 	OUT_RING(ring,
-			CONDREG(ij_pix_regid, A6XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
-			CONDREG(ij_cent_regid, A6XX_GRAS_CNTL_IJ_PERSP_CENTROID) |
-			CONDREG(ij_samp_regid, A6XX_GRAS_CNTL_IJ_PERSP_SAMPLE) |
-			COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_GRAS_CNTL_SIZE) |
-			COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
-			COND(fs->fragcoord_compmask != 0, A6XX_GRAS_CNTL_SIZE |
-								A6XX_GRAS_CNTL_COORD_MASK(fs->fragcoord_compmask)) |
-			COND(fs->frag_face, A6XX_GRAS_CNTL_SIZE));
+			CONDREG(ij_regid[IJ_PERSP_PIXEL], A6XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
+			CONDREG(ij_regid[IJ_PERSP_CENTROID], A6XX_GRAS_CNTL_IJ_PERSP_CENTROID) |
+			CONDREG(ij_regid[IJ_PERSP_SAMPLE], A6XX_GRAS_CNTL_IJ_PERSP_SAMPLE) |
+			COND(need_size, A6XX_GRAS_CNTL_SIZE) |
+			COND(need_size_persamp, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
+			COND(fs->fragcoord_compmask != 0, A6XX_GRAS_CNTL_COORD_MASK(fs->fragcoord_compmask)));
 
 	OUT_PKT4(ring, REG_A6XX_RB_RENDER_CONTROL0, 2);
 	OUT_RING(ring,
-			CONDREG(ij_pix_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
-			CONDREG(ij_cent_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_CENTROID) |
-			CONDREG(ij_samp_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_SAMPLE) |
+			CONDREG(ij_regid[IJ_PERSP_PIXEL], A6XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
+			CONDREG(ij_regid[IJ_PERSP_CENTROID], A6XX_RB_RENDER_CONTROL0_IJ_PERSP_CENTROID) |
+			CONDREG(ij_regid[IJ_PERSP_SAMPLE], A6XX_RB_RENDER_CONTROL0_IJ_PERSP_SAMPLE) |
+			COND(need_size, A6XX_RB_RENDER_CONTROL0_SIZE) |
 			COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_UNK10) |
-			COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE) |
-			COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |
-			COND(fs->fragcoord_compmask != 0, A6XX_RB_RENDER_CONTROL0_SIZE |
-								A6XX_RB_RENDER_CONTROL0_COORD_MASK(fs->fragcoord_compmask)) |
-			COND(fs->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
+			COND(need_size_persamp, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |
+			COND(fs->fragcoord_compmask != 0,
+					A6XX_RB_RENDER_CONTROL0_COORD_MASK(fs->fragcoord_compmask)));
 
 	OUT_RING(ring,
 			CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
 			CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
-			CONDREG(ij_size_regid, A6XX_RB_RENDER_CONTROL1_SIZE) |
+			CONDREG(ij_regid[IJ_PERSP_SIZE], A6XX_RB_RENDER_CONTROL1_SIZE) |
 			COND(fs->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
 
 	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_CNTL, 1);
