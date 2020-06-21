@@ -1097,7 +1097,7 @@ void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 {
    uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
-   uint32_t ij_pix_regid, ij_samp_regid, ij_cent_regid, ij_size_regid;
+   uint32_t ij_regid[IJ_COUNT];
    uint32_t smask_in_regid;
 
    bool sample_shading = fs->per_samp | fs->key.sample_shading;
@@ -1108,15 +1108,19 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    face_regid      = ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRONT_FACE);
    coord_regid     = ir3_find_sysval_regid(fs, SYSTEM_VALUE_FRAG_COORD);
    zwcoord_regid   = VALIDREG(coord_regid) ? coord_regid + 2 : regid(63, 0);
-   ij_pix_regid    = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
-   ij_samp_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE);
-   ij_cent_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID);
-   ij_size_regid   = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE);
+   for (unsigned i = 0; i < ARRAY_SIZE(ij_regid); i++)
+      ij_regid[i] = ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + i);
+
+   if (VALIDREG(ij_regid[IJ_LINEAR_SAMPLE]))
+      tu_finishme("linear sample varying");
+
+   if (VALIDREG(ij_regid[IJ_LINEAR_CENTROID]))
+      tu_finishme("linear centroid varying");
 
    if (fs->num_sampler_prefetch > 0) {
-      assert(VALIDREG(ij_pix_regid));
+      assert(VALIDREG(ij_regid[IJ_PERSP_PIXEL]));
       /* also, it seems like ij_pix is *required* to be r0.x */
-      assert(ij_pix_regid == regid(0, 0));
+      assert(ij_regid[IJ_PERSP_PIXEL] == regid(0, 0));
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_PREFETCH_CNTL, 1 + fs->num_sampler_prefetch);
@@ -1149,41 +1153,50 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    tu_cs_emit(cs, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
                   A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
                   A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
-                  A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_size_regid));
-   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_pix_regid) |
-                  A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_cent_regid) |
-                  0xfc00fc00);
+                  A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_SIZE]));
+   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |
+                  A6XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_PIXEL(ij_regid[IJ_LINEAR_PIXEL]) |
+                  A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_regid[IJ_PERSP_CENTROID]) |
+                  A6XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_CENTROID(ij_regid[IJ_LINEAR_CENTROID]));
    tu_cs_emit(cs, A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
                   A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
-                  A6XX_HLSQ_CONTROL_4_REG_IJ_PERSP_SAMPLE(ij_samp_regid) |
-                  0x0000fc00);
+                  A6XX_HLSQ_CONTROL_4_REG_IJ_PERSP_SAMPLE(ij_regid[IJ_PERSP_SAMPLE]) |
+                  A6XX_HLSQ_CONTROL_4_REG_IJ_LINEAR_SAMPLE(ij_regid[IJ_LINEAR_SAMPLE]));
    tu_cs_emit(cs, 0xfc);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
    tu_cs_emit(cs, enable_varyings ? 3 : 1);
 
+   bool need_size = fs->frag_face || fs->fragcoord_compmask != 0;
+   bool need_size_persamp = false;
+   if (VALIDREG(ij_regid[IJ_PERSP_SIZE])) {
+      if (sample_shading)
+         need_size_persamp = true;
+      else
+         need_size = true;
+   }
+   if (VALIDREG(ij_regid[IJ_LINEAR_PIXEL]))
+      need_size = true;
+
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CNTL, 1);
    tu_cs_emit(cs,
-         CONDREG(ij_pix_regid, A6XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
-         CONDREG(ij_cent_regid, A6XX_GRAS_CNTL_IJ_PERSP_CENTROID) |
-         CONDREG(ij_samp_regid, A6XX_GRAS_CNTL_IJ_PERSP_SAMPLE) |
-         COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_GRAS_CNTL_SIZE) |
-         COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
-         COND(fs->fragcoord_compmask != 0, A6XX_GRAS_CNTL_SIZE |
-                              A6XX_GRAS_CNTL_COORD_MASK(fs->fragcoord_compmask)) |
-         COND(fs->frag_face, A6XX_GRAS_CNTL_SIZE));
+         CONDREG(ij_regid[IJ_PERSP_PIXEL], A6XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
+         CONDREG(ij_regid[IJ_PERSP_CENTROID], A6XX_GRAS_CNTL_IJ_PERSP_CENTROID) |
+         CONDREG(ij_regid[IJ_PERSP_SAMPLE], A6XX_GRAS_CNTL_IJ_PERSP_SAMPLE) |
+         COND(need_size, A6XX_GRAS_CNTL_SIZE) |
+         COND(need_size_persamp, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
+         COND(fs->fragcoord_compmask != 0, A6XX_GRAS_CNTL_COORD_MASK(fs->fragcoord_compmask)));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_RENDER_CONTROL0, 2);
    tu_cs_emit(cs,
-         CONDREG(ij_pix_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
-         CONDREG(ij_cent_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_CENTROID) |
-         CONDREG(ij_samp_regid, A6XX_RB_RENDER_CONTROL0_IJ_PERSP_SAMPLE) |
+         CONDREG(ij_regid[IJ_PERSP_PIXEL], A6XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
+         CONDREG(ij_regid[IJ_PERSP_CENTROID], A6XX_RB_RENDER_CONTROL0_IJ_PERSP_CENTROID) |
+         CONDREG(ij_regid[IJ_PERSP_SAMPLE], A6XX_RB_RENDER_CONTROL0_IJ_PERSP_SAMPLE) |
+         COND(need_size, A6XX_RB_RENDER_CONTROL0_SIZE) |
          COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_UNK10) |
-         COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE) |
-         COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |
-         COND(fs->fragcoord_compmask != 0, A6XX_RB_RENDER_CONTROL0_SIZE |
-                              A6XX_RB_RENDER_CONTROL0_COORD_MASK(fs->fragcoord_compmask)) |
-         COND(fs->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
+         COND(need_size_persamp, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |
+         COND(fs->fragcoord_compmask != 0,
+                           A6XX_RB_RENDER_CONTROL0_COORD_MASK(fs->fragcoord_compmask)));
    tu_cs_emit(cs,
          /* these two bits (UNK4/UNK5) relate to fragcoord
           * without them, fragcoord is the same for all samples
@@ -1192,7 +1205,7 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
          COND(sample_shading, A6XX_RB_RENDER_CONTROL1_UNK5) |
          CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
          CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
-         CONDREG(ij_size_regid, A6XX_RB_RENDER_CONTROL1_SIZE) |
+         CONDREG(ij_regid[IJ_PERSP_SIZE], A6XX_RB_RENDER_CONTROL1_SIZE) |
          COND(fs->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_CNTL, 1);
