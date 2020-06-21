@@ -58,13 +58,15 @@ ir3_point_sprite(const struct ir3_shader_variant *fs, int i,
 		uint32_t sprite_coord_enable, bool *coord_mode)
 {
 	gl_varying_slot slot = fs->inputs[i].slot;
-	(void)coord_mode; /* this will be used later */
-	/* since we don't enable PIPE_CAP_TGSI_TEXCOORD: */
-	if (slot >= VARYING_SLOT_VAR0) {
-		unsigned texmask = 1 << (slot - VARYING_SLOT_VAR0);
-		return !!(sprite_coord_enable & texmask);
+	switch (slot) {
+	case VARYING_SLOT_PNTC:
+		*coord_mode = true;
+		return true;
+	case VARYING_SLOT_TEX0 ... VARYING_SLOT_TEX7:
+		return !!(sprite_coord_enable & BITFIELD_BIT(slot - VARYING_SLOT_TEX0));
+	default:
+		return false;
 	}
-	return false;
 }
 
 #endif /* IR3_GALLIUM_H_ */
