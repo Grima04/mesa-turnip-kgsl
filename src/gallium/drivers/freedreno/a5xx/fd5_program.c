@@ -287,7 +287,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	struct stage s[MAX_STAGES];
 	uint32_t pos_regid, psize_regid, color_regid[8];
 	uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid, samp_mask_regid;
-	uint32_t vcoord_regid, vertex_regid, instance_regid;
+	uint32_t ij_regid[IJ_COUNT], vertex_regid, instance_regid;
 	enum a3xx_threadsize fssz;
 	uint8_t psize_loc = ~0;
 	int i, j;
@@ -321,7 +321,8 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	face_regid      = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRONT_FACE);
 	coord_regid     = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRAG_COORD);
 	zwcoord_regid   = (coord_regid == regid(63,0)) ? regid(63,0) : (coord_regid + 2);
-	vcoord_regid    = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
+	for (unsigned i = 0; i < ARRAY_SIZE(ij_regid); i++)
+		ij_regid[i] = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + i);
 
 	/* we could probably divide this up into things that need to be
 	 * emitted if frag-prog is dirty vs if vert-prog is dirty..
@@ -510,12 +511,16 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_RING(ring, A5XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
 			A5XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
 			A5XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(samp_mask_regid) |
-			0xfc000000);               /* XXX */
-	OUT_RING(ring, A5XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(vcoord_regid) |
-			0xfcfcfc00);               /* XXX */
+			A5XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_SIZE]));
+	OUT_RING(ring,
+			A5XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |
+			A5XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_PIXEL(ij_regid[IJ_LINEAR_PIXEL]) |
+			A5XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_regid[IJ_PERSP_CENTROID]) |
+			A5XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_regid[IJ_LINEAR_CENTROID]));
 	OUT_RING(ring, A5XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
 			A5XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
-			0x0000fcfc);               /* XXX */
+			A5XX_HLSQ_CONTROL_4_REG_IJ_PERSP_SAMPLE(ij_regid[IJ_PERSP_SAMPLE]) |
+			A5XX_HLSQ_CONTROL_4_REG_IJ_LINEAR_SAMPLE(ij_regid[IJ_LINEAR_SAMPLE]));
 
 	OUT_PKT4(ring, REG_A5XX_SP_FS_CTRL_REG0, 1);
 	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_SP_FS_CTRL_REG0_VARYING) |
@@ -536,19 +541,29 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT4(ring, REG_A5XX_SP_SP_CNTL, 1);
 	OUT_RING(ring, 0x00000010);        /* XXX */
 
+	/* XXX: missing enable bits for per-sample bary linear centroid and IJ_PERSP_SIZE
+	 * (should be identical to a6xx)
+	 */
+
 	OUT_PKT4(ring, REG_A5XX_GRAS_CNTL, 1);
-	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
+	OUT_RING(ring,
+			CONDREG(ij_regid[IJ_PERSP_PIXEL], A5XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
+			CONDREG(ij_regid[IJ_PERSP_CENTROID], A5XX_GRAS_CNTL_IJ_PERSP_CENTROID) |
 			COND(s[FS].v->fragcoord_compmask != 0,
 					A5XX_GRAS_CNTL_COORD_MASK(s[FS].v->fragcoord_compmask) |
 					A5XX_GRAS_CNTL_SIZE) |
-			COND(s[FS].v->frag_face, A5XX_GRAS_CNTL_SIZE));
+			COND(s[FS].v->frag_face, A5XX_GRAS_CNTL_SIZE) |
+			CONDREG(ij_regid[IJ_LINEAR_PIXEL], A5XX_GRAS_CNTL_SIZE));
 
 	OUT_PKT4(ring, REG_A5XX_RB_RENDER_CONTROL0, 2);
-	OUT_RING(ring, COND(s[FS].v->total_in > 0, A5XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
+	OUT_RING(ring,
+			CONDREG(ij_regid[IJ_PERSP_PIXEL], A5XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
+			CONDREG(ij_regid[IJ_PERSP_CENTROID], A5XX_RB_RENDER_CONTROL0_IJ_PERSP_CENTROID) |
 			COND(s[FS].v->fragcoord_compmask != 0,
 					A5XX_RB_RENDER_CONTROL0_COORD_MASK(s[FS].v->fragcoord_compmask) |
 					A5XX_RB_RENDER_CONTROL0_SIZE) |
-			COND(s[FS].v->frag_face, A5XX_RB_RENDER_CONTROL0_SIZE));
+			COND(s[FS].v->frag_face, A5XX_RB_RENDER_CONTROL0_SIZE) |
+			CONDREG(ij_regid[IJ_LINEAR_PIXEL], A5XX_RB_RENDER_CONTROL0_SIZE));
 	OUT_RING(ring,
 			COND(samp_mask_regid != regid(63, 0),
 				A5XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
