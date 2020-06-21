@@ -74,6 +74,18 @@ enum ir3_driver_param {
 #define IR3_MAX_SO_OUTPUTS       64
 #define IR3_MAX_UBO_PUSH_RANGES  32
 
+/* mirrors SYSTEM_VALUE_BARYCENTRIC_ but starting from 0 */
+enum ir3_bary {
+	IJ_PERSP_PIXEL,
+	IJ_PERSP_SAMPLE,
+	IJ_PERSP_CENTROID,
+	IJ_PERSP_SIZE,
+	IJ_LINEAR_PIXEL,
+	IJ_LINEAR_CENTROID,
+	IJ_LINEAR_SAMPLE,
+	IJ_COUNT,
+};
+
 /**
  * Description of a lowered UBO.
  */

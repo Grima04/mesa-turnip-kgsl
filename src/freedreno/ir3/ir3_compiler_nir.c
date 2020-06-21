@@ -98,7 +98,7 @@ create_frag_input(struct ir3_context *ctx, bool use_ldlv, unsigned n)
 		instr->cat6.type = TYPE_U32;
 		instr->cat6.iim_val = 1;
 	} else {
-		instr = ir3_BARY_F(block, inloc, 0, ctx->ij_pixel, 0);
+		instr = ir3_BARY_F(block, inloc, 0, ctx->ij[IJ_PERSP_PIXEL], 0);
 		instr->regs[2]->wrmask = 0x3;
 	}
 
@@ -1346,44 +1346,47 @@ create_sysval_input(struct ir3_context *ctx, gl_system_value slot,
 }
 
 static struct ir3_instruction *
-get_barycentric_centroid(struct ir3_context *ctx)
+get_barycentric(struct ir3_context *ctx, enum ir3_bary bary)
 {
-	if (!ctx->ij_centroid) {
+	static const gl_system_value sysval_base = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
+
+	STATIC_ASSERT(sysval_base + IJ_PERSP_PIXEL == SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
+	STATIC_ASSERT(sysval_base + IJ_PERSP_SAMPLE == SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE);
+	STATIC_ASSERT(sysval_base + IJ_PERSP_CENTROID == SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID);
+	STATIC_ASSERT(sysval_base + IJ_PERSP_SIZE == SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE);
+	STATIC_ASSERT(sysval_base + IJ_LINEAR_PIXEL == SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL);
+	STATIC_ASSERT(sysval_base + IJ_LINEAR_CENTROID == SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID);
+	STATIC_ASSERT(sysval_base + IJ_LINEAR_SAMPLE == SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE);
+
+	if (!ctx->ij[bary]) {
 		struct ir3_instruction *xy[2];
 		struct ir3_instruction *ij;
 
-		ij = create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID, 0x3);
+		ij = create_sysval_input(ctx, sysval_base + bary, 0x3);
 		ir3_split_dest(ctx->block, xy, ij, 0, 2);
 
-		ctx->ij_centroid = ir3_create_collect(ctx, xy, 2);
+		ctx->ij[bary] = ir3_create_collect(ctx, xy, 2);
 	}
 
-	return ctx->ij_centroid;
+	return ctx->ij[bary];
+}
+
+static struct ir3_instruction *
+get_barycentric_centroid(struct ir3_context *ctx)
+{
+	return get_barycentric(ctx, IJ_PERSP_CENTROID);
 }
 
 static struct ir3_instruction *
 get_barycentric_sample(struct ir3_context *ctx)
 {
-	if (!ctx->ij_sample) {
-		struct ir3_instruction *xy[2];
-		struct ir3_instruction *ij;
-
-		ij = create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE, 0x3);
-		ir3_split_dest(ctx->block, xy, ij, 0, 2);
-
-		ctx->ij_sample = ir3_create_collect(ctx, xy, 2);
-	}
-
-	return ctx->ij_sample;
+	return get_barycentric(ctx, IJ_PERSP_SAMPLE);
 }
 
 static struct ir3_instruction  *
 get_barycentric_pixel(struct ir3_context *ctx)
 {
-	/* TODO when tgsi_to_nir supports "new-style" FS inputs switch
-	 * this to create ij_pixel only on demand:
-	 */
-	return ctx->ij_pixel;
+	return get_barycentric(ctx, IJ_PERSP_PIXEL);
 }
 
 static struct ir3_instruction *
@@ -1594,11 +1597,11 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	}
 	case nir_intrinsic_load_size_ir3:
-		if (!ctx->ij_size) {
-			ctx->ij_size =
+		if (!ctx->ij[IJ_PERSP_SIZE]) {
+			ctx->ij[IJ_PERSP_SIZE] =
 				create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE, 0x1);
 		}
-		dst[0] = ctx->ij_size;
+		dst[0] = ctx->ij[IJ_PERSP_SIZE];
 		break;
 	case nir_intrinsic_load_barycentric_centroid:
 		ir3_split_dest(b, dst, get_barycentric_centroid(ctx), 0, 2);
@@ -3270,7 +3273,7 @@ emit_instructions(struct ir3_context *ctx)
 	 * tgsi_to_nir)
 	 */
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
-		ctx->ij_pixel = create_input(ctx, 0x3);
+		ctx->ij[IJ_PERSP_PIXEL] = create_input(ctx, 0x3);
 	}
 
 	/* Setup inputs: */
@@ -3281,9 +3284,9 @@ emit_instructions(struct ir3_context *ctx)
 	/* Defer add_sysval_input() stuff until after setup_inputs(),
 	 * because sysvals need to be appended after varyings:
 	 */
-	if (ctx->ij_pixel) {
+	if (ctx->ij[IJ_PERSP_PIXEL]) {
 		add_sysval_input_compmask(ctx, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL,
-				0x3, ctx->ij_pixel);
+				0x3, ctx->ij[IJ_PERSP_PIXEL]);
 	}
 
 
