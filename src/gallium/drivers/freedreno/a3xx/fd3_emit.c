@@ -605,6 +605,17 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		uint32_t val = fd3_rasterizer_stateobj(ctx->rasterizer)
 				->gras_cl_clip_cntl;
 		uint8_t planes = ctx->rasterizer->clip_plane_enable;
+		val |= CONDREG(ir3_find_sysval_regid(fp, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL),
+				A3XX_GRAS_CL_CLIP_CNTL_IJ_PERSP_CENTER);
+		val |= CONDREG(ir3_find_sysval_regid(fp, SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL),
+				A3XX_GRAS_CL_CLIP_CNTL_IJ_NON_PERSP_CENTER);
+		val |= CONDREG(ir3_find_sysval_regid(fp, SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID),
+				A3XX_GRAS_CL_CLIP_CNTL_IJ_PERSP_CENTROID);
+		val |= CONDREG(ir3_find_sysval_regid(fp, SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID),
+				A3XX_GRAS_CL_CLIP_CNTL_IJ_NON_PERSP_CENTROID);
+		/* docs say enable at least one of IJ_PERSP_CENTER/CENTROID when fragcoord is used */
+		val |= CONDREG(ir3_find_sysval_regid(fp, SYSTEM_VALUE_FRAG_COORD),
+				A3XX_GRAS_CL_CLIP_CNTL_IJ_PERSP_CENTER);
 		val |= COND(fp->writes_pos, A3XX_GRAS_CL_CLIP_CNTL_ZCLIP_DISABLE);
 		val |= COND(fp->fragcoord_compmask != 0, A3XX_GRAS_CL_CLIP_CNTL_ZCOORD |
 				A3XX_GRAS_CL_CLIP_CNTL_WCOORD);
