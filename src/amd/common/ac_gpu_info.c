@@ -93,6 +93,14 @@ static bool has_syncobj(int fd)
 	return value ? true : false;
 }
 
+static bool has_timeline_syncobj(int fd)
+{
+	uint64_t value;
+	if (drmGetCap(fd, DRM_CAP_SYNCOBJ_TIMELINE, &value))
+		return false;
+	return value ? true : false;
+}
+
 static uint64_t fix_vram_size(uint64_t size)
 {
 	/* The VRAM size is underreported, so we need to fix it, because
@@ -478,6 +486,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		uvd_enc.available_rings ? true : false;
 	info->has_userptr = true;
 	info->has_syncobj = has_syncobj(fd);
+	info->has_timeline_syncobj = has_timeline_syncobj(fd);
 	info->has_syncobj_wait_for_submit = info->has_syncobj && info->drm_minor >= 20;
 	info->has_fence_to_handle = info->has_syncobj && info->drm_minor >= 21;
 	info->has_ctx_priority = info->drm_minor >= 22;
@@ -923,6 +932,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    has_userptr = %i\n", info->has_userptr);
 	printf("    has_syncobj = %u\n", info->has_syncobj);
 	printf("    has_syncobj_wait_for_submit = %u\n", info->has_syncobj_wait_for_submit);
+	printf("    has_timeline_syncobj = %u\n", info->has_timeline_syncobj);
 	printf("    has_fence_to_handle = %u\n", info->has_fence_to_handle);
 	printf("    has_ctx_priority = %u\n", info->has_ctx_priority);
 	printf("    has_local_buffers = %u\n", info->has_local_buffers);
