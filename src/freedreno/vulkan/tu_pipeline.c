@@ -1547,17 +1547,21 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
 void
 tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
 {
-   const VkOffset2D min = scissor->offset;
-   const VkOffset2D max = {
+   VkOffset2D min = scissor->offset;
+   VkOffset2D max = {
       scissor->offset.x + scissor->extent.width,
       scissor->offset.y + scissor->extent.height,
    };
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0, 2);
-   tu_cs_emit(cs, A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(min.x) |
-                     A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(min.y));
-   tu_cs_emit(cs, A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(max.x - 1) |
-                     A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(max.y - 1));
+   /* special case for empty scissor with max == 0 to avoid overflow */
+   if (max.x == 0)
+      min.x = max.x = 1;
+   if (max.y == 0)
+      min.y = max.y = 1;
+
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0(.x = min.x, .y = min.y),
+                   A6XX_GRAS_SC_SCREEN_SCISSOR_BR_0(.x = max.x - 1, .y = max.y - 1));
 }
 
 void
