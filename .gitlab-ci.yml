@@ -9,7 +9,6 @@ include:
   - local: '.gitlab-ci/test-source-dep.yml'
 
 stages:
-  - deploy
   - container
   - container-2
   - meson-x86_64
@@ -22,6 +21,7 @@ stages:
   - radv
   - lima
   - virgl
+  - deploy
   - success
 
 .docs-base:
