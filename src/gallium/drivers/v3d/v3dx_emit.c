@@ -527,6 +527,12 @@ v3dX(emit_state)(struct pipe_context *pctx)
 
                         config.stencil_enable =
                                 v3d->zsa->base.stencil[0].enabled;
+
+                        /* Use nicer line caps when line smoothing is
+                         * enabled
+                         */
+                        config.line_rasterization =
+                                v3d_line_smoothing_enabled(v3d) ? 1 : 0;
                 }
 
         }
