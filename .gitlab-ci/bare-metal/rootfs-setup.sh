@@ -39,7 +39,9 @@ for var in \
     VK_DRIVER \
     ; do
   val=`echo ${!var} | sed 's|"||g'`
-  echo "export $var=\"${val}\"" >> $rootfs_dst/set-job-env-vars.sh
+  if [ -n "$val" ]; then
+    echo "export $var=\"${val}\"" >> $rootfs_dst/set-job-env-vars.sh
+  fi
 done
 echo "Variables passed through:"
 cat $rootfs_dst/set-job-env-vars.sh
