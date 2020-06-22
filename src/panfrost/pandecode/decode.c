@@ -3281,4 +3281,6 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                         break;
                 }
         } while ((jc_gpu_va = h->next_job));
+
+        pandecode_map_read_write();
 }

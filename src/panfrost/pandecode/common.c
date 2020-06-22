@@ -28,20 +28,48 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "decode.h"
 #include "util/macros.h"
 #include "util/u_debug.h"
+#include "util/u_dynarray.h"
 #include "util/hash_table.h"
 
 /* Memory handling */
 
 static struct hash_table_u64 *mmap_table;
 
+static struct util_dynarray ro_mappings;
+
+static struct pandecode_mapped_memory *
+pandecode_find_mapped_gpu_mem_containing_rw(uint64_t addr)
+{
+        return _mesa_hash_table_u64_search(mmap_table, addr & ~(4096 - 1));
+}
+
 struct pandecode_mapped_memory *
 pandecode_find_mapped_gpu_mem_containing(uint64_t addr)
 {
-        return _mesa_hash_table_u64_search(mmap_table, addr & ~(4096 - 1));
+        struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing_rw(addr);
+
+        if (mem && mem->addr && !mem->ro) {
+                mprotect(mem->addr, mem->length, PROT_READ);
+                mem->ro = true;
+                util_dynarray_append(&ro_mappings, struct pandecode_mapped_memory *, mem);
+        }
+
+        return mem;
+}
+
+void
+pandecode_map_read_write(void)
+{
+        util_dynarray_foreach(&ro_mappings, struct pandecode_mapped_memory *, mem) {
+                (*mem)->ro = false;
+                mprotect((*mem)->addr, (*mem)->length, PROT_READ | PROT_WRITE);
+        }
+        util_dynarray_clear(&ro_mappings);
 }
 
 static void
@@ -64,7 +92,7 @@ pandecode_inject_mmap(uint64_t gpu_va, void *cpu, unsigned sz, const char *name)
         /* First, search if we already mapped this and are just updating an address */
 
         struct pandecode_mapped_memory *existing =
-                pandecode_find_mapped_gpu_mem_containing(gpu_va);
+                pandecode_find_mapped_gpu_mem_containing_rw(gpu_va);
 
         if (existing && existing->gpu_va == gpu_va) {
                 existing->length = sz;
@@ -97,7 +125,7 @@ pointer_as_memory_reference(uint64_t ptr)
 
         /* Try to find the corresponding mapped zone */
 
-        mapped = pandecode_find_mapped_gpu_mem_containing(ptr);
+        mapped = pandecode_find_mapped_gpu_mem_containing_rw(ptr);
 
         if (mapped) {
                 snprintf(out, 128, "%s + %d", mapped->name, (int) (ptr - mapped->gpu_va));
@@ -150,6 +178,7 @@ void
 pandecode_initialize(bool to_stderr)
 {
         mmap_table = _mesa_hash_table_u64_create(NULL);
+        util_dynarray_init(&ro_mappings, NULL);
         pandecode_dump_file_open(to_stderr);
 }
 
@@ -165,5 +194,6 @@ void
 pandecode_close(void)
 {
         _mesa_hash_table_u64_destroy(mmap_table, NULL);
+        util_dynarray_fini(&ro_mappings);
         pandecode_dump_file_close();
 }
