@@ -226,12 +226,17 @@ void validate(Program* program, FILE * output)
                if (instr->isSDWA())
                   scalar_mask = program->chip_class >= GFX9 ? 0x7 : 0x4;
 
-               check(instr->definitions[0].getTemp().type() == RegType::vgpr ||
-                     (int) instr->format & (int) Format::VOPC ||
-                     instr->opcode == aco_opcode::v_readfirstlane_b32 ||
-                     instr->opcode == aco_opcode::v_readlane_b32 ||
-                     instr->opcode == aco_opcode::v_readlane_b32_e64,
-                     "Wrong Definition type for VALU instruction", instr.get());
+               if ((int) instr->format & (int) Format::VOPC ||
+                   instr->opcode == aco_opcode::v_readfirstlane_b32 ||
+                   instr->opcode == aco_opcode::v_readlane_b32 ||
+                   instr->opcode == aco_opcode::v_readlane_b32_e64) {
+                  check(instr->definitions[0].getTemp().type() == RegType::sgpr,
+                        "Wrong Definition type for VALU instruction", instr.get());
+               } else {
+                  check(instr->definitions[0].getTemp().type() == RegType::vgpr,
+                        "Wrong Definition type for VALU instruction", instr.get());
+               }
+
                unsigned num_sgprs = 0;
                unsigned sgpr[] = {0, 0};
                for (unsigned i = 0; i < instr->operands.size(); i++)
@@ -239,11 +244,26 @@ void validate(Program* program, FILE * output)
                   Operand op = instr->operands[i];
                   if (instr->opcode == aco_opcode::v_readfirstlane_b32 ||
                       instr->opcode == aco_opcode::v_readlane_b32 ||
-                      instr->opcode == aco_opcode::v_readlane_b32_e64 ||
-                      instr->opcode == aco_opcode::v_writelane_b32 ||
+                      instr->opcode == aco_opcode::v_readlane_b32_e64) {
+                     check(i != 1 ||
+                           (op.isTemp() && op.regClass().type() == RegType::sgpr) ||
+                           op.isConstant(),
+                           "Must be a SGPR or a constant", instr.get());
+                     check(i == 1 ||
+                           (op.isTemp() && op.regClass().type() == RegType::vgpr && op.bytes() <= 4),
+                           "Wrong Operand type for VALU instruction", instr.get());
+                     continue;
+                  }
+
+                  if (instr->opcode == aco_opcode::v_writelane_b32 ||
                       instr->opcode == aco_opcode::v_writelane_b32_e64) {
-                     check(!op.isLiteral(), "No literal allowed on VALU instruction", instr.get());
-                     check(i == 1 || (op.isTemp() && op.regClass().type() == RegType::vgpr && op.bytes() <= 4), "Wrong Operand type for VALU instruction", instr.get());
+                     check(i != 2 ||
+                           (op.isTemp() && op.regClass().type() == RegType::vgpr && op.bytes() <= 4),
+                           "Wrong Operand type for VALU instruction", instr.get());
+                     check(i == 2 ||
+                           (op.isTemp() && op.regClass().type() == RegType::sgpr) ||
+                           op.isConstant(),
+                           "Must be a SGPR or a constant", instr.get());
                      continue;
                   }
                   if (op.isTemp() && instr->operands[i].regClass().type() == RegType::sgpr) {
