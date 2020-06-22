@@ -87,7 +87,7 @@ static unsigned slot_pack_map[] = {
    [VARYING_SLOT_VIEW_INDEX] = 9, /* input/output */
    [VARYING_SLOT_VIEWPORT_MASK] = 10, /* output only */
 };
-#define NTV_MIN_RESERVED_SLOTS 10
+#define NTV_MIN_RESERVED_SLOTS 11
 
 struct ntv_context {
    struct spirv_builder builder;
