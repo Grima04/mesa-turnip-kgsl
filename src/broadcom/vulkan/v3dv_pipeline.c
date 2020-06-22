@@ -834,18 +834,29 @@ pipeline_populate_v3d_key(struct v3d_key *key,
     * it is needed a shader variant (if we are lucky the default values would
     * be the same and no new compilation will be done)
     */
-   nir_shader *s = p_stage->nir;
 
-   key->num_tex_used = s->info.num_textures;
-   for (uint32_t i = 0; i < s->info.num_textures; i++) {
-      key->tex[i].swizzle[0] = PIPE_SWIZZLE_X;
-      key->tex[i].swizzle[1] = PIPE_SWIZZLE_Y;
-      key->tex[i].swizzle[2] = PIPE_SWIZZLE_Z;
-      key->tex[i].swizzle[3] = PIPE_SWIZZLE_W;
+   /* We don't use the nir shader info.num_textures because that doesn't take
+    * into account input attachments, even after calling
+    * nir_lower_input_attachments. As a general rule that makes sense, but on
+    * our case we are handling them mostly as textures. We iterate through the
+    * combined_index_map that was filled with the textures sused on th sader.
+    */
+   uint32_t tex_idx = 0;
+   if (p_stage->pipeline->combined_index_map) {
+      hash_table_foreach(p_stage->pipeline->combined_index_map, entry) {
+         key->tex[tex_idx].swizzle[0] = PIPE_SWIZZLE_X;
+         key->tex[tex_idx].swizzle[1] = PIPE_SWIZZLE_Y;
+         key->tex[tex_idx].swizzle[2] = PIPE_SWIZZLE_Z;
+         key->tex[tex_idx].swizzle[3] = PIPE_SWIZZLE_W;
 
-      key->tex[i].return_size = 16;
-      key->tex[i].return_channels = 2;
+         key->tex[tex_idx].return_size = 16;
+         key->tex[tex_idx].return_channels = 2;
+
+         tex_idx++;
+      }
    }
+   key->num_tex_used = tex_idx;
+   assert(key->num_tex_used <= V3D_MAX_TEXTURE_SAMPLERS);
 
    /* default value. Would be override on the vs/gs populate methods when GS
     * gets supported
