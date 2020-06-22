@@ -2165,6 +2165,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                vir_uniform(c, QUNIFORM_ALPHA_REF, 0));
                 break;
 
+        case nir_intrinsic_load_line_coord:
+                ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, c->line_x));
+                break;
+
         case nir_intrinsic_load_sample_mask_in:
                 ntq_store_dest(c, &instr->dest, 0, vir_MSF(c));
                 break;
@@ -2720,7 +2724,10 @@ nir_to_vir(struct v3d_compile *c)
                         c->point_x = emit_fragment_varying(c, NULL, 0, 0);
                         c->point_y = emit_fragment_varying(c, NULL, 0, 0);
                         c->uses_implicit_point_line_varyings = true;
-                } else if (c->fs_key->is_lines && c->devinfo->ver < 40) {
+                } else if (c->fs_key->is_lines &&
+                           (c->devinfo->ver < 40 ||
+                            (c->s->info.system_values_read &
+                             BITFIELD64_BIT(SYSTEM_VALUE_LINE_COORD)))) {
                         c->line_x = emit_fragment_varying(c, NULL, 0, 0);
                         c->uses_implicit_point_line_varyings = true;
                 }
