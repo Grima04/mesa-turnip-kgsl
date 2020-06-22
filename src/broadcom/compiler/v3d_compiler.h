@@ -261,6 +261,13 @@ enum quniform_contents {
 
         QUNIFORM_ALPHA_REF,
 
+        QUNIFORM_LINE_WIDTH,
+
+        /* The line width sent to hardware. This includes the expanded width
+         * when anti-aliasing is enabled.
+         */
+        QUNIFORM_AA_LINE_WIDTH,
+
         /* Number of workgroups passed to glDispatchCompute in the dimension
          * selected by the data value.
          */

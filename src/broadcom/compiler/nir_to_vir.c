@@ -2169,6 +2169,16 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, c->line_x));
                 break;
 
+        case nir_intrinsic_load_line_width:
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_uniform(c, QUNIFORM_LINE_WIDTH, 0));
+                break;
+
+        case nir_intrinsic_load_aa_line_width:
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_uniform(c, QUNIFORM_AA_LINE_WIDTH, 0));
+                break;
+
         case nir_intrinsic_load_sample_mask_in:
                 ntq_store_dest(c, &instr->dest, 0, vir_MSF(c));
                 break;
