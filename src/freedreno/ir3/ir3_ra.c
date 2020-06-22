@@ -1310,13 +1310,6 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 
 			debug_assert(!(instr->regs[0]->flags & (IR3_REG_HALF | IR3_REG_HIGH)));
 
-			/* only consider the first component: */
-			if (id->off > 0)
-				continue;
-
-			if (ctx->scalar_pass && !should_assign(ctx, instr))
-				continue;
-
 			/* 'base' is in scalar (class 0) but we need to map that
 			 * the conflicting register of the appropriate class (ie.
 			 * input could be vec2/vec3/etc)
@@ -1335,6 +1328,9 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 			 *           .. and so on..
 			 */
 			unsigned regid = instr->regs[0]->num;
+			assert(regid >= id->off);
+			regid -= id->off;
+
 			unsigned reg = ctx->set->gpr_to_ra_reg[id->cls][regid];
 			unsigned name = ra_name(ctx, id);
 			ra_set_node_reg(ctx->g, name, reg);
