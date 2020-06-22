@@ -288,6 +288,12 @@ def tristrip(intype, outtype, inpv, outpv, pr):
 def trifan(intype, outtype, inpv, outpv, pr):
     preamble(intype, outtype, inpv, outpv, pr, prim='trifan')
     print('  for (i = start, j = 0; j < out_nr; j+=3, i++) { ')
+
+    if pr == PRENABLE:
+        def close_func(index):
+            print('         start = i;')
+        prim_restart(3, 3, 1, close_func)
+
     do_tri( intype, outtype, 'out+j',  'start', 'i+1', 'i+2', inpv, outpv );
     print('   }')
     postamble()
