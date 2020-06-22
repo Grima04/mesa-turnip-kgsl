@@ -70,9 +70,13 @@ lower_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
 
 
    /* Convert result back to the original bit-size */
-   nir_alu_type type = nir_op_infos[op].output_type;
-   nir_ssa_def *dst = nir_convert_to_bit_size(bld, lowered_dst, type, dst_bit_size);
-   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(dst));
+   if (dst_bit_size != bit_size) {
+      nir_alu_type type = nir_op_infos[op].output_type;
+      nir_ssa_def *dst = nir_convert_to_bit_size(bld, lowered_dst, type, dst_bit_size);
+      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(dst));
+   } else {
+      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(lowered_dst));
+   }
 }
 
 static bool
@@ -95,8 +99,6 @@ lower_impl(nir_function_impl *impl,
          unsigned lower_bit_size = callback(alu, callback_data);
          if (lower_bit_size == 0)
             continue;
-
-         assert(lower_bit_size != alu->dest.dest.ssa.bit_size);
 
          lower_instr(&b, alu, lower_bit_size);
          progress = true;
