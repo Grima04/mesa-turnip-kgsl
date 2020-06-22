@@ -856,42 +856,15 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		fd6_emit_immediates(screen, fs, ring);
 }
 
+static void emit_interp_state(struct fd_ringbuffer *ring, struct ir3_shader_variant *fs,
+		bool rasterflat, bool sprite_coord_mode, uint32_t sprite_coord_enable);
+
 static struct fd_ringbuffer *
 create_interp_stateobj(struct fd_context *ctx, struct fd6_program_state *state)
 {
-	const struct ir3_shader_variant *fs = state->fs;
 	struct fd_ringbuffer *ring = fd_ringbuffer_new_object(ctx->pipe, 18 * 4);
-	uint32_t vinterp[8] = {0};
 
-	/* figure out VARYING_INTERP / VARYING_PS_REPL register values: */
-	for (int j = -1; (j = ir3_next_varying(fs, j)) < (int)fs->inputs_count; ) {
-		/* NOTE: varyings are packed, so if compmask is 0xb
-		 * then first, third, and fourth component occupy
-		 * three consecutive varying slots:
-		 */
-		unsigned compmask = fs->inputs[j].compmask;
-
-		uint32_t inloc = fs->inputs[j].inloc;
-
-		if (fs->inputs[j].interpolate == INTERP_MODE_FLAT) {
-			uint32_t loc = inloc;
-
-			for (int i = 0; i < 4; i++) {
-				if (compmask & (1 << i)) {
-					vinterp[loc / 16] |= 1 << ((loc % 16) * 2);
-					loc++;
-				}
-			}
-		}
-	}
-
-	OUT_PKT4(ring, REG_A6XX_VPC_VARYING_INTERP_MODE(0), 8);
-	for (int i = 0; i < 8; i++)
-		OUT_RING(ring, vinterp[i]);    /* VPC_VARYING_INTERP[i].MODE */
-
-	OUT_PKT4(ring, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
-	for (int i = 0; i < 8; i++)
-		OUT_RING(ring, 0x00000000);    /* VPC_VARYING_PS_REPL[i] */
+	emit_interp_state(ring, state->fs, false, false, 0);
 
 	return ring;
 }
@@ -912,83 +885,89 @@ fd6_program_interp_state(struct fd6_emit *emit)
 		struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
 				emit->ctx->batch->submit, 18 * 4, FD_RINGBUFFER_STREAMING);
 
-		/* slow-path: */
-		struct ir3_shader_variant *fs = state->fs;
-		uint32_t vinterp[8], vpsrepl[8];
+		emit_interp_state(ring, state->fs, emit->rasterflat,
+				emit->sprite_coord_mode, emit->sprite_coord_enable);
 
-		memset(vinterp, 0, sizeof(vinterp));
-		memset(vpsrepl, 0, sizeof(vpsrepl));
+		return ring;
+	}
+}
 
-		for (int j = -1; (j = ir3_next_varying(fs, j)) < (int)fs->inputs_count; ) {
+static void
+emit_interp_state(struct fd_ringbuffer *ring, struct ir3_shader_variant *fs,
+		bool rasterflat, bool sprite_coord_mode, uint32_t sprite_coord_enable)
+{
+	uint32_t vinterp[8], vpsrepl[8];
 
-			/* NOTE: varyings are packed, so if compmask is 0xb
-			 * then first, third, and fourth component occupy
-			 * three consecutive varying slots:
-			 */
-			unsigned compmask = fs->inputs[j].compmask;
+	memset(vinterp, 0, sizeof(vinterp));
+	memset(vpsrepl, 0, sizeof(vpsrepl));
 
-			uint32_t inloc = fs->inputs[j].inloc;
+	for (int j = -1; (j = ir3_next_varying(fs, j)) < (int)fs->inputs_count; ) {
 
-			if ((fs->inputs[j].interpolate == INTERP_MODE_FLAT) ||
-					(fs->inputs[j].rasterflat && emit->rasterflat)) {
-				uint32_t loc = inloc;
+		/* NOTE: varyings are packed, so if compmask is 0xb
+		 * then first, third, and fourth component occupy
+		 * three consecutive varying slots:
+		 */
+		unsigned compmask = fs->inputs[j].compmask;
 
-				for (int i = 0; i < 4; i++) {
-					if (compmask & (1 << i)) {
-						vinterp[loc / 16] |= 1 << ((loc % 16) * 2);
-						loc++;
-					}
-				}
-			}
+		uint32_t inloc = fs->inputs[j].inloc;
 
-			gl_varying_slot slot = fs->inputs[j].slot;
+		if ((fs->inputs[j].interpolate == INTERP_MODE_FLAT) ||
+				(fs->inputs[j].rasterflat && rasterflat)) {
+			uint32_t loc = inloc;
 
-			/* since we don't enable PIPE_CAP_TGSI_TEXCOORD: */
-			if (slot >= VARYING_SLOT_VAR0) {
-				unsigned texmask = 1 << (slot - VARYING_SLOT_VAR0);
-				/* Replace the .xy coordinates with S/T from the point sprite. Set
-				 * interpolation bits for .zw such that they become .01
-				 */
-				if (emit->sprite_coord_enable & texmask) {
-					/* mask is two 2-bit fields, where:
-					 *   '01' -> S
-					 *   '10' -> T
-					 *   '11' -> 1 - T  (flip mode)
-					 */
-					unsigned mask = emit->sprite_coord_mode ? 0b1101 : 0b1001;
-					uint32_t loc = inloc;
-					if (compmask & 0x1) {
-						vpsrepl[loc / 16] |= ((mask >> 0) & 0x3) << ((loc % 16) * 2);
-						loc++;
-					}
-					if (compmask & 0x2) {
-						vpsrepl[loc / 16] |= ((mask >> 2) & 0x3) << ((loc % 16) * 2);
-						loc++;
-					}
-					if (compmask & 0x4) {
-						/* .z <- 0.0f */
-						vinterp[loc / 16] |= 0b10 << ((loc % 16) * 2);
-						loc++;
-					}
-					if (compmask & 0x8) {
-						/* .w <- 1.0f */
-						vinterp[loc / 16] |= 0b11 << ((loc % 16) * 2);
-						loc++;
-					}
+			for (int i = 0; i < 4; i++) {
+				if (compmask & (1 << i)) {
+					vinterp[loc / 16] |= 1 << ((loc % 16) * 2);
+					loc++;
 				}
 			}
 		}
 
-		OUT_PKT4(ring, REG_A6XX_VPC_VARYING_INTERP_MODE(0), 8);
-		for (int i = 0; i < 8; i++)
-			OUT_RING(ring, vinterp[i]);     /* VPC_VARYING_INTERP[i].MODE */
+		gl_varying_slot slot = fs->inputs[j].slot;
 
-		OUT_PKT4(ring, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
-		for (int i = 0; i < 8; i++)
-			OUT_RING(ring, vpsrepl[i]);     /* VPC_VARYING_PS_REPL[i] */
-
-		return ring;
+		/* since we don't enable PIPE_CAP_TGSI_TEXCOORD: */
+		if (slot >= VARYING_SLOT_VAR0) {
+			unsigned texmask = 1 << (slot - VARYING_SLOT_VAR0);
+			/* Replace the .xy coordinates with S/T from the point sprite. Set
+			 * interpolation bits for .zw such that they become .01
+			 */
+			if (sprite_coord_enable & texmask) {
+				/* mask is two 2-bit fields, where:
+				 *   '01' -> S
+				 *   '10' -> T
+				 *   '11' -> 1 - T  (flip mode)
+				 */
+				unsigned mask = sprite_coord_mode ? 0b1101 : 0b1001;
+				uint32_t loc = inloc;
+				if (compmask & 0x1) {
+					vpsrepl[loc / 16] |= ((mask >> 0) & 0x3) << ((loc % 16) * 2);
+					loc++;
+				}
+				if (compmask & 0x2) {
+					vpsrepl[loc / 16] |= ((mask >> 2) & 0x3) << ((loc % 16) * 2);
+					loc++;
+				}
+				if (compmask & 0x4) {
+					/* .z <- 0.0f */
+					vinterp[loc / 16] |= 0b10 << ((loc % 16) * 2);
+					loc++;
+				}
+				if (compmask & 0x8) {
+					/* .w <- 1.0f */
+					vinterp[loc / 16] |= 0b11 << ((loc % 16) * 2);
+					loc++;
+				}
+			}
+		}
 	}
+
+	OUT_PKT4(ring, REG_A6XX_VPC_VARYING_INTERP_MODE(0), 8);
+	for (int i = 0; i < 8; i++)
+		OUT_RING(ring, vinterp[i]);     /* VPC_VARYING_INTERP[i].MODE */
+
+	OUT_PKT4(ring, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
+	for (int i = 0; i < 8; i++)
+		OUT_RING(ring, vpsrepl[i]);     /* VPC_VARYING_PS_REPL[i] */
 }
 
 static struct ir3_program_state *
