@@ -24,19 +24,32 @@ stages:
   - virgl
   - success
 
-pages:
+.docs-base:
   image: alpine
   stage: deploy
   script:
   - apk --no-cache add py3-pip
   - pip3 install sphinx sphinx_rtd_theme
   - sphinx-build -b html docs public
+
+pages:
+  extends: .docs-base
   artifacts:
     paths:
     - public
   only:
     refs:
     - master@mesa/mesa
+    changes:
+    - docs/**/*
+    - .gitlab-ci.yml
+
+test-docs:
+  extends: .docs-base
+  except:
+    refs:
+    - master@mesa/mesa
+  only:
     changes:
     - docs/**/*
     - .gitlab-ci.yml
