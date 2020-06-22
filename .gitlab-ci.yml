@@ -35,7 +35,11 @@ pages:
     paths:
     - public
   only:
-  - master@mesa/mesa
+    refs:
+    - master@mesa/mesa
+    changes:
+    - docs/**/*
+    - .gitlab-ci.yml
 
 # When to automatically run the CI
 .ci-run-policy:
