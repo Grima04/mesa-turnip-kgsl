@@ -1209,7 +1209,8 @@ static void
 tu6_emit_fs_outputs(struct tu_cs *cs,
                     const struct ir3_shader_variant *fs,
                     uint32_t mrt_count, bool dual_src_blend,
-                    uint32_t render_components)
+                    uint32_t render_components,
+                    bool is_s8_uint)
 {
    uint32_t smask_regid, posz_regid;
 
@@ -1255,7 +1256,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    enum a6xx_ztest_mode zmode;
 
-   if (fs->no_earlyz || fs->has_kill || fs->writes_pos) {
+   if (fs->no_earlyz || fs->has_kill || fs->writes_pos || is_s8_uint) {
       zmode = A6XX_LATE_Z;
    } else {
       zmode = A6XX_EARLY_Z;
@@ -1376,14 +1377,16 @@ tu6_emit_program(struct tu_cs *cs,
       tu6_emit_fs_inputs(cs, fs);
       tu6_emit_fs_outputs(cs, fs, builder->color_attachment_count,
                           builder->use_dual_src_blend,
-                          builder->render_components);
+                          builder->render_components,
+                          builder->depth_attachment_format == VK_FORMAT_S8_UINT);
    } else {
       /* TODO: check if these can be skipped if fs is disabled */
       struct ir3_shader_variant dummy_variant = {};
       tu6_emit_fs_inputs(cs, &dummy_variant);
       tu6_emit_fs_outputs(cs, &dummy_variant, builder->color_attachment_count,
                           builder->use_dual_src_blend,
-                          builder->render_components);
+                          builder->render_components,
+                          builder->depth_attachment_format == VK_FORMAT_S8_UINT);
    }
 
    if (gs || hs) {
