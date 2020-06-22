@@ -47,13 +47,17 @@ pages:
 test-docs:
   extends: .docs-base
   stage: container+docs
-  except:
-    refs:
-    - master@mesa/mesa
-  only:
-    changes:
-    - docs/**/*
-    - .gitlab-ci.yml
+  rules:
+    - if: '$CI_PROJECT_NAMESPACE == "mesa"'
+      when: never
+    - if: '$GITLAB_USER_LOGIN == "marge-bot"'
+      changes: &docs-or-ci
+      - docs/**/*
+      - .gitlab-ci.yml
+      when: on_success
+    - changes: *docs-or-ci
+      when: manual
+    # Other cases default to never
 
 # When to automatically run the CI
 .ci-run-policy:
