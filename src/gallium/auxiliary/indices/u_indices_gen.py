@@ -208,7 +208,7 @@ def preamble(intype, outtype, inpv, outpv, pr, prim):
 def postamble():
     print('}')
 
-def prim_restart(in_verts, out_verts, out_prims):
+def prim_restart(in_verts, out_verts, out_prims, close_func = None):
     print('restart:')
     print('      if (i + ' + str(in_verts) + ' > in_nr) {')
     for i in range(out_prims):
@@ -219,6 +219,10 @@ def prim_restart(in_verts, out_verts, out_prims):
     for i in range(in_verts):
         print('      if (in[i + ' + str(i) + '] == restart_index) {')
         print('         i += ' + str(i + 1) + ';')
+
+        if close_func is not None:
+            close_func(i)
+
         print('         goto restart;')
         print('      }')
 
@@ -245,10 +249,21 @@ def linestrip(intype, outtype, inpv, outpv, pr):
 
 def lineloop(intype, outtype, inpv, outpv, pr):
     preamble(intype, outtype, inpv, outpv, pr, prim='lineloop')
+    print('  unsigned end = start;')
     print('  for (i = start, j = 0; j < out_nr - 2; j+=2, i++) { ')
+    if pr == PRENABLE:
+        def close_func(index):
+            do_line( intype, outtype, 'out+j',  'end', 'start', inpv, outpv )
+            print('         start = i;')
+            print('         end = start;')
+            print('         j += 2;')
+
+        prim_restart(2, 2, 1, close_func)
+
     do_line( intype, outtype, 'out+j',  'i', 'i+1', inpv, outpv );
+    print('      end = i+1;')
     print('   }')
-    do_line( intype, outtype, 'out+j',  'i', 'start', inpv, outpv );
+    do_line( intype, outtype, 'out+j',  'end', 'start', inpv, outpv );
     postamble()
 
 def tris(intype, outtype, inpv, outpv, pr):
