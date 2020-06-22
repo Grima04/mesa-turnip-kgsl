@@ -35,7 +35,7 @@ pages:
     paths:
     - public
   only:
-  - master
+  - master@mesa/mesa
 
 # When to automatically run the CI
 .ci-run-policy:
