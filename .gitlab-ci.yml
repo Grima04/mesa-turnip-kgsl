@@ -9,7 +9,7 @@ include:
   - local: '.gitlab-ci/test-source-dep.yml'
 
 stages:
-  - container
+  - container+docs
   - container-2
   - meson-x86_64
   - scons
@@ -26,7 +26,6 @@ stages:
 
 .docs-base:
   image: alpine
-  stage: deploy
   script:
   - apk --no-cache add py3-pip
   - pip3 install sphinx sphinx_rtd_theme
@@ -34,6 +33,7 @@ stages:
 
 pages:
   extends: .docs-base
+  stage: deploy
   artifacts:
     paths:
     - public
@@ -46,6 +46,7 @@ pages:
 
 test-docs:
   extends: .docs-base
+  stage: container+docs
   except:
     refs:
     - master@mesa/mesa
@@ -131,7 +132,7 @@ success:
 # repository's registry will be used there as well.
 
 .container:
-  stage: container
+  stage: container+docs
   extends:
     - .ci-run-policy
   rules:
@@ -361,7 +362,7 @@ windows_build_vs2019:
   extends:
     - .container
     - .windows-docker-vs2019
-  stage: container
+  stage: container+docs
   variables:
     GIT_STRATEGY: fetch # we do actually need the full repository though
   timeout: 4h # LLVM takes ages
