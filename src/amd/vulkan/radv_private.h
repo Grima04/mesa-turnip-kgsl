@@ -675,6 +675,8 @@ struct radv_meta_state {
 
 #define RADV_MAX_QUEUE_FAMILIES 3
 
+struct radv_deferred_queue_submission;
+
 enum ring_type radv_queue_family_to_ring(int f);
 
 struct radv_queue {
@@ -711,6 +713,13 @@ struct radv_queue {
 
 	struct list_head pending_submissions;
 	pthread_mutex_t pending_mutex;
+
+	pthread_mutex_t thread_mutex;
+	pthread_cond_t thread_cond;
+	struct radv_deferred_queue_submission *thread_submission;
+	pthread_t submission_thread;
+	bool thread_exit;
+	bool thread_running;
 };
 
 struct radv_bo_list {

@@ -33,6 +33,7 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 #include <linux/unistd.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -82,6 +83,25 @@ radv_timeline_trigger_waiters_locked(struct radv_timeline *timeline,
 static
 void radv_destroy_semaphore_part(struct radv_device *device,
                                  struct radv_semaphore_part *part);
+
+static VkResult
+radv_create_pthread_cond(pthread_cond_t *cond);
+
+uint64_t radv_get_current_time(void)
+{
+	struct timespec tv;
+	clock_gettime(CLOCK_MONOTONIC, &tv);
+	return tv.tv_nsec + tv.tv_sec*1000000000ull;
+}
+
+static uint64_t radv_get_absolute_timeout(uint64_t timeout)
+{
+	uint64_t current_time = radv_get_current_time();
+
+	timeout = MIN2(UINT64_MAX - current_time, timeout);
+
+	return current_time + timeout;
+}
 
 static int
 radv_device_get_cache_uuid(enum radeon_family family, void *uuid)
@@ -2252,13 +2272,27 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
 	list_inithead(&queue->pending_submissions);
 	pthread_mutex_init(&queue->pending_mutex, NULL);
 
+	pthread_mutex_init(&queue->thread_mutex, NULL);
+	queue->thread_submission = NULL;
+	queue->thread_running = queue->thread_exit = false;
+	result = radv_create_pthread_cond(&queue->thread_cond);
+	if (result != VK_SUCCESS)
+		return vk_error(device->instance, result);
+
 	return VK_SUCCESS;
 }
 
 static void
 radv_queue_finish(struct radv_queue *queue)
 {
+	if (queue->thread_running) {
+		p_atomic_set(&queue->thread_exit, true);
+		pthread_cond_broadcast(&queue->thread_cond);
+		pthread_join(queue->submission_thread, NULL);
+	}
+	pthread_cond_destroy(&queue->thread_cond);
 	pthread_mutex_destroy(&queue->pending_mutex);
+	pthread_mutex_destroy(&queue->thread_mutex);
 
 	if (queue->hw_ctx)
 		queue->device->ws->ctx_destroy(queue->hw_ctx);
@@ -4088,6 +4122,11 @@ struct radv_queue_submission {
 };
 
 static VkResult
+radv_queue_trigger_submission(struct radv_deferred_queue_submission *submission,
+                              uint32_t decrement,
+                              struct list_head *processing_list);
+
+static VkResult
 radv_create_deferred_submission(struct radv_queue *queue,
                                 const struct radv_queue_submission *submission,
                                 struct radv_deferred_queue_submission **out)
@@ -4182,7 +4221,7 @@ radv_create_deferred_submission(struct radv_queue *queue,
 	return VK_SUCCESS;
 }
 
-static void
+static VkResult
 radv_queue_enqueue_submission(struct radv_deferred_queue_submission *submission,
                               struct list_head *processing_list)
 {
@@ -4213,9 +4252,7 @@ radv_queue_enqueue_submission(struct radv_deferred_queue_submission *submission,
 	 * submitted, but if the queue was empty, we decrement ourselves as there is no previous
 	 * submission. */
 	uint32_t decrement = submission->wait_semaphore_count - wait_cnt + (is_first ? 1 : 0);
-	if (__atomic_sub_fetch(&submission->submission_wait_count, decrement, __ATOMIC_ACQ_REL) == 0) {
-		list_addtail(&submission->processing_list, processing_list);
-	}
+	return radv_queue_trigger_submission(submission, decrement, processing_list);
 }
 
 static void
@@ -4231,9 +4268,7 @@ radv_queue_submission_update_queue(struct radv_deferred_queue_submission *submis
 			list_first_entry(&submission->queue->pending_submissions,
 			                 struct radv_deferred_queue_submission,
 			                 queue_pending_list);
-		if (p_atomic_dec_zero(&next_submission->submission_wait_count)) {
-			list_addtail(&next_submission->processing_list, processing_list);
-		}
+		radv_queue_trigger_submission(next_submission, 1, processing_list);
 	}
 	pthread_mutex_unlock(&submission->queue->pending_mutex);
 
@@ -4422,6 +4457,95 @@ radv_process_submissions(struct list_head *processing_list)
 	return VK_SUCCESS;
 }
 
+static VkResult
+wait_for_submission_timelines_available(struct radv_deferred_queue_submission *submission,
+                                        uint64_t timeout)
+{
+	return VK_SUCCESS; /* TODO: when we implement timeline syncobj. */
+}
+
+static void* radv_queue_submission_thread_run(void *q)
+{
+	struct radv_queue *queue = q;
+
+	pthread_mutex_lock(&queue->thread_mutex);
+	while (!p_atomic_read(&queue->thread_exit)) {
+		struct radv_deferred_queue_submission *submission = queue->thread_submission;
+		struct list_head processing_list;
+		VkResult result = VK_SUCCESS;
+		if (!submission) {
+			pthread_cond_wait(&queue->thread_cond, &queue->thread_mutex);
+			continue;
+		}
+		pthread_mutex_unlock(&queue->thread_mutex);
+
+		/* Wait at most 5 seconds so we have a chance to notice shutdown when
+		 * a semaphore never gets signaled. If it takes longer we just retry
+		 * the wait next iteration. */
+		result = wait_for_submission_timelines_available(submission,
+		                                                 radv_get_absolute_timeout(5000000000));
+		if (result != VK_SUCCESS) {
+			pthread_mutex_lock(&queue->thread_mutex);
+			continue;
+		}
+
+		/* The lock isn't held but nobody will add one until we finish
+		 * the current submission. */
+		p_atomic_set(&queue->thread_submission, NULL);
+
+		list_inithead(&processing_list);
+		list_addtail(&submission->processing_list, &processing_list);
+		result = radv_process_submissions(&processing_list);
+
+		pthread_mutex_lock(&queue->thread_mutex);
+	}
+	pthread_mutex_unlock(&queue->thread_mutex);
+	return NULL;
+}
+
+static VkResult
+radv_queue_trigger_submission(struct radv_deferred_queue_submission *submission,
+                              uint32_t decrement,
+                              struct list_head *processing_list)
+{
+	struct radv_queue *queue = submission->queue;
+	int ret;
+	if  (p_atomic_add_return(&submission->submission_wait_count, -decrement))
+		return VK_SUCCESS;
+
+	if (wait_for_submission_timelines_available(submission, radv_get_absolute_timeout(0)) == VK_SUCCESS) {
+		list_addtail(&submission->processing_list, processing_list);
+		return VK_SUCCESS;
+	}
+
+	pthread_mutex_lock(&queue->thread_mutex);
+
+	/* A submission can only be ready for the thread if it doesn't have
+	 * any predecessors in the same queue, so there can only be one such
+	 * submission at a time. */
+	assert(queue->thread_submission == NULL);
+
+	/* Only start the thread on demand to save resources for the many games
+	 * which only use binary semaphores. */
+	if (!queue->thread_running) {
+		ret  = pthread_create(&queue->submission_thread, NULL,
+		                      radv_queue_submission_thread_run, queue);
+		if (ret) {
+			pthread_mutex_unlock(&queue->thread_mutex);
+			return vk_errorf(queue->device->instance,
+			                 VK_ERROR_DEVICE_LOST,
+			                 "Failed to start submission thread");
+		}
+		queue->thread_running = true;
+	}
+
+	queue->thread_submission = submission;
+	pthread_mutex_unlock(&queue->thread_mutex);
+
+	pthread_cond_signal(&queue->thread_cond);
+	return VK_SUCCESS;
+}
+
 static VkResult radv_queue_submit(struct radv_queue *queue,
                                   const struct radv_queue_submission *submission)
 {
@@ -4434,7 +4558,12 @@ static VkResult radv_queue_submit(struct radv_queue *queue,
 	struct list_head processing_list;
 	list_inithead(&processing_list);
 
-	radv_queue_enqueue_submission(deferred, &processing_list);
+	result = radv_queue_enqueue_submission(deferred, &processing_list);
+	if (result != VK_SUCCESS) {
+		/* If anything is in the list we leak. */
+		assert(list_is_empty(&processing_list));
+		return result;
+	}
 	return radv_process_submissions(&processing_list);
 }
 
@@ -5341,24 +5470,6 @@ void radv_DestroyFence(
 	radv_destroy_fence(device, pAllocator, fence);
 }
 
-
-uint64_t radv_get_current_time(void)
-{
-	struct timespec tv;
-	clock_gettime(CLOCK_MONOTONIC, &tv);
-	return tv.tv_nsec + tv.tv_sec*1000000000ull;
-}
-
-static uint64_t radv_get_absolute_timeout(uint64_t timeout)
-{
-	uint64_t current_time = radv_get_current_time();
-
-	timeout = MIN2(UINT64_MAX - current_time, timeout);
-
-	return current_time + timeout;
-}
-
-
 static bool radv_all_fences_plain_and_submitted(struct radv_device *device,
                                                 uint32_t fenceCount, const VkFence *pFences)
 {
@@ -5741,9 +5852,7 @@ radv_timeline_trigger_waiters_locked(struct radv_timeline *timeline,
 		if (waiter->value > timeline->highest_submitted)
 			continue;
 
-		if (p_atomic_dec_zero(&waiter->submission->submission_wait_count)) {
-			list_addtail(&waiter->submission->processing_list, processing_list);
-		}
+		radv_queue_trigger_submission(waiter->submission, 1, processing_list);
 		list_del(&waiter->list);
 	}
 }
