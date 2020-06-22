@@ -699,6 +699,10 @@ struct v3d_fence *v3d_fence_create(struct v3d_context *v3d);
 
 void v3d_update_primitive_counters(struct v3d_context *v3d);
 
+bool v3d_line_smoothing_enabled(struct v3d_context *v3d);
+
+float v3d_get_real_line_width(struct v3d_context *v3d);
+
 #ifdef v3dX
 #  include "v3dx_context.h"
 #else

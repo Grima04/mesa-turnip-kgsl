@@ -541,6 +541,8 @@ v3d_update_compiled_fs(struct v3d_context *v3d, uint8_t prim_mode)
         key->is_points = (prim_mode == PIPE_PRIM_POINTS);
         key->is_lines = (prim_mode >= PIPE_PRIM_LINES &&
                          prim_mode <= PIPE_PRIM_LINE_STRIP);
+        key->line_smoothing = (key->is_lines &&
+                               v3d_line_smoothing_enabled(v3d));
         key->clamp_color = v3d->rasterizer->base.clamp_fragment_color;
         if (v3d->blend->base.logicop_enable) {
                 key->logicop_func = v3d->blend->base.logicop_func;

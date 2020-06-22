@@ -313,9 +313,12 @@ v3d_write_uniforms(struct v3d_context *v3d, struct v3d_job *job,
                         break;
 
                 case QUNIFORM_LINE_WIDTH:
-                case QUNIFORM_AA_LINE_WIDTH:
                         cl_aligned_f(&uniforms,
                                      v3d->rasterizer->base.line_width);
+                        break;
+
+                case QUNIFORM_AA_LINE_WIDTH:
+                        cl_aligned_f(&uniforms, v3d_get_real_line_width(v3d));
                         break;
 
                 case QUNIFORM_UBO_ADDR: {

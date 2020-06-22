@@ -890,6 +890,13 @@ v3d_nir_lower_fs_early(struct v3d_compile *c)
 
         NIR_PASS_V(c->s, v3d_nir_lower_logic_ops, c);
 
+        if (c->fs_key->line_smoothing) {
+                v3d_nir_lower_line_smooth(c->s);
+                NIR_PASS_V(c->s, nir_lower_global_vars_to_local);
+                /* The lowering pass can introduce new sysval reads */
+                nir_shader_gather_info(c->s, nir_shader_get_entrypoint(c->s));
+        }
+
         /* If the shader has no non-TLB side effects, we can promote it to
          * enabling early_fragment_tests even if the user didn't.
          */

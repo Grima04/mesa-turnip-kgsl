@@ -551,7 +551,7 @@ v3dX(emit_state)(struct pipe_context *pctx)
                 }
 
                 cl_emit(&job->bcl, LINE_WIDTH, line_width) {
-                        line_width.line_width = v3d->rasterizer->base.line_width;
+                        line_width.line_width = v3d_get_real_line_width(v3d);
                 }
         }
 
