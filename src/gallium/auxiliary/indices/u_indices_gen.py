@@ -298,28 +298,9 @@ def polygon(intype, outtype, inpv, outpv, pr):
     preamble(intype, outtype, inpv, outpv, pr, prim='polygon')
     print('  for (i = start, j = 0; j < out_nr; j+=3, i++) { ')
     if pr == PRENABLE:
-        print('restart:')
-        print('      if (i + 3 > in_nr) {')
-        print('         (out+j+0)[0] = restart_index;')
-        print('         (out+j+0)[1] = restart_index;')
-        print('         (out+j+0)[2] = restart_index;')
-        print('         continue;')
-        print('      }')
-        print('      if (in[i + 0] == restart_index) {')
-        print('         i += 1;')
-        print('         start = i;')
-        print('         goto restart;')
-        print('      }')
-        print('      if (in[i + 1] == restart_index) {')
-        print('         i += 2;')
-        print('         start = i;')
-        print('         goto restart;')
-        print('      }')
-        print('      if (in[i + 2] == restart_index) {')
-        print('         i += 3;')
-        print('         start = i;')
-        print('         goto restart;')
-        print('      }')
+        def close_func(index):
+            print('         start = i;')
+        prim_restart(3, 3, 1, close_func)
 
     if inpv == FIRST:
         do_tri( intype, outtype, 'out+j',  'start', 'i+1', 'i+2', inpv, outpv );
