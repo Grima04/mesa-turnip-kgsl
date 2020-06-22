@@ -49,4 +49,22 @@ void ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso);
 
 void ir3_prog_init(struct pipe_context *pctx);
 
+/**
+ * A helper to determine if a fs input 'i' is point/sprite coord, given
+ * the specified sprite_coord_enable mask
+ */
+static inline bool
+ir3_point_sprite(const struct ir3_shader_variant *fs, int i,
+		uint32_t sprite_coord_enable, bool *coord_mode)
+{
+	gl_varying_slot slot = fs->inputs[i].slot;
+	(void)coord_mode; /* this will be used later */
+	/* since we don't enable PIPE_CAP_TGSI_TEXCOORD: */
+	if (slot >= VARYING_SLOT_VAR0) {
+		unsigned texmask = 1 << (slot - VARYING_SLOT_VAR0);
+		return !!(sprite_coord_enable & texmask);
+	}
+	return false;
+}
+
 #endif /* IR3_GALLIUM_H_ */

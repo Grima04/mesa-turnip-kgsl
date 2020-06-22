@@ -769,8 +769,6 @@ struct ir3_shader_linkage {
 static inline void
 ir3_link_add(struct ir3_shader_linkage *l, uint8_t regid_, uint8_t compmask, uint8_t loc)
 {
-
-
 	for (int j = 0; j < util_last_bit(compmask); j++) {
 		uint8_t comploc = loc + j;
 		l->varmask[comploc / 32] |= 1 << (comploc % 32);
