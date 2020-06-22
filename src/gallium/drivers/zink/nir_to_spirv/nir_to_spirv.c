@@ -536,7 +536,11 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
                                                    sampled_type);
 
    if (glsl_type_is_array(var->type)) {
-      for (int i = 0; i < glsl_get_length(var->type); ++i) {
+      /* ARB_arrays_of_arrays from GLSL 1.30 allows nesting of arrays, so we just
+       * use the total array size if we encounter a nested array
+       */
+      unsigned size = glsl_get_aoa_size(var->type);
+      for (int i = 0; i < size; ++i) {
          SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
                                                SpvStorageClassUniformConstant);
 

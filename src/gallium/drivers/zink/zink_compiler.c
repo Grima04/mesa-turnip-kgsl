@@ -289,9 +289,24 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          ret->num_bindings++;
       } else {
          assert(var->data.mode == nir_var_uniform);
-         if (glsl_type_is_array(var->type) &&
-             glsl_type_is_sampler(glsl_get_array_element(var->type))) {
-            for (int i = 0; i < glsl_get_length(var->type); ++i) {
+         if (glsl_type_is_sampler(var->type)) {
+            int binding = zink_binding(nir->info.stage,
+                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                       var->data.binding);
+            ret->bindings[ret->num_bindings].index = var->data.binding;
+            ret->bindings[ret->num_bindings].binding = binding;
+            ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            ret->num_bindings++;
+         } else if (glsl_type_is_array(var->type)) {
+            /* need to unroll possible arrays of arrays before checking type
+             * in order to handle ARB_arrays_of_arrays extension
+             */
+            const struct glsl_type *type = glsl_without_array(var->type);
+            if (!glsl_type_is_sampler(type))
+               continue;
+
+            unsigned size = glsl_get_aoa_size(var->type);
+            for (int i = 0; i < size; ++i) {
                int binding = zink_binding(nir->info.stage,
                                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                           var->data.binding + i);
@@ -300,14 +315,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                ret->num_bindings++;
             }
-         } else if (glsl_type_is_sampler(var->type)) {
-            int binding = zink_binding(nir->info.stage,
-                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                       var->data.binding);
-            ret->bindings[ret->num_bindings].index = var->data.binding;
-            ret->bindings[ret->num_bindings].binding = binding;
-            ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            ret->num_bindings++;
          }
       }
    }
