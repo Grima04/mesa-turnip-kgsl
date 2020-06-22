@@ -43,7 +43,6 @@
 #include "util/u_upload_mgr.h"
 #include "intel/common/gen_l3_config.h"
 
-#define BLORP_USE_SOFTPIN
 #include "blorp/blorp_genX_exec.h"
 
 static uint32_t *
