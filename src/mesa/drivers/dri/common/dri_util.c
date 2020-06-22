@@ -890,7 +890,7 @@ static const struct {
    {
       .image_format    = __DRI_IMAGE_FORMAT_XRGB8888,
       .mesa_format     =        MESA_FORMAT_B8G8R8X8_UNORM,
-      .internal_format =        GL_RGBA8,
+      .internal_format =        GL_RGB8,
    },
    {
       .image_format    = __DRI_IMAGE_FORMAT_ABGR16161616F,
