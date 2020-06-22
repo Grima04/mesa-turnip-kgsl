@@ -816,11 +816,9 @@ struct tu_cmd_state
    struct tu_cs_entry ia_gmem_ib, ia_sysmem_ib;
 
    /* Index buffer */
-   struct tu_buffer *index_buffer;
-   uint64_t index_offset;
-   uint32_t index_type;
-   uint32_t max_index_count;
    uint64_t index_va;
+   uint32_t max_index_count;
+   uint8_t index_size, index_shift;
 
    /* because streamout base has to be 32-byte aligned
     * there is an extra offset to deal with when it is

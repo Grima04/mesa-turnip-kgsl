@@ -49,21 +49,6 @@ tu_msaa_samples(VkSampleCountFlagBits samples)
    return util_logbase2(samples);
 }
 
-static inline enum a4xx_index_size
-tu6_index_size(VkIndexType type)
-{
-   switch (type) {
-   case VK_INDEX_TYPE_UINT16:
-      return INDEX4_SIZE_16_BIT;
-   case VK_INDEX_TYPE_UINT32:
-      return INDEX4_SIZE_32_BIT;
-   case VK_INDEX_TYPE_UINT8_EXT:
-      return INDEX4_SIZE_8_BIT;
-   default:
-      unreachable("invalid VkIndexType");
-   }
-}
-
 static inline uint32_t
 tu6_stage2opcode(gl_shader_stage stage)
 {

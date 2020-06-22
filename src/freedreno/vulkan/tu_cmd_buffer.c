@@ -884,13 +884,6 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
-tu6_emit_restart_index(struct tu_cs *cs, uint32_t restart_index)
-{
-   tu_cs_emit_regs(cs,
-                   A6XX_PC_RESTART_INDEX(restart_index));
-}
-
-static void
 tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_physical_device *phys_dev = cmd->device->physical_device;
@@ -1702,6 +1695,8 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    }
 
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
+   cmd_buffer->state.index_size = 0xff; /* dirty restart index */
+
    tu_cache_init(&cmd_buffer->state.cache);
    tu_cache_init(&cmd_buffer->state.renderpass_cache);
    cmd_buffer->usage_flags = pBeginInfo->flags;
@@ -1774,23 +1769,42 @@ tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_buffer, buf, buffer);
 
-   /* initialize/update the restart index */
-   if (!cmd->state.index_buffer || cmd->state.index_type != indexType) {
-      struct tu_cs *draw_cs = &cmd->draw_cs;
 
-      tu6_emit_restart_index(
-         draw_cs, indexType == VK_INDEX_TYPE_UINT32 ? 0xffffffff : 0xffff);
 
-      tu_cs_sanity_check(draw_cs);
+   uint32_t index_size, index_shift, restart_index;
+
+   switch (indexType) {
+   case VK_INDEX_TYPE_UINT16:
+      index_size = INDEX4_SIZE_16_BIT;
+      index_shift = 1;
+      restart_index = 0xffff;
+      break;
+   case VK_INDEX_TYPE_UINT32:
+      index_size = INDEX4_SIZE_32_BIT;
+      index_shift = 2;
+      restart_index = 0xffffffff;
+      break;
+   case VK_INDEX_TYPE_UINT8_EXT:
+      index_size = INDEX4_SIZE_8_BIT;
+      index_shift = 0;
+      restart_index = 0xff;
+      break;
+   default:
+      unreachable("invalid VkIndexType");
    }
 
-   /* track the BO */
-   if (cmd->state.index_buffer != buf)
-      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+   /* initialize/update the restart index */
+   if (cmd->state.index_size != index_size)
+      tu_cs_emit_regs(&cmd->draw_cs, A6XX_PC_RESTART_INDEX(restart_index));
 
-   cmd->state.index_buffer = buf;
-   cmd->state.index_offset = offset;
-   cmd->state.index_type = indexType;
+   assert(buf->size >= offset);
+
+   cmd->state.index_va = buf->bo->iova + buf->bo_offset + offset;
+   cmd->state.max_index_count = (buf->size - offset) >> index_shift;
+   cmd->state.index_size = index_size;
+   cmd->state.index_shift = index_shift;
+
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
 
 void
@@ -2634,6 +2648,8 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
 
          tu_cs_add_entries(&cmd->cs, &secondary->cs);
       }
+
+      cmd->state.index_size = secondary->state.index_size; /* for restart index update */
    }
    cmd->state.dirty = ~0u; /* TODO: set dirty only what needs to be */
 
@@ -2877,58 +2893,6 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    tu_CmdNextSubpass(commandBuffer, pSubpassBeginInfo->contents);
 }
 
-struct tu_draw_info
-{
-   /**
-    * Number of vertices.
-    */
-   uint32_t count;
-
-   /**
-    * Index of the first vertex.
-    */
-   int32_t vertex_offset;
-
-   /**
-    * First instance id.
-    */
-   uint32_t first_instance;
-
-   /**
-    * Number of instances.
-    */
-   uint32_t instance_count;
-
-   /**
-    * First index (indexed draws only).
-    */
-   uint32_t first_index;
-
-   /**
-    * Whether it's an indexed draw.
-    */
-   bool indexed;
-
-   /**
-    * Indirect draw parameters resource.
-    */
-   struct tu_buffer *indirect;
-   uint64_t indirect_offset;
-   uint32_t stride;
-
-   /**
-    * Draw count parameters resource.
-    */
-   struct tu_buffer *count_buffer;
-   uint64_t count_buffer_offset;
-
-   /**
-    * Stream output parameters resource.
-    */
-   struct tu_buffer *streamout_buffer;
-   uint64_t streamout_buffer_offset;
-};
-
 static void
 tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
                      struct tu_descriptor_state *descriptors_state,
@@ -3009,7 +2973,7 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
 
 static VkResult
 tu6_emit_vs_params(struct tu_cmd_buffer *cmd,
-                   const struct tu_draw_info *draw,
+                   uint32_t first_instance,
                    struct tu_cs_entry *entry)
 {
    /* TODO: fill out more than just base instance */
@@ -3040,7 +3004,7 @@ tu6_emit_vs_params(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit(&cs, 0);
    tu_cs_emit(&cs, 0);
-   tu_cs_emit(&cs, draw->first_instance);
+   tu_cs_emit(&cs, first_instance);
    tu_cs_emit(&cs, 0);
 
    *entry = tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
@@ -3073,14 +3037,14 @@ tu6_emit_vertex_buffers(struct tu_cmd_buffer *cmd,
 
 static uint64_t
 get_tess_param_bo_size(const struct tu_pipeline *pipeline,
-                       const struct tu_draw_info *draw_info)
+                       uint32_t draw_count)
 {
    /* TODO: For indirect draws, we can't compute the BO size ahead of time.
     * Still not sure what to do here, so just allocate a reasonably large
     * BO and hope for the best for now.
     * (maxTessellationControlPerVertexOutputComponents * 2048 vertices +
     *  maxTessellationControlPerPatchOutputComponents * 512 patches) */
-   if (draw_info->indirect) {
+   if (!draw_count) {
       return ((128 * 2048) + (128 * 512)) * 4;
    }
 
@@ -3089,26 +3053,26 @@ get_tess_param_bo_size(const struct tu_pipeline *pipeline,
     * where i = # vertices per patch, j = # per-vertex outputs, and
     * k = # per-patch outputs.*/
    uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;
-   uint32_t num_patches = draw_info->count / verts_per_patch;
-   return draw_info->count * pipeline->tess.per_vertex_output_size +
+   uint32_t num_patches = draw_count / verts_per_patch;
+   return draw_count * pipeline->tess.per_vertex_output_size +
           pipeline->tess.per_patch_output_size * num_patches;
 }
 
 static uint64_t
 get_tess_factor_bo_size(const struct tu_pipeline *pipeline,
-                        const struct tu_draw_info *draw_info)
+                        uint32_t draw_count)
 {
    /* TODO: For indirect draws, we can't compute the BO size ahead of time.
     * Still not sure what to do here, so just allocate a reasonably large
     * BO and hope for the best for now.
     * (quad factor stride * 512 patches) */
-   if (draw_info->indirect) {
+   if (!draw_count) {
       return (28 * 512) * 4;
    }
 
    /* Each distinct patch gets its own tess factor output. */
    uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;
-   uint32_t num_patches = draw_info->count / verts_per_patch;
+   uint32_t num_patches = draw_count / verts_per_patch;
    uint32_t factor_stride;
    switch (pipeline->tess.patch_type) {
    case IR3_TESS_ISOLINES:
@@ -3128,7 +3092,7 @@ get_tess_factor_bo_size(const struct tu_pipeline *pipeline,
 
 static VkResult
 tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
-                     const struct tu_draw_info *draw,
+                     uint32_t draw_count,
                      const struct tu_pipeline *pipeline,
                      struct tu_cs_entry *entry)
 {
@@ -3137,8 +3101,8 @@ tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
    if (result != VK_SUCCESS)
       return result;
 
-   uint64_t tess_factor_size = get_tess_factor_bo_size(pipeline, draw);
-   uint64_t tess_param_size = get_tess_param_bo_size(pipeline, draw);
+   uint64_t tess_factor_size = get_tess_factor_bo_size(pipeline, draw_count);
+   uint64_t tess_param_size = get_tess_param_bo_size(pipeline, draw_count);
    uint64_t tess_bo_size =  tess_factor_size + tess_param_size;
    if (tess_bo_size > 0) {
       struct tu_bo *tess_bo;
@@ -3187,9 +3151,13 @@ tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
 }
 
 static VkResult
-tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
-                     struct tu_cs *cs,
-                     const struct tu_draw_info *draw)
+tu6_draw_common(struct tu_cmd_buffer *cmd,
+                struct tu_cs *cs,
+                bool indexed,
+                uint32_t vertex_offset,
+                uint32_t first_instance,
+                /* note: draw_count count is 0 for indirect */
+                uint32_t draw_count)
 {
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
    VkResult result;
@@ -3197,11 +3165,17 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    struct tu_descriptor_state *descriptors_state =
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
 
+   tu_emit_cache_flush_renderpass(cmd, cs);
+
    /* TODO lrz */
+
+   tu_cs_emit_regs(cs,
+                   A6XX_VFD_INDEX_OFFSET(vertex_offset),
+                   A6XX_VFD_INSTANCE_START_OFFSET(first_instance));
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0(
          .primitive_restart =
-               pipeline->ia.primitive_restart && draw->indexed,
+               pipeline->ia.primitive_restart && indexed,
          .tess_upper_left_domain_origin =
                pipeline->tess.upper_left_domain_origin));
 
@@ -3250,7 +3224,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
       cmd->state.vertex_buffers_ib = tu6_emit_vertex_buffers(cmd, pipeline);
 
    struct tu_cs_entry vs_params;
-   result = tu6_emit_vs_params(cmd, draw, &vs_params);
+   result = tu6_emit_vs_params(cmd, first_instance, &vs_params);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3259,7 +3233,7 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
    struct tu_cs_entry tess_consts = {};
    if (has_tess) {
       cmd->has_tess = true;
-      result = tu6_emit_tess_consts(cmd, draw, pipeline, &tess_consts);
+      result = tu6_emit_tess_consts(cmd, draw_count, pipeline, &tess_consts);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -3344,157 +3318,36 @@ tu6_bind_draw_states(struct tu_cmd_buffer *cmd,
 }
 
 static uint32_t
-compute_tess_draw0(struct tu_pipeline *pipeline)
+tu_draw_initiator(struct tu_cmd_buffer *cmd, bool indexed)
 {
-   uint32_t patch_type = pipeline->tess.patch_type;
-   uint32_t tess_draw0 = 0;
-   switch (patch_type) {
+   const struct tu_pipeline *pipeline = cmd->state.pipeline;
+   uint32_t initiator =
+      CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(pipeline->ia.primtype) |
+      CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(indexed ? DI_SRC_SEL_DMA : DI_SRC_SEL_AUTO_INDEX) |
+      CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(cmd->state.index_size) |
+      CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY);
+
+   if (pipeline->active_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
+      initiator |= CP_DRAW_INDX_OFFSET_0_GS_ENABLE;
+
+   switch (pipeline->tess.patch_type) {
    case IR3_TESS_TRIANGLES:
-      tess_draw0 = CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_TRIANGLES);
+      initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_TRIANGLES) |
+                   CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
       break;
    case IR3_TESS_ISOLINES:
-      tess_draw0 = CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_ISOLINES);
+      initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_ISOLINES) |
+                   CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
       break;
    case IR3_TESS_NONE:
-   case IR3_TESS_QUADS:
-      tess_draw0 = CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_QUADS);
+      initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_QUADS);
       break;
-   default:
-      unreachable("invalid tess patch type");
+   case IR3_TESS_QUADS:
+      initiator |= CP_DRAW_INDX_OFFSET_0_PATCH_TYPE(TESS_QUADS) |
+                   CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
+      break;
    }
-   if (patch_type != IR3_TESS_NONE)
-      tess_draw0 |= CP_DRAW_INDX_OFFSET_0_TESS_ENABLE;
-   return tess_draw0;
-}
-
-static void
-tu6_emit_draw_indirect(struct tu_cmd_buffer *cmd,
-                     struct tu_cs *cs,
-                     const struct tu_draw_info *draw)
-{
-   const enum pc_di_primtype primtype = cmd->state.pipeline->ia.primtype;
-   bool has_gs = cmd->state.pipeline->active_stages &
-                 VK_SHADER_STAGE_GEOMETRY_BIT;
-
-   tu_cs_emit_regs(cs,
-                   A6XX_VFD_INDEX_OFFSET(draw->vertex_offset),
-                   A6XX_VFD_INSTANCE_START_OFFSET(draw->first_instance));
-
-   uint32_t tess_draw0 = compute_tess_draw0(cmd->state.pipeline);
-   if (draw->indexed) {
-      const enum a4xx_index_size index_size =
-         tu6_index_size(cmd->state.index_type);
-      const uint32_t index_bytes =
-         (cmd->state.index_type == VK_INDEX_TYPE_UINT32) ? 4 : 2;
-      const struct tu_buffer *index_buf = cmd->state.index_buffer;
-      unsigned max_indicies =
-         (index_buf->size - cmd->state.index_offset) / index_bytes;
-
-      const uint32_t cp_draw_indx =
-         CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
-         CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
-         CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-         tess_draw0 |
-         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
-
-      tu_cs_emit_pkt7(cs, CP_DRAW_INDX_INDIRECT, 6);
-      tu_cs_emit(cs, cp_draw_indx);
-      tu_cs_emit_qw(cs, index_buf->bo->iova + cmd->state.index_offset);
-      tu_cs_emit(cs, A5XX_CP_DRAW_INDX_INDIRECT_3_MAX_INDICES(max_indicies));
-      tu_cs_emit_qw(cs, draw->indirect->bo->iova + draw->indirect_offset);
-   } else {
-      const uint32_t cp_draw_indx =
-         CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
-         CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-         tess_draw0 |
-         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
-
-      tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT, 3);
-      tu_cs_emit(cs, cp_draw_indx);
-      tu_cs_emit_qw(cs, draw->indirect->bo->iova + draw->indirect_offset);
-   }
-
-   tu_bo_list_add(&cmd->bo_list, draw->indirect->bo, MSM_SUBMIT_BO_READ);
-}
-
-static void
-tu6_emit_draw_direct(struct tu_cmd_buffer *cmd,
-                     struct tu_cs *cs,
-                     const struct tu_draw_info *draw)
-{
-
-   const enum pc_di_primtype primtype = cmd->state.pipeline->ia.primtype;
-   bool has_gs = cmd->state.pipeline->active_stages &
-                 VK_SHADER_STAGE_GEOMETRY_BIT;
-
-   tu_cs_emit_regs(cs,
-                   A6XX_VFD_INDEX_OFFSET(draw->vertex_offset),
-                   A6XX_VFD_INSTANCE_START_OFFSET(draw->first_instance));
-
-   uint32_t tess_draw0 = compute_tess_draw0(cmd->state.pipeline);
-   /* TODO hw binning */
-   if (draw->indexed) {
-      const enum a4xx_index_size index_size =
-         tu6_index_size(cmd->state.index_type);
-      const uint32_t index_bytes =
-         (cmd->state.index_type == VK_INDEX_TYPE_UINT32) ? 4 : 2;
-      const struct tu_buffer *buf = cmd->state.index_buffer;
-      const VkDeviceSize offset = buf->bo_offset + cmd->state.index_offset +
-                                  index_bytes * draw->first_index;
-      const uint32_t size = index_bytes * draw->count;
-
-      const uint32_t cp_draw_indx =
-         CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
-         CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_DMA) |
-         CP_DRAW_INDX_OFFSET_0_INDEX_SIZE(index_size) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-         tess_draw0 |
-         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
-
-      tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 7);
-      tu_cs_emit(cs, cp_draw_indx);
-      tu_cs_emit(cs, draw->instance_count);
-      tu_cs_emit(cs, draw->count);
-      tu_cs_emit(cs, 0x0); /* XXX */
-      tu_cs_emit_qw(cs, buf->bo->iova + offset);
-      tu_cs_emit(cs, size);
-   } else {
-      const uint32_t cp_draw_indx =
-         CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
-         CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
-         CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
-         tess_draw0 |
-         COND(has_gs, CP_DRAW_INDX_OFFSET_0_GS_ENABLE);
-
-      tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
-      tu_cs_emit(cs, cp_draw_indx);
-      tu_cs_emit(cs, draw->instance_count);
-      tu_cs_emit(cs, draw->count);
-   }
-}
-
-static void
-tu_draw(struct tu_cmd_buffer *cmd, const struct tu_draw_info *draw)
-{
-   struct tu_cs *cs = &cmd->draw_cs;
-   VkResult result;
-
-   tu_emit_cache_flush_renderpass(cmd, cs);
-
-   result = tu6_bind_draw_states(cmd, cs, draw);
-   if (result != VK_SUCCESS) {
-      cmd->record_result = result;
-      return;
-   }
-
-   if (draw->indirect)
-      tu6_emit_draw_indirect(cmd, cs, draw);
-   else
-      tu6_emit_draw_direct(cmd, cs, draw);
-
-   tu_cs_sanity_check(cs);
+   return initiator;
 }
 
 void
@@ -3504,15 +3357,15 @@ tu_CmdDraw(VkCommandBuffer commandBuffer,
            uint32_t firstVertex,
            uint32_t firstInstance)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   struct tu_draw_info info = {};
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs *cs = &cmd->draw_cs;
 
-   info.count = vertexCount;
-   info.instance_count = instanceCount;
-   info.first_instance = firstInstance;
-   info.vertex_offset = firstVertex;
+   tu6_draw_common(cmd, cs, false, firstVertex, firstInstance, vertexCount);
 
-   tu_draw(cmd_buffer, &info);
+   tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
+   tu_cs_emit(cs, tu_draw_initiator(cmd, false));
+   tu_cs_emit(cs, instanceCount);
+   tu_cs_emit(cs, vertexCount);
 }
 
 void
@@ -3523,17 +3376,18 @@ tu_CmdDrawIndexed(VkCommandBuffer commandBuffer,
                   int32_t vertexOffset,
                   uint32_t firstInstance)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   struct tu_draw_info info = {};
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   struct tu_cs *cs = &cmd->draw_cs;
 
-   info.indexed = true;
-   info.count = indexCount;
-   info.instance_count = instanceCount;
-   info.first_index = firstIndex;
-   info.vertex_offset = vertexOffset;
-   info.first_instance = firstInstance;
+   tu6_draw_common(cmd, cs, true, vertexOffset, firstInstance, indexCount);
 
-   tu_draw(cmd_buffer, &info);
+   tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 7);
+   tu_cs_emit(cs, tu_draw_initiator(cmd, true));
+   tu_cs_emit(cs, instanceCount);
+   tu_cs_emit(cs, indexCount);
+   tu_cs_emit(cs, 0x0); /* XXX */
+   tu_cs_emit_qw(cs, cmd->state.index_va + (firstIndex << cmd->state.index_shift));
+   tu_cs_emit(cs, indexCount << cmd->state.index_shift);
 }
 
 void
@@ -3543,16 +3397,19 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
                    uint32_t drawCount,
                    uint32_t stride)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
-   struct tu_draw_info info = {};
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_buffer, buf, _buffer);
+   struct tu_cs *cs = &cmd->draw_cs;
 
-   info.count = drawCount;
-   info.indirect = buffer;
-   info.indirect_offset = offset;
-   info.stride = stride;
+   tu6_draw_common(cmd, cs, false, 0, 0, 0);
 
-   tu_draw(cmd_buffer, &info);
+   for (uint32_t i = 0; i < drawCount; i++) {
+      tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT, 3);
+      tu_cs_emit(cs, tu_draw_initiator(cmd, false));
+      tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset + stride * i);
+   }
+
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
 
 void
@@ -3562,17 +3419,21 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
                           uint32_t drawCount,
                           uint32_t stride)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
-   struct tu_draw_info info = {};
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_buffer, buf, _buffer);
+   struct tu_cs *cs = &cmd->draw_cs;
 
-   info.indexed = true;
-   info.count = drawCount;
-   info.indirect = buffer;
-   info.indirect_offset = offset;
-   info.stride = stride;
+   tu6_draw_common(cmd, cs, true, 0, 0, 0);
 
-   tu_draw(cmd_buffer, &info);
+   for (uint32_t i = 0; i < drawCount; i++) {
+      tu_cs_emit_pkt7(cs, CP_DRAW_INDX_INDIRECT, 6);
+      tu_cs_emit(cs, tu_draw_initiator(cmd, true));
+      tu_cs_emit_qw(cs, cmd->state.index_va);
+      tu_cs_emit(cs, A5XX_CP_DRAW_INDX_INDIRECT_3_MAX_INDICES(cmd->state.max_index_count));
+      tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset + stride * i);
+   }
+
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
 
 void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
@@ -3583,18 +3444,7 @@ void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
                                     uint32_t counterOffset,
                                     uint32_t vertexStride)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   TU_FROM_HANDLE(tu_buffer, buffer, _counterBuffer);
-
-   struct tu_draw_info info = {};
-
-   info.instance_count = instanceCount;
-   info.first_instance = firstInstance;
-   info.streamout_buffer = buffer;
-   info.streamout_buffer_offset = counterBufferOffset;
-   info.stride = vertexStride;
-
-   tu_draw(cmd_buffer, &info);
+   tu_finishme("CmdDrawIndirectByteCountEXT");
 }
 
 struct tu_dispatch_info
