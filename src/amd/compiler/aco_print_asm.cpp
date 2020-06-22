@@ -69,11 +69,17 @@ void print_asm_gfx6_gfx7(Program *program, std::vector<uint32_t>& binary,
    sprintf(command, "clrxdisasm --gpuType=%s -r %s", gpu_type, path);
 
    p = popen(command, "r");
-   if (!p || errno == ENOENT) {
-      out << "clrxdisasm not found\n";
-   } else {
-      while (fgets(line, sizeof(line), p))
+   if (p) {
+      if (!fgets(line, sizeof(line), p)) {
+         out << "clrxdisasm not found\n";
+         pclose(p);
+         goto fail;
+      }
+
+      do {
          out << line;
+      } while (fgets(line, sizeof(line), p));
+
       pclose(p);
    }
 
