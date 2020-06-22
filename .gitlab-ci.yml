@@ -97,11 +97,15 @@ test-docs:
 success:
   stage: success
   image: debian:stable-slim
-  only:
-    - merge_requests
-  except:
-    changes:
-      *all_paths
+  rules:
+    - if: '$CI_PROJECT_NAMESPACE == "mesa"'
+      when: never
+    - if: '$GITLAB_USER_LOGIN == "marge-bot"'
+      changes: *docs-or-ci
+      when: never
+    - changes: *all_paths
+      when: never
+    - when: on_success
   variables:
     GIT_STRATEGY: none
   script:
