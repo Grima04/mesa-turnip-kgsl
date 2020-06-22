@@ -32,7 +32,7 @@ sys.path.append(VULKAN_UTIL)
 
 from vk_extensions import *
 
-API_PATCH_VERSION = 131
+API_PATCH_VERSION = 145
 
 # Supported API versions.  Each one is the maximum patch version for the given
 # version.  Version come in increasing order and each version is available if
