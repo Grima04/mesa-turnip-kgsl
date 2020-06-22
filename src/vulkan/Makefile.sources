@@ -27,6 +27,8 @@ VULKAN_UTIL_FILES := \
 	util/vk_alloc.h \
 	util/vk_debug_report.c \
 	util/vk_debug_report.h \
+	util/vk_deferred_operation.c \
+	util/vk_deferred_operation.h \
 	util/vk_format.c \
 	util/vk_object.c \
 	util/vk_object.h \

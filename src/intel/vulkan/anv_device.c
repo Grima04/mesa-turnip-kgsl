@@ -43,6 +43,7 @@
 #include "util/driconf.h"
 #include "git_sha1.h"
 #include "vk_util.h"
+#include "vk_deferred_operation.h"
 #include "common/gen_aux_map.h"
 #include "common/gen_defines.h"
 #include "common/gen_uuid.h"
@@ -4696,4 +4697,47 @@ void anv_GetPrivateDataEXT(
    vk_object_base_get_private_data(&device->vk,
                                    objectType, objectHandle,
                                    privateDataSlot, pData);
+}
+
+VkResult anv_CreateDeferredOperationKHR(
+    VkDevice                                    _device,
+    const VkAllocationCallbacks*                pAllocator,
+    VkDeferredOperationKHR*                     pDeferredOperation)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   return vk_create_deferred_operation(&device->vk, pAllocator,
+                                       pDeferredOperation);
+}
+
+void anv_DestroyDeferredOperationKHR(
+    VkDevice                                    _device,
+    VkDeferredOperationKHR                      operation,
+    const VkAllocationCallbacks*                pAllocator)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   vk_destroy_deferred_operation(&device->vk, operation, pAllocator);
+}
+
+uint32_t anv_GetDeferredOperationMaxConcurrencyKHR(
+    VkDevice                                    _device,
+    VkDeferredOperationKHR                      operation)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   return vk_get_deferred_operation_max_concurrency(&device->vk, operation);
+}
+
+VkResult anv_GetDeferredOperationResultKHR(
+    VkDevice                                    _device,
+    VkDeferredOperationKHR                      operation)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   return vk_get_deferred_operation_result(&device->vk, operation);
+}
+
+VkResult anv_DeferredOperationJoinKHR(
+    VkDevice                                    _device,
+    VkDeferredOperationKHR                      operation)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   return vk_deferred_operation_join(&device->vk, operation);
 }

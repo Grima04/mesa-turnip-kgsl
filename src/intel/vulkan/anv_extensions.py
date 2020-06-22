@@ -59,6 +59,7 @@ EXTENSIONS = [
     Extension('VK_KHR_copy_commands2',                    1, True),
     Extension('VK_KHR_create_renderpass2',                1, True),
     Extension('VK_KHR_dedicated_allocation',              3, True),
+    Extension('VK_KHR_deferred_host_operations',          1, True),
     Extension('VK_KHR_depth_stencil_resolve',             1, True),
     Extension('VK_KHR_descriptor_update_template',        1, True),
     Extension('VK_KHR_device_group',                      4, True),
