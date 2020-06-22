@@ -25,6 +25,7 @@ stages:
   - success
 
 .docs-base:
+  extends: .ci-run-policy
   image: alpine
   script:
   - apk --no-cache add py3-pip
@@ -37,12 +38,13 @@ pages:
   artifacts:
     paths:
     - public
-  only:
-    refs:
-    - master@mesa/mesa
-    changes:
-    - docs/**/*
-    - .gitlab-ci.yml
+  rules:
+    - if: '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
+      changes: &docs-or-ci
+      - docs/**/*
+      - .gitlab-ci.yml
+      when: on_success
+    # Other cases default to never
 
 test-docs:
   extends: .docs-base
@@ -51,9 +53,7 @@ test-docs:
     - if: '$CI_PROJECT_NAMESPACE == "mesa"'
       when: never
     - if: '$GITLAB_USER_LOGIN == "marge-bot"'
-      changes: &docs-or-ci
-      - docs/**/*
-      - .gitlab-ci.yml
+      changes: *docs-or-ci
       when: on_success
     - changes: *docs-or-ci
       when: manual
