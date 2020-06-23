@@ -770,12 +770,13 @@ bool get_regs_for_copies(ra_ctx& ctx,
             PhysReg reg(def_reg_lo);
             for (unsigned i = 0; i < instr->operands.size(); i++) {
                if (instr->operands[i].isTemp() && instr->operands[i].tempId() == id) {
-                  assert(!reg_file.test(reg, var.rc.bytes()));
-                  res = {reg, !var.rc.is_subdword() || (reg.byte() % info.stride == 0)};
+                  res = {reg, (!var.rc.is_subdword() || (reg.byte() % info.stride == 0)) && !reg_file.test(reg, var.rc.bytes())};
                   break;
                }
                reg.reg_b += instr->operands[i].bytes();
             }
+            if (!res.second)
+               res = {var.reg, !reg_file.test(var.reg, var.rc.bytes())};
          } else {
             info.lb = def_reg_lo;
             info.ub = def_reg_hi + 1;
@@ -1364,19 +1365,21 @@ PhysReg get_reg_create_vector(ra_ctx& ctx,
    /* collect variables to be moved */
    std::set<std::pair<unsigned, unsigned>> vars = collect_vars(ctx, reg_file, PhysReg{best_pos}, size);
 
-   /* GFX9+: move killed operands which aren't yet at the correct position
-    * Moving all killed operands generally leads to more register swaps.
-    * This is only done on GFX9+ because of the cheap v_swap instruction.
-    */
-   if (ctx.program->chip_class >= GFX9) {
-      for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
-         if (instr->operands[i].isTemp() &&
-             instr->operands[i].isFirstKillBeforeDef() &&
-             instr->operands[i].getTemp().type() == rc.type() &&
-             instr->operands[i].physReg().reg_b != best_pos * 4 + offset) {
-            vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
-            reg_file.clear(instr->operands[i]);
-         }
+   for (unsigned i = 0, offset = 0; i < instr->operands.size(); offset += instr->operands[i].bytes(), i++) {
+      if (!instr->operands[i].isTemp() || !instr->operands[i].isFirstKillBeforeDef() ||
+          instr->operands[i].getTemp().type() != rc.type())
+         continue;
+      bool correct_pos = instr->operands[i].physReg().reg_b == best_pos * 4 + offset;
+      /* GFX9+: move killed operands which aren't yet at the correct position
+       * Moving all killed operands generally leads to more register swaps.
+       * This is only done on GFX9+ because of the cheap v_swap instruction.
+       */
+      if (ctx.program->chip_class >= GFX9 && !correct_pos) {
+         vars.emplace(instr->operands[i].bytes(), instr->operands[i].tempId());
+         reg_file.clear(instr->operands[i]);
+      /* fill operands which are in the correct position to avoid overwriting */
+      } else if (correct_pos) {
+         reg_file.fill(instr->operands[i]);
       }
    }
    ASSERTED bool success = false;
