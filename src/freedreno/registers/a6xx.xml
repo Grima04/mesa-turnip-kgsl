@@ -2300,8 +2300,12 @@ to upconvert to 32b float internally?
 		<bitfield name="Z_WRITE_ENABLE" pos="1" type="boolean"/>
 		<bitfield name="ZFUNC" low="2" high="4" type="adreno_compare_func"/>
 		<bitfield name="Z_CLAMP_ENABLE" pos="5" type="boolean"/>
-		<doc>Z_TEST_ENABLE bit is set for zfunc other than GL_ALWAYS or GL_NEVER</doc>
+		<doc>
+		Z_TEST_ENABLE bit is set for zfunc other than GL_ALWAYS or GL_NEVER
+		also set when Z_BOUNDS_ENABLE is set
+		</doc>
 		<bitfield name="Z_TEST_ENABLE" pos="6" type="boolean"/>
+		<bitfield name="Z_BOUNDS_ENABLE" pos="7" type="boolean"/>
 	</reg32>
 	<!-- duplicates GRAS_SU_DEPTH_BUFFER_INFO: -->
 	<reg32 offset="0x8872" name="RB_DEPTH_BUFFER_INFO">
@@ -2319,10 +2323,8 @@ to upconvert to 32b float internally?
 	<reg64 offset="0x8875" name="RB_DEPTH_BUFFER_BASE" type="waddress"/>
 	<reg32 offset="0x8877" name="RB_DEPTH_BUFFER_BASE_GMEM"/>
 
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x8878" name="RB_UNKNOWN_8878"/>
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x8879" name="RB_UNKNOWN_8879"/>
+	<reg32 offset="0x8878" name="RB_Z_BOUNDS_MIN" type="float"/>
+	<reg32 offset="0x8879" name="RB_Z_BOUNDS_MAX" type="float"/>
 
 	<reg32 offset="0x8880" name="RB_STENCIL_CONTROL">
 		<bitfield name="STENCIL_ENABLE" pos="0" type="boolean"/>
