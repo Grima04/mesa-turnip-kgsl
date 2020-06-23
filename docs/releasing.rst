@@ -314,10 +314,10 @@ Then run the
 
    ./bin/post_version.py X.Y.Z
 
-, where X.Y.Z is the version you just made. This will updated
-docs/relnotes.rst, docs/index.rst, and docs/release-calendar.rst. It
-will then generate a git commit automatically. Check that everything
-looks correct and push:
+, where X.Y.Z is the version you just made. This will update
+docs/relnotes.rst and docs/release-calendar.rst. It will then generate
+a git commit automatically. Check that everything looks correct and
+push:
 
 ::
 

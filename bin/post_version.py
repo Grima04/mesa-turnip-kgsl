@@ -26,33 +26,6 @@ import pathlib
 import subprocess
 
 
-def update_homepage(version: str) -> None:
-    p = pathlib.Path(__file__).parent.parent / 'docs' / 'conf.py'
-
-    # Don't post release candidates to the homepage
-    if 'rc' in version:
-        return
-
-    with open(p, 'r') as f:
-        conf = f.readlines()
-
-    new_conf = []
-    for line in conf:
-        if line.startswith("version = '") and line.endswith("'\n"):
-            old_version = line.split("'")[1]
-            # Avoid overwriting 20.1.0 when releasing 20.0.8
-            # TODO: we might need more than that to handle 20.0.10
-            if old_version < version:
-                line = f"version = '{version}'\n"
-        new_conf.append(line)
-
-    with open(p, 'w') as f:
-        for line in new_conf:
-            f.write(line)
-
-    subprocess.run(['git', 'add', p])
-
-
 def update_release_notes(version: str) -> None:
     p = pathlib.Path(__file__).parent.parent / 'docs' / 'relnotes.rst'
 
@@ -108,7 +81,6 @@ def main() -> None:
     parser.add_argument('version', help="The released version.")
     args = parser.parse_args()
 
-    update_homepage(args.version)
     update_calendar(args.version)
     done = 'update calendar'
 
