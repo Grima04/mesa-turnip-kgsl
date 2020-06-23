@@ -1885,7 +1885,7 @@ iris_transfer_map(struct pipe_context *ctx,
    } else {
       /* Otherwise we're free to map on the CPU. */
 
-      if (need_resolve) {
+      if (resource->target != PIPE_BUFFER) {
          iris_resource_access_raw(ice, res, level, box->z, box->depth,
                                   usage & PIPE_TRANSFER_WRITE);
       }
