@@ -1907,6 +1907,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       } else if (dst.regClass() == v1) {
          emit_rsq(ctx, bld, Definition(dst), src);
       } else if (dst.regClass() == v2) {
+         /* Lowered at NIR level for precision reasons. */
          emit_vop1_instruction(ctx, instr, aco_opcode::v_rsq_f64, dst);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -1998,6 +1999,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       } else if (dst.regClass() == v1) {
          emit_rcp(ctx, bld, Definition(dst), src);
       } else if (dst.regClass() == v2) {
+         /* Lowered at NIR level for precision reasons. */
          emit_vop1_instruction(ctx, instr, aco_opcode::v_rcp_f64, dst);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");
@@ -2025,6 +2027,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       } else if (dst.regClass() == v1) {
          emit_sqrt(ctx, bld, Definition(dst), src);
       } else if (dst.regClass() == v2) {
+         /* Lowered at NIR level for precision reasons. */
          emit_vop1_instruction(ctx, instr, aco_opcode::v_sqrt_f64, dst);
       } else {
          fprintf(stderr, "Unimplemented NIR instr bit size: ");

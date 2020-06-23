@@ -86,6 +86,10 @@ static const struct nir_shader_compiler_options nir_options_llvm = {
                                nir_lower_divmod64 |
                                nir_lower_minmax64 |
                                nir_lower_iabs64,
+	.lower_doubles_options = nir_lower_drcp |
+				 nir_lower_dsqrt |
+				 nir_lower_drsq |
+				 nir_lower_ddiv,
 };
 
 static const struct nir_shader_compiler_options nir_options_aco = {
@@ -122,6 +126,10 @@ static const struct nir_shader_compiler_options nir_options_aco = {
                                nir_lower_divmod64 |
                                nir_lower_minmax64 |
                                nir_lower_iabs64,
+	.lower_doubles_options = nir_lower_drcp |
+				 nir_lower_dsqrt |
+				 nir_lower_drsq |
+				 nir_lower_ddiv,
 };
 
 bool
@@ -466,6 +474,11 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		NIR_PASS_V(nir, radv_nir_lower_ycbcr_textures, layout);
 		if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
 			NIR_PASS_V(nir, nir_lower_discard_to_demote);
+
+		nir_lower_doubles_options lower_doubles =
+			nir->options->lower_doubles_options;
+
+		NIR_PASS_V(nir, nir_lower_doubles, NULL, lower_doubles);
 	}
 
 	/* Vulkan uses the separate-shader linking model */
