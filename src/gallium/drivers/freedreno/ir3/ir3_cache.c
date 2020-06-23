@@ -105,12 +105,13 @@ ir3_cache_lookup(struct ir3_cache *cache, const struct ir3_cache_key *key,
 	};
 
 	struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
+	struct ir3_shader_key shader_key = key->key;
 
 	for (gl_shader_stage stage = MESA_SHADER_VERTEX;
 		 stage < MESA_SHADER_STAGES; stage++) {
 		if (shaders[stage]) {
 			variants[stage] =
-				ir3_shader_variant(shaders[stage], key->key, false, debug);
+				ir3_shader_variant(shaders[stage], shader_key, false, debug);
 			if (!variants[stage])
 				return NULL;
 		} else {
@@ -118,12 +119,28 @@ ir3_cache_lookup(struct ir3_cache *cache, const struct ir3_cache_key *key,
 		}
 	}
 
+	uint32_t safe_constlens = ir3_trim_constlen(variants, key->vs->compiler);
+	shader_key.safe_constlen = true;
+
+	for (gl_shader_stage stage = MESA_SHADER_VERTEX;
+		 stage < MESA_SHADER_STAGES; stage++) {
+		if (safe_constlens & (1 << stage)) {
+			variants[stage] =
+				ir3_shader_variant(shaders[stage], shader_key, false, debug);
+			if (!variants[stage])
+				return NULL;
+		}
+	}
+
 	/* For tessellation, the binning shader is derived from the DS. */
 	struct ir3_shader_variant *bs;
-	if (key->ds)
-		bs = ir3_shader_variant(key->ds, key->key, true, debug);
-	else
-		bs = ir3_shader_variant(key->vs, key->key, true, debug);
+	if (key->ds) {
+		shader_key.safe_constlen = !!(safe_constlens & (1 << MESA_SHADER_TESS_EVAL));
+		bs = ir3_shader_variant(key->ds, shader_key, true, debug);
+	} else {
+		shader_key.safe_constlen = !!(safe_constlens & (1 << MESA_SHADER_VERTEX));
+		bs = ir3_shader_variant(key->vs, shader_key, true, debug);
+	}
 	if (!bs)
 		return NULL;
 

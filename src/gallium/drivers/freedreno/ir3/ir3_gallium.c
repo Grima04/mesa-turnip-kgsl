@@ -203,10 +203,27 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		break;
 	}
 
-	ir3_shader_variant(shader, key, false, debug);
+	key.safe_constlen = false;
+	struct ir3_shader_variant *v = ir3_shader_variant(shader, key, false, debug);
+	if (!v)
+		return NULL;
 
-	if (nir->info.stage == MESA_SHADER_VERTEX)
-		ir3_shader_variant(shader, key, true, debug);
+	if (v->constlen > compiler->max_const_safe) {
+		key.safe_constlen = true;
+		ir3_shader_variant(shader, key, false, debug);
+	}
+
+	if (nir->info.stage == MESA_SHADER_VERTEX) {
+		key.safe_constlen = false;
+		v = ir3_shader_variant(shader, key, true, debug);
+		if (!v)
+			return NULL;
+
+		if (v->constlen > compiler->max_const_safe) {
+			key.safe_constlen = true;
+			ir3_shader_variant(shader, key, true, debug);
+		}
+	}
 
 	shader->initial_variants_done = true;
 
