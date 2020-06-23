@@ -223,9 +223,46 @@ lower_vote_eq_to_ballot(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 static nir_ssa_def *
+lower_shuffle_to_swizzle(nir_builder *b, nir_intrinsic_instr *intrin,
+                         const nir_lower_subgroups_options *options)
+{
+   unsigned mask = nir_src_as_uint(intrin->src[1]);
+
+   if (mask >= 32)
+      return NULL;
+
+   nir_intrinsic_instr *swizzle = nir_intrinsic_instr_create(
+      b->shader, nir_intrinsic_masked_swizzle_amd);
+   swizzle->num_components = intrin->num_components;
+   nir_src_copy(&swizzle->src[0], &intrin->src[0], swizzle);
+   nir_intrinsic_set_swizzle_mask(swizzle, (mask << 10) | 0x1f);
+   nir_ssa_dest_init(&swizzle->instr, &swizzle->dest,
+                     intrin->dest.ssa.num_components,
+                     intrin->dest.ssa.bit_size, NULL);
+
+   if (options->lower_to_scalar && swizzle->num_components > 1) {
+      return lower_subgroup_op_to_scalar(b, swizzle, options->lower_shuffle_to_32bit);
+   } else if (options->lower_shuffle_to_32bit && swizzle->src[0].ssa->bit_size == 64) {
+      return lower_subgroup_op_to_32bit(b, swizzle);
+   } else {
+      nir_builder_instr_insert(b, &swizzle->instr);
+      return &swizzle->dest.ssa;
+   }
+}
+
+static nir_ssa_def *
 lower_shuffle(nir_builder *b, nir_intrinsic_instr *intrin,
               const nir_lower_subgroups_options *options)
 {
+   if (intrin->intrinsic == nir_intrinsic_shuffle_xor &&
+       options->lower_shuffle_to_swizzle_amd &&
+       nir_src_is_const(intrin->src[1])) {
+      nir_ssa_def *result =
+         lower_shuffle_to_swizzle(b, intrin, options);
+      if (result)
+         return result;
+   }
+
    nir_ssa_def *index = nir_load_subgroup_invocation(b);
    bool is_shuffle = false;
    switch (intrin->intrinsic) {

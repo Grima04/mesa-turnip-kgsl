@@ -4153,6 +4153,7 @@ typedef struct nir_lower_subgroups_options {
    bool lower_subgroup_masks:1;
    bool lower_shuffle:1;
    bool lower_shuffle_to_32bit:1;
+   bool lower_shuffle_to_swizzle_amd:1;
    bool lower_quad:1;
    bool lower_quad_broadcast_dynamic:1;
    bool lower_quad_broadcast_dynamic_to_const:1;
