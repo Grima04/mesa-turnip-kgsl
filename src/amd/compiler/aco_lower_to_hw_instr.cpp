@@ -1323,7 +1323,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          return;
       }
       if (it == copy_map.end()) {
-         if (!skip_partial_copies)
+         if (!skip_partial_copies || ctx->program->chip_class < GFX8)
             break;
          skip_partial_copies = false;
          it = copy_map.begin();
