@@ -1132,6 +1132,21 @@ struct_member_matrix_stride_cb(struct vtn_builder *b,
 }
 
 static void
+struct_packed_decoration_cb(struct vtn_builder *b,
+                            struct vtn_value *val, int member,
+                            const struct vtn_decoration *dec, void *void_ctx)
+{
+   vtn_assert(val->type->base_type == vtn_base_type_struct);
+   if (dec->decoration == SpvDecorationCPacked) {
+      if (b->shader->info.stage != MESA_SHADER_KERNEL) {
+         vtn_warn("Decoration only allowed for CL-style kernels: %s",
+                  spirv_decoration_to_string(dec->decoration));
+      }
+      val->type->packed = true;
+   }
+}
+
+static void
 struct_block_decoration_cb(struct vtn_builder *b,
                            struct vtn_value *val, int member,
                            const struct vtn_decoration *dec, void *ctx)
@@ -1229,11 +1244,7 @@ type_decoration_cb(struct vtn_builder *b,
       break;
 
    case SpvDecorationCPacked:
-      if (b->shader->info.stage != MESA_SHADER_KERNEL)
-         vtn_warn("Decoration only allowed for CL-style kernels: %s",
-                  spirv_decoration_to_string(dec->decoration));
-      else
-         type->packed = true;
+      /* Handled when parsing a struct type, nothing to do here. */
       break;
 
    case SpvDecorationSaturatedConversion:
@@ -1457,10 +1468,13 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          };
       }
 
+      vtn_foreach_decoration(b, val, struct_packed_decoration_cb, NULL);
+
       if (b->shader->info.stage == MESA_SHADER_KERNEL) {
          unsigned offset = 0;
          for (unsigned i = 0; i < num_fields; i++) {
-            offset = align(offset, glsl_get_cl_alignment(fields[i].type));
+            if (!val->type->packed)
+               offset = align(offset, glsl_get_cl_alignment(fields[i].type));
             fields[i].offset = offset;
             offset += glsl_get_cl_size(fields[i].type);
          }
@@ -1488,7 +1502,8 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
                                                name ? name : "block");
       } else {
          val->type->type = glsl_struct_type(fields, num_fields,
-                                            name ? name : "struct", false);
+                                            name ? name : "struct",
+                                            val->type->packed);
       }
       break;
    }
