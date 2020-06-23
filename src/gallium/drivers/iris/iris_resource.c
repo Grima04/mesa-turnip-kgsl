@@ -1799,7 +1799,7 @@ iris_transfer_map(struct pipe_context *ctx,
          (res->aux.usage == ISL_AUX_USAGE_CCS_D ||
           res->aux.usage == ISL_AUX_USAGE_CCS_E ||
           res->aux.usage == ISL_AUX_USAGE_GEN12_CCS_E) &&
-         iris_has_color_unresolved(res, level, 1, box->z, box->depth);
+         iris_has_invalid_primary(res, level, 1, box->z, box->depth);
 
       need_resolve = need_color_resolve ||
                      need_hiz_resolve ||
