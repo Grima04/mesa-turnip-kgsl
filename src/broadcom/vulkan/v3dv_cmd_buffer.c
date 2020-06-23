@@ -1856,6 +1856,9 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
       const struct v3dv_image *image = iview->image;
       const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
 
+      /* FIXME */
+      assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
+
       const uint32_t *clear_color =
          &state->attachments[attachment_idx].clear_value.color[0];
 
