@@ -27,7 +27,7 @@ import subprocess
 
 
 def update_release_notes(version: str) -> None:
-    p = pathlib.Path(__file__).parent.parent / 'docs' / 'relnotes.rst'
+    p = pathlib.Path('docs') / 'relnotes.rst'
 
     with open(p, 'r') as f:
         relnotes = f.readlines()
@@ -48,7 +48,7 @@ def update_release_notes(version: str) -> None:
 
 
 def update_calendar(version: str) -> None:
-    p = pathlib.Path(__file__).parent.parent / 'docs' / 'release-calendar.rst'
+    p = pathlib.Path('docs') / 'release-calendar.rst'
 
     with open(p, 'r') as f:
         calendar = f.readlines()
