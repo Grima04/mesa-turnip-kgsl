@@ -39,6 +39,7 @@ descriptor_bo_size(VkDescriptorType type)
       return sizeof(struct v3dv_combined_image_sampler_descriptor);
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       return sizeof(struct v3dv_sampled_image_descriptor);
    default:
       return 0;
@@ -250,7 +251,8 @@ v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descr
 
    assert(type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
           type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-          type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
+          type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ||
+          type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
    if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
       reloc.offset += offsetof(struct v3dv_combined_image_sampler_descriptor,
@@ -275,7 +277,8 @@ v3dv_descriptor_map_get_image_view(struct v3dv_descriptor_state *descriptor_stat
    assert(image_descriptor);
    assert(image_descriptor->type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
           image_descriptor->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-          image_descriptor->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
+          image_descriptor->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ||
+          image_descriptor->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
    assert(image_descriptor->image_view);
    assert(image_descriptor->image_view->image);
@@ -381,6 +384,7 @@ v3dv_CreateDescriptorPool(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          break;
       default:
          unreachable("Unimplemented descriptor type");
@@ -629,6 +633,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          /* Nothing here, just to keep the descriptor type filtering below */
          break;
       default:
@@ -960,6 +965,7 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
 
             break;
          }
+         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
             const VkDescriptorImageInfo *image_info = writeset->pImageInfo + j;
