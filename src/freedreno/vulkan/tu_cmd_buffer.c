@@ -2202,8 +2202,6 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_pipeline, pipeline, _pipeline);
 
-   tu_bo_list_add(&cmd->bo_list, &pipeline->program.binary_bo,
-                  MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
    for (uint32_t i = 0; i < pipeline->cs.bo_count; i++) {
       tu_bo_list_add(&cmd->bo_list, pipeline->cs.bos[i],
                      MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);

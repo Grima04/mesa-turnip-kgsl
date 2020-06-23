@@ -243,9 +243,8 @@ struct tu_pipeline_builder
    struct tu_shader *shaders[MESA_SHADER_STAGES];
    struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
    struct ir3_shader_variant *binning_variant;
-   uint32_t shader_offsets[MESA_SHADER_STAGES];
-   uint32_t binning_vs_offset;
-   uint32_t shader_total_size;
+   uint64_t shader_iova[MESA_SHADER_STAGES];
+   uint64_t binning_vs_iova;
 
    bool rasterizer_discard;
    /* these states are affectd by rasterizer_discard */
@@ -1334,7 +1333,6 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
 static void
 tu6_emit_program(struct tu_cs *cs,
                  struct tu_pipeline_builder *builder,
-                 const struct tu_bo *binary_bo,
                  bool binning_pass)
 {
    const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
@@ -1355,8 +1353,7 @@ tu6_emit_program(struct tu_cs *cs,
    */
    if (binning_pass && !gs) {
       vs = bs;
-      tu6_emit_xs_config(cs, stage, bs,
-                         binary_bo->iova + builder->binning_vs_offset);
+      tu6_emit_xs_config(cs, stage, bs, builder->binning_vs_iova);
       stage++;
    }
 
@@ -1366,8 +1363,7 @@ tu6_emit_program(struct tu_cs *cs,
       if (stage == MESA_SHADER_FRAGMENT && binning_pass)
          fs = xs = NULL;
 
-      tu6_emit_xs_config(cs, stage, xs,
-                         binary_bo->iova + builder->shader_offsets[stage]);
+      tu6_emit_xs_config(cs, stage, xs, builder->shader_iova[stage]);
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
@@ -1800,34 +1796,32 @@ tu6_emit_blend_control(struct tu_cs *cs,
 }
 
 static VkResult
-tu_pipeline_create(struct tu_device *dev,
-                   struct tu_pipeline_layout *layout,
-                   bool compute,
-                   const VkAllocationCallbacks *pAllocator,
-                   struct tu_pipeline **out_pipeline)
+tu_pipeline_allocate_cs(struct tu_device *dev,
+                        struct tu_pipeline *pipeline,
+                        struct tu_pipeline_builder *builder,
+                        struct ir3_shader_variant *compute)
 {
-   struct tu_pipeline *pipeline =
-      vk_zalloc2(&dev->alloc, pAllocator, sizeof(*pipeline), 8,
-                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!pipeline)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   uint32_t size = 2048 + tu6_load_state_size(pipeline->layout, compute);
 
-   tu_cs_init(&pipeline->cs, dev, TU_CS_MODE_SUB_STREAM, 2048);
+   /* graphics case: */
+   if (builder) {
+      for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
+         if (builder->variants[i])
+            size += builder->variants[i]->info.sizedwords;
+      }
+
+      size += builder->binning_variant->info.sizedwords;
+   } else {
+      size += compute->info.sizedwords;
+   }
+
+   tu_cs_init(&pipeline->cs, dev, TU_CS_MODE_SUB_STREAM, size);
 
    /* Reserve the space now such that tu_cs_begin_sub_stream never fails. Note
     * that LOAD_STATE can potentially take up a large amount of space so we
     * calculate its size explicitly.
    */
-   unsigned load_state_size = tu6_load_state_size(layout, compute);
-   VkResult result = tu_cs_reserve_space(&pipeline->cs, 2048 + load_state_size);
-   if (result != VK_SUCCESS) {
-      vk_free2(&dev->alloc, pAllocator, pipeline);
-      return result;
-   }
-
-   *out_pipeline = pipeline;
-
-   return VK_SUCCESS;
+   return tu_cs_reserve_space(&pipeline->cs, size);
 }
 
 static void
@@ -1878,6 +1872,25 @@ tu6_get_tessmode(struct tu_shader* shader)
    default:
       unreachable("bad tessmode");
    }
+}
+
+static uint64_t
+tu_upload_variant(struct tu_pipeline *pipeline,
+                  const struct ir3_shader_variant *variant)
+{
+   struct tu_cs_memory memory;
+
+   if (!variant)
+      return 0;
+
+   /* this expects to get enough alignment because shaders are allocated first
+    * and sizedwords is always aligned correctly
+    * note: an assert in tu6_emit_xs_config validates the alignment
+    */
+   tu_cs_alloc(&pipeline->cs, variant->info.sizedwords, 1, &memory);
+
+   memcpy(memory.map, variant->bin, sizeof(uint32_t) * variant->info.sizedwords);
+   return memory.iova;
 }
 
 static VkResult
@@ -1932,10 +1945,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
                                 &key, false, &created);
       if (!builder->variants[stage])
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-      builder->shader_offsets[stage] = builder->shader_total_size;
-      builder->shader_total_size +=
-         sizeof(uint32_t) * builder->variants[stage]->info.sizedwords;
    }
 
    const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
@@ -1951,9 +1960,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
          return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
-   builder->binning_vs_offset = builder->shader_total_size;
-   builder->shader_total_size +=
-      sizeof(uint32_t) * variant->info.sizedwords;
    builder->binning_variant = variant;
 
    if (builder->shaders[MESA_SHADER_TESS_CTRL]) {
@@ -1978,39 +1984,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       }
       pipeline->tess.per_vertex_output_size = per_vertex_output_size;
       pipeline->tess.per_patch_output_size = per_patch_output_size;
-   }
-
-   return VK_SUCCESS;
-}
-
-static VkResult
-tu_pipeline_builder_upload_shaders(struct tu_pipeline_builder *builder,
-                                   struct tu_pipeline *pipeline)
-{
-   struct tu_bo *bo = &pipeline->program.binary_bo;
-
-   VkResult result =
-      tu_bo_init_new(builder->device, bo, builder->shader_total_size);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = tu_bo_map(builder->device, bo);
-   if (result != VK_SUCCESS)
-      return result;
-
-   for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
-      const struct ir3_shader_variant *variant = builder->variants[i];
-      if (!variant)
-         continue;
-
-      memcpy(bo->map + builder->shader_offsets[i], variant->bin,
-             sizeof(uint32_t) * variant->info.sizedwords);
-   }
-
-   if (builder->binning_variant) {
-      const struct ir3_shader_variant *variant = builder->binning_variant;
-      memcpy(bo->map + builder->binning_vs_offset, variant->bin,
-             sizeof(uint32_t) * variant->info.sizedwords);
    }
 
    return VK_SUCCESS;
@@ -2058,11 +2031,11 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
 {
    struct tu_cs prog_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, false);
+   tu6_emit_program(&prog_cs, builder, false);
    pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_program(&prog_cs, builder, &pipeline->program.binary_bo, true);
+   tu6_emit_program(&prog_cs, builder, true);
    pipeline->program.binning_state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
    VkShaderStageFlags stages = 0;
@@ -2355,33 +2328,40 @@ tu_pipeline_finish(struct tu_pipeline *pipeline,
                    const VkAllocationCallbacks *alloc)
 {
    tu_cs_finish(&pipeline->cs);
-
-   if (pipeline->program.binary_bo.gem_handle)
-      tu_bo_finish(dev, &pipeline->program.binary_bo);
 }
 
 static VkResult
 tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
                           struct tu_pipeline **pipeline)
 {
-   VkResult result = tu_pipeline_create(builder->device, builder->layout,
-                                        false, builder->alloc, pipeline);
-   if (result != VK_SUCCESS)
-      return result;
+   VkResult result;
+
+   *pipeline =
+      vk_zalloc2(&builder->device->alloc, builder->alloc, sizeof(**pipeline),
+                 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!*pipeline)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    (*pipeline)->layout = builder->layout;
 
    /* compile and upload shaders */
    result = tu_pipeline_builder_compile_shaders(builder, *pipeline);
-   if (result == VK_SUCCESS)
-      result = tu_pipeline_builder_upload_shaders(builder, *pipeline);
    if (result != VK_SUCCESS) {
-      tu_pipeline_finish(*pipeline, builder->device, builder->alloc);
       vk_free2(&builder->device->alloc, builder->alloc, *pipeline);
-      *pipeline = VK_NULL_HANDLE;
-
       return result;
    }
+
+   result = tu_pipeline_allocate_cs(builder->device, *pipeline, builder, NULL);
+   if (result != VK_SUCCESS) {
+      vk_free2(&builder->device->alloc, builder->alloc, *pipeline);
+      return result;
+   }
+
+   for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++)
+      builder->shader_iova[i] = tu_upload_variant(*pipeline, builder->variants[i]);
+
+   builder->binning_vs_iova =
+      tu_upload_variant(*pipeline, builder->binning_variant);
 
    tu_pipeline_builder_parse_dynamic(builder, *pipeline);
    tu_pipeline_builder_parse_shader_stages(builder, *pipeline);
@@ -2520,30 +2500,6 @@ tu_CreateGraphicsPipelines(VkDevice device,
 }
 
 static VkResult
-tu_compute_upload_shader(VkDevice device,
-                         struct tu_pipeline *pipeline,
-                         struct ir3_shader_variant *v)
-{
-   TU_FROM_HANDLE(tu_device, dev, device);
-   struct tu_bo *bo = &pipeline->program.binary_bo;
-
-   uint32_t shader_size = sizeof(uint32_t) * v->info.sizedwords;
-   VkResult result =
-      tu_bo_init_new(dev, bo, shader_size);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = tu_bo_map(dev, bo);
-   if (result != VK_SUCCESS)
-      return result;
-
-   memcpy(bo->map, v->bin, shader_size);
-
-   return VK_SUCCESS;
-}
-
-
-static VkResult
 tu_compute_pipeline_create(VkDevice device,
                            VkPipelineCache _cache,
                            const VkComputePipelineCreateInfo *pCreateInfo,
@@ -2559,9 +2515,11 @@ tu_compute_pipeline_create(VkDevice device,
 
    *pPipeline = VK_NULL_HANDLE;
 
-   result = tu_pipeline_create(dev, layout, true, pAllocator, &pipeline);
-   if (result != VK_SUCCESS)
-      return result;
+   pipeline =
+      vk_zalloc2(&dev->alloc, pAllocator, sizeof(*pipeline), 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!pipeline)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    pipeline->layout = layout;
 
@@ -2577,22 +2535,26 @@ tu_compute_pipeline_create(VkDevice device,
    bool created;
    struct ir3_shader_variant *v =
       ir3_shader_get_variant(shader->ir3_shader, &key, false, &created);
-   if (!v)
+   if (!v) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;
+   }
 
    tu_pipeline_set_linkage(&pipeline->program.link[MESA_SHADER_COMPUTE],
                            shader, v);
 
-   result = tu_compute_upload_shader(device, pipeline, v);
+   result = tu_pipeline_allocate_cs(dev, pipeline, NULL, v);
    if (result != VK_SUCCESS)
       goto fail;
+
+   uint64_t shader_iova = tu_upload_variant(pipeline, v);
 
    for (int i = 0; i < 3; i++)
       pipeline->compute.local_size[i] = v->shader->nir->info.cs.local_size[i];
 
    struct tu_cs prog_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_cs_config(&prog_cs, shader, v, pipeline->program.binary_bo.iova);
+   tu6_emit_cs_config(&prog_cs, shader, v, shader_iova);
    pipeline->program.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &prog_cs);
 
    tu6_emit_load_state(pipeline, true);
@@ -2604,7 +2566,6 @@ fail:
    if (shader)
       tu_shader_destroy(dev, shader, pAllocator);
 
-   tu_pipeline_finish(pipeline, dev, pAllocator);
    vk_free2(&dev->alloc, pAllocator, pipeline);
 
    return result;
