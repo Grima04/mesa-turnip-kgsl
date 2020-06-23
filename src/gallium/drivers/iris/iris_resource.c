@@ -108,6 +108,7 @@ modifier_is_supported(const struct gen_device_info *devinfo,
       if (rt_format == ISL_FORMAT_UNSUPPORTED ||
           !isl_format_supports_ccs_e(devinfo, rt_format))
          return false;
+      break;
    }
    default:
       break;
