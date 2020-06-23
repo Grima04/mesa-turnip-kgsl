@@ -1159,7 +1159,7 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
       Definition op_as_def = Definition(op.physReg(), op.regClass());
       if (ctx->program->chip_class >= GFX9 && def.regClass() == v1) {
          bld.vop1(aco_opcode::v_swap_b32, def, op_as_def, op, def_as_op);
-      } else if (def.regClass() == v1 || (def.regClass().is_subdword() && ctx->program->chip_class < GFX8)) {
+      } else if (def.regClass() == v1) {
          assert(def.physReg().byte() == 0 && op.physReg().byte() == 0);
          bld.vop2(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
          bld.vop2(aco_opcode::v_xor_b32, def, op, def_as_op);
@@ -1560,6 +1560,10 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          memset(swap.uses + offset, 0, swap.bytes - offset);
          swap.bytes = offset;
       }
+
+      /* GFX6-7 can only swap full registers */
+      if (ctx->program->chip_class <= GFX7)
+         swap.bytes = align(swap.bytes, 4);
 
       do_swap(ctx, bld, swap, preserve_scc, pi);
 
