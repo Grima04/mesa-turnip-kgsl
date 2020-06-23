@@ -1373,7 +1373,10 @@ device_alloc(struct v3dv_device *device,
 static void
 device_free(struct v3dv_device *device, struct v3dv_device_memory *mem)
 {
-   v3dv_bo_free(device, mem->bo);
+   if (mem->has_bo_ownership)
+      v3dv_bo_free(device, mem->bo);
+   else if (mem->bo)
+      vk_free(&device->alloc, mem->bo);
 }
 
 static void
@@ -1457,6 +1460,7 @@ device_import_bo(struct v3dv_device *device,
    (*bo)->offset = get_offset.offset;
    (*bo)->map = NULL;
    (*bo)->map_size = 0;
+   (*bo)->private = false;
 
    return VK_SUCCESS;
 
@@ -1506,7 +1510,6 @@ device_alloc_for_wsi(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       goto fail_import;
 
-
    return VK_SUCCESS;
 
 fail_import:
@@ -1544,6 +1547,7 @@ v3dv_AllocateMemory(VkDevice _device,
 
    assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.memoryTypeCount);
    mem->type = &pdevice->memory.memoryTypes[pAllocateInfo->memoryTypeIndex];
+   mem->has_bo_ownership = true;
 
    const struct wsi_memory_allocate_info *wsi_info = NULL;
    const VkImportMemoryFdInfoKHR *fd_info = NULL;
@@ -1571,6 +1575,7 @@ v3dv_AllocateMemory(VkDevice _device,
       result = device_import_bo(device, pAllocator,
                                 fd_info->fd, pAllocateInfo->allocationSize,
                                 &mem->bo);
+      mem->has_bo_ownership = false;
       if (result == VK_SUCCESS)
          close(fd_info->fd);
    } else {
