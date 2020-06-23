@@ -728,6 +728,76 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
    return true;
 }
 
+/* FIXME: really similar to lower_tex_src_to_offset, perhaps refactor? */
+static void
+lower_image_deref(nir_builder *b,
+                  nir_intrinsic_instr *instr,
+                  struct v3dv_pipeline *pipeline,
+                  const struct v3dv_pipeline_layout *layout)
+{
+   nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
+   nir_ssa_def *index = NULL;
+   unsigned array_elements = 1;
+   unsigned base_index = 0;
+
+   while (deref->deref_type != nir_deref_type_var) {
+      assert(deref->parent.is_ssa);
+      nir_deref_instr *parent =
+         nir_instr_as_deref(deref->parent.ssa->parent_instr);
+
+      assert(deref->deref_type == nir_deref_type_array);
+
+      if (nir_src_is_const(deref->arr.index) && index == NULL) {
+         /* We're still building a direct index */
+         base_index += nir_src_as_uint(deref->arr.index) * array_elements;
+      } else {
+         if (index == NULL) {
+            /* We used to be direct but not anymore */
+            index = nir_imm_int(b, base_index);
+            base_index = 0;
+         }
+
+         index = nir_iadd(b, index,
+                          nir_imul(b, nir_imm_int(b, array_elements),
+                                   nir_ssa_for_src(b, deref->arr.index, 1)));
+      }
+
+      array_elements *= glsl_get_length(parent->type);
+
+      deref = parent;
+   }
+
+   if (index)
+      index = nir_umin(b, index, nir_imm_int(b, array_elements - 1));
+
+   uint32_t set = deref->var->data.descriptor_set;
+   uint32_t binding = deref->var->data.binding;
+   struct v3dv_descriptor_set_layout *set_layout = layout->set[set].layout;
+   struct v3dv_descriptor_set_binding_layout *binding_layout =
+      &set_layout->binding[binding];
+
+   uint32_t array_index = deref->var->data.index + base_index;
+
+   assert(binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+   int desc_index =
+      descriptor_map_add(&pipeline->texture_map,
+                         deref->var->data.descriptor_set,
+                         deref->var->data.binding,
+                         array_index,
+                         binding_layout->array_size);
+
+   /* We still need to get a combined_index, as we are integrating images with
+    * the rest of the texture/sampler support
+    */
+   int combined_index =
+      get_combined_index(pipeline, desc_index, V3DV_NO_SAMPLER_IDX);
+
+   index = nir_imm_int(b, combined_index);
+
+   nir_rewrite_image_intrinsic(instr, index, false);
+}
+
 static bool
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                 struct v3dv_pipeline *pipeline,
@@ -750,6 +820,23 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
 
    case nir_intrinsic_vulkan_resource_index:
       lower_vulkan_resource_index(b, instr, pipeline, layout);
+      return true;
+
+   case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_deref_store:
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_deref_size:
+   case nir_intrinsic_image_deref_samples:
+      lower_image_deref(b, instr, pipeline, layout);
       return true;
 
    default:
