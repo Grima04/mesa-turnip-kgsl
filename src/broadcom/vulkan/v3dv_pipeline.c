@@ -1623,91 +1623,84 @@ v3dv_dynamic_state_mask(VkDynamicState state)
 }
 
 static void
-pipeline_init_dynamic_state(struct v3dv_pipeline *pipeline,
-                            const VkGraphicsPipelineCreateInfo *pCreateInfo)
+pipeline_init_dynamic_state(
+   struct v3dv_pipeline *pipeline,
+   const VkPipelineDynamicStateCreateInfo *pDynamicState,
+   const VkPipelineViewportStateCreateInfo *pViewportState,
+   const VkPipelineDepthStencilStateCreateInfo *pDepthStencilState,
+   const VkPipelineColorBlendStateCreateInfo *pColorBlendState,
+   const VkPipelineRasterizationStateCreateInfo *pRasterizationState)
 {
    pipeline->dynamic_state = default_dynamic_state;
    struct v3dv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
    /* Create a mask of enabled dynamic states */
    uint32_t dynamic_states = 0;
-   if (pCreateInfo->pDynamicState) {
-      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+   if (pDynamicState) {
+      uint32_t count = pDynamicState->dynamicStateCount;
       for (uint32_t s = 0; s < count; s++) {
          dynamic_states |=
-            v3dv_dynamic_state_mask(pCreateInfo->pDynamicState->pDynamicStates[s]);
+            v3dv_dynamic_state_mask(pDynamicState->pDynamicStates[s]);
       }
    }
 
    /* For any pipeline states that are not dynamic, set the dynamic state
     * from the static pipeline state.
-    *
-    * Notice that we don't let the number of viewports and scissort rects to
-    * be set dynamically, so these are always copied from the pipeline state.
     */
-   dynamic->viewport.count = pCreateInfo->pViewportState->viewportCount;
-   if (!(dynamic_states & V3DV_DYNAMIC_VIEWPORT)) {
-      assert(pCreateInfo->pViewportState);
+   if (pViewportState) {
+      if (!(dynamic_states & V3DV_DYNAMIC_VIEWPORT)) {
+         dynamic->viewport.count = pViewportState->viewportCount;
+         typed_memcpy(dynamic->viewport.viewports, pViewportState->pViewports,
+                      pViewportState->viewportCount);
 
-      typed_memcpy(dynamic->viewport.viewports,
-                   pCreateInfo->pViewportState->pViewports,
-                   pCreateInfo->pViewportState->viewportCount);
+         for (uint32_t i = 0; i < dynamic->viewport.count; i++) {
+            v3dv_viewport_compute_xform(&dynamic->viewport.viewports[i],
+                                        dynamic->viewport.scale[i],
+                                        dynamic->viewport.translate[i]);
+         }
+      }
 
-      for (uint32_t i = 0; i < dynamic->viewport.count; i++) {
-         v3dv_viewport_compute_xform(&dynamic->viewport.viewports[i],
-                                     dynamic->viewport.scale[i],
-                                     dynamic->viewport.translate[i]);
+      if (!(dynamic_states & V3DV_DYNAMIC_SCISSOR)) {
+         dynamic->scissor.count = pViewportState->scissorCount;
+         typed_memcpy(dynamic->scissor.scissors, pViewportState->pScissors,
+                      pViewportState->scissorCount);
       }
    }
 
-   dynamic->scissor.count = pCreateInfo->pViewportState->scissorCount;
-   if (!(dynamic_states & V3DV_DYNAMIC_SCISSOR)) {
-      typed_memcpy(dynamic->scissor.scissors,
-                   pCreateInfo->pViewportState->pScissors,
-                   pCreateInfo->pViewportState->scissorCount);
-   }
-
-   if (pCreateInfo->pDepthStencilState != NULL) {
+   if (pDepthStencilState) {
       if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_COMPARE_MASK)) {
          dynamic->stencil_compare_mask.front =
-            pCreateInfo->pDepthStencilState->front.compareMask;
+            pDepthStencilState->front.compareMask;
          dynamic->stencil_compare_mask.back =
-            pCreateInfo->pDepthStencilState->back.compareMask;
+            pDepthStencilState->back.compareMask;
       }
 
       if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_WRITE_MASK)) {
-         dynamic->stencil_write_mask.front =
-            pCreateInfo->pDepthStencilState->front.writeMask;
-         dynamic->stencil_write_mask.back =
-            pCreateInfo->pDepthStencilState->back.writeMask;
+         dynamic->stencil_write_mask.front = pDepthStencilState->front.writeMask;
+         dynamic->stencil_write_mask.back = pDepthStencilState->back.writeMask;
       }
 
       if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_REFERENCE)) {
-         dynamic->stencil_reference.front =
-            pCreateInfo->pDepthStencilState->front.reference;
-         dynamic->stencil_reference.back =
-            pCreateInfo->pDepthStencilState->back.reference;
+         dynamic->stencil_reference.front = pDepthStencilState->front.reference;
+         dynamic->stencil_reference.back = pDepthStencilState->back.reference;
       }
    }
 
-   if (pCreateInfo->pColorBlendState &&
-       !(dynamic_states & V3DV_DYNAMIC_BLEND_CONSTANTS)) {
-      memcpy(dynamic->blend_constants,
-             pCreateInfo->pColorBlendState->blendConstants,
+   if (pColorBlendState && !(dynamic_states & V3DV_DYNAMIC_BLEND_CONSTANTS)) {
+      memcpy(dynamic->blend_constants, pColorBlendState->blendConstants,
              sizeof(dynamic->blend_constants));
    }
 
-   if (pCreateInfo->pRasterizationState &&
-       !pCreateInfo->pRasterizationState->rasterizerDiscardEnable) {
-      if (pCreateInfo->pRasterizationState->depthBiasEnable &&
+   if (pRasterizationState) {
+      if (pRasterizationState->depthBiasEnable &&
           !(dynamic_states & V3DV_DYNAMIC_DEPTH_BIAS)) {
          dynamic->depth_bias.constant_factor =
-            pCreateInfo->pRasterizationState->depthBiasConstantFactor;
+            pRasterizationState->depthBiasConstantFactor;
          dynamic->depth_bias.slope_factor =
-            pCreateInfo->pRasterizationState->depthBiasSlopeFactor;
+            pRasterizationState->depthBiasSlopeFactor;
       }
       if (!(dynamic_states & V3DV_DYNAMIC_LINE_WIDTH))
-         dynamic->line_width = pCreateInfo->pRasterizationState->lineWidth;
+         dynamic->line_width = pRasterizationState->lineWidth;
    }
 
    pipeline->dynamic_state.mask = dynamic_states;
@@ -2014,28 +2007,20 @@ stencil_op_is_no_op(const VkStencilOpState *stencil)
 
 static void
 enable_depth_bias(struct v3dv_pipeline *pipeline,
-                  const VkGraphicsPipelineCreateInfo *pInfo)
+                  const VkPipelineRasterizationStateCreateInfo *rs_info)
 {
-   assert(pInfo);
-
    pipeline->depth_bias.enabled = false;
    pipeline->depth_bias.is_z16 = false;
 
-   if (!pInfo->pRasterizationState ||
-       !pInfo->pRasterizationState->depthBiasEnable ||
-       pInfo->pRasterizationState->rasterizerDiscardEnable)
+   if (!rs_info || !rs_info->depthBiasEnable)
       return;
 
    /* Check the depth/stencil attachment description for the subpass used with
     * this pipeline.
     */
-   struct v3dv_render_pass *pass =
-      v3dv_render_pass_from_handle(pInfo->renderPass);
-   assert(pass);
-
-   assert(pInfo->subpass < pass->subpass_count);
-   struct v3dv_subpass *subpass = &pass->subpasses[pInfo->subpass];
-   assert(subpass);
+   assert(pipeline->pass && pipeline->subpass);
+   struct v3dv_render_pass *pass = pipeline->pass;
+   struct v3dv_subpass *subpass = pipeline->subpass;
 
    if (subpass->ds_attachment.attachment == VK_ATTACHMENT_UNUSED)
       return;
@@ -2367,13 +2352,14 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    pipeline->pass = render_pass;
    pipeline->subpass = &render_pass->subpasses[pCreateInfo->subpass];
 
-   pipeline_init_dynamic_state(pipeline, pCreateInfo);
-
    /* If rasterization is not enabled, various CreateInfo structs must be
     * ignored.
     */
    const bool raster_enabled =
       !pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
+
+   const VkPipelineViewportStateCreateInfo *vp_info =
+      raster_enabled ? pCreateInfo->pViewportState : NULL;
 
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
       raster_enabled ? pCreateInfo->pDepthStencilState : NULL;
@@ -2384,6 +2370,10 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       raster_enabled ? pCreateInfo->pColorBlendState : NULL;
 
+   pipeline_init_dynamic_state(pipeline,
+                               pCreateInfo->pDynamicState,
+                               vp_info, ds_info, cb_info, rs_info);
+
    /* V3D 4.2 doesn't support depth bounds testing so we don't advertise that
     * feature and it shouldn't be used by any pipeline.
     */
@@ -2393,7 +2383,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    pack_cfg_bits(pipeline, ds_info, rs_info);
    pack_stencil_cfg(pipeline, ds_info);
    pipeline_set_ez_state(pipeline, ds_info);
-   enable_depth_bias(pipeline, pCreateInfo);
+   enable_depth_bias(pipeline, rs_info);
 
    pipeline->primitive_restart =
       pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
