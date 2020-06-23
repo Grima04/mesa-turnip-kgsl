@@ -466,16 +466,9 @@ gpu_supports_render_format(struct etna_screen *screen, enum pipe_format format,
    if (fmt == ETNA_NO_MATCH)
       return false;
 
-   /* Validate MSAA; number of samples must be allowed, and render target
-    * must have MSAA'able format. */
-   if (sample_count > 1) {
-      if (!VIV_FEATURE(screen, chipFeatures, MSAA))
+   /* MSAA is broken */
+   if (sample_count > 1)
          return false;
-      if (!translate_samples_to_xyscale(sample_count, NULL, NULL))
-         return false;
-      if (translate_ts_format(format) == ETNA_NO_MATCH)
-         return false;
-   }
 
    if (format == PIPE_FORMAT_R8_UNORM)
       return VIV_FEATURE(screen, chipMinorFeatures5, HALTI5);
