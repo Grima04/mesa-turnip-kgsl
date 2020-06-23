@@ -1788,27 +1788,12 @@ iris_transfer_map(struct pipe_context *ctx,
       usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
    }
 
-   bool need_resolve = false;
-
-   if (resource->target != PIPE_BUFFER) {
-      bool need_hiz_resolve = iris_resource_level_has_hiz(res, level);
-      bool need_stencil_resolve = res->aux.usage == ISL_AUX_USAGE_STC_CCS;
-
-      bool need_color_resolve =
-         (res->aux.usage == ISL_AUX_USAGE_CCS_D ||
-          res->aux.usage == ISL_AUX_USAGE_CCS_E ||
-          res->aux.usage == ISL_AUX_USAGE_GEN12_CCS_E) &&
-         iris_has_invalid_primary(res, level, 1, box->z, box->depth);
-
-      need_resolve = need_color_resolve ||
-                     need_hiz_resolve ||
-                     need_stencil_resolve;
-   }
-
    bool map_would_stall = false;
 
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
-      map_would_stall = need_resolve || resource_is_busy(ice, res);
+      map_would_stall =
+         resource_is_busy(ice, res) ||
+         iris_has_invalid_primary(res, level, 1, box->z, box->depth);
 
       if (map_would_stall && (usage & PIPE_TRANSFER_DONTBLOCK) &&
                              (usage & PIPE_TRANSFER_MAP_DIRECTLY))
