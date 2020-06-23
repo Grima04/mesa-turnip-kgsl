@@ -438,10 +438,6 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   const struct radv_pipeline_layout *layout,
 			   unsigned subgroup_size, unsigned ballot_bit_size);
 
-void *
-radv_alloc_shader_memory(struct radv_device *device,
-			  struct radv_shader_variant *shader);
-
 void
 radv_destroy_shader_slabs(struct radv_device *device);
 

@@ -631,7 +631,7 @@ radv_lower_fs_io(nir_shader *nir)
 }
 
 
-void *
+static void *
 radv_alloc_shader_memory(struct radv_device *device,
 			 struct radv_shader_variant *shader)
 {
