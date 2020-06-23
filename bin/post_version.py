@@ -84,10 +84,9 @@ def main() -> None:
     update_calendar(args.version)
     done = 'update calendar'
 
-    if not is_release_candidate(args.version):
-        update_index(args.version)
+    if 'rc' not in args.version:
         update_release_notes(args.version)
-        done += ', add news item, and link releases notes'
+        done += ' and link releases notes'
 
     subprocess.run(['git', 'commit', '-m',
                     f'docs: {done} for {args.version}'])
