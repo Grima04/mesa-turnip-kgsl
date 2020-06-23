@@ -785,6 +785,16 @@ lower_f2(nir_builder *b, nir_ssa_def *x, bool dst_is_signed)
    return res;
 }
 
+static nir_ssa_def *
+lower_bit_count64(nir_builder *b, nir_ssa_def *x)
+{
+   nir_ssa_def *x_lo = nir_unpack_64_2x32_split_x(b, x);
+   nir_ssa_def *x_hi = nir_unpack_64_2x32_split_y(b, x);
+   nir_ssa_def *lo_count = nir_bit_count(b, x_lo);
+   nir_ssa_def *hi_count = nir_bit_count(b, x_hi);
+   return nir_iadd(b, lo_count, hi_count);
+}
+
 nir_lower_int64_options
 nir_lower_int64_op_to_options_mask(nir_op opcode)
 {
@@ -859,6 +869,8 @@ nir_lower_int64_op_to_options_mask(nir_op opcode)
       return nir_lower_extract64;
    case nir_op_ufind_msb:
       return nir_lower_ufind_msb64;
+   case nir_op_bit_count:
+      return nir_lower_bit_count64;
    default:
       return 0;
    }
@@ -963,6 +975,8 @@ lower_int64_alu_instr(nir_builder *b, nir_instr *instr, void *_state)
       return lower_extract(b, alu->op, src[0], src[1]);
    case nir_op_ufind_msb:
       return lower_ufind_msb64(b, src[0]);
+   case nir_op_bit_count:
+      return lower_bit_count64(b, src[0]);
    case nir_op_i2f64:
    case nir_op_i2f32:
    case nir_op_i2f16:
@@ -1028,6 +1042,7 @@ should_lower_int64_alu_instr(const nir_instr *instr, const void *_data)
          return false;
       break;
    case nir_op_ufind_msb:
+   case nir_op_bit_count:
       assert(alu->src[0].src.is_ssa);
       if (alu->src[0].src.ssa->bit_size != 64)
          return false;
