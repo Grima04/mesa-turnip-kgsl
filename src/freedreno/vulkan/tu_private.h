@@ -406,7 +406,7 @@ struct tu_cs_entry
    uint32_t offset;
 };
 
-struct ts_cs_memory {
+struct tu_cs_memory {
    uint32_t *map;
    uint64_t iova;
 };

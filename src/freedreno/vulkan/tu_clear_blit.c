@@ -473,7 +473,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
 #define GS_OFFSET (32 * sizeof(instr_t))
 
    /* shaders */
-   struct ts_cs_memory shaders = { };
+   struct tu_cs_memory shaders = { };
    VkResult result = tu_cs_alloc(&cmd->sub_cs, 2 + layered_clear,
                                  16 * sizeof(instr_t), &shaders);
    assert(result == VK_SUCCESS);
@@ -626,7 +626,7 @@ r3d_src_common(struct tu_cmd_buffer *cmd,
                uint32_t offset_ubwc,
                VkFilter filter)
 {
-   struct ts_cs_memory texture = { };
+   struct tu_cs_memory texture = { };
    VkResult result = tu_cs_alloc(&cmd->sub_cs,
                                  2, /* allocate space for a sampler too */
                                  A6XX_TEX_CONST_DWORDS, &texture);
@@ -1554,7 +1554,7 @@ tu_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
 
    tu_bo_list_add(&cmd->bo_list, buffer->bo, MSM_SUBMIT_BO_WRITE);
 
-   struct ts_cs_memory tmp;
+   struct tu_cs_memory tmp;
    VkResult result = tu_cs_alloc(&cmd->sub_cs, DIV_ROUND_UP(dataSize, 64), 64, &tmp);
    if (result != VK_SUCCESS) {
       cmd->record_result = result;

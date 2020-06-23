@@ -1176,7 +1176,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
    if (!subpass->input_count)
       return;
 
-   struct ts_cs_memory texture;
+   struct tu_cs_memory texture;
    VkResult result = tu_cs_alloc(&cmd->sub_cs, subpass->input_count * 2,
                                  A6XX_TEX_CONST_DWORDS, &texture);
    assert(result == VK_SUCCESS);
@@ -1887,7 +1887,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
    if (layout->dynamic_offset_count) {
       /* allocate and fill out dynamic descriptor set */
-      struct ts_cs_memory dynamic_desc_set;
+      struct tu_cs_memory dynamic_desc_set;
       VkResult result = tu_cs_alloc(&cmd->sub_cs, layout->dynamic_offset_count,
                                     A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
       assert(result == VK_SUCCESS);
@@ -2175,7 +2175,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 static struct tu_cs
 tu_cmd_dynamic_state(struct tu_cmd_buffer *cmd, uint32_t id, uint32_t size)
 {
-   struct ts_cs_memory memory;
+   struct tu_cs_memory memory;
    struct tu_cs cs;
 
    /* TODO: share this logic with tu_pipeline_static_state */

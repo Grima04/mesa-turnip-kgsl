@@ -2125,7 +2125,7 @@ static bool
 tu_pipeline_static_state(struct tu_pipeline *pipeline, struct tu_cs *cs,
                          uint32_t id, uint32_t size)
 {
-   struct ts_cs_memory memory;
+   struct tu_cs_memory memory;
 
    if (pipeline->dynamic_state_mask & BIT(id))
       return false;
