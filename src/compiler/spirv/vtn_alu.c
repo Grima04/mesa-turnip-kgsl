@@ -257,7 +257,6 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
    case SpvOpBitFieldSExtract:      return nir_op_ibitfield_extract;
    case SpvOpBitFieldUExtract:      return nir_op_ubitfield_extract;
    case SpvOpBitReverse:            return nir_op_bitfield_reverse;
-   case SpvOpBitCount:              return nir_op_bit_count;
 
    case SpvOpUCountLeadingZerosINTEL: return nir_op_uclz;
    /* SpvOpUCountTrailingZerosINTEL is handled elsewhere. */
@@ -639,6 +638,14 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
                                nir_find_lsb(&b->nb, src[0]),
                                nir_imm_int(&b->nb, 32u));
       break;
+
+   case SpvOpBitCount: {
+      /* bit_count always returns int32, but the SPIR-V opcode just says the return
+       * value needs to be big enough to store the number of bits.
+       */
+      dest->def = nir_u2u(&b->nb, nir_bit_count(&b->nb, src[0]), glsl_get_bit_size(dest_type));
+      break;
+   }
 
    default: {
       bool swap;

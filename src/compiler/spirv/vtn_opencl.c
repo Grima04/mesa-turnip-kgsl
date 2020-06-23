@@ -117,8 +117,11 @@ handle_alu(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
            unsigned num_srcs, nir_ssa_def **srcs,
            const struct glsl_type *dest_type)
 {
-   return nir_build_alu(&b->nb, nir_alu_op_for_opencl_opcode(b, opcode),
-                        srcs[0], srcs[1], srcs[2], NULL);
+   nir_ssa_def *ret = nir_build_alu(&b->nb, nir_alu_op_for_opencl_opcode(b, opcode),
+                                    srcs[0], srcs[1], srcs[2], NULL);
+   if (opcode == OpenCLstd_Popcount)
+      ret = nir_u2u(&b->nb, ret, glsl_get_bit_size(dest_type));
+   return ret;
 }
 
 static nir_ssa_def *
