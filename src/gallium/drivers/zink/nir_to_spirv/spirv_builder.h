@@ -302,6 +302,10 @@ spirv_builder_type_vector(struct spirv_builder *b, SpvId component_type,
                           unsigned component_count);
 
 SpvId
+spirv_builder_type_matrix(struct spirv_builder *b, SpvId component_type,
+                          unsigned component_count);
+
+SpvId
 spirv_builder_type_array(struct spirv_builder *b, SpvId component_type,
                          SpvId length);
 

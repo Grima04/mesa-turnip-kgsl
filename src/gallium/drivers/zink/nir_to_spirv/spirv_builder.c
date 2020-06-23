@@ -916,6 +916,15 @@ spirv_builder_type_vector(struct spirv_builder *b, SpvId component_type,
 }
 
 SpvId
+spirv_builder_type_matrix(struct spirv_builder *b, SpvId component_type,
+                          unsigned component_count)
+{
+   assert(component_count > 1);
+   uint32_t args[] = { component_type, component_count };
+   return get_type_def(b, SpvOpTypeMatrix, args, ARRAY_SIZE(args));
+}
+
+SpvId
 spirv_builder_type_array(struct spirv_builder *b, SpvId component_type,
                          SpvId length)
 {
