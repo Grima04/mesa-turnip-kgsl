@@ -112,7 +112,8 @@ setup_stages(struct fd4_emit *emit, struct stage *s)
 		if (s[i].v) {
 			s[i].i = &s[i].v->info;
 			/* constlen is in units of 4 * vec4: */
-			s[i].constlen = align(s[i].v->constlen, 4) / 4;
+			assert(s[i].v->constlen % 4 == 0);
+			s[i].constlen = s[i].v->constlen / 4;
 			/* instrlen is already in units of 16 instr.. although
 			 * probably we should ditch that and not make the compiler
 			 * care about instruction group size of a3xx vs a4xx

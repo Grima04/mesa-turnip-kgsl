@@ -26,6 +26,7 @@
 
 #include "util/u_atomic.h"
 #include "util/u_string.h"
+#include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/format/u_format.h"
 
@@ -139,6 +140,13 @@ void * ir3_shader_assemble(struct ir3_shader_variant *v)
 	 * the assembler what the max addr reg value can be:
 	 */
 	v->constlen = MAX2(v->constlen, v->info.max_const + 1);
+
+	/* On a4xx and newer, constlen must be a multiple of 16 dwords even though
+	 * uploads are in units of 4 dwords. Round it up here to make calculations
+	 * regarding the shared constlen simpler.
+	 */
+	if (gpu_id >= 400)
+		v->constlen = align(v->constlen, 4);
 
 	fixup_regfootprint(v);
 

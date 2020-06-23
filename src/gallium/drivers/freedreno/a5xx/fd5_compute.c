@@ -122,7 +122,8 @@ cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v,
 		A5XX_SP_CS_CONFIG_SHADEROBJOFFSET(0) |
 		A5XX_SP_CS_CONFIG_ENABLED);
 
-	unsigned constlen = align(v->constlen, 4) / 4;
+	assert(v->constlen % 4 == 0);
+	unsigned constlen = v->constlen / 4;
 	OUT_PKT4(ring, REG_A5XX_HLSQ_CS_CONSTLEN, 2);
 	OUT_RING(ring, constlen);          /* HLSQ_CS_CONSTLEN */
 	OUT_RING(ring, instrlen);          /* HLSQ_CS_INSTRLEN */

@@ -327,7 +327,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
    struct ir3_shader_variant vs = {
       .type = MESA_SHADER_VERTEX,
       .instrlen = 1,
-      .constlen = 2,
+      .constlen = 4,
       .info.max_reg = 1,
       .inputs_count = 1,
       .inputs[0] = {
@@ -360,7 +360,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
    struct ir3_shader_variant fs = {
       .type = MESA_SHADER_FRAGMENT,
       .instrlen = 1, /* max of 9 instructions with num_rts = 8 */
-      .constlen = num_rts,
+      .constlen = align(num_rts, 4),
       .info.max_reg = MAX2(num_rts, 1) - 1,
       .total_in = blit ? 2 : 0,
       .num_samp = blit ? 1 : 0,
@@ -389,7 +389,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
    struct ir3_shader_variant gs_shader = {
       .type = MESA_SHADER_GEOMETRY,
       .instrlen = 1,
-      .constlen = 2,
+      .constlen = 4,
       .info.max_reg = 1,
       .inputs_count = 1,
       .inputs[0] = {

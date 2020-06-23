@@ -412,7 +412,7 @@ tu6_emit_xs_config(struct tu_cs *cs,
    tu_cs_emit(cs, xs->instrlen);
 
    tu_cs_emit_pkt4(cs, cfg->reg_hlsq_xs_ctrl, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(xs->constlen, 4)) |
+   tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(xs->constlen) |
                   A6XX_HLSQ_VS_CNTL_ENABLED);
 
    /* emit program binary

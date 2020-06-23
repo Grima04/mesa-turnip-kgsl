@@ -234,19 +234,19 @@ setup_config_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *stat
 		debug_assert(state->vs->constlen >= state->bs->constlen);
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_VS_CNTL, 4);
-	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(state->vs->constlen, 4)) |
+	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(state->vs->constlen) |
 			A6XX_HLSQ_VS_CNTL_ENABLED);
 	OUT_RING(ring, COND(state->hs,
 					A6XX_HLSQ_HS_CNTL_ENABLED |
-					A6XX_HLSQ_HS_CNTL_CONSTLEN(align(state->hs->constlen, 4))));
+					A6XX_HLSQ_HS_CNTL_CONSTLEN(state->hs->constlen)));
 	OUT_RING(ring, COND(state->ds,
 					A6XX_HLSQ_DS_CNTL_ENABLED |
-					A6XX_HLSQ_DS_CNTL_CONSTLEN(align(state->ds->constlen, 4))));
+					A6XX_HLSQ_DS_CNTL_CONSTLEN(state->ds->constlen)));
 	OUT_RING(ring, COND(state->gs,
 					A6XX_HLSQ_GS_CNTL_ENABLED |
-					A6XX_HLSQ_GS_CNTL_CONSTLEN(align(state->gs->constlen, 4))));
+					A6XX_HLSQ_GS_CNTL_CONSTLEN(state->gs->constlen)));
 	OUT_PKT4(ring, REG_A6XX_HLSQ_FS_CNTL, 1);
-	OUT_RING(ring, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(state->fs->constlen, 4)) |
+	OUT_RING(ring, A6XX_HLSQ_FS_CNTL_CONSTLEN(state->fs->constlen) |
 			A6XX_HLSQ_FS_CNTL_ENABLED);
 
 	OUT_PKT4(ring, REG_A6XX_SP_VS_CONFIG, 1);
