@@ -690,6 +690,7 @@ struct ir3_shader {
 
 	unsigned num_reserved_user_consts;
 
+	bool nir_finalized;
 	struct nir_shader *nir;
 	struct ir3_stream_output_info stream_output;
 

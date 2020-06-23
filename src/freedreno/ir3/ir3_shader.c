@@ -248,6 +248,17 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key)
 	if (ir3_disk_cache_retrieve(shader->compiler, v))
 		return v;
 
+	if (!shader->nir_finalized) {
+		ir3_nir_post_finalize(shader->compiler, shader->nir);
+
+		if (ir3_shader_debug & IR3_DBG_DISASM) {
+			printf("dump nir%d: type=%d", shader->id, shader->type);
+			nir_print_shader(shader->nir, stdout);
+		}
+
+		shader->nir_finalized = true;
+	}
+
 	if (!compile_variant(v))
 		goto fail;
 
@@ -453,13 +464,6 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 	shader->nir = nir;
 
 	ir3_disk_cache_init_shader_key(compiler, shader);
-
-	ir3_nir_post_finalize(compiler, nir);
-
-	if (ir3_shader_debug & IR3_DBG_DISASM) {
-		printf("dump nir%d: type=%d", shader->id, shader->type);
-		nir_print_shader(shader->nir, stdout);
-	}
 
 	ir3_setup_used_key(shader);
 
