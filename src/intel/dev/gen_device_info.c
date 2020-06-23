@@ -1058,7 +1058,7 @@ static const struct gen_device_info gen_device_info_rkl_gt1 = {
    .urb.size = 768,                             \
    .simulator_id = 30
 
-static const struct gen_device_info gen_device_info_dg1 = {
+UNUSED static const struct gen_device_info gen_device_info_dg1 = {
    GEN12_DG1_FEATURES,
 };
 
