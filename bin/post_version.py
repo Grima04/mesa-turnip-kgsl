@@ -109,7 +109,6 @@ def main() -> None:
     args = parser.parse_args()
 
     update_homepage(args.version)
-    update_release_notes(args.version)
     update_calendar(args.version)
     done = 'update calendar'
 
