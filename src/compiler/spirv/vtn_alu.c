@@ -281,6 +281,7 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
    case SpvOpFOrdEqual:                            return nir_op_feq;
    case SpvOpFUnordEqual:                          return nir_op_feq;
    case SpvOpINotEqual:                            return nir_op_ine;
+   case SpvOpLessOrGreater:                        /* Deprecated, use OrdNotEqual */
    case SpvOpFOrdNotEqual:                         return nir_op_fne;
    case SpvOpFUnordNotEqual:                       return nir_op_fne;
    case SpvOpULessThan:                            return nir_op_ult;
@@ -548,6 +549,7 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
+   case SpvOpLessOrGreater:
    case SpvOpFOrdNotEqual: {
       /* For all the SpvOpFOrd* comparisons apart from NotEqual, the value
        * from the ALU will probably already be false if the operands are not
