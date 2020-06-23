@@ -1762,6 +1762,29 @@ get_src_int(struct ntv_context *ctx, nir_src *src)
    return bitcast_to_ivec(ctx, def, bit_size, num_components);
 }
 
+static SpvId
+pad_coord_vector(struct ntv_context *ctx, SpvId orig, unsigned old_size, unsigned new_size)
+{
+    SpvId int_type = spirv_builder_type_int(&ctx->builder, 32);
+    SpvId type = get_ivec_type(ctx, 32, new_size);
+    SpvId constituents[NIR_MAX_VEC_COMPONENTS] = {0};
+    SpvId zero = emit_int_const(ctx, 32, 0);
+    assert(new_size < NIR_MAX_VEC_COMPONENTS);
+
+    if (old_size == 1)
+       constituents[0] = orig;
+    else {
+       for (unsigned i = 0; i < old_size; i++)
+          constituents[i] = spirv_builder_emit_vector_extract(&ctx->builder, int_type, orig, i);
+    }
+
+    for (unsigned i = old_size; i < new_size; i++)
+       constituents[i] = zero;
+
+    return spirv_builder_emit_composite_construct(&ctx->builder, type,
+                                                  constituents, new_size);
+}
+
 static void
 emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 {
@@ -1776,7 +1799,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
          offset = 0, sample = 0;
-   unsigned coord_components = 0;
+   unsigned coord_components = 0, coord_bitsize = 0, offset_components = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
       case nir_tex_src_coord:
@@ -1786,6 +1809,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          else
             coord = get_src_float(ctx, &tex->src[i].src);
          coord_components = nir_src_num_components(tex->src[i].src);
+         coord_bitsize = nir_src_bit_size(tex->src[i].src);
          break;
 
       case nir_tex_src_projector:
@@ -1796,6 +1820,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
       case nir_tex_src_offset:
          offset = get_src_int(ctx, &tex->src[i].src);
+         offset_components = nir_src_num_components(tex->src[i].src);
          break;
 
       case nir_tex_src_bias:
@@ -1897,6 +1922,19 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    if (tex->op == nir_texop_txf ||
        tex->op == nir_texop_txf_ms) {
       SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
+      if (offset) {
+         /* SPIRV requires matched length vectors for OpIAdd, so if a shader
+          * uses vecs of differing sizes we need to make a new vec padded with zeroes
+          * to mimic how GLSL does this implicitly
+          */
+         if (offset_components > coord_components)
+            coord = pad_coord_vector(ctx, coord, coord_components, offset_components);
+         else if (coord_components > offset_components)
+            offset = pad_coord_vector(ctx, offset, offset_components, coord_components);
+         coord = emit_binop(ctx, SpvOpIAdd,
+                            get_ivec_type(ctx, coord_bitsize, coord_components),
+                            coord, offset);
+      }
       result = spirv_builder_emit_image_fetch(&ctx->builder, dest_type,
                                               image, coord, lod, sample);
    } else {
