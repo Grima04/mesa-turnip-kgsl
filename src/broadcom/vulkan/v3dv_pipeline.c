@@ -668,12 +668,19 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
    struct v3dv_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
 
+   /* For input attachments, the shader includes the attachment_idx. As we are
+    * treating them as a texture, we only want the base_index
+    */
+   uint32_t array_index = binding_layout->type != VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ?
+      deref->var->data.index + base_index :
+      base_index;
+
    int desc_index =
       descriptor_map_add(is_sampler ?
                          &pipeline->sampler_map : &pipeline->texture_map,
                          deref->var->data.descriptor_set,
                          deref->var->data.binding,
-                         deref->var->data.index + base_index,
+                         array_index,
                          binding_layout->array_size);
    if (is_sampler)
       instr->sampler_index = desc_index;

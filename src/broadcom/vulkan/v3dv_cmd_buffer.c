@@ -2068,8 +2068,7 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
                            subpass->color_count,
                            internal_bpp);
 
-      /* FIXME: we don't support input/resolve attachments yet */
-      assert(subpass->input_count == 0);
+      /* FIXME: we don't suppport resolve attachments yet */
       assert(subpass->resolve_attachments == NULL);
    }
 
