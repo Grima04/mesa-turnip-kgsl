@@ -1629,14 +1629,12 @@ tu6_emit_depth_control(struct tu_cs *cs,
                        const VkPipelineDepthStencilStateCreateInfo *ds_info,
                        const VkPipelineRasterizationStateCreateInfo *rast_info)
 {
-   assert(!ds_info->depthBoundsTestEnable);
-
    uint32_t rb_depth_cntl = 0;
    if (ds_info->depthTestEnable) {
       rb_depth_cntl |=
          A6XX_RB_DEPTH_CNTL_Z_ENABLE |
          A6XX_RB_DEPTH_CNTL_ZFUNC(tu6_compare_func(ds_info->depthCompareOp)) |
-         A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
+         A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE; /* TODO: don't set for ALWAYS/NEVER */
 
       if (rast_info->depthClampEnable)
          rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE;
@@ -1644,6 +1642,9 @@ tu6_emit_depth_control(struct tu_cs *cs,
       if (ds_info->depthWriteEnable)
          rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
    }
+
+   if (ds_info->depthBoundsTestEnable)
+         rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE | A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_CNTL, 1);
    tu_cs_emit(cs, rb_depth_cntl);
@@ -2244,6 +2245,12 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
    tu6_emit_stencil_control(&cs, ds_info);
 
    pipeline->ds.state_ib = tu_cs_end_sub_stream(&pipeline->cs, &cs);
+
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_DEPTH_BOUNDS, 3)) {
+      tu_cs_emit_regs(&cs,
+                      A6XX_RB_Z_BOUNDS_MIN(ds_info->minDepthBounds),
+                      A6XX_RB_Z_BOUNDS_MAX(ds_info->maxDepthBounds));
+   }
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK, 2)) {
       tu_cs_emit_regs(&cs, A6XX_RB_STENCILMASK(.mask = ds_info->front.compareMask & 0xff,
