@@ -372,7 +372,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 	 */
 	struct ir3_const_state worst_case_const_state = { };
 	ir3_setup_const_state(nir, v, &worst_case_const_state);
-	const uint32_t max_upload = (compiler->max_const -
+	const uint32_t max_upload = (ir3_max_const(v) -
 			worst_case_const_state.offsets.immediate) * 16;
 
 	uint32_t offset = v->shader->num_reserved_user_consts * 16;

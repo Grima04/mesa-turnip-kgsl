@@ -285,6 +285,8 @@ ir3_setup_used_key(struct ir3_shader *shader)
 	 */
 	key->has_per_samp = true;
 
+	key->safe_constlen = true;
+
 	if (info->stage == MESA_SHADER_FRAGMENT) {
 		key->fsaturate_s = ~0;
 		key->fsaturate_t = ~0;

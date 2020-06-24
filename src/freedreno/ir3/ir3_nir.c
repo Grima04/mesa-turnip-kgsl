@@ -552,5 +552,5 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 
 	const_state->offsets.immediate = constoff;
 
-	assert(constoff <= compiler->max_const);
+	assert(constoff <= ir3_max_const(v));
 }

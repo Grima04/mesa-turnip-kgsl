@@ -299,6 +299,12 @@ struct ir3_shader_key {
 			unsigned tessellation : 2;
 
 			unsigned has_gs : 1;
+
+			/* Whether this variant sticks to the "safe" maximum constlen,
+			 * which guarantees that the combined stages will never go over
+			 * the limit:
+			 */
+			unsigned safe_constlen : 1;
 		};
 		uint32_t global;
 	};
@@ -369,6 +375,9 @@ ir3_shader_key_changes_fs(struct ir3_shader_key *key, struct ir3_shader_key *las
 	if (last_key->ucp_enables != key->ucp_enables)
 		return true;
 
+	if (last_key->safe_constlen != key->safe_constlen)
+		return true;
+
 	return false;
 }
 
@@ -389,6 +398,9 @@ ir3_shader_key_changes_vs(struct ir3_shader_key *key, struct ir3_shader_key *las
 		return true;
 
 	if (last_key->ucp_enables != key->ucp_enables)
+		return true;
+
+	if (last_key->safe_constlen != key->safe_constlen)
 		return true;
 
 	return false;
@@ -666,6 +678,25 @@ ir3_const_state(const struct ir3_shader_variant *v)
 	if (v->binning_pass)
 		return v->nonbinning->const_state;
 	return v->const_state;
+}
+
+/* Given a variant, calculate the maximum constlen it can have.
+ */
+
+static inline unsigned
+ir3_max_const(const struct ir3_shader_variant *v)
+{
+	const struct ir3_compiler *compiler = v->shader->compiler;
+
+	if (v->shader->type == MESA_SHADER_COMPUTE) {
+		return compiler->max_const_compute;
+	} else if (v->key.safe_constlen) {
+		return compiler->max_const_safe;
+	} else if (v->shader->type == MESA_SHADER_FRAGMENT) {
+		return compiler->max_const_frag;
+	} else {
+		return compiler->max_const_geom;
+	}
 }
 
 void * ir3_shader_assemble(struct ir3_shader_variant *v);

@@ -70,10 +70,24 @@ struct ir3_compiler {
 	 */
 	bool samgq_workaround;
 
-	/* on a3xx, the limit on const access is lower than later gens (in vec4
-	 * units):
+	/* The maximum number of constants, in vec4's, across the entire graphics
+	 * pipeline.
 	 */
-	uint32_t max_const;
+	uint16_t max_const_pipeline;
+
+	/* The maximum number of constants, in vec4's, for VS+HS+DS+GS. */
+	uint16_t max_const_geom;
+
+	/* The maximum number of constants, in vec4's, for FS. */
+	uint16_t max_const_frag;
+
+	/* A "safe" max constlen that can be applied to each shader in the
+	 * pipeline which we guarantee will never exceed any combined limits.
+	 */
+	uint16_t max_const_safe;
+
+	/* The maximum number of constants, in vec4's, for compute shaders. */
+	uint16_t max_const_compute;
 
 	/* on a3xx, the unit of indirect const load is higher than later gens (in
 	 * vec4 units):
