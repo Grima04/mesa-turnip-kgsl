@@ -704,6 +704,8 @@ struct ir3_shader_variant * ir3_shader_get_variant(struct ir3_shader *shader,
 		const struct ir3_shader_key *key, bool binning_pass, bool *created);
 struct ir3_shader * ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 		unsigned reserved_user_consts, struct ir3_stream_output_info *stream_output);
+uint32_t ir3_trim_constlen(struct ir3_shader_variant **variants,
+		const struct ir3_compiler *compiler);
 void ir3_shader_destroy(struct ir3_shader *shader);
 void ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out);
 uint64_t ir3_shader_outputs(const struct ir3_shader *so);

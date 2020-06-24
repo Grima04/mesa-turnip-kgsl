@@ -326,6 +326,75 @@ ir3_setup_used_key(struct ir3_shader *shader)
 	}
 }
 
+
+/* Given an array of constlen's, decrease some of them so that the sum stays
+ * within "combined_limit" while trying to fairly share the reduction. Returns
+ * a bitfield of which stages should be trimmed.
+ */
+static uint32_t
+trim_constlens(unsigned *constlens,
+			   unsigned first_stage, unsigned last_stage,
+			   unsigned combined_limit, unsigned safe_limit)
+{
+   unsigned cur_total = 0;
+   for (unsigned i = first_stage; i <= last_stage; i++) {
+      cur_total += constlens[i];
+   }
+
+   unsigned max_stage;
+   unsigned max_const = 0;
+   uint32_t trimmed = 0;
+
+   while (cur_total > combined_limit) {
+	   for (unsigned i = first_stage; i <= last_stage; i++) {
+		   if (constlens[i] >= max_const) {
+			   max_stage = i;
+			   max_const = constlens[i];
+		   }
+	   }
+
+	   assert(max_const > safe_limit);
+	   trimmed |= 1 << max_stage;
+	   cur_total = cur_total - max_const + safe_limit;
+	   constlens[max_stage] = safe_limit;
+   }
+
+   return trimmed;
+}
+
+/* Figures out which stages in the pipeline to use the "safe" constlen for, in
+ * order to satisfy all shared constlen limits.
+ */
+uint32_t
+ir3_trim_constlen(struct ir3_shader_variant **variants,
+				  const struct ir3_compiler *compiler)
+{
+	unsigned constlens[MESA_SHADER_STAGES] = {};
+
+	for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+		if (variants[i])
+			constlens[i] = variants[i]->constlen;
+	}
+
+	uint32_t trimmed = 0;
+	STATIC_ASSERT(MESA_SHADER_STAGES <= 8 * sizeof(trimmed));
+
+	/* There are two shared limits to take into account, the geometry limit on
+	 * a6xx and the total limit. The frag limit on a6xx only matters for a
+	 * single stage, so it's always satisfied with the first variant.
+	 */
+	if (compiler->gpu_id >= 600) {
+		trimmed |=
+			trim_constlens(constlens, MESA_SHADER_VERTEX, MESA_SHADER_GEOMETRY,
+						   compiler->max_const_geom, compiler->max_const_safe);
+	}
+	trimmed |=
+		trim_constlens(constlens, MESA_SHADER_VERTEX, MESA_SHADER_FRAGMENT,
+					   compiler->max_const_pipeline, compiler->max_const_safe);
+
+	return trimmed;
+}
+
 struct ir3_shader *
 ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
 		unsigned reserved_user_consts, struct ir3_stream_output_info *stream_output)
