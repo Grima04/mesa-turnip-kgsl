@@ -107,7 +107,6 @@ public:
 
    find_lowerable_rvalues_visitor(struct set *result,
                                   const struct gl_shader_compiler_options *options);
-   bool can_lower_type(const glsl_type *type) const;
 
    static void stack_enter(class ir_instruction *ir, void *data);
    static void stack_leave(class ir_instruction *ir, void *data);
@@ -147,8 +146,9 @@ public:
    virtual ir_visitor_status visit_leave(ir_expression *);
 };
 
-bool
-find_lowerable_rvalues_visitor::can_lower_type(const glsl_type *type) const
+static bool
+can_lower_type(const struct gl_shader_compiler_options *options,
+               const glsl_type *type)
 {
    /* Don’t lower any expressions involving non-float types except bool and
     * texture samplers. This will rule out operations that change the type such
@@ -290,7 +290,7 @@ enum find_lowerable_rvalues_visitor::can_lower_state
 find_lowerable_rvalues_visitor::handle_precision(const glsl_type *type,
                                                  int precision) const
 {
-   if (!can_lower_type(type))
+   if (!can_lower_type(options, type))
       return CANT_LOWER;
 
    switch (precision) {
@@ -332,7 +332,7 @@ find_lowerable_rvalues_visitor::visit(ir_constant *ir)
 {
    stack_enter(ir, this);
 
-   if (!can_lower_type(ir->type))
+   if (!can_lower_type(options, ir->type))
       stack.back().state = CANT_LOWER;
 
    stack_leave(ir, this);
@@ -396,7 +396,7 @@ find_lowerable_rvalues_visitor::visit_enter(ir_expression *ir)
 {
    ir_hierarchical_visitor::visit_enter(ir);
 
-   if (!can_lower_type(ir->type))
+   if (!can_lower_type(options, ir->type))
       stack.back().state = CANT_LOWER;
 
    /* Don't lower precision for derivative calculations */
@@ -564,6 +564,33 @@ find_lowerable_rvalues(const struct gl_shader_compiler_options *options,
    assert(v.stack.empty());
 }
 
+static const glsl_type *
+lower_glsl_type(const glsl_type *type)
+{
+   glsl_base_type new_base_type;
+
+   switch (type->base_type) {
+   case GLSL_TYPE_FLOAT:
+      new_base_type = GLSL_TYPE_FLOAT16;
+      break;
+   case GLSL_TYPE_INT:
+      new_base_type = GLSL_TYPE_INT16;
+      break;
+   case GLSL_TYPE_UINT:
+      new_base_type = GLSL_TYPE_UINT16;
+      break;
+   default:
+      unreachable("invalid type");
+      return NULL;
+   }
+
+   return glsl_type::get_instance(new_base_type,
+                                  type->vector_elements,
+                                  type->matrix_columns,
+                                  type->explicit_stride,
+                                  type->interface_row_major);
+}
+
 static ir_rvalue *
 convert_precision(glsl_base_type type, bool up, ir_rvalue *ir)
 {
@@ -616,22 +643,6 @@ convert_precision(glsl_base_type type, bool up, ir_rvalue *ir)
    return new(mem_ctx) ir_expression(op, desired_type, ir, NULL);
 }
 
-static glsl_base_type
-lower_type(glsl_base_type type)
-{
-   switch (type) {
-   case GLSL_TYPE_FLOAT:
-      return GLSL_TYPE_FLOAT16;
-   case GLSL_TYPE_INT:
-      return GLSL_TYPE_INT16;
-   case GLSL_TYPE_UINT:
-      return GLSL_TYPE_UINT16;
-   default:
-      unreachable("invalid type");
-      return GLSL_TYPE_ERROR;;
-   }
-}
-
 void
 lower_precision_visitor::handle_rvalue(ir_rvalue **rvalue)
 {
@@ -646,11 +657,7 @@ lower_precision_visitor::handle_rvalue(ir_rvalue **rvalue)
    } else if (ir->type->base_type == GLSL_TYPE_FLOAT ||
               ir->type->base_type == GLSL_TYPE_INT ||
               ir->type->base_type == GLSL_TYPE_UINT) {
-      ir->type = glsl_type::get_instance(lower_type(ir->type->base_type),
-                                         ir->type->vector_elements,
-                                         ir->type->matrix_columns,
-                                         ir->type->explicit_stride,
-                                         ir->type->interface_row_major);
+      ir->type = lower_glsl_type(ir->type);
 
       ir_constant *const_ir = ir->as_constant();
 
