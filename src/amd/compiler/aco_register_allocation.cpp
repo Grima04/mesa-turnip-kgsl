@@ -185,6 +185,13 @@ public:
       return false;
    }
 
+   bool is_empty_or_blocked(PhysReg start) {
+      if (regs[start] == 0xF0000000) {
+         return subdword_regs[start][start.byte()] + 1 <= 1;
+      }
+      return regs[start] + 1 <= 1;
+   }
+
    void clear(PhysReg start, RegClass rc) {
       if (rc.is_subdword())
          fill_subdword(start, rc.bytes(), 0);
@@ -947,9 +954,11 @@ std::pair<PhysReg, bool> get_reg_impl(ra_ctx& ctx,
    unsigned reg_hi = lb + size - 1;
    for (reg_lo = lb, reg_hi = lb + size - 1; reg_hi < ub; reg_lo += stride, reg_hi += stride) {
       /* first check the edges: this is what we have to fix to allow for num_moves > size */
-      if (reg_lo > lb && reg_file[reg_lo] != 0 && reg_file.get_id(PhysReg(reg_lo)) == reg_file.get_id(PhysReg(reg_lo).advance(-1)))
+      if (reg_lo > lb && !reg_file.is_empty_or_blocked(PhysReg(reg_lo)) &&
+          reg_file.get_id(PhysReg(reg_lo)) == reg_file.get_id(PhysReg(reg_lo).advance(-1)))
          continue;
-      if (reg_hi < ub - 1 && reg_file[reg_hi] != 0 && reg_file.get_id(PhysReg(reg_hi).advance(3)) == reg_file.get_id(PhysReg(reg_hi).advance(4)))
+      if (reg_hi < ub - 1 && !reg_file.is_empty_or_blocked(PhysReg(reg_hi).advance(3)) &&
+          reg_file.get_id(PhysReg(reg_hi).advance(3)) == reg_file.get_id(PhysReg(reg_hi).advance(4)))
          continue;
 
       /* second, check that we have at most k=num_moves elements in the window
