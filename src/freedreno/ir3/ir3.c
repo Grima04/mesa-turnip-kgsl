@@ -35,7 +35,7 @@
 #include "util/u_math.h"
 
 #include "instr-a3xx.h"
-#include "ir3_compiler.h"
+#include "ir3_shader.h"
 
 /* simple allocator to carve allocations out of an up-front allocated heap,
  * so that we can free everything easily in one shot.

@@ -24,7 +24,7 @@
 #include <err.h>
 
 #include "ir3_assembler.h"
-#include "ir3_compiler.h"
+#include "ir3_shader.h"
 #include "ir3_parser.h"
 
 /**

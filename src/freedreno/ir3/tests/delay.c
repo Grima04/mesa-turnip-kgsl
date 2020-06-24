@@ -25,7 +25,7 @@
 
 #include "ir3.h"
 #include "ir3_assembler.h"
-#include "ir3_compiler.h"
+#include "ir3_shader.h"
 
 /*
  * A test for delay-slot calculation.  Each test specifies ir3 assembly

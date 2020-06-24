@@ -30,7 +30,7 @@
 #include "util/bitset.h"
 
 #include "ir3.h"
-#include "ir3_compiler.h"
+#include "ir3_shader.h"
 #include "ir3_ra.h"
 
 

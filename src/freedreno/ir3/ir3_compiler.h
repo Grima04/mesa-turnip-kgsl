@@ -27,9 +27,10 @@
 #ifndef IR3_COMPILER_H_
 #define IR3_COMPILER_H_
 
-#include "ir3_shader.h"
+#include "ir3.h"
 
 struct ir3_ra_reg_set;
+struct ir3_shader;
 
 struct ir3_compiler {
 	struct fd_device *dev;

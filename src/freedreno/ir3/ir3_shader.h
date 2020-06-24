@@ -34,7 +34,7 @@
 #include "compiler/nir/nir.h"
 #include "util/bitscan.h"
 
-#include "ir3.h"
+#include "ir3_compiler.h"
 
 struct glsl_type;
 
