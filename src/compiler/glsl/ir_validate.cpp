@@ -35,6 +35,7 @@
 
 #include "ir.h"
 #include "ir_hierarchical_visitor.h"
+#include "util/debug.h"
 #include "util/hash_table.h"
 #include "util/macros.h"
 #include "util/set.h"
@@ -1111,7 +1112,6 @@ ir_validate::validate_ir(ir_instruction *ir, void *data)
    _mesa_set_add(ir_set, ir);
 }
 
-#ifdef DEBUG
 static void
 check_node_type(ir_instruction *ir, void *data)
 {
@@ -1125,7 +1125,6 @@ check_node_type(ir_instruction *ir, void *data)
    if (value != NULL)
       assert(value->type != glsl_type::error_type);
 }
-#endif
 
 void
 validate_ir_tree(exec_list *instructions)
@@ -1134,7 +1133,10 @@ validate_ir_tree(exec_list *instructions)
     * and it's half composed of assert()s anyway which wouldn't do
     * anything.
     */
-#ifdef DEBUG
+#ifndef DEBUG
+   if (!env_var_as_boolean("GLSL_VALIDATE", false))
+      return;
+#endif
    ir_validate v;
 
    v.run(instructions);
@@ -1142,5 +1144,4 @@ validate_ir_tree(exec_list *instructions)
    foreach_in_list(ir_instruction, ir, instructions) {
       visit_tree(ir, check_node_type, NULL);
    }
-#endif
 }
