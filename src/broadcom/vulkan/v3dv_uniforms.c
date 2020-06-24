@@ -234,15 +234,19 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
    assert(image_view);
 
    switch(contents) {
+   case QUNIFORM_IMAGE_WIDTH:
    case QUNIFORM_TEXTURE_WIDTH:
       /* We don't u_minify the values, as we are using the image_view
        * extents
        */
       return image_view->extent.width;
+   case QUNIFORM_IMAGE_HEIGHT:
    case QUNIFORM_TEXTURE_HEIGHT:
       return image_view->extent.height;
+   case QUNIFORM_IMAGE_DEPTH:
    case QUNIFORM_TEXTURE_DEPTH:
       return image_view->extent.depth;
+   case QUNIFORM_IMAGE_ARRAY_SIZE:
    case QUNIFORM_TEXTURE_ARRAY_SIZE:
       return image_view->last_layer - image_view->first_layer + 1;
    case QUNIFORM_TEXTURE_LEVELS:
@@ -315,6 +319,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
                                  uinfo->contents[i], data);
         break;
 
+      case QUNIFORM_IMAGE_TMU_CONFIG_P0:
       case QUNIFORM_TMU_CONFIG_P0:
          write_tmu_p0(cmd_buffer, pipeline, &uniforms, data);
          break;
@@ -323,6 +328,10 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
          write_tmu_p1(cmd_buffer, pipeline, &uniforms, data);
          break;
 
+      case QUNIFORM_IMAGE_WIDTH:
+      case QUNIFORM_IMAGE_HEIGHT:
+      case QUNIFORM_IMAGE_DEPTH:
+      case QUNIFORM_IMAGE_ARRAY_SIZE:
       case QUNIFORM_TEXTURE_WIDTH:
       case QUNIFORM_TEXTURE_HEIGHT:
       case QUNIFORM_TEXTURE_DEPTH:
