@@ -213,8 +213,6 @@ static void
 fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 {
 	struct fd_context *ctx = fd_context(pctx);
-	struct fd_batch *batch = fd_context_batch(ctx);
-	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
 	/* for debugging problems with indirect draw, it is convenient
 	 * to be able to emulate it, to determine if game is feeding us
@@ -260,12 +258,25 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		}
 	}
 
+	struct fd_batch *batch = NULL;
+	fd_batch_reference(&batch, fd_context_batch(ctx));
+
 	if (ctx->in_discard_blit) {
 		fd_batch_reset(batch);
 		fd_context_all_dirty(ctx);
 	}
 
 	batch_draw_tracking(batch, info);
+
+	if (unlikely(ctx->batch != batch)) {
+		/* The current batch was flushed in batch_draw_tracking()
+		 * so start anew.  We know this won't happen a second time
+		 * since we are dealing with a fresh batch:
+		 */
+		fd_batch_reference(&batch, fd_context_batch(ctx));
+		batch_draw_tracking(batch, info);
+		assert(ctx->batch == batch);
+	}
 
 	batch->blit = ctx->in_discard_blit;
 	batch->back_blit = ctx->in_shadow;
@@ -299,6 +310,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 	 */
 	fd_fence_ref(&ctx->last_fence, NULL);
 
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	DBG("%p: %ux%u num_draws=%u (%s/%s)", batch,
 		pfb->width, pfb->height, batch->num_draws,
 		util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
@@ -316,6 +328,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 		fd_context_all_dirty(ctx);
 
 	fd_batch_check_size(batch);
+	fd_batch_reference(&batch, NULL);
 
 	if (info == &new_info)
 		pipe_resource_reference(&indexbuf, NULL);
@@ -377,12 +390,13 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 		unsigned stencil)
 {
 	struct fd_context *ctx = fd_context(pctx);
-	struct fd_batch *batch = fd_context_batch(ctx);
-	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
 	/* TODO: push down the region versions into the tiles */
 	if (!fd_render_condition_check(pctx))
 		return;
+
+	struct fd_batch *batch = NULL;
+	fd_batch_reference(&batch, fd_context_batch(ctx));
 
 	if (ctx->in_discard_blit) {
 		fd_batch_reset(batch);
@@ -391,12 +405,23 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 
 	batch_clear_tracking(batch, buffers);
 
+	if (unlikely(ctx->batch != batch)) {
+		/* The current batch was flushed in batch_clear_tracking()
+		 * so start anew.  We know this won't happen a second time
+		 * since we are dealing with a fresh batch:
+		 */
+		fd_batch_reference(&batch, fd_context_batch(ctx));
+		batch_clear_tracking(batch, buffers);
+		assert(ctx->batch == batch);
+	}
+
 	/* Clearing last_fence must come after the batch dependency tracking
 	 * (resource_read()/resource_written()), as that can trigger a flush,
 	 * re-populating last_fence
 	 */
 	fd_fence_ref(&ctx->last_fence, NULL);
 
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	DBG("%p: %x %ux%u depth=%f, stencil=%u (%s/%s)", batch, buffers,
 		pfb->width, pfb->height, depth, stencil,
 		util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
@@ -423,6 +448,7 @@ fd_clear(struct pipe_context *pctx, unsigned buffers,
 	}
 
 	fd_batch_check_size(batch);
+	fd_batch_reference(&batch, NULL);
 }
 
 static void
