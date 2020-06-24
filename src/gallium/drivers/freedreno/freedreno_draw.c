@@ -430,7 +430,6 @@ fd_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 	struct fd_context *ctx = fd_context(pctx);
 	const struct fd_shaderbuf_stateobj *so = &ctx->shaderbuf[PIPE_SHADER_COMPUTE];
 	struct fd_batch *batch, *save_batch = NULL;
-	unsigned i;
 
 	batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
 	fd_batch_reference(&save_batch, ctx->batch);
