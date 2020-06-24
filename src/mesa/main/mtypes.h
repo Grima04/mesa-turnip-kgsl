@@ -3211,6 +3211,12 @@ struct gl_shader_compiler_options
    GLboolean LowerPrecisionDerivatives;
 
    /**
+    * This enables 16-bit phis in NIR, 16-bit loop counters, 16-bit indirect
+    * arrays, etc.
+    */
+   GLboolean LowerPrecisionTemporaries;
+
+   /**
     * \name Forms of indirect addressing the driver cannot do.
     */
    /*@{*/

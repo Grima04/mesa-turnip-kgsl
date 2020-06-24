@@ -1628,6 +1628,653 @@ TESTS = [
          }
          """,
          r'expression f16vec4 \+ \(expression f16vec4 f2fmp \(expression vec4 unpackSnorm4x8 \(var_ref val'),
+    Test("f32 csel",
+         """
+         #version 300 es
+         precision mediump float;
+
+         in vec4 var;
+         out vec4 color;
+
+         void main()
+         {
+                 color = (var.x > var.y) ? var : vec4(10.0);
+         }
+         """,
+         r'\(constant +f16vec4 \(10'),
+    Test("i32 csel",
+         """
+         #version 310 es
+         precision mediump int;
+
+         in flat ivec4 var;
+         out ivec4 color;
+
+         void main()
+         {
+                 color = (var.x > var.y) ? var : ivec4(10);
+         }
+         """,
+         r'\(constant +i16vec4 \(10'),
+    Test("u32 csel",
+         """
+         #version 310 es
+         precision mediump int;
+
+         in flat uvec4 var;
+         out uvec4 color;
+
+         void main()
+         {
+                 color = (var.x > var.y) ? var : uvec4(10);
+         }
+         """,
+         r'\(constant +u16vec4 \(10'),
+    Test("f32 loop counter",
+         """
+         #version 300 es
+         precision mediump float;
+
+         uniform float n, incr;
+         out float color;
+
+         void main()
+         {
+                 color = 0.0;
+                 for (float x = 0.0; x < n; x += incr)
+                    color += x;
+         }
+         """,
+         r'\(assign  \(x\) \(var_ref x\)  \(expression float16_t \+ \(var_ref x\) \(expression float16_t f2fmp \(var_ref incr'),
+    Test("i32 loop counter",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int n, incr;
+         out int color;
+
+         void main()
+         {
+                 color = 0;
+                 for (int x = 0; x < n; x += incr)
+                    color += x;
+         }
+         """,
+         r'\(assign  \(x\) \(var_ref x\)  \(expression int16_t \+ \(var_ref x\) \(expression int16_t i2imp \(var_ref incr'),
+    Test("u32 loop counter",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint n, incr;
+         out uint color;
+
+         void main()
+         {
+                 color = 0u;
+                 for (uint x = 0u; x < n; x += incr)
+                    color += x;
+         }
+         """,
+         r'\(assign  \(x\) \(var_ref x\)  \(expression uint16_t \+ \(var_ref x\) \(expression uint16_t u2ump \(var_ref incr'),
+    Test("f32 temp array",
+         """
+         #version 300 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         void main()
+         {
+                 float a[2] = float[2](x, y);
+                 if (x > 0.0)
+                     a[1] = 3.0;
+                 color = a[0] + a[1];
+         }
+         """,
+         r'\(constant float16_t \(3'),
+    Test("i32 temp array",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         void main()
+         {
+                 int a[2] = int[2](x, y);
+                 if (x > 0)
+                     a[1] = 3;
+                 color = a[0] + a[1];
+         }
+         """,
+         r'\(constant int16_t \(3'),
+    Test("u32 temp array",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         void main()
+         {
+                 uint a[2] = uint[2](x, y);
+                 if (x > 0u)
+                     a[1] = 3u;
+                 color = a[0] + a[1];
+         }
+         """,
+         r'\(constant uint16_t \(3'),
+    Test("f32 temp array of array",
+         """
+         #version 310 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         void main()
+         {
+                 float a[2][2] = float[2][2](float[2](x, y), float[2](x, y));
+                 if (x > 0.0)
+                     a[1][1] = 3.0;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant float16_t \(3'),
+    Test("i32 temp array of array",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         void main()
+         {
+                 int a[2][2] = int[2][2](int[2](x, y), int[2](x, y));
+                 if (x > 0)
+                     a[1][1] = 3;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant int16_t \(3'),
+    Test("u32 temp array of array",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         void main()
+         {
+                 uint a[2][2] = uint[2][2](uint[2](x, y), uint[2](x, y));
+                 if (x > 0u)
+                     a[1][1] = 3u;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant uint16_t \(3'),
+    Test("f32 temp array of array assigned from highp",
+         """
+         #version 310 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         void main()
+         {
+                 highp float b[2][2] = float[2][2](float[2](x, y), float[2](x, y));
+                 float a[2][2];
+                 a = b;
+                 if (x > 0.0)
+                     a[1][1] = 3.0;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant float16_t \(3'),
+    Test("i32 temp array of array assigned from highp",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         void main()
+         {
+                 highp int b[2][2] = int[2][2](int[2](x, y), int[2](x, y));
+                 int a[2][2];
+                 a = b;
+                 if (x > 0)
+                     a[1][1] = 3;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant int16_t \(3'),
+    Test("u32 temp array of array assigned from highp",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         void main()
+         {
+                 highp uint b[2][2] = uint[2][2](uint[2](x, y), uint[2](x, y));
+                 uint a[2][2];
+                 a = b;
+                 if (x > 0u)
+                     a[1][1] = 3u;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant uint16_t \(3'),
+    Test("f32 temp array of array assigned to highp",
+         """
+         #version 310 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         void main()
+         {
+                 float a[2][2] = float[2][2](float[2](x, y), float[2](x, y));
+                 highp float b[2][2];
+                 b = a;
+                 a = b;
+                 if (x > 0.0)
+                     a[1][1] = 3.0;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant float16_t \(3'),
+    Test("i32 temp array of array assigned to highp",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         void main()
+         {
+                 int a[2][2] = int[2][2](int[2](x, y), int[2](x, y));
+                 highp int b[2][2];
+                 b = a;
+                 a = b;
+                 if (x > 0)
+                     a[1][1] = 3;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant int16_t \(3'),
+    Test("u32 temp array of array assigned to highp",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         void main()
+         {
+                 uint a[2][2] = uint[2][2](uint[2](x, y), uint[2](x, y));
+                 highp uint b[2][2];
+                 b = a;
+                 a = b;
+                 if (x > 0u)
+                     a[1][1] = 3u;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant uint16_t \(3'),
+    Test("f32 temp array of array returned by function",
+         """
+         #version 310 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         float[2][2] f(void)
+         {
+            return float[2][2](float[2](x, y), float[2](x, y));
+         }
+
+         void main()
+         {
+                 float a[2][2] = f();
+                 if (x > 0.0)
+                     a[1][1] = 3.0;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant float16_t \(3'),
+    Test("i32 temp array of array returned by function",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         int[2][2] f(void)
+         {
+            return int[2][2](int[2](x, y), int[2](x, y));
+         }
+
+         void main()
+         {
+                 int a[2][2] = f();
+                 if (x > 0)
+                     a[1][1] = 3;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant int16_t \(3'),
+    Test("u32 temp array of array returned by function",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         uint[2][2] f(void)
+         {
+            return uint[2][2](uint[2](x, y), uint[2](x, y));
+         }
+
+         void main()
+         {
+                 uint a[2][2] = f();
+                 if (x > 0u)
+                     a[1][1] = 3u;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant uint16_t \(3'),
+    Test("f32 temp array of array as function out",
+         """
+         #version 310 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         void f(out float[2][2] v)
+         {
+            v = float[2][2](float[2](x, y), float[2](x, y));
+         }
+
+         void main()
+         {
+                 float a[2][2];
+                 f(a);
+                 if (x > 0.0)
+                     a[1][1] = 3.0;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant float16_t \(3'),
+    Test("i32 temp array of array as function out",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         void f(out int[2][2] v)
+         {
+            v = int[2][2](int[2](x, y), int[2](x, y));
+         }
+
+         void main()
+         {
+                 int a[2][2];
+                 f(a);
+                 if (x > 0)
+                     a[1][1] = 3;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant int16_t \(3'),
+    Test("u32 temp array of array as function out",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         void f(out uint[2][2] v)
+         {
+            v = uint[2][2](uint[2](x, y), uint[2](x, y));
+         }
+
+         void main()
+         {
+                 uint a[2][2];
+                 f(a);
+                 if (x > 0u)
+                     a[1][1] = 3u;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant uint16_t \(3'),
+    Test("f32 temp array of array as function in",
+         """
+         #version 310 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         float[2][2] f(in float[2][2] v)
+         {
+            float t[2][2] = v;
+            return t;
+         }
+
+         void main()
+         {
+                 float a[2][2];
+                 a = f(a);
+                 if (x > 0.0)
+                     a[1][1] = 3.0;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant float16_t \(3'),
+    Test("i32 temp array of array as function in",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         int[2][2] f(in int[2][2] v)
+         {
+            int t[2][2] = v;
+            return t;
+         }
+
+         void main()
+         {
+                 int a[2][2];
+                 a = f(a);
+                 if (x > 0)
+                     a[1][1] = 3;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant int16_t \(3'),
+    Test("u32 temp array of array as function in",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         uint[2][2] f(in uint[2][2] v)
+         {
+            uint t[2][2] = v;
+            return t;
+         }
+
+         void main()
+         {
+                 uint a[2][2];
+                 a = f(a);
+                 if (x > 0u)
+                     a[1][1] = 3u;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant uint16_t \(3'),
+    Test("f32 temp array of array as function inout",
+         """
+         #version 310 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         void f(inout float[2][2] v)
+         {
+            float t[2][2] = v;
+            v = t;
+         }
+
+         void main()
+         {
+                 float a[2][2];
+                 f(a);
+                 if (x > 0.0)
+                     a[1][1] = 3.0;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant float16_t \(3'),
+    Test("i32 temp array of array as function inout",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         void f(inout int[2][2] v)
+         {
+            int t[2][2] = v;
+            v = t;
+         }
+
+         void main()
+         {
+                 int a[2][2];
+                 f(a);
+                 if (x > 0)
+                     a[1][1] = 3;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant int16_t \(3'),
+    Test("u32 temp array of array as function inout",
+         """
+         #version 310 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         void f(inout uint[2][2] v)
+         {
+            uint t[2][2] = v;
+            v = t;
+         }
+
+         void main()
+         {
+                 uint a[2][2];
+                 f(a);
+                 if (x > 0u)
+                     a[1][1] = 3u;
+                 color = a[0][0] + a[1][1];
+         }
+         """,
+         r'\(constant uint16_t \(3'),
+    Test("f32 temp struct (not lowered in the presence of control flow - TODO)",
+         """
+         #version 300 es
+         precision mediump float;
+
+         uniform float x,y;
+         out float color;
+
+         void main()
+         {
+                 struct { float x,y; } s;
+                 s.x = x;
+                 s.y = y;
+                 if (x > 0.0)
+                     s.y = 3.0;
+                 color = s.x + s.y;
+         }
+         """,
+         r'\(constant float \(3'), # should be float16_t
+    Test("i32 temp struct (not lowered in the presence of control flow - TODO)",
+         """
+         #version 300 es
+         precision mediump int;
+
+         uniform int x,y;
+         out int color;
+
+         void main()
+         {
+                 struct { int x,y; } s;
+                 s.x = x;
+                 s.y = y;
+                 if (x > 0)
+                     s.y = 3;
+                 color = s.x + s.y;
+         }
+         """,
+         r'\(constant int \(3'), # should be int16_t
+    Test("u32 temp struct (not lowered in the presence of control flow - TODO)",
+         """
+         #version 300 es
+         precision mediump int;
+
+         uniform uint x,y;
+         out uint color;
+
+         void main()
+         {
+                 struct { uint x,y; } s;
+                 s.x = x;
+                 s.y = y;
+                 if (x > 0u)
+                     s.y = 3u;
+                 color = s.x + s.y;
+         }
+         """,
+         r'\(constant uint \(3'), # should be uint16_t
 ]
 
 
