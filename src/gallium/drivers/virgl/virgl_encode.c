@@ -338,13 +338,19 @@ int virgl_encode_blend_state(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, tmp);
 
    for (i = 0; i < VIRGL_MAX_COLOR_BUFS; i++) {
+      /* We use alpha src factor to pass the advanced blend equation value
+       * to the host. By doing so, we don't have to change the protocol.
+       */
+      uint32_t alpha = (i == 0 && blend_state->advanced_blend_func)
+                        ? blend_state->advanced_blend_func
+                        : blend_state->rt[i].alpha_src_factor;
       tmp =
          VIRGL_OBJ_BLEND_S2_RT_BLEND_ENABLE(blend_state->rt[i].blend_enable) |
          VIRGL_OBJ_BLEND_S2_RT_RGB_FUNC(blend_state->rt[i].rgb_func) |
          VIRGL_OBJ_BLEND_S2_RT_RGB_SRC_FACTOR(blend_state->rt[i].rgb_src_factor) |
          VIRGL_OBJ_BLEND_S2_RT_RGB_DST_FACTOR(blend_state->rt[i].rgb_dst_factor)|
          VIRGL_OBJ_BLEND_S2_RT_ALPHA_FUNC(blend_state->rt[i].alpha_func) |
-         VIRGL_OBJ_BLEND_S2_RT_ALPHA_SRC_FACTOR(blend_state->rt[i].alpha_src_factor) |
+         VIRGL_OBJ_BLEND_S2_RT_ALPHA_SRC_FACTOR(alpha) |
          VIRGL_OBJ_BLEND_S2_RT_ALPHA_DST_FACTOR(blend_state->rt[i].alpha_dst_factor) |
          VIRGL_OBJ_BLEND_S2_RT_COLORMASK(blend_state->rt[i].colormask);
       virgl_encoder_write_dword(ctx->cbuf, tmp);

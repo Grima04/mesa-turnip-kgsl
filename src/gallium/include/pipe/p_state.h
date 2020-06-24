@@ -365,6 +365,7 @@ struct pipe_blend_state
    unsigned alpha_to_coverage_dither:1;
    unsigned alpha_to_one:1;
    unsigned max_rt:3;            /* index of max rt, Ie. # of cbufs minus 1 */
+   unsigned advanced_blend_func:4;
    struct pipe_rt_blend_state rt[PIPE_MAX_COLOR_BUFS];
 };
 

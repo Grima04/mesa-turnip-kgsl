@@ -218,6 +218,10 @@ st_update_blend( struct st_context *st )
       blend->logicop_func = ctx->Color._LogicOp;
    }
    else if (ctx->Color.BlendEnabled &&
+            ctx->Color._AdvancedBlendMode != BLEND_NONE) {
+      blend->advanced_blend_func = ctx->Color._AdvancedBlendMode;
+   }
+   else if (ctx->Color.BlendEnabled &&
             ctx->Color._AdvancedBlendMode == BLEND_NONE) {
       /* blending enabled */
       for (i = 0, j = 0; i < num_state; i++) {
