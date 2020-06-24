@@ -69,11 +69,13 @@ public:
    virtual ir_visitor_status visit_enter(ir_function *ir);
    virtual ir_visitor_status visit_leave(ir_function *ir);
    virtual ir_visitor_status visit_enter(ir_function_signature *ir);
+   virtual ir_visitor_status visit_enter(ir_return *ir);
 
    virtual ir_visitor_status visit_leave(ir_expression *ir);
    virtual ir_visitor_status visit_leave(ir_swizzle *ir);
 
    virtual ir_visitor_status visit_enter(class ir_dereference_array *);
+   virtual ir_visitor_status visit_enter(class ir_dereference_record *);
 
    virtual ir_visitor_status visit_enter(ir_assignment *ir);
    virtual ir_visitor_status visit_enter(ir_call *ir);
@@ -93,6 +95,13 @@ ir_validate::visit(ir_dereference_variable *ir)
    if ((ir->var == NULL) || (ir->var->as_variable() == NULL)) {
       printf("ir_dereference_variable @ %p does not specify a variable %p\n",
 	     (void *) ir, (void *) ir->var);
+      abort();
+   }
+
+   if (ir->var->type != ir->type) {
+      printf("ir_dereference_variable type is not equal to variable type: ");
+      ir->print();
+      printf("\n");
       abort();
    }
 
@@ -121,6 +130,21 @@ ir_validate::visit_enter(class ir_dereference_array *ir)
       abort();
    }
 
+   if (ir->array->type->is_array()) {
+      if (ir->array->type->fields.array != ir->type) {
+         printf("ir_dereference_array type is not equal to the array "
+                "element type: ");
+         ir->print();
+         printf("\n");
+         abort();
+      }
+   } else if (ir->array->type->base_type != ir->type->base_type) {
+      printf("ir_dereference_array base types are not equal: ");
+      ir->print();
+      printf("\n");
+      abort();
+   }
+
    if (!ir->array_index->type->is_scalar()) {
       printf("ir_dereference_array @ %p does not have scalar index: %s\n",
              (void *) ir, ir->array_index->type->name);
@@ -130,6 +154,28 @@ ir_validate::visit_enter(class ir_dereference_array *ir)
    if (!ir->array_index->type->is_integer_16_32()) {
       printf("ir_dereference_array @ %p does not have integer index: %s\n",
              (void *) ir, ir->array_index->type->name);
+      abort();
+   }
+
+   return visit_continue;
+}
+
+ir_visitor_status
+ir_validate::visit_enter(class ir_dereference_record *ir)
+{
+   if (!ir->record->type->is_struct() && !ir->record->type->is_interface()) {
+      printf("ir_dereference_record @ %p does not specify a record\n",
+             (void *) ir);
+      ir->print();
+      printf("\n");
+      abort();
+   }
+
+   if (ir->record->type->fields.structure[ir->field_idx].type != ir->type) {
+      printf("ir_dereference_record type is not equal to the record "
+             "field type: ");
+      ir->print();
+      printf("\n");
       abort();
    }
 
@@ -230,6 +276,17 @@ ir_validate::visit_enter(ir_function_signature *ir)
    }
 
    this->validate_ir(ir, this->data_enter);
+
+   return visit_continue;
+}
+
+ir_visitor_status
+ir_validate::visit_enter(ir_return *ir)
+{
+   if (!this->current_function) {
+      printf("Return statement outside of a function\n");
+      abort();
+   }
 
    return visit_continue;
 }
@@ -1030,6 +1087,15 @@ ir_validate::visit_enter(ir_assignment *ir)
 	 ir->print();
 	 abort();
       }
+   }
+
+   if (lhs->type->base_type != ir->rhs->type->base_type) {
+      printf("Assignment LHS and RHS base types are different:\n");
+      lhs->print();
+      printf("\n");
+      ir->rhs->print();
+      printf("\n");
+      abort();
    }
 
    this->validate_ir(ir, this->data_enter);
