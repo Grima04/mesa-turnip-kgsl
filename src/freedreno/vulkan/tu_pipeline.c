@@ -1401,6 +1401,7 @@ tu6_emit_vertex_input(struct tu_cs *cs,
 {
    uint32_t vfd_decode_idx = 0;
    uint32_t binding_instanced = 0; /* bitmask of instanced bindings */
+   uint32_t step_rate[MAX_VBS];
 
    for (uint32_t i = 0; i < info->vertexBindingDescriptionCount; i++) {
       const VkVertexInputBindingDescription *binding =
@@ -1413,6 +1414,17 @@ tu6_emit_vertex_input(struct tu_cs *cs,
          binding_instanced |= 1 << binding->binding;
 
       *bindings_used |= 1 << binding->binding;
+      step_rate[binding->binding] = 1;
+   }
+
+   const VkPipelineVertexInputDivisorStateCreateInfoEXT *div_state =
+      vk_find_struct_const(info->pNext, PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
+   if (div_state) {
+      for (uint32_t i = 0; i < div_state->vertexBindingDivisorCount; i++) {
+         const VkVertexInputBindingDivisorDescriptionEXT *desc =
+            &div_state->pVertexBindingDivisors[i];
+         step_rate[desc->binding] = desc->divisor;
+      }
    }
 
    /* TODO: emit all VFD_DECODE/VFD_DEST_CNTL in same (two) pkt4 */
@@ -1421,6 +1433,8 @@ tu6_emit_vertex_input(struct tu_cs *cs,
       const VkVertexInputAttributeDescription *attr =
          &info->pVertexAttributeDescriptions[i];
       uint32_t input_idx;
+
+      assert(*bindings_used & BIT(attr->binding));
 
       for (input_idx = 0; input_idx < vs->inputs_count; input_idx++) {
          if ((vs->inputs[input_idx].slot - VERT_ATTRIB_GENERIC0) == attr->location)
@@ -1441,7 +1455,7 @@ tu6_emit_vertex_input(struct tu_cs *cs,
                         .swap = format.swap,
                         .unk30 = 1,
                         ._float = !vk_format_is_int(attr->format)),
-                      A6XX_VFD_DECODE_STEP_RATE(vfd_decode_idx, 1));
+                      A6XX_VFD_DECODE_STEP_RATE(vfd_decode_idx, step_rate[attr->binding]));
 
       tu_cs_emit_regs(cs,
                       A6XX_VFD_DEST_CNTL_INSTR(vfd_decode_idx,

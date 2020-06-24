@@ -80,6 +80,7 @@ EXTENSIONS = [
     Extension('VK_IMG_filter_cubic',                      1, 'device->gpu_id == 650'),
     Extension('VK_EXT_filter_cubic',                      1, 'device->gpu_id == 650'),
     Extension('VK_EXT_index_type_uint8',                  1, True),
+    Extension('VK_EXT_vertex_attribute_divisor',          1, True),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)
