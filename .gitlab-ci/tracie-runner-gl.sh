@@ -25,6 +25,9 @@ export EGL_PLATFORM="surfaceless"
 export DISPLAY=
 export WAFFLE_PLATFORM="surfaceless_egl"
 
+# Our rootfs may not have "less", which apitrace uses during apitrace dump
+export PAGER=cat
+
 RESULTS=`pwd`/results
 mkdir -p $RESULTS
 
