@@ -322,23 +322,11 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 }
 
 static void
-fd_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor_state *scissor_state,
-		const union pipe_color_union *color, double depth, unsigned stencil)
+batch_clear_tracking(struct fd_batch *batch, unsigned buffers)
 {
-	struct fd_context *ctx = fd_context(pctx);
-	struct fd_batch *batch = fd_context_batch(ctx);
+	struct fd_context *ctx = batch->ctx;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	unsigned cleared_buffers;
-	int i;
-
-	/* TODO: push down the region versions into the tiles */
-	if (!fd_render_condition_check(pctx))
-		return;
-
-	if (ctx->in_discard_blit) {
-		fd_batch_reset(batch);
-		fd_context_all_dirty(ctx);
-	}
 
 	/* pctx->clear() is only for full-surface clears, so scissor is
 	 * equivalent to having GL_SCISSOR_TEST disabled:
@@ -365,7 +353,7 @@ fd_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor_
 	fd_screen_lock(ctx->screen);
 
 	if (buffers & PIPE_CLEAR_COLOR)
-		for (i = 0; i < pfb->nr_cbufs; i++)
+		for (unsigned i = 0; i < pfb->nr_cbufs; i++)
 			if (buffers & (PIPE_CLEAR_COLOR0 << i))
 				resource_written(batch, pfb->cbufs[i]->texture);
 
@@ -380,6 +368,28 @@ fd_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor_
 		resource_written(batch, aq->prsc);
 
 	fd_screen_unlock(ctx->screen);
+}
+
+static void
+fd_clear(struct pipe_context *pctx, unsigned buffers,
+		const struct pipe_scissor_state *scissor_state,
+		const union pipe_color_union *color, double depth,
+		unsigned stencil)
+{
+	struct fd_context *ctx = fd_context(pctx);
+	struct fd_batch *batch = fd_context_batch(ctx);
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+
+	/* TODO: push down the region versions into the tiles */
+	if (!fd_render_condition_check(pctx))
+		return;
+
+	if (ctx->in_discard_blit) {
+		fd_batch_reset(batch);
+		fd_context_all_dirty(ctx);
+	}
+
+	batch_clear_tracking(batch, buffers);
 
 	/* Clearing last_fence must come after the batch dependency tracking
 	 * (resource_read()/resource_written()), as that can trigger a flush,
