@@ -136,8 +136,11 @@ Temp emit_mbcnt(isel_context *ctx, Definition dst,
 
    if (ctx->program->wave_size == 32) {
       return thread_id_lo;
+   } else if (ctx->program->chip_class <= GFX7) {
+      Temp thread_id_hi = bld.vop2(aco_opcode::v_mbcnt_hi_u32_b32, dst, mask_hi, thread_id_lo);
+      return thread_id_hi;
    } else {
-      Temp thread_id_hi = bld.vop3(aco_opcode::v_mbcnt_hi_u32_b32, dst, mask_hi, thread_id_lo);
+      Temp thread_id_hi = bld.vop3(aco_opcode::v_mbcnt_hi_u32_b32_e64, dst, mask_hi, thread_id_lo);
       return thread_id_hi;
    }
 }
