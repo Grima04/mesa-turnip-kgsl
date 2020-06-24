@@ -1919,6 +1919,7 @@ static VkResult
 tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
                                     struct tu_pipeline *pipeline)
 {
+   const struct ir3_compiler *compiler = builder->device->compiler;
    const VkPipelineShaderStageCreateInfo *stage_infos[MESA_SHADER_STAGES] = {
       NULL
    };
@@ -1956,8 +1957,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
    pipeline->tess.patch_type = key.tessellation;
 
-   for (gl_shader_stage stage = MESA_SHADER_STAGES - 1;
-        stage > MESA_SHADER_NONE; stage--) {
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
+        stage < MESA_SHADER_STAGES; stage++) {
       if (!builder->shaders[stage])
          continue;
       
@@ -1969,6 +1970,25 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
          return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
+   uint32_t safe_constlens = ir3_trim_constlen(builder->variants, compiler);
+
+   key.safe_constlen = true;
+
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
+        stage < MESA_SHADER_STAGES; stage++) {
+      if (!builder->shaders[stage])
+         continue;
+
+      if (safe_constlens & (1 << stage)) {
+         bool created;
+         builder->variants[stage] =
+            ir3_shader_get_variant(builder->shaders[stage]->ir3_shader,
+                                   &key, false, &created);
+         if (!builder->variants[stage])
+            return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
+   }
+
    const struct tu_shader *vs = builder->shaders[MESA_SHADER_VERTEX];
    struct ir3_shader_variant *variant;
 
@@ -1976,6 +1996,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       variant = builder->variants[MESA_SHADER_VERTEX];
    } else {
       bool created;
+      key.safe_constlen = !!(safe_constlens & (1 << MESA_SHADER_VERTEX));
       variant = ir3_shader_get_variant(vs->ir3_shader, &key,
                                        true, &created);
       if (!variant)
