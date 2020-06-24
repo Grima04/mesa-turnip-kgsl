@@ -60,7 +60,7 @@ nir_can_move_instr(nir_instr *instr, nir_move_options options)
    }
 
    if ((options & nir_move_copies) && instr->type == nir_instr_type_alu &&
-       nir_instr_as_alu(instr)->op == nir_op_mov) {
+       nir_op_is_vec(nir_instr_as_alu(instr)->op)) {
       return true;
    }
 
