@@ -4197,7 +4197,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 					       RADV_CMD_FLAG_START_PIPELINE_STATS, 0);
 		}
 
-		if (!queue->device->ws->cs_finalize(cs))
+		if (queue->device->ws->cs_finalize(cs) != VK_SUCCESS)
 			goto fail;
 	}
 
