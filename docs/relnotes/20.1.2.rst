@@ -46,47 +46,59 @@ Changes
 -------
 
 Bas Nieuwenhuizen (3):
+
 - vulkan/wsi/x11: Ensure we create at least minImageCount images.
 - radv/winsys: Deal with realloc failures in BO lists.
 - radv: Handle mmap failures.
 
 Daniel Schürmann (1):
+
 - aco: fix WQM handling in nested loops
 
 Danylo Piliaiev (1):
+
 - st/mesa: account for "loose", per-mipmap level textures in CopyImageSubData
 
 Eric Anholt (2):
+
 - freedreno/ir3: Fix register allocation assertion failures.
 - freedreno/ir3: Fix register allocation assertion failures.
 
 Eric Engestrom (3):
+
 - docs/relnotes: add sha256 sums to 20.1.0
 - .pick_status.json: Update to 4fc0499049fcdb7f892f99ce7abf9d739730138e
 - v3d: add missing unlock() in error path
 
 Erik Faye-Lund (3):
+
 - Revert "gallium/hud: don't use user vertex buffers"
 - gallium/hud: don't use user vertex buffers
 - mesa/main: fix inverted condition
 
 Gert Wollny (1):
+
 - r600/sfn: Don't set num_components on TESS sysvalue intrinsics
 
 Jan Beich (2):
+
 - util: enable futex usage on BSDs after 7dc2f4788288
 - meson: unbreak sysctl.h detection on BSDs
 
 Jose Maria Casanova Crespo (1):
+
 - nir: only uniforms with dynamically_uniform offset are dynamically_uniform
 
 Kristian Høgsberg (1):
+
 - freedreno: Handle DRM_FORMAT_MOD_INVALID in shared code
 
 Krzysztof Raszkowski (1):
+
 - gallium/swr: Fix building swr with MSVC
 
 Marek Olšák (7):
+
 - ac/surface: don't recompute the DCC retile map for imported textures
 - amd/addrlib: don't recompute DCC info for every ComputeDccAddrFromCoord call
 - amd/addrlib: remove unused members of ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT
@@ -96,21 +108,26 @@ Marek Olšák (7):
 - ac/nir: fix 64-bit division for GL CTS
 
 Mario Kleiner (1):
+
 - vulkan/wsi: Really terminate DRM lease in wsi_release_display().
 
 Pierre-Eric Pelloux-Prayer (1):
+
 - st/mesa: make texture views inherit compressed_data storage
 
 Rhys Perry (3):
+
 - radv: add new drirc option radv_no_dynamic_bounds
 - radv: enable radv_no_dynamic_bounds for Path of Exile
 - radv: enable radv_no_dynamic_bounds for more Path of Exile executables
 
 Samuel Pitoiset (3):
+
 - radv: set DB_SHADER_CONTROL.CONSERVATIVE_Z_EXPORT correctly
 - spirv: fix using OpSampledImage with OpUndef instead of OpType{Image,Sampler}
 - radv: lower discards to demote to workaround a RDR2 game bug
 
 Timothy Arceri (2):
+
 - glsl: fix incorrect optimisation in opt_constant_variable()
 - st_glsl_to_nir: fix potential use after free
