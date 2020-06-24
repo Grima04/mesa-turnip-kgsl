@@ -2843,7 +2843,8 @@ set_blend_entry_bits(struct brw_context *brw, BLEND_ENTRY_GENXML *entry, int i,
          entry->LogicOpEnable = true;
          entry->LogicOpFunction = ctx->Color._LogicOp;
       }
-   } else if (blend_enabled && !ctx->Color._AdvancedBlendMode
+   } else if (blend_enabled &&
+              ctx->Color._AdvancedBlendMode == BLEND_NONE
               && (GEN_GEN <= 5 || !integer)) {
       GLenum eqRGB = ctx->Color.Blend[i].EquationRGB;
       GLenum eqA = ctx->Color.Blend[i].EquationA;

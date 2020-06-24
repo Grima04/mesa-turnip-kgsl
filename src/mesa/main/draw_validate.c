@@ -60,7 +60,8 @@ check_blend_func_error(struct gl_context *ctx)
       }
    }
 
-   if (ctx->Color.BlendEnabled && ctx->Color._AdvancedBlendMode) {
+   if (ctx->Color.BlendEnabled &&
+       ctx->Color._AdvancedBlendMode != BLEND_NONE) {
       /* The KHR_blend_equation_advanced spec says:
        *
        *    "If any non-NONE draw buffer uses a blend equation found in table
