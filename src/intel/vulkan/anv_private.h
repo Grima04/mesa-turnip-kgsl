@@ -1036,8 +1036,11 @@ struct anv_memory_heap {
    VkDeviceSize      size;
    VkMemoryHeapFlags flags;
 
-   /* Driver-internal book-keeping */
-   VkDeviceSize      used;
+   /** Driver-internal book-keeping.
+    *
+    * Align it to 64 bits to make atomic operations faster on 32 bit platforms.
+    */
+   VkDeviceSize      used __attribute__ ((aligned (8)));
 };
 
 struct anv_physical_device {
