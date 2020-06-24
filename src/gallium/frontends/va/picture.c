@@ -109,8 +109,10 @@ static VAStatus
 handlePictureParameterBuffer(vlVaDriver *drv, vlVaContext *context, vlVaBuffer *buf)
 {
    VAStatus vaStatus = VA_STATUS_SUCCESS;
+   enum pipe_video_format format =
+      u_reduce_video_profile(context->templat.profile);
 
-   switch (u_reduce_video_profile(context->templat.profile)) {
+   switch (format) {
    case PIPE_VIDEO_FORMAT_MPEG12:
       vlVaHandlePictureParameterBufferMPEG12(drv, context, buf);
       break;
@@ -145,9 +147,6 @@ handlePictureParameterBuffer(vlVaDriver *drv, vlVaContext *context, vlVaBuffer *
 
    /* Create the decoder once max_references is known. */
    if (!context->decoder) {
-      enum pipe_video_format format =
-         u_reduce_video_profile(context->templat.profile);
-
       if (!context->target)
          return VA_STATUS_ERROR_INVALID_CONTEXT;
 
@@ -166,6 +165,13 @@ handlePictureParameterBuffer(vlVaDriver *drv, vlVaContext *context, vlVaBuffer *
          return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
       context->needs_begin_frame = true;
+   }
+
+   if (format == PIPE_VIDEO_FORMAT_VP9) {
+      context->decoder->width =
+         context->desc.vp9.picture_parameter.frame_width;
+      context->decoder->height =
+         context->desc.vp9.picture_parameter.frame_height;
    }
 
    return vaStatus;

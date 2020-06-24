@@ -81,8 +81,12 @@ void vlVaHandlePictureParameterBufferVP9(vlVaDriver *drv, vlVaContext *context, 
 
    context->desc.vp9.picture_parameter.bit_depth = vp9->bit_depth;
 
-   for (i = 0 ; i < NUM_VP9_REFS ; i++)
-      vlVaGetReferenceFrame(drv, vp9->reference_frames[i], &context->desc.vp9.ref[i]);
+   for (i = 0 ; i < NUM_VP9_REFS ; i++) {
+      if (vp9->pic_fields.bits.frame_type == 0)
+         context->desc.vp9.ref[i] = NULL;
+      else
+         vlVaGetReferenceFrame(drv, vp9->reference_frames[i], &context->desc.vp9.ref[i]);
+   }
 
    if (!context->decoder && !context->templat.max_references)
       context->templat.max_references = NUM_VP9_REFS;
