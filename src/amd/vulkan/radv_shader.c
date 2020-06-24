@@ -478,6 +478,14 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		nir_lower_doubles_options lower_doubles =
 			nir->options->lower_doubles_options;
 
+		if (device->physical_device->rad_info.chip_class == GFX6) {
+			/* GFX6 doesn't support v_floor_f64 and the precision
+			 * of v_fract_f64 which is used to implement 64-bit
+			 * floor is less than what Vulkan requires.
+			 */
+			lower_doubles |= nir_lower_dfloor;
+		}
+
 		NIR_PASS_V(nir, nir_lower_doubles, NULL, lower_doubles);
 	}
 

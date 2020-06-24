@@ -1,7 +1,3 @@
-dEQP-VK.glsl.builtin.precision_double.floor.compute.scalar
-dEQP-VK.glsl.builtin.precision_double.floor.compute.vec2
-dEQP-VK.glsl.builtin.precision_double.floor.compute.vec3
-dEQP-VK.glsl.builtin.precision_double.floor.compute.vec4
 dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_local.image.guard_nonlocal.workgroup.comp
 dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.image.guard_nonlocal.workgroup.comp
 dEQP-VK.pipeline.depth.format.d16_unorm.compare_ops.never_zerodepthbounds_depthdisabled_stencilenabled

@@ -979,7 +979,8 @@ Temp emit_floor_f64(isel_context *ctx, Builder& bld, Definition dst, Temp val)
    if (ctx->options->chip_class >= GFX7)
       return bld.vop1(aco_opcode::v_floor_f64, Definition(dst), val);
 
-   /* GFX6 doesn't support V_FLOOR_F64, lower it. */
+   /* GFX6 doesn't support V_FLOOR_F64, lower it (note that it's actually
+    * lowered at NIR level for precision reasons). */
    Temp src0 = as_vgpr(ctx, val);
 
    Temp mask = bld.copy(bld.def(s1), Operand(3u)); /* isnan */
