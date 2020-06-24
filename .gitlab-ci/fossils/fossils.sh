@@ -64,7 +64,7 @@ create_clean_git
 for fossil in $(query_fossils_yaml fossils)
 do
     fetch_fossil "$fossil" || exit $?
-    fossilize-replay $fossil || exit $?
+    fossilize-replay --num-threads 4 $fossil || exit $?
     rm $fossil
 done
 
