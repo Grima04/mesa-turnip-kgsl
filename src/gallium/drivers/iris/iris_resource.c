@@ -1789,13 +1789,12 @@ iris_transfer_map(struct pipe_context *ctx,
    }
 
    bool need_resolve = false;
-   bool need_color_resolve = false;
 
    if (resource->target != PIPE_BUFFER) {
       bool need_hiz_resolve = iris_resource_level_has_hiz(res, level);
       bool need_stencil_resolve = res->aux.usage == ISL_AUX_USAGE_STC_CCS;
 
-      need_color_resolve =
+      bool need_color_resolve =
          (res->aux.usage == ISL_AUX_USAGE_CCS_D ||
           res->aux.usage == ISL_AUX_USAGE_CCS_E ||
           res->aux.usage == ISL_AUX_USAGE_GEN12_CCS_E) &&
@@ -1856,13 +1855,15 @@ iris_transfer_map(struct pipe_context *ctx,
     * read from the original buffer, we'd simply copy it to a temporary...
     * then stall (a bit longer) to read from that buffer.
     *
-    * Images are less clear-cut.  Color resolves are destructive, removing
-    * the underlying compression, so we'd rather blit the data to a linear
+    * Images are less clear-cut.  Resolves can be destructive, removing some
+    * of the underlying compression, so we'd rather blit the data to a linear
     * temporary and map that, to avoid the resolve.  (It might be better to
     * a tiled temporary and use the tiled_memcpy paths...)
     */
-   if (!(usage & PIPE_TRANSFER_DISCARD_RANGE) && !need_color_resolve)
+   if (!(usage & PIPE_TRANSFER_DISCARD_RANGE) &&
+       !iris_has_invalid_primary(res, level, 1, box->z, box->depth)) {
       no_gpu = true;
+   }
 
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
    if (fmtl->txc == ISL_TXC_ASTC)
