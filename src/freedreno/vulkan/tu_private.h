@@ -815,6 +815,8 @@ struct tu_cmd_state
    struct tu_cs_entry desc_sets_ib, desc_sets_load_ib;
    struct tu_cs_entry ia_gmem_ib, ia_sysmem_ib;
 
+   struct tu_draw_state vs_params;
+
    /* Index buffer */
    uint64_t index_va;
    uint32_t max_index_count;

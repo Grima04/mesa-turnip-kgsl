@@ -919,6 +919,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AB00, 0x5);
    tu_cs_emit_write_reg(cs, REG_A6XX_VPC_GS_SIV_CNTL, 0x0000ffff);
 
+   /* TODO: set A6XX_VFD_ADD_OFFSET_INSTANCE and fix ir3 to avoid adding base instance */
    tu_cs_emit_write_reg(cs, REG_A6XX_VFD_ADD_OFFSET, A6XX_VFD_ADD_OFFSET_VERTEX);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8811, 0x00000010);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL, 0x1f);
@@ -2973,46 +2974,6 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    return tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
 }
 
-static VkResult
-tu6_emit_vs_params(struct tu_cmd_buffer *cmd,
-                   uint32_t first_instance,
-                   struct tu_cs_entry *entry)
-{
-   /* TODO: fill out more than just base instance */
-   const struct tu_program_descriptor_linkage *link =
-      &cmd->state.pipeline->program.link[MESA_SHADER_VERTEX];
-   const struct ir3_const_state *const_state = &link->const_state;
-   struct tu_cs cs;
-
-   if (const_state->offsets.driver_param >= link->constlen) {
-      *entry = (struct tu_cs_entry) {};
-      return VK_SUCCESS;
-   }
-
-   VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 8, &cs);
-   if (result != VK_SUCCESS)
-      return result;
-
-   tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
-   tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(const_state->offsets.driver_param) |
-         CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-         CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-         CP_LOAD_STATE6_0_STATE_BLOCK(SB6_VS_SHADER) |
-         CP_LOAD_STATE6_0_NUM_UNIT(1));
-   tu_cs_emit(&cs, 0);
-   tu_cs_emit(&cs, 0);
-
-   STATIC_ASSERT(IR3_DP_INSTID_BASE == 2);
-
-   tu_cs_emit(&cs, 0);
-   tu_cs_emit(&cs, 0);
-   tu_cs_emit(&cs, first_instance);
-   tu_cs_emit(&cs, 0);
-
-   *entry = tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
-   return VK_SUCCESS;
-}
-
 static struct tu_cs_entry
 tu6_emit_vertex_buffers(struct tu_cmd_buffer *cmd,
                         const struct tu_pipeline *pipeline)
@@ -3156,9 +3117,7 @@ static VkResult
 tu6_draw_common(struct tu_cmd_buffer *cmd,
                 struct tu_cs *cs,
                 bool indexed,
-                uint32_t vertex_offset,
-                uint32_t first_instance,
-                /* note: draw_count count is 0 for indirect */
+                /* note: draw_count is 0 for indirect */
                 uint32_t draw_count)
 {
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
@@ -3170,10 +3129,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    tu_emit_cache_flush_renderpass(cmd, cs);
 
    /* TODO lrz */
-
-   tu_cs_emit_regs(cs,
-                   A6XX_VFD_INDEX_OFFSET(vertex_offset),
-                   A6XX_VFD_INSTANCE_START_OFFSET(first_instance));
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0(
          .primitive_restart =
@@ -3225,11 +3180,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
       cmd->state.vertex_buffers_ib = tu6_emit_vertex_buffers(cmd, pipeline);
 
-   struct tu_cs_entry vs_params;
-   result = tu6_emit_vs_params(cmd, first_instance, &vs_params);
-   if (result != VK_SUCCESS)
-      return result;
-
    bool has_tess =
          pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
    struct tu_cs_entry tess_consts = {};
@@ -3269,7 +3219,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS, cmd->state.desc_sets_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.desc_sets_load_ib);
       tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers_ib);
-      tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_PARAMS, vs_params);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
 
       for (uint32_t i = 0; i < ARRAY_SIZE(cmd->state.dynamic_state); i++) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i,
@@ -3306,7 +3256,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_DESC_SETS_LOAD, cmd->state.desc_sets_load_ib);
          if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
             tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers_ib);
-         tu_cs_emit_sds_ib(cs, TU_DRAW_STATE_VS_PARAMS, vs_params);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
    }
 
    tu_cs_sanity_check(cs);
@@ -3352,6 +3302,68 @@ tu_draw_initiator(struct tu_cmd_buffer *cmd, enum pc_di_src_sel src_sel)
    return initiator;
 }
 
+
+static uint32_t
+vs_params_offset(struct tu_cmd_buffer *cmd)
+{
+   const struct tu_program_descriptor_linkage *link =
+      &cmd->state.pipeline->program.link[MESA_SHADER_VERTEX];
+   const struct ir3_const_state *const_state = &link->const_state;
+
+   if (const_state->offsets.driver_param >= link->constlen)
+      return 0;
+
+   /* this layout is required by CP_DRAW_INDIRECT_MULTI */
+   STATIC_ASSERT(IR3_DP_DRAWID == 0);
+   STATIC_ASSERT(IR3_DP_VTXID_BASE == 1);
+   STATIC_ASSERT(IR3_DP_INSTID_BASE == 2);
+
+   /* 0 means disabled for CP_DRAW_INDIRECT_MULTI */
+   assert(const_state->offsets.driver_param != 0);
+
+   return const_state->offsets.driver_param;
+}
+
+static struct tu_draw_state
+tu6_emit_vs_params(struct tu_cmd_buffer *cmd,
+                   uint32_t vertex_offset,
+                   uint32_t first_instance)
+{
+   uint32_t offset = vs_params_offset(cmd);
+
+   struct tu_cs cs;
+   VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 3 + (offset ? 8 : 0), &cs);
+   if (result != VK_SUCCESS) {
+      cmd->record_result = result;
+      return (struct tu_draw_state) {};
+   }
+
+   /* TODO: don't make a new draw state when it doesn't change */
+
+   tu_cs_emit_regs(&cs,
+                   A6XX_VFD_INDEX_OFFSET(vertex_offset),
+                   A6XX_VFD_INSTANCE_START_OFFSET(first_instance));
+
+   if (offset) {
+      tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_GEOM, 3 + 4);
+      tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(offset) |
+            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+            CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+            CP_LOAD_STATE6_0_STATE_BLOCK(SB6_VS_SHADER) |
+            CP_LOAD_STATE6_0_NUM_UNIT(1));
+      tu_cs_emit(&cs, 0);
+      tu_cs_emit(&cs, 0);
+
+      tu_cs_emit(&cs, 0);
+      tu_cs_emit(&cs, vertex_offset);
+      tu_cs_emit(&cs, first_instance);
+      tu_cs_emit(&cs, 0);
+   }
+
+   struct tu_cs_entry entry = tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
+   return (struct tu_draw_state) {entry.bo->iova + entry.offset, entry.size / 4};
+}
+
 void
 tu_CmdDraw(VkCommandBuffer commandBuffer,
            uint32_t vertexCount,
@@ -3362,7 +3374,9 @@ tu_CmdDraw(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *cs = &cmd->draw_cs;
 
-   tu6_draw_common(cmd, cs, false, firstVertex, firstInstance, vertexCount);
+   cmd->state.vs_params = tu6_emit_vs_params(cmd, firstVertex, firstInstance);
+
+   tu6_draw_common(cmd, cs, false, vertexCount);
 
    tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
    tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_INDEX));
@@ -3381,7 +3395,9 @@ tu_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *cs = &cmd->draw_cs;
 
-   tu6_draw_common(cmd, cs, true, vertexOffset, firstInstance, indexCount);
+   cmd->state.vs_params = tu6_emit_vs_params(cmd, vertexOffset, firstInstance);
+
+   tu6_draw_common(cmd, cs, true, indexCount);
 
    tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 7);
    tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_DMA));
@@ -3403,13 +3419,25 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_buffer, buf, _buffer);
    struct tu_cs *cs = &cmd->draw_cs;
 
-   tu6_draw_common(cmd, cs, false, 0, 0, 0);
+   cmd->state.vs_params = (struct tu_draw_state) {};
 
-   for (uint32_t i = 0; i < drawCount; i++) {
-      tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT, 3);
-      tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_INDEX));
-      tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset + stride * i);
-   }
+   tu6_draw_common(cmd, cs, false, 0);
+
+   /* workaround for a firmware bug with CP_DRAW_INDIRECT_MULTI, where it
+    * doesn't wait for WFIs to be completed and leads to GPU fault/hang
+    * TODO: this could be worked around in a more performant way,
+    * or there may exist newer firmware that has been fixed
+    */
+   if (cmd->device->physical_device->gpu_id != 650)
+      tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+
+   tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT_MULTI, 6);
+   tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_INDEX));
+   tu_cs_emit(cs, A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_NORMAL) |
+                  A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(vs_params_offset(cmd)));
+   tu_cs_emit(cs, drawCount);
+   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
+   tu_cs_emit(cs, stride);
 
    tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
@@ -3425,15 +3453,27 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_buffer, buf, _buffer);
    struct tu_cs *cs = &cmd->draw_cs;
 
-   tu6_draw_common(cmd, cs, true, 0, 0, 0);
+   cmd->state.vs_params = (struct tu_draw_state) {};
 
-   for (uint32_t i = 0; i < drawCount; i++) {
-      tu_cs_emit_pkt7(cs, CP_DRAW_INDX_INDIRECT, 6);
-      tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_DMA));
-      tu_cs_emit_qw(cs, cmd->state.index_va);
-      tu_cs_emit(cs, A5XX_CP_DRAW_INDX_INDIRECT_3_MAX_INDICES(cmd->state.max_index_count));
-      tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset + stride * i);
-   }
+   tu6_draw_common(cmd, cs, true, 0);
+
+   /* workaround for a firmware bug with CP_DRAW_INDIRECT_MULTI, where it
+    * doesn't wait for WFIs to be completed and leads to GPU fault/hang
+    * TODO: this could be worked around in a more performant way,
+    * or there may exist newer firmware that has been fixed
+    */
+   if (cmd->device->physical_device->gpu_id != 650)
+      tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+
+   tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT_MULTI, 9);
+   tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_DMA));
+   tu_cs_emit(cs, A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_INDEXED) |
+                  A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(vs_params_offset(cmd)));
+   tu_cs_emit(cs, drawCount);
+   tu_cs_emit_qw(cs, cmd->state.index_va);
+   tu_cs_emit(cs, cmd->state.max_index_count);
+   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
+   tu_cs_emit(cs, stride);
 
    tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
@@ -3450,7 +3490,9 @@ void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_buffer, buf, _counterBuffer);
    struct tu_cs *cs = &cmd->draw_cs;
 
-   tu6_draw_common(cmd, cs, false, 0, firstInstance, 0);
+   cmd->state.vs_params = tu6_emit_vs_params(cmd, 0, firstInstance);
+
+   tu6_draw_common(cmd, cs, false, 0);
 
    tu_cs_emit_pkt7(cs, CP_DRAW_AUTO, 6);
    tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_XFB));

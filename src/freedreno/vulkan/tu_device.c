@@ -590,8 +590,8 @@ tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .sampleRateShading = true,
       .dualSrcBlend = true,
       .logicOp = true,
-      .multiDrawIndirect = false,
-      .drawIndirectFirstInstance = false,
+      .multiDrawIndirect = true,
+      .drawIndirectFirstInstance = true,
       .depthClamp = true,
       .depthBiasClamp = false,
       .fillModeNonSolid = false,
@@ -636,6 +636,22 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    vk_foreach_struct(ext, pFeatures->pNext)
    {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES:
+         *((VkPhysicalDeviceVulkan11Features*) ext) = (VkPhysicalDeviceVulkan11Features) {
+            .storageBuffer16BitAccess            = false,
+            .uniformAndStorageBuffer16BitAccess  = false,
+            .storagePushConstant16               = false,
+            .storageInputOutput16                = false,
+            .multiview                           = false,
+            .multiviewGeometryShader             = false,
+            .multiviewTessellationShader         = false,
+            .variablePointersStorageBuffer       = false,
+            .variablePointers                    = false,
+            .protectedMemory                     = false,
+            .samplerYcbcrConversion              = true,
+            .shaderDrawParameters                = true,
+         };
+         break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
          VkPhysicalDeviceVariablePointersFeatures *features = (void *) ext;
          features->variablePointersStorageBuffer = false;
@@ -653,7 +669,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
          VkPhysicalDeviceShaderDrawParametersFeatures *features =
             (VkPhysicalDeviceShaderDrawParametersFeatures *) ext;
-         features->shaderDrawParameters = false;
+         features->shaderDrawParameters = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
