@@ -49,8 +49,6 @@ public:
 
    ir_function_signature *map_builtin(ir_function_signature *sig);
 
-   bool progress;
-
    /* Set of rvalues that can be lowered. This will be filled in by
     * find_lowerable_rvalues_visitor. Only the root node of a lowerable section
     * will be added to this set.
@@ -777,8 +775,6 @@ find_precision_visitor::handle_rvalue(ir_rvalue **rvalue)
     */
    if ((*rvalue)->type->base_type != GLSL_TYPE_BOOL)
       *rvalue = convert_precision((*rvalue)->type->base_type, true, *rvalue);
-
-   progress = true;
 }
 
 ir_visitor_status
@@ -847,8 +843,7 @@ find_precision_visitor::map_builtin(ir_function_signature *sig)
 }
 
 find_precision_visitor::find_precision_visitor(const struct gl_shader_compiler_options *options)
-   : progress(false),
-     lowerable_rvalues(_mesa_pointer_set_create(NULL)),
+   : lowerable_rvalues(_mesa_pointer_set_create(NULL)),
      lowered_builtins(NULL),
      clone_ht(NULL),
      lowered_builtin_mem_ctx(NULL),
@@ -869,7 +864,7 @@ find_precision_visitor::~find_precision_visitor()
 
 }
 
-bool
+void
 lower_precision(const struct gl_shader_compiler_options *options,
                 exec_list *instructions)
 {
@@ -878,6 +873,4 @@ lower_precision(const struct gl_shader_compiler_options *options,
    find_lowerable_rvalues(options, instructions, v.lowerable_rvalues);
 
    visit_list_elements(&v, instructions);
-
-   return v.progress;
 }
