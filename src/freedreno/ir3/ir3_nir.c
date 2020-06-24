@@ -514,8 +514,12 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 		constoff += align(cnt, 4) / 4;
 	}
 
-	if (const_state->num_driver_params > 0)
+	if (const_state->num_driver_params > 0) {
+		/* offset cannot be 0 for vs params loaded by CP_DRAW_INDIRECT_MULTI */
+		if (v->type == MESA_SHADER_VERTEX && compiler->gpu_id >= 600)
+			constoff = MAX2(constoff, 1);
 		const_state->offsets.driver_param = constoff;
+	}
 	constoff += const_state->num_driver_params / 4;
 
 	if ((v->type == MESA_SHADER_VERTEX) &&

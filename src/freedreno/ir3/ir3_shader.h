@@ -55,9 +55,10 @@ enum ir3_driver_param {
 	IR3_DP_CS_COUNT   = 8,   /* must be aligned to vec4 */
 
 	/* vertex shader driver params: */
-	IR3_DP_VTXID_BASE = 0,
-	IR3_DP_VTXCNT_MAX = 1,
+	IR3_DP_DRAWID = 0,
+	IR3_DP_VTXID_BASE = 1,
 	IR3_DP_INSTID_BASE = 2,
+	IR3_DP_VTXCNT_MAX = 3,
 	/* user-clip-plane components, up to 8x vec4's: */
 	IR3_DP_UCP0_X     = 4,
 	/* .... */
