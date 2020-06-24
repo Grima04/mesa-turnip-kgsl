@@ -64,7 +64,12 @@ create_clean_git
 for fossil in $(query_fossils_yaml fossils)
 do
     fetch_fossil "$fossil" || exit $?
-    fossilize-replay --num-threads 4 $fossil || exit $?
+    fossilize-replay --num-threads 4 $fossil 1>&2 2> fossil_replay.txt
+    if [ $? != 0 ]; then
+        echo "Replay of $fossil failed"
+        grep "pipeline crashed or hung" fossil_replay.txt
+        exit 1
+    fi
     rm $fossil
 done
 
