@@ -203,8 +203,11 @@ struct iris_bo {
     *
     * Although this is a global field, use in multiple contexts should be
     * safe, see iris_emit_buffer_barrier_for() for details.
+    *
+    * Also align it to 64 bits. This will make atomic operations faster on 32
+    * bit platforms.
     */
-   uint64_t last_seqnos[NUM_IRIS_DOMAINS];
+   uint64_t last_seqnos[NUM_IRIS_DOMAINS] __attribute__ ((aligned (8)));
 
    /**
     * Boolean of whether the GPU is definitely not accessing the buffer.
