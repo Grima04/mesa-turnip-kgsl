@@ -101,7 +101,7 @@ check_blend_func_error(struct gl_context *ctx)
       const struct gl_program *prog = ctx->FragmentProgram._Current;
       const GLbitfield blend_support = !prog ? 0 : prog->sh.fs.BlendSupport;
 
-      if ((blend_support & ctx->Color._AdvancedBlendMode) == 0) {
+      if ((blend_support & BITFIELD_BIT(ctx->Color._AdvancedBlendMode)) == 0) {
          _mesa_error(ctx, GL_INVALID_OPERATION,
                      "fragment shader does not allow advanced blending mode "
                      "(%s)",
