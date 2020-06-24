@@ -1977,6 +1977,26 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    }
 
    if (initializer) {
+      switch (var->mode) {
+      case vtn_variable_mode_workgroup:
+         /* VK_KHR_zero_initialize_workgroup_memory. */
+         vtn_fail_if(b->options->environment != NIR_SPIRV_VULKAN,
+                     "Only Vulkan supports variable initializer "
+                     "for Workgroup variable %u",
+                     vtn_id_for_value(b, val));
+         vtn_fail_if(initializer->value_type != vtn_value_type_constant ||
+                     !initializer->is_null_constant,
+                     "Workgroup variable %u can only have OpConstantNull "
+                     "as initializer, but have %u instead",
+                     vtn_id_for_value(b, val),
+                     vtn_id_for_value(b, initializer));
+         b->shader->info.cs.zero_initialize_shared_memory = true;
+         break;
+      default:
+         /* Nothing to check. */
+         break;
+      }
+
       switch (initializer->value_type) {
       case vtn_value_type_constant:
          var->var->constant_initializer =

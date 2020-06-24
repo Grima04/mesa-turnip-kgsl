@@ -603,6 +603,9 @@ struct vtn_value {
     * the existence of a NonUniform decoration on this value.*/
    uint32_t propagated_non_uniform : 1;
 
+   /* Valid for vtn_value_type_constant to indicate the value is OpConstantNull. */
+   bool is_null_constant:1;
+
    const char *name;
    struct vtn_decoration *decoration;
    struct vtn_type *type;

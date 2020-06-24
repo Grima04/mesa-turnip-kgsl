@@ -368,6 +368,8 @@ typedef struct shader_info {
           */
          enum gl_derivative_group derivative_group:2;
 
+         bool zero_initialize_shared_memory;
+
          /**
           * Size of shared variables accessed by the compute shader.
           */
