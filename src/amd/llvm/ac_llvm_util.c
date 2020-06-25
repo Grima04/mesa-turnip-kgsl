@@ -78,10 +78,9 @@ static void ac_init_llvm_target()
 	LLVMParseCommandLineOptions(ARRAY_SIZE(argv), argv, NULL);
 }
 
-static once_flag ac_init_llvm_target_once_flag = ONCE_FLAG_INIT;
-
-void ac_init_llvm_once(void)
+PUBLIC void ac_init_llvm_once(void)
 {
+	static once_flag ac_init_llvm_target_once_flag = ONCE_FLAG_INIT;
 	call_once(&ac_init_llvm_target_once_flag, ac_init_llvm_target);
 }
 
