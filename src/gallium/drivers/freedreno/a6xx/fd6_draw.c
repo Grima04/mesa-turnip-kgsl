@@ -82,16 +82,15 @@ draw_emit(struct fd_ringbuffer *ring,
 		assert(!info->has_user_indices);
 
 		struct pipe_resource *idx_buffer = info->index.resource;
-		uint32_t idx_offset = index_offset + info->start * info->index_size;
 		unsigned max_indices = (idx_buffer->width0 - index_offset) / info->index_size;
 
 		OUT_PKT(ring, CP_DRAW_INDX_OFFSET,
 				pack_CP_DRAW_INDX_OFFSET_0(*draw0),
 				CP_DRAW_INDX_OFFSET_1(.num_instances = info->instance_count),
 				CP_DRAW_INDX_OFFSET_2(.num_indices = info->count),
-				CP_DRAW_INDX_OFFSET_3(0),
+				CP_DRAW_INDX_OFFSET_3(.first_indx = info->start),
 				A5XX_CP_DRAW_INDX_OFFSET_INDX_BASE(
-						fd_resource(idx_buffer)->bo, idx_offset),
+						fd_resource(idx_buffer)->bo, index_offset),
 				A5XX_CP_DRAW_INDX_OFFSET_6(.max_indices = max_indices)
 			);
 	} else {
