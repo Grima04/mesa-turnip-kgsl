@@ -909,9 +909,6 @@ if _shader_cache != 'disabled'
     with_shader_cache = true
   endif
 endif
-if with_amd_vk and not with_shader_cache
-  error('Radv requires shader cache support')
-endif
 
 # Check for GCC style builtins
 foreach b : ['bswap32', 'bswap64', 'clz', 'clzll', 'ctz', 'expect', 'ffs',
