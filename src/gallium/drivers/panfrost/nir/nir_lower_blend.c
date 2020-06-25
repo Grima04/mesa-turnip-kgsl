@@ -95,7 +95,7 @@ nir_alpha_saturate(
 static nir_ssa_def *
 nir_blend_factor_value(
    nir_builder *b,
-   nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bconst,
+   nir_ssa_def *src, nir_ssa_def *src1, nir_ssa_def *dst, nir_ssa_def *bconst,
    unsigned chan,
    enum blend_factor factor,
    bool half)
@@ -105,10 +105,14 @@ nir_blend_factor_value(
       return half ? nir_imm_float16(b, 0.0) : nir_imm_float(b, 0.0);
    case BLEND_FACTOR_SRC_COLOR:
       return nir_channel(b, src, chan);
+   case BLEND_FACTOR_SRC1_COLOR:
+      return nir_channel(b, src1, chan);
    case BLEND_FACTOR_DST_COLOR:
       return nir_channel(b, dst, chan);
    case BLEND_FACTOR_SRC_ALPHA:
       return nir_channel(b, src, 3);
+   case BLEND_FACTOR_SRC1_ALPHA:
+      return nir_channel(b, src1, 3);
    case BLEND_FACTOR_DST_ALPHA:
       return nir_channel(b, dst, 3);
    case BLEND_FACTOR_CONSTANT_COLOR:
@@ -126,14 +130,14 @@ static nir_ssa_def *
 nir_blend_factor(
    nir_builder *b,
    nir_ssa_def *raw_scalar,
-   nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bconst,
+   nir_ssa_def *src, nir_ssa_def *src1, nir_ssa_def *dst, nir_ssa_def *bconst,
    unsigned chan,
    enum blend_factor factor,
    bool inverted,
    bool half)
 {
    nir_ssa_def *f =
-      nir_blend_factor_value(b, src, dst, bconst, chan, factor, half);
+      nir_blend_factor_value(b, src, src1, dst, bconst, chan, factor, half);
 
    nir_ssa_def *unity = half ? nir_imm_float16(b, 1.0) : nir_imm_float(b, 1.0);
 
@@ -256,7 +260,7 @@ static nir_ssa_def *
 nir_blend(
    nir_builder *b,
    nir_lower_blend_options options,
-   nir_ssa_def *src, nir_ssa_def *dst)
+   nir_ssa_def *src, nir_ssa_def *src1, nir_ssa_def *dst)
 {
    if (options.logicop_enable)
       return nir_blend_logicop(b, options, src, dst);
@@ -281,12 +285,12 @@ nir_blend(
       if (nir_blend_factored(chan.func)) {
          psrc = nir_blend_factor(
                    b, psrc,
-                   src, dst, bconst, c,
+                   src, src1, dst, bconst, c,
                    chan.src_factor, chan.invert_src_factor, options.half);
 
          pdst = nir_blend_factor(
                    b, pdst,
-                   src, dst, bconst, c,
+                   src, src1, dst, bconst, c,
                    chan.dst_factor, chan.invert_dst_factor, options.half);
       }
 
@@ -349,11 +353,14 @@ nir_lower_blend(nir_shader *shader, nir_lower_blend_options options)
             /* Grab the input color */
             nir_ssa_def *src = nir_ssa_for_src(&b, intr->src[1], 4);
 
+            /* Grab the dual-source input color */
+            nir_ssa_def *src1 = options.src1;
+
             /* Grab the tilebuffer color - io lowered to load_output */
             nir_ssa_def *dst = nir_load_var(&b, var);
 
             /* Blend the two colors per the passed options */
-            nir_ssa_def *blended = nir_blend(&b, options, src, dst);
+            nir_ssa_def *blended = nir_blend(&b, options, src, src1, dst);
 
             /* Write out the final color instead of the input */
             nir_instr_rewrite_src(instr, &intr->src[1],
