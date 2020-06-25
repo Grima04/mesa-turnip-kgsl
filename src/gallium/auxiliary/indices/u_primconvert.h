@@ -33,6 +33,7 @@ struct primconvert_context;
 
 struct primconvert_config {
    uint32_t primtypes_mask;
+   bool fixed_prim_restart;
 };
 
 struct primconvert_context *util_primconvert_create(struct pipe_context *pipe,

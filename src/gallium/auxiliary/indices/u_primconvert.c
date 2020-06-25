@@ -44,6 +44,7 @@
 #include "util/u_draw.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
+#include "util/u_prim_restart.h"
 #include "util/u_upload_mgr.h"
 
 #include "indices/u_indices.h"
@@ -152,6 +153,14 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
 
    if (info->index_size) {
       trans_func(src, info->start, info->count, new_info.count, info->restart_index, dst);
+
+      if (pc->cfg.fixed_prim_restart && info->primitive_restart) {
+         new_info.restart_index = (1ull << (new_info.index_size * 8)) - 1;
+         if (info->restart_index != new_info.restart_index)
+            util_translate_prim_restart_data(new_info.index_size, dst, dst,
+                                             new_info.count,
+                                             info->restart_index);
+      }
    }
    else {
       gen_func(info->start, new_info.count, dst);
