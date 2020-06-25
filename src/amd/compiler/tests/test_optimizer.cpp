@@ -25,6 +25,18 @@
 
 using namespace aco;
 
+Temp fneg(Temp src)
+{
+   return bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0xbf800000u), src);
+}
+
+Temp fabs(Temp src)
+{
+   Builder::Result res = bld.vop2_e64(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x3f800000u), src);
+   res.instr->vop3().abs[1] = true;
+   return res;
+}
+
 BEGIN_TEST(optimize.neg)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v1: %b, s1: %c, s1: %d = p_startpgm
@@ -33,31 +45,30 @@ BEGIN_TEST(optimize.neg)
 
       //! v1: %res0 = v_mul_f32 %a, -%b
       //! p_unit_test 0, %res0
-      Temp neg_b = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(0x80000000u), inputs[1]);
+      Temp neg_b = fneg(inputs[1]);
       writeout(0, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], neg_b));
 
-      //! v1: %neg_a = v_xor_b32 0x80000000, %a
-      //~gfx[6-9]! v1: %res1 = v_mul_f32 0x123456, %neg_a
+      //~gfx9! v1: %neg_a = v_mul_f32 -1.0, %a
+      //~gfx9! v1: %res1 = v_mul_f32 0x123456, %neg_a
       //~gfx10! v1: %res1 = v_mul_f32 0x123456, -%a
       //! p_unit_test 1, %res1
-      Temp neg_a = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(0x80000000u), inputs[0]);
+      Temp neg_a = fneg(inputs[0]);
       writeout(1, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0x123456u), neg_a));
 
       //! v1: %res2 = v_mul_f32 %a, %b
       //! p_unit_test 2, %res2
-      Temp neg_neg_a = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(0x80000000u), neg_a);
+      Temp neg_neg_a = fneg(neg_a);
       writeout(2, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), neg_neg_a, inputs[1]));
 
-      /* we could optimize this case into just an abs(), but NIR already does this */
-      //! v1: %res3 = v_mul_f32 |%neg_a|, %b
+      //! v1: %res3 = v_mul_f32 |%a|, %b
       //! p_unit_test 3, %res3
-      Temp abs_neg_a = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0x7FFFFFFFu), neg_a);
+      Temp abs_neg_a = fabs(neg_a);
       writeout(3, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), abs_neg_a, inputs[1]));
 
       //! v1: %res4 = v_mul_f32 -|%a|, %b
       //! p_unit_test 4, %res4
-      Temp abs_a = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0x7FFFFFFFu), inputs[0]);
-      Temp neg_abs_a = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(0x80000000u), abs_a);
+      Temp abs_a = fabs(inputs[0]);
+      Temp neg_abs_a = fneg(abs_a);
       writeout(4, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), neg_abs_a, inputs[1]));
 
       //! v1: %res5 = v_mul_f32 -%a, %b row_shl:1 bound_ctrl:1
@@ -74,8 +85,13 @@ BEGIN_TEST(optimize.neg)
 
       //! v1: %res8 = v_mul_f32 %a, -%c
       //! p_unit_test 8, %res8
-      Temp neg_c = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(0x80000000u), bld.copy(bld.def(v1), inputs[2]));
+      Temp neg_c = fneg(bld.copy(bld.def(v1), inputs[2]));
       writeout(8, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], neg_c));
+
+      // //! v1: %res9 = v_mul_f32 |%neg_a|, %b
+      // //! p_unit_test 9, %res9
+      Temp abs_neg_abs_a = fabs(neg_abs_a);
+      writeout(9, bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), abs_neg_abs_a, inputs[1]));
 
       finish_opt_test();
    }
@@ -750,22 +766,22 @@ BEGIN_TEST(optimize.add3)
 END_TEST
 
 BEGIN_TEST(optimize.minmax)
-   for (unsigned i = GFX8; i <= GFX10; i++) {
+   for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a = p_startpgm
       if (!setup_cs("v1", (chip_class)i))
          continue;
 
       //! v1: %res0 = v_max3_f32 0, -0, %a
       //! p_unit_test 0, %res0
-      Temp xor0 = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(0x80000000u), Operand(inputs[0]));
+      Temp xor0 = fneg(inputs[0]);
       Temp min = bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0u), xor0);
-      Temp xor1 = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(0x80000000u), min);
+      Temp xor1 = fneg(min);
       writeout(0, bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), xor1));
 
       //! v1: %res1 = v_max3_f32 0, -0, -%a
       //! p_unit_test 1, %res1
       min = bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0u), Operand(inputs[0]));
-      xor1 = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(0x80000000u), min);
+      xor1 = fneg(min);
       writeout(1, bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), xor1));
 
       finish_opt_test();
