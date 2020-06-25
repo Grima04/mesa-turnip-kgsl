@@ -3572,9 +3572,14 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
     */
    struct v3dv_descriptor_state *gfx_descriptor_state =
       &state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS];
-   if (push_descriptor_state && gfx_descriptor_state->valid != 0) {
-      memcpy(&state->meta.descriptor_state, gfx_descriptor_state,
-             sizeof(state->descriptor_state));
+   if (push_descriptor_state) {
+      if (gfx_descriptor_state->valid != 0) {
+         memcpy(&state->meta.descriptor_state, gfx_descriptor_state,
+                sizeof(state->descriptor_state));
+      }
+      state->meta.has_descriptor_state = true;
+   } else {
+      state->meta.has_descriptor_state = false;
    }
 
    /* FIXME: if we keep track of wether we have bound any push constant state
@@ -3629,12 +3634,14 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
       state->pipeline = VK_NULL_HANDLE;
    }
 
-   if (state->meta.descriptor_state.valid != 0) {
-      memcpy(&state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS],
-             &state->meta.descriptor_state,
-             sizeof(state->descriptor_state));
-   } else {
-      state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS].valid = 0;
+   if (state->meta.has_descriptor_state) {
+      if (state->meta.descriptor_state.valid != 0) {
+         memcpy(&state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS],
+                &state->meta.descriptor_state,
+                sizeof(state->descriptor_state));
+      } else {
+         state->descriptor_state[VK_PIPELINE_BIND_POINT_GRAPHICS].valid = 0;
+      }
    }
 
    memcpy(cmd_buffer->push_constants_data, state->meta.push_constants,
@@ -3644,7 +3651,7 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
    state->meta.framebuffer = VK_NULL_HANDLE;
    state->meta.pass = VK_NULL_HANDLE;
    state->meta.subpass_idx = -1;
-   state->meta.descriptor_state.valid = 0;
+   state->meta.has_descriptor_state = false;
 }
 
 /* FIXME: C&P from v3dx_draw. Refactor to common place? */
