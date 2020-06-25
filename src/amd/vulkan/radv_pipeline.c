@@ -58,6 +58,8 @@ struct radv_blend_state {
 	uint32_t cb_blend_control[8];
 
 	uint32_t spi_shader_col_format;
+	uint32_t col_format_is_int8;
+	uint32_t col_format_is_int10;
 	uint32_t cb_shader_mask;
 	uint32_t db_alpha_to_mask;
 
@@ -478,6 +480,30 @@ static unsigned radv_choose_spi_color_format(VkFormat vk_format,
 		return formats.normal;
 }
 
+static bool
+format_is_int8(VkFormat format)
+{
+	const struct vk_format_description *desc = vk_format_description(format);
+	int channel =  vk_format_get_first_non_void_channel(format);
+
+	return channel >= 0 && desc->channel[channel].pure_integer &&
+	       desc->channel[channel].size == 8;
+}
+
+static bool
+format_is_int10(VkFormat format)
+{
+	const struct vk_format_description *desc = vk_format_description(format);
+
+	if (desc->nr_channels != 4)
+		return false;
+	for (unsigned i = 0; i < 4; i++) {
+		if (desc->channel[i].pure_integer && desc->channel[i].size == 10)
+			return true;
+	}
+	return false;
+}
+
 static void
 radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 					const VkGraphicsPipelineCreateInfo *pCreateInfo,
@@ -485,7 +511,7 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 {
 	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
-	unsigned col_format = 0;
+	unsigned col_format = 0, is_int8 = 0, is_int10 = 0;
 	unsigned num_targets;
 
 	for (unsigned i = 0; i < (blend->single_cb_enable ? 1 : subpass->color_count); ++i) {
@@ -501,6 +527,11 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 			cf = radv_choose_spi_color_format(attachment->format,
 			                                  blend_enable,
 							  blend->need_src_alpha & (1 << i));
+
+			if (format_is_int8(attachment->format))
+				is_int8 |= 1 << i;
+			if (format_is_int10(attachment->format))
+				is_int10 |= 1 << i;
 		}
 
 		col_format |= cf << (4 * i);
@@ -531,30 +562,8 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 		col_format |= (col_format & 0xf) << 4;
 
 	blend->spi_shader_col_format = col_format;
-}
-
-static bool
-format_is_int8(VkFormat format)
-{
-	const struct vk_format_description *desc = vk_format_description(format);
-	int channel =  vk_format_get_first_non_void_channel(format);
-
-	return channel >= 0 && desc->channel[channel].pure_integer &&
-	       desc->channel[channel].size == 8;
-}
-
-static bool
-format_is_int10(VkFormat format)
-{
-	const struct vk_format_description *desc = vk_format_description(format);
-
-	if (desc->nr_channels != 4)
-		return false;
-	for (unsigned i = 0; i < 4; i++) {
-		if (desc->channel[i].pure_integer && desc->channel[i].size == 10)
-			return true;
-	}
-	return false;
+	blend->col_format_is_int8 = is_int8;
+	blend->col_format_is_int10 = is_int10;
 }
 
 /*
@@ -589,30 +598,6 @@ unsigned radv_format_meta_fs_key(VkFormat format)
 	bool is_int10 = format_is_int10(format);
 
 	return col_format + (is_int8 ? 3 : is_int10 ? 5 : 0);
-}
-
-static void
-radv_pipeline_compute_get_int_clamp(const VkGraphicsPipelineCreateInfo *pCreateInfo,
-				    unsigned *is_int8, unsigned *is_int10)
-{
-	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
-	*is_int8 = 0;
-	*is_int10 = 0;
-
-	for (unsigned i = 0; i < subpass->color_count; ++i) {
-		struct radv_render_pass_attachment *attachment;
-
-		if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED)
-			continue;
-
-		attachment = pass->attachments + subpass->color_attachments[i].attachment;
-
-		if (format_is_int8(attachment->format))
-			*is_int8 |= 1 << i;
-		if (format_is_int10(attachment->format))
-			*is_int10 |= 1 << i;
-	}
 }
 
 static void
@@ -2341,8 +2326,10 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 
 	key.col_format = blend->spi_shader_col_format;
 	key.is_dual_src = blend->mrt0_is_dual_src;
-	if (pipeline->device->physical_device->rad_info.chip_class < GFX8)
-		radv_pipeline_compute_get_int_clamp(pCreateInfo, &key.is_int8, &key.is_int10);
+	if (pipeline->device->physical_device->rad_info.chip_class < GFX8) {
+		key.is_int8 = blend->col_format_is_int8;
+		key.is_int10 = blend->col_format_is_int10;
+	}
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10)
 		key.topology = pCreateInfo->pInputAssemblyState->topology;
