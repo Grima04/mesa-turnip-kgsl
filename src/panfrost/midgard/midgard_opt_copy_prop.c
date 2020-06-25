@@ -120,6 +120,9 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (skip)
                         continue;
 
+                if (ctx->blend_src1 == to)
+                        ctx->blend_src1 = from;
+
                 /* We're clear -- rewrite, composing the swizzle */
                 mir_rewrite_index_src_swizzle(ctx, to, from, ins->swizzle[1]);
                 mir_remove_instruction(ins);

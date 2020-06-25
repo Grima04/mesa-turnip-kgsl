@@ -36,6 +36,9 @@ can_cull_mask(compiler_context *ctx, midgard_instruction *ins)
         if (ins->dest >= ctx->temp_count)
                 return false;
 
+        if (ins->dest == ctx->blend_src1)
+                return false;
+
         if (ins->type == TAG_LOAD_STORE_4)
                 if (load_store_opcode_props[ins->load_store.op].props & LDST_SPECIAL_MASK)
                         return false;

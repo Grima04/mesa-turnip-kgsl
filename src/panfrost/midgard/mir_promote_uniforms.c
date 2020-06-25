@@ -186,7 +186,7 @@ midgard_promote_uniforms(compiler_context *ctx)
                 /* We do need the move for safety for a non-SSA dest, or if
                  * we're being fed into a special class */
 
-                bool needs_move = ins->dest & PAN_IS_REG;
+                bool needs_move = ins->dest & PAN_IS_REG || ins->dest == ctx->blend_src1;
 
                 if (ins->dest < ctx->temp_count)
                         needs_move |= BITSET_TEST(special, ins->dest);

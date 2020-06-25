@@ -630,6 +630,15 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 l->solutions[ctx->blend_input] = 0;
         }
 
+        /* Same for the dual-source blend input/output, except here we use r2,
+         * which is also set in the fragment shader. */
+
+        if (ctx->blend_src1 != ~0) {
+                assert(ctx->blend_src1 < ctx->temp_count);
+                l->solutions[ctx->blend_src1] = (16 * 2);
+                ctx->work_registers = MAX2(ctx->work_registers, 2);
+        }
+
         mir_compute_interference(ctx, l);
 
         *spilled = !lcra_solve(l);

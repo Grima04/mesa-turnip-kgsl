@@ -1767,13 +1767,15 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
                         emit_varying_read(ctx, reg, offset, nr_comp, component, indirect_offset, t | nir_dest_bit_size(instr->dest), is_flat);
                 } else if (ctx->is_blend) {
-                        /* ctx->blend_input will be precoloured to r0, where
+                        /* ctx->blend_input will be precoloured to r0/r2, where
                          * the input is preloaded */
 
-                        if (ctx->blend_input == ~0)
-                                ctx->blend_input = reg;
+                        unsigned *input = offset ? &ctx->blend_src1 : &ctx->blend_input;
+
+                        if (*input == ~0)
+                                *input = reg;
                         else
-                                emit_mir_instruction(ctx, v_mov(ctx->blend_input, reg));
+                                emit_mir_instruction(ctx, v_mov(*input, reg));
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
                         emit_attr_read(ctx, reg, offset, nr_comp, t);
                 } else {
@@ -1867,11 +1869,30 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 nir_intrinsic_store_combined_output_pan;
 
                         const nir_variable *var;
-                        enum midgard_rt_id rt;
-
                         var = search_var(&ctx->nir->outputs,
                                          nir_intrinsic_base(instr));
                         assert(var);
+
+                        /* Dual-source blend writeout is done by leaving the
+                         * value in r2 for the blend shader to use. */
+                        if (var->data.index) {
+                                if (instr->src[0].is_ssa) {
+                                        emit_explicit_constant(ctx, reg, reg);
+
+                                        unsigned out = make_compiler_temp(ctx);
+
+                                        midgard_instruction ins = v_mov(reg, out);
+                                        emit_mir_instruction(ctx, ins);
+
+                                        ctx->blend_src1 = out;
+                                } else {
+                                        ctx->blend_src1 = reg;
+                                }
+
+                                break;
+                        }
+
+                        enum midgard_rt_id rt;
                         if (var->data.location == FRAG_RESULT_COLOR)
                                 rt = MIDGARD_COLOR_RT0;
                         else if (var->data.location >= FRAG_RESULT_DATA0)
@@ -2818,6 +2839,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         ctx->alpha_ref = program->alpha_ref;
         ctx->blend_rt = MIDGARD_COLOR_RT0 + blend_rt;
         ctx->blend_input = ~0;
+        ctx->blend_src1 = ~0;
         ctx->quirks = midgard_get_quirks(gpu_id);
 
         /* Start off with a safe cutoff, allowing usage of all 16 work

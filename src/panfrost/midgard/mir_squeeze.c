@@ -80,4 +80,5 @@ mir_squeeze_index(compiler_context *ctx)
         }
 
         ctx->blend_input = find_or_allocate_temp(ctx, ctx->blend_input);
+        ctx->blend_src1 = find_or_allocate_temp(ctx, ctx->blend_src1);
 }

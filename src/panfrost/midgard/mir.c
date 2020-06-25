@@ -75,6 +75,9 @@ mir_rewrite_index_dst(compiler_context *ctx, unsigned old, unsigned new)
         /* Implicitly written before the shader */
         if (ctx->blend_input == old)
                 ctx->blend_input = new;
+
+        if (ctx->blend_src1 == old)
+                ctx->blend_src1 = new;
 }
 
 void

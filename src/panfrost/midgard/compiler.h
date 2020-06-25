@@ -246,6 +246,9 @@ typedef struct compiler_context {
         /* Index to precolour to r0 for an input blend colour */
         unsigned blend_input;
 
+        /* Index to precolour to r2 for a dual-source blend colour */
+        unsigned blend_src1;
+
         /* Tracking for blend constant patching */
         int blend_constant_offset;
 
