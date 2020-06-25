@@ -1562,6 +1562,15 @@ tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
    if (max.y == 0)
       min.y = max.y = 1;
 
+   /* avoid overflow with large scissor
+    * note the max will be limited to min - 1, so that empty scissor works
+    */
+   uint32_t scissor_max = BITFIELD_MASK(15);
+   min.x = MIN2(scissor_max, min.x);
+   min.y = MIN2(scissor_max, min.y);
+   max.x = MIN2(scissor_max, max.x);
+   max.y = MIN2(scissor_max, max.y);
+
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0(.x = min.x, .y = min.y),
                    A6XX_GRAS_SC_SCREEN_SCISSOR_BR_0(.x = max.x - 1, .y = max.y - 1));
