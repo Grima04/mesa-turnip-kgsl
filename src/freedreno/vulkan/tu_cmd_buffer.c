@@ -1799,7 +1799,6 @@ tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    cmd->state.index_va = buf->bo->iova + buf->bo_offset + offset;
    cmd->state.max_index_count = (buf->size - offset) >> index_shift;
    cmd->state.index_size = index_size;
-   cmd->state.index_shift = index_shift;
 
    tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
@@ -3401,9 +3400,9 @@ tu_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_DMA));
    tu_cs_emit(cs, instanceCount);
    tu_cs_emit(cs, indexCount);
-   tu_cs_emit(cs, 0x0); /* XXX */
-   tu_cs_emit_qw(cs, cmd->state.index_va + (firstIndex << cmd->state.index_shift));
-   tu_cs_emit(cs, indexCount << cmd->state.index_shift);
+   tu_cs_emit(cs, firstIndex);
+   tu_cs_emit_qw(cs, cmd->state.index_va);
+   tu_cs_emit(cs, cmd->state.max_index_count);
 }
 
 void

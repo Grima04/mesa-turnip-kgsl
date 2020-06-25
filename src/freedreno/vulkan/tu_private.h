@@ -820,7 +820,7 @@ struct tu_cmd_state
    /* Index buffer */
    uint64_t index_va;
    uint32_t max_index_count;
-   uint8_t index_size, index_shift;
+   uint8_t index_size;
 
    /* because streamout base has to be 32-byte aligned
     * there is an extra offset to deal with when it is
