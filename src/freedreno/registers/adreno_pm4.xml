@@ -709,7 +709,8 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		</reg32>
 		<reg64 offset="4" name="INDX_BASE" type="address"/>
 		<reg32 offset="6" name="6">
-			<bitfield name="INDX_SIZE" low="0" high="31"/>
+			<!-- max # of elements in index buffer -->
+			<bitfield name="MAX_INDICES" low="0" high="31"/>
 		</reg32>
 	</stripe>
 
@@ -718,7 +719,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</reg32>
 
 	<reg32 offset="5" name="5">
-		<bitfield name="INDX_SIZE" low="0" high="31"/>
+		<bitfield name="INDX_SIZE" low="0" high="31" type="uint"/>
 	</reg32>
 </domain>
 
