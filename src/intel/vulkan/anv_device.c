@@ -1451,6 +1451,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES_KHR: {
+         VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR *features =
+            (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR *)ext;
+         features->shaderZeroInitializeWorkgroupMemory = true;
+         break;
+      }
+
       default:
          anv_debug_ignored_stype(ext->sType);
          break;

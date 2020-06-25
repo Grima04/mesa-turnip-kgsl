@@ -122,6 +122,7 @@ EXTENSIONS = [
     Extension('VK_KHR_workgroup_memory_explicit_layout',  1, True),
     Extension('VK_KHR_xcb_surface',                       6, 'VK_USE_PLATFORM_XCB_KHR'),
     Extension('VK_KHR_xlib_surface',                      6, 'VK_USE_PLATFORM_XLIB_KHR'),
+    Extension('VK_KHR_zero_initialize_workgroup_memory',  1, True),
     Extension('VK_EXT_4444_formats',                      1, True),
     Extension('VK_EXT_acquire_xlib_display',              1, 'VK_USE_PLATFORM_XLIB_XRANDR_EXT'),
     Extension('VK_EXT_buffer_device_address',             2, 'device->has_a64_buffer_access'),
