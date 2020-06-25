@@ -1581,6 +1581,19 @@ void brw_debug_key_recompile(const struct brw_compiler *c, void *log,
                              const struct brw_base_prog_key *old_key,
                              const struct brw_base_prog_key *key);
 
+/* Shared Local Memory Size is specified as powers of two,
+ * and also have a Gen-dependent minimum value if not zero.
+ */
+static inline uint32_t
+calculate_gen_slm_size(unsigned gen, uint32_t bytes)
+{
+   assert(bytes <= 64 * 1024);
+   if (bytes > 0)
+      return MAX2(util_next_power_of_two(bytes), gen >= 9 ? 1024 : 4096);
+   else
+      return 0;
+}
+
 static inline uint32_t
 encode_slm_size(unsigned gen, uint32_t bytes)
 {
@@ -1595,18 +1608,19 @@ encode_slm_size(unsigned gen, uint32_t bytes)
     * -------------------------------------------------------------------
     * Gen9+  |    0 |    1 |    2 |    3 |    4 |     5 |     6 |     7 |
     */
-   assert(bytes <= 64 * 1024);
 
    if (bytes > 0) {
-      /* Shared Local Memory Size is specified as powers of two. */
-      slm_size = util_next_power_of_two(bytes);
+      slm_size = calculate_gen_slm_size(gen, bytes);
+      assert(util_is_power_of_two_nonzero(slm_size));
 
       if (gen >= 9) {
-         /* Use a minimum of 1kB; turn an exponent of 10 (1024 kB) into 1. */
-         slm_size = ffs(MAX2(slm_size, 1024)) - 10;
+         /* Turn an exponent of 10 (1024 kB) into 1. */
+         assert(slm_size >= 1024);
+         slm_size = ffs(slm_size) - 10;
       } else {
-         /* Use a minimum of 4kB; convert to the pre-Gen9 representation. */
-         slm_size = MAX2(slm_size, 4096) / 4096;
+         assert(slm_size >= 4096);
+         /* Convert to the pre-Gen9 representation. */
+         slm_size = slm_size / 4096;
       }
    }
 
