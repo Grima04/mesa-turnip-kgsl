@@ -604,10 +604,14 @@ panfrost_transfer_map(struct pipe_context *pctx,
             !(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
             (usage & PIPE_TRANSFER_WRITE) &&
             !(resource->target == PIPE_BUFFER
-              && !util_ranges_intersect(&rsrc->valid_buffer_range, box->x, box->x + box->width))) {
+              && !util_ranges_intersect(&rsrc->valid_buffer_range, box->x, box->x + box->width)) &&
+            panfrost_pending_batches_access_bo(ctx, bo)) {
 
-                /* It is often faster to copy the whole resource than to flush
-                 * readers */
+                /* When a resource to be modified is already being used by a
+                 * pending batch, it is often faster to copy the whole BO than
+                 * to flush and split the frame in two. This also mostly
+                 * mitigates broken depth reload.
+                 */
 
                 panfrost_flush_batches_accessing_bo(ctx, bo, PAN_BO_ACCESS_WRITE);
                 panfrost_bo_wait(bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
