@@ -552,7 +552,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
 
-   uint32_t max_binding = 0;
+   int32_t max_binding = pCreateInfo->bindingCount > 0 ? 0 : -1;
    uint32_t immutable_sampler_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
@@ -590,13 +590,16 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    /* We just allocate all the immutable samplers at the end of the struct */
    struct v3dv_sampler *samplers = (void*) &set_layout->binding[max_binding + 1];
 
-   VkDescriptorSetLayoutBinding *bindings =
-      create_sorted_bindings(pCreateInfo->pBindings, pCreateInfo->bindingCount,
-                             device, pAllocator);
-
-   if (!bindings) {
-      vk_free2(&device->alloc, pAllocator, set_layout);
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   VkDescriptorSetLayoutBinding *bindings = NULL;
+   if (pCreateInfo->bindingCount > 0) {
+      assert(max_binding >= 0);
+      bindings = create_sorted_bindings(pCreateInfo->pBindings,
+                                        pCreateInfo->bindingCount,
+                                        device, pAllocator);
+      if (!bindings) {
+         vk_free2(&device->alloc, pAllocator, set_layout);
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
    }
 
    memset(set_layout->binding, 0,
@@ -667,7 +670,8 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
          binding->descriptorCount;
    }
 
-   vk_free2(&device->alloc, pAllocator, bindings);
+   if (bindings)
+      vk_free2(&device->alloc, pAllocator, bindings);
 
    set_layout->descriptor_count = descriptor_count;
    set_layout->dynamic_offset_count = dynamic_offset_count;
