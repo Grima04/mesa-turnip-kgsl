@@ -359,6 +359,8 @@ preprocess_nir(nir_shader *nir,
               nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_lower_direct_array_deref_of_vec_load);
 
+   NIR_PASS_V(nir, nir_lower_frexp);
+
    /* Get rid of split copies */
    nir_optimize(nir, stage, false);
 }
