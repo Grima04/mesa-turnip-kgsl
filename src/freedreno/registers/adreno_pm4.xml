@@ -698,6 +698,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<bitfield name="NUM_INDICES" low="0" high="31" type="uint"/>
 	</reg32>
 	<reg32 offset="3" name="3">
+		<bitfield name="FIRST_INDX" low="0" high="31"/>
 	</reg32>
 
 	<stripe variants="A5XX-">
