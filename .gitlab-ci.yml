@@ -802,6 +802,11 @@ piglit-quick_shader:
   extends: .test-vk
   script:
     - ./install/fossilize-runner.sh
+  artifacts:
+    when: on_failure
+    name: "mesa_${CI_JOB_NAME}"
+    paths:
+      - results/
 
 llvmpipe-gles2:
   variables:
