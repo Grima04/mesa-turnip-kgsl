@@ -83,7 +83,8 @@ $BM/write-serial.py $BM_SERIAL `printf '\016'`
 # Wait for the device to complete the deqp run
 $BM/expect-output.sh serial-output.txt \
     -f "bare-metal result" \
-    -e "---. end Kernel panic"
+    -e "---. end Kernel panic" \
+    -e "POWER_GOOD not seen in time"
 
 # power down the CPU on the device
 $BM/write-serial.py $BM_SERIAL_EC 'power off'
