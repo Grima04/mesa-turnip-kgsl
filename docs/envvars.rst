@@ -548,8 +548,6 @@ RADV driver environment variables
       disable NGG for GFX10+
    ``nooutoforder``
       disable out-of-order rasterization
-   ``noshaderballot``
-      disable shader ballot
    ``nothreadllvm``
       disable LLVM threaded compilation
    ``preoptir``
