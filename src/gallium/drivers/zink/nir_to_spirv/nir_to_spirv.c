@@ -557,8 +557,7 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
          ctx->samplers[index] = var_id;
          ctx->samplers_used |= 1 << index;
 
-         spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
-                                           var->data.descriptor_set);
+         spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
          int binding = zink_binding(ctx->stage,
                                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                     var->data.binding + i);
@@ -578,8 +577,7 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
       ctx->samplers[index] = var_id;
       ctx->samplers_used |= 1 << index;
 
-      spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
-                                        var->data.descriptor_set);
+      spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
       int binding = zink_binding(ctx->stage,
                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                  var->data.binding);
@@ -622,8 +620,7 @@ emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
    assert(ctx->num_ubos < ARRAY_SIZE(ctx->ubos));
    ctx->ubos[ctx->num_ubos++] = var_id;
 
-   spirv_builder_emit_descriptor_set(&ctx->builder, var_id,
-                                     var->data.descriptor_set);
+   spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
    int binding = zink_binding(ctx->stage,
                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                               var->data.binding);
