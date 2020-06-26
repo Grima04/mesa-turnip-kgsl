@@ -425,6 +425,15 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    return true;
 }
 
+static uint32_t
+get_resource_usage(struct zink_resource *res)
+{
+   uint32_t batch_uses = 0;
+   for (unsigned i = 0; i < 4; i++)
+      batch_uses |= p_atomic_read(&res->batch_uses[i]) << i;
+   return batch_uses;
+}
+
 static void *
 zink_transfer_map(struct pipe_context *pctx,
                   struct pipe_resource *pres,
@@ -436,6 +445,7 @@ zink_transfer_map(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(pres);
+   uint32_t batch_uses = get_resource_usage(res);
 
    struct zink_transfer *trans = slab_alloc(&ctx->transfer_pool);
    if (!trans)
@@ -451,12 +461,15 @@ zink_transfer_map(struct pipe_context *pctx,
 
    void *ptr;
    if (pres->target == PIPE_BUFFER) {
-      if (usage & PIPE_MAP_READ) {
-         /* need to wait for rendering to finish
-          * TODO: optimize/fix this to be much less obtrusive
-          * mesa/mesa#2966
-          */
-         zink_fence_wait(pctx);
+      if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+         if ((usage & PIPE_MAP_READ && batch_uses >= ZINK_RESOURCE_ACCESS_WRITE) ||
+             (usage & PIPE_MAP_WRITE && batch_uses)) {
+            /* need to wait for rendering to finish
+             * TODO: optimize/fix this to be much less obtrusive
+             * mesa/mesa#2966
+             */
+            zink_fence_wait(pctx);
+         }
       }
 
 
