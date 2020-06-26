@@ -1426,6 +1426,12 @@ struct v3dv_pipeline {
    struct v3dv_pipeline_stage *fs;
    struct v3dv_pipeline_stage *cs;
 
+   /* Spilling memory requirements */
+   struct {
+      struct v3dv_bo *bo;
+      uint32_t size_per_thread;
+   } spill;
+
    struct v3dv_dynamic_state dynamic_state;
 
    struct v3dv_pipeline_layout *layout;

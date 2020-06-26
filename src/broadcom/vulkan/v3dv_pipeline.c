@@ -130,6 +130,11 @@ v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
    destroy_pipeline_stage(device, pipeline->fs, pAllocator);
    destroy_pipeline_stage(device, pipeline->cs, pAllocator);
 
+   if (pipeline->spill.bo) {
+      assert(pipeline->spill.size_per_thread > 0);
+      v3dv_bo_free(device, pipeline->spill.bo);
+   }
+
    if (pipeline->default_attribute_values) {
       v3dv_bo_free(device, pipeline->default_attribute_values);
       pipeline->default_attribute_values = NULL;
@@ -1253,7 +1258,8 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
       return entry->data;
    }
 
-   struct v3dv_device *device = p_stage->pipeline->device;
+   struct v3dv_pipeline *pipeline = p_stage->pipeline;
+   struct v3dv_device *device = pipeline->device;
    struct v3dv_shader_variant *variant =
       vk_zalloc(&device->alloc, sizeof(*variant), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -1264,7 +1270,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
    }
 
    struct v3dv_physical_device *physical_device =
-      &p_stage->pipeline->device->instance->physicalDevice;
+      &pipeline->device->instance->physicalDevice;
    const struct v3d_compiler *compiler = physical_device->compiler;
 
    uint32_t variant_id = p_atomic_inc_return(&p_stage->compiled_variant_count);
@@ -1313,8 +1319,22 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
       _mesa_hash_table_insert(ht, dup_key, variant);
    }
 
-   /* FIXME: pending provide scratch space for register spilling */
-   assert(variant->prog_data.base->spill_size == 0);
+   if (variant->prog_data.base->spill_size > pipeline->spill.size_per_thread) {
+      /* The TIDX register we use for choosing the area to access
+       * for scratch space is: (core << 6) | (qpu << 2) | thread.
+       * Even at minimum threadcount in a particular shader, that
+       * means we still multiply by qpus by 4.
+       */
+      const uint32_t total_spill_size =
+         4 * device->devinfo.qpu_count * variant->prog_data.base->spill_size;
+      if (pipeline->spill.bo) {
+         assert(pipeline->spill.size_per_thread > 0);
+         v3dv_bo_free(device, pipeline->spill.bo);
+      }
+      pipeline->spill.bo =
+         v3dv_bo_alloc(device, total_spill_size, "spill", true);
+      pipeline->spill.size_per_thread = variant->prog_data.base->spill_size;
+   }
 
    *out_vk_result = VK_SUCCESS;
    return variant;

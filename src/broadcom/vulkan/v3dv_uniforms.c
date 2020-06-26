@@ -349,6 +349,16 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
          cl_aligned_reloc(&job->indirect, &uniforms, job->csd.shared_memory, 0);
          break;
 
+      case QUNIFORM_SPILL_OFFSET:
+         assert(pipeline->spill.bo);
+         cl_aligned_reloc(&job->indirect, &uniforms, pipeline->spill.bo, 0);
+         break;
+
+      case QUNIFORM_SPILL_SIZE_PER_THREAD:
+         assert(pipeline->spill.size_per_thread > 0);
+         cl_aligned_u32(&uniforms, pipeline->spill.size_per_thread);
+         break;
+
       default:
          unreachable("unsupported quniform_contents uniform type\n");
       }
