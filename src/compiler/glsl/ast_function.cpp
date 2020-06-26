@@ -205,9 +205,6 @@ verify_parameter_modes(_mesa_glsl_parse_state *state,
       const ast_expression *const actual_ast =
          exec_node_data(ast_expression, actual_ast_node, link);
 
-      /* FIXME: 'loc' is incorrect (as of 2011-01-21). It is always
-       * FIXME: 0:0(0).
-       */
       YYLTYPE loc = actual_ast->get_location();
 
       /* Verify that 'const_in' parameters are ir_constants. */
