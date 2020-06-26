@@ -94,6 +94,7 @@ static const struct nir_shader_compiler_options nir_options = {
    .lower_extract_word = true,
    .lower_mul_high = true,
    .lower_rotate = true,
+   .lower_uadd_carry = true,
 };
 
 const void *
