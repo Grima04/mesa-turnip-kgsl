@@ -363,11 +363,11 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
                 break;
         case GLSL_SAMPLER_DIM_2D:
         case GLSL_SAMPLER_DIM_RECT:
+        case GLSL_SAMPLER_DIM_CUBE:
                 vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUT,
                               ntq_get_src(c, instr->src[1], 1), &tmu_writes);
                 break;
         case GLSL_SAMPLER_DIM_3D:
-        case GLSL_SAMPLER_DIM_CUBE:
                 vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUT,
                               ntq_get_src(c, instr->src[1], 1), &tmu_writes);
                 vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUR,
@@ -377,7 +377,11 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
                 unreachable("bad image sampler dim");
         }
 
-        if (nir_intrinsic_image_array(instr)) {
+        /* In order to fetch on a cube map, we need to interpret it as
+         * 2D arrays, where the third coord would be the face index.
+         */
+        if (nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_CUBE ||
+            nir_intrinsic_image_array(instr)) {
                 vir_TMU_WRITE(c, V3D_QPU_WADDR_TMUI,
                               ntq_get_src(c, instr->src[1],
                                           is_1d ? 1 : 2), &tmu_writes);
