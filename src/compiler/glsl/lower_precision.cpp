@@ -378,14 +378,11 @@ find_lowerable_rvalues_visitor::visit_enter(ir_texture *ir)
 {
    ir_hierarchical_visitor::visit_enter(ir);
 
-   if (stack.back().state == UNKNOWN) {
-      /* The precision of the sample value depends on the precision of the
-       * sampler.
-       */
-      stack.back().state = handle_precision(ir->type,
-                                            ir->sampler->precision());
-   }
-
+   /* The precision of the sample value depends on the precision of the
+    * sampler.
+    */
+   stack.back().state = handle_precision(ir->type,
+                                         ir->sampler->precision());
    return visit_continue;
 }
 
