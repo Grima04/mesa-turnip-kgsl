@@ -540,8 +540,6 @@ RADV driver environment variables
       disable HIZ for depthstencil images
    ``noibs``
       disable directly recording command buffers in GPU-visible memory
-   ``noloadstoreopt``
-      disable LLVM SILoadStoreOptimizer pass
    ``nomemorycache``
       disable memory shaders cache
    ``nongg``

@@ -4440,8 +4440,6 @@ llvm_compile_shader(struct radv_device *device,
 	tm_options |= AC_TM_SUPPORTS_SPILL;
 	if (args->options->check_ir)
 		tm_options |= AC_TM_CHECK_IR;
-	if (device->instance->debug_flags & RADV_DEBUG_NO_LOAD_STORE_OPT)
-		tm_options |= AC_TM_NO_LOAD_STORE_OPT;
 
 	thread_compiler = !(device->instance->debug_flags & RADV_DEBUG_NOTHREADLLVM);
 

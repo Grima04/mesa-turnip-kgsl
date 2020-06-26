@@ -501,7 +501,6 @@ static const struct debug_control radv_debug_options[] = {
 	{"checkir", RADV_DEBUG_CHECKIR},
 	{"nothreadllvm", RADV_DEBUG_NOTHREADLLVM},
 	{"nobinning", RADV_DEBUG_NOBINNING},
-	{"noloadstoreopt", RADV_DEBUG_NO_LOAD_STORE_OPT},
 	{"nongg", RADV_DEBUG_NO_NGG},
 	{"allentrypoints", RADV_DEBUG_ALL_ENTRYPOINTS},
 	{"metashaders", RADV_DEBUG_DUMP_META_SHADERS},
@@ -548,13 +547,6 @@ radv_handle_per_app_options(struct radv_instance *instance,
 		if (!strcmp(name, "DOOM_VFR")) {
 			/* Work around a Doom VFR game bug */
 			instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
-		} else if (!strcmp(name, "MonsterHunterWorld.exe")) {
-			/* Workaround for a WaW hazard when LLVM moves/merges
-			 * load/store memory operations.
-			 * See https://reviews.llvm.org/D61313
-			 */
-			if (LLVM_VERSION_MAJOR < 9)
-				instance->debug_flags |= RADV_DEBUG_NO_LOAD_STORE_OPT;
 		} else if (!strcmp(name, "Fledge")) {
 			/*
 			 * Zero VRAM for "The Surge 2"
