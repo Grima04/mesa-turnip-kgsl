@@ -588,7 +588,7 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 static void
 emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
 {
-   uint32_t size = glsl_count_attribute_slots(var->type, false);
+   uint32_t size = glsl_count_attribute_slots(var->interface_type, false);
    SpvId vec4_type = get_uvec_type(ctx, 32, 4);
    SpvId array_length = emit_uint_const(ctx, 32, size);
    SpvId array_type = spirv_builder_type_array(&ctx->builder, vec4_type,
