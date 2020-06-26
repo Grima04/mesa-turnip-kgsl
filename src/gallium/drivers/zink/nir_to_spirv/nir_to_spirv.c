@@ -1569,7 +1569,8 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                       SpvStorageClassUniform,
                                                       uvec4_type);
 
-      unsigned idx = const_offset->u32;
+      assert(const_offset->u32 % 16 == 0);
+      unsigned idx = const_offset->u32 / 16;
       SpvId member = emit_uint_const(ctx, 32, 0);
       SpvId offset = emit_uint_const(ctx, 32, idx);
       SpvId offsets[] = { member, offset };
