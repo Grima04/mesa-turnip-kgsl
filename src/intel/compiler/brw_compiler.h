@@ -38,6 +38,8 @@ struct ra_regs;
 struct nir_shader;
 struct brw_program;
 
+typedef struct nir_shader nir_shader;
+
 struct brw_compiler {
    const struct gen_device_info *devinfo;
 
@@ -1399,7 +1401,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
                void *mem_ctx,
                const struct brw_vs_prog_key *key,
                struct brw_vs_prog_data *prog_data,
-               struct nir_shader *shader,
+               nir_shader *shader,
                int shader_time_index,
                struct brw_compile_stats *stats,
                char **error_str);
@@ -1415,7 +1417,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
                 void *mem_ctx,
                 const struct brw_tcs_prog_key *key,
                 struct brw_tcs_prog_data *prog_data,
-                struct nir_shader *nir,
+                nir_shader *nir,
                 int shader_time_index,
                 struct brw_compile_stats *stats,
                 char **error_str);
@@ -1431,7 +1433,7 @@ brw_compile_tes(const struct brw_compiler *compiler, void *log_data,
                 const struct brw_tes_prog_key *key,
                 const struct brw_vue_map *input_vue_map,
                 struct brw_tes_prog_data *prog_data,
-                struct nir_shader *shader,
+                nir_shader *shader,
                 int shader_time_index,
                 struct brw_compile_stats *stats,
                 char **error_str);
@@ -1446,7 +1448,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
                void *mem_ctx,
                const struct brw_gs_prog_key *key,
                struct brw_gs_prog_data *prog_data,
-               struct nir_shader *shader,
+               nir_shader *shader,
                struct gl_program *prog,
                int shader_time_index,
                struct brw_compile_stats *stats,
@@ -1494,7 +1496,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                void *mem_ctx,
                const struct brw_wm_prog_key *key,
                struct brw_wm_prog_data *prog_data,
-               struct nir_shader *shader,
+               nir_shader *shader,
                int shader_time_index8,
                int shader_time_index16,
                int shader_time_index32,
@@ -1513,7 +1515,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                void *mem_ctx,
                const struct brw_cs_prog_key *key,
                struct brw_cs_prog_data *prog_data,
-               const struct nir_shader *shader,
+               const nir_shader *shader,
                int shader_time_index,
                struct brw_compile_stats *stats,
                char **error_str);
