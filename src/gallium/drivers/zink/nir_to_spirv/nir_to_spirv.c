@@ -588,6 +588,12 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 static void
 emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
 {
+   /* variables accessed inside a uniform block will get merged into a big
+    * memory blob and accessed by offset
+    */
+   if (var->data.location)
+      return;
+
    uint32_t size = glsl_count_attribute_slots(var->interface_type, false);
    SpvId vec4_type = get_uvec_type(ctx, 32, 4);
    SpvId array_length = emit_uint_const(ctx, 32, size);

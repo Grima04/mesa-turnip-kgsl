@@ -284,6 +284,9 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    nir_foreach_variable_with_modes(var, nir, nir_var_uniform |
                                              nir_var_mem_ubo) {
       if (var->data.mode == nir_var_mem_ubo) {
+         /* ignore variables being accessed if they aren't the base of the UBO */
+         if (var->data.location)
+            continue;
          int binding = zink_binding(nir->info.stage,
                                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                     var->data.binding);
