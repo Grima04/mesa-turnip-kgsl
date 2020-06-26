@@ -352,6 +352,8 @@ get_patch_count_threshold(int input_control_points)
    return 1;
 }
 
+} /* namespace brw */
+
 extern "C" const unsigned *
 brw_compile_tcs(const struct brw_compiler *compiler,
                 void *log_data,
@@ -390,7 +392,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    bool has_primitive_id =
       nir->info.system_values_read & (1 << SYSTEM_VALUE_PRIMITIVE_ID);
 
-   prog_data->patch_count_threshold = get_patch_count_threshold(key->input_vertices);
+   prog_data->patch_count_threshold = brw::get_patch_count_threshold(key->input_vertices);
 
    if (compiler->use_tcs_8_patch &&
        nir->info.tess.tcs_vertices_out <= (devinfo->gen >= 12 ? 32 : 16) &&
@@ -487,7 +489,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
       assembly = g.get_assembly();
    } else {
-      vec4_tcs_visitor v(compiler, log_data, key, prog_data,
+      brw::vec4_tcs_visitor v(compiler, log_data, key, prog_data,
                          nir, mem_ctx, shader_time_index, &input_vue_map);
       if (!v.run()) {
          if (error_str)
@@ -507,6 +509,3 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
    return assembly;
 }
-
-
-} /* namespace brw */

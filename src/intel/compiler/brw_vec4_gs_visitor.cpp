@@ -610,6 +610,8 @@ static const GLuint gl_prim_to_hw_prim[GL_TRIANGLE_STRIP_ADJACENCY+1] = {
    [GL_TRIANGLE_STRIP_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
 };
 
+} /* namespace brw */
+
 extern "C" const unsigned *
 brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
                void *mem_ctx,
@@ -828,9 +830,9 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
       prog_data->base.urb_entry_size = ALIGN(output_size_bytes, 128) / 128;
    }
 
-   assert(nir->info.gs.output_primitive < ARRAY_SIZE(gl_prim_to_hw_prim));
+   assert(nir->info.gs.output_primitive < ARRAY_SIZE(brw::gl_prim_to_hw_prim));
    prog_data->output_topology =
-      gl_prim_to_hw_prim[nir->info.gs.output_primitive];
+      brw::gl_prim_to_hw_prim[nir->info.gs.output_primitive];
 
    prog_data->vertices_in = nir->info.gs.vertices_in;
 
@@ -881,7 +883,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
           likely(!(INTEL_DEBUG & DEBUG_NO_DUAL_OBJECT_GS))) {
          prog_data->base.dispatch_mode = DISPATCH_MODE_4X2_DUAL_OBJECT;
 
-         vec4_gs_visitor v(compiler, log_data, &c, prog_data, nir,
+         brw::vec4_gs_visitor v(compiler, log_data, &c, prog_data, nir,
                            mem_ctx, true /* no_spills */, shader_time_index);
 
          /* Backup 'nr_params' and 'param' as they can be modified by the
@@ -947,15 +949,15 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    else
       prog_data->base.dispatch_mode = DISPATCH_MODE_4X2_DUAL_INSTANCE;
 
-   vec4_gs_visitor *gs = NULL;
+   brw::vec4_gs_visitor *gs = NULL;
    const unsigned *ret = NULL;
 
    if (compiler->devinfo->gen >= 7)
-      gs = new vec4_gs_visitor(compiler, log_data, &c, prog_data,
+      gs = new brw::vec4_gs_visitor(compiler, log_data, &c, prog_data,
                                nir, mem_ctx, false /* no_spills */,
                                shader_time_index);
    else
-      gs = new gen6_gs_visitor(compiler, log_data, &c, prog_data, prog,
+      gs = new brw::gen6_gs_visitor(compiler, log_data, &c, prog_data, prog,
                                nir, mem_ctx, false /* no_spills */,
                                shader_time_index);
 
@@ -972,6 +974,3 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    delete gs;
    return ret;
 }
-
-
-} /* namespace brw */
