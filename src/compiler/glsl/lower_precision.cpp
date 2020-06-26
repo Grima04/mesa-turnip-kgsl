@@ -590,12 +590,12 @@ lower_glsl_type(const glsl_type *type)
 }
 
 static ir_rvalue *
-convert_precision(glsl_base_type type, bool up, ir_rvalue *ir)
+convert_precision(bool up, ir_rvalue *ir)
 {
    unsigned new_type, op;
 
    if (up) {
-      switch (type) {
+      switch (ir->type->base_type) {
       case GLSL_TYPE_FLOAT16:
          new_type = GLSL_TYPE_FLOAT;
          op = ir_unop_f162f;
@@ -613,7 +613,7 @@ convert_precision(glsl_base_type type, bool up, ir_rvalue *ir)
          return NULL;
       }
    } else {
-      switch (type) {
+      switch (ir->type->base_type) {
       case GLSL_TYPE_FLOAT:
          new_type = GLSL_TYPE_FLOAT16;
          op = ir_unop_f2fmp;
@@ -651,10 +651,8 @@ lower_precision_visitor::handle_rvalue(ir_rvalue **rvalue)
 
    if (ir->as_dereference()) {
       if (!ir->type->is_boolean())
-         *rvalue = convert_precision(ir->type->base_type, false, ir);
-   } else if (ir->type->base_type == GLSL_TYPE_FLOAT ||
-              ir->type->base_type == GLSL_TYPE_INT ||
-              ir->type->base_type == GLSL_TYPE_UINT) {
+         *rvalue = convert_precision(false, ir);
+   } else if (ir->type->is_32bit()) {
       ir->type = lower_glsl_type(ir->type);
 
       ir_constant *const_ir = ir->as_constant();
@@ -773,8 +771,9 @@ find_precision_visitor::handle_rvalue(ir_rvalue **rvalue)
    /* We don’t need to add the final conversion if the final type has been
     * converted to bool
     */
-   if ((*rvalue)->type->base_type != GLSL_TYPE_BOOL)
-      *rvalue = convert_precision((*rvalue)->type->base_type, true, *rvalue);
+   if ((*rvalue)->type->base_type != GLSL_TYPE_BOOL) {
+      *rvalue = convert_precision(true, *rvalue);
+   }
 }
 
 ir_visitor_status
