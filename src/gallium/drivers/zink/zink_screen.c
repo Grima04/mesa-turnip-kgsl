@@ -296,7 +296,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.props.limits.maxDescriptorSetStorageBuffers;
 
    case PIPE_CAP_MAX_SHADER_BUFFER_SIZE:
-      return screen->info.props.limits.maxStorageBufferRange; /* unsure */
+      return 65536;
 
    case PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT:
    case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
@@ -417,7 +417,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       }
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
-      return MIN2(screen->info.props.limits.maxUniformBufferRange, INT_MAX);
+      return 65536;
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
       return screen->info.props.limits.maxPerStageDescriptorUniformBuffers;
