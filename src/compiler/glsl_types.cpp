@@ -2465,6 +2465,7 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
          unsigned field_size, field_align;
          fields[i].type =
             fields[i].type->get_explicit_type_for_size_align(type_info, &field_size, &field_align);
+         field_align = this->packed ? 1 : field_align;
          fields[i].offset = align(*size, field_align);
 
          *size = fields[i].offset + field_size;
@@ -2473,8 +2474,10 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
 
       const glsl_type *type;
       if (this->is_struct()) {
-         type = get_struct_instance(fields, this->length, this->name, false);
+         type = get_struct_instance(fields, this->length, this->name,
+                                    this->packed);
       } else {
+         assert(!this->packed);
          type = get_interface_instance(fields, this->length,
                                        (enum glsl_interface_packing)this->interface_packing,
                                        this->interface_row_major,
