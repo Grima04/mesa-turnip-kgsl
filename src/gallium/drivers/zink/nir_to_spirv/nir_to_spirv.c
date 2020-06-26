@@ -2333,12 +2333,15 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
    nir_foreach_shader_out_variable(var, s)
       emit_output(&ctx, var);
 
+
    if (so_info)
       emit_so_info(&ctx, util_last_bit64(s->info.outputs_written), so_info);
-   nir_foreach_variable_with_modes(var, s, nir_var_uniform |
-                                           nir_var_mem_ubo |
-                                           nir_var_mem_ssbo)
-      emit_uniform(&ctx, var);
+   /* we have to reverse iterate to match what's done in zink_compiler.c */
+   foreach_list_typed_reverse(nir_variable, var, node, &s->variables)
+      if (_nir_shader_variable_has_mode(var, nir_var_uniform |
+                                        nir_var_mem_ubo |
+                                        nir_var_mem_ssbo))
+         emit_uniform(&ctx, var);
 
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,

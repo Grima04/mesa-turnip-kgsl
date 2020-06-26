@@ -281,46 +281,59 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    }
 
    ret->num_bindings = 0;
-   nir_foreach_variable_with_modes(var, nir, nir_var_uniform |
-                                             nir_var_mem_ubo) {
-      if (var->data.mode == nir_var_mem_ubo) {
-         /* ignore variables being accessed if they aren't the base of the UBO */
-         if (var->data.location)
-            continue;
-         int binding = zink_binding(nir->info.stage,
-                                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                    var->data.binding);
-         ret->bindings[ret->num_bindings].index = var->data.binding;
-         ret->bindings[ret->num_bindings].binding = binding;
-         ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-         ret->num_bindings++;
-      } else {
-         assert(var->data.mode == nir_var_uniform);
-         if (glsl_type_is_sampler(var->type)) {
-            int binding = zink_binding(nir->info.stage,
-                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                       var->data.binding);
-            ret->bindings[ret->num_bindings].index = var->data.binding;
-            ret->bindings[ret->num_bindings].binding = binding;
-            ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            ret->num_bindings++;
-         } else if (glsl_type_is_array(var->type)) {
-            /* need to unroll possible arrays of arrays before checking type
-             * in order to handle ARB_arrays_of_arrays extension
-             */
-            const struct glsl_type *type = glsl_without_array(var->type);
-            if (!glsl_type_is_sampler(type))
+   uint32_t cur_ubo = 0;
+   /* UBO buffers are zero-indexed, but buffer 0 is always the one created by nir_lower_uniforms_to_ubo,
+    * which means there is no buffer 0 if there are no uniforms
+    */
+   int ubo_index = !nir->num_uniforms;
+   /* need to set up var->data.binding for UBOs, which means we need to start at
+    * the "first" UBO, which is at the end of the list
+    */
+   foreach_list_typed_reverse(nir_variable, var, node, &nir->variables) {
+      if (_nir_shader_variable_has_mode(var, nir_var_uniform |
+                                        nir_var_mem_ubo |
+                                        nir_var_mem_ssbo)) {
+         if (var->data.mode == nir_var_mem_ubo) {
+            /* ignore variables being accessed if they aren't the base of the UBO */
+            if (var->data.location)
                continue;
+            var->data.binding = cur_ubo++;
 
-            unsigned size = glsl_get_aoa_size(var->type);
-            for (int i = 0; i < size; ++i) {
+            int binding = zink_binding(nir->info.stage,
+                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                       var->data.binding);
+            ret->bindings[ret->num_bindings].index = ubo_index++;
+            ret->bindings[ret->num_bindings].binding = binding;
+            ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            ret->num_bindings++;
+         } else {
+            assert(var->data.mode == nir_var_uniform);
+            if (glsl_type_is_sampler(var->type)) {
                int binding = zink_binding(nir->info.stage,
                                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                          var->data.binding + i);
-               ret->bindings[ret->num_bindings].index = var->data.binding + i;
+                                          var->data.binding);
+               ret->bindings[ret->num_bindings].index = var->data.binding;
                ret->bindings[ret->num_bindings].binding = binding;
                ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                ret->num_bindings++;
+            } else if (glsl_type_is_array(var->type)) {
+               /* need to unroll possible arrays of arrays before checking type
+                * in order to handle ARB_arrays_of_arrays extension
+                */
+               const struct glsl_type *type = glsl_without_array(var->type);
+               if (!glsl_type_is_sampler(type))
+                  continue;
+
+               unsigned size = glsl_get_aoa_size(var->type);
+               for (int i = 0; i < size; ++i) {
+                  int binding = zink_binding(nir->info.stage,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             var->data.binding + i);
+                  ret->bindings[ret->num_bindings].index = var->data.binding + i;
+                  ret->bindings[ret->num_bindings].binding = binding;
+                  ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                  ret->num_bindings++;
+               }
             }
          }
       }
