@@ -351,6 +351,8 @@ spirv_builder_emit_access_chain(struct spirv_builder *b, SpvId result_type,
                                 SpvId base, const SpvId indexes[],
                                 size_t num_indexes)
 {
+   assert(base);
+   assert(result_type);
    SpvId result = spirv_builder_new_id(b);
 
    int words = 4 + num_indexes;
