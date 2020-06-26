@@ -1323,7 +1323,7 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          return;
       }
       if (it == copy_map.end()) {
-         if (!skip_partial_copies || ctx->program->chip_class < GFX8)
+         if (!skip_partial_copies)
             break;
          skip_partial_copies = false;
          it = copy_map.begin();
@@ -1423,7 +1423,8 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
              * a partial copy allows further copies, it should be done instead. */
             bool partial_copy = (has_zero_use_bytes == 0xf) || (has_zero_use_bytes == 0xf0);
             for (std::pair<const PhysReg, copy_operation>& copy : copy_map) {
-               if (partial_copy)
+               /* on GFX6/7, we can only do copies with full registers */
+               if (partial_copy || ctx->program->chip_class <= GFX7)
                   break;
                for (uint16_t i = 0; i < copy.second.bytes; i++) {
                   /* distance might underflow */
