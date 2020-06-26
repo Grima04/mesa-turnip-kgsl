@@ -27,12 +27,13 @@ traces:
 #    expectations:
 #      - device: freedreno-a630
 #        checksum: 0
-  - path: gputest/pixmark-piano.trace
-    expectations:
-      # One of the material textures appears brighter on freedreno than
-      # i965 in a way that is probably wrong.
-      - device: freedreno-a630
-        checksum: 1aad6e1ffe23cae71acdb70695a6184b
+# Intermittent GPU hangs on a630 result in test failures for this.
+#  - path: gputest/pixmark-piano.trace
+#    expectations:
+#      # One of the material textures appears brighter on freedreno than
+#      # i965 in a way that is probably wrong.
+#      - device: freedreno-a630
+#        checksum: 1aad6e1ffe23cae71acdb70695a6184b
   - path: gputest/pixmark-volplosion.trace
     expectations:
       # Looks fine, but totally different shape from the rendering on i965.
