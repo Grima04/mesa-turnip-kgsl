@@ -630,6 +630,15 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    }
 }
 
+unsigned
+_mesa_program_state_value_size(const gl_state_index16 state[STATE_LENGTH])
+{
+   if (state[0] == STATE_LIGHT && state[2] == STATE_SPOT_CUTOFF)
+      return 1;
+
+   /* Everything else is packed into vec4s */
+   return 4;
+}
 
 /**
  * Return a bitmask of the Mesa state flags (_NEW_* values) which would
