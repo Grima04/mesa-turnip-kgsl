@@ -259,7 +259,11 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
    ret->programs = _mesa_pointer_set_create(NULL);
 
-   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 1);
+   /* only do uniforms -> ubo if we have uniforms, otherwise we're just
+    * screwing with the bindings for no reason
+    */
+   if (nir->num_uniforms)
+      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 1);
    NIR_PASS_V(nir, nir_lower_clip_halfz);
    if (nir->info.stage == MESA_SHADER_VERTEX)
       have_psiz = check_psiz(nir);
