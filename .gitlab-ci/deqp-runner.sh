@@ -80,6 +80,10 @@ set +e
 
 if [ -n "$DEQP_PARALLEL" ]; then
    JOB="--job $DEQP_PARALLEL"
+elif [ -n "$FDO_CI_CONCURRENT" ]; then
+   JOB="--job $FDO_CI_CONCURRENT"
+else
+   JOB="--job 4"
 fi
 
 run_cts() {

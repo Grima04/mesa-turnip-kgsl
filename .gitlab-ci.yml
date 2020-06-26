@@ -193,7 +193,7 @@ success:
   variables:
     FDO_DISTRIBUTION_VERSION: buster-slim
     FDO_REPO_SUFFIX: "debian/$CI_JOB_NAME"
-    FDO_DISTRIBUTION_EXEC: 'bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
+    FDO_DISTRIBUTION_EXEC: 'env FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
 
@@ -221,7 +221,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-10"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-20-jflags"
 
 .use-x86_build:
   variables:
@@ -235,7 +235,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &i386_build "2020-07-10"
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-07-20-jflags"
 
 .use-i386_build:
   variables:
@@ -249,7 +249,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-07-10"
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-07-20-jflags"
 
 .use-ppc64el_build:
   variables:
@@ -263,7 +263,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &s390x_build "2020-06-02"
+    FDO_DISTRIBUTION_TAG: &s390x_build "2020-06-29-jflags"
 
 .use-s390x_build:
   variables:
@@ -305,7 +305,7 @@ x86_test-vk:
 x86_build_old:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-06-12"
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-06-29-jflags"
     FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:
@@ -321,7 +321,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-07-10"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-07-20-jflags"
 
 .use-arm_build:
   variables:
@@ -500,10 +500,8 @@ make git archive:
     - .build-linux
     - .use-x86_build
   stage: scons
-  variables:
-    SCONSFLAGS: "-j4"
   script:
-    - .gitlab-ci/scons-build.sh
+    - env SCONSFLAGS="-j${FDO_CI_CONCURRENT:-4}" .gitlab-ci/scons-build.sh
 
 meson-testing:
   extends:
@@ -895,10 +893,9 @@ piglit-quick_shader:
 llvmpipe-gles2:
   variables:
     DEQP_VER: gles2
-    DEQP_PARALLEL: 4
     NIR_VALIDATE: 0
-    # Don't use threads inside llvmpipe, we've already got all 4 cores
-    # busy with DEQP_PARALLEL.
+    # Don't use threads inside llvmpipe, we've already got all cores
+    # busy at the deqp-runner level.
     LP_NUM_THREADS: 0
     DEQP_EXPECTED_FAILS: deqp-llvmpipe-fails.txt
     LIBGL_ALWAYS_SOFTWARE: "true"
@@ -932,11 +929,10 @@ softpipe-gles31:
 virgl-gles2-on-gl:
   variables:
     DEQP_VER: gles2
-    DEQP_PARALLEL: 4
     NIR_VALIDATE: 0
     DEQP_NO_SAVE_RESULTS: 1
-    # Don't use threads inside llvmpipe, we've already got all 4 cores
-    # busy with DEQP_PARALLEL.
+    # Don't use threads inside llvmpipe, we've already got all cores
+    # busy at the deqp-runner level.
     LP_NUM_THREADS: 0
     DEQP_EXPECTED_FAILS: deqp-virgl-gl-fails.txt
     DEQP_OPTIONS: "--deqp-log-images=disable"
