@@ -1161,6 +1161,21 @@ TESTS = [
          }
          """,
          r'\(expression +f16vec4 +dFdy +\(expression +f16vec4'),
+    Test("textureSize",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform mediump sampler2D tex;
+         out ivec2 color;
+
+         void main()
+         {
+                 color = textureSize(tex, 0) * ivec2(2);
+         }
+         """,
+         r'expression ivec2 \* \(txs ivec2 \(var_ref tex'),
 ]
 
 

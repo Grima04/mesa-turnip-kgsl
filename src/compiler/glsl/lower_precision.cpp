@@ -457,6 +457,10 @@ is_lowerable_builtin(ir_call *ir,
        * uses lower precision. The function parameters don't matter.
        */
       if (var && var->type->without_array()->is_sampler()) {
+         /* textureSize always returns highp. */
+         if (!strcmp(ir->callee_name(), "textureSize"))
+            return false;
+
          return var->data.precision == GLSL_PRECISION_MEDIUM ||
                 var->data.precision == GLSL_PRECISION_LOW;
       }
