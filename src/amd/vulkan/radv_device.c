@@ -372,9 +372,6 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	device->dcc_msaa_allowed =
 		(device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
-	device->use_shader_ballot = (!device->use_llvm && device->rad_info.chip_class >= GFX8) ||
-				    (device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
-
 	device->use_ngg = device->rad_info.chip_class >= GFX10 &&
 			  device->rad_info.family != CHIP_NAVI14 &&
 			  !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
@@ -520,7 +517,6 @@ static const struct debug_control radv_perftest_options[] = {
 	{"localbos", RADV_PERFTEST_LOCAL_BOS},
 	{"dccmsaa", RADV_PERFTEST_DCC_MSAA},
 	{"bolist", RADV_PERFTEST_BO_LIST},
-	{"shader_ballot", RADV_PERFTEST_SHADER_BALLOT},
 	{"tccompatcmask", RADV_PERFTEST_TC_COMPAT_CMASK},
 	{"cswave32", RADV_PERFTEST_CS_WAVE_32},
 	{"pswave32", RADV_PERFTEST_PS_WAVE_32},

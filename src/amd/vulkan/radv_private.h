@@ -294,9 +294,6 @@ struct radv_physical_device {
 	/* Whether DCC should be enabled for MSAA textures. */
 	bool dcc_msaa_allowed;
 
-	/* Whether to enable the AMD_shader_ballot extension */
-	bool use_shader_ballot;
-
 	/* Whether to enable NGG. */
 	bool use_ngg;
 

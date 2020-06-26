@@ -585,8 +585,6 @@ RADV driver environment variables
       enable local BOs
    ``pswave32``
       enable wave32 for pixel shaders (GFX10+)
-   ``shader_ballot``
-      enable shader ballot
    ``tccompatcmask``
       enable TC-compat cmask for MSAA images
 

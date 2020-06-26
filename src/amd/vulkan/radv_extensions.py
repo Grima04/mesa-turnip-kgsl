@@ -171,7 +171,7 @@ EXTENSIONS = [
     # Disable mixed attachment samples on GFX6-GFX7 until the CTS failures have been resolved.
     Extension('VK_AMD_mixed_attachment_samples',          1, 'device->rad_info.chip_class >= GFX8'),
     Extension('VK_AMD_rasterization_order',               1, 'device->rad_info.has_out_of_order_rast'),
-    Extension('VK_AMD_shader_ballot',                     1, 'device->use_shader_ballot'),
+    Extension('VK_AMD_shader_ballot',                     1, True),
     Extension('VK_AMD_shader_core_properties',            1, True),
     Extension('VK_AMD_shader_core_properties2',           1, True),
     Extension('VK_AMD_shader_explicit_vertex_parameter',  1, True),
