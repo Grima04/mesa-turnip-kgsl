@@ -66,7 +66,7 @@ class Format(Enum):
          return [('uint32_t', 'block', '-1'),
                  ('uint32_t', 'imm', '0')]
       elif self == Format.SMEM:
-         return [('bool', 'can_reorder', 'true'),
+         return [('memory_sync_info', 'sync', 'memory_sync_info()'),
                  ('bool', 'glc', 'false'),
                  ('bool', 'dlc', 'false'),
                  ('bool', 'nv', 'false')]
@@ -123,6 +123,9 @@ class Format(Enum):
       elif self == Format.PSEUDO_REDUCTION:
          return [('ReduceOp', 'op', None, 'reduce_op'),
                  ('unsigned', 'cluster_size', '0')]
+      elif self == Format.PSEUDO_BARRIER:
+         return [('memory_sync_info', 'sync', None),
+                 ('sync_scope', 'exec_scope', 'scope_invocation')]
       elif self == Format.VINTRP:
          return [('unsigned', 'attribute', None),
                  ('unsigned', 'component', None)]
@@ -133,7 +136,7 @@ class Format(Enum):
                  ('bool', 'bound_ctrl', 'true')]
       elif self in [Format.FLAT, Format.GLOBAL, Format.SCRATCH]:
          return [('uint16_t', 'offset', 0),
-                 ('bool', 'can_reorder', 'true'),
+                 ('memory_sync_info', 'sync', 'memory_sync_info()'),
                  ('bool', 'glc', 'false'),
                  ('bool', 'slc', 'false'),
                  ('bool', 'lds', 'false'),
@@ -265,13 +268,7 @@ opcode("p_cbranch", format=Format.PSEUDO_BRANCH)
 opcode("p_cbranch_z", format=Format.PSEUDO_BRANCH)
 opcode("p_cbranch_nz", format=Format.PSEUDO_BRANCH)
 
-opcode("p_memory_barrier_common", format=Format.PSEUDO_BARRIER) # atomic, buffer, image and shared
-opcode("p_memory_barrier_atomic", format=Format.PSEUDO_BARRIER)
-opcode("p_memory_barrier_buffer", format=Format.PSEUDO_BARRIER)
-opcode("p_memory_barrier_image", format=Format.PSEUDO_BARRIER)
-opcode("p_memory_barrier_shared", format=Format.PSEUDO_BARRIER)
-opcode("p_memory_barrier_gs_data", format=Format.PSEUDO_BARRIER)
-opcode("p_memory_barrier_gs_sendmsg", format=Format.PSEUDO_BARRIER)
+opcode("p_barrier", format=Format.PSEUDO_BARRIER)
 
 opcode("p_spill")
 opcode("p_reload")

@@ -127,6 +127,28 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
    program->next_fp_mode.round32 = fp_round_ne;
 }
 
+memory_sync_info get_sync_info(const Instruction* instr)
+{
+   switch (instr->format) {
+   case Format::SMEM:
+      return static_cast<const SMEM_instruction*>(instr)->sync;
+   case Format::MUBUF:
+      return static_cast<const MUBUF_instruction*>(instr)->sync;
+   case Format::MIMG:
+      return static_cast<const MIMG_instruction*>(instr)->sync;
+   case Format::MTBUF:
+      return static_cast<const MTBUF_instruction*>(instr)->sync;
+   case Format::FLAT:
+   case Format::GLOBAL:
+   case Format::SCRATCH:
+      return static_cast<const FLAT_instruction*>(instr)->sync;
+   case Format::DS:
+      return static_cast<const DS_instruction*>(instr)->sync;
+   default:
+      return memory_sync_info();
+   }
+}
+
 bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr)
 {
    if (!instr->isVALU())

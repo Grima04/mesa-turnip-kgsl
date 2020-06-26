@@ -3137,8 +3137,7 @@ struct LoadEmitInfo {
 
    bool glc = false;
    unsigned swizzle_component_size = 0;
-   barrier_interaction barrier = barrier_none;
-   bool can_reorder = true;
+   memory_sync_info sync;
    Temp soffset = Temp(0, s1);
 };
 
@@ -3441,10 +3440,12 @@ Temp lds_load_callback(Builder& bld, const LoadEmitInfo *info,
 
    RegClass rc = RegClass(RegType::vgpr, DIV_ROUND_UP(size, 4));
    Temp val = rc == info->dst.regClass() && dst_hint.id() ? dst_hint : bld.tmp(rc);
+   Instruction *instr;
    if (read2)
-      bld.ds(op, Definition(val), offset, m, const_offset, const_offset + 1);
+      instr = bld.ds(op, Definition(val), offset, m, const_offset, const_offset + 1);
    else
-      bld.ds(op, Definition(val), offset, m, const_offset);
+      instr = bld.ds(op, Definition(val), offset, m, const_offset);
+   static_cast<DS_instruction *>(instr)->sync = info->sync;
 
    if (size < 4)
       val = bld.pseudo(aco_opcode::p_extract_vector, bld.def(RegClass::get(RegType::vgpr, size)), val, Operand(0u));
@@ -3490,8 +3491,7 @@ Temp smem_load_callback(Builder& bld, const LoadEmitInfo *info,
    load->definitions[0] = Definition(val);
    load->glc = info->glc;
    load->dlc = info->glc && bld.program->chip_class >= GFX10;
-   load->barrier = info->barrier;
-   load->can_reorder = false; // FIXME: currently, it doesn't seem beneficial due to how our scheduler works
+   load->sync = info->sync;
    bld.insert(std::move(load));
    return val;
 }
@@ -3540,8 +3540,7 @@ Temp mubuf_load_callback(Builder& bld, const LoadEmitInfo *info,
    mubuf->offen = (offset.type() == RegType::vgpr);
    mubuf->glc = info->glc;
    mubuf->dlc = info->glc && bld.program->chip_class >= GFX10;
-   mubuf->barrier = info->barrier;
-   mubuf->can_reorder = info->can_reorder;
+   mubuf->sync = info->sync;
    mubuf->offset = const_offset;
    mubuf->swizzled = info->swizzle_component_size != 0;
    RegClass rc = RegClass::get(RegType::vgpr, bytes_size);
@@ -3605,7 +3604,7 @@ Temp global_load_callback(Builder& bld, const LoadEmitInfo *info,
       mubuf->offset = 0;
       mubuf->addr64 = offset.type() == RegType::vgpr;
       mubuf->disable_wqm = false;
-      mubuf->barrier = info->barrier;
+      mubuf->sync = info->sync;
       mubuf->definitions[0] = Definition(val);
       bld.insert(std::move(mubuf));
    } else {
@@ -3616,7 +3615,7 @@ Temp global_load_callback(Builder& bld, const LoadEmitInfo *info,
       flat->operands[1] = Operand(s1);
       flat->glc = info->glc;
       flat->dlc = info->glc && bld.program->chip_class >= GFX10;
-      flat->barrier = info->barrier;
+      flat->sync = info->sync;
       flat->offset = 0u;
       flat->definitions[0] = Definition(val);
       bld.insert(std::move(flat));
@@ -3638,8 +3637,7 @@ Temp load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
    LoadEmitInfo info = {Operand(as_vgpr(ctx, address)), dst, num_components, elem_size_bytes};
    info.align_mul = align;
    info.align_offset = 0;
-   info.barrier = barrier_shared;
-   info.can_reorder = false;
+   info.sync = memory_sync_info(storage_shared);
    info.const_offset = base_offset;
    emit_lds_load(ctx, bld, &info);
 
@@ -3848,13 +3846,16 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
       }
       assert(inline_offset <= max_offset); /* offsets[i] shouldn't be large enough for this to happen */
 
+      Instruction *instr;
       if (write2) {
          Temp second_data = write_datas[second];
          inline_offset /= data.bytes();
-         bld.ds(op, address_offset, data, second_data, m, inline_offset, inline_offset + write2_off);
+         instr = bld.ds(op, address_offset, data, second_data, m, inline_offset, inline_offset + write2_off);
       } else {
-         bld.ds(op, address_offset, data, m, inline_offset);
+         instr = bld.ds(op, address_offset, data, m, inline_offset);
       }
+      static_cast<DS_instruction *>(instr)->sync =
+         memory_sync_info(storage_shared);
    }
 }
 
@@ -4017,7 +4018,8 @@ void emit_single_mubuf_store(isel_context *ctx, Temp descriptor, Temp voffset, T
                                  /* idxen*/ false, /* addr64 */ false, /* disable_wqm */ false, /* glc */ true,
                                  /* dlc*/ false, /* slc */ slc);
 
-   static_cast<MUBUF_instruction *>(r.instr)->can_reorder = allow_reorder;
+   if (!allow_reorder)
+      static_cast<MUBUF_instruction *>(r.instr)->sync = memory_sync_info(storage_buffer, semantic_private);
 }
 
 void store_vmem_mubuf(isel_context *ctx, Temp src, Temp descriptor, Temp voffset, Temp soffset,
@@ -4847,15 +4849,13 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          }
 
          if (use_mubuf) {
-            Instruction *mubuf = bld.mubuf(opcode,
-                                           Definition(fetch_dst), list, fetch_index, soffset,
-                                           fetch_offset, false, false, true).instr;
-            static_cast<MUBUF_instruction*>(mubuf)->can_reorder = true;
+            bld.mubuf(opcode,
+                      Definition(fetch_dst), list, fetch_index, soffset,
+                      fetch_offset, false, false, true).instr;
          } else {
-            Instruction *mtbuf = bld.mtbuf(opcode,
-                                           Definition(fetch_dst), list, fetch_index, soffset,
-                                           fetch_dfmt, nfmt, fetch_offset, false, true).instr;
-            static_cast<MTBUF_instruction*>(mtbuf)->can_reorder = true;
+            bld.mtbuf(opcode,
+                      Definition(fetch_dst), list, fetch_index, soffset,
+                      fetch_dfmt, nfmt, fetch_offset, false, true).instr;
          }
 
          emit_split_vector(ctx, fetch_dst, fetch_dst.size());
@@ -5208,7 +5208,7 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_size,
                  Temp dst, Temp rsrc, Temp offset, unsigned align_mul, unsigned align_offset,
-                 bool glc=false, bool readonly=true, bool allow_smem=true)
+                 bool glc=false, bool allow_smem=true, memory_sync_info sync=memory_sync_info())
 {
    Builder bld(ctx->program, ctx->block);
 
@@ -5218,8 +5218,7 @@ void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_
 
    LoadEmitInfo info = {Operand(offset), dst, num_components, component_size, rsrc};
    info.glc = glc;
-   info.barrier = readonly ? barrier_none : barrier_buffer;
-   info.can_reorder = readonly;
+   info.sync = sync;
    info.align_mul = align_mul;
    info.align_offset = align_offset;
    if (use_smem)
@@ -5737,7 +5736,6 @@ static Temp adjust_sample_index_using_fmask(isel_context *ctx, bool da, std::vec
    load->unrm = true;
    load->da = da;
    load->dim = dim;
-   load->can_reorder = true; /* fmask images shouldn't be modified */
    ctx->block->instructions.emplace_back(std::move(load));
 
    Operand sample_index4;
@@ -5837,6 +5835,22 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
 }
 
 
+memory_sync_info get_memory_sync_info(nir_intrinsic_instr *instr, storage_class storage, unsigned semantics)
+{
+   /* atomicrmw might not have NIR_INTRINSIC_ACCESS and there's nothing interesting there anyway */
+   if (semantics & semantic_atomicrmw)
+      return memory_sync_info(storage, semantics);
+
+   unsigned access = nir_intrinsic_access(instr);
+
+   if (access & ACCESS_VOLATILE)
+      semantics |= semantic_volatile;
+   if (access & ACCESS_CAN_REORDER)
+      semantics |= semantic_can_reorder | semantic_private;
+
+   return memory_sync_info(storage, semantics);
+}
+
 void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -5845,6 +5859,8 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
    bool is_array = glsl_sampler_type_is_array(type);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+
+   memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
@@ -5882,7 +5898,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
       load->idxen = true;
       load->glc = var->data.access & (ACCESS_VOLATILE | ACCESS_COHERENT);
       load->dlc = load->glc && ctx->options->chip_class >= GFX10;
-      load->barrier = barrier_image;
+      load->sync = sync;
       ctx->block->instructions.emplace_back(std::move(load));
 
       expand_vector(ctx, tmp, dst, instr->dest.ssa.num_components, (1 << num_channels) - 1);
@@ -5914,7 +5930,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    load->dmask = dmask;
    load->unrm = true;
    load->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
-   load->barrier = barrier_image;
+   load->sync = sync;
    ctx->block->instructions.emplace_back(std::move(load));
 
    expand_vector(ctx, tmp, dst, instr->dest.ssa.num_components, dmask);
@@ -5929,6 +5945,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    bool is_array = glsl_sampler_type_is_array(type);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[3].ssa));
 
+   memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
    bool glc = ctx->options->chip_class == GFX6 || var->data.access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE) ? 1 : 0;
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
@@ -5960,7 +5977,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
       store->glc = glc;
       store->dlc = false;
       store->disable_wqm = true;
-      store->barrier = barrier_image;
+      store->sync = sync;
       ctx->program->needs_exact = true;
       ctx->block->instructions.emplace_back(std::move(store));
       return;
@@ -5984,7 +6001,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    store->unrm = true;
    store->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
    store->disable_wqm = true;
-   store->barrier = barrier_image;
+   store->sync = sync;
    ctx->program->needs_exact = true;
    ctx->block->instructions.emplace_back(std::move(store));
    return;
@@ -6062,6 +6079,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+   memory_sync_info sync = get_memory_sync_info(instr, storage_image, semantic_atomicrmw);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
@@ -6079,7 +6097,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       mubuf->glc = return_previous;
       mubuf->dlc = false; /* Not needed for atomics */
       mubuf->disable_wqm = true;
-      mubuf->barrier = barrier_image;
+      mubuf->sync = sync;
       ctx->program->needs_exact = true;
       ctx->block->instructions.emplace_back(std::move(mubuf));
       return;
@@ -6100,7 +6118,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    mimg->unrm = true;
    mimg->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
    mimg->disable_wqm = true;
-   mimg->barrier = barrier_image;
+   mimg->sync = sync;
    ctx->program->needs_exact = true;
    ctx->block->instructions.emplace_back(std::move(mimg));
    return;
@@ -6164,7 +6182,6 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
    mimg->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    mimg->dmask = (1 << instr->dest.ssa.num_components) - 1;
    mimg->da = glsl_sampler_type_is_array(type);
-   mimg->can_reorder = true;
    Definition& def = mimg->definitions[0];
    ctx->block->instructions.emplace_back(std::move(mimg));
 
@@ -6219,7 +6236,8 @@ void visit_load_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    allow_smem |= ((access & ACCESS_RESTRICT) && (access & ACCESS_NON_WRITEABLE)) || (access & ACCESS_CAN_REORDER);
 
    load_buffer(ctx, num_components, size, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa),
-               nir_intrinsic_align_mul(instr), nir_intrinsic_align_offset(instr), glc, false, allow_smem);
+               nir_intrinsic_align_mul(instr), nir_intrinsic_align_offset(instr), glc, allow_smem,
+               get_memory_sync_info(instr, storage_buffer, 0));
 }
 
 void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -6233,6 +6251,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
 
+   memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
    uint32_t flags = get_all_buffer_resource_flags(ctx, instr->src[1].ssa, nir_intrinsic_access(instr));
    /* GLC bypasses VMEM/SMEM caches, so GLC SMEM loads/stores are coherent with GLC VMEM loads/stores
@@ -6275,7 +6294,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          store->glc = glc;
          store->dlc = false;
          store->disable_wqm = true;
-         store->barrier = barrier_buffer;
+         store->sync = sync;
          ctx->block->instructions.emplace_back(std::move(store));
          ctx->program->wb_smem_l1_on_end = true;
          if (op == aco_opcode::p_fs_buffer_store_smem) {
@@ -6293,7 +6312,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
          store->glc = glc;
          store->dlc = false;
          store->disable_wqm = true;
-         store->barrier = barrier_buffer;
+         store->sync = sync;
          ctx->program->needs_exact = true;
          ctx->block->instructions.emplace_back(std::move(store));
       }
@@ -6384,7 +6403,7 @@ void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    mubuf->glc = return_previous;
    mubuf->dlc = false; /* Not needed for atomics */
    mubuf->disable_wqm = true;
-   mubuf->barrier = barrier_buffer;
+   mubuf->sync = get_memory_sync_info(instr, storage_buffer, semantic_atomicrmw);
    ctx->program->needs_exact = true;
    ctx->block->instructions.emplace_back(std::move(mubuf));
 }
@@ -6409,8 +6428,7 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
    info.glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT);
    info.align_mul = nir_intrinsic_align_mul(instr);
    info.align_offset = nir_intrinsic_align_offset(instr);
-   info.barrier = barrier_buffer;
-   info.can_reorder = false;
+   info.sync = get_memory_sync_info(instr, storage_buffer, 0);
    /* VMEM stores don't update the SMEM cache and it's difficult to prove that
     * it's safe to use SMEM */
    bool can_use_smem = nir_intrinsic_access(instr) & ACCESS_NON_WRITEABLE;
@@ -6430,6 +6448,7 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Temp addr = get_ssa_temp(ctx, instr->src[1].ssa);
+   memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
 
    if (ctx->options->chip_class >= GFX7)
@@ -6495,7 +6514,7 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
          flat->dlc = false;
          flat->offset = offset;
          flat->disable_wqm = true;
-         flat->barrier = barrier_buffer;
+         flat->sync = sync;
          ctx->program->needs_exact = true;
          ctx->block->instructions.emplace_back(std::move(flat));
       } else {
@@ -6515,7 +6534,7 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
          mubuf->offset = offsets[i];
          mubuf->addr64 = addr.type() == RegType::vgpr;
          mubuf->disable_wqm = true;
-         mubuf->barrier = barrier_buffer;
+         mubuf->sync = sync;
          ctx->program->needs_exact = true;
          ctx->block->instructions.emplace_back(std::move(mubuf));
       }
@@ -6608,7 +6627,7 @@ void visit_global_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       flat->dlc = false; /* Not needed for atomics */
       flat->offset = 0;
       flat->disable_wqm = true;
-      flat->barrier = barrier_buffer;
+      flat->sync = get_memory_sync_info(instr, storage_buffer, semantic_atomicrmw);
       ctx->program->needs_exact = true;
       ctx->block->instructions.emplace_back(std::move(flat));
    } else {
@@ -6675,7 +6694,7 @@ void visit_global_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       mubuf->offset = 0;
       mubuf->addr64 = addr.type() == RegType::vgpr;
       mubuf->disable_wqm = true;
-      mubuf->barrier = barrier_buffer;
+      mubuf->sync = get_memory_sync_info(instr, storage_buffer, semantic_atomicrmw);
       ctx->program->needs_exact = true;
       ctx->block->instructions.emplace_back(std::move(mubuf));
    }
@@ -6683,20 +6702,30 @@ void visit_global_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void emit_memory_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
    Builder bld(ctx->program, ctx->block);
+   storage_class all_mem = (storage_class)(storage_buffer | storage_image | storage_atomic_counter | storage_shared);
    switch(instr->intrinsic) {
       case nir_intrinsic_group_memory_barrier:
+         bld.barrier(aco_opcode::p_barrier,
+                     memory_sync_info(all_mem, semantic_acqrel, scope_workgroup));
+         break;
       case nir_intrinsic_memory_barrier:
-         bld.barrier(aco_opcode::p_memory_barrier_common);
+         bld.barrier(aco_opcode::p_barrier,
+                     memory_sync_info(all_mem, semantic_acqrel, scope_device));
          break;
       case nir_intrinsic_memory_barrier_buffer:
-         bld.barrier(aco_opcode::p_memory_barrier_buffer);
-         break;
       case nir_intrinsic_memory_barrier_image:
-         bld.barrier(aco_opcode::p_memory_barrier_image);
+         /* since NIR splits barriers, we have to unify buffer and image barriers
+          * for now so dEQP-VK.memory_model.message_passing.core11.u32.coherent.
+          * fence_fence.atomicwrite.device.payload_nonlocal.buffer.guard_nonlocal.image.comp
+          * passes
+          */
+         bld.barrier(aco_opcode::p_barrier,
+                     memory_sync_info((storage_class)(storage_buffer | storage_image), semantic_acqrel, scope_device));
          break;
       case nir_intrinsic_memory_barrier_tcs_patch:
       case nir_intrinsic_memory_barrier_shared:
-         bld.barrier(aco_opcode::p_memory_barrier_shared);
+         bld.barrier(aco_opcode::p_barrier,
+                     memory_sync_info(storage_shared, semantic_acqrel, scope_workgroup));
          break;
       default:
          unreachable("Unimplemented memory barrier intrinsic");
@@ -6844,6 +6873,7 @@ void visit_shared_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    ds->offset0 = offset;
    if (return_previous)
       ds->definitions[0] = Definition(get_ssa_temp(ctx, &instr->dest.ssa));
+   ds->sync = memory_sync_info(storage_shared, semantic_atomicrmw);
    ctx->block->instructions.emplace_back(std::move(ds));
 }
 
@@ -6884,7 +6914,7 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
    info.align_mul = nir_intrinsic_align_mul(instr);
    info.align_offset = nir_intrinsic_align_offset(instr);
    info.swizzle_component_size = ctx->program->chip_class <= GFX8 ? 4 : 0;
-   info.can_reorder = false;
+   info.sync = memory_sync_info(storage_buffer, semantic_private);
    info.soffset = ctx->program->scratch_offset;
    emit_scratch_load(ctx, bld, &info);
 }
@@ -6907,7 +6937,8 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
 
    for (unsigned i = 0; i < write_count; i++) {
       aco_opcode op = get_buffer_store_op(false, write_datas[i].bytes());
-      bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true, true);
+      Instruction *instr = bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true, true);
+      static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_buffer, semantic_private);
    }
 }
 
@@ -7021,8 +7052,7 @@ void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *inst
             mtbuf->offset = const_offset;
             mtbuf->glc = true;
             mtbuf->slc = true;
-            mtbuf->barrier = barrier_gs_data;
-            mtbuf->can_reorder = true;
+            mtbuf->sync = memory_sync_info(storage_vmem_output, semantic_can_reorder);
             bld.insert(std::move(mtbuf));
          }
 
@@ -7347,8 +7377,6 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
          load->glc = false;
          load->dlc = false;
          load->disable_wqm = false;
-         load->barrier = barrier_none;
-         load->can_reorder = true;
          ctx->block->instructions.emplace_back(std::move(load));
       }
 
@@ -7531,17 +7559,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       visit_get_buffer_size(ctx, instr);
       break;
    case nir_intrinsic_control_barrier: {
-      if (ctx->program->chip_class == GFX6 && ctx->shader->info.stage == MESA_SHADER_TESS_CTRL) {
-         /* GFX6 only (thanks to a hw bug workaround):
-          * The real barrier instruction isn’t needed, because an entire patch
-          * always fits into a single wave.
-          */
-         break;
-      }
-
-      if (ctx->program->workgroup_size > ctx->program->wave_size)
-         bld.sopp(aco_opcode::s_barrier);
-
+      bld.barrier(aco_opcode::p_barrier, memory_sync_info(0, 0, scope_invocation), scope_workgroup);
       break;
    }
    case nir_intrinsic_memory_barrier_tcs_patch:
@@ -8093,7 +8111,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       aco_opcode opcode =
          nir_intrinsic_memory_scope(instr) == NIR_SCOPE_DEVICE ?
             aco_opcode::s_memrealtime : aco_opcode::s_memtime;
-      bld.smem(opcode, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), false);
+      bld.smem(opcode, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), memory_sync_info(0, semantic_volatile));
       emit_split_vector(ctx, get_ssa_temp(ctx, &instr->dest.ssa), 2);
       break;
    }
@@ -8674,7 +8692,6 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       tex->da = da;
       tex->definitions[0] = Definition(tmp_dst);
       tex->dim = dim;
-      tex->can_reorder = true;
       ctx->block->instructions.emplace_back(std::move(tex));
 
       if (div_by_6) {
@@ -8707,7 +8724,6 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       tex->da = da;
       Temp size = bld.tmp(v2);
       tex->definitions[0] = Definition(size);
-      tex->can_reorder = true;
       ctx->block->instructions.emplace_back(std::move(tex));
       emit_split_vector(ctx, size, size.size());
 
@@ -8809,7 +8825,6 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       mubuf->operands[2] = Operand((uint32_t) 0);
       mubuf->definitions[0] = Definition(tmp_dst);
       mubuf->idxen = true;
-      mubuf->can_reorder = true;
       ctx->block->instructions.emplace_back(std::move(mubuf));
 
       expand_vector(ctx, tmp_dst, dst, instr->dest.ssa.num_components, (1 << last_bit) - 1);
@@ -8858,7 +8873,6 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       tex->unrm = true;
       tex->da = da;
       tex->definitions[0] = Definition(tmp_dst);
-      tex->can_reorder = true;
       ctx->block->instructions.emplace_back(std::move(tex));
 
       if (instr->op == nir_texop_samples_identical) {
@@ -9002,7 +9016,6 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
    tex->dmask = dmask;
    tex->da = da;
    tex->definitions[0] = Definition(tmp_dst);
-   tex->can_reorder = true;
    ctx->block->instructions.emplace_back(std::move(tex));
 
    if (tg4_integer_cube_workaround) {
@@ -10285,6 +10298,13 @@ static void create_fs_exports(isel_context *ctx)
       create_null_export(ctx);
 }
 
+static void create_workgroup_barrier(Builder& bld)
+{
+   bld.barrier(aco_opcode::p_barrier,
+               memory_sync_info(storage_shared, semantic_acqrel, scope_workgroup),
+               scope_workgroup);
+}
+
 static void write_tcs_tess_factors(isel_context *ctx)
 {
    unsigned outer_comps;
@@ -10309,9 +10329,7 @@ static void write_tcs_tess_factors(isel_context *ctx)
 
    Builder bld(ctx->program, ctx->block);
 
-   bld.barrier(aco_opcode::p_memory_barrier_shared);
-   if (unlikely(ctx->program->chip_class != GFX6 && ctx->program->workgroup_size > ctx->program->wave_size))
-      bld.sopp(aco_opcode::s_barrier);
+   create_workgroup_barrier(bld);
 
    Temp tcs_rel_ids = get_arg(ctx, ctx->args->ac.tcs_rel_ids);
    Temp invocation_id = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), tcs_rel_ids, Operand(8u), Operand(5u));
@@ -10470,7 +10488,6 @@ static void emit_stream_output(isel_context *ctx,
       store->glc = true;
       store->dlc = false;
       store->slc = true;
-      store->can_reorder = true;
       ctx->block->instructions.emplace_back(std::move(store));
    }
 }
@@ -10890,8 +10907,7 @@ void ngg_emit_nogs_output(isel_context *ctx)
 
       if (ctx->stage == ngg_vertex_gs) {
          /* Wait for GS threads to store primitive ID in LDS. */
-         bld.barrier(aco_opcode::p_memory_barrier_shared);
-         bld.sopp(aco_opcode::s_barrier);
+         create_workgroup_barrier(bld);
 
          /* Calculate LDS address where the GS threads stored the primitive ID. */
          Temp wave_id_in_tg = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
@@ -10975,8 +10991,7 @@ void select_program(Program *program,
       if (i) {
          Builder bld(ctx.program, ctx.block);
 
-         bld.barrier(aco_opcode::p_memory_barrier_shared);
-         bld.sopp(aco_opcode::s_barrier);
+         create_workgroup_barrier(bld);
 
          if (ctx.stage == vertex_geometry_gs || ctx.stage == tess_eval_geometry_gs) {
             ctx.gs_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1, m0), bld.def(s1, scc), get_arg(&ctx, args->merged_wave_info), Operand((8u << 16) | 16u));
@@ -10999,7 +11014,8 @@ void select_program(Program *program,
          ngg_emit_nogs_output(&ctx);
       } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
          Builder bld(ctx.program, ctx.block);
-         bld.barrier(aco_opcode::p_memory_barrier_gs_data);
+         bld.barrier(aco_opcode::p_barrier,
+                     memory_sync_info(storage_vmem_output, semantic_release, scope_device));
          bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx.gs_wave_id), -1, sendmsg_gs_done(false, false, 0));
       } else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
          write_tcs_tess_factors(&ctx);
@@ -11031,7 +11047,7 @@ void select_program(Program *program,
    ctx.block->kind |= block_kind_uniform;
    Builder bld(ctx.program, ctx.block);
    if (ctx.program->wb_smem_l1_on_end)
-      bld.smem(aco_opcode::s_dcache_wb, false);
+      bld.smem(aco_opcode::s_dcache_wb, memory_sync_info(storage_buffer, semantic_volatile));
    bld.sopp(aco_opcode::s_endpgm);
 
    cleanup_cfg(program);
@@ -11116,8 +11132,6 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
             mubuf->glc = true;
             mubuf->slc = true;
             mubuf->dlc = args->options->chip_class >= GFX10;
-            mubuf->barrier = barrier_none;
-            mubuf->can_reorder = true;
 
             ctx.outputs.mask[i] |= 1 << j;
             ctx.outputs.temps[i * 4u + j] = mubuf->definitions[0].getTemp();

@@ -1026,8 +1026,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
                new_instr->operands.back() = Operand(base);
                if (!smem->definitions.empty())
                   new_instr->definitions[0] = smem->definitions[0];
-               new_instr->can_reorder = smem->can_reorder;
-               new_instr->barrier = smem->barrier;
+               new_instr->sync = smem->sync;
                new_instr->glc = smem->glc;
                new_instr->dlc = smem->dlc;
                new_instr->nv = smem->nv;

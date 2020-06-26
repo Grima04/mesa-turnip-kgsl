@@ -1854,6 +1854,7 @@ void lower_to_hw_instr(Program* program)
                   emit_gfx10_wave64_bpermute(program, instr, bld);
                else
                   unreachable("Current hardware supports ds_bpermute, don't emit p_bpermute.");
+               break;
             }
             default:
                break;
@@ -1908,6 +1909,18 @@ void lower_to_hw_instr(Program* program)
                            reduce->operands[2].physReg(), // vtmp
                            reduce->definitions[2].physReg(), // sitmp
                            reduce->operands[0], reduce->definitions[0]);
+         } else if (instr->format == Format::PSEUDO_BARRIER) {
+            Pseudo_barrier_instruction* barrier = static_cast<Pseudo_barrier_instruction*>(instr.get());
+
+            /* Anything larger than a workgroup isn't possible. Anything
+             * smaller requires no instructions and this pseudo instruction
+             * would only be included to control optimizations. */
+            bool emit_s_barrier = barrier->exec_scope == scope_workgroup &&
+                                  program->workgroup_size > program->wave_size;
+
+            bld.insert(std::move(instr));
+            if (emit_s_barrier)
+               bld.sopp(aco_opcode::s_barrier);
          } else if (instr->opcode == aco_opcode::p_cvt_f16_f32_rtne) {
             float_mode new_mode = block->fp_mode;
             new_mode.round16_64 = fp_round_ne;
