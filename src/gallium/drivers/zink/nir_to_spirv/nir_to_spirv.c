@@ -1526,6 +1526,94 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
 }
 
 static void
+emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   ASSERTED nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
+   assert(const_block_index); // no dynamic indexing for now
+
+   SpvId uint_type = get_uvec_type(ctx, 32, 1);
+   SpvId one = emit_uint_const(ctx, 32, 1);
+
+   /* number of components being loaded */
+   unsigned num_components = nir_dest_num_components(intr->dest);
+   SpvId constituents[num_components];
+   SpvId result;
+
+   /* destination type for the load */
+   SpvId type = get_dest_uvec_type(ctx, &intr->dest);
+   /* an id of the array stride in bytes */
+   SpvId vec4_size = emit_uint_const(ctx, 32, sizeof(uint32_t) * 4);
+   /* an id of an array member in bytes */
+   SpvId uint_size = emit_uint_const(ctx, 32, sizeof(uint32_t));
+
+   /* we grab a single array member at a time, so it's a pointer to a uint */
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   SpvStorageClassUniform,
+                                                   uint_type);
+
+   /* our generated uniform has a memory layout like
+    *
+    * struct {
+    *    vec4 base[array_size];
+    * };
+    *
+    * where 'array_size' is set as though every member of the ubo takes up a vec4,
+    * even if it's only a vec2 or a float.
+    *
+    * first, access 'base'
+    */
+   SpvId member = emit_uint_const(ctx, 32, 0);
+   /* this is the offset (in bytes) that we're accessing:
+    * it may be a const value or it may be dynamic in the shader
+    */
+   SpvId offset = get_src(ctx, &intr->src[1]);
+   /* convert offset to an array index for 'base' to determine which vec4 to access */
+   SpvId vec_offset = emit_binop(ctx, SpvOpUDiv, uint_type, offset, vec4_size);
+   /* use the remainder to calculate the byte offset in the vec, which tells us the member
+    * that we're going to access
+    */
+   SpvId vec_member_offset = emit_binop(ctx, SpvOpUDiv, uint_type,
+                                        emit_binop(ctx, SpvOpUMod, uint_type, offset, vec4_size),
+                                        uint_size);
+   /* OpAccessChain takes an array of indices that drill into a hierarchy based on the type:
+    * index 0 is accessing 'base'
+    * index 1 is accessing 'base[index 1]'
+    * index 2 is accessing 'base[index 1][index 2]'
+    *
+    * we must perform the access this way in case src[1] is dynamic because there's
+    * no other spirv method for using an id to access a member of a composite, as
+    * (composite|vector)_extract both take literals
+    */
+   for (unsigned i = 0; i < num_components; i++) {
+      SpvId indices[3] = { member, vec_offset, vec_member_offset };
+      SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
+                                                  ctx->ubos[const_block_index->u32], indices,
+                                                  ARRAY_SIZE(indices));
+      /* load a single value into the constituents array */
+      constituents[i] = spirv_builder_emit_load(&ctx->builder, uint_type, ptr);
+      /* increment to the next vec4 member index for the next load */
+      vec_member_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_member_offset, one);
+   }
+
+   /* if loading more than 1 value, reassemble the results into the desired type,
+    * otherwise just use the loaded result
+    */
+   if (num_components > 1) {
+      result = spirv_builder_emit_composite_construct(&ctx->builder,
+                                                      type,
+                                                      constituents,
+                                                      num_components);
+   } else
+      result = constituents[0];
+
+   /* explicitly convert to a bool vector if the destination type is a bool */
+   if (nir_dest_bit_size(intr->dest) == 1)
+      result = uvec_to_bvec(ctx, result, num_components);
+
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
+}
+
+static void
 emit_load_ubo_vec4(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    ASSERTED nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
@@ -1721,6 +1809,10 @@ static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
+   case nir_intrinsic_load_ubo:
+      emit_load_ubo(ctx, intr);
+      break;
+
    case nir_intrinsic_load_ubo_vec4:
       emit_load_ubo_vec4(ctx, intr);
       break;
