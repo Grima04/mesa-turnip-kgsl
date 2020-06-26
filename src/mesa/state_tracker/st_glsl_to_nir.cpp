@@ -455,10 +455,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
          for (unsigned int i = 0; i < var->num_state_slots; i++) {
             unsigned comps;
             if (glsl_type_is_struct_or_ifc(type)) {
-               /* Builtin struct require specical handling for now we just
-                * make all members vec4. See st_nir_lower_builtin.
-                */
-               comps = 4;
+               comps = _mesa_program_state_value_size(slots[i].tokens);
             } else {
                comps = glsl_get_vector_elements(type);
             }
@@ -490,9 +487,11 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
    st_set_prog_affected_state_flags(prog);
 
    /* None of the builtins being lowered here can be produced by SPIR-V.  See
-    * _mesa_builtin_uniform_desc.
+    * _mesa_builtin_uniform_desc. Also drivers that support packed uniform
+    * storage don't need to lower builtins.
     */
-   if (!shader_program->data->spirv)
+   if (!shader_program->data->spirv &&
+       !st->ctx->Const.PackedDriverUniformStorage)
       NIR_PASS_V(nir, st_nir_lower_builtin);
 
    NIR_PASS_V(nir, gl_nir_lower_atomics, shader_program, true);
