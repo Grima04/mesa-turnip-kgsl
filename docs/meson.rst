@@ -290,7 +290,7 @@ Then configure meson:
 
    meson builddir/ --cross-file cross-llvm.ini
 
-See the `Cross Compilation <#cross-compilation>`__ section for more
+See the :ref:`Cross Compilation <cross-compilation>` section for more
 information.
 
 On windows (and in other cases), using llvm-config or cmake may be

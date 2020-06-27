@@ -7,8 +7,8 @@ system.
 The master git repository is hosted on
 `freedesktop.org <https://www.freedesktop.org>`__.
 
-You may access the repository either as an `anonymous
-user <#anonymous>`__ (read-only) or as a `developer <#developer>`__
+You may access the repository either as an :ref:`anonymous
+user <anonymous>` (read-only) or as a :ref:`developer <developer>`
 (read/write).
 
 You may also `browse the main Mesa git

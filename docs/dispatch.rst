@@ -5,7 +5,7 @@ Several factors combine to make efficient dispatch of OpenGL functions
 fairly complicated. This document attempts to explain some of the issues
 and introduce the reader to Mesa's implementation. Readers already
 familiar with the issues around GL dispatch can safely skip ahead to the
-`overview of Mesa's implementation <#overview>`__.
+:ref:`overview of Mesa's implementation <overview>`.
 
 1. Complexity of GL Dispatch
 ----------------------------
@@ -162,7 +162,7 @@ dispatch routines are very short, and it is trivial to create optimal
 assembly language versions. The amount of optimization provided by using
 assembly stubs varies from platform to platform and application to
 application. However, by using the assembly stubs, many platforms can
-use an additional space optimization (see `below <#fixedsize>`__).
+use an additional space optimization (see :ref:`below <fixedsize>`).
 
 The biggest hurdle to creating assembly stubs is handling the various
 ways that the dispatch table pointer can be accessed. There are four
