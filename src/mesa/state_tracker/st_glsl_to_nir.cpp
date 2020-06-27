@@ -432,6 +432,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
                          struct gl_shader_program *shader_program)
 {
    nir_shader *nir = prog->nir;
+   struct pipe_screen *screen = st->pipe->screen;
 
    /* Make a pass over the IR to add state references for any built-in
     * uniforms that are used.  This has to be done now (during linking).
@@ -486,7 +487,9 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
        !st->ctx->Const.PackedDriverUniformStorage)
       NIR_PASS_V(nir, st_nir_lower_builtin);
 
-   NIR_PASS_V(nir, gl_nir_lower_atomics, shader_program, true);
+   if (!screen->get_param(screen, PIPE_CAP_NIR_ATOMICS_AS_DEREF))
+      NIR_PASS_V(nir, gl_nir_lower_atomics, shader_program, true);
+
    NIR_PASS_V(nir, nir_opt_intrinsics);
 
    /* Lower 64-bit ops. */
@@ -508,7 +511,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
       (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp );
    nir_remove_dead_variables(nir, mask, NULL);
 
-   if (!st->has_hw_atomics)
+   if (!st->has_hw_atomics && !screen->get_param(screen, PIPE_CAP_NIR_ATOMICS_AS_DEREF))
       NIR_PASS_V(nir, nir_lower_atomics_to_ssbo);
 
    st_finalize_nir_before_variants(nir);
