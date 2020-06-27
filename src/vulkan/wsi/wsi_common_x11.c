@@ -41,6 +41,7 @@
 #include "util/xmlconfig.h"
 
 #include "vk_util.h"
+#include "vk_enum_to_str.h"
 #include "wsi_common_private.h"
 #include "wsi_common_x11.h"
 #include "wsi_common_queue.h"
@@ -796,7 +797,8 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(x11_swapchain, base.base, VkSwapchainKHR,
  * this has not been seen, success will be returned.
  */
 static VkResult
-x11_swapchain_result(struct x11_swapchain *chain, VkResult result)
+_x11_swapchain_result(struct x11_swapchain *chain, VkResult result,
+                      const char *file, int line)
 {
    /* Prioritise returning existing errors for consistency. */
    if (chain->status < 0)
@@ -804,6 +806,10 @@ x11_swapchain_result(struct x11_swapchain *chain, VkResult result)
 
    /* If we have a new error, mark it as permanent on the chain and return. */
    if (result < 0) {
+#ifndef NDEBUG
+      fprintf(stderr, "%s:%d: Swapchain status changed to %s\n",
+              file, line, vk_Result_to_str(result));
+#endif
       chain->status = result;
       return result;
    }
@@ -816,6 +822,12 @@ x11_swapchain_result(struct x11_swapchain *chain, VkResult result)
     * and is always returned rather than success.
     */
    if (result == VK_SUBOPTIMAL_KHR) {
+#ifndef NDEBUG
+      if (chain->status != VK_SUBOPTIMAL_KHR) {
+         fprintf(stderr, "%s:%d: Swapchain status changed to %s\n",
+                 file, line, vk_Result_to_str(result));
+      }
+#endif
       chain->status = result;
       return result;
    }
@@ -823,6 +835,8 @@ x11_swapchain_result(struct x11_swapchain *chain, VkResult result)
    /* No changes, so return the last status. */
    return chain->status;
 }
+#define x11_swapchain_result(chain, result) \
+   _x11_swapchain_result(chain, result, __FILE__, __LINE__)
 
 static struct wsi_image *
 x11_get_wsi_image(struct wsi_swapchain *wsi_chain, uint32_t image_index)
