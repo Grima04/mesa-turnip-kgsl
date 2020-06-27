@@ -755,7 +755,7 @@ BOOL_32 Gfx10Lib::HwlInitGlobalParams(
     const ADDR_CREATE_INPUT* pCreateIn) ///< [in] create input
 {
     BOOL_32        valid = TRUE;
-    GB_ADDR_CONFIG gbAddrConfig;
+    GB_ADDR_CONFIG_gfx10 gbAddrConfig;
 
     gbAddrConfig.u32All = pCreateIn->regValue.gbAddrConfig;
 
