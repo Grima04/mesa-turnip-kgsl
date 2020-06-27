@@ -401,6 +401,8 @@ For those coming from autotools be aware of the following:
    are disabled. This is unrelated to the ``buildtype``; setting the
    latter to ``release`` will not turn off assertions.
 
+.. _cross-compilation:
+
 4. Cross-compilation and 32-bit builds
 --------------------------------------
 

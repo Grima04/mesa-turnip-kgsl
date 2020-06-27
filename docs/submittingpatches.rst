@@ -1,6 +1,8 @@
 Submitting Patches
 ==================
 
+.. _guidelines:
+
 Basic guidelines
 ----------------
 
