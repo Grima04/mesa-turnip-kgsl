@@ -164,7 +164,7 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 {
 	struct stage s[MAX_STAGES];
 	uint32_t pos_regid, posz_regid, psize_regid, color_regid[8];
-	uint32_t face_regid, coord_regid, zwcoord_regid, vcoord_regid;
+	uint32_t face_regid, coord_regid, zwcoord_regid, vcoord_regid, lcoord_regid;
 	enum a3xx_threadsize fssz;
 	int constmode;
 	int i, j;
@@ -210,6 +210,16 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 	coord_regid     = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRAG_COORD);
 	zwcoord_regid   = (coord_regid == regid(63,0)) ? regid(63,0) : (coord_regid + 2);
 	vcoord_regid    = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
+	lcoord_regid    = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL);
+
+	/* XXX since we don't know how to support noperspective varyings on a4xx,
+	 * use this little hack to support u_blitter, which should be the only
+	 * case with noperspective varyings on a4xx:
+	 */
+	if (VALIDREG(lcoord_regid)) {
+		assert(!VALIDREG(vcoord_regid));
+		vcoord_regid = lcoord_regid;
+	}
 
 	/* we could probably divide this up into things that need to be
 	 * emitted if frag-prog is dirty vs if vert-prog is dirty..
