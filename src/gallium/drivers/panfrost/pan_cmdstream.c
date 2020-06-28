@@ -134,10 +134,15 @@ panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
                                    struct mali_vertex_tiler_postfix *postfix)
 {
         SET_BIT(postfix->gl_enables, MALI_OCCLUSION_QUERY, ctx->occlusion_query);
-        if (ctx->occlusion_query)
+        if (ctx->occlusion_query) {
                 postfix->occlusion_counter = ctx->occlusion_query->bo->gpu;
-        else
+                panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
+                                      PAN_BO_ACCESS_SHARED |
+                                      PAN_BO_ACCESS_RW |
+                                      PAN_BO_ACCESS_FRAGMENT);
+        } else {
                 postfix->occlusion_counter = 0;
+        }
 }
 
 void

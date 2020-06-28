@@ -1327,7 +1327,8 @@ panfrost_get_query_result(struct pipe_context *pipe,
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
                 DBG("Flushing for occlusion query\n");
-                panfrost_flush_all_batches(ctx, true);
+                panfrost_flush_batches_accessing_bo(ctx, query->bo, PAN_BO_ACCESS_WRITE);
+                panfrost_bo_wait(query->bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
 
                 /* Read back the query results */
                 unsigned *result = (unsigned *) query->bo->cpu;
