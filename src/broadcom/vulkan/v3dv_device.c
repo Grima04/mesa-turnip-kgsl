@@ -574,7 +574,7 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
    *pFeatures = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true, /* This feature is mandatory */
       .fullDrawIndexUint32 = false,
-      .imageCubeArray = false,
+      .imageCubeArray = true,
       .independentBlend = false,
       .geometryShader = false,
       .tessellationShader = false,
