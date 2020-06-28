@@ -2449,7 +2449,7 @@ to upconvert to 32b float internally?
 	<reg64 offset="0x8900" name="RB_DEPTH_FLAG_BUFFER_BASE" type="waddress"/>
 	<reg32 offset="0x8902" name="RB_DEPTH_FLAG_BUFFER_PITCH">
 		<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
-		<bitfield name="ARRAY_PITCH" low="11" high="21" shr="7" type="uint"/>
+		<bitfield name="ARRAY_PITCH" low="11" high="24" shr="7" type="uint"/>
 	</reg32>
 	<array offset="0x8903" name="RB_MRT_FLAG_BUFFER" stride="3" length="8">
 		<reg32 offset="0" name="ADDR_LO"/>
@@ -2457,7 +2457,7 @@ to upconvert to 32b float internally?
 		<reg64 offset="0" name="ADDR" type="waddress"/>
 		<reg32 offset="2" name="PITCH">
 			<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
-			<bitfield name="ARRAY_PITCH" low="11" high="21" shr="7" type="uint"/> <!-- ??? -->
+			<bitfield name="ARRAY_PITCH" low="11" high="24" shr="7" type="uint"/> <!-- ??? -->
 		</reg32>
 	</array>
 	<reg32 offset="0x8927" name="RB_SAMPLE_COUNT_ADDR_LO"/>
