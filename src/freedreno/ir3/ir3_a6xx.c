@@ -351,7 +351,9 @@ emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	resinfo->cat6.d = intr->num_components;
 	resinfo->cat6.type = TYPE_U32;
 	resinfo->cat6.typed = false;
-	resinfo->regs[0]->wrmask = MASK(intr->num_components);
+	/* resinfo has no writemask and always writes out 3 components: */
+	compile_assert(ctx, intr->num_components <= 3);
+	resinfo->regs[0]->wrmask = MASK(3);
 	ir3_handle_bindless_cat6(resinfo, intr->src[0]);
 
 	ir3_split_dest(b, dst, resinfo, 0, intr->num_components);
