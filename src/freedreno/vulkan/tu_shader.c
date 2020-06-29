@@ -42,7 +42,23 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
    /* TODO these are made-up */
    const struct spirv_to_nir_options spirv_options = {
       .frag_coord_is_sysval = true,
-      .lower_ubo_ssbo_access_to_offsets = true,
+      .lower_ubo_ssbo_access_to_offsets = false,
+
+      .ubo_addr_format = nir_address_format_vec2_index_32bit_offset,
+      .ssbo_addr_format = nir_address_format_vec2_index_32bit_offset,
+
+      /* Accessed via stg/ldg */
+      .phys_ssbo_addr_format = nir_address_format_64bit_global,
+
+      /* Accessed via the const register file */
+      .push_const_addr_format = nir_address_format_logical,
+
+      /* Accessed via ldl/stl */
+      .shared_addr_format = nir_address_format_32bit_offset,
+
+      /* Accessed via stg/ldg (not used with Vulkan?) */
+      .global_addr_format = nir_address_format_64bit_global,
+
       .caps = {
          .transform_feedback = true,
          .tessellation = true,
@@ -151,19 +167,103 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
       break;
    }
 
-   nir_intrinsic_instr *bindless =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_bindless_resource_ir3);
-   bindless->num_components = 0;
-   nir_ssa_dest_init(&bindless->instr, &bindless->dest,
-                     1, 32, NULL);
-   nir_intrinsic_set_desc_set(bindless, set);
-   bindless->src[0] = nir_src_for_ssa(nir_iadd(b, nir_imm_int(b, base), vulkan_idx));
-   nir_builder_instr_insert(b, &bindless->instr);
+   nir_ssa_def *def = nir_vec3(b, nir_imm_int(b, set),
+                               nir_iadd(b, nir_imm_int(b, base), vulkan_idx),
+                               nir_imm_int(b, 0));
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa,
-                            nir_src_for_ssa(&bindless->dest.ssa));
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(def));
    nir_instr_remove(&instr->instr);
+}
+
+static void
+lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin)
+{
+   /* Loading the descriptor happens as part of the load/store instruction so
+    * this is a no-op.
+    */
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, intrin->src[0]);
+   nir_instr_remove(&intrin->instr);
+}
+
+static void
+lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
+{
+   const nir_intrinsic_info *info = &nir_intrinsic_infos[intrin->intrinsic];
+
+   /* The bindless base is part of the instruction, which means that part of
+    * the "pointer" has to be constant. We solve this in the same way the blob
+    * does, by generating a bunch of if-statements. In the usual case where
+    * the descriptor set is constant this will get optimized out.
+    */
+
+   unsigned buffer_src;
+   if (intrin->intrinsic == nir_intrinsic_store_ssbo) {
+      /* This has the value first */
+      buffer_src = 1;
+   } else {
+      buffer_src = 0;
+   }
+
+   nir_ssa_def *base_idx = nir_channel(b, intrin->src[buffer_src].ssa, 0);
+   nir_ssa_def *descriptor_idx = nir_channel(b, intrin->src[buffer_src].ssa, 1);
+
+   nir_ssa_def *results[MAX_SETS + 1] = { NULL };
+
+   for (unsigned i = 0; i < MAX_SETS + 1; i++) {
+      /* if (base_idx == i) { ... */
+      nir_if *nif = nir_push_if(b, nir_ieq(b, base_idx, nir_imm_int(b, i)));
+
+      nir_intrinsic_instr *bindless =
+         nir_intrinsic_instr_create(b->shader,
+                                    nir_intrinsic_bindless_resource_ir3);
+      bindless->num_components = 0;
+      nir_ssa_dest_init(&bindless->instr, &bindless->dest,
+                        1, 32, NULL);
+      nir_intrinsic_set_desc_set(bindless, i);
+      bindless->src[0] = nir_src_for_ssa(descriptor_idx);
+      nir_builder_instr_insert(b, &bindless->instr);
+
+      nir_intrinsic_instr *copy =
+         nir_intrinsic_instr_create(b->shader, intrin->intrinsic);
+
+      copy->num_components = intrin->num_components;
+
+      for (unsigned src = 0; src < info->num_srcs; src++) {
+         if (src == buffer_src)
+            copy->src[src] = nir_src_for_ssa(&bindless->dest.ssa);
+         else
+            copy->src[src] = nir_src_for_ssa(intrin->src[src].ssa);
+      }
+
+      for (unsigned idx = 0; idx < info->num_indices; idx++) {
+         copy->const_index[idx] = intrin->const_index[idx];
+      }
+
+      if (info->has_dest) {
+         nir_ssa_dest_init(&copy->instr, &copy->dest,
+                           intrin->dest.ssa.num_components,
+                           intrin->dest.ssa.bit_size,
+                           intrin->dest.ssa.name);
+         results[i] = &copy->dest.ssa;
+      }
+
+      nir_builder_instr_insert(b, &copy->instr);
+
+      /* } else { ... */
+      nir_push_else(b, nif);
+   }
+
+   nir_ssa_def *result =
+      nir_ssa_undef(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size);
+   for (int i = MAX_SETS; i >= 0; i--) {
+      nir_pop_if(b, NULL);
+      if (info->has_dest)
+         result = nir_if_phi(b, results[i], result);
+   }
+
+   if (info->has_dest)
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(result));
+   nir_instr_remove(&intrin->instr);
 }
 
 static nir_ssa_def *
@@ -263,8 +363,33 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
       lower_load_push_constant(b, instr, shader);
       return true;
 
+   case nir_intrinsic_load_vulkan_descriptor:
+      lower_load_vulkan_descriptor(instr);
+      return true;
+
    case nir_intrinsic_vulkan_resource_index:
       lower_vulkan_resource_index(b, instr, shader, layout);
+      return true;
+
+   case nir_intrinsic_load_ubo:
+   case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic_fadd:
+   case nir_intrinsic_ssbo_atomic_fmin:
+   case nir_intrinsic_ssbo_atomic_fmax:
+   case nir_intrinsic_ssbo_atomic_fcomp_swap:
+   case nir_intrinsic_get_buffer_size:
+      lower_ssbo_ubo_intrinsic(b, instr);
       return true;
 
    case nir_intrinsic_image_deref_load:
@@ -401,6 +526,11 @@ lower_impl(nir_function_impl *impl, struct tu_shader *shader,
       }
    }
 
+   if (progress)
+      nir_metadata_preserve(impl, nir_metadata_none);
+   else
+      nir_metadata_preserve(impl, nir_metadata_all);
+
    return progress;
 }
 
@@ -477,6 +607,18 @@ tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
                                 NULL);
 
    return progress;
+}
+
+static void
+shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+
+   unsigned comp_size =
+      glsl_type_is_boolean(type) ? 4 : glsl_get_bit_size(type) / 8;
+   unsigned length = glsl_get_vector_elements(type);
+   *size = comp_size * length;
+   *align = 4;
 }
 
 static void
@@ -627,6 +769,18 @@ tu_shader_create(struct tu_device *dev,
 
    if (stage == MESA_SHADER_FRAGMENT)
       NIR_PASS_V(nir, nir_lower_input_attachments, true);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_mem_ubo | nir_var_mem_ssbo,
+              nir_address_format_vec2_index_32bit_offset);
+
+   if (nir->info.stage == MESA_SHADER_COMPUTE) {
+      NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+                 nir_var_mem_shared, shared_type_info);
+      NIR_PASS_V(nir, nir_lower_explicit_io,
+                 nir_var_mem_shared,
+                 nir_address_format_32bit_offset);
+   }
 
    NIR_PASS_V(nir, tu_lower_io, shader, layout);
 
