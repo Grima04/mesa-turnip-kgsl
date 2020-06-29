@@ -553,7 +553,7 @@ st_init_driver_flags(struct st_context *st)
    }
 
    if (st->lower_ucp)
-      f->NewClipPlaneEnable = ST_NEW_VS_STATE;
+      f->NewClipPlaneEnable = ST_NEW_VS_STATE | ST_NEW_GS_STATE;
    else
       f->NewClipPlaneEnable = ST_NEW_RASTERIZER;
 
@@ -722,10 +722,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    assert(!ctx->Extensions.OES_geometry_shader || !st->lower_point_size);
    assert(!ctx->Extensions.ARB_tessellation_shader || !st->lower_point_size);
 
-   /* FIXME: add support for geometry and tessellation shaders for
-    * lower_ucp
-    */
-   assert(!ctx->Extensions.OES_geometry_shader || !st->lower_ucp);
+   /* FIXME: add support for tessellation shaders for lower_ucp */
    assert(!ctx->Extensions.ARB_tessellation_shader || !st->lower_ucp);
 
    if (st_have_perfmon(st)) {
@@ -808,7 +805,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st->shader_has_one_variant[MESA_SHADER_GEOMETRY] =
          st->has_shareable_shaders &&
          !st->clamp_frag_depth_in_shader &&
-         !st->clamp_vert_color_in_shader;
+         !st->clamp_vert_color_in_shader &&
+         !st->lower_ucp;
    st->shader_has_one_variant[MESA_SHADER_COMPUTE] = st->has_shareable_shaders;
 
    st->bitmap.cache.empty = true;

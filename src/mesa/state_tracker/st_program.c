@@ -695,8 +695,14 @@ lower_ucp(struct st_context *st,
          _mesa_add_state_reference(params, clipplane_state[i]);
       }
 
-      NIR_PASS_V(nir, nir_lower_clip_vs, ucp_enables,
-                 true, can_compact, clipplane_state);
+      if (nir->info.stage == MESA_SHADER_VERTEX) {
+         NIR_PASS_V(nir, nir_lower_clip_vs, ucp_enables,
+                    true, can_compact, clipplane_state);
+      } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+         NIR_PASS_V(nir, nir_lower_clip_gs, ucp_enables,
+                    can_compact, clipplane_state);
+      }
+
       NIR_PASS_V(nir, nir_lower_io_to_temporaries,
                  nir_shader_get_entrypoint(nir), true, false);
       NIR_PASS_V(nir, nir_lower_global_vars_to_local);
@@ -1782,6 +1788,7 @@ st_get_common_variant(struct st_context *st,
    struct pipe_context *pipe = st->pipe;
    struct st_variant *v;
    struct pipe_shader_state state = {0};
+   struct gl_program_parameter_list *params = prog->Base.Parameters;
 
    /* Search for existing variant */
    for (v = prog->variants; v; v = v->next) {
@@ -1801,6 +1808,11 @@ st_get_common_variant(struct st_context *st,
 
             if (key->clamp_color) {
                NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
+               finalize = true;
+            }
+
+            if (key->lower_ucp) {
+               lower_ucp(st, state.ir.nir, key->lower_ucp, params);
                finalize = true;
             }
 
