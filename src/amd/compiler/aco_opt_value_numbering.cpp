@@ -224,8 +224,6 @@ struct InstrPred {
             return aK->imm == bK->imm;
          }
          case Format::SMEM: {
-            if (!a->operands.empty() && a->operands[0].bytes() == 16)
-               return false;
             SMEM_instruction* aS = static_cast<SMEM_instruction*>(a);
             SMEM_instruction* bS = static_cast<SMEM_instruction*>(b);
             /* isel shouldn't be creating situations where this assertion fails */
