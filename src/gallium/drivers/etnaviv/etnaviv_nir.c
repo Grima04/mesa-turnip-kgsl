@@ -192,3 +192,71 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
       }
    }
 }
+
+static void
+etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
+{
+   nir_shader *shader = impl->function->shader;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   /* in a seperate loop so we can apply the multiple-uniform logic to the new fmul */
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_alu)
+            continue;
+
+         nir_alu_instr *alu = nir_instr_as_alu(instr);
+         /* multiply sin/cos src by constant
+          * TODO: do this earlier (but it breaks const_prop opt)
+          */
+         if (alu->op == nir_op_fsin || alu->op == nir_op_fcos) {
+            b.cursor = nir_before_instr(instr);
+
+            nir_ssa_def *imm = has_new_transcendentals ?
+               nir_imm_float(&b, 1.0 / M_PI) :
+               nir_imm_float(&b, 2.0 / M_PI);
+
+            nir_instr_rewrite_src(instr, &alu->src[0].src,
+               nir_src_for_ssa(nir_fmul(&b, alu->src[0].src.ssa, imm)));
+         }
+
+         /* change transcendental ops to vec2 and insert vec1 mul for the result
+          * TODO: do this earlier (but it breaks with optimizations)
+          */
+         if (has_new_transcendentals && (
+             alu->op == nir_op_fdiv || alu->op == nir_op_flog2 ||
+             alu->op == nir_op_fsin || alu->op == nir_op_fcos)) {
+            nir_ssa_def *ssa = &alu->dest.dest.ssa;
+
+            assert(ssa->num_components == 1);
+
+            nir_alu_instr *mul = nir_alu_instr_create(shader, nir_op_fmul);
+            mul->src[0].src = mul->src[1].src = nir_src_for_ssa(ssa);
+            mul->src[1].swizzle[0] = 1;
+
+            mul->dest.write_mask = 1;
+            nir_ssa_dest_init(&mul->instr, &mul->dest.dest, 1, 32, NULL);
+
+            ssa->num_components = 2;
+
+            mul->dest.saturate = alu->dest.saturate;
+            alu->dest.saturate = 0;
+
+            nir_instr_insert_after(instr, &mul->instr);
+
+            nir_ssa_def_rewrite_uses_after(ssa, nir_src_for_ssa(&mul->dest.dest.ssa), &mul->instr);
+         }
+      }
+   }
+}
+
+void
+etna_lower_alu(nir_shader *shader, bool has_new_transcendentals)
+{
+   nir_foreach_function(function, shader) {
+      if (function->impl)
+         etna_lower_alu_impl(function->impl, has_new_transcendentals);
+   }
+}
