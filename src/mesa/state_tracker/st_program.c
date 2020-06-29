@@ -668,6 +668,41 @@ get_nir_shader(struct st_context *st, struct st_program *stp)
    return nir_deserialize(NULL, options, &blob_reader);
 }
 
+static void
+lower_ucp(struct st_context *st,
+          struct nir_shader *nir,
+          unsigned ucp_enables,
+          struct gl_program_parameter_list *params)
+{
+   if (nir->info.outputs_written & VARYING_BIT_CLIP_DIST0)
+      NIR_PASS_V(nir, nir_lower_clip_disable, ucp_enables);
+   else {
+      struct pipe_screen *screen = st->pipe->screen;
+      bool can_compact = screen->get_param(screen,
+                                           PIPE_CAP_NIR_COMPACT_ARRAYS);
+      bool use_eye = st->ctx->_Shader->CurrentProgram[MESA_SHADER_VERTEX] != NULL;
+
+      gl_state_index16 clipplane_state[MAX_CLIP_PLANES][STATE_LENGTH];
+      for (int i = 0; i < MAX_CLIP_PLANES; ++i) {
+         if (use_eye) {
+            clipplane_state[i][0] = STATE_CLIPPLANE;
+            clipplane_state[i][1] = i;
+         } else {
+            clipplane_state[i][0] = STATE_INTERNAL;
+            clipplane_state[i][1] = STATE_CLIP_INTERNAL;
+            clipplane_state[i][2] = i;
+         }
+         _mesa_add_state_reference(params, clipplane_state[i]);
+      }
+
+      NIR_PASS_V(nir, nir_lower_clip_vs, ucp_enables,
+                 true, can_compact, clipplane_state);
+      NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+                 nir_shader_get_entrypoint(nir), true, false);
+      NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+   }
+}
+
 static const gl_state_index16 depth_range_state[STATE_LENGTH] =
    { STATE_DEPTH_RANGE };
 
@@ -678,7 +713,6 @@ st_create_vp_variant(struct st_context *st,
 {
    struct st_common_variant *vpv = CALLOC_STRUCT(st_common_variant);
    struct pipe_context *pipe = st->pipe;
-   struct pipe_screen *screen = pipe->screen;
    struct pipe_shader_state state = {0};
 
    static const gl_state_index16 point_size_state[STATE_LENGTH] =
@@ -712,34 +746,7 @@ st_create_vp_variant(struct st_context *st,
       }
 
       if (key->lower_ucp) {
-         bool can_compact = screen->get_param(screen,
-                                              PIPE_CAP_NIR_COMPACT_ARRAYS);
-
-         bool use_eye = st->ctx->_Shader->CurrentProgram[MESA_SHADER_VERTEX] != NULL;
-         struct nir_shader *nir = state.ir.nir;
-
-         if (nir->info.outputs_written & VARYING_BIT_CLIP_DIST0)
-            NIR_PASS_V(state.ir.nir, nir_lower_clip_disable, key->lower_ucp);
-         else {
-            gl_state_index16 clipplane_state[MAX_CLIP_PLANES][STATE_LENGTH];
-            for (int i = 0; i < MAX_CLIP_PLANES; ++i) {
-               if (use_eye) {
-                  clipplane_state[i][0] = STATE_CLIPPLANE;
-                  clipplane_state[i][1] = i;
-               } else {
-                  clipplane_state[i][0] = STATE_INTERNAL;
-                  clipplane_state[i][1] = STATE_CLIP_INTERNAL;
-                  clipplane_state[i][2] = i;
-               }
-               _mesa_add_state_reference(params, clipplane_state[i]);
-            }
-
-            NIR_PASS_V(state.ir.nir, nir_lower_clip_vs, key->lower_ucp,
-                       true, can_compact, clipplane_state);
-            NIR_PASS_V(state.ir.nir, nir_lower_io_to_temporaries,
-                       nir_shader_get_entrypoint(state.ir.nir), true, false);
-            NIR_PASS_V(state.ir.nir, nir_lower_global_vars_to_local);
-         }
+         lower_ucp(st, state.ir.nir, key->lower_ucp, params);
          finalize = true;
       }
 
