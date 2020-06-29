@@ -861,6 +861,12 @@ glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride)
 }
 
 bool
+glsl_type_is_packed(const struct glsl_type *type)
+{
+   return type->packed;
+}
+
+bool
 glsl_type_is_leaf(const struct glsl_type *type)
 {
    if (glsl_type_is_struct_or_ifc(type) ||

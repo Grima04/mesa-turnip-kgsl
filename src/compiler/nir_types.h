@@ -129,6 +129,7 @@ glsl_get_bit_size(const struct glsl_type *type)
    return glsl_base_type_get_bit_size(glsl_get_base_type(type));
 }
 
+bool glsl_type_is_packed(const struct glsl_type *type);
 bool glsl_type_is_16bit(const struct glsl_type *type);
 bool glsl_type_is_32bit(const struct glsl_type *type);
 bool glsl_type_is_64bit(const struct glsl_type *type);
