@@ -3415,7 +3415,16 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    /* Upload vertex element attributes (SHADER_STATE_ATTRIBUTE_RECORD) */
+   struct v3d_vs_prog_data *prog_data_vs =
+      pipeline->vs->current_variant->prog_data.vs;
+
+   struct v3d_vs_prog_data *prog_data_vs_bin =
+      pipeline->vs_bin->current_variant->prog_data.vs;
+
    bool cs_loaded_any = false;
+   const bool cs_uses_builtins = prog_data_vs_bin->uses_iid ||
+                                 prog_data_vs_bin->uses_biid ||
+                                 prog_data_vs_bin->uses_vid;
    const uint32_t packet_length =
       cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD);
 
@@ -3424,12 +3433,6 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
       uint32_t location = pipeline->va[i].driver_location;
 
       struct v3dv_vertex_binding *c_vb = &cmd_buffer->state.vertex_bindings[binding];
-
-      struct v3d_vs_prog_data *prog_data_vs =
-         pipeline->vs->current_variant->prog_data.vs;
-
-      struct v3d_vs_prog_data *prog_data_vs_bin =
-         pipeline->vs_bin->current_variant->prog_data.vs;
 
       cl_emit_with_prepacked(&job->indirect, GL_SHADER_STATE_ATTRIBUTE_RECORD,
                              &pipeline->vertex_attrs[i * packet_length], attr) {
@@ -3450,12 +3453,18 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
           * the CS, then set up a dummy load of the last attribute into the
           * CS's VPM inputs.  (Since CS is just dead-code-elimination compared
           * to VS, we can't have CS loading but not VS).
+          *
+          * GFXH-1602: first attribute must be active if using builtins.
           */
          if (prog_data_vs_bin->vattr_sizes[location])
             cs_loaded_any = true;
 
-         if (binding == pipeline->va_count - 1 && !cs_loaded_any) {
+         if (i == 0 && cs_uses_builtins && !cs_loaded_any) {
             attr.number_of_values_read_by_coordinate_shader = 1;
+            cs_loaded_any = true;
+         } else if (i == pipeline->va_count - 1 && !cs_loaded_any) {
+            attr.number_of_values_read_by_coordinate_shader = 1;
+            cs_loaded_any = true;
          }
 
          attr.maximum_index = 0xffffff;
