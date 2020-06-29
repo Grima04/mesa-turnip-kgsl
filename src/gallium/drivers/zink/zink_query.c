@@ -101,19 +101,6 @@ zink_create_query(struct pipe_context *pctx,
 }
 
 static void
-wait_query(struct pipe_context *pctx, struct zink_query *query)
-{
-   struct pipe_fence_handle *fence = NULL;
-
-   pctx->flush(pctx, &fence, PIPE_FLUSH_HINT_FINISH);
-   if (fence) {
-      pctx->screen->fence_finish(pctx->screen, NULL, fence,
-                                 PIPE_TIMEOUT_INFINITE);
-      pctx->screen->fence_reference(pctx->screen, &fence, NULL);
-   }
-}
-
-static void
 destroy_query(struct zink_screen *screen, struct zink_query *query)
 {
    assert(!p_atomic_read(&query->fences));
@@ -131,7 +118,7 @@ zink_destroy_query(struct pipe_context *pctx,
    p_atomic_set(&query->dead, true);
    if (p_atomic_read(&query->fences)) {
       if (query->xfb_running)
-        wait_query(pctx, query);
+        zink_fence_wait(pctx);
       return;
    }
 
@@ -345,10 +332,8 @@ zink_get_query_result(struct pipe_context *pctx,
                       bool wait,
                       union pipe_query_result *result)
 {
-   struct zink_query *query = (struct zink_query *)q;
-
    if (wait) {
-      wait_query(pctx, query);
+      zink_fence_wait(pctx);
    } else
       pctx->flush(pctx, NULL, 0);
    return get_query_result(pctx, q, wait, result);

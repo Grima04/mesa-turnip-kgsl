@@ -154,6 +154,9 @@ struct zink_batch *
 zink_batch_no_rp(struct zink_context *ctx);
 
 void
+zink_fence_wait(struct pipe_context *ctx);
+
+void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
                       VkImageAspectFlags aspect, VkImageLayout new_layout);
 

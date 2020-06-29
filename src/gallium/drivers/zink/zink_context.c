@@ -897,6 +897,18 @@ zink_flush(struct pipe_context *pctx,
                                  PIPE_TIMEOUT_INFINITE);
 }
 
+void
+zink_fence_wait(struct pipe_context *pctx)
+{
+   struct pipe_fence_handle *fence = NULL;
+   pctx->flush(pctx, &fence, PIPE_FLUSH_HINT_FINISH);
+   if (fence) {
+      pctx->screen->fence_finish(pctx->screen, NULL, fence,
+                                 PIPE_TIMEOUT_INFINITE);
+      pctx->screen->fence_reference(pctx->screen, &fence, NULL);
+   }
+}
+
 static void
 zink_flush_resource(struct pipe_context *pipe,
                     struct pipe_resource *resource)
