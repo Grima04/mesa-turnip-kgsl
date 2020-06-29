@@ -30,32 +30,16 @@
 
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
-#include "util/register_allocate.h"
 
 #define ALU_SWIZ(s) INST_SWIZ((s)->swizzle[0], (s)->swizzle[1], (s)->swizzle[2], (s)->swizzle[3])
 #define SRC_DISABLE ((hw_src){})
 #define SRC_CONST(idx, s) ((hw_src){.use=1, .rgroup = INST_RGROUP_UNIFORM_0, .reg=idx, .swiz=s})
 #define SRC_REG(idx, s) ((hw_src){.use=1, .rgroup = INST_RGROUP_TEMP, .reg=idx, .swiz=s})
 
-#define emit(type, args...) etna_emit_##type(state->c, args)
+#define emit(type, args...) etna_emit_##type(c, args)
 
 typedef struct etna_inst_dst hw_dst;
 typedef struct etna_inst_src hw_src;
-
-struct state {
-   struct etna_compile *c;
-
-   unsigned const_count;
-
-   nir_shader *shader;
-   nir_function_impl *impl;
-
-   /* ra state */
-   struct ra_graph *g;
-   struct ra_regs *regs;
-   unsigned *live_map;
-   unsigned num_nodes;
-};
 
 static inline hw_src
 src_swizzle(hw_src src, unsigned swizzle)
@@ -88,10 +72,10 @@ const_add(uint64_t *c, uint64_t value)
 }
 
 static hw_src
-const_src(struct state *state, nir_const_value *value, unsigned num_components)
+const_src(struct etna_compile *c, nir_const_value *value, unsigned num_components)
 {
    /* use inline immediates if possible */
-   if (state->c->specs->halti >= 2 && num_components == 1 &&
+   if (c->specs->halti >= 2 && num_components == 1 &&
        value[0].u64 >> 32 == ETNA_IMMEDIATE_CONSTANT) {
       uint32_t bits = value[0].u32;
 
@@ -111,7 +95,7 @@ const_src(struct state *state, nir_const_value *value, unsigned num_components)
    unsigned i;
    int swiz = -1;
    for (i = 0; swiz < 0; i++) {
-      uint64_t *a = &state->c->consts[i*4];
+      uint64_t *a = &c->consts[i*4];
       uint64_t save[4];
       memcpy(save, a, sizeof(save));
       swiz = 0;
@@ -127,7 +111,7 @@ const_src(struct state *state, nir_const_value *value, unsigned num_components)
    }
 
    assert(i <= ETNA_MAX_IMM / 4);
-   state->const_count = MAX2(state->const_count, i);
+   c->const_count = MAX2(c->const_count, i);
 
    return SRC_CONST(i - 1, swiz);
 }
@@ -262,10 +246,10 @@ static inline int reg_get_type(int virt_reg)
    return virt_reg % NUM_REG_TYPES;
 }
 
-static inline int reg_get_base(struct state *state, int virt_reg)
+static inline int reg_get_base(struct etna_compile *c, int virt_reg)
 {
    /* offset by 1 to avoid reserved position register */
-   if (state->shader->info.stage == MESA_SHADER_FRAGMENT)
+   if (c->nir->info.stage == MESA_SHADER_FRAGMENT)
       return (virt_reg / NUM_REG_TYPES + 1) % ETNA_MAX_TEMPS;
    return virt_reg / NUM_REG_TYPES;
 }
@@ -315,17 +299,17 @@ static inline int reg_get_class(int virt_reg)
 
 /* nir_src to allocated register */
 static hw_src
-ra_src(struct state *state, nir_src *src)
+ra_src(struct etna_compile *c, nir_src *src)
 {
-   unsigned reg = ra_get_node_reg(state->g, state->live_map[src_index(state->impl, src)]);
-   return SRC_REG(reg_get_base(state, reg), reg_swiz[reg_get_type(reg)]);
+   unsigned reg = ra_get_node_reg(c->g, c->live_map[src_index(c->impl, src)]);
+   return SRC_REG(reg_get_base(c, reg), reg_swiz[reg_get_type(reg)]);
 }
 
 static hw_src
-get_src(struct state *state, nir_src *src)
+get_src(struct etna_compile *c, nir_src *src)
 {
    if (!src->is_ssa)
-      return ra_src(state, src);
+      return ra_src(c, src);
 
    nir_instr *instr = src->ssa->parent_instr;
 
@@ -333,12 +317,12 @@ get_src(struct state *state, nir_src *src)
       assert(instr->type == nir_instr_type_alu);
       nir_alu_instr *alu = nir_instr_as_alu(instr);
       assert(alu->op == nir_op_mov);
-      return src_swizzle(get_src(state, &alu->src[0].src), ALU_SWIZ(&alu->src[0]));
+      return src_swizzle(get_src(c, &alu->src[0].src), ALU_SWIZ(&alu->src[0]));
    }
 
    switch (instr->type) {
    case nir_instr_type_load_const:
-      return const_src(state, nir_instr_as_load_const(instr)->value, src->ssa->num_components);
+      return const_src(c, nir_instr_as_load_const(instr)->value, src->ssa->num_components);
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
       switch (intr->intrinsic) {
@@ -346,27 +330,27 @@ get_src(struct state *state, nir_src *src)
       case nir_intrinsic_load_instance_id:
       case nir_intrinsic_load_uniform:
       case nir_intrinsic_load_ubo:
-         return ra_src(state, src);
+         return ra_src(c, src);
       case nir_intrinsic_load_front_face:
          return (hw_src) { .use = 1, .rgroup = INST_RGROUP_INTERNAL };
       case nir_intrinsic_load_frag_coord:
          return SRC_REG(0, INST_SWIZ_IDENTITY);
       default:
-         compile_error(state->c, "Unhandled NIR intrinsic type: %s\n",
+         compile_error(c, "Unhandled NIR intrinsic type: %s\n",
                        nir_intrinsic_infos[intr->intrinsic].name);
          break;
       }
    } break;
    case nir_instr_type_alu:
    case nir_instr_type_tex:
-      return ra_src(state, src);
+      return ra_src(c, src);
    case nir_instr_type_ssa_undef: {
       /* return zero to deal with broken Blur demo */
       nir_const_value value = CONST(0);
-      return src_swizzle(const_src(state, &value, 1), SWIZZLE(X,X,X,X));
+      return src_swizzle(const_src(c, &value, 1), SWIZZLE(X,X,X,X));
    }
    default:
-      compile_error(state->c, "Unhandled NIR instruction type: %d\n", instr->type);
+      compile_error(c, "Unhandled NIR instruction type: %d\n", instr->type);
       break;
    }
 
@@ -409,19 +393,19 @@ vec_dest_has_swizzle(nir_alu_instr *vec, nir_ssa_def *ssa)
  * *p_swiz tells how the components need to be placed into register
  */
 static hw_dst
-ra_dest(struct state *state, nir_dest *dest, unsigned *p_swiz)
+ra_dest(struct etna_compile *c, nir_dest *dest, unsigned *p_swiz)
 {
    unsigned swiz = INST_SWIZ_IDENTITY, mask = 0xf;
    dest = real_dest(dest, &swiz, &mask);
 
-   unsigned r = ra_get_node_reg(state->g, state->live_map[dest_index(state->impl, dest)]);
+   unsigned r = ra_get_node_reg(c->g, c->live_map[dest_index(c->impl, dest)]);
    unsigned t = reg_get_type(r);
 
    *p_swiz = inst_swiz_compose(swiz, reg_dst_swiz[t]);
 
    return (hw_dst) {
       .use = 1,
-      .reg = reg_get_base(state, r),
+      .reg = reg_get_base(c, r),
       .write_mask = inst_write_mask_compose(mask, reg_writemask[t]),
    };
 }
@@ -438,7 +422,7 @@ static unsigned int *q_values[] = {
 };
 
 static void
-ra_assign(struct state *state, nir_shader *shader)
+ra_assign(struct etna_compile *c, nir_shader *shader)
 {
    struct ra_regs *regs = ra_alloc_reg_set(NULL, ETNA_MAX_TEMPS *
                   NUM_REG_TYPES, false);
@@ -490,17 +474,17 @@ ra_assign(struct state *state, nir_shader *shader)
    for (unsigned i = 0; i < num_nodes; i++) {
       nir_instr *instr = defs[i].instr;
       nir_dest *dest = defs[i].dest;
-      unsigned c = nir_dest_num_components(*dest) - 1;
+      unsigned comp = nir_dest_num_components(*dest) - 1;
 
       if (instr->type == nir_instr_type_alu &&
-          state->c->specs->has_new_transcendentals) {
+          c->specs->has_new_transcendentals) {
          switch (nir_instr_as_alu(instr)->op) {
          case nir_op_fdiv:
          case nir_op_flog2:
          case nir_op_fsin:
          case nir_op_fcos:
             assert(dest->is_ssa);
-            c = REG_CLASS_VIRT_VEC2T;
+            comp = REG_CLASS_VIRT_VEC2T;
          default:
             break;
          }
@@ -512,13 +496,13 @@ ra_assign(struct state *state, nir_shader *shader)
          if (intr->intrinsic == nir_intrinsic_load_ubo) {
             assert(dest == &intr->dest);
             if (dest->ssa.num_components == 2)
-               c = REG_CLASS_VIRT_VEC2C;
+               comp = REG_CLASS_VIRT_VEC2C;
             if (dest->ssa.num_components == 3)
-               c = REG_CLASS_VIRT_VEC3C;
+               comp = REG_CLASS_VIRT_VEC3C;
          }
       }
 
-      ra_set_node_class(g, i, c);
+      ra_set_node_class(g, i, comp);
    }
 
    nir_foreach_block(block, impl) {
@@ -555,7 +539,7 @@ ra_assign(struct state *state, nir_shader *shader)
             }[nir_dest_num_components(*dest) - 1];
             break;
          case nir_intrinsic_load_instance_id:
-            reg = state->c->variant->infile.num_reg * NUM_REG_TYPES + REG_TYPE_VIRT_SCALAR_Y;
+            reg = c->variant->infile.num_reg * NUM_REG_TYPES + REG_TYPE_VIRT_SCALAR_Y;
             break;
          default:
             continue;
@@ -581,30 +565,30 @@ ra_assign(struct state *state, nir_shader *shader)
    ASSERTED bool ok = ra_allocate(g);
    assert(ok);
 
-   state->g = g;
-   state->regs = regs;
-   state->live_map = live_map;
-   state->num_nodes = num_nodes;
+   c->g = g;
+   c->regs = regs;
+   c->live_map = live_map;
+   c->num_nodes = num_nodes;
 }
 
 static unsigned
-ra_finish(struct state *state)
+ra_finish(struct etna_compile *c)
 {
    /* TODO: better way to get number of registers used? */
    unsigned j = 0;
-   for (unsigned i = 0; i < state->num_nodes; i++) {
-      j = MAX2(j, reg_get_base(state, ra_get_node_reg(state->g, i)) + 1);
+   for (unsigned i = 0; i < c->num_nodes; i++) {
+      j = MAX2(j, reg_get_base(c, ra_get_node_reg(c->g, i)) + 1);
    }
 
-   ralloc_free(state->g);
-   ralloc_free(state->regs);
-   ralloc_free(state->live_map);
+   ralloc_free(c->g);
+   ralloc_free(c->regs);
+   ralloc_free(c->live_map);
 
    return j;
 }
 
 static void
-emit_alu(struct state *state, nir_alu_instr * alu)
+emit_alu(struct etna_compile *c, nir_alu_instr * alu)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
 
@@ -615,7 +599,7 @@ emit_alu(struct state *state, nir_alu_instr * alu)
    assert(!(alu->op >= nir_op_vec2 && alu->op <= nir_op_vec4));
 
    unsigned dst_swiz;
-   hw_dst dst = ra_dest(state, &alu->dest.dest, &dst_swiz);
+   hw_dst dst = ra_dest(c, &alu->dest.dest, &dst_swiz);
 
    /* compose alu write_mask with RA write mask */
    if (!alu->dest.dest.is_ssa)
@@ -638,7 +622,7 @@ emit_alu(struct state *state, nir_alu_instr * alu)
       nir_alu_src *asrc = &alu->src[i];
       hw_src src;
 
-      src = src_swizzle(get_src(state, &asrc->src), ALU_SWIZ(asrc));
+      src = src_swizzle(get_src(c, &asrc->src), ALU_SWIZ(asrc));
       src = src_swizzle(src, dst_swiz);
 
       if (src.rgroup != INST_RGROUP_IMMEDIATE) {
@@ -656,10 +640,10 @@ emit_alu(struct state *state, nir_alu_instr * alu)
 }
 
 static void
-emit_tex(struct state *state, nir_tex_instr * tex)
+emit_tex(struct etna_compile *c, nir_tex_instr * tex)
 {
    unsigned dst_swiz;
-   hw_dst dst = ra_dest(state, &tex->dest, &dst_swiz);
+   hw_dst dst = ra_dest(c, &tex->dest, &dst_swiz);
    nir_src *coord = NULL, *lod_bias = NULL, *compare = NULL;
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
@@ -676,41 +660,41 @@ emit_tex(struct state *state, nir_tex_instr * tex)
          compare = &tex->src[i].src;
          break;
       default:
-         compile_error(state->c, "Unhandled NIR tex src type: %d\n",
+         compile_error(c, "Unhandled NIR tex src type: %d\n",
                        tex->src[i].src_type);
          break;
       }
    }
 
-   emit(tex, tex->op, tex->sampler_index, dst_swiz, dst, get_src(state, coord),
-        lod_bias ? get_src(state, lod_bias) : SRC_DISABLE,
-        compare ? get_src(state, compare) : SRC_DISABLE);
+   emit(tex, tex->op, tex->sampler_index, dst_swiz, dst, get_src(c, coord),
+        lod_bias ? get_src(c, lod_bias) : SRC_DISABLE,
+        compare ? get_src(c, compare) : SRC_DISABLE);
 }
 
 static void
-emit_intrinsic(struct state *state, nir_intrinsic_instr * intr)
+emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
 {
    switch (intr->intrinsic) {
    case nir_intrinsic_store_deref:
-      emit(output, nir_src_as_deref(intr->src[0])->var, get_src(state, &intr->src[1]));
+      emit(output, nir_src_as_deref(intr->src[0])->var, get_src(c, &intr->src[1]));
       break;
    case nir_intrinsic_discard_if:
-      emit(discard, get_src(state, &intr->src[0]));
+      emit(discard, get_src(c, &intr->src[0]));
       break;
    case nir_intrinsic_discard:
       emit(discard, SRC_DISABLE);
       break;
    case nir_intrinsic_load_uniform: {
       unsigned dst_swiz;
-      struct etna_inst_dst dst = ra_dest(state, &intr->dest, &dst_swiz);
+      struct etna_inst_dst dst = ra_dest(c, &intr->dest, &dst_swiz);
 
       /* TODO: rework so extra MOV isn't required, load up to 4 addresses at once */
-      emit_inst(state->c, &(struct etna_inst) {
+      emit_inst(c, &(struct etna_inst) {
          .opcode = INST_OPCODE_MOVAR,
          .dst.write_mask = 0x1,
-         .src[2] = get_src(state, &intr->src[0]),
+         .src[2] = get_src(c, &intr->src[0]),
       });
-      emit_inst(state->c, &(struct etna_inst) {
+      emit_inst(c, &(struct etna_inst) {
          .opcode = INST_OPCODE_MOV,
          .dst = dst,
          .src[2] = {
@@ -726,12 +710,12 @@ emit_intrinsic(struct state *state, nir_intrinsic_instr * intr)
       /* TODO: if offset is of the form (x + C) then add C to the base instead */
       unsigned idx = nir_src_as_const_value(intr->src[0])[0].u32;
       unsigned dst_swiz;
-      emit_inst(state->c, &(struct etna_inst) {
+      emit_inst(c, &(struct etna_inst) {
          .opcode = INST_OPCODE_LOAD,
          .type = INST_TYPE_U32,
-         .dst = ra_dest(state, &intr->dest, &dst_swiz),
-         .src[0] = get_src(state, &intr->src[1]),
-         .src[1] = const_src(state, &CONST_VAL(ETNA_IMMEDIATE_UBO0_ADDR + idx, 0), 1),
+         .dst = ra_dest(c, &intr->dest, &dst_swiz),
+         .src[0] = get_src(c, &intr->src[1]),
+         .src[1] = const_src(c, &CONST_VAL(ETNA_IMMEDIATE_UBO0_ADDR + idx, 0), 1),
       });
    } break;
    case nir_intrinsic_load_front_face:
@@ -742,23 +726,23 @@ emit_intrinsic(struct state *state, nir_intrinsic_instr * intr)
    case nir_intrinsic_load_instance_id:
       break;
    default:
-      compile_error(state->c, "Unhandled NIR intrinsic type: %s\n",
+      compile_error(c, "Unhandled NIR intrinsic type: %s\n",
                     nir_intrinsic_infos[intr->intrinsic].name);
    }
 }
 
 static void
-emit_instr(struct state *state, nir_instr * instr)
+emit_instr(struct etna_compile *c, nir_instr * instr)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
-      emit_alu(state, nir_instr_as_alu(instr));
+      emit_alu(c, nir_instr_as_alu(instr));
       break;
    case nir_instr_type_tex:
-      emit_tex(state, nir_instr_as_tex(instr));
+      emit_tex(c, nir_instr_as_tex(instr));
       break;
    case nir_instr_type_intrinsic:
-      emit_intrinsic(state, nir_instr_as_intrinsic(instr));
+      emit_intrinsic(c, nir_instr_as_intrinsic(instr));
       break;
    case nir_instr_type_jump:
       assert(nir_instr_is_last(instr));
@@ -767,18 +751,18 @@ emit_instr(struct state *state, nir_instr * instr)
    case nir_instr_type_deref:
       break;
    default:
-      compile_error(state->c, "Unhandled NIR instruction type: %d\n", instr->type);
+      compile_error(c, "Unhandled NIR instruction type: %d\n", instr->type);
       break;
    }
 }
 
 static void
-emit_block(struct state *state, nir_block * block)
+emit_block(struct etna_compile *c, nir_block * block)
 {
    emit(block_start, block->index);
 
    nir_foreach_instr(instr, block)
-      emit_instr(state, instr);
+      emit_instr(c, instr);
 
    /* succs->index < block->index is for the loop case  */
    nir_block *succs = block->successors[0];
@@ -787,13 +771,13 @@ emit_block(struct state *state, nir_block * block)
 }
 
 static void
-emit_cf_list(struct state *state, struct exec_list *list);
+emit_cf_list(struct etna_compile *c, struct exec_list *list);
 
 static void
-emit_if(struct state *state, nir_if * nif)
+emit_if(struct etna_compile *c, nir_if * nif)
 {
-   emit(jump, nir_if_first_else_block(nif)->index, get_src(state, &nif->condition));
-   emit_cf_list(state, &nif->then_list);
+   emit(jump, nir_if_first_else_block(nif)->index, get_src(c, &nif->condition));
+   emit_cf_list(c, &nif->then_list);
 
    /* jump at end of then_list to skip else_list
     * not needed if then_list already ends with a jump or else_list is empty
@@ -802,25 +786,25 @@ emit_if(struct state *state, nir_if * nif)
        !nir_cf_list_is_empty_block(&nif->else_list))
       emit(jump, nir_if_last_else_block(nif)->successors[0]->index, SRC_DISABLE);
 
-   emit_cf_list(state, &nif->else_list);
+   emit_cf_list(c, &nif->else_list);
 }
 
 static void
-emit_cf_list(struct state *state, struct exec_list *list)
+emit_cf_list(struct etna_compile *c, struct exec_list *list)
 {
    foreach_list_typed(nir_cf_node, node, node, list) {
       switch (node->type) {
       case nir_cf_node_block:
-         emit_block(state, nir_cf_node_as_block(node));
+         emit_block(c, nir_cf_node_as_block(node));
          break;
       case nir_cf_node_if:
-         emit_if(state, nir_cf_node_as_if(node));
+         emit_if(c, nir_cf_node_as_if(node));
          break;
       case nir_cf_node_loop:
-         emit_cf_list(state, &nir_cf_node_as_loop(node)->body);
+         emit_cf_list(c, &nir_cf_node_as_loop(node)->body);
          break;
       default:
-         compile_error(state->c, "Unknown NIR node type\n");
+         compile_error(c, "Unknown NIR node type\n");
          break;
       }
    }
@@ -881,12 +865,12 @@ insert_vec_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
  * -insert movs for multiple constants (pre-HALTI5)
  */
 static void
-lower_alu(struct state *state, nir_alu_instr *alu)
+lower_alu(struct etna_compile *c, nir_alu_instr *alu)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
 
    nir_builder b;
-   nir_builder_init(&b, state->impl);
+   nir_builder_init(&b, c->impl);
    b.cursor = nir_before_instr(&alu->instr);
 
    switch (alu->op) {
@@ -896,7 +880,7 @@ lower_alu(struct state *state, nir_alu_instr *alu)
       break;
    default:
       /* pre-GC7000L can only have 1 uniform src per instruction */
-      if (state->c->specs->halti >= 5)
+      if (c->specs->halti >= 5)
          return;
 
       nir_const_value value[4] = {};
@@ -1016,7 +1000,7 @@ lower_alu(struct state *state, nir_alu_instr *alu)
       }
 
       if (need_mov && !(finished_write_mask & (1 << i)))
-         finished_write_mask |= insert_vec_mov(alu, i, state->shader);
+         finished_write_mask |= insert_vec_mov(alu, i, c->nir);
    }
 }
 
@@ -1024,25 +1008,21 @@ static bool
 emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
 {
    nir_shader *shader = c->nir;
+   c->impl = nir_shader_get_entrypoint(shader);
 
-   struct state state = {
-      .c = c,
-      .shader = shader,
-      .impl = nir_shader_get_entrypoint(shader),
-   };
    bool have_indirect_uniform = false;
    unsigned indirect_max = 0;
 
    nir_builder b;
-   nir_builder_init(&b, state.impl);
+   nir_builder_init(&b, c->impl);
 
    /* convert non-dynamic uniform loads to constants, etc */
-   nir_foreach_block(block, state.impl) {
+   nir_foreach_block(block, c->impl) {
       nir_foreach_instr_safe(instr, block) {
          switch(instr->type) {
          case nir_instr_type_alu:
             /* deals with vecN and const srcs */
-            lower_alu(&state, nir_instr_as_alu(instr));
+            lower_alu(c, nir_instr_as_alu(instr));
             break;
          case nir_instr_type_load_const: {
             nir_load_const_instr *load_const = nir_instr_as_load_const(instr);
@@ -1095,11 +1075,11 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
    if (have_indirect_uniform) {
       for (unsigned i = 0; i < indirect_max * 4; i++)
          c->consts[i] = UNIFORM(i).u64;
-      state.const_count = indirect_max;
+      c->const_count = indirect_max;
    }
 
    /* add mov for any store output using sysval/const  */
-   nir_foreach_block(block, state.impl) {
+   nir_foreach_block(block, c->impl) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
             continue;
@@ -1124,11 +1104,11 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
    nir_convert_from_ssa(shader, true);
    nir_opt_dce(shader);
 
-   ra_assign(&state, shader);
+   ra_assign(c, shader);
 
-   emit_cf_list(&state, &nir_shader_get_entrypoint(shader)->body);
+   emit_cf_list(c, &nir_shader_get_entrypoint(shader)->body);
 
-   *num_temps = ra_finish(&state);
-   *num_consts = state.const_count;
+   *num_temps = ra_finish(c);
+   *num_consts = c->const_count;
    return true;
 }

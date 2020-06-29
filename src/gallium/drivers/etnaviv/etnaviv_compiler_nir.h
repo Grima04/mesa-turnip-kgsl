@@ -28,6 +28,37 @@
 #define H_ETNAVIV_COMPILER_NIR
 
 #include "compiler/nir/nir.h"
+#include "etnaviv_asm.h"
+#include "etnaviv_compiler.h"
+#include "util/register_allocate.h"
+
+struct etna_compile {
+   nir_shader *nir;
+   nir_function_impl *impl;
+#define is_fs(c) ((c)->nir->info.stage == MESA_SHADER_FRAGMENT)
+   const struct etna_specs *specs;
+   struct etna_shader_variant *variant;
+
+   /* block # to instr index */
+   unsigned *block_ptr;
+
+   /* Code generation */
+   int inst_ptr; /* current instruction pointer */
+   struct etna_inst code[ETNA_MAX_INSTRUCTIONS * ETNA_INST_SIZE];
+
+   /* constants */
+   uint64_t consts[ETNA_MAX_IMM];
+   unsigned const_count;
+
+   /* ra state */
+   struct ra_graph *g;
+   struct ra_regs *regs;
+   unsigned *live_map;
+   unsigned num_nodes;
+
+   /* There was an error during compilation */
+   bool error;
+};
 
 #define compile_error(ctx, args...) ({ \
    printf(args); \

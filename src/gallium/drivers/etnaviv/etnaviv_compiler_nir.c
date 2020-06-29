@@ -44,28 +44,6 @@
 #include "tgsi/tgsi_strings.h"
 #include "util/u_half.h"
 
-struct etna_compile {
-   nir_shader *nir;
-#define is_fs(c) ((c)->nir->info.stage == MESA_SHADER_FRAGMENT)
-   const struct etna_specs *specs;
-   struct etna_shader_variant *variant;
-
-   /* block # to instr index */
-   unsigned *block_ptr;
-
-   /* Code generation */
-   int inst_ptr; /* current instruction pointer */
-   struct etna_inst code[ETNA_MAX_INSTRUCTIONS * ETNA_INST_SIZE];
-
-   /* constants */
-   uint64_t consts[ETNA_MAX_IMM];
-
-   /* There was an error during compilation */
-   bool error;
-};
-
-
-
 static bool
 etna_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
 {
