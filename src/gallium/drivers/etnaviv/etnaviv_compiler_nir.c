@@ -393,7 +393,6 @@ etna_emit_output(struct etna_compile *c, nir_variable *var, struct etna_inst_src
    NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);      \
    this_progress;                                          \
 })
-#define OPT_V(nir, pass, ...) NIR_PASS_V(nir, pass, ##__VA_ARGS__)
 
 static void
 etna_optimize_loop(nir_shader *s)
@@ -402,7 +401,7 @@ etna_optimize_loop(nir_shader *s)
    do {
       progress = false;
 
-      OPT_V(s, nir_lower_vars_to_ssa);
+      NIR_PASS_V(s, nir_lower_vars_to_ssa);
       progress |= OPT(s, nir_opt_copy_prop_vars);
       progress |= OPT(s, nir_copy_prop);
       progress |= OPT(s, nir_opt_dce);
@@ -574,15 +573,15 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    NIR_PASS_V(s, nir_lower_io, ~nir_var_shader_out, etna_glsl_type_size,
             (nir_lower_io_options)0);
 
-   OPT_V(s, nir_lower_regs_to_ssa);
-   OPT_V(s, nir_lower_vars_to_ssa);
-   OPT_V(s, nir_lower_indirect_derefs, nir_var_all);
-   OPT_V(s, nir_lower_tex, &(struct nir_lower_tex_options) { .lower_txp = ~0u });
-   OPT_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
+   NIR_PASS_V(s, nir_lower_regs_to_ssa);
+   NIR_PASS_V(s, nir_lower_vars_to_ssa);
+   NIR_PASS_V(s, nir_lower_indirect_derefs, nir_var_all);
+   NIR_PASS_V(s, nir_lower_tex, &(struct nir_lower_tex_options) { .lower_txp = ~0u });
+   NIR_PASS_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
 
    etna_optimize_loop(s);
 
-   OPT_V(s, etna_lower_io, v);
+   NIR_PASS_V(s, etna_lower_io, v);
 
    if (v->shader->specs->vs_need_z_div)
       NIR_PASS_V(s, nir_lower_clip_halfz);
@@ -592,12 +591,12 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       /* use opt_algebraic between int_to_float and boot_to_float because
        * int_to_float emits ftrunc, and ftrunc lowering generates bool ops
        */
-      OPT_V(s, nir_lower_int_to_float);
-      OPT_V(s, nir_opt_algebraic);
-      OPT_V(s, nir_lower_bool_to_float);
+      NIR_PASS_V(s, nir_lower_int_to_float);
+      NIR_PASS_V(s, nir_opt_algebraic);
+      NIR_PASS_V(s, nir_lower_bool_to_float);
    } else {
-      OPT_V(s, nir_lower_idiv, nir_lower_idiv_fast);
-      OPT_V(s, nir_lower_bool_to_int32);
+      NIR_PASS_V(s, nir_lower_idiv, nir_lower_idiv_fast);
+      NIR_PASS_V(s, nir_lower_bool_to_int32);
    }
 
    etna_optimize_loop(s);
@@ -606,7 +605,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       nir_print_shader(s, stdout);
 
    while( OPT(s, nir_opt_vectorize) );
-   OPT_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
+   NIR_PASS_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
 
    NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(s, nir_opt_algebraic_late);
