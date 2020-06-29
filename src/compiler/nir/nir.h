@@ -2152,7 +2152,6 @@ typedef struct {
     *    - nir_texop_txf
     *    - nir_texop_txf_ms
     *    - nir_texop_txs
-    *    - nir_texop_lod
     *    - nir_texop_query_levels
     *    - nir_texop_texture_samples
     *    - nir_texop_samples_identical
@@ -2177,7 +2176,6 @@ nir_tex_instr_need_sampler(const nir_tex_instr *instr)
    case nir_texop_txf:
    case nir_texop_txf_ms:
    case nir_texop_txs:
-   case nir_texop_lod:
    case nir_texop_query_levels:
    case nir_texop_texture_samples:
    case nir_texop_samples_identical:
