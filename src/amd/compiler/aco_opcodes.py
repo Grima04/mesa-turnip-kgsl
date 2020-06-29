@@ -129,7 +129,7 @@ class Format(Enum):
          return [('uint16_t', 'dpp_ctrl', None),
                  ('uint8_t', 'row_mask', '0xF'),
                  ('uint8_t', 'bank_mask', '0xF'),
-                 ('bool', 'bound_ctrl', 'false')]
+                 ('bool', 'bound_ctrl', 'true')]
       elif self in [Format.FLAT, Format.GLOBAL, Format.SCRATCH]:
          return [('uint16_t', 'offset', 0),
                  ('bool', 'can_reorder', 'true'),
