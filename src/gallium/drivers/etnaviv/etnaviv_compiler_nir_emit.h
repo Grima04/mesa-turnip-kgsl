@@ -36,8 +36,6 @@
 #define SRC_CONST(idx, s) ((hw_src){.use=1, .rgroup = INST_RGROUP_UNIFORM_0, .reg=idx, .swiz=s})
 #define SRC_REG(idx, s) ((hw_src){.use=1, .rgroup = INST_RGROUP_TEMP, .reg=idx, .swiz=s})
 
-#define emit(type, args...) etna_emit_##type(c, args)
-
 typedef struct etna_inst_dst hw_dst;
 typedef struct etna_inst_src hw_src;
 
@@ -636,7 +634,7 @@ emit_alu(struct etna_compile *c, nir_alu_instr * alu)
       srcs[i] = src;
    }
 
-   emit(alu, alu->op, dst, srcs, alu->dest.saturate || (alu->op == nir_op_fsat));
+   etna_emit_alu(c, alu->op, dst, srcs, alu->dest.saturate || (alu->op == nir_op_fsat));
 }
 
 static void
@@ -666,9 +664,9 @@ emit_tex(struct etna_compile *c, nir_tex_instr * tex)
       }
    }
 
-   emit(tex, tex->op, tex->sampler_index, dst_swiz, dst, get_src(c, coord),
-        lod_bias ? get_src(c, lod_bias) : SRC_DISABLE,
-        compare ? get_src(c, compare) : SRC_DISABLE);
+   etna_emit_tex(c, tex->op, tex->sampler_index, dst_swiz, dst, get_src(c, coord),
+                 lod_bias ? get_src(c, lod_bias) : SRC_DISABLE,
+                 compare ? get_src(c, compare) : SRC_DISABLE);
 }
 
 static void
@@ -676,13 +674,13 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
 {
    switch (intr->intrinsic) {
    case nir_intrinsic_store_deref:
-      emit(output, nir_src_as_deref(intr->src[0])->var, get_src(c, &intr->src[1]));
+      etna_emit_output(c, nir_src_as_deref(intr->src[0])->var, get_src(c, &intr->src[1]));
       break;
    case nir_intrinsic_discard_if:
-      emit(discard, get_src(c, &intr->src[0]));
+      etna_emit_discard(c, get_src(c, &intr->src[0]));
       break;
    case nir_intrinsic_discard:
-      emit(discard, SRC_DISABLE);
+      etna_emit_discard(c, SRC_DISABLE);
       break;
    case nir_intrinsic_load_uniform: {
       unsigned dst_swiz;
@@ -759,7 +757,7 @@ emit_instr(struct etna_compile *c, nir_instr * instr)
 static void
 emit_block(struct etna_compile *c, nir_block * block)
 {
-   emit(block_start, block->index);
+   etna_emit_block_start(c, block->index);
 
    nir_foreach_instr(instr, block)
       emit_instr(c, instr);
@@ -767,7 +765,7 @@ emit_block(struct etna_compile *c, nir_block * block)
    /* succs->index < block->index is for the loop case  */
    nir_block *succs = block->successors[0];
    if (nir_block_ends_in_jump(block) || succs->index < block->index)
-      emit(jump, succs->index, SRC_DISABLE);
+      etna_emit_jump(c, succs->index, SRC_DISABLE);
 }
 
 static void
@@ -776,7 +774,7 @@ emit_cf_list(struct etna_compile *c, struct exec_list *list);
 static void
 emit_if(struct etna_compile *c, nir_if * nif)
 {
-   emit(jump, nir_if_first_else_block(nif)->index, get_src(c, &nif->condition));
+   etna_emit_jump(c, nir_if_first_else_block(nif)->index, get_src(c, &nif->condition));
    emit_cf_list(c, &nif->then_list);
 
    /* jump at end of then_list to skip else_list
@@ -784,7 +782,7 @@ emit_if(struct etna_compile *c, nir_if * nif)
     */
    if (!nir_block_ends_in_jump(nir_if_last_then_block(nif)) &&
        !nir_cf_list_is_empty_block(&nif->else_list))
-      emit(jump, nir_if_last_else_block(nif)->successors[0]->index, SRC_DISABLE);
+      etna_emit_jump(c, nir_if_last_else_block(nif)->successors[0]->index, SRC_DISABLE);
 
    emit_cf_list(c, &nif->else_list);
 }
