@@ -1363,10 +1363,13 @@ device_alloc(struct v3dv_device *device,
              VkDeviceSize size)
 {
    /* Our kernel interface is 32-bit */
-   assert((size & 0xffffffff) == size);
+   if (size > UINT32_MAX)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
    mem->bo = v3dv_bo_alloc(device, size, "device_alloc", false);
    if (!mem->bo)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
    return VK_SUCCESS;
 }
 

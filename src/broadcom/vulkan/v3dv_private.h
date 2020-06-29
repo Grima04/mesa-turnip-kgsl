@@ -404,7 +404,7 @@ struct v3dv_image {
    bool tiled;
 
    struct v3d_resource_slice slices[V3D_MAX_MIP_LEVELS];
-   uint32_t size; /* Total size in bytes */
+   uint64_t size; /* Total size in bytes */
    uint32_t cube_map_stride;
    uint32_t alignment;
 
