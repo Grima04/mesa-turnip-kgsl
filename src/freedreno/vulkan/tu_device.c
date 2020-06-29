@@ -656,8 +656,8 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->multiview                           = false;
          features->multiviewGeometryShader             = false;
          features->multiviewTessellationShader         = false;
-         features->variablePointersStorageBuffer       = false;
-         features->variablePointers                    = false;
+         features->variablePointersStorageBuffer       = true;
+         features->variablePointers                    = true;
          features->protectedMemory                     = false;
          features->samplerYcbcrConversion              = true;
          features->shaderDrawParameters                = true;
@@ -665,8 +665,8 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
          VkPhysicalDeviceVariablePointersFeatures *features = (void *) ext;
-         features->variablePointersStorageBuffer = false;
-         features->variablePointers = false;
+         features->variablePointersStorageBuffer = true;
+         features->variablePointers = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
