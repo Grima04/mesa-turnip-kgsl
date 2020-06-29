@@ -112,7 +112,7 @@ etna_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
 }
 
 static void
-etna_lower_alu_impl(nir_function_impl *impl, struct etna_compile *c)
+etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
 {
    nir_shader *shader = impl->function->shader;
 
@@ -132,7 +132,7 @@ etna_lower_alu_impl(nir_function_impl *impl, struct etna_compile *c)
          if (alu->op == nir_op_fsin || alu->op == nir_op_fcos) {
             b.cursor = nir_before_instr(instr);
 
-            nir_ssa_def *imm = c->specs->has_new_transcendentals ?
+            nir_ssa_def *imm = has_new_transcendentals ?
                nir_imm_float(&b, 1.0 / M_PI) :
                nir_imm_float(&b, 2.0 / M_PI);
 
@@ -143,7 +143,7 @@ etna_lower_alu_impl(nir_function_impl *impl, struct etna_compile *c)
          /* change transcendental ops to vec2 and insert vec1 mul for the result
           * TODO: do this earlier (but it breaks with optimizations)
           */
-         if (c->specs->has_new_transcendentals && (
+         if (has_new_transcendentals && (
              alu->op == nir_op_fdiv || alu->op == nir_op_flog2 ||
              alu->op == nir_op_fsin || alu->op == nir_op_fcos)) {
             nir_ssa_def *ssa = &alu->dest.dest.ssa;
@@ -170,11 +170,11 @@ etna_lower_alu_impl(nir_function_impl *impl, struct etna_compile *c)
    }
 }
 
-static void etna_lower_alu(nir_shader *shader, struct etna_compile *c)
+static void etna_lower_alu(nir_shader *shader, bool has_new_transcendentals)
 {
    nir_foreach_function(function, shader) {
       if (function->impl)
-         etna_lower_alu_impl(function->impl, c);
+         etna_lower_alu_impl(function->impl, has_new_transcendentals);
    }
 }
 
@@ -688,7 +688,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
 
    NIR_PASS_V(s, nir_opt_dce);
 
-   NIR_PASS_V(s, etna_lower_alu, c);
+   NIR_PASS_V(s, etna_lower_alu, c->specs->has_new_transcendentals);
 
    if (DBG_ENABLED(ETNA_DBG_DUMP_SHADERS))
       nir_print_shader(s, stdout);
