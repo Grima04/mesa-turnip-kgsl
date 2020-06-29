@@ -40,7 +40,6 @@
 #include "util/u_memory.h"
 #include "util/register_allocate.h"
 #include "compiler/nir/nir_builder.h"
-#include "compiler/nir/nir_worklist.h"
 
 #include "tgsi/tgsi_strings.h"
 #include "util/u_half.h"

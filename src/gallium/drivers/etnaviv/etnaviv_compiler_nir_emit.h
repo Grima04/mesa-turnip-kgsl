@@ -30,7 +30,6 @@
 
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
-#include "compiler/nir/nir_worklist.h"
 #include "util/register_allocate.h"
 
 #define ALU_SWIZ(s) INST_SWIZ((s)->swizzle[0], (s)->swizzle[1], (s)->swizzle[2], (s)->swizzle[3])
@@ -42,11 +41,6 @@
 
 typedef struct etna_inst_dst hw_dst;
 typedef struct etna_inst_src hw_src;
-
-enum {
-   BYPASS_DST = 1,
-   BYPASS_SRC = 2,
-};
 
 struct state {
    struct etna_compile *c;
@@ -70,16 +64,6 @@ src_swizzle(hw_src src, unsigned swizzle)
       src.swiz = inst_swiz_compose(src.swiz, swizzle);
 
    return src;
-}
-
-static inline bool is_sysval(nir_instr *instr)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   return intr->intrinsic == nir_intrinsic_load_front_face ||
-          intr->intrinsic == nir_intrinsic_load_frag_coord;
 }
 
 /* constants are represented as 64-bit ints
@@ -329,20 +313,6 @@ static inline int reg_get_class(int virt_reg)
    return 0;
 }
 
-/* get unique ssa/reg index for nir_src */
-static unsigned
-src_index(nir_function_impl *impl, nir_src *src)
-{
-   return src->is_ssa ? src->ssa->index : (src->reg.reg->index + impl->ssa_alloc);
-}
-
-/* get unique ssa/reg index for nir_dest */
-static unsigned
-dest_index(nir_function_impl *impl, nir_dest *dest)
-{
-   return dest->is_ssa ? dest->ssa.index : (dest->reg.reg->index + impl->ssa_alloc);
-}
-
 /* nir_src to allocated register */
 static hw_src
 ra_src(struct state *state, nir_src *src)
@@ -403,32 +373,6 @@ get_src(struct state *state, nir_src *src)
    return SRC_DISABLE;
 }
 
-static void
-update_swiz_mask(nir_alu_instr *alu, nir_dest *dest, unsigned *swiz, unsigned *mask)
-{
-   if (!swiz)
-      return;
-
-   bool is_vec = dest != NULL;
-   unsigned swizzle = 0, write_mask = 0;
-   for (unsigned i = 0; i < 4; i++) {
-      /* channel not written */
-      if (!(alu->dest.write_mask & (1 << i)))
-         continue;
-      /* src is different (only check for vecN) */
-      if (is_vec && alu->src[i].src.ssa != &dest->ssa)
-         continue;
-
-      unsigned src_swiz = is_vec ? alu->src[i].swizzle[0] : alu->src[0].swizzle[i];
-      swizzle |= (*swiz >> src_swiz * 2 & 3) << i * 2;
-      /* this channel isn't written through this chain */
-      if (*mask & (1 << src_swiz))
-         write_mask |= 1 << i;
-   }
-   *swiz = swizzle;
-   *mask = write_mask;
-}
-
 static bool
 vec_dest_has_swizzle(nir_alu_instr *vec, nir_ssa_def *ssa)
 {
@@ -461,82 +405,6 @@ vec_dest_has_swizzle(nir_alu_instr *vec, nir_ssa_def *ssa)
    return false;
 }
 
-static nir_dest *
-real_dest(nir_dest *dest, unsigned *swiz, unsigned *mask)
-{
-   if (!dest || !dest->is_ssa)
-      return dest;
-
-   bool can_bypass_src = !list_length(&dest->ssa.if_uses);
-   nir_instr *p_instr = dest->ssa.parent_instr;
-
-   /* if used by a vecN, the "real" destination becomes the vecN destination
-    * lower_alu guarantees that values used by a vecN are only used by that vecN
-    * we can apply the same logic to movs in a some cases too
-    */
-   nir_foreach_use(use_src, &dest->ssa) {
-      nir_instr *instr = use_src->parent_instr;
-
-      /* src bypass check: for now only deal with tex src mov case
-       * note: for alu don't bypass mov for multiple uniform sources
-       */
-      switch (instr->type) {
-      case nir_instr_type_tex:
-         if (p_instr->type == nir_instr_type_alu &&
-             nir_instr_as_alu(p_instr)->op == nir_op_mov) {
-            break;
-         }
-      default:
-         can_bypass_src = false;
-         break;
-      }
-
-      if (instr->type != nir_instr_type_alu)
-         continue;
-
-      nir_alu_instr *alu = nir_instr_as_alu(instr);
-
-      switch (alu->op) {
-      case nir_op_vec2:
-      case nir_op_vec3:
-      case nir_op_vec4:
-         assert(list_length(&dest->ssa.if_uses) == 0);
-         nir_foreach_use(use_src, &dest->ssa)
-            assert(use_src->parent_instr == instr);
-
-         update_swiz_mask(alu, dest, swiz, mask);
-         break;
-      case nir_op_mov: {
-         switch (dest->ssa.parent_instr->type) {
-         case nir_instr_type_alu:
-         case nir_instr_type_tex:
-            break;
-         default:
-            continue;
-         }
-         if (list_length(&dest->ssa.if_uses) || list_length(&dest->ssa.uses) > 1)
-            continue;
-
-         update_swiz_mask(alu, NULL, swiz, mask);
-         break;
-      };
-      default:
-         continue;
-      }
-
-      assert(!(instr->pass_flags & BYPASS_SRC));
-      instr->pass_flags |= BYPASS_DST;
-      return real_dest(&alu->dest.dest, swiz, mask);
-   }
-
-   if (can_bypass_src && !(p_instr->pass_flags & BYPASS_DST)) {
-      p_instr->pass_flags |= BYPASS_SRC;
-      return NULL;
-   }
-
-   return dest;
-}
-
 /* get allocated dest register for nir_dest
  * *p_swiz tells how the components need to be placed into register
  */
@@ -556,263 +424,6 @@ ra_dest(struct state *state, nir_dest *dest, unsigned *p_swiz)
       .reg = reg_get_base(state, r),
       .write_mask = inst_write_mask_compose(mask, reg_writemask[t]),
    };
-}
-
-/* if instruction dest needs a register, return nir_dest for it */
-static nir_dest *
-dest_for_instr(nir_instr *instr)
-{
-   nir_dest *dest = NULL;
-
-   switch (instr->type) {
-   case nir_instr_type_alu:
-      dest = &nir_instr_as_alu(instr)->dest.dest;
-      break;
-   case nir_instr_type_tex:
-      dest = &nir_instr_as_tex(instr)->dest;
-      break;
-   case nir_instr_type_intrinsic: {
-      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-      if (intr->intrinsic == nir_intrinsic_load_uniform ||
-          intr->intrinsic == nir_intrinsic_load_ubo ||
-          intr->intrinsic == nir_intrinsic_load_input ||
-          intr->intrinsic == nir_intrinsic_load_instance_id)
-         dest = &intr->dest;
-   } break;
-   case nir_instr_type_deref:
-      return NULL;
-   default:
-      break;
-   }
-   return real_dest(dest, NULL, NULL);
-}
-
-struct live_def {
-   nir_instr *instr;
-   nir_dest *dest; /* cached dest_for_instr */
-   unsigned live_start, live_end; /* live range */
-};
-
-static void
-range_include(struct live_def *def, unsigned index)
-{
-   if (def->live_start > index)
-      def->live_start = index;
-   if (def->live_end < index)
-      def->live_end = index;
-}
-
-struct live_defs_state {
-   unsigned num_defs;
-   unsigned bitset_words;
-
-   nir_function_impl *impl;
-   nir_block *block; /* current block pointer */
-   unsigned index; /* current live index */
-
-   struct live_def *defs;
-   unsigned *live_map; /* to map ssa/reg index into defs array */
-
-   nir_block_worklist worklist;
-};
-
-static bool
-init_liveness_block(nir_block *block,
-                    struct live_defs_state *state)
-{
-   block->live_in = reralloc(block, block->live_in, BITSET_WORD,
-                             state->bitset_words);
-   memset(block->live_in, 0, state->bitset_words * sizeof(BITSET_WORD));
-
-   block->live_out = reralloc(block, block->live_out, BITSET_WORD,
-                              state->bitset_words);
-   memset(block->live_out, 0, state->bitset_words * sizeof(BITSET_WORD));
-
-   nir_block_worklist_push_head(&state->worklist, block);
-
-   return true;
-}
-
-static bool
-set_src_live(nir_src *src, void *void_state)
-{
-   struct live_defs_state *state = void_state;
-
-   if (src->is_ssa) {
-      nir_instr *instr = src->ssa->parent_instr;
-
-      if (is_sysval(instr) || instr->type == nir_instr_type_deref)
-         return true;
-
-      switch (instr->type) {
-      case nir_instr_type_load_const:
-      case nir_instr_type_ssa_undef:
-         return true;
-      case nir_instr_type_alu: {
-         /* alu op bypass */
-         nir_alu_instr *alu = nir_instr_as_alu(instr);
-         if (instr->pass_flags & BYPASS_SRC) {
-            for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++)
-               set_src_live(&alu->src[i].src, state);
-            return true;
-         }
-      } break;
-      default:
-         break;
-      }
-   }
-
-   unsigned i = state->live_map[src_index(state->impl, src)];
-   assert(i != ~0u);
-
-   BITSET_SET(state->block->live_in, i);
-   range_include(&state->defs[i], state->index);
-
-   return true;
-}
-
-static bool
-propagate_across_edge(nir_block *pred, nir_block *succ,
-                      struct live_defs_state *state)
-{
-   BITSET_WORD progress = 0;
-   for (unsigned i = 0; i < state->bitset_words; ++i) {
-      progress |= succ->live_in[i] & ~pred->live_out[i];
-      pred->live_out[i] |= succ->live_in[i];
-   }
-   return progress != 0;
-}
-
-static unsigned
-live_defs(nir_function_impl *impl, struct live_def *defs, unsigned *live_map)
-{
-   struct live_defs_state state;
-   unsigned block_live_index[impl->num_blocks + 1];
-
-   state.impl = impl;
-   state.defs = defs;
-   state.live_map = live_map;
-
-   state.num_defs = 0;
-   nir_foreach_block(block, impl) {
-      block_live_index[block->index] = state.num_defs;
-      nir_foreach_instr(instr, block) {
-         nir_dest *dest = dest_for_instr(instr);
-         if (!dest)
-            continue;
-
-         unsigned idx = dest_index(impl, dest);
-         /* register is already in defs */
-         if (live_map[idx] != ~0u)
-            continue;
-
-         defs[state.num_defs] = (struct live_def) {instr, dest, state.num_defs, 0};
-
-         /* input live from the start */
-         if (instr->type == nir_instr_type_intrinsic) {
-            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            if (intr->intrinsic == nir_intrinsic_load_input ||
-                intr->intrinsic == nir_intrinsic_load_instance_id)
-               defs[state.num_defs].live_start = 0;
-         }
-
-         live_map[idx] = state.num_defs;
-         state.num_defs++;
-      }
-   }
-   block_live_index[impl->num_blocks] = state.num_defs;
-
-   nir_block_worklist_init(&state.worklist, impl->num_blocks, NULL);
-
-   /* We now know how many unique ssa definitions we have and we can go
-    * ahead and allocate live_in and live_out sets and add all of the
-    * blocks to the worklist.
-    */
-   state.bitset_words = BITSET_WORDS(state.num_defs);
-   nir_foreach_block(block, impl) {
-      init_liveness_block(block, &state);
-   }
-
-   /* We're now ready to work through the worklist and update the liveness
-    * sets of each of the blocks.  By the time we get to this point, every
-    * block in the function implementation has been pushed onto the
-    * worklist in reverse order.  As long as we keep the worklist
-    * up-to-date as we go, everything will get covered.
-    */
-   while (!nir_block_worklist_is_empty(&state.worklist)) {
-      /* We pop them off in the reverse order we pushed them on.  This way
-       * the first walk of the instructions is backwards so we only walk
-       * once in the case of no control flow.
-       */
-      nir_block *block = nir_block_worklist_pop_head(&state.worklist);
-      state.block = block;
-
-      memcpy(block->live_in, block->live_out,
-             state.bitset_words * sizeof(BITSET_WORD));
-
-      state.index = block_live_index[block->index + 1];
-
-      nir_if *following_if = nir_block_get_following_if(block);
-      if (following_if)
-         set_src_live(&following_if->condition, &state);
-
-      nir_foreach_instr_reverse(instr, block) {
-         /* when we come across the next "live" instruction, decrement index */
-         if (state.index && instr == defs[state.index - 1].instr) {
-            state.index--;
-            /* the only source of writes to registers is phis:
-             * we don't expect any partial write_mask alus
-             * so clearing live_in here is OK
-             */
-            BITSET_CLEAR(block->live_in, state.index);
-         }
-
-         /* don't set_src_live for not-emitted instructions */
-         if (instr->pass_flags)
-            continue;
-
-         unsigned index = state.index;
-
-         /* output live till the end */
-         if (instr->type == nir_instr_type_intrinsic) {
-            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            if (intr->intrinsic == nir_intrinsic_store_deref)
-               state.index = ~0u;
-         }
-
-         nir_foreach_src(instr, set_src_live, &state);
-
-         state.index = index;
-      }
-      assert(state.index == block_live_index[block->index]);
-
-      /* Walk over all of the predecessors of the current block updating
-       * their live in with the live out of this one.  If anything has
-       * changed, add the predecessor to the work list so that we ensure
-       * that the new information is used.
-       */
-      set_foreach(block->predecessors, entry) {
-         nir_block *pred = (nir_block *)entry->key;
-         if (propagate_across_edge(pred, block, &state))
-            nir_block_worklist_push_tail(&state.worklist, pred);
-      }
-   }
-
-   nir_block_worklist_fini(&state.worklist);
-
-   /* apply live_in/live_out to ranges */
-
-   nir_foreach_block(block, impl) {
-      int i;
-
-      BITSET_FOREACH_SET(i, block->live_in, state.num_defs)
-         range_include(&state.defs[i], block_live_index[block->index]);
-
-      BITSET_FOREACH_SET(i, block->live_out, state.num_defs)
-         range_include(&state.defs[i], block_live_index[block->index + 1]);
-   }
-
-   return state.num_defs;
 }
 
 /* precomputed by register_allocate  */
@@ -872,7 +483,7 @@ ra_assign(struct state *state, nir_shader *shader)
    memset(live_map, 0xff, sizeof(unsigned) * max_nodes);
    struct live_def *defs = rzalloc_array(NULL, struct live_def, max_nodes);
 
-   unsigned num_nodes = live_defs(impl, defs, live_map);
+   unsigned num_nodes = etna_live_defs(impl, defs, live_map);
    struct ra_graph *g = ra_alloc_interference_graph(regs, num_nodes);
 
    /* set classes from num_components */
