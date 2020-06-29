@@ -3041,7 +3041,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
          image.lod = nir_imm_int(&b->nb, 0);
       }
 
-      /* TODO: Volatile. */
+      if (operands & SpvImageOperandsVolatileTexelMask)
+         access |= ACCESS_VOLATILE;
 
       break;
    }
@@ -3081,7 +3082,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
          image.lod = nir_imm_int(&b->nb, 0);
       }
 
-      /* TODO: Volatile. */
+      if (operands & SpvImageOperandsVolatileTexelMask)
+         access |= ACCESS_VOLATILE;
 
       break;
    }
