@@ -3747,8 +3747,16 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
 static struct v3dv_job *
 cmd_buffer_pre_draw_split_job(struct v3dv_cmd_buffer *cmd_buffer)
 {
+   /* If we emitted a pipeline barrier right before this draw we won't have
+    * an active job. In that case, create a new job continuing the current
+    * subpass.
+    */
    struct v3dv_job *job = cmd_buffer->state.job;
-   assert(job);
+   if (!job) {
+      job = v3dv_cmd_buffer_subpass_resume(cmd_buffer,
+                                           cmd_buffer->state.subpass_idx);
+      return job;
+   }
 
    /* If the job has been flagged with 'always_flush' and it has already
     * recorded any draw calls then we need to start a new job for it.
