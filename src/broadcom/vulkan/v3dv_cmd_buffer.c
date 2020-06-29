@@ -3451,7 +3451,7 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
           * CS's VPM inputs.  (Since CS is just dead-code-elimination compared
           * to VS, we can't have CS loading but not VS).
           */
-         if (prog_data_vs->vattr_sizes[location])
+         if (prog_data_vs_bin->vattr_sizes[location])
             cs_loaded_any = true;
 
          if (binding == pipeline->va_count - 1 && !cs_loaded_any) {
