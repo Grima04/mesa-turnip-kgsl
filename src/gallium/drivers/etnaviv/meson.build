@@ -37,6 +37,7 @@ files_etnaviv = files(
   'etnaviv_clear_blit.h',
   'etnaviv_compiler.h',
   'etnaviv_compiler_nir.c',
+  'etnaviv_compiler_nir_emit.c',
   'etnaviv_compiler_nir_emit.h',
   'etnaviv_compiler_nir_liveness.c',
   'etnaviv_compiler_tgsi.c',

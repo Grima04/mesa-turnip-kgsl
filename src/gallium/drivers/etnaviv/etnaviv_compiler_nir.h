@@ -235,4 +235,25 @@ struct live_def {
 unsigned
 etna_live_defs(nir_function_impl *impl, struct live_def *defs, unsigned *live_map);
 
+static inline void
+emit_inst(struct etna_compile *c, struct etna_inst *inst)
+{
+   c->code[c->inst_ptr++] = *inst;
+}
+
+void
+etna_emit_alu(struct etna_compile *c, nir_op op, struct etna_inst_dst dst,
+              struct etna_inst_src src[3], bool saturate);
+
+void
+etna_emit_tex(struct etna_compile *c, nir_texop op, unsigned texid, unsigned dst_swiz,
+              struct etna_inst_dst dst, struct etna_inst_src coord,
+              struct etna_inst_src lod_bias, struct etna_inst_src compare);
+
+void
+etna_emit_jump(struct etna_compile *c, unsigned block, struct etna_inst_src condition);
+
+void
+etna_emit_discard(struct etna_compile *c, struct etna_inst_src condition);
+
 #endif
