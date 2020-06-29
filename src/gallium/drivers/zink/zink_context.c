@@ -552,6 +552,8 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 
    zink_render_pass_reference(screen, &batch->rp, ctx->gfx_pipeline_state.render_pass);
    zink_framebuffer_reference(screen, &batch->fb, ctx->framebuffer);
+   for (struct zink_surface **surf = (struct zink_surface **)batch->fb->surfaces; *surf; surf++)
+      zink_batch_reference_resource_rw(batch, zink_resource((*surf)->base.texture), true);
 
    vkCmdBeginRenderPass(batch->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
 }
