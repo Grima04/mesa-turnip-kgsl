@@ -279,8 +279,6 @@ nir_deref_instr_get_const_offset(nir_deref_instr *deref,
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
 
-   assert(path.path[0]->deref_type == nir_deref_type_var);
-
    unsigned offset = 0;
    for (nir_deref_instr **p = &path.path[1]; *p; p++) {
       switch ((*p)->deref_type) {
@@ -295,6 +293,9 @@ nir_deref_instr_get_const_offset(nir_deref_instr *deref,
                                                 (*p)->strct.index);
 	 break;
       }
+      case nir_deref_type_cast:
+         /* A cast doesn't contribute to the offset */
+         break;
       default:
          unreachable("Unsupported deref type");
       }
@@ -311,8 +312,6 @@ nir_build_deref_offset(nir_builder *b, nir_deref_instr *deref,
 {
    nir_deref_path path;
    nir_deref_path_init(&path, deref, NULL);
-
-   assert(path.path[0]->deref_type == nir_deref_type_var);
 
    nir_ssa_def *offset = nir_imm_intN_t(b, 0, deref->dest.ssa.bit_size);
    for (nir_deref_instr **p = &path.path[1]; *p; p++) {
@@ -332,6 +331,9 @@ nir_build_deref_offset(nir_builder *b, nir_deref_instr *deref,
          offset = nir_iadd_imm(b, offset, field_offset);
          break;
       }
+      case nir_deref_type_cast:
+         /* A cast doesn't contribute to the offset */
+         break;
       default:
          unreachable("Unsupported deref type");
       }
