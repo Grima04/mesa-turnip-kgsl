@@ -26,6 +26,7 @@
 
 #include "etnaviv_asm.h"
 #include "etnaviv_context.h"
+#include "etnaviv_compiler_nir.h"
 
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
@@ -61,12 +62,6 @@ struct state {
    unsigned *live_map;
    unsigned num_nodes;
 };
-
-#define compile_error(ctx, args...) ({ \
-   printf(args); \
-   ctx->error = true; \
-   assert(0); \
-})
 
 static inline hw_src
 src_swizzle(hw_src src, unsigned swizzle)

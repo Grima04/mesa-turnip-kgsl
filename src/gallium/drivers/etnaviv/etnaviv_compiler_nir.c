@@ -27,6 +27,7 @@
  */
 
 #include "etnaviv_compiler.h"
+#include "etnaviv_compiler_nir.h"
 #include "etnaviv_asm.h"
 #include "etnaviv_context.h"
 #include "etnaviv_debug.h"
@@ -225,7 +226,8 @@ etna_emit_alu(struct etna_compile *c, nir_op op, struct etna_inst_dst dst,
    struct etna_op_info ei = etna_ops[op];
    unsigned swiz_scalar = INST_SWIZ_BROADCAST(ffs(dst.write_mask) - 1);
 
-   assert(ei.opcode != 0xff);
+   if (ei.opcode == 0xff)
+      compile_error(c, "Unhandled ALU op: %s\n", nir_op_infos[op].name);
 
    struct etna_inst inst = {
       .opcode = ei.opcode,
@@ -309,7 +311,7 @@ etna_emit_tex(struct etna_compile *c, nir_texop op, unsigned texid, unsigned dst
    case nir_texop_txb: inst.opcode = INST_OPCODE_TEXLDB; break;
    case nir_texop_txl: inst.opcode = INST_OPCODE_TEXLDL; break;
    default:
-      assert(0);
+      compile_error(c, "Unhandled NIR tex type: %d\n", op);
    }
 
    emit_inst(c, &inst);
