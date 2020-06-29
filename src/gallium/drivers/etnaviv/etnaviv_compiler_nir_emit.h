@@ -153,13 +153,6 @@ const_src(struct state *state, nir_const_value *value, unsigned num_components)
    return SRC_CONST(i - 1, swiz);
 }
 
-struct ssa_reg {
-   uint8_t idx;
-   uint8_t src_swizzle;
-   uint8_t dst_swizzle;
-   uint8_t write_mask;
-};
-
 /* Swizzles and write masks can be used to layer virtual non-interfering
  * registers on top of the real VEC4 registers. For example, the virtual
  * VEC3_XYZ register and the virtual SCALAR_W register that use the same
