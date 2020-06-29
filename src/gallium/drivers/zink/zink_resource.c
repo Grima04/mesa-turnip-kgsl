@@ -529,6 +529,8 @@ zink_transfer_map(struct pipe_context *pctx,
 
       } else {
          assert(!res->optimial_tiling);
+         if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
+            zink_fence_wait(pctx);
          VkResult result = vkMapMemory(screen->dev, res->mem, res->offset, res->size, 0, &ptr);
          if (result != VK_SUCCESS)
             return NULL;
@@ -565,7 +567,9 @@ zink_transfer_unmap(struct pipe_context *pctx,
 
       if (trans->base.usage & PIPE_MAP_WRITE) {
          struct zink_context *ctx = zink_context(pctx);
-
+         uint32_t batch_uses = get_resource_usage(res);
+         if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
+            zink_fence_wait(pctx);
          zink_transfer_copy_bufimage(ctx, res, staging_res, trans, true);
       }
 
