@@ -49,6 +49,7 @@
  * setup.
  */
 struct etna_compiler {
+   uint32_t shader_count;
 };
 
 /* compiler output per input/output */
