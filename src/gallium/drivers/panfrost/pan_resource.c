@@ -272,6 +272,16 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
         unsigned depth = res->depth0;
         unsigned bytes_per_pixel = util_format_get_blocksize(pres->internal_format);
 
+        /* MSAA is implemented as a 3D texture with z corresponding to the
+         * sample #, horrifyingly enough */
+
+        bool msaa = res->nr_samples > 1;
+
+        if (msaa) {
+                assert(depth == 1);
+                depth = res->nr_samples;
+        }
+
         assert(depth > 0);
 
         /* Tiled operates blockwise; linear is packed. Also, anything
@@ -361,7 +371,10 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
 
                 width = u_minify(width, 1);
                 height = u_minify(height, 1);
-                depth = u_minify(depth, 1);
+
+                /* Don't mipmap the sample count */
+                if (!msaa)
+                        depth = u_minify(depth, 1);
         }
 
         assert(res->array_size);
