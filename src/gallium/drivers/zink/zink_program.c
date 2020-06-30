@@ -138,20 +138,24 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
 {
    struct zink_shader *dirty[ZINK_SHADER_COUNT] = {NULL};
 
+   /* we need to map pipe_shader_type -> gl_shader_stage so we can ensure that we're compiling
+    * the shaders in pipeline order and have builtin input/output locations match up after being compacted
+    */
    unsigned dirty_shader_stages = ctx->dirty_shader_stages;
    while (dirty_shader_stages) {
       unsigned type = u_bit_scan(&dirty_shader_stages);
-      dirty[type] = stages[type];
+      dirty[tgsi_processor_to_shader_stage(type)] = stages[type];
    }
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+      enum pipe_shader_type type = pipe_shader_type_from_mesa(i);
       if (dirty[i]) {
-         prog->stages[i] = CALLOC_STRUCT(zink_shader_module);
-         assert(prog->stages[i]);
-         pipe_reference_init(&prog->stages[i]->reference, 1);
-         prog->stages[i]->shader = zink_shader_compile(zink_screen(ctx->base.screen), stages[i]);
-      } else if (stages[i]) /* reuse existing shader module */
-         zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->stages[i], ctx->curr_program->stages[i]);
-      prog->shaders[i] = stages[i];
+         prog->stages[type] = CALLOC_STRUCT(zink_shader_module);
+         assert(prog->stages[type]);
+         pipe_reference_init(&prog->stages[type]->reference, 1);
+         prog->stages[type]->shader = zink_shader_compile(zink_screen(ctx->base.screen), dirty[i]);
+      } else if (stages[type]) /* reuse existing shader module */
+         zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->stages[type], ctx->curr_program->stages[type]);
+      prog->shaders[type] = stages[type];
    }
    ctx->dirty_shader_stages = 0;
 }
