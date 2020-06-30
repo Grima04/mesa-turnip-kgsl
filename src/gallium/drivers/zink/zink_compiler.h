@@ -72,7 +72,8 @@ struct zink_shader {
 };
 
 VkShaderModule
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs);
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
+                    unsigned char *shader_slot_map, unsigned char *shader_slots_reserved);
 
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,

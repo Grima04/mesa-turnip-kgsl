@@ -217,11 +217,12 @@ update_so_info(struct zink_shader *sh,
 }
 
 VkShaderModule
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs)
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
+                    unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
    void *streamout = zs->streamout.so_info_slots ? &zs->streamout : NULL;
-   struct spirv_shader *spirv = nir_to_spirv(zs->nir, streamout);
+   struct spirv_shader *spirv = nir_to_spirv(zs->nir, streamout, shader_slot_map, shader_slots_reserved);
    assert(spirv);
 
    if (zink_debug & ZINK_DEBUG_SPIRV) {

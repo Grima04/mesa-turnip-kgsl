@@ -26,6 +26,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include "compiler/shader_enums.h"
 #include "pipe/p_state.h"
 #include "util/u_inlines.h"
 
@@ -48,6 +49,8 @@ struct zink_gfx_program {
 
    struct zink_shader_module *modules[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
+   unsigned char shader_slot_map[VARYING_SLOT_MAX];
+   unsigned char shader_slots_reserved;
    VkDescriptorSetLayout dsl;
    VkPipelineLayout layout;
    unsigned num_descriptors;

@@ -146,13 +146,15 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
       unsigned type = u_bit_scan(&dirty_shader_stages);
       dirty[tgsi_processor_to_shader_stage(type)] = stages[type];
    }
+
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       enum pipe_shader_type type = pipe_shader_type_from_mesa(i);
       if (dirty[i]) {
          prog->modules[type] = CALLOC_STRUCT(zink_shader_module);
          assert(prog->modules[type]);
          pipe_reference_init(&prog->modules[type]->reference, 1);
-         prog->modules[type]->shader = zink_shader_compile(zink_screen(ctx->base.screen), dirty[i]);
+         prog->modules[type]->shader = zink_shader_compile(zink_screen(ctx->base.screen), dirty[i],
+                                                           prog->shader_slot_map, &prog->shader_slots_reserved);
       } else if (stages[type]) /* reuse existing shader module */
          zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], ctx->curr_program->modules[type]);
       prog->shaders[type] = stages[type];
@@ -172,6 +174,28 @@ equals_gfx_pipeline_state(const void *a, const void *b)
    return memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash)) == 0;
 }
 
+static void
+init_slot_map(struct zink_context *ctx, struct zink_gfx_program *prog)
+{
+   unsigned existing_shaders = 0;
+
+   /* if there's a case where we'll be reusing any shaders, we need to reuse the slot map too */
+   if (ctx->curr_program) {
+      for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+          if (ctx->curr_program->shaders[i])
+             existing_shaders |= 1 << i;
+      }
+   }
+   if (ctx->dirty_shader_stages == existing_shaders || !existing_shaders)
+      /* all shaders are being recompiled: new slot map */
+      memset(prog->shader_slot_map, -1, sizeof(prog->shader_slot_map));
+   else {
+      /* at least some shaders are being reused: use existing slot map so locations match up */
+      memcpy(prog->shader_slot_map, ctx->curr_program->shader_slot_map, sizeof(prog->shader_slot_map));
+      prog->shader_slots_reserved = ctx->curr_program->shader_slots_reserved;
+   }
+}
+
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader *stages[ZINK_SHADER_COUNT])
@@ -182,6 +206,8 @@ zink_create_gfx_program(struct zink_context *ctx,
       goto fail;
 
    pipe_reference_init(&prog->reference, 1);
+
+   init_slot_map(ctx, prog);
 
    update_shader_modules(ctx, stages, prog);
 

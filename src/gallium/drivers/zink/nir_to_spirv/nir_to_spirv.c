@@ -29,65 +29,7 @@
 #include "util/u_memory.h"
 #include "util/hash_table.h"
 
-/* this consistently maps slots to a zero-indexed value to avoid wasting slots */
-static unsigned slot_pack_map[] = {
-   /* Position is builtin */
-   [VARYING_SLOT_POS] = UINT_MAX,
-   [VARYING_SLOT_COL0] = 0, /* input/output */
-   [VARYING_SLOT_COL1] = 1, /* input/output */
-   [VARYING_SLOT_FOGC] = 2, /* input/output */
-   /* TEX0-7 are deprecated, so we put them at the end of the range and hope nobody uses them all */
-   [VARYING_SLOT_TEX0] = VARYING_SLOT_VAR0 - 1, /* input/output */
-   [VARYING_SLOT_TEX1] = VARYING_SLOT_VAR0 - 2,
-   [VARYING_SLOT_TEX2] = VARYING_SLOT_VAR0 - 3,
-   [VARYING_SLOT_TEX3] = VARYING_SLOT_VAR0 - 4,
-   [VARYING_SLOT_TEX4] = VARYING_SLOT_VAR0 - 5,
-   [VARYING_SLOT_TEX5] = VARYING_SLOT_VAR0 - 6,
-   [VARYING_SLOT_TEX6] = VARYING_SLOT_VAR0 - 7,
-   [VARYING_SLOT_TEX7] = VARYING_SLOT_VAR0 - 8,
-
-   /* PointSize is builtin */
-   [VARYING_SLOT_PSIZ] = UINT_MAX,
-
-   [VARYING_SLOT_BFC0] = 3, /* output only */
-   [VARYING_SLOT_BFC1] = 4, /* output only */
-   [VARYING_SLOT_EDGE] = 5, /* output only */
-   [VARYING_SLOT_CLIP_VERTEX] = 6, /* output only */
-
-   /* ClipDistance is builtin */
-   [VARYING_SLOT_CLIP_DIST0] = UINT_MAX,
-   [VARYING_SLOT_CLIP_DIST1] = UINT_MAX,
-
-   /* CullDistance is builtin */
-   [VARYING_SLOT_CULL_DIST0] = UINT_MAX, /* input/output */
-   [VARYING_SLOT_CULL_DIST1] = UINT_MAX, /* never actually used */
-
-   /* PrimitiveId is builtin */
-   [VARYING_SLOT_PRIMITIVE_ID] = UINT_MAX,
-
-   /* Layer is builtin */
-   [VARYING_SLOT_LAYER] = UINT_MAX, /* input/output */
-
-   /* ViewportIndex is builtin */
-   [VARYING_SLOT_VIEWPORT] =  UINT_MAX, /* input/output */
-
-   /* FrontFacing is builtin */
-   [VARYING_SLOT_FACE] = UINT_MAX,
-
-   /* PointCoord is builtin */
-   [VARYING_SLOT_PNTC] = UINT_MAX, /* input only */
-
-   /* TessLevelOuter is builtin */
-   [VARYING_SLOT_TESS_LEVEL_OUTER] = UINT_MAX,
-   /* TessLevelInner is builtin */
-   [VARYING_SLOT_TESS_LEVEL_INNER] = UINT_MAX,
-
-   [VARYING_SLOT_BOUNDING_BOX0] = 7, /* Only appears as TCS output. */
-   [VARYING_SLOT_BOUNDING_BOX1] = 8, /* Only appears as TCS output. */
-   [VARYING_SLOT_VIEW_INDEX] = 9, /* input/output */
-   [VARYING_SLOT_VIEWPORT_MASK] = 10, /* output only */
-};
-#define NTV_MIN_RESERVED_SLOTS 11
+#define SLOT_UNSET ((unsigned char) -1)
 
 struct ntv_context {
    void *mem_ctx;
@@ -123,10 +65,10 @@ struct ntv_context {
    bool block_started;
    SpvId loop_break, loop_cont;
 
+   unsigned char *shader_slot_map;
+   unsigned char shader_slots_reserved;
+
    SpvId front_face_var, instance_id_var, vertex_id_var;
-#ifndef NDEBUG
-   bool seen_texcoord[8]; //whether we've seen a VARYING_SLOT_TEX[n] this pass
-#endif
 };
 
 static SpvId
@@ -295,25 +237,24 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
    unreachable("we shouldn't get here, I think...");
 }
 
+static inline unsigned char
+reserve_slot(struct ntv_context *ctx)
+{
+   /* TODO: this should actually be clamped to the limits value as in the table
+    * in 14.1.4 of the vulkan spec, though there's not really any recourse
+    * other than aborting if we do hit it...
+    */
+   assert(ctx->shader_slots_reserved < MAX_VARYING);
+   return ctx->shader_slots_reserved++;
+}
+
 static inline unsigned
 handle_slot(struct ntv_context *ctx, unsigned slot)
 {
-   unsigned orig = slot;
-   if (slot < VARYING_SLOT_VAR0) {
-#ifndef NDEBUG
-      if (slot >= VARYING_SLOT_TEX0 && slot <= VARYING_SLOT_TEX7)
-         ctx->seen_texcoord[slot - VARYING_SLOT_TEX0] = true;
-#endif
-      slot = slot_pack_map[slot];
-      if (slot == UINT_MAX)
-         debug_printf("unhandled varying slot: %s\n", gl_varying_slot_name(orig));
-   } else {
-      slot -= VARYING_SLOT_VAR0 - NTV_MIN_RESERVED_SLOTS;
-      assert(slot <= VARYING_SLOT_VAR0 - 8 ||
-             !ctx->seen_texcoord[VARYING_SLOT_VAR0 - slot - 1]);
-
-   }
-   assert(slot < VARYING_SLOT_VAR0);
+   if (ctx->shader_slot_map[slot] == SLOT_UNSET)
+      ctx->shader_slot_map[slot] = reserve_slot(ctx);
+   slot = ctx->shader_slot_map[slot];
+   assert(slot < MAX_VARYING);
    return slot;
 }
 
@@ -901,8 +842,7 @@ get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_c
 /* for streamout create new outputs, as streamout can be done on individual components,
    from complete outputs, so we just can't use the created packed outputs */
 static void
-emit_so_info(struct ntv_context *ctx, unsigned max_output_location,
-             const struct zink_so_info *so_info)
+emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
 {
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
       struct pipe_stream_output so_output = so_info->so_info.output[i];
@@ -924,16 +864,9 @@ emit_so_info(struct ntv_context *ctx, unsigned max_output_location,
       /* output location is incremented by VARYING_SLOT_VAR0 for non-builtins in vtn,
        * so we need to ensure that the new xfb location slot doesn't conflict with any previously-emitted
        * outputs.
-       *
-       * if there's no previous outputs that take up user slots (VAR0+) then we can start right after the
-       * glsl builtin reserved slots, otherwise we start just after the adjusted user output slot
        */
-      uint32_t location = NTV_MIN_RESERVED_SLOTS + i;
-      if (max_output_location >= VARYING_SLOT_VAR0)
-         location = max_output_location - VARYING_SLOT_VAR0 + 1 + i;
+      uint32_t location = reserve_slot(ctx);
       assert(location < VARYING_SLOT_VAR0);
-      assert(location <= VARYING_SLOT_VAR0 - 8 ||
-             !ctx->seen_texcoord[VARYING_SLOT_VAR0 - location - 1]);
       spirv_builder_emit_location(&ctx->builder, var_id, location);
 
       /* note: gl_ClipDistance[4] can the 0-indexed member of VARYING_SLOT_CLIP_DIST1 here,
@@ -2236,7 +2169,8 @@ emit_cf_list(struct ntv_context *ctx, struct exec_list *list)
 }
 
 struct spirv_shader *
-nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
+nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
+             unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
 {
    struct spirv_shader *ret = NULL;
 
@@ -2279,6 +2213,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
    }
 
    ctx.stage = s->info.stage;
+   ctx.shader_slot_map = shader_slot_map;
+   ctx.shader_slots_reserved = *shader_slots_reserved;
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
    spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageGLSL, 450);
 
@@ -2329,7 +2265,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
 
 
    if (so_info)
-      emit_so_info(&ctx, util_last_bit64(s->info.outputs_written), so_info);
+      emit_so_info(&ctx, so_info);
    /* we have to reverse iterate to match what's done in zink_compiler.c */
    foreach_list_typed_reverse(nir_variable, var, node, &s->variables)
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |
@@ -2421,6 +2357,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
    assert(ret->num_words == num_words);
 
    ralloc_free(ctx.mem_ctx);
+   *shader_slots_reserved = ctx.shader_slots_reserved;
 
    return ret;
 
