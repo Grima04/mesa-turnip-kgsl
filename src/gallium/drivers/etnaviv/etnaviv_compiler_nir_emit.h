@@ -158,7 +158,7 @@ const_src(struct state *state, nir_const_value *value, unsigned num_components)
  * VEC3_XYZ register and the virtual SCALAR_W register that use the same
  * physical VEC4 base register do not interfere.
  */
-enum {
+enum reg_class {
    REG_CLASS_VIRT_SCALAR,
    REG_CLASS_VIRT_VEC2,
    REG_CLASS_VIRT_VEC3,
@@ -169,9 +169,9 @@ enum {
    REG_CLASS_VIRT_VEC2C,
    REG_CLASS_VIRT_VEC3C,
    NUM_REG_CLASSES,
-} reg_class;
+};
 
-enum {
+enum reg_type {
    REG_TYPE_VEC4,
    REG_TYPE_VIRT_VEC3_XYZ,
    REG_TYPE_VIRT_VEC3_XYW,
@@ -195,7 +195,7 @@ enum {
    REG_TYPE_VIRT_VEC3C_XYZ,
    REG_TYPE_VIRT_VEC3C_YZW,
    NUM_REG_TYPES,
-} reg_type;
+};
 
 /* writemask when used as dest */
 static const uint8_t
