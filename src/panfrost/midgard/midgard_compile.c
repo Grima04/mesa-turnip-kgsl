@@ -2147,7 +2147,8 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         break;
                 };
 
-                case nir_tex_src_comparator: {
+                case nir_tex_src_comparator:
+                case nir_tex_src_ms_index: {
                         unsigned comp = COMPONENT_Z;
 
                         /* mov coord_temp.foo, coords */
