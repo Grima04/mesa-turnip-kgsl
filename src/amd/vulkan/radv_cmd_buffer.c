@@ -106,15 +106,11 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t copy_mask = src->mask;
 	uint32_t dest_mask = 0;
 
-	/* Make sure to copy the number of viewports/scissors because they can
-	 * only be specified at pipeline creation time.
-	 */
-	dest->viewport.count = src->viewport.count;
-	dest->scissor.count = src->scissor.count;
 	dest->discard_rectangle.count = src->discard_rectangle.count;
 	dest->sample_location.count = src->sample_location.count;
 
 	if (copy_mask & RADV_DYNAMIC_VIEWPORT) {
+		dest->viewport.count = src->viewport.count;
 		if (memcmp(&dest->viewport.viewports, &src->viewport.viewports,
 			   src->viewport.count * sizeof(VkViewport))) {
 			typed_memcpy(dest->viewport.viewports,
@@ -125,6 +121,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	if (copy_mask & RADV_DYNAMIC_SCISSOR) {
+		dest->scissor.count = src->scissor.count;
 		if (memcmp(&dest->scissor.scissors, &src->scissor.scissors,
 			   src->scissor.count * sizeof(VkRect2D))) {
 			typed_memcpy(dest->scissor.scissors,
@@ -3956,10 +3953,14 @@ void radv_CmdSetViewport(
 	assert(firstViewport < MAX_VIEWPORTS);
 	assert(total_count >= 1 && total_count <= MAX_VIEWPORTS);
 
-	if (!memcmp(state->dynamic.viewport.viewports + firstViewport,
+	if (total_count <= state->dynamic.viewport.count &&
+	    !memcmp(state->dynamic.viewport.viewports + firstViewport,
 		    pViewports, viewportCount * sizeof(*pViewports))) {
 		return;
 	}
+
+	if (state->dynamic.viewport.count < total_count)
+		state->dynamic.viewport.count = total_count;
 
 	memcpy(state->dynamic.viewport.viewports + firstViewport, pViewports,
 	       viewportCount * sizeof(*pViewports));
@@ -3980,10 +3981,14 @@ void radv_CmdSetScissor(
 	assert(firstScissor < MAX_SCISSORS);
 	assert(total_count >= 1 && total_count <= MAX_SCISSORS);
 
-	if (!memcmp(state->dynamic.scissor.scissors + firstScissor, pScissors,
+	if (total_count <= state->dynamic.scissor.count &&
+	    !memcmp(state->dynamic.scissor.scissors + firstScissor, pScissors,
 		    scissorCount * sizeof(*pScissors))) {
 		return;
 	}
+
+	if (state->dynamic.scissor.count < total_count)
+		state->dynamic.scissor.count = total_count;
 
 	memcpy(state->dynamic.scissor.scissors + firstScissor, pScissors,
 	       scissorCount * sizeof(*pScissors));

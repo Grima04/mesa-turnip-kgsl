@@ -62,15 +62,6 @@ radv_meta_save(struct radv_meta_saved_state *state,
 		typed_memcpy(state->scissor.scissors,
 			     cmd_buffer->state.dynamic.scissor.scissors,
 			     MAX_SCISSORS);
-
-		/* The most common meta operations all want to have the
-		 * viewport reset and any scissors disabled. The rest of the
-		 * dynamic state should have no effect.
-		 */
-		cmd_buffer->state.dynamic.viewport.count = 0;
-		cmd_buffer->state.dynamic.scissor.count = 0;
-		cmd_buffer->state.dirty |= 1 << VK_DYNAMIC_STATE_VIEWPORT |
-					   1 << VK_DYNAMIC_STATE_SCISSOR;
 	}
 
 	if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
