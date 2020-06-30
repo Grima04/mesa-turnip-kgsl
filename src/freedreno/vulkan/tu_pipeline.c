@@ -905,7 +905,7 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs ? fs->total_in : 0) |
                   COND(fs && fs->total_in, A6XX_VPC_CNTL_0_VARYING) |
                   A6XX_VPC_CNTL_0_PRIMIDLOC(linkage.primid_loc) |
-                  A6XX_VPC_CNTL_0_UNKLOC(0xff));
+                  A6XX_VPC_CNTL_0_VIEWIDLOC(0xff));
 
    if (hs) {
       shader_info *hs_info = &hs->shader->nir->info;
@@ -1010,7 +1010,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
       tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_UNKNOWN_9B07, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_CNTL, 1);
       tu_cs_emit(cs, 0);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);

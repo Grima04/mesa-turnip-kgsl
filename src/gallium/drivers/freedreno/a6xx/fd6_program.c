@@ -644,7 +644,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_RING(ring, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs->total_in) |
 			 COND(enable_varyings, A6XX_VPC_CNTL_0_VARYING) |
 			 A6XX_VPC_CNTL_0_PRIMIDLOC(l.primid_loc) |
-			 A6XX_VPC_CNTL_0_UNKLOC(0xff));
+			 A6XX_VPC_CNTL_0_VIEWIDLOC(0xff));
 
 	OUT_PKT4(ring, REG_A6XX_PC_VS_OUT_CNTL, 1);
 	OUT_RING(ring, A6XX_PC_VS_OUT_CNTL_STRIDE_IN_VPC(l.max_loc) |
@@ -825,7 +825,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
 		OUT_RING(ring, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
 
-		OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9B07, 1);
+		OUT_PKT4(ring, REG_A6XX_PC_MULTIVIEW_CNTL, 1);
 		OUT_RING(ring, 0);
 
 		OUT_PKT4(ring, REG_A6XX_SP_GS_PRIM_SIZE, 1);

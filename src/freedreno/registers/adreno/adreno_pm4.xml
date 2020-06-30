@@ -1725,7 +1725,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<doc>
 			Do a mysterious CP_EVENT_WRITE 0x3f when the low bit of
 			the data to write is 0. Used by the Vulkan blob with
-			PC_UNKNOWN_9B07, but this isn't predicated on particular
+			PC_MULTIVIEW_CNTL, but this isn't predicated on particular
 			register(s) like the others.
 		</doc>
 		<value name="UNK_EVENT_WRITE" value="0x4"/>

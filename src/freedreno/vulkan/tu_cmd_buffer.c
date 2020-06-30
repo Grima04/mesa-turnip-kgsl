@@ -858,7 +858,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9980, 0);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9B07, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_MULTIVIEW_CNTL, 0);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_A81B, 0);
 
@@ -876,7 +876,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_write_reg(cs, REG_A6XX_VFD_MODE_CNTL, 0x00000000);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_VFD_UNKNOWN_A008, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VFD_MULTIVIEW_CNTL, 0);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL, 0x0000001f);
 
