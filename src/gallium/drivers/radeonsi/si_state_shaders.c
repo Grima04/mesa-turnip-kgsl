@@ -2651,9 +2651,15 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       sel->gs_input_verts_per_prim =
          u_vertices_per_prim(sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM]);
 
-      /* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation. */
+      /* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation so
+       * we can't split workgroups. Disable ngg if any of the following conditions is true:
+       * - num_invocations * gs_max_out_vertices > 256
+       * - LDS usage is too high
+       */
       sel->tess_turns_off_ngg = sscreen->info.chip_class >= GFX10 &&
-                                sel->gs_num_invocations * sel->gs_max_out_vertices > 256;
+                                (sel->gs_num_invocations * sel->gs_max_out_vertices > 256 ||
+                                 sel->gs_num_invocations * sel->gs_max_out_vertices *
+                                 (sel->info.num_outputs * 4 + 1) > 6500 /* max dw per GS primitive */);
       break;
 
    case PIPE_SHADER_TESS_CTRL:
