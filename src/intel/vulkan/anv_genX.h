@@ -109,3 +109,7 @@ void genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,
 
 void genX(blorp_exec)(struct blorp_batch *batch,
                       const struct blorp_params *params);
+
+void genX(cmd_emit_timestamp)(struct anv_batch *batch,
+                              struct anv_bo *bo,
+                              uint32_t offset);

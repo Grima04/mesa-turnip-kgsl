@@ -6396,3 +6396,13 @@ VkResult genX(CmdSetPerformanceStreamMarkerINTEL)(
 
    return VK_SUCCESS;
 }
+
+void genX(cmd_emit_timestamp)(struct anv_batch *batch,
+                              struct anv_bo *bo,
+                              uint32_t offset) {
+   anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
+      pc.CommandStreamerStallEnable = true;
+      pc.PostSyncOperation       = WriteTimestamp;
+      pc.Address = (struct anv_address) {bo, offset};
+   }
+}
