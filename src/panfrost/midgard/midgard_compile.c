@@ -1931,6 +1931,7 @@ midgard_tex_format(enum glsl_sampler_dim dim)
                 return MALI_TEX_1D;
 
         case GLSL_SAMPLER_DIM_2D:
+        case GLSL_SAMPLER_DIM_MS:
         case GLSL_SAMPLER_DIM_EXTERNAL:
         case GLSL_SAMPLER_DIM_RECT:
                 return MALI_TEX_2D;
