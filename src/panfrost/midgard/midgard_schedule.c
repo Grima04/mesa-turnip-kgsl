@@ -1004,13 +1004,6 @@ mir_schedule_alu(
                 predicate.no_cond = true;
         }
 
-        if (writeout < PAN_WRITEOUT_Z)
-                mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
-
-        predicate.no_mask = writeout ? (1 << 3) : 0;
-        mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
-        predicate.no_mask = 0;
-
         if (writeout) {
                 /* Propagate up */
                 bundle.last_writeout = branch->last_writeout;
@@ -1102,6 +1095,12 @@ mir_schedule_alu(
                 vlut = z_store;
                 vlut->unit = UNIT_VLUT;
         }
+
+        mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
+
+        predicate.no_mask = writeout ? (1 << 3) : 0;
+        mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
+        predicate.no_mask = 0;
 
         mir_choose_alu(&vadd, instructions, worklist, len, &predicate, UNIT_VADD);
 
