@@ -466,7 +466,11 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         if (!ctx->temp_count)
                 return NULL;
 
-        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count, 5);
+        /* Initialize LCRA. Allocate an extra node at the end for a precoloured
+         * r1 for interference */
+
+        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count + 1, 5);
+        unsigned node_r1 = ctx->temp_count;
 
         /* Starts of classes, in bytes */
         l->class_start[REG_CLASS_WORK]  = 16 * 0;
@@ -633,6 +637,52 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
                 if (ins->dest < ctx->temp_count)
                         l->solutions[ins->dest] = (16 * 1) + COMPONENT_W * 4;
+        }
+
+        /* Destinations of instructions in a writeout block cannot be assigned
+         * to r1 unless they are actually used as r1 from the writeout itself,
+         * since the writes to r1 are special. A code sequence like:
+         *
+         *      sadd.fmov r1.x, [...]
+         *      vadd.fadd r0, r1, r2
+         *      [writeout branch]
+         *
+         * will misbehave since the r1.x write will be interpreted as a
+         * gl_FragDepth write so it won't show up correctly when r1 is read in
+         * the following segment. We model this as interference.
+         */
+
+        l->solutions[node_r1] = (16 * 1);
+
+        mir_foreach_block(ctx, _blk) {
+                midgard_block *blk = (midgard_block *) _blk;
+
+                mir_foreach_bundle_in_block(blk, v) {
+                        /* We need at least a writeout and nonwriteout instruction */
+                        if (v->instruction_count < 2)
+                                continue;
+
+                        /* Branches always come at the end */
+                        midgard_instruction *br = v->instructions[v->instruction_count - 1];
+
+                        if (!br->writeout)
+                                continue;
+
+                        for (signed i = v->instruction_count - 2; i >= 0; --i) {
+                                midgard_instruction *ins = v->instructions[i];
+
+                                if (ins->dest >= ctx->temp_count)
+                                        continue;
+
+                                bool used_as_r1 = (br->dest == ins->dest);
+
+                                mir_foreach_src(br, s)
+                                        used_as_r1 |= (s > 0) && (br->src[s] == ins->dest);
+
+                                if (!used_as_r1)
+                                        lcra_add_node_interference(l, ins->dest, mir_bytemask(ins), node_r1, 0xFFFF);
+                        }
+                }
         }
 
         /* Precolour blend input to r0. Note writeout is necessarily at the end
