@@ -3735,7 +3735,6 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_cl_ensure_space_with_branch(
          &job->bcl, cl_packet_length(VERTEX_ARRAY_PRIMS));
       v3dv_return_if_oom(cmd_buffer, NULL);
-
       cl_emit(&job->bcl, VERTEX_ARRAY_PRIMS, prim) {
          prim.mode = hw_prim_type;
          prim.length = info->vertex_count;

@@ -910,8 +910,8 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
          .srcSubresource = {
             .aspectMask = copy_aspect,
             .mipLevel = region->imageSubresource.mipLevel,
-            .baseArrayLayer = region->imageSubresource.baseArrayLayer,
-            .layerCount = region->imageSubresource.layerCount,
+            .baseArrayLayer = region->imageSubresource.baseArrayLayer + i,
+            .layerCount = 1,
          },
          .srcOffsets = {
             {
