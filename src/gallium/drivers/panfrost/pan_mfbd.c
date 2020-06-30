@@ -211,6 +211,15 @@ panfrost_mfbd_set_cbuf(
         assert(surf->u.tex.last_layer == first_layer);
         int stride = rsrc->slices[level].stride;
 
+        /* Only set layer_stride for MSAA rendering */
+
+        unsigned nr_samples = surf->nr_samples;
+
+        if (!nr_samples)
+                nr_samples = surf->texture->nr_samples;
+
+        unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].size0 : 0;
+
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
         rt->format = panfrost_mfbd_format(surf);
@@ -226,6 +235,7 @@ panfrost_mfbd_set_cbuf(
 
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride / 16;
+                rt->layer_stride = layer_stride;
         } else if (rsrc->layout == MALI_TEXTURE_TILED) {
                 if (is_bifrost) {
                         rt->format.unk3 |= 0x8;
@@ -235,12 +245,14 @@ panfrost_mfbd_set_cbuf(
 
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride;
+                rt->layer_stride = layer_stride;
         } else if (rsrc->layout == MALI_TEXTURE_AFBC) {
                 rt->format.block = MALI_BLOCK_AFBC;
 
                 unsigned header_size = rsrc->slices[level].header_size;
 
                 rt->framebuffer = base + header_size;
+                rt->layer_stride = layer_stride;
                 rt->afbc.metadata = base;
                 rt->afbc.stride = 0;
                 rt->afbc.flags = MALI_AFBC_FLAGS;
