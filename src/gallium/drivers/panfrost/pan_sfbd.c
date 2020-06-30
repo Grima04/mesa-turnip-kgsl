@@ -204,12 +204,11 @@ panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
         /* TODO: Why do we need to make the stack bigger than other platforms? */
         unsigned shift = panfrost_get_stack_shift(MAX2(batch->stack_size, 512));
 
-        /* TODO: where do we specify the shift? */
-
         struct mali_single_framebuffer framebuffer = {
                 .width = MALI_POSITIVE(width),
                 .height = MALI_POSITIVE(height),
                 .shared_memory = {
+                        .stack_shift = shift,
                         .shared_workgroup_count = ~0,
                         .scratchpad = panfrost_batch_get_scratchpad(batch, shift, dev->thread_tls_alloc, dev->core_count)->gpu,
                 },
