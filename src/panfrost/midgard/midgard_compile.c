@@ -2184,6 +2184,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_texop_native(ctx, instr, TEXTURE_OP_LOD);
                 break;
         case nir_texop_txf:
+        case nir_texop_txf_ms:
                 emit_texop_native(ctx, instr, TEXTURE_OP_TEXEL_FETCH);
                 break;
         case nir_texop_txs:
