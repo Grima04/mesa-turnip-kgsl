@@ -248,7 +248,12 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
       return image_view->extent.depth;
    case QUNIFORM_IMAGE_ARRAY_SIZE:
    case QUNIFORM_TEXTURE_ARRAY_SIZE:
-      return image_view->last_layer - image_view->first_layer + 1;
+      if (image_view->type != VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+         return image_view->last_layer - image_view->first_layer + 1;
+      } else {
+         assert((image_view->last_layer - image_view->first_layer + 1) % 6 == 0);
+         return (image_view->last_layer - image_view->first_layer + 1) / 6;
+      }
    case QUNIFORM_TEXTURE_LEVELS:
       return image_view->max_level - image_view->base_level + 1;
    default:

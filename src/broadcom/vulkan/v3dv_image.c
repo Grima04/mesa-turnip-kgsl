@@ -568,6 +568,7 @@ v3dv_CreateImageView(VkDevice _device,
 
    iview->image = image;
    iview->aspects = range->aspectMask;
+   iview->type = pCreateInfo->viewType;
 
    iview->base_level = range->baseMipLevel;
    iview->max_level = iview->base_level + v3dv_level_count(image, range) - 1;

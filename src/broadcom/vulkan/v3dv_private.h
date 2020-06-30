@@ -418,6 +418,7 @@ struct v3dv_image_view {
    const struct v3dv_image *image;
    VkImageAspectFlags aspects;
    VkExtent3D extent;
+   VkImageViewType type;
 
    VkFormat vk_format;
    const struct v3dv_format *format;
