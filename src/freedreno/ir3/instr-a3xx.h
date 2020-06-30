@@ -185,6 +185,9 @@ typedef enum {
 	OPC_DSYPP_1         = _OPC(5, 25),
 	OPC_RGETPOS         = _OPC(5, 26),
 	OPC_RGETINFO        = _OPC(5, 27),
+	/* cat5 meta instructions, placed above the cat5 opc field's size */
+	OPC_DSXPP_MACRO     = _OPC(5, 32),
+	OPC_DSYPP_MACRO     = _OPC(5, 33),
 
 	/* category 6: */
 	OPC_LDG             = _OPC(6, 0),        /* load-global */

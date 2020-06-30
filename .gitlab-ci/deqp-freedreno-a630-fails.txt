@@ -5,7 +5,6 @@ dEQP-GLES31.functional.stencil_texturing.render.depth24_stencil8_clear
 dEQP-GLES31.functional.stencil_texturing.render.depth24_stencil8_draw
 dEQP-VK.binding_model.descriptorset_random.sets4.constant.ubolimitlow.sbolimithigh.imglimithigh.noiub.uab.frag.ialimitlow.0
 dEQP-VK.draw.output_location.array.b8g8r8a8-unorm-mediump-output-vec3
-dEQP-VK.glsl.derivate.fwidthfine.uniform_loop.vec3_mediump
 dEQP-VK.glsl.linkage.varying.struct.mat3x2
 dEQP-VK.graphicsfuzz.mat-array-deep-control-flow
 dEQP-VK.pipeline.spec_constant.graphics.geometry.composite.array.array_vec4

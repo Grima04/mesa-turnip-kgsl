@@ -1263,6 +1263,9 @@ static const struct opc_info {
 	OPC(5, OPC_DSYPP_1,      dsypp.1),
 	OPC(5, OPC_RGETPOS,      rgetpos),
 	OPC(5, OPC_RGETINFO,     rgetinfo),
+	/* macros are needed here for ir3_print */
+	OPC(5, OPC_DSXPP_MACRO,  dsxpp.macro),
+	OPC(5, OPC_DSYPP_MACRO,  dsypp.macro),
 
 
 	/* category 6: */
