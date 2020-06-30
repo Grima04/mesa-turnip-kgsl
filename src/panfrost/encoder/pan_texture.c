@@ -197,6 +197,7 @@ panfrost_emit_texture_payload(
         unsigned width, unsigned height,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
+        unsigned nr_samples,
         unsigned cube_stride,
         bool manual_stride,
         mali_ptr base,
@@ -246,6 +247,7 @@ panfrost_new_texture(
         enum mali_texture_layout layout,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
+        unsigned nr_samples,
         unsigned cube_stride,
         unsigned swizzle,
         mali_ptr base,
@@ -293,6 +295,7 @@ panfrost_new_texture(
                 width, height,
                 first_level, last_level,
                 first_layer, last_layer,
+                nr_samples,
                 cube_stride,
                 manual_stride,
                 base,
@@ -309,6 +312,7 @@ panfrost_new_texture_bifrost(
         enum mali_texture_layout layout,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
+        unsigned nr_samples,
         unsigned cube_stride,
         unsigned swizzle,
         mali_ptr base,
@@ -330,6 +334,7 @@ panfrost_new_texture_bifrost(
                 width, height,
                 first_level, last_level,
                 first_layer, last_layer,
+                nr_samples,
                 cube_stride,
                 true, /* Stride explicit on Bifrost */
                 base,
@@ -390,8 +395,8 @@ panfrost_get_layer_stride(struct panfrost_slice *slices, bool is_3d, unsigned cu
  * the base address of a texture to get the address to that level/face */
 
 unsigned
-panfrost_texture_offset(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level, unsigned face)
+panfrost_texture_offset(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level, unsigned face, unsigned sample)
 {
         unsigned layer_stride = panfrost_get_layer_stride(slices, is_3d, cube_stride, level);
-        return slices[level].offset + (face * layer_stride);
+        return slices[level].offset + (face * layer_stride) + (sample * slices[level].size0);
 }

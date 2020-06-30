@@ -211,7 +211,7 @@ panfrost_mfbd_set_cbuf(
         assert(surf->u.tex.last_layer == first_layer);
         int stride = rsrc->slices[level].stride;
 
-        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
+        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
         rt->format = panfrost_mfbd_format(surf);
 
@@ -274,7 +274,7 @@ panfrost_mfbd_set_zsbuf(
         unsigned first_layer = surf->u.tex.first_layer;
         assert(surf->u.tex.last_layer == first_layer);
 
-        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
+        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
         if (rsrc->layout == MALI_TEXTURE_AFBC) {
                 /* The only Z/S format we can compress is Z24S8 or variants
@@ -336,7 +336,7 @@ panfrost_mfbd_set_zsbuf(
                         struct panfrost_resource *stencil = rsrc->separate_stencil;
                         struct panfrost_slice stencil_slice = stencil->slices[level];
 
-                        fbx->ds_linear.stencil = panfrost_get_texture_address(stencil, level, first_layer);
+                        fbx->ds_linear.stencil = panfrost_get_texture_address(stencil, level, first_layer, 0);
                         fbx->ds_linear.stencil_stride = stencil_slice.stride;
                 }
 

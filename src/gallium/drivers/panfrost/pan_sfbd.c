@@ -134,7 +134,7 @@ panfrost_sfbd_set_cbuf(
         assert(surf->u.tex.last_layer == first_layer);
         signed stride = rsrc->slices[level].stride;
 
-        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
+        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
         fb->format = panfrost_sfbd_format(surf);
 

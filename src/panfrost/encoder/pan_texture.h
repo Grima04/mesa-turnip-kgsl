@@ -84,6 +84,7 @@ panfrost_new_texture(
         enum mali_texture_layout layout,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
+        unsigned nr_samples,
         unsigned cube_stride,
         unsigned swizzle,
         mali_ptr base,
@@ -99,6 +100,7 @@ panfrost_new_texture_bifrost(
         enum mali_texture_layout layout,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
+        unsigned nr_samples,
         unsigned cube_stride,
         unsigned swizzle,
         mali_ptr base,
@@ -110,7 +112,7 @@ unsigned
 panfrost_get_layer_stride(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level);
 
 unsigned
-panfrost_texture_offset(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level, unsigned face);
+panfrost_texture_offset(struct panfrost_slice *slices, bool is_3d, unsigned cube_stride, unsigned level, unsigned face, unsigned sample);
 
 /* Formats */
 

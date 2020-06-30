@@ -94,7 +94,7 @@ pan_transfer(struct pipe_transfer *p)
 mali_ptr
 panfrost_get_texture_address(
         struct panfrost_resource *rsrc,
-        unsigned level, unsigned face);
+        unsigned level, unsigned face, unsigned sample);
 
 void panfrost_resource_screen_init(struct pipe_screen *screen);
 
