@@ -1436,8 +1436,13 @@ vtn_get_builtin_location(struct vtn_builder *b,
       set_mode_system_value(b, mode);
       break;
    case SpvBuiltInViewIndex:
-      *location = SYSTEM_VALUE_VIEW_INDEX;
-      set_mode_system_value(b, mode);
+      if (b->options && b->options->view_index_is_input) {
+         *location = VARYING_SLOT_VIEW_INDEX;
+         vtn_assert(*mode == nir_var_shader_in);
+      } else {
+         *location = SYSTEM_VALUE_VIEW_INDEX;
+         set_mode_system_value(b, mode);
+      }
       break;
    case SpvBuiltInSubgroupEqMask:
       *location = SYSTEM_VALUE_SUBGROUP_EQ_MASK,
