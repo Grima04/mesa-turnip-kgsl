@@ -932,11 +932,23 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
          * whereas in Gallium, it also covers cubemaps */
 
         unsigned array_size = texture->array_size;
+        unsigned depth = texture->depth0;
 
         if (so->base.target == PIPE_TEXTURE_CUBE) {
                 /* TODO: Cubemap arrays */
                 assert(array_size == 6);
                 array_size /= 6;
+        }
+
+        /* MSAA only supported for 2D textures (and 2D texture arrays via an
+         * extension currently unimplemented */
+
+        if (so->base.target == PIPE_TEXTURE_2D) {
+                assert(depth == 1);
+                depth = texture->nr_samples;
+        } else {
+                /* MSAA only supported for 2D textures */
+                assert(texture->nr_samples <= 1);
         }
 
         enum mali_texture_type type =
@@ -961,7 +973,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 panfrost_new_texture_bifrost(
                                 so->bifrost_descriptor,
                                 texture->width0, texture->height0,
-                                texture->depth0, array_size,
+                                depth, array_size,
                                 so->base.format,
                                 type, prsrc->layout,
                                 so->base.u.tex.first_level,
@@ -987,7 +999,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 panfrost_new_texture(
                                 so->bo->cpu,
                                 texture->width0, texture->height0,
-                                texture->depth0, array_size,
+                                depth, array_size,
                                 so->base.format,
                                 type, prsrc->layout,
                                 so->base.u.tex.first_level,
