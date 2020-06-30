@@ -466,12 +466,13 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return false;
 
         /* MSAA 4x supported, but no more. Technically some revisions of the
-         * hardware can go up to 16x but we don't support higher modes yet. */
+         * hardware can go up to 16x but we don't support higher modes yet.
+         * MSAA 2x is notably not supported and gets rounded up to MSAA 4x. */
 
         if (sample_count > 1 && !(pan_debug & (PAN_DBG_GL3 | PAN_DBG_DEQP)))
                 return false;
 
-        if (sample_count > 4)
+        if (!(sample_count == 0 || sample_count == 1 || sample_count == 4))
                 return false;
 
         if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
