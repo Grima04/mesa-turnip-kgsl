@@ -328,6 +328,20 @@ blorp_hiz_op(struct blorp_batch *batch, struct blorp_surf *surf,
 
    params.hiz_op = op;
    params.full_surface_hiz_op = true;
+   switch (op) {
+   case ISL_AUX_OP_FULL_RESOLVE:
+      params.snapshot_type = INTEL_SNAPSHOT_HIZ_RESOLVE;
+      break;
+   case ISL_AUX_OP_AMBIGUATE:
+      params.snapshot_type = INTEL_SNAPSHOT_HIZ_AMBIGUATE;
+      break;
+   case ISL_AUX_OP_FAST_CLEAR:
+      params.snapshot_type = INTEL_SNAPSHOT_HIZ_CLEAR;
+      break;
+   case ISL_AUX_OP_PARTIAL_RESOLVE:
+   case ISL_AUX_OP_NONE:
+      unreachable("Invalid HiZ op");
+   }
 
    for (uint32_t a = 0; a < num_layers; a++) {
       const uint32_t layer = start_layer + a;

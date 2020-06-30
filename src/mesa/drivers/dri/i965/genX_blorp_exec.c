@@ -38,6 +38,9 @@
 
 #include "brw_blorp.h"
 
+static void blorp_measure_start(struct blorp_batch *batch,
+                                const struct blorp_params *params) { }
+
 static void *
 blorp_emit_dwords(struct blorp_batch *batch, unsigned n)
 {

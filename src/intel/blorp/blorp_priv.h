@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "common/intel_measure.h"
 #include "compiler/nir/nir.h"
 #include "compiler/brw_compiler.h"
 
@@ -218,6 +219,7 @@ struct blorp_params
 
    bool use_pre_baked_binding_table;
    uint32_t pre_baked_binding_table_offset;
+   enum intel_measure_snapshot_type snapshot_type;
 };
 
 void blorp_params_init(struct blorp_params *params);

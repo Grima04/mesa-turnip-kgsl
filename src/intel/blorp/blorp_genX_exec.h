@@ -52,6 +52,10 @@ static uint64_t
 blorp_emit_reloc(struct blorp_batch *batch,
                  void *location, struct blorp_address address, uint32_t delta);
 
+static void
+blorp_measure_start(struct blorp_batch *batch,
+                    const struct blorp_params *params);
+
 static void *
 blorp_alloc_dynamic_state(struct blorp_batch *batch,
                           uint32_t size,
@@ -1766,6 +1770,8 @@ blorp_emit_gen8_hiz_op(struct blorp_batch *batch,
       blorp_emit_depth_stencil_config(batch, params);
    }
 
+   blorp_measure_start(batch, params);
+
    blorp_emit(batch, GENX(3DSTATE_WM_HZ_OP), hzp) {
       switch (params->hiz_op) {
       case ISL_AUX_OP_FAST_CLEAR:
@@ -1969,6 +1975,8 @@ blorp_exec(struct blorp_batch *batch, const struct blorp_params *params)
 
    if (!(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
       blorp_emit_depth_stencil_config(batch, params);
+
+   blorp_measure_start(batch, params);
 
    blorp_emit(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType = SEQUENTIAL;
