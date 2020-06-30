@@ -524,6 +524,10 @@ bool can_swap_operands(aco_ptr<Instruction>& instr)
       return false;
 
    switch (instr->opcode) {
+   case aco_opcode::v_add_u32:
+   case aco_opcode::v_add_co_u32:
+   case aco_opcode::v_add_co_u32_e64:
+   case aco_opcode::v_add_i32:
    case aco_opcode::v_add_f16:
    case aco_opcode::v_add_f32:
    case aco_opcode::v_mul_f16:
