@@ -1768,6 +1768,7 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
    _EGLSurface *tmp_dsurf, *tmp_rsurf;
    __DRIdrawable *ddraw, *rdraw;
    __DRIcontext *cctx;
+   EGLint egl_error = EGL_SUCCESS;
 
    if (!dri2_dpy)
       return _eglError(EGL_NOT_INITIALIZED, "eglMakeCurrent");
@@ -1802,16 +1803,19 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
 
    if (cctx || ddraw || rdraw) {
       if (!dri2_dpy->core->bindContext(cctx, ddraw, rdraw)) {
+         _EGLContext *tmp_ctx;
+
+         /* dri2_dpy->core->bindContext failed. We cannot tell for sure why, but
+          * setting the error to EGL_BAD_MATCH is surely better than leaving it
+          * as EGL_SUCCESS.
+          */
+         egl_error = EGL_BAD_MATCH;
+
          /* undo the previous _eglBindContext */
          _eglBindContext(old_ctx, old_dsurf, old_rsurf, &ctx, &tmp_dsurf, &tmp_rsurf);
          assert(&dri2_ctx->base == ctx &&
                 tmp_dsurf == dsurf &&
                 tmp_rsurf == rsurf);
-
-         if (old_dsurf && _eglSurfaceInSharedBufferMode(old_dsurf) &&
-             old_dri2_dpy->vtbl->set_shared_buffer_mode) {
-            old_dri2_dpy->vtbl->set_shared_buffer_mode(old_disp, old_dsurf, true);
-         }
 
          _eglPutSurface(dsurf);
          _eglPutSurface(rsurf);
@@ -1821,14 +1825,34 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
          _eglPutSurface(old_rsurf);
          _eglPutContext(old_ctx);
 
-         /* dri2_dpy->core->bindContext failed. We cannot tell for sure why, but
-          * setting the error to EGL_BAD_MATCH is surely better than leaving it
-          * as EGL_SUCCESS.
-          */
-         return _eglError(EGL_BAD_MATCH, "eglMakeCurrent");
-      }
+         ddraw = (old_dsurf) ? dri2_dpy->vtbl->get_dri_drawable(old_dsurf) : NULL;
+         rdraw = (old_rsurf) ? dri2_dpy->vtbl->get_dri_drawable(old_rsurf) : NULL;
+         cctx = (old_ctx) ? dri2_egl_context(old_ctx)->dri_context : NULL;
 
-      dri2_dpy->ref_count++;
+         /* undo the previous dri2_dpy->core->unbindContext */
+         if (dri2_dpy->core->bindContext(cctx, ddraw, rdraw)) {
+            if (old_dsurf && _eglSurfaceInSharedBufferMode(old_dsurf) &&
+                old_dri2_dpy->vtbl->set_shared_buffer_mode) {
+               old_dri2_dpy->vtbl->set_shared_buffer_mode(old_disp, old_dsurf, true);
+            }
+
+            return _eglError(egl_error, "eglMakeCurrent");
+         }
+
+         /* We cannot restore the same state as it was before calling
+          * eglMakeCurrent() and the spec isn't clear about what to do. We
+          * can prevent EGL from calling into the DRI driver with no DRI
+          * context bound.
+          */
+         dsurf = rsurf = NULL;
+         ctx = NULL;
+
+         _eglBindContext(ctx, dsurf, rsurf, &tmp_ctx, &tmp_dsurf, &tmp_rsurf);
+         assert(tmp_ctx == old_ctx && tmp_dsurf == old_dsurf &&
+                tmp_rsurf == old_rsurf);
+
+         _eglLog(_EGL_WARNING, "DRI2: failed to rebind the previous context");
+      }
    }
 
    dri2_destroy_surface(drv, disp, old_dsurf);
@@ -1838,6 +1862,11 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
       dri2_destroy_context(drv, disp, old_ctx);
       dri2_display_release(old_disp);
    }
+
+   if (egl_error != EGL_SUCCESS)
+      return _eglError(egl_error, "eglMakeCurrent");
+
+   dri2_dpy->ref_count++;
 
    if (dsurf && _eglSurfaceHasMutableRenderBuffer(dsurf) &&
        dri2_dpy->vtbl->set_shared_buffer_mode) {
