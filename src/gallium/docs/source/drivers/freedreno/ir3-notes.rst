@@ -133,7 +133,7 @@ In addition there are various util macros/functions to simplify manipulation/tra
 
 For example:
 
-::
+.. code-block:: c
 
   foreach_ssa_src_n(src, i, instr) {
     unsigned d = delay_calc_srcn(ctx, src, instr, i);

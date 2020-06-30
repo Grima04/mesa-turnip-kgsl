@@ -84,7 +84,7 @@ exclude_trees = []
 pygments_style = 'sphinx'
 
 # The language for highlighting source code.
-highlight_language = 'c'
+highlight_language = 'none'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
