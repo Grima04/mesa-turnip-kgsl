@@ -25,7 +25,7 @@ def parse_opcode(env, sig, signode):
     return opcode
 
 def setup(app):
-    app.add_description_unit("envvar", "envvar", "%s (environment variable)",
+    app.add_object_type("envvar", "envvar", "%s (environment variable)",
         parse_envvar)
-    app.add_description_unit("opcode", "opcode", "%s (TGSI opcode)",
+    app.add_object_type("opcode", "opcode", "%s (TGSI opcode)",
         parse_opcode)
