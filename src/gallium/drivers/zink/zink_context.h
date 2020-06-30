@@ -95,7 +95,7 @@ struct zink_context {
    struct hash_table *program_cache;
    struct zink_gfx_program *curr_program;
 
-   unsigned dirty_program : 1;
+   unsigned dirty_shader_stages : 6; /* mask of changed shader stages */
 
    struct hash_table *render_pass_cache;
 

@@ -160,7 +160,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 static struct zink_gfx_program *
 get_gfx_program(struct zink_context *ctx)
 {
-   if (ctx->dirty_program) {
+   if (ctx->dirty_shader_stages) {
       struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
                                                          ctx->gfx_stages);
       if (!entry) {
@@ -171,7 +171,7 @@ get_gfx_program(struct zink_context *ctx)
             return NULL;
       }
       ctx->curr_program = entry->data;
-      ctx->dirty_program = false;
+      ctx->dirty_shader_stages = 0;
    }
 
    assert(ctx->curr_program);

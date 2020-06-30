@@ -38,10 +38,15 @@ struct zink_gfx_pipeline_state;
 struct hash_table;
 struct set;
 
+struct zink_shader_module {
+   struct pipe_reference reference;
+   VkShaderModule shader;
+};
+
 struct zink_gfx_program {
    struct pipe_reference reference;
 
-   VkShaderModule stages[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
+   struct zink_shader_module *stages[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
    VkDescriptorSetLayout dsl;
    VkPipelineLayout layout;

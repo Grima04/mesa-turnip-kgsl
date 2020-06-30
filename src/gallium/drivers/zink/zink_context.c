@@ -1178,8 +1178,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->dummy_buffer)
       goto fail;
 
-   ctx->dirty_program = true;
-
    /* start the first batch */
    zink_start_batch(ctx, zink_curr_batch(ctx));
 
