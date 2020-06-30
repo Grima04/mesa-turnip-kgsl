@@ -1738,8 +1738,8 @@ struct mali_render_target {
         mali_ptr framebuffer;
 
         u32 zero2 : 4;
-        u32 framebuffer_stride : 28; // in units of bytes
-        u32 zero3;
+        u32 framebuffer_stride : 28; // in units of bytes, row to next
+        u32 layer_stride; /* For multisample rendering */
 
         u32 clear_color_1; // RGBA8888 from glClear, actually used by hardware
         u32 clear_color_2; // always equal, but unclear function?

@@ -1088,6 +1088,9 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct mali_fram
                 MEMORY_PROP(rt, framebuffer);
                 pandecode_prop("framebuffer_stride = %d", rt->framebuffer_stride);
 
+                if (rt->layer_stride)
+                        pandecode_prop("layer_stride = %d", rt->layer_stride);
+
                 if (rt->clear_color_1 | rt->clear_color_2 | rt->clear_color_3 | rt->clear_color_4) {
                         pandecode_prop("clear_color_1 = 0x%" PRIx32, rt->clear_color_1);
                         pandecode_prop("clear_color_2 = 0x%" PRIx32, rt->clear_color_2);
@@ -1095,11 +1098,10 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct mali_fram
                         pandecode_prop("clear_color_4 = 0x%" PRIx32, rt->clear_color_4);
                 }
 
-                if (rt->zero1 || rt->zero2 || rt->zero3) {
+                if (rt->zero1 || rt->zero2) {
                         pandecode_msg("XXX: render target zeros tripped\n");
                         pandecode_prop("zero1 = 0x%" PRIx64, rt->zero1);
                         pandecode_prop("zero2 = 0x%" PRIx32, rt->zero2);
-                        pandecode_prop("zero3 = 0x%" PRIx32, rt->zero3);
                 }
 
                 pandecode_indent--;
