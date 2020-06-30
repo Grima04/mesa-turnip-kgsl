@@ -1685,37 +1685,41 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t internal_type = V3D_INTERNAL_TYPE_8UI;
 
    /* Select appropriate pixel format for the copy operation based on the
-    * alignment of the size to copy.
+    * size to copy and the alignment of the source and destination offsets.
     */
-   uint32_t item_size;
-   uint32_t format;
-   VkFormat vk_format;
-   switch (region->size % 4) {
-   case 0:
-      item_size = 4;
-      format = V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
-      vk_format = VK_FORMAT_R8G8B8A8_UINT;
-      break;
-   case 2:
-      item_size = 2;
-      format = V3D_OUTPUT_IMAGE_FORMAT_RG8UI;
-      vk_format = VK_FORMAT_R8G8_UINT;
-      break;
-   case 1:
-   case 3:
-      item_size = 1;
-      format = V3D_OUTPUT_IMAGE_FORMAT_R8UI;
-      vk_format = VK_FORMAT_R8_UINT;
-      break;
-
+   src_offset += region->srcOffset;
+   dst_offset += region->dstOffset;
+   uint32_t item_size = 4;
+   while (item_size > 1 &&
+          (src_offset % item_size != 0 || dst_offset % item_size != 0)) {
+      item_size /= 2;
    }
+
+   while (item_size > 1 && region->size % item_size != 0)
+      item_size /= 2;
+
    assert(region->size % item_size == 0);
    uint32_t num_items = region->size / item_size;
    assert(num_items > 0);
 
+   uint32_t format;
+   VkFormat vk_format;
+   switch (item_size) {
+   case 4:
+      format = V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI;
+      vk_format = VK_FORMAT_R8G8B8A8_UINT;
+      break;
+   case 2:
+      format = V3D_OUTPUT_IMAGE_FORMAT_RG8UI;
+      vk_format = VK_FORMAT_R8G8_UINT;
+      break;
+   default:
+      format = V3D_OUTPUT_IMAGE_FORMAT_R8UI;
+      vk_format = VK_FORMAT_R8_UINT;
+      break;
+   }
+
    struct v3dv_job *job = NULL;
-   src_offset += region->srcOffset;
-   dst_offset += region->dstOffset;
    while (num_items > 0) {
       job = v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
       if (!job)
