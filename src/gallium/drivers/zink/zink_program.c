@@ -149,12 +149,12 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       enum pipe_shader_type type = pipe_shader_type_from_mesa(i);
       if (dirty[i]) {
-         prog->stages[type] = CALLOC_STRUCT(zink_shader_module);
-         assert(prog->stages[type]);
-         pipe_reference_init(&prog->stages[type]->reference, 1);
-         prog->stages[type]->shader = zink_shader_compile(zink_screen(ctx->base.screen), dirty[i]);
+         prog->modules[type] = CALLOC_STRUCT(zink_shader_module);
+         assert(prog->modules[type]);
+         pipe_reference_init(&prog->modules[type]->reference, 1);
+         prog->modules[type]->shader = zink_shader_compile(zink_screen(ctx->base.screen), dirty[i]);
       } else if (stages[type]) /* reuse existing shader module */
-         zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->stages[type], ctx->curr_program->stages[type]);
+         zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], ctx->curr_program->modules[type]);
       prog->shaders[type] = stages[type];
    }
    ctx->dirty_shader_stages = 0;
@@ -194,7 +194,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    }
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
-      if (prog->stages[i]) {
+      if (prog->modules[i]) {
          _mesa_set_add(stages[i]->programs, prog);
          zink_gfx_program_reference(screen, NULL, prog);
       }
@@ -245,8 +245,8 @@ zink_destroy_gfx_program(struct zink_screen *screen,
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (prog->shaders[i])
          gfx_program_remove_shader(prog, prog->shaders[i]);
-      if (prog->stages[i])
-         zink_shader_module_reference(screen, &prog->stages[i], NULL);
+      if (prog->modules[i])
+         zink_shader_module_reference(screen, &prog->modules[i], NULL);
    }
 
    /* unref all used render-passes */

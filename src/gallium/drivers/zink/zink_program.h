@@ -46,7 +46,7 @@ struct zink_shader_module {
 struct zink_gfx_program {
    struct pipe_reference reference;
 
-   struct zink_shader_module *stages[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
+   struct zink_shader_module *modules[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
    VkDescriptorSetLayout dsl;
    VkPipelineLayout layout;
