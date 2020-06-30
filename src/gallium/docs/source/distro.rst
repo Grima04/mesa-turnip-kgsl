@@ -103,7 +103,7 @@ MesaGL
 
 The gallium frontend implementing a GL state machine. Not usable as
 a standalone frontend; Mesa should be built with another gallium frontend,
-such as :ref:`DRI` or :ref:`EGL`.
+such as :ref:`DRI` or EGL.
 
 VDPAU
 ^^^^^
