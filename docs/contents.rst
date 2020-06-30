@@ -68,6 +68,7 @@
    release-calendar
    sourcedocs
    dispatch
+   gallium/index
 
 .. toctree::
    :maxdepth: 1
