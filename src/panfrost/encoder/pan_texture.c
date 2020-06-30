@@ -215,22 +215,26 @@ panfrost_emit_texture_payload(
                 panfrost_adjust_cube_dimensions(&first_face, &last_face, &first_layer, &last_layer);
         }
 
+        nr_samples = MAX2(nr_samples, 1);
+
         unsigned idx = 0;
 
         for (unsigned w = first_layer; w <= last_layer; ++w) {
                 for (unsigned l = first_level; l <= last_level; ++l) {
                         for (unsigned f = first_face; f <= last_face; ++f) {
-                                payload[idx++] = base + panfrost_texture_offset(
-                                                slices, type == MALI_TEX_3D,
-                                                cube_stride, l, w * face_mult + f);
+                                for (unsigned s = 0; s < nr_samples; ++s) {
+                                        payload[idx++] = base + panfrost_texture_offset(
+                                                        slices, type == MALI_TEX_3D,
+                                                        cube_stride, l, w * face_mult + f, s);
 
-                                if (manual_stride) {
-                                        payload[idx++] = (layout == MALI_TEXTURE_LINEAR) ?
-                                                slices[l].stride :
-                                                panfrost_nonlinear_stride(layout,
-                                                                MAX2(desc->block.bits / 8, 1),
-                                                                u_minify(width, l),
-                                                                u_minify(height, l));
+                                        if (manual_stride) {
+                                                payload[idx++] = (layout == MALI_TEXTURE_LINEAR) ?
+                                                        slices[l].stride :
+                                                        panfrost_nonlinear_stride(layout,
+                                                                        MAX2(desc->block.bits / 8, 1),
+                                                                        u_minify(width, l),
+                                                                        u_minify(height, l));
+                                        }
                                 }
                         }
                 }
