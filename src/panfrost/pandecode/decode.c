@@ -2065,8 +2065,9 @@ pandecode_texture_payload(mali_ptr payload,
         /* Miptree for each face */
         if (type == MALI_TEX_CUBE)
                 bitmap_count *= 6;
-        else if (type == MALI_TEX_3D && layout == MALI_TEXTURE_LINEAR)
-                bitmap_count *= (depth + 1);
+
+        /* Array of layers */
+        bitmap_count *= (depth + 1);
 
         /* Array of textures */
         bitmap_count *= (array_size + 1);
@@ -2171,22 +2172,19 @@ pandecode_texture(mali_ptr u,
         /* All four width/height/depth/array_size dimensions are present
          * regardless of the type of texture, but it is an error to have
          * non-zero dimensions for unused dimensions. Verify this. array_size
-         * can always be set, as can width. */
+         * can always be set, as can width. Depth used for MSAA. */
 
         if (t->height && dimension < 2)
                 pandecode_msg("XXX: nonzero height for <2D texture\n");
-
-        if (t->depth && dimension < 3)
-                pandecode_msg("XXX: nonzero depth for <2D texture\n");
 
         /* Print only the dimensions that are actually there */
 
         pandecode_log_cont(": %d", t->width + 1);
 
-        if (dimension >= 2)
+        if (t->height || t->depth)
                 pandecode_log_cont("x%u", t->height + 1);
 
-        if (dimension >= 3)
+        if (t->depth)
                 pandecode_log_cont("x%u", t->depth + 1);
 
         if (t->array_size)
