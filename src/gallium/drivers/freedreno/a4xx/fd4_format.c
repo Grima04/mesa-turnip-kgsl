@@ -339,7 +339,7 @@ enum a4xx_vtx_fmt
 fd4_pipe2vtx(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return VFMT4_NONE;
 	return formats[format].vtx;
 }
 
@@ -348,7 +348,7 @@ enum a4xx_tex_fmt
 fd4_pipe2tex(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return TFMT4_NONE;
 	return formats[format].tex;
 }
 
@@ -357,7 +357,7 @@ enum a4xx_color_fmt
 fd4_pipe2color(enum pipe_format format)
 {
 	if (!formats[format].present)
-		return ~0;
+		return RB4_NONE;
 	return formats[format].rb;
 }
 
