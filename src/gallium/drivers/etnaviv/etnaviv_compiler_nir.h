@@ -30,7 +30,6 @@
 #include "compiler/nir/nir.h"
 #include "etnaviv_asm.h"
 #include "etnaviv_compiler.h"
-#include "util/register_allocate.h"
 
 struct etna_compile {
    nir_shader *nir;
@@ -234,6 +233,96 @@ struct live_def {
 
 unsigned
 etna_live_defs(nir_function_impl *impl, struct live_def *defs, unsigned *live_map);
+
+/* Swizzles and write masks can be used to layer virtual non-interfering
+ * registers on top of the real VEC4 registers. For example, the virtual
+ * VEC3_XYZ register and the virtual SCALAR_W register that use the same
+ * physical VEC4 base register do not interfere.
+ */
+enum reg_class {
+   REG_CLASS_VIRT_SCALAR,
+   REG_CLASS_VIRT_VEC2,
+   REG_CLASS_VIRT_VEC3,
+   REG_CLASS_VEC4,
+   /* special vec2 class for fast transcendentals, limited to XY or ZW */
+   REG_CLASS_VIRT_VEC2T,
+   /* special classes for LOAD - contiguous components */
+   REG_CLASS_VIRT_VEC2C,
+   REG_CLASS_VIRT_VEC3C,
+   NUM_REG_CLASSES,
+};
+
+enum reg_type {
+   REG_TYPE_VEC4,
+   REG_TYPE_VIRT_VEC3_XYZ,
+   REG_TYPE_VIRT_VEC3_XYW,
+   REG_TYPE_VIRT_VEC3_XZW,
+   REG_TYPE_VIRT_VEC3_YZW,
+   REG_TYPE_VIRT_VEC2_XY,
+   REG_TYPE_VIRT_VEC2_XZ,
+   REG_TYPE_VIRT_VEC2_XW,
+   REG_TYPE_VIRT_VEC2_YZ,
+   REG_TYPE_VIRT_VEC2_YW,
+   REG_TYPE_VIRT_VEC2_ZW,
+   REG_TYPE_VIRT_SCALAR_X,
+   REG_TYPE_VIRT_SCALAR_Y,
+   REG_TYPE_VIRT_SCALAR_Z,
+   REG_TYPE_VIRT_SCALAR_W,
+   REG_TYPE_VIRT_VEC2T_XY,
+   REG_TYPE_VIRT_VEC2T_ZW,
+   REG_TYPE_VIRT_VEC2C_XY,
+   REG_TYPE_VIRT_VEC2C_YZ,
+   REG_TYPE_VIRT_VEC2C_ZW,
+   REG_TYPE_VIRT_VEC3C_XYZ,
+   REG_TYPE_VIRT_VEC3C_YZW,
+   NUM_REG_TYPES,
+};
+
+/* writemask when used as dest */
+static const uint8_t
+reg_writemask[NUM_REG_TYPES] = {
+   [REG_TYPE_VEC4] = 0xf,
+   [REG_TYPE_VIRT_SCALAR_X] = 0x1,
+   [REG_TYPE_VIRT_SCALAR_Y] = 0x2,
+   [REG_TYPE_VIRT_VEC2_XY] = 0x3,
+   [REG_TYPE_VIRT_VEC2T_XY] = 0x3,
+   [REG_TYPE_VIRT_VEC2C_XY] = 0x3,
+   [REG_TYPE_VIRT_SCALAR_Z] = 0x4,
+   [REG_TYPE_VIRT_VEC2_XZ] = 0x5,
+   [REG_TYPE_VIRT_VEC2_YZ] = 0x6,
+   [REG_TYPE_VIRT_VEC2C_YZ] = 0x6,
+   [REG_TYPE_VIRT_VEC3_XYZ] = 0x7,
+   [REG_TYPE_VIRT_VEC3C_XYZ] = 0x7,
+   [REG_TYPE_VIRT_SCALAR_W] = 0x8,
+   [REG_TYPE_VIRT_VEC2_XW] = 0x9,
+   [REG_TYPE_VIRT_VEC2_YW] = 0xa,
+   [REG_TYPE_VIRT_VEC3_XYW] = 0xb,
+   [REG_TYPE_VIRT_VEC2_ZW] = 0xc,
+   [REG_TYPE_VIRT_VEC2T_ZW] = 0xc,
+   [REG_TYPE_VIRT_VEC2C_ZW] = 0xc,
+   [REG_TYPE_VIRT_VEC3_XZW] = 0xd,
+   [REG_TYPE_VIRT_VEC3_YZW] = 0xe,
+   [REG_TYPE_VIRT_VEC3C_YZW] = 0xe,
+};
+
+static inline int reg_get_type(int virt_reg)
+{
+   return virt_reg % NUM_REG_TYPES;
+}
+
+static inline int reg_get_base(struct etna_compile *c, int virt_reg)
+{
+   /* offset by 1 to avoid reserved position register */
+   if (c->nir->info.stage == MESA_SHADER_FRAGMENT)
+      return (virt_reg / NUM_REG_TYPES + 1) % ETNA_MAX_TEMPS;
+   return virt_reg / NUM_REG_TYPES;
+}
+
+void
+etna_ra_assign(struct etna_compile *c, nir_shader *shader);
+
+unsigned
+etna_ra_finish(struct etna_compile *c);
 
 static inline void
 emit_inst(struct etna_compile *c, struct etna_inst *inst)
