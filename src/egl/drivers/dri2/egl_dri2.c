@@ -1773,27 +1773,17 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
    if (!dri2_dpy)
       return _eglError(EGL_NOT_INITIALIZED, "eglMakeCurrent");
 
-   /* make new bindings */
-   if (!_eglBindContext(ctx, dsurf, rsurf, &old_ctx, &old_dsurf, &old_rsurf)) {
-      /* _eglBindContext already sets the EGL error (in _eglCheckMakeCurrent) */
+   /* make new bindings, set the EGL error otherwise */
+   if (!_eglBindContext(ctx, dsurf, rsurf, &old_ctx, &old_dsurf, &old_rsurf))
       return EGL_FALSE;
-   }
-
-   if (old_ctx) {
-      old_disp = old_ctx->Resource.Display;
-      old_dri2_dpy = dri2_egl_display(old_disp);
-   }
-
-   /* flush before context switch */
-   if (old_ctx)
-      dri2_gl_flush();
-
-   ddraw = (dsurf) ? dri2_dpy->vtbl->get_dri_drawable(dsurf) : NULL;
-   rdraw = (rsurf) ? dri2_dpy->vtbl->get_dri_drawable(rsurf) : NULL;
-   cctx = (dri2_ctx) ? dri2_ctx->dri_context : NULL;
 
    if (old_ctx) {
       __DRIcontext *old_cctx = dri2_egl_context(old_ctx)->dri_context;
+      old_disp = old_ctx->Resource.Display;
+      old_dri2_dpy = dri2_egl_display(old_disp);
+
+      /* flush before context switch */
+      dri2_gl_flush();
 
       if (old_dsurf)
          dri2_surf_update_fence_fd(old_ctx, disp, old_dsurf);
@@ -1807,6 +1797,9 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
       dri2_dpy->core->unbindContext(old_cctx);
    }
 
+   ddraw = (dsurf) ? dri2_dpy->vtbl->get_dri_drawable(dsurf) : NULL;
+   rdraw = (rsurf) ? dri2_dpy->vtbl->get_dri_drawable(rsurf) : NULL;
+   cctx = (dri2_ctx) ? dri2_ctx->dri_context : NULL;
    unbind = (cctx == NULL && ddraw == NULL && rdraw == NULL);
 
    if (!unbind && !dri2_dpy->core->bindContext(cctx, ddraw, rdraw)) {
