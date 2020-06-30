@@ -1341,6 +1341,7 @@ public:
 
    int maxGPR;
    bool fp64;
+   bool persampleInvocation;
 
    MemoryPool mem_Instruction;
    MemoryPool mem_CmpInstruction;

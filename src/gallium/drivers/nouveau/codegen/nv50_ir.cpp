@@ -1254,14 +1254,12 @@ nv50_ir_init_prog_info(struct nv50_ir_prog_info *info)
       info->prop.cp.numThreads[1] =
       info->prop.cp.numThreads[2] = 1;
    }
-   info->io.pointSize = 0xff;
    info->io.instanceId = 0xff;
    info->io.vertexId = 0xff;
    info->io.edgeFlagIn = 0xff;
    info->io.edgeFlagOut = 0xff;
    info->io.fragDepth = 0xff;
    info->io.sampleMask = 0xff;
-   info->io.backFaceColor[0] = info->io.backFaceColor[1] = 0xff;
 }
 
 int

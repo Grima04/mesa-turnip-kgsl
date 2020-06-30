@@ -2965,7 +2965,7 @@ NVC0LoweringPass::handleRDSV(Instruction *i)
          bld.mkOp2v(OP_AND, TYPE_U32, bld.getSSA(), ld->getDef(0),
                     bld.mkOp2v(OP_SHL, TYPE_U32, bld.getSSA(),
                                bld.loadImm(NULL, 1), sampleid->getDef(0)));
-      if (prog->driver->prop.fp.persampleInvocation) {
+      if (prog->persampleInvocation) {
          bld.mkMov(i->getDef(0), masked);
       } else {
          bld.mkOp3(OP_SELP, TYPE_U32, i->getDef(0), ld->getDef(0), masked,
