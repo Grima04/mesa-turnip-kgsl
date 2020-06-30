@@ -11,9 +11,3 @@ dEQP-VK.rasterization.interpolation.basic.non_strict_lines_wide
 dEQP-VK.rasterization.interpolation.projected.lines_wide
 dEQP-VK.rasterization.interpolation.projected.non_strict_line_strip_wide
 dEQP-VK.rasterization.interpolation.projected.non_strict_lines_wide
-dEQP-VK.rasterization.interpolation_multisample_2_bit.lines_wide
-dEQP-VK.rasterization.interpolation_multisample_2_bit.non_strict_lines_wide
-dEQP-VK.rasterization.interpolation_multisample_4_bit.lines_wide
-dEQP-VK.rasterization.interpolation_multisample_4_bit.non_strict_lines_wide
-dEQP-VK.rasterization.interpolation_multisample_8_bit.lines_wide
-dEQP-VK.rasterization.interpolation_multisample_8_bit.non_strict_lines_wide

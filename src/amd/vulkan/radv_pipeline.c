@@ -1154,7 +1154,6 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 		unsigned log_z_samples = util_logbase2(z_samples);
 		unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
 		ms->pa_sc_mode_cntl_0 |= S_028A48_MSAA_ENABLE(1);
-		ms->pa_sc_line_cntl |= S_028BDC_EXPAND_LINE_WIDTH(1); /* CM_R_028BDC_PA_SC_LINE_CNTL */
 		ms->db_eqaa |= S_028804_MAX_ANCHOR_SAMPLES(log_z_samples) |
 			S_028804_PS_ITER_SAMPLES(log_ps_iter_samples) |
 			S_028804_MASK_EXPORT_NUM_SAMPLES(log_samples) |
