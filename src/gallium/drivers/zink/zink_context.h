@@ -71,6 +71,8 @@ zink_so_target(struct pipe_stream_output_target *so_target)
    return (struct zink_so_target *)so_target;
 }
 
+#define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
+
 struct zink_context {
    struct pipe_context base;
    struct slab_child_pool transfer_pool;
@@ -88,7 +90,7 @@ struct zink_context {
    struct zink_vertex_elements_state *element_state;
    struct zink_rasterizer_state *rast_state;
 
-   struct zink_shader *gfx_stages[PIPE_SHADER_TYPES - 1];
+   struct zink_shader *gfx_stages[ZINK_SHADER_COUNT];
    struct zink_gfx_pipeline_state gfx_pipeline_state;
    struct hash_table *program_cache;
    struct zink_gfx_program *curr_program;

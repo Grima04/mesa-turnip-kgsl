@@ -140,9 +140,9 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    pci.pDepthStencilState = &depth_stencil_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;
 
-   VkPipelineShaderStageCreateInfo shader_stages[PIPE_SHADER_TYPES - 1];
+   VkPipelineShaderStageCreateInfo shader_stages[ZINK_SHADER_COUNT];
    uint32_t num_stages = 0;
-   for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
+   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (!prog->stages[i])
          continue;
 

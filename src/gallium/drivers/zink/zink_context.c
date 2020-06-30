@@ -839,13 +839,13 @@ zink_shader_stage(enum pipe_shader_type type)
 static uint32_t
 hash_gfx_program(const void *key)
 {
-   return _mesa_hash_data(key, sizeof(struct zink_shader *) * (PIPE_SHADER_TYPES - 1));
+   return _mesa_hash_data(key, sizeof(struct zink_shader *) * (ZINK_SHADER_COUNT));
 }
 
 static bool
 equals_gfx_program(const void *a, const void *b)
 {
-   return memcmp(a, b, sizeof(struct zink_shader *) * (PIPE_SHADER_TYPES - 1)) == 0;
+   return memcmp(a, b, sizeof(struct zink_shader *) * (ZINK_SHADER_COUNT)) == 0;
 }
 
 static uint32_t

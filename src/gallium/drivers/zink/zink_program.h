@@ -29,7 +29,8 @@
 #include "pipe/p_state.h"
 #include "util/u_inlines.h"
 
-struct zink_context;
+#include "zink_context.h"
+
 struct zink_screen;
 struct zink_shader;
 struct zink_gfx_pipeline_state;
@@ -40,8 +41,8 @@ struct set;
 struct zink_gfx_program {
    struct pipe_reference reference;
 
-   VkShaderModule stages[PIPE_SHADER_TYPES - 1]; // compute stage doesn't belong here
-   struct zink_shader *shaders[PIPE_SHADER_TYPES - 1];
+   VkShaderModule stages[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
+   struct zink_shader *shaders[ZINK_SHADER_COUNT];
    VkDescriptorSetLayout dsl;
    VkPipelineLayout layout;
    unsigned num_descriptors;
@@ -51,7 +52,7 @@ struct zink_gfx_program {
 
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
-                        struct zink_shader *stages[PIPE_SHADER_TYPES - 1]);
+                        struct zink_shader *stages[ZINK_SHADER_COUNT]);
 
 void
 zink_destroy_gfx_program(struct zink_screen *screen,

@@ -47,13 +47,13 @@ debug_describe_zink_gfx_program(char *buf, const struct zink_gfx_program *ptr)
 
 static VkDescriptorSetLayout
 create_desc_set_layout(VkDevice dev,
-                       struct zink_shader *stages[PIPE_SHADER_TYPES - 1],
+                       struct zink_shader *stages[ZINK_SHADER_COUNT],
                        unsigned *num_descriptors)
 {
    VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS];
    int num_bindings = 0;
 
-   for (int i = 0; i < PIPE_SHADER_TYPES - 1; i++) {
+   for (int i = 0; i < ZINK_SHADER_COUNT; i++) {
       struct zink_shader *shader = stages[i];
       if (!shader)
          continue;
@@ -108,9 +108,9 @@ create_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
 }
 
 static void
-update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[PIPE_SHADER_TYPES - 1], struct zink_gfx_program *prog)
+update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_SHADER_COUNT], struct zink_gfx_program *prog)
 {
-   for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
+   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (stages[i]) {
          prog->stages[i] = zink_shader_compile(zink_screen(ctx->base.screen), stages[i]);
          prog->shaders[i] = stages[i];
@@ -132,7 +132,7 @@ equals_gfx_pipeline_state(const void *a, const void *b)
 
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
-                        struct zink_shader *stages[PIPE_SHADER_TYPES - 1])
+                        struct zink_shader *stages[ZINK_SHADER_COUNT])
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_gfx_program *prog = CALLOC_STRUCT(zink_gfx_program);
@@ -151,7 +151,7 @@ zink_create_gfx_program(struct zink_context *ctx,
          goto fail;
    }
 
-   for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
+   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (prog->stages[i]) {
          _mesa_set_add(stages[i]->programs, prog);
          zink_gfx_program_reference(screen, NULL, prog);
@@ -200,7 +200,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
    if (prog->dsl)
       vkDestroyDescriptorSetLayout(screen->dev, prog->dsl, NULL);
 
-   for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i) {
+   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (prog->shaders[i])
          gfx_program_remove_shader(prog, prog->shaders[i]);
       if (prog->stages[i])
