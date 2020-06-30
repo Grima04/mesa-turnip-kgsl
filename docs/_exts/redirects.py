@@ -1,6 +1,9 @@
 import os
 
-redirects = []
+redirects = [
+    ('llvmpipe', 'gallium/drivers/llvmpipe'),
+    ('postprocess', 'gallium/postprocess')
+]
 
 def create_redirect(dst):
     tpl = '<html><head><meta http-equiv="refresh" content="0; url={0}"><script>window.location.replace("{0}")</script></head></html>'

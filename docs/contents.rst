@@ -44,9 +44,7 @@
    debugging
    perf
    extensions
-   llvmpipe
    vmware-guest
-   postprocess
    application-issues
    viewperf
    xlibdriver

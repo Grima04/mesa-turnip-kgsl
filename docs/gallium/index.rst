@@ -16,6 +16,7 @@ Contents:
    cso
    distro
    drivers
+   postprocess
    glossary
 
 Indices and tables
