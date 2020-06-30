@@ -72,6 +72,14 @@ static const struct test {
 	INSTR_6XX(8010000a_00000003, "rcp r2.z, r0.w"),
 
 	/* cat5 */
+	/* dEQP-VK.glsl.derivate.dfdx.uniform_if.float_mediump */
+	INSTR_6XX(a3801102_00000001, "dsx (f32)(x)r0.z, r0.x"), /* dsx (f32)(xOOO)r0.z, r0.x */
+	/* dEQP-VK.glsl.derivate.dfdy.uniform_if.float_mediump */
+	INSTR_6XX(a3c01102_00000001, "dsy (f32)(x)r0.z, r0.x"), /* dsy (f32)(xOOO)r0.z, r0.x */
+	/* dEQP-VK.glsl.derivate.dfdxfine.uniform_loop.float_highp */
+	INSTR_6XX(a6001105_00000001, "dsxpp.1 (x)r1.y, r0.x"), /* dsxpp.1 (xOOO)r1.y, r0.x */
+	INSTR_6XX(a6201105_00000001, "dsxpp.1.p (x)r1.y, r0.x"), /* dsxpp.1 (xOOO)r1.y, r0.x */
+
 	INSTR_6XX(a2802f00_00000001, "getsize (u16)(xyzw)hr0.x, r0.x, t#0"),
 
 	/* cat6 */
