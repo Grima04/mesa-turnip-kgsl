@@ -800,26 +800,26 @@ NineDevice9_SetCursorProperties( struct NineDevice9 *This,
     {
         D3DLOCKED_RECT lock;
         HRESULT hr;
-        const struct util_format_description *sfmt =
-            util_format_description(surf->base.info.format);
-        assert(sfmt);
+        const struct util_format_unpack_description *unpack =
+            util_format_unpack_description(surf->base.info.format);
+        assert(unpack);
 
         hr = NineSurface9_LockRect(surf, &lock, NULL, D3DLOCK_READONLY);
         if (FAILED(hr))
             ret_err("Failed to map cursor source image.\n",
                     D3DERR_DRIVERINTERNALERROR);
 
-        sfmt->unpack_rgba_8unorm(ptr, transfer->stride,
-                                 lock.pBits, lock.Pitch,
-                                 This->cursor.w, This->cursor.h);
+        unpack->unpack_rgba_8unorm(ptr, transfer->stride,
+                                   lock.pBits, lock.Pitch,
+                                   This->cursor.w, This->cursor.h);
 
         if (hw_cursor) {
             void *data = lock.pBits;
             /* SetCursor assumes 32x32 argb with pitch 128 */
             if (lock.Pitch != 128) {
-                sfmt->unpack_rgba_8unorm(This->cursor.hw_upload_temp, 128,
-                                         lock.pBits, lock.Pitch,
-                                         32, 32);
+                unpack->unpack_rgba_8unorm(This->cursor.hw_upload_temp, 128,
+                                           lock.pBits, lock.Pitch,
+                                           32, 32);
                 data = This->cursor.hw_upload_temp;
             }
             hw_cursor = ID3DPresent_SetCursor(This->swapchains[0]->present,
