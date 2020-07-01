@@ -197,6 +197,12 @@ line_width_needed(enum pipe_prim_type reduced_prim,
    }
 }
 
+static inline bool
+restart_supported(enum pipe_prim_type mode)
+{
+    return mode == PIPE_PRIM_LINE_STRIP || mode == PIPE_PRIM_TRIANGLE_STRIP || mode == PIPE_PRIM_TRIANGLE_FAN;
+}
+
 void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo)
@@ -209,6 +215,11 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
    bool need_index_buffer_unref = false;
 
+
+   if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
+       util_draw_vbo_without_prim_restart(pctx, dinfo);
+       return;
+   }
    if (dinfo->mode >= PIPE_PRIM_QUADS ||
        dinfo->mode == PIPE_PRIM_LINE_LOOP) {
       if (!u_trim_pipe_prim(dinfo->mode, (unsigned *)&dinfo->count))
@@ -223,7 +234,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!gfx_program)
       return;
 
-   /* this is broken for anything requiring primconvert atm */
    ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
 
    VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
