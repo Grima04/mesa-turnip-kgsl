@@ -709,7 +709,6 @@ st_AllocTextureImageBuffer(struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    struct st_texture_image *stImage = st_texture_image(texImage);
    struct st_texture_object *stObj = st_texture_object(texImage->TexObject);
-   const GLuint level = texImage->Level;
    GLuint width = texImage->Width;
    GLuint height = texImage->Height;
    GLuint depth = texImage->Depth;
@@ -721,29 +720,34 @@ st_AllocTextureImageBuffer(struct gl_context *ctx,
    stObj->needs_validation = true;
 
    compressed_tex_fallback_allocate(st, stImage);
+   const bool allowAllocateToStObj = !stObj->pt ||
+                                     stObj->pt->last_level == 0 ||
+                                     texImage->Level == 0;
 
-   /* Look if the parent texture object has space for this image */
-   if (stObj->pt &&
-       level <= stObj->pt->last_level &&
-       st_texture_match_image(st, stObj->pt, texImage)) {
-      /* this image will fit in the existing texture object's memory */
-      pipe_resource_reference(&stImage->pt, stObj->pt);
-      return GL_TRUE;
-   }
+   if (allowAllocateToStObj) {
+      /* Look if the parent texture object has space for this image */
+      if (stObj->pt &&
+          st_texture_match_image(st, stObj->pt, texImage)) {
+         /* this image will fit in the existing texture object's memory */
+         pipe_resource_reference(&stImage->pt, stObj->pt);
+         assert(stImage->pt);
+         return GL_TRUE;
+      }
 
-   /* The parent texture object does not have space for this image */
+      /* The parent texture object does not have space for this image */
 
-   pipe_resource_reference(&stObj->pt, NULL);
-   st_texture_release_all_sampler_views(st, stObj);
+      pipe_resource_reference(&stObj->pt, NULL);
+      st_texture_release_all_sampler_views(st, stObj);
 
-   if (!guess_and_alloc_texture(st, stObj, stImage)) {
-      /* Probably out of memory.
-       * Try flushing any pending rendering, then retry.
-       */
-      st_finish(st);
       if (!guess_and_alloc_texture(st, stObj, stImage)) {
-         _mesa_error(ctx, GL_OUT_OF_MEMORY, "glTexImage");
-         return GL_FALSE;
+         /* Probably out of memory.
+         * Try flushing any pending rendering, then retry.
+         */
+         st_finish(st);
+         if (!guess_and_alloc_texture(st, stObj, stImage)) {
+            _mesa_error(ctx, GL_OUT_OF_MEMORY, "glTexImage");
+            return GL_FALSE;
+         }
       }
    }
 
