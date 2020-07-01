@@ -53,17 +53,22 @@ load_frag_coord(const nir_input_attachment_options *options, nir_builder *b)
 static nir_ssa_def *
 load_layer_id(const nir_input_attachment_options *options, nir_builder *b)
 {
-   if (options->use_layer_id_sysval)
-      return nir_load_layer_id(b);
+   if (options->use_layer_id_sysval) {
+      if (options->use_view_id_for_layer)
+         return nir_load_view_index(b);
+      else
+         return nir_load_layer_id(b);
+   }
 
+   gl_varying_slot slot = options->use_view_id_for_layer ?
+      VARYING_SLOT_VIEW_INDEX : VARYING_SLOT_LAYER;
    nir_variable *layer_id =
-      nir_find_variable_with_location(b->shader, nir_var_shader_in,
-                                      VARYING_SLOT_LAYER);
+      nir_find_variable_with_location(b->shader, nir_var_shader_in, slot);
 
    if (layer_id == NULL) {
       layer_id = nir_variable_create(b->shader, nir_var_shader_in,
                                      glsl_int_type(), NULL);
-      layer_id->data.location = VARYING_SLOT_LAYER;
+      layer_id->data.location = slot;
       layer_id->data.interpolation = INTERP_MODE_FLAT;
       layer_id->data.driver_location = b->shader->num_inputs++;
    }
