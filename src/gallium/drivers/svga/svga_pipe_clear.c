@@ -352,18 +352,7 @@ svga_clear_texture(struct pipe_context *pipe,
          color.f[0] = color.f[1] = color.f[2] = color.f[3] = 0;
       }
       else {
-         if (util_format_is_pure_sint(surface->format)) {
-            /* signed integer */
-            desc->unpack_rgba_sint(color.i, 0, data, 0, 1, 1);
-         }
-         else if (util_format_is_pure_uint(surface->format)) {
-            /* unsigned integer */
-            desc->unpack_rgba_uint(color.ui, 0, data, 0, 1, 1);
-         }
-         else {
-            /* floating point */
-            desc->unpack_rgba_float(color.f, 0, data, 0, 1, 1);
-         }
+         util_format_unpack_rgba(surface->format, &color, data, 1);
       }
 
       /* Setup render target view */
