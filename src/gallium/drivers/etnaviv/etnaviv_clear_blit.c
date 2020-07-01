@@ -73,13 +73,7 @@ etna_clear_blit_pack_rgba(enum pipe_format format, const union pipe_color_union 
 {
    union util_color uc;
 
-   if (util_format_is_pure_uint(format)) {
-      util_format_write_4ui(format, color->ui, 0, &uc, 0, 0, 0, 1, 1);
-   } else if (util_format_is_pure_sint(format)) {
-      util_format_write_4i(format, color->i, 0, &uc, 0, 0, 0, 1, 1);
-   } else {
-      util_pack_color(color->f, format, &uc);
-   }
+   util_pack_color_union(format, &uc, color);
 
    switch (util_format_get_blocksize(format)) {
    case 1:
