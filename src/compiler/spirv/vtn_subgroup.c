@@ -88,7 +88,7 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpGroupNonUniformBallot: ++w;
+   case SpvOpGroupNonUniformBallot: ++w; /* fallthrough */
    case SpvOpSubgroupBallotKHR: {
       vtn_fail_if(val->type->type != glsl_vector_type(GLSL_TYPE_UINT, 4),
                   "OpGroupNonUniformBallot must return a uvec4");
@@ -177,14 +177,14 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpGroupNonUniformBroadcastFirst: ++w;
+   case SpvOpGroupNonUniformBroadcastFirst: ++w; /* fallthrough */
    case SpvOpSubgroupFirstInvocationKHR:
       vtn_build_subgroup_instr(b, nir_intrinsic_read_first_invocation,
                                val->ssa, vtn_ssa_value(b, w[3]), NULL, 0, 0);
       break;
 
    case SpvOpGroupNonUniformBroadcast:
-   case SpvOpGroupBroadcast: ++w;
+   case SpvOpGroupBroadcast: ++w; /* fallthrough */
    case SpvOpSubgroupReadInvocationKHR:
       vtn_build_subgroup_instr(b, nir_intrinsic_read_invocation,
                                val->ssa, vtn_ssa_value(b, w[3]),
