@@ -341,12 +341,7 @@ util_format_read_4(enum pipe_format format,
 
    src_row = (const uint8_t *)src + y*src_stride + x*(format_desc->block.bits/8);
 
-   if (util_format_is_pure_uint(format))
-      format_desc->unpack_rgba_sint(dst, dst_stride, src_row, src_stride, w, h);
-   else if (util_format_is_pure_uint(format))
-      format_desc->unpack_rgba_uint(dst, dst_stride, src_row, src_stride, w, h);
-   else
-      format_desc->unpack_rgba_float(dst, dst_stride, src_row, src_stride, w, h);
+   format_desc->unpack_rgba(dst, dst_stride, src_row, src_stride, w, h);
 }
 
 
@@ -695,8 +690,8 @@ util_format_translate(enum pipe_format dst_format,
       unsigned tmp_stride;
       int *tmp_row;
 
-      if (!src_format_desc->unpack_rgba_sint ||
-          !dst_format_desc->pack_rgba_sint) {
+      if (util_format_is_pure_sint(src_format) !=
+          util_format_is_pure_sint(dst_format)) {
          return FALSE;
       }
 
@@ -706,7 +701,7 @@ util_format_translate(enum pipe_format dst_format,
          return FALSE;
 
       while (height >= y_step) {
-         src_format_desc->unpack_rgba_sint(tmp_row, tmp_stride, src_row, src_stride, width, y_step);
+         src_format_desc->unpack_rgba(tmp_row, tmp_stride, src_row, src_stride, width, y_step);
          dst_format_desc->pack_rgba_sint(dst_row, dst_stride, tmp_row, tmp_stride, width, y_step);
 
          dst_row += dst_step;
@@ -715,7 +710,7 @@ util_format_translate(enum pipe_format dst_format,
       }
 
       if (height) {
-         src_format_desc->unpack_rgba_sint(tmp_row, tmp_stride, src_row, src_stride, width, height);
+         src_format_desc->unpack_rgba(tmp_row, tmp_stride, src_row, src_stride, width, height);
          dst_format_desc->pack_rgba_sint(dst_row, dst_stride, tmp_row, tmp_stride, width, height);
       }
 
@@ -726,7 +721,7 @@ util_format_translate(enum pipe_format dst_format,
       unsigned tmp_stride;
       unsigned int *tmp_row;
 
-      if (!src_format_desc->unpack_rgba_uint ||
+      if (!src_format_desc->unpack_rgba ||
           !dst_format_desc->pack_rgba_uint) {
          return FALSE;
       }
@@ -737,7 +732,7 @@ util_format_translate(enum pipe_format dst_format,
          return FALSE;
 
       while (height >= y_step) {
-         src_format_desc->unpack_rgba_uint(tmp_row, tmp_stride, src_row, src_stride, width, y_step);
+         src_format_desc->unpack_rgba(tmp_row, tmp_stride, src_row, src_stride, width, y_step);
          dst_format_desc->pack_rgba_uint(dst_row, dst_stride, tmp_row, tmp_stride, width, y_step);
 
          dst_row += dst_step;
@@ -746,7 +741,7 @@ util_format_translate(enum pipe_format dst_format,
       }
 
       if (height) {
-         src_format_desc->unpack_rgba_uint(tmp_row, tmp_stride, src_row, src_stride, width, height);
+         src_format_desc->unpack_rgba(tmp_row, tmp_stride, src_row, src_stride, width, height);
          dst_format_desc->pack_rgba_uint(dst_row, dst_stride, tmp_row, tmp_stride, width, height);
       }
 
@@ -756,7 +751,7 @@ util_format_translate(enum pipe_format dst_format,
       unsigned tmp_stride;
       float *tmp_row;
 
-      if (!src_format_desc->unpack_rgba_float ||
+      if (!src_format_desc->unpack_rgba ||
           !dst_format_desc->pack_rgba_float) {
          return FALSE;
       }
@@ -767,7 +762,7 @@ util_format_translate(enum pipe_format dst_format,
          return FALSE;
 
       while (height >= y_step) {
-         src_format_desc->unpack_rgba_float(tmp_row, tmp_stride, src_row, src_stride, width, y_step);
+         src_format_desc->unpack_rgba(tmp_row, tmp_stride, src_row, src_stride, width, y_step);
          dst_format_desc->pack_rgba_float(dst_row, dst_stride, tmp_row, tmp_stride, width, y_step);
 
          dst_row += dst_step;
@@ -776,7 +771,7 @@ util_format_translate(enum pipe_format dst_format,
       }
 
       if (height) {
-         src_format_desc->unpack_rgba_float(tmp_row, tmp_stride, src_row, src_stride, width, height);
+         src_format_desc->unpack_rgba(tmp_row, tmp_stride, src_row, src_stride, width, height);
          dst_format_desc->pack_rgba_float(dst_row, dst_stride, tmp_row, tmp_stride, width, height);
       }
 

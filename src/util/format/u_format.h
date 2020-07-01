@@ -274,15 +274,17 @@ struct util_format_description
                         unsigned i, unsigned j);
 
    /**
-    * Unpack pixel blocks to R32G32B32A32_FLOAT.
+    * Unpack pixel blocks to R32G32B32A32_UINT/_INT_FLOAT based on whether the
+    * type is pure uint, int, or other.
+    *
     * Note: strides are in bytes.
     *
     * Only defined for non-depth-stencil formats.
     */
    void
-   (*unpack_rgba_float)(float *dst, unsigned dst_stride,
-                        const uint8_t *src, unsigned src_stride,
-                        unsigned width, unsigned height);
+   (*unpack_rgba)(void *dst, unsigned dst_stride,
+                  const uint8_t *src, unsigned src_stride,
+                  unsigned width, unsigned height);
 
    /**
     * Pack pixel blocks from R32G32B32A32_FLOAT.
@@ -371,32 +373,10 @@ struct util_format_description
                    const uint8_t *src, unsigned src_stride,
                    unsigned width, unsigned height);
 
-  /**
-    * Unpack pixel blocks to R32G32B32A32_UINT.
-    * Note: strides are in bytes.
-    *
-    * Only defined for INT formats.
-    */
-   void
-   (*unpack_rgba_uint)(uint32_t *dst, unsigned dst_stride,
-                       const uint8_t *src, unsigned src_stride,
-                       unsigned width, unsigned height);
-
    void
    (*pack_rgba_uint)(uint8_t *dst, unsigned dst_stride,
                      const uint32_t *src, unsigned src_stride,
                      unsigned width, unsigned height);
-
-  /**
-    * Unpack pixel blocks to R32G32B32A32_SINT.
-    * Note: strides are in bytes.
-    *
-    * Only defined for INT formats.
-    */
-   void
-   (*unpack_rgba_sint)(int32_t *dst, unsigned dst_stride,
-                       const uint8_t *src, unsigned src_stride,
-                       unsigned width, unsigned height);
 
    void
    (*pack_rgba_sint)(uint8_t *dst, unsigned dst_stride,
@@ -1473,15 +1453,6 @@ util_format_unpack_s_8uint(enum pipe_format format, uint8_t *dst,
    desc->unpack_s_8uint(dst, 0, (const uint8_t *)src, 0, w, 1);
 }
 
-static inline void
-util_format_unpack_rgba_float(enum pipe_format format, float *dst,
-                              const void *src, unsigned w)
-{
-   const struct util_format_description *desc = util_format_description(format);
-
-   desc->unpack_rgba_float(dst, 0, (const uint8_t *)src, 0, w, 1);
-}
-
 /**
  * Unpacks a row of color data to 32-bit RGBA, either integers for pure
  * integer formats (sign-extended for signed data), or 32-bit floats.
@@ -1492,12 +1463,7 @@ util_format_unpack_rgba(enum pipe_format format, void *dst,
 {
    const struct util_format_description *desc = util_format_description(format);
 
-   if (util_format_is_pure_uint(format))
-      desc->unpack_rgba_uint((uint32_t *)dst, 0, (const uint8_t *)src, 0, w, 1);
-   else if (util_format_is_pure_sint(format))
-      desc->unpack_rgba_sint((int32_t *)dst, 0, (const uint8_t *)src, 0, w, 1);
-   else
-      desc->unpack_rgba_float((float *)dst, 0, (const uint8_t *)src, 0, w, 1);
+   desc->unpack_rgba(dst, 0, (const uint8_t *)src, 0, w, 1);
 }
 
 static inline void
