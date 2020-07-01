@@ -1538,6 +1538,96 @@ TESTS = [
          }
          """,
          r'expression int16_t bitfield_insert \(expression int16_t'),
+    Test("bitCount",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp int val;
+         out int color;
+
+         void main()
+         {
+                 color = bitCount(val) + 1;
+         }
+         """,
+         r'expression int16_t \+ \(expression int16_t i2imp \(expression int bit_count \(var_ref val'),
+    Test("findLSB",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp int val;
+         out int color;
+
+         void main()
+         {
+                 color = findLSB(val) + 1;
+         }
+         """,
+         r'expression int16_t \+ \(expression int16_t i2imp \(expression int find_lsb \(var_ref val'),
+    Test("findMSB",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp int val;
+         out int color;
+
+         void main()
+         {
+                 color = findMSB(val) + 1;
+         }
+         """,
+         r'expression int16_t \+ \(expression int16_t i2imp \(expression int find_msb \(var_ref val'),
+    Test("unpackHalf2x16",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp uint val;
+         out vec2 color;
+
+         void main()
+         {
+                 color = unpackHalf2x16(val) + vec2(1.0);
+         }
+         """,
+         r'expression f16vec2 \+ \(expression f16vec2 f2fmp \(expression vec2 unpackHalf2x16 \(var_ref val'),
+    Test("unpackUnorm4x8",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp uint val;
+         out vec4 color;
+
+         void main()
+         {
+                 color = unpackUnorm4x8(val) + vec4(1.0);
+         }
+         """,
+         r'expression f16vec4 \+ \(expression f16vec4 f2fmp \(expression vec4 unpackUnorm4x8 \(var_ref val'),
+    Test("unpackSnorm4x8",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp uint val;
+         out vec4 color;
+
+         void main()
+         {
+                 color = unpackSnorm4x8(val) + vec4(1.0);
+         }
+         """,
+         r'expression f16vec4 \+ \(expression f16vec4 f2fmp \(expression vec4 unpackSnorm4x8 \(var_ref val'),
 ]
 
 

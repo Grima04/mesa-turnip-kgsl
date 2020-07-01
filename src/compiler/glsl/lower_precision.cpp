@@ -409,6 +409,17 @@ find_lowerable_rvalues_visitor::visit_enter(ir_expression *ir)
 }
 
 static bool
+function_always_returns_mediump_or_lowp(const char *name)
+{
+   return !strcmp(name, "bitCount") ||
+          !strcmp(name, "findLSB") ||
+          !strcmp(name, "findMSB") ||
+          !strcmp(name, "unpackHalf2x16") ||
+          !strcmp(name, "unpackUnorm4x8") ||
+          !strcmp(name, "unpackSnorm4x8");
+}
+
+static bool
 is_lowerable_builtin(ir_call *ir,
                      const struct set *lowerable_rvalues)
 {
@@ -510,6 +521,11 @@ is_lowerable_builtin(ir_call *ir,
       check_parameters = 1;
    } else if (!strcmp(ir->callee_name(), "bitfieldInsert")) {
       check_parameters = 2;
+   } if (function_always_returns_mediump_or_lowp(ir->callee_name())) {
+      /* These only lower the return value. Parameters keep their precision,
+       * which is preserved in map_builtin.
+       */
+      check_parameters = 0;
    }
 
    foreach_in_list(ir_rvalue, param, &ir->actual_parameters) {
@@ -875,8 +891,14 @@ find_precision_visitor::map_builtin(ir_function_signature *sig)
    ir_function_signature *lowered_sig =
       sig->clone(lowered_builtin_mem_ctx, clone_ht);
 
-   foreach_in_list(ir_variable, param, &lowered_sig->parameters) {
-      param->data.precision = GLSL_PRECISION_MEDIUM;
+   /* Functions that always return mediump or lowp should keep their
+    * parameters intact, because they can be highp. NIR can lower
+    * the up-conversion for parameters if needed.
+    */
+   if (!function_always_returns_mediump_or_lowp(sig->function_name())) {
+      foreach_in_list(ir_variable, param, &lowered_sig->parameters) {
+         param->data.precision = GLSL_PRECISION_MEDIUM;
+      }
    }
 
    lower_precision(options, &lowered_sig->body);
