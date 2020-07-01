@@ -1886,6 +1886,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
       case GL_RED:
          if (_mesa_has_rg_textures(ctx))
             return GL_NO_ERROR;
+         /* fallthrough */
       default:
          return GL_INVALID_OPERATION;
       }
@@ -2927,6 +2928,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
          case GL_RGBA:
             if (_mesa_has_OES_texture_float(ctx) && internalFormat == format)
                break;
+         /* fallthrough */
          default:
             return GL_INVALID_OPERATION;
          }
@@ -2935,6 +2937,7 @@ _mesa_gles_error_check_format_and_type(const struct gl_context *ctx,
       case GL_HALF_FLOAT_OES:
          if (_mesa_has_OES_texture_half_float(ctx) && internalFormat == format)
             break;
+         /* fallthrough */
       default:
          return GL_INVALID_OPERATION;
       }
