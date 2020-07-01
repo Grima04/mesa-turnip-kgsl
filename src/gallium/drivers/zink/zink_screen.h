@@ -54,6 +54,7 @@ struct zink_screen {
    bool have_KHR_external_memory_fd;
    bool have_EXT_conditional_rendering;
    bool have_EXT_transform_feedback;
+   bool have_EXT_index_type_uint8;
 
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;

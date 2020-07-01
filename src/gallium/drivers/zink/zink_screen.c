@@ -759,7 +759,7 @@ static struct pipe_screen *
 zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
-   bool have_tf_ext = false, have_cond_render_ext = false;
+   bool have_tf_ext = false, have_cond_render_ext = false, have_EXT_index_type_uint8 = false;
    if (!screen)
       return NULL;
 
@@ -798,6 +798,9 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
             if (!strcmp(extensions[i].extensionName,
                         VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME))
                have_tf_ext = true;
+            if (!strcmp(extensions[i].extensionName,
+                        VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME))
+               have_EXT_index_type_uint8 = true;
 
          }
          FREE(extensions);
@@ -806,6 +809,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    VkPhysicalDeviceFeatures2 feats = {};
    VkPhysicalDeviceTransformFeedbackFeaturesEXT tf_feats = {};
    VkPhysicalDeviceConditionalRenderingFeaturesEXT cond_render_feats = {};
+   VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_uint8_feats = {};
 
    feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
    if (have_tf_ext) {
@@ -818,12 +822,19 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       cond_render_feats.pNext = feats.pNext;
       feats.pNext = &cond_render_feats;
    }
+   if (have_EXT_index_type_uint8) {
+      index_uint8_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
+      index_uint8_feats.pNext = feats.pNext;
+      feats.pNext = &index_uint8_feats;
+   }
    vkGetPhysicalDeviceFeatures2(screen->pdev, &feats);
    memcpy(&screen->feats, &feats.features, sizeof(screen->feats));
    if (have_tf_ext && tf_feats.transformFeedback)
       screen->have_EXT_transform_feedback = true;
    if (have_cond_render_ext && cond_render_feats.conditionalRendering)
       screen->have_EXT_conditional_rendering = true;
+   if (have_EXT_index_type_uint8 && index_uint8_feats.indexTypeUint8)
+      screen->have_EXT_index_type_uint8 = true;
 
    VkPhysicalDeviceProperties2 props = {};
    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
@@ -855,7 +866,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
     * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
     */
    dci.pNext = &feats;
-   const char *extensions[5] = {
+   const char *extensions[6] = {
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
    };
    num_extensions = 1;
@@ -872,6 +883,9 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 
    if (screen->have_EXT_conditional_rendering)
       extensions[num_extensions++] = VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME;
+
+   if (screen->have_EXT_index_type_uint8)
+      extensions[num_extensions++] = VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME;
 
    if (screen->have_EXT_transform_feedback)
       extensions[num_extensions++] = VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME;

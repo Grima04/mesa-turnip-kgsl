@@ -210,7 +210,7 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    if (dinfo->mode >= PIPE_PRIM_QUADS ||
        dinfo->mode == PIPE_PRIM_LINE_LOOP ||
-       dinfo->index_size == 1) {
+       (dinfo->index_size == 1 && !screen->have_EXT_index_type_uint8)) {
       if (!u_trim_pipe_prim(dinfo->mode, (unsigned *)&dinfo->count))
          return;
 
@@ -424,8 +424,21 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
 
    if (dinfo->index_size > 0) {
-      assert(dinfo->index_size != 1);
-      VkIndexType index_type = dinfo->index_size == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+      VkIndexType index_type;
+      switch (dinfo->index_size) {
+      case 1:
+         assert(screen->have_EXT_index_type_uint8);
+         index_type = VK_INDEX_TYPE_UINT8_EXT;
+         break;
+      case 2:
+         index_type = VK_INDEX_TYPE_UINT16;
+         break;
+      case 4:
+         index_type = VK_INDEX_TYPE_UINT32;
+         break;
+      default:
+         unreachable("unknown index size!");
+      }
       struct zink_resource *res = zink_resource(index_buffer);
       vkCmdBindIndexBuffer(batch->cmdbuf, res->buffer, index_offset, index_type);
       zink_batch_reference_resoure(batch, res);
