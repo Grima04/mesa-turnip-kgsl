@@ -5728,6 +5728,7 @@ compressed_tex_sub_image(unsigned dim, GLenum target, GLuint textureOrIndex,
          break;
       case TEX_MODE_CURRENT_NO_ERROR:
          no_error = true;
+         /* fallthrough */
       case TEX_MODE_CURRENT_ERROR:
       default:
          assert(textureOrIndex == 0);
