@@ -477,6 +477,12 @@ pack_texture_shader_state(struct v3dv_device *device,
       } else {
          tex.image_depth = (image_view->last_layer - image_view->first_layer) + 1;
       }
+
+      if (image_view->type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+         assert(tex.image_depth % 6 == 0);
+         tex.image_depth /= 6;
+      }
+
       tex.image_height = image->extent.height * msaa_scale;
       tex.image_width = image->extent.width * msaa_scale;
 
