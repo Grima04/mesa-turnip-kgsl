@@ -299,7 +299,7 @@ x86_test-gl:
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-07-21-tracie"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-07-21-gfxreconstruct-dev"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
