@@ -2064,8 +2064,8 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                format(file, ")");
                break;
             }
-            /* FALLTHROUGH */
          }
+         /* FALLTHROUGH */
 
          case GEN7_SFID_PIXEL_INTERPOLATOR:
             if (devinfo->gen >= 7) {
