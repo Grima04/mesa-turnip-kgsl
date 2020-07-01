@@ -11,6 +11,7 @@ include:
 stages:
   - container+docs
   - container-2
+  - deploy
   - meson-x86_64
   - scons
   - meson-misc
@@ -21,7 +22,6 @@ stages:
   - radv
   - lima
   - virgl
-  - deploy
   - success
 
 .docs-base:
