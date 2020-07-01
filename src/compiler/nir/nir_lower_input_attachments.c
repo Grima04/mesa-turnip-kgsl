@@ -50,6 +50,27 @@ load_frag_coord(const nir_input_attachment_options *options, nir_builder *b)
    return nir_load_var(b, pos);
 }
 
+static nir_ssa_def *
+load_layer_id(const nir_input_attachment_options *options, nir_builder *b)
+{
+   if (options->use_layer_id_sysval)
+      return nir_load_layer_id(b);
+
+   nir_variable *layer_id =
+      nir_find_variable_with_location(b->shader, nir_var_shader_in,
+                                      VARYING_SLOT_LAYER);
+
+   if (layer_id == NULL) {
+      layer_id = nir_variable_create(b->shader, nir_var_shader_in,
+                                     glsl_int_type(), NULL);
+      layer_id->data.location = VARYING_SLOT_LAYER;
+      layer_id->data.interpolation = INTERP_MODE_FLAT;
+      layer_id->data.driver_location = b->shader->num_inputs++;
+   }
+
+   return nir_load_var(b, layer_id);
+}
+
 static bool
 try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load,
                      const nir_input_attachment_options *options)
@@ -73,7 +94,7 @@ try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load,
    nir_ssa_def *offset = nir_ssa_for_src(&b, load->src[1], 2);
    nir_ssa_def *pos = nir_iadd(&b, frag_coord, offset);
 
-   nir_ssa_def *layer = nir_load_layer_id(&b);
+   nir_ssa_def *layer = load_layer_id(options, &b);
    nir_ssa_def *coord =
       nir_vec3(&b, nir_channel(&b, pos, 0), nir_channel(&b, pos, 1), layer);
 
@@ -144,7 +165,7 @@ try_lower_input_texop(nir_function_impl *impl, nir_tex_instr *tex,
    nir_ssa_def *frag_coord = load_frag_coord(options, &b);
    frag_coord = nir_f2i32(&b, frag_coord);
 
-   nir_ssa_def *layer = nir_load_layer_id(&b);
+   nir_ssa_def *layer = load_layer_id(options, &b);
    nir_ssa_def *coord = nir_vec3(&b, nir_channel(&b, frag_coord, 0),
                                      nir_channel(&b, frag_coord, 1), layer);
 

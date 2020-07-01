@@ -508,6 +508,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			NIR_PASS_V(nir, nir_lower_input_attachments,
 				   &(nir_input_attachment_options) {
 					.use_fragcoord_sysval = true,
+					.use_layer_id_sysval = true,
 				   });
 
 		NIR_PASS_V(nir, nir_remove_dead_variables,

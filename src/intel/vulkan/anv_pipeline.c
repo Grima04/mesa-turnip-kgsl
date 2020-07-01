@@ -747,6 +747,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
       NIR_PASS_V(nir, nir_lower_input_attachments,
                  &(nir_input_attachment_options) {
                      .use_fragcoord_sysval = true,
+                     .use_layer_id_sysval = true,
                  });
    }
 

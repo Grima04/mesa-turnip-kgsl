@@ -4460,6 +4460,7 @@ bool nir_lower_idiv(nir_shader *shader, enum nir_lower_idiv_path path);
 
 typedef struct nir_input_attachment_options {
    bool use_fragcoord_sysval;
+   bool use_layer_id_sysval;
 } nir_input_attachment_options;
 
 bool nir_lower_input_attachments(nir_shader *shader,

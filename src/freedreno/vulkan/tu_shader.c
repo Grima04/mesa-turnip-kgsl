@@ -774,6 +774,7 @@ tu_shader_create(struct tu_device *dev,
       NIR_PASS_V(nir, nir_lower_input_attachments,
                  &(nir_input_attachment_options) {
                      .use_fragcoord_sysval = true,
+                     .use_layer_id_sysval = true,
                  });
    }
 
