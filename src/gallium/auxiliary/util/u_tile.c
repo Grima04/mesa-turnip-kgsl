@@ -365,10 +365,6 @@ pipe_put_tile_rgba(struct pipe_transfer *pt,
    if (u_clip_tile(x, y, &w, &h, &pt->box))
       return;
 
-   /* softpipe's S8_UINT texture cache fetch needs to take the rgba_format
-    * path, not ui (since there's no ui unpack for s8, but it's technically
-    * pure integer).
-    */
    if (util_format_is_pure_uint(format)) {
       util_format_write_4ui(format,
                             p, src_stride * sizeof(float),
@@ -435,6 +431,10 @@ pipe_get_tile_rgba(struct pipe_transfer *pt,
 
    pipe_get_tile_raw(pt, src, x, y, w, h, packed, 0);
 
+   /* softpipe's S8_UINT texture cache fetch needs to take the rgba_format
+    * path, not ui (since there's no ui unpack for s8, but it's technically
+    * pure integer).
+    */
    if (util_format_is_pure_uint(format) &&
        !util_format_is_depth_or_stencil(format)) {
       util_format_read_4ui(format,
